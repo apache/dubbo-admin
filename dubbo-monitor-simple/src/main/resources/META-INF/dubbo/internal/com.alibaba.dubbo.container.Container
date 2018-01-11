@@ -1,1 +1,2 @@
 registry=com.alibaba.dubbo.monitor.simple.RegistryContainer
+jetty=com.alibaba.dubbo.container.jetty.JettyContainer
