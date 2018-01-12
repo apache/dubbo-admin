@@ -14,13 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alibaba.dubbo.monitor.simple;
+package com.alibaba.dubbo.monitor.simple.container;
 
 import com.alibaba.dubbo.common.logger.Logger;
 import com.alibaba.dubbo.common.logger.LoggerFactory;
 import com.alibaba.dubbo.common.utils.ConfigUtils;
 import com.alibaba.dubbo.common.utils.NetUtils;
 import com.alibaba.dubbo.container.Container;
+import com.alibaba.dubbo.monitor.simple.servlet.PageServlet;
+import com.alibaba.dubbo.monitor.simple.servlet.ResourceFilter;
 
 import org.mortbay.jetty.Handler;
 import org.mortbay.jetty.Server;
@@ -38,7 +40,7 @@ public class JettyContainer implements Container {
     public static final String JETTY_DIRECTORY = "dubbo.jetty.directory";
     public static final String JETTY_PAGES = "dubbo.jetty.page";
     public static final int DEFAULT_JETTY_PORT = 8080;
-    private static final Logger logger = LoggerFactory.getLogger(com.alibaba.dubbo.container.jetty.JettyContainer.class);
+    private static final Logger logger = LoggerFactory.getLogger(JettyContainer.class);
     SelectChannelConnector connector;
 
     public void start() {

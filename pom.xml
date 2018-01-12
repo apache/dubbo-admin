@@ -17,6 +17,9 @@
     <properties>
         <dubbo_all_version>2.6.1</dubbo_all_version>
         <dubbo_version>2.6.1</dubbo_version>
+        <webx_version>3.1.6</webx_version>
+        <velocity_version>1.7</velocity_version>
+        <jfreechart_version>1.0.13</jfreechart_version>
     </properties>
 
     <modules>
@@ -32,6 +35,21 @@
                 <groupId>com.alibaba</groupId>
                 <artifactId>dubbo</artifactId>
                 <version>${dubbo_all_version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba.citrus</groupId>
+                <artifactId>citrus-webx-all</artifactId>
+                <version>${webx_version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.velocity</groupId>
+                <artifactId>velocity</artifactId>
+                <version>${velocity_version}</version>
+            </dependency>
+            <dependency>
+                <groupId>jfree</groupId>
+                <artifactId>jfreechart</artifactId>
+                <version>${jfreechart_version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

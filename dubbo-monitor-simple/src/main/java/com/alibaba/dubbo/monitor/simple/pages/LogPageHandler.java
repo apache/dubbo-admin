@@ -17,9 +17,9 @@
 package com.alibaba.dubbo.monitor.simple.pages;
 
 import com.alibaba.dubbo.common.URL;
-import com.alibaba.dubbo.container.page.Menu;
-import com.alibaba.dubbo.container.page.Page;
-import com.alibaba.dubbo.container.page.PageHandler;
+import com.alibaba.dubbo.monitor.simple.common.Menu;
+import com.alibaba.dubbo.monitor.simple.common.Page;
+import com.alibaba.dubbo.monitor.simple.servlet.PageHandler;
 
 import org.apache.log4j.Appender;
 import org.apache.log4j.FileAppender;
