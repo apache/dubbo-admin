@@ -18,10 +18,10 @@ package com.alibaba.dubbo.monitor.simple.pages;
 
 import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.common.extension.ExtensionLoader;
-import com.alibaba.dubbo.container.page.Menu;
-import com.alibaba.dubbo.container.page.Page;
-import com.alibaba.dubbo.container.page.PageHandler;
-import com.alibaba.dubbo.container.page.PageServlet;
+import com.alibaba.dubbo.monitor.simple.common.Menu;
+import com.alibaba.dubbo.monitor.simple.common.Page;
+import com.alibaba.dubbo.monitor.simple.servlet.PageHandler;
+import com.alibaba.dubbo.monitor.simple.servlet.PageServlet;
 
 import java.util.ArrayList;
 import java.util.List;

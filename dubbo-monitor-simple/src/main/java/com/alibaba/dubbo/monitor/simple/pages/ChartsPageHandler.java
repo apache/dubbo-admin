@@ -18,9 +18,9 @@ package com.alibaba.dubbo.monitor.simple.pages;
 
 import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.common.utils.ConfigUtils;
-import com.alibaba.dubbo.container.page.Page;
-import com.alibaba.dubbo.container.page.PageHandler;
 import com.alibaba.dubbo.monitor.MonitorService;
+import com.alibaba.dubbo.monitor.simple.common.Page;
+import com.alibaba.dubbo.monitor.simple.servlet.PageHandler;
 
 import java.io.File;
 import java.text.SimpleDateFormat;

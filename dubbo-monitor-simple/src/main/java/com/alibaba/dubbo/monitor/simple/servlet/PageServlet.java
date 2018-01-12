@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alibaba.dubbo.monitor.simple;
+package com.alibaba.dubbo.monitor.simple.servlet;
 
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.URL;
@@ -22,10 +22,9 @@ import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.common.logger.Logger;
 import com.alibaba.dubbo.common.logger.LoggerFactory;
 import com.alibaba.dubbo.common.utils.StringUtils;
-import com.alibaba.dubbo.container.page.Menu;
-import com.alibaba.dubbo.container.page.MenuComparator;
-import com.alibaba.dubbo.container.page.Page;
-import com.alibaba.dubbo.container.page.PageHandler;
+import com.alibaba.dubbo.monitor.simple.common.Menu;
+import com.alibaba.dubbo.monitor.simple.common.MenuComparator;
+import com.alibaba.dubbo.monitor.simple.common.Page;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -47,14 +46,14 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class PageServlet extends HttpServlet {
 
-    protected static final Logger logger = LoggerFactory.getLogger(com.alibaba.dubbo.container.page.PageServlet.class);
+    protected static final Logger logger = LoggerFactory.getLogger(PageServlet.class);
     private static final long serialVersionUID = -8370312705453328501L;
-    private static com.alibaba.dubbo.container.page.PageServlet INSTANCE;
+    private static PageServlet INSTANCE;
     protected final Random random = new Random();
     protected final Map<String, PageHandler> pages = new ConcurrentHashMap<String, PageHandler>();
     protected final List<PageHandler> menus = new ArrayList<PageHandler>();
 
-    public static com.alibaba.dubbo.container.page.PageServlet getInstance() {
+    public static PageServlet getInstance() {
         return INSTANCE;
     }
 

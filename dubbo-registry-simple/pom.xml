@@ -55,7 +55,7 @@ limitations under the License.
                                 <artifactItem>
                                     <groupId>com.alibaba</groupId>
                                     <artifactId>dubbo</artifactId>
-                                    <version>${project.parent.version}</version>
+                                    <version>${dubbo_all_version}</version>
                                     <outputDirectory>${project.build.directory}/dubbo</outputDirectory>
                                     <includes>META-INF/assembly/**</includes>
                                 </artifactItem>

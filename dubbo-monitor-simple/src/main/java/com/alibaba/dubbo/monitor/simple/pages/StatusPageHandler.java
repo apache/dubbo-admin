@@ -21,9 +21,9 @@ import com.alibaba.dubbo.common.extension.ExtensionLoader;
 import com.alibaba.dubbo.common.status.Status;
 import com.alibaba.dubbo.common.status.StatusChecker;
 import com.alibaba.dubbo.common.status.support.StatusUtils;
-import com.alibaba.dubbo.container.page.Menu;
-import com.alibaba.dubbo.container.page.Page;
-import com.alibaba.dubbo.container.page.PageHandler;
+import com.alibaba.dubbo.monitor.simple.common.Menu;
+import com.alibaba.dubbo.monitor.simple.common.Page;
+import com.alibaba.dubbo.monitor.simple.servlet.PageHandler;
 
 import java.util.ArrayList;
 import java.util.HashMap;

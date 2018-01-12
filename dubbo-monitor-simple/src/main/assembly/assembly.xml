@@ -22,12 +22,12 @@ limitations under the License.
     <includeBaseDirectory>true</includeBaseDirectory>
     <fileSets>
         <fileSet>
-            <directory>${project.build.directory}/dubbo/META-INF/assembly/bin</directory>
-            <outputDirectory>bin</outputDirectory>
+            <directory>${project.build.directory}/classes/META-INF/assembly/bin</directory>
+            <outputDirectory>assembly.bin</outputDirectory>
             <fileMode>0755</fileMode>
         </fileSet>
         <fileSet>
-            <directory>src/main/assembly/conf</directory>
+            <directory>src/main/resources/conf</directory>
             <outputDirectory>conf</outputDirectory>
             <fileMode>0644</fileMode>
         </fileSet>

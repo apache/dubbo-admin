@@ -22,7 +22,7 @@ limitations under the License.
 
     <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
         <property name="systemPropertiesModeName" value="SYSTEM_PROPERTIES_MODE_OVERRIDE"/>
-        <property name="location" value="classpath:dubbo.properties"/>
+        <property name="location" value="classpath:conf/dubbo.properties"/>
     </bean>
 
     <bean id="monitorService" class="com.alibaba.dubbo.monitor.simple.SimpleMonitorService">
