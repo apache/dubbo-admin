@@ -14,33 +14,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alibaba.dubbo.monitor.simple;
+package com.alibaba.dubbo.monitor.simple.servlet;
 
-import com.alibaba.dubbo.container.page.Menu;
-import com.alibaba.dubbo.container.page.PageHandler;
-
-import java.io.Serializable;
-import java.util.Comparator;
+import com.alibaba.dubbo.common.URL;
+import com.alibaba.dubbo.common.extension.SPI;
+import com.alibaba.dubbo.monitor.simple.common.Page;
 
 /**
- * MenuComparator
+ * PageHandler
  */
-public class MenuComparator implements Comparator<PageHandler>, Serializable {
+@SPI
+public interface PageHandler {
 
-    private static final long serialVersionUID = -3161526932904414029L;
-
-    public int compare(PageHandler o1, PageHandler o2) {
-        if (o1 == null && o2 == null) {
-            return 0;
-        }
-        if (o1 == null) {
-            return -1;
-        }
-        if (o2 == null) {
-            return 1;
-        }
-        return o1.equals(o2) ? 0 : (o1.getClass().getAnnotation(Menu.class).order()
-                > o2.getClass().getAnnotation(Menu.class).order() ? 1 : -1);
-    }
+    /**
+     * Handle the page.
+     *
+     * @param url
+     * @return the page.
+     */
+    Page handle(URL url);
 
 }

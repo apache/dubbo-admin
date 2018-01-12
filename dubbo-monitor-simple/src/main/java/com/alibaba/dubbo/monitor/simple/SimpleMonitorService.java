@@ -24,6 +24,7 @@ import com.alibaba.dubbo.common.utils.ConfigUtils;
 import com.alibaba.dubbo.common.utils.NamedThreadFactory;
 import com.alibaba.dubbo.common.utils.NetUtils;
 import com.alibaba.dubbo.monitor.MonitorService;
+import com.alibaba.dubbo.monitor.simple.common.CountUtils;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;

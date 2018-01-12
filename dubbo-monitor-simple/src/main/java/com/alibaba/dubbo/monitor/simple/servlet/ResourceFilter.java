@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alibaba.dubbo.monitor.simple;
+package com.alibaba.dubbo.monitor.simple.servlet;
 
 import com.alibaba.dubbo.common.Constants;
 

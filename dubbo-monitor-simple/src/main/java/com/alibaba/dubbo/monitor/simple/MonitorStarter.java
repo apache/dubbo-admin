@@ -16,22 +16,12 @@
  */
 package com.alibaba.dubbo.monitor.simple;
 
-import com.alibaba.dubbo.common.URL;
-import com.alibaba.dubbo.common.extension.SPI;
-import com.alibaba.dubbo.container.page.Page;
+import com.alibaba.dubbo.common.Constants;
+import com.alibaba.dubbo.container.Main;
 
-/**
- * PageHandler
- */
-@SPI
-public interface PageHandler {
-
-    /**
-     * Handle the page.
-     *
-     * @param url
-     * @return the page.
-     */
-    Page handle(URL url);
-
+public class MonitorStarter {
+    public static void main(String[] args) {
+        System.setProperty(Constants.DUBBO_PROPERTIES_KEY, "conf/dubbo.properties");
+        Main.main(args);
+    }
 }

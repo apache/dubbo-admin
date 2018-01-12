@@ -19,9 +19,9 @@ package com.alibaba.dubbo.monitor.simple.pages;
 import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.common.Version;
 import com.alibaba.dubbo.common.utils.NetUtils;
-import com.alibaba.dubbo.container.page.Menu;
-import com.alibaba.dubbo.container.page.Page;
-import com.alibaba.dubbo.container.page.PageHandler;
+import com.alibaba.dubbo.monitor.simple.common.Menu;
+import com.alibaba.dubbo.monitor.simple.common.Page;
+import com.alibaba.dubbo.monitor.simple.servlet.PageHandler;
 
 import java.lang.management.ManagementFactory;
 import java.text.SimpleDateFormat;
@@ -47,7 +47,7 @@ public class SystemPageHandler implements PageHandler {
 
         row = new ArrayList<String>();
         row.add("Version");
-        row.add(Version.getVersion(com.alibaba.dubbo.container.page.pages.SystemPageHandler.class, "2.0.0"));
+        row.add(Version.getVersion(SystemPageHandler.class, "2.0.0"));
         rows.add(row);
 
         row = new ArrayList<String>();
