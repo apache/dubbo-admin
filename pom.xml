@@ -14,6 +14,7 @@
         <dubbo_version>2.6.0</dubbo_version>
         <webx_version>3.1.6</webx_version>
         <jfreechart_version>1.0.13</jfreechart_version>
+        <velocity_version>1.7</velocity_version>
 
         <!-- Temporarily added for lower version compatibility  -->
         <spring_version>4.3.10.RELEASE</spring_version>
@@ -24,6 +25,11 @@
         <slf4j_version>1.7.25</slf4j_version>
         <log4j_version>1.2.16</log4j_version>
         <commons_lang3_version>3.4</commons_lang3_version>
+
+        <!-- Test libs -->
+        <junit_version>4.12</junit_version>
+        <easymock_version>3.4</easymock_version>
+        <jmockit_version>1.33</jmockit_version>
     </properties>
 
     <modules>
@@ -75,6 +81,11 @@
                 <version>${jetty_version}</version>
             </dependency>
             <dependency>
+                <groupId>org.apache.velocity</groupId>
+                <artifactId>velocity</artifactId>
+                <version>${velocity_version}</version>
+            </dependency>
+            <dependency>
                 <groupId>javax.servlet</groupId>
                 <artifactId>javax.servlet-api</artifactId>
                 <version>${servlet_version}</version>
@@ -101,6 +112,28 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <!-- Temporarily added for lower version compatibility  -->
+    <dependencies>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit_version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.easymock</groupId>
+            <artifactId>easymock</artifactId>
+            <version>${easymock_version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jmockit</groupId>
+            <artifactId>jmockit</artifactId>
+            <version>${jmockit_version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
     <build>
         <pluginManagement>
