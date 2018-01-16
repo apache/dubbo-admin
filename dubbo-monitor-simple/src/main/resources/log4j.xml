@@ -19,7 +19,7 @@
     </appender>
 
     <logger name="org.apache">
-        <level value="ERROR"/>
+        <level value="INFO"/>
     </logger>
     <root>
         <level value="INFO"/>
