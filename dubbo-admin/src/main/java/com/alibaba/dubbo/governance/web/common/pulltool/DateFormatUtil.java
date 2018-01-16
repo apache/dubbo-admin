@@ -16,7 +16,8 @@ package com.alibaba.dubbo.governance.web.common.pulltool;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import org.apache.commons.lang.StringUtils;
+
+import org.apache.commons.lang3.StringUtils;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;

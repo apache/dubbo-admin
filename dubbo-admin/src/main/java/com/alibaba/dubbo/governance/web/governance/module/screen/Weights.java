@@ -25,8 +25,8 @@ import com.alibaba.dubbo.registry.common.domain.Weight;
 import com.alibaba.dubbo.registry.common.util.OverrideUtils;
 import com.alibaba.dubbo.registry.common.util.Tool;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.math.NumberUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.io.BufferedReader;
