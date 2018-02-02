@@ -96,32 +96,27 @@ public class AuthorizationValve extends AbstractValve {
             }
             return;
         }
-        //FIXME
-        if (!uri.startsWith("/status/")) {
-            User user = null;
-            String authType = null;
-            String authorization = request.getHeader("Authorization");
-            if (authorization != null && authorization.length() > 0) {
-                int i = authorization.indexOf(' ');
-                if (i >= 0) {
-                    authType = authorization.substring(0, i);
-                    String authPrincipal = authorization.substring(i + 1);
-                    if (BASIC_CHALLENGE.equalsIgnoreCase(authType)) {
-                        user = loginByBase(authPrincipal);
-                    } else if (DIGEST_CHALLENGE.equalsIgnoreCase(authType)) {
-                        user = loginByDigest(authPrincipal);
-                    }
+        User user = null;
+        String authType = null;
+        String authorization = request.getHeader("Authorization");
+        if (authorization != null && authorization.length() > 0) {
+            int i = authorization.indexOf(' ');
+            if (i >= 0) {
+                authType = authorization.substring(0, i);
+                String authPrincipal = authorization.substring(i + 1);
+                if (BASIC_CHALLENGE.equalsIgnoreCase(authType)) {
+                    user = loginByBase(authPrincipal);
+                } else if (DIGEST_CHALLENGE.equalsIgnoreCase(authType)) {
+                    user = loginByDigest(authPrincipal);
                 }
             }
-            if (user == null || user.getUsername() == null || user.getUsername().length() == 0) {
-                showLoginForm();
-                pipelineContext.breakPipeline(1);
-            }
-            if (user != null && StringUtils.isNotEmpty(user.getUsername())) {
-                request.getSession().setAttribute(WebConstants.CURRENT_USER_KEY, user);
-                pipelineContext.invokeNext();
-            }
-        } else {
+        }
+        if (user == null || user.getUsername() == null || user.getUsername().length() == 0) {
+            showLoginForm();
+            pipelineContext.breakPipeline(1);
+        }
+        if (user != null && StringUtils.isNotEmpty(user.getUsername())) {
+            request.getSession().setAttribute(WebConstants.CURRENT_USER_KEY, user);
             pipelineContext.invokeNext();
         }
     }
