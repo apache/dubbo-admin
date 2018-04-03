@@ -1,5 +1,5 @@
 ### dubbo-ops
-The following modules in [dubbo](https://github.com/alibaba/dubbo) have been moved here:
+The following modules in [Apache Dubbo(incubating)](https://github.com/apache/incubator-dubbo) have been moved here:
 
 * dubbo-admin
 * dubbo-monitor-simple
