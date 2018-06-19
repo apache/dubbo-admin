@@ -3,6 +3,5 @@ sudo: false # faster builds
 
 jdk:
     - oraclejdk8
-    - openjdk7
 script:
     - travis_wait 30 mvn clean package
