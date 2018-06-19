@@ -30,6 +30,7 @@
         <easymock_version>3.4</easymock_version>
         <jmockit_version>1.33</jmockit_version>
         <apache_rat_plugin.version>0.12</apache_rat_plugin.version>
+        <maven_compiler_version>3.6.0</maven_compiler_version>
         <maven_jacoco_version>0.8.1</maven_jacoco_version>
     </properties>
 
@@ -157,6 +158,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven_compiler_version}</version>
                     <configuration>
                         <fork>true</fork>
                         <source>1.6</source>
