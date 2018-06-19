@@ -17,6 +17,7 @@
 
 package com.alibaba.dubboadmin;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,6 +29,7 @@ public class DubboAdminApplicationTests {
 
 	@Test
 	public void contextLoads() {
+		Assert.assertTrue(true);
 	}
 
 }
