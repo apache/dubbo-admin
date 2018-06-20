@@ -1,0 +1,9 @@
+language: java
+sudo: false # faster builds
+
+jdk:
+    - oraclejdk10
+    - oraclejdk9
+    - oraclejdk8
+script:
+    - travis_wait 30 mvn clean package
