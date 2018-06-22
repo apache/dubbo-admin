@@ -20,7 +20,9 @@ package com.alibaba.dubboadmin.web.mvc;
 import java.lang.reflect.Method;
 import java.util.Map;
 
+import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 
 import com.alibaba.dubboadmin.SpringUtil;
@@ -214,28 +216,34 @@ public class RouterController {
                         if (method.getName().equals(action)) {
                             Class<?> param = method.getParameterTypes()[0];
                             try {
-                                Object value = param.newInstance();
-                                Method[] mms = param.getDeclaredMethods();
-                                for (Method m : mms) {
-                                    if (m.getName().toLowerCase().startsWith("set")) {
-                                        String methodName = m.getName();
-                                        String key = methodName.substring(3).toLowerCase();
-                                        String tmp = params.get(key);
-                                        Object obj = tmp;
-                                        if (tmp != null) {
-                                            Class<?> t = m.getParameterTypes()[0];
-                                            if (isPrimitive(t)) {
-                                                obj = convertPrimitive(t, tmp);
+                                if (!param.isAssignableFrom(HttpServletRequest.class)) {
+                                    Object value = param.newInstance();
+                                    Method[] mms = param.getDeclaredMethods();
+                                    for (Method m : mms) {
+                                        if (m.getName().toLowerCase().startsWith("set")) {
+                                            String methodName = m.getName();
+                                            String key = methodName.substring(3).toLowerCase();
+                                            String tmp = params.get(key);
+                                            Object obj = tmp;
+                                            if (tmp != null) {
+                                                Class<?> t = m.getParameterTypes()[0];
+                                                if (isPrimitive(t)) {
+                                                    obj = convertPrimitive(t, tmp);
+                                                }
+                                                m.invoke(value, obj);
                                             }
-                                            m.invoke(value, obj);
-                                        }
 
+                                        }
                                     }
+                                    return (String)method.invoke(controller, value, request, response, model);
+                                } else {
+                                    return (String)method.invoke(controller, request, response, model);
                                 }
-                                return (String)method.invoke(controller, value, request, response, model);
                             } catch (Exception e) {
                                 e.printStackTrace();
                             }
+
+
                         }
                     }
                 } else {
@@ -313,6 +321,4 @@ public class RouterController {
         return "";
 
     }
-
-
 }
