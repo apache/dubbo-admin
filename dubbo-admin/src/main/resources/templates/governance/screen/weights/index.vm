@@ -20,7 +20,7 @@
                 class="ico_font">#springMessage("add")</span></a>
         <span class="ico_line">|</span>
         <a href="#" onclick="if(! hasCheckbox('ids')) { showAlert('#springMessage(
-            "empty.list")'); } else if(! h asChecked('ids')) { showAlert('#springMessage(
+            "empty.list")'); } else if(! hasChecked('ids')) { showAlert('#springMessage(
             "please.select")'); } else { showConfirm('#springMessage(
             "confirm.batch.delete")', 'weights/' + getChecked('ids') + '/delete'); } return false;"><img
                 src="$rootContextPath.getURI("images/ico_delete.png")" width="12" height="12"/><span

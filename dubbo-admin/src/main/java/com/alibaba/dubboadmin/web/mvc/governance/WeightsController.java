@@ -155,20 +155,20 @@ public class WeightsController extends BaseController {
                 if (!IP_PATTERN.matcher(ip).matches()) {
                     model.addAttribute("message", "illegal IP: " + s);
                     model.addAttribute("success", false);
-                    model.addAttribute("redirect", "governance/weights");
+                    model.addAttribute("redirect", "../weights");
                     return "governance/screen/redirect";
                 }
                 if (LOCAL_IP_PATTERN.matcher(ip).matches() || ALL_IP_PATTERN.matcher(ip).matches()) {
                     model.addAttribute("message", "local IP or any host ip is illegal: " + s);
                     model.addAttribute("success", false);
-                    model.addAttribute("redirect", "governance/weights");
+                    model.addAttribute("redirect", "../weights");
                     return "governance/screen/redirect";
                 }
                 if (port != null) {
                     if (!NumberUtils.isDigits(port)) {
                         model.addAttribute("message", "illegal port: " + s);
                         model.addAttribute("success", false);
-                        model.addAttribute("redirect", "governance/weights");
+                        model.addAttribute("redirect", "../weights");
                         return "governance/screen/redirect";
                     }
                 }
@@ -190,7 +190,7 @@ public class WeightsController extends BaseController {
                 if (!super.currentUser.hasServicePrivilege(s)) {
                     model.addAttribute("message", getMessage("HaveNoServicePrivilege", s));
                     model.addAttribute("success", false);
-                    model.addAttribute("redirect", "governance/weights");
+                    model.addAttribute("redirect", "../weights");
                     return "governance/screen/redirect";
                 }
                 aimServices.add(s);
@@ -208,7 +208,7 @@ public class WeightsController extends BaseController {
             }
         }
         model.addAttribute("success", true);
-        model.addAttribute("redirect", "governance/weights");
+        model.addAttribute("redirect", "../weights");
         return "governance/screen/redirect";
     }
 
@@ -289,7 +289,7 @@ public class WeightsController extends BaseController {
                 model.addAttribute("message", getMessage("HaveNoServicePrivilege", w.getService()));
                 success = false;
                 model.addAttribute("success", success);
-                model.addAttribute("redirect", "governance/weights");
+                model.addAttribute("redirect", "../../weights");
                 return "governance/screen/redirect";
             }
         }
@@ -298,7 +298,7 @@ public class WeightsController extends BaseController {
             overrideService.deleteOverride(id);
         }
         model.addAttribute("success", success);
-        model.addAttribute("redirect", "governance/weights");
+        model.addAttribute("redirect", "../../weights");
         return "governance/screen/redirect";
     }
 

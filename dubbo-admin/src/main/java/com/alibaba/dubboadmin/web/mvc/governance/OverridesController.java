@@ -334,7 +334,7 @@ public class OverridesController extends BaseController {
         }
 
         model.addAttribute("success", success);
-        model.addAttribute("redirect", "governance/overrides");
+        model.addAttribute("redirect", "../overrides");
         return "governance/screen/redirect";
     }
 
@@ -355,7 +355,7 @@ public class OverridesController extends BaseController {
         }
 
         model.addAttribute("success", succcess);
-        model.addAttribute("redirect", "governance/overrides");
+        model.addAttribute("redirect", "../overrides");
         return "governance/screen/redirect";
 
     }
@@ -369,7 +369,7 @@ public class OverridesController extends BaseController {
         }
 
         model.addAttribute("success", true);
-        model.addAttribute("redirect", "governance/overrides");
+        model.addAttribute("redirect", "../../overrides");
         return "governance/screen/redirect";
     }
 
@@ -384,14 +384,14 @@ public class OverridesController extends BaseController {
                 model.addAttribute("message", getMessage("NoSuchOperationData", id));
                 success = false;
                 model.addAttribute("success", success);
-                model.addAttribute("redirect", "governance/overrides");
+                model.addAttribute("redirect", "../../overrides");
                 return "governance/screen/redirect";
             } else {
                 if (!super.currentUser.hasServicePrivilege(override.getService())) {
                     model.addAttribute("message", getMessage("HaveNoServicePrivilege", override.getService()));
                     success = false;
                     model.addAttribute("success", success);
-                    model.addAttribute("redirect", "governance/overrides");
+                    model.addAttribute("redirect", "../../overrides");
                     return "governance/screen/redirect";
                 }
             }
@@ -402,7 +402,7 @@ public class OverridesController extends BaseController {
         }
 
         model.addAttribute("success", success);
-        model.addAttribute("redirect", "governance/overrides");
+        model.addAttribute("redirect", "../../overrides");
         return "governance/screen/redirect";
     }
 
@@ -417,14 +417,14 @@ public class OverridesController extends BaseController {
                 model.addAttribute("message", getMessage("NoSuchOperationData", id));
                 success = false;
                 model.addAttribute("success", success);
-                model.addAttribute("redirect", "governance/overrides");
+                model.addAttribute("redirect", "../../overrides");
                 return "governance/screen/redirect";
             } else {
                 if (!super.currentUser.hasServicePrivilege(override.getService())) {
                     model.addAttribute("message", getMessage("HaveNoServicePrivilege", override.getService()));
                     success = false;
                     model.addAttribute("success", success);
-                    model.addAttribute("redirect", "governance/overrides");
+                    model.addAttribute("redirect", "../../overrides");
                     return "governance/screen/redirect";
                 }
             }
@@ -434,7 +434,7 @@ public class OverridesController extends BaseController {
             overrideService.disableOverride(id);
         }
         model.addAttribute("success", success);
-        model.addAttribute("redirect", "governance/overrides");
+        model.addAttribute("redirect", "../../overrides");
         return "governance/screen/redirect";
     }
 
