@@ -321,11 +321,4 @@ public class RouterController {
         return "";
 
     }
-
-    public static void main(String[] args) {
-        HttpServletRequest request = new HttpServletRequestWrapper(null);
-
-    }
-
-
 }
