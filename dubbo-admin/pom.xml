@@ -5,7 +5,7 @@
 
 	<groupId>com.alibaba</groupId>
 	<artifactId>dubbo-admin</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>2.0.0</version>
 	<packaging>jar</packaging>
 
 	<name>dubbo-admin</name>
@@ -72,6 +72,64 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+
+			<!--see https://github.com/spotify/dockerfile-maven/issues/10#issuecomment-331697440-->
+			<!--
+				mvn dockerfile:build
+				mvn dockerfile:tag@tag-version
+				mvn dockerfile:push@push-latest
+				mvn dockerfile:push@push-version
+			-->
+			<plugin>
+				<groupId>com.spotify</groupId>
+				<artifactId>dockerfile-maven-plugin</artifactId>
+				<version>1.4.3</version>
+				<configuration>
+					<repository>xinmeng/dubbo-admin</repository>
+					<buildArgs>
+						<JAR_FILE>target/${project.build.finalName}.jar</JAR_FILE>
+					</buildArgs>
+				</configuration>
+				<executions>
+					<execution>
+						<id>build-and-tag-latest</id>
+						<phase>none</phase>
+						<goals>
+							<goal>build</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>tag-version</id>
+						<phase>none</phase>
+						<goals>
+							<goal>tag</goal>
+						</goals>
+						<configuration>
+							<tag>${project.version}</tag>
+						</configuration>
+					</execution>
+					<execution>
+						<id>push-latest</id>
+						<phase>none</phase>
+						<goals>
+							<goal>push</goal>
+						</goals>
+						<configuration>
+							<tag>latest</tag>
+						</configuration>
+					</execution>
+					<execution>
+						<id>push-version</id>
+						<phase>none</phase>
+						<goals>
+							<goal>push</goal>
+						</goals>
+						<configuration>
+							<tag>${project.version}</tag>
+						</configuration>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>
