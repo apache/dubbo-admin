@@ -12,7 +12,6 @@
     <properties>
         <dubbo_all_version>2.6.0</dubbo_all_version>
         <dubbo_version>2.6.0</dubbo_version>
-        <webx_version>3.1.6</webx_version>
         <jfreechart_version>1.0.13</jfreechart_version>
         <velocity_version>1.7</velocity_version>
 
@@ -36,7 +35,9 @@
         <java_target_version>1.6</java_target_version>
         <file_encoding>UTF-8</file_encoding>
         <!-- Maven plugins -->
+        <apache_rat_plugin.version>0.12</apache_rat_plugin.version>
         <maven_compiler_version>3.6.0</maven_compiler_version>
+        <maven_jacoco_version>0.8.1</maven_jacoco_version>
     </properties>
 
     <modules>
@@ -52,11 +53,6 @@
                 <groupId>com.alibaba</groupId>
                 <artifactId>dubbo</artifactId>
                 <version>${dubbo_all_version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.alibaba.citrus</groupId>
-                <artifactId>citrus-webx-all</artifactId>
-                <version>${webx_version}</version>
             </dependency>
             <dependency>
                 <groupId>jfree</groupId>
@@ -97,6 +93,12 @@
                 <groupId>org.apache.velocity</groupId>
                 <artifactId>velocity</artifactId>
                 <version>${velocity_version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.springframework</groupId>
+                        <artifactId>spring-framework-bom</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>javax.servlet</groupId>
@@ -171,6 +173,71 @@
                 <plugin>
                     <artifactId>maven-assembly-plugin</artifactId>
                     <version>2.6</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven_compiler_version}</version>
+                    <configuration>
+                        <fork>true</fork>
+                        <source>1.6</source>
+                        <target>1.6</target>
+                        <encoding>UTF-8</encoding>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${maven_jacoco_version}</version>
+                    <executions>
+                        <execution>
+                            <id>jacoco-initialize</id>
+                            <goals>
+                                <goal>prepare-agent</goal>
+                            </goals>
+                            <configuration>
+                                <propertyName>jacocoArgLine</propertyName>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>jacoco-site</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>report</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.rat</groupId>
+                    <artifactId>apache-rat-plugin</artifactId>
+                    <version>${apache_rat_plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>verify.rat</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                            <configuration>
+                                <excludes>
+                                    <exclude>**/.idea/</exclude>
+                                    <exclude>**/*.iml</exclude>
+                                    <exclude>.git/</exclude>
+                                    <exclude>.gitignore</exclude>
+                                    <exclude>.repository/</exclude>
+                                    <exclude>**/.settings/*</exclude>
+                                    <exclude>**/.classpath</exclude>
+                                    <exclude>**/.project</exclude>
+                                    <exclude>**/target/**</exclude>
+                                    <exclude>**/*.log</exclude>
+                                    <exclude>.codecov.yml</exclude>
+                                    <exclude>.travis.yml</exclude>
+                                    <exclude>README.md</exclude>
+                                </excludes>
+                            </configuration>
+                        </execution>
+                    </executions>
                 </plugin>
             </plugins>
         </pluginManagement>
