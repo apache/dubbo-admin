@@ -71,6 +71,8 @@ public class WebConstants {
         mapper.put("loadbalances", "loadbalancesController");
         mapper.put("owners", "ownersController");
         mapper.put("weights", "weightsController");
+        mapper.put("addresses", "addressesController");
+        mapper.put("services", "servicesController");
     }
 
 
