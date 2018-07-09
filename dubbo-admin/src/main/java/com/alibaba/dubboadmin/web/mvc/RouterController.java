@@ -29,6 +29,7 @@ import com.alibaba.dubboadmin.SpringUtil;
 import com.alibaba.dubboadmin.governance.util.WebConstants;
 import com.alibaba.dubboadmin.web.mvc.governance.ServicesController;
 
+import oracle.jrockit.jfr.events.RequestableEventEnvironment;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -77,7 +78,7 @@ public class RouterController {
     public String addressRouter(@PathVariable("ip") String ip, @PathVariable("type") String type,
                                 HttpServletRequest request, HttpServletResponse response, Model model) {
         model.addAttribute("address", ip);
-        return appRouter(null, null, type, request, response, model);
+        return appRouter(null, "addresses", ip, type, request, response, model);
     }
 
     @RequestMapping("/governance/addresses/{ip:[0-9.]+:?[0-9]+}/{type}/{action}")
@@ -85,7 +86,7 @@ public class RouterController {
                                       @PathVariable("action") String action, HttpServletRequest request,
                                       HttpServletResponse response, Model model) {
         model.addAttribute("address", ip);
-        return appAction(params, null, null, type, action, request, response, model);
+        return appAction(params, null, "addresses",ip, type, action, request, response, model);
     }
 
     @RequestMapping("/governance/addresses/{ip:[0-9.]+:?[0-9]+}/{type}/{id}/{action}")
@@ -102,7 +103,7 @@ public class RouterController {
     public String servicerRouter(@PathVariable("service") String service, @PathVariable("type") String type,
                                  HttpServletRequest request, HttpServletResponse response, Model model) {
         model.addAttribute("service", service);
-        return appRouter(null, service, type, request, response, model);
+        return appRouter(null, "services", service, type, request, response, model);
     }
 
     @RequestMapping("/governance/services/{service}/{type}/{action}")
@@ -115,7 +116,7 @@ public class RouterController {
             System.out.println("value: " + entry.getValue());
         }
         model.addAttribute("service", service);
-        return appAction(param, null, service, type, action, request, response, model);
+        return appAction(param, null, "services", service, type, action, request, response, model);
     }
 
     @RequestMapping("/governance/services/{service}/{type}/{id}/{action}")
@@ -146,17 +147,18 @@ public class RouterController {
     //    return "";
     //}
 
-    @RequestMapping("/governance/applications/{app}/services/{service}/{type}")
-    public String appRouter(@PathVariable("app") String app, @PathVariable("service") String service,
-                            @PathVariable("type") String type, HttpServletRequest request,
+    @RequestMapping("/governance/applications/{app}/{elements}/{element}/{type}")
+    public String appRouter(@PathVariable("app") String app, @PathVariable("elements") String elements,
+                            @PathVariable("element") String element, @PathVariable("type") String type,
+                            HttpServletRequest request,
                             HttpServletResponse response, Model model) {
         if (app != null) {
             model.addAttribute("app", app);
         }
-        if (StringUtils.isNumeric(service)) {
+        if (StringUtils.isNumeric(element)) {
             //service action, shield, recover..
             Long[] ids = new Long[1];
-            ids[0] = Long.valueOf(service);
+            ids[0] = Long.valueOf(element);
             model.addAttribute("service", request.getParameter("service"));
             try {
                 Method m = servicesController.getClass().getDeclaredMethod(type, Long[].class, HttpServletRequest.class,
@@ -167,8 +169,10 @@ public class RouterController {
                 e.printStackTrace();
             }
         }
-        if (service != null) {
-            model.addAttribute("service", service);
+        if (elements.equals("services")) {
+            model.addAttribute("service", element);
+        } else if (elements.equals("addresses")) {
+            model.addAttribute("address", element);
         }
 
         String name = WebConstants.mapper.get(type);
@@ -188,24 +192,43 @@ public class RouterController {
         return "";
     }
 
-    @RequestMapping("/governance/applications/{app}/services")
-    public String appWithService(@PathVariable("app") String app, HttpServletRequest request,
+    @RequestMapping("/governance/applications/{app}/{type}")
+    public String appWithService(@PathVariable("app") String app, @PathVariable("type") String type,
+                                 HttpServletRequest request,
                                  HttpServletResponse response,
                                  Model model) {
         model.addAttribute("app", app);
-        return servicesController.index(request, response, model);
+        String name = WebConstants.mapper.get(type);
+        if (name != null) {
+            Object controller = SpringUtil.getBean(name);
+            try {
+                Method index = controller.getClass().getDeclaredMethod("index", HttpServletRequest.class,
+                    HttpServletResponse.class, Model.class);
+                Object result = index.invoke(controller, request, response, model);
+                return (String) result;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+        }
+        return "";
     }
 
 
-    @RequestMapping("/governance/applications/{app}/services/{service}/{type}/{action}")
+    @RequestMapping("/governance/applications/{app}/{elements}/{element}/{type}/{action}")
     public String appAction(@RequestParam Map<String, String> params, @PathVariable("app") String app,
-                            @PathVariable("service") String service, @PathVariable("type") String type,
-                            @PathVariable("action") String action, HttpServletRequest request,
-                            HttpServletResponse response, Model model) {
+                            @PathVariable("elements") String elements, @PathVariable("element") String element,
+                            @PathVariable("type") String type, @PathVariable("action") String action,
+                            HttpServletRequest request, HttpServletResponse response, Model model) {
         if (app != null) {
             model.addAttribute("app", app);
         }
-        model.addAttribute("service", service);
+        if (elements.equals("services")) {
+            model.addAttribute("service", element);
+        } else if (elements.equals("addresses")) {
+            model.addAttribute("address", element);
+        }
+
         String name = WebConstants.mapper.get(type);
         if (name != null) {
             Object controller = SpringUtil.getBean(name);
