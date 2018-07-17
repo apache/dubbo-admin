@@ -68,6 +68,7 @@ public class BaseController {
         model.addAttribute("rootContextPath", new RootContextPath(request.getContextPath()));
         model.addAttribute("tool", tool);
         model.addAttribute("_method", methodName);
+        model.addAttribute("helpUrl", WebConstants.HELP_URL);
         model.addAttribute("_type", type);
 
     }
