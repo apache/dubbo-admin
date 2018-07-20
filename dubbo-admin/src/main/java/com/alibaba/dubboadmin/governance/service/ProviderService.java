@@ -54,6 +54,8 @@ public interface ProviderService {
 
     List<Provider> findByService(String serviceName);
 
+    List<Provider> findByAppandService(String app, String serviceName);
+
     List<Provider> findAll();
 
     List<Provider> findByAddress(String providerAddress);

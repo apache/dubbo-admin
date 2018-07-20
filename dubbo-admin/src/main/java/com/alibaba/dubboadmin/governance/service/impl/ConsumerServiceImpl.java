@@ -178,6 +178,19 @@ public class ConsumerServiceImpl extends AbstractService implements ConsumerServ
         return SyncUtils.url2ConsumerList(findConsumerUrlByApplication(application));
     }
 
+    public List<Consumer> findByAppandService(String app, String serviceName) {
+        return SyncUtils.url2ConsumerList(findConsumerUrlByAppandService(app, serviceName));
+    }
+
+    private Map<Long, URL> findConsumerUrlByAppandService(String application, String service) {
+        Map<String, String> filter = new HashMap<>();
+        filter.put(Constants.CATEGORY_KEY, Constants.CONSUMERS_CATEGORY);
+        filter.put(Constants.APPLICATION_KEY, application);
+        filter.put(Constants.SERVICE_FILTER_KEY, service);
+
+        return SyncUtils.filterFromCategory(getRegistryCache(), filter);
+    }
+
     private Map<Long, URL> findConsumerUrlByApplication(String application) {
         Map<String, String> filter = new HashMap<String, String>();
         filter.put(Constants.CATEGORY_KEY, Constants.CONSUMERS_CATEGORY);

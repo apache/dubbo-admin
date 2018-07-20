@@ -51,6 +51,8 @@ public interface ConsumerService {
 
     List<Consumer> findByApplication(String application);
 
+    List<Consumer> findByAppandService(String app, String serviceName);
+
     List<String> findServicesByApplication(String application);
 
     List<String> findServices();

@@ -16,6 +16,7 @@
  */
 package com.alibaba.dubboadmin.governance.service.impl;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -313,6 +314,10 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         return SyncUtils.url2ProviderList(findProviderUrlByService(serviceName));
     }
 
+    public List<Provider> findByAppandService(String app, String serviceName) {
+        return SyncUtils.url2ProviderList(findProviderUrlByAppandService(app, serviceName));
+    }
+
     private Map<Long, URL> findProviderUrlByService(String service) {
         Map<String, String> filter = new HashMap<String, String>();
         filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
@@ -384,8 +389,17 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         return SyncUtils.url2ProviderList(findProviderUrlByApplication(application));
     }
 
+    private Map<Long, URL> findProviderUrlByAppandService(String app, String service) {
+        Map<String, String> filter = new HashMap<>();
+        filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
+        filter.put(Constants.APPLICATION_KEY, app);
+        filter.put(Constants.SERVICE_FILTER_KEY, service);
+        return SyncUtils.filterFromCategory(getRegistryCache(), filter);
+    }
+
+
     private Map<Long, URL> findProviderUrlByApplication(String application) {
-        Map<String, String> filter = new HashMap<String, String>();
+        Map<String, String> filter = new HashMap<>();
         filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
         filter.put(Constants.APPLICATION_KEY, application);
         return SyncUtils.filterFromCategory(getRegistryCache(), filter);
