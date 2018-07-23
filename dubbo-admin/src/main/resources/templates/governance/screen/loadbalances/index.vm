@@ -16,45 +16,45 @@
 <div class="ico_btn">
     #if($currentUser.role != "G")
         <a href="loadbalances/add"><img src="$rootContextPath.getURI("images/ico_add.png")" width="9" height="9"/><span
-                class="ico_font">#springMessage("add")</span></a>
+                class="ico_font">#springMessageText("add", "add")</span></a>
         <span class="ico_line">|</span>
-        <a href="#" onclick="if(! hasCheckbox('ids')) { showAlert('#springMessage(
-            "empty.list")'); } else if(! hasChecked('ids')) { showAlert('#springMessage(
-            "please.select")'); } else { showConfirm('#springMessage(
-            "confirm.batch.delete")', 'loadbalances/' + getChecked('ids') + '/delete'); } return false;"><img
+        <a href="#" onclick="if(! hasCheckbox('ids')) { showAlert('#springMessageText(
+            "empty.list","empty.list")'); } else if(! hasChecked('ids')) { showAlert('#springMessageText(
+            "please.select","please.select")'); } else { showConfirm('#springMessageText(
+            "confirm.batch.delete","confirm.batch.delete")', 'loadbalances/' + getChecked('ids') + '/delete'); } return false;"><img
                 src="$rootContextPath.getURI("images/ico_delete.png")" width="12" height="12"/><span
-                class="ico_font">#springMessage("batch.delete")</span></a>
+                class="ico_font">#springMessageText("batch.delete", "batch.delete")</span></a>
     #end
 </div>
 <br/>
 <table cellpadding="0" cellspacing="0" class="list list_dubbo" id="table_o">
     <tr>
         <th width="20"><input type="checkbox" onclick="checkAll('table_o', 'ids', this.checked)"/></th>
-        <th>#springMessage("service.method"): <input type="text" onkeyup="searchTable('table_o', 1, this.value);"
+        <th>#springMessageText("service.method", "service.method"): <input type="text" onkeyup="searchTable('table_o', 1, this.value);"
                                                 onclick="searchTable('table_o', 1, this.value);"/>&nbsp;<img
                 src="$rootContextPath.getURI("images/ico_search.png")" width="12" height="12"/></th>
         #if(! $service)
-            <th>#springMessage("service"): <input type="text" onkeyup="searchTable('table_o', 2, this.value);"
+            <th>#springMessageText("service", "service"): <input type="text" onkeyup="searchTable('table_o', 2, this.value);"
                                              onclick="searchTable('table_o', 2, this.value);"/>&nbsp;<img
                     src="$rootContextPath.getURI("images/ico_search.png")" width="12" height="12"/></th>
-            <th width="190">#springMessage("loadBalanceStrategy"): <select onchange="searchTable('table_o', 3, this.value);"
+            <th width="190">#springMessageText("loadBalanceStrategy", "loadBalanceStrategy"): <select onchange="searchTable('table_o', 3, this.value);"
                                                                       onclick="searchTable('table_o', 3, this.value);">
-                <option value="">#springMessage("all")</option>
-                <option value="#springMessage("random")">#springMessage("random")</option>
-                <option value="#springMessage("roundrobin")">#springMessage("roundrobin")</option>
-                <option value="#springMessage("leastactive")">#springMessage("leastactive")</option>
+                <option value="">#springMessageText("all", "all")</option>
+                <option value="#springMessageText("random", "random")">#springMessageText("random", "random")</option>
+                <option value="#springMessageText("roundrobin", "roundrobin")">#springMessageText("roundrobin", "roundrobin")</option>
+                <option value="#springMessageText("leastactive", "leastactive")">#springMessageText("leastactive", "leastactive")</option>
             </select></th>
         #else
-            <th width="190">#springMessage("loadBalanceStrategy"): <select onchange="searchTable('table_o', 2, this.value);"
+            <th width="190">#springMessageText("loadBalanceStrategy", "loadBalanceStrategy"): <select onchange="searchTable('table_o', 2, this.value);"
                                                                       onclick="searchTable('table_o', 2, this.value);">
-                <option value="">#springMessage("all")</option>
-                <option value="#springMessage("random")">#springMessage("random")</option>
-                <option value="#springMessage("roundrobin")">#springMessage("roundrobin")</option>
-                <option value="#springMessage("leastactive")">#springMessage("leastactive")</option>
+                <option value="">#springMessageText("all", "all")</option>
+                <option value="#springMessageText("random", "random")">#springMessageText("random", "random")</option>
+                <option value="#springMessageText("roundrobin", "roundrobin")">#springMessageText("roundrobin", "roundrobin")</option>
+                <option value="#springMessageText("leastactive", "leastactive")">#springMessageText("leastactive", "leastactive")</option>
             </select></th>
         #end
         #if($currentUser.role != "G")
-            <th width="130">#springMessage("operation")</th>#end
+            <th width="130">#springMessageText("operation", "operation")</th>#end
     </tr>
     #foreach($loadbalance in $loadbalances)
         <tr>
@@ -63,20 +63,20 @@
             #if(! $service)
                 <td><a href="services/$loadbalance.service/loadbalances">$loadbalance.service</a></td>
             #end
-            <td>#springMessage($loadbalance.strategy)</td>
+            <td>#springMessageText($loadbalance.strategy,$loadbalance.strategy)</td>
             #if($currentUser.role != "G")
                 <td>
                     <a href="loadbalances/$loadbalance.id/edit"><img
                             src="$rootContextPath.getURI("images/ico_edit.png")" width="12" height="12"/><span
-                            class="ico_font">#springMessage("edit")</span></a>
+                            class="ico_font">#springMessageText("edit", "edit")</span></a>
                     <span class="ico_line">|</span>
-                    <a href="#" onclick="showConfirm('#springMessage(
-                        "confirm.delete")', '$loadbalance.service', 'loadbalances/$loadbalance.id/delete'); return false;">
+                    <a href="#" onclick="showConfirm('#springMessageText(
+                        "confirm.delete","confirm.delete")', '$loadbalance.service', 'loadbalances/$loadbalance.id/delete'); return false;">
                         <img src="$rootContextPath.getURI("images/ico_delete.png")" width="12" height="12"/>
-                        <span class="ico_font">#springMessage("delete")</span></a>
+                        <span class="ico_font">#springMessageText("delete", "delete")</span></a>
                 </td>
             #end
         </tr>
     #end
 </table>
-<div class="page">#springMessage("page.total")$loadbalances.size()#springMessage("page.records") </div>
+<div class="page">#springMessageText("page.total", "page.total")$loadbalances.size()#springMessageText("page.records", "page.records") </div>

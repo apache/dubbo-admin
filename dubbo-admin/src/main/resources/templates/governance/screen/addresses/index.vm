@@ -14,7 +14,7 @@
 ##limitations under the License.
 #set($layout = "/templates/governance/layout/default.vm")
 #if(! $addresses || $addresses.size() == 0)
-<font color="red">#springMessage("not.found")</font> (<a href="addresses?keyword=*">#springMessage("show.all") </a>)
+<font color="red">#springMessageText("not.found", "not.found")</font> (<a href="addresses?keyword=*">#springMessageText("show.all", "show.all") </a>)
 #elseif($keyword && $addresses.size() == 1)
 <script type="text/javascript">
         #if($providerAddresses.contains($addresses.iterator().next()))
@@ -26,16 +26,16 @@
 #else
 <table cellpadding="0" cellspacing="0" class="list list_dubbo" id="table_o">
     <tr>
-        <th>#springMessage("address"):
+        <th>#springMessageText("address", "address"):
             <input type="text" onkeyup="searchTable('table_o', 0, this.value);"
                    onclick="searchTable('table_o', 0, this.value);"/>&nbsp;<img
                     src="$rootContextPath.getURI("images/ico_search.png")" width="12" height="12"/>
         </th>
-        <th width="100">#springMessage("role"): <select onchange="searchTable('table_o', 1, this.value);"
+        <th width="100">#springMessageText("role", "role"): <select onchange="searchTable('table_o', 1, this.value);"
                                                    onclick="searchTable('table_o', 1, this.value);">
-            <option value="">#springMessage("all")</option>
-            <option value="#springMessage("provider")">#springMessage("provider")</option>
-            <option value="#springMessage("consumer")">#springMessage("consumer")</option>
+            <option value="">#springMessageText("all", "all")</option>
+            <option value="#springMessageText("provider", "provider")">#springMessageText("provider", "provider")</option>
+            <option value="#springMessageText("consumer", "consumer")">#springMessageText("consumer", "consumer")</option>
         </select></th>
     </tr>
     #foreach($address in $addresses)
@@ -49,14 +49,14 @@
             </td>
             <td>
                 #if($providerAddresses.contains($address))
-                    <font color="green">#springMessage("provider")</font>
+                    <font color="green">#springMessageText("provider", "provider")</font>
                 #end
                 #if($consumerAddresses.contains($address))
-                    <font color="blue">#springMessage("consumer")</font>
+                    <font color="blue">#springMessageText("consumer", "consumer")</font>
                 #end
             </td>
         </tr>
     #end
 </table>
-<div class="page">#springMessage("page.total")$addresses.size()#springMessage("page.records") </div>
+<div class="page">#springMessageText("page.total", "page.total")$addresses.size()#springMessageText("page.records", "page.records") </div>
 #end

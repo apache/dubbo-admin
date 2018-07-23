@@ -15,112 +15,112 @@
 #set($layout = "/templates/governance/layout/default.vm")
 <div class="ico_btn">
     <a href="../../consumers"><img src="$rootContextPath.getURI("images/ico_back.png")" width="12" height="12"/><span
-            class="ico_font">#springMessage("back")</span></a>
+            class="ico_font">#springMessageText("back", "back")</span></a>
     #set($mock=$tool.getConsumerMock($consumer))
     #if($currentUser.hasServicePrivilege($consumer.service))
         <span class="ico_line">|</span>
         <a href="../$consumer.id/edit"><img src="$rootContextPath.getURI("images/ico_edit.png")" width="12"
-                                            height="12"/><span class="ico_font">#springMessage("edit")</span></a>
+                                            height="12"/><span class="ico_font">#springMessageText("edit", "edit")</span></a>
         <span class="ico_line">|</span>
         #if($mock.equals("force%3Areturn+null"))
-            <a href="#" onclick="showConfirm('#springMessage(
-                "confirm.cancel.mock")', '$consumer.address -&gt; $tool.getSimpleName($consumer.service)', '../$consumer.id/recover'); return false;"><img
+            <a href="#" onclick="showConfirm('#springMessageText(
+                "confirm.cancel.mock","confirm.cancel.mock")', '$consumer.address -&gt; $tool.getSimpleName($consumer.service)', '../$consumer.id/recover'); return false;"><img
                     src="$rootContextPath.getURI("images/ico_enable.png")" width="12" height="12"/><span
-                    class="ico_font">#springMessage("cancel.mock")</span></a>
+                    class="ico_font">#springMessageText("cancel.mock", "cancel.mock")</span></a>
             <span class="ico_line">|</span>
-            <a href="#" onclick="showConfirm('#springMessage(
-                "confirm.fail.mock")', '$consumer.address -&gt; $tool.getSimpleName($consumer.service)', '../$consumer.id/tolerant'); return false;"><img
+            <a href="#" onclick="showConfirm('#springMessageText(
+                "confirm.fail.mock","confirm.fail.mock")', '$consumer.address -&gt; $tool.getSimpleName($consumer.service)', '../$consumer.id/tolerant'); return false;"><img
                     src="$rootContextPath.getURI("images/ico_run.png")" width="12" height="12"/><span
-                    class="ico_font">#springMessage("fail.mock")</span></a>
+                    class="ico_font">#springMessageText("fail.mock", "fail.mock")</span></a>
         #elseif ($mock.equals("fail%3Areturn+null"))
-            <a href="#" onclick="showConfirm('#springMessage(
-                "confirm.force.mock")', '$consumer.address -&gt; $tool.getSimpleName($consumer.service)', '../$consumer.id/shield'); return false;"><img
+            <a href="#" onclick="showConfirm('#springMessageText(
+                "confirm.force.mock","confirm.force.mock")', '$consumer.address -&gt; $tool.getSimpleName($consumer.service)', '../$consumer.id/shield'); return false;"><img
                     src="$rootContextPath.getURI("images/ico_cancel.png")" width="12" height="12"/><span
-                    class="ico_font">#springMessage("force.mock")</span></a>
+                    class="ico_font">#springMessageText("force.mock", "force.mock")</span></a>
             <span class="ico_line">|</span>
-            <a href="#" onclick="showConfirm('#springMessage(
-                "confirm.cancel.mock")', '$consumer.address -&gt; $tool.getSimpleName($consumer.service)', '../$consumer.id/recover'); return false;"><img
+            <a href="#" onclick="showConfirm('#springMessageText(
+                "confirm.cancel.mock","confirm.cancel.mock")', '$consumer.address -&gt; $tool.getSimpleName($consumer.service)', '../$consumer.id/recover'); return false;"><img
                     src="$rootContextPath.getURI("images/ico_enable.png")" width="12" height="12"/><span
-                    class="ico_font">#springMessage("cancel.mock")</span></a>
+                    class="ico_font">#springMessageText("cancel.mock", "cancel.mock")</span></a>
         #else
-            <a href="#" onclick="showConfirm('#springMessage(
-                "confirm.force.mock")', '$consumer.address -&gt; $tool.getSimpleName($consumer.service)', '../$consumer.id/shield'); return false;"><img
+            <a href="#" onclick="showConfirm('#springMessageText(
+                "confirm.force.mock","confirm.force.mock")', '$consumer.address -&gt; $tool.getSimpleName($consumer.service)', '../$consumer.id/shield'); return false;"><img
                     src="$rootContextPath.getURI("images/ico_cancel.png")" width="12" height="12"/><span
-                    class="ico_font">#springMessage("force.mock")</span></a>
+                    class="ico_font">#springMessageText("force.mock", "force.mock")</span></a>
             <span class="ico_line">|</span>
-            <a href="#" onclick="showConfirm('#springMessage(
-                "confirm.fail.mock")', '$consumer.address -&gt; $tool.getSimpleName($consumer.service)', '../$consumer.id/tolerant'); return false;"><img
+            <a href="#" onclick="showConfirm('#springMessageText(
+                "confirm.fail.mock","confirm.fail.mock")', '$consumer.address -&gt; $tool.getSimpleName($consumer.service)', '../$consumer.id/tolerant'); return false;"><img
                     src="$rootContextPath.getURI("images/ico_run.png")" width="12" height="12"/><span
-                    class="ico_font">#springMessage("fail.mock")</span></a>
+                    class="ico_font">#springMessageText("fail.mock", "fail.mock")</span></a>
         #end
     #end
     #if ($consumer.routes && $consumer.routes.size() > 0)
         <span class="ico_line">|</span>
         <a href="../$consumer.id/routed"><img src="$rootContextPath.getURI("images/ico_balance.png")" width="12"
-                                              height="12"/><span class="ico_font">#springMessage("routed")
+                                              height="12"/><span class="ico_font">#springMessageText("routed", "routed")
             ($consumer.routes.size())</span></a>
     #end
     <span class="ico_line">|</span>
     <a href="../$consumer.id"><img src="$rootContextPath.getURI("images/ico_show.png")" width="12" height="12"/><span
-            class="ico_font">#springMessage("show")</span></a>
+            class="ico_font">#springMessageText("show", "show")</span></a>
 </div>
 <br/>
 <table cellpadding="0" cellspacing="0" class="info">
     #if(! $service)
         <tr>
-            <th style="width: 100px;">#springMessage("service"):</th>
+            <th style="width: 100px;">#springMessageText("service", "service"):</th>
             <td>$!consumer.service</td>
         </tr>
     #end
     <tr>
-        <th style="width: 100px;">#springMessage("consumerAddress"):</th>
+        <th style="width: 100px;">#springMessageText("ConsumerAddress", "ConsumerAddress"):</th>
         <td>consumer://$!consumer.address/$!consumer.service?$!consumer.parameters</td>
     </tr>
     <tr>
-        <th>#springMessage("overrides"):</th>
+        <th>#springMessageText("overrides", "overrides"):</th>
         <td>$!consumer.override.params</td>
     </tr>
     <tr>
-        <th>#springMessage("mock"):</th>
+        <th>#springMessageText("mock", "mock"):</th>
         <td>
             #if($mock.equals("force%3Areturn+null"))
-                <font color="red">#springMessage("force.mocked")</font>
+                <font color="red">#springMessageText("force.mocked", "force.mocked")</font>
             #elseif ($mock.equals("fail%3Areturn+null"))
-                <font color="blue">#springMessage("fail.mocked")</font>
+                <font color="blue">#springMessageText("fail.mocked", "fail.mocked")</font>
             #else
-                <font color="gray">#springMessage("no.mocked")</font>
+                <font color="gray">#springMessageText("no.mocked", "no.mocked")</font>
             #end
         </td>
     </tr>
     <tr>
-        <th>#springMessage("Status"):</th>
+        <th>#springMessageText("status", "status"):</th>
         <td>
             #if($tool.isInBlackList($consumer))
-                <font color="red">#springMessage("Forbidden")</font>
+                <font color="red">#springMessageText("Forbidden", "Forbidden")</font>
             #else
-                <font color="green">#springMessage("Allowed")</font>
+                <font color="green">#springMessageText("Allowed", "Allowed")</font>
             #end
         </td>
     </tr>
     <tr>
-        <th>#springMessage("Route"):</th>
+        <th>#springMessageText("Route", "Route"):</th>
         <td>
             #if($consumer.routes && $consumer.routes.size() > 0)
-                <a href="../$consumer.id/routed">#springMessage("routed")($consumer.routes.size())</a>
+                <a href="../$consumer.id/routed">#springMessageText("routed", "routed")($consumer.routes.size())</a>
             #else
-                <font color="gray">#springMessage("unrouted")</font>
+                <font color="gray">#springMessageText("unrouted", "unrouted")</font>
             #end
         </td>
     </tr>
     <tr>
-        <th>#springMessage("notify"):</th>
+        <th>#springMessageText("notify", "notify"):</th>
         <td></td>
     </tr>
 </table>
 <br/>
 <table cellpadding="0" cellspacing="0" class="list list_dubbo" id="table_o">
     <tr>
-        <th>#springMessage("url"): <input type="text" style="width: 100px;" onkeyup="searchTable('table_o', 0, this.value);"
+        <th>#springMessageText("url", "url"): <input type="text" style="width: 100px;" onkeyup="searchTable('table_o', 0, this.value);"
                                      onclick="searchTable('table_o', 1, this.value);"/>&nbsp;<img
                 src="$rootContextPath.getURI("images/ico_search.png")" width="12" height="12"/></th>
     </tr>
@@ -130,4 +130,4 @@
         </tr>
     #end
 </table>
-<div class="page">#springMessage("page.total")$providers.size()#springMessage("page.records") </div>
+<div class="page">#springMessageText("page.total", "page.total")$providers.size()#springMessageText("page.records", "page.records") </div>

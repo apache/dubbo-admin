@@ -15,35 +15,35 @@
 #set($layout = "/templates/governance/layout/default.vm")
 <div class="ico_btn">
     <a href="../../routes"><img src="$rootContextPath.getURI("images/ico_back.png")" width="12" height="12"/><span
-            class="ico_font">#springMessage("back")</span></a>
+            class="ico_font">#springMessageText("back", "back")</span></a>
     <span class="ico_line">|</span>
     <a href="../$route.id/routeselect"><img src="$rootContextPath.getURI("images/ico_show.png")" width="12"
-                                            height="12"/><span class="ico_font">#springMessage("proview")</span></a>
+                                            height="12"/><span class="ico_font">#springMessageText("proview", "proview")</span></a>
     #if($currentUser.role != "G")
         <span class="ico_line">|</span>
         <a href="../$route.id"><img src="$rootContextPath.getURI("images/ico_show.png")" width="12" height="12"/><span
-                class="ico_font">#springMessage("show")</span></a>
+                class="ico_font">#springMessageText("show", "show")</span></a>
         <span class="ico_line">|</span>
         <a href="../$route.id/edit?actionflag=copy"><img src="$rootContextPath.getURI("images/ico_register.png")"
-                                                         width="12" height="12"/><span class="ico_font">#springMessage(
-            "copy")</span></a>
+                                                         width="12" height="12"/><span class="ico_font">#springMessageText(
+            "copy","copy")</span></a>
         <span class="ico_line">|</span>
         #if($route.enabled)
-            <a href="#" onclick="showConfirm('#springMessage(
-                "confirm.disable")', '$route.name', '../$route.id/disable'); return false;">
+            <a href="#" onclick="showConfirm('#springMessageText(
+                "confirm.disable","confirm.disable")', '$route.name', '../$route.id/disable'); return false;">
                 <img src="$rootContextPath.getURI("images/ico_disable.png")" width="13" height="13"/>
-                <span class="ico_font">#springMessage("disable")</span></a>
+                <span class="ico_font">#springMessageText("disable", "disable")</span></a>
         #else
-            <a href="#" onclick="showConfirm('#springMessage(
-                "confirm.enable")', '$route.name', '../$route.id/enable'); return false;">
+            <a href="#" onclick="showConfirm('#springMessageText(
+                "confirm.enable","confirm.enable")', '$route.name', '../$route.id/enable'); return false;">
                 <img src="$rootContextPath.getURI("images/ico_enable.png")" width="13" height="13"/>
-                <span class="ico_font">#springMessage("enable")</span></a>
+                <span class="ico_font">#springMessageText("enable", "enable")</span></a>
         #end
         <span class="ico_line">|</span>
         <a href="#"
-           onclick="showConfirm('#springMessage("confirm.delete")', '$route.name', '../$route.id/delete'); return false;">
+           onclick="showConfirm('#springMessageText("confirm.delete", "confirm.delete")', '$route.name', '../$route.id/delete'); return false;">
             <img src="$rootContextPath.getURI("images/ico_delete.png")" width="12" height="12"/>
-            <span class="ico_font">#springMessage("delete")</span></a>
+            <span class="ico_font">#springMessageText("delete", "delete")</span></a>
     #end
 </div>
 <br/>
@@ -51,7 +51,7 @@
       method="POST">
     <table cellpadding="0" cellspacing="0" class="info">
         <tr>
-            <th width="100">#springMessage("route.name"): <font color='red'>*</font></th>
+            <th width="100">#springMessageText("route.name", "route.name"): <font color='red'>*</font></th>
             <td colspan="2">
                 #if($actionflag=="copy")
                     <input type="text" id="name" name="name" maxlength="200" value=""/>
@@ -59,32 +59,32 @@
                     <input type="text" id="name" name="name" maxlength="200" value="$route.name"/>
                 #end
             </td>
-            <td><font color='blue'>#springMessage("RouteNameTip")</font></td>
+            <td><font color='blue'>#springMessageText("RouteNameTip", "RouteNameTip")</font></td>
         </tr>
         <tr>
-            <th>#springMessage("Priority"):</th>
+            <th>#springMessageText("Priority", "Priority"):</th>
             <td colspan="2">
                 <input type="text" id="priority" name="priority" value="#if($route)$route.priority#{else}0#end"
                        onkeydown="return checkNumber();"/>
             </td>
             <td>
-                <font color='blue'>#springMessage("RoutePriorityTip")</font>
+                <font color='blue'>#springMessageText("RoutePriorityTip", "RoutePriorityTip")</font>
             </td>
         </tr>
         <tr>
-            <th>#springMessage("service"): <font color='red'>*</font></th>
+            <th>#springMessageText("service", "service"): <font color='red'>*</font></th>
             <td colspan="2">
                 <input type="hidden" id="service" name="service" value="$service"/>$service
             </td>
             <td></td>
         </tr>
         <tr>
-            <th>#springMessage("methodName"):</th>
+            <th>#springMessageText("methodName", "methodName"):</th>
             <td colspan="2">
                 <input type="text" id="method" name="method" value="$!method" style="ime-mode:disabled"/>
                 #if ($methods)
                     <select onchange="if (this.value != '') { if (byId('method').value == '') { byId('method').value = this.value; } else { byId('method').value = byId('method').value + ',' + this.value; } this.value = ''; }">
-                        <option value="">#springMessage("Choose")</option>
+                        <option value="">#springMessageText("Choose", "Choose")</option>
                         #foreach ($m in $methods)
                             <option value="$m">$m</option>
                         #end
@@ -92,39 +92,39 @@
                 #end
             </td>
             <td>
-                <font color='blue'>#springMessage("RouteMethodTip")<font>
+                <font color='blue'>#springMessageText("RouteMethodTip", "RouteMethodTip")<font>
             </td>
         </tr>
         <tr>
-            <th>#springMessage("MatchRule")</th>
-            <th>#springMessage("Match")</th>
-            <th>#springMessage("Mismatch")</th>
-            <td><font color='blue'>#springMessage("RouteMatchTip")</font></td>
+            <th>#springMessageText("MatchRule","MatchRule")</th>
+            <th>#springMessageText("Match", "Match")</th>
+            <th>#springMessageText("Mismatch", "Mismatch")</th>
+            <td><font color='blue'>#springMessageText("RouteMatchTip", "RouteMatchTip")</font></td>
         </tr>
         <tr>
-            <th>#springMessage("ConsumerHost"):</th>
+            <th>#springMessageText("ConsumerHost", "ConsumerHost"):</th>
             <td><input type="text" id="consumerHost" name="consumerHost" value="$!consumerHost"
                        style="ime-mode:disabled"/></td>
             <td><input type="text" id="unconsumerHost" name="unconsumerHost" value="$!unconsumerHost"
                        style="ime-mode:disabled"/></td>
-            <td><font color="blue">#springMessage("RouteHostTip")</font></td>
+            <td><font color="blue">#springMessageText("RouteHostTip", "RouteHostTip")</font></td>
         </tr>
         <tr>
-            <th>#springMessage("ConsumerApplication"):</th>
+            <th>#springMessageText("ConsumerApplication", "ConsumerApplication"):</th>
             <td><input type="text" id="consumerApplication" name="consumerApplication" value="$!consumerApplication"
                        style="ime-mode:disabled"/></td>
             <td><input type="text" id="unconsumerApplication" name="unconsumerApplication"
                        value="$!unconsumerApplication" style="ime-mode:disabled"/></td>
-            <td><font color="blue">#springMessage("RouteApplicationTip")</font></td>
+            <td><font color="blue">#springMessageText("RouteApplicationTip", "RouteApplicationTip")</font></td>
         </tr>
         <tr>
-            <th>#springMessage("ConsumerCluster"):</th>
+            <th>#springMessageText("ConsumerCluster","ConsumerCluster"):</th>
             <td>
                 <input type="text" id="consumerCluster" name="consumerCluster" value="$!consumerCluster"
                        style="ime-mode:disabled"/>
                 #if ($clusterNames && $clusterNames.size() > 0)
                     <select onchange="if (this.value != '') { if (byId('consumerCluster').value == '') { byId('consumerCluster').value = this.value; } else { byId('consumerCluster').value = byId('consumerCluster').value + ',' + this.value; } this.value = ''; }">
-                        <option value="">#springMessage("Choose")</option>
+                        <option value="">#springMessageText("Choose", "Choose")</option>
                         #foreach ($c in $clusterNames)
                             <option value="$c">$c</option>
                         #end
@@ -136,37 +136,37 @@
                        style="ime-mode:disabled"/>
                 #if ($clusterNames && $clusterNames.size() > 0)
                     <select onchange="if (this.value != '') { if (byId('unconsumerCluster').value == '') { byId('unconsumerCluster').value = this.value; } else { byId('unconsumerCluster').value = byId('unconsumerCluster').value + ',' + this.value; } this.value = ''; }">
-                        <option value="">#springMessage("Choose")</option>
+                        <option value="">#springMessageText("Choose", "Choose")</option>
                         #foreach ($c in $clusterNames)
                             <option value="$c">$c</option>
                         #end
                     </select>
                 #end
             </td>
-            <td><font color="blue">#springMessage("RouteClusterTip")</font></td>
+            <td><font color="blue">#springMessageText("RouteClusterTip", "RouteClusterTip")</font></td>
         </tr>
         <tr>
-            <th>#springMessage("FilterRule")</th>
-            <th>#springMessage("Match")</th>
-            <th>#springMessage("Mismatch")</th>
-            <td><font color='blue'>#springMessage("RouteFilterTip")</font></td>
+            <th>#springMessageText("FilterRule","FilterRule")</th>
+            <th>#springMessageText("Match", "Match")</th>
+            <th>#springMessageText("Mismatch", "Mismatch")</th>
+            <td><font color='blue'>#springMessageText("RouteFilterTip", "RouteFilterTip")</font></td>
         </tr>
         <tr id="host">
-            <th>#springMessage("ProviderHost"):</th>
+            <th>#springMessageText("ProviderHost", "ProviderHost"):</th>
             <td><input type="text" id="providerHost" value="$!providerHost"
                        name="providerHost" style="ime-mode:disabled"/></td>
             <td><input type="text" id="unproviderHost" value="$!unproviderHost"
                        name="unproviderHost" style="ime-mode:disabled"/></td>
-            <td><font color="blue">#springMessage("RouteHostTip")</font></td>
+            <td><font color="blue">#springMessageText("RouteHostTip", "RouteHostTip")</font></td>
         </tr>
         <tr id="cluster">
-            <th>#springMessage("ProviderCluster"):</th>
+            <th>#springMessageText("ProviderCluster", "ProviderCluster"):</th>
             <td>
                 <input type="text" id="providerCluster" value="$!providerCluster" name="providerCluster"
                        style="ime-mode:disabled"/>
                 #if ($clusterNames && $clusterNames.size() > 0)
                     <select onchange="if (this.value != '') { if (byId('providerCluster').value == '') { byId('providerCluster').value = this.value; } else { byId('providerCluster').value = byId('providerCluster').value + ',' + this.value; } this.value = ''; }">
-                        <option value="">#springMessage("Choose")</option>
+                        <option value="">#springMessageText("Choose", "Choose")</option>
                         #foreach ($c in $clusterNames)
                             <option value="$c">$c</option>
                         #end
@@ -178,17 +178,17 @@
                        style="ime-mode:disabled"/>
                 #if ($clusterNames && $clusterNames.size() > 0)
                     <select onchange="if (this.value != '') { if (byId('unproviderCluster').value == '') { byId('unproviderCluster').value = this.value; } else { byId('unproviderCluster').value = byId('unproviderCluster').value + ',' + this.value; } this.value = ''; }">
-                        <option value="">#springMessage("Choose")</option>
+                        <option value="">#springMessageText("Choose", "Choose")</option>
                         #foreach ($c in $clusterNames)
                             <option value="$c">$c</option>
                         #end
                     </select>
                 #end
             </td>
-            <td><font color="blue">#springMessage("RouteClusterTip")</font></td>
+            <td><font color="blue">#springMessageText("RouteClusterTip", "RouteClusterTip")</font></td>
         </tr>
         <tr id="protocol">
-            <th>#springMessage("ProviderProtocol"):</th>
+            <th>#springMessageText("ProviderProtocol","ProviderProtocol"):</th>
             <td><input type="text" id="providerProtocol" value="$!providerProtocol"
                        name="providerProtocol" style="ime-mode:disabled"/></td>
             <td><input type="text" id="unproviderProtocol" value="$!unproviderProtocol"
@@ -196,7 +196,7 @@
             <td></td>
         </tr>
         <tr id="port">
-            <th>#springMessage("ProviderPort"):</th>
+            <th>#springMessageText("ProviderPort","ProviderPort"):</th>
             <td><input type="text" id="providerPort" name="providerPort" value="$!providerPort"
                        style="ime-mode:disabled"/>
             </td>
@@ -205,8 +205,8 @@
         </tr>
         <tr>
             <td colspan="4">
-                <div class="btn"><a href="#" onclick="if(check()){document.getElementById('df').submit();}">#springMessage(
-                    "save")</a></div>
+                <div class="btn"><a href="#" onclick="if(check()){document.getElementById('df').submit();}">#springMessageText(
+                    "save","save")</a></div>
             </td>
         </tr>
     </table>
@@ -216,11 +216,11 @@
 <script type="text/javascript">
     function check() {
         if (byId('name').value.trim() == '') {
-            showAlert("#springMessage("PleaseInput"), #springMessage("route.name"))", 'name');
+            showAlert("#springMessageText("PleaseInput", "PleaseInput"), #springMessageText("route.name","route.name"))", 'name');
             return false;
         }
         if (byId('service').value.trim() == '') {
-            showAlert("#springMessage("PleaseInput"), #springMessage("service"))", 'service');
+            showAlert("#springMessageText("PleaseInput", "PleaseInput"), #springMessageText("service", "service"))", 'service');
             return false;
         }
         if (byId('service').value.indexOf('*') != -1 || byId('service').value.indexOf(',') != -1) {

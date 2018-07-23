@@ -15,7 +15,7 @@
 #set($layout = "/templates/governance/layout/default.vm")
 <div class="ico_btn">
     <a href="../../weights"><img src="$rootContextPath.getURI("images/ico_back.png")" width="12" height="12"/><span
-            class="ico_font">#springMessage("back")</span></a>
+            class="ico_font">#springMessageText("back", "back")</span></a>
 </div>
 <br/>
 <form id="weightForm" action="../update" method="POST">
@@ -26,21 +26,21 @@
             </td>
         </tr>
         <tr>
-            <th width="100">#springMessage("service")&nbsp;&nbsp;<font color='red'>*</font></th>
+            <th width="100">#springMessageText("service", "service")&nbsp;&nbsp;<font color='red'>*</font></th>
             <td>
                 $weight.service <input type="hidden" id="serviceName" name="service" value="$weight.service"
                                        style="ime-mode:disabled" maxlength="200"/>
             </td>
         </tr>
         <tr>
-            <th>#springMessage("provider")&nbsp;&nbsp;<font color='red'>*</font></th>
+            <th>#springMessageText("provider", "provider")&nbsp;&nbsp;<font color='red'>*</font></th>
             <td>
                 #if($actionflag=="copy")
                     <input type="text" id="address" name="address" value="$!weight.address" style="ime-mode:disabled"
                            maxlength="200"/>
                     #if($service)
                         <select id="selectAddeess" name="selectAddeess" onchange="fnSetService(this,'address')">
-                            <option value="">#springMessage("Choose")</option>
+                            <option value="">#springMessageText("Choose", "Choose")</option>
                             #if ($addressList && $addressList.size() > 0)
                                 #foreach ($s in $addressList)
                                     <option value="$s">$s</option>
@@ -56,7 +56,7 @@
             </td>
         </tr>
         <tr>
-            <th style="width: 100px;">#springMessage("weights")&nbsp;&nbsp;<font color='red'>*</font></th>
+            <th style="width: 100px;">#springMessageText("weights", "weights")&nbsp;&nbsp;<font color='red'>*</font></th>
             <td>
                 <input type="text" id="weight" name="weight" value="$!weight.weight" maxlength="3"
                        onkeydown="return checkNumber();"/>
@@ -65,8 +65,8 @@
         <tr>
             <th>
                 <div class="btn"><a href="#"
-                                    onclick="if(check()){document.getElementById('weightForm').submit();}">#springMessage(
-                    "save")</a></div>
+                                    onclick="if(check()){document.getElementById('weightForm').submit();}">#springMessageText(
+                    "save","save")</a></div>
             </th>
             <td></td>
         </tr>
@@ -103,12 +103,12 @@
     function check() {
         var serviceName = byId('serviceName').value.trim();
         if (serviceName == '') {
-            showAlert("#springMessage("PleaseInput"), #springMessage("service")", 'serviceName');
+            showAlert("#springMessageText("PleaseInput", "PleaseInput"), #springMessageText("service", "service")", 'serviceName');
             return false;
         }
         var address = byId('address').value.trim();
         if (address == '') {
-            showAlert("#springMessage("PleaseInput"), #springMessage("address")", 'address');
+            showAlert("#springMessageText("PleaseInput", "PleaseInput"), #springMessageText("address", "address")", 'address');
             return false;
         }
         var exp = /^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5]):\d+$/;
@@ -120,7 +120,7 @@
             var address = addresses[i];
             if (address != "") {
                 if (!address.match(exp) && !address.match(exp2) && !address.match(exp3) && !address.match(exp4)) {
-                    showAlert("#springMessage("InvalidIp"), #springMessage("address")", 'address');
+                    showAlert("#springMessageText("InvalidIp", "InvalidIp"), #springMessageText("address", "address")", 'address');
                     return false;
                 }
             }

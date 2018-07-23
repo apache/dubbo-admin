@@ -15,53 +15,53 @@
 #set($layout = "/templates/governance/layout/default.vm")
 <div class="ico_btn">
     <a href="../overrides"><img src="$rootContextPath.getURI("images/ico_back.png")" width="12" height="12"/><span
-            class="ico_font">#springMessage("back")</span></a>
+            class="ico_font">#springMessageText("back", "back")</span></a>
     <span class="ico_line">|</span>
     <a href="$override.id/edit">
         <img src="$rootContextPath.getURI("images/ico_edit.png")" width="13" height="13"/>
-        <span class="ico_font">#springMessage("edit")</span></a>
+        <span class="ico_font">#springMessageText("edit", "edit")</span></a>
     <span class="ico_line">|</span>
     <a href="#"
-       onclick="showConfirm('#springMessage("confirm.delete")', '$override.id', '$override.id/delete'); return false;">
+       onclick="showConfirm('#springMessageText("confirm.delete", "confirm.delete")', '$override.id', '$override.id/delete'); return false;">
         <img src="$rootContextPath.getURI("images/ico_delete.png")" width="12" height="12"/>
-        <span class="ico_font">#springMessage("delete")</span></a>
+        <span class="ico_font">#springMessageText("delete", "delete")</span></a>
 </div>
 <br/>
 
 <table cellpadding="0" cellspacing="0" class="info" id="dynamicTable">
     <tr>
-        <td style="width: 100px;"><b>#springMessage("service"):</b></td>
+        <td style="width: 100px;"><b>#springMessageText("service", "service"):</b></td>
         <td style="width: 300px;">$override.service</td>
     </tr>
     <tr>
-        <td><b>#springMessage("status"): <b></td>
+        <td><b>#springMessageText("status", "status"): <b></td>
         <td>
             #if($override.enabled)
-				#springMessage("enable")
+				#springMessageText("enable", "enable")
 			#else
-                #springMessage("disable")
+                #springMessageText("disable", "disable")
             #end
         </td>
     </tr>
     <tr>
-        <td style="width: 100px;"><b>#springMessage("application")</b></td>
+        <td style="width: 100px;"><b>#springMessageText("application", "application")</b></td>
         <td>$!override.application</td>
     </tr>
     <tr>
-        <td style="width: 100px;"><b>#springMessage("clientAddress")</b></td>
+        <td style="width: 100px;"><b>#springMessageText("clientAddress", "clientAddress")</b></td>
         <td>$!override.address</td>
     </tr>
 </table>
 <br>
 
 <hr>
-<b>#springMessage("override.config")</b>
+<b>#springMessageText("override.config", "override.config")</b>
 <br>
 <table cellpadding="0" cellspacing="0" class="info" id="paramTable">
     #foreach($p in $parameters.entrySet())
         <tr id="paramTable.old.$velocityCount">
-            <td style="width: 150px;"><b>#springMessage("parameter.key"): </b> $p.key</td>
-            <td><b>#springMessage("parameter.value"): </b> $p.value
+            <td style="width: 150px;"><b>#springMessageText("parameter.key", "parameter.key"): </b> $p.key</td>
+            <td><b>#springMessageText("parameter.value", "parameter.value"): </b> $p.value
             </td>
         </tr>
     #end
@@ -71,18 +71,18 @@
 <br>
 <hr>
 
-<b>#springMessage("override.mock")</b>
+<b>#springMessageText("override.mock", "override.mock")</b>
 <br>
 <table cellpadding="0" cellspacing="0" class="info" id="mockTable">
     #if($mockDefaultMethodJson)
         <tr>
-            <td style="width: 150px;"><b>#springMessage("mock.all.method"):</b>
+            <td style="width: 150px;"><b>#springMessageText("mock.all.method", "mock.all.method"):</b>
             </th>
             <td>
                 #if($mockDefaultMethodForce == "force")
-                    #springMessage("force.mock")
+                    #springMessageText("force.mock", "force.mock")
                 #else
-                    #springMessage("fail.mock")
+                    #springMessageText("fail.mock", "fail.mock")
                 #end
                 :
                 $mockDefaultMethodJson
@@ -90,13 +90,13 @@
         </tr>
     #end
     #foreach($m in $methodJsons.entrySet())
-        <td><b>#springMessage("mock.method")<font color="orange"><code>${m.key}</code></font>#springMessage("mock.value"):</b>
+        <td><b>#springMessageText("mock.method", "mock.method")<font color="orange"><code>${m.key}</code></font>#springMessageText("mock.value", "mock.value"):</b>
         </td>
         <td>
             #if($methodForces.get($m.key) == "force")
-                #springMessage("force.mock")
+                #springMessageText("force.mock", "force.mock")
             #else
-                #springMessage("fail.mock")
+                #springMessageText("fail.mock", "fail.mock")
             #end
             :
             $m.value
@@ -119,7 +119,7 @@
     function check() {
         var service = byId('service').value.trim();
         if (service == '') {
-            showAlert("#springMessage("PleaseInput"), #springMessage("service"))", 'service');
+            showAlert("#springMessageText("PleaseInput", "PleaseInput"), #springMessageText("service", "service"))", 'service');
             return false;
         }
         return true;

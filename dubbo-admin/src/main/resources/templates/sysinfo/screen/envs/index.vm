@@ -18,17 +18,17 @@
 <br/>
 <table cellpadding="0" cellspacing="0" class="list list_dubbo" id="table_o">
     <tr>
-        <th width="140">#springMessage("property.name"): <input type="text" style="width: 60px;"
+        <th width="140">#springMessageText("property.name", "property.name"): <input type="text" style="width: 60px;"
                                                            onkeyup="searchTable('table_o', 0, this.value);"
                                                            onclick="searchTable('table_o', 0, this.value);"/>&nbsp;<img
                 src="$rootContextPath.getURI("images/ico_search.png")" width="12" height="12"/></th>
-        <th>#springMessage("property.value"): <input type="text" onkeyup="searchTable('table_o', 1, this.value);"
+        <th>#springMessageText("property.value", "property.value"): <input type="text" onkeyup="searchTable('table_o', 1, this.value);"
                                                 onclick="searchTable('table_o', 1, this.value);"/>&nbsp;<img
                 src="$rootContextPath.getURI("images/ico_search.png")" width="12" height="12"/></th>
     </tr>
     #foreach($entry in $properties.entrySet())
         <tr>
-            <td>#springMessage($entry.key)</td>
+            <td>#springMessageText($entry.key, $entry.key)</td>
             <td>$entry.value</td>
         </tr>
     #end

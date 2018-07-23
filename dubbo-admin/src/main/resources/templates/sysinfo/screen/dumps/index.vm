@@ -18,59 +18,59 @@
 <br/>
 <table cellpadding="0" cellspacing="0" class="list list_dubbo" id="table_o">
     <tr>
-        <th>#springMessage("property.name"): <input type="text" onkeyup="searchTable('table_o', 0, this.value);"
+        <th>#springMessageText("property.name", "property.name"): <input type="text" onkeyup="searchTable('table_o', 0, this.value);"
                                                onclick="searchTable('table_o', 0, this.value);"/>&nbsp;<img
                 src="$rootContextPath.getURI("images/ico_search.png")" width="12" height="12"/></th>
-        <th>#springMessage("property.count")</th>
+        <th>#springMessageText("property.count", "property.count")</th>
     </tr>
     <tr>
         <td>
-            #springMessage("NoProvider")
+            #springMessageText("noProvider", "noProvider")
         </td>
         <td>
-            <a herf="#" onclick="window.open('$rootContextPath.getURI("/sysinfo/dump/noProviders")')">#springMessage(
-                "property.count")
+            <a herf="#" onclick="window.open('$rootContextPath.getURI("/sysinfo/dump/noProviders")')">#springMessageText(
+                "property.count","property.count")
                 ($noProviderServices.size())</a>
         </td>
     </tr>
     <tr>
         <td>
-            #springMessage("services")
+            #springMessageText("services", "services")
         </td>
         <td>
-            <a herf="#" onclick="window.open('$rootContextPath.getURI("/sysinfo/dump/services")')">#springMessage(
-                "property.count")
+            <a herf="#" onclick="window.open('$rootContextPath.getURI("/sysinfo/dump/services")')">#springMessageText(
+                "property.count","property.count")
                 ($services.size())</a>
         </td>
     </tr>
     <tr>
         <td>
-            #springMessage("providers")
+            #springMessageText("providers", "providers")
         </td>
         <td>
-            <a herf="#" onclick="window.open('$rootContextPath.getURI("/sysinfo/dump/providers")')">#springMessage(
-                "property.count")
+            <a herf="#" onclick="window.open('$rootContextPath.getURI("/sysinfo/dump/providers")')">#springMessageText(
+                "property.count","property.count")
                 ($providers.size())</a>
         </td>
     </tr>
     <tr>
         <td>
-            #springMessage("consumers")
+            #springMessageText("consumers", "consumers")
         </td>
         <td>
-            <a herf="#" onclick="window.open('$rootContextPath.getURI("/sysinfo/dump/consumers")')">#springMessage(
-                "property.count")
+            <a herf="#" onclick="window.open('$rootContextPath.getURI("/sysinfo/dump/consumers")')">#springMessageText(
+                "property.count","property.count")
                 ($consumers.size())</a>
         </td>
     </tr>
     <tr>
         <td>
-            #springMessage("versions")
+            #springMessageText("versions", "versions")
         </td>
         <td>
             #set ($client=$providers.size()+$consumers.size())
-            <a herf="#" onclick="window.open('$rootContextPath.getURI("/sysinfo/dump/versions")')">#springMessage(
-                "property.count")($client)</a>
+            <a herf="#" onclick="window.open('$rootContextPath.getURI("/sysinfo/dump/versions")')">#springMessageText(
+                "property.count","property.count")($client)</a>
         </td>
     </tr>
 </table>

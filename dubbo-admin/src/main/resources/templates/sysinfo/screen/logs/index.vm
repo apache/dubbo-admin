@@ -24,10 +24,10 @@
             <option value="ERROR" #if($level == "ERROR")selected="selected"#end>ERROR</option>
             <option value="OFF" #if($level == "OFF")selected="selected"#end>OFF</option>
         </select>
-        <a href="#" onclick="showConfirm('#springMessage(
-            "logs.confirmChangeLogLevel")', '/sysinfo/logs/change?level=' + document.getElementById('logLevel').value);">
+        <a href="#" onclick="showConfirm('#springMessageText(
+            "logs.confirmChangeLogLevel","logs.confirmChangeLogLevel")', '/sysinfo/logs/change?level=' + document.getElementById('logLevel').value);">
             <img src="$rootContextPath.getURI("images/ico_enable.png")" width="12" height="12"/><span
-                class="ico_font">#springMessage("change.log.level")</span>
+                class="ico_font">#springMessageText("change.log.level", "change.log.level")</span>
         </a>
     #end
 </div>
@@ -35,8 +35,8 @@
 <table cellpadding="0" cellspacing="0" class="list list_dubbo" id="table_o">
     <tr>
         <th>
-            #springMessage("logs.file"): $name (#springMessage("logs.size"): $size / #springMessage(
-            "logs.modify"): $modified) #springMessage("logs.level"): $level
+            #springMessageText("logs.file", "logs.file"): $name (#springMessageText("logs.size", "logs.size"): $size / #springMessageText(
+            "logs.modify","logs.modify"): $modified) #springMessageText("logs.level", "logs.level"): $level
             : <input type="text" onkeyup="searchTable('table_o', 0, this.value);"
                      onclick="searchTable('table_o', 0, this.value);"/>&nbsp;<img
                 src="$rootContextPath.getURI("images/ico_search.png")" width="12" height="12"/>
