@@ -33,58 +33,58 @@
 <script language="javascript">setActiveTab(2);</script>
 <div class="dubbo_search">
     <div class="title title_search"><h2>
-        #if($_method != "index")#springMessage($_method)#end #springMessage($_type)
+        #if($_method != "index")#springMessageText($_method,$_method)#end #springMessageText($_type,$_type)
     </h2></div>
     <div class="crumbs">
-        <a href="$rootContextPath.getURI("/")">#springMessage("home")</a> &gt; #springMessage("governance")
+        <a href="$rootContextPath.getURI("/")">#springMessageText("home", "home")</a> &gt; #springMessageText("governance", "governance")
         #if($app && $app != '*')
             &gt;
-            #springMessage("applications")
+            #springMessageText("applications", "applications")
             &gt; $app
         #end
         #if($service && $service != '*')
             &gt;
             #if($app && $app != '*')
-                <a href="$rootContextPath.getURI("/governance/applications")/$app/services">#springMessage(
-                    "services")</a>
+                <a href="$rootContextPath.getURI("/governance/applications")/$app/services">#springMessageText(
+                    "services","addresses")</a>
             #else
-                #springMessage("services")
+                #springMessageText("services", "services")
             #end
             &gt; $service
         #elseif($address && $address != '*')
             &gt;
             #if($app && $app != '*')
-                <a href="$rootContextPath.getURI("/governance/applications")/$app/addresses">#springMessage(
-                    "addresses")</a>
+                <a href="$rootContextPath.getURI("/governance/applications")/$app/addresses">#springMessageText(
+                    "addresses","addresses")</a>
             #else
-                #springMessage("addresses")
+                #springMessageText("addresses", "addresses")
             #end
             &gt; $address
         #end
         #if($_method == "index")
-            &gt; #springMessage($_type)
+            &gt; #springMessageText($_type, $_type)
         #else
             &gt;
             #if($_method == "show")
-                <a href="../$_type">#springMessage($_type)</a>
+                <a href="../$_type">#springMessageText($_type, $_type)</a>
             #elseif($id)
-                <a href="../../$_type">#springMessage($_type)</a>
+                <a href="../../$_type">#springMessageText($_type, $_type)</a>
             #else
-                <a href="../$_type">#springMessage($_type)</a>
+                <a href="../$_type">#springMessageText($_type, $_type)</a>
             #end
             &gt;
             #if($id)$id &gt;#end
-            #springMessage($_method)
+            #springMessageText($_method,$_method)
         #end
     </div>
     <div class="search_o" id="Tab1">
         <div class="search_categories">
             <ul>
-                <li id="one1" onclick="setTab2('one',1,3); return false;"><a href="#">#springMessage("service")</a><span
+                <li id="one1" onclick="setTab2('one',1,3); return false;"><a href="#">#springMessageText("service", "service")</a><span
                         class="search_line">|</span></li>
-                <li id="one2" onclick="setTab2('one',2,3); return false;"><a href="#">#springMessage("application")</a><span
+                <li id="one2" onclick="setTab2('one',2,3); return false;"><a href="#">#springMessageText("application", "application")</a><span
                         class="search_line">|</span></li>
-                <li id="one3" onclick="setTab2('one',3,3); return false;"><a href="#">#springMessage("address")</a></li>
+                <li id="one3" onclick="setTab2('one',3,3); return false;"><a href="#">#springMessageText("address", "address")</a></li>
             </ul>
         </div>
         <div class="contentbox">
@@ -131,7 +131,7 @@
                                     "show" || $_method == "add" || $_method == "addMock")../#elseif($_method ==
                                     "edit" || $_method == "editMock" || $_method == "routed" || $_method ==
                                     "notified" || $_method == "preview" || $_method == "routeselect" || $_method ==
-                                    "testrun" || $_method == "notified")../../#{end}$tab';">#springMessage($tab)</li>
+                                    "testrun" || $_method == "notified")../../#{end}$tab';">#springMessageText($tab, $tab)</li>
                         #end
                     #end
                 </ul>
@@ -152,14 +152,14 @@
                                 style="cursor: pointer;" width="20" height="20"/></td>
         </tr>
         <tr height="120">
-            <td align="right"><span id="alertText" style="font-size: 32px;">#springMessage("please.input")</span><br/><span
+            <td align="right"><span id="alertText" style="font-size: 32px;">#springMessageText("please.input", "please.input")</span><br/><span
                     id="alertData" style="font-size: 12px;"></span></td>
             <td></td>
         </tr>
         <tr>
             <td align="right">
-                <div class="btn_info" style="float: right; clear: left;"><a href="#" onclick="alertOK();">#springMessage(
-                    "confirm")</a></div>
+                <div class="btn_info" style="float: right; clear: left;"><a href="#" onclick="alertOK();">#springMessageText(
+                    "confirm","confirm")</a></div>
             </td>
             <td></td>
         </tr>
@@ -173,16 +173,16 @@
                                 style="cursor: pointer;" width="20" height="20"/></td>
         </tr>
         <tr height="120">
-            <td align="right"><span id="confirmText" style="font-size: 32px;">#springMessage("confirm")</span><br/><span
+            <td align="right"><span id="confirmText" style="font-size: 32px;">#springMessageText("confirm", "confirm")</span><br/><span
                     id="confirmData" style="font-size: 12px;"></span></td>
             <td></td>
         </tr>
         <tr>
             <td align="right">
                 <div class="btn_info" style="float: right; clear: left;"><a href="#"
-                                                                            onclick="confirmCancel();">#springMessage(
-                    "cancel")</a></div>&nbsp;&nbsp;&nbsp;&nbsp;<div class="btn_info" style="float: right; clear: left;">
-                <a href="#" onclick="confirmOK();">#springMessage("confirm")</a></div>
+                                                                            onclick="confirmCancel();">#springMessageText(
+                    "cancel","cancel")</a></div>&nbsp;&nbsp;&nbsp;&nbsp;<div class="btn_info" style="float: right; clear: left;">
+                <a href="#" onclick="confirmOK();">#springMessageText("confirm", "confirm")</a></div>
             </td>
             <td></td>
         </tr>
@@ -203,9 +203,9 @@
             return;
         }
         if (keyword == ''
-                || keyword == '#springMessage("please.input.service")'
-                || keyword == '#springMessage("please.input.application")'
-                || keyword == '#springMessage("please.input.address")') {
+                || keyword == '#springMessageText("please.input.service", "please.input.service")'
+                || keyword == '#springMessageText("please.input.application", "please.input.application")'
+                || keyword == '#springMessageText("please.input.address", "please.input.address")') {
             keyword = '*';
         }
         window.location.href = '$rootContextPath.getURI("governance/")' + searchType + '?keyword=' + keyword;
@@ -228,7 +228,7 @@
         var msg = "";
         var val = "";
         if (cursel == 1) {
-            msg = '#springMessage("please.input.service")';
+            msg = '#springMessageText("please.input.service", "please.input.service")';
             #if($service)
                 #if($keyword)
                     val = '$keyword';
@@ -241,7 +241,7 @@
             searchType = "services";
         }
         else if (cursel == 2) {
-            msg = '#springMessage("please.input.application")';
+            msg = '#springMessageText("please.input.application", "please.input.application")';
             #if($app)
                 #if($keyword)
                     val = '$keyword';
@@ -254,7 +254,7 @@
             searchType = "applications";
         }
         else if (cursel == 3) {
-            msg = '#springMessage("please.input.address")';
+            msg = '#springMessageText("please.input.address", "please.input.address")';
             #if($address)
                 #if($keyword)
                     val = '$keyword';
@@ -272,9 +272,9 @@
     }
     function fnonfocus() {
         var obj = document.getElementById('searchContent');
-        if (obj.value == '#springMessage("please.input.service")'
-                || obj.value == '#springMessage("please.input.application")'
-                || obj.value == '#springMessage("please.input.address")') {
+        if (obj.value == '#springMessageText("please.input.service", "please.input.service")'
+                || obj.value == '#springMessageText("please.input.application", "please.input.application")'
+                || obj.value == '#springMessageText("please.input.address", "please.input.address")') {
             obj.value = '';
         }
     }
@@ -282,11 +282,11 @@
         var obj = document.getElementById('searchContent');
         if (obj.value == '') {
             if (searchType == 'services')
-                obj.value = '#springMessage("please.input.service")';
+                obj.value = '#springMessageText("please.input.service", "please.input.service")';
             else if (searchType == 'applications')
-                obj.value = '#springMessage("please.input.application")';
+                obj.value = '#springMessageText("please.input.application", "please.input.application")';
             else if (searchType == 'addresses')
-                obj.value = '#springMessage("please.input.address")';
+                obj.value = '#springMessageText("please.input.address", "please.input.address")';
         }
     }
 </script>

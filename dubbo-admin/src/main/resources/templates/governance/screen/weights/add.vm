@@ -15,13 +15,13 @@
 #set($layout = "/templates/governance/layout/default.vm")
 <div class="ico_btn">
     <a href="../weights"><img src="$rootContextPath.getURI("images/ico_back.png")" width="12" height="12"/><span
-            class="ico_font">#springMessage("back")</span></a>
+            class="ico_font">#springMessageText("back", "back")</span></a>
 </div>
 <br/>
 <form id="df" action="../weights/create" method="POST">
     <table cellpadding="0" cellspacing="0" class="info">
         <tr>
-            <th width="100">#springMessage("service")&nbsp;&nbsp;<font color='red'>*</font></th>
+            <th width="100">#springMessageText("service", "service")&nbsp;&nbsp;<font color='red'>*</font></th>
             <td width="300">
                 #if($service)
                     <input type="hidden" id="multiservice" name="service" value="$service"/>$service
@@ -29,7 +29,7 @@
                     <textarea id="service" name="multiservice" style="ime-mode:disabled" rows="2" cols="40"></textarea>
                     #if ($serviceList && $serviceList.size() > 0)
                         <select id="selectService" name="selectService" onchange="fnSetService(this)">
-                            <option value="">#springMessage("Choose")</option>
+                            <option value="">#springMessageText("Choose", "Choose")</option>
                             #foreach ($s in $serviceList)
                                 <option value="$s">$tool.getSimpleName($s)</option>
                             #end
@@ -39,7 +39,7 @@
             </td>
         </tr>
         <tr>
-            <th style="width: 100px;">#springMessage("provider"):&nbsp;&nbsp;<font color='red'>*</font></th>
+            <th style="width: 100px;">#springMessageText("provider", "provider"):&nbsp;&nbsp;<font color='red'>*</font></th>
             <td>
                 #if($address)
                     <input type="hidden" id="address" name="address"
@@ -48,25 +48,25 @@
                     <textarea id="address" name="address" rows="2" cols="40"></textarea>
                     #if ($addressList && $addressList.size() > 0)
                         <select id="selectAddeess" name="selectAddeess" onchange="fnSetAddress(this)">
-                            <option value="">#springMessage("Choose")</option>
+                            <option value="">#springMessageText("Choose", "Choose")</option>
                             #foreach ($s in $addressList)
                                 <option value="$s">$tool.getHostPrefix($s)$s</option>
                             #end
                         </select>
                     #end
-                    <font color="blue">#springMessage("BatchAddressTip")</font>
+                    <font color="blue">#springMessageText("BatchAddressTip", "BatchAddressTip")</font>
                 #end
             </td>
         </tr>
         <tr>
-            <th style="width: 100px;">#springMessage("weights"):&nbsp;&nbsp;<font color='red'>*</font></th>
+            <th style="width: 100px;">#springMessageText("weights", "weights"):&nbsp;&nbsp;<font color='red'>*</font></th>
             <td><input type="text" id="weight" name="weight" value="" maxlength="3" onkeydown="return checkNumber();"/>
             </td>
         </tr>
         <tr>
             <th>
-                <div class="btn"><a href="#" onclick="if(check()){document.getElementById('df').submit();}">#springMessage(
-                    "save")</a></div>
+                <div class="btn"><a href="#" onclick="if(check()){document.getElementById('df').submit();}">#springMessageText(
+                    "save","save")</a></div>
             </th>
             <td></td>
         </tr>
@@ -112,12 +112,12 @@
     function check() {
         var service = byId('service').value.trim();
         if (service == '') {
-            showAlert("#springMessage("PleaseInput"), #springMessage("service")", 'service');
+            showAlert("#springMessageText("PleaseInput", "PleaseInput"), #springMessageText("service", "service")", 'service');
             return false;
         }
         var address = byId('address').value.trim();
         if (address == '') {
-            showAlert("#springMessage("PleaseInput"), #springMessage("address")", 'address');
+            showAlert("#springMessageText("PleaseInput", "PleaseInput"), #springMessageText("address", "address")", 'address');
             return false;
         }
         var exp = /^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5]):\d+$/;
@@ -129,7 +129,7 @@
             var address = addresses[i];
             if (address != "") {
                 if (!address.match(exp) && !address.match(exp2) && !address.match(exp3) && !address.match(exp4)) {
-                    showAlert("#springMessage("InvalidIp"), #springMessage("address")", 'address');
+                    showAlert("#springMessageText("InvalidIp", "InvalidIp"), #springMessageText("address", "address")", 'address');
                     return false;
                 }
             }

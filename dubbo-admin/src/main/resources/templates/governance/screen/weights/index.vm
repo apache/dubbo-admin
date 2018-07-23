@@ -17,31 +17,31 @@
     #if($currentUser.role != "G")
         <a href="weights/add"><img src="$rootContextPath.getURI("images/ico_add.png")"
                                                                      width="9" height="9"/><span
-                class="ico_font">#springMessage("add")</span></a>
+                class="ico_font">#springMessageText("add", "add")</span></a>
         <span class="ico_line">|</span>
-        <a href="#" onclick="if(! hasCheckbox('ids')) { showAlert('#springMessage(
-            "empty.list")'); } else if(! hasChecked('ids')) { showAlert('#springMessage(
-            "please.select")'); } else { showConfirm('#springMessage(
-            "confirm.batch.delete")', 'weights/' + getChecked('ids') + '/delete'); } return false;"><img
+        <a href="#" onclick="if(! hasCheckbox('ids')) { showAlert('#springMessageText(
+            "empty.list","empty.list")'); } else if(! hasChecked('ids')) { showAlert('#springMessageText(
+            "please.select","please.select")'); } else { showConfirm('#springMessageText(
+            "confirm.batch.delete","confirm.batch.delete")', 'weights/' + getChecked('ids') + '/delete'); } return false;"><img
                 src="$rootContextPath.getURI("images/ico_delete.png")" width="12" height="12"/><span
-                class="ico_font">#springMessage("batch.delete")</span></a>
+                class="ico_font">#springMessageText("batch.delete", "batch.delete")</span></a>
     #end
 </div>
 <br/>
 <table cellpadding="0" cellspacing="0" class="list list_dubbo" id="table_o">
     <tr>
         <th width="20"><input type="checkbox" onclick="checkAll('table_o', 'ids', this.checked)"/></th>
-        <th>#springMessage("address"): <input type="text" onkeyup="searchTable('table_o', 1, this.value);"
+        <th>#springMessageText("address", "address"): <input type="text" onkeyup="searchTable('table_o', 1, this.value);"
                                          onclick="searchTable('table_o', 1, this.value);"/>&nbsp;<img
                 src="$rootContextPath.getURI("images/ico_search.png")" width="12" height="12"/></th>
         #if(! $service)
-            <th>#springMessage("service"): <input type="text" onkeyup="searchTable('table_o', 2, this.value);"
+            <th>#springMessageText("service", "service"): <input type="text" onkeyup="searchTable('table_o', 2, this.value);"
                                              onclick="searchTable('table_o', 2, this.value);"/>&nbsp;<img
                     src="$rootContextPath.getURI("images/ico_search.png")" width="12" height="12"/></th>
         #end
-        <th width="50">#springMessage("weights")</th>
+        <th width="50">#springMessageText("weights", "weights")</th>
         #if($currentUser.role != "G")
-            <th width="135">#springMessage("operation")</th>#end
+            <th width="135">#springMessageText("operation", "operation")</th>#end
     </tr>
     #foreach($weight in $weights)
         <tr>
@@ -55,15 +55,15 @@
                 <td>
                     <a href="weights/$weight.id/edit">
                         <img src="$rootContextPath.getURI("images/ico_edit.png")" width="13" height="13"/>
-                        <span class="ico_font">#springMessage("edit")</span></a>
+                        <span class="ico_font">#springMessageText("edit", "edit")</span></a>
                     <span class="ico_line">|</span>
-                    <a href="#" onclick="showConfirm('#springMessage(
-                        "confirm.delete")', '$weight.address', 'weights/$weight.id/delete'); return false;">
+                    <a href="#" onclick="showConfirm('#springMessageText(
+                        "confirm.delete","confirm.delete")', '$weight.address', 'weights/$weight.id/delete'); return false;">
                         <img src="$rootContextPath.getURI("images/ico_delete.png")" width="12" height="12"/>
-                        <span class="ico_font">#springMessage("delete")</span></a>
+                        <span class="ico_font">#springMessageText("delete", "delete")</span></a>
                 </td>
             #end
         </tr>
     #end
 </table>
-<div class="page">#springMessage("page.total")$weights.size()#springMessage("page.records") </div>
+<div class="page">#springMessageText("page.total", "page.total")$weights.size()#springMessageText("page.records", "page.records") </div>

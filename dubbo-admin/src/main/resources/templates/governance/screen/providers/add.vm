@@ -15,7 +15,7 @@
 #set($layout = "/templates/governance/layout/default.vm")
 <div class="ico_btn">
     <a href="#if($id)../#end../providers"><img src="$rootContextPath.getURI("images/ico_back.png")" width="12"
-                                               height="12"/><span class="ico_font">#springMessage("back")</span></a>
+                                               height="12"/><span class="ico_font">#springMessageText("back", "back")</span></a>
 </div>
 <br/>
 <form id="providerForm" action="#if($id)../create#{else}create#end" method="POST">
@@ -25,11 +25,11 @@
                 <input type="hidden" id="service" name="service" value="$!provider.service"/>
             #else
                 <tr>
-                    <th style="width: 100px;">#springMessage("service"):</th>
+                    <th style="width: 100px;">#springMessageText("service", "service"):</th>
                     <td style="width: 300px;"><input id="service" type="text" name="service" class="setting_input"
                                                      style="width: 200px;"/>
                         <select onchange="fnSetService(this)">
-                            <option value="">#springMessage("Choose")</option>
+                            <option value="">#springMessageText("Choose", "Choose")</option>
                             #foreach($s in $serviceList)
                                 <option value="$s">$tool.getSimpleName($s)</option>
                             #end
@@ -39,29 +39,29 @@
             #end
         #end
         <tr>
-            <th style="width: 100px;">#springMessage("url"):</th>
+            <th style="width: 100px;">#springMessageText("url", "url"):</th>
             <td><input type="text" id="url" name="url"
                        value="#if($provider.url)$!provider.url?$!provider.parameters#{else}dubbo://#if($address)$address#{else}0.0.0.0:20880#end/#if($service)$tool.getInterface($service)#{else}com.xxx.XxxService#end?application=#if($app)$app#{else}xxx#end#if($tool.getGroup($service))&group=$tool.getGroup($service)#end#if($tool.getVersion($service))&version=$tool.getVersion($service)#end#end"
                        class="setting_input" style="width: 700px;" maxlength="2000"/></td>
         </tr>
         <tr>
-            <th>#springMessage("type"):</th>
-            <td><font color="blue">#springMessage("static")</font></td>
+            <th>#springMessageText("type", "type"):</th>
+            <td><font color="blue">#springMessageText("static", "static")</font></td>
         </tr>
         <tr>
-            <th>#springMessage("status"):</th>
+            <th>#springMessageText("status", "status"):</th>
             <td>
                 <select name="enabled">
-                    <option value="true">#springMessage("enable")</option>
-                    <option value="false" selected="selected">#springMessage("disable")</option>
+                    <option value="true">#springMessageText("enable", "enable")</option>
+                    <option value="false" selected="selected">#springMessageText("disable", "disable")</option>
                 </select>
             </td>
         </tr>
         <tr>
             <th>
                 <div class="btn"><a href="#"
-                                    onclick="if(check()){document.getElementById('providerForm').submit();}">#springMessage(
-                    "save")</a></div>
+                                    onclick="if(check()){document.getElementById('providerForm').submit();}">#springMessageText(
+                    "save","save")</a></div>
             </th>
         </tr>
     </table>
@@ -84,13 +84,13 @@
         #if(! $service)
             var service = byId('service').value.trim();
             if (service == '') {
-                showAlert("#springMessage("PleaseInput")#springMessage("service")", 'service');
+                showAlert("#springMessageText("PleaseInput", "PleaseInput")#springMessageText("service", "service")", 'service');
                 return false;
             }
         #end
         var url = byId('url').value.trim();
         if (url == '' || url.indexOf('0.0.0.0') > 0 || url.indexOf('com.xxx.XxxService') > 0 || url.indexOf('application=xxx') > 0) {
-            showAlert("#springMessage("PleaseInput")#springMessage("url")", 'url');
+            showAlert("#springMessageText("PleaseInput", "PleaseInput")#springMessageText("url", "url")", 'url');
             return false;
         }
         return true;

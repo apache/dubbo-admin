@@ -15,30 +15,30 @@
 #set($layout = "/templates/sysinfo/layout/default.vm")
 <div class="ico_btn">
     <a href="../status" target="_blank"><img src="$rootContextPath.getURI("images/ico_run.png")" width="12"
-                                             height="12"/><span class="ico_font">#springMessage("summary")</span></a>
+                                             height="12"/><span class="ico_font">#springMessageText("summary", "summary")</span></a>
 </div>
 <br/>
 <table cellpadding="0" cellspacing="0" class="list list_dubbo" id="table_o">
     <tr>
-        <th width="140">#springMessage("status.resourcename"): <input type="text" style="width: 60px;"
+        <th width="140">#springMessageText("status.resourcename", "status.resourcename"): <input type="text" style="width: 60px;"
                                                                  onkeyup="searchTable('table_o', 0, this.value);"
                                                                  onclick="searchTable('table_o', 0, this.value);"/>&nbsp;<img
                 src="$rootContextPath.getURI("images/ico_search.png")" width="12" height="12"/></th>
-        <th width="100">#springMessage("status.status"): <select onchange="searchTable('table_o', 1, this.value);"
+        <th width="100">#springMessageText("status.status", "status.status"): <select onchange="searchTable('table_o', 1, this.value);"
                                                             onclick="searchTable('table_o', 1, this.value);">
-            <option value="">#springMessage("all")</option>
-            <option value="#springMessage("status.OK")">#springMessage("status.OK")</option>
-            <option value="#springMessage("status.WARN")">#springMessage("status.WARN")</option>
-            <option value="#springMessage("status.ERROR")">#springMessage("status.ERROR")</option>
+            <option value="">#springMessageText("all", "all")</option>
+            <option value="#springMessageText("status.OK", "status.OK")">#springMessageText("status.OK", "status.OK")</option>
+            <option value="#springMessageText("status.WARN", "status.WARN")">#springMessageText("status.WARN", "status.WARN")</option>
+            <option value="#springMessageText("status.ERROR", "status.ERROR")">#springMessageText("status.ERROR", "status.ERROR")</option>
         </select></th>
-        <th width="50%">#springMessage("status.message"): <input type="text" onkeyup="searchTable('table_o', 2, this.value);"
+        <th width="50%">#springMessageText("status.message", "status.message"): <input type="text" onkeyup="searchTable('table_o', 2, this.value);"
                                                             onclick="searchTable('table_o', 2, this.value);"/>&nbsp;<img
                 src="$rootContextPath.getURI("images/ico_search.png")" width="12" height="12"/></th>
-        <th>#springMessage("status.description")</th>
+        <th>#springMessageText("status.description","status.description")</th>
     </tr>
     #foreach($status in $statusList.entrySet())
         <tr>
-            <td>#springMessage("status.${status.key}Status")</td>
+            <td>#springMessageText("status.${status.key}Status","status.${status.key}Status")</td>
             <td>
                 #if($status.value.level == "OK")
                 <font color="green">
@@ -49,11 +49,11 @@
                 #else
                 <font color="gray">
                 #end
-                #springMessage("status.$status.value.level")
+                #springMessageText("status.$status.value.level","status.$status.value.level")
             </font>
             </td>
             <td>$tool.unescape($status.value.message)</td>
-            <td>#springMessage("status.${status.key}StatusDesc")</td>
+            <td>#springMessageText("status.${status.key}StatusDesc", "status.${status.key}StatusDesc")</td>
         </tr>
     #end
 </table>

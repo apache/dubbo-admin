@@ -15,10 +15,10 @@
 #set($layout = "/templates/governance/layout/default.vm")
 <div class="ico_btn">
     <a href="../../loadbalances"><img src="$rootContextPath.getURI("images/ico_back.png")" width="12" height="12"/><span
-            class="ico_font">#springMessage("back")</span></a>
+            class="ico_font">#springMessageText("back", "back")</span></a>
     <span class="ico_line">|</span>
     <a href="../$loadbalance.id"><img src="$rootContextPath.getURI("images/ico_show.png")" width="12" height="12"/><span
-            class="ico_font">#springMessage("show")</span></a>
+            class="ico_font">#springMessageText("show", "show")</span></a>
 </div>
 <br/>
 <form id="df" action="../update" method="POST" onsubmit="return check();">
@@ -29,19 +29,19 @@
             </td>
         </tr>
         <tr>
-            <th style="width: 100px;">#springMessage("service")&nbsp;&nbsp;<font color='red'>*</font></th>
+            <th style="width: 100px;">#springMessageText("service", "service")&nbsp;&nbsp;<font color='red'>*</font></th>
             <td>
                 $loadbalance.service
             </td>
         </tr>
         <tr>
-            <th style="width: 100px;">#springMessage("methodName")&nbsp;&nbsp;<font color='red'>*</font></th>
+            <th style="width: 100px;">#springMessageText("methodName", "methodName")&nbsp;&nbsp;<font color='red'>*</font></th>
             <td>
                 $loadbalance.method
             </td>
         </tr>
         <tr>
-            <th>#springMessage("loadBalanceStrategy"):</th>
+            <th>#springMessageText("loadBalanceStrategy", "loadBalanceStrategy"):</th>
             <td>
                 <input type="hidden" id="service" name="service" style="ime-mode:disabled" maxlength="200"
                        value="$loadbalance.service"/>
@@ -51,17 +51,17 @@
                        value="$loadbalance.strategy"/>
                 <select id="lbstrategy" name="lbstrategy"
                         onchange="if (this.value != '') { byId('strategy').value = this.value; this.value = ''; }">>
-                    <option value="">#springMessage("Choose")</option>
-                    <option value="random">#springMessage("random")</option>
-                    <option value="roundrobin">#springMessage("roundrobin")</option>
-                    <option value="leastactive">#springMessage("leastactive")</option>
+                    <option value="">#springMessageText("Choose", "Choose")</option>
+                    <option value="random">#springMessageText("random", "random")</option>
+                    <option value="roundrobin">#springMessageText("roundrobin", "roundrobin")</option>
+                    <option value="leastactive">#springMessageText("leastactive", "leastactive")</option>
                 </select>
             </td>
         </tr>
         <tr>
             <th>
-                <div class="btn"><a href="#" onclick="if(check){document.getElementById('df').submit();}">#springMessage(
-                    "save")</a></div>
+                <div class="btn"><a href="#" onclick="if(check){document.getElementById('df').submit();}">#springMessageText(
+                    "save","save")</a></div>
             </th>
             <td></td>
         </tr>
@@ -89,12 +89,12 @@
     function check() {
         var method = byId('method').value.trim();
         if (method == '') {
-            showAlert("#springMessage("PleaseInput")#springMessage("methodName")", 'method');
+            showAlert("#springMessageText("PleaseInput", "PleaseInput")#springMessageText("methodName", "methodName")", 'method');
             return false;
         }
         var strategy = byId('strategy').value.trim();
         if (strategy == '') {
-            showAlert("#springMessage("PleaseInput")#springMessage("loadBalanceStrategy")", 'strategy');
+            showAlert("#springMessageText("PleaseInput", "PleaseInput")#springMessageText("loadBalanceStrategy", "loadBalanceStrategy")", 'strategy');
             return false;
         }
         return true;

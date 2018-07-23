@@ -16,14 +16,14 @@
 <div class="ico_btn">
     #if($currentUser.role != "G")
         <a href="overrides/add"><img src="$rootContextPath.getURI("images/ico_add.png")" width="9" height="9"/><span
-                class="ico_font">#springMessage("add")</span></a>
+                class="ico_font">#springMessageText("add", "add")</span></a>
         <span class="ico_line">|</span>
-        <a href="#" onclick="if(! hasCheckbox('ids')) { showAlert('#springMessage(
-            "empty.list")'); } else if(! hasChecked('ids')) { showAlert('#springMessage(
-            "please.select")'); } else { showConfirm('#springMessage(
-            "confirm.batch.delete")', 'overrides/' + getChecked('ids') + '/delete'); } return false;"><img
+        <a href="#" onclick="if(! hasCheckbox('ids')) { showAlert('#springMessageText(
+            "empty.list","empty.list")'); } else if(! hasChecked('ids')) { showAlert('#springMessageText(
+            "please.select","please.select")'); } else { showConfirm('#springMessageText(
+            "confirm.batch.delete","confirm.batch.delete")', 'overrides/' + getChecked('ids') + '/delete'); } return false;"><img
                 src="$rootContextPath.getURI("images/ico_delete.png")" width="12" height="12"/><span
-                class="ico_font">#springMessage("batch.delete")</span></a>
+                class="ico_font">#springMessageText("batch.delete", "batch.delete")</span></a>
     #end
 </div>
 <br/>
@@ -31,14 +31,14 @@
     <tr>
         <th width="20"><input type="checkbox" onclick="checkAll('table_o', 'ids', this.checked)"/></th>
         #if(!$service)
-            <th>#springMessage("service")</th>
+            <th>#springMessageText("service", "service")</th>
         #end
-        <th>#springMessage("application")</th>
-        <th>#springMessage("address")</th>
-        <th>#springMessage("parameters")</th>
-        <th>#springMessage("status")</th>
+        <th>#springMessageText("application", "application")</th>
+        <th>#springMessageText("address", "address")</th>
+        <th>#springMessageText("parameters", "parameters")</th>
+        <th>#springMessageText("status", "status")</th>
         #if($currentUser.role != "G")
-            <th>#springMessage("operation")</th>#end
+            <th>#springMessageText("operation", "operation")</th>#end
     </tr>
     #foreach($override in $overrides)
         <tr>
@@ -51,40 +51,40 @@
             <td>$!tool.decodeUrl($override.params)</td>
             <td>
                 #if($override.enabled)
-                    <font color="green">#springMessage("Enabled")</font>
+                    <font color="green">#springMessageText("enabled", "enabled")</font>
                 #else
-                    <font color="red">#springMessage("Disabled")</font>
+                    <font color="red">#springMessageText("disabled", "disabled")</font>
                 #end
             </td>
             #if($currentUser.role != "G")
                 <td>
                     <a href="overrides/$override.id">
                         <img src="$rootContextPath.getURI("images/ico_show.png")" width="13" height="13"/>
-                        <span class="ico_font">#springMessage("show")</span></a>
+                        <span class="ico_font">#springMessageText("show", "show")</span></a>
                     <span class="ico_line">|</span>
                     <a href="overrides/$override.id/edit">
                         <img src="$rootContextPath.getURI("images/ico_edit.png")" width="13" height="13"/>
-                        <span class="ico_font">#springMessage("edit")</span></a>
+                        <span class="ico_font">#springMessageText("edit", "edit")</span></a>
                     <span class="ico_line">|</span>
                     #if($override.enabled)
-                        <a href="#" onclick="showConfirm('#springMessage(
-                            "confirm.disable")', '$override.application - $override.address', 'overrides/$override.id/disable'); return false;"><img
+                        <a href="#" onclick="showConfirm('#springMessageText(
+                            "confirm.disable","confirm.disable")', '$override.application - $override.address', 'overrides/$override.id/disable'); return false;"><img
                                 src="$rootContextPath.getURI("images/ico_disable.png")" width="12" height="12"/><span
-                                class="ico_font">#springMessage("disable")</span></a>
+                                class="ico_font">#springMessageText("disable", "disable")</span></a>
                     #else
-                        <a href="#" onclick="showConfirm('#springMessage(
-                            "confirm.enable")', '$override.application - $override.address', 'overrides/$override.id/enable'); return false;"><img
+                        <a href="#" onclick="showConfirm('#springMessageText(
+                            "confirm.enable","confirm.enable")', '$override.application - $override.address', 'overrides/$override.id/enable'); return false;"><img
                                 src="$rootContextPath.getURI("images/ico_enable.png")" width="12" height="12"/><span
-                                class="ico_font">#springMessage("enable")</span></a>
+                                class="ico_font">#springMessageText("enable", "enable")</span></a>
                     #end
                     <span class="ico_line">|</span>
-                    <a href="#" onclick="showConfirm('#springMessage(
-                        "confirm.delete")', '$override.id', 'overrides/$override.id/delete'); return false;">
+                    <a href="#" onclick="showConfirm('#springMessageText(
+                        "confirm.delete","confirm.delete")', '$override.id', 'overrides/$override.id/delete'); return false;">
                         <img src="$rootContextPath.getURI("images/ico_delete.png")" width="12" height="12"/>
-                        <span class="ico_font">#springMessage("delete")</span></a>
+                        <span class="ico_font">#springMessageText("delete", "delete")</span></a>
                 </td>
             #end
         </tr>
     #end
 </table>
-<div class="page">#springMessage("page.total")$overrides.size()#springMessage("page.records") </div>
+<div class="page">#springMessageText("page.total", "page.total")$overrides.size()#springMessageText("page.records", "page.records") </div>

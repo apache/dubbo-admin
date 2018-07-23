@@ -17,42 +17,42 @@
     #if($currentUser.role != "G")
         <a href="accesses/add#if($service)?service=$service#end"><img
                 src="$rootContextPath.getURI("images/ico_add.png")" width="9" height="9"/><span
-                class="ico_font">#springMessage("add")</span></a>
+                class="ico_font">#springMessageText("add", "add")</span></a>
         <span class="ico_line">|</span>
-        <a href="#" onclick="if(! hasCheckbox('ids')) { showAlert('#springMessage(
-            "empty.list")'); } else if(! hasChecked('ids')) { showAlert('#springMessage(
-            "please.select")'); } else { showConfirm('#springMessage(
-            "confirm.batch.delete")', 'accesses' + '/delete?accesses=' + getCheckedAccesses('ids')); } return false;"><img
+        <a href="#" onclick="if(! hasCheckbox('ids')) { showAlert('#springMessageText(
+            "empty.list","empty.list")'); } else if(! hasChecked('ids')) { showAlert('#springMessageText(
+            "please.select","please.select")'); } else { showConfirm('#springMessageText(
+            "confirm.batch.delete","confirm.batch.delete")', 'accesses' + '/delete?accesses=' + getCheckedAccesses('ids')); } return false;"><img
                 src="$rootContextPath.getURI("images/ico_delete.png")" width="12" height="12"/><span
-                class="ico_font">#springMessage("batch.delete")</span></a>
+                class="ico_font">#springMessageText("batch.delete", "batch.delete")</span></a>
     #end
 </div>
 <br/>
 <table cellpadding="0" cellspacing="0" class="list list_dubbo" id="table_o">
     <tr>
         <th width="20"><input type="checkbox" onclick="checkAll('table_o', 'ids', this.checked)"/></th>
-        <th>#springMessage("consumer.address"): <input type="text" onkeyup="searchTable('table_o', 1, this.value);"
+        <th>#springMessageText("consumer.address", "consumer.address"): <input type="text" onkeyup="searchTable('table_o', 1, this.value);"
                                                   onclick="searchTable('table_o', 1, this.value);"/>&nbsp;<img
                 src="$rootContextPath.getURI("images/ico_search.png")" width="12" height="12"/></th>
         #set($column = 2) ## 是否显示 服务名一列
         #if(!$service)
-            <th>#springMessage("service"):
+            <th>#springMessageText("service", "service"):
                 <input type="text" onkeyup="searchTable('table_o', 2, this.value);"
                        onclick="searchTable('table_o', 2, this.value);"/>&nbsp;
                 <img src="$rootContextPath.getURI("images/ico_search.png")" width="12" height="12"/>
             </th>
             #set($column = $column + 1)
         #end
-        <th width="110">#springMessage("type"):
+        <th width="110">#springMessageText("type", "type"):
             <select onchange="searchTable('table_o', $column, this.value);"
                     onclick="searchTable('table_o', $column, this.value);">
-                <option value="">#springMessage("all")</option>
-                <option value="#springMessage("whitelist")">#springMessage("whitelist")</option>
-                <option value="#springMessage("blacklist")">#springMessage("blacklist")</option>
+                <option value="">#springMessageText("all", "all")</option>
+                <option value="#springMessageText("whitelist", "whitelist")">#springMessageText("whitelist", "whitelist")</option>
+                <option value="#springMessageText("blacklist", "blacklist")">#springMessageText("blacklist", "blacklist")</option>
             </select>
         </th>
         #if($currentUser.role != "G")
-            <th width="170">#springMessage("operation")</th>#end
+            <th width="170">#springMessageText("operation", "operation")</th>#end
     </tr>
     #foreach($access in $accesses)
         <tr>
@@ -61,20 +61,20 @@
             #if(!$service)
                 <td><a href="services/$access.service/accesses">$access.service</a></td>
             #end
-            <td>#if($access.allow==true) <font color="green">#springMessage("whitelist")</font> #elseif($access.allow==false)
-                <font color="red">#springMessage("blacklist")</font> #end</td>
+            <td>#if($access.allow==true) <font color="green">#springMessageText("whitelist", "whitelist")</font> #elseif($access.allow==false)
+                <font color="red">#springMessageText("blacklist", "blacklist")</font> #end</td>
             #if($currentUser.role != "G")
                 <td>
-                    <a href="#" onclick="showConfirm('#springMessage(
-                        "confirm.delete")', '$access.address', 'accesses/delete?accesses=$access.service=$access.address'); return false;">
+                    <a href="#" onclick="showConfirm('#springMessageText(
+                        "confirm.delete","confirm.delete")', '$access.address', 'accesses/delete?accesses=$access.service=$access.address'); return false;">
                         <img src="$rootContextPath.getURI("images/ico_delete.png")" width="12" height="12"/>
-                        <span class="ico_font">#springMessage("delete")</span></a>
+                        <span class="ico_font">#springMessageText("delete", "delete")</span></a>
                 </td>
             #end
         </tr>
     #end
 </table>
-<div class="page">#springMessage("page.total")$accesses.size()#springMessage("page.records") </div>
+<div class="page">#springMessageText("page.total", "page.total")$accesses.size()#springMessageText("page.records", "page.records") </div>
 <script language="javascript">
     function getCheckedAccesses(name) {
         var resultController = "";

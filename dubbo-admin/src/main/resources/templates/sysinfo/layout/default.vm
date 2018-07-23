@@ -38,32 +38,32 @@
     <div class="title title_search">
         <h2>
             #if($_method == "index")
-                #springMessage("sysinfo.$_type")
+                #springMessageText("sysinfo.$_type", "sysinfo.$_type")
             #else
-                #springMessage($_method)
+                #springMessageText($_method, $_method)
             #end
         </h2>
     </div>
     <div class="crumbs">
-        <a href="$rootContextPath.getURI("/")">#springMessage("home")</a> &gt; #springMessage("system.management")
+        <a href="$rootContextPath.getURI("/")">#springMessageText("home", "home")</a> &gt; #springMessageText("system.management", "system.management")
         #if($service)
             &gt; <a href="../../#if($_method == "show" || $_method == "add")../#elseif($_method ==
-            "edit")../../#{end}services">#springMessage("services")</a>
+            "edit")../../#{end}services">#springMessageText("services", "services")</a>
             &gt; $service
         #elseif($app)
             &gt; <a href="../../#if($_method == "show" || $_method == "add")../#elseif($_method ==
-            "edit")../../#{end}applications">#springMessage("applications")</a>
+            "edit")../../#{end}applications">#springMessageText("applications", "applications")</a>
             &gt; $app
         #elseif($address)
             &gt; <a href="../../#if($_method == "show" || $_method == "add")../#elseif($_method ==
-            "edit")../../#{end}addresses">#springMessage("addresses")</a>
+            "edit")../../#{end}addresses">#springMessageText("addresses", "addresses")</a>
             &gt; $address
         #end
         #if($_method == "index")
-            &gt; #springMessage("sysinfo.$_type")
+            &gt; #springMessageText("sysinfo.$_type", "sysinfo.$_type")
         #else
-            &gt; <a href="../$_type">#springMessage("sysinfo.$_type")</a>
-            &gt; #if($id)$id &gt;#end #springMessage($_method)
+            &gt; <a href="../$_type">#springMessageText("sysinfo.$_type", "sysinfo.$_type")</a>
+            &gt; #if($id)$id &gt;#end #springMessageText($_method, $_method)
         #end
     </div>
 </div>
@@ -76,7 +76,7 @@
                     #if($tool.checkUrl($currentUser,"/sysinfo/$tab"))
                         <li id="$tab"#if($_type == $tab) class="active"#else style="color: white;"#end
                             onclick="window.location.href='$rootContextPath.getURI(
-                                "/sysinfo/$tab")';">#springMessage($tab)</li>
+                                "/sysinfo/$tab")';">#springMessageText($tab, $tab)</li>
                     #end
                 #end
             </ul>
@@ -99,7 +99,7 @@
         </tr>
         <tr height="120">
             <td align="right">
-                <span id="alertText" style="font-size: 32px;">#springMessage("please.input")</span>
+                <span id="alertText" style="font-size: 32px;">#springMessageText("please.input", "please.input")</span>
                 <br/><span id="alertData" style="font-size: 12px;"></span>
             </td>
             <td></td>
@@ -107,7 +107,7 @@
         <tr>
             <td align="right">
                 <div class="btn_info" style="float: right; clear: left;">
-                    <a href="#" onclick="alertOK();">#springMessage("confirm")</a>
+                    <a href="#" onclick="alertOK();">#springMessageText("confirm", "confirm")</a>
                 </div>
             </td>
             <td></td>
@@ -125,7 +125,7 @@
         </tr>
         <tr height="120">
             <td align="right">
-                <span id="confirmText" style="font-size: 32px;">#springMessage("confirm")</span>
+                <span id="confirmText" style="font-size: 32px;">#springMessageText("confirm", "confirm")</span>
                 <br/>
                 <span id="confirmData" style="font-size: 12px;"></span>
             </td>
@@ -134,10 +134,10 @@
         <tr>
             <td align="right">
                 <div class="btn_info" style="float: right; clear: left;">
-                    <a href="#" onclick="confirmCancel();">#springMessage("cancel")</a>
+                    <a href="#" onclick="confirmCancel();">#springMessageText("cancel", "cancel")</a>
                 </div>
                 &nbsp;&nbsp;&nbsp;&nbsp;<div class="btn_info" style="float: right; clear: left;">
-                <a href="#" onclick="confirmOK();">#springMessage("confirm")</a>
+                <a href="#" onclick="confirmOK();">#springMessageText("confirm", "confirm")</a>
             </div>
             </td>
             <td></td>
