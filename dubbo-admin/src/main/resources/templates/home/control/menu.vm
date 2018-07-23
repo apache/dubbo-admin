@@ -64,13 +64,13 @@
                         <td style="padding-left: 10px;"><img src="$rootContextPath.getURI("images/ico_user.png")"
                                                              width="14" height="14" border="0"/></td>
                         <td>
-                            #if($currentUser.name)$currentUser.name#else$currentUser.username#end, #springMessage("welcome")
+                            #if($currentUser.name)$currentUser.name#else$currentUser.username#end, #springMessageText("welcome", "welcome")
                         </td>
                         <td style="padding-left: 10px;"><img src="$rootContextPath.getURI("images/exit.png")" width="14"
                                                              height="19" border="0"/></td>
-                        <td><a href="#" onclick="showConfirm('#springMessage("confirm.logout")', '#springMessage(
-                            "current.user"): $currentUser.Name', '/logout'); return false;"
-                               style="color: white;">#springMessage("logout")</a></td>
+                        <td><a href="#" onclick="showConfirm('#springMessageText("confirm.logout", "confirm.logout")', '#springMessageText(
+                            "current.user","current.user"): $currentUser.Name', '/logout'); return false;"
+                               style="color: white;">#springMessageText("logout", "logout")</a></td>
                     </tr>
                 </table>
             </td>
@@ -79,49 +79,49 @@
 </div>
 <div class="nav">
     <ul>
-        <li id="unique_tab1"><a href="$rootContextPath.getURI("/")">#springMessage("home")</a></li>
-        <li id="unique_tab2" class="sub_nav"><a href="#" onclick="return false;" style="cursor:default;">#springMessage(
-            "governance")</a>
+        <li id="unique_tab1"><a href="$rootContextPath.getURI("/")">#springMessageText("home", "home")</a></li>
+        <li id="unique_tab2" class="sub_nav"><a href="#" onclick="return false;" style="cursor:default;">#springMessageText(
+            "governance","governance")</a>
             <ul>
                 #if($tool.checkUrl($currentUser,"/governance/services"))
-                    <li><a href="$rootContextPath.getURI("/governance/services")">#springMessage("services")</a></li>#end
+                    <li><a href="$rootContextPath.getURI("/governance/services")">#springMessageText("services", "services")</a></li>#end
                 #if($tool.checkUrl($currentUser,"/governance/applications"))
-                    <li><a href="$rootContextPath.getURI("/governance/applications")">#springMessage("applications")</a>
+                    <li><a href="$rootContextPath.getURI("/governance/applications")">#springMessageText("applications", "applications")</a>
                     </li>#end
                 #if($tool.checkUrl($currentUser,"/governance/addresses"))
-                    <li><a href="$rootContextPath.getURI("/governance/addresses")">#springMessage("addresses")</a></li>#end
+                    <li><a href="$rootContextPath.getURI("/governance/addresses")">#springMessageText("addresses", "addresses")</a></li>#end
                 #if($tool.checkUrl($currentUser,"/governance/providers"))
-                    <li><a href="$rootContextPath.getURI("/governance/providers")">#springMessage("providers")</a></li>#end
+                    <li><a href="$rootContextPath.getURI("/governance/providers")">#springMessageText("providers", "providers")</a></li>#end
                 #if($tool.checkUrl($currentUser,"/governance/consumers"))
-                    <li><a href="$rootContextPath.getURI("/governance/consumers")">#springMessage("consumers")</a></li>#end
+                    <li><a href="$rootContextPath.getURI("/governance/consumers")">#springMessageText("consumers", "consumers")</a></li>#end
                 #if($tool.checkUrl($currentUser,"/governance/routes"))
-                    <li><a href="$rootContextPath.getURI("/governance/routes")">#springMessage("routes")</a></li>#end
+                    <li><a href="$rootContextPath.getURI("/governance/routes")">#springMessageText("routes", "routes")</a></li>#end
                 #if($tool.checkUrl($currentUser,"/governance/overrides"))
-                    <li><a href="$rootContextPath.getURI("/governance/overrides")">#springMessage("overrides")</a></li>#end
+                    <li><a href="$rootContextPath.getURI("/governance/overrides")">#springMessageText("overrides", "overrides")</a></li>#end
                 #if($tool.checkUrl($currentUser,"/governance/accesses"))
-                    <li><a href="$rootContextPath.getURI("/governance/accesses")">#springMessage("accesses")</a></li>#end
+                    <li><a href="$rootContextPath.getURI("/governance/accesses")">#springMessageText("accesses", "accesses")</a></li>#end
                 #if($tool.checkUrl($currentUser,"/governance/weights"))
-                    <li><a href="$rootContextPath.getURI("/governance/weights")">#springMessage("weights")</a></li>#end
+                    <li><a href="$rootContextPath.getURI("/governance/weights")">#springMessageText("weights", "weights")</a></li>#end
                 #if($tool.checkUrl($currentUser,"/governance/loadbalances"))
-                    <li><a href="$rootContextPath.getURI("/governance/loadbalances")">#springMessage("loadbalances")</a>
+                    <li><a href="$rootContextPath.getURI("/governance/loadbalances")">#springMessageText("loadbalances", "loadbalances")</a>
                     </li>#end
                 #if($tool.checkUrl($currentUser,"/governance/owners"))
-                    <li><a href="$rootContextPath.getURI("/governance/owners")">#springMessage("owners")</a></li>#end
+                    <li><a href="$rootContextPath.getURI("/governance/owners")">#springMessageText("owners", "owners")</a></li>#end
             </ul>
         </li>
-        <li id="unique_tab3" class="sub_nav"><a href="#" onclick="return false;" style="cursor:default;">#springMessage(
-            "system.management")</a>
+        <li id="unique_tab3" class="sub_nav"><a href="#" onclick="return false;" style="cursor:default;">#springMessageText(
+            "system.management","system.management")</a>
             <ul>
                 #if($tool.checkUrl($currentUser,"/sysinfo/versions"))
-                    <li><a href="$rootContextPath.getURI("/sysinfo/versions")">#springMessage("versions")</a></li>#end
+                    <li><a href="$rootContextPath.getURI("/sysinfo/versions")">#springMessageText("versions", "versions")</a></li>#end
                 #if($tool.checkUrl($currentUser,"/sysinfo/dumps"))
-                    <li><a href="$rootContextPath.getURI("/sysinfo/dumps")">#springMessage("dumps")</a></li>#end
+                    <li><a href="$rootContextPath.getURI("/sysinfo/dumps")">#springMessageText("dumps", "dumps")</a></li>#end
                 #if($tool.checkUrl($currentUser,"/sysinfo/statuses"))
-                    <li><a href="$rootContextPath.getURI("/sysinfo/statuses")">#springMessage("statuses")</a></li>#end
+                    <li><a href="$rootContextPath.getURI("/sysinfo/statuses")">#springMessageText("statuses", "statuses")</a></li>#end
                 #if($tool.checkUrl($currentUser,"/sysinfo/logs"))
-                    <li><a href="$rootContextPath.getURI("/sysinfo/logs")">#springMessage("logs")</a></li>#end
+                    <li><a href="$rootContextPath.getURI("/sysinfo/logs")">#springMessageText("logs", "logs")</a></li>#end
                 #if($tool.checkUrl($currentUser,"/sysinfo/envs"))
-                    <li><a href="$rootContextPath.getURI("/sysinfo/envs")">#springMessage("envs")</a></li>#end
+                    <li><a href="$rootContextPath.getURI("/sysinfo/envs")">#springMessageText("envs", "envs")</a></li>#end
             </ul>
         </li>
     </ul>
@@ -129,7 +129,7 @@
         <table>
             <tr>
                 <td><img src="$rootContextPath.getURI("images/ico_help.png")" width="14" height="14" border="0"/></td>
-                <td><a href="$helpUrl" target="_blank">#springMessage("help")</a></td>
+                <td><a href="$helpUrl" target="_blank">#springMessageText("help", "help")</a></td>
             </tr>
         </table>
     </div>

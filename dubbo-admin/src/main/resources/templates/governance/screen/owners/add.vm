@@ -15,13 +15,13 @@
 #set($layout = "/templates/governance/layout/default.vm")
 <div class="ico_btn">
     <a href="../owners"><img src="$rootContextPath.getURI("images/ico_back.png")" width="12" height="12"/><span
-            class="ico_font">#springMessage("back")</span></a>
+            class="ico_font">#springMessageText("back", "back")</span></a>
 </div>
 <br/>
 <form id="df" action="create" method="POST">
     <table cellpadding="0" cellspacing="0" class="info">
         <tr>
-            <th style="width: 150px;">#springMessage("service")&nbsp;&nbsp;<font color='red'>*</font></th>
+            <th style="width: 150px;">#springMessageText("service", "service")&nbsp;&nbsp;<font color='red'>*</font></th>
             <td>
                 #if($service)
                     <input type="hidden" id="serviceName" name="service" value="$service"/>$service
@@ -29,7 +29,7 @@
                     <input id="serviceName" name="service" rows="5" cols="40" maxlength="200">
                     #if ($serviceList && $serviceList.size() > 0)
                         <select id="selectService" name="selectService" onchange="fnSetService(this)">
-                            <option value="">#springMessage("Choose")</option>
+                            <option value="">#springMessageText("Choose", "Choose")</option>
                             #foreach ($s in $serviceList)
                                 <option value="$s">$tool.getSimpleName($s)</option>
                             #end
@@ -39,14 +39,14 @@
             </td>
         </tr>
         <tr>
-            <th style="width: 150px;">#springMessage("Username")&nbsp;&nbsp;<font color='red'>*</font></th>
+            <th style="width: 150px;">#springMessageText("Username", "Username")&nbsp;&nbsp;<font color='red'>*</font></th>
             <td><input type="text" id="username" name="username" style="ime-mode:disabled" value="$operator"
                        maxlength="100"/></td>
         </tr>
         <tr>
             <th>
-                <div class="btn"><a href="#" onclick="if(check()){document.getElementById('df').submit();}">#springMessage(
-                    "save")</a></div>
+                <div class="btn"><a href="#" onclick="if(check()){document.getElementById('df').submit();}">#springMessageText(
+                    "save","save")</a></div>
             </th>
             <td></td>
         </tr>
@@ -56,7 +56,7 @@
     function check() {
         var username = byId('username').value.trim();
         if (username == '') {
-            showAlert("#springMessage("PleaseInput")#springMessage("Username")", 'username');
+            showAlert("#springMessageText("PleaseInput", "PleaseInput")#springMessageText("Username", "Username")", 'username');
             return false;
         }
         return true;
