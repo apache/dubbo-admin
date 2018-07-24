@@ -28,6 +28,7 @@ import com.alibaba.dubbo.common.logger.Logger;
 import com.alibaba.dubbo.common.logger.LoggerFactory;
 import com.alibaba.dubboadmin.governance.service.ConsumerService;
 import com.alibaba.dubboadmin.governance.service.ProviderService;
+import com.alibaba.dubboadmin.governance.util.WebConstants;
 import com.alibaba.dubboadmin.registry.common.domain.Consumer;
 import com.alibaba.dubboadmin.registry.common.domain.Provider;
 import com.alibaba.dubboadmin.web.pulltool.RootContextPath;
@@ -77,6 +78,7 @@ public class IndexController {
         model.addAttribute("providers", pList.size());
         model.addAttribute("consumers", cList.size());
         model.addAttribute("applications", applications.size());
+        model.addAttribute("helpUrl", WebConstants.HELP_URL);
         model.addAttribute("tool", new Tool());
         return "home/screen/index";
 
