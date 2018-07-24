@@ -57,6 +57,11 @@ public class WebConstants {
      * Operation record page The default page record shows the number of records
      */
     public static final Integer OPRATION_RECORDS_PAGE_SIZE = 100;
+
+    /**
+     * Help Url
+     */
+    public static final String HELP_URL="https://github.com/apache/incubator-dubbo-ops";
     Map<String, Object> context;
 
     public static final Map<String, String> mapper = new HashMap<>();
