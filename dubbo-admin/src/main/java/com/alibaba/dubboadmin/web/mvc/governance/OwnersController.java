@@ -35,6 +35,7 @@ import org.springframework.validation.support.BindingAwareModelMap;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * ProvidersController. URI: /services/$service/owners
@@ -101,8 +102,8 @@ public class OwnersController extends BaseController {
         return "governance/screen/redirect";
     }
 
-    @RequestMapping("/{ids}/delete")
-    public String delete(@PathVariable("ids") Long[] ids, HttpServletRequest request, HttpServletResponse response, Model model) {
+    @RequestMapping("/delete")
+    public String delete(@RequestParam("ids") Long[] ids, HttpServletRequest request, HttpServletResponse response, Model model) {
         prepare(request, response, model, "delete", "owners");
 
         String service = request.getParameter("service");

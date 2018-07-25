@@ -38,6 +38,7 @@ import org.springframework.ui.Model;
 import org.springframework.validation.support.BindingAwareModelMap;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * ProvidersController.
@@ -71,8 +72,8 @@ public class LoadbalancesController extends BaseController {
         return "governance/screen/loadbalances/index";
     }
 
-    @RequestMapping("/{id}")
-    public String show(@PathVariable("id") Long id, HttpServletRequest request, HttpServletResponse response, Model model) {
+    @RequestMapping("/detail")
+    public String show(@RequestParam("id") Long id, HttpServletRequest request, HttpServletResponse response, Model model) {
         prepare(request, response, model, "show", "loadbalances");
         LoadBalance loadbalance = OverrideUtils.overrideToLoadBalance(overrideService.findById(id));
         model.addAttribute("loadbalance", loadbalance);
@@ -102,8 +103,8 @@ public class LoadbalancesController extends BaseController {
         return "governance/screen/loadbalances/add";
     }
 
-    @RequestMapping("/{id}/edit")
-    public String edit(@PathVariable("id") Long id, HttpServletRequest request, HttpServletResponse response, Model model) {
+    @RequestMapping("/edit")
+    public String edit(@RequestParam("id") Long id, HttpServletRequest request, HttpServletResponse response, Model model) {
         prepare(request, response, model, "edit", "loadbalances");
         String service = request.getParameter("service");
         String input = request.getParameter("input");
@@ -165,8 +166,8 @@ public class LoadbalancesController extends BaseController {
      * @param ids
      * @return
      */
-    @RequestMapping("/{ids}/delete")
-    public String delete(@PathVariable("ids") Long[] ids, HttpServletRequest request, HttpServletResponse response, Model model) {
+    @RequestMapping("/delete")
+    public String delete(@RequestParam("ids") Long[] ids, HttpServletRequest request, HttpServletResponse response, Model model) {
         prepare(request, response, model, "delete", "loadbalances");
         boolean success = true;
         for (Long id : ids) {

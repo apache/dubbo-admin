@@ -44,6 +44,7 @@ import org.springframework.ui.Model;
 import org.springframework.validation.support.BindingAwareModelMap;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 @RequestMapping("/governance/overrides")
@@ -107,9 +108,9 @@ public class OverridesController extends BaseController {
         return "governance/screen/overrides/index";
     }
 
-    @RequestMapping("/{id}")
-    public String show(@PathVariable Long id, HttpServletRequest request, HttpServletResponse response,
-                     Model model) {
+    @RequestMapping("/detail")
+    public String show(@RequestParam Long id, HttpServletRequest request, HttpServletResponse response,
+                       Model model) {
         prepare(request, response, model, "show", "overrides");
         Override override = overrideService.findById(id);
 
@@ -174,8 +175,8 @@ public class OverridesController extends BaseController {
         return "governance/screen/overrides/add";
     }
 
-    @RequestMapping("/{id}/edit")
-    public String edit(@PathVariable("id") Long id, HttpServletRequest request, HttpServletResponse response,
+    @RequestMapping("/edit")
+    public String edit(@RequestParam("id") Long id, HttpServletRequest request, HttpServletResponse response,
                      Model model) {
         prepare(request, response, model, "edit", "overrides");
         Override override = overrideService.findById(id);
@@ -360,8 +361,8 @@ public class OverridesController extends BaseController {
 
     }
 
-    @RequestMapping("/{ids}/delete")
-    public String delete(@PathVariable("ids") Long[] ids, HttpServletRequest request,
+    @RequestMapping("/delete")
+    public String delete(@RequestParam("ids") Long[] ids, HttpServletRequest request,
                               HttpServletResponse response, Model model) {
         prepare(request, response, model, "delete", "overrides");
         for (Long id : ids) {
@@ -373,8 +374,8 @@ public class OverridesController extends BaseController {
         return "governance/screen/redirect";
     }
 
-    @RequestMapping("/{ids}/enable")
-    public String enable(@PathVariable("ids") Long[] ids, HttpServletRequest request,
+    @RequestMapping("/enable")
+    public String enable(@RequestParam("ids") Long[] ids, HttpServletRequest request,
                           HttpServletResponse response, Model model) {
         prepare(request, response, model, "enable", "overrides");
         boolean success = true;
@@ -406,8 +407,8 @@ public class OverridesController extends BaseController {
         return "governance/screen/redirect";
     }
 
-    @RequestMapping("/{ids}/disable")
-    public String disable(@PathVariable("ids") Long[] ids, HttpServletRequest request,
+    @RequestMapping("/disable")
+    public String disable(@RequestParam("ids") Long[] ids, HttpServletRequest request,
                            HttpServletResponse response, Model model) {
         prepare(request, response, model, "disable", "overrides");
         boolean success = true;

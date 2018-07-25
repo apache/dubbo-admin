@@ -78,22 +78,4 @@ public class LogsController extends BaseController {
         model.addAttribute("content", content);
         return "sysinfo/screen/logs/index";
     }
-
-    public boolean change(Map<String, Object> context) throws Exception {
-        String contextLevel = (String) context.get("level");
-        if (contextLevel == null || contextLevel.length() == 0) {
-            context.put("message", getMessage("MissRequestParameters", "level"));
-            return false;
-        }
-        if (!User.ROOT.equals(role)) {
-            context.put("message", getMessage("HaveNoRootPrivilege"));
-            return false;
-        }
-        Level level = Level.valueOf(contextLevel);
-        if (level != LoggerFactory.getLevel()) {
-            LoggerFactory.setLevel(level);
-        }
-        context.put("redirect", "/sysinfo/logs");
-        return true;
-    }
 }

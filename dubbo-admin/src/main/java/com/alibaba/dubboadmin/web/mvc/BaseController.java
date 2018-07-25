@@ -76,9 +76,4 @@ public class BaseController {
         return messageResourceService.getMessage(key, args);
     }
 
-    private String getDefaultRedirect(Map<String, Object> context, String operate) {
-        String defaultRedirect = (String) context.get("defaultRedirect");
-        return defaultRedirect;
-    }
-
 }

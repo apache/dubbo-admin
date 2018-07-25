@@ -162,8 +162,8 @@ public class RoutesController extends BaseController {
      * Display routing details
      *
      */
-    @RequestMapping("/{id}")
-    public String show(@PathVariable("id") Long id, HttpServletRequest request, HttpServletResponse response, Model model) {
+    @RequestMapping("/detail")
+    public String show(@RequestParam("id") Long id, HttpServletRequest request, HttpServletResponse response, Model model) {
         try {
             prepare(request, response, model, "show", "routes");
             Route route = routeService.findRoute(id);
@@ -235,8 +235,8 @@ public class RoutesController extends BaseController {
      *
      */
 
-    @RequestMapping("/{id}/edit")
-    public String edit(@PathVariable("id") Long id, @RequestParam(required = false) String service,
+    @RequestMapping("/edit")
+    public String edit(@RequestParam("id") Long id, @RequestParam(required = false) String service,
                      @RequestParam(required = false) String input,
                      HttpServletRequest request, HttpServletResponse response, Model model) {
 
@@ -377,8 +377,8 @@ public class RoutesController extends BaseController {
      *
      * @return
      */
-    @RequestMapping("/{id}/update")
-    public String update(@PathVariable("id") Long id, HttpServletRequest request, HttpServletResponse response, Model model) {
+    @RequestMapping("/update")
+    public String update(@RequestParam("id") Long id, HttpServletRequest request, HttpServletResponse response, Model model) {
         prepare(request, response, model, "update", "routes");
         boolean success = true;
         String idStr = String.valueOf(id);
@@ -569,76 +569,4 @@ public class RoutesController extends BaseController {
         return "governance/screen/redirect";
     }
 
-    /**
-     * Choose consumers
-     *
-     * @param context
-     */
-    public void routeselect(Map<String, Object> context) {
-        long rid = Long.valueOf((String) context.get("id"));
-        context.put("id", rid);
-
-        Route route = routeService.findRoute(rid);
-        if (route == null) {
-            throw new IllegalStateException("Route(id=" + rid + ") is not existed!");
-        }
-
-        context.put("route", route);
-        // retrieve data
-        List<Consumer> consumers = consumerService.findByService(route.getService());
-        context.put("consumers", consumers);
-
-        Map<String, Boolean> matchRoute = new HashMap<String, Boolean>();
-        for (Consumer c : consumers) {
-            matchRoute.put(c.getAddress(), RouteUtils.matchRoute(c.getAddress(), null, route, null));
-        }
-        context.put("matchRoute", matchRoute);
-    }
-
-    public void preview(Map<String, Object> context) throws Exception {
-        String rid = (String) context.get("id");
-        String consumerid = (String) context.get("cid");
-
-
-        if (StringUtils.isEmpty(rid)) {
-            context.put("message", getMessage("MissRequestParameters", "id"));
-        }
-
-        Map<String, String> serviceUrls = new HashMap<String, String>();
-        Route route = routeService.findRoute(Long.valueOf(rid));
-        if (null == route) {
-            context.put("message", getMessage("NoSuchRecord"));
-        }
-        List<Provider> providers = providerService.findByService(route.getService());
-        if (providers != null) {
-            for (Provider p : providers) {
-                serviceUrls.put(p.getUrl(), p.getParameters());
-            }
-        }
-        if (StringUtils.isNotEmpty(consumerid)) {
-            Consumer consumer = consumerService.findConsumer(Long.valueOf(consumerid));
-            if (null == consumer) {
-                context.put("message", getMessage("NoSuchRecord"));
-            }
-            Map<String, String> result = RouteUtils.previewRoute(consumer.getService(), consumer.getAddress(), consumer.getParameters(), serviceUrls,
-                    route, null, null);
-            context.put("route", route);
-            context.put("consumer", consumer);
-            context.put("result", result);
-        } else {
-            String address = (String) context.get("address");
-            String service = (String) context.get("service");
-
-            Map<String, String> result = RouteUtils.previewRoute(service, address, null, serviceUrls,
-                    route, null, null);
-            context.put("route", route);
-
-            Consumer consumer = new Consumer();
-            consumer.setService(service);
-            consumer.setAddress(address);
-            context.put("consumer", consumer);
-            context.put("result", result);
-        }
-
-    }
 }

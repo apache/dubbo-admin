@@ -111,15 +111,6 @@ public class WeightsController extends BaseController {
         return "governance/screen/weights/add";
     }
 
-    /**
-     * load page for the multi adding
-     *
-     * @param context
-     */
-    public void multiadd(Map<String, Object> context) {
-        List<String> serviceList = Tool.sortSimpleName(providerService.findServices());
-        context.put("serviceList", serviceList);
-    }
 
     @RequestMapping("/create")
     public String create(HttpServletRequest request, HttpServletResponse response, Model model) throws Exception {
@@ -237,11 +228,6 @@ public class WeightsController extends BaseController {
         model.addAttribute("service", overrideService.findById(id).getService());
         return "governance/screen/weights/edit";
     }
-
-    //public void sameSeviceEdit(Long id, Map<String, Object> context) {
-    //    add(context);
-    //    show(id, context);
-    //}
 
     /**
      * load weight for editing

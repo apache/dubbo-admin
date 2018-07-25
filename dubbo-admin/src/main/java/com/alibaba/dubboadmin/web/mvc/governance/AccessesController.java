@@ -289,15 +289,4 @@ public class AccessesController extends BaseController {
         model.addAttribute("redirect", "../accesses");
         return "governance/screen/redirect";
     }
-
-    public void show(Map<String, Object> context) {
-    }
-
-    public void edit(Map<String, Object> context) {
-    }
-
-    public String update(Map<String, Object> context) {
-        return null;
-    }
-
 }
