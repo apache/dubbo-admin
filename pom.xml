@@ -29,6 +29,12 @@
         <junit_version>4.12</junit_version>
         <easymock_version>3.4</easymock_version>
         <jmockit_version>1.33</jmockit_version>
+
+        <!-- for maven compiler plugin -->
+        <java_source_version>1.6</java_source_version>
+        <java_target_version>1.6</java_target_version>
+        <file_encoding>UTF-8</file_encoding>
+        <!-- Maven plugins -->
         <apache_rat_plugin.version>0.12</apache_rat_plugin.version>
         <maven_compiler_version>3.6.0</maven_compiler_version>
         <maven_jacoco_version>0.8.1</maven_jacoco_version>
@@ -145,6 +151,19 @@
     </dependencies>
 
     <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven_compiler_version}</version>
+                <configuration>
+                    <fork>true</fork>
+                    <source>${java_source_version}</source>
+                    <target>${java_target_version}</target>
+                    <encoding>${file_encoding}</encoding>
+                </configuration>
+            </plugin>
+        </plugins>
         <pluginManagement>
             <plugins>
                 <plugin>
