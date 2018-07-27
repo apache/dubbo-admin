@@ -16,6 +16,7 @@ import com.alibaba.dubboadmin.governance.service.ProviderService;
 import com.alibaba.dubboadmin.registry.common.domain.Provider;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @author zmx ON 2018/7/20
  */
 
-//@RestController
+@Controller
 public class IndexController {
 
     @Autowired
@@ -91,5 +92,10 @@ public class IndexController {
         }
         model.addAttribute("serviceDO", result);
         return "";
+    }
+
+    @RequestMapping("/")
+    public String testController() {
+        return "serviceSearch";
     }
 }

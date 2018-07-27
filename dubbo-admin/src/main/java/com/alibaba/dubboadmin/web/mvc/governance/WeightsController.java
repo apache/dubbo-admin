@@ -46,6 +46,7 @@ import org.springframework.validation.support.BindingAwareModelMap;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
 
 /**
  * ProvidersController.
@@ -203,8 +204,8 @@ public class WeightsController extends BaseController {
         return "governance/screen/redirect";
     }
 
-    @RequestMapping("/{id}/edit")
-    public String edit(@PathVariable("id") Long id, HttpServletRequest request, HttpServletResponse response, Model model) {
+    @RequestMapping("/edit")
+    public String edit(@RequestParam("id") Long id, HttpServletRequest request, HttpServletResponse response, Model model) {
         prepare(request, response, model, "edit", "weights");
         String service = request.getParameter("service");
         String input = request.getParameter("input");
@@ -235,8 +236,8 @@ public class WeightsController extends BaseController {
      * @param id
 
      */
-    @RequestMapping("/{id}")
-    public String show(@PathVariable("id") Long id, HttpServletRequest request, HttpServletResponse response, Model model) {
+    @RequestMapping("/detail")
+    public String show(@RequestParam("id") Long id, HttpServletRequest request, HttpServletResponse response, Model model) {
         prepare(request, response, model, "show", "weights");
         Weight weight = OverrideUtils.overrideToWeight(overrideService.findById(id));
         model.addAttribute("weight", weight);
@@ -265,8 +266,8 @@ public class WeightsController extends BaseController {
      * @param ids
      * @return
      */
-    @RequestMapping("/{ids}/delete")
-    public String delete(@PathVariable("ids") Long[] ids, HttpServletRequest request, HttpServletResponse response, Model model) {
+    @RequestMapping("/delete")
+    public String delete(@RequestParam("ids") Long[] ids, HttpServletRequest request, HttpServletResponse response, Model model) {
         prepare(request, response, model, "delete", "weights");
         boolean success = true;
         for (Long id : ids) {
