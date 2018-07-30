@@ -1,0 +1,26 @@
+@media (min-width: 768px) {
+    .wide-80-modal .modal-dialog {
+        width: 80%;
+    }
+    .wide-60-modal .modal-dialog {
+        width: 60%;
+    }
+}
+
+@media (min-width: 992px) {
+    .wide-80-modal .modal-dialog {
+        width: 80%;
+    }
+    .wide-60-modal .modal-dialog {
+        width: 60%;
+    }
+}
+
+@media (min-width: 1200px) {
+    .wide-80-modal .modal-dialog {
+        width: 80%;
+    }
+    .wide-60-modal .modal-dialog {
+        width: 60%;
+    }
+}
