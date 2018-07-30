@@ -98,4 +98,9 @@ public class IndexController {
     public String testController() {
         return "serviceSearch";
     }
+
+    @RequestMapping("/routing")
+    public String test2Conroller() {
+        return "routingRules";
+    }
 }

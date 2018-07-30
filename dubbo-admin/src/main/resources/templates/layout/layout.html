@@ -17,7 +17,8 @@
         <div class="content-wrapper" >
             <!--<div th:replace="common/headerBar :: headerBar" />-->
 
-            <session class="content-header" layout:fragment="content" />
+            <section class="content-header" layout:fragment="content-header" />
+            <session class="content" layout:fragment="content" />
 
             <!--<div th:replace="common/footer :: footer" />-->
         </div>
