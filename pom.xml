@@ -4,19 +4,25 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>2.0.2.RELEASE</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+
     <groupId>com.alibaba</groupId>
     <artifactId>dubbo-ops</artifactId>
     <version>2.0.0</version>
     <packaging>pom</packaging>
 
     <properties>
-        <dubbo_all_version>2.6.0</dubbo_all_version>
-        <dubbo_version>2.6.0</dubbo_version>
+        <dubbo_all_version>2.6.2</dubbo_all_version>
+        <dubbo_version>2.6.2</dubbo_version>
         <jfreechart_version>1.0.13</jfreechart_version>
         <velocity_version>1.7</velocity_version>
 
         <!-- Temporarily added for lower version compatibility  -->
-        <spring_version>4.3.10.RELEASE</spring_version>
         <fastjson_version>1.2.31</fastjson_version>
         <curator_version>2.12.0</curator_version>
         <jetty_version>6.1.26</jetty_version>
@@ -161,8 +167,8 @@
                     <version>${maven_compiler_version}</version>
                     <configuration>
                         <fork>true</fork>
-                        <source>1.6</source>
-                        <target>1.6</target>
+                        <source>1.8</source>
+                        <target>1.8</target>
                         <encoding>UTF-8</encoding>
                     </configuration>
                 </plugin>

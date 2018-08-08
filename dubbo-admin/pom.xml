@@ -12,10 +12,9 @@
 	<description>Demo project for Spring Boot</description>
 
 	<parent>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.0.2.RELEASE</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<groupId>com.alibaba</groupId>
+		<artifactId>dubbo-ops</artifactId>
+		<version>2.0.0</version>
 	</parent>
 
 	<properties>
@@ -39,7 +38,7 @@
         <dependency>
             <groupId>com.alibaba.boot</groupId>
             <artifactId>velocity-spring-boot-starter</artifactId>
-            <version>0.1.0</version>
+            <version>1.0.4.RELEASE</version>
         </dependency>
 
         <dependency>
@@ -51,7 +50,12 @@
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>dubbo</artifactId>
-            <version>2.6.2</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.springframework</groupId>
+					<artifactId>spring-context</artifactId>
+				</exclusion>
+			</exclusions>
         </dependency>
 
         <dependency>

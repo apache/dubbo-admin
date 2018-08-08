@@ -23,7 +23,7 @@
        http://dubbo.apache.org/schema/dubbo http://dubbo.apache.org/schema/dubbo/dubbo.xsd">
 
     <dubbo:application name="dubbo-admin"/>
-    <dubbo:registry address="${dubbo.registry.address}"/>
+    <dubbo:registry address="${dubbo.registry.address}" protocol="zookeeper"/>
     <dubbo:reference id="registryService" interface="com.alibaba.dubbo.registry.RegistryService" check="false"/>
 
 </beans>
