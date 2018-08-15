@@ -17,16 +17,10 @@
 
 package com.alibaba.dubboadmin.web.mvc;
 
-import java.lang.reflect.Method;
-import java.util.Map;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import com.alibaba.dubboadmin.SpringUtil;
 import com.alibaba.dubboadmin.governance.util.WebConstants;
+import com.alibaba.dubboadmin.registry.common.domain.Override;
 import com.alibaba.dubboadmin.web.mvc.governance.ServicesController;
-
 import org.apache.commons.lang.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -34,6 +28,11 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.lang.reflect.Method;
+import java.util.Map;
 
 
 @Controller
@@ -44,9 +43,9 @@ public class RouterController {
 
     private boolean isPrimitive(Class<?> cls) {
         return cls.isPrimitive() || cls == Boolean.class || cls == Byte.class
-            || cls == Character.class || cls == Short.class || cls == Integer.class
-            || cls == Long.class || cls == Float.class || cls == Double.class
-            || cls == String.class;
+                || cls == Character.class || cls == Short.class || cls == Integer.class
+                || cls == Long.class || cls == Float.class || cls == Double.class
+                || cls == String.class;
     }
 
     private Object convertPrimitive(Class<?> cls, String value) {
@@ -83,7 +82,7 @@ public class RouterController {
                                       @PathVariable("action") String action, HttpServletRequest request,
                                       HttpServletResponse response, Model model) {
         model.addAttribute("address", ip);
-        return appAction(params, null, "addresses",ip, type, action, request, response, model);
+        return appAction(params, null, "addresses", ip, type, action, request, response, model);
     }
 
     @RequestMapping("/governance/addresses/{ip:[0-9.]+:?[0-9]+}/{type}/{id}/{action}")
@@ -128,7 +127,7 @@ public class RouterController {
         System.out.println("method: " + method);
         for (Map.Entry<String, Object> entry : param.entrySet()) {
             if (entry.getKey().equals("application")) {
-                app = (String)entry.getValue();
+                app = (String) entry.getValue();
             }
             System.out.println("key: " + entry.getKey());
             System.out.println("value: " + entry.getValue());
@@ -159,7 +158,7 @@ public class RouterController {
             model.addAttribute("service", request.getParameter("service"));
             try {
                 Method m = servicesController.getClass().getDeclaredMethod(type, Long[].class, HttpServletRequest.class,
-                    HttpServletResponse.class, Model.class);
+                        HttpServletResponse.class, Model.class);
                 Object result = m.invoke(servicesController, ids, request, response, model);
                 return (String) result;
             } catch (Exception e) {
@@ -177,10 +176,10 @@ public class RouterController {
             Object controller = SpringUtil.getBean(name);
             if (controller != null) {
                 try {
-                    Method index =  controller.getClass().getDeclaredMethod("index", HttpServletRequest.class, HttpServletResponse.class,
-                         Model.class);
-                    Object result =  index.invoke(controller, request, response, model);
-                    return (String)result;
+                    Method index = controller.getClass().getDeclaredMethod("index", HttpServletRequest.class, HttpServletResponse.class,
+                            Model.class);
+                    Object result = index.invoke(controller, request, response, model);
+                    return (String) result;
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -200,7 +199,7 @@ public class RouterController {
             Object controller = SpringUtil.getBean(name);
             try {
                 Method index = controller.getClass().getDeclaredMethod("index", HttpServletRequest.class,
-                    HttpServletResponse.class, Model.class);
+                        HttpServletResponse.class, Model.class);
                 Object result = index.invoke(controller, request, response, model);
                 return (String) result;
             } catch (Exception e) {
@@ -238,7 +237,13 @@ public class RouterController {
                             try {
                                 if (!param.isAssignableFrom(HttpServletRequest.class)) {
                                     Object value = param.newInstance();
-                                    Method[] mms = param.getDeclaredMethods();
+                                    //此处有问题，Override 父类的set方法不会被调用，导致id没有值
+                                    Method[] mms;
+                                    if (param.isAssignableFrom(Override.class)) {
+                                        mms = param.getMethods();
+                                    } else {
+                                        mms = param.getDeclaredMethods();
+                                    }
                                     for (Method m : mms) {
                                         if (m.getName().toLowerCase().startsWith("set")) {
                                             String methodName = m.getName();
@@ -255,9 +260,9 @@ public class RouterController {
 
                                         }
                                     }
-                                    return (String)method.invoke(controller, value, request, response, model);
+                                    return (String) method.invoke(controller, value, request, response, model);
                                 } else {
-                                    return (String)method.invoke(controller, request, response, model);
+                                    return (String) method.invoke(controller, request, response, model);
                                 }
                             } catch (Exception e) {
                                 e.printStackTrace();
@@ -270,16 +275,16 @@ public class RouterController {
                     try {
                         if (StringUtils.isNumeric(action)) {
                             // action is id, call show method
-                            Method show =  controller.getClass().getDeclaredMethod("show", Long.class, HttpServletRequest.class, HttpServletResponse.class,
-                                Model.class);
-                            Object result =  show.invoke(controller, Long.valueOf(action), request, response, model);
-                            return (String)result;
+                            Method show = controller.getClass().getDeclaredMethod("show", Long.class, HttpServletRequest.class, HttpServletResponse.class,
+                                    Model.class);
+                            Object result = show.invoke(controller, Long.valueOf(action), request, response, model);
+                            return (String) result;
                         } else {
                             Method m = controller.getClass().getDeclaredMethod(action, HttpServletRequest.class,
-                                HttpServletResponse.class,
-                                Model.class);
-                            Object result =  m.invoke(controller, request, response, model);
-                            return (String)result;
+                                    HttpServletResponse.class,
+                                    Model.class);
+                            Object result = m.invoke(controller, request, response, model);
+                            return (String) result;
                         }
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -293,9 +298,9 @@ public class RouterController {
 
     @RequestMapping("/governance/applications/{app}/services/{service}/{type}/{id}/{action}")
     public String appActionWithIdandAction(@PathVariable("app") String app, @PathVariable("service") String service,
-                               @PathVariable("type") String type, @PathVariable("id") String id,
-                               @PathVariable("action") String action,
-                               HttpServletRequest request, HttpServletResponse response, Model model) {
+                                           @PathVariable("type") String type, @PathVariable("id") String id,
+                                           @PathVariable("action") String action,
+                                           HttpServletRequest request, HttpServletResponse response, Model model) {
         if (app != null) {
             model.addAttribute("app", app);
         }
@@ -311,11 +316,11 @@ public class RouterController {
                         Method m = null;
                         try {
                             m = controller.getClass().getDeclaredMethod(action, Long.class, HttpServletRequest.class,
-                                HttpServletResponse.class, Model.class);
+                                    HttpServletResponse.class, Model.class);
                             result = m.invoke(controller, Long.valueOf(id), request, response, model);
                         } catch (NoSuchMethodException e) {
                             m = controller.getClass().getDeclaredMethod(action, Long[].class, HttpServletRequest.class,
-                                HttpServletResponse.class, Model.class);
+                                    HttpServletResponse.class, Model.class);
                             result = m.invoke(controller, new Long[]{Long.valueOf(id)}, request, response, model);
 
                         }
@@ -323,16 +328,16 @@ public class RouterController {
                         //id array
                         String[] array = id.split(",");
                         Long[] ids = new Long[array.length];
-                        for (int i = 0; i < array.length; i ++) {
+                        for (int i = 0; i < array.length; i++) {
                             ids[i] = Long.valueOf(array[i]);
                         }
 
                         Method m = controller.getClass().getDeclaredMethod(action, Long[].class, HttpServletRequest.class,
-                            HttpServletResponse.class, Model.class);
+                                HttpServletResponse.class, Model.class);
 
                         result = m.invoke(controller, ids, request, response, model);
                     }
-                    return (String)result;
+                    return (String) result;
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
