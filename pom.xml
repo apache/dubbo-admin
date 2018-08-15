@@ -4,34 +4,22 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.alibaba</groupId>
+    <parent>
+        <groupId>com.alibaba</groupId>
+        <artifactId>dubbo-parent</artifactId>
+        <version>2.6.1</version>
+    </parent>
+
     <artifactId>dubbo-ops</artifactId>
     <version>2.0.0</version>
     <packaging>pom</packaging>
 
     <properties>
-        <dubbo_all_version>2.6.0</dubbo_all_version>
-        <dubbo_version>2.6.0</dubbo_version>
-        <jfreechart_version>1.0.13</jfreechart_version>
+        <dubbo_all_version>2.6.1</dubbo_all_version>
+        <dubbo_version>2.6.1</dubbo_version>
+        <webx_version>3.1.6</webx_version>
         <velocity_version>1.7</velocity_version>
-
-        <!-- Temporarily added for lower version compatibility  -->
-        <spring_version>4.3.10.RELEASE</spring_version>
-        <fastjson_version>1.2.31</fastjson_version>
-        <curator_version>2.12.0</curator_version>
-        <jetty_version>6.1.26</jetty_version>
-        <servlet_version>3.1.0</servlet_version>
-        <slf4j_version>1.7.25</slf4j_version>
-        <log4j_version>1.2.16</log4j_version>
-        <commons_lang3_version>3.4</commons_lang3_version>
-
-        <!-- Test libs -->
-        <junit_version>4.12</junit_version>
-        <easymock_version>3.4</easymock_version>
-        <jmockit_version>1.33</jmockit_version>
-        <apache_rat_plugin.version>0.12</apache_rat_plugin.version>
-        <maven_compiler_version>3.6.0</maven_compiler_version>
-        <maven_jacoco_version>0.8.1</maven_jacoco_version>
+        <jfreechart_version>1.0.13</jfreechart_version>
     </properties>
 
     <modules>
@@ -49,75 +37,19 @@
                 <version>${dubbo_all_version}</version>
             </dependency>
             <dependency>
-                <groupId>jfree</groupId>
-                <artifactId>jfreechart</artifactId>
-                <version>${jfreechart_version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-framework-bom</artifactId>
-                <version>${spring_version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
-            <!-- Temporarily added for lower version compatibility  -->
-            <dependency>
-                <groupId>com.alibaba</groupId>
-                <artifactId>fastjson</artifactId>
-                <version>${fastjson_version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.curator</groupId>
-                <artifactId>curator-framework</artifactId>
-                <version>${curator_version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.mortbay.jetty</groupId>
-                <artifactId>jetty</artifactId>
-                <version>${jetty_version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.mortbay.jetty</groupId>
-                        <artifactId>servlet-api</artifactId>
-                    </exclusion>
-                </exclusions>
+                <groupId>com.alibaba.citrus</groupId>
+                <artifactId>citrus-webx-all</artifactId>
+                <version>${webx_version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.velocity</groupId>
                 <artifactId>velocity</artifactId>
                 <version>${velocity_version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.springframework</groupId>
-                        <artifactId>spring-framework-bom</artifactId>
-                    </exclusion>
-                </exclusions>
             </dependency>
             <dependency>
-                <groupId>javax.servlet</groupId>
-                <artifactId>javax.servlet-api</artifactId>
-                <version>${servlet_version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-api</artifactId>
-                <version>${slf4j_version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-log4j12</artifactId>
-                <version>${slf4j_version}</version>
-            </dependency>
-            <dependency>
-                <groupId>log4j</groupId>
-                <artifactId>log4j</artifactId>
-                <version>${log4j_version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.commons</groupId>
-                <artifactId>commons-lang3</artifactId>
-                <version>${commons_lang3_version}</version>
+                <groupId>jfree</groupId>
+                <artifactId>jfreechart</artifactId>
+                <version>${jfreechart_version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
