@@ -16,17 +16,6 @@
  */
 package com.alibaba.dubboadmin.web.mvc.governance;
 
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import com.alibaba.dubbo.common.utils.CollectionUtils;
 import com.alibaba.dubbo.common.utils.StringUtils;
 import com.alibaba.dubboadmin.governance.service.ConsumerService;
@@ -41,7 +30,6 @@ import com.alibaba.dubboadmin.registry.common.route.RouteRule;
 import com.alibaba.dubboadmin.registry.common.route.RouteUtils;
 import com.alibaba.dubboadmin.web.mvc.BaseController;
 import com.alibaba.dubboadmin.web.pulltool.Tool;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -50,10 +38,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.text.ParseException;
+import java.util.*;
+
 /**
  * ProvidersController.
  * URI: /services/$service/routes
- *
  */
 @Controller
 @RequestMapping("/governance/routes")
@@ -134,14 +126,13 @@ public class RoutesController extends BaseController {
 
     /**
      * Routing module home page
-     *
      */
     @RequestMapping("")
     public String index(HttpServletRequest request, HttpServletResponse response, Model model) {
         prepare(request, response, model, "index", "routes");
-        BindingAwareModelMap newModel = (BindingAwareModelMap)model;
-        String address = (String)newModel.get("address");
-        String service = (String)newModel.get("service");
+        BindingAwareModelMap newModel = (BindingAwareModelMap) model;
+        String address = (String) newModel.get("address");
+        String service = (String) newModel.get("service");
         address = Tool.getIP(address);
         List<Route> routes;
         if (service != null && service.length() > 0
@@ -160,7 +151,6 @@ public class RoutesController extends BaseController {
 
     /**
      * Display routing details
-     *
      */
     @RequestMapping("/{id}")
     public String show(@PathVariable("id") Long id, HttpServletRequest request, HttpServletResponse response, Model model) {
@@ -211,13 +201,12 @@ public class RoutesController extends BaseController {
 
     /**
      * Load new route page
-     *
      */
     @RequestMapping("/add")
     public String add(HttpServletRequest request, HttpServletResponse response, Model model) {
         prepare(request, response, model, "add", "routes");
-        BindingAwareModelMap newModel = (BindingAwareModelMap)model;
-        String service = (String)newModel.get("service");
+        BindingAwareModelMap newModel = (BindingAwareModelMap) model;
+        String service = (String) newModel.get("service");
         if (service != null && service.length() > 0 && !service.contains("*")) {
             model.addAttribute("service", service);
             model.addAttribute("methods", CollectionUtils.sort(new ArrayList<String>(providerService.findMethodsByService(service))));
@@ -230,15 +219,20 @@ public class RoutesController extends BaseController {
         return "governance/screen/routes/add";
     }
 
+
+    //修复指定服务的路由规则编辑的时候报错:java.lang.NoSuchMethodException: com.alibaba.dubboadmin.web.mvc.governance.RoutesController.edit([Ljava.lang.Long;, javax.servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse, org.springframework.ui.Model)
+    public String edit(Long id, HttpServletRequest request, HttpServletResponse response, Model model) {
+        return edit(id, null, null, request, response, model);
+    }
+
     /**
      * Load modified routing page
-     *
      */
 
     @RequestMapping("/{id}/edit")
     public String edit(@PathVariable("id") Long id, @RequestParam(required = false) String service,
-                     @RequestParam(required = false) String input,
-                     HttpServletRequest request, HttpServletResponse response, Model model) {
+                       @RequestParam(required = false) String input,
+                       HttpServletRequest request, HttpServletResponse response, Model model) {
 
         prepare(request, response, model, "edit", "routes");
         if (service != null && service.length() > 0 && !service.contains("*")) {
@@ -268,7 +262,7 @@ public class RoutesController extends BaseController {
 
         @SuppressWarnings("unchecked")
         Map<String, RouteRule.MatchPair>[] paramArray = new Map[]{
-            routeRule.getWhenCondition(), routeRule.getThenCondition()};
+                routeRule.getWhenCondition(), routeRule.getThenCondition()};
         String[][][] namesArray = new String[][][]{when_names, then_names};
 
         for (int i = 0; i < paramArray.length; ++i) {
@@ -316,7 +310,7 @@ public class RoutesController extends BaseController {
             Map<String, String> when_name2valueList = new HashMap<String, String>();
             Map<String, String> notWhen_name2valueList = new HashMap<String, String>();
             for (String[] names : when_names) {
-                when_name2valueList.put(names[0],  request.getParameter(names[1]));
+                when_name2valueList.put(names[0], request.getParameter(names[1]));
                 notWhen_name2valueList.put(names[0], request.getParameter(names[2])); // TODO. We should guarantee value is never null in here, will be supported later
             }
 
@@ -404,7 +398,7 @@ public class RoutesController extends BaseController {
             // Check parameters, patchwork rule
             if (StringUtils.isNotEmpty((String) request.getParameter("name"))) {
                 String service = oldRoute.getService();
-                if (((BindingAwareModelMap)model).get("operator") == null) {
+                if (((BindingAwareModelMap) model).get("operator") == null) {
                     model.addAttribute("message", getMessage("HaveNoServicePrivilege", service));
                     success = false;
                     model.addAttribute("success", success);
@@ -522,7 +516,7 @@ public class RoutesController extends BaseController {
      */
     @RequestMapping("/{ids}/delete")
     public String delete(@PathVariable("ids") Long[] ids, HttpServletRequest request, HttpServletResponse response,
-                          Model model) {
+                         Model model) {
         prepare(request, response, model, "delete", "routes");
         for (Long id : ids) {
             routeService.deleteRoute(id);
@@ -541,7 +535,7 @@ public class RoutesController extends BaseController {
      */
     @RequestMapping("/{ids}/enable")
     public String enable(@PathVariable("ids") Long[] ids, HttpServletRequest request, HttpServletResponse response,
-                          Model model) {
+                         Model model) {
         prepare(request, response, model, "enable", "routes");
         for (Long id : ids) {
             routeService.enableRoute(id);
@@ -559,7 +553,7 @@ public class RoutesController extends BaseController {
      */
     @RequestMapping("/{ids}/disable")
     public String disable(@PathVariable("ids") Long[] ids, HttpServletRequest request, HttpServletResponse response,
-                           Model model) {
+                          Model model) {
         prepare(request, response, model, "disable", "routes");
         for (Long id : ids) {
             routeService.disableRoute(id);

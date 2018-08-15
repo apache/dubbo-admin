@@ -16,22 +16,6 @@
  */
 package com.alibaba.dubboadmin.web.mvc.governance;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.StringReader;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.regex.Pattern;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import com.alibaba.dubboadmin.governance.service.ProviderService;
 import com.alibaba.dubboadmin.governance.service.RouteService;
 import com.alibaba.dubboadmin.registry.common.domain.Access;
@@ -40,7 +24,6 @@ import com.alibaba.dubboadmin.registry.common.route.RouteRule;
 import com.alibaba.dubboadmin.registry.common.route.RouteRule.MatchPair;
 import com.alibaba.dubboadmin.web.mvc.BaseController;
 import com.alibaba.dubboadmin.web.pulltool.Tool;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -48,9 +31,18 @@ import org.springframework.validation.support.BindingAwareModelMap;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.StringReader;
+import java.text.ParseException;
+import java.util.*;
+import java.util.Map.Entry;
+import java.util.regex.Pattern;
+
 /**
  * ProvidersController. URI: /services/$service/accesses
- *
  */
 
 @Controller
@@ -69,9 +61,9 @@ public class AccessesController extends BaseController {
     @RequestMapping("")
     public String index(HttpServletRequest request, HttpServletResponse response, Model model) {
         prepare(request, response, model, "index", "accesses");
-        BindingAwareModelMap newModel = (BindingAwareModelMap)model;
-        String address = (String)newModel.get("address");
-        String service = (String)newModel.get("service");
+        BindingAwareModelMap newModel = (BindingAwareModelMap) model;
+        String address = (String) newModel.get("address");
+        String service = (String) newModel.get("service");
 
         address = Tool.getIP(address);
         List<Route> routes;
@@ -224,8 +216,15 @@ public class AccessesController extends BaseController {
         return aimServices;
     }
 
+
+    //修复从菜单: 首页 > 服务治理 > 服务 > com.kingnet.blockdata.service.DemoService:1.0.0 > 访问控制,中删除时反射执行方法找不到的BUG
+    // RouterController 284行导致的bug:java.lang.NoSuchMethodException: com.alibaba.dubboadmin.web.mvc.governance.AccessesController.delete(javax.servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse, org.springframework.ui.Model)
+    public String delete(HttpServletRequest request, HttpServletResponse response, Model model) throws ParseException {
+        String accesses = request.getParameter("accesses");
+        return delete(accesses, request, response, model);
+    }
+
     /**
-     *
      * @throws ParseException
      */
     @RequestMapping("/delete")
