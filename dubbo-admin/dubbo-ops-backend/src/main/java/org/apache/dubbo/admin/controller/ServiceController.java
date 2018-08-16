@@ -1,4 +1,4 @@
-package org.apache.dubbo.admin.web.rest;
+package org.apache.dubbo.admin.controller;
 
 import org.apache.dubbo.admin.domain.ServiceDO;
 import org.apache.dubbo.admin.domain.ServiceDetailDO;
