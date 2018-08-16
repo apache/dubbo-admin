@@ -13,7 +13,7 @@ The following modules in [Apache Dubbo(incubating)](https://github.com/apache/in
 You can get a release of dubbo monitor in two steps:
 
 #### dubbo admin
-dubbo admin is a spring boot application, you can start it with fat jar or in IDE directly
+please refer to the REAME.md in dubbo admin module
 
 #### dubbo monitor and dubbo registry
 - Step 1:

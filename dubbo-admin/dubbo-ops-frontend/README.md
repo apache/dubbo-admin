@@ -1,6 +1,6 @@
-# demo-app
+# dubbo-ops-frontend
 
-> A Vue.js project
+> dubbo ops frontend based on vuetify
 
 ## Build Setup
 
