@@ -13,7 +13,7 @@ The following modules in [Apache Dubbo(incubating)](https://github.com/apache/in
 You can get a release of dubbo monitor in two steps:
 
 #### dubbo admin
-please refer to the REAME.md in dubbo admin module
+please refer to the README.md in dubbo admin module
 
 #### dubbo monitor and dubbo registry
 - Step 1:

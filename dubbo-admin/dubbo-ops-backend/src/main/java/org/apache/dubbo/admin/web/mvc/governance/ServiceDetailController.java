@@ -23,9 +23,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.*;
 
-/**
- * @author zmx ON 2018/7/20
- */
 
 @Controller
 public class ServiceDetailController extends BaseController{

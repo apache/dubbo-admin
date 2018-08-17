@@ -2,7 +2,7 @@
   "name": "dubbo-ops-frontend",
   "version": "1.0.0",
   "description": "A Vue.js project",
-  "author": "zmx <minuxan.zmx@alibaba-inc.com>",
+  "author": "apache incubator dubbo",
   "private": true,
   "scripts": {
     "dev": "webpack-dev-server --inline --progress --config build/webpack.dev.conf.js",

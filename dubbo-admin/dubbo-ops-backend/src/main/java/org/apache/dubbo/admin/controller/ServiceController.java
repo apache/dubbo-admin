@@ -20,9 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/**
- * @author zmx ON 2018/7/31
- */
 
 @RestController
 @RequestMapping("/service")
