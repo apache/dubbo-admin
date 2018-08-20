@@ -16,7 +16,7 @@
   -->
 
 <template>
-  <v-app>
+  <v-app :dark="dark">
     <drawer></drawer>
     <toolbar></toolbar>
     <v-content>
@@ -38,20 +38,21 @@ export default {
   data () {
     return {
       clipped: false,
-      drawer: true,
       fixed: false,
+      dark: true,
       items: [{
         icon: 'bubble_chart',
         title: 'Inspire'
       }],
       miniVariant: false,
-      right: true,
-      rightDrawer: false,
-      title: 'Vuetify.js'
+      right: true
     }
   },
   created () {
     window.getApp = this
+    window.getApp.$on('CHANGE_THEME', () => {
+      this.dark = (!this.dark)
+    })
   },
   computed: {
     appTitle () {

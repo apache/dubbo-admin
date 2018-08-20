@@ -30,6 +30,7 @@
     <v-spacer></v-spacer>
     <v-spacer></v-spacer>
     <v-switch
+      @change="handleTheme"
     ></v-switch>
   </v-toolbar>
 </template>
@@ -39,10 +40,10 @@
     methods: {
       handleDrawerToggle () {
         window.getApp.$emit('DRAWER_TOGGLED')
+      },
+      handleTheme () {
+        window.getApp.$emit('CHANGE_THEME')
       }
     }
   }
 </script>
-
-
-
