@@ -19,7 +19,7 @@
   <v-container grid-list-xl fluid >
     <v-layout row wrap >
       <v-flex sm12>
-        <h3>basic info</h3>
+        <h3>Basic Info</h3>
       </v-flex>
       <v-flex lg12>
         <v-data-table
@@ -34,7 +34,7 @@
         </v-data-table>
       </v-flex>
       <v-flex sm12>
-        <h3>service info</h3>
+        <h3>Service Info</h3>
       </v-flex>
       <v-flex lg12 >
         <v-tabs
@@ -52,11 +52,20 @@
               :items="providerDetails"
             >
               <template slot="items" slot-scope="props">
-                <td>{{props.item.ip}}</td>
-                <td>{{props.item.port}}</td>
-                <td>{{props.item.timeout}}</td>
-                <td>{{props.item.serial}}</td>
-                <td>URL</td>
+                <td>{{getIp(props.item.address)}}</td>
+                <td>{{getPort(props.item.address)}}</td>
+                <td></td>
+                <td></td>
+                <td><v-tooltip top>
+                  <v-btn
+                          small
+                          slot="activator"
+                          color="primary"
+                  >
+                    URL
+                  </v-btn>
+                  <span>{{props.item.url}}</span>
+                </v-tooltip></td>
               </template>
             </v-data-table>
           </v-tab-item>
@@ -67,16 +76,16 @@
               :items="consumerDetails"
             >
               <template slot="items" slot-scope="props">
-                <td>{{props.item.ip}}</td>
-                <td>{{props.item.port}}</td>
-                <td>{{props.item.appName}}</td>
+                <td>{{getIp(props.item.address)}}</td>
+                <td>{{getPort(props.item.address)}}</td>
+                <td>{{props.item.application}}</td>
               </template>
             </v-data-table>
           </v-tab-item>
         </v-tabs>
       </v-flex>
       <v-flex sm12>
-        <h3>meta data</h3>
+        <h3>Metadata</h3>
       </v-flex>
       <v-flex lg12>
         <v-data-table
@@ -94,63 +103,10 @@
   </v-container>
 </template>
 <script>
+  import {AXIOS} from './http-common'
+
   export default {
     props: {
-      basic: {
-        type: Array,
-        default: () =>
-          [
-            {
-              role: '应用名',
-              value: 'dubbo-demo'
-            },
-            {
-              role: '服务名',
-              value: 'dubbo.com.alibaba'
-            },
-            {
-              role: 'xxxx',
-              value: 'ffffff'
-            }
-          ]
-      },
-      providerDetails: {
-        type: Array,
-        default: () =>
-          [
-            {
-              ip: '192.168.0.1',
-              port: '28880',
-              timeout: '3000',
-              serial: 'hessian'
-            },
-            {
-              ip: '192.168.0.8',
-              port: '28880',
-              timeout: '3000',
-              serial: 'hessian'
-
-            }
-          ]
-      },
-      consumerDetails: {
-        type: Array,
-        default: () =>
-          [
-            {
-              ip: '192.168.1.3',
-              port: '56895',
-              appName: 'dubbo-demo'
-            },
-            {
-              ip: '192.168.2.8',
-              port: '35971',
-              appName: 'dubbo-demo'
-            }
-
-          ]
-      },
-
       metadata: {
         type: Array,
         default: () =>
@@ -177,17 +133,17 @@
     data: () => ({
       metaHeaders: [
         {
-          text: '方法名',
+          text: 'Method Name',
           value: 'method',
           sortable: false
         },
         {
-          text: '参数列表',
+          text: 'Parameter List',
           value: 'parameter',
           sortable: false
         },
         {
-          text: '返回值类型',
+          text: 'Return Type',
           value: 'returnType',
           sortable: false
         }
@@ -199,19 +155,19 @@
             value: 'ip'
           },
           {
-            text: '端口',
+            text: 'Port',
             value: 'port'
           },
           {
-            text: '超时时间(ms)',
+            text: 'Timeout(ms)',
             value: 'timeout'
           },
           {
-            text: '序列化方式',
+            text: 'Serialization',
             value: 'serial'
           },
           {
-            text: '操作',
+            text: 'Operation',
             value: 'operate'
           }
 
@@ -222,16 +178,58 @@
             value: 'ip'
           },
           {
-            text: '端口',
+            text: 'Port',
             value: 'port'
           },
           {
-            text: '应用名',
+            text: 'Application Name',
             value: 'appName'
           }
         ]
+      },
+      providerDetails: [],
+      consumerDetails: [],
+      basic: []
+    }),
+    methods: {
+      detail: function (app, service) {
+        AXIOS.get('/service/detail?' + 'app=' + app + '&service=' + service)
+            .then(response => {
+              this.providerDetails = response.data.providers
+              this.consumerDetails = response.data.consumers
+            })
+      },
+      getIp: function (address) {
+        return address.split(':')[0]
+      },
+      getPort: function (address) {
+        return address.split(':')[1]
       }
-    })
+    },
+    mounted: function () {
+      let query = this.$route.query
+      let app = ''
+      let service = ''
+      Object.keys(query).forEach(function (key) {
+        if (key === 'app') {
+          app = query[key]
+        }
+        if (key === 'service') {
+          service = query[key]
+        }
+      })
+      if (app !== '' && service !== '') {
+        this.detail(app, service)
+        let serviceItem = {}
+        serviceItem.role = 'Service Name'
+        serviceItem.value = service
+        this.basic.push(serviceItem)
+        let appItem = {}
+        appItem.role = 'Application Name'
+        appItem.value = app
+        this.basic.push(appItem)
+      }
+    }
   }
 </script>
 
