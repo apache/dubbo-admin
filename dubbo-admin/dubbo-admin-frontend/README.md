@@ -1,4 +1,4 @@
-# dubbo-ops-frontend
+# dubbo-admin-frontend
 
 > dubbo ops frontend based on vuetify
 

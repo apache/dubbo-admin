@@ -26,7 +26,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>dubbo-ops-backend</artifactId>
+    <artifactId>dubbo-admin-backend</artifactId>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -92,7 +92,7 @@
                             <overwrite>true</overwrite>
                             <resources>
                                 <resource>
-                                    <directory>${project.parent.basedir}/dubbo-ops-frontend/target/dist</directory>
+                                    <directory>${project.parent.basedir}/dubbo-admin-frontend/target/dist</directory>
                                     <includes>
                                         <include>static/</include>
                                         <include>index.html</include>

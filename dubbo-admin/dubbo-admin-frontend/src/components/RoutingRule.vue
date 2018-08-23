@@ -18,25 +18,30 @@
 <template>
   <v-container grid-list-xl fluid >
     <!--<v-layout row wrap>-->
-    <v-layout row justify-center>
-      <v-flex lg10>
+    <v-layout row wrap>
+      <!--<v-layout row>-->
+      <v-flex lg10 sm12 xs12>
         <v-text-field
-          flat
-          solo-inverted
-          append-icon="search"
-          @click:append="click"
+                flat
+                v-model="filter"
         />
       </v-flex>
-      <v-flex xs1
-              class="pl-0 ml-0"
+      <v-flex lg1 sm6 xs6
+              class="pl-0 ml-0 pr-0 mr-0"
       >
         <v-select
-          :items="dropdown_font"
-          label="Select"
-          v-model="service"
-          solo-inverted
-          single-line
+                :items="dropdown_font"
+                v-model="pattern"
         ></v-select>
+      </v-flex>
+      <v-flex lg1 xm6 xs6
+              class="pb-0 mb-0 pl-0 ml-0 mt-2"
+      >
+        <v-btn
+                @click="search(filter, pattern, true)"
+                color="primary">
+          search
+        </v-btn>
       </v-flex>
     </v-layout>
     <v-layout justify-space-between row>
@@ -112,7 +117,8 @@
     },
     data: () => ({
       dropdown_font: [ 'Service', 'App', 'IP' ],
-      service: 'Service',
+      pattern: 'Service',
+      filter: '',
       dialog: false,
       placeholder: 'dataId: serviceKey + CONFIGURATORS\n' +
       '\n' +

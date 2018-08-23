@@ -39,7 +39,7 @@ export default {
     return {
       clipped: false,
       fixed: false,
-      dark: true,
+      dark: false,
       items: [{
         icon: 'bubble_chart',
         title: 'Inspire'

@@ -20,19 +20,21 @@
     v-model="drawer"
     fixed
     app
+    dark
   >
-    <v-toolbar>
-      <img src="@/assets/dubbo.svg" width="120" alt="Dubbo Ops"/>
+    <v-toolbar
+    color="primary">
+      <img src="@/assets/D-01.jpg" width="40" height="40" alt="Dubbo Ops"/>
       <v-toolbar-title class="ml-0 pl-3">
         <span class="hidden-sm-and-down">Dubbo Ops</span>
       </v-toolbar-title>
     </v-toolbar>
     <v-list>
-      <v-list-tile>
+      <v-list-tile href="/#/service">
         <v-list-tile-action>
           <v-icon>search</v-icon>
         </v-list-tile-action>
-        <v-list-tile-title>服务查询</v-list-tile-title>
+        <v-list-tile-title >Service Search</v-list-tile-title>
       </v-list-tile>
 
       <v-list-group
@@ -41,22 +43,22 @@
         no-action
       >
         <v-list-tile slot="activator">
-          <v-list-tile-title>服务治理</v-list-tile-title>
+          <v-list-tile-title>Service Governance</v-list-tile-title>
+        </v-list-tile>
+        <v-list-tile href="/#/routingRule">
+          <v-list-tile-title>Routing Rule</v-list-tile-title>
         </v-list-tile>
         <v-list-tile >
-          <v-list-tile-title>路由规则</v-list-tile-title>
+          <v-list-tile-title>Dynamic Config</v-list-tile-title>
         </v-list-tile>
         <v-list-tile >
-          <v-list-tile-title>动态配置</v-list-tile-title>
+          <v-list-tile-title>Access Control</v-list-tile-title>
         </v-list-tile>
         <v-list-tile >
-          <v-list-tile-title>访问控制</v-list-tile-title>
+          <v-list-tile-title>Weight Adjust</v-list-tile-title>
         </v-list-tile>
         <v-list-tile >
-          <v-list-tile-title>权重调节</v-list-tile-title>
-        </v-list-tile>
-        <v-list-tile >
-          <v-list-tile-title>负载均衡</v-list-tile-title>
+          <v-list-tile-title>Load Balance</v-list-tile-title>
         </v-list-tile>
       </v-list-group>
 
@@ -64,7 +66,7 @@
         <v-list-tile-action>
           <v-icon>computer</v-icon>
         </v-list-tile-action>
-        <v-list-tile-title>单机运维</v-list-tile-title>
+        <v-list-tile-title>QoS</v-list-tile-title>
       </v-list-tile>
 
       <v-list-group
@@ -73,10 +75,10 @@
         no-action
       >
         <v-list-tile slot="activator">
-          <v-list-tile-title>服务信息</v-list-tile-title>
+          <v-list-tile-title>Service Info</v-list-tile-title>
         </v-list-tile>
         <v-list-tile >
-          <v-list-tile-title>版本分布</v-list-tile-title>
+          <v-list-tile-title>Version</v-list-tile-title>
         </v-list-tile>
       </v-list-group>
     </v-list>

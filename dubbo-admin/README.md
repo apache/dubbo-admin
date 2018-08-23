@@ -9,7 +9,7 @@
 mvn clean install
 
 # run
-mvn --projects dubbo-ops-backend spring-boot:run
+mvn --projects dubbo-admin-backend spring-boot:run
 
 # visit
 localhost:8080 
