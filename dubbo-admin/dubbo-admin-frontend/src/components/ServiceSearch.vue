@@ -18,25 +18,33 @@
 <template>
   <v-container id="search" grid-list-xl fluid >
     <v-layout row wrap>
-      <v-layout row justify-center>
-        <v-flex lg10>
+      <!--<v-layout row>-->
+        <v-flex
+          lg10
+          sm12
+          xs12
+        >
           <v-text-field
             flat
-            solo-inverted
-            append-icon="search"
-            @click:append="click"
+            v-model="filter"
           />
         </v-flex>
-        <v-flex xs1
-                class="pl-0 ml-0"
+        <v-flex lg1 sm6 xs6
+                class="pl-0 ml-0 pr-0 mr-0"
         >
           <v-select
             :items="dropdown_font"
-            label="Select"
-            v-model="service"
-            solo-inverted
-            single-line
+            v-model="pattern"
           ></v-select>
+        </v-flex>
+        <v-flex lg1 xm6 xs6
+                class="pb-0 mb-0 pl-0 ml-0 mt-2"
+        >
+          <v-btn
+            @click="search(filter, pattern, true)"
+            color="primary">
+            search
+          </v-btn>
         </v-flex>
       </v-layout>
       <v-flex sm12>
@@ -46,47 +54,28 @@
         <v-data-table
           class="elevation-1"
           :headers="headers"
-          :items="result"
+          :items="services"
         >
           <template slot="items" slot-scope="props">
-            <td>{{props.item.service}}</td>
+            <td>{{props.item.serviceName}}</td>
             <td>{{props.item.group}}</td>
-            <td>{{props.item.application}}</td>
-            <td>Detail</td>
+            <td>{{props.item.appName}}</td>
+            <td><v-btn small color='primary' :href='getHref(props.item.serviceName, props.item.appName)'>Detail</v-btn></td>
           </template>
         </v-data-table>
       </v-flex>
-    </v-layout>
+    <!--</v-layout>-->
   </v-container>
 </template>
 <script>
-  export default {
-    props: {
-      result: {
-        type: Array,
-        default: () => [
-          {
-            service: 'com.alibaba.dubbo.com',
-            group: 'dubbo',
-            application: 'demo-provider'
-          },
-          {
-            service: 'com.alibaba.sample',
-            group: 'dubbo',
-            application: 'demo-provider'
-          },
-          {
-            service: 'com.taobao.core.engine',
-            group: 'dubbo',
-            application: 'demo-provider'
-          }
+  import {AXIOS} from './http-common'
 
-        ]
-      }
-    },
+  export default {
     data: () => ({
+      services: [],
       dropdown_font: [ 'Service', 'App', 'IP' ],
-      service: 'Service',
+      pattern: 'Service',
+      filter: '',
       headers: [
         {
           text: 'Service',
@@ -113,8 +102,40 @@
     methods: {
       click: function () {
         console.log('aaa')
+      },
+      getHref: function (service, app) {
+        return '/#/serviceDetail?service=' + service + '&app=' + app
+      },
+
+      search: function (filter, pattern, rewrite) {
+        AXIOS.get('service/search?' + 'filter=' + filter + '&pattern=' + pattern)
+          .then(response => {
+            this.services = response.data
+            if (rewrite) {
+              this.$router.push({path: 'service', query: {filter: filter, pattern: pattern}})
+            }
+          })
+      }
+    },
+    mounted: function () {
+      let query = this.$route.query
+      let filter = ''
+      let pattern = ''
+      Object.keys(query).forEach(function (key) {
+        if (key === 'filter') {
+          filter = query[key]
+        }
+        if (key === 'pattern') {
+          pattern = query[key]
+        }
+      })
+      if (filter !== '' && pattern !== '') {
+        this.pattern = pattern
+        this.filter = filter
+        this.search(filter, pattern, false)
       }
     }
+
   }
 </script>
 

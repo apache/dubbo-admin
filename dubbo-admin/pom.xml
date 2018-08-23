@@ -24,8 +24,8 @@
 	<artifactId>dubbo-admin</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<modules>
-		<module>dubbo-ops-frontend</module>
-		<module>dubbo-ops-backend</module>
+		<module>dubbo-admin-frontend</module>
+		<module>dubbo-admin-backend</module>
 	</modules>
 	<packaging>pom</packaging>
 

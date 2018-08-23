@@ -26,7 +26,7 @@ Vue.use(Router)
 export default new Router({
   routes: [
     {
-      path: '/',
+      path: '/service',
       name: 'ServiceSearch',
       component: ServiceSearch
     },
