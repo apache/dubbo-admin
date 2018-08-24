@@ -24,9 +24,9 @@
   >
     <v-toolbar
     color="primary">
-      <img src="@/assets/D-01.jpg" width="40" height="40" alt="Dubbo Ops"/>
+      <img src="@/assets/logo.png" width="24" height="24"/>
       <v-toolbar-title class="ml-0 pl-3">
-        <span class="hidden-sm-and-down">Dubbo Ops</span>
+        <span class="hidden-sm-and-down">Dubbo Admin</span>
       </v-toolbar-title>
     </v-toolbar>
     <v-list>
