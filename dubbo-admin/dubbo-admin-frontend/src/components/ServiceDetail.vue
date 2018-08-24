@@ -106,30 +106,6 @@
   import {AXIOS} from './http-common'
 
   export default {
-    props: {
-      metadata: {
-        type: Array,
-        default: () =>
-          [
-            {
-              method: 'toString',
-              parameter: 'java.lang.String',
-              returnType: 'void'
-            },
-            {
-              method: 'queryBatch',
-              parameter: 'com.taobao.tc.domain.query.QueryBizOrderDO',
-              returnType: 'com.taobao.tc.domain.result.BatchQueryBizOrderResultDO'
-            },
-            {
-              method: 'isShowCheckcode',
-              parameter: 'long',
-              returnType: 'com.taobao.tc.domain.result.QueryTairResultDO'
-            }
-
-          ]
-      }
-    },
     data: () => ({
       metaHeaders: [
         {
@@ -189,6 +165,7 @@
       },
       providerDetails: [],
       consumerDetails: [],
+      metadata: [],
       basic: []
     }),
     methods: {
