@@ -28,3 +28,9 @@ target/
 # system ignore
 .DS_Store
 Thumbs.db
+
+dubbo-admin/dubbo-admin-backend/src/main/resources/public
+dubbo-admin/dubbo-admin-backend/target
+dubbo-admin/dubbo-admin-frontend/dist
+dubbo-admin/dubbo-admin-frontend/node
+dubbo-admin/dubbo-admin-frontend/node-modules
