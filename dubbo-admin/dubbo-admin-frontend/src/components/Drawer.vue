@@ -16,47 +16,40 @@
   -->
 
 <template>
-  <v-navigation-drawer
-    v-model="drawer"
-    fixed
-    app
-  >
-    <v-toolbar
-    color="primary">
+  <v-navigation-drawer v-model="drawer" fixed app>
+
+    <v-toolbar color="primary">
       <img src="@/assets/logo.png" width="24" height="24"/>
       <v-toolbar-title class="ml-0 pl-3">
         <span class="hidden-sm-and-down white--text">Dubbo Admin</span>
       </v-toolbar-title>
     </v-toolbar>
+
     <v-list>
       <v-list-tile href="/#/service">
         <v-list-tile-action>
           <v-icon>search</v-icon>
         </v-list-tile-action>
-        <v-list-tile-title >Service Search</v-list-tile-title>
+        <v-list-tile-title>Service Search</v-list-tile-title>
       </v-list-tile>
 
-      <v-list-group
-        prepend-icon="edit"
-        value="true"
-        no-action
-      >
+      <v-list-group prepend-icon="edit" value="true" no-action>
         <v-list-tile slot="activator">
           <v-list-tile-title>Service Governance</v-list-tile-title>
         </v-list-tile>
         <v-list-tile href="/#/routingRule">
           <v-list-tile-title>Routing Rule</v-list-tile-title>
         </v-list-tile>
-        <v-list-tile >
+        <v-list-tile>
           <v-list-tile-title>Dynamic Config</v-list-tile-title>
         </v-list-tile>
-        <v-list-tile >
+        <v-list-tile>
           <v-list-tile-title>Access Control</v-list-tile-title>
         </v-list-tile>
-        <v-list-tile >
+        <v-list-tile>
           <v-list-tile-title>Weight Adjust</v-list-tile-title>
         </v-list-tile>
-        <v-list-tile >
+        <v-list-tile>
           <v-list-tile-title>Load Balance</v-list-tile-title>
         </v-list-tile>
       </v-list-group>
@@ -68,21 +61,18 @@
         <v-list-tile-title>QoS</v-list-tile-title>
       </v-list-tile>
 
-      <v-list-group
-        prepend-icon="info"
-        value="true"
-        no-action
-      >
+      <v-list-group prepend-icon="info" value="true" no-action>
         <v-list-tile slot="activator">
           <v-list-tile-title>Service Info</v-list-tile-title>
         </v-list-tile>
-        <v-list-tile >
+        <v-list-tile>
           <v-list-tile-title>Version</v-list-tile-title>
         </v-list-tile>
       </v-list-group>
     </v-list>
   </v-navigation-drawer>
 </template>
+
 <script>
   export default {
     name: 'drawer',
