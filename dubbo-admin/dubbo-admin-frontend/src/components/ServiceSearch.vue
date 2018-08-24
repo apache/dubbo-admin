@@ -18,53 +18,55 @@
 <template>
   <v-container id="search" grid-list-xl fluid >
     <v-layout row wrap>
-      <!--<v-layout row>-->
-        <v-flex
-          lg10
-          sm12
-          xs12
-        >
-          <v-text-field
-            flat
-            v-model="filter"
-          />
-        </v-flex>
-        <v-flex lg1 sm6 xs6
-                class="pl-0 ml-0 pr-0 mr-0"
-        >
-          <v-select
-            :items="dropdown_font"
-            v-model="pattern"
-          ></v-select>
-        </v-flex>
-        <v-flex lg1 xm6 xs6
-                class="pb-0 mb-0 pl-0 ml-0 mt-2"
-        >
-          <v-btn
-            @click="search(filter, pattern, true)"
-            color="primary">
-            search
-          </v-btn>
-        </v-flex>
-      </v-layout>
-      <v-flex sm12>
-        <h3>Search Result</h3>
+      <v-flex xs12 class="justify-center">
+        <v-form>
+          <v-layout row wrap>
+            <v-flex xs10>
+              <v-text-field label="Search dubbo service"
+                            v-bind:suffix="queryBy"
+                            v-model="filter"></v-text-field>
+            </v-flex>
+
+            <v-flex xs2>
+              <v-menu bottom left class="hidden-xs-only">
+                <v-btn
+                  slot="activator"
+                  icon>
+                  <v-icon>unfold_more</v-icon>
+                </v-btn>
+
+                <v-list>
+                  <v-list-tile
+                    v-for="(item, i) in items"
+                    :key="i"
+                    @click="selected = i">
+                    <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                  </v-list-tile>
+                </v-list>
+              </v-menu>
+              <v-btn @click="submit" color="primary" large>Search</v-btn>
+            </v-flex>
+          </v-layout>
+        </v-form>
       </v-flex>
-      <v-flex lg12>
-        <v-data-table
-          class="elevation-1"
-          :headers="headers"
-          :items="services"
-        >
-          <template slot="items" slot-scope="props">
-            <td>{{props.item.serviceName}}</td>
-            <td>{{props.item.group}}</td>
-            <td>{{props.item.appName}}</td>
-            <td><v-btn small color='primary' :href='getHref(props.item.serviceName, props.item.appName)'>Detail</v-btn></td>
-          </template>
-        </v-data-table>
-      </v-flex>
-    <!--</v-layout>-->
+    </v-layout>
+    <v-flex sm12>
+      <h3>Search Result</h3>
+    </v-flex>
+    <v-flex lg12>
+      <v-data-table
+        class="elevation-1"
+        :headers="headers"
+        :items="services"
+      >
+        <template slot="items" slot-scope="props">
+          <td>{{props.item.serviceName}}</td>
+          <td>{{props.item.group}}</td>
+          <td>{{props.item.appName}}</td>
+          <td><v-btn small color='primary' :href='getHref(props.item.serviceName, props.item.appName)'>Detail</v-btn></td>
+        </template>
+      </v-data-table>
+    </v-flex>
   </v-container>
 </template>
 <script>
@@ -72,9 +74,13 @@
 
   export default {
     data: () => ({
+      items: [
+        {title: 'service name'},
+        {title: 'IP'},
+        {title: 'application'}
+      ],
+      selected: 0,
       services: [],
-      dropdown_font: [ 'Service', 'App', 'IP' ],
-      pattern: 'Service',
       filter: '',
       headers: [
         {
@@ -99,14 +105,19 @@
         }
       ]
     }),
+    computed: {
+      queryBy () {
+        return 'by ' + this.items[this.selected].title
+      }
+    },
     methods: {
-      click: function () {
-        console.log('aaa')
-      },
       getHref: function (service, app) {
         return '/#/serviceDetail?service=' + service + '&app=' + app
       },
-
+      submit () {
+        let pattern = this.items[this.selected].title
+        this.search(this.filter, pattern, true)
+      },
       search: function (filter, pattern, rewrite) {
         AXIOS.get('service/search?' + 'filter=' + filter + '&pattern=' + pattern)
           .then(response => {

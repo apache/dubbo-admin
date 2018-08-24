@@ -17,59 +17,75 @@
 
 <template>
   <v-container grid-list-xl fluid >
-    <!--<v-layout row wrap>-->
-    <v-layout row wrap>
-      <!--<v-layout row>-->
-      <v-flex lg10 sm12 xs12>
-        <v-text-field
-                flat
-                v-model="filter"
-        />
-      </v-flex>
-      <v-flex lg1 sm6 xs6
-              class="pl-0 ml-0 pr-0 mr-0"
-      >
-        <v-select
-                :items="dropdown_font"
-                v-model="pattern"
-        ></v-select>
-      </v-flex>
-      <v-flex lg1 xm6 xs6
-              class="pb-0 mb-0 pl-0 ml-0 mt-2"
-      >
-        <v-btn
-                @click="search(filter, pattern, true)"
-                color="primary">
-          search
-        </v-btn>
-      </v-flex>
-    </v-layout>
-    <v-layout justify-space-between row>
-      <v-flex lg10>
-        <h3>Search Result</h3>
-      </v-flex>
-      <v-flex xs2>
-        <v-btn @click.stop="dialog = true">create Rule</v-btn>
-      </v-flex>
-    </v-layout>
-    <v-flex lg12>
+    <div>
+      <v-layout row wrap>
+        <v-flex xs12 class="justify-space-between">
+          <v-form>
+            <v-layout row wrap>
+              <v-flex xs11>
+                <v-text-field label="Search dubbo service"
+                              v-model="filter"></v-text-field>
+              </v-flex>
+
+              <v-flex xs1>
+                <v-btn @click="submit" color="primary" >Search</v-btn>
+              </v-flex>
+            </v-layout>
+          </v-form>
+        </v-flex>
+      </v-layout>
+      <v-toolbar flat color="white">
+        <v-toolbar-title>Search Result</v-toolbar-title>
+        <v-spacer></v-spacer>
+        <v-btn outline color="primary" @click.stop="dialog = true" class="mb-2">CREATE</v-btn>
+      </v-toolbar>
       <v-data-table
-        class="elevation-1"
         :headers="headers"
-        :items="result"
+        :items="routingRules"
+        hide-actions
+        class="elevation-1"
       >
         <template slot="items" slot-scope="props">
-          <td>{{props.item.service}}</td>
-          <td>{{props.item.group}}</td>
-          <td>{{props.item.application}}</td>
-          <td>Details</td>
+          <td>{{ props.item.rule }}</td>
+          <td class="text-xs-left">{{ props.item.service }}</td>
+          <td class="text-xs-left">{{ props.item.priority }}</td>
+          <td class="text-xs-left">{{ props.item.status }}</td>
+          <td class="justify-center px-0">
+            <v-icon
+              small
+              class="mr-2"
+              @click="deleteItem(props.item)"
+            >
+              visibility
+            </v-icon>
+            <v-icon
+              small
+              class="mr-2"
+              @click="editItem(props.item)"
+            >
+              edit
+            </v-icon>
+            <v-icon
+              small
+              class="mr-2"
+              @click="editItem(props.item)"
+            >
+              block
+            </v-icon>
+            <v-icon
+              small
+              @click="deleteItem(props.item)"
+            >
+              delete
+            </v-icon>
+          </td>
         </template>
       </v-data-table>
-    </v-flex>
+    </div>
     <v-dialog   v-model="dialog" width="450px" persistent >
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">Creat new Routing rule</span>
+          <span class="headline">Create new Routing rule</span>
         </v-card-title>
         <v-card-text >
           <v-textarea
@@ -92,34 +108,21 @@
 </template>
 <script>
   export default {
-    props: {
-      result: {
-        type: Array,
-        default: () => [
-          {
-            service: 'com.alibaba.dubbo.com',
-            group: 'dubbo',
-            application: 'demo-provider'
-          },
-          {
-            service: 'com.alibaba.sample',
-            group: 'dubbo',
-            application: 'demo-provider'
-          },
-          {
-            service: 'com.taobao.core.engine',
-            group: 'dubbo',
-            application: 'demo-provider'
-          }
-
-        ]
-      }
-    },
     data: () => ({
       dropdown_font: [ 'Service', 'App', 'IP' ],
       pattern: 'Service',
       filter: '',
       dialog: false,
+      selected: [],
+      routingRules: [
+        {
+          id: 0,
+          rule: 'test',
+          service: 'com.alibaba.dubbo.com',
+          priority: 0,
+          status: 'enabled'
+        }
+      ],
       placeholder: 'dataId: serviceKey + CONFIGURATORS\n' +
       '\n' +
       '%yaml 1.2\n' +
@@ -161,18 +164,23 @@
       '...\n',
       headers: [
         {
-          text: 'Service',
+          text: 'Rule Name',
+          value: 'rule',
+          class: 'font-weight-black'
+        },
+        {
+          text: 'Service Name',
           value: 'service',
           class: 'font-weight-black'
         },
         {
-          text: 'Group',
-          value: 'group',
+          text: 'Priority',
+          value: 'priority',
           class: 'font-weight-black'
         },
         {
-          text: 'Application',
-          value: 'application',
+          text: 'Status',
+          value: 'status',
           class: 'font-weight-black'
         },
         {
@@ -183,8 +191,18 @@
       ]
     }),
     methods: {
-      click: function () {
-        console.log('aaa')
+      submit () {
+        console.log('submit')
+      },
+      toggleAll () {
+        if (this.selected.length) this.selected = []
+        else this.selected = this.routingRules.slice()
+      },
+      enable: function (status) {
+        if (status === 'enabled') {
+          return 'disable'
+        }
+        return 'enable'
       },
       setHeight: function () {
         this.height = window.innerHeight * 0.65
@@ -197,3 +215,9 @@
 
   }
 </script>
+
+<style scoped>
+  div.btn__content {
+    padding: 0;
+  }
+</style>
