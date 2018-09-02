@@ -19,22 +19,38 @@
   <v-container grid-list-xl fluid >
     <div>
       <v-layout row wrap>
-        <v-flex xs12 class="justify-space-between">
-          <v-form>
-            <v-layout row wrap>
-              <v-flex xs11>
-                <v-text-field label="Search dubbo service"
-                              v-model="filter"></v-text-field>
-              </v-flex>
+        <v-flex xs12 >
+          <!--<v-form>-->
+            <!--<v-layout row wrap>-->
+              <!--<v-flex xs11>-->
+                <!--<v-text-field label="Search dubbo service"-->
+                              <!--v-model="filter"></v-text-field>-->
+              <!--</v-flex>-->
 
-              <v-flex xs1>
-                <v-btn @click="submit" color="primary" >Search</v-btn>
-              </v-flex>
-            </v-layout>
-          </v-form>
+              <!--<v-flex xs1>-->
+                <!--<v-btn @click="submit" color="primary" >Search</v-btn>-->
+              <!--</v-flex>-->
+            <!--</v-layout>-->
+          <!--</v-form>-->
+          <v-card flat>
+            <v-card-text>
+                <v-layout row wrap >
+                  <!--<v-flex xs10>-->
+                    <v-text-field label="Search dubbo service"
+                                  v-model="filter"></v-text-field>
+                  <!--</v-flex>-->
+
+                  <!--<v-flex xs1>-->
+                    <v-btn @click="submit" color="primary" >Search</v-btn>
+                  <!--</v-flex>-->
+                </v-layout>
+
+            </v-card-text>
+
+          </v-card>
         </v-flex>
       </v-layout>
-      <v-toolbar flat color="white">
+      <v-toolbar class="elevation-1" flat color="white">
         <v-toolbar-title>Search Result</v-toolbar-title>
         <v-spacer></v-spacer>
         <v-btn outline color="primary" @click.stop="dialog = true" class="mb-2">CREATE</v-btn>
@@ -215,9 +231,3 @@
 
   }
 </script>
-
-<style scoped>
-  div.btn__content {
-    padding: 0;
-  }
-</style>
