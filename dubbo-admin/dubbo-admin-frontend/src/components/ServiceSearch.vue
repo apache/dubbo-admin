@@ -18,42 +18,50 @@
 <template>
   <v-container id="search" grid-list-xl fluid >
     <v-layout row wrap>
-      <v-flex xs12 class="justify-center">
-        <v-form>
-          <v-layout row wrap>
-            <v-flex xs10>
-              <v-text-field label="Search dubbo service"
-                            v-bind:suffix="queryBy"
-                            v-model="filter"></v-text-field>
-            </v-flex>
+      <v-flex xs12 >
+        <v-card flat>
+          <v-card-text>
+            <v-form>
+              <v-layout row wrap>
+                <!--<v-flex xs10>-->
+                  <v-text-field label="Search dubbo service"
+                                v-bind:suffix="queryBy"
+                                v-model="filter"></v-text-field>
+                <!--</v-flex>-->
 
-            <v-flex xs2>
-              <v-menu bottom left class="hidden-xs-only">
-                <v-btn
-                  slot="activator"
-                  icon>
-                  <v-icon>unfold_more</v-icon>
-                </v-btn>
+                <!--<v-flex xs2>-->
+                  <v-menu bottom left class="hidden-xs-only">
+                    <v-btn
+                      slot="activator"
+                      icon>
+                      <v-icon>unfold_more</v-icon>
+                    </v-btn>
 
-                <v-list>
-                  <v-list-tile
-                    v-for="(item, i) in items"
-                    :key="i"
-                    @click="selected = i">
-                    <v-list-tile-title>{{ item.title }}</v-list-tile-title>
-                  </v-list-tile>
-                </v-list>
-              </v-menu>
-              <v-btn @click="submit" color="primary" class="ml-4" large>Search</v-btn>
-            </v-flex>
-          </v-layout>
-        </v-form>
+                    <v-list>
+                      <v-list-tile
+                        v-for="(item, i) in items"
+                        :key="i"
+                        @click="selected = i">
+                        <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                      </v-list-tile>
+                    </v-list>
+                  </v-menu>
+                  <v-btn @click="submit" color="primary"  >Search</v-btn>
+                <!--</v-flex>-->
+              </v-layout>
+            </v-form>
+
+          </v-card-text>
+        </v-card>
       </v-flex>
     </v-layout>
-    <v-flex sm12>
-      <h3>Search Result</h3>
-    </v-flex>
+    <!--<v-flex sm12>-->
+      <!--<h3>Search Result</h3>-->
+    <!--</v-flex>-->
     <v-flex lg12>
+      <v-toolbar class="elevation-1" flat color="white">
+        <v-toolbar-title>Search Result</v-toolbar-title>
+      </v-toolbar>
       <v-data-table
         class="elevation-1"
         :headers="headers"
@@ -141,8 +149,6 @@
         }
       })
       if (filter !== '' && pattern !== '') {
-        this.pattern = pattern
-        this.filter = filter
         this.search(filter, pattern, false)
       }
     }
