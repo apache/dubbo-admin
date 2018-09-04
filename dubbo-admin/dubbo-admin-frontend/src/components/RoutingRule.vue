@@ -20,29 +20,12 @@
     <div>
       <v-layout row wrap>
         <v-flex xs12 >
-          <!--<v-form>-->
-            <!--<v-layout row wrap>-->
-              <!--<v-flex xs11>-->
-                <!--<v-text-field label="Search dubbo service"-->
-                              <!--v-model="filter"></v-text-field>-->
-              <!--</v-flex>-->
-
-              <!--<v-flex xs1>-->
-                <!--<v-btn @click="submit" color="primary" >Search</v-btn>-->
-              <!--</v-flex>-->
-            <!--</v-layout>-->
-          <!--</v-form>-->
           <v-card flat>
             <v-card-text>
                 <v-layout row wrap >
-                  <!--<v-flex xs10>-->
                     <v-text-field label="Search dubbo service"
                                   v-model="filter"></v-text-field>
-                  <!--</v-flex>-->
-
-                  <!--<v-flex xs1>-->
                     <v-btn @click="submit" color="primary" >Search</v-btn>
-                  <!--</v-flex>-->
                 </v-layout>
 
             </v-card-text>
@@ -53,7 +36,7 @@
       <v-toolbar class="elevation-1" flat color="white">
         <v-toolbar-title>Search Result</v-toolbar-title>
         <v-spacer></v-spacer>
-        <v-btn outline color="primary" @click.stop="dialog = true" class="mb-2">CREATE</v-btn>
+        <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">CREATE</v-btn>
       </v-toolbar>
       <v-data-table
         :headers="headers"
@@ -104,13 +87,18 @@
           <span class="headline">Create new Routing rule</span>
         </v-card-title>
         <v-card-text >
-          <v-textarea
-            name="input-7-1"
-            box
-            :height="height"
-            label="Label"
-            :placeholder="placeholder"
-          ></v-textarea>
+          <v-text-field
+            placeholder="service:version or application, version is optional"
+            required
+            ref="scope"
+            :rules="[() => !!scope || 'This field is required']"
+            v-model="scope"
+          ></v-text-field>
+          <v-text-field
+            placeholder="group, only effective on service"
+            v-model="group"
+          ></v-text-field>
+          <codemirror :placeholder='placeholder' :options="cmOption"></codemirror>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -123,13 +111,22 @@
 
 </template>
 <script>
+  import { codemirror } from 'vue-codemirror'
+  import 'codemirror/lib/codemirror.css'
+  import 'codemirror/mode/yaml/yaml.js'
+  import 'codemirror/addon/display/placeholder'
   export default {
+    components: {
+      codemirror
+    },
     data: () => ({
       dropdown_font: [ 'Service', 'App', 'IP' ],
       pattern: 'Service',
       filter: '',
       dialog: false,
-      selected: [],
+      group: '',
+      scope: '',
+      height: 0,
       routingRules: [
         {
           id: 0,
@@ -139,45 +136,25 @@
           status: 'enabled'
         }
       ],
-      placeholder: 'dataId: serviceKey + CONFIGURATORS\n' +
-      '\n' +
-      '%yaml 1.2\n' +
-      '---\n' +
-      'scope: service/application\n' +
-      'key: serviceKey/appName\n' +
-      'configs:\n' +
-      ' - addresses:[ip1, ip2]\n' +
-      '   apps: [app1, app2]\n' +
-      '   services: [s1, s2]\n' +
-      '   side: provider\n' +
-      '   rules:\n' +
-      '    threadpool:\n' +
-      '     size:\n' +
-      '     core:\n' +
-      '     queue:\n' +
-      '    cluster:\n' +
-      '     loadbalance:\n' +
-      '     cluster:\n' +
-      '    config:\n' +
-      '     timeout:\n' +
-      '     weight:\n' +
-      '     mock: return null\n' +
-      ' - addresses: [ip1, ip2]\n' +
-      '   rules:\n' +
-      '    threadpool:\n' +
-      '     size:\n' +
-      '     core:\n' +
-      '     queue:\n' +
-      '    cluster:\n' +
-      '     loadbalance:\n' +
-      '     cluster:\n' +
-      '    config:\n' +
-      '     timeout:\n' +
-      '     weight:\n' +
-      '   apps: [app1, app2]\n' +
-      '   services: [s1, s2]\n' +
-      '   side: provider\n' +
-      '...\n',
+      placeholder: '%yaml 1.2\n' +
+        '---\n' +
+        'enable: true/false\n' +
+        'priority:\n' +
+        'runtime: false/true\n' +
+        'category: routers\n' +
+        'force: true/false\n' +
+        'dynamic: true/false\n' +
+        'conditions:\n' +
+        '  - => host != 172.22.3.91\n' +
+        '  - host != 10.20.153.10,10.20.153.11 =>\n' +
+        '  - host = 10.20.153.10,10.20.153.11 =>\n' +
+        '  - application != kylin => host != 172.22.3.95,172.22.3.96\n' +
+        '  - method = find*,list*,get*,is* => host = 172.22.3.94,172.22.3.95,172.22.3.96\n' +
+        '...\n',
+      cmOption: {
+        lineNumbers: true,
+        mode: 'text/x-yaml'
+      },
       headers: [
         {
           text: 'Rule Name',
@@ -207,12 +184,11 @@
       ]
     }),
     methods: {
-      submit () {
+      submit: function () {
         console.log('submit')
       },
-      toggleAll () {
-        if (this.selected.length) this.selected = []
-        else this.selected = this.routingRules.slice()
+      openDialog: function () {
+        this.dialog = true
       },
       enable: function (status) {
         if (status === 'enabled') {
@@ -221,10 +197,10 @@
         return 'enable'
       },
       setHeight: function () {
-        this.height = window.innerHeight * 0.65
-        console.log(this.height)
+        this.height = window.innerHeight * 0.5
       }
     },
+
     created () {
       this.setHeight()
     }
