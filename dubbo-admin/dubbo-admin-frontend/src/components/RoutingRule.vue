@@ -118,8 +118,6 @@
 
 </template>
 <script>
-  import $ from 'jquery'
-  // import CodeMirror from 'codemirror'
   import { codemirror } from 'vue-codemirror'
   import 'codemirror/lib/codemirror.css'
   import 'codemirror/mode/yaml/yaml.js'
@@ -198,9 +196,6 @@
       },
       openDialog: function () {
         this.dialog = true
-        // $('.CodeMirror').remove()
-        // this.initCodeMirror(document.getElementById('rule-content'))
-        // this.refreshCodeMirror()
       },
       enable: function (status) {
         if (status === 'enabled') {
@@ -211,20 +206,6 @@
       setHeight: function () {
         this.height = window.innerHeight * 0.5
       }
-      // initCodeMirror: function (element) {
-      //   return CodeMirror.fromTextArea(element, {
-      //     lineNumbers: true,
-      //     lineWrapping: true,
-      //     mode: 'text/x-yaml'
-      //   })
-      // },
-      // refreshCodeMirror: function () {
-      //   setTimeout(function () {
-      //     $('.CodeMirror').each(function (i, el) {
-      //       el.CodeMirror.refresh()
-      //     })
-      //   }, 100)
-      // }
     },
 
     created () {
