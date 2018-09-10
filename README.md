@@ -9,6 +9,11 @@ The following modules in [Apache Dubbo(incubating)](https://github.com/apache/in
 * dubbo-monitor-simple
 * dubbo-registry-simple
 
+
+## NOTICE  
+dubbo admin is under refactoring, please checkout the `develop` branch
+
+
 ## How to use it
 
 ### dubbo admin
