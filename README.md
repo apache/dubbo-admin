@@ -2,6 +2,10 @@
 
 > dubbo admin front end and back end
 
+### front end
+* Vue.js and Vuetify
+* dubbo-admin-frontend/README.md for more detail
+
 ## Build setup 
 
 ``` bash
