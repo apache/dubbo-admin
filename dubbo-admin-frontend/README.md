@@ -1,6 +1,7 @@
 # dubbo-admin-frontend
 
-> dubbo ops frontend based on vuetify
+> dubbo ops frontend based on vuetify  
+> standard front end project
 
 ## Build Setup
 
@@ -19,3 +20,6 @@ npm run build --report
 ```
 
 For a detailed explanation on how things work, check out the [guide](http://vuejs-templates.github.io/webpack/) and [docs for vue-loader](http://vuejs.github.io/vue-loader).
+
+managed by [front end maven plugin](https://github.com/eirslett/frontend-maven-plugin)
+
