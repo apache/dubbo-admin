@@ -65,6 +65,14 @@ public class Route extends Entity {
 
     private boolean force;
 
+    private String version;
+
+    private String group;
+
+    private boolean dynamic;
+
+    private boolean runtime;
+
     private List<Route> children;
 
     public Route() {
@@ -122,6 +130,38 @@ public class Route extends Entity {
         this.enabled = enabled;
     }
 
+    public boolean isDynamic() {
+        return dynamic;
+    }
+
+    public void setDynamic(boolean dynamic) {
+        this.dynamic = dynamic;
+    }
+
+    public boolean isRuntime() {
+        return runtime;
+    }
+
+    public void setRuntime(boolean runtime) {
+        this.runtime = runtime;
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
+    }
+
+    public String getGroup() {
+        return group;
+    }
+
+    public void setGroup(String group) {
+        this.group = group;
+    }
+
     public boolean isForce() {
         return force;
     }
@@ -144,12 +184,12 @@ public class Route extends Entity {
 
     public void setRule(String rule) {
         this.rule = rule;
-        String[] rules = rule.split(" => ");
-        if (rules.length != 2) {
-            throw new IllegalArgumentException("Illegal Route Condition Rule");
-        }
-        this.matchRule = rules[0];
-        this.filterRule = rules[1];
+//        String[] rules = rule.split(" => ");
+//        if (rules.length != 2) {
+//            throw new IllegalArgumentException("Illegal Route Condition Rule");
+//        }
+//        this.matchRule = rules[0];
+//        this.filterRule = rules[1];
     }
 
     public String getMatchRule() {
@@ -177,25 +217,12 @@ public class Route extends Entity {
     }
 
     public URL toUrl() {
-        String group = null;
-        String version = null;
-        String path = service;
-        int i = path.indexOf("/");
-        if (i > 0) {
-            group = path.substring(0, i);
-            path = path.substring(i + 1);
-        }
-        i = path.lastIndexOf(":");
-        if (i > 0) {
-            version = path.substring(i + 1);
-            path = path.substring(0, i);
-        }
-        return URL.valueOf(Constants.ROUTE_PROTOCOL + "://" + Constants.ANYHOST_VALUE + "/" + path
+        return URL.valueOf(Constants.ROUTE_PROTOCOL + "://" + Constants.ANYHOST_VALUE + "/" + getService()
                 + "?" + Constants.CATEGORY_KEY + "=" + Constants.ROUTERS_CATEGORY
-                + "&router=condition&runtime=false&enabled=" + isEnabled() + "&priority=" + getPriority() + "&force=" + isForce() + "&dynamic=false"
-                + "&name=" + getName() + "&" + Constants.RULE_KEY + "=" + URL.encode(getMatchRule() + " => " + getFilterRule())
-                + (group == null ? "" : "&" + Constants.GROUP_KEY + "=" + group)
-                + (version == null ? "" : "&" + Constants.VERSION_KEY + "=" + version));
+                + "&router=condition&runtime=false&enabled=" + isEnabled() + "&priority=" + getPriority() + "&force=" + isForce() + "&dynamic=" + isDynamic()
+                + "&name=" + getName() + "&" + Constants.RULE_KEY + "=" + URL.encode(getRule())
+                + (getGroup() == null ? "" : "&" + Constants.GROUP_KEY + "=" + getGroup())
+                + (getVersion() == null ? "" : "&" + Constants.VERSION_KEY + "=" + getVersion()));
     }
 
 }
