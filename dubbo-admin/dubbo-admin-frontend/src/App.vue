@@ -22,43 +22,61 @@
     <v-content>
       <router-view/>
     </v-content>
-    <footers></footers>
+    <v-footer height="auto" class="white pa-3 app--footer">
+      <span class="caption">Copyright &copy; {{ new Date().getFullYear() }} The Apache Software Foundation. </span>
+      <v-spacer></v-spacer>
+      <span class="caption mr-1"> Make With Love </span>
+      <v-icon color="pink" small>favorite</v-icon>
+    </v-footer>
   </v-app>
 </template>
 <script>
-import Drawer from '@/components/Drawer'
-import Toolbar from '@/components/Toolbar'
-import Footers from '@/components/Footers'
-export default {
-  components: {
-    Drawer,
-    Toolbar,
-    Footers
-  },
-  data () {
-    return {
-      clipped: false,
-      fixed: false,
-      dark: false,
-      items: [{
-        icon: 'bubble_chart',
-        title: 'Inspire'
-      }],
-      miniVariant: false,
-      right: true
-    }
-  },
-  created () {
-    window.getApp = this
-    window.getApp.$on('CHANGE_THEME', () => {
-      this.dark = (!this.dark)
-    })
-  },
-  computed: {
-    appTitle () {
-      return this.$store.state.appTitle
-    }
-  },
-  name: 'App'
-}
+  import Drawer from '@/components/Drawer'
+  import Toolbar from '@/components/Toolbar'
+  import Footers from '@/components/Footers'
+
+  export default {
+    components: {
+      Drawer,
+      Toolbar,
+      Footers
+    },
+    data () {
+      return {
+        clipped: false,
+        fixed: false,
+        dark: false,
+        items: [{
+          icon: 'bubble_chart',
+          title: 'Inspire'
+        }],
+        miniVariant: false,
+        right: true
+      }
+    },
+    created () {
+      window.getApp = this
+      window.getApp.$on('CHANGE_THEME', () => {
+        this.dark = (!this.dark)
+      })
+    },
+    computed: {
+      appTitle () {
+        return this.$store.state.appTitle
+      }
+    },
+    name: 'App'
+  }
 </script>
+
+
+<style lang="stylus" scoped>
+  .setting-fab
+    top: 50% !important;
+    right: 0;
+    border-radius: 0
+
+  .page-wrapper
+    min-height: calc(100vh - 64px - 50px - 81px);
+
+</style>
