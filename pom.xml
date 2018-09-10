@@ -16,217 +16,73 @@
   ~  limitations under the License.
   -->
 
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.alibaba</groupId>
-    <artifactId>dubbo-ops</artifactId>
-    <version>2.0.0</version>
-    <packaging>pom</packaging>
+	<groupId>org.apache</groupId>
+	<artifactId>dubbo-admin</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<modules>
+		<module>dubbo-admin-frontend</module>
+		<module>dubbo-admin-backend</module>
+	</modules>
+	<packaging>pom</packaging>
 
-    <properties>
-        <dubbo_all_version>2.6.0</dubbo_all_version>
-        <dubbo_version>2.6.0</dubbo_version>
-        <jfreechart_version>1.0.13</jfreechart_version>
+	<name>dubbo-admin</name>
+	<description>Dubbo admin front and back end</description>
 
-        <!-- Temporarily added for lower version compatibility  -->
-        <spring_version>4.3.10.RELEASE</spring_version>
-        <fastjson_version>1.2.31</fastjson_version>
-        <curator_version>2.12.0</curator_version>
-        <jetty_version>6.1.26</jetty_version>
-        <servlet_version>3.1.0</servlet_version>
-        <slf4j_version>1.7.25</slf4j_version>
-        <log4j_version>1.2.16</log4j_version>
-        <commons_lang3_version>3.4</commons_lang3_version>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>2.0.2.RELEASE</version>
+		<relativePath/> <!-- lookup parent from repository -->
+	</parent>
 
-        <!-- Test libs -->
-        <junit_version>4.12</junit_version>
-        <easymock_version>3.4</easymock_version>
-        <jmockit_version>1.33</jmockit_version>
-        <apache_rat_plugin.version>0.12</apache_rat_plugin.version>
-        <maven_compiler_version>3.6.0</maven_compiler_version>
-        <maven_jacoco_version>0.8.1</maven_jacoco_version>
-    </properties>
+	<properties>
+		<main.basedir>${project.basedir}</main.basedir>
+        <commons-lang3-version>3.7</commons-lang3-version>
+		<dubbo-version>2.6.2</dubbo-version>
+		<curator-version>2.12.0</curator-version>
+		<fastjson-version>1.2.46</fastjson-version>
+		<snakeyaml-version>1.22</snakeyaml-version>
+	</properties>
 
-    <modules>
-        <module>dubbo-admin</module>
-        <module>dubbo-monitor-simple</module>
-        <module>dubbo-registry-simple</module>
-    </modules>
-
-    <dependencyManagement>
+	<dependencyManagement>
         <dependencies>
-            <!-- Currently, we still use "dubbo-all" as a dependency. -->
-            <dependency>
-                <groupId>com.alibaba</groupId>
-                <artifactId>dubbo</artifactId>
-                <version>${dubbo_all_version}</version>
-            </dependency>
-            <dependency>
-                <groupId>jfree</groupId>
-                <artifactId>jfreechart</artifactId>
-                <version>${jfreechart_version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.springframework</groupId>
-                <artifactId>spring-framework-bom</artifactId>
-                <version>${spring_version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
+			<dependency>
+				<groupId>org.apache.commons</groupId>
+				<artifactId>commons-lang3</artifactId>
+				<version>${commons-lang3-version}</version>
+			</dependency>
 
-            <!-- Temporarily added for lower version compatibility  -->
-            <dependency>
-                <groupId>com.alibaba</groupId>
-                <artifactId>fastjson</artifactId>
-                <version>${fastjson_version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.curator</groupId>
-                <artifactId>curator-framework</artifactId>
-                <version>${curator_version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.mortbay.jetty</groupId>
-                <artifactId>jetty</artifactId>
-                <version>${jetty_version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.mortbay.jetty</groupId>
-                        <artifactId>servlet-api</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-            <dependency>
-                <groupId>javax.servlet</groupId>
-                <artifactId>javax.servlet-api</artifactId>
-                <version>${servlet_version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-api</artifactId>
-                <version>${slf4j_version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-log4j12</artifactId>
-                <version>${slf4j_version}</version>
-            </dependency>
-            <dependency>
-                <groupId>log4j</groupId>
-                <artifactId>log4j</artifactId>
-                <version>${log4j_version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.commons</groupId>
-                <artifactId>commons-lang3</artifactId>
-                <version>${commons_lang3_version}</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+			<dependency>
+				<groupId>com.alibaba</groupId>
+				<artifactId>dubbo</artifactId>
+				<version>${dubbo-version}</version>
+			</dependency>
 
-    <!-- Temporarily added for lower version compatibility  -->
-    <dependencies>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <version>${junit_version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.easymock</groupId>
-            <artifactId>easymock</artifactId>
-            <version>${easymock_version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.jmockit</groupId>
-            <artifactId>jmockit</artifactId>
-            <version>${jmockit_version}</version>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
+			<dependency>
+				<groupId>org.apache.curator</groupId>
+				<artifactId>curator-framework</artifactId>
+				<version>${curator-version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.alibaba</groupId>
+				<artifactId>fastjson</artifactId>
+				<version>${fastjson-version}</version>
+			</dependency>
 
-    <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <artifactId>maven-dependency-plugin</artifactId>
-                    <version>2.10</version>
-                </plugin>
-                <plugin>
-                    <artifactId>maven-assembly-plugin</artifactId>
-                    <version>2.6</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-compiler-plugin</artifactId>
-                    <version>${maven_compiler_version}</version>
-                    <configuration>
-                        <fork>true</fork>
-                        <source>1.6</source>
-                        <target>1.6</target>
-                        <encoding>UTF-8</encoding>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>org.jacoco</groupId>
-                    <artifactId>jacoco-maven-plugin</artifactId>
-                    <version>${maven_jacoco_version}</version>
-                    <executions>
-                        <execution>
-                            <id>jacoco-initialize</id>
-                            <goals>
-                                <goal>prepare-agent</goal>
-                            </goals>
-                            <configuration>
-                                <propertyName>jacocoArgLine</propertyName>
-                            </configuration>
-                        </execution>
-                        <execution>
-                            <id>jacoco-site</id>
-                            <phase>package</phase>
-                            <goals>
-                                <goal>report</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.rat</groupId>
-                    <artifactId>apache-rat-plugin</artifactId>
-                    <version>${apache_rat_plugin.version}</version>
-                    <executions>
-                        <execution>
-                            <id>verify.rat</id>
-                            <phase>verify</phase>
-                            <goals>
-                                <goal>check</goal>
-                            </goals>
-                            <configuration>
-                                <excludes>
-                                    <exclude>**/.idea/</exclude>
-                                    <exclude>**/*.iml</exclude>
-                                    <exclude>.git/</exclude>
-                                    <exclude>.gitignore</exclude>
-                                    <exclude>.repository/</exclude>
-                                    <exclude>**/.settings/*</exclude>
-                                    <exclude>**/.classpath</exclude>
-                                    <exclude>**/.project</exclude>
-                                    <exclude>**/target/**</exclude>
-                                    <exclude>**/*.log</exclude>
-                                    <exclude>.codecov.yml</exclude>
-                                    <exclude>.travis.yml</exclude>
-                                    <exclude>README.md</exclude>
-                                </excludes>
-                            </configuration>
-                        </execution>
-                    </executions>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-    </build>
+			<dependency>
+				<groupId>org.yaml</groupId>
+				<artifactId>snakeyaml</artifactId>
+				<version>${snakeyaml-version}</version>
+			</dependency>
+
+		</dependencies>
+	</dependencyManagement>
+
+
+
 
 </project>
