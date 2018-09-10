@@ -88,23 +88,15 @@
         </v-card-title>
         <v-card-text >
           <v-text-field
-            placeholder="service:version or application, version is optional"
+            placeholder="service:version, version is optional"
             required
-            ref="scope"
-            :rules="[() => !!scope || 'This field is required']"
-            v-model="scope"
+            v-model="service"
           ></v-text-field>
           <v-text-field
-            placeholder="group, only effective on service"
-            v-model="group"
+            placeholder="application name"
+            required
+            v-model="application"
           ></v-text-field>
-          <!--<v-textarea-->
-          <!--id="rule-content"-->
-          <!--name="input-7-1"-->
-          <!--box-->
-          <!--:height="height"-->
-          <!--:placeholder="placeholder"-->
-          <!--&gt;</v-textarea>-->
           <codemirror :placeholder='placeholder' :options="cmOption"></codemirror>
         </v-card-text>
         <v-card-actions>
@@ -131,8 +123,8 @@
       pattern: 'Service',
       filter: '',
       dialog: false,
-      group: '',
-      scope: '',
+      application: '',
+      service: '',
       height: 0,
       routingRules: [
         {
