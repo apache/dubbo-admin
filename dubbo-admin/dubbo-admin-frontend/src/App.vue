@@ -23,10 +23,9 @@
       <router-view/>
     </v-content>
     <v-footer height="auto" class="white pa-3 app--footer">
-      <span class="caption">Copyright &copy; {{ new Date().getFullYear() }} The Apache Software Foundation. </span>
+      <span class="caption">Dubbo Admin</span>
       <v-spacer></v-spacer>
-      <span class="caption mr-1"> Make With Love </span>
-      <v-icon color="pink" small>favorite</v-icon>
+      <span class="caption mr-1">Copyright &copy; {{ new Date().getFullYear() }} The Apache Software Foundation.</span>
     </v-footer>
   </v-app>
 </template>
