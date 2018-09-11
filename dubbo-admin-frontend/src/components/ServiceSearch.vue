@@ -59,21 +59,34 @@
       <!--<h3>Search Result</h3>-->
     <!--</v-flex>-->
     <v-flex lg12>
-      <v-toolbar class="elevation-1" flat color="white">
-        <v-toolbar-title>Search Result</v-toolbar-title>
-      </v-toolbar>
-      <v-data-table
-        class="elevation-1"
-        :headers="headers"
-        :items="services"
-      >
-        <template slot="items" slot-scope="props">
-          <td>{{props.item.serviceName}}</td>
-          <td>{{props.item.group}}</td>
-          <td>{{props.item.appName}}</td>
-          <td><v-btn small color='primary' :href='getHref(props.item.serviceName, props.item.appName)'>Detail</v-btn></td>
+      <v-card>
+        <v-toolbar card dense color="transparent">
+          <v-toolbar-title><h4>Search Result</h4></v-toolbar-title>
+          <v-spacer></v-spacer>
+          <v-btn icon>
+            <v-icon>more_vert</v-icon>
+          </v-btn>
+        </v-toolbar>
+      <v-divider></v-divider>
+      <v-card-text class="pa-0">
+        <template>
+          <v-data-table
+            hide-actions
+            class="elevation-0 table-striped"
+            :headers="headers"
+            :items="services"
+          >
+            <template slot="items" slot-scope="props">
+              <td>{{props.item.serviceName}}</td>
+              <td>{{props.item.group}}</td>
+              <td>{{props.item.appName}}</td>
+              <td><v-btn small color='primary' :href='getHref(props.item.serviceName, props.item.appName)'>Detail</v-btn></td>
+            </template>
+          </v-data-table>
         </template>
-      </v-data-table>
+        <v-divider></v-divider>
+      </v-card-text>
+      </v-card>
     </v-flex>
   </v-container>
 </template>
