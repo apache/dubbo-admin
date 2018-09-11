@@ -20,6 +20,7 @@ import Router from 'vue-router'
 import ServiceSearch from '@/components/ServiceSearch'
 import ServiceDetail from '@/components/ServiceDetail'
 import RoutingRule from '@/components/RoutingRule'
+import LoadBalance from '@/components/LoadBalance'
 
 Vue.use(Router)
 
@@ -39,6 +40,11 @@ export default new Router({
       path: '/routingRule',
       name: 'RoutingRule',
       component: RoutingRule
+    },
+    {
+      path: '/governance/loadbalance',
+      name: 'LoadBalance',
+      component: LoadBalance
     }
   ]
 })
