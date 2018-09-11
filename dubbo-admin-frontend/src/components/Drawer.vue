@@ -16,9 +16,16 @@
   -->
 
 <template>
-  <v-navigation-drawer v-model="drawer" fixed app>
+  <v-navigation-drawer
+    id="appDrawer"
+    :mini-variant.sync="mini"
+    fixed
+    :dark="$vuetify.dark"
+    app
+    v-model="drawer"
+  >
 
-    <v-toolbar color="primary">
+    <v-toolbar color="primary darken-1" dark>
       <img src="@/assets/logo.png" width="24" height="24"/>
       <v-toolbar-title class="ml-0 pl-3">
         <span class="hidden-sm-and-down white--text">Dubbo Admin</span>
@@ -26,63 +33,53 @@
     </v-toolbar>
 
     <v-list>
-      <v-list-tile href="/#/service">
-        <v-list-tile-action>
-          <v-icon>search</v-icon>
-        </v-list-tile-action>
-        <v-list-tile-title>Service Search</v-list-tile-title>
-      </v-list-tile>
+      <template v-for="(item, i) in menus">
+        <v-list-group v-if="item.items" :key="i" :group="item.group" :prepend-icon="item.icon" no-action>
+          <v-list-tile slot="activator" ripple>
+            <v-list-tile-content>
+              <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+            </v-list-tile-content>
+          </v-list-tile>
 
-      <v-list-group prepend-icon="edit" value="true" no-action>
-        <v-list-tile slot="activator">
-          <v-list-tile-title>Service Governance</v-list-tile-title>
-        </v-list-tile>
-        <v-list-tile href="/#/routingRule">
-          <v-list-tile-title>Routing Rule</v-list-tile-title>
-        </v-list-tile>
-        <v-list-tile>
-          <v-list-tile-title>Dynamic Config</v-list-tile-title>
-        </v-list-tile>
-        <v-list-tile>
-          <v-list-tile-title>Access Control</v-list-tile-title>
-        </v-list-tile>
-        <v-list-tile>
-          <v-list-tile-title>Weight Adjust</v-list-tile-title>
-        </v-list-tile>
-        <v-list-tile>
-          <v-list-tile-title>Load Balance</v-list-tile-title>
-        </v-list-tile>
-      </v-list-group>
+          <template v-for="(subItem, i) in item.items">
+            <v-list-tile :key="i" :to="subItem.path" ripple>
+              <v-list-tile-content>
+                <v-list-tile-title>{{ subItem.title }}</v-list-tile-title>
+              </v-list-tile-content>
+            </v-list-tile>
+          </template>
+        </v-list-group>
 
-      <v-list-tile>
-        <v-list-tile-action>
-          <v-icon>computer</v-icon>
-        </v-list-tile-action>
-        <v-list-tile-title>QoS</v-list-tile-title>
-      </v-list-tile>
-
-      <v-list-group prepend-icon="info" value="true" no-action>
-        <v-list-tile slot="activator">
-          <v-list-tile-title>Service Info</v-list-tile-title>
+        <v-list-tile v-else :key="item.title" :to="item.path" ripple="ripple">
+          <v-list-tile-action>
+            <v-icon>{{ item.icon }}</v-icon>
+          </v-list-tile-action>
+          <v-list-tile-content>{{ item.title }}</v-list-tile-content>
         </v-list-tile>
-        <v-list-tile>
-          <v-list-tile-title>Version</v-list-tile-title>
-        </v-list-tile>
-      </v-list-group>
+      </template>
     </v-list>
   </v-navigation-drawer>
 </template>
 
 <script>
+  import menu from '@/api/menu'
+
   export default {
     name: 'drawer',
     data: () => ({
-      drawer: true
+      mini: false,
+      drawer: true,
+      menus: menu
     }),
     created () {
       window.getApp.$on('DRAWER_TOGGLED', () => {
         this.drawer = (!this.drawer)
       })
+    },
+    computed: {
+      sideToolbarColor () {
+        return this.$vuetify.options.extra.sideNav
+      }
     }
   }
 </script>
