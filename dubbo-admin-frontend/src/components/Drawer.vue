@@ -32,9 +32,9 @@
       </v-toolbar-title>
     </v-toolbar>
 
-    <v-list>
+    <v-list expand>
       <template v-for="(item, i) in menus">
-        <v-list-group v-if="item.items" :key="i" :group="item.group" :prepend-icon="item.icon" no-action>
+        <v-list-group v-if="item.items" :group="item.group" :prepend-icon="item.icon" no-action>
           <v-list-tile slot="activator" ripple>
             <v-list-tile-content>
               <v-list-tile-title>{{ item.title }}</v-list-tile-title>
@@ -42,7 +42,7 @@
           </v-list-tile>
 
           <template v-for="(subItem, i) in item.items">
-            <v-list-tile :key="i" :to="subItem.path" ripple>
+            <v-list-tile :to="subItem.path" ripple>
               <v-list-tile-content>
                 <v-list-tile-title>{{ subItem.title }}</v-list-tile-title>
               </v-list-tile-content>
@@ -50,7 +50,7 @@
           </template>
         </v-list-group>
 
-        <v-list-tile v-else :key="item.title" :to="item.path" ripple="ripple">
+        <v-list-tile v-else :key="item.title" :to="item.path" ripple>
           <v-list-tile-action>
             <v-icon>{{ item.icon }}</v-icon>
           </v-list-tile-action>
