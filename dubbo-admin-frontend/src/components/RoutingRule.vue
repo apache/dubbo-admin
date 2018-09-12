@@ -33,20 +33,23 @@
 
     <v-flex lg12>
       <v-card>
-        <v-toolbar card dense color="transparent">
-          <v-toolbar-title><h4>Search Result</h4></v-toolbar-title>
+        <v-toolbar flat color="transparent" class="elevation-0">
+          <v-toolbar-title><span class="headline">Search Result</span></v-toolbar-title>
+          <v-divider
+            class="mx-2"
+            inset
+            vertical
+          ></v-divider>
           <v-spacer></v-spacer>
           <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">CREATE</v-btn>
         </v-toolbar>
-
-        <v-divider></v-divider>
 
         <v-card-text class="pa-0">
           <v-data-table
             :headers="headers"
             :items="routingRules"
             hide-actions
-            class="elevation-1"
+            class="elevation-0"
           >
             <template slot="items" slot-scope="props">
               <td>{{ props.item.rule }}</td>
