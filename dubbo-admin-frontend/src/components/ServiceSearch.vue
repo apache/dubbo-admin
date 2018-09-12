@@ -24,7 +24,8 @@
             <v-form>
               <v-layout row wrap>
                   <v-text-field label="Search dubbo service"
-                                v-bind:suffix="queryBy"
+                                :hint="hint"
+                                :suffix="queryBy"
                                 v-model="filter"></v-text-field>
 
                   <v-menu bottom left class="hidden-xs-only">
@@ -90,9 +91,9 @@
   export default {
     data: () => ({
       items: [
-        {title: 'service name'},
-        {title: 'IP'},
-        {title: 'application'}
+        {id: 0, title: 'service name'},
+        {id: 1, title: 'IP'},
+        {id: 2, title: 'application'}
       ],
       selected: 0,
       services: [],
@@ -123,6 +124,15 @@
     computed: {
       queryBy () {
         return 'by ' + this.items[this.selected].title
+      },
+      hint () {
+        if (this.selected === 0) {
+          return 'Full qualified class name with service version, e.g. org.apache.dubbo.HelloService:1.0.0'
+        } else if (this.selected === 1) {
+          return 'Find all services provided by the target server on the specified IP address'
+        } else if (this.selected === 2) {
+          return 'Input an application name to find all services provided by one particular application.'
+        }
       }
     },
     methods: {
