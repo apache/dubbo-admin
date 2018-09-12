@@ -65,6 +65,59 @@ public class RoutesController {
 
     }
 
+    @RequestMapping("/all")
+    public List<Route> allRoutes(@RequestParam(required = false) String serviceName,
+                                 @RequestParam(required = false) String app) {
+        List<Route> routes = null;
+        if (app != null) {
+           // app scope in 2.7
+        }
+        if (serviceName != null) {
+            routes = routeService.findByService(serviceName);
+        }
+        if (serviceName == null && app == null) {
+            // TODO throw exception
+        }
+        //no support for findAll and findByaddress
+        return routes;
+    }
+
+    @RequestMapping("/detail")
+    public Route routeDetail(@RequestParam long id) {
+        Route route = routeService.findRoute(id);
+        if (route == null) {
+            // TODO throw exception
+        }
+        return route;
+    }
+
+    @RequestMapping("/delete")
+    public boolean deleteRoute(@RequestParam long id) {
+        routeService.deleteRoute(id);
+        return true;
+    }
+
+    @RequestMapping("/edit")
+    public Route editRule(@RequestParam long id) {
+        Route route = routeService.findRoute(id);
+        if (route == null) {
+            // TODO throw exception
+        }
+        return route;
+    }
+
+    @RequestMapping("/enable")
+    public boolean enableRoute(@RequestParam long id) {
+        routeService.enableRoute(id);
+        return true;
+    }
+
+    @RequestMapping("/disable")
+    public boolean disableRoute(@RequestParam long id) {
+        routeService.disableRoute(id);
+        return true;
+    }
+
     private Object getParameter(Map<String, Object> result, String key, Object defaultValue) {
         if (result.get(key) != null) {
             return result.get(key);
