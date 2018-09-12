@@ -100,7 +100,7 @@
       filter: '',
       headers: [
         {
-          text: 'Service',
+          text: 'Service Name',
           value: 'service',
           align: 'left'
         },
