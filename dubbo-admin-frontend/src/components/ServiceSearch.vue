@@ -56,13 +56,13 @@
     <v-flex lg12>
       <v-card>
         <v-toolbar card dense color="transparent">
-          <v-toolbar-title><h4>Search Result</h4></v-toolbar-title>
+          <v-toolbar-title><span class="headline">Search Result</span></v-toolbar-title>
           <v-spacer></v-spacer>
           <v-btn icon>
             <v-icon>more_vert</v-icon>
           </v-btn>
         </v-toolbar>
-      <v-divider></v-divider>
+
       <v-card-text class="pa-0">
         <template>
           <v-data-table
