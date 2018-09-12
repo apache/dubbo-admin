@@ -57,33 +57,12 @@
               <td class="text-xs-left">{{ props.item.priority }}</td>
               <td class="text-xs-left">{{ props.item.status }}</td>
               <td class="justify-center px-0">
-                <v-icon
-                  small
-                  class="mr-2"
-                  @click="deleteItem(props.item)"
-                >
-                  visibility
-                </v-icon>
-                <v-icon
-                  small
-                  class="mr-2"
-                  @click="editItem(props.item)"
-                >
-                  edit
-                </v-icon>
-                <v-icon
-                  small
-                  class="mr-2"
-                  @click="editItem(props.item)"
-                >
-                  block
-                </v-icon>
-                <v-icon
-                  small
-                  @click="deleteItem(props.item)"
-                >
-                  delete
-                </v-icon>
+                <v-tooltip bottom v-for="op in operations">
+                  <v-icon small class="mr-2" slot="activator" @click="op.callback">
+                    {{op.icon}}
+                  </v-icon>
+                  <span>{{op.tooltip}}</span>
+                </v-tooltip>
               </td>
             </template>
           </v-data-table>
@@ -136,6 +115,11 @@
       application: '',
       service: '',
       height: 0,
+      operations: [
+        {icon: 'visibility', callback: 'viewItem(props.item)', tooltip: 'View'},
+        {icon: 'edit', callback: 'editItem(props.item)', tooltip: 'Edit'},
+        {icon: 'delete', callback: 'deleteItem(props.item)', tooltip: 'Delete'}
+      ],
       routingRules: [
         {
           id: 0,
