@@ -17,70 +17,77 @@
 
 <template>
   <v-container grid-list-xl fluid >
-    <div>
       <v-layout row wrap>
         <v-flex xs12 >
-          <v-card flat>
+          <v-card flat color="transparent">
             <v-card-text>
               <v-layout row wrap >
                 <v-text-field label="Search dubbo service"
-                              v-model="filter"></v-text-field>
-                <v-btn @click="submit" color="primary" >Search</v-btn>
+                              v-model="filter" clearable></v-text-field>
+                <v-btn @click="submit" color="primary" large>Search</v-btn>
               </v-layout>
-
             </v-card-text>
-
           </v-card>
         </v-flex>
       </v-layout>
-      <v-toolbar class="elevation-1" flat color="white">
-        <v-toolbar-title>Search Result</v-toolbar-title>
-        <v-spacer></v-spacer>
-        <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">CREATE</v-btn>
-      </v-toolbar>
-      <v-data-table
-        :headers="headers"
-        :items="routingRules"
-        hide-actions
-        class="elevation-1"
-      >
-        <template slot="items" slot-scope="props">
-          <td>{{ props.item.rule }}</td>
-          <td class="text-xs-left">{{ props.item.service }}</td>
-          <td class="text-xs-left">{{ props.item.priority }}</td>
-          <td class="text-xs-left">{{ props.item.status }}</td>
-          <td class="justify-center px-0">
-            <v-icon
-              small
-              class="mr-2"
-              @click="deleteItem(props.item)"
-            >
-              visibility
-            </v-icon>
-            <v-icon
-              small
-              class="mr-2"
-              @click="editItem(props.item)"
-            >
-              edit
-            </v-icon>
-            <v-icon
-              small
-              class="mr-2"
-              @click="editItem(props.item)"
-            >
-              block
-            </v-icon>
-            <v-icon
-              small
-              @click="deleteItem(props.item)"
-            >
-              delete
-            </v-icon>
-          </td>
-        </template>
-      </v-data-table>
-    </div>
+
+    <v-flex lg12>
+      <v-card>
+        <v-toolbar card dense color="transparent">
+          <v-toolbar-title><h4>Search Result</h4></v-toolbar-title>
+          <v-spacer></v-spacer>
+          <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">CREATE</v-btn>
+        </v-toolbar>
+
+        <v-divider></v-divider>
+
+        <v-card-text class="pa-0">
+          <v-data-table
+            :headers="headers"
+            :items="routingRules"
+            hide-actions
+            class="elevation-1"
+          >
+            <template slot="items" slot-scope="props">
+              <td>{{ props.item.rule }}</td>
+              <td class="text-xs-left">{{ props.item.service }}</td>
+              <td class="text-xs-left">{{ props.item.priority }}</td>
+              <td class="text-xs-left">{{ props.item.status }}</td>
+              <td class="justify-center px-0">
+                <v-icon
+                  small
+                  class="mr-2"
+                  @click="deleteItem(props.item)"
+                >
+                  visibility
+                </v-icon>
+                <v-icon
+                  small
+                  class="mr-2"
+                  @click="editItem(props.item)"
+                >
+                  edit
+                </v-icon>
+                <v-icon
+                  small
+                  class="mr-2"
+                  @click="editItem(props.item)"
+                >
+                  block
+                </v-icon>
+                <v-icon
+                  small
+                  @click="deleteItem(props.item)"
+                >
+                  delete
+                </v-icon>
+              </td>
+            </template>
+          </v-data-table>
+        </v-card-text>
+      </v-card>
+    </v-flex>
+
     <v-dialog   v-model="dialog" width="450px" persistent >
       <v-card>
         <v-card-title class="justify-center">
