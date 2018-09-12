@@ -46,7 +46,7 @@
                       </v-list-tile>
                     </v-list>
                   </v-menu>
-                  <v-btn @click="submit" color="primary"  >Search</v-btn>
+                  <v-btn @click="submit" color="primary" large>Search</v-btn>
                 <!--</v-flex>-->
               </v-layout>
             </v-form>
