@@ -18,18 +18,15 @@
 <template>
   <v-container id="search" grid-list-xl fluid >
     <v-layout row wrap>
-      <v-flex xs12 >
+      <v-flex lg12>
         <v-card flat color="transparent">
           <v-card-text>
             <v-form>
               <v-layout row wrap>
-                <!--<v-flex xs10>-->
                   <v-text-field label="Search dubbo service"
                                 v-bind:suffix="queryBy"
                                 v-model="filter"></v-text-field>
-                <!--</v-flex>-->
 
-                <!--<v-flex xs2>-->
                   <v-menu bottom left class="hidden-xs-only">
                     <v-btn
                       slot="activator"
@@ -47,7 +44,6 @@
                     </v-list>
                   </v-menu>
                   <v-btn @click="submit" color="primary" large>Search</v-btn>
-                <!--</v-flex>-->
               </v-layout>
             </v-form>
 
@@ -55,9 +51,7 @@
         </v-card>
       </v-flex>
     </v-layout>
-    <!--<v-flex sm12>-->
-      <!--<h3>Search Result</h3>-->
-    <!--</v-flex>-->
+
     <v-flex lg12>
       <v-card>
         <v-toolbar card dense color="transparent">
