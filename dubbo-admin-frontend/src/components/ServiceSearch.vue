@@ -102,22 +102,22 @@
         {
           text: 'Service',
           value: 'service',
-          class: 'font-weight-black'
+          align: 'left'
         },
         {
           text: 'Group',
           value: 'group',
-          class: 'font-weight-black'
+          align: 'left'
         },
         {
           text: 'Application',
           value: 'application',
-          class: 'font-weight-black'
+          align: 'left'
         },
         {
           text: 'Operation',
           value: 'operation',
-          class: 'font-weight-black'
+          sortable: false
         }
       ]
     }),
