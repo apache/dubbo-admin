@@ -19,7 +19,7 @@
   <v-container id="search" grid-list-xl fluid >
     <v-layout row wrap>
       <v-flex xs12 >
-        <v-card flat>
+        <v-card flat color="transparent">
           <v-card-text>
             <v-form>
               <v-layout row wrap>
