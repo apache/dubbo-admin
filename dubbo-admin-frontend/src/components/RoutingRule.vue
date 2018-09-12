@@ -167,11 +167,13 @@
       headers: [
         {
           text: 'Rule Name',
-          value: 'rule'
+          value: 'rule',
+          align: 'left'
         },
         {
           text: 'Service Name',
-          value: 'service'
+          value: 'service',
+          align: 'left'
         },
         {
           text: 'Priority',
