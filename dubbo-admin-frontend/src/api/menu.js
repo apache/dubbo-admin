@@ -5,7 +5,7 @@ const Menu = [
     icon: 'edit',
     group: 'governance',
     items: [
-      {title: 'Routing Rule', path: '/routingRule'},
+      {title: 'Routing Rule', path: '/governance/routingRule'},
       {title: 'Dynamic Config', path: '/governance/config'},
       {title: 'Access Control', path: '/governance/access'},
       {title: 'Weight Adjust', path: '/governance/weight'},

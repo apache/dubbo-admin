@@ -37,7 +37,7 @@ export default new Router({
       component: ServiceDetail
     },
     {
-      path: '/routingRule',
+      path: '/governance/routingRule',
       name: 'RoutingRule',
       component: RoutingRule
     },
