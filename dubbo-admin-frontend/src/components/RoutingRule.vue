@@ -167,28 +167,26 @@
       headers: [
         {
           text: 'Rule Name',
-          value: 'rule',
-          class: 'font-weight-black'
+          value: 'rule'
         },
         {
           text: 'Service Name',
-          value: 'service',
-          class: 'font-weight-black'
+          value: 'service'
         },
         {
           text: 'Priority',
           value: 'priority',
-          class: 'font-weight-black'
+          sortable: false
         },
         {
           text: 'Status',
           value: 'status',
-          class: 'font-weight-black'
+          sortable: false
         },
         {
           text: 'Operation',
           value: 'operation',
-          class: 'font-weight-black'
+          sortable: false
         }
       ]
     }),
