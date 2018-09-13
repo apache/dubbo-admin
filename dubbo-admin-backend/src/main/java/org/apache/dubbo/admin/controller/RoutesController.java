@@ -106,15 +106,13 @@ public class RoutesController {
         return route;
     }
 
-    @RequestMapping("/enable")
-    public boolean enableRoute(@RequestParam long id) {
-        routeService.enableRoute(id);
-        return true;
-    }
-
-    @RequestMapping("/disable")
-    public boolean disableRoute(@RequestParam long id) {
-        routeService.disableRoute(id);
+    @RequestMapping("/changeStatus")
+    public boolean enableRoute(@RequestParam long id, @RequestParam boolean enabled) {
+        if (enabled) {
+            routeService.disableRoute(id);
+        } else {
+            routeService.enableRoute(id);
+        }
         return true;
     }
 
