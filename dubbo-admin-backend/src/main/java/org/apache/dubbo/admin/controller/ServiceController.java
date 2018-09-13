@@ -57,7 +57,7 @@ public class ServiceController {
         List<Provider> allProviders = providerService.findAll();
 
         List<ServiceDO> result = new ArrayList<>();
-        if (pattern.equals("App")) {
+        if (pattern.equals("application")) {
             for (Provider provider : allProviders) {
                 Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
                 String app = map.get(Constants.APPLICATION_KEY);
@@ -71,7 +71,7 @@ public class ServiceController {
                 }
             }
 
-        } else if (pattern.equals("Service")) {
+        } else if (pattern.equals("service name")) {
             for (Provider provider : allProviders) {
                 String service = provider.getService();
                 Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
@@ -85,7 +85,7 @@ public class ServiceController {
                 }
             }
 
-        } else if (pattern.equals("Ip")) {
+        } else if (pattern.equals("IP")) {
             for (Provider provider : allProviders) {
                 String address = provider.getAddress();
                 Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());

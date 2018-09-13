@@ -52,16 +52,16 @@
             class="elevation-0"
           >
             <template slot="items" slot-scope="props">
-              <td>{{ props.item.rule }}</td>
               <td class="text-xs-left">{{ props.item.service }}</td>
+              <td class="text-xs-left">{{ props.item.group }}</td>
               <td class="text-xs-left">{{ props.item.priority }}</td>
-              <td class="text-xs-left">{{ props.item.status }}</td>
+              <td class="text-xs-left">{{ props.item.enabled }}</td>
               <td class="justify-center px-0">
-                <v-tooltip bottom v-for="op in operations" :key="op.callback">
-                  <v-icon small class="mr-2" slot="activator" @click="op.callback">
+                <v-tooltip bottom v-for="op in operations" :key="op.id">
+                  <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon, props.item)">
                     {{op.icon}}
                   </v-icon>
-                  <span>{{op.tooltip}}</span>
+                  <span>{{op.tooltip(props.item)}}</span>
                 </v-tooltip>
               </td>
             </template>
@@ -70,7 +70,7 @@
       </v-card>
     </v-flex>
 
-    <v-dialog   v-model="dialog" full-width persistent>
+    <v-dialog   v-model="dialog" width="800px" persistent >
       <v-card>
         <v-card-title class="justify-center">
           <span class="headline">Create New Routing Rule</span>
@@ -94,11 +94,24 @@
                       :value="code"
                       :options="cmOption">
           </codemirror>
+          <codemirror v-model='ruleText' :placeholder='placeholder' :options="cmOption"></codemirror>
+
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="blue darken-1" flat @click.native="dialog = false">Close</v-btn>
           <v-btn color="blue darken-1" flat @click.native="dialog = false">Save</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    <v-dialog v-model="warn" persistent max-width="500px">
+      <v-card>
+        <v-card-title class="headline">{{this.warnTitle}}</v-card-title>
+        <v-card-text >{{this.warnText}}</v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="green darken-1" flat @click.native="warn = false">Disagree</v-btn>
+          <v-btn color="green darken-1" flat @click.native="deleteItem(currentId)">Agree</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -112,6 +125,7 @@
   import 'codemirror/mode/yaml/yaml.js'
   import 'codemirror/addon/display/autorefresh.js'
   import 'codemirror/addon/display/placeholder'
+  import {AXIOS} from './http-common'
   export default {
     components: {
       codemirror
@@ -121,13 +135,38 @@
       pattern: 'Service',
       filter: '',
       dialog: false,
+      warn: false,
       application: '',
       service: '',
+      ruleText: '',
+      warnTitle: '',
+      warnText: '',
+      currentId: 0,
       height: 0,
       operations: [
-        {icon: 'visibility', callback: 'viewItem(props.item)', tooltip: 'View'},
-        {icon: 'edit', callback: 'editItem(props.item)', tooltip: 'Edit'},
-        {icon: 'delete', callback: 'deleteItem(props.item)', tooltip: 'Delete'}
+        {id: 0,
+          icon: 'visibility',
+          tooltip: function (item) {
+            return 'View'
+          }},
+        {id: 1,
+          icon: 'edit',
+          tooltip: function (item) {
+            return 'Edit'
+          }},
+        {id: 2,
+          icon: 'block',
+          tooltip: function (item) {
+            if (item.enabled === true) {
+              return 'Disable'
+            }
+            return 'Enable'
+          }},
+        {id: 3,
+          icon: 'delete',
+          tooltip: function (item) {
+            return 'Delete'
+          }}
       ],
       routingRules: [
         {
@@ -160,14 +199,15 @@
       },
       headers: [
         {
-          text: 'Rule Name',
-          value: 'rule',
-          align: 'left'
-        },
-        {
           text: 'Service Name',
           value: 'service',
           align: 'left'
+        },
+        {
+          text: 'Group',
+          value: 'group',
+          align: 'left'
+
         },
         {
           text: 'Priority',
@@ -175,8 +215,8 @@
           sortable: false
         },
         {
-          text: 'Status',
-          value: 'status',
+          text: 'Enabled',
+          value: 'enabled',
           sortable: false
         },
         {
@@ -188,19 +228,61 @@
     }),
     methods: {
       submit: function () {
-        console.log('submit')
+        this.search(this.filter, true)
       },
+      search: function (filter, rewrite) {
+        AXIOS.get('/routes/all?serviceName=' + filter)
+          .then(response => {
+            this.routingRules = response.data
+            if (rewrite) {
+              this.$router.push({path: 'routingRule', query: {serviceName: filter}})
+            }
+          })
+      },
+
       openDialog: function () {
         this.dialog = true
       },
-      enable: function (status) {
-        if (status === 'enabled') {
-          return 'disable'
+      itemOperation: function (icon, item) {
+        switch (icon) {
+          case 'visibility':
+            AXIOS.get('/routes/detail?id=' + item.id)
+              .then(response => {
+                let route = response.data
+                this.service = route.service
+                this.ruleText = route.rule
+                this.cmOption.readOnly = true
+                this.dialog = true
+              })
+            break
+          case 'edit':
+            AXIOS.get('/routes/edit?id=' + item.id)
+              .then(response => {
+                console.log('edit')
+                this.dialog = true
+              })
+            break
+          case 'block':
+            AXIOS.get('/routes/changeStatus?id=' + item.id)
+              .then(response => {
+                this.dialog = true
+              })
+            break
+          case 'delete':
+            this.warnTitle = ' Are you sure to Delete Routing Rule'
+            this.warnText = 'serviceName: ' + item.service
+            this.warn = true
+            this.currentId = item.id
         }
-        return 'enable'
       },
       setHeight: function () {
         this.height = window.innerHeight * 0.5
+      },
+      deleteItem: function (id) {
+        AXIOS.get('/routes/delete?id=' + id)
+          .then(response => {
+            this.warn = false
+          })
       }
     },
     computed: {
@@ -210,6 +292,19 @@
     },
     created () {
       this.setHeight()
+    },
+    mounted: function () {
+      let query = this.$route.query
+      let service = ''
+      Object.keys(query).forEach(function (key) {
+        if (key === 'serviceName') {
+          service = query[key]
+        }
+      })
+      if (service !== '') {
+        this.filter = service
+        this.search(service, false)
+      }
     }
 
   }

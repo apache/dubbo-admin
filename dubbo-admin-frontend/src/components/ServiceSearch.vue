@@ -166,6 +166,14 @@
         }
       })
       if (filter !== '' && pattern !== '') {
+        this.filter = filter
+        if (pattern === 'service name') {
+          this.selected = 0
+        } else if (pattern === 'application') {
+          this.selected = 2
+        } else if (pattern === 'IP') {
+          this.selected = 1
+        }
         this.search(filter, pattern, false)
       }
     }
