@@ -91,10 +91,9 @@
 
           <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
           <codemirror ref="myCm"
-                      :value="code"
+                      v-model="ruleText"
                       :options="cmOption">
           </codemirror>
-          <codemirror v-model='ruleText' :placeholder='placeholder' :options="cmOption"></codemirror>
 
         </v-card-text>
         <v-card-actions>
@@ -138,7 +137,6 @@
       warn: false,
       application: '',
       service: '',
-      ruleText: '',
       warnTitle: '',
       warnText: '',
       currentId: 0,
@@ -177,7 +175,7 @@
           status: 'enabled'
         }
       ],
-      code: '%yaml 1.2\n' +
+      ruleText: '%yaml 1.2\n' +
         '---\n' +
         'enable: true/false\n' +
         'priority:\n' +
