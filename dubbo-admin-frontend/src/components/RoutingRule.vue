@@ -70,23 +70,30 @@
       </v-card>
     </v-flex>
 
-    <v-dialog   v-model="dialog" width="450px" persistent >
+    <v-dialog   v-model="dialog" full-width persistent>
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">Create new Routing rule</span>
+          <span class="headline">Create New Routing Rule</span>
         </v-card-title>
         <v-card-text >
           <v-text-field
-            placeholder="service:version, version is optional"
+            label="Service Unique ID"
+            hint="A service ID in form of service:version, version is optional"
             required
             v-model="service"
           ></v-text-field>
           <v-text-field
-            placeholder="application name"
+            label="Application Name"
+            hint="Application name the service belongs to"
             required
             v-model="application"
           ></v-text-field>
-          <codemirror :placeholder='placeholder' :options="cmOption"></codemirror>
+
+          <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
+          <codemirror ref="myCm"
+                      :value="code"
+                      :options="cmOption">
+          </codemirror>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -101,7 +108,9 @@
 <script>
   import { codemirror } from 'vue-codemirror'
   import 'codemirror/lib/codemirror.css'
+  import 'codemirror/theme/paraiso-light.css'
   import 'codemirror/mode/yaml/yaml.js'
+  import 'codemirror/addon/display/autorefresh.js'
   import 'codemirror/addon/display/placeholder'
   export default {
     components: {
@@ -129,7 +138,7 @@
           status: 'enabled'
         }
       ],
-      placeholder: '%yaml 1.2\n' +
+      code: '%yaml 1.2\n' +
         '---\n' +
         'enable: true/false\n' +
         'priority:\n' +
@@ -142,11 +151,12 @@
         '  - host != 10.20.153.10,10.20.153.11 =>\n' +
         '  - host = 10.20.153.10,10.20.153.11 =>\n' +
         '  - application != kylin => host != 172.22.3.95,172.22.3.96\n' +
-        '  - method = find*,list*,get*,is* => host = 172.22.3.94,172.22.3.95,172.22.3.96\n' +
-        '...\n',
+        '  - method = find*,list*,get*,is* => host = 172.22.3.94,172.22.3.95,172.22.3.96',
       cmOption: {
-        lineNumbers: true,
-        mode: 'text/x-yaml'
+        theme: 'paraiso-light',
+        autoRefresh: true,
+        mode: 'text/x-yaml',
+        line: true
       },
       headers: [
         {
@@ -193,7 +203,11 @@
         this.height = window.innerHeight * 0.5
       }
     },
-
+    computed: {
+      codemirror () {
+        return this.$refs.myCm.codemirror
+      }
+    },
     created () {
       this.setHeight()
     }
