@@ -57,7 +57,7 @@
               <td class="text-xs-left">{{ props.item.priority }}</td>
               <td class="text-xs-left">{{ props.item.status }}</td>
               <td class="justify-center px-0">
-                <v-tooltip bottom v-for="op in operations">
+                <v-tooltip bottom v-for="op in operations" :key="op.callback">
                   <v-icon small class="mr-2" slot="activator" @click="op.callback">
                     {{op.icon}}
                   </v-icon>
