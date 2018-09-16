@@ -58,8 +58,8 @@
               <td class="text-xs-left">{{ props.item.enabled }}</td>
               <td class="justify-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
-                  <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon, props.item)">
-                    {{op.icon}}
+                  <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon(props.item), props.item)">
+                    {{op.icon(props.item)}}
                   </v-icon>
                   <span>{{op.tooltip(props.item)}}</span>
                 </v-tooltip>
@@ -98,11 +98,12 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="blue darken-1" flat @click.native="dialog = false">Close</v-btn>
-          <v-btn color="blue darken-1" flat @click.native="dialog = false">Save</v-btn>
+          <v-btn color="blue darken-1" flat @click.native="closeDialog">Close</v-btn>
+          <v-btn color="blue darken-1" flat @click.native="saveItem">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
+
     <v-dialog v-model="warn" persistent max-width="500px">
       <v-card>
         <v-card-title class="headline">{{this.warnTitle}}</v-card-title>
@@ -110,10 +111,11 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="green darken-1" flat @click.native="warn = false">Disagree</v-btn>
-          <v-btn color="green darken-1" flat @click.native="deleteItem(currentId)">Agree</v-btn>
+          <v-btn color="green darken-1" flat @click.native="deleteItem(warnStatus)">Agree</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
+
   </v-container>
 
 </template>
@@ -124,6 +126,7 @@
   import 'codemirror/mode/yaml/yaml.js'
   import 'codemirror/addon/display/autorefresh.js'
   import 'codemirror/addon/display/placeholder'
+  import yaml from 'js-yaml'
   import {AXIOS} from './http-common'
   export default {
     components: {
@@ -139,21 +142,30 @@
       service: '',
       warnTitle: '',
       warnText: '',
-      currentId: 0,
+      warnStatus: {},
       height: 0,
       operations: [
         {id: 0,
-          icon: 'visibility',
+          icon: function (item) {
+            return 'visibility'
+          },
           tooltip: function (item) {
             return 'View'
           }},
         {id: 1,
-          icon: 'edit',
+          icon: function (item) {
+            return 'edit'
+          },
           tooltip: function (item) {
             return 'Edit'
           }},
         {id: 2,
-          icon: 'block',
+          icon: function (item) {
+            if (item.enabled) {
+              return 'block'
+            }
+            return 'check_circle_outline'
+          },
           tooltip: function (item) {
             if (item.enabled === true) {
               return 'Disable'
@@ -161,7 +173,9 @@
             return 'Enable'
           }},
         {id: 3,
-          icon: 'delete',
+          icon: function (item) {
+            return 'delete'
+          },
           tooltip: function (item) {
             return 'Delete'
           }}
@@ -175,7 +189,7 @@
           status: 'enabled'
         }
       ],
-      ruleText: '%yaml 1.2\n' +
+      template: '%yaml 1.2\n' +
         '---\n' +
         'enable: true/false\n' +
         'priority:\n' +
@@ -189,9 +203,11 @@
         '  - host = 10.20.153.10,10.20.153.11 =>\n' +
         '  - application != kylin => host != 172.22.3.95,172.22.3.96\n' +
         '  - method = find*,list*,get*,is* => host = 172.22.3.94,172.22.3.95,172.22.3.96',
+      ruleText: '',
       cmOption: {
         theme: 'paraiso-light',
         autoRefresh: true,
+        readOnly: false,
         mode: 'text/x-yaml',
         line: true
       },
@@ -238,6 +254,11 @@
           })
       },
 
+      closeDialog: function () {
+        this.ruleText = this.template
+        this.dialog = false
+        this.cmOption.readOnly = false
+      },
       openDialog: function () {
         this.dialog = true
       },
@@ -247,6 +268,7 @@
             AXIOS.get('/routes/detail?id=' + item.id)
               .then(response => {
                 let route = response.data
+                let result = yaml.safeDump(route)
                 this.service = route.service
                 this.ruleText = route.rule
                 this.cmOption.readOnly = true
@@ -256,31 +278,47 @@
           case 'edit':
             AXIOS.get('/routes/edit?id=' + item.id)
               .then(response => {
-                console.log('edit')
+                let route = response.data
+                this.service = route.service
+                this.ruleText = route.rule
+                this.cmOption.readOnly = false
                 this.dialog = true
               })
             break
           case 'block':
-            AXIOS.get('/routes/changeStatus?id=' + item.id)
-              .then(response => {
-                this.dialog = true
-              })
+          case 'check_circle_outline':
+            this.warnTitle = ' Are you sure to ' + icon + ' Routing Rule'
+            this.warnText = 'serviceName: ' + item.service
+            this.warn = true
+            this.warnStatus.operation = 'block'
+            this.warnStatus.id = item.id
+            this.warnStatus.enabled = item.enabled
             break
           case 'delete':
             this.warnTitle = ' Are you sure to Delete Routing Rule'
             this.warnText = 'serviceName: ' + item.service
             this.warn = true
-            this.currentId = item.id
+            this.warnStatus.operation = 'delete'
+            this.warnStatus.id = item.id
         }
       },
       setHeight: function () {
         this.height = window.innerHeight * 0.5
       },
-      deleteItem: function (id) {
-        AXIOS.get('/routes/delete?id=' + id)
-          .then(response => {
-            this.warn = false
-          })
+      deleteItem: function (warnStatus) {
+        if (warnStatus.operation === 'delete') {
+          AXIOS.get('/routes/delete?id=' + warnStatus.id)
+            .then(response => {
+              this.warn = false
+              this.search(this.filter, false)
+            })
+        } else if (warnStatus.operation === 'block') {
+          AXIOS.get('/routes/changeStatus?id=' + warnStatus.id + '&enabled=' + warnStatus.enabled)
+            .then(response => {
+              this.warn = false
+              this.search(this.filter, false)
+            })
+        }
       }
     },
     computed: {
@@ -292,6 +330,7 @@
       this.setHeight()
     },
     mounted: function () {
+      this.ruleText = this.template
       let query = this.$route.query
       let service = ''
       Object.keys(query).forEach(function (key) {

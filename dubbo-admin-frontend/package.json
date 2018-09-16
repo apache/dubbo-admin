@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "axios": "^0.18.0",
+    "js-yaml": "^3.12.0",
     "vue": "^2.5.2",
     "vue-codemirror": "^4.0.5",
     "vue-router": "^3.0.1",

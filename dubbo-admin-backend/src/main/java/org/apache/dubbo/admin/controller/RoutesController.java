@@ -65,6 +65,30 @@ public class RoutesController {
 
     }
 
+    @RequestMapping("/update")
+    public void updateRule(@RequestParam Long id, @RequestParam String rule) {
+        Route route = routeService.findRoute(id);
+        if (route == null) {
+            //TODO Exception
+        }
+        Yaml yaml = new Yaml();
+        Map<String, Object> result = yaml.load(rule);
+        List<String> conditions = (List)result.get("conditions");
+        for (String condition : conditions) {
+            Route newRoute = new Route();
+            newRoute.setService(route.getService());
+            newRoute.setVersion(route.getVersion());
+            newRoute.setEnabled((boolean)getParameter(result, "enabled", true));
+            newRoute.setForce((boolean)getParameter(result, "force", false));
+            newRoute.setGroup((String)getParameter(result, "group", null));
+            newRoute.setDynamic((boolean)getParameter(result, "dynamic", false));
+            newRoute.setRuntime((boolean)getParameter(result, "runtime", false));
+            newRoute.setPriority((int)getParameter(result, "priority", 0));
+            newRoute.setRule(condition);
+            routeService.updateRoute(newRoute);
+        }
+    }
+
     @RequestMapping("/all")
     public List<Route> allRoutes(@RequestParam(required = false) String serviceName,
                                  @RequestParam(required = false) String app) {
@@ -107,7 +131,7 @@ public class RoutesController {
     }
 
     @RequestMapping("/changeStatus")
-    public boolean enableRoute(@RequestParam long id, @RequestParam boolean enabled) {
+    public boolean enableRoute(@RequestParam Long id, @RequestParam boolean enabled) {
         if (enabled) {
             routeService.disableRoute(id);
         } else {
