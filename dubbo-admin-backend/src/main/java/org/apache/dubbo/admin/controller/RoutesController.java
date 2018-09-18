@@ -4,9 +4,7 @@ import org.apache.dubbo.admin.governance.service.ProviderService;
 import org.apache.dubbo.admin.governance.service.RouteService;
 import org.apache.dubbo.admin.registry.common.domain.Route;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.yaml.snakeyaml.Yaml;
 
 import java.util.List;
@@ -22,13 +20,14 @@ public class RoutesController {
     private ProviderService providerService;
 
     @RequestMapping("/create")
-    public void createRule(@RequestParam(required = false) String serviceName,
+    public boolean createRule(@RequestParam(required = false) String serviceName,
                            @RequestParam(required = false) String app,
                            @RequestParam String rule) {
         if (serviceName == null && app == null) {
 
         }
         Yaml yaml = new Yaml();
+        rule = rule.replace("===", "\n");
         Map<String, Object> result = yaml.load(rule);
         if (serviceName != null) {
             result.put("scope", serviceName);
@@ -56,13 +55,12 @@ public class RoutesController {
                 routeService.createRoute(route);
             }
 
-
         } else {
             //new feature in 2.7
             result.put("scope", "application");
             result.put("appname", app);
         }
-
+        return true;
     }
 
     @RequestMapping("/update")
@@ -71,6 +69,7 @@ public class RoutesController {
         if (route == null) {
             //TODO Exception
         }
+        rule = rule.replace("===", "\n");
         Yaml yaml = new Yaml();
         Map<String, Object> result = yaml.load(rule);
         List<String> conditions = (List)result.get("conditions");
