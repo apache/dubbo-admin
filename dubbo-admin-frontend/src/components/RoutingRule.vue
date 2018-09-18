@@ -110,8 +110,8 @@
         <v-card-text >{{this.warnText}}</v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="green darken-1" flat @click.native="warn = false">Disagree</v-btn>
-          <v-btn color="green darken-1" flat @click.native="deleteItem(warnStatus)">Agree</v-btn>
+          <v-btn color="green darken-1" flat @click.native="closeWarn">CANCLE</v-btn>
+          <v-btn color="green darken-1" flat @click.native="deleteItem(warnStatus)">CONFIRM</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -134,6 +134,7 @@
     },
     data: () => ({
       dropdown_font: [ 'Service', 'App', 'IP' ],
+      ruleKeys: ['service', 'enabled', 'force', 'dynamic', 'runtime', 'group', 'version', 'rule', 'priority'],
       pattern: 'Service',
       filter: '',
       dialog: false,
@@ -181,20 +182,11 @@
           }}
       ],
       routingRules: [
-        {
-          id: 0,
-          rule: 'test',
-          service: 'com.alibaba.dubbo.com',
-          priority: 0,
-          status: 'enabled'
-        }
       ],
-      template: '%yaml 1.2\n' +
-        '---\n' +
+      template:
         'enable: true/false\n' +
         'priority:\n' +
         'runtime: false/true\n' +
-        'category: routers\n' +
         'force: true/false\n' +
         'dynamic: true/false\n' +
         'conditions:\n' +
@@ -253,14 +245,50 @@
             }
           })
       },
-
+      handleRule: function (route) {
+        let result = {}
+        let conditions = []
+        for (let property in route) {
+          if (this.ruleKeys.includes(property)) {
+            if (property === 'rule') {
+              conditions.push(route[property])
+            } else {
+              result[property] = route[property]
+            }
+          }
+        }
+        if (conditions.length > 0) {
+          result['conditions'] = conditions
+        }
+        return yaml.safeDump(result)
+      },
       closeDialog: function () {
         this.ruleText = this.template
+        this.service = ''
         this.dialog = false
         this.cmOption.readOnly = false
       },
       openDialog: function () {
         this.dialog = true
+      },
+      openWarn: function (title, text) {
+        this.warnTitle = title
+        this.warnText = text
+        this.warn = true
+      },
+      closeWarn: function () {
+        this.warnTitle = ''
+        this.warnText = ''
+        this.warn = false
+      },
+      saveItem: function () {
+        let text = this.ruleText.replace(/\n/g, '===')
+        AXIOS.get('/routes/create?serviceName=' + this.service + '&rule=' + text)
+          .then(response => {
+            if (response.data) {
+              this.search(this.filter, false)
+            }
+          })
       },
       itemOperation: function (icon, item) {
         switch (icon) {
@@ -268,9 +296,9 @@
             AXIOS.get('/routes/detail?id=' + item.id)
               .then(response => {
                 let route = response.data
-                let result = yaml.safeDump(route)
+                let result = this.handleRule(route)
                 this.service = route.service
-                this.ruleText = route.rule
+                this.ruleText = result
                 this.cmOption.readOnly = true
                 this.dialog = true
               })
@@ -279,25 +307,22 @@
             AXIOS.get('/routes/edit?id=' + item.id)
               .then(response => {
                 let route = response.data
+                let result = this.handleRule(route)
                 this.service = route.service
-                this.ruleText = route.rule
+                this.ruleText = result
                 this.cmOption.readOnly = false
                 this.dialog = true
               })
             break
           case 'block':
           case 'check_circle_outline':
-            this.warnTitle = ' Are you sure to ' + icon + ' Routing Rule'
-            this.warnText = 'serviceName: ' + item.service
-            this.warn = true
+            this.openWarn(' Are you sure to ' + icon + ' Routing Rule', 'serviceName: ' + item.service)
             this.warnStatus.operation = 'block'
             this.warnStatus.id = item.id
             this.warnStatus.enabled = item.enabled
             break
           case 'delete':
-            this.warnTitle = ' Are you sure to Delete Routing Rule'
-            this.warnText = 'serviceName: ' + item.service
-            this.warn = true
+            this.openWarn(' Are you sure to Delete Routing Rule', 'serviceName: ' + item.service)
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = item.id
         }

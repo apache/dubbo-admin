@@ -219,7 +219,7 @@ public class Route extends Entity {
     public URL toUrl() {
         return URL.valueOf(Constants.ROUTE_PROTOCOL + "://" + Constants.ANYHOST_VALUE + "/" + getService()
                 + "?" + Constants.CATEGORY_KEY + "=" + Constants.ROUTERS_CATEGORY
-                + "&router=condition&runtime=false&enabled=" + isEnabled() + "&priority=" + getPriority() + "&force=" + isForce() + "&dynamic=" + isDynamic()
+                + "&router=condition&runtime=" + isRuntime() + "&enabled=" + isEnabled() + "&priority=" + getPriority() + "&force=" + isForce() + "&dynamic=" + isDynamic()
                 + "&name=" + getName() + "&" + Constants.RULE_KEY + "=" + URL.encode(getRule())
                 + (getGroup() == null ? "" : "&" + Constants.GROUP_KEY + "=" + getGroup())
                 + (getVersion() == null ? "" : "&" + Constants.VERSION_KEY + "=" + getVersion()));
