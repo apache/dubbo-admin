@@ -20,6 +20,7 @@ import Router from 'vue-router'
 import ServiceSearch from '@/components/ServiceSearch'
 import ServiceDetail from '@/components/ServiceDetail'
 import RoutingRule from '@/components/RoutingRule'
+import AccessControl from '@/components/AccessControl'
 import LoadBalance from '@/components/LoadBalance'
 
 Vue.use(Router)
@@ -40,6 +41,11 @@ export default new Router({
       path: '/governance/routingRule',
       name: 'RoutingRule',
       component: RoutingRule
+    },
+    {
+      path: '/governance/accesses',
+      name: 'AccessControl',
+      component: AccessControl
     },
     {
       path: '/governance/loadbalance',

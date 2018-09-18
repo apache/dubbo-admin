@@ -7,7 +7,7 @@ const Menu = [
     items: [
       {title: 'Routing Rule', path: '/governance/routingRule'},
       {title: 'Dynamic Config', path: '/governance/config'},
-      {title: 'Access Control', path: '/governance/access'},
+      {title: 'Access Control', path: '/governance/accesses'},
       {title: 'Weight Adjust', path: '/governance/weight'},
       {title: 'Load Balance', path: '/governance/loadbalance'}
     ]
