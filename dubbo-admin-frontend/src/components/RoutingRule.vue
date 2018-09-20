@@ -282,11 +282,11 @@
         this.warn = false
       },
       saveItem: function () {
-        let text = this.ruleText.replace(/\n/g, '===')
+        let text = encodeURIComponent(this.ruleText)
         AXIOS.get('/routes/create?serviceName=' + this.service + '&rule=' + text)
           .then(response => {
             if (response.data) {
-              this.search(this.filter, false)
+              this.search(this.service, true)
             }
           })
       },
