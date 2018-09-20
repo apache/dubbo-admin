@@ -16,14 +16,22 @@
   -->
 
 <template>
-  <v-container grid-list-xl fluid>
-    <v-layout row wrap>
+  <v-container grid-list-xl
+               fluid>
+    <v-layout row
+              wrap>
       <v-flex xs12>
-        <v-card flat color="transparent">
+        <v-card flat
+                color="transparent">
           <v-card-text>
-            <v-layout row wrap>
-              <v-text-field label="Search dubbo service" v-model="filter" clearable></v-text-field>
-              <v-btn @click="submit" color="primary" large>Search</v-btn>
+            <v-layout row
+                      wrap>
+              <v-text-field label="Search Access Controls by service name"
+                            v-model="filter"
+                            clearable></v-text-field>
+              <v-btn @click="submit"
+                     color="primary"
+                     large>Search</v-btn>
             </v-layout>
           </v-card-text>
         </v-card>
@@ -32,31 +40,54 @@
 
     <v-flex lg12>
       <v-card>
-        <v-toolbar flat color="transparent" class="elevation-0">
+        <v-toolbar flat
+                   color="transparent"
+                   class="elevation-0">
           <v-toolbar-title>
             <span class="headline">Search Result</span>
           </v-toolbar-title>
-          <v-divider class="mx-2" inset vertical></v-divider>
           <v-spacer></v-spacer>
-          <v-btn :disabled="selected.length == 0" outline color="error" @click.stop="toDelete(selected)" class="mb-2">BATCH DELETE</v-btn>
-          <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">CREATE</v-btn>
+          <v-btn :disabled="selected.length == 0"
+                 outline
+                 color="error"
+                 @click.stop="toDelete(selected)"
+                 class="mb-2">BATCH DELETE</v-btn>
+          <v-btn outline
+                 color="primary"
+                 @click.stop="toCreate"
+                 class="mb-2">CREATE</v-btn>
         </v-toolbar>
 
         <v-card-text class="pa-0">
-          <v-data-table v-model="selected" :headers="headers" :items="accesses" hide-actions select-all class="elevation-0">
-            <template slot="items" slot-scope="props">
+          <v-data-table v-model="selected"
+                        :headers="headers"
+                        :items="accesses"
+                        hide-actions
+                        select-all
+                        class="elevation-0">
+            <template slot="items"
+                      slot-scope="props">
               <td>
-                <v-checkbox v-model="props.selected" primary hide-details></v-checkbox>
+                <v-checkbox v-model="props.selected"
+                            primary
+                            hide-details></v-checkbox>
               </td>
-              <td class="text-xs-left">{{ props.item.address }}</td>
-              <td class="text-xs-left">{{ props.item.service }}</td>
+              <td class="text-xs-left">{{ props.item.address }}
+              </td>
+              <td class="text-xs-left">{{ props.item.service }}
+              </td>
               <td class="text-xs-left">
-                <span v-if="props.item.allow" class="green--text">Whitelist</span>
-                <span v-else class="red--text">Blacklist</span>
+                <span v-if="props.item.allow"
+                      class="green--text">Whitelist</span>
+                <span v-else
+                      class="red--text">Blacklist</span>
               </td>
               <td class="text-xs-center px-0">
                 <v-tooltip bottom>
-                  <v-icon small class="mr-2" slot="activator" @click="toDelete([props.item])">delete</v-icon>
+                  <v-icon small
+                          class="mr-2"
+                          slot="activator"
+                          @click="toDelete([props.item])">delete</v-icon>
                   <span>Delete</span>
                 </v-tooltip>
               </td>
@@ -66,36 +97,76 @@
       </v-card>
     </v-flex>
 
-    <v-dialog v-model="create.enable" width="800px" persistent>
+    <v-dialog v-model="create.enable"
+              width="800px"
+              persistent>
       <v-card>
         <v-card-title class="justify-center">
           <span class="headline">Create New Access Control</span>
         </v-card-title>
+
         <v-card-text>
+          <v-form v-model="create.valid"
+                  ref="createForm">
+            <v-combobox v-model="create.services"
+                        :items="services"
+                        label="Services"
+                        chips
+                        multiple
+                        required>
+              <template slot="selection"
+                        slot-scope="data">
+                <v-chip :selected="data.selected">
+                  {{ [...data.item.split('.').slice(0, -2).map(x => x.slice(0, 1)), ...data.item.split('.').slice(-1)].join('.') }}
+                </v-chip>
+              </template>
+            </v-combobox>
+            <v-textarea v-model="create.addresses"
+                        label="Consumer addresses"
+                        hint="Multiple addresses separated by line breaks. (Address must between 0.0.0.0 and 255.255.255.255)"
+                        required />
+            <v-switch v-model="create.allowed"
+                      :label="`Status: ${create.allowed ? 'Allowd' : 'Forbidden'}`" />
+
+          </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="darken-1" flat @click="create.enable = false">Close</v-btn>
-          <v-btn color="green darken-1" flat @click="saveItem()">Save</v-btn>
+          <v-btn color="darken-1"
+                 flat
+                 @click="closeCreate()">Close</v-btn>
+          <v-btn color="green darken-1"
+                 :disabled="!create.valid"
+                 flat
+                 @click="createItem()">Create</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="confirm.enable" persistent max-width="500px">
+    <v-dialog v-model="confirm.enable"
+              persistent
+              max-width="500px">
       <v-card>
         <v-card-title class="headline">{{this.confirm.title}}</v-card-title>
         <v-card-text>{{this.confirm.text}}</v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="red darken-1" flat @click="confirm.enable = false">Disagree</v-btn>
-          <v-btn color="green darken-1" flat @click="deleteItems(confirm.accesses)">Agree</v-btn>
+          <v-btn color="red darken-1"
+                 flat
+                 @click="confirm.enable = false">Disagree</v-btn>
+          <v-btn color="green darken-1"
+                 flat
+                 @click="deleteItems(confirm.accesses)">Agree</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <v-snackbar v-model="snackbar.enable" :color="snackbar.color">
+    <v-snackbar v-model="snackbar.enable"
+                :color="snackbar.color">
       {{ snackbar.text }}
-      <v-btn dark flat @click="snackbar.enable = false">
+      <v-btn dark
+             flat
+             @click="snackbar.enable = false">
         Close
       </v-btn>
     </v-snackbar>
@@ -134,8 +205,13 @@ export default {
     ],
     accesses: [],
     create: {
-      enable: false
+      enable: false,
+      valid: true,
+      services: null,
+      addresses: '',
+      allowed: false
     },
+    services: [],
     confirm: {
       enable: false,
       title: '',
@@ -157,11 +233,28 @@ export default {
           this.accesses = response.data
         })
     },
-    openDialog () {
+    toCreate () {
       this.create.enable = true
+      AXIOS.get('/accesses/services')
+        .then(response => {
+          this.services = response.data
+        })
     },
-    saveItem () {
-
+    createItem () {
+      AXIOS.post('/accesses/create', {
+        services: this.create.services,
+        addresses: this.create.addresses,
+        allowed: this.create.allowed
+      }).then(response => {
+        this.$refs.createForm.reset()
+        this.create.enable = false
+        this.search(this.filter)
+        this.showSnackbar('success', 'Create success')
+      }).catch(error => this.showSnackbar('error', error.response.data.message))
+    },
+    closeCreate () {
+      this.create.enable = false
+      this.$refs.createForm.reset()
     },
     toDelete (items) {
       let text = items.length === 1

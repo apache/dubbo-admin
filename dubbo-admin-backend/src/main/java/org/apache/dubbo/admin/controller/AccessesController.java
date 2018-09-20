@@ -1,3 +1,19 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.dubbo.admin.controller;
 
 import com.alibaba.dubbo.common.logger.Logger;
@@ -7,13 +23,11 @@ import org.apache.dubbo.admin.governance.service.ProviderService;
 import org.apache.dubbo.admin.governance.service.RouteService;
 import org.apache.dubbo.admin.registry.common.domain.Access;
 import org.apache.dubbo.admin.registry.common.domain.Route;
+import org.apache.dubbo.admin.registry.common.dto.CreateAccessControl;
 import org.apache.dubbo.admin.registry.common.route.RouteRule;
 import org.apache.dubbo.admin.web.pulltool.Tool;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import java.text.ParseException;
@@ -77,8 +91,8 @@ public class AccessesController {
         return accesses;
     }
 
-    @RequestMapping("/delete")
-    public void delete(@RequestBody List<Access> accesses) throws Exception {
+    @RequestMapping(value = "/delete", method = RequestMethod.POST)
+    public void deleteAccesses(@RequestBody List<Access> accesses) throws Exception {
         Map<String, Set<String>> prepareToDeleate = new HashMap<String, Set<String>>();
         for (Access access : accesses) {
             Set<String> addresses = prepareToDeleate.get(access.getService());
@@ -129,7 +143,71 @@ public class AccessesController {
                 }
             }
         }
+    }
 
+    @RequestMapping("/services")
+    public List<String> findServices() {
+        return Tool.sortSimpleName(providerService.findServices());
+    }
+
+    @RequestMapping(value = "/create", method = RequestMethod.POST)
+    public void createAccesses(@RequestBody CreateAccessControl createAccessControl) throws Exception {
+        List<String> services = createAccessControl.getServices();
+        List<String> addresses = createAccessControl.getAddressList();
+        boolean allowed = createAccessControl.isAllowed();
+
+        if (services == null || services.isEmpty()) {
+            throw new IllegalArgumentException("Services is required.");
+        }
+        if (addresses == null || addresses.isEmpty()) {
+            throw new IllegalArgumentException("Addresses is required.");
+        }
+
+        for (String aimService : services) {
+            boolean isFirst = false;
+            List<Route> routes = routeService.findForceRouteByService(aimService);
+            Route route = null;
+            if (routes == null || routes.size() == 0) {
+                isFirst = true;
+                route = new Route();
+                route.setService(aimService);
+                route.setForce(true);
+                route.setName(aimService + " blackwhitelist");
+                route.setFilterRule("false");
+                route.setEnabled(true);
+            } else {
+                route = routes.get(0);
+                this.initMatchAndFilterRule(route);
+            }
+            Map<String, RouteRule.MatchPair> when = null;
+            RouteRule.MatchPair matchPair = null;
+            if (isFirst) {
+                when = new HashMap<String, RouteRule.MatchPair>();
+                matchPair = new RouteRule.MatchPair(new HashSet<String>(), new HashSet<String>());
+                when.put("consumer.host", matchPair);
+            } else {
+                when = RouteRule.parseRule(route.getMatchRule());
+                matchPair = when.get("consumer.host");
+            }
+            for (String consumerAddress : addresses) {
+                if (allowed) {
+                    matchPair.getUnmatches().add(Tool.getIP(consumerAddress));
+                } else {
+                    matchPair.getMatches().add(Tool.getIP(consumerAddress));
+                }
+            }
+            StringBuilder sb = new StringBuilder();
+            RouteRule.contidionToString(sb, when);
+            route.setMatchRule(sb.toString());
+            // TODO use new rule
+            route.setRule(route.getMatchRule() + " => " + route.getFilterRule());
+            if (isFirst) {
+                routeService.createRoute(route);
+            } else {
+                routeService.updateRoute(route);
+            }
+
+        }
     }
 
     // for old rule
