@@ -184,12 +184,12 @@ public class Route extends Entity {
 
     public void setRule(String rule) {
         this.rule = rule;
-//        String[] rules = rule.split(" => ");
-//        if (rules.length != 2) {
-//            throw new IllegalArgumentException("Illegal Route Condition Rule");
-//        }
-//        this.matchRule = rules[0];
-//        this.filterRule = rules[1];
+        String[] rules = rule.split(" => ");
+        if (rules.length != 2) {
+            throw new IllegalArgumentException("Illegal Route Condition Rule");
+        }
+        this.matchRule = rules[0];
+        this.filterRule = rules[1];
     }
 
     public String getMatchRule() {
