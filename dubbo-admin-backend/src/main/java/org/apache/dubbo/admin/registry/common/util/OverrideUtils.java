@@ -104,7 +104,11 @@ public class OverrideUtils {
     }
 
     public static LoadBalance overrideToLoadBalance(Override override) {
-        return OverrideUtils.overridesToLoadBalances(Arrays.asList(override)).get(0);
+        List<LoadBalance> loadBalances = OverrideUtils.overridesToLoadBalances(Arrays.asList(override));
+        if (loadBalances != null && loadBalances.size() > 0) {
+            return loadBalances.get(0);
+        }
+        return null;
     }
 
     public static Override loadBalanceToOverride(LoadBalance loadBalance) {

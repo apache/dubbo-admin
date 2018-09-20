@@ -1,13 +1,28 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ *  he License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.apache.dubbo.admin.controller;
 
 import org.apache.dubbo.admin.governance.service.ProviderService;
 import org.apache.dubbo.admin.governance.service.RouteService;
 import org.apache.dubbo.admin.registry.common.domain.Route;
+import org.apache.dubbo.admin.util.YamlUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-import org.yaml.snakeyaml.Yaml;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
@@ -22,14 +37,13 @@ public class RoutesController {
     private ProviderService providerService;
 
     @RequestMapping("/create")
-    public void createRule(@RequestParam(required = false) String serviceName,
+    public boolean createRule(@RequestParam(required = false) String serviceName,
                            @RequestParam(required = false) String app,
                            @RequestParam String rule) {
         if (serviceName == null && app == null) {
 
         }
-        Yaml yaml = new Yaml();
-        Map<String, Object> result = yaml.load(rule);
+        Map<String, Object> result = YamlUtil.loadString(rule);
         if (serviceName != null) {
             result.put("scope", serviceName);
             result.put("group/service:version", result.get("group") + "/" + serviceName);
@@ -56,13 +70,12 @@ public class RoutesController {
                 routeService.createRoute(route);
             }
 
-
         } else {
             //new feature in 2.7
             result.put("scope", "application");
             result.put("appname", app);
         }
-
+        return true;
     }
 
     @RequestMapping("/update")
@@ -71,8 +84,8 @@ public class RoutesController {
         if (route == null) {
             //TODO Exception
         }
-        Yaml yaml = new Yaml();
-        Map<String, Object> result = yaml.load(rule);
+        rule = rule.replace("===", "\n");
+        Map<String, Object> result = YamlUtil.loadString(rule);
         List<String> conditions = (List)result.get("conditions");
         for (String condition : conditions) {
             Route newRoute = new Route();
