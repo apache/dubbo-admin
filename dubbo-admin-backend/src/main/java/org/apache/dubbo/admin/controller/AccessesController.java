@@ -19,21 +19,16 @@ package org.apache.dubbo.admin.controller;
 import com.alibaba.dubbo.common.logger.Logger;
 import com.alibaba.dubbo.common.logger.LoggerFactory;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.dubbo.admin.dto.AccessDTO;
 import org.apache.dubbo.admin.governance.service.ProviderService;
 import org.apache.dubbo.admin.governance.service.RouteService;
-import org.apache.dubbo.admin.registry.common.domain.Access;
 import org.apache.dubbo.admin.registry.common.domain.Route;
-import org.apache.dubbo.admin.registry.common.dto.CreateAccessControl;
 import org.apache.dubbo.admin.registry.common.route.RouteRule;
-import org.apache.dubbo.admin.web.pulltool.Tool;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import java.text.ParseException;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 @RestController
 @RequestMapping("/api/accesses")
@@ -46,178 +41,77 @@ public class AccessesController {
     private ProviderService providerService;
 
     @RequestMapping("/search")
-    public List<Access> searchAccesses(@RequestParam(required = false) String address,
-                                       @RequestParam(required = false) String service) {
-        address = Tool.getIP(address);
-        List<Route> routes;
-        if (StringUtils.isNotBlank(service)) {
-            routes = routeService.findForceRouteByService(service.trim());
-        } else if (StringUtils.isNotBlank(address)) {
-            routes = routeService.findForceRouteByAddress(address.trim());
+    public List<AccessDTO> searchAccesses(@RequestBody(required = false) Map<String, String> params) throws ParseException {
+        List<AccessDTO> result = new ArrayList<>();
+        List<Route> routes = new ArrayList<>();
+        if (StringUtils.isNotBlank(params.get("service"))) {
+            Route route = routeService.getBlackwhitelistRouteByService(params.get("service").trim());
+            if (route != null) {
+                routes.add(route);
+            }
         } else {
             routes = routeService.findAllForceRoute();
         }
-        List<Access> accesses = new ArrayList<Access>();
-        AtomicLong idGenerator = new AtomicLong();
-        for (Route route : routes) {
-            this.initMatchAndFilterRule(route);
-            Map<String, RouteRule.MatchPair> rule = new HashMap<String, RouteRule.MatchPair>();
-            try {
-                rule = RouteRule.parseRule(route.getMatchRule());
-            } catch (ParseException e) {
-                logger.error("parse rule error", e);
-            }
-            RouteRule.MatchPair pair = rule.get("consumer.host");
 
-            if (pair != null) {
-                for (String host : pair.getMatches()) {
-                    Access access = new Access();
-                    access.setId(idGenerator.incrementAndGet());
-                    access.setAddress(host);
-                    access.setService(route.getService());
-                    access.setAllow(false);
-                    accesses.add(access);
+        for (Route route : routes) {
+            // Match WhiteBlackList Route
+            if (route.getName().endsWith(AccessDTO.KEY_BLACK_WHITE_LIST)) {
+                AccessDTO accessDTO = new AccessDTO();
+                accessDTO.setId(route.getId());
+                accessDTO.setService(route.getService());
+                Map<String, RouteRule.MatchPair> when = RouteRule.parseRule(route.getMatchRule());
+                for (String key : when.keySet()) {
+                    accessDTO.setWhitelist(when.get(key).getUnmatches());
+                    accessDTO.setBlacklist(when.get(key).getMatches());
                 }
-                for (String host : pair.getUnmatches()) {
-                    Access access = new Access();
-                    access.setId(idGenerator.incrementAndGet());
-                    access.setAddress(host);
-                    access.setService(route.getService());
-                    access.setAllow(true);
-                    accesses.add(access);
-                }
+                result.add(accessDTO);
             }
         }
-        return accesses;
+        return result;
     }
 
     @RequestMapping(value = "/delete", method = RequestMethod.POST)
-    public void deleteAccesses(@RequestBody List<Access> accesses) throws Exception {
-        Map<String, Set<String>> prepareToDeleate = new HashMap<String, Set<String>>();
-        for (Access access : accesses) {
-            Set<String> addresses = prepareToDeleate.get(access.getService());
-            if (addresses == null) {
-                prepareToDeleate.put(access.getService(), new HashSet<String>());
-                addresses = prepareToDeleate.get(access.getService());
-            }
-            addresses.add(access.getAddress());
+    public void deleteAccesses(@RequestBody Map<String, Long> params) {
+        if (params.get("id") == null) {
+            throw new IllegalArgumentException("Argument of id is null!");
         }
-
-        for (String service : prepareToDeleate.keySet()) {
-            List<Route> routes = routeService.findForceRouteByService(service);
-            if (routes == null || routes.size() == 0) {
-                continue;
-            }
-            for (Route blackwhitelist : routes) {
-                this.initMatchAndFilterRule(blackwhitelist);
-                RouteRule.MatchPair pairs = RouteRule.parseRule(blackwhitelist.getMatchRule()).get("consumer.host");
-                Set<String> matches = new HashSet<String>(pairs.getMatches());
-                Set<String> unmatches = new HashSet<String>(pairs.getUnmatches());
-                for (String pair : pairs.getMatches()) {
-                    for (String address : prepareToDeleate.get(service)) {
-                        if (pair.equals(address)) {
-                            matches.remove(pair);
-                            break;
-                        }
-                    }
-                }
-                for (String pair : pairs.getUnmatches()) {
-                    for (String address : prepareToDeleate.get(service)) {
-                        if (pair.equals(address)) {
-                            unmatches.remove(pair);
-                            break;
-                        }
-                    }
-                }
-                if (matches.size() == 0 && unmatches.size() == 0) {
-                    routeService.deleteRoute(blackwhitelist.getId());
-                } else {
-                    Map<String, RouteRule.MatchPair> condition = new HashMap<String, RouteRule.MatchPair>();
-                    condition.put("consumer.host", new RouteRule.MatchPair(matches, unmatches));
-                    StringBuilder sb = new StringBuilder();
-                    RouteRule.contidionToString(sb, condition);
-                    blackwhitelist.setMatchRule(sb.toString());
-                    // TODO use new rule
-                    blackwhitelist.setRule(blackwhitelist.getMatchRule() + " => " + blackwhitelist.getFilterRule());
-                    routeService.updateRoute(blackwhitelist);
-                }
-            }
-        }
-    }
-
-    @RequestMapping("/services")
-    public List<String> findServices() {
-        return Tool.sortSimpleName(providerService.findServices());
+        routeService.deleteRoute(params.get("id"));
     }
 
     @RequestMapping(value = "/create", method = RequestMethod.POST)
-    public void createAccesses(@RequestBody CreateAccessControl createAccessControl) throws Exception {
-        List<String> services = createAccessControl.getServices();
-        List<String> addresses = createAccessControl.getAddressList();
-        boolean allowed = createAccessControl.isAllowed();
-
-        if (services == null || services.isEmpty()) {
-            throw new IllegalArgumentException("Services is required.");
+    public void createAccesses(@RequestBody AccessDTO accessDTO) throws ParseException {
+        if (StringUtils.isBlank(accessDTO.getService())) {
+            throw new IllegalArgumentException("Service is required.");
         }
-        if (addresses == null || addresses.isEmpty()) {
-            throw new IllegalArgumentException("Addresses is required.");
+        if (accessDTO.getBlacklist() == null && accessDTO.getWhitelist() == null) {
+            throw new IllegalArgumentException("One of Blacklist/Whitelist is required.");
         }
 
-        for (String aimService : services) {
-            boolean isFirst = false;
-            List<Route> routes = routeService.findForceRouteByService(aimService);
-            Route route = null;
-            if (routes == null || routes.size() == 0) {
-                isFirst = true;
-                route = new Route();
-                route.setService(aimService);
-                route.setForce(true);
-                route.setName(aimService + " blackwhitelist");
-                route.setFilterRule("false");
-                route.setEnabled(true);
-            } else {
-                route = routes.get(0);
-                this.initMatchAndFilterRule(route);
-            }
-            Map<String, RouteRule.MatchPair> when = null;
-            RouteRule.MatchPair matchPair = null;
-            if (isFirst) {
-                when = new HashMap<String, RouteRule.MatchPair>();
-                matchPair = new RouteRule.MatchPair(new HashSet<String>(), new HashSet<String>());
-                when.put("consumer.host", matchPair);
-            } else {
-                when = RouteRule.parseRule(route.getMatchRule());
-                matchPair = when.get("consumer.host");
-            }
-            for (String consumerAddress : addresses) {
-                if (allowed) {
-                    matchPair.getUnmatches().add(Tool.getIP(consumerAddress));
-                } else {
-                    matchPair.getMatches().add(Tool.getIP(consumerAddress));
-                }
-            }
-            StringBuilder sb = new StringBuilder();
-            RouteRule.contidionToString(sb, when);
-            route.setMatchRule(sb.toString());
-            // TODO use new rule
-            route.setRule(route.getMatchRule() + " => " + route.getFilterRule());
-            if (isFirst) {
-                routeService.createRoute(route);
-            } else {
-                routeService.updateRoute(route);
-            }
+        Route route = routeService.getBlackwhitelistRouteByService(accessDTO.getService());
 
+        if (route != null) {
+            throw new IllegalArgumentException(accessDTO.getService() + " is existed.");
         }
-    }
 
-    // for old rule
-    // TODO org.apache.dubbo.admin.registry.common.domain.Route#toUrl() URL.encode(getRule()) -> URL.encode(getMatchRule() + " => " + getFilterRule())
-    private void initMatchAndFilterRule(Route route) {
-        String[] rules = route.getRule().split(" => ");
-        if (rules.length != 2) {
-            throw new IllegalArgumentException("Illegal Route Condition Rule");
+        route = new Route();
+        route.setService(accessDTO.getService());
+        route.setForce(true);
+        route.setName(accessDTO.getService() + " " + AccessDTO.KEY_BLACK_WHITE_LIST);
+        route.setEnabled(true);
+
+        Map<String, RouteRule.MatchPair> when = new HashMap<>();
+        RouteRule.MatchPair matchPair = new RouteRule.MatchPair(new HashSet<>(), new HashSet<>());
+
+        if (accessDTO.getWhitelist() != null) {
+            matchPair.getUnmatches().addAll(accessDTO.getWhitelist());
         }
-        route.setMatchRule(rules[0]);
-        route.setFilterRule(rules[1]);
+        if (accessDTO.getBlacklist() != null) {
+            matchPair.getMatches().addAll(accessDTO.getBlacklist());
+        }
+
+        StringBuilder sb = new StringBuilder();
+        RouteRule.contidionToString(sb, when);
+        route.setMatchRule(sb.toString());
+        routeService.createRoute(route);
     }
 }

@@ -47,11 +47,6 @@
             <span class="headline">Search Result</span>
           </v-toolbar-title>
           <v-spacer></v-spacer>
-          <v-btn :disabled="selected.length == 0"
-                 outline
-                 color="error"
-                 @click.stop="toDelete(selected)"
-                 class="mb-2">BATCH DELETE</v-btn>
           <v-btn outline
                  color="primary"
                  @click.stop="toCreate"
@@ -62,32 +57,32 @@
           <v-data-table v-model="selected"
                         :headers="headers"
                         :items="accesses"
+                        :loading="loading"
                         hide-actions
-                        select-all
                         class="elevation-0">
             <template slot="items"
                       slot-scope="props">
-              <td>
-                <v-checkbox v-model="props.selected"
-                            primary
-                            hide-details></v-checkbox>
-              </td>
-              <td class="text-xs-left">{{ props.item.address }}
-              </td>
-              <td class="text-xs-left">{{ props.item.service }}
-              </td>
-              <td class="text-xs-left">
-                <span v-if="props.item.allow"
-                      class="green--text">Whitelist</span>
-                <span v-else
-                      class="red--text">Blacklist</span>
-              </td>
+              <td class="text-xs-left">{{ props.item.service }}</td>
               <td class="text-xs-center px-0">
                 <v-tooltip bottom>
                   <v-icon small
                           class="mr-2"
+                          slot="activator">visibility</v-icon>
+                  <span>View</span>
+                </v-tooltip>
+                <v-tooltip bottom>
+                  <v-icon small
+                          class="mr-2"
+                          color="blue"
+                          slot="activator">edit</v-icon>
+                  <span>Edit</span>
+                </v-tooltip>
+                <v-tooltip bottom>
+                  <v-icon small
+                          class="mr-2"
                           slot="activator"
-                          @click="toDelete([props.item])">delete</v-icon>
+                          color="red"
+                          @click="toDelete(props.item)">delete</v-icon>
                   <span>Delete</span>
                 </v-tooltip>
               </td>
@@ -104,30 +99,16 @@
         <v-card-title class="justify-center">
           <span class="headline">Create New Access Control</span>
         </v-card-title>
-
         <v-card-text>
           <v-form v-model="create.valid"
                   ref="createForm">
-            <v-combobox v-model="create.services"
-                        :items="services"
-                        label="Services"
-                        chips
-                        multiple
-                        required>
-              <template slot="selection"
-                        slot-scope="data">
-                <v-chip :selected="data.selected">
-                  {{ [...data.item.split('.').slice(0, -2).map(x => x.slice(0, 1)), ...data.item.split('.').slice(-1)].join('.') }}
-                </v-chip>
-              </template>
-            </v-combobox>
-            <v-textarea v-model="create.addresses"
-                        label="Consumer addresses"
-                        hint="Multiple addresses separated by line breaks. (Address must between 0.0.0.0 and 255.255.255.255)"
-                        required />
-            <v-switch v-model="create.allowed"
-                      :label="`Status: ${create.allowed ? 'Allowd' : 'Forbidden'}`" />
-
+            <v-text-field label="Service Unique ID"
+                          hint="A service ID in form of service"
+                          required
+                          v-model="create.service"></v-text-field>
+            <v-subheader class="pa-0 mt-3">BLACK/WHITE LIST CONTENT</v-subheader>
+            <ace-editor v-model="create.content"
+                        :config="create.aceConfig" />
           </v-form>
         </v-card-text>
         <v-card-actions>
@@ -156,7 +137,7 @@
                  @click="confirm.enable = false">Disagree</v-btn>
           <v-btn color="green darken-1"
                  flat
-                 @click="deleteItems(confirm.accesses)">Agree</v-btn>
+                 @click="deleteItem(confirm.id)">Agree</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -174,49 +155,49 @@
 </template>
 
 <script>
+import yaml from 'js-yaml'
 import { AXIOS } from './http-common'
+import AceEditor from '@/components/AceEditor'
 
 export default {
   name: 'AccessControl',
   data: () => ({
     selected: [],
     filter: '',
+    loading: false,
     headers: [
-      {
-        text: 'Consumer Address',
-        value: 'address',
-        align: 'left'
-      },
       {
         text: 'Service Name',
         value: 'service',
         align: 'left'
       },
       {
-        text: 'Type',
-        value: 'allow',
-        sortable: false
-      },
-      {
         text: 'Operation',
         value: 'operation',
-        sortable: false
+        sortable: false,
+        width: '115px'
       }
     ],
     accesses: [],
     create: {
       enable: false,
       valid: true,
-      services: null,
-      addresses: '',
-      allowed: false
+      service: null,
+      content:
+        'blacklist:\n' +
+        '  - 1.1.1.1\n' +
+        '  - 2.2.2.2\n' +
+        'whitelist:\n' +
+        '  - 3.3.3.3\n' +
+        '  - 4.4.*\n',
+      aceConfig: {}
     },
     services: [],
     confirm: {
       enable: false,
       title: '',
       text: '',
-      accesses: []
+      id: null
     },
     snackbar: {
       enable: false,
@@ -225,26 +206,32 @@ export default {
   }),
   methods: {
     submit () {
+      if (this.filter == null) {
+        this.filter = ''
+      }
       this.search(this.filter)
     },
     search (filter) {
-      AXIOS.get('/accesses/search?service=' + filter)
-        .then(response => {
-          this.accesses = response.data
-        })
+      this.loading = true
+      AXIOS.post('/accesses/search', {
+        service: this.filter
+      }).then(response => {
+        this.accesses = response.data
+        this.loading = false
+      }).catch(error => {
+        this.showSnackbar('error', error.response.data.message)
+        this.loading = false
+      })
     },
     toCreate () {
       this.create.enable = true
-      AXIOS.get('/accesses/services')
-        .then(response => {
-          this.services = response.data
-        })
     },
     createItem () {
+      let doc = yaml.load(this.create.content)
       AXIOS.post('/accesses/create', {
-        services: this.create.services,
-        addresses: this.create.addresses,
-        allowed: this.create.allowed
+        service: this.create.service,
+        whitelist: doc.whitelist,
+        blacklist: doc.blacklist
       }).then(response => {
         this.$refs.createForm.reset()
         this.create.enable = false
@@ -256,24 +243,21 @@ export default {
       this.create.enable = false
       this.$refs.createForm.reset()
     },
-    toDelete (items) {
-      let text = items.length === 1
-        ? ('Address: ' + items[0].address + ' Service: ' + items[0].service)
-        : ('Delete ' + items.length + ' Access Controls')
+    toDelete (item) {
       Object.assign(this.confirm, {
         enable: true,
-        title: 'Are you sure to Delete Access Control(s)',
-        text: text,
-        accesses: items
+        title: 'Are you sure to Delete Access Control',
+        text: `Service: ${item.service}`,
+        id: item.id
       })
     },
-    deleteItems (accesses) {
-      AXIOS.post('/accesses/delete', accesses)
-        .then(response => {
-          this.showSnackbar('success', 'Delete success')
-          this.search(this.filter)
-        })
-        .catch(error => this.showSnackbar('error', error.response.data.message))
+    deleteItem (id) {
+      AXIOS.post('/accesses/delete', {
+        id: id
+      }).then(response => {
+        this.showSnackbar('success', 'Delete success')
+        this.search(this.filter)
+      }).catch(error => this.showSnackbar('error', error.response.data.message))
     },
     showSnackbar (color, message) {
       Object.assign(this.snackbar, {
@@ -287,6 +271,9 @@ export default {
   },
   mounted () {
     this.search(this.filter)
+  },
+  components: {
+    AceEditor
   }
 }
 </script>
