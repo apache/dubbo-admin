@@ -211,8 +211,9 @@ export default {
     },
     search (filter) {
       this.loading = true
+      this.$router.push({path: 'access', query: (filter !== '' ? {service: filter} : null)})
       AXIOS.post('/access/search', {
-        service: this.filter
+        service: filter
       }).then(response => {
         this.accesses = response.data
         this.loading = false
@@ -297,6 +298,14 @@ export default {
     }
   },
   mounted () {
+    let query = this.$route.query
+    let service = ''
+    Object.keys(query).forEach(function (key) {
+      if (key === 'service') {
+        service = query[key]
+      }
+    })
+    this.filter = service
     this.search(this.filter)
   },
   components: {
