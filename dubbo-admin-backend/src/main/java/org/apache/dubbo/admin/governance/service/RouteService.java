@@ -54,4 +54,6 @@ public interface RouteService {
 
     List<Route> findAllForceRoute();
 
+    Route getBlackwhitelistRouteByService(String service);
+
 }

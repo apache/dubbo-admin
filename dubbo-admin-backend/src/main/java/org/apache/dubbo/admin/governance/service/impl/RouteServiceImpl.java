@@ -18,6 +18,7 @@ package org.apache.dubbo.admin.governance.service.impl;
 
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.URL;
+import org.apache.dubbo.admin.dto.AccessDTO;
 import org.apache.dubbo.admin.governance.service.RouteService;
 import org.apache.dubbo.admin.governance.sync.util.Pair;
 import org.apache.dubbo.admin.governance.sync.util.SyncUtils;
@@ -163,6 +164,16 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
     public List<Route> findAllForceRoute() {
         return SyncUtils.url2RouteList(findRouteUrl(null, null, true));
+    }
+
+    public Route getBlackwhitelistRouteByService(String service) {
+        List<Route> routes = SyncUtils.url2RouteList(findRouteUrl(service, null, true));
+        for (Route route : routes) {
+            if (route.getName().endsWith(AccessDTO.KEY_BLACK_WHITE_LIST)) {
+                return route;
+            }
+        }
+        return null;
     }
 
 }
