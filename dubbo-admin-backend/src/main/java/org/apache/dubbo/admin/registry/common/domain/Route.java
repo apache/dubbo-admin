@@ -34,7 +34,7 @@ public class Route extends Entity {
     public static final String KEY_CONSUMER_APPLICATION = "consumer.application";
     public static final String KEY_CONSUMER_GROUP = "consumer.cluster";
     public static final String KEY_CONSUMER_VERSION = "consumer.version";
-    public static final String KEY_CONSUMER_HOST = "consumer.host";
+    public static final String KEY_CONSUMER_HOST = "host";
     public static final String KEY_CONSUMER_METHODS = "consumer.methods";
     public static final String KEY_PROVIDER_APPLICATION = "provider.application";
 
@@ -220,7 +220,7 @@ public class Route extends Entity {
         return URL.valueOf(Constants.ROUTE_PROTOCOL + "://" + Constants.ANYHOST_VALUE + "/" + getService()
                 + "?" + Constants.CATEGORY_KEY + "=" + Constants.ROUTERS_CATEGORY
                 + "&router=condition&runtime=" + isRuntime() + "&enabled=" + isEnabled() + "&priority=" + getPriority() + "&force=" + isForce() + "&dynamic=" + isDynamic()
-                + "&name=" + getName() + "&" + Constants.RULE_KEY + "=" + URL.encode(getRule())
+                + "&name=" + getName() + "&" + Constants.RULE_KEY + "=" + URL.encode(getMatchRule() + " => " + getFilterRule())
                 + (getGroup() == null ? "" : "&" + Constants.GROUP_KEY + "=" + getGroup())
                 + (getVersion() == null ? "" : "&" + Constants.VERSION_KEY + "=" + getVersion()));
     }
