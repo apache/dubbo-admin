@@ -67,14 +67,9 @@
                 <v-tooltip bottom>
                   <v-icon small
                           class="mr-2"
-                          slot="activator">visibility</v-icon>
-                  <span>View</span>
-                </v-tooltip>
-                <v-tooltip bottom>
-                  <v-icon small
-                          class="mr-2"
                           color="blue"
-                          slot="activator">edit</v-icon>
+                          slot="activator"
+                          @click="toEdit(props.item)">edit</v-icon>
                   <span>Edit</span>
                 </v-tooltip>
                 <v-tooltip bottom>
@@ -92,34 +87,33 @@
       </v-card>
     </v-flex>
 
-    <v-dialog v-model="create.enable"
+    <v-dialog v-model="modal.enable"
               width="800px"
               persistent>
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">Create New Access Control</span>
+          <span class="headline">{{ modal.title }} Access Control</span>
         </v-card-title>
         <v-card-text>
-          <v-form v-model="create.valid"
-                  ref="createForm">
+          <v-form ref="modalForm">
             <v-text-field label="Service Unique ID"
                           hint="A service ID in form of service"
                           required
-                          v-model="create.service"></v-text-field>
+                          :readonly="modal.id != null"
+                          v-model="modal.service" />
             <v-subheader class="pa-0 mt-3">BLACK/WHITE LIST CONTENT</v-subheader>
-            <ace-editor v-model="create.content"
-                        :config="create.aceConfig" />
+            <ace-editor v-model="modal.content"
+                        :config="modal.aceConfig" />
           </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="darken-1"
                  flat
-                 @click="closeCreate()">Close</v-btn>
+                 @click="closeModal()">Close</v-btn>
           <v-btn color="green darken-1"
-                 :disabled="!create.valid"
                  flat
-                 @click="createItem()">Create</v-btn>
+                 @click="modal.click">{{ modal.saveBtn }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -179,11 +173,15 @@ export default {
       }
     ],
     accesses: [],
-    create: {
+    modal: {
       enable: false,
-      valid: true,
+      title: 'Create New',
+      saveBtn: 'Create',
+      click: null,
+      id: null,
       service: null,
-      content:
+      content: '',
+      template:
         'blacklist:\n' +
         '  - 1.1.1.1\n' +
         '  - 2.2.2.2\n' +
@@ -213,7 +211,7 @@ export default {
     },
     search (filter) {
       this.loading = true
-      AXIOS.post('/accesses/search', {
+      AXIOS.post('/access/search', {
         service: this.filter
       }).then(response => {
         this.accesses = response.data
@@ -223,25 +221,54 @@ export default {
         this.loading = false
       })
     },
+    closeModal () {
+      this.modal.enable = false
+      this.modal.id = null
+      this.$refs.modalForm.reset()
+    },
     toCreate () {
-      this.create.enable = true
+      Object.assign(this.modal, {
+        enable: true,
+        title: 'Create New',
+        saveBtn: 'Create',
+        content: this.modal.template,
+        click: this.createItem
+      })
     },
     createItem () {
-      let doc = yaml.load(this.create.content)
-      AXIOS.post('/accesses/create', {
-        service: this.create.service,
+      let doc = yaml.load(this.modal.content)
+      AXIOS.post('/access/create', {
+        service: this.modal.service,
         whitelist: doc.whitelist,
         blacklist: doc.blacklist
       }).then(response => {
-        this.$refs.createForm.reset()
-        this.create.enable = false
+        this.closeModal()
         this.search(this.filter)
         this.showSnackbar('success', 'Create success')
       }).catch(error => this.showSnackbar('error', error.response.data.message))
     },
-    closeCreate () {
-      this.create.enable = false
-      this.$refs.createForm.reset()
+    toEdit (item) {
+      Object.assign(this.modal, {
+        enable: true,
+        title: 'Edit',
+        saveBtn: 'Update',
+        click: this.editItem,
+        id: item.id,
+        service: item.service,
+        content: yaml.safeDump({blacklist: item.blacklist, whitelist: item.whitelist})
+      })
+    },
+    editItem () {
+      let doc = yaml.load(this.modal.content)
+      AXIOS.post('/access/update', {
+        id: this.modal.id,
+        whitelist: doc.whitelist,
+        blacklist: doc.blacklist
+      }).then(response => {
+        this.closeModal()
+        this.search(this.filter)
+        this.showSnackbar('success', 'Update success')
+      }).catch(error => this.showSnackbar('error', error.response.data.message))
     },
     toDelete (item) {
       Object.assign(this.confirm, {
@@ -252,7 +279,7 @@ export default {
       })
     },
     deleteItem (id) {
-      AXIOS.post('/accesses/delete', {
+      AXIOS.post('/access/delete', {
         id: id
       }).then(response => {
         this.showSnackbar('success', 'Delete success')

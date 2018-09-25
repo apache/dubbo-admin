@@ -31,7 +31,7 @@ import java.text.ParseException;
 import java.util.*;
 
 @RestController
-@RequestMapping("/api/accesses")
+@RequestMapping("/api/access")
 public class AccessesController {
     private static final Logger logger = LoggerFactory.getLogger(AccessesController.class);
 
@@ -41,7 +41,7 @@ public class AccessesController {
     private ProviderService providerService;
 
     @RequestMapping("/search")
-    public List<AccessDTO> searchAccesses(@RequestBody(required = false) Map<String, String> params) throws ParseException {
+    public List<AccessDTO> searchAccess(@RequestBody(required = false) Map<String, String> params) throws ParseException {
         List<AccessDTO> result = new ArrayList<>();
         List<Route> routes = new ArrayList<>();
         if (StringUtils.isNotBlank(params.get("service"))) {
@@ -71,7 +71,7 @@ public class AccessesController {
     }
 
     @RequestMapping(value = "/delete", method = RequestMethod.POST)
-    public void deleteAccesses(@RequestBody Map<String, Long> params) {
+    public void deleteAccess(@RequestBody Map<String, Long> params) {
         if (params.get("id") == null) {
             throw new IllegalArgumentException("Argument of id is null!");
         }
@@ -79,7 +79,7 @@ public class AccessesController {
     }
 
     @RequestMapping(value = "/create", method = RequestMethod.POST)
-    public void createAccesses(@RequestBody AccessDTO accessDTO) throws ParseException {
+    public void createAccess(@RequestBody AccessDTO accessDTO) {
         if (StringUtils.isBlank(accessDTO.getService())) {
             throw new IllegalArgumentException("Service is required.");
         }
@@ -101,6 +101,7 @@ public class AccessesController {
 
         Map<String, RouteRule.MatchPair> when = new HashMap<>();
         RouteRule.MatchPair matchPair = new RouteRule.MatchPair(new HashSet<>(), new HashSet<>());
+        when.put(Route.KEY_CONSUMER_HOST, matchPair);
 
         if (accessDTO.getWhitelist() != null) {
             matchPair.getUnmatches().addAll(accessDTO.getWhitelist());
@@ -113,5 +114,26 @@ public class AccessesController {
         RouteRule.contidionToString(sb, when);
         route.setMatchRule(sb.toString());
         routeService.createRoute(route);
+    }
+
+    @RequestMapping(value = "/update", method = RequestMethod.POST)
+    public void updateAccess(@RequestBody AccessDTO accessDTO) {
+        Route route = routeService.findRoute(accessDTO.getId());
+        Map<String, RouteRule.MatchPair> when = new HashMap<>();
+        RouteRule.MatchPair matchPair = new RouteRule.MatchPair(new HashSet<>(), new HashSet<>());
+        when.put(Route.KEY_CONSUMER_HOST, matchPair);
+
+        if (accessDTO.getWhitelist() != null) {
+            matchPair.getUnmatches().addAll(accessDTO.getWhitelist());
+        }
+        if (accessDTO.getBlacklist() != null) {
+            matchPair.getMatches().addAll(accessDTO.getBlacklist());
+        }
+
+        StringBuilder sb = new StringBuilder();
+        RouteRule.contidionToString(sb, when);
+        route.setMatchRule(sb.toString());
+
+        routeService.updateRoute(route);
     }
 }

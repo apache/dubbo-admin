@@ -11,6 +11,7 @@ let defaultConfig = {
   lang: 'yaml',
   theme: 'monokai',
   readonly: false,
+  fontSize: 14,
   tabSize: 2
 }
 
@@ -37,6 +38,11 @@ export default {
         this.myConfig = Object.assign({}, defaultConfig, newVal)
         this.initAce(this.myConfig)
       }
+    },
+    value (newVal, oldVal) {
+      if (newVal !== oldVal) {
+        this.$ace.setValue(newVal, 1)
+      }
     }
   },
   methods: {
@@ -53,7 +59,7 @@ export default {
       this.$ace.setTheme(`ace/theme/${conf.theme}`) // 配置主题
       this.$ace.setValue(this.value, 1) // 设置默认内容
       this.$ace.setReadOnly(conf.readonly) // 设置是否为只读模式
-      this.$ace.setFontSize(14)
+      this.$ace.setFontSize(conf.fontSize)
       session.setTabSize(conf.tabSize) // Tab大小
       session.setUseSoftTabs(true)
 

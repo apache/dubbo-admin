@@ -43,7 +43,7 @@ export default new Router({
       component: RoutingRule
     },
     {
-      path: '/governance/accesses',
+      path: '/governance/access',
       name: 'AccessControl',
       component: AccessControl
     },
