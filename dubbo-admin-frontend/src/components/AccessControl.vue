@@ -177,7 +177,7 @@ export default {
       enable: false,
       title: 'Create New',
       saveBtn: 'Create',
-      click: null,
+      click: () => {},
       id: null,
       service: null,
       content: '',
