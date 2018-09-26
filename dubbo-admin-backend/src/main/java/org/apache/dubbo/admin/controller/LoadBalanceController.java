@@ -17,15 +17,14 @@
 
 package org.apache.dubbo.admin.controller;
 
+import org.apache.dubbo.admin.dto.BalancingDTO;
 import org.apache.dubbo.admin.governance.service.OverrideService;
 import org.apache.dubbo.admin.registry.common.domain.LoadBalance;
 import org.apache.dubbo.admin.registry.common.domain.Override;
 import org.apache.dubbo.admin.registry.common.util.OverrideUtils;
 import org.apache.dubbo.admin.util.YamlUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,8 +37,10 @@ public class LoadBalanceController {
     @Autowired
     private OverrideService overrideService;
 
-    @RequestMapping("/create")
-    public boolean createLoadbalance(@RequestParam String serviceName, @RequestParam String rule) {
+    @RequestMapping(value = "/create", method = RequestMethod.POST)
+    public boolean createLoadbalance(@RequestBody BalancingDTO balancingDTO) {
+        String serviceName = balancingDTO.getServiceName();
+        String rule = balancingDTO.getRule();
         if (serviceName == null || serviceName.length() == 0) {
             //TODO throw exception
         }
@@ -51,8 +52,10 @@ public class LoadBalanceController {
         return true;
     }
 
-    @RequestMapping("/update")
-    public boolean updateLoadbalance(@RequestParam Long id, @RequestParam String rule) {
+    @RequestMapping(value = "/update", method = RequestMethod.POST)
+    public boolean updateLoadbalance(@RequestBody BalancingDTO balancingDTO) {
+        Long id = balancingDTO.getId();
+        String rule = balancingDTO.getRule();
         Override override = overrideService.findById(id);
         if (override == null) {
             //TODO throw exception
@@ -66,8 +69,9 @@ public class LoadBalanceController {
         return true;
     }
 
-    @RequestMapping("/all")
-    public List<LoadBalance> allLoadbalances(@RequestParam String serviceName) {
+    @RequestMapping(value = "/search", method = RequestMethod.POST)
+    public List<LoadBalance> allLoadbalances(@RequestBody Map<String, String> params) {
+        String serviceName = params.get(params);
         if (serviceName == null || serviceName.length() == 0) {
            //TODO throw Exception
         }
@@ -93,8 +97,9 @@ public class LoadBalanceController {
         return OverrideUtils.overrideToLoadBalance(override);
     }
 
-    @RequestMapping("/delete")
-    public boolean delete(@RequestParam Long id) {
+    @RequestMapping(value  = "/delete", method = RequestMethod.POST)
+    public boolean delete(@RequestBody Map<String, Long> params) {
+        Long id = params.get("id");
         overrideService.deleteOverride(id);
         return true;
     }

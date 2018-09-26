@@ -17,19 +17,19 @@
 
 <template>
   <v-container grid-list-xl fluid >
-      <v-layout row wrap>
-        <v-flex xs12 >
-          <v-card flat color="transparent">
-            <v-card-text>
-              <v-layout row wrap >
-                <v-text-field label="Search dubbo service"
-                              v-model="filter" clearable></v-text-field>
-                <v-btn @click="submit" color="primary" large>Search</v-btn>
-              </v-layout>
-            </v-card-text>
-          </v-card>
-        </v-flex>
-      </v-layout>
+    <v-layout row wrap>
+      <v-flex xs12 >
+        <v-card flat color="transparent">
+          <v-card-text>
+            <v-layout row wrap >
+              <v-text-field label="Search dubbo service"
+                            v-model="filter" clearable></v-text-field>
+              <v-btn @click="submit" color="primary" large>Search</v-btn>
+            </v-layout>
+          </v-card-text>
+        </v-card>
+      </v-flex>
+    </v-layout>
 
     <v-flex lg12>
       <v-card>
@@ -47,15 +47,13 @@
         <v-card-text class="pa-0">
           <v-data-table
             :headers="headers"
-            :items="routingRules"
+            :items="loadBalances"
             hide-actions
             class="elevation-0"
           >
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.service }}</td>
-              <td class="text-xs-left">{{ props.item.group }}</td>
-              <td class="text-xs-left">{{ props.item.priority }}</td>
-              <td class="text-xs-left">{{ props.item.enabled }}</td>
+              <td class="text-xs-left">{{ props.item.method }}</td>
               <td class="justify-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
                   <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon(props.item), props.item)">
@@ -73,22 +71,15 @@
     <v-dialog   v-model="dialog" width="800px" persistent >
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">Create New Routing Rule</span>
+          <span class="headline">Create New Weight Rule</span>
         </v-card-title>
         <v-card-text >
           <v-text-field
             label="Service Unique ID"
-            hint="A service ID in form of service:version, version is optional"
+            hint="A service ID is service name"
             required
             v-model="service"
           ></v-text-field>
-          <v-text-field
-            label="Application Name"
-            hint="Application name the service belongs to"
-            required
-            v-model="application"
-          ></v-text-field>
-
           <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
           <codemirror ref="myCm"
                       v-model="ruleText"
@@ -117,8 +108,8 @@
     </v-dialog>
 
   </v-container>
-
 </template>
+
 <script>
   import { codemirror } from 'vue-codemirror'
   import 'codemirror/lib/codemirror.css'
@@ -134,7 +125,7 @@
     },
     data: () => ({
       dropdown_font: [ 'Service', 'App', 'IP' ],
-      ruleKeys: ['enabled', 'force', 'dynamic', 'runtime', 'group', 'version', 'rule', 'priority'],
+      ruleKeys: ['weight', 'address'],
       pattern: 'Service',
       filter: '',
       dialog: false,
@@ -160,19 +151,6 @@
           tooltip: function (item) {
             return 'Edit'
           }},
-        {id: 2,
-          icon: function (item) {
-            if (item.enabled) {
-              return 'block'
-            }
-            return 'check_circle_outline'
-          },
-          tooltip: function (item) {
-            if (item.enabled === true) {
-              return 'Disable'
-            }
-            return 'Enable'
-          }},
         {id: 3,
           icon: function (item) {
             return 'delete'
@@ -181,20 +159,13 @@
             return 'Delete'
           }}
       ],
-      routingRules: [
+      loadBalances: [
       ],
       template:
-        'enabled: true/false\n' +
-        'priority:\n' +
-        'runtime: false/true\n' +
-        'force: true/false\n' +
-        'dynamic: true/false\n' +
-        'conditions:\n' +
-        '  - => host != 172.22.3.91\n' +
-        '  - host != 10.20.153.10,10.20.153.11 =>\n' +
-        '  - host = 10.20.153.10,10.20.153.11 =>\n' +
-        '  - application != kylin => host != 172.22.3.95,172.22.3.96\n' +
-        '  - method = find*,list*,get*,is* => host = 172.22.3.94,172.22.3.95,172.22.3.96',
+        'weight: 100  # 100 for default\n' +
+        'provider:   # provider\'s ip\n' +
+        '  - 192.168.0.1\n' +
+        '  - 192.168.0.2',
       ruleText: '',
       cmOption: {
         theme: 'paraiso-light',
@@ -210,20 +181,10 @@
           align: 'left'
         },
         {
-          text: 'Group',
-          value: 'group',
+          text: 'Weight',
+          value: 'weight',
           align: 'left'
 
-        },
-        {
-          text: 'Priority',
-          value: 'priority',
-          sortable: false
-        },
-        {
-          text: 'Enabled',
-          value: 'enabled',
-          sortable: false
         },
         {
           text: 'Operation',
@@ -239,33 +200,29 @@
       search: function (filter, rewrite) {
         let params = {}
         params.serviceName = filter
-
-        AXIOS.post('/routes/search', params)
-          .then(response => {
-            this.routingRules = response.data
-            if (rewrite) {
-              this.$router.push({path: 'routingRule', query: {serviceName: filter}})
-            }
-          })
+        AXIOS.post('/weight/search', params)
+            .then(response => {
+              this.loadBalances = response.data
+              if (rewrite) {
+                this.$router.push({path: 'weight', query: {serviceName: filter}})
+              }
+            })
       },
-      handleRule: function (route) {
-        console.log(route)
+      handleRule: function (weight) {
         let result = {}
-        let conditions = []
-        for (let property in route) {
+        let provider = []
+        for (let property in weight) {
           if (this.ruleKeys.includes(property)) {
-            if (property === 'rule') {
-              conditions.push(route[property])
+            if (property === 'address') {
+              provider.push(weight[property])
             } else {
-              result[property] = route[property]
+              result[property] = weight[property]
             }
           }
         }
-        if (conditions.length > 0) {
-          result['conditions'] = conditions
+        if (provider.length > 0) {
+          result['provider'] = provider
         }
-        console.log('result====')
-        console.log(result)
         return yaml.safeDump(result)
       },
       closeDialog: function () {
@@ -288,48 +245,39 @@
         this.warn = false
       },
       saveItem: function () {
-        let rule = yaml.safeLoad(this.ruleText)
-        rule.serviceName = this.service
-        AXIOS.post('/routes/create', rule)
+        let weight = yaml.safeLoad(this.ruleText)
+        weight.service = this.service
+        AXIOS.post('/weight/create', weight)
           .then(response => {
-            if (response.data) {
-              this.search(this.service, true)
-            }
+            this.search(this.service, true)
             this.closeDialog()
           })
       },
       itemOperation: function (icon, item) {
         switch (icon) {
           case 'visibility':
-            AXIOS.get('/routes/detail?id=' + item.id)
-              .then(response => {
-                let route = response.data
-                let result = this.handleRule(route)
-                this.service = route.service
-                this.ruleText = result
-                this.cmOption.readOnly = true
-                this.dialog = true
-              })
+            AXIOS.get('/weight/detail?id=' + item.id)
+                .then(response => {
+                  let weight = response.data
+                  let result = this.handleRule(weight)
+                  this.service = weight.service
+                  this.ruleText = result
+                  this.cmOption.readOnly = true
+                  this.dialog = true
+                })
             break
           case 'edit':
             let id = {}
             id.id = item.id
-            AXIOS.post('/routes/edit', id)
-              .then(response => {
-                let route = response.data
-                let result = this.handleRule(route)
-                this.service = route.service
-                this.ruleText = result
-                this.cmOption.readOnly = false
-                this.dialog = true
-              })
-            break
-          case 'block':
-          case 'check_circle_outline':
-            this.openWarn(' Are you sure to ' + icon + ' Routing Rule', 'serviceName: ' + item.service)
-            this.warnStatus.operation = 'block'
-            this.warnStatus.id = item.id
-            this.warnStatus.enabled = item.enabled
+            AXIOS.post('/weight/edit' + id)
+                .then(response => {
+                  let weight = response.data
+                  let result = this.handleRule(weight)
+                  this.service = weight.service
+                  this.ruleText = result
+                  this.cmOption.readOnly = false
+                  this.dialog = true
+                })
             break
           case 'delete':
             this.openWarn(' Are you sure to Delete Routing Rule', 'serviceName: ' + item.service)
@@ -344,20 +292,20 @@
         if (warnStatus.operation === 'delete') {
           let id = {}
           id.id = warnStatus.id
-          AXIOS.post('/routes/delete', id)
-            .then(response => {
-              this.warn = false
-              this.search(this.filter, false)
-            })
+          AXIOS.post('/weight/delete', id)
+              .then(response => {
+                this.warn = false
+                this.search(this.filter, false)
+              })
         } else if (warnStatus.operation === 'block') {
           let status = {}
-          status.id = warnStatus.id
           status.enabled = warnStatus.enabled
-          AXIOS.post('/routes/changeStatus', status)
-            .then(response => {
-              this.warn = false
-              this.search(this.filter, false)
-            })
+          status.id = warnStatus.id
+          AXIOS.post('/weight/changeStatus', status)
+              .then(response => {
+                this.warn = false
+                this.search(this.filter, false)
+              })
         }
       }
     },
@@ -383,6 +331,9 @@
         this.search(service, false)
       }
     }
-
   }
 </script>
+
+<style scoped>
+
+</style>

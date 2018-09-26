@@ -17,12 +17,14 @@
 
 package org.apache.dubbo.admin.controller;
 
+import org.apache.dubbo.admin.dto.RouteDTO;
 import org.apache.dubbo.admin.governance.service.ProviderService;
 import org.apache.dubbo.admin.governance.service.RouteService;
 import org.apache.dubbo.admin.registry.common.domain.Route;
 import org.apache.dubbo.admin.util.YamlUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.yaml.snakeyaml.events.Event;
 
 import java.util.List;
 import java.util.Map;
@@ -36,17 +38,14 @@ public class RoutesController {
     @Autowired
     private ProviderService providerService;
 
-    @RequestMapping("/create")
-    public boolean createRule(@RequestParam(required = false) String serviceName,
-                           @RequestParam(required = false) String app,
-                           @RequestParam String rule) {
+    @RequestMapping(value = "/create", method = RequestMethod.POST)
+    public boolean createRule(@RequestBody RouteDTO routeDTO) {
+        String serviceName = routeDTO.getServiceName();
+        String app = routeDTO.getApp();
         if (serviceName == null && app == null) {
 
         }
-        Map<String, Object> result = YamlUtil.loadString(rule);
         if (serviceName != null) {
-            result.put("scope", serviceName);
-            result.put("group/service:version", result.get("group") + "/" + serviceName);
             //2.6
             String version = null;
             String service = serviceName;
@@ -55,56 +54,54 @@ public class RoutesController {
                 service = serviceName.split(":")[0];
             }
 
-            List<String> conditions = (List)result.get("conditions");
+            String[] conditions = routeDTO.getConditions();
             for (String condition : conditions) {
                 Route route = new Route();
                 route.setService(service);
                 route.setVersion(version);
-                route.setEnabled((boolean)getParameter(result, "enabled", true));
-                route.setForce((boolean)getParameter(result, "force", false));
-                route.setGroup((String)getParameter(result, "group", null));
-                route.setDynamic((boolean)getParameter(result, "dynamic", false));
-                route.setRuntime((boolean)getParameter(result, "runtime", false));
-                route.setPriority((int)getParameter(result, "priority", 0));
+                route.setEnabled(routeDTO.isEnabled());
+                route.setForce(routeDTO.isForce());
+                route.setGroup(routeDTO.getGroup());
+                route.setDynamic(routeDTO.isDynamic());
+                route.setRuntime(routeDTO.isRuntime());
+                route.setPriority(routeDTO.getPriority());
                 route.setRule(condition);
                 routeService.createRoute(route);
             }
 
         } else {
             //new feature in 2.7
-            result.put("scope", "application");
-            result.put("appname", app);
         }
         return true;
     }
 
-    @RequestMapping("/update")
-    public void updateRule(@RequestParam Long id, @RequestParam String rule) {
+    @RequestMapping(value = "/update", method = RequestMethod.POST)
+    public void updateRule(@RequestBody RouteDTO routeDTO) {
+        Long id = routeDTO.getId();
         Route route = routeService.findRoute(id);
         if (route == null) {
             //TODO Exception
         }
-        rule = rule.replace("===", "\n");
-        Map<String, Object> result = YamlUtil.loadString(rule);
-        List<String> conditions = (List)result.get("conditions");
+        String[] conditions = routeDTO.getConditions();
         for (String condition : conditions) {
             Route newRoute = new Route();
             newRoute.setService(route.getService());
             newRoute.setVersion(route.getVersion());
-            newRoute.setEnabled((boolean)getParameter(result, "enabled", true));
-            newRoute.setForce((boolean)getParameter(result, "force", false));
-            newRoute.setGroup((String)getParameter(result, "group", null));
-            newRoute.setDynamic((boolean)getParameter(result, "dynamic", false));
-            newRoute.setRuntime((boolean)getParameter(result, "runtime", false));
-            newRoute.setPriority((int)getParameter(result, "priority", 0));
+            newRoute.setEnabled(routeDTO.isEnabled());
+            newRoute.setForce(routeDTO.isForce());
+            newRoute.setGroup(routeDTO.getGroup());
+            newRoute.setDynamic(routeDTO.isDynamic());
+            newRoute.setRuntime(routeDTO.isRuntime());
+            newRoute.setPriority(routeDTO.getPriority());
             newRoute.setRule(condition);
             routeService.updateRoute(newRoute);
         }
     }
 
-    @RequestMapping("/all")
-    public List<Route> allRoutes(@RequestParam(required = false) String serviceName,
-                                 @RequestParam(required = false) String app) {
+    @RequestMapping(value = "/search", method = RequestMethod.POST)
+    public List<Route> allRoutes(@RequestBody Map<String, String> params) {
+        String app = params.get("app");
+        String serviceName = params.get("serviceName");
         List<Route> routes = null;
         if (app != null) {
            // app scope in 2.7
@@ -128,14 +125,16 @@ public class RoutesController {
         return route;
     }
 
-    @RequestMapping("/delete")
-    public boolean deleteRoute(@RequestParam long id) {
+    @RequestMapping(value = "/delete", method = RequestMethod.POST)
+    public boolean deleteRoute(@RequestBody Map<String, Long> params) {
+        Long id = params.get("id");
         routeService.deleteRoute(id);
         return true;
     }
 
-    @RequestMapping("/edit")
-    public Route editRule(@RequestParam long id) {
+    @RequestMapping(value = "/edit", method = RequestMethod.POST)
+    public Route editRule(@RequestBody Map<String, Long> params) {
+        Long id = params.get("id");
         Route route = routeService.findRoute(id);
         if (route == null) {
             // TODO throw exception
@@ -143,8 +142,11 @@ public class RoutesController {
         return route;
     }
 
-    @RequestMapping("/changeStatus")
-    public boolean enableRoute(@RequestParam Long id, @RequestParam boolean enabled) {
+    @RequestMapping(value = "/changeStatus", method = RequestMethod.POST)
+    public boolean enableRoute(@RequestBody Map<String, Object> params) {
+        boolean enabled = (boolean)params.get("enabled");
+
+        long id = Long.parseLong(params.get("id").toString());
         if (enabled) {
             routeService.disableRoute(id);
         } else {

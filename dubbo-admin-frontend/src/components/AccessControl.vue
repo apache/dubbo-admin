@@ -305,8 +305,10 @@ export default {
         service = query[key]
       }
     })
-    this.filter = service
-    this.search(this.filter)
+    if (service !== '') {
+      this.filter = service
+      this.search(this.filter)
+    }
   },
   components: {
     AceEditor
