@@ -27,9 +27,7 @@ import org.apache.dubbo.admin.registry.common.domain.Consumer;
 import org.apache.dubbo.admin.registry.common.domain.Provider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -48,11 +46,11 @@ public class ServiceController {
     @Autowired
     private ConsumerService consumerService;
 
-    @RequestMapping("/search")
-    public List<ServiceDO> search(@RequestParam String filter,
-                                  @RequestParam String pattern,
-                                  HttpServletRequest request,
-                                  HttpServletResponse response, Model model) {
+    @RequestMapping(value = "/search", method = RequestMethod.POST)
+    public List<ServiceDO> search(@RequestBody Map<String, String> params) {
+
+        String pattern = params.get("pattern");
+        String filter = params.get("filter");
 
         List<Provider> allProviders = providerService.findAll();
 
@@ -100,7 +98,6 @@ public class ServiceController {
 
             }
         }
-        model.addAttribute("serviceDO", result);
         return result;
     }
 

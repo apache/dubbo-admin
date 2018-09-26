@@ -184,12 +184,18 @@ public class Route extends Entity {
 
     public void setRule(String rule) {
         this.rule = rule;
-        String[] rules = rule.split(" => ");
+        String[] rules = rule.split("=>");
         if (rules.length != 2) {
-            throw new IllegalArgumentException("Illegal Route Condition Rule");
+            if (rule.endsWith("=>")) {
+                this.matchRule = rules[0].trim();
+                this.filterRule = "";
+            } else {
+                throw new IllegalArgumentException("Illegal Route Condition Rule");
+            }
+        } else {
+            this.matchRule = rules[0].trim();
+            this.filterRule = rules[1].trim();
         }
-        this.matchRule = rules[0];
-        this.filterRule = rules[1];
     }
 
     public String getMatchRule() {
@@ -197,7 +203,11 @@ public class Route extends Entity {
     }
 
     public void setMatchRule(String matchRule) {
-        this.matchRule = matchRule;
+        if (matchRule != null) {
+            this.matchRule = matchRule.trim();
+        } else {
+            this.matchRule = matchRule;
+        }
     }
 
     public String getFilterRule() {
@@ -205,7 +215,11 @@ public class Route extends Entity {
     }
 
     public void setFilterRule(String filterRule) {
-        this.filterRule = filterRule;
+        if (filterRule != null) {
+            this.filterRule = filterRule.trim();
+        } else {
+            this.filterRule = filterRule;
+        }
     }
 
     @java.lang.Override
@@ -217,6 +231,11 @@ public class Route extends Entity {
     }
 
     public URL toUrl() {
+//        if (filterRule != null && filterRule.endsWith("null")) {
+//            filterRule = null;
+//        } else {
+//            filterRule = filterRule.trim();
+//        }
         return URL.valueOf(Constants.ROUTE_PROTOCOL + "://" + Constants.ANYHOST_VALUE + "/" + getService()
                 + "?" + Constants.CATEGORY_KEY + "=" + Constants.ROUTERS_CATEGORY
                 + "&router=condition&runtime=" + isRuntime() + "&enabled=" + isEnabled() + "&priority=" + getPriority() + "&force=" + isForce() + "&dynamic=" + isDynamic()

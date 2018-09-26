@@ -57,7 +57,11 @@ public class OverrideUtils {
     }
 
     public static Weight overrideToWeight(Override override) {
-        return overridesToWeights(Arrays.asList(override)).get(0);
+        List<Weight> weights = OverrideUtils.overridesToWeights(Arrays.asList(override));
+        if (weights != null && weights.size() > 0) {
+            return overridesToWeights(Arrays.asList(override)).get(0);
+        }
+        return null;
     }
 
     public static Override weightToOverride(Weight weight) {

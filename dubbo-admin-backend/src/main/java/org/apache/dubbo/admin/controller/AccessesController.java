@@ -50,7 +50,7 @@ public class AccessesController {
                 routes.add(route);
             }
         } else {
-            routes = routeService.findAllForceRoute();
+            //TODO throw exception
         }
 
         for (Route route : routes) {
@@ -97,6 +97,7 @@ public class AccessesController {
         route.setService(accessDTO.getService());
         route.setForce(true);
         route.setName(accessDTO.getService() + " " + AccessDTO.KEY_BLACK_WHITE_LIST);
+        route.setFilterRule("false");
         route.setEnabled(true);
 
         Map<String, RouteRule.MatchPair> when = new HashMap<>();

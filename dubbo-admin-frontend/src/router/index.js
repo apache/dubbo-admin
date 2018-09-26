@@ -22,6 +22,7 @@ import ServiceDetail from '@/components/ServiceDetail'
 import RoutingRule from '@/components/RoutingRule'
 import AccessControl from '@/components/AccessControl'
 import LoadBalance from '@/components/LoadBalance'
+import WeightAdjust from '@/components/WeightAdjust'
 
 Vue.use(Router)
 
@@ -51,6 +52,11 @@ export default new Router({
       path: '/governance/loadbalance',
       name: 'LoadBalance',
       component: LoadBalance
+    },
+    {
+      path: '/governance/weight',
+      name: 'WeightAdjust',
+      component: WeightAdjust
     }
   ]
 })
