@@ -183,7 +183,7 @@ public class Route extends Entity {
     }
 
     public void setRule(String rule) {
-        this.rule = rule;
+        this.rule = rule.trim();
         String[] rules = rule.split("=>");
         if (rules.length != 2) {
             if (rule.endsWith("=>")) {

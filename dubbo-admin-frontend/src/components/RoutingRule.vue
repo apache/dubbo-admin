@@ -139,6 +139,7 @@
       filter: '',
       dialog: false,
       warn: false,
+      updateId: -1,
       application: '',
       service: '',
       warnTitle: '',
@@ -190,11 +191,11 @@
         'force: true/false\n' +
         'dynamic: true/false\n' +
         'conditions:\n' +
-        '  - => host != 172.22.3.91\n' +
-        '  - host != 10.20.153.10,10.20.153.11 =>\n' +
-        '  - host = 10.20.153.10,10.20.153.11 =>\n' +
-        '  - application != kylin => host != 172.22.3.95,172.22.3.96\n' +
-        '  - method = find*,list*,get*,is* => host = 172.22.3.94,172.22.3.95,172.22.3.96',
+        ' - \'=> host != 172.22.3.91\'\n' +
+        ' - \'host != 10.20.153.10,10.20.153.11 =>\'\n' +
+        ' - \'host = 10.20.153.10,10.20.153.11 =>\'\n' +
+        ' - \'application != kylin => host != 172.22.3.95,172.22.3.96\'\n' +
+        ' - \'method = find*,list*,get*,is* => host = 172.22.3.94,172.22.3.95,172.22.3.96\'',
       ruleText: '',
       cmOption: {
         theme: 'paraiso-light',
@@ -270,6 +271,7 @@
       },
       closeDialog: function () {
         this.ruleText = this.template
+        this.updateId = -1
         this.service = ''
         this.dialog = false
         this.cmOption.readOnly = false
@@ -290,13 +292,24 @@
       saveItem: function () {
         let rule = yaml.safeLoad(this.ruleText)
         rule.serviceName = this.service
-        AXIOS.post('/routes/create', rule)
-          .then(response => {
-            if (response.data) {
-              this.search(this.service, true)
-            }
-            this.closeDialog()
-          })
+        if (this.updateId !== -1) {
+          rule.id = this.updateId
+          AXIOS.post('/routes/update', rule)
+            .then(response => {
+              if (response.data) {
+                this.search(this.service, true)
+              }
+              this.closeDialog()
+            })
+        } else {
+          AXIOS.post('/routes/create', rule)
+            .then(response => {
+              if (response.data) {
+                this.search(this.service, true)
+              }
+              this.closeDialog()
+            })
+        }
       },
       itemOperation: function (icon, item) {
         switch (icon) {
@@ -322,6 +335,7 @@
                 this.ruleText = result
                 this.cmOption.readOnly = false
                 this.dialog = true
+                this.updateId = item.id
               })
             break
           case 'block':
