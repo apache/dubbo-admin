@@ -23,6 +23,7 @@ import RoutingRule from '@/components/RoutingRule'
 import AccessControl from '@/components/AccessControl'
 import LoadBalance from '@/components/LoadBalance'
 import WeightAdjust from '@/components/WeightAdjust'
+import DynamicConfig from '@/components/DynamicConfig'
 
 Vue.use(Router)
 
@@ -57,6 +58,11 @@ export default new Router({
       path: '/governance/weight',
       name: 'WeightAdjust',
       component: WeightAdjust
+    },
+    {
+      path: '/governance/config',
+      name: 'DynamicConfig',
+      component: DynamicConfig
     }
   ]
 })
