@@ -162,8 +162,17 @@
       loadBalances: [
       ],
       template:
-        'methodName: sayHello  # 0 for all methods\n' +
-        'strategy:  # leastactive, random, roundrobin',
+        'application:  # consumer\'s application name, empty for all \n' +
+        'address: 192.168.0.1 # consumer\'s ip address, empty for all consumers\n' +
+        'dynamic: false\n' +
+        'enabled: false # enable this rule\n' +
+        'parameters:\n' +
+        '  - timeout: 100\n' +
+        '\n' +
+        'mock: \n' +
+        '  - 0: \'force: return null’\n' +
+        '  - sayHello: \'force: return null\'\n' +
+        '  - test: \'fail: return empty\'',
       ruleText: '',
       cmOption: {
         theme: 'paraiso-light',

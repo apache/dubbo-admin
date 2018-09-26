@@ -74,7 +74,7 @@ public class RoutesController {
     }
 
     @RequestMapping(value = "/update", method = RequestMethod.POST)
-    public void updateRule(@RequestBody RouteDTO routeDTO) {
+    public boolean updateRule(@RequestBody RouteDTO routeDTO) {
         Long id = routeDTO.getId();
         Route route = routeService.findRoute(id);
         if (route == null) {
@@ -92,8 +92,10 @@ public class RoutesController {
             newRoute.setRuntime(routeDTO.isRuntime());
             newRoute.setPriority(routeDTO.getPriority());
             newRoute.setRule(condition);
+            newRoute.setId(id);
             routeService.updateRoute(newRoute);
         }
+        return true;
     }
 
     @RequestMapping(value = "/search", method = RequestMethod.POST)
