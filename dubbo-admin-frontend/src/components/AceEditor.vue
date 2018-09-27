@@ -16,7 +16,7 @@
   -->
 
 <template>
-  <div :style="{height: myConfig.height + 'px', width: myConfig.width + 'px'}"></div>
+  <div :style="{height: myConfig.height, width: myConfig.width}"></div>
 </template>
 
 <script>
@@ -24,7 +24,7 @@ import brace from 'brace'
 
 let defaultConfig = {
   width: '100%',
-  height: 300,
+  height: '300px',
   lang: 'yaml',
   theme: 'monokai',
   readonly: false,
