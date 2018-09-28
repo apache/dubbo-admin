@@ -47,19 +47,18 @@
         <v-card-text class="pa-0">
           <v-data-table
             :headers="headers"
-            :items="loadBalances"
+            :items="configs"
             hide-actions
             class="elevation-0"
           >
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.service }}</td>
-              <td class="text-xs-left">{{ props.item.method }}</td>
               <td class="justify-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
-                  <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon(props.item), props.item)">
-                    {{op.icon(props.item)}}
+                  <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon, props.item)">
+                    {{op.icon}}
                   </v-icon>
-                  <span>{{op.tooltip(props.item)}}</span>
+                  <span>{{op.tooltip}}</span>
                 </v-tooltip>
               </td>
             </template>
@@ -71,7 +70,7 @@
     <v-dialog   v-model="dialog" width="800px" persistent >
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">Create New LoadBalance Rule</span>
+          <span class="headline">Create New Dynamic Config Rule</span>
         </v-card-title>
         <v-card-text >
           <v-text-field
@@ -125,7 +124,6 @@
     },
     data: () => ({
       dropdown_font: [ 'Service', 'App', 'IP' ],
-      ruleKeys: ['method', 'strategy'],
       pattern: 'Service',
       filter: '',
       dialog: false,
@@ -137,29 +135,11 @@
       warnStatus: {},
       height: 0,
       operations: [
-        {id: 0,
-          icon: function (item) {
-            return 'visibility'
-          },
-          tooltip: function (item) {
-            return 'View'
-          }},
-        {id: 1,
-          icon: function (item) {
-            return 'edit'
-          },
-          tooltip: function (item) {
-            return 'Edit'
-          }},
-        {id: 3,
-          icon: function (item) {
-            return 'delete'
-          },
-          tooltip: function (item) {
-            return 'Delete'
-          }}
+        {id: 0, icon: 'visibility', tooltip: 'View'},
+        {id: 1, icon: 'edit', tooltip: 'Edit'},
+        {id: 3, icon: 'delete', tooltip: 'Delete'}
       ],
-      loadBalances: [
+      configs: [
       ],
       template:
         'application:  # consumer\'s application name, empty for all \n' +
@@ -170,7 +150,7 @@
         '  - timeout: 100\n' +
         '\n' +
         'mock: \n' +
-        '  - 0: \'force: return null’\n' +
+        '  - 0: \'force: return null\'\n' +
         '  - sayHello: \'force: return null\'\n' +
         '  - test: \'fail: return empty\'',
       ruleText: '',
@@ -188,12 +168,6 @@
           align: 'left'
         },
         {
-          text: 'Method',
-          value: 'method',
-          align: 'left'
-
-        },
-        {
           text: 'Operation',
           value: 'operation',
           sortable: false
@@ -205,24 +179,13 @@
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        let params = {}
-        params.service = filter
-        AXIOS.post('/balancing/search', params)
+        AXIOS.get('/override/search?serviceName=' + filter)
           .then(response => {
-            this.loadBalances = response.data
+            this.configs = response.data
             if (rewrite) {
-              this.$router.push({path: 'loadbalance', query: {service: filter}})
+              this.$router.push({path: 'config', query: {service: filter}})
             }
           })
-      },
-      handleRule: function (route) {
-        let result = {}
-        for (let property in route) {
-          if (this.ruleKeys.includes(property)) {
-            result[property] = route[property]
-          }
-        }
-        return yaml.safeDump(result)
       },
       closeDialog: function () {
         this.ruleText = this.template
@@ -244,45 +207,43 @@
         this.warn = false
       },
       saveItem: function () {
-        let text = encodeURIComponent(this.ruleText)  // contains illegal url character, need encode
-        let rule = {}
-        rule.service = this.service
-        rule.rule = text
-        AXIOS.post('/balancing/create', rule)
+        let override = yaml.safeLoad(this.ruleText)  // contains illegal url character, need encode
+        override.service = this.service
+        AXIOS.post('/override/create', override)
           .then(response => {
             if (response.data) {
               this.search(this.service, true)
+              this.filter = this.service
             }
+            this.closeDialog()
           })
       },
       itemOperation: function (icon, item) {
         switch (icon) {
           case 'visibility':
-            AXIOS.get('/balancing/detail?id=' + item.id)
+            AXIOS.get('/override/detail?id=' + item.id)
               .then(response => {
-                let balancing = response.data
-                let result = this.handleRule(balancing)
-                this.service = balancing.service
-                this.ruleText = result
+                let config = response.data
+                this.service = config.service
+                delete config.service
+                this.ruleText = yaml.safeDump(config)
                 this.cmOption.readOnly = true
                 this.dialog = true
               })
             break
           case 'edit':
-            let edit = {}
-            edit.id = item.id
-            AXIOS.post('/balancing/edit', edit)
+            AXIOS.get('/override/detail?id=' + item.id)
               .then(response => {
-                let loadbalance = response.data
-                let result = this.handleRule(loadbalance)
-                this.service = loadbalance.service
-                this.ruleText = result
+                let config = response.data
+                this.service = config.service
+                delete config.service
+                this.ruleText = yaml.safeDump(config)
                 this.cmOption.readOnly = false
                 this.dialog = true
               })
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + item.service)
+            this.openWarn(' Are you sure to Delete Dynamic Config', 'service: ' + item.service)
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = item.id
         }
@@ -291,24 +252,13 @@
         this.height = window.innerHeight * 0.5
       },
       deleteItem: function (warnStatus) {
-        if (warnStatus.operation === 'delete') {
-          let id = {}
-          id.id = warnStatus.id
-          AXIOS.post('/balancing/delete', id)
-            .then(response => {
-              this.warn = false
-              this.search(this.filter, false)
-            })
-        } else if (warnStatus.operation === 'block') {
-          let status = {}
-          status.enabled = warnStatus.enabled
-          status.id = warnStatus.id
-          AXIOS.post('/routes/changeStatus', status)
-            .then(response => {
-              this.warn = false
-              this.search(this.filter, false)
-            })
-        }
+        let id = {}
+        id.id = warnStatus.id
+        AXIOS.post('/override/delete', id)
+          .then(response => {
+            this.warn = false
+            this.search(this.filter, false)
+          })
       }
     },
     computed: {
@@ -333,6 +283,5 @@
         this.search(service, false)
       }
     }
-
   }
 </script>
