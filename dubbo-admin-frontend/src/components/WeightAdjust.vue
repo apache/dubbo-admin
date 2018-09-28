@@ -56,10 +56,10 @@
               <td class="text-xs-left">{{ props.item.method }}</td>
               <td class="justify-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
-                  <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon(props.item), props.item)">
-                    {{op.icon(props.item)}}
+                  <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon, props.item)">
+                    {{op.icon}}
                   </v-icon>
-                  <span>{{op.tooltip(props.item)}}</span>
+                  <span>{{op.tooltip}}</span>
                 </v-tooltip>
               </td>
             </template>
@@ -137,27 +137,9 @@
       warnStatus: {},
       height: 0,
       operations: [
-        {id: 0,
-          icon: function (item) {
-            return 'visibility'
-          },
-          tooltip: function (item) {
-            return 'View'
-          }},
-        {id: 1,
-          icon: function (item) {
-            return 'edit'
-          },
-          tooltip: function (item) {
-            return 'Edit'
-          }},
-        {id: 3,
-          icon: function (item) {
-            return 'delete'
-          },
-          tooltip: function (item) {
-            return 'Delete'
-          }}
+        {id: 0, icon: 'visibility', tooltip: 'View'},
+        {id: 1, icon: 'edit', tooltip: 'Edit'},
+        {id: 3, icon: 'delete', tooltip: 'Delete'}
       ],
       loadBalances: [
       ],
