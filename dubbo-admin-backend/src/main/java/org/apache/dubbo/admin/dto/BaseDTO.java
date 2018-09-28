@@ -16,37 +16,19 @@
  */
 package org.apache.dubbo.admin.dto;
 
-import java.util.Set;
+/**
+ * BaseDTO
+ *
+ * For receive ID parameter with @RequestBody
+ */
+public class BaseDTO {
+    private Long id;
 
-public class AccessDTO extends BaseDTO {
-    // BlackWhiteList key
-    public static final String KEY_BLACK_WHITE_LIST = "blackwhitelist";
-
-    private String service;
-    private Set<String> whitelist;
-    private Set<String> blacklist;
-
-    public String getService() {
-        return service;
+    public Long getId() {
+        return id;
     }
 
-    public void setService(String service) {
-        this.service = service;
-    }
-
-    public Set<String> getWhitelist() {
-        return whitelist;
-    }
-
-    public void setWhitelist(Set<String> whitelist) {
-        this.whitelist = whitelist;
-    }
-
-    public Set<String> getBlacklist() {
-        return blacklist;
-    }
-
-    public void setBlacklist(Set<String> blacklist) {
-        this.blacklist = blacklist;
+    public void setId(Long id) {
+        this.id = id;
     }
 }

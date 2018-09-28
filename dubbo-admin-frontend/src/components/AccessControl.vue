@@ -212,8 +212,10 @@ export default {
     search (filter) {
       this.loading = true
       this.$router.push({path: 'access', query: (filter !== '' ? {service: filter} : null)})
-      AXIOS.post('/access/search', {
-        service: filter
+      AXIOS.get('/access/search', {
+        params: {
+          service: filter
+        }
       }).then(response => {
         this.accesses = response.data
         this.loading = false
