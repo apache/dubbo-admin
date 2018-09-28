@@ -14,9 +14,8 @@
   - See the License for the specific language governing permissions and
   - limitations under the License.
   -->
-
 <template>
-  <div :style="{height: myConfig.height, width: myConfig.width}"></div>
+  <div :style="{height: instanceConfig.height, width: instanceConfig.width}"></div>
 </template>
 
 <script>
@@ -29,7 +28,8 @@ let defaultConfig = {
   theme: 'monokai',
   readonly: false,
   fontSize: 14,
-  tabSize: 2
+  tabSize: 2,
+  overrideValueHistory: true
 }
 
 export default {
@@ -45,54 +45,68 @@ export default {
   },
   data () {
     return {
-      myConfig: Object.assign({}, defaultConfig, this.config),
-      $ace: null
+      $ace: null,
+      instanceConfig: Object.assign({}, defaultConfig, this.config),
+      _content: ''
     }
   },
   watch: {
-    config (newVal, oldVal) {
-      if (newVal !== oldVal) {
-        this.myConfig = Object.assign({}, defaultConfig, newVal)
-        this.initAce(this.myConfig)
-      }
-    },
     value (newVal, oldVal) {
       if (newVal !== oldVal) {
-        this.$ace.setValue(newVal, 1)
+        if (this._content !== newVal) {
+          this._content = newVal
+          if (this.instanceConfig.overrideValueHistory) {
+            this.$ace.getSession().setValue(newVal)
+          } else {
+            this.$ace.setValue(newVal, 1)
+          }
+        }
+      }
+    },
+    config (newVal, oldVal) {
+      if (newVal !== oldVal) {
+        this.instanceConfig = Object.assign({}, defaultConfig, newVal)
+        this.initAce(this.instanceConfig)
       }
     }
   },
   methods: {
     initAce (conf) {
       this.$ace = brace.edit(this.$el)
-      this.$ace.$blockScrolling = Infinity // 消除警告
-      let session = this.$ace.getSession()
+      this.$ace.$blockScrolling = Infinity
+
       this.$emit('init', this.$ace)
 
       require(`brace/mode/${conf.lang}`)
       require(`brace/theme/${conf.theme}`)
 
-      session.setMode(`ace/mode/${conf.lang}`) // 配置语言
-      this.$ace.setTheme(`ace/theme/${conf.theme}`) // 配置主题
-      this.$ace.setValue(this.value, 1) // 设置默认内容
-      this.$ace.setReadOnly(conf.readonly) // 设置是否为只读模式
-      this.$ace.setFontSize(conf.fontSize)
-      session.setTabSize(conf.tabSize) // Tab大小
+      let session = this.$ace.getSession()
+      session.setMode(`ace/mode/${conf.lang}`)
+      session.setTabSize(conf.tabSize)
       session.setUseSoftTabs(true)
+      session.setUseWrapMode(true)
 
-      this.$ace.setShowPrintMargin(false) // 不显示打印边距
-      session.setUseWrapMode(true) // 自动换行
+      if (conf.overrideValueHistory) {
+        session.setValue(this.value)
+      } else {
+        this.$ace.setValue(this.value, 1)
+      }
 
-      // 绑定输入事件回调
+      this.$ace.setTheme(`ace/theme/${conf.theme}`)
+      this.$ace.setReadOnly(conf.readonly)
+      this.$ace.setFontSize(conf.fontSize)
+      this.$ace.setShowPrintMargin(false)
+
       this.$ace.on('change', () => {
-        var content = this.$ace.getValue()
-        this.$emit('input', content)
+        var aceValue = this.$ace.getValue()
+        this.$emit('input', aceValue)
+        this._content = aceValue
       })
     }
   },
   mounted () {
-    if (this.myConfig) {
-      this.initAce(this.myConfig)
+    if (this.instanceConfig) {
+      this.initAce(this.instanceConfig)
     } else {
       this.initAce(defaultConfig)
     }
