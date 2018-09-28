@@ -141,7 +141,7 @@
         {id: 1, icon: 'edit', tooltip: 'Edit'},
         {id: 3, icon: 'delete', tooltip: 'Delete'}
       ],
-      loadBalances: [
+      configs: [
       ],
       template:
         'weight: 100  # 100 for default\n' +

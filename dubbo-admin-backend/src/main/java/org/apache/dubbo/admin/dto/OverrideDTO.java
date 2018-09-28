@@ -17,15 +17,19 @@
 
 package org.apache.dubbo.admin.dto;
 
-public class OverrideDTO {
+import org.apache.dubbo.admin.governance.sync.util.Pair;
+
+import java.util.Map;
+
+public class OverrideDTO extends BaseDTO{
 
     String app;
     String service;
     String address;
     boolean dynamic;
     boolean enabled;
-    String[] parameters;
-    String[] mock;
+    Map<String, Object>[] parameters;
+    Map<Object, String>[] mock;
 
     public String getApp() {
         return app;
@@ -67,19 +71,19 @@ public class OverrideDTO {
         this.enabled = enabled;
     }
 
-    public String[] getParameters() {
+    public Map<String, Object>[] getParameters() {
         return parameters;
     }
 
-    public void setParameters(String[] parameters) {
+    public void setParameters(Map<String, Object>[] parameters) {
         this.parameters = parameters;
     }
 
-    public String[] getMock() {
+    public Map<Object, String>[] getMock() {
         return mock;
     }
 
-    public void setMock(String[] mock) {
+    public void setMock(Map<Object, String>[] mock) {
         this.mock = mock;
     }
 }

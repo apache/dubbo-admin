@@ -141,7 +141,7 @@
         {id: 1, icon: 'edit', tooltip: 'Edit'},
         {id: 3, icon: 'delete', tooltip: 'Delete'}
       ],
-      loadBalances: [
+      configs: [
       ],
       template:
         'methodName: sayHello  # 0 for all methods\n' +
