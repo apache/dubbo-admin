@@ -16,15 +16,11 @@
  */
 package org.apache.dubbo.admin.registry.common.route;
 
-import org.apache.dubbo.admin.registry.common.domain.Route;
 import com.alibaba.dubbo.common.utils.StringUtils;
+import org.apache.dubbo.admin.registry.common.domain.Route;
 
 import java.text.ParseException;
-import java.util.Map;
-import java.util.Set;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Collections;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

@@ -16,10 +16,10 @@
  */
 package org.apache.dubbo.admin.registry.common.route;
 
+import com.alibaba.dubbo.common.Constants;
 import org.apache.dubbo.admin.registry.common.domain.Consumer;
 import org.apache.dubbo.admin.registry.common.domain.Override;
 import org.apache.dubbo.admin.registry.common.domain.Provider;
-import com.alibaba.dubbo.common.Constants;
 
 import java.util.ArrayList;
 import java.util.Collections;

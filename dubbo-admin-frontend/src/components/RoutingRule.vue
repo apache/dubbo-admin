@@ -238,36 +238,13 @@
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        let params = {}
-        params.serviceName = filter
-
-        AXIOS.post('/routes/search', params)
+        AXIOS.get('/routes/search?serviceName=' + filter)
           .then(response => {
             this.routingRules = response.data
             if (rewrite) {
-              this.$router.push({path: 'routingRule', query: {serviceName: filter}})
+              this.$router.push({path: 'routingRule', query: {service: filter}})
             }
           })
-      },
-      handleRule: function (route) {
-        console.log(route)
-        let result = {}
-        let conditions = []
-        for (let property in route) {
-          if (this.ruleKeys.includes(property)) {
-            if (property === 'rule') {
-              conditions.push(route[property])
-            } else {
-              result[property] = route[property]
-            }
-          }
-        }
-        if (conditions.length > 0) {
-          result['conditions'] = conditions
-        }
-        console.log('result====')
-        console.log(result)
-        return yaml.safeDump(result)
       },
       closeDialog: function () {
         this.ruleText = this.template
@@ -291,7 +268,7 @@
       },
       saveItem: function () {
         let rule = yaml.safeLoad(this.ruleText)
-        rule.serviceName = this.service
+        rule.service = this.service
         if (this.updateId !== -1) {
           rule.id = this.updateId
           AXIOS.post('/routes/update', rule)
@@ -306,6 +283,7 @@
             .then(response => {
               if (response.data) {
                 this.search(this.service, true)
+                this.filter = this.service
               }
               this.closeDialog()
             })
@@ -317,9 +295,9 @@
             AXIOS.get('/routes/detail?id=' + item.id)
               .then(response => {
                 let route = response.data
-                let result = this.handleRule(route)
                 this.service = route.service
-                this.ruleText = result
+                delete route.service
+                this.ruleText = yaml.safeDump(route)
                 this.cmOption.readOnly = true
                 this.dialog = true
               })
@@ -327,26 +305,29 @@
           case 'edit':
             let id = {}
             id.id = item.id
-            AXIOS.post('/routes/edit', id)
+            AXIOS.get('/routes/detail?id=' + item.id)
               .then(response => {
                 let route = response.data
-                let result = this.handleRule(route)
                 this.service = route.service
-                this.ruleText = result
+                delete route.service
+                this.ruleText = yaml.safeDump(route)
                 this.cmOption.readOnly = false
                 this.dialog = true
                 this.updateId = item.id
               })
             break
           case 'block':
-          case 'check_circle_outline':
-            this.openWarn(' Are you sure to ' + icon + ' Routing Rule', 'serviceName: ' + item.service)
-            this.warnStatus.operation = 'block'
+            this.openWarn(' Are you sure to block Routing Rule', 'service: ' + item.service)
+            this.warnStatus.operation = 'disable'
             this.warnStatus.id = item.id
-            this.warnStatus.enabled = item.enabled
+            break
+          case 'check_circle_outline':
+            this.openWarn(' Are you sure to enable Routing Rule', 'service: ' + item.service)
+            this.warnStatus.operation = 'enable'
+            this.warnStatus.id = item.id
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Routing Rule', 'serviceName: ' + item.service)
+            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + item.service)
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = item.id
         }
@@ -363,11 +344,18 @@
               this.warn = false
               this.search(this.filter, false)
             })
-        } else if (warnStatus.operation === 'block') {
-          let status = {}
-          status.id = warnStatus.id
-          status.enabled = warnStatus.enabled
-          AXIOS.post('/routes/changeStatus', status)
+        } else if (warnStatus.operation === 'disable') {
+          let id = {}
+          id.id = warnStatus.id
+          AXIOS.post('/routes/disable', id)
+            .then(response => {
+              this.warn = false
+              this.search(this.filter, false)
+            })
+        } else if (warnStatus.operation === 'enable') {
+          let id = {}
+          id.id = warnStatus.id
+          AXIOS.post('/routes/enable', id)
             .then(response => {
               this.warn = false
               this.search(this.filter, false)
@@ -388,7 +376,7 @@
       let query = this.$route.query
       let service = ''
       Object.keys(query).forEach(function (key) {
-        if (key === 'serviceName') {
+        if (key === 'service') {
           service = query[key]
         }
       })

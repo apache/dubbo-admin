@@ -17,20 +17,17 @@
 
 package org.apache.dubbo.admin.controller;
 
-import org.apache.dubbo.admin.domain.ServiceDO;
-import org.apache.dubbo.admin.domain.ServiceDetailDO;
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.utils.StringUtils;
+import org.apache.dubbo.admin.dto.ServiceDTO;
+import org.apache.dubbo.admin.dto.ServiceDetailDTO;
 import org.apache.dubbo.admin.governance.service.ConsumerService;
 import org.apache.dubbo.admin.governance.service.ProviderService;
 import org.apache.dubbo.admin.registry.common.domain.Consumer;
 import org.apache.dubbo.admin.registry.common.domain.Provider;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -46,23 +43,21 @@ public class ServiceController {
     @Autowired
     private ConsumerService consumerService;
 
-    @RequestMapping(value = "/search", method = RequestMethod.POST)
-    public List<ServiceDO> search(@RequestBody Map<String, String> params) {
-
-        String pattern = params.get("pattern");
-        String filter = params.get("filter");
+    @RequestMapping(value = "/search", method = RequestMethod.GET)
+    public List<ServiceDTO> search(@RequestParam String pattern,
+                                   @RequestParam String filter) {
 
         List<Provider> allProviders = providerService.findAll();
 
-        List<ServiceDO> result = new ArrayList<>();
+        List<ServiceDTO> result = new ArrayList<>();
         if (pattern.equals("application")) {
             for (Provider provider : allProviders) {
                 Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
                 String app = map.get(Constants.APPLICATION_KEY);
                 if (app.toLowerCase().contains(filter)) {
-                    ServiceDO s = new ServiceDO();
+                    ServiceDTO s = new ServiceDTO();
                     s.setAppName(app);
-                    s.setServiceName(provider.getService());
+                    s.setService(provider.getService());
                     s.setGroup(map.get(Constants.GROUP_KEY));
                     s.setVersion(map.get(Constants.VERSION_KEY));
                     result.add(s);
@@ -74,9 +69,9 @@ public class ServiceController {
                 String service = provider.getService();
                 Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
                 if (service.toLowerCase().contains(filter.toLowerCase())) {
-                    ServiceDO s = new ServiceDO();
+                    ServiceDTO s = new ServiceDTO();
                     s.setAppName(map.get(Constants.APPLICATION_KEY));
-                    s.setServiceName(service);
+                    s.setService(service);
                     s.setGroup(map.get(Constants.GROUP_KEY));
                     s.setVersion(map.get(Constants.VERSION_KEY));
                     result.add(s);
@@ -88,9 +83,9 @@ public class ServiceController {
                 String address = provider.getAddress();
                 Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
                 if (address.contains(filter)) {
-                    ServiceDO s = new ServiceDO();
+                    ServiceDTO s = new ServiceDTO();
                     s.setAppName(map.get(Constants.APPLICATION_KEY));
-                    s.setServiceName(provider.getService());
+                    s.setService(provider.getService());
                     s.setGroup(map.get(Constants.GROUP_KEY));
                     s.setVersion(map.get(Constants.VERSION_KEY));
                     result.add(s);
@@ -102,15 +97,15 @@ public class ServiceController {
     }
 
     @RequestMapping("/detail")
-    public ServiceDetailDO serviceDetail(@RequestParam String app, @RequestParam String service) {
+    public ServiceDetailDTO serviceDetail(@RequestParam String app, @RequestParam String service) {
         List<Provider> providers = providerService.findByAppandService(app, service);
 
         List<Consumer> consumers = consumerService.findByAppandService(app, service);
 
-        ServiceDetailDO serviceDetailDO = new ServiceDetailDO();
-        serviceDetailDO.setConsumers(consumers);
-        serviceDetailDO.setProviders(providers);
-        return serviceDetailDO;
+        ServiceDetailDTO serviceDetailDTO = new ServiceDetailDTO();
+        serviceDetailDTO.setConsumers(consumers);
+        serviceDetailDTO.setProviders(providers);
+        return serviceDetailDTO;
     }
 
 }

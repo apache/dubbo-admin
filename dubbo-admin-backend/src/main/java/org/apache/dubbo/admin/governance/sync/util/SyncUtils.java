@@ -16,11 +16,11 @@
  */
 package org.apache.dubbo.admin.governance.sync.util;
 
-import org.apache.dubbo.admin.registry.common.domain.Override;
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.admin.registry.common.domain.Consumer;
+import org.apache.dubbo.admin.registry.common.domain.Override;
 import org.apache.dubbo.admin.registry.common.domain.Provider;
 import org.apache.dubbo.admin.registry.common.domain.Route;
 

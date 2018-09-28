@@ -18,17 +18,18 @@
 package org.apache.dubbo.admin.controller;
 
 import org.apache.dubbo.admin.dto.BalancingDTO;
+import org.apache.dubbo.admin.dto.BaseDTO;
 import org.apache.dubbo.admin.governance.service.OverrideService;
 import org.apache.dubbo.admin.registry.common.domain.LoadBalance;
 import org.apache.dubbo.admin.registry.common.domain.Override;
 import org.apache.dubbo.admin.registry.common.util.OverrideUtils;
-import org.apache.dubbo.admin.util.YamlUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+
+import static org.apache.dubbo.admin.registry.common.util.OverrideUtils.overrideToLoadBalance;
 
 @RestController
 @RequestMapping("/api/balancing")
@@ -39,15 +40,14 @@ public class LoadBalanceController {
 
     @RequestMapping(value = "/create", method = RequestMethod.POST)
     public boolean createLoadbalance(@RequestBody BalancingDTO balancingDTO) {
-        String serviceName = balancingDTO.getServiceName();
-        String rule = balancingDTO.getRule();
+        String serviceName = balancingDTO.getService();
         if (serviceName == null || serviceName.length() == 0) {
             //TODO throw exception
         }
-
-        Map<String, Object> result = YamlUtil.loadString(rule);
-        LoadBalance loadBalance = generateLoadbalance(result);
+        LoadBalance loadBalance = new LoadBalance();
         loadBalance.setService(serviceName);
+        loadBalance.setMethod(formatMethodName(balancingDTO.getMethodName()));
+        loadBalance.setStrategy(balancingDTO.getStrategy());
         overrideService.saveOverride(OverrideUtils.loadBalanceToOverride(loadBalance));
         return true;
     }
@@ -55,33 +55,37 @@ public class LoadBalanceController {
     @RequestMapping(value = "/update", method = RequestMethod.POST)
     public boolean updateLoadbalance(@RequestBody BalancingDTO balancingDTO) {
         Long id = balancingDTO.getId();
-        String rule = balancingDTO.getRule();
         Override override = overrideService.findById(id);
         if (override == null) {
             //TODO throw exception
         }
-        LoadBalance old = OverrideUtils.overrideToLoadBalance(override);
-        Map<String, Object> result = YamlUtil.loadString(rule);
-        LoadBalance loadBalance = generateLoadbalance(result);
+        LoadBalance old = overrideToLoadBalance(override);
+        LoadBalance loadBalance = new LoadBalance();
+        loadBalance.setStrategy(balancingDTO.getStrategy());
+        loadBalance.setMethod(formatMethodName(balancingDTO.getMethodName()));
         loadBalance.setService(old.getService());
         loadBalance.setId(old.getId());
         overrideService.updateOverride(OverrideUtils.loadBalanceToOverride(loadBalance));
         return true;
     }
 
-    @RequestMapping(value = "/search", method = RequestMethod.POST)
-    public List<LoadBalance> allLoadbalances(@RequestBody Map<String, String> params) {
-        String serviceName = params.get(params);
+    @RequestMapping(value = "/search", method = RequestMethod.GET)
+    public List<BalancingDTO> allLoadbalances(@RequestParam String serviceName) {
         if (serviceName == null || serviceName.length() == 0) {
            //TODO throw Exception
         }
         List<Override> overrides = overrideService.findByService(serviceName);
-        List<LoadBalance> loadBalances = new ArrayList<>();
+        List<BalancingDTO> loadBalances = new ArrayList<>();
         if (overrides != null) {
             for (Override override : overrides) {
-                LoadBalance l = OverrideUtils.overrideToLoadBalance(override);
+                LoadBalance l = overrideToLoadBalance(override);
                 if (l != null) {
-                    loadBalances.add(l);
+                    BalancingDTO balancingDTO = new BalancingDTO();
+                    balancingDTO.setService(l.getService());
+                    balancingDTO.setMethodName(l.getMethod());
+                    balancingDTO.setStrategy(l.getStrategy());
+                    balancingDTO.setId(l.getId());
+                    loadBalances.add(balancingDTO);
                 }
             }
         }
@@ -89,32 +93,31 @@ public class LoadBalanceController {
     }
 
     @RequestMapping("/detail")
-    public LoadBalance detail(@RequestParam Long id) {
+    public BalancingDTO detail(@RequestParam Long id) {
         Override override =  overrideService.findById(id);
         if (override == null) {
             //TODO throw exception
         }
-        return OverrideUtils.overrideToLoadBalance(override);
+
+        LoadBalance loadBalance = OverrideUtils.overrideToLoadBalance(override);
+        BalancingDTO balancingDTO = new BalancingDTO();
+        balancingDTO.setService(loadBalance.getService());
+        balancingDTO.setMethodName(loadBalance.getMethod());
+        balancingDTO.setStrategy(loadBalance.getStrategy());
+        return balancingDTO;
     }
 
     @RequestMapping(value  = "/delete", method = RequestMethod.POST)
-    public boolean delete(@RequestBody Map<String, Long> params) {
-        Long id = params.get("id");
+    public boolean delete(@RequestBody BaseDTO baseDTO) {
+        Long id = baseDTO.getId();
         overrideService.deleteOverride(id);
         return true;
     }
 
-    private LoadBalance generateLoadbalance(Map<String, Object> yaml) {
-        LoadBalance loadBalance = new LoadBalance();
-        String methodName;
-        if (yaml.get("methodName").equals(0)) {
-            methodName = "*";
-        } else {
-            methodName = (String)yaml.get("methodName");
+    private String formatMethodName(String method) {
+        if (method.equals("0")) {
+            return "*";
         }
-        String strategy = (String)yaml.get("strategy");
-        loadBalance.setMethod(methodName);
-        loadBalance.setStrategy(strategy);
-        return loadBalance;
+        return method;
     }
 }

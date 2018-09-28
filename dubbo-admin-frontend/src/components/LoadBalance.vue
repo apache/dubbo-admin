@@ -53,7 +53,7 @@
           >
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.service }}</td>
-              <td class="text-xs-left">{{ props.item.method }}</td>
+              <td class="text-xs-left">{{ props.item.methodName }}</td>
               <td class="justify-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
                   <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon(props.item), props.item)">
@@ -196,24 +196,13 @@
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        let params = {}
-        params.serviceName = filter
-        AXIOS.post('/balancing/search', params)
+        AXIOS.get('/balancing/search?service=' + filter)
           .then(response => {
             this.loadBalances = response.data
             if (rewrite) {
-              this.$router.push({path: 'loadbalance', query: {serviceName: filter}})
+              this.$router.push({path: 'loadbalance', query: {service: filter}})
             }
           })
-      },
-      handleRule: function (route) {
-        let result = {}
-        for (let property in route) {
-          if (this.ruleKeys.includes(property)) {
-            result[property] = route[property]
-          }
-        }
-        return yaml.safeDump(result)
       },
       closeDialog: function () {
         this.ruleText = this.template
@@ -235,15 +224,15 @@
         this.warn = false
       },
       saveItem: function () {
-        let text = encodeURIComponent(this.ruleText)  // contains illegal url character, need encode
-        let rule = {}
-        rule.serviceName = this.service
-        rule.rule = text
-        AXIOS.post('/balancing/create', rule)
+        let balancing = yaml.safeLoad(this.ruleText)
+        balancing.service = this.service
+        AXIOS.post('/balancing/create', balancing)
           .then(response => {
             if (response.data) {
               this.search(this.service, true)
+              this.filter = this.service
             }
+            this.closeDialog()
           })
       },
       itemOperation: function (icon, item) {
@@ -252,28 +241,26 @@
             AXIOS.get('/balancing/detail?id=' + item.id)
               .then(response => {
                 let balancing = response.data
-                let result = this.handleRule(balancing)
                 this.service = balancing.service
-                this.ruleText = result
+                delete balancing.service
+                this.ruleText = yaml.safeDump(balancing)
                 this.cmOption.readOnly = true
                 this.dialog = true
               })
             break
           case 'edit':
-            let edit = {}
-            edit.id = item.id
-            AXIOS.post('/balancing/edit', edit)
+            AXIOS.get('/balancing/detail?id=' + item.id)
               .then(response => {
-                let loadbalance = response.data
-                let result = this.handleRule(loadbalance)
-                this.service = loadbalance.service
-                this.ruleText = result
+                let balancing = response.data
+                this.service = balancing.service
+                delete balancing.service
+                this.ruleText = yaml.safeDump(balancing)
                 this.cmOption.readOnly = false
                 this.dialog = true
               })
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Routing Rule', 'serviceName: ' + item.service)
+            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + item.service)
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = item.id
         }
@@ -282,24 +269,13 @@
         this.height = window.innerHeight * 0.5
       },
       deleteItem: function (warnStatus) {
-        if (warnStatus.operation === 'delete') {
-          let id = {}
-          id.id = warnStatus.id
-          AXIOS.post('/balancing/delete', id)
-            .then(response => {
-              this.warn = false
-              this.search(this.filter, false)
-            })
-        } else if (warnStatus.operation === 'block') {
-          let status = {}
-          status.enabled = warnStatus.enabled
-          status.id = warnStatus.id
-          AXIOS.post('/routes/changeStatus', status)
-            .then(response => {
-              this.warn = false
-              this.search(this.filter, false)
-            })
-        }
+        let id = {}
+        id.id = warnStatus.id
+        AXIOS.post('/balancing/delete', id)
+          .then(response => {
+            this.warn = false
+            this.search(this.filter, false)
+          })
       }
     },
     computed: {
@@ -315,7 +291,7 @@
       let query = this.$route.query
       let service = ''
       Object.keys(query).forEach(function (key) {
-        if (key === 'serviceName') {
+        if (key === 'service') {
           service = query[key]
         }
       })

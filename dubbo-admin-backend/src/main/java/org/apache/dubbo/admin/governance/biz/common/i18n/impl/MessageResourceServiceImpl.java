@@ -17,8 +17,8 @@
 package org.apache.dubbo.admin.governance.biz.common.i18n.impl;
 
 
-import org.apache.dubbo.admin.web.mvc.common.i18n.LocaleUtil;
 import org.apache.dubbo.admin.governance.biz.common.i18n.MessageResourceService;
+import org.apache.dubbo.admin.web.mvc.common.i18n.LocaleUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.NoSuchMessageException;

@@ -17,12 +17,9 @@
 
 package org.apache.dubbo.admin.dto;
 
-import java.util.List;
-
-public class WeightDTO {
+public class WeightDTO extends BaseDTO{
 
     private String service;
-    private Long id;
     private int weight;
     private String[] provider;
 
@@ -32,14 +29,6 @@ public class WeightDTO {
 
     public void setService(String service) {
         this.service = service;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
     }
 
     public int getWeight() {

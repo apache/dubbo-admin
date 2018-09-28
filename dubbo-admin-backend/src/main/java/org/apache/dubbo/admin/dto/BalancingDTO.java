@@ -17,36 +17,33 @@
 
 package org.apache.dubbo.admin.dto;
 
-/**
- * @author zmx ON 2018/9/25
- */
-public class BalancingDTO {
+public class BalancingDTO extends BaseDTO{
 
-    private Long id;
-    private String serviceName;
-    private String rule;
+    private String service;
+    private String methodName;
+    private String strategy;
 
-    public Long getId() {
-        return id;
+    public String getService() {
+        return service;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setService(String service) {
+        this.service = service;
     }
 
-    public String getServiceName() {
-        return serviceName;
+    public String getMethodName() {
+        return methodName;
     }
 
-    public void setServiceName(String serviceName) {
-        this.serviceName = serviceName;
+    public void setMethodName(String methodName) {
+        this.methodName = methodName;
     }
 
-    public String getRule() {
-        return rule;
+    public String getStrategy() {
+        return strategy;
     }
 
-    public void setRule(String rule) {
-        this.rule = rule;
+    public void setStrategy(String strategy) {
+        this.strategy = strategy;
     }
 }

@@ -17,6 +17,7 @@
 
 package org.apache.dubbo.admin.controller;
 
+import org.apache.dubbo.admin.dto.BaseDTO;
 import org.apache.dubbo.admin.dto.RouteDTO;
 import org.apache.dubbo.admin.governance.service.ProviderService;
 import org.apache.dubbo.admin.governance.service.RouteService;
@@ -24,8 +25,8 @@ import org.apache.dubbo.admin.registry.common.domain.Route;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/routes")
@@ -38,7 +39,7 @@ public class RoutesController {
 
     @RequestMapping(value = "/create", method = RequestMethod.POST)
     public boolean createRule(@RequestBody RouteDTO routeDTO) {
-        String serviceName = routeDTO.getServiceName();
+        String serviceName = routeDTO.getService();
         String app = routeDTO.getApp();
         if (serviceName == null && app == null) {
 
@@ -98,10 +99,9 @@ public class RoutesController {
         return true;
     }
 
-    @RequestMapping(value = "/search", method = RequestMethod.POST)
-    public List<Route> allRoutes(@RequestBody Map<String, String> params) {
-        String app = params.get("app");
-        String serviceName = params.get("serviceName");
+    @RequestMapping(value = "/search", method = RequestMethod.GET)
+    public List<RouteDTO> allRoutes(@RequestParam(required = false) String app,
+                                    @RequestParam(required = false) String serviceName) {
         List<Route> routes = null;
         if (app != null) {
            // app scope in 2.7
@@ -112,54 +112,64 @@ public class RoutesController {
         if (serviceName == null && app == null) {
             // TODO throw exception
         }
-        //no support for findAll and findByaddress
-        return routes;
+        List<RouteDTO> routeDTOS = new ArrayList<>();
+        for (Route route : routes) {
+            RouteDTO routeDTO = new RouteDTO();
+            routeDTO.setDynamic(route.isDynamic());
+            routeDTO.setConditions(new String[]{route.getRule()});
+            routeDTO.setEnabled(route.isEnabled());
+            routeDTO.setForce(route.isForce());
+            routeDTO.setGroup(route.getGroup());
+            routeDTO.setPriority(route.getPriority());
+            routeDTO.setRuntime(route.isRuntime());
+            routeDTO.setService(route.getService());
+            routeDTO.setId(route.getId());
+            routeDTOS.add(routeDTO);
+        }
+        //no support for findAll or findByaddress
+        return routeDTOS;
     }
 
     @RequestMapping("/detail")
-    public Route routeDetail(@RequestParam long id) {
+    public RouteDTO routeDetail(@RequestParam long id) {
         Route route = routeService.findRoute(id);
         if (route == null) {
             // TODO throw exception
         }
-        return route;
+        RouteDTO routeDTO = new RouteDTO();
+        routeDTO.setDynamic(route.isDynamic());
+        routeDTO.setConditions(new String[]{route.getRule()});
+        routeDTO.setEnabled(route.isEnabled());
+        routeDTO.setForce(route.isForce());
+        routeDTO.setGroup(route.getGroup());
+        routeDTO.setPriority(route.getPriority());
+        routeDTO.setRuntime(route.isRuntime());
+        routeDTO.setService(route.getService());
+        routeDTO.setId(route.getId());
+        return routeDTO;
     }
 
     @RequestMapping(value = "/delete", method = RequestMethod.POST)
-    public boolean deleteRoute(@RequestBody Map<String, Long> params) {
-        Long id = params.get("id");
+    public boolean deleteRoute(@RequestBody BaseDTO baseDTO) {
+        Long id = baseDTO.getId();
         routeService.deleteRoute(id);
         return true;
     }
 
-    @RequestMapping(value = "/edit", method = RequestMethod.POST)
-    public Route editRule(@RequestBody Map<String, Long> params) {
-        Long id = params.get("id");
-        Route route = routeService.findRoute(id);
-        if (route == null) {
-            // TODO throw exception
-        }
-        return route;
-    }
+    @RequestMapping(value = "/enable", method = RequestMethod.POST)
+    public boolean enableRoute(@RequestBody BaseDTO baseDTO) {
 
-    @RequestMapping(value = "/changeStatus", method = RequestMethod.POST)
-    public boolean enableRoute(@RequestBody Map<String, Object> params) {
-        boolean enabled = (boolean)params.get("enabled");
-
-        long id = Long.parseLong(params.get("id").toString());
-        if (enabled) {
-            routeService.disableRoute(id);
-        } else {
-            routeService.enableRoute(id);
-        }
+        Long id = baseDTO.getId();
+        routeService.enableRoute(id);
         return true;
     }
 
-    private Object getParameter(Map<String, Object> result, String key, Object defaultValue) {
-        if (result.get(key) != null) {
-            return result.get(key);
-        }
-        return defaultValue;
+    @RequestMapping(value = "/disable", method = RequestMethod.POST)
+    public boolean disableRoute(@RequestBody BaseDTO baseDTO) {
+
+        Long id = baseDTO.getId();
+        routeService.disableRoute(id);
+        return true;
     }
 
     public static void main(String[] args) {
