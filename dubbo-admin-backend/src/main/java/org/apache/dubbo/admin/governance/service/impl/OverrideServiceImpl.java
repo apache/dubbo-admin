@@ -16,12 +16,12 @@
  */
 package org.apache.dubbo.admin.governance.service.impl;
 
-import org.apache.dubbo.admin.registry.common.domain.Override;
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.URL;
 import org.apache.dubbo.admin.governance.service.OverrideService;
 import org.apache.dubbo.admin.governance.sync.util.Pair;
 import org.apache.dubbo.admin.governance.sync.util.SyncUtils;
+import org.apache.dubbo.admin.registry.common.domain.Override;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;

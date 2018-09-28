@@ -240,6 +240,7 @@ export default {
     },
     createItem () {
       let doc = yaml.load(this.modal.content)
+      this.filter = this.modal.service
       AXIOS.post('/access/create', {
         service: this.modal.service,
         whitelist: doc.whitelist,

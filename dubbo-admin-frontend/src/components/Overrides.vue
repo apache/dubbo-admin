@@ -206,12 +206,12 @@
       },
       search: function (filter, rewrite) {
         let params = {}
-        params.serviceName = filter
+        params.service = filter
         AXIOS.post('/balancing/search', params)
           .then(response => {
             this.loadBalances = response.data
             if (rewrite) {
-              this.$router.push({path: 'loadbalance', query: {serviceName: filter}})
+              this.$router.push({path: 'loadbalance', query: {service: filter}})
             }
           })
       },
@@ -246,7 +246,7 @@
       saveItem: function () {
         let text = encodeURIComponent(this.ruleText)  // contains illegal url character, need encode
         let rule = {}
-        rule.serviceName = this.service
+        rule.service = this.service
         rule.rule = text
         AXIOS.post('/balancing/create', rule)
           .then(response => {
@@ -282,7 +282,7 @@
               })
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Routing Rule', 'serviceName: ' + item.service)
+            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + item.service)
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = item.id
         }
@@ -324,7 +324,7 @@
       let query = this.$route.query
       let service = ''
       Object.keys(query).forEach(function (key) {
-        if (key === 'serviceName') {
+        if (key === 'service') {
           service = query[key]
         }
       })

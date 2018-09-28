@@ -17,16 +17,15 @@
 
 package org.apache.dubbo.admin.dto;
 
-public class RouteDTO extends BaseDTO{
-    private String app;
-    private String service;
-    private String group;
-    private boolean dynamic;
-    private int priority;
-    private boolean enabled;
-    private boolean force;
-    private boolean runtime;
-    private String[] conditions;
+public class OverrideDTO {
+
+    String app;
+    String service;
+    String address;
+    boolean dynamic;
+    boolean enabled;
+    String[] parameters;
+    String[] mock;
 
     public String getApp() {
         return app;
@@ -44,12 +43,12 @@ public class RouteDTO extends BaseDTO{
         this.service = service;
     }
 
-    public String getGroup() {
-        return group;
+    public String getAddress() {
+        return address;
     }
 
-    public void setGroup(String group) {
-        this.group = group;
+    public void setAddress(String address) {
+        this.address = address;
     }
 
     public boolean isDynamic() {
@@ -60,14 +59,6 @@ public class RouteDTO extends BaseDTO{
         this.dynamic = dynamic;
     }
 
-    public int getPriority() {
-        return priority;
-    }
-
-    public void setPriority(int priority) {
-        this.priority = priority;
-    }
-
     public boolean isEnabled() {
         return enabled;
     }
@@ -76,27 +67,19 @@ public class RouteDTO extends BaseDTO{
         this.enabled = enabled;
     }
 
-    public boolean isForce() {
-        return force;
+    public String[] getParameters() {
+        return parameters;
     }
 
-    public void setForce(boolean force) {
-        this.force = force;
+    public void setParameters(String[] parameters) {
+        this.parameters = parameters;
     }
 
-    public boolean isRuntime() {
-        return runtime;
+    public String[] getMock() {
+        return mock;
     }
 
-    public void setRuntime(boolean runtime) {
-        this.runtime = runtime;
-    }
-
-    public String[] getConditions() {
-        return conditions;
-    }
-
-    public void setConditions(String[] conditions) {
-        this.conditions = conditions;
+    public void setMock(String[] mock) {
+        this.mock = mock;
     }
 }

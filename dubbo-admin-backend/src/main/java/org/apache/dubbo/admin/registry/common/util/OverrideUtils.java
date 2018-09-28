@@ -16,10 +16,10 @@
  */
 package org.apache.dubbo.admin.registry.common.util;
 
+import com.alibaba.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.admin.registry.common.domain.LoadBalance;
 import org.apache.dubbo.admin.registry.common.domain.Override;
 import org.apache.dubbo.admin.registry.common.domain.Weight;
-import com.alibaba.dubbo.common.utils.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;

@@ -16,10 +16,10 @@
  */
 package org.apache.dubbo.admin.registry.common.route;
 
+import com.alibaba.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.admin.registry.common.domain.Override;
 import org.apache.dubbo.admin.registry.common.domain.Provider;
 import org.apache.dubbo.admin.registry.common.domain.Route;
-import com.alibaba.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.admin.web.pulltool.Tool;
 
 import java.net.URI;

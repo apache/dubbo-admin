@@ -72,10 +72,10 @@
             :items="services"
           >
             <template slot="items" slot-scope="props">
-              <td>{{props.item.serviceName}}</td>
+              <td>{{props.item.service}}</td>
               <td>{{props.item.group}}</td>
               <td>{{props.item.appName}}</td>
-              <td><v-btn small color='primary' :href='getHref(props.item.serviceName, props.item.appName)'>Detail</v-btn></td>
+              <td><v-btn small color='primary' :href='getHref(props.item.service, props.item.appName)'>Detail</v-btn></td>
             </template>
           </v-data-table>
         </template>

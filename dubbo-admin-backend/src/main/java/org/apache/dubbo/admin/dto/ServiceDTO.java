@@ -15,31 +15,43 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.domain;
+package org.apache.dubbo.admin.dto;
 
-import org.apache.dubbo.admin.registry.common.domain.Consumer;
-import org.apache.dubbo.admin.registry.common.domain.Provider;
+public class ServiceDTO {
+    private String service;
+    private String appName;
+    private String group;
+    private String version;
 
-import java.util.List;
-
-public class ServiceDetailDO {
-
-    List<Provider> providers;
-    List<Consumer> consumers;
-
-    public List<Provider> getProviders() {
-        return providers;
+    public String getService() {
+        return service;
     }
 
-    public void setProviders(List<Provider> providers) {
-        this.providers = providers;
+    public void setService(String service) {
+        this.service = service;
     }
 
-    public List<Consumer> getConsumers() {
-        return consumers;
+    public String getAppName() {
+        return appName;
     }
 
-    public void setConsumers(List<Consumer> consumers) {
-        this.consumers = consumers;
+    public void setAppName(String appName) {
+        this.appName = appName;
+    }
+
+    public String getGroup() {
+        return group;
+    }
+
+    public void setGroup(String group) {
+        this.group = group;
+    }
+
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
     }
 }

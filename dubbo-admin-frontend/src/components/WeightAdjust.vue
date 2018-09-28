@@ -198,32 +198,13 @@
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        let params = {}
-        params.serviceName = filter
-        AXIOS.post('/weight/search', params)
+        AXIOS.get('/weight/search?serviceName=' + filter)
             .then(response => {
               this.loadBalances = response.data
               if (rewrite) {
-                this.$router.push({path: 'weight', query: {serviceName: filter}})
+                this.$router.push({path: 'weight', query: {service: filter}})
               }
             })
-      },
-      handleRule: function (weight) {
-        let result = {}
-        let provider = []
-        for (let property in weight) {
-          if (this.ruleKeys.includes(property)) {
-            if (property === 'address') {
-              provider.push(weight[property])
-            } else {
-              result[property] = weight[property]
-            }
-          }
-        }
-        if (provider.length > 0) {
-          result['provider'] = provider
-        }
-        return yaml.safeDump(result)
       },
       closeDialog: function () {
         this.ruleText = this.template
@@ -250,6 +231,7 @@
         AXIOS.post('/weight/create', weight)
           .then(response => {
             this.search(this.service, true)
+            this.filter = this.service
             this.closeDialog()
           })
       },
@@ -259,28 +241,26 @@
             AXIOS.get('/weight/detail?id=' + item.id)
                 .then(response => {
                   let weight = response.data
-                  let result = this.handleRule(weight)
                   this.service = weight.service
-                  this.ruleText = result
+                  delete weight.service
+                  this.ruleText = yaml.safeDump(weight)
                   this.cmOption.readOnly = true
                   this.dialog = true
                 })
             break
           case 'edit':
-            let id = {}
-            id.id = item.id
-            AXIOS.post('/weight/edit' + id)
+            AXIOS.get('/weight/detail?id=' + item.id)
                 .then(response => {
                   let weight = response.data
-                  let result = this.handleRule(weight)
                   this.service = weight.service
-                  this.ruleText = result
+                  delete weight.service
+                  this.ruleText = yaml.safeDump(weight)
                   this.cmOption.readOnly = false
                   this.dialog = true
                 })
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Routing Rule', 'serviceName: ' + item.service)
+            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + item.service)
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = item.id
         }
@@ -289,24 +269,13 @@
         this.height = window.innerHeight * 0.5
       },
       deleteItem: function (warnStatus) {
-        if (warnStatus.operation === 'delete') {
-          let id = {}
-          id.id = warnStatus.id
-          AXIOS.post('/weight/delete', id)
-              .then(response => {
-                this.warn = false
-                this.search(this.filter, false)
-              })
-        } else if (warnStatus.operation === 'block') {
-          let status = {}
-          status.enabled = warnStatus.enabled
-          status.id = warnStatus.id
-          AXIOS.post('/weight/changeStatus', status)
-              .then(response => {
-                this.warn = false
-                this.search(this.filter, false)
-              })
-        }
+        let id = {}
+        id.id = warnStatus.id
+        AXIOS.post('/weight/delete', id)
+          .then(response => {
+            this.warn = false
+            this.search(this.filter, false)
+          })
       }
     },
     computed: {
@@ -322,7 +291,7 @@
       let query = this.$route.query
       let service = ''
       Object.keys(query).forEach(function (key) {
-        if (key === 'serviceName') {
+        if (key === 'service') {
           service = query[key]
         }
       })
