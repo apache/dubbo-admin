@@ -17,8 +17,6 @@
 
 package org.apache.dubbo.admin.dto;
 
-import org.apache.dubbo.admin.governance.sync.util.Pair;
-
 import java.util.Map;
 
 public class OverrideDTO extends BaseDTO{
