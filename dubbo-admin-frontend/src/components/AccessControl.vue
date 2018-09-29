@@ -102,8 +102,7 @@
                           :readonly="modal.id != null"
                           v-model="modal.service" />
             <v-subheader class="pa-0 mt-3">BLACK/WHITE LIST CONTENT</v-subheader>
-            <ace-editor v-model="modal.content"
-                        :config="modal.aceConfig" />
+            <ace-editor v-model="modal.content" />
           </v-form>
         </v-card-text>
         <v-card-actions>
@@ -187,8 +186,7 @@ export default {
         '  - 2.2.2.2\n' +
         'whitelist:\n' +
         '  - 3.3.3.3\n' +
-        '  - 4.4.*\n',
-      aceConfig: {}
+        '  - 4.4.*\n'
     },
     services: [],
     confirm: {
