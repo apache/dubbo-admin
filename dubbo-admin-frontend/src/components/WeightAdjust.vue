@@ -47,7 +47,7 @@
         <v-card-text class="pa-0">
           <v-data-table
             :headers="headers"
-            :items="loadBalances"
+            :items="weights"
             hide-actions
             class="elevation-0"
           >
@@ -81,10 +81,8 @@
             v-model="service"
           ></v-text-field>
           <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
-          <codemirror ref="myCm"
-                      v-model="ruleText"
-                      :options="cmOption">
-          </codemirror>
+
+          <ace-editor v-model="ruleText" :readonly="readonly"></ace-editor>
 
         </v-card-text>
         <v-card-actions>
@@ -111,17 +109,12 @@
 </template>
 
 <script>
-  import { codemirror } from 'vue-codemirror'
-  import 'codemirror/lib/codemirror.css'
-  import 'codemirror/theme/paraiso-light.css'
-  import 'codemirror/mode/yaml/yaml.js'
-  import 'codemirror/addon/display/autorefresh.js'
-  import 'codemirror/addon/display/placeholder'
+  import AceEditor from '@/components/AceEditor'
   import yaml from 'js-yaml'
   import {AXIOS} from './http-common'
   export default {
     components: {
-      codemirror
+      AceEditor
     },
     data: () => ({
       dropdown_font: [ 'Service', 'App', 'IP' ],
@@ -141,7 +134,7 @@
         {id: 1, icon: 'edit', tooltip: 'Edit'},
         {id: 3, icon: 'delete', tooltip: 'Delete'}
       ],
-      configs: [
+      weights: [
       ],
       template:
         'weight: 100  # 100 for default\n' +
@@ -149,13 +142,7 @@
         '  - 192.168.0.1\n' +
         '  - 192.168.0.2',
       ruleText: '',
-      cmOption: {
-        theme: 'paraiso-light',
-        autoRefresh: true,
-        readOnly: false,
-        mode: 'text/x-yaml',
-        line: true
-      },
+      readonly: false,
       headers: [
         {
           text: 'Service Name',
@@ -182,7 +169,7 @@
       search: function (filter, rewrite) {
         AXIOS.get('/weight/search?serviceName=' + filter)
             .then(response => {
-              this.loadBalances = response.data
+              this.weights = response.data
               if (rewrite) {
                 this.$router.push({path: 'weight', query: {service: filter}})
               }
@@ -192,7 +179,7 @@
         this.ruleText = this.template
         this.service = ''
         this.dialog = false
-        this.cmOption.readOnly = false
+        this.readonly = false
       },
       openDialog: function () {
         this.dialog = true
@@ -226,7 +213,7 @@
                   this.service = weight.service
                   delete weight.service
                   this.ruleText = yaml.safeDump(weight)
-                  this.cmOption.readOnly = true
+                  this.readonly = true
                   this.dialog = true
                 })
             break
@@ -237,7 +224,7 @@
                   this.service = weight.service
                   delete weight.service
                   this.ruleText = yaml.safeDump(weight)
-                  this.cmOption.readOnly = false
+                  this.readonly = false
                   this.dialog = true
                 })
             break
@@ -258,11 +245,6 @@
             this.warn = false
             this.search(this.filter, false)
           })
-      }
-    },
-    computed: {
-      codemirror () {
-        return this.$refs.myCm.codemirror
       }
     },
     created () {

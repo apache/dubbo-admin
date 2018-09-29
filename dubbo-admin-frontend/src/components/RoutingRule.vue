@@ -90,10 +90,7 @@
           ></v-text-field>
 
           <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
-          <codemirror ref="myCm"
-                      v-model="ruleText"
-                      :options="cmOption">
-          </codemirror>
+          <ace-editor v-model="ruleText" :readonly="readonly"></ace-editor>
 
         </v-card-text>
         <v-card-actions>
@@ -120,17 +117,12 @@
 
 </template>
 <script>
-  import { codemirror } from 'vue-codemirror'
-  import 'codemirror/lib/codemirror.css'
-  import 'codemirror/theme/paraiso-light.css'
-  import 'codemirror/mode/yaml/yaml.js'
-  import 'codemirror/addon/display/autorefresh.js'
-  import 'codemirror/addon/display/placeholder'
   import yaml from 'js-yaml'
+  import AceEditor from '@/components/AceEditor'
   import {AXIOS} from './http-common'
   export default {
     components: {
-      codemirror
+      AceEditor
     },
     data: () => ({
       dropdown_font: [ 'Service', 'App', 'IP' ],
@@ -197,13 +189,7 @@
         ' - \'application != kylin => host != 172.22.3.95,172.22.3.96\'\n' +
         ' - \'method = find*,list*,get*,is* => host = 172.22.3.94,172.22.3.95,172.22.3.96\'',
       ruleText: '',
-      cmOption: {
-        theme: 'paraiso-light',
-        autoRefresh: true,
-        readOnly: false,
-        mode: 'text/x-yaml',
-        line: true
-      },
+      readonly: false,
       headers: [
         {
           text: 'Service Name',
@@ -251,7 +237,7 @@
         this.updateId = -1
         this.service = ''
         this.dialog = false
-        this.cmOption.readOnly = false
+        this.readonly = false
       },
       openDialog: function () {
         this.dialog = true
@@ -298,7 +284,7 @@
                 this.service = route.service
                 delete route.service
                 this.ruleText = yaml.safeDump(route)
-                this.cmOption.readOnly = true
+                this.readonly = true
                 this.dialog = true
               })
             break
@@ -311,7 +297,7 @@
                 this.service = route.service
                 delete route.service
                 this.ruleText = yaml.safeDump(route)
-                this.cmOption.readOnly = false
+                this.readonly = false
                 this.dialog = true
                 this.updateId = item.id
               })
@@ -361,11 +347,6 @@
               this.search(this.filter, false)
             })
         }
-      }
-    },
-    computed: {
-      codemirror () {
-        return this.$refs.myCm.codemirror
       }
     },
     created () {
