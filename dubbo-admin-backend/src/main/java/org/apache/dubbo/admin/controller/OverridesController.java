@@ -18,7 +18,6 @@
 package org.apache.dubbo.admin.controller;
 
 import com.alibaba.dubbo.common.URL;
-import com.google.common.collect.Lists;
 import org.apache.dubbo.admin.dto.BaseDTO;
 import org.apache.dubbo.admin.dto.OverrideDTO;
 import org.apache.dubbo.admin.governance.service.OverrideService;
@@ -26,7 +25,10 @@ import org.apache.dubbo.admin.registry.common.domain.Override;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/override")
