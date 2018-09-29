@@ -80,10 +80,7 @@
             v-model="service"
           ></v-text-field>
           <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
-          <codemirror ref="myCm"
-                      v-model="ruleText"
-                      :options="cmOption">
-          </codemirror>
+          <ace-editor v-model="ruleText" :readonly="readonly"/>
 
         </v-card-text>
         <v-card-actions>
@@ -110,17 +107,12 @@
 
 </template>
 <script>
-  import { codemirror } from 'vue-codemirror'
-  import 'codemirror/lib/codemirror.css'
-  import 'codemirror/theme/paraiso-light.css'
-  import 'codemirror/mode/yaml/yaml.js'
-  import 'codemirror/addon/display/autorefresh.js'
-  import 'codemirror/addon/display/placeholder'
+  import AceEditor from '@/components/AceEditor'
   import yaml from 'js-yaml'
   import {AXIOS} from './http-common'
   export default {
     components: {
-      codemirror
+      AceEditor
     },
     data: () => ({
       dropdown_font: [ 'Service', 'App', 'IP' ],
@@ -154,13 +146,7 @@
         '  - sayHello: \'force: return null\'\n' +
         '  - test: \'fail: return empty\'',
       ruleText: '',
-      cmOption: {
-        theme: 'paraiso-light',
-        autoRefresh: true,
-        readOnly: false,
-        mode: 'text/x-yaml',
-        line: true
-      },
+      readonly: false,
       headers: [
         {
           text: 'Service Name',
@@ -191,7 +177,7 @@
         this.ruleText = this.template
         this.service = ''
         this.dialog = false
-        this.cmOption.readOnly = false
+        this.readonly = false
       },
       openDialog: function () {
         this.dialog = true
@@ -227,7 +213,7 @@
                 this.service = config.service
                 delete config.service
                 this.ruleText = yaml.safeDump(config)
-                this.cmOption.readOnly = true
+                this.readonly = true
                 this.dialog = true
               })
             break
@@ -238,7 +224,7 @@
                 this.service = config.service
                 delete config.service
                 this.ruleText = yaml.safeDump(config)
-                this.cmOption.readOnly = false
+                this.readonly = false
                 this.dialog = true
               })
             break
@@ -259,11 +245,6 @@
             this.warn = false
             this.search(this.filter, false)
           })
-      }
-    },
-    computed: {
-      codemirror () {
-        return this.$refs.myCm.codemirror
       }
     },
     created () {
