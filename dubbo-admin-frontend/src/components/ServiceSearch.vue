@@ -144,10 +144,7 @@
         this.search(this.filter, pattern, true)
       },
       search: function (filter, pattern, rewrite) {
-        let service = {}
-        service.filter = filter
-        service.pattern = pattern
-        AXIOS.post('service/search', service)
+        AXIOS.get('service/search?pattern=' + pattern + '&filter=' + filter)
           .then(response => {
             this.services = response.data
             if (rewrite) {
