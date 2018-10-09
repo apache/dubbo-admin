@@ -30,9 +30,9 @@
   </v-app>
 </template>
 <script>
-  import Drawer from '@/components/Drawer'
-  import Toolbar from '@/components/Toolbar'
-  import Footers from '@/components/Footers'
+  import Drawer from '@/components/public/Drawer'
+  import Toolbar from '@/components/public/Toolbar'
+  import Footers from '@/components/public/Footers'
 
   export default {
     components: {

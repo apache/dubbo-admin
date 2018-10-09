@@ -47,12 +47,13 @@
         <v-card-text class="pa-0">
           <v-data-table
             :headers="headers"
-            :items="configs"
+            :items="weights"
             hide-actions
             class="elevation-0"
           >
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.service }}</td>
+              <td class="text-xs-left">{{ props.item.method }}</td>
               <td class="justify-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
                   <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon, props.item)">
@@ -70,7 +71,7 @@
     <v-dialog   v-model="dialog" width="800px" persistent >
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">Create New Dynamic Config Rule</span>
+          <span class="headline">Create New Weight Rule</span>
         </v-card-title>
         <v-card-text >
           <v-text-field
@@ -80,7 +81,8 @@
             v-model="service"
           ></v-text-field>
           <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
-          <ace-editor v-model="ruleText" :readonly="readonly"/>
+
+          <ace-editor v-model="ruleText" :readonly="readonly"></ace-editor>
 
         </v-card-text>
         <v-card-actions>
@@ -104,18 +106,19 @@
     </v-dialog>
 
   </v-container>
-
 </template>
+
 <script>
-  import AceEditor from '@/components/AceEditor'
+  import AceEditor from '@/components/public/AceEditor'
   import yaml from 'js-yaml'
-  import {AXIOS} from './http-common'
+  import {AXIOS} from '../http-common'
   export default {
     components: {
       AceEditor
     },
     data: () => ({
       dropdown_font: [ 'Service', 'App', 'IP' ],
+      ruleKeys: ['weight', 'address'],
       pattern: 'Service',
       filter: '',
       dialog: false,
@@ -131,20 +134,13 @@
         {id: 1, icon: 'edit', tooltip: 'Edit'},
         {id: 3, icon: 'delete', tooltip: 'Delete'}
       ],
-      configs: [
+      weights: [
       ],
       template:
-        'application:  # consumer\'s application name, empty for all \n' +
-        'address: 192.168.0.1 # consumer\'s ip address, empty for all consumers\n' +
-        'dynamic: false\n' +
-        'enabled: false # enable this rule\n' +
-        'parameters:\n' +
-        '  - timeout: 100\n' +
-        '\n' +
-        'mock: \n' +
-        '  - 0: \'force: return null\'\n' +
-        '  - sayHello: \'force: return null\'\n' +
-        '  - test: \'fail: return empty\'',
+        'weight: 100  # 100 for default\n' +
+        'provider:   # provider\'s ip\n' +
+        '  - 192.168.0.1\n' +
+        '  - 192.168.0.2',
       ruleText: '',
       readonly: false,
       headers: [
@@ -152,6 +148,12 @@
           text: 'Service Name',
           value: 'service',
           align: 'left'
+        },
+        {
+          text: 'Weight',
+          value: 'weight',
+          align: 'left'
+
         },
         {
           text: 'Operation',
@@ -165,13 +167,13 @@
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        AXIOS.get('/override/search?serviceName=' + filter)
-          .then(response => {
-            this.configs = response.data
-            if (rewrite) {
-              this.$router.push({path: 'config', query: {service: filter}})
-            }
-          })
+        AXIOS.get('/weight/search?serviceName=' + filter)
+            .then(response => {
+              this.weights = response.data
+              if (rewrite) {
+                this.$router.push({path: 'weight', query: {service: filter}})
+              }
+            })
       },
       closeDialog: function () {
         this.ruleText = this.template
@@ -193,43 +195,41 @@
         this.warn = false
       },
       saveItem: function () {
-        let override = yaml.safeLoad(this.ruleText)  // contains illegal url character, need encode
-        override.service = this.service
-        AXIOS.post('/override/create', override)
+        let weight = yaml.safeLoad(this.ruleText)
+        weight.service = this.service
+        AXIOS.post('/weight/create', weight)
           .then(response => {
-            if (response.data) {
-              this.search(this.service, true)
-              this.filter = this.service
-            }
+            this.search(this.service, true)
+            this.filter = this.service
             this.closeDialog()
           })
       },
       itemOperation: function (icon, item) {
         switch (icon) {
           case 'visibility':
-            AXIOS.get('/override/detail?id=' + item.id)
-              .then(response => {
-                let config = response.data
-                this.service = config.service
-                delete config.service
-                this.ruleText = yaml.safeDump(config)
-                this.readonly = true
-                this.dialog = true
-              })
+            AXIOS.get('/weight/detail?id=' + item.id)
+                .then(response => {
+                  let weight = response.data
+                  this.service = weight.service
+                  delete weight.service
+                  this.ruleText = yaml.safeDump(weight)
+                  this.readonly = true
+                  this.dialog = true
+                })
             break
           case 'edit':
-            AXIOS.get('/override/detail?id=' + item.id)
-              .then(response => {
-                let config = response.data
-                this.service = config.service
-                delete config.service
-                this.ruleText = yaml.safeDump(config)
-                this.readonly = false
-                this.dialog = true
-              })
+            AXIOS.get('/weight/detail?id=' + item.id)
+                .then(response => {
+                  let weight = response.data
+                  this.service = weight.service
+                  delete weight.service
+                  this.ruleText = yaml.safeDump(weight)
+                  this.readonly = false
+                  this.dialog = true
+                })
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Dynamic Config', 'service: ' + item.service)
+            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + item.service)
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = item.id
         }
@@ -240,7 +240,7 @@
       deleteItem: function (warnStatus) {
         let id = {}
         id.id = warnStatus.id
-        AXIOS.post('/override/delete', id)
+        AXIOS.post('/weight/delete', id)
           .then(response => {
             this.warn = false
             this.search(this.filter, false)
@@ -266,3 +266,7 @@
     }
   }
 </script>
+
+<style scoped>
+
+</style>

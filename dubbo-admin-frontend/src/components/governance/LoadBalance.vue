@@ -109,8 +109,8 @@
 </template>
 <script>
   import yaml from 'js-yaml'
-  import {AXIOS} from './http-common'
-  import AceEditor from '@/components/AceEditor'
+  import {AXIOS} from '../http-common'
+  import AceEditor from '@/components/public/AceEditor'
   export default {
     components: {
       AceEditor
