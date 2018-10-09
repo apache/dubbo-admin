@@ -19,11 +19,11 @@ import Vue from 'vue'
 import Router from 'vue-router'
 import ServiceSearch from '@/components/ServiceSearch'
 import ServiceDetail from '@/components/ServiceDetail'
-import RoutingRule from '@/components/RoutingRule'
-import AccessControl from '@/components/AccessControl'
-import LoadBalance from '@/components/LoadBalance'
-import WeightAdjust from '@/components/WeightAdjust'
-import Overrides from '@/components/Overrides'
+import RoutingRule from '@/components/governance/RoutingRule'
+import AccessControl from '@/components/governance/AccessControl'
+import LoadBalance from '@/components/governance/LoadBalance'
+import WeightAdjust from '@/components/governance/WeightAdjust'
+import Overrides from '@/components/governance/Overrides'
 
 Vue.use(Router)
 
