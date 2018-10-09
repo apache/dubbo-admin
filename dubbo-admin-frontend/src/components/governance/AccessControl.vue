@@ -21,20 +21,7 @@
     <v-layout row
               wrap>
       <v-flex xs12>
-        <v-card flat
-                color="transparent">
-          <v-card-text>
-            <v-layout row
-                      wrap>
-              <v-text-field label="Search Access Controls by service name"
-                            v-model="filter"
-                            clearable></v-text-field>
-              <v-btn @click="submit"
-                     color="primary"
-                     large>Search</v-btn>
-            </v-layout>
-          </v-card-text>
-        </v-card>
+        <search v-model="filter" :submit="submit" label="Search Access Controls by service name"></search>
       </v-flex>
     </v-layout>
 
@@ -151,6 +138,7 @@
 import yaml from 'js-yaml'
 import { AXIOS } from '../http-common'
 import AceEditor from '@/components/public/AceEditor'
+import Search from '@/components/public/Search'
 
 export default {
   name: 'AccessControl',
@@ -312,7 +300,8 @@ export default {
     }
   },
   components: {
-    AceEditor
+    AceEditor,
+    Search
   }
 }
 </script>
