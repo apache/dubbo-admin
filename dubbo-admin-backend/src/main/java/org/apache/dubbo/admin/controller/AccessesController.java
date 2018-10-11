@@ -20,7 +20,6 @@ import com.alibaba.dubbo.common.logger.Logger;
 import com.alibaba.dubbo.common.logger.LoggerFactory;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.dto.AccessDTO;
-import org.apache.dubbo.admin.dto.BaseDTO;
 import org.apache.dubbo.admin.governance.service.RouteService;
 import org.apache.dubbo.admin.registry.common.domain.Route;
 import org.apache.dubbo.admin.registry.common.route.RouteRule;
@@ -31,15 +30,15 @@ import java.text.ParseException;
 import java.util.*;
 
 @RestController
-@RequestMapping("/api/access")
+@RequestMapping("/api/{env}/rules/access")
 public class AccessesController {
     private static final Logger logger = LoggerFactory.getLogger(AccessesController.class);
 
     @Resource
     private RouteService routeService;
 
-    @RequestMapping(value = "/search", method = RequestMethod.GET)
-    public List<AccessDTO> searchAccess(@RequestParam(required = false) String service) throws ParseException {
+    @RequestMapping(method = RequestMethod.GET)
+    public List<AccessDTO> searchAccess(@RequestParam(required = false) String service, @PathVariable String env) throws ParseException {
         List<AccessDTO> result = new ArrayList<>();
         List<Route> routes = new ArrayList<>();
         if (StringUtils.isNotBlank(service)) {
@@ -47,6 +46,8 @@ public class AccessesController {
             if (route != null) {
                 routes.add(route);
             }
+        } else {
+            routes = routeService.findAllForceRoute();
         }
 
         for (Route route : routes) {
@@ -67,8 +68,8 @@ public class AccessesController {
         return result;
     }
 
-    @RequestMapping(value = "/detail", method = RequestMethod.GET)
-    public AccessDTO detailAccess(@RequestParam String id) throws ParseException {
+    @RequestMapping(value = "/{id}", method = RequestMethod.GET)
+    public AccessDTO detailAccess(@PathVariable String id, @PathVariable String env) throws ParseException {
         Route route = routeService.findRoute(id);
         if (route.getName().endsWith(AccessDTO.KEY_BLACK_WHITE_LIST)) {
             AccessDTO accessDTO = new AccessDTO();
@@ -85,16 +86,16 @@ public class AccessesController {
         }
     }
 
-    @RequestMapping(value = "/delete", method = RequestMethod.POST)
-    public void deleteAccess(@RequestBody BaseDTO baseDTO) {
-        if (baseDTO.getId() == null) {
+    @RequestMapping(value = "{id}", method = RequestMethod.DELETE)
+    public void deleteAccess(@PathVariable String id, @PathVariable String env) {
+        if (id == null) {
             throw new IllegalArgumentException("Argument of id is null!");
         }
-        routeService.deleteRoute(baseDTO.getId());
+        routeService.deleteRoute(id);
     }
 
-    @RequestMapping(value = "/create", method = RequestMethod.POST)
-    public void createAccess(@RequestBody AccessDTO accessDTO) {
+    @RequestMapping(method = RequestMethod.POST)
+    public void createAccess(@RequestBody AccessDTO accessDTO, @PathVariable String env) {
         if (StringUtils.isBlank(accessDTO.getService())) {
             throw new IllegalArgumentException("Service is required.");
         }
@@ -132,9 +133,9 @@ public class AccessesController {
         routeService.createRoute(route);
     }
 
-    @RequestMapping(value = "/update", method = RequestMethod.POST)
-    public void updateAccess(@RequestBody AccessDTO accessDTO) {
-        Route route = routeService.findRoute(accessDTO.getId());
+    @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
+    public void updateAccess(@PathVariable String id, @RequestBody AccessDTO accessDTO, @PathVariable String env) {
+        Route route = routeService.findRoute(id);
         Map<String, RouteRule.MatchPair> when = new HashMap<>();
         RouteRule.MatchPair matchPair = new RouteRule.MatchPair(new HashSet<>(), new HashSet<>());
         when.put(Route.KEY_CONSUMER_HOST, matchPair);

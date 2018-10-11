@@ -21,7 +21,9 @@
     <v-layout row
               wrap>
       <v-flex xs12>
-        <search v-model="filter" :submit="submit" label="Search Access Controls by service name"></search>
+        <search v-model="filter"
+                :submit="search"
+                label="Search Access Controls by service name"></search>
       </v-flex>
     </v-layout>
 
@@ -136,7 +138,7 @@
 
 <script>
 import yaml from 'js-yaml'
-import { AXIOS } from '../http-common'
+import { AXIOS } from '@/components/http-common'
 import AceEditor from '@/components/public/AceEditor'
 import Search from '@/components/public/Search'
 
@@ -189,18 +191,15 @@ export default {
     }
   }),
   methods: {
-    submit () {
+    search () {
       if (this.filter == null) {
         this.filter = ''
       }
-      this.search(this.filter)
-    },
-    search (filter) {
       this.loading = true
-      this.$router.push({path: 'access', query: (filter !== '' ? {service: filter} : null)})
-      AXIOS.get('/access/search', {
+      this.$router.push({path: 'access', query: (this.filter !== '' ? {service: this.filter} : null)})
+      AXIOS.get('/rules/access', {
         params: {
-          service: filter
+          service: this.filter
         }
       }).then(response => {
         this.accesses = response.data
@@ -226,8 +225,8 @@ export default {
     },
     createItem () {
       let doc = yaml.load(this.modal.content)
-      this.filter = this.modal.service
-      AXIOS.post('/access/create', {
+      this.filter = ''
+      AXIOS.post('/rules/access', {
         service: this.modal.service,
         whitelist: doc.whitelist,
         blacklist: doc.blacklist
@@ -250,8 +249,7 @@ export default {
     },
     editItem () {
       let doc = yaml.load(this.modal.content)
-      AXIOS.post('/access/update', {
-        id: this.modal.id,
+      AXIOS.put('/rules/access/' + this.modal.id, {
         whitelist: doc.whitelist,
         blacklist: doc.blacklist
       }).then(response => {
@@ -269,9 +267,8 @@ export default {
       })
     },
     deleteItem (id) {
-      AXIOS.post('/access/delete', {
-        id: id
-      }).then(response => {
+      AXIOS.delete('/rules/access/' + id)
+      .then(response => {
         this.showSnackbar('success', 'Delete success')
         this.search(this.filter)
       }).catch(error => this.showSnackbar('error', error.response.data.message))
@@ -288,16 +285,10 @@ export default {
   },
   mounted () {
     let query = this.$route.query
-    let service = ''
-    Object.keys(query).forEach(function (key) {
-      if (key === 'service') {
-        service = query[key]
-      }
-    })
-    if (service !== '') {
-      this.filter = service
-      this.search(this.filter)
+    if ('service' in query) {
+      this.filter = query['service']
     }
+    this.search()
   },
   components: {
     AceEditor,
