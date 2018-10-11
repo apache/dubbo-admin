@@ -68,7 +68,7 @@ public class OwnerServiceImpl extends AbstractService implements OwnerService {
         return toOverrideLiset(pList, cList);
     }
 
-    public Owner findById(Long id) {
+    public Owner findById(String id) {
 
         return null;
     }
@@ -149,7 +149,7 @@ public class OwnerServiceImpl extends AbstractService implements OwnerService {
                         override.setParams(StringUtils.toQueryString(params));
                         overrideService.updateOverride(override);
                     } else {
-                        overrideService.deleteOverride(override.getId());
+                        overrideService.deleteOverride(override.getHash());
                     }
                 }
             }

@@ -22,6 +22,7 @@ import org.apache.dubbo.admin.dto.RouteDTO;
 import org.apache.dubbo.admin.governance.service.ProviderService;
 import org.apache.dubbo.admin.governance.service.RouteService;
 import org.apache.dubbo.admin.registry.common.domain.Route;
+import org.apache.dubbo.admin.util.MD5Util;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -76,7 +77,7 @@ public class RoutesController {
 
     @RequestMapping(value = "/update", method = RequestMethod.POST)
     public boolean updateRule(@RequestBody RouteDTO routeDTO) {
-        Long id = routeDTO.getId();
+        String id = routeDTO.getId();
         Route route = routeService.findRoute(id);
         if (route == null) {
             //TODO Exception
@@ -93,7 +94,6 @@ public class RoutesController {
             newRoute.setRuntime(routeDTO.isRuntime());
             newRoute.setPriority(routeDTO.getPriority());
             newRoute.setRule(condition);
-            newRoute.setId(id);
             routeService.updateRoute(newRoute);
         }
         return true;
@@ -123,7 +123,7 @@ public class RoutesController {
             routeDTO.setPriority(route.getPriority());
             routeDTO.setRuntime(route.isRuntime());
             routeDTO.setService(route.getService());
-            routeDTO.setId(route.getId());
+            routeDTO.setId(MD5Util.MD5_16bit(route.toUrl().toFullString()));
             routeDTOS.add(routeDTO);
         }
         //no support for findAll or findByaddress
@@ -131,7 +131,7 @@ public class RoutesController {
     }
 
     @RequestMapping("/detail")
-    public RouteDTO routeDetail(@RequestParam long id) {
+    public RouteDTO routeDetail(@RequestParam String id) {
         Route route = routeService.findRoute(id);
         if (route == null) {
             // TODO throw exception
@@ -145,13 +145,13 @@ public class RoutesController {
         routeDTO.setPriority(route.getPriority());
         routeDTO.setRuntime(route.isRuntime());
         routeDTO.setService(route.getService());
-        routeDTO.setId(route.getId());
+        routeDTO.setId(route.getHash());
         return routeDTO;
     }
 
     @RequestMapping(value = "/delete", method = RequestMethod.POST)
     public boolean deleteRoute(@RequestBody BaseDTO baseDTO) {
-        Long id = baseDTO.getId();
+        String id = baseDTO.getId();
         routeService.deleteRoute(id);
         return true;
     }
@@ -159,7 +159,7 @@ public class RoutesController {
     @RequestMapping(value = "/enable", method = RequestMethod.POST)
     public boolean enableRoute(@RequestBody BaseDTO baseDTO) {
 
-        Long id = baseDTO.getId();
+        String id = baseDTO.getId();
         routeService.enableRoute(id);
         return true;
     }
@@ -167,7 +167,7 @@ public class RoutesController {
     @RequestMapping(value = "/disable", method = RequestMethod.POST)
     public boolean disableRoute(@RequestBody BaseDTO baseDTO) {
 
-        Long id = baseDTO.getId();
+        String id = baseDTO.getId();
         routeService.disableRoute(id);
         return true;
     }

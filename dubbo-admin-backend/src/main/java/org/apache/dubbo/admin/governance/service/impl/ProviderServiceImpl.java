@@ -51,7 +51,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         registryService.register(url);
     }
 
-    public void enableProvider(Long id) {
+    public void enableProvider(String id) {
         if (id == null) {
             throw new IllegalStateException("no provider id");
         }
@@ -78,7 +78,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
                 Map<String, String> params = StringUtils.parseQueryString(o.getParams());
                 if (params.containsKey(Constants.DISABLED_KEY)) {
                     if (params.get(Constants.DISABLED_KEY).equals("true")) {
-                        overrideService.deleteOverride(o.getId());
+                        overrideService.deleteOverride(o.getHash());
                     }
                 }
             }
@@ -88,7 +88,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         }
     }
 
-    public void disableProvider(Long id) {
+    public void disableProvider(String id) {
         if (id == null) {
             throw new IllegalStateException("no provider id");
         }
@@ -115,7 +115,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
                 Map<String, String> params = StringUtils.parseQueryString(o.getParams());
                 if (params.containsKey(Constants.DISABLED_KEY)) {
                     if (params.get(Constants.DISABLED_KEY).equals("false")) {
-                        overrideService.deleteOverride(o.getId());
+                        overrideService.deleteOverride(o.getHash());
                     }
                 }
             }
@@ -126,15 +126,15 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
 
     }
 
-    public void doublingProvider(Long id) {
+    public void doublingProvider(String id) {
         setWeight(id, 2F);
     }
 
-    public void halvingProvider(Long id) {
+    public void halvingProvider(String id) {
         setWeight(id, 0.5F);
     }
 
-    public void setWeight(Long id, float factor) {
+    public void setWeight(String id, float factor) {
         if (id == null) {
             throw new IllegalStateException("no provider id");
         }
@@ -174,7 +174,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
                         override.setParams(StringUtils.toQueryString(params));
                         overrideService.updateOverride(override);
                     } else {
-                        overrideService.deleteOverride(override.getId());
+                        overrideService.deleteOverride(override.getHash());
                     }
                 }
             }
@@ -202,7 +202,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         return weight;
     }
 
-    public void deleteStaticProvider(Long id) {
+    public void deleteStaticProvider(String id) {
         URL oldProvider = findProviderUrl(id);
         if (oldProvider == null) {
             throw new IllegalStateException("Provider was changed!");
@@ -211,12 +211,12 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
     }
 
     public void updateProvider(Provider provider) {
-        Long id = provider.getId();
-        if (id == null) {
+        String hash = provider.getHash();
+        if (hash == null) {
             throw new IllegalStateException("no provider id");
         }
 
-        URL oldProvider = findProviderUrl(id);
+        URL oldProvider = findProviderUrl(hash);
         if (oldProvider == null) {
             throw new IllegalStateException("Provider was changed!");
         }
@@ -226,17 +226,17 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         registryService.register(newProvider);
     }
 
-    public Provider findProvider(Long id) {
+    public Provider findProvider(String id) {
         return SyncUtils.url2Provider(findProviderUrlPair(id));
     }
 
-    public Pair<Long, URL> findProviderUrlPair(Long id) {
+    public Pair<String, URL> findProviderUrlPair(String id) {
         return SyncUtils.filterFromCategory(getRegistryCache(), Constants.PROVIDERS_CATEGORY, id);
     }
 
     public List<String> findServices() {
         List<String> ret = new ArrayList<String>();
-        ConcurrentMap<String, Map<Long, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
+        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
         if (providerUrls != null) ret.addAll(providerUrls.keySet());
         return ret;
     }
@@ -244,12 +244,12 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
     public List<String> findAddresses() {
         List<String> ret = new ArrayList<String>();
 
-        ConcurrentMap<String, Map<Long, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
+        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
         if (null == providerUrls) return ret;
 
-        for (Map.Entry<String, Map<Long, URL>> e1 : providerUrls.entrySet()) {
-            Map<Long, URL> value = e1.getValue();
-            for (Map.Entry<Long, URL> e2 : value.entrySet()) {
+        for (Map.Entry<String, Map<String, URL>> e1 : providerUrls.entrySet()) {
+            Map<String, URL> value = e1.getValue();
+            for (Map.Entry<String, URL> e2 : value.entrySet()) {
                 URL u = e2.getValue();
                 String app = u.getAddress();
                 if (app != null) ret.add(app);
@@ -261,10 +261,10 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
 
     public List<String> findAddressesByApplication(String application) {
         List<String> ret = new ArrayList<String>();
-        ConcurrentMap<String, Map<Long, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
-        for (Map.Entry<String, Map<Long, URL>> e1 : providerUrls.entrySet()) {
-            Map<Long, URL> value = e1.getValue();
-            for (Map.Entry<Long, URL> e2 : value.entrySet()) {
+        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
+        for (Map.Entry<String, Map<String, URL>> e1 : providerUrls.entrySet()) {
+            Map<String, URL> value = e1.getValue();
+            for (Map.Entry<String, URL> e2 : value.entrySet()) {
                 URL u = e2.getValue();
                 if (application.equals(u.getParameter(Constants.APPLICATION_KEY))) {
                     String addr = u.getAddress();
@@ -278,10 +278,10 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
 
     public List<String> findAddressesByService(String service) {
         List<String> ret = new ArrayList<String>();
-        ConcurrentMap<String, Map<Long, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
+        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
         if (null == providerUrls) return ret;
 
-        for (Map.Entry<Long, URL> e2 : providerUrls.get(service).entrySet()) {
+        for (Map.Entry<String, URL> e2 : providerUrls.get(service).entrySet()) {
             URL u = e2.getValue();
             String app = u.getAddress();
             if (app != null) ret.add(app);
@@ -292,14 +292,14 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
 
     public List<String> findApplicationsByServiceName(String service) {
         List<String> ret = new ArrayList<String>();
-        ConcurrentMap<String, Map<Long, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
+        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
         if (null == providerUrls) return ret;
 
-        Map<Long, URL> value = providerUrls.get(service);
+        Map<String, URL> value = providerUrls.get(service);
         if (value == null) {
             return ret;
         }
-        for (Map.Entry<Long, URL> e2 : value.entrySet()) {
+        for (Map.Entry<String, URL> e2 : value.entrySet()) {
             URL u = e2.getValue();
             String app = u.getParameter(Constants.APPLICATION_KEY);
             if (app != null) ret.add(app);
@@ -316,7 +316,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         return SyncUtils.url2ProviderList(findProviderUrlByAppandService(app, serviceName));
     }
 
-    private Map<Long, URL> findProviderUrlByService(String service) {
+    private Map<String, URL> findProviderUrlByService(String service) {
         Map<String, String> filter = new HashMap<String, String>();
         filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
         filter.put(SyncUtils.SERVICE_FILTER_KEY, service);
@@ -328,7 +328,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         return SyncUtils.url2ProviderList(findAllProviderUrl());
     }
 
-    private Map<Long, URL> findAllProviderUrl() {
+    private Map<String, URL> findAllProviderUrl() {
         Map<String, String> filter = new HashMap<String, String>();
         filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
         return SyncUtils.filterFromCategory(getRegistryCache(), filter);
@@ -338,7 +338,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         return SyncUtils.url2ProviderList(findProviderUrlByAddress(providerAddress));
     }
 
-    public Map<Long, URL> findProviderUrlByAddress(String address) {
+    public Map<String, URL> findProviderUrlByAddress(String address) {
         Map<String, String> filter = new HashMap<String, String>();
         filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
         filter.put(SyncUtils.ADDRESS_FILTER_KEY, address);
@@ -349,12 +349,12 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
     public List<String> findServicesByAddress(String address) {
         List<String> ret = new ArrayList<String>();
 
-        ConcurrentMap<String, Map<Long, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
+        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
         if (providerUrls == null || address == null || address.length() == 0) return ret;
 
-        for (Map.Entry<String, Map<Long, URL>> e1 : providerUrls.entrySet()) {
-            Map<Long, URL> value = e1.getValue();
-            for (Map.Entry<Long, URL> e2 : value.entrySet()) {
+        for (Map.Entry<String, Map<String, URL>> e1 : providerUrls.entrySet()) {
+            Map<String, URL> value = e1.getValue();
+            for (Map.Entry<String, URL> e2 : value.entrySet()) {
                 URL u = e2.getValue();
                 if (address.equals(u.getAddress())) {
                     ret.add(e1.getKey());
@@ -368,12 +368,12 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
 
     public List<String> findApplications() {
         List<String> ret = new ArrayList<String>();
-        ConcurrentMap<String, Map<Long, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
+        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
         if (providerUrls == null) return ret;
 
-        for (Map.Entry<String, Map<Long, URL>> e1 : providerUrls.entrySet()) {
-            Map<Long, URL> value = e1.getValue();
-            for (Map.Entry<Long, URL> e2 : value.entrySet()) {
+        for (Map.Entry<String, Map<String, URL>> e1 : providerUrls.entrySet()) {
+            Map<String, URL> value = e1.getValue();
+            for (Map.Entry<String, URL> e2 : value.entrySet()) {
                 URL u = e2.getValue();
                 String app = u.getParameter(Constants.APPLICATION_KEY);
                 if (app != null) ret.add(app);
@@ -387,7 +387,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         return SyncUtils.url2ProviderList(findProviderUrlByApplication(application));
     }
 
-    private Map<Long, URL> findProviderUrlByAppandService(String app, String service) {
+    private Map<String, URL> findProviderUrlByAppandService(String app, String service) {
         Map<String, String> filter = new HashMap<>();
         filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
         filter.put(Constants.APPLICATION_KEY, app);
@@ -396,7 +396,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
     }
 
 
-    private Map<Long, URL> findProviderUrlByApplication(String application) {
+    private Map<String, URL> findProviderUrlByApplication(String application) {
         Map<String, String> filter = new HashMap<>();
         filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
         filter.put(Constants.APPLICATION_KEY, application);
@@ -406,12 +406,12 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
     public List<String> findServicesByApplication(String application) {
         List<String> ret = new ArrayList<String>();
 
-        ConcurrentMap<String, Map<Long, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
+        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
         if (providerUrls == null || application == null || application.length() == 0) return ret;
 
-        for (Map.Entry<String, Map<Long, URL>> e1 : providerUrls.entrySet()) {
-            Map<Long, URL> value = e1.getValue();
-            for (Map.Entry<Long, URL> e2 : value.entrySet()) {
+        for (Map.Entry<String, Map<String, URL>> e1 : providerUrls.entrySet()) {
+            Map<String, URL> value = e1.getValue();
+            for (Map.Entry<String, URL> e2 : value.entrySet()) {
                 URL u = e2.getValue();
                 if (application.equals(u.getParameter(Constants.APPLICATION_KEY))) {
                     ret.add(e1.getKey());
@@ -426,13 +426,13 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
     public List<String> findMethodsByService(String service) {
         List<String> ret = new ArrayList<String>();
 
-        ConcurrentMap<String, Map<Long, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
+        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
         if (providerUrls == null || service == null || service.length() == 0) return ret;
 
-        Map<Long, URL> providers = providerUrls.get(service);
+        Map<String, URL> providers = providerUrls.get(service);
         if (null == providers || providers.isEmpty()) return ret;
 
-        Entry<Long, URL> p = providers.entrySet().iterator().next();
+        Entry<String, URL> p = providers.entrySet().iterator().next();
         String value = p.getValue().getParameter("methods");
         if (value == null || value.length() == 0) {
             return ret;
@@ -448,7 +448,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         return ret;
     }
 
-    private URL findProviderUrl(Long id) {
+    private URL findProviderUrl(String id) {
         return findProvider(id).toUrl();
     }
 
@@ -456,17 +456,17 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         return SyncUtils.url2Provider(findProviderUrl(service, address));
     }
 
-    private Pair<Long, URL> findProviderUrl(String service, String address) {
+    private Pair<String, URL> findProviderUrl(String service, String address) {
         Map<String, String> filter = new HashMap<String, String>();
         filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
         filter.put(SyncUtils.ADDRESS_FILTER_KEY, address);
 
-        Map<Long, URL> ret = SyncUtils.filterFromCategory(getRegistryCache(), filter);
+        Map<String, URL> ret = SyncUtils.filterFromCategory(getRegistryCache(), filter);
         if (ret.isEmpty()) {
             return null;
         } else {
-            Long key = ret.entrySet().iterator().next().getKey();
-            return new Pair<Long, URL>(key, ret.get(key));
+            String key = ret.entrySet().iterator().next().getKey();
+            return new Pair<String, URL>(key, ret.get(key));
         }
     }
 

@@ -54,7 +54,7 @@ public class LoadBalanceController {
 
     @RequestMapping(value = "/update", method = RequestMethod.POST)
     public boolean updateLoadbalance(@RequestBody BalancingDTO balancingDTO) {
-        Long id = balancingDTO.getId();
+        String id = balancingDTO.getId();
         Override override = overrideService.findById(id);
         if (override == null) {
             //TODO throw exception
@@ -84,7 +84,7 @@ public class LoadBalanceController {
                     balancingDTO.setService(l.getService());
                     balancingDTO.setMethodName(l.getMethod());
                     balancingDTO.setStrategy(l.getStrategy());
-                    balancingDTO.setId(l.getId());
+                    balancingDTO.setId(l.getHash());
                     loadBalances.add(balancingDTO);
                 }
             }
@@ -93,7 +93,7 @@ public class LoadBalanceController {
     }
 
     @RequestMapping("/detail")
-    public BalancingDTO detail(@RequestParam Long id) {
+    public BalancingDTO detail(@RequestParam String id) {
         Override override =  overrideService.findById(id);
         if (override == null) {
             //TODO throw exception
@@ -109,7 +109,7 @@ public class LoadBalanceController {
 
     @RequestMapping(value  = "/delete", method = RequestMethod.POST)
     public boolean delete(@RequestBody BaseDTO baseDTO) {
-        Long id = baseDTO.getId();
+        String id = baseDTO.getId();
         overrideService.deleteOverride(id);
         return true;
     }

@@ -32,6 +32,8 @@ public abstract class Entity implements Serializable {
 
     private Long id;
 
+    private String hash;
+
     private Date created;
 
     private Date modified;
@@ -65,6 +67,14 @@ public abstract class Entity implements Serializable {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getHash() {
+        return hash;
+    }
+
+    public void setHash(String hash) {
+        this.hash = hash;
     }
 
     public Date getCreated() {

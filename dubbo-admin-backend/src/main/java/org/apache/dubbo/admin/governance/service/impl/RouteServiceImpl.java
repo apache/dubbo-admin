@@ -41,11 +41,11 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
     }
 
     public void updateRoute(Route route) {
-        Long id = route.getId();
-        if (id == null) {
-            throw new IllegalStateException("no route id");
+        String hash = route.getHash();
+        if (hash == null) {
+            throw new IllegalStateException("no route hash");
         }
-        URL oldRoute = findRouteUrl(id);
+        URL oldRoute = findRouteUrl(hash);
         if (oldRoute == null) {
             throw new IllegalStateException("Route was changed!");
         }
@@ -54,7 +54,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         registryService.register(route.toUrl());
     }
 
-    public void deleteRoute(Long id) {
+    public void deleteRoute(String id) {
         URL oldRoute = findRouteUrl(id);
         if (oldRoute == null) {
             throw new IllegalStateException("Route was changed!");
@@ -62,7 +62,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         registryService.unregister(oldRoute);
     }
 
-    public void enableRoute(Long id) {
+    public void enableRoute(String id) {
         if (id == null) {
             throw new IllegalStateException("no route id");
         }
@@ -81,7 +81,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
     }
 
-    public void disableRoute(Long id) {
+    public void disableRoute(String id) {
         if (id == null) {
             throw new IllegalStateException("no route id");
         }
@@ -104,26 +104,26 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         return SyncUtils.url2RouteList(findAllUrl());
     }
 
-    private Map<Long, URL> findAllUrl() {
+    private Map<String, URL> findAllUrl() {
         Map<String, String> filter = new HashMap<String, String>();
         filter.put(Constants.CATEGORY_KEY, Constants.ROUTERS_CATEGORY);
 
         return SyncUtils.filterFromCategory(getRegistryCache(), filter);
     }
 
-    public Route findRoute(Long id) {
+    public Route findRoute(String id) {
         return SyncUtils.url2Route(findRouteUrlPair(id));
     }
 
-    public Pair<Long, URL> findRouteUrlPair(Long id) {
+    public Pair<String, URL> findRouteUrlPair(String id) {
         return SyncUtils.filterFromCategory(getRegistryCache(), Constants.ROUTERS_CATEGORY, id);
     }
 
-    private URL findRouteUrl(Long id) {
+    private URL findRouteUrl(String id) {
         return findRoute(id).toUrl();
     }
 
-    private Map<Long, URL> findRouteUrl(String service, String address, boolean force) {
+    private Map<String, URL> findRouteUrl(String service, String address, boolean force) {
         Map<String, String> filter = new HashMap<String, String>();
         filter.put(Constants.CATEGORY_KEY, Constants.ROUTERS_CATEGORY);
         if (service != null && service.length() > 0) {

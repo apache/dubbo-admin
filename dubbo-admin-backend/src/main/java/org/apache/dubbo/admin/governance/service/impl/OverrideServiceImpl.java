@@ -41,11 +41,11 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
     }
 
     public void updateOverride(Override override) {
-        Long id = override.getId();
-        if (id == null) {
+        String hash = override.getHash();
+        if (hash == null) {
             throw new IllegalStateException("no override id");
         }
-        URL oldOverride = findOverrideUrl(id);
+        URL oldOverride = findOverrideUrl(hash);
         if (oldOverride == null) {
             throw new IllegalStateException("Route was changed!");
         }
@@ -56,7 +56,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
 
     }
 
-    public void deleteOverride(Long id) {
+    public void deleteOverride(String id) {
         URL oldOverride = findOverrideUrl(id);
         if (oldOverride == null) {
             throw new IllegalStateException("Route was changed!");
@@ -64,7 +64,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         registryService.unregister(oldOverride);
     }
 
-    public void enableOverride(Long id) {
+    public void enableOverride(String id) {
         if (id == null) {
             throw new IllegalStateException("no override id");
         }
@@ -83,7 +83,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
 
     }
 
-    public void disableOverride(Long id) {
+    public void disableOverride(String id) {
         if (id == null) {
             throw new IllegalStateException("no override id");
         }
@@ -102,7 +102,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
 
     }
 
-    private Map<Long, URL> findOverrideUrl(String service, String address, String application) {
+    private Map<String, URL> findOverrideUrl(String service, String address, String application) {
         Map<String, String> filter = new HashMap<String, String>();
         filter.put(Constants.CATEGORY_KEY, Constants.CONFIGURATORS_CATEGORY);
         if (service != null && service.length() > 0) {
@@ -141,11 +141,11 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         return SyncUtils.url2OverrideList(findOverrideUrl(null, null, null));
     }
 
-    private Pair<Long, URL> findOverrideUrlPair(Long id) {
+    private Pair<String, URL> findOverrideUrlPair(String id) {
         return SyncUtils.filterFromCategory(getRegistryCache(), Constants.CONFIGURATORS_CATEGORY, id);
     }
 
-    public Override findById(Long id) {
+    public Override findById(String id) {
         return SyncUtils.url2Override(findOverrideUrlPair(id));
     }
 
@@ -183,7 +183,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         return url;*/
     }
 
-    URL findOverrideUrl(Long id) {
+    URL findOverrideUrl(String id) {
         return getUrlFromOverride(findById(id));
     }
 

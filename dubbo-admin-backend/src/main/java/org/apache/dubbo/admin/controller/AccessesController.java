@@ -53,7 +53,7 @@ public class AccessesController {
             // Match WhiteBlackList Route
             if (route.getName().endsWith(AccessDTO.KEY_BLACK_WHITE_LIST)) {
                 AccessDTO accessDTO = new AccessDTO();
-                accessDTO.setId(route.getId());
+                accessDTO.setId(route.getHash());
                 accessDTO.setService(route.getService());
                 Map<String, RouteRule.MatchPair> when = RouteRule.parseRule(route.getMatchRule());
                 for (String key : when.keySet()) {
@@ -68,11 +68,11 @@ public class AccessesController {
     }
 
     @RequestMapping(value = "/detail", method = RequestMethod.GET)
-    public AccessDTO detailAccess(@RequestParam Long id) throws ParseException {
+    public AccessDTO detailAccess(@RequestParam String id) throws ParseException {
         Route route = routeService.findRoute(id);
         if (route.getName().endsWith(AccessDTO.KEY_BLACK_WHITE_LIST)) {
             AccessDTO accessDTO = new AccessDTO();
-            accessDTO.setId(route.getId());
+            accessDTO.setId(route.getHash());
             accessDTO.setService(route.getService());
             Map<String, RouteRule.MatchPair> when = RouteRule.parseRule(route.getMatchRule());
             for (String key : when.keySet()) {

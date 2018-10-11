@@ -28,7 +28,7 @@ public interface ConsumerService {
 
     List<Consumer> findByService(String serviceName);
 
-    Consumer findConsumer(Long id);
+    Consumer findConsumer(String id);
 
     List<Consumer> findAll();
 

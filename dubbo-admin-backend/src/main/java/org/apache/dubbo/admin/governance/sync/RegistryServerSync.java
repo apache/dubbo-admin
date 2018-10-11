@@ -24,6 +24,7 @@ import com.alibaba.dubbo.common.utils.NetUtils;
 import com.alibaba.dubbo.common.utils.StringUtils;
 import com.alibaba.dubbo.registry.NotifyListener;
 import com.alibaba.dubbo.registry.RegistryService;
+import org.apache.dubbo.admin.util.MD5Util;
 import org.apache.dubbo.admin.web.pulltool.Tool;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
@@ -57,15 +58,15 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
     /**
      * Make sure ID never changed when the same url notified many times
      */
-    private final ConcurrentHashMap<String, Long> URL_IDS_MAPPER = new ConcurrentHashMap<String, Long>();
+    private final ConcurrentHashMap<String, String> URL_IDS_MAPPER = new ConcurrentHashMap<>();
 
-    // ConcurrentMap<category, ConcurrentMap<servicename, Map<Long, URL>>>
-    private final ConcurrentMap<String, ConcurrentMap<String, Map<Long, URL>>>
-        registryCache = new ConcurrentHashMap<String, ConcurrentMap<String, Map<Long, URL>>>();
+    // ConcurrentMap<category, ConcurrentMap<servicename, Map<MD5, URL>>>
+    private final ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>>
+        registryCache = new ConcurrentHashMap<>();
     @Autowired
     private RegistryService registryService;
 
-    public ConcurrentMap<String, ConcurrentMap<String, Map<Long, URL>>> getRegistryCache() {
+    public ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>> getRegistryCache() {
         return registryCache;
     }
 
@@ -84,12 +85,12 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
             return;
         }
         // Map<category, Map<servicename, Map<Long, URL>>>
-        final Map<String, Map<String, Map<Long, URL>>> categories = new HashMap<String, Map<String, Map<Long, URL>>>();
+        final Map<String, Map<String, Map<String, URL>>> categories = new HashMap<>();
         String interfaceName = null;
         for (URL url : urls) {
             String category = url.getParameter(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
             if (Constants.EMPTY_PROTOCOL.equalsIgnoreCase(url.getProtocol())) { // NOTE: group and version in empty protocol is *
-                ConcurrentMap<String, Map<Long, URL>> services = registryCache.get(category);
+                ConcurrentMap<String, Map<String, URL>> services = registryCache.get(category);
                 if (services != null) {
                     String group = url.getParameter(Constants.GROUP_KEY);
                     String version = url.getParameter(Constants.VERSION_KEY);
@@ -97,7 +98,7 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
                     if (!Constants.ANY_VALUE.equals(group) && !Constants.ANY_VALUE.equals(version)) {
                         services.remove(url.getServiceKey());
                     } else {
-                        for (Map.Entry<String, Map<Long, URL>> serviceEntry : services.entrySet()) {
+                        for (Map.Entry<String, Map<String, URL>> serviceEntry : services.entrySet()) {
                             String service = serviceEntry.getKey();
                             if (Tool.getInterface(service).equals(url.getServiceInterface())
                                     && (Constants.ANY_VALUE.equals(group) || StringUtils.isEquals(group, Tool.getGroup(service)))
@@ -111,15 +112,15 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
                 if (StringUtils.isEmpty(interfaceName)) {
                     interfaceName = url.getServiceInterface();
                 }
-                Map<String, Map<Long, URL>> services = categories.get(category);
+                Map<String, Map<String, URL>> services = categories.get(category);
                 if (services == null) {
-                    services = new HashMap<String, Map<Long, URL>>();
+                    services = new HashMap<>();
                     categories.put(category, services);
                 }
                 String service = url.getServiceKey();
-                Map<Long, URL> ids = services.get(service);
+                Map<String, URL> ids = services.get(service);
                 if (ids == null) {
-                    ids = new HashMap<Long, URL>();
+                    ids = new HashMap<>();
                     services.put(service, ids);
                 }
 
@@ -127,20 +128,20 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
                 if (URL_IDS_MAPPER.containsKey(url.toFullString())) {
                     ids.put(URL_IDS_MAPPER.get(url.toFullString()), url);
                 } else {
-                    long currentId = ID.incrementAndGet();
-                    ids.put(currentId, url);
-                    URL_IDS_MAPPER.putIfAbsent(url.toFullString(), currentId);
+                    String md5 = MD5Util.MD5_16bit(url.toFullString());
+                    ids.put(md5, url);
+                    URL_IDS_MAPPER.putIfAbsent(url.toFullString(), md5);
                 }
             }
         }
         if (categories.size() == 0) {
             return;
         }
-        for (Map.Entry<String, Map<String, Map<Long, URL>>> categoryEntry : categories.entrySet()) {
+        for (Map.Entry<String, Map<String, Map<String, URL>>> categoryEntry : categories.entrySet()) {
             String category = categoryEntry.getKey();
-            ConcurrentMap<String, Map<Long, URL>> services = registryCache.get(category);
+            ConcurrentMap<String, Map<String, URL>> services = registryCache.get(category);
             if (services == null) {
-                services = new ConcurrentHashMap<String, Map<Long, URL>>();
+                services = new ConcurrentHashMap<String, Map<String, URL>>();
                 registryCache.put(category, services);
             } else {// Fix map can not be cleared when service is unregistered: when a unique “group/service:version” service is unregistered, but we still have the same services with different version or group, so empty protocols can not be invoked.
                 Set<String> keys = new HashSet<String>(services.keySet());
