@@ -26,11 +26,11 @@ public interface OverrideService {
 
     void updateOverride(Override override);
 
-    void deleteOverride(Long id);
+    void deleteOverride(String id);
 
-    void enableOverride(Long id);
+    void enableOverride(String id);
 
-    void disableOverride(Long id);
+    void disableOverride(String id);
 
     List<Override> findByService(String service);
 
@@ -44,6 +44,6 @@ public interface OverrideService {
 
     List<Override> findAll();
 
-    Override findById(Long id);
+    Override findById(String id);
 
 }

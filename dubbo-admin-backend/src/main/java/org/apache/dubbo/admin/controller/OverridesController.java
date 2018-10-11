@@ -55,15 +55,18 @@ public class OverridesController {
 
     @RequestMapping(value = "/update", method = RequestMethod.POST)
     public boolean updateOverride(@RequestBody OverrideDTO overrideDTO) {
-        Long id = overrideDTO.getId();
+        String id = overrideDTO.getId();
         Override old = overrideService.findById(id);
+        if (old == null) {
+            //TODO handle exception
+        }
         Override override = new Override();
         override.setService(overrideDTO.getService());
         override.setApplication(overrideDTO.getApp());
         override.setAddress(overrideDTO.getAddress());
         override.setEnabled(overrideDTO.isEnabled());
         overrideDTOToParams(override, overrideDTO);
-        override.setId(id);
+        override.setHash(id);
         overrideService.updateOverride(override);
         return true;
     }
@@ -78,7 +81,7 @@ public class OverridesController {
             overrideDTO.setApp(override.getApplication());
             overrideDTO.setEnabled(override.isEnabled());
             overrideDTO.setService(override.getService());
-            overrideDTO.setId(override.getId());
+            overrideDTO.setId(override.getHash());
             paramsToOverrideDTO(override, overrideDTO);
             result.add(overrideDTO);
         }
@@ -86,7 +89,7 @@ public class OverridesController {
     }
 
     @RequestMapping("/detail")
-    public OverrideDTO detail(@RequestParam Long id) {
+    public OverrideDTO detail(@RequestParam String id) {
         Override override = overrideService.findById(id);
         if (override == null) {
             //TODO throw exception
@@ -102,7 +105,7 @@ public class OverridesController {
 
     @RequestMapping(value  = "/delete", method = RequestMethod.POST)
     public boolean delete(@RequestBody BaseDTO baseDTO) {
-        Long id = baseDTO.getId();
+        String id = baseDTO.getId();
         overrideService.deleteOverride(id);
         return true;
     }

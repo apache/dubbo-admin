@@ -51,7 +51,7 @@ public class WeightController {
 
     @RequestMapping(value = "/update", method = RequestMethod.POST)
     public boolean updateWeight(@RequestBody WeightDTO weightDTO) {
-        Long id = weightDTO.getId();
+        String id = weightDTO.getId();
         if (id == null) {
             //TODO throw exception
         }
@@ -76,7 +76,7 @@ public class WeightController {
                 weightDTO.setProvider(new String[]{w.getAddress()});
                 weightDTO.setService(w.getService());
                 weightDTO.setWeight(w.getWeight());
-                weightDTO.setId(w.getId());
+                weightDTO.setId(w.getHash());
                 weightDTOS.add(weightDTO);
             }
         }
@@ -84,7 +84,7 @@ public class WeightController {
     }
 
     @RequestMapping("/detail")
-    public WeightDTO detail(@RequestParam Long id) {
+    public WeightDTO detail(@RequestParam String id) {
         Override override = overrideService.findById(id);
         if (override != null) {
 
@@ -93,7 +93,7 @@ public class WeightController {
             weightDTO.setProvider(new String[]{w.getAddress()});
             weightDTO.setService(w.getService());
             weightDTO.setWeight(w.getWeight());
-            weightDTO.setId(w.getId());
+            weightDTO.setId(w.getHash());
             return weightDTO;
         }
         return null;
@@ -101,7 +101,7 @@ public class WeightController {
 
     @RequestMapping(value = "/delete", method = RequestMethod.POST)
     public boolean delete(@RequestBody BaseDTO baseDTO) {
-        Long id = baseDTO.getId();
+        String id = baseDTO.getId();
         overrideService.deleteOverride(id);
         return true;
     }

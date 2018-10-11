@@ -37,19 +37,19 @@ public class SyncUtils {
 
     public static final String ID_FILTER_KEY = ".id";
 
-    public static Provider url2Provider(Pair<Long, URL> pair) {
+    public static Provider url2Provider(Pair<String, URL> pair) {
         if (pair == null) {
             return null;
         }
 
-        Long id = pair.getKey();
+        String id = pair.getKey();
         URL url = pair.getValue();
 
         if (url == null)
             return null;
 
         Provider p = new Provider();
-        p.setId(id);
+        p.setHash(id);
         p.setService(url.getServiceKey());
         p.setAddress(url.getAddress());
         p.setApplication(url.getParameter(Constants.APPLICATION_KEY));
@@ -64,27 +64,27 @@ public class SyncUtils {
         return p;
     }
 
-    public static List<Provider> url2ProviderList(Map<Long, URL> ps) {
-        List<Provider> ret = new ArrayList<Provider>();
-        for (Map.Entry<Long, URL> entry : ps.entrySet()) {
-            ret.add(url2Provider(new Pair<Long, URL>(entry.getKey(), entry.getValue())));
+    public static List<Provider> url2ProviderList(Map<String, URL> ps) {
+        List<Provider> ret = new ArrayList<>();
+        for (Map.Entry<String, URL> entry : ps.entrySet()) {
+            ret.add(url2Provider(new Pair<>(entry.getKey(), entry.getValue())));
         }
         return ret;
     }
 
-    public static Consumer url2Consumer(Pair<Long, URL> pair) {
+    public static Consumer url2Consumer(Pair<String, URL> pair) {
         if (pair == null) {
             return null;
         }
 
-        Long id = pair.getKey();
+        String id = pair.getKey();
         URL url = pair.getValue();
 
         if (null == url)
             return null;
 
         Consumer c = new Consumer();
-        c.setId(id);
+        c.setHash(id);
         c.setService(url.getServiceKey());
         c.setAddress(url.getHost());
         c.setApplication(url.getParameter(Constants.APPLICATION_KEY));
@@ -93,28 +93,28 @@ public class SyncUtils {
         return c;
     }
 
-    public static List<Consumer> url2ConsumerList(Map<Long, URL> cs) {
+    public static List<Consumer> url2ConsumerList(Map<String, URL> cs) {
         List<Consumer> list = new ArrayList<Consumer>();
         if (cs == null) return list;
-        for (Map.Entry<Long, URL> entry : cs.entrySet()) {
-            list.add(url2Consumer(new Pair<Long, URL>(entry.getKey(), entry.getValue())));
+        for (Map.Entry<String, URL> entry : cs.entrySet()) {
+            list.add(url2Consumer(new Pair<>(entry.getKey(), entry.getValue())));
         }
         return list;
     }
 
-    public static Route url2Route(Pair<Long, URL> pair) {
+    public static Route url2Route(Pair<String, URL> pair) {
         if (pair == null) {
             return null;
         }
 
-        Long id = pair.getKey();
+        String id = pair.getKey();
         URL url = pair.getValue();
 
         if (null == url)
             return null;
 
         Route r = new Route();
-        r.setId(id);
+        r.setHash(id);
         r.setName(url.getParameter("name"));
         r.setService(url.getServiceKey());
         r.setPriority(url.getParameter(Constants.PRIORITY_KEY, 0));
@@ -128,28 +128,28 @@ public class SyncUtils {
         return r;
     }
 
-    public static List<Route> url2RouteList(Map<Long, URL> cs) {
+    public static List<Route> url2RouteList(Map<String, URL> cs) {
         List<Route> list = new ArrayList<Route>();
         if (cs == null) return list;
-        for (Map.Entry<Long, URL> entry : cs.entrySet()) {
-            list.add(url2Route(new Pair<Long, URL>(entry.getKey(), entry.getValue())));
+        for (Map.Entry<String, URL> entry : cs.entrySet()) {
+            list.add(url2Route(new Pair<>(entry.getKey(), entry.getValue())));
         }
         return list;
     }
 
-    public static Override url2Override(Pair<Long, URL> pair) {
+    public static Override url2Override(Pair<String, URL> pair) {
         if (pair == null) {
             return null;
         }
 
-        Long id = pair.getKey();
+        String id = pair.getKey();
         URL url = pair.getValue();
 
         if (null == url)
             return null;
 
         Override o = new Override();
-        o.setId(id);
+        o.setHash(id);
 
         Map<String, String> parameters = new HashMap<String, String>(url.getParameters());
 
@@ -179,7 +179,7 @@ public class SyncUtils {
     }
 
     // Map<category, Map<servicename, Map<Long, URL>>>
-    public static <SM extends Map<String, Map<Long, URL>>> Map<Long, URL> filterFromCategory(Map<String, SM> urls, Map<String, String> filter) {
+    public static <SM extends Map<String, Map<String, URL>>> Map<String, URL> filterFromCategory(Map<String, SM> urls, Map<String, String> filter) {
         String c = (String) filter.get(Constants.CATEGORY_KEY);
         if (c == null) throw new IllegalArgumentException("no category");
 
@@ -187,29 +187,29 @@ public class SyncUtils {
         return filterFromService(urls.get(c), filter);
     }
 
-    public static List<Override> url2OverrideList(Map<Long, URL> cs) {
+    public static List<Override> url2OverrideList(Map<String, URL> cs) {
         List<Override>
             list = new ArrayList<Override>();
         if (cs == null) return list;
-        for (Map.Entry<Long, URL> entry : cs.entrySet()) {
-            list.add(url2Override(new Pair<Long, URL>(entry.getKey(), entry.getValue())));
+        for (Map.Entry<String, URL> entry : cs.entrySet()) {
+            list.add(url2Override(new Pair<>(entry.getKey(), entry.getValue())));
         }
         return list;
     }
 
 
     // Map<servicename, Map<Long, URL>>
-    public static Map<Long, URL> filterFromService(Map<String, Map<Long, URL>> urls, Map<String, String> filter) {
-        Map<Long, URL> ret = new HashMap<Long, URL>();
+    public static Map<String, URL> filterFromService(Map<String, Map<String, URL>> urls, Map<String, String> filter) {
+        Map<String, URL> ret = new HashMap<>();
         if (urls == null) return ret;
 
         String s = (String) filter.remove(SERVICE_FILTER_KEY);
         if (s == null) {
-            for (Map.Entry<String, Map<Long, URL>> entry : urls.entrySet()) {
+            for (Map.Entry<String, Map<String, URL>> entry : urls.entrySet()) {
                 filterFromUrls(entry.getValue(), ret, filter);
             }
         } else {
-            Map<Long, URL> map = urls.get(s);
+            Map<String, URL> map = urls.get(s);
             filterFromUrls(map, ret, filter);
         }
 
@@ -217,10 +217,10 @@ public class SyncUtils {
     }
 
     // Map<Long, URL>
-    static void filterFromUrls(Map<Long, URL> from, Map<Long, URL> to, Map<String, String> filter) {
+    static void filterFromUrls(Map<String, URL> from, Map<String, URL> to, Map<String, String> filter) {
         if (from == null || from.isEmpty()) return;
 
-        for (Map.Entry<Long, URL> entry : from.entrySet()) {
+        for (Map.Entry<String, URL> entry : from.entrySet()) {
             URL url = entry.getValue();
 
             boolean match = true;
@@ -247,13 +247,13 @@ public class SyncUtils {
         }
     }
 
-    public static <SM extends Map<String, Map<Long, URL>>> Pair<Long, URL> filterFromCategory(Map<String, SM> urls, String category, Long id) {
+    public static <SM extends Map<String, Map<String, URL>>> Pair<String, URL> filterFromCategory(Map<String, SM> urls, String category, String id) {
         SM services = urls.get(category);
         if (services == null) return null;
 
-        for (Map.Entry<String, Map<Long, URL>> e1 : services.entrySet()) {
-            Map<Long, URL> u = e1.getValue();
-            if (u.containsKey(id)) return new Pair<Long, URL>(id, u.get(id));
+        for (Map.Entry<String, Map<String, URL>> e1 : services.entrySet()) {
+            Map<String, URL> u = e1.getValue();
+            if (u.containsKey(id)) return new Pair<>(id, u.get(id));
         }
         return null;
     }

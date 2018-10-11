@@ -38,7 +38,7 @@ public class AbstractService {
     @Autowired
     private RegistryServerSync sync;
 
-    public ConcurrentMap<String, ConcurrentMap<String, Map<Long, URL>>> getRegistryCache() {
+    public ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>> getRegistryCache() {
         return sync.getRegistryCache();
     }
 

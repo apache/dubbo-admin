@@ -275,11 +275,7 @@
             AXIOS.get('/routes/detail?id=' + item.id)
               .then(response => {
                 let route = response.data
-                this.service = route.service
-                delete route.service
-                this.ruleText = yaml.safeDump(route)
-                this.readonly = true
-                this.dialog = true
+                this.handleRoute(route, true)
               })
             break
           case 'edit':
@@ -288,11 +284,7 @@
             AXIOS.get('/routes/detail?id=' + item.id)
               .then(response => {
                 let route = response.data
-                this.service = route.service
-                delete route.service
-                this.ruleText = yaml.safeDump(route)
-                this.readonly = false
-                this.dialog = true
+                this.handleRoute(route, false)
                 this.updateId = item.id
               })
             break
@@ -311,6 +303,16 @@
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = item.id
         }
+      },
+      handleRoute: function (route, readonly) {
+        this.service = route.service
+        delete route.service
+        delete route.id
+        delete route.app
+        delete route.group
+        this.ruleText = yaml.safeDump(route)
+        this.readonly = readonly
+        this.dialog = true
       },
       setHeight: function () {
         this.height = window.innerHeight * 0.5

@@ -32,7 +32,7 @@ public interface OwnerService {
 
     List<Owner> findAll();
 
-    Owner findById(Long id);
+    Owner findById(String id);
 
     void saveOwner(Owner owner);
 

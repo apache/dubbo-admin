@@ -28,19 +28,19 @@ public interface ProviderService {
 
     void create(Provider provider);
 
-    void enableProvider(Long id);
+    void enableProvider(String id);
 
-    void disableProvider(Long id);
+    void disableProvider(String id);
 
-    void doublingProvider(Long id);
+    void doublingProvider(String id);
 
-    void halvingProvider(Long id);
+    void halvingProvider(String id);
 
-    void deleteStaticProvider(Long id);
+    void deleteStaticProvider(String id);
 
     void updateProvider(Provider provider);
 
-    Provider findProvider(Long id);
+    Provider findProvider(String id);
 
     List<String> findServices();
 

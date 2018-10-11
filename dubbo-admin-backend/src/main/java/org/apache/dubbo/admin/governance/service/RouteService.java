@@ -18,6 +18,7 @@ package org.apache.dubbo.admin.governance.service;
 
 import org.apache.dubbo.admin.registry.common.domain.Route;
 
+import java.net.URL;
 import java.util.List;
 
 /**
@@ -30,13 +31,13 @@ public interface RouteService {
 
     void updateRoute(Route route);
 
-    void deleteRoute(Long id);
+    void deleteRoute(String id);
 
-    void enableRoute(Long id);
+    void enableRoute(String id);
 
-    void disableRoute(Long id);
+    void disableRoute(String id);
 
-    Route findRoute(Long id);
+    Route findRoute(String id);
 
     List<Route> findAll();
 
