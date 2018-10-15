@@ -86,7 +86,7 @@ public class AccessesController {
         }
     }
 
-    @RequestMapping(value = "{id}", method = RequestMethod.DELETE)
+    @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public void deleteAccess(@PathVariable String id, @PathVariable String env) {
         if (id == null) {
             throw new IllegalArgumentException("Argument of id is null!");
