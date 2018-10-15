@@ -115,6 +115,7 @@
       ruleKeys: ['method', 'strategy'],
       pattern: 'Service',
       filter: '',
+      updateId: '',
       dialog: false,
       warn: false,
       application: '',
@@ -159,18 +160,22 @@
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        AXIOS.get('/balancing/search?serviceName=' + filter)
-          .then(response => {
-            this.loadBalances = response.data
-            if (rewrite) {
-              this.$router.push({path: 'loadbalance', query: {service: filter}})
-            }
-          })
+        AXIOS.get('/rules/balancing', {
+          params: {
+            service: filter
+          }
+        }).then(response => {
+          this.loadBalances = response.data
+          if (rewrite) {
+            this.$router.push({path: 'loadbalance', query: {service: filter}})
+          }
+        })
       },
       closeDialog: function () {
         this.ruleText = this.template
         this.service = ''
         this.dialog = false
+        this.updateId = ''
         this.readonly = false
       },
       openDialog: function () {
@@ -189,38 +194,45 @@
       saveItem: function () {
         let balancing = yaml.safeLoad(this.ruleText)
         balancing.service = this.service
-        AXIOS.post('/balancing/create', balancing)
-          .then(response => {
-            if (response.data) {
-              this.search(this.service, true)
-              this.filter = this.service
-            }
+        if (this.updateId !== '') {
+          if (this.updateId === 'close') {
             this.closeDialog()
-          })
+          } else {
+            balancing.id = this.updateId
+            AXIOS.put('/rules/balancing/' + balancing.id, balancing)
+              .then(response => {
+                this.search(this.service, true)
+                this.filter = this.service
+                this.closeDialog()
+              })
+          }
+        } else {
+          AXIOS.post('/rules/balancing', balancing)
+            .then(response => {
+              if (response.data) {
+                this.search(this.service, true)
+                this.filter = this.service
+              }
+              this.closeDialog()
+            })
+        }
       },
       itemOperation: function (icon, item) {
         switch (icon) {
           case 'visibility':
-            AXIOS.get('/balancing/detail?id=' + item.id)
+            AXIOS.get('/rules/balancing/' + item.id)
               .then(response => {
                 let balancing = response.data
-                this.service = balancing.service
-                delete balancing.service
-                delete balancing.id
-                this.ruleText = yaml.safeDump(balancing)
-                this.readonly = true
-                this.dialog = true
+                this.handleBalance(balancing, true)
+                this.updateId = 'close'
               })
             break
           case 'edit':
-            AXIOS.get('/balancing/detail?id=' + item.id)
+            AXIOS.get('/rules/balancing/' + item.id)
               .then(response => {
                 let balancing = response.data
-                this.service = balancing.service
-                delete balancing.service
-                this.ruleText = yaml.safeDump(balancing)
-                this.readonly = false
-                this.dialog = true
+                this.handleBalance(balancing, false)
+                this.updateId = item.id
               })
             break
           case 'delete':
@@ -229,13 +241,19 @@
             this.warnStatus.id = item.id
         }
       },
+      handleBalance: function (balancing, readonly) {
+        this.service = balancing.service
+        delete balancing.service
+        delete balancing.id
+        this.ruleText = yaml.safeDump(balancing)
+        this.readonly = readonly
+        this.dialog = true
+      },
       setHeight: function () {
         this.height = window.innerHeight * 0.5
       },
       deleteItem: function (warnStatus) {
-        let id = {}
-        id.id = warnStatus.id
-        AXIOS.post('/balancing/delete', id)
+        AXIOS.delete('/rules/balancing/' + warnStatus.id)
           .then(response => {
             this.warn = false
             this.search(this.filter, false)
