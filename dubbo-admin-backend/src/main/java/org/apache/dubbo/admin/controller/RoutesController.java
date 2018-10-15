@@ -30,7 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/routes")
+@RequestMapping("/api/{env}/rules/route")
 public class RoutesController {
 
     @Autowired
@@ -38,8 +38,8 @@ public class RoutesController {
     @Autowired
     private ProviderService providerService;
 
-    @RequestMapping(value = "/create", method = RequestMethod.POST)
-    public boolean createRule(@RequestBody RouteDTO routeDTO) {
+    @RequestMapping(method = RequestMethod.POST)
+    public boolean createRule(@RequestBody RouteDTO routeDTO, @PathVariable String env) {
         String serviceName = routeDTO.getService();
         String app = routeDTO.getApp();
         if (serviceName == null && app == null) {
@@ -75,9 +75,8 @@ public class RoutesController {
         return true;
     }
 
-    @RequestMapping(value = "/update", method = RequestMethod.POST)
-    public boolean updateRule(@RequestBody RouteDTO routeDTO) {
-        String id = routeDTO.getId();
+    @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
+    public boolean updateRule(@PathVariable String id, @RequestBody RouteDTO routeDTO, @PathVariable String env) {
         Route route = routeService.findRoute(id);
         if (route == null) {
             //TODO Exception
@@ -99,18 +98,17 @@ public class RoutesController {
         return true;
     }
 
-    @RequestMapping(value = "/search", method = RequestMethod.GET)
-    public List<RouteDTO> allRoutes(@RequestParam(required = false) String app,
-                                    @RequestParam(required = false) String serviceName) {
-        List<Route> routes = null;
+    @RequestMapping(method = RequestMethod.GET)
+    public List<RouteDTO> searchRoutes(@RequestParam(required = false) String app,
+                                    @RequestParam(required = false) String service, @PathVariable String env) {
+        List<Route> routes;
         if (app != null) {
            // app scope in 2.7
         }
-        if (serviceName != null) {
-            routes = routeService.findByService(serviceName);
-        }
-        if (serviceName == null && app == null) {
-            // TODO throw exception
+        if (service != null) {
+            routes = routeService.findByService(service);
+        } else {
+            routes = routeService.findAll();
         }
         List<RouteDTO> routeDTOS = new ArrayList<>();
         for (Route route : routes) {
@@ -123,15 +121,14 @@ public class RoutesController {
             routeDTO.setPriority(route.getPriority());
             routeDTO.setRuntime(route.isRuntime());
             routeDTO.setService(route.getService());
-            routeDTO.setId(MD5Util.MD5_16bit(route.toUrl().toFullString()));
+            routeDTO.setId(route.getHash());
             routeDTOS.add(routeDTO);
         }
-        //no support for findAll or findByaddress
         return routeDTOS;
     }
 
-    @RequestMapping("/detail")
-    public RouteDTO routeDetail(@RequestParam String id) {
+    @RequestMapping(value = "/{id}", method = RequestMethod.GET)
+    public RouteDTO detailRoute(@PathVariable String id, @PathVariable String env) {
         Route route = routeService.findRoute(id);
         if (route == null) {
             // TODO throw exception
@@ -149,25 +146,22 @@ public class RoutesController {
         return routeDTO;
     }
 
-    @RequestMapping(value = "/delete", method = RequestMethod.POST)
-    public boolean deleteRoute(@RequestBody BaseDTO baseDTO) {
-        String id = baseDTO.getId();
+    @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
+    public boolean deleteRoute(@PathVariable String id, @PathVariable String env) {
         routeService.deleteRoute(id);
         return true;
     }
 
-    @RequestMapping(value = "/enable", method = RequestMethod.POST)
-    public boolean enableRoute(@RequestBody BaseDTO baseDTO) {
+    @RequestMapping(value = "/enable/{id}", method = RequestMethod.PUT)
+    public boolean enableRoute(@PathVariable String id, @PathVariable String env) {
 
-        String id = baseDTO.getId();
         routeService.enableRoute(id);
         return true;
     }
 
-    @RequestMapping(value = "/disable", method = RequestMethod.POST)
-    public boolean disableRoute(@RequestBody BaseDTO baseDTO) {
+    @RequestMapping(value = "/disable/{id}", method = RequestMethod.PUT)
+    public boolean disableRoute(@PathVariable String id, @PathVariable String env) {
 
-        String id = baseDTO.getId();
         routeService.disableRoute(id);
         return true;
     }

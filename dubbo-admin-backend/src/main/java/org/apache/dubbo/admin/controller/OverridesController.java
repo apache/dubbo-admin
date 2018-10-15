@@ -31,14 +31,14 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/override")
+@RequestMapping("/api/{env}/rules/override")
 public class OverridesController {
 
     @Autowired
     private OverrideService overrideService;
 
-    @RequestMapping(value = "/create", method = RequestMethod.POST)
-    public boolean createOverride(@RequestBody OverrideDTO overrideDTO) {
+    @RequestMapping(method = RequestMethod.POST)
+    public boolean createOverride(@RequestBody OverrideDTO overrideDTO, @PathVariable String env) {
         String serviceName = overrideDTO.getService();
         if (serviceName == null || serviceName.length() == 0) {
             //TODO throw exception
@@ -53,9 +53,8 @@ public class OverridesController {
         return true;
     }
 
-    @RequestMapping(value = "/update", method = RequestMethod.POST)
-    public boolean updateOverride(@RequestBody OverrideDTO overrideDTO) {
-        String id = overrideDTO.getId();
+    @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
+    public boolean updateOverride(@PathVariable String id, @RequestBody OverrideDTO overrideDTO, @PathVariable String env) {
         Override old = overrideService.findById(id);
         if (old == null) {
             //TODO handle exception
@@ -71,9 +70,13 @@ public class OverridesController {
         return true;
     }
 
-    @RequestMapping(value = "/search", method = RequestMethod.GET)
-    public List<OverrideDTO> allOverride(@RequestParam String serviceName) {
-        List<Override> overrides = overrideService.findByService(serviceName);
+    @RequestMapping(method = RequestMethod.GET)
+    public List<OverrideDTO> searchOverride(@RequestParam(required = false) String service, @PathVariable String env) {
+        List<Override> overrides;
+        if (service == null || service.length() == 0) {
+           overrides = overrideService.findAll();
+        }
+        overrides = overrideService.findByService(service);
         List<OverrideDTO> result = new ArrayList<>();
         for (Override override : overrides) {
             OverrideDTO overrideDTO = new OverrideDTO();
@@ -88,8 +91,8 @@ public class OverridesController {
         return result;
     }
 
-    @RequestMapping("/detail")
-    public OverrideDTO detail(@RequestParam String id) {
+    @RequestMapping(value = "/{id}", method = RequestMethod.GET)
+    public OverrideDTO detailOverride(@PathVariable String id, @PathVariable String env) {
         Override override = overrideService.findById(id);
         if (override == null) {
             //TODO throw exception
@@ -103,9 +106,8 @@ public class OverridesController {
         return overrideDTO;
     }
 
-    @RequestMapping(value  = "/delete", method = RequestMethod.POST)
-    public boolean delete(@RequestBody BaseDTO baseDTO) {
-        String id = baseDTO.getId();
+    @RequestMapping(value  = "/{id}", method = RequestMethod.DELETE)
+    public boolean deleteOverride(@PathVariable String id, @PathVariable String env) {
         overrideService.deleteOverride(id);
         return true;
     }

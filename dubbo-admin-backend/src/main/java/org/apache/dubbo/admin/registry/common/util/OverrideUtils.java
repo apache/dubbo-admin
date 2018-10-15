@@ -46,6 +46,7 @@ public class OverrideUtils {
                         Weight weight = new Weight();
                         weight.setAddress(o.getAddress());
                         weight.setId(o.getId());
+                        weight.setHash(o.getHash());
                         weight.setService(o.getService());
                         weight.setWeight(Integer.valueOf(entry.getValue()));
                         weights.add(weight);
@@ -67,6 +68,7 @@ public class OverrideUtils {
     public static Override weightToOverride(Weight weight) {
         Override override = new Override();
         override.setId(weight.getId());
+        override.setHash(weight.getHash());
         override.setAddress(weight.getAddress());
         override.setEnabled(true);
         override.setParams("weight=" + weight.getWeight());
@@ -96,6 +98,7 @@ public class OverrideUtils {
 
                         loadBalance.setMethod(method);
                         loadBalance.setId(o.getId());
+                        loadBalance.setHash(o.getHash());
                         loadBalance.setService(o.getService());
                         loadBalance.setStrategy(entry.getValue());
                         loadBalances.add(loadBalance);
@@ -118,6 +121,7 @@ public class OverrideUtils {
     public static Override loadBalanceToOverride(LoadBalance loadBalance) {
         Override override = new Override();
         override.setId(loadBalance.getId());
+        override.setHash(loadBalance.getHash());
         override.setService(loadBalance.getService());
         override.setEnabled(true);
         String method = loadBalance.getMethod();

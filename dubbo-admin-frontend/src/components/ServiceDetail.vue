@@ -170,7 +170,7 @@
     }),
     methods: {
       detail: function (app, service) {
-        AXIOS.get('/service/detail?' + 'app=' + app + '&service=' + service)
+        AXIOS.get('/service/' + app + '/' + service)
             .then(response => {
               this.providerDetails = response.data.providers
               this.consumerDetails = response.data.consumers

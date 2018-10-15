@@ -19,7 +19,6 @@ package org.apache.dubbo.admin.util;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import javax.sound.midi.Soundbank;
 import javax.xml.bind.DatatypeConverter;
 
 public class MD5Util {
