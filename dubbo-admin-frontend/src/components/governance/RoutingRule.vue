@@ -125,7 +125,7 @@
       filter: '',
       dialog: false,
       warn: false,
-      updateId: -1,
+      updateId: '',
       application: '',
       service: '',
       warnTitle: '',
@@ -218,17 +218,20 @@
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        AXIOS.get('/routes/search?serviceName=' + filter)
-          .then(response => {
-            this.routingRules = response.data
-            if (rewrite) {
-              this.$router.push({path: 'routingRule', query: {service: filter}})
-            }
-          })
+        AXIOS.get('/rules/route/', {
+          params: {
+            service: filter
+          }
+        }).then(response => {
+          this.routingRules = response.data
+          if (rewrite) {
+            this.$router.push({path: 'routingRule', query: {service: filter}})
+          }
+        })
       },
       closeDialog: function () {
         this.ruleText = this.template
-        this.updateId = -1
+        this.updateId = ''
         this.service = ''
         this.dialog = false
         this.readonly = false
@@ -249,17 +252,21 @@
       saveItem: function () {
         let rule = yaml.safeLoad(this.ruleText)
         rule.service = this.service
-        if (this.updateId !== -1) {
-          rule.id = this.updateId
-          AXIOS.post('/routes/update', rule)
-            .then(response => {
-              if (response.data) {
-                this.search(this.service, true)
-              }
-              this.closeDialog()
-            })
+        if (this.updateId !== '') {
+          if (this.updateId === 'close') {
+            this.closeDialog()
+          } else {
+            rule.id = this.updateId
+            AXIOS.put('/rules/route/' + rule.id, rule)
+              .then(response => {
+                if (response.data) {
+                  this.search(this.service, true)
+                }
+                this.closeDialog()
+              })
+          }
         } else {
-          AXIOS.post('/routes/create', rule)
+          AXIOS.post('/rules/route/', rule)
             .then(response => {
               if (response.data) {
                 this.search(this.service, true)
@@ -272,19 +279,20 @@
       itemOperation: function (icon, item) {
         switch (icon) {
           case 'visibility':
-            AXIOS.get('/routes/detail?id=' + item.id)
+            AXIOS.get('/rules/route/' + item.id)
               .then(response => {
                 let route = response.data
-                this.handleRoute(route, true)
+                this.handleBalance(route, true)
+                this.updateId = 'close'
               })
             break
           case 'edit':
             let id = {}
             id.id = item.id
-            AXIOS.get('/routes/detail?id=' + item.id)
+            AXIOS.get('/rules/route/' + item.id)
               .then(response => {
                 let route = response.data
-                this.handleRoute(route, false)
+                this.handleBalance(route, false)
                 this.updateId = item.id
               })
             break
@@ -304,7 +312,7 @@
             this.warnStatus.id = item.id
         }
       },
-      handleRoute: function (route, readonly) {
+      handleBalance: function (route, readonly) {
         this.service = route.service
         delete route.service
         delete route.id
@@ -319,25 +327,19 @@
       },
       deleteItem: function (warnStatus) {
         if (warnStatus.operation === 'delete') {
-          let id = {}
-          id.id = warnStatus.id
-          AXIOS.post('/routes/delete', id)
+          AXIOS.delete('/rules/route/' + warnStatus.id)
             .then(response => {
               this.warn = false
               this.search(this.filter, false)
             })
         } else if (warnStatus.operation === 'disable') {
-          let id = {}
-          id.id = warnStatus.id
-          AXIOS.post('/routes/disable', id)
+          AXIOS.put('/rules/route/disable/' + warnStatus.id)
             .then(response => {
               this.warn = false
               this.search(this.filter, false)
             })
         } else if (warnStatus.operation === 'enable') {
-          let id = {}
-          id.id = warnStatus.id
-          AXIOS.post('/routes/enable', id)
+          AXIOS.put('/rules/route/enable/' + warnStatus.id)
             .then(response => {
               this.warn = false
               this.search(this.filter, false)

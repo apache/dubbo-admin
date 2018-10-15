@@ -18,7 +18,6 @@
 package org.apache.dubbo.admin.controller;
 
 import org.apache.dubbo.admin.dto.BalancingDTO;
-import org.apache.dubbo.admin.dto.BaseDTO;
 import org.apache.dubbo.admin.governance.service.OverrideService;
 import org.apache.dubbo.admin.registry.common.domain.LoadBalance;
 import org.apache.dubbo.admin.registry.common.domain.Override;
@@ -32,14 +31,14 @@ import java.util.List;
 import static org.apache.dubbo.admin.registry.common.util.OverrideUtils.overrideToLoadBalance;
 
 @RestController
-@RequestMapping("/api/balancing")
+@RequestMapping("/api/{env}/rules/balancing")
 public class LoadBalanceController {
 
     @Autowired
     private OverrideService overrideService;
 
-    @RequestMapping(value = "/create", method = RequestMethod.POST)
-    public boolean createLoadbalance(@RequestBody BalancingDTO balancingDTO) {
+    @RequestMapping(method = RequestMethod.POST)
+    public boolean createLoadbalance(@RequestBody BalancingDTO balancingDTO, @PathVariable String env) {
         String serviceName = balancingDTO.getService();
         if (serviceName == null || serviceName.length() == 0) {
             //TODO throw exception
@@ -52,9 +51,8 @@ public class LoadBalanceController {
         return true;
     }
 
-    @RequestMapping(value = "/update", method = RequestMethod.POST)
-    public boolean updateLoadbalance(@RequestBody BalancingDTO balancingDTO) {
-        String id = balancingDTO.getId();
+    @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
+    public boolean updateLoadbalance(@PathVariable String id, @RequestBody BalancingDTO balancingDTO, @PathVariable String env) {
         Override override = overrideService.findById(id);
         if (override == null) {
             //TODO throw exception
@@ -64,17 +62,20 @@ public class LoadBalanceController {
         loadBalance.setStrategy(balancingDTO.getStrategy());
         loadBalance.setMethod(formatMethodName(balancingDTO.getMethodName()));
         loadBalance.setService(old.getService());
-        loadBalance.setId(old.getId());
+        loadBalance.setHash(id);
         overrideService.updateOverride(OverrideUtils.loadBalanceToOverride(loadBalance));
         return true;
     }
 
-    @RequestMapping(value = "/search", method = RequestMethod.GET)
-    public List<BalancingDTO> allLoadbalances(@RequestParam String serviceName) {
-        if (serviceName == null || serviceName.length() == 0) {
+    @RequestMapping(method = RequestMethod.GET)
+    public List<BalancingDTO> searchLoadbalances(@RequestParam(required = false) String service, @PathVariable String env) {
+        List<Override> overrides;
+        if (service == null || service.length() == 0) {
+            overrides = overrideService.findAll();
            //TODO throw Exception
+        } else {
+            overrides = overrideService.findByService(service);
         }
-        List<Override> overrides = overrideService.findByService(serviceName);
         List<BalancingDTO> loadBalances = new ArrayList<>();
         if (overrides != null) {
             for (Override override : overrides) {
@@ -92,8 +93,8 @@ public class LoadBalanceController {
         return loadBalances;
     }
 
-    @RequestMapping("/detail")
-    public BalancingDTO detail(@RequestParam String id) {
+    @RequestMapping(value = "/{id}", method = RequestMethod.GET)
+    public BalancingDTO detailLoadBalance(@PathVariable String id, @PathVariable String env) {
         Override override =  overrideService.findById(id);
         if (override == null) {
             //TODO throw exception
@@ -107,9 +108,11 @@ public class LoadBalanceController {
         return balancingDTO;
     }
 
-    @RequestMapping(value  = "/delete", method = RequestMethod.POST)
-    public boolean delete(@RequestBody BaseDTO baseDTO) {
-        String id = baseDTO.getId();
+    @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
+    public boolean deleteLoadBalance(@PathVariable String id, @PathVariable String env) {
+        if (id == null) {
+            throw new IllegalArgumentException("Argument of id is null!");
+        }
         overrideService.deleteOverride(id);
         return true;
     }

@@ -119,6 +119,7 @@
       dialog: false,
       warn: false,
       application: '',
+      updateId: '',
       service: '',
       warnTitle: '',
       warnText: '',
@@ -162,13 +163,16 @@
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        AXIOS.get('/weight/search?serviceName=' + filter)
-            .then(response => {
-              this.weights = response.data
-              if (rewrite) {
-                this.$router.push({path: 'weight', query: {service: filter}})
-              }
-            })
+        AXIOS.get('/rules/weight/', {
+          params: {
+            service: filter
+          }
+        }).then(response => {
+          this.weights = response.data
+          if (rewrite) {
+            this.$router.push({path: 'weight', query: {service: filter}})
+          }
+        })
       },
       closeDialog: function () {
         this.ruleText = this.template
@@ -192,35 +196,43 @@
       saveItem: function () {
         let weight = yaml.safeLoad(this.ruleText)
         weight.service = this.service
-        AXIOS.post('/weight/create', weight)
-          .then(response => {
-            this.search(this.service, true)
-            this.filter = this.service
+        if (this.updateId !== '') {
+          if (this.updateId === 'close') {
             this.closeDialog()
-          })
+          } else {
+            weight.id = this.updateId
+            AXIOS.put('/rules/weight/' + weight.id, weight)
+              .then(response => {
+                this.search(this.service, true)
+                this.filter = this.service
+                this.closeDialog()
+              })
+          }
+        } else {
+          AXIOS.post('/rules/weight', weight)
+            .then(response => {
+              this.search(this.service, true)
+              this.filter = this.service
+              this.closeDialog()
+            })
+        }
       },
       itemOperation: function (icon, item) {
         switch (icon) {
           case 'visibility':
-            AXIOS.get('/weight/detail?id=' + item.id)
+            AXIOS.get('/rules/weight/' + item.id)
                 .then(response => {
                   let weight = response.data
-                  this.service = weight.service
-                  delete weight.service
-                  this.ruleText = yaml.safeDump(weight)
-                  this.readonly = true
-                  this.dialog = true
+                  this.handleWeight(weight, true)
+                  this.updateId = 'close'
                 })
             break
           case 'edit':
-            AXIOS.get('/weight/detail?id=' + item.id)
+            AXIOS.get('/rules/weight/' + item.id)
                 .then(response => {
                   let weight = response.data
-                  this.service = weight.service
-                  delete weight.service
-                  this.ruleText = yaml.safeDump(weight)
-                  this.readonly = false
-                  this.dialog = true
+                  this.handleWeight(weight, false)
+                  this.updateId = item.id
                 })
             break
           case 'delete':
@@ -229,13 +241,18 @@
             this.warnStatus.id = item.id
         }
       },
+      handleWeight: function (weight, readonly) {
+        this.service = weight.service
+        delete weight.service
+        this.ruleText = yaml.safeDump(weight)
+        this.readonly = readonly
+        this.dialog = true
+      },
       setHeight: function () {
         this.height = window.innerHeight * 0.5
       },
       deleteItem: function (warnStatus) {
-        let id = {}
-        id.id = warnStatus.id
-        AXIOS.post('/weight/delete', id)
+        AXIOS.delete('/rules/weight/' + warnStatus.id)
           .then(response => {
             this.warn = false
             this.search(this.filter, false)

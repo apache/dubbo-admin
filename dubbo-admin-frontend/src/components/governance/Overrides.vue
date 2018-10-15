@@ -115,6 +115,7 @@
       dialog: false,
       warn: false,
       application: '',
+      updateId: '',
       service: '',
       warnTitle: '',
       warnText: '',
@@ -159,18 +160,22 @@
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        AXIOS.get('/override/search?serviceName=' + filter)
-          .then(response => {
-            this.configs = response.data
-            if (rewrite) {
-              this.$router.push({path: 'config', query: {service: filter}})
-            }
-          })
+        AXIOS.get('/rules/override', {
+          params: {
+            service: filter
+          }
+        }).then(response => {
+          this.configs = response.data
+          if (rewrite) {
+            this.$router.push({path: 'config', query: {service: filter}})
+          }
+        })
       },
       closeDialog: function () {
         this.ruleText = this.template
         this.service = ''
         this.dialog = false
+        this.updateId = ''
         this.readonly = false
       },
       openDialog: function () {
@@ -187,39 +192,45 @@
         this.warn = false
       },
       saveItem: function () {
-        let override = yaml.safeLoad(this.ruleText)  // contains illegal url character, need encode
+        let override = yaml.safeLoad(this.ruleText)
         override.service = this.service
-        AXIOS.post('/override/create', override)
-          .then(response => {
-            if (response.data) {
-              this.search(this.service, true)
-              this.filter = this.service
-            }
+        if (this.updateId !== '') {
+          if (this.updateId === 'close') {
             this.closeDialog()
-          })
+          } else {
+            AXIOS.put('/rules/override/' + this.updateId, override)
+              .then(response => {
+                this.search(this.service, true)
+                this.filter = this.service
+              })
+          }
+        } else {
+          AXIOS.post('/rules/override', override)
+            .then(response => {
+              if (response.data) {
+                this.search(this.service, true)
+                this.filter = this.service
+              }
+              this.closeDialog()
+            })
+        }
       },
       itemOperation: function (icon, item) {
         switch (icon) {
           case 'visibility':
-            AXIOS.get('/override/detail?id=' + item.id)
+            AXIOS.get('/rules/override/' + item.id)
               .then(response => {
                 let config = response.data
-                this.service = config.service
-                delete config.service
-                this.ruleText = yaml.safeDump(config)
-                this.readonly = true
-                this.dialog = true
+                this.handleConfig(config, true)
+                this.updateId = 'close'
               })
             break
           case 'edit':
-            AXIOS.get('/override/detail?id=' + item.id)
+            AXIOS.get('/rules/override/' + item.id)
               .then(response => {
                 let config = response.data
-                this.service = config.service
-                delete config.service
-                this.ruleText = yaml.safeDump(config)
-                this.readonly = false
-                this.dialog = true
+                this.handleConfig(config, false)
+                this.updateId = item.id
               })
             break
           case 'delete':
@@ -228,13 +239,20 @@
             this.warnStatus.id = item.id
         }
       },
+      handleConfig: function (config, readonly) {
+        this.service = config.service
+        delete config.service
+        this.ruleText = yaml.safeDump(config)
+        this.readonly = readonly
+        this.dialog = true
+      },
       setHeight: function () {
         this.height = window.innerHeight * 0.5
       },
       deleteItem: function (warnStatus) {
         let id = {}
         id.id = warnStatus.id
-        AXIOS.post('/override/delete', id)
+        AXIOS.delete('/rules/override/' + id)
           .then(response => {
             this.warn = false
             this.search(this.filter, false)

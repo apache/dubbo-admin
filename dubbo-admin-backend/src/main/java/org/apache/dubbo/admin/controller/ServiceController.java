@@ -37,7 +37,7 @@ import java.util.Map;
 
 
 @RestController
-@RequestMapping("/api/service")
+@RequestMapping("/api/{env}/service")
 public class ServiceController {
 
     @Autowired
@@ -46,60 +46,45 @@ public class ServiceController {
     @Autowired
     private ConsumerService consumerService;
 
-    @RequestMapping(value = "/search", method = RequestMethod.GET)
-    public List<ServiceDTO> search(@RequestParam String pattern,
-                                   @RequestParam String filter) {
+    @RequestMapping(method = RequestMethod.GET)
+    public List<ServiceDTO> searchService(@RequestParam String pattern,
+                                   @RequestParam(required = false) String filter) {
 
         List<Provider> allProviders = providerService.findAll();
 
         List<ServiceDTO> result = new ArrayList<>();
-        if (pattern.equals("application")) {
-            for (Provider provider : allProviders) {
-                Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
-                String app = map.get(Constants.APPLICATION_KEY);
-                if (app.toLowerCase().contains(filter)) {
-                    ServiceDTO s = new ServiceDTO();
-                    s.setAppName(app);
-                    s.setService(provider.getService());
-                    s.setGroup(map.get(Constants.GROUP_KEY));
-                    s.setVersion(map.get(Constants.VERSION_KEY));
-                    result.add(s);
+        for (Provider provider : allProviders) {
+            Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
+            ServiceDTO s = new ServiceDTO();
+            if (filter == null || filter.length() == 0) {
+                s.setAppName(provider.getApplication());
+                s.setService(provider.getService());
+                s.setGroup(map.get(Constants.GROUP_KEY));
+                s.setVersion(map.get(Constants.VERSION_KEY));
+                result.add(s);
+            } else {
+                filter = filter.toLowerCase();
+                String key = null;
+                switch (pattern) {
+                    case "application":
+                        key = provider.getApplication().toLowerCase();
+                        break;
+                    case "service name":
+                        key = provider.getService().toLowerCase();
+                        break;
+                    case "IP":
+                        key = provider.getService().toLowerCase();
+                        break;
                 }
-            }
-
-        } else if (pattern.equals("service name")) {
-            for (Provider provider : allProviders) {
-                String service = provider.getService();
-                Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
-                if (service.toLowerCase().contains(filter.toLowerCase())) {
-                    ServiceDTO s = new ServiceDTO();
-                    s.setAppName(map.get(Constants.APPLICATION_KEY));
-                    s.setService(service);
-                    s.setGroup(map.get(Constants.GROUP_KEY));
-                    s.setVersion(map.get(Constants.VERSION_KEY));
-                    result.add(s);
+                if (key.contains(filter)) {
+                    result.add(createService(provider, map));
                 }
-            }
-
-        } else if (pattern.equals("IP")) {
-            for (Provider provider : allProviders) {
-                String address = provider.getAddress();
-                Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
-                if (address.contains(filter)) {
-                    ServiceDTO s = new ServiceDTO();
-                    s.setAppName(map.get(Constants.APPLICATION_KEY));
-                    s.setService(provider.getService());
-                    s.setGroup(map.get(Constants.GROUP_KEY));
-                    s.setVersion(map.get(Constants.VERSION_KEY));
-                    result.add(s);
-                }
-
             }
         }
         return result;
     }
 
-    @RequestMapping("/detail")
+    @RequestMapping("/{app}/{service}")
     public ServiceDetailDTO serviceDetail(@RequestParam String app, @RequestParam String service) {
         List<Provider> providers = providerService.findByAppandService(app, service);
 
@@ -109,6 +94,15 @@ public class ServiceController {
         serviceDetailDTO.setConsumers(consumers);
         serviceDetailDTO.setProviders(providers);
         return serviceDetailDTO;
+    }
+
+    private ServiceDTO createService(Provider provider, Map<String, String> map) {
+        ServiceDTO serviceDTO = new ServiceDTO();
+        serviceDTO.setAppName(provider.getApplication());
+        serviceDTO.setService(provider.getService());
+        serviceDTO.setGroup(map.get(Constants.GROUP_KEY));
+        serviceDTO.setVersion(map.get(Constants.VERSION_KEY));
+        return serviceDTO;
     }
 
 }

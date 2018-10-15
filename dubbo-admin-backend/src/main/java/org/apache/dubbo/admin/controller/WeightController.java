@@ -17,7 +17,6 @@
 
 package org.apache.dubbo.admin.controller;
 
-import org.apache.dubbo.admin.dto.BaseDTO;
 import org.apache.dubbo.admin.dto.WeightDTO;
 import org.apache.dubbo.admin.governance.service.OverrideService;
 import org.apache.dubbo.admin.registry.common.domain.Override;
@@ -30,14 +29,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/weight")
+@RequestMapping("/api/{env}/rules/weight")
 public class WeightController {
 
     @Autowired
     private OverrideService overrideService;
 
-    @RequestMapping(value = "/create", method = RequestMethod.POST)
-    public boolean createWeight(@RequestBody WeightDTO weightDTO) {
+    @RequestMapping(method = RequestMethod.POST)
+    public boolean createWeight(@RequestBody WeightDTO weightDTO, @PathVariable String env) {
         String[] addresses = weightDTO.getProvider();
         for (String address : addresses) {
             Weight weight = new Weight();
@@ -49,9 +48,8 @@ public class WeightController {
         return true;
     }
 
-    @RequestMapping(value = "/update", method = RequestMethod.POST)
-    public boolean updateWeight(@RequestBody WeightDTO weightDTO) {
-        String id = weightDTO.getId();
+    @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
+    public boolean updateWeight(@PathVariable String id, @RequestBody WeightDTO weightDTO, @PathVariable String env) {
         if (id == null) {
             //TODO throw exception
         }
@@ -60,14 +58,22 @@ public class WeightController {
             //TODO throw exception
         }
         Weight old = OverrideUtils.overrideToWeight(override);
-        old.setWeight(weightDTO.getWeight());
-        overrideService.updateOverride(OverrideUtils.weightToOverride(old));
+        Weight weight = new Weight();
+        weight.setWeight(weightDTO.getWeight());
+        weight.setHash(id);
+        weight.setService(old.getService());
+        overrideService.updateOverride(OverrideUtils.weightToOverride(weight));
         return true;
     }
 
-    @RequestMapping(value = "/search", method = RequestMethod.GET)
-    public List<WeightDTO> allWeight(@RequestParam String serviceName) {
-        List<Override> overrides = overrideService.findByService(serviceName);
+    @RequestMapping(method = RequestMethod.GET)
+    public List<WeightDTO> searchWeight(@RequestParam(required = false) String service, @PathVariable String env) {
+        List<Override> overrides;
+        if (service == null || service.length() == 0) {
+            overrides = overrideService.findAll();
+        } else {
+            overrides = overrideService.findByService(service);
+        }
         List<WeightDTO> weightDTOS = new ArrayList<>();
         for (Override override : overrides) {
             Weight w = OverrideUtils.overrideToWeight(override);
@@ -83,8 +89,8 @@ public class WeightController {
         return weightDTOS;
     }
 
-    @RequestMapping("/detail")
-    public WeightDTO detail(@RequestParam String id) {
+    @RequestMapping(value = "/{id}", method = RequestMethod.GET)
+    public WeightDTO detailWeight(@PathVariable String id, @PathVariable String env) {
         Override override = overrideService.findById(id);
         if (override != null) {
 
@@ -99,9 +105,8 @@ public class WeightController {
         return null;
     }
 
-    @RequestMapping(value = "/delete", method = RequestMethod.POST)
-    public boolean delete(@RequestBody BaseDTO baseDTO) {
-        String id = baseDTO.getId();
+    @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
+    public boolean deleteWeight(@PathVariable String id, @PathVariable String env) {
         overrideService.deleteOverride(id);
         return true;
     }

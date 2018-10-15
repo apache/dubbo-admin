@@ -144,13 +144,17 @@
         this.search(this.filter, pattern, true)
       },
       search: function (filter, pattern, rewrite) {
-        AXIOS.get('service/search?pattern=' + pattern + '&filter=' + filter)
-          .then(response => {
-            this.services = response.data
-            if (rewrite) {
-              this.$router.push({path: 'service', query: {filter: filter, pattern: pattern}})
-            }
-          })
+        AXIOS.get('/service', {
+          params: {
+            pattern: pattern,
+            filter: filter
+          }
+        }).then(response => {
+          this.services = response.data
+          if (rewrite) {
+            this.$router.push({path: 'service', query: {filter: filter, pattern: pattern}})
+          }
+        })
       }
     },
     mounted: function () {
