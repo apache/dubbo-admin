@@ -85,7 +85,7 @@ public class ServiceController {
     }
 
     @RequestMapping("/{app}/{service}")
-    public ServiceDetailDTO serviceDetail(@RequestParam String app, @RequestParam String service) {
+    public ServiceDetailDTO serviceDetail(@PathVariable String app, @PathVariable String service) {
         List<Provider> providers = providerService.findByAppandService(app, service);
 
         List<Consumer> consumers = consumerService.findByAppandService(app, service);
