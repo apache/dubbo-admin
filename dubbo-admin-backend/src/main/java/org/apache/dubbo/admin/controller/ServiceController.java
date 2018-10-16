@@ -26,6 +26,7 @@ import org.apache.dubbo.admin.governance.service.ProviderService;
 import org.apache.dubbo.admin.registry.common.domain.Consumer;
 import org.apache.dubbo.admin.registry.common.domain.Provider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
