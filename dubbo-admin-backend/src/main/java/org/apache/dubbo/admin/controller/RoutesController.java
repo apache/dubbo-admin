@@ -55,19 +55,17 @@ public class RoutesController {
             }
 
             String[] conditions = routeDTO.getConditions();
-            for (String condition : conditions) {
-                Route route = new Route();
-                route.setService(service);
-                route.setVersion(version);
-                route.setEnabled(routeDTO.isEnabled());
-                route.setForce(routeDTO.isForce());
-                route.setGroup(routeDTO.getGroup());
-                route.setDynamic(routeDTO.isDynamic());
-                route.setRuntime(routeDTO.isRuntime());
-                route.setPriority(routeDTO.getPriority());
-                route.setRule(condition);
-                routeService.createRoute(route);
-            }
+            String rule = parseCondition(conditions);
+            Route route = new Route();
+            route.setService(service);
+            route.setVersion(version);
+            route.setEnabled(routeDTO.isEnabled()); route.setForce(routeDTO.isForce());
+            route.setGroup(routeDTO.getGroup());
+            route.setDynamic(routeDTO.isDynamic());
+            route.setRuntime(routeDTO.isRuntime());
+            route.setPriority(routeDTO.getPriority());
+            route.setRule(rule);
+            routeService.createRoute(route);
 
         } else {
             //new feature in 2.7
@@ -82,19 +80,18 @@ public class RoutesController {
             //TODO Exception
         }
         String[] conditions = routeDTO.getConditions();
-        for (String condition : conditions) {
-            Route newRoute = new Route();
-            newRoute.setService(route.getService());
-            newRoute.setVersion(route.getVersion());
-            newRoute.setEnabled(routeDTO.isEnabled());
-            newRoute.setForce(routeDTO.isForce());
-            newRoute.setGroup(routeDTO.getGroup());
-            newRoute.setDynamic(routeDTO.isDynamic());
-            newRoute.setRuntime(routeDTO.isRuntime());
-            newRoute.setPriority(routeDTO.getPriority());
-            newRoute.setRule(condition);
-            routeService.updateRoute(newRoute);
-        }
+        String rule = parseCondition(conditions);
+        Route newRoute = new Route();
+        newRoute.setService(route.getService());
+        newRoute.setVersion(route.getVersion());
+        newRoute.setEnabled(routeDTO.isEnabled());
+        newRoute.setForce(routeDTO.isForce());
+        newRoute.setGroup(routeDTO.getGroup());
+        newRoute.setDynamic(routeDTO.isDynamic());
+        newRoute.setRuntime(routeDTO.isRuntime());
+        newRoute.setPriority(routeDTO.getPriority());
+        newRoute.setRule(rule);
+        routeService.updateRoute(newRoute);
         return true;
     }
 
@@ -166,19 +163,33 @@ public class RoutesController {
         return true;
     }
 
+    private String parseCondition(String[] conditions) {
+        StringBuilder when = new StringBuilder();
+        StringBuilder then = new StringBuilder();
+        for (String condition : conditions) {
+            condition = condition.trim();
+            if (condition.contains("=>") && !condition.endsWith("=>")) {
+                String consumer = condition.split("=>")[0].trim();
+                String provider = condition.split("=>")[1].trim();
+                if (when.length() != 0) {
+                    when.append(" & ").append(consumer);
+                } else {
+                    when.append(consumer);
+                }
+
+                if (then.length() != 0) {
+                    then.append(" & ").append(provider);
+                } else {
+                    then.append(provider);
+                }
+            }
+        }
+        return (when.append(" => ").append(then)).toString();
+    }
+
     public static void main(String[] args) {
-        String yaml =
-                "enable: true\n" +
-                        "priority: 0\n" +
-                        "runtime: true\n" +
-                        "category: routers\n" +
-                        "dynamic: true\n" +
-                        "conditions:\n" +
-                        "  - '=> host != 172.22.3.91'\n" +
-                        "  - 'host != 10.20.153.10,10.20.153.11 =>'\n" +
-                        "  - 'host = 10.20.153.10,10.20.153.11 =>'\n" +
-                        "  - 'application != kylin => host != 172.22.3.95,172.22.3.96'\n" +
-                        "  - 'method = find*,list*,get*,is* => host = 172.22.3.94,172.22.3.95,172.22.3.96'";
+        String a = "fwjiojie =>";
+        a.split("=>", 2);
     }
 
 }
