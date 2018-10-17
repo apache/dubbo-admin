@@ -146,7 +146,7 @@ export default {
   name: 'AccessControl',
   data: () => ({
     selected: [],
-    filter: '',
+    filter: null,
     loading: false,
     headers: [
       {
@@ -196,7 +196,10 @@ export default {
         this.filter = ''
       }
       this.loading = true
-      this.$router.push({path: 'access', query: (this.filter !== '' ? {service: this.filter} : null)})
+      this.$router.push({
+        path: 'access',
+        query: { service: this.filter }
+      })
       AXIOS.get('/rules/access', {
         params: {
           service: this.filter
@@ -287,8 +290,8 @@ export default {
     let query = this.$route.query
     if ('service' in query) {
       this.filter = query['service']
+      this.search()
     }
-    this.search()
   },
   components: {
     AceEditor,
