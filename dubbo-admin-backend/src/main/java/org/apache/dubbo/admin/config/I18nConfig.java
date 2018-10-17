@@ -17,11 +17,13 @@
 
 package org.apache.dubbo.admin.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.LocaleResolver;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.i18n.LocaleChangeInterceptor;
@@ -36,6 +38,9 @@ import java.util.Locale;
 //@ImportResource({"classpath*:dubbo-admin.xml"})
 public class I18nConfig implements WebMvcConfigurer {
 
+    @Value("${spring.profiles.active}")
+    private String activeProfile;
+
     @Bean
     public LocaleResolver localeResolver() {
         SessionLocaleResolver sessionLocaleResolver = new SessionLocaleResolver();
@@ -49,6 +54,16 @@ public class I18nConfig implements WebMvcConfigurer {
         LocaleChangeInterceptor lci = new LocaleChangeInterceptor();
         lci.setParamName("lang");
         return lci;
+    }
+
+    @Override
+    public void addCorsMappings(CorsRegistry registry) {
+        if (activeProfile.equals("develop")) {
+            registry.addMapping("/**")
+                    .allowedHeaders("*")
+                    .allowedMethods("*")
+                    .allowedOrigins("*");
+        }
     }
 
     @Override
