@@ -6,6 +6,15 @@
 * Vue.js and Vuetify
 * dubbo-admin-frontend/README.md for more detail
 
+### back end
+> Configuration files (Before packaging application, make sure the correct profile in the MAVEN profiles was selected)
+> * `application.properties`   
+>   The generic configuration
+> * `application-test.properties`  
+>   The configuration for test
+> * `application-production.properties` (default)    
+>   The configuration for production
+
 ## Build setup 
 
 ``` bash
