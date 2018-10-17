@@ -19,7 +19,7 @@
   <v-container grid-list-xl fluid >
     <v-layout row wrap>
       <v-flex xs12 >
-        <search v-model="filter" :submit="submit" label="Search dubbo service"></search>
+        <search v-model="filter" :submit="submit" label="Search LoadBalance by service Name"></search>
 
       </v-flex>
     </v-layout>
