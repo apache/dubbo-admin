@@ -82,7 +82,24 @@
 		</dependencies>
 	</dependencyManagement>
 
+	<profiles>
+		<profile>
+			<id>develop</id>
+			<properties>
+				<activeProfile>develop</activeProfile>
+			</properties>
+		</profile>
 
+		<profile>
+			<id>production</id>
+			<properties>
+				<activeProfile>production</activeProfile>
+			</properties>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+		</profile>
+	</profiles>
 
 
 </project>
