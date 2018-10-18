@@ -17,6 +17,7 @@
 
 package org.apache.dubbo.admin.controller;
 
+import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.dto.BaseDTO;
 import org.apache.dubbo.admin.dto.RouteDTO;
 import org.apache.dubbo.admin.governance.service.ProviderService;
@@ -24,6 +25,7 @@ import org.apache.dubbo.admin.governance.service.RouteService;
 import org.apache.dubbo.admin.registry.common.domain.Route;
 import org.apache.dubbo.admin.util.MD5Util;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -39,11 +41,12 @@ public class RoutesController {
     private ProviderService providerService;
 
     @RequestMapping(method = RequestMethod.POST)
-    public boolean createRule(@RequestBody RouteDTO routeDTO, @PathVariable String env) {
+    @ResponseStatus(HttpStatus.CREATED)
+    public boolean createRule(@RequestBody RouteDTO routeDTO, @PathVariable String env) throws ParamValidationException {
         String serviceName = routeDTO.getService();
         String app = routeDTO.getApp();
         if (serviceName == null && app == null) {
-
+            throw new ParamValidationException("serviceName and app is Empty!");
         }
         if (serviceName != null) {
             //2.6
@@ -74,10 +77,10 @@ public class RoutesController {
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
-    public boolean updateRule(@PathVariable String id, @RequestBody RouteDTO routeDTO, @PathVariable String env) {
+    public boolean updateRule(@PathVariable String id, @RequestBody RouteDTO routeDTO, @PathVariable String env) throws ParamValidationException {
         Route route = routeService.findRoute(id);
         if (route == null) {
-            //TODO Exception
+            throw new ParamValidationException("Unknown ID!");
         }
         String[] conditions = routeDTO.getConditions();
         String rule = parseCondition(conditions);
@@ -125,10 +128,10 @@ public class RoutesController {
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
-    public RouteDTO detailRoute(@PathVariable String id, @PathVariable String env) {
+    public RouteDTO detailRoute(@PathVariable String id, @PathVariable String env) throws ParamValidationException {
         Route route = routeService.findRoute(id);
         if (route == null) {
-            // TODO throw exception
+            throw new ParamValidationException("Unknown ID!");
         }
         RouteDTO routeDTO = new RouteDTO();
         routeDTO.setDynamic(route.isDynamic());

@@ -17,12 +17,14 @@
 
 package org.apache.dubbo.admin.controller;
 
+import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.dto.WeightDTO;
 import org.apache.dubbo.admin.governance.service.OverrideService;
 import org.apache.dubbo.admin.registry.common.domain.Override;
 import org.apache.dubbo.admin.registry.common.domain.Weight;
 import org.apache.dubbo.admin.registry.common.util.OverrideUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -36,6 +38,7 @@ public class WeightController {
     private OverrideService overrideService;
 
     @RequestMapping(method = RequestMethod.POST)
+    @ResponseStatus(HttpStatus.CREATED)
     public boolean createWeight(@RequestBody WeightDTO weightDTO, @PathVariable String env) {
         String[] addresses = weightDTO.getProvider();
         for (String address : addresses) {
@@ -49,13 +52,13 @@ public class WeightController {
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
-    public boolean updateWeight(@PathVariable String id, @RequestBody WeightDTO weightDTO, @PathVariable String env) {
+    public boolean updateWeight(@PathVariable String id, @RequestBody WeightDTO weightDTO, @PathVariable String env) throws ParamValidationException {
         if (id == null) {
-            //TODO throw exception
+            throw new ParamValidationException("Unknown ID!");
         }
         Override override = overrideService.findById(id);
         if (override == null) {
-            //TODO throw exception
+            throw new ParamValidationException("Unknown ID!");
         }
         Weight old = OverrideUtils.overrideToWeight(override);
         Weight weight = new Weight();
