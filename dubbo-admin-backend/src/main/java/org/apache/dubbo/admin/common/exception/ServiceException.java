@@ -16,12 +16,14 @@
  */
 package org.apache.dubbo.admin.common.exception;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
 /**
  * Service Logic Exception
  */
+@ResponseStatus(value = HttpStatus.SERVICE_UNAVAILABLE)
 public class ServiceException extends RuntimeException {
-	
-	private static final long serialVersionUID = 1L;
 
 	public ServiceException() {
 	}
