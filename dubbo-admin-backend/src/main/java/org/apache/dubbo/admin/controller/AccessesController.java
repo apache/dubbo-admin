@@ -23,6 +23,7 @@ import org.apache.dubbo.admin.dto.AccessDTO;
 import org.apache.dubbo.admin.governance.service.RouteService;
 import org.apache.dubbo.admin.registry.common.domain.Route;
 import org.apache.dubbo.admin.registry.common.route.RouteRule;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -95,6 +96,7 @@ public class AccessesController {
     }
 
     @RequestMapping(method = RequestMethod.POST)
+    @ResponseStatus(HttpStatus.CREATED)
     public void createAccess(@RequestBody AccessDTO accessDTO, @PathVariable String env) {
         if (StringUtils.isBlank(accessDTO.getService())) {
             throw new IllegalArgumentException("Service is required.");
