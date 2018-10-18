@@ -92,7 +92,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="green darken-1" flat @click.native="closeWarn">CANCLE</v-btn>
-          <v-btn color="green darken-1" flat @click.native="deleteItem(warnStatus)">CONFIRM</v-btn>
+          <v-btn color="green darken-1" flat @click.native="deleteItem(warnStatus.id)">CONFIRM</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -252,8 +252,8 @@
       setHeight: function () {
         this.height = window.innerHeight * 0.5
       },
-      deleteItem: function (warnStatus) {
-        AXIOS.delete('/rules/balancing/' + warnStatus.id)
+      deleteItem: function (id) {
+        AXIOS.delete('/rules/balancing/' + id)
           .then(response => {
             this.warn = false
             this.search(this.filter, false)
