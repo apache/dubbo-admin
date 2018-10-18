@@ -18,6 +18,7 @@
 package org.apache.dubbo.admin.controller;
 
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
+import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.dto.WeightDTO;
 import org.apache.dubbo.admin.governance.service.OverrideService;
 import org.apache.dubbo.admin.registry.common.domain.Override;
@@ -52,13 +53,13 @@ public class WeightController {
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
-    public boolean updateWeight(@PathVariable String id, @RequestBody WeightDTO weightDTO, @PathVariable String env) throws ParamValidationException {
+    public boolean updateWeight(@PathVariable String id, @RequestBody WeightDTO weightDTO, @PathVariable String env) {
         if (id == null) {
             throw new ParamValidationException("Unknown ID!");
         }
         Override override = overrideService.findById(id);
         if (override == null) {
-            throw new ParamValidationException("Unknown ID!");
+            throw new ResourceNotFoundException("Unknown ID!");
         }
         Weight old = OverrideUtils.overrideToWeight(override);
         Weight weight = new Weight();

@@ -19,6 +19,7 @@ package org.apache.dubbo.admin.handler;
 import org.apache.dubbo.admin.common.CommonResponse;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.PermissionDeniedException;
+import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.common.exception.ServiceException;
 
 import com.alibaba.dubbo.common.logger.Logger;
@@ -42,7 +43,7 @@ public class CustomExceptionHandler {
     @ExceptionHandler(value = Exception.class)
     public CommonResponse commonExceptionHandle(Exception e) {
         CommonResponse commonResponse = CommonResponse.createCommonResponse();
-        logger.error("[SystemException]Exception：", e);
+        logger.error("[SystemException]Exception:", e);
         return commonResponse.fail("System Error, please try again later! Message:" + e.getMessage());
     }
 
@@ -51,7 +52,7 @@ public class CustomExceptionHandler {
     @ExceptionHandler(value = ServiceException.class)
     public CommonResponse serviceExceptionHandle(Exception e) {
         CommonResponse commonResponse = CommonResponse.createCommonResponse();
-        logger.error("[ServiceException]Exception：", e);
+        logger.error("[ServiceException]Exception:", e);
         return commonResponse.fail("ServiceException, message:" + e.getMessage());
     }
 
@@ -60,16 +61,25 @@ public class CustomExceptionHandler {
     @ExceptionHandler(value = PermissionDeniedException.class)
     public CommonResponse permissionDeniedExceptionHandle(Exception e) {
         CommonResponse commonResponse = CommonResponse.createCommonResponse();
-        logger.error("[PermissionDeniedException]Exception：", e);
+        logger.error("[PermissionDeniedException]Exception:", e);
         return commonResponse.fail("Permission Denied!");
     }
 
     @ResponseBody
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(value = {ParamValidationException.class, IllegalArgumentException.class})
+    @ExceptionHandler(value = {ParamValidationException.class})
     public CommonResponse paramValidationExceptionHandle(Exception e) {
         CommonResponse commonResponse = CommonResponse.createCommonResponse();
-        logger.error("[ParamValidationException]Exception：", e);
+        logger.error("[ParamValidationException]Exception:", e);
         return commonResponse.fail("Parameter validation failure! Message:" + e.getMessage());
+    }
+
+    @ResponseBody
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    @ExceptionHandler(value = {ResourceNotFoundException.class})
+    public CommonResponse resourceNotFoundExceptionHandle(Exception e) {
+        CommonResponse commonResponse = CommonResponse.createCommonResponse();
+        logger.error("[ResourceNotFoundException]Exception:", e);
+        return commonResponse.fail("Resource not found! Message:" + e.getMessage());
     }
 }
