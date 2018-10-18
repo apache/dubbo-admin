@@ -68,8 +68,7 @@ public class AccessesController {
                 result.add(accessDTO);
             }
         }
-throw new ParseException("222",3);
-//        return result;
+        return result;
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
