@@ -18,6 +18,7 @@
 package org.apache.dubbo.admin.controller;
 
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
+import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.dto.BaseDTO;
 import org.apache.dubbo.admin.dto.RouteDTO;
 import org.apache.dubbo.admin.governance.service.ProviderService;
@@ -42,7 +43,7 @@ public class RoutesController {
 
     @RequestMapping(method = RequestMethod.POST)
     @ResponseStatus(HttpStatus.CREATED)
-    public boolean createRule(@RequestBody RouteDTO routeDTO, @PathVariable String env) throws ParamValidationException {
+    public boolean createRule(@RequestBody RouteDTO routeDTO, @PathVariable String env) {
         String serviceName = routeDTO.getService();
         String app = routeDTO.getApp();
         if (serviceName == null && app == null) {
@@ -77,10 +78,10 @@ public class RoutesController {
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
-    public boolean updateRule(@PathVariable String id, @RequestBody RouteDTO routeDTO, @PathVariable String env) throws ParamValidationException {
+    public boolean updateRule(@PathVariable String id, @RequestBody RouteDTO routeDTO, @PathVariable String env) {
         Route route = routeService.findRoute(id);
         if (route == null) {
-            throw new ParamValidationException("Unknown ID!");
+            throw new ResourceNotFoundException("Unknown ID!");
         }
         String[] conditions = routeDTO.getConditions();
         String rule = parseCondition(conditions);
@@ -128,10 +129,10 @@ public class RoutesController {
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
-    public RouteDTO detailRoute(@PathVariable String id, @PathVariable String env) throws ParamValidationException {
+    public RouteDTO detailRoute(@PathVariable String id, @PathVariable String env) {
         Route route = routeService.findRoute(id);
         if (route == null) {
-            throw new ParamValidationException("Unknown ID!");
+            throw new ResourceNotFoundException("Unknown ID!");
         }
         RouteDTO routeDTO = new RouteDTO();
         routeDTO.setDynamic(route.isDynamic());

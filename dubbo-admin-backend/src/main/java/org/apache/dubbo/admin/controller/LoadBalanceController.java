@@ -18,6 +18,7 @@
 package org.apache.dubbo.admin.controller;
 
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
+import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.dto.BalancingDTO;
 import org.apache.dubbo.admin.governance.service.OverrideService;
 import org.apache.dubbo.admin.registry.common.domain.LoadBalance;
@@ -66,7 +67,7 @@ public class LoadBalanceController {
     public boolean updateLoadbalance(@PathVariable String id, @RequestBody BalancingDTO balancingDTO, @PathVariable String env) throws ParamValidationException {
         Override override = overrideService.findById(id);
         if (override == null) {
-            throw new ParamValidationException("Unknown ID!");
+            throw new ResourceNotFoundException("Unknown ID!");
         }
         LoadBalance old = overrideToLoadBalance(override);
         LoadBalance loadBalance = new LoadBalance();
@@ -108,7 +109,7 @@ public class LoadBalanceController {
     public BalancingDTO detailLoadBalance(@PathVariable String id, @PathVariable String env) throws ParamValidationException {
         Override override =  overrideService.findById(id);
         if (override == null) {
-            throw new ParamValidationException("Unknown ID!");
+            throw new ResourceNotFoundException("Unknown ID!");
         }
 
         LoadBalance loadBalance = OverrideUtils.overrideToLoadBalance(override);

@@ -16,6 +16,13 @@
  */
 package org.apache.dubbo.admin.common.exception;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
+/**
+ * Permission denied exception
+ */
+@ResponseStatus(value = HttpStatus.UNAUTHORIZED)
 public class PermissionDeniedException extends RuntimeException {
 
     public PermissionDeniedException(String message) {
