@@ -112,6 +112,20 @@ public class OverridesController {
         return true;
     }
 
+    @RequestMapping(value = "/enable/{id}", method = RequestMethod.PUT)
+    public boolean enableRoute(@PathVariable String id, @PathVariable String env) {
+
+        overrideService.enableOverride(id);
+        return true;
+    }
+
+    @RequestMapping(value = "/disable/{id}", method = RequestMethod.PUT)
+    public boolean disableRoute(@PathVariable String id, @PathVariable String env) {
+
+        overrideService.disableOverride(id);
+        return true;
+    }
+
     private void overrideDTOToParams(Override override, OverrideDTO overrideDTO) {
         Map<Object, String>[] mocks = overrideDTO.getMock();
         Map<String, Object>[] parameters = overrideDTO.getParameters();

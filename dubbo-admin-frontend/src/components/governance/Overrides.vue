@@ -47,10 +47,10 @@
               <td class="text-xs-left">{{ props.item.service }}</td>
               <td class="justify-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
-                  <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon, props.item)">
-                    {{op.icon}}
+                  <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon(props.item), props.item)">
+                    {{op.icon(props.item)}}
                   </v-icon>
-                  <span>{{op.tooltip}}</span>
+                  <span>{{op.tooltip(props.item)}}</span>
                 </v-tooltip>
               </td>
             </template>
@@ -103,6 +103,7 @@
   import yaml from 'js-yaml'
   import {AXIOS} from '../http-common'
   import Search from '@/components/public/Search'
+  import operations from '@/api/operation'
   export default {
     components: {
       AceEditor,
@@ -121,18 +122,14 @@
       warnText: '',
       warnStatus: {},
       height: 0,
-      operations: [
-        {id: 0, icon: 'visibility', tooltip: 'View'},
-        {id: 1, icon: 'edit', tooltip: 'Edit'},
-        {id: 3, icon: 'delete', tooltip: 'Delete'}
-      ],
+      operations: operations,
       configs: [
       ],
       template:
         'application:  # consumer\'s application name, empty for all \n' +
         'address: 192.168.0.1 # consumer\'s ip address, empty for all consumers\n' +
         'dynamic: false\n' +
-        'enabled: false # enable this rule\n' +
+        'enabled: true # enable this rule\n' +
         'parameters:\n' +
         '  - timeout: 100\n' +
         '\n' +
@@ -233,6 +230,16 @@
                 this.updateId = item.id
               })
             break
+          case 'block':
+            this.openWarn(' Are you sure to block Dynamic Config', 'service: ' + item.service)
+            this.warnStatus.operation = 'disable'
+            this.warnStatus.id = item.id
+            break
+          case 'check_circle_outline':
+            this.openWarn(' Are you sure to enable Dynamic Config', 'service: ' + item.service)
+            this.warnStatus.operation = 'enable'
+            this.warnStatus.id = item.id
+            break
           case 'delete':
             this.openWarn(' Are you sure to Delete Dynamic Config', 'service: ' + item.service)
             this.warnStatus.operation = 'delete'
@@ -250,13 +257,27 @@
         this.height = window.innerHeight * 0.5
       },
       deleteItem: function (warnStatus) {
-        let id = {}
-        id.id = warnStatus.id
-        AXIOS.delete('/rules/override/' + id)
-          .then(response => {
-            this.warn = false
-            this.search(this.filter, false)
-          })
+        let id = warnStatus.id
+        let operation = warnStatus.operation
+        if (operation === 'delete') {
+          AXIOS.delete('/rules/override/' + id)
+            .then(response => {
+              this.warn = false
+              this.search(this.filter, false)
+            })
+        } else if (operation === 'disable') {
+          AXIOS.put('/rules/override/disable/' + id)
+            .then(response => {
+              this.warn = false
+              this.search(this.filter, false)
+            })
+        } else if (operation === 'enable') {
+          AXIOS.put('/rules/override/enable/' + id)
+            .then(response => {
+              this.warn = false
+              this.search(this.filter, false)
+            })
+        }
       }
     },
     created () {
