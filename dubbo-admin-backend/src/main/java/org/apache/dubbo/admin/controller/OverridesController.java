@@ -18,11 +18,16 @@
 package org.apache.dubbo.admin.controller;
 
 import com.alibaba.dubbo.common.URL;
+
+import org.apache.dubbo.admin.common.exception.ParamValidationException;
+import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.dto.BaseDTO;
 import org.apache.dubbo.admin.dto.OverrideDTO;
 import org.apache.dubbo.admin.governance.service.OverrideService;
 import org.apache.dubbo.admin.registry.common.domain.Override;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -38,10 +43,11 @@ public class OverridesController {
     private OverrideService overrideService;
 
     @RequestMapping(method = RequestMethod.POST)
+    @ResponseStatus(HttpStatus.CREATED)
     public boolean createOverride(@RequestBody OverrideDTO overrideDTO, @PathVariable String env) {
         String serviceName = overrideDTO.getService();
-        if (serviceName == null || serviceName.length() == 0) {
-            //TODO throw exception
+        if (StringUtils.isEmpty(serviceName)) {
+            throw new ParamValidationException("serviceName is Empty!");
         }
         Override override = new Override();
         override.setService(serviceName);
@@ -57,7 +63,7 @@ public class OverridesController {
     public boolean updateOverride(@PathVariable String id, @RequestBody OverrideDTO overrideDTO, @PathVariable String env) {
         Override old = overrideService.findById(id);
         if (old == null) {
-            //TODO handle exception
+            throw new ResourceNotFoundException("Unknown ID!");
         }
         Override override = new Override();
         override.setService(overrideDTO.getService());
@@ -95,7 +101,7 @@ public class OverridesController {
     public OverrideDTO detailOverride(@PathVariable String id, @PathVariable String env) {
         Override override = overrideService.findById(id);
         if (override == null) {
-            //TODO throw exception
+            throw new ResourceNotFoundException("Unknown ID!");
         }
         OverrideDTO overrideDTO = new OverrideDTO();
         overrideDTO.setAddress(override.getAddress());
