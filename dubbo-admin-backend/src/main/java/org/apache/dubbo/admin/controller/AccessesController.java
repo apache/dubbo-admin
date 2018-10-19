@@ -19,10 +19,14 @@ package org.apache.dubbo.admin.controller;
 import com.alibaba.dubbo.common.logger.Logger;
 import com.alibaba.dubbo.common.logger.LoggerFactory;
 import org.apache.commons.lang3.StringUtils;
+
+import org.apache.dubbo.admin.common.exception.ParamValidationException;
+import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.dto.AccessDTO;
 import org.apache.dubbo.admin.governance.service.RouteService;
 import org.apache.dubbo.admin.registry.common.domain.Route;
 import org.apache.dubbo.admin.registry.common.route.RouteRule;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -64,7 +68,6 @@ public class AccessesController {
                 result.add(accessDTO);
             }
         }
-
         return result;
     }
 
@@ -88,25 +91,23 @@ public class AccessesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public void deleteAccess(@PathVariable String id, @PathVariable String env) {
-        if (id == null) {
-            throw new IllegalArgumentException("Argument of id is null!");
-        }
         routeService.deleteRoute(id);
     }
 
     @RequestMapping(method = RequestMethod.POST)
+    @ResponseStatus(HttpStatus.CREATED)
     public void createAccess(@RequestBody AccessDTO accessDTO, @PathVariable String env) {
         if (StringUtils.isBlank(accessDTO.getService())) {
-            throw new IllegalArgumentException("Service is required.");
+            throw new ParamValidationException("Service is required.");
         }
         if (accessDTO.getBlacklist() == null && accessDTO.getWhitelist() == null) {
-            throw new IllegalArgumentException("One of Blacklist/Whitelist is required.");
+            throw new ParamValidationException("One of Blacklist/Whitelist is required.");
         }
 
         Route route = routeService.getBlackwhitelistRouteByService(accessDTO.getService());
 
         if (route != null) {
-            throw new IllegalArgumentException(accessDTO.getService() + " is existed.");
+            throw new ParamValidationException(accessDTO.getService() + " is existed.");
         }
 
         route = new Route();
@@ -136,6 +137,9 @@ public class AccessesController {
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
     public void updateAccess(@PathVariable String id, @RequestBody AccessDTO accessDTO, @PathVariable String env) {
         Route route = routeService.findRoute(id);
+        if (Objects.isNull(route)) {
+            throw new ResourceNotFoundException("Unknown ID!");
+        }
         Map<String, RouteRule.MatchPair> when = new HashMap<>();
         RouteRule.MatchPair matchPair = new RouteRule.MatchPair(new HashSet<>(), new HashSet<>());
         when.put(Route.KEY_CONSUMER_HOST, matchPair);
