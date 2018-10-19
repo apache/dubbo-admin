@@ -18,7 +18,6 @@ package org.apache.dubbo.admin.governance.service;
 
 import org.apache.dubbo.admin.registry.common.domain.Route;
 
-import java.net.URL;
 import java.util.List;
 
 /**
