@@ -17,6 +17,7 @@
 
 package org.apache.dubbo.admin.controller;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.dto.WeightDTO;
@@ -73,7 +74,7 @@ public class WeightController {
     @RequestMapping(method = RequestMethod.GET)
     public List<WeightDTO> searchWeight(@RequestParam(required = false) String service, @PathVariable String env) {
         List<Override> overrides;
-        if (service == null || service.length() == 0) {
+        if (StringUtils.isEmpty(service)) {
             overrides = overrideService.findAll();
         } else {
             overrides = overrideService.findByService(service);
