@@ -21,7 +21,7 @@ package org.apache.dubbo.admin.dto;
  *
  * For receive ID parameter with @RequestBody
  */
-public class BaseDTO {
+public abstract class BaseDTO {
     private String id;
 
     public String getId() {

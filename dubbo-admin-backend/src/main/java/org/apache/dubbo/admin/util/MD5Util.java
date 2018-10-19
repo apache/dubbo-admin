@@ -17,9 +17,9 @@
 
 package org.apache.dubbo.admin.util;
 
+import javax.xml.bind.DatatypeConverter;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import javax.xml.bind.DatatypeConverter;
 
 public class MD5Util {
 

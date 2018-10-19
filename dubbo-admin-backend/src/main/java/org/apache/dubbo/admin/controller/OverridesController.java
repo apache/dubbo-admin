@@ -18,7 +18,6 @@
 package org.apache.dubbo.admin.controller;
 
 import com.alibaba.dubbo.common.URL;
-import org.apache.dubbo.admin.dto.BaseDTO;
 import org.apache.dubbo.admin.dto.OverrideDTO;
 import org.apache.dubbo.admin.governance.service.OverrideService;
 import org.apache.dubbo.admin.registry.common.domain.Override;
