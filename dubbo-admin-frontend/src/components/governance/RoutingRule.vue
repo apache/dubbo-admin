@@ -199,6 +199,7 @@
         this.ruleText = this.template
         this.updateId = ''
         this.service = ''
+        this.application = ''
         this.dialog = false
         this.readonly = false
       },

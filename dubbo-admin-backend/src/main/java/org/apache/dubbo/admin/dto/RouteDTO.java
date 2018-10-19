@@ -26,7 +26,16 @@ public class RouteDTO extends BaseDTO{
     private boolean enabled;
     private boolean force;
     private boolean runtime;
+    private String version;
     private String[] conditions;
+
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
+    }
 
     public String getApp() {
         return app;

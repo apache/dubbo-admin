@@ -17,12 +17,10 @@
 
 package org.apache.dubbo.admin.controller;
 
-import org.apache.dubbo.admin.dto.BaseDTO;
 import org.apache.dubbo.admin.dto.RouteDTO;
 import org.apache.dubbo.admin.governance.service.ProviderService;
 import org.apache.dubbo.admin.governance.service.RouteService;
 import org.apache.dubbo.admin.registry.common.domain.Route;
-import org.apache.dubbo.admin.util.MD5Util;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -52,19 +50,11 @@ public class RoutesController {
             if (serviceName.contains(":") && !serviceName.endsWith(":")) {
                 version = serviceName.split(":")[1];
                 service = serviceName.split(":")[0];
+                routeDTO.setService(service);
+                routeDTO.setVersion(version);
             }
 
-            String[] conditions = routeDTO.getConditions();
-            String rule = parseCondition(conditions);
-            Route route = new Route();
-            route.setService(service);
-            route.setVersion(version);
-            route.setEnabled(routeDTO.isEnabled()); route.setForce(routeDTO.isForce());
-            route.setGroup(routeDTO.getGroup());
-            route.setDynamic(routeDTO.isDynamic());
-            route.setRuntime(routeDTO.isRuntime());
-            route.setPriority(routeDTO.getPriority());
-            route.setRule(rule);
+            Route route = convertRouteDTOtoRoute(routeDTO, null);
             routeService.createRoute(route);
 
         } else {
@@ -79,18 +69,9 @@ public class RoutesController {
         if (route == null) {
             //TODO Exception
         }
-        String[] conditions = routeDTO.getConditions();
-        String rule = parseCondition(conditions);
-        Route newRoute = new Route();
-        newRoute.setService(route.getService());
-        newRoute.setVersion(route.getVersion());
-        newRoute.setEnabled(routeDTO.isEnabled());
-        newRoute.setForce(routeDTO.isForce());
-        newRoute.setGroup(routeDTO.getGroup());
-        newRoute.setDynamic(routeDTO.isDynamic());
-        newRoute.setRuntime(routeDTO.isRuntime());
-        newRoute.setPriority(routeDTO.getPriority());
-        newRoute.setRule(rule);
+        routeDTO.setVersion(route.getVersion());
+        routeDTO.setService(route.getService());
+        Route newRoute = convertRouteDTOtoRoute(routeDTO, id);
         routeService.updateRoute(newRoute);
         return true;
     }
@@ -109,16 +90,7 @@ public class RoutesController {
         }
         List<RouteDTO> routeDTOS = new ArrayList<>();
         for (Route route : routes) {
-            RouteDTO routeDTO = new RouteDTO();
-            routeDTO.setDynamic(route.isDynamic());
-            routeDTO.setConditions(new String[]{route.getRule()});
-            routeDTO.setEnabled(route.isEnabled());
-            routeDTO.setForce(route.isForce());
-            routeDTO.setGroup(route.getGroup());
-            routeDTO.setPriority(route.getPriority());
-            routeDTO.setRuntime(route.isRuntime());
-            routeDTO.setService(route.getService());
-            routeDTO.setId(route.getHash());
+            RouteDTO routeDTO = convertRoutetoRouteDTO(route, route.getHash());
             routeDTOS.add(routeDTO);
         }
         return routeDTOS;
@@ -130,16 +102,7 @@ public class RoutesController {
         if (route == null) {
             // TODO throw exception
         }
-        RouteDTO routeDTO = new RouteDTO();
-        routeDTO.setDynamic(route.isDynamic());
-        routeDTO.setConditions(new String[]{route.getRule()});
-        routeDTO.setEnabled(route.isEnabled());
-        routeDTO.setForce(route.isForce());
-        routeDTO.setGroup(route.getGroup());
-        routeDTO.setPriority(route.getPriority());
-        routeDTO.setRuntime(route.isRuntime());
-        routeDTO.setService(route.getService());
-        routeDTO.setId(route.getHash());
+        RouteDTO routeDTO = convertRoutetoRouteDTO(route, id);
         return routeDTO;
     }
 
@@ -168,28 +131,62 @@ public class RoutesController {
         StringBuilder then = new StringBuilder();
         for (String condition : conditions) {
             condition = condition.trim();
-            if (condition.contains("=>") && !condition.endsWith("=>")) {
-                String consumer = condition.split("=>")[0].trim();
-                String provider = condition.split("=>")[1].trim();
-                if (when.length() != 0) {
-                    when.append(" & ").append(consumer);
-                } else {
-                    when.append(consumer);
+            if (condition.contains("=>")) {
+                String[] array = condition.split("=>", 2);
+                String consumer = array[0].trim();
+                String provider = array[1].trim();
+                if (consumer != "") {
+                    if (when.length() != 0) {
+                        when.append(" & ").append(consumer);
+                    } else {
+                        when.append(consumer);
+                    }
                 }
-
-                if (then.length() != 0) {
-                    then.append(" & ").append(provider);
-                } else {
-                    then.append(provider);
+                if (provider != "") {
+                    if (then.length() != 0) {
+                        then.append(" & ").append(provider);
+                    } else {
+                        then.append(provider);
+                    }
                 }
             }
         }
         return (when.append(" => ").append(then)).toString();
     }
 
-    public static void main(String[] args) {
-        String a = "fwjiojie =>";
-        a.split("=>", 2);
+    private Route convertRouteDTOtoRoute(RouteDTO routeDTO, String id) {
+        Route route = new Route();
+        String[] conditions = routeDTO.getConditions();
+        String rule = parseCondition(conditions);
+        route.setService(routeDTO.getService());
+        route.setVersion(routeDTO.getVersion());
+        route.setEnabled(routeDTO.isEnabled());
+        route.setForce(routeDTO.isForce());
+        route.setGroup(routeDTO.getGroup());
+        route.setDynamic(routeDTO.isDynamic());
+        route.setRuntime(routeDTO.isRuntime());
+        route.setPriority(routeDTO.getPriority());
+        route.setRule(rule);
+        if(id != null) {
+            route.setHash(id);
+        }
+        return route;
     }
 
+    private RouteDTO convertRoutetoRouteDTO(Route route, String id) {
+        RouteDTO routeDTO = new RouteDTO();
+        routeDTO.setDynamic(route.isDynamic());
+        routeDTO.setConditions(new String[]{route.getRule()});
+        routeDTO.setEnabled(route.isEnabled());
+        routeDTO.setForce(route.isForce());
+        routeDTO.setGroup(route.getGroup());
+        routeDTO.setPriority(route.getPriority());
+        routeDTO.setRuntime(route.isRuntime());
+        routeDTO.setService(route.getService());
+        routeDTO.setVersion(route.getVersion());
+        if (id != null) {
+            routeDTO.setId(route.getHash());
+        }
+        return routeDTO;
+    }
 }
