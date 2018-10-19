@@ -18,15 +18,14 @@
 package org.apache.dubbo.admin.controller;
 
 import com.alibaba.dubbo.common.URL;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
-import org.apache.dubbo.admin.dto.BaseDTO;
 import org.apache.dubbo.admin.dto.OverrideDTO;
 import org.apache.dubbo.admin.governance.service.OverrideService;
 import org.apache.dubbo.admin.registry.common.domain.Override;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -78,10 +77,11 @@ public class OverridesController {
     @RequestMapping(method = RequestMethod.GET)
     public List<OverrideDTO> searchOverride(@RequestParam(required = false) String service, @PathVariable String env) {
         List<Override> overrides;
-        if (service == null || service.length() == 0) {
+        if (StringUtils.isEmpty(service)) {
            overrides = overrideService.findAll();
+        } else {
+            overrides = overrideService.findByService(service);
         }
-        overrides = overrideService.findByService(service);
         List<OverrideDTO> result = new ArrayList<>();
         for (Override override : overrides) {
             OverrideDTO overrideDTO = new OverrideDTO();

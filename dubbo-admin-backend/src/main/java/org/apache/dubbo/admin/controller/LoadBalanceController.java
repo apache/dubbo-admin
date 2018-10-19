@@ -17,6 +17,7 @@
 
 package org.apache.dubbo.admin.controller;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.dto.BalancingDTO;
@@ -24,17 +25,9 @@ import org.apache.dubbo.admin.governance.service.OverrideService;
 import org.apache.dubbo.admin.registry.common.domain.LoadBalance;
 import org.apache.dubbo.admin.registry.common.domain.Override;
 import org.apache.dubbo.admin.registry.common.util.OverrideUtils;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -82,9 +75,8 @@ public class LoadBalanceController {
     @RequestMapping(method = RequestMethod.GET)
     public List<BalancingDTO> searchLoadbalances(@RequestParam(required = false) String service, @PathVariable String env) {
         List<Override> overrides;
-        if (service == null || service.length() == 0) {
+        if (StringUtils.isEmpty(service)) {
             overrides = overrideService.findAll();
-           //TODO throw Exception
         } else {
             overrides = overrideService.findByService(service);
         }

@@ -53,7 +53,7 @@ public class ServiceController {
         for (Provider provider : allProviders) {
             Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
             ServiceDTO s = new ServiceDTO();
-            if (filter == null || filter.length() == 0) {
+            if (org.apache.commons.lang3.StringUtils.isEmpty(filter)) {
                 s.setAppName(provider.getApplication());
                 s.setService(provider.getService());
                 s.setGroup(map.get(Constants.GROUP_KEY));

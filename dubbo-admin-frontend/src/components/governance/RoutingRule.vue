@@ -241,6 +241,9 @@
               }
               this.closeDialog()
             })
+            .catch(error => {
+              console.log(error)
+            })
         }
       },
       itemOperation: function (icon, item) {

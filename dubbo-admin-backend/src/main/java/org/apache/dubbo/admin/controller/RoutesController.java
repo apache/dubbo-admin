@@ -17,9 +17,9 @@
 
 package org.apache.dubbo.admin.controller;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
-import org.apache.dubbo.admin.dto.BaseDTO;
 import org.apache.dubbo.admin.dto.RouteDTO;
 import org.apache.dubbo.admin.governance.service.ProviderService;
 import org.apache.dubbo.admin.governance.service.RouteService;
@@ -45,10 +45,10 @@ public class RoutesController {
     public boolean createRule(@RequestBody RouteDTO routeDTO, @PathVariable String env) {
         String serviceName = routeDTO.getService();
         String app = routeDTO.getApp();
-        if (serviceName == null && app == null) {
+        if (StringUtils.isEmpty(serviceName) && StringUtils.isEmpty(app)) {
             throw new ParamValidationException("serviceName and app is Empty!");
         }
-        if (serviceName != null) {
+        if (StringUtils.isNotEmpty(serviceName)) {
             //2.6
             String version = null;
             String service = serviceName;
@@ -85,10 +85,10 @@ public class RoutesController {
     public List<RouteDTO> searchRoutes(@RequestParam(required = false) String app,
                                     @RequestParam(required = false) String service, @PathVariable String env) {
         List<Route> routes;
-        if (app != null) {
+        if (StringUtils.isNotEmpty(app)) {
            // app scope in 2.7
         }
-        if (service != null) {
+        if (StringUtils.isNotEmpty(service)) {
             routes = routeService.findByService(service);
         } else {
             routes = routeService.findAll();
