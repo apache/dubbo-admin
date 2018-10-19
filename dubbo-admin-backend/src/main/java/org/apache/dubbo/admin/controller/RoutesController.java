@@ -17,11 +17,15 @@
 
 package org.apache.dubbo.admin.controller;
 
+import org.apache.dubbo.admin.common.exception.ParamValidationException;
+import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
+import org.apache.dubbo.admin.dto.BaseDTO;
 import org.apache.dubbo.admin.dto.RouteDTO;
 import org.apache.dubbo.admin.governance.service.ProviderService;
 import org.apache.dubbo.admin.governance.service.RouteService;
 import org.apache.dubbo.admin.registry.common.domain.Route;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -37,11 +41,12 @@ public class RoutesController {
     private ProviderService providerService;
 
     @RequestMapping(method = RequestMethod.POST)
+    @ResponseStatus(HttpStatus.CREATED)
     public boolean createRule(@RequestBody RouteDTO routeDTO, @PathVariable String env) {
         String serviceName = routeDTO.getService();
         String app = routeDTO.getApp();
         if (serviceName == null && app == null) {
-
+            throw new ParamValidationException("serviceName and app is Empty!");
         }
         if (serviceName != null) {
             //2.6
@@ -67,7 +72,7 @@ public class RoutesController {
     public boolean updateRule(@PathVariable String id, @RequestBody RouteDTO routeDTO, @PathVariable String env) {
         Route route = routeService.findRoute(id);
         if (route == null) {
-            //TODO Exception
+            throw new ResourceNotFoundException("Unknown ID!");
         }
         routeDTO.setVersion(route.getVersion());
         routeDTO.setService(route.getService());
@@ -100,7 +105,7 @@ public class RoutesController {
     public RouteDTO detailRoute(@PathVariable String id, @PathVariable String env) {
         Route route = routeService.findRoute(id);
         if (route == null) {
-            // TODO throw exception
+            throw new ResourceNotFoundException("Unknown ID!");
         }
         RouteDTO routeDTO = convertRoutetoRouteDTO(route, id);
         return routeDTO;

@@ -17,13 +17,24 @@
 
 package org.apache.dubbo.admin.controller;
 
+import org.apache.dubbo.admin.common.exception.ParamValidationException;
+import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.dto.BalancingDTO;
 import org.apache.dubbo.admin.governance.service.OverrideService;
 import org.apache.dubbo.admin.registry.common.domain.LoadBalance;
 import org.apache.dubbo.admin.registry.common.domain.Override;
 import org.apache.dubbo.admin.registry.common.util.OverrideUtils;
+
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,10 +49,11 @@ public class LoadBalanceController {
     private OverrideService overrideService;
 
     @RequestMapping(method = RequestMethod.POST)
-    public boolean createLoadbalance(@RequestBody BalancingDTO balancingDTO, @PathVariable String env) {
+    @ResponseStatus(HttpStatus.CREATED)
+    public boolean createLoadbalance(@RequestBody BalancingDTO balancingDTO, @PathVariable String env) throws ParamValidationException {
         String serviceName = balancingDTO.getService();
-        if (serviceName == null || serviceName.length() == 0) {
-            //TODO throw exception
+        if (StringUtils.isEmpty(serviceName)) {
+            throw new ParamValidationException("serviceName is Empty!");
         }
         LoadBalance loadBalance = new LoadBalance();
         loadBalance.setService(serviceName);
@@ -52,10 +64,10 @@ public class LoadBalanceController {
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
-    public boolean updateLoadbalance(@PathVariable String id, @RequestBody BalancingDTO balancingDTO, @PathVariable String env) {
+    public boolean updateLoadbalance(@PathVariable String id, @RequestBody BalancingDTO balancingDTO, @PathVariable String env) throws ParamValidationException {
         Override override = overrideService.findById(id);
         if (override == null) {
-            //TODO throw exception
+            throw new ResourceNotFoundException("Unknown ID!");
         }
         LoadBalance old = overrideToLoadBalance(override);
         LoadBalance loadBalance = new LoadBalance();
@@ -94,10 +106,10 @@ public class LoadBalanceController {
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
-    public BalancingDTO detailLoadBalance(@PathVariable String id, @PathVariable String env) {
+    public BalancingDTO detailLoadBalance(@PathVariable String id, @PathVariable String env) throws ParamValidationException {
         Override override =  overrideService.findById(id);
         if (override == null) {
-            //TODO throw exception
+            throw new ResourceNotFoundException("Unknown ID!");
         }
 
         LoadBalance loadBalance = OverrideUtils.overrideToLoadBalance(override);
