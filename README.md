@@ -1,5 +1,9 @@
 # Dubbo ops
 
+[![Build Status](https://travis-ci.org/apache/incubator-dubbo-ops.svg?branch=master)](https://travis-ci.org/apache/incubator-dubbo-ops)
+[![codecov](https://codecov.io/gh/apache/incubator-dubbo-ops/branch/master/graph/badge.svg)](https://codecov.io/gh/apache/incubator-dubbo-ops)
+![license](https://img.shields.io/github/license/apache/incubator-dubbo-ops.svg)
+
 ### Screenshot
 
 ![index](https://raw.githubusercontent.com/apache/incubator-dubbo-ops/develop/dubbo-admin-frontend/src/assets/index.png)
