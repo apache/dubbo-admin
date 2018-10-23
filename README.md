@@ -21,7 +21,7 @@
 >   The generic configuration, it's permanent.
 > - `application-develop.properties`  
 >   The configuration for develop, it will be work when you use Maven's `develop` Profile.
-> - `application-production.properties` (default)
+> - `application-production.properties` (default)   
 >   The configuration for production, it will be work when you use Maven's `production` Profile. Meanwhile, it's maven's default profile in this project.
 
 ### Build setup

@@ -16,9 +16,6 @@
  */
 package org.apache.dubbo.admin.common;
 
-import com.google.common.collect.Lists;
-
-import java.util.Collection;
 import java.util.HashMap;
 
 /**
@@ -32,6 +29,10 @@ public class CommonResponse extends HashMap<String, Object> {
 
     private static final String DATA = "data";
 
+    private static final String REDIRECT = "redirect";
+
+    private static final String EMPTY = "";
+
     public boolean isSuccess() {
         return get(SUCCESS) != null && (Boolean) get(SUCCESS);
     }
@@ -40,7 +41,7 @@ public class CommonResponse extends HashMap<String, Object> {
         if (get(MESSAGE) != null) {
             return (String) get(MESSAGE);
         }
-        return "";
+        return EMPTY;
     }
 
     private CommonResponse() {
@@ -66,29 +67,16 @@ public class CommonResponse extends HashMap<String, Object> {
     }
 
     public CommonResponse redirect(String url) {
-        this.put("redirect", url);
+        this.put(REDIRECT, url);
         return this;
     }
 
     public CommonResponse setData(Object data) {
-        Collection collection;
-        if (!containsKey(DATA) || get(DATA) == null) {
-            collection = Lists.newArrayList();
-            put(DATA, collection);
-        } else {
-            collection = (Collection) get(DATA);
-        }
-        collection.add(data);
-        return this;
+        return putData(DATA, data);
     }
 
-    public CommonResponse setData(String key, Object data) {
+    public CommonResponse putData(String key, Object data) {
         this.put(key, data);
-        return this;
-    }
-
-    public CommonResponse setData(Collection collection) {
-        this.put(DATA, collection);
         return this;
     }
 

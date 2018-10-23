@@ -15,7 +15,23 @@
  * limitations under the License.
  */
 import axios from 'axios'
+import Vue from 'vue'
+import HttpStatus from 'http-status'
 
-export const AXIOS = axios.create({
+let instance = axios.create({
   baseURL: 'http://localhost:8080/api/dev'
 })
+
+instance.interceptors.response.use((response) => {
+  return response
+}, (error) => {
+  if (error.message.indexOf('Network Error') >= 0) {
+    Vue.prototype.$notify.error('Network error, please check your network settings!')
+  } else if (error.response.status === HttpStatus.UNAUTHORIZED) {
+    // TODO jump to url
+  } else if (error.response.status >= HttpStatus.BAD_REQUEST) {
+    Vue.prototype.$notify.error(error.response.data.message)
+  }
+})
+
+export const AXIOS = instance
