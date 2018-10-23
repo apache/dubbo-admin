@@ -123,16 +123,6 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
-
-    <v-snackbar v-model="snackbar.enable"
-                :color="snackbar.color">
-      {{ snackbar.text }}
-      <v-btn dark
-             flat
-             @click="snackbar.enable = false">
-        Close
-      </v-btn>
-    </v-snackbar>
   </v-container>
 </template>
 
@@ -277,11 +267,7 @@ export default {
       }).catch(error => this.showSnackbar('error', error.response.data.message))
     },
     showSnackbar (color, message) {
-      Object.assign(this.snackbar, {
-        enable: true,
-        color: color,
-        text: message
-      })
+      this.$notify(message, color)
       this.confirm.enable = false
       this.selected = []
     }
