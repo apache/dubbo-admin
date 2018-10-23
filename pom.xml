@@ -45,7 +45,6 @@
 		<dubbo-version>2.6.4</dubbo-version>
 		<curator-version>2.12.0</curator-version>
 		<fastjson-version>1.2.46</fastjson-version>
-		<snakeyaml-version>1.22</snakeyaml-version>
 		<springfox-swagger-version>2.9.2</springfox-swagger-version>
 		<netty-version>4.1.30.Final</netty-version>
 	</properties>
@@ -73,12 +72,6 @@
 				<groupId>com.alibaba</groupId>
 				<artifactId>fastjson</artifactId>
 				<version>${fastjson-version}</version>
-			</dependency>
-
-			<dependency>
-				<groupId>org.yaml</groupId>
-				<artifactId>snakeyaml</artifactId>
-				<version>${snakeyaml-version}</version>
 			</dependency>
 
 			<dependency>
