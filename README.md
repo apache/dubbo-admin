@@ -15,22 +15,62 @@
 
 ### Backend
 
-> Configuration files (Before packaging application, make sure the correct profile in the MAVEN profiles was selected)
->
-> - `application.properties`  
->   The generic configuration, it's permanent.
-> - `application-develop.properties`  
->   The configuration for develop, it will be work when you use Maven's `develop` Profile.
-> - `application-production.properties` (default)   
->   The configuration for production, it will be work when you use Maven's `production` Profile. Meanwhile, it's maven's default profile in this project.
+* Configuration files  
 
-### Build setup
+> - `application.properties`  
+>   The generic configuration, shared by `application-develop.properties` and `application-production.properties`
+> - `application-production.properties` (default)  
+>   The configuration for production
+> - `application-develop.properties`  
+>   The configuration for develop
+> 
+
+
+### Production Setup
 
 1. Clone source code on develop branch
 2. Specify registry address in `dubbo-admin-backend/src/resources/application-production.properties`
-3. Build `mvn clean package`
+3. Build   
+
+    * select configuration files via command line  
+    
+    > - `mvn clean package -Pproduction` will active production configuration(`application-production.properties`)
+    > - `mvn clean package -Ddevelop` will active develop configuration(`application-develop.properties`)
 4. Start `mvn --projects dubbo-admin-backend spring-boot:run`
 5. Visit `http://localhost:8080`
+
+
+### Development Setup
+* Configuration in IDE  
+
+   * Select configuration files in Intellij Idea 
+
+      1. Choose profile file during project importing   
+         1. In the **Import from Maven** page where IntelliJ IDEA displays the profiles, activate the ones you need: 
+      ![profile](https://raw.githubusercontent.com/apache/incubator-dubbo-ops/develop/dubbo-admin-frontend/src/assets/profile-idea.jpg)
+         2.  Select **Next** and finish import
+    
+      2.  Choose profile file in the Maven Projects tool window to activate profiles.  
+          1. Open the Maven Projects tool window.  
+          2. Click the Profiles node to open a list of declared profiles.  
+          3. Select the appropriate checkboxes to activate the profiles you need.
+            
+    * Select configuration files in Eclipse
+        1. import project
+        2. In **Project Explorer**, right click `dubbo-admin-backend`
+        3. Choose **Maven**->**Select Maven Profiles**
+        4. Select profile you need
+        ![profile-eclipse](https://raw.githubusercontent.com/apache/incubator-dubbo-ops/develop/dubbo-admin-frontend/src/assets/profile-eclipse.jpg)
+* Run backend project  
+   backend is a standard spring boot project, you can run it in any java IDE
+* Run frontend project  
+  run with `npm run dev`
+* visit webpage
+  visit `localhost://localhost:8081`, frontend support hot reload.             
+   
+ * CORS problem
+    in this development mode, frontend will request `localhost:8080` to fetch data, this will cause a CORS problem, so we add a configuration in `I18nConfig.java` to support CORS, this configuration will only be active under **develop** mode, please select the right maven profile to support this.
+
 
 ### License
 
