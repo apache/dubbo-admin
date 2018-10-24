@@ -6,7 +6,7 @@
 
 ### Screenshot
 
-![index](https://raw.githubusercontent.com/apache/incubator-dubbo-ops/develop/dubbo-admin-frontend/src/assets/index.png)
+![index](https://raw.githubusercontent.com/apache/incubator-dubbo-ops/develop/doc/images/index.png)
 
 ### Frontend
 
@@ -47,7 +47,7 @@
 
       1. Choose profile file during project importing   
          1. In the **Import from Maven** page where IntelliJ IDEA displays the profiles, activate the ones you need: 
-      ![profile](https://raw.githubusercontent.com/apache/incubator-dubbo-ops/develop/dubbo-admin-frontend/src/assets/profile-idea.jpg)
+      ![profile](https://raw.githubusercontent.com/apache/incubator-dubbo-ops/develop/doc/images/profile-idea.jpg)
          2.  Select **Next** and finish import
     
       2.  Choose profile file in the Maven Projects tool window to activate profiles.  
@@ -60,7 +60,7 @@
         2. In **Project Explorer**, right click `dubbo-admin-backend`
         3. Choose **Maven**->**Select Maven Profiles**
         4. Select profile you need
-        ![profile-eclipse](https://raw.githubusercontent.com/apache/incubator-dubbo-ops/develop/dubbo-admin-frontend/src/assets/profile-eclipse.jpg)
+        ![profile-eclipse](https://raw.githubusercontent.com/apache/incubator-dubbo-ops/develop/doc/images/profile-eclipse.jpg)
 * Run backend project  
    backend is a standard spring boot project, you can run it in any java IDE
 * Run frontend project  
