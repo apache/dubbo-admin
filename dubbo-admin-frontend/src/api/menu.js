@@ -13,7 +13,7 @@ const Menu = [
     ]
   },
   { title: 'Service Test', path: '/test', icon: 'computer', badge: 'feature' },
-  { title: 'Service Mock', path: '/mock', icon: 'computer', badge: 'feature' },
+  { title: 'Service Mock', path: '/mock', icon: 'computer', badge: 'feature' }
 ]
 
 export default Menu
