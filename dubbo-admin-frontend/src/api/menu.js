@@ -12,15 +12,8 @@ const Menu = [
       { title: 'Load Balance', path: '/governance/loadbalance' }
     ]
   },
-  { title: 'QoS', path: '/qos', icon: 'computer' },
-  {
-    title: 'Service Info',
-    icon: 'info',
-    group: 'info',
-    items: [
-      { title: 'Version', path: '/info/version' }
-    ]
-  }
+  { title: 'Service Test', path: '/test', icon: 'computer', badge: 'feature' },
+  { title: 'Service Mock', path: '/mock', icon: 'computer', badge: 'feature' },
 ]
 
 export default Menu
