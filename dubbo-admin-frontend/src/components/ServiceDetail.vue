@@ -169,8 +169,8 @@
       basic: []
     }),
     methods: {
-      detail: function (app, service) {
-        AXIOS.get('/service/' + app + '/' + service)
+      detail: function (service) {
+        AXIOS.get('/service/' + service)
             .then(response => {
               this.providerDetails = response.data.providers
               this.consumerDetails = response.data.consumers
@@ -195,8 +195,8 @@
           service = query[key]
         }
       })
-      if (app !== '' && service !== '') {
-        this.detail(app, service)
+      if (service !== '') {
+        this.detail(service)
         let serviceItem = {}
         serviceItem.role = 'Service Name'
         serviceItem.value = service
