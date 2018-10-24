@@ -68,7 +68,7 @@
           <v-text-field
             label="Service Unique ID"
             hint="A service ID is service name"
-            required
+            :rules="[required]"
             v-model="service"
           ></v-text-field>
           <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
@@ -125,6 +125,7 @@
       operations: operations,
       configs: [
       ],
+      required: value => !!value || 'Service ID is Required.',
       template:
         'application:  # consumer\'s application name, empty for all \n' +
         'address: 192.168.0.1 # consumer\'s ip address, empty for all consumers\n' +
@@ -190,6 +191,9 @@
       },
       saveItem: function () {
         let override = yaml.safeLoad(this.ruleText)
+        if (this.service === '') {
+          return
+        }
         override.service = this.service
         if (this.updateId !== '') {
           if (this.updateId === 'close') {

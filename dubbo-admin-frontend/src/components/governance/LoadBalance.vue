@@ -70,7 +70,7 @@
           <v-text-field
             label="Service Unique ID"
             hint="A service ID is service name"
-            required
+            :rules="[required]"
             v-model="service"
           ></v-text-field>
           <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
@@ -131,6 +131,7 @@
       ],
       loadBalances: [
       ],
+      required: value => !!value || 'Service ID is required',
       template:
         'methodName: sayHello  # 0 for all methods\n' +
         'strategy:  # leastactive, random, roundrobin',
@@ -193,6 +194,9 @@
       },
       saveItem: function () {
         let balancing = yaml.safeLoad(this.ruleText)
+        if (this.service === '') {
+          return
+        }
         balancing.service = this.service
         if (this.updateId !== '') {
           if (this.updateId === 'close') {

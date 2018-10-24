@@ -87,7 +87,7 @@
           <v-form ref="modalForm">
             <v-text-field label="Service Unique ID"
                           hint="A service ID in form of service"
-                          required
+                          :rules="[required]"
                           :readonly="modal.id != null"
                           v-model="modal.service" />
             <v-subheader class="pa-0 mt-3">BLACK/WHITE LIST CONTENT</v-subheader>
@@ -152,6 +152,7 @@ export default {
       }
     ],
     accesses: [],
+    required: value => !!value || 'Service Id is required',
     modal: {
       enable: false,
       title: 'Create New',
@@ -219,6 +220,9 @@ export default {
     createItem () {
       let doc = yaml.load(this.modal.content)
       this.filter = ''
+      if (this.modal.service === '' || this.modal.service === null) {
+        return
+      }
       AXIOS.post('/rules/access', {
         service: this.modal.service,
         whitelist: doc.whitelist,
