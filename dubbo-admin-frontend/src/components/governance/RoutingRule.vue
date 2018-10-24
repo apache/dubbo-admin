@@ -71,13 +71,12 @@
           <v-text-field
             label="Service Unique ID"
             hint="A service ID in form of service:version, version is optional"
-            required
+            :rules="[required]"
             v-model="service"
           ></v-text-field>
           <v-text-field
             label="Application Name"
             hint="Application name the service belongs to"
-            required
             v-model="application"
           ></v-text-field>
 
@@ -136,6 +135,7 @@
       operations: operations,
       routingRules: [
       ],
+      required: value => !!value || 'Service ID is required',
       template:
         'enabled: true/false\n' +
         'priority:\n' +
@@ -218,6 +218,9 @@
       },
       saveItem: function () {
         let rule = yaml.safeLoad(this.ruleText)
+        if (rule.service === '') {
+          return
+        }
         rule.service = this.service
         if (this.updateId !== '') {
           if (this.updateId === 'close') {

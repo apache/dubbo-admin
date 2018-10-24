@@ -70,7 +70,7 @@
           <v-text-field
             label="Service Unique ID"
             hint="A service ID is service name"
-            required
+            :rules="[required]"
             v-model="service"
           ></v-text-field>
           <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
@@ -132,6 +132,7 @@
       ],
       weights: [
       ],
+      required: value => !!value || 'Service ID is required',
       template:
         'weight: 100  # 100 for default\n' +
         'provider:   # provider\'s ip\n' +
@@ -195,6 +196,9 @@
       },
       saveItem: function () {
         let weight = yaml.safeLoad(this.ruleText)
+        if (this.service === '') {
+          return
+        }
         weight.service = this.service
         if (this.updateId !== '') {
           if (this.updateId === 'close') {
