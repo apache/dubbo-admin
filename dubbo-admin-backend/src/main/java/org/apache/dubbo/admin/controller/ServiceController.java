@@ -81,11 +81,11 @@ public class ServiceController {
         return result;
     }
 
-    @RequestMapping("/{app}/{service}")
-    public ServiceDetailDTO serviceDetail(@PathVariable String app, @PathVariable String service) {
-        List<Provider> providers = providerService.findByAppandService(app, service);
+    @RequestMapping("/{service}")
+    public ServiceDetailDTO serviceDetail(@PathVariable String service) {
+        List<Provider> providers = providerService.findByService(service);
 
-        List<Consumer> consumers = consumerService.findByAppandService(app, service);
+        List<Consumer> consumers = consumerService.findByService(service);
 
         ServiceDetailDTO serviceDetailDTO = new ServiceDetailDTO();
         serviceDetailDTO.setConsumers(consumers);
