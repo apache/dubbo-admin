@@ -46,6 +46,9 @@
               <v-list-tile-content>
                 <v-list-tile-title>{{ subItem.title }}</v-list-tile-title>
               </v-list-tile-content>
+              <v-chip v-if="subItem.badge" color="primary" class="v-chip--x-small" disabled text-color="white">
+                {{subItem.badge}}
+              </v-chip>
             </v-list-tile>
           </template>
         </v-list-group>
@@ -55,6 +58,9 @@
             <v-icon>{{ item.icon }}</v-icon>
           </v-list-tile-action>
           <v-list-tile-content>{{ item.title }}</v-list-tile-content>
+          <v-chip v-if="item.badge" color="primary" class="v-chip--x-small" disabled text-color="white">
+            {{item.badge}}
+          </v-chip>
         </v-list-tile>
       </template>
     </v-list>
@@ -83,3 +89,10 @@
     }
   }
 </script>
+
+<style>
+  .v-chip--x-small {
+    font-size: 10px;
+    height: 16px;
+  }
+</style>
