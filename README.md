@@ -49,12 +49,12 @@
          1. In the **Import from Maven** page where IntelliJ IDEA displays the profiles, activate the ones you need: 
       ![profile](https://raw.githubusercontent.com/apache/incubator-dubbo-ops/develop/doc/images/profile-idea.jpg)
          2.  Select **Next** and finish import
-    
+
       2.  Choose profile file in the Maven Projects tool window to activate profiles.  
           1. Open the Maven Projects tool window.  
           2. Click the Profiles node to open a list of declared profiles.  
           3. Select the appropriate checkboxes to activate the profiles you need.
-            
+      
     * Select configuration files in Eclipse
         1. import project
         2. In **Project Explorer**, right click `dubbo-admin-backend`
@@ -66,10 +66,13 @@
 * Run frontend project  
   run with `npm run dev`
 * visit webpage
-  visit `localhost://localhost:8081`, frontend support hot reload.             
-   
+  visit `http://localhost:8081`, frontend support hot reload.             
  * CORS problem
     in this development mode, frontend will request `localhost:8080` to fetch data, this will cause a CORS problem, so we add a configuration in `I18nConfig.java` to support CORS, this configuration will only be active under **develop** mode, please select the right maven profile to support this.
+
+### Swagger supoort
+
+Once deployed, you can check http://localhost:8080/swagger-ui.html to check all restful api and models
 
 
 ### License
