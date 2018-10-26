@@ -12,8 +12,8 @@ const Menu = [
       { title: 'Load Balance', path: '/governance/loadbalance' }
     ]
   },
-  { title: 'Service Test', path: '/test', icon: 'computer', badge: 'feature' },
-  { title: 'Service Mock', path: '/mock', icon: 'computer', badge: 'feature' }
+  { title: 'Service Test', path: '/test', icon: 'code', badge: 'feature' },
+  { title: 'Service Mock', path: '/mock', icon: 'build', badge: 'feature' }
 ]
 
 export default Menu
