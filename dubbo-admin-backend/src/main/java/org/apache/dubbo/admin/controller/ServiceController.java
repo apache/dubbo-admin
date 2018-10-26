@@ -45,7 +45,7 @@ public class ServiceController {
 
     @RequestMapping(method = RequestMethod.GET)
     public List<ServiceDTO> searchService(@RequestParam String pattern,
-                                   @RequestParam(required = false) String filter) {
+                                          @RequestParam(required = false) String filter) {
 
         List<Provider> allProviders = providerService.findAll();
 
@@ -73,7 +73,7 @@ public class ServiceController {
                         key = provider.getService().toLowerCase();
                         break;
                 }
-                if (key.contains(filter)) {
+                if (key != null && key.contains(filter)) {
                     result.add(createService(provider, map));
                 }
             }
@@ -81,7 +81,7 @@ public class ServiceController {
         return result;
     }
 
-    @RequestMapping("/{service}")
+    @RequestMapping(value = "/{service}", method = RequestMethod.GET)
     public ServiceDetailDTO serviceDetail(@PathVariable String service) {
         List<Provider> providers = providerService.findByService(service);
 
