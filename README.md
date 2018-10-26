@@ -39,7 +39,7 @@
     > - `mvn clean package -Ddevelop` will active develop configuration(`application-develop.properties`)
 4. Start `mvn --projects dubbo-admin-backend spring-boot:run`
 5. Visit `http://localhost:8080`
-
+---
 
 ### Development Setup
 * Configuration in IDE  
