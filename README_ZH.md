@@ -39,7 +39,7 @@ English version goes [here](README.md).
     > - `mvn clean package -Pproduction` 激活生产环境的配置文件(`application-production.properties`)
 4. 启动 `mvn --projects dubbo-admin-backend spring-boot:run`
 5. 访问 `http://localhost:8080`
-
+---
 
 ### 开发环境配置
 * IDE设置  
