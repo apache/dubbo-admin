@@ -111,7 +111,6 @@
   import yaml from 'js-yaml'
   import AceEditor from '@/components/public/AceEditor'
   import Search from '@/components/public/Search'
-  import {AXIOS} from '../http-common'
   import operations from '@/api/operation'
   export default {
     components: {
@@ -184,7 +183,7 @@
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        AXIOS.get('/rules/route/', {
+        this.$axios.get('/rules/route/', {
           params: {
             service: filter
           }
@@ -227,7 +226,7 @@
             this.closeDialog()
           } else {
             rule.id = this.updateId
-            AXIOS.put('/rules/route/' + rule.id, rule)
+            this.$axios.put('/rules/route/' + rule.id, rule)
               .then(response => {
                 if (response.data) {
                   this.search(this.service, true)
@@ -236,7 +235,7 @@
               })
           }
         } else {
-          AXIOS.post('/rules/route/', rule)
+          this.$axios.post('/rules/route/', rule)
             .then(response => {
               if (response.data) {
                 this.search(this.service, true)
@@ -252,7 +251,7 @@
       itemOperation: function (icon, item) {
         switch (icon) {
           case 'visibility':
-            AXIOS.get('/rules/route/' + item.id)
+            this.$axios.get('/rules/route/' + item.id)
               .then(response => {
                 let route = response.data
                 this.handleBalance(route, true)
@@ -262,7 +261,7 @@
           case 'edit':
             let id = {}
             id.id = item.id
-            AXIOS.get('/rules/route/' + item.id)
+            this.$axios.get('/rules/route/' + item.id)
               .then(response => {
                 let route = response.data
                 this.handleBalance(route, false)
@@ -302,19 +301,19 @@
         let id = warnStatus.id
         let operation = warnStatus.operation
         if (operation === 'delete') {
-          AXIOS.delete('/rules/route/' + id)
+          this.$axios.delete('/rules/route/' + id)
             .then(response => {
               this.warn = false
               this.search(this.filter, false)
             })
         } else if (operation === 'disable') {
-          AXIOS.put('/rules/route/disable/' + id)
+          this.$axios.put('/rules/route/disable/' + id)
             .then(response => {
               this.warn = false
               this.search(this.filter, false)
             })
         } else if (operation === 'enable') {
-          AXIOS.put('/rules/route/enable/' + id)
+          this.$axios.put('/rules/route/enable/' + id)
             .then(response => {
               this.warn = false
               this.search(this.filter, false)

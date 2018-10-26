@@ -24,9 +24,11 @@ import Vuetify from 'vuetify'
 import 'vuetify/dist/vuetify.min.css'
 import { store } from './store'
 import Notify from './components/public/notify'
+import { AXIOS } from './components/http-common'
 
 Vue.use(Vuetify)
 Vue.use(Notify)
+Vue.prototype.$axios = AXIOS
 
 Vue.config.productionTip = false
 

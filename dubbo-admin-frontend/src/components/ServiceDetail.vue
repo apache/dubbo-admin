@@ -103,8 +103,6 @@
   </v-container>
 </template>
 <script>
-  import {AXIOS} from './http-common'
-
   export default {
     data: () => ({
       metaHeaders: [
@@ -170,7 +168,7 @@
     }),
     methods: {
       detail: function (service) {
-        AXIOS.get('/service/' + service)
+        this.$axios.get('/service/' + service)
             .then(response => {
               this.providerDetails = response.data.providers
               this.consumerDetails = response.data.consumers
