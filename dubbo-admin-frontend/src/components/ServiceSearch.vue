@@ -86,8 +86,6 @@
   </v-container>
 </template>
 <script>
-  import {AXIOS} from './http-common'
-
   export default {
     data: () => ({
       items: [
@@ -144,7 +142,7 @@
         this.search(this.filter, pattern, true)
       },
       search: function (filter, pattern, rewrite) {
-        AXIOS.get('/service', {
+        this.$axios.get('/service', {
           params: {
             pattern: pattern,
             filter: filter
