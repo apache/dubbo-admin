@@ -47,7 +47,7 @@
 		<fastjson-version>1.2.46</fastjson-version>
 		<springfox-swagger-version>2.9.2</springfox-swagger-version>
 		<netty-version>4.1.30.Final</netty-version>
-		<jacoco-version>0.8.1</jacoco-version>
+		<jacoco-version>0.8.2</jacoco-version>
 	</properties>
 
 	<dependencyManagement>
