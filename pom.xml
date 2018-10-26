@@ -47,6 +47,7 @@
 		<fastjson-version>1.2.46</fastjson-version>
 		<springfox-swagger-version>2.9.2</springfox-swagger-version>
 		<netty-version>4.1.30.Final</netty-version>
+		<jacoco-version>0.8.1</jacoco-version>
 	</properties>
 
 	<dependencyManagement>
@@ -117,7 +118,7 @@
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.1</version>
+                <version>${jacoco-version}</version>
 				<executions>
 					<execution>
 						<goals>
