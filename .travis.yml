@@ -5,7 +5,7 @@ jdk:
     - oraclejdk11
     - oraclejdk8
 script:
-    - travis_wait 30 mvn clean cobertura:cobertura package
+    - travis_wait 30 mvn clean package
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
