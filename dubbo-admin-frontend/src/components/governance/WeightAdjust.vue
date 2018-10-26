@@ -104,7 +104,6 @@
 <script>
   import AceEditor from '@/components/public/AceEditor'
   import yaml from 'js-yaml'
-  import {AXIOS} from '../http-common'
   import Search from '@/components/public/Search'
   export default {
     components: {
@@ -164,7 +163,7 @@
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        AXIOS.get('/rules/weight/', {
+        this.$axios.get('/rules/weight/', {
           params: {
             service: filter
           }
@@ -205,7 +204,7 @@
             this.closeDialog()
           } else {
             weight.id = this.updateId
-            AXIOS.put('/rules/weight/' + weight.id, weight)
+            this.$axios.put('/rules/weight/' + weight.id, weight)
               .then(response => {
                 this.search(this.service, true)
                 this.filter = this.service
@@ -213,7 +212,7 @@
               })
           }
         } else {
-          AXIOS.post('/rules/weight', weight)
+          this.$axios.post('/rules/weight', weight)
             .then(response => {
               this.search(this.service, true)
               this.filter = this.service
@@ -224,7 +223,7 @@
       itemOperation: function (icon, item) {
         switch (icon) {
           case 'visibility':
-            AXIOS.get('/rules/weight/' + item.id)
+            this.$axios.get('/rules/weight/' + item.id)
                 .then(response => {
                   let weight = response.data
                   this.handleWeight(weight, true)
@@ -232,7 +231,7 @@
                 })
             break
           case 'edit':
-            AXIOS.get('/rules/weight/' + item.id)
+            this.$axios.get('/rules/weight/' + item.id)
                 .then(response => {
                   let weight = response.data
                   this.handleWeight(weight, false)
@@ -256,7 +255,7 @@
         this.height = window.innerHeight * 0.5
       },
       deleteItem: function (warnStatus) {
-        AXIOS.delete('/rules/weight/' + warnStatus.id)
+        this.$axios.delete('/rules/weight/' + warnStatus.id)
           .then(response => {
             this.warn = false
             this.search(this.filter, false)

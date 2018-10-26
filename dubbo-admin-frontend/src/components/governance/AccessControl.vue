@@ -128,7 +128,6 @@
 
 <script>
 import yaml from 'js-yaml'
-import { AXIOS } from '@/components/http-common'
 import AceEditor from '@/components/public/AceEditor'
 import Search from '@/components/public/Search'
 
@@ -191,7 +190,7 @@ export default {
         path: 'access',
         query: { service: this.filter }
       })
-      AXIOS.get('/rules/access', {
+      this.$axios.get('/rules/access', {
         params: {
           service: this.filter
         }
@@ -223,7 +222,7 @@ export default {
       if (this.modal.service === '' || this.modal.service === null) {
         return
       }
-      AXIOS.post('/rules/access', {
+      this.$axios.post('/rules/access', {
         service: this.modal.service,
         whitelist: doc.whitelist,
         blacklist: doc.blacklist
@@ -246,7 +245,7 @@ export default {
     },
     editItem () {
       let doc = yaml.load(this.modal.content)
-      AXIOS.put('/rules/access/' + this.modal.id, {
+      this.$axios.put('/rules/access/' + this.modal.id, {
         whitelist: doc.whitelist,
         blacklist: doc.blacklist
       }).then(response => {
@@ -264,7 +263,7 @@ export default {
       })
     },
     deleteItem (id) {
-      AXIOS.delete('/rules/access/' + id)
+      this.$axios.delete('/rules/access/' + id)
       .then(response => {
         this.showSnackbar('success', 'Delete success')
         this.search(this.filter)

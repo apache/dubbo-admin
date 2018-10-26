@@ -102,7 +102,6 @@
 </template>
 <script>
   import yaml from 'js-yaml'
-  import {AXIOS} from '../http-common'
   import AceEditor from '@/components/public/AceEditor'
   import Search from '@/components/public/Search'
   export default {
@@ -161,7 +160,7 @@
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        AXIOS.get('/rules/balancing', {
+        this.$axios.get('/rules/balancing', {
           params: {
             service: filter
           }
@@ -203,7 +202,7 @@
             this.closeDialog()
           } else {
             balancing.id = this.updateId
-            AXIOS.put('/rules/balancing/' + balancing.id, balancing)
+            this.$axios.put('/rules/balancing/' + balancing.id, balancing)
               .then(response => {
                 this.search(this.service, true)
                 this.filter = this.service
@@ -211,7 +210,7 @@
               })
           }
         } else {
-          AXIOS.post('/rules/balancing', balancing)
+          this.$axios.post('/rules/balancing', balancing)
             .then(response => {
               if (response.data) {
                 this.search(this.service, true)
@@ -224,7 +223,7 @@
       itemOperation: function (icon, item) {
         switch (icon) {
           case 'visibility':
-            AXIOS.get('/rules/balancing/' + item.id)
+            this.$axios.get('/rules/balancing/' + item.id)
               .then(response => {
                 let balancing = response.data
                 this.handleBalance(balancing, true)
@@ -232,7 +231,7 @@
               })
             break
           case 'edit':
-            AXIOS.get('/rules/balancing/' + item.id)
+            this.$axios.get('/rules/balancing/' + item.id)
               .then(response => {
                 let balancing = response.data
                 this.handleBalance(balancing, false)
@@ -257,7 +256,7 @@
         this.height = window.innerHeight * 0.5
       },
       deleteItem: function (id) {
-        AXIOS.delete('/rules/balancing/' + id)
+        this.$axios.delete('/rules/balancing/' + id)
           .then(response => {
             this.warn = false
             this.search(this.filter, false)

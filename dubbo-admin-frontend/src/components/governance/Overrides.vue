@@ -101,7 +101,6 @@
 <script>
   import AceEditor from '@/components/public/AceEditor'
   import yaml from 'js-yaml'
-  import {AXIOS} from '../http-common'
   import Search from '@/components/public/Search'
   import operations from '@/api/operation'
   export default {
@@ -158,7 +157,7 @@
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        AXIOS.get('/rules/override', {
+        this.$axios.get('/rules/override', {
           params: {
             service: filter
           }
@@ -199,14 +198,14 @@
           if (this.updateId === 'close') {
             this.closeDialog()
           } else {
-            AXIOS.put('/rules/override/' + this.updateId, override)
+            this.$axios.put('/rules/override/' + this.updateId, override)
               .then(response => {
                 this.search(this.service, true)
                 this.filter = this.service
               })
           }
         } else {
-          AXIOS.post('/rules/override', override)
+          this.$axios.post('/rules/override', override)
             .then(response => {
               if (response.data) {
                 this.search(this.service, true)
@@ -219,7 +218,7 @@
       itemOperation: function (icon, item) {
         switch (icon) {
           case 'visibility':
-            AXIOS.get('/rules/override/' + item.id)
+            this.$axios.get('/rules/override/' + item.id)
               .then(response => {
                 let config = response.data
                 this.handleConfig(config, true)
@@ -227,7 +226,7 @@
               })
             break
           case 'edit':
-            AXIOS.get('/rules/override/' + item.id)
+            this.$axios.get('/rules/override/' + item.id)
               .then(response => {
                 let config = response.data
                 this.handleConfig(config, false)
@@ -264,19 +263,19 @@
         let id = warnStatus.id
         let operation = warnStatus.operation
         if (operation === 'delete') {
-          AXIOS.delete('/rules/override/' + id)
+          this.$axios.delete('/rules/override/' + id)
             .then(response => {
               this.warn = false
               this.search(this.filter, false)
             })
         } else if (operation === 'disable') {
-          AXIOS.put('/rules/override/disable/' + id)
+          this.$axios.put('/rules/override/disable/' + id)
             .then(response => {
               this.warn = false
               this.search(this.filter, false)
             })
         } else if (operation === 'enable') {
-          AXIOS.put('/rules/override/enable/' + id)
+          this.$axios.put('/rules/override/enable/' + id)
             .then(response => {
               this.warn = false
               this.search(this.filter, false)
