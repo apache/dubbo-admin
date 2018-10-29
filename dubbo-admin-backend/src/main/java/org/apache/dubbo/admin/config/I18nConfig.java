@@ -17,7 +17,6 @@
 
 package org.apache.dubbo.admin.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -34,11 +33,7 @@ import java.util.Locale;
 @Configuration
 @EnableAutoConfiguration
 @ComponentScan
-//@ImportResource({"classpath*:dubbo-admin.xml"})
 public class I18nConfig implements WebMvcConfigurer {
-
-    @Value("${spring.profiles.active}")
-    private String activeProfile;
 
     @Bean
     public LocaleResolver localeResolver() {
