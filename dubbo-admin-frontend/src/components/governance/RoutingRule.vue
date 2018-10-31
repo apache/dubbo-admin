@@ -27,11 +27,6 @@
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
           <v-toolbar-title><span class="headline">Search Result</span></v-toolbar-title>
-          <v-divider
-            class="mx-2"
-            inset
-            vertical
-          ></v-divider>
           <v-spacer></v-spacer>
           <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">CREATE</v-btn>
         </v-toolbar>
@@ -48,7 +43,7 @@
               <td class="text-xs-left">{{ props.item.group }}</td>
               <td class="text-xs-left">{{ props.item.priority }}</td>
               <td class="text-xs-left">{{ props.item.enabled }}</td>
-              <td class="justify-center px-0">
+              <td class="text-xs-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
                   <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon(props.item), props.item)">
                     {{op.icon(props.item)}}
@@ -174,7 +169,8 @@
         {
           text: 'Operation',
           value: 'operation',
-          sortable: false
+          sortable: false,
+          width: '115px'
         }
       ]
     }),

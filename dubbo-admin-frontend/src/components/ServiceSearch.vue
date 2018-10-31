@@ -55,32 +55,29 @@
 
     <v-flex lg12>
       <v-card>
-        <v-toolbar card dense color="transparent">
+        <v-toolbar flat color="transparent" class="elevation-0">
           <v-toolbar-title><span class="headline">Search Result</span></v-toolbar-title>
           <v-spacer></v-spacer>
-          <v-btn icon>
-            <v-icon>more_vert</v-icon>
-          </v-btn>
         </v-toolbar>
 
-      <v-card-text class="pa-0">
-        <template>
-          <v-data-table
-            hide-actions
-            class="elevation-0 table-striped"
-            :headers="headers"
-            :items="services"
-          >
-            <template slot="items" slot-scope="props">
-              <td>{{props.item.service}}</td>
-              <td>{{props.item.group}}</td>
-              <td>{{props.item.appName}}</td>
-              <td><v-btn small color='primary' :href='getHref(props.item.service, props.item.appName)'>Detail</v-btn></td>
-            </template>
-          </v-data-table>
-        </template>
-        <v-divider></v-divider>
-      </v-card-text>
+        <v-card-text class="pa-0">
+          <template>
+            <v-data-table
+              hide-actions
+              class="elevation-0 table-striped"
+              :headers="headers"
+              :items="services"
+            >
+              <template slot="items" slot-scope="props">
+                <td>{{props.item.service}}</td>
+                <td>{{props.item.group}}</td>
+                <td>{{props.item.appName}}</td>
+                <td class="text-xs-center px-0"><v-btn small color='primary' :href='getHref(props.item.service, props.item.appName)'>Detail</v-btn></td>
+              </template>
+            </v-data-table>
+          </template>
+          <v-divider></v-divider>
+        </v-card-text>
       </v-card>
     </v-flex>
   </v-container>
@@ -115,7 +112,8 @@
         {
           text: 'Operation',
           value: 'operation',
-          sortable: false
+          sortable: false,
+          width: '110px'
         }
       ]
     }),
