@@ -23,7 +23,7 @@
       <v-flex xs12>
         <search v-model="filter"
                 :submit="search"
-                label="Search Access Controls by service name"></search>
+                label="Search Access Control by service name"></search>
       </v-flex>
     </v-layout>
 

@@ -19,7 +19,7 @@
   <v-container grid-list-xl fluid >
     <v-layout row wrap>
       <v-flex xs12 >
-        <search v-model="filter" :submit="submit" label="Search LoadBalance by service Name"></search>
+        <search v-model="filter" :submit="submit" label="Search Load Balance by service Name"></search>
 
       </v-flex>
     </v-layout>
@@ -28,11 +28,6 @@
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
           <v-toolbar-title><span class="headline">Search Result</span></v-toolbar-title>
-          <v-divider
-            class="mx-2"
-            inset
-            vertical
-          ></v-divider>
           <v-spacer></v-spacer>
           <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">CREATE</v-btn>
         </v-toolbar>
@@ -47,7 +42,7 @@
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.service }}</td>
               <td class="text-xs-left">{{ props.item.methodName }}</td>
-              <td class="justify-center px-0">
+              <td class="text-xs-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
                   <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon, props.item)">
                     {{op.icon}}
@@ -151,7 +146,8 @@
         {
           text: 'Operation',
           value: 'operation',
-          sortable: false
+          sortable: false,
+          width: '115px'
         }
       ]
     }),
