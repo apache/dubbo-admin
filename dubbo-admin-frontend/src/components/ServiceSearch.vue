@@ -153,8 +153,8 @@
     },
     mounted: function () {
       let query = this.$route.query
-      let filter = ''
-      let pattern = ''
+      let filter = null
+      let pattern = null
       Object.keys(query).forEach(function (key) {
         if (key === 'filter') {
           filter = query[key]
@@ -163,7 +163,7 @@
           pattern = query[key]
         }
       })
-      if (filter !== '' && pattern !== '') {
+      if (filter != null && pattern != null) {
         this.filter = filter
         if (pattern === 'serviceName') {
           this.selected = 0
