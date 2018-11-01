@@ -78,10 +78,10 @@ public class ServiceController {
                     case "application":
                         key = provider.getApplication().toLowerCase();
                         break;
-                    case "service name":
+                    case "serviceName":
                         key = provider.getService().toLowerCase();
                         break;
-                    case "IP":
+                    case "ip":
                         key = provider.getService().toLowerCase();
                         break;
                 }
