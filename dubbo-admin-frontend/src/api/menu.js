@@ -30,7 +30,9 @@ const Menu = [
     ]
   },
   { title: 'Service Test', path: '/test', icon: 'code', badge: 'feature' },
-  { title: 'Service Mock', path: '/mock', icon: 'build', badge: 'feature' }
+  { title: 'Service Mock', path: '/mock', icon: 'build', badge: 'feature' },
+  { title: 'Metrics', path: '/metrics', icon: 'show_chart', badge: 'feature' }
+
 ]
 
 export default Menu
