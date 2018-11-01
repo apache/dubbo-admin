@@ -69,7 +69,7 @@
               :items="services"
             >
               <template slot="items" slot-scope="props">
-                <td>{{props.item.service}}</td>
+                <td >{{props.item.service}}</td>
                 <td>{{props.item.group}}</td>
                 <td>{{props.item.appName}}</td>
                 <td class="text-xs-center px-0"><v-btn small color='primary' :href='getHref(props.item.service, props.item.appName)'>Detail</v-btn></td>
@@ -180,4 +180,13 @@
 
   }
 </script>
+
+<style scoped>
+  table.v-table tbody td {
+    font-size: 13px;
+    font-weight: 400;
+    word-break: break-all;
+  }
+
+</style>
 
