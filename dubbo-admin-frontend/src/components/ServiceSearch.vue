@@ -23,15 +23,13 @@
           <v-card-text>
             <v-form>
               <v-layout row wrap>
-                  <v-text-field label="Search dubbo service"
+                  <v-text-field label="Search dubbo services"
                                 :hint="hint"
                                 :suffix="queryBy"
                                 v-model="filter"></v-text-field>
 
-                  <v-menu bottom left class="hidden-xs-only">
-                    <v-btn
-                      slot="activator"
-                      icon>
+                  <v-menu class="hidden-xs-only">
+                    <v-btn slot="activator" large icon>
                       <v-icon>unfold_more</v-icon>
                     </v-btn>
 
@@ -86,9 +84,9 @@
   export default {
     data: () => ({
       items: [
-        {id: 0, title: 'service name'},
-        {id: 1, title: 'IP'},
-        {id: 2, title: 'application'}
+        {id: 0, title: 'service name', value: 'serviceName'},
+        {id: 1, title: 'IP', value: 'ip'},
+        {id: 2, title: 'application', value: 'application'}
       ],
       selected: 0,
       services: [],
@@ -136,7 +134,7 @@
         return '/#/serviceDetail?service=' + service + '&app=' + app
       },
       submit () {
-        let pattern = this.items[this.selected].title
+        let pattern = this.items[this.selected].value
         this.search(this.filter, pattern, true)
       },
       search: function (filter, pattern, rewrite) {
@@ -167,11 +165,11 @@
       })
       if (filter !== '' && pattern !== '') {
         this.filter = filter
-        if (pattern === 'service name') {
+        if (pattern === 'serviceName') {
           this.selected = 0
         } else if (pattern === 'application') {
           this.selected = 2
-        } else if (pattern === 'IP') {
+        } else if (pattern === 'ip') {
           this.selected = 1
         }
         this.search(filter, pattern, false)
@@ -183,8 +181,6 @@
 
 <style scoped>
   table.v-table tbody td {
-    font-size: 13px;
-    font-weight: 400;
     word-break: break-all;
   }
 
