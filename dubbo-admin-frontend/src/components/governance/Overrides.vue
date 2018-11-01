@@ -248,6 +248,7 @@
       handleConfig: function (config, readonly) {
         this.service = config.service
         delete config.service
+        delete config.id
         this.ruleText = yaml.safeDump(config)
         this.readonly = readonly
         this.dialog = true
