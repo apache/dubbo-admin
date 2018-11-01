@@ -53,7 +53,11 @@ public class ServiceController {
             Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
             String app = provider.getApplication();
             String service = provider.getService();
-            String group = map.get(Constants.GROUP_KEY);
+            String group = null;
+            if (service.contains("/")) {
+                group = service.split("/")[0];
+                service = service.split("/")[1];
+            }
             String version = map.get(Constants.VERSION_KEY);
             String url = app + service + group + version;
             if (serviceUrl.contains(url)) {
@@ -105,8 +109,14 @@ public class ServiceController {
     private ServiceDTO createService(Provider provider, Map<String, String> map) {
         ServiceDTO serviceDTO = new ServiceDTO();
         serviceDTO.setAppName(provider.getApplication());
-        serviceDTO.setService(provider.getService());
-        serviceDTO.setGroup(map.get(Constants.GROUP_KEY));
+        String service = provider.getService();
+        String group = null;
+        if (service.contains("/")) {
+            group = service.split("/")[0];
+            service = service.split("/")[1];
+        }
+        serviceDTO.setService(service);
+        serviceDTO.setGroup(group);
         serviceDTO.setVersion(map.get(Constants.VERSION_KEY));
         return serviceDTO;
     }
