@@ -264,13 +264,13 @@
     mounted: function () {
       this.ruleText = this.template
       let query = this.$route.query
-      let service = ''
+      let service = null
       Object.keys(query).forEach(function (key) {
         if (key === 'service') {
           service = query[key]
         }
       })
-      if (service !== '') {
+      if (service !== null) {
         this.filter = service
         this.search(service, false)
       }
