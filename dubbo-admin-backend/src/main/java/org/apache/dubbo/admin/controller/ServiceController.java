@@ -28,9 +28,7 @@ import org.apache.dubbo.admin.registry.common.domain.Provider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
 @RestController
@@ -48,17 +46,27 @@ public class ServiceController {
                                           @RequestParam(required = false) String filter) {
 
         List<Provider> allProviders = providerService.findAll();
+        Set<String> serviceUrl = new HashSet<>();
 
         List<ServiceDTO> result = new ArrayList<>();
         for (Provider provider : allProviders) {
             Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
+            String app = provider.getApplication();
+            String service = provider.getService();
+            String group = map.get(Constants.GROUP_KEY);
+            String version = map.get(Constants.VERSION_KEY);
+            String url = app + service + group + version;
+            if (serviceUrl.contains(url)) {
+                continue;
+            }
             ServiceDTO s = new ServiceDTO();
             if (org.apache.commons.lang3.StringUtils.isEmpty(filter)) {
-                s.setAppName(provider.getApplication());
-                s.setService(provider.getService());
-                s.setGroup(map.get(Constants.GROUP_KEY));
-                s.setVersion(map.get(Constants.VERSION_KEY));
+                s.setAppName(app);
+                s.setService(service);
+                s.setGroup(group);
+                s.setVersion(version);
                 result.add(s);
+                serviceUrl.add(url);
             } else {
                 filter = filter.toLowerCase();
                 String key = null;
@@ -75,6 +83,7 @@ public class ServiceController {
                 }
                 if (key != null && key.contains(filter)) {
                     result.add(createService(provider, map));
+                    serviceUrl.add(url);
                 }
             }
         }
