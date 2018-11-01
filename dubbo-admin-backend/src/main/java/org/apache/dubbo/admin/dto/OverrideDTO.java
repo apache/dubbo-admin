@@ -21,7 +21,7 @@ import java.util.Map;
 
 public class OverrideDTO extends BaseDTO{
 
-    String app;
+    String application;
     String service;
     String address;
     boolean dynamic;
@@ -29,12 +29,12 @@ public class OverrideDTO extends BaseDTO{
     Map<String, Object>[] parameters;
     Map<Object, String>[] mock;
 
-    public String getApp() {
-        return app;
+    public String getApplication() {
+        return application;
     }
 
-    public void setApp(String app) {
-        this.app = app;
+    public void setApplication(String application) {
+        this.application = application;
     }
 
     public String getService() {

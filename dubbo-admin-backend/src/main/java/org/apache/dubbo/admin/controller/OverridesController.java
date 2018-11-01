@@ -49,7 +49,7 @@ public class OverridesController {
         }
         Override override = new Override();
         override.setService(serviceName);
-        override.setApplication(overrideDTO.getApp());
+        override.setApplication(overrideDTO.getApplication());
         override.setAddress(overrideDTO.getAddress());
         override.setEnabled(overrideDTO.isEnabled());
         overrideDTOToParams(override, overrideDTO);
@@ -65,7 +65,7 @@ public class OverridesController {
         }
         Override override = new Override();
         override.setService(overrideDTO.getService());
-        override.setApplication(overrideDTO.getApp());
+        override.setApplication(overrideDTO.getApplication());
         override.setAddress(overrideDTO.getAddress());
         override.setEnabled(overrideDTO.isEnabled());
         overrideDTOToParams(override, overrideDTO);
@@ -85,8 +85,8 @@ public class OverridesController {
         List<OverrideDTO> result = new ArrayList<>();
         for (Override override : overrides) {
             OverrideDTO overrideDTO = new OverrideDTO();
-            overrideDTO.setAddress(override.getAddress());
-            overrideDTO.setApp(override.getApplication());
+            overrideDTO.setAddress(override.getAddress().split(":")[0]);
+            overrideDTO.setApplication(override.getApplication());
             overrideDTO.setEnabled(override.isEnabled());
             overrideDTO.setService(override.getService());
             overrideDTO.setId(override.getHash());
@@ -103,8 +103,8 @@ public class OverridesController {
             throw new ResourceNotFoundException("Unknown ID!");
         }
         OverrideDTO overrideDTO = new OverrideDTO();
-        overrideDTO.setAddress(override.getAddress());
-        overrideDTO.setApp(override.getApplication());
+        overrideDTO.setAddress(override.getAddress().split(":")[0]);
+        overrideDTO.setApplication(override.getApplication());
         overrideDTO.setEnabled(override.isEnabled());
         overrideDTO.setService(override.getService());
         paramsToOverrideDTO(override, overrideDTO);
@@ -158,44 +158,48 @@ public class OverridesController {
                 }
             }
         }
-        int length = params.length();
-        if (params.charAt(length - 1) == '&') {
-            params.deleteCharAt(length - 1);
+        if (StringUtils.isNotEmpty(params)) {
+            int length = params.length();
+            if (params.charAt(length - 1) == '&') {
+                params.deleteCharAt(length - 1);
+            }
         }
         override.setParams(params.toString());
     }
 
     private void paramsToOverrideDTO(Override override, OverrideDTO overrideDTO) {
         String params = override.getParams();
-        List<Map<Object, String>> mock = new ArrayList<>();
-        List<Map<String, Object>> parameters = new ArrayList<>();
-        String[] pair = params.split("&");
-        for (String p : pair) {
-            String key = p.split("=")[0];
-            if (key.contains("mock")) {
-                //mock
-                String value = URL.decode(p.split("=")[1]);
-                Map<Object, String> item = new HashMap<>();
-                if (key.contains(".")) {
-                    //single method mock
-                    key = key.split("\\.")[0];
-                    item.put(key, value);
+        if (StringUtils.isNotEmpty(params)) {
+            List<Map<Object, String>> mock = new ArrayList<>();
+            List<Map<String, Object>> parameters = new ArrayList<>();
+            String[] pair = params.split("&");
+            for (String p : pair) {
+                String key = p.split("=")[0];
+                if (key.contains("mock")) {
+                    //mock
+                    String value = URL.decode(p.split("=")[1]);
+                    Map<Object, String> item = new HashMap<>();
+                    if (key.contains(".")) {
+                        //single method mock
+                        key = key.split("\\.")[0];
+                        item.put(key, value);
+                    } else {
+                        item.put(0, value);
+                    }
+                    mock.add(item);
                 } else {
-                    item.put(0, value);
+                    //parameter
+                    String value = p.split("=")[1];
+                    Map<String, Object> item = new HashMap<>();
+                    item.put(key, value);
+                    parameters.add(item);
                 }
-                mock.add(item);
-            } else {
-                //parameter
-                String value = p.split("=")[1];
-                Map<String, Object> item = new HashMap<>();
-                item.put(key, value);
-                parameters.add(item);
             }
+            Map<Object, String>[] mockArray = new Map[mock.size()];
+            overrideDTO.setMock(mock.toArray(mockArray));
+            Map<String, Object>[] paramArray = new Map[parameters.size()];
+            overrideDTO.setParameters(parameters.toArray(paramArray));
         }
-        Map<Object, String>[] mockArray = new Map[mock.size()];
-        overrideDTO.setMock(mock.toArray(mockArray));
-        Map<String, Object>[] paramArray = new Map[parameters.size()];
-        overrideDTO.setParameters(parameters.toArray(paramArray));
     }
 
 }
