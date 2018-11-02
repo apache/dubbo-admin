@@ -64,7 +64,7 @@
         <v-card-text >
           <v-text-field
             label="Service Unique ID"
-            hint="A service ID is service name"
+            hint="A service ID in form of group/service:version, group and version are optional"
             :rules="[required]"
             v-model="service"
           ></v-text-field>
@@ -125,7 +125,7 @@
       ],
       loadBalances: [
       ],
-      required: value => !!value || 'Service ID is required',
+      required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
       template:
         'methodName: sayHello  # 0 for all methods\n' +
         'strategy:  # leastactive, random, roundrobin',

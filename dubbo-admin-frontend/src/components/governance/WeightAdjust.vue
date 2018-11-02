@@ -64,7 +64,7 @@
         <v-card-text >
           <v-text-field
             label="Service Unique ID"
-            hint="A service ID is service name"
+            hint="A service ID in form of group/service:version, group and version are optional"
             :rules="[required]"
             v-model="service"
           ></v-text-field>
@@ -126,7 +126,7 @@
       ],
       weights: [
       ],
-      required: value => !!value || 'Service ID is required',
+      required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
       template:
         'weight: 100  # 100 for default\n' +
         'provider:   # provider\'s ip\n' +

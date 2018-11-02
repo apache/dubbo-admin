@@ -65,7 +65,7 @@
         <v-card-text >
           <v-text-field
             label="Service Unique ID"
-            hint="A service ID in form of service:version, version is optional"
+            hint="A service ID in form of group/service:version, group and version are optional"
             :rules="[required]"
             v-model="service"
           ></v-text-field>
@@ -129,7 +129,7 @@
       operations: operations,
       routingRules: [
       ],
-      required: value => !!value || 'Service ID is required',
+      required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
       template:
         'enabled: true/false\n' +
         'priority:\n' +

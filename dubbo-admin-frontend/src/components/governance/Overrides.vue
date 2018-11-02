@@ -62,7 +62,7 @@
         <v-card-text >
           <v-text-field
             label="Service Unique ID"
-            hint="A service ID is service name"
+            hint="A service ID in form of group/service:version, group and version are optional"
             :rules="[required]"
             v-model="service"
           ></v-text-field>
@@ -119,7 +119,7 @@
       operations: operations,
       configs: [
       ],
-      required: value => !!value || 'Service ID is Required.',
+      required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
       template:
         'application:  # consumer\'s application name, empty for all \n' +
         'address: 192.168.0.1 # consumer\'s ip address, empty for all consumers\n' +
