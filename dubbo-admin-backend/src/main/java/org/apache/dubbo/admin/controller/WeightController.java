@@ -36,8 +36,12 @@ import java.util.List;
 @RequestMapping("/api/{env}/rules/weight")
 public class WeightController {
 
+    private final OverrideService overrideService;
+
     @Autowired
-    private OverrideService overrideService;
+    public WeightController(OverrideService overrideService) {
+        this.overrideService = overrideService;
+    }
 
     @RequestMapping(method = RequestMethod.POST)
     @ResponseStatus(HttpStatus.CREATED)

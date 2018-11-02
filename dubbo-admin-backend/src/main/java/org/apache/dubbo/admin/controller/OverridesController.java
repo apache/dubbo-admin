@@ -37,8 +37,12 @@ import java.util.Map;
 @RequestMapping("/api/{env}/rules/override")
 public class OverridesController {
 
+    private final OverrideService overrideService;
+
     @Autowired
-    private OverrideService overrideService;
+    public OverridesController(OverrideService overrideService) {
+        this.overrideService = overrideService;
+    }
 
     @RequestMapping(method = RequestMethod.POST)
     @ResponseStatus(HttpStatus.CREATED)
@@ -78,7 +82,7 @@ public class OverridesController {
     public List<OverrideDTO> searchOverride(@RequestParam(required = false) String service, @PathVariable String env) {
         List<Override> overrides;
         if (StringUtils.isEmpty(service)) {
-           overrides = overrideService.findAll();
+            overrides = overrideService.findAll();
         } else {
             overrides = overrideService.findByService(service);
         }
@@ -111,7 +115,7 @@ public class OverridesController {
         return overrideDTO;
     }
 
-    @RequestMapping(value  = "/{id}", method = RequestMethod.DELETE)
+    @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteOverride(@PathVariable String id, @PathVariable String env) {
         overrideService.deleteOverride(id);
         return true;
