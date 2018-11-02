@@ -19,6 +19,7 @@ package org.apache.dubbo.admin.controller;
 
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.utils.StringUtils;
+import com.sun.tools.classfile.ConstantPool;
 import org.apache.dubbo.admin.dto.ServiceDTO;
 import org.apache.dubbo.admin.dto.ServiceDetailDTO;
 import org.apache.dubbo.admin.governance.service.ConsumerService;
@@ -52,12 +53,8 @@ public class ServiceController {
         for (Provider provider : allProviders) {
             Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
             String app = provider.getApplication();
-            String service = provider.getService();
-            String group = null;
-            if (service.contains("/")) {
-                group = service.split("/")[0];
-                service = service.split("/")[1];
-            }
+            String service = map.get(Constants.INTERFACE_KEY);
+            String group = map.get(Constants.GROUP_KEY);
             String version = map.get(Constants.VERSION_KEY);
             String url = app + service + group + version;
             if (serviceUrl.contains(url)) {
@@ -96,6 +93,7 @@ public class ServiceController {
 
     @RequestMapping(value = "/{service}", method = RequestMethod.GET)
     public ServiceDetailDTO serviceDetail(@PathVariable String service) {
+        service = service.replace("*", "/");
         List<Provider> providers = providerService.findByService(service);
 
         List<Consumer> consumers = consumerService.findByService(service);
@@ -109,15 +107,12 @@ public class ServiceController {
     private ServiceDTO createService(Provider provider, Map<String, String> map) {
         ServiceDTO serviceDTO = new ServiceDTO();
         serviceDTO.setAppName(provider.getApplication());
-        String service = provider.getService();
-        String group = null;
-        if (service.contains("/")) {
-            group = service.split("/")[0];
-            service = service.split("/")[1];
-        }
+        String service = map.get(Constants.INTERFACE_KEY);
+        String group = map.get(Constants.GROUP_KEY);
+        String version = map.get(Constants.VERSION_KEY);
         serviceDTO.setService(service);
         serviceDTO.setGroup(group);
-        serviceDTO.setVersion(map.get(Constants.VERSION_KEY));
+        serviceDTO.setVersion(version);
         return serviceDTO;
     }
 

@@ -122,8 +122,6 @@ public class SyncUtils {
         r.setForce(url.getParameter(Constants.FORCE_KEY, false));
         r.setDynamic(url.getParameter(Constants.DYNAMIC_KEY, false));
         r.setRuntime(url.getParameter(Constants.RUNTIME_KEY, false));
-        r.setGroup(url.getParameter(Constants.GROUP_KEY, (String)null));
-        r.setVersion(url.getParameter(Constants.VERSION_KEY, (String)null));
         r.setRule(url.getParameterAndDecoded(Constants.RULE_KEY));
         return r;
     }
