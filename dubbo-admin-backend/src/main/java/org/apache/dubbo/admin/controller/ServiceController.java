@@ -19,7 +19,6 @@ package org.apache.dubbo.admin.controller;
 
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.utils.StringUtils;
-import com.sun.tools.classfile.ConstantPool;
 import org.apache.dubbo.admin.dto.ServiceDTO;
 import org.apache.dubbo.admin.dto.ServiceDetailDTO;
 import org.apache.dubbo.admin.governance.service.ConsumerService;
