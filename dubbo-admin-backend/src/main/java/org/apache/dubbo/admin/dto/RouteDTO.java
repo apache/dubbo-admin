@@ -20,22 +20,13 @@ package org.apache.dubbo.admin.dto;
 public class RouteDTO extends BaseDTO{
     private String app;
     private String service;
-    private String group;
     private boolean dynamic;
     private int priority;
     private boolean enabled;
     private boolean force;
     private boolean runtime;
-    private String version;
     private String[] conditions;
 
-    public String getVersion() {
-        return version;
-    }
-
-    public void setVersion(String version) {
-        this.version = version;
-    }
 
     public String getApp() {
         return app;
@@ -51,14 +42,6 @@ public class RouteDTO extends BaseDTO{
 
     public void setService(String service) {
         this.service = service;
-    }
-
-    public String getGroup() {
-        return group;
-    }
-
-    public void setGroup(String group) {
-        this.group = group;
     }
 
     public boolean isDynamic() {

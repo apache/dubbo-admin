@@ -50,14 +50,7 @@ public class RoutesController {
         }
         if (StringUtils.isNotEmpty(serviceName)) {
             //2.6
-            String version = null;
-            String service = serviceName;
-            if (serviceName.contains(":") && !serviceName.endsWith(":")) {
-                version = serviceName.split(":")[1];
-                service = serviceName.split(":")[0];
-                routeDTO.setService(service);
-                routeDTO.setVersion(version);
-            }
+            routeDTO.setService(serviceName);
 
             Route route = convertRouteDTOtoRoute(routeDTO, null);
             routeService.createRoute(route);
@@ -74,7 +67,6 @@ public class RoutesController {
         if (route == null) {
             throw new ResourceNotFoundException("Unknown ID!");
         }
-        routeDTO.setVersion(route.getVersion());
         routeDTO.setService(route.getService());
         Route newRoute = convertRouteDTOtoRoute(routeDTO, id);
         routeService.updateRoute(newRoute);
@@ -164,10 +156,8 @@ public class RoutesController {
         String[] conditions = routeDTO.getConditions();
         String rule = parseCondition(conditions);
         route.setService(routeDTO.getService());
-        route.setVersion(routeDTO.getVersion());
         route.setEnabled(routeDTO.isEnabled());
         route.setForce(routeDTO.isForce());
-        route.setGroup(routeDTO.getGroup());
         route.setDynamic(routeDTO.isDynamic());
         route.setRuntime(routeDTO.isRuntime());
         route.setPriority(routeDTO.getPriority());
@@ -184,11 +174,9 @@ public class RoutesController {
         routeDTO.setConditions(new String[]{route.getRule()});
         routeDTO.setEnabled(route.isEnabled());
         routeDTO.setForce(route.isForce());
-        routeDTO.setGroup(route.getGroup());
         routeDTO.setPriority(route.getPriority());
         routeDTO.setRuntime(route.isRuntime());
         routeDTO.setService(route.getService());
-        routeDTO.setVersion(route.getVersion());
         if (id != null) {
             routeDTO.setId(route.getHash());
         }

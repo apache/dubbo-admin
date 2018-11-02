@@ -28,7 +28,7 @@
           hide-actions
           hide-headers >
           <template slot="items" slot-scope="props">
-            <td>{{props.item.role}} </td>
+            <td>{{props.item.name}} </td>
             <td>{{props.item.value}}</td>
           </template>
         </v-data-table>
@@ -183,26 +183,34 @@
     },
     mounted: function () {
       let query = this.$route.query
-      let app = ''
-      let service = ''
+      let meta = {
+        'service': '',
+        'app': '',
+        'group': '',
+        'version': ''
+      }
+      var vm = this
       Object.keys(query).forEach(function (key) {
-        if (key === 'app') {
-          app = query[key]
-        }
-        if (key === 'service') {
-          service = query[key]
+        if (key in meta) {
+          meta[key] = query[key]
         }
       })
-      if (service !== '') {
-        this.detail(service)
-        let serviceItem = {}
-        serviceItem.role = 'Service Name'
-        serviceItem.value = service
-        this.basic.push(serviceItem)
-        let appItem = {}
-        appItem.role = 'Application Name'
-        appItem.value = app
-        this.basic.push(appItem)
+      let dataId = meta['service']
+      if (meta['group'] !== '') {
+        dataId = meta['group'] + '*' + dataId
+      }
+      if (meta['version'] !== '') {
+        dataId = dataId + ':' + meta['version']
+      }
+
+      if (dataId !== '') {
+        this.detail(dataId)
+        Object.keys(meta).forEach(function (key) {
+          let item = {}
+          item.value = meta[key]
+          item.name = key.charAt(0).toUpperCase() + key.substr(1)
+          vm.basic.push(item)
+        })
       }
     }
   }

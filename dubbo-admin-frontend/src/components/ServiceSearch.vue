@@ -69,8 +69,10 @@
               <template slot="items" slot-scope="props">
                 <td >{{props.item.service}}</td>
                 <td>{{props.item.group}}</td>
+                <td>{{props.item.version}}</td>
                 <td>{{props.item.appName}}</td>
-                <td class="text-xs-center px-0"><v-btn small color='primary' :href='getHref(props.item.service, props.item.appName)'>Detail</v-btn></td>
+                <td class="text-xs-center px-0"><v-btn small color='primary' :href='getHref(props.item.service, props.item.appName,
+                                                                                            props.item.group, props.item.version)'>Detail</v-btn></td>
               </template>
             </v-data-table>
           </template>
@@ -103,6 +105,11 @@
           align: 'left'
         },
         {
+          text: 'Version',
+          value: 'version',
+          align: 'left'
+        },
+        {
           text: 'Application',
           value: 'application',
           align: 'left'
@@ -130,8 +137,15 @@
       }
     },
     methods: {
-      getHref: function (service, app) {
-        return '/#/serviceDetail?service=' + service + '&app=' + app
+      getHref: function (service, app, group, version) {
+        let query = 'service=' + service + '&app=' + app
+        if (group !== null) {
+          query = query + '&group=' + group
+        }
+        if (version != null) {
+          query = query + '&version=' + version
+        }
+        return '/#/serviceDetail?' + query
       },
       submit () {
         let pattern = this.items[this.selected].value

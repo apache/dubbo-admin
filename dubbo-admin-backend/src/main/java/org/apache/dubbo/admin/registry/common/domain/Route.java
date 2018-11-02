@@ -65,10 +65,6 @@ public class Route extends Entity {
 
     private boolean force;
 
-    private String version;
-
-    private String group;
-
     private boolean dynamic;
 
     private boolean runtime;
@@ -146,22 +142,6 @@ public class Route extends Entity {
         this.runtime = runtime;
     }
 
-    public String getVersion() {
-        return version;
-    }
-
-    public void setVersion(String version) {
-        this.version = version;
-    }
-
-    public String getGroup() {
-        return group;
-    }
-
-    public void setGroup(String group) {
-        this.group = group;
-    }
-
     public boolean isForce() {
         return force;
     }
@@ -231,17 +211,25 @@ public class Route extends Entity {
     }
 
     public URL toUrl() {
-//        if (filterRule != null && filterRule.endsWith("null")) {
-//            filterRule = null;
-//        } else {
-//            filterRule = filterRule.trim();
-//        }
-        return URL.valueOf(Constants.ROUTE_PROTOCOL + "://" + Constants.ANYHOST_VALUE + "/" + getService()
+        String group = null;
+        String version = null;
+        String path = service;
+        int i = path.indexOf("/");
+        if (i > 0) {
+            group = path.substring(0, i);
+            path = path.substring(i + 1);
+        }
+        i = path.lastIndexOf(":");
+        if (i > 0) {
+            version = path.substring(i + 1);
+            path = path.substring(0, i);
+        }
+        return URL.valueOf(Constants.ROUTE_PROTOCOL + "://" + Constants.ANYHOST_VALUE + "/" + path
                 + "?" + Constants.CATEGORY_KEY + "=" + Constants.ROUTERS_CATEGORY
                 + "&router=condition&runtime=" + isRuntime() + "&enabled=" + isEnabled() + "&priority=" + getPriority() + "&force=" + isForce() + "&dynamic=" + isDynamic()
                 + "&name=" + getName() + "&" + Constants.RULE_KEY + "=" + URL.encode(getMatchRule() + " => " + getFilterRule())
-                + (getGroup() == null ? "" : "&" + Constants.GROUP_KEY + "=" + getGroup())
-                + (getVersion() == null ? "" : "&" + Constants.VERSION_KEY + "=" + getVersion()));
+                + (group == null ? "" : "&" + Constants.GROUP_KEY + "=" + group)
+                + (version == null ? "" : "&" + Constants.VERSION_KEY + "=" + version));
     }
 
 }
