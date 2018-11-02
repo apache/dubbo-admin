@@ -21,7 +21,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.dto.RouteDTO;
-import org.apache.dubbo.admin.governance.service.ProviderService;
 import org.apache.dubbo.admin.governance.service.RouteService;
 import org.apache.dubbo.admin.registry.common.domain.Route;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,10 +34,12 @@ import java.util.List;
 @RequestMapping("/api/{env}/rules/route")
 public class RoutesController {
 
+    private final RouteService routeService;
+
     @Autowired
-    private RouteService routeService;
-    @Autowired
-    private ProviderService providerService;
+    public RoutesController(RouteService routeService) {
+        this.routeService = routeService;
+    }
 
     @RequestMapping(method = RequestMethod.POST)
     @ResponseStatus(HttpStatus.CREATED)
@@ -75,10 +76,10 @@ public class RoutesController {
 
     @RequestMapping(method = RequestMethod.GET)
     public List<RouteDTO> searchRoutes(@RequestParam(required = false) String app,
-                                    @RequestParam(required = false) String service, @PathVariable String env) {
+                                       @RequestParam(required = false) String service, @PathVariable String env) {
         List<Route> routes;
         if (StringUtils.isNotEmpty(app)) {
-           // app scope in 2.7
+            // app scope in 2.7
         }
         if (StringUtils.isNotEmpty(service)) {
             routes = routeService.findByService(service);
@@ -162,7 +163,7 @@ public class RoutesController {
         route.setRuntime(routeDTO.isRuntime());
         route.setPriority(routeDTO.getPriority());
         route.setRule(rule);
-        if(id != null) {
+        if (id != null) {
             route.setHash(id);
         }
         return route;

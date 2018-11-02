@@ -25,10 +25,10 @@ import org.apache.dubbo.admin.dto.AccessDTO;
 import org.apache.dubbo.admin.governance.service.RouteService;
 import org.apache.dubbo.admin.registry.common.domain.Route;
 import org.apache.dubbo.admin.registry.common.route.RouteRule;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
-import javax.annotation.Resource;
 import java.text.ParseException;
 import java.util.*;
 
@@ -37,8 +37,12 @@ import java.util.*;
 public class AccessesController {
     private static final Logger logger = LoggerFactory.getLogger(AccessesController.class);
 
-    @Resource
-    private RouteService routeService;
+    private final RouteService routeService;
+
+    @Autowired
+    public AccessesController(RouteService routeService) {
+        this.routeService = routeService;
+    }
 
     @RequestMapping(method = RequestMethod.GET)
     public List<AccessDTO> searchAccess(@RequestParam(required = false) String service, @PathVariable String env) throws ParseException {

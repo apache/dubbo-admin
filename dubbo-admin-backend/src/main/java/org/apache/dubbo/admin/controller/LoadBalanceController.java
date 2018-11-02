@@ -38,8 +38,12 @@ import static org.apache.dubbo.admin.registry.common.util.OverrideUtils.override
 @RequestMapping("/api/{env}/rules/balancing")
 public class LoadBalanceController {
 
+    private final OverrideService overrideService;
+
     @Autowired
-    private OverrideService overrideService;
+    public LoadBalanceController(OverrideService overrideService) {
+        this.overrideService = overrideService;
+    }
 
     @RequestMapping(method = RequestMethod.POST)
     @ResponseStatus(HttpStatus.CREATED)
@@ -99,7 +103,7 @@ public class LoadBalanceController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public BalancingDTO detailLoadBalance(@PathVariable String id, @PathVariable String env) throws ParamValidationException {
-        Override override =  overrideService.findById(id);
+        Override override = overrideService.findById(id);
         if (override == null) {
             throw new ResourceNotFoundException("Unknown ID!");
         }

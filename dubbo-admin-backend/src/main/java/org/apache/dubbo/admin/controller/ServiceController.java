@@ -35,11 +35,14 @@ import java.util.*;
 @RequestMapping("/api/{env}/service")
 public class ServiceController {
 
-    @Autowired
-    private ProviderService providerService;
+    private final ProviderService providerService;
+    private final ConsumerService consumerService;
 
     @Autowired
-    private ConsumerService consumerService;
+    public ServiceController(ProviderService providerService, ConsumerService consumerService) {
+        this.providerService = providerService;
+        this.consumerService = consumerService;
+    }
 
     @RequestMapping(method = RequestMethod.GET)
     public List<ServiceDTO> searchService(@RequestParam String pattern,
