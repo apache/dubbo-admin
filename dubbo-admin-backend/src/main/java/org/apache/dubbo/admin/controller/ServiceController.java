@@ -81,7 +81,7 @@ public class ServiceController {
                         key = provider.getService().toLowerCase();
                         break;
                     case "ip":
-                        key = provider.getService().toLowerCase();
+                        key = provider.getAddress().toLowerCase();
                         break;
                 }
                 if (key != null && key.contains(filter)) {
