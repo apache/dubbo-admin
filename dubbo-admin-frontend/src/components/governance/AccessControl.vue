@@ -86,7 +86,7 @@
         <v-card-text>
           <v-form ref="modalForm">
             <v-text-field label="Service Unique ID"
-                          hint="A service ID in form of service"
+                          hint="A service ID in form of group/service:version, group and version are optional"
                           :rules="[required]"
                           :readonly="modal.id != null"
                           v-model="modal.service" />
@@ -151,7 +151,7 @@ export default {
       }
     ],
     accesses: [],
-    required: value => !!value || 'Service Id is required',
+    required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
     modal: {
       enable: false,
       title: 'Create New',
