@@ -128,7 +128,7 @@
       },
       hint () {
         if (this.selected === 0) {
-          return 'Full qualified class name with service version, e.g. org.apache.dubbo.HelloService:1.0.0'
+          return 'Service ID, org.apache.dubbo.demo.api.DemoService'
         } else if (this.selected === 1) {
           return 'Find all services provided by the target server on the specified IP address'
         } else if (this.selected === 2) {
