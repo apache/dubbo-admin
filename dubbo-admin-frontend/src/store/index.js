@@ -22,7 +22,7 @@ Vue.use(Vuex)
 
 export const store = new Vuex.Store({
   state: {
-    appTitle: 'Dubbo ops'
+    appTitle: 'Dubbo OPS'
   },
   mutations: {},
   actions: {},

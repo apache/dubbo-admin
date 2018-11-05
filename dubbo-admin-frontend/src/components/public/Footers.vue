@@ -16,16 +16,20 @@
   -->
 
 <template>
-  <v-footer fixed app>
-    <span>&copy; 2018</span>
+  <v-footer inset height="auto" class="pa-3 footer-border-top" app>
+    <v-spacer></v-spacer>
+    <span class="caption mr-1"><strong>Copyright</strong> &copy;{{ new Date().getFullYear() }} <strong>The Apache Software Foundation.</strong></span>
   </v-footer>
 </template>
 <script>
   export default {
-    name: 'footers',
-    data: () => ({
-      fixed: true
-    })
+    name: 'footers'
   }
 </script>
+
+<style>
+  .footer-border-top {
+    border-top: solid 1px rgba(0,0,0,.12);
+  }
+</style>
 
