@@ -24,11 +24,10 @@
     app
     v-model="drawer"
   >
-
     <v-toolbar color="primary darken-1" dark>
       <img src="@/assets/logo.png" width="24" height="24"/>
       <v-toolbar-title class="ml-0 pl-3">
-        <span class="hidden-sm-and-down white--text">Dubbo Admin</span>
+        <span class="hidden-sm-and-down white--text">{{ $store.state.appTitle }}</span>
       </v-toolbar-title>
     </v-toolbar>
 

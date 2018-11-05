@@ -22,11 +22,7 @@
     <v-content>
       <router-view/>
     </v-content>
-    <v-footer height="auto" class="white pa-3 app--footer">
-      <span class="caption">Dubbo Admin</span>
-      <v-spacer></v-spacer>
-      <span class="caption mr-1">Copyright &copy; {{ new Date().getFullYear() }} The Apache Software Foundation.</span>
-    </v-footer>
+    <footers></footers>
   </v-app>
 </template>
 <script>
@@ -42,27 +38,11 @@
     },
     data () {
       return {
-        clipped: false,
-        fixed: false,
-        dark: false,
-        items: [{
-          icon: 'bubble_chart',
-          title: 'Inspire'
-        }],
-        miniVariant: false,
-        right: true
+        dark: false
       }
     },
     created () {
       window.getApp = this
-      window.getApp.$on('CHANGE_THEME', () => {
-        this.dark = (!this.dark)
-      })
-    },
-    computed: {
-      appTitle () {
-        return this.$store.state.appTitle
-      }
     },
     name: 'App'
   }
