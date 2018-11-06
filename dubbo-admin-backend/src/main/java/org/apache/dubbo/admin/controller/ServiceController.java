@@ -46,7 +46,7 @@ public class ServiceController {
 
     @RequestMapping(method = RequestMethod.GET)
     public List<ServiceDTO> searchService(@RequestParam String pattern,
-                                          @RequestParam(required = false) String filter) {
+                                          @RequestParam(required = false) String filter,@PathVariable String env) {
 
         List<Provider> allProviders = providerService.findAll();
         Set<String> serviceUrl = new HashSet<>();
@@ -94,7 +94,7 @@ public class ServiceController {
     }
 
     @RequestMapping(value = "/{service}", method = RequestMethod.GET)
-    public ServiceDetailDTO serviceDetail(@PathVariable String service) {
+    public ServiceDetailDTO serviceDetail(@PathVariable String service, @PathVariable String env) {
         service = service.replace("*", "/");
         List<Provider> providers = providerService.findByService(service);
 
