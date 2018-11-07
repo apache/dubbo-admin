@@ -74,8 +74,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="blue darken-1" flat @click.native="closeDialog">Close</v-btn>
-          <v-btn color="blue darken-1" flat @click.native="saveItem">Save</v-btn>
+          <v-btn color="darken-1" flat @click.native="closeDialog">Close</v-btn>
+          <v-btn color="primary darken-1" depressed @click.native="saveItem">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -86,8 +86,8 @@
         <v-card-text >{{this.warnText}}</v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="green darken-1" flat @click.native="closeWarn">CANCLE</v-btn>
-          <v-btn color="green darken-1" flat @click.native="deleteItem(warnStatus.id)">CONFIRM</v-btn>
+          <v-btn color="darken-1" flat @click.native="closeWarn">CANCLE</v-btn>
+          <v-btn color="primary darken-1" depressed @click.native="deleteItem(warnStatus.id)">CONFIRM</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>

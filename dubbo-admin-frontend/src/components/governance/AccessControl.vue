@@ -99,8 +99,8 @@
           <v-btn color="darken-1"
                  flat
                  @click="closeModal()">Close</v-btn>
-          <v-btn color="green darken-1"
-                 flat
+          <v-btn color="primary"
+                 depressed
                  @click="modal.click">{{ modal.saveBtn }}</v-btn>
         </v-card-actions>
       </v-card>
@@ -114,11 +114,11 @@
         <v-card-text>{{this.confirm.text}}</v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="red darken-1"
+          <v-btn color="darken-1"
                  flat
                  @click="confirm.enable = false">Disagree</v-btn>
-          <v-btn color="green darken-1"
-                 flat
+          <v-btn color="primary"
+                 depressed
                  @click="deleteItem(confirm.id)">Agree</v-btn>
         </v-card-actions>
       </v-card>
