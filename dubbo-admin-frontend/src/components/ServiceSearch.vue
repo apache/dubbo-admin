@@ -23,11 +23,19 @@
           <v-card-text>
             <v-form>
               <v-layout row wrap>
-                  <v-text-field label="Search dubbo services"
-                                :hint="hint"
-                                :suffix="queryBy"
-                                v-model="filter"></v-text-field>
-
+                <v-autocomplete
+                  :loading="loading"
+                  :items="typeAhead"
+                  :search-input.sync="input"
+                  v-model="filter"
+                  flat
+                  append-icon=""
+                  hide-no-data
+                  :suffix="queryBy"
+                  :hint="hint"
+                  open-on-clear
+                  label="Search Dubbo Services"
+                ></v-autocomplete>
                   <v-menu class="hidden-xs-only">
                     <v-btn slot="activator" large icon>
                       <v-icon>unfold_more</v-icon>
@@ -90,7 +98,12 @@
         {id: 1, title: 'IP', value: 'ip'},
         {id: 2, title: 'application', value: 'application'}
       ],
+      loading: false,
       selected: 0,
+      serviceItem: [],
+      input: null,
+      appItem: [],
+      typeAhead: [],
       services: [],
       filter: '',
       headers: [
@@ -136,7 +149,31 @@
         }
       }
     },
+    watch: {
+      input (val) {
+        console.log(val)
+        console.log(this.typeAhead)
+        if (val === undefined || val === '' || val === null || val.length < 5) {
+          this.filter = null
+          this.typeAhead = []
+          return
+        }
+        val && val !== this.select && this.querySelections(val)
+      }
+    },
     methods: {
+      querySelections (v) {
+        // this.loading = true
+        if (this.selected === 0) {
+          this.typeAhead = this.serviceItem.filter(e => {
+            return (e || '').toLowerCase().indexOf((v || '').toLowerCase()) > -1
+          })
+        } else if (this.selected === 2) {
+          this.typeAhead = this.appItem.filter(e => {
+            return (e || '').toLowerCase().indexOf((v || '').toLowerCase()) > -1
+          })
+        }
+      },
       getHref: function (service, app, group, version) {
         let query = 'service=' + service + '&app=' + app
         if (group !== null) {
@@ -169,6 +206,7 @@
       let query = this.$route.query
       let filter = null
       let pattern = null
+      let vm = this
       Object.keys(query).forEach(function (key) {
         if (key === 'filter') {
           filter = query[key]
@@ -188,6 +226,17 @@
         }
         this.search(filter, pattern, false)
       }
+      this.$axios.get('/service', {
+        params: {
+          pattern: 'serviceName'
+        }
+      }).then(response => {
+        let length = response.data.length
+        for (let i = 0; i < length; i++) {
+          vm.serviceItem.push(response.data[i].service)
+          vm.appItem.push(response.data[i].appName)
+        }
+      })
     }
 
   }
