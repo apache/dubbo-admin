@@ -227,7 +227,7 @@ public class SyncUtils {
                 String value = e.getValue();
 
                 if (ADDRESS_FILTER_KEY.equals(key)) {
-                    if (!value.equals(url.getAddress())) {
+                    if (!value.equals(url.getIp())) {
                         match = false;
                         break;
                     }

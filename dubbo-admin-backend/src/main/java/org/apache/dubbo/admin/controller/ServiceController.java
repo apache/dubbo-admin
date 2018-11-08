@@ -29,6 +29,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 @RestController
@@ -45,50 +47,55 @@ public class ServiceController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public List<ServiceDTO> searchService(@RequestParam String pattern,
-                                          @RequestParam(required = false) String filter,@PathVariable String env) {
+    public Set<ServiceDTO> searchService(@RequestParam String pattern,
+                                         @RequestParam String filter,@PathVariable String env) {
 
-        List<Provider> allProviders = providerService.findAll();
-        Set<String> serviceUrl = new HashSet<>();
+        List<Provider> providers = new ArrayList<>();
+        if (!filter.contains("*") && !filter.contains("?")) {
+            if (pattern.equals("ip")) {
+                providers = providerService.findByAddress(filter);
+            } else if (pattern.equals("serviceName")) {
+                providers = providerService.findByService(filter);
+            } else if (pattern.equals("application")) {
+                providers = providerService.findByApplication(filter);
+            }
+        } else {
+            List<String> candidates = Collections.emptyList();
+            if (pattern.equals("serviceName")) {
+               candidates = providerService.findServices();
+            } else if (pattern.equals("application")) {
+                candidates = providerService.findApplications();
+            }
+            filter = filter.toLowerCase().replace(".", "\\.");
+            if (filter.startsWith("*")) {
+                filter = "." + filter;
+            }
+            Pattern regex = Pattern.compile(filter);
+            for (String candidate : candidates) {
+                Matcher matcher = regex.matcher(candidate);
+                if (matcher.matches() || matcher.lookingAt()) {
+                    if (pattern.equals("serviceName")) {
+                        providers.addAll(providerService.findByService(candidate));
+                    } else {
+                        providers.addAll(providerService.findByApplication(candidate));
+                    }
+                }
+            }
+        }
 
-        List<ServiceDTO> result = new ArrayList<>();
-        for (Provider provider : allProviders) {
+        Set<ServiceDTO> result = new TreeSet<>();
+        for (Provider provider : providers) {
             Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
             String app = provider.getApplication();
             String service = map.get(Constants.INTERFACE_KEY);
             String group = map.get(Constants.GROUP_KEY);
             String version = map.get(Constants.VERSION_KEY);
-            String url = app + service + group + version;
-            if (serviceUrl.contains(url)) {
-                continue;
-            }
             ServiceDTO s = new ServiceDTO();
-            if (org.apache.commons.lang3.StringUtils.isEmpty(filter)) {
-                s.setAppName(app);
-                s.setService(service);
-                s.setGroup(group);
-                s.setVersion(version);
-                result.add(s);
-                serviceUrl.add(url);
-            } else {
-                filter = filter.toLowerCase();
-                String key = null;
-                switch (pattern) {
-                    case "application":
-                        key = provider.getApplication().toLowerCase();
-                        break;
-                    case "serviceName":
-                        key = provider.getService().toLowerCase();
-                        break;
-                    case "ip":
-                        key = provider.getAddress().toLowerCase();
-                        break;
-                }
-                if (key != null && key.contains(filter)) {
-                    result.add(createService(provider, map));
-                    serviceUrl.add(url);
-                }
-            }
+            s.setAppName(app);
+            s.setService(service);
+            s.setGroup(group);
+            s.setVersion(version);
+            result.add(s);
         }
         return result;
     }
@@ -105,17 +112,4 @@ public class ServiceController {
         serviceDetailDTO.setProviders(providers);
         return serviceDetailDTO;
     }
-
-    private ServiceDTO createService(Provider provider, Map<String, String> map) {
-        ServiceDTO serviceDTO = new ServiceDTO();
-        serviceDTO.setAppName(provider.getApplication());
-        String service = map.get(Constants.INTERFACE_KEY);
-        String group = map.get(Constants.GROUP_KEY);
-        String version = map.get(Constants.VERSION_KEY);
-        serviceDTO.setService(service);
-        serviceDTO.setGroup(group);
-        serviceDTO.setVersion(version);
-        return serviceDTO;
-    }
-
 }

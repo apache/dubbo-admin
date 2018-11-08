@@ -17,7 +17,9 @@
 
 package org.apache.dubbo.admin.dto;
 
-public class ServiceDTO {
+import org.apache.commons.lang3.StringUtils;
+
+public class ServiceDTO implements Comparable<ServiceDTO>{
     private String service;
     private String appName;
     private String group;
@@ -53,5 +55,20 @@ public class ServiceDTO {
 
     public void setVersion(String version) {
         this.version = version;
+    }
+
+    @Override
+    public int compareTo(ServiceDTO o) {
+        int result = StringUtils.trimToEmpty(appName).compareTo(StringUtils.trimToEmpty(o.getAppName()));
+        if (result == 0) {
+            result = StringUtils.trimToEmpty(service).compareTo(StringUtils.trimToEmpty(o.getService()));
+            if (result == 0) {
+                result = StringUtils.trimToEmpty(group).compareTo(StringUtils.trimToEmpty(o.getGroup()));
+            }
+            if (result == 0) {
+                result = StringUtils.trimToEmpty(version).compareTo(StringUtils.trimToEmpty(o.getVersion()));
+            }
+        }
+        return result;
     }
 }
