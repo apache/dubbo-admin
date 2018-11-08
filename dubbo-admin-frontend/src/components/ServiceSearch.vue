@@ -23,7 +23,8 @@
           <v-card-text>
             <v-form>
               <v-layout row wrap>
-                <v-autocomplete
+                <v-combobox
+                  id="serviceSearch"
                   :loading="loading"
                   :items="typeAhead"
                   :search-input.sync="input"
@@ -33,9 +34,8 @@
                   hide-no-data
                   :suffix="queryBy"
                   :hint="hint"
-                  open-on-clear
                   label="Search Dubbo Services"
-                ></v-autocomplete>
+                ></v-combobox>
                   <v-menu class="hidden-xs-only">
                     <v-btn slot="activator" large icon>
                       <v-icon>unfold_more</v-icon>
@@ -151,10 +151,7 @@
     },
     watch: {
       input (val) {
-        console.log(val)
-        console.log(this.typeAhead)
-        if (val === undefined || val === '' || val === null || val.length < 5) {
-          this.filter = null
+        if (val === undefined || val === '' || val === null || val.length < 4) {
           this.typeAhead = []
           return
         }
@@ -163,16 +160,20 @@
     },
     methods: {
       querySelections (v) {
-        // this.loading = true
-        if (this.selected === 0) {
-          this.typeAhead = this.serviceItem.filter(e => {
-            return (e || '').toLowerCase().indexOf((v || '').toLowerCase()) > -1
-          })
-        } else if (this.selected === 2) {
-          this.typeAhead = this.appItem.filter(e => {
-            return (e || '').toLowerCase().indexOf((v || '').toLowerCase()) > -1
-          })
-        }
+        this.loading = true
+        // Simulated ajax query
+        setTimeout(() => {
+          if (this.selected === 0) {
+            this.typeAhead = this.serviceItem.filter(e => {
+              return (e || '').toLowerCase().indexOf((v || '').toLowerCase()) > -1
+            })
+          } else if (this.selected === 2) {
+            this.typeAhead = this.appItem.filter(e => {
+              return (e || '').toLowerCase().indexOf((v || '').toLowerCase()) > -1
+            })
+          }
+          this.loading = false
+        }, 500)
       },
       getHref: function (service, app, group, version) {
         let query = 'service=' + service + '&app=' + app
@@ -185,8 +186,13 @@
         return '/#/serviceDetail?' + query
       },
       submit () {
-        let pattern = this.items[this.selected].value
-        this.search(this.filter, pattern, true)
+        this.filter = document.querySelector('#serviceSearch').value.trim()
+        if (this.filter) {
+          let pattern = this.items[this.selected].value
+          this.search(this.filter, pattern, true)
+        } else {
+          return false
+        }
       },
       search: function (filter, pattern, rewrite) {
         this.$axios.get('/service', {
@@ -228,7 +234,8 @@
       }
       this.$axios.get('/service', {
         params: {
-          pattern: 'serviceName'
+          pattern: 'serviceName',
+          filter: '*'
         }
       }).then(response => {
         let length = response.data.length
