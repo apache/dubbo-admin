@@ -98,6 +98,7 @@
         {id: 1, title: 'IP', value: 'ip'},
         {id: 2, title: 'application', value: 'application'}
       ],
+      timerID: null,
       loading: false,
       selected: 0,
       serviceItem: [],
@@ -151,28 +152,32 @@
     },
     watch: {
       input (val) {
-        if (val === undefined || val === '' || val === null || val.length < 4) {
-          this.typeAhead = []
-          return
-        }
-        val && val !== this.select && this.querySelections(val)
+        this.querySelections(val)
       }
     },
     methods: {
       querySelections (v) {
-        this.loading = true
+        if (this.timerID) {
+          clearTimeout(this.timerID)
+        }
         // Simulated ajax query
-        setTimeout(() => {
-          if (this.selected === 0) {
-            this.typeAhead = this.serviceItem.filter(e => {
-              return (e || '').toLowerCase().indexOf((v || '').toLowerCase()) > -1
-            })
-          } else if (this.selected === 2) {
-            this.typeAhead = this.appItem.filter(e => {
-              return (e || '').toLowerCase().indexOf((v || '').toLowerCase()) > -1
-            })
+        this.timerID = setTimeout(() => {
+          if (v && v.length >= 4) {
+            this.loading = true
+            if (this.selected === 0) {
+              this.typeAhead = this.serviceItem.filter(e => {
+                return (e || '').toLowerCase().indexOf((v || '').toLowerCase()) > -1
+              })
+            } else if (this.selected === 2) {
+              this.typeAhead = this.appItem.filter(e => {
+                return (e || '').toLowerCase().indexOf((v || '').toLowerCase()) > -1
+              })
+            }
+            this.loading = false
+            this.timerID = null
+          } else {
+            this.typeAhead = []
           }
-          this.loading = false
         }, 500)
       },
       getHref: function (service, app, group, version) {
