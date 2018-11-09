@@ -142,11 +142,11 @@
       },
       hint () {
         if (this.selected === 0) {
-          return 'Service ID, org.apache.dubbo.demo.api.DemoService'
+          return 'Service ID, org.apache.dubbo.demo.api.DemoService, * for all services'
         } else if (this.selected === 1) {
           return 'Find all services provided by the target server on the specified IP address'
         } else if (this.selected === 2) {
-          return 'Input an application name to find all services provided by one particular application.'
+          return 'Input an application name to find all services provided by one particular application, * for all'
         }
       }
     },
