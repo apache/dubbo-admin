@@ -35,6 +35,7 @@
                   :suffix="queryBy"
                   :hint="hint"
                   label="Search Dubbo Services"
+                  @keyup.enter="submit"
                 ></v-combobox>
                   <v-menu class="hidden-xs-only">
                     <v-btn slot="activator" large icon>
@@ -245,6 +246,7 @@
       }).then(response => {
         let length = response.data.length
         for (let i = 0; i < length; i++) {
+          vm.services.push(response.data[i])
           vm.serviceItem.push(response.data[i].service)
           vm.appItem.push(response.data[i].appName)
         }
