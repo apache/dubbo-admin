@@ -202,17 +202,23 @@
             weight.id = this.updateId
             this.$axios.put('/rules/weight/' + weight.id, weight)
               .then(response => {
-                this.search(this.service, true)
-                this.filter = this.service
-                this.closeDialog()
+                if (response.status === 200) {
+                  this.search(this.service, true)
+                  this.filter = this.service
+                  this.closeDialog()
+                  this.$notify.success('Update success')
+                }
               })
           }
         } else {
           this.$axios.post('/rules/weight', weight)
             .then(response => {
-              this.search(this.service, true)
-              this.filter = this.service
-              this.closeDialog()
+              if (response.status === 200) {
+                this.search(this.service, true)
+                this.filter = this.service
+                this.closeDialog()
+                this.$notify.success('Create success')
+              }
             })
         }
       },
@@ -253,8 +259,11 @@
       deleteItem: function (warnStatus) {
         this.$axios.delete('/rules/weight/' + warnStatus.id)
           .then(response => {
-            this.warn = false
-            this.search(this.filter, false)
+            if (response.status === 200) {
+              this.warn = false
+              this.search(this.filter, false)
+              this.$notify.success('Delete success')
+            }
           })
       }
     },
