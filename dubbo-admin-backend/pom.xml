@@ -53,7 +53,7 @@
         </dependency>
 
         <dependency>
-            <groupId>com.alibaba</groupId>
+            <groupId>org.apache.dubbo</groupId>
             <artifactId>dubbo</artifactId>
             <exclusions>
                 <exclusion>
@@ -61,6 +61,11 @@
                     <groupId>org.jboss.netty</groupId>
                 </exclusion>
             </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.dubbo</groupId>
+            <artifactId>dubbo-metadata-report-api</artifactId>
         </dependency>
 
         <dependency>

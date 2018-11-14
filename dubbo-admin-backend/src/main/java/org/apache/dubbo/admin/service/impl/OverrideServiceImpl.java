@@ -16,8 +16,8 @@
  */
 package org.apache.dubbo.admin.service.impl;
 
-import com.alibaba.dubbo.common.Constants;
-import com.alibaba.dubbo.common.URL;
+import org.apache.dubbo.common.Constants;
+import org.apache.dubbo.common.URL;
 import org.apache.dubbo.admin.service.OverrideService;
 import org.apache.dubbo.admin.common.util.Pair;
 import org.apache.dubbo.admin.common.util.SyncUtils;
@@ -151,36 +151,6 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
 
     private URL getUrlFromOverride(Override override) {
         return override.toUrl();
-        /*Map<String, String> params = ConvertUtil.serviceName2Map(override.getService());
-        if(!params.containsKey(Constants.INTERFACE_KEY)) {
-            throw new IllegalArgumentException("No interface info");
-        }
-        if(!params.containsKey(Constants.VERSION_KEY)) {
-            throw new IllegalArgumentException("No version info");
-        }
-        
-        boolean enabled = override.isEnabled();
-        if(!enabled) {
-            params.put("enabled", "false");
-        }
-        String application = override.getApplication();
-        if(!StringUtils.isEmpty(application)) {
-            params.put("application", application);
-        }
-        String address = override.getAddress();
-        if(!StringUtils.isEmpty(address)) {
-            params.put("address", address);
-        }
-        
-        String overrideAddress = override.getOverrideAddress();
-        if(StringUtils.isEmpty(overrideAddress)) {
-            overrideAddress = "0.0.0.0";
-        }
-        params.put(Constants.CATEGORY_KEY, Constants.CONFIGURATORS_CATEGORY);
-        
-        URL url = new URL("override", overrideAddress, -1, params);
-        url = url.addParameterString(override.getParams());
-        return url;*/
     }
 
     URL findOverrideUrl(String id) {

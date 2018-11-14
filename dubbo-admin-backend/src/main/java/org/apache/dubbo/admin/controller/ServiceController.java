@@ -17,8 +17,8 @@
 
 package org.apache.dubbo.admin.controller;
 
-import com.alibaba.dubbo.common.Constants;
-import com.alibaba.dubbo.common.utils.StringUtils;
+import org.apache.dubbo.common.Constants;
+import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.admin.model.dto.ServiceDTO;
 import org.apache.dubbo.admin.model.dto.ServiceDetailDTO;
 import org.apache.dubbo.admin.service.ConsumerService;

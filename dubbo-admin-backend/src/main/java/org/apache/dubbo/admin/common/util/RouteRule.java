@@ -16,7 +16,7 @@
  */
 package org.apache.dubbo.admin.common.util;
 
-import com.alibaba.dubbo.common.utils.StringUtils;
+import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.admin.model.domain.Route;
 
 import java.text.ParseException;

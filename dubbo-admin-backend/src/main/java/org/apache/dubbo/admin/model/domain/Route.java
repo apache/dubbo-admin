@@ -16,8 +16,8 @@
  */
 package org.apache.dubbo.admin.model.domain;
 
-import com.alibaba.dubbo.common.Constants;
-import com.alibaba.dubbo.common.URL;
+import org.apache.dubbo.common.Constants;
+import org.apache.dubbo.common.URL;
 
 import java.util.List;
 
