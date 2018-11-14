@@ -224,20 +224,22 @@
             rule.id = this.updateId
             this.$axios.put('/rules/route/' + rule.id, rule)
               .then(response => {
-                if (response.data) {
+                if (response.status === 200) {
                   this.search(this.service, true)
+                  this.closeDialog()
+                  this.$notify.success('Update success')
                 }
-                this.closeDialog()
               })
           }
         } else {
           this.$axios.post('/rules/route/', rule)
             .then(response => {
-              if (response.data) {
+              if (response.status === 201) {
                 this.search(this.service, true)
                 this.filter = this.service
+                this.closeDialog()
+                this.$notify.success('Create success')
               }
-              this.closeDialog()
             })
             .catch(error => {
               console.log(error)
@@ -299,20 +301,29 @@
         if (operation === 'delete') {
           this.$axios.delete('/rules/route/' + id)
             .then(response => {
-              this.warn = false
-              this.search(this.filter, false)
+              if (response.status === 200) {
+                this.warn = false
+                this.search(this.filter, false)
+                this.$notify.success('Delete success')
+              }
             })
         } else if (operation === 'disable') {
           this.$axios.put('/rules/route/disable/' + id)
             .then(response => {
-              this.warn = false
-              this.search(this.filter, false)
+              if (response.status === 200) {
+                this.warn = false
+                this.search(this.filter, false)
+                this.$notify.success('Disable success')
+              }
             })
         } else if (operation === 'enable') {
           this.$axios.put('/rules/route/enable/' + id)
             .then(response => {
-              this.warn = false
-              this.search(this.filter, false)
+              if (response.status === 200) {
+                this.warn = false
+                this.search(this.filter, false)
+                this.$notify.success('Enable success')
+              }
             })
         }
       }
