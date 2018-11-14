@@ -35,6 +35,7 @@ English version goes [here](README.md).
           </snapshots>
       </repository>
    ``` 
+* 在项目根目录(incubator-dubbo-ops)第一次构建需要强制更新: `mvn -Dmaven.test.skip=true clean -U package`   
 
 
 ### 生产环境配置  

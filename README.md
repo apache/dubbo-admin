@@ -34,6 +34,7 @@
          </snapshots>
      </repository>
    ``` 
+* force update under root path(incubator-dubbo-ops) for the first building: `mvn -Dmaven.test.skip=true clean -U package`
 
 
 ### Production Setup
