@@ -42,7 +42,7 @@
 	<properties>
 		<main.basedir>${project.basedir}</main.basedir>
         <commons-lang3-version>3.7</commons-lang3-version>
-		<dubbo-version>2.6.4</dubbo-version>
+		<dubbo-version>2.7.0-SNAPSHOT</dubbo-version>
 		<curator-version>2.12.0</curator-version>
 		<fastjson-version>1.2.46</fastjson-version>
 		<springfox-swagger-version>2.9.2</springfox-swagger-version>
@@ -59,7 +59,13 @@
 			</dependency>
 
 			<dependency>
-				<groupId>com.alibaba</groupId>
+				<groupId>org.apache.dubbo</groupId>
+				<artifactId>dubbo-metadata-report-api</artifactId>
+                <version>${dubbo-version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.dubbo</groupId>
 				<artifactId>dubbo</artifactId>
 				<version>${dubbo-version}</version>
 			</dependency>

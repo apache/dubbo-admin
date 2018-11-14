@@ -16,9 +16,9 @@
  */
 package org.apache.dubbo.admin.common.util;
 
-import com.alibaba.dubbo.common.Constants;
-import com.alibaba.dubbo.common.URL;
-import com.alibaba.dubbo.common.utils.StringUtils;
+import org.apache.dubbo.common.Constants;
+import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.admin.model.domain.Consumer;
 import org.apache.dubbo.admin.model.domain.Override;
 import org.apache.dubbo.admin.model.domain.Provider;

@@ -17,7 +17,7 @@
 
 package org.apache.dubbo.admin.controller;
 
-import com.alibaba.dubbo.common.URL;
+import org.apache.dubbo.common.URL;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;

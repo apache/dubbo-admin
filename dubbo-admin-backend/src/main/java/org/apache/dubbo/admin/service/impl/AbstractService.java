@@ -16,10 +16,10 @@
  */
 package org.apache.dubbo.admin.service.impl;
 
-import com.alibaba.dubbo.common.URL;
-import com.alibaba.dubbo.common.logger.Logger;
-import com.alibaba.dubbo.common.logger.LoggerFactory;
-import com.alibaba.dubbo.registry.RegistryService;
+import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
+import org.apache.dubbo.registry.RegistryService;
 import org.apache.dubbo.admin.service.RegistryServerSync;
 import org.springframework.beans.factory.annotation.Autowired;
 
