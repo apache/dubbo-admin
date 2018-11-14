@@ -14,19 +14,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.dubbo.admin.service;
 
-package org.apache.dubbo.admin;
+import org.apache.dubbo.admin.model.domain.Override;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ApplicationContext;
+import java.util.List;
 
-@SpringBootApplication
-public class DubboAdminApplication {
+public interface OverrideService {
 
-	public static void main(String[] args) {
-		ApplicationContext act = SpringApplication.run(DubboAdminApplication.class, args);
+    void saveOverride(Override override);
 
+    void updateOverride(Override override);
 
-	}
+    void deleteOverride(String id);
+
+    void enableOverride(String id);
+
+    void disableOverride(String id);
+
+    List<Override> findByService(String service);
+
+    List<Override> findByAddress(String address);
+
+    List<Override> findByServiceAndAddress(String service, String address);
+
+    List<Override> findByApplication(String application);
+
+    List<Override> findByServiceAndApplication(String service, String application);
+
+    List<Override> findAll();
+
+    Override findById(String id);
+
 }

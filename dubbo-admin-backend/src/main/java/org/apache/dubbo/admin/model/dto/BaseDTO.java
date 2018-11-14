@@ -14,19 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.dubbo.admin.model.dto;
 
-package org.apache.dubbo.admin;
+/**
+ * BaseDTO
+ *
+ * For receive ID parameter with @RequestBody
+ */
+public abstract class BaseDTO {
+    private String id;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ApplicationContext;
+    public String getId() {
+        return id;
+    }
 
-@SpringBootApplication
-public class DubboAdminApplication {
-
-	public static void main(String[] args) {
-		ApplicationContext act = SpringApplication.run(DubboAdminApplication.class, args);
-
-
-	}
+    public void setId(String id) {
+        this.id = id;
+    }
 }

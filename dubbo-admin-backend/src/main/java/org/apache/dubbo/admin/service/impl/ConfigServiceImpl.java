@@ -14,19 +14,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.dubbo.admin.service.impl;
 
-package org.apache.dubbo.admin;
+import org.apache.dubbo.admin.service.ConfigService;
+import org.apache.dubbo.admin.model.domain.Config;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ApplicationContext;
+import java.util.List;
+import java.util.Map;
 
-@SpringBootApplication
-public class DubboAdminApplication {
+/**
+ * TODO Comment of IbatisConfigDAO
+ *
+ */
+public class ConfigServiceImpl extends AbstractService implements ConfigService {
 
-	public static void main(String[] args) {
-		ApplicationContext act = SpringApplication.run(DubboAdminApplication.class, args);
+    /* (non-Javadoc)
+     * @see com.alibaba.dubbo.governance.service.ConfigService#update(java.util.List)
+     */
+    public void update(List<Config> configs) {
+        // TODO Auto-generated method stub
 
+    }
 
-	}
+    /* (non-Javadoc)
+     * @see com.alibaba.dubbo.governance.service.ConfigService#findAllConfigsMap()
+     */
+    public Map<String, String> findAllConfigsMap() {
+        // TODO Auto-generated method stub
+        return null;
+    }
 }

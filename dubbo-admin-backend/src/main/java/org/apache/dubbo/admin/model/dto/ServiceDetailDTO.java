@@ -15,18 +15,31 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin;
+package org.apache.dubbo.admin.model.dto;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ApplicationContext;
+import org.apache.dubbo.admin.model.domain.Consumer;
+import org.apache.dubbo.admin.model.domain.Provider;
 
-@SpringBootApplication
-public class DubboAdminApplication {
+import java.util.List;
 
-	public static void main(String[] args) {
-		ApplicationContext act = SpringApplication.run(DubboAdminApplication.class, args);
+public class ServiceDetailDTO {
 
+    List<Provider> providers;
+    List<Consumer> consumers;
 
-	}
+    public List<Provider> getProviders() {
+        return providers;
+    }
+
+    public void setProviders(List<Provider> providers) {
+        this.providers = providers;
+    }
+
+    public List<Consumer> getConsumers() {
+        return consumers;
+    }
+
+    public void setConsumers(List<Consumer> consumers) {
+        this.consumers = consumers;
+    }
 }

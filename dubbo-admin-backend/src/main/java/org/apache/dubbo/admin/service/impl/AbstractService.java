@@ -14,30 +14,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.dubbo.admin.governance.util;
+package org.apache.dubbo.admin.service.impl;
 
-import org.apache.dubbo.admin.common.util.UrlUtils;
-import org.junit.Assert;
-import org.junit.Test;
+import com.alibaba.dubbo.common.URL;
+import com.alibaba.dubbo.common.logger.Logger;
+import com.alibaba.dubbo.common.logger.LoggerFactory;
+import com.alibaba.dubbo.registry.RegistryService;
+import org.apache.dubbo.admin.service.RegistryServerSync;
+import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
 
-public class UrlUtilsTest {
+/**
+ * IbatisDAO
+ *
+ */
+public class AbstractService {
 
-    @Test
-    public void testParamsMapToString() {
-        Map<String, String[]> params = new HashMap<>();
-        params.put("a", new String[]{"1", "2", "3"});
-        params.put("b", new String[]{"8", "7", "6"});
-        String result = UrlUtils.paramsMapToString(params);
-        Assert.assertEquals(result, "&a=1,2,3&b=8,7,6");
+    protected static final Logger logger = LoggerFactory.getLogger(AbstractService.class);
+    @Autowired
+    protected RegistryService registryService;
+    @Autowired
+    private RegistryServerSync sync;
+
+    public ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>> getRegistryCache() {
+        return sync.getRegistryCache();
     }
 
-    @Test
-    public void testArrayToString() {
-        String[] strArr = {"1", "2", "3"};
-        String result = UrlUtils.arrayToString(strArr);
-        Assert.assertEquals(result, "1,2,3");
-    }
 }

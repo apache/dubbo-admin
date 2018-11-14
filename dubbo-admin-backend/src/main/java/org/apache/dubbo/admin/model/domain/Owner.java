@@ -14,19 +14,50 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.dubbo.admin.model.domain;
 
-package org.apache.dubbo.admin;
+public class Owner extends Entity {
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ApplicationContext;
+    private static final long serialVersionUID = -4891350118145794727L;
 
-@SpringBootApplication
-public class DubboAdminApplication {
+    /**
+     * wildcards allowed
+     */
+    private String service;
 
-	public static void main(String[] args) {
-		ApplicationContext act = SpringApplication.run(DubboAdminApplication.class, args);
+    private String username;
 
+    private User user;
 
-	}
+    public Owner() {
+    }
+
+    public Owner(Long id) {
+        super(id);
+    }
+
+    public String getService() {
+        return service;
+    }
+
+    public void setService(String service) {
+        this.service = service;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
 }

@@ -15,18 +15,35 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin;
+package org.apache.dubbo.admin.model.dto;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ApplicationContext;
+public class WeightDTO extends BaseDTO{
 
-@SpringBootApplication
-public class DubboAdminApplication {
+    private String service;
+    private int weight;
+    private String[] provider;
 
-	public static void main(String[] args) {
-		ApplicationContext act = SpringApplication.run(DubboAdminApplication.class, args);
+    public String getService() {
+        return service;
+    }
 
+    public void setService(String service) {
+        this.service = service;
+    }
 
-	}
+    public int getWeight() {
+        return weight;
+    }
+
+    public void setWeight(int weight) {
+        this.weight = weight;
+    }
+
+    public String[] getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String[] provider) {
+        this.provider = provider;
+    }
 }
