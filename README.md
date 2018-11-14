@@ -18,6 +18,23 @@
 
 * Standard spring boot project
 
+**NOTICE** this branch is based on Dubbo 2.7-SNAPSHOT, since this version is not published yet, you need to add a repository to get this dependency: 
+*  add configuration below to your maven `settings.xml` file, in `<repositories>` section:
+
+   ```xml
+     <repository>
+         <id>apache.snapshots.https</id>
+         <name>Apache Development Snapshot Repository</name>
+         <url>https://repository.apache.org/content/repositories/snapshots</url>
+         <releases>
+             <enabled>false</enabled>
+         </releases>
+         <snapshots>
+             <enabled>true</enabled>
+         </snapshots>
+     </repository>
+   ``` 
+
 
 ### Production Setup
 

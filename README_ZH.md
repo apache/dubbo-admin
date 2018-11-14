@@ -19,6 +19,23 @@ English version goes [here](README.md).
 
 * 标准spring boot工程  
 
+**注意** 本分支依赖Dubbo2.7-SNAPSHOT版本，该Dubbo版本还未正式发布，因此需要在maven中增加一个仓库配置来获得此依赖。
+* 在maven的配置文件`settings.xml`中，`<repositories>`部分内增加如下配置:  
+
+    ```xml
+      <repository>
+          <id>apache.snapshots.https</id>
+          <name>Apache Development Snapshot Repository</name>
+          <url>https://repository.apache.org/content/repositories/snapshots</url>
+          <releases>
+              <enabled>false</enabled>
+          </releases>
+          <snapshots>
+              <enabled>true</enabled>
+          </snapshots>
+      </repository>
+   ``` 
+
 
 ### 生产环境配置  
 
