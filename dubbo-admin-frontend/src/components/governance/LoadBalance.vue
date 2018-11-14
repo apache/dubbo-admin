@@ -200,19 +200,23 @@
             balancing.id = this.updateId
             this.$axios.put('/rules/balancing/' + balancing.id, balancing)
               .then(response => {
-                this.search(this.service, true)
-                this.filter = this.service
-                this.closeDialog()
+                if (response.status === 200) {
+                  this.search(this.service, true)
+                  this.filter = this.service
+                  this.closeDialog()
+                  this.$notify.success('Update success')
+                }
               })
           }
         } else {
           this.$axios.post('/rules/balancing', balancing)
             .then(response => {
-              if (response.data) {
+              if (response.status === 201) {
                 this.search(this.service, true)
                 this.filter = this.service
+                this.closeDialog()
+                this.$notify.success('Create success')
               }
-              this.closeDialog()
             })
         }
       },
@@ -254,8 +258,11 @@
       deleteItem: function (id) {
         this.$axios.delete('/rules/balancing/' + id)
           .then(response => {
-            this.warn = false
-            this.search(this.filter, false)
+            if (response.status === 200) {
+              this.warn = false
+              this.search(this.filter, false)
+              this.$notify.success('Delete success')
+            }
           })
       }
     },
