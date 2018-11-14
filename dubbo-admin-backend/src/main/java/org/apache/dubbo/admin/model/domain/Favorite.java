@@ -14,19 +14,47 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.dubbo.admin.model.domain;
 
-package org.apache.dubbo.admin;
+public class Favorite extends Entity {
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ApplicationContext;
+    private static final long serialVersionUID = -1281982267153430266L;
 
-@SpringBootApplication
-public class DubboAdminApplication {
+    private String name;
 
-	public static void main(String[] args) {
-		ApplicationContext act = SpringApplication.run(DubboAdminApplication.class, args);
+    private String url;
 
+    private String username;
 
-	}
+    public Favorite() {
+    }
+
+    public Favorite(Long id) {
+        super(id);
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
 }

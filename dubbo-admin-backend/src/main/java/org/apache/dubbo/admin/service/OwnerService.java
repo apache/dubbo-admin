@@ -14,19 +14,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.dubbo.admin.service;
 
-package org.apache.dubbo.admin;
+import org.apache.dubbo.admin.model.domain.Owner;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ApplicationContext;
+import java.util.List;
 
-@SpringBootApplication
-public class DubboAdminApplication {
+public interface OwnerService {
 
-	public static void main(String[] args) {
-		ApplicationContext act = SpringApplication.run(DubboAdminApplication.class, args);
+    List<String> findAllServiceNames();
 
+    List<String> findServiceNamesByUsername(String username);
 
-	}
+    List<String> findUsernamesByServiceName(String serviceName);
+
+    List<Owner> findByService(String serviceName);
+
+    List<Owner> findAll();
+
+    Owner findById(String id);
+
+    void saveOwner(Owner owner);
+
+    void deleteOwner(Owner owner);
+
 }

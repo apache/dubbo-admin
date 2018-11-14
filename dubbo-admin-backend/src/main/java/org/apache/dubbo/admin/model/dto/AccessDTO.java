@@ -14,19 +14,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.dubbo.admin.model.dto;
 
-package org.apache.dubbo.admin;
+import java.util.Set;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ApplicationContext;
+public class AccessDTO extends BaseDTO {
+    // BlackWhiteList key
+    public static final String KEY_BLACK_WHITE_LIST = "blackwhitelist";
 
-@SpringBootApplication
-public class DubboAdminApplication {
+    private String service;
+    private Set<String> whitelist;
+    private Set<String> blacklist;
 
-	public static void main(String[] args) {
-		ApplicationContext act = SpringApplication.run(DubboAdminApplication.class, args);
+    public String getService() {
+        return service;
+    }
 
+    public void setService(String service) {
+        this.service = service;
+    }
 
-	}
+    public Set<String> getWhitelist() {
+        return whitelist;
+    }
+
+    public void setWhitelist(Set<String> whitelist) {
+        this.whitelist = whitelist;
+    }
+
+    public Set<String> getBlacklist() {
+        return blacklist;
+    }
+
+    public void setBlacklist(Set<String> blacklist) {
+        this.blacklist = blacklist;
+    }
 }

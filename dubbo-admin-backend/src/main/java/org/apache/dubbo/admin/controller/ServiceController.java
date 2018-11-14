@@ -19,12 +19,12 @@ package org.apache.dubbo.admin.controller;
 
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.utils.StringUtils;
-import org.apache.dubbo.admin.dto.ServiceDTO;
-import org.apache.dubbo.admin.dto.ServiceDetailDTO;
-import org.apache.dubbo.admin.governance.service.ConsumerService;
-import org.apache.dubbo.admin.governance.service.ProviderService;
-import org.apache.dubbo.admin.registry.common.domain.Consumer;
-import org.apache.dubbo.admin.registry.common.domain.Provider;
+import org.apache.dubbo.admin.model.dto.ServiceDTO;
+import org.apache.dubbo.admin.model.dto.ServiceDetailDTO;
+import org.apache.dubbo.admin.service.ConsumerService;
+import org.apache.dubbo.admin.service.ProviderService;
+import org.apache.dubbo.admin.model.domain.Consumer;
+import org.apache.dubbo.admin.model.domain.Provider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 

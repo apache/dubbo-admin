@@ -14,19 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.dubbo.admin.service;
 
-package org.apache.dubbo.admin;
+import org.apache.dubbo.admin.model.domain.Config;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ApplicationContext;
+import java.util.List;
+import java.util.Map;
 
-@SpringBootApplication
-public class DubboAdminApplication {
+/**
+ * TODO Comment of ConfigDAO
+ *
+ */
+public interface ConfigService {
 
-	public static void main(String[] args) {
-		ApplicationContext act = SpringApplication.run(DubboAdminApplication.class, args);
+    void update(List<Config> configs);
 
+    Map<String, String> findAllConfigsMap();
 
-	}
 }

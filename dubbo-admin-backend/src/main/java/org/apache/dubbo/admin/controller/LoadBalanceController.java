@@ -20,11 +20,11 @@ package org.apache.dubbo.admin.controller;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
-import org.apache.dubbo.admin.dto.BalancingDTO;
-import org.apache.dubbo.admin.governance.service.OverrideService;
-import org.apache.dubbo.admin.registry.common.domain.LoadBalance;
-import org.apache.dubbo.admin.registry.common.domain.Override;
-import org.apache.dubbo.admin.registry.common.util.OverrideUtils;
+import org.apache.dubbo.admin.model.dto.BalancingDTO;
+import org.apache.dubbo.admin.service.OverrideService;
+import org.apache.dubbo.admin.model.domain.LoadBalance;
+import org.apache.dubbo.admin.model.domain.Override;
+import org.apache.dubbo.admin.common.util.OverrideUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -32,7 +32,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.apache.dubbo.admin.registry.common.util.OverrideUtils.overrideToLoadBalance;
+import static org.apache.dubbo.admin.common.util.OverrideUtils.overrideToLoadBalance;
 
 @RestController
 @RequestMapping("/api/{env}/rules/balancing")

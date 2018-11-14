@@ -15,18 +15,35 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin;
+package org.apache.dubbo.admin.model.dto;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ApplicationContext;
+public class BalancingDTO extends BaseDTO{
 
-@SpringBootApplication
-public class DubboAdminApplication {
+    private String service;
+    private String methodName;
+    private String strategy;
 
-	public static void main(String[] args) {
-		ApplicationContext act = SpringApplication.run(DubboAdminApplication.class, args);
+    public String getService() {
+        return service;
+    }
 
+    public void setService(String service) {
+        this.service = service;
+    }
 
-	}
+    public String getMethodName() {
+        return methodName;
+    }
+
+    public void setMethodName(String methodName) {
+        this.methodName = methodName;
+    }
+
+    public String getStrategy() {
+        return strategy;
+    }
+
+    public void setStrategy(String strategy) {
+        this.strategy = strategy;
+    }
 }

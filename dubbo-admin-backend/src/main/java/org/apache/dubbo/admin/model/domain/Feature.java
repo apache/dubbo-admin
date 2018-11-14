@@ -14,19 +14,49 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.dubbo.admin.model.domain;
 
-package org.apache.dubbo.admin;
+/**
+ * System features
+ */
+public class Feature extends Entity {
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.ApplicationContext;
+    private static final long serialVersionUID = 3246619851259746169L;
 
-@SpringBootApplication
-public class DubboAdminApplication {
+    private String name;
 
-	public static void main(String[] args) {
-		ApplicationContext act = SpringApplication.run(DubboAdminApplication.class, args);
+    private boolean enabled;
 
+    private String username;
 
-	}
+    public Feature() {
+    }
+
+    public Feature(Long id) {
+        super(id);
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public boolean getEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
 }
