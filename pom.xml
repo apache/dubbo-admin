@@ -62,10 +62,16 @@
 		<springfox-swagger-version>2.9.2</springfox-swagger-version>
 		<netty-version>4.1.30.Final</netty-version>
 		<jacoco-version>0.8.2</jacoco-version>
+		<jedis-version>2.9.0</jedis-version>
 	</properties>
 
 	<dependencyManagement>
         <dependencies>
+			<dependency>
+				<groupId>redis.clients</groupId>
+				<artifactId>jedis</artifactId>
+				<version>${jedis-version}</version>
+			</dependency>
 			<dependency>
 				<groupId>org.apache.commons</groupId>
 				<artifactId>commons-lang3</artifactId>
