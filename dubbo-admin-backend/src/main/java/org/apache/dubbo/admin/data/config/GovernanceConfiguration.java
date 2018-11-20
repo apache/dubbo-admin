@@ -1,6 +1,6 @@
 package org.apache.dubbo.admin.data.config;
 
-import org.apache.dubbo.governance.DynamicConfiguration;
+import org.apache.dubbo.configcenter.DynamicConfiguration;
 
 
 public interface GovernanceConfiguration extends DynamicConfiguration {
