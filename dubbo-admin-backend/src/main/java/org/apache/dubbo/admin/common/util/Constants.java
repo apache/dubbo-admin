@@ -41,6 +41,7 @@ public class Constants {
     public static final String BALANCING = "balancing";
     public static final String SERVICE = "service";
     public static final String APPLICATION = "application";
+    public static final String IP = "ip";
     public static final Set<String> CONFIGS = new HashSet<>();
 
     static {
