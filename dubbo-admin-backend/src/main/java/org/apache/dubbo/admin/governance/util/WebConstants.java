@@ -40,9 +40,17 @@ public class WebConstants {
     /**
      * Service name
      */
-    public static final String SERVICE_NAME = "serviceName";
+    public static final String SERVICE_NAME_KEY = "serviceName";
     /**
-     * Service name
+     * application
+     */
+    public static final String APPLICATION_KEY = "application";
+    /**
+     * ip
+     */
+    public static final String IP_KEY = "ip";
+    /**
+     * entry
      */
     public static final String ENTRY = "entry";
     /**

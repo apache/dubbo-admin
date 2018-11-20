@@ -19,26 +19,26 @@ package org.apache.dubbo.admin.governance.service.impl;
 import com.alibaba.dubbo.common.Constants;
 import com.alibaba.dubbo.common.URL;
 import com.alibaba.dubbo.common.utils.StringUtils;
+import org.apache.dubbo.admin.dto.ServiceDTO;
 import org.apache.dubbo.admin.governance.service.OverrideService;
 import org.apache.dubbo.admin.governance.service.ProviderService;
 import org.apache.dubbo.admin.governance.sync.util.Pair;
 import org.apache.dubbo.admin.governance.sync.util.SyncUtils;
+import org.apache.dubbo.admin.governance.util.WebConstants;
 import org.apache.dubbo.admin.registry.common.domain.Override;
 import org.apache.dubbo.admin.registry.common.domain.Provider;
 import org.apache.dubbo.admin.registry.common.route.ParseUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * IbatisProviderService
- *
  */
 @Component
 public class ProviderServiceImpl extends AbstractService implements ProviderService {
@@ -468,6 +468,71 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
             String key = ret.entrySet().iterator().next().getKey();
             return new Pair<String, URL>(key, ret.get(key));
         }
+    }
+
+    public Set<ServiceDTO> getServiceDTOS(String pattern, String filter, String env) {
+        List<Provider> providers = new ArrayList<>();
+        if (!filter.contains("*") && !filter.contains("?")) {
+            // filter with specific string
+            if (WebConstants.IP_KEY.equals(pattern)) {
+                providers = findByAddress(filter);
+            } else if (WebConstants.SERVICE_NAME_KEY.equals(pattern)) {
+                providers = findByService(filter);
+            } else if (WebConstants.APPLICATION_KEY.equals(pattern)) {
+                providers = findByApplication(filter);
+            }
+        } else {
+            // filter with fuzzy search
+            List<String> candidates = Collections.emptyList();
+            if (WebConstants.SERVICE_NAME_KEY.equals(pattern)) {
+                candidates = findServices();
+            } else if (WebConstants.APPLICATION_KEY.equals(pattern)) {
+                candidates = findApplications();
+            }
+            // replace dot symbol and asterisk symbol to java-based regex pattern
+            filter = filter.toLowerCase().replace(".", "\\.");
+            if (filter.startsWith("*")) {
+                filter = "." + filter;
+            }
+            Pattern regex = Pattern.compile(filter, Pattern.CASE_INSENSITIVE); // search with no case insensitive
+            for (String candidate : candidates) {
+                Matcher matcher = regex.matcher(candidate);
+                if (matcher.matches() || matcher.lookingAt()) {
+                    if (WebConstants.SERVICE_NAME_KEY.equals(pattern)) {
+                        providers.addAll(findByService(candidate));
+                    } else {
+                        providers.addAll(findByApplication(candidate));
+                    }
+                }
+            }
+        }
+
+        Set<ServiceDTO> result = convertProviders2DTO(providers);
+        return result;
+    }
+
+    /**
+     * Convert provider list to ServiceDTO list
+     *
+     * @param providers list of providers
+     * @return ServiceDTO list of front page
+     */
+    public Set<ServiceDTO> convertProviders2DTO(List<Provider> providers) {
+        Set<ServiceDTO> result = new TreeSet<>();
+        for (Provider provider : providers) {
+            Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
+            String app = provider.getApplication();
+            String service = map.get(Constants.INTERFACE_KEY);
+            String group = map.get(Constants.GROUP_KEY);
+            String version = map.get(Constants.VERSION_KEY);
+            ServiceDTO s = new ServiceDTO();
+            s.setAppName(app);
+            s.setService(service);
+            s.setGroup(group);
+            s.setVersion(version);
+            result.add(s);
+        }
+        return result;
     }
 
 }
