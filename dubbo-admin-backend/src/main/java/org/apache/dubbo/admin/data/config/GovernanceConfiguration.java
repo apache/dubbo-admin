@@ -1,13 +1,18 @@
 package org.apache.dubbo.admin.data.config;
 
-import org.apache.dubbo.configcenter.DynamicConfiguration;
+import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.extension.SPI;
 
 
-public interface GovernanceConfiguration extends DynamicConfiguration {
+@SPI("zookeeper")
+public interface GovernanceConfiguration {
+    void init();
+
+    void setUrl(URL url);
+
+    URL getUrl();
     String setConfig(String key, String value);
 
-    String setConfig(String key, String group, String value);
-
-    String setConfig(String key, String group, int timeout, String value);
+    String getConfig(String key);
 
 }
