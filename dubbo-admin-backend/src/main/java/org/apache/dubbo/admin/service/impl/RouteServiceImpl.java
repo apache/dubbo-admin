@@ -37,7 +37,7 @@ import java.util.Map;
 public class RouteServiceImpl extends AbstractService implements RouteService {
 
     public void createRoute(Route route) {
-        registryService.register(route.toUrl());
+        registry.register(route.toUrl());
     }
 
     public void updateRoute(Route route) {
@@ -50,8 +50,8 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
             throw new IllegalStateException("Route was changed!");
         }
 
-        registryService.unregister(oldRoute);
-        registryService.register(route.toUrl());
+        registry.unregister(oldRoute);
+        registry.register(route.toUrl());
     }
 
     public void deleteRoute(String id) {
@@ -59,7 +59,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         if (oldRoute == null) {
             throw new IllegalStateException("Route was changed!");
         }
-        registryService.unregister(oldRoute);
+        registry.unregister(oldRoute);
     }
 
     public void enableRoute(String id) {
@@ -75,9 +75,9 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
             return;
         }
 
-        registryService.unregister(oldRoute);
+        registry.unregister(oldRoute);
         URL newRoute = oldRoute.addParameter("enabled", true);
-        registryService.register(newRoute);
+        registry.register(newRoute);
 
     }
 
@@ -95,8 +95,8 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         }
 
         URL newRoute = oldRoute.addParameter("enabled", false);
-        registryService.unregister(oldRoute);
-        registryService.register(newRoute);
+        registry.unregister(oldRoute);
+        registry.register(newRoute);
 
     }
 
