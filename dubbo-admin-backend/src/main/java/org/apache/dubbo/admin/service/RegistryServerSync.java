@@ -23,7 +23,7 @@ import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.common.utils.NetUtils;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.registry.NotifyListener;
-import org.apache.dubbo.registry.RegistryService;
+import org.apache.dubbo.registry.Registry;
 import org.apache.dubbo.admin.common.util.MD5Util;
 import org.apache.dubbo.admin.common.util.Tool;
 import org.springframework.beans.factory.DisposableBean;
@@ -64,7 +64,7 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
     private final ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>>
         registryCache = new ConcurrentHashMap<>();
     @Autowired
-    private RegistryService registryService;
+    private Registry registry;
 
     public ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>> getRegistryCache() {
         return registryCache;
@@ -72,11 +72,11 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
 
     public void afterPropertiesSet() throws Exception {
         logger.info("Init Dubbo Admin Sync Cache...");
-        registryService.subscribe(SUBSCRIBE, this);
+        registry.subscribe(SUBSCRIBE, this);
     }
 
     public void destroy() throws Exception {
-        registryService.unsubscribe(SUBSCRIBE, this);
+        registry.unsubscribe(SUBSCRIBE, this);
     }
 
     // Notification of of any service with any type (override、subcribe、route、provider) is full.

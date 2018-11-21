@@ -48,7 +48,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
 
     public void create(Provider provider) {
         URL url = provider.toUrl();
-        registryService.register(url);
+        registry.register(url);
     }
 
     public void enableProvider(String id) {
@@ -207,7 +207,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         if (oldProvider == null) {
             throw new IllegalStateException("Provider was changed!");
         }
-        registryService.unregister(oldProvider);
+        registry.unregister(oldProvider);
     }
 
     public void updateProvider(Provider provider) {
@@ -222,8 +222,8 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         }
         URL newProvider = provider.toUrl();
 
-        registryService.unregister(oldProvider);
-        registryService.register(newProvider);
+        registry.unregister(oldProvider);
+        registry.register(newProvider);
     }
 
     public Provider findProvider(String id) {
