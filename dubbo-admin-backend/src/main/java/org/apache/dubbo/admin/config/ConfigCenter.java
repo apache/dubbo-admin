@@ -85,6 +85,8 @@ public class ConfigCenter {
         MetaDataCollector metaDataCollector = null;
         if (metadataUrl != null) {
             metaDataCollector = ExtensionLoader.getExtensionLoader(MetaDataCollector.class).getExtension(metadataUrl.getProtocol());
+            metaDataCollector.setUrl(metadataUrl);
+            metaDataCollector.init();
         }
         return metaDataCollector;
     }
