@@ -22,6 +22,7 @@ import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.common.util.Pair;
 import org.apache.dubbo.admin.common.util.SyncUtils;
 import org.apache.dubbo.admin.model.domain.Consumer;
+import org.apache.dubbo.metadata.identifier.ConsumerMetadataIdentifier;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -47,6 +48,11 @@ public class ConsumerServiceImpl extends AbstractService implements ConsumerServ
 
     public List<Consumer> findAll() {
         return SyncUtils.url2ConsumerList(findAllConsumerUrl());
+    }
+
+    @Override
+    public String getConsumerMetadata(ConsumerMetadataIdentifier consumerIdentifier) {
+        return metaDataCollector.getConsumerMetaData(consumerIdentifier);
     }
 
     private Map<String, URL> findAllConsumerUrl() {

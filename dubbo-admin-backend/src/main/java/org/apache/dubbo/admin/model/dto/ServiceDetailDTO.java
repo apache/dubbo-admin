@@ -19,6 +19,7 @@ package org.apache.dubbo.admin.model.dto;
 
 import org.apache.dubbo.admin.model.domain.Consumer;
 import org.apache.dubbo.admin.model.domain.Provider;
+import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
 
 import java.util.List;
 
@@ -26,6 +27,9 @@ public class ServiceDetailDTO {
 
     List<Provider> providers;
     List<Consumer> consumers;
+
+    FullServiceDefinition metadata;
+
 
     public List<Provider> getProviders() {
         return providers;
@@ -41,5 +45,13 @@ public class ServiceDetailDTO {
 
     public void setConsumers(List<Consumer> consumers) {
         this.consumers = consumers;
+    }
+
+    public FullServiceDefinition getMetadata() {
+        return metadata;
+    }
+
+    public void setMetadata(FullServiceDefinition metadata) {
+        this.metadata = metadata;
     }
 }

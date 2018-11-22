@@ -42,6 +42,8 @@ public interface RouteService {
 
     List<Route> findByService(String serviceName);
 
+    List<Route> findByApplication(String application);
+
     List<Route> findByAddress(String address);
 
     List<Route> findByServiceAndAddress(String service, String address);
