@@ -91,10 +91,10 @@
         <v-data-table
           class="elevation-1"
           :headers="metaHeaders"
-          :items="metadata">
+          :items="methodMetaData">
           <template slot="items" slot-scope="props">
-            <td>{{props.item.method}}</td>
-            <td>{{props.item.parameter}}</td>
+            <td>{{props.item.name}}</td>
+            <td>{{getParameters(props.item.parameterTypes)}}</td>
             <td>{{props.item.returnType}}</td>
           </template>
         </v-data-table>
@@ -163,7 +163,7 @@
       },
       providerDetails: [],
       consumerDetails: [],
-      metadata: [],
+      methodMetaData: [],
       basic: []
     }),
     methods: {
@@ -172,6 +172,9 @@
             .then(response => {
               this.providerDetails = response.data.providers
               this.consumerDetails = response.data.consumers
+              if (response.data.metadata !== null) {
+                this.methodMetaData = response.data.metadata.methods
+              }
             })
       },
       getIp: function (address) {
@@ -179,6 +182,13 @@
       },
       getPort: function (address) {
         return address.split(':')[1]
+      },
+      getParameters: function (parameterTypes) {
+        let result = ''
+        for (let i = 0; i < parameterTypes.length; i++) {
+          result = result + parameterTypes[i] + ' '
+        }
+        return result.trim()
       }
     },
     mounted: function () {
