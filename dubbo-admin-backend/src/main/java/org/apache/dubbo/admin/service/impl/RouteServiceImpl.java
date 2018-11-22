@@ -138,6 +138,11 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         return SyncUtils.filterFromCategory(getRegistryCache(), filter);
     }
 
+    @Override
+    public List<Route> findByApplication(String application) {
+        return null;
+    }
+
     public List<Route> findByService(String serviceName) {
         return SyncUtils.url2RouteList(findRouteUrl(serviceName, null, false));
     }

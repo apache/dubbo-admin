@@ -1,5 +1,6 @@
 package org.apache.dubbo.admin.config;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.data.config.GovernanceConfiguration;
 import org.apache.dubbo.admin.data.metadata.MetaDataCollector;
@@ -42,7 +43,7 @@ public class ConfigCenter {
     @Bean("governanceConfiguration")
     GovernanceConfiguration getDynamicConfiguration() {
         if (configCenter != null) {
-            configCenterUrl = formUrl(configCenter);
+            configCenterUrl = formUrl(configCenter, group);
             GovernanceConfiguration dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(configCenterUrl.getProtocol());
             dynamicConfiguration.setUrl(configCenterUrl);
             dynamicConfiguration.init();
@@ -51,9 +52,9 @@ public class ConfigCenter {
 
             Arrays.stream(config.split("\n")).forEach( s -> {
                 if(s.startsWith(Constants.REGISTRY_ADDRESS)) {
-                    registryUrl = formUrl(s.split("=")[1].trim());
+                    registryUrl = formUrl(s.split("=")[1].trim(), group);
                 } else if (s.startsWith(Constants.METADATA_ADDRESS)) {
-                    metadataUrl = formUrl(s.split("=")[1].trim());
+                    metadataUrl = formUrl(s.split("=")[1].trim(), group);
                 }
             });
             return dynamicConfiguration;
@@ -88,12 +89,15 @@ public class ConfigCenter {
         return metaDataCollector;
     }
 
-    private URL formUrl(String config) {
+    private URL formUrl(String config, String group) {
         String protocol = config.split("://")[0];
         String address = config.split("://")[1];
         String port = address.split(":")[1];
         String host = address.split(":")[0];
-        return new URL(protocol, host, Integer.parseInt(port));
+        URL url = new URL(protocol, host, Integer.parseInt(port));
+        if (StringUtils.isNotEmpty(group)) {
+            url.addParameter(org.apache.dubbo.common.Constants.GROUP_KEY, group);
+        }
+        return url;
     }
-
 }

@@ -26,6 +26,7 @@ import org.apache.dubbo.admin.common.util.SyncUtils;
 import org.apache.dubbo.admin.model.domain.Override;
 import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.common.util.ParseUtils;
+import org.apache.dubbo.metadata.identifier.ProviderMetadataIdentifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -86,6 +87,11 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
             oldProvider.setEnabled(true);
             updateProvider(oldProvider);
         }
+    }
+
+    @java.lang.Override
+    public String getProviderMetaData(ProviderMetadataIdentifier providerIdentifier) {
+        return metaDataCollector.getProviderMetaData(providerIdentifier);
     }
 
     public void disableProvider(String id) {
