@@ -31,8 +31,12 @@ public class ZookeeperMetaDataCollector implements MetaDataCollector {
 
     @Override
     public void init() {
+        String group = url.getParameter(Constants.GROUP_KEY, DEFAULT_ROOT);
+        if (!group.startsWith(Constants.PATH_SEPARATOR)) {
+            group = Constants.PATH_SEPARATOR + group;
+        }
+        root = group;
         client = CuratorFrameworkFactory.newClient(url.getAddress(), new ExponentialBackoffRetry(1000, 3));
-        root = url.getParameter(Constants.GROUP_KEY) == null ? DEFAULT_ROOT : url.getParameter(Constants.GROUP_KEY);
         client.start();
     }
 
