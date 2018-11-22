@@ -17,6 +17,7 @@
 package org.apache.dubbo.admin.service.impl;
 
 import org.apache.dubbo.admin.data.config.GovernanceConfiguration;
+import org.apache.dubbo.admin.data.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
@@ -42,6 +43,9 @@ public class AbstractService {
 
     @Autowired
     protected GovernanceConfiguration dynamicConfiguration;
+
+    @Autowired
+    protected MetaDataCollector metaDataCollector;
 
     @Autowired
     private RegistryServerSync sync;
