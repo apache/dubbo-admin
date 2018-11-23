@@ -94,7 +94,9 @@
           :items="methodMetaData">
           <template slot="items" slot-scope="props">
             <td>{{props.item.name}}</td>
-            <td>{{getParameters(props.item.parameterTypes)}}</td>
+            <td>
+              <v-chip v-for="(type, index) in props.item.parameterTypes" :key="type.id" label>{{type}}</v-chip>
+            </td>
             <td>{{props.item.returnType}}</td>
           </template>
         </v-data-table>
