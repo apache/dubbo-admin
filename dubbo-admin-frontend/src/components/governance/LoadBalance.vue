@@ -68,6 +68,11 @@
             :rules="[required]"
             v-model="service"
           ></v-text-field>
+          <v-text-field
+            label="Application Name"
+            hint="Application name the service belongs to"
+            v-model="application"
+          ></v-text-field>
           <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
           <ace-editor v-model="ruleText" :readonly="readonly"/>
 
@@ -271,7 +276,7 @@
     },
     mounted: function () {
       this.ruleText = this.template
-      let query = this.$route.query
+      let query = this.$conditionRoute.query
       let service = null
       Object.keys(query).forEach(function (key) {
         if (key === 'service') {

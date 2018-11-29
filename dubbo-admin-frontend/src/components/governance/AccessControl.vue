@@ -90,6 +90,12 @@
                           :rules="[required]"
                           :readonly="modal.id != null"
                           v-model="modal.service" />
+            <v-text-field
+              label="Application Name"
+              hint="Application name the service belongs to"
+              :readonly="modal.id != null"
+              v-model="modal.application"
+            ></v-text-field>
             <v-subheader class="pa-0 mt-3">BLACK/WHITE LIST CONTENT</v-subheader>
             <ace-editor v-model="modal.content" />
           </v-form>
@@ -159,6 +165,7 @@ export default {
       click: () => {},
       id: null,
       service: null,
+      application: null,
       content: '',
       template:
         'blacklist:\n' +
@@ -276,7 +283,7 @@ export default {
     }
   },
   mounted () {
-    let query = this.$route.query
+    let query = this.$conditionRoute.query
     if ('service' in query) {
       this.filter = query['service']
       this.search()

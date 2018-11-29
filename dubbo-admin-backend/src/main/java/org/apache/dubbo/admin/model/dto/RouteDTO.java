@@ -17,31 +17,21 @@
 
 package org.apache.dubbo.admin.model.dto;
 
-public class RouteDTO extends BaseDTO{
-    private String app;
-    private String service;
+public abstract class RouteDTO extends BaseDTO{
     private boolean dynamic;
     private int priority;
     private boolean enabled;
     private boolean force;
     private boolean runtime;
-    private String[] conditions;
+    private String application;
 
 
-    public String getApp() {
-        return app;
+    public String getApplication() {
+        return application;
     }
 
-    public void setApp(String app) {
-        this.app = app;
-    }
-
-    public String getService() {
-        return service;
-    }
-
-    public void setService(String service) {
-        this.service = service;
+    public void setApplication(String application) {
+        this.application = application;
     }
 
     public boolean isDynamic() {
@@ -82,13 +72,5 @@ public class RouteDTO extends BaseDTO{
 
     public void setRuntime(boolean runtime) {
         this.runtime = runtime;
-    }
-
-    public String[] getConditions() {
-        return conditions;
-    }
-
-    public void setConditions(String[] conditions) {
-        this.conditions = conditions;
     }
 }

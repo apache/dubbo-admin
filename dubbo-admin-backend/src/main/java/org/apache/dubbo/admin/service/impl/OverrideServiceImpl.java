@@ -16,17 +16,15 @@
  */
 package org.apache.dubbo.admin.service.impl;
 
-import org.apache.dubbo.common.Constants;
-import org.apache.dubbo.common.URL;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.service.OverrideService;
-import org.apache.dubbo.admin.common.util.Pair;
-import org.apache.dubbo.admin.common.util.SyncUtils;
 import org.apache.dubbo.admin.model.domain.Override;
 import org.springframework.stereotype.Component;
+import org.yaml.snakeyaml.Yaml;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+
 
 /**
  * IbatisOverrideDAO.java
@@ -34,127 +32,81 @@ import java.util.Map;
  */
 @Component
 public class OverrideServiceImpl extends AbstractService implements OverrideService {
+    private String prefix = Constants.CONFIG_KEY;
+    Yaml yaml = new Yaml();
 
+    @java.lang.Override
     public void saveOverride(Override override) {
-        URL url = getUrlFromOverride(override);
-        registry.register(url);
+        String path = getPath(override.getKey());
+        dynamicConfiguration.setConfig(path, yaml.dump(override));
     }
 
+    @java.lang.Override
     public void updateOverride(Override override) {
-        String hash = override.getHash();
-        if (hash == null) {
-            throw new IllegalStateException("no override id");
+        String path = getPath(override.getKey());
+        if (dynamicConfiguration.getConfig(path) == null) {
+            //throw exception
         }
-        URL oldOverride = findOverrideUrl(hash);
-        if (oldOverride == null) {
-            throw new IllegalStateException("Route was changed!");
-        }
-        URL newOverride = getUrlFromOverride(override);
-
-        registry.unregister(oldOverride);
-        registry.register(newOverride);
-
+        dynamicConfiguration.setConfig(path, yaml.dump(override));
     }
 
+    @java.lang.Override
     public void deleteOverride(String id) {
-        URL oldOverride = findOverrideUrl(id);
-        if (oldOverride == null) {
-            throw new IllegalStateException("Route was changed!");
+        if (StringUtils.isEmpty(id)) {
+            // throw exception
         }
-        registry.unregister(oldOverride);
+        String path = getPath(id);
+        if (dynamicConfiguration.getConfig(path) == null) {
+            //throw exception
+        }
+        dynamicConfiguration.deleteConfig(path);
     }
 
+    @java.lang.Override
     public void enableOverride(String id) {
-        if (id == null) {
-            throw new IllegalStateException("no override id");
+        if (StringUtils.isEmpty(id)) {
+            //throw exception
         }
-
-        URL oldOverride = findOverrideUrl(id);
-        if (oldOverride == null) {
-            throw new IllegalStateException("Override was changed!");
+        String path = getPath(id);
+        if (dynamicConfiguration.getConfig(path) == null) {
+            //throw exception
         }
-        if (oldOverride.getParameter("enabled", true)) {
-            return;
-        }
-
-        URL newOverride = oldOverride.addParameter("enabled", true);
-        registry.unregister(oldOverride);
-        registry.register(newOverride);
-
+        String config = dynamicConfiguration.getConfig(path);
+        Override override = yaml.loadAs(config, Override.class);
+        override.setEnabled(true);
+        dynamicConfiguration.setConfig(path, yaml.dump(override));
     }
 
+    @java.lang.Override
     public void disableOverride(String id) {
-        if (id == null) {
-            throw new IllegalStateException("no override id");
+        if (StringUtils.isEmpty(id)) {
+            //throw exception
         }
-
-        URL oldProvider = findOverrideUrl(id);
-        if (oldProvider == null) {
-            throw new IllegalStateException("Override was changed!");
+        String path = getPath(id);
+        if (dynamicConfiguration.getConfig(path) == null) {
+            //throw exception
         }
-        if (!oldProvider.getParameter("enabled", true)) {
-            return;
+        String config = dynamicConfiguration.getConfig(path);
+        Override override = yaml.loadAs(config, Override.class);
+        override.setEnabled(false);
+        dynamicConfiguration.setConfig(path, yaml.dump(override));
+    }
+
+    @java.lang.Override
+    public Override findOverride(String id) {
+        if (StringUtils.isEmpty(id)) {
+            //throw exception
         }
-
-        URL newProvider = oldProvider.addParameter("enabled", false);
-        registry.unregister(oldProvider);
-        registry.register(newProvider);
-
-    }
-
-    private Map<String, URL> findOverrideUrl(String service, String address, String application) {
-        Map<String, String> filter = new HashMap<String, String>();
-        filter.put(Constants.CATEGORY_KEY, Constants.CONFIGURATORS_CATEGORY);
-        if (service != null && service.length() > 0) {
-            filter.put(SyncUtils.SERVICE_FILTER_KEY, service);
+        String path = getPath(id);
+        String config = dynamicConfiguration.getConfig(path);
+        if (config != null) {
+            return yaml.loadAs(config, Override.class);
         }
-        if (address != null && address.length() > 0) {
-            filter.put(SyncUtils.ADDRESS_FILTER_KEY, address);
-        }
-        if (application != null && application.length() > 0) {
-            filter.put(Constants.APPLICATION_KEY, application);
-        }
-        return SyncUtils.filterFromCategory(getRegistryCache(), filter);
+        return null;
     }
 
-    public List<Override> findByAddress(String address) {
-        return SyncUtils.url2OverrideList(findOverrideUrl(null, address, null));
-    }
-
-    public List<Override> findByServiceAndAddress(String service, String address) {
-        return SyncUtils.url2OverrideList(findOverrideUrl(service, address, null));
-    }
-
-    public List<Override> findByApplication(String application) {
-        return SyncUtils.url2OverrideList(findOverrideUrl(null, null, application));
-    }
-
-    public List<Override> findByService(String service) {
-        return SyncUtils.url2OverrideList(findOverrideUrl(service, null, null));
-    }
-
-    public List<Override> findByServiceAndApplication(String service, String application) {
-        return SyncUtils.url2OverrideList(findOverrideUrl(service, null, application));
-    }
-
-    public List<Override> findAll() {
-        return SyncUtils.url2OverrideList(findOverrideUrl(null, null, null));
-    }
-
-    private Pair<String, URL> findOverrideUrlPair(String id) {
-        return SyncUtils.filterFromCategory(getRegistryCache(), Constants.CONFIGURATORS_CATEGORY, id);
-    }
-
-    public Override findById(String id) {
-        return SyncUtils.url2Override(findOverrideUrlPair(id));
-    }
-
-    private URL getUrlFromOverride(Override override) {
-        return override.toUrl();
-    }
-
-    URL findOverrideUrl(String id) {
-        return getUrlFromOverride(findById(id));
+    private String getPath(String key) {
+        return prefix + Constants.PATH_SEPARATOR + key + Constants.PATH_SEPARATOR + "configurators";
     }
 
 }

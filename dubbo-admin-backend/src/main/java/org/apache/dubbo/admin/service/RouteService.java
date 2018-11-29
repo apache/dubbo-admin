@@ -16,9 +16,8 @@
  */
 package org.apache.dubbo.admin.service;
 
-import org.apache.dubbo.admin.model.domain.Route;
-
-import java.util.List;
+import org.apache.dubbo.admin.model.domain.ConditionRoute;
+import org.apache.dubbo.admin.model.domain.TagRoute;
 
 /**
  * RouteService
@@ -26,36 +25,36 @@ import java.util.List;
  */
 public interface RouteService {
 
-    void createRoute(Route route);
+    void createConditionRoute(ConditionRoute conditionRoute);
 
-    void updateRoute(Route route);
+    void updateConditionRoute(ConditionRoute conditionRoute);
 
-    void deleteRoute(String id);
+    void deleteConditionRoute(String id);
 
-    void enableRoute(String id);
 
-    void disableRoute(String id);
+    void enableConditionRoute(String id);
 
-    Route findRoute(String id);
 
-    List<Route> findAll();
+    void disableConditionRoute(String id);
 
-    List<Route> findByService(String serviceName);
 
-    List<Route> findByApplication(String application);
+    ConditionRoute findConditionRoute(String serviceName);
 
-    List<Route> findByAddress(String address);
+    void createTagRoute(TagRoute tagRoute);
 
-    List<Route> findByServiceAndAddress(String service, String address);
+    void updateTagRoute(TagRoute tagRoute);
 
-    List<Route> findForceRouteByService(String service);
+    void deleteTagRoute(String id);
 
-    List<Route> findForceRouteByAddress(String address);
 
-    List<Route> findForceRouteByServiceAndAddress(String service, String address);
+    void enableTagRoute(String id);
 
-    List<Route> findAllForceRoute();
 
-    Route getBlackwhitelistRouteByService(String service);
+    void disableTagRoute(String id);
+
+
+    TagRoute findTagRoute(String serviceName);
+
+    ConditionRoute getBlackwhitelistRouteByService(String service);
 
 }

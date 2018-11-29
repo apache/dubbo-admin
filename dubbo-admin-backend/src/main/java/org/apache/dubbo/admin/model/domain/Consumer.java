@@ -54,7 +54,7 @@ public class Consumer extends Entity {
 
     private List<Override> overrides;
 
-    private List<Route> routes;
+    private List<ConditionRoute> conditionRoutes;
 
     private List<Provider> providers;
 
@@ -176,12 +176,12 @@ public class Consumer extends Entity {
         this.overrides = overrides;
     }
 
-    public List<Route> getRoutes() {
-        return routes;
+    public List<ConditionRoute> getConditionRoutes() {
+        return conditionRoutes;
     }
 
-    public void setRoutes(List<Route> routes) {
-        this.routes = routes;
+    public void setConditionRoutes(List<ConditionRoute> conditionRoutes) {
+        this.conditionRoutes = conditionRoutes;
     }
 
     public List<Provider> getProviders() {
@@ -196,7 +196,7 @@ public class Consumer extends Entity {
         return "Consumer [service=" + service + ", parameters=" + parameters + ", result=" + result
                 + ", address=" + address + ", registry=" + registry + ", application="
                 + application + ", username=" + username + ", statistics=" + statistics
-                + ", collected=" + collected + ", routes=" + routes + ", overrides=" + overrides
+                + ", collected=" + collected + ", conditionRoutes=" + conditionRoutes + ", overrides=" + overrides
                 + ", expired=" + expired + ", alived=" + alived + "]";
     }
 

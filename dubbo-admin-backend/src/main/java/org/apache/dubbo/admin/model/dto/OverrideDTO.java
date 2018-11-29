@@ -17,17 +17,35 @@
 
 package org.apache.dubbo.admin.model.dto;
 
+import org.apache.dubbo.admin.model.domain.Config;
+import org.apache.dubbo.admin.model.domain.OverrideConfig;
+
 import java.util.Map;
 
 public class OverrideDTO extends BaseDTO{
 
-    String application;
-    String service;
-    String address;
-    boolean dynamic;
-    boolean enabled;
-    Map<String, Object>[] parameters;
-    Map<Object, String>[] mock;
+    private String application;
+    private String apiVersion;
+    private String service;
+    private boolean dynamic;
+    private boolean enabled;
+    private OverrideConfig[] configs;
+
+    public OverrideConfig[] getConfigs() {
+        return configs;
+    }
+
+    public void setConfigs(OverrideConfig[] configs) {
+        this.configs = configs;
+    }
+
+    public String getApiVersion() {
+        return apiVersion;
+    }
+
+    public void setApiVersion(String apiVersion) {
+        this.apiVersion = apiVersion;
+    }
 
     public String getApplication() {
         return application;
@@ -45,14 +63,6 @@ public class OverrideDTO extends BaseDTO{
         this.service = service;
     }
 
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
-
     public boolean isDynamic() {
         return dynamic;
     }
@@ -67,21 +77,5 @@ public class OverrideDTO extends BaseDTO{
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
-    }
-
-    public Map<String, Object>[] getParameters() {
-        return parameters;
-    }
-
-    public void setParameters(Map<String, Object>[] parameters) {
-        this.parameters = parameters;
-    }
-
-    public Map<Object, String>[] getMock() {
-        return mock;
-    }
-
-    public void setMock(Map<Object, String>[] mock) {
-        this.mock = mock;
     }
 }

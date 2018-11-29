@@ -3,13 +3,12 @@ package org.apache.dubbo.admin.data.metadata.impl;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.data.metadata.MetaDataCollector;
-import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.metadata.identifier.ConsumerMetadataIdentifier;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 import org.apache.dubbo.metadata.identifier.ProviderMetadataIdentifier;
-import org.apache.dubbo.remoting.zookeeper.ZookeeperClient;
 
 public class ZookeeperMetaDataCollector implements MetaDataCollector {
 

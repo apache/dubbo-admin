@@ -15,4 +15,6 @@ public interface GovernanceConfiguration {
 
     String getConfig(String key);
 
+    boolean deleteConfig(String key);
+
 }

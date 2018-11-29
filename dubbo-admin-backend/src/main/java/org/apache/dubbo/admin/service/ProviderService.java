@@ -29,13 +29,13 @@ public interface ProviderService {
 
     void create(Provider provider);
 
-    void enableProvider(String id);
+//    void enableProvider(String id);
 
-    void disableProvider(String id);
+//    void disableProvider(String id);
 
-    void doublingProvider(String id);
+//    void doublingProvider(String id);
 
-    void halvingProvider(String id);
+//    void halvingProvider(String id);
 
     void deleteStaticProvider(String id);
 
