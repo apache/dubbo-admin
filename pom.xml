@@ -64,10 +64,16 @@
 		<jacoco-version>0.8.2</jacoco-version>
 		<jedis-version>2.9.0</jedis-version>
         <apollo-version>1.1.2</apollo-version>
+		<snakeyaml-version>1.19</snakeyaml-version>
 	</properties>
 
 	<dependencyManagement>
         <dependencies>
+			<dependency>
+				<groupId>org.yaml</groupId>
+				<artifactId>snakeyaml</artifactId>
+				<version>${snakeyaml-version}</version>
+			</dependency>
 			<dependency>
 				<groupId>redis.clients</groupId>
 				<artifactId>jedis</artifactId>

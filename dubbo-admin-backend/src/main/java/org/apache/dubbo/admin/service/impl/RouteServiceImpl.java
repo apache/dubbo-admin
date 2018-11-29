@@ -16,18 +16,12 @@
  */
 package org.apache.dubbo.admin.service.impl;
 
-import org.apache.dubbo.common.Constants;
-import org.apache.dubbo.common.URL;
-import org.apache.dubbo.admin.model.dto.AccessDTO;
+import org.apache.dubbo.admin.common.util.Constants;
+import org.apache.dubbo.admin.model.domain.ConditionRoute;
+import org.apache.dubbo.admin.model.domain.TagRoute;
 import org.apache.dubbo.admin.service.RouteService;
-import org.apache.dubbo.admin.common.util.Pair;
-import org.apache.dubbo.admin.common.util.SyncUtils;
-import org.apache.dubbo.admin.model.domain.Route;
 import org.springframework.stereotype.Component;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import org.yaml.snakeyaml.Yaml;
 
 /**
  * IbatisRouteService
@@ -36,149 +30,133 @@ import java.util.Map;
 @Component
 public class RouteServiceImpl extends AbstractService implements RouteService {
 
-    public void createRoute(Route route) {
-        registry.register(route.toUrl());
-    }
+    private String prefix = Constants.CONFIG_KEY;
+    Yaml yaml = new Yaml();
 
-    public void updateRoute(Route route) {
-        String hash = route.getHash();
-        if (hash == null) {
-            throw new IllegalStateException("no route hash");
-        }
-        URL oldRoute = findRouteUrl(hash);
-        if (oldRoute == null) {
-            throw new IllegalStateException("Route was changed!");
-        }
-
-        registry.unregister(oldRoute);
-        registry.register(route.toUrl());
-    }
-
-    public void deleteRoute(String id) {
-        URL oldRoute = findRouteUrl(id);
-        if (oldRoute == null) {
-            throw new IllegalStateException("Route was changed!");
-        }
-        registry.unregister(oldRoute);
-    }
-
-    public void enableRoute(String id) {
-        if (id == null) {
-            throw new IllegalStateException("no route id");
-        }
-
-        URL oldRoute = findRouteUrl(id);
-        if (oldRoute == null) {
-            throw new IllegalStateException("Route was changed!");
-        }
-        if (oldRoute.getParameter("enabled", true)) {
-            return;
-        }
-
-        registry.unregister(oldRoute);
-        URL newRoute = oldRoute.addParameter("enabled", true);
-        registry.register(newRoute);
-
-    }
-
-    public void disableRoute(String id) {
-        if (id == null) {
-            throw new IllegalStateException("no route id");
-        }
-
-        URL oldRoute = findRouteUrl(id);
-        if (oldRoute == null) {
-            throw new IllegalStateException("Route was changed!");
-        }
-        if (!oldRoute.getParameter("enabled", true)) {
-            return;
-        }
-
-        URL newRoute = oldRoute.addParameter("enabled", false);
-        registry.unregister(oldRoute);
-        registry.register(newRoute);
-
-    }
-
-    public List<Route> findAll() {
-        return SyncUtils.url2RouteList(findAllUrl());
-    }
-
-    private Map<String, URL> findAllUrl() {
-        Map<String, String> filter = new HashMap<String, String>();
-        filter.put(Constants.CATEGORY_KEY, Constants.ROUTERS_CATEGORY);
-
-        return SyncUtils.filterFromCategory(getRegistryCache(), filter);
-    }
-
-    public Route findRoute(String id) {
-        return SyncUtils.url2Route(findRouteUrlPair(id));
-    }
-
-    public Pair<String, URL> findRouteUrlPair(String id) {
-        return SyncUtils.filterFromCategory(getRegistryCache(), Constants.ROUTERS_CATEGORY, id);
-    }
-
-    private URL findRouteUrl(String id) {
-        return findRoute(id).toUrl();
-    }
-
-    private Map<String, URL> findRouteUrl(String service, String address, boolean force) {
-        Map<String, String> filter = new HashMap<String, String>();
-        filter.put(Constants.CATEGORY_KEY, Constants.ROUTERS_CATEGORY);
-        if (service != null && service.length() > 0) {
-            filter.put(SyncUtils.SERVICE_FILTER_KEY, service);
-        }
-        if (address != null && address.length() > 0) {
-            filter.put(SyncUtils.ADDRESS_FILTER_KEY, address);
-        }
-        if (force) {
-            filter.put("force", "true");
-        }
-        return SyncUtils.filterFromCategory(getRegistryCache(), filter);
+    @Override
+    public void createConditionRoute(ConditionRoute conditionRoute) {
+        String path = getPath(conditionRoute.getKey(),Constants.CONDITION_ROUTE);
+        dynamicConfiguration.setConfig(path, yaml.dump(conditionRoute));
     }
 
     @Override
-    public List<Route> findByApplication(String application) {
-        return null;
+    public void updateConditionRoute(ConditionRoute conditionRoute) {
+        String path = getPath(conditionRoute.getKey(), Constants.CONDITION_ROUTE);
+        if (dynamicConfiguration.getConfig(path) == null) {
+           //throw exception
+        }
+        dynamicConfiguration.setConfig(path, yaml.dump(conditionRoute));
+
     }
 
-    public List<Route> findByService(String serviceName) {
-        return SyncUtils.url2RouteList(findRouteUrl(serviceName, null, false));
+    @Override
+    public void deleteConditionRoute(String serviceName) {
+        String path = getPath(serviceName, Constants.CONDITION_ROUTE);
+        dynamicConfiguration.deleteConfig(path);
+
     }
 
-    public List<Route> findByAddress(String address) {
-        return SyncUtils.url2RouteList(findRouteUrl(null, address, false));
+
+    @Override
+    public void enableConditionRoute(String serviceName) {
+        String path = getPath(serviceName, Constants.CONDITION_ROUTE);
+        String config = dynamicConfiguration.getConfig(path);
+        if (config != null) {
+            ConditionRoute conditionRoute = yaml.loadAs(config, ConditionRoute.class);
+            conditionRoute.setEnabled(true);
+            dynamicConfiguration.setConfig(path, yaml.dump(conditionRoute));
+        }
     }
 
-    public List<Route> findByServiceAndAddress(String service, String address) {
-        return SyncUtils.url2RouteList(findRouteUrl(service, address, false));
+    @Override
+    public void disableConditionRoute(String serviceName) {
+        String path = getPath(serviceName, Constants.CONDITION_ROUTE);
+        String config = dynamicConfiguration.getConfig(path);
+        if (config != null) {
+            ConditionRoute conditionRoute = yaml.loadAs(config, ConditionRoute.class);
+            conditionRoute.setEnabled(false);
+            dynamicConfiguration.setConfig(path, yaml.dump(conditionRoute));
+        }
+
     }
 
-    public List<Route> findForceRouteByService(String service) {
-        return SyncUtils.url2RouteList(findRouteUrl(service, null, true));
-    }
-
-    public List<Route> findForceRouteByAddress(String address) {
-        return SyncUtils.url2RouteList(findRouteUrl(null, address, true));
-    }
-
-    public List<Route> findForceRouteByServiceAndAddress(String service, String address) {
-        return SyncUtils.url2RouteList(findRouteUrl(service, address, true));
-    }
-
-    public List<Route> findAllForceRoute() {
-        return SyncUtils.url2RouteList(findRouteUrl(null, null, true));
-    }
-
-    public Route getBlackwhitelistRouteByService(String service) {
-        List<Route> routes = SyncUtils.url2RouteList(findRouteUrl(service, null, true));
-        for (Route route : routes) {
-            if (route.getName().endsWith(AccessDTO.KEY_BLACK_WHITE_LIST)) {
-                return route;
-            }
+    @Override
+    public ConditionRoute findConditionRoute(String serviceName) {
+        String path = getPath(serviceName, Constants.CONDITION_ROUTE);
+        String config = dynamicConfiguration.getConfig(path);
+        if (config != null) {
+            return yaml.loadAs(config, ConditionRoute.class);
         }
         return null;
     }
+
+    @Override
+    public void createTagRoute(TagRoute tagRoute) {
+        String path = getPath(tagRoute.getKey(),Constants.TAG_ROUTE);
+        dynamicConfiguration.setConfig(path, yaml.dump(tagRoute));
+    }
+
+    @Override
+    public void updateTagRoute(TagRoute tagRoute) {
+        String path = getPath(tagRoute.getKey(), Constants.TAG_ROUTE);
+        if (dynamicConfiguration.getConfig(path) == null) {
+            //throw exception
+        }
+        dynamicConfiguration.setConfig(path, yaml.dump(tagRoute));
+
+    }
+
+    @Override
+    public void deleteTagRoute(String id) {
+        String path = getPath(id, Constants.TAG_ROUTE);
+        dynamicConfiguration.deleteConfig(path);
+    }
+
+    @Override
+    public void enableTagRoute(String id) {
+        String path = getPath(id, Constants.TAG_ROUTE);
+        String config = dynamicConfiguration.getConfig(path);
+        if (config != null) {
+            TagRoute tagRoute = yaml.loadAs(config, TagRoute.class);
+            tagRoute.setEnabled(true);
+            dynamicConfiguration.setConfig(path, yaml.dump(tagRoute));
+        }
+
+    }
+
+    @Override
+    public void disableTagRoute(String id) {
+        String path = getPath(id, Constants.TAG_ROUTE);
+        String config = dynamicConfiguration.getConfig(path);
+        if (config != null) {
+            TagRoute tagRoute = yaml.loadAs(config, TagRoute.class);
+            tagRoute.setEnabled(false);
+            dynamicConfiguration.setConfig(path, yaml.dump(tagRoute));
+        }
+
+    }
+
+    @Override
+    public TagRoute findTagRoute(String id) {
+        String path = getPath(id, Constants.TAG_ROUTE);
+        String config = dynamicConfiguration.getConfig(path);
+        if (config != null) {
+            return yaml.loadAs(config, TagRoute.class);
+        }
+        return null;
+    }
+
+    private String getPath(String key, String type) {
+        if (type.equals(Constants.CONDITION_ROUTE)) {
+            return prefix + Constants.PATH_SEPARATOR + key + Constants.PATH_SEPARATOR + "routers";
+        } else {
+            return prefix + Constants.PATH_SEPARATOR + key + Constants.PATH_SEPARATOR + "tagrouters";
+        }
+    }
+    @Override
+    public ConditionRoute getBlackwhitelistRouteByService(String service) {
+        return null;
+    }
+
 
 }

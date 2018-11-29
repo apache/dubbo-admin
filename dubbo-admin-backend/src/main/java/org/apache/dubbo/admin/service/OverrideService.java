@@ -32,18 +32,6 @@ public interface OverrideService {
 
     void disableOverride(String id);
 
-    List<Override> findByService(String service);
-
-    List<Override> findByAddress(String address);
-
-    List<Override> findByServiceAndAddress(String service, String address);
-
-    List<Override> findByApplication(String application);
-
-    List<Override> findByServiceAndApplication(String service, String application);
-
-    List<Override> findAll();
-
-    Override findById(String id);
+    Override findOverride(String service);
 
 }

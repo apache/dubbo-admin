@@ -22,7 +22,7 @@ import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.admin.model.domain.Consumer;
 import org.apache.dubbo.admin.model.domain.Override;
 import org.apache.dubbo.admin.model.domain.Provider;
-import org.apache.dubbo.admin.model.domain.Route;
+import org.apache.dubbo.admin.model.domain.ConditionRoute;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -102,79 +102,6 @@ public class SyncUtils {
         return list;
     }
 
-    public static Route url2Route(Pair<String, URL> pair) {
-        if (pair == null) {
-            return null;
-        }
-
-        String id = pair.getKey();
-        URL url = pair.getValue();
-
-        if (null == url)
-            return null;
-
-        Route r = new Route();
-        r.setHash(id);
-        r.setName(url.getParameter("name"));
-        r.setService(url.getServiceKey());
-        r.setPriority(url.getParameter(Constants.PRIORITY_KEY, 0));
-        r.setEnabled(url.getParameter(Constants.ENABLED_KEY, true));
-        r.setForce(url.getParameter(Constants.FORCE_KEY, false));
-        r.setDynamic(url.getParameter(Constants.DYNAMIC_KEY, false));
-        r.setRuntime(url.getParameter(Constants.RUNTIME_KEY, false));
-        r.setRule(url.getParameterAndDecoded(Constants.RULE_KEY));
-        return r;
-    }
-
-    public static List<Route> url2RouteList(Map<String, URL> cs) {
-        List<Route> list = new ArrayList<Route>();
-        if (cs == null) return list;
-        for (Map.Entry<String, URL> entry : cs.entrySet()) {
-            list.add(url2Route(new Pair<>(entry.getKey(), entry.getValue())));
-        }
-        return list;
-    }
-
-    public static Override url2Override(Pair<String, URL> pair) {
-        if (pair == null) {
-            return null;
-        }
-
-        String id = pair.getKey();
-        URL url = pair.getValue();
-
-        if (null == url)
-            return null;
-
-        Override o = new Override();
-        o.setHash(id);
-
-        Map<String, String> parameters = new HashMap<String, String>(url.getParameters());
-
-        o.setService(url.getServiceKey());
-        parameters.remove(Constants.INTERFACE_KEY);
-        parameters.remove(Constants.GROUP_KEY);
-        parameters.remove(Constants.VERSION_KEY);
-        parameters.remove(Constants.APPLICATION_KEY);
-        parameters.remove(Constants.CATEGORY_KEY);
-        parameters.remove(Constants.DYNAMIC_KEY);
-        parameters.remove(Constants.ENABLED_KEY);
-
-        o.setEnabled(url.getParameter(Constants.ENABLED_KEY, true));
-
-        String host = url.getHost();
-        boolean anyhost = url.getParameter(Constants.ANYHOST_VALUE, false);
-        if (!anyhost || !"0.0.0.0".equals(host)) {
-            o.setAddress(url.getAddress());
-        }
-
-        o.setApplication(url.getParameter(Constants.APPLICATION_KEY, url.getUsername()));
-        parameters.remove(Constants.VERSION_KEY);
-
-        o.setParams(StringUtils.toQueryString(parameters));
-
-        return o;
-    }
 
     // Map<category, Map<servicename, Map<Long, URL>>>
     public static <SM extends Map<String, Map<String, URL>>> Map<String, URL> filterFromCategory(Map<String, SM> urls, Map<String, String> filter) {
@@ -183,16 +110,6 @@ public class SyncUtils {
 
         filter.remove(Constants.CATEGORY_KEY);
         return filterFromService(urls.get(c), filter);
-    }
-
-    public static List<Override> url2OverrideList(Map<String, URL> cs) {
-        List<Override>
-            list = new ArrayList<Override>();
-        if (cs == null) return list;
-        for (Map.Entry<String, URL> entry : cs.entrySet()) {
-            list.add(url2Override(new Pair<>(entry.getKey(), entry.getValue())));
-        }
-        return list;
     }
 
 

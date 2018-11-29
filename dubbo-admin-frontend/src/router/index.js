@@ -20,6 +20,7 @@ import Router from 'vue-router'
 import ServiceSearch from '@/components/ServiceSearch'
 import ServiceDetail from '@/components/ServiceDetail'
 import RoutingRule from '@/components/governance/RoutingRule'
+import TagRule from '@/components/governance/TagRule'
 import AccessControl from '@/components/governance/AccessControl'
 import LoadBalance from '@/components/governance/LoadBalance'
 import WeightAdjust from '@/components/governance/WeightAdjust'
@@ -43,6 +44,11 @@ export default new Router({
       path: '/governance/routingRule',
       name: 'RoutingRule',
       component: RoutingRule
+    },
+    {
+      path: '/governance/tagRule',
+      name: 'TagRule',
+      component: TagRule
     },
     {
       path: '/governance/access',

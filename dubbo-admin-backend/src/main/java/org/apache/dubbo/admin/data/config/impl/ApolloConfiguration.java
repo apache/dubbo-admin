@@ -37,4 +37,9 @@ public class ApolloConfiguration implements GovernanceConfiguration {
     public String getConfig(String key) {
         return null;
     }
+
+    @Override
+    public boolean deleteConfig(String key) {
+        return false;
+    }
 }

@@ -28,7 +28,7 @@ public class Operation extends Entity {
 
     public static final String PROVIDER_TYPE = "Provider";
     public static final String CONSUMER_TYPE = "Consumer";
-    public static final String ROUTE_TYPE = "Route";
+    public static final String ROUTE_TYPE = "ConditionRoute";
     public static final String WEIGHT_TYPE = "Weight";
     public static final String CLUSTER_TYPE = "Cluster";
     public static final String DOCUMENT_TYPE = "Document";

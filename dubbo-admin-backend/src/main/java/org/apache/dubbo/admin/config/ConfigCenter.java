@@ -26,7 +26,7 @@ public class ConfigCenter {
     @Value("${dubbo.registry.address:}")
     private String registryAddress;
 
-    private static String globalConfigPath = "/config/dubbo/dubbo.properties";
+    private static String globalConfigPath = "config/dubbo/dubbo.properties";
 
     @Value("${dubbo.registry.group:}")
     private String group;
@@ -47,7 +47,6 @@ public class ConfigCenter {
             GovernanceConfiguration dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(configCenterUrl.getProtocol());
             dynamicConfiguration.setUrl(configCenterUrl);
             dynamicConfiguration.init();
-            globalConfigPath = group == null ? "/dubbo" + globalConfigPath : "/" + group + globalConfigPath;
             String config = dynamicConfiguration.getConfig(globalConfigPath);
 
             Arrays.stream(config.split("\n")).forEach( s -> {
