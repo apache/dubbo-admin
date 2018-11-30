@@ -38,8 +38,7 @@
             class="elevation-0"
           >
             <template slot="items" slot-scope="props">
-              <td class="text-xs-left">{{ props.item.service }}</td>
-              <td class="text-xs-left">{{ props.item.group }}</td>
+              <td class="text-xs-left">{{ props.item.application }}</td>
               <td class="text-xs-left">{{ props.item.priority }}</td>
               <td class="text-xs-left">{{ props.item.enabled }}</td>
               <td class="text-xs-center px-0">
@@ -62,11 +61,6 @@
           <span class="headline">Create New Routing Rule</span>
         </v-card-title>
         <v-card-text >
-          <v-text-field
-            label="Service Unique ID"
-            hint="A service ID in form of group/service:version, group and version are optional"
-            v-model="service"
-          ></v-text-field>
           <v-text-field
             label="Application Name"
             hint="Application name the service belongs to"
@@ -120,7 +114,6 @@
       warn: false,
       updateId: '',
       application: '',
-      service: '',
       warnTitle: '',
       warnText: '',
       warnStatus: {},
@@ -182,7 +175,6 @@
       closeDialog: function () {
         this.ruleText = this.template
         this.updateId = ''
-        this.service = ''
         this.application = ''
         this.dialog = false
         this.readonly = false
@@ -202,10 +194,9 @@
       },
       saveItem: function () {
         let rule = yaml.safeLoad(this.ruleText)
-        if (this.service === '' && this.application === '') {
+        if (this.application === '') {
           return
         }
-        rule.service = this.service
         rule.application = this.application
         if (this.updateId !== '') {
           if (this.updateId === 'close') {
@@ -215,7 +206,7 @@
             this.$axios.put('/rules/route/tag/' + rule.id, rule)
               .then(response => {
                 if (response.status === 200) {
-                  this.search(this.service, true)
+                  this.search(this.application, true)
                   this.closeDialog()
                   this.$notify.success('Update success')
                 }
@@ -225,8 +216,8 @@
           this.$axios.post('/rules/route/tag/', rule)
             .then(response => {
               if (response.status === 201) {
-                this.search(this.service, true)
-                this.filter = this.service
+                this.search(this.application, true)
+                this.filter = this.application
                 this.closeDialog()
                 this.$notify.success('Create success')
               }
@@ -258,30 +249,28 @@
               })
             break
           case 'block':
-            this.openWarn(' Are you sure to block Routing Rule', 'service: ' + item.service)
+            this.openWarn(' Are you sure to block Routing Rule', 'application: ' + item.application)
             this.warnStatus.operation = 'disable'
             this.warnStatus.id = itemId
             break
           case 'check_circle_outline':
-            this.openWarn(' Are you sure to enable Routing Rule', 'service: ' + item.service)
+            this.openWarn(' Are you sure to enable Routing Rule', 'application: ' + item.application)
             this.warnStatus.operation = 'enable'
             this.warnStatus.id = itemId
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + item.service)
+            this.openWarn(' Are you sure to Delete Routing Rule', 'application: ' + item.application)
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = itemId
         }
       },
-      handleBalance: function (conditionRoute, readonly) {
-        this.service = conditionRoute.service
-        this.application = conditionRoute.application
-        delete conditionRoute.service
-        delete conditionRoute.id
-        delete conditionRoute.app
-        delete conditionRoute.group
-        delete conditionRoute.application
-        this.ruleText = yaml.safeDump(conditionRoute)
+      handleBalance: function (tagRoute, readonly) {
+        this.application = tagRoute.application
+        delete tagRoute.id
+        delete tagRoute.app
+        delete tagRoute.group
+        delete tagRoute.application
+        this.ruleText = yaml.safeDump(tagRoute)
         this.readonly = readonly
         this.dialog = true
       },
