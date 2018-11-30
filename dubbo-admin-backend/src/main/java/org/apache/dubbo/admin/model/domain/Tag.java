@@ -1,11 +1,8 @@
 package org.apache.dubbo.admin.model.domain;
 
-/**
- * @author zmx ON 2018/11/28
- */
 public class Tag {
     String name;
-    String[] address;
+    String[] addresses;
 
     public String getName() {
         return name;
@@ -15,11 +12,11 @@ public class Tag {
         this.name = name;
     }
 
-    public String[] getAddress() {
-        return address;
+    public String[] getAddresses() {
+        return addresses;
     }
 
-    public void setAddress(String[] address) {
-        this.address = address;
+    public void setAddresses(String[] addresses) {
+        this.addresses = addresses;
     }
 }

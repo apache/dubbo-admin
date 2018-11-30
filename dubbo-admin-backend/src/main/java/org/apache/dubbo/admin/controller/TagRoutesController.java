@@ -11,6 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/{env}/rules/route/tag")
 public class TagRoutesController {
@@ -47,17 +50,17 @@ public class TagRoutesController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public TagRouteDTO searchRoutes(@RequestParam String application, @PathVariable String env) {
+    public List<TagRouteDTO> searchRoutes(@RequestParam String application, @PathVariable String env) {
+        List<TagRouteDTO> result = new ArrayList<>();
         TagRoute tagRoute = null;
         if (StringUtils.isNotEmpty(application)) {
             tagRoute = routeService.findTagRoute(application);
         }
         if (tagRoute != null) {
             TagRouteDTO routeDTO = convertTagRouteToTagRouteDTO(tagRoute);
-            return routeDTO;
+            result.add(routeDTO);
         }
-        return null;
-
+        return result;
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
