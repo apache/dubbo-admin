@@ -175,7 +175,7 @@
           .then(response => {
             this.tagRoutingRules = response.data
             if (rewrite) {
-              this.$router.push({path: 'routingRule', query: {application: filter}})
+              this.$router.push({path: 'tagRule', query: {application: filter}})
             }
           })
       },
@@ -328,7 +328,6 @@
       this.ruleText = this.template
       let query = this.$route.query
       let filter = null
-      let vm = this
       Object.keys(query).forEach(function (key) {
         if (key === 'application') {
           filter = query[key]

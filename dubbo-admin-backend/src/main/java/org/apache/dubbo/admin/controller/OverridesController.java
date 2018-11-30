@@ -65,13 +65,13 @@ public class OverridesController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public List<OverrideDTO> searchOverride(@RequestParam(required = false) String service,
+    public List<OverrideDTO> searchOverride(@RequestParam(required = false) String serviceName,
                                             @RequestParam(required = false) String application,
                                             @PathVariable String env) {
         Override override = null;
         List<OverrideDTO> result = new ArrayList<>();
-        if (StringUtils.isNotEmpty(service)) {
-            override = overrideService.findOverride(service);
+        if (StringUtils.isNotEmpty(serviceName)) {
+            override = overrideService.findOverride(serviceName);
         } else if(StringUtils.isNotEmpty(application)){
             override = overrideService.findOverride(application);
         }
@@ -118,7 +118,7 @@ public class OverridesController {
             return null;
         }
         Override override = new Override();
-        if (overrideDTO.getApplication() != null) {
+        if (StringUtils.isNotEmpty(overrideDTO.getApplication())) {
             override.setScope("application");
             override.setKey(overrideDTO.getApplication());
         } else {

@@ -18,12 +18,12 @@ public class OverrideConfig {
         this.side = side;
     }
 
-    public String[] getAddress() {
+    public String[] getAddresses() {
         return addresses;
     }
 
-    public void setAddress(String[] address) {
-        this.addresses = address;
+    public void setAddresses(String[] addresses) {
+        this.addresses = addresses;
     }
 
     public String[] getProviderAddresses() {

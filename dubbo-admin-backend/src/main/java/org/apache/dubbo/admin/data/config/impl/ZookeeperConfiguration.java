@@ -65,8 +65,9 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
 
     @Override
     public boolean deleteConfig(String key) {
+        String path = getNodePath(key);
         try {
-            zkClient.delete().forPath(key);
+            zkClient.delete().forPath(path);
         } catch (Exception e) {
             e.printStackTrace();
         }
