@@ -39,7 +39,7 @@ public class TagRoutesController {
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
-    public boolean updateRule(@PathVariable String id, @RequestBody TagRouteDTO routeDTO, @PathVariable String dev) {
+    public boolean updateRule(@PathVariable String id, @RequestBody TagRouteDTO routeDTO, @PathVariable String env) {
         if (routeService.findConditionRoute(id) == null) {
             //throw exception
         }
