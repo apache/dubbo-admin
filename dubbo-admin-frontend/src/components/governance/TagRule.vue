@@ -281,7 +281,7 @@
         let id = warnStatus.id
         let operation = warnStatus.operation
         if (operation === 'delete') {
-          this.$axios.delete('/rules/tag/' + id)
+          this.$axios.delete('/rules/route/tag/' + id)
             .then(response => {
               if (response.status === 200) {
                 this.warn = false
@@ -290,7 +290,7 @@
               }
             })
         } else if (operation === 'disable') {
-          this.$axios.put('/rules/tag/disable/' + id)
+          this.$axios.put('/rules/route/tag/disable/' + id)
             .then(response => {
               if (response.status === 200) {
                 this.warn = false
@@ -299,7 +299,7 @@
               }
             })
         } else if (operation === 'enable') {
-          this.$axios.put('/rules/tag/enable/' + id)
+          this.$axios.put('/rules/route/tag/enable/' + id)
             .then(response => {
               if (response.status === 200) {
                 this.warn = false
