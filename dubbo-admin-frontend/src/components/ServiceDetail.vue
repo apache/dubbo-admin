@@ -97,7 +97,9 @@
             <td>
               <v-chip v-for="(type, index) in props.item.parameterTypes" :key="type.id" label>{{type}}</v-chip>
             </td>
-            <td>{{props.item.returnType}}</td>
+            <td>
+              <v-chip label>{{props.item.returnType}}</v-chip>
+            </td>
           </template>
         </v-data-table>
       </v-flex>
