@@ -22,6 +22,7 @@ import org.apache.dubbo.admin.service.OverrideService;
 import org.apache.dubbo.admin.model.domain.Override;
 import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.nodes.Tag;
 
 import java.util.List;
 
@@ -38,7 +39,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
     @java.lang.Override
     public void saveOverride(Override override) {
         String path = getPath(override.getKey());
-        dynamicConfiguration.setConfig(path, yaml.dump(override));
+        dynamicConfiguration.setConfig(path, yaml.dumpAsMap(override));
     }
 
     @java.lang.Override
@@ -47,7 +48,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         if (dynamicConfiguration.getConfig(path) == null) {
             //throw exception
         }
-        dynamicConfiguration.setConfig(path, yaml.dump(override));
+        dynamicConfiguration.setConfig(path, yaml.dumpAsMap(override));
     }
 
     @java.lang.Override
@@ -74,7 +75,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         String config = dynamicConfiguration.getConfig(path);
         Override override = yaml.loadAs(config, Override.class);
         override.setEnabled(true);
-        dynamicConfiguration.setConfig(path, yaml.dump(override));
+        dynamicConfiguration.setConfig(path, yaml.dumpAsMap(override));
     }
 
     @java.lang.Override
@@ -89,7 +90,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         String config = dynamicConfiguration.getConfig(path);
         Override override = yaml.loadAs(config, Override.class);
         override.setEnabled(false);
-        dynamicConfiguration.setConfig(path, yaml.dump(override));
+        dynamicConfiguration.setConfig(path, yaml.dumpAsMap(override));
     }
 
     @java.lang.Override

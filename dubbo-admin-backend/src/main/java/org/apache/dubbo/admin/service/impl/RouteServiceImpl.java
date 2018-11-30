@@ -36,7 +36,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
     @Override
     public void createConditionRoute(ConditionRoute conditionRoute) {
         String path = getPath(conditionRoute.getKey(),Constants.CONDITION_ROUTE);
-        dynamicConfiguration.setConfig(path, yaml.dump(conditionRoute));
+        dynamicConfiguration.setConfig(path, yaml.dumpAsMap(conditionRoute));
     }
 
     @Override
@@ -45,7 +45,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         if (dynamicConfiguration.getConfig(path) == null) {
            //throw exception
         }
-        dynamicConfiguration.setConfig(path, yaml.dump(conditionRoute));
+        dynamicConfiguration.setConfig(path, yaml.dumpAsMap(conditionRoute));
 
     }
 
@@ -64,7 +64,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         if (config != null) {
             ConditionRoute conditionRoute = yaml.loadAs(config, ConditionRoute.class);
             conditionRoute.setEnabled(true);
-            dynamicConfiguration.setConfig(path, yaml.dump(conditionRoute));
+            dynamicConfiguration.setConfig(path, yaml.dumpAsMap(conditionRoute));
         }
     }
 
@@ -75,7 +75,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         if (config != null) {
             ConditionRoute conditionRoute = yaml.loadAs(config, ConditionRoute.class);
             conditionRoute.setEnabled(false);
-            dynamicConfiguration.setConfig(path, yaml.dump(conditionRoute));
+            dynamicConfiguration.setConfig(path, yaml.dumpAsMap(conditionRoute));
         }
 
     }
@@ -93,7 +93,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
     @Override
     public void createTagRoute(TagRoute tagRoute) {
         String path = getPath(tagRoute.getKey(),Constants.TAG_ROUTE);
-        dynamicConfiguration.setConfig(path, yaml.dump(tagRoute));
+        dynamicConfiguration.setConfig(path, yaml.dumpAsMap(tagRoute));
     }
 
     @Override
@@ -102,7 +102,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         if (dynamicConfiguration.getConfig(path) == null) {
             //throw exception
         }
-        dynamicConfiguration.setConfig(path, yaml.dump(tagRoute));
+        dynamicConfiguration.setConfig(path, yaml.dumpAsMap(tagRoute));
 
     }
 
@@ -119,7 +119,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         if (config != null) {
             TagRoute tagRoute = yaml.loadAs(config, TagRoute.class);
             tagRoute.setEnabled(true);
-            dynamicConfiguration.setConfig(path, yaml.dump(tagRoute));
+            dynamicConfiguration.setConfig(path, yaml.dumpAsMap(tagRoute));
         }
 
     }
@@ -131,7 +131,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         if (config != null) {
             TagRoute tagRoute = yaml.loadAs(config, TagRoute.class);
             tagRoute.setEnabled(false);
-            dynamicConfiguration.setConfig(path, yaml.dump(tagRoute));
+            dynamicConfiguration.setConfig(path, yaml.dumpAsMap(tagRoute));
         }
 
     }
