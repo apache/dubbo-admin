@@ -16,8 +16,8 @@
  */
 package org.apache.dubbo.admin.service;
 
-import org.apache.dubbo.admin.model.domain.ConditionRoute;
-import org.apache.dubbo.admin.model.domain.TagRoute;
+import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
+import org.apache.dubbo.admin.model.dto.TagRouteDTO;
 
 /**
  * RouteService
@@ -25,9 +25,9 @@ import org.apache.dubbo.admin.model.domain.TagRoute;
  */
 public interface RouteService {
 
-    void createConditionRoute(ConditionRoute conditionRoute);
+    void createConditionRoute(ConditionRouteDTO conditionRoute);
 
-    void updateConditionRoute(ConditionRoute conditionRoute);
+    void updateConditionRoute(ConditionRouteDTO oldConditionRoute, ConditionRouteDTO conditionRoute);
 
     void deleteConditionRoute(String id);
 
@@ -38,11 +38,11 @@ public interface RouteService {
     void disableConditionRoute(String id);
 
 
-    ConditionRoute findConditionRoute(String serviceName);
+    ConditionRouteDTO findConditionRoute(String serviceName);
 
-    void createTagRoute(TagRoute tagRoute);
+    void createTagRoute(TagRouteDTO tagRoute);
 
-    void updateTagRoute(TagRoute tagRoute);
+    void updateTagRoute(TagRouteDTO tagRoute);
 
     void deleteTagRoute(String id);
 
@@ -53,8 +53,7 @@ public interface RouteService {
     void disableTagRoute(String id);
 
 
-    TagRoute findTagRoute(String serviceName);
+    TagRouteDTO findTagRoute(String serviceName);
 
-    ConditionRoute getBlackwhitelistRouteByService(String service);
 
 }

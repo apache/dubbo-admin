@@ -16,11 +16,7 @@
  */
 
 package org.apache.dubbo.admin.model.dto;
-
-import org.apache.dubbo.admin.model.domain.Config;
 import org.apache.dubbo.admin.model.domain.OverrideConfig;
-
-import java.util.Map;
 
 public class OverrideDTO extends BaseDTO{
 
@@ -29,7 +25,26 @@ public class OverrideDTO extends BaseDTO{
     private String service;
     private boolean dynamic;
     private boolean enabled;
+    private String key;
+    private String scope;
     private OverrideConfig[] configs;
+
+
+    public String getKey() {
+        return key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
+    }
+
+    public String getScope() {
+        return scope;
+    }
+
+    public void setScope(String scope) {
+        this.scope = scope;
+    }
 
     public OverrideConfig[] getConfigs() {
         return configs;

@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.dubbo.admin.config;
 
 import org.apache.commons.lang3.StringUtils;
@@ -42,23 +59,25 @@ public class ConfigCenter {
      */
     @Bean("governanceConfiguration")
     GovernanceConfiguration getDynamicConfiguration() {
-        if (configCenter != null) {
+        GovernanceConfiguration dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getDefaultExtension();
+        if (StringUtils.isNotEmpty(configCenter)) {
             configCenterUrl = formUrl(configCenter, group);
-            GovernanceConfiguration dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(configCenterUrl.getProtocol());
+            dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(configCenterUrl.getProtocol());
             dynamicConfiguration.setUrl(configCenterUrl);
             dynamicConfiguration.init();
             String config = dynamicConfiguration.getConfig(globalConfigPath);
 
-            Arrays.stream(config.split("\n")).forEach( s -> {
-                if(s.startsWith(Constants.REGISTRY_ADDRESS)) {
-                    registryUrl = formUrl(s.split("=")[1].trim(), group);
-                } else if (s.startsWith(Constants.METADATA_ADDRESS)) {
-                    metadataUrl = formUrl(s.split("=")[1].trim(), group);
-                }
-            });
-            return dynamicConfiguration;
+            if (StringUtils.isNotEmpty(config)) {
+                Arrays.stream(config.split("\n")).forEach( s -> {
+                    if(s.startsWith(Constants.REGISTRY_ADDRESS)) {
+                        registryUrl = formUrl(s.split("=")[1].trim(), group);
+                    } else if (s.startsWith(Constants.METADATA_ADDRESS)) {
+                        metadataUrl = formUrl(s.split("=")[1].trim(), group);
+                    }
+                });
+            }
         }
-        return null;
+        return dynamicConfiguration;
     }
 
     /*
@@ -68,10 +87,11 @@ public class ConfigCenter {
     @DependsOn("governanceConfiguration")
     Registry getRegistry() {
         Registry registry = null;
-        if (registryUrl != null) {
-            RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
-            registry = registryFactory.getRegistry(registryUrl);
+        if (registryUrl == null) {
+            registryUrl = formUrl(registryAddress, group);
         }
+        RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
+        registry = registryFactory.getRegistry(registryUrl);
         return registry;
     }
 
@@ -81,7 +101,7 @@ public class ConfigCenter {
     @Bean
     @DependsOn("governanceConfiguration")
     MetaDataCollector getMetadataCollector() {
-        MetaDataCollector metaDataCollector = null;
+        MetaDataCollector metaDataCollector = ExtensionLoader.getExtensionLoader(MetaDataCollector.class).getDefaultExtension();
         if (metadataUrl != null) {
             metaDataCollector = ExtensionLoader.getExtensionLoader(MetaDataCollector.class).getExtension(metadataUrl.getProtocol());
             metaDataCollector.setUrl(metadataUrl);

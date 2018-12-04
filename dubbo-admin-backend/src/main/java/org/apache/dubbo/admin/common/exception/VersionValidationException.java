@@ -15,23 +15,16 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.data.metadata;
+package org.apache.dubbo.admin.common.exception;
 
-import org.apache.dubbo.common.URL;
-import org.apache.dubbo.common.extension.SPI;
-import org.apache.dubbo.metadata.identifier.ConsumerMetadataIdentifier;
-import org.apache.dubbo.metadata.identifier.ProviderMetadataIdentifier;
 
-@SPI("zookeeper")
-public interface MetaDataCollector {
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
-    void setUrl(URL url);
+@ResponseStatus(value = HttpStatus.BAD_REQUEST)
+public class VersionValidationException extends SystemException{
 
-    URL getUrl();
-
-    void init();
-
-    String getProviderMetaData(ProviderMetadataIdentifier key);
-
-    String getConsumerMetaData(ConsumerMetadataIdentifier key);
+    public VersionValidationException(String message) {
+        super(message);
+    }
 }

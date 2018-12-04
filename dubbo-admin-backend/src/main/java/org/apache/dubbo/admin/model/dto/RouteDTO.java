@@ -24,7 +24,24 @@ public abstract class RouteDTO extends BaseDTO{
     private boolean force;
     private boolean runtime;
     private String application;
+    private String key;
+    private String scope;
 
+    public String getKey() {
+        return key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
+    }
+
+    public String getScope() {
+        return scope;
+    }
+
+    public void setScope(String scope) {
+        this.scope = scope;
+    }
 
     public String getApplication() {
         return application;

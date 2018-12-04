@@ -16,13 +16,10 @@
  */
 package org.apache.dubbo.admin.common.util;
 
+import org.apache.dubbo.admin.model.domain.Consumer;
+import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
-import org.apache.dubbo.common.utils.StringUtils;
-import org.apache.dubbo.admin.model.domain.Consumer;
-import org.apache.dubbo.admin.model.domain.Override;
-import org.apache.dubbo.admin.model.domain.Provider;
-import org.apache.dubbo.admin.model.domain.ConditionRoute;
 
 import java.util.ArrayList;
 import java.util.HashMap;

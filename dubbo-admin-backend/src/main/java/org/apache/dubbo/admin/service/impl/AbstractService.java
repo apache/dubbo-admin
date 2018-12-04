@@ -18,13 +18,11 @@ package org.apache.dubbo.admin.service.impl;
 
 import org.apache.dubbo.admin.data.config.GovernanceConfiguration;
 import org.apache.dubbo.admin.data.metadata.MetaDataCollector;
+import org.apache.dubbo.admin.service.RegistryServerSync;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.configcenter.DynamicConfiguration;
 import org.apache.dubbo.registry.Registry;
-import org.apache.dubbo.registry.RegistryService;
-import org.apache.dubbo.admin.service.RegistryServerSync;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.Map;

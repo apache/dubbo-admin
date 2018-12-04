@@ -18,12 +18,15 @@ package org.apache.dubbo.admin.service.impl;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.util.Constants;
-import org.apache.dubbo.admin.service.OverrideService;
+import org.apache.dubbo.admin.common.util.Pair;
+import org.apache.dubbo.admin.common.util.YamlParser;
 import org.apache.dubbo.admin.model.domain.Override;
+import org.apache.dubbo.admin.model.domain.OverrideConfig;
+import org.apache.dubbo.admin.model.dto.OverrideDTO;
+import org.apache.dubbo.admin.service.OverrideService;
 import org.springframework.stereotype.Component;
-import org.yaml.snakeyaml.Yaml;
-import org.yaml.snakeyaml.nodes.Tag;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -34,21 +37,43 @@ import java.util.List;
 @Component
 public class OverrideServiceImpl extends AbstractService implements OverrideService {
     private String prefix = Constants.CONFIG_KEY;
-    Yaml yaml = new Yaml();
 
     @java.lang.Override
-    public void saveOverride(Override override) {
+    public void saveOverride(OverrideDTO override) {
+        override = convertOverrideDTOtoStore(override);
         String path = getPath(override.getKey());
-        dynamicConfiguration.setConfig(path, yaml.dumpAsMap(override));
+        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(override));
+
+        //for2.6
+        if (override.getScope().equals("service")) {
+            List<Override> result = convertDTOtoOldOverride(override);
+            for (Override o : result) {
+                registry.register(o.toUrl());
+            }
+        }
     }
 
     @java.lang.Override
-    public void updateOverride(Override override) {
-        String path = getPath(override.getKey());
+    public void updateOverride(OverrideDTO old, OverrideDTO update) {
+        old = convertOverrideDTOtoStore(old);
+        update = convertOverrideDTOtoStore(update);
+        String path = getPath(update.getKey());
         if (dynamicConfiguration.getConfig(path) == null) {
             //throw exception
         }
-        dynamicConfiguration.setConfig(path, yaml.dumpAsMap(override));
+        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(update));
+
+        //for 2.6
+        if (update.getScope().equals("service")) {
+            List<Override> oldOverrides = convertDTOtoOldOverride(old);
+            List<Override> updatedOverrides = convertDTOtoOldOverride(update);
+            for (Override o : oldOverrides) {
+                registry.unregister(o.toUrl());
+            }
+            for (Override o : updatedOverrides) {
+                registry.register(o.toUrl());
+            }
+        }
     }
 
     @java.lang.Override
@@ -57,10 +82,20 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             // throw exception
         }
         String path = getPath(id);
-        if (dynamicConfiguration.getConfig(path) == null) {
+        String config = dynamicConfiguration.getConfig(path);
+        if (config == null) {
             //throw exception
         }
         dynamicConfiguration.deleteConfig(path);
+
+        //for 2.6
+        OverrideDTO overrideDTO = YamlParser.loadObject(config, OverrideDTO.class);
+        if (overrideDTO.getScope().equals("service")) {
+            List<Override> overrides = convertDTOtoOldOverride(overrideDTO);
+            for (Override o : overrides) {
+                registry.unregister(o.toUrl());
+            }
+        }
     }
 
     @java.lang.Override
@@ -69,13 +104,24 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             //throw exception
         }
         String path = getPath(id);
-        if (dynamicConfiguration.getConfig(path) == null) {
+        String config = dynamicConfiguration.getConfig(path);
+        if (config == null) {
             //throw exception
         }
-        String config = dynamicConfiguration.getConfig(path);
-        Override override = yaml.loadAs(config, Override.class);
+        OverrideDTO override = YamlParser.loadObject(config, OverrideDTO.class);
         override.setEnabled(true);
-        dynamicConfiguration.setConfig(path, yaml.dumpAsMap(override));
+        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(override));
+
+        //2.6
+        if (override.getScope().equals("service")) {
+            List<Override> overrides = convertDTOtoOldOverride(override);
+            for (Override o : overrides) {
+                o.setEnabled(false);
+                registry.unregister(o.toUrl());
+                o.setEnabled(true);
+                registry.register(o.toUrl());
+            }
+        }
     }
 
     @java.lang.Override
@@ -88,24 +134,95 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             //throw exception
         }
         String config = dynamicConfiguration.getConfig(path);
-        Override override = yaml.loadAs(config, Override.class);
+        OverrideDTO override = YamlParser.loadObject(config, OverrideDTO.class);
         override.setEnabled(false);
-        dynamicConfiguration.setConfig(path, yaml.dumpAsMap(override));
+        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(override));
+
+        //for 2.6
+        if (override.getScope().equals("service")) {
+            List<Override> overrides = convertDTOtoOldOverride(override);
+            for (Override o : overrides) {
+                o.setEnabled(true);
+                registry.unregister(o.toUrl());
+                o.setEnabled(false);
+                registry.register(o.toUrl());
+            }
+        }
     }
 
     @java.lang.Override
-    public Override findOverride(String id) {
+    public OverrideDTO findOverride(String id) {
         if (StringUtils.isEmpty(id)) {
             //throw exception
         }
         String path = getPath(id);
         String config = dynamicConfiguration.getConfig(path);
         if (config != null) {
-            return yaml.loadAs(config, Override.class);
+            return YamlParser.loadObject(config, OverrideDTO.class);
         }
         return null;
     }
 
+    private OverrideDTO convertOverrideDTOtoStore(OverrideDTO overrideDTO) {
+        if (StringUtils.isNotEmpty(overrideDTO.getApplication())) {
+           overrideDTO.setScope("application");
+           overrideDTO.setKey(overrideDTO.getApplication());
+        } else {
+            overrideDTO.setScope("service");
+            overrideDTO.setKey(overrideDTO.getService());
+        }
+        overrideDTO.setApplication(null);
+        overrideDTO.setService(null);
+        return overrideDTO;
+    }
+
+    private void overrideDTOToParams(Override override, OverrideConfig config) {
+        Pair<String, Object>[] parameters = config.getParameters();
+        StringBuilder params = new StringBuilder();
+
+        if (parameters != null) {
+            for (Pair<String, Object> param : parameters) {
+                String value = param.getKey() + "=" + param.getValue();
+                params.append(value).append("&");
+            }
+        }
+        if (StringUtils.isNotEmpty(params)) {
+            int length = params.length();
+            if (params.charAt(length - 1) == '&') {
+                params.deleteCharAt(length - 1);
+            }
+        }
+        override.setParams(params.toString());
+    }
+    private List<Override> convertDTOtoOldOverride(OverrideDTO overrideDTO) {
+        List<Override> result = new ArrayList<>();
+        OverrideConfig[] configs = overrideDTO.getConfigs();
+        for (OverrideConfig config : configs) {
+            String[] apps = config.getApplications();
+            String[] addresses = config.getAddresses();
+            for (String address : addresses) {
+                if (apps != null && apps.length > 0) {
+                    for (String app : apps) {
+                        Override override = new Override();
+                        override.setService(overrideDTO.getKey());
+                        override.setAddress(address);
+                        override.setEnabled(overrideDTO.isEnabled());
+                        overrideDTOToParams(override, config);
+                        override.setApplication(app);
+                        result.add(override);
+                    }
+                } else {
+                    Override override = new Override();
+                    override.setService(overrideDTO.getKey());
+                    override.setAddress(address);
+                    override.setEnabled(overrideDTO.isEnabled());
+                    overrideDTOToParams(override, config);
+                    result.add(override);
+                }
+            }
+        }
+        return result;
+    }
     private String getPath(String key) {
         return prefix + Constants.PATH_SEPARATOR + key + Constants.PATH_SEPARATOR + "configurators";
     }

@@ -16,12 +16,12 @@
  */
 package org.apache.dubbo.admin.service.impl;
 
-import org.apache.dubbo.common.Constants;
-import org.apache.dubbo.common.URL;
-import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.common.util.Pair;
 import org.apache.dubbo.admin.common.util.SyncUtils;
 import org.apache.dubbo.admin.model.domain.Consumer;
+import org.apache.dubbo.admin.service.ConsumerService;
+import org.apache.dubbo.common.Constants;
+import org.apache.dubbo.common.URL;
 import org.apache.dubbo.metadata.identifier.ConsumerMetadataIdentifier;
 import org.springframework.stereotype.Component;
 
