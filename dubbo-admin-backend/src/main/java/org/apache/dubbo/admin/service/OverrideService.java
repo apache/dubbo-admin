@@ -16,15 +16,13 @@
  */
 package org.apache.dubbo.admin.service;
 
-import org.apache.dubbo.admin.model.domain.Override;
-
-import java.util.List;
+import org.apache.dubbo.admin.model.dto.OverrideDTO;
 
 public interface OverrideService {
 
-    void saveOverride(Override override);
+    void saveOverride(OverrideDTO override);
 
-    void updateOverride(Override override);
+    void updateOverride(OverrideDTO old, OverrideDTO override);
 
     void deleteOverride(String id);
 
@@ -32,6 +30,6 @@ public interface OverrideService {
 
     void disableOverride(String id);
 
-    Override findOverride(String service);
+    OverrideDTO findOverride(String service);
 
 }

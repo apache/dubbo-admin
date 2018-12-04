@@ -15,23 +15,37 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.data.metadata;
+package org.apache.dubbo.admin.data.metadata.impl;
 
+import org.apache.dubbo.admin.data.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
-import org.apache.dubbo.common.extension.SPI;
 import org.apache.dubbo.metadata.identifier.ConsumerMetadataIdentifier;
 import org.apache.dubbo.metadata.identifier.ProviderMetadataIdentifier;
 
-@SPI("zookeeper")
-public interface MetaDataCollector {
+public class NoOpMetadataCollector implements MetaDataCollector {
 
-    void setUrl(URL url);
+    @Override
+    public void setUrl(URL url) {
 
-    URL getUrl();
+    }
 
-    void init();
+    @Override
+    public URL getUrl() {
+        return null;
+    }
 
-    String getProviderMetaData(ProviderMetadataIdentifier key);
+    @Override
+    public void init() {
 
-    String getConsumerMetaData(ConsumerMetadataIdentifier key);
+    }
+
+    @Override
+    public String getProviderMetaData(ProviderMetadataIdentifier key) {
+        return null;
+    }
+
+    @Override
+    public String getConsumerMetaData(ConsumerMetadataIdentifier key) {
+        return null;
+    }
 }

@@ -16,6 +16,8 @@
  */
 package org.apache.dubbo.admin.service;
 
+import org.apache.dubbo.admin.common.util.MD5Util;
+import org.apache.dubbo.admin.common.util.Tool;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
@@ -24,8 +26,6 @@ import org.apache.dubbo.common.utils.NetUtils;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.registry.NotifyListener;
 import org.apache.dubbo.registry.Registry;
-import org.apache.dubbo.admin.common.util.MD5Util;
-import org.apache.dubbo.admin.common.util.Tool;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;

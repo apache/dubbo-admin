@@ -16,16 +16,18 @@
  */
 package org.apache.dubbo.admin.service.impl;
 
+import com.google.gson.Gson;
+import org.apache.dubbo.admin.common.util.ConvertUtil;
+import org.apache.dubbo.admin.common.util.Pair;
+import org.apache.dubbo.admin.common.util.ParseUtils;
+import org.apache.dubbo.admin.common.util.SyncUtils;
+import org.apache.dubbo.admin.model.domain.Provider;
+import org.apache.dubbo.admin.service.OverrideService;
+import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.utils.StringUtils;
-import org.apache.dubbo.admin.service.OverrideService;
-import org.apache.dubbo.admin.service.ProviderService;
-import org.apache.dubbo.admin.common.util.Pair;
-import org.apache.dubbo.admin.common.util.SyncUtils;
-import org.apache.dubbo.admin.model.domain.Override;
-import org.apache.dubbo.admin.model.domain.Provider;
-import org.apache.dubbo.admin.common.util.ParseUtils;
+import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
 import org.apache.dubbo.metadata.identifier.ProviderMetadataIdentifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -393,6 +395,29 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         return SyncUtils.url2ProviderList(findProviderUrlByApplication(application));
     }
 
+    @Override
+    public String findVersionInApplication(String application) {
+        List<String> services = findServicesByApplication(application);
+        return findServiceVersion(services.get(0));
+    }
+
+    @Override
+    public String findServiceVersion(String serviceName) {
+        String version = "2.6";
+        serviceName = serviceName.replace("*", "/");
+        Map<String, String> info = ConvertUtil.serviceName2Map(serviceName);
+        ProviderMetadataIdentifier p = new ProviderMetadataIdentifier(info.get(Constants.INTERFACE_KEY),
+                info.get(Constants.VERSION_KEY),
+                info.get(Constants.GROUP_KEY));
+        String metadata = getProviderMetaData(p);
+        Gson gson = new Gson();
+        if (StringUtils.isNoneEmpty(metadata)) {
+            FullServiceDefinition serviceDefinition = gson.fromJson(metadata, FullServiceDefinition.class);
+            version = serviceDefinition.getParameters().get("specVersion");
+        }
+        return version;
+    }
+
     private Map<String, URL> findProviderUrlByAppandService(String app, String service) {
         Map<String, String> filter = new HashMap<>();
         filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
@@ -400,6 +425,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         filter.put(SyncUtils.SERVICE_FILTER_KEY, service);
         return SyncUtils.filterFromCategory(getRegistryCache(), filter);
     }
+
 
 
     private Map<String, URL> findProviderUrlByApplication(String application) {

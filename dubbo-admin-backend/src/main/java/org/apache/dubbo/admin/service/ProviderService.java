@@ -47,6 +47,10 @@ public interface ProviderService {
 
     List<String> findServices();
 
+    String findServiceVersion(String serviceName);
+
+    String findVersionInApplication(String application);
+
     List<String> findAddresses();
 
     List<String> findAddressesByApplication(String application);
