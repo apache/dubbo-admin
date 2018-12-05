@@ -305,7 +305,7 @@
             this.closeDialog()
           } else {
             rule.id = this.updateId
-            this.$axios.put('/rules/route/condition' + rule.id, rule)
+            this.$axios.put('/rules/route/condition/' + rule.id, rule)
               .then(response => {
                 if (response.status === 200) {
                   this.search(this.service, true)
