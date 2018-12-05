@@ -152,6 +152,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         tagRoute = convertTagRouteDTOtoStore(tagRoute);
         String path = getPath(tagRoute.getKey(), Constants.TAG_ROUTE);
         if (dynamicConfiguration.getConfig(path) == null) {
+            throw new ResourceNotFoundException("can not find tagroute: " + tagRoute.getKey());
             //throw exception
         }
         dynamicConfiguration.setConfig(path, YamlParser.dumpObject(tagRoute));

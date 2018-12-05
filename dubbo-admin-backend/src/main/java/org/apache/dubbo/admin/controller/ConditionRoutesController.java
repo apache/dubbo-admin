@@ -56,7 +56,7 @@ public class ConditionRoutesController {
     public boolean updateRule(@PathVariable String id, @RequestBody ConditionRouteDTO newConditionRoute, @PathVariable String env) {
         ConditionRouteDTO oldConditionRoute = routeService.findConditionRoute(id);
         if (oldConditionRoute == null) {
-            //throw exception
+            throw new ResourceNotFoundException("can not find route rule for: " + id);
         }
         routeService.updateConditionRoute(oldConditionRoute, newConditionRoute);
         return true;
