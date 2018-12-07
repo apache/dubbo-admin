@@ -305,10 +305,18 @@
             this.closeDialog()
           } else {
             rule.id = this.updateId
-            this.$axios.put('/rules/route/condition' + rule.id, rule)
+            this.$axios.put('/rules/route/condition/' + rule.id, rule)
               .then(response => {
                 if (response.status === 200) {
-                  this.search(this.service, true)
+                  if (this.service !== '') {
+                    this.selected = 0
+                    this.search(this.service, true)
+                    this.filter = this.service
+                  } else {
+                    this.selected = 1
+                    this.search(this.application, true)
+                    this.filter = this.application
+                  }
                   this.closeDialog()
                   this.$notify.success('Update success')
                 }
@@ -318,8 +326,15 @@
           this.$axios.post('/rules/route/condition/', rule)
             .then(response => {
               if (response.status === 201) {
-                this.search(this.service, true)
-                this.filter = this.service
+                if (this.service !== '') {
+                  this.selected = 0
+                  this.search(this.service, true)
+                  this.filter = this.service
+                } else {
+                  this.selected = 1
+                  this.search(this.application, true)
+                  this.filter = this.application
+                }
                 this.closeDialog()
                 this.$notify.success('Create success')
               }
