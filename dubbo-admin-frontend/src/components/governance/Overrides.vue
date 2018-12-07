@@ -282,8 +282,15 @@
             this.$axios.put('/rules/override/' + this.updateId, override)
               .then(response => {
                 if (response.status === 200) {
-                  this.search(this.service, true)
-                  this.filter = this.service
+                  if (this.service !== '') {
+                    this.selected = 0
+                    this.search(this.service, true)
+                    this.filter = this.service
+                  } else {
+                    this.selected = 1
+                    this.search(this.application, true)
+                    this.filter = this.application
+                  }
                   this.$notify.success('Update success')
                   this.closeDialog()
                 }
@@ -293,8 +300,15 @@
           this.$axios.post('/rules/override', override)
             .then(response => {
               if (response.status === 201) {
-                this.search(this.service, true)
-                this.filter = this.service
+                if (this.service !== '') {
+                  this.selected = 0
+                  this.search(this.service, true)
+                  this.filter = this.service
+                } else {
+                  this.selected = 1
+                  this.search(this.application, true)
+                  this.filter = this.application
+                }
                 this.$notify.success('Create success')
                 this.closeDialog()
               }
