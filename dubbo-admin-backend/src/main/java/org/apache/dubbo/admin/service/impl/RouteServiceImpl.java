@@ -38,8 +38,8 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
     @Override
     public void createConditionRoute(ConditionRouteDTO conditionRoute) {
-        String path = getPath(conditionRoute.getKey(),Constants.CONDITION_ROUTE);
         conditionRoute = convertRouteDTOtoStore(conditionRoute);
+        String path = getPath(conditionRoute.getKey(),Constants.CONDITION_ROUTE);
         //register2.7
         dynamicConfiguration.setConfig(path, YamlParser.dumpObject(conditionRoute));
 
