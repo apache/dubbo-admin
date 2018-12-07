@@ -17,13 +17,13 @@
 
 package org.apache.dubbo.admin.model.domain;
 
-import org.apache.dubbo.admin.common.util.Pair;
+import java.util.Map;
 
 public class OverrideConfig {
     private String side;
     private String[] addresses;
     private String[] providerAddresses;
-    private Pair<String, Object>[] parameters;
+    private Map<String, Object> parameters;
     private String[] applications;
     private String[] services;
 
@@ -51,11 +51,11 @@ public class OverrideConfig {
         this.providerAddresses = providerAddresses;
     }
 
-    public Pair<String, Object>[] getParameters() {
+    public Map<String, Object> getParameters() {
         return parameters;
     }
 
-    public void setParameters(Pair<String, Object>[] parameters) {
+    public void setParameters(Map<String, Object> parameters) {
         this.parameters = parameters;
     }
 

@@ -18,7 +18,6 @@ package org.apache.dubbo.admin.service.impl;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.util.Constants;
-import org.apache.dubbo.admin.common.util.Pair;
 import org.apache.dubbo.admin.common.util.YamlParser;
 import org.apache.dubbo.admin.model.domain.Override;
 import org.apache.dubbo.admin.model.domain.OverrideConfig;
@@ -28,6 +27,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -177,12 +177,12 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
     }
 
     private void overrideDTOToParams(Override override, OverrideConfig config) {
-        Pair<String, Object>[] parameters = config.getParameters();
+        Map<String, Object> parameters = config.getParameters();
         StringBuilder params = new StringBuilder();
 
         if (parameters != null) {
-            for (Pair<String, Object> param : parameters) {
-                String value = param.getKey() + "=" + param.getValue();
+            for (Map.Entry<String, Object> entry : parameters.entrySet()) {
+                String value = entry.getKey() + "=" + entry.getValue();
                 params.append(value).append("&");
             }
         }
