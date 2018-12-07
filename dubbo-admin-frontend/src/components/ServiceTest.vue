@@ -20,28 +20,55 @@
       <v-flex xs12>
         <search v-model="filter" label="Search by service name" :submit="search"></search>
       </v-flex>
+      <v-flex xs12>
+        <h3>Methods</h3>
+      </v-flex>
+      <v-flex xs12>
+        <v-data-table :headers="headers" :items="methods" hide-actions class="elevation-1">
+          <template slot="items" slot-scope="props">
+            <td>{{ props.item.name }}</td>
+            <td><v-chip xs v-for="(type, index) in props.item.parameterTypes" :key="index" label>{{ type }}</v-chip></td>
+            <td><v-chip label>{{ props.item.returnType }}</v-chip></td>
+            <td class="text-xs-right">
+              <v-tooltip bottom>
+                <v-icon small
+                        class="mr-2"
+                        color="blue"
+                        slot="activator"
+                        @click="toTest(props.item)">input</v-icon>
+                <span>Try it</span>
+              </v-tooltip>
+            </td>
+          </template>
+        </v-data-table>
+      </v-flex>
     </v-layout>
 
-    <v-card>
-      <v-card-text>
-        <v-layout row>
-          <v-flex xs6>
-            <v-data-table :headers="headers" :items="methods" hide-actions>
-              <template slot="items" slot-scope="props">
-                <td>
-                  <div>Name: {{ props.item.name }}</div>
-                  <div>Return: {{ props.item.returnType }}</div>
-                </td>
-                <td></td>
-              </template>
-            </v-data-table>
-          </v-flex>
-          <v-flex xs6>
-            <json-editor v-model="json" />
-          </v-flex>
-        </v-layout>
-      </v-card-text>
-    </v-card>
+    <v-dialog v-model="modal.enable" width="1000px" persistent>
+      <v-card>
+        <v-card-title>
+          <span class="headline">Test {{ modal.method }}</span>
+        </v-card-title>
+        <v-container grid-list-xl fluid>
+          <v-layout row>
+            <v-flex lg6>
+              <json-editor v-model="modal.json" />
+            </v-flex>
+            <v-flex lg6>
+            </v-flex>
+          </v-layout>
+        </v-container>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="darken-1"
+                 flat
+                 @click="modal.enable = false">Close</v-btn>
+          <v-btn color="primary"
+                 depressed
+                 @click="test">Execute</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -53,23 +80,37 @@
     name: 'ServiceTest',
     data () {
       return {
-        filter: null,
+        filter: 'org.apache.dubbo.demo.api.DemoService',
         headers: [
           {
-            text: 'Method',
-            value: 'name',
-            align: 'left'
+            text: 'Method Name',
+            value: 'method',
+            sortable: false
           },
           {
-            text: 'Operation',
+            text: 'Parameter List',
+            value: 'parameter',
+            sortable: false
+          },
+          {
+            text: 'Return Type',
+            value: 'returnType',
+            sortable: false
+          },
+          {
+            text: '',
             value: 'operation',
-            sortable: false,
-            width: '115px'
+            sortable: false
           }
         ],
         service: null,
         methods: [],
-        json: {}
+        modal: {
+          method: null,
+          enable: false,
+          types: null,
+          json: []
+        }
       }
     },
     methods: {
@@ -89,6 +130,36 @@
         }).catch(error => {
           this.showSnackbar('error', error.response.data.message)
         })
+      },
+      toTest (item) {
+        Object.assign(this.modal, {
+          enable: true,
+          method: item.name
+        })
+        this.modal.json = []
+        this.modal.types = item.parameterTypes
+        item.parameterTypes.forEach((i, index) => {
+          this.modal.json.push(this.getType(i))
+        })
+      },
+      test () {
+        this.$axios.post('/test', {
+          service: this.service.metadata.canonicalName,
+          method: this.modal.method,
+          types: this.modal.types,
+          params: JSON.stringify(this.modal.json)
+        }).then(response => {
+          console.log(response)
+        })
+      },
+      getType (type) {
+        if (type.indexOf('java.util.List') === 0) {
+          return []
+        } else if (type.indexOf('java.util.Map') === 0) {
+          return []
+        } else {
+          return ''
+        }
       }
     },
     components: {
