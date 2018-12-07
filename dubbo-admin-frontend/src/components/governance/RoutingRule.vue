@@ -448,7 +448,7 @@
       let filter = null
       let vm = this
       Object.keys(query).forEach(function (key) {
-        if (key === 'service') {
+        if (key === 'serviceName') {
           filter = query[key]
           vm.selected = 0
         }

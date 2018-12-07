@@ -97,7 +97,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
                 //for2.6
                 URL oldURL = convertRouteToOldRoute(conditionRoute).toUrl();
                 registry.unregister(oldURL);
-                oldURL.addParameter("enabled", true);
+                oldURL = oldURL.addParameter("enabled", true);
                 registry.register(oldURL);
             }
 
@@ -119,7 +119,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
                 //for 2.6
                 URL oldURL = convertRouteToOldRoute(conditionRoute).toUrl();
                 registry.unregister(oldURL);
-                oldURL.addParameter("enabled", false);
+                oldURL = oldURL.addParameter("enabled", false);
                 registry.register(oldURL);
             }
 
