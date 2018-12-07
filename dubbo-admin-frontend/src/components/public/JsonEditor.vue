@@ -52,6 +52,7 @@
       const options = {
         name: 'Parameters',
         navigationBar: false,
+        search: false,
         mode: this.mode,
         modes: this.modes,
         onChange: () => {
