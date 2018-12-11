@@ -20,8 +20,10 @@ package org.apache.dubbo.admin.controller;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
+import org.apache.dubbo.admin.common.exception.VersionValidationException;
 import org.apache.dubbo.admin.model.dto.OverrideDTO;
 import org.apache.dubbo.admin.service.OverrideService;
+import org.apache.dubbo.admin.service.ProviderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -34,10 +36,12 @@ import java.util.List;
 public class OverridesController {
 
     private final OverrideService overrideService;
+    private final ProviderService providerService;
 
     @Autowired
-    public OverridesController(OverrideService overrideService) {
+    public OverridesController(OverrideService overrideService, ProviderService providerService) {
         this.overrideService = overrideService;
+        this.providerService = providerService;
     }
 
     @RequestMapping(method = RequestMethod.POST)
@@ -47,6 +51,9 @@ public class OverridesController {
         String application = overrideDTO.getApplication();
         if (StringUtils.isEmpty(serviceName) && StringUtils.isEmpty(application)) {
             throw new ParamValidationException("serviceName and application are Empty!");
+        }
+        if (StringUtils.isNotEmpty(application) && providerService.findVersionInApplication(application).equals("2.6")) {
+            throw new VersionValidationException("dubbo 2.6 does not support application scope dynamic config");
         }
         overrideService.saveOverride(overrideDTO);
         return true;
