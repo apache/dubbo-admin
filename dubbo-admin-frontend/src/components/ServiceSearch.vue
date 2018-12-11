@@ -34,6 +34,7 @@
                   hide-no-data
                   :suffix="queryBy"
                   :hint="hint"
+                  @keyup.enter="submit"
                   label="Search Dubbo Services"
                 ></v-combobox>
                 <v-menu class="hidden-xs-only">
