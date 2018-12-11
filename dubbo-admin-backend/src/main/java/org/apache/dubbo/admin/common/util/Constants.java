@@ -31,4 +31,7 @@ public class Constants {
     public static final String CONDITION_ROUTE = "condition_route";
     public static final String TAG_ROUTE = "tag_route";
 
+
+    public static final String COMPATIBLE_CONFIG = "compatible_config";
+
 }
