@@ -46,7 +46,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         //register2.6
         if (conditionRoute.getScope().equals("service")) {
             Route old = convertRouteToOldRoute(conditionRoute);
-            registry.register(old.toUrl());
+            registry.register(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
         }
 
     }
@@ -64,8 +64,8 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         if (newConditionRoute.getScope().equals("service")) {
             Route old = convertRouteToOldRoute(oldConditionRoute);
             Route updated = convertRouteToOldRoute(newConditionRoute);
-            registry.unregister(old.toUrl());
-            registry.register(updated.toUrl());
+            registry.unregister(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+            registry.register(updated.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
         }
     }
 
@@ -80,7 +80,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
             ConditionRouteDTO route = YamlParser.loadObject(config, ConditionRouteDTO.class);
             if (route.getScope().equals("service")) {
                 Route old = convertRouteToOldRoute(route);
-                registry.unregister(old.toUrl());
+                registry.unregister(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
             }
         }
     }
@@ -95,7 +95,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
             if (conditionRoute.getScope().equals("service")) {
                 //for2.6
-                URL oldURL = convertRouteToOldRoute(conditionRoute).toUrl();
+                URL oldURL = convertRouteToOldRoute(conditionRoute).toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true);
                 registry.unregister(oldURL);
                 oldURL = oldURL.addParameter("enabled", true);
                 registry.register(oldURL);
@@ -117,7 +117,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
             if (conditionRoute.getScope().equals("service")) {
                 //for 2.6
-                URL oldURL = convertRouteToOldRoute(conditionRoute).toUrl();
+                URL oldURL = convertRouteToOldRoute(conditionRoute).toUrl().addParameter(Constants.COMPATIBLE_CONFIG,true);
                 registry.unregister(oldURL);
                 oldURL = oldURL.addParameter("enabled", false);
                 registry.register(oldURL);

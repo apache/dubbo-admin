@@ -48,7 +48,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         if (override.getScope().equals("service")) {
             List<Override> result = convertDTOtoOldOverride(override);
             for (Override o : result) {
-                registry.register(o.toUrl());
+                registry.register(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
             }
         }
     }
@@ -68,10 +68,10 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             List<Override> oldOverrides = convertDTOtoOldOverride(old);
             List<Override> updatedOverrides = convertDTOtoOldOverride(update);
             for (Override o : oldOverrides) {
-                registry.unregister(o.toUrl());
+                registry.unregister(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
             }
             for (Override o : updatedOverrides) {
-                registry.register(o.toUrl());
+                registry.register(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
             }
         }
     }
@@ -93,7 +93,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         if (overrideDTO.getScope().equals("service")) {
             List<Override> overrides = convertDTOtoOldOverride(overrideDTO);
             for (Override o : overrides) {
-                registry.unregister(o.toUrl());
+                registry.unregister(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
             }
         }
     }
@@ -117,9 +117,9 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             List<Override> overrides = convertDTOtoOldOverride(override);
             for (Override o : overrides) {
                 o.setEnabled(false);
-                registry.unregister(o.toUrl());
+                registry.unregister(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
                 o.setEnabled(true);
-                registry.register(o.toUrl());
+                registry.register(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
             }
         }
     }
@@ -143,9 +143,9 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             List<Override> overrides = convertDTOtoOldOverride(override);
             for (Override o : overrides) {
                 o.setEnabled(true);
-                registry.unregister(o.toUrl());
+                registry.unregister(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
                 o.setEnabled(false);
-                registry.register(o.toUrl());
+                registry.register(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
             }
         }
     }
