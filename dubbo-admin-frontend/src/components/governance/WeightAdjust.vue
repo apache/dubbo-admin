@@ -177,6 +177,7 @@
         this.readonly = false
       },
       openDialog: function () {
+        this.updateId = ''
         this.dialog = true
       },
       openWarn: function (title, text) {
@@ -213,7 +214,7 @@
         } else {
           this.$axios.post('/rules/weight', weight)
             .then(response => {
-              if (response.status === 200) {
+              if (response.status === 201) {
                 this.search(this.service, true)
                 this.filter = this.service
                 this.closeDialog()

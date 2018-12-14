@@ -50,7 +50,7 @@ public class WeightController {
         for (String address : addresses) {
             Weight weight = new Weight();
             weight.setService(weightDTO.getService());
-            weight.setWeight(weight.getWeight());
+            weight.setWeight(weightDTO.getWeight());
             weight.setAddress(address);
             overrideService.saveOverride(OverrideUtils.weightToOverride(weight));
         }
