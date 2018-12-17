@@ -16,13 +16,15 @@
  */
 package org.apache.dubbo.admin.service;
 
-import org.apache.dubbo.admin.model.dto.OverrideDTO;
+import org.apache.dubbo.admin.model.dto.BalancingDTO;
+import org.apache.dubbo.admin.model.dto.DynamicConfigDTO;
+import org.apache.dubbo.admin.model.dto.WeightDTO;
 
 public interface OverrideService {
 
-    void saveOverride(OverrideDTO override);
+    void saveOverride(DynamicConfigDTO override);
 
-    void updateOverride(OverrideDTO old, OverrideDTO override);
+    void updateOverride(DynamicConfigDTO override);
 
     void deleteOverride(String id);
 
@@ -30,6 +32,22 @@ public interface OverrideService {
 
     void disableOverride(String id);
 
-    OverrideDTO findOverride(String service);
+    DynamicConfigDTO findOverride(String id);
+
+    void saveWeight(WeightDTO weightDTO);
+
+    void updateWeight(WeightDTO weightDTO);
+
+    void deleteWeight(String id);
+
+    WeightDTO findWeight(String id);
+
+    void saveBalance(BalancingDTO balancingDTO);
+
+    void updateBalance(BalancingDTO balancingDTO);
+
+    void deleteBalance(String id);
+
+    BalancingDTO findBalance(String id);
 
 }

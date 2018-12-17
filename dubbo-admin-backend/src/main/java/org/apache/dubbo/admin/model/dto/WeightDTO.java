@@ -17,19 +17,12 @@
 
 package org.apache.dubbo.admin.model.dto;
 
+import java.util.List;
+
 public class WeightDTO extends BaseDTO{
 
-    private String service;
     private int weight;
-    private String[] provider;
-
-    public String getService() {
-        return service;
-    }
-
-    public void setService(String service) {
-        this.service = service;
-    }
+    private List<String> addresses;
 
     public int getWeight() {
         return weight;
@@ -39,11 +32,11 @@ public class WeightDTO extends BaseDTO{
         this.weight = weight;
     }
 
-    public String[] getProvider() {
-        return provider;
+    public List<String> getAddresses() {
+        return addresses;
     }
 
-    public void setProvider(String[] provider) {
-        this.provider = provider;
+    public void setAddresses(List<String> addresses) {
+        this.addresses = addresses;
     }
 }

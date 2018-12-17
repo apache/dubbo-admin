@@ -65,7 +65,7 @@ public class ConditionRoutesController {
         if (oldConditionRoute == null) {
             throw new ResourceNotFoundException("can not find route rule for: " + id);
         }
-        routeService.updateConditionRoute(oldConditionRoute, newConditionRoute);
+        routeService.updateConditionRoute(newConditionRoute);
         return true;
     }
 
@@ -80,8 +80,7 @@ public class ConditionRoutesController {
         if (StringUtils.isNotEmpty(serviceName)) {
             conditionRoute = routeService.findConditionRoute(serviceName);
         }
-        if (conditionRoute != null) {
-            conditionRoute = convertRouteDTOtoDisplay(conditionRoute);
+        if (conditionRoute != null && conditionRoute.getConditions() != null) {
             result.add(conditionRoute);
         }
         return result;
@@ -90,10 +89,9 @@ public class ConditionRoutesController {
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public ConditionRouteDTO detailRoute(@PathVariable String id, @PathVariable String env) {
         ConditionRouteDTO conditionRoute = routeService.findConditionRoute(id);
-        if (conditionRoute == null) {
+        if (conditionRoute == null || conditionRoute.getConditions() == null) {
             throw new ResourceNotFoundException("Unknown ID!");
         }
-        conditionRoute = convertRouteDTOtoDisplay(conditionRoute);
         return conditionRoute;
     }
 
@@ -115,14 +113,4 @@ public class ConditionRoutesController {
         return true;
     }
 
-    private ConditionRouteDTO convertRouteDTOtoDisplay(ConditionRouteDTO conditionRouteDTO) {
-        if (conditionRouteDTO.getScope().equals("application")) {
-            conditionRouteDTO.setApplication(conditionRouteDTO.getKey());
-        } else {
-            conditionRouteDTO.setService(conditionRouteDTO.getKey());
-        }
-        conditionRouteDTO.setScope(null);
-        conditionRouteDTO.setKey(null);
-        return conditionRouteDTO;
-    }
 }

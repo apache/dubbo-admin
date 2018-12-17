@@ -18,14 +18,22 @@ package org.apache.dubbo.admin.service.impl;
 
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.common.util.Constants;
+import org.apache.dubbo.admin.common.util.ConvertUtil;
+import org.apache.dubbo.admin.common.util.RouteRule;
 import org.apache.dubbo.admin.common.util.YamlParser;
 import org.apache.dubbo.admin.model.domain.Route;
+import org.apache.dubbo.admin.model.dto.AccessDTO;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
 import org.apache.dubbo.admin.model.dto.TagRouteDTO;
+import org.apache.dubbo.admin.model.store.BlackWhiteList;
+import org.apache.dubbo.admin.model.store.RoutingRuleDTO;
 import org.apache.dubbo.admin.service.RouteService;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.springframework.stereotype.Component;
+
+import java.time.YearMonth;
+import java.util.List;
 
 /**
  * IbatisRouteService
@@ -38,13 +46,19 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
     @Override
     public void createConditionRoute(ConditionRouteDTO conditionRoute) {
-        conditionRoute = convertRouteDTOtoStore(conditionRoute);
-        String path = getPath(conditionRoute.getKey(),Constants.CONDITION_ROUTE);
+        String id = ConvertUtil.getIdFromDTO(conditionRoute);
+        String path = getPath(id, Constants.CONDITION_ROUTE);
+        String existConfig = dynamicConfiguration.getConfig(path);
+        RoutingRuleDTO existRule = null;
+        if (existConfig != null) {
+            existRule = YamlParser.loadObject(existConfig, RoutingRuleDTO.class);
+        }
+        existRule = RouteRule.insertConditionRule(existRule, conditionRoute);
         //register2.7
-        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(conditionRoute));
+        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(existRule));
 
         //register2.6
-        if (conditionRoute.getScope().equals("service")) {
+        if (StringUtils.isNotEmpty(conditionRoute.getService())) {
             Route old = convertRouteToOldRoute(conditionRoute);
             registry.register(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
         }
@@ -52,16 +66,20 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
     }
 
     @Override
-    public void updateConditionRoute(ConditionRouteDTO oldConditionRoute, ConditionRouteDTO newConditionRoute) {
-        oldConditionRoute = convertRouteDTOtoStore(oldConditionRoute);
-        newConditionRoute = convertRouteDTOtoStore(newConditionRoute);
-        String path = getPath(newConditionRoute.getKey(), Constants.CONDITION_ROUTE);
-        if (dynamicConfiguration.getConfig(path) == null) {
+    public void updateConditionRoute(ConditionRouteDTO newConditionRoute) {
+        String id = ConvertUtil.getIdFromDTO(newConditionRoute);
+        String path = getPath(id, Constants.CONDITION_ROUTE);
+        String existConfig = dynamicConfiguration.getConfig(path);
+        if (existConfig == null) {
             throw new ResourceNotFoundException("no existing condition route for path: " + path);
         }
-        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(newConditionRoute));
+        RoutingRuleDTO routingRuleDTO = YamlParser.loadObject(existConfig, RoutingRuleDTO.class);
+        ConditionRouteDTO oldConditionRoute = RouteRule.createConditionRouteFromRule(routingRuleDTO);
+        routingRuleDTO = RouteRule.insertConditionRule(routingRuleDTO, newConditionRoute);
+        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(routingRuleDTO));
 
-        if (newConditionRoute.getScope().equals("service")) {
+        //for 2.6
+        if (StringUtils.isNotEmpty(newConditionRoute.getService())) {
             Route old = convertRouteToOldRoute(oldConditionRoute);
             Route updated = convertRouteToOldRoute(newConditionRoute);
             registry.unregister(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
@@ -70,40 +88,140 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
     }
 
     @Override
-    public void deleteConditionRoute(String serviceName) {
-        String path = getPath(serviceName, Constants.CONDITION_ROUTE);
+    public void deleteConditionRoute(String id) {
+        if (StringUtils.isEmpty(id)) {
+            // throw exception
+        }
+        String path = getPath(id, Constants.CONDITION_ROUTE);
         String config = dynamicConfiguration.getConfig(path);
-        dynamicConfiguration.deleteConfig(path);
+        if (config == null) {
+            //throw exception
+        }
+        RoutingRuleDTO route = YamlParser.loadObject(config, RoutingRuleDTO.class);
+        if (route.getBlackWhiteList() != null) {
+           route.setConditions(null);
+            dynamicConfiguration.setConfig(path, YamlParser.dumpObject(route));
+        } else {
+            dynamicConfiguration.deleteConfig(path);
+        }
 
         //for 2.6
-        if (StringUtils.isNoneEmpty(config)) {
-            ConditionRouteDTO route = YamlParser.loadObject(config, ConditionRouteDTO.class);
-            if (route.getScope().equals("service")) {
-                Route old = convertRouteToOldRoute(route);
-                registry.unregister(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+        if (route.getScope().equals(Constants.SERVICE)) {
+            RoutingRuleDTO originRule = YamlParser.loadObject(config, RoutingRuleDTO.class);
+            ConditionRouteDTO conditionRouteDTO = RouteRule.createConditionRouteFromRule(originRule);
+            Route old = convertRouteToOldRoute(conditionRouteDTO);
+            registry.unregister(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+        }
+    }
+
+    @Override
+    public void deleteAccess(String id) {
+        String path = getPath(id, Constants.CONDITION_ROUTE);
+        String config = dynamicConfiguration.getConfig(path);
+        if (config != null) {
+            RoutingRuleDTO ruleDTO = YamlParser.loadObject(config, RoutingRuleDTO.class);
+            BlackWhiteList old = ruleDTO.getBlackWhiteList();
+            if (ruleDTO.getConditions() == null) {
+                dynamicConfiguration.deleteConfig(path);
+            } else {
+                ruleDTO.setBlackWhiteList(null);
+                dynamicConfiguration.setConfig(path, YamlParser.dumpObject(ruleDTO));
+            }
+            //2.6
+            if (ruleDTO.getScope().equals(Constants.SERVICE) && old != null) {
+                Route route = RouteRule.convertBlackWhiteListtoRoute(old, Constants.SERVICE, id);
+                registry.unregister(route.toUrl());
             }
         }
     }
 
+    @Override
+    public void createAccess(AccessDTO accessDTO) {
+        String id = ConvertUtil.getIdFromDTO(accessDTO);
+        String path = getPath(id, Constants.CONDITION_ROUTE);
+        String config = dynamicConfiguration.getConfig(path);
+        BlackWhiteList blackWhiteList = RouteRule.convertToBlackWhiteList(accessDTO);
+        RoutingRuleDTO ruleDTO;
+        if (config == null) {
+            ruleDTO = new RoutingRuleDTO();
+            ruleDTO.setEnabled(true);
+            if (StringUtils.isNoneEmpty(accessDTO.getApplication())) {
+                ruleDTO.setScope(Constants.APPLICATION);
+            } else {
+                ruleDTO.setScope(Constants.SERVICE);
+            }
+            ruleDTO.setKey(id);
+            ruleDTO.setBlackWhiteList(blackWhiteList);
+        } else {
+            ruleDTO = YamlParser.loadObject(config, RoutingRuleDTO.class);
+            if (ruleDTO.getBlackWhiteList() != null) {
+                //todo throw exception
+            }
+            ruleDTO.setBlackWhiteList(blackWhiteList);
+        }
+        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(ruleDTO));
+
+        //for 2.6
+        if (ruleDTO.getScope().equals("service")) {
+            Route route = RouteRule.convertAccessDTOtoRoute(accessDTO);
+            registry.register(route.toUrl());
+        }
+
+    }
 
     @Override
-    public void enableConditionRoute(String serviceName) {
-        String path = getPath(serviceName, Constants.CONDITION_ROUTE);
+    public AccessDTO findAccess(String id) {
+        String path = getPath(id, Constants.CONDITION_ROUTE);
         String config = dynamicConfiguration.getConfig(path);
         if (config != null) {
-            ConditionRouteDTO conditionRoute = YamlParser.loadObject(config, ConditionRouteDTO.class);
+            RoutingRuleDTO ruleDTO = YamlParser.loadObject(config, RoutingRuleDTO.class);
+            BlackWhiteList blackWhiteList = ruleDTO.getBlackWhiteList();
+            return RouteRule.convertToAccessDTO(blackWhiteList, ruleDTO.getScope(), ruleDTO.getKey());
+        }
+        return null;
+    }
 
-            if (conditionRoute.getScope().equals("service")) {
+    @Override
+    public void updateAccess(AccessDTO accessDTO) {
+        String key = ConvertUtil.getIdFromDTO(accessDTO);
+        String path = getPath(key, Constants.CONDITION_ROUTE);
+        BlackWhiteList blackWhiteList = RouteRule.convertToBlackWhiteList(accessDTO);
+        BlackWhiteList old = null;
+        String config = dynamicConfiguration.getConfig(path);
+        if (config != null) {
+            RoutingRuleDTO ruleDTO = YamlParser.loadObject(config, RoutingRuleDTO.class);
+            old = ruleDTO.getBlackWhiteList();
+            ruleDTO.setBlackWhiteList(blackWhiteList);
+            dynamicConfiguration.setConfig(path, YamlParser.dumpObject(ruleDTO));
+        }
+
+        //2.6
+        if (StringUtils.isNotEmpty(accessDTO.getService())) {
+            Route oldRoute = RouteRule.convertBlackWhiteListtoRoute(old, Constants.SERVICE, key);
+            Route newRoute = RouteRule.convertAccessDTOtoRoute(accessDTO);
+            registry.unregister(oldRoute.toUrl());
+            registry.register(newRoute.toUrl());
+        }
+    }
+
+    @Override
+    public void enableConditionRoute(String id) {
+        String path = getPath(id, Constants.CONDITION_ROUTE);
+        String config = dynamicConfiguration.getConfig(path);
+        if (config != null) {
+            RoutingRuleDTO ruleDTO = YamlParser.loadObject(config, RoutingRuleDTO.class);
+
+            if (ruleDTO.getScope().equals(Constants.SERVICE)) {
                 //for2.6
-                URL oldURL = convertRouteToOldRoute(conditionRoute).toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true);
+                URL oldURL = convertRouteToOldRoute(RouteRule.createConditionRouteFromRule(ruleDTO)).toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true);
                 registry.unregister(oldURL);
                 oldURL = oldURL.addParameter("enabled", true);
                 registry.register(oldURL);
             }
 
             //2.7
-            conditionRoute.setEnabled(true);
-            dynamicConfiguration.setConfig(path, YamlParser.dumpObject(conditionRoute));
+            ruleDTO.setEnabled(true);
+            dynamicConfiguration.setConfig(path, YamlParser.dumpObject(ruleDTO));
         }
 
     }
@@ -113,46 +231,48 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         String path = getPath(serviceName, Constants.CONDITION_ROUTE);
         String config = dynamicConfiguration.getConfig(path);
         if (config != null) {
-            ConditionRouteDTO conditionRoute = YamlParser.loadObject(config, ConditionRouteDTO.class);
+            RoutingRuleDTO routeRule = YamlParser.loadObject(config, RoutingRuleDTO.class);
 
-            if (conditionRoute.getScope().equals("service")) {
+            if (routeRule.getScope().equals(Constants.SERVICE)) {
                 //for 2.6
-                URL oldURL = convertRouteToOldRoute(conditionRoute).toUrl().addParameter(Constants.COMPATIBLE_CONFIG,true);
+                URL oldURL = convertRouteToOldRoute(RouteRule.createConditionRouteFromRule(routeRule)).toUrl().addParameter(Constants.COMPATIBLE_CONFIG,true);
                 registry.unregister(oldURL);
                 oldURL = oldURL.addParameter("enabled", false);
                 registry.register(oldURL);
             }
 
             //2.7
-            conditionRoute.setEnabled(false);
-            dynamicConfiguration.setConfig(path, YamlParser.dumpObject(conditionRoute));
+            routeRule.setEnabled(false);
+            dynamicConfiguration.setConfig(path, YamlParser.dumpObject(routeRule));
         }
 
     }
 
     @Override
-    public ConditionRouteDTO findConditionRoute(String serviceName) {
-        String path = getPath(serviceName, Constants.CONDITION_ROUTE);
+    public ConditionRouteDTO findConditionRoute(String id) {
+        String path = getPath(id, Constants.CONDITION_ROUTE);
         String config = dynamicConfiguration.getConfig(path);
         if (config != null) {
-            return YamlParser.loadObject(config, ConditionRouteDTO.class);
+            RoutingRuleDTO routingRuleDTO = YamlParser.loadObject(config, RoutingRuleDTO.class);
+            ConditionRouteDTO conditionRouteDTO = RouteRule.createConditionRouteFromRule(routingRuleDTO);
+            return conditionRouteDTO;
         }
         return null;
     }
 
     @Override
     public void createTagRoute(TagRouteDTO tagRoute) {
-        tagRoute = convertTagRouteDTOtoStore(tagRoute);
-        String path = getPath(tagRoute.getKey(),Constants.TAG_ROUTE);
+        String id = ConvertUtil.getIdFromDTO(tagRoute);
+        String path = getPath(id,Constants.TAG_ROUTE);
         dynamicConfiguration.setConfig(path, YamlParser.dumpObject(tagRoute));
     }
 
     @Override
     public void updateTagRoute(TagRouteDTO tagRoute) {
-        tagRoute = convertTagRouteDTOtoStore(tagRoute);
-        String path = getPath(tagRoute.getKey(), Constants.TAG_ROUTE);
+        String id = ConvertUtil.getIdFromDTO(tagRoute);
+        String path = getPath(id, Constants.TAG_ROUTE);
         if (dynamicConfiguration.getConfig(path) == null) {
-            throw new ResourceNotFoundException("can not find tagroute: " + tagRoute.getKey());
+            throw new ResourceNotFoundException("can not find tagroute: " + id);
             //throw exception
         }
         dynamicConfiguration.setConfig(path, YamlParser.dumpObject(tagRoute));
@@ -207,7 +327,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         }
     }
 
-    private String parseCondition(String[] conditions) {
+    private String parseCondition(List<String> conditions) {
         StringBuilder when = new StringBuilder();
         StringBuilder then = new StringBuilder();
         for (String condition : conditions) {
@@ -237,7 +357,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
     private Route convertRouteToOldRoute(ConditionRouteDTO route) {
         Route old = new Route();
-        old.setService(route.getKey());
+        old.setService(route.getService());
         old.setEnabled(route.isEnabled());
         old.setForce(route.isForce());
         old.setRuntime(route.isRuntime());
@@ -245,25 +365,5 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         String rule = parseCondition(route.getConditions());
         old.setRule(rule);
         return old;
-    }
-
-    private ConditionRouteDTO convertRouteDTOtoStore(ConditionRouteDTO conditionRoute) {
-        if (StringUtils.isNoneEmpty(conditionRoute.getApplication())) {
-            conditionRoute.setScope("application");
-            conditionRoute.setKey(conditionRoute.getApplication());
-            conditionRoute.setApplication(null);
-        } else {
-            conditionRoute.setScope("service");
-            conditionRoute.setKey(conditionRoute.getService());
-            conditionRoute.setService(null);
-        }
-        return conditionRoute;
-    }
-
-    private TagRouteDTO convertTagRouteDTOtoStore(TagRouteDTO tagRouteDTO) {
-        tagRouteDTO.setKey(tagRouteDTO.getApplication());
-        tagRouteDTO.setScope("application");
-        tagRouteDTO.setApplication(null);
-        return tagRouteDTO;
     }
 }

@@ -18,9 +18,40 @@
 <template>
   <v-container grid-list-xl fluid >
     <v-layout row wrap>
-      <v-flex xs12 >
-        <search v-model="filter" :submit="submit" label="Search Weight by service name"></search>
+      <v-flex lg12>
+        <v-card flat color="transparent">
+          <v-card-text>
+            <v-form>
+              <v-layout row wrap>
+                <v-combobox
+                  id="serviceSearch"
+                  v-model="filter"
+                  flat
+                  append-icon=""
+                  hide-no-data
+                  :suffix="queryBy"
+                  label="Search Routing Rule"
+                ></v-combobox>
+                <v-menu class="hidden-xs-only">
+                  <v-btn slot="activator" large icon>
+                    <v-icon>unfold_more</v-icon>
+                  </v-btn>
 
+                  <v-list>
+                    <v-list-tile
+                      v-for="(item, i) in items"
+                      :key="i"
+                      @click="selected = i">
+                      <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                    </v-list-tile>
+                  </v-list>
+                </v-menu>
+                <v-btn @click="submit" color="primary" large>Search</v-btn>
+
+              </v-layout>
+            </v-form>
+          </v-card-text>
+        </v-card>
       </v-flex>
     </v-layout>
 
@@ -32,15 +63,36 @@
           <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">CREATE</v-btn>
         </v-toolbar>
 
-        <v-card-text class="pa-0">
+        <v-card-text class="pa-0" v-if="selected == 0">
           <v-data-table
-            :headers="headers"
+            :headers="serviceHeaders"
             :items="weights"
             hide-actions
             class="elevation-0"
           >
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.service }}</td>
+              <td class="text-xs-left">{{ props.item.method }}</td>
+              <td class="text-xs-center px-0">
+                <v-tooltip bottom v-for="op in operations" :key="op.id">
+                  <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon, props.item)">
+                    {{op.icon}}
+                  </v-icon>
+                  <span>{{op.tooltip}}</span>
+                </v-tooltip>
+              </td>
+            </template>
+          </v-data-table>
+        </v-card-text>
+        <v-card-text class="pa-0" v-if="selected == 1">
+          <v-data-table
+            :headers="appHeaders"
+            :items="weights"
+            hide-actions
+            class="elevation-0"
+          >
+            <template slot="items" slot-scope="props">
+              <td class="text-xs-left">{{ props.item.application }}</td>
               <td class="text-xs-left">{{ props.item.method }}</td>
               <td class="text-xs-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
@@ -111,6 +163,11 @@
       Search
     },
     data: () => ({
+      items: [
+        {id: 0, title: 'service name', value: 'serviceName'},
+        {id: 1, title: 'application', value: 'application'}
+      ],
+      selected: 0,
       dropdown_font: [ 'Service', 'App', 'IP' ],
       ruleKeys: ['weight', 'address'],
       pattern: 'Service',
@@ -134,15 +191,34 @@
       required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
       template:
         'weight: 100  # 100 for default\n' +
-        'provider:   # provider\'s ip\n' +
+        'addresses:   # addresses\'s ip\n' +
         '  - 192.168.0.1\n' +
         '  - 192.168.0.2',
       ruleText: '',
       readonly: false,
-      headers: [
+      serviceHeaders: [
         {
           text: 'Service Name',
           value: 'service',
+          align: 'left'
+        },
+        {
+          text: 'Weight',
+          value: 'weight',
+          align: 'left'
+
+        },
+        {
+          text: 'Operation',
+          value: 'operation',
+          sortable: false,
+          width: '115px'
+        }
+      ],
+      appHeaders: [
+        {
+          text: 'Application Name',
+          value: 'application',
           align: 'left'
         },
         {
@@ -164,16 +240,19 @@
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        this.$axios.get('/rules/weight/', {
-          params: {
-            service: filter
-          }
-        }).then(response => {
-          this.weights = response.data
-          if (rewrite) {
-            this.$router.push({path: 'weight', query: {service: filter}})
-          }
-        })
+        let type = this.items[this.selected].value
+        let url = '/rules/weight/?' + type + '=' + filter
+        this.$axios.get(url)
+          .then(response => {
+            this.weights = response.data
+            if (rewrite) {
+              if (this.selected === 0) {
+                this.$router.push({path: 'weight', query: {serviceName: filter}})
+              } else if (this.selected === 1) {
+                this.$router.push({path: 'weight', query: {application: filter}})
+              }
+            }
+          })
       },
       closeDialog: function () {
         this.ruleText = this.template
@@ -196,10 +275,11 @@
       },
       saveItem: function () {
         let weight = yaml.safeLoad(this.ruleText)
-        if (this.service === '') {
+        if (this.service === '' && this.application === '') {
           return
         }
         weight.service = this.service
+        weight.application = this.application
         if (this.updateId !== '') {
           if (this.updateId === 'close') {
             this.closeDialog()
@@ -208,8 +288,15 @@
             this.$axios.put('/rules/weight/' + weight.id, weight)
               .then(response => {
                 if (response.status === 200) {
-                  this.search(this.service, true)
-                  this.filter = this.service
+                  if (this.service !== '') {
+                    this.selected = 0
+                    this.search(this.service, true)
+                    this.filter = this.service
+                  } else {
+                    this.selected = 1
+                    this.search(this.application, true)
+                    this.filter = this.application
+                  }
                   this.closeDialog()
                   this.$notify.success('Update success')
                 }
@@ -218,9 +305,16 @@
         } else {
           this.$axios.post('/rules/weight', weight)
             .then(response => {
-              if (response.status === 200) {
-                this.search(this.service, true)
-                this.filter = this.service
+              if (response.status === 201) {
+                if (this.service !== '') {
+                  this.selected = 0
+                  this.search(this.service, true)
+                  this.filter = this.service
+                } else {
+                  this.selected = 1
+                  this.search(this.application, true)
+                  this.filter = this.application
+                }
                 this.closeDialog()
                 this.$notify.success('Create success')
               }
@@ -228,9 +322,15 @@
         }
       },
       itemOperation: function (icon, item) {
+        let itemId = ''
+        if (this.selected === 0) {
+          itemId = item.service
+        } else {
+          itemId = item.application
+        }
         switch (icon) {
           case 'visibility':
-            this.$axios.get('/rules/weight/' + item.id)
+            this.$axios.get('/rules/weight/' + itemId)
                 .then(response => {
                   let weight = response.data
                   this.handleWeight(weight, true)
@@ -238,22 +338,24 @@
                 })
             break
           case 'edit':
-            this.$axios.get('/rules/weight/' + item.id)
+            this.$axios.get('/rules/weight/' + itemId)
                 .then(response => {
                   let weight = response.data
                   this.handleWeight(weight, false)
-                  this.updateId = item.id
+                  this.updateId = itemId
                 })
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + item.service)
+            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + itemId)
             this.warnStatus.operation = 'delete'
-            this.warnStatus.id = item.id
+            this.warnStatus.id = itemId
         }
       },
       handleWeight: function (weight, readonly) {
         this.service = weight.service
+        this.application = weight.application
         delete weight.service
+        delete weight.application
         this.ruleText = yaml.safeDump(weight)
         this.readonly = readonly
         this.dialog = true
@@ -275,9 +377,14 @@
     created () {
       this.setHeight()
     },
+    computed: {
+      queryBy () {
+        return 'by ' + this.items[this.selected].title
+      }
+    },
     mounted: function () {
       this.ruleText = this.template
-      let query = this.$conditionRoute.query
+      let query = this.$route.query
       let service = null
       Object.keys(query).forEach(function (key) {
         if (key === 'service') {

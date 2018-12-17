@@ -22,13 +22,22 @@ package org.apache.dubbo.admin.model.dto;
  * For receive ID parameter with @RequestBody
  */
 public abstract class BaseDTO {
-    private String id;
+    private String application;
+    private String service;
 
-    public String getId() {
-        return id;
+    public String getApplication() {
+        return application;
     }
 
-    public void setId(String id) {
-        this.id = id;
+    public void setApplication(String application) {
+        this.application = application;
+    }
+
+    public String getService() {
+        return service;
+    }
+
+    public void setService(String service) {
+        this.service = service;
     }
 }

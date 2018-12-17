@@ -18,6 +18,9 @@
 package org.apache.dubbo.admin.common.util;
 
 
+import java.util.HashSet;
+import java.util.Set;
+
 public class Constants {
 
     public static final String REGISTRY_ADDRESS = "dubbo.registry.address";
@@ -29,9 +32,18 @@ public class Constants {
     public static final String CATEGORY_KEY = "category";
     public static final String ROUTERS_CATEGORY = "routers";
     public static final String CONDITION_ROUTE = "condition_route";
+    public static final String CONFIGURATOR = "configurators";
     public static final String TAG_ROUTE = "tag_route";
-
-
     public static final String COMPATIBLE_CONFIG = "compatible_config";
+    public static final String WEIGHT = "weight";
+    public static final String BALANCING = "balancing";
+    public static final String SERVICE = "service";
+    public static final String APPLICATION = "application";
+    public static final Set<String> CONFIGS = new HashSet<>();
+
+    static {
+        CONFIGS.add(WEIGHT);
+        CONFIGS.add(BALANCING);
+    }
 
 }

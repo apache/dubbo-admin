@@ -16,6 +16,7 @@
  */
 package org.apache.dubbo.admin.common.util;
 
+import org.apache.dubbo.admin.model.dto.BaseDTO;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.utils.StringUtils;
 
@@ -53,4 +54,45 @@ public class ConvertUtil {
 
         return ret;
     }
+
+    public static String getIdFromDTO(BaseDTO baseDTO) {
+        String id;
+        if (StringUtils.isNotEmpty(baseDTO.getApplication())) {
+            id = baseDTO.getApplication();
+        } else {
+            id = baseDTO.getService();
+        }
+        return id;
+    }
+
+    public static String getScopeFromDTO(BaseDTO baseDTO) {
+        if (StringUtils.isNotEmpty(baseDTO.getApplication())) {
+            return org.apache.dubbo.admin.common.util.Constants.APPLICATION;
+        } else {
+            return org.apache.dubbo.admin.common.util.Constants.SERVICE;
+        }
+    }
+
+//    public static <T extends BaseDTO> T convertDTOtoStore(T dto) {
+//        if (StringUtils.isNotEmpty(dto.getApplication())) {
+//            dto.setScope("application");
+//            dto.setKey(dto.getApplication());
+//        } else {
+//            dto.setScope("service");
+//            dto.setKey(dto.getService());
+//        }
+//        return dto;
+//    }
+//
+//    public static <T extends BaseDTO> T convertDTOtoDisplay(T dto) {
+//        if (dto == null) {
+//            return null;
+//        }
+//        if(dto.getScope().equals("application")) {
+//            dto.setApplication(dto.getKey());
+//        } else {
+//            dto.setService(dto.getKey());
+//        }
+//        return dto;
+//    }
 }
