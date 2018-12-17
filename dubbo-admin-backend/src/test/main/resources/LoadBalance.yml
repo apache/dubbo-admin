@@ -1,0 +1,15 @@
+---
+apiVersion: v2.7
+scope: application
+key: governance-consumer
+enabled: false
+configs:
+  - addresses: ["0.0.0.0:20880"]
+    side: provider
+    parameters:
+      timeout: 2000
+  - type: balancing
+    enabled: true
+    parameters:
+      method: '*'
+      strategy: random

@@ -16,22 +16,22 @@
  */
 package org.apache.dubbo.admin.model.dto;
 
+import java.util.List;
 import java.util.Set;
 
 public class AccessDTO extends BaseDTO {
     // BlackWhiteList key
-    public static final String KEY_BLACK_WHITE_LIST = "blackwhitelist";
 
-    private String service;
     private Set<String> whitelist;
     private Set<String> blacklist;
+    private boolean enabled = true;
 
-    public String getService() {
-        return service;
+    public boolean isEnabled() {
+        return enabled;
     }
 
-    public void setService(String service) {
-        this.service = service;
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 
     public Set<String> getWhitelist() {
