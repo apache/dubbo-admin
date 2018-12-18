@@ -103,11 +103,14 @@ public class OverrideUtils {
 
     public static OverrideConfig balanceDTOtoConfig(BalancingDTO balancingDTO) {
         OverrideConfig overrideConfig = new OverrideConfig();
-        overrideConfig.setType("balancing");
+        overrideConfig.setType(Constants.BALANCING);
         overrideConfig.setEnabled(true);
         Map<String, Object> parameters = new HashMap<>();
-        parameters.put("method", balancingDTO.getMethodName());
-        parameters.put("strategy", balancingDTO.getStrategy());
+        if (balancingDTO.getMethodName().equals("*")) {
+            parameters.put("loadbalance", balancingDTO.getStrategy());
+        } else {
+            parameters.put(balancingDTO.getMethodName() + ".loadbalance", balancingDTO.getStrategy());
+        }
         overrideConfig.setParameters(parameters);
         return overrideConfig;
     }
@@ -119,7 +122,7 @@ public class OverrideUtils {
         } else {
             weightDTO.setService(key);
         }
-        weightDTO.setWeight((int)config.getParameters().get("weight"));
+        weightDTO.setWeight((int)config.getParameters().get(Constants.WEIGHT));
         weightDTO.setAddresses(config.getAddresses());
         return weightDTO;
     }
@@ -131,8 +134,17 @@ public class OverrideUtils {
         } else {
             balancingDTO.setService(key);
         }
-        balancingDTO.setStrategy((String)config.getParameters().get("strategy"));
-        balancingDTO.setMethodName((String)config.getParameters().get("method"));
+        for (Map.Entry<String, Object> entry : config.getParameters().entrySet()) {
+            String k = entry.getKey();
+            String method;
+            if (k.contains(".")) {
+                method = k.split("\\.")[0];
+            } else {
+                method = "*";
+            }
+            balancingDTO.setMethodName(method);
+            balancingDTO.setStrategy((String)entry.getValue());
+        }
         return balancingDTO;
     }
 
