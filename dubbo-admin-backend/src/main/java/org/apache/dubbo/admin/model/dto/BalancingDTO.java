@@ -19,17 +19,8 @@ package org.apache.dubbo.admin.model.dto;
 
 public class BalancingDTO extends BaseDTO{
 
-    private String service;
     private String methodName;
     private String strategy;
-
-    public String getService() {
-        return service;
-    }
-
-    public void setService(String service) {
-        this.service = service;
-    }
 
     public String getMethodName() {
         return methodName;

@@ -193,7 +193,7 @@
         'force: true\n' +
         'configs: \n' +
         '  - addresses: [0.0.0.0]  # 0.0.0.0 for all addresses\n' +
-        '    side: consumer        # effective side, consumer or provider\n' +
+        '    side: consumer        # effective side, consumer or addresses\n' +
         '    parameters: \n' +
         '      timeout: 6000       # dynamic config parameter\n',
       ruleText: '',

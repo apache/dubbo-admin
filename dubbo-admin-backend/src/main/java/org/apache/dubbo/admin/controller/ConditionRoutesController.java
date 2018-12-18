@@ -20,7 +20,9 @@ package org.apache.dubbo.admin.controller;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
+import org.apache.dubbo.admin.common.exception.VersionValidationException;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
+import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.admin.service.RouteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -34,10 +36,12 @@ import java.util.List;
 public class ConditionRoutesController {
 
     private final RouteService routeService;
+    private final ProviderService providerService;
 
     @Autowired
-    public ConditionRoutesController(RouteService routeService) {
+    public ConditionRoutesController(RouteService routeService, ProviderService providerService) {
         this.routeService = routeService;
+        this.providerService = providerService;
     }
 
     @RequestMapping(method = RequestMethod.POST)
@@ -47,6 +51,9 @@ public class ConditionRoutesController {
         String app = routeDTO.getApplication();
         if (StringUtils.isEmpty(serviceName) && StringUtils.isEmpty(app)) {
             throw new ParamValidationException("serviceName and app is Empty!");
+        }
+        if (StringUtils.isNotEmpty(app) && providerService.findVersionInApplication(app).equals("2.6")) {
+            throw new VersionValidationException("dubbo 2.6 does not support application scope routing rule");
         }
         routeService.createConditionRoute(routeDTO);
         return true;
@@ -58,7 +65,7 @@ public class ConditionRoutesController {
         if (oldConditionRoute == null) {
             throw new ResourceNotFoundException("can not find route rule for: " + id);
         }
-        routeService.updateConditionRoute(oldConditionRoute, newConditionRoute);
+        routeService.updateConditionRoute(newConditionRoute);
         return true;
     }
 
@@ -73,8 +80,7 @@ public class ConditionRoutesController {
         if (StringUtils.isNotEmpty(serviceName)) {
             conditionRoute = routeService.findConditionRoute(serviceName);
         }
-        if (conditionRoute != null) {
-            conditionRoute = convertRouteDTOtoDisplay(conditionRoute);
+        if (conditionRoute != null && conditionRoute.getConditions() != null) {
             result.add(conditionRoute);
         }
         return result;
@@ -83,10 +89,9 @@ public class ConditionRoutesController {
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public ConditionRouteDTO detailRoute(@PathVariable String id, @PathVariable String env) {
         ConditionRouteDTO conditionRoute = routeService.findConditionRoute(id);
-        if (conditionRoute == null) {
+        if (conditionRoute == null || conditionRoute.getConditions() == null) {
             throw new ResourceNotFoundException("Unknown ID!");
         }
-        conditionRoute = convertRouteDTOtoDisplay(conditionRoute);
         return conditionRoute;
     }
 
@@ -108,14 +113,4 @@ public class ConditionRoutesController {
         return true;
     }
 
-    private ConditionRouteDTO convertRouteDTOtoDisplay(ConditionRouteDTO conditionRouteDTO) {
-        if (conditionRouteDTO.getScope().equals("application")) {
-            conditionRouteDTO.setApplication(conditionRouteDTO.getKey());
-        } else {
-            conditionRouteDTO.setService(conditionRouteDTO.getKey());
-        }
-        conditionRouteDTO.setScope(null);
-        conditionRouteDTO.setKey(null);
-        return conditionRouteDTO;
-    }
 }

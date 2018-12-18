@@ -15,20 +15,19 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.model.dto;
-import org.apache.dubbo.admin.model.domain.OverrideConfig;
+package org.apache.dubbo.admin.model.store;
 
-public class OverrideDTO extends BaseDTO{
+import org.apache.dubbo.admin.model.dto.Config;
 
-    private String application;
-    private String apiVersion;
-    private String service;
-    private boolean dynamic;
-    private boolean enabled;
+import java.util.List;
+
+public class OverrideDTO {
     private String key;
     private String scope;
-    private OverrideConfig[] configs;
-
+    private String apiVersion;
+    private boolean dynamic;
+    private boolean enabled;
+    private List<OverrideConfig> configs;
 
     public String getKey() {
         return key;
@@ -46,36 +45,12 @@ public class OverrideDTO extends BaseDTO{
         this.scope = scope;
     }
 
-    public OverrideConfig[] getConfigs() {
-        return configs;
-    }
-
-    public void setConfigs(OverrideConfig[] configs) {
-        this.configs = configs;
-    }
-
     public String getApiVersion() {
         return apiVersion;
     }
 
     public void setApiVersion(String apiVersion) {
         this.apiVersion = apiVersion;
-    }
-
-    public String getApplication() {
-        return application;
-    }
-
-    public void setApplication(String application) {
-        this.application = application;
-    }
-
-    public String getService() {
-        return service;
-    }
-
-    public void setService(String service) {
-        this.service = service;
     }
 
     public boolean isDynamic() {
@@ -92,5 +67,13 @@ public class OverrideDTO extends BaseDTO{
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public List<OverrideConfig> getConfigs() {
+        return configs;
+    }
+
+    public void setConfigs(List<OverrideConfig> configs) {
+        this.configs = configs;
     }
 }

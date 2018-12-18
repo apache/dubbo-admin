@@ -17,43 +17,43 @@
 
 <template>
   <v-container grid-list-xl fluid >
-      <v-layout row wrap>
-        <v-flex lg12>
-          <v-card flat color="transparent">
-            <v-card-text>
-              <v-form>
-                <v-layout row wrap>
-                  <v-combobox
-                    id="serviceSearch"
-                    v-model="filter"
-                    flat
-                    append-icon=""
-                    hide-no-data
-                    :suffix="queryBy"
-                    label="Search Routing Rule"
-                  ></v-combobox>
-                  <v-menu class="hidden-xs-only">
-                    <v-btn slot="activator" large icon>
-                      <v-icon>unfold_more</v-icon>
-                    </v-btn>
+    <v-layout row wrap>
+      <v-flex lg12>
+        <v-card flat color="transparent">
+          <v-card-text>
+            <v-form>
+              <v-layout row wrap>
+                <v-combobox
+                  id="serviceSearch"
+                  v-model="filter"
+                  flat
+                  append-icon=""
+                  hide-no-data
+                  :suffix="queryBy"
+                  label="Search Routing Rule"
+                ></v-combobox>
+                <v-menu class="hidden-xs-only">
+                  <v-btn slot="activator" large icon>
+                    <v-icon>unfold_more</v-icon>
+                  </v-btn>
 
-                    <v-list>
-                      <v-list-tile
-                        v-for="(item, i) in items"
-                        :key="i"
-                        @click="selected = i">
-                        <v-list-tile-title>{{ item.title }}</v-list-tile-title>
-                      </v-list-tile>
-                    </v-list>
-                  </v-menu>
-                  <v-btn @click="submit" color="primary" large>Search</v-btn>
+                  <v-list>
+                    <v-list-tile
+                      v-for="(item, i) in items"
+                      :key="i"
+                      @click="selected = i">
+                      <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                    </v-list-tile>
+                  </v-list>
+                </v-menu>
+                <v-btn @click="submit" color="primary" large>Search</v-btn>
 
-                </v-layout>
-              </v-form>
-            </v-card-text>
-          </v-card>
-        </v-flex>
-      </v-layout>
+              </v-layout>
+            </v-form>
+          </v-card-text>
+        </v-card>
+      </v-flex>
+    </v-layout>
     <v-flex lg12>
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
@@ -361,8 +361,6 @@
               })
             break
           case 'edit':
-            let id = {}
-            id.id = itemId
             this.$axios.get('/rules/route/condition/' + itemId)
               .then(response => {
                 let conditionRoute = response.data
@@ -371,17 +369,17 @@
               })
             break
           case 'block':
-            this.openWarn(' Are you sure to block Routing Rule', 'service: ' + item.service)
+            this.openWarn(' Are you sure to block Routing Rule', 'service: ' + itemId)
             this.warnStatus.operation = 'disable'
             this.warnStatus.id = itemId
             break
           case 'check_circle_outline':
-            this.openWarn(' Are you sure to enable Routing Rule', 'service: ' + item.service)
+            this.openWarn(' Are you sure to enable Routing Rule', 'service: ' + itemId)
             this.warnStatus.operation = 'enable'
             this.warnStatus.id = itemId
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + item.service)
+            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + itemId)
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = itemId
         }
@@ -448,7 +446,7 @@
       let filter = null
       let vm = this
       Object.keys(query).forEach(function (key) {
-        if (key === 'service') {
+        if (key === 'serviceName') {
           filter = query[key]
           vm.selected = 0
         }

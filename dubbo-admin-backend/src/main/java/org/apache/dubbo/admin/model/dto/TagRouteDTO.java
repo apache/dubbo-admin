@@ -19,15 +19,34 @@ package org.apache.dubbo.admin.model.dto;
 
 import org.apache.dubbo.admin.model.domain.Tag;
 
-public class TagRouteDTO extends RouteDTO{
-    private Tag[] tags;
+import java.util.List;
 
-    public Tag[] getTags() {
+public class TagRouteDTO extends RouteDTO{
+    private String scope;
+    private String key;
+    private List<Tag> tags;
+
+    public String getScope() {
+        return scope;
+    }
+
+    public void setScope(String scope) {
+        this.scope = scope;
+    }
+
+    public String getKey() {
+        return key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
+    }
+
+    public List<Tag> getTags() {
         return tags;
     }
 
-    public void setTags(Tag[] tags) {
+    public void setTags(List<Tag> tags) {
         this.tags = tags;
     }
-
 }

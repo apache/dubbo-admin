@@ -17,16 +17,47 @@
 
 package org.apache.dubbo.admin.model.dto;
 
+import org.apache.dubbo.admin.model.store.OverrideConfig;
+
 import java.util.List;
 
-public class ConditionRouteDTO extends RouteDTO{
-    private List<String> conditions;
+public class DynamicConfigDTO extends BaseDTO {
 
-    public List<String> getConditions() {
-        return conditions;
+    private String apiVersion;
+    private boolean dynamic;
+    private boolean enabled;
+    private List<OverrideConfig> configs;
+
+
+    public List<OverrideConfig> getConfigs() {
+        return configs;
     }
 
-    public void setConditions(List<String> conditions) {
-        this.conditions = conditions;
+    public void setConfigs(List<OverrideConfig> configs) {
+        this.configs = configs;
+    }
+
+    public String getApiVersion() {
+        return apiVersion;
+    }
+
+    public void setApiVersion(String apiVersion) {
+        this.apiVersion = apiVersion;
+    }
+
+    public boolean isDynamic() {
+        return dynamic;
+    }
+
+    public void setDynamic(boolean dynamic) {
+        this.dynamic = dynamic;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 }
