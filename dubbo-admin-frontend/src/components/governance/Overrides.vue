@@ -184,7 +184,6 @@
       ],
       appConfigs: [
       ],
-      required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
       template:
 
         'apiVersion: v2.7\n' +
@@ -271,6 +270,7 @@
       saveItem: function () {
         let override = yaml.safeLoad(this.ruleText)
         if (this.service === '' && this.application === '') {
+          this.$notify.error("Either service or application is needed")
           return
         }
         override.service = this.service

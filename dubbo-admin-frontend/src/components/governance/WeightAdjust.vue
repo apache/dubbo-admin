@@ -117,7 +117,6 @@
           <v-text-field
             label="Service Unique ID"
             hint="A service ID in form of group/service:version, group and version are optional"
-            :rules="[required]"
             v-model="service"
           ></v-text-field>
           <v-text-field
@@ -188,7 +187,6 @@
       ],
       weights: [
       ],
-      required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
       template:
         'weight: 100  # 100 for default\n' +
         'addresses:   # addresses\'s ip\n' +
@@ -276,6 +274,7 @@
       saveItem: function () {
         let weight = yaml.safeLoad(this.ruleText)
         if (this.service === '' && this.application === '') {
+          this.$notify.error("Either service or application is needed")
           return
         }
         weight.service = this.service

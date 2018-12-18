@@ -186,7 +186,6 @@
       ],
       appRoutingRules: [
       ],
-      required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
       template:
         'enabled: true\n' +
         'priority: 100\n' +
@@ -296,6 +295,7 @@
       saveItem: function () {
         let rule = yaml.safeLoad(this.ruleText)
         if (this.service === '' && this.application === '') {
+          this.$notify.error("Either service or application is needed")
           return
         }
         rule.service = this.service
