@@ -23,9 +23,7 @@ import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.data.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
-import org.apache.dubbo.metadata.identifier.ConsumerMetadataIdentifier;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
-import org.apache.dubbo.metadata.identifier.ProviderMetadataIdentifier;
 
 public class ZookeeperMetaDataCollector implements MetaDataCollector {
 
@@ -58,12 +56,12 @@ public class ZookeeperMetaDataCollector implements MetaDataCollector {
 
 
     @Override
-    public String getProviderMetaData(ProviderMetadataIdentifier key) {
+    public String getProviderMetaData(MetadataIdentifier key) {
         return doGetMetadata(key);
     }
 
     @Override
-    public String getConsumerMetaData(ConsumerMetadataIdentifier key) {
+    public String getConsumerMetaData(MetadataIdentifier key) {
         return doGetMetadata(key);
     }
 

@@ -19,8 +19,7 @@ package org.apache.dubbo.admin.data.metadata;
 
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.SPI;
-import org.apache.dubbo.metadata.identifier.ConsumerMetadataIdentifier;
-import org.apache.dubbo.metadata.identifier.ProviderMetadataIdentifier;
+import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 
 @SPI("zookeeper")
 public interface MetaDataCollector {
@@ -31,7 +30,7 @@ public interface MetaDataCollector {
 
     void init();
 
-    String getProviderMetaData(ProviderMetadataIdentifier key);
+    String getProviderMetaData(MetadataIdentifier key);
 
-    String getConsumerMetaData(ConsumerMetadataIdentifier key);
+    String getConsumerMetaData(MetadataIdentifier key);
 }

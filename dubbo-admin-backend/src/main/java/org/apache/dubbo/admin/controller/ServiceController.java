@@ -28,7 +28,7 @@ import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
-import org.apache.dubbo.metadata.identifier.ProviderMetadataIdentifier;
+import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -112,10 +112,14 @@ public class ServiceController {
         List<Consumer> consumers = consumerService.findByService(service);
 
         Map<String, String> info = ConvertUtil.serviceName2Map(service);
-        ProviderMetadataIdentifier p = new ProviderMetadataIdentifier(info.get(Constants.INTERFACE_KEY),
+        String application = null;
+        if (providers != null && providers.size() > 0) {
+            application = providers.get(0).getApplication();
+        }
+        MetadataIdentifier identifier = new MetadataIdentifier(info.get(Constants.INTERFACE_KEY),
                                                                       info.get(Constants.VERSION_KEY),
-                                                                      info.get(Constants.GROUP_KEY));
-        String metadata = providerService.getProviderMetaData(p);
+                                                                      info.get(Constants.GROUP_KEY), Constants.PROVIDER_SIDE, application);
+        String metadata = providerService.getProviderMetaData(identifier);
         Gson gson = new Gson();
         FullServiceDefinition serviceDefinition = gson.fromJson(metadata, FullServiceDefinition.class);
         ServiceDetailDTO serviceDetailDTO = new ServiceDetailDTO();

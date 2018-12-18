@@ -17,7 +17,7 @@
 package org.apache.dubbo.admin.service;
 
 import org.apache.dubbo.admin.model.domain.Provider;
-import org.apache.dubbo.metadata.identifier.ProviderMetadataIdentifier;
+import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 
 import java.util.List;
 
@@ -43,11 +43,11 @@ public interface ProviderService {
 
     Provider findProvider(String id);
 
-    String getProviderMetaData(ProviderMetadataIdentifier providerIdentifier);
+    String getProviderMetaData(MetadataIdentifier providerIdentifier);
 
     List<String> findServices();
 
-    String findServiceVersion(String serviceName);
+    String findServiceVersion(String serviceName, String application);
 
     String findVersionInApplication(String application);
 

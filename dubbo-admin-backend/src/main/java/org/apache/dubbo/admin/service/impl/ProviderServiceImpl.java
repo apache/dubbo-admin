@@ -28,7 +28,7 @@ import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
-import org.apache.dubbo.metadata.identifier.ProviderMetadataIdentifier;
+import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -92,7 +92,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
 //    }
 
     @java.lang.Override
-    public String getProviderMetaData(ProviderMetadataIdentifier providerIdentifier) {
+    public String getProviderMetaData(MetadataIdentifier providerIdentifier) {
         return metaDataCollector.getProviderMetaData(providerIdentifier);
     }
 
@@ -398,18 +398,18 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
     @Override
     public String findVersionInApplication(String application) {
         List<String> services = findServicesByApplication(application);
-        return findServiceVersion(services.get(0));
+        return findServiceVersion(services.get(0), application);
     }
 
     @Override
-    public String findServiceVersion(String serviceName) {
+    public String findServiceVersion(String serviceName, String application) {
         String version = "2.6";
         serviceName = serviceName.replace("*", "/");
         Map<String, String> info = ConvertUtil.serviceName2Map(serviceName);
-        ProviderMetadataIdentifier p = new ProviderMetadataIdentifier(info.get(Constants.INTERFACE_KEY),
+        MetadataIdentifier identifier = new MetadataIdentifier(info.get(Constants.INTERFACE_KEY),
                 info.get(Constants.VERSION_KEY),
-                info.get(Constants.GROUP_KEY));
-        String metadata = getProviderMetaData(p);
+                info.get(Constants.GROUP_KEY), Constants.PROVIDER_SIDE, application);
+        String metadata = getProviderMetaData(identifier);
         Gson gson = new Gson();
         if (StringUtils.isNoneEmpty(metadata)) {
             FullServiceDefinition serviceDefinition = gson.fromJson(metadata, FullServiceDefinition.class);

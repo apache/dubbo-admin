@@ -20,9 +20,7 @@ package org.apache.dubbo.admin.data.metadata.impl;
 
 import org.apache.dubbo.admin.data.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
-import org.apache.dubbo.metadata.identifier.ConsumerMetadataIdentifier;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
-import org.apache.dubbo.metadata.identifier.ProviderMetadataIdentifier;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
@@ -48,12 +46,12 @@ public class RedisMetaDataCollector implements MetaDataCollector {
     }
 
     @Override
-    public String getProviderMetaData(ProviderMetadataIdentifier key) {
+    public String getProviderMetaData(MetadataIdentifier key) {
         return doGetMetaData(key);
     }
 
     @Override
-    public String getConsumerMetaData(ConsumerMetadataIdentifier key) {
+    public String getConsumerMetaData(MetadataIdentifier key) {
         return doGetMetaData(key);
     }
 
