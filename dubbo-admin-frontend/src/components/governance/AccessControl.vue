@@ -146,7 +146,6 @@
           <v-form ref="modalForm">
             <v-text-field label="Service Unique ID"
                           hint="A service ID in form of group/service:version, group and version are optional"
-                          :rules="[required]"
                           :readonly="modal.id != null"
                           v-model="modal.service" />
             <v-text-field
@@ -233,7 +232,6 @@ export default {
       }
     ],
     accesses: [],
-    required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
     modal: {
       enable: false,
       title: 'Create New',
@@ -309,6 +307,7 @@ export default {
       let doc = yaml.load(this.modal.content)
       this.filter = ''
       if (this.modal.service === '' && this.modal.service === null) {
+        this.$notify.error("Either service or application is needed")
         return
       }
       var vm = this

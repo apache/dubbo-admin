@@ -121,7 +121,6 @@
       operations: operations,
       tagRoutingRules: [
       ],
-      required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
       template:
         'force: false\n' +
         'enabled: true\n' +
@@ -195,6 +194,7 @@
       saveItem: function () {
         let rule = yaml.safeLoad(this.ruleText)
         if (this.application === '') {
+          this.$notify.error("application is required")
           return
         }
         rule.application = this.application

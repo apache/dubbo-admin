@@ -118,7 +118,6 @@
           <v-text-field
             label="Service Unique ID"
             hint="A service ID in form of group/service:version, group and version are optional"
-            :rules="[required]"
             v-model="service"
           ></v-text-field>
           <v-text-field
@@ -188,7 +187,6 @@
       ],
       loadBalances: [
       ],
-      required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
       template:
         'methodName: sayHello  # 0 for all methods\n' +
         'strategy:  # leastactive, random, roundrobin',
@@ -272,6 +270,7 @@
         this.ruleText = this.verifyRuleText(this.ruleText)
         let balancing = yaml.safeLoad(this.ruleText)
         if (this.service === '' && this.application === '') {
+          this.$notify.error("Either service or application is needed")
           return
         }
         balancing.service = this.service
