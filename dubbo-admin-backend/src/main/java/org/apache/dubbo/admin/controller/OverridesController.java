@@ -20,8 +20,10 @@ package org.apache.dubbo.admin.controller;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
-import org.apache.dubbo.admin.model.dto.OverrideDTO;
+import org.apache.dubbo.admin.common.exception.VersionValidationException;
+import org.apache.dubbo.admin.model.dto.DynamicConfigDTO;
 import org.apache.dubbo.admin.service.OverrideService;
+import org.apache.dubbo.admin.service.ProviderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -34,60 +36,63 @@ import java.util.List;
 public class OverridesController {
 
     private final OverrideService overrideService;
+    private final ProviderService providerService;
 
     @Autowired
-    public OverridesController(OverrideService overrideService) {
+    public OverridesController(OverrideService overrideService, ProviderService providerService) {
         this.overrideService = overrideService;
+        this.providerService = providerService;
     }
 
     @RequestMapping(method = RequestMethod.POST)
     @ResponseStatus(HttpStatus.CREATED)
-    public boolean createOverride(@RequestBody OverrideDTO overrideDTO, @PathVariable String env) {
+    public boolean createOverride(@RequestBody DynamicConfigDTO overrideDTO, @PathVariable String env) {
         String serviceName = overrideDTO.getService();
         String application = overrideDTO.getApplication();
         if (StringUtils.isEmpty(serviceName) && StringUtils.isEmpty(application)) {
             throw new ParamValidationException("serviceName and application are Empty!");
+        }
+        if (StringUtils.isNotEmpty(application) && providerService.findVersionInApplication(application).equals("2.6")) {
+            throw new VersionValidationException("dubbo 2.6 does not support application scope dynamic config");
         }
         overrideService.saveOverride(overrideDTO);
         return true;
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
-    public boolean updateOverride(@PathVariable String id, @RequestBody OverrideDTO overrideDTO, @PathVariable String env) {
-        OverrideDTO old = overrideService.findOverride(id);
+    public boolean updateOverride(@PathVariable String id, @RequestBody DynamicConfigDTO overrideDTO, @PathVariable String env) {
+        DynamicConfigDTO old = overrideService.findOverride(id);
         if (old == null) {
             throw new ResourceNotFoundException("Unknown ID!");
         }
-        overrideService.updateOverride(old, overrideDTO);
+        overrideService.updateOverride(overrideDTO);
         return true;
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public List<OverrideDTO> searchOverride(@RequestParam(required = false) String serviceName,
-                                            @RequestParam(required = false) String application,
-                                            @PathVariable String env) {
-        OverrideDTO override = null;
-        List<OverrideDTO> result = new ArrayList<>();
+    public List<DynamicConfigDTO> searchOverride(@RequestParam(required = false) String serviceName,
+                                                 @RequestParam(required = false) String application,
+                                                 @PathVariable String env) {
+        DynamicConfigDTO override = null;
+        List<DynamicConfigDTO> result = new ArrayList<>();
         if (StringUtils.isNotEmpty(serviceName)) {
             override = overrideService.findOverride(serviceName);
         } else if(StringUtils.isNotEmpty(application)){
             override = overrideService.findOverride(application);
         }
         if (override != null) {
-            override = convertOverrideDTOtoDisplay(override);
             result.add(override);
         }
         return result;
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
-    public OverrideDTO detailOverride(@PathVariable String id, @PathVariable String env) {
-        OverrideDTO override = overrideService.findOverride(id);
+    public DynamicConfigDTO detailOverride(@PathVariable String id, @PathVariable String env) {
+        DynamicConfigDTO override = overrideService.findOverride(id);
         if (override == null) {
             throw new ResourceNotFoundException("Unknown ID!");
         }
 
-        override = convertOverrideDTOtoDisplay(override);
         return override;
     }
 
@@ -109,16 +114,5 @@ public class OverridesController {
 
         overrideService.disableOverride(id);
         return true;
-    }
-
-    private OverrideDTO convertOverrideDTOtoDisplay(OverrideDTO overrideDTO) {
-        if (overrideDTO.getScope().equals("application")) {
-            overrideDTO.setApplication(overrideDTO.getKey());
-        } else {
-            overrideDTO.setService(overrideDTO.getKey());
-        }
-        overrideDTO.setScope(null);
-        overrideDTO.setKey(null);
-        return overrideDTO;
     }
 }

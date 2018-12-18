@@ -15,12 +15,48 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.model.dto;
+package org.apache.dubbo.admin.model.store;
 
 import java.util.List;
 
-public class ConditionRouteDTO extends RouteDTO{
+public class BlackWhiteList {
+    private boolean enabled;
+    private boolean force;
+    private boolean runtime;
+    private int priority;
     private List<String> conditions;
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public boolean isForce() {
+        return force;
+    }
+
+    public void setForce(boolean force) {
+        this.force = force;
+    }
+
+    public boolean isRuntime() {
+        return runtime;
+    }
+
+    public void setRuntime(boolean runtime) {
+        this.runtime = runtime;
+    }
+
+    public int getPriority() {
+        return priority;
+    }
+
+    public void setPriority(int priority) {
+        this.priority = priority;
+    }
 
     public List<String> getConditions() {
         return conditions;

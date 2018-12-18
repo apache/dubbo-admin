@@ -15,17 +15,21 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.model.domain;
+package org.apache.dubbo.admin.model.store;
 
+import java.util.List;
 import java.util.Map;
 
 public class OverrideConfig {
+
     private String side;
-    private String[] addresses;
-    private String[] providerAddresses;
+    private List<String> addresses;
+    private List<String> providerAddresses;
     private Map<String, Object> parameters;
-    private String[] applications;
-    private String[] services;
+    private List<String> applications;
+    private List<String> services;
+    private String type;
+    private boolean enabled;
 
     public String getSide() {
         return side;
@@ -35,19 +39,19 @@ public class OverrideConfig {
         this.side = side;
     }
 
-    public String[] getAddresses() {
+    public List<String> getAddresses() {
         return addresses;
     }
 
-    public void setAddresses(String[] addresses) {
+    public void setAddresses(List<String> addresses) {
         this.addresses = addresses;
     }
 
-    public String[] getProviderAddresses() {
+    public List<String> getProviderAddresses() {
         return providerAddresses;
     }
 
-    public void setProviderAddresses(String[] providerAddresses) {
+    public void setProviderAddresses(List<String> providerAddresses) {
         this.providerAddresses = providerAddresses;
     }
 
@@ -59,19 +63,35 @@ public class OverrideConfig {
         this.parameters = parameters;
     }
 
-    public String[] getApplications() {
+    public List<String> getApplications() {
         return applications;
     }
 
-    public void setApplications(String[] applications) {
+    public void setApplications(List<String> applications) {
         this.applications = applications;
     }
 
-    public String[] getServices() {
+    public List<String> getServices() {
         return services;
     }
 
-    public void setServices(String[] services) {
+    public void setServices(List<String> services) {
         this.services = services;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 }

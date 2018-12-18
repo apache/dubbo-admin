@@ -15,14 +15,38 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.model.dto;
+package org.apache.dubbo.admin.model.store;
 
-public abstract class RouteDTO extends BaseDTO{
+import java.util.List;
+
+public class RoutingRuleDTO {
+
+    private String key;
+    private String scope;
     private boolean dynamic;
     private int priority;
     private boolean enabled;
     private boolean force;
     private boolean runtime;
+    private List<String> conditions;
+    private BlackWhiteList blackWhiteList;
+
+
+    public String getKey() {
+        return key;
+    }
+
+    public void setKey(String key) {
+        this.key = key;
+    }
+
+    public String getScope() {
+        return scope;
+    }
+
+    public void setScope(String scope) {
+        this.scope = scope;
+    }
 
     public boolean isDynamic() {
         return dynamic;
@@ -62,5 +86,21 @@ public abstract class RouteDTO extends BaseDTO{
 
     public void setRuntime(boolean runtime) {
         this.runtime = runtime;
+    }
+
+    public List<String> getConditions() {
+        return conditions;
+    }
+
+    public void setConditions(List<String> conditions) {
+        this.conditions = conditions;
+    }
+
+    public BlackWhiteList getBlackWhiteList() {
+        return blackWhiteList;
+    }
+
+    public void setBlackWhiteList(BlackWhiteList blackWhiteList) {
+        this.blackWhiteList = blackWhiteList;
     }
 }

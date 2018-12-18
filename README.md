@@ -24,7 +24,7 @@
 ### Production Setup
 
 1. Clone source code on develop branch `git clone https://github.com/apache/incubator-dubbo-ops.git`
-2. Specify registry address in `dubbo-admin-backend/src/resources/application-production.properties`
+2. Specify registry address in `dubbo-admin-backend/src/main/resources/application-production.properties`
 3. Build   
 
     > - `mvn clean package`
