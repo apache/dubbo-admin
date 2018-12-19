@@ -186,7 +186,7 @@
       ],
       template:
 
-        'apiVersion: v2.7\n' +
+        'configVersion: v2.7\n' +
         'enabled: true\n' +
         'runtime: true\n' +
         'force: true\n' +
