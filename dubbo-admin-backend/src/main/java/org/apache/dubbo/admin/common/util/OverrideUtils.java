@@ -19,7 +19,6 @@ package org.apache.dubbo.admin.common.util;
 import org.apache.dubbo.admin.model.domain.*;
 import org.apache.dubbo.admin.model.domain.Override;
 import org.apache.dubbo.admin.model.dto.BalancingDTO;
-import org.apache.dubbo.admin.model.dto.Config;
 import org.apache.dubbo.admin.model.dto.DynamicConfigDTO;
 import org.apache.dubbo.admin.model.dto.WeightDTO;
 import org.apache.dubbo.admin.model.store.OverrideConfig;
@@ -72,7 +71,7 @@ public class OverrideUtils {
 
     public static DynamicConfigDTO createFromOverride(OverrideDTO overrideDTO) {
         DynamicConfigDTO dynamicConfigDTO = new DynamicConfigDTO();
-        dynamicConfigDTO.setApiVersion(overrideDTO.getApiVersion());
+        dynamicConfigDTO.setConfigVersion(overrideDTO.getConfigVersion());
         List<OverrideConfig> configs = new ArrayList<>();
         for (OverrideConfig overrideConfig : overrideDTO.getConfigs()) {
             if (overrideConfig.getType() == null) {
@@ -96,7 +95,7 @@ public class OverrideUtils {
             overrideDTO.setScope(Constants.SERVICE);
             overrideDTO.setKey(dynamicConfigDTO.getService());
         }
-        overrideDTO.setApiVersion(dynamicConfigDTO.getApiVersion());
+        overrideDTO.setConfigVersion(dynamicConfigDTO.getConfigVersion());
         overrideDTO.setConfigs(dynamicConfigDTO.getConfigs());
         return overrideDTO;
     }

@@ -17,14 +17,12 @@
 
 package org.apache.dubbo.admin.model.store;
 
-import org.apache.dubbo.admin.model.dto.Config;
-
 import java.util.List;
 
 public class OverrideDTO {
     private String key;
     private String scope;
-    private String apiVersion;
+    private String configVersion;
     private boolean dynamic;
     private boolean enabled;
     private List<OverrideConfig> configs;
@@ -45,12 +43,12 @@ public class OverrideDTO {
         this.scope = scope;
     }
 
-    public String getApiVersion() {
-        return apiVersion;
+    public String getConfigVersion() {
+        return configVersion;
     }
 
-    public void setApiVersion(String apiVersion) {
-        this.apiVersion = apiVersion;
+    public void setConfigVersion(String configVersion) {
+        this.configVersion = configVersion;
     }
 
     public boolean isDynamic() {
