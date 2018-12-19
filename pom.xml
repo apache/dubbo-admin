@@ -63,7 +63,7 @@
 		<netty-version>4.1.30.Final</netty-version>
 		<jacoco-version>0.8.2</jacoco-version>
 		<jedis-version>2.9.0</jedis-version>
-        <apollo-version>1.1.2</apollo-version>
+        <apollo-version>1.2.0</apollo-version>
 		<snakeyaml-version>1.19</snakeyaml-version>
 	</properties>
 
