@@ -72,7 +72,7 @@
           >
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.service }}</td>
-              <td class="text-xs-left">{{ props.item.method }}</td>
+              <td class="text-xs-left">{{ props.item.weight }}</td>
               <td class="text-xs-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
                   <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon, props.item)">
@@ -93,7 +93,7 @@
           >
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.application }}</td>
-              <td class="text-xs-left">{{ props.item.method }}</td>
+              <td class="text-xs-left">{{ props.item.weight }}</td>
               <td class="text-xs-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
                   <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon, props.item)">
@@ -163,7 +163,7 @@
     },
     data: () => ({
       items: [
-        {id: 0, title: 'service name', value: 'serviceName'},
+        {id: 0, title: 'service name', value: 'service'},
         {id: 1, title: 'application', value: 'application'}
       ],
       selected: 0,
@@ -245,7 +245,7 @@
             this.weights = response.data
             if (rewrite) {
               if (this.selected === 0) {
-                this.$router.push({path: 'weight', query: {serviceName: filter}})
+                this.$router.push({path: 'weight', query: {service: filter}})
               } else if (this.selected === 1) {
                 this.$router.push({path: 'weight', query: {application: filter}})
               }
@@ -273,13 +273,14 @@
       },
       saveItem: function () {
         let weight = yaml.safeLoad(this.ruleText)
-        if (this.service === '' && this.application === '') {
+        if (!this.service && !this.application) {
           this.$notify.error('Either service or application is needed')
           return
         }
         weight.service = this.service
         weight.application = this.application
-        if (this.updateId !== '') {
+        let vm = this
+        if (this.updateId) {
           if (this.updateId === 'close') {
             this.closeDialog()
           } else {
@@ -287,14 +288,14 @@
             this.$axios.put('/rules/weight/' + weight.id, weight)
               .then(response => {
                 if (response.status === 200) {
-                  if (this.service !== '') {
-                    this.selected = 0
-                    this.search(this.service, true)
-                    this.filter = this.service
+                  if (vm.service) {
+                    vm.selected = 0
+                    vm.search(his.service, true)
+                    vm.filter = vm.service
                   } else {
-                    this.selected = 1
-                    this.search(this.application, true)
-                    this.filter = this.application
+                    vm.selected = 1
+                    vm.search(vm.application, true)
+                    vm.filter = vm.application
                   }
                   this.closeDialog()
                   this.$notify.success('Update success')
@@ -305,17 +306,17 @@
           this.$axios.post('/rules/weight', weight)
             .then(response => {
               if (response.status === 201) {
-                if (this.service !== '') {
-                  this.selected = 0
-                  this.search(this.service, true)
-                  this.filter = this.service
+                if (this.service) {
+                  vm.selected = 0
+                  vm.search(vm.service, true)
+                  vm.filter = vm.service
                 } else {
-                  this.selected = 1
-                  this.search(this.application, true)
-                  this.filter = this.application
+                  vm.selected = 1
+                  vm.search(vm.application, true)
+                  vm.filter = vm.application
                 }
-                this.closeDialog()
-                this.$notify.success('Create success')
+                vm.closeDialog()
+                vm.$notify.success('Create success')
               }
             })
         }
@@ -326,6 +327,9 @@
           itemId = item.service
         } else {
           itemId = item.application
+        }
+        if (itemId.includes('/')) {
+          itemId = itemId.replace('/', '*')
         }
         switch (icon) {
           case 'visibility':
@@ -384,15 +388,21 @@
     mounted: function () {
       this.ruleText = this.template
       let query = this.$route.query
-      let service = null
+      let filter = null
+      let vm = this
       Object.keys(query).forEach(function (key) {
         if (key === 'service') {
-          service = query[key]
+          filter = query[key]
+          vm.selected = 0
+        }
+        if (key === 'application') {
+          filter = query[key]
+          vm.selected = 1
         }
       })
-      if (service !== null) {
-        this.filter = service
-        this.search(service, false)
+      if (filter !== null) {
+        this.filter = filter
+        this.search(filter, false)
       }
     }
   }

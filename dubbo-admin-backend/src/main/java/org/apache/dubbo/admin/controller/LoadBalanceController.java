@@ -65,6 +65,7 @@ public class LoadBalanceController {
         if (id == null) {
             throw new ParamValidationException("Unknown ID!");
         }
+        id = id.replace("*", "/");
         BalancingDTO balancing = overrideService.findBalance(id);
         if (balancing == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -85,18 +86,18 @@ public class LoadBalanceController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public List<BalancingDTO> searchLoadbalances(@RequestParam(required = false) String serviceName,
+    public List<BalancingDTO> searchLoadbalances(@RequestParam(required = false) String service,
                                                  @RequestParam(required = false) String application,
                                                  @PathVariable String env) {
 
-        if (StringUtils.isBlank(serviceName) && StringUtils.isBlank(application)) {
+        if (StringUtils.isBlank(service) && StringUtils.isBlank(application)) {
             throw new ParamValidationException("Either service or application is required");
         }
         BalancingDTO balancingDTO;
         if (StringUtils.isNotBlank(application)) {
             balancingDTO = overrideService.findBalance(application);
         } else {
-            balancingDTO = overrideService.findBalance(serviceName);
+            balancingDTO = overrideService.findBalance(service);
         }
         List<BalancingDTO> balancingDTOS = new ArrayList<>();
         if (balancingDTO != null) {
@@ -107,6 +108,7 @@ public class LoadBalanceController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public BalancingDTO detailLoadBalance(@PathVariable String id, @PathVariable String env) throws ParamValidationException {
+        id = id.replace("*", "/");
         BalancingDTO balancingDTO = overrideService.findBalance(id);
         if (balancingDTO == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -122,6 +124,7 @@ public class LoadBalanceController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteLoadBalance(@PathVariable String id, @PathVariable String env) {
+        id = id.replace("*", "/");
         if (id == null) {
             throw new IllegalArgumentException("Argument of id is null!");
         }

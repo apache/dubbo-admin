@@ -61,6 +61,7 @@ public class OverridesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
     public boolean updateOverride(@PathVariable String id, @RequestBody DynamicConfigDTO overrideDTO, @PathVariable String env) {
+        id = id.replace("*", "/");
         DynamicConfigDTO old = overrideService.findOverride(id);
         if (old == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -70,13 +71,13 @@ public class OverridesController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public List<DynamicConfigDTO> searchOverride(@RequestParam(required = false) String serviceName,
+    public List<DynamicConfigDTO> searchOverride(@RequestParam(required = false) String service,
                                                  @RequestParam(required = false) String application,
                                                  @PathVariable String env) {
         DynamicConfigDTO override = null;
         List<DynamicConfigDTO> result = new ArrayList<>();
-        if (StringUtils.isNotEmpty(serviceName)) {
-            override = overrideService.findOverride(serviceName);
+        if (StringUtils.isNotEmpty(service)) {
+            override = overrideService.findOverride(service);
         } else if(StringUtils.isNotEmpty(application)){
             override = overrideService.findOverride(application);
         }
@@ -88,6 +89,7 @@ public class OverridesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public DynamicConfigDTO detailOverride(@PathVariable String id, @PathVariable String env) {
+        id = id.replace("*", "/");
         DynamicConfigDTO override = overrideService.findOverride(id);
         if (override == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -98,6 +100,7 @@ public class OverridesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteOverride(@PathVariable String id, @PathVariable String env) {
+        id = id.replace("*", "/");
         overrideService.deleteOverride(id);
         return true;
     }
@@ -105,12 +108,14 @@ public class OverridesController {
     @RequestMapping(value = "/enable/{id}", method = RequestMethod.PUT)
     public boolean enableRoute(@PathVariable String id, @PathVariable String env) {
 
+        id = id.replace("*", "/");
         overrideService.enableOverride(id);
         return true;
     }
 
     @RequestMapping(value = "/disable/{id}", method = RequestMethod.PUT)
     public boolean disableRoute(@PathVariable String id, @PathVariable String env) {
+        id = id.replace("*", "/");
 
         overrideService.disableOverride(id);
         return true;

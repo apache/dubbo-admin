@@ -193,12 +193,13 @@
       },
       saveItem: function () {
         let rule = yaml.safeLoad(this.ruleText)
-        if (this.application === '') {
+        if (!this.application) {
           this.$notify.error('application is required')
           return
         }
         rule.application = this.application
-        if (this.updateId !== '') {
+        let vm = this
+        if (this.updateId) {
           if (this.updateId === 'close') {
             this.closeDialog()
           } else {
@@ -206,9 +207,9 @@
             this.$axios.put('/rules/route/tag/' + rule.id, rule)
               .then(response => {
                 if (response.status === 200) {
-                  this.search(this.application, true)
-                  this.closeDialog()
-                  this.$notify.success('Update success')
+                  vm.search(vm.application, true)
+                  vm.closeDialog()
+                  vm.$notify.success('Update success')
                 }
               })
           }
@@ -216,10 +217,10 @@
           this.$axios.post('/rules/route/tag/', rule)
             .then(response => {
               if (response.status === 201) {
-                this.search(this.application, true)
-                this.filter = this.application
-                this.closeDialog()
-                this.$notify.success('Create success')
+                vm.search(vm.application, true)
+                vm.filter = vm.application
+                vm.closeDialog()
+                vm.$notify.success('Create success')
               }
             })
             .catch(error => {

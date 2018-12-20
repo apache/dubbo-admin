@@ -96,6 +96,8 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         }
         configs.addAll(update.getConfigs());
         overrideDTO.setConfigs(configs);
+        overrideDTO.setDynamic(update.isDynamic());
+        overrideDTO.setEnabled(update.isEnabled());
         dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO));
 
         //for 2.6
@@ -224,7 +226,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         String path = getPath(id);
         String config = dynamicConfiguration.getConfig(path);
         OverrideConfig overrideConfig = OverrideUtils.weightDTOtoConfig(weightDTO);
-        OverrideDTO overrideDTO = insertConfig(config, overrideConfig, id, scope);
+        OverrideDTO overrideDTO = insertConfig(config, overrideConfig, id, scope, Constants.WEIGHT);
         dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO));
 
         //for 2.6
@@ -334,7 +336,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         String path = getPath(id);
         String config = dynamicConfiguration.getConfig(path);
         OverrideConfig overrideConfig = OverrideUtils.balanceDTOtoConfig(balancingDTO);
-        OverrideDTO overrideDTO = insertConfig(config, overrideConfig, id, scope);
+        OverrideDTO overrideDTO = insertConfig(config, overrideConfig, id, scope, Constants.BALANCING);
         dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO));
 
         //for 2.6
@@ -433,7 +435,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         return null;
     }
 
-    private OverrideDTO insertConfig(String config, OverrideConfig overrideConfig, String key, String scope) {
+    private OverrideDTO insertConfig(String config, OverrideConfig overrideConfig, String key, String scope, String configType) {
         OverrideDTO overrideDTO = null;
         if(config == null) {
             overrideDTO = new OverrideDTO();
@@ -446,6 +448,12 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             overrideDTO = YamlParser.loadObject(config, OverrideDTO.class);
             List<OverrideConfig> configs = overrideDTO.getConfigs();
             if (configs != null) {
+                for (OverrideConfig o : configs) {
+                    if (configType.equals(o.getType())) {
+                        configs.remove(o);
+                        break;
+                    }
+                }
                 configs.add(overrideConfig);
             } else {
                 configs = new ArrayList<>();

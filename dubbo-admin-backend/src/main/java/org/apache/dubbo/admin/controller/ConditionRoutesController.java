@@ -61,6 +61,7 @@ public class ConditionRoutesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
     public boolean updateRule(@PathVariable String id, @RequestBody ConditionRouteDTO newConditionRoute, @PathVariable String env) {
+        id = id.replace("*", "/");
         ConditionRouteDTO oldConditionRoute = routeService.findConditionRoute(id);
         if (oldConditionRoute == null) {
             throw new ResourceNotFoundException("can not find route rule for: " + id);
@@ -71,14 +72,14 @@ public class ConditionRoutesController {
 
     @RequestMapping(method = RequestMethod.GET)
     public List<ConditionRouteDTO> searchRoutes(@RequestParam(required = false) String application,
-                                                @RequestParam(required = false) String serviceName, @PathVariable String env) {
+                                                @RequestParam(required = false) String service, @PathVariable String env) {
         ConditionRouteDTO conditionRoute = null;
         List<ConditionRouteDTO> result = new ArrayList<>();
         if (StringUtils.isNotEmpty(application)) {
             conditionRoute = routeService.findConditionRoute(application);
         }
-        if (StringUtils.isNotEmpty(serviceName)) {
-            conditionRoute = routeService.findConditionRoute(serviceName);
+        if (StringUtils.isNotEmpty(service)) {
+            conditionRoute = routeService.findConditionRoute(service);
         }
         if (conditionRoute != null && conditionRoute.getConditions() != null) {
             result.add(conditionRoute);
@@ -88,6 +89,7 @@ public class ConditionRoutesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public ConditionRouteDTO detailRoute(@PathVariable String id, @PathVariable String env) {
+        id = id.replace("*", "/");
         ConditionRouteDTO conditionRoute = routeService.findConditionRoute(id);
         if (conditionRoute == null || conditionRoute.getConditions() == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -97,18 +99,21 @@ public class ConditionRoutesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteRoute(@PathVariable String id, @PathVariable String env) {
+        id = id.replace("*", "/");
         routeService.deleteConditionRoute(id);
         return true;
     }
 
     @RequestMapping(value = "/enable/{id}", method = RequestMethod.PUT)
     public boolean enableRoute(@PathVariable String id, @PathVariable String env) {
+        id = id.replace("*", "/");
         routeService.enableConditionRoute(id);
         return true;
     }
 
     @RequestMapping(value = "/disable/{id}", method = RequestMethod.PUT)
     public boolean disableRoute(@PathVariable String id, @PathVariable String env) {
+        id = id.replace("*", "/");
         routeService.disableConditionRoute(id);
         return true;
     }
