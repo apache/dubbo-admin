@@ -63,6 +63,9 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             }
         }
         configs.addAll(override.getConfigs());
+        existOverride.setEnabled(override.isEnabled());
+        existOverride.setRuntime(override.isRuntime());
+        existOverride.setForce(override.isForce());
         existOverride.setConfigs(configs);
         dynamicConfiguration.setConfig(path, YamlParser.dumpObject(existOverride));
 
@@ -96,7 +99,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         }
         configs.addAll(update.getConfigs());
         overrideDTO.setConfigs(configs);
-        overrideDTO.setDynamic(update.isDynamic());
+        overrideDTO.setRuntime(update.isRuntime());
         overrideDTO.setEnabled(update.isEnabled());
         dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO));
 
