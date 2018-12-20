@@ -307,7 +307,7 @@ export default {
       let doc = yaml.load(this.modal.content)
       this.filter = ''
       if (this.modal.service === '' && this.modal.service === null) {
-        this.$notify.error("Either service or application is needed")
+        this.$notify.error('Either service or application is needed')
         return
       }
       var vm = this

@@ -194,7 +194,7 @@
       saveItem: function () {
         let rule = yaml.safeLoad(this.ruleText)
         if (this.application === '') {
-          this.$notify.error("application is required")
+          this.$notify.error('application is required')
           return
         }
         rule.application = this.application

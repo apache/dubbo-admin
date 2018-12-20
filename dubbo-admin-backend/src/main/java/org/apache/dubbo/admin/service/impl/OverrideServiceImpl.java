@@ -23,7 +23,6 @@ import org.apache.dubbo.admin.common.util.OverrideUtils;
 import org.apache.dubbo.admin.common.util.YamlParser;
 import org.apache.dubbo.admin.model.domain.LoadBalance;
 import org.apache.dubbo.admin.model.domain.Override;
-import org.apache.dubbo.admin.model.dto.Config;
 import org.apache.dubbo.admin.model.domain.Weight;
 import org.apache.dubbo.admin.model.dto.BalancingDTO;
 import org.apache.dubbo.admin.model.dto.DynamicConfigDTO;
@@ -97,7 +96,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         }
         configs.addAll(update.getConfigs());
         overrideDTO.setConfigs(configs);
-        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(update));
+        dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO));
 
         //for 2.6
         if (StringUtils.isNotEmpty(update.getService())) {

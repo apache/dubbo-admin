@@ -270,7 +270,7 @@
         this.ruleText = this.verifyRuleText(this.ruleText)
         let balancing = yaml.safeLoad(this.ruleText)
         if (this.service === '' && this.application === '') {
-          this.$notify.error("Either service or application is needed")
+          this.$notify.error('Either service or application is needed')
           return
         }
         balancing.service = this.service
