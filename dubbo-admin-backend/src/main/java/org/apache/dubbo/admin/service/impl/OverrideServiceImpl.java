@@ -510,13 +510,6 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         return prefix + Constants.PATH_SEPARATOR + key + Constants.PATH_SEPARATOR + Constants.CONFIGURATOR;
     }
 
-    private String formatMethodName(String method) {
-        if (method.equals("0")) {
-            return "*";
-        }
-        return method;
-    }
-
     private void unregisterWeight(WeightDTO weightDTO) {
         List<String> addresses = weightDTO.getAddresses();
         if (addresses != null) {
@@ -549,7 +542,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
     private void unregisterBalancing(BalancingDTO balancingDTO) {
         LoadBalance loadBalance = new LoadBalance();
         loadBalance.setService(balancingDTO.getService());
-        loadBalance.setMethod(formatMethodName(balancingDTO.getMethodName()));
+        loadBalance.setMethod(balancingDTO.getMethodName());
         loadBalance.setStrategy(balancingDTO.getStrategy());
         registry.unregister(OverrideUtils.loadBalanceToOverride(loadBalance).toUrl());
     }
@@ -557,7 +550,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
     private void registerBalancing(BalancingDTO balancingDTO) {
         LoadBalance loadBalance = new LoadBalance();
         loadBalance.setService(balancingDTO.getService());
-        loadBalance.setMethod(formatMethodName(balancingDTO.getMethodName()));
+        loadBalance.setMethod(balancingDTO.getMethodName());
         loadBalance.setStrategy(balancingDTO.getStrategy());
         registry.register(OverrideUtils.loadBalanceToOverride(loadBalance).toUrl());
     }

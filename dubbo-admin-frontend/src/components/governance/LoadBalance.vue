@@ -188,7 +188,7 @@
       loadBalances: [
       ],
       template:
-        'methodName: sayHello  # 0 for all methods\n' +
+        'methodName: sayHello  # * for all methods\n' +
         'strategy:  # leastactive, random, roundrobin',
       ruleText: '',
       readonly: false,
