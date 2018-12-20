@@ -78,14 +78,18 @@ public class OverrideUtils {
                 configs.add(overrideConfig);
             }
         }
+        if (configs.size() == 0) {
+            return null;
+        }
         dynamicConfigDTO.setConfigs(configs);
         if (overrideDTO.getScope().equals(Constants.APPLICATION)) {
             dynamicConfigDTO.setApplication(overrideDTO.getKey());
         } else {
             dynamicConfigDTO.setService(overrideDTO.getKey());
         }
-        dynamicConfigDTO.setDynamic(overrideDTO.isDynamic());
+        dynamicConfigDTO.setRuntime(overrideDTO.isRuntime());
         dynamicConfigDTO.setEnabled(overrideDTO.isEnabled());
+        dynamicConfigDTO.setForce(overrideDTO.isForce());
         return dynamicConfigDTO;
     }
     public static OverrideDTO createFromDynamicConfig(DynamicConfigDTO dynamicConfigDTO) {
