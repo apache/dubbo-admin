@@ -84,6 +84,8 @@ public class OverrideUtils {
         } else {
             dynamicConfigDTO.setService(overrideDTO.getKey());
         }
+        dynamicConfigDTO.setDynamic(overrideDTO.isDynamic());
+        dynamicConfigDTO.setEnabled(overrideDTO.isEnabled());
         return dynamicConfigDTO;
     }
     public static OverrideDTO createFromDynamicConfig(DynamicConfigDTO dynamicConfigDTO) {

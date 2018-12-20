@@ -58,14 +58,14 @@ public class ServiceController {
         if (!filter.contains("*") && !filter.contains("?")) {
             if (pattern.equals("ip")) {
                 providers = providerService.findByAddress(filter);
-            } else if (pattern.equals("serviceName")) {
+            } else if (pattern.equals("service")) {
                 providers = providerService.findByService(filter);
             } else if (pattern.equals("application")) {
                 providers = providerService.findByApplication(filter);
             }
         } else {
             List<String> candidates = Collections.emptyList();
-            if (pattern.equals("serviceName")) {
+            if (pattern.equals("service")) {
                candidates = providerService.findServices();
             } else if (pattern.equals("application")) {
                 candidates = providerService.findApplications();
@@ -78,7 +78,7 @@ public class ServiceController {
             for (String candidate : candidates) {
                 Matcher matcher = regex.matcher(candidate);
                 if (matcher.matches() || matcher.lookingAt()) {
-                    if (pattern.equals("serviceName")) {
+                    if (pattern.equals("service")) {
                         providers.addAll(providerService.findByService(candidate));
                     } else {
                         providers.addAll(providerService.findByApplication(candidate));

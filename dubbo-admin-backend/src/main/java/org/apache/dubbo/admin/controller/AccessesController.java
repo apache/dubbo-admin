@@ -45,10 +45,10 @@ public class AccessesController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public List<AccessDTO> searchAccess(@RequestParam(required = false) String serviceName,
+    public List<AccessDTO> searchAccess(@RequestParam(required = false) String service,
                                         @RequestParam(required = false) String application,
                                         @PathVariable String env) throws ParseException {
-        if (StringUtils.isBlank(serviceName) && StringUtils.isBlank(application)) {
+        if (StringUtils.isBlank(service) && StringUtils.isBlank(application)) {
             throw new ParamValidationException("Either service or application is required");
         }
         List<AccessDTO> accessDTOS = new ArrayList<>();
@@ -56,7 +56,7 @@ public class AccessesController {
         if (StringUtils.isNotBlank(application)) {
             accessDTO = routeService.findAccess(application);
         } else {
-            accessDTO = routeService.findAccess(serviceName);
+            accessDTO = routeService.findAccess(service);
         }
         if (accessDTO != null) {
             accessDTO.setEnabled(true);
@@ -67,12 +67,14 @@ public class AccessesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public AccessDTO detailAccess(@PathVariable String id, @PathVariable String env) throws ParseException {
+        id = id.replace("*", "/");
         AccessDTO accessDTO = routeService.findAccess(id);
         return accessDTO;
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public void deleteAccess(@PathVariable String id, @PathVariable String env) {
+        id = id.replace("*", "/");
         routeService.deleteAccess(id);
     }
 
@@ -91,6 +93,7 @@ public class AccessesController {
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
     public void updateAccess(@PathVariable String id, @RequestBody AccessDTO accessDTO, @PathVariable String env) {
 
+        id = id.replace("*", "/");
         ConditionRouteDTO route = routeService.findConditionRoute(id);
         if (Objects.isNull(route)) {
             throw new ResourceNotFoundException("Unknown ID!");

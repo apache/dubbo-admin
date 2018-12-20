@@ -163,7 +163,7 @@
     },
     data: () => ({
       items: [
-        {id: 0, title: 'service name', value: 'serviceName'},
+        {id: 0, title: 'service name', value: 'service'},
         {id: 1, title: 'application', value: 'application'}
       ],
       selected: 0,
@@ -242,7 +242,11 @@
           .then(response => {
             this.loadBalances = response.data
             if (rewrite) {
-              this.$router.push({path: 'loadbalance', query: {service: filter}})
+              if (this.selected === 0) {
+                this.$router.push({path: 'loadbalance', query: {service: filter}})
+              } else if (this.selected === 1) {
+                this.$router.push({path: 'loadbalance', query: {application: filter}})
+              }
             }
           })
       },
@@ -269,13 +273,14 @@
       saveItem: function () {
         this.ruleText = this.verifyRuleText(this.ruleText)
         let balancing = yaml.safeLoad(this.ruleText)
-        if (this.service === '' && this.application === '') {
+        if (!this.service && !this.application) {
           this.$notify.error('Either service or application is needed')
           return
         }
+        let vm = this
         balancing.service = this.service
         balancing.application = this.application
-        if (this.updateId !== '') {
+        if (this.updateId) {
           if (this.updateId === 'close') {
             this.closeDialog()
           } else {
@@ -283,14 +288,14 @@
             this.$axios.put('/rules/balancing/' + balancing.id, balancing)
               .then(response => {
                 if (response.status === 200) {
-                  if (this.service !== '') {
-                    this.selected = 0
-                    this.search(this.service, true)
-                    this.filter = this.service
+                  if (vm.service) {
+                    vm.selected = 0
+                    vm.search(vm.service, true)
+                    vm.filter = vm.service
                   } else {
-                    this.selected = 1
-                    this.search(this.application, true)
-                    this.filter = this.application
+                    vm.selected = 1
+                    vm.search(vm.application, true)
+                    vm.filter = vm.application
                   }
                   this.closeDialog()
                   this.$notify.success('Update success')
@@ -301,14 +306,14 @@
           this.$axios.post('/rules/balancing', balancing)
             .then(response => {
               if (response.status === 201) {
-                if (this.service !== '') {
-                  this.selected = 0
-                  this.search(this.service, true)
-                  this.filter = this.service
+                if (vm.service) {
+                  vm.selected = 0
+                  vm.search(vm.service, true)
+                  vm.filter = vm.service
                 } else {
-                  this.selected = 1
-                  this.search(this.application, true)
-                  this.filter = this.application
+                  vm.selected = 1
+                  vm.search(vm.application, true)
+                  vm.filter = vm.application
                 }
                 this.closeDialog()
                 this.$notify.success('Create success')
@@ -322,6 +327,9 @@
           itemId = item.service
         } else {
           itemId = item.application
+        }
+        if (itemId.includes('/')) {
+          itemId = itemId.replace('/', '*')
         }
         switch (icon) {
           case 'visibility':
@@ -391,15 +399,21 @@
     mounted: function () {
       this.ruleText = this.template
       let query = this.$route.query
-      let service = null
+      let filter = null
+      let vm = this
       Object.keys(query).forEach(function (key) {
         if (key === 'service') {
-          service = query[key]
+          filter = query[key]
+          vm.selected = 0
+        }
+        if (key === 'application') {
+          filter = query[key]
+          vm.selected = 1
         }
       })
-      if (service !== null) {
-        this.filter = service
-        this.search(service, false)
+      if (filter !== null) {
+        this.filter = filter
+        this.search(filter, false)
       }
     }
 
