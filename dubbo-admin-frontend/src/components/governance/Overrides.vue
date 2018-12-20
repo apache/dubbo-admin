@@ -270,7 +270,7 @@
       saveItem: function () {
         let override = yaml.safeLoad(this.ruleText)
         if (this.service === '' && this.application === '') {
-          this.$notify.error("Either service or application is needed")
+          this.$notify.error('Either service or application is needed')
           return
         }
         override.service = this.service
@@ -361,12 +361,19 @@
         delete config.service
         delete config.application
         delete config.id
+        this.removeEmpty(config)
         this.ruleText = yaml.safeDump(config)
         this.readonly = readonly
         this.dialog = true
       },
       setHeight: function () {
         this.height = window.innerHeight * 0.5
+      },
+      removeEmpty: function (obj) {
+        Object.keys(obj).forEach(key => {
+          if (obj[key] && typeof obj[key] === 'object') this.removeEmpty(obj[key]);
+          else if (obj[key] == null) delete obj[key];
+        });
       },
       deleteItem: function (warnStatus) {
         let id = warnStatus.id

@@ -24,6 +24,8 @@ import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.data.config.GovernanceConfiguration;
 import org.apache.dubbo.common.URL;
 
+import javax.swing.*;
+
 public class ZookeeperConfiguration implements GovernanceConfiguration {
     private CuratorFramework zkClient;
     private URL url;
@@ -52,7 +54,22 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
 
     @Override
     public String setConfig(String key, String value) {
-        String path = getNodePath(key);
+        return setConfig(null, key, value);
+    }
+
+    @Override
+    public String getConfig(String key) {
+        return getConfig(null, key);
+    }
+
+    @Override
+    public boolean deleteConfig(String key) {
+        return deleteConfig(null, key);
+    }
+
+    @Override
+    public String setConfig(String group, String key, String value) {
+        String path = getNodePath(key, group);
         try {
             if (zkClient.checkExists().forPath(path) == null) {
                 zkClient.create().creatingParentsIfNeeded().forPath(path);
@@ -66,8 +83,8 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
     }
 
     @Override
-    public String getConfig(String key) {
-        String path = getNodePath(key);
+    public String getConfig(String group, String key) {
+        String path = getNodePath(key, group);
 
         try {
             if (zkClient.checkExists().forPath(path) == null) {
@@ -81,8 +98,8 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
     }
 
     @Override
-    public boolean deleteConfig(String key) {
-        String path = getNodePath(key);
+    public boolean deleteConfig(String group, String key) {
+        String path = getNodePath(key, group);
         try {
             zkClient.delete().forPath(path);
         } catch (Exception e) {
@@ -91,11 +108,18 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
         return true;
     }
 
-    private String getNodePath(String path) {
-        return toRootDir() + path;
+    private String getNodePath(String path, String group) {
+        return toRootDir(group) + path;
     }
 
-    private String toRootDir() {
+    private String toRootDir(String group) {
+        if (group != null) {
+            if (!group.startsWith(Constants.PATH_SEPARATOR)) {
+                root = Constants.PATH_SEPARATOR + group;
+            } else {
+                root = group;
+            }
+        }
         if (root.equals(Constants.PATH_SEPARATOR)) {
             return root;
         }

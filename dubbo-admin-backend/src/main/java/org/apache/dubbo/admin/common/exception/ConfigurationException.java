@@ -15,29 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.data.config;
+package org.apache.dubbo.admin.common.exception;
 
-import org.apache.dubbo.common.URL;
-import org.apache.dubbo.common.extension.SPI;
+public class ConfigurationException extends RuntimeException{
 
-
-@SPI("zookeeper")
-public interface GovernanceConfiguration {
-    void init();
-
-    void setUrl(URL url);
-
-    URL getUrl();
-    String setConfig(String key, String value);
-
-    String getConfig(String key);
-
-    boolean deleteConfig(String key);
-
-    String setConfig(String group, String key, String value);
-
-    String getConfig(String group, String key);
-
-    boolean deleteConfig(String group, String key);
-
+    public ConfigurationException(String message) {
+        super(message);
+    }
 }

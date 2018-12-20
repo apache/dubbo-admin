@@ -295,7 +295,7 @@
       saveItem: function () {
         let rule = yaml.safeLoad(this.ruleText)
         if (this.service === '' && this.application === '') {
-          this.$notify.error("Either service or application is needed")
+          this.$notify.error('Either service or application is needed')
           return
         }
         rule.service = this.service
