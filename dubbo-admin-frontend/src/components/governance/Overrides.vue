@@ -268,7 +268,7 @@
       },
       saveItem: function () {
         let override = yaml.safeLoad(this.ruleText)
-        if (!this.service  && !this.application) {
+        if (!this.service && !this.application) {
           this.$notify.error('Either service or application is needed')
           return
         }
