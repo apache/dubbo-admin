@@ -36,6 +36,7 @@
                   :hint="hint"
                   @keyup.enter="submit"
                   label="Search Dubbo Services"
+                  @keyup.enter="submit"
                 ></v-combobox>
                 <v-menu class="hidden-xs-only">
                   <v-btn slot="activator" large icon>
