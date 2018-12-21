@@ -23,7 +23,6 @@ public class RoutingRuleDTO {
 
     private String key;
     private String scope;
-    private boolean dynamic;
     private int priority;
     private boolean enabled;
     private boolean force;
@@ -46,14 +45,6 @@ public class RoutingRuleDTO {
 
     public void setScope(String scope) {
         this.scope = scope;
-    }
-
-    public boolean isDynamic() {
-        return dynamic;
-    }
-
-    public void setDynamic(boolean dynamic) {
-        this.dynamic = dynamic;
     }
 
     public int getPriority() {

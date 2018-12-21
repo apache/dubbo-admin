@@ -15,43 +15,11 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.model.dto;
+package org.apache.dubbo.admin.common.exception;
 
-public abstract class RouteDTO extends BaseDTO{
-    private int priority;
-    private boolean enabled;
-    private boolean force;
-    private boolean runtime;
+public class ConfigurationException extends RuntimeException{
 
-    public int getPriority() {
-        return priority;
-    }
-
-    public void setPriority(int priority) {
-        this.priority = priority;
-    }
-
-    public boolean isEnabled() {
-        return enabled;
-    }
-
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
-    }
-
-    public boolean isForce() {
-        return force;
-    }
-
-    public void setForce(boolean force) {
-        this.force = force;
-    }
-
-    public boolean isRuntime() {
-        return runtime;
-    }
-
-    public void setRuntime(boolean runtime) {
-        this.runtime = runtime;
+    public ConfigurationException(String message) {
+        super(message);
     }
 }

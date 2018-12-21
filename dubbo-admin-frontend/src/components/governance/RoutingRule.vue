@@ -164,12 +164,12 @@
     },
     data: () => ({
       items: [
-        {id: 0, title: 'service name', value: 'serviceName'},
+        {id: 0, title: 'service name', value: 'service'},
         {id: 1, title: 'application', value: 'application'}
       ],
       selected: 0,
       dropdown_font: [ 'Service', 'App', 'IP' ],
-      ruleKeys: ['enabled', 'force', 'dynamic', 'runtime', 'group', 'version', 'rule', 'priority'],
+      ruleKeys: ['enabled', 'force', 'runtime', 'group', 'version', 'rule', 'priority'],
       pattern: 'Service',
       filter: '',
       dialog: false,
@@ -186,7 +186,6 @@
       ],
       appRoutingRules: [
       ],
-      required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
       template:
         'enabled: true\n' +
         'priority: 100\n' +
@@ -265,7 +264,7 @@
             }
             if (rewrite) {
               if (this.selected === 0) {
-                this.$router.push({path: 'routingRule', query: {serviceName: filter}})
+                this.$router.push({path: 'routingRule', query: {service: filter}})
               } else if (this.selected === 1) {
                 this.$router.push({path: 'routingRule', query: {application: filter}})
               }
@@ -295,9 +294,11 @@
       },
       saveItem: function () {
         let rule = yaml.safeLoad(this.ruleText)
-        if (this.service === '' && this.application === '') {
+        if (!this.service && !this.application) {
+          this.$notify.error('Either service or application is needed')
           return
         }
+        let vm = this
         rule.service = this.service
         rule.application = this.application
         if (this.updateId !== '') {
@@ -308,14 +309,14 @@
             this.$axios.put('/rules/route/condition/' + rule.id, rule)
               .then(response => {
                 if (response.status === 200) {
-                  if (this.service !== '') {
-                    this.selected = 0
-                    this.search(this.service, true)
-                    this.filter = this.service
+                  if (vm.service) {
+                    vm.selected = 0
+                    vm.search(vm.service, true)
+                    vm.filter = vm.service
                   } else {
-                    this.selected = 1
-                    this.search(this.application, true)
-                    this.filter = this.application
+                    vm.selected = 1
+                    vm.search(vm.application, true)
+                    vm.filter = vm.application
                   }
                   this.closeDialog()
                   this.$notify.success('Update success')
@@ -326,14 +327,14 @@
           this.$axios.post('/rules/route/condition/', rule)
             .then(response => {
               if (response.status === 201) {
-                if (this.service !== '') {
-                  this.selected = 0
-                  this.search(this.service, true)
-                  this.filter = this.service
+                if (vm.service) {
+                  vm.selected = 0
+                  vm.search(vm.service, true)
+                  vm.filter = vm.service
                 } else {
-                  this.selected = 1
-                  this.search(this.application, true)
-                  this.filter = this.application
+                  vm.selected = 1
+                  vm.search(vm.application, true)
+                  vm.filter = vm.application
                 }
                 this.closeDialog()
                 this.$notify.success('Create success')
@@ -350,6 +351,9 @@
           itemId = item.service
         } else {
           itemId = item.application
+        }
+        if (itemId.includes('/')) {
+          itemId = itemId.replace('/', '*')
         }
         switch (icon) {
           case 'visibility':
@@ -446,7 +450,7 @@
       let filter = null
       let vm = this
       Object.keys(query).forEach(function (key) {
-        if (key === 'serviceName') {
+        if (key === 'service') {
           filter = query[key]
           vm.selected = 0
         }

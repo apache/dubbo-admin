@@ -16,7 +16,9 @@
  */
 package org.apache.dubbo.admin.service.impl;
 
+import com.google.common.collect.Iterables;
 import com.google.gson.Gson;
+import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.common.util.Pair;
 import org.apache.dubbo.admin.common.util.ParseUtils;
@@ -28,9 +30,10 @@ import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
-import org.apache.dubbo.metadata.identifier.ProviderMetadataIdentifier;
+import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.yaml.snakeyaml.events.Event;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,6 +41,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentMap;
+
+import static org.apache.dubbo.common.Constants.SPECIFICATION_VERSION_KEY;
 
 /**
  * IbatisProviderService
@@ -92,7 +97,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
 //    }
 
     @java.lang.Override
-    public String getProviderMetaData(ProviderMetadataIdentifier providerIdentifier) {
+    public String getProviderMetaData(MetadataIdentifier providerIdentifier) {
         return metaDataCollector.getProviderMetaData(providerIdentifier);
     }
 
@@ -398,22 +403,21 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
     @Override
     public String findVersionInApplication(String application) {
         List<String> services = findServicesByApplication(application);
-        return findServiceVersion(services.get(0));
+        if (services == null || services.size() == 0) {
+            throw new ParamValidationException("there is no service for application: " + application);
+        }
+        return findServiceVersion(services.get(0), application);
     }
 
     @Override
-    public String findServiceVersion(String serviceName) {
+    public String findServiceVersion(String serviceName, String application) {
         String version = "2.6";
-        serviceName = serviceName.replace("*", "/");
-        Map<String, String> info = ConvertUtil.serviceName2Map(serviceName);
-        ProviderMetadataIdentifier p = new ProviderMetadataIdentifier(info.get(Constants.INTERFACE_KEY),
-                info.get(Constants.VERSION_KEY),
-                info.get(Constants.GROUP_KEY));
-        String metadata = getProviderMetaData(p);
-        Gson gson = new Gson();
-        if (StringUtils.isNoneEmpty(metadata)) {
-            FullServiceDefinition serviceDefinition = gson.fromJson(metadata, FullServiceDefinition.class);
-            version = serviceDefinition.getParameters().get("specVersion");
+        Map<String, URL> result = findProviderUrlByAppandService(application, serviceName);
+        if (result != null && result.size() > 0) {
+            URL url = result.values().stream().findFirst().get();
+            if (url.getParameter(Constants.SPECIFICATION_VERSION_KEY) != null) {
+                version = url.getParameter(Constants.SPECIFICATION_VERSION_KEY);
+            }
         }
         return version;
     }

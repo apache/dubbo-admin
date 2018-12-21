@@ -17,7 +17,7 @@
 package org.apache.dubbo.admin.service;
 
 import org.apache.dubbo.admin.model.domain.Consumer;
-import org.apache.dubbo.metadata.identifier.ConsumerMetadataIdentifier;
+import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 
 import java.util.List;
 
@@ -31,7 +31,7 @@ public interface ConsumerService {
 
     Consumer findConsumer(String id);
 
-    String getConsumerMetadata(ConsumerMetadataIdentifier consumerIdentifier);
+    String getConsumerMetadata(MetadataIdentifier consumerIdentifier);
 
     List<Consumer> findAll();
 

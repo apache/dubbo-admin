@@ -163,7 +163,7 @@
     },
     data: () => ({
       items: [
-        {id: 0, title: 'service name', value: 'serviceName'},
+        {id: 0, title: 'service name', value: 'service'},
         {id: 1, title: 'application', value: 'application'}
       ],
       selected: 0,
@@ -184,13 +184,11 @@
       ],
       appConfigs: [
       ],
-      required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
       template:
 
-        'apiVersion: v2.7\n' +
+        'configVersion: v2.7\n' +
         'enabled: true\n' +
         'runtime: true\n' +
-        'force: true\n' +
         'configs: \n' +
         '  - addresses: [0.0.0.0]  # 0.0.0.0 for all addresses\n' +
         '    side: consumer        # effective side, consumer or addresses\n' +
@@ -241,7 +239,7 @@
             }
             if (rewrite) {
               if (this.selected === 0) {
-                this.$router.push({path: 'config', query: {serviceName: filter}})
+                this.$router.push({path: 'config', query: {service: filter}})
               } else if (this.selected === 1) {
                 this.$router.push({path: 'config', query: {application: filter}})
               }
@@ -270,26 +268,28 @@
       },
       saveItem: function () {
         let override = yaml.safeLoad(this.ruleText)
-        if (this.service === '' && this.application === '') {
+        if (!this.service && !this.application) {
+          this.$notify.error('Either service or application is needed')
           return
         }
         override.service = this.service
         override.application = this.application
-        if (this.updateId !== '') {
+        let vm = this
+        if (this.updateId) {
           if (this.updateId === 'close') {
             this.closeDialog()
           } else {
             this.$axios.put('/rules/override/' + this.updateId, override)
               .then(response => {
                 if (response.status === 200) {
-                  if (this.service !== '') {
-                    this.selected = 0
-                    this.search(this.service, true)
-                    this.filter = this.service
+                  if (vm.service) {
+                    vm.selected = 0
+                    vm.search(this.service, true)
+                    vm.filter = vm.service
                   } else {
-                    this.selected = 1
-                    this.search(this.application, true)
-                    this.filter = this.application
+                    vm.selected = 1
+                    vm.search(vm.application, true)
+                    vm.filter = vm.application
                   }
                   this.$notify.success('Update success')
                   this.closeDialog()
@@ -300,14 +300,14 @@
           this.$axios.post('/rules/override', override)
             .then(response => {
               if (response.status === 201) {
-                if (this.service !== '') {
-                  this.selected = 0
-                  this.search(this.service, true)
-                  this.filter = this.service
+                if (this.service) {
+                  vm.selected = 0
+                  vm.search(vm.service, true)
+                  vm.filter = vm.service
                 } else {
-                  this.selected = 1
-                  this.search(this.application, true)
-                  this.filter = this.application
+                  vm.selected = 1
+                  vm.search(vm.application, true)
+                  vm.filter = vm.application
                 }
                 this.$notify.success('Create success')
                 this.closeDialog()
@@ -321,6 +321,9 @@
           itemId = item.service
         } else {
           itemId = item.application
+        }
+        if (itemId.includes('/')) {
+          itemId = itemId.replace('/', '*')
         }
         switch (icon) {
           case 'visibility':
@@ -361,12 +364,22 @@
         delete config.service
         delete config.application
         delete config.id
+        this.removeEmpty(config)
         this.ruleText = yaml.safeDump(config)
         this.readonly = readonly
         this.dialog = true
       },
       setHeight: function () {
         this.height = window.innerHeight * 0.5
+      },
+      removeEmpty: function (obj) {
+        Object.keys(obj).forEach(key => {
+          if (obj[key] && typeof obj[key] === 'object') {
+            this.removeEmpty(obj[key])
+          } else if (obj[key] == null) {
+            delete obj[key]
+          }
+        })
       },
       deleteItem: function (warnStatus) {
         let id = warnStatus.id
@@ -415,7 +428,7 @@
       let filter = null
       let vm = this
       Object.keys(query).forEach(function (key) {
-        if (key === 'serviceName') {
+        if (key === 'service') {
           filter = query[key]
           vm.selected = 0
         }

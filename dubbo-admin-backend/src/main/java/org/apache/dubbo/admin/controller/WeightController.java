@@ -68,6 +68,7 @@ public class WeightController {
         if (id == null) {
             throw new ParamValidationException("Unknown ID!");
         }
+        id = id.replace("*", "/");
         WeightDTO weight = overrideService.findWeight(id);
         if (weight == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -83,17 +84,17 @@ public class WeightController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public List<WeightDTO> searchWeight(@RequestParam(required = false) String serviceName,
+    public List<WeightDTO> searchWeight(@RequestParam(required = false) String service,
                                         @RequestParam(required = false) String application,
                                         @PathVariable String env) {
-        if (StringUtils.isBlank(serviceName) && StringUtils.isBlank(application)) {
+        if (StringUtils.isBlank(service) && StringUtils.isBlank(application)) {
             throw new ParamValidationException("Either service or application is required");
         }
         WeightDTO weightDTO;
         if (StringUtils.isNotBlank(application)) {
             weightDTO = overrideService.findWeight(application);
         } else {
-            weightDTO = overrideService.findWeight(serviceName);
+            weightDTO = overrideService.findWeight(service);
         }
         List<WeightDTO> weightDTOS = new ArrayList<>();
         if (weightDTO != null) {
@@ -122,6 +123,7 @@ public class WeightController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public WeightDTO detailWeight(@PathVariable String id, @PathVariable String env) {
+        id = id.replace("*", "/");
         WeightDTO weightDTO = overrideService.findWeight(id);
         if (weightDTO == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -131,6 +133,7 @@ public class WeightController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteWeight(@PathVariable String id, @PathVariable String env) {
+        id = id.replace("*", "/");
         overrideService.deleteWeight(id);
         return true;
     }

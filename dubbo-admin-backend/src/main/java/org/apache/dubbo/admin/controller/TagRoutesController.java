@@ -62,6 +62,7 @@ public class TagRoutesController {
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
     public boolean updateRule(@PathVariable String id, @RequestBody TagRouteDTO routeDTO, @PathVariable String env) {
 
+        id = id.replace("*", "/");
         String app = routeDTO.getApplication();
         if (providerService.findVersionInApplication(app).equals("2.6")) {
             throw new VersionValidationException("dubbo 2.6 does not support tag route");
@@ -76,10 +77,17 @@ public class TagRoutesController {
 
     @RequestMapping(method = RequestMethod.GET)
     public List<TagRouteDTO> searchRoutes(@RequestParam String application, @PathVariable String env) {
-        if (providerService.findVersionInApplication(application).equals("2.6")) {
-            throw new VersionValidationException("dubbo 2.6 does not support tag route");
-        }
         List<TagRouteDTO> result = new ArrayList<>();
+        String version = "2.6";
+        try {
+            version = providerService.findVersionInApplication(application);
+        } catch (ParamValidationException e) {
+            //ignore
+        }
+        if (version.equals("2.6")) {
+            return result;
+        }
+
         TagRouteDTO tagRoute = null;
         if (StringUtils.isNotEmpty(application)) {
             tagRoute = routeService.findTagRoute(application);
@@ -93,6 +101,7 @@ public class TagRoutesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public TagRouteDTO detailRoute(@PathVariable String id, @PathVariable String env) {
+        id = id.replace("*", "/");
         TagRouteDTO tagRoute = routeService.findTagRoute(id);
         if (tagRoute == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -103,18 +112,21 @@ public class TagRoutesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteRoute(@PathVariable String id, @PathVariable String env) {
+        id = id.replace("*", "/");
         routeService.deleteTagRoute(id);
         return true;
     }
 
     @RequestMapping(value = "/enable/{id}", method = RequestMethod.PUT)
     public boolean enableRoute(@PathVariable String id, @PathVariable String env) {
+        id = id.replace("*", "/");
         routeService.enableTagRoute(id);
         return true;
     }
 
     @RequestMapping(value = "/disable/{id}", method = RequestMethod.PUT)
     public boolean disableRoute(@PathVariable String id, @PathVariable String env) {
+        id = id.replace("*", "/");
         routeService.disableTagRoute(id);
         return true;
     }
