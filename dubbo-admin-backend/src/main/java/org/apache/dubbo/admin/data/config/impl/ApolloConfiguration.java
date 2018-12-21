@@ -18,14 +18,30 @@
 package org.apache.dubbo.admin.data.config.impl;
 
 import com.ctrip.framework.apollo.openapi.client.ApolloOpenApiClient;
+import com.ctrip.framework.apollo.openapi.dto.OpenItemDTO;
 import org.apache.dubbo.admin.data.config.GovernanceConfiguration;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.extension.SPI;
 import org.springframework.beans.factory.annotation.Value;
 
+@SPI("apollo")
 public class ApolloConfiguration implements GovernanceConfiguration {
 
     @Value("${dubbo.apollo.token}")
     private String token;
+
+    @Value("${dubbo.apollo.cluster}")
+    private String cluster;
+
+    @Value("${dubbo.apollo.namespace}")
+    private String namespace;
+
+    @Value("${dubbo.apollo.env}")
+    private String env;
+
+    @Value("${dubbo.apollo.appId}")
+    private String appId;
+
     private URL url;
     private ApolloOpenApiClient client;
 
@@ -47,16 +63,50 @@ public class ApolloConfiguration implements GovernanceConfiguration {
 
     @Override
     public String setConfig(String key, String value) {
-        return null;
+        return setConfig(null, key, value);
     }
 
     @Override
     public String getConfig(String key) {
-        return null;
+        return getConfig(null, key);
     }
 
     @Override
     public boolean deleteConfig(String key) {
-        return false;
+        return deleteConfig(null, key);
+    }
+
+    @Override
+    public String setConfig(String group, String key, String value) {
+        if (group == null) {
+            group = namespace;
+        }
+        OpenItemDTO openItemDTO = new OpenItemDTO();
+        openItemDTO.setKey(key);
+        openItemDTO.setValue(value);
+        client.createItem(appId, env, cluster, group, openItemDTO);
+        return value;
+    }
+
+    @Override
+    public String getConfig(String group, String key) {
+        if (group == null) {
+            group = namespace;
+        }
+        OpenItemDTO openItemDTO =  client.getItem(appId, env, cluster, group, key);
+        if (openItemDTO != null) {
+            return openItemDTO.getValue();
+        }
+        return null;
+    }
+
+    @Override
+    public boolean deleteConfig(String group, String key) {
+        if (group == null) {
+            group = namespace;
+        }
+        //TODO user login user name as the operator
+        client.removeItem(appId, env, cluster, group, key, "admin");
+        return true;
     }
 }

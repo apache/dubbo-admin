@@ -23,11 +23,10 @@ import java.util.List;
 
 public class DynamicConfigDTO extends BaseDTO {
 
-    private String apiVersion;
-    private boolean dynamic;
+    private String configVersion;
+    private boolean runtime;
     private boolean enabled;
     private List<OverrideConfig> configs;
-
 
     public List<OverrideConfig> getConfigs() {
         return configs;
@@ -37,20 +36,20 @@ public class DynamicConfigDTO extends BaseDTO {
         this.configs = configs;
     }
 
-    public String getApiVersion() {
-        return apiVersion;
+    public String getConfigVersion() {
+        return configVersion;
     }
 
-    public void setApiVersion(String apiVersion) {
-        this.apiVersion = apiVersion;
+    public void setConfigVersion(String configVersion) {
+        this.configVersion = configVersion;
     }
 
-    public boolean isDynamic() {
-        return dynamic;
+    public boolean isRuntime() {
+        return runtime;
     }
 
-    public void setDynamic(boolean dynamic) {
-        this.dynamic = dynamic;
+    public void setRuntime(boolean runtime) {
+        this.runtime = runtime;
     }
 
     public boolean isEnabled() {

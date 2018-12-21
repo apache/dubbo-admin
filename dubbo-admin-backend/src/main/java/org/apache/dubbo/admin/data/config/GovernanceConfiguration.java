@@ -34,4 +34,10 @@ public interface GovernanceConfiguration {
 
     boolean deleteConfig(String key);
 
+    String setConfig(String group, String key, String value);
+
+    String getConfig(String group, String key);
+
+    boolean deleteConfig(String group, String key);
+
 }

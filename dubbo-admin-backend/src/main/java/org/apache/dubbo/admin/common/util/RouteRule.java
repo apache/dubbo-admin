@@ -205,7 +205,6 @@ public class RouteRule {
             }
         }
         existRule.setConditions(conditionRoute.getConditions());
-        existRule.setDynamic(conditionRoute.isDynamic());
         existRule.setEnabled(conditionRoute.isEnabled());
         existRule.setForce(conditionRoute.isForce());
         existRule.setRuntime(conditionRoute.isRuntime());
@@ -312,7 +311,6 @@ public class RouteRule {
         conditionRouteDTO.setEnabled(routingRuleDTO.isEnabled());
         conditionRouteDTO.setForce(routingRuleDTO.isForce());
         conditionRouteDTO.setRuntime(routingRuleDTO.isRuntime());
-        conditionRouteDTO.setDynamic(routingRuleDTO.isDynamic());
         return conditionRouteDTO;
     }
 

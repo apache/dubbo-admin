@@ -18,9 +18,12 @@
 package org.apache.dubbo.admin.config;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.dubbo.admin.common.exception.ConfigurationException;
+import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.data.config.GovernanceConfiguration;
 import org.apache.dubbo.admin.data.metadata.MetaDataCollector;
+import org.apache.dubbo.admin.data.metadata.impl.NoOpMetadataCollector;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.registry.Registry;
@@ -59,7 +62,8 @@ public class ConfigCenter {
      */
     @Bean("governanceConfiguration")
     GovernanceConfiguration getDynamicConfiguration() {
-        GovernanceConfiguration dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getDefaultExtension();
+        GovernanceConfiguration dynamicConfiguration = null;
+
         if (StringUtils.isNotEmpty(configCenter)) {
             configCenterUrl = formUrl(configCenter, group);
             dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(configCenterUrl.getProtocol());
@@ -77,6 +81,17 @@ public class ConfigCenter {
                 });
             }
         }
+        if (dynamicConfiguration == null) {
+            if (StringUtils.isNotEmpty(registryAddress)) {
+                registryUrl = formUrl(registryAddress, group);
+                dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(registryUrl.getProtocol());
+                dynamicConfiguration.setUrl(registryUrl);
+                dynamicConfiguration.init();
+            } else {
+                throw new ConfigurationException("Either configcenter or registry address is needed");
+                //throw exception
+            }
+        }
         return dynamicConfiguration;
     }
 
@@ -88,6 +103,9 @@ public class ConfigCenter {
     Registry getRegistry() {
         Registry registry = null;
         if (registryUrl == null) {
+            if (StringUtils.isNotEmpty(registryAddress)) {
+                throw new ConfigurationException("Either configcenter or registry address is needed");
+            }
             registryUrl = formUrl(registryAddress, group);
         }
         RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
@@ -101,7 +119,7 @@ public class ConfigCenter {
     @Bean
     @DependsOn("governanceConfiguration")
     MetaDataCollector getMetadataCollector() {
-        MetaDataCollector metaDataCollector = ExtensionLoader.getExtensionLoader(MetaDataCollector.class).getDefaultExtension();
+        MetaDataCollector metaDataCollector = new NoOpMetadataCollector();
         if (metadataUrl != null) {
             metaDataCollector = ExtensionLoader.getExtensionLoader(MetaDataCollector.class).getExtension(metadataUrl.getProtocol());
             metaDataCollector.setUrl(metadataUrl);

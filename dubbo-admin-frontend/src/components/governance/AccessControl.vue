@@ -146,7 +146,6 @@
           <v-form ref="modalForm">
             <v-text-field label="Service Unique ID"
                           hint="A service ID in form of group/service:version, group and version are optional"
-                          :rules="[required]"
                           :readonly="modal.id != null"
                           v-model="modal.service" />
             <v-text-field
@@ -200,7 +199,7 @@ export default {
   name: 'AccessControl',
   data: () => ({
     items: [
-      {id: 0, title: 'service name', value: 'serviceName'},
+      {id: 0, title: 'service name', value: 'service'},
       {id: 1, title: 'application', value: 'application'}
     ],
     selected: 0,
@@ -233,7 +232,6 @@ export default {
       }
     ],
     accesses: [],
-    required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
     modal: {
       enable: false,
       title: 'Create New',
@@ -265,7 +263,7 @@ export default {
   }),
   methods: {
     search () {
-      if (this.filter == null) {
+      if (!this.filter) {
         return
       }
       let type = this.items[this.selected].value
@@ -308,10 +306,11 @@ export default {
     createItem () {
       let doc = yaml.load(this.modal.content)
       this.filter = ''
-      if (this.modal.service === '' && this.modal.service === null) {
+      if (!this.modal.service && !this.modal.application) {
+        this.$notify.error('Either service or application is needed')
         return
       }
-      var vm = this
+      let vm = this
       this.$axios.post('/rules/access', {
         service: this.modal.service,
         application: this.modal.application,
@@ -319,7 +318,7 @@ export default {
         blacklist: doc.blacklist
       }).then(response => {
         if (response.status === 201) {
-          if (vm.modal.service !== null) {
+          if (vm.modal.service) {
             vm.selected = 0
             vm.filter = vm.modal.service
           } else {
@@ -338,6 +337,9 @@ export default {
         itemId = item.service
       } else {
         itemId = item.application
+      }
+      if (itemId.includes('/')) {
+        itemId = itemId.replace('/', '*')
       }
       Object.assign(this.modal, {
         enable: true,
@@ -361,7 +363,7 @@ export default {
 
       }).then(response => {
         if (response.status === 200) {
-          if (vm.modal.service !== null) {
+          if (vm.modal.service) {
             vm.selected = 0
             vm.filter = vm.modal.service
           } else {
