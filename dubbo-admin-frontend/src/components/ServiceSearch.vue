@@ -247,7 +247,7 @@
         if (version !== null) {
           query = query + ':' + version
         }
-        if (type !== 'tagRule') {
+        if (type === 'tagRule') {
           return base + '?application=' + query;
         }
         return base + '?service=' + query;
