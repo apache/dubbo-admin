@@ -65,7 +65,6 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         configs.addAll(override.getConfigs());
         existOverride.setEnabled(override.isEnabled());
         existOverride.setRuntime(override.isRuntime());
-        existOverride.setForce(override.isForce());
         existOverride.setConfigs(configs);
         dynamicConfiguration.setConfig(path, YamlParser.dumpObject(existOverride));
 
