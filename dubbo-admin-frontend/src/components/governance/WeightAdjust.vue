@@ -290,7 +290,7 @@
                 if (response.status === 200) {
                   if (vm.service) {
                     vm.selected = 0
-                    vm.search(his.service, true)
+                    vm.search(vm.service, true)
                     vm.filter = vm.service
                   } else {
                     vm.selected = 1

@@ -128,22 +128,22 @@
       ],
       options: [
         { title: 'Routing Rule',
-          value: "routingRule"
+          value: 'routingRule'
         },
         { title: 'Tag Rule',
-          value: "tagRule"
+          value: 'tagRule'
         },
         { title: 'Dynamic Config',
-          value: "config"
+          value: 'config'
         },
         { title: 'Access Control',
-          value: "access"
+          value: 'access'
         },
         { title: 'Weight Adjust',
-          value: "weight"
+          value: 'weight'
         },
         { title: 'Load Balance',
-          value: "loadbalance"
+          value: 'loadbalance'
         }
       ],
       timerID: null,
@@ -240,7 +240,7 @@
       },
       governanceHref: function (type, service, group, version) {
         let base = '/#/governance/' + type
-        let query = service;
+        let query = service
         if (group !== null) {
           query = group + '/' + query
         }
@@ -248,9 +248,9 @@
           query = query + ':' + version
         }
         if (type === 'tagRule') {
-          return base + '?application=' + query;
+          return base + '?application=' + query
         }
-        return base + '?service=' + query;
+        return base + '?service=' + query
       },
       submit () {
         this.filter = document.querySelector('#serviceSearch').value.trim()
@@ -299,7 +299,7 @@
         }
         this.search(filter, pattern, false)
       } else {
-        //display all existing services by default
+        // display all existing services by default
         this.filter = '*'
         this.selected = 0
         pattern = 'service'
