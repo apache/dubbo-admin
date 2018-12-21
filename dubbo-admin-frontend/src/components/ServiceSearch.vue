@@ -298,6 +298,12 @@
           this.selected = 1
         }
         this.search(filter, pattern, false)
+      } else {
+        //display all existing services by default
+        this.filter = '*'
+        this.selected = 0
+        pattern = 'service'
+        this.search(this.filter, pattern, true)
       }
       this.$axios.get('/service', {
         params: {
