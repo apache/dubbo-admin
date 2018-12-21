@@ -77,10 +77,17 @@ public class TagRoutesController {
 
     @RequestMapping(method = RequestMethod.GET)
     public List<TagRouteDTO> searchRoutes(@RequestParam String application, @PathVariable String env) {
-        if (providerService.findVersionInApplication(application).equals("2.6")) {
-            throw new VersionValidationException("dubbo 2.6 does not support tag route");
-        }
         List<TagRouteDTO> result = new ArrayList<>();
+        String version = "2.6";
+        try {
+            version = providerService.findVersionInApplication(application);
+        } catch (ParamValidationException e) {
+            //ignore
+        }
+        if (version.equals("2.6")) {
+            return result;
+        }
+
         TagRouteDTO tagRoute = null;
         if (StringUtils.isNotEmpty(application)) {
             tagRoute = routeService.findTagRoute(application);
