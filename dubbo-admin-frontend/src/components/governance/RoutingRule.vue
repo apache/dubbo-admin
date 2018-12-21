@@ -169,7 +169,7 @@
       ],
       selected: 0,
       dropdown_font: [ 'Service', 'App', 'IP' ],
-      ruleKeys: ['enabled', 'force', 'dynamic', 'runtime', 'group', 'version', 'rule', 'priority'],
+      ruleKeys: ['enabled', 'force', 'runtime', 'group', 'version', 'rule', 'priority'],
       pattern: 'Service',
       filter: '',
       dialog: false,

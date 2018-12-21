@@ -189,7 +189,6 @@
         'configVersion: v2.7\n' +
         'enabled: true\n' +
         'runtime: true\n' +
-        'force: true\n' +
         'configs: \n' +
         '  - addresses: [0.0.0.0]  # 0.0.0.0 for all addresses\n' +
         '    side: consumer        # effective side, consumer or addresses\n' +

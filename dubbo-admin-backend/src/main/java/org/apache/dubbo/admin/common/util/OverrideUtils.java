@@ -89,7 +89,6 @@ public class OverrideUtils {
         }
         dynamicConfigDTO.setRuntime(overrideDTO.isRuntime());
         dynamicConfigDTO.setEnabled(overrideDTO.isEnabled());
-        dynamicConfigDTO.setForce(overrideDTO.isForce());
         return dynamicConfigDTO;
     }
     public static OverrideDTO createFromDynamicConfig(DynamicConfigDTO dynamicConfigDTO) {

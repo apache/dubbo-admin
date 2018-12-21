@@ -18,19 +18,10 @@
 package org.apache.dubbo.admin.model.dto;
 
 public abstract class RouteDTO extends BaseDTO{
-    private boolean dynamic;
     private int priority;
     private boolean enabled;
     private boolean force;
     private boolean runtime;
-
-    public boolean isDynamic() {
-        return dynamic;
-    }
-
-    public void setDynamic(boolean dynamic) {
-        this.dynamic = dynamic;
-    }
 
     public int getPriority() {
         return priority;
