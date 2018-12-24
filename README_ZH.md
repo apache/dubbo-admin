@@ -5,7 +5,9 @@
 ![license](https://img.shields.io/github/license/apache/incubator-dubbo-ops.svg)
 
 English version goes [here](README.md).
-
+### Demo地址  
+* http://47.91.207.147/#/service  
+* 该地址是`metadata`分支的最新版本，在从源码构建之前，可以先尝试demo
 ### 页面截图
 
 ![index](https://raw.githubusercontent.com/apache/incubator-dubbo-ops/develop/doc/images/index.png)
