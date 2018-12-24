@@ -70,17 +70,7 @@ public class LoadBalanceController {
         if (balancing == null) {
             throw new ResourceNotFoundException("Unknown ID!");
         }
-//        Override override = overrideService.findById(id);
-//        if (override == null) {
-//            throw new ResourceNotFoundException("Unknown ID!");
-//        }
-//        LoadBalance old = overrideToLoadBalance(override);
-//        LoadBalance loadBalance = new LoadBalance();
-//        loadBalance.setStrategy(balancingDTO.getStrategy());
-//        loadBalance.setMethod(formatMethodName(balancingDTO.getMethodName()));
-//        loadBalance.setService(old.getService());
-//        loadBalance.setHash(id);
-//        overrideService.updateOverride(OverrideUtils.loadBalanceToOverride(loadBalance));
+
         overrideService.saveBalance(balancingDTO);
         return true;
     }

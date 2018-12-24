@@ -23,7 +23,6 @@ public class OverrideDTO {
     private String key;
     private String scope;
     private String configVersion;
-    private boolean runtime;
     private boolean enabled;
     private List<OverrideConfig> configs;
 
@@ -49,14 +48,6 @@ public class OverrideDTO {
 
     public void setConfigVersion(String configVersion) {
         this.configVersion = configVersion;
-    }
-
-    public boolean isRuntime() {
-        return runtime;
-    }
-
-    public void setRuntime(boolean runtime) {
-        this.runtime = runtime;
     }
 
     public boolean isEnabled() {

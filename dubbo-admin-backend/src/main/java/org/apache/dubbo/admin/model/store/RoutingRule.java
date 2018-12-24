@@ -19,7 +19,7 @@ package org.apache.dubbo.admin.model.store;
 
 import java.util.List;
 
-public class RoutingRuleDTO {
+public class RoutingRule {
 
     private String key;
     private String scope;

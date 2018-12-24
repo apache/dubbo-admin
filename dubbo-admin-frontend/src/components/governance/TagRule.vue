@@ -19,7 +19,7 @@
   <v-container grid-list-xl fluid >
     <v-layout row wrap>
       <v-flex xs12 >
-        <search v-model="filter" :submit="submit" label="Search Routing Rule by service name"></search>
+        <search id="serviceSearch" v-model="filter" :submit="submit" label="Search Routing Rule by application name"></search>
       </v-flex>
     </v-layout>
     <v-flex lg12>
@@ -39,7 +39,6 @@
           >
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.application }}</td>
-              <td class="text-xs-left">{{ props.item.priority }}</td>
               <td class="text-xs-left">{{ props.item.enabled }}</td>
               <td class="text-xs-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
@@ -107,7 +106,7 @@
     },
     data: () => ({
       dropdown_font: [ 'Service', 'App', 'IP' ],
-      ruleKeys: ['enabled', 'force', 'dynamic', 'runtime', 'group', 'version', 'rule', 'priority'],
+      ruleKeys: ['enabled', 'force', 'dynamic', 'runtime', 'group', 'version', 'rule'],
       pattern: 'Service',
       filter: '',
       dialog: false,
@@ -125,7 +124,6 @@
         'force: false\n' +
         'enabled: true\n' +
         'runtime: false\n' +
-        'priority: 100\n' +
         'tags:\n' +
         ' - name: tag1\n' +
         '   addresses: [192.168.0.1:20881]\n' +
@@ -138,11 +136,6 @@
           text: 'Application Name',
           value: 'application',
           align: 'left'
-        },
-        {
-          text: 'Priority',
-          value: 'priority',
-          sortable: false
         },
         {
           text: 'Enabled',
@@ -159,6 +152,7 @@
     }),
     methods: {
       submit: function () {
+        this.filter = document.querySelector('#serviceSearch').value.trim()
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
@@ -234,8 +228,8 @@
           case 'visibility':
             this.$axios.get('/rules/route/tag/' + itemId)
               .then(response => {
-                let conditionRoute = response.data
-                this.handleBalance(conditionRoute, true)
+                let tagRoute = response.data
+                this.handleBalance(tagRoute, true)
                 this.updateId = 'close'
               })
             break
@@ -271,6 +265,8 @@
         delete tagRoute.app
         delete tagRoute.group
         delete tagRoute.application
+        delete tagRoute.service
+        delete tagRoute.priority
         this.ruleText = yaml.safeDump(tagRoute)
         this.readonly = readonly
         this.dialog = true

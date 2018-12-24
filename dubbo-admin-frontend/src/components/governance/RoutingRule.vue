@@ -72,7 +72,6 @@
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.service }}</td>
               <td class="text-xs-left">{{ props.item.group }}</td>
-              <td class="text-xs-left">{{ props.item.priority }}</td>
               <td class="text-xs-left">{{ props.item.enabled }}</td>
               <td class="text-xs-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
@@ -94,7 +93,6 @@
           >
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.application }}</td>
-              <td class="text-xs-left">{{ props.item.priority }}</td>
               <td class="text-xs-left">{{ props.item.enabled }}</td>
               <td class="text-xs-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
@@ -169,7 +167,7 @@
       ],
       selected: 0,
       dropdown_font: [ 'Service', 'App', 'IP' ],
-      ruleKeys: ['enabled', 'force', 'runtime', 'group', 'version', 'rule', 'priority'],
+      ruleKeys: ['enabled', 'force', 'runtime', 'group', 'version', 'rule'],
       pattern: 'Service',
       filter: '',
       dialog: false,
@@ -188,7 +186,6 @@
       ],
       template:
         'enabled: true\n' +
-        'priority: 100\n' +
         'runtime: false\n' +
         'force: true\n' +
         'conditions:\n' +
@@ -200,11 +197,6 @@
           text: 'Application Name',
           value: 'application',
           align: 'left'
-        },
-        {
-          text: 'Priority',
-          value: 'priority',
-          sortable: false
         },
         {
           text: 'Enabled',
@@ -231,11 +223,6 @@
 
         },
         {
-          text: 'Priority',
-          value: 'priority',
-          sortable: false
-        },
-        {
           text: 'Enabled',
           value: 'enabled',
           sortable: false
@@ -250,6 +237,7 @@
     }),
     methods: {
       submit: function () {
+        this.filter = document.querySelector('#serviceSearch').value.trim()
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
@@ -396,6 +384,7 @@
         delete conditionRoute.app
         delete conditionRoute.group
         delete conditionRoute.application
+        delete conditionRoute.priority
         this.ruleText = yaml.safeDump(conditionRoute)
         this.readonly = readonly
         this.dialog = true
