@@ -29,6 +29,8 @@ public class Constants {
     public static final String PATH_SEPARATOR = "/";
     public static final String GROUP_KEY = "group";
     public static final String CONFIG_KEY = "config";
+    public static final String PROVIDER_SIDE = "provider";
+    public static final String CONSUMER_SIDE = "consumer";
     public static final String CATEGORY_KEY = "category";
     public static final String ROUTERS_CATEGORY = "routers";
     public static final String CONDITION_ROUTE = "condition_route";

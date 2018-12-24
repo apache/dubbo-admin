@@ -24,7 +24,6 @@ import java.util.List;
 public class DynamicConfigDTO extends BaseDTO {
 
     private String configVersion;
-    private boolean runtime;
     private boolean enabled;
     private List<OverrideConfig> configs;
 
@@ -42,14 +41,6 @@ public class DynamicConfigDTO extends BaseDTO {
 
     public void setConfigVersion(String configVersion) {
         this.configVersion = configVersion;
-    }
-
-    public boolean isRuntime() {
-        return runtime;
-    }
-
-    public void setRuntime(boolean runtime) {
-        this.runtime = runtime;
     }
 
     public boolean isEnabled() {

@@ -61,7 +61,7 @@ public interface RouteService {
     void disableTagRoute(String id);
 
 
-    TagRouteDTO findTagRoute(String serviceName);
+    TagRouteDTO findTagRoute(String id);
 
 
 }

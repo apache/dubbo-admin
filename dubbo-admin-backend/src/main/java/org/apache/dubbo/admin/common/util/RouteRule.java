@@ -19,8 +19,10 @@ package org.apache.dubbo.admin.common.util;
 import org.apache.dubbo.admin.model.domain.Route;
 import org.apache.dubbo.admin.model.dto.AccessDTO;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
+import org.apache.dubbo.admin.model.dto.TagRouteDTO;
 import org.apache.dubbo.admin.model.store.BlackWhiteList;
-import org.apache.dubbo.admin.model.store.RoutingRuleDTO;
+import org.apache.dubbo.admin.model.store.RoutingRule;
+import org.apache.dubbo.admin.model.store.TagRoute;
 import org.apache.dubbo.common.utils.StringUtils;
 
 import java.text.ParseException;
@@ -193,9 +195,31 @@ public class RouteRule {
         }
     }
 
-    public static RoutingRuleDTO insertConditionRule(RoutingRuleDTO existRule, ConditionRouteDTO conditionRoute) {
+    public static TagRoute convertTagroutetoStore(TagRouteDTO tagRoute) {
+        TagRoute store = new TagRoute();
+        store.setKey(tagRoute.getApplication());
+        store.setEnabled(tagRoute.isEnabled());
+        store.setForce(tagRoute.isForce());
+        store.setPriority(tagRoute.getPriority());
+        store.setRuntime(tagRoute.isRuntime());
+        store.setTags(tagRoute.getTags());
+        return store;
+    }
+
+    public static TagRouteDTO convertTagroutetoDisplay(TagRoute tagRoute) {
+        TagRouteDTO tagRouteDTO = new TagRouteDTO();
+        tagRouteDTO.setApplication(tagRoute.getKey());
+        tagRouteDTO.setRuntime(tagRoute.isRuntime());
+        tagRouteDTO.setPriority(tagRoute.getPriority());
+        tagRouteDTO.setTags(tagRoute.getTags());
+        tagRouteDTO.setForce(tagRoute.isForce());
+        tagRouteDTO.setEnabled(tagRoute.isEnabled());
+        return tagRouteDTO;
+    }
+
+    public static RoutingRule insertConditionRule(RoutingRule existRule, ConditionRouteDTO conditionRoute) {
         if (existRule == null) {
-            existRule = new RoutingRuleDTO();
+            existRule = new RoutingRule();
             if (StringUtils.isNotEmpty(conditionRoute.getApplication())) {
                 existRule.setKey(conditionRoute.getApplication());
                 existRule.setScope(Constants.APPLICATION);
@@ -299,18 +323,18 @@ public class RouteRule {
         return route;
     }
 
-    public static ConditionRouteDTO createConditionRouteFromRule(RoutingRuleDTO routingRuleDTO) {
+    public static ConditionRouteDTO createConditionRouteFromRule(RoutingRule routingRule) {
         ConditionRouteDTO conditionRouteDTO = new ConditionRouteDTO();
-        if (routingRuleDTO.getScope().equals(Constants.SERVICE)) {
-            conditionRouteDTO.setService(routingRuleDTO.getKey());
+        if (routingRule.getScope().equals(Constants.SERVICE)) {
+            conditionRouteDTO.setService(routingRule.getKey());
         } else {
-            conditionRouteDTO.setApplication(routingRuleDTO.getKey());
+            conditionRouteDTO.setApplication(routingRule.getKey());
         }
-        conditionRouteDTO.setConditions(routingRuleDTO.getConditions());
-        conditionRouteDTO.setPriority(routingRuleDTO.getPriority());
-        conditionRouteDTO.setEnabled(routingRuleDTO.isEnabled());
-        conditionRouteDTO.setForce(routingRuleDTO.isForce());
-        conditionRouteDTO.setRuntime(routingRuleDTO.isRuntime());
+        conditionRouteDTO.setConditions(routingRule.getConditions());
+        conditionRouteDTO.setPriority(routingRule.getPriority());
+        conditionRouteDTO.setEnabled(routingRule.isEnabled());
+        conditionRouteDTO.setForce(routingRule.isForce());
+        conditionRouteDTO.setRuntime(routingRule.isRuntime());
         return conditionRouteDTO;
     }
 

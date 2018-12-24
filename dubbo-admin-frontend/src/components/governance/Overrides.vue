@@ -188,7 +188,6 @@
 
         'configVersion: v2.7\n' +
         'enabled: true\n' +
-        'runtime: true\n' +
         'configs: \n' +
         '  - addresses: [0.0.0.0]  # 0.0.0.0 for all addresses\n' +
         '    side: consumer        # effective side, consumer or addresses\n' +
@@ -225,6 +224,7 @@
     }),
     methods: {
       submit: function () {
+        this.filter = document.querySelector('#serviceSearch').value.trim()
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
@@ -364,6 +364,9 @@
         delete config.service
         delete config.application
         delete config.id
+        for (let i = 0; i < config.configs.length; i++) {
+          delete config.configs[i].enabled
+        }
         this.removeEmpty(config)
         this.ruleText = yaml.safeDump(config)
         this.readonly = readonly
