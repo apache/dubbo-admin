@@ -263,6 +263,7 @@ export default {
   }),
   methods: {
     search () {
+      this.filter = document.querySelector('#serviceSearch').value.trim()
       if (!this.filter) {
         return
       }
