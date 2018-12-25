@@ -18,7 +18,7 @@
   <v-container grid-list-xl fluid>
     <v-layout row wrap>
       <v-flex xs12>
-        <search v-model="filter" label="Search by service name" :submit="search"></search>
+        <search id="serviceSearch" v-model="filter" label="Search by service name" :submit="search"></search>
       </v-flex>
       <v-flex xs12>
         <h3>Methods</h3>
@@ -80,7 +80,7 @@
     name: 'ServiceTest',
     data () {
       return {
-        filter: 'org.apache.dubbo.demo.api.DemoService',
+        filter: '',
         headers: [
           {
             text: 'Method Name',
@@ -115,8 +115,11 @@
     },
     methods: {
       search () {
-        if (this.filter == null) {
-          this.filter = ''
+        if (!this.filter) {
+          this.filter = document.querySelector('#serviceSearch').value.trim()
+          if (!this.filter) {
+            return
+          }
         }
         this.$router.push({
           path: 'test',
@@ -147,7 +150,7 @@
           service: this.service.metadata.canonicalName,
           method: this.modal.method,
           types: this.modal.types,
-          params: JSON.stringify(this.modal.json)
+          params: this.modal.json
         }).then(response => {
           console.log(response)
         })
@@ -160,6 +163,19 @@
         } else {
           return ''
         }
+      }
+    },
+    mounted: function () {
+      let query = this.$route.query
+      let filter = null
+      Object.keys(query).forEach(function (key) {
+        if (key === 'service') {
+          filter = query[key]
+        }
+      })
+      if (filter !== null) {
+        this.filter = filter
+        this.search()
       }
     },
     components: {
