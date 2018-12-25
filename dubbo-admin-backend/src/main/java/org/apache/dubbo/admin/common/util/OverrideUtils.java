@@ -60,11 +60,12 @@ public class OverrideUtils {
 
     public static OverrideConfig weightDTOtoConfig(WeightDTO weightDTO) {
         OverrideConfig overrideConfig = new OverrideConfig();
-        overrideConfig.setType("weight");
+        overrideConfig.setType(Constants.WEIGHT);
         overrideConfig.setEnabled(true);
+        overrideConfig.setSide(Constants.PROVIDER_SIDE);
         overrideConfig.setAddresses(weightDTO.getAddresses());
         Map<String, Object> parameters = new HashMap<>();
-        parameters.put("weight", weightDTO.getWeight());
+        parameters.put(Constants.WEIGHT, weightDTO.getWeight());
         overrideConfig.setParameters(parameters);
         return overrideConfig;
     }
@@ -87,7 +88,6 @@ public class OverrideUtils {
         } else {
             dynamicConfigDTO.setService(overrideDTO.getKey());
         }
-        dynamicConfigDTO.setRuntime(overrideDTO.isRuntime());
         dynamicConfigDTO.setEnabled(overrideDTO.isEnabled());
         return dynamicConfigDTO;
     }
@@ -109,6 +109,7 @@ public class OverrideUtils {
         OverrideConfig overrideConfig = new OverrideConfig();
         overrideConfig.setType(Constants.BALANCING);
         overrideConfig.setEnabled(true);
+        overrideConfig.setSide(Constants.CONSUMER_SIDE);
         Map<String, Object> parameters = new HashMap<>();
         if (balancingDTO.getMethodName().equals("*")) {
             parameters.put("loadbalance", balancingDTO.getStrategy());

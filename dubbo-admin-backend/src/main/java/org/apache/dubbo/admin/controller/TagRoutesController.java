@@ -93,7 +93,6 @@ public class TagRoutesController {
             tagRoute = routeService.findTagRoute(application);
         }
         if (tagRoute != null) {
-            tagRoute = convertTagrouteToDisplay(tagRoute);
             result.add(tagRoute);
         }
         return result;
@@ -106,8 +105,7 @@ public class TagRoutesController {
         if (tagRoute == null) {
             throw new ResourceNotFoundException("Unknown ID!");
         }
-        TagRouteDTO tagRouteDTO = convertTagrouteToDisplay(tagRoute);
-        return tagRouteDTO;
+        return tagRoute;
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
@@ -129,13 +127,6 @@ public class TagRoutesController {
         id = id.replace("*", "/");
         routeService.disableTagRoute(id);
         return true;
-    }
-
-    private TagRouteDTO convertTagrouteToDisplay(TagRouteDTO tagRouteDTO) {
-        tagRouteDTO.setApplication(tagRouteDTO.getKey());
-        tagRouteDTO.setScope(null);
-        tagRouteDTO.setKey(null);
-        return tagRouteDTO;
     }
 }
 
