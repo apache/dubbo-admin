@@ -37,6 +37,14 @@ public class GenericServiceImpl {
 
         reference.setInterface(service);
         GenericService genericService = reference.get();
-        return genericService.$invoke(method, parameterTypes, params);
+        Object result = genericService.$invoke(method, parameterTypes, params);
+        System.out.println(result);
+        return result;
+    }
+
+    public static void main(String[] args) {
+        GenericServiceImpl genericService = new GenericServiceImpl();
+        genericService.init();
+        genericService.invoke("org.apache.dubbo.demo.api.DemoService", "sayHello", new String[]{"java.lang.String"}, new Object[]{"hello"});
     }
 }

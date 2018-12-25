@@ -4,7 +4,7 @@ public class ServiceTestDTO {
     private String service;
     private String method;
     private String[] types;
-    private String params;
+    private Object[] params;
 
     public String getService() {
         return service;
@@ -30,11 +30,11 @@ public class ServiceTestDTO {
         this.types = types;
     }
 
-    public String getParams() {
+    public Object[] getParams() {
         return params;
     }
 
-    public void setParams(String params) {
+    public void setParams(Object[] params) {
         this.params = params;
     }
 }
