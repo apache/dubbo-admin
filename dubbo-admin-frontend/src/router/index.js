@@ -19,7 +19,8 @@ import Vue from 'vue'
 import Router from 'vue-router'
 import ServiceSearch from '@/components/ServiceSearch'
 import ServiceDetail from '@/components/ServiceDetail'
-import ServiceTest from '@/components/ServiceTest'
+import ServiceTest from '@/components/test/ServiceTest'
+import TestMethod from '@/components/test/TestMethod'
 import RoutingRule from '@/components/governance/RoutingRule'
 import TagRule from '@/components/governance/TagRule'
 import AccessControl from '@/components/governance/AccessControl'
@@ -45,6 +46,11 @@ export default new Router({
       path: '/test',
       name: 'ServiceTest',
       component: ServiceTest
+    },
+    {
+      path: '/testMethod',
+      name: 'TestMethod',
+      component: TestMethod
     },
     {
       path: '/governance/routingRule',

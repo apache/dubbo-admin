@@ -124,10 +124,10 @@ public class ServiceController {
         if (metadata != null) {
             Gson gson = new Gson();
             FullServiceDefinition serviceDefinition = gson.fromJson(metadata, FullServiceDefinition.class);
-            serviceDetailDTO.setConsumers(consumers);
-            serviceDetailDTO.setProviders(providers);
             serviceDetailDTO.setMetadata(serviceDefinition);
         }
+        serviceDetailDTO.setConsumers(consumers);
+        serviceDetailDTO.setProviders(providers);
         return serviceDetailDTO;
     }
 }

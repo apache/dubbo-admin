@@ -55,6 +55,7 @@
               <json-editor v-model="modal.json" />
             </v-flex>
             <v-flex lg6>
+              <json-editor v-model="modal.json" />
             </v-flex>
           </v-layout>
         </v-container>
