@@ -19,7 +19,6 @@ package org.apache.dubbo.admin.config;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ConfigurationException;
-import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.data.config.GovernanceConfiguration;
 import org.apache.dubbo.admin.data.metadata.MetaDataCollector;
@@ -51,6 +50,11 @@ public class ConfigCenter {
     @Value("${dubbo.registry.group:}")
     private String group;
 
+    @Value("${dubbo.registry.username:}")
+    private String username;
+    @Value("${dubbo.registry.password:}")
+    private String password;
+
 
     private URL configCenterUrl;
     private URL registryUrl;
@@ -65,7 +69,7 @@ public class ConfigCenter {
         GovernanceConfiguration dynamicConfiguration = null;
 
         if (StringUtils.isNotEmpty(configCenter)) {
-            configCenterUrl = formUrl(configCenter, group);
+            configCenterUrl = formUrl(configCenter, group, username, password);
             dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(configCenterUrl.getProtocol());
             dynamicConfiguration.setUrl(configCenterUrl);
             dynamicConfiguration.init();
@@ -74,16 +78,16 @@ public class ConfigCenter {
             if (StringUtils.isNotEmpty(config)) {
                 Arrays.stream(config.split("\n")).forEach( s -> {
                     if(s.startsWith(Constants.REGISTRY_ADDRESS)) {
-                        registryUrl = formUrl(s.split("=")[1].trim(), group);
+                        registryUrl = formUrl(s.split("=")[1].trim(), group, username, password);
                     } else if (s.startsWith(Constants.METADATA_ADDRESS)) {
-                        metadataUrl = formUrl(s.split("=")[1].trim(), group);
+                        metadataUrl = formUrl(s.split("=")[1].trim(), group, username, password);
                     }
                 });
             }
         }
         if (dynamicConfiguration == null) {
             if (StringUtils.isNotEmpty(registryAddress)) {
-                registryUrl = formUrl(registryAddress, group);
+                registryUrl = formUrl(registryAddress, group, username, password);
                 dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(registryUrl.getProtocol());
                 dynamicConfiguration.setUrl(registryUrl);
                 dynamicConfiguration.init();
@@ -106,7 +110,7 @@ public class ConfigCenter {
             if (StringUtils.isNotEmpty(registryAddress)) {
                 throw new ConfigurationException("Either configcenter or registry address is needed");
             }
-            registryUrl = formUrl(registryAddress, group);
+            registryUrl = formUrl(registryAddress, group, username, password);
         }
         RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
         registry = registryFactory.getRegistry(registryUrl);
@@ -128,14 +132,20 @@ public class ConfigCenter {
         return metaDataCollector;
     }
 
-    private URL formUrl(String config, String group) {
+    private URL formUrl(String config, String group, String username, String password) {
         String protocol = config.split("://")[0];
         String address = config.split("://")[1];
         String port = address.split(":")[1];
         String host = address.split(":")[0];
         URL url = new URL(protocol, host, Integer.parseInt(port));
         if (StringUtils.isNotEmpty(group)) {
-            url.addParameter(org.apache.dubbo.common.Constants.GROUP_KEY, group);
+            url = url.addParameter(org.apache.dubbo.common.Constants.GROUP_KEY, group);
+        }
+        if (StringUtils.isNotEmpty(username)) {
+            url = url.setUsername(username);
+        }
+        if (StringUtils.isNotEmpty(password)) {
+            url = url.setPassword(password);
         }
         return url;
     }

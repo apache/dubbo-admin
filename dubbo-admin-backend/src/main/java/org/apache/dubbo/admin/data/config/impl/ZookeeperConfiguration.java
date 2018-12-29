@@ -17,6 +17,7 @@
 
 package org.apache.dubbo.admin.data.config.impl;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
@@ -43,7 +44,15 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
 
     @Override
     public void init() {
-        zkClient = CuratorFrameworkFactory.newClient(url.getAddress(), new ExponentialBackoffRetry(1000, 3));
+        CuratorFrameworkFactory.Builder zkClientBuilder = CuratorFrameworkFactory.builder().
+                connectString(url.getAddress()).
+                retryPolicy(new ExponentialBackoffRetry(1000, 3));
+        if(StringUtils.isNotEmpty(url.getUsername()) && StringUtils.isNotEmpty(url.getPassword())){
+            // add authorization
+            String auth = url.getUsername() + ":" + url.getPassword();
+            zkClientBuilder.authorization("digest", auth.getBytes());
+        }
+        zkClient = zkClientBuilder.build();
         String group = url.getParameter(Constants.GROUP_KEY, Constants.DEFAULT_ROOT);
         if (!group.startsWith(Constants.PATH_SEPARATOR)) {
             group = Constants.PATH_SEPARATOR + group;
