@@ -50,9 +50,9 @@ public class ConfigCenter {
     @Value("${dubbo.registry.group:}")
     private String group;
 
-    @Value("${dubbo.registry.username:}")
+    @Value("${dubbo.configcenter.username:}")
     private String username;
-    @Value("${dubbo.registry.password:}")
+    @Value("${dubbo.configcenter.password:}")
     private String password;
 
 
