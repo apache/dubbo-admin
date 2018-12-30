@@ -25,9 +25,9 @@
     <v-flex lg12>
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
-          <v-toolbar-title><span class="headline">Search Result</span></v-toolbar-title>
+          <v-toolbar-title><span class="headline">{{$t('searchResult')}}</span></v-toolbar-title>
           <v-spacer></v-spacer>
-          <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">CREATE</v-btn>
+          <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">{{$t('create')}}</v-btn>
         </v-toolbar>
 
         <v-card-text class="pa-0" >
@@ -45,7 +45,7 @@
                   <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon(props.item), props.item)">
                     {{op.icon(props.item)}}
                   </v-icon>
-                  <span>{{op.tooltip(props.item)}}</span>
+                  <span>{{$t(op.tooltip(props.item))}}</span>
                 </v-tooltip>
               </td>
             </template>
@@ -57,30 +57,30 @@
     <v-dialog   v-model="dialog" width="800px" persistent >
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">Create New Routing Rule</span>
+          <span class="headline">{{$t('createNewTagRule')}}</span>
         </v-card-title>
         <v-card-text >
           <v-text-field
-            label="Application Name"
-            hint="Application name the service belongs to"
+            :label="$t('appName')"
+            :hint="$t('appNameHint')"
             v-model="application"
           ></v-text-field>
 
-          <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
+          <v-subheader class="pa-0 mt-3">{{$t('ruleContent')}}</v-subheader>
           <ace-editor v-model="ruleText" :readonly="readonly"></ace-editor>
 
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn flat @click.native="closeDialog">Close</v-btn>
-          <v-btn depressed color="primary" @click.native="saveItem">Save</v-btn>
+          <v-btn flat @click.native="closeDialog">{{$t('close')}}</v-btn>
+          <v-btn depressed color="primary" @click.native="saveItem">{{$t('save')}}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
     <v-dialog v-model="warn" persistent max-width="500px">
       <v-card>
-        <v-card-title class="headline">{{this.warnTitle}}</v-card-title>
+        <v-card-title class="headline">{{$t(this.warnTitle)}}</v-card-title>
         <v-card-text >{{this.warnText}}</v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -131,26 +131,29 @@
         '   addresses: [192.168.0.2:20882]\n',
       ruleText: '',
       readonly: false,
-      headers: [
-        {
-          text: 'Application Name',
-          value: 'application',
-          align: 'left'
-        },
-        {
-          text: 'Enabled',
-          value: 'enabled',
-          sortable: false
-        },
-        {
-          text: 'Operation',
-          value: 'operation',
-          sortable: false,
-          width: '115px'
-        }
-      ]
+      headers: []
     }),
     methods: {
+      setHeaders: function () {
+        this.headers = [
+          {
+            text: this.$t('appName'),
+            value: 'application',
+            align: 'left'
+          },
+          {
+            text: this.$t('enabled'),
+            value: 'enabled',
+            sortable: false
+          },
+          {
+            text: this.$t('operation'),
+            value: 'operation',
+            sortable: false,
+            width: '115px'
+          }
+        ]
+      },
       submit: function () {
         this.filter = document.querySelector('#serviceSearch').value.trim()
         this.search(this.filter, true)
@@ -310,7 +313,13 @@
     created () {
       this.setHeight()
     },
+    watch: {
+      area () {
+        this.setHeaders()
+      }
+    },
     mounted: function () {
+      this.setHeaders()
       this.ruleText = this.template
       let query = this.$route.query
       let filter = null

@@ -14,26 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import Vue from 'vue'
-import Vuex from 'vuex'
-
-Vue.use(Vuex)
-
-export const store = new Vuex.Store({
-  state: {
-    appTitle: 'Dubbo OPS',
-    area: null
-  },
-  mutations: {
-    setArea (state, area) {
-      state.area = area
-    }
-  },
-  actions: {
-    changeArea ({commit}, area) {
-      commit('setArea', area)
-    }
-  },
-  getters: {}
-})
+export function translateTitle (title) {
+  let key = this.$te('drawer.' + title)
+  if (key) {
+    let newTitle = this.$t('drawer.' + title)
+    return newTitle
+  }
+  return title
+}

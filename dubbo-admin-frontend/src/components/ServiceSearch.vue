@@ -34,7 +34,7 @@
                   hide-no-data
                   :suffix="queryBy"
                   :hint="hint"
-                  label="Search Dubbo Services"
+                  :label="$t('searchDubboService')"
                   @keyup.enter="submit"
                 ></v-combobox>
                 <v-menu class="hidden-xs-only">
@@ -62,7 +62,7 @@
     <v-flex lg12>
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
-          <v-toolbar-title><span class="headline">Search Result</span></v-toolbar-title>
+          <v-toolbar-title><span class="headline">{{$t('searchResult')}}</span></v-toolbar-title>
           <v-spacer></v-spacer>
         </v-toolbar>
 
@@ -155,34 +155,7 @@
       typeAhead: [],
       services: [],
       filter: '',
-      headers: [
-        {
-          text: 'Service Name',
-          value: 'service',
-          align: 'left'
-        },
-        {
-          text: 'Group',
-          value: 'group',
-          align: 'left'
-        },
-        {
-          text: 'Version',
-          value: 'version',
-          align: 'left'
-        },
-        {
-          text: 'Application',
-          value: 'application',
-          align: 'left'
-        },
-        {
-          text: 'Operation',
-          value: 'operation',
-          sortable: false,
-          width: '110px'
-        }
-      ]
+      headers: []
     }),
     computed: {
       queryBy () {
@@ -190,20 +163,53 @@
       },
       hint () {
         if (this.selected === 0) {
-          return 'Service ID, org.apache.dubbo.demo.api.DemoService, * for all services'
+          return this.$t('serviceSearchHint')
         } else if (this.selected === 1) {
-          return 'Find all services provided by the target server on the specified IP address'
+          return this.$t('ipSearchHint')
         } else if (this.selected === 2) {
-          return 'Input an application name to find all services provided by one particular application, * for all'
+          return this.$t('appSearchHint')
         }
       }
     },
     watch: {
       input (val) {
         this.querySelections(val)
+      },
+      area () {
+        this.setHeaders()
       }
     },
     methods: {
+      setHeaders: function () {
+        this.headers = [
+          {
+            text: this.$t('serviceName'),
+            value: 'service',
+            align: 'left'
+          },
+          {
+            text: this.$t('group'),
+            value: 'group',
+            align: 'left'
+          },
+          {
+            text: this.$t('version'),
+            value: 'version',
+            align: 'left'
+          },
+          {
+            text: this.$t('app'),
+            value: 'application',
+            align: 'left'
+          },
+          {
+            text: this.$t('operation'),
+            value: 'operation',
+            sortable: false,
+            width: '110px'
+          }
+        ]
+      },
       querySelections (v) {
         if (this.timerID) {
           clearTimeout(this.timerID)
@@ -276,6 +282,7 @@
       }
     },
     mounted: function () {
+      this.setHeaders()
       let query = this.$route.query
       let filter = null
       let pattern = null
