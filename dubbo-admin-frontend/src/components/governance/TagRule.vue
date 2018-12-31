@@ -19,7 +19,7 @@
   <v-container grid-list-xl fluid >
     <v-layout row wrap>
       <v-flex xs12 >
-        <search id="serviceSearch" v-model="filter" :submit="submit" label="Search Routing Rule by application name"></search>
+        <search id="serviceSearch" v-model="filter" :submit="submit" :label="$t('searchTagRule')"></search>
       </v-flex>
     </v-layout>
     <v-flex lg12>

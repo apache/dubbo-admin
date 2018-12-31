@@ -52,7 +52,7 @@ export default {
   edit: 'Edit',
   delete: 'Delete',
   searchRoutingRule: 'Search Routing Rule',
-  searchWeightRUle: 'Search Weight Adjust Rule',
+  searchWeightRule: 'Search Weight Adjust Rule',
   dataIdHint: 'A service ID in form of group/service:version, group and version are optional',
   agree: 'Agree',
   disagree: 'Disagree',
@@ -63,5 +63,7 @@ export default {
   searchDubboService: 'Search Dubbo Services',
   serviceSearchHint: 'Service ID, org.apache.dubbo.demo.api.DemoService, * for all services',
   ipSearchHint: 'Find all services provided by the target server on the specified IP address',
-  appSearchHint: 'Input an application name to find all services provided by one particular application, * for all'
+  appSearchHint: 'Input an application name to find all services provided by one particular application, * for all',
+  searchTagRule: 'Search Tag Rule by application name',
+  searchBalanceRule: 'Search Balancing Rule'
 }

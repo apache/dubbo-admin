@@ -42,7 +42,7 @@
                       v-for="(item, i) in items"
                       :key="i"
                       @click="selected = i">
-                      <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                      <v-list-tile-title>{{ $t(item.title) }}</v-list-tile-title>
                     </v-list-tile>
                   </v-list>
                 </v-menu>
@@ -162,8 +162,8 @@
     },
     data: () => ({
       items: [
-        {id: 0, title: 'service name', value: 'service'},
-        {id: 1, title: 'application', value: 'application'}
+        {id: 0, title: 'serviceName', value: 'service'},
+        {id: 1, title: 'app', value: 'application'}
       ],
       selected: 0,
       dropdown_font: [ 'Service', 'App', 'IP' ],
@@ -219,23 +219,23 @@
       setServiceHeaders: function () {
         this.serviceHeaders = [
           {
-            text: 'Service Name',
+            text: this.$t('serviceName'),
             value: 'service',
             align: 'left'
           },
           {
-            text: 'Group',
+            text: this.$t('group'),
             value: 'group',
             align: 'left'
 
           },
           {
-            text: 'Enabled',
+            text: this.$t('enabled'),
             value: 'enabled',
             sortable: false
           },
           {
-            text: 'Operation',
+            text: this.$t('operation'),
             value: 'operation',
             sortable: false,
             width: '115px'
@@ -436,7 +436,7 @@
     },
     computed: {
       queryBy () {
-        return 'by ' + this.items[this.selected].title
+        return 'by ' + this.$t(this.items[this.selected].title)
       }
     },
     watch: {
