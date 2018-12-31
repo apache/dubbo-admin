@@ -30,8 +30,11 @@ const messages = {
   }
 }
 
+let locale = window.localStorage.getItem('locale')
+let selectedLang = window.localStorage.getItem('selectedLang')
+
 export default new VueI18n({
-  locale: 'zh',
-  selectedLang: '简体中文',
+  locale: locale === null ? 'zh' : locale,
+  selectedLang: selectedLang === null ? '简体中文' : selectedLang,
   messages
 })

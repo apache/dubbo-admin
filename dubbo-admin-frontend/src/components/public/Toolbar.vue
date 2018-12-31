@@ -138,7 +138,9 @@
         } else {
           this.$i18n.locale = 'en'
         }
-        this.$store.dispatch('changeArea', { area: this.$i18n.locale })
+        this.$store.dispatch('changeArea', {area: this.$i18n.locale})
+        window.localStorage.setItem('locale', this.$i18n.locale)
+        window.localStorage.setItem('selectedLang', this.selectedLang)
       },
       handleTheme () {
         window.getApp.$emit('CHANGE_THEME')
