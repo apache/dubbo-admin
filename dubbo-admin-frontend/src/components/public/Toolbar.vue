@@ -34,13 +34,13 @@
     </v-text-field>
 
     <v-spacer></v-spacer>
-    <v-btn icon>
+    <v-btn icon v-if="false">
       <v-icon>settings</v-icon>
     </v-btn>
     <v-btn icon @click="handleFullScreen()">
       <v-icon>fullscreen</v-icon>
     </v-btn>
-    <v-menu offset-y origin="center center" class="elelvation-1" :nudge-bottom="14" transition="scale-transition">
+    <v-menu offset-y origin="center center" class="elelvation-1" :nudge-bottom="14" transition="scale-transition" v-if="false">
       <v-btn icon flat slot="activator">
         <v-badge color="red" overlap>
           <span slot="badge">3</span>
@@ -49,7 +49,7 @@
       </v-btn>
       <!--<notification-list></notification-list>-->
     </v-menu>
-    <v-menu offset-y origin="center center" :nudge-bottom="10" transition="scale-transition">
+    <v-menu offset-y origin="center center" :nudge-bottom="10" transition="scale-transition" v-if="false">
       <v-btn icon large flat slot="activator">
         <v-avatar size="30px">
           <img src="@/assets/avatar.png" alt="Logined User" />

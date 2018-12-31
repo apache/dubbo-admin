@@ -18,8 +18,40 @@
 <template>
   <v-container grid-list-xl fluid >
     <v-layout row wrap>
-      <v-flex xs12 >
-        <search v-model="filter" :submit="submit" label="Search Dynamic Config by service name"></search>
+      <v-flex lg12>
+        <v-card flat color="transparent">
+          <v-card-text>
+            <v-form>
+              <v-layout row wrap>
+                <v-combobox
+                  id="serviceSearch"
+                  v-model="filter"
+                  flat
+                  append-icon=""
+                  hide-no-data
+                  :suffix="queryBy"
+                  label="Search Dynamic Config"
+                ></v-combobox>
+                <v-menu class="hidden-xs-only">
+                  <v-btn slot="activator" large icon>
+                    <v-icon>unfold_more</v-icon>
+                  </v-btn>
+
+                  <v-list>
+                    <v-list-tile
+                      v-for="(item, i) in items"
+                      :key="i"
+                      @click="selected = i">
+                      <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                    </v-list-tile>
+                  </v-list>
+                </v-menu>
+                <v-btn @click="submit" color="primary" large>Search</v-btn>
+
+              </v-layout>
+            </v-form>
+          </v-card-text>
+        </v-card>
       </v-flex>
     </v-layout>
 
@@ -31,15 +63,36 @@
           <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">CREATE</v-btn>
         </v-toolbar>
 
-        <v-card-text class="pa-0">
+        <v-card-text class="pa-0" v-if="selected == 0">
           <v-data-table
-            :headers="headers"
-            :items="configs"
+            :headers="serviceHeaders"
+            :items="serviceConfigs"
             hide-actions
             class="elevation-0"
           >
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.service }}</td>
+              <td class="text-xs-center px-0">
+                <v-tooltip bottom v-for="op in operations" :key="op.id">
+                  <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon(props.item), props.item)">
+                    {{op.icon(props.item)}}
+                  </v-icon>
+                  <span>{{op.tooltip(props.item)}}</span>
+                </v-tooltip>
+              </td>
+            </template>
+          </v-data-table>
+        </v-card-text>
+
+        <v-card-text class="pa-0" v-if="selected == 1">
+          <v-data-table
+            :headers="appHeaders"
+            :items="appConfigs"
+            hide-actions
+            class="elevation-0"
+          >
+            <template slot="items" slot-scope="props">
+              <td class="text-xs-left">{{ props.item.application }}</td>
               <td class="text-xs-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
                   <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon(props.item), props.item)">
@@ -63,9 +116,14 @@
           <v-text-field
             label="Service Unique ID"
             hint="A service ID in form of group/service:version, group and version are optional"
-            :rules="[required]"
             v-model="service"
           ></v-text-field>
+          <v-text-field
+            label="Application Name"
+            hint="Application name the service belongs to"
+            v-model="application"
+          ></v-text-field>
+
           <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
           <ace-editor v-model="ruleText" :readonly="readonly"/>
 
@@ -104,6 +162,11 @@
       Search
     },
     data: () => ({
+      items: [
+        {id: 0, title: 'service name', value: 'service'},
+        {id: 1, title: 'application', value: 'application'}
+      ],
+      selected: 0,
       dropdown_font: [ 'Service', 'App', 'IP' ],
       pattern: 'Service',
       filter: '',
@@ -117,27 +180,38 @@
       warnStatus: {},
       height: 0,
       operations: operations,
-      configs: [
+      serviceConfigs: [
       ],
-      required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
+      appConfigs: [
+      ],
       template:
-        'application:  # consumer\'s application name, empty for all \n' +
-        'address: 192.168.0.1 # consumer\'s ip address, empty for all consumers\n' +
-        'dynamic: false\n' +
-        'enabled: true # enable this rule\n' +
-        'parameters:\n' +
-        '  - timeout: 100\n' +
-        '\n' +
-        'mock: \n' +
-        '  - 0: \'force: return null\'\n' +
-        '  - sayHello: \'force: return null\'\n' +
-        '  - test: \'fail: return empty\'',
+
+        'configVersion: v2.7\n' +
+        'enabled: true\n' +
+        'configs: \n' +
+        '  - addresses: [0.0.0.0]  # 0.0.0.0 for all addresses\n' +
+        '    side: consumer        # effective side, consumer or addresses\n' +
+        '    parameters: \n' +
+        '      timeout: 6000       # dynamic config parameter\n',
       ruleText: '',
       readonly: false,
-      headers: [
+      serviceHeaders: [
         {
           text: 'Service Name',
           value: 'service',
+          align: 'left'
+        },
+        {
+          text: 'Operation',
+          value: 'operation',
+          sortable: false,
+          width: '115px'
+        }
+      ],
+      appHeaders: [
+        {
+          text: 'Application Name',
+          value: 'application',
           align: 'left'
         },
         {
@@ -150,19 +224,27 @@
     }),
     methods: {
       submit: function () {
+        this.filter = document.querySelector('#serviceSearch').value.trim()
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        this.$axios.get('/rules/override', {
-          params: {
-            service: filter
-          }
-        }).then(response => {
-          this.configs = response.data
-          if (rewrite) {
-            this.$router.push({path: 'config', query: {service: filter}})
-          }
-        })
+        let type = this.items[this.selected].value
+        let url = '/rules/override/?' + type + '=' + filter
+        this.$axios.get(url)
+          .then(response => {
+            if (this.selected === 0) {
+              this.serviceConfigs = response.data
+            } else {
+              this.appConfigs = response.data
+            }
+            if (rewrite) {
+              if (this.selected === 0) {
+                this.$router.push({path: 'config', query: {service: filter}})
+              } else if (this.selected === 1) {
+                this.$router.push({path: 'config', query: {application: filter}})
+              }
+            }
+          })
       },
       closeDialog: function () {
         this.ruleText = this.template
@@ -186,19 +268,29 @@
       },
       saveItem: function () {
         let override = yaml.safeLoad(this.ruleText)
-        if (this.service === '') {
+        if (!this.service && !this.application) {
+          this.$notify.error('Either service or application is needed')
           return
         }
         override.service = this.service
-        if (this.updateId !== '') {
+        override.application = this.application
+        let vm = this
+        if (this.updateId) {
           if (this.updateId === 'close') {
             this.closeDialog()
           } else {
             this.$axios.put('/rules/override/' + this.updateId, override)
               .then(response => {
                 if (response.status === 200) {
-                  this.search(this.service, true)
-                  this.filter = this.service
+                  if (vm.service) {
+                    vm.selected = 0
+                    vm.search(this.service, true)
+                    vm.filter = vm.service
+                  } else {
+                    vm.selected = 1
+                    vm.search(vm.application, true)
+                    vm.filter = vm.application
+                  }
                   this.$notify.success('Update success')
                   this.closeDialog()
                 }
@@ -208,8 +300,15 @@
           this.$axios.post('/rules/override', override)
             .then(response => {
               if (response.status === 201) {
-                this.search(this.service, true)
-                this.filter = this.service
+                if (this.service) {
+                  vm.selected = 0
+                  vm.search(vm.service, true)
+                  vm.filter = vm.service
+                } else {
+                  vm.selected = 1
+                  vm.search(vm.application, true)
+                  vm.filter = vm.application
+                }
                 this.$notify.success('Create success')
                 this.closeDialog()
               }
@@ -217,9 +316,18 @@
         }
       },
       itemOperation: function (icon, item) {
+        let itemId = ''
+        if (this.selected === 0) {
+          itemId = item.service
+        } else {
+          itemId = item.application
+        }
+        if (itemId.includes('/')) {
+          itemId = itemId.replace('/', '*')
+        }
         switch (icon) {
           case 'visibility':
-            this.$axios.get('/rules/override/' + item.id)
+            this.$axios.get('/rules/override/' + itemId)
               .then(response => {
                 let config = response.data
                 this.handleConfig(config, true)
@@ -227,39 +335,54 @@
               })
             break
           case 'edit':
-            this.$axios.get('/rules/override/' + item.id)
+            this.$axios.get('/rules/override/' + itemId)
               .then(response => {
                 let config = response.data
                 this.handleConfig(config, false)
-                this.updateId = item.id
+                this.updateId = itemId
               })
             break
           case 'block':
             this.openWarn(' Are you sure to block Dynamic Config', 'service: ' + item.service)
             this.warnStatus.operation = 'disable'
-            this.warnStatus.id = item.id
+            this.warnStatus.id = itemId
             break
           case 'check_circle_outline':
             this.openWarn(' Are you sure to enable Dynamic Config', 'service: ' + item.service)
             this.warnStatus.operation = 'enable'
-            this.warnStatus.id = item.id
+            this.warnStatus.id = itemId
             break
           case 'delete':
             this.openWarn(' Are you sure to Delete Dynamic Config', 'service: ' + item.service)
             this.warnStatus.operation = 'delete'
-            this.warnStatus.id = item.id
+            this.warnStatus.id = itemId
         }
       },
       handleConfig: function (config, readonly) {
         this.service = config.service
+        this.application = config.application
         delete config.service
+        delete config.application
         delete config.id
+        for (let i = 0; i < config.configs.length; i++) {
+          delete config.configs[i].enabled
+        }
+        this.removeEmpty(config)
         this.ruleText = yaml.safeDump(config)
         this.readonly = readonly
         this.dialog = true
       },
       setHeight: function () {
         this.height = window.innerHeight * 0.5
+      },
+      removeEmpty: function (obj) {
+        Object.keys(obj).forEach(key => {
+          if (obj[key] && typeof obj[key] === 'object') {
+            this.removeEmpty(obj[key])
+          } else if (obj[key] == null) {
+            delete obj[key]
+          }
+        })
       },
       deleteItem: function (warnStatus) {
         let id = warnStatus.id
@@ -297,18 +420,29 @@
     created () {
       this.setHeight()
     },
+    computed: {
+      queryBy () {
+        return 'by ' + this.items[this.selected].title
+      }
+    },
     mounted: function () {
       this.ruleText = this.template
       let query = this.$route.query
-      let service = null
+      let filter = null
+      let vm = this
       Object.keys(query).forEach(function (key) {
         if (key === 'service') {
-          service = query[key]
+          filter = query[key]
+          vm.selected = 0
+        }
+        if (key === 'application') {
+          filter = query[key]
+          vm.selected = 1
         }
       })
-      if (service !== null) {
-        this.filter = service
-        this.search(service, false)
+      if (filter !== null) {
+        this.filter = filter
+        this.search(filter, false)
       }
     }
   }

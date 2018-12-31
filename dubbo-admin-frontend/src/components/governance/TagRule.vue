@@ -1,0 +1,329 @@
+<!--
+  - Licensed to the Apache Software Foundation (ASF) under one or more
+  - contributor license agreements.  See the NOTICE file distributed with
+  - this work for additional information regarding copyright ownership.
+  - The ASF licenses this file to You under the Apache License, Version 2.0
+  - (the "License"); you may not use this file except in compliance with
+  - the License.  You may obtain a copy of the License at
+  -
+  -     http://www.apache.org/licenses/LICENSE-2.0
+  -
+  - Unless required by applicable law or agreed to in writing, software
+  - distributed under the License is distributed on an "AS IS" BASIS,
+  - WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  - See the License for the specific language governing permissions and
+  - limitations under the License.
+  -->
+
+<template>
+  <v-container grid-list-xl fluid >
+    <v-layout row wrap>
+      <v-flex xs12 >
+        <search id="serviceSearch" v-model="filter" :submit="submit" label="Search Routing Rule by application name"></search>
+      </v-flex>
+    </v-layout>
+    <v-flex lg12>
+      <v-card>
+        <v-toolbar flat color="transparent" class="elevation-0">
+          <v-toolbar-title><span class="headline">Search Result</span></v-toolbar-title>
+          <v-spacer></v-spacer>
+          <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">CREATE</v-btn>
+        </v-toolbar>
+
+        <v-card-text class="pa-0" >
+          <v-data-table
+            :headers="headers"
+            :items="tagRoutingRules"
+            hide-actions
+            class="elevation-0"
+          >
+            <template slot="items" slot-scope="props">
+              <td class="text-xs-left">{{ props.item.application }}</td>
+              <td class="text-xs-left">{{ props.item.enabled }}</td>
+              <td class="text-xs-center px-0">
+                <v-tooltip bottom v-for="op in operations" :key="op.id">
+                  <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon(props.item), props.item)">
+                    {{op.icon(props.item)}}
+                  </v-icon>
+                  <span>{{op.tooltip(props.item)}}</span>
+                </v-tooltip>
+              </td>
+            </template>
+          </v-data-table>
+        </v-card-text>
+      </v-card>
+    </v-flex>
+
+    <v-dialog   v-model="dialog" width="800px" persistent >
+      <v-card>
+        <v-card-title class="justify-center">
+          <span class="headline">Create New Routing Rule</span>
+        </v-card-title>
+        <v-card-text >
+          <v-text-field
+            label="Application Name"
+            hint="Application name the service belongs to"
+            v-model="application"
+          ></v-text-field>
+
+          <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
+          <ace-editor v-model="ruleText" :readonly="readonly"></ace-editor>
+
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn flat @click.native="closeDialog">Close</v-btn>
+          <v-btn depressed color="primary" @click.native="saveItem">Save</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="warn" persistent max-width="500px">
+      <v-card>
+        <v-card-title class="headline">{{this.warnTitle}}</v-card-title>
+        <v-card-text >{{this.warnText}}</v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn flat @click.native="closeWarn">CANCLE</v-btn>
+          <v-btn depressed color="primary" @click.native="deleteItem(warnStatus)">CONFIRM</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+  </v-container>
+
+</template>
+<script>
+  import yaml from 'js-yaml'
+  import AceEditor from '@/components/public/AceEditor'
+  import operations from '@/api/operation'
+  import Search from '@/components/public/Search'
+
+  export default {
+    components: {
+      AceEditor,
+      Search
+    },
+    data: () => ({
+      dropdown_font: [ 'Service', 'App', 'IP' ],
+      ruleKeys: ['enabled', 'force', 'dynamic', 'runtime', 'group', 'version', 'rule'],
+      pattern: 'Service',
+      filter: '',
+      dialog: false,
+      warn: false,
+      updateId: '',
+      application: '',
+      warnTitle: '',
+      warnText: '',
+      warnStatus: {},
+      height: 0,
+      operations: operations,
+      tagRoutingRules: [
+      ],
+      template:
+        'force: false\n' +
+        'enabled: true\n' +
+        'runtime: false\n' +
+        'tags:\n' +
+        ' - name: tag1\n' +
+        '   addresses: [192.168.0.1:20881]\n' +
+        ' - name: tag2\n' +
+        '   addresses: [192.168.0.2:20882]\n',
+      ruleText: '',
+      readonly: false,
+      headers: [
+        {
+          text: 'Application Name',
+          value: 'application',
+          align: 'left'
+        },
+        {
+          text: 'Enabled',
+          value: 'enabled',
+          sortable: false
+        },
+        {
+          text: 'Operation',
+          value: 'operation',
+          sortable: false,
+          width: '115px'
+        }
+      ]
+    }),
+    methods: {
+      submit: function () {
+        this.filter = document.querySelector('#serviceSearch').value.trim()
+        this.search(this.filter, true)
+      },
+      search: function (filter, rewrite) {
+        let url = '/rules/route/tag/?application' + '=' + filter
+        this.$axios.get(url)
+          .then(response => {
+            this.tagRoutingRules = response.data
+            if (rewrite) {
+              this.$router.push({path: 'tagRule', query: {application: filter}})
+            }
+          })
+      },
+      closeDialog: function () {
+        this.ruleText = this.template
+        this.updateId = ''
+        this.application = ''
+        this.dialog = false
+        this.readonly = false
+      },
+      openDialog: function () {
+        this.dialog = true
+      },
+      openWarn: function (title, text) {
+        this.warnTitle = title
+        this.warnText = text
+        this.warn = true
+      },
+      closeWarn: function () {
+        this.warnTitle = ''
+        this.warnText = ''
+        this.warn = false
+      },
+      saveItem: function () {
+        let rule = yaml.safeLoad(this.ruleText)
+        if (!this.application) {
+          this.$notify.error('application is required')
+          return
+        }
+        rule.application = this.application
+        let vm = this
+        if (this.updateId) {
+          if (this.updateId === 'close') {
+            this.closeDialog()
+          } else {
+            rule.id = this.updateId
+            this.$axios.put('/rules/route/tag/' + rule.id, rule)
+              .then(response => {
+                if (response.status === 200) {
+                  vm.search(vm.application, true)
+                  vm.closeDialog()
+                  vm.$notify.success('Update success')
+                }
+              })
+          }
+        } else {
+          this.$axios.post('/rules/route/tag/', rule)
+            .then(response => {
+              if (response.status === 201) {
+                vm.search(vm.application, true)
+                vm.filter = vm.application
+                vm.closeDialog()
+                vm.$notify.success('Create success')
+              }
+            })
+            .catch(error => {
+              console.log(error)
+            })
+        }
+      },
+      itemOperation: function (icon, item) {
+        let itemId = item.application
+        switch (icon) {
+          case 'visibility':
+            this.$axios.get('/rules/route/tag/' + itemId)
+              .then(response => {
+                let tagRoute = response.data
+                this.handleBalance(tagRoute, true)
+                this.updateId = 'close'
+              })
+            break
+          case 'edit':
+            let id = {}
+            id.id = itemId
+            this.$axios.get('/rules/route/tag/' + itemId)
+              .then(response => {
+                let conditionRoute = response.data
+                this.handleBalance(conditionRoute, false)
+                this.updateId = itemId
+              })
+            break
+          case 'block':
+            this.openWarn(' Are you sure to block Routing Rule', 'application: ' + item.application)
+            this.warnStatus.operation = 'disable'
+            this.warnStatus.id = itemId
+            break
+          case 'check_circle_outline':
+            this.openWarn(' Are you sure to enable Routing Rule', 'application: ' + item.application)
+            this.warnStatus.operation = 'enable'
+            this.warnStatus.id = itemId
+            break
+          case 'delete':
+            this.openWarn(' Are you sure to Delete Routing Rule', 'application: ' + item.application)
+            this.warnStatus.operation = 'delete'
+            this.warnStatus.id = itemId
+        }
+      },
+      handleBalance: function (tagRoute, readonly) {
+        this.application = tagRoute.application
+        delete tagRoute.id
+        delete tagRoute.app
+        delete tagRoute.group
+        delete tagRoute.application
+        delete tagRoute.service
+        delete tagRoute.priority
+        this.ruleText = yaml.safeDump(tagRoute)
+        this.readonly = readonly
+        this.dialog = true
+      },
+      setHeight: function () {
+        this.height = window.innerHeight * 0.5
+      },
+      deleteItem: function (warnStatus) {
+        let id = warnStatus.id
+        let operation = warnStatus.operation
+        if (operation === 'delete') {
+          this.$axios.delete('/rules/route/tag/' + id)
+            .then(response => {
+              if (response.status === 200) {
+                this.warn = false
+                this.search(this.filter, false)
+                this.$notify.success('Delete success')
+              }
+            })
+        } else if (operation === 'disable') {
+          this.$axios.put('/rules/route/tag/disable/' + id)
+            .then(response => {
+              if (response.status === 200) {
+                this.warn = false
+                this.search(this.filter, false)
+                this.$notify.success('Disable success')
+              }
+            })
+        } else if (operation === 'enable') {
+          this.$axios.put('/rules/route/tag/enable/' + id)
+            .then(response => {
+              if (response.status === 200) {
+                this.warn = false
+                this.search(this.filter, false)
+                this.$notify.success('Enable success')
+              }
+            })
+        }
+      }
+    },
+    created () {
+      this.setHeight()
+    },
+    mounted: function () {
+      this.ruleText = this.template
+      let query = this.$route.query
+      let filter = null
+      Object.keys(query).forEach(function (key) {
+        if (key === 'application') {
+          filter = query[key]
+        }
+      })
+      if (filter !== null) {
+        this.filter = filter
+        this.search(filter, false)
+      }
+    }
+
+  }
+</script>

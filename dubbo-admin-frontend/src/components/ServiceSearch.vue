@@ -37,24 +37,23 @@
                   label="Search Dubbo Services"
                   @keyup.enter="submit"
                 ></v-combobox>
-                  <v-menu class="hidden-xs-only">
-                    <v-btn slot="activator" large icon>
-                      <v-icon>unfold_more</v-icon>
-                    </v-btn>
+                <v-menu class="hidden-xs-only">
+                  <v-btn slot="activator" large icon>
+                    <v-icon>unfold_more</v-icon>
+                  </v-btn>
 
-                    <v-list>
-                      <v-list-tile
-                        v-for="(item, i) in items"
-                        :key="i"
-                        @click="selected = i">
-                        <v-list-tile-title>{{ item.title }}</v-list-tile-title>
-                      </v-list-tile>
-                    </v-list>
-                  </v-menu>
-                  <v-btn @click="submit" color="primary" large>Search</v-btn>
+                  <v-list>
+                    <v-list-tile
+                      v-for="(item, i) in items"
+                      :key="i"
+                      @click="selected = i">
+                      <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                    </v-list-tile>
+                  </v-list>
+                </v-menu>
+                <v-btn @click="submit" color="primary" large>Search</v-btn>
               </v-layout>
             </v-form>
-
           </v-card-text>
         </v-card>
       </v-flex>
@@ -80,8 +79,36 @@
                 <td>{{props.item.group}}</td>
                 <td>{{props.item.version}}</td>
                 <td>{{props.item.appName}}</td>
-                <td class="text-xs-center px-0"><v-btn small color='primary' :href='getHref(props.item.service, props.item.appName,
-                                                                                            props.item.group, props.item.version)'>Detail</v-btn></td>
+                <td class="text-xs-center px-0" nowrap>
+                  <v-btn
+                    small
+                    color='primary'
+                    :href='getHref(props.item.service, props.item.appName, props.item.group, props.item.version)'
+                  >
+                    Detail
+                  </v-btn>
+                  <v-menu
+                  >
+                    <v-btn
+                      slot="activator"
+                      color="primary"
+                      small
+                      dark
+                    >
+                      More
+                      <v-icon>expand_more</v-icon>
+                    </v-btn>
+                    <v-list>
+                      <v-list-tile
+                        v-for="(item, i) in options"
+                        :key="i"
+                        :href='governanceHref(item.value, props.item.service, props.item.group, props.item.version)'
+                      >
+                        <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                      </v-list-tile>
+                    </v-list>
+                  </v-menu>
+                </td>
               </template>
             </v-data-table>
           </template>
@@ -95,9 +122,29 @@
   export default {
     data: () => ({
       items: [
-        {id: 0, title: 'service name', value: 'serviceName'},
+        {id: 0, title: 'service name', value: 'service'},
         {id: 1, title: 'IP', value: 'ip'},
         {id: 2, title: 'application', value: 'application'}
+      ],
+      options: [
+        { title: 'Routing Rule',
+          value: 'routingRule'
+        },
+        { title: 'Tag Rule',
+          value: 'tagRule'
+        },
+        { title: 'Dynamic Config',
+          value: 'config'
+        },
+        { title: 'Access Control',
+          value: 'access'
+        },
+        { title: 'Weight Adjust',
+          value: 'weight'
+        },
+        { title: 'Load Balance',
+          value: 'loadbalance'
+        }
       ],
       timerID: null,
       loading: false,
@@ -191,6 +238,20 @@
         }
         return '/#/serviceDetail?' + query
       },
+      governanceHref: function (type, service, group, version) {
+        let base = '/#/governance/' + type
+        let query = service
+        if (group !== null) {
+          query = group + '/' + query
+        }
+        if (version !== null) {
+          query = query + ':' + version
+        }
+        if (type === 'tagRule') {
+          return base + '?application=' + query
+        }
+        return base + '?service=' + query
+      },
       submit () {
         this.filter = document.querySelector('#serviceSearch').value.trim()
         if (this.filter) {
@@ -229,7 +290,7 @@
       })
       if (filter != null && pattern != null) {
         this.filter = filter
-        if (pattern === 'serviceName') {
+        if (pattern === 'service') {
           this.selected = 0
         } else if (pattern === 'application') {
           this.selected = 2
@@ -237,10 +298,16 @@
           this.selected = 1
         }
         this.search(filter, pattern, false)
+      } else {
+        // display all existing services by default
+        this.filter = '*'
+        this.selected = 0
+        pattern = 'service'
+        this.search(this.filter, pattern, true)
       }
       this.$axios.get('/service', {
         params: {
-          pattern: 'serviceName',
+          pattern: 'service',
           filter: '*'
         }
       }).then(response => {

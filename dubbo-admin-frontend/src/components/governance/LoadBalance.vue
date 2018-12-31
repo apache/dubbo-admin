@@ -18,9 +18,40 @@
 <template>
   <v-container grid-list-xl fluid >
     <v-layout row wrap>
-      <v-flex xs12 >
-        <search v-model="filter" :submit="submit" label="Search Load Balance by service Name"></search>
+      <v-flex lg12>
+        <v-card flat color="transparent">
+          <v-card-text>
+            <v-form>
+              <v-layout row wrap>
+                <v-combobox
+                  id="serviceSearch"
+                  v-model="filter"
+                  flat
+                  append-icon=""
+                  hide-no-data
+                  :suffix="queryBy"
+                  label="Search Balancing Rule"
+                ></v-combobox>
+                <v-menu class="hidden-xs-only">
+                  <v-btn slot="activator" large icon>
+                    <v-icon>unfold_more</v-icon>
+                  </v-btn>
 
+                  <v-list>
+                    <v-list-tile
+                      v-for="(item, i) in items"
+                      :key="i"
+                      @click="selected = i">
+                      <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                    </v-list-tile>
+                  </v-list>
+                </v-menu>
+                <v-btn @click="submit" color="primary" large>Search</v-btn>
+
+              </v-layout>
+            </v-form>
+          </v-card-text>
+        </v-card>
       </v-flex>
     </v-layout>
 
@@ -32,15 +63,37 @@
           <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">CREATE</v-btn>
         </v-toolbar>
 
-        <v-card-text class="pa-0">
+        <v-card-text class="pa-0" v-if="selected == 0">
           <v-data-table
-            :headers="headers"
+            :headers="serviceHeaders"
             :items="loadBalances"
             hide-actions
             class="elevation-0"
           >
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.service }}</td>
+              <td class="text-xs-left">{{ props.item.methodName }}</td>
+              <td class="text-xs-center px-0">
+                <v-tooltip bottom v-for="op in operations" :key="op.id">
+                  <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon, props.item)">
+                    {{op.icon}}
+                  </v-icon>
+                  <span>{{op.tooltip}}</span>
+                </v-tooltip>
+              </td>
+            </template>
+          </v-data-table>
+        </v-card-text>
+
+        <v-card-text class="pa-0" v-if="selected == 1">
+          <v-data-table
+            :headers="appHeaders"
+            :items="loadBalances"
+            hide-actions
+            class="elevation-0"
+          >
+            <template slot="items" slot-scope="props">
+              <td class="text-xs-left">{{ props.item.application }}</td>
               <td class="text-xs-left">{{ props.item.methodName }}</td>
               <td class="text-xs-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
@@ -65,8 +118,12 @@
           <v-text-field
             label="Service Unique ID"
             hint="A service ID in form of group/service:version, group and version are optional"
-            :rules="[required]"
             v-model="service"
+          ></v-text-field>
+          <v-text-field
+            label="Application Name"
+            hint="Application name the service belongs to"
+            v-model="application"
           ></v-text-field>
           <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
           <ace-editor v-model="ruleText" :readonly="readonly"/>
@@ -105,6 +162,11 @@
       Search
     },
     data: () => ({
+      items: [
+        {id: 0, title: 'service name', value: 'service'},
+        {id: 1, title: 'application', value: 'application'}
+      ],
+      selected: 0,
       dropdown_font: [ 'Service', 'App', 'IP' ],
       ruleKeys: ['method', 'strategy'],
       pattern: 'Service',
@@ -125,16 +187,34 @@
       ],
       loadBalances: [
       ],
-      required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
       template:
-        'methodName: sayHello  # 0 for all methods\n' +
+        'methodName: *  # * for all methods\n' +
         'strategy:  # leastactive, random, roundrobin',
       ruleText: '',
       readonly: false,
-      headers: [
+      serviceHeaders: [
         {
           text: 'Service Name',
           value: 'service',
+          align: 'left'
+        },
+        {
+          text: 'Method',
+          value: 'method',
+          align: 'left'
+
+        },
+        {
+          text: 'Operation',
+          value: 'operation',
+          sortable: false,
+          width: '115px'
+        }
+      ],
+      appHeaders: [
+        {
+          text: 'Application Name',
+          value: 'application',
           align: 'left'
         },
         {
@@ -153,19 +233,23 @@
     }),
     methods: {
       submit: function () {
+        this.filter = document.querySelector('#serviceSearch').value.trim()
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        this.$axios.get('/rules/balancing', {
-          params: {
-            service: filter
-          }
-        }).then(response => {
-          this.loadBalances = response.data
-          if (rewrite) {
-            this.$router.push({path: 'loadbalance', query: {service: filter}})
-          }
-        })
+        let type = this.items[this.selected].value
+        let url = '/rules/balancing/?' + type + '=' + filter
+        this.$axios.get(url)
+          .then(response => {
+            this.loadBalances = response.data
+            if (rewrite) {
+              if (this.selected === 0) {
+                this.$router.push({path: 'loadbalance', query: {service: filter}})
+              } else if (this.selected === 1) {
+                this.$router.push({path: 'loadbalance', query: {application: filter}})
+              }
+            }
+          })
       },
       closeDialog: function () {
         this.ruleText = this.template
@@ -188,12 +272,16 @@
         this.warn = false
       },
       saveItem: function () {
+        this.ruleText = this.verifyRuleText(this.ruleText)
         let balancing = yaml.safeLoad(this.ruleText)
-        if (this.service === '') {
+        if (!this.service && !this.application) {
+          this.$notify.error('Either service or application is needed')
           return
         }
+        let vm = this
         balancing.service = this.service
-        if (this.updateId !== '') {
+        balancing.application = this.application
+        if (this.updateId) {
           if (this.updateId === 'close') {
             this.closeDialog()
           } else {
@@ -201,8 +289,15 @@
             this.$axios.put('/rules/balancing/' + balancing.id, balancing)
               .then(response => {
                 if (response.status === 200) {
-                  this.search(this.service, true)
-                  this.filter = this.service
+                  if (vm.service) {
+                    vm.selected = 0
+                    vm.search(vm.service, true)
+                    vm.filter = vm.service
+                  } else {
+                    vm.selected = 1
+                    vm.search(vm.application, true)
+                    vm.filter = vm.application
+                  }
                   this.closeDialog()
                   this.$notify.success('Update success')
                 }
@@ -212,8 +307,15 @@
           this.$axios.post('/rules/balancing', balancing)
             .then(response => {
               if (response.status === 201) {
-                this.search(this.service, true)
-                this.filter = this.service
+                if (vm.service) {
+                  vm.selected = 0
+                  vm.search(vm.service, true)
+                  vm.filter = vm.service
+                } else {
+                  vm.selected = 1
+                  vm.search(vm.application, true)
+                  vm.filter = vm.application
+                }
                 this.closeDialog()
                 this.$notify.success('Create success')
               }
@@ -221,9 +323,18 @@
         }
       },
       itemOperation: function (icon, item) {
+        let itemId = ''
+        if (this.selected === 0) {
+          itemId = item.service
+        } else {
+          itemId = item.application
+        }
+        if (itemId.includes('/')) {
+          itemId = itemId.replace('/', '*')
+        }
         switch (icon) {
           case 'visibility':
-            this.$axios.get('/rules/balancing/' + item.id)
+            this.$axios.get('/rules/balancing/' + itemId)
               .then(response => {
                 let balancing = response.data
                 this.handleBalance(balancing, true)
@@ -231,22 +342,24 @@
               })
             break
           case 'edit':
-            this.$axios.get('/rules/balancing/' + item.id)
+            this.$axios.get('/rules/balancing/' + itemId)
               .then(response => {
                 let balancing = response.data
                 this.handleBalance(balancing, false)
-                this.updateId = item.id
+                this.updateId = itemId
               })
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + item.service)
+            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + itemId)
             this.warnStatus.operation = 'delete'
-            this.warnStatus.id = item.id
+            this.warnStatus.id = itemId
         }
       },
       handleBalance: function (balancing, readonly) {
         this.service = balancing.service
+        this.application = balancing.application
         delete balancing.service
+        delete balancing.application
         delete balancing.id
         this.ruleText = yaml.safeDump(balancing)
         this.readonly = readonly
@@ -264,23 +377,44 @@
               this.$notify.success('Delete success')
             }
           })
+      },
+      verifyRuleText: function (ruleText) {
+        let lines = ruleText.split('\n')
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].includes('methodName') && lines[i].includes('*')) {
+            lines[i] = "methodName: '*'"
+          }
+        }
+        let newText = lines.join('\n')
+        return newText
       }
     },
     created () {
       this.setHeight()
     },
+    computed: {
+      queryBy () {
+        return 'by ' + this.items[this.selected].title
+      }
+    },
     mounted: function () {
       this.ruleText = this.template
       let query = this.$route.query
-      let service = null
+      let filter = null
+      let vm = this
       Object.keys(query).forEach(function (key) {
         if (key === 'service') {
-          service = query[key]
+          filter = query[key]
+          vm.selected = 0
+        }
+        if (key === 'application') {
+          filter = query[key]
+          vm.selected = 1
         }
       })
-      if (service !== null) {
-        this.filter = service
-        this.search(service, false)
+      if (filter !== null) {
+        this.filter = filter
+        this.search(filter, false)
       }
     }
 

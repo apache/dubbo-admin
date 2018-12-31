@@ -39,19 +39,46 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 
+	<repositories>
+		<repository>
+			<id>apache.snapshots.https</id>
+			<name>Apache Development Snapshot Repository</name>
+			<url>https://repository.apache.org/content/repositories/snapshots</url>
+			<releases>
+				<enabled>false</enabled>
+			</releases>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</repository>
+	</repositories>
+
 	<properties>
 		<main.basedir>${project.basedir}</main.basedir>
         <commons-lang3-version>3.7</commons-lang3-version>
-		<dubbo-version>2.6.4</dubbo-version>
+		<dubbo-version>2.7.0-SNAPSHOT</dubbo-version>
 		<curator-version>2.12.0</curator-version>
 		<fastjson-version>1.2.46</fastjson-version>
 		<springfox-swagger-version>2.9.2</springfox-swagger-version>
 		<netty-version>4.1.30.Final</netty-version>
 		<jacoco-version>0.8.2</jacoco-version>
+		<jedis-version>2.9.0</jedis-version>
+        <apollo-version>1.2.0</apollo-version>
+		<snakeyaml-version>1.19</snakeyaml-version>
 	</properties>
 
 	<dependencyManagement>
         <dependencies>
+			<dependency>
+				<groupId>org.yaml</groupId>
+				<artifactId>snakeyaml</artifactId>
+				<version>${snakeyaml-version}</version>
+			</dependency>
+			<dependency>
+				<groupId>redis.clients</groupId>
+				<artifactId>jedis</artifactId>
+				<version>${jedis-version}</version>
+			</dependency>
 			<dependency>
 				<groupId>org.apache.commons</groupId>
 				<artifactId>commons-lang3</artifactId>
@@ -59,7 +86,13 @@
 			</dependency>
 
 			<dependency>
-				<groupId>com.alibaba</groupId>
+				<groupId>com.ctrip.framework.apollo</groupId>
+				<artifactId>apollo-openapi</artifactId>
+				<version>${apollo-version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>org.apache.dubbo</groupId>
 				<artifactId>dubbo</artifactId>
 				<version>${dubbo-version}</version>
 			</dependency>

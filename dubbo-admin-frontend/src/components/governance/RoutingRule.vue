@@ -17,12 +17,43 @@
 
 <template>
   <v-container grid-list-xl fluid >
-      <v-layout row wrap>
-        <v-flex xs12 >
-          <search v-model="filter" :submit="submit" label="Search Routing Rule by service name"></search>
-        </v-flex>
-      </v-layout>
+    <v-layout row wrap>
+      <v-flex lg12>
+        <v-card flat color="transparent">
+          <v-card-text>
+            <v-form>
+              <v-layout row wrap>
+                <v-combobox
+                  id="serviceSearch"
+                  v-model="filter"
+                  flat
+                  append-icon=""
+                  hide-no-data
+                  :suffix="queryBy"
+                  label="Search Routing Rule"
+                ></v-combobox>
+                <v-menu class="hidden-xs-only">
+                  <v-btn slot="activator" large icon>
+                    <v-icon>unfold_more</v-icon>
+                  </v-btn>
 
+                  <v-list>
+                    <v-list-tile
+                      v-for="(item, i) in items"
+                      :key="i"
+                      @click="selected = i">
+                      <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                    </v-list-tile>
+                  </v-list>
+                </v-menu>
+                <v-btn @click="submit" color="primary" large>Search</v-btn>
+
+              </v-layout>
+            </v-form>
+          </v-card-text>
+        </v-card>
+      </v-flex>
+    </v-layout>
     <v-flex lg12>
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
@@ -31,17 +62,37 @@
           <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">CREATE</v-btn>
         </v-toolbar>
 
-        <v-card-text class="pa-0">
+        <v-card-text class="pa-0" v-if="selected == 0">
           <v-data-table
-            :headers="headers"
-            :items="routingRules"
+            :headers="serviceHeaders"
+            :items="serviceRoutingRules"
             hide-actions
             class="elevation-0"
           >
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.service }}</td>
               <td class="text-xs-left">{{ props.item.group }}</td>
-              <td class="text-xs-left">{{ props.item.priority }}</td>
+              <td class="text-xs-left">{{ props.item.enabled }}</td>
+              <td class="text-xs-center px-0">
+                <v-tooltip bottom v-for="op in operations" :key="op.id">
+                  <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon(props.item), props.item)">
+                    {{op.icon(props.item)}}
+                  </v-icon>
+                  <span>{{op.tooltip(props.item)}}</span>
+                </v-tooltip>
+              </td>
+            </template>
+          </v-data-table>
+        </v-card-text>
+        <v-card-text class="pa-0" v-if="selected == 1">
+          <v-data-table
+            :headers="appHeaders"
+            :items="appRoutingRules"
+            hide-actions
+            class="elevation-0"
+          >
+            <template slot="items" slot-scope="props">
+              <td class="text-xs-left">{{ props.item.application }}</td>
               <td class="text-xs-left">{{ props.item.enabled }}</td>
               <td class="text-xs-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
@@ -66,7 +117,6 @@
           <v-text-field
             label="Service Unique ID"
             hint="A service ID in form of group/service:version, group and version are optional"
-            :rules="[required]"
             v-model="service"
           ></v-text-field>
           <v-text-field
@@ -105,16 +155,19 @@
 <script>
   import yaml from 'js-yaml'
   import AceEditor from '@/components/public/AceEditor'
-  import Search from '@/components/public/Search'
   import operations from '@/api/operation'
   export default {
     components: {
-      AceEditor,
-      Search
+      AceEditor
     },
     data: () => ({
+      items: [
+        {id: 0, title: 'service name', value: 'service'},
+        {id: 1, title: 'application', value: 'application'}
+      ],
+      selected: 0,
       dropdown_font: [ 'Service', 'App', 'IP' ],
-      ruleKeys: ['enabled', 'force', 'dynamic', 'runtime', 'group', 'version', 'rule', 'priority'],
+      ruleKeys: ['enabled', 'force', 'runtime', 'group', 'version', 'rule'],
       pattern: 'Service',
       filter: '',
       dialog: false,
@@ -127,24 +180,37 @@
       warnStatus: {},
       height: 0,
       operations: operations,
-      routingRules: [
+      serviceRoutingRules: [
       ],
-      required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
+      appRoutingRules: [
+      ],
       template:
-        'enabled: true/false\n' +
-        'priority:\n' +
-        'runtime: false/true\n' +
-        'force: true/false\n' +
-        'dynamic: true/false\n' +
+        'enabled: true\n' +
+        'runtime: false\n' +
+        'force: true\n' +
         'conditions:\n' +
-        ' - \'=> host != 172.22.3.91\'\n' +
-        ' - \'host != 10.20.153.10,10.20.153.11 =>\'\n' +
-        ' - \'host = 10.20.153.10,10.20.153.11 =>\'\n' +
-        ' - \'application != kylin => host != 172.22.3.95,172.22.3.96\'\n' +
-        ' - \'method = find*,list*,get*,is* => host = 172.22.3.94,172.22.3.95,172.22.3.96\'',
+        ' - \'=> host != 172.22.3.91\'\n',
       ruleText: '',
       readonly: false,
-      headers: [
+      appHeaders: [
+        {
+          text: 'Application Name',
+          value: 'application',
+          align: 'left'
+        },
+        {
+          text: 'Enabled',
+          value: 'enabled',
+          sortable: false
+        },
+        {
+          text: 'Operation',
+          value: 'operation',
+          sortable: false,
+          width: '115px'
+        }
+      ],
+      serviceHeaders: [
         {
           text: 'Service Name',
           value: 'service',
@@ -155,11 +221,6 @@
           value: 'group',
           align: 'left'
 
-        },
-        {
-          text: 'Priority',
-          value: 'priority',
-          sortable: false
         },
         {
           text: 'Enabled',
@@ -176,19 +237,27 @@
     }),
     methods: {
       submit: function () {
+        this.filter = document.querySelector('#serviceSearch').value.trim()
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
-        this.$axios.get('/rules/route/', {
-          params: {
-            service: filter
-          }
-        }).then(response => {
-          this.routingRules = response.data
-          if (rewrite) {
-            this.$router.push({path: 'routingRule', query: {service: filter}})
-          }
-        })
+        let type = this.items[this.selected].value
+        let url = '/rules/route/condition/?' + type + '=' + filter
+        this.$axios.get(url)
+          .then(response => {
+            if (this.selected === 0) {
+              this.serviceRoutingRules = response.data
+            } else {
+              this.appRoutingRules = response.data
+            }
+            if (rewrite) {
+              if (this.selected === 0) {
+                this.$router.push({path: 'routingRule', query: {service: filter}})
+              } else if (this.selected === 1) {
+                this.$router.push({path: 'routingRule', query: {application: filter}})
+              }
+            }
+          })
       },
       closeDialog: function () {
         this.ruleText = this.template
@@ -213,30 +282,48 @@
       },
       saveItem: function () {
         let rule = yaml.safeLoad(this.ruleText)
-        if (rule.service === '') {
+        if (!this.service && !this.application) {
+          this.$notify.error('Either service or application is needed')
           return
         }
+        let vm = this
         rule.service = this.service
+        rule.application = this.application
         if (this.updateId !== '') {
           if (this.updateId === 'close') {
             this.closeDialog()
           } else {
             rule.id = this.updateId
-            this.$axios.put('/rules/route/' + rule.id, rule)
+            this.$axios.put('/rules/route/condition/' + rule.id, rule)
               .then(response => {
                 if (response.status === 200) {
-                  this.search(this.service, true)
+                  if (vm.service) {
+                    vm.selected = 0
+                    vm.search(vm.service, true)
+                    vm.filter = vm.service
+                  } else {
+                    vm.selected = 1
+                    vm.search(vm.application, true)
+                    vm.filter = vm.application
+                  }
                   this.closeDialog()
                   this.$notify.success('Update success')
                 }
               })
           }
         } else {
-          this.$axios.post('/rules/route/', rule)
+          this.$axios.post('/rules/route/condition/', rule)
             .then(response => {
               if (response.status === 201) {
-                this.search(this.service, true)
-                this.filter = this.service
+                if (vm.service) {
+                  vm.selected = 0
+                  vm.search(vm.service, true)
+                  vm.filter = vm.service
+                } else {
+                  vm.selected = 1
+                  vm.search(vm.application, true)
+                  vm.filter = vm.application
+                }
                 this.closeDialog()
                 this.$notify.success('Create success')
               }
@@ -247,48 +334,58 @@
         }
       },
       itemOperation: function (icon, item) {
+        let itemId = ''
+        if (this.selected === 0) {
+          itemId = item.service
+        } else {
+          itemId = item.application
+        }
+        if (itemId.includes('/')) {
+          itemId = itemId.replace('/', '*')
+        }
         switch (icon) {
           case 'visibility':
-            this.$axios.get('/rules/route/' + item.id)
+            this.$axios.get('/rules/route/condition/' + itemId)
               .then(response => {
-                let route = response.data
-                this.handleBalance(route, true)
+                let conditionRoute = response.data
+                this.handleBalance(conditionRoute, true)
                 this.updateId = 'close'
               })
             break
           case 'edit':
-            let id = {}
-            id.id = item.id
-            this.$axios.get('/rules/route/' + item.id)
+            this.$axios.get('/rules/route/condition/' + itemId)
               .then(response => {
-                let route = response.data
-                this.handleBalance(route, false)
-                this.updateId = item.id
+                let conditionRoute = response.data
+                this.handleBalance(conditionRoute, false)
+                this.updateId = itemId
               })
             break
           case 'block':
-            this.openWarn(' Are you sure to block Routing Rule', 'service: ' + item.service)
+            this.openWarn(' Are you sure to block Routing Rule', 'service: ' + itemId)
             this.warnStatus.operation = 'disable'
-            this.warnStatus.id = item.id
+            this.warnStatus.id = itemId
             break
           case 'check_circle_outline':
-            this.openWarn(' Are you sure to enable Routing Rule', 'service: ' + item.service)
+            this.openWarn(' Are you sure to enable Routing Rule', 'service: ' + itemId)
             this.warnStatus.operation = 'enable'
-            this.warnStatus.id = item.id
+            this.warnStatus.id = itemId
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + item.service)
+            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + itemId)
             this.warnStatus.operation = 'delete'
-            this.warnStatus.id = item.id
+            this.warnStatus.id = itemId
         }
       },
-      handleBalance: function (route, readonly) {
-        this.service = route.service
-        delete route.service
-        delete route.id
-        delete route.app
-        delete route.group
-        this.ruleText = yaml.safeDump(route)
+      handleBalance: function (conditionRoute, readonly) {
+        this.service = conditionRoute.service
+        this.application = conditionRoute.application
+        delete conditionRoute.service
+        delete conditionRoute.id
+        delete conditionRoute.app
+        delete conditionRoute.group
+        delete conditionRoute.application
+        delete conditionRoute.priority
+        this.ruleText = yaml.safeDump(conditionRoute)
         this.readonly = readonly
         this.dialog = true
       },
@@ -299,7 +396,7 @@
         let id = warnStatus.id
         let operation = warnStatus.operation
         if (operation === 'delete') {
-          this.$axios.delete('/rules/route/' + id)
+          this.$axios.delete('/rules/route/condition/' + id)
             .then(response => {
               if (response.status === 200) {
                 this.warn = false
@@ -308,7 +405,7 @@
               }
             })
         } else if (operation === 'disable') {
-          this.$axios.put('/rules/route/disable/' + id)
+          this.$axios.put('/rules/route/condition/disable/' + id)
             .then(response => {
               if (response.status === 200) {
                 this.warn = false
@@ -317,7 +414,7 @@
               }
             })
         } else if (operation === 'enable') {
-          this.$axios.put('/rules/route/enable/' + id)
+          this.$axios.put('/rules/route/condition/enable/' + id)
             .then(response => {
               if (response.status === 200) {
                 this.warn = false
@@ -331,18 +428,29 @@
     created () {
       this.setHeight()
     },
+    computed: {
+      queryBy () {
+        return 'by ' + this.items[this.selected].title
+      }
+    },
     mounted: function () {
       this.ruleText = this.template
       let query = this.$route.query
-      let service = null
+      let filter = null
+      let vm = this
       Object.keys(query).forEach(function (key) {
         if (key === 'service') {
-          service = query[key]
+          filter = query[key]
+          vm.selected = 0
+        }
+        if (key === 'application') {
+          filter = query[key]
+          vm.selected = 1
         }
       })
-      if (service !== null) {
-        this.filter = service
-        this.search(service, false)
+      if (filter !== null) {
+        this.filter = filter
+        this.search(filter, false)
       }
     }
 

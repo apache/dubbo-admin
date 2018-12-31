@@ -20,10 +20,40 @@
                fluid>
     <v-layout row
               wrap>
-      <v-flex xs12>
-        <search v-model="filter"
-                :submit="search"
-                label="Search Access Control by service name"></search>
+      <v-flex lg12>
+        <v-card flat color="transparent">
+          <v-card-text>
+            <v-form>
+              <v-layout row wrap>
+                <v-combobox
+                  id="serviceSearch"
+                  v-model="filter"
+                  flat
+                  append-icon=""
+                  hide-no-data
+                  :suffix="queryBy"
+                  label="Search Routing Rule"
+                ></v-combobox>
+                <v-menu class="hidden-xs-only">
+                  <v-btn slot="activator" large icon>
+                    <v-icon>unfold_more</v-icon>
+                  </v-btn>
+
+                  <v-list>
+                    <v-list-tile
+                      v-for="(item, i) in items"
+                      :key="i"
+                      @click="selected = i">
+                      <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                    </v-list-tile>
+                  </v-list>
+                </v-menu>
+                <v-btn @click="search" color="primary" large>Search</v-btn>
+
+              </v-layout>
+            </v-form>
+          </v-card-text>
+        </v-card>
       </v-flex>
     </v-layout>
 
@@ -42,9 +72,8 @@
                  class="mb-2">CREATE</v-btn>
         </v-toolbar>
 
-        <v-card-text class="pa-0">
-          <v-data-table v-model="selected"
-                        :headers="headers"
+        <v-card-text class="pa-0" v-if="selected == 0">
+          <v-data-table :headers="serviceHeaders"
                         :items="accesses"
                         :loading="loading"
                         hide-actions
@@ -52,6 +81,36 @@
             <template slot="items"
                       slot-scope="props">
               <td class="text-xs-left">{{ props.item.service }}</td>
+              <td class="text-xs-center px-0">
+                <v-tooltip bottom>
+                  <v-icon small
+                          class="mr-2"
+                          color="blue"
+                          slot="activator"
+                          @click="toEdit(props.item)">edit</v-icon>
+                  <span>Edit</span>
+                </v-tooltip>
+                <v-tooltip bottom>
+                  <v-icon small
+                          class="mr-2"
+                          slot="activator"
+                          color="red"
+                          @click="toDelete(props.item)">delete</v-icon>
+                  <span>Delete</span>
+                </v-tooltip>
+              </td>
+            </template>
+          </v-data-table>
+        </v-card-text>
+        <v-card-text class="pa-0" v-if="selected == 1">
+          <v-data-table :headers="appHeaders"
+                        :items="accesses"
+                        :loading="loading"
+                        hide-actions
+                        class="elevation-0">
+            <template slot="items"
+                      slot-scope="props">
+              <td class="text-xs-left">{{ props.item.application }}</td>
               <td class="text-xs-center px-0">
                 <v-tooltip bottom>
                   <v-icon small
@@ -87,9 +146,14 @@
           <v-form ref="modalForm">
             <v-text-field label="Service Unique ID"
                           hint="A service ID in form of group/service:version, group and version are optional"
-                          :rules="[required]"
                           :readonly="modal.id != null"
                           v-model="modal.service" />
+            <v-text-field
+              label="Application Name"
+              hint="Application name the service belongs to"
+              :readonly="modal.id != null"
+              v-model="modal.application"
+            ></v-text-field>
             <v-subheader class="pa-0 mt-3">BLACK/WHITE LIST CONTENT</v-subheader>
             <ace-editor v-model="modal.content" />
           </v-form>
@@ -134,10 +198,14 @@ import Search from '@/components/public/Search'
 export default {
   name: 'AccessControl',
   data: () => ({
-    selected: [],
+    items: [
+      {id: 0, title: 'service name', value: 'service'},
+      {id: 1, title: 'application', value: 'application'}
+    ],
+    selected: 0,
     filter: null,
     loading: false,
-    headers: [
+    serviceHeaders: [
       {
         text: 'Service Name',
         value: 'service',
@@ -150,8 +218,20 @@ export default {
         width: '115px'
       }
     ],
+    appHeaders: [
+      {
+        text: 'Application Name',
+        value: 'application',
+        align: 'left'
+      },
+      {
+        text: 'Operation',
+        value: 'operation',
+        sortable: false,
+        width: '115px'
+      }
+    ],
     accesses: [],
-    required: value => !!value || 'Service ID is required, in form of group/service:version, group and version are optional',
     modal: {
       enable: false,
       title: 'Create New',
@@ -159,6 +239,7 @@ export default {
       click: () => {},
       id: null,
       service: null,
+      application: null,
       content: '',
       template:
         'blacklist:\n' +
@@ -182,25 +263,32 @@ export default {
   }),
   methods: {
     search () {
-      if (this.filter == null) {
-        this.filter = ''
+      this.filter = document.querySelector('#serviceSearch').value.trim()
+      if (!this.filter) {
+        return
       }
+      let type = this.items[this.selected].value
       this.loading = true
-      this.$router.push({
-        path: 'access',
-        query: { service: this.filter }
-      })
-      this.$axios.get('/rules/access', {
-        params: {
-          service: this.filter
-        }
-      }).then(response => {
-        this.accesses = response.data
-        this.loading = false
-      }).catch(error => {
-        this.showSnackbar('error', error.response.data.message)
-        this.loading = false
-      })
+      if (this.selected === 0) {
+        this.$router.push({
+          path: 'access',
+          query: {service: this.filter}
+        })
+      } else if (this.selected === 1) {
+        this.$router.push({
+          path: 'access',
+          query: {application: this.filter}
+        })
+      }
+      let url = '/rules/access/?' + type + '=' + this.filter
+      this.$axios.get(url)
+        .then(response => {
+          this.accesses = response.data
+          this.loading = false
+        }).catch(error => {
+          this.showSnackbar('error', error.response.data.message)
+          this.loading = false
+        })
     },
     closeModal () {
       this.modal.enable = false
@@ -219,47 +307,88 @@ export default {
     createItem () {
       let doc = yaml.load(this.modal.content)
       this.filter = ''
-      if (this.modal.service === '' || this.modal.service === null) {
+      if (!this.modal.service && !this.modal.application) {
+        this.$notify.error('Either service or application is needed')
         return
       }
+      let vm = this
       this.$axios.post('/rules/access', {
         service: this.modal.service,
+        application: this.modal.application,
         whitelist: doc.whitelist,
         blacklist: doc.blacklist
       }).then(response => {
-        this.closeModal()
-        this.search(this.filter)
+        if (response.status === 201) {
+          if (vm.modal.service) {
+            vm.selected = 0
+            vm.filter = vm.modal.service
+          } else {
+            vm.selected = 1
+            vm.filter = vm.modal.application
+          }
+          this.search()
+          this.closeModal()
+        }
         this.showSnackbar('success', 'Create success')
       }).catch(error => this.showSnackbar('error', error.response.data.message))
     },
     toEdit (item) {
+      let itemId = null
+      if (this.selected === 0) {
+        itemId = item.service
+      } else {
+        itemId = item.application
+      }
+      if (itemId.includes('/')) {
+        itemId = itemId.replace('/', '*')
+      }
       Object.assign(this.modal, {
         enable: true,
         title: 'Edit',
         saveBtn: 'Update',
         click: this.editItem,
-        id: item.id,
+        id: itemId,
         service: item.service,
+        application: item.application,
         content: yaml.safeDump({blacklist: item.blacklist, whitelist: item.whitelist})
       })
     },
     editItem () {
       let doc = yaml.load(this.modal.content)
+      let vm = this
       this.$axios.put('/rules/access/' + this.modal.id, {
         whitelist: doc.whitelist,
-        blacklist: doc.blacklist
+        blacklist: doc.blacklist,
+        application: this.modal.application,
+        service: this.modal.service
+
       }).then(response => {
-        this.closeModal()
-        this.search(this.filter)
+        if (response.status === 200) {
+          if (vm.modal.service) {
+            vm.selected = 0
+            vm.filter = vm.modal.service
+          } else {
+            vm.selected = 1
+            vm.filter = vm.modal.application
+          }
+          vm.closeModal()
+          vm.search()
+        }
         this.showSnackbar('success', 'Update success')
       }).catch(error => this.showSnackbar('error', error.response.data.message))
     },
     toDelete (item) {
+      let itemId = null
+      if (this.selected === 0) {
+        itemId = item.service
+      } else {
+        itemId = item.application
+      }
       Object.assign(this.confirm, {
         enable: true,
         title: 'Are you sure to Delete Access Control',
-        text: `Service: ${item.service}`,
-        id: item.id
+        text: `Id: ${itemId}`,
+        id: itemId
       })
     },
     deleteItem (id) {
@@ -272,15 +401,24 @@ export default {
     showSnackbar (color, message) {
       this.$notify(message, color)
       this.confirm.enable = false
-      this.selected = []
+    }
+  },
+  computed: {
+    queryBy () {
+      return 'by ' + this.items[this.selected].title
     }
   },
   mounted () {
     let query = this.$route.query
     if ('service' in query) {
       this.filter = query['service']
-      this.search()
+      this.selected = 0
     }
+    if ('application' in query) {
+      this.filter = query['application']
+      this.selected = 1
+    }
+    this.search()
   },
   components: {
     AceEditor,
