@@ -18,25 +18,8 @@
 <template>
   <v-container grid-list-xl fluid >
     <v-layout row wrap>
-      <v-flex lg12>
-        <v-card flat color="transparent">
-          <v-card-text>
-            <v-form>
-              <v-layout row wrap>
-                <v-combobox
-                  id="serviceSearch"
-                  v-model="filter"
-                  flat
-                  append-icon=""
-                  hide-no-data
-                  :suffix="queryBy"
-                  :label="$t('searchTagRule')"
-                ></v-combobox>
-                <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
-              </v-layout>
-            </v-form>
-          </v-card-text>
-        </v-card>
+      <v-flex xs12 >
+        <search id="serviceSearch" v-model="filter" :submit="submit" :label="$t('searchTagRule')"></search>
       </v-flex>
     </v-layout>
     <v-flex lg12>

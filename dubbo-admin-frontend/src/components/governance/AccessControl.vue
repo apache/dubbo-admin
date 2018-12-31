@@ -69,7 +69,7 @@
           <v-btn outline
                  color="primary"
                  @click.stop="toCreate"
-                 class="mb-2">CREATE</v-btn>
+                 class="mb-2">{{$t('create')}}</v-btn>
         </v-toolbar>
 
         <v-card-text class="pa-0" v-if="selected == 0">
@@ -411,7 +411,7 @@ export default {
   },
   computed: {
     queryBy () {
-      return 'by ' + this.items[this.selected].title
+      return 'by ' + this.$t(this.items[this.selected].title)
     }
   },
   watch: {

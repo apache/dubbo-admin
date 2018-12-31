@@ -64,5 +64,6 @@ export default {
   serviceSearchHint: '服务ID, org.apache.dubbo.demo.api.DemoService, * 代表所有服务',
   ipSearchHint: '在指定的IP地址上查找目标服务器提供的所有服务',
   appSearchHint: '输入应用名称以查找由一个特定应用提供的所有服务, * 代表所有',
-  searchTagRule: '根据应用名搜索标签规则'
+  searchTagRule: '根据应用名搜索标签规则',
+  searchBalanceRule: '搜索负载均衡规则'
 }

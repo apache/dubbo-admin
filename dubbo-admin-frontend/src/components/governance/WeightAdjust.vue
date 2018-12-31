@@ -42,11 +42,11 @@
                       v-for="(item, i) in items"
                       :key="i"
                       @click="selected = i">
-                      <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                      <v-list-tile-title>{{ $t(item.title) }}</v-list-tile-title>
                     </v-list-tile>
                   </v-list>
                 </v-menu>
-                <v-btn @click="submit" color="primary" large>Search</v-btn>
+                <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
 
               </v-layout>
             </v-form>
@@ -163,8 +163,8 @@
     },
     data: () => ({
       items: [
-        {id: 0, title: 'service name', value: 'service'},
-        {id: 1, title: 'application', value: 'application'}
+        {id: 0, title: 'serviceName', value: 'service'},
+        {id: 1, title: 'app', value: 'application'}
       ],
       selected: 0,
       dropdown_font: [ 'Service', 'App', 'IP' ],
@@ -389,7 +389,7 @@
     },
     computed: {
       queryBy () {
-        return 'by ' + this.items[this.selected].title
+        return 'by ' + this.$t(this.items[this.selected].title)
       }
     },
     watch: {
