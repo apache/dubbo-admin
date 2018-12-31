@@ -43,7 +43,7 @@
 * visit web page
   visit `http://localhost:8081`, frontend supports hot reload.
  * CORS problem
-    for the convenience of development, we deploy frontend and backend separately, so the frontend supports hot reload. In this mode, frontend will request `localhost:8080` to fetch data, this will cause a CORS problem, so we add a configuration in `dubbo-admin-frontend/config/index.js` to support CORS. this config will activated under `npm run dev` mode.
+    for the convenience of development, we deploy frontend and backend separately, so the frontend supports hot reload. In this mode, frontend will request `localhost:8080` to fetch data, this will cause a CORS problem, so we add a configuration in `dubbo-admin-frontend/config/index.js` to support CORS. This config will be activated under `npm run dev` mode.
 
 ### Swagger support
 
