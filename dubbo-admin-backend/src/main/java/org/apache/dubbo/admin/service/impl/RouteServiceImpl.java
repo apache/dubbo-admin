@@ -339,14 +339,14 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
                 String[] array = condition.split("=>", 2);
                 String consumer = array[0].trim();
                 String provider = array[1].trim();
-                if (consumer != "") {
+                if (consumer.length() != 0) {
                     if (when.length() != 0) {
                         when.append(" & ").append(consumer);
                     } else {
                         when.append(consumer);
                     }
                 }
-                if (provider != "") {
+                if (provider.length() != 0) {
                     if (then.length() != 0) {
                         then.append(" & ").append(provider);
                     } else {
