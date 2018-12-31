@@ -219,23 +219,23 @@
       setServiceHeaders: function () {
         this.serviceHeaders = [
           {
-            text: 'Service Name',
+            text: this.$t('serviceName'),
             value: 'service',
             align: 'left'
           },
           {
-            text: 'Group',
+            text: this.$t('group'),
             value: 'group',
             align: 'left'
 
           },
           {
-            text: 'Enabled',
+            text: this.$t('enabled'),
             value: 'enabled',
             sortable: false
           },
           {
-            text: 'Operation',
+            text: this.$t('operation'),
             value: 'operation',
             sortable: false,
             width: '115px'
