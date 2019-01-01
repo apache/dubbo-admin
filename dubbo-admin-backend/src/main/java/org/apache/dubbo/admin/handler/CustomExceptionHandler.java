@@ -24,6 +24,7 @@ import org.apache.dubbo.admin.common.exception.ServiceException;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -66,7 +67,8 @@ public class CustomExceptionHandler {
 
     @ResponseBody
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @ExceptionHandler(value = {ParamValidationException.class})
+    @ExceptionHandler(value = {ParamValidationException.class,
+            ServletRequestBindingException.class})
     public CommonResponse paramValidationExceptionHandle(Exception e) {
         CommonResponse commonResponse = CommonResponse.createCommonResponse();
         logger.error("[ParamValidationException]Exception:", e);

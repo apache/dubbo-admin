@@ -266,6 +266,7 @@
         this.readonly = false
       },
       openDialog: function () {
+        this.updateId = ''
         this.dialog = true
       },
       openWarn: function (title, text) {
