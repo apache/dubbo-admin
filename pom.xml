@@ -93,12 +93,6 @@
 
 			<dependency>
 				<groupId>org.apache.dubbo</groupId>
-				<artifactId>dubbo-metadata-report-api</artifactId>
-                <version>${dubbo-version}</version>
-			</dependency>
-
-			<dependency>
-				<groupId>org.apache.dubbo</groupId>
 				<artifactId>dubbo</artifactId>
 				<version>${dubbo-version}</version>
 			</dependency>

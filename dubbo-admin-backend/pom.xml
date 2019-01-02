@@ -72,11 +72,6 @@
             <artifactId>dubbo</artifactId>
         </dependency>
 
-        <!--<dependency>-->
-            <!--<groupId>org.apache.dubbo</groupId>-->
-            <!--<artifactId>dubbo-metadata-report-api</artifactId>-->
-        <!--</dependency>-->
-
         <dependency>
             <groupId>org.apache.curator</groupId>
             <artifactId>curator-framework</artifactId>
