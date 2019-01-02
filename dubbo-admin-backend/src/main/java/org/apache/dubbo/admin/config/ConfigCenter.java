@@ -107,7 +107,7 @@ public class ConfigCenter {
     Registry getRegistry() {
         Registry registry = null;
         if (registryUrl == null) {
-            if (StringUtils.isNotEmpty(registryAddress)) {
+            if (StringUtils.isBlank(registryAddress)) {
                 throw new ConfigurationException("Either configcenter or registry address is needed");
             }
             registryUrl = formUrl(registryAddress, group, username, password);
@@ -133,11 +133,7 @@ public class ConfigCenter {
     }
 
     private URL formUrl(String config, String group, String username, String password) {
-        String protocol = config.split("://")[0];
-        String address = config.split("://")[1];
-        String port = address.split(":")[1];
-        String host = address.split(":")[0];
-        URL url = new URL(protocol, host, Integer.parseInt(port));
+        URL url = URL.valueOf(config);
         if (StringUtils.isNotEmpty(group)) {
             url = url.addParameter(org.apache.dubbo.common.Constants.GROUP_KEY, group);
         }
