@@ -30,7 +30,7 @@
                   append-icon=""
                   hide-no-data
                   :suffix="queryBy"
-                  label="Search Balancing Rule"
+                  :label="$t('searchBalanceRule')"
                 ></v-combobox>
                 <v-menu class="hidden-xs-only">
                   <v-btn slot="activator" large icon>
@@ -42,11 +42,11 @@
                       v-for="(item, i) in items"
                       :key="i"
                       @click="selected = i">
-                      <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                      <v-list-tile-title>{{ $t(item.title) }}</v-list-tile-title>
                     </v-list-tile>
                   </v-list>
                 </v-menu>
-                <v-btn @click="submit" color="primary" large>Search</v-btn>
+                <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
 
               </v-layout>
             </v-form>
@@ -58,9 +58,9 @@
     <v-flex lg12>
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
-          <v-toolbar-title><span class="headline">Search Result</span></v-toolbar-title>
+          <v-toolbar-title><span class="headline">{{$t('searchResult')}}</span></v-toolbar-title>
           <v-spacer></v-spacer>
-          <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">CREATE</v-btn>
+          <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">{{$t('create')}}</v-btn>
         </v-toolbar>
 
         <v-card-text class="pa-0" v-if="selected == 0">
@@ -78,7 +78,7 @@
                   <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon, props.item)">
                     {{op.icon}}
                   </v-icon>
-                  <span>{{op.tooltip}}</span>
+                  <span>{{$t(op.tooltip)}}</span>
                 </v-tooltip>
               </td>
             </template>
@@ -100,7 +100,7 @@
                   <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon, props.item)">
                     {{op.icon}}
                   </v-icon>
-                  <span>{{op.tooltip}}</span>
+                  <span>{{$t(op.tooltip)}}</span>
                 </v-tooltip>
               </td>
             </template>
@@ -117,12 +117,12 @@
         <v-card-text >
           <v-text-field
             label="Service Unique ID"
-            hint="A service ID in form of group/service:version, group and version are optional"
+            :hint="$t('dataIdHint')"
             v-model="service"
           ></v-text-field>
           <v-text-field
-            label="Application Name"
-            hint="Application name the service belongs to"
+            :label="$t('appName')"
+            :hint="$t('appNameHint')"
             v-model="application"
           ></v-text-field>
           <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
@@ -139,7 +139,7 @@
 
     <v-dialog v-model="warn" persistent max-width="500px">
       <v-card>
-        <v-card-title class="headline">{{this.warnTitle}}</v-card-title>
+        <v-card-title class="headline">{{$t(this.warnTitle)}}</v-card-title>
         <v-card-text >{{this.warnText}}</v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -163,8 +163,8 @@
     },
     data: () => ({
       items: [
-        {id: 0, title: 'service name', value: 'service'},
-        {id: 1, title: 'application', value: 'application'}
+        {id: 0, title: 'serviceName', value: 'service'},
+        {id: 1, title: 'app', value: 'application'}
       ],
       selected: 0,
       dropdown_font: [ 'Service', 'App', 'IP' ],
@@ -181,57 +181,62 @@
       warnStatus: {},
       height: 0,
       operations: [
-        {id: 0, icon: 'visibility', tooltip: 'View'},
-        {id: 1, icon: 'edit', tooltip: 'Edit'},
-        {id: 3, icon: 'delete', tooltip: 'Delete'}
+        {id: 0, icon: 'visibility', tooltip: 'view'},
+        {id: 1, icon: 'edit', tooltip: 'edit'},
+        {id: 3, icon: 'delete', tooltip: 'delete'}
       ],
-      loadBalances: [
-      ],
+      loadBalances: [],
       template:
         'methodName: *  # * for all methods\n' +
         'strategy:  # leastactive, random, roundrobin',
       ruleText: '',
       readonly: false,
-      serviceHeaders: [
-        {
-          text: 'Service Name',
-          value: 'service',
-          align: 'left'
-        },
-        {
-          text: 'Method',
-          value: 'method',
-          align: 'left'
-
-        },
-        {
-          text: 'Operation',
-          value: 'operation',
-          sortable: false,
-          width: '115px'
-        }
-      ],
-      appHeaders: [
-        {
-          text: 'Application Name',
-          value: 'application',
-          align: 'left'
-        },
-        {
-          text: 'Method',
-          value: 'method',
-          align: 'left'
-
-        },
-        {
-          text: 'Operation',
-          value: 'operation',
-          sortable: false,
-          width: '115px'
-        }
-      ]
+      serviceHeaders: [],
+      appHeaders: []
     }),
     methods: {
+      setServiceHeaders: function () {
+        this.serviceHeaders = [
+          {
+            text: this.$t('serviceName'),
+            value: 'service',
+            align: 'left'
+          },
+          {
+            text: this.$t('method'),
+            value: 'method',
+            align: 'left'
+
+          },
+          {
+            text: this.$t('operation'),
+            value: 'operation',
+            sortable: false,
+            width: '115px'
+          }
+        ]
+      },
+      setAppHeaders: function () {
+        this.appHeaders = [
+          {
+            text: this.$t('appName'),
+            value: 'application',
+            align: 'left'
+          },
+          {
+            text: this.$t('method'),
+            value: 'method',
+            align: 'left'
+
+          },
+          {
+            text: this.$('operation'),
+            value: 'operation',
+            sortable: false,
+            width: '115px'
+          }
+        ]
+      },
       submit: function () {
         this.filter = document.querySelector('#serviceSearch').value.trim()
         this.search(this.filter, true)
@@ -394,10 +399,18 @@
     },
     computed: {
       queryBy () {
-        return 'by ' + this.items[this.selected].title
+        return 'by ' + this.$t(this.items[this.selected].title)
+      }
+    },
+    watch: {
+      area () {
+        this.setServiceHeaders()
+        this.setAppHeaders()
       }
     },
     mounted: function () {
+      this.setServiceHeaders()
+      this.setAppHeaders()
       this.ruleText = this.template
       let query = this.$route.query
       let filter = null

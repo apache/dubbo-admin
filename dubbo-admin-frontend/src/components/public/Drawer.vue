@@ -36,14 +36,14 @@
         <v-list-group v-if="item.items" :group="item.group" :prepend-icon="item.icon" no-action>
           <v-list-tile slot="activator" ripple>
             <v-list-tile-content>
-              <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+              <v-list-tile-title>{{ $t(item.title) }}</v-list-tile-title>
             </v-list-tile-content>
           </v-list-tile>
 
           <template v-for="(subItem, i) in item.items">
             <v-list-tile :to="subItem.path" ripple>
               <v-list-tile-content>
-                <v-list-tile-title>{{ subItem.title }}</v-list-tile-title>
+                <v-list-tile-title>{{ $t(subItem.title) }}</v-list-tile-title>
               </v-list-tile-content>
               <v-chip v-if="subItem.badge" color="primary" class="v-chip--x-small" disabled text-color="white">
                 {{subItem.badge}}
@@ -56,7 +56,7 @@
           <v-list-tile-action>
             <v-icon>{{ item.icon }}</v-icon>
           </v-list-tile-action>
-          <v-list-tile-content>{{ item.title }}</v-list-tile-content>
+          <v-list-tile-content>{{ $t(item.title) }}</v-list-tile-content>
           <v-chip v-if="item.badge" color="primary" class="v-chip--x-small" disabled text-color="white">
             {{item.badge}}
           </v-chip>

@@ -25,9 +25,11 @@ import 'vuetify/dist/vuetify.min.css'
 import { store } from './store'
 import Notify from './components/public/notify'
 import { AXIOS } from './components/http-common'
+import i18n from './lang'
 
 Vue.use(Vuetify)
 Vue.use(Notify)
+
 Vue.prototype.$axios = AXIOS
 
 Vue.config.productionTip = false
@@ -37,6 +39,7 @@ new Vue({
   el: '#app',
   router,
   store,
+  i18n,
   components: { App },
   template: '<App/>'
 })

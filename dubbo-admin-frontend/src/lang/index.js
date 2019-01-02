@@ -14,26 +14,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 import Vue from 'vue'
-import Vuex from 'vuex'
+import VueI18n from 'vue-i18n'
+import enLocale from './en'
+import zhLocale from './zh'
 
-Vue.use(Vuex)
+Vue.use(VueI18n)
 
-export const store = new Vuex.Store({
-  state: {
-    appTitle: 'Dubbo OPS',
-    area: null
+const messages = {
+  en: {
+    ...enLocale
   },
-  mutations: {
-    setArea (state, area) {
-      state.area = area
-    }
-  },
-  actions: {
-    changeArea ({commit}, area) {
-      commit('setArea', area)
-    }
-  },
-  getters: {}
+  zh: {
+    ...zhLocale
+  }
+}
+
+let locale = window.localStorage.getItem('locale')
+let selectedLang = window.localStorage.getItem('selectedLang')
+
+export default new VueI18n({
+  locale: locale === null ? 'zh' : locale,
+  selectedLang: selectedLang === null ? '简体中文' : selectedLang,
+  messages
 })
