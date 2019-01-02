@@ -17,11 +17,15 @@
 
 package org.apache.dubbo.admin.common.util;
 
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 public class MD5Util {
 
+    private static final Logger logger = LoggerFactory.getLogger(MD5Util.class);
     private static MessageDigest md;
     private static final char[] hexCode = "0123456789ABCDEF".toCharArray();
 
@@ -29,7 +33,7 @@ public class MD5Util {
         try {
             md = MessageDigest.getInstance("MD5");
         } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
     }
 
