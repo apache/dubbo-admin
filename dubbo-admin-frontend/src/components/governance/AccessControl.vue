@@ -32,7 +32,7 @@
                   append-icon=""
                   hide-no-data
                   :suffix="queryBy"
-                  label="Search Routing Rule"
+                  :label="$t('searchRoutingRule')"
                 ></v-combobox>
                 <v-menu class="hidden-xs-only">
                   <v-btn slot="activator" large icon>
@@ -44,11 +44,11 @@
                       v-for="(item, i) in items"
                       :key="i"
                       @click="selected = i">
-                      <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                      <v-list-tile-title>{{ $t(item.title) }}</v-list-tile-title>
                     </v-list-tile>
                   </v-list>
                 </v-menu>
-                <v-btn @click="search" color="primary" large>Search</v-btn>
+                <v-btn @click="search" color="primary" large>{{$t('search')}}</v-btn>
 
               </v-layout>
             </v-form>
@@ -63,13 +63,13 @@
                    color="transparent"
                    class="elevation-0">
           <v-toolbar-title>
-            <span class="headline">Search Result</span>
+            <span class="headline">{{$t('searchResult')}}</span>
           </v-toolbar-title>
           <v-spacer></v-spacer>
           <v-btn outline
                  color="primary"
                  @click.stop="toCreate"
-                 class="mb-2">CREATE</v-btn>
+                 class="mb-2">{{$t('create')}}</v-btn>
         </v-toolbar>
 
         <v-card-text class="pa-0" v-if="selected == 0">
@@ -145,12 +145,12 @@
         <v-card-text>
           <v-form ref="modalForm">
             <v-text-field label="Service Unique ID"
-                          hint="A service ID in form of group/service:version, group and version are optional"
+                          :hint="$t('dataIdHint')"
                           :readonly="modal.id != null"
                           v-model="modal.service" />
             <v-text-field
-              label="Application Name"
-              hint="Application name the service belongs to"
+              :label="$t('appName')"
+              :hint="$t('appNameHint')"
               :readonly="modal.id != null"
               v-model="modal.application"
             ></v-text-field>
@@ -162,7 +162,7 @@
           <v-spacer></v-spacer>
           <v-btn color="darken-1"
                  flat
-                 @click="closeModal()">Close</v-btn>
+                 @click="closeModal()">{{$t('close')}}</v-btn>
           <v-btn color="primary"
                  depressed
                  @click="modal.click">{{ modal.saveBtn }}</v-btn>
@@ -180,10 +180,10 @@
           <v-spacer></v-spacer>
           <v-btn color="darken-1"
                  flat
-                 @click="confirm.enable = false">Disagree</v-btn>
+                 @click="confirm.enable = false">{{$t('disagree')}}</v-btn>
           <v-btn color="primary"
                  depressed
-                 @click="deleteItem(confirm.id)">Agree</v-btn>
+                 @click="deleteItem(confirm.id)">{{$t('agree')}}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -199,38 +199,14 @@ export default {
   name: 'AccessControl',
   data: () => ({
     items: [
-      {id: 0, title: 'service name', value: 'service'},
-      {id: 1, title: 'application', value: 'application'}
+      {id: 0, title: 'serviceName', value: 'service'},
+      {id: 1, title: 'app', value: 'application'}
     ],
     selected: 0,
     filter: null,
     loading: false,
-    serviceHeaders: [
-      {
-        text: 'Service Name',
-        value: 'service',
-        align: 'left'
-      },
-      {
-        text: 'Operation',
-        value: 'operation',
-        sortable: false,
-        width: '115px'
-      }
-    ],
-    appHeaders: [
-      {
-        text: 'Application Name',
-        value: 'application',
-        align: 'left'
-      },
-      {
-        text: 'Operation',
-        value: 'operation',
-        sortable: false,
-        width: '115px'
-      }
-    ],
+    serviceHeaders: [],
+    appHeaders: [],
     accesses: [],
     modal: {
       enable: false,
@@ -262,6 +238,36 @@ export default {
     }
   }),
   methods: {
+    setAppHeaders () {
+      this.appHeaders = [
+        {
+          text: this.$t('appName'),
+          value: 'application',
+          align: 'left'
+        },
+        {
+          text: this.$t('operation'),
+          value: 'operation',
+          sortable: false,
+          width: '115px'
+        }
+      ]
+    },
+    setServiceHeaders () {
+      this.serviceHeaders = [
+        {
+          text: this.$t('serviceName'),
+          value: 'service',
+          align: 'left'
+        },
+        {
+          text: this.$t('operation'),
+          value: 'operation',
+          sortable: false,
+          width: '115px'
+        }
+      ]
+    },
     search () {
       this.filter = document.querySelector('#serviceSearch').value.trim()
       if (!this.filter) {
@@ -405,10 +411,18 @@ export default {
   },
   computed: {
     queryBy () {
-      return 'by ' + this.items[this.selected].title
+      return 'by ' + this.$t(this.items[this.selected].title)
+    }
+  },
+  watch: {
+    area () {
+      this.setAppHeaders()
+      this.setServiceHeaders()
     }
   },
   mounted () {
+    this.setAppHeaders()
+    this.setServiceHeaders()
     let query = this.$route.query
     if ('service' in query) {
       this.filter = query['service']

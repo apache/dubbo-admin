@@ -16,23 +16,23 @@
  */
 
 const Menu = [
-  { title: 'Service Search', path: '/service', icon: 'search' },
+  { title: 'serviceSearch', path: '/service', icon: 'search' },
   {
-    title: 'Service Governance',
+    title: 'serviceGovernance',
     icon: 'edit',
     group: 'governance',
     items: [
-      { title: 'Routing Rule', path: '/governance/routingRule' },
-      {title: 'Tag Rule', path: '/governance/tagRule', badge: 'new'},
-      { title: 'Dynamic Config', path: '/governance/config' },
-      { title: 'Access Control', path: '/governance/access' },
-      { title: 'Weight Adjust', path: '/governance/weight' },
-      { title: 'Load Balance', path: '/governance/loadbalance' }
+      { title: 'routingRule', path: '/governance/routingRule' },
+      {title: 'tagRule', path: '/governance/tagRule', badge: 'new'},
+      { title: 'dynamicConfig', path: '/governance/config' },
+      { title: 'accessControl', path: '/governance/access' },
+      { title: 'weightAdjust', path: '/governance/weight' },
+      { title: 'loadBalance', path: '/governance/loadbalance' }
     ]
   },
-  { title: 'Service Test', path: '/test', icon: 'code', badge: 'feature' },
-  { title: 'Service Mock', path: '/mock', icon: 'build', badge: 'feature' },
-  { title: 'Metrics', path: '/metrics', icon: 'show_chart', badge: 'feature' }
+  { title: 'serviceTest', path: '/test', icon: 'code', badge: 'feature' },
+  { title: 'serviceMock', path: '/mock', icon: 'build', badge: 'feature' },
+  { title: 'metrics', path: '/metrics', icon: 'show_chart', badge: 'feature' }
 
 ]
 

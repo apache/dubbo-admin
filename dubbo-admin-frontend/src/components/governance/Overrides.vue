@@ -30,7 +30,7 @@
                   append-icon=""
                   hide-no-data
                   :suffix="queryBy"
-                  label="Search Dynamic Config"
+                  :label="$t('searchDynamicConfig')"
                 ></v-combobox>
                 <v-menu class="hidden-xs-only">
                   <v-btn slot="activator" large icon>
@@ -42,11 +42,11 @@
                       v-for="(item, i) in items"
                       :key="i"
                       @click="selected = i">
-                      <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                      <v-list-tile-title>{{ $t(item.title) }}</v-list-tile-title>
                     </v-list-tile>
                   </v-list>
                 </v-menu>
-                <v-btn @click="submit" color="primary" large>Search</v-btn>
+                <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
 
               </v-layout>
             </v-form>
@@ -58,9 +58,9 @@
     <v-flex lg12>
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
-          <v-toolbar-title><span class="headline">Search Result</span></v-toolbar-title>
+          <v-toolbar-title><span class="headline">{{$t('searchResult')}}</span></v-toolbar-title>
           <v-spacer></v-spacer>
-          <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">CREATE</v-btn>
+          <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">{{$t('create')}}</v-btn>
         </v-toolbar>
 
         <v-card-text class="pa-0" v-if="selected == 0">
@@ -77,7 +77,7 @@
                   <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon(props.item), props.item)">
                     {{op.icon(props.item)}}
                   </v-icon>
-                  <span>{{op.tooltip(props.item)}}</span>
+                  <span>{{$t(op.tooltip(props.item))}}</span>
                 </v-tooltip>
               </td>
             </template>
@@ -98,7 +98,7 @@
                   <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon(props.item), props.item)">
                     {{op.icon(props.item)}}
                   </v-icon>
-                  <span>{{op.tooltip(props.item)}}</span>
+                  <span>{{$t(op.tooltip(props.item))}}</span>
                 </v-tooltip>
               </td>
             </template>
@@ -110,7 +110,7 @@
     <v-dialog   v-model="dialog" width="800px" persistent >
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">Create New Dynamic Config Rule</span>
+          <span class="headline">{{$t('createNewDynamicConfigRule')}}</span>
         </v-card-title>
         <v-card-text >
           <v-text-field
@@ -124,26 +124,26 @@
             v-model="application"
           ></v-text-field>
 
-          <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
+          <v-subheader class="pa-0 mt-3">{{$t('ruleContent')}}</v-subheader>
           <ace-editor v-model="ruleText" :readonly="readonly"/>
 
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="darken-1" flat @click.native="closeDialog">Close</v-btn>
-          <v-btn color="primary darken-1" depressed @click.native="saveItem">Save</v-btn>
+          <v-btn color="darken-1" flat @click.native="closeDialog">{{$t('close')}}</v-btn>
+          <v-btn color="primary darken-1" depressed @click.native="saveItem">{{$t('save')}}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
     <v-dialog v-model="warn" persistent max-width="500px">
       <v-card>
-        <v-card-title class="headline">{{this.warnTitle}}</v-card-title>
+        <v-card-title class="headline">{{$t(this.warnTitle)}}</v-card-title>
         <v-card-text >{{this.warnText}}</v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="darken-1" flat @click.native="closeWarn">CANCLE</v-btn>
-          <v-btn color="primary darken-1" depressed @click.native="deleteItem(warnStatus)">CONFIRM</v-btn>
+          <v-btn color="darken-1" flat @click.native="closeWarn">{{$t('cancel')}}</v-btn>
+          <v-btn color="primary darken-1" depressed @click.native="deleteItem(warnStatus)">{{$t('confirm')}}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -163,8 +163,8 @@
     },
     data: () => ({
       items: [
-        {id: 0, title: 'service name', value: 'service'},
-        {id: 1, title: 'application', value: 'application'}
+        {id: 0, title: 'serviceName', value: 'service'},
+        {id: 1, title: 'app', value: 'application'}
       ],
       selected: 0,
       dropdown_font: [ 'Service', 'App', 'IP' ],
@@ -195,34 +195,40 @@
         '      timeout: 6000       # dynamic config parameter\n',
       ruleText: '',
       readonly: false,
-      serviceHeaders: [
-        {
-          text: 'Service Name',
-          value: 'service',
-          align: 'left'
-        },
-        {
-          text: 'Operation',
-          value: 'operation',
-          sortable: false,
-          width: '115px'
-        }
-      ],
-      appHeaders: [
-        {
-          text: 'Application Name',
-          value: 'application',
-          align: 'left'
-        },
-        {
-          text: 'Operation',
-          value: 'operation',
-          sortable: false,
-          width: '115px'
-        }
-      ]
+      serviceHeaders: [],
+      appHeaders: []
     }),
     methods: {
+      setAppHeaders: function () {
+        this.appHeaders = [
+          {
+            text: this.$t('appName'),
+            value: 'application',
+            align: 'left'
+          },
+          {
+            text: this.$t('operation'),
+            value: 'operation',
+            sortable: false,
+            width: '115px'
+          }
+        ]
+      },
+      setServiceHeaders: function () {
+        this.serviceHeaders = [
+          {
+            text: this.$t('serviceName'),
+            value: 'service',
+            align: 'left'
+          },
+          {
+            text: this.$t('operation'),
+            value: 'operation',
+            sortable: false,
+            width: '115px'
+          }
+        ]
+      },
       submit: function () {
         this.filter = document.querySelector('#serviceSearch').value.trim()
         this.search(this.filter, true)
@@ -422,10 +428,18 @@
     },
     computed: {
       queryBy () {
-        return 'by ' + this.items[this.selected].title
+        return 'by ' + this.$t(this.items[this.selected].title)
+      }
+    },
+    watch: {
+      area () {
+        this.setAppHeaders()
+        this.setServiceHeaders()
       }
     },
     mounted: function () {
+      this.setAppHeaders()
+      this.setServiceHeaders()
       this.ruleText = this.template
       let query = this.$route.query
       let filter = null
