@@ -27,6 +27,9 @@ import AccessControl from '@/components/governance/AccessControl'
 import LoadBalance from '@/components/governance/LoadBalance'
 import WeightAdjust from '@/components/governance/WeightAdjust'
 import Overrides from '@/components/governance/Overrides'
+import ServiceTest from '@/components/test/ServiceTest'
+import ServiceMock from '@/components/test/ServiceMock'
+import ServiceMetrics from '@/components/metrics/ServiceMetrics'
 
 Vue.use(Router)
 
@@ -72,8 +75,7 @@ export default new Router({
       name: 'LoadBalance',
       component: LoadBalance
     },
-    {
-      path: '/governance/weight',
+    { path: '/governance/weight',
       name: 'WeightAdjust',
       component: WeightAdjust
     },
@@ -81,6 +83,22 @@ export default new Router({
       path: '/governance/config',
       name: 'Overrides',
       component: Overrides
+    },
+    {
+      path: '/test',
+      name: 'ServiceTest',
+      component: ServiceTest
+    },
+    {
+      path: '/mock',
+      name: 'ServiceMock',
+      component: ServiceMock
+    },
+    {
+      path: '/metrics',
+      name: 'ServiceMetrics',
+      component: ServiceMetrics
     }
+
   ]
 })
