@@ -41,6 +41,15 @@ public class Constants {
     public static final String BALANCING = "balancing";
     public static final String SERVICE = "service";
     public static final String APPLICATION = "application";
+
+    public static final String PUNCTUATION_POINT = ".";
+    public static final String PUNCTUATION_SEPARATOR_POINT = "\\.";
+    public final static String INTERROGATION_POINT = "?";
+    public static final String ANY_VALUE = "*";
+    public static final String IP = "ip";
+    public static final String INTERFACE_KEY = "interface";
+    public static final String VERSION_KEY = "version";
+
     public static final Set<String> CONFIGS = new HashSet<>();
 
     static {
