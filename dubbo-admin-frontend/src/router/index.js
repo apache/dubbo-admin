@@ -45,11 +45,6 @@ export default new Router({
       component: ServiceDetail
     },
     {
-      path: '/test',
-      name: 'ServiceTest',
-      component: ServiceTest
-    },
-    {
       path: '/testMethod',
       name: 'TestMethod',
       component: TestMethod
