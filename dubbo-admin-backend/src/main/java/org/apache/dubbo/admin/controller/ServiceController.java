@@ -18,6 +18,8 @@
 package org.apache.dubbo.admin.controller;
 
 import com.google.gson.Gson;
+
+import org.apache.dubbo.admin.common.AdminConstants;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.model.domain.Consumer;
 import org.apache.dubbo.admin.model.domain.Provider;
@@ -52,33 +54,33 @@ public class ServiceController {
 
     @RequestMapping(method = RequestMethod.GET)
     public Set<ServiceDTO> searchService(@RequestParam String pattern,
-                                         @RequestParam String filter,@PathVariable String env) {
+        @RequestParam String filter,@PathVariable String env) {
 
         List<Provider> providers = new ArrayList<>();
-        if (!filter.contains("*") && !filter.contains("?")) {
-            if (pattern.equals("ip")) {
+        if (!filter.contains(AdminConstants.ANY_VALUE) && !filter.contains(AdminConstants.INTERROGATION_POINT)) {
+            if (AdminConstants.IP.equals(pattern)) {
                 providers = providerService.findByAddress(filter);
-            } else if (pattern.equals("service")) {
+            } else if (AdminConstants.SERVICE.equals(pattern)) {
                 providers = providerService.findByService(filter);
-            } else if (pattern.equals("application")) {
+            } else if (AdminConstants.APPLICATION.equals(pattern)) {
                 providers = providerService.findByApplication(filter);
             }
         } else {
             List<String> candidates = Collections.emptyList();
-            if (pattern.equals("service")) {
-               candidates = providerService.findServices();
-            } else if (pattern.equals("application")) {
+            if (AdminConstants.SERVICE.equals(pattern)) {
+                candidates = providerService.findServices();
+            } else if (AdminConstants.APPLICATION.equals(pattern)) {
                 candidates = providerService.findApplications();
             }
-            filter = filter.toLowerCase().replace(".", "\\.");
-            if (filter.startsWith("*")) {
-                filter = "." + filter;
+            filter = filter.toLowerCase().replace(AdminConstants.PUNCTUATION_POINT, AdminConstants.PUNCTUATION_SEPARATOR_POINT);
+            if (filter.startsWith(AdminConstants.ANY_VALUE)) {
+                filter = AdminConstants.PUNCTUATION_POINT + filter;
             }
             Pattern regex = Pattern.compile(filter);
             for (String candidate : candidates) {
                 Matcher matcher = regex.matcher(candidate);
                 if (matcher.matches() || matcher.lookingAt()) {
-                    if (pattern.equals("service")) {
+                    if (AdminConstants.SERVICE.equals(pattern)) {
                         providers.addAll(providerService.findByService(candidate));
                     } else {
                         providers.addAll(providerService.findByApplication(candidate));
@@ -106,7 +108,7 @@ public class ServiceController {
 
     @RequestMapping(value = "/{service}", method = RequestMethod.GET)
     public ServiceDetailDTO serviceDetail(@PathVariable String service, @PathVariable String env) {
-        service = service.replace("*", "/");
+        service = service.replace(AdminConstants.ANY_VALUE, AdminConstants.PATH_SEPARATOR);
         List<Provider> providers = providerService.findByService(service);
 
         List<Consumer> consumers = consumerService.findByService(service);
@@ -117,8 +119,8 @@ public class ServiceController {
             application = providers.get(0).getApplication();
         }
         MetadataIdentifier identifier = new MetadataIdentifier(info.get(Constants.INTERFACE_KEY),
-                                                                      info.get(Constants.VERSION_KEY),
-                                                                      info.get(Constants.GROUP_KEY), Constants.PROVIDER_SIDE, application);
+            info.get(Constants.VERSION_KEY),
+            info.get(Constants.GROUP_KEY), Constants.PROVIDER_SIDE, application);
         String metadata = providerService.getProviderMetaData(identifier);
         ServiceDetailDTO serviceDetailDTO = new ServiceDetailDTO();
         if (metadata != null) {
