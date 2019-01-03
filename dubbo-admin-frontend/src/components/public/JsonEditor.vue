@@ -25,7 +25,7 @@
   export default {
     name: 'json-editor',
     props: {
-      value: Array,
+      value: null,
       mode: {
         type: String,
         default: 'tree'
