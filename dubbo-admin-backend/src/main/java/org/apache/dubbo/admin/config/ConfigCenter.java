@@ -43,7 +43,7 @@ public class ConfigCenter {
     @Value("${dubbo.configcenter:}")
     private String configCenter;
 
-    @Value("${dubbo.configcenter:}")
+    @Value("${dubbo.registry.address:}")
     private String registryAddress;
 
     private static String globalConfigPath = "config/dubbo/dubbo.properties";

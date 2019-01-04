@@ -19,7 +19,7 @@ package org.apache.dubbo.admin.controller;
 
 import com.google.gson.Gson;
 
-import org.apache.dubbo.admin.common.AdminConstants;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.model.domain.Consumer;
 import org.apache.dubbo.admin.model.domain.Provider;
@@ -27,7 +27,6 @@ import org.apache.dubbo.admin.model.dto.ServiceDTO;
 import org.apache.dubbo.admin.model.dto.ServiceDetailDTO;
 import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.ProviderService;
-import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
@@ -57,30 +56,30 @@ public class ServiceController {
         @RequestParam String filter,@PathVariable String env) {
 
         List<Provider> providers = new ArrayList<>();
-        if (!filter.contains(AdminConstants.ANY_VALUE) && !filter.contains(AdminConstants.INTERROGATION_POINT)) {
-            if (AdminConstants.IP.equals(pattern)) {
+        if (!filter.contains(Constants.ANY_VALUE) && !filter.contains(Constants.INTERROGATION_POINT)) {
+            if (Constants.IP.equals(pattern)) {
                 providers = providerService.findByAddress(filter);
-            } else if (AdminConstants.SERVICE.equals(pattern)) {
+            } else if (Constants.SERVICE.equals(pattern)) {
                 providers = providerService.findByService(filter);
-            } else if (AdminConstants.APPLICATION.equals(pattern)) {
+            } else if (Constants.APPLICATION.equals(pattern)) {
                 providers = providerService.findByApplication(filter);
             }
         } else {
             List<String> candidates = Collections.emptyList();
-            if (AdminConstants.SERVICE.equals(pattern)) {
+            if (Constants.SERVICE.equals(pattern)) {
                 candidates = providerService.findServices();
-            } else if (AdminConstants.APPLICATION.equals(pattern)) {
+            } else if (Constants.APPLICATION.equals(pattern)) {
                 candidates = providerService.findApplications();
             }
-            filter = filter.toLowerCase().replace(AdminConstants.PUNCTUATION_POINT, AdminConstants.PUNCTUATION_SEPARATOR_POINT);
-            if (filter.startsWith(AdminConstants.ANY_VALUE)) {
-                filter = AdminConstants.PUNCTUATION_POINT + filter;
+            filter = filter.toLowerCase().replace(Constants.PUNCTUATION_POINT, Constants.PUNCTUATION_SEPARATOR_POINT);
+            if (filter.startsWith(Constants.ANY_VALUE)) {
+                filter = Constants.PUNCTUATION_POINT + filter;
             }
             Pattern regex = Pattern.compile(filter);
             for (String candidate : candidates) {
                 Matcher matcher = regex.matcher(candidate);
                 if (matcher.matches() || matcher.lookingAt()) {
-                    if (AdminConstants.SERVICE.equals(pattern)) {
+                    if (Constants.SERVICE.equals(pattern)) {
                         providers.addAll(providerService.findByService(candidate));
                     } else {
                         providers.addAll(providerService.findByApplication(candidate));
@@ -108,7 +107,7 @@ public class ServiceController {
 
     @RequestMapping(value = "/{service}", method = RequestMethod.GET)
     public ServiceDetailDTO serviceDetail(@PathVariable String service, @PathVariable String env) {
-        service = service.replace(AdminConstants.ANY_VALUE, AdminConstants.PATH_SEPARATOR);
+        service = service.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         List<Provider> providers = providerService.findByService(service);
 
         List<Consumer> consumers = consumerService.findByService(service);
@@ -119,8 +118,8 @@ public class ServiceController {
             application = providers.get(0).getApplication();
         }
         MetadataIdentifier identifier = new MetadataIdentifier(info.get(Constants.INTERFACE_KEY),
-            info.get(Constants.VERSION_KEY),
-            info.get(Constants.GROUP_KEY), Constants.PROVIDER_SIDE, application);
+                                                                      info.get(Constants.VERSION_KEY),
+                                                                      info.get(Constants.GROUP_KEY), Constants.PROVIDER_SIDE, application);
         String metadata = providerService.getProviderMetaData(identifier);
         ServiceDetailDTO serviceDetailDTO = new ServiceDetailDTO();
         if (metadata != null) {
