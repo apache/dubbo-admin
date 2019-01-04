@@ -33,7 +33,10 @@ English version goes [here](README.md).
 3. 构建
 
     > - `mvn clean package`
-4. 启动 `mvn --projects dubbo-admin-backend spring-boot:run`
+4. 启动 
+   * `mvn --projects dubbo-admin-backend spring-boot:run`   
+   或者   
+   * `cd dubbo-admin-backend/target; java -jar dubbo-admin-backend-0.0.1-SNAPSHOT.jar`
 5. 访问 `http://localhost:8080`
 ---
 
