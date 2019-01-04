@@ -247,17 +247,17 @@
               })
             break
           case 'block':
-            this.openWarn(' Are you sure to block Routing Rule', 'application: ' + item.application)
+            this.openWarn(' Are you sure to block Tag Rule', 'application: ' + item.application)
             this.warnStatus.operation = 'disable'
             this.warnStatus.id = itemId
             break
           case 'check_circle_outline':
-            this.openWarn(' Are you sure to enable Routing Rule', 'application: ' + item.application)
+            this.openWarn(' Are you sure to enable Tag Rule', 'application: ' + item.application)
             this.warnStatus.operation = 'enable'
             this.warnStatus.id = itemId
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Routing Rule', 'application: ' + item.application)
+            this.openWarn(' Are you sure to Delete Tag Rule', 'application: ' + item.application)
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = itemId
         }
