@@ -21,6 +21,7 @@
 
 * Standard spring boot project
 * **NOTICE** this branch is based on Dubbo 2.7-SNAPSHOT, since this version is not published yet, so if you find a dependency error, please clear the dubbo2.7 related files in the local library
+* [configurations in application.properties](https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration)
 * force update under root path(incubator-dubbo-ops) for the first building: `mvn -Dmaven.test.skip=true clean -U package`
 
 
