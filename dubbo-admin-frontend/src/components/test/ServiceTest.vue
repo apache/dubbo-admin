@@ -31,11 +31,12 @@
             <td><v-chip label>{{ props.item.returnType }}</v-chip></td>
             <td class="text-xs-right">
               <v-tooltip bottom>
-                <v-icon small
-                        class="mr-2"
-                        color="blue"
-                        slot="activator"
-                        @click="toTest(props.item)">input</v-icon>
+                <v-btn
+                  fab dark small color="blue" slot="activator"
+                  :href="getHref(props.item.application, props.item.service, props.item.signature)"
+                >
+                  <v-icon>edit</v-icon>
+                </v-btn>
                 <span>Try it</span>
               </v-tooltip>
             </td>
@@ -109,7 +110,7 @@
         modal: {
           method: null,
           enable: false,
-          types: null,
+          paramaterTypes: null,
           json: []
         }
       }
@@ -129,7 +130,26 @@
         this.$axios.get('/service/' + this.filter).then(response => {
           this.service = response.data
           if (this.service.hasOwnProperty('metadata')) {
-            this.methods = this.service.metadata.methods
+            let data = this.service.metadata.methods
+            for (let i = 0; i < data.length; i++) {
+              let method = {}
+              let sig = data[i].name + '~'
+              let parameters = data[i].parameterTypes
+              let length = parameters.length
+              for (let j = 0; j < length; j++) {
+                sig = sig + parameters[j]
+                if (j !== length - 1) {
+                  sig = sig + ';'
+                }
+              }
+              method.signature = sig
+              method.name = data[i].name
+              method.parameterTypes = data[i].parameterTypes
+              method.returnType = data[i].returnType
+              method.service = response.data.service
+              method.application = response.data.application
+              this.methods.push(method)
+            }
           }
         }).catch(error => {
           this.showSnackbar('error', error.response.data.message)
@@ -141,16 +161,21 @@
           method: item.name
         })
         this.modal.json = []
-        this.modal.types = item.parameterTypes
+        this.modal.paramaterTypes = item.parameterTypes
         item.parameterTypes.forEach((i, index) => {
           this.modal.json.push(this.getType(i))
         })
+      },
+      getHref (application, service, method) {
+        let base = '/#/testMethod?'
+        let query = 'application=' + application + '&service=' + service + '&method=' + method
+        return base + query
       },
       test () {
         this.$axios.post('/test', {
           service: this.service.metadata.canonicalName,
           method: this.modal.method,
-          types: this.modal.types,
+          paramaterTypes: this.modal.paramaterTypes,
           params: this.modal.json
         }).then(response => {
           console.log(response)

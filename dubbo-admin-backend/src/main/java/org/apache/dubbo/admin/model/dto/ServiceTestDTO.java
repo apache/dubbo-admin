@@ -3,7 +3,7 @@ package org.apache.dubbo.admin.model.dto;
 public class ServiceTestDTO {
     private String service;
     private String method;
-    private String[] types;
+    private String[] paramaterTypes;
     private Object[] params;
 
     public String getService() {
@@ -22,12 +22,12 @@ public class ServiceTestDTO {
         this.method = method;
     }
 
-    public String[] getTypes() {
-        return types;
+    public String[] getParamaterTypes() {
+        return paramaterTypes;
     }
 
-    public void setTypes(String[] types) {
-        this.types = types;
+    public void setParamaterTypes(String[] paramaterTypes) {
+        this.paramaterTypes = paramaterTypes;
     }
 
     public Object[] getParams() {

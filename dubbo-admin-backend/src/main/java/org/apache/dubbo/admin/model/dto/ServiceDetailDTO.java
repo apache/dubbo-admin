@@ -27,9 +27,26 @@ public class ServiceDetailDTO {
 
     List<Provider> providers;
     List<Consumer> consumers;
+    private String service;
+    private String application;
 
     FullServiceDefinition metadata;
 
+    public String getService() {
+        return service;
+    }
+
+    public void setService(String service) {
+        this.service = service;
+    }
+
+    public String getApplication() {
+        return application;
+    }
+
+    public void setApplication(String application) {
+        this.application = application;
+    }
 
     public List<Provider> getProviders() {
         return providers;
