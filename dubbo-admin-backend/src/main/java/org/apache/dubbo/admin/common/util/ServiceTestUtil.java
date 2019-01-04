@@ -19,7 +19,6 @@ package org.apache.dubbo.admin.common.util;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.model.domain.MethodMetadata;
-import org.apache.dubbo.admin.model.dto.MethodDTO;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
 import org.apache.dubbo.metadata.definition.model.MethodDefinition;
 import org.apache.dubbo.metadata.definition.model.ServiceDefinition;
@@ -34,10 +33,16 @@ public class ServiceTestUtil {
     private static Pattern COLLECTION_PATTERN = Pattern.compile("^java\\.util\\..*(Set|List|Queue|Collection|Deque)(<.*>)*$");
     private static Pattern MAP_PATTERN = Pattern.compile("^java\\.util\\..*Map.*(<.*>)*$");
 
-    public static boolean sameMethod(MethodDefinition m, MethodDTO methodDTO) {
-        return (m.getName().equals(methodDTO.getName())
-                && m.getReturnType().equals(methodDTO.getReturnType())
-                && m.getParameterTypes().equals(methodDTO.getParameterTypes().toArray()));
+    public static boolean sameMethod(MethodDefinition m, String methodSig) {
+        String name = m.getName();
+        String[] parameters = m.getParameterTypes();
+        StringBuilder sb = new StringBuilder();
+        sb.append(name).append("~");
+        for (String parameter : parameters) {
+            sb.append(parameter).append(";");
+        }
+        String sig = StringUtils.removeEnd(sb.toString(), ";");
+        return sig.equals(methodSig);
     }
 
     public static MethodMetadata generateMethodMeta(FullServiceDefinition serviceDefinition, MethodDefinition methodDefinition) {
@@ -85,7 +90,7 @@ public class ServiceTestUtil {
     private static void generateComplexType(ServiceDefinition sd, TypeDefinition td, Map holder) {
         for (Map.Entry<String, TypeDefinition> entry : td.getProperties().entrySet()) {
             if (isPrimitiveType(td)) {
-                holder.put(entry.getKey(), td.getType());
+                holder.put(entry.getKey(), generatePrimitiveType(td));
             } else {
                 generateEnclosedType(holder, entry.getKey(), sd, entry.getValue());
             }
@@ -201,7 +206,7 @@ public class ServiceTestUtil {
     }
 
     private static void generateEnclosedType(Map<String, Object> holder, String key, ServiceDefinition sd, TypeDefinition td) {
-        if (td.getProperties() == null || td.getProperties().size() == 0) {
+        if (td.getProperties() == null || td.getProperties().size() == 0 || isPrimitiveType(td)) {
             holder.put(key, generateType(sd, td));
         } else {
             Map<String, Object> enclosedMap = new HashMap<>();

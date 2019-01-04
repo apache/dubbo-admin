@@ -4,23 +4,18 @@ import com.google.gson.Gson;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.common.util.ServiceTestUtil;
 import org.apache.dubbo.admin.model.domain.MethodMetadata;
-import org.apache.dubbo.admin.model.dto.MethodDTO;
 import org.apache.dubbo.admin.model.dto.ServiceTestDTO;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.admin.service.impl.GenericServiceImpl;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
 import org.apache.dubbo.metadata.definition.model.MethodDefinition;
-import org.apache.dubbo.metadata.definition.model.TypeDefinition;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/{env}/test")
@@ -34,14 +29,13 @@ public class ServiceTestController {
 
     @RequestMapping(method = RequestMethod.POST)
     public Object test(@PathVariable String env, @RequestBody ServiceTestDTO serviceTestDTO) {
-        return genericService.invoke(serviceTestDTO.getService(), serviceTestDTO.getMethod(), serviceTestDTO.getTypes(), serviceTestDTO.getParams());
+        return genericService.invoke(serviceTestDTO.getService(), serviceTestDTO.getMethod(), serviceTestDTO.getParamaterTypes(), serviceTestDTO.getParams());
 //        return null;
     }
 
     @RequestMapping(value = "/method", method = RequestMethod.GET)
-    public MethodMetadata methodDetail(@PathVariable String env, @RequestBody MethodDTO methodDTO) {
-        String service = methodDTO.getService();
-        String application = methodDTO.getApplication();
+    public MethodMetadata methodDetail(@PathVariable String env, @RequestParam String application, @RequestParam String service,
+                                       @RequestParam String method) {
         Map<String, String> info = ConvertUtil.serviceName2Map(service);
         MetadataIdentifier identifier = new MetadataIdentifier(info.get(Constants.INTERFACE_KEY),
                 info.get(Constants.VERSION_KEY),
@@ -54,7 +48,7 @@ public class ServiceTestController {
             List<MethodDefinition> methods = serviceDefinition.getMethods();
             if (methods != null) {
                 for (MethodDefinition m : methods) {
-                    if (ServiceTestUtil.sameMethod(m, methodDTO)) {
+                    if (ServiceTestUtil.sameMethod(m, method)) {
                         methodMetadata = ServiceTestUtil.generateMethodMeta(serviceDefinition, m);
                         break;
                     }
@@ -62,11 +56,5 @@ public class ServiceTestController {
             }
         }
         return methodMetadata;
-    }
-
-    public static void main(String[] args) {
-        String[] types = new String[]{"java.lang.String", "java.lang.Map", "com.taobao.alibaba.Demo"};
-        String signature = Arrays.stream(types).collect(Collectors.joining(";"));
-        System.out.println(signature);
     }
 }

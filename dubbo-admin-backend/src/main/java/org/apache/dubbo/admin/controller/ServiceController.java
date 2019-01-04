@@ -128,6 +128,8 @@ public class ServiceController {
         }
         serviceDetailDTO.setConsumers(consumers);
         serviceDetailDTO.setProviders(providers);
+        serviceDetailDTO.setService(service);
+        serviceDetailDTO.setApplication(application);
         return serviceDetailDTO;
     }
 }
