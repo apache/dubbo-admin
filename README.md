@@ -32,7 +32,10 @@
 3. Build
 
     > - `mvn clean package`
-4. Start `mvn --projects dubbo-admin-backend spring-boot:run`
+4. Start 
+    * `mvn --projects dubbo-admin-backend spring-boot:run`  
+    OR
+    * `cd dubbo-admin-backend/target`;   `java -jar dubbo-admin-backend-0.0.1-SNAPSHOT.jar`
 5. Visit `http://localhost:8080`
 ---
 
