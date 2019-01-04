@@ -53,7 +53,7 @@ public class ServiceController {
 
     @RequestMapping(method = RequestMethod.GET)
     public Set<ServiceDTO> searchService(@RequestParam String pattern,
-        @RequestParam String filter,@PathVariable String env) {
+                                         @RequestParam String filter,@PathVariable String env) {
 
         List<Provider> providers = new ArrayList<>();
         if (!filter.contains(Constants.ANY_VALUE) && !filter.contains(Constants.INTERROGATION_POINT)) {
