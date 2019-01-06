@@ -17,6 +17,7 @@
 
 package org.apache.dubbo.admin.model.dto;
 
+import java.util.Objects;
 import org.apache.commons.lang3.StringUtils;
 
 public class ServiceDTO implements Comparable<ServiceDTO>{
@@ -70,5 +71,23 @@ public class ServiceDTO implements Comparable<ServiceDTO>{
             }
         }
         return result;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        ServiceDTO that = (ServiceDTO) o;
+        return Objects.equals(service, that.service) && Objects.equals(appName, that.appName) && Objects
+            .equals(group, that.group) && Objects.equals(version, that.version);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(service, appName, group, version);
     }
 }

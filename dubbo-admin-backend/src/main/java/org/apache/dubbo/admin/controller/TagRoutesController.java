@@ -21,6 +21,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.common.exception.VersionValidationException;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.TagRouteDTO;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.admin.service.RouteService;
@@ -62,7 +63,7 @@ public class TagRoutesController {
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
     public boolean updateRule(@PathVariable String id, @RequestBody TagRouteDTO routeDTO, @PathVariable String env) {
 
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         String app = routeDTO.getApplication();
         if (providerService.findVersionInApplication(app).equals("2.6")) {
             throw new VersionValidationException("dubbo 2.6 does not support tag route");
@@ -100,7 +101,7 @@ public class TagRoutesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public TagRouteDTO detailRoute(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         TagRouteDTO tagRoute = routeService.findTagRoute(id);
         if (tagRoute == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -110,21 +111,21 @@ public class TagRoutesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteRoute(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         routeService.deleteTagRoute(id);
         return true;
     }
 
     @RequestMapping(value = "/enable/{id}", method = RequestMethod.PUT)
     public boolean enableRoute(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         routeService.enableTagRoute(id);
         return true;
     }
 
     @RequestMapping(value = "/disable/{id}", method = RequestMethod.PUT)
     public boolean disableRoute(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         routeService.disableTagRoute(id);
         return true;
     }
