@@ -53,56 +53,10 @@ public class ServiceController {
     @RequestMapping(method = RequestMethod.GET)
     public Set<ServiceDTO> searchService(@RequestParam String pattern,
                                          @RequestParam String filter,@PathVariable String env) {
-
-        List<Provider> providers = new ArrayList<>();
-        if (!filter.contains(Constants.ANY_VALUE) && !filter.contains(Constants.INTERROGATION_POINT)) {
-            if (Constants.IP.equals(pattern)) {
-                providers = providerService.findByAddress(filter);
-            } else if (Constants.SERVICE.equals(pattern)) {
-                providers = providerService.findByService(filter);
-            } else if (Constants.APPLICATION.equals(pattern)) {
-                providers = providerService.findByApplication(filter);
-            }
-        } else {
-            List<String> candidates = Collections.emptyList();
-            if (Constants.SERVICE.equals(pattern)) {
-                candidates = providerService.findServices();
-            } else if (Constants.APPLICATION.equals(pattern)) {
-                candidates = providerService.findApplications();
-            }
-            filter = filter.toLowerCase().replace(Constants.PUNCTUATION_POINT, Constants.PUNCTUATION_SEPARATOR_POINT);
-            if (filter.startsWith(Constants.ANY_VALUE)) {
-                filter = Constants.PUNCTUATION_POINT + filter;
-            }
-            Pattern regex = Pattern.compile(filter);
-            for (String candidate : candidates) {
-                Matcher matcher = regex.matcher(candidate);
-                if (matcher.matches() || matcher.lookingAt()) {
-                    if (Constants.SERVICE.equals(pattern)) {
-                        providers.addAll(providerService.findByService(candidate));
-                    } else {
-                        providers.addAll(providerService.findByApplication(candidate));
-                    }
-                }
-            }
-        }
-
-        Set<ServiceDTO> result = new TreeSet<>();
-        for (Provider provider : providers) {
-            Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
-            String app = provider.getApplication();
-            String service = map.get(Constants.INTERFACE_KEY);
-            String group = map.get(Constants.GROUP_KEY);
-            String version = map.get(Constants.VERSION_KEY);
-            ServiceDTO s = new ServiceDTO();
-            s.setAppName(app);
-            s.setService(service);
-            s.setGroup(group);
-            s.setVersion(version);
-            result.add(s);
-        }
-        return result;
+        return providerService.getServiceDTOS(pattern, filter, env);
     }
+
+
 
     @RequestMapping(value = "/{service}", method = RequestMethod.GET)
     public ServiceDetailDTO serviceDetail(@PathVariable String service, @PathVariable String env) {
