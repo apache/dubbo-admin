@@ -20,7 +20,7 @@ export default {
   routingRule: 'Routing Rule',
   tagRule: 'Tag Rule',
   dynamicConfig: 'Dynamic Config',
-  accessControl: 'Access Control',
+  accessControl: 'Black White List',
   weightAdjust: 'Weight Adjust',
   loadBalance: 'Load Balance',
   serviceTest: 'Service Test',
