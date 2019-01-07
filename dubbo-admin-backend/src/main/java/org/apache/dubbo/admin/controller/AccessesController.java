@@ -100,18 +100,4 @@ public class AccessesController {
         }
         routeService.updateAccess(accessDTO);
     }
-
-//    private ConditionRouteDTO routeCopy(ConditionRouteDTO old) {
-//        ConditionRouteDTO newRoute = new ConditionRouteDTO();
-//        newRoute.setKey(old.getKey());
-//        newRoute.setScope(old.getScope());
-//        newRoute.setConditions(old.getConditions());
-//        newRoute.setRuntime(old.isRuntime());
-//        newRoute.setEnabled(old.isEnabled());
-//        newRoute.setDynamic(old.isDynamic());
-//        newRoute.setForce(old.isForce());
-//        newRoute.setPriority(old.getPriority());
-//        newRoute.setBlackWhiteList(null);
-//        return newRoute;
-//    }
 }
