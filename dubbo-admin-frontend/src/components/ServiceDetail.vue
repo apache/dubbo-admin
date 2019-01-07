@@ -34,16 +34,16 @@
         </v-data-table>
       </v-flex>
       <v-flex sm12>
-        <h3>Service Info</h3>
+        <h3>{{$t('serviceInfo')}}</h3>
       </v-flex>
       <v-flex lg12 >
         <v-tabs
           class="elevation-1">
           <v-tab>
-            providers
+            {{$t('providers')}}
           </v-tab>
           <v-tab>
-            consumers
+            {{$t('consumers')}}
           </v-tab>
           <v-tab-item>
             <v-data-table
@@ -101,6 +101,12 @@
               <v-chip label>{{props.item.returnType}}</v-chip>
             </td>
           </template>
+          <template slot="no-data">
+            <v-alert :value="true" color="warning" icon="warning">
+              {{$t('noMetadataHint')}}
+              <a :href="$t('configAddress')" target="_blank">{{$t('here')}}</a>
+            </v-alert>
+          </template>
         </v-data-table>
       </v-flex>
     </v-layout>
@@ -148,7 +154,7 @@
               value: 'port'
             },
             {
-              text: this.$t('timeout(ms)'),
+              text: this.$t('timeout'),
               value: 'timeout'
             },
             {
