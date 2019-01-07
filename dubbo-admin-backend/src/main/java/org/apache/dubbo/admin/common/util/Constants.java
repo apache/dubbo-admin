@@ -48,6 +48,9 @@ public class Constants {
     public static final String IP = "ip";
     public static final String INTERFACE_KEY = "interface";
     public static final String VERSION_KEY = "version";
+    public static final String PROVIDERS_CATEGORY = "providers";
+    public static final String CONSUMERS_CATEGORY = "consumers";
+    public static final String SPECIFICATION_VERSION_KEY = "specVersion";
     public static final Set<String> CONFIGS = new HashSet<>();
 
     static {
