@@ -27,8 +27,15 @@ export default {
   serviceMock: 'Service Mock',
   metrics: 'Metrics',
   group: 'Group',
+  serviceInfo: 'Service Info',
+  providers: 'Providers',
+  consumers: 'Consumers',
   version: 'Version',
   app: 'Application',
+  ip: 'IP',
+  port: 'PORT',
+  timeout: 'timeout(ms)',
+  serialization: 'serialization',
   appName: 'Application Name',
   serviceName: 'Service Name',
   operation: 'Operation',
@@ -65,5 +72,10 @@ export default {
   ipSearchHint: 'Find all services provided by the target server on the specified IP address',
   appSearchHint: 'Input an application name to find all services provided by one particular application, * for all',
   searchTagRule: 'Search Tag Rule by application name',
-  searchBalanceRule: 'Search Balancing Rule'
+  searchBalanceRule: 'Search Balancing Rule',
+  noMetadataHint: 'There is no metadata available, please update to Dubbo2.7, or check your config center configuration in application.properties, please check ',
+  parameterList: 'parameterList',
+  returnType: 'returnType',
+  here: 'here',
+  configAddress: 'https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration'
 }
