@@ -21,7 +21,7 @@
       <v-flex lg12>
         <v-card>
           <v-card-title>
-            <h1>Service Mock will release in the future</h1>
+            <h1>Service Test will release in the future</h1>
           </v-card-title>
         </v-card>
       </v-flex>

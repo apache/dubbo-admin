@@ -34,12 +34,32 @@
     </v-text-field>
 
     <v-spacer></v-spacer>
+
+    <!--settings button-->
     <v-btn icon v-if="false">
       <v-icon>settings</v-icon>
     </v-btn>
+
+    <!--full screen button-->
     <v-btn icon @click="handleFullScreen()">
       <v-icon>fullscreen</v-icon>
     </v-btn>
+
+    <!--language select button-->
+    <v-menu  attach bottom left offset-y max-height="500">
+      <v-btn flat slot="activator" style="mini-width: 48px">
+        {{selectedLang}}
+      </v-btn>
+      <v-list class="pa-0">
+        <v-list-tile v-for="(item, index) in lang" @click="change(index)" :key="index">
+          <v-list-tile-content>
+            <v-list-tile-title>{{item}}</v-list-tile-title>
+          </v-list-tile-content>
+        </v-list-tile>
+      </v-list>
+    </v-menu>
+
+    <!--notifictation button-->
     <v-menu offset-y origin="center center" class="elelvation-1" :nudge-bottom="14" transition="scale-transition" v-if="false">
       <v-btn icon flat slot="activator">
         <v-badge color="red" overlap>
@@ -49,6 +69,8 @@
       </v-btn>
       <!--<notification-list></notification-list>-->
     </v-menu>
+
+    <!--login user info-->
     <v-menu offset-y origin="center center" :nudge-bottom="10" transition="scale-transition" v-if="false">
       <v-btn icon large flat slot="activator">
         <v-avatar size="30px">
@@ -73,6 +95,11 @@
   export default {
     name: 'toolbar',
     data: () => ({
+      selectedLang: '',
+      lang: [
+        '简体中文',
+        'English'
+      ],
       items: [
         {
           icon: 'account_circle',
@@ -104,11 +131,29 @@
       handleDrawerToggle () {
         window.getApp.$emit('DRAWER_TOGGLED')
       },
+      change (index) {
+        this.selectedLang = this.lang[index]
+        if (index === 0) {
+          this.$i18n.locale = 'zh'
+        } else {
+          this.$i18n.locale = 'en'
+        }
+        this.$store.dispatch('changeArea', {area: this.$i18n.locale})
+        window.localStorage.setItem('locale', this.$i18n.locale)
+        window.localStorage.setItem('selectedLang', this.selectedLang)
+      },
       handleTheme () {
         window.getApp.$emit('CHANGE_THEME')
       },
       handleFullScreen () {
         Util.toggleFullScreen()
+      }
+    },
+    mounted: function () {
+      if (this.$i18n.locale === 'zh') {
+        this.selectedLang = '简体中文'
+      } else {
+        this.selectedLang = 'English'
       }
     }
   }

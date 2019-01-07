@@ -16,7 +16,7 @@
  */
 package org.apache.dubbo.admin.controller;
 
-import org.apache.dubbo.admin.common.util.RouteRule;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
@@ -67,14 +67,14 @@ public class AccessesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public AccessDTO detailAccess(@PathVariable String id, @PathVariable String env) throws ParseException {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         AccessDTO accessDTO = routeService.findAccess(id);
         return accessDTO;
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public void deleteAccess(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         routeService.deleteAccess(id);
     }
 
@@ -93,25 +93,11 @@ public class AccessesController {
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
     public void updateAccess(@PathVariable String id, @RequestBody AccessDTO accessDTO, @PathVariable String env) {
 
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         ConditionRouteDTO route = routeService.findConditionRoute(id);
         if (Objects.isNull(route)) {
             throw new ResourceNotFoundException("Unknown ID!");
         }
         routeService.updateAccess(accessDTO);
     }
-
-//    private ConditionRouteDTO routeCopy(ConditionRouteDTO old) {
-//        ConditionRouteDTO newRoute = new ConditionRouteDTO();
-//        newRoute.setKey(old.getKey());
-//        newRoute.setScope(old.getScope());
-//        newRoute.setConditions(old.getConditions());
-//        newRoute.setRuntime(old.isRuntime());
-//        newRoute.setEnabled(old.isEnabled());
-//        newRoute.setDynamic(old.isDynamic());
-//        newRoute.setForce(old.isForce());
-//        newRoute.setPriority(old.getPriority());
-//        newRoute.setBlackWhiteList(null);
-//        return newRoute;
-//    }
 }

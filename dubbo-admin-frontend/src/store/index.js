@@ -22,9 +22,18 @@ Vue.use(Vuex)
 
 export const store = new Vuex.Store({
   state: {
-    appTitle: 'Dubbo OPS'
+    appTitle: 'Dubbo OPS',
+    area: null
   },
-  mutations: {},
-  actions: {},
+  mutations: {
+    setArea (state, area) {
+      state.area = area
+    }
+  },
+  actions: {
+    changeArea ({commit}, area) {
+      commit('setArea', area)
+    }
+  },
   getters: {}
 })

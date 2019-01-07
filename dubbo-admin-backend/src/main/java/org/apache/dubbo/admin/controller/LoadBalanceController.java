@@ -20,6 +20,7 @@ package org.apache.dubbo.admin.controller;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.BalancingDTO;
 import org.apache.dubbo.admin.service.OverrideService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,7 +66,7 @@ public class LoadBalanceController {
         if (id == null) {
             throw new ParamValidationException("Unknown ID!");
         }
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         BalancingDTO balancing = overrideService.findBalance(id);
         if (balancing == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -98,7 +99,7 @@ public class LoadBalanceController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public BalancingDTO detailLoadBalance(@PathVariable String id, @PathVariable String env) throws ParamValidationException {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         BalancingDTO balancingDTO = overrideService.findBalance(id);
         if (balancingDTO == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -114,7 +115,7 @@ public class LoadBalanceController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteLoadBalance(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         if (id == null) {
             throw new IllegalArgumentException("Argument of id is null!");
         }
