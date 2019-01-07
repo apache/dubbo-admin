@@ -20,6 +20,7 @@ package org.apache.dubbo.admin.controller;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.model.dto.AccessDTO;
 import org.apache.dubbo.admin.model.dto.WeightDTO;
@@ -68,7 +69,7 @@ public class WeightController {
         if (id == null) {
             throw new ParamValidationException("Unknown ID!");
         }
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         WeightDTO weight = overrideService.findWeight(id);
         if (weight == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -123,7 +124,7 @@ public class WeightController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public WeightDTO detailWeight(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         WeightDTO weightDTO = overrideService.findWeight(id);
         if (weightDTO == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -133,7 +134,7 @@ public class WeightController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteWeight(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         overrideService.deleteWeight(id);
         return true;
     }

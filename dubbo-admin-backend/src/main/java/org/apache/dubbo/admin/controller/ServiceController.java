@@ -25,7 +25,7 @@ import org.apache.dubbo.admin.model.dto.ServiceDTO;
 import org.apache.dubbo.admin.model.dto.ServiceDetailDTO;
 import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.ProviderService;
-import org.apache.dubbo.common.Constants;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
@@ -55,30 +55,30 @@ public class ServiceController {
                                          @RequestParam String filter,@PathVariable String env) {
 
         List<Provider> providers = new ArrayList<>();
-        if (!filter.contains("*") && !filter.contains("?")) {
-            if (pattern.equals("ip")) {
+        if (!filter.contains(Constants.ANY_VALUE) && !filter.contains(Constants.INTERROGATION_POINT)) {
+            if (Constants.IP.equals(pattern)) {
                 providers = providerService.findByAddress(filter);
-            } else if (pattern.equals("service")) {
+            } else if (Constants.SERVICE.equals(pattern)) {
                 providers = providerService.findByService(filter);
-            } else if (pattern.equals("application")) {
+            } else if (Constants.APPLICATION.equals(pattern)) {
                 providers = providerService.findByApplication(filter);
             }
         } else {
             List<String> candidates = Collections.emptyList();
-            if (pattern.equals("service")) {
-               candidates = providerService.findServices();
-            } else if (pattern.equals("application")) {
+            if (Constants.SERVICE.equals(pattern)) {
+                candidates = providerService.findServices();
+            } else if (Constants.APPLICATION.equals(pattern)) {
                 candidates = providerService.findApplications();
             }
-            filter = filter.toLowerCase().replace(".", "\\.");
-            if (filter.startsWith("*")) {
-                filter = "." + filter;
+            filter = filter.toLowerCase().replace(Constants.PUNCTUATION_POINT, Constants.PUNCTUATION_SEPARATOR_POINT);
+            if (filter.startsWith(Constants.ANY_VALUE)) {
+                filter = Constants.PUNCTUATION_POINT + filter;
             }
             Pattern regex = Pattern.compile(filter);
             for (String candidate : candidates) {
                 Matcher matcher = regex.matcher(candidate);
                 if (matcher.matches() || matcher.lookingAt()) {
-                    if (pattern.equals("service")) {
+                    if (Constants.SERVICE.equals(pattern)) {
                         providers.addAll(providerService.findByService(candidate));
                     } else {
                         providers.addAll(providerService.findByApplication(candidate));
@@ -106,7 +106,7 @@ public class ServiceController {
 
     @RequestMapping(value = "/{service}", method = RequestMethod.GET)
     public ServiceDetailDTO serviceDetail(@PathVariable String service, @PathVariable String env) {
-        service = service.replace("*", "/");
+        service = service.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         List<Provider> providers = providerService.findByService(service);
 
         List<Consumer> consumers = consumerService.findByService(service);
