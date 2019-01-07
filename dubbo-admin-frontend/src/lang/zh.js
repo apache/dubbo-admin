@@ -20,7 +20,7 @@ export default {
   routingRule: '路由规则',
   tagRule: '标签规则',
   dynamicConfig: '动态配置',
-  accessControl: '访问控制',
+  accessControl: '黑白名单',
   weightAdjust: '权重调整',
   loadBalance: '负载均衡',
   serviceTest: '服务测试',
