@@ -14,37 +14,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.dubbo.admin.common.util;
 
-import org.apache.dubbo.admin.model.dto.DynamicConfigDTO;
+import org.apache.dubbo.admin.common.util.UrlUtils;
+import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 
-public class YamlParserTest {
+public class UrlUtilsTest {
 
-    private String streamToString(InputStream stream) {
-        try {
-            byte[] bytes = new byte[stream.available()];
-            stream.read(bytes);
-            return new String(bytes);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
+    @Test
+    public void testParamsMapToString() {
+        Map<String, String[]> params = new HashMap<>();
+        params.put("a", new String[]{"1", "2", "3"});
+        params.put("b", new String[]{"8", "7", "6"});
+        String result = UrlUtils.paramsMapToString(params);
+        Assert.assertEquals(result, "&a=1,2,3&b=8,7,6");
     }
 
     @Test
-    public void parseLoadBalanceTest() {
-        InputStream yamlStream = this.getClass().getResourceAsStream("/LoadBalance.yml");
-        DynamicConfigDTO overrideDTO = YamlParser.loadObject(streamToString(yamlStream), DynamicConfigDTO.class);
-        if ("weight".equals(null)) {
-            System.out.println("aa");
-        }
-        overrideDTO.getConfigs();
+    public void testArrayToString() {
+        String[] strArr = {"1", "2", "3"};
+        String result = UrlUtils.arrayToString(strArr);
+        Assert.assertEquals(result, "1,2,3");
     }
-
-
 }
