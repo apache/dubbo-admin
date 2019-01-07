@@ -75,11 +75,11 @@ public class ServiceController {
                                                                       info.get(Constants.GROUP_KEY), Constants.PROVIDER_SIDE, application);
         String metadata = providerService.getProviderMetaData(identifier);
         ServiceDetailDTO serviceDetailDTO = new ServiceDetailDTO();
+        serviceDetailDTO.setConsumers(consumers);
+        serviceDetailDTO.setProviders(providers);
         if (metadata != null) {
             Gson gson = new Gson();
             FullServiceDefinition serviceDefinition = gson.fromJson(metadata, FullServiceDefinition.class);
-            serviceDetailDTO.setConsumers(consumers);
-            serviceDetailDTO.setProviders(providers);
             serviceDetailDTO.setMetadata(serviceDefinition);
         }
         return serviceDetailDTO;
