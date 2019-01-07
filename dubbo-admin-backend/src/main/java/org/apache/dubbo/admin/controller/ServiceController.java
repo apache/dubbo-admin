@@ -25,7 +25,7 @@ import org.apache.dubbo.admin.model.dto.ServiceDTO;
 import org.apache.dubbo.admin.model.dto.ServiceDetailDTO;
 import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.ProviderService;
-import org.apache.dubbo.common.Constants;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
@@ -53,7 +53,6 @@ public class ServiceController {
     @RequestMapping(method = RequestMethod.GET)
     public Set<ServiceDTO> searchService(@RequestParam String pattern,
                                          @RequestParam String filter,@PathVariable String env) {
-
         return providerService.getServiceDTOS(pattern, filter, env);
     }
 
@@ -61,7 +60,7 @@ public class ServiceController {
 
     @RequestMapping(value = "/{service}", method = RequestMethod.GET)
     public ServiceDetailDTO serviceDetail(@PathVariable String service, @PathVariable String env) {
-        service = service.replace("*", "/");
+        service = service.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         List<Provider> providers = providerService.findByService(service);
 
         List<Consumer> consumers = consumerService.findByService(service);

@@ -14,30 +14,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.dubbo.admin.governance.util;
+import Vue from 'vue'
+import VueI18n from 'vue-i18n'
+import enLocale from './en'
+import zhLocale from './zh'
 
-import org.apache.dubbo.admin.common.util.UrlUtils;
-import org.junit.Assert;
-import org.junit.Test;
+Vue.use(VueI18n)
 
-import java.util.HashMap;
-import java.util.Map;
-
-public class UrlUtilsTest {
-
-    @Test
-    public void testParamsMapToString() {
-        Map<String, String[]> params = new HashMap<>();
-        params.put("a", new String[]{"1", "2", "3"});
-        params.put("b", new String[]{"8", "7", "6"});
-        String result = UrlUtils.paramsMapToString(params);
-        Assert.assertEquals(result, "&a=1,2,3&b=8,7,6");
-    }
-
-    @Test
-    public void testArrayToString() {
-        String[] strArr = {"1", "2", "3"};
-        String result = UrlUtils.arrayToString(strArr);
-        Assert.assertEquals(result, "1,2,3");
-    }
+const messages = {
+  en: {
+    ...enLocale
+  },
+  zh: {
+    ...zhLocale
+  }
 }
+
+let locale = window.localStorage.getItem('locale')
+let selectedLang = window.localStorage.getItem('selectedLang')
+
+export default new VueI18n({
+  locale: locale === null ? 'zh' : locale,
+  selectedLang: selectedLang === null ? '简体中文' : selectedLang,
+  messages
+})

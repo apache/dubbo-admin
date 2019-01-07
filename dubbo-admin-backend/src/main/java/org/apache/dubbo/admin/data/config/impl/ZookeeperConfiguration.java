@@ -22,18 +22,20 @@ import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.data.config.GovernanceConfiguration;
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.common.URL;
 
-import javax.swing.*;
 
 public class ZookeeperConfiguration implements GovernanceConfiguration {
+    private static final Logger logger = LoggerFactory.getLogger(ZookeeperConfiguration.class);
     private CuratorFramework zkClient;
     private URL url;
     private String root;
 
     @Override
     public void setUrl(URL url) {
-       this.url = url;
+        this.url = url;
     }
 
     @Override
@@ -77,7 +79,7 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
             zkClient.setData().forPath(path, value.getBytes());
             return value;
         } catch (Exception e) {
-
+            logger.error(e.getMessage(), e);
         }
         return null;
     }
@@ -92,7 +94,7 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
             }
             return new String(zkClient.getData().forPath(path));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return null;
     }
@@ -103,7 +105,7 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
         try {
             zkClient.delete().forPath(path);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return true;
     }

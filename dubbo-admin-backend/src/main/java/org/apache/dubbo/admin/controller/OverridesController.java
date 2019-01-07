@@ -21,6 +21,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.common.exception.VersionValidationException;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.DynamicConfigDTO;
 import org.apache.dubbo.admin.service.OverrideService;
 import org.apache.dubbo.admin.service.ProviderService;
@@ -61,7 +62,7 @@ public class OverridesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
     public boolean updateOverride(@PathVariable String id, @RequestBody DynamicConfigDTO overrideDTO, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         DynamicConfigDTO old = overrideService.findOverride(id);
         if (old == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -89,7 +90,7 @@ public class OverridesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public DynamicConfigDTO detailOverride(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         DynamicConfigDTO override = overrideService.findOverride(id);
         if (override == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -100,7 +101,7 @@ public class OverridesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteOverride(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         overrideService.deleteOverride(id);
         return true;
     }
@@ -108,14 +109,14 @@ public class OverridesController {
     @RequestMapping(value = "/enable/{id}", method = RequestMethod.PUT)
     public boolean enableRoute(@PathVariable String id, @PathVariable String env) {
 
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         overrideService.enableOverride(id);
         return true;
     }
 
     @RequestMapping(value = "/disable/{id}", method = RequestMethod.PUT)
     public boolean disableRoute(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
 
         overrideService.disableOverride(id);
         return true;
