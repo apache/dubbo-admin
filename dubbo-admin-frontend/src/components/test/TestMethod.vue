@@ -31,7 +31,7 @@
             </v-card-text>
             <v-card-actions>
               <v-spacer></v-spacer>
-              <v-btn id="execute" mt-0 color="blue" @click="executeMethod()">EXECUTE</v-btn>
+              <v-btn id="execute" mt-0 color="primary" @click="executeMethod()">EXECUTE</v-btn>
             </v-card-actions>
           </v-flex>
           <v-flex lg8>
