@@ -53,14 +53,6 @@ public class WeightController {
             throw new ParamValidationException("Either Service or application is required.");
         }
         overrideService.saveWeight(weightDTO);
-//        List<String> addresses = weightDTO.getAddresses();
-//        for (String address : addresses) {
-//            Weight weight = new Weight();
-//            weight.setService(weightDTO.getService());
-//            weight.setWeight(weight.getWeight());
-//            weight.setAddress(address);
-//            overrideService.saveOverride(OverrideUtils.weightToOverride(weight));
-//        }
         return true;
     }
 
@@ -74,12 +66,6 @@ public class WeightController {
         if (weight == null) {
             throw new ResourceNotFoundException("Unknown ID!");
         }
-//        Weight old = OverrideUtils.overrideToWeight(override);
-//        Weight weight = new Weight();
-//        weight.setWeight(weightDTO.getWeight());
-//        weight.setHash(id);
-//        weight.setService(old.getService());
-//        overrideService.updateOverride(OverrideUtils.weightToOverride(weight));
         overrideService.updateWeight(weightDTO);
         return true;
     }
@@ -102,23 +88,6 @@ public class WeightController {
             weightDTOS.add(weightDTO);
         }
 
-//        if (StringUtils.isEmpty(service)) {
-//            overrides = overrideService.findAll();
-//        } else {
-//            overrides = overrideService.findByService(service);
-//        }
-//        List<WeightDTO> weightDTOS = new ArrayList<>();
-//        for (Override override : overrides) {
-//            Weight w = OverrideUtils.overrideToWeight(override);
-//            if (w != null) {
-//                WeightDTO weightDTO = new WeightDTO();
-//                weightDTO.setAddresses(new String[]{w.getAddress()});
-//                weightDTO.setService(w.getService());
-//                weightDTO.setWeight(w.getWeight());
-//                weightDTO.setId(w.getHash());
-//                weightDTOS.add(weightDTO);
-//            }
-//        }
         return weightDTOS;
     }
 
