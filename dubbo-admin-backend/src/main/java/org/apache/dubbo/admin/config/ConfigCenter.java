@@ -43,18 +43,18 @@ public class ConfigCenter {
 
     @Value("${dubbo.config-center:}")
     private String configCenter;
-
-    @Value("${dubbo.registry.address:}")
-    private String registryAddress;
-
-    private static String globalConfigPath = "config/dubbo/dubbo.properties";
-
-    @Value("${dubbo.registry.group:}")
-    private String group;
     @Value("${dubbo.config-center.username:}")
     private String username;
     @Value("${dubbo.config-center.password:}")
     private String password;
+
+    @Value("${dubbo.registry.address:}")
+    private String registryAddress;
+    @Value("${dubbo.registry.group:}")
+    private String group;
+
+    private static String globalConfigPath = "config/dubbo/dubbo.properties";
+
     private static final Logger logger = LoggerFactory.getLogger(ConfigCenter.class);
 
     private URL configCenterUrl;
