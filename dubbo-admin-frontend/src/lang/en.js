@@ -55,6 +55,8 @@ export default {
   createNewRoutingRule: 'Create New Routing Rule',
   createNewTagRule: 'Create New Tag Rule',
   createNewDynamicConfigRule: 'Create New Dynamic Config Rule',
+  createNewWeightRule: 'Create New Weight Rule',
+  serviceIdHint: 'Service ID',
   view: 'View',
   edit: 'Edit',
   delete: 'Delete',
