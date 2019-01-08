@@ -61,6 +61,7 @@ export default {
   edit: 'Edit',
   delete: 'Delete',
   searchRoutingRule: 'Search Routing Rule',
+  searchAccess: 'Search Access Rule',
   searchWeightRule: 'Search Weight Adjust Rule',
   dataIdHint: 'A service ID in form of group/service:version, group and version are optional',
   agree: 'Agree',

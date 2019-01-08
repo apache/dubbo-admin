@@ -16,10 +16,8 @@
   -->
 
 <template>
-  <v-container grid-list-xl
-               fluid>
-    <v-layout row
-              wrap>
+  <v-container grid-list-xl fluid>
+    <v-layout row wrap>
       <v-flex lg12>
         <v-card flat color="transparent">
           <v-card-text>
@@ -32,7 +30,7 @@
                   append-icon=""
                   hide-no-data
                   :suffix="queryBy"
-                  :label="$t('searchRoutingRule')"
+                  :label="$t('searchAccessRule')"
                 ></v-combobox>
                 <v-menu class="hidden-xs-only">
                   <v-btn slot="activator" large icon>
@@ -269,7 +267,6 @@ export default {
       ]
     },
     search () {
-      this.filter = document.querySelector('#serviceSearch').value.trim()
       if (!this.filter) {
         return
       }
