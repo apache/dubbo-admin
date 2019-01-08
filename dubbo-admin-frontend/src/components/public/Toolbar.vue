@@ -28,7 +28,7 @@
       hide-details
       solo-inverted
       prepend-inner-icon="search"
-      label="Search"
+      :label="$t('search')"
       class="hidden-sm-and-down"
     >
     </v-text-field>
