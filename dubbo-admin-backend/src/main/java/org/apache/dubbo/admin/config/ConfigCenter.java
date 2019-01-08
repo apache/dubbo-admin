@@ -20,7 +20,6 @@ package org.apache.dubbo.admin.config;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ConfigurationException;
 import org.apache.dubbo.admin.common.util.Constants;
-import org.apache.dubbo.admin.controller.AccessesController;
 import org.apache.dubbo.admin.data.config.GovernanceConfiguration;
 import org.apache.dubbo.admin.data.metadata.MetaDataCollector;
 import org.apache.dubbo.admin.data.metadata.impl.NoOpMetadataCollector;
@@ -52,9 +51,9 @@ public class ConfigCenter {
 
     @Value("${dubbo.registry.group:}")
     private String group;
-    @Value("${dubbo.configcenter.username:}")
+    @Value("${dubbo.config-center.username:}")
     private String username;
-    @Value("${dubbo.configcenter.password:}")
+    @Value("${dubbo.config-center.password:}")
     private String password;
     private static final Logger logger = LoggerFactory.getLogger(ConfigCenter.class);
 
