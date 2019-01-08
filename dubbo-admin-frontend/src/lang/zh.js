@@ -55,6 +55,8 @@ export default {
   createNewRoutingRule: '创建新路由规则',
   createNewTagRule: '创建新标签规则',
   createNewDynamicConfigRule: '创建新动态配置规则',
+  createNewWeightRule: '新建权重规则',
+  serviceIdHint: '服务名',
   view: '查看',
   edit: '编辑',
   delete: '删除',
