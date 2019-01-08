@@ -576,10 +576,13 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
             }
             // replace dot symbol and asterisk symbol to java-based regex pattern
             filter = filter.toLowerCase().replace(Constants.PUNCTUATION_POINT, Constants.PUNCTUATION_SEPARATOR_POINT);
-            if (filter.startsWith(Constants.ANY_VALUE)) {
+            // filter start with [* 、? 、+] will triggering PatternSyntaxException
+            if (filter.startsWith(Constants.ANY_VALUE)
+                || filter.startsWith(Constants.INTERROGATION_POINT) || filter.startsWith(Constants.PLUS_SIGNS)) {
                 filter = Constants.PUNCTUATION_POINT + filter;
             }
-            Pattern regex = Pattern.compile(filter, Pattern.CASE_INSENSITIVE); // search with no case insensitive
+            // search with no case insensitive
+            Pattern regex = Pattern.compile(filter, Pattern.CASE_INSENSITIVE);
             for (String candidate : candidates) {
                 Matcher matcher = regex.matcher(candidate);
                 if (matcher.matches() || matcher.lookingAt()) {
