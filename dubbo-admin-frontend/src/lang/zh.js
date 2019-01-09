@@ -79,5 +79,15 @@ export default {
   returnType: '返回值',
   noMetadataHint: '无元数据信息，请升级至Dubbo2.7及以上版本，或者查看application.properties中关于config center的配置，详见',
   here: '这里',
-  configAddress: 'https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E'
+  configAddress: 'https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E',
+  whiteList: '白名单',
+  whiteListHint: '白名单IP列表, 多个地址用逗号分隔: 1.1.1.1,2.2.2.2',
+  blackList: '黑名单',
+  blackListHint: '黑名单IP列表, 多个地址用逗号分隔: 3.3.3.3,4.4.4.4',
+  address: '地址列表',
+  weightAddressHint: '此权重设置的IP地址,用逗号分隔: 1.1.1.1,2.2.2.2',
+  weightHint: '权重值，默认100',
+  methodHint: '负载均衡生效的方法，*代表所有方法',
+  strategy: '策略',
+  balanceStrategyHint: '负载均衡策略'
 }

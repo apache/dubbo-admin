@@ -118,16 +118,33 @@
             label="Service Unique ID"
             :hint="$t('serviceIdHint')"
             v-model="service"
+            :readonly="readonly"
           ></v-text-field>
           <v-text-field
             :label="$t('appName')"
             :hint="$t('appNameHint')"
             v-model="application"
+            :readonly="readonly"
           ></v-text-field>
-          <v-subheader class="pa-0 mt-3">{{$t('ruleContent')}}</v-subheader>
-
-          <ace-editor v-model="ruleText" :readonly="readonly"></ace-editor>
-
+          <v-layout row justify-space-between>
+            <v-flex >
+              <v-text-field
+                :label="$t('weight')"
+                :hint="$t('weightHint')"
+                v-model="rule.weight"
+                :readonly="readonly"
+              ></v-text-field>
+            </v-flex>
+            <v-spacer></v-spacer>
+            <v-flex>
+              <v-text-field
+                :label="$t('address')"
+                :hint="$t('weightAddressHint')"
+                v-model="rule.address"
+                :readonly="readonly"
+              ></v-text-field>
+            </v-flex>
+          </v-layout>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -154,7 +171,6 @@
 
 <script>
   import AceEditor from '@/components/public/AceEditor'
-  import yaml from 'js-yaml'
   import Search from '@/components/public/Search'
   export default {
     components: {
@@ -181,9 +197,9 @@
       warnStatus: {},
       height: 0,
       operations: [
-        {id: 0, icon: 'visibility', tooltip: 'View'},
-        {id: 1, icon: 'edit', tooltip: 'Edit'},
-        {id: 3, icon: 'delete', tooltip: 'Delete'}
+        {id: 0, icon: 'visibility', tooltip: 'view'},
+        {id: 1, icon: 'edit', tooltip: 'edit'},
+        {id: 3, icon: 'delete', tooltip: 'delete'}
       ],
       weights: [
       ],
@@ -193,6 +209,10 @@
         '  - 192.168.0.1\n' +
         '  - 192.168.0.2',
       ruleText: '',
+      rule: {
+        weight: 100,
+        address: ''
+      },
       readonly: false,
       serviceHeaders: [],
       appHeaders: []
@@ -261,6 +281,8 @@
       },
       closeDialog: function () {
         this.ruleText = this.template
+        this.rule.address = ''
+        this.rule.weight = 100
         this.service = ''
         this.dialog = false
         this.readonly = false
@@ -280,13 +302,16 @@
         this.warn = false
       },
       saveItem: function () {
-        let weight = yaml.safeLoad(this.ruleText)
+        let weight = {}
+        // let weight = yaml.safeLoad(this.ruleText)
         if (!this.service && !this.application) {
           this.$notify.error('Either service or application is needed')
           return
         }
         weight.service = this.service
         weight.application = this.application
+        weight.weight = this.rule.weight
+        weight.addresses = this.rule.address.split(',')
         let vm = this
         if (this.updateId) {
           if (this.updateId === 'close') {
@@ -365,9 +390,11 @@
       handleWeight: function (weight, readonly) {
         this.service = weight.service
         this.application = weight.application
-        delete weight.service
-        delete weight.application
-        this.ruleText = yaml.safeDump(weight)
+        // delete weight.service
+        // delete weight.application
+        // this.ruleText = yaml.safeDump(weight)
+        this.rule.weight = weight.weight
+        this.rule.address = weight.addresses.join(',')
         this.readonly = readonly
         this.dialog = true
       },

@@ -28,7 +28,7 @@ public class RoutingRule {
     private boolean force;
     private boolean runtime;
     private List<String> conditions;
-    private BlackWhiteList blackWhiteList;
+//    private BlackWhiteList blackWhiteList;
 
 
     public String getKey() {
@@ -87,11 +87,11 @@ public class RoutingRule {
         this.conditions = conditions;
     }
 
-    public BlackWhiteList getBlackWhiteList() {
-        return blackWhiteList;
-    }
-
-    public void setBlackWhiteList(BlackWhiteList blackWhiteList) {
-        this.blackWhiteList = blackWhiteList;
-    }
+//    public BlackWhiteList getBlackWhiteList() {
+//        return blackWhiteList;
+//    }
+//
+//    public void setBlackWhiteList(BlackWhiteList blackWhiteList) {
+//        this.blackWhiteList = blackWhiteList;
+//    }
 }

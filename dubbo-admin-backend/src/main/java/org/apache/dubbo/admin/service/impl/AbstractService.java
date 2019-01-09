@@ -16,8 +16,8 @@
  */
 package org.apache.dubbo.admin.service.impl;
 
-import org.apache.dubbo.admin.data.config.GovernanceConfiguration;
-import org.apache.dubbo.admin.data.metadata.MetaDataCollector;
+import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
+import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.admin.service.RegistryServerSync;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;

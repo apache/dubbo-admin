@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.data.metadata;
+package org.apache.dubbo.admin.registry.metadata;
 
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.SPI;
