@@ -17,8 +17,8 @@
 export default {
   serviceSearch: '服务查询',
   serviceGovernance: '服务治理',
-  routingRule: '路由规则',
-  tagRule: '标签规则',
+  routingRule: '条件路由',
+  tagRule: '标签路由',
   dynamicConfig: '动态配置',
   accessControl: '黑白名单',
   weightAdjust: '权重调整',
