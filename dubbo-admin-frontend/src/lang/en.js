@@ -17,7 +17,7 @@
 export default {
   serviceSearch: 'Service Search',
   serviceGovernance: 'Service Governance',
-  routingRule: 'Routing Rule',
+  routingRule: 'Condition Rule',
   tagRule: 'Tag Rule',
   dynamicConfig: 'Dynamic Config',
   accessControl: 'Black White List',
