@@ -45,6 +45,7 @@ public class Constants {
     public static final String PUNCTUATION_SEPARATOR_POINT = "\\.";
     public static final String INTERROGATION_POINT = "?";
     public static final String ANY_VALUE = "*";
+    public static final String PLUS_SIGNS = "+";
     public static final String IP = "ip";
     public static final String INTERFACE_KEY = "interface";
     public static final String VERSION_KEY = "version";
