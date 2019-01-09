@@ -15,14 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.data.config.impl;
+package org.apache.dubbo.admin.registry.config.impl;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.dubbo.admin.common.util.Constants;
-import org.apache.dubbo.admin.data.config.GovernanceConfiguration;
+import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.common.URL;

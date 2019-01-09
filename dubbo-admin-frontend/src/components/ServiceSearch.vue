@@ -242,7 +242,7 @@
         if (version != null) {
           query = query + '&version=' + version
         }
-        return '/#/serviceDetail?' + query
+        return '#/serviceDetail?' + query
       },
       governanceHref: function (type, service, group, version) {
         let base = '/#/governance/' + type

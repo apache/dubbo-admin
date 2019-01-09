@@ -47,9 +47,9 @@ export default {
   method: 'Method',
   weight: 'Weight',
   create: 'CREATE',
-  save: 'Save',
+  save: 'SAVE',
   cancel: 'CANCEL',
-  close: 'Close',
+  close: 'CLOSE',
   confirm: 'CONFIRM',
   ruleContent: 'RULE CONTENT',
   createNewRoutingRule: 'Create New Routing Rule',
@@ -79,5 +79,15 @@ export default {
   parameterList: 'parameterList',
   returnType: 'returnType',
   here: 'here',
-  configAddress: 'https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration'
+  configAddress: 'https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration',
+  whiteList: 'White List',
+  whiteListHint: 'White list IP address, divided by comma: 1.1.1.1,2.2.2.2',
+  blackList: 'Black List',
+  blackListHint: 'Black list IP address, divided by comma: 3.3.3.3,4.4.4.4',
+  address: 'Address',
+  weightAddressHint: 'IP addresses to set this weight, divided by comma: 1.1.1.1,2.2.2.2',
+  weightHint: 'weight value, default is 100',
+  methodHint: 'choose method of load balancing, * for all methods',
+  strategy: 'Strategy',
+  balanceStrategyHint: 'load balancing strategy'
 }

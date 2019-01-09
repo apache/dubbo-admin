@@ -87,8 +87,16 @@
                           class="mr-2"
                           color="blue"
                           slot="activator"
-                          @click="toEdit(props.item)">edit</v-icon>
-                  <span>Edit</span>
+                          @click="toEdit(props.item, true)">view</v-icon>
+                  <span>{{$t('view')}}</span>
+                </v-tooltip>
+                <v-tooltip bottom>
+                  <v-icon small
+                          class="mr-2"
+                          color="blue"
+                          slot="activator"
+                          @click="toEdit(props.item, false)">edit</v-icon>
+                  <span>{{$t('edit')}}</span>
                 </v-tooltip>
                 <v-tooltip bottom>
                   <v-icon small
@@ -96,7 +104,7 @@
                           slot="activator"
                           color="red"
                           @click="toDelete(props.item)">delete</v-icon>
-                  <span>Delete</span>
+                  <span>{{$t('delete')}}</span>
                 </v-tooltip>
               </td>
             </template>
@@ -144,18 +152,37 @@
         </v-card-title>
         <v-card-text>
           <v-form ref="modalForm">
-            <v-text-field label="Service Unique ID"
-                          :hint="$t('dataIdHint')"
-                          :readonly="modal.id != null"
-                          v-model="modal.service" />
+            <v-text-field
+              label="Service Unique ID"
+              :hint="$t('dataIdHint')"
+              :readonly="modal.readonly"
+              v-model="modal.service"
+            ></v-text-field>
             <v-text-field
               :label="$t('appName')"
               :hint="$t('appNameHint')"
-              :readonly="modal.id != null"
+              :readonly="modal.readonly"
               v-model="modal.application"
             ></v-text-field>
-            <v-subheader class="pa-0 mt-3">BLACK/WHITE LIST CONTENT</v-subheader>
-            <ace-editor v-model="modal.content" />
+            <v-layout row justify-space-between>
+              <v-flex >
+                <v-text-field
+                  :readonly="modal.readonly"
+                  :label="$t('whiteList')"
+                  v-modal="modal.whiteList"
+                  :hint="$t('whiteListHint')">
+                </v-text-field>
+              </v-flex>
+              <v-spacer></v-spacer>
+              <v-flex>
+                <v-text-field
+                  :label="$t('blackList')"
+                  :hint="$t('blackListHint')"
+                  v-modal="modal.blackList"
+                  :readonly="modal.id != null">
+                </v-text-field>
+              </v-flex>
+            </v-layout>
           </v-form>
         </v-card-text>
         <v-card-actions>
@@ -191,7 +218,6 @@
 </template>
 
 <script>
-import yaml from 'js-yaml'
 import AceEditor from '@/components/public/AceEditor'
 import Search from '@/components/public/Search'
 
@@ -210,6 +236,7 @@ export default {
     accesses: [],
     modal: {
       enable: false,
+      readonly: false,
       title: 'Create New',
       saveBtn: 'Create',
       click: () => {},
@@ -217,6 +244,8 @@ export default {
       service: null,
       application: null,
       content: '',
+      blackList: '',
+      whiteList: '',
       template:
         'blacklist:\n' +
         '  - 1.1.1.1\n' +
@@ -311,18 +340,20 @@ export default {
       })
     },
     createItem () {
-      let doc = yaml.load(this.modal.content)
+      // let doc = yaml.load(this.modal.content)
       this.filter = ''
       if (!this.modal.service && !this.modal.application) {
         this.$notify.error('Either service or application is needed')
         return
       }
       let vm = this
+      let blackList = this.modal.blackList.split(',')
+      let whiteList = this.modal.whiteList.split(',')
       this.$axios.post('/rules/access', {
         service: this.modal.service,
         application: this.modal.application,
-        whitelist: doc.whitelist,
-        blacklist: doc.blacklist
+        whitelist: whiteList,
+        blacklist: blackList
       }).then(response => {
         if (response.status === 201) {
           if (vm.modal.service) {
@@ -338,7 +369,7 @@ export default {
         this.showSnackbar('success', 'Create success')
       }).catch(error => this.showSnackbar('error', error.response.data.message))
     },
-    toEdit (item) {
+    toEdit (item, readonly) {
       let itemId = null
       if (this.selected === 0) {
         itemId = item.service
@@ -350,21 +381,26 @@ export default {
       }
       Object.assign(this.modal, {
         enable: true,
+        readonly: readonly,
         title: 'Edit',
         saveBtn: 'Update',
         click: this.editItem,
         id: itemId,
         service: item.service,
         application: item.application,
-        content: yaml.safeDump({blacklist: item.blacklist, whitelist: item.whitelist})
+        whiteList: item.whitelist,
+        blackList: item.blacklist
+        // content: yaml.safeDump({blacklist: item.blacklist, whitelist: item.whitelist})
       })
     },
     editItem () {
-      let doc = yaml.load(this.modal.content)
+      // let doc = yaml.load(this.modal.content)
+      let blackList = this.modal.blackList.split(',')
+      let whiteList = this.modal.whiteList.split(',')
       let vm = this
       this.$axios.put('/rules/access/' + this.modal.id, {
-        whitelist: doc.whitelist,
-        blacklist: doc.blacklist,
+        whitelist: whiteList,
+        blacklist: blackList,
         application: this.modal.application,
         service: this.modal.service
 
