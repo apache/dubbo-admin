@@ -19,7 +19,7 @@
   <v-container grid-list-xl fluid >
     <v-layout row wrap >
       <v-flex sm12>
-        <h3>Basic Info</h3>
+        <h3>{{$t('basicInfo')}}</h3>
       </v-flex>
       <v-flex lg12>
         <v-data-table
@@ -34,16 +34,16 @@
         </v-data-table>
       </v-flex>
       <v-flex sm12>
-        <h3>Service Info</h3>
+        <h3>{{$t('serviceInfo')}}</h3>
       </v-flex>
       <v-flex lg12 >
         <v-tabs
           class="elevation-1">
           <v-tab>
-            providers
+            {{$t('providers')}}
           </v-tab>
           <v-tab>
-            consumers
+            {{$t('consumers')}}
           </v-tab>
           <v-tab-item>
             <v-data-table
@@ -85,7 +85,7 @@
         </v-tabs>
       </v-flex>
       <v-flex sm12>
-        <h3>Metadata</h3>
+        <h3>{{$t('metaData')}}</h3>
       </v-flex>
       <v-flex lg12>
         <v-data-table
@@ -101,6 +101,12 @@
               <v-chip label>{{props.item.returnType}}</v-chip>
             </td>
           </template>
+          <template slot="no-data">
+            <v-alert :value="true" color="warning" icon="warning">
+              {{$t('noMetadataHint')}}
+              <a :href="$t('configAddress')" target="_blank">{{$t('here')}}</a>
+            </v-alert>
+          </template>
         </v-data-table>
       </v-flex>
     </v-layout>
@@ -109,68 +115,74 @@
 <script>
   export default {
     data: () => ({
-      metaHeaders: [
-        {
-          text: 'Method Name',
-          value: 'method',
-          sortable: false
-        },
-        {
-          text: 'Parameter List',
-          value: 'parameter',
-          sortable: false
-        },
-        {
-          text: 'Return Type',
-          value: 'returnType',
-          sortable: false
-        }
-      ],
-      detailHeaders: {
-        providers: [
-          {
-            text: 'IP',
-            value: 'ip'
-          },
-          {
-            text: 'Port',
-            value: 'port'
-          },
-          {
-            text: 'Timeout(ms)',
-            value: 'timeout'
-          },
-          {
-            text: 'Serialization',
-            value: 'serial'
-          },
-          {
-            text: 'Operation',
-            value: 'operate'
-          }
-
-        ],
-        consumers: [
-          {
-            text: 'IP',
-            value: 'ip'
-          },
-          {
-            text: 'Port',
-            value: 'port'
-          },
-          {
-            text: 'Application Name',
-            value: 'appName'
-          }
-        ]
-      },
+      metaHeaders: [],
+      detailHeaders: {},
       providerDetails: [],
       consumerDetails: [],
       methodMetaData: [],
       basic: []
     }),
     methods: {
+      setmetaHeaders: function () {
+        this.metaHeaders = [
+          {
+            text: this.$t('methodName'),
+            value: 'method',
+            sortable: false
+          },
+          {
+            text: this.$t('parameterList'),
+            value: 'parameter',
+            sortable: false
+          },
+          {
+            text: this.$t('returnType'),
+            value: 'returnType',
+            sortable: false
+          }
+        ]
+      },
+      setdetailHeaders: function () {
+        this.detailHeaders = {
+          providers: [
+            {
+              text: this.$t('ip'),
+              value: 'ip'
+            },
+            {
+              text: this.$t('port'),
+              value: 'port'
+            },
+            {
+              text: this.$t('timeout'),
+              value: 'timeout'
+            },
+            {
+              text: this.$t('serialization'),
+              value: 'serial'
+            },
+            {
+              text: this.$t('operation'),
+              value: 'operate'
+            }
+
+          ],
+          consumers: [
+            {
+              text: this.$t('ip'),
+              value: 'ip'
+            },
+            {
+              text: this.$t('port'),
+              value: 'port'
+            },
+            {
+              text: this.$t('appName'),
+              value: 'appName'
+            }
+          ]
+        }
+      },
       detail: function (service) {
         this.$axios.get('/service/' + service)
             .then(response => {
@@ -196,6 +208,8 @@
       }
     },
     mounted: function () {
+      this.setmetaHeaders()
+      this.setdetailHeaders()
       let query = this.$route.query
       let meta = {
         'service': '',

@@ -15,18 +15,21 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.data.metadata.impl;
+package org.apache.dubbo.admin.registry.metadata.impl;
 
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.dubbo.admin.common.util.Constants;
-import org.apache.dubbo.admin.data.metadata.MetaDataCollector;
+import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 
 public class ZookeeperMetaDataCollector implements MetaDataCollector {
 
+    private static final Logger logger = LoggerFactory.getLogger(ZookeeperMetaDataCollector.class);
     private CuratorFramework client;
     private URL url;
     private String root;
@@ -86,7 +89,7 @@ public class ZookeeperMetaDataCollector implements MetaDataCollector {
             }
             return new String(client.getData().forPath(path));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return null;
     }

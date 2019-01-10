@@ -15,17 +15,13 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.data.config.impl;
+package org.apache.dubbo.admin.registry.metadata.impl;
 
-import org.apache.dubbo.admin.data.config.GovernanceConfiguration;
+import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 
-public class NoOpConfiguration implements GovernanceConfiguration {
-
-    @Override
-    public void init() {
-
-    }
+public class NoOpMetadataCollector implements MetaDataCollector {
 
     @Override
     public void setUrl(URL url) {
@@ -38,32 +34,17 @@ public class NoOpConfiguration implements GovernanceConfiguration {
     }
 
     @Override
-    public String setConfig(String key, String value) {
+    public void init() {
+
+    }
+
+    @Override
+    public String getProviderMetaData(MetadataIdentifier key) {
         return null;
     }
 
     @Override
-    public String getConfig(String key) {
+    public String getConsumerMetaData(MetadataIdentifier key) {
         return null;
-    }
-
-    @Override
-    public boolean deleteConfig(String key) {
-        return false;
-    }
-
-    @Override
-    public String setConfig(String group, String key, String value) {
-        return null;
-    }
-
-    @Override
-    public String getConfig(String group, String key) {
-        return null;
-    }
-
-    @Override
-    public boolean deleteConfig(String group, String key) {
-        return false;
     }
 }

@@ -14,30 +14,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.dubbo.admin.governance.util;
 
-import org.apache.dubbo.admin.common.util.UrlUtils;
-import org.junit.Assert;
-import org.junit.Test;
+package org.apache.dubbo.admin.registry.config;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.extension.SPI;
 
-public class UrlUtilsTest {
 
-    @Test
-    public void testParamsMapToString() {
-        Map<String, String[]> params = new HashMap<>();
-        params.put("a", new String[]{"1", "2", "3"});
-        params.put("b", new String[]{"8", "7", "6"});
-        String result = UrlUtils.paramsMapToString(params);
-        Assert.assertEquals(result, "&a=1,2,3&b=8,7,6");
-    }
+@SPI("zookeeper")
+public interface GovernanceConfiguration {
+    void init();
 
-    @Test
-    public void testArrayToString() {
-        String[] strArr = {"1", "2", "3"};
-        String result = UrlUtils.arrayToString(strArr);
-        Assert.assertEquals(result, "1,2,3");
-    }
+    void setUrl(URL url);
+
+    URL getUrl();
+    String setConfig(String key, String value);
+
+    String getConfig(String key);
+
+    boolean deleteConfig(String key);
+
+    String setConfig(String group, String key, String value);
+
+    String getConfig(String group, String key);
+
+    boolean deleteConfig(String group, String key);
+
 }

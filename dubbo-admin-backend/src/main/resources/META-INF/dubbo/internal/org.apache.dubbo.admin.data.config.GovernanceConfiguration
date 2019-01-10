@@ -1,2 +1,0 @@
-zookeeper=org.apache.dubbo.admin.data.config.impl.ZookeeperConfiguration
-apollo=org.apache.dubbo.admin.data.config.impl.ZookeeperConfiguration

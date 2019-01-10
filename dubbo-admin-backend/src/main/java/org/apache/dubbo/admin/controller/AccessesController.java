@@ -16,8 +16,10 @@
  */
 package org.apache.dubbo.admin.controller;
 
-import org.apache.dubbo.admin.common.util.RouteRule;
+import org.apache.dubbo.admin.common.exception.VersionValidationException;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
+import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.commons.lang3.StringUtils;
@@ -38,10 +40,12 @@ public class AccessesController {
     private static final Logger logger = LoggerFactory.getLogger(AccessesController.class);
 
     private final RouteService routeService;
+    private final ProviderService providerService;
 
     @Autowired
-    public AccessesController(RouteService routeService) {
+    public AccessesController(RouteService routeService, ProviderService providerService) {
         this.routeService = routeService;
+        this.providerService = providerService;
     }
 
     @RequestMapping(method = RequestMethod.GET)
@@ -67,14 +71,14 @@ public class AccessesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public AccessDTO detailAccess(@PathVariable String id, @PathVariable String env) throws ParseException {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         AccessDTO accessDTO = routeService.findAccess(id);
         return accessDTO;
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public void deleteAccess(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         routeService.deleteAccess(id);
     }
 
@@ -83,6 +87,10 @@ public class AccessesController {
     public void createAccess(@RequestBody AccessDTO accessDTO, @PathVariable String env) {
         if (StringUtils.isBlank(accessDTO.getService()) && StringUtils.isBlank(accessDTO.getApplication())) {
             throw new ParamValidationException("Either Service or application is required.");
+        }
+        String application = accessDTO.getApplication();
+        if (StringUtils.isNotEmpty(application) && this.providerService.findVersionInApplication(application).equals("2.6")) {
+            throw new VersionValidationException("dubbo 2.6 does not support application scope blackwhite list config");
         }
         if (accessDTO.getBlacklist() == null && accessDTO.getWhitelist() == null) {
             throw new ParamValidationException("One of Blacklist/Whitelist is required.");
@@ -93,25 +101,11 @@ public class AccessesController {
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
     public void updateAccess(@PathVariable String id, @RequestBody AccessDTO accessDTO, @PathVariable String env) {
 
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         ConditionRouteDTO route = routeService.findConditionRoute(id);
         if (Objects.isNull(route)) {
             throw new ResourceNotFoundException("Unknown ID!");
         }
         routeService.updateAccess(accessDTO);
     }
-
-//    private ConditionRouteDTO routeCopy(ConditionRouteDTO old) {
-//        ConditionRouteDTO newRoute = new ConditionRouteDTO();
-//        newRoute.setKey(old.getKey());
-//        newRoute.setScope(old.getScope());
-//        newRoute.setConditions(old.getConditions());
-//        newRoute.setRuntime(old.isRuntime());
-//        newRoute.setEnabled(old.isEnabled());
-//        newRoute.setDynamic(old.isDynamic());
-//        newRoute.setForce(old.isForce());
-//        newRoute.setPriority(old.getPriority());
-//        newRoute.setBlackWhiteList(null);
-//        return newRoute;
-//    }
 }

@@ -1,7 +1,5 @@
 ---
-apiVersion: v2.7
-scope: application
-key: governance-consumer
+configVersion: v2.7
 enabled: false
 configs:
   - addresses: ["0.0.0.0:20880"]

@@ -30,7 +30,7 @@
                   append-icon=""
                   hide-no-data
                   :suffix="queryBy"
-                  label="Search Routing Rule"
+                  :label="$t('searchWeightRule')"
                 ></v-combobox>
                 <v-menu class="hidden-xs-only">
                   <v-btn slot="activator" large icon>
@@ -42,11 +42,11 @@
                       v-for="(item, i) in items"
                       :key="i"
                       @click="selected = i">
-                      <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                      <v-list-tile-title>{{ $t(item.title) }}</v-list-tile-title>
                     </v-list-tile>
                   </v-list>
                 </v-menu>
-                <v-btn @click="submit" color="primary" large>Search</v-btn>
+                <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
 
               </v-layout>
             </v-form>
@@ -58,9 +58,9 @@
     <v-flex lg12>
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
-          <v-toolbar-title><span class="headline">Search Result</span></v-toolbar-title>
+          <v-toolbar-title><span class="headline">{{$t('searchResult')}}</span></v-toolbar-title>
           <v-spacer></v-spacer>
-          <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">CREATE</v-btn>
+          <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">{{$t('create')}}</v-btn>
         </v-toolbar>
 
         <v-card-text class="pa-0" v-if="selected == 0">
@@ -78,7 +78,7 @@
                   <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon, props.item)">
                     {{op.icon}}
                   </v-icon>
-                  <span>{{op.tooltip}}</span>
+                  <span>{{$t(op.tooltip)}}</span>
                 </v-tooltip>
               </td>
             </template>
@@ -99,7 +99,7 @@
                   <v-icon small class="mr-2" slot="activator" @click="itemOperation(op.icon, props.item)">
                     {{op.icon}}
                   </v-icon>
-                  <span>{{op.tooltip}}</span>
+                  <span>{{$t(op.tooltip)}}</span>
                 </v-tooltip>
               </td>
             </template>
@@ -111,28 +111,45 @@
     <v-dialog   v-model="dialog" width="800px" persistent >
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">Create New Weight Rule</span>
+          <span class="headline">{{$t('createNewWeightRule')}}</span>
         </v-card-title>
         <v-card-text >
           <v-text-field
             label="Service Unique ID"
-            hint="A service ID in form of group/service:version, group and version are optional"
+            :hint="$t('serviceIdHint')"
             v-model="service"
+            :readonly="readonly"
           ></v-text-field>
           <v-text-field
-            label="Application Name"
-            hint="Application name the service belongs to"
+            :label="$t('appName')"
+            :hint="$t('appNameHint')"
             v-model="application"
+            :readonly="readonly"
           ></v-text-field>
-          <v-subheader class="pa-0 mt-3">RULE CONTENT</v-subheader>
-
-          <ace-editor v-model="ruleText" :readonly="readonly"></ace-editor>
-
+          <v-layout row justify-space-between>
+            <v-flex >
+              <v-text-field
+                :label="$t('weight')"
+                :hint="$t('weightHint')"
+                v-model="rule.weight"
+                :readonly="readonly"
+              ></v-text-field>
+            </v-flex>
+            <v-spacer></v-spacer>
+            <v-flex>
+              <v-text-field
+                :label="$t('address')"
+                :hint="$t('weightAddressHint')"
+                v-model="rule.address"
+                :readonly="readonly"
+              ></v-text-field>
+            </v-flex>
+          </v-layout>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="darken-1" flat @click.native="closeDialog">Close</v-btn>
-          <v-btn color="primary darken-1" depressed @click.native="saveItem">Save</v-btn>
+          <v-btn color="darken-1" flat @click.native="closeDialog">{{$t('close')}}</v-btn>
+          <v-btn color="primary darken-1" depressed @click.native="saveItem">{{$t('save')}}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -143,8 +160,8 @@
         <v-card-text >{{this.warnText}}</v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
-          <v-btn color="darken-1" flat @click.native="closeWarn">CANCLE</v-btn>
-          <v-btn color="primary darken-1" depressed @click.native="deleteItem(warnStatus)">CONFIRM</v-btn>
+          <v-btn color="darken-1" flat @click.native="closeWarn">{{$t('cancel')}}</v-btn>
+          <v-btn color="primary darken-1" depressed @click.native="deleteItem(warnStatus)">{{$t('confirm')}}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -154,7 +171,6 @@
 
 <script>
   import AceEditor from '@/components/public/AceEditor'
-  import yaml from 'js-yaml'
   import Search from '@/components/public/Search'
   export default {
     components: {
@@ -163,8 +179,8 @@
     },
     data: () => ({
       items: [
-        {id: 0, title: 'service name', value: 'service'},
-        {id: 1, title: 'application', value: 'application'}
+        {id: 0, title: 'serviceName', value: 'service'},
+        {id: 1, title: 'app', value: 'application'}
       ],
       selected: 0,
       dropdown_font: [ 'Service', 'App', 'IP' ],
@@ -181,9 +197,9 @@
       warnStatus: {},
       height: 0,
       operations: [
-        {id: 0, icon: 'visibility', tooltip: 'View'},
-        {id: 1, icon: 'edit', tooltip: 'Edit'},
-        {id: 3, icon: 'delete', tooltip: 'Delete'}
+        {id: 0, icon: 'visibility', tooltip: 'view'},
+        {id: 1, icon: 'edit', tooltip: 'edit'},
+        {id: 3, icon: 'delete', tooltip: 'delete'}
       ],
       weights: [
       ],
@@ -193,47 +209,57 @@
         '  - 192.168.0.1\n' +
         '  - 192.168.0.2',
       ruleText: '',
+      rule: {
+        weight: 100,
+        address: ''
+      },
       readonly: false,
-      serviceHeaders: [
-        {
-          text: 'Service Name',
-          value: 'service',
-          align: 'left'
-        },
-        {
-          text: 'Weight',
-          value: 'weight',
-          align: 'left'
-
-        },
-        {
-          text: 'Operation',
-          value: 'operation',
-          sortable: false,
-          width: '115px'
-        }
-      ],
-      appHeaders: [
-        {
-          text: 'Application Name',
-          value: 'application',
-          align: 'left'
-        },
-        {
-          text: 'Weight',
-          value: 'weight',
-          align: 'left'
-
-        },
-        {
-          text: 'Operation',
-          value: 'operation',
-          sortable: false,
-          width: '115px'
-        }
-      ]
+      serviceHeaders: [],
+      appHeaders: []
     }),
     methods: {
+      setServiceHeaders: function () {
+        this.serviceHeaders = [
+          {
+            text: this.$t('serviceName'),
+            value: 'service',
+            align: 'left'
+          },
+          {
+            text: this.$t('weight'),
+            value: 'weight',
+            align: 'left'
+
+          },
+          {
+            text: this.$t('operation'),
+            value: 'operation',
+            sortable: false,
+            width: '115px'
+          }
+        ]
+      },
+      setAppHeaders: function () {
+        this.appHeaders = [
+          {
+            text: this.$t('appName'),
+            value: 'application',
+            align: 'left'
+          },
+          {
+            text: this.$t('weight'),
+            value: 'weight',
+            align: 'left'
+
+          },
+          {
+            text: this.$t('operation'),
+            value: 'operation',
+            sortable: false,
+            width: '115px'
+          }
+        ]
+      },
       submit: function () {
         this.filter = document.querySelector('#serviceSearch').value.trim()
         this.search(this.filter, true)
@@ -255,6 +281,8 @@
       },
       closeDialog: function () {
         this.ruleText = this.template
+        this.rule.address = ''
+        this.rule.weight = 100
         this.service = ''
         this.dialog = false
         this.readonly = false
@@ -274,13 +302,16 @@
         this.warn = false
       },
       saveItem: function () {
-        let weight = yaml.safeLoad(this.ruleText)
+        let weight = {}
+        // let weight = yaml.safeLoad(this.ruleText)
         if (!this.service && !this.application) {
           this.$notify.error('Either service or application is needed')
           return
         }
         weight.service = this.service
         weight.application = this.application
+        weight.weight = this.rule.weight
+        weight.addresses = this.rule.address.split(',')
         let vm = this
         if (this.updateId) {
           if (this.updateId === 'close') {
@@ -359,9 +390,11 @@
       handleWeight: function (weight, readonly) {
         this.service = weight.service
         this.application = weight.application
-        delete weight.service
-        delete weight.application
-        this.ruleText = yaml.safeDump(weight)
+        // delete weight.service
+        // delete weight.application
+        // this.ruleText = yaml.safeDump(weight)
+        this.rule.weight = weight.weight
+        this.rule.address = weight.addresses.join(',')
         this.readonly = readonly
         this.dialog = true
       },
@@ -384,10 +417,18 @@
     },
     computed: {
       queryBy () {
-        return 'by ' + this.items[this.selected].title
+        return 'by ' + this.$t(this.items[this.selected].title)
+      }
+    },
+    watch: {
+      area () {
+        this.setAppHeaders()
+        this.setServiceHeaders()
       }
     },
     mounted: function () {
+      this.setAppHeaders()
+      this.setServiceHeaders()
       this.ruleText = this.template
       let query = this.$route.query
       let filter = null

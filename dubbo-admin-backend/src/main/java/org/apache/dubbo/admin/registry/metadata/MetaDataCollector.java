@@ -15,29 +15,22 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.data.config;
+package org.apache.dubbo.admin.registry.metadata;
 
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.SPI;
-
+import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 
 @SPI("zookeeper")
-public interface GovernanceConfiguration {
-    void init();
+public interface MetaDataCollector {
 
     void setUrl(URL url);
 
     URL getUrl();
-    String setConfig(String key, String value);
 
-    String getConfig(String key);
+    void init();
 
-    boolean deleteConfig(String key);
+    String getProviderMetaData(MetadataIdentifier key);
 
-    String setConfig(String group, String key, String value);
-
-    String getConfig(String group, String key);
-
-    boolean deleteConfig(String group, String key);
-
+    String getConsumerMetaData(MetadataIdentifier key);
 }

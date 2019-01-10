@@ -24,7 +24,7 @@ import java.util.Set;
 public class Constants {
 
     public static final String REGISTRY_ADDRESS = "dubbo.registry.address";
-    public static final String METADATA_ADDRESS = "dubbo.metadataReport.address";
+    public static final String METADATA_ADDRESS = "dubbo.metadata-report.address";
     public static final String DEFAULT_ROOT = "dubbo";
     public static final String PATH_SEPARATOR = "/";
     public static final String GROUP_KEY = "group";
@@ -41,6 +41,17 @@ public class Constants {
     public static final String BALANCING = "balancing";
     public static final String SERVICE = "service";
     public static final String APPLICATION = "application";
+    public static final String PUNCTUATION_POINT = ".";
+    public static final String PUNCTUATION_SEPARATOR_POINT = "\\.";
+    public static final String INTERROGATION_POINT = "?";
+    public static final String ANY_VALUE = "*";
+    public static final String PLUS_SIGNS = "+";
+    public static final String IP = "ip";
+    public static final String INTERFACE_KEY = "interface";
+    public static final String VERSION_KEY = "version";
+    public static final String PROVIDERS_CATEGORY = "providers";
+    public static final String CONSUMERS_CATEGORY = "consumers";
+    public static final String SPECIFICATION_VERSION_KEY = "specVersion";
     public static final Set<String> CONFIGS = new HashSet<>();
 
     static {

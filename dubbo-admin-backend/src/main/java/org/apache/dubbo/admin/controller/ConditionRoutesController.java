@@ -21,6 +21,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.common.exception.VersionValidationException;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.admin.service.RouteService;
@@ -61,7 +62,7 @@ public class ConditionRoutesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
     public boolean updateRule(@PathVariable String id, @RequestBody ConditionRouteDTO newConditionRoute, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         ConditionRouteDTO oldConditionRoute = routeService.findConditionRoute(id);
         if (oldConditionRoute == null) {
             throw new ResourceNotFoundException("can not find route rule for: " + id);
@@ -89,7 +90,7 @@ public class ConditionRoutesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public ConditionRouteDTO detailRoute(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         ConditionRouteDTO conditionRoute = routeService.findConditionRoute(id);
         if (conditionRoute == null || conditionRoute.getConditions() == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -99,21 +100,21 @@ public class ConditionRoutesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteRoute(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         routeService.deleteConditionRoute(id);
         return true;
     }
 
     @RequestMapping(value = "/enable/{id}", method = RequestMethod.PUT)
     public boolean enableRoute(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         routeService.enableConditionRoute(id);
         return true;
     }
 
     @RequestMapping(value = "/disable/{id}", method = RequestMethod.PUT)
     public boolean disableRoute(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         routeService.disableConditionRoute(id);
         return true;
     }
