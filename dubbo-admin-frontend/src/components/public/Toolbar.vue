@@ -28,8 +28,10 @@
       hide-details
       solo-inverted
       prepend-inner-icon="search"
-      :label="$t('search')"
+      :label="$t('serviceSearch')"
       class="hidden-sm-and-down"
+      v-model="global"
+      @keyup.enter="submit"
     >
     </v-text-field>
 
@@ -96,6 +98,7 @@
     name: 'toolbar',
     data: () => ({
       selectedLang: '',
+      global: '',
       lang: [
         '简体中文',
         'English'
@@ -128,6 +131,15 @@
       ]
     }),
     methods: {
+      submit () {
+        if (window.location.href.includes('#/service')) {
+          window.location.href = '#/service?filter=' + this.global + '&pattern=service';
+          window.location.reload()
+        } else {
+          window.location.href = '#/service?filter=' + this.global + '&pattern=service';
+        }
+        this.global = ''
+      },
       handleDrawerToggle () {
         window.getApp.$emit('DRAWER_TOGGLED')
       },
