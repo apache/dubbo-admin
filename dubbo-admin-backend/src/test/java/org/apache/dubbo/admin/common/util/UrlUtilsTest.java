@@ -14,23 +14,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.dubbo.admin.common.util;
 
-package org.apache.dubbo.admin.data.metadata;
+import org.apache.dubbo.admin.common.util.UrlUtils;
+import org.junit.Assert;
+import org.junit.Test;
 
-import org.apache.dubbo.common.URL;
-import org.apache.dubbo.common.extension.SPI;
-import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+import java.util.HashMap;
+import java.util.Map;
 
-@SPI("zookeeper")
-public interface MetaDataCollector {
+public class UrlUtilsTest {
 
-    void setUrl(URL url);
+    @Test
+    public void testParamsMapToString() {
+        Map<String, String[]> params = new HashMap<>();
+        params.put("a", new String[]{"1", "2", "3"});
+        params.put("b", new String[]{"8", "7", "6"});
+        String result = UrlUtils.paramsMapToString(params);
+        Assert.assertEquals(result, "&a=1,2,3&b=8,7,6");
+    }
 
-    URL getUrl();
-
-    void init();
-
-    String getProviderMetaData(MetadataIdentifier key);
-
-    String getConsumerMetaData(MetadataIdentifier key);
+    @Test
+    public void testArrayToString() {
+        String[] strArr = {"1", "2", "3"};
+        String result = UrlUtils.arrayToString(strArr);
+        Assert.assertEquals(result, "1,2,3");
+    }
 }

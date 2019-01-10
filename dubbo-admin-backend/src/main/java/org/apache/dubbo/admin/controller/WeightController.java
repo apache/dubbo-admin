@@ -20,6 +20,8 @@ package org.apache.dubbo.admin.controller;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
+import org.apache.dubbo.admin.common.exception.VersionValidationException;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.model.dto.AccessDTO;
 import org.apache.dubbo.admin.model.dto.WeightDTO;
@@ -27,6 +29,7 @@ import org.apache.dubbo.admin.service.OverrideService;
 import org.apache.dubbo.admin.model.domain.Override;
 import org.apache.dubbo.admin.model.domain.Weight;
 import org.apache.dubbo.admin.common.util.OverrideUtils;
+import org.apache.dubbo.admin.service.ProviderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -39,10 +42,12 @@ import java.util.List;
 public class WeightController {
 
     private final OverrideService overrideService;
+    private final ProviderService providerService;
 
     @Autowired
-    public WeightController(OverrideService overrideService) {
+    public WeightController(OverrideService overrideService, ProviderService providerService) {
         this.overrideService = overrideService;
+        this.providerService = providerService;
     }
 
     @RequestMapping(method = RequestMethod.POST)
@@ -51,15 +56,11 @@ public class WeightController {
         if (StringUtils.isBlank(weightDTO.getService()) && StringUtils.isBlank(weightDTO.getApplication())) {
             throw new ParamValidationException("Either Service or application is required.");
         }
+        String application = weightDTO.getApplication();
+        if (StringUtils.isNotEmpty(application) && this.providerService.findVersionInApplication(application).equals("2.6")) {
+            throw new VersionValidationException("dubbo 2.6 does not support application scope blackwhite list config");
+        }
         overrideService.saveWeight(weightDTO);
-//        List<String> addresses = weightDTO.getAddresses();
-//        for (String address : addresses) {
-//            Weight weight = new Weight();
-//            weight.setService(weightDTO.getService());
-//            weight.setWeight(weight.getWeight());
-//            weight.setAddress(address);
-//            overrideService.saveOverride(OverrideUtils.weightToOverride(weight));
-//        }
         return true;
     }
 
@@ -68,17 +69,11 @@ public class WeightController {
         if (id == null) {
             throw new ParamValidationException("Unknown ID!");
         }
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         WeightDTO weight = overrideService.findWeight(id);
         if (weight == null) {
             throw new ResourceNotFoundException("Unknown ID!");
         }
-//        Weight old = OverrideUtils.overrideToWeight(override);
-//        Weight weight = new Weight();
-//        weight.setWeight(weightDTO.getWeight());
-//        weight.setHash(id);
-//        weight.setService(old.getService());
-//        overrideService.updateOverride(OverrideUtils.weightToOverride(weight));
         overrideService.updateWeight(weightDTO);
         return true;
     }
@@ -101,29 +96,12 @@ public class WeightController {
             weightDTOS.add(weightDTO);
         }
 
-//        if (StringUtils.isEmpty(service)) {
-//            overrides = overrideService.findAll();
-//        } else {
-//            overrides = overrideService.findByService(service);
-//        }
-//        List<WeightDTO> weightDTOS = new ArrayList<>();
-//        for (Override override : overrides) {
-//            Weight w = OverrideUtils.overrideToWeight(override);
-//            if (w != null) {
-//                WeightDTO weightDTO = new WeightDTO();
-//                weightDTO.setAddresses(new String[]{w.getAddress()});
-//                weightDTO.setService(w.getService());
-//                weightDTO.setWeight(w.getWeight());
-//                weightDTO.setId(w.getHash());
-//                weightDTOS.add(weightDTO);
-//            }
-//        }
         return weightDTOS;
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public WeightDTO detailWeight(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         WeightDTO weightDTO = overrideService.findWeight(id);
         if (weightDTO == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -133,7 +111,7 @@ public class WeightController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteWeight(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         overrideService.deleteWeight(id);
         return true;
     }

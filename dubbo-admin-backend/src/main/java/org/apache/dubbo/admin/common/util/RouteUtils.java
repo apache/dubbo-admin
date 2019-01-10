@@ -37,7 +37,7 @@ import java.util.regex.Pattern;
  * The meaning of Rule: If a request matches When Condition, then use Then Condition to filter providers (only providers match Then Condition will be returned). <br>
  * The process of using Conditions to match consumers and providers is called `Filter`.
  * When Condition are used to filter ConsumersController, while Then Condition are used to filter ProvidersController.
- * RouteRule performs like this: If a Consumer matches When Condition, then only return the ProvidersController matches Then Condition. This means RouteRule should be applied to current Consumer and the providers returned are filtered by RouteRule.<br>
+ * RouteUtils performs like this: If a Consumer matches When Condition, then only return the ProvidersController matches Then Condition. This means RouteUtils should be applied to current Consumer and the providers returned are filtered by RouteUtils.<br>
  *
  * An example of ConditionRoute Rule：<code>
  * key1 = value11,value12 & key2 = value21 & key2 != value22 => key3 = value3 & key4 = value41,vlaue42 & key5 !=value51
@@ -47,9 +47,9 @@ import java.util.regex.Pattern;
  * Value object, thread safe.
  *
  */
-public class RouteRule {
+public class RouteUtils {
     @SuppressWarnings("unchecked")
-    static RouteRule EMPTY = new RouteRule(Collections.EMPTY_MAP, Collections.EMPTY_MAP);
+    static RouteUtils EMPTY = new RouteUtils(Collections.EMPTY_MAP, Collections.EMPTY_MAP);
     private static Pattern ROUTE_PATTERN = Pattern.compile("([&!=,]*)\\s*([^&!=,\\s]+)");
     private static Pattern CONDITION_SEPERATOR = Pattern.compile("(.*)=>(.*)");
     private static Pattern VALUE_LIST_SEPARATOR = Pattern.compile("\\s*,\\s*");
@@ -58,7 +58,7 @@ public class RouteRule {
     private volatile String tostring = null;
 
     // FIXME
-    private RouteRule(Map<String, MatchPair> when, Map<String, MatchPair> then) {
+    private RouteUtils(Map<String, MatchPair> when, Map<String, MatchPair> then) {
         for (Map.Entry<String, MatchPair> entry : when.entrySet()) {
             entry.getValue().freeze();
         }
@@ -140,16 +140,16 @@ public class RouteRule {
     }
 
     /**
-     * Parse the RouteRule as a string into an object.
+     * Parse the RouteUtils as a string into an object.
      *
-     * @throws ParseException RouteRule string format is wrong. The following input conditions, RouteRule are illegal.
+     * @throws ParseException RouteUtils string format is wrong. The following input conditions, RouteUtils are illegal.
      * <ul> <li> input is <code>null</code>。
      * <li> input is "" or " "。
      * <li> input Rule doesn't have a When Condition
      * <li> input Rule doesn't have a Then Condition
      * </ul>
      */
-    public static RouteRule parse(Route conditionRoute) throws ParseException {
+    public static RouteUtils parse(Route conditionRoute) throws ParseException {
         if (conditionRoute == null)
             throw new ParseException("null conditionRoute!", 0);
 
@@ -160,7 +160,7 @@ public class RouteRule {
         return parse(conditionRoute == null ? null : conditionRoute.getMatchRule(), conditionRoute == null ? null : conditionRoute.getFilterRule());
     }
 
-    public static RouteRule parse(String whenRule, String thenRule) throws ParseException {
+    public static RouteUtils parse(String whenRule, String thenRule) throws ParseException {
         /*if (whenRule == null || whenRule.trim().length() == 0) {
             throw new ParseException("Illegal route rule without when express", 0);
     	}*/
@@ -169,10 +169,10 @@ public class RouteRule {
         }
         Map<String, MatchPair> when = parseRule(whenRule.trim());
         Map<String, MatchPair> then = parseRule(thenRule.trim());
-        return new RouteRule(when, then);
+        return new RouteUtils(when, then);
     }
 
-    public static RouteRule parse(String rule) throws ParseException {
+    public static RouteUtils parse(String rule) throws ParseException {
         if (StringUtils.isBlank(rule)) {
             throw new ParseException("Illegal blank route rule", 0);
         }
@@ -187,7 +187,7 @@ public class RouteRule {
      * @see #parse(String)
      * @throws RuntimeException This is an wrapper exception for the {@link ParseException} thrown by the {@link #parse (String)} method.
      */
-    public static RouteRule parseQuitely(Route conditionRoute) {
+    public static RouteUtils parseQuitely(Route conditionRoute) {
         try {
             return parse(conditionRoute);
         } catch (ParseException e) {
@@ -235,15 +235,10 @@ public class RouteRule {
         existRule.setPriority(conditionRoute.getPriority());
         return existRule;
     }
-    public static BlackWhiteList convertToBlackWhiteList(AccessDTO accessDTO) {
+    public static List<String> convertToBlackWhiteList(AccessDTO accessDTO) {
         if (accessDTO == null) {
             return null;
         }
-        BlackWhiteList blackWhiteList = new BlackWhiteList();
-//        if (StringUtils.isNoneEmpty(accessDTO.getApplication())) {
-//            blackWhiteList.set
-//        }
-//        AccessDTO storeDTO = ConvertUtil.convertDTOtoStore(accessDTO);
 
         Set<String> whiteList = accessDTO.getWhitelist();
         Set<String> blackList = accessDTO.getBlacklist();
@@ -268,11 +263,38 @@ public class RouteRule {
             sb.append(" =>");
             conditions.add(sb.toString());
         }
-        blackWhiteList.setConditions(conditions);
-        return blackWhiteList;
+        return conditions;
     }
 
-    public static AccessDTO convertToAccessDTO(BlackWhiteList blackWhiteList, String scope, String key) {
+    public static List<String> filterBlackWhiteListFromConditions(List<String> conditions) {
+        List<String> result = new ArrayList<>();
+        if (conditions == null || conditions.isEmpty()) {
+            return result;
+        }
+        for (String condition : conditions) {
+            if (isBlackList(condition)) {
+                result.add(condition);
+            } else if (isWhiteList(condition)) {
+                result.add(condition);
+            }
+        }
+        return result;
+    }
+
+    public static List<String> filterConditionRuleFromConditions(List<String> conditions) {
+        List<String> result = new ArrayList<>();
+        if (conditions == null || conditions.isEmpty()) {
+            return result;
+        }
+        for (String condition : conditions) {
+            if (!isBlackList(condition) && !isWhiteList(condition)) {
+                result.add(condition);
+            }
+        }
+        return result;
+    }
+
+    public static AccessDTO convertToAccessDTO(List<String> blackWhiteList, String scope, String key) {
         if (blackWhiteList == null) {
             return null;
         }
@@ -282,8 +304,8 @@ public class RouteRule {
         } else {
             accessDTO.setService(key);
         }
-        if (blackWhiteList.getConditions() != null) {
-            for (String condition : blackWhiteList.getConditions()) {
+        if (blackWhiteList != null) {
+            for (String condition : blackWhiteList) {
                 if (condition.contains("host != ")) {
                     //white list
                     condition = org.apache.commons.lang3.StringUtils.substringBetween(condition, "host !=", " =>").trim();
@@ -306,8 +328,8 @@ public class RouteRule {
         route.setFilterRule("false");
         route.setEnabled(true);
 
-        Map<String, RouteRule.MatchPair> when = new HashMap<>();
-        RouteRule.MatchPair matchPair = new RouteRule.MatchPair(new HashSet<>(), new HashSet<>());
+        Map<String, RouteUtils.MatchPair> when = new HashMap<>();
+        RouteUtils.MatchPair matchPair = new RouteUtils.MatchPair(new HashSet<>(), new HashSet<>());
         when.put(Route.KEY_CONSUMER_HOST, matchPair);
 
         if (accessDTO.getWhitelist() != null) {
@@ -318,7 +340,7 @@ public class RouteRule {
         }
 
         StringBuilder sb = new StringBuilder();
-        RouteRule.contidionToString(sb, when);
+        RouteUtils.contidionToString(sb, when);
         route.setMatchRule(sb.toString());
         return route;
     }
@@ -330,7 +352,7 @@ public class RouteRule {
         } else {
             conditionRouteDTO.setApplication(routingRule.getKey());
         }
-        conditionRouteDTO.setConditions(routingRule.getConditions());
+        conditionRouteDTO.setConditions(RouteUtils.filterConditionRuleFromConditions(routingRule.getConditions()));
         conditionRouteDTO.setPriority(routingRule.getPriority());
         conditionRouteDTO.setEnabled(routingRule.isEnabled());
         conditionRouteDTO.setForce(routingRule.isForce());
@@ -338,7 +360,7 @@ public class RouteRule {
         return conditionRouteDTO;
     }
 
-    public static Route convertBlackWhiteListtoRoute(BlackWhiteList blackWhiteList, String scope, String key) {
+    public static Route convertBlackWhiteListtoRoute(List<String> blackWhiteList, String scope, String key) {
         AccessDTO accessDTO = convertToAccessDTO(blackWhiteList, scope, key);
         return convertAccessDTOtoRoute(accessDTO);
     }
@@ -402,19 +424,19 @@ public class RouteRule {
         return condition;
     }
 
-    public static RouteRule createFromNameAndValueListString(Map<String, String> whenParams, Map<String, String> notWhenParams,
-                                                             Map<String, String> thenParams, Map<String, String> notThenParams) {
+    public static RouteUtils createFromNameAndValueListString(Map<String, String> whenParams, Map<String, String> notWhenParams,
+                                                              Map<String, String> thenParams, Map<String, String> notThenParams) {
         Map<String, MatchPair> when = parseNameAndValueListString2Condition(whenParams, notWhenParams);
         Map<String, MatchPair> then = parseNameAndValueListString2Condition(thenParams, notThenParams);
 
-        return new RouteRule(when, then);
+        return new RouteUtils(when, then);
     }
 
-    public static RouteRule createFromCondition(Map<String, MatchPair> whenCondition, Map<String, MatchPair> thenCondition) {
-        return new RouteRule(whenCondition, thenCondition);
+    public static RouteUtils createFromCondition(Map<String, MatchPair> whenCondition, Map<String, MatchPair> thenCondition) {
+        return new RouteUtils(whenCondition, thenCondition);
     }
 
-    public static RouteRule copyWithRemove(RouteRule copy, Set<String> whenParams, Set<String> thenParams) {
+    public static RouteUtils copyWithRemove(RouteUtils copy, Set<String> whenParams, Set<String> thenParams) {
         Map<String, MatchPair> when = new HashMap<String, MatchPair>();
         for (Entry<String, MatchPair> entry : copy.getWhenCondition().entrySet()) {
             if (whenParams == null || !whenParams.contains(entry.getKey())) {
@@ -429,7 +451,7 @@ public class RouteRule {
             }
         }
 
-        return new RouteRule(when, then);
+        return new RouteUtils(when, then);
     }
 
     /**
@@ -438,9 +460,9 @@ public class RouteRule {
      * @param copy Replace Base
      * @param whenCondition WhenCondition to replace, if Base does not have an item, insert it directly.
      * @param thenCondition ThenCondition to replace, if Base has no items, then insert directly.
-     * @return RouteRule after replacement
+     * @return RouteUtils after replacement
      */
-    public static RouteRule copyWithReplace(RouteRule copy, Map<String, MatchPair> whenCondition, Map<String, MatchPair> thenCondition) {
+    public static RouteUtils copyWithReplace(RouteUtils copy, Map<String, MatchPair> whenCondition, Map<String, MatchPair> thenCondition) {
         if (null == copy) {
             throw new NullPointerException("Argument copy is null!");
         }
@@ -457,7 +479,7 @@ public class RouteRule {
             then.putAll(thenCondition);
         }
 
-        return new RouteRule(when, then);
+        return new RouteUtils(when, then);
     }
 
     // TODO ToString out of the current list is out of order, should we sort?
@@ -573,6 +595,14 @@ public class RouteRule {
         return sb.toString();
     }
 
+    private static boolean isBlackList(String address) {
+        return (address.startsWith("host = ") && address.endsWith(" =>"));
+    }
+
+    private static boolean isWhiteList(String address) {
+        return (address.startsWith("host != ") && address.endsWith(" =>"));
+    }
+
     @Override
     public String toString() {
         if (tostring != null)
@@ -603,7 +633,7 @@ public class RouteRule {
             return false;
         if (getClass() != obj.getClass())
             return false;
-        RouteRule other = (RouteRule) obj;
+        RouteUtils other = (RouteUtils) obj;
         if (thenCondition == null) {
             if (other.thenCondition != null)
                 return false;

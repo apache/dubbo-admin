@@ -20,8 +20,11 @@ package org.apache.dubbo.admin.controller;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
+import org.apache.dubbo.admin.common.exception.VersionValidationException;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.BalancingDTO;
 import org.apache.dubbo.admin.service.OverrideService;
+import org.apache.dubbo.admin.service.ProviderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -35,10 +38,12 @@ import java.util.List;
 public class LoadBalanceController {
 
     private final OverrideService overrideService;
+    private final ProviderService providerService;
 
     @Autowired
-    public LoadBalanceController(OverrideService overrideService) {
+    public LoadBalanceController(OverrideService overrideService, ProviderService providerService) {
         this.overrideService = overrideService;
+        this.providerService = providerService;
     }
 
     @RequestMapping(method = RequestMethod.POST)
@@ -47,16 +52,11 @@ public class LoadBalanceController {
         if (StringUtils.isBlank(balancingDTO.getService()) && StringUtils.isBlank(balancingDTO.getApplication())) {
             throw new ParamValidationException("Either Service or application is required.");
         }
+        String application = balancingDTO.getApplication();
+        if (StringUtils.isNotEmpty(application) && this.providerService.findVersionInApplication(application).equals("2.6")) {
+            throw new VersionValidationException("dubbo 2.6 does not support application scope load balancing config");
+        }
         overrideService.saveBalance(balancingDTO);
-//        String serviceName = balancingDTO.getService();
-//        if (StringUtils.isEmpty(serviceName)) {
-//            throw new ParamValidationException("serviceName is Empty!");
-//        }
-//        LoadBalance loadBalance = new LoadBalance();
-//        loadBalance.setService(serviceName);
-//        loadBalance.setMethod(formatMethodName(balancingDTO.getMethodName()));
-//        loadBalance.setStrategy(balancingDTO.getStrategy());
-//        overrideService.saveOverride(OverrideUtils.loadBalanceToOverride(loadBalance));
         return true;
     }
 
@@ -65,7 +65,7 @@ public class LoadBalanceController {
         if (id == null) {
             throw new ParamValidationException("Unknown ID!");
         }
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         BalancingDTO balancing = overrideService.findBalance(id);
         if (balancing == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -98,7 +98,7 @@ public class LoadBalanceController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public BalancingDTO detailLoadBalance(@PathVariable String id, @PathVariable String env) throws ParamValidationException {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         BalancingDTO balancingDTO = overrideService.findBalance(id);
         if (balancingDTO == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -114,7 +114,7 @@ public class LoadBalanceController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteLoadBalance(@PathVariable String id, @PathVariable String env) {
-        id = id.replace("*", "/");
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         if (id == null) {
             throw new IllegalArgumentException("Argument of id is null!");
         }

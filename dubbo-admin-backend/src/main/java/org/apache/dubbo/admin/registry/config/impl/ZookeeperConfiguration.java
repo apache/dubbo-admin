@@ -15,25 +15,28 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.data.config.impl;
+package org.apache.dubbo.admin.registry.config.impl;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.dubbo.admin.common.util.Constants;
-import org.apache.dubbo.admin.data.config.GovernanceConfiguration;
+import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.common.URL;
 
-import javax.swing.*;
 
 public class ZookeeperConfiguration implements GovernanceConfiguration {
+    private static final Logger logger = LoggerFactory.getLogger(ZookeeperConfiguration.class);
     private CuratorFramework zkClient;
     private URL url;
     private String root;
 
     @Override
     public void setUrl(URL url) {
-       this.url = url;
+        this.url = url;
     }
 
     @Override
@@ -43,7 +46,15 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
 
     @Override
     public void init() {
-        zkClient = CuratorFrameworkFactory.newClient(url.getAddress(), new ExponentialBackoffRetry(1000, 3));
+        CuratorFrameworkFactory.Builder zkClientBuilder = CuratorFrameworkFactory.builder().
+                connectString(url.getAddress()).
+                retryPolicy(new ExponentialBackoffRetry(1000, 3));
+        if(StringUtils.isNotEmpty(url.getUsername()) && StringUtils.isNotEmpty(url.getPassword())){
+            // add authorization
+            String auth = url.getUsername() + ":" + url.getPassword();
+            zkClientBuilder.authorization("digest", auth.getBytes());
+        }
+        zkClient = zkClientBuilder.build();
         String group = url.getParameter(Constants.GROUP_KEY, Constants.DEFAULT_ROOT);
         if (!group.startsWith(Constants.PATH_SEPARATOR)) {
             group = Constants.PATH_SEPARATOR + group;
@@ -77,7 +88,7 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
             zkClient.setData().forPath(path, value.getBytes());
             return value;
         } catch (Exception e) {
-
+            logger.error(e.getMessage(), e);
         }
         return null;
     }
@@ -92,7 +103,7 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
             }
             return new String(zkClient.getData().forPath(path));
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return null;
     }
@@ -103,7 +114,7 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
         try {
             zkClient.delete().forPath(path);
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error(e.getMessage(), e);
         }
         return true;
     }

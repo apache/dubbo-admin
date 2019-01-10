@@ -32,7 +32,7 @@
                   append-icon=""
                   hide-no-data
                   :suffix="queryBy"
-                  label="Search Routing Rule"
+                  :label="$t('searchRoutingRule')"
                 ></v-combobox>
                 <v-menu class="hidden-xs-only">
                   <v-btn slot="activator" large icon>
@@ -44,11 +44,11 @@
                       v-for="(item, i) in items"
                       :key="i"
                       @click="selected = i">
-                      <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                      <v-list-tile-title>{{ $t(item.title) }}</v-list-tile-title>
                     </v-list-tile>
                   </v-list>
                 </v-menu>
-                <v-btn @click="search" color="primary" large>Search</v-btn>
+                <v-btn @click="search" color="primary" large>{{$t('search')}}</v-btn>
 
               </v-layout>
             </v-form>
@@ -63,13 +63,13 @@
                    color="transparent"
                    class="elevation-0">
           <v-toolbar-title>
-            <span class="headline">Search Result</span>
+            <span class="headline">{{$t('searchResult')}}</span>
           </v-toolbar-title>
           <v-spacer></v-spacer>
           <v-btn outline
                  color="primary"
                  @click.stop="toCreate"
-                 class="mb-2">CREATE</v-btn>
+                 class="mb-2">{{$t('create')}}</v-btn>
         </v-toolbar>
 
         <v-card-text class="pa-0" v-if="selected == 0">
@@ -87,8 +87,16 @@
                           class="mr-2"
                           color="blue"
                           slot="activator"
-                          @click="toEdit(props.item)">edit</v-icon>
-                  <span>Edit</span>
+                          @click="toEdit(props.item, true)">visibility</v-icon>
+                  <span>{{$t('view')}}</span>
+                </v-tooltip>
+                <v-tooltip bottom>
+                  <v-icon small
+                          class="mr-2"
+                          color="blue"
+                          slot="activator"
+                          @click="toEdit(props.item, false)">edit</v-icon>
+                  <span>{{$t('edit')}}</span>
                 </v-tooltip>
                 <v-tooltip bottom>
                   <v-icon small
@@ -96,7 +104,7 @@
                           slot="activator"
                           color="red"
                           @click="toDelete(props.item)">delete</v-icon>
-                  <span>Delete</span>
+                  <span>{{$t('delete')}}</span>
                 </v-tooltip>
               </td>
             </template>
@@ -117,7 +125,15 @@
                           class="mr-2"
                           color="blue"
                           slot="activator"
-                          @click="toEdit(props.item)">edit</v-icon>
+                          @click="toEdit(props.item, true)">visibility</v-icon>
+                  <span>{{$t('view')}}</span>
+                </v-tooltip>
+                <v-tooltip bottom>
+                  <v-icon small
+                          class="mr-2"
+                          color="blue"
+                          slot="activator"
+                          @click="toEdit(props.item, false)">edit</v-icon>
                   <span>Edit</span>
                 </v-tooltip>
                 <v-tooltip bottom>
@@ -144,25 +160,44 @@
         </v-card-title>
         <v-card-text>
           <v-form ref="modalForm">
-            <v-text-field label="Service Unique ID"
-                          hint="A service ID in form of group/service:version, group and version are optional"
-                          :readonly="modal.id != null"
-                          v-model="modal.service" />
             <v-text-field
-              label="Application Name"
-              hint="Application name the service belongs to"
-              :readonly="modal.id != null"
+              label="Service Unique ID"
+              :hint="$t('dataIdHint')"
+              :readonly="modal.readonly"
+              v-model="modal.service"
+            ></v-text-field>
+            <v-text-field
+              :label="$t('appName')"
+              :hint="$t('appNameHint')"
+              :readonly="modal.readonly"
               v-model="modal.application"
             ></v-text-field>
-            <v-subheader class="pa-0 mt-3">BLACK/WHITE LIST CONTENT</v-subheader>
-            <ace-editor v-model="modal.content" />
+            <v-layout row justify-space-between>
+              <v-flex >
+                <v-text-field
+                  :readonly="modal.readonly"
+                  :label="$t('whiteList')"
+                  v-model="modal.whiteList"
+                  :hint="$t('whiteListHint')">
+                </v-text-field>
+              </v-flex>
+              <v-spacer></v-spacer>
+              <v-flex>
+                <v-text-field
+                  :label="$t('blackList')"
+                  :hint="$t('blackListHint')"
+                  v-model="modal.blackList"
+                  :readonly="modal.id != null">
+                </v-text-field>
+              </v-flex>
+            </v-layout>
           </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn color="darken-1"
                  flat
-                 @click="closeModal()">Close</v-btn>
+                 @click="closeModal()">{{$t('close')}}</v-btn>
           <v-btn color="primary"
                  depressed
                  @click="modal.click">{{ modal.saveBtn }}</v-btn>
@@ -180,10 +215,10 @@
           <v-spacer></v-spacer>
           <v-btn color="darken-1"
                  flat
-                 @click="confirm.enable = false">Disagree</v-btn>
+                 @click="confirm.enable = false">{{$t('disagree')}}</v-btn>
           <v-btn color="primary"
                  depressed
-                 @click="deleteItem(confirm.id)">Agree</v-btn>
+                 @click="deleteItem(confirm.id)">{{$t('agree')}}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -191,7 +226,6 @@
 </template>
 
 <script>
-import yaml from 'js-yaml'
 import AceEditor from '@/components/public/AceEditor'
 import Search from '@/components/public/Search'
 
@@ -199,41 +233,18 @@ export default {
   name: 'AccessControl',
   data: () => ({
     items: [
-      {id: 0, title: 'service name', value: 'service'},
-      {id: 1, title: 'application', value: 'application'}
+      {id: 0, title: 'serviceName', value: 'service'},
+      {id: 1, title: 'app', value: 'application'}
     ],
     selected: 0,
     filter: null,
     loading: false,
-    serviceHeaders: [
-      {
-        text: 'Service Name',
-        value: 'service',
-        align: 'left'
-      },
-      {
-        text: 'Operation',
-        value: 'operation',
-        sortable: false,
-        width: '115px'
-      }
-    ],
-    appHeaders: [
-      {
-        text: 'Application Name',
-        value: 'application',
-        align: 'left'
-      },
-      {
-        text: 'Operation',
-        value: 'operation',
-        sortable: false,
-        width: '115px'
-      }
-    ],
+    serviceHeaders: [],
+    appHeaders: [],
     accesses: [],
     modal: {
       enable: false,
+      readonly: false,
       title: 'Create New',
       saveBtn: 'Create',
       click: () => {},
@@ -241,6 +252,8 @@ export default {
       service: null,
       application: null,
       content: '',
+      blackList: '',
+      whiteList: '',
       template:
         'blacklist:\n' +
         '  - 1.1.1.1\n' +
@@ -262,10 +275,42 @@ export default {
     }
   }),
   methods: {
+    setAppHeaders () {
+      this.appHeaders = [
+        {
+          text: this.$t('appName'),
+          value: 'application',
+          align: 'left'
+        },
+        {
+          text: this.$t('operation'),
+          value: 'operation',
+          sortable: false,
+          width: '115px'
+        }
+      ]
+    },
+    setServiceHeaders () {
+      this.serviceHeaders = [
+        {
+          text: this.$t('serviceName'),
+          value: 'service',
+          align: 'left'
+        },
+        {
+          text: this.$t('operation'),
+          value: 'operation',
+          sortable: false,
+          width: '115px'
+        }
+      ]
+    },
     search () {
-      this.filter = document.querySelector('#serviceSearch').value.trim()
       if (!this.filter) {
-        return
+        this.filter = document.querySelector('#serviceSearch').value.trim()
+        if (!this.filter) {
+          return
+        }
       }
       let type = this.items[this.selected].value
       this.loading = true
@@ -305,18 +350,26 @@ export default {
       })
     },
     createItem () {
-      let doc = yaml.load(this.modal.content)
+      // let doc = yaml.load(this.modal.content)
       this.filter = ''
       if (!this.modal.service && !this.modal.application) {
         this.$notify.error('Either service or application is needed')
         return
       }
       let vm = this
+      let blackList = []
+      let whiteList = []
+      if (this.modal.blackList) {
+        blackList = this.modal.blackList.split(',')
+      }
+      if (this.modal.whiteList) {
+        whiteList = this.modal.whiteList.split(',')
+      }
       this.$axios.post('/rules/access', {
         service: this.modal.service,
         application: this.modal.application,
-        whitelist: doc.whitelist,
-        blacklist: doc.blacklist
+        whitelist: whiteList,
+        blacklist: blackList
       }).then(response => {
         if (response.status === 201) {
           if (vm.modal.service) {
@@ -332,7 +385,7 @@ export default {
         this.showSnackbar('success', 'Create success')
       }).catch(error => this.showSnackbar('error', error.response.data.message))
     },
-    toEdit (item) {
+    toEdit (item, readonly) {
       let itemId = null
       if (this.selected === 0) {
         itemId = item.service
@@ -344,21 +397,26 @@ export default {
       }
       Object.assign(this.modal, {
         enable: true,
+        readonly: readonly,
         title: 'Edit',
         saveBtn: 'Update',
         click: this.editItem,
         id: itemId,
         service: item.service,
         application: item.application,
-        content: yaml.safeDump({blacklist: item.blacklist, whitelist: item.whitelist})
+        whiteList: item.whitelist,
+        blackList: item.blacklist
+        // content: yaml.safeDump({blacklist: item.blacklist, whitelist: item.whitelist})
       })
     },
     editItem () {
-      let doc = yaml.load(this.modal.content)
+      // let doc = yaml.load(this.modal.content)
+      let blackList = this.modal.blackList.split(',')
+      let whiteList = this.modal.whiteList.split(',')
       let vm = this
       this.$axios.put('/rules/access/' + this.modal.id, {
-        whitelist: doc.whitelist,
-        blacklist: doc.blacklist,
+        whitelist: whiteList,
+        blacklist: blackList,
         application: this.modal.application,
         service: this.modal.service
 
@@ -405,10 +463,18 @@ export default {
   },
   computed: {
     queryBy () {
-      return 'by ' + this.items[this.selected].title
+      return 'by ' + this.$t(this.items[this.selected].title)
+    }
+  },
+  watch: {
+    area () {
+      this.setAppHeaders()
+      this.setServiceHeaders()
     }
   },
   mounted () {
+    this.setAppHeaders()
+    this.setServiceHeaders()
     let query = this.$route.query
     if ('service' in query) {
       this.filter = query['service']
