@@ -87,7 +87,7 @@
                           class="mr-2"
                           color="blue"
                           slot="activator"
-                          @click="toEdit(props.item, true)">view</v-icon>
+                          @click="toEdit(props.item, true)">visibility</v-icon>
                   <span>{{$t('view')}}</span>
                 </v-tooltip>
                 <v-tooltip bottom>
@@ -125,7 +125,15 @@
                           class="mr-2"
                           color="blue"
                           slot="activator"
-                          @click="toEdit(props.item)">edit</v-icon>
+                          @click="toEdit(props.item, true)">visibility</v-icon>
+                  <span>{{$t('view')}}</span>
+                </v-tooltip>
+                <v-tooltip bottom>
+                  <v-icon small
+                          class="mr-2"
+                          color="blue"
+                          slot="activator"
+                          @click="toEdit(props.item, false)">edit</v-icon>
                   <span>Edit</span>
                 </v-tooltip>
                 <v-tooltip bottom>
@@ -169,7 +177,7 @@
                 <v-text-field
                   :readonly="modal.readonly"
                   :label="$t('whiteList')"
-                  v-modal="modal.whiteList"
+                  v-model="modal.whiteList"
                   :hint="$t('whiteListHint')">
                 </v-text-field>
               </v-flex>
@@ -178,7 +186,7 @@
                 <v-text-field
                   :label="$t('blackList')"
                   :hint="$t('blackListHint')"
-                  v-modal="modal.blackList"
+                  v-model="modal.blackList"
                   :readonly="modal.id != null">
                 </v-text-field>
               </v-flex>
@@ -298,9 +306,11 @@ export default {
       ]
     },
     search () {
-      this.filter = document.querySelector('#serviceSearch').value.trim()
       if (!this.filter) {
-        return
+        this.filter = document.querySelector('#serviceSearch').value.trim()
+        if (!this.filter) {
+          return
+        }
       }
       let type = this.items[this.selected].value
       this.loading = true
@@ -347,8 +357,14 @@ export default {
         return
       }
       let vm = this
-      let blackList = this.modal.blackList.split(',')
-      let whiteList = this.modal.whiteList.split(',')
+      let blackList = []
+      let whiteList = []
+      if (this.modal.blackList) {
+        blackList = this.modal.blackList.split(',')
+      }
+      if (this.modal.whiteList) {
+        whiteList = this.modal.whiteList.split(',')
+      }
       this.$axios.post('/rules/access', {
         service: this.modal.service,
         application: this.modal.application,
