@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 export default {
-  serviceSearch: 'Service Search',
+  serviceSearch: 'Search service name',
   serviceGovernance: 'Service Governance',
   routingRule: 'Condition Rule',
   tagRule: 'Tag Rule',
@@ -56,6 +56,7 @@ export default {
   createNewTagRule: 'Create New Tag Rule',
   createNewDynamicConfigRule: 'Create New Dynamic Config Rule',
   createNewWeightRule: 'Create New Weight Rule',
+  createNewLoadBalanceRule: 'Create new load balancing rule',
   serviceIdHint: 'Service ID',
   view: 'View',
   edit: 'Edit',
@@ -69,7 +70,7 @@ export default {
   appNameHint: 'Application name the service belongs to',
   basicInfo: 'BasicInfo',
   metaData: 'MetaData',
-  searchDubboService: 'Search Dubbo Services',
+  searchDubboService: 'Search Dubbo Services or applications',
   serviceSearchHint: 'Service ID, org.apache.dubbo.demo.api.DemoService, * for all services',
   ipSearchHint: 'Find all services provided by the target server on the specified IP address',
   appSearchHint: 'Input an application name to find all services provided by one particular application, * for all',
