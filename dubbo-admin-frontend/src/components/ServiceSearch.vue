@@ -123,7 +123,7 @@
     data: () => ({
       items: [
         {id: 0, title: 'serviceName', value: 'service'},
-        {id: 1, title: 'IP', value: 'ip'},
+        {id: 1, title: 'ip', value: 'ip'},
         {id: 2, title: 'app', value: 'application'}
       ],
       options: [

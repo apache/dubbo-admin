@@ -89,5 +89,12 @@ export default {
   weightHint: '权重值，默认100',
   methodHint: '负载均衡生效的方法，*代表所有方法',
   strategy: '策略',
-  balanceStrategyHint: '负载均衡策略'
+  balanceStrategyHint: '负载均衡策略',
+  goIndex: '返回首页',
+  releaseLater: '在后续版本中发布，敬请期待',
+  later: {
+    metrics: 'Metrics会在后续版本中发布，敬请期待',
+    serviceTest: '服务测试会在后续版本中发布，敬请期待',
+    serviceMock: '服务Mock会在后续版本中发布，敬请期待'
+  }
 }

@@ -16,14 +16,19 @@
   -->
 
 <template>
-  <v-container grid-list-xl fluid>
-    <v-layout row wrap>
-      <v-flex lg12>
-        <v-card>
-          <v-card-title>
-            <h1>Service Test will release in the future</h1>
-          </v-card-title>
-        </v-card>
+  <v-container
+    fill-height
+  >
+    <v-layout align-center>
+      <v-flex text-xs-center>
+        <h1 class="display-2 primary--text">{{$t('later.serviceTest')}}</h1>
+        <v-btn
+          href="#/service"
+          color="primary"
+          outline
+        >
+          {{$t('goIndex')}}
+        </v-btn>
       </v-flex>
     </v-layout>
   </v-container>

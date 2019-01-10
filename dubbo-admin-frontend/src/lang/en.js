@@ -89,5 +89,12 @@ export default {
   weightHint: 'weight value, default is 100',
   methodHint: 'choose method of load balancing, * for all methods',
   strategy: 'Strategy',
-  balanceStrategyHint: 'load balancing strategy'
+  balanceStrategyHint: 'load balancing strategy',
+  goIndex: 'Go To Index',
+  releaseLater: 'will release later',
+  later: {
+    metrics: 'Metrics will release later',
+    serviceTest: 'Service Test will release later',
+    serviceMock: 'Service Mock will release later'
+  }
 }
