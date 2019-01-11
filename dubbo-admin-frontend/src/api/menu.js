@@ -24,8 +24,8 @@ const Menu = [
     items: [
       { title: 'routingRule', path: '/governance/routingRule' },
       {title: 'tagRule', path: '/governance/tagRule', badge: 'new'},
-      { title: 'dynamicConfig', path: '/governance/config' },
       { title: 'accessControl', path: '/governance/access' },
+      { title: 'dynamicConfig', path: '/governance/config' },
       { title: 'weightAdjust', path: '/governance/weight' },
       { title: 'loadBalance', path: '/governance/loadbalance' }
     ]

@@ -60,9 +60,11 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
      */
     private final ConcurrentHashMap<String, String> URL_IDS_MAPPER = new ConcurrentHashMap<>();
 
-    // ConcurrentMap<category, ConcurrentMap<servicename, Map<MD5, URL>>>
-    private final ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>>
-        registryCache = new ConcurrentHashMap<>();
+    /**
+     * ConcurrentMap<category, ConcurrentMap<servicename, Map<MD5, URL>>>
+     * registryCache
+     */
+    private final ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>> registryCache = new ConcurrentHashMap<>();
     @Autowired
     private Registry registry;
 
@@ -70,16 +72,19 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
         return registryCache;
     }
 
+    @Override
     public void afterPropertiesSet() throws Exception {
         logger.info("Init Dubbo Admin Sync Cache...");
         registry.subscribe(SUBSCRIBE, this);
     }
 
+    @Override
     public void destroy() throws Exception {
         registry.unsubscribe(SUBSCRIBE, this);
     }
 
     // Notification of of any service with any type (override、subcribe、route、provider) is full.
+    @Override
     public void notify(List<URL> urls) {
         if (urls == null || urls.isEmpty()) {
             return;
@@ -89,7 +94,8 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
         String interfaceName = null;
         for (URL url : urls) {
             String category = url.getParameter(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
-            if (Constants.EMPTY_PROTOCOL.equalsIgnoreCase(url.getProtocol())) { // NOTE: group and version in empty protocol is *
+            // NOTE: group and version in empty protocol is *
+            if (Constants.EMPTY_PROTOCOL.equalsIgnoreCase(url.getProtocol())) {
                 ConcurrentMap<String, Map<String, URL>> services = registryCache.get(category);
                 if (services != null) {
                     String group = url.getParameter(Constants.GROUP_KEY);
@@ -155,4 +161,4 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
         }
     }
 }
-    
+

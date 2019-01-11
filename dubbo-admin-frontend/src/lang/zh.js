@@ -17,8 +17,8 @@
 export default {
   serviceSearch: '服务查询',
   serviceGovernance: '服务治理',
-  routingRule: '路由规则',
-  tagRule: '标签规则',
+  routingRule: '条件路由',
+  tagRule: '标签路由',
   dynamicConfig: '动态配置',
   accessControl: '黑白名单',
   weightAdjust: '权重调整',
@@ -56,6 +56,7 @@ export default {
   createNewTagRule: '创建新标签规则',
   createNewDynamicConfigRule: '创建新动态配置规则',
   createNewWeightRule: '新建权重规则',
+  createNewLoadBalanceRule: '新建负载均衡规则',
   serviceIdHint: '服务名',
   view: '查看',
   edit: '编辑',
@@ -69,7 +70,7 @@ export default {
   appNameHint: '服务所属的应用名称',
   basicInfo: '基础信息',
   metaData: '元数据',
-  searchDubboService: '搜索Dubbo服务',
+  searchDubboService: '搜索Dubbo服务或应用',
   serviceSearchHint: '服务ID, org.apache.dubbo.demo.api.DemoService, * 代表所有服务',
   ipSearchHint: '在指定的IP地址上查找目标服务器提供的所有服务',
   appSearchHint: '输入应用名称以查找由一个特定应用提供的所有服务, * 代表所有',
@@ -79,5 +80,22 @@ export default {
   returnType: '返回值',
   noMetadataHint: '无元数据信息，请升级至Dubbo2.7及以上版本，或者查看application.properties中关于config center的配置，详见',
   here: '这里',
-  configAddress: 'https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E'
+  configAddress: 'https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E',
+  whiteList: '白名单',
+  whiteListHint: '白名单IP列表, 多个地址用逗号分隔: 1.1.1.1,2.2.2.2',
+  blackList: '黑名单',
+  blackListHint: '黑名单IP列表, 多个地址用逗号分隔: 3.3.3.3,4.4.4.4',
+  address: '地址列表',
+  weightAddressHint: '此权重设置的IP地址,用逗号分隔: 1.1.1.1,2.2.2.2',
+  weightHint: '权重值，默认100',
+  methodHint: '负载均衡生效的方法，*代表所有方法',
+  strategy: '策略',
+  balanceStrategyHint: '负载均衡策略',
+  goIndex: '返回首页',
+  releaseLater: '在后续版本中发布，敬请期待',
+  later: {
+    metrics: 'Metrics会在后续版本中发布，敬请期待',
+    serviceTest: '服务测试会在后续版本中发布，敬请期待',
+    serviceMock: '服务Mock会在后续版本中发布，敬请期待'
+  }
 }

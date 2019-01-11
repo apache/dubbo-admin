@@ -15,36 +15,50 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.data.metadata.impl;
+package org.apache.dubbo.admin.registry.metadata.impl;
 
-import org.apache.dubbo.admin.data.metadata.MetaDataCollector;
+
+import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 
-public class NoOpMetadataCollector implements MetaDataCollector {
+public class RedisMetaDataCollector implements MetaDataCollector {
 
+    private  URL url;
+    private JedisPool pool;
+    private static final String META_DATA_SOTRE_TAG = ".metaData";
     @Override
     public void setUrl(URL url) {
-
+        this.url = url;
     }
 
     @Override
     public URL getUrl() {
-        return null;
+        return url;
     }
 
     @Override
     public void init() {
-
+        pool = new JedisPool(new JedisPoolConfig(), url.getHost(), url.getPort());
     }
 
     @Override
     public String getProviderMetaData(MetadataIdentifier key) {
-        return null;
+        return doGetMetaData(key);
     }
 
     @Override
     public String getConsumerMetaData(MetadataIdentifier key) {
-        return null;
+        return doGetMetaData(key);
+    }
+
+    private String doGetMetaData(MetadataIdentifier identifier) {
+        //TODO error handing
+        Jedis jedis = pool.getResource();
+        String result = jedis.get(identifier.getUniqueKey(MetadataIdentifier.KeyTypeEnum.UNIQUE_KEY) + META_DATA_SOTRE_TAG);
+        return result;
     }
 }

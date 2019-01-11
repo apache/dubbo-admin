@@ -123,7 +123,7 @@
     data: () => ({
       items: [
         {id: 0, title: 'serviceName', value: 'service'},
-        {id: 1, title: 'IP', value: 'ip'},
+        {id: 1, title: 'ip', value: 'ip'},
         {id: 2, title: 'app', value: 'application'}
       ],
       options: [
@@ -242,7 +242,7 @@
         if (version != null) {
           query = query + '&version=' + version
         }
-        return '/#/serviceDetail?' + query
+        return '#/serviceDetail?' + query
       },
       governanceHref: function (type, service, group, version) {
         let base = '/#/governance/' + type
