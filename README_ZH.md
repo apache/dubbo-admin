@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/apache/incubator-dubbo-ops/branch/develop/graph/badge.svg)](https://codecov.io/gh/apache/incubator-dubbo-ops)
 ![license](https://img.shields.io/github/license/apache/incubator-dubbo-ops.svg)
 
-English version goes [here](README.md).
+[English version](README.md).
 ### Demo地址
 * http://47.91.207.147/#/service
 * 该地址是`develop`分支的最新版本，在从源码构建之前，可以先尝试demo
