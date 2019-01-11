@@ -112,7 +112,7 @@
     <v-dialog   v-model="dialog" width="800px" persistent >
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">Create New LoadBalance Rule</span>
+          <span class="headline">{{$t('createNewLoadBalanceRule')}}</span>
         </v-card-title>
         <v-card-text >
           <v-text-field
@@ -441,7 +441,7 @@
     },
     computed: {
       queryBy () {
-        return 'by ' + this.$t(this.items[this.selected].title)
+        return this.$t('by') + this.$t(this.items[this.selected].title)
       }
     },
     watch: {

@@ -12,6 +12,8 @@
 
 ![index](https://raw.githubusercontent.com/apache/incubator-dubbo-ops/develop/doc/images/index.png)
 
+### Service Governance  
+service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.6, please refer to [here](https://github.com/apache/incubator-dubbo-ops/wiki/The-compatibility-of-service-governance)
 ### Frontend
 
 - [Vue.js](https://vuejs.org) and [Vuetify](https://vuetifyjs.com)

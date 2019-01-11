@@ -4,7 +4,7 @@
 [![codecov](https://codecov.io/gh/apache/incubator-dubbo-ops/branch/develop/graph/badge.svg)](https://codecov.io/gh/apache/incubator-dubbo-ops)
 ![license](https://img.shields.io/github/license/apache/incubator-dubbo-ops.svg)
 
-English version goes [here](README.md).
+[English version](README.md).
 ### Demo地址
 * http://47.91.207.147/#/service
 * 该地址是`develop`分支的最新版本，在从源码构建之前，可以先尝试demo
@@ -12,6 +12,8 @@ English version goes [here](README.md).
 
 ![index](https://raw.githubusercontent.com/apache/incubator-dubbo-ops/develop/doc/images/index.png)
 
+### 服务治理  
+服务治理的部分，按照Dubbo 2.7的格式进行配置，同时兼容Dubbo 2.6，详见[这里](https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E5%85%BC%E5%AE%B9%E6%80%A7%E8%AF%B4%E6%98%8E)
 ### 前端部分
 
 - 使用[Vue.js](https://vuejs.org)作为javascript框架，[Vuetify](https://vuetifyjs.com)作为UI框架

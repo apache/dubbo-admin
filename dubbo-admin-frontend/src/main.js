@@ -27,7 +27,11 @@ import Notify from './components/public/notify'
 import { AXIOS } from './components/http-common'
 import i18n from './lang'
 
-Vue.use(Vuetify)
+Vue.use(Vuetify, {
+  lang: {
+    t: (key, ...params) => i18n.t(key, params)
+  }
+})
 Vue.use(Notify)
 
 Vue.prototype.$axios = AXIOS
