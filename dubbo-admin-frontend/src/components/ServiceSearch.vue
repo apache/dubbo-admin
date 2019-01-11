@@ -70,7 +70,6 @@
           <template>
             <v-data-table
               hide-actions
-              :no-data-text="$t('noDataText')"
               class="elevation-0 table-striped"
               :headers="headers"
               :items="services"

@@ -48,7 +48,6 @@
           <v-tab-item>
             <v-data-table
               class="elevation-1"
-              :no-data-text="$t('noDataText')"
               :headers="detailHeaders.providers"
               :items="providerDetails"
             >
@@ -73,7 +72,6 @@
           <v-tab-item >
             <v-data-table
               class="elevation-1"
-              :no-data-text="$t('noDataText')"
               :headers="detailHeaders.consumers"
               :items="consumerDetails"
             >
@@ -92,7 +90,6 @@
       <v-flex lg12>
         <v-data-table
           class="elevation-1"
-          :no-data-text="$t('noDataText')"
           :headers="metaHeaders"
           :items="methodMetaData">
           <template slot="items" slot-scope="props">
@@ -239,7 +236,7 @@
         Object.keys(meta).forEach(function (key) {
           let item = {}
           item.value = meta[key]
-          item.name = key.charAt(0).toUpperCase() + key.substr(1)
+          item.name = vm.$t(key)
           vm.basic.push(item)
         })
       }

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 export default {
-  noDataText: 'No data available',
+  service: 'Service',
   serviceSearch: 'Search service name',
   serviceGovernance: 'Service Governance',
   routingRule: 'Condition Rule',
@@ -100,5 +100,19 @@ export default {
     serviceTest: 'Service Test will release later',
     serviceMock: 'Service Mock will release later'
   },
-  by: 'by '
+  by: 'by ',
+  $vuetify: {
+    dataIterator: {
+      rowsPerPageText: 'Items per page:',
+      rowsPerPageAll: 'All',
+      pageText: '{0}-{1} of {2}',
+      noResultsText: 'No matching records found',
+      nextPage: 'Next page',
+      prevPage: 'Previous page'
+    },
+    dataTable: {
+      rowsPerPageText: 'Rows per page:'
+    },
+    noDataText: 'No data available'
+  }
 }

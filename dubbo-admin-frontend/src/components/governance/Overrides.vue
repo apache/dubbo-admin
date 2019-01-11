@@ -68,7 +68,6 @@
             :headers="serviceHeaders"
             :items="serviceConfigs"
             hide-actions
-            :no-data-text="$t('noDataText')"
             class="elevation-0"
           >
             <template slot="items" slot-scope="props">
@@ -90,7 +89,6 @@
             :headers="appHeaders"
             :items="appConfigs"
             hide-actions
-            :no-data-text="$t('noDataText')"
             class="elevation-0"
           >
             <template slot="items" slot-scope="props">
