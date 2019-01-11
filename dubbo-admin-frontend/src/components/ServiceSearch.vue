@@ -104,7 +104,7 @@
                         :key="i"
                         :href='governanceHref(item.value, props.item.service, props.item.group, props.item.version)'
                       >
-                        <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                        <v-list-tile-title>{{ $t(item.title) }}</v-list-tile-title>
                       </v-list-tile>
                     </v-list>
                   </v-menu>
@@ -127,22 +127,22 @@
         {id: 2, title: 'app', value: 'application'}
       ],
       options: [
-        { title: 'Routing Rule',
+        { title: 'routingRule',
           value: 'routingRule'
         },
-        { title: 'Tag Rule',
+        { title: 'tagRule',
           value: 'tagRule'
         },
-        { title: 'Dynamic Config',
+        { title: 'dynamicConfig',
           value: 'config'
         },
-        { title: 'Access Control',
+        { title: 'accessControl',
           value: 'access'
         },
-        { title: 'Weight Adjust',
+        { title: 'weightAdjust',
           value: 'weight'
         },
-        { title: 'Load Balance',
+        { title: 'loadBalance',
           value: 'loadbalance'
         }
       ],

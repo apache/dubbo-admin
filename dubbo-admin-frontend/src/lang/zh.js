@@ -62,6 +62,7 @@ export default {
   edit: '编辑',
   delete: '删除',
   searchRoutingRule: '搜索路由规则',
+  searchAccessRule: '搜索黑白名单',
   searchWeightRule: '搜索权重调整规则',
   dataIdHint: '组/服务：版本形式的服务ID，组和版本可选',
   agree: '同意',
