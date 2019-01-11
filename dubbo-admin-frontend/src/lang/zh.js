@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 export default {
-  noDataText: '没有可用的数据',
+  service: '服务',
   serviceSearch: '服务查询',
   serviceGovernance: '服务治理',
   routingRule: '条件路由',
@@ -100,5 +100,19 @@ export default {
     serviceTest: '服务测试会在后续版本中发布，敬请期待',
     serviceMock: '服务Mock会在后续版本中发布，敬请期待'
   },
-  by: '按'
+  by: '按',
+  $vuetify: {
+    dataIterator: {
+      rowsPerPageText: '每页记录数：',
+      rowsPerPageAll: '全部',
+      pageText: '{0}-{1} 共 {2} 条',
+      noResultsText: '没有找到匹配记录',
+      nextPage: '下一页',
+      prevPage: '上一页'
+    },
+    dataTable: {
+      rowsPerPageText: '每页行数：'
+    },
+    noDataText: '无可用数据'
+  }
 }

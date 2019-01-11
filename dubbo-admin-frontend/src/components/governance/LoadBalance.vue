@@ -69,7 +69,6 @@
             :items="loadBalances"
             hide-actions
             class="elevation-0"
-            :no-data-text="$t('noDataText')"
           >
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.service }}</td>
@@ -91,7 +90,6 @@
             :headers="appHeaders"
             :items="loadBalances"
             hide-actions
-            :no-data-text="$t('noDataText')"
             class="elevation-0"
           >
             <template slot="items" slot-scope="props">
