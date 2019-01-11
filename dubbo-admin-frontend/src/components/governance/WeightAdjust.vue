@@ -418,7 +418,7 @@
     },
     computed: {
       queryBy () {
-        return 'by ' + this.$t(this.items[this.selected].title)
+        return this.$t('by') + this.$t(this.items[this.selected].title)
       }
     },
     watch: {

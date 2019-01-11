@@ -99,5 +99,6 @@ export default {
     metrics: 'Metrics will release later',
     serviceTest: 'Service Test will release later',
     serviceMock: 'Service Mock will release later'
-  }
+  },
+  by: 'by '
 }
