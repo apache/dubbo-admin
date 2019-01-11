@@ -155,7 +155,7 @@
         ]
       },
       submit: function () {
-        this.filter = document.querySelector('#serviceSearch').value.trim()
+        this.filter = this.filter.trim()
         this.search(this.filter, true)
       },
       search: function (filter, rewrite) {
