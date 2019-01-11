@@ -245,7 +245,7 @@
         return '#/serviceDetail?' + query
       },
       governanceHref: function (type, service, group, version) {
-        let base = '/#/governance/' + type
+        let base = '#/governance/' + type
         let query = service
         if (group !== null) {
           query = group + '/' + query
