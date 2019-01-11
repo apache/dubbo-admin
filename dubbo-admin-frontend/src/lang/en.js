@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 export default {
+  noDataText: 'No data available',
   serviceSearch: 'Search service name',
   serviceGovernance: 'Service Governance',
   routingRule: 'Condition Rule',
