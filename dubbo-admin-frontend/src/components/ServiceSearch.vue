@@ -104,7 +104,7 @@
                         :key="i"
                         :href='governanceHref(item.value, props.item.service, props.item.group, props.item.version)'
                       >
-                        <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+                        <v-list-tile-title>{{ $t(item.title) }}</v-list-tile-title>
                       </v-list-tile>
                     </v-list>
                   </v-menu>
@@ -127,22 +127,22 @@
         {id: 2, title: 'app', value: 'application'}
       ],
       options: [
-        { title: 'Routing Rule',
+        { title: 'routingRule',
           value: 'routingRule'
         },
-        { title: 'Tag Rule',
+        { title: 'tagRule',
           value: 'tagRule'
         },
-        { title: 'Dynamic Config',
+        { title: 'dynamicConfig',
           value: 'config'
         },
-        { title: 'Access Control',
+        { title: 'accessControl',
           value: 'access'
         },
-        { title: 'Weight Adjust',
+        { title: 'weightAdjust',
           value: 'weight'
         },
-        { title: 'Load Balance',
+        { title: 'loadBalance',
           value: 'loadbalance'
         }
       ],
@@ -159,7 +159,7 @@
     }),
     computed: {
       queryBy () {
-        return 'by ' + this.$t(this.items[this.selected].title)
+        return this.$t('by') + this.$t(this.items[this.selected].title)
       },
       hint () {
         if (this.selected === 0) {
@@ -245,7 +245,7 @@
         return '#/serviceDetail?' + query
       },
       governanceHref: function (type, service, group, version) {
-        let base = '/#/governance/' + type
+        let base = '#/governance/' + type
         let query = service
         if (group !== null) {
           query = group + '/' + query

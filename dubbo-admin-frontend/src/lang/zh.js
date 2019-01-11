@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 export default {
+  service: '服务',
   serviceSearch: '服务查询',
   serviceGovernance: '服务治理',
   routingRule: '条件路由',
@@ -56,11 +57,13 @@ export default {
   createNewTagRule: '创建新标签规则',
   createNewDynamicConfigRule: '创建新动态配置规则',
   createNewWeightRule: '新建权重规则',
+  createNewLoadBalanceRule: '新建负载均衡规则',
   serviceIdHint: '服务名',
   view: '查看',
   edit: '编辑',
   delete: '删除',
   searchRoutingRule: '搜索路由规则',
+  searchAccessRule: '搜索黑白名单',
   searchWeightRule: '搜索权重调整规则',
   dataIdHint: '组/服务：版本形式的服务ID，组和版本可选',
   agree: '同意',
@@ -69,7 +72,7 @@ export default {
   appNameHint: '服务所属的应用名称',
   basicInfo: '基础信息',
   metaData: '元数据',
-  searchDubboService: '搜索Dubbo服务',
+  searchDubboService: '搜索Dubbo服务或应用',
   serviceSearchHint: '服务ID, org.apache.dubbo.demo.api.DemoService, * 代表所有服务',
   ipSearchHint: '在指定的IP地址上查找目标服务器提供的所有服务',
   appSearchHint: '输入应用名称以查找由一个特定应用提供的所有服务, * 代表所有',
@@ -96,5 +99,20 @@ export default {
     metrics: 'Metrics会在后续版本中发布，敬请期待',
     serviceTest: '服务测试会在后续版本中发布，敬请期待',
     serviceMock: '服务Mock会在后续版本中发布，敬请期待'
+  },
+  by: '按',
+  $vuetify: {
+    dataIterator: {
+      rowsPerPageText: '每页记录数：',
+      rowsPerPageAll: '全部',
+      pageText: '{0}-{1} 共 {2} 条',
+      noResultsText: '没有找到匹配记录',
+      nextPage: '下一页',
+      prevPage: '上一页'
+    },
+    dataTable: {
+      rowsPerPageText: '每页行数：'
+    },
+    noDataText: '无可用数据'
   }
 }

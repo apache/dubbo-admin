@@ -15,7 +15,8 @@
  * limitations under the License.
  */
 export default {
-  serviceSearch: 'Service Search',
+  service: 'Service',
+  serviceSearch: 'Search service name',
   serviceGovernance: 'Service Governance',
   routingRule: 'Condition Rule',
   tagRule: 'Tag Rule',
@@ -56,11 +57,13 @@ export default {
   createNewTagRule: 'Create New Tag Rule',
   createNewDynamicConfigRule: 'Create New Dynamic Config Rule',
   createNewWeightRule: 'Create New Weight Rule',
+  createNewLoadBalanceRule: 'Create new load balancing rule',
   serviceIdHint: 'Service ID',
   view: 'View',
   edit: 'Edit',
   delete: 'Delete',
   searchRoutingRule: 'Search Routing Rule',
+  searchAccess: 'Search Access Rule',
   searchWeightRule: 'Search Weight Adjust Rule',
   dataIdHint: 'A service ID in form of group/service:version, group and version are optional',
   agree: 'Agree',
@@ -69,7 +72,7 @@ export default {
   appNameHint: 'Application name the service belongs to',
   basicInfo: 'BasicInfo',
   metaData: 'MetaData',
-  searchDubboService: 'Search Dubbo Services',
+  searchDubboService: 'Search Dubbo Services or applications',
   serviceSearchHint: 'Service ID, org.apache.dubbo.demo.api.DemoService, * for all services',
   ipSearchHint: 'Find all services provided by the target server on the specified IP address',
   appSearchHint: 'Input an application name to find all services provided by one particular application, * for all',
@@ -96,5 +99,20 @@ export default {
     metrics: 'Metrics will release later',
     serviceTest: 'Service Test will release later',
     serviceMock: 'Service Mock will release later'
+  },
+  by: 'by ',
+  $vuetify: {
+    dataIterator: {
+      rowsPerPageText: 'Items per page:',
+      rowsPerPageAll: 'All',
+      pageText: '{0}-{1} of {2}',
+      noResultsText: 'No matching records found',
+      nextPage: 'Next page',
+      prevPage: 'Previous page'
+    },
+    dataTable: {
+      rowsPerPageText: 'Rows per page:'
+    },
+    noDataText: 'No data available'
   }
 }

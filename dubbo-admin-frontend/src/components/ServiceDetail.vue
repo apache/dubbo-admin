@@ -236,7 +236,7 @@
         Object.keys(meta).forEach(function (key) {
           let item = {}
           item.value = meta[key]
-          item.name = key.charAt(0).toUpperCase() + key.substr(1)
+          item.name = vm.$t(key)
           vm.basic.push(item)
         })
       }
