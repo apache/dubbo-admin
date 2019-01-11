@@ -133,10 +133,10 @@
     methods: {
       submit () {
         if (window.location.href.includes('#/service')) {
-          window.location.href = '#/service?filter=' + this.global + '&pattern=service';
+          window.location.href = '#/service?filter=' + this.global + '&pattern=service'
           window.location.reload()
         } else {
-          window.location.href = '#/service?filter=' + this.global + '&pattern=service';
+          window.location.href = '#/service?filter=' + this.global + '&pattern=service'
         }
         this.global = ''
       },

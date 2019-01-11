@@ -35,6 +35,7 @@
             :headers="headers"
             :items="tagRoutingRules"
             hide-actions
+            :no-data-text="$t('noDataText')"
             class="elevation-0"
           >
             <template slot="items" slot-scope="props">

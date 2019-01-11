@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 export default {
+  noDataText: '没有可用的数据',
   serviceSearch: '服务查询',
   serviceGovernance: '服务治理',
   routingRule: '条件路由',
