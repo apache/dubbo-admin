@@ -48,6 +48,7 @@
           <v-tab-item>
             <v-data-table
               class="elevation-1"
+              :no-data-text="$t('noDataText')"
               :headers="detailHeaders.providers"
               :items="providerDetails"
             >
@@ -72,6 +73,7 @@
           <v-tab-item >
             <v-data-table
               class="elevation-1"
+              :no-data-text="$t('noDataText')"
               :headers="detailHeaders.consumers"
               :items="consumerDetails"
             >
@@ -90,6 +92,7 @@
       <v-flex lg12>
         <v-data-table
           class="elevation-1"
+          :no-data-text="$t('noDataText')"
           :headers="metaHeaders"
           :items="methodMetaData">
           <template slot="items" slot-scope="props">
