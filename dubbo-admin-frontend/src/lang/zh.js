@@ -99,5 +99,6 @@ export default {
     metrics: 'Metrics会在后续版本中发布，敬请期待',
     serviceTest: '服务测试会在后续版本中发布，敬请期待',
     serviceMock: '服务Mock会在后续版本中发布，敬请期待'
-  }
+  },
+  by: '按'
 }
