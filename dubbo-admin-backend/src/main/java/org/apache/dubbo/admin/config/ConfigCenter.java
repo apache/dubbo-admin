@@ -41,16 +41,16 @@ import java.util.Arrays;
 public class ConfigCenter {
 
 
-    @Value("${dubbo.config-center:}")
+    @Value("${admin.config-center:}")
     private String configCenter;
-    @Value("${dubbo.config-center.username:}")
+    @Value("${admin.config-center.username:}")
     private String username;
-    @Value("${dubbo.config-center.password:}")
+    @Value("${admin.config-center.password:}")
     private String password;
 
-    @Value("${dubbo.registry.address:}")
+    @Value("${admin.registry.address:}")
     private String registryAddress;
-    @Value("${dubbo.registry.group:}")
+    @Value("${admin.registry.group:}")
     private String group;
 
     private static String globalConfigPath = "config/dubbo/dubbo.properties";
