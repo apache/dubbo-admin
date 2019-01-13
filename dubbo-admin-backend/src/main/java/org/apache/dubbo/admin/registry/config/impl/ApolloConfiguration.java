@@ -27,19 +27,19 @@ import org.springframework.beans.factory.annotation.Value;
 @SPI("apollo")
 public class ApolloConfiguration implements GovernanceConfiguration {
 
-    @Value("${dubbo.apollo.token}")
+    @Value("${admin.apollo.token}")
     private String token;
 
-    @Value("${dubbo.apollo.cluster}")
+    @Value("${admin.apollo.cluster}")
     private String cluster;
 
-    @Value("${dubbo.apollo.namespace}")
+    @Value("${admin.apollo.namespace}")
     private String namespace;
 
-    @Value("${dubbo.apollo.env}")
+    @Value("${admin.apollo.env}")
     private String env;
 
-    @Value("${dubbo.apollo.appId}")
+    @Value("${admin.apollo.appId}")
     private String appId;
 
     private URL url;
