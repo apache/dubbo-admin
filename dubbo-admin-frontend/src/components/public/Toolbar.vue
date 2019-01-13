@@ -37,10 +37,41 @@
 
     <v-spacer></v-spacer>
 
-    <!--settings button-->
-    <v-btn icon v-if="false">
-      <v-icon>settings</v-icon>
+    <!--sign in button-->
+    <v-btn flat v-if="!signIn" @click="login">
+      Sign In
     </v-btn>
+
+    <v-menu offset-y origin="center center" :nudge-bottom="10" transition="scale-transition" v-if="signIn">
+      <v-btn icon large flat slot="activator">
+        <v-avatar size="30px">
+          <img src="@/assets/avatar.png" alt="Logined User" />
+        </v-avatar>
+      </v-btn>
+      <v-card>
+        <v-card-text>
+          User: {{userName}}
+        </v-card-text>
+      </v-card>
+      <v-list class="pa-0">
+        <v-list-tile @click="logout">
+          <v-list-tile-action>
+            <v-icon>exit_to_app</v-icon>
+          </v-list-tile-action>
+          <v-list-tile-content>
+            <v-list-tile-title>logout</v-list-tile-title>
+          </v-list-tile-content>
+        </v-list-tile>
+        <!--<v-list-tile v-for="(item,index) in items" :to="!item.href ? { name: item.name } : null" :href="item.href" @click="item.click" ripple="ripple" :disabled="item.disabled" :target="item.target" rel="noopener" :key="index">-->
+          <!--<v-list-tile-action v-if="item.icon">-->
+            <!--<v-icon>{{ item.icon }}</v-icon>-->
+          <!--</v-list-tile-action>-->
+          <!--<v-list-tile-content>-->
+            <!--<v-list-tile-title>{{ item.title }}</v-list-tile-title>-->
+          <!--</v-list-tile-content>-->
+        <!--</v-list-tile>-->
+      </v-list>
+    </v-menu>
 
     <!--full screen button-->
     <v-btn icon @click="handleFullScreen()">
@@ -72,24 +103,6 @@
       <!--<notification-list></notification-list>-->
     </v-menu>
 
-    <!--login user info-->
-    <v-menu offset-y origin="center center" :nudge-bottom="10" transition="scale-transition" v-if="false">
-      <v-btn icon large flat slot="activator">
-        <v-avatar size="30px">
-          <img src="@/assets/avatar.png" alt="Logined User" />
-        </v-avatar>
-      </v-btn>
-      <v-list class="pa-0">
-        <v-list-tile v-for="(item,index) in items" :to="!item.href ? { name: item.name } : null" :href="item.href" @click="item.click" ripple="ripple" :disabled="item.disabled" :target="item.target" rel="noopener" :key="index">
-          <v-list-tile-action v-if="item.icon">
-            <v-icon>{{ item.icon }}</v-icon>
-          </v-list-tile-action>
-          <v-list-tile-content>
-            <v-list-tile-title>{{ item.title }}</v-list-tile-title>
-          </v-list-tile-content>
-        </v-list-tile>
-      </v-list>
-    </v-menu>
   </v-toolbar>
 </template>
 <script>
@@ -99,35 +112,35 @@
     data: () => ({
       selectedLang: '',
       global: '',
+      userName: 'root',
+      signIn: true,
       lang: [
         '简体中文',
         'English'
       ],
       items: [
-        {
-          icon: 'account_circle',
-          href: '#',
-          title: 'Profile',
-          click: (e) => {
-            console.log(e)
-          }
-        },
-        {
-          icon: 'settings',
-          href: '#',
-          title: 'Settings',
-          click: (e) => {
-            console.log(e)
-          }
-        },
-        {
-          icon: 'fullscreen_exit',
-          href: '#',
-          title: 'Logout',
-          click: (e) => {
-            window.getApp.$emit('APP_LOGOUT')
-          }
-        }
+        // {
+        //   icon: 'account_circle',
+        //   href: '#',
+        //   title: 'Profile',
+        //   click: (e) => {
+        //     console.log(e)
+        //   }
+        // },
+        // {
+        //   icon: 'settings',
+        //   href: '#',
+        //   title: 'Settings',
+        //   click: (e) => {
+        //     console.log(e)
+        //   }
+        // },
+        // {
+        //   icon: 'exit_to_app',
+        //   href: '#',
+        //   title: 'Logout',
+        //   click: logout
+        // }
       ]
     }),
     methods: {
@@ -139,6 +152,12 @@
           window.location.href = '#/service?filter=' + this.global + '&pattern=service'
         }
         this.global = ''
+      },
+      logout () {
+        this.$axios.get('/logout')
+          .then(response => {
+
+          })
       },
       handleDrawerToggle () {
         window.getApp.$emit('DRAWER_TOGGLED')

@@ -27,7 +27,7 @@ import java.util.List;
  */
 public class User extends Entity {
 
-    public static final String REALM = "dubbo";
+    public static final String REALM = "dubbo admin";
     public static final String ROOT = "R";
     public static final String ADMINISTRATOR = "A";
     public static final String MANAGER = "M";
