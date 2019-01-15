@@ -19,7 +19,6 @@ package org.apache.dubbo.admin.registry.config;
 
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.SPI;
-import org.omg.PortableInterceptor.ServerRequestInfo;
 
 
 @SPI("zookeeper")
