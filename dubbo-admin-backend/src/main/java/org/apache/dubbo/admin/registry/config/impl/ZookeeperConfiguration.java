@@ -27,6 +27,8 @@ import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.common.URL;
 
+import java.security.acl.Group;
+
 
 public class ZookeeperConfiguration implements GovernanceConfiguration {
     private static final Logger logger = LoggerFactory.getLogger(ZookeeperConfiguration.class);
@@ -117,6 +119,16 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
             logger.error(e.getMessage(), e);
         }
         return true;
+    }
+
+    @Override
+    public String getPath(String key) {
+        return getNodePath(key, null);
+    }
+
+    @Override
+    public String getPath(String group, String key) {
+        return getNodePath(key, group);
     }
 
     private String getNodePath(String path, String group) {

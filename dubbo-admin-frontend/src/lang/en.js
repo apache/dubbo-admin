@@ -114,5 +114,13 @@ export default {
       rowsPerPageText: 'Rows per page:'
     },
     noDataText: 'No data available'
-  }
+  },
+  configManage: 'Configuration Management',
+  configCenterAddress: 'ConfigCenter Address',
+  searchDubboConfig: 'Search Dubbo Config',
+  createNewDubboConfig: 'Create New Dubbo Config',
+  scope: 'Scope',
+  name: 'Name',
+  warnDeleteConfig: ' Are you sure to Delete Dubbo Config: ',
+  configNameHint: "Application name the config belongs to, use 'global'(without quotes) for global config"
 }
