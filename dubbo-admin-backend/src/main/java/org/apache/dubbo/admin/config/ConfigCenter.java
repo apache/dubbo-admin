@@ -23,12 +23,14 @@ import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.admin.registry.metadata.impl.NoOpMetadataCollector;
+import org.apache.dubbo.admin.service.ManagementService;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.registry.Registry;
 import org.apache.dubbo.registry.RegistryFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -62,6 +64,7 @@ public class ConfigCenter {
     private URL metadataUrl;
 
 
+
     /*
      * generate dynamic configuration client
      */
@@ -79,8 +82,10 @@ public class ConfigCenter {
             if (StringUtils.isNotEmpty(config)) {
                 Arrays.stream(config.split("\n")).forEach( s -> {
                     if(s.startsWith(Constants.REGISTRY_ADDRESS)) {
-                        registryUrl = formUrl(s.split("=")[1].trim(), group, username, password);
+                        String registryAddress = s.split("=")[1].trim();
+                        registryUrl = formUrl(registryAddress, group, username, password);
                     } else if (s.startsWith(Constants.METADATA_ADDRESS)) {
+                        String metadataAddress = s.split("=")[1].trim();
                         metadataUrl = formUrl(s.split("=")[1].trim(), group, username, password);
                     }
                 });

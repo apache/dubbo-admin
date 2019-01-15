@@ -15,34 +15,20 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin.registry.config;
+package org.apache.dubbo.admin.service;
 
-import org.apache.dubbo.common.URL;
-import org.apache.dubbo.common.extension.SPI;
-import org.omg.PortableInterceptor.ServerRequestInfo;
+import org.apache.dubbo.admin.model.dto.ConfigDTO;
+
+public interface ManagementService {
 
 
-@SPI("zookeeper")
-public interface GovernanceConfiguration {
-    void init();
-
-    void setUrl(URL url);
-
-    URL getUrl();
-    String setConfig(String key, String value);
+    void setConfig(ConfigDTO config);
 
     String getConfig(String key);
 
+    String getConfigPath(String key);
+
+    boolean updateConfig(ConfigDTO configDTO);
+
     boolean deleteConfig(String key);
-
-    String setConfig(String group, String key, String value);
-
-    String getConfig(String group, String key);
-
-    boolean deleteConfig(String group, String key);
-
-    String getPath(String key);
-
-    String getPath(String group, String key);
-
 }

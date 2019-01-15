@@ -114,5 +114,13 @@ export default {
       rowsPerPageText: '每页行数：'
     },
     noDataText: '无可用数据'
-  }
+  },
+  configManage: '配置管理',
+  configCenterAddress: '配置中心地址',
+  searchDubboConfig: '搜索Dubbo配置',
+  createNewDubboConfig: '新建Dubbo配置',
+  scope: '范围',
+  name: '名称',
+  warnDeleteConfig: ' 是否要删除Dubbo配置: ',
+  configNameHint: '配置所属的应用名, global 表示全局配置'
 }

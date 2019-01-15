@@ -109,4 +109,14 @@ public class ApolloConfiguration implements GovernanceConfiguration {
         client.removeItem(appId, env, cluster, group, key, "admin");
         return true;
     }
+
+    @Override
+    public String getPath(String key) {
+        return null;
+    }
+
+    @Override
+    public String getPath(String group, String key) {
+        return null;
+    }
 }
