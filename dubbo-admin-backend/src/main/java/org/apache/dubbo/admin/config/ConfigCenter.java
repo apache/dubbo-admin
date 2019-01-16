@@ -43,18 +43,25 @@ import java.util.Arrays;
 public class ConfigCenter {
 
 
+
+    //centers in dubbo 2.7
     @Value("${admin.config-center:}")
     private String configCenter;
-    @Value("${admin.config-center.username:}")
-    private String username;
-    @Value("${admin.config-center.password:}")
-    private String password;
 
     @Value("${admin.registry.address:}")
     private String registryAddress;
+
+    @Value("${admin.metadata.address:}")
+    private String metadataAddress;
+
     @Value("${admin.registry.group:}")
     private String group;
 
+    @Value("${admin.config-center.username:}")
+    private String username;
+    @Value("${admin.config-center.password:}")
+
+    private String password;
     private static String globalConfigPath = "config/dubbo/dubbo.properties";
 
     private static final Logger logger = LoggerFactory.getLogger(ConfigCenter.class);
@@ -85,7 +92,7 @@ public class ConfigCenter {
                         String registryAddress = s.split("=")[1].trim();
                         registryUrl = formUrl(registryAddress, group, username, password);
                     } else if (s.startsWith(Constants.METADATA_ADDRESS)) {
-                        String metadataAddress = s.split("=")[1].trim();
+                        metadataAddress = s.split("=")[1].trim();
                         metadataUrl = formUrl(s.split("=")[1].trim(), group, username, password);
                     }
                 });
@@ -131,6 +138,11 @@ public class ConfigCenter {
     @DependsOn("governanceConfiguration")
     MetaDataCollector getMetadataCollector() {
         MetaDataCollector metaDataCollector = new NoOpMetadataCollector();
+        if (metadataUrl == null) {
+            if (StringUtils.isNotEmpty(metadataAddress)) {
+                metadataUrl = formUrl(metadataAddress.split("=")[1].trim(), group, username, password);
+            }
+        }
         if (metadataUrl != null) {
             metaDataCollector = ExtensionLoader.getExtensionLoader(MetaDataCollector.class).getExtension(metadataUrl.getProtocol());
             metaDataCollector.setUrl(metadataUrl);
