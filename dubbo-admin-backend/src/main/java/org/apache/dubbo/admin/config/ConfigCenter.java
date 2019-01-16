@@ -92,7 +92,6 @@ public class ConfigCenter {
                         String registryAddress = s.split("=")[1].trim();
                         registryUrl = formUrl(registryAddress, group, username, password);
                     } else if (s.startsWith(Constants.METADATA_ADDRESS)) {
-                        metadataAddress = s.split("=")[1].trim();
                         metadataUrl = formUrl(s.split("=")[1].trim(), group, username, password);
                     }
                 });
@@ -140,7 +139,7 @@ public class ConfigCenter {
         MetaDataCollector metaDataCollector = new NoOpMetadataCollector();
         if (metadataUrl == null) {
             if (StringUtils.isNotEmpty(metadataAddress)) {
-                metadataUrl = formUrl(metadataAddress.split("=")[1].trim(), group, username, password);
+                metadataUrl = formUrl(metadataAddress, group, username, password);
             }
         }
         if (metadataUrl != null) {
