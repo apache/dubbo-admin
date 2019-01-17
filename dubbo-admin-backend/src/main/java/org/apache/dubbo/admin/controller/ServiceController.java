@@ -17,6 +17,7 @@
 
 package org.apache.dubbo.admin.controller;
 
+import com.ctrip.framework.apollo.core.enums.Env;
 import com.google.gson.Gson;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.model.domain.Consumer;
@@ -26,7 +27,6 @@ import org.apache.dubbo.admin.model.dto.ServiceDetailDTO;
 import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.admin.common.util.Constants;
-import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +38,7 @@ import java.util.regex.Pattern;
 
 
 @RestController
-@RequestMapping("/api/{env}/service")
+@RequestMapping("/api/{env}")
 public class ServiceController {
 
     private final ProviderService providerService;
@@ -50,7 +50,7 @@ public class ServiceController {
         this.consumerService = consumerService;
     }
 
-    @RequestMapping(method = RequestMethod.GET)
+    @RequestMapping( value = "/service", method = RequestMethod.GET)
     public Set<ServiceDTO> searchService(@RequestParam String pattern,
                                          @RequestParam String filter,@PathVariable String env) {
         return providerService.getServiceDTOS(pattern, filter, env);
@@ -58,7 +58,7 @@ public class ServiceController {
 
 
 
-    @RequestMapping(value = "/{service}", method = RequestMethod.GET)
+    @RequestMapping(value = "/service/{service}", method = RequestMethod.GET)
     public ServiceDetailDTO serviceDetail(@PathVariable String service, @PathVariable String env) {
         service = service.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         List<Provider> providers = providerService.findByService(service);
@@ -83,5 +83,15 @@ public class ServiceController {
             serviceDetailDTO.setMetadata(serviceDefinition);
         }
         return serviceDetailDTO;
+    }
+
+    @RequestMapping(value = "/services", method = RequestMethod.GET)
+    public Set<String> allServices(@PathVariable String env) {
+        return providerService.findServices();
+    }
+
+    @RequestMapping(value = "/applications", method = RequestMethod.GET)
+    public Set<String> allApplications(@PathVariable String env) {
+        return providerService.findApplications();
     }
 }
