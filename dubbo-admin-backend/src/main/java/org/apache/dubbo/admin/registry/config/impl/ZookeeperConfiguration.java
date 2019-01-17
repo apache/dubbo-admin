@@ -17,16 +17,16 @@
 
 package org.apache.dubbo.admin.registry.config.impl;
 
+import org.apache.dubbo.admin.common.util.Constants;
+import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
+import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.ExponentialBackoffRetry;
-import org.apache.dubbo.admin.common.util.Constants;
-import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
-import org.apache.dubbo.common.logger.Logger;
-import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.common.URL;
-
 
 public class ZookeeperConfiguration implements GovernanceConfiguration {
     private static final Logger logger = LoggerFactory.getLogger(ZookeeperConfiguration.class);
@@ -46,10 +46,13 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
 
     @Override
     public void init() {
+        if (url == null) {
+            throw new IllegalStateException("server url is null, cannot init");
+        }
         CuratorFrameworkFactory.Builder zkClientBuilder = CuratorFrameworkFactory.builder().
                 connectString(url.getAddress()).
                 retryPolicy(new ExponentialBackoffRetry(1000, 3));
-        if(StringUtils.isNotEmpty(url.getUsername()) && StringUtils.isNotEmpty(url.getPassword())){
+        if (StringUtils.isNotEmpty(url.getUsername()) && StringUtils.isNotEmpty(url.getPassword())) {
             // add authorization
             String auth = url.getUsername() + ":" + url.getPassword();
             zkClientBuilder.authorization("digest", auth.getBytes());
@@ -80,6 +83,9 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
 
     @Override
     public String setConfig(String group, String key, String value) {
+        if (key == null || value == null) {
+            throw new IllegalArgumentException("key or value cannot be null");
+        }
         String path = getNodePath(key, group);
         try {
             if (zkClient.checkExists().forPath(path) == null) {
@@ -95,6 +101,9 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
 
     @Override
     public String getConfig(String group, String key) {
+        if (key == null) {
+            throw new IllegalArgumentException("key cannot be null");
+        }
         String path = getNodePath(key, group);
 
         try {
@@ -110,16 +119,33 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
 
     @Override
     public boolean deleteConfig(String group, String key) {
+        if (key == null) {
+            throw new IllegalArgumentException("key cannot be null");
+        }
         String path = getNodePath(key, group);
         try {
             zkClient.delete().forPath(path);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
+            return false;
         }
         return true;
     }
 
+    @Override
+    public String getPath(String key) {
+        return getNodePath(key, null);
+    }
+
+    @Override
+    public String getPath(String group, String key) {
+        return getNodePath(key, group);
+    }
+
     private String getNodePath(String path, String group) {
+        if (path == null) {
+            throw new IllegalArgumentException("path cannot be null");
+        }
         return toRootDir(group) + path;
     }
 

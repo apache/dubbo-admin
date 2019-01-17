@@ -16,7 +16,7 @@
  */
 package org.apache.dubbo.admin.service;
 
-import org.apache.dubbo.admin.common.util.MD5Util;
+import org.apache.dubbo.admin.common.util.CoderUtil;
 import org.apache.dubbo.admin.common.util.Tool;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
@@ -134,7 +134,7 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
                 if (URL_IDS_MAPPER.containsKey(url.toFullString())) {
                     ids.put(URL_IDS_MAPPER.get(url.toFullString()), url);
                 } else {
-                    String md5 = MD5Util.MD5_16bit(url.toFullString());
+                    String md5 = CoderUtil.MD5_16bit(url.toFullString());
                     ids.put(md5, url);
                     URL_IDS_MAPPER.putIfAbsent(url.toFullString(), md5);
                 }

@@ -23,12 +23,14 @@ import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.admin.registry.metadata.impl.NoOpMetadataCollector;
+import org.apache.dubbo.admin.service.ManagementService;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.registry.Registry;
 import org.apache.dubbo.registry.RegistryFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,18 +43,25 @@ import java.util.Arrays;
 public class ConfigCenter {
 
 
-    @Value("${dubbo.config-center:}")
-    private String configCenter;
-    @Value("${dubbo.config-center.username:}")
-    private String username;
-    @Value("${dubbo.config-center.password:}")
-    private String password;
 
-    @Value("${dubbo.registry.address:}")
+    //centers in dubbo 2.7
+    @Value("${admin.config-center:}")
+    private String configCenter;
+
+    @Value("${admin.registry.address:}")
     private String registryAddress;
-    @Value("${dubbo.registry.group:}")
+
+    @Value("${admin.metadata.address:}")
+    private String metadataAddress;
+
+    @Value("${admin.registry.group:}")
     private String group;
 
+    @Value("${admin.config-center.username:}")
+    private String username;
+    @Value("${admin.config-center.password:}")
+
+    private String password;
     private static String globalConfigPath = "config/dubbo/dubbo.properties";
 
     private static final Logger logger = LoggerFactory.getLogger(ConfigCenter.class);
@@ -60,6 +69,7 @@ public class ConfigCenter {
     private URL configCenterUrl;
     private URL registryUrl;
     private URL metadataUrl;
+
 
 
     /*
@@ -79,7 +89,8 @@ public class ConfigCenter {
             if (StringUtils.isNotEmpty(config)) {
                 Arrays.stream(config.split("\n")).forEach( s -> {
                     if(s.startsWith(Constants.REGISTRY_ADDRESS)) {
-                        registryUrl = formUrl(s.split("=")[1].trim(), group, username, password);
+                        String registryAddress = s.split("=")[1].trim();
+                        registryUrl = formUrl(registryAddress, group, username, password);
                     } else if (s.startsWith(Constants.METADATA_ADDRESS)) {
                         metadataUrl = formUrl(s.split("=")[1].trim(), group, username, password);
                     }
@@ -126,6 +137,11 @@ public class ConfigCenter {
     @DependsOn("governanceConfiguration")
     MetaDataCollector getMetadataCollector() {
         MetaDataCollector metaDataCollector = new NoOpMetadataCollector();
+        if (metadataUrl == null) {
+            if (StringUtils.isNotEmpty(metadataAddress)) {
+                metadataUrl = formUrl(metadataAddress, group, username, password);
+            }
+        }
         if (metadataUrl != null) {
             metaDataCollector = ExtensionLoader.getExtensionLoader(MetaDataCollector.class).getExtension(metadataUrl.getProtocol());
             metaDataCollector.setUrl(metadataUrl);

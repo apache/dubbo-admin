@@ -29,6 +29,7 @@ public class Constants {
     public static final String PATH_SEPARATOR = "/";
     public static final String GROUP_KEY = "group";
     public static final String CONFIG_KEY = "config";
+    public static final String DUBBO_PROPERTY = "dubbo.properties";
     public static final String PROVIDER_SIDE = "provider";
     public static final String CONSUMER_SIDE = "consumer";
     public static final String CATEGORY_KEY = "category";
@@ -51,7 +52,8 @@ public class Constants {
     public static final String VERSION_KEY = "version";
     public static final String PROVIDERS_CATEGORY = "providers";
     public static final String CONSUMERS_CATEGORY = "consumers";
-    public static final String SPECIFICATION_VERSION_KEY = "specVersion";
+    public static final String SPECIFICATION_VERSION_KEY = "release";
+    public static final String GLOBAL_CONFIG = "global";
     public static final Set<String> CONFIGS = new HashSet<>();
 
     static {

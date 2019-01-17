@@ -21,6 +21,7 @@
       <v-layout row wrap >
         <v-text-field
           :label="label" clearable
+          :hint="hint"
           v-bind:value="value"
           v-on:input="$emit('input', $event)"></v-text-field>
         <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
@@ -39,6 +40,10 @@
         default: null
       },
       label: {
+        type: String,
+        default: ''
+      },
+      hint: {
         type: String,
         default: ''
       }
