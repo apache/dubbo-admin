@@ -22,12 +22,15 @@ import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.ConfigDTO;
 import org.apache.dubbo.admin.service.ManagementService;
+import org.apache.dubbo.admin.service.ProviderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 @RestController
@@ -35,12 +38,14 @@ import java.util.regex.Pattern;
 public class ManagementController {
 
     private final ManagementService managementService;
+    private final ProviderService providerService;
     private static Pattern CLASS_NAME_PATTERN = Pattern.compile("([a-zA-Z_$][a-zA-Z\\d_$]*\\.)*[a-zA-Z_$][a-zA-Z\\d_$]*");
 
 
     @Autowired
-    public ManagementController(ManagementService managementService) {
+    public ManagementController(ManagementService managementService, ProviderService providerService) {
         this.managementService = managementService;
+        this.providerService = providerService;
     }
 
     @RequestMapping(value ="/config", method = RequestMethod.POST)
@@ -63,23 +68,32 @@ public class ManagementController {
 
     @RequestMapping(value = "/config/{key}", method = RequestMethod.GET)
     public List<ConfigDTO> getConfig(@PathVariable String key, @PathVariable String env) {
-        String config = managementService.getConfig(key);
+        Set<String> query = new HashSet<>();
         List<ConfigDTO> configDTOs = new ArrayList<>();
-        if (config == null) {
-            return configDTOs;
-        }
-        ConfigDTO configDTO = new ConfigDTO();
-        configDTO.setKey(key);
-        configDTO.setConfig(config);
-        configDTO.setPath(managementService.getConfigPath(key));
-        if (Constants.GLOBAL_CONFIG.equals(key)) {
-            configDTO.setScope(Constants.GLOBAL_CONFIG);
-        } else if(CLASS_NAME_PATTERN.matcher(key).matches()){
-            configDTO.setScope(Constants.SERVICE);
+        if (key.equals(Constants.ANY_VALUE)) {
+            query = providerService.findApplications();
+            query.add("global");
         } else {
-            configDTO.setScope(Constants.APPLICATION);
+            query.add(key);
         }
-        configDTOs.add(configDTO);
+        for (String q : query) {
+            String config = managementService.getConfig(q);
+            if (config == null) {
+                continue;
+            }
+            ConfigDTO configDTO = new ConfigDTO();
+            configDTO.setKey(q);
+            configDTO.setConfig(config);
+            configDTO.setPath(managementService.getConfigPath(q));
+            if (Constants.GLOBAL_CONFIG.equals(q)) {
+                configDTO.setScope(Constants.GLOBAL_CONFIG);
+            } else if(CLASS_NAME_PATTERN.matcher(q).matches()){
+                configDTO.setScope(Constants.SERVICE);
+            } else {
+                configDTO.setScope(Constants.APPLICATION);
+            }
+            configDTOs.add(configDTO);
+        }
         return configDTOs;
     }
 
