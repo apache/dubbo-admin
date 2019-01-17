@@ -78,14 +78,14 @@
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="warn" persistent max-width="500px">
+    <v-dialog v-model="warn.display" persistent max-width="500px">
       <v-card>
-        <v-card-title class="headline">{{$t(this.warnTitle)}}</v-card-title>
-        <v-card-text >{{this.warnText}}</v-card-text>
+        <v-card-title class="headline">{{$t(this.warn.title)}}</v-card-title>
+        <v-card-text >{{this.warn.text}}</v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn flat @click.native="closeWarn">CANCLE</v-btn>
-          <v-btn depressed color="primary" @click.native="deleteItem(warnStatus)">CONFIRM</v-btn>
+          <v-btn depressed color="primary" @click.native="deleteItem(warn.status)">{{$t('confirm')}}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -110,12 +110,14 @@
       pattern: 'Service',
       filter: '',
       dialog: false,
-      warn: false,
       updateId: '',
       application: '',
-      warnTitle: '',
-      warnText: '',
-      warnStatus: {},
+      warn: {
+        display: false,
+        title: '',
+        text: '',
+        status: {}
+      },
       height: 0,
       operations: operations,
       tagRoutingRules: [
@@ -179,14 +181,14 @@
         this.dialog = true
       },
       openWarn: function (title, text) {
-        this.warnTitle = title
-        this.warnText = text
-        this.warn = true
+        this.warn.title = title
+        this.warn.text = text
+        this.warn.display = true
       },
       closeWarn: function () {
-        this.warnTitle = ''
-        this.warnText = ''
-        this.warn = false
+        this.warn.title = ''
+        this.warn.text = ''
+        this.warn.display = false
       },
       saveItem: function () {
         let rule = yaml.safeLoad(this.ruleText)
@@ -248,18 +250,18 @@
             break
           case 'block':
             this.openWarn(' Are you sure to block Tag Rule', 'application: ' + item.application)
-            this.warnStatus.operation = 'disable'
-            this.warnStatus.id = itemId
+            this.warn.status.operation = 'disable'
+            this.warn.status.id = itemId
             break
           case 'check_circle_outline':
             this.openWarn(' Are you sure to enable Tag Rule', 'application: ' + item.application)
-            this.warnStatus.operation = 'enable'
-            this.warnStatus.id = itemId
+            this.warn.status.operation = 'enable'
+            this.warn.status.id = itemId
             break
           case 'delete':
             this.openWarn(' Are you sure to Delete Tag Rule', 'application: ' + item.application)
-            this.warnStatus.operation = 'delete'
-            this.warnStatus.id = itemId
+            this.warn.status.operation = 'delete'
+            this.warn.status.id = itemId
         }
       },
       handleBalance: function (tagRoute, readonly) {
@@ -284,7 +286,7 @@
           this.$axios.delete('/rules/route/tag/' + id)
             .then(response => {
               if (response.status === 200) {
-                this.warn = false
+                this.warn.display = false
                 this.search(this.filter, false)
                 this.$notify.success('Delete success')
               }
@@ -293,7 +295,7 @@
           this.$axios.put('/rules/route/tag/disable/' + id)
             .then(response => {
               if (response.status === 200) {
-                this.warn = false
+                this.warn.display = false
                 this.search(this.filter, false)
                 this.$notify.success('Disable success')
               }
@@ -302,7 +304,7 @@
           this.$axios.put('/rules/route/tag/enable/' + id)
             .then(response => {
               if (response.status === 200) {
-                this.warn = false
+                this.warn.display = false
                 this.search(this.filter, false)
                 this.$notify.success('Enable success')
               }

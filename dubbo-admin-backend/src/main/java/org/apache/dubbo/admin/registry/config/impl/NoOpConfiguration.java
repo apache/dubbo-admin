@@ -66,4 +66,14 @@ public class NoOpConfiguration implements GovernanceConfiguration {
     public boolean deleteConfig(String group, String key) {
         return false;
     }
+
+    @Override
+    public String getPath(String key) {
+        return null;
+    }
+
+    @Override
+    public String getPath(String group, String key) {
+        return null;
+    }
 }

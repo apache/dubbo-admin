@@ -312,18 +312,19 @@
         pattern = 'service'
         this.search(this.filter, pattern, true)
       }
-      this.$axios.get('/service', {
-        params: {
-          pattern: 'service',
-          filter: '*'
-        }
-      }).then(response => {
-        let length = response.data.length
-        for (let i = 0; i < length; i++) {
-          vm.serviceItem.push(response.data[i].service)
-          vm.appItem.push(response.data[i].appName)
-        }
-      })
+      this.$axios.get('/services')
+        .then(response => {
+          if (response.status === 200) {
+            vm.serviceItem = response.data
+          }
+        })
+
+      this.$axios.get('/applications')
+        .then(response => {
+          if (response.status === 200) {
+            vm.appItem = response.data
+          }
+        })
     }
 
   }

@@ -253,8 +253,8 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
     }
 
     @Override
-    public List<String> findServices() {
-        List<String> ret = new ArrayList<String>();
+    public Set<String> findServices() {
+        Set<String> ret = new HashSet<>();
         ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
         if (providerUrls != null){
             ret.addAll(providerUrls.keySet());
@@ -413,8 +413,8 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
     }
 
     @Override
-    public List<String> findApplications() {
-        List<String> ret = new ArrayList<String>();
+    public Set<String> findApplications() {
+        Set<String> ret = new HashSet<>();
         ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
         if (providerUrls == null){
             return ret;
@@ -568,7 +568,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
             }
         } else {
             // filter with fuzzy search
-            List<String> candidates = Collections.emptyList();
+            Set<String> candidates = Collections.emptySet();
             if (Constants.SERVICE.equals(pattern)) {
                 candidates = findServices();
             } else if (Constants.APPLICATION.equals(pattern)) {
