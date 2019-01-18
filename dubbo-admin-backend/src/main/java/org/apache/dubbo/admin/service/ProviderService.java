@@ -52,7 +52,7 @@ public interface ProviderService {
      *
      * @return list of all provider's service name
      */
-    List<String> findServices();
+    Set<String> findServices();
 
     String findServiceVersion(String serviceName, String application);
 
@@ -88,7 +88,7 @@ public interface ProviderService {
 
     List<String> findServicesByAddress(String providerAddress);
 
-    List<String> findApplications();
+    Set<String> findApplications();
 
     /**
      * Get provider list with specific application name.

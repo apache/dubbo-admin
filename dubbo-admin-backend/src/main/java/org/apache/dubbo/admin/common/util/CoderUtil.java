@@ -17,15 +17,16 @@
 
 package org.apache.dubbo.admin.common.util;
 
+import org.apache.dubbo.common.io.Bytes;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
-public class MD5Util {
+public class CoderUtil {
 
-    private static final Logger logger = LoggerFactory.getLogger(MD5Util.class);
+    private static final Logger logger = LoggerFactory.getLogger(CoderUtil.class);
     private static MessageDigest md;
     private static final char[] hexCode = "0123456789ABCDEF".toCharArray();
 
@@ -55,6 +56,16 @@ public class MD5Util {
         return hash;
     }
 
+    public static String MD5_32bit(byte[] input) {
+        if (input == null || input.length == 0) {
+            return null;
+        }
+        md.update(input);
+        byte[] digest = md.digest();
+        String hash = convertToString(digest);
+        return hash;
+    }
+
     private static String convertToString(byte[] data) {
         StringBuilder r = new StringBuilder(data.length * 2);
         for (byte b : data) {
@@ -64,7 +75,7 @@ public class MD5Util {
         return r.toString();
     }
 
-    public static void main(String[] args) {
-        System.out.println(MD5_16bit("fwjioejfiowejfiowjfiwfjowejfei"));
+    public static String decodeBase64(String source) {
+        return new String(Bytes.base642bytes(source));
     }
 }

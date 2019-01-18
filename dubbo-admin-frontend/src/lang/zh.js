@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 export default {
+  service: '服务',
   serviceSearch: '服务查询',
   serviceGovernance: '服务治理',
   routingRule: '条件路由',
@@ -62,6 +63,7 @@ export default {
   edit: '编辑',
   delete: '删除',
   searchRoutingRule: '搜索路由规则',
+  searchAccessRule: '搜索黑白名单',
   searchWeightRule: '搜索权重调整规则',
   dataIdHint: '组/服务：版本形式的服务ID，组和版本可选',
   agree: '同意',
@@ -97,5 +99,28 @@ export default {
     metrics: 'Metrics会在后续版本中发布，敬请期待',
     serviceTest: '服务测试会在后续版本中发布，敬请期待',
     serviceMock: '服务Mock会在后续版本中发布，敬请期待'
-  }
+  },
+  by: '按',
+  $vuetify: {
+    dataIterator: {
+      rowsPerPageText: '每页记录数：',
+      rowsPerPageAll: '全部',
+      pageText: '{0}-{1} 共 {2} 条',
+      noResultsText: '没有找到匹配记录',
+      nextPage: '下一页',
+      prevPage: '上一页'
+    },
+    dataTable: {
+      rowsPerPageText: '每页行数：'
+    },
+    noDataText: '无可用数据'
+  },
+  configManage: '配置管理',
+  configCenterAddress: '配置中心地址',
+  searchDubboConfig: '搜索Dubbo配置',
+  createNewDubboConfig: '新建Dubbo配置',
+  scope: '范围',
+  name: '名称',
+  warnDeleteConfig: ' 是否要删除Dubbo配置: ',
+  configNameHint: '配置所属的应用名, global 表示全局配置'
 }

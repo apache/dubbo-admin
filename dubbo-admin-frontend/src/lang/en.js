@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 export default {
+  service: 'Service',
   serviceSearch: 'Search service name',
   serviceGovernance: 'Service Governance',
   routingRule: 'Condition Rule',
@@ -62,6 +63,7 @@ export default {
   edit: 'Edit',
   delete: 'Delete',
   searchRoutingRule: 'Search Routing Rule',
+  searchAccess: 'Search Access Rule',
   searchWeightRule: 'Search Weight Adjust Rule',
   dataIdHint: 'A service ID in form of group/service:version, group and version are optional',
   agree: 'Agree',
@@ -97,5 +99,28 @@ export default {
     metrics: 'Metrics will release later',
     serviceTest: 'Service Test will release later',
     serviceMock: 'Service Mock will release later'
-  }
+  },
+  by: 'by ',
+  $vuetify: {
+    dataIterator: {
+      rowsPerPageText: 'Items per page:',
+      rowsPerPageAll: 'All',
+      pageText: '{0}-{1} of {2}',
+      noResultsText: 'No matching records found',
+      nextPage: 'Next page',
+      prevPage: 'Previous page'
+    },
+    dataTable: {
+      rowsPerPageText: 'Rows per page:'
+    },
+    noDataText: 'No data available'
+  },
+  configManage: 'Configuration Management',
+  configCenterAddress: 'ConfigCenter Address',
+  searchDubboConfig: 'Search Dubbo Config',
+  createNewDubboConfig: 'Create New Dubbo Config',
+  scope: 'Scope',
+  name: 'Name',
+  warnDeleteConfig: ' Are you sure to Delete Dubbo Config: ',
+  configNameHint: "Application name the config belongs to, use 'global'(without quotes) for global config"
 }
