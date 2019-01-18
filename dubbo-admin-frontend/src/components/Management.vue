@@ -79,7 +79,7 @@
             v-model="key"
           ></v-text-field>
 
-          <v-subheader class="pa-0 mt-3">{{$t('ruleContent')}}</v-subheader>
+          <v-subheader class="pa-0 mt-3">{{$t('configContent')}}</v-subheader>
           <ace-editor lang="properties" v-model="rule" :readonly="readonly"></ace-editor>
 
         </v-card-text>
