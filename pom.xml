@@ -66,6 +66,7 @@
 		<jedis-version>2.9.0</jedis-version>
         <apollo-version>1.2.0</apollo-version>
 		<snakeyaml-version>1.19</snakeyaml-version>
+		<powermock-version>2.0.0</powermock-version>
 	</properties>
 
 	<dependencyManagement>
@@ -130,6 +131,16 @@
 				<groupId>io.netty</groupId>
 				<artifactId>netty-all</artifactId>
 				<version>${netty-version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.powermock</groupId>
+				<artifactId>powermock-api-mockito2</artifactId>
+				<version>${powermock-version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.powermock</groupId>
+				<artifactId>powermock-module-junit4</artifactId>
+				<version>${powermock-version}</version>
 			</dependency>
 
 		</dependencies>
