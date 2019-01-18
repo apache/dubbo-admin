@@ -1,36 +1,46 @@
 package org.apache.dubbo.admin.config;
 
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.retry.ExponentialBackoffRetry;
+import org.apache.curator.test.TestingServer;
 import org.apache.dubbo.admin.common.exception.ConfigurationException;
-import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
-import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
-import org.apache.dubbo.common.extension.ExtensionLoader;
-import org.apache.dubbo.registry.Registry;
-import org.apache.dubbo.registry.RegistryFactory;
+import org.apache.dubbo.common.utils.NetUtils;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PowerMockIgnore;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
-import org.powermock.modules.junit4.PowerMockRunnerDelegate;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.powermock.api.mockito.PowerMockito.mock;
-import static org.powermock.api.mockito.PowerMockito.when;
+import java.io.IOException;
+
+import static org.junit.Assert.*;
 
 
-@RunWith(PowerMockRunner.class)
-@PowerMockRunnerDelegate(SpringJUnit4ClassRunner.class)
-@PrepareForTest(value = {ExtensionLoader.class})
-@PowerMockIgnore({"javax.management.*"})
+@RunWith(SpringJUnit4ClassRunner.class)
 public class ConfigCenterTest {
+
+    private String zkAddress;
+    private TestingServer zkServer;
+    private CuratorFramework zkClient;
+
+    @Before
+    public void setup() throws Exception {
+        int zkServerPort = NetUtils.getAvailablePort();
+        zkAddress = "zookeeper://127.0.0.1:" + zkServerPort;
+        zkServer = new TestingServer(zkServerPort, true);
+        zkClient = CuratorFrameworkFactory.builder().connectString(zkServer.getConnectString()).retryPolicy(new ExponentialBackoffRetry(1000, 3)).build();
+        zkClient.start();
+    }
+
+    @After
+    public void tearDown() throws IOException {
+        zkServer.close();
+        zkServer.stop();
+    }
 
     @InjectMocks
     private ConfigCenter configCenter;
@@ -38,41 +48,50 @@ public class ConfigCenterTest {
     @Test
     public void testGetDynamicConfiguration() throws Exception {
         // mock @value inject
-        ReflectionTestUtils.setField(configCenter, "configCenter", "zookeeper://127.0.0.1:2181");
+        ReflectionTestUtils.setField(configCenter, "configCenter", zkAddress);
         ReflectionTestUtils.setField(configCenter, "group", "dubbo");
         ReflectionTestUtils.setField(configCenter, "username", "username");
         ReflectionTestUtils.setField(configCenter, "password", "password");
 
-        ExtensionLoader extensionLoader = mock(ExtensionLoader.class);
-        GovernanceConfiguration dynamicConfiguration = mock(GovernanceConfiguration.class);
-        PowerMockito.mockStatic(ExtensionLoader.class);
+        // config is null
+        configCenter.getDynamicConfiguration();
 
-        when(extensionLoader.getExtension(any())).thenReturn(dynamicConfiguration);
-        when(ExtensionLoader.class, "getExtensionLoader", GovernanceConfiguration.class).thenReturn(extensionLoader);
+        // config is registry address
+        zkClient.createContainers("/dubbo/config/dubbo/dubbo.properties");
+        zkClient.setData().forPath("/dubbo/config/dubbo/dubbo.properties", "dubbo.registry.address=zookeeper://test-registry.com:2181".getBytes());
+        configCenter.getDynamicConfiguration();
+        Object registryUrl = ReflectionTestUtils.getField(configCenter, "registryUrl");
+        assertNotNull(registryUrl);
+        assertEquals("test-registry.com", ((URL) registryUrl).getHost());
 
-        // stub config is null
-        assertEquals(dynamicConfiguration, configCenter.getDynamicConfiguration());
-        // stub config is registry address
-        when(dynamicConfiguration.getConfig(anyString())).thenReturn("dubbo.registry.address=zookeeper://test-registry.com:2181");
-        assertEquals(dynamicConfiguration, configCenter.getDynamicConfiguration());
-        // stub config is meta date address
-        when(dynamicConfiguration.getConfig(anyString())).thenReturn("dubbo.metadata-report.address=zookeeper://test-metadata.com:2181");
-        assertEquals(dynamicConfiguration, configCenter.getDynamicConfiguration());
+        // config is meta date address
+        zkClient.setData().forPath("/dubbo/config/dubbo/dubbo.properties", "dubbo.metadata-report.address=zookeeper://test-metadata.com:2181".getBytes());
+        configCenter.getDynamicConfiguration();
+        Object metadataUrl = ReflectionTestUtils.getField(configCenter, "metadataUrl");
+        assertNotNull(metadataUrl);
+        assertEquals("test-metadata.com", ((URL) metadataUrl).getHost());
 
-        // stub config is empty
-        when(dynamicConfiguration.getConfig(anyString())).thenReturn("");
-        assertEquals(dynamicConfiguration, configCenter.getDynamicConfiguration());
+        // config is empty
+        zkClient.setData().forPath("/dubbo/config/dubbo/dubbo.properties", "".getBytes());
+        ReflectionTestUtils.setField(configCenter, "registryUrl", null);
+        ReflectionTestUtils.setField(configCenter, "metadataUrl", null);
+        configCenter.getDynamicConfiguration();
+        assertNull(ReflectionTestUtils.getField(configCenter, "registryUrl"));
+        assertNull(ReflectionTestUtils.getField(configCenter, "metadataUrl"));
 
         // configCenter is null
         ReflectionTestUtils.setField(configCenter, "configCenter", null);
         // registryAddress is not null
-        ReflectionTestUtils.setField(configCenter, "registryAddress", "zookeeper://127.0.0.1:2181");
-        assertEquals(dynamicConfiguration, configCenter.getDynamicConfiguration());
+        ReflectionTestUtils.setField(configCenter, "registryAddress", zkAddress);
+        configCenter.getDynamicConfiguration();
+        registryUrl = ReflectionTestUtils.getField(configCenter, "registryUrl");
+        assertNotNull(registryUrl);
+        assertEquals("127.0.0.1", ((URL) registryUrl).getHost());
 
-        // configCenter, registryAddress are all null
-        ReflectionTestUtils.setField(configCenter, "configCenter", null);
-        ReflectionTestUtils.setField(configCenter, "registryAddress", null);
+        // configCenter & registryAddress are null
         try {
+            ReflectionTestUtils.setField(configCenter, "configCenter", null);
+            ReflectionTestUtils.setField(configCenter, "registryAddress", null);
             configCenter.getDynamicConfiguration();
             fail("should throw exception when configCenter, registryAddress are all null");
         } catch (ConfigurationException e) {
@@ -86,23 +105,18 @@ public class ConfigCenterTest {
             fail("should throw exception when registryAddress is blank");
         } catch (ConfigurationException e) {
         }
+        assertNull(ReflectionTestUtils.getField(configCenter, "registryUrl"));
 
         // mock @value inject
-        ReflectionTestUtils.setField(configCenter, "registryAddress", "zookeeper://127.0.0.1:2181");
+        ReflectionTestUtils.setField(configCenter, "registryAddress", zkAddress);
         ReflectionTestUtils.setField(configCenter, "group", "dubbo");
         ReflectionTestUtils.setField(configCenter, "username", "username");
         ReflectionTestUtils.setField(configCenter, "password", "password");
 
-        ExtensionLoader extensionLoader = mock(ExtensionLoader.class);
-        RegistryFactory registryFactory = mock(RegistryFactory.class);
-        Registry registry = mock(Registry.class);
-        PowerMockito.mockStatic(ExtensionLoader.class);
-
-        when(registryFactory.getRegistry(any(URL.class))).thenReturn(registry);
-        when(extensionLoader.getAdaptiveExtension()).thenReturn(registryFactory);
-        when(ExtensionLoader.class, "getExtensionLoader", RegistryFactory.class).thenReturn(extensionLoader);
-
-        assertEquals(registry, configCenter.getRegistry());
+        configCenter.getRegistry();
+        Object registryUrl = ReflectionTestUtils.getField(configCenter, "registryUrl");
+        assertNotNull(registryUrl);
+        assertEquals("127.0.0.1", ((URL) registryUrl).getHost());
     }
 
     @Test
@@ -110,20 +124,17 @@ public class ConfigCenterTest {
         // when metadataAddress is empty
         ReflectionTestUtils.setField(configCenter, "metadataAddress", "");
         configCenter.getMetadataCollector();
+        assertNull(ReflectionTestUtils.getField(configCenter, "metadataUrl"));
 
         // mock @value inject
-        ReflectionTestUtils.setField(configCenter, "metadataAddress", "zookeeper://127.0.0.1:2181");
+        ReflectionTestUtils.setField(configCenter, "metadataAddress", zkAddress);
         ReflectionTestUtils.setField(configCenter, "group", "dubbo");
         ReflectionTestUtils.setField(configCenter, "username", "username");
         ReflectionTestUtils.setField(configCenter, "password", "password");
 
-        ExtensionLoader extensionLoader = mock(ExtensionLoader.class);
-        MetaDataCollector metaDataCollector = mock(MetaDataCollector.class);
-        PowerMockito.mockStatic(ExtensionLoader.class);
-
-        when(extensionLoader.getExtension(any())).thenReturn(metaDataCollector);
-        when(ExtensionLoader.class, "getExtensionLoader", MetaDataCollector.class).thenReturn(extensionLoader);
-
         configCenter.getMetadataCollector();
+        Object metadataUrl = ReflectionTestUtils.getField(configCenter, "metadataUrl");
+        assertNotNull(metadataUrl);
+        assertEquals("127.0.0.1", ((URL) metadataUrl).getHost());
     }
 }
