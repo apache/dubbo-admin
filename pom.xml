@@ -58,7 +58,7 @@
         <commons-lang3-version>3.7</commons-lang3-version>
 		<dubbo-version>2.7.0-SNAPSHOT</dubbo-version>
 		<curator-version>2.12.0</curator-version>
-		<curator-test-version>2.12.0</curator-test-version>
+		<curator-test-version>4.1.0</curator-test-version>
 		<fastjson-version>1.2.46</fastjson-version>
 		<springfox-swagger-version>2.9.2</springfox-swagger-version>
 		<netty-version>4.1.30.Final</netty-version>
