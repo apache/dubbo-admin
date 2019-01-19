@@ -39,9 +39,4 @@ public class UrlUtilsTest {
         String result = UrlUtils.arrayToString(strArr);
         Assert.assertEquals(result, "1,2,3");
     }
-
-    @Test
-    public void testTravis() {
-        Assert.assertTrue(1 == 2);
-    }
 }
