@@ -16,7 +16,6 @@
  */
 package org.apache.dubbo.admin.common.util;
 
-import org.apache.dubbo.admin.common.util.UrlUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -40,4 +39,9 @@ public class UrlUtilsTest {
         String result = UrlUtils.arrayToString(strArr);
         Assert.assertEquals(result, "1,2,3");
     }
+
+/*    @Test
+    public void testTravis() {
+        Assert.assertTrue(1 == 2);
+    }*/
 }

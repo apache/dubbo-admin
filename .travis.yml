@@ -1,11 +1,11 @@
-language: java
+language: generic # support java and node.js
 sudo: false # faster builds
 
 jdk:
-    - oraclejdk8
-    - oraclejdk11
+  - oraclejdk8
+  - oraclejdk11
 script:
-    - travis_wait 30 mvn clean package
+  - travis_wait 30 mvn clean package
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
