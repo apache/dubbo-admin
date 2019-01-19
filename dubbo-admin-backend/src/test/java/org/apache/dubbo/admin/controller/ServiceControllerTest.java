@@ -36,11 +36,6 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
 
-/**
- * Created by kezhenxu94 at 2019/1/16 17:45.
- *
- * @author kezhenxu94 (kezhenxu94 at 163 dot com)
- */
 public class ServiceControllerTest extends AbstractSpringIntegrationTest {
   @Autowired
   private Registry registry;

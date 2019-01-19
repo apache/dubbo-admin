@@ -32,11 +32,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.client.RestTemplate;
 
-/**
- * Created by kezhenxu94 at 2019/1/16 17:41.
- *
- * @author kezhenxu94 (kezhenxu94 at 163 dot com)
- */
 @ActiveProfiles("test")
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
