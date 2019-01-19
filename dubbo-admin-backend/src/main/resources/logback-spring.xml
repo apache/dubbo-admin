@@ -23,6 +23,8 @@
     <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
     <include resource="org/springframework/boot/logging/logback/file-appender.xml"/>
 
+    <logger name="org.apache" level="WARN"/>
+
     <appender name="FILE-LOG-ASYNC" class="ch.qos.logback.classic.AsyncAppender">
         <discardingThreshold>0</discardingThreshold>
         <queueSize>2048</queueSize>
