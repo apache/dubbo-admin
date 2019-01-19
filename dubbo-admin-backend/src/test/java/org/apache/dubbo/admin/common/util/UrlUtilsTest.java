@@ -40,8 +40,8 @@ public class UrlUtilsTest {
         Assert.assertEquals(result, "1,2,3");
     }
 
-/*    @Test
+    @Test
     public void testTravis() {
         Assert.assertTrue(1 == 2);
-    }*/
+    }
 }
