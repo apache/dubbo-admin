@@ -58,6 +58,8 @@ public class ManagementControllerTest extends AbstractSpringIntegrationTest {
     byte[] bytes = zkClient.getData().forPath(getPath("dubbo"));
     String config = new String(bytes);
     assertEquals(configDTO.getConfig(), config);
+
+    zkClient.delete().forPath(getPath("dubbo"));
   }
 
   @Test
@@ -91,19 +93,20 @@ public class ManagementControllerTest extends AbstractSpringIntegrationTest {
 
   @Test
   public void shouldUpdateConfigSpecifiedKey() throws Exception {
+    String key = "shouldUpdateConfigSpecifiedKey";
     ConfigDTO configDTO = new ConfigDTO();
-    configDTO.setKey(Constants.GLOBAL_CONFIG);
+    configDTO.setKey(key);
     configDTO.setConfig("key1=val1\nkey2=val2");
     restTemplate.postForEntity(url("/api/{env}/manage/config"), configDTO, Boolean.class, env);
 
     configDTO.setConfig("key1=updatedVal1\nkey2=updatedVal2");
     ResponseEntity<Void> responseEntity = restTemplate.exchange(
         url("/api/{env}/manage/config/{key}"), HttpMethod.PUT,
-        new HttpEntity<>(configDTO), Void.class, env, Constants.GLOBAL_CONFIG
+        new HttpEntity<>(configDTO), Void.class, env, key
     );
     assertEquals(responseEntity.getStatusCode(), HttpStatus.OK);
 
-    byte[] bytes = zkClient.getData().forPath(getPath("dubbo"));
+    byte[] bytes = zkClient.getData().forPath(getPath(key));
     String config = new String(bytes);
     assertEquals("key1=updatedVal1\nkey2=updatedVal2", config);
   }
@@ -142,7 +145,7 @@ public class ManagementControllerTest extends AbstractSpringIntegrationTest {
     List<ConfigDTO> configDTOs = new ArrayList<>(num);
     for (int i = 0; i < num; i++) {
       ConfigDTO configDTO = new ConfigDTO();
-      configDTO.setKey("key" + i);
+      configDTO.setKey("shouldDeleteConfigKey" + i);
       configDTO.setConfig("key1=val1\nkey2=val2");
       configDTOs.add(configDTO);
 
@@ -155,7 +158,7 @@ public class ManagementControllerTest extends AbstractSpringIntegrationTest {
     when(providerService.findApplications())
         .thenReturn(configDTOs.stream().map(ConfigDTO::getKey).collect(Collectors.toSet()));
 
-    restTemplate.delete(url("/api/{env}/manage/config/{key}"), env, "key1");
+    restTemplate.delete(url("/api/{env}/manage/config/{key}"), env, "shouldDeleteConfigKey1");
     ResponseEntity<List<ConfigDTO>> responseEntity = restTemplate.exchange(
         url("/api/{env}/manage/config/{key}"), HttpMethod.GET,
         null, new ParameterizedTypeReference<List<ConfigDTO>>() {
@@ -164,7 +167,7 @@ public class ManagementControllerTest extends AbstractSpringIntegrationTest {
     assertEquals(responseEntity.getStatusCode(), HttpStatus.OK);
     assertThat(responseEntity.getBody(), hasSize(num - 1));
 
-    restTemplate.delete(url("/api/{env}/manage/config/{key}"), env, "key10");
+    restTemplate.delete(url("/api/{env}/manage/config/{key}"), env, "shouldDeleteConfigKey10");
     responseEntity = restTemplate.exchange(
         url("/api/{env}/manage/config/{key}"), HttpMethod.GET,
         null, new ParameterizedTypeReference<List<ConfigDTO>>() {
