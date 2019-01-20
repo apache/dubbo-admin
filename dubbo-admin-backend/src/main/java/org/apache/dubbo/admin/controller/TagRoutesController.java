@@ -68,7 +68,7 @@ public class TagRoutesController {
         if (providerService.findVersionInApplication(app).equals("2.6")) {
             throw new VersionValidationException("dubbo 2.6 does not support tag route");
         }
-        if (routeService.findConditionRoute(id) == null) {
+        if (routeService.findTagRoute(id) == null) {
             throw new ResourceNotFoundException("can not find tag route, Id: " + id);
         }
         routeService.updateTagRoute(routeDTO);
