@@ -207,6 +207,17 @@
         return result.trim()
       }
     },
+    computed: {
+      area () {
+        return this.$i18n.locale
+      }
+    },
+    watch: {
+      area () {
+        this.setdetailHeaders()
+        this.setmetaHeaders()
+      }
+    },
     mounted: function () {
       this.setmetaHeaders()
       this.setdetailHeaders()
