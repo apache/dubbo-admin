@@ -60,8 +60,8 @@ public class ConfigCenter {
     @Value("${admin.config-center.username:}")
     private String username;
     @Value("${admin.config-center.password:}")
-
     private String password;
+
     private static String globalConfigPath = "config/dubbo/dubbo.properties";
 
     private static final Logger logger = LoggerFactory.getLogger(ConfigCenter.class);

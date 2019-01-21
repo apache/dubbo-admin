@@ -315,6 +315,11 @@
     created () {
       this.setHeight()
     },
+    computed: {
+      area () {
+        return this.$i18n.locale
+      }
+    },
     watch: {
       area () {
         this.setHeaders()
