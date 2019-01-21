@@ -54,6 +54,7 @@ public class Constants {
     public static final String CONSUMERS_CATEGORY = "consumers";
     public static final String SPECIFICATION_VERSION_KEY = "release";
     public static final String GLOBAL_CONFIG = "global";
+    public static final String GLOBAL_CONFIG_PATH = "config/dubbo/dubbo.properties";
     public static final Set<String> CONFIGS = new HashSet<>();
 
     static {
