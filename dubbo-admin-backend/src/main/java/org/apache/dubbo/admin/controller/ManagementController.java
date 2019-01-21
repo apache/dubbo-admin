@@ -72,7 +72,7 @@ public class ManagementController {
         List<ConfigDTO> configDTOs = new ArrayList<>();
         if (key.equals(Constants.ANY_VALUE)) {
             query = providerService.findApplications();
-            query.add("global");
+            query.add(Constants.GLOBAL_CONFIG);
         } else {
             query.add(key);
         }

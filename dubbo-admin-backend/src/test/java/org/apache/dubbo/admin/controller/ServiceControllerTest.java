@@ -17,8 +17,6 @@
 
 package org.apache.dubbo.admin.controller;
 
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import org.apache.dubbo.admin.AbstractSpringIntegrationTest;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.ServiceDTO;
@@ -32,6 +30,10 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertThat;
@@ -41,7 +43,7 @@ public class ServiceControllerTest extends AbstractSpringIntegrationTest {
   private Registry registry;
 
   @Before
-  public void setUp() throws InterruptedException {
+  public void setUp() throws Exception {
     final Set<URL> registered = ((AbstractRegistry) registry).getRegistered();
     for (final URL url : registered) {
       registry.unregister(url);
