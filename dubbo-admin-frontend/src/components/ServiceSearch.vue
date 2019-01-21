@@ -169,6 +169,9 @@
         } else if (this.selected === 2) {
           return this.$t('appSearchHint')
         }
+      },
+      area () {
+        return this.$i18n.locale
       }
     },
     watch: {
