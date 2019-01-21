@@ -462,6 +462,9 @@ export default {
   computed: {
     queryBy () {
       return this.$t('by') + this.$t(this.items[this.selected].title)
+    },
+    area () {
+      return this.$i18n.locale
     }
   },
   watch: {

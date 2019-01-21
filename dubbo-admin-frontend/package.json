@@ -8,7 +8,8 @@
     "dev": "webpack-dev-server --inline --progress --config build/webpack.dev.conf.js",
     "start": "npm run dev",
     "lint": "eslint --ext .js,.vue src",
-    "build": "node build/build.js"
+    "build": "node build/build.js",
+    "test": "npm run lint"
   },
   "dependencies": {
     "ajv": "^6.7.0",
@@ -23,6 +24,8 @@
     "vuex": "^3.0.1"
   },
   "devDependencies": {
+    "@vue/server-test-utils": "^1.0.0-beta.28",
+    "@vue/test-utils": "^1.0.0-beta.28",
     "autoprefixer": "^7.1.2",
     "babel-core": "^6.22.1",
     "babel-eslint": "^7.1.1",
@@ -66,7 +69,7 @@
     "url-loader": "^1.0.1",
     "vue-loader": "^13.3.0",
     "vue-style-loader": "^3.0.1",
-    "vue-template-compiler": "^2.5.2",
+    "vue-template-compiler": "^2.5.22",
     "webpack": "^3.6.0",
     "webpack-bundle-analyzer": "^2.9.0",
     "webpack-dev-server": "^2.9.1",
