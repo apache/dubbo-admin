@@ -17,7 +17,6 @@
 
 package org.apache.dubbo.admin.controller;
 
-import com.ctrip.framework.apollo.core.enums.Env;
 import com.google.gson.Gson;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.model.domain.Consumer;
@@ -33,9 +32,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 
 @RestController
 @RequestMapping("/api/{env}")
@@ -43,11 +39,13 @@ public class ServiceController {
 
     private final ProviderService providerService;
     private final ConsumerService consumerService;
+    private final Gson gson;
 
     @Autowired
     public ServiceController(ProviderService providerService, ConsumerService consumerService) {
         this.providerService = providerService;
         this.consumerService = consumerService;
+        this.gson = new Gson();
     }
 
     @RequestMapping( value = "/service", method = RequestMethod.GET)
@@ -55,8 +53,6 @@ public class ServiceController {
                                          @RequestParam String filter,@PathVariable String env) {
         return providerService.getServiceDTOS(pattern, filter, env);
     }
-
-
 
     @RequestMapping(value = "/service/{service}", method = RequestMethod.GET)
     public ServiceDetailDTO serviceDetail(@PathVariable String service, @PathVariable String env) {
@@ -78,7 +74,6 @@ public class ServiceController {
         serviceDetailDTO.setConsumers(consumers);
         serviceDetailDTO.setProviders(providers);
         if (metadata != null) {
-            Gson gson = new Gson();
             FullServiceDefinition serviceDefinition = gson.fromJson(metadata, FullServiceDefinition.class);
             serviceDetailDTO.setMetadata(serviceDefinition);
         }
