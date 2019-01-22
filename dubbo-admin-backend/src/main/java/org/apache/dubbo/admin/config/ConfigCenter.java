@@ -18,19 +18,18 @@
 package org.apache.dubbo.admin.config;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.dubbo.admin.DubboAdminProperties;
 import org.apache.dubbo.admin.common.exception.ConfigurationException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.admin.registry.metadata.impl.NoOpMetadataCollector;
-import org.apache.dubbo.admin.service.ManagementService;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.registry.Registry;
 import org.apache.dubbo.registry.RegistryFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -41,28 +40,13 @@ import java.util.Arrays;
 
 @Configuration
 public class ConfigCenter {
-
-
-
-    //centers in dubbo 2.7
-    @Value("${admin.config-center:}")
+    // centers in dubbo 2.7
     private String configCenter;
-
-    @Value("${admin.registry.address:}")
     private String registryAddress;
-
-    @Value("${admin.metadata.address:}")
     private String metadataAddress;
-
-    @Value("${admin.registry.group:}")
     private String group;
-
-    @Value("${admin.config-center.username:}")
     private String username;
-    @Value("${admin.config-center.password:}")
     private String password;
-
-    private static String globalConfigPath = "config/dubbo/dubbo.properties";
 
     private static final Logger logger = LoggerFactory.getLogger(ConfigCenter.class);
 
@@ -70,6 +54,14 @@ public class ConfigCenter {
     private URL registryUrl;
     private URL metadataUrl;
 
+    public ConfigCenter(final DubboAdminProperties dubboAdminProperties) {
+        configCenter = dubboAdminProperties.getConfigCenter().getAddress();
+        registryAddress = dubboAdminProperties.getRegistry().getAddress();
+        metadataAddress = dubboAdminProperties.getMetadata().getAddress();
+        group = dubboAdminProperties.getRegistry().getGroup();
+        username = dubboAdminProperties.getConfigCenter().getUsername();
+        password = dubboAdminProperties.getConfigCenter().getPassword();
+    }
 
 
     /*
@@ -84,7 +76,7 @@ public class ConfigCenter {
             dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(configCenterUrl.getProtocol());
             dynamicConfiguration.setUrl(configCenterUrl);
             dynamicConfiguration.init();
-            String config = dynamicConfiguration.getConfig(globalConfigPath);
+            String config = dynamicConfiguration.getConfig(Constants.GLOBAL_CONFIG_PATH);
 
             if (StringUtils.isNotEmpty(config)) {
                 Arrays.stream(config.split("\n")).forEach( s -> {

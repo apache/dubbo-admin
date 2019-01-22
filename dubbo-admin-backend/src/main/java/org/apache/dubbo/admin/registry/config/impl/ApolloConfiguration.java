@@ -19,6 +19,7 @@ package org.apache.dubbo.admin.registry.config.impl;
 
 import com.ctrip.framework.apollo.openapi.client.ApolloOpenApiClient;
 import com.ctrip.framework.apollo.openapi.dto.OpenItemDTO;
+import org.apache.dubbo.admin.DubboAdminProperties;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.SPI;
@@ -26,25 +27,23 @@ import org.springframework.beans.factory.annotation.Value;
 
 @SPI("apollo")
 public class ApolloConfiguration implements GovernanceConfiguration {
-
-    @Value("${admin.apollo.token}")
     private String token;
-
-    @Value("${admin.apollo.cluster}")
     private String cluster;
-
-    @Value("${admin.apollo.namespace}")
     private String namespace;
-
-    @Value("${admin.apollo.env}")
     private String env;
-
-    @Value("${admin.apollo.appId}")
     private String appId;
 
     private URL url;
     private ApolloOpenApiClient client;
 
+    public ApolloConfiguration(final DubboAdminProperties dubboAdminProperties) {
+        token = dubboAdminProperties.getApollo().getToken();
+        cluster = dubboAdminProperties.getApollo().getCluster();
+        namespace = dubboAdminProperties.getApollo().getNamespace();
+        env = dubboAdminProperties.getApollo().getEnv();
+        appId = dubboAdminProperties.getApollo().getAppId();
+
+    }
 
     @Override
     public void setUrl(URL url) {

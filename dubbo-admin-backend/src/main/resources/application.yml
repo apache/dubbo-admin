@@ -15,16 +15,17 @@
 # limitations under the License.
 #
 
-# centers in dubbo2.7
-admin.registry.address=zookeeper://127.0.0.1:2181
-admin.config-center=zookeeper://127.0.0.1:2181
-admin.metadata.address=zookeeper://127.0.0.1:2181
-
-
-
-admin.registry.group=dubbo
-admin.apollo.token=e16e5cd903fd0c97a116c873b448544b9d086de9
-admin.apollo.appId=test
-admin.apollo.env=dev
-admin.apollo.cluster=default
-admin.apollo.namespace=dubbo
+admin:
+  registry:
+    address: zookeeper://127.0.0.1:2181
+    group: dubbo
+  config-center:
+    address: zookeeper://127.0.0.1:2181
+  metadata:
+    address: zookeeper://127.0.0.1:2181
+  apollo:
+    env: dev
+    app-id: test
+    cluster: default
+    namespace: dubbo
+    token: e16e5cd903fd0c97a116c873b448544b9d086de9

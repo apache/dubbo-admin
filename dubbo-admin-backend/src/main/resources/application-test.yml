@@ -15,7 +15,10 @@
 # limitations under the License.
 #
 
-# centers in dubbo2.7
-admin.registry.address=zookeeper://127.0.0.1:2182
-admin.config-center=zookeeper://127.0.0.1:2182
-admin.metadata.address=zookeeper://127.0.0.1:2182
+admin:
+  registry:
+    address: zookeeper://127.0.0.1:2182
+  config-center:
+    address: zookeeper://127.0.0.1:2182
+  metadata:
+    address: zookeeper://127.0.0.1:2182
