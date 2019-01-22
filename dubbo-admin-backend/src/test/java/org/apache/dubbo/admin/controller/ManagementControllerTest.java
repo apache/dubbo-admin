@@ -17,6 +17,7 @@
 
 package org.apache.dubbo.admin.controller;
 
+import java.util.UUID;
 import org.apache.dubbo.admin.AbstractSpringIntegrationTest;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.ConfigDTO;
@@ -64,7 +65,8 @@ public class ManagementControllerTest extends AbstractSpringIntegrationTest {
 
   @Test
   public void shouldCreateApplicationConfig() throws Exception {
-    String application = "dubbo-admin";
+    String uuid = UUID.randomUUID().toString();
+    String application = "dubbo-admin" + uuid;
     ConfigDTO configDTO = new ConfigDTO();
     configDTO.setKey(application);
     configDTO.setConfig("key1=val1\nkey2=val2");
