@@ -39,11 +39,13 @@ public class ServiceController {
 
     private final ProviderService providerService;
     private final ConsumerService consumerService;
+    private final Gson gson;
 
     @Autowired
     public ServiceController(ProviderService providerService, ConsumerService consumerService) {
         this.providerService = providerService;
         this.consumerService = consumerService;
+        this.gson = new Gson();
     }
 
     @RequestMapping( value = "/service", method = RequestMethod.GET)
@@ -72,7 +74,6 @@ public class ServiceController {
         serviceDetailDTO.setConsumers(consumers);
         serviceDetailDTO.setProviders(providers);
         if (metadata != null) {
-            Gson gson = new Gson();
             FullServiceDefinition serviceDefinition = gson.fromJson(metadata, FullServiceDefinition.class);
             serviceDetailDTO.setMetadata(serviceDefinition);
         }
