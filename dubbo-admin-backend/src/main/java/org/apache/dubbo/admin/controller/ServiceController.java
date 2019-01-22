@@ -17,7 +17,6 @@
 
 package org.apache.dubbo.admin.controller;
 
-import com.ctrip.framework.apollo.core.enums.Env;
 import com.google.gson.Gson;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.model.domain.Consumer;
@@ -33,9 +32,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 
 @RestController
 @RequestMapping("/api/{env}")
@@ -55,8 +51,6 @@ public class ServiceController {
                                          @RequestParam String filter,@PathVariable String env) {
         return providerService.getServiceDTOS(pattern, filter, env);
     }
-
-
 
     @RequestMapping(value = "/service/{service}", method = RequestMethod.GET)
     public ServiceDetailDTO serviceDetail(@PathVariable String service, @PathVariable String env) {
