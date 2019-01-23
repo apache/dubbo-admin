@@ -24,7 +24,6 @@
 * 标准spring boot工程
 * **注意** 本分支依赖Dubbo2.7-SNAPSHOT版本，该Dubbo版本还未正式发布，因此如果发现依赖方面的错误，请清空本地库中的dubbo2.7相关文件
 * [application.properties配置说明](https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E)  
-* **注意** 本分支依赖Dubbo2.7-SNAPSHOT版本，该Dubbo版本还未正式发布，因此如果发现依赖方面的错误，请清空本地库中的dubbo2.7相关文件
 * 在项目根目录(incubator-dubbo-ops)第一次构建需要强制更新: `mvn -Dmaven.test.skip=true clean -U package`
 
 
