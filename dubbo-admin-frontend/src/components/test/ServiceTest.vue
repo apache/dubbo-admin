@@ -110,7 +110,7 @@
         modal: {
           method: null,
           enable: false,
-          paramaterTypes: null,
+          parameterTypes: null,
           json: []
         }
       }
@@ -161,7 +161,7 @@
           method: item.name
         })
         this.modal.json = []
-        this.modal.paramaterTypes = item.parameterTypes
+        this.modal.parameterTypes = item.parameterTypes
         item.parameterTypes.forEach((i, index) => {
           this.modal.json.push(this.getType(i))
         })
@@ -175,7 +175,7 @@
         this.$axios.post('/test', {
           service: this.service.metadata.canonicalName,
           method: this.modal.method,
-          paramaterTypes: this.modal.paramaterTypes,
+          parameterTypes: this.modal.parameterTypes,
           params: this.modal.json
         }).then(response => {
           console.log(response)
