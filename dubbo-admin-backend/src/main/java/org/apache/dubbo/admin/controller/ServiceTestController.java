@@ -29,8 +29,7 @@ public class ServiceTestController {
 
     @RequestMapping(method = RequestMethod.POST)
     public Object test(@PathVariable String env, @RequestBody ServiceTestDTO serviceTestDTO) {
-        return genericService.invoke(serviceTestDTO.getService(), serviceTestDTO.getMethod(), serviceTestDTO.getParamaterTypes(), serviceTestDTO.getParams());
-//        return null;
+        return genericService.invoke(serviceTestDTO.getService(), serviceTestDTO.getMethod(), serviceTestDTO.getParameterTypes(), serviceTestDTO.getParams());
     }
 
     @RequestMapping(value = "/method", method = RequestMethod.GET)
