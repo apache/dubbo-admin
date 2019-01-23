@@ -23,7 +23,9 @@
           :label="label" clearable
           :hint="hint"
           v-bind:value="value"
-          v-on:input="$emit('input', $event)"></v-text-field>
+          v-on:input="$emit('input', $event)"
+          @keydown.enter="submit"
+        ></v-text-field>
         <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
       </v-layout>
     </v-card-text>
