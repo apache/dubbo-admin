@@ -5,6 +5,7 @@ jdk:
     - oraclejdk8
     - oraclejdk11
 script:
+    - ./mvnw checkstyle:check
     - travis_wait 30 ./mvnw clean package
 
 after_success:
