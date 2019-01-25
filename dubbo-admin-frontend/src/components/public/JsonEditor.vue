@@ -34,7 +34,15 @@
         type: Array,
         default: () => ['tree', 'code']
       },
-      templates: Array
+      templates: Array,
+      name: {
+        type: String,
+        default: 'Parameters'
+      },
+      readonly: {
+        type: Boolean,
+        default: false
+      }
     },
     data () {
       return {
@@ -44,27 +52,28 @@
     watch: {
       value (newVal, oldVal) {
         if (newVal !== oldVal && this.$jsoneditor) {
-          this.$jsoneditor.update(newVal)
+          this.$jsoneditor.update(newVal || {})
         }
       }
     },
     mounted () {
       const options = {
-        name: 'Parameters',
+        name: this.name,
         navigationBar: false,
         search: false,
         mode: this.mode,
         modes: this.modes,
+        onEditable: (node) => !this.readonly,
         onChange: () => {
           if (this.$jsoneditor) {
-            var json = this.$jsoneditor.get()
+            const json = this.$jsoneditor.get()
             this.$emit('input', json)
           }
         },
         templates: this.templates
       }
       this.$jsoneditor = new JSONEditor(this.$el, options)
-      this.$jsoneditor.set(this.value)
+      this.$jsoneditor.set(this.value || {})
       this.$jsoneditor.expandAll()
     },
     beforeDestroy () {

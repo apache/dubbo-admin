@@ -22,7 +22,7 @@ import java.util.Map;
 
 public class MethodMetadata {
     private String signature;
-    private List parameterTypes;
+    private List<Object> parameterTypes;
     private String returnType;
 
     public String getSignature() {
@@ -33,11 +33,11 @@ public class MethodMetadata {
         this.signature = signature;
     }
 
-    public List getParameterTypes() {
+    public List<Object> getParameterTypes() {
         return parameterTypes;
     }
 
-    public void setParameterTypes(List parameterTypes) {
+    public void setParameterTypes(List<Object> parameterTypes) {
         this.parameterTypes = parameterTypes;
     }
 

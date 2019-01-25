@@ -20,12 +20,13 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/{env}/test")
 public class ServiceTestController {
+    private final GenericServiceImpl genericService;
+    private final ProviderService providerService;
 
-    @Autowired
-    private GenericServiceImpl genericService;
-
-    @Autowired
-    private ProviderService providerService;
+    public ServiceTestController(GenericServiceImpl genericService, ProviderService providerService) {
+        this.genericService = genericService;
+        this.providerService = providerService;
+    }
 
     @RequestMapping(method = RequestMethod.POST)
     public Object test(@PathVariable String env, @RequestBody ServiceTestDTO serviceTestDTO) {
