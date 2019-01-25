@@ -17,8 +17,8 @@
 
 package org.apache.dubbo.admin.controller;
 
-import com.ctrip.framework.apollo.core.enums.Env;
 import com.google.gson.Gson;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.model.domain.Consumer;
 import org.apache.dubbo.admin.model.domain.Provider;
@@ -26,16 +26,18 @@ import org.apache.dubbo.admin.model.dto.ServiceDTO;
 import org.apache.dubbo.admin.model.dto.ServiceDetailDTO;
 import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.ProviderService;
-import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/{env}")
@@ -43,11 +45,13 @@ public class ServiceController {
 
     private final ProviderService providerService;
     private final ConsumerService consumerService;
+    private final Gson gson;
 
     @Autowired
     public ServiceController(ProviderService providerService, ConsumerService consumerService) {
         this.providerService = providerService;
         this.consumerService = consumerService;
+        this.gson = new Gson();
     }
 
     @RequestMapping( value = "/service", method = RequestMethod.GET)
@@ -55,8 +59,6 @@ public class ServiceController {
                                          @RequestParam String filter,@PathVariable String env) {
         return providerService.getServiceDTOS(pattern, filter, env);
     }
-
-
 
     @RequestMapping(value = "/service/{service}", method = RequestMethod.GET)
     public ServiceDetailDTO serviceDetail(@PathVariable String service, @PathVariable String env) {
@@ -78,7 +80,6 @@ public class ServiceController {
         serviceDetailDTO.setConsumers(consumers);
         serviceDetailDTO.setProviders(providers);
         if (metadata != null) {
-            Gson gson = new Gson();
             FullServiceDefinition serviceDefinition = gson.fromJson(metadata, FullServiceDefinition.class);
             serviceDetailDTO.setMetadata(serviceDefinition);
         }

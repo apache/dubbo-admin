@@ -25,7 +25,7 @@ import org.apache.dubbo.admin.model.dto.ServiceDTO;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.registry.Registry;
 import org.apache.dubbo.registry.support.AbstractRegistry;
-import org.junit.Before;
+import org.junit.After;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
@@ -40,11 +40,14 @@ public class ServiceControllerTest extends AbstractSpringIntegrationTest {
   @Autowired
   private Registry registry;
 
-  @Before
-  public void setUp() throws InterruptedException {
+  @After
+  public void tearDown() throws Exception {
     final Set<URL> registered = ((AbstractRegistry) registry).getRegistered();
     for (final URL url : registered) {
-      registry.unregister(url);
+      try {
+        registry.unregister(url);
+      } catch (Exception ignored) {
+      }
     }
     TimeUnit.SECONDS.sleep(1);
   }
@@ -92,9 +95,9 @@ public class ServiceControllerTest extends AbstractSpringIntegrationTest {
   @Test
   public void shouldFilterUsingPattern() throws InterruptedException {
     final int num = 10;
+    final String application = "dubbo-admin";
     for (int i = 0; i < num; i++) {
       final String service = "org.apache.dubbo.admin.test.service" + i + ".pattern" + (i % 2);
-      final String application = "dubbo-admin";
       registry.register(generateProviderServiceUrl(application, service));
     }
     TimeUnit.SECONDS.sleep(1);

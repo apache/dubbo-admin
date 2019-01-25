@@ -4,8 +4,15 @@ sudo: false # faster builds
 jdk:
     - oraclejdk8
     - oraclejdk11
+
+cache:
+  directories:
+    - $HOME/.m2
+
+install: true
+
 script:
-    - travis_wait 30 mvn clean package
+    - travis_wait 30 ./mvnw clean install -DskipTests=false -Dcheckstyle.skip=false -Dmaven.javadoc.skip=true
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)

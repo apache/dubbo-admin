@@ -25,7 +25,12 @@ import org.apache.dubbo.admin.service.ManagementService;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -72,7 +77,7 @@ public class ManagementController {
         List<ConfigDTO> configDTOs = new ArrayList<>();
         if (key.equals(Constants.ANY_VALUE)) {
             query = providerService.findApplications();
-            query.add("global");
+            query.add(Constants.GLOBAL_CONFIG);
         } else {
             query.add(key);
         }
