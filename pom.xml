@@ -164,7 +164,6 @@
 									<encoding>UTF-8</encoding>
 									<consoleOutput>true</consoleOutput>
 									<failOnViolation>true</failOnViolation>
-									<excludes>**/JSONWriter.java</excludes>
 								</configuration>
 								<goals>
 									<goal>check</goal>

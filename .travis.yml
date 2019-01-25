@@ -9,7 +9,7 @@ before_install:
     - ./mvnw checkstyle:check
 
 script:
-    - travis_wait 30 ./mvnw clean package
+    - travis_wait 30 ./mvnw clean install -DskipTests=false -Dcheckstyle.skip=false -Dmaven.javadoc.skip=true
 
 after_success:
   - bash <(curl -s https://codecov.io/bash)
