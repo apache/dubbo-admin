@@ -16,23 +16,31 @@
  */
 package org.apache.dubbo.admin.controller;
 
-import org.apache.dubbo.admin.common.exception.VersionValidationException;
-import org.apache.dubbo.admin.common.util.Constants;
-import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
-import org.apache.dubbo.admin.service.ProviderService;
-import org.apache.dubbo.common.logger.Logger;
-import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
+import org.apache.dubbo.admin.common.exception.VersionValidationException;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.AccessDTO;
+import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
+import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.admin.service.RouteService;
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/{env}/rules/access")
@@ -89,7 +97,7 @@ public class AccessesController {
             throw new ParamValidationException("Either Service or application is required.");
         }
         String application = accessDTO.getApplication();
-        if (StringUtils.isNotEmpty(application) && this.providerService.findVersionInApplication(application).equals("2.6")) {
+        if (StringUtils.isNotEmpty(application) && "2.6".equals(providerService.findVersionInApplication(application))) {
             throw new VersionValidationException("dubbo 2.6 does not support application scope blackwhite list config");
         }
         if (accessDTO.getBlacklist() == null && accessDTO.getWhitelist() == null) {
