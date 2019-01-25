@@ -16,8 +16,9 @@
  */
 package org.apache.dubbo.admin.common.util;
 
-import org.apache.dubbo.admin.model.domain.*;
+import org.apache.dubbo.admin.model.domain.LoadBalance;
 import org.apache.dubbo.admin.model.domain.Override;
+import org.apache.dubbo.admin.model.domain.Weight;
 import org.apache.dubbo.admin.model.dto.BalancingDTO;
 import org.apache.dubbo.admin.model.dto.DynamicConfigDTO;
 import org.apache.dubbo.admin.model.dto.WeightDTO;
@@ -25,7 +26,11 @@ import org.apache.dubbo.admin.model.store.OverrideConfig;
 import org.apache.dubbo.admin.model.store.OverrideDTO;
 import org.apache.dubbo.common.utils.StringUtils;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * OverrideUtils.java

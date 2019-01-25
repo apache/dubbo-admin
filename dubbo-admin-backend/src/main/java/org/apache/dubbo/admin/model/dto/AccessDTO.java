@@ -16,7 +16,6 @@
  */
 package org.apache.dubbo.admin.model.dto;
 
-import java.util.List;
 import java.util.Set;
 
 public class AccessDTO extends BaseDTO {
