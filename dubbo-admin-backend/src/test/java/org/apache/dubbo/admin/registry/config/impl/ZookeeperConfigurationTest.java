@@ -17,11 +17,10 @@
 
 package org.apache.dubbo.admin.registry.config.impl;
 
+import org.apache.curator.test.TestingServer;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.utils.NetUtils;
-
-import org.apache.curator.test.TestingServer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

@@ -17,7 +17,6 @@
 
 package org.apache.dubbo.admin.controller;
 
-import java.util.UUID;
 import org.apache.dubbo.admin.AbstractSpringIntegrationTest;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.ConfigDTO;
@@ -32,6 +31,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.hamcrest.Matchers.hasSize;

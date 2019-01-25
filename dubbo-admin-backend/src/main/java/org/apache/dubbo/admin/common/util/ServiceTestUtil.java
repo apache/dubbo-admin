@@ -24,10 +24,13 @@ import org.apache.dubbo.metadata.definition.model.MethodDefinition;
 import org.apache.dubbo.metadata.definition.model.ServiceDefinition;
 import org.apache.dubbo.metadata.definition.model.TypeDefinition;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class ServiceTestUtil {
     private static Pattern COLLECTION_PATTERN = Pattern.compile("^java\\.util\\..*(Set|List|Queue|Collection|Deque)(<.*>)*$");

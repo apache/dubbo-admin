@@ -18,7 +18,6 @@
 package org.apache.dubbo.admin.model.domain;
 
 import java.util.List;
-import java.util.Map;
 
 public class MethodMetadata {
     private String signature;
