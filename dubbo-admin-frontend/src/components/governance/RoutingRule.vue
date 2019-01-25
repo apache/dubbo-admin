@@ -26,6 +26,10 @@
                 <v-combobox
                   id="serviceSearch"
                   v-model="filter"
+                  :loading="searchLoading"
+                  :items="typeAhead"
+                  :search-input.sync="input"
+                  @keyup.enter="submit"
                   flat
                   append-icon=""
                   hide-no-data
@@ -179,6 +183,10 @@
       warnText: '',
       warnStatus: {},
       height: 0,
+      searchLoading: false,
+      typeAhead: [],
+      input: null,
+      timerID: null,
       operations: operations,
       serviceRoutingRules: [
       ],
@@ -241,6 +249,26 @@
             width: '115px'
           }
         ]
+      },
+      querySelections (v) {
+        if (this.timerID) {
+          clearTimeout(this.timerID)
+        }
+        // Simulated ajax query
+        this.timerID = setTimeout(() => {
+          if (v && v.length >= 4) {
+            this.searchLoading = true
+            if (this.selected === 0) {
+              this.typeAhead = this.$store.getters.getServiceItems(v)
+            } else if (this.selected === 1) {
+              this.typeAhead = this.$store.getters.getAppItems(v)
+            }
+            this.searchLoading = false
+            this.timerID = null
+          } else {
+            this.typeAhead = []
+          }
+        }, 500)
       },
       submit: function () {
         this.filter = document.querySelector('#serviceSearch').value.trim()
@@ -443,6 +471,9 @@
       }
     },
     watch: {
+      input (val) {
+        this.querySelections(val)
+      },
       area () {
         this.setAppHeaders()
         this.setServiceHeaders()
@@ -451,6 +482,8 @@
     mounted: function () {
       this.setAppHeaders()
       this.setServiceHeaders()
+      this.$store.dispatch('loadServiceItems')
+      this.$store.dispatch('loadAppItems')
       this.ruleText = this.template
       let query = this.$route.query
       let filter = null
