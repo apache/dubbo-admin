@@ -136,6 +136,47 @@
 		</dependencies>
 	</dependencyManagement>
 
+	<profiles>
+		<profile>
+			<id>checkstyle</id>
+			<activation>
+				<jdk>[1.8,)</jdk>
+			</activation>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-checkstyle-plugin</artifactId>
+						<version>${maven-checkstyle-plugin-version}</version>
+						<dependencies>
+							<dependency>
+								<groupId>com.puppycrawl.tools</groupId>
+								<artifactId>checkstyle</artifactId>
+								<version>8.9</version>
+							</dependency>
+						</dependencies>
+						<executions>
+							<execution>
+								<id>checkstyle-validation</id>
+								<phase>validate</phase>
+								<configuration>
+									<configLocation>codestyle/checkstyle.xml</configLocation>
+									<encoding>UTF-8</encoding>
+									<consoleOutput>true</consoleOutput>
+									<failOnViolation>true</failOnViolation>
+									<excludes>**/JSONWriter.java</excludes>
+								</configuration>
+								<goals>
+									<goal>check</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
+
 	<build>
 		<plugins>
 			<plugin>
@@ -157,14 +198,6 @@
 					</execution>
 				</executions>
 			</plugin>
-      <plugin>
-          <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-checkstyle-plugin</artifactId>
-          <version>${maven-checkstyle-plugin-version}</version>
-          <configuration>
-              <configLocation>google_checks.xml</configLocation>
-          </configuration>
-      </plugin>
 		</plugins>
 	</build>
 
