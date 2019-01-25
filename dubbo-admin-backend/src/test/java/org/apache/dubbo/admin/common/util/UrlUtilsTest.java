@@ -16,7 +16,6 @@
  */
 package org.apache.dubbo.admin.common.util;
 
-import org.apache.dubbo.admin.common.util.UrlUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
