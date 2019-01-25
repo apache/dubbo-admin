@@ -66,6 +66,7 @@
 		<jedis-version>2.9.0</jedis-version>
         <apollo-version>1.2.0</apollo-version>
 		<snakeyaml-version>1.19</snakeyaml-version>
+		<maven-checkstyle-plugin-version>3.0.0</maven-checkstyle-plugin-version>
 	</properties>
 
 	<dependencyManagement>
@@ -156,6 +157,14 @@
 					</execution>
 				</executions>
 			</plugin>
+      <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-checkstyle-plugin</artifactId>
+          <version>${maven-checkstyle-plugin-version}</version>
+          <configuration>
+              <configLocation>google_checks.xml</configLocation>
+          </configuration>
+      </plugin>
 		</plugins>
 	</build>
 

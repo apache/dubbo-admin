@@ -95,9 +95,9 @@ public class ServiceControllerTest extends AbstractSpringIntegrationTest {
   @Test
   public void shouldFilterUsingPattern() throws InterruptedException {
     final int num = 10;
+    final String application = "dubbo-admin";
     for (int i = 0; i < num; i++) {
       final String service = "org.apache.dubbo.admin.test.service" + i + ".pattern" + (i % 2);
-      final String application = "dubbo-admin";
       registry.register(generateProviderServiceUrl(application, service));
     }
     TimeUnit.SECONDS.sleep(1);
