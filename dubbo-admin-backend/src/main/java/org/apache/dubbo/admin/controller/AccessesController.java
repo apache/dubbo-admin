@@ -89,7 +89,7 @@ public class AccessesController {
             throw new ParamValidationException("Either Service or application is required.");
         }
         String application = accessDTO.getApplication();
-        if (StringUtils.isNotEmpty(application) && this.providerService.findVersionInApplication(application).equals("2.6")) {
+        if (StringUtils.isNotEmpty(application) && "2.6".equals(providerService.findVersionInApplication(application))) {
             throw new VersionValidationException("dubbo 2.6 does not support application scope blackwhite list config");
         }
         if (accessDTO.getBlacklist() == null && accessDTO.getWhitelist() == null) {
