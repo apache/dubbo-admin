@@ -18,110 +18,85 @@
 <template>
   <v-container grid-list-xl fluid>
     <v-layout row wrap>
-      <v-flex lg12>
-      </v-flex>
-      <v-flex lg12>
+      <v-flex class="test-form" lg12 xl6>
         <v-card>
-          <v-flex lg8>
-            <v-card-title>
-              <span>Service: {{service}}<br> Method: {{method.name}}</span>
-            </v-card-title>
-            <v-card-text>
-              <json-editor id="test" v-model="method.json"/>
-            </v-card-text>
-            <v-card-actions>
-              <v-spacer></v-spacer>
-              <v-btn id="execute" mt-0 color="primary" @click="executeMethod()">EXECUTE</v-btn>
-            </v-card-actions>
-          </v-flex>
-          <v-flex lg8>
-            <v-card-text>
-              <h2>Test Result</h2>
-              <json-editor id="result" v-model="result" v-if="showResult"></json-editor>
-            </v-card-text>
-          </v-flex>
+          <v-card-title class="headline">Test: {{service}}#{{method.name}}</v-card-title>
+          <v-card-text>
+            <json-editor id="test" v-model="method.json"/>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer></v-spacer>
+            <v-btn id="execute" mt-0 color="primary" @click="executeMethod()">EXECUTE</v-btn>
+          </v-card-actions>
         </v-card>
       </v-flex>
-
+      <v-flex class="test-result" lg12 xl6>
+        <v-card>
+          <v-card-title class="headline">Result</v-card-title>
+          <v-card-text>
+            <json-editor v-model="result" name="Result" readonly></json-editor>
+          </v-card-text>
+        </v-card>
+      </v-flex>
     </v-layout>
-
   </v-container>
 </template>
 
 <script>
   import JsonEditor from '@/components/public/JsonEditor'
+
   export default {
     name: 'TestMethod',
+    components: {
+      JsonEditor
+    },
     data () {
       return {
-        basic: [],
-        service: null,
-        application: null,
+        service: this.$route.query['service'],
+        application: this.$route.query['application'],
         method: {
           name: null,
           parameterTypes: [],
           json: []
         },
-        showResult: false,
-        result: {}
+        result: null
       }
     },
-
     methods: {
-      executeMethod: function () {
-        let serviceTestDTO = {}
-        serviceTestDTO.service = this.service
-        serviceTestDTO.method = this.method.name
-        serviceTestDTO.parameterType = this.method.parameterTypes
-        serviceTestDTO.params = this.method.json
-        this.$axios.post('/test', serviceTestDTO)
-          .then(response => {
-            if (response.status === 200) {
-              this.result = response.data
-              this.showResult = true
-            }
-          })
+      executeMethod () {
+        let serviceTestDTO = {
+          service: this.service,
+          method: this.method.name,
+          parameterTypes: this.method.parameterTypes,
+          params: this.method.json
+        }
+        this.$axios.post('/test', serviceTestDTO).then(response => {
+          if (response.status === 200) {
+            this.result = response.data
+          }
+        })
       }
     },
+    mounted () {
+      const query = this.$route.query
+      const method = query['method']
 
-    mounted: function () {
-      let query = this.$route.query
-      let vm = this
-      let method = null
-      Object.keys(query).forEach(function (key) {
-        if (key === 'service') {
-          let item = {}
-          item.name = 'service'
-          item.value = query[key]
-          vm.basic.push(item)
-          vm.service = query[key]
-        }
-        if (key === 'method') {
-          let item = {}
-          item.name = 'method'
-          item.value = query[key]
-          vm.method.name = query[key].split('~')[0]
-          method = query[key]
-          vm.basic.push(item)
-        }
-        if (key === 'application') {
-          vm.application = query[key]
-        }
-      })
+      if (method) {
+        const [methodName, parametersTypes] = method.split('~')
+        this.method.name = methodName
+        this.method.parameterTypes = parametersTypes.split(';')
+      }
+
       this.$axios.get('/test/method', {
         params: {
-          application: vm.application,
-          service: vm.service,
+          application: this.application,
+          service: this.service,
           method: method
         }
       }).then(response => {
         this.method.json = response.data.parameterTypes
       })
-    },
-    components: {
-      JsonEditor
     }
-
   }
 </script>
 

@@ -49,10 +49,10 @@ public class ServiceTestUtil {
         MethodMetadata methodMetadata = new MethodMetadata();
         String[] parameterTypes = methodDefinition.getParameterTypes();
         String returnType = methodDefinition.getReturnType();
-        String signature = methodDefinition.getName() + "~" + Arrays.stream(parameterTypes).collect(Collectors.joining(";"));
+        String signature = methodDefinition.getName() + "~" + String.join(";", parameterTypes);
         methodMetadata.setSignature(signature);
         methodMetadata.setReturnType(returnType);
-        List parameters = generateParameterTypes(parameterTypes, serviceDefinition);
+        List<Object> parameters = generateParameterTypes(parameterTypes, serviceDefinition);
         methodMetadata.setParameterTypes(parameters);
         return methodMetadata;
     }
@@ -72,8 +72,8 @@ public class ServiceTestUtil {
                 type.equals("java.lang.Object");
     }
 
-    private static List generateParameterTypes(String[] parameterTypes, ServiceDefinition serviceDefinition) {
-        List parameters = new ArrayList();
+    private static List<Object> generateParameterTypes(String[] parameterTypes, ServiceDefinition serviceDefinition) {
+        List<Object> parameters = new ArrayList<>();
         for (String type : parameterTypes) {
             Object result = generateType(serviceDefinition, type);
             parameters.add(result);
@@ -87,7 +87,7 @@ public class ServiceTestUtil {
                 .findFirst().orElse(new TypeDefinition(type));
     }
 
-    private static void generateComplexType(ServiceDefinition sd, TypeDefinition td, Map holder) {
+    private static void generateComplexType(ServiceDefinition sd, TypeDefinition td, Map<String, Object> holder) {
         for (Map.Entry<String, TypeDefinition> entry : td.getProperties().entrySet()) {
             if (isPrimitiveType(td)) {
                 holder.put(entry.getKey(), generatePrimitiveType(td));
