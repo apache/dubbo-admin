@@ -91,8 +91,7 @@ public class LoadBalanceControllerTest extends AbstractSpringIntegrationTest {
         BalancingDTO balancing = mock(BalancingDTO.class);
         when(overrideService.findBalance(id)).thenReturn(balancing);
         uri = restTemplate.getUriTemplateHandler().expand(url("/api/{env}/rules/balancing/{id}"), env, id);
-        response = restTemplate.exchange(uri, HttpMethod.PUT, new HttpEntity<>(balancingDTO), String.class);
-        assertTrue(Boolean.valueOf(response.getBody()));
+        assertTrue(restTemplate.exchange(uri, HttpMethod.PUT, new HttpEntity<>(balancingDTO), Boolean.class).getBody());
         verify(overrideService).saveBalance(any(BalancingDTO.class));
     }
 
