@@ -4,6 +4,10 @@ sudo: false # faster builds
 jdk:
     - oraclejdk8
     - oraclejdk11
+
+before_install:
+    - ./mvnw checkstyle:check
+
 script:
     - travis_wait 30 ./mvnw clean package
 
