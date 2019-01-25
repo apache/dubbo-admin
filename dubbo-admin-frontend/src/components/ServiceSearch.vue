@@ -25,7 +25,7 @@
               <v-layout row wrap>
                 <v-combobox
                   id="serviceSearch"
-                  :loading="loading"
+                  :loading="searchLoading"
                   :items="typeAhead"
                   :search-input.sync="input"
                   v-model="filter"
@@ -147,11 +147,9 @@
         }
       ],
       timerID: null,
-      loading: false,
+      searchLoading: false,
       selected: 0,
-      serviceItem: [],
       input: null,
-      appItem: [],
       typeAhead: [],
       services: [],
       filter: '',
@@ -220,17 +218,13 @@
         // Simulated ajax query
         this.timerID = setTimeout(() => {
           if (v && v.length >= 4) {
-            this.loading = true
+            this.searchLoading = true
             if (this.selected === 0) {
-              this.typeAhead = this.serviceItem.filter(e => {
-                return (e || '').toLowerCase().indexOf((v || '').toLowerCase()) > -1
-              })
+              this.typeAhead = this.$store.getters.getServiceItems(v)
             } else if (this.selected === 2) {
-              this.typeAhead = this.appItem.filter(e => {
-                return (e || '').toLowerCase().indexOf((v || '').toLowerCase()) > -1
-              })
+              this.typeAhead = this.$store.getters.getAppItems(v)
             }
-            this.loading = false
+            this.searchLoading = false
             this.timerID = null
           } else {
             this.typeAhead = []
@@ -286,10 +280,11 @@
     },
     mounted: function () {
       this.setHeaders()
+      this.$store.dispatch('loadServiceItems')
+      this.$store.dispatch('loadAppItems')
       let query = this.$route.query
       let filter = null
       let pattern = null
-      let vm = this
       Object.keys(query).forEach(function (key) {
         if (key === 'filter') {
           filter = query[key]
@@ -315,19 +310,6 @@
         pattern = 'service'
         this.search(this.filter, pattern, true)
       }
-      this.$axios.get('/services')
-        .then(response => {
-          if (response.status === 200) {
-            vm.serviceItem = response.data
-          }
-        })
-
-      this.$axios.get('/applications')
-        .then(response => {
-          if (response.status === 200) {
-            vm.appItem = response.data
-          }
-        })
     }
 
   }

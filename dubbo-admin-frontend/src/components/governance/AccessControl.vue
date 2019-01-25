@@ -26,6 +26,10 @@
                 <v-combobox
                   id="serviceSearch"
                   v-model="filter"
+                  :loading="searchLoading"
+                  :items="typeAhead"
+                  :search-input.sync="input"
+                  @keyup.enter="search"
                   flat
                   append-icon=""
                   hide-no-data
@@ -240,6 +244,10 @@ export default {
     serviceHeaders: [],
     appHeaders: [],
     accesses: [],
+    searchLoading: false,
+    typeAhead: [],
+    input: null,
+    timerID: null,
     modal: {
       enable: false,
       readonly: false,
@@ -302,6 +310,26 @@ export default {
           width: '115px'
         }
       ]
+    },
+    querySelections (v) {
+      if (this.timerID) {
+        clearTimeout(this.timerID)
+      }
+      // Simulated ajax query
+      this.timerID = setTimeout(() => {
+        if (v && v.length >= 4) {
+          this.searchLoading = true
+          if (this.selected === 0) {
+            this.typeAhead = this.$store.getters.getServiceItems(v)
+          } else if (this.selected === 1) {
+            this.typeAhead = this.$store.getters.getAppItems(v)
+          }
+          this.searchLoading = false
+          this.timerID = null
+        } else {
+          this.typeAhead = []
+        }
+      }, 500)
     },
     search () {
       if (!this.filter) {
@@ -468,6 +496,9 @@ export default {
     }
   },
   watch: {
+    input (val) {
+      this.querySelections(val)
+    },
     area () {
       this.setAppHeaders()
       this.setServiceHeaders()
@@ -476,6 +507,8 @@ export default {
   mounted () {
     this.setAppHeaders()
     this.setServiceHeaders()
+    this.$store.dispatch('loadServiceItems')
+    this.$store.dispatch('loadAppItems')
     let query = this.$route.query
     if ('service' in query) {
       this.filter = query['service']

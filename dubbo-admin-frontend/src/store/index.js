@@ -23,17 +23,66 @@ Vue.use(Vuex)
 export const store = new Vuex.Store({
   state: {
     appTitle: 'Dubbo OPS',
-    area: null
+    area: null,
+    serviceItems: null,
+    appItems: null
   },
   mutations: {
     setArea (state, area) {
       state.area = area
+    },
+    setServiceItems (state, serviceItems) {
+      state.serviceItems = serviceItems
+    },
+    setAppItems (state, appItems) {
+      state.appItems = appItems
     }
   },
   actions: {
     changeArea ({commit}, area) {
       commit('setArea', area)
+    },
+    /**
+     * Load service items from server, put results into storage.
+     */
+    loadServiceItems ({commit}) {
+      Vue.prototype.$axios.get('/services')
+        .then(response => {
+          if (response.status === 200) {
+            const serviceItems = response.data
+            commit('setServiceItems', serviceItems)
+          }
+        })
+    },
+    /**
+     * Load application items from server, put results into storage.
+     */
+    loadAppItems ({commit}) {
+      Vue.prototype.$axios.get('/applications')
+        .then(response => {
+          if (response.status === 200) {
+            const appItems = response.data
+            commit('setAppItems', appItems)
+          }
+        })
     }
   },
-  getters: {}
+  getters: {
+    /**
+     * Get service item arrays with filter
+     */
+    getServiceItems: (state) => (filter) => {
+      return state.serviceItems.filter(e => {
+        return (e || '').toLowerCase().indexOf((filter || '').toLowerCase()) > -1
+      })
+    },
+    /**
+     * Get application item arrays with filter
+     */
+    getAppItems: (state) => (filter) => {
+      return state.appItems.filter(e => {
+        return (e || '').toLowerCase().indexOf((filter || '').toLowerCase()) > -1
+      })
+    }
+  }
 })
