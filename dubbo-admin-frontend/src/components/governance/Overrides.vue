@@ -19,6 +19,9 @@
   <v-container grid-list-xl fluid >
     <v-layout row wrap>
       <v-flex lg12>
+        <breadcrumb title="dynamicConfig" :items="breads"></breadcrumb>
+      </v-flex>
+      <v-flex lg12>
         <v-card flat color="transparent">
           <v-card-text>
             <v-form>
@@ -160,15 +163,27 @@
   import yaml from 'js-yaml'
   import Search from '@/components/public/Search'
   import operations from '@/api/operation'
+  import Breadcrumb from '@/components/public/Breadcrumb'
   export default {
     components: {
       AceEditor,
-      Search
+      Search,
+      Breadcrumb
     },
     data: () => ({
       items: [
         {id: 0, title: 'serviceName', value: 'service'},
         {id: 1, title: 'app', value: 'application'}
+      ],
+      breads: [
+        {
+          text: 'serviceGovernance',
+          href: ''
+        },
+        {
+          text: 'dynamicConfig',
+          href: ''
+        }
       ],
       selected: 0,
       dropdown_font: [ 'Service', 'App', 'IP' ],

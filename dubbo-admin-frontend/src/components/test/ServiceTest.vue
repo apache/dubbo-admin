@@ -17,6 +17,9 @@
 <template>
   <v-container grid-list-xl fluid>
     <v-layout row wrap>
+      <v-flex lg12>
+        <breadcrumb title="serviceTest" :items="breads"></breadcrumb>
+      </v-flex>
       <v-flex xs12>
         <search v-model="filter" label="Search by service name" :submit="search"></search>
       </v-flex>
@@ -50,29 +53,45 @@
 <script>
   import JsonEditor from '@/components/public/JsonEditor'
   import Search from '@/components/public/Search'
+  import Breadcrumb from '@/components/public/Breadcrumb'
 
   export default {
     name: 'ServiceTest',
     components: {
       JsonEditor,
-      Search
+      Search,
+      Breadcrumb
     },
     data () {
       return {
         filter: this.$route.query['service'] || '',
-        headers: [
+        breads: [
           {
-            text: 'Method Name',
+            text: 'serviceSearch',
+            href: ''
+          }
+        ],
+        headers: [
+        ],
+        service: null,
+        methods: []
+      }
+    },
+    methods: {
+      setHeaders: function () {
+        this.headers = [
+          {
+            text: this.$t('methodName'),
             value: 'method',
             sortable: false
           },
           {
-            text: 'Parameter List',
+            text: this.$t('parameterList'),
             value: 'parameter',
             sortable: false
           },
           {
-            text: 'Return Type',
+            text: this.$t('returnType'),
             value: 'returnType',
             sortable: false
           },
@@ -81,12 +100,8 @@
             value: 'operation',
             sortable: false
           }
-        ],
-        service: null,
-        methods: []
-      }
-    },
-    methods: {
+        ]
+      },
       search () {
         if (!this.filter) {
           return
@@ -125,6 +140,16 @@
       },
       getHref (application, service, method) {
         return `/#/testMethod?application=${application}&service=${service}&method=${method}`
+      }
+    },
+    computed: {
+      area () {
+        return this.$i18n.locale
+      }
+    },
+    watch: {
+      area () {
+        this.setHeaders()
       }
     },
     created () {

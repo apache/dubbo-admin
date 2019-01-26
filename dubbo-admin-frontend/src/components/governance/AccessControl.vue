@@ -19,6 +19,9 @@
   <v-container grid-list-xl fluid>
     <v-layout row wrap>
       <v-flex lg12>
+        <breadcrumb title="accessControl" :items="breads"></breadcrumb>
+      </v-flex>
+      <v-flex lg12>
         <v-card flat color="transparent">
           <v-card-text>
             <v-form>
@@ -230,6 +233,7 @@
 <script>
 import AceEditor from '@/components/public/AceEditor'
 import Search from '@/components/public/Search'
+import Breadcrumb from '@/components/public/Breadcrumb'
 
 export default {
   name: 'AccessControl',
@@ -237,6 +241,16 @@ export default {
     items: [
       {id: 0, title: 'serviceName', value: 'service'},
       {id: 1, title: 'app', value: 'application'}
+    ],
+    breads: [
+      {
+        text: 'serviceGovernance',
+        href: ''
+      },
+      {
+        text: 'accessControl',
+        href: ''
+      }
     ],
     selected: 0,
     filter: null,
@@ -521,6 +535,7 @@ export default {
     this.search()
   },
   components: {
+    Breadcrumb,
     AceEditor,
     Search
   }

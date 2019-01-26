@@ -18,6 +18,9 @@
 <template>
   <v-container grid-list-xl fluid >
     <v-layout row wrap>
+      <v-flex lg12>
+        <breadcrumb title="tagRule" :items="breads"></breadcrumb>
+      </v-flex>
       <v-flex xs12 >
         <search id="serviceSearch" v-model="filter" :submit="submit" :label="$t('searchTagRule')"></search>
       </v-flex>
@@ -98,11 +101,13 @@
   import AceEditor from '@/components/public/AceEditor'
   import operations from '@/api/operation'
   import Search from '@/components/public/Search'
+  import Breadcrumb from '@/components/public/Breadcrumb'
 
   export default {
     components: {
       AceEditor,
-      Search
+      Search,
+      Breadcrumb
     },
     data: () => ({
       dropdown_font: [ 'Service', 'App', 'IP' ],
@@ -118,6 +123,16 @@
         text: '',
         status: {}
       },
+      breads: [
+        {
+          text: 'serviceGovernance',
+          href: ''
+        },
+        {
+          text: 'tagRule',
+          href: ''
+        }
+      ],
       height: 0,
       operations: operations,
       tagRoutingRules: [
