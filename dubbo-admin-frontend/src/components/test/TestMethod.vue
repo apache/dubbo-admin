@@ -18,9 +18,12 @@
 <template>
   <v-container grid-list-xl fluid>
     <v-layout row wrap>
-      <v-flex class="test-form" lg12 xl6>
+      <v-flex lg12>
+        <breadcrumb title="testMethod" :items="breads"></breadcrumb>
+      </v-flex>
+    <v-flex class="test-form" lg12 xl6>
         <v-card>
-          <v-card-title class="headline">Test: {{service}}#{{method.name}}</v-card-title>
+          <v-card-title class="headline">{{$t('testMethod') + ': ' + method.signature}}</v-card-title>
           <v-card-text>
             <json-editor id="test" v-model="method.json"/>
           </v-card-text>
@@ -44,18 +47,32 @@
 
 <script>
   import JsonEditor from '@/components/public/JsonEditor'
+  import Breadcrumb from '@/components/public/Breadcrumb'
 
   export default {
     name: 'TestMethod',
     components: {
-      JsonEditor
+      JsonEditor,
+      Breadcrumb
     },
     data () {
       return {
+        breads: [
+          {
+            text: 'serviceSearch',
+            href: 'test'
+          },
+          {
+            text: 'serviceTest',
+            href: '',
+            strong: this.$route.query['service']
+          }
+        ],
         service: this.$route.query['service'],
         application: this.$route.query['application'],
         method: {
           name: null,
+          signature: this.$route.query['method'],
           parameterTypes: [],
           json: []
         },

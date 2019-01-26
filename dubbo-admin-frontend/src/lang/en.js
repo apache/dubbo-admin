@@ -123,5 +123,6 @@ export default {
   name: 'Name',
   warnDeleteConfig: ' Are you sure to Delete Dubbo Config: ',
   configNameHint: "Application name the config belongs to, use 'global'(without quotes) for global config",
-  configContent: 'Config Content'
+  configContent: 'Config Content',
+  testMethod: 'Test Method'
 }
