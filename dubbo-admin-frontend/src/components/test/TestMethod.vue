@@ -29,13 +29,16 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn id="execute" mt-0 color="primary" @click="executeMethod()">EXECUTE</v-btn>
+            <v-btn id="execute" mt-0 color="primary" @click="executeMethod()">{{$t('execute')}}</v-btn>
           </v-card-actions>
         </v-card>
       </v-flex>
       <v-flex class="test-result" lg12 xl6>
         <v-card>
-          <v-card-title class="headline">Result</v-card-title>
+          <v-card-title class="headline">{{$t('result') }}
+            <span class="green--text" v-if="success===true">{{ $t('success')}}</span>
+            <span class="red--text" v-if="success===false">{{ $t('fail')}}</span>
+          </v-card-title>
           <v-card-text>
             <json-editor v-model="result" name="Result" readonly></json-editor>
           </v-card-text>
@@ -48,15 +51,19 @@
 <script>
   import JsonEditor from '@/components/public/JsonEditor'
   import Breadcrumb from '@/components/public/Breadcrumb'
+  import axios from 'axios'
 
   export default {
     name: 'TestMethod',
     components: {
       JsonEditor,
-      Breadcrumb
+      Breadcrumb,
+      axios
     },
     data () {
       return {
+        baseURL: '/api/dev',
+        success: null,
         breads: [
           {
             text: 'serviceSearch',
@@ -87,11 +94,17 @@
           parameterTypes: this.method.parameterTypes,
           params: this.method.json
         }
-        this.$axios.post('/test', serviceTestDTO).then(response => {
-          if (response.status === 200) {
-            this.result = response.data
-          }
-        })
+        axios.post(this.baseURL + '/test', serviceTestDTO)
+          .then(response => {
+            if (response && response.status === 200) {
+              this.success = true
+              this.result = response.data
+            }
+          })
+          .catch(error => {
+            this.success = false
+            this.result = error.response.data
+          })
       }
     },
     mounted () {
