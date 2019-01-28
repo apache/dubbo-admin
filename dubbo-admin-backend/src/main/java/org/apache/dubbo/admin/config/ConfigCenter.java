@@ -49,7 +49,7 @@ public class ConfigCenter {
     @Value("${admin.registry.address:}")
     private String registryAddress;
 
-    @Value("${admin.metadata.address:}")
+    @Value("${admin.metadata-report.address:}")
     private String metadataAddress;
 
     @Value("${admin.registry.group:}")
