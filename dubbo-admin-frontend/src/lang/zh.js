@@ -124,5 +124,9 @@ export default {
   warnDeleteConfig: ' 是否要删除Dubbo配置: ',
   configNameHint: '配置所属的应用名, global 表示全局配置',
   configContent: '配置内容',
-  testMethod: '测试方法'
+  testMethod: '测试方法',
+  execute: '执行',
+  result: '结果: ',
+  success: ' 成功',
+  fail: '失败'
 }
