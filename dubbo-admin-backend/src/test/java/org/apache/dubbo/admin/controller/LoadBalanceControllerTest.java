@@ -84,14 +84,12 @@ public class LoadBalanceControllerTest extends AbstractSpringIntegrationTest {
         URI uri;
         ResponseEntity<String> response;
         // unknown id
-        uri = restTemplate.getUriTemplateHandler().expand(url("/api/{env}/rules/balancing/{id}"), env, id);
-        response = restTemplate.exchange(uri, HttpMethod.PUT, new HttpEntity<>(balancingDTO), String.class);
+        response = restTemplate.exchange(url("/api/{env}/rules/balancing/{id}"), HttpMethod.PUT, new HttpEntity<>(balancingDTO, null), String.class, env, id);
         assertFalse("should return a fail response, when id is null", (Boolean) objectMapper.readValue(response.getBody(), Map.class).get("success"));
         // valid id
         BalancingDTO balancing = mock(BalancingDTO.class);
         when(overrideService.findBalance(id)).thenReturn(balancing);
-        uri = restTemplate.getUriTemplateHandler().expand(url("/api/{env}/rules/balancing/{id}"), env, id);
-        assertTrue(restTemplate.exchange(uri, HttpMethod.PUT, new HttpEntity<>(balancingDTO), Boolean.class).getBody());
+        assertTrue(restTemplate.exchange(url("/api/{env}/rules/balancing/{id}"), HttpMethod.PUT, new HttpEntity<>(balancingDTO, null), Boolean.class, env, id).getBody());
         verify(overrideService).saveBalance(any(BalancingDTO.class));
     }
 
@@ -138,8 +136,7 @@ public class LoadBalanceControllerTest extends AbstractSpringIntegrationTest {
         URI uri;
         ResponseEntity<String> response;
 
-        uri = restTemplate.getUriTemplateHandler().expand(url("/api/{env}/rules/balancing/{id}"), env, id);
-        response = restTemplate.exchange(uri, HttpMethod.DELETE, new HttpEntity<>(null), String.class);
+        response = restTemplate.exchange(url("/api/{env}/rules/balancing/{id}"), HttpMethod.DELETE, new HttpEntity<>(null), String.class, env, id);
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertTrue(Boolean.valueOf(response.getBody()));
     }
