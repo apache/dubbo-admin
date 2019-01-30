@@ -120,10 +120,10 @@ public class LoadBalanceController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteLoadBalance(@PathVariable String id, @PathVariable String env) {
-        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         if (id == null) {
             throw new IllegalArgumentException("Argument of id is null!");
         }
+        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         overrideService.deleteBalance(id);
         return true;
     }
