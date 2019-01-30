@@ -67,6 +67,10 @@
 		<snakeyaml-version>1.19</snakeyaml-version>
 		<maven-checkstyle-plugin-version>3.0.0</maven-checkstyle-plugin-version>
 		<spring-boot-version>2.0.2.RELEASE</spring-boot-version>
+		<maven_compiler_version>3.6.0</maven_compiler_version>
+		<java_source_version>1.8</java_source_version>
+		<java_target_version>1.8</java_target_version>
+		<file_encoding>UTF-8</file_encoding>
 	</properties>
 
 	<dependencyManagement>
@@ -214,6 +218,16 @@
 						</goals>
 					</execution>
 				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>${maven_compiler_version}</version>
+				<configuration>
+					<source>${java_source_version}</source>
+					<target>${java_target_version}</target>
+					<encoding>${file_encoding}</encoding>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>
