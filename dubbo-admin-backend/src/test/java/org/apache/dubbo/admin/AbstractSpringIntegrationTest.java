@@ -21,42 +21,38 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.RetryOneTime;
 import org.apache.curator.test.TestingServer;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
-import org.springframework.web.client.RestTemplate;
-
-import java.io.IOException;
 
 @ActiveProfiles("test")
 @RunWith(SpringJUnit4ClassRunner.class)
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(classes = DubboAdminApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ContextConfiguration(classes = DubboAdminApplication.class)
 public abstract class AbstractSpringIntegrationTest {
-  protected RestTemplate restTemplate = (new TestRestTemplate()).getRestTemplate();
+  @Autowired
+  protected TestRestTemplate restTemplate;
 
-  protected static TestingServer zkServer;
-  protected static CuratorFramework zkClient;
+  protected static final TestingServer zkServer;
+  protected static final CuratorFramework zkClient;
 
-  @Value("${local.server.port}")
+  static {
+    try {
+      zkServer = new TestingServer(2182, true);
+      zkClient = CuratorFrameworkFactory.newClient(zkServer.getConnectString(), new RetryOneTime(2000));
+      zkClient.start();
+    } catch (Exception e) {
+      throw new ExceptionInInitializerError(e);
+    }
+  }
+
+  @LocalServerPort
   protected int port;
-
-  @BeforeClass
-  public static void beforeClass() throws Exception {
-    zkServer = new TestingServer(2182, true);
-    zkClient = CuratorFrameworkFactory.newClient(zkServer.getConnectString(), new RetryOneTime(2000));
-    zkClient.start();
-  }
-
-  @AfterClass
-  public static void afterClass() throws IOException {
-    zkClient.close();
-    zkServer.stop();
-  }
 
   protected String url(final String path) {
     return "http://localhost:" + port + path;
