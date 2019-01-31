@@ -26,6 +26,7 @@
 	<modules>
 		<module>dubbo-admin-frontend</module>
 		<module>dubbo-admin-backend</module>
+		<module>dubbo-admin-distribution</module>
 	</modules>
 	<packaging>pom</packaging>
 
