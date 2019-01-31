@@ -130,5 +130,10 @@ export default {
   success: 'SUCCESS',
   fail: 'FAIL',
   detail: 'Detail',
-  more: 'More'
+  more: 'More',
+  test: 'Test',
+  placeholders: {
+    searchService: 'Search by service name'
+  },
+  methods: 'Methods'
 }

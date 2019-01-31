@@ -83,6 +83,13 @@
                   <v-btn
                     small
                     color='primary'
+                    @click="toTestService(props.item)"
+                  >
+                    {{$t('test')}}
+                  </v-btn>
+                  <v-btn
+                    small
+                    color='primary'
                     :href='getHref(props.item.service, props.item.appName, props.item.group, props.item.version)'
                   >
                    {{ $t('detail') }}
@@ -276,6 +283,10 @@
             this.$router.push({path: 'service', query: {filter: filter, pattern: pattern}})
           }
         })
+      },
+      toTestService (item) {
+        const service = item.service
+        this.$router.push(`/test/?service=${service}`)
       }
     },
     mounted: function () {

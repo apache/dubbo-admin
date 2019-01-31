@@ -21,10 +21,10 @@
         <breadcrumb title="serviceTest" :items="breads"></breadcrumb>
       </v-flex>
       <v-flex xs12>
-        <search v-model="filter" label="Search by service name" :submit="search"></search>
+        <search v-model="filter" :label="$t('placeholders.searchService')" :submit="search"></search>
       </v-flex>
       <v-flex xs12>
-        <h3>Methods</h3>
+        <h3>{{$t('methods')}}</h3>
       </v-flex>
       <v-flex xs12>
         <v-data-table :headers="headers" :items="methods" hide-actions class="elevation-1">
@@ -40,7 +40,7 @@
                 >
                   <v-icon>edit</v-icon>
                 </v-btn>
-                <span>Try it</span>
+                <span>{{$t('test')}}</span>
               </v-tooltip>
             </td>
           </template>
