@@ -130,5 +130,7 @@ export default {
   success: ' 成功',
   fail: '失败',
   detail: '详情',
-  more: '更多'
+  more: '更多',
+  copyUrl: '复制 URL',
+  copySuccessfully: '已复制'
 }

@@ -130,5 +130,7 @@ export default {
   success: 'SUCCESS',
   fail: 'FAIL',
   detail: 'Detail',
-  more: 'More'
+  more: 'More',
+  copyUrl: 'Copy URL',
+  copySuccessfully: 'Copied'
 }
