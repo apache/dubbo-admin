@@ -52,6 +52,18 @@
                         <version>3.1.0</version>
                         <executions>
                             <execution>
+                                <id>bin-release</id>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>single</goal>
+                                </goals>
+                                <configuration>
+                                    <descriptors>
+                                        <descriptor>src/assembly/bin-release.xml</descriptor>
+                                    </descriptors>
+                                </configuration>
+                            </execution>
+                            <execution>
                                 <id>source-release</id>
                                 <phase>package</phase>
                                 <goals>
