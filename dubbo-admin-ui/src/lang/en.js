@@ -135,5 +135,8 @@ export default {
   placeholders: {
     searchService: 'Search by service name'
   },
-  methods: 'Methods'
+  methods: 'Methods',
+  testModule: {
+    searchServiceHint: 'Service ID, org.apache.dubbo.demo.api.DemoService, * for fuzzy search, press Enter to search'
+  }
 }

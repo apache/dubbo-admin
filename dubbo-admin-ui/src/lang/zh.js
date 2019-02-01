@@ -135,5 +135,8 @@ export default {
   placeholders: {
     searchService: '通过服务名搜索服务'
   },
-  methods: '方法列表'
+  methods: '方法列表',
+  testModule: {
+    searchServiceHint: '服务ID, org.apache.dubbo.demo.api.DemoService, 使用 * 进行模糊查找, 按回车键查询'
+  }
 }
