@@ -22,7 +22,6 @@
 ### 后端部分
 
 * 标准spring boot工程
-* **注意** 本分支依赖Dubbo2.7-SNAPSHOT版本，该Dubbo版本还未正式发布，因此如果发现依赖方面的错误，请清空本地库中的dubbo2.7相关文件
 * [application.properties配置说明](https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E)  
 * 在项目根目录(incubator-dubbo-ops)第一次构建需要强制更新: `mvn -Dmaven.test.skip=true clean -U package`
 
@@ -30,14 +29,14 @@
 ### 生产环境配置
 
 1. 下载代码: `git clone https://github.com/apache/incubator-dubbo-ops.git`
-2. 在 `dubbo-admin-backend/src/main/resources/application-production.properties`中指定注册中心地址
+2. 在 `dubbo-admin-server/src/main/resources/application-production.properties`中指定注册中心地址
 3. 构建
 
     > - `mvn clean package`
 4. 启动 
-   * `mvn --projects dubbo-admin-backend spring-boot:run`   
+   * `mvn --projects dubbo-admin-server spring-boot:run`   
    或者   
-   * `cd dubbo-admin-backend/target; java -jar dubbo-admin-backend-0.1.jar`
+   * `cd dubbo-admin-server/target; java -jar dubbo-admin-server-0.1.jar`
 5. 访问 `http://localhost:8080`
 ---
 

@@ -31,15 +31,38 @@
     <dependencies>
         <dependency>
             <groupId>org.apache</groupId>
-            <artifactId>dubbo-admin-frontend</artifactId>
+            <artifactId>dubbo-admin-ui</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache</groupId>
-            <artifactId>dubbo-admin-backend</artifactId>
+            <artifactId>dubbo-admin-server</artifactId>
             <version>${project.version}</version>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.8</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <configuration>
+                            <tasks>
+                                <copy file="../dubbo-admin-server/target/dubbo-admin-server-${project.version}.jar"
+                                      tofile="target/dubbo-admin-${project.version}.jar"/>
+                            </tasks>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 
     <profiles>
         <profile>
