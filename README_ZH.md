@@ -33,7 +33,7 @@
 3. 构建
 
     > - `mvn clean package`  
-    **注意** 如果出现 `Cannot find module '/xxx/incubator-dubbo-ops/dubbo-admin-ui/node/node_modules/npm/bin/npm-cli.js`，请先执行`npm uninstall v9.11.1`, 再执行本步骤
+    **注意** 如果出现 `Cannot find module '/xxx/incubator-dubbo-ops/dubbo-admin-ui/node/node_modules/npm/bin/npm-cli.js`，请先执行`npm uninstall v9.11.1`, `rm -rf ~/.npm`, 再执行本步骤
 4. 启动 
    * `mvn --projects dubbo-admin-server spring-boot:run`   
    或者   
