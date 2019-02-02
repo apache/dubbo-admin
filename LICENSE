@@ -209,11 +209,11 @@ and license terms. Your use of these submodules is subject to the terms and
 conditions of the following licenses.
 
 ================================================================
-For dubbo-admin-frontend/static/fonts
+For dubbo-admin-ui/static/fonts
 This product bundles files from google fonts roboto which is licensed under the Apache License v2
 For details, see https://github.com/google/fonts/tree/master/apache/roboto
 
-For dubbo-admin-frontend/static/OpenSans.css
+For dubbo-admin-ui/static/OpenSans.css
 This product bundles files from google material design icons which is licensed under the Apache License v2
 For details, see https://github.com/google/material-design-icons/blob/2.2.0/LICENSE
 

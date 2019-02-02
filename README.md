@@ -14,12 +14,12 @@
 
 ### Service Governance  
 service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.6, please refer to [here](https://github.com/apache/incubator-dubbo-ops/wiki/The-compatibility-of-service-governance)
-### Frontend
+### admin UI
 
 - [Vue.js](https://vuejs.org) and [Vuetify](https://vuetifyjs.com)
-- [dubbo-admin-frontend/README.md](dubbo-admin-frontend/README.md) for more detail
+- [dubbo-admin-ui/README.md](dubbo-admin-ui/README.md) for more detail
 
-### Backend
+### admin Server
 
 * Standard spring boot project
 * [configurations in application.properties](https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration)
@@ -32,7 +32,8 @@ service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.
 2. Specify registry address in `dubbo-admin-server/src/main/resources/application-production.properties`
 3. Build
 
-    > - `mvn clean package`
+    > - `mvn clean package`  
+    **NOTICE** if a failure like `Cannot find module /xxxx/incubator-dubbo-ops/dubbo-admin-ui/node/node_modules/npm/bin/npm-cli.js`, please run `npm uninstall v9.11.1` first, and repeat this step
 4. Start 
     * `mvn --projects dubbo-admin-server spring-boot:run`  
     OR
@@ -41,14 +42,14 @@ service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.
 ---
 
 ### Development Setup
-* Run backend project
+* Run admin server project
    backend is a standard spring boot project, you can run it in any java IDE
-* Run frontend project
+* Run admin ui project
   run with `npm run dev`.
 * visit web page
   visit `http://localhost:8081`, frontend supports hot reload.
  * CORS problem
-    for the convenience of development, we deploy frontend and backend separately, so the frontend supports hot reload. In this mode, frontend will request `localhost:8080` to fetch data, this will cause a CORS problem, so we add a configuration in `dubbo-admin-frontend/config/index.js` to support CORS. This config will be activated under `npm run dev` mode.
+    for the convenience of development, we deploy ui and server separately, so the frontend supports hot reload. In this mode, frontend will request `localhost:8080` to fetch data, this will cause a CORS problem, so we add a configuration in `dubbo-admin-ui/config/index.js` to support CORS. This config will be activated under `npm run dev` mode.
 
 ### Swagger support
 

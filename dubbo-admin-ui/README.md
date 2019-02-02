@@ -1,6 +1,6 @@
-# dubbo-admin-frontend
+# dubbo-admin-ui
 
-> dubbo ops frontend based on vuetify  
+> dubbo admin ui based on vuetify  
 > standard front end project
 
 ## Build Setup
