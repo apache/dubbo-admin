@@ -33,7 +33,7 @@ service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.
 3. Build
 
     > - `mvn clean package`  
-    **NOTICE** if a failure like `Cannot find module /xxxx/incubator-dubbo-ops/dubbo-admin-ui/node/node_modules/npm/bin/npm-cli.js`, please run `npm uninstall v9.11.1` first, and repeat this step
+    **NOTICE** if a failure like `Cannot find module /xxxx/incubator-dubbo-ops/dubbo-admin-ui/node/node_modules/npm/bin/npm-cli.js`, please run `npm uninstall v9.11.1`,`rm -rf ~/.npm` first, and repeat this step
 4. Start 
     * `mvn --projects dubbo-admin-server spring-boot:run`  
     OR
