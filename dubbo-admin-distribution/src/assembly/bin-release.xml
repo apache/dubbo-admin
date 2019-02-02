@@ -29,16 +29,22 @@
                 <include>DISCLAIMER</include>
                 <include>NOTICE</include>
                 <include>LICENSE</include>
+                <include>dubbo-admin-distribution/README.md</include>
             </includes>
         </fileSet>
     </fileSets>
     <files>
         <file>
-            <source>../dubbo-admin-backend/target/dubbo-admin-backend-${project.version}.jar</source>
+            <source>target/dubbo-admin-${project.version}.jar</source>
             <outputDirectory></outputDirectory>
         </file>
         <file>
-            <source>../dubbo-admin-backend/src/main/resources/application.properties</source>
+            <source>../dubbo-admin-server/src/main/resources/application.properties</source>
+            <outputDirectory></outputDirectory>
+        </file>
+        <file>
+            <source>README.md</source>
+            <outputDirectory></outputDirectory>
         </file>
     </files>
 

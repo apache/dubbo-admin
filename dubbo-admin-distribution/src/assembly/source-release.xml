@@ -34,7 +34,7 @@
                 <exclude>**/target/**</exclude>
                 <exclude>**/eclipse-classes/**</exclude>
                 <exclude>**/dubbo-governance.log*</exclude>
-                <exclude>dubbo-admin-backend/src/main/resources/public/**</exclude>
+                <exclude>dubbo-admin-server/src/main/resources/public/**</exclude>
                 <exclude>**/.gitrepo</exclude>
                 <exclude>**/.gitkeep</exclude>
                 <exclude>*.enc</exclude>

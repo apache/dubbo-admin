@@ -29,8 +29,8 @@ target/
 .DS_Store
 Thumbs.db
 
-dubbo-admin-backend/src/main/resources/public
-dubbo-admin-backend/target
-dubbo-admin-frontend/dist
-dubbo-admin-frontend/node
-dubbo-admin-frontend/node-modules
+dubbo-admin-server/src/main/resources/public
+dubbo-admin-server/target
+dubbo-admin-ui/dist
+dubbo-admin-ui/node
+dubbo-admin-ui/node-modules

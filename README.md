@@ -22,7 +22,6 @@ service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.
 ### Backend
 
 * Standard spring boot project
-* **NOTICE** this branch is based on Dubbo 2.7-SNAPSHOT, since this version is not published yet, so if you find a dependency error, please clear the dubbo2.7 related files in the local library
 * [configurations in application.properties](https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration)
 * force update under root path(incubator-dubbo-ops) for the first building: `mvn -Dmaven.test.skip=true clean -U package`
 
@@ -30,14 +29,14 @@ service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.
 ### Production Setup
 
 1. Clone source code on develop branch `git clone https://github.com/apache/incubator-dubbo-ops.git`
-2. Specify registry address in `dubbo-admin-backend/src/main/resources/application-production.properties`
+2. Specify registry address in `dubbo-admin-server/src/main/resources/application-production.properties`
 3. Build
 
     > - `mvn clean package`
 4. Start 
-    * `mvn --projects dubbo-admin-backend spring-boot:run`  
+    * `mvn --projects dubbo-admin-server spring-boot:run`  
     OR
-    * `cd dubbo-admin-backend/target`;   `java -jar dubbo-admin-backend-0.1.jar`
+    * `cd dubbo-admin-server/target`;   `java -jar dubbo-admin-server-0.1.jar`
 5. Visit `http://localhost:8080`
 ---
 
