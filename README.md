@@ -36,7 +36,7 @@ service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.
 4. Start 
     * `mvn --projects dubbo-admin-server spring-boot:run`  
     OR
-    * `cd dubbo-admin-server/target`;   `java -jar dubbo-admin-server-0.1.jar`
+    * `cd dubbo-admin-distribution/target`;   `java -jar dubbo-admin-0.1.jar`
 5. Visit `http://localhost:8080`
 ---
 

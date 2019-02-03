@@ -36,7 +36,7 @@
 4. 启动 
    * `mvn --projects dubbo-admin-server spring-boot:run`   
    或者   
-   * `cd dubbo-admin-server/target; java -jar dubbo-admin-server-0.1.jar`
+   * `cd dubbo-admin-distribution/target; java -jar dubbo-admin-0.1.jar`
 5. 访问 `http://localhost:8080`
 ---
 
