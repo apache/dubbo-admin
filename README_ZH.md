@@ -18,12 +18,12 @@
 
 - 使用[Vue.js](https://vuejs.org)作为javascript框架，[Vuetify](https://vuetifyjs.com)作为UI框架
 - [dubbo-admin-ui/README.md](dubbo-admin-ui/README.md)中有更详细的介绍
+- 设置 npm **代理镜像** : 可以设置npm代理镜像来加速npm install的过程：在~/.npmrc中增加 `registry =https://registry.npm.taobao.org`
 
 ### 后端部分
 
 * 标准spring boot工程
 * [application.properties配置说明](https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E)  
-* 在项目根目录(incubator-dubbo-ops)第一次构建需要强制更新: `mvn -Dmaven.test.skip=true clean -U package`
 
 
 ### 生产环境配置
