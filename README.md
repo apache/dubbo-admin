@@ -18,12 +18,12 @@ service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.
 
 - [Vue.js](https://vuejs.org) and [Vuetify](https://vuetifyjs.com)
 - [dubbo-admin-ui/README.md](dubbo-admin-ui/README.md) for more detail
+- Set npm **proxy mirror**: you can set npm proxy mirror to speedup npm install: add `registry =https://registry.npm.taobao.org` to ~/.npmrc
 
 ### admin Server
 
 * Standard spring boot project
 * [configurations in application.properties](https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration)
-* force update under root path(incubator-dubbo-ops) for the first building: `mvn -Dmaven.test.skip=true clean -U package`
 
 
 ### Production Setup
