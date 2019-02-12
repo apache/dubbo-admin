@@ -132,5 +132,13 @@ export default {
   detail: '详情',
   more: '更多',
   copyUrl: '复制 URL',
-  copySuccessfully: '已复制'
+  copySuccessfully: '已复制',
+  test: '测试',
+  placeholders: {
+    searchService: '通过服务名搜索服务'
+  },
+  methods: '方法列表',
+  testModule: {
+    searchServiceHint: '服务ID, org.apache.dubbo.demo.api.DemoService, 使用 * 进行模糊查找, 按回车键查询'
+  }
 }

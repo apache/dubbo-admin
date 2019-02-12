@@ -21,10 +21,24 @@
         <breadcrumb title="serviceTest" :items="breads"></breadcrumb>
       </v-flex>
       <v-flex xs12>
-        <search v-model="filter" label="Search by service name" :submit="search"></search>
+        <v-autocomplete
+          flat
+          hide-no-data
+          v-model="service"
+          :loading="loading"
+          :search-input.sync="filter"
+          :hint="$t('testModule.searchServiceHint')"
+          :items="services"
+          item-value="service"
+          item-text="service"
+          :label="$t('placeholders.searchService')"
+          persistent-hint
+          @keyup.enter="search"
+          clearable
+        ></v-autocomplete>
       </v-flex>
       <v-flex xs12>
-        <h3>Methods</h3>
+        <h3>{{$t('methods')}}</h3>
       </v-flex>
       <v-flex xs12>
         <v-data-table :headers="headers" :items="methods" hide-actions class="elevation-1">
@@ -40,7 +54,7 @@
                 >
                   <v-icon>edit</v-icon>
                 </v-btn>
-                <span>Try it</span>
+                <span>{{$t('test')}}</span>
               </v-tooltip>
             </td>
           </template>
@@ -68,13 +82,16 @@
         breads: [
           {
             text: 'serviceSearch',
-            href: ''
+            href: '/test'
           }
         ],
         headers: [
         ],
         service: null,
-        methods: []
+        methods: [],
+        services: [],
+        searchKey: this.$route.query['service'] || '*',
+        loading: false
       }
     },
     methods: {
@@ -138,6 +155,26 @@
           this.showSnackbar('error', error.response.data.message)
         })
       },
+      searchServices () {
+        let filter = this.filter || ''
+        if (!filter.startsWith('*')) {
+          filter = '*' + filter
+        }
+        if (!filter.endsWith('*')) {
+          filter += '*'
+        }
+        const pattern = 'service'
+        this.loading = true
+        this.$axios.get('/service', {
+          params: {
+            pattern, filter
+          }
+        }).then(response => {
+          this.services = response.data
+        }).finally(() => {
+          this.loading = false
+        })
+      },
       getHref (application, service, method) {
         return `/#/testMethod?application=${application}&service=${service}&method=${method}`
       }
@@ -150,6 +187,12 @@
     watch: {
       area () {
         this.setHeaders()
+      },
+      filter () {
+        this.searchServices()
+      },
+      searchKey () {
+        this.search()
       }
     },
     created () {
@@ -157,3 +200,8 @@
     }
   }
 </script>
+<style>
+  .v-breadcrumbs {
+    padding-left: 0;
+  }
+</style>
