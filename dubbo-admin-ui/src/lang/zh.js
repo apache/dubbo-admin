@@ -132,6 +132,8 @@ export default {
   detail: '详情',
   more: '更多',
   copyUrl: '复制 URL',
+  copy: '复制',
+  url: 'URL',
   copySuccessfully: '已复制',
   test: '测试',
   placeholders: {

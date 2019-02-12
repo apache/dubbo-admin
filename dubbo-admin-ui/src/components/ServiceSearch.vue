@@ -81,29 +81,30 @@
                 <td>{{props.item.appName}}</td>
                 <td class="text-xs-center px-0" nowrap>
                   <v-btn
-                    small
-                    color='primary'
-                    @click="toTestService(props.item)"
-                  >
-                    {{$t('test')}}
-                  </v-btn>
-                  <v-btn
-                    small
-                    color='primary'
+                    class="tiny"
+                    color='success'
                     :href='getHref(props.item.service, props.item.appName, props.item.group, props.item.version)'
                   >
                    {{ $t('detail') }}
+                  </v-btn>
+                  <v-btn
+                    small
+                    class="tiny"
+                    outline
+                    @click="toTestService(props.item)"
+                  >
+                    {{$t('test')}}
                   </v-btn>
                   <v-menu
                   >
                     <v-btn
                       slot="activator"
-                      color="primary"
+                      class="tiny"
+                      outline
                       small
-                      dark
                     >
                       {{ $t('more') }}
-                      <v-icon>expand_more</v-icon>
+                      <v-icon class="tiny-icon" >arrow_drop_down</v-icon>
                     </v-btn>
                     <v-list>
                       <v-list-tile
@@ -329,6 +330,16 @@
 <style scoped>
   table.v-table tbody td {
     word-break: break-all;
+  }
+
+  .tiny {
+    min-width: 30px;
+    height: 20px;
+    font-size: 8px;
+  }
+
+  .tiny-icon {
+    font-size: 18px;
   }
 
 </style>

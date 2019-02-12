@@ -56,17 +56,21 @@
                 <td>{{getPort(props.item.address)}}</td>
                 <td></td>
                 <td></td>
-                <td><v-tooltip top>
-                  <v-btn
-                          small
-                          slot="activator"
-                          color="primary"
-                          @click="toCopyText(props.item.url)"
-                  >
-                    {{$t('copyUrl')}}
-                  </v-btn>
-                  <span>{{props.item.url}}</span>
-                </v-tooltip></td>
+                <td>
+                  <v-tooltip top>
+                    <v-btn
+                      class="tiny"
+                      slot="activator"
+                      color="primary"
+                      @mouseover="setHoverHint"
+                      @mouseout="setoutHint"
+                      @click="toCopyText(props.item.url)"
+                    >
+                        {{$t(hint)}}
+                    </v-btn>
+                    <span>{{props.item.url}}</span>
+                  </v-tooltip>
+                </td>
               </template>
             </v-data-table>
           </v-tab-item>
@@ -121,7 +125,8 @@
       providerDetails: [],
       consumerDetails: [],
       methodMetaData: [],
-      basic: []
+      basic: [],
+      hint: 'url'
     }),
     methods: {
       setmetaHeaders: function () {
@@ -142,6 +147,13 @@
             sortable: false
           }
         ]
+      },
+      setHoverHint: function () {
+        this.hint = 'copy'
+      },
+
+      setoutHint: function () {
+        this.hint = 'url'
       },
       setdetailHeaders: function () {
         this.detailHeaders = {
@@ -260,4 +272,12 @@
     }
   }
 </script>
+
+<style scoped>
+  .tiny {
+    min-width: 30px;
+    height: 20px;
+    font-size: 8px;
+  }
+</style>
 

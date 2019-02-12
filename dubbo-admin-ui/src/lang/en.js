@@ -132,6 +132,8 @@ export default {
   detail: 'Detail',
   more: 'More',
   copyUrl: 'Copy URL',
+  copy: 'Copy',
+  url: 'URL',
   copySuccessfully: 'Copied',
   test: 'Test',
   placeholders: {
