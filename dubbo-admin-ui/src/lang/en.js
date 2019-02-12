@@ -131,6 +131,8 @@ export default {
   fail: 'FAIL',
   detail: 'Detail',
   more: 'More',
+  copyUrl: 'Copy URL',
+  copySuccessfully: 'Copied',
   test: 'Test',
   placeholders: {
     searchService: 'Search by service name'

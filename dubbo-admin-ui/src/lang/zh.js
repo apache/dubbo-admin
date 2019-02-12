@@ -131,6 +131,8 @@ export default {
   fail: '失败',
   detail: '详情',
   more: '更多',
+  copyUrl: '复制 URL',
+  copySuccessfully: '已复制',
   test: '测试',
   placeholders: {
     searchService: '通过服务名搜索服务'

@@ -61,8 +61,9 @@
                           small
                           slot="activator"
                           color="primary"
+                          @click="toCopyText(props.item.url)"
                   >
-                    URL
+                    {{$t('copyUrl')}}
                   </v-btn>
                   <span>{{props.item.url}}</span>
                 </v-tooltip></td>
@@ -205,6 +206,11 @@
           result = result + parameterTypes[i] + ' '
         }
         return result.trim()
+      },
+      toCopyText (text) {
+        this.$copyText(text).then(() => {
+          this.$notify.success(this.$t('copySuccessfully'))
+        }, () => {})
       }
     },
     computed: {
