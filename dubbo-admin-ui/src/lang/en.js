@@ -130,5 +130,13 @@ export default {
   success: 'SUCCESS',
   fail: 'FAIL',
   detail: 'Detail',
-  more: 'More'
+  more: 'More',
+  test: 'Test',
+  placeholders: {
+    searchService: 'Search by service name'
+  },
+  methods: 'Methods',
+  testModule: {
+    searchServiceHint: 'Service ID, org.apache.dubbo.demo.api.DemoService, * for fuzzy search, press Enter to search'
+  }
 }
