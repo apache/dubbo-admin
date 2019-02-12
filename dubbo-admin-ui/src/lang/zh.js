@@ -130,5 +130,13 @@ export default {
   success: ' 成功',
   fail: '失败',
   detail: '详情',
-  more: '更多'
+  more: '更多',
+  test: '测试',
+  placeholders: {
+    searchService: '通过服务名搜索服务'
+  },
+  methods: '方法列表',
+  testModule: {
+    searchServiceHint: '服务ID, org.apache.dubbo.demo.api.DemoService, 使用 * 进行模糊查找, 按回车键查询'
+  }
 }
