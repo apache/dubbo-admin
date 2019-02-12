@@ -26,6 +26,7 @@ import { store } from './store'
 import Notify from './components/public/notify'
 import { AXIOS } from './components/http-common'
 import i18n from './lang'
+import VueClipboard from 'vue-clipboard2'
 
 Vue.use(Vuetify, {
   lang: {
@@ -37,6 +38,9 @@ Vue.use(Notify)
 Vue.prototype.$axios = AXIOS
 
 Vue.config.productionTip = false
+
+VueClipboard.config.autoSetContainer = true
+Vue.use(VueClipboard)
 
 /* eslint-disable no-new */
 new Vue({
