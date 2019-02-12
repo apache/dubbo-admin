@@ -128,5 +128,7 @@ export default {
   execute: '执行',
   result: '结果: ',
   success: ' 成功',
-  fail: '失败'
+  fail: '失败',
+  detail: '详情',
+  more: '更多'
 }

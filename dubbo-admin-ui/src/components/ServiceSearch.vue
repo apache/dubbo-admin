@@ -85,7 +85,7 @@
                     color='primary'
                     :href='getHref(props.item.service, props.item.appName, props.item.group, props.item.version)'
                   >
-                    Detail
+                   {{ $t('detail') }}
                   </v-btn>
                   <v-menu
                   >
@@ -95,7 +95,7 @@
                       small
                       dark
                     >
-                      More
+                      {{ $t('more') }}
                       <v-icon>expand_more</v-icon>
                     </v-btn>
                     <v-list>

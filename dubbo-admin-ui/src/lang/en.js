@@ -128,5 +128,7 @@ export default {
   execute: 'EXECUTE',
   result: 'Result: ',
   success: 'SUCCESS',
-  fail: 'FAIL'
+  fail: 'FAIL',
+  detail: 'Detail',
+  more: 'More'
 }
