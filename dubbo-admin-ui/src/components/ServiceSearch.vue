@@ -47,7 +47,7 @@
                       v-for="(item, i) in items"
                       :key="i"
                       @click="selected = i">
-                      <v-list-tile-title>{{ $t(item.title) }}</v-list-tile-title>
+                      <v-list-tile-title >{{ $t(item.title) }}</v-list-tile-title>
                     </v-list-tile>
                   </v-list>
                 </v-menu>
@@ -112,7 +112,7 @@
                         :key="i"
                         :href='governanceHref(item.value, props.item.service, props.item.group, props.item.version)'
                       >
-                        <v-list-tile-title>{{ $t(item.title) }}</v-list-tile-title>
+                        <v-list-tile-title class="small-list">{{ $t(item.title) }}</v-list-tile-title>
                       </v-list-tile>
                     </v-list>
                   </v-menu>
@@ -340,6 +340,10 @@
 
   .tiny-icon {
     font-size: 18px;
+  }
+
+  .small-list {
+    font-size: 10px;
   }
 
 </style>
