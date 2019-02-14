@@ -69,7 +69,7 @@
           <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">{{$t('create')}}</v-btn>
         </v-toolbar>
 
-        <v-card-text class="pa-0" v-if="selected == 0">
+        <v-card-text class="pa-0" v-show="selected == 0">
           <v-data-table
             :headers="serviceHeaders"
             :items="serviceRoutingRules"
@@ -91,7 +91,7 @@
             </template>
           </v-data-table>
         </v-card-text>
-        <v-card-text class="pa-0" v-if="selected == 1">
+        <v-card-text class="pa-0" v-show="selected == 1">
           <v-data-table
             :headers="appHeaders"
             :items="appRoutingRules"
