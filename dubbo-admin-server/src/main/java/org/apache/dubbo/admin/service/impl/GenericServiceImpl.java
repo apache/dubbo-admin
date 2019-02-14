@@ -54,9 +54,7 @@ public class GenericServiceImpl {
 
         reference.setInterface(service);
         GenericService genericService = reference.get();
-        Object result = genericService.$invoke(method, parameterTypes, params);
-        System.out.println(result);
-        return result;
+        return genericService.$invoke(method, parameterTypes, params);
     }
 
     public static void main(String[] args) {
