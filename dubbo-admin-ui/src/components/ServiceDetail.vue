@@ -28,7 +28,7 @@
           hide-actions
           hide-headers >
           <template slot="items" slot-scope="props">
-            <td>{{props.item.name}} </td>
+            <td>{{$t(props.item.name)}} </td>
             <td>{{props.item.value}}</td>
           </template>
         </v-data-table>
@@ -265,7 +265,7 @@
         Object.keys(meta).forEach(function (key) {
           let item = {}
           item.value = meta[key]
-          item.name = vm.$t(key)
+          item.name = key
           vm.basic.push(item)
         })
       }
