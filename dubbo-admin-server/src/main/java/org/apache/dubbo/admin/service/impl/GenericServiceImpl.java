@@ -50,7 +50,6 @@ public class GenericServiceImpl {
         reference.setGeneric(true);
         reference.setApplication(applicationConfig);
         reference.setInterface(service);
-        reference.refresh();
         GenericService genericService = reference.get();
         return genericService.$invoke(method, parameterTypes, params);
     }
