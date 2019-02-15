@@ -21,12 +21,12 @@ import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.config.RegistryConfig;
+import org.apache.dubbo.config.context.ConfigManager;
 import org.apache.dubbo.registry.Registry;
 import org.apache.dubbo.rpc.service.GenericService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -38,16 +38,21 @@ public class GenericServiceImpl {
     @Autowired
     private Registry registry;
 
-    ApplicationConfig applicationConfig;
+    private static volatile ApplicationConfig applicationConfig;
 
-    @PostConstruct
-    public void init() {
-        RegistryConfig registryConfig = new RegistryConfig();
-        registryConfig.setAddress(registry.getUrl().getProtocol() + "://" + registry.getUrl().getAddress());
-        registryConfig.setGroup(registry.getUrl().getParameter(org.apache.dubbo.common.Constants.GROUP_KEY, Constants.DEFAULT_ROOT));
-        applicationConfig = new ApplicationConfig();
-        applicationConfig.setName("dubbo-admin");
-        applicationConfig.setRegistry(registryConfig);
+    public void initApplicationConfig() {
+        if (applicationConfig == null) {
+            synchronized (GenericServiceImpl.class){
+                if (applicationConfig == null) {
+                    RegistryConfig registryConfig = new RegistryConfig();
+                    registryConfig.setAddress(registry.getUrl().getProtocol() + "://" + registry.getUrl().getAddress());
+                    registryConfig.setGroup(registry.getUrl().getParameter(org.apache.dubbo.common.Constants.GROUP_KEY, Constants.DEFAULT_ROOT));
+                    applicationConfig = new ApplicationConfig();
+                    applicationConfig.setName("dubbo-admin");
+                    applicationConfig.setRegistry(registryConfig);
+                }
+            }
+        }
     }
 
     public ReferenceConfig<GenericService> getReferenceConfig(String service) {
@@ -56,7 +61,12 @@ public class GenericServiceImpl {
             referenceConfigMap.computeIfAbsent(service, key -> {
                 ReferenceConfig<GenericService> genericServiceReferenceConfig = new ReferenceConfig<>();
                 genericServiceReferenceConfig.setGeneric(true);
-                genericServiceReferenceConfig.setApplication(applicationConfig);
+                if (ConfigManager.getInstance().getApplication().isPresent()) {
+                    genericServiceReferenceConfig.setApplication(ConfigManager.getInstance().getApplication().get());
+                } else {
+                    initApplicationConfig();
+                    genericServiceReferenceConfig.setApplication(applicationConfig);
+                }
                 return genericServiceReferenceConfig;
             });
         }
