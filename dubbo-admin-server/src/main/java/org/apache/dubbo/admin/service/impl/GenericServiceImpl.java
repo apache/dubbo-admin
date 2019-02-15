@@ -29,30 +29,28 @@ import javax.annotation.PostConstruct;
 
 @Component
 public class GenericServiceImpl {
-
-    private ReferenceConfig<GenericService> reference;
-
+    private ApplicationConfig applicationConfig;
     @Autowired
     private Registry registry;
 
     @PostConstruct
     public void init() {
-        reference = new ReferenceConfig<>();
-        reference.setGeneric(true);
-
         RegistryConfig registryConfig = new RegistryConfig();
         registryConfig.setAddress(registry.getUrl().getProtocol() + "://" + registry.getUrl().getAddress());
 
-        ApplicationConfig applicationConfig = new ApplicationConfig();
+        applicationConfig = new ApplicationConfig();
         applicationConfig.setName("dubbo-admin");
         applicationConfig.setRegistry(registryConfig);
 
-        reference.setApplication(applicationConfig);
     }
 
     public Object invoke(String service, String method, String[] parameterTypes, Object[] params) {
 
+        ReferenceConfig<GenericService> reference = new ReferenceConfig<>();
+        reference.setGeneric(true);
+        reference.setApplication(applicationConfig);
         reference.setInterface(service);
+        reference.refresh();
         GenericService genericService = reference.get();
         return genericService.$invoke(method, parameterTypes, params);
     }
