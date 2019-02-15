@@ -29,8 +29,6 @@
           :search-input.sync="filter"
           :hint="$t('testModule.searchServiceHint')"
           :items="services"
-          item-value="service"
-          item-text="service"
           :label="$t('placeholders.searchService')"
           persistent-hint
           @keyup.enter="search"
@@ -44,8 +42,12 @@
         <v-data-table :headers="headers" :items="methods" hide-actions class="elevation-1">
           <template slot="items" slot-scope="props">
             <td>{{ props.item.name }}</td>
-            <td><v-chip xs v-for="(type, index) in props.item.parameterTypes" :key="index" label>{{ type }}</v-chip></td>
-            <td><v-chip label>{{ props.item.returnType }}</v-chip></td>
+            <td>
+              <v-chip xs v-for="(type, index) in props.item.parameterTypes" :key="index" label>{{ type }}</v-chip>
+            </td>
+            <td>
+              <v-chip v-if="props.item.returnType!=null" label>{{ props.item.returnType }}</v-chip>
+            </td>
             <td class="text-xs-right">
               <v-tooltip bottom>
                 <v-btn
@@ -85,8 +87,8 @@
             href: '/test'
           }
         ],
-        headers: [
-        ],
+        headers: [],
+        timerID: null,
         service: null,
         methods: [],
         services: [],
@@ -123,13 +125,14 @@
         if (!this.filter) {
           return
         }
+        this.service = this.filter
+        this.services = [this.filter]
         this.$router.replace({
-          query: { service: this.filter }
+          query: {service: this.filter}
         })
-        this.$axios.get('/service/' + this.filter).then(response => {
-          this.service = response.data
+        this.$axios.get('/service/' + this.filter.replace('/', '*')).then(response => {
           this.methods = []
-          if (this.service.metadata) {
+          if (response.data.metadata) {
             let methods = this.service.metadata.methods
             for (let i = 0; i < methods.length; i++) {
               let method = {}
@@ -150,30 +153,49 @@
               method.application = response.data.application
               this.methods.push(method)
             }
+          } else if (response.data.providers.length > 0) {
+            let provider = response.data.providers[0]
+            let application = provider.application
+            let service = provider.service
+            let parametersArray = provider.parameters.split('&')
+            for (var i = 0; i < parametersArray.length; i++) {
+              let [key, value] = parametersArray[i].split('=')
+              if (key === 'methods') {
+                let methods = decodeURI(value)
+                let methodsArray = methods.split(',')
+                for (var j = 0; j < methodsArray.length; j++) {
+                  let method = {}
+                  method.signature = methodsArray[j]
+                  method.name = methodsArray[j]
+                  method.parameterTypes = null
+                  method.returnType = null
+                  method.service = service
+                  method.application = application
+                  this.methods.push(method)
+                }
+              }
+            }
           }
         }).catch(error => {
           this.showSnackbar('error', error.response.data.message)
         })
       },
       searchServices () {
+        if (this.timerID) {
+          clearTimeout(this.timerID)
+        }
         let filter = this.filter || ''
-        if (!filter.startsWith('*')) {
-          filter = '*' + filter
-        }
-        if (!filter.endsWith('*')) {
-          filter += '*'
-        }
-        const pattern = 'service'
-        this.loading = true
-        this.$axios.get('/service', {
-          params: {
-            pattern, filter
+        // Simulated ajax query
+        this.timerID = setTimeout(() => {
+          if (filter) {
+            this.loading = true
+            this.services = this.$store.getters.getServiceItems(filter)
+            this.loading = false
+          } else {
+            this.services = []
           }
-        }).then(response => {
-          this.services = response.data
-        }).finally(() => {
-          this.loading = false
-        })
+          this.timerID = null
+        }, 200)
       },
       getHref (application, service, method) {
         return `/#/testMethod?application=${application}&service=${service}&method=${method}`
@@ -195,7 +217,9 @@
         this.search()
       }
     },
-    created () {
+    mounted: function () {
+      this.$store.dispatch('loadServiceItems')
+      this.setHeaders()
       this.search()
     }
   }

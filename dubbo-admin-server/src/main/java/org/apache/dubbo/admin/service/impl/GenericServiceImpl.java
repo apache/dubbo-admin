@@ -17,6 +17,7 @@
 
 package org.apache.dubbo.admin.service.impl;
 
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.config.RegistryConfig;
@@ -26,42 +27,55 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class GenericServiceImpl {
 
-    private ReferenceConfig<GenericService> reference;
+    private static final Map<String, ReferenceConfig<GenericService>> referenceConfigMap = new ConcurrentHashMap<>();
 
     @Autowired
     private Registry registry;
 
+    ApplicationConfig applicationConfig;
+
     @PostConstruct
     public void init() {
-        reference = new ReferenceConfig<>();
-        reference.setGeneric(true);
-
         RegistryConfig registryConfig = new RegistryConfig();
         registryConfig.setAddress(registry.getUrl().getProtocol() + "://" + registry.getUrl().getAddress());
-
-        ApplicationConfig applicationConfig = new ApplicationConfig();
+        registryConfig.setGroup(registry.getUrl().getParameter(org.apache.dubbo.common.Constants.GROUP_KEY, Constants.DEFAULT_ROOT));
+        applicationConfig = new ApplicationConfig();
         applicationConfig.setName("dubbo-admin");
         applicationConfig.setRegistry(registryConfig);
+    }
 
-        reference.setApplication(applicationConfig);
+    public ReferenceConfig<GenericService> getReferenceConfig(String service) {
+        ReferenceConfig<GenericService> reference = referenceConfigMap.get(service);
+        if (reference == null) {
+            referenceConfigMap.computeIfAbsent(service, key -> {
+                ReferenceConfig<GenericService> genericServiceReferenceConfig = new ReferenceConfig<>();
+                genericServiceReferenceConfig.setGeneric(true);
+                genericServiceReferenceConfig.setApplication(applicationConfig);
+                return genericServiceReferenceConfig;
+            });
+        }
+        return referenceConfigMap.get(service);
     }
 
     public Object invoke(String service, String method, String[] parameterTypes, Object[] params) {
-
+        ReferenceConfig<GenericService> reference = getReferenceConfig(service);
+        int i;
+        if ((i = service.indexOf(Constants.PATH_SEPARATOR)) > -1) {
+            reference.setGroup(service.substring(0, i));
+            service = service.substring(i + 1);
+        }
+        if ((i = service.indexOf(':')) > -1) {
+            reference.setVersion(service.substring(i + 1));
+            service = service.substring(0, i);
+        }
         reference.setInterface(service);
         GenericService genericService = reference.get();
-        Object result = genericService.$invoke(method, parameterTypes, params);
-        System.out.println(result);
-        return result;
-    }
-
-    public static void main(String[] args) {
-        GenericServiceImpl genericService = new GenericServiceImpl();
-        genericService.init();
-        genericService.invoke("org.apache.dubbo.demo.api.DemoService", "sayHello", new String[]{"java.lang.String"}, new Object[]{"hello"});
+        return genericService.$invoke(method, parameterTypes, params);
     }
 }
