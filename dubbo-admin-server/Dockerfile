@@ -26,8 +26,8 @@ VOLUME /tmp
 # Make port 8080 available to the world outside this container
 EXPOSE 7001
 
-# The application's jar file
-ARG JAR_FILE=target/dubbo-admin-2.0.0.jar
+# The application's jar file which should be configred by docker maven plugin
+# ARG JAR_FILE=
 
 # Add the application's jar to the container
 ADD ${JAR_FILE} dubbo-admin.jar
