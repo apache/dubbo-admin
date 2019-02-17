@@ -23,7 +23,7 @@ services:
         aliases:
           - zookeeper
   dubbo-admin:
-    image: xinmeng/dubbo-admin:2.0.0
+    image: xinmeng/dubbo-admin
     environment:
       - ZOOKEEPER=zookeeper:2181
       - ROOT_PASS=root
