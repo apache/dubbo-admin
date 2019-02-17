@@ -27,7 +27,7 @@ VOLUME /tmp
 EXPOSE 7001
 
 # The application's jar file which should be configred by docker maven plugin
-# ARG JAR_FILE=
+ARG JAR_FILE
 
 # Add the application's jar to the container
 ADD ${JAR_FILE} dubbo-admin.jar
@@ -44,4 +44,4 @@ ENV GUEST_PASS="guest"
 
 # Run the jar file
 #ENTRYPOINT ["java","-Djava.security.egd=file:/dev/./urandom", "$ZOOKEEPER", "$ROOT_PASS", "$GUEST_PASS","-jar","/dubbo-admin.jar"]
-ENTRYPOINT java -Djava.security.egd=file:/dev/./urandom -Ddubbo.registry.address=zookeeper://$ZOOKEEPER  -Ddubbo.admin.root.password=$ROOT_PASS -Ddubbo.admin.guest.password=$GUEST_PASS -jar /dubbo-admin.jar
+ENTRYPOINT java -Djava.security.egd=file:/dev/./urandom -jar /dubbo-admin.jar --dubbo.registry.address=zookeeper://$ZOOKEEPER --dubbo.config.center=zookeeper://$ZOOKEEPER --admin.metadata-report.address=zookeeper://$ZOOKEEPER --dubbo.admin.root.password=$ROOT_PASS --dubbo.admin.guest.password=$GUEST_PASS
