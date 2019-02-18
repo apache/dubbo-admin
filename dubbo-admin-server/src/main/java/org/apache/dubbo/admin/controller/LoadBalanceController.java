@@ -110,12 +110,6 @@ public class LoadBalanceController {
             throw new ResourceNotFoundException("Unknown ID!");
         }
         return balancingDTO;
-
-//        LoadBalance loadBalance = OverrideUtils.overrideToLoadBalance(override);
-//        BalancingDTO balancingDTO = new BalancingDTO();
-//        balancingDTO.setService(loadBalance.getService());
-//        balancingDTO.setMethodName(loadBalance.getMethod());
-//        balancingDTO.setStrategy(loadBalance.getStrategy());
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
