@@ -21,6 +21,10 @@ import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.common.util.OverrideUtils;
 import org.apache.dubbo.admin.common.util.YamlParser;
+import org.apache.dubbo.admin.model.adapter.BalancingDTO2OverrideConfigAdapter;
+import org.apache.dubbo.admin.model.adapter.DynamicConfigDTO2OverrideDTOAdapter;
+import org.apache.dubbo.admin.model.adapter.LoadBalance2OverrideAdapter;
+import org.apache.dubbo.admin.model.adapter.WeightToOverrideAdapter;
 import org.apache.dubbo.admin.model.domain.LoadBalance;
 import org.apache.dubbo.admin.model.domain.Override;
 import org.apache.dubbo.admin.model.domain.Weight;
@@ -51,7 +55,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         String path = getPath(id);
         String exitConfig = dynamicConfiguration.getConfig(path);
         List<OverrideConfig> configs = new ArrayList<>();
-        OverrideDTO existOverride = OverrideUtils.createFromDynamicConfig(override);
+        OverrideDTO existOverride = new DynamicConfigDTO2OverrideDTOAdapter(override);
         if (exitConfig != null) {
             existOverride = YamlParser.loadObject(exitConfig, OverrideDTO.class);
             if (existOverride.getConfigs() != null) {
@@ -335,7 +339,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         String scope = ConvertUtil.getScopeFromDTO(balancingDTO);
         String path = getPath(id);
         String config = dynamicConfiguration.getConfig(path);
-        OverrideConfig overrideConfig = OverrideUtils.balanceDTOtoConfig(balancingDTO);
+        OverrideConfig overrideConfig = new BalancingDTO2OverrideConfigAdapter(balancingDTO);
         OverrideDTO overrideDTO = insertConfig(config, overrideConfig, id, scope, Constants.BALANCING);
         dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO));
 
@@ -363,7 +367,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
                             oldBalancing = OverrideUtils.configtoBalancingDTO(overrideConfig, Constants.SERVICE, overrideDTO.getKey());
                         }
                         int index = configs.indexOf(overrideConfig);
-                        OverrideConfig newConfig = OverrideUtils.balanceDTOtoConfig(balancingDTO);
+                        OverrideConfig newConfig = new BalancingDTO2OverrideConfigAdapter(balancingDTO);
                         configs.set(index, newConfig);
                         break;
                     }
@@ -521,12 +525,12 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
     private void unregisterWeight(WeightDTO weightDTO) {
         List<String> addresses = weightDTO.getAddresses();
         if (addresses != null) {
+            Weight weight = new Weight();
+            weight.setService(weightDTO.getService());
+            weight.setWeight(weightDTO.getWeight());
             for (String address : addresses) {
-                Weight weight = new Weight();
-                weight.setService(weightDTO.getService());
                 weight.setAddress(address);
-                weight.setWeight(weightDTO.getWeight());
-                Override override = OverrideUtils.weightToOverride(weight);
+                Override override = new WeightToOverrideAdapter(weight);
                 registry.unregister(override.toUrl());
             }
         }
@@ -535,15 +539,14 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
     private void registerWeight(WeightDTO weightDTO) {
         List<String> addresses = weightDTO.getAddresses();
         if (addresses != null) {
+            Weight weight = new Weight();
+            weight.setService(weightDTO.getService());
+            weight.setWeight(weightDTO.getWeight());
             for (String address : addresses) {
-                Weight weight = new Weight();
-                weight.setService(weightDTO.getService());
                 weight.setAddress(address);
-                weight.setWeight(weightDTO.getWeight());
-                Override override = OverrideUtils.weightToOverride(weight);
+                Override override = new WeightToOverrideAdapter(weight);
                 registry.register(override.toUrl());
             }
-
         }
     }
 
@@ -552,7 +555,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         loadBalance.setService(balancingDTO.getService());
         loadBalance.setMethod(balancingDTO.getMethodName());
         loadBalance.setStrategy(balancingDTO.getStrategy());
-        registry.unregister(OverrideUtils.loadBalanceToOverride(loadBalance).toUrl());
+        registry.unregister(new LoadBalance2OverrideAdapter(loadBalance).toUrl());
     }
 
     private void registerBalancing(BalancingDTO balancingDTO) {
@@ -560,7 +563,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         loadBalance.setService(balancingDTO.getService());
         loadBalance.setMethod(balancingDTO.getMethodName());
         loadBalance.setStrategy(balancingDTO.getStrategy());
-        registry.register(OverrideUtils.loadBalanceToOverride(loadBalance).toUrl());
+        registry.register(new LoadBalance2OverrideAdapter(loadBalance).toUrl());
     }
 
 }
