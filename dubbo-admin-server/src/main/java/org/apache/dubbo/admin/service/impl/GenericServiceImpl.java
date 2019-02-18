@@ -67,6 +67,16 @@ public class GenericServiceImpl {
                     initApplicationConfig();
                     genericServiceReferenceConfig.setApplication(applicationConfig);
                 }
+                int i;
+                if ((i = key.indexOf(Constants.PATH_SEPARATOR)) > -1) {
+                    reference.setGroup(key.substring(0, i));
+                    key = key.substring(i + 1);
+                }
+                if ((i = key.indexOf(':')) > -1) {
+                    reference.setVersion(key.substring(i + 1));
+                    key = key.substring(0, i);
+                }
+                genericServiceReferenceConfig.setInterface(key);
                 return genericServiceReferenceConfig;
             });
         }
@@ -75,16 +85,6 @@ public class GenericServiceImpl {
 
     public Object invoke(String service, String method, String[] parameterTypes, Object[] params) {
         ReferenceConfig<GenericService> reference = getReferenceConfig(service);
-        int i;
-        if ((i = service.indexOf(Constants.PATH_SEPARATOR)) > -1) {
-            reference.setGroup(service.substring(0, i));
-            service = service.substring(i + 1);
-        }
-        if ((i = service.indexOf(':')) > -1) {
-            reference.setVersion(service.substring(i + 1));
-            service = service.substring(0, i);
-        }
-        reference.setInterface(service);
         GenericService genericService = reference.get();
         return genericService.$invoke(method, parameterTypes, params);
     }
