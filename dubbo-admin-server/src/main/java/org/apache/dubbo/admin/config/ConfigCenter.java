@@ -60,8 +60,6 @@ public class ConfigCenter {
     @Value("${admin.config-center.password:}")
     private String password;
 
-    private static String globalConfigPath = "config/dubbo/dubbo.properties";
-
     private static final Logger logger = LoggerFactory.getLogger(ConfigCenter.class);
 
     private URL configCenterUrl;
@@ -82,7 +80,7 @@ public class ConfigCenter {
             dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(configCenterUrl.getProtocol());
             dynamicConfiguration.setUrl(configCenterUrl);
             dynamicConfiguration.init();
-            String config = dynamicConfiguration.getConfig(globalConfigPath);
+            String config = dynamicConfiguration.getConfig(Constants.GLOBAL_CONFIG_PATH);
 
             if (StringUtils.isNotEmpty(config)) {
                 Arrays.stream(config.split("\n")).forEach( s -> {

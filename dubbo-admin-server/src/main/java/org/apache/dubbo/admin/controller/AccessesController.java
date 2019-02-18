@@ -37,7 +37,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -59,7 +58,7 @@ public class AccessesController {
     @RequestMapping(method = RequestMethod.GET)
     public List<AccessDTO> searchAccess(@RequestParam(required = false) String service,
                                         @RequestParam(required = false) String application,
-                                        @PathVariable String env) throws ParseException {
+                                        @PathVariable String env) {
         if (StringUtils.isBlank(service) && StringUtils.isBlank(application)) {
             throw new ParamValidationException("Either service or application is required");
         }
@@ -78,7 +77,7 @@ public class AccessesController {
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
-    public AccessDTO detailAccess(@PathVariable String id, @PathVariable String env) throws ParseException {
+    public AccessDTO detailAccess(@PathVariable String id, @PathVariable String env) {
         id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         AccessDTO accessDTO = routeService.findAccess(id);
         return accessDTO;
