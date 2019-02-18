@@ -91,8 +91,8 @@
         let serviceTestDTO = {
           service: this.service,
           method: this.method.name,
-          parameterTypes: this.method.parameterTypes,
-          params: this.method.json
+          parameterTypes: this.method.parameterTypes || this.method.json.parameterTypes,
+          params: this.method.parameterTypes ? this.method.json : this.method.json.parameters
         }
         axios.post(this.baseURL + '/test', serviceTestDTO)
           .then(response => {
@@ -112,9 +112,14 @@
       const method = query['method']
 
       if (method) {
-        const [methodName, parametersTypes] = method.split('~')
-        this.method.name = methodName
-        this.method.parameterTypes = parametersTypes.split(';')
+        if (method.indexOf('~') > -1) {
+          const [methodName, parametersTypes] = method.split('~')
+          this.method.name = methodName
+          this.method.parameterTypes = parametersTypes.split(';')
+        } else {
+          this.method.name = method
+          this.method.parameterTypes = null
+        }
       }
 
       this.$axios.get('/test/method', {
@@ -124,7 +129,11 @@
           method: method
         }
       }).then(response => {
-        this.method.json = response.data.parameterTypes
+        if (response.data.parameterTypes) {
+          this.method.parameterTypes = response.data.parameterTypes
+        } else {
+          this.method.json = {parameters: [], parameterTypes: []}
+        }
       })
     }
   }

@@ -90,7 +90,7 @@
                   <v-btn
                     small
                     class="tiny"
-                    outline
+                    color='info'
                     @click="toTestService(props.item)"
                   >
                     {{$t('test')}}
@@ -233,10 +233,10 @@
               this.typeAhead = this.$store.getters.getAppItems(v)
             }
             this.searchLoading = false
-            this.timerID = null
           } else {
             this.typeAhead = []
           }
+          this.timerID = null
         }, 500)
       },
       getHref: function (service, app, group, version) {
@@ -286,7 +286,15 @@
         })
       },
       toTestService (item) {
-        const service = item.service
+        let service = item.service
+        let group = item.group
+        let version = item.version
+        if (group !== null) {
+          service = group + '/' + service
+        }
+        if (version !== null) {
+          service = service + ':' + version
+        }
         this.$router.push(`/test/?service=${service}`)
       }
     },
