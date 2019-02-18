@@ -69,11 +69,11 @@ public class GenericServiceImpl {
                 }
                 int i;
                 if ((i = key.indexOf(Constants.PATH_SEPARATOR)) > -1) {
-                    reference.setGroup(key.substring(0, i));
+                    genericServiceReferenceConfig.setGroup(key.substring(0, i));
                     key = key.substring(i + 1);
                 }
                 if ((i = key.indexOf(':')) > -1) {
-                    reference.setVersion(key.substring(i + 1));
+                    genericServiceReferenceConfig.setVersion(key.substring(i + 1));
                     key = key.substring(0, i);
                 }
                 genericServiceReferenceConfig.setInterface(key);
