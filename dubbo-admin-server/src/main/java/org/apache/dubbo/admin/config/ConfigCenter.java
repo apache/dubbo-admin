@@ -77,9 +77,7 @@ public class ConfigCenter {
 
         if (StringUtils.isNotEmpty(configCenter)) {
             configCenterUrl = formUrl(configCenter, group, username, password);
-            dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(configCenterUrl.getProtocol());
-            dynamicConfiguration.setUrl(configCenterUrl);
-            dynamicConfiguration.init();
+            dynamicConfiguration = getGovernanceConfigurationFromURL(configCenterUrl);
             String config = dynamicConfiguration.getConfig(Constants.GLOBAL_CONFIG_PATH);
 
             if (StringUtils.isNotEmpty(config)) {
@@ -96,13 +94,10 @@ public class ConfigCenter {
         if (dynamicConfiguration == null) {
             if (StringUtils.isNotEmpty(registryAddress)) {
                 registryUrl = formUrl(registryAddress, group, username, password);
-                dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(registryUrl.getProtocol());
-                dynamicConfiguration.setUrl(registryUrl);
-                dynamicConfiguration.init();
+                dynamicConfiguration = getGovernanceConfigurationFromURL(registryUrl);
                 logger.warn("you are using dubbo.registry.address, which is not recommend, please refer to: https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration");
             } else {
                 throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration");
-                //throw exception
             }
         }
         return dynamicConfiguration;
@@ -114,7 +109,6 @@ public class ConfigCenter {
     @Bean
     @DependsOn("governanceConfiguration")
     Registry getRegistry() {
-        Registry registry = null;
         if (registryUrl == null) {
             if (StringUtils.isBlank(registryAddress)) {
                 throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration");
@@ -122,8 +116,7 @@ public class ConfigCenter {
             registryUrl = formUrl(registryAddress, group, username, password);
         }
         RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
-        registry = registryFactory.getRegistry(registryUrl);
-        return registry;
+        return registryFactory.getRegistry(registryUrl);
     }
 
     /*
@@ -160,5 +153,13 @@ public class ConfigCenter {
             url = url.setPassword(password);
         }
         return url;
+    }
+
+    private GovernanceConfiguration getGovernanceConfigurationFromURL(URL url) {
+        GovernanceConfiguration dynamicConfiguration =
+                ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(url.getProtocol());
+        dynamicConfiguration.setUrl(url);
+        dynamicConfiguration.init();
+        return dynamicConfiguration;
     }
 }
