@@ -28,6 +28,7 @@ import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+import org.omg.CosNaming.NamingContextExtPackage.StringNameHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -459,11 +460,20 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
     public Set<ServiceDTO> convertProviders2DTO(List<Provider> providers) {
         Set<ServiceDTO> result = new TreeSet<>();
         for (Provider provider : providers) {
-            Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
             String app = provider.getApplication();
-            String service = map.get(Constants.INTERFACE_KEY);
-            String group = map.get(Constants.GROUP_KEY);
-            String version = map.get(Constants.VERSION_KEY);
+            String service = provider.getService();
+            String group = null;
+            String version = null;
+            int i = service.indexOf("/");
+            if (i >= 0) {
+                group = service.substring(0, i);
+                service = service.substring(i + 1);
+            }
+            i = service.lastIndexOf(":");
+            if (i >= 0) {
+                version = service.substring(i + 1);
+                service = service.substring(0, i);
+            }
             ServiceDTO s = new ServiceDTO();
             s.setAppName(app);
             s.setService(service);
