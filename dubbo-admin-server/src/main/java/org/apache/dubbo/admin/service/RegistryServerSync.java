@@ -70,7 +70,7 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
      */
     private final ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>> registryCache = new ConcurrentHashMap<>();
     @Autowired
-    private Registry registry;
+    private List<Registry> registries;
 
     public ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>> getRegistryCache() {
         return registryCache;
@@ -79,12 +79,16 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
     @Override
     public void afterPropertiesSet() throws Exception {
         logger.info("Init Dubbo Admin Sync Cache...");
-        registry.subscribe(SUBSCRIBE, this);
+        for (Registry registry : registries) {
+            registry.subscribe(SUBSCRIBE, this);
+        }
     }
 
     @Override
     public void destroy() throws Exception {
-        registry.unsubscribe(SUBSCRIBE, this);
+        for (Registry registry : registries) {
+            registry.unsubscribe(SUBSCRIBE, this);
+        }
     }
 
     // Notification of of any service with any type (override、subcribe、route、provider) is full.

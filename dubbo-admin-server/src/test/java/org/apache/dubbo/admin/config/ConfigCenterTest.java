@@ -121,7 +121,7 @@ public class ConfigCenterTest {
     @Test
     public void testGetRegistry() throws Exception {
         try {
-            configCenter.getRegistry();
+            configCenter.getRegistries(configCenter.getDynamicConfiguration());
             fail("should throw exception when registryAddress is blank");
         } catch (ConfigurationException e) {
         }
@@ -133,7 +133,7 @@ public class ConfigCenterTest {
         ReflectionTestUtils.setField(configCenter, "username", "username");
         ReflectionTestUtils.setField(configCenter, "password", "password");
 
-        configCenter.getRegistry();
+        configCenter.getRegistries(configCenter.getDynamicConfiguration());
         Object registryUrl = ReflectionTestUtils.getField(configCenter, "registryUrl");
         assertNotNull(registryUrl);
         assertEquals("127.0.0.1", ((URL) registryUrl).getHost());
@@ -143,7 +143,7 @@ public class ConfigCenterTest {
     public void testGetMetadataCollector() throws Exception {
         // when metadataAddress is empty
         ReflectionTestUtils.setField(configCenter, "metadataAddress", "");
-        configCenter.getMetadataCollector();
+        configCenter.getMetadataCollector(configCenter.getDynamicConfiguration());
         assertNull(ReflectionTestUtils.getField(configCenter, "metadataUrl"));
 
         // mock @value inject
@@ -152,7 +152,7 @@ public class ConfigCenterTest {
         ReflectionTestUtils.setField(configCenter, "username", "username");
         ReflectionTestUtils.setField(configCenter, "password", "password");
 
-        configCenter.getMetadataCollector();
+        configCenter.getMetadataCollector(configCenter.getDynamicConfiguration());
         Object metadataUrl = ReflectionTestUtils.getField(configCenter, "metadataUrl");
         assertNotNull(metadataUrl);
         assertEquals("127.0.0.1", ((URL) metadataUrl).getHost());

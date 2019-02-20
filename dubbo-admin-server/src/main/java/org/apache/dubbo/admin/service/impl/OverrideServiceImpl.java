@@ -34,6 +34,7 @@ import org.apache.dubbo.admin.model.dto.WeightDTO;
 import org.apache.dubbo.admin.model.store.OverrideConfig;
 import org.apache.dubbo.admin.model.store.OverrideDTO;
 import org.apache.dubbo.admin.service.OverrideService;
+import org.apache.dubbo.registry.Registry;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -75,7 +76,9 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         if (StringUtils.isNotEmpty(override.getService())) {
             List<Override> result = convertDTOtoOldOverride(override);
             for (Override o : result) {
-                registry.register(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+                for (Registry registry : registries) {
+                    registry.register(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+                }
             }
         }
     }
@@ -109,10 +112,14 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             List<Override> oldOverrides = convertDTOtoOldOverride(old);
             List<Override> updatedOverrides = convertDTOtoOldOverride(update);
             for (Override o : oldOverrides) {
-                registry.unregister(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+                for (Registry registry : registries) {
+                    registry.unregister(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+                }
             }
             for (Override o : updatedOverrides) {
-                registry.register(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+                for (Registry registry : registries) {
+                    registry.register(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+                }
             }
         }
     }
@@ -150,7 +157,9 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         if (overrideDTO.getScope().equals(Constants.SERVICE)) {
             List<Override> overrides = convertDTOtoOldOverride(old);
             for (Override o : overrides) {
-                registry.unregister(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+                for (Registry registry : registries) {
+                    registry.unregister(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+                }
             }
         }
     }
@@ -174,10 +183,12 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         if (override.getScope().equals(Constants.SERVICE)) {
             List<Override> overrides = convertDTOtoOldOverride(old);
             for (Override o : overrides) {
-                o.setEnabled(false);
-                registry.unregister(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
-                o.setEnabled(true);
-                registry.register(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+                for (Registry registry : registries) {
+                    o.setEnabled(false);
+                    registry.unregister(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+                    o.setEnabled(true);
+                    registry.register(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+                }
             }
         }
     }
@@ -201,10 +212,12 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         if (override.getScope().equals(Constants.SERVICE)) {
             List<Override> overrides = convertDTOtoOldOverride(old);
             for (Override o : overrides) {
-                o.setEnabled(true);
-                registry.unregister(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
-                o.setEnabled(false);
-                registry.register(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+                for (Registry registry : registries) {
+                    o.setEnabled(true);
+                    registry.unregister(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+                    o.setEnabled(false);
+                    registry.register(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+                }
             }
         }
     }
@@ -531,7 +544,9 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             for (String address : addresses) {
                 weight.setAddress(address);
                 Override override = new WeightToOverrideAdapter(weight);
-                registry.unregister(override.toUrl());
+                for (Registry registry : registries) {
+                    registry.unregister(override.toUrl());
+                }
             }
         }
     }
@@ -545,7 +560,9 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             for (String address : addresses) {
                 weight.setAddress(address);
                 Override override = new WeightToOverrideAdapter(weight);
-                registry.register(override.toUrl());
+                for (Registry registry : registries) {
+                    registry.register(override.toUrl());
+                }
             }
         }
     }
@@ -555,7 +572,9 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         loadBalance.setService(balancingDTO.getService());
         loadBalance.setMethod(balancingDTO.getMethodName());
         loadBalance.setStrategy(balancingDTO.getStrategy());
-        registry.unregister(new LoadBalance2OverrideAdapter(loadBalance).toUrl());
+        for (Registry registry : registries) {
+            registry.unregister(new LoadBalance2OverrideAdapter(loadBalance).toUrl());
+        }
     }
 
     private void registerBalancing(BalancingDTO balancingDTO) {
@@ -563,7 +582,9 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         loadBalance.setService(balancingDTO.getService());
         loadBalance.setMethod(balancingDTO.getMethodName());
         loadBalance.setStrategy(balancingDTO.getStrategy());
-        registry.register(new LoadBalance2OverrideAdapter(loadBalance).toUrl());
+        for (Registry registry : registries) {
+            registry.register(new LoadBalance2OverrideAdapter(loadBalance).toUrl());
+        }
     }
 
 }

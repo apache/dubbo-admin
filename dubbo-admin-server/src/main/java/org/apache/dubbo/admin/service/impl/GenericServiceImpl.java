@@ -26,16 +26,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import java.util.List;
 
 @Component
 public class GenericServiceImpl {
     private ApplicationConfig applicationConfig;
     @Autowired
-    private Registry registry;
+    private List<Registry> registries;
 
     @PostConstruct
     public void init() {
         RegistryConfig registryConfig = new RegistryConfig();
+        Registry registry = registries.stream().findFirst().get();
         registryConfig.setAddress(registry.getUrl().getProtocol() + "://" + registry.getUrl().getAddress());
 
         applicationConfig = new ApplicationConfig();

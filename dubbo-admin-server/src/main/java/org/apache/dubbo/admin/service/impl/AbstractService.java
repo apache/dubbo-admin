@@ -25,6 +25,7 @@ import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.registry.Registry;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
@@ -37,7 +38,7 @@ public class AbstractService {
     protected static final Logger logger = LoggerFactory.getLogger(AbstractService.class);
 
     @Autowired
-    protected Registry registry;
+    protected List<Registry> registries;
 
     @Autowired
     protected GovernanceConfiguration dynamicConfiguration;

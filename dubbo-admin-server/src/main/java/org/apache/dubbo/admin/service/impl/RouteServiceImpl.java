@@ -59,7 +59,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         //register2.6
         if (StringUtils.isNotEmpty(conditionRoute.getService())) {
             Route old = convertRouteToOldRoute(conditionRoute);
-            registry.register(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+            registries.forEach(registry -> registry.register(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true)));
         }
 
     }
@@ -81,8 +81,10 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         if (StringUtils.isNotEmpty(newConditionRoute.getService())) {
             Route old = convertRouteToOldRoute(oldConditionRoute);
             Route updated = convertRouteToOldRoute(newConditionRoute);
-            registry.unregister(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
-            registry.register(updated.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+            registries.forEach(registry -> {
+                registry.unregister(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+                registry.register(updated.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+            });
         }
     }
 
@@ -110,7 +112,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
             RoutingRule originRule = YamlParser.loadObject(config, RoutingRule.class);
             ConditionRouteDTO conditionRouteDTO = RouteUtils.createConditionRouteFromRule(originRule);
             Route old = convertRouteToOldRoute(conditionRouteDTO);
-            registry.unregister(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+            registries.forEach(registry -> registry.unregister(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true)));
         }
     }
 
@@ -131,7 +133,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
             //2.6
             if (ruleDTO.getScope().equals(Constants.SERVICE) && blackWhiteList.size() > 0) {
                 Route route = RouteUtils.convertBlackWhiteListtoRoute(blackWhiteList, Constants.SERVICE, id);
-                registry.unregister(route.toUrl());
+                registries.forEach(registry -> registry.unregister(route.toUrl()));
             }
         }
     }
@@ -166,7 +168,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         //for 2.6
         if (ruleDTO.getScope().equals("service")) {
             Route route = RouteUtils.convertAccessDTOtoRoute(accessDTO);
-            registry.register(route.toUrl());
+            registries.forEach(registry -> registry.register(route.toUrl()));
         }
 
     }
@@ -203,8 +205,10 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         if (StringUtils.isNotEmpty(accessDTO.getService())) {
             Route oldRoute = RouteUtils.convertBlackWhiteListtoRoute(oldList, Constants.SERVICE, key);
             Route newRoute = RouteUtils.convertAccessDTOtoRoute(accessDTO);
-            registry.unregister(oldRoute.toUrl());
-            registry.register(newRoute.toUrl());
+            registries.forEach(registry -> {
+                registry.unregister(oldRoute.toUrl());
+                registry.register(newRoute.toUrl());
+            });
         }
     }
 
@@ -218,9 +222,11 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
             if (ruleDTO.getScope().equals(Constants.SERVICE)) {
                 //for2.6
                 URL oldURL = convertRouteToOldRoute(RouteUtils.createConditionRouteFromRule(ruleDTO)).toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true);
-                registry.unregister(oldURL);
-                oldURL = oldURL.addParameter("enabled", true);
-                registry.register(oldURL);
+                registries.forEach(registry -> {
+                    registry.unregister(oldURL);
+                    URL newURL = oldURL.addParameter("enabled", true);
+                    registry.register(newURL);
+                });
             }
 
             //2.7
@@ -240,9 +246,11 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
             if (routeRule.getScope().equals(Constants.SERVICE)) {
                 //for 2.6
                 URL oldURL = convertRouteToOldRoute(RouteUtils.createConditionRouteFromRule(routeRule)).toUrl().addParameter(Constants.COMPATIBLE_CONFIG,true);
-                registry.unregister(oldURL);
-                oldURL = oldURL.addParameter("enabled", false);
-                registry.register(oldURL);
+                registries.forEach(registry -> {
+                    registry.unregister(oldURL);
+                    URL newURL = oldURL.addParameter("enabled", false);
+                    registry.register(newURL);
+                });
             }
 
             //2.7

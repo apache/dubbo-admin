@@ -32,14 +32,14 @@ import org.apache.dubbo.registry.RegistryFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.DependsOn;
 
-import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 
 
 @Configuration
 public class ConfigCenter {
-
+    private final AdminProperties adminProperties;
 
 
     //centers in dubbo 2.7
@@ -63,9 +63,10 @@ public class ConfigCenter {
     private static final Logger logger = LoggerFactory.getLogger(ConfigCenter.class);
 
     private URL configCenterUrl;
-    private URL registryUrl;
-    private URL metadataUrl;
 
+    public ConfigCenter(AdminProperties adminProperties) {
+        this.adminProperties = adminProperties;
+    }
 
 
     /*
@@ -73,59 +74,77 @@ public class ConfigCenter {
      */
     @Bean("governanceConfiguration")
     GovernanceConfiguration getDynamicConfiguration() {
-        GovernanceConfiguration dynamicConfiguration = null;
-
         if (StringUtils.isNotEmpty(configCenter)) {
             configCenterUrl = formUrl(configCenter, group, username, password);
-            dynamicConfiguration = getGovernanceConfigurationFromURL(configCenterUrl);
-            String config = dynamicConfiguration.getConfig(Constants.GLOBAL_CONFIG_PATH);
-
-            if (StringUtils.isNotEmpty(config)) {
-                Arrays.stream(config.split("\n")).forEach( s -> {
-                    if(s.startsWith(Constants.REGISTRY_ADDRESS)) {
-                        String registryAddress = s.split("=")[1].trim();
-                        registryUrl = formUrl(registryAddress, group, username, password);
-                    } else if (s.startsWith(Constants.METADATA_ADDRESS)) {
-                        metadataUrl = formUrl(s.split("=")[1].trim(), group, username, password);
-                    }
-                });
+            GovernanceConfiguration dynamicConfiguration = getGovernanceConfigurationFromURL(configCenterUrl);
+            if (dynamicConfiguration != null) {
+                return dynamicConfiguration;
             }
         }
-        if (dynamicConfiguration == null) {
-            if (StringUtils.isNotEmpty(registryAddress)) {
-                registryUrl = formUrl(registryAddress, group, username, password);
-                dynamicConfiguration = getGovernanceConfigurationFromURL(registryUrl);
-                logger.warn("you are using dubbo.registry.address, which is not recommend, please refer to: https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration");
-            } else {
-                throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration");
-            }
+        if (StringUtils.isNotEmpty(registryAddress)) {
+            URL registryUrl = formUrl(registryAddress, group, username, password);
+            GovernanceConfiguration dynamicConfiguration = getGovernanceConfigurationFromURL(registryUrl);
+            logger.warn("you are using dubbo.registry.address, which is not recommend, please refer to: https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration");
+            return dynamicConfiguration;
         }
-        return dynamicConfiguration;
+        throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration");
     }
 
     /*
      * generate registry client
      */
-    @Bean
-    @DependsOn("governanceConfiguration")
-    Registry getRegistry() {
-        if (registryUrl == null) {
+    @Bean("registries")
+    List<Registry> getRegistries(GovernanceConfiguration governanceConfiguration) {
+        List<Registry> registries = new LinkedList<>();
+        RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
+
+        String config = governanceConfiguration.getConfig(Constants.GLOBAL_CONFIG_PATH);
+
+        if (StringUtils.isNotEmpty(config)) {
+            for (String s : config.split("\n")) {
+                if(s.startsWith(Constants.REGISTRY_ADDRESS)) {
+                    String registryAddress = s.split("=")[1].trim();
+                    URL registryUrl = formUrl(registryAddress, group, username, password);
+                    registries.add(registryFactory.getRegistry(registryUrl));
+                }
+            }
+        }
+
+        if (registries.isEmpty()) {
             if (StringUtils.isBlank(registryAddress)) {
                 throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration");
             }
-            registryUrl = formUrl(registryAddress, group, username, password);
+            URL registryUrl = formUrl(registryAddress, group, username, password);
+            registries.add(registryFactory.getRegistry(registryUrl));
         }
-        RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
-        return registryFactory.getRegistry(registryUrl);
+
+//        if (registries.isEmpty()) {
+            for (AdminProperties.Registry registry : adminProperties.getRegistries()) {
+                URL registryUrl = formUrl(registry.getAddress(), registry.getGroup(), registry.getUsername(), registry.getPassword());
+                registries.add(registryFactory.getRegistry(registryUrl));
+            }
+//        }
+        return registries;
     }
 
     /*
      * generate metadata client
      */
     @Bean
-    @DependsOn("governanceConfiguration")
-    MetaDataCollector getMetadataCollector() {
+    MetaDataCollector getMetadataCollector(GovernanceConfiguration governanceConfiguration) {
         MetaDataCollector metaDataCollector = new NoOpMetadataCollector();
+
+        String config = governanceConfiguration.getConfig(Constants.GLOBAL_CONFIG_PATH);
+        URL metadataUrl = null;
+
+        if (StringUtils.isNotEmpty(config)) {
+            for (String s : config.split("\n")) {
+                if (s.startsWith(Constants.METADATA_ADDRESS)) {
+                    metadataUrl = formUrl(s.split("=")[1].trim(), group, username, password);
+                }
+            }
+        }
+
         if (metadataUrl == null) {
             if (StringUtils.isNotEmpty(metadataAddress)) {
                 metadataUrl = formUrl(metadataAddress, group, username, password);
