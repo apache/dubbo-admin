@@ -133,7 +133,7 @@
         this.$axios.get('/service/' + this.filter.replace('/', '*')).then(response => {
           this.methods = []
           if (response.data.metadata) {
-            let methods = this.service.metadata.methods
+            let methods = response.data.metadata.methods
             for (let i = 0; i < methods.length; i++) {
               let method = {}
               let sig = methods[i].name + '~'

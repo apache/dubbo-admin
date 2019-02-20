@@ -130,7 +130,7 @@
         }
       }).then(response => {
         if (response.data.parameterTypes) {
-          this.method.parameterTypes = response.data.parameterTypes
+          this.method.json = response.data.parameterTypes
         } else {
           this.method.json = {parameters: [], parameterTypes: []}
         }
