@@ -35,6 +35,7 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 
 @Configuration
@@ -63,6 +64,7 @@ public class ConfigCenter {
     private static final Logger logger = LoggerFactory.getLogger(ConfigCenter.class);
 
     private URL configCenterUrl;
+    private URL metadataUrl;
 
     public ConfigCenter(AdminProperties adminProperties) {
         this.adminProperties = adminProperties;
@@ -118,12 +120,12 @@ public class ConfigCenter {
             registries.add(registryFactory.getRegistry(registryUrl));
         }
 
-//        if (registries.isEmpty()) {
+        if (Objects.nonNull(adminProperties.getRegistries()) && adminProperties.getRegistries().length > 0) {
             for (AdminProperties.Registry registry : adminProperties.getRegistries()) {
                 URL registryUrl = formUrl(registry.getAddress(), registry.getGroup(), registry.getUsername(), registry.getPassword());
                 registries.add(registryFactory.getRegistry(registryUrl));
             }
-//        }
+        }
         return registries;
     }
 
@@ -135,7 +137,6 @@ public class ConfigCenter {
         MetaDataCollector metaDataCollector = new NoOpMetadataCollector();
 
         String config = governanceConfiguration.getConfig(Constants.GLOBAL_CONFIG_PATH);
-        URL metadataUrl = null;
 
         if (StringUtils.isNotEmpty(config)) {
             for (String s : config.split("\n")) {

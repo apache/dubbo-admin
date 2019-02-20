@@ -25,9 +25,11 @@ import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
@@ -39,10 +41,6 @@ import static org.mockito.Mockito.when;
 
 @RunWith(SpringJUnit4ClassRunner.class)
 public class RegistryServerSyncTest {
-
-    @Mock
-    private Registry registry;
-
     @InjectMocks
     private RegistryServerSync registryServerSync;
 
@@ -53,14 +51,22 @@ public class RegistryServerSyncTest {
 
     @Test
     public void testAfterPropertiesSet() throws Exception {
+        List<Registry> registries = Arrays.asList(mock(Registry.class), mock(Registry.class));
+        ReflectionTestUtils.setField(registryServerSync, "registries", registries);
         registryServerSync.afterPropertiesSet();
-        verify(registry).subscribe(any(URL.class), any(RegistryServerSync.class));
+        for (Registry registry : registries) {
+            verify(registry).subscribe(any(URL.class), any(RegistryServerSync.class));
+        }
     }
 
     @Test
     public void testDestroy() throws Exception {
+        List<Registry> registries = Arrays.asList(mock(Registry.class), mock(Registry.class));
+        ReflectionTestUtils.setField(registryServerSync, "registries", registries);
         registryServerSync.destroy();
-        verify(registry).unsubscribe(any(URL.class), any(RegistryServerSync.class));
+        for (Registry registry : registries) {
+            verify(registry).unsubscribe(any(URL.class), any(RegistryServerSync.class));
+        }
     }
 
     @Test
