@@ -27,10 +27,19 @@
             <directory>../</directory>
             <includes>
                 <include>DISCLAIMER</include>
-                <include>NOTICE</include>
-                <include>LICENSE</include>
-                <include>dubbo-admin-distribution/README.md</include>
             </includes>
+        </fileSet>
+        <fileSet>
+            <directory>src/licenses</directory>
+            <outputDirectory>licenses</outputDirectory>
+        </fileSet>
+        <fileSet>
+            <directory>src</directory>
+            <includes>
+                <include>LICENSE</include>
+                <include>NOTICE</include>
+            </includes>
+            <outputDirectory></outputDirectory>
         </fileSet>
     </fileSets>
     <files>
