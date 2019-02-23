@@ -91,7 +91,7 @@
                     small
                     class="tiny"
                     outline
-                    @click="toTestService(props.item)"
+                    :href='toTestService(props.item)'
                   >
                     {{$t('test')}}
                   </v-btn>
@@ -286,8 +286,15 @@
         })
       },
       toTestService (item) {
-        const service = item.service
-        this.$router.push(`/test/?service=${service}`)
+        let base = '#/test'
+        let query = '?service=' + item.service
+        if (item.group) {
+          query = query + '&group=' + item.group
+        }
+        if (item.version) {
+          query = query + '&version=' + item.version
+        }
+        return base + query
       }
     },
     mounted: function () {

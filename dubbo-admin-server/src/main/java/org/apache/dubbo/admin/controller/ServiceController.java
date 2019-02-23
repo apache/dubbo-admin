@@ -63,18 +63,28 @@ public class ServiceController {
     @RequestMapping(value = "/service/{service}", method = RequestMethod.GET)
     public ServiceDetailDTO serviceDetail(@PathVariable String service, @PathVariable String env) {
         service = service.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
+        String group = null;
+        String version = null;
+        String interfaze = service;
+        int i = interfaze.indexOf("/");
+        if (i >= 0) {
+            group = interfaze.substring(0, i);
+            interfaze = interfaze.substring(i + 1);
+        }
+        i = interfaze.lastIndexOf(":");
+        if (i >= 0) {
+            version = interfaze.substring(i + 1);
+            interfaze = interfaze.substring(0, i);
+        }
         List<Provider> providers = providerService.findByService(service);
 
         List<Consumer> consumers = consumerService.findByService(service);
 
-        Map<String, String> info = ConvertUtil.serviceName2Map(service);
         String application = null;
         if (providers != null && providers.size() > 0) {
             application = providers.get(0).getApplication();
         }
-        MetadataIdentifier identifier = new MetadataIdentifier(info.get(Constants.INTERFACE_KEY),
-                                                                      info.get(Constants.VERSION_KEY),
-                                                                      info.get(Constants.GROUP_KEY), Constants.PROVIDER_SIDE, application);
+        MetadataIdentifier identifier = new MetadataIdentifier(interfaze, version, group, Constants.PROVIDER_SIDE, application);
         String metadata = providerService.getProviderMetaData(identifier);
         ServiceDetailDTO serviceDetailDTO = new ServiceDetailDTO();
         serviceDetailDTO.setConsumers(consumers);
