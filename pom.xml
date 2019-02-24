@@ -240,6 +240,7 @@
 										<exclude>**/.eslintignore</exclude>
 										<exclude>**/resources/META-INF/**</exclude>
 										<exclude>**/src/main/resources/public/**</exclude>
+										<exclude>**/src/licenses/**</exclude>
 									</excludes>
 								</configuration>
 							</execution>
