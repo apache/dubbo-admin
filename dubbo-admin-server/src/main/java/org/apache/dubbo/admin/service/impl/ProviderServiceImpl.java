@@ -21,6 +21,7 @@ import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.Pair;
 import org.apache.dubbo.admin.common.util.ParseUtils;
 import org.apache.dubbo.admin.common.util.SyncUtils;
+import org.apache.dubbo.admin.common.util.Tool;
 import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.dto.ServiceDTO;
 import org.apache.dubbo.admin.service.OverrideService;
@@ -460,21 +461,12 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         for (Provider provider : providers) {
             String app = provider.getApplication();
             String service = provider.getService();
-            String group = null;
-            String version = null;
-            int i = service.indexOf("/");
-            if (i >= 0) {
-                group = service.substring(0, i);
-                service = service.substring(i + 1);
-            }
-            i = service.lastIndexOf(":");
-            if (i >= 0) {
-                version = service.substring(i + 1);
-                service = service.substring(0, i);
-            }
+            String group = Tool.getGroup(service);
+            String version = Tool.getVersion(service);
+            String interfaze = Tool.getInterface(service);
             ServiceDTO s = new ServiceDTO();
             s.setAppName(app);
-            s.setService(service);
+            s.setService(interfaze);
             s.setGroup(group);
             s.setVersion(version);
             result.add(s);

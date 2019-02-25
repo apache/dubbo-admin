@@ -19,6 +19,7 @@ package org.apache.dubbo.admin.controller;
 
 import com.google.gson.Gson;
 import org.apache.dubbo.admin.common.util.Constants;
+import org.apache.dubbo.admin.common.util.Tool;
 import org.apache.dubbo.admin.model.domain.Consumer;
 import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.dto.ServiceDTO;
@@ -61,19 +62,9 @@ public class ServiceController {
     @RequestMapping(value = "/service/{service}", method = RequestMethod.GET)
     public ServiceDetailDTO serviceDetail(@PathVariable String service, @PathVariable String env) {
         service = service.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
-        String group = null;
-        String version = null;
-        String interfaze = service;
-        int i = interfaze.indexOf("/");
-        if (i >= 0) {
-            group = interfaze.substring(0, i);
-            interfaze = interfaze.substring(i + 1);
-        }
-        i = interfaze.lastIndexOf(":");
-        if (i >= 0) {
-            version = interfaze.substring(i + 1);
-            interfaze = interfaze.substring(0, i);
-        }
+        String group = Tool.getGroup(service);
+        String version = Tool.getVersion(service);
+        String interfaze = Tool.getInterface(service);
         List<Provider> providers = providerService.findByService(service);
 
         List<Consumer> consumers = consumerService.findByService(service);

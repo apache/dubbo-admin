@@ -46,28 +46,6 @@
           </v-card>
         </v-flex>
       </v-layout>
-      <!--<v-flex xs12>-->
-        <!--<search v-model="filter" :label="$t('placeholders.searchService')"-->
-                <!--:hint="$t('testModule.searchServiceHint')"-->
-                <!--:submit="search"></search>-->
-      <!--</v-flex>-->
-      <!--<v-flex xs12>-->
-        <!--<v-autocomplete-->
-          <!--flat-->
-          <!--hide-no-data-->
-          <!--v-model="service"-->
-          <!--:loading="loading"-->
-          <!--:search-input.sync="filter"-->
-          <!--:hint="$t('testModule.searchServiceHint')"-->
-          <!--:items="services"-->
-          <!--item-value="service"-->
-          <!--item-text="service"-->
-          <!--:label="$t('placeholders.searchService')"-->
-          <!--persistent-hint-->
-          <!--@keyup.enter="search"-->
-          <!--clearable-->
-        <!--&gt;</v-autocomplete>-->
-      <!--</v-flex>-->
       <v-flex xs12>
         <h3>{{$t('methods')}}</h3>
       </v-flex>
