@@ -62,11 +62,11 @@
                       class="tiny"
                       slot="activator"
                       color="primary"
-                      @mouseover="setHoverHint"
-                      @mouseout="setoutHint"
+                      @mouseover="setHoverHint(props.item)"
+                      @mouseout="setoutHint(props.item)"
                       @click="toCopyText(props.item.url)"
                     >
-                        {{$t(hint)}}
+                        {{$t(props.item.hint)}}
                     </v-btn>
                     <span>{{props.item.url}}</span>
                   </v-tooltip>
@@ -125,8 +125,7 @@
       providerDetails: [],
       consumerDetails: [],
       methodMetaData: [],
-      basic: [],
-      hint: 'url'
+      basic: []
     }),
     methods: {
       setmetaHeaders: function () {
@@ -148,12 +147,12 @@
           }
         ]
       },
-      setHoverHint: function () {
-        this.hint = 'copy'
+      setHoverHint: function (item) {
+        this.$set(item, 'hint', 'copy')
       },
 
-      setoutHint: function () {
-        this.hint = 'url'
+      setoutHint: function (item) {
+        this.$set(item, 'hint', 'url')
       },
       setdetailHeaders: function () {
         this.detailHeaders = {
@@ -200,6 +199,9 @@
         this.$axios.get('/service/' + service)
             .then(response => {
               this.providerDetails = response.data.providers
+              for (let i = 0; i < this.providerDetails.length; i++) {
+                this.$set(this.providerDetails[i], 'hint', 'url')
+              }
               this.consumerDetails = response.data.consumers
               if (response.data.metadata !== null) {
                 this.methodMetaData = response.data.metadata.methods
@@ -211,13 +213,6 @@
       },
       getPort: function (address) {
         return address.split(':')[1]
-      },
-      getParameters: function (parameterTypes) {
-        let result = ''
-        for (let i = 0; i < parameterTypes.length; i++) {
-          result = result + parameterTypes[i] + ' '
-        }
-        return result.trim()
       },
       toCopyText (text) {
         this.$copyText(text).then(() => {
