@@ -24,6 +24,7 @@ import org.apache.dubbo.admin.common.exception.ServiceException;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -58,7 +59,7 @@ public class CustomExceptionHandler {
 
     @ResponseBody
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
-    @ExceptionHandler(value = PermissionDeniedException.class)
+    @ExceptionHandler(value = {PermissionDeniedException.class, AccessDeniedException.class})
     public CommonResponse permissionDeniedExceptionHandle(Exception e) {
         CommonResponse commonResponse = CommonResponse.createCommonResponse();
         logger.error("[PermissionDeniedException]Exception:", e);
