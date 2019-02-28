@@ -17,8 +17,11 @@
 
 <template>
   <v-app :dark="dark">
-    <drawer></drawer>
-    <toolbar></toolbar>
+    <drawer v-if="!isLoginPage"></drawer>
+    <toolbar
+      :show-drawer="!isLoginPage"
+      :show-search-field="!isLoginPage"
+    ></toolbar>
     <v-content>
       <router-view/>
     </v-content>
@@ -35,6 +38,11 @@
       Drawer,
       Toolbar,
       Footers
+    },
+    computed: {
+      isLoginPage () {
+        return this.$route.path === '/login'
+      }
     },
     data () {
       return {

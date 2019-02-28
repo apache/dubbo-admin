@@ -22,7 +22,10 @@
     dark
     app
   >
-    <v-toolbar-side-icon @click.stop="handleDrawerToggle"></v-toolbar-side-icon>
+    <v-toolbar-side-icon
+      @click.stop="handleDrawerToggle"
+      v-if="showDrawer"
+    ></v-toolbar-side-icon>
     <v-text-field
       flat
       hide-details
@@ -32,6 +35,7 @@
       class="hidden-sm-and-down"
       v-model="global"
       @keyup.enter="submit"
+      v-if="showSearchField"
     >
     </v-text-field>
 
@@ -96,6 +100,16 @@
   import Util from '@/util'
   export default {
     name: 'toolbar',
+    props: {
+      showDrawer: {
+        type: Boolean,
+        default: true
+      },
+      showSearchField: {
+        type: Boolean,
+        default: true
+      }
+    },
     data: () => ({
       selectedLang: '',
       global: '',
