@@ -69,10 +69,12 @@
         <v-card-text class="pa-0">
           <template>
             <v-data-table
-              hide-actions
               class="elevation-0 table-striped"
+              :pagination.sync="pagination"
+              :total-items="totalItems"
               :headers="headers"
               :items="services"
+              :loading="loadingServices"
             >
               <template slot="items" slot-scope="props">
                 <td >{{props.item.service}}</td>
@@ -159,9 +161,15 @@
       selected: 0,
       input: null,
       typeAhead: [],
-      services: [],
+      resultPage: {},
       filter: '',
-      headers: []
+      headers: [],
+      pagination: {
+        page: 1,
+        rowsPerPage: 10 // -1 for All
+      },
+      totalItems: 0,
+      loadingServices: false
     }),
     computed: {
       queryBy () {
@@ -178,6 +186,12 @@
       },
       area () {
         return this.$i18n.locale
+      },
+      services () {
+        if (!this.resultPage || !this.resultPage.content) {
+          return []
+        }
+        return this.resultPage.content
       }
     },
     watch: {
@@ -186,6 +200,17 @@
       },
       area () {
         this.setHeaders()
+      },
+      pagination: {
+        handler (newVal, oldVal) {
+          if (newVal.page === oldVal.page && newVal.rowsPerPage === oldVal.rowsPerPage) {
+            return
+          }
+          const filter = this.$route.query.filter || '*';
+          const pattern = this.$route.query.pattern || 'service'
+          this.search(filter, pattern, false)
+        },
+        deep: true
       }
     },
     methods: {
@@ -273,16 +298,24 @@
         }
       },
       search: function (filter, pattern, rewrite) {
+        const page = this.pagination.page - 1
+        const size = this.pagination.rowsPerPage
+        this.loadingServices = true
         this.$axios.get('/service', {
           params: {
-            pattern: pattern,
-            filter: filter
+            pattern,
+            filter,
+            page,
+            size
           }
         }).then(response => {
-          this.services = response.data
+          this.resultPage = response.data
+          this.totalItems = this.resultPage.totalElements
           if (rewrite) {
             this.$router.push({path: 'service', query: {filter: filter, pattern: pattern}})
           }
+        }).finally(() => {
+          this.loadingServices = false
         })
       },
       toTestService (item) {
