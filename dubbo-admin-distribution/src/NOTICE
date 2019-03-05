@@ -7,7 +7,7 @@ The Apache Software Foundation (http://www.apache.org/).
 
 ========================================================================
 
-yetus NOTICE
+audience-annotations NOTICE
 
 ========================================================================
 Apache Yetus
@@ -25,7 +25,7 @@ See LICENSE for terms.
 
 ========================================================================
 
-Apache Commons CLI NOTICE
+commons-cli NOTICE
 
 ========================================================================
 Apache Commons CLI
@@ -36,7 +36,7 @@ The Apache Software Foundation (http://www.apache.org/).
 
 ========================================================================
 
-Apache Commons Codec NOTICE
+commons-codec NOTICE
 
 ========================================================================
 Apache Commons Codec
@@ -59,7 +59,7 @@ Copyright (c) 2008 Alexander Beider & Stephen P. Morse.
 
 ========================================================================
 
-Apache Commons Lang NOTICE
+commons-lang3 NOTICE
 
 ========================================================================
 Apache Commons Lang
@@ -73,7 +73,7 @@ under the Apache License 2.0 (see: StringUtils.containsWhitespace())
 
 ========================================================================
 
-Apache Commons Pool NOTICE
+commons-pool NOTICE
 
 ========================================================================
 Apache Commons Pool
@@ -84,7 +84,7 @@ The Apache Software Foundation (http://www.apache.org/).
 
 ========================================================================
 
-Apache Curator NOTICE
+curator NOTICE
 
 ========================================================================
 Apache Curator
@@ -96,7 +96,7 @@ The Apache Software Foundation (http://www.apache.org/).
 
 ========================================================================
 
-Apache Dubbo (incubating) NOTICE
+dubbo NOTICE
 
 ========================================================================
 Apache Dubbo (incubating)
@@ -116,7 +116,7 @@ Copyright 2014 The Netty Project
 
 ========================================================================
 
-Apache HttpComponents Client NOTICE
+httpcomponents-client NOTICE
 
 ========================================================================
 Apache HttpComponents Client
@@ -127,7 +127,7 @@ The Apache Software Foundation (http://www.apache.org/).
 
 ========================================================================
 
-Apache HttpComponents Core NOTICE
+httpcomponents-core NOTICE
 
 ========================================================================
 Apache HttpComponents Core
@@ -138,7 +138,7 @@ The Apache Software Foundation (http://www.apache.org/).
 
 ========================================================================
 
-Apache Log4j NOTICE
+log4j NOTICE
 
 ========================================================================
 Apache log4j
@@ -149,7 +149,7 @@ The Apache Software Foundation (http://www.apache.org/).
 
 ========================================================================
 
-Apache log4j NOTICE
+logging-log4j2 NOTICE
 
 ========================================================================
 Apache Log4j
@@ -172,7 +172,7 @@ Copyright 2017 Remko Popma
 
 ========================================================================
 
-Netty Project NOTICE
+netty NOTICE
 
 ========================================================================
                             The Netty Project
@@ -400,7 +400,7 @@ This product contains the Maven wrapper scripts from 'Maven Wrapper', that provi
 
 ========================================================================
 
-Spring Framework NOTICE
+spring-framework NOTICE
 
 ========================================================================
 Spring Framework 5.0.6.RELEASE
@@ -417,7 +417,39 @@ subcomponent's license, as noted in the license.txt file.
 
 ========================================================================
 
-Apache Tomcat NOTICE
+spring-data-jpa NOTICE
+
+========================================================================
+Spring Data JPA 2.0.7
+Copyright (c) [2011-2015] Pivotal Software, Inc.
+
+This product is licensed to you under the Apache License, Version 2.0 (the "License").
+You may not use this product except in compliance with the License.
+
+This product may include a number of subcomponents with
+separate copyright notices and license terms. Your use of the source
+code for the these subcomponents is subject to the terms and
+conditions of the subcomponent's license, as noted in the LICENSE file.
+
+========================================================================
+
+spring-data-commons NOTICE
+
+========================================================================
+Spring Data Commons 2.0.7
+Copyright (c) [2010-2015] Pivotal Software, Inc.
+
+This product is licensed to you under the Apache License, Version 2.0 (the "License").
+You may not use this product except in compliance with the License.
+
+This product may include a number of subcomponents with
+separate copyright notices and license terms. Your use of the source
+code for the these subcomponents is subject to the terms and
+conditions of the subcomponent's license, as noted in the LICENSE file.
+
+========================================================================
+
+tomcat NOTICE
 
 ========================================================================
 Apache Tomcat
@@ -474,7 +506,7 @@ http://www.oracle.com/webfolder/technetwork/jsc/xml/ns/javaee/index.html
 
 ========================================================================
 
-Apache Zookeeper NOTICE
+zookeeper NOTICE
 
 ========================================================================
 Apache ZooKeeper
@@ -485,7 +517,7 @@ The Apache Software Foundation (http://www.apache.org/).
 
 ========================================================================
 
-JSON Editor NOTICE
+jsoneditor NOTICE
 
 ========================================================================
 JSON Editor
