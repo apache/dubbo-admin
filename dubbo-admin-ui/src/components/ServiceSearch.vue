@@ -206,7 +206,7 @@
           if (newVal.page === oldVal.page && newVal.rowsPerPage === oldVal.rowsPerPage) {
             return
           }
-          const filter = this.$route.query.filter || '*';
+          const filter = this.$route.query.filter || '*'
           const pattern = this.$route.query.pattern || 'service'
           this.search(filter, pattern, false)
         },
