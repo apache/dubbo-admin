@@ -77,7 +77,13 @@
       }
     },
     methods: {
-      submit () {}
+      submit () {
+        this.$axios.post('login', `username=${this.username}&password=${this.password}`).then(data => {
+          console.info(data)
+        }).catch(error => {
+          console.error(error)
+        })
+      }
     }
   }
 </script>

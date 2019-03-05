@@ -22,7 +22,18 @@ let instance = axios.create({
   baseURL: '/api/dev'
 })
 
+instance.interceptors.request.use((config) => {
+  console.info(config)
+  if (config.url.endsWith('login')) {
+    config.baseURL = '/'
+  } else {
+    config.baseURL = '/api/dev'
+  }
+  return config
+})
+
 instance.interceptors.response.use((response) => {
+  console.info(response)
   return response
 }, (error) => {
   if (error.message.indexOf('Network Error') >= 0) {
