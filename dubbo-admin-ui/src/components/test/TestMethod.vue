@@ -81,13 +81,15 @@
           name: null,
           signature: this.$route.query['method'],
           parameterTypes: [],
-          json: []
+          json: [],
+          jsonTypes: []
         },
         result: null
       }
     },
     methods: {
       executeMethod () {
+        this.convertType(this.method.json, this.method.jsonTypes)
         let serviceTestDTO = {
           service: this.service,
           method: this.method.name,
@@ -105,6 +107,14 @@
             this.success = false
             this.result = error.response.data
           })
+      },
+
+      convertType (params, types) {
+        for (let i = 0; i < params.length; i++) {
+          if (typeof types[i] === 'string' && typeof params[i] !== 'string') {
+            params[i] = String(params[i])
+          }
+        }
       }
     },
     mounted () {
@@ -125,6 +135,7 @@
         }
       }).then(response => {
         this.method.json = response.data.parameterTypes
+        this.method.jsonTypes = response.data.parameterTypes
       })
     }
   }
