@@ -79,9 +79,10 @@
     methods: {
       submit () {
         this.$axios.post('login', `username=${this.username}&password=${this.password}`).then(data => {
-          console.info(data)
+          console.info({data})
+          this.$router.replace('/')
         }).catch(error => {
-          console.error(error)
+          this.$notify.error(error.message)
         })
       }
     }
