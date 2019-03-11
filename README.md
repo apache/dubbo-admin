@@ -1,4 +1,4 @@
-# Dubbo ops
+# Dubbo Admin
 
 [![Build Status](https://travis-ci.org/apache/incubator-dubbo-ops.svg?branch=develop)](https://travis-ci.org/apache/incubator-dubbo-ops)
 [![codecov](https://codecov.io/gh/apache/incubator-dubbo-ops/branch/develop/graph/badge.svg)](https://codecov.io/gh/apache/incubator-dubbo-ops)
