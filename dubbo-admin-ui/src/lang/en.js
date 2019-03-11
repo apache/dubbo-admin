@@ -82,7 +82,7 @@ export default {
   parameterList: 'parameterList',
   returnType: 'returnType',
   here: 'here',
-  configAddress: 'https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration',
+  configAddress: 'https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration',
   whiteList: 'White List',
   whiteListHint: 'White list IP address, divided by comma: 1.1.1.1,2.2.2.2',
   blackList: 'Black List',

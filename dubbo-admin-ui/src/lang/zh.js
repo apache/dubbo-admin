@@ -82,7 +82,7 @@ export default {
   returnType: '返回值',
   noMetadataHint: '无元数据信息，请升级至Dubbo2.7及以上版本，或者查看application.properties中关于config center的配置，详见',
   here: '这里',
-  configAddress: 'https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E',
+  configAddress: 'https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E',
   whiteList: '白名单',
   whiteListHint: '白名单IP列表, 多个地址用逗号分隔: 1.1.1.1,2.2.2.2',
   blackList: '黑名单',
