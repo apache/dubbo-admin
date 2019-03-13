@@ -276,6 +276,7 @@ The text of each license is the standard Apache 2.0 license.
 
     * Apache: dubbo 2.7.0 https://raw.githubusercontent.com/apache/incubator-dubbo/dubbo-2.7.0/LICENSE Apache 2.0
     - dubbo-2.7.0.jar
+    - dubbo-serialization-kryo-2.7.0.jar
 
     * Google: gson 2.8.4 https://raw.githubusercontent.com/google/gson/gson-parent-2.8.4/LICENSE Apache 2.0
     - gson-2.8.4.jar
@@ -412,6 +413,7 @@ The text of each license is also included at licenses/LICENSE-[project].
     * vuejs: vue-router 3.0.1 https://raw.githubusercontent.com/vuejs/vue-router/v3.0.1/LICENSE MIT
     * vuetifyjs: vuetify 1.2.2 https://raw.githubusercontent.com/vuetifyjs/vuetify/v1.2.2/LICENSE MIT
     * vuejs: vuex 3.0.1 https://raw.githubusercontent.com/vuejs/vuex/v3.0.1/LICENSE MIT
+    * lodash: lodash 4.17.11 https://raw.githubusercontent.com/lodash/lodash/4.17.11/LICENSE MIT
 
 
 ========================================================================

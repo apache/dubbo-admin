@@ -114,6 +114,12 @@
 			</dependency>
 
 			<dependency>
+				<groupId>org.apache.dubbo</groupId>
+				<artifactId>dubbo-serialization-kryo</artifactId>
+				<version>${dubbo-version}</version>
+			</dependency>
+
+			<dependency>
 				<groupId>org.apache.curator</groupId>
 				<artifactId>curator-framework</artifactId>
 				<version>${curator-version}</version>
