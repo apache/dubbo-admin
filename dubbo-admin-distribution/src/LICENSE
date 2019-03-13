@@ -276,6 +276,8 @@ The text of each license is the standard Apache 2.0 license.
 
     * Apache: dubbo 2.7.0 https://raw.githubusercontent.com/apache/incubator-dubbo/dubbo-2.7.0/LICENSE Apache 2.0
     - dubbo-2.7.0.jar
+    - dubbo-common-2.7.0.jar
+    - dubbo-serialization-api-2.7.0.jar
     - dubbo-serialization-kryo-2.7.0.jar
 
     * Google: gson 2.8.4 https://raw.githubusercontent.com/google/gson/gson-parent-2.8.4/LICENSE Apache 2.0
@@ -386,6 +388,26 @@ The text of each license is the standard Apache 2.0 license.
     * wildfly jandex 2.0.3.Final https://raw.githubusercontent.com/wildfly/jandex/2.0.3.Final/LICENSE.txt Apache 2.0
     - jandex-2.0.3.Final.jar
 
+    * Apache commons-logging 1.2 https://raw.githubusercontent.com/apache/commons-logging/LOGGING_1_2/LICENSE.txt Apache 2.0
+    - commons-logging-1.2.jar
+
+    * RuedigerMoeller fst 2.48-jdk-6 https://raw.githubusercontent.com/RuedigerMoeller/fast-serialization/jdk-6/LICENSE.md Apache 2.0
+    - fst-2.48-jdk-6.jar
+
+    * dubbo hessian-lite 3.2.3 https://raw.githubusercontent.com/dubbo/hessian-lite/v3.2.4/LICENSE Apache 2.0
+    - hessian-lite-3.2.3.jar
+
+    * jdereg java-util 1.9.0 https://raw.githubusercontent.com/jdereg/java-util/master/LICENSE Apache 2.0
+    - java-util-1.9.0.jar
+
+    * jdereg json-io 2.5.1 https://raw.githubusercontent.com/jdereg/json-io/2.5.1.201402192244/LICENSE Apache 2.0
+    - json-io-2.5.1.jar
+
+    * magro kryo-serializers 0.42 https://raw.githubusercontent.com/magro/kryo-serializers/kryo-serializers-0.42/LICENCE.txt Apache 2.0
+    - kryo-serializers-0.42.jar
+
+    * easymock objenesis 2.6 https://raw.githubusercontent.com/easymock/objenesis/2.6/LICENSE.txt Apache 2.0
+    - objenesis-2.6.jar
 
 ========================================================================
 MIT licenses
@@ -481,6 +503,14 @@ The text of each license is also included at licenses/LICENSE-[project].
     - antlr-2.7.7.jar
     * dom4j: dom4j 1.6.1 https://raw.githubusercontent.com/dom4j/dom4j/dom4j_1_6_1/LICENSE.txt BSD
     - dom4j-1.6.1.jar
+    * ow2: asm 5.0.4 https://gitlab.ow2.org/asm/asm/raw/ASM_5_0_4/LICENSE.txt BSD
+    - asm-5.0.4.jar
+    * EsotericSoftware kryo 4.0.1 https://raw.githubusercontent.com/EsotericSoftware/kryo/kryo-parent-4.0.1/license.txt BSD
+    - kryo-4.0.1.jar
+    * EsotericSoftware minlog 1.3.0 https://raw.githubusercontent.com/EsotericSoftware/minlog/minlog-1.3.0/license.txt BSD
+    - minlog-1.3.0.jar
+    * EsotericSoftware reflectasm 1.11.3 https://raw.githubusercontent.com/EsotericSoftware/reflectasm/reflectasm-1.11.3/license.txt BSD
+    - reflectasm-1.11.3.jar
 
 ========================================================================
 Apache 2.0, LGPL 2.1 and MPL 1.1
