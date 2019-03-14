@@ -131,16 +131,13 @@
         this.method.parameterTypes = parametersTypes.split(';')
       }
 
-      this.$axios.get('/test/method', {
-        params: {
-          application: this.application,
-          service: this.service,
-          method: method
-        }
-      }).then(response => {
-        this.method.json = response.data.parameterTypes
-        this.method.jsonTypes = response.data.parameterTypes
-      })
+      let url = '/test/method?' + 'application=' + this.application +
+                '&service=' + this.service + '&method=' + method
+      this.$axios.get(encodeURI(url))
+        .then(response => {
+          this.method.json = response.data.parameterTypes
+          this.method.jsonTypes = response.data.parameterTypes
+        })
     }
   }
 </script>
