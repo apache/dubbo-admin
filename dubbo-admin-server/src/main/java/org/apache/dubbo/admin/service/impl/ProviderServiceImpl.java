@@ -21,12 +21,12 @@ import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.Pair;
 import org.apache.dubbo.admin.common.util.ParseUtils;
 import org.apache.dubbo.admin.common.util.SyncUtils;
+import org.apache.dubbo.admin.common.util.Tool;
 import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.dto.ServiceDTO;
 import org.apache.dubbo.admin.service.OverrideService;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.common.URL;
-import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -461,14 +461,14 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
     public Set<ServiceDTO> convertProviders2DTO(List<Provider> providers) {
         Set<ServiceDTO> result = new TreeSet<>();
         for (Provider provider : providers) {
-            Map<String, String> map = StringUtils.parseQueryString(provider.getParameters());
             String app = provider.getApplication();
-            String service = map.get(Constants.INTERFACE_KEY);
-            String group = map.get(Constants.GROUP_KEY);
-            String version = map.get(Constants.VERSION_KEY);
+            String service = provider.getService();
+            String group = Tool.getGroup(service);
+            String version = Tool.getVersion(service);
+            String interfaze = Tool.getInterface(service);
             ServiceDTO s = new ServiceDTO();
             s.setAppName(app);
-            s.setService(service);
+            s.setService(interfaze);
             s.setGroup(group);
             s.setVersion(version);
             result.add(s);

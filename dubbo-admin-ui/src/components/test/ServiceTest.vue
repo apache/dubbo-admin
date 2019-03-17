@@ -20,23 +20,32 @@
       <v-flex lg12>
         <breadcrumb title="serviceTest" :items="breads"></breadcrumb>
       </v-flex>
-      <v-flex xs12>
-        <v-autocomplete
-          flat
-          hide-no-data
-          v-model="service"
-          :loading="loading"
-          :search-input.sync="filter"
-          :hint="$t('testModule.searchServiceHint')"
-          :items="services"
-          item-value="service"
-          item-text="service"
-          :label="$t('placeholders.searchService')"
-          persistent-hint
-          @keyup.enter="search"
-          clearable
-        ></v-autocomplete>
-      </v-flex>
+      <v-layout row wrap>
+        <v-flex lg12>
+          <v-card flat color="transparent">
+            <v-card-text>
+              <v-form>
+                <v-layout row wrap>
+                  <v-combobox
+                    id="serviceTestSearch"
+                    :loading="searchLoading"
+                    :items="typeAhead"
+                    :search-input.sync="input"
+                    v-model="filter"
+                    flat
+                    append-icon=""
+                    hide-no-data
+                    :hint="$t('testModule.searchServiceHint')"
+                    :label="$t('placeholders.searchService')"
+                    @keyup.enter="submit"
+                  ></v-combobox>
+                  <v-btn @click="submit" color="primary" large>{{ $t('search') }}</v-btn>
+                </v-layout>
+              </v-form>
+            </v-card-text>
+          </v-card>
+        </v-flex>
+      </v-layout>
       <v-flex xs12>
         <h3>{{$t('methods')}}</h3>
       </v-flex>
@@ -78,7 +87,11 @@
     },
     data () {
       return {
-        filter: this.$route.query['service'] || '',
+        typeAhead: [],
+        input: null,
+        searchLoading: false,
+        timerID: null,
+        filter: '',
         breads: [
           {
             text: 'serviceSearch',
@@ -90,11 +103,36 @@
         service: null,
         methods: [],
         services: [],
-        searchKey: this.$route.query['service'] || '*',
         loading: false
       }
     },
     methods: {
+      querySelections (v) {
+        if (this.timerID) {
+          clearTimeout(this.timerID)
+        }
+        // Simulated ajax query
+        this.timerID = setTimeout(() => {
+          if (v && v.length >= 4) {
+            this.searchLoading = true
+            this.typeAhead = this.$store.getters.getServiceItems(v)
+            this.searchLoading = false
+            this.timerID = null
+          } else {
+            this.typeAhead = []
+          }
+        }, 500)
+      },
+      submit () {
+        this.filter = document.querySelector('#serviceTestSearch').value.trim()
+        if (this.filter) {
+          let filter = this.filter.replace('/', '*')
+          this.search(filter)
+        } else {
+          return false
+        }
+      },
+
       setHeaders: function () {
         this.headers = [
           {
@@ -119,14 +157,11 @@
           }
         ]
       },
-      search () {
-        if (!this.filter) {
+      search (filter) {
+        if (!filter) {
           return
         }
-        this.$router.replace({
-          query: { service: this.filter }
-        })
-        this.$axios.get('/service/' + this.filter).then(response => {
+        this.$axios.get('/service/' + filter).then(response => {
           this.service = response.data
           this.methods = []
           if (this.service.metadata) {
@@ -185,18 +220,25 @@
       }
     },
     watch: {
+      input (val) {
+        this.querySelections(val)
+      },
       area () {
         this.setHeaders()
-      },
-      filter () {
-        this.searchServices()
-      },
-      searchKey () {
-        this.search()
       }
     },
-    created () {
-      this.search()
+    mounted () {
+      this.$store.dispatch('loadServiceItems')
+      let query = this.$route.query
+      this.filter = query['service']
+      if ('group' in query) {
+        this.filter = query['group'] + '/' + this.filter
+      }
+      if ('version' in query) {
+        this.filter = this.filter + ':' + query['version']
+      }
+
+      this.search(this.filter.replace('/', '*'))
     }
   }
 </script>

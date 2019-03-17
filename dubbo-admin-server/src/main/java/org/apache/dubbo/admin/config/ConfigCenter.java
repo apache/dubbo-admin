@@ -86,10 +86,10 @@ public class ConfigCenter {
         if (StringUtils.isNotEmpty(registryAddress)) {
             URL registryUrl = formUrl(registryAddress, group, username, password);
             GovernanceConfiguration dynamicConfiguration = getGovernanceConfigurationFromURL(registryUrl);
-            logger.warn("you are using dubbo.registry.address, which is not recommend, please refer to: https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration");
+            logger.warn("you are using dubbo.registry.address, which is not recommend, please refer to: https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration");
             return dynamicConfiguration;
         }
-        throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration");
+        throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration");
     }
 
     /*
@@ -114,7 +114,7 @@ public class ConfigCenter {
 
         if (registries.isEmpty()) {
             if (StringUtils.isBlank(registryAddress)) {
-                throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration");
+                throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration");
             }
             URL registryUrl = formUrl(registryAddress, group, username, password);
             registries.add(registryFactory.getRegistry(registryUrl));
@@ -156,7 +156,7 @@ public class ConfigCenter {
             metaDataCollector.setUrl(metadataUrl);
             metaDataCollector.init();
         } else {
-            logger.warn("you are using dubbo.registry.address, which is not recommend, please refer to: https://github.com/apache/incubator-dubbo-ops/wiki/Dubbo-Admin-configuration");
+            logger.warn("you are using dubbo.registry.address, which is not recommend, please refer to: https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration");
         }
         return metaDataCollector;
     }

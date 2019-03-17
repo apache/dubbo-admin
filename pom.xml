@@ -114,6 +114,12 @@
 			</dependency>
 
 			<dependency>
+				<groupId>org.apache.dubbo</groupId>
+				<artifactId>dubbo-serialization-kryo</artifactId>
+				<version>${dubbo-version}</version>
+			</dependency>
+
+			<dependency>
 				<groupId>org.apache.curator</groupId>
 				<artifactId>curator-framework</artifactId>
 				<version>${curator-version}</version>
@@ -240,6 +246,7 @@
 										<exclude>**/.eslintignore</exclude>
 										<exclude>**/resources/META-INF/**</exclude>
 										<exclude>**/src/main/resources/public/**</exclude>
+										<exclude>**/src/licenses/**</exclude>
 									</excludes>
 								</configuration>
 							</execution>

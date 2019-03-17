@@ -52,6 +52,8 @@
   import JsonEditor from '@/components/public/JsonEditor'
   import Breadcrumb from '@/components/public/Breadcrumb'
   import axios from 'axios'
+  import set from 'lodash/set'
+  import util from '@/util'
 
   export default {
     name: 'TestMethod',
@@ -81,13 +83,15 @@
           name: null,
           signature: this.$route.query['method'],
           parameterTypes: [],
-          json: []
+          json: [],
+          jsonTypes: []
         },
         result: null
       }
     },
     methods: {
       executeMethod () {
+        this.convertType(this.method.json, this.method.jsonTypes)
         let serviceTestDTO = {
           service: this.service,
           method: this.method.name,
@@ -105,6 +109,16 @@
             this.success = false
             this.result = error.response.data
           })
+      },
+
+      convertType (params, types) {
+        const p = util.flattenObject(params)
+        const t = util.flattenObject(types)
+        Object.keys(p).forEach(key => {
+          if (typeof t[key] === 'string' && typeof p[key] !== 'string') {
+            set(params, key, String(p[key]))
+          }
+        })
       }
     },
     mounted () {
@@ -117,15 +131,13 @@
         this.method.parameterTypes = parametersTypes.split(';')
       }
 
-      this.$axios.get('/test/method', {
-        params: {
-          application: this.application,
-          service: this.service,
-          method: method
-        }
-      }).then(response => {
-        this.method.json = response.data.parameterTypes
-      })
+      let url = '/test/method?' + 'application=' + this.application +
+                '&service=' + this.service + '&method=' + method
+      this.$axios.get(encodeURI(url))
+        .then(response => {
+          this.method.json = response.data.parameterTypes
+          this.method.jsonTypes = response.data.parameterTypes
+        })
     }
   }
 </script>
