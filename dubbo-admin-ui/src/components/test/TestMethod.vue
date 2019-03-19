@@ -54,6 +54,7 @@
   import axios from 'axios'
   import set from 'lodash/set'
   import util from '@/util'
+  import constants from '@/util/constants'
 
   export default {
     name: 'TestMethod',
@@ -83,7 +84,7 @@
           name: null,
           signature: this.$route.query['method'],
           parameterTypes: [],
-          json: [],
+          json: JSON.parse(localStorage.getItem(`${constants.cacheKey.testMethodParametersPrefix}:${this.$route.query.service}:${this.$route.query.method}`) || '[]'),
           jsonTypes: []
         },
         result: null
@@ -97,6 +98,10 @@
           method: this.method.name,
           parameterTypes: this.method.parameterTypes,
           params: this.method.json
+        }
+        if (this.method.json) {
+          console.info('abc')
+          localStorage.setItem(`${constants.cacheKey.testMethodParametersPrefix}:${this.$route.query.service}:${this.$route.query.method}`, JSON.stringify(this.method.json))
         }
         axios.post(this.baseURL + '/test', serviceTestDTO)
           .then(response => {
@@ -135,7 +140,9 @@
                 '&service=' + this.service + '&method=' + method
       this.$axios.get(encodeURI(url))
         .then(response => {
-          this.method.json = response.data.parameterTypes
+          if (!this.method.json) {
+            this.method.json = response.data.parameterTypes
+          }
           this.method.jsonTypes = response.data.parameterTypes
         })
     }
