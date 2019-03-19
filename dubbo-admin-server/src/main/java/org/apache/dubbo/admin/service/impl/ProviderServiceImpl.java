@@ -466,11 +466,13 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
             String group = Tool.getGroup(service);
             String version = Tool.getVersion(service);
             String interfaze = Tool.getInterface(service);
+            String registry = provider.getRegistry();
             ServiceDTO s = new ServiceDTO();
             s.setAppName(app);
             s.setService(interfaze);
             s.setGroup(group);
             s.setVersion(version);
+            s.setRegistry(registry);
             result.add(s);
         }
         return result;

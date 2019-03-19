@@ -52,6 +52,7 @@ public class SyncUtils {
         p.setApplication(url.getParameter(Constants.APPLICATION_KEY));
         p.setUrl(url.toIdentityString());
         p.setParameters(url.toParameterString());
+        p.setRegistry(url.getParameter(Constants.REGISTRY_KEY));
 
         p.setDynamic(url.getParameter("dynamic", true));
         p.setEnabled(url.getParameter(Constants.ENABLED_KEY, true));

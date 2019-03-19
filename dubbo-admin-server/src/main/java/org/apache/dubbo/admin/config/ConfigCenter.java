@@ -18,6 +18,9 @@
 package org.apache.dubbo.admin.config;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.CuratorFrameworkFactory;
+import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.dubbo.admin.common.exception.ConfigurationException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
@@ -33,6 +36,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import javax.annotation.PostConstruct;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
@@ -70,6 +74,15 @@ public class ConfigCenter {
         this.adminProperties = adminProperties;
     }
 
+//    @PostConstruct
+//    public void init() throws Exception {
+//        CuratorFramework zkClient = CuratorFrameworkFactory.builder().
+//                connectString("127.0.0.1:2181").
+//                retryPolicy(new ExponentialBackoffRetry(1000, 3)).build();
+//        zkClient.start();
+//        zkClient.setData().forPath("/dubbo/config/dubbo/dubbo.properties", ("dubbo.registry.address=zookeeper://127.0.0.1:2181\n" +
+//                "dubbo.metadata-report.address=zookeeper://127.0.0.1:2181").getBytes());
+//    }
 
     /*
      * generate dynamic configuration client

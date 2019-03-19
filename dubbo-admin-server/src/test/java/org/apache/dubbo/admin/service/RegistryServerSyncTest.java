@@ -55,7 +55,7 @@ public class RegistryServerSyncTest {
         ReflectionTestUtils.setField(registryServerSync, "registries", registries);
         registryServerSync.afterPropertiesSet();
         for (Registry registry : registries) {
-            verify(registry).subscribe(any(URL.class), any(RegistryServerSync.class));
+            verify(registry).subscribe(any(URL.class), any(RegistryServerSync.Notifier.class));
         }
     }
 
@@ -65,14 +65,14 @@ public class RegistryServerSyncTest {
         ReflectionTestUtils.setField(registryServerSync, "registries", registries);
         registryServerSync.destroy();
         for (Registry registry : registries) {
-            verify(registry).unsubscribe(any(URL.class), any(RegistryServerSync.class));
+            verify(registry).unsubscribe(any(URL.class), any(RegistryServerSync.Notifier.class));
         }
     }
 
     @Test
     public void testNotify() {
-        registryServerSync.notify(null);
-        registryServerSync.notify(Collections.emptyList());
+        registryServerSync.new Notifier("").notify(null);
+        registryServerSync.new Notifier("").notify(Collections.emptyList());
 
         // when url.getProtocol is not empty protocol
         URL consumerUrl = mock(URL.class);
@@ -87,7 +87,7 @@ public class RegistryServerSyncTest {
         when(providerUrl.getServiceKey()).thenReturn("org.apache.dubbo.provider");
         when(providerUrl.toFullString()).thenReturn("consumer://192.168.1.10/sunbufu.dubbo.consumer?application=dubbo&category=consumer&check=false&dubbo=2.6.2&interface=sunbufu.dubbo.consumer&loadbalabce=roundrobin&mehods=sayHi,sayGoodBye&owner=sunbufu&pid=18&protocol=dubbo&side=consumer&timeout=3000&timestamp=1548127407769");
 
-        registryServerSync.notify(Arrays.asList(consumerUrl, consumerUrl, providerUrl));
+        registryServerSync.new Notifier("").notify(Arrays.asList(consumerUrl, consumerUrl, providerUrl));
 
         ConcurrentMap<String, Map<String, URL>> consumerMap = registryServerSync.getRegistryCache().get(org.apache.dubbo.common.Constants.CONSUMER_PROTOCOL);
         assertTrue(consumerMap.keySet().contains("org.apache.dubbo.consumer"));
@@ -98,14 +98,14 @@ public class RegistryServerSyncTest {
         when(consumerUrl.getProtocol()).thenReturn(org.apache.dubbo.common.Constants.EMPTY_PROTOCOL);
         when(consumerUrl.getParameter(Constants.GROUP_KEY)).thenReturn("dubbo");
         when(consumerUrl.getParameter(Constants.VERSION_KEY)).thenReturn("2.7.0");
-        registryServerSync.notify(Collections.singletonList(consumerUrl));
+        registryServerSync.new Notifier("").notify(Collections.singletonList(consumerUrl));
 
         assertTrue(!consumerMap.keySet().contains("org.apache.dubbo.consumer"));
 
         // when url's group or version is ANY_VALUE (*)
         when(providerUrl.getProtocol()).thenReturn(org.apache.dubbo.common.Constants.EMPTY_PROTOCOL);
         when(providerUrl.getParameter(Constants.GROUP_KEY)).thenReturn(Constants.ANY_VALUE);
-        registryServerSync.notify(Collections.singletonList(providerUrl));
+        registryServerSync.new Notifier("").notify(Collections.singletonList(providerUrl));
 
         assertTrue(!providerMap.keySet().contains("org.apache.dubbo.provider"));
     }

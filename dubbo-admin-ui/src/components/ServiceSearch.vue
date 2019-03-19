@@ -78,6 +78,7 @@
             >
               <template slot="items" slot-scope="props">
                 <td >{{props.item.service}}</td>
+                <td >{{props.item.registry}}</td>
                 <td>{{props.item.group}}</td>
                 <td>{{props.item.version}}</td>
                 <td>{{props.item.appName}}</td>
@@ -219,6 +220,11 @@
           {
             text: this.$t('serviceName'),
             value: 'service',
+            align: 'left'
+          },
+          {
+            text: this.$t('registry'),
+            value: 'registry',
             align: 'left'
           },
           {

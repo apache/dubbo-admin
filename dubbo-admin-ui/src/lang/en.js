@@ -39,6 +39,7 @@ export default {
   serialization: 'serialization',
   appName: 'Application Name',
   serviceName: 'Service Name',
+  registry: 'Registry',
   operation: 'Operation',
   searchResult: 'Search Result',
   search: 'Search',

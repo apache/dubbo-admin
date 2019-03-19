@@ -39,6 +39,7 @@ export default {
   serialization: '序列化',
   appName: '应用名',
   serviceName: '服务名',
+  registry: '注册中心',
   operation: '操作',
   searchResult: '查询结果',
   search: '搜索',
