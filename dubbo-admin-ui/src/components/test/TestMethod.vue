@@ -29,6 +29,9 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
+            <input type="file" ref="file" style="display: none" @change="onChosenFileChanged($event.target.files)">
+            <v-btn id="export" mt-0 color="primary" @click="saveFile(method.json)">{{$t('exportParameters')}}</v-btn>
+            <v-btn mt-0 color="primary" @click="$refs.file.click()">{{$t('importParameters')}}</v-btn>
             <v-btn id="execute" mt-0 color="primary" @click="executeMethod()">{{$t('execute')}}</v-btn>
           </v-card-actions>
         </v-card>
@@ -100,7 +103,6 @@
           params: this.method.json
         }
         if (this.method.json) {
-          console.info('abc')
           localStorage.setItem(`${constants.cacheKey.testMethodParametersPrefix}:${this.$route.query.service}:${this.$route.query.method}`, JSON.stringify(this.method.json))
         }
         axios.post(this.baseURL + '/test', serviceTestDTO)
@@ -124,8 +126,39 @@
             set(params, key, String(p[key]))
           }
         })
+      },
+
+      saveFile (content) {
+        const data = JSON.stringify(content)
+        const blob = new Blob([data], {type: 'text/plain'})
+        const e = document.createEvent('MouseEvents')
+        const a = document.createElement('a')
+        a.download = 'test.json'
+        a.href = window.URL.createObjectURL(blob)
+        a.dataset.downloadurl = ['text/json', a.download, a.href].join(':')
+        e.initEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null)
+        a.dispatchEvent(e)
+      },
+
+      onChosenFileChanged (files) {
+        if (files.length === 0) {
+          return
+        }
+        const file = files[0]
+        const reader = new FileReader()
+        reader.onload = event => {
+          try {
+            const content = event.target.result
+            const json = JSON.parse(content)
+            this.method.json = json
+          } catch (e) {
+            this.$notify.error(this.$t('malformedImportParameters'))
+          }
+        }
+        reader.readAsText(file)
       }
     },
+
     mounted () {
       const query = this.$route.query
       const method = query['method']
@@ -140,7 +173,7 @@
                 '&service=' + this.service + '&method=' + method
       this.$axios.get(encodeURI(url))
         .then(response => {
-          if (!this.method.json) {
+          if (Object.keys(this.method.json).length === 0) {
             this.method.json = response.data.parameterTypes
           }
           this.method.jsonTypes = response.data.parameterTypes
