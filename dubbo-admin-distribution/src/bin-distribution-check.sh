@@ -18,9 +18,10 @@
 # HOW TO RUN THIS SCRIPT
 # 1. unzip the bin-release file.
 # 2. place this script under your unzipped bin-release directory.
-# 3. if you want to check the javascript dependencies,
+# 3. extract the dubbo-admin-$version.jar file by tar -xf dubbo-admin-$version.jar
+# 4. if you want to check the javascript dependencies,
 #    copy the package.json file to the directory.
-# 4. run this script.
+# 5. run this script.
 
 # Step 1: check all the dependendcies list in LICENSE are acutally bundled.
 
