@@ -18,9 +18,6 @@
 package org.apache.dubbo.admin.config;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.retry.ExponentialBackoffRetry;
 import org.apache.dubbo.admin.common.exception.ConfigurationException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
