@@ -84,8 +84,8 @@ public class RegistryServerSync implements InitializingBean, DisposableBean {
         logger.info("Init Dubbo Admin Sync Cache...");
         for (Registry registry : registries) {
             URL url = registry.getUrl();
-            if (!notifiers.containsKey(url.getAddress())) {
-                Notifier notifier = new Notifier(url.getAddress());
+            if (!notifiers.containsKey(url)) {
+                Notifier notifier = new Notifier(url);
                 notifiers.put(url, notifier);
                 registry.subscribe(SUBSCRIBE, notifier);
             }
@@ -97,16 +97,16 @@ public class RegistryServerSync implements InitializingBean, DisposableBean {
         for (Registry registry : registries) {
             URL url = registry.getUrl();
             if (notifiers.containsKey(url)) {
-                registry.unsubscribe(SUBSCRIBE, notifiers.get(url.getAddress()));
+                registry.unsubscribe(SUBSCRIBE, notifiers.get(url));
             }
         }
     }
 
     class Notifier implements NotifyListener {
         // keep track of the registry that the services belong to
-        private final String registry;
+        private final URL registry;
 
-        Notifier(String registry) {
+        Notifier(URL registry) {
             this.registry = registry;
         }
 
@@ -119,7 +119,7 @@ public class RegistryServerSync implements InitializingBean, DisposableBean {
             final Map<String, Map<String, Map<String, URL>>> categories = new HashMap<>();
             String interfaceName = null;
             for (URL url : urls) {
-                url = url.addParameter(Constants.REGISTRY_KEY, registry);
+                url = url.addParameter(Constants.REGISTRY_KEY, registry.getAddress());
                 String category = url.getParameter(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
                 // NOTE: group and version in empty protocol is *
                 if (Constants.EMPTY_PROTOCOL.equalsIgnoreCase(url.getProtocol())) {
