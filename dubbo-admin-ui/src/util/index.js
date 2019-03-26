@@ -36,8 +36,35 @@ const toggleFullScreen = () => {
   }
 }
 
+// Flatten all nested keys of an object to one level with values, whose keys can be parameter of lodash.set
+// e.g.: [{username: 'a', age: 3}, {username: 'b', age: 4}] => {'0.username': 'a', '0.age': 3, '1.username': 'b', '1.age': 4}
+const flattenObject = obj => {
+  const toReturn = {}
+
+  for (let i in obj) {
+    if (!obj.hasOwnProperty(i)) {
+      continue
+    }
+
+    if ((typeof obj[i]) === 'object' && obj[i] !== null) {
+      const flatObject = flattenObject(obj[i])
+      for (let x in flatObject) {
+        if (!flatObject.hasOwnProperty(x)) {
+          continue
+        }
+
+        toReturn[i + '.' + x] = flatObject[x]
+      }
+    } else {
+      toReturn[i] = obj[i]
+    }
+  }
+  return toReturn
+}
+
 export default {
   randomElement,
   toggleFullScreen,
-  kebab
+  kebab,
+  flattenObject
 }

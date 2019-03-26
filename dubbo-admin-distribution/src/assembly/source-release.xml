@@ -59,6 +59,10 @@
                 <exclude>**/.mvn/**</exclude>
                 <exclude>**/*.jar</exclude>
                 <exclude>**/mvnw*</exclude>
+                <exclude>dubbo-admin-distribution/src/LICENSE</exclude>
+                <exclude>dubbo-admin-distribution/src/NOTICE</exclude>
+                <exclude>dubbo-admin-distribution/src/licenses/**</exclude>
+                <exclude>dubbo-admin-distribution/src/bin-distribution-check.sh</exclude>
             </excludes>
         </fileSet>
     </fileSets>

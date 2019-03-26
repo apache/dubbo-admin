@@ -19,6 +19,7 @@ package org.apache.dubbo.admin.controller;
 
 import com.google.gson.Gson;
 import org.apache.dubbo.admin.common.util.Constants;
+import org.apache.dubbo.admin.common.util.Tool;
 import org.apache.dubbo.admin.model.domain.Consumer;
 import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.dto.ServiceDTO;
@@ -28,6 +29,9 @@ import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -36,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/{env}")
@@ -53,27 +58,29 @@ public class ServiceController {
     }
 
     @RequestMapping( value = "/service", method = RequestMethod.GET)
-    public Set<ServiceDTO> searchService(@RequestParam String pattern,
-                                         @RequestParam String filter,@PathVariable String env) {
-        return providerService.getServiceDTOS(pattern, filter, env);
+    public Page<ServiceDTO> searchService(@RequestParam String pattern,
+                                          @RequestParam String filter,
+                                          @PathVariable String env,
+                                          Pageable pageable) {
+        final Set<ServiceDTO> serviceDTOS = providerService.getServiceDTOS(pattern, filter, env);
+
+        final int total = serviceDTOS.size();
+        final List<ServiceDTO> content =
+                serviceDTOS.stream()
+                        .skip(pageable.getOffset())
+                        .limit(pageable.getPageSize())
+                        .collect(Collectors.toList());
+
+        final Page<ServiceDTO> page = new PageImpl<>(content, pageable, total);
+        return page;
     }
 
     @RequestMapping(value = "/service/{service}", method = RequestMethod.GET)
     public ServiceDetailDTO serviceDetail(@PathVariable String service, @PathVariable String env) {
         service = service.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
-        String group = null;
-        String version = null;
-        String interfaze = service;
-        int i = interfaze.indexOf("/");
-        if (i >= 0) {
-            group = interfaze.substring(0, i);
-            interfaze = interfaze.substring(i + 1);
-        }
-        i = interfaze.lastIndexOf(":");
-        if (i >= 0) {
-            version = interfaze.substring(i + 1);
-            interfaze = interfaze.substring(0, i);
-        }
+        String group = Tool.getGroup(service);
+        String version = Tool.getVersion(service);
+        String interfaze = Tool.getInterface(service);
         List<Provider> providers = providerService.findByService(service);
 
         List<Consumer> consumers = consumerService.findByService(service);

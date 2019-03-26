@@ -18,6 +18,7 @@
 package org.apache.dubbo.admin.model.domain;
 
 
+import org.apache.dubbo.admin.common.util.Tool;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
 
@@ -208,20 +209,10 @@ public class Route extends Entity {
     }
 
     public URL toUrl() {
-        String group = null;
-        String version = null;
-        String path = service;
-        int i = path.indexOf("/");
-        if (i > 0) {
-            group = path.substring(0, i);
-            path = path.substring(i + 1);
-        }
-        i = path.lastIndexOf(":");
-        if (i > 0) {
-            version = path.substring(i + 1);
-            path = path.substring(0, i);
-        }
-        return URL.valueOf(Constants.ROUTE_PROTOCOL + "://" + Constants.ANYHOST_VALUE + "/" + path
+        String group = Tool.getGroup(service);
+        String version = Tool.getVersion(service);
+        String interfaze = Tool.getInterface(service);
+        return URL.valueOf(Constants.ROUTE_PROTOCOL + "://" + Constants.ANYHOST_VALUE + "/" + interfaze
                 + "?" + Constants.CATEGORY_KEY + "=" + Constants.ROUTERS_CATEGORY
                 + "&router=condition&runtime=" + isRuntime() + "&enabled=" + isEnabled() + "&priority=" + getPriority() + "&force=" + isForce() + "&dynamic=" + isDynamic()
                 + "&name=" + getName() + "&" + Constants.RULE_KEY + "=" + URL.encode(getMatchRule() + " => " + getFilterRule())

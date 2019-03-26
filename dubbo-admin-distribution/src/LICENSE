@@ -202,9 +202,9 @@
    limitations under the License.
 
 
-Apache Dubbo Ops Submodules:
+Apache Dubbo Admin Submodules:
 
-Apache Dubbo Ops includes a number of submodules with separate copyright notices
+Apache Dubbo Admin includes a number of submodules with separate copyright notices
 and license terms. Your use of these submodules is subject to the terms and
 conditions of the following licenses.
 
@@ -215,9 +215,27 @@ Apache 2.0 licenses
 The following components are provided under the Apache License. See project link for details.
 The text of each license is also included at licenses/LICENSE-[project].
 
-    Alibaba: fastjson 1.2.46 https://github.com/alibaba/fastjson/tree/1.2.46 Apache 2.0
-    mapstruct: mapstruct 1.2.0.Final https://github.com/mapstruct/mapstruct/tree/1.2.0.Final Apache 2.0
-    Swagger-api: swagger-core 1.5.20 https://github.com/swagger-api/swagger-core/tree/v1.5.20 Apache 2.0
+    * Alibaba: fastjson 1.2.46 https://raw.githubusercontent.com/alibaba/fastjson/1.2.46/license.txt Apache 2.0
+    - fastjson-1.2.46.jar
+
+    * mapstruct: mapstruct 1.2.0.Final https://raw.githubusercontent.com/mapstruct/mapstruct/1.2.0.Final/LICENSE.txt Apache 2.0
+    - mapstruct-1.2.0.Final.jar
+
+    * Swagger-api: swagger-core 1.5.20 https://raw.githubusercontent.com/swagger-api/swagger-core/v1.5.20/LICENSE Apache 2.0
+    - swagger-annotations-1.5.20.jar
+    - swagger-models-1.5.20.jar
+
+========================================================================
+Apache 1.1 licenses
+========================================================================
+
+The following components are provided under the Apache License. See project link for details.
+The text of each license is the standard Apache 1.1 license.
+
+    * Apache: log4j 1.2.17 https://raw.githubusercontent.com/apache/log4j/v1_2_17/LICENSE Apache 1.1
+    - log4j-1.2.17.jar
+
+
 
 ========================================================================
 Apache 2.0 licenses
@@ -225,42 +243,171 @@ Apache 2.0 licenses
 
 The following components are provided under the Apache License. See project link for details.
 The text of each license is the standard Apache 2.0 license.
-================================================================
-    Ctripcorp: apollo v1.2.0 https://github.com/ctripcorp/apollo/tree/v1.2.0  Apache 2.0
-    Apache: audience-annotations 0.5.0 https://github.com/apache/yetus/tree/rel/0.5.0 Apache 2.0
-    raphw: byte-buddy 1.7.11 https://github.com/raphw/byte-buddy/tree/byte-buddy-1.7.11 Apache 2.0
-    FasterXML: java-classmate 1.3.4 https://github.com/FasterXML/java-classmate/tree/classmate-1.3.4 Apache 2.0
-    Apache: commons-cli 1.2 https://github.com/apache/commons-cli/tree/cli-1.2 Apache 2.0
-    Apache: commons-codec 1.11 https://github.com/apache/commons-codec/tree/commons-codec-1.11 Apache 2.0
-    Apache: commons-lang3 3.7 https://github.com/apache/commons-lang/tree/LANG_3_7 Apache 2.0
-    Apache: commons-pool 2.5.0 https://github.com/apache/commons-pool/tree/POOL_2_5_0 Apache 2.0
-    Apache: curator 2.12.0 https://github.com/apache/curator/tree/apache-curator-2.12.0 Apache 2.0
-    Apache: dubbo 2.7.0 https://github.com/apache/incubator-dubbo/tree/dubbo-2.7.0 Apache 2.0
-    Google: gson 2.8.4 https://github.com/google/gson/tree/gson-parent-2.8.4 Apache 2.0
-    Google: guava 20.0 https://github.com/google/guava/tree/v20.0 Apache 2.0
-    hibernate: hibernate-validator 6.0.9.final https://github.com/hibernate/hibernate-validator/tree/6.0.9.Final Apache 2.0
-    Apache: httpcomponents-client 4.5.5 https://github.com/apache/httpcomponents-client/tree/4.5.5 Apache 2.0
-    Apache: httpcomponents-core 4.4.9 https://github.com/apache/httpcomponents-core/tree/4.4.9 Apache 2.0
-    FasterXML: jackson-annotations 2.9.0 https://github.com/FasterXML/jackson-annotations/tree/jackson-annotations-2.9.0 Apache 2.0
-    FasterXML: jackson-core 2.9.5 https://github.com/FasterXML/jackson-core/tree/jackson-core-2.9.5 Apache 2.0
-    FasterXML: jackson-databind 2.9.5 https://github.com/FasterXML/jackson-databind/tree/jackson-databind-2.9.5 Apache 2.0
-    FasterXML: jackson-modules-java8 2.9.5 https://github.com/FasterXML/jackson-modules-java8/tree/jackson-modules-java8-2.9.5 Apache 2.0
-    jboss: jboss-logging 3.3.2-final https://mvnrepository.com/artifact/org.jboss.logging/jboss-logging/3.3.2.Final Apache 2.0
-    Apache: log4j 1.2.17 https://github.com/apache/log4j/tree/v1_2_17 Apache 2.0
-    Apache: log4j 2.10.0 https://github.com/apache/logging-log4j2/tree/log4j-2.10.0 Apache 2.0
-    netty: netty 4.1.30.final https://github.com/netty/netty/tree/netty-4.1.30.Final Apache 2.0
-    Spring: spring-framework 5.0.6.RELEASE https://github.com/spring-projects/spring-framework/tree/v5.0.6.RELEASE Apache 2.0
-    Spring: spring-boot 2.0.2.RELEASE https://github.com/spring-projects/spring-boot/tree/v2.0.2.RELEASE Apache 2.0
-    asomov snakeyml 1.19  https://bitbucket.org/asomov/snakeyaml/src/153cce6397b5a5bb21fa1e4a8496433c55772760/?at=snakeyaml-1.19 Apache 2.0
-    Spring: spring-plugin 1.2.0.RELEASE https://github.com/spring-projects/spring-plugin/tree/1.2.0.RELEASE Apache 2.0
-    Springfox: springfox 2.9.2 https://github.com/springfox/springfox/tree/2.9.2 Apache 2.0
-    tomcat tomcat-embed 8.5.31 http://svn.apache.org/repos/asf/tomcat/tc8.5.x/tags/TOMCAT_8_5_31/ Apache 2.0
-    beanvalidation: beanvalidation-api 2.0.1.final https://github.com/beanvalidation/beanvalidation-api/tree/2.0.1.Final Apache 2.0
-    Apache: zookeeper 3.5.4 https://github.com/apache/zookeeper/tree/release-3.5.4 Apache 2.0
-    josdejong: jsoneditor 5.26.2 https://github.com/josdejong/jsoneditor/tree/v5.26.2 Apache 2.0
-    Google: fonts https://github.com/google/fonts/tree/master/apache/roboto Apache 2.0
-    Google: material design icons 3.0.1 https://github.com/google/material-design-icons/tree/3.0.1/ Apache 2.0
 
+    * Ctripcorp: apollo v1.2.0 https://raw.githubusercontent.com/ctripcorp/apollo/v1.2.0/LICENSE  Apache 2.0
+    - apollo-core-1.2.0.jar
+    - apollo-openapi-1.2.0.jar
+
+    * Apache: audience-annotations 0.5.0 https://raw.githubusercontent.com/apache/yetus/rel/0.5.0/LICENSE Apache 2.0
+    - audience-annotations-0.5.0.jar
+
+    * Raphw: byte-buddy 1.7.11 https://raw.githubusercontent.com/raphw/byte-buddy/byte-buddy-1.7.11/LICENSE Apache 2.0
+    - byte-buddy-1.7.11.jar
+
+    * FasterXML: java-classmate 1.3.4 https://github.com/FasterXML/java-classmate/tree/classmate-1.3.4 Apache 2.0
+    - classmate-1.3.4.jar
+
+    * Apache: commons-cli 1.2 https://raw.githubusercontent.com/apache/commons-cli/cli-1.2/LICENSE.txt Apache 2.0
+    - commons-cli-1.2.jar
+
+    * Apache: commons-codec 1.11 https://raw.githubusercontent.com/apache/commons-codec/commons-codec-1.11/LICENSE.txt Apache 2.0
+    - commons-codec-1.11.jar
+
+    * Apache: commons-lang3 3.7 https://raw.githubusercontent.com/apache/commons-lang/LANG_3_7/LICENSE.txt Apache 2.0
+    - commons-lang3-3.7.jar
+
+    * Apache: commons-pool 2.5.0 https://raw.githubusercontent.com/apache/commons-pool/POOL_2_5_0/LICENSE.txt Apache 2.0
+    - commons-pool2-2.5.0.jar
+
+    * Apache: curator 2.12.0 https://raw.githubusercontent.com/apache/curator/apache-curator-2.12.0/LICENSE Apache 2.0
+    - curator-client-2.12.0.jar
+    - curator-framework-2.12.0.jar
+    - curator-recipes-2.12.0.jar
+
+    * Apache: dubbo 2.7.0 https://raw.githubusercontent.com/apache/incubator-dubbo/dubbo-2.7.0/LICENSE Apache 2.0
+    - dubbo-2.7.0.jar
+    - dubbo-common-2.7.0.jar
+    - dubbo-serialization-api-2.7.0.jar
+    - dubbo-serialization-kryo-2.7.0.jar
+
+    * Google: gson 2.8.4 https://raw.githubusercontent.com/google/gson/gson-parent-2.8.4/LICENSE Apache 2.0
+    - gson-2.8.4.jar
+
+    * Google: guava 20.0 https://raw.githubusercontent.com/google/guava/v20.0/COPYING Apache 2.0
+    - guava-20.0.jar
+
+    * hibernate: hibernate-validator 6.0.9.final https://raw.githubusercontent.com/hibernate/hibernate-validator/6.0.9.Final/license.txtl Apache 2.0
+    - hibernate-validator-6.0.9.Final.jar
+
+    * Apache: httpcomponents-client 4.5.5 https://raw.githubusercontent.com/apache/httpcomponents-client/4.5.5/LICENSE.txt Apache 2.0
+    - httpclient-4.5.5.jar
+
+    * Apache: httpcomponents-core 4.4.9 https://raw.githubusercontent.com/apache/httpcomponents-core/4.4.9/LICENSE.txt Apache 2.0
+    - httpcore-4.4.9.jar
+
+    * FasterXML: jackson-annotations 2.9.0 https://github.com/FasterXML/jackson-annotations/tree/jackson-annotations-2.9.0 Apache 2.0
+    - jackson-annotations-2.9.0.jar
+
+    * FasterXML: jackson-core 2.9.5 https://github.com/FasterXML/jackson-core/tree/jackson-core-2.9.5 Apache 2.0
+    - jackson-core-2.9.5.jar
+
+    * FasterXML: jackson-databind 2.9.5 https://github.com/FasterXML/jackson-databind/tree/jackson-databind-2.9.5 Apache 2.0
+    - jackson-databind-2.9.5.jar
+
+    * FasterXML: jackson-modules-java8 2.9.5 https://raw.githubusercontent.com/FasterXML/jackson-modules-java8/jackson-modules-java8-2.9.5/LICENSE Apache 2.0
+    - jackson-datatype-jdk8-2.9.5.jar
+    - jackson-datatype-jsr310-2.9.5.jar
+    - jackson-module-parameter-names-2.9.5.jar
+
+    * jboss: jboss-logging 3.3.2-final https://mvnrepository.com/artifact/org.jboss.logging/jboss-logging/3.3.2.Final Apache 2.0
+    - jboss-logging-3.3.2.Final.jar
+
+
+    * Apache: logging-log4j2 2.10.0 https://raw.githubusercontent.com/apache/logging-log4j2/log4j-2.10.0/LICENSE.txt Apache 2.0
+    - log4j-api-2.10.0.jar
+    - log4j-to-slf4j-2.10.0.jar
+
+    * netty: netty 4.1.30.final https://raw.githubusercontent.com/netty/netty/netty-4.1.30.Final/LICENSE.txt Apache 2.0
+    - netty-all-4.1.30.Final.jar
+
+    * Spring: spring-framework 5.0.6.RELEASE https://raw.githubusercontent.com/spring-projects/spring-framework/v5.0.6.RELEASE/src/docs/dist/license.txt Apache 2.0
+    - spring-aop-5.0.6.RELEASE.jar
+    - spring-beans-5.0.6.RELEASE.jar
+    - spring-aspects-5.0.6.RELEASE.jar
+    - spring-context-5.0.6.RELEASE.jar
+    - spring-core-5.0.6.RELEASE.jar
+    - spring-expression-5.0.6.RELEASE.jar
+    - spring-jcl-5.0.6.RELEASE.jar
+    - spring-jdbc-5.0.6.RELEASE.jar
+    - spring-web-5.0.6.RELEASE.jar
+    - spring-orm-5.0.6.RELEASE.jar
+    - spring-webmvc-5.0.6.RELEASE.jar
+    - spring-tx-5.0.6.RELEASE.jar
+
+    * Spring: spring-boot 2.0.2.RELEASE https://raw.githubusercontent.com/spring-projects/spring-boot/v2.0.2.RELEASE/LICENSE.txt Apache 2.0
+    - spring-boot-2.0.2.RELEASE.jar
+    - spring-boot-autoconfigure-2.0.2.RELEASE.jar
+    - spring-boot-starter-2.0.2.RELEASE.jar
+    - spring-boot-starter-json-2.0.2.RELEASE.jar
+    - spring-boot-starter-logging-2.0.2.RELEASE.jar
+    - spring-boot-starter-tomcat-2.0.2.RELEASE.jar
+    - spring-boot-starter-web-2.0.2.RELEASE.jar
+    - spring-boot-starter-data-jpa-2.0.2.RELEASE.jar
+    - spring-boot-starter-aop-2.0.2.RELEASE.jar
+    - spring-boot-starter-jdbc-2.0.2.RELEASE.jar
+
+    * Spring: spring-data-commons 2.0.7.RELEASE https://raw.githubusercontent.com/spring-projects/spring-data-commons/2.0.7.RELEASE/src/main/resources/license.txt Apache 2.0
+    - spring-data-commons-2.0.7.RELEASE.jar
+
+    * Spring: spring-data-jpa 2.0.7.RELEASE https://raw.githubusercontent.com/spring-projects/spring-data-jpa/2.0.7.RELEASE/src/main/resources/license.txt Apache 2.0
+    - spring-data-jpa-2.0.7.RELEASE.jar
+
+    * asomov snakeyml 1.19  https://bitbucket.org/asomov/snakeyaml/raw/153cce6397b5a5bb21fa1e4a8496433c55772760/LICENSE.txt Apache 2.0
+    - snakeyaml-1.19.jar
+
+    * Spring: spring-plugin 1.2.0.RELEASE https://raw.githubusercontent.com/spring-projects/spring-plugin/1.2.0.RELEASE/LICENSE.txt Apache 2.0
+    - spring-plugin-core-1.2.0.RELEASE.jar
+    - spring-plugin-metadata-1.2.0.RELEASE.jar
+
+    * Springfox: springfox 2.9.2 https://raw.githubusercontent.com/springfox/springfox/2.9.2/LICENSE Apache 2.0
+    - springfox-core-2.9.2.jar
+    - springfox-schema-2.9.2.jar
+    - springfox-spi-2.9.2.jar
+    - springfox-spring-web-2.9.2.jar
+    - springfox-swagger-common-2.9.2.jar
+    - springfox-swagger-ui-2.9.2.jar
+    - springfox-swagger2-2.9.2.jar
+
+    * tomcat tomcat 8.5.31 http://svn.apache.org/repos/asf/tomcat/archive/tc8.5.x/tags/TOMCAT_8_5_31/LICENSE Apache 2.0
+    - tomcat-embed-core-8.5.31.jar
+    - tomcat-embed-el-8.5.31.jar
+    - tomcat-embed-websocket-8.5.31.jar
+
+    * beanvalidation: beanvalidation-api 2.0.1.final https://github.com/beanvalidation/beanvalidation-api/tree/2.0.1.Final Apache 2.0
+    - validation-api-2.0.1.Final.jar
+
+    * Apache: zookeeper 3.5.4 https://raw.githubusercontent.com/apache/zookeeper/release-3.5.4/LICENSE.txt Apache 2.0
+    - zookeeper-3.5.4-beta.jar
+
+    * josdejong: jsoneditor 5.26.2 https://raw.githubusercontent.com/josdejong/jsoneditor/v5.26.2/LICENSE Apache 2.0
+    * Google: fonts https://raw.githubusercontent.com/google/fonts/master/apache/roboto/LICENSE.txt Apache 2.0
+    * Google: material design icons 3.0.1 https://raw.githubusercontent.com/google/material-design-icons/3.0.1/LICENSE Apache 2.0
+    * brettwooldridge: HikariCP 2.7.9 https://raw.githubusercontent.com/brettwooldridge/HikariCP/HikariCP-2.7.9/LICENSE Apache 2.0
+    - HikariCP-2.7.9.jar
+
+    * wildfly jandex 2.0.3.Final https://raw.githubusercontent.com/wildfly/jandex/2.0.3.Final/LICENSE.txt Apache 2.0
+    - jandex-2.0.3.Final.jar
+
+    * Apache commons-logging 1.2 https://raw.githubusercontent.com/apache/commons-logging/LOGGING_1_2/LICENSE.txt Apache 2.0
+    - commons-logging-1.2.jar
+
+    * RuedigerMoeller fst 2.48-jdk-6 https://raw.githubusercontent.com/RuedigerMoeller/fast-serialization/jdk-6/LICENSE.md Apache 2.0
+    - fst-2.48-jdk-6.jar
+
+    * dubbo hessian-lite 3.2.3 https://raw.githubusercontent.com/dubbo/hessian-lite/v3.2.4/LICENSE Apache 2.0
+    - hessian-lite-3.2.3.jar
+
+    * jdereg java-util 1.9.0 https://raw.githubusercontent.com/jdereg/java-util/master/LICENSE Apache 2.0
+    - java-util-1.9.0.jar
+
+    * jdereg json-io 2.5.1 https://raw.githubusercontent.com/jdereg/json-io/2.5.1.201402192244/LICENSE Apache 2.0
+    - json-io-2.5.1.jar
+
+    * magro kryo-serializers 0.42 https://raw.githubusercontent.com/magro/kryo-serializers/kryo-serializers-0.42/LICENCE.txt Apache 2.0
+    - kryo-serializers-0.42.jar
+
+    * easymock objenesis 2.6 https://raw.githubusercontent.com/easymock/objenesis/2.6/LICENSE.txt Apache 2.0
+    - objenesis-2.6.jar
 
 ========================================================================
 MIT licenses
@@ -269,18 +416,26 @@ MIT licenses
 The following components are provided under the MIT License. See project link for details.
 The text of each license is also included at licenses/LICENSE-[project].
 
-    jedis: 2.9.0 https://github.com/xetorthio/jedis/tree/jedis-2.9.0 MIT
-    slf4j: jul-to-slf4j 1.7.25 https://github.com/qos-ch/slf4j/tree/v_1.7.25/jul-to-slf4j MIT
-    qos-ch: slf4j 1.7.25 https://github.com/qos-ch/slf4j/tree/v_1.7.25 MIT
-    axios: axios 0.18.0 https://github.com/axios/axios/tree/v0.18.0 MIT
-    thlorenz: brace 0.11.0 https://github.com/thlorenz/brace/tree/v0.11.0 MIT
-    nodeca: js-yaml 3.12.0 https://github.com/nodeca/js-yaml/tree/3.12.0 MIT
-    vuejs: vue 2.5.2 https://github.com/vuejs/vue/tree/v2.5.2 MIT
-    Inndy: vue-clipboard2 0.2.1 https://github.com/Inndy/vue-clipboard2/tree/v0.2.1 MIT
-    kazupon: vue-i18n 8.6.0 https://github.com/kazupon/vue-i18n/tree/v8.6.0 MIT
-    vuejs: vue-router 3.0.1 https://github.com/vuejs/vue-router/tree/v3.0.1 MIT
-    vuetifyjs: vuetify 1.2.2 https://github.com/vuetifyjs/vuetify/tree/v1.2.2 MIT
-    vuejs: vuex 3.0.1 https://github.com/vuejs/vuex/tree/v3.0.1 MIT
+    * jedis: 2.9.0 https://raw.githubusercontent.com/xetorthio/jedis/jedis-2.9.0/LICENSE.txt MIT
+    - jedis-2.9.0.jar
+
+    * slf4j: jul-to-slf4j 1.7.25 https://raw.githubusercontent.com/qos-ch/slf4j/v_1.7.25/LICENSE.txt MIT
+    - jul-to-slf4j-1.7.25.jar
+    - jcl-over-slf4j-1.7.25.jar
+
+    * qos-ch: slf4j 1.7.25 https://raw.githubusercontent.com/qos-ch/slf4j/v_1.7.25/LICENSE.txt MIT
+    - slf4j-api-1.7.25.jar
+
+    * axios: axios 0.18.0 https://raw.githubusercontent.com/axios/axios/v0.18.0/LICENSE MIT
+    * thlorenz: brace 0.11.0 https://raw.githubusercontent.com/thlorenz/brace/v0.11.0/LICENSE MIT
+    * nodeca: js-yaml 3.12.0 https://raw.githubusercontent.com/nodeca/js-yaml/3.12.0/LICENSE MIT
+    * vuejs: vue 2.5.2 https://raw.githubusercontent.com/vuejs/vue/v2.5.2/LICENSE MIT
+    * Inndy: vue-clipboard2 0.2.1 https://raw.githubusercontent.com/Inndy/vue-clipboard2/v0.2.1/LICENSE MIT
+    * kazupon: vue-i18n 8.6.0 https://raw.githubusercontent.com/kazupon/vue-i18n/v8.6.0/LICENSE MIT
+    * vuejs: vue-router 3.0.1 https://raw.githubusercontent.com/vuejs/vue-router/v3.0.1/LICENSE MIT
+    * vuetifyjs: vuetify 1.2.2 https://raw.githubusercontent.com/vuetifyjs/vuetify/v1.2.2/LICENSE MIT
+    * vuejs: vuex 3.0.1 https://raw.githubusercontent.com/vuejs/vuex/v3.0.1/LICENSE MIT
+    * lodash: lodash 4.17.11 https://raw.githubusercontent.com/lodash/lodash/4.17.11/LICENSE MIT
 
 
 ========================================================================
@@ -289,15 +444,53 @@ EPL v1.0 and LGPL 2.1
 The following components are provided under the EPL v1.0 and LGPL 2.1. See project link for details.
 The text of each license is also included at licenses/LICENSE-[project].
 
-    qos-ch: logback 1.2.3 https://github.com/qos-ch/logback/tree/v_1.2.3  EPL v1.0 and LGPL 2.1
+    * qos-ch: logback 1.2.3 https://raw.githubusercontent.com/qos-ch/logback/v_1.2.3/LICENSE.txt  EPL v1.0 and LGPL 2.1
+    - logback-classic-1.2.3.jar
+    - logback-core-1.2.3.jar
 
 ========================================================================
-CDDL and GPL 2.0
+LGPL 2.1
 ========================================================================
-The following components are provided under the CDDL and GPL 2.0. See project link for details.
+The following components are provided under the EPL v1.0 and LGPL 2.1. See project link for details.
 The text of each license is also included at licenses/LICENSE-[project].
 
-    javaee: javax.annotation 1.3.2 https://github.com/javaee/javax.annotation/tree/1.3.2 CDDL and GPL 2.0
+    * hibernate: hibernate-commons-annotations 5.0.1.Final https://raw.githubusercontent.com/hibernate/hibernate-commons-annotations/5.0.1.Final/lgpl.txt LGPL 2.1
+    - hibernate-commons-annotations-5.0.1.Final.jar
+
+    * hibernate: hibernate-orm 5.2.17.Final   https://raw.githubusercontent.com/hibernate/hibernate-orm/5.2.17/lgpl.txt LGPL 2.1
+    - hibernate-core-5.2.17.Final.jar
+
+
+========================================================================
+EPL v1.0
+========================================================================
+The following components are provided under the EPL v1.0. See project link for details.
+The text of each license is also included at licenses/LICENSE-[project].
+
+    * Eclipse: AspectJ Weaver 1.8.3 http://www.eclipse.org/legal/epl-v10.html  EPL v1.0
+    - aspectjweaver-1.8.13.jar
+
+========================================================================
+EDL v1.0
+========================================================================
+The following components are provided under the EDL v1.0. See project link for details.
+The text of each license is also included at licenses/LICENSE-[project].
+
+========================================================================
+
+    * Hibernate: hibernate-jpa-api https://raw.githubusercontent.com/hibernate/hibernate-jpa-api/master/license.txt EDL v1.0
+    - hibernate-jpa-2.1-api-1.0.0.Final.jar
+
+CDDL 1.1
+========================================================================
+The following components are provided under the CDDL 1.1. See project link for details.
+The text of each license is also included at licenses/LICENSE-[project].
+
+    * javaee: javax.annotation 1.3.2 https://raw.githubusercontent.com/javaee/javax.annotation/1.3.2/LICENSE CDDL 1.1
+    - javax.annotation-api-1.3.2.jar
+
+    * javaee: javax.transaction 1.2 https://raw.githubusercontent.com/javaee/javax.transaction/master/LICENSE CDDL 1.1
+    - javax.transaction-api-1.2.jar
 
 ========================================================================
 BSD licenses
@@ -305,6 +498,26 @@ BSD licenses
 The following components are provided under a BSD license. See project link for details.
 The text of each license is also included at licenses/LICENSE-[project].
 
-    adaltas: node-http-status 1.2.0 https://github.com/adaltas/node-http-status/tree/v1.2.0
+    * adaltas: node-http-status 1.2.0 https://github.com/adaltas/node-http-status/tree/v1.2.0 BSD
+    * antlr: antlr 2.7.7 http://www.antlr.org/license.html BSD
+    - antlr-2.7.7.jar
+    * dom4j: dom4j 1.6.1 https://raw.githubusercontent.com/dom4j/dom4j/dom4j_1_6_1/LICENSE.txt BSD
+    - dom4j-1.6.1.jar
+    * ow2: asm 5.0.4 https://gitlab.ow2.org/asm/asm/raw/ASM_5_0_4/LICENSE.txt BSD
+    - asm-5.0.4.jar
+    * EsotericSoftware kryo 4.0.1 https://raw.githubusercontent.com/EsotericSoftware/kryo/kryo-parent-4.0.1/license.txt BSD
+    - kryo-4.0.1.jar
+    * EsotericSoftware minlog 1.3.0 https://raw.githubusercontent.com/EsotericSoftware/minlog/minlog-1.3.0/license.txt BSD
+    - minlog-1.3.0.jar
+    * EsotericSoftware reflectasm 1.11.3 https://raw.githubusercontent.com/EsotericSoftware/reflectasm/reflectasm-1.11.3/license.txt BSD
+    - reflectasm-1.11.3.jar
+
+========================================================================
+Apache 2.0, LGPL 2.1 and MPL 1.1
+========================================================================
+The following components are provided under Apache 2.0, LGPL 2.1 and MPL 1.1. See project link for details.
+The text of each license is also included at licenses/LICENSE-[project].
+   * javassist: javassist 3.20.0-ga https://raw.githubusercontent.com/jboss-javassist/javassist/rel_3_20_0_ga/License.html Apache 2.0, LGPL 2.1 and MPL 1.1
+   - javassist-3.20.0-GA.jar
 
 

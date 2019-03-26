@@ -16,6 +16,7 @@
  */
 package org.apache.dubbo.admin.model.domain;
 
+import org.apache.dubbo.admin.common.util.Tool;
 import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.utils.StringUtils;
@@ -201,19 +202,9 @@ public class Consumer extends Entity {
     }
 
     public URL toUrl() {
-        String group = null;
-        String version = null;
-        String path = service;
-        int i = path.indexOf("/");
-        if (i > 0) {
-            group = path.substring(0, i);
-            path = path.substring(i + 1);
-        }
-        i = path.lastIndexOf(":");
-        if (i > 0) {
-            version = path.substring(i + 1);
-            path = path.substring(0, i);
-        }
+        String group = Tool.getGroup(service);
+        String version = Tool.getVersion(service);
+        String interfaze = Tool.getInterface(service);
         Map<String, String> param = StringUtils.parseQueryString(parameters);
         param.put(Constants.CATEGORY_KEY, Constants.CONSUMERS_CATEGORY);
         if (group != null) {
@@ -222,7 +213,7 @@ public class Consumer extends Entity {
         if (version != null) {
             param.put(Constants.VERSION_KEY, version);
         }
-        return URL.valueOf(Constants.CONSUMER_PROTOCOL + "://" + address + "/" + path
+        return URL.valueOf(Constants.CONSUMER_PROTOCOL + "://" + address + "/" + interfaze
                 + "?" + StringUtils.toQueryString(param));
     }
 

@@ -17,12 +17,12 @@
 
 package org.apache.dubbo.admin.service.impl;
 
+import org.apache.dubbo.admin.common.util.Tool;
 import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.config.RegistryConfig;
 import org.apache.dubbo.registry.Registry;
 import org.apache.dubbo.rpc.service.GenericService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
@@ -30,8 +30,11 @@ import javax.annotation.PostConstruct;
 @Component
 public class GenericServiceImpl {
     private ApplicationConfig applicationConfig;
-    @Autowired
-    private Registry registry;
+    private final Registry registry;
+
+    public GenericServiceImpl(Registry registry) {
+        this.registry = registry;
+    }
 
     @PostConstruct
     public void init() {
@@ -41,16 +44,21 @@ public class GenericServiceImpl {
         applicationConfig = new ApplicationConfig();
         applicationConfig.setName("dubbo-admin");
         applicationConfig.setRegistry(registryConfig);
-
     }
 
     public Object invoke(String service, String method, String[] parameterTypes, Object[] params) {
 
         ReferenceConfig<GenericService> reference = new ReferenceConfig<>();
+        String group = Tool.getGroup(service);
+        String version = Tool.getVersion(service);
+        String interfaze = Tool.getInterface(service);
         reference.setGeneric(true);
         reference.setApplication(applicationConfig);
-        reference.setInterface(service);
+        reference.setInterface(interfaze);
+        reference.setVersion(version);
+        reference.setGroup(group);
         GenericService genericService = reference.get();
+
         return genericService.$invoke(method, parameterTypes, params);
     }
 }
