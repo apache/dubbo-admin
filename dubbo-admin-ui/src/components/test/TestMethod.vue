@@ -128,7 +128,11 @@
       if (method) {
         const [methodName, parametersTypes] = method.split('~')
         this.method.name = methodName
-        this.method.parameterTypes = parametersTypes.split(';')
+        if (parametersTypes) {
+          this.method.parameterTypes = parametersTypes.split(';')
+        } else { // if parametersTypes === "",  "".split(";") will produce [""], which is wrong
+          this.method.parameterTypes = []
+        }
       }
 
       let url = '/test/method?' + 'application=' + this.application +
