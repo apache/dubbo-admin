@@ -27,72 +27,108 @@
       <v-flex lg4 sm6 xs12>
         <v-card>
           <v-card-text>
+            <h4>Provider (Total)</h4>
+            <hr style="height:3px;border:none;border-top:3px double #9D9D9D;" />
             <mini-chart
-              title="Monthly Sales"
-              sub-title="10%"
+              title="qps(ms)"
+              :sub-title="majorDataMap.provider.qps"
               icon="trending_up"
               :data="dataset.monthVisit"
               :chart-color="color.blue.base"
               type="line"
-            >
-            </mini-chart>
+            ></mini-chart>
+            <hr style="height:1px;border:none;border-top:1px solid #ADADAD;" />
             <mini-chart
-              title="Monthly Sales"
-              sub-title="10%"
+              title="rt(ms)"
+              :sub-title="majorDataMap.provider.rt"
               icon="trending_up"
               :data="dataset.monthVisit"
               :chart-color="color.blue.base"
               type="line"
-            >
-            </mini-chart>
+              class="minichart"
+            ></mini-chart>
+            <hr style="height:1px;border:none;border-top:1px solid #ADADAD;" />
+            <mini-chart
+              title="success rate"
+              :sub-title="majorDataMap.provider.success_rate"
+              icon="trending_up"
+              :data="dataset.monthVisit"
+              :chart-color="color.blue.base"
+              type="line"
+            ></mini-chart>
+            <hr style="height:1px;border:none;border-top:1px solid #ADADAD;" />
           </v-card-text>
         </v-card>
       </v-flex>
       <v-flex lg4 sm6 xs12>
         <v-card>
           <v-card-text>
+            <h4>Consumer (Total)</h4>
+            <hr style="height:3px;border:none;border-top:3px double #9D9D9D;" />
             <mini-chart
-              title="Monthly Sales"
-              sub-title="10%"
+              title="qps(ms)"
+              :sub-title="majorDataMap.consumer.qps"
               icon="trending_up"
               :data="dataset.monthVisit"
               :chart-color="color.blue.base"
               type="line"
-            >
-            </mini-chart>
+            ></mini-chart>
+            <hr style="height:1px;border:none;border-top:1px solid #ADADAD;" />
             <mini-chart
-              title="Monthly Sales"
-              sub-title="10%"
+              title="rt(ms)"
+              :sub-title="majorDataMap.consumer.rt"
               icon="trending_up"
               :data="dataset.monthVisit"
               :chart-color="color.blue.base"
               type="line"
-            >
-            </mini-chart>
+            ></mini-chart>
+            <hr style="height:1px;border:none;border-top:1px solid #ADADAD;" />
+            <mini-chart
+              title="success rate"
+              :sub-title="majorDataMap.consumer.success_rate"
+              icon="trending_up"
+              :data="dataset.monthVisit"
+              :chart-color="color.blue.base"
+              type="line"
+            ></mini-chart>
+            <hr style="height:1px;border:none;border-top:1px solid #ADADAD;" />
           </v-card-text>
         </v-card>
       </v-flex>
       <v-flex lg4 sm6 xs12>
         <v-card>
           <v-card-text>
-            <mini-chart
-              title="Monthly Sales"
-              sub-title="10%"
-              icon="trending_up"
-              :data="dataset.monthVisit"
-              :chart-color="color.blue.base"
-              type="line"
-            >
-            </mini-chart>
-            <mini-chart
-              title="Monthly Sales"
-              sub-title="10%"
-              icon="trending_up"
-              :data="dataset.monthVisit"
-              :chart-color="color.blue.base"
-              type="line"
-            >
-            </mini-chart>
+            <h4>Thread Pool</h4>
+            <hr style="height:3px;border:none;border-top:3px double #9D9D9D;" />
+              <div class="layout row ma-0 align-center justify-space-between">
+                <div class="text-box">
+                  <div class="subheading pb-2">active count</div>
+                  <span class="grey--text">{{this.threadPoolData.active}} <v-icon small color="green">trending_down</v-icon> </span>
+                </div>
+                <div class="chart">
+                  <v-progress-circular
+                    :size="60"
+                    :width="5"
+                    :rotate="360"
+                    :value="this.threadPoolData.activert"
+                    color="success"
+                  >
+                    {{this.threadPoolData.activert}}
+                  </v-progress-circular>
+                </div>
+              </div>
+            <hr style="height:1px;border:none;border-top:1px solid #ADADAD;" />
+            <div class="layout row ma-0 align-center justify-space-between">
+              <div class="subheading pb-2">core size</div>
+              <span class="grey--text">{{this.threadPoolData.core}} </span>
+              <div class="subheading pb-2">max size</div>
+              <span class="grey--text">{{this.threadPoolData.max}} </span>
+              <div class="subheading pb-2">current size</div>
+              <span class="grey--text">{{this.threadPoolData.current}} </span>
+              <div style="height:60px"></div>
+              <v-icon small color="green">trending_down</v-icon>
+            </div>
+            <hr style="height:1px;border:none;border-top:1px solid #ADADAD;" />
           </v-card-text>
         </v-card>
       </v-flex>
@@ -110,6 +146,7 @@
           </v-tab>
           <v-tab-item>
             <v-data-table
+              id="providerList"
               class="elevation-1"
               :headers="headers"
               :items="providerDetails"
@@ -151,13 +188,18 @@
   import Breadcrumb from '@/components/public/Breadcrumb'
   import Search from '@/components/public/Search'
   import {
-    monthVisitData,
     campaignData,
     locationData,
     StackData,
     SinData
   } from '@/api/chart'
+
+  const shortMonth = [
+    1, 2, 3, 4, 5, 6
+  ]
+
   export default {
+
     name: 'ServiceMetrics',
     components: {
       MiniChart,
@@ -167,6 +209,40 @@
     },
     data () {
       return {
+        threadPoolData: {
+          "core" : 0,
+          "max" : 0,
+          "current" : 0,
+          "active" : 0,
+          "activert": 0,
+        },
+        echartMap:{
+          "provider": [{
+            "timestamp": 0,
+            "qps": 0,
+            "tt": 0,
+            "success_rate": 0,
+          }],
+          "consumer": [{
+            "timestamp": 0,
+            "qps": 0,
+            "tt": 0,
+            "success_rate": 0,
+          }],
+        },
+        majorDataMap: {
+          provider: {
+            qps: "0",
+            rt: "0",
+            success_rate: "0%"
+          },
+          consumer: {
+            qps: "0",
+            rt: "0",
+            success_rate: "0%"
+          },
+          threadPool:{}
+        },
         selectedTab: 'tab-1',
         filter: '',
         headers: [],
@@ -176,14 +252,14 @@
             method: 'aaaa~ICS',
             qps: '0.58',
             rt: '111',
-            successRate: '100%'
+            success_rate: '100%'
           },
           {
             service: 'a.b.c.f',
             method: 'bbbb~ICS',
             qps: '0.87',
             rt: '120',
-            successRate: '90%'
+            success_rate: '90%'
           }
 
         ],
@@ -191,7 +267,12 @@
         option: null,
         dataset: {
           sinData: SinData,
-          monthVisit: monthVisitData,
+          monthVisit: shortMonth.map(m => {
+            return {
+              'time': m,
+              'Value': Math.floor(Math.random() * 1000) + 200,
+            }
+          }),
           campaign: campaignData,
           location: locationData,
           stackData: StackData
@@ -206,8 +287,123 @@
 
       }
     },
+    /*
+    * */
     methods: {
       submit: function () {
+        this.vv = 20
+        //这里变不了我就很迷了
+        this.dataset.monthVisit=[{"time": 1,"Value":200}]
+        this.filter = this.filter.trim()
+        this.searchByIp(this.filter)
+      },
+      setRandomValue: function(data) {
+        for(let i in data) {
+          data[i]['value'] = Math.floor(Math.random() * 1000) + 200
+        }
+        return data
+      },
+      searchByIp: function (filter) {
+        //TODO 到时候记得把filter塞进来
+        let url = '/metrics/ipAddr/?ip' + '=127.0.0.1' + '&group=dubbo'
+        this.$axios.get(url)
+          .then(response => {
+            if (!response.data)
+              return
+            this.dealNormal(response.data)
+            this.dealMajor(response.data)
+            this.dealThreadPoolData(response.data)
+          })
+      },
+      dealThreadPoolData: function (data) {
+        for (let index in data) {
+          let metricsDTO = data[index]
+          if ((metricsDTO['metric']).indexOf('threadPool') >= -1) {
+            this.threadPoolData[metricsDTO['metric'].substring(metricsDTO['metric'].lastIndexOf(".")+1)] = metricsDTO['value']
+          }
+        }
+        this.threadPoolData.activert = (100 * this.threadPoolData.active / this.threadPoolData.current).toFixed(2)
+
+      },
+      dealMajor: function (data) {
+        for (let index in data) {
+          let metricsDTO = data[index]
+          if (metricsDTO['metricLevel'] === 'MAJOR' && (metricsDTO['metric']).indexOf('threadPool') == -1) {
+            let metric = metricsDTO['metric'] + ''
+            let provider = metric.split('.')[1]
+            metric = metric.substring(metric.lastIndexOf('.') + 1)
+            this.dealEchartData(metricsDTO, provider, metric)
+            if (typeof metricsDTO.value != 'string') {
+              // console.log(metricsDTO)
+              metricsDTO.value = metricsDTO.value.toFixed(2)
+            }
+            if (this.majorDataMap[provider][metric])
+              this.majorDataMap[provider][metric] = metricsDTO.value
+          }
+        }
+         // console.log(this.majorDataMap)
+        // console.log("psw", this.echartMap)
+      },
+      dealEchartData: function (metricsDTO, provider, metric) {
+        let timestamp = metricsDTO['timestamp']
+        let arr = this.echartMap[provider]
+        let lastTime = arr[arr.length-1]['timestamp']
+        if (timestamp > lastTime) {
+          arr.push({
+            'timestamp': timestamp,
+            metric: metricsDTO['value']
+          })
+          if(arr.length > 10) {
+            arr.shift()
+          }
+        } else {
+          arr[arr.length-1][metric] = metricsDTO['value']
+        }
+      },
+      dealNormal: function (data) {
+        let serviceMethodMap = {};
+        for (let index in data) {
+          let metricsDTO = data[index]
+          if (metricsDTO['metricLevel'] === 'NORMAL') {
+            let metric = metricsDTO['metric'] + ''
+            let isProvider = metric.split('.')[1]
+            metric = isProvider + '.' + metric.substring(metric.lastIndexOf('.') + 1)
+
+            let methodMap = serviceMethodMap[metricsDTO.tags.service]
+            if (!methodMap) {
+              methodMap = {}
+              serviceMethodMap[metricsDTO.tags.service] = methodMap
+            }
+            let metricMap = methodMap[metricsDTO.tags.method]
+
+            if(!metricMap) {
+              metricMap = {}
+              serviceMethodMap[metricsDTO.tags.service][metricsDTO.tags.method] = metricMap
+            }
+            metricMap[metric] = metricsDTO['value']
+          }
+        }
+        this.providerDetails = []
+        this.consumerDetails = []
+        for (let service in serviceMethodMap) {
+          for (let method in serviceMethodMap[service]) {
+            let metricsMap = serviceMethodMap[service][method]
+            this.addDataToDetails(this.providerDetails, service, method, metricsMap, "provider")
+            this.addDataToDetails(this.consumerDetails, service, method, metricsMap, "consumer")
+          }
+        }
+      },
+      addDataToDetails: function (sideDetails, service, method, metricsMap, side) {
+        if(metricsMap[side + '.qps'] && metricsMap[side + '.success_rate'] && metricsMap[side + '.success_bucket_count']) {
+          sideDetails.push({
+            service: service,
+            method: method,
+            qps: metricsMap[side + '.qps'].toFixed(2),
+            rt: metricsMap[side + '.rt'].toFixed(2),
+            successRate: metricsMap[side + '.success_rate'],
+            successCount: metricsMap[side + '.success_bucket_count']
+          })
+        }
       },
       setHeaders: function () {
         this.headers = [
@@ -236,6 +432,9 @@
     },
     mounted: function () {
       this.setHeaders()
+      setInterval(() => {
+        this.submit()
+      },5000)
     }
   }
 </script>
