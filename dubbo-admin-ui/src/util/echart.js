@@ -206,10 +206,15 @@ export default {
     }
   },
   mounted () {
+    // console.log(this)
     this.init()
   },
-
+  watch: {
+    option(cur, old) {
+      // console.log("echart", cur, old)
+    }
+  },
   beforeDestroy () {
     this.clean()
-  }
+  },
 }

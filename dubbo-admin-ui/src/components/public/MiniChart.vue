@@ -18,11 +18,11 @@
 <template>
       <div class="layout row ma-0 align-center justify-space-between">
         <div class="text-box">
-          <div class="subheading pb-2">{{title}}</div>
+          <div class="subheading pb-2">{{title}} </div>
           <span class="grey--text">{{subTitle}} <v-icon small :color="iconColor">{{icon}}</v-icon></span>
         </div>
         <div class="chart">
-          <e-chart
+          <e-chart id="hello"
             :path-option="computeChartOption"
             height="68px"
             width="100%"
@@ -34,6 +34,7 @@
 
 <script>
   import EChart from '@/util/echart'
+  import _object from 'lodash/object'
   export default {
     components: {
       EChart
@@ -76,8 +77,16 @@
         }
         return this.defaultOption
       }
-    }
+    },
 
+    watch: {
+      data(curVal, oldVal){
+        // console.log(oldVal,curVal);
+        // console.log(this.defaultOption)
+
+        return this.defaultOption
+      }
+    }
   }
 </script>
 
