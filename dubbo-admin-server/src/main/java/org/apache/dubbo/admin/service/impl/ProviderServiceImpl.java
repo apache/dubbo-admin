@@ -46,7 +46,7 @@ import java.util.regex.Pattern;
 
 
 /**
- * IbatisProviderService
+ * ProviderServiceImpl
  *
  */
 @Component

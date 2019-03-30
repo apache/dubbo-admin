@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * IbatisDAO
+ * AbstractService
  *
  */
 public class AbstractService {
