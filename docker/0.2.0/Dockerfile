@@ -16,7 +16,7 @@
 FROM openjdk:8-jdk
 RUN mkdir /source && wget https://github.com/apache/incubator-dubbo-admin/archive/0.2.0.zip && unzip 0.2.0.zip -d /source
 WORKDIR /source/incubator-dubbo-admin-0.2.0
-RUN mvn clean package -Dmaven.test.skip=true
+RUN ./mvnw clean package -Dmaven.test.skip=true
 
 FROM openjdk:8-jre
 LABEL maintainer="dev@dubbo.apache.org"
