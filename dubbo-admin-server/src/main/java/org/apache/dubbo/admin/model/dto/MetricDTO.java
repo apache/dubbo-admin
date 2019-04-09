@@ -105,18 +105,18 @@ public class MetricDTO {
             return;
 
         StringBuilder method = new StringBuilder(getTags().get("method"));
-        MethodDefinition methodDefinition = map.get(method);
+        MethodDefinition methodDefinition = map.get(method.toString());
         if (method == null || methodDefinition == null) {
             return;
         }
         String[] argTypes = methodDefinition.getParameterTypes();
         method.append(" (");
+
         for (int i = 0; i < argTypes.length; i++) {
-            method.append(method + (i == 0 ? "" : ", ") + argTypes[i].substring(argTypes[i].lastIndexOf(".") + 1));
+            method.append((i == 0 ? "" : ", ") + argTypes[i].substring(argTypes[i].lastIndexOf(".") + 1));
         }
         method.append(")");
-        method.append(methodDefinition.getReturnType().getClass().getSimpleName() + " " + method);
-        getTags().put("method", method.toString());
+        getTags().put("method", methodDefinition.getReturnType().getClass().getSimpleName() + " " + method);
     }
 
     public enum MetricType {
