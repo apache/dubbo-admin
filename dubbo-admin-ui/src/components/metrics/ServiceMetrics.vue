@@ -32,7 +32,7 @@
             <mini-chart
               title="qps(ms)"
               :sub-title="majorDataMap.provider.qps"
-              icon="trending_up"
+              :icon="majorDataMap.provider.qps_trending"
               :data="dataset.monthVisit"
               :chart-color="color.blue.base"
               type="line"
@@ -41,7 +41,7 @@
             <mini-chart
               title="rt(ms)"
               :sub-title="majorDataMap.provider.rt"
-              icon="trending_up"
+              :icon="majorDataMap.provider.rt_trending"
               :data="dataset.monthVisit"
               :chart-color="color.blue.base"
               type="line"
@@ -51,7 +51,7 @@
             <mini-chart
               title="success rate"
               :sub-title="majorDataMap.provider.success_rate"
-              icon="trending_up"
+              :icon="majorDataMap.provider.success_rate_trending"
               :data="dataset.monthVisit"
               :chart-color="color.blue.base"
               type="line"
@@ -68,7 +68,7 @@
             <mini-chart
               title="qps(ms)"
               :sub-title="majorDataMap.consumer.qps"
-              icon="trending_up"
+              :icon="majorDataMap.consumer.qps_trending"
               :data="dataset.monthVisit"
               :chart-color="color.blue.base"
               type="line"
@@ -77,7 +77,7 @@
             <mini-chart
               title="rt(ms)"
               :sub-title="majorDataMap.consumer.rt"
-              icon="trending_up"
+              :icon="majorDataMap.consumer.rt_trending"
               :data="dataset.monthVisit"
               :chart-color="color.blue.base"
               type="line"
@@ -86,7 +86,7 @@
             <mini-chart
               title="success rate"
               :sub-title="majorDataMap.consumer.success_rate"
-              icon="trending_up"
+              :icon="majorDataMap.consumer.success_rate_trending"
               :data="dataset.monthVisit"
               :chart-color="color.blue.base"
               type="line"
@@ -103,7 +103,7 @@
               <div class="layout row ma-0 align-center justify-space-between">
                 <div class="text-box">
                   <div class="subheading pb-2">active count</div>
-                  <span class="grey--text">{{this.threadPoolData.active}} <v-icon small color="green">trending_down</v-icon> </span>
+                  <span class="grey--text">{{this.threadPoolData.active}} <v-icon small color="green">{{this.threadPoolData.active_trending}}</v-icon> </span>
                 </div>
                 <div class="chart">
                   <v-progress-circular
@@ -126,7 +126,7 @@
               <div class="subheading pb-2">current size</div>
               <span class="grey--text">{{this.threadPoolData.current}} </span>
               <div style="height:60px"></div>
-              <v-icon small color="green">trending_down</v-icon>
+              <v-icon small color="green">{{this.threadPoolData.current_trending}}</v-icon>
             </div>
             <hr style="height:1px;border:none;border-top:1px solid #ADADAD;" />
           </v-card-text>
@@ -212,9 +212,12 @@
         threadPoolData: {
           "core" : 0,
           "max" : 0,
-          "current" : 0,
+          'current' : 0,
+          'current_trending': '',
           "active" : 0,
+          'active_trending': '',
           "activert": 0,
+
         },
         echartMap:{
           "provider": [{
@@ -232,14 +235,21 @@
         },
         majorDataMap: {
           provider: {
-            qps: "0",
-            rt: "0",
-            success_rate: "0%"
+            qps: '0',
+            qps: '0',
+            qps_trending: '',
+            rt: '0',
+            rt_trending: '',
+            success_rate: '0%',
+            success_rate_trending: '',
           },
           consumer: {
-            qps: "0",
-            rt: "0",
-            success_rate: "0%"
+            qps: '0',
+            qps_trending: '',
+            rt: '0',
+            rt_trending: '',
+            success_rate: '0%',
+            success_rate_trending: '',
           },
           threadPool:{}
         },
@@ -319,7 +329,12 @@
         for (let index in data) {
           let metricsDTO = data[index]
           if ((metricsDTO['metric']).indexOf('threadPool') >= -1) {
-            this.threadPoolData[metricsDTO['metric'].substring(metricsDTO['metric'].lastIndexOf(".")+1)] = metricsDTO['value']
+            let metric = metricsDTO['metric'].substring(metricsDTO['metric'].lastIndexOf(".")+1)
+            if(metric === 'active' || metric === 'current') {
+              let trending = metric + '_trending'
+              this.threadPoolData[trending] = this.dealTrending(this.threadPoolData[metric], metricsDTO['value'])
+            }
+            this.threadPoolData[metric] = metricsDTO['value']
           }
         }
         this.threadPoolData.activert = (100 * this.threadPoolData.active / this.threadPoolData.current).toFixed(2)
@@ -337,14 +352,18 @@
               // console.log(metricsDTO)
               metricsDTO.value = metricsDTO.value.toFixed(2)
             }
-            if (this.majorDataMap[provider][metric])
+            if (this.majorDataMap[provider][metric]) {
+              let trending = metric + '_trending'
+              this.majorDataMap[provider][trending] = this.dealTrending(this.majorDataMap[provider][metric], metricsDTO.value)
               this.majorDataMap[provider][metric] = metricsDTO.value
+            }
           }
         }
          // console.log(this.majorDataMap)
-        // console.log("psw", this.echartMap)
+         // console.log("psw", this.echartMap)
       },
       dealEchartData: function (metricsDTO, provider, metric) {
+        //这一块
         let timestamp = metricsDTO['timestamp']
         let arr = this.echartMap[provider]
         let lastTime = arr[arr.length-1]['timestamp']
@@ -404,6 +423,13 @@
             successCount: metricsMap[side + '.success_bucket_count']
           })
         }
+      },
+      dealTrending: function(oldValue, curValue) {
+        if (curValue > oldValue)
+          return 'trending_up'
+        if (curValue < oldValue)
+          return 'trending_down'
+        return ''
       },
       setHeaders: function () {
         this.headers = [
