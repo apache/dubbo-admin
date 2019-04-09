@@ -44,22 +44,36 @@ public class MetricsCollectController {
         return service.invoke(group).toString();
     }
 
+    private String getOnePortMessage(String group, String ip, String port, String protocol) {
+        MetrcisCollectServiceImpl metrcisCollectService = new MetrcisCollectServiceImpl();
+        metrcisCollectService.setUrl(protocol + "://" + ip + ":" + port +"?scope=remote&cache=true");
+        String res = metrcisCollectService.invoke(group).toString();
+        return res;
+    }
+
     @RequestMapping( value = "/ipAddr", method = RequestMethod.GET)
     public List<MetricDTO> searchService(@RequestParam String ip, @RequestParam String group) {
-        MetrcisCollectServiceImpl metrcisCollectService = new MetrcisCollectServiceImpl();
-        metrcisCollectService.setUrl("dubbo://" + ip + ":54188?scope=remote&cache=true");
-        String res = metrcisCollectService.invoke(group).toString();
-        System.out.println("1");
-        List<MetricDTO> metricDTOS = new Gson().fromJson(res, new TypeToken<List<MetricDTO>>(){}.getType());
-        metrcisCollectService = new MetrcisCollectServiceImpl();
-        metrcisCollectService.setUrl("dubbo://" + ip + ":54199?scope=remote&cache=true");
-        String res1 = metrcisCollectService.invoke(group).toString();
-        System.out.println("2");
-        metricDTOS.addAll(new Gson().fromJson(res1, new TypeToken<List<MetricDTO>>(){}.getType()));
-        List<MethodDefinition> methods = new ArrayList<>();
-        System.out.println("3");
-        Set<String> serviceSet = new HashSet<>();
 
+        Map<String, String> configMap = new HashMap<String, String>();
+        //TODO get this message from config file
+        //     key:port value:protocol
+        configMap.put("54188", "dubbo");
+        configMap.put("54199", "dubbo");
+
+        // default value
+        if (configMap.size() <= 0) {
+            configMap.put("20880", "dubbo");
+        }
+
+        List<MetricDTO> metricDTOS = new ArrayList<>();
+        for (String port : configMap.keySet()) {
+            String protocol = configMap.get(port);
+            String res = getOnePortMessage(group, ip, port, protocol);
+            metricDTOS.addAll(new Gson().fromJson(res, new TypeToken<List<MetricDTO>>(){}.getType()));
+        }
+
+        List<MethodDefinition> methods = new ArrayList<>();
+        Set<String> serviceSet = new HashSet<>();
         metricDTOS.stream().forEach(metricDTO -> {
             String service = metricDTO.getService();
             if(service != null && !serviceSet.contains(service)) {

@@ -105,7 +105,6 @@ public class MetricDTO {
             return;
 
         StringBuilder method = new StringBuilder(getTags().get("method"));
-        System.out.println(method.toString());
         MethodDefinition methodDefinition = map.get(method);
         if (method == null || methodDefinition == null) {
             return;
