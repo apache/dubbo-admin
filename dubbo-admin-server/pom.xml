@@ -203,6 +203,8 @@
                                     <includes>
                                         <include>static/</include>
                                         <include>index.html</include>
+                                        <include>app.css</include>
+                                        <include>app.css.map</include>
                                     </includes>
                                 </resource>
                             </resources>
