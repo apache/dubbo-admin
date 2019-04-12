@@ -2,28 +2,20 @@ package org.apache.dubbo.admin.controller;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import org.apache.dubbo.admin.common.util.Constants;
-import org.apache.dubbo.admin.common.util.ConvertUtil;
-import org.apache.dubbo.admin.model.domain.Consumer;
-import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.dto.MetricDTO;
 import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.admin.service.impl.MetrcisCollectServiceImpl;
-import org.apache.dubbo.config.ApplicationConfig;
-import org.apache.dubbo.config.ReferenceConfig;
-import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
-import org.apache.dubbo.metadata.definition.model.MethodDefinition;
-import org.apache.dubbo.metadata.definition.model.ServiceDefinition;
-import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
-import org.apache.dubbo.monitor.MetricsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.*;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
 
 
 @RestController
