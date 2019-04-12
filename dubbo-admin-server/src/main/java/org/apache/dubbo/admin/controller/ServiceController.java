@@ -38,6 +38,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -107,7 +108,7 @@ public class ServiceController {
 
     @RequestMapping(value = "/services", method = RequestMethod.GET)
     public Set<String> allServices(@PathVariable String env) {
-        return providerService.findServices();
+        return new HashSet<>(providerService.findServices());
     }
 
     @RequestMapping(value = "/applications", method = RequestMethod.GET)
