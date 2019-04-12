@@ -19,20 +19,28 @@ package org.apache.dubbo.admin.controller;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+import org.apache.dubbo.admin.common.util.Constants;
+import org.apache.dubbo.admin.model.domain.Consumer;
+import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.dto.MetricDTO;
 import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.admin.service.impl.MetrcisCollectServiceImpl;
+import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
+import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Set;
+import java.util.Iterator;
+
 
 
 @RestController
@@ -63,17 +71,14 @@ public class MetricsCollectController {
     @RequestMapping( value = "/ipAddr", method = RequestMethod.GET)
     public List<MetricDTO> searchService(@RequestParam String ip, @RequestParam String group) {
 
+        System.out.println(ip);
         Map<String, String> configMap = new HashMap<String, String>();
-        //TODO get this message from config file
-        //     key:port value:protocol
-        configMap.put("54188", "dubbo");
-        configMap.put("54199", "dubbo");
+        addMetricsConfigToMap(configMap);
 
-        // default value
+//         default value
         if (configMap.size() <= 0) {
             configMap.put("20880", "dubbo");
         }
-
         List<MetricDTO> metricDTOS = new ArrayList<>();
         for (String port : configMap.keySet()) {
             String protocol = configMap.get(port);
@@ -82,5 +87,39 @@ public class MetricsCollectController {
         }
 
         return metricDTOS;
+    }
+
+    protected void addMetricsConfigToMap(Map<String, String> configMap) {
+        Set<String> services = providerService.findServices();
+        services.addAll(consumerService.findServices());
+        Iterator<String> it = services.iterator();
+        while (it.hasNext()) {
+            String service = it.next();
+            List<Provider>  providers = providerService.findByService(service);
+            List<Consumer> consumers = consumerService.findByService(service);
+            String providerApplication = null;
+            String consumerApplication = null;
+            providerApplication = providers.get(0).getApplication();
+            consumerApplication = consumers.get(0).getApplication();
+
+            MetadataIdentifier providerMetadataIdentifier = new MetadataIdentifier(service
+                    ,null,null, Constants.PROVIDER_SIDE ,providerApplication);
+            MetadataIdentifier consumerMetadataIdentifier = new MetadataIdentifier(service
+                    ,null,null, Constants.CONSUMER_SIDE ,consumerApplication);
+
+            if (consumerApplication != null) {
+                String consumerMetadata = consumerService.getConsumerMetadata(consumerMetadataIdentifier);
+                Map<String, String> consumerParameters = new Gson().fromJson(consumerMetadata, Map.class);
+                configMap.put(consumerParameters.get(Constants.METRICS_PORT), consumerParameters.get(Constants.METRICS_PROTOCOL));
+            }
+
+            if (providerApplication != null) {
+                String providerMetaData = providerService.getProviderMetaData(providerMetadataIdentifier);
+                FullServiceDefinition providerServiceDefinition = new Gson().fromJson(providerMetaData, FullServiceDefinition.class);
+                Map<String, String> parameters = providerServiceDefinition.getParameters();
+                configMap.put(parameters.get(Constants.METRICS_PORT), parameters.get(Constants.METRICS_PROTOCOL));
+            }
+        }
+        configMap.remove(null);
     }
 }
