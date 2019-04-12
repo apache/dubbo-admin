@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -54,7 +55,7 @@ public class MetricsCollectController {
     private ConsumerService consumerService;
 
     @RequestMapping(method = RequestMethod.POST)
-    public String metricsCollect(@RequestParam String group) {
+    public String metricsCollect(@RequestParam String group, @PathVariable String env) {
         MetrcisCollectServiceImpl service = new MetrcisCollectServiceImpl();
         service.setUrl("dubbo://127.0.0.1:20880?scope=remote&cache=true");
 
@@ -69,7 +70,7 @@ public class MetricsCollectController {
     }
 
     @RequestMapping( value = "/ipAddr", method = RequestMethod.GET)
-    public List<MetricDTO> searchService(@RequestParam String ip, @RequestParam String group) {
+    public List<MetricDTO> searchService(@RequestParam String ip, @RequestParam String group, @PathVariable String env) {
 
         System.out.println(ip);
         Map<String, String> configMap = new HashMap<String, String>();
