@@ -72,37 +72,6 @@ public class MetricsCollectController {
             metricDTOS.addAll(new Gson().fromJson(res, new TypeToken<List<MetricDTO>>(){}.getType()));
         }
 
-        List<MethodDefinition> methods = new ArrayList<>();
-        Set<String> serviceSet = new HashSet<>();
-        metricDTOS.stream().forEach(metricDTO -> {
-            String service = metricDTO.getService();
-            if(service != null && !serviceSet.contains(service)) {
-                serviceSet.add(service);
-                methods.addAll(getMethodsMetaData(service, true));
-                methods.addAll(getMethodsMetaData(service, false));
-            }
-        });
-        Map map = ConvertUtil.methodList2Map(methods);
-
-        metricDTOS.stream().forEach(metricDTO -> {
-            metricDTO.changeMethod(map);
-        });
-
         return metricDTOS;
-    }
-
-    protected List<MethodDefinition> getMethodsMetaData(String service, boolean isProvider) {
-        List services = isProvider ? providerService.findByService(service) : consumerService.findByService(service);
-        if(services.size() <= 0) {
-            return new ArrayList<>();
-        }
-        String application = isProvider ? ((Provider)services.get(0)).getApplication()
-                : ((Consumer)services.get(0)).getApplication();
-        MetadataIdentifier metadataIdentifier = new MetadataIdentifier(service
-                ,null,null, isProvider ? Constants.PROVIDER_SIDE : Constants.CONSUMER_SIDE,application);
-        String metadata = isProvider ? providerService.getProviderMetaData(metadataIdentifier)
-                : consumerService.getConsumerMetadata(metadataIdentifier);
-        ServiceDefinition serviceDefinition = new Gson().fromJson(metadata, ServiceDefinition.class);
-        return serviceDefinition.getMethods();
     }
 }

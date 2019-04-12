@@ -210,11 +210,11 @@ export default {
     this.init()
   },
   watch: {
-    option(cur, old) {
+    option (cur, old) {
       // console.log("echart", cur, old)
     }
   },
   beforeDestroy () {
     this.clean()
-  },
+  }
 }

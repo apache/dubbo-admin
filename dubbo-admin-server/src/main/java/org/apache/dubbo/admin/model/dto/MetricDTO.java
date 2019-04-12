@@ -1,7 +1,5 @@
 package org.apache.dubbo.admin.model.dto;
 
-import org.apache.dubbo.metadata.definition.model.MethodDefinition;
-
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -98,25 +96,6 @@ public class MetricDTO {
 
     public String getService() {
         return getTags().get("service");
-    }
-
-    public void changeMethod(Map<String, MethodDefinition> map) {
-        if(getTags() == null || getTags().get("method") == null)
-            return;
-
-        StringBuilder method = new StringBuilder(getTags().get("method"));
-        MethodDefinition methodDefinition = map.get(method.toString());
-        if (method == null || methodDefinition == null) {
-            return;
-        }
-        String[] argTypes = methodDefinition.getParameterTypes();
-        method.append(" (");
-
-        for (int i = 0; i < argTypes.length; i++) {
-            method.append((i == 0 ? "" : ", ") + argTypes[i].substring(argTypes[i].lastIndexOf(".") + 1));
-        }
-        method.append(")");
-        getTags().put("method", methodDefinition.getReturnType().getClass().getSimpleName() + " " + method);
     }
 
     public enum MetricType {

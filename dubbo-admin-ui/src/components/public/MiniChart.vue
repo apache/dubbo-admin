@@ -34,7 +34,6 @@
 
 <script>
   import EChart from '@/util/echart'
-  import _object from 'lodash/object'
   export default {
     components: {
       EChart
@@ -80,10 +79,7 @@
     },
 
     watch: {
-      data(curVal, oldVal){
-        // console.log(oldVal,curVal);
-        // console.log(this.defaultOption)
-
+      data (curVal, oldVal) {
         return this.defaultOption
       }
     }
