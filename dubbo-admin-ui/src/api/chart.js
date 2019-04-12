@@ -22,7 +22,7 @@ const shortMonth = [
 const monthVisitData = shortMonth.map(m => {
   return {
     'time': m,
-    'Value': Math.floor(Math.random() * 1000) + 200,
+    'Value': Math.floor(Math.random() * 1000) + 200
   }
 })
 

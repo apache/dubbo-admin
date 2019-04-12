@@ -210,38 +210,36 @@
     data () {
       return {
         threadPoolData: {
-          "core" : 0,
-          "max" : 0,
-          'current' : 0,
+          'core': 0,
+          'max': 0,
+          'current': 0,
           'current_trending': '',
-          "active" : 0,
+          'active': 0,
           'active_trending': '',
-          "activert": 0,
-
+          'activert': 0
         },
-        echartMap:{
-          "provider": [{
-            "timestamp": 0,
-            "qps": 0,
-            "tt": 0,
-            "success_rate": 0,
+        echartMap: {
+          'provider': [{
+            'timestamp': 0,
+            'qps': 0,
+            'tt': 0,
+            'success_rate': 0
           }],
-          "consumer": [{
-            "timestamp": 0,
-            "qps": 0,
-            "tt": 0,
-            "success_rate": 0,
-          }],
+          'consumer': [{
+            'timestamp': 0,
+            'qps': 0,
+            'tt': 0,
+            'success_rate': 0
+          }]
         },
         majorDataMap: {
           provider: {
-            qps: '0',
             qps: '0',
             qps_trending: '',
             rt: '0',
             rt_trending: '',
             success_rate: '0%',
-            success_rate_trending: '',
+            success_rate_trending: ''
           },
           consumer: {
             qps: '0',
@@ -249,9 +247,9 @@
             rt: '0',
             rt_trending: '',
             success_rate: '0%',
-            success_rate_trending: '',
+            success_rate_trending: ''
           },
-          threadPool:{}
+          threadPool: {}
         },
         selectedTab: 'tab-1',
         filter: '',
@@ -280,7 +278,7 @@
           monthVisit: shortMonth.map(m => {
             return {
               'time': m,
-              'Value': Math.floor(Math.random() * 1000) + 200,
+              'Value': Math.floor(Math.random() * 1000) + 200
             }
           }),
           campaign: campaignData,
@@ -303,12 +301,12 @@
       submit: function () {
         this.vv = 20
         //这里变不了我就很迷了
-        this.dataset.monthVisit=[{"time": 1,"Value":200}]
+        this.dataset.monthVisit = [{'time': 1, 'Value': 200}]
         this.filter = this.filter.trim()
         this.searchByIp(this.filter)
       },
-      setRandomValue: function(data) {
-        for(let i in data) {
+      setRandomValue: function (data) {
+        for (let i in data) {
           data[i]['value'] = Math.floor(Math.random() * 1000) + 200
         }
         return data
@@ -318,8 +316,9 @@
         let url = '/metrics/ipAddr/?ip' + '=127.0.0.1' + '&group=dubbo'
         this.$axios.get(url)
           .then(response => {
-            if (!response.data)
+            if (!response.data) {
               return
+            }
             this.dealNormal(response.data)
             this.dealMajor(response.data)
             this.dealThreadPoolData(response.data)
@@ -329,8 +328,8 @@
         for (let index in data) {
           let metricsDTO = data[index]
           if ((metricsDTO['metric']).indexOf('threadPool') >= -1) {
-            let metric = metricsDTO['metric'].substring(metricsDTO['metric'].lastIndexOf(".")+1)
-            if(metric === 'active' || metric === 'current') {
+            let metric = metricsDTO['metric'].substring(metricsDTO['metric'].lastIndexOf('.') + 1)
+            if (metric === 'active' || metric === 'current') {
               let trending = metric + '_trending'
               this.threadPoolData[trending] = this.dealTrending(this.threadPoolData[metric], metricsDTO['value'])
             }
@@ -338,18 +337,16 @@
           }
         }
         this.threadPoolData.activert = (100 * this.threadPoolData.active / this.threadPoolData.current).toFixed(2)
-
       },
       dealMajor: function (data) {
         for (let index in data) {
           let metricsDTO = data[index]
-          if (metricsDTO['metricLevel'] === 'MAJOR' && (metricsDTO['metric']).indexOf('threadPool') == -1) {
+          if (metricsDTO['metricLevel'] === 'MAJOR' && (metricsDTO['metric']).indexOf('threadPool') === -1) {
             let metric = metricsDTO['metric'] + ''
             let provider = metric.split('.')[1]
             metric = metric.substring(metric.lastIndexOf('.') + 1)
             this.dealEchartData(metricsDTO, provider, metric)
-            if (typeof metricsDTO.value != 'string') {
-              // console.log(metricsDTO)
+            if (typeof metricsDTO.value !== 'string') {
               metricsDTO.value = metricsDTO.value.toFixed(2)
             }
             if (this.majorDataMap[provider][metric]) {
@@ -359,28 +356,26 @@
             }
           }
         }
-         // console.log(this.majorDataMap)
-         // console.log("psw", this.echartMap)
       },
       dealEchartData: function (metricsDTO, provider, metric) {
         //这一块
         let timestamp = metricsDTO['timestamp']
         let arr = this.echartMap[provider]
-        let lastTime = arr[arr.length-1]['timestamp']
+        let lastTime = arr[arr.length - 1]['timestamp']
         if (timestamp > lastTime) {
           arr.push({
             'timestamp': timestamp,
             metric: metricsDTO['value']
           })
-          if(arr.length > 10) {
+          if (arr.length > 10) {
             arr.shift()
           }
         } else {
-          arr[arr.length-1][metric] = metricsDTO['value']
+          arr[arr.length - 1][metric] = metricsDTO['value']
         }
       },
       dealNormal: function (data) {
-        let serviceMethodMap = {};
+        let serviceMethodMap = {}
         for (let index in data) {
           let metricsDTO = data[index]
           if (metricsDTO['metricLevel'] === 'NORMAL') {
@@ -395,7 +390,7 @@
             }
             let metricMap = methodMap[metricsDTO.tags.method]
 
-            if(!metricMap) {
+            if (!metricMap) {
               metricMap = {}
               serviceMethodMap[metricsDTO.tags.service][metricsDTO.tags.method] = metricMap
             }
@@ -407,13 +402,13 @@
         for (let service in serviceMethodMap) {
           for (let method in serviceMethodMap[service]) {
             let metricsMap = serviceMethodMap[service][method]
-            this.addDataToDetails(this.providerDetails, service, method, metricsMap, "provider")
-            this.addDataToDetails(this.consumerDetails, service, method, metricsMap, "consumer")
+            this.addDataToDetails(this.providerDetails, service, method, metricsMap, 'provider')
+            this.addDataToDetails(this.consumerDetails, service, method, metricsMap, 'consumer')
           }
         }
       },
       addDataToDetails: function (sideDetails, service, method, metricsMap, side) {
-        if(metricsMap[side + '.qps'] && metricsMap[side + '.success_rate'] && metricsMap[side + '.success_bucket_count']) {
+        if (metricsMap[side + '.qps'] && metricsMap[side + '.success_rate'] && metricsMap[side + '.success_bucket_count']) {
           sideDetails.push({
             service: service,
             method: method,
@@ -424,11 +419,13 @@
           })
         }
       },
-      dealTrending: function(oldValue, curValue) {
-        if (curValue > oldValue)
+      dealTrending: function (oldValue, curValue) {
+        if (curValue > oldValue) {
           return 'trending_up'
-        if (curValue < oldValue)
+        }
+        if (curValue < oldValue) {
           return 'trending_down'
+        }
         return ''
       },
       setHeaders: function () {
@@ -460,7 +457,7 @@
       this.setHeaders()
       setInterval(() => {
         this.submit()
-      },5000)
+      }, 5000)
     }
   }
 </script>
