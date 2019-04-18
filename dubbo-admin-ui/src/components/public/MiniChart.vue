@@ -18,11 +18,11 @@
 <template>
       <div class="layout row ma-0 align-center justify-space-between">
         <div class="text-box">
-          <div class="subheading pb-2">{{title}}</div>
+          <div class="subheading pb-2">{{title}} </div>
           <span class="grey--text">{{subTitle}} <v-icon small :color="iconColor">{{icon}}</v-icon></span>
         </div>
         <div class="chart">
-          <e-chart
+          <e-chart id="hello"
             :path-option="computeChartOption"
             height="68px"
             width="100%"
@@ -76,8 +76,13 @@
         }
         return this.defaultOption
       }
-    }
+    },
 
+    watch: {
+      data (curVal, oldVal) {
+        return this.defaultOption
+      }
+    }
   }
 </script>
 
