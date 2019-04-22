@@ -323,16 +323,12 @@ The text of each license is the standard Apache 2.0 license.
     * Spring: spring-framework 5.0.6.RELEASE https://raw.githubusercontent.com/spring-projects/spring-framework/v5.0.6.RELEASE/src/docs/dist/license.txt Apache 2.0
     - spring-aop-5.0.6.RELEASE.jar
     - spring-beans-5.0.6.RELEASE.jar
-    - spring-aspects-5.0.6.RELEASE.jar
     - spring-context-5.0.6.RELEASE.jar
     - spring-core-5.0.6.RELEASE.jar
     - spring-expression-5.0.6.RELEASE.jar
     - spring-jcl-5.0.6.RELEASE.jar
-    - spring-jdbc-5.0.6.RELEASE.jar
     - spring-web-5.0.6.RELEASE.jar
-    - spring-orm-5.0.6.RELEASE.jar
     - spring-webmvc-5.0.6.RELEASE.jar
-    - spring-tx-5.0.6.RELEASE.jar
 
     * Spring: spring-boot 2.0.2.RELEASE https://raw.githubusercontent.com/spring-projects/spring-boot/v2.0.2.RELEASE/LICENSE.txt Apache 2.0
     - spring-boot-2.0.2.RELEASE.jar
@@ -342,15 +338,11 @@ The text of each license is the standard Apache 2.0 license.
     - spring-boot-starter-logging-2.0.2.RELEASE.jar
     - spring-boot-starter-tomcat-2.0.2.RELEASE.jar
     - spring-boot-starter-web-2.0.2.RELEASE.jar
-    - spring-boot-starter-data-jpa-2.0.2.RELEASE.jar
-    - spring-boot-starter-aop-2.0.2.RELEASE.jar
-    - spring-boot-starter-jdbc-2.0.2.RELEASE.jar
 
     * Spring: spring-data-commons 2.0.7.RELEASE https://raw.githubusercontent.com/spring-projects/spring-data-commons/2.0.7.RELEASE/src/main/resources/license.txt Apache 2.0
     - spring-data-commons-2.0.7.RELEASE.jar
 
     * Spring: spring-data-jpa 2.0.7.RELEASE https://raw.githubusercontent.com/spring-projects/spring-data-jpa/2.0.7.RELEASE/src/main/resources/license.txt Apache 2.0
-    - spring-data-jpa-2.0.7.RELEASE.jar
 
     * asomov snakeyml 1.19  https://bitbucket.org/asomov/snakeyaml/raw/153cce6397b5a5bb21fa1e4a8496433c55772760/LICENSE.txt Apache 2.0
     - snakeyaml-1.19.jar
@@ -382,11 +374,6 @@ The text of each license is the standard Apache 2.0 license.
     * josdejong: jsoneditor 5.26.2 https://raw.githubusercontent.com/josdejong/jsoneditor/v5.26.2/LICENSE Apache 2.0
     * Google: fonts https://raw.githubusercontent.com/google/fonts/master/apache/roboto/LICENSE.txt Apache 2.0
     * Google: material design icons 3.0.1 https://raw.githubusercontent.com/google/material-design-icons/3.0.1/LICENSE Apache 2.0
-    * brettwooldridge: HikariCP 2.7.9 https://raw.githubusercontent.com/brettwooldridge/HikariCP/HikariCP-2.7.9/LICENSE Apache 2.0
-    - HikariCP-2.7.9.jar
-
-    * wildfly jandex 2.0.3.Final https://raw.githubusercontent.com/wildfly/jandex/2.0.3.Final/LICENSE.txt Apache 2.0
-    - jandex-2.0.3.Final.jar
 
     * Apache commons-logging 1.2 https://raw.githubusercontent.com/apache/commons-logging/LOGGING_1_2/LICENSE.txt Apache 2.0
     - commons-logging-1.2.jar
@@ -447,28 +434,6 @@ The text of each license is also included at licenses/LICENSE-[project].
     * qos-ch: logback 1.2.3 https://raw.githubusercontent.com/qos-ch/logback/v_1.2.3/LICENSE.txt  EPL v1.0 and LGPL 2.1
     - logback-classic-1.2.3.jar
     - logback-core-1.2.3.jar
-
-========================================================================
-LGPL 2.1
-========================================================================
-The following components are provided under the EPL v1.0 and LGPL 2.1. See project link for details.
-The text of each license is also included at licenses/LICENSE-[project].
-
-    * hibernate: hibernate-commons-annotations 5.0.1.Final https://raw.githubusercontent.com/hibernate/hibernate-commons-annotations/5.0.1.Final/lgpl.txt LGPL 2.1
-    - hibernate-commons-annotations-5.0.1.Final.jar
-
-    * hibernate: hibernate-orm 5.2.17.Final   https://raw.githubusercontent.com/hibernate/hibernate-orm/5.2.17/lgpl.txt LGPL 2.1
-    - hibernate-core-5.2.17.Final.jar
-
-
-========================================================================
-EPL v1.0
-========================================================================
-The following components are provided under the EPL v1.0. See project link for details.
-The text of each license is also included at licenses/LICENSE-[project].
-
-    * Eclipse: AspectJ Weaver 1.8.3 http://www.eclipse.org/legal/epl-v10.html  EPL v1.0
-    - aspectjweaver-1.8.13.jar
 
 ========================================================================
 EDL v1.0
