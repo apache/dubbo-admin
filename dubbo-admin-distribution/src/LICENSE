@@ -342,8 +342,6 @@ The text of each license is the standard Apache 2.0 license.
     * Spring: spring-data-commons 2.0.7.RELEASE https://raw.githubusercontent.com/spring-projects/spring-data-commons/2.0.7.RELEASE/src/main/resources/license.txt Apache 2.0
     - spring-data-commons-2.0.7.RELEASE.jar
 
-    * Spring: spring-data-jpa 2.0.7.RELEASE https://raw.githubusercontent.com/spring-projects/spring-data-jpa/2.0.7.RELEASE/src/main/resources/license.txt Apache 2.0
-
     * asomov snakeyml 1.19  https://bitbucket.org/asomov/snakeyaml/raw/153cce6397b5a5bb21fa1e4a8496433c55772760/LICENSE.txt Apache 2.0
     - snakeyaml-1.19.jar
 
