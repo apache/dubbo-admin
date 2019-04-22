@@ -68,6 +68,7 @@
 		<snakeyaml-version>1.19</snakeyaml-version>
 		<maven-checkstyle-plugin-version>3.0.0</maven-checkstyle-plugin-version>
 		<spring-boot-version>2.0.2.RELEASE</spring-boot-version>
+		<spring-data-commons-version>2.0.7.RELEASE</spring-data-commons-version>
 		<maven_compiler_version>3.6.0</maven_compiler_version>
 		<java_source_version>1.8</java_source_version>
 		<java_target_version>1.8</java_target_version>
@@ -78,6 +79,11 @@
 
 	<dependencyManagement>
         <dependencies>
+			<dependency>
+				<groupId>org.springframework.data</groupId>
+				<artifactId>spring-data-commons</artifactId>
+				<version>${spring-data-commons-version}</version>
+			</dependency>
 			<dependency>
 				<groupId>org.yaml</groupId>
 				<artifactId>snakeyaml</artifactId>
