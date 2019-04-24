@@ -29,33 +29,11 @@
           <v-card-text>
             <h4>Provider (Total)</h4>
             <hr style="height:3px;border:none;border-top:3px double #9D9D9D;" />
-            <mini-chart
-              title="qps(ms)"
-              :sub-title="majorDataMap.provider.qps"
-              :icon="majorDataMap.provider.qps_trending"
-              :data="dataset.monthVisit"
-              :chart-color="color.blue.base"
-              type="line"
-            ></mini-chart>
+            <chart ref="chart1"  :options="provider.qps" :autoresize="true"/>
             <hr style="height:1px;border:none;border-top:1px solid #ADADAD;" />
-            <mini-chart
-              title="rt(ms)"
-              :sub-title="majorDataMap.provider.rt"
-              :icon="majorDataMap.provider.rt_trending"
-              :data="dataset.monthVisit"
-              :chart-color="color.blue.base"
-              type="line"
-              class="minichart"
-            ></mini-chart>
+            <chart ref="chart1" :options="provider.rt" :autoresize="true" />
             <hr style="height:1px;border:none;border-top:1px solid #ADADAD;" />
-            <mini-chart
-              title="success rate"
-              :sub-title="majorDataMap.provider.success_rate"
-              :icon="majorDataMap.provider.success_rate_trending"
-              :data="dataset.monthVisit"
-              :chart-color="color.blue.base"
-              type="line"
-            ></mini-chart>
+            <chart ref="chart1" :options="provider.success_rate" :autoresize="true" />
             <hr style="height:1px;border:none;border-top:1px solid #ADADAD;" />
           </v-card-text>
         </v-card>
@@ -65,32 +43,11 @@
           <v-card-text>
             <h4>Consumer (Total)</h4>
             <hr style="height:3px;border:none;border-top:3px double #9D9D9D;" />
-            <mini-chart
-              title="qps(ms)"
-              :sub-title="majorDataMap.consumer.qps"
-              :icon="majorDataMap.consumer.qps_trending"
-              :data="dataset.monthVisit"
-              :chart-color="color.blue.base"
-              type="line"
-            ></mini-chart>
+            <chart ref="chart1" :options="consumer.qps" :autoresize="true" />
             <hr style="height:1px;border:none;border-top:1px solid #ADADAD;" />
-            <mini-chart
-              title="rt(ms)"
-              :sub-title="majorDataMap.consumer.rt"
-              :icon="majorDataMap.consumer.rt_trending"
-              :data="dataset.monthVisit"
-              :chart-color="color.blue.base"
-              type="line"
-            ></mini-chart>
+            <chart ref="chart1" :options="consumer.rt" :autoresize="true" />
             <hr style="height:1px;border:none;border-top:1px solid #ADADAD;" />
-            <mini-chart
-              title="success rate"
-              :sub-title="majorDataMap.consumer.success_rate"
-              :icon="majorDataMap.consumer.success_rate_trending"
-              :data="dataset.monthVisit"
-              :chart-color="color.blue.base"
-              type="line"
-            ></mini-chart>
+            <chart ref="chart1" :options="consumer.success_rate" :autoresize="true" />
             <hr style="height:1px;border:none;border-top:1px solid #ADADAD;" />
           </v-card-text>
         </v-card>
@@ -182,33 +139,168 @@
 </template>
 
 <script>
-  import EChart from '@/util/echart'
   import Material from 'vuetify/es5/util/colors'
-  import MiniChart from '@/components/public/MiniChart'
   import Breadcrumb from '@/components/public/Breadcrumb'
   import Search from '@/components/public/Search'
-  import {
-    campaignData,
-    locationData,
-    StackData,
-    SinData
-  } from '@/api/chart'
-
-  const shortMonth = [
-    1, 2, 3, 4, 5, 6
-  ]
 
   export default {
 
     name: 'ServiceMetrics',
     components: {
-      MiniChart,
-      EChart,
       Breadcrumb,
       Search
     },
     data () {
       return {
+        provider: {
+          metrics: [
+            'dubbo.provider.qps', 'dubbo.provider.rt', 'dubbo.provider.success_rate'
+          ],
+          qps: {
+            title: {
+              text: 'qps',
+              padding: [50, 5, 5, 5],
+              textStyle: {
+                fontWeight: 200,
+                fontSize: 12
+              }
+            },
+            tooltip: {},
+            xAxis: {
+              show: false,
+              type: 'category',
+              data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            },
+            yAxis: {
+              show: false
+            },
+            series: [{
+              type: 'line',
+              data: []
+            }]
+          },
+          rt: {
+            title: {
+              text: 'rt(ms)',
+              padding: [50, 5, 5, 5],
+              textStyle: {
+                fontWeight: 200,
+                fontSize: 12
+              }
+            },
+            tooltip: {},
+            xAxis: {
+              show: false,
+              type: 'category',
+              data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            },
+            yAxis: {
+              show: false
+            },
+            series: [{
+              type: 'line',
+              data: []
+            }]
+          },
+          success_rate: {
+            title: {
+              text: 'success rate',
+              padding: [50, 5, 5, 5],
+              textStyle: {
+                fontWeight: 200,
+                fontSize: 12
+              }
+            },
+            tooltip: {},
+            xAxis: {
+              show: false,
+              type: 'category',
+              data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            },
+            yAxis: {
+              show: false
+            },
+            series: [{
+              type: 'line',
+              data: []
+            }]
+          }
+        },
+        consumer: {
+          metrics: [
+            'dubbo.consumer.qps', 'dubbo.consumer.rt', 'dubbo.consumer.success_rate'
+          ],
+          qps: {
+            title: {
+              text: 'qps',
+              padding: [50, 5, 5, 5],
+              textStyle: {
+                fontWeight: 200,
+                fontSize: 12
+              }
+
+            },
+            tooltip: {},
+            xAxis: {
+              show: false,
+              type: 'category',
+              data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            },
+            yAxis: {
+              show: false
+            },
+            series: [{
+              type: 'line',
+              data: []
+            }]
+          },
+          rt: {
+            title: {
+              text: 'rt(ms)',
+              padding: [50, 5, 5, 5],
+              textStyle: {
+                fontWeight: 200,
+                fontSize: 12
+              }
+            },
+            tooltip: {},
+            xAxis: {
+              show: false,
+              type: 'category',
+              data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            },
+            yAxis: {
+              show: false
+            },
+            series: [{
+              type: 'line',
+              data: []
+            }]
+          },
+          success_rate: {
+            title: {
+              text: 'success rate',
+              padding: [50, 5, 5, 5],
+              textStyle: {
+                fontWeight: 200,
+                fontSize: 12
+              }
+            },
+            tooltip: {},
+            xAxis: {
+              show: false,
+              type: 'category',
+              data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+            },
+            yAxis: {
+              show: false
+            },
+            series: [{
+              type: 'line',
+              data: []
+            }]
+          }
+        },
         threadPoolData: {
           'core': 0,
           'max': 0,
@@ -218,73 +310,12 @@
           'active_trending': '',
           'activert': 0
         },
-        echartMap: {
-          'provider': [{
-            'timestamp': 0,
-            'qps': 0,
-            'tt': 0,
-            'success_rate': 0
-          }],
-          'consumer': [{
-            'timestamp': 0,
-            'qps': 0,
-            'tt': 0,
-            'success_rate': 0
-          }]
-        },
-        majorDataMap: {
-          provider: {
-            qps: '0',
-            qps_trending: '',
-            rt: '0',
-            rt_trending: '',
-            success_rate: '0%',
-            success_rate_trending: ''
-          },
-          consumer: {
-            qps: '0',
-            qps_trending: '',
-            rt: '0',
-            rt_trending: '',
-            success_rate: '0%',
-            success_rate_trending: ''
-          },
-          threadPool: {}
-        },
         selectedTab: 'tab-1',
         filter: '',
         headers: [],
-        providerDetails: [
-          {
-            service: 'a.b.c.d',
-            method: 'aaaa~ICS',
-            qps: '0.58',
-            rt: '111',
-            success_rate: '100%'
-          },
-          {
-            service: 'a.b.c.f',
-            method: 'bbbb~ICS',
-            qps: '0.87',
-            rt: '120',
-            success_rate: '90%'
-          }
-
-        ],
+        providerDetails: [],
         consumerDetails: [],
         option: null,
-        dataset: {
-          sinData: SinData,
-          monthVisit: shortMonth.map(m => {
-            return {
-              'time': m,
-              'Value': Math.floor(Math.random() * 1000) + 200
-            }
-          }),
-          campaign: campaignData,
-          location: locationData,
-          stackData: StackData
-        },
         color: Material,
         breads: [
           {
@@ -299,21 +330,17 @@
     * */
     methods: {
       submit: function () {
-        this.vv = 20
-        //这里变不了我就很迷了
-        this.dataset.monthVisit = [{'time': 1, 'Value': 200}]
-        this.filter = this.filter.trim()
-        this.searchByIp(this.filter)
+        this.searchByIp(this.filter, true)
       },
-      setRandomValue: function (data) {
-        for (let i in data) {
-          data[i]['value'] = Math.floor(Math.random() * 1000) + 200
+      searchByIp: function (filter, rewrite) {
+        if (this.filter === '') {
+          return
         }
-        return data
-      },
-      searchByIp: function (filter) {
-        //TODO 到时候记得把filter塞进来
-        let url = '/metrics/ipAddr/?ip' + '=127.0.0.1' + '&group=dubbo'
+
+        if (rewrite) {
+          this.$router.push({path: '/metrics', query: {ip: this.filter}})
+        }
+        let url = '/metrics/ipAddr/?ip=' + filter + '&group=dubbo'
         this.$axios.get(url)
           .then(response => {
             if (!response.data) {
@@ -338,40 +365,34 @@
         }
         this.threadPoolData.activert = (100 * this.threadPoolData.active / this.threadPoolData.current).toFixed(2)
       },
+      getKey: function (key) {
+        return key.substring(key.lastIndexOf('.') + 1)
+      },
       dealMajor: function (data) {
         for (let index in data) {
           let metricsDTO = data[index]
-          if (metricsDTO['metricLevel'] === 'MAJOR' && (metricsDTO['metric']).indexOf('threadPool') === -1) {
-            let metric = metricsDTO['metric'] + ''
-            let provider = metric.split('.')[1]
-            metric = metric.substring(metric.lastIndexOf('.') + 1)
-            this.dealEchartData(metricsDTO, provider, metric)
-            if (typeof metricsDTO.value !== 'string') {
-              metricsDTO.value = metricsDTO.value.toFixed(2)
+          if (this.provider.metrics.indexOf(metricsDTO['metric']) !== -1) {
+            let key = this.getKey(metricsDTO['metric'])
+            let data = this.provider[key].series[0].data
+            if (data.length === 10) {
+              data.push(metricsDTO['value'])
+              data.shift()
+            } else {
+              data.push(metricsDTO['value'])
             }
-            if (this.majorDataMap[provider][metric]) {
-              let trending = metric + '_trending'
-              this.majorDataMap[provider][trending] = this.dealTrending(this.majorDataMap[provider][metric], metricsDTO.value)
-              this.majorDataMap[provider][metric] = metricsDTO.value
+            this.provider[key].series.data = data
+          }
+          if (this.consumer.metrics.indexOf(metricsDTO['metric']) !== -1) {
+            let key = this.getKey(metricsDTO['metric'])
+            let data = this.consumer[key].series[0].data
+            if (data.length === 10) {
+              data.push(metricsDTO['value'])
+              data.shift()
+            } else {
+              data.push(metricsDTO['value'])
             }
+            this.consumer[key].series.data = data
           }
-        }
-      },
-      dealEchartData: function (metricsDTO, provider, metric) {
-        //这一块
-        let timestamp = metricsDTO['timestamp']
-        let arr = this.echartMap[provider]
-        let lastTime = arr[arr.length - 1]['timestamp']
-        if (timestamp > lastTime) {
-          arr.push({
-            'timestamp': timestamp,
-            metric: metricsDTO['value']
-          })
-          if (arr.length > 10) {
-            arr.shift()
-          }
-        } else {
-          arr[arr.length - 1][metric] = metricsDTO['value']
         }
       },
       dealNormal: function (data) {
@@ -455,13 +476,29 @@
     },
     mounted: function () {
       this.setHeaders()
+      let filter = null
+      let query = this.$route.query
+      Object.keys(query).forEach(function (key) {
+        if (key === 'ip') {
+          filter = query[key]
+        }
+      })
+      if (filter !== null) {
+        this.filter = filter
+        this.searchByIp(this.filter, false)
+      }
       setInterval(() => {
-        this.submit()
+        this.searchByIp(this.filter, false)
       }, 5000)
     }
   }
 </script>
 
 <style scoped>
+  .echarts {
+    width: 105%;
+    height: 68px;
+  }
+
 
 </style>

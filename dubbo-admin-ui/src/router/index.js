@@ -30,6 +30,7 @@ import ServiceTest from '@/components/test/ServiceTest'
 import ServiceMock from '@/components/test/ServiceMock'
 import ServiceMetrics from '@/components/metrics/ServiceMetrics'
 import Management from '@/components/Management'
+import Test from '@/components/metrics/Test'
 
 Vue.use(Router)
 
@@ -93,6 +94,11 @@ export default new Router({
       path: '/metrics',
       name: 'ServiceMetrics',
       component: ServiceMetrics
+    },
+    {
+      path: '/metrics/test',
+      name: 'Test',
+      component: Test
     },
     {
       path: '/management',
