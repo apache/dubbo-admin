@@ -26,6 +26,10 @@ import { store } from './store'
 import Notify from './components/public/notify'
 import { AXIOS } from './components/http-common'
 import i18n from './lang'
+import ECharts from 'vue-echarts/components/ECharts'
+import 'echarts/lib/chart/line'
+import 'echarts/lib/component/tooltip'
+import 'echarts/lib/component/title'
 import VueClipboard from 'vue-clipboard2'
 
 Vue.use(Vuetify, {
@@ -41,6 +45,7 @@ Vue.config.productionTip = false
 
 VueClipboard.config.autoSetContainer = true
 Vue.use(VueClipboard)
+Vue.component('chart', ECharts)
 
 /* eslint-disable no-new */
 new Vue({
