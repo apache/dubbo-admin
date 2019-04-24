@@ -474,6 +474,16 @@
         ]
       }
     },
+    computed: {
+      area () {
+        return this.$i18n.locale
+      }
+    },
+    watch: {
+      area () {
+        this.setHeaders()
+      }
+    },
     mounted: function () {
       this.setHeaders()
       let filter = null
