@@ -351,7 +351,11 @@
           this.$notify.error('Either service or application is needed')
           return
         }
-        weight.service = this.service
+        if (this.service && this.application) {
+          this.$notify.error('You can not set both service ID and application name')
+          return
+        }
+        weight.service = this.service;
         weight.application = this.application
         weight.weight = this.rule.weight
         weight.addresses = this.rule.address.split(',')
