@@ -364,6 +364,10 @@
           this.$notify.error('Either service or application is needed')
           return
         }
+        if (this.service && this.application) {
+          this.$notify.error('You can not set both service ID and application name')
+          return
+        }
         let vm = this
         balancing.service = this.service
         balancing.application = this.application

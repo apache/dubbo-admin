@@ -321,6 +321,10 @@
           this.$notify.error('Either service or application is needed')
           return
         }
+        if (this.service && this.application) {
+          this.$notify.error('You can not set both service ID and application name')
+          return
+        }
         override.service = this.service
         override.application = this.application
         let vm = this
