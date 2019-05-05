@@ -34,10 +34,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/**
- * IbatisRouteService
- *
- */
 @Component
 public class RouteServiceImpl extends AbstractService implements RouteService {
 

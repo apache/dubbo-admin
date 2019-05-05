@@ -41,10 +41,6 @@ import java.util.List;
 import java.util.Map;
 
 
-/**
- * IbatisOverrideDAO.java
- *
- */
 @Component
 public class OverrideServiceImpl extends AbstractService implements OverrideService {
     private String prefix = Constants.CONFIG_KEY;
