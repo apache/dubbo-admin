@@ -393,6 +393,7 @@
         } else {
           itemId = item.application
         }
+        let oldItemId = itemId
         if (itemId.includes('/')) {
           itemId = itemId.replace('/', '*')
         }
@@ -414,17 +415,17 @@
               })
             break
           case 'block':
-            this.openWarn(' Are you sure to block Routing Rule', 'service: ' + itemId)
+            this.openWarn(' Are you sure to block Routing Rule', 'service: ' + oldItemId)
             this.warnStatus.operation = 'disable'
             this.warnStatus.id = itemId
             break
           case 'check_circle_outline':
-            this.openWarn(' Are you sure to enable Routing Rule', 'service: ' + itemId)
+            this.openWarn(' Are you sure to enable Routing Rule', 'service: ' + oldItemId)
             this.warnStatus.operation = 'enable'
             this.warnStatus.id = itemId
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + itemId)
+            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + oldItemId)
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = itemId
         }
