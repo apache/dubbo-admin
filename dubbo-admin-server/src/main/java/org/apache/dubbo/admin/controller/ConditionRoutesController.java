@@ -82,11 +82,12 @@ public class ConditionRoutesController {
                                                 @RequestParam(required = false) String service, @PathVariable String env) {
         ConditionRouteDTO conditionRoute = null;
         List<ConditionRouteDTO> result = new ArrayList<>();
-        if (StringUtils.isNotEmpty(application)) {
+        if (StringUtils.isNotBlank(application)) {
             conditionRoute = routeService.findConditionRoute(application);
-        }
-        if (StringUtils.isNotEmpty(service)) {
+        } else if (StringUtils.isNotBlank(service)) {
             conditionRoute = routeService.findConditionRoute(service);
+        } else {
+            throw new ParamValidationException("Either Service or application is required.");
         }
         if (conditionRoute != null && conditionRoute.getConditions() != null) {
             result.add(conditionRoute);

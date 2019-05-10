@@ -83,10 +83,12 @@ public class OverridesController {
                                                  @PathVariable String env) {
         DynamicConfigDTO override = null;
         List<DynamicConfigDTO> result = new ArrayList<>();
-        if (StringUtils.isNotEmpty(service)) {
+        if (StringUtils.isNotBlank(service)) {
             override = overrideService.findOverride(service);
-        } else if(StringUtils.isNotEmpty(application)){
+        } else if(StringUtils.isNotBlank(application)){
             override = overrideService.findOverride(application);
+        } else {
+            throw new ParamValidationException("Either Service or application is required.");
         }
         if (override != null) {
             result.add(override);

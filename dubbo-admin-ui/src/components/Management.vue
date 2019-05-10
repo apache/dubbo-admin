@@ -256,15 +256,19 @@
           }
         },
         submit () {
+          if (!this.filter) {
+            this.$notify.error('application is needed')
+            return
+          }
           this.filter = this.filter.trim()
-          this.search(this.filter)
+          this.search()
         },
-        search (filter) {
-          this.$axios.get('/manage/config/' + filter)
+        search () {
+          this.$axios.get('/manage/config/' + this.filter)
             .then(response => {
               if (response.status === 200) {
                 this.dubboConfig = response.data
-                this.$router.push({path: 'management', query: {key: filter}})
+                this.$router.push({path: 'management', query: {key: this.filter}})
               }
             })
         }
@@ -283,7 +287,7 @@
         } else {
           this.filter = 'global'
         }
-        this.search(this.filter)
+        this.search()
       }
     }
 </script>

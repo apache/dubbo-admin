@@ -172,16 +172,20 @@
         ]
       },
       submit: function () {
+        if (!this.filter) {
+          this.$notify.error('application is needed')
+          return
+        }
         this.filter = this.filter.trim()
-        this.search(this.filter, true)
+        this.search(true)
       },
-      search: function (filter, rewrite) {
-        let url = '/rules/route/tag/?application' + '=' + filter
+      search: function (rewrite) {
+        let url = '/rules/route/tag/?application' + '=' + this.filter
         this.$axios.get(url)
           .then(response => {
             this.tagRoutingRules = response.data
             if (rewrite) {
-              this.$router.push({path: 'tagRule', query: {application: filter}})
+              this.$router.push({path: 'tagRule', query: {application: this.filter}})
             }
           })
       },
@@ -352,7 +356,7 @@
       })
       if (filter !== null) {
         this.filter = filter
-        this.search(filter, false)
+        this.search(false)
       }
     }
 

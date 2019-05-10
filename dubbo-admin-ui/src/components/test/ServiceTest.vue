@@ -129,6 +129,7 @@
           let filter = this.filter.replace('/', '*')
           this.search(filter)
         } else {
+          this.$notify.error('service is needed')
           return false
         }
       },
@@ -237,8 +238,9 @@
       if ('version' in query) {
         this.filter = this.filter + ':' + query['version']
       }
-
-      this.search(this.filter.replace('/', '*'))
+      if (this.filter) {
+        this.search(this.filter.replace('/', '*'))
+      }
     }
   }
 </script>
