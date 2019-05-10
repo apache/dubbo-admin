@@ -274,11 +274,15 @@
       },
       submit: function () {
         this.filter = document.querySelector('#serviceSearch').value.trim()
-        this.search(this.filter, true)
+        this.search(true)
       },
-      search: function (filter, rewrite) {
+      search: function (rewrite) {
+        if (!this.filter) {
+          this.$notify.error('Either service or application is needed')
+          return
+        }
         let type = this.items[this.selected].value
-        let url = '/rules/override/?' + type + '=' + filter
+        let url = '/rules/override/?' + type + '=' + this.filter
         this.$axios.get(url)
           .then(response => {
             if (this.selected === 0) {
@@ -288,9 +292,9 @@
             }
             if (rewrite) {
               if (this.selected === 0) {
-                this.$router.push({path: 'config', query: {service: filter}})
+                this.$router.push({path: 'config', query: {service: this.filter}})
               } else if (this.selected === 1) {
-                this.$router.push({path: 'config', query: {application: filter}})
+                this.$router.push({path: 'config', query: {application: this.filter}})
               }
             }
           })
@@ -511,7 +515,7 @@
       })
       if (filter !== null) {
         this.filter = filter
-        this.search(filter, false)
+        this.search(false)
       }
     }
   }
