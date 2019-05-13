@@ -43,7 +43,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
+import java.util.stream.Collectors;
 
 /**
  * IbatisProviderService
@@ -425,6 +425,9 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
             } else if (Constants.APPLICATION.equals(pattern)) {
                 candidates = findApplications();
             }
+            else if (Constants.IP.equals(pattern)) {
+                candidates = findAddresses().stream().collect(Collectors.toSet());
+            }
             // replace dot symbol and asterisk symbol to java-based regex pattern
             filter = filter.toLowerCase().replace(Constants.PUNCTUATION_POINT, Constants.PUNCTUATION_SEPARATOR_POINT);
             // filter start with [* 、? 、+] will triggering PatternSyntaxException
@@ -439,7 +442,11 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
                 if (matcher.matches() || matcher.lookingAt()) {
                     if (Constants.SERVICE.equals(pattern)) {
                         providers.addAll(findByService(candidate));
-                    } else {
+                    }
+                    else if (Constants.IP.equals(pattern)) {
+                        providers.addAll(findByAddress(candidate));
+                    }
+                    else {
                         providers.addAll(findByApplication(candidate));
                     }
                 }
