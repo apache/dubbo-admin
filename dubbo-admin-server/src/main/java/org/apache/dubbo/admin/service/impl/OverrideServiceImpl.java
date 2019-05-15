@@ -21,7 +21,6 @@ import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.common.util.OverrideUtils;
 import org.apache.dubbo.admin.common.util.YamlParser;
-import org.apache.dubbo.admin.model.adapter.BalancingDTO2OverrideConfigAdapter;
 import org.apache.dubbo.admin.model.adapter.DynamicConfigDTO2OverrideDTOAdapter;
 import org.apache.dubbo.admin.model.adapter.LoadBalance2OverrideAdapter;
 import org.apache.dubbo.admin.model.adapter.WeightToOverrideAdapter;
