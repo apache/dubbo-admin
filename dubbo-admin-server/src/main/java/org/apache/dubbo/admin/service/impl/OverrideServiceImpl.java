@@ -335,7 +335,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         String scope = ConvertUtil.getScopeFromDTO(balancingDTO);
         String path = getPath(id);
         String config = dynamicConfiguration.getConfig(path);
-        OverrideConfig overrideConfig = new BalancingDTO2OverrideConfigAdapter(balancingDTO);
+        OverrideConfig overrideConfig = OverrideUtils.balancingDTOtoConfig(balancingDTO);
         OverrideDTO overrideDTO = insertConfig(config, overrideConfig, id, scope, Constants.BALANCING);
         dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO));
 
@@ -363,7 +363,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
                             oldBalancing = OverrideUtils.configtoBalancingDTO(overrideConfig, Constants.SERVICE, overrideDTO.getKey());
                         }
                         int index = configs.indexOf(overrideConfig);
-                        OverrideConfig newConfig = new BalancingDTO2OverrideConfigAdapter(balancingDTO);
+                        OverrideConfig newConfig = OverrideUtils.balancingDTOtoConfig(balancingDTO);
                         configs.set(index, newConfig);
                         break;
                     }
