@@ -387,12 +387,12 @@
                 if (response.status === 200) {
                   if (vm.service) {
                     vm.selected = 0
-                    vm.search(vm.service, true)
                     vm.filter = vm.service
+                    vm.search(true)
                   } else {
                     vm.selected = 1
-                    vm.search(vm.application, true)
                     vm.filter = vm.application
+                    vm.search(true)
                   }
                   this.closeDialog()
                   this.$notify.success('Update success')
@@ -405,12 +405,12 @@
               if (response.status === 201) {
                 if (vm.service) {
                   vm.selected = 0
-                  vm.search(vm.service, true)
                   vm.filter = vm.service
+                  vm.search(true)
                 } else {
                   vm.selected = 1
-                  vm.search(vm.application, true)
                   vm.filter = vm.application
+                  vm.search(true)
                 }
                 this.closeDialog()
                 this.$notify.success('Create success')
@@ -446,7 +446,7 @@
               })
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + itemId)
+            this.openWarn('warnDeleteBalancing', 'service: ' + itemId)
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = itemId
         }
@@ -471,7 +471,7 @@
           .then(response => {
             if (response.status === 200) {
               this.warn = false
-              this.search(this.filter, false)
+              this.search(false)
               this.$notify.success('Delete success')
             }
           })
