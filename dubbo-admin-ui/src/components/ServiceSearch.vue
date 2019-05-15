@@ -112,7 +112,7 @@
                       <v-list-tile
                         v-for="(item, i) in options"
                         :key="i"
-                        :href='governanceHref(item.value, props.item.service, props.item.group, props.item.version)'
+                        :href='governanceHref(item.value, props.item.service, props.item.appName, props.item.group, props.item.version)'
                       >
                         <v-list-tile-title class="small-list">{{ $t(item.title) }}</v-list-tile-title>
                       </v-list-tile>
@@ -274,11 +274,14 @@
         }
         return '#/serviceDetail?' + query
       },
-      governanceHref: function (type, service, group, version) {
+      governanceHref: function (type, service, appName, group, version) {
         let base = '#/governance/' + type
         let query = service
+        if (type === 'tagRule') {
+          query = appName
+        }
         if (group !== null) {
-          query = group + '/' + query
+          query = group + '/' + query;
         }
         if (version !== null) {
           query = query + ':' + version
