@@ -433,7 +433,7 @@
                 })
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + itemId)
+            this.openWarn('warnDeleteWeightAdjust', 'service: ' + itemId)
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = itemId
         }

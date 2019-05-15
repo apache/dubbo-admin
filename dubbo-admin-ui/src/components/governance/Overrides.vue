@@ -410,7 +410,7 @@
             this.warnStatus.id = itemId
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Dynamic Config', 'service: ' + item.service)
+            this.openWarn('warnDeleteDynamicConfig', 'service: ' + item.service)
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = itemId
         }

@@ -278,7 +278,7 @@
             this.warn.status.id = itemId
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Tag Rule', 'application: ' + item.application)
+            this.openWarn('warnDeleteTagRule', 'application: ' + item.application)
             this.warn.status.operation = 'delete'
             this.warn.status.id = itemId
         }
