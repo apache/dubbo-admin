@@ -493,7 +493,7 @@ export default {
       }
       Object.assign(this.confirm, {
         enable: true,
-        title: 'Are you sure to Delete Access Control',
+        title: 'warnDeleteAccessControl',
         text: `Id: ${itemId}`,
         id: itemId
       })

@@ -429,7 +429,7 @@
             this.warnStatus.id = itemId
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + oldItemId)
+            this.openWarn('warnDeleteRouteRule', 'service: ' + oldItemId)
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = itemId
         }
