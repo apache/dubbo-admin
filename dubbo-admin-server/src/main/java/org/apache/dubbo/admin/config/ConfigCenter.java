@@ -151,7 +151,7 @@ public class ConfigCenter {
     private URL formUrl(String config, String group, String username, String password) {
         URL url = URL.valueOf(config);
         if (StringUtils.isNotEmpty(group)) {
-            url = url.addParameter(org.apache.dubbo.common.Constants.GROUP_KEY, group);
+            url = url.addParameter(Constants.GROUP_KEY, group);
         }
         if (StringUtils.isNotEmpty(username)) {
             url = url.setUsername(username);
