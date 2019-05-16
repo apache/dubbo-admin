@@ -17,7 +17,6 @@
 package org.apache.dubbo.admin.common.util;
 
 import org.apache.dubbo.admin.model.dto.BaseDTO;
-import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.metadata.definition.model.MethodDefinition;
 

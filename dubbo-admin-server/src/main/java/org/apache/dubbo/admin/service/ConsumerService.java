@@ -29,7 +29,6 @@ public interface ConsumerService {
 
     List<Consumer> findByService(String serviceName);
 
-    Consumer findConsumer(String id);
 
     String getConsumerMetadata(MetadataIdentifier consumerIdentifier);
 
@@ -38,26 +37,5 @@ public interface ConsumerService {
     /**
      * query for all consumer addresses
      */
-    List<String> findAddresses();
-
-    List<String> findAddressesByApplication(String application);
-
-    List<String> findAddressesByService(String serviceName);
-
     List<Consumer> findByAddress(String consumerAddress);
-
-    List<String> findServicesByAddress(String consumerAddress);
-
-    List<String> findApplications();
-
-    List<String> findApplicationsByServiceName(String serviceName);
-
-    List<Consumer> findByApplication(String application);
-
-    List<Consumer> findByAppandService(String app, String serviceName);
-
-    List<String> findServicesByApplication(String application);
-
-    List<String> findServices();
-
 }

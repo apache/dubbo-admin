@@ -17,8 +17,8 @@
 package org.apache.dubbo.admin.service;
 
 import org.apache.dubbo.admin.common.util.CoderUtil;
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.Tool;
-import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
