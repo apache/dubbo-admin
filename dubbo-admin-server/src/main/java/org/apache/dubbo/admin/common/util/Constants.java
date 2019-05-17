@@ -49,12 +49,30 @@ public class Constants {
     public static final String PLUS_SIGNS = "+";
     public static final String IP = "ip";
     public static final String INTERFACE_KEY = "interface";
+    public static final String DYNAMIC_KEY = "dynamic";
+    public static final String CONSUMER_PROTOCOL = "consumer";
+    public static final String PROVIDER_PROTOCOL = "provider";
+    public static final String ROUTE_PROTOCOL = "route";
+    public static final String APPLICATION_KEY = "application";
+    public static final String ENABLED_KEY = "enabled";
+    public static final String RULE_KEY = "rule";
+    public static final String ANYHOST_VALUE = "0.0.0.0";
+    public static final String OVERRIDE_PROTOCOL = "override";
+    public static final String CONFIGURATORS_CATEGORY = "configurators";
+    public static final String EMPTY_PROTOCOL = "empty";
+    public static final String WEIGHT_KEY = "weight";
+    public static final int DEFAULT_WEIGHT = 100;
+    public static final String ADMIN_PROTOCOL = "admin";
+    public static final String CLASSIFIER_KEY = "classifier";
+    public static final String CHECK_KEY = "check";
     public static final String VERSION_KEY = "version";
     public static final String PROVIDERS_CATEGORY = "providers";
     public static final String CONSUMERS_CATEGORY = "consumers";
     public static final String SPECIFICATION_VERSION_KEY = "release";
     public static final String GLOBAL_CONFIG = "global";
     public static final String GLOBAL_CONFIG_PATH = "config/dubbo/dubbo.properties";
+    public static final String METRICS_PORT = "metrics.port";
+    public static final String METRICS_PROTOCOL = "metrics.protocol";
     public static final Set<String> CONFIGS = new HashSet<>();
 
     static {

@@ -14,28 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.dubbo.admin.service;
 
-import org.apache.dubbo.admin.model.domain.Consumer;
-import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
-import java.util.List;
+@RunWith(SpringJUnit4ClassRunner.class)
+public class DirectConnectTest {
 
-/**
- * Query service for consumer info
- *
- */
-public interface ConsumerService {
-
-    List<Consumer> findByService(String serviceName);
-
-
-    String getConsumerMetadata(MetadataIdentifier consumerIdentifier);
-
-    List<Consumer> findAll();
-
-    /**
-     * query for all consumer addresses
-     */
-    List<Consumer> findByAddress(String consumerAddress);
+    @Test
+    public void testDirectService() {
+//        MetrcisCollectServiceImpl service = new MetrcisCollectServiceImpl();
+//        service.setUrl("dubbo://admindeMacBook-Pro.local:54188/org.apache.dubbo.monitor.MetricsService");
+//        System.out.println(service.invoke("dubbo"));
+    }
 }

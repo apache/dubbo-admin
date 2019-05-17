@@ -34,10 +34,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.List;
 
-/**
- * IbatisRouteService
- *
- */
 @Component
 public class RouteServiceImpl extends AbstractService implements RouteService {
 
@@ -259,6 +255,10 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         if (config != null) {
             RoutingRule routingRule = YamlParser.loadObject(config, RoutingRule.class);
             ConditionRouteDTO conditionRouteDTO = RouteUtils.createConditionRouteFromRule(routingRule);
+            String service = conditionRouteDTO.getService();
+            if (org.apache.commons.lang3.StringUtils.isNotBlank(service)) {
+                conditionRouteDTO.setService(service.replace("*", "/"));
+            }
             return conditionRouteDTO;
         }
         return null;
@@ -327,6 +327,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
     }
 
     private String getPath(String key, String type) {
+        key = key.replace("/", "*");
         if (type.equals(Constants.CONDITION_ROUTE)) {
             return prefix + Constants.PATH_SEPARATOR + key + Constants.PATH_SEPARATOR + "condition-router";
         } else {

@@ -45,10 +45,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
-/**
- * IbatisProviderService
- *
- */
 @Component
 public class ProviderServiceImpl extends AbstractService implements ProviderService {
 
