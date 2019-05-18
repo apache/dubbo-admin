@@ -29,7 +29,7 @@
 ### 生产环境配置
 
 1. 下载代码: `git clone https://github.com/apache/incubator-dubbo-admin.git`
-2. 在 `dubbo-admin-server/src/main/resources/application-production.properties`中指定注册中心地址
+2. 在 `dubbo-admin-server/src/main/resources/application.properties`中指定注册中心地址
 3. 构建
 
     > - `mvn clean package`  
