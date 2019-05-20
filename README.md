@@ -29,7 +29,7 @@ service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.
 ### Production Setup
 
 1. Clone source code on develop branch `git clone https://github.com/apache/incubator-dubbo-admin.git`
-2. Specify registry address in `dubbo-admin-server/src/main/resources/application-production.properties`
+2. Specify registry address in `dubbo-admin-server/src/main/resources/application.properties`
 3. Build
 
     > - `mvn clean package`  
