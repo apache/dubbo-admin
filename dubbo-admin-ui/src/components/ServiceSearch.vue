@@ -281,7 +281,7 @@
           query = appName
         }
         if (group !== null) {
-          query = group + '/' + query;
+          query = group + '/' + query
         }
         if (version !== null) {
           query = query + ':' + version
