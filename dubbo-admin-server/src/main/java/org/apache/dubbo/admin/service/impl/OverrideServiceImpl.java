@@ -514,6 +514,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         return result;
     }
     private String getPath(String key) {
+        key = key.replace("/", "*");
         return prefix + Constants.PATH_SEPARATOR + key + Constants.PATH_SEPARATOR + Constants.CONFIGURATOR;
     }
 
