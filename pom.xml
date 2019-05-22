@@ -65,6 +65,8 @@
 		<jacoco-version>0.8.2</jacoco-version>
 		<jedis-version>2.9.0</jedis-version>
         <apollo-version>1.2.0</apollo-version>
+		<consul-version>1.4.2</consul-version>
+		<consul-embedded-version>2.0.0</consul-embedded-version>
 		<snakeyaml-version>1.24</snakeyaml-version>
 		<maven-checkstyle-plugin-version>3.0.0</maven-checkstyle-plugin-version>
 		<spring-boot-version>2.1.4.RELEASE</spring-boot-version>
@@ -162,6 +164,17 @@
 				<groupId>io.netty</groupId>
 				<artifactId>netty-all</artifactId>
 				<version>${netty-version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>com.ecwid.consul</groupId>
+				<artifactId>consul-api</artifactId>
+				<version>${consul-version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.pszymczyk.consul</groupId>
+				<artifactId>embedded-consul</artifactId>
+				<version>${consul-embedded-version}</version>
 			</dependency>
 
 		</dependencies>
