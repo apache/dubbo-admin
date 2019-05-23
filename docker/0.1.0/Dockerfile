@@ -15,7 +15,7 @@
 
 FROM openjdk:8-jdk
 RUN mkdir /source && wget https://github.com/apache/incubator-dubbo-ops/archive/0.1.zip && unzip 0.1.zip -d /source
-WORKDIR /source/incubator-dubbo-ops-0.1
+WORKDIR /source/incubator-dubbo-admin-0.1
 RUN ./mvnw clean package -Dmaven.test.skip=true
 
 FROM openjdk:8-jre
