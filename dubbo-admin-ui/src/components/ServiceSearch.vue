@@ -302,7 +302,7 @@
       },
       search: function (filter, pattern, rewrite) {
         const page = this.pagination.page - 1
-        const size = this.pagination.rowsPerPage
+        const size = this.pagination.rowsPerPage === -1 ? this.totalItems : this.pagination.rowsPerPage;
         this.loadingServices = true
         this.$axios.get('/service', {
           params: {
