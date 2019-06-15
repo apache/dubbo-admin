@@ -87,11 +87,13 @@ public class ServiceController {
         List<Consumer> consumers = consumerService.findByService(service);
 
         String application = null;
+        String dubboVersion = null;
         if (providers != null && providers.size() > 0) {
             application = providers.get(0).getApplication();
+            dubboVersion = providers.get(0).toUrl().getParameter(Constants.SPECIFICATION_VERSION_KEY);
         }
         MetadataIdentifier identifier = new MetadataIdentifier(interfaze, version, group, Constants.PROVIDER_SIDE, application);
-        String metadata = providerService.getProviderMetaData(identifier);
+        String metadata = providerService.getProviderMetaData(identifier, dubboVersion);
         ServiceDetailDTO serviceDetailDTO = new ServiceDetailDTO();
         serviceDetailDTO.setConsumers(consumers);
         serviceDetailDTO.setProviders(providers);

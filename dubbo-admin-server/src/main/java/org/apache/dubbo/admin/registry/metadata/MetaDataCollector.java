@@ -30,7 +30,7 @@ public interface MetaDataCollector {
 
     void init();
 
-    String getProviderMetaData(MetadataIdentifier key);
+    String getProviderMetaData(MetadataIdentifier key, String dubboVersion);
 
-    String getConsumerMetaData(MetadataIdentifier key);
+    String getConsumerMetaData(MetadataIdentifier key, String dubboVersion);
 }

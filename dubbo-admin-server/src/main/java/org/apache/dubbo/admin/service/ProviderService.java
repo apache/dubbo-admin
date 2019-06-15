@@ -45,7 +45,7 @@ public interface ProviderService {
 
     Provider findProvider(String id);
 
-    String getProviderMetaData(MetadataIdentifier providerIdentifier);
+    String getProviderMetaData(MetadataIdentifier providerIdentifier, String dubboVersion);
 
     /**
      * Get all provider's service name

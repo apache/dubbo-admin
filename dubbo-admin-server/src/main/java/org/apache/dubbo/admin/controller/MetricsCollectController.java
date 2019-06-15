@@ -95,7 +95,8 @@ public class MetricsCollectController {
             String service = provider.getService();
             MetadataIdentifier providerIdentifier = new MetadataIdentifier(Tool.getInterface(service), Tool.getVersion(service), Tool.getGroup(service),
                     Constants.PROVIDER_SIDE, provider.getApplication());
-            String metaData = providerService.getProviderMetaData(providerIdentifier);
+            String dubboVersion = provider.toUrl().getParameter(Constants.SPECIFICATION_VERSION_KEY);
+            String metaData = providerService.getProviderMetaData(providerIdentifier, dubboVersion);
             FullServiceDefinition providerServiceDefinition = new Gson().fromJson(metaData, FullServiceDefinition.class);
             Map<String, String> parameters = providerServiceDefinition.getParameters();
             configMap.put(parameters.get(Constants.METRICS_PORT), parameters.get(Constants.METRICS_PROTOCOL));

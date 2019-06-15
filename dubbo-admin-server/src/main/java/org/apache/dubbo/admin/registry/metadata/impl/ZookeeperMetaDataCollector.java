@@ -33,6 +33,7 @@ public class ZookeeperMetaDataCollector implements MetaDataCollector {
     private CuratorFramework client;
     private URL url;
     private String root;
+    private final static String METADATA_NODE_NAME = "service.data";
     private final static String DEFAULT_ROOT = "dubbo";
 
     @Override
@@ -58,13 +59,13 @@ public class ZookeeperMetaDataCollector implements MetaDataCollector {
 
 
     @Override
-    public String getProviderMetaData(MetadataIdentifier key) {
-        return doGetMetadata(key);
+    public String getProviderMetaData(MetadataIdentifier key, String dubboVersion) {
+        return doGetMetadata(key, dubboVersion);
     }
 
     @Override
-    public String getConsumerMetaData(MetadataIdentifier key) {
-        return doGetMetadata(key);
+    public String getConsumerMetaData(MetadataIdentifier key, String dubboVersion) {
+        return doGetMetadata(key, dubboVersion);
     }
 
     private String getNodePath(MetadataIdentifier metadataIdentifier) {
@@ -78,10 +79,18 @@ public class ZookeeperMetaDataCollector implements MetaDataCollector {
         return root + Constants.PATH_SEPARATOR;
     }
 
-    private String doGetMetadata(MetadataIdentifier identifier) {
+    private String doGetMetadata(MetadataIdentifier identifier, String dubboVersion) {
         //TODO error handing
         try {
             String path = getNodePath(identifier);
+            // before to version 2.7.2, the path ended with "/service.data"
+            String versionPrefix = "2.7.";
+            if(dubboVersion != null && dubboVersion.startsWith(versionPrefix) && dubboVersion.length() > versionPrefix.length()){
+                int sVer = Integer.valueOf(dubboVersion.substring(versionPrefix.length(),versionPrefix.length() + 1));
+                if(sVer < 2){
+                    path += "/" + METADATA_NODE_NAME;
+                }
+            }
             if (client.checkExists().forPath(path) == null) {
                 return null;
             }

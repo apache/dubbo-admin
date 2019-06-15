@@ -22,6 +22,7 @@ import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.common.util.ServiceTestUtil;
 import org.apache.dubbo.admin.model.domain.MethodMetadata;
+import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.dto.ServiceTestDTO;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.admin.service.impl.GenericServiceImpl;
@@ -65,7 +66,12 @@ public class ServiceTestController {
         MetadataIdentifier identifier = new MetadataIdentifier(info.get(Constants.INTERFACE_KEY),
                 info.get(Constants.VERSION_KEY),
                 info.get(Constants.GROUP_KEY), Constants.PROVIDER_SIDE, application);
-        String metadata = providerService.getProviderMetaData(identifier);
+        List<Provider> providers = providerService.findByService(service);
+        String dubboVersion = null;
+        if (providers != null && providers.size() > 0) {
+            dubboVersion = providers.get(0).toUrl().getParameter(Constants.SPECIFICATION_VERSION_KEY);
+        }
+        String metadata = providerService.getProviderMetaData(identifier, dubboVersion);
         MethodMetadata methodMetadata = null;
         if (metadata != null) {
             Gson gson = new Gson();

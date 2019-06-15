@@ -59,8 +59,8 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
 
 
     @Override
-    public String getProviderMetaData(MetadataIdentifier providerIdentifier) {
-        return metaDataCollector.getProviderMetaData(providerIdentifier);
+    public String getProviderMetaData(MetadataIdentifier providerIdentifier, String dubboVersion) {
+        return metaDataCollector.getProviderMetaData(providerIdentifier, dubboVersion);
     }
 
 

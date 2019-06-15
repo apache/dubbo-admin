@@ -46,12 +46,12 @@ public class RedisMetaDataCollector implements MetaDataCollector {
     }
 
     @Override
-    public String getProviderMetaData(MetadataIdentifier key) {
+    public String getProviderMetaData(MetadataIdentifier key, String dubboVersion) {
         return doGetMetaData(key);
     }
 
     @Override
-    public String getConsumerMetaData(MetadataIdentifier key) {
+    public String getConsumerMetaData(MetadataIdentifier key, String dubboVersion) {
         return doGetMetaData(key);
     }
 
