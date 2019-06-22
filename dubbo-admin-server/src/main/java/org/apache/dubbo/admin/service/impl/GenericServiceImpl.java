@@ -57,8 +57,23 @@ public class GenericServiceImpl {
         reference.setInterface(interfaze);
         reference.setVersion(version);
         reference.setGroup(group);
+        removeGenericSymbol(parameterTypes);
         GenericService genericService = reference.get();
 
         return genericService.$invoke(method, parameterTypes, params);
+    }
+
+    /**
+     * remove generic from parameterTypes
+     *
+     * @param parameterTypes
+     */
+    private void removeGenericSymbol(String[] parameterTypes){
+        for (int i = 0; i < parameterTypes.length; i++) {
+            int index = parameterTypes[i].indexOf("<");
+            if (index > -1) {
+                parameterTypes[i] = parameterTypes[i].substring(0, index);
+            }
+        }
     }
 }
