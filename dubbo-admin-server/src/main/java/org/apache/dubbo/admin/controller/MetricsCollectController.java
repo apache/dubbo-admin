@@ -24,7 +24,9 @@ import org.apache.dubbo.admin.common.util.Tool;
 import org.apache.dubbo.admin.model.domain.Consumer;
 import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.dto.MetricDTO;
+import org.apache.dubbo.admin.model.dto.RelationDTO;
 import org.apache.dubbo.admin.service.ConsumerService;
+import org.apache.dubbo.admin.service.MetricsService;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.admin.service.impl.MetrcisCollectServiceImpl;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
@@ -41,8 +43,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-
-
 @RestController
 @RequestMapping("/api/{env}/metrics")
 public class MetricsCollectController {
@@ -53,12 +53,20 @@ public class MetricsCollectController {
     @Autowired
     private ConsumerService consumerService;
 
+    @Autowired
+    private MetricsService metricsService;
+
     @RequestMapping(method = RequestMethod.POST)
     public String metricsCollect(@RequestParam String group, @PathVariable String env) {
         MetrcisCollectServiceImpl service = new MetrcisCollectServiceImpl();
         service.setUrl("dubbo://127.0.0.1:20880?scope=remote&cache=true");
 
         return service.invoke(group).toString();
+    }
+
+    @RequestMapping(value = "/relation", method = RequestMethod.GET)
+    public RelationDTO getApplicationRelation(){
+        return metricsService.getApplicationRelation();
     }
 
     private String getOnePortMessage(String group, String ip, String port, String protocol) {
