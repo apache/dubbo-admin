@@ -22,11 +22,18 @@ import org.apache.dubbo.admin.model.dto.RelationDTO;
 import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.MetricsService;
 import org.apache.dubbo.admin.service.ProviderService;
+
 import org.apache.dubbo.common.utils.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
@@ -84,16 +91,16 @@ public class MetricsServiceImpl implements MetricsService {
         for (Map.Entry<String, RelationDTO.Node> entry : providerNodeMap.entrySet()) {
             if (nodeMap.get(entry.getKey()) != null) {
                 nodeMap.get(entry.getKey()).setCategory(RelationDTO.CONSUMER_AND_PROVIDER_CATEGORIES.getIndex());
-            } else{
+            } else {
                 nodeMap.put(entry.getKey(), entry.getValue());
             }
         }
         // build link by same service
         Set<RelationDTO.Link> linkSet = new HashSet<>();
-        for(String service : serviceSet){
+        for (String service : serviceSet) {
             Set<String> consumerApplicationSet = consumerServiceApplicationMap.get(service);
             Set<String> providerApplicationSet = providerServiceApplicationMap.get(service);
-            if(CollectionUtils.isNotEmpty(consumerApplicationSet) && CollectionUtils.isNotEmpty(providerApplicationSet)){
+            if (CollectionUtils.isNotEmpty(consumerApplicationSet) && CollectionUtils.isNotEmpty(providerApplicationSet)) {
                 for (String providerApplication : providerApplicationSet) {
                     for (String consumerApplication : consumerApplicationSet) {
                         if (nodeMap.get(consumerApplication) != null && nodeMap.get(providerApplication) != null) {
