@@ -52,8 +52,14 @@ public class ConfigCenter {
     @Value("${admin.metadata-report.address:}")
     private String metadataAddress;
 
-    @Value("${admin.registry.group:}")
-    private String group;
+    @Value("${admin.registry.group:dubbo}")
+    private String registryGroup;
+
+    @Value("${admin.config-center.group:dubbo}")
+    private String configCenterGroup;
+
+    @Value("${admin.metadata-report.group:dubbo}")
+    private String metadataGroup;
 
     @Value("${admin.config-center.username:}")
     private String username;
@@ -76,7 +82,7 @@ public class ConfigCenter {
         GovernanceConfiguration dynamicConfiguration = null;
 
         if (StringUtils.isNotEmpty(configCenter)) {
-            configCenterUrl = formUrl(configCenter, group, username, password);
+            configCenterUrl = formUrl(configCenter, configCenterGroup, username, password);
             dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(configCenterUrl.getProtocol());
             dynamicConfiguration.setUrl(configCenterUrl);
             dynamicConfiguration.init();
@@ -86,16 +92,16 @@ public class ConfigCenter {
                 Arrays.stream(config.split("\n")).forEach( s -> {
                     if(s.startsWith(Constants.REGISTRY_ADDRESS)) {
                         String registryAddress = s.split("=")[1].trim();
-                        registryUrl = formUrl(registryAddress, group, username, password);
+                        registryUrl = formUrl(registryAddress, configCenterGroup, username, password);
                     } else if (s.startsWith(Constants.METADATA_ADDRESS)) {
-                        metadataUrl = formUrl(s.split("=")[1].trim(), group, username, password);
+                        metadataUrl = formUrl(s.split("=")[1].trim(), configCenterGroup, username, password);
                     }
                 });
             }
         }
         if (dynamicConfiguration == null) {
             if (StringUtils.isNotEmpty(registryAddress)) {
-                registryUrl = formUrl(registryAddress, group, username, password);
+                registryUrl = formUrl(registryAddress, configCenterGroup, username, password);
                 dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(registryUrl.getProtocol());
                 dynamicConfiguration.setUrl(registryUrl);
                 dynamicConfiguration.init();
@@ -119,7 +125,7 @@ public class ConfigCenter {
             if (StringUtils.isBlank(registryAddress)) {
                 throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration");
             }
-            registryUrl = formUrl(registryAddress, group, username, password);
+            registryUrl = formUrl(registryAddress, registryGroup, username, password);
         }
         RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
         registry = registryFactory.getRegistry(registryUrl);
@@ -135,7 +141,7 @@ public class ConfigCenter {
         MetaDataCollector metaDataCollector = new NoOpMetadataCollector();
         if (metadataUrl == null) {
             if (StringUtils.isNotEmpty(metadataAddress)) {
-                metadataUrl = formUrl(metadataAddress, group, username, password);
+                metadataUrl = formUrl(metadataAddress, metadataGroup, username, password);
             }
         }
         if (metadataUrl != null) {
