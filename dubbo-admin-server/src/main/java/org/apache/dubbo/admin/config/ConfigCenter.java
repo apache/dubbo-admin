@@ -101,7 +101,7 @@ public class ConfigCenter {
         }
         if (dynamicConfiguration == null) {
             if (StringUtils.isNotEmpty(registryAddress)) {
-                registryUrl = formUrl(registryAddress, configCenterGroup, username, password);
+                registryUrl = formUrl(registryAddress, registryGroup, username, password);
                 dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(registryUrl.getProtocol());
                 dynamicConfiguration.setUrl(registryUrl);
                 dynamicConfiguration.init();
