@@ -40,6 +40,7 @@ public class GenericServiceImpl {
     public void init() {
         RegistryConfig registryConfig = new RegistryConfig();
         registryConfig.setAddress(registry.getUrl().getProtocol() + "://" + registry.getUrl().getAddress());
+        registryConfig.setGroup(registry.getUrl().getParameter("group"));
 
         applicationConfig = new ApplicationConfig();
         applicationConfig.setName("dubbo-admin");
