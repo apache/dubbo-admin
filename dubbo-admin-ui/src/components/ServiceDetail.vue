@@ -56,6 +56,7 @@
                 <td>{{getPort(props.item.address)}}</td>
                 <td></td>
                 <td></td>
+                <td>{{props.item.weight}}</td>
                 <td>
                   <v-tooltip top>
                     <v-btn
@@ -172,6 +173,10 @@
             {
               text: this.$t('serialization'),
               value: 'serial'
+            },
+            {
+              text: this.$t('weight'),
+              value: 'weight'
             },
             {
               text: this.$t('operation'),
