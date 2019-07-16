@@ -14,28 +14,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.dubbo.admin.service;
 
-import org.apache.dubbo.admin.model.domain.Consumer;
-import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+package org.apache.dubbo.admin.service.impl;
 
-import java.util.List;
+import org.apache.dubbo.config.ApplicationConfig;
+import org.apache.dubbo.config.ReferenceConfig;
+import org.apache.dubbo.monitor.MetricsService;
 
-/**
- * Query service for consumer info
- *
- */
-public interface ConsumerService {
+public class MetrcisCollectServiceImpl {
 
-    List<Consumer> findByService(String serviceName);
+    private ReferenceConfig<MetricsService> referenceConfig;
 
+    public MetrcisCollectServiceImpl() {
+        referenceConfig = new ReferenceConfig<>();
+        referenceConfig.setApplication(new ApplicationConfig("dubbo-admin"));
+        referenceConfig.setInterface(MetricsService.class);
+    }
 
-    String getConsumerMetadata(MetadataIdentifier consumerIdentifier);
+    public void setUrl(String url) {
+        referenceConfig.setUrl(url);
+    }
 
-    List<Consumer> findAll();
-
-    /**
-     * query for all consumer addresses
-     */
-    List<Consumer> findByAddress(String consumerAddress);
+    public Object invoke(String group) {
+        MetricsService metricsService = referenceConfig.get();
+        return metricsService.getMetricsByGroup(group);
+    }
 }

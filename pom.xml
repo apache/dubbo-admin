@@ -55,8 +55,8 @@
 
 	<properties>
 		<main.basedir>${project.basedir}</main.basedir>
-        <commons-lang3-version>3.7</commons-lang3-version>
-		<dubbo-version>2.7.0</dubbo-version>
+		<commons-lang3-version>3.7</commons-lang3-version>
+		<dubbo-version>2.7.2</dubbo-version>
 		<curator-version>2.12.0</curator-version>
 		<curator-test-version>4.1.0</curator-test-version>
 		<fastjson-version>1.2.46</fastjson-version>
@@ -64,11 +64,12 @@
 		<netty-version>4.1.30.Final</netty-version>
 		<jacoco-version>0.8.2</jacoco-version>
 		<jedis-version>2.9.0</jedis-version>
-        <apollo-version>1.2.0</apollo-version>
+		<apollo-version>1.2.0</apollo-version>
 		<nacos-version>1.0.0</nacos-version>
-		<snakeyaml-version>1.19</snakeyaml-version>
+		<guava-version>20.0</guava-version>
+		<snakeyaml-version>1.24</snakeyaml-version>
 		<maven-checkstyle-plugin-version>3.0.0</maven-checkstyle-plugin-version>
-		<spring-boot-version>2.0.2.RELEASE</spring-boot-version>
+		<spring-boot-version>2.1.4.RELEASE</spring-boot-version>
 		<maven_compiler_version>3.6.0</maven_compiler_version>
 		<java_source_version>1.8</java_source_version>
 		<java_target_version>1.8</java_target_version>
@@ -169,6 +170,12 @@
 				<groupId>io.netty</groupId>
 				<artifactId>netty-all</artifactId>
 				<version>${netty-version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>com.google.guava</groupId>
+				<artifactId>guava</artifactId>
+				<version>${guava-version}</version>
 			</dependency>
 
 		</dependencies>

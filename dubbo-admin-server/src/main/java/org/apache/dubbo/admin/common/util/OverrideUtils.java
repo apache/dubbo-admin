@@ -44,6 +44,21 @@ public class OverrideUtils {
         return overrideConfig;
     }
 
+    public static OverrideConfig balancingDTOtoConfig(BalancingDTO balancingDTO) {
+        OverrideConfig overrideConfig = new OverrideConfig();
+        overrideConfig.setType(Constants.BALANCING);
+        overrideConfig.setEnabled(true);
+        overrideConfig.setSide(Constants.CONSUMER_SIDE);
+        Map<String, Object> parameters = new HashMap<>();
+        if (balancingDTO.getMethodName().equals("*")) {
+            parameters.put("loadbalance", balancingDTO.getStrategy());
+        } else {
+            parameters.put(balancingDTO.getMethodName() + ".loadbalance", balancingDTO.getStrategy());
+        }
+        overrideConfig.setParameters(parameters);
+        return overrideConfig;
+    }
+
     public static DynamicConfigDTO createFromOverride(OverrideDTO overrideDTO) {
         DynamicConfigDTO dynamicConfigDTO = new DynamicConfigDTO();
         dynamicConfigDTO.setConfigVersion(overrideDTO.getConfigVersion());

@@ -1,8 +1,8 @@
 # Dubbo控制台
 
-[![Build Status](https://travis-ci.org/apache/incubator-dubbo-admin.svg?branch=develop)](https://travis-ci.org/apache/incubator-dubbo-admin)
-[![codecov](https://codecov.io/gh/apache/incubator-dubbo-admin/branch/develop/graph/badge.svg)](https://codecov.io/gh/apache/incubator-dubbo-admin)
-![license](https://img.shields.io/github/license/apache/incubator-dubbo-admin.svg)
+[![Build Status](https://travis-ci.org/apache/dubbo-admin.svg?branch=develop)](https://travis-ci.org/apache/dubbo-admin)
+[![codecov](https://codecov.io/gh/apache/dubbo-admin/branch/develop/graph/badge.svg)](https://codecov.io/gh/apache/dubbo-admin)
+![license](https://img.shields.io/github/license/apache/dubbo-admin.svg)
 
 [English version](README.md).
 ### Demo地址
@@ -10,10 +10,10 @@
 * 该地址是`develop`分支的最新版本，在从源码构建之前，可以先尝试demo
 ### 页面截图
 
-![index](https://raw.githubusercontent.com/apache/incubator-dubbo-admin/develop/doc/images/index.png)
+![index](https://raw.githubusercontent.com/apache/dubbo-admin/develop/doc/images/index.png)
 
 ### 服务治理  
-服务治理的部分，按照Dubbo 2.7的格式进行配置，同时兼容Dubbo 2.6，详见[这里](https://github.com/apache/incubator-dubbo-admin/wiki/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E5%85%BC%E5%AE%B9%E6%80%A7%E8%AF%B4%E6%98%8E)
+服务治理的部分，按照Dubbo 2.7的格式进行配置，同时兼容Dubbo 2.6，详见[这里](https://github.com/apache/dubbo-admin/wiki/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E5%85%BC%E5%AE%B9%E6%80%A7%E8%AF%B4%E6%98%8E)
 ### 前端部分
 
 - 使用[Vue.js](https://vuejs.org)作为javascript框架，[Vuetify](https://vuetifyjs.com)作为UI框架
@@ -23,13 +23,13 @@
 ### 后端部分
 
 * 标准spring boot工程
-* [application.properties配置说明](https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E)  
+* [application.properties配置说明](https://github.com/apache/dubbo-admin/wiki/Dubbo-Admin%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E)  
 
 
 ### 生产环境配置
 
-1. 下载代码: `git clone https://github.com/apache/incubator-dubbo-admin.git`
-2. 在 `dubbo-admin-server/src/main/resources/application-production.properties`中指定注册中心地址
+1. 下载代码: `git clone https://github.com/apache/dubbo-admin.git`
+2. 在 `dubbo-admin-server/src/main/resources/application.properties`中指定注册中心地址
 3. 构建
 
     > - `mvn clean package`  

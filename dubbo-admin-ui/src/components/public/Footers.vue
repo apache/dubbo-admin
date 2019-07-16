@@ -18,7 +18,7 @@
 <template>
   <v-footer inset height="auto" class="pa-3 footer-border-top">
     <v-spacer></v-spacer>
-    <span class="caption mr-1"><strong>Copyright</strong> &copy;{{ new Date().getFullYear() }} <strong>The Apache Software Foundation.</strong></span>
+    <span class="caption mr-1"><strong>Copyright</strong> &copy;2018-2019 <strong>The Apache Software Foundation.</strong></span>
   </v-footer>
 </template>
 <script>

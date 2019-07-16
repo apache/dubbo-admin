@@ -17,10 +17,11 @@
 package org.apache.dubbo.admin.common.util;
 
 import org.apache.dubbo.admin.model.dto.BaseDTO;
-import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.utils.StringUtils;
+import org.apache.dubbo.metadata.definition.model.MethodDefinition;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ConvertUtil {
@@ -62,5 +63,13 @@ public class ConvertUtil {
         } else {
             return org.apache.dubbo.admin.common.util.Constants.SERVICE;
         }
+    }
+
+    public static Map methodList2Map(List<MethodDefinition> methods) {
+        Map<String, MethodDefinition> res = new HashMap<>();
+        for (int i = 0; i < methods.size(); i++) {
+            res.put(methods.get(i).getName(), methods.get(i));
+        }
+        return res;
     }
 }

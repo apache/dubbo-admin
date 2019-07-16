@@ -17,6 +17,7 @@
 
 package org.apache.dubbo.admin.registry.metadata.impl;
 
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
@@ -34,6 +35,7 @@ import static com.alibaba.nacos.api.PropertyKeyConst.SERVER_ADDR;
 public class NacosMetaDataCollector implements MetaDataCollector {
     private static final Logger logger = LoggerFactory.getLogger(NacosMetaDataCollector.class);
     private ConfigService configService;
+    private String group;
     private URL url;
     @Override
     public void setUrl(URL url) {
@@ -52,6 +54,8 @@ public class NacosMetaDataCollector implements MetaDataCollector {
 
     private ConfigService buildConfigService(URL url) {
         Properties nacosProperties = buildNacosProperties(url);
+        group = url.getParameter(Constants.GROUP_KEY, "DEFAULT_GROUP");
+
         try {
             configService = NacosFactory.createConfigService(nacosProperties);
         } catch (NacosException e) {
@@ -91,7 +95,7 @@ public class NacosMetaDataCollector implements MetaDataCollector {
     private String getMetaData(MetadataIdentifier identifier) {
         try {
             return configService.getConfig(identifier.getUniqueKey(MetadataIdentifier.KeyTypeEnum.UNIQUE_KEY),
-                    identifier.getGroup(), 1000 * 10);
+                    group, 1000 * 10);
         } catch (NacosException e) {
             logger.warn("Failed to get " + identifier + " from nacos, cause: " + e.getMessage(), e);
         }
