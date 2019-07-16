@@ -49,13 +49,13 @@ public class NacosMetaDataCollector implements MetaDataCollector {
 
     @Override
     public void init() {
+        group = url.getParameter(Constants.GROUP_KEY, "DEFAULT_GROUP");
+
         configService = buildConfigService(url);
     }
 
     private ConfigService buildConfigService(URL url) {
         Properties nacosProperties = buildNacosProperties(url);
-        group = url.getParameter(Constants.GROUP_KEY, "DEFAULT_GROUP");
-
         try {
             configService = NacosFactory.createConfigService(nacosProperties);
         } catch (NacosException e) {
