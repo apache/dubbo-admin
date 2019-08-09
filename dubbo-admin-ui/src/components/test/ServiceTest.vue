@@ -20,8 +20,7 @@
       <v-flex lg12>
         <breadcrumb title="serviceTest" :items="breads"></breadcrumb>
       </v-flex>
-      <v-layout row wrap>
-        <v-flex lg12>
+      <v-flex lg12>
           <v-card flat color="transparent">
             <v-card-text>
               <v-form>
@@ -45,29 +44,37 @@
             </v-card-text>
           </v-card>
         </v-flex>
-      </v-layout>
       <v-flex xs12>
-        <h3>{{$t('methods')}}</h3>
-      </v-flex>
-      <v-flex xs12>
-        <v-data-table :headers="headers" :items="methods" hide-actions class="elevation-1">
-          <template slot="items" slot-scope="props">
-            <td>{{ props.item.name }}</td>
-            <td><v-chip xs v-for="(type, index) in props.item.parameterTypes" :key="index" label>{{ type }}</v-chip></td>
-            <td><v-chip label>{{ props.item.returnType }}</v-chip></td>
-            <td class="text-xs-right">
-              <v-tooltip bottom>
-                <v-btn
-                  fab dark small color="blue" slot="activator"
-                  :href="getHref(props.item.application, props.item.service, props.item.signature)"
-                >
-                  <v-icon>edit</v-icon>
-                </v-btn>
-                <span>{{$t('test')}}</span>
-              </v-tooltip>
-            </td>
-          </template>
-        </v-data-table>
+        <v-card>
+          <v-toolbar flat color="transparent" class="elevation-0">
+            <v-toolbar-title><span class="headline">{{$t('methods')}}</span></v-toolbar-title>
+            <v-spacer></v-spacer>
+          </v-toolbar>
+          <v-card-text class="pa-0">
+            <v-data-table :headers="headers" :items="methods" hide-actions class="elevation-1">
+              <template slot="items" slot-scope="props">
+                <td>{{ props.item.name }}</td>
+                <td>
+                  <v-chip xs v-for="(type, index) in props.item.parameterTypes" :key="index" label>{{ type }}</v-chip>
+                </td>
+                <td>
+                  <v-chip label>{{ props.item.returnType }}</v-chip>
+                </td>
+                <td class="text-xs-right">
+                  <v-tooltip bottom>
+                    <v-btn
+                      fab dark small color="blue" slot="activator"
+                      :href="getHref(props.item.application, props.item.service, props.item.signature)"
+                    >
+                      <v-icon>edit</v-icon>
+                    </v-btn>
+                    <span>{{$t('test')}}</span>
+                  </v-tooltip>
+                </td>
+              </template>
+            </v-data-table>
+          </v-card-text>
+        </v-card>
       </v-flex>
     </v-layout>
   </v-container>
@@ -231,7 +238,7 @@
     mounted () {
       this.$store.dispatch('loadServiceItems')
       let query = this.$route.query
-      this.filter = query['service']
+      this.filter = query['service'] || ''
       if ('group' in query) {
         this.filter = query['group'] + '/' + this.filter
       }
@@ -241,6 +248,7 @@
       if (this.filter) {
         this.search(this.filter.replace('/', '*'))
       }
+      this.setHeaders()
     }
   }
 </script>
