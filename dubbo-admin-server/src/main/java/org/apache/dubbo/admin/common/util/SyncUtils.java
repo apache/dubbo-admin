@@ -33,6 +33,8 @@ public class SyncUtils {
 
     public static final String ID_FILTER_KEY = ".id";
 
+    public static final String COLON = ":";
+
     public static Provider url2Provider(Pair<String, URL> pair) {
         if (pair == null) {
             return null;
@@ -140,9 +142,18 @@ public class SyncUtils {
                 String value = e.getValue();
 
                 if (ADDRESS_FILTER_KEY.equals(key)) {
-                    if (!value.equals(url.getIp())) {
-                        match = false;
-                        break;
+                    // value is address:port
+                    if (value.contains(COLON)) {
+                        if (!value.equals(url.getIp() + COLON + url.getPort())) {
+                            match = false;
+                            break;
+                        }
+                    }
+                    else {  // value is just address
+                        if (!value.equals(url.getIp())) {
+                            match = false;
+                            break;
+                        }
                     }
                 } else {
                     if (!value.equals(url.getParameter(key))) {
