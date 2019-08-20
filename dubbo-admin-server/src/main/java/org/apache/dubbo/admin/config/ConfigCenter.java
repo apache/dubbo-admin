@@ -36,6 +36,7 @@ import org.springframework.context.annotation.DependsOn;
 
 import java.util.Arrays;
 
+import static org.apache.dubbo.common.constants.CommonConstants.CLUSTER_KEY;
 
 @Configuration
 public class ConfigCenter {
@@ -51,6 +52,9 @@ public class ConfigCenter {
 
     @Value("${admin.metadata-report.address:}")
     private String metadataAddress;
+
+    @Value("${admin.metadata-report.cluster:false}")
+    private boolean cluster;
 
     @Value("${admin.registry.group:dubbo}")
     private String registryGroup;
@@ -142,6 +146,7 @@ public class ConfigCenter {
         if (metadataUrl == null) {
             if (StringUtils.isNotEmpty(metadataAddress)) {
                 metadataUrl = formUrl(metadataAddress, metadataGroup, username, password);
+                metadataUrl = metadataUrl.addParameter(CLUSTER_KEY, cluster);
             }
         }
         if (metadataUrl != null) {

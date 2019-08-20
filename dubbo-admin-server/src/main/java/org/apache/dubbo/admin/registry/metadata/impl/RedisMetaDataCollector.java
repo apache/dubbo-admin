@@ -18,18 +18,38 @@
 package org.apache.dubbo.admin.registry.metadata.impl;
 
 
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+import org.apache.dubbo.rpc.RpcException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisCluster;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
+import java.util.HashSet;
+import java.util.Set;
+
+import static org.apache.dubbo.common.constants.CommonConstants.CLUSTER_KEY;
+import static org.apache.dubbo.common.constants.CommonConstants.COMMA_SPLIT_PATTERN;
+import static org.apache.dubbo.common.constants.CommonConstants.DEFAULT_TIMEOUT;
+import static org.apache.dubbo.common.constants.CommonConstants.TIMEOUT_KEY;
+import static org.apache.dubbo.metadata.identifier.MetadataIdentifier.META_DATA_STORE_TAG;
+
 public class RedisMetaDataCollector implements MetaDataCollector {
 
-    private  URL url;
+    private final static Logger logger = LoggerFactory.getLogger(RedisMetaDataCollector.class);
+    private URL url;
     private JedisPool pool;
     private static final String META_DATA_SOTRE_TAG = ".metaData";
+    Set<HostAndPort> jedisClusterNodes;
+    private int timeout;
+    private String password;
+
     @Override
     public void setUrl(URL url) {
         this.url = url;
@@ -42,7 +62,18 @@ public class RedisMetaDataCollector implements MetaDataCollector {
 
     @Override
     public void init() {
-        pool = new JedisPool(new JedisPoolConfig(), url.getHost(), url.getPort());
+        timeout = url.getParameter(TIMEOUT_KEY, DEFAULT_TIMEOUT);
+        password = url.getPassword();
+        if (url.getParameter(CLUSTER_KEY, false)) {
+            jedisClusterNodes = new HashSet<>();
+            String[] addresses = COMMA_SPLIT_PATTERN.split(url.getAddress());
+            for (String address : addresses) {
+                URL tmpUrl = url.setAddress(address);
+                jedisClusterNodes.add(new HostAndPort(tmpUrl.getHost(), tmpUrl.getPort()));
+            }
+        } else {
+            pool = new JedisPool(new JedisPoolConfig(), url.getHost(), url.getPort(), timeout, url.getPassword());
+        }
     }
 
     @Override
@@ -56,9 +87,22 @@ public class RedisMetaDataCollector implements MetaDataCollector {
     }
 
     private String doGetMetaData(MetadataIdentifier identifier) {
-        //TODO error handing
-        Jedis jedis = pool.getResource();
-        String result = jedis.get(identifier.getUniqueKey(MetadataIdentifier.KeyTypeEnum.UNIQUE_KEY) + META_DATA_SOTRE_TAG);
+        String result = null;
+        if (url.getParameter(CLUSTER_KEY, false)) {
+            try (JedisCluster jedisCluster = new JedisCluster(jedisClusterNodes, timeout, timeout, 2, password, new GenericObjectPoolConfig())) {
+                result = jedisCluster.get(identifier.getUniqueKey(MetadataIdentifier.KeyTypeEnum.UNIQUE_KEY) + META_DATA_STORE_TAG);
+            } catch (Throwable e) {
+                logger.error("Failed to get " + identifier + " from redis cluster, cause: " + e.getMessage(), e);
+                throw new RpcException("Failed to get " + identifier + " from redis cluster, cause: " + e.getMessage(), e);
+            }
+        } else {
+            try (Jedis jedis = pool.getResource()) {
+                result = jedis.get(identifier.getUniqueKey(MetadataIdentifier.KeyTypeEnum.UNIQUE_KEY) + META_DATA_SOTRE_TAG);
+            } catch (Throwable e) {
+                logger.error("Failed to get " + identifier + " from redis, cause: " + e.getMessage(), e);
+                throw new RpcException("Failed to get " + identifier + " from redis, cause: " + e.getMessage(), e);
+            }
+        }
         return result;
     }
 }
