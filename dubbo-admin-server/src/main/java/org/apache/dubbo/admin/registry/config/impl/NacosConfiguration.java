@@ -17,23 +17,27 @@
 
 package org.apache.dubbo.admin.registry.config.impl;
 
-import org.apache.commons.lang3.StringUtils;
-import org.apache.curator.framework.CuratorFramework;
-import org.apache.curator.framework.CuratorFrameworkFactory;
-import org.apache.curator.retry.ExponentialBackoffRetry;
-import org.apache.dubbo.admin.common.util.Constants;
+import java.util.Properties;
+
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.SPI;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
+import org.hibernate.internal.util.config.ConfigurationException;
 
-@SPI("zookeeper")
-public class ZookeeperConfiguration implements GovernanceConfiguration {
-    private static final Logger logger = LoggerFactory.getLogger(ZookeeperConfiguration.class);
-    private CuratorFramework zkClient;
+import com.alibaba.nacos.api.NacosFactory;
+import com.alibaba.nacos.api.config.ConfigService;
+import com.alibaba.nacos.api.exception.NacosException;
+
+import static com.alibaba.nacos.api.PropertyKeyConst.SERVER_ADDR;
+import static com.alibaba.nacos.api.PropertyKeyConst.NAMESPACE;
+
+@SPI("nacos")
+public class NacosConfiguration implements GovernanceConfiguration {
+    private static final Logger logger = LoggerFactory.getLogger(NacosConfiguration.class);
+    private ConfigService configService;
     private URL url;
-    private String root;
 
     @Override
     public void setUrl(URL url) {
@@ -50,21 +54,15 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
         if (url == null) {
             throw new IllegalStateException("server url is null, cannot init");
         }
-        CuratorFrameworkFactory.Builder zkClientBuilder = CuratorFrameworkFactory.builder().
-                connectString(url.getAddress()).
-                retryPolicy(new ExponentialBackoffRetry(1000, 3));
-        if (StringUtils.isNotEmpty(url.getUsername()) && StringUtils.isNotEmpty(url.getPassword())) {
-            // add authorization
-            String auth = url.getUsername() + ":" + url.getPassword();
-            zkClientBuilder.authorization("digest", auth.getBytes());
-        }
-        zkClient = zkClientBuilder.build();
-        String group = url.getParameter(Constants.GROUP_KEY, Constants.DEFAULT_ROOT);
-        if (!group.startsWith(Constants.PATH_SEPARATOR)) {
-            group = Constants.PATH_SEPARATOR + group;
-        }
-        root = group;
-        zkClient.start();
+        
+        Properties properties = new Properties();
+		properties.put(SERVER_ADDR, url.getAddress());
+		properties.put(NAMESPACE, url.getParameter(NAMESPACE, "public"));
+		try {
+			configService = NacosFactory.createConfigService(properties);
+		} catch (NacosException e) {
+			throw new ConfigurationException("nacos config start error", e);
+		}
     }
 
     @Override
@@ -87,12 +85,8 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
         if (key == null || value == null) {
             throw new IllegalArgumentException("key or value cannot be null");
         }
-        String path = getNodePath(key, group);
         try {
-            if (zkClient.checkExists().forPath(path) == null) {
-                zkClient.create().creatingParentsIfNeeded().forPath(path);
-            }
-            zkClient.setData().forPath(path, value.getBytes());
+        	configService.publishConfig(key, group, value);
             return value;
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
@@ -105,13 +99,8 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
         if (key == null) {
             throw new IllegalArgumentException("key cannot be null");
         }
-        String path = getNodePath(key, group);
-
         try {
-            if (zkClient.checkExists().forPath(path) == null) {
-                return null;
-            }
-            return new String(zkClient.getData().forPath(path));
+            return configService.getConfig(key, group, 5000);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
         }
@@ -123,9 +112,8 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
         if (key == null) {
             throw new IllegalArgumentException("key cannot be null");
         }
-        String path = getNodePath(key, group);
         try {
-            zkClient.delete().forPath(path);
+        	configService.removeConfig(key, group);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
             return false;
@@ -135,32 +123,13 @@ public class ZookeeperConfiguration implements GovernanceConfiguration {
 
     @Override
     public String getPath(String key) {
-        return getNodePath(key, null);
+        return null;
     }
 
     @Override
     public String getPath(String group, String key) {
-        return getNodePath(key, group);
+        return null;
     }
 
-    private String getNodePath(String path, String group) {
-        if (path == null) {
-            throw new IllegalArgumentException("path cannot be null");
-        }
-        return toRootDir(group) + path;
-    }
 
-    private String toRootDir(String group) {
-        if (group != null) {
-            if (!group.startsWith(Constants.PATH_SEPARATOR)) {
-                root = Constants.PATH_SEPARATOR + group;
-            } else {
-                root = group;
-            }
-        }
-        if (root.equals(Constants.PATH_SEPARATOR)) {
-            return root;
-        }
-        return root + Constants.PATH_SEPARATOR;
-    }
 }

@@ -19,8 +19,10 @@ package org.apache.dubbo.admin.registry.metadata.impl;
 
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.extension.SPI;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 
+@SPI("noOp")
 public class NoOpMetadataCollector implements MetaDataCollector {
 
     @Override

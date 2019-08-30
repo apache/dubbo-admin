@@ -1,0 +1,49 @@
+{
+    "parameters": {
+        "side": "provider",
+        "release": "2.7.0",
+        "methods": "sayHello",
+        "dubbo": "2.0.2",
+        "interface": "com.lls.lls.nacos.sample.service.api.provider.DemoProvider",
+        "qos.enable": "false",
+        "generic": "false",
+        "timeout": "60000",
+        "application": "lls-nacos-sample-service-dubbo",
+        "default.service.filter": "llsExceptionFilter,-exception",
+        "bean.name": "ServiceBean:com.lls.lls.nacos.sample.service.api.provider.DemoProvider",
+        "anyhost": "true"
+    },
+    "canonicalName": "com.lls.lls.nacos.sample.service.api.provider.DemoProvider",
+    "codeSource": "file:/D:/workspace-lls/lls-framework-samples/lls-nacos-sample/lls-nacos-sample-service-api/target/classes/",
+    "methods": [
+        {
+            "name": "sayHello",
+            "parameterTypes": [
+                "java.lang.String"
+            ],
+            "returnType": "java.lang.String"
+        }
+    ],
+    "types": [
+        {
+            "type": "byte"
+        },
+        {
+            "type": "int"
+        },
+        {
+            "type": "java.lang.String",
+            "properties": {
+                "coder": {
+                    "type": "byte"
+                },
+                "value": {
+                    "type": "byte[]"
+                },
+                "hash": {
+                    "type": "int"
+                }
+            }
+        }
+    ]
+}

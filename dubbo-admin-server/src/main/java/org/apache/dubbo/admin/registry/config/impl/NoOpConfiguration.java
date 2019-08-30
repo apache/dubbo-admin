@@ -19,7 +19,9 @@ package org.apache.dubbo.admin.registry.config.impl;
 
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.extension.SPI;
 
+@SPI("noOp")
 public class NoOpConfiguration implements GovernanceConfiguration {
 
     @Override

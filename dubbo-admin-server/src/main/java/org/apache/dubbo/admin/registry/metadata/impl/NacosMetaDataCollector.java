@@ -20,9 +20,11 @@ package org.apache.dubbo.admin.registry.metadata.impl;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.extension.SPI;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+import org.apache.dubbo.metadata.identifier.MetadataIdentifier.KeyTypeEnum;
 
 import com.alibaba.nacos.api.NacosFactory;
 import com.alibaba.nacos.api.config.ConfigService;
@@ -31,7 +33,9 @@ import com.alibaba.nacos.api.exception.NacosException;
 import java.util.Properties;
 
 import static com.alibaba.nacos.api.PropertyKeyConst.SERVER_ADDR;
+import static com.alibaba.nacos.api.PropertyKeyConst.NAMESPACE;
 
+@SPI("nacos")
 public class NacosMetaDataCollector implements MetaDataCollector {
     private static final Logger logger = LoggerFactory.getLogger(NacosMetaDataCollector.class);
     private ConfigService configService;
@@ -79,7 +83,9 @@ public class NacosMetaDataCollector implements MetaDataCollector {
                 ":" +
                 url.getPort() // Port
                 ;
+        String namespace = url.getParameter(NAMESPACE);
         properties.put(SERVER_ADDR, serverAddr);
+        properties.put(NAMESPACE, namespace);
     }
 
     @Override
@@ -94,11 +100,21 @@ public class NacosMetaDataCollector implements MetaDataCollector {
 
     private String getMetaData(MetadataIdentifier identifier) {
         try {
-            return configService.getConfig(identifier.getUniqueKey(MetadataIdentifier.KeyTypeEnum.UNIQUE_KEY),
+            return configService.getConfig(getUniqueKey(identifier, MetadataIdentifier.KeyTypeEnum.UNIQUE_KEY),
                     group, 1000 * 10);
         } catch (NacosException e) {
             logger.warn("Failed to get " + identifier + " from nacos, cause: " + e.getMessage(), e);
         }
         return null;
+    }
+
+    private String getUniqueKey(MetadataIdentifier identifier, KeyTypeEnum keyType) {
+    	String serviceInterface = identifier.getServiceInterface();
+    	String SEPARATOR = identifier.SEPARATOR;
+    	String version = identifier.getVersion();
+    	String group = identifier.getGroup();
+    	String side = identifier.getSide();
+    	String application = identifier.getApplication();
+        return serviceInterface + SEPARATOR + (version == null ? "" : version + SEPARATOR) + (group == null ? "" : group + SEPARATOR) + side + SEPARATOR + application;
     }
 }

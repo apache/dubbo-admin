@@ -21,6 +21,7 @@ package org.apache.dubbo.admin.registry.metadata.impl;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.extension.SPI;
 import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 import org.apache.dubbo.rpc.RpcException;
 import org.slf4j.Logger;
@@ -40,6 +41,7 @@ import static org.apache.dubbo.common.constants.CommonConstants.DEFAULT_TIMEOUT;
 import static org.apache.dubbo.common.constants.CommonConstants.TIMEOUT_KEY;
 import static org.apache.dubbo.metadata.identifier.MetadataIdentifier.META_DATA_STORE_TAG;
 
+@SPI("redis")
 public class RedisMetaDataCollector implements MetaDataCollector {
 
     private final static Logger logger = LoggerFactory.getLogger(RedisMetaDataCollector.class);
