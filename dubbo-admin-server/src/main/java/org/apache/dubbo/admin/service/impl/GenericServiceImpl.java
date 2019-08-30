@@ -17,37 +17,37 @@
 
 package org.apache.dubbo.admin.service.impl;
 
-import org.apache.dubbo.admin.common.util.Tool;
-import org.apache.dubbo.config.ApplicationConfig;
-import org.apache.dubbo.config.ReferenceConfig;
-import org.apache.dubbo.config.RegistryConfig;
-import org.apache.dubbo.registry.Registry;
-import org.apache.dubbo.rpc.service.GenericService;
-import org.springframework.stereotype.Component;
+import java.util.List;
 
 import javax.annotation.PostConstruct;
 
+import org.apache.dubbo.admin.common.util.Tool;
+import org.apache.dubbo.admin.model.domain.Provider;
+import org.apache.dubbo.admin.service.ProviderService;
+import org.apache.dubbo.config.ApplicationConfig;
+import org.apache.dubbo.config.ReferenceConfig;
+import org.apache.dubbo.rpc.service.GenericService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
 @Component
 public class GenericServiceImpl {
+    private ProviderService providerService;
     private ApplicationConfig applicationConfig;
-    private final Registry registry;
-
-    public GenericServiceImpl(Registry registry) {
-        this.registry = registry;
+    
+    @Autowired
+    public GenericServiceImpl(ProviderService providerService) {
+        this.providerService = providerService;
     }
 
     @PostConstruct
     public void init() {
-        RegistryConfig registryConfig = new RegistryConfig();
-        registryConfig.setAddress(registry.getUrl().getProtocol() + "://" + registry.getUrl().getAddress());
-        registryConfig.setGroup(registry.getUrl().getParameter("group"));
-
         applicationConfig = new ApplicationConfig();
         applicationConfig.setName("dubbo-admin");
-        applicationConfig.setRegistry(registryConfig);
     }
 
     public Object invoke(String service, String method, String[] parameterTypes, Object[] params) {
+    	List<Provider> providers = providerService.findByService(service);
 
         ReferenceConfig<GenericService> reference = new ReferenceConfig<>();
         String group = Tool.getGroup(service);
@@ -58,6 +58,7 @@ public class GenericServiceImpl {
         reference.setInterface(interfaze);
         reference.setVersion(version);
         reference.setGroup(group);
+        reference.setUrl(providers.get(0).getUrl()+"?generic=true&timeout=3000");
         GenericService genericService = reference.get();
 
         return genericService.$invoke(method, parameterTypes, params);

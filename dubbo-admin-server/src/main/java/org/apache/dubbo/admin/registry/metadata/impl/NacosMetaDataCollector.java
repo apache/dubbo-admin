@@ -17,6 +17,11 @@
 
 package org.apache.dubbo.admin.registry.metadata.impl;
 
+import static com.alibaba.nacos.api.PropertyKeyConst.NAMESPACE;
+import static com.alibaba.nacos.api.PropertyKeyConst.SERVER_ADDR;
+
+import java.util.Properties;
+
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
@@ -27,10 +32,6 @@ import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
 import com.alibaba.nacos.api.NacosFactory;
 import com.alibaba.nacos.api.config.ConfigService;
 import com.alibaba.nacos.api.exception.NacosException;
-
-import java.util.Properties;
-
-import static com.alibaba.nacos.api.PropertyKeyConst.SERVER_ADDR;
 
 public class NacosMetaDataCollector implements MetaDataCollector {
     private static final Logger logger = LoggerFactory.getLogger(NacosMetaDataCollector.class);
@@ -80,6 +81,7 @@ public class NacosMetaDataCollector implements MetaDataCollector {
                 url.getPort() // Port
                 ;
         properties.put(SERVER_ADDR, serverAddr);
+		properties.put(NAMESPACE, url.getParameter(NAMESPACE, "public"));
     }
 
     @Override
@@ -101,4 +103,5 @@ public class NacosMetaDataCollector implements MetaDataCollector {
         }
         return null;
     }
+
 }
