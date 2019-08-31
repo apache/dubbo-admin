@@ -66,7 +66,7 @@ public class ConfigCenter {
     @Value("${dubbo.registry.parameters.namespace:public}")
     private String registryNamespace;
 
-    @Value("${dubbo.config-center.parameters.namespace.group:public}")
+    @Value("${dubbo.config-center.parameters.namespace:public}")
     private String configCenterNamespace;
 
     @Value("${dubbo.metadata-report.parameters.namespace:public}")
