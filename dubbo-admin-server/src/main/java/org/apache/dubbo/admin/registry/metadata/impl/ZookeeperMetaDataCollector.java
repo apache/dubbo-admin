@@ -81,7 +81,7 @@ public class ZookeeperMetaDataCollector implements MetaDataCollector {
     private String doGetMetadata(MetadataIdentifier identifier) {
         //TODO error handing
         try {
-            String path = getNodePath(identifier);
+            String path = getNodePath(identifier)+"/service.data";
             if (client.checkExists().forPath(path) == null) {
                 return null;
             }
