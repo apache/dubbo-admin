@@ -16,21 +16,31 @@ public class ConfigCenterConfig extends org.apache.dubbo.config.ConfigCenterConf
 	private static final long serialVersionUID = 7920845503724712940L;
 
 	@Bean
-	DynamicConfiguration getDynamicConfiguration() {
+	public DynamicConfiguration getDynamicConfiguration() {
 		
 		DynamicConfiguration dynamicConfiguration = getDynamicConfiguration(super.toUrl());
 
 		String configContent = dynamicConfiguration.getProperties(super.getConfigFile(), super.getGroup());
+		
+		updateEnvironment(configContent);
+		
+		dynamicConfiguration.addListener(super.getConfigFile(), event -> {
+			updateEnvironment(event.getValue());
+		});
+        
+        return dynamicConfiguration;
 
+	}
+	
+	
+	private void updateEnvironment(String configContent) {
         try {
             Environment.getInstance().setConfigCenterFirst(super.isHighestPriority());
             Environment.getInstance().updateExternalConfigurationMap(parseProperties(configContent));
         } catch (IOException e) {
             throw new IllegalStateException("Failed to parse configurations from Config Center.", e);
         }
-        
-        return dynamicConfiguration;
-
+		
 	}
 
     private DynamicConfiguration getDynamicConfiguration(URL url) {

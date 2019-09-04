@@ -41,7 +41,9 @@ public class MetaDataCollectorConfig extends org.apache.dubbo.config.MetadataRep
 		if (StringUtils.isNotEmpty(getPassword())) {
 			url = url.setPassword(getPassword());
 		}
-		url = url.addParameter("namespace", getParameters().get("namespace"));
+		if (getParameters() != null ) {
+			url = url.addParameter("namespace", getParameters().get("namespace"));
+		}
 		return url;
 	}
 }

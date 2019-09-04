@@ -30,11 +30,11 @@ import org.springframework.context.annotation.Configuration;
 public class ConfigCenter {
 
 	@EnableDubboConfigBindings({
-			@EnableDubboConfigBinding(prefix = "admin.config-center", type = ConfigCenterConfig.class),
-			@EnableDubboConfigBinding(prefix = "admin.config-center", type = GovernanceConfigurationConfig.class),
-			@EnableDubboConfigBinding(prefix = "admin.application", type = ApplicationConfig.class),
-			@EnableDubboConfigBinding(prefix = "admin.registry", type = RegistryConfig.class),
-			@EnableDubboConfigBinding(prefix = "admin.metadata-report", type = MetaDataCollectorConfig.class), })
+			@EnableDubboConfigBinding(prefix = "dubbo.config-center", type = ConfigCenterConfig.class),
+			@EnableDubboConfigBinding(prefix = "dubbo.config-center", type = GovernanceConfigurationConfig.class),
+			@EnableDubboConfigBinding(prefix = "dubbo.application", type = ApplicationConfig.class),
+			@EnableDubboConfigBinding(prefix = "dubbo.registry", type = RegistryConfig.class),
+			@EnableDubboConfigBinding(prefix = "dubbo.metadata-report", type = MetaDataCollectorConfig.class), })
 	protected static class SingleDubboConfigConfiguration {
 	}
 

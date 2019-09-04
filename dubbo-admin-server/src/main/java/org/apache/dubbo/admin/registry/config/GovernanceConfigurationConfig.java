@@ -9,7 +9,7 @@ public class GovernanceConfigurationConfig extends org.apache.dubbo.config.Confi
 	private static final long serialVersionUID = -7036219290017247288L;
 	
 	@Bean
-	GovernanceConfiguration getGovernanceConfiguration() {
+	public GovernanceConfiguration getGovernanceConfiguration() {
 		URL configCenterUrl = super.toUrl();
 		GovernanceConfiguration dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class)
 				.getExtension(configCenterUrl.getProtocol());

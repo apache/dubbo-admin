@@ -42,7 +42,9 @@ public class RegistryConfig extends org.apache.dubbo.config.RegistryConfig {
 		if (StringUtils.isNotEmpty(getPassword())) {
 			url = url.setPassword(getPassword());
 		}
-		url = url.addParameter("namespace", getParameters().get("namespace"));
+		if (getParameters() != null ) {
+			url = url.addParameter("namespace", getParameters().get("namespace"));
+		}
 		return url;
 	}
 }
