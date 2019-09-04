@@ -18,30 +18,29 @@
 package org.apache.dubbo.admin.registry.metadata.impl;
 
 
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
-import org.apache.dubbo.common.URL;
-import org.apache.dubbo.common.extension.SPI;
-import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
-import org.apache.dubbo.rpc.RpcException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import redis.clients.jedis.HostAndPort;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisCluster;
-import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.JedisPoolConfig;
-
-import java.util.HashSet;
-import java.util.Set;
-
 import static org.apache.dubbo.common.constants.CommonConstants.CLUSTER_KEY;
 import static org.apache.dubbo.common.constants.CommonConstants.COMMA_SPLIT_PATTERN;
 import static org.apache.dubbo.common.constants.CommonConstants.DEFAULT_TIMEOUT;
 import static org.apache.dubbo.common.constants.CommonConstants.TIMEOUT_KEY;
 import static org.apache.dubbo.metadata.identifier.MetadataIdentifier.META_DATA_STORE_TAG;
 
-@SPI("redis")
+import java.util.HashSet;
+import java.util.Set;
+
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
+import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
+import org.apache.dubbo.common.URL;
+import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+import org.apache.dubbo.rpc.RpcException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import redis.clients.jedis.HostAndPort;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisCluster;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
+
 public class RedisMetaDataCollector implements MetaDataCollector {
 
     private final static Logger logger = LoggerFactory.getLogger(RedisMetaDataCollector.class);

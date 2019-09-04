@@ -17,14 +17,13 @@
 
 package org.apache.dubbo.admin.registry.config.impl;
 
-import com.ctrip.framework.apollo.openapi.client.ApolloOpenApiClient;
-import com.ctrip.framework.apollo.openapi.dto.OpenItemDTO;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
 import org.apache.dubbo.common.URL;
-import org.apache.dubbo.common.extension.SPI;
 import org.springframework.beans.factory.annotation.Value;
 
-@SPI("apollo")
+import com.ctrip.framework.apollo.openapi.client.ApolloOpenApiClient;
+import com.ctrip.framework.apollo.openapi.dto.OpenItemDTO;
+
 public class ApolloConfiguration implements GovernanceConfiguration {
 
     @Value("${admin.apollo.token}")
