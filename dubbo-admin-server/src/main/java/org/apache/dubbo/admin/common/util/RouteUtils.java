@@ -169,7 +169,7 @@ public class RouteUtils {
     public static RouteUtils parse(String whenRule, String thenRule) throws ParseException {
         /*if (whenRule == null || whenRule.trim().length() == 0) {
             throw new ParseException("Illegal route rule without when express", 0);
-    	}*/
+        }*/
         if (thenRule == null || thenRule.trim().length() == 0) {
             throw new ParseException("Illegal route rule without then express", 0);
         }

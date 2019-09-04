@@ -94,21 +94,21 @@ public class ConfigCenterTest {
     
     @Test
     public void testDynamicConfiguration() throws Exception {
-    	
-    	getDynamicConfiguration();
+        
+        getDynamicConfiguration();
         String configfile = configCenterConfig.getConfigFile();
-		dynamicConfiguration.addListener(configfile, event -> {
-	        Registry registry = registryConfig.configCenterRegistry(dynamicConfiguration);
-	        URL registryUrl = registry.getUrl();
-	        assertNotNull(registryUrl);
-	        assertEquals("127.0.0.1", registryUrl.getHost());
-		});
-		
-		dynamicConfiguration.addListener(configfile, event -> {
-	        MetaDataCollector metaDataCollector = metaDataCollectorConfig.configCenterMetaDataCollector(dynamicConfiguration);
-	        URL metadataUrl = metaDataCollector.getUrl();
-	        assertEquals("127.0.0.1", metadataUrl.getHost());
-		});
+        dynamicConfiguration.addListener(configfile, event -> {
+            Registry registry = registryConfig.configCenterRegistry(dynamicConfiguration);
+            URL registryUrl = registry.getUrl();
+            assertNotNull(registryUrl);
+            assertEquals("127.0.0.1", registryUrl.getHost());
+        });
+        
+        dynamicConfiguration.addListener(configfile, event -> {
+            MetaDataCollector metaDataCollector = metaDataCollectorConfig.configCenterMetaDataCollector(dynamicConfiguration);
+            URL metadataUrl = metaDataCollector.getUrl();
+            assertEquals("127.0.0.1", metadataUrl.getHost());
+        });
         zkClient.setData().forPath("/dubbo/config/dubbo/dubbo.properties", getPropertiesContent().getBytes());
         
         Thread.sleep(2000);
@@ -123,7 +123,7 @@ public class ConfigCenterTest {
     @Test
     public void testStaticConfiguration() {
 
-    	registryConfig.setAddress(zkAddress);
+        registryConfig.setAddress(zkAddress);
         Registry registry = registryConfig.registry();
         URL registryUrl = registry.getUrl();
         assertNotNull(registryUrl);
@@ -133,12 +133,12 @@ public class ConfigCenterTest {
         MetaDataCollector metaDataCollector = metaDataCollectorConfig.metaDataCollector();
         URL metadataUrl = metaDataCollector.getUrl();
         assertEquals("127.0.0.1", metadataUrl.getHost());
-    	
+        
     }
 
     
     private String getPropertiesContent() {
-    	return "dubbo.registry.address=" + zkAddress + "\n" +
-    	"dubbo.metadata-report.address=" + zkAddress + "\n";
+        return "dubbo.registry.address=" + zkAddress + "\n" +
+        "dubbo.metadata-report.address=" + zkAddress + "\n";
     }
 }

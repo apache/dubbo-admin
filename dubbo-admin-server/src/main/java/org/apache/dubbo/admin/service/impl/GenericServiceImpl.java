@@ -47,7 +47,7 @@ public class GenericServiceImpl {
     }
 
     public Object invoke(String service, String method, String[] parameterTypes, Object[] params) {
-    	List<Provider> providers = providerService.findByService(service);
+        List<Provider> providers = providerService.findByService(service);
 
         ReferenceConfig<GenericService> reference = new ReferenceConfig<>();
         String group = Tool.getGroup(service);

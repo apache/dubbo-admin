@@ -23,11 +23,11 @@ import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 
 @SpringBootApplication(exclude={
-		DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class
+        DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class
 })
 public class DubboAdminApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(DubboAdminApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(DubboAdminApplication.class, args);
+    }
 }

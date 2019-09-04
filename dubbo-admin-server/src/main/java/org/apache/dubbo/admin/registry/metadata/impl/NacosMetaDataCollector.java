@@ -81,7 +81,7 @@ public class NacosMetaDataCollector implements MetaDataCollector {
                 url.getPort() // Port
                 ;
         properties.put(SERVER_ADDR, serverAddr);
-		properties.put(NAMESPACE, url.getParameter(NAMESPACE, "public"));
+        properties.put(NAMESPACE, url.getParameter(NAMESPACE, "public"));
     }
 
     @Override

@@ -54,13 +54,13 @@ public class NacosConfiguration implements GovernanceConfiguration {
         }
         
         Properties properties = new Properties();
-		properties.put(SERVER_ADDR, url.getAddress());
-		properties.put(NAMESPACE, url.getParameter(NAMESPACE, "public"));
-		try {
-			configService = NacosFactory.createConfigService(properties);
-		} catch (NacosException e) {
-			throw new ConfigurationException("nacos config start error", e);
-		}
+        properties.put(SERVER_ADDR, url.getAddress());
+        properties.put(NAMESPACE, url.getParameter(NAMESPACE, "public"));
+        try {
+            configService = NacosFactory.createConfigService(properties);
+        } catch (NacosException e) {
+            throw new ConfigurationException("nacos config start error", e);
+        }
     }
 
     @Override
@@ -84,7 +84,7 @@ public class NacosConfiguration implements GovernanceConfiguration {
             throw new IllegalArgumentException("key or value cannot be null");
         }
         try {
-        	configService.publishConfig(key, group, value);
+            configService.publishConfig(key, group, value);
             return value;
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
@@ -111,7 +111,7 @@ public class NacosConfiguration implements GovernanceConfiguration {
             throw new IllegalArgumentException("key cannot be null");
         }
         try {
-        	configService.removeConfig(key, group);
+            configService.removeConfig(key, group);
         } catch (Exception e) {
             logger.error(e.getMessage(), e);
             return false;

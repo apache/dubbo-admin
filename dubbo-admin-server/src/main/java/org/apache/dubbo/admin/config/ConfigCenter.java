@@ -29,13 +29,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class ConfigCenter {
 
-	@EnableDubboConfigBindings({
-			@EnableDubboConfigBinding(prefix = "dubbo.config-center", type = ConfigCenterConfig.class),
-			@EnableDubboConfigBinding(prefix = "dubbo.config-center", type = GovernanceConfigurationConfig.class),
-			@EnableDubboConfigBinding(prefix = "dubbo.application", type = ApplicationConfig.class),
-			@EnableDubboConfigBinding(prefix = "dubbo.registry", type = RegistryConfig.class),
-			@EnableDubboConfigBinding(prefix = "dubbo.metadata-report", type = MetaDataCollectorConfig.class), })
-	protected static class SingleDubboConfigConfiguration {
-	}
+    @EnableDubboConfigBindings({
+            @EnableDubboConfigBinding(prefix = "dubbo.config-center", type = ConfigCenterConfig.class),
+            @EnableDubboConfigBinding(prefix = "dubbo.config-center", type = GovernanceConfigurationConfig.class),
+            @EnableDubboConfigBinding(prefix = "dubbo.application", type = ApplicationConfig.class),
+            @EnableDubboConfigBinding(prefix = "dubbo.registry", type = RegistryConfig.class),
+            @EnableDubboConfigBinding(prefix = "dubbo.metadata-report", type = MetaDataCollectorConfig.class), })
+    protected static class SingleDubboConfigConfiguration {
+    }
 
 }
