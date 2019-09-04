@@ -29,13 +29,11 @@
     <artifactId>dubbo-admin-distribution</artifactId>
 
     <dependencies>
-    <!-- 
         <dependency>
             <groupId>org.apache</groupId>
             <artifactId>dubbo-admin-ui</artifactId>
             <version>${project.version}</version>
         </dependency>
-     -->
         <dependency>
             <groupId>org.apache</groupId>
             <artifactId>dubbo-admin-server</artifactId>
