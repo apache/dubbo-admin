@@ -168,12 +168,18 @@ public class NacosConfiguration implements GovernanceConfiguration {
         if (split.length != 3) {
             return null;
         }
-        if (this.group.equals(split[1])) {
-            groupAndDataId[0] = this.group;
+        if (Constants.DUBBO_PROPERTY.equals(split[2])) {
+
+            if (this.group.equals(split[1])) {
+                groupAndDataId[0] = this.group;
+            } else {
+                groupAndDataId[0] = split[1];
+            }
+            groupAndDataId[1] = split[2];
         } else {
-            groupAndDataId[0] = split[1];
+            groupAndDataId[0] = group;
+            groupAndDataId[1] = split[1] + Constants.PUNCTUATION_POINT + split[2];
         }
-        groupAndDataId[1] = split[2];
         return groupAndDataId;
     }
 }
