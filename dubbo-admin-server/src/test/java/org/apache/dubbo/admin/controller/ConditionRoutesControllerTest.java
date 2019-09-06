@@ -37,15 +37,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.Matchers.*;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.when;
 
 public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest {
@@ -118,7 +111,7 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
         + "priority: 0\n"
         + "runtime: false\n"
         + "scope: service";
-    String path = "/dubbo/config/" + service + "/condition-router";
+    String path = "/dubbo/config/dubbo/" + service + ".condition-router";
     zkClient.create().creatingParentContainersIfNeeded().forPath(path);
     zkClient.setData().forPath(path, content.getBytes());
 
@@ -152,7 +145,7 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
         + "priority: 0\n"
         + "runtime: false\n"
         + "scope: service";
-    String path = "/dubbo/config/" + service + "/condition-router";
+    String path = "/dubbo/config/dubbo/" + service + ".condition-router";
     zkClient.create().creatingParentContainersIfNeeded().forPath(path);
     zkClient.setData().forPath(path, content.getBytes());
 
@@ -183,7 +176,7 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
         + "priority: 0\n"
         + "runtime: false\n"
         + "scope: service";
-    String path = "/dubbo/config/" + service + "/condition-router";
+    String path = "/dubbo/config/dubbo/" + service + ".condition-router";
     zkClient.create().creatingParentContainersIfNeeded().forPath(path);
     zkClient.setData().forPath(path, content.getBytes());
 
@@ -218,7 +211,7 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
         + "priority: 0\n"
         + "runtime: false\n"
         + "scope: service";
-    String path = "/dubbo/config/" + service + "/condition-router";
+    String path = "/dubbo/config/dubbo/" + service + ".condition-router";
     zkClient.create().creatingParentContainersIfNeeded().forPath(path);
     zkClient.setData().forPath(path, content.getBytes());
 
@@ -245,7 +238,7 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
         + "priority: 0\n"
         + "runtime: false\n"
         + "scope: service";
-    String path = "/dubbo/config/" + service + "/condition-router";
+    String path = "/dubbo/config/dubbo/" + service + ".condition-router";
     zkClient.create().creatingParentContainersIfNeeded().forPath(path);
     zkClient.setData().forPath(path, content.getBytes());
 
@@ -274,7 +267,7 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
         + "priority: 0\n"
         + "runtime: false\n"
         + "scope: service";
-    String path = "/dubbo/config/" + service + "/condition-router";
+    String path = "/dubbo/config/dubbo/" + service + ".condition-router";
     zkClient.create().creatingParentContainersIfNeeded().forPath(path);
     zkClient.setData().forPath(path, content.getBytes());
 

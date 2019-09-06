@@ -329,9 +329,9 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
     private String getPath(String key, String type) {
         key = key.replace("/", "*");
         if (type.equals(Constants.CONDITION_ROUTE)) {
-            return prefix + Constants.PATH_SEPARATOR + key + Constants.PATH_SEPARATOR + "condition-router";
+            return prefix + Constants.PATH_SEPARATOR + key + Constants.CONDITION_RULE_SUFFIX;
         } else {
-            return prefix + Constants.PATH_SEPARATOR + key + Constants.PATH_SEPARATOR + "tag-router";
+            return prefix + Constants.PATH_SEPARATOR + key + Constants.TAG_RULE_SUFFIX;
         }
     }
 
