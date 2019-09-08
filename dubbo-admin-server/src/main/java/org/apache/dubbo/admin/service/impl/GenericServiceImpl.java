@@ -58,6 +58,7 @@ public class GenericServiceImpl {
         reference.setInterface(interfaze);
         reference.setVersion(version);
         reference.setGroup(group);
+        reference.setGeneric(org.apache.dubbo.rpc.Constants.GENERIC_SERIALIZATION_DEFAULT);
         GenericService genericService = reference.get();
 
         return genericService.$invoke(method, parameterTypes, params);
