@@ -37,6 +37,7 @@ public class Constants {
     public static final String CONDITION_ROUTE = "condition_route";
     public static final String CONDITION_RULE_SUFFIX = ".condition-router";
     public static final String CONFIGURATOR = "configurators";
+    public static final String CONFIGURATOR_RULE_SUFFIX = ".configurators";
     public static final String TAG_ROUTE = "tag_route";
     public static final String TAG_RULE_SUFFIX = ".tag-router";
     public static final String COMPATIBLE_CONFIG = "compatible_config";
