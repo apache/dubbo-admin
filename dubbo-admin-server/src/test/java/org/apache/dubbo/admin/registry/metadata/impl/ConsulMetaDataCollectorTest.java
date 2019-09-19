@@ -22,7 +22,6 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.pszymczyk.consul.ConsulProcess;
 import com.pszymczyk.consul.ConsulStarterBuilder;
-import org.apache.dubbo.common.Constants;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.metadata.definition.ServiceDefinitionBuilder;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
@@ -39,6 +38,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static org.apache.dubbo.common.constants.CommonConstants.CONSUMER_SIDE;
+import static org.apache.dubbo.common.constants.CommonConstants.PROVIDER_SIDE;
 
 public class ConsulMetaDataCollectorTest {
 
@@ -114,7 +116,7 @@ public class ConsulMetaDataCollectorTest {
         identifier.setApplication(String.format("metadata-%s-test", isProducer ? "provider" : "consumer"));
         identifier.setGroup("group");
         identifier.setServiceInterface(ServiceA.class.getName());
-        identifier.setSide(isProducer ? Constants.PROVIDER_SIDE : Constants.CONSUMER_SIDE);
+        identifier.setSide(isProducer ? PROVIDER_SIDE : CONSUMER_SIDE);
         identifier.setVersion("1.0.0");
         return identifier;
     }
