@@ -21,6 +21,7 @@ import org.apache.dubbo.admin.AbstractSpringIntegrationTest;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.ConfigDTO;
 import org.apache.dubbo.admin.service.ProviderService;
+import org.apache.dubbo.common.utils.StringUtils;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -36,8 +37,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static org.hamcrest.Matchers.hasSize;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.when;
 
 public class ManagementControllerTest extends AbstractSpringIntegrationTest {
@@ -64,11 +64,11 @@ public class ManagementControllerTest extends AbstractSpringIntegrationTest {
     assertEquals(responseEntity.getStatusCode(), HttpStatus.CREATED);
     assertEquals(responseEntity.getBody(), true);
 
-    byte[] bytes = zkClient.getData().forPath(getPath("dubbo"));
+    byte[] bytes = zkClient.getData().forPath(getPath(""));
     String config = new String(bytes);
     assertEquals(configDTO.getConfig(), config);
 
-    zkClient.delete().forPath(getPath("dubbo"));
+    zkClient.delete().forPath(getPath(""));
   }
 
   @Test
@@ -188,7 +188,7 @@ public class ManagementControllerTest extends AbstractSpringIntegrationTest {
   }
 
   private String getPath(String key) {
-    return "/dubbo/" + Constants.CONFIG_KEY + Constants.PATH_SEPARATOR + key + Constants.PATH_SEPARATOR
-        + Constants.DUBBO_PROPERTY;
+    key =  StringUtils.isNotEmpty(key) ? key + Constants.PATH_SEPARATOR  + Constants.DUBBO_PROPERTY : Constants.DUBBO_PROPERTY;
+    return "/dubbo/" + Constants.CONFIG_KEY + Constants.PATH_SEPARATOR + key;
   }
 }
