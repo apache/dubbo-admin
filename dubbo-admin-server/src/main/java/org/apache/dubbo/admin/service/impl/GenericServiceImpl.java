@@ -52,16 +52,20 @@ public class GenericServiceImpl {
         ReferenceConfig<GenericService> reference = new ReferenceConfig<>();
         String group = Tool.getGroup(service);
         String version = Tool.getVersion(service);
-        String interfaze = Tool.getInterface(service);
+        String intf = Tool.getInterface(service);
         reference.setGeneric(true);
         reference.setApplication(applicationConfig);
-        reference.setInterface(interfaze);
+        reference.setInterface(intf);
         reference.setVersion(version);
         reference.setGroup(group);
-        removeGenericSymbol(parameterTypes);
-        GenericService genericService = reference.get();
 
-        return genericService.$invoke(method, parameterTypes, params);
+        try {
+            removeGenericSymbol(parameterTypes);
+            GenericService genericService = reference.get();
+            return genericService.$invoke(method, parameterTypes, params);
+        } finally {
+            reference.destroy();
+        }
     }
 
     /**
