@@ -64,7 +64,9 @@
 		<netty-version>4.1.30.Final</netty-version>
 		<jacoco-version>0.8.2</jacoco-version>
 		<jedis-version>2.9.0</jedis-version>
-		<apollo-version>1.2.0</apollo-version>
+    <apollo-version>1.2.0</apollo-version>
+		<consul-version>1.4.2</consul-version>
+		<consul-embedded-version>2.0.0</consul-embedded-version>
 		<nacos-version>1.0.0</nacos-version>
 		<guava-version>20.0</guava-version>
 		<snakeyaml-version>1.24</snakeyaml-version>
@@ -173,11 +175,21 @@
 			</dependency>
 
 			<dependency>
+				<groupId>com.ecwid.consul</groupId>
+				<artifactId>consul-api</artifactId>
+				<version>${consul-version}</version>
+			</dependency>
+			<dependency>
+				<groupId>com.pszymczyk.consul</groupId>
+				<artifactId>embedded-consul</artifactId>
+				<version>${consul-embedded-version}</version>
+			</dependency>
+          
+ 			<dependency> 
 				<groupId>com.google.guava</groupId>
 				<artifactId>guava</artifactId>
 				<version>${guava-version}</version>
 			</dependency>
-
 		</dependencies>
 	</dependencyManagement>
 
