@@ -1,4 +1,3 @@
-#
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -13,20 +12,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
 
-# centers in dubbo2.7
-admin.registry.address=zookeeper://127.0.0.1:2181
-admin.config-center=zookeeper://127.0.0.1:2181
-admin.metadata-report.address=zookeeper://127.0.0.1:2181
+version: '3'
 
-#group
-admin.registry.group=dubbo
-admin.config-center.group=dubbo
-admin.metadata-report.group=dubbo
-
-admin.apollo.token=e16e5cd903fd0c97a116c873b448544b9d086de9
-admin.apollo.appId=test
-admin.apollo.env=dev
-admin.apollo.cluster=default
-admin.apollo.namespace=dubbo
+services:
+  zookeeper:
+    image: zookeeper
+    ports:
+      - 2181:2181
+  admin:
+    image: apache/dubbo-admin
+    depends_on:
+      - zookeeper
+    ports:
+      - 8080
+    environment:
+      - admin.registry.address=zookeeper://zookeeper:2181
+      - admin.config-center=zookeeper://zookeeper:2181
+      - admin.metadata-report.address=zookeeper://zookeeper:2181

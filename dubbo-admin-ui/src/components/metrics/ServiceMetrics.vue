@@ -343,12 +343,20 @@
         let url = '/metrics/ipAddr/?ip=' + filter + '&group=dubbo'
         this.$axios.get(url)
           .then(response => {
+            if (!response) {
+              throw new Error('ServerError')
+            }
             if (!response.data) {
               return
             }
             this.dealNormal(response.data)
             this.dealMajor(response.data)
             this.dealThreadPoolData(response.data)
+          })
+          .catch(error => {
+            if (error.message === 'ServerError') {
+              clearInterval(this.searchTimer)
+            }
           })
       },
       dealThreadPoolData: function (data) {
@@ -496,10 +504,13 @@
       if (filter !== null) {
         this.filter = filter
         this.searchByIp(this.filter, false)
+        if (this.searchTimer !== null) {
+          clearInterval(this.searchTimer)
+        }
+        this.searchTimer = setInterval(() => {
+          this.searchByIp(this.filter, false)
+        }, 5000)
       }
-      setInterval(() => {
-        this.searchByIp(this.filter, false)
-      }, 5000)
     }
   }
 </script>
