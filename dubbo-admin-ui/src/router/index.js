@@ -29,6 +29,7 @@ import Overrides from '@/components/governance/Overrides'
 import ServiceTest from '@/components/test/ServiceTest'
 import ServiceMock from '@/components/test/ServiceMock'
 import ServiceMetrics from '@/components/metrics/ServiceMetrics'
+import ServiceRelation from '@/components/metrics/ServiceRelation'
 import Management from '@/components/Management'
 
 Vue.use(Router)
@@ -90,9 +91,14 @@ export default new Router({
       component: ServiceMock
     },
     {
-      path: '/metrics',
+      path: '/metrics/index',
       name: 'ServiceMetrics',
       component: ServiceMetrics
+    },
+    {
+      path: '/metrics/relation',
+      name: 'ServiceRelation',
+      component: ServiceRelation
     },
     {
       path: '/management',
