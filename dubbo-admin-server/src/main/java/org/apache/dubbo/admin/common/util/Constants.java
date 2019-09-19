@@ -28,7 +28,7 @@ public class Constants {
     public static final String DEFAULT_ROOT = "dubbo";
     public static final String PATH_SEPARATOR = "/";
     public static final String GROUP_KEY = "group";
-    public static final String CONFIG_KEY = "config/dubbo";
+    public static final String CONFIG_KEY = "config" + PATH_SEPARATOR + "dubbo";
     public static final String DUBBO_PROPERTY = "dubbo.properties";
     public static final String PROVIDER_SIDE = "provider";
     public static final String CONSUMER_SIDE = "consumer";
