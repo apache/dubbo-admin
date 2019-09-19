@@ -51,7 +51,6 @@
 <script>
   import JsonEditor from '@/components/public/JsonEditor'
   import Breadcrumb from '@/components/public/Breadcrumb'
-  import axios from 'axios'
   import set from 'lodash/set'
   import util from '@/util'
 
@@ -60,11 +59,9 @@
     components: {
       JsonEditor,
       Breadcrumb,
-      axios
     },
     data () {
       return {
-        baseURL: '/api/dev',
         success: null,
         breads: [
           {
@@ -98,7 +95,7 @@
           parameterTypes: this.method.parameterTypes,
           params: this.method.json
         }
-        axios.post(this.baseURL + '/test', serviceTestDTO)
+        this.$axios.post('/test', serviceTestDTO)
           .then(response => {
             if (response && response.status === 200) {
               this.success = true
