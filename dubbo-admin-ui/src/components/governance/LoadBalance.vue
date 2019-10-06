@@ -319,19 +319,23 @@
       },
       submit: function () {
         this.filter = document.querySelector('#serviceSearch').value.trim()
-        this.search(this.filter, true)
+        this.search(true)
       },
-      search: function (filter, rewrite) {
+      search: function (rewrite) {
+        if (!this.filter) {
+          this.$notify.error('Either service or application is needed')
+          return
+        }
         let type = this.items[this.selected].value
-        let url = '/rules/balancing/?' + type + '=' + filter
+        let url = '/rules/balancing/?' + type + '=' + this.filter
         this.$axios.get(url)
           .then(response => {
             this.loadBalances = response.data
             if (rewrite) {
               if (this.selected === 0) {
-                this.$router.push({path: 'loadbalance', query: {service: filter}})
+                this.$router.push({path: 'loadbalance', query: {service: this.filter}})
               } else if (this.selected === 1) {
-                this.$router.push({path: 'loadbalance', query: {application: filter}})
+                this.$router.push({path: 'loadbalance', query: {application: this.filter}})
               }
             }
           })
@@ -364,6 +368,10 @@
           this.$notify.error('Either service or application is needed')
           return
         }
+        if (this.service && this.application) {
+          this.$notify.error('You can not set both service ID and application name')
+          return
+        }
         let vm = this
         balancing.service = this.service
         balancing.application = this.application
@@ -379,12 +387,12 @@
                 if (response.status === 200) {
                   if (vm.service) {
                     vm.selected = 0
-                    vm.search(vm.service, true)
                     vm.filter = vm.service
+                    vm.search(true)
                   } else {
                     vm.selected = 1
-                    vm.search(vm.application, true)
                     vm.filter = vm.application
+                    vm.search(true)
                   }
                   this.closeDialog()
                   this.$notify.success('Update success')
@@ -397,12 +405,12 @@
               if (response.status === 201) {
                 if (vm.service) {
                   vm.selected = 0
-                  vm.search(vm.service, true)
                   vm.filter = vm.service
+                  vm.search(true)
                 } else {
                   vm.selected = 1
-                  vm.search(vm.application, true)
                   vm.filter = vm.application
+                  vm.search(true)
                 }
                 this.closeDialog()
                 this.$notify.success('Create success')
@@ -438,7 +446,7 @@
               })
             break
           case 'delete':
-            this.openWarn(' Are you sure to Delete Routing Rule', 'service: ' + itemId)
+            this.openWarn('warnDeleteBalancing', 'service: ' + itemId)
             this.warnStatus.operation = 'delete'
             this.warnStatus.id = itemId
         }
@@ -463,7 +471,7 @@
           .then(response => {
             if (response.status === 200) {
               this.warn = false
-              this.search(this.filter, false)
+              this.search(false)
               this.$notify.success('Delete success')
             }
           })
@@ -520,7 +528,7 @@
       })
       if (filter !== null) {
         this.filter = filter
-        this.search(filter, false)
+        this.search(false)
       }
     }
 

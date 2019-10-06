@@ -40,6 +40,7 @@ public class GenericServiceImpl {
     public void init() {
         RegistryConfig registryConfig = new RegistryConfig();
         registryConfig.setAddress(registry.getUrl().getProtocol() + "://" + registry.getUrl().getAddress());
+        registryConfig.setGroup(registry.getUrl().getParameter("group"));
 
         applicationConfig = new ApplicationConfig();
         applicationConfig.setName("dubbo-admin");
@@ -51,14 +52,33 @@ public class GenericServiceImpl {
         ReferenceConfig<GenericService> reference = new ReferenceConfig<>();
         String group = Tool.getGroup(service);
         String version = Tool.getVersion(service);
-        String interfaze = Tool.getInterface(service);
+        String intf = Tool.getInterface(service);
         reference.setGeneric(true);
         reference.setApplication(applicationConfig);
-        reference.setInterface(interfaze);
+        reference.setInterface(intf);
         reference.setVersion(version);
         reference.setGroup(group);
-        GenericService genericService = reference.get();
 
-        return genericService.$invoke(method, parameterTypes, params);
+        try {
+            removeGenericSymbol(parameterTypes);
+            GenericService genericService = reference.get();
+            return genericService.$invoke(method, parameterTypes, params);
+        } finally {
+            reference.destroy();
+        }
+    }
+
+    /**
+     * remove generic from parameterTypes
+     *
+     * @param parameterTypes
+     */
+    private void removeGenericSymbol(String[] parameterTypes){
+        for (int i = 0; i < parameterTypes.length; i++) {
+            int index = parameterTypes[i].indexOf("<");
+            if (index > -1) {
+                parameterTypes[i] = parameterTypes[i].substring(0, index);
+            }
+        }
     }
 }

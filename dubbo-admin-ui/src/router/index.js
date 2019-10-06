@@ -29,6 +29,7 @@ import Overrides from '@/components/governance/Overrides'
 import ServiceTest from '@/components/test/ServiceTest'
 import ServiceMock from '@/components/test/ServiceMock'
 import ServiceMetrics from '@/components/metrics/ServiceMetrics'
+import ServiceRelation from '@/components/metrics/ServiceRelation'
 import Management from '@/components/Management'
 import Index from '@/Index'
 import Login from '@/Login'
@@ -134,9 +135,17 @@ export default new Router({
           }
         },
         {
-          path: '/metrics',
+          path: '/metrics/index',
           name: 'ServiceMetrics',
           component: ServiceMetrics,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/metrics/relation',
+          name: 'ServiceRelation',
+          component: ServiceRelation,
           meta: {
             requireLogin: true
           }
@@ -157,5 +166,6 @@ export default new Router({
         requireLogin: false
       }
     }
+
   ]
 })

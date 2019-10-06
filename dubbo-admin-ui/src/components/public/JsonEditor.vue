@@ -90,4 +90,7 @@
     width: 100%;
     height: 100%;
   }
+  >>> .ace_gutter {
+    z-index: auto;
+  }
 </style>

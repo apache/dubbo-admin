@@ -230,7 +230,7 @@ public class RouteUtils {
                 existRule.setKey(conditionRoute.getApplication());
                 existRule.setScope(Constants.APPLICATION);
             } else {
-                existRule.setKey(conditionRoute.getService());
+                existRule.setKey(conditionRoute.getService().replace("/", "*"));
                 existRule.setScope(Constants.SERVICE);
             }
         }

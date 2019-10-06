@@ -16,11 +16,12 @@
  */
 package org.apache.dubbo.admin.model.adapter;
 
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.BalancingDTO;
 import org.apache.dubbo.admin.model.store.OverrideConfig;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class BalancingDTO2OverrideConfigAdapter extends OverrideConfig {
   public BalancingDTO2OverrideConfigAdapter(BalancingDTO balancingDTO) {

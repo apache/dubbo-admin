@@ -1,8 +1,8 @@
 # Dubbo Admin
 
-[![Build Status](https://travis-ci.org/apache/incubator-dubbo-admin.svg?branch=develop)](https://travis-ci.org/apache/incubator-dubbo-admin)
-[![codecov](https://codecov.io/gh/apache/incubator-dubbo-admin/branch/develop/graph/badge.svg)](https://codecov.io/gh/apache/incubator-dubbo-admin)
-![license](https://img.shields.io/github/license/apache/incubator-dubbo-admin.svg)
+[![Build Status](https://travis-ci.org/apache/dubbo-admin.svg?branch=develop)](https://travis-ci.org/apache/dubbo-admin)
+[![codecov](https://codecov.io/gh/apache/dubbo-admin/branch/develop/graph/badge.svg)](https://codecov.io/gh/apache/dubbo-admin)
+![license](https://img.shields.io/github/license/apache/dubbo-admin.svg)
 
 [中文说明](README_ZH.md)
 ### Demo Address
@@ -10,10 +10,10 @@
 * this demo is the latest version of `develop` branch, you can try it before building from source code
 ### Screenshot
 
-![index](https://raw.githubusercontent.com/apache/incubator-dubbo-admin/develop/doc/images/index.png)
+![index](https://raw.githubusercontent.com/apache/dubbo-admin/develop/doc/images/index.png)
 
 ### Service Governance  
-service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.6, please refer to [here](https://github.com/apache/incubator-dubbo-admin/wiki/The-compatibility-of-service-governance)
+service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.6, please refer to [here](https://github.com/apache/dubbo-admin/wiki/The-compatibility-of-service-governance)
 ### admin UI
 
 - [Vue.js](https://vuejs.org) and [Vuetify](https://vuetifyjs.com)
@@ -23,13 +23,13 @@ service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.
 ### admin Server
 
 * Standard spring boot project
-* [configurations in application.properties](https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration)
+* [configurations in application.properties](https://github.com/apache/dubbo-admin/wiki/Dubbo-Admin-configuration)
 
 
 ### Production Setup
 
-1. Clone source code on develop branch `git clone https://github.com/apache/incubator-dubbo-admin.git`
-2. Specify registry address in `dubbo-admin-server/src/main/resources/application-production.properties`
+1. Clone source code on develop branch `git clone https://github.com/apache/dubbo-admin.git`
+2. Specify registry address in `dubbo-admin-server/src/main/resources/application.properties`
 3. Build
 
     > - `mvn clean package`  
@@ -58,4 +58,4 @@ Once deployed, you can check http://localhost:8080/swagger-ui.html to check all 
 ### License
 
 Apache Dubbo admin is under the Apache 2.0 license, Version 2.0.
-See [LICENSE](https://github.com/apache/incubator-dubbo-admin/blob/develop/LICENSE) for full license text.
+See [LICENSE](https://github.com/apache/dubbo-admin/blob/develop/LICENSE) for full license text.

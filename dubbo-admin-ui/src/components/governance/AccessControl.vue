@@ -32,7 +32,7 @@
                   :loading="searchLoading"
                   :items="typeAhead"
                   :search-input.sync="input"
-                  @keyup.enter="search"
+                  @keyup.enter="submit"
                   flat
                   append-icon=""
                   hide-no-data
@@ -53,7 +53,7 @@
                     </v-list-tile>
                   </v-list>
                 </v-menu>
-                <v-btn @click="search" color="primary" large>{{$t('search')}}</v-btn>
+                <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
 
               </v-layout>
             </v-form>
@@ -345,25 +345,29 @@ export default {
         }
       }, 500)
     },
-    search () {
+    submit: function () {
+      this.filter = document.querySelector('#serviceSearch').value.trim()
+      this.search(true)
+    },
+    search (rewrite) {
       if (!this.filter) {
-        this.filter = document.querySelector('#serviceSearch').value.trim()
-        if (!this.filter) {
-          return
-        }
+        this.$notify.error('Either service or application is needed')
+        return
       }
       let type = this.items[this.selected].value
       this.loading = true
-      if (this.selected === 0) {
-        this.$router.push({
-          path: 'access',
-          query: {service: this.filter}
-        })
-      } else if (this.selected === 1) {
-        this.$router.push({
-          path: 'access',
-          query: {application: this.filter}
-        })
+      if (rewrite) {
+        if (this.selected === 0) {
+          this.$router.push({
+            path: 'access',
+            query: {service: this.filter}
+          })
+        } else if (this.selected === 1) {
+          this.$router.push({
+            path: 'access',
+            query: {application: this.filter}
+          })
+        }
       }
       let url = '/rules/access/?' + type + '=' + this.filter
       this.$axios.get(url)
@@ -395,6 +399,10 @@ export default {
       this.filter = ''
       if (!this.modal.service && !this.modal.application) {
         this.$notify.error('Either service or application is needed')
+        return
+      }
+      if (this.modal.service && this.modal.application) {
+        this.$notify.error('You can not set both service ID and application name')
         return
       }
       let vm = this
@@ -483,9 +491,12 @@ export default {
       } else {
         itemId = item.application
       }
+      if (itemId.includes('/')) {
+        itemId = itemId.replace('/', '*')
+      }
       Object.assign(this.confirm, {
         enable: true,
-        title: 'Are you sure to Delete Access Control',
+        title: 'warnDeleteAccessControl',
         text: `Id: ${itemId}`,
         id: itemId
       })
@@ -533,7 +544,9 @@ export default {
       this.filter = query['application']
       this.selected = 1
     }
-    this.search()
+    if (this.filter !== null) {
+      this.search()
+    }
   },
   components: {
     Breadcrumb,

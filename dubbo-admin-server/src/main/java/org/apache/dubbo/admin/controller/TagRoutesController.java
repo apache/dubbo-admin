@@ -86,6 +86,9 @@ public class TagRoutesController {
 
     @RequestMapping(method = RequestMethod.GET)
     public List<TagRouteDTO> searchRoutes(@RequestParam String application, @PathVariable String env) {
+        if (StringUtils.isBlank(application)) {
+            throw new ParamValidationException("application is required.");
+        }
         List<TagRouteDTO> result = new ArrayList<>();
         String version = "2.6";
         try {
@@ -97,10 +100,7 @@ public class TagRoutesController {
             return result;
         }
 
-        TagRouteDTO tagRoute = null;
-        if (StringUtils.isNotEmpty(application)) {
-            tagRoute = routeService.findTagRoute(application);
-        }
+        TagRouteDTO tagRoute = routeService.findTagRoute(application);
         if (tagRoute != null) {
             result.add(tagRoute);
         }
