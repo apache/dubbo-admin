@@ -18,6 +18,8 @@
 package org.apache.dubbo.admin.controller;
 
 import org.apache.commons.lang3.StringUtils;
+
+import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.common.exception.VersionValidationException;
@@ -38,7 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.ArrayList;
 import java.util.List;
 
-
+@Authority(needLogin = true)
 @RestController
 @RequestMapping("/api/{env}/rules/balancing")
 public class LoadBalanceController {

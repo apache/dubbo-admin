@@ -30,75 +30,132 @@ import ServiceTest from '@/components/test/ServiceTest'
 import ServiceMock from '@/components/test/ServiceMock'
 import ServiceMetrics from '@/components/metrics/ServiceMetrics'
 import Management from '@/components/Management'
+import Index from '@/Index'
+import Login from '@/Login'
 
 Vue.use(Router)
 
 export default new Router({
   routes: [
     {
-      path: '/service',
-      name: 'ServiceSearch',
-      component: ServiceSearch
-    },
-    {
-      path: '/serviceDetail',
-      name: 'ServiceDetail',
-      component: ServiceDetail
-    },
-    {
-      path: '/testMethod',
-      name: 'TestMethod',
-      component: TestMethod
-    },
-    {
-      path: '/governance/routingRule',
-      name: 'RoutingRule',
-      component: RoutingRule
-    },
-    {
-      path: '/governance/tagRule',
-      name: 'TagRule',
-      component: TagRule
-    },
-    {
-      path: '/governance/access',
-      name: 'AccessControl',
-      component: AccessControl
-    },
-    {
-      path: '/governance/loadbalance',
-      name: 'LoadBalance',
-      component: LoadBalance
-    },
-    { path: '/governance/weight',
-      name: 'WeightAdjust',
-      component: WeightAdjust
-    },
-    {
-      path: '/governance/config',
-      name: 'Overrides',
-      component: Overrides
-    },
-    {
-      path: '/test',
-      name: 'ServiceTest',
-      component: ServiceTest
-    },
-    {
-      path: '/mock',
-      name: 'ServiceMock',
-      component: ServiceMock
-    },
-    {
-      path: '/metrics',
-      name: 'ServiceMetrics',
-      component: ServiceMetrics
-    },
-    {
-      path: '/management',
-      name: 'Management',
-      component: Management
+      path: '/',
+      name: 'Index',
+      component: Index,
+      meta: {
+        requireLogin: true
+      },
+      children: [
+        {
+          path: '/service',
+          name: 'ServiceSearch',
+          component: ServiceSearch,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/serviceDetail',
+          name: 'ServiceDetail',
+          component: ServiceDetail,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/testMethod',
+          name: 'TestMethod',
+          component: TestMethod,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/governance/routingRule',
+          name: 'RoutingRule',
+          component: RoutingRule,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/governance/tagRule',
+          name: 'TagRule',
+          component: TagRule,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/governance/access',
+          name: 'AccessControl',
+          component: AccessControl,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/governance/loadbalance',
+          name: 'LoadBalance',
+          component: LoadBalance,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/governance/weight',
+          name: 'WeightAdjust',
+          component: WeightAdjust,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/governance/config',
+          name: 'Overrides',
+          component: Overrides,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/test',
+          name: 'ServiceTest',
+          component: ServiceTest,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/mock',
+          name: 'ServiceMock',
+          component: ServiceMock,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/metrics',
+          name: 'ServiceMetrics',
+          component: ServiceMetrics,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/management',
+          name: 'Management',
+          component: Management,
+          meta: {
+            requireLogin: true
+          }
+        }]
+    }, {
+      path: '/login',
+      name: 'Login',
+      component: Login,
+      meta: {
+        requireLogin: false
+      }
     }
-
   ]
 })

@@ -18,6 +18,8 @@
 package org.apache.dubbo.admin.controller;
 
 import com.google.gson.Gson;
+
+import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.common.util.ServiceTestUtil;
 import org.apache.dubbo.admin.model.domain.MethodMetadata;
@@ -37,7 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
-
+@Authority(needLogin = true)
 @RestController
 @RequestMapping("/api/{env}/test")
 public class ServiceTestController {
