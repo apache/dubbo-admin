@@ -26,7 +26,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-import sun.misc.BASE64Encoder;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
@@ -48,8 +47,7 @@ public class UserController {
     public String login(@RequestParam String userName, @RequestParam String password) {
         if (StringUtils.isBlank(rootUserName) || (rootUserName.equals(userName) && rootUserPassword.equals(password))) {
             UUID uuid = UUID.randomUUID();
-            BASE64Encoder base64Encoder = new BASE64Encoder ();
-            String token = base64Encoder.encode(uuid.toString().getBytes());
+            String token = uuid.toString();
             User user = new User();
             user.setUserName(userName);
             user.setLastUpdateTime(System.currentTimeMillis());
