@@ -157,5 +157,7 @@ export default {
   testModule: {
     searchServiceHint: '服务ID, org.apache.dubbo.demo.api.DemoService, 使用 * 进行模糊查找, 按回车键查询'
   },
-  userName: '用户名'
+  userName: '用户名',
+  password: '密码',
+  login: '登录'
 }
