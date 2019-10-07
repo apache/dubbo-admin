@@ -19,6 +19,7 @@ package org.apache.dubbo.admin.interceptor;
 import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.controller.UserController;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
@@ -30,9 +31,11 @@ import java.lang.reflect.Method;
 
 @Component
 public class AuthInterceptor extends HandlerInterceptorAdapter {
+    @Value("${admin.check.authority:true}")
+    private boolean checkAuthority;
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        if (!(handler instanceof HandlerMethod)) {
+        if (!(handler instanceof HandlerMethod) || !checkAuthority) {
             return true;
         }
         HandlerMethod handlerMethod = (HandlerMethod) handler;

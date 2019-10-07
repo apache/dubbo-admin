@@ -22,6 +22,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -43,7 +44,7 @@ public class UserController {
     @Value("${admin.root.user.password:}")
     private String rootUserPassword;
 
-    @RequestMapping("/login")
+    @RequestMapping(value = "/login", method = RequestMethod.GET)
     public String login(@RequestParam String userName, @RequestParam String password) {
         if (StringUtils.isBlank(rootUserName) || (rootUserName.equals(userName) && rootUserPassword.equals(password))) {
             UUID uuid = UUID.randomUUID();
@@ -58,7 +59,7 @@ public class UserController {
     }
 
     @Authority(needLogin = true)
-    @RequestMapping("/logout")
+    @RequestMapping(value = "/logout", method = RequestMethod.DELETE)
     public boolean logout() {
         HttpServletRequest request =
                 ((ServletRequestAttributes) Objects.requireNonNull(RequestContextHolder.getRequestAttributes())).getRequest();
