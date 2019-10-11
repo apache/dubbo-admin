@@ -58,7 +58,7 @@
     name: 'TestMethod',
     components: {
       JsonEditor,
-      Breadcrumb,
+      Breadcrumb
     },
     data () {
       return {
