@@ -30,7 +30,13 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.Properties;
 
+import static com.alibaba.nacos.api.PropertyKeyConst.ACCESS_KEY;
+import static com.alibaba.nacos.api.PropertyKeyConst.CLUSTER_NAME;
+import static com.alibaba.nacos.api.PropertyKeyConst.ENDPOINT;
+import static com.alibaba.nacos.api.PropertyKeyConst.NAMESPACE;
+import static com.alibaba.nacos.api.PropertyKeyConst.SECRET_KEY;
 import static com.alibaba.nacos.api.PropertyKeyConst.SERVER_ADDR;
+import static com.alibaba.nacos.client.naming.utils.UtilAndComs.NACOS_NAMING_LOG_NAME;
 
 public class NacosConfiguration implements GovernanceConfiguration {
     private static final Logger logger = LoggerFactory.getLogger(NacosConfiguration.class);
@@ -62,6 +68,7 @@ public class NacosConfiguration implements GovernanceConfiguration {
     private Properties buildNacosProperties(URL url) {
         Properties properties = new Properties();
         setServerAddr(url, properties);
+        setProperties(url, properties);
         return properties;
     }
 
@@ -74,6 +81,21 @@ public class NacosConfiguration implements GovernanceConfiguration {
         properties.put(SERVER_ADDR, serverAddr);
     }
 
+    private void setProperties(URL url, Properties properties) {
+        putPropertyIfAbsent(url, properties, NAMESPACE);
+        putPropertyIfAbsent(url, properties, NACOS_NAMING_LOG_NAME);
+        putPropertyIfAbsent(url, properties, ENDPOINT);
+        putPropertyIfAbsent(url, properties, ACCESS_KEY);
+        putPropertyIfAbsent(url, properties, SECRET_KEY);
+        putPropertyIfAbsent(url, properties, CLUSTER_NAME);
+    }
+
+    private void putPropertyIfAbsent(URL url, Properties properties, String propertyName) {
+        String propertyValue = url.getParameter(propertyName);
+        if (org.apache.dubbo.common.utils.StringUtils.isNotEmpty(propertyValue)) {
+            properties.setProperty(propertyName, propertyValue);
+        }
+    }
 
     @Override
     public void setUrl(URL url) {
@@ -165,21 +187,33 @@ public class NacosConfiguration implements GovernanceConfiguration {
 
         String[] groupAndDataId = new String[2];
         String[] split = key.split("/");
-        if (split.length != 3) {
-            return null;
-        }
-        if (Constants.DUBBO_PROPERTY.equals(split[2])) {
 
-            if (this.group.equals(split[1])) {
-                groupAndDataId[0] = this.group;
+        // global config
+        if (split.length == 3) {
+            if (Constants.DUBBO_PROPERTY.equals(split[2])) {
+                if (this.group.equals(split[1])) {
+                    groupAndDataId[0] = this.group;
+                } else {
+                    groupAndDataId[0] = split[1];
+                }
+                groupAndDataId[1] = split[2];
             } else {
-                groupAndDataId[0] = split[1];
+                groupAndDataId[0] = group;
+                groupAndDataId[1] = split[1] + Constants.PUNCTUATION_POINT + split[2];
             }
-            groupAndDataId[1] = split[2];
-        } else {
-            groupAndDataId[0] = group;
-            groupAndDataId[1] = split[1] + Constants.PUNCTUATION_POINT + split[2];
+            return groupAndDataId;
         }
-        return groupAndDataId;
+        // application config
+        if (split.length == 4) {
+            if (Constants.DUBBO_PROPERTY.equals(split[3])) {
+                groupAndDataId[0] = split[2];
+                groupAndDataId[1] = split[3];
+            } else {
+                groupAndDataId[0] = group;
+                groupAndDataId[1] = split[2] + Constants.PUNCTUATION_POINT + split[2];
+            }
+            return groupAndDataId;
+        }
+        return null;
     }
 }
