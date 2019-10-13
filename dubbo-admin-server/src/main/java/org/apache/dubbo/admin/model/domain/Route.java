@@ -214,6 +214,7 @@ public class Route extends Entity {
         String interfaze = Tool.getInterface(service);
         return URL.valueOf(Constants.ROUTE_PROTOCOL + "://" + Constants.ANYHOST_VALUE + "/" + interfaze
                 + "?" + Constants.CATEGORY_KEY + "=" + Constants.ROUTERS_CATEGORY
+                + "&" + Constants.INTERFACE_KEY + "=" + interfaze
                 + "&router=condition&runtime=" + isRuntime() + "&enabled=" + isEnabled() + "&priority=" + getPriority() + "&force=" + isForce() + "&dynamic=" + isDynamic()
                 + "&name=" + getName() + "&" + Constants.RULE_KEY + "=" + URL.encode(getMatchRule() + " => " + getFilterRule())
                 + (group == null ? "" : "&" + Constants.GROUP_KEY + "=" + group)
