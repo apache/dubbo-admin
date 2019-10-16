@@ -297,7 +297,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
 
     @Override
     public String findServiceVersion(String serviceName, String application) {
-        String version = "2.6";
+        String version = "2.7";
         Map<String, URL> result = findProviderUrlByAppandService(application, serviceName);
         if (result != null && result.size() > 0) {
             URL url = result.values().stream().findFirst().get();

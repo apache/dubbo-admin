@@ -37,6 +37,7 @@ import static com.alibaba.nacos.api.PropertyKeyConst.NAMESPACE;
 import static com.alibaba.nacos.api.PropertyKeyConst.SECRET_KEY;
 import static com.alibaba.nacos.api.PropertyKeyConst.SERVER_ADDR;
 import static com.alibaba.nacos.client.naming.utils.UtilAndComs.NACOS_NAMING_LOG_NAME;
+import static org.apache.dubbo.common.constants.RemotingConstants.BACKUP_KEY;
 
 public class NacosConfiguration implements GovernanceConfiguration {
     private static final Logger logger = LoggerFactory.getLogger(NacosConfiguration.class);
@@ -74,10 +75,17 @@ public class NacosConfiguration implements GovernanceConfiguration {
 
     private void setServerAddr(URL url, Properties properties) {
 
-        String serverAddr = url.getHost() + // Host
-                ":" +
-                url.getPort() // Port
-                ;
+        StringBuilder serverAddrBuilder =
+                new StringBuilder(url.getHost()) // Host
+                        .append(":")
+                        .append(url.getPort()); // Port
+
+        // Append backup parameter as other servers
+        String backup = url.getParameter(BACKUP_KEY);
+        if (backup != null) {
+            serverAddrBuilder.append(",").append(backup);
+        }
+        String serverAddr = serverAddrBuilder.toString();
         properties.put(SERVER_ADDR, serverAddr);
     }
 

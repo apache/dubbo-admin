@@ -31,6 +31,7 @@ import com.alibaba.nacos.api.exception.NacosException;
 import java.util.Properties;
 
 import static com.alibaba.nacos.api.PropertyKeyConst.SERVER_ADDR;
+import static org.apache.dubbo.common.constants.RemotingConstants.BACKUP_KEY;
 
 public class NacosMetaDataCollector implements MetaDataCollector {
     private static final Logger logger = LoggerFactory.getLogger(NacosMetaDataCollector.class);
@@ -75,10 +76,17 @@ public class NacosMetaDataCollector implements MetaDataCollector {
 
     private void setServerAddr(URL url, Properties properties) {
 
-        String serverAddr = url.getHost() + // Host
-                ":" +
-                url.getPort() // Port
-                ;
+        StringBuilder serverAddrBuilder =
+                new StringBuilder(url.getHost()) // Host
+                        .append(":")
+                        .append(url.getPort()); // Port
+
+        // Append backup parameter as other servers
+        String backup = url.getParameter(BACKUP_KEY);
+        if (backup != null) {
+            serverAddrBuilder.append(",").append(backup);
+        }
+        String serverAddr = serverAddrBuilder.toString();
         properties.put(SERVER_ADDR, serverAddr);
     }
 
