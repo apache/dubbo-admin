@@ -18,6 +18,8 @@
 package org.apache.dubbo.admin.controller;
 
 import com.google.gson.Gson;
+
+import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.Tool;
 import org.apache.dubbo.admin.model.domain.Consumer;
@@ -42,7 +44,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
+@Authority(needLogin = true)
 @RestController
 @RequestMapping("/api/{env}")
 public class ServiceController {
