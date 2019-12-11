@@ -19,6 +19,8 @@ package org.apache.dubbo.admin.controller;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
+
+import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.Tool;
 import org.apache.dubbo.admin.model.domain.Consumer;
@@ -42,7 +44,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+@Authority(needLogin = true)
 @RestController
 @RequestMapping("/api/{env}/metrics")
 public class MetricsCollectController {

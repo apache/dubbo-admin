@@ -22,13 +22,23 @@ let instance = axios.create({
   baseURL: '/api/dev'
 })
 
+instance.interceptors.request.use(config => {
+  let token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = token
+  }
+  return config
+})
+
 instance.interceptors.response.use((response) => {
   return response
 }, (error) => {
   if (error.message.indexOf('Network Error') >= 0) {
     Vue.prototype.$notify.error('Network error, please check your network settings!')
   } else if (error.response.status === HttpStatus.UNAUTHORIZED) {
-    // TODO jump to url
+    localStorage.removeItem('token')
+    localStorage.removeItem('username')
+    Vue.prototype.$notify.error('Authorized failed,please login.')
   } else if (error.response.status >= HttpStatus.BAD_REQUEST) {
     Vue.prototype.$notify.error(error.response.data.message)
   }

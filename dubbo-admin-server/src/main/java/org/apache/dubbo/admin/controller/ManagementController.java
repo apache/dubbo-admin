@@ -17,6 +17,7 @@
 
 package org.apache.dubbo.admin.controller;
 
+import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.common.util.Constants;
@@ -37,7 +38,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
-
+@Authority(needLogin = true)
 @RestController
 @RequestMapping("/api/{env}/manage")
 public class ManagementController {
