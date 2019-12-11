@@ -32,6 +32,7 @@ import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.springframework.stereotype.Component;
 
+import java.util.LinkedList;
 import java.util.List;
 
 @Component
@@ -54,8 +55,9 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
         //register2.6
         if (StringUtils.isNotEmpty(conditionRoute.getService())) {
-            Route old = convertRouteToOldRoute(conditionRoute);
-            registry.register(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+            for (Route old : convertRouteToOldRoute(conditionRoute)) {
+            	registry.register(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+            }
         }
 
     }
@@ -75,10 +77,12 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
         //for 2.6
         if (StringUtils.isNotEmpty(newConditionRoute.getService())) {
-            Route old = convertRouteToOldRoute(oldConditionRoute);
-            Route updated = convertRouteToOldRoute(newConditionRoute);
-            registry.unregister(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
-            registry.register(updated.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+            for (Route old : convertRouteToOldRoute(oldConditionRoute)) {
+            	registry.unregister(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+            }
+            for (Route updated : convertRouteToOldRoute(newConditionRoute)) {
+            	registry.register(updated.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+            }
         }
     }
 
@@ -105,8 +109,9 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         if (route.getScope().equals(Constants.SERVICE)) {
             RoutingRule originRule = YamlParser.loadObject(config, RoutingRule.class);
             ConditionRouteDTO conditionRouteDTO = RouteUtils.createConditionRouteFromRule(originRule);
-            Route old = convertRouteToOldRoute(conditionRouteDTO);
-            registry.unregister(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+            for (Route old : convertRouteToOldRoute(conditionRouteDTO)) {
+            	registry.unregister(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+            }
         }
     }
 
@@ -213,10 +218,12 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
             if (ruleDTO.getScope().equals(Constants.SERVICE)) {
                 //for2.6
-                URL oldURL = convertRouteToOldRoute(RouteUtils.createConditionRouteFromRule(ruleDTO)).toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true);
-                registry.unregister(oldURL);
-                oldURL = oldURL.addParameter("enabled", true);
-                registry.register(oldURL);
+            	for (Route oldRoute : convertRouteToOldRoute(RouteUtils.createConditionRouteFromRule(ruleDTO))) {
+	                URL oldURL = oldRoute.toUrl();
+	                registry.unregister(oldURL);
+	                oldURL = oldURL.addParameter("enabled", true);
+	                registry.register(oldURL);
+            	}
             }
 
             //2.7
@@ -235,10 +242,12 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
             if (routeRule.getScope().equals(Constants.SERVICE)) {
                 //for 2.6
-                URL oldURL = convertRouteToOldRoute(RouteUtils.createConditionRouteFromRule(routeRule)).toUrl().addParameter(Constants.COMPATIBLE_CONFIG,true);
-                registry.unregister(oldURL);
-                oldURL = oldURL.addParameter("enabled", false);
-                registry.register(oldURL);
+            	for (Route oldRoute : convertRouteToOldRoute(RouteUtils.createConditionRouteFromRule(routeRule))) {
+	                URL oldURL = oldRoute.toUrl();
+	                registry.unregister(oldURL);
+	                oldURL = oldURL.addParameter("enabled", false);
+	                registry.register(oldURL);
+            	}
             }
 
             //2.7
@@ -335,43 +344,45 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         }
     }
 
-    private String parseCondition(List<String> conditions) {
+    private String parseCondition(String condition) {
         StringBuilder when = new StringBuilder();
         StringBuilder then = new StringBuilder();
-        for (String condition : conditions) {
-            condition = condition.trim();
-            if (condition.contains("=>")) {
-                String[] array = condition.split("=>", 2);
-                String consumer = array[0].trim();
-                String provider = array[1].trim();
-                if (consumer.length() != 0) {
-                    if (when.length() != 0) {
-                        when.append(" & ").append(consumer);
-                    } else {
-                        when.append(consumer);
-                    }
+        condition = condition.trim();
+        if (condition.contains("=>")) {
+            String[] array = condition.split("=>", 2);
+            String consumer = array[0].trim();
+            String provider = array[1].trim();
+            if (consumer.length() != 0) {
+                if (when.length() != 0) {
+                    when.append(" & ").append(consumer);
+                } else {
+                    when.append(consumer);
                 }
-                if (provider.length() != 0) {
-                    if (then.length() != 0) {
-                        then.append(" & ").append(provider);
-                    } else {
-                        then.append(provider);
-                    }
+            }
+            if (provider.length() != 0) {
+                if (then.length() != 0) {
+                    then.append(" & ").append(provider);
+                } else {
+                    then.append(provider);
                 }
             }
         }
         return (when.append(" => ").append(then)).toString();
     }
 
-    private Route convertRouteToOldRoute(ConditionRouteDTO route) {
-        Route old = new Route();
-        old.setService(route.getService());
-        old.setEnabled(route.isEnabled());
-        old.setForce(route.isForce());
-        old.setRuntime(route.isRuntime());
-        old.setPriority(route.getPriority());
-        String rule = parseCondition(route.getConditions());
-        old.setRule(rule);
-        return old;
+    private List<Route> convertRouteToOldRoute(ConditionRouteDTO route) {
+    	List<Route> oldList = new LinkedList<Route>();
+    	for (String condition : route.getConditions()) {
+	        Route old = new Route();
+	        old.setService(route.getService());
+	        old.setEnabled(route.isEnabled());
+	        old.setForce(route.isForce());
+	        old.setRuntime(route.isRuntime());
+	        old.setPriority(route.getPriority());
+	        String rule = parseCondition(condition);
+	        old.setRule(rule);
+	        oldList.add(old);
+    	}
+        return oldList;
     }
 }
