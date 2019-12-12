@@ -63,8 +63,6 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
 
   @Test
   public void shouldThrowWhenParamInvalid() {
-    String uuid = UUID.randomUUID().toString();
-
     ConditionRouteDTO dto = new ConditionRouteDTO();
     ResponseEntity<String> responseEntity = restTemplate.postForEntity(
         url("/api/{env}/rules/route/condition"), dto, String.class, env
@@ -72,13 +70,6 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
     assertThat(responseEntity.getStatusCode(), is(HttpStatus.BAD_REQUEST));
     assertThat(responseEntity.getBody(), containsString("serviceName and app is Empty!"));
 
-    dto.setApplication("application" + uuid);
-    when(providerService.findVersionInApplication(dto.getApplication())).thenReturn("2.6");
-    responseEntity = restTemplate.postForEntity(
-        url("/api/{env}/rules/route/condition"), dto, String.class, env
-    );
-    assertThat(responseEntity.getStatusCode(), is(HttpStatus.INTERNAL_SERVER_ERROR));
-    assertThat(responseEntity.getBody(), containsString("dubbo 2.6 does not support application scope routing rule"));
   }
 
   @Test

@@ -127,9 +127,11 @@
             v-model="service"
           ></v-text-field>
           <v-text-field
-            label="Application Name"
-            hint="Application name the service belongs to"
+            :label="$t('appName')"
+            :hint="$t('consumerAppNameHint') "
             v-model="application"
+            :readonly="readonly"
+            :placeholder="$t('nonsupport')"
           ></v-text-field>
 
           <v-subheader class="pa-0 mt-3">{{$t('ruleContent')}}</v-subheader>

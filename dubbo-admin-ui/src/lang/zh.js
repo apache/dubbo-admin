@@ -159,5 +159,7 @@ export default {
   },
   userName: '用户名',
   password: '密码',
-  login: '登录'
+  login: '登录',
+  consumerAppNameHint: '消费者应用名称',
+  nonsupport: 'dubbo2.7版本之前不支持应用程序范围路由规则'
 }

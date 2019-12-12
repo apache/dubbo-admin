@@ -159,5 +159,7 @@ export default {
   },
   userName: 'User Name',
   password: 'Password',
-  login: 'Login'
+  login: 'Login',
+  consumerAppNameHint: 'Consumer Application name',
+  nonsupport: 'Does not support application scope routing rule before dubbo version 2.7'
 }
