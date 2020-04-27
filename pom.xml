@@ -20,9 +20,8 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>org.apache</groupId>
 	<artifactId>dubbo-admin</artifactId>
-	<version>0.1</version>
+	<version>0.2.0-SNAPSHOT</version>
 	<modules>
 		<module>dubbo-admin-ui</module>
 		<module>dubbo-admin-server</module>
@@ -184,8 +183,8 @@
 				<artifactId>embedded-consul</artifactId>
 				<version>${consul-embedded-version}</version>
 			</dependency>
-          
- 			<dependency> 
+
+ 			<dependency>
 				<groupId>com.google.guava</groupId>
 				<artifactId>guava</artifactId>
 				<version>${guava-version}</version>
