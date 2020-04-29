@@ -272,6 +272,7 @@
 										<exclude>**/resources/META-INF/**</exclude>
 										<exclude>**/src/main/resources/public/**</exclude>
 										<exclude>**/src/licenses/**</exclude>
+										<exclude>.github/**</exclude>
 									</excludes>
 								</configuration>
 							</execution>
