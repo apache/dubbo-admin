@@ -1,2 +1,2 @@
-* run: java -jar dubbo-admin-0.1.jar
+* run: java -jar dubbo-admin-${project.version}.jar
 * modify properties in `application.properties`
