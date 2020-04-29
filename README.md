@@ -1,6 +1,6 @@
 # Dubbo Admin
 
-[![Build Status](https://travis-ci.org/apache/dubbo-admin.svg?branch=develop)](https://travis-ci.org/apache/dubbo-admin)
+![GitHub Workflow Status](https://img.shields.io/github/workflow/status/apache/dubbo-admin/CI)
 [![codecov](https://codecov.io/gh/apache/dubbo-admin/branch/develop/graph/badge.svg)](https://codecov.io/gh/apache/dubbo-admin)
 ![license](https://img.shields.io/github/license/apache/dubbo-admin.svg)
 
