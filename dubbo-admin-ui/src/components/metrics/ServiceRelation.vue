@@ -34,11 +34,9 @@
 </template>
 <script>
   import Breadcrumb from '@/components/public/Breadcrumb'
-  import axios from 'axios'
   export default {
     components: {
-      Breadcrumb,
-      axios
+      Breadcrumb
     },
     data: () => ({
       baseURL: '/api/dev',
@@ -60,7 +58,7 @@
         // eslint-disable-next-line no-undef
         this.chartContent = echarts.init(document.getElementById('chartContent'))
         this.chartContent.showLoading()
-        axios.get(this.baseURL + '/metrics/relation')
+        this.$axios.get('/metrics/relation')
           .then(response => {
             if (response && response.status === 200) {
               this.success = true
