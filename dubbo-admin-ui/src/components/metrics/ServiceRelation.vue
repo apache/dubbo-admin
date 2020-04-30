@@ -39,7 +39,6 @@
       Breadcrumb
     },
     data: () => ({
-      baseURL: '/api/dev',
       success: null,
       breads: [
         {
