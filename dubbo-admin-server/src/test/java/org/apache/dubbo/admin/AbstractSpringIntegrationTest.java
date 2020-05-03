@@ -26,35 +26,56 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.context.ApplicationContextInitializer;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.context.support.TestPropertySourceUtils;
+import org.springframework.util.SocketUtils;
 
 @ActiveProfiles("test")
 @RunWith(SpringJUnit4ClassRunner.class)
 @SpringBootTest(classes = DubboAdminApplication.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@ContextConfiguration(classes = DubboAdminApplication.class)
+@ContextConfiguration(classes = DubboAdminApplication.class, initializers = AbstractSpringIntegrationTest.PropertyOverrideContextInitializer.class)
 public abstract class AbstractSpringIntegrationTest {
-  @Autowired
-  protected TestRestTemplate restTemplate;
+    @Autowired
+    protected TestRestTemplate restTemplate;
 
-  protected static final TestingServer zkServer;
-  protected static final CuratorFramework zkClient;
+    protected static final TestingServer zkServer;
+    protected static final CuratorFramework zkClient;
 
-  static {
-    try {
-      zkServer = new TestingServer(2182, true);
-      zkClient = CuratorFrameworkFactory.newClient(zkServer.getConnectString(), new RetryOneTime(2000));
-      zkClient.start();
-    } catch (Exception e) {
-      throw new ExceptionInInitializerError(e);
+    static {
+        try {
+            int zkPort = SocketUtils.findAvailableTcpPort();
+            zkServer = new TestingServer(zkPort, true);
+            zkClient = CuratorFrameworkFactory.newClient(zkServer.getConnectString(), new RetryOneTime(2000));
+            zkClient.start();
+        } catch (Exception e) {
+            throw new ExceptionInInitializerError(e);
+        }
     }
-  }
 
-  @LocalServerPort
-  protected int port;
+    @LocalServerPort
+    protected int port;
 
-  protected String url(final String path) {
-    return "http://localhost:" + port + path;
-  }
+    protected String url(final String path) {
+        return "http://localhost:" + port + path;
+    }
+
+    public static class PropertyOverrideContextInitializer
+            implements ApplicationContextInitializer<ConfigurableApplicationContext> {
+
+        static final String PROPERTY_FIRST_VALUE = "contextClass";
+
+        @Override
+        public void initialize(ConfigurableApplicationContext configurableApplicationContext) {
+            TestPropertySourceUtils.addInlinedPropertiesToEnvironment(configurableApplicationContext,
+                    "admin.registry.address=zookeeper://" + zkServer.getConnectString());
+            TestPropertySourceUtils.addInlinedPropertiesToEnvironment(configurableApplicationContext,
+                    "admin.metadata.address=zookeeper://" + zkServer.getConnectString());
+            TestPropertySourceUtils.addInlinedPropertiesToEnvironment(configurableApplicationContext,
+                    "admin.config-center=zookeeper://" + zkServer.getConnectString());
+        }
+    }
 }
