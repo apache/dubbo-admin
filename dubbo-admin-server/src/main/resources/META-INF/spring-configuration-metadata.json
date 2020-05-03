@@ -1,0 +1,10 @@
+{
+  "properties": [
+    {
+      "name": "admin.check.authority",
+      "type": "java.lang.Boolean",
+      "description": "Whether to enable basic authentication.",
+      "defaultValue": true
+    }
+  ]
+}
