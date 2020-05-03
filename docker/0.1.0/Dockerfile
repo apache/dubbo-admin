@@ -14,12 +14,12 @@
 # limitations under the License.
 
 FROM openjdk:8-jdk
-RUN mkdir /source && wget https://github.com/apache/incubator-dubbo-ops/archive/0.1.zip && unzip 0.1.zip -d /source
-WORKDIR /source/incubator-dubbo-admin-0.1
+RUN mkdir /source && wget https://github.com/apache/dubbo-admin/archive/0.1.zip && unzip 0.1.zip -d /source
+WORKDIR /source/dubbo-admin-0.1
 RUN ./mvnw clean package -Dmaven.test.skip=true
 
 FROM openjdk:8-jre
 LABEL maintainer="dev@dubbo.apache.org"
-COPY --from=0 /source/incubator-dubbo-admin-0.1/dubbo-admin-distribution/target/dubbo-admin-0.1.jar /app.jar
+COPY --from=0 /source/dubbo-admin-0.1/dubbo-admin-distribution/target/dubbo-admin-0.1.jar /app.jar
 ENTRYPOINT ["java","-XX:+UnlockExperimentalVMOptions","-XX:+UseCGroupMemoryLimitForHeap","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
 EXPOSE 8080
