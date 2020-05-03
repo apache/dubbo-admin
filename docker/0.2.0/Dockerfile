@@ -14,8 +14,8 @@
 # limitations under the License.
 
 FROM maven:3-openjdk-8
-RUN mkdir /source && wget https://github.com/apache/incubator-dubbo-admin/archive/0.2.0.zip && unzip 0.2.0.zip -d /source
-WORKDIR /source/incubator-dubbo-admin-0.2.0
+RUN mkdir /source && wget https://github.com/apache/dubbo-admin/archive/0.2.0.zip && unzip 0.2.0.zip -d /source
+WORKDIR /source/dubbo-admin-0.2.0
 RUN mvn clean package -Dmaven.test.skip=true
 
 FROM openjdk:8-jre
