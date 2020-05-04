@@ -21,7 +21,8 @@ package org.apache.dubbo.admin.registry.metadata.impl;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
-import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+import org.apache.dubbo.metadata.report.identifier.KeyTypeEnum;
+import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
 import org.apache.dubbo.rpc.RpcException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,7 +39,7 @@ import static org.apache.dubbo.common.constants.CommonConstants.CLUSTER_KEY;
 import static org.apache.dubbo.common.constants.CommonConstants.COMMA_SPLIT_PATTERN;
 import static org.apache.dubbo.common.constants.CommonConstants.DEFAULT_TIMEOUT;
 import static org.apache.dubbo.common.constants.CommonConstants.TIMEOUT_KEY;
-import static org.apache.dubbo.metadata.identifier.MetadataIdentifier.META_DATA_STORE_TAG;
+import static org.apache.dubbo.metadata.MetadataConstants.META_DATA_STORE_TAG;
 
 public class RedisMetaDataCollector implements MetaDataCollector {
 
@@ -90,14 +91,14 @@ public class RedisMetaDataCollector implements MetaDataCollector {
         String result = null;
         if (url.getParameter(CLUSTER_KEY, false)) {
             try (JedisCluster jedisCluster = new JedisCluster(jedisClusterNodes, timeout, timeout, 2, password, new GenericObjectPoolConfig())) {
-                result = jedisCluster.get(identifier.getUniqueKey(MetadataIdentifier.KeyTypeEnum.UNIQUE_KEY) + META_DATA_STORE_TAG);
+                result = jedisCluster.get(identifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY) + META_DATA_STORE_TAG);
             } catch (Throwable e) {
                 logger.error("Failed to get " + identifier + " from redis cluster, cause: " + e.getMessage(), e);
                 throw new RpcException("Failed to get " + identifier + " from redis cluster, cause: " + e.getMessage(), e);
             }
         } else {
             try (Jedis jedis = pool.getResource()) {
-                result = jedis.get(identifier.getUniqueKey(MetadataIdentifier.KeyTypeEnum.UNIQUE_KEY) + META_DATA_SOTRE_TAG);
+                result = jedis.get(identifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY) + META_DATA_SOTRE_TAG);
             } catch (Throwable e) {
                 logger.error("Failed to get " + identifier + " from redis, cause: " + e.getMessage(), e);
                 throw new RpcException("Failed to get " + identifier + " from redis, cause: " + e.getMessage(), e);

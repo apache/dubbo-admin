@@ -1,6 +1,6 @@
 name: CI
 
-on: [push, pull_request]
+on: [push]
 
 jobs:
   build:
@@ -16,7 +16,7 @@ jobs:
         with:
           java-version: ${{ matrix.java }}
       - name: Build with Maven
-        run: ./mvnw clean install -DskipTests=false -Dcheckstyle.skip=false -Drat.skip=false -Dmaven.javadoc.skip=true
+        run: ./mvnw clean install --batch-mode -DskipTests=false -Dcheckstyle.skip=false -Drat.skip=false -Dmaven.javadoc.skip=true
       - name: Upload coverage to codecov
         uses: codecov/codecov-action@v1
 

@@ -25,7 +25,8 @@ import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+import org.apache.dubbo.metadata.report.identifier.KeyTypeEnum;
+import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
 
 public class ZookeeperMetaDataCollector implements MetaDataCollector {
 
@@ -68,7 +69,7 @@ public class ZookeeperMetaDataCollector implements MetaDataCollector {
     }
 
     private String getNodePath(MetadataIdentifier metadataIdentifier) {
-        return toRootDir() + metadataIdentifier.getUniqueKey(MetadataIdentifier.KeyTypeEnum.PATH);
+        return toRootDir() + metadataIdentifier.getUniqueKey(KeyTypeEnum.PATH);
     }
 
     private String toRootDir() {

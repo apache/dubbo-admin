@@ -22,7 +22,8 @@ import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+import org.apache.dubbo.metadata.report.identifier.KeyTypeEnum;
+import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
 
 import com.alibaba.nacos.api.NacosFactory;
 import com.alibaba.nacos.api.config.ConfigService;
@@ -94,7 +95,7 @@ public class NacosMetaDataCollector implements MetaDataCollector {
 
     private String getMetaData(MetadataIdentifier identifier) {
         try {
-            return configService.getConfig(identifier.getUniqueKey(MetadataIdentifier.KeyTypeEnum.UNIQUE_KEY),
+            return configService.getConfig(identifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY),
                     group, 1000 * 10);
         } catch (NacosException e) {
             logger.warn("Failed to get " + identifier + " from nacos, cause: " + e.getMessage(), e);

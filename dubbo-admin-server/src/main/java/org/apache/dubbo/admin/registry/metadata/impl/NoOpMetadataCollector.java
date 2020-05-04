@@ -19,7 +19,7 @@ package org.apache.dubbo.admin.registry.metadata.impl;
 
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
-import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
 
 public class NoOpMetadataCollector implements MetaDataCollector {
 
