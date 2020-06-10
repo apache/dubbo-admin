@@ -338,7 +338,7 @@
         }
 
         if (rewrite) {
-          this.$router.push({path: '/metrics', query: {ip: this.filter}})
+          this.$router.push({path: '/metrics/index', query: {ip: this.filter}})
         }
         let url = '/metrics/ipAddr/?ip=' + filter + '&group=dubbo'
         this.$axios.get(url)
