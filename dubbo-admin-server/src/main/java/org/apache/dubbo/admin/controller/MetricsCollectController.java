@@ -108,7 +108,9 @@ public class MetricsCollectController {
             String metaData = providerService.getProviderMetaData(providerIdentifier);
             FullServiceDefinition providerServiceDefinition = new Gson().fromJson(metaData, FullServiceDefinition.class);
             Map<String, String> parameters = providerServiceDefinition.getParameters();
-            configMap.put(parameters.get(Constants.METRICS_PORT), parameters.get(Constants.METRICS_PROTOCOL));
+            if(parameters.containsKey(Constants.METRICS_PORT) && parameters.containsKey(Constants.METRICS_PROTOCOL)) {
+            	configMap.put(parameters.get(Constants.METRICS_PORT), parameters.get(Constants.METRICS_PROTOCOL));
+            }
         } else {
             List<Consumer> consumers = consumerService.findByAddress(ip);
             if (consumers.size() > 0) {
@@ -118,7 +120,9 @@ public class MetricsCollectController {
                         Constants.CONSUMER_SIDE, consumer.getApplication());
                 String metaData = consumerService.getConsumerMetadata(consumerIdentifier);
                 Map<String, String> consumerParameters = new Gson().fromJson(metaData, Map.class);
-                configMap.put(consumerParameters.get(Constants.METRICS_PORT), consumerParameters.get(Constants.METRICS_PROTOCOL));
+                if(consumerParameters.containsKey(Constants.METRICS_PORT) && consumerParameters.containsKey(Constants.METRICS_PROTOCOL)) {
+                	configMap.put(consumerParameters.get(Constants.METRICS_PORT), consumerParameters.get(Constants.METRICS_PROTOCOL));
+                }
             }
         }
     }
