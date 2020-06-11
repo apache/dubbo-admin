@@ -330,7 +330,7 @@
     * */
     methods: {
       submit: function () {
-        this.searchByIp(this.filter, true)
+        this.searchByIp(this.filter, false)
       },
       searchByIp: function (filter, rewrite) {
         if (this.filter === '') {
