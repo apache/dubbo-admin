@@ -73,7 +73,7 @@ public class MetricsCollectController {
 
     private String getOnePortMessage(String group, String ip, String port, String protocol) {
         MetrcisCollectServiceImpl metrcisCollectService = new MetrcisCollectServiceImpl();
-        metrcisCollectService.setUrl(protocol + "://" + ip + ":" + port +"?scope=remote&cache=true");
+        metrcisCollectService.setUrl(protocol + "://" + ip + ":" + port +"?scope=remote");
         String res = metrcisCollectService.invoke(group).toString();
         return res;
     }
