@@ -49,14 +49,16 @@ import java.util.Map;
 @RequestMapping("/api/{env}/metrics")
 public class MetricsCollectController {
 
-    @Autowired
     private ProviderService providerService;
-
-    @Autowired
     private ConsumerService consumerService;
+    private MetricsService metricsService;
 
     @Autowired
-    private MetricsService metricsService;
+    public MetricsCollectController(ProviderService providerService, ConsumerService consumerService, MetricsService metricsService) {
+        this.providerService = providerService;
+        this.consumerService = consumerService;
+        this.metricsService = metricsService;
+    }
 
     @RequestMapping(method = RequestMethod.POST)
     public String metricsCollect(@RequestParam String group, @PathVariable String env) {
