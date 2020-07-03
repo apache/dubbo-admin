@@ -296,9 +296,9 @@
                             </execution>
                         </executions>
                         <configuration>
-                            <systemPropertyVariables>
+                            <environmentVariables>
                                 <BASEURL>http://localhost:${dubbo-admin.port}</BASEURL>
-                            </systemPropertyVariables>
+                            </environmentVariables>
                             <includes>
                                 <include>**/*IT.java</include>
                             </includes>
