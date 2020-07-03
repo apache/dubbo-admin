@@ -27,7 +27,8 @@ import org.apache.dubbo.metadata.definition.ServiceDefinitionBuilder;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
 import org.apache.dubbo.metadata.definition.model.MethodDefinition;
 import org.apache.dubbo.metadata.definition.util.ClassUtils;
-import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+import org.apache.dubbo.metadata.report.identifier.KeyTypeEnum;
+import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -73,7 +74,7 @@ public class ConsulMetaDataCollectorTest {
         FullServiceDefinition definition = ServiceDefinitionBuilder.buildFullDefinition(ServiceA.class, params);
 
         String metadata = gson.toJson(definition);
-        consulMetaDataCollector.getClient().setKVValue(identifier.getUniqueKey(MetadataIdentifier.KeyTypeEnum.UNIQUE_KEY), metadata);
+        consulMetaDataCollector.getClient().setKVValue(identifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY), metadata);
 
         String providerMetaData = consulMetaDataCollector.getProviderMetaData(identifier);
         Assert.assertEquals(metadata, providerMetaData);
@@ -102,7 +103,7 @@ public class ConsulMetaDataCollectorTest {
         consumerParams.put("k2", "1");
         consumerParams.put("k3", "true");
         String metadata = gson.toJson(consumerParams);
-        consulMetaDataCollector.getClient().setKVValue(identifier.getUniqueKey(MetadataIdentifier.KeyTypeEnum.UNIQUE_KEY), metadata);
+        consulMetaDataCollector.getClient().setKVValue(identifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY), metadata);
 
         String consumerMetaData = consulMetaDataCollector.getConsumerMetaData(identifier);
         Map<String, String> retParams = gson.fromJson(consumerMetaData, new TypeToken<Map<String, String>>() {

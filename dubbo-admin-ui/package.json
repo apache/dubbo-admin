@@ -1,8 +1,8 @@
 {
   "name": "dubbo-admin-ui",
-  "version": "1.0.0",
-  "description": "A Vue.js project",
-  "author": "apache incubator dubbo",
+  "version": "0.2.0-SNAPSHOT",
+  "description": "dubbo-admin-ui",
+  "author": "apache dubbo",
   "private": true,
   "scripts": {
     "dev": "webpack-dev-server --inline --progress --config build/webpack.dev.conf.js",
@@ -17,14 +17,14 @@
     "http-status": "^1.2.0",
     "js-yaml": "^3.12.0",
     "jsoneditor": "^5.26.2",
-    "lodash": "^4.17.11",
-    "vue": "^2.5.2",
+    "lodash": "^4.17.15",
+    "vue": "^2.6.11",
     "vue-clipboard2": "^0.2.1",
     "vue-echarts": "^4.0.1",
-    "vue-i18n": "^8.6.0",
-    "vue-router": "^3.0.1",
-    "vuetify": "^1.2.2",
-    "vuex": "^3.0.1"
+    "vue-i18n": "^8.18.2",
+    "vue-router": "^3.3.4",
+    "vuetify": "^1.5.24",
+    "vuex": "^3.5.1"
   },
   "devDependencies": {
     "autoprefixer": "^7.1.2",

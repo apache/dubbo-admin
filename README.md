@@ -40,6 +40,7 @@ service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.
     OR
     * `cd dubbo-admin-distribution/target`;   `java -jar dubbo-admin-0.1.jar`
 5. Visit `http://localhost:8080`
+6. Default username and password is `root`
 ---
 
 ### Development Setup

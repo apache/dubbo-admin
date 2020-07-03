@@ -56,8 +56,8 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
 
   @After
   public void tearDown() throws Exception {
-    if (zkClient.checkExists().forPath("/dubbo") != null) {
-      zkClient.delete().deletingChildrenIfNeeded().forPath("/dubbo");
+    if (zkClient.checkExists().forPath("/dubbo/config/dubbo") != null) {
+      zkClient.delete().deletingChildrenIfNeeded().forPath("/dubbo/config/dubbo");
     }
   }
 

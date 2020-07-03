@@ -18,7 +18,7 @@ package org.apache.dubbo.admin.service;
 
 import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.dto.ServiceDTO;
-import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
 
 import java.util.List;
 import java.util.Set;

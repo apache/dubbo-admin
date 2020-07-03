@@ -26,7 +26,8 @@ import com.ecwid.consul.v1.kv.model.GetValue;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+import org.apache.dubbo.metadata.report.identifier.KeyTypeEnum;
+import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
 
 import java.util.Objects;
 
@@ -67,11 +68,11 @@ public class ConsulMetaDataCollector implements MetaDataCollector {
 
     private String doGetMetaData(MetadataIdentifier key) {
         try {
-            Response<GetValue> response = this.client.getKVValue(key.getUniqueKey(MetadataIdentifier.KeyTypeEnum.UNIQUE_KEY));
+            Response<GetValue> response = this.client.getKVValue(key.getUniqueKey(KeyTypeEnum.UNIQUE_KEY));
             return response.getValue().getDecodedValue();
         } catch (Exception e) {
             LOG.error(String.format("Failed to fetch metadata for %s from consul, cause: %s",
-                    key.getUniqueKey(MetadataIdentifier.KeyTypeEnum.UNIQUE_KEY), e.getMessage()), e);
+                    key.getUniqueKey(KeyTypeEnum.UNIQUE_KEY), e.getMessage()), e);
         }
         return null;
     }
