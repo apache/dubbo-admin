@@ -36,7 +36,7 @@
         <junit.version>4.12</junit.version>
         <jib-maven-plugin.version>2.4.0</jib-maven-plugin.version>
         <maven-compiler-plugin.version>3.7.0</maven-compiler-plugin.version>
-        <docker-maven-plugin.version>0.30.0</docker-maven-plugin.version>
+        <docker-maven-plugin.version>0.33.0</docker-maven-plugin.version>
         <maven-failsafe-plugin.version>2.21.0</maven-failsafe-plugin.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -253,6 +253,7 @@
                                     <alias>dubbo-admin-provider</alias>
                                     <name>${provider.image.name}</name>
                                     <run>
+                                        <dependsOn>dubbo-admin</dependsOn>
                                         <env>
                                             <dubbo.config-center.address>zookeeper://${local.ip}:${zookeeper.port}
                                             </dubbo.config-center.address>
