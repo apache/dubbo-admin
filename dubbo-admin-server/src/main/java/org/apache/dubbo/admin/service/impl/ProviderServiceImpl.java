@@ -27,7 +27,7 @@ import org.apache.dubbo.admin.model.dto.ServiceDTO;
 import org.apache.dubbo.admin.service.OverrideService;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.common.URL;
-import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 

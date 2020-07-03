@@ -29,7 +29,7 @@ import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.admin.service.impl.GenericServiceImpl;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
 import org.apache.dubbo.metadata.definition.model.MethodDefinition;
-import org.apache.dubbo.metadata.identifier.MetadataIdentifier;
+import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
