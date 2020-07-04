@@ -12,14 +12,15 @@ jobs:
         run: cp docker/latest/** ./
       - name: Docker build
         run: docker build -t apache/dubbo-admin-integration:latest .
+      - name: Upload latest docker image
+        run: |
+          env
+          user=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user | jq -r .login)
+          username="$(echo ${user} | tr "[:upper:]" "[:lower:]")"
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login docker.pkg.github.com -u "${username}" --password-stdin
+          docker tag apache/dubbo-admin-integration:latest docker.pkg.github.com/htynkn/dubbo-admin/dubbo-admin-integration:latest
+          docker push docker.pkg.github.com/htynkn/dubbo-admin/dubbo-admin-integration:latest
       - name: Setup xvfb
         run: sudo apt-get install xvfb
       - name: Run integration test
         run: xvfb-run --server-args="-screen 0, 1024x768x24" ./mvnw --batch-mode --projects dubbo-admin-test --activate-profiles dubbo-admin-integration-test -Ddocker.showLogs=true docker:stop docker:remove verify
-      - name: Upload latest docker image
-        run: |
-          user=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user | jq -r .login)
-          username="$(echo ${user} | tr "[:upper:]" "[:lower:]")"
-          echo ${{ secrets.GITHUB_TOKEN }} | docker login docker.pkg.github.com -u "${username}" --password-stdin
-          docker tag apache/dubbo-admin-integration:latest docker.pkg.github.com/apache/dubbo-admin/dubbo-admin-integration:latest
-          docker push docker.pkg.github.com/apache/dubbo-admin/dubbo-admin-integration:latest
