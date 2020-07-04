@@ -27,8 +27,22 @@ module.exports = {
     },
     optimization: {
       splitChunks: {
-        minSize: 1000000,
-        maxSize: 3000000,
+        cacheGroups: {
+          reactBase: {
+            name: 'braceBase',
+            test: (module) => {
+              return /brace/.test(module.context);
+            },
+            chunks: 'initial',
+            priority: 10,
+          },
+          common: {
+            name: 'vendor',
+            chunks: 'initial',
+            priority: 2,
+            minChunks: 2,
+          },
+        }
       }
     }
   }
