@@ -13,13 +13,13 @@ jobs:
       - name: Docker build
         run: docker build -t apache/dubbo-admin-integration:latest .
       - name: Upload latest docker image
+        if: {{ github.ref != 'ref/head/develop' }}
         run: |
-          env
           user=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user | jq -r .login)
           username="$(echo ${user} | tr "[:upper:]" "[:lower:]")"
           echo ${{ secrets.GITHUB_TOKEN }} | docker login docker.pkg.github.com -u "${username}" --password-stdin
-          docker tag apache/dubbo-admin-integration:latest docker.pkg.github.com/htynkn/dubbo-admin/dubbo-admin-integration:latest
-          docker push docker.pkg.github.com/htynkn/dubbo-admin/dubbo-admin-integration:latest
+          docker tag apache/dubbo-admin-integration:latest docker.pkg.github.com/${{ github.repository }}/dubbo-admin-integration:latest
+          docker push docker.pkg.github.com/${{ github.repository }}/dubbo-admin-integration:latest
       - name: Setup xvfb
         run: sudo apt-get install xvfb
       - name: Run integration test
