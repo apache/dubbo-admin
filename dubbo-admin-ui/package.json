@@ -1,9 +1,12 @@
 {
-  "name": "v4",
-  "version": "0.1.0",
+  "name": "dubbo-admin-ui",
+  "version": "0.2.0-SNAPSHOT",
+  "description": "dubbo-admin-ui",
+  "author": "apache dubbo",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
+    "dev": "vue-cli-service serve",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint"
   },
