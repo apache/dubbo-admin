@@ -16,11 +16,8 @@ jobs:
         run: sudo apt-get install xvfb
       - name: Run integration test
         run: xvfb-run --server-args="-screen 0, 1024x768x24" ./mvnw --batch-mode --projects dubbo-admin-test --activate-profiles dubbo-admin-integration-test -Ddocker.showLogs=true docker:stop docker:remove verify
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
       - name: Upload latest docker image
+        if: ${{ github.event_name == 'push' }}
         run: |
           user=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/user | jq -r .login)
           username="$(echo ${user} | tr "[:upper:]" "[:lower:]")"
