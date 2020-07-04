@@ -268,6 +268,7 @@
 										<exclude>**/package.json</exclude>
 										<exclude>**/OpenSans.css</exclude>
 										<exclude>**/.eslintignore</exclude>
+										<exclude>**/.browserslistrc</exclude>
 										<exclude>**/resources/META-INF/**</exclude>
 										<exclude>**/src/main/resources/public/**</exclude>
 										<exclude>**/src/licenses/**</exclude>

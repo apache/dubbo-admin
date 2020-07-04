@@ -15,7 +15,8 @@
  * limitations under the License.
  */
 
-'use strict'
 module.exports = {
-  NODE_ENV: '"production"'
-}
+  presets: [
+    '@vue/cli-plugin-babel/preset'
+  ]
+};

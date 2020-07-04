@@ -22,9 +22,9 @@ import App from './App'
 import router from './router'
 import Vuetify from 'vuetify'
 import 'vuetify/dist/vuetify.min.css'
-import { store } from './store'
+import {store} from './store'
 import Notify from './components/public/notify'
-import { AXIOS } from './components/http-common'
+import {AXIOS} from './components/http-common'
 import i18n from './lang'
 import ECharts from 'vue-echarts/components/ECharts'
 import 'echarts/lib/chart/line'
@@ -49,13 +49,11 @@ Vue.component('chart', ECharts)
 
 /* eslint-disable no-new */
 new Vue({
-  el: '#app',
   router,
   store,
   i18n,
-  components: { App },
-  template: '<App/>'
-})
+  render: h => h(App)
+}).$mount('#app')
 
 router.beforeEach((to, from, next) => {
   if (to.matched.some(record => record.meta.requireLogin)) {
