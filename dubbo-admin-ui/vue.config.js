@@ -20,5 +20,16 @@ module.exports = {
         }
       }
     }
+  },
+  configureWebpack: {
+    performance: {
+      hints: false
+    },
+    optimization: {
+      splitChunks: {
+        minSize: 500000,
+        maxSize: 3000000,
+      }
+    }
   }
 };
