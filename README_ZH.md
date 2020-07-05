@@ -5,9 +5,11 @@
 ![license](https://img.shields.io/github/license/apache/dubbo-admin.svg)
 
 [English version](README.md).
-### Demo地址
-* http://47.91.207.147/#/service
-* 该地址是`develop`分支的最新版本，在从源码构建之前，可以先尝试demo
+### 快速开始
+
+* 预构建的Docker镜像 https://hub.docker.com/r/apache/dubbo-admin
+* 快速启动一个演示环境 [play-with-docker](https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/apache/dubbo-admin/develop/docker/stack.yml#) (版本:0.1.0)
+
 ### 页面截图
 
 ![index](https://raw.githubusercontent.com/apache/dubbo-admin/develop/doc/images/index.png)
@@ -16,9 +18,9 @@
 服务治理的部分，按照Dubbo 2.7的格式进行配置，同时兼容Dubbo 2.6，详见[这里](https://github.com/apache/dubbo-admin/wiki/%E6%9C%8D%E5%8A%A1%E6%B2%BB%E7%90%86%E5%85%BC%E5%AE%B9%E6%80%A7%E8%AF%B4%E6%98%8E)
 ### 前端部分
 
-- 使用[Vue.js](https://vuejs.org)作为javascript框架，[Vuetify](https://vuetifyjs.com)作为UI框架
+- 使用[Vue.js](https://vuejs.org)作为javascript框架
 - [dubbo-admin-ui/README.md](dubbo-admin-ui/README.md)中有更详细的介绍
-- 设置 npm **代理镜像** : 可以设置npm代理镜像来加速npm install的过程：在~/.npmrc中增加 `registry =https://registry.npm.taobao.org`
+- 设置 npm **代理镜像** : 如果遇到了网络问题，可以设置npm代理镜像来加速npm install的过程：在~/.npmrc中增加 `registry =https://registry.npm.taobao.org`
 
 ### 后端部分
 
@@ -47,8 +49,6 @@
   `dubbo admin ui`由npm管理和构建，在开发环境中，可以单独运行: `npm run dev`
 * 页面访问
   访问 `http://localhost:8081`, 由于前后端分开部署，前端支持热加载，任何页面的修改都可以实时反馈，不需要重启应用。
- * 跨域问题
-    为了方便开发，我们提供了这种前后端分离的部署模式，主要的好处是支持前端热部署，在这种模式下，前端会通过8080端口访问后端的restful api接口，获取数据, 这将导致跨域访问的问题。因此我们在`dubbo-admin-ui/config/index.js`添加了支持跨域访问的配置,当前端通过`npm run dev`单独启动时，这些配置将被激活，允许跨域访问
 
 ### Swagger 支持
 

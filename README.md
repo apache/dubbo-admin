@@ -7,9 +7,11 @@
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/apache/dubbo-admin.svg)](http://isitmaintained.com/project/apache/dubbo-admin "Percentage of issues still open")
 
 [中文说明](README_ZH.md)
-### Demo Address
-* http://47.91.207.147/#/service
-* this demo is the latest version of `develop` branch, you can try it before building from source code
+### Quick start
+
+* prebuilt docker image https://hub.docker.com/r/apache/dubbo-admin
+* quick start a live demo with [play-with-docker](https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/apache/dubbo-admin/develop/docker/stack.yml#) (version:0.1.0)
+
 ### Screenshot
 
 ![index](https://raw.githubusercontent.com/apache/dubbo-admin/develop/doc/images/index.png)
@@ -18,9 +20,9 @@
 service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.6, please refer to [here](https://github.com/apache/dubbo-admin/wiki/The-compatibility-of-service-governance)
 ### admin UI
 
-- [Vue.js](https://vuejs.org) and [Vuetify](https://vuetifyjs.com)
+- [Vue.js](https://vuejs.org) and [Vue Cli](https://cli.vuejs.org/)
 - [dubbo-admin-ui/README.md](dubbo-admin-ui/README.md) for more detail
-- Set npm **proxy mirror**: you can set npm proxy mirror to speedup npm install: add `registry =https://registry.npm.taobao.org` to ~/.npmrc
+- Set npm **proxy mirror**: if you have network issue, you can set npm proxy mirror to speedup npm install: add `registry =https://registry.npm.taobao.org` to ~/.npmrc
 
 ### admin Server
 
@@ -50,9 +52,7 @@ service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.
   run with `npm run dev`.
 * visit web page
   visit `http://localhost:8081`, frontend supports hot reload.
- * CORS problem
-    for the convenience of development, we deploy ui and server separately, so the frontend supports hot reload. In this mode, frontend will request `localhost:8080` to fetch data, this will cause a CORS problem, so we add a configuration in `dubbo-admin-ui/config/index.js` to support CORS. This config will be activated under `npm run dev` mode.
-
+  
 ### Swagger support
 
 Once deployed, you can check http://localhost:8080/swagger-ui.html to check all restful api and models
