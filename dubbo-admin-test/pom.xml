@@ -84,6 +84,30 @@
         </dependency>
 
         <dependency>
+            <groupId>com.sun.jersey</groupId>
+            <artifactId>jersey-servlet</artifactId>
+            <version>1.19.4</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.sun.jersey</groupId>
+            <artifactId>jersey-json</artifactId>
+            <version>1.19.4</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.sun.jersey</groupId>
+            <artifactId>jersey-client</artifactId>
+            <version>1.19.4</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.eclipse.jetty.aggregate</groupId>
+            <artifactId>jetty-all-server</artifactId>
+            <version>8.2.0.v20160908</version>
+        </dependency>
+
+        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.13</version>
@@ -151,6 +175,7 @@
                                     <portNames>
                                         <portName>zookeeper.port</portName>
                                         <portName>dubbo-admin.port</portName>
+                                        <portName>rest.api.port</portName>
                                     </portNames>
                                 </configuration>
                             </execution>
@@ -190,6 +215,31 @@
                             </to>
                             <container>
                                 <mainClass>org.apache.dubbo.admin.ProviderBootstrap</mainClass>
+                            </container>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>dockerBuild</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <version>${jib-maven-plugin.version}</version>
+                        <configuration>
+                            <from>
+                                <image>${java-image.name}</image>
+                            </from>
+                            <to>
+                                <image>${consumer.image.name}</image>
+                            </to>
+                            <container>
+                                <mainClass>org.apache.dubbo.admin.ConsumerBootstrap</mainClass>
                             </container>
                         </configuration>
                         <executions>
@@ -260,6 +310,26 @@
                                         </env>
                                         <wait>
                                             <log>dubbo service started</log>
+                                        </wait>
+                                    </run>
+                                </image>
+                                <image>
+                                    <alias>dubbo-admin-consumer</alias>
+                                    <name>${consumer.image.name}</name>
+                                    <run>
+                                        <dependsOn>dubbo-admin</dependsOn>
+                                        <env>
+                                            <dubbo.config-center.address>zookeeper://${local.ip}:${zookeeper.port}
+                                            </dubbo.config-center.address>
+                                            <rest.api.port>${rest.api.port}</rest.api.port>
+                                        </env>
+                                        <wait>
+                                            <log>dubbo service init finish</log>
+                                            <http>
+                                                <url>http://${local.ip}:${rest.api.port}/checkAlive</url>
+                                                <method>GET</method>
+                                                <status>200</status>
+                                            </http>
                                         </wait>
                                     </run>
                                 </image>

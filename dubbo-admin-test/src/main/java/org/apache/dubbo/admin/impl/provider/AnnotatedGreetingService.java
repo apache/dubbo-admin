@@ -17,7 +17,7 @@
  *
  */
 
-package org.apache.dubbo.admin.impl;
+package org.apache.dubbo.admin.impl.provider;
 
 import org.apache.dubbo.admin.api.GreetingService;
 import org.apache.dubbo.config.annotation.DubboService;
