@@ -267,7 +267,7 @@
                                     <alias>dubbo-admin-consumer</alias>
                                     <name>${consumer.image.name}</name>
                                     <run>
-                                        <dependsOn>dubbo-admin</dependsOn>
+                                        <dependsOn>dubbo-admin-provider</dependsOn>
                                         <env>
                                             <dubbo.config-center.address>zookeeper://${local.ip}:${zookeeper.port}
                                             </dubbo.config-center.address>
@@ -275,11 +275,6 @@
                                         </env>
                                         <wait>
                                             <log>dubbo service init finish</log>
-                                            <http>
-                                                <url>http://${local.ip}:${rest.api.port}/checkAlive</url>
-                                                <method>GET</method>
-                                                <status>200</status>
-                                            </http>
                                         </wait>
                                     </run>
                                 </image>

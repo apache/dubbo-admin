@@ -18,11 +18,7 @@
  */
 package org.apache.dubbo.admin.impl.consumer;
 
-import org.apache.dubbo.config.spring.context.annotation.EnableDubbo;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.PropertySource;
+import org.springframework.context.ApplicationContext;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -32,17 +28,7 @@ import javax.ws.rs.core.MediaType;
 
 @Path("/")
 public class RestApiService {
-
-    private static AnnotationConfigApplicationContext context;
-
-    public RestApiService() {
-        if (context == null) {
-            context = new AnnotationConfigApplicationContext(ConsumerConfiguration.class);
-            context.start();
-
-            System.out.println("dubbo service init finish");
-        }
-    }
+    public static ApplicationContext applicationContext;
 
     @Path("/checkAlive")
     @GET
@@ -55,15 +41,7 @@ public class RestApiService {
     @GET
     @Produces(MediaType.APPLICATION_JSON) // 声明这个接口将以json格式返回
     public CommonResult hello(@QueryParam("name") String name) {
-        return CommonResult.success(context.getBean(AnnotatedGreetingService.class).sayHello(name));
-    }
-
-
-    @Configuration
-    @EnableDubbo(scanBasePackages = "org.apache.dubbo.admin.impl.consumer")
-    @ComponentScan(basePackages = "org.apache.dubbo.admin.impl.consumer")
-    @PropertySource("classpath:/spring/dubbo-consumer.properties")
-    public static class ConsumerConfiguration {
+        return CommonResult.success(applicationContext.getBean(AnnotatedGreetingService.class).sayHello(name));
     }
 
     public static class CommonResult {

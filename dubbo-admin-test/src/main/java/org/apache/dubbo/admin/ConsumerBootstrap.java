@@ -20,9 +20,15 @@ package org.apache.dubbo.admin;
 
 
 import com.sun.jersey.spi.container.servlet.ServletContainer;
+import org.apache.dubbo.admin.impl.consumer.RestApiService;
+import org.apache.dubbo.config.spring.context.annotation.EnableDubbo;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
 
 public class ConsumerBootstrap {
     public static void main(String[] args) throws Exception {
@@ -33,7 +39,13 @@ public class ConsumerBootstrap {
             //ignore
         }
 
-        Server server = new Server(port); // 监听8282端口
+        AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(ConsumerBootstrap.ConsumerConfiguration.class);
+        context.start();
+
+
+        RestApiService.applicationContext = context;
+
+        Server server = new Server(port);
         ServletHolder servlet = new ServletHolder(ServletContainer.class);
 
         servlet.setInitParameter("com.sun.jersey.config.property.packages", "org.apache.dubbo.admin.impl.consumer");
@@ -44,6 +56,16 @@ public class ConsumerBootstrap {
         handler.addServlet(servlet, "/*");
         server.setHandler(handler);
         server.start();
-        System.out.println("start...in " + port);
+
+        System.out.println("dubbo service init finish");
     }
+
+
+    @Configuration
+    @EnableDubbo(scanBasePackages = "org.apache.dubbo.admin.impl.consumer")
+    @ComponentScan(basePackages = "org.apache.dubbo.admin.impl.consumer")
+    @PropertySource("classpath:/spring/dubbo-consumer.properties")
+    public static class ConsumerConfiguration {
+    }
+
 }
