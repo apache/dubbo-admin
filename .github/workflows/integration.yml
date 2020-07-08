@@ -12,7 +12,13 @@ jobs:
         run: cp docker/latest/** ./
       - name: Docker build
         run: docker build -t apache/dubbo-admin-integration:latest .
+      - name: Build provider and consumer image
+        run: ./mvnw --batch-mode --projects dubbo-admin-test --activate-profiles build-provider package && ./mvnw --batch-mode --projects dubbo-admin-test --activate-profiles build-consumer package
       - name: Setup xvfb
         run: sudo apt-get install xvfb
       - name: Run integration test
         run: xvfb-run --server-args="-screen 0, 1024x768x24" ./mvnw --batch-mode --projects dubbo-admin-test --activate-profiles dubbo-admin-integration-test -Ddocker.showLogs=true docker:stop docker:remove verify
+      - uses: actions/upload-artifact@v2
+        with:
+          name: screenshots
+          path: dubbo-admin-test/target/screens/

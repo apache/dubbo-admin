@@ -43,7 +43,7 @@ public class ProviderBootstrap {
     }
 
     @Configuration
-    @EnableDubbo(scanBasePackages = "org.apache.dubbo.admin.impl")
+    @EnableDubbo(scanBasePackages = "org.apache.dubbo.admin.impl.provider")
     @PropertySource("classpath:/spring/dubbo-provider.properties")
     static class ProviderConfiguration {
         @Value("${dubbo.config-center.address}")
