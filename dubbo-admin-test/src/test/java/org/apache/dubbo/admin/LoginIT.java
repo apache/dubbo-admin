@@ -30,7 +30,7 @@ import org.seleniumhq.selenium.fluent.FluentWebDriver;
 
 import java.util.concurrent.TimeUnit;
 
-public class LoginIT {
+public class LoginIT extends BaseIT {
     private static WebDriver driver;
     private static FluentWebDriver fwd;
     private static String BASE_URL;
@@ -59,6 +59,8 @@ public class LoginIT {
 
         fwd.input(By.name("username")).sendKeys("root");
         fwd.input(By.cssSelector("input[type='password']")).sendKeys("root");
+
+        this.takeShot(driver, "login");
 
 
         fwd.button(By.tagName("button")).click();

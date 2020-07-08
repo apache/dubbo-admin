@@ -16,16 +16,18 @@
  *   limitations under the License.
  *
  */
-
-package org.apache.dubbo.admin.impl;
+package org.apache.dubbo.admin.impl.consumer;
 
 import org.apache.dubbo.admin.api.GreetingService;
-import org.apache.dubbo.config.annotation.DubboService;
+import org.apache.dubbo.config.annotation.DubboReference;
+import org.springframework.stereotype.Service;
 
-@DubboService(version = "1.0.0")
-public class AnnotatedGreetingService implements GreetingService {
+@Service
+public class AnnotatedGreetingService {
+    @DubboReference(version = "1.0.0")
+    private GreetingService greetingService;
+
     public String sayHello(String name) {
-        System.out.println("greeting service received: " + name);
-        return "hello, " + name;
+        return greetingService.sayHello(name);
     }
 }
