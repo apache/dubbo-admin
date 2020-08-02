@@ -40,6 +40,7 @@
                     v-model="password"
                     class="input-group--focused"
                     :type="e2 ? 'password' : 'text'"
+                    @keyup.enter.native="login"
                   ></v-text-field>
 
                   <v-card-actions>
