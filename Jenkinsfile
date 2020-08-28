@@ -162,7 +162,7 @@ def isPullRequest(branch) {
 }
 
 def doBuildAndTest(branch) {
-  return branch.startsWith('PR') || branch == 'staging' || branch == 'production'
+  return branch == 'develop'
 }
 
 def isProdRelease(branch) {
