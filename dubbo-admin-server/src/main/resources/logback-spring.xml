@@ -16,30 +16,31 @@
   limitations under the License.
   -->
 <configuration>
-    <property name="LOG_FILE" value="dubbo-governance.log"/>
-    <property name="LOG_FILE_MAX_HISTORY" value="7"/>
+    <property name="LOG_HOME" value="/logs/"/>
 
-    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
-    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
-    <include resource="org/springframework/boot/logging/logback/file-appender.xml"/>
-
-    <logger name="org.apache" level="WARN"/>
-
-    <appender name="FILE-LOG-ASYNC" class="ch.qos.logback.classic.AsyncAppender">
-        <discardingThreshold>0</discardingThreshold>
-        <queueSize>2048</queueSize>
-        <appender-ref ref="FILE"/>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%d %-5level %thread %class{0}:%line] %msg%n</pattern>
+        </encoder>
     </appender>
 
-    <appender name="CONSOLE-LOG-ASYNC" class="ch.qos.logback.classic.AsyncAppender">
-        <discardingThreshold>0</discardingThreshold>
-        <queueSize>2048</queueSize>
-        <appender-ref ref="CONSOLE"/>
+    <appender name="appender.main"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <append>true</append>
+        <file>${LOG_HOME}/dubbo-admin.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/rolling/dubbo-admin-%d{yyyyMMdd}.log</fileNamePattern>
+        </rollingPolicy>
+        <encoder>
+            <pattern>[%d{yyyy-MM-dd HH:mm:ss} %-5level %thread %class{0}:%line] %msg%n</pattern>
+        </encoder>
     </appender>
 
-    <root level="INFO">
-        <appender-ref ref="CONSOLE-LOG-ASYNC"/>
-        <appender-ref ref="FILE-LOG-ASYNC"/>
+    <logger name="org.example.examplewebapp" level="DEBUG"/>
+
+    <root level="info">
+        <appender-ref ref="STDOUT"/>
+        <appender-ref ref="appender.main"/>
     </root>
 
 </configuration>
