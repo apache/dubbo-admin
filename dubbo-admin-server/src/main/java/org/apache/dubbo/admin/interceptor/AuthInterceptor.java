@@ -18,10 +18,10 @@ package org.apache.dubbo.admin.interceptor;
 
 import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.controller.UserController;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.handler.HandlerInterceptorAdapter;
 
@@ -33,6 +33,7 @@ import java.lang.reflect.Method;
 public class AuthInterceptor extends HandlerInterceptorAdapter {
     @Value("${admin.check.authority:true}")
     private boolean checkAuthority;
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         if (!(handler instanceof HandlerMethod) || !checkAuthority) {
@@ -44,8 +45,8 @@ public class AuthInterceptor extends HandlerInterceptorAdapter {
         if (null == authority) {
             authority = method.getDeclaringClass().getDeclaredAnnotation(Authority.class);
         }
-        if (null != authority && authority.needLogin()) {
-            String authorization = request.getHeader("Authorization");
+        String authorization = request.getHeader("Authorization");
+        if (null != authority && authority.needLogin() && !StringUtils.isEmpty(authorization)) {
             UserController.User user = UserController.tokenMap.get(authorization);
             if (null != user && System.currentTimeMillis() - user.getLastUpdateTime() <= 1000 * 60 * 15) {
                 user.setLastUpdateTime(System.currentTimeMillis());
