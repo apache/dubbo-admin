@@ -16,7 +16,7 @@
   limitations under the License.
   -->
 <configuration>
-    <property name="LOG_HOME" value="/logs/"/>
+    <property name="LOG_HOME" value="${user.home}/logs/dubbo-admin"/>
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
