@@ -159,5 +159,36 @@ export default {
   },
   userName: '用户名',
   password: '密码',
-  login: '登录'
+  login: '登录',
+  apiDocs: '接口文档',
+  apiDocsRes: {
+    dubboProviderIP: 'Dubbo 提供者Ip',
+    dubboProviderPort: 'Dubbo 提供者端口',
+    loadApiList: '加载接口列表',
+    apiListText: '接口列表',
+    apiForm: {
+      missingInterfaceInfo: '缺少接口信息',
+      getApiInfoErr: '获取接口信息异常',
+      api404Err: '接口名称不正确,没有查找到接口参数和响应信息',
+      apiRespDecShowLabel: '接口说明',
+      apiNameShowLabel: '接口名称',
+      apiVersionShowLabel: '接口版本',
+      apiDescriptionShowLabel: '接口描述',
+      paramDescriptionShowLabel: '描述',
+      isAsyncFormLabel: '是否异步调用(此参数不可修改,根据接口定义的是否异步显示)',
+      apiModuleFormLabel: '接口模块(此参数不可修改)',
+      apiFunctionNameFormLabel: '接口方法名(此参数不可修改)',
+      registryCenterUrlFormLabel: '注册中心地址, 如果为空将使用Dubbo 提供者Ip和端口进行直连',
+      prarmNameLabel: '参数名',
+      prarmRequiredLabel: '该参数为必填',
+      doTestBtn: '测试',
+      responseLabel: '响应',
+      responseExampleLabel: '响应示例',
+      apiResponseLabel: '接口响应',
+      LoadingLabel: '加载中...',
+      requireTip: '有未填写的必填项',
+      requestApiErrorTip: '请求接口发生异常,请检查提交的数据,特别是JSON类数据和其中的枚举部分',
+      unsupportedHtmlTypeTip: '暂不支持的HTML类型'
+    }
+  }
 }

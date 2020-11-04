@@ -159,5 +159,36 @@ export default {
   },
   userName: 'User Name',
   password: 'Password',
-  login: 'Login'
+  login: 'Login',
+  apiDocs: 'API Docs',
+  apiDocsRes: {
+    dubboProviderIP: 'Dubbo Provider Ip',
+    dubboProviderPort: 'Dubbo Provider Port',
+    loadApiList: 'Load Api List',
+    apiListText: 'Api List',
+    apiForm: {
+      missingInterfaceInfo: 'Missing interface information',
+      getApiInfoErr: 'Exception in obtaining interface information',
+      api404Err: 'Interface name is incorrect, interface parameters and response information are not found',
+      apiRespDecShowLabel: 'Api Info',
+      apiNameShowLabel: 'Api Name',
+      apiVersionShowLabel: 'Api Version',
+      apiDescriptionShowLabel: 'Api Description',
+      paramDescriptionShowLabel: 'Description',
+      isAsyncFormLabel: 'Whether to call asynchronously (this parameter cannot be modified, according to whether to display asynchronously defined by the interface)',
+      apiModuleFormLabel: 'Api module (this parameter cannot be modified)',
+      apiFunctionNameFormLabel: 'Api function name(this parameter cannot be modified)',
+      registryCenterUrlFormLabel: 'Registry address. If it is empty, Dubbo provider IP and port will be used for direct connection',
+      prarmNameLabel: 'Parameter name',
+      prarmRequiredLabel: 'This parameter is required',
+      doTestBtn: 'Do Test',
+      responseLabel: 'Response',
+      responseExampleLabel: 'Response Example',
+      apiResponseLabel: 'Api Response',
+      LoadingLabel: 'Loading...',
+      requireTip: 'There are required items not filled in',
+      requestApiErrorTip: 'There is an exception in the request interface. Please check the submitted data, especially the JSON class data and the enumeration part',
+      unsupportedHtmlTypeTip: 'Temporarily unsupported HTML type'
+    }
+  }
 }
