@@ -1,0 +1,161 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "dubbo api docs 静态测试11111",
+    "version": "0.1.1",
+    "title": "dubbo api docs 静态测试"
+  },
+  "host": "localhost:8080",
+  "basePath": "/api/docs/swagger",
+  "tags": [
+    {
+      "name": "testSync",
+      "description": "同步测试"
+    },
+    {
+      "name": "testAsync",
+      "description": "异步测试"
+    }
+  ],
+  "paths": {
+    "/127.0.0.1/20881/org.apache.dubbo.apidocs.examples.api.ISyncDemo/demoApi2/false/requestDubbo": {
+      "post": {
+        "tags": [
+          "testSync"
+        ],
+        "summary": "request and response parameters are Strings",
+        "description": "description description description description description",
+        "operationId": "demoApi2",
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "java.lang.String-->prarm1",
+            "in": "formData",
+            "description": "prarm1 description",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "java.lang.String-->prarm2",
+            "in": "formData",
+            "description": "prarm2 description",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "/127.0.0.1/20881/org.apache.dubbo.apidocs.examples.api.ISyncDemo/demoApi13/false/requestDubbo": {
+      "post": {
+        "tags": [
+          "testSync"
+        ],
+        "summary": "Simple test",
+        "description": "description description description description description",
+        "operationId": "demoApi13",
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "org.apache.dubbo.apidocs.examples.params.DemoParamBean3-->string",
+            "in": "formData",
+            "description": "string description",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "org.apache.dubbo.apidocs.examples.params.DemoParamBean3-->bean4",
+            "in": "formData",
+            "description": "bean4 description",
+            "required": false,
+            "type": "string",
+            "style": "deepObject",
+            "value": "{\"bean4Str\": \"a string\"}"
+          },
+          {
+            "name": "org.apache.dubbo.apidocs.examples.params.DemoParamBean4-->bean4Str",
+            "in": "formData",
+            "description": "bean4Str description",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/DemoParamBean3"
+            }
+          }
+        }
+      }
+    },
+    "/127.0.0.1/20881/org.apache.dubbo.apidocs.examples.api.IAsyncDemo/demoApi13/true/requestDubbo": {
+      "post": {
+        "tags": [
+          "testAsync"
+        ],
+        "summary": "Simple test",
+        "description": "description description description description description",
+        "operationId": "demoApi13",
+        "consumes": [
+          "multipart/form-data"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "org.apache.dubbo.apidocs.examples.params.DemoParamBean3-->string",
+            "in": "formData",
+            "description": "string description",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "org.apache.dubbo.apidocs.examples.params.DemoParamBean4-->bean4Str",
+            "in": "formData",
+            "description": "bean4Str description",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/DemoParamBean3"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "DemoParamBean3": {
+      "type": "object",
+      "properties": {
+        "string": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

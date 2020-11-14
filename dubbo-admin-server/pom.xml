@@ -34,6 +34,7 @@
         <java.version>1.8</java.version>
         <mockito-version>2.23.4</mockito-version>
         <lombok.version>1.18.12</lombok.version>
+        <swagger-models.version>2.1.5</swagger-models.version>
     </properties>
 
     <dependencies>
@@ -179,6 +180,13 @@
             <artifactId>lombok</artifactId>
             <version>${lombok.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-models</artifactId>
+            <version>${swagger-models.version}</version>
+        </dependency>
+
     </dependencies>
 
     <build>

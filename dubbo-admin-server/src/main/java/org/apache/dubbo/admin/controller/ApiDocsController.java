@@ -21,7 +21,7 @@ import org.apache.dubbo.admin.controller.editors.CustomLocalDateTimeEditor;
 import org.apache.dubbo.admin.model.dto.docs.ApiInfoRequest;
 import org.apache.dubbo.admin.model.dto.docs.CallDubboServiceRequest;
 import org.apache.dubbo.admin.model.dto.docs.CallDubboServiceRequestInterfacePrarm;
-import org.apache.dubbo.admin.utils.DubboUtil;
+import org.apache.dubbo.admin.utils.ApiDocsDubboGenericUtil;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SimplePropertyPreFilter;
@@ -43,7 +43,6 @@ import javax.annotation.PostConstruct;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -87,14 +86,14 @@ public class ApiDocsController {
     }
 
     /**
-     * Set timeout and retries for {@link org.apache.dubbo.admin.utils.DubboUtil}
+     * Set timeout and retries for {@link ApiDocsDubboGenericUtil}
      * 2020-11-02 11:16:28
      * @param:
      * @return void
      */
     @PostConstruct
     public void setRetriesAndTimeout(){
-        DubboUtil.setRetriesAndTimeout(retries, timeout);
+        ApiDocsDubboGenericUtil.setRetriesAndTimeout(retries, timeout);
     }
 
     @ApiOperation(value = "request dubbo api", notes = "request dubbo api", httpMethod = "POST", produces = "application/json")
@@ -131,7 +130,7 @@ public class ApiDocsController {
         if (null == prarmValues) {
             prarmValues = new Object[0];
         }
-        CompletableFuture<Object> future = DubboUtil.invoke(dubboCfg.getRegistryCenterUrl(), dubboCfg.getInterfaceClassName(),
+        CompletableFuture<Object> future = ApiDocsDubboGenericUtil.invoke(dubboCfg.getRegistryCenterUrl(), dubboCfg.getInterfaceClassName(),
                 dubboCfg.getMethodName(), dubboCfg.isAsync(), prarmTypes, prarmValues);
         try {
             Object objResult = future.get();
