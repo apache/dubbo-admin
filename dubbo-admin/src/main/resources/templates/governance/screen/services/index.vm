@@ -18,9 +18,9 @@
 #elseif($keyword && $services.size() == 1)
 <script type="text/javascript">
         #if(! $providerServices.contains($services.iterator().next()))
-        window.location.href = "services/$services.iterator().next()/consumers";
+        window.location.href = '$rootContextPath.getURI("/governance/")services/$services.iterator().next()/consumers';
         #else
-        window.location.href = "services/$services.iterator().next()/providers";
+        window.location.href = '$rootContextPath.getURI("/governance/")services/$services.iterator().next()/providers';
         #end
 </script>
 #else
@@ -87,9 +87,9 @@
             <td><input type="checkbox" name="ids" value="$service"/></td>
             <td>
                 #if(! $providerServices.contains($service))
-                    <a href="services/$service/consumers">$service</a>
+                    <a href="$rootContextPath.getURI("/governance/")services/$service/consumers">$service</a>
                 #else
-                    <a href="services/$service/providers">$service</a>
+                    <a href="$rootContextPath.getURI("/governance/")services/$service/providers">$service</a>
                 #end
             </td>
             <td>

@@ -94,16 +94,21 @@ public class RouterController {
         return appActionWithIdandAction(null, null, type, id, action, request, response, model);
     }
 
-
     // service mapping
-    @RequestMapping("/governance/services/{service}/{type}")
+    @RequestMapping("/governance/services/{service}/{type:providers|consumers|accesses|weights|overrides|owners|applications|loadbalances|routes}")
     public String servicerRouter(@PathVariable("service") String service, @PathVariable("type") String type,
                                  HttpServletRequest request, HttpServletResponse response, Model model) {
         model.addAttribute("service", service);
         return appRouter(null, "services", service, type, request, response, model);
     }
 
-    @RequestMapping("/governance/services/{service}/{type}/{action}")
+    @RequestMapping("/governance/services/{group}/{service}/{type:providers|consumers|accesses|weights|overrides|owners|applications|loadbalances|routes}")
+    public String servicerRouter(@PathVariable("group") String group, @PathVariable("service") String service, @PathVariable("type") String type,
+                                 HttpServletRequest request, HttpServletResponse response, Model model) {
+        return servicerRouter(group + "/" + service, type, request, response, model);
+    }
+
+    @RequestMapping("/governance/services/{service}/{type:providers|consumers|accesses|weights|overrides|owners|applications|loadbalances|routes}/{action}")
     public String serviceAction(@RequestParam Map<String, String> param,
                                 @PathVariable("service") String service, @PathVariable("type") String type,
                                 @PathVariable("action") String action, HttpServletRequest request,
@@ -116,7 +121,15 @@ public class RouterController {
         return appAction(param, null, "services", service, type, action, request, response, model);
     }
 
-    @RequestMapping("/governance/services/{service}/{type}/{id}/{action}")
+    @RequestMapping("/governance/services/{group}/{service}/{type:providers|consumers|accesses|weights|overrides|owners|applications|loadbalances|routes}/{action}")
+    public String serviceAction(@RequestParam Map<String, String> param,
+                                @PathVariable("group") String group, @PathVariable("service") String service, @PathVariable("type") String type,
+                                @PathVariable("action") String action, HttpServletRequest request,
+                                HttpServletResponse response, Model model) {
+        return serviceAction(param, group + "/" + service, type, action, request, response, model);
+    }
+
+    @RequestMapping("/governance/services/{service}/{type:providers|consumers|accesses|weights|overrides|owners|applications|loadbalances|routes}/{id}/{action}")
     public String serviceActionWithId(@RequestParam Map<String, Object> param,
                                       @PathVariable("service") String service,
                                       @PathVariable("type") String type, @PathVariable("id") String id,
@@ -136,7 +149,15 @@ public class RouterController {
         return appActionWithIdandAction(app, service, type, id, action, request, response, model);
     }
 
-    // app mapping all execute goes here
+    @RequestMapping("/governance/services/{group}/{service}/{type:providers|consumers|accesses|weights|overrides|owners|applications|loadbalances|routes}/{id}/{action}")
+    public String serviceActionWithId(@RequestParam Map<String, Object> param,
+                                      @PathVariable("group") String group, @PathVariable("service") String service,
+                                      @PathVariable("type") String type, @PathVariable("id") String id,
+                                      @PathVariable("action") String action, HttpServletRequest request, HttpServletResponse response, Model model) {
+        return serviceActionWithId(param, group + "/" + service, type, id, action, request, response, model);
+    }
+
+        // app mapping all execute goes here
     //@RequestMapping("/governance/applications/{app}/services/{ids}/{action}")
     //public String serviceActionWithApp(@PathVariable("app") String app, @PathVariable("ids") String ids,
     //                                   @PathVariable("type") String type, HttpServletRequest request,
@@ -289,7 +310,6 @@ public class RouterController {
         }
         return "";
     }
-
 
     @RequestMapping("/governance/applications/{app}/services/{service}/{type}/{id}/{action}")
     public String appActionWithIdandAction(@PathVariable("app") String app, @PathVariable("service") String service,

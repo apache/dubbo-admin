@@ -126,7 +126,7 @@
         <tr>
             <td><input type="checkbox" name="ids" value="$consumer.id"/></td>
             <td>
-                <a href="consumers/$consumer.id">#if($address)$tool.getSimpleName($consumer.service)#else$consumer.address#end</a>
+                <a href="$rootContextPath.getURI("/governance/")consumers/$consumer.id">#if($address)$tool.getSimpleName($consumer.service)#else$consumer.address#end</a>
             </td>
             <td>$consumer.application</td>
             <td>
@@ -148,14 +148,14 @@
             </td>
             <td>
                 #if($consumer.routes && $consumer.routes.size() > 0)
-                    <a href="consumers/$consumer.id/routed">#springMessageText("routed", "routed")($consumer.routes.size())</a>
+                    <a href="$rootContextPath.getURI("/governance/")consumers/$consumer.id/routed">#springMessageText("routed", "routed")($consumer.routes.size())</a>
                 #else
                     <font color="gray">#springMessageText("unrouted", "unrouted")</font>
                 #end
             </td>
             <td>
                 #if($consumer.providers && $consumer.providers.size() > 0)
-                    <a href="consumers/$consumer.id/notified">#springMessageText("notified", "notified")($consumer.providers.size())</a>
+                    <a href="$rootContextPath.getURI("/governance/")consumers/$consumer.id/notified">#springMessageText("notified", "notified")($consumer.providers.size())</a>
                 #else
                     <font color="red">#springMessageText("noProvider", "noProvider")</font>
                 #end
@@ -163,7 +163,7 @@
             #if($currentUser.role != "G")
                 <td>
                     #if($currentUser.hasServicePrivilege($consumer.service))
-                        <a href="consumers/$consumer.id/edit"><img src="$rootContextPath.getURI("images/ico_edit.png")"
+                        <a href="$rootContextPath.getURI("/governance/")consumers/$consumer.id/edit"><img src="$rootContextPath.getURI("images/ico_edit.png")"
                                                                    width="12" height="12"/><span
                                 class="ico_font">#springMessageText("edit", "edit")</span></a>
                         <span class="ico_line">|</span>

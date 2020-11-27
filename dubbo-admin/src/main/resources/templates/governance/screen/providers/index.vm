@@ -15,7 +15,7 @@
 #set($layout = "/templates/governance/layout/default.vm")
 <div class="ico_btn">
     #if($currentUser.role != "G")
-        <a href="providers/add"><img src="$rootContextPath.getURI("images/ico_add.png")" width="12" height="12"/><span
+        <a href="$rootContextPath.getURI("/governance/")providers/add"><img src="$rootContextPath.getURI("images/ico_add.png")" width="12" height="12"/><span
                 class="ico_font">#springMessageText("add", "add")</span></a>
         <span class="ico_line">|</span>
         <a href="#" onclick="if(! hasCheckbox('ids')) { showAlert('#springMessageText(
@@ -94,7 +94,7 @@
         <tr>
             <td><input type="checkbox" name="ids" value="$provider.id"/></td>
             <td>
-                <a href="providers/$provider.id">#if($address)$tool.getSimpleName($provider.service)#else$provider.address#end</a>
+                <a href="$rootContextPath.getURI("/governance/")providers/$provider.id">#if($address)$tool.getSimpleName($provider.service)#else$provider.address#end</a>
             </td>
             <td>$tool.getProviderWeight($provider)</td>
             <td>#if($provider.dynamic)<font color="green">#springMessageText("dynamic", "dynamic")</font>#else<font color="blue">#springMessageText(
@@ -137,11 +137,11 @@
             #if($currentUser.role != "G")
                 <td>
                     #if($currentUser.hasServicePrivilege($provider.service))
-                        <a href="providers/$provider.id/edit"><img src="$rootContextPath.getURI("images/ico_edit.png")"
+                        <a href="$rootContextPath.getURI("/governance/")providers/$provider.id/edit"><img src="$rootContextPath.getURI("images/ico_edit.png")"
                                                                    width="12" height="12"/><span
                                 class="ico_font">#springMessageText("edit", "edit")</span></a>
                         <span class="ico_line">|</span>
-                        <a href="providers/$provider.id/add"><img src="$rootContextPath.getURI("images/ico_add.png")"
+                        <a href="$rootContextPath.getURI("/governance/")providers/$provider.id/add"><img src="$rootContextPath.getURI("images/ico_add.png")"
                                                                   width="12" height="12"/><span
                                 class="ico_font">#springMessageText("copy", "copy")</span></a>
                         <span class="ico_line">|</span>
