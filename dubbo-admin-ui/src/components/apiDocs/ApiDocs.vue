@@ -53,9 +53,8 @@
     <v-flex lg3>
     <v-card
       class="mx-auto"
-      dark
     >
-      <v-toolbar dark>
+      <v-toolbar>
         <v-toolbar-side-icon></v-toolbar-side-icon>
         <v-toolbar-title>{{ $t('apiDocsRes.apiListText') }}</v-toolbar-title>
         <v-spacer></v-spacer>
