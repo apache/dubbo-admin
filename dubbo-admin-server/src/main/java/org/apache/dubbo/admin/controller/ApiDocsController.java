@@ -20,7 +20,7 @@ import org.apache.dubbo.admin.controller.editors.CustomLocalDateEditor;
 import org.apache.dubbo.admin.controller.editors.CustomLocalDateTimeEditor;
 import org.apache.dubbo.admin.model.dto.docs.ApiInfoRequest;
 import org.apache.dubbo.admin.model.dto.docs.CallDubboServiceRequest;
-import org.apache.dubbo.admin.model.dto.docs.CallDubboServiceRequestInterfacePrarm;
+import org.apache.dubbo.admin.model.dto.docs.CallDubboServiceRequestInterfaceParam;
 import org.apache.dubbo.admin.utils.ApiDocsDubboGenericUtil;
 
 import com.alibaba.fastjson.JSON;
@@ -98,40 +98,40 @@ public class ApiDocsController {
 
     @ApiOperation(value = "request dubbo api", notes = "request dubbo api", httpMethod = "POST", produces = "application/json")
     @PostMapping("/requestDubbo")
-    public String callDubboService(CallDubboServiceRequest dubboCfg, @RequestBody List<CallDubboServiceRequestInterfacePrarm> methodPrarms){
-        String[] prarmTypes = null;
-        Object[] prarmValues = null;
-        if(null != methodPrarms && !methodPrarms.isEmpty()){
-            prarmTypes = new String[methodPrarms.size()];
-            prarmValues = new Object[methodPrarms.size()];
-            for(int i = 0; i < methodPrarms.size(); i++){
-                CallDubboServiceRequestInterfacePrarm prarm = methodPrarms.get(i);
-                prarmTypes[i] = prarm.getPrarmType();
-                Object prarmValue = prarm.getPrarmValue();
-                if(isBaseType(prarm.getPrarmType()) && null != prarmValue){
-                    if(prarmValue instanceof Map){
-                        Map<?, ?> tempMap = (Map<?, ?>) prarmValue;
+    public String callDubboService(CallDubboServiceRequest dubboCfg, @RequestBody List<CallDubboServiceRequestInterfaceParam> methodparams){
+        String[] paramTypes = null;
+        Object[] paramValues = null;
+        if(null != methodparams && !methodparams.isEmpty()){
+            paramTypes = new String[methodparams.size()];
+            paramValues = new Object[methodparams.size()];
+            for(int i = 0; i < methodparams.size(); i++){
+                CallDubboServiceRequestInterfaceParam param = methodparams.get(i);
+                paramTypes[i] = param.getParamType();
+                Object paramValue = param.getParamValue();
+                if(isBaseType(param.getParamType()) && null != paramValue){
+                    if(paramValue instanceof Map){
+                        Map<?, ?> tempMap = (Map<?, ?>) paramValue;
                         if(!tempMap.isEmpty()) {
                             this.emptyString2Null(tempMap);
-                            prarmValues[i] = tempMap.values().stream().findFirst().orElse(null);
+                            paramValues[i] = tempMap.values().stream().findFirst().orElse(null);
                         }
                     } else {
-                        prarmValues[i] = emptyString2Null(prarmValue);
+                        paramValues[i] = emptyString2Null(paramValue);
                     }
                 } else {
-                    this.emptyString2Null(prarmValue);
-                    prarmValues[i] = prarmValue;
+                    this.emptyString2Null(paramValue);
+                    paramValues[i] = paramValue;
                 }
             }
         }
-        if (null == prarmTypes) {
-            prarmTypes = new String[0];
+        if (null == paramTypes) {
+            paramTypes = new String[0];
         }
-        if (null == prarmValues) {
-            prarmValues = new Object[0];
+        if (null == paramValues) {
+            paramValues = new Object[0];
         }
         CompletableFuture<Object> future = ApiDocsDubboGenericUtil.invoke(dubboCfg.getRegistryCenterUrl(), dubboCfg.getInterfaceClassName(),
-                dubboCfg.getMethodName(), dubboCfg.isAsync(), prarmTypes, prarmValues);
+                dubboCfg.getMethodName(), dubboCfg.isAsync(), paramTypes, paramValues);
         try {
             Object objResult = future.get();
             return JSON.toJSONString(objResult, CLASS_NAME_PRE_FILTER);
@@ -141,12 +141,12 @@ public class ApiDocsController {
         }
     }
 
-    private Object emptyString2Null(Object prarmValue){
-        if(null != prarmValue) {
-            if (prarmValue instanceof String && StringUtils.isBlank((String) prarmValue)) {
+    private Object emptyString2Null(Object paramValue){
+        if(null != paramValue) {
+            if (paramValue instanceof String && StringUtils.isBlank((String) paramValue)) {
                 return null;
-            } else if (prarmValue instanceof Map) {
-                Map<String, Object> tempMap = (Map<String, Object>) prarmValue;
+            } else if (paramValue instanceof Map) {
+                Map<String, Object> tempMap = (Map<String, Object>) paramValue;
                 tempMap.forEach((k, v) -> {
                     if (v != null && v instanceof String && StringUtils.isBlank((String) v)) {
                         tempMap.put(k, null);
@@ -156,7 +156,7 @@ public class ApiDocsController {
                 });
             }
         }
-        return prarmValue;
+        return paramValue;
     }
 
     @ApiOperation(value = "Get basic information of all modules, excluding API parameter information", notes = "Get basic information of all modules, excluding API parameter information", httpMethod = "GET", produces = "application/json")
@@ -179,12 +179,12 @@ public class ApiDocsController {
         req.setMethodName("apiParamsResponseInfo");
         req.setAsync(false);
 
-        List<CallDubboServiceRequestInterfacePrarm> methodPrarms = new ArrayList<>(1);
-        CallDubboServiceRequestInterfacePrarm prarm = new CallDubboServiceRequestInterfacePrarm();
-        prarm.setPrarmType(String.class.getName());
-        prarm.setPrarmValue(apiInfoRequest.getApiName());
-        methodPrarms.add(prarm);
-        return callDubboService(req, methodPrarms);
+        List<CallDubboServiceRequestInterfaceParam> methodparams = new ArrayList<>(1);
+        CallDubboServiceRequestInterfaceParam param = new CallDubboServiceRequestInterfaceParam();
+        param.setParamType(String.class.getName());
+        param.setParamValue(apiInfoRequest.getApiName());
+        methodparams.add(param);
+        return callDubboService(req, methodparams);
     }
 
     private static boolean isBaseType(String typeStr) {

@@ -27,12 +27,12 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-public class CallDubboServiceRequestInterfacePrarm {
+public class CallDubboServiceRequestInterfaceParam {
 
     @ApiParam(value = "Parameter type (full package path), such as: java.lang.String", required = true)
-    private String prarmType;
+    private String paramType;
 
     @ApiParam(value = "Parameter value", required = true)
-    private Object prarmValue;
+    private Object paramValue;
 
 }

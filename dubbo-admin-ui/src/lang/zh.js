@@ -172,23 +172,28 @@ export default {
       api404Err: '接口名称不正确,没有查找到接口参数和响应信息',
       apiRespDecShowLabel: '接口说明',
       apiNameShowLabel: '接口名称',
+      apiPathShowLabel: '接口位置',
+      apiMethodParamInfoLabel: '接口参数',
       apiVersionShowLabel: '接口版本',
       apiDescriptionShowLabel: '接口描述',
-      paramDescriptionShowLabel: '描述',
       isAsyncFormLabel: '是否异步调用(此参数不可修改,根据接口定义的是否异步显示)',
       apiModuleFormLabel: '接口模块(此参数不可修改)',
       apiFunctionNameFormLabel: '接口方法名(此参数不可修改)',
       registryCenterUrlFormLabel: '注册中心地址, 如果为空将使用Dubbo 提供者Ip和端口进行直连',
-      prarmNameLabel: '参数名',
-      prarmRequiredLabel: '该参数为必填',
+      paramNameLabel: '参数名',
+      paramPathLabel: '参数位置',
+      paramDescriptionLabel: '说明',
+      paramRequiredLabel: '该参数为必填',
       doTestBtn: '测试',
       responseLabel: '响应',
       responseExampleLabel: '响应示例',
       apiResponseLabel: '接口响应',
       LoadingLabel: '加载中...',
       requireTip: '有未填写的必填项',
+      requireItemTip: '该项为必填!',
       requestApiErrorTip: '请求接口发生异常,请检查提交的数据,特别是JSON类数据和其中的枚举部分',
-      unsupportedHtmlTypeTip: '暂不支持的HTML类型'
+      unsupportedHtmlTypeTip: '暂不支持的表单类型',
+      none: '无'
     }
   }
 }

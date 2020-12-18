@@ -21,6 +21,7 @@ import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.config.RegistryConfig;
 import org.apache.dubbo.rpc.service.GenericService;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 
 import java.util.Map;
@@ -31,9 +32,6 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 /**
  * Dubbo operation related tool class.
- *
- * @author klw(213539 @ qq.com)
- * 2020/11/2 10:57
  */
 public class ApiDocsDubboGenericUtil {
 
@@ -82,7 +80,6 @@ public class ApiDocsDubboGenericUtil {
 
     /**
      * Get registry information.
-     * 2020/11/2 11:03
      *
      * @param address Address of Registration Center
      * @return org.apache.dubbo.config.RegistryConfig
@@ -99,8 +96,16 @@ public class ApiDocsDubboGenericUtil {
     }
 
     /**
+     * remove cached registry information.
+     * @param address Address of Registration Center
+     * @return void
+     */
+    private static void removeRegistryConfig(String address) {
+        registryConfigCache.remove(address);
+    }
+
+    /**
      * Get proxy object for dubbo service
-     * 2020/11/2 11:03
      *
      * @return org.apache.dubbo.config.ReferenceConfig<org.apache.dubbo.rpc.service.GenericService>
      * @param: address  address Address of Registration Center
@@ -127,8 +132,18 @@ public class ApiDocsDubboGenericUtil {
     }
 
     /**
+     * remove cached proxy object.
+     * @param address
+     * @param interfaceName
+     * @return void
+     */
+    private static void removeReferenceConfig(String address, String interfaceName) {
+        removeRegistryConfig(address);
+        referenceCache.remove(address + "/" + interfaceName);
+    }
+
+    /**
      * Call duboo provider and return {@link CompletableFuture}
-     * 2020/11/2 11:03
      *
      * @return java.util.concurrent.CompletableFuture<java.lang.Object>
      * @param: address
@@ -136,23 +151,29 @@ public class ApiDocsDubboGenericUtil {
      * @param: methodName
      * @param: async  Whether the provider is asynchronous is to directly return the {@link CompletableFuture}
      * returned by the provider, not to wrap it as {@link CompletableFuture}
-     * @param: prarmTypes
-     * @param: prarmValues
+     * @param: paramTypes
+     * @param: paramValues
      */
     public static CompletableFuture<Object> invoke(String address, String interfaceName,
-                                                   String methodName, boolean async, String[] prarmTypes,
-                                                   Object[] prarmValues) {
+                                                   String methodName, boolean async, String[] paramTypes,
+                                                   Object[] paramValues) {
         CompletableFuture future = null;
         ReferenceConfig<GenericService> reference = getReferenceConfig(address, interfaceName);
         if (null != reference) {
             GenericService genericService = reference.get();
             if (null != genericService) {
                 if (async) {
-                    future = genericService.$invokeAsync(methodName, prarmTypes, prarmValues);
+                    future = genericService.$invokeAsync(methodName, paramTypes, paramValues);
                 } else {
-                    future = CompletableFuture.supplyAsync(() -> genericService.$invoke(methodName, prarmTypes, prarmValues), EXECUTOR);
+                    future = CompletableFuture.supplyAsync(() -> genericService.$invoke(methodName, paramTypes, paramValues), EXECUTOR);
                 }
             }
+            future.exceptionally(ex -> {
+                if (StringUtils.contains(ex.toString(), "Failed to invoke remote method")) {
+                    removeReferenceConfig(address, interfaceName);
+                }
+                return ex;
+            });
         }
         return future;
     }
@@ -165,17 +186,25 @@ public class ApiDocsDubboGenericUtil {
      * @param: address
      * @param: interfaceName
      * @param: methodName
-     * @param: prarmTypes
-     * @param: prarmValues
+     * @param: paramTypes
+     * @param: paramValues
      */
     public static Object invokeSync(String address, String interfaceName,
-                                    String methodName, String[] prarmTypes,
-                                    Object[] prarmValues) {
+                                    String methodName, String[] paramTypes,
+                                    Object[] paramValues) {
         ReferenceConfig<GenericService> reference = getReferenceConfig(address, interfaceName);
         if (null != reference) {
             GenericService genericService = reference.get();
-            if (null != genericService) {
-                return genericService.$invoke(methodName, prarmTypes, prarmValues);
+            try {
+                if (null != genericService) {
+                    return genericService.$invoke(methodName, paramTypes, paramValues);
+                }
+            } catch (Exception ex) {
+                if (StringUtils.contains(ex.toString(), "Failed to invoke remote method")) {
+                    removeReferenceConfig(address, interfaceName);
+                } else {
+                    throw ex;
+                }
             }
         }
         return null;

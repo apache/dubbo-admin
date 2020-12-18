@@ -33,7 +33,7 @@
           value="127.0.0.1"
           outline
         ></v-text-field>
-        <v-text-field
+        <v-text-field style="marginLeft: 10px;"
           id="dubboProviderPort"
           :label="$t('apiDocsRes.dubboProviderPort')"
           :rules="rules"
@@ -51,45 +51,46 @@
 
   <v-layout row wrap>
     <v-flex lg3>
-    <v-card
-      class="mx-auto"
-    >
-      <v-toolbar>
-        <v-toolbar-side-icon></v-toolbar-side-icon>
-        <v-toolbar-title>{{ $t('apiDocsRes.apiListText') }}</v-toolbar-title>
-        <v-spacer></v-spacer>
-      </v-toolbar>
-      <v-list>
-        <v-list-group
-          v-for="item in apiModules"
-          :key="item.title"
-          no-action
-        >
-          <template v-slot:activator>
-          <v-list-tile>
-            <v-list-tile-content>
-            <v-list-tile-title>{{ item.title }}</v-list-tile-title>
-            </v-list-tile-content>
-          </v-list-tile>
-          </template>
-
-          <v-list-tile
-          v-for="child in item.apis"
-          :key="child.title"
-          @click="showApiForm(child.formInfo)"
+      <v-card id="apiListDiv"
+        class="mx-auto"
+      >
+        <v-toolbar>
+          <v-toolbar-side-icon></v-toolbar-side-icon>
+          <v-toolbar-title>{{ $t('apiDocsRes.apiListText') }}</v-toolbar-title>
+          <v-spacer></v-spacer>
+        </v-toolbar>
+        <v-list>
+          <v-list-group
+            v-for="item in apiModules"
+            :key="item.title"
+            no-action
           >
-          <v-list-tile-content>
-            <v-list-tile-title>{{ child.title }}</v-list-tile-title>
-          </v-list-tile-content>
-          </v-list-tile>
-        </v-list-group>
-      </v-list>
-    </v-card>
+            <template v-slot:activator>
+            <v-list-tile>
+              <v-list-tile-content>
+              <v-list-tile-title>{{ item.title }}</v-list-tile-title>
+              </v-list-tile-content>
+            </v-list-tile>
+            </template>
+
+            <v-list-tile
+            class="apiListListTile"
+            v-for="child in item.apis"
+            :key="child.title"
+            @click="showApiForm(child.formInfo, $event)"
+            >
+            <v-list-tile-content>
+              <v-list-tile-title>{{ child.title }}</v-list-tile-title>
+            </v-list-tile-content>
+            </v-list-tile>
+          </v-list-group>
+        </v-list>
+      </v-card>
     </v-flex>
     <v-flex lg9>
-    <v-card>
-      <apiForm :formInfo="formInfo" />
-    </v-card>
+      <v-card id="apiFormDiv">
+        <apiForm :formInfo="formInfo" />
+      </v-card>
     </v-flex>
   </v-layout>
   </v-container>
@@ -115,7 +116,8 @@ export default {
       value => !!value || 'Required.'
     ],
     apiModules: [],
-    formInfo: {}
+    formInfo: {},
+    isApiListDivFixed: false
   }),
   methods: {
     submit () {
@@ -131,7 +133,7 @@ export default {
         if (response && response.data && response.data !== '') {
           const menuData = JSON.parse(response.data)
           menuData.sort((a, b) => {
-            return a.moduleChName > b.moduleChName
+            return a.moduleDocName > b.moduleDocName
           })
           for (let i = 0; i < menuData.length; i++) {
             const menu = menuData[i]
@@ -139,21 +141,21 @@ export default {
               return a.apiName > b.apiName
             })
             const menu2 = {
-              title: menu.moduleChName,
+              title: menu.moduleDocName,
               apis: []
             }
             const menuItems = menu.moduleApiList
             for (let j = 0; j < menuItems.length; j++) {
               const menuItem = menuItems[j]
               const menuItem2 = {
-                title: menuItem.apiChName,
+                title: menuItem.apiDocName,
                 formInfo: {
                   moduleClassName: menu.moduleClassName,
                   dubboIp: dubboProviderIP,
                   dubboPort: dubboProviderPort,
                   apiName: menuItem.apiName,
                   apiRespDec: menuItem.apiRespDec,
-                  apiChName: menuItem.apiChName,
+                  apiDocName: menuItem.apiDocName,
                   description: menuItem.description,
                   apiVersion: menuItem.apiVersion
                 }
@@ -168,13 +170,42 @@ export default {
         console.log('error', error.message)
       })
     },
-    showApiForm (formInfo) {
+    showApiForm (formInfo, e) {
       this.formInfo = formInfo
+      const apiListListTileList = document.getElementsByClassName('apiListListTile')
+      for (var i = 0; i < apiListListTileList.length; i++) {
+        apiListListTileList[i].childNodes.forEach(function (curr, index, arr) {
+          curr.classList.remove('primary--text')
+        })
+      }
+      e.currentTarget.classList.add('primary--text')
+    },
+    fixedApiListDiv () {
+      var scrollTop = document.documentElement.scrollTop || document.body.scrollTop
+      var apiListDivTop = document.getElementById('apiFormDiv').offsetTop
+      var apiListDivWidth = document.getElementById('apiListDiv').offsetWidth
+      if (!this.isApiListDivFixed && scrollTop >= apiListDivTop) {
+        this.isApiListDivFixed = true
+        document.getElementById('apiListDiv').classList.add('apiListDiv-fixed')
+        document.getElementById('apiListDiv').style.top = '75px'
+        document.getElementById('apiListDiv').style.width = apiListDivWidth + 'px'
+      }
+      if (this.isApiListDivFixed && scrollTop <= apiListDivTop) {
+        this.isApiListDivFixed = false
+        document.getElementById('apiListDiv').classList.remove('apiListDiv-fixed')
+        document.getElementById('apiListDiv').style.top = '0px'
+      }
     }
   },
   mounted () {
+    window.addEventListener('scroll', this.fixedApiListDiv)
   }
 }
 </script>
 <style scoped>
+
+  .apiListDiv-fixed{
+    position: fixed;
+  }
+
 </style>

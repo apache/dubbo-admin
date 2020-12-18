@@ -172,23 +172,28 @@ export default {
       api404Err: 'Interface name is incorrect, interface parameters and response information are not found',
       apiRespDecShowLabel: 'Api Info',
       apiNameShowLabel: 'Api Name',
+      apiPathShowLabel: 'Api Path',
+      apiMethodParamInfoLabel: 'Api method parameters',
       apiVersionShowLabel: 'Api Version',
       apiDescriptionShowLabel: 'Api Description',
-      paramDescriptionShowLabel: 'Description',
       isAsyncFormLabel: 'Whether to call asynchronously (this parameter cannot be modified, according to whether to display asynchronously defined by the interface)',
       apiModuleFormLabel: 'Api module (this parameter cannot be modified)',
       apiFunctionNameFormLabel: 'Api function name(this parameter cannot be modified)',
       registryCenterUrlFormLabel: 'Registry address. If it is empty, Dubbo provider IP and port will be used for direct connection',
-      prarmNameLabel: 'Parameter name',
-      prarmRequiredLabel: 'This parameter is required',
+      paramNameLabel: 'Parameter name',
+      paramPathLabel: 'Parameter path',
+      paramDescriptionLabel: 'Description',
+      paramRequiredLabel: 'This parameter is required',
       doTestBtn: 'Do Test',
       responseLabel: 'Response',
       responseExampleLabel: 'Response Example',
       apiResponseLabel: 'Api Response',
       LoadingLabel: 'Loading...',
       requireTip: 'There are required items not filled in',
+      requireItemTip: 'This field is required',
       requestApiErrorTip: 'There is an exception in the request interface. Please check the submitted data, especially the JSON class data and the enumeration part',
-      unsupportedHtmlTypeTip: 'Temporarily unsupported HTML type'
+      unsupportedHtmlTypeTip: 'Temporarily unsupported form type',
+      none: 'none'
     }
   }
 }
