@@ -17,17 +17,11 @@
 package org.apache.dubbo.admin.model.dto.docs;
 
 import io.swagger.annotations.ApiParam;
-import lombok.Getter;
-import lombok.Setter;
 
 
 /**
  * Call Dubbo api to request parameters.
- * @author klw(213539@qq.com)
- * 2020/11/2 11:11
  */
-@Getter
-@Setter
 public class CallDubboServiceRequest {
 
     @ApiParam(value = "Address of registration center, such as: nacos://127.0.0.1:8848", required = true)
@@ -42,4 +36,35 @@ public class CallDubboServiceRequest {
     @ApiParam(value = "Whether to call asynchronously, false by default")
     private boolean async = false;
 
+    public String getRegistryCenterUrl() {
+        return registryCenterUrl;
+    }
+
+    public void setRegistryCenterUrl(String registryCenterUrl) {
+        this.registryCenterUrl = registryCenterUrl;
+    }
+
+    public String getInterfaceClassName() {
+        return interfaceClassName;
+    }
+
+    public void setInterfaceClassName(String interfaceClassName) {
+        this.interfaceClassName = interfaceClassName;
+    }
+
+    public String getMethodName() {
+        return methodName;
+    }
+
+    public void setMethodName(String methodName) {
+        this.methodName = methodName;
+    }
+
+    public boolean isAsync() {
+        return async;
+    }
+
+    public void setAsync(boolean async) {
+        this.async = async;
+    }
 }

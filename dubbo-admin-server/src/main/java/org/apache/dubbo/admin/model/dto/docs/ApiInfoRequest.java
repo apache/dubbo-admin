@@ -17,16 +17,10 @@
 package org.apache.dubbo.admin.model.dto.docs;
 
 import io.swagger.annotations.ApiParam;
-import lombok.Getter;
-import lombok.Setter;
 
 /**
  * Obtain the API module list and the request parameters of the API parameter information interface.
- * @author klw(213539@qq.com)
- * 2020/11/2 11:11
  */
-@Getter
-@Setter
 public class ApiInfoRequest {
 
     @ApiParam(value = "IP of Dubbo provider", required = true)
@@ -38,4 +32,27 @@ public class ApiInfoRequest {
     @ApiParam(value = "API full name (interface class full name. Method name), which must be passed when getting API parameter information")
     private String apiName;
 
+    public String getDubboIp() {
+        return dubboIp;
+    }
+
+    public void setDubboIp(String dubboIp) {
+        this.dubboIp = dubboIp;
+    }
+
+    public String getDubboPort() {
+        return dubboPort;
+    }
+
+    public void setDubboPort(String dubboPort) {
+        this.dubboPort = dubboPort;
+    }
+
+    public String getApiName() {
+        return apiName;
+    }
+
+    public void setApiName(String apiName) {
+        this.apiName = apiName;
+    }
 }

@@ -17,16 +17,10 @@
 package org.apache.dubbo.admin.model.dto.docs;
 
 import io.swagger.annotations.ApiParam;
-import lombok.Getter;
-import lombok.Setter;
 
 /**
  * Parameters passed to duboo service api.
- * @author klw(213539@qq.com)
- * 2020/11/2 11:10
  */
-@Getter
-@Setter
 public class CallDubboServiceRequestInterfaceParam {
 
     @ApiParam(value = "Parameter type (full package path), such as: java.lang.String", required = true)
@@ -35,4 +29,19 @@ public class CallDubboServiceRequestInterfaceParam {
     @ApiParam(value = "Parameter value", required = true)
     private Object paramValue;
 
+    public String getParamType() {
+        return paramType;
+    }
+
+    public void setParamType(String paramType) {
+        this.paramType = paramType;
+    }
+
+    public Object getParamValue() {
+        return paramValue;
+    }
+
+    public void setParamValue(Object paramValue) {
+        this.paramValue = paramValue;
+    }
 }

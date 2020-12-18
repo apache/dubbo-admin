@@ -22,12 +22,13 @@ import org.apache.dubbo.admin.model.dto.docs.ApiInfoRequest;
 import org.apache.dubbo.admin.model.dto.docs.CallDubboServiceRequest;
 import org.apache.dubbo.admin.model.dto.docs.CallDubboServiceRequestInterfaceParam;
 import org.apache.dubbo.admin.utils.ApiDocsDubboGenericUtil;
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SimplePropertyPreFilter;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.propertyeditors.StringTrimmerEditor;
@@ -51,14 +52,13 @@ import java.util.concurrent.ExecutionException;
 
 /**
  * dubbo doc ui server api.
- * @author klw(213539@qq.com)
- * 2020/11/2 11:12
  */
 @Api(tags = {"dubbo-api-docs-api"})
 @RestController
-@Slf4j
 @RequestMapping("/api/{env}/docs")
 public class ApiDocsController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ApiDocsController.class);
 
     private static final SimplePropertyPreFilter CLASS_NAME_PRE_FILTER = new SimplePropertyPreFilter(HashMap.class);
     static {
@@ -136,7 +136,7 @@ public class ApiDocsController {
             Object objResult = future.get();
             return JSON.toJSONString(objResult, CLASS_NAME_PRE_FILTER);
         } catch (InterruptedException | ExecutionException e) {
-            log.error(e.getMessage(), e);
+            LOG.error(e.getMessage(), e);
             return "Some exceptions have occurred, please check the log.";
         }
     }

@@ -23,9 +23,6 @@ import java.time.format.DateTimeFormatter;
 
 /**
  * Date time tool class of LocalDateTime.
- *
- * @author klw(213539 @ qq.com)
- * 2020/11/2 10:57
  */
 public class LocalDateTimeUtil {
 
