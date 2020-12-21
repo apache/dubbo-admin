@@ -67,26 +67,26 @@
 </template>
 
 <script>
-  import menu from '@/api/menu'
+import menu from '@/api/menu'
 
-  export default {
-    name: 'drawer',
-    data: () => ({
-      mini: false,
-      drawer: true,
-      menus: menu
-    }),
-    created () {
-      window.getApp.$on('DRAWER_TOGGLED', () => {
-        this.drawer = (!this.drawer)
-      })
-    },
-    computed: {
-      sideToolbarColor () {
-        return this.$vuetify.options.extra.sideNav
-      }
+export default {
+  name: 'drawer',
+  data: () => ({
+    mini: false,
+    drawer: true,
+    menus: menu
+  }),
+  created () {
+    window.getApp.$on('DRAWER_TOGGLED', () => {
+      this.drawer = (!this.drawer)
+    })
+  },
+  computed: {
+    sideToolbarColor () {
+      return this.$vuetify.options.extra.sideNav
     }
   }
+}
 </script>
 
 <style>

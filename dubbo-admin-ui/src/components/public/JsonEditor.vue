@@ -19,70 +19,70 @@
 </template>
 
 <script>
-  import JSONEditor from 'jsoneditor'
-  import 'jsoneditor/dist/jsoneditor.css'
+import JSONEditor from 'jsoneditor/dist/jsoneditor-minimalist.js'
+import 'jsoneditor/dist/jsoneditor.css'
 
-  export default {
-    name: 'json-editor',
-    props: {
-      value: null,
-      mode: {
-        type: String,
-        default: 'tree'
-      },
-      modes: {
-        type: Array,
-        default: () => ['tree', 'code']
-      },
-      templates: Array,
-      name: {
-        type: String,
-        default: 'Parameters'
-      },
-      readonly: {
-        type: Boolean,
-        default: false
-      }
+export default {
+  name: 'json-editor',
+  props: {
+    value: null,
+    mode: {
+      type: String,
+      default: 'tree'
     },
-    data () {
-      return {
-        $jsoneditor: null
-      }
+    modes: {
+      type: Array,
+      default: () => ['tree', 'code']
     },
-    watch: {
-      value (newVal, oldVal) {
-        if (newVal !== oldVal && this.$jsoneditor) {
-          this.$jsoneditor.update(newVal || {})
-        }
-      }
+    templates: Array,
+    name: {
+      type: String,
+      default: 'Parameters'
     },
-    mounted () {
-      const options = {
-        name: this.name,
-        navigationBar: false,
-        search: false,
-        mode: this.mode,
-        modes: this.modes,
-        onEditable: (node) => !this.readonly,
-        onChange: () => {
-          if (this.$jsoneditor) {
-            const json = this.$jsoneditor.get()
-            this.$emit('input', json)
-          }
-        },
-        templates: this.templates
-      }
-      this.$jsoneditor = new JSONEditor(this.$el, options)
-      this.$jsoneditor.set(this.value || {})
-      this.$jsoneditor.expandAll()
-    },
-    beforeDestroy () {
-      if (this.$jsoneditor) {
-        this.$jsoneditor.destroy()
-        this.$jsoneditor = null
+    readonly: {
+      type: Boolean,
+      default: false
+    }
+  },
+  data () {
+    return {
+      $jsoneditor: null
+    }
+  },
+  watch: {
+    value (newVal, oldVal) {
+      if (newVal !== oldVal && this.$jsoneditor) {
+        this.$jsoneditor.update(newVal || {})
       }
     }
+  },
+  mounted () {
+    const options = {
+      name: this.name,
+      navigationBar: false,
+      search: false,
+      mode: this.mode,
+      modes: this.modes,
+      onEditable: (node) => !this.readonly,
+      onChange: () => {
+        if (this.$jsoneditor) {
+          const json = this.$jsoneditor.get()
+          this.$emit('input', json)
+        }
+      },
+      templates: this.templates
+    }
+    this.$jsoneditor = new JSONEditor(this.$el, options)
+    this.$jsoneditor.set(this.value || {})
+    this.$jsoneditor.expandAll()
+  },
+  beforeDestroy () {
+    if (this.$jsoneditor) {
+      this.$jsoneditor.destroy()
+      this.$jsoneditor = null
+    }
   }
+}
 </script>
 
 <style scoped>

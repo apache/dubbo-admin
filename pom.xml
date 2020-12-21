@@ -273,6 +273,8 @@
 										<exclude>**/src/main/resources/public/**</exclude>
 										<exclude>**/src/licenses/**</exclude>
 										<exclude>.github/**</exclude>
+										<exclude>**/assets/**</exclude>
+										<exclude>**/yarn.lock</exclude>
 									</excludes>
 								</configuration>
 							</execution>

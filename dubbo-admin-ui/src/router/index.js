@@ -27,6 +27,7 @@ import LoadBalance from '@/components/governance/LoadBalance'
 import WeightAdjust from '@/components/governance/WeightAdjust'
 import Overrides from '@/components/governance/Overrides'
 import ServiceTest from '@/components/test/ServiceTest'
+import ApiDocs from '@/components/apiDocs/ApiDocs'
 import ServiceMock from '@/components/test/ServiceMock'
 import ServiceMetrics from '@/components/metrics/ServiceMetrics'
 import ServiceRelation from '@/components/metrics/ServiceRelation'
@@ -154,6 +155,14 @@ export default new Router({
           path: '/management',
           name: 'Management',
           component: Management,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/apiDocs',
+          name: 'apiDocs',
+          component: ApiDocs,
           meta: {
             requireLogin: true
           }
