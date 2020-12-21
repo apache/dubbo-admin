@@ -11,21 +11,22 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
-    "core-js": "^3.6.5",
-    "vue": "^2.6.11",
-    "vue-router": "^3.2.0",
-    "vuex": "^3.4.0",
     "axios": "^0.18.0",
     "brace": "^0.11.1",
+    "core-js": "^3.6.5",
     "echarts": "^4.2.1",
     "http-status": "^1.2.0",
     "js-yaml": "^3.12.0",
-    "jsoneditor": "^5.26.2",
+    "jsoneditor": "^9.1.5",
     "lodash": "^4.17.15",
+    "vue": "^2.6.11",
     "vue-clipboard2": "^0.2.1",
     "vue-echarts": "^4.0.1",
     "vue-i18n": "^8.18.2",
-    "vuetify": "^1.5.24"
+    "vue-json-viewer": "^2.2.16",
+    "vue-router": "^3.2.0",
+    "vuetify": "^1.5.24",
+    "vuex": "^3.4.0"
   },
   "devDependencies": {
     "@vue/babel-plugin-transform-vue-jsx": "^1.1.2",
