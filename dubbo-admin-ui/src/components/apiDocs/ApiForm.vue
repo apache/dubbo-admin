@@ -153,7 +153,7 @@
                           <div class="font-weight-normal">
                             <strong>{{ $t('apiDocsRes.apiForm.paramPathLabel') }}</strong>
                           </div>
-                          <div style="wordBreak: break-word">{{item.get('paramType')}}#{{item.get('name')}}</div>
+                          <div style="wordBreak: break-word">[{{item.get('paramIndex')}}]{{item.get('paramType')}}#{{item.get('name')}}</div>
                         </div>
                       </v-timeline-item>
                       <v-timeline-item
@@ -357,7 +357,6 @@ export default {
       if (!this.$refs.form.validate()) {
         return false
       }
-
       var tempMap = new Map()
       this.formValues.forEach((value, key) => {
         var elementIdSplited = key.split('@@')
@@ -413,7 +412,6 @@ export default {
       }).then(response => {
         this.responseData = response.data
       })
-      // console.log(this.formValues)
     }
   },
   mounted () {
