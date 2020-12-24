@@ -139,6 +139,8 @@ export default {
   },
   data: () => {
     return {
+      isSelectDefaultBuiled: false,
+      selectDefaultValue: ''
     }
   },
   watch: {
@@ -160,25 +162,39 @@ export default {
     },
     buildSelectItem () {
       var allowableValues = this.formItemInfo.get('allowableValues')
-      const dataSource = new Array()
+      const selectSource = []
+      var dsItemEmpty = {}
+      dsItemEmpty.label = ''
+      dsItemEmpty.value = ''
+      selectSource.push(dsItemEmpty)
       for (var i = 0; i < allowableValues.length; i++) {
         var valueItem = allowableValues[i]
         var dsItem = {}
         dsItem.label = valueItem
         dsItem.value = valueItem
-        dataSource.push(dsItem)
+        selectSource.push(dsItem)
       }
-      return dataSource
+      return selectSource
     },
     buildDefaultValue () {
       var defaultValue = this.formItemInfo.get('defaultValue')
-      this.formValues.set(this.buildItemId(), defaultValue)
+      if (defaultValue) {
+        this.formValues.set(this.buildItemId(), defaultValue)
+      } else {
+        defaultValue = ''
+      }
       return defaultValue
     },
     buildSelectDefaultValue () {
-      var allowableValues = this.formItemInfo.get('allowableValues')
-      this.formValues.set(this.buildItemId(), allowableValues[0])
-      return allowableValues[0]
+      if (!this.isSelectDefaultBuiled) {
+        this.isSelectDefaultBuiled = true
+        var defaultValue = this.formItemInfo.get('defaultValue')
+        if (defaultValue) {
+          this.selectDefaultValue = defaultValue
+          this.formValues.set(this.buildItemId(), defaultValue[0])
+        }
+      }
+      return this.selectDefaultValue
     },
     buildJsonDefaultValue () {
       var defaultValue = JSON.parse(this.formItemInfo.get('subParamsJson'))
