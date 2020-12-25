@@ -17,6 +17,7 @@
 import axios from 'axios'
 import Vue from 'vue'
 import HttpStatus from 'http-status'
+import Router from '../router'
 
 let instance = axios.create({
   baseURL: '/api/dev'
@@ -39,6 +40,7 @@ instance.interceptors.response.use((response) => {
     localStorage.removeItem('token')
     localStorage.removeItem('username')
     Vue.prototype.$notify.error('Authorized failed,please login.')
+    Router.push('/login?redirect=' + location.href.split("#")[1])
   } else if (error.response.status >= HttpStatus.BAD_REQUEST) {
     Vue.prototype.$notify.error(error.response.data.message)
   }
