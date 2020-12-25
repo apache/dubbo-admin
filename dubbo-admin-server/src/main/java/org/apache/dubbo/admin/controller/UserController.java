@@ -43,6 +43,8 @@ public class UserController {
     private String rootUserName;
     @Value("${admin.root.user.password:}")
     private String rootUserPassword;
+    @Value("${admin.user.max-idle-time:15}")
+    private int userMaxIdleTime;
 
     @RequestMapping(value = "/login", method = RequestMethod.GET)
     public String login(@RequestParam String userName, @RequestParam String password) {
@@ -69,7 +71,7 @@ public class UserController {
 
     @Scheduled(cron= "0 5 * * * ?")
     public void clearExpiredToken() {
-        tokenMap.entrySet().removeIf(entry -> entry.getValue() == null || System.currentTimeMillis() - entry.getValue().getLastUpdateTime() > 1000 * 60 * 15);
+        tokenMap.entrySet().removeIf(entry -> entry.getValue() == null || System.currentTimeMillis() - entry.getValue().getLastUpdateTime() > 1000 * 60 * userMaxIdleTime);
     }
 
     public static class User {
