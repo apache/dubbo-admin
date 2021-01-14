@@ -111,12 +111,14 @@ public class ApiDocsDubboGenericUtil {
      * @param: address  address Address of Registration Center
      * @param: interfaceName  Interface full package path
      */
-    private static ReferenceConfig<GenericService> getReferenceConfig(String address, String interfaceName) {
-        ReferenceConfig<GenericService> referenceConfig = referenceCache.get(address + "/" + interfaceName);
+    private static ReferenceConfig<GenericService> getReferenceConfig(String address, String interfaceName, String version) {
+        final String key = buildCacheKey(address, interfaceName, version);
+        ReferenceConfig<GenericService> referenceConfig = referenceCache.get(key);
         if (null == referenceConfig) {
             referenceConfig = new ReferenceConfig<>();
             referenceConfig.setRetries(retries);
             referenceConfig.setTimeout(timeout);
+            referenceConfig.setVersion(version);
             referenceConfig.setApplication(application);
             if (address.startsWith("dubbo")) {
                 referenceConfig.setUrl(address);
@@ -126,7 +128,7 @@ public class ApiDocsDubboGenericUtil {
             referenceConfig.setInterface(interfaceName);
             // Declared as a generic interface
             referenceConfig.setGeneric(true);
-            referenceCache.put(address + "/" + interfaceName, referenceConfig);
+            referenceCache.put(key, referenceConfig);
         }
         return referenceConfig;
     }
@@ -137,9 +139,13 @@ public class ApiDocsDubboGenericUtil {
      * @param interfaceName
      * @return void
      */
-    private static void removeReferenceConfig(String address, String interfaceName) {
+    private static void removeReferenceConfig(String address, String interfaceName, String version) {
         removeRegistryConfig(address);
-        referenceCache.remove(address + "/" + interfaceName);
+        referenceCache.remove(buildCacheKey(address, interfaceName, version));
+    }
+
+    private static String buildCacheKey(String address, String interfaceName, String version) {
+        return address + "/" + interfaceName + "/" + version;
     }
 
     /**
@@ -155,10 +161,10 @@ public class ApiDocsDubboGenericUtil {
      * @param: paramValues
      */
     public static CompletableFuture<Object> invoke(String address, String interfaceName,
-                                                   String methodName, boolean async, String[] paramTypes,
+                                                   String methodName, boolean async, String version, String[] paramTypes,
                                                    Object[] paramValues) {
         CompletableFuture future = null;
-        ReferenceConfig<GenericService> reference = getReferenceConfig(address, interfaceName);
+        ReferenceConfig<GenericService> reference = getReferenceConfig(address, interfaceName, version);
         if (null != reference) {
             GenericService genericService = reference.get();
             if (null != genericService) {
@@ -170,7 +176,7 @@ public class ApiDocsDubboGenericUtil {
             }
             future.exceptionally(ex -> {
                 if (StringUtils.contains(ex.toString(), "Failed to invoke remote method")) {
-                    removeReferenceConfig(address, interfaceName);
+                    removeReferenceConfig(address, interfaceName, version);
                 }
                 return ex;
             });
@@ -190,9 +196,9 @@ public class ApiDocsDubboGenericUtil {
      * @param: paramValues
      */
     public static Object invokeSync(String address, String interfaceName,
-                                    String methodName, String[] paramTypes,
+                                    String methodName, String version, String[] paramTypes,
                                     Object[] paramValues) {
-        ReferenceConfig<GenericService> reference = getReferenceConfig(address, interfaceName);
+        ReferenceConfig<GenericService> reference = getReferenceConfig(address, interfaceName, version);
         if (null != reference) {
             GenericService genericService = reference.get();
             try {
@@ -201,7 +207,7 @@ public class ApiDocsDubboGenericUtil {
                 }
             } catch (Exception ex) {
                 if (StringUtils.contains(ex.toString(), "Failed to invoke remote method")) {
-                    removeReferenceConfig(address, interfaceName);
+                    removeReferenceConfig(address, interfaceName, version);
                 } else {
                     throw ex;
                 }

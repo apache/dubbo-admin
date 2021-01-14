@@ -401,7 +401,8 @@ export default {
           async: this.formItemAsync,
           interfaceClassName: this.formItemInterfaceClassName,
           methodName: this.formItemMethodName,
-          registryCenterUrl: this.formItemRegistryCenterUrl
+          registryCenterUrl: this.formItemRegistryCenterUrl,
+          version: this.apiInfoData.apiVersion || ''
         },
         headers: {
           'Content-Type': 'application/json; charset=UTF-8'

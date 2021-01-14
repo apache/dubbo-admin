@@ -178,11 +178,10 @@ export default {
     },
     buildDefaultValue () {
       var defaultValue = this.formItemInfo.get('defaultValue')
-      if (defaultValue) {
-        this.formValues.set(this.buildItemId(), defaultValue)
-      } else {
+      if (!defaultValue) {
         defaultValue = ''
       }
+      this.formValues.set(this.buildItemId(), defaultValue)
       return defaultValue
     },
     buildSelectDefaultValue () {
@@ -192,6 +191,8 @@ export default {
         if (defaultValue) {
           this.selectDefaultValue = defaultValue
           this.formValues.set(this.buildItemId(), defaultValue[0])
+        } else {
+          this.formValues.set(this.buildItemId(), '')
         }
       }
       return this.selectDefaultValue
