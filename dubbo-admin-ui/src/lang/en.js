@@ -170,7 +170,7 @@ export default {
       missingInterfaceInfo: 'Missing interface information',
       getApiInfoErr: 'Exception in obtaining interface information',
       api404Err: 'Interface name is incorrect, interface parameters and response information are not found',
-      apiRespDecShowLabel: 'Api Info',
+      apiRespDecShowLabel: 'Response Description',
       apiNameShowLabel: 'Api Name',
       apiPathShowLabel: 'Api Path',
       apiMethodParamInfoLabel: 'Api method parameters',
