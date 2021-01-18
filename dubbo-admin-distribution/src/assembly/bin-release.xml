@@ -18,6 +18,8 @@
           xsi:schemaLocation="http://maven.apache.org/ASSEMBLY/2.0.0 http://maven.apache.org/xsd/assembly-2.0.0.xsd">
     <id>bin-release</id>
     <formats>
+        <format>dir</format>
+        <format>tar.gz</format>
         <format>zip</format>
     </formats>
     <includeBaseDirectory>true</includeBaseDirectory>
@@ -34,6 +36,11 @@
             <outputDirectory>licenses</outputDirectory>
         </fileSet>
         <fileSet>
+            <directory>src/bin</directory>
+            <outputDirectory>bin</outputDirectory>
+            <fileMode>0755</fileMode>
+        </fileSet>
+        <fileSet>
             <directory>src</directory>
             <includes>
                 <include>LICENSE</include>
@@ -45,11 +52,8 @@
     <files>
         <file>
             <source>target/dubbo-admin-${project.version}.jar</source>
-            <outputDirectory></outputDirectory>
-        </file>
-        <file>
-            <source>../dubbo-admin-server/src/main/resources/application.properties</source>
-            <outputDirectory></outputDirectory>
+            <outputDirectory>lib</outputDirectory>
+            <destName>dubbo-admin.jar</destName>
         </file>
         <file>
             <source>README.md</source>
