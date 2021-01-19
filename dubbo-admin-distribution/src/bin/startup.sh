@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -47,10 +47,21 @@ if [ -z "$JAVA_HOME" ]; then
         error_exit "Please set the JAVA_HOME variable in your environment, We need java(x64)! jdk8 or later is better!"
   fi
 fi
+
 export SERVER="dubbo-admin"
 export JAVA_HOME
 export JAVA="$JAVA_HOME/bin/java"
 export BASE_DIR=`cd $(dirname $0)/..; pwd`
+
+if [ ! -d "${BASE_DIR}/logs" ]; then
+  mkdir ${BASE_DIR}/logs
+fi
+
+# check the start.out log output file
+if [ ! -f "${BASE_DIR}/logs/start.out" ]; then
+  touch "${BASE_DIR}/logs/start.out"
+fi
+
 JAVA_OPT="${JAVA_OPT} -Xms512m -Xmx512m -Xmn256m"
 JAVA_OPT="${JAVA_OPT} -jar ${BASE_DIR}/lib/${SERVER}.jar"
 nohup $JAVA ${JAVA_OPT} dubbo.admin >> ${BASE_DIR}/logs/catlog.out 2>&1 &
