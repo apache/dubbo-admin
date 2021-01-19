@@ -54,18 +54,12 @@ export JAVA="$JAVA_HOME/bin/java"
 export BASE_DIR=`cd $(dirname $0)/..; pwd`
 
 if [ ! -d "${BASE_DIR}/logs" ]; then
-  echo "mkdir"
   mkdir ${BASE_DIR}/logs
-else
-  echo "not mkdir"
 fi
 
 # check the start.out log output file
 if [ ! -f "${BASE_DIR}/logs/start.out" ]; then
-  echo "touch"
   touch "${BASE_DIR}/logs/start.out"
-else
-  echo "not touch"
 fi
 
 JAVA_OPT="${JAVA_OPT} -Xms512m -Xmx512m -Xmn256m"
