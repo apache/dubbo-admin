@@ -275,6 +275,7 @@
 										<exclude>.github/**</exclude>
 										<exclude>**/assets/**</exclude>
 										<exclude>**/yarn.lock</exclude>
+										<exclude>**/node/**</exclude>
 									</excludes>
 								</configuration>
 							</execution>
