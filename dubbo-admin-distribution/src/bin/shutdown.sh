@@ -28,4 +28,4 @@ echo "The dubbo admin server(${pid}) is running..."
 
 kill ${pid}
 
-echo "Send shutdown request to dubbo admin server(${pid}) OK"
+echo "Send shutdown request to dubbo admin server(${pid}) OK!"
