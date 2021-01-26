@@ -195,5 +195,6 @@ export default {
       unsupportedHtmlTypeTip: '暂不支持的表单类型',
       none: '无'
     }
-  }
+  },
+  authFailed:'权限验证失败'
 }

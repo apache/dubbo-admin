@@ -47,14 +47,6 @@ VueClipboard.config.autoSetContainer = true
 Vue.use(VueClipboard)
 Vue.component('chart', ECharts)
 
-/* eslint-disable no-new */
-new Vue({
-  router,
-  store,
-  i18n,
-  render: h => h(App)
-}).$mount('#app')
-
 router.beforeEach((to, from, next) => {
   if (to.matched.some(record => record.meta.requireLogin)) {
     if (localStorage.getItem('token')) {
@@ -69,3 +61,11 @@ router.beforeEach((to, from, next) => {
     next()
   }
 })
+
+/* eslint-disable no-new */
+new Vue({
+  router,
+  store,
+  i18n,
+  render: h => h(App)
+}).$mount('#app')

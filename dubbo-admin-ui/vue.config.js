@@ -39,6 +39,7 @@ module.exports = {
     }
   },
   configureWebpack: {
+    devtool: process.env.NODE_ENV === 'dev' ? 'source-map' : undefined,
     performance: {
       hints: false
     },

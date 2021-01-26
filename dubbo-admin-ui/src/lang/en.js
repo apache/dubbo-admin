@@ -195,5 +195,6 @@ export default {
       unsupportedHtmlTypeTip: 'Temporarily unsupported form type',
       none: 'none'
     }
-  }
+  },
+  authFailed:'Authorized failed,please login.'
 }
