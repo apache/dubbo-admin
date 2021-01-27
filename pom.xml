@@ -15,12 +15,12 @@
   ~  See the License for the specific language governing permissions and
   ~  limitations under the License.
   -->
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <groupId>org.apache.dubbo</groupId>
     <artifactId>dubbo-admin</artifactId>
-    <version>0.2.0-SNAPSHOT</version>
+    <version>${revision}</version>
     <modules>
         <module>dubbo-admin-ui</module>
         <module>dubbo-admin-server</module>
@@ -53,9 +53,10 @@
     </repositories>
 
     <properties>
+        <revision>0.3.0-SNAPSHOT</revision>
         <main.basedir>${project.basedir}</main.basedir>
         <commons-lang3-version>3.7</commons-lang3-version>
-        <dubbo-version>2.7.7</dubbo-version>
+        <dubbo-version>2.7.8</dubbo-version>
         <curator-version>2.12.0</curator-version>
         <curator-test-version>4.1.0</curator-test-version>
         <fastjson-version>1.2.67</fastjson-version>
@@ -72,6 +73,8 @@
         <maven-checkstyle-plugin-version>3.0.0</maven-checkstyle-plugin-version>
         <spring-boot-version>2.1.4.RELEASE</spring-boot-version>
         <maven_compiler_version>3.6.0</maven_compiler_version>
+        <maven-flatten-version>1.1.0</maven-flatten-version>
+
         <java_source_version>1.8</java_source_version>
         <java_target_version>1.8</java_target_version>
         <file_encoding>UTF-8</file_encoding>
@@ -274,6 +277,9 @@
                                         <exclude>**/src/main/resources/public/**</exclude>
                                         <exclude>**/src/licenses/**</exclude>
                                         <exclude>.github/**</exclude>
+                                        <exclude>**/assets/**</exclude>
+                                        <exclude>**/yarn.lock</exclude>
+                                        <exclude>**/node/**</exclude>
                                     </excludes>
                                 </configuration>
                             </execution>
@@ -286,6 +292,34 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>${maven-flatten-version}</version>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>resolveCiFriendliesOnly</flattenMode>
+                    <pomElements>
+                        <dependencies>expand</dependencies>
+                    </pomElements>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>

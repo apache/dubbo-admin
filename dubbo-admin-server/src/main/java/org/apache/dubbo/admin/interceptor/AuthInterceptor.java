@@ -48,7 +48,7 @@ public class AuthInterceptor extends HandlerInterceptorAdapter {
         String authorization = request.getHeader("Authorization");
         if (null != authority && authority.needLogin() && !StringUtils.isEmpty(authorization)) {
             UserController.User user = UserController.tokenMap.get(authorization);
-            if (null != user && System.currentTimeMillis() - user.getLastUpdateTime() <= 1000 * 60 * 15) {
+            if (null != user && System.currentTimeMillis() - user.getLastUpdateTime() <= 1000 * 60 * 60) {
                 user.setLastUpdateTime(System.currentTimeMillis());
                 return true;
             }
