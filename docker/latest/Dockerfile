@@ -19,7 +19,7 @@
 # WORKDIR /source/dubbo-admin-snapshot
 # RUN mvn --batch-mode clean package -Dmaven.test.skip=true
 
-FROM openjdk:8-jre
+FROM openjdk:8-jre-alpine
 LABEL maintainer="chris.p.tang@gmail.com"
 # RUN apt-get update && apt-get install -y tini
 COPY ./app/dubbo-admin-server-0.2.0-SNAPSHOT.jar /app.jar
