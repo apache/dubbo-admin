@@ -22,6 +22,6 @@ RUN mvn --batch-mode clean package -Dmaven.test.skip=true
 FROM openjdk:8-jre
 LABEL maintainer="dev@dubbo.apache.org"
 RUN apt-get update && apt-get install -y tini
-COPY --from=0 /source/dubbo-admin-snapshot/dubbo-admin-distribution/target/dubbo-admin-0.2.0-SNAPSHOT.jar /app.jar
+COPY --from=0 /source/dubbo-admin-snapshot/dubbo-admin-distribution/target/dubbo-admin-0.3.0-SNAPSHOT.jar /app.jar
 ENTRYPOINT ["tini","--","java","-XX:+UnlockExperimentalVMOptions","-XX:+UseCGroupMemoryLimitForHeap","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
 EXPOSE 8080
