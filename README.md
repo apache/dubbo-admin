@@ -36,7 +36,7 @@ service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.
 2. Specify registry address in `dubbo-admin-server/src/main/resources/application.properties`
 3. Build
 
-    > - `mvn clean package`  
+    > - `mvn clean package -Dmaven.test.skip=true`  
 4. Start 
     * `mvn --projects dubbo-admin-server spring-boot:run`  
     OR
