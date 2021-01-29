@@ -147,11 +147,12 @@ export default {
   },
   methods: {
     buildItemId () {
-      return this.formItemInfo.get('paramType') + '@@' +
+      const result = this.formItemInfo.get('paramType') + '@@' +
       this.formItemInfo.get('paramIndex') + '@@' +
       this.formItemInfo.get('javaType') + '@@' +
       this.formItemInfo.get('name') + '@@' +
       this.formItemInfo.get('htmlType')
+      return result
     },
     requiredCheck (value) {
       if (this.formItemInfo.get('required')) {

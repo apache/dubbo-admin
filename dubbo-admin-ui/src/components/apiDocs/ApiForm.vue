@@ -376,20 +376,23 @@ export default {
         var postDataItem = {}
         postData[key.split('@@')[1]] = postDataItem
         postDataItem.paramType = key.split('@@')[0]
-        var postDataItemValue = {}
-        postDataItem.paramValue = postDataItemValue
-        value.forEach(element => {
-          var elementKeySplited = element.key.split('@@')
-          var elementName = elementKeySplited[3]
-          if (elementKeySplited[4] === 'TEXT_AREA') {
-            if (element.value !== '') {
+        if (value.length === 1) {
+          postDataItem.paramValue = value[0].value
+        } else {
+          var postDataItemValue = {}
+          postDataItem.paramValue = postDataItemValue
+          value.forEach(element => {
+            var elementKeySplited = element.key.split('@@')
+            var elementName = elementKeySplited[3]
+            if (elementKeySplited[4] === 'TEXT_AREA') {
+              if (element.value !== '') {
+                postDataItemValue[elementName] = element.value
+              }
+            } else {
               postDataItemValue[elementName] = element.value
             }
-          } else {
-            var elementValue = element.value
-            postDataItemValue[elementName] = elementValue
-          }
-        })
+          })
+        }
       })
       if (this.formItemRegistryCenterUrl === '') {
         this.formItemRegistryCenterUrl = 'dubbo://' + this.formInfo.dubboIp + ':' + this.formInfo.dubboPort
