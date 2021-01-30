@@ -317,7 +317,9 @@ export default {
                 formItem.set('example', paramItem.example)
                 formItem.set('defaultValue', paramItem.defaultValue)
                 formItem.set('allowableValues', paramItem.allowableValues)
+                formItem.set('subParamsJson', paramItem.subParamsJson)
                 formItem.set('required', paramItem.required)
+                formItem.set('methodParam', true)
                 formsArray.push(formItem)
               } else {
                 // No htmltype, that's an object
@@ -335,10 +337,7 @@ export default {
                   formItem.set('description', paramInfoItem.description)
                   formItem.set('example', paramInfoItem.example)
                   formItem.set('defaultValue', paramInfoItem.defaultValue)
-                  formItem.set(
-                    'allowableValues',
-                    paramInfoItem.allowableValues
-                  )
+                  formItem.set('allowableValues', paramInfoItem.allowableValues)
                   formItem.set('subParamsJson', paramInfoItem.subParamsJson)
                   formItem.set('required', paramInfoItem.required)
                   formsArray.push(formItem)
@@ -357,10 +356,14 @@ export default {
       if (!this.$refs.form.validate()) {
         return false
       }
+      console.log(this.formValues)
       var tempMap = new Map()
       this.formValues.forEach((value, key) => {
         var elementIdSplited = key.split('@@')
         var tempMapKey = elementIdSplited[0] + '@@' + elementIdSplited[1]
+        if (elementIdSplited[5]) {
+          tempMapKey = tempMapKey + '@@' + elementIdSplited[5]
+        }
         var tempMapValueArray = tempMap.get(tempMapKey)
         if (!tempMapValueArray) {
           tempMapValueArray = new Array()
@@ -376,7 +379,7 @@ export default {
         var postDataItem = {}
         postData[key.split('@@')[1]] = postDataItem
         postDataItem.paramType = key.split('@@')[0]
-        if (value.length === 1) {
+        if (key.split('@@')[2]) {
           postDataItem.paramValue = value[0].value
         } else {
           var postDataItemValue = {}
