@@ -20,7 +20,7 @@
 # RUN mvn --batch-mode clean package -Dmaven.test.skip=true
 
 FROM openjdk:8-jre-alpine
-LABEL maintainer="chris.p.tang@gmail.com"
+LABEL maintainer="dev@dubbo.apache.org"
 COPY ./app/dubbo-admin-server-0.3.0-SNAPSHOT.jar /app.jar
 ENTRYPOINT ["java","-XX:+UnlockExperimentalVMOptions","-XX:+UseCGroupMemoryLimitForHeap","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
 EXPOSE 8080
