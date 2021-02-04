@@ -36,6 +36,17 @@ public class CallDubboServiceRequest {
     @ApiParam(value = "Whether to call asynchronously, false by default")
     private boolean async = false;
 
+    @ApiParam(value = "The version of API")
+    private String version;
+
+    public String getVersion() {
+        return version;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
+    }
+
     public String getRegistryCenterUrl() {
         return registryCenterUrl;
     }

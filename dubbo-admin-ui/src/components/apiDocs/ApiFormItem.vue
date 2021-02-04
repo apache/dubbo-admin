@@ -111,6 +111,32 @@
       style="height:300px;"
       outline
     ></json-editor2>
+    <v-text-field
+      v-else-if="formItemInfo.get('htmlType')==='DATE_SELECTOR'"
+      :id="buildItemId()"
+      :name="buildItemId()"
+      :ref="buildItemId()"
+      :label="formItemInfo.get('docName')"
+      :placeholder="formItemInfo.get('example')"
+      :value="buildDefaultValue()"
+      :required="formItemInfo.get('required')"
+      :rules="[requiredCheck]"
+      @change="itemChange($event)"
+      outline
+    ></v-text-field>
+    <v-text-field
+      v-else-if="formItemInfo.get('htmlType')==='DATETIME_SELECTOR'"
+      :id="buildItemId()"
+      :name="buildItemId()"
+      :ref="buildItemId()"
+      :label="formItemInfo.get('docName')"
+      :placeholder="formItemInfo.get('example')"
+      :value="buildDefaultValue()"
+      :required="formItemInfo.get('required')"
+      :rules="[requiredCheck]"
+      @change="itemChange($event)"
+      outline
+    ></v-text-field>
     <span v-else>{{$t('apiDocsRes.apiForm.unsupportedHtmlTypeTip')}}</span>
   </div>
 </template>
@@ -147,11 +173,15 @@ export default {
   },
   methods: {
     buildItemId () {
-      return this.formItemInfo.get('paramType') + '@@' +
+      let result = this.formItemInfo.get('paramType') + '@@' +
       this.formItemInfo.get('paramIndex') + '@@' +
       this.formItemInfo.get('javaType') + '@@' +
       this.formItemInfo.get('name') + '@@' +
       this.formItemInfo.get('htmlType')
+      if (this.formItemInfo.get('methodParam')) {
+        result = result + '@@' + this.formItemInfo.get('methodParam')
+      }
+      return result
     },
     requiredCheck (value) {
       if (this.formItemInfo.get('required')) {
@@ -178,11 +208,10 @@ export default {
     },
     buildDefaultValue () {
       var defaultValue = this.formItemInfo.get('defaultValue')
-      if (defaultValue) {
-        this.formValues.set(this.buildItemId(), defaultValue)
-      } else {
+      if (!defaultValue) {
         defaultValue = ''
       }
+      this.formValues.set(this.buildItemId(), defaultValue)
       return defaultValue
     },
     buildSelectDefaultValue () {
@@ -192,12 +221,14 @@ export default {
         if (defaultValue) {
           this.selectDefaultValue = defaultValue
           this.formValues.set(this.buildItemId(), defaultValue[0])
+        } else {
+          this.formValues.set(this.buildItemId(), '')
         }
       }
       return this.selectDefaultValue
     },
     buildJsonDefaultValue () {
-      var defaultValue = JSON.parse(this.formItemInfo.get('subParamsJson'))
+      var defaultValue = this.formItemInfo.get('subParamsJson') === '' ? this.formItemInfo.get('subParamsJson') : JSON.parse(this.formItemInfo.get('subParamsJson'))
       this.formValues.set(this.buildItemId(), defaultValue)
       return defaultValue
     },

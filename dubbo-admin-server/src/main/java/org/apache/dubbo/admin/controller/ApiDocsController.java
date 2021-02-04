@@ -112,8 +112,8 @@ public class ApiDocsController {
                     if(paramValue instanceof Map){
                         Map<?, ?> tempMap = (Map<?, ?>) paramValue;
                         if(!tempMap.isEmpty()) {
-                            this.emptyString2Null(tempMap);
-                            paramValues[i] = tempMap.values().stream().findFirst().orElse(null);
+                            Object tempParamValue = tempMap.values().stream().findFirst().orElse(null);
+                            paramValues[i] = this.emptyString2Null(tempParamValue);
                         }
                     } else {
                         paramValues[i] = emptyString2Null(paramValue);
@@ -131,7 +131,7 @@ public class ApiDocsController {
             paramValues = new Object[0];
         }
         CompletableFuture<Object> future = ApiDocsDubboGenericUtil.invoke(dubboCfg.getRegistryCenterUrl(), dubboCfg.getInterfaceClassName(),
-                dubboCfg.getMethodName(), dubboCfg.isAsync(), paramTypes, paramValues);
+                dubboCfg.getMethodName(), dubboCfg.isAsync(), dubboCfg.getVersion(), paramTypes, paramValues);
         try {
             Object objResult = future.get();
             return JSON.toJSONString(objResult, CLASS_NAME_PRE_FILTER);

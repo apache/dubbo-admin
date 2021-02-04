@@ -170,12 +170,12 @@ export default {
       missingInterfaceInfo: '缺少接口信息',
       getApiInfoErr: '获取接口信息异常',
       api404Err: '接口名称不正确,没有查找到接口参数和响应信息',
-      apiRespDecShowLabel: '接口说明',
+      apiRespDecShowLabel: '响应说明',
       apiNameShowLabel: '接口名称',
       apiPathShowLabel: '接口位置',
       apiMethodParamInfoLabel: '接口参数',
       apiVersionShowLabel: '接口版本',
-      apiDescriptionShowLabel: '接口描述',
+      apiDescriptionShowLabel: '接口说明',
       isAsyncFormLabel: '是否异步调用(此参数不可修改,根据接口定义的是否异步显示)',
       apiModuleFormLabel: '接口模块(此参数不可修改)',
       apiFunctionNameFormLabel: '接口方法名(此参数不可修改)',
@@ -195,5 +195,6 @@ export default {
       unsupportedHtmlTypeTip: '暂不支持的表单类型',
       none: '无'
     }
-  }
+  },
+  authFailed:'权限验证失败'
 }

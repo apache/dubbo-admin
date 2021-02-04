@@ -1,3 +1,5 @@
+#!/bin/sh
+
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -5,7 +7,7 @@
 # (the "License"); you may not use this file except in compliance with
 # the License.  You may obtain a copy of the License at
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
@@ -13,15 +15,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM maven:3-openjdk-8
-RUN mkdir -p /source/dubbo-admin-snapshot
-ADD . /source/dubbo-admin-snapshot
-WORKDIR /source/dubbo-admin-snapshot
-RUN mvn --batch-mode clean package -Dmaven.test.skip=true
+cd `dirname $0`/../lib
+target_dir=`pwd`
 
-FROM openjdk:8-jre
-LABEL maintainer="dev@dubbo.apache.org"
-RUN apt-get update && apt-get install -y tini
-COPY --from=0 /source/dubbo-admin-snapshot/dubbo-admin-distribution/target/dubbo-admin-0.3.0-SNAPSHOT.jar /app.jar
-ENTRYPOINT ["tini","--","java","-XX:+UnlockExperimentalVMOptions","-XX:+UseCGroupMemoryLimitForHeap","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
-EXPOSE 8080
+pid=`ps ax | grep -i 'dubbo.admin' | grep ${target_dir} | grep java | grep -v grep | awk '{print $1}'`
+if [ -z "$pid" ] ; then
+        echo "No dubbo admin server running."
+        exit -1;
+fi
+
+echo "The dubbo admin server(${pid}) is running..."
+
+kill ${pid}
+
+echo "Send shutdown request to dubbo admin server(${pid}) OK!"

@@ -39,7 +39,7 @@ instance.interceptors.response.use((response) => {
   } else if (error.response.status === HttpStatus.UNAUTHORIZED) {
     localStorage.removeItem('token')
     localStorage.removeItem('username')
-    Vue.prototype.$notify.error('Authorized failed,please login.')
+    Vue.prototype.$notify.error('Authorization failed, please login again.')
     Router.push('/login?redirect=' + location.href.split("#")[1])
   } else if (error.response.status >= HttpStatus.BAD_REQUEST) {
     Vue.prototype.$notify.error(error.response.data.message)
