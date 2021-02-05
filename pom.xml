@@ -54,7 +54,7 @@
 	<properties>
 		<main.basedir>${project.basedir}</main.basedir>
 		<commons-lang3-version>3.7</commons-lang3-version>
-		<dubbo-version>2.7.7</dubbo-version>
+		<dubbo-version>2.7.8</dubbo-version>
 		<curator-version>2.12.0</curator-version>
 		<curator-test-version>4.1.0</curator-test-version>
 		<fastjson-version>1.2.67</fastjson-version>
