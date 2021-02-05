@@ -42,7 +42,7 @@ instance.interceptors.response.use((response) => {
     localStorage.removeItem('username')
     Vue.prototype.$notify.error(i18n.t('authFailed'))
     let paths = location.href.split('#')
-    if(paths.length > 1 && paths[1].startsWith('/login')) {
+    if (paths.length > 1 && paths[1].startsWith('/login')) {
       // avoid splicing multiple redirects
       return
     }
