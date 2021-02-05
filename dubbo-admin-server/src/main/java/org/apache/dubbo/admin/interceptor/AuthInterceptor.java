@@ -35,10 +35,11 @@ import java.lang.reflect.Method;
 public class AuthInterceptor extends HandlerInterceptorAdapter {
     @Value("${admin.check.authority:true}")
     private boolean checkAuthority;
+    
     //make session timeout configurable
-    //default is 15 minutes
-    @Value("${admin.user.max-idle-time:15}")
-    private int userMaxIdleTime;
+    //default to be an hour:1000 * 60 * 60
+    @Value("${admin.check.sessionTimeoutMilli:3600000}")
+    private long sessionTimeoutMilli;
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         if (!(handler instanceof HandlerMethod) || !checkAuthority) {
@@ -63,7 +64,7 @@ public class AuthInterceptor extends HandlerInterceptorAdapter {
             }
 
             UserController.User user = UserController.tokenMap.get(authorization);
-            if (null != user && System.currentTimeMillis() - user.getLastUpdateTime() <= 1000 * 60 * userMaxIdleTime) {
+            if (null != user && System.currentTimeMillis() - user.getLastUpdateTime() <= sessionTimeoutMilli) {
                 user.setLastUpdateTime(System.currentTimeMillis());
                 return true;
             }
