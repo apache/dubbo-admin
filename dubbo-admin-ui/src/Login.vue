@@ -87,7 +87,7 @@
             localStorage.setItem('username', userName)
             //login and redirect
             let redirect = this.$route.query.redirect
-            if(redirect){
+            if(redirect) {
                 this.$router.replace(redirect)
             } else {
                 this.$router.replace('/')
