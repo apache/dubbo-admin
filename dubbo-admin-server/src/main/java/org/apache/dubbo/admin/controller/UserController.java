@@ -43,6 +43,10 @@ public class UserController {
     private String rootUserName;
     @Value("${admin.root.user.password:}")
     private String rootUserPassword;
+    //make session timeout configurable
+    //default to be an hour:1000 * 60 * 60
+    @Value("${admin.check.sessionTimeoutMilli:3600000}")
+    private long sessionTimeoutMilli;
 
     @RequestMapping(value = "/login", method = RequestMethod.GET)
     public String login(@RequestParam String userName, @RequestParam String password) {
@@ -69,7 +73,7 @@ public class UserController {
 
     @Scheduled(cron= "0 5 * * * ?")
     public void clearExpiredToken() {
-        tokenMap.entrySet().removeIf(entry -> entry.getValue() == null || System.currentTimeMillis() - entry.getValue().getLastUpdateTime() > 1000 * 60 * 15);
+        tokenMap.entrySet().removeIf(entry -> entry.getValue() == null || System.currentTimeMillis() - entry.getValue().getLastUpdateTime() > sessionTimeoutMilli);
     }
 
     public static class User {

@@ -35,12 +35,11 @@ import java.lang.reflect.Method;
 public class AuthInterceptor extends HandlerInterceptorAdapter {
     @Value("${admin.check.authority:true}")
     private boolean checkAuthority;
-
+    
     //make session timeout configurable
     //default to be an hour:1000 * 60 * 60
     @Value("${admin.check.sessionTimeoutMilli:3600000}")
     private long sessionTimeoutMilli;
-
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         if (!(handler instanceof HandlerMethod) || !checkAuthority) {
