@@ -85,7 +85,13 @@
           if (response.status === 200 && response.data) {
             localStorage.setItem('token', response.data)
             localStorage.setItem('username', userName)
-            this.$router.replace('/')
+            //login and redirect
+            let redirect = this.$route.query.redirect
+            if(redirect) {
+                this.$router.replace(redirect)
+            } else {
+                this.$router.replace('/')
+            }
           } else {
             vm.$notify('Username or password error,please try again')
           }

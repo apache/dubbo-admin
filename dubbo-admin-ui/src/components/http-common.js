@@ -41,7 +41,12 @@ instance.interceptors.response.use((response) => {
     localStorage.removeItem('token')
     localStorage.removeItem('username')
     Vue.prototype.$notify.error(i18n.t('authFailed'))
-    router.push({ path: 'login' })
+    let paths = location.href.split('#')
+    if (paths.length > 1 && paths[1].startsWith('/login')) {
+      // avoid splicing multiple redirects
+      return
+    }
+    router.push({path: 'login', query: {redirect: paths.length === 1 ? '/' : paths[1]}})
   } else if (error.response.status >= HttpStatus.BAD_REQUEST) {
     Vue.prototype.$notify.error(error.response.data.message)
   }
