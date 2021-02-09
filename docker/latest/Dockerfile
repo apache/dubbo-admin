@@ -23,5 +23,9 @@ FROM openjdk:8-jre
 LABEL maintainer="dev@dubbo.apache.org"
 RUN apt-get update && apt-get install -y tini
 COPY --from=0 /source/dubbo-admin-snapshot/dubbo-admin-distribution/target/dubbo-admin-0.3.0-SNAPSHOT.jar /app.jar
-ENTRYPOINT ["tini","--","java","-XX:+UnlockExperimentalVMOptions","-XX:+UseCGroupMemoryLimitForHeap","-Djava.security.egd=file:/dev/./urandom","-jar","/app.jar"]
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+
+ENV JAVA_OPTS = ""
+
+ENTRYPOINT ["tini", "--", "/usr/local/bin/entrypoint.sh"]
 EXPOSE 8080

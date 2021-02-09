@@ -18,18 +18,24 @@
  */
 package org.apache.dubbo.admin;
 
-import org.apache.dubbo.admin.pages.LoginPage;
+import org.apache.dubbo.admin.pages.ServicePage;
 import org.fluentlenium.core.annotation.Page;
 import org.junit.Test;
 
-public class LoginIT extends BaseIT {
+public class ServiceIT extends BaseIT {
     @Page
-    private LoginPage loginPage;
+    private ServicePage servicePage;
 
     @Test
-    public void shouldLogin() {
-        goTo(loginPage).loginWithRoot();
+    public void shouldCheckServiceInfo() {
+        autoLogin();
 
-        loginPage.takeShot("login");
+        goTo(servicePage);
+
+        servicePage.takeShot("service-page");
+
+        servicePage.checkDetailForService("org.apache.dubbo.admin.api.GreetingService:1.0.0");
+
+        servicePage.takeShot("service-detail");
     }
 }

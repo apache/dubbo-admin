@@ -18,18 +18,20 @@
  */
 package org.apache.dubbo.admin;
 
-import org.apache.dubbo.admin.pages.LoginPage;
+import org.apache.dubbo.admin.pages.MetricRelationPage;
 import org.fluentlenium.core.annotation.Page;
 import org.junit.Test;
 
-public class LoginIT extends BaseIT {
+public class MetricIT extends BaseIT {
     @Page
-    private LoginPage loginPage;
+    private MetricRelationPage relationPage;
 
     @Test
-    public void shouldLogin() {
-        goTo(loginPage).loginWithRoot();
+    public void shouldShowRelation() {
+        autoLogin();
 
-        loginPage.takeShot("login");
+        goTo(relationPage).showRelation();
+
+        relationPage.takeShot("metric-relation");
     }
 }
