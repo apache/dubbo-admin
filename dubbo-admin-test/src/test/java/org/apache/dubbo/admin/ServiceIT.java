@@ -22,6 +22,9 @@ import org.apache.dubbo.admin.pages.ServicePage;
 import org.fluentlenium.core.annotation.Page;
 import org.junit.Test;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.MatcherAssert.assertThat;
+
 public class ServiceIT extends BaseIT {
     @Page
     private ServicePage servicePage;
@@ -37,5 +40,18 @@ public class ServiceIT extends BaseIT {
         servicePage.checkDetailForService("org.apache.dubbo.admin.api.GreetingService:1.0.0");
 
         servicePage.takeShot("service-detail");
+    }
+
+    @Test
+    public void shouldTestService() {
+        autoLogin();
+
+        goTo(servicePage).checkTestDetailForService("org.apache.dubbo.admin.api.GreetingService:1.0.0")
+                .takeShot("service-test-list");
+
+        servicePage.openTestDialogForMethod("sayHello").executeTestMethodWithParam("world")
+                .takeShot("service-test-detail");
+
+        assertThat(servicePage.getTestMethodResult(), containsString("hello, world"));
     }
 }
