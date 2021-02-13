@@ -135,6 +135,8 @@ public class ServicePage extends BasePage {
 
         testExecButton.click();
 
+        await().atMost(10,TimeUnit.SECONDS).untilPredicate(p-> !getTestMethodResult().contains("{0}"));
+
         return this;
     }
 
