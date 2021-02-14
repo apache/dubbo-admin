@@ -37,6 +37,6 @@ public class ManageIT extends BaseIT {
 
         assertThat(managePage.getConfigDetail(), containsString("dubbo.registry.address"));
 
-        managePage.takeShot("manage-config");
+        managePage.takeScreenshot("manage-config");
     }
 }

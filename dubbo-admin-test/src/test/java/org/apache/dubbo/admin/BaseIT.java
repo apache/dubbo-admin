@@ -25,7 +25,6 @@ import org.fluentlenium.adapter.junit.FluentTest;
 import org.fluentlenium.core.annotation.Page;
 import org.junit.BeforeClass;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +37,12 @@ public class BaseIT extends FluentTest {
     @Page
     LoginPage loginPage;
 
+    public BaseIT() {
+        setWebDriver("chrome");
+        setScreenshotPath("target/screens/");
+        setScreenshotMode(TriggerMode.AUTOMATIC_ON_FAIL);
+    }
+
     @BeforeClass
     public static void beforeClass() {
         WebDriverManager.chromedriver().setup();
@@ -46,14 +51,10 @@ public class BaseIT extends FluentTest {
     }
 
     @Override
-    public WebDriver newWebDriver() {
-        return new ChromeDriver();
-    }
-
-    @Override
     public String getBaseUrl() {
         return BASE_URL;
     }
+
 
     public void autoLogin() {
         goTo(loginPage);

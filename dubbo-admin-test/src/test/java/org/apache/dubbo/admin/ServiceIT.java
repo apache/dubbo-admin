@@ -35,11 +35,11 @@ public class ServiceIT extends BaseIT {
 
         goTo(servicePage);
 
-        servicePage.takeShot("service-page");
+        servicePage.takeScreenshot("service-page");
 
         servicePage.checkDetailForService("org.apache.dubbo.admin.api.GreetingService:1.0.0");
 
-        servicePage.takeShot("service-detail");
+        servicePage.takeScreenshot("service-detail");
     }
 
     @Test
@@ -47,10 +47,10 @@ public class ServiceIT extends BaseIT {
         autoLogin();
 
         goTo(servicePage).checkTestDetailForService("org.apache.dubbo.admin.api.GreetingService:1.0.0")
-                .takeShot("service-test-list");
+                .takeScreenshot("service-test-list");
 
         servicePage.openTestDialogForMethod("sayHello").executeTestMethodWithParam("world")
-                .takeShot("service-test-detail");
+                .takeScreenshot("service-test-detail");
 
         assertThat(servicePage.getTestMethodResult(), containsString("hello, world"));
     }

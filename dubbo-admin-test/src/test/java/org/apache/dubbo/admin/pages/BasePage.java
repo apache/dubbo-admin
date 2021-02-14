@@ -18,32 +18,8 @@
  */
 package org.apache.dubbo.admin.pages;
 
-import org.apache.commons.io.FileUtils;
 import org.fluentlenium.core.FluentPage;
-import org.openqa.selenium.OutputType;
-import org.openqa.selenium.TakesScreenshot;
-import org.openqa.selenium.WebDriver;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
 
 public class BasePage extends FluentPage {
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    public void takeShot(String name) {
-        WebDriver webDriver = getDriver();
-        TakesScreenshot scrShot = ((TakesScreenshot) webDriver);
-
-        File SrcFile = scrShot.getScreenshotAs(OutputType.FILE);
-
-        File DestFile = new File("target/screens/" + name + ".png");
-
-        try {
-            FileUtils.copyFile(SrcFile, DestFile);
-        } catch (IOException e) {
-            logger.info("#takeShot# take shot fail", e);
-        }
-    }
 }

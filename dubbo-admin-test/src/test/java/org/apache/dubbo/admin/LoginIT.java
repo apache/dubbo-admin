@@ -30,6 +30,6 @@ public class LoginIT extends BaseIT {
     public void shouldLogin() {
         goTo(loginPage).loginWithRoot();
 
-        loginPage.takeShot("login");
+        loginPage.takeScreenshot("login");
     }
 }
