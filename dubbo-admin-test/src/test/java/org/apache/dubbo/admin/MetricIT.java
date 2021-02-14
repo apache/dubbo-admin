@@ -32,6 +32,6 @@ public class MetricIT extends BaseIT {
 
         goTo(relationPage).showRelation();
 
-        relationPage.takeScreenshot("metric-relation");
+        relationPage.takeScreenshot("metric-relation.png");
     }
 }
