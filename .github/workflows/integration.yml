@@ -12,13 +12,34 @@ jobs:
         run: cp docker/latest/** ./
       - name: Docker build
         run: docker build -t apache/dubbo-admin-integration:latest .
+      - name: Prepare agent
+        run: mkdir jacoco && wget https://repo1.maven.org/maven2/org/jacoco/org.jacoco.agent/0.8.6/org.jacoco.agent-0.8.6-runtime.jar -O jacoco/jacoco.jar && wget https://repo1.maven.org/maven2/org/jacoco/org.jacoco.cli/0.8.6/org.jacoco.cli-0.8.6-nodeps.jar -O jacoco/jacoco-cli.jar
       - name: Build provider and consumer image
         run: ./mvnw --batch-mode --projects dubbo-admin-test --activate-profiles build-provider package && ./mvnw --batch-mode --projects dubbo-admin-test --activate-profiles build-consumer package
       - name: Setup xvfb
-        run: sudo apt-get install xvfb
+        run: sudo apt-get install xvfb ttf-wqy-zenhei -y && fc-cache -v
       - name: Run integration test
         run: xvfb-run --server-args="-screen 0, 1024x768x24" ./mvnw --batch-mode --projects dubbo-admin-test --activate-profiles dubbo-admin-integration-test -Ddocker.showLogs=true docker:stop docker:remove verify
+      - name: Save failure screenshots
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: failure-screenshots
+          path: dubbo-admin-test/target/screens/
       - uses: actions/upload-artifact@v2
         with:
           name: screenshots
           path: dubbo-admin-test/target/screens/
+      - name: Set up JDK
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+      - name: Compile server project
+        run: ./mvnw clean package -DskipTests=true -pl dubbo-admin-server
+      - name: Generate report
+        run: java -jar jacoco/jacoco-cli.jar report jacoco/jacoco.exec --classfiles dubbo-admin-server/target/classes/ --sourcefiles dubbo-admin-server/src --xml jacoco/jacoco.xml
+      - name: Upload coverage to codecov
+        uses: codecov/codecov-action@v1
+        with:
+          flags: integration
+          directory: ./jacoco

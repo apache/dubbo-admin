@@ -122,9 +122,9 @@
         </dependency>
 
         <dependency>
-            <groupId>org.seleniumhq.selenium.fluent</groupId>
-            <artifactId>fluent-selenium</artifactId>
-            <version>1.17</version>
+            <groupId>org.fluentlenium</groupId>
+            <artifactId>fluentlenium-junit</artifactId>
+            <version>3.9.1</version>
             <scope>test</scope>
         </dependency>
 
@@ -235,7 +235,13 @@
                                             </admin.config-center>
                                             <admin.metadata-report.address>zookeeper://zookeeper:2181
                                             </admin.metadata-report.address>
+                                            <JAVA_OPTS>-javaagent:/jacoco/jacoco.jar=destfile=/jacoco/jacoco.exec</JAVA_OPTS>
                                         </env>
+                                        <volumes>
+                                            <bind>
+                                                <volume>${project.basedir}/../jacoco:/jacoco</volume>
+                                            </bind>
+                                        </volumes>
                                         <links>
                                             <link>zookeeper:zookeeper</link>
                                         </links>
@@ -246,6 +252,7 @@
                                                 <method>GET</method>
                                                 <status>200</status>
                                             </http>
+                                            <time>20000</time>
                                         </wait>
                                     </run>
                                 </image>

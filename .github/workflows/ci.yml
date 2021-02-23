@@ -19,4 +19,5 @@ jobs:
         run: ./mvnw clean install --batch-mode -DskipTests=false -Dcheckstyle.skip=false -Drat.skip=false -Dmaven.javadoc.skip=true
       - name: Upload coverage to codecov
         uses: codecov/codecov-action@v1
-
+        with:
+          flags: unit

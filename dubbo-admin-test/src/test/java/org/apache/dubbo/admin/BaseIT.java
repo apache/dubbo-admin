@@ -18,30 +18,53 @@
  */
 package org.apache.dubbo.admin;
 
-import org.apache.commons.io.FileUtils;
-import org.openqa.selenium.OutputType;
-import org.openqa.selenium.TakesScreenshot;
+import io.github.bonigarcia.wdm.WebDriverManager;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.dubbo.admin.pages.LoginPage;
+import org.fluentlenium.adapter.junit.FluentTest;
+import org.fluentlenium.core.annotation.Page;
+import org.junit.BeforeClass;
 import org.openqa.selenium.WebDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-
-public class BaseIT {
+public class BaseIT extends FluentTest {
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    public void takeShot(WebDriver webDriver, String name) {
-        TakesScreenshot scrShot = ((TakesScreenshot) webDriver);
+    protected static WebDriver driver;
+    protected static String BASE_URL;
 
-        File SrcFile = scrShot.getScreenshotAs(OutputType.FILE);
+    @Page
+    LoginPage loginPage;
 
-        File DestFile = new File("target/screens/" + name + ".png");
+    public BaseIT() {
+        setWebDriver("chrome");
+        setScreenshotPath("target/screens/");
+        setScreenshotMode(TriggerMode.AUTOMATIC_ON_FAIL);
+    }
+
+    @BeforeClass
+    public static void beforeClass() {
+        WebDriverManager.chromedriver().setup();
+
+        BASE_URL = StringUtils.defaultString(System.getenv("BASEURL"), "http://localhost:8082");
+    }
+
+    @Override
+    public String getBaseUrl() {
+        return BASE_URL;
+    }
+
+
+    public void autoLogin() {
+        goTo(loginPage);
 
         try {
-            FileUtils.copyFile(SrcFile, DestFile);
-        } catch (IOException e) {
-            logger.info("#takeShot# take shot fail", e);
+            await().untilPredicate(fluentControl -> loginPage.url().contains("login"));
+
+            loginPage.loginWithRoot();
+        } catch (Exception ignore) {
+            logger.info("already log in");
         }
     }
 }
