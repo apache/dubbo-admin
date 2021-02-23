@@ -40,7 +40,7 @@
             <span class="red--text" v-if="success===false">{{ $t('fail')}}</span>
           </v-card-title>
           <v-card-text>
-            <json-editor v-model="result" name="Result" readonly></json-editor>
+            <json-editor v-model="result" name="Result" class="it-test-method-result-container" readonly></json-editor>
           </v-card-text>
         </v-card>
       </v-flex>

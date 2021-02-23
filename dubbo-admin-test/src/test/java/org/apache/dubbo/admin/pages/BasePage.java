@@ -16,20 +16,10 @@
  *   limitations under the License.
  *
  */
-package org.apache.dubbo.admin;
+package org.apache.dubbo.admin.pages;
 
-import org.apache.dubbo.admin.pages.LoginPage;
-import org.fluentlenium.core.annotation.Page;
-import org.junit.Test;
+import org.fluentlenium.core.FluentPage;
 
-public class LoginIT extends BaseIT {
-    @Page
-    private LoginPage loginPage;
+public class BasePage extends FluentPage {
 
-    @Test
-    public void shouldLogin() {
-        goTo(loginPage).loginWithRoot();
-
-        loginPage.takeScreenshot("login.png");
-    }
 }

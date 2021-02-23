@@ -18,18 +18,25 @@
  */
 package org.apache.dubbo.admin;
 
-import org.apache.dubbo.admin.pages.LoginPage;
+import org.apache.dubbo.admin.pages.ManagePage;
 import org.fluentlenium.core.annotation.Page;
 import org.junit.Test;
 
-public class LoginIT extends BaseIT {
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+public class ManageIT extends BaseIT {
     @Page
-    private LoginPage loginPage;
+    private ManagePage managePage;
 
     @Test
-    public void shouldLogin() {
-        goTo(loginPage).loginWithRoot();
+    public void shouldViewConfig() {
+        autoLogin();
 
-        loginPage.takeScreenshot("login.png");
+        goTo(managePage).showConfigDetailFor("global");
+
+        assertThat(managePage.getConfigDetail(), containsString("dubbo.registry.address"));
+
+        managePage.takeScreenshot("manage-config.png");
     }
 }

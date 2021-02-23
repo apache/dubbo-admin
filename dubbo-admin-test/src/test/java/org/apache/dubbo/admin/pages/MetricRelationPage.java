@@ -16,20 +16,14 @@
  *   limitations under the License.
  *
  */
-package org.apache.dubbo.admin;
+package org.apache.dubbo.admin.pages;
 
-import org.apache.dubbo.admin.pages.LoginPage;
-import org.fluentlenium.core.annotation.Page;
-import org.junit.Test;
+import org.fluentlenium.core.annotation.PageUrl;
 
-public class LoginIT extends BaseIT {
-    @Page
-    private LoginPage loginPage;
-
-    @Test
-    public void shouldLogin() {
-        goTo(loginPage).loginWithRoot();
-
-        loginPage.takeScreenshot("login.png");
+@PageUrl("/#/metrics/relation")
+public class MetricRelationPage extends BasePage {
+    public MetricRelationPage showRelation() {
+        isAt();
+        return this;
     }
 }
