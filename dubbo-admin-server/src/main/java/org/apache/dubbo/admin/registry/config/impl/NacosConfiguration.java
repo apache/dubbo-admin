@@ -37,14 +37,12 @@ public class NacosConfiguration implements GovernanceConfiguration {
     private static final Logger logger = LoggerFactory.getLogger(NacosConfiguration.class);
 
     private ConfigService configService;
-    private String nameSpace;
     private String group;
     private URL url;
 
     @Override
     public void init() {
         group = url.getParameter(Constants.GROUP_KEY, "DEFAULT_GROUP");
-        nameSpace = url.getParameter(Constants.NAMESPACE_KEY, "public");
         configService = buildConfigService(url);
     }
 
@@ -64,6 +62,7 @@ public class NacosConfiguration implements GovernanceConfiguration {
     private Properties buildNacosProperties(URL url) {
         Properties properties = new Properties();
         setServerAddr(url, properties);
+        setNamespace(url, properties);
         return properties;
     }
 
@@ -74,7 +73,13 @@ public class NacosConfiguration implements GovernanceConfiguration {
                 url.getPort() // Port
                 ;
         properties.put(SERVER_ADDR, serverAddr);
-        properties.put(NAMESPACE, nameSpace);
+    }
+
+    private void setNamespace(URL url, Properties properties) {
+        String namespace = url.getParameter(NAMESPACE);
+        if (StringUtils.isNotBlank(namespace)) {
+            properties.put(NAMESPACE, namespace);
+        }
     }
 
 

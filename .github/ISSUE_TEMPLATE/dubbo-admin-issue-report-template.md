@@ -9,7 +9,7 @@ about: If you would like to report a issue to Dubbo-Admin, please use this templ
 
 ### Environment
 
-* Dubbo version: xxx
+* Dubbo Admin version: xxx
 * Registry center detail (type and version): xxx
 * Operating System version: xxx
 * Java version: xxx

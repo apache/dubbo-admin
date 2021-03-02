@@ -105,9 +105,9 @@ public class ConfigCenter {
                 Arrays.stream(config.split("\n")).forEach( s -> {
                     if(s.startsWith(Constants.REGISTRY_ADDRESS)) {
                         String registryAddress = s.split("=")[1].trim();
-                        registryUrl = formUrl(registryAddress, configCenterGroup, registryNameSpace, username, password);
+                        registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
                     } else if (s.startsWith(Constants.METADATA_ADDRESS)) {
-                        metadataUrl = formUrl(s.split("=")[1].trim(), configCenterGroup, metadataGroupNameSpace, username, password);
+                        metadataUrl = formUrl(s.split("=")[1].trim(), metadataGroup, metadataGroupNameSpace, username, password);
                     }
                 });
             }

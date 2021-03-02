@@ -31,7 +31,6 @@
     <properties>
         <source.level>1.8</source.level>
         <target.level>1.8</target.level>
-        <dubbo.version>2.7.7</dubbo.version>
         <spring.version>4.3.16.RELEASE</spring.version>
         <junit.version>4.12</junit.version>
         <jib-maven-plugin.version>2.4.0</jib-maven-plugin.version>
@@ -50,7 +49,7 @@
             <dependency>
                 <groupId>org.apache.dubbo</groupId>
                 <artifactId>dubbo-dependencies-bom</artifactId>
-                <version>${dubbo.version}</version>
+                <version>${dubbo-version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -61,13 +60,13 @@
         <dependency>
             <groupId>org.apache.dubbo</groupId>
             <artifactId>dubbo</artifactId>
-            <version>${dubbo.version}</version>
+            <version>${dubbo-version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.apache.dubbo</groupId>
             <artifactId>dubbo-dependencies-zookeeper</artifactId>
-            <version>${dubbo.version}</version>
+            <version>${dubbo-version}</version>
             <type>pom</type>
         </dependency>
 
