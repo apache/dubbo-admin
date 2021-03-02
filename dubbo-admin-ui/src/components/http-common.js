@@ -46,7 +46,7 @@ instance.interceptors.response.use((response) => {
       // avoid splicing multiple redirects
       return
     }
-    router.push({path: 'login', query: {redirect: paths.length === 1 ? '/' : paths[1]}})
+    router.push({path: '/login', query: {redirect: paths.length === 1 ? '/' : paths[1]}})
   } else if (error.response.status >= HttpStatus.BAD_REQUEST) {
     Vue.prototype.$notify.error(error.response.data.message)
   }
