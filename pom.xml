@@ -280,6 +280,9 @@
 										<exclude>**/assets/**</exclude>
 										<exclude>**/yarn.lock</exclude>
 										<exclude>**/node/**</exclude>
+										<exclude>**/.prettierignore</exclude>
+										<exclude>**/*.json</exclude>
+										<exclude>**/*.svg</exclude>
 									</excludes>
 								</configuration>
 							</execution>
