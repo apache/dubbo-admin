@@ -262,7 +262,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
     @Override
     public ConditionRouteDTO findConditionRoute(ConditionRouteDTO crDTO) {
-        return findConditionRoute(ConvertUtil.getServiceIdFromDTO(crDTO, false));
+        return findConditionRoute(ConvertUtil.getIdFromDTO(crDTO));
     }
 
     @Override

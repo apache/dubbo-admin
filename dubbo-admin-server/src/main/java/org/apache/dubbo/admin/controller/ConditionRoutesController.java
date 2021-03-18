@@ -24,8 +24,6 @@ import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.common.exception.VersionValidationException;
 import org.apache.dubbo.admin.common.util.Constants;
-import org.apache.dubbo.admin.common.util.ConvertUtil;
-import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.admin.service.RouteService;
@@ -65,12 +63,6 @@ public class ConditionRoutesController {
         }
         if (StringUtils.isNotEmpty(app) && providerService.findVersionInApplication(app).equals("2.6")) {
             throw new VersionValidationException("dubbo 2.6 does not support application scope routing rule");
-        }
-
-        String id = ConvertUtil.getServiceIdFromDTO(routeDTO, true);
-        List<Provider> providers = providerService.findByService(id);
-        if (null == providers || providers.isEmpty()) {
-            throw new ParamValidationException("no service found for " + routeDTO.getService());
         }
 
         routeService.createConditionRoute(routeDTO);
