@@ -139,380 +139,380 @@
 </template>
 
 <script>
-  import Material from 'vuetify/es5/util/colors'
-  import Breadcrumb from '@/components/public/Breadcrumb'
-  import Search from '@/components/public/Search'
+import Material from 'vuetify/es5/util/colors'
+import Breadcrumb from '@/components/public/Breadcrumb'
+import Search from '@/components/public/Search'
 
-  export default {
+export default {
 
-    name: 'ServiceMetrics',
-    components: {
-      Breadcrumb,
-      Search
-    },
-    data () {
-      return {
-        provider: {
-          metrics: [
-            'dubbo.provider.qps', 'dubbo.provider.rt', 'dubbo.provider.success_rate'
-          ],
-          qps: {
-            title: {
-              text: 'qps',
-              padding: [50, 5, 5, 5],
-              textStyle: {
-                fontWeight: 200,
-                fontSize: 12
-              }
-            },
-            tooltip: {},
-            xAxis: {
-              show: false,
-              type: 'category',
-              data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-            },
-            yAxis: {
-              show: false
-            },
-            series: [{
-              type: 'line',
-              data: []
-            }]
+  name: 'ServiceMetrics',
+  components: {
+    Breadcrumb,
+    Search
+  },
+  data () {
+    return {
+      provider: {
+        metrics: [
+          'dubbo.provider.qps', 'dubbo.provider.rt', 'dubbo.provider.success_rate'
+        ],
+        qps: {
+          title: {
+            text: 'qps',
+            padding: [50, 5, 5, 5],
+            textStyle: {
+              fontWeight: 200,
+              fontSize: 12
+            }
           },
-          rt: {
-            title: {
-              text: 'rt(ms)',
-              padding: [50, 5, 5, 5],
-              textStyle: {
-                fontWeight: 200,
-                fontSize: 12
-              }
-            },
-            tooltip: {},
-            xAxis: {
-              show: false,
-              type: 'category',
-              data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-            },
-            yAxis: {
-              show: false
-            },
-            series: [{
-              type: 'line',
-              data: []
-            }]
+          tooltip: {},
+          xAxis: {
+            show: false,
+            type: 'category',
+            data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
           },
-          success_rate: {
-            title: {
-              text: 'success rate',
-              padding: [50, 5, 5, 5],
-              textStyle: {
-                fontWeight: 200,
-                fontSize: 12
-              }
-            },
-            tooltip: {},
-            xAxis: {
-              show: false,
-              type: 'category',
-              data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-            },
-            yAxis: {
-              show: false
-            },
-            series: [{
-              type: 'line',
-              data: []
-            }]
-          }
+          yAxis: {
+            show: false
+          },
+          series: [{
+            type: 'line',
+            data: []
+          }]
         },
-        consumer: {
-          metrics: [
-            'dubbo.consumer.qps', 'dubbo.consumer.rt', 'dubbo.consumer.success_rate'
-          ],
-          qps: {
-            title: {
-              text: 'qps',
-              padding: [50, 5, 5, 5],
-              textStyle: {
-                fontWeight: 200,
-                fontSize: 12
-              }
-
-            },
-            tooltip: {},
-            xAxis: {
-              show: false,
-              type: 'category',
-              data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-            },
-            yAxis: {
-              show: false
-            },
-            series: [{
-              type: 'line',
-              data: []
-            }]
+        rt: {
+          title: {
+            text: 'rt(ms)',
+            padding: [50, 5, 5, 5],
+            textStyle: {
+              fontWeight: 200,
+              fontSize: 12
+            }
           },
-          rt: {
-            title: {
-              text: 'rt(ms)',
-              padding: [50, 5, 5, 5],
-              textStyle: {
-                fontWeight: 200,
-                fontSize: 12
-              }
-            },
-            tooltip: {},
-            xAxis: {
-              show: false,
-              type: 'category',
-              data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-            },
-            yAxis: {
-              show: false
-            },
-            series: [{
-              type: 'line',
-              data: []
-            }]
+          tooltip: {},
+          xAxis: {
+            show: false,
+            type: 'category',
+            data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
           },
-          success_rate: {
-            title: {
-              text: 'success rate',
-              padding: [50, 5, 5, 5],
-              textStyle: {
-                fontWeight: 200,
-                fontSize: 12
-              }
-            },
-            tooltip: {},
-            xAxis: {
-              show: false,
-              type: 'category',
-              data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-            },
-            yAxis: {
-              show: false
-            },
-            series: [{
-              type: 'line',
-              data: []
-            }]
-          }
+          yAxis: {
+            show: false
+          },
+          series: [{
+            type: 'line',
+            data: []
+          }]
         },
-        threadPoolData: {
-          'core': 0,
-          'max': 0,
-          'current': 0,
-          'current_trending': '',
-          'active': 0,
-          'active_trending': '',
-          'activert': 0
-        },
-        selectedTab: 'tab-1',
-        filter: '',
-        headers: [],
-        providerDetails: [],
-        consumerDetails: [],
-        option: null,
-        color: Material,
-        breads: [
-          {
-            text: 'metrics',
-            href: ''
-          }
-        ]
+        success_rate: {
+          title: {
+            text: 'success rate',
+            padding: [50, 5, 5, 5],
+            textStyle: {
+              fontWeight: 200,
+              fontSize: 12
+            }
+          },
+          tooltip: {},
+          xAxis: {
+            show: false,
+            type: 'category',
+            data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+          },
+          yAxis: {
+            show: false
+          },
+          series: [{
+            type: 'line',
+            data: []
+          }]
+        }
+      },
+      consumer: {
+        metrics: [
+          'dubbo.consumer.qps', 'dubbo.consumer.rt', 'dubbo.consumer.success_rate'
+        ],
+        qps: {
+          title: {
+            text: 'qps',
+            padding: [50, 5, 5, 5],
+            textStyle: {
+              fontWeight: 200,
+              fontSize: 12
+            }
 
-      }
-    },
-    /*
+          },
+          tooltip: {},
+          xAxis: {
+            show: false,
+            type: 'category',
+            data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+          },
+          yAxis: {
+            show: false
+          },
+          series: [{
+            type: 'line',
+            data: []
+          }]
+        },
+        rt: {
+          title: {
+            text: 'rt(ms)',
+            padding: [50, 5, 5, 5],
+            textStyle: {
+              fontWeight: 200,
+              fontSize: 12
+            }
+          },
+          tooltip: {},
+          xAxis: {
+            show: false,
+            type: 'category',
+            data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+          },
+          yAxis: {
+            show: false
+          },
+          series: [{
+            type: 'line',
+            data: []
+          }]
+        },
+        success_rate: {
+          title: {
+            text: 'success rate',
+            padding: [50, 5, 5, 5],
+            textStyle: {
+              fontWeight: 200,
+              fontSize: 12
+            }
+          },
+          tooltip: {},
+          xAxis: {
+            show: false,
+            type: 'category',
+            data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+          },
+          yAxis: {
+            show: false
+          },
+          series: [{
+            type: 'line',
+            data: []
+          }]
+        }
+      },
+      threadPoolData: {
+        core: 0,
+        max: 0,
+        current: 0,
+        current_trending: '',
+        active: 0,
+        active_trending: '',
+        activert: 0
+      },
+      selectedTab: 'tab-1',
+      filter: '',
+      headers: [],
+      providerDetails: [],
+      consumerDetails: [],
+      option: null,
+      color: Material,
+      breads: [
+        {
+          text: 'metrics',
+          href: ''
+        }
+      ]
+
+    }
+  },
+  /*
     * */
-    methods: {
-      submit: function () {
-        this.searchByIp(this.filter, true)
-      },
-      searchByIp: function (filter, rewrite) {
-        if (this.filter === '') {
-          return
-        }
+  methods: {
+    submit: function () {
+      this.searchByIp(this.filter, true)
+    },
+    searchByIp: function (filter, rewrite) {
+      if (this.filter === '') {
+        return
+      }
 
-        if (rewrite) {
-          this.$router.push({path: '/metrics/index', query: {ip: this.filter}})
-        }
-        let url = '/metrics/ipAddr/?ip=' + filter + '&group=dubbo'
-        this.$axios.get(url)
-          .then(response => {
-            if (!response) {
-              throw new Error('ServerError')
-            }
-            if (!response.data) {
-              return
-            }
-            this.dealNormal(response.data)
-            this.dealMajor(response.data)
-            this.dealThreadPoolData(response.data)
-          })
-          .catch(error => {
-            if (error.message === 'ServerError') {
-              clearInterval(this.searchTimer)
-            }
-          })
-      },
-      dealThreadPoolData: function (data) {
-        for (let index in data) {
-          let metricsDTO = data[index]
-          if ((metricsDTO['metric']).indexOf('threadPool') >= -1) {
-            let metric = metricsDTO['metric'].substring(metricsDTO['metric'].lastIndexOf('.') + 1)
-            if (metric === 'active' || metric === 'current') {
-              let trending = metric + '_trending'
-              this.threadPoolData[trending] = this.dealTrending(this.threadPoolData[metric], metricsDTO['value'])
-            }
-            this.threadPoolData[metric] = metricsDTO['value']
+      if (rewrite) {
+        this.$router.push({ path: '/metrics/index', query: { ip: this.filter } })
+      }
+      const url = '/metrics/ipAddr/?ip=' + filter + '&group=dubbo'
+      this.$axios.get(url)
+        .then(response => {
+          if (!response) {
+            throw new Error('ServerError')
           }
-        }
-        this.threadPoolData.activert = (100 * this.threadPoolData.active / this.threadPoolData.current).toFixed(2)
-      },
-      getKey: function (key) {
-        return key.substring(key.lastIndexOf('.') + 1)
-      },
-      dealMajor: function (data) {
-        for (let index in data) {
-          let metricsDTO = data[index]
-          if (this.provider.metrics.indexOf(metricsDTO['metric']) !== -1) {
-            let key = this.getKey(metricsDTO['metric'])
-            let data = this.provider[key].series[0].data
-            if (data.length === 10) {
-              data.push(metricsDTO['value'])
-              data.shift()
-            } else {
-              data.push(metricsDTO['value'])
-            }
-            this.provider[key].series.data = data
+          if (!response.data) {
+            return
           }
-          if (this.consumer.metrics.indexOf(metricsDTO['metric']) !== -1) {
-            let key = this.getKey(metricsDTO['metric'])
-            let data = this.consumer[key].series[0].data
-            if (data.length === 10) {
-              data.push(metricsDTO['value'])
-              data.shift()
-            } else {
-              data.push(metricsDTO['value'])
-            }
-            this.consumer[key].series.data = data
+          this.dealNormal(response.data)
+          this.dealMajor(response.data)
+          this.dealThreadPoolData(response.data)
+        })
+        .catch(error => {
+          if (error.message === 'ServerError') {
+            clearInterval(this.searchTimer)
           }
-        }
-      },
-      dealNormal: function (data) {
-        let serviceMethodMap = {}
-        for (let index in data) {
-          let metricsDTO = data[index]
-          if (metricsDTO['metricLevel'] === 'NORMAL') {
-            let metric = metricsDTO['metric'] + ''
-            let isProvider = metric.split('.')[1]
-            metric = isProvider + '.' + metric.substring(metric.lastIndexOf('.') + 1)
-
-            let methodMap = serviceMethodMap[metricsDTO.tags.service]
-            if (!methodMap) {
-              methodMap = {}
-              serviceMethodMap[metricsDTO.tags.service] = methodMap
-            }
-            let metricMap = methodMap[metricsDTO.tags.method]
-
-            if (!metricMap) {
-              metricMap = {}
-              serviceMethodMap[metricsDTO.tags.service][metricsDTO.tags.method] = metricMap
-            }
-            metricMap[metric] = metricsDTO['value']
+        })
+    },
+    dealThreadPoolData: function (data) {
+      for (const index in data) {
+        const metricsDTO = data[index]
+        if ((metricsDTO.metric).indexOf('threadPool') >= -1) {
+          const metric = metricsDTO.metric.substring(metricsDTO.metric.lastIndexOf('.') + 1)
+          if (metric === 'active' || metric === 'current') {
+            const trending = metric + '_trending'
+            this.threadPoolData[trending] = this.dealTrending(this.threadPoolData[metric], metricsDTO.value)
           }
+          this.threadPoolData[metric] = metricsDTO.value
         }
-        this.providerDetails = []
-        this.consumerDetails = []
-        for (let service in serviceMethodMap) {
-          for (let method in serviceMethodMap[service]) {
-            let metricsMap = serviceMethodMap[service][method]
-            this.addDataToDetails(this.providerDetails, service, method, metricsMap, 'provider')
-            this.addDataToDetails(this.consumerDetails, service, method, metricsMap, 'consumer')
+      }
+      this.threadPoolData.activert = (100 * this.threadPoolData.active / this.threadPoolData.current).toFixed(2)
+    },
+    getKey: function (key) {
+      return key.substring(key.lastIndexOf('.') + 1)
+    },
+    dealMajor: function (data) {
+      for (const index in data) {
+        const metricsDTO = data[index]
+        if (this.provider.metrics.indexOf(metricsDTO.metric) !== -1) {
+          const key = this.getKey(metricsDTO.metric)
+          const data = this.provider[key].series[0].data
+          if (data.length === 10) {
+            data.push(metricsDTO.value)
+            data.shift()
+          } else {
+            data.push(metricsDTO.value)
           }
+          this.provider[key].series.data = data
         }
-      },
-      addDataToDetails: function (sideDetails, service, method, metricsMap, side) {
-        if (metricsMap[side + '.qps'] && metricsMap[side + '.success_rate'] && metricsMap[side + '.success_bucket_count']) {
-          sideDetails.push({
-            service: service,
-            method: method,
-            qps: metricsMap[side + '.qps'].toFixed(2),
-            rt: metricsMap[side + '.rt'].toFixed(2),
-            successRate: metricsMap[side + '.success_rate'],
-            successCount: metricsMap[side + '.success_bucket_count']
-          })
-        }
-      },
-      dealTrending: function (oldValue, curValue) {
-        if (curValue > oldValue) {
-          return 'trending_up'
-        }
-        if (curValue < oldValue) {
-          return 'trending_down'
-        }
-        return ''
-      },
-      setHeaders: function () {
-        this.headers = [
-          {
-            text: this.$t('service'),
-            value: 'service'
-          },
-          {
-            text: this.$t('method'),
-            value: 'method'
-          },
-          {
-            text: this.$t('qps'),
-            value: 'qps'
-          },
-          {
-            text: this.$t('rt'),
-            value: 'rt'
-          },
-          {
-            text: this.$t('successRate'),
-            value: 'successRate'
+        if (this.consumer.metrics.indexOf(metricsDTO.metric) !== -1) {
+          const key = this.getKey(metricsDTO.metric)
+          const data = this.consumer[key].series[0].data
+          if (data.length === 10) {
+            data.push(metricsDTO.value)
+            data.shift()
+          } else {
+            data.push(metricsDTO.value)
           }
-        ]
+          this.consumer[key].series.data = data
+        }
       }
     },
-    computed: {
-      area () {
-        return this.$i18n.locale
+    dealNormal: function (data) {
+      const serviceMethodMap = {}
+      for (const index in data) {
+        const metricsDTO = data[index]
+        if (metricsDTO.metricLevel === 'NORMAL') {
+          let metric = metricsDTO.metric + ''
+          const isProvider = metric.split('.')[1]
+          metric = isProvider + '.' + metric.substring(metric.lastIndexOf('.') + 1)
+
+          let methodMap = serviceMethodMap[metricsDTO.tags.service]
+          if (!methodMap) {
+            methodMap = {}
+            serviceMethodMap[metricsDTO.tags.service] = methodMap
+          }
+          let metricMap = methodMap[metricsDTO.tags.method]
+
+          if (!metricMap) {
+            metricMap = {}
+            serviceMethodMap[metricsDTO.tags.service][metricsDTO.tags.method] = metricMap
+          }
+          metricMap[metric] = metricsDTO.value
+        }
+      }
+      this.providerDetails = []
+      this.consumerDetails = []
+      for (const service in serviceMethodMap) {
+        for (const method in serviceMethodMap[service]) {
+          const metricsMap = serviceMethodMap[service][method]
+          this.addDataToDetails(this.providerDetails, service, method, metricsMap, 'provider')
+          this.addDataToDetails(this.consumerDetails, service, method, metricsMap, 'consumer')
+        }
       }
     },
-    watch: {
-      area () {
-        this.setHeaders()
+    addDataToDetails: function (sideDetails, service, method, metricsMap, side) {
+      if (metricsMap[side + '.qps'] && metricsMap[side + '.success_rate'] && metricsMap[side + '.success_bucket_count']) {
+        sideDetails.push({
+          service: service,
+          method: method,
+          qps: metricsMap[side + '.qps'].toFixed(2),
+          rt: metricsMap[side + '.rt'].toFixed(2),
+          successRate: metricsMap[side + '.success_rate'],
+          successCount: metricsMap[side + '.success_bucket_count']
+        })
       }
     },
-    mounted: function () {
+    dealTrending: function (oldValue, curValue) {
+      if (curValue > oldValue) {
+        return 'trending_up'
+      }
+      if (curValue < oldValue) {
+        return 'trending_down'
+      }
+      return ''
+    },
+    setHeaders: function () {
+      this.headers = [
+        {
+          text: this.$t('service'),
+          value: 'service'
+        },
+        {
+          text: this.$t('method'),
+          value: 'method'
+        },
+        {
+          text: this.$t('qps'),
+          value: 'qps'
+        },
+        {
+          text: this.$t('rt'),
+          value: 'rt'
+        },
+        {
+          text: this.$t('successRate'),
+          value: 'successRate'
+        }
+      ]
+    }
+  },
+  computed: {
+    area () {
+      return this.$i18n.locale
+    }
+  },
+  watch: {
+    area () {
       this.setHeaders()
-      let filter = null
-      let query = this.$route.query
-      Object.keys(query).forEach(function (key) {
-        if (key === 'ip') {
-          filter = query[key]
-        }
-      })
-      if (filter !== null) {
-        this.filter = filter
-        this.searchByIp(this.filter, false)
-        if (this.searchTimer !== null) {
-          clearInterval(this.searchTimer)
-        }
-        this.searchTimer = setInterval(() => {
-          this.searchByIp(this.filter, false)
-        }, 5000)
+    }
+  },
+  mounted: function () {
+    this.setHeaders()
+    let filter = null
+    const query = this.$route.query
+    Object.keys(query).forEach(function (key) {
+      if (key === 'ip') {
+        filter = query[key]
       }
+    })
+    if (filter !== null) {
+      this.filter = filter
+      this.searchByIp(this.filter, false)
+      if (this.searchTimer !== null) {
+        clearInterval(this.searchTimer)
+      }
+      this.searchTimer = setInterval(() => {
+        this.searchByIp(this.filter, false)
+      }, 5000)
     }
   }
+}
 </script>
 
 <style scoped>
@@ -520,6 +520,5 @@
     width: 105%;
     height: 68px;
   }
-
 
 </style>

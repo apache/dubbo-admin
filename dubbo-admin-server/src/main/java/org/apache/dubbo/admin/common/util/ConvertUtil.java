@@ -24,6 +24,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.dubbo.admin.common.util.Constants.COLON;
+
 public class ConvertUtil {
     private ConvertUtil() {
     }
@@ -52,9 +54,47 @@ public class ConvertUtil {
         if (StringUtils.isNotEmpty(baseDTO.getApplication())) {
             id = baseDTO.getApplication();
         } else {
-            id = baseDTO.getService();
+            // id format: "${class}:${version}:${group}"
+            id = new StringBuilder(baseDTO.getService()).append(COLON).append(null2EmptyString(baseDTO.getServiceVersion()))
+                    .append(COLON).append(null2EmptyString(baseDTO.getServiceGroup())).toString();
         }
         return id;
+    }
+
+    /**
+     * Detach interface class, version and group from id.
+     * @param id
+     * @return java.lang.String[] 0: interface class; 1: version; 2: group
+     */
+    public static String[] detachId(String id) {
+        if (id.contains(COLON)) {
+            return id.split(COLON);
+        } else {
+            return new String[]{id};
+        }
+    }
+
+    public static String getServiceIdFromDTO(BaseDTO baseDTO, boolean groupAsFolder) {
+        StringBuilder buf = new StringBuilder();
+        buf.append(baseDTO.getService());
+        if (StringUtils.isNotEmpty(baseDTO.getServiceVersion())) {
+            buf.append(COLON).append(baseDTO.getServiceVersion());
+        }
+        if (StringUtils.isNotEmpty(baseDTO.getServiceGroup())) {
+            if (groupAsFolder) {
+                buf.insert(0, baseDTO.getServiceGroup() + "/");
+            } else {
+                buf.append(COLON).append(baseDTO.getServiceGroup());
+            }
+        }
+        return buf.toString();
+    }
+
+    public static String null2EmptyString(String str) {
+        if (null == str) {
+            str = StringUtils.EMPTY_STRING;
+        }
+        return str;
     }
 
     public static String getScopeFromDTO(BaseDTO baseDTO) {
