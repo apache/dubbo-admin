@@ -71,7 +71,9 @@ export default {
   searchRoutingRule: '搜索路由规则',
   searchAccessRule: '搜索黑白名单',
   searchWeightRule: '搜索权重调整规则',
-  dataIdHint: '组/服务：版本形式的服务ID，组和版本可选',
+  dataIdClassHint: '服务接口的类完整包路径',
+  dataIdVersionHint: '服务接口的Version,根据接口实际情况选填',
+  dataIdGroupHint: '服务接口的Group,根据接口实际情况选填',
   agree: '同意',
   disagree: '不同意',
   searchDynamicConfig: '搜索动态配置',
@@ -196,5 +198,5 @@ export default {
       none: '无'
     }
   },
-  authFailed:'权限验证失败'
+  authFailed: '权限验证失败'
 }

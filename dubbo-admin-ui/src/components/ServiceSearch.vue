@@ -129,245 +129,252 @@
   </v-container>
 </template>
 <script>
-  export default {
-    data: () => ({
-      items: [
-        {id: 0, title: 'serviceName', value: 'service'},
-        {id: 1, title: 'ip', value: 'ip'},
-        {id: 2, title: 'app', value: 'application'}
-      ],
-      options: [
-        { title: 'routingRule',
-          value: 'routingRule'
-        },
-        { title: 'tagRule',
-          value: 'tagRule'
-        },
-        { title: 'dynamicConfig',
-          value: 'config'
-        },
-        { title: 'accessControl',
-          value: 'access'
-        },
-        { title: 'weightAdjust',
-          value: 'weight'
-        },
-        { title: 'loadBalance',
-          value: 'loadbalance'
-        }
-      ],
-      timerID: null,
-      searchLoading: false,
-      selected: 0,
-      input: null,
-      typeAhead: [],
-      resultPage: {},
-      filter: '',
-      headers: [],
-      pagination: {
-        page: 1,
-        rowsPerPage: 10 // -1 for All
+export default {
+  data: () => ({
+    items: [
+      { id: 0, title: 'serviceName', value: 'service' },
+      { id: 1, title: 'ip', value: 'ip' },
+      { id: 2, title: 'app', value: 'application' }
+    ],
+    options: [
+      {
+        title: 'routingRule',
+        value: 'routingRule'
       },
-      totalItems: 0,
-      loadingServices: false
-    }),
-    computed: {
-      queryBy () {
-        return this.$t('by') + this.$t(this.items[this.selected].title)
+      {
+        title: 'tagRule',
+        value: 'tagRule'
       },
-      hint () {
-        if (this.selected === 0) {
-          return this.$t('serviceSearchHint')
-        } else if (this.selected === 1) {
-          return this.$t('ipSearchHint')
-        } else if (this.selected === 2) {
-          return this.$t('appSearchHint')
-        }
+      {
+        title: 'dynamicConfig',
+        value: 'config'
       },
-      area () {
-        return this.$i18n.locale
+      {
+        title: 'accessControl',
+        value: 'access'
       },
-      services () {
-        if (!this.resultPage || !this.resultPage.content) {
-          return []
-        }
-        return this.resultPage.content
+      {
+        title: 'weightAdjust',
+        value: 'weight'
+      },
+      {
+        title: 'loadBalance',
+        value: 'loadbalance'
+      }
+    ],
+    timerID: null,
+    searchLoading: false,
+    selected: 0,
+    input: null,
+    typeAhead: [],
+    resultPage: {},
+    filter: '',
+    headers: [],
+    pagination: {
+      page: 1,
+      rowsPerPage: 10 // -1 for All
+    },
+    totalItems: 0,
+    loadingServices: false
+  }),
+  computed: {
+    queryBy () {
+      return this.$t('by') + this.$t(this.items[this.selected].title)
+    },
+    // eslint-disable-next-line vue/return-in-computed-property
+    hint () {
+      if (this.selected === 0) {
+        return this.$t('serviceSearchHint')
+      } else if (this.selected === 1) {
+        return this.$t('ipSearchHint')
+      } else if (this.selected === 2) {
+        return this.$t('appSearchHint')
       }
     },
-    watch: {
-      input (val) {
-        this.querySelections(val)
-      },
-      area () {
-        this.setHeaders()
-      },
-      pagination: {
-        handler (newVal, oldVal) {
-          if (newVal.page === oldVal.page && newVal.rowsPerPage === oldVal.rowsPerPage) {
-            return
-          }
-          const filter = this.$route.query.filter || '*'
-          const pattern = this.$route.query.pattern || 'service'
-          this.search(filter, pattern, false)
-        },
-        deep: true
-      }
+    area () {
+      return this.$i18n.locale
     },
-    methods: {
-      setHeaders: function () {
-        this.headers = [
-          {
-            text: this.$t('serviceName'),
-            value: 'service',
-            align: 'left'
-          },
-          {
-            text: this.$t('group'),
-            value: 'group',
-            align: 'left'
-          },
-          {
-            text: this.$t('version'),
-            value: 'version',
-            align: 'left'
-          },
-          {
-            text: this.$t('app'),
-            value: 'application',
-            align: 'left'
-          },
-          {
-            text: this.$t('operation'),
-            value: 'operation',
-            sortable: false,
-            width: '110px'
-          }
-        ]
-      },
-      querySelections (v) {
-        if (this.timerID) {
-          clearTimeout(this.timerID)
-        }
-        // Simulated ajax query
-        this.timerID = setTimeout(() => {
-          if (v && v.length >= 4) {
-            this.searchLoading = true
-            if (this.selected === 0) {
-              this.typeAhead = this.$store.getters.getServiceItems(v)
-            } else if (this.selected === 2) {
-              this.typeAhead = this.$store.getters.getAppItems(v)
-            }
-            this.searchLoading = false
-            this.timerID = null
-          } else {
-            this.typeAhead = []
-          }
-        }, 500)
-      },
-      getHref: function (service, app, group, version) {
-        let query = 'service=' + service + '&app=' + app
-        if (group !== null) {
-          query = query + '&group=' + group
-        }
-        if (version != null) {
-          query = query + '&version=' + version
-        }
-        return '#/serviceDetail?' + query
-      },
-      governanceHref: function (type, service, appName, group, version) {
-        let base = '#/governance/' + type
-        let query = service
-        if (type === 'tagRule') {
-          query = appName
-        }
-        if (group !== null) {
-          query = group + '/' + query
-        }
-        if (version !== null) {
-          query = query + ':' + version
-        }
-        if (type === 'tagRule') {
-          return base + '?application=' + query
-        }
-        return base + '?service=' + query
-      },
-      submit () {
-        this.filter = document.querySelector('#serviceSearch').value.trim()
-        if (this.filter) {
-          let pattern = this.items[this.selected].value
-          this.search(this.filter, pattern, true)
-        } else {
-          return false
-        }
-      },
-      search: function (filter, pattern, rewrite) {
-        const page = this.pagination.page - 1
-        const size = this.pagination.rowsPerPage === -1 ? this.totalItems : this.pagination.rowsPerPage
-        this.loadingServices = true
-        this.$axios.get('/service', {
-          params: {
-            pattern,
-            filter,
-            page,
-            size
-          }
-        }).then(response => {
-          this.resultPage = response.data
-          this.totalItems = this.resultPage.totalElements
-          if (rewrite) {
-            this.$router.push({path: 'service', query: {filter: filter, pattern: pattern}})
-          }
-        }).finally(() => {
-          this.loadingServices = false
-        })
-      },
-      toTestService (item) {
-        let base = '#/test'
-        let query = '?service=' + item.service
-        if (item.group) {
-          query = query + '&group=' + item.group
-        }
-        if (item.version) {
-          query = query + '&version=' + item.version
-        }
-        return base + query
+    services () {
+      if (!this.resultPage || !this.resultPage.content) {
+        return []
       }
-    },
-    mounted: function () {
-      this.setHeaders()
-      this.$store.dispatch('loadServiceItems')
-      this.$store.dispatch('loadAppItems')
-      let query = this.$route.query
-      let filter = null
-      let pattern = null
-      Object.keys(query).forEach(function (key) {
-        if (key === 'filter') {
-          filter = query[key]
-        }
-        if (key === 'pattern') {
-          pattern = query[key]
-        }
-      })
-      if (filter != null && pattern != null) {
-        this.filter = filter
-        if (pattern === 'service') {
-          this.selected = 0
-        } else if (pattern === 'application') {
-          this.selected = 2
-        } else if (pattern === 'ip') {
-          this.selected = 1
-        }
-        this.search(filter, pattern, false)
-      } else {
-        // display all existing services by default
-        this.filter = '*'
-        this.selected = 0
-        pattern = 'service'
-        this.search(this.filter, pattern, true)
-      }
+      return this.resultPage.content
     }
-
+  },
+  watch: {
+    input (val) {
+      this.querySelections(val)
+    },
+    area () {
+      this.setHeaders()
+    },
+    pagination: {
+      handler (newVal, oldVal) {
+        if (newVal.page === oldVal.page && newVal.rowsPerPage === oldVal.rowsPerPage) {
+          return
+        }
+        const filter = this.$route.query.filter || '*'
+        const pattern = this.$route.query.pattern || 'service'
+        this.search(filter, pattern, false)
+      },
+      deep: true
+    }
+  },
+  methods: {
+    setHeaders: function () {
+      this.headers = [
+        {
+          text: this.$t('serviceName'),
+          value: 'service',
+          align: 'left'
+        },
+        {
+          text: this.$t('group'),
+          value: 'group',
+          align: 'left'
+        },
+        {
+          text: this.$t('version'),
+          value: 'version',
+          align: 'left'
+        },
+        {
+          text: this.$t('app'),
+          value: 'application',
+          align: 'left'
+        },
+        {
+          text: this.$t('operation'),
+          value: 'operation',
+          sortable: false,
+          width: '110px'
+        }
+      ]
+    },
+    querySelections (v) {
+      if (this.timerID) {
+        clearTimeout(this.timerID)
+      }
+      // Simulated ajax query
+      this.timerID = setTimeout(() => {
+        if (v && v.length >= 4) {
+          this.searchLoading = true
+          if (this.selected === 0) {
+            this.typeAhead = this.$store.getters.getServiceItems(v)
+          } else if (this.selected === 2) {
+            this.typeAhead = this.$store.getters.getAppItems(v)
+          }
+          this.searchLoading = false
+          this.timerID = null
+        } else {
+          this.typeAhead = []
+        }
+      }, 500)
+    },
+    getHref: function (service, app, group, version) {
+      let query = 'service=' + service + '&app=' + app
+      if (group !== null) {
+        query = query + '&group=' + group
+      }
+      if (version != null) {
+        query = query + '&version=' + version
+      }
+      return '#/serviceDetail?' + query
+    },
+    governanceHref: function (type, service, appName, group, version) {
+      const base = '#/governance/' + type
+      let query = service
+      if (type === 'tagRule') {
+        query = appName
+      }
+      if (group !== null) {
+        query = query + '&serviceGroup=' + group
+      }
+      if (version !== null) {
+        query = query + '&serviceVersion=' + version
+      }
+      if (type === 'tagRule') {
+        return base + '?application=' + query
+      }
+      return base + '?service=' + query
+    },
+    submit () {
+      this.filter = document.querySelector('#serviceSearch').value.trim()
+      if (this.filter) {
+        const pattern = this.items[this.selected].value
+        this.search(this.filter, pattern, true)
+      } else {
+        return false
+      }
+    },
+    search: function (filter, pattern, rewrite) {
+      const page = this.pagination.page - 1
+      const size = this.pagination.rowsPerPage === -1 ? this.totalItems : this.pagination.rowsPerPage
+      this.loadingServices = true
+      this.$axios.get('/service', {
+        params: {
+          pattern,
+          filter,
+          page,
+          size
+        }
+      }).then(response => {
+        this.resultPage = response.data
+        this.totalItems = this.resultPage.totalElements
+        if (rewrite) {
+          this.$router.push({ path: 'service', query: { filter: filter, pattern: pattern } })
+        }
+      }).finally(() => {
+        this.loadingServices = false
+      })
+    },
+    toTestService (item) {
+      const base = '#/test'
+      let query = '?service=' + item.service
+      if (item.group) {
+        query = query + '&group=' + item.group
+      }
+      if (item.version) {
+        query = query + '&version=' + item.version
+      }
+      return base + query
+    }
+  },
+  mounted: function () {
+    this.setHeaders()
+    this.$store.dispatch('loadServiceItems')
+    this.$store.dispatch('loadAppItems')
+    const query = this.$route.query
+    let filter = null
+    let pattern = null
+    Object.keys(query).forEach(function (key) {
+      if (key === 'filter') {
+        filter = query[key]
+      }
+      if (key === 'pattern') {
+        pattern = query[key]
+      }
+    })
+    if (filter != null && pattern != null) {
+      this.filter = filter
+      if (pattern === 'service') {
+        this.selected = 0
+      } else if (pattern === 'application') {
+        this.selected = 2
+      } else if (pattern === 'ip') {
+        this.selected = 1
+      }
+      this.search(filter, pattern, false)
+    } else {
+      // display all existing services by default
+      this.filter = '*'
+      this.selected = 0
+      pattern = 'service'
+      this.search(this.filter, pattern, true)
+    }
   }
+
+}
 </script>
 
 <style scoped>
@@ -390,4 +397,3 @@
   }
 
 </style>
-
