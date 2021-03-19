@@ -177,6 +177,7 @@ export default {
       apiPathShowLabel: '接口位置',
       apiMethodParamInfoLabel: '接口参数',
       apiVersionShowLabel: '接口版本',
+      apiGroupShowLabel: '接口分组',
       apiDescriptionShowLabel: '接口说明',
       isAsyncFormLabel: '是否异步调用(此参数不可修改,根据接口定义的是否异步显示)',
       apiModuleFormLabel: '接口模块(此参数不可修改)',

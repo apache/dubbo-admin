@@ -177,6 +177,7 @@ export default {
       apiPathShowLabel: 'Api Path',
       apiMethodParamInfoLabel: 'Api method parameters',
       apiVersionShowLabel: 'Api Version',
+      apiGroupShowLabel: 'Api Group',
       apiDescriptionShowLabel: 'Api Description',
       isAsyncFormLabel: 'Whether to call asynchronously (this parameter cannot be modified, according to whether to display asynchronously defined by the interface)',
       apiModuleFormLabel: 'Api module (this parameter cannot be modified)',
