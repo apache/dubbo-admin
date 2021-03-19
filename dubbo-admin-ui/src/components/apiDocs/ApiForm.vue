@@ -88,6 +88,19 @@
           >
             <div>
               <div class="font-weight-normal">
+                <strong>{{ $t('apiDocsRes.apiForm.apiGroupShowLabel') }}</strong>
+              </div>
+              <div>
+                {{ this.apiInfoData.apiGroup || $t('apiDocsRes.apiForm.none') }}
+              </div>
+            </div>
+          </v-timeline-item>
+          <v-timeline-item
+            color="cyan"
+            small
+          >
+            <div>
+              <div class="font-weight-normal">
                 <strong>{{ $t('apiDocsRes.apiForm.apiDescriptionShowLabel') }}</strong>
               </div>
               <div>
@@ -356,7 +369,6 @@ export default {
       if (!this.$refs.form.validate()) {
         return false
       }
-      console.log(this.formValues)
       var tempMap = new Map()
       this.formValues.forEach((value, key) => {
         var elementIdSplited = key.split('@@')
@@ -408,7 +420,8 @@ export default {
           interfaceClassName: this.formItemInterfaceClassName,
           methodName: this.formItemMethodName,
           registryCenterUrl: this.formItemRegistryCenterUrl,
-          version: this.apiInfoData.apiVersion || ''
+          version: this.apiInfoData.apiVersion || '',
+          group: this.apiInfoData.apiGroup || ''
         },
         headers: {
           'Content-Type': 'application/json; charset=UTF-8'
