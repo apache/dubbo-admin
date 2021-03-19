@@ -39,6 +39,9 @@ public class CallDubboServiceRequest {
     @ApiParam(value = "The version of API")
     private String version;
 
+    @ApiParam(value = "The group of API")
+    private String group;
+
     public String getVersion() {
         return version;
     }
@@ -77,5 +80,13 @@ public class CallDubboServiceRequest {
 
     public void setAsync(boolean async) {
         this.async = async;
+    }
+
+    public String getGroup() {
+        return group;
+    }
+
+    public void setGroup(String group) {
+        this.group = group;
     }
 }
