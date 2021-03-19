@@ -22,7 +22,7 @@ package org.apache.dubbo.admin.impl.provider;
 import org.apache.dubbo.admin.api.GreetingService;
 import org.apache.dubbo.config.annotation.DubboService;
 
-@DubboService(version = "1.0.0")
+@DubboService(version = "1.0.0", group = "test")
 public class AnnotatedGreetingService implements GreetingService {
     public String sayHello(String name) {
         System.out.println("greeting service received: " + name);

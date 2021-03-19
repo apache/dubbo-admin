@@ -24,7 +24,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AnnotatedGreetingService {
-    @DubboReference(version = "1.0.0")
+    @DubboReference(version = "1.0.0", group = "test")
     private GreetingService greetingService;
 
     public String sayHello(String name) {

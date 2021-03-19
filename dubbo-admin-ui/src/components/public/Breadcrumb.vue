@@ -32,21 +32,21 @@
 </template>
 
 <script>
-  export default {
-    name: 'Breadcrumb',
-    props: {
-      title: {
-        type: String,
-        default: ''
-      },
-      items: {
-        type: Array,
-        default: []
-      }
+export default {
+  name: 'Breadcrumb',
+  props: {
+    title: {
+      type: String,
+      default: ''
     },
-    data: () => ({
-    })
-  }
+    items: {
+      type: Array,
+      default: []
+    }
+  },
+  data: () => ({
+  })
+}
 </script>
 
 <style scoped>

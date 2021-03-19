@@ -71,7 +71,9 @@ export default {
   searchRoutingRule: 'Search Routing Rule',
   searchAccess: 'Search Access Rule',
   searchWeightRule: 'Search Weight Adjust Rule',
-  dataIdHint: 'A service ID in form of group/service:version, group and version are optional',
+  dataIdClassHint: 'Complete package path of service interface class',
+  dataIdVersionHint: 'The version of the service interface, which can be filled in according to the actual situation of the interface',
+  dataIdGroupHint: 'The group of the service interface, which can be filled in according to the actual situation of the interface',
   agree: 'Agree',
   disagree: 'Disagree',
   searchDynamicConfig: 'Search Dynamic Config',
@@ -196,5 +198,5 @@ export default {
       none: 'none'
     }
   },
-  authFailed:'Authorized failed,please login.'
+  authFailed: 'Authorized failed,please login.'
 }

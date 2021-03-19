@@ -30,7 +30,7 @@ public interface RouteService {
 
     void updateConditionRoute(ConditionRouteDTO newConditionRoute);
 
-    void deleteConditionRoute(String id);
+    void deleteConditionRoute(ConditionRouteDTO conditionRoute);
 
     void deleteAccess(String id);
 
@@ -40,11 +40,13 @@ public interface RouteService {
 
     void updateAccess(AccessDTO accessDTO);
 
-    void enableConditionRoute(String id);
+    void enableConditionRoute(ConditionRouteDTO conditionRoute);
 
 
-    void disableConditionRoute(String id);
+    void disableConditionRoute(ConditionRouteDTO conditionRoute);
 
+
+    ConditionRouteDTO findConditionRoute(ConditionRouteDTO crDTO);
 
     ConditionRouteDTO findConditionRoute(String id);
 

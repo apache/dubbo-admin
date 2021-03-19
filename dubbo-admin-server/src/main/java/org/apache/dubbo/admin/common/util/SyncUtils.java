@@ -25,6 +25,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.dubbo.admin.common.util.Constants.COLON;
+
 public class SyncUtils {
 
     public static final String SERVICE_FILTER_KEY = ".service";
@@ -32,8 +34,6 @@ public class SyncUtils {
     public static final String ADDRESS_FILTER_KEY = ".address";
 
     public static final String ID_FILTER_KEY = ".id";
-
-    public static final String COLON = ":";
 
     public static Provider url2Provider(Pair<String, URL> pair) {
         if (pair == null) {

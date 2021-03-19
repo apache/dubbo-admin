@@ -24,6 +24,8 @@ package org.apache.dubbo.admin.model.dto;
 public abstract class BaseDTO {
     private String application;
     private String service;
+    private String serviceVersion;
+    private String serviceGroup;
 
     public String getApplication() {
         return application;
@@ -39,5 +41,21 @@ public abstract class BaseDTO {
 
     public void setService(String service) {
         this.service = service;
+    }
+
+    public String getServiceVersion() {
+        return serviceVersion;
+    }
+
+    public void setServiceVersion(String serviceVersion) {
+        this.serviceVersion = serviceVersion;
+    }
+
+    public String getServiceGroup() {
+        return serviceGroup;
+    }
+
+    public void setServiceGroup(String serviceGroup) {
+        this.serviceGroup = serviceGroup;
     }
 }

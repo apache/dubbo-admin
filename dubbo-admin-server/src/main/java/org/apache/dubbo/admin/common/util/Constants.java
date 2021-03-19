@@ -78,6 +78,7 @@ public class Constants {
     public static final String METRICS_PORT = "metrics.port";
     public static final String METRICS_PROTOCOL = "metrics.protocol";
     public static final Set<String> CONFIGS = new HashSet<>();
+    public static final String COLON = ":";
 
     static {
         CONFIGS.add(WEIGHT);
