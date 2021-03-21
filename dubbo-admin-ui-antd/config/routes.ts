@@ -16,6 +16,21 @@
  */
 export default [
   {
+    path: '/',
+    routes: [
+      {
+        path: '/service',
+        routes:[
+          {
+            name: 'service',
+            path: '/service',
+            component: './Service'
+          }
+        ]
+      }
+    ],
+  },
+  {
     path: '/user',
     layout: false,
     routes: [
@@ -57,10 +72,6 @@ export default [
     icon: 'table',
     path: '/list',
     component: './TableList',
-  },
-  {
-    path: '/',
-    redirect: '/welcome',
   },
   {
     component: './404',

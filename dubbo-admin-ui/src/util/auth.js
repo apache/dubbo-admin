@@ -14,8 +14,29 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { DefaultFooter } from '@ant-design/pro-layout';
 
-export default () => (
-  <DefaultFooter copyright="Copyright ©2018-2021 The Apache Software Foundation." links={[]} />
-);
+ /**
+  * token key
+  */
+ const tokenKey = 'token';
+
+ /**
+  * username token
+  */
+ const usernameKey = 'usernameKey';
+
+ export function setToken(token){
+    localStorage.setItem(tokenKey,token);
+ } 
+
+ export function getToken(){
+    return localStorage.getItem(tokenKey)
+ }
+
+ export function setUsername(username){
+    localStorage.setItem(usernameKey,username);
+ } 
+
+ export function getUsername(){
+    return localStorage.getItem(usernameKey)
+ }

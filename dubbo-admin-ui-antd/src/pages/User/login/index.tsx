@@ -21,6 +21,7 @@ import ProForm, { ProFormCheckbox, ProFormText } from '@ant-design/pro-form';
 import { useIntl, Link, history, FormattedMessage, SelectLang } from 'umi';
 import Footer from '@/components/Footer';
 import { login } from '@/services/ant-design-pro/login';
+import {setToken,setUsername} from '@/storage/auth'
 
 import styles from './index.less';
 
@@ -66,8 +67,10 @@ const Login: React.FC = () => {
             defaultMessage: 'Login successful!',
           }),
         );
-        localStorage.setItem('token', msg);
-        localStorage.setItem('username', values.username);
+
+        setToken(msg);
+        setUsername(values.username);
+
         goto();
         return;
       }

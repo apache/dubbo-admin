@@ -25,6 +25,7 @@ import Footer from '@/components/Footer';
 import type { ResponseError } from 'umi-request';
 import { currentUser as queryCurrentUser } from './services/ant-design-pro/api';
 import { BookOutlined, LinkOutlined } from '@ant-design/icons';
+import { getToken } from '@/storage/auth'
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -40,26 +41,16 @@ export async function getInitialState(): Promise<{
   currentUser?: API.CurrentUser;
   fetchUserInfo?: () => Promise<API.CurrentUser | undefined>;
 }> {
-  const fetchUserInfo = async () => {
-    try {
-      const currentUser = await queryCurrentUser();
-      return currentUser;
-    } catch (error) {
-      history.push('/user/login');
-    }
-    return undefined;
-  };
   // If it is a login page, do not execute
   if (history.location.pathname !== '/user/login') {
-    const currentUser = await fetchUserInfo();
+    if (!getToken()) {
+      history.push('/user/login');
+    }
     return {
-      fetchUserInfo,
-      currentUser,
       settings: {},
     };
   }
   return {
-    fetchUserInfo,
     settings: {},
   };
 }
@@ -73,7 +64,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
     onPageChange: () => {
       const { location } = history;
       // If not, redirect to login
-      if (!initialState?.currentUser && location.pathname !== '/user/login') {
+      if (!getToken() && location.pathname !== '/user/login') {
         history.push('/user/login');
       }
     },

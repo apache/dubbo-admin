@@ -14,8 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { DefaultFooter } from '@ant-design/pro-layout';
 
-export default () => (
-  <DefaultFooter copyright="Copyright ©2018-2021 The Apache Software Foundation." links={[]} />
-);
+import React, { useState } from 'react';
+
+const Service:React.FC = () => {
+  return (<div>service</div>);
+}
+
+export default Service;
