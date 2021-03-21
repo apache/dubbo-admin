@@ -71,4 +71,5 @@ export default defineConfig({
     schemaPath: join(__dirname, 'oneapi.json'),
     mock: false,
   },
+  devtool:REACT_APP_ENV == 'dev' ? 'source-map' : undefined
 });

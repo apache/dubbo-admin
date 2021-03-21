@@ -14,8 +14,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { DefaultFooter } from '@ant-design/pro-layout';
+/* eslint no-useless-escape:0 import/prefer-default-export:0 */
 
-export default () => (
-  <DefaultFooter copyright="Copyright ©2018-2021 The Apache Software Foundation." links={[]} />
-);
+ /**
+  * token key
+  */
+  const tokenKey = 'token';
+
+  /**
+   * username token
+   */
+  const usernameKey = 'usernameKey';
+
+  export const setToken = (token:string)=>{
+     localStorage.setItem(tokenKey,token);
+  }
+
+  export const getToken = (): string => {
+    var result = localStorage.getItem(tokenKey);
+    return result?result:'';
+  }
+
+  export const setUsername = (username:string) => {
+     localStorage.setItem(usernameKey,username);
+  }
+
+  export const getUsername = ():string =>{
+    var result = localStorage.getItem(usernameKey);
+    return result?result:'';
+  }
