@@ -157,7 +157,8 @@ export default {
                   apiRespDec: menuItem.apiRespDec,
                   apiDocName: menuItem.apiDocName,
                   description: menuItem.description,
-                  apiVersion: menuItem.apiVersion
+                  apiVersion: menuItem.apiVersion,
+                  apiGroup: menuItem.apiGroup
                 }
               }
               menu2.apis.push(menuItem2)

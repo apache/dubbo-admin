@@ -16,6 +16,7 @@
  */
 package org.apache.dubbo.admin.controller;
 
+import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.controller.editors.CustomLocalDateEditor;
 import org.apache.dubbo.admin.controller.editors.CustomLocalDateTimeEditor;
 import org.apache.dubbo.admin.model.dto.docs.ApiInfoRequest;
@@ -53,6 +54,7 @@ import java.util.concurrent.ExecutionException;
 /**
  * dubbo doc ui server api.
  */
+@Authority(needLogin = true)
 @Api(tags = {"dubbo-api-docs-api"})
 @RestController
 @RequestMapping("/api/{env}/docs")
@@ -131,7 +133,7 @@ public class ApiDocsController {
             paramValues = new Object[0];
         }
         CompletableFuture<Object> future = ApiDocsDubboGenericUtil.invoke(dubboCfg.getRegistryCenterUrl(), dubboCfg.getInterfaceClassName(),
-                dubboCfg.getMethodName(), dubboCfg.isAsync(), dubboCfg.getVersion(), paramTypes, paramValues);
+                dubboCfg.getMethodName(), dubboCfg.isAsync(), dubboCfg.getVersion(), paramTypes, paramValues, dubboCfg.getGroup());
         try {
             Object objResult = future.get();
             return JSON.toJSONString(objResult, CLASS_NAME_PRE_FILTER);
