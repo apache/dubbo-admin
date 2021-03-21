@@ -17,11 +17,14 @@
 
 package org.apache.dubbo.admin.registry.config.impl;
 
+import com.alibaba.nacos.api.PropertyKeyConst;
+import java.util.Map;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
+import org.apache.dubbo.common.utils.StringConstantFieldValuePredicate;
 
 import com.alibaba.nacos.api.NacosFactory;
 import com.alibaba.nacos.api.config.ConfigService;
@@ -63,6 +66,9 @@ public class NacosConfiguration implements GovernanceConfiguration {
         Properties properties = new Properties();
         setServerAddr(url, properties);
         setNamespace(url, properties);
+        Map<String, String> parameters = url.getParameters(
+                StringConstantFieldValuePredicate.of(PropertyKeyConst.class));
+        properties.putAll(parameters);
         return properties;
     }
 

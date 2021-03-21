@@ -53,6 +53,18 @@
                     </v-list-tile>
                   </v-list>
                 </v-menu>
+                <v-text-field
+                  v-show="selected == 0"
+                  label="Version"
+                  :hint="$t('dataIdVersionHint')"
+                  v-model="serviceVersion4Search"
+                ></v-text-field>
+                <v-text-field
+                  v-show="selected == 0"
+                  label="Group"
+                  :hint="$t('dataIdGroupHint')"
+                  v-model="serviceGroup4Search"
+                ></v-text-field>
                 <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
 
               </v-layout>
@@ -115,17 +127,35 @@
       </v-card>
     </v-flex>
 
-    <v-dialog   v-model="dialog" width="800px" persistent >
+    <v-dialog v-model="dialog" width="800px" persistent >
       <v-card>
         <v-card-title class="justify-center">
           <span class="headline">{{$t('createNewRoutingRule')}}</span>
         </v-card-title>
         <v-card-text >
-          <v-text-field
-            label="Service Unique ID"
-            :hint="$t('dataIdHint')"
-            v-model="service"
-          ></v-text-field>
+          <v-layout wrap>
+            <v-flex xs12 sm6 md4>
+              <v-text-field
+                label="Service class"
+                :hint="$t('dataIdClassHint')"
+                v-model="service"
+              ></v-text-field>
+            </v-flex>
+            <v-flex xs12 sm6 md4>
+              <v-text-field
+                label="Version"
+                :hint="$t('dataIdVersionHint')"
+                v-model="serviceVersion"
+              ></v-text-field>
+            </v-flex>
+            <v-flex xs12 sm6 md4>
+              <v-text-field
+                label="Group"
+                :hint="$t('dataIdGroupHint')"
+                v-model="serviceGroup"
+              ></v-text-field>
+            </v-flex>
+          </v-layout>
           <v-text-field
             label="Application Name"
             hint="Application name the service belongs to"
@@ -160,218 +190,208 @@
 
 </template>
 <script>
-  import yaml from 'js-yaml'
-  import AceEditor from '@/components/public/AceEditor'
-  import operations from '@/api/operation'
-  import Breadcrumb from '@/components/public/Breadcrumb'
-  export default {
-    components: {
-      AceEditor,
-      Breadcrumb
-    },
-    data: () => ({
-      items: [
-        {id: 0, title: 'serviceName', value: 'service'},
-        {id: 1, title: 'app', value: 'application'}
-      ],
-      breads: [
-        {
-          text: 'serviceGovernance',
-          href: ''
-        },
-        {
-          text: 'routingRule',
-          href: ''
-        }
-      ],
-      selected: 0,
-      dropdown_font: [ 'Service', 'App', 'IP' ],
-      ruleKeys: ['enabled', 'force', 'runtime', 'group', 'version', 'rule'],
-      pattern: 'Service',
-      filter: '',
-      dialog: false,
-      warn: false,
-      updateId: '',
-      application: '',
-      service: '',
-      warnTitle: '',
-      warnText: '',
-      warnStatus: {},
-      height: 0,
-      searchLoading: false,
-      typeAhead: [],
-      input: null,
-      timerID: null,
-      operations: operations,
-      serviceRoutingRules: [
-      ],
-      appRoutingRules: [
-      ],
-      template:
+import yaml from 'js-yaml'
+import AceEditor from '@/components/public/AceEditor'
+import operations from '@/api/operation'
+import Breadcrumb from '@/components/public/Breadcrumb'
+export default {
+  components: {
+    AceEditor,
+    Breadcrumb
+  },
+  data: () => ({
+    items: [
+      { id: 0, title: 'serviceName', value: 'service' },
+      { id: 1, title: 'app', value: 'application' }
+    ],
+    breads: [
+      {
+        text: 'serviceGovernance',
+        href: ''
+      },
+      {
+        text: 'routingRule',
+        href: ''
+      }
+    ],
+    selected: 0,
+    dropdown_font: ['Service', 'App', 'IP'],
+    ruleKeys: ['enabled', 'force', 'runtime', 'group', 'version', 'rule'],
+    pattern: 'Service',
+    filter: '',
+    serviceVersion4Search: '',
+    serviceGroup4Search: '',
+    dialog: false,
+    warn: false,
+    updateId: '',
+    application: '',
+    service: '',
+    serviceVersion: '',
+    serviceGroup: '',
+    warnTitle: '',
+    warnText: '',
+    warnStatus: {},
+    height: 0,
+    searchLoading: false,
+    typeAhead: [],
+    input: null,
+    timerID: null,
+    operations: operations,
+    serviceRoutingRules: [
+    ],
+    appRoutingRules: [
+    ],
+    template:
         'enabled: true\n' +
         'runtime: false\n' +
         'force: true\n' +
         'conditions:\n' +
         ' - \'=> host != 172.22.3.91\'\n',
-      ruleText: '',
-      readonly: false,
-      appHeaders: [],
-      serviceHeaders: []
-    }),
-    methods: {
-      setAppHeaders: function () {
-        this.appHeaders = [
-          {
-            text: this.$t('appName'),
-            value: 'application',
-            align: 'left'
-          },
-          {
-            text: this.$t('enabled'),
-            value: 'enabled',
-            sortable: false
-          },
-          {
-            text: this.$t('operation'),
-            value: 'operation',
-            sortable: false,
-            width: '115px'
-          }
-        ]
-      },
-      setServiceHeaders: function () {
-        this.serviceHeaders = [
-          {
-            text: this.$t('serviceName'),
-            value: 'service',
-            align: 'left'
-          },
-          {
-            text: this.$t('group'),
-            value: 'group',
-            align: 'left'
+    ruleText: '',
+    readonly: false,
+    appHeaders: [],
+    serviceHeaders: []
+  }),
+  methods: {
+    setAppHeaders: function () {
+      this.appHeaders = [
+        {
+          text: this.$t('appName'),
+          value: 'application',
+          align: 'left'
+        },
+        {
+          text: this.$t('enabled'),
+          value: 'enabled',
+          sortable: false
+        },
+        {
+          text: this.$t('operation'),
+          value: 'operation',
+          sortable: false,
+          width: '115px'
+        }
+      ]
+    },
+    setServiceHeaders: function () {
+      this.serviceHeaders = [
+        {
+          text: this.$t('serviceName'),
+          value: 'service',
+          align: 'left'
+        },
+        {
+          text: this.$t('group'),
+          value: 'group',
+          align: 'left'
 
-          },
-          {
-            text: this.$t('enabled'),
-            value: 'enabled',
-            sortable: false
-          },
-          {
-            text: this.$t('operation'),
-            value: 'operation',
-            sortable: false,
-            width: '115px'
+        },
+        {
+          text: this.$t('enabled'),
+          value: 'enabled',
+          sortable: false
+        },
+        {
+          text: this.$t('operation'),
+          value: 'operation',
+          sortable: false,
+          width: '115px'
+        }
+      ]
+    },
+    querySelections (v) {
+      if (this.timerID) {
+        clearTimeout(this.timerID)
+      }
+      // Simulated ajax query
+      this.timerID = setTimeout(() => {
+        if (v && v.length >= 4) {
+          this.searchLoading = true
+          if (this.selected === 0) {
+            this.typeAhead = this.$store.getters.getServiceItems(v)
+          } else if (this.selected === 1) {
+            this.typeAhead = this.$store.getters.getAppItems(v)
           }
-        ]
-      },
-      querySelections (v) {
-        if (this.timerID) {
-          clearTimeout(this.timerID)
-        }
-        // Simulated ajax query
-        this.timerID = setTimeout(() => {
-          if (v && v.length >= 4) {
-            this.searchLoading = true
-            if (this.selected === 0) {
-              this.typeAhead = this.$store.getters.getServiceItems(v)
-            } else if (this.selected === 1) {
-              this.typeAhead = this.$store.getters.getAppItems(v)
-            }
-            this.searchLoading = false
-            this.timerID = null
-          } else {
-            this.typeAhead = []
-          }
-        }, 500)
-      },
-      submit: function () {
-        this.filter = document.querySelector('#serviceSearch').value.trim()
-        this.search(true)
-      },
-      search: function (rewrite) {
-        if (!this.filter) {
-          this.$notify.error('Either service or application is needed')
-          return
-        }
-        let type = this.items[this.selected].value
-        let url = '/rules/route/condition/?' + type + '=' + this.filter
-        this.$axios.get(url)
-          .then(response => {
-            if (this.selected === 0) {
-              this.serviceRoutingRules = response.data
-            } else {
-              this.appRoutingRules = response.data
-            }
-            if (rewrite) {
-              if (this.selected === 0) {
-                this.$router.push({path: 'routingRule', query: {service: this.filter}})
-              } else if (this.selected === 1) {
-                this.$router.push({path: 'routingRule', query: {application: this.filter}})
-              }
-            }
-          })
-      },
-      closeDialog: function () {
-        this.ruleText = this.template
-        this.updateId = ''
-        this.service = ''
-        this.application = ''
-        this.dialog = false
-        this.readonly = false
-      },
-      openDialog: function () {
-        this.dialog = true
-      },
-      openWarn: function (title, text) {
-        this.warnTitle = title
-        this.warnText = text
-        this.warn = true
-      },
-      closeWarn: function () {
-        this.warnTitle = ''
-        this.warnText = ''
-        this.warn = false
-      },
-      saveItem: function () {
-        let rule = yaml.safeLoad(this.ruleText)
-        if (!this.service && !this.application) {
-          this.$notify.error('Either service or application is needed')
-          return
-        }
-        if (this.service && this.application) {
-          this.$notify.error('You can not set both service ID and application name')
-          return
-        }
-        let vm = this
-        rule.service = this.service
-        rule.application = this.application
-        if (this.updateId !== '') {
-          if (this.updateId === 'close') {
-            this.closeDialog()
-          } else {
-            rule.id = this.updateId
-            this.$axios.put('/rules/route/condition/' + rule.id, rule)
-              .then(response => {
-                if (response.status === 200) {
-                  if (vm.service) {
-                    vm.selected = 0
-                    vm.search(vm.service, true)
-                    vm.filter = vm.service
-                  } else {
-                    vm.selected = 1
-                    vm.search(vm.application, true)
-                    vm.filter = vm.application
-                  }
-                  this.closeDialog()
-                  this.$notify.success('Update success')
-                }
-              })
-          }
+          this.searchLoading = false
+          this.timerID = null
         } else {
-          this.$axios.post('/rules/route/condition/', rule)
+          this.typeAhead = []
+        }
+      }, 500)
+    },
+    submit: function () {
+      this.filter = document.querySelector('#serviceSearch').value.trim()
+      this.search(true)
+    },
+    search: function (rewrite) {
+      if (!this.filter) {
+        this.$notify.error('Either service or application is needed')
+        return
+      }
+      const type = this.items[this.selected].value
+      const url = '/rules/route/condition/?' + type + '=' + this.filter + '&serviceVersion=' + this.serviceVersion4Search + '&serviceGroup=' + this.serviceGroup4Search
+      this.$axios.get(url)
+        .then(response => {
+          if (this.selected === 0) {
+            this.serviceRoutingRules = response.data
+          } else {
+            this.appRoutingRules = response.data
+          }
+          if (rewrite) {
+            if (this.selected === 0) {
+              this.$router.push({ path: 'routingRule', query: { service: this.filter, serviceVersion: this.serviceVersion4Search, serviceGroup: this.serviceGroup4Search } })
+            } else if (this.selected === 1) {
+              this.$router.push({ path: 'routingRule', query: { application: this.filter } })
+            }
+          }
+        })
+    },
+    closeDialog: function () {
+      this.ruleText = this.template
+      this.updateId = ''
+      this.service = ''
+      this.serviceVersion = ''
+      this.serviceGroup = ''
+      this.application = ''
+      this.dialog = false
+      this.readonly = false
+    },
+    openDialog: function () {
+      this.dialog = true
+    },
+    openWarn: function (title, text) {
+      this.warnTitle = title
+      this.warnText = text
+      this.warn = true
+    },
+    closeWarn: function () {
+      this.warnTitle = ''
+      this.warnText = ''
+      this.warn = false
+    },
+    saveItem: function () {
+      const rule = yaml.safeLoad(this.ruleText)
+      if (!this.service && !this.application) {
+        this.$notify.error('Either service or application is needed')
+        return
+      }
+      if (this.service && this.application) {
+        this.$notify.error('You can not set both service ID and application name')
+        return
+      }
+      const vm = this
+      rule.service = this.service
+      rule.serviceVersion = this.serviceVersion
+      rule.serviceGroup = this.serviceGroup
+      rule.application = this.application
+      if (this.updateId !== '') {
+        if (this.updateId === 'close') {
+          this.closeDialog()
+        } else {
+          rule.id = this.updateId
+          this.$axios.put('/rules/route/condition/' + rule.id, rule)
             .then(response => {
-              if (response.status === 201) {
+              if (response.status === 200) {
                 if (vm.service) {
                   vm.selected = 0
                   vm.search(vm.service, true)
@@ -382,151 +402,199 @@
                   vm.filter = vm.application
                 }
                 this.closeDialog()
-                this.$notify.success('Create success')
-              }
-            })
-            .catch(error => {
-              console.log(error)
-            })
-        }
-      },
-      itemOperation: function (icon, item) {
-        let itemId = ''
-        if (this.selected === 0) {
-          itemId = item.service
-        } else {
-          itemId = item.application
-        }
-        let oldItemId = itemId
-        if (itemId.includes('/')) {
-          itemId = itemId.replace('/', '*')
-        }
-        switch (icon) {
-          case 'visibility':
-            this.$axios.get('/rules/route/condition/' + itemId)
-              .then(response => {
-                let conditionRoute = response.data
-                this.handleBalance(conditionRoute, true)
-                this.updateId = 'close'
-              })
-            break
-          case 'edit':
-            this.$axios.get('/rules/route/condition/' + itemId)
-              .then(response => {
-                let conditionRoute = response.data
-                this.handleBalance(conditionRoute, false)
-                this.updateId = itemId
-              })
-            break
-          case 'block':
-            this.openWarn(' Are you sure to block Routing Rule', 'service: ' + oldItemId)
-            this.warnStatus.operation = 'disable'
-            this.warnStatus.id = itemId
-            break
-          case 'check_circle_outline':
-            this.openWarn(' Are you sure to enable Routing Rule', 'service: ' + oldItemId)
-            this.warnStatus.operation = 'enable'
-            this.warnStatus.id = itemId
-            break
-          case 'delete':
-            this.openWarn('warnDeleteRouteRule', 'service: ' + oldItemId)
-            this.warnStatus.operation = 'delete'
-            this.warnStatus.id = itemId
-        }
-      },
-      handleBalance: function (conditionRoute, readonly) {
-        this.service = conditionRoute.service
-        this.application = conditionRoute.application
-        delete conditionRoute.service
-        delete conditionRoute.id
-        delete conditionRoute.app
-        delete conditionRoute.group
-        delete conditionRoute.application
-        delete conditionRoute.priority
-        this.ruleText = yaml.safeDump(conditionRoute)
-        this.readonly = readonly
-        this.dialog = true
-      },
-      setHeight: function () {
-        this.height = window.innerHeight * 0.5
-      },
-      deleteItem: function (warnStatus) {
-        let id = warnStatus.id
-        let operation = warnStatus.operation
-        if (operation === 'delete') {
-          this.$axios.delete('/rules/route/condition/' + id)
-            .then(response => {
-              if (response.status === 200) {
-                this.warn = false
-                this.search(this.filter, false)
-                this.$notify.success('Delete success')
-              }
-            })
-        } else if (operation === 'disable') {
-          this.$axios.put('/rules/route/condition/disable/' + id)
-            .then(response => {
-              if (response.status === 200) {
-                this.warn = false
-                this.search(this.filter, false)
-                this.$notify.success('Disable success')
-              }
-            })
-        } else if (operation === 'enable') {
-          this.$axios.put('/rules/route/condition/enable/' + id)
-            .then(response => {
-              if (response.status === 200) {
-                this.warn = false
-                this.search(this.filter, false)
-                this.$notify.success('Enable success')
+                this.$notify.success('Update success')
               }
             })
         }
+      } else {
+        this.$axios.post('/rules/route/condition/', rule)
+          .then(response => {
+            if (response.status === 201) {
+              if (vm.service) {
+                vm.selected = 0
+                vm.search(vm.service, true)
+                vm.filter = vm.service
+              } else {
+                vm.selected = 1
+                vm.search(vm.application, true)
+                vm.filter = vm.application
+              }
+              this.closeDialog()
+              this.$notify.success('Create success')
+            }
+          })
+          .catch(error => {
+            console.log(error)
+          })
       }
     },
-    created () {
-      this.setHeight()
-    },
-    computed: {
-      queryBy () {
-        return this.$t('by') + this.$t(this.items[this.selected].title)
-      },
-      area () {
-        return this.$i18n.locale
+    itemOperation: function (icon, item) {
+      let itemId = ''
+      if (this.selected === 0) {
+        itemId = item.service
+      } else {
+        itemId = item.application
+      }
+      const oldItemId = itemId
+      if (itemId.includes('/')) {
+        itemId = itemId.replace('/', '*')
+      }
+      switch (icon) {
+        case 'visibility':
+          this.$axios.get('/rules/route/condition/' + itemId + '?serviceVersion=' + item.serviceVersion + '&serviceGroup=' + item.serviceGroup)
+            .then(response => {
+              const conditionRoute = response.data
+              this.serviceVersion = conditionRoute.serviceVersion
+              this.serviceGroup = conditionRoute.serviceGroup
+              delete conditionRoute.serviceVersion
+              delete conditionRoute.serviceGroup
+              this.handleBalance(conditionRoute, true)
+              this.updateId = 'close'
+            })
+          break
+        case 'edit':
+          this.$axios.get('/rules/route/condition/' + itemId + '?serviceVersion=' + item.serviceVersion + '&serviceGroup=' + item.serviceGroup)
+            .then(response => {
+              const conditionRoute = response.data
+              this.serviceVersion = conditionRoute.serviceVersion
+              this.serviceGroup = conditionRoute.serviceGroup
+              delete conditionRoute.serviceVersion
+              delete conditionRoute.serviceGroup
+              this.handleBalance(conditionRoute, false)
+              this.updateId = itemId
+            })
+          break
+        case 'block':
+          this.openWarn(' Are you sure to block Routing Rule', 'service: ' + oldItemId)
+          this.warnStatus.operation = 'disable'
+          this.warnStatus.id = itemId
+          this.warnStatus.serviceVersion = item.serviceVersion
+          this.warnStatus.serviceGroup = item.serviceGroup
+          break
+        case 'check_circle_outline':
+          this.openWarn(' Are you sure to enable Routing Rule', 'service: ' + oldItemId)
+          this.warnStatus.operation = 'enable'
+          this.warnStatus.id = itemId
+          this.warnStatus.serviceVersion = item.serviceVersion
+          this.warnStatus.serviceGroup = item.serviceGroup
+          break
+        case 'delete':
+          this.openWarn('warnDeleteRouteRule', 'service: ' + oldItemId)
+          this.warnStatus.operation = 'delete'
+          this.warnStatus.id = itemId
+          this.warnStatus.serviceVersion = item.serviceVersion
+          this.warnStatus.serviceGroup = item.serviceGroup
       }
     },
-    watch: {
-      input (val) {
-        this.querySelections(val)
-      },
-      area () {
-        this.setAppHeaders()
-        this.setServiceHeaders()
-      }
+    handleBalance: function (conditionRoute, readonly) {
+      this.service = conditionRoute.service
+      this.application = conditionRoute.application
+      delete conditionRoute.service
+      delete conditionRoute.id
+      delete conditionRoute.app
+      delete conditionRoute.group
+      delete conditionRoute.application
+      delete conditionRoute.priority
+      this.ruleText = yaml.safeDump(conditionRoute)
+      this.readonly = readonly
+      this.dialog = true
     },
-    mounted: function () {
-      this.setAppHeaders()
-      this.setServiceHeaders()
-      this.$store.dispatch('loadServiceItems')
-      this.$store.dispatch('loadAppItems')
-      this.ruleText = this.template
-      let query = this.$route.query
-      let filter = null
-      let vm = this
-      Object.keys(query).forEach(function (key) {
-        if (key === 'service') {
-          filter = query[key]
-          vm.selected = 0
-        }
-        if (key === 'application') {
-          filter = query[key]
-          vm.selected = 1
-        }
-      })
-      if (filter !== null) {
-        this.filter = filter
-        this.search(false)
+    setHeight: function () {
+      this.height = window.innerHeight * 0.5
+    },
+    deleteItem: function (warnStatus) {
+      const id = warnStatus.id
+      const operation = warnStatus.operation
+      const serviceVersion = warnStatus.serviceVersion
+      const serviceGroup = warnStatus.serviceGroup
+      if (operation === 'delete') {
+        this.$axios.delete('/rules/route/condition/' + id + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup)
+          .then(response => {
+            if (response.status === 200) {
+              this.warn = false
+              this.search(this.filter, false)
+              this.$notify.success('Delete success')
+            }
+          })
+      } else if (operation === 'disable') {
+        this.$axios.put('/rules/route/condition/disable/' + id + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup)
+          .then(response => {
+            if (response.status === 200) {
+              this.warn = false
+              this.search(this.filter, false)
+              this.$notify.success('Disable success')
+            }
+          })
+      } else if (operation === 'enable') {
+        this.$axios.put('/rules/route/condition/enable/' + id + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup)
+          .then(response => {
+            if (response.status === 200) {
+              this.warn = false
+              this.search(this.filter, false)
+              this.$notify.success('Enable success')
+            }
+          })
       }
     }
-
+  },
+  created () {
+    this.setHeight()
+  },
+  computed: {
+    queryBy () {
+      return this.$t('by') + this.$t(this.items[this.selected].title)
+    },
+    area () {
+      return this.$i18n.locale
+    }
+  },
+  watch: {
+    input (val) {
+      this.querySelections(val)
+    },
+    area () {
+      this.setAppHeaders()
+      this.setServiceHeaders()
+    }
+  },
+  mounted: function () {
+    this.setAppHeaders()
+    this.setServiceHeaders()
+    this.$store.dispatch('loadServiceItems')
+    this.$store.dispatch('loadAppItems')
+    this.ruleText = this.template
+    const query = this.$route.query
+    let filter = null
+    let queryServiceVersion = null
+    let queryServiceGroup = null
+    const vm = this
+    Object.keys(query).forEach(function (key) {
+      if (key === 'service') {
+        filter = query[key]
+        if (query.serviceVersion) {
+          queryServiceVersion = query.serviceVersion
+        }
+        if (query.serviceGroup) {
+          queryServiceGroup = query.serviceGroup
+        }
+        vm.selected = 0
+      }
+      if (key === 'application') {
+        filter = query[key]
+        vm.selected = 1
+      }
+    })
+    if (queryServiceVersion != null) {
+      this.serviceVersion4Search = query.serviceVersion
+    }
+    if (queryServiceGroup != null) {
+      this.serviceGroup4Search = query.serviceGroup
+    }
+    if (filter !== null) {
+      this.filter = filter
+      this.search(false)
+    }
   }
+
+}
 </script>
