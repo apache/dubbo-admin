@@ -21,6 +21,8 @@ import java.util.List;
 
 public class ConditionRouteDTO extends RouteDTO{
     private List<String> conditions;
+    private String serviceVersion;
+    private String serviceGroup;
 
     public List<String> getConditions() {
         return conditions;
@@ -28,5 +30,20 @@ public class ConditionRouteDTO extends RouteDTO{
 
     public void setConditions(List<String> conditions) {
         this.conditions = conditions;
+    }
+    public String getServiceVersion() {
+        return serviceVersion;
+    }
+
+    public void setServiceVersion(String serviceVersion) {
+        this.serviceVersion = serviceVersion;
+    }
+
+    public String getServiceGroup() {
+        return serviceGroup;
+    }
+
+    public void setServiceGroup(String serviceGroup) {
+        this.serviceGroup = serviceGroup;
     }
 }

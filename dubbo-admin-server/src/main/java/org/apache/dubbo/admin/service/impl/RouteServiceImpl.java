@@ -42,7 +42,8 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
     @Override
     public void createConditionRoute(ConditionRouteDTO conditionRoute) {
-        String id = ConvertUtil.getIdFromDTO(conditionRoute);
+        String id = ConvertUtil.getIdFromDTO(conditionRoute, conditionRoute.getServiceVersion(),
+                conditionRoute.getServiceGroup());
         String path = getPath(id, Constants.CONDITION_ROUTE);
         String existConfig = dynamicConfiguration.getConfig(path);
         RoutingRule existRule = null;
@@ -64,7 +65,8 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
     @Override
     public void updateConditionRoute(ConditionRouteDTO newConditionRoute) {
-        String id = ConvertUtil.getIdFromDTO(newConditionRoute);
+        String id = ConvertUtil.getIdFromDTO(newConditionRoute, newConditionRoute.getServiceVersion(),
+                newConditionRoute.getServiceGroup());
         String path = getPath(id, Constants.CONDITION_ROUTE);
         String existConfig = dynamicConfiguration.getConfig(path);
         if (existConfig == null) {
@@ -88,7 +90,8 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
     @Override
     public void deleteConditionRoute(ConditionRouteDTO conditionRoute) {
-        String id = ConvertUtil.getIdFromDTO(conditionRoute);
+        String id = ConvertUtil.getIdFromDTO(conditionRoute, conditionRoute.getServiceVersion(),
+                conditionRoute.getServiceGroup());
         String path = getPath(id, Constants.CONDITION_ROUTE);
 
         String config = dynamicConfiguration.getConfig(path);
@@ -210,7 +213,8 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
     @Override
     public void enableConditionRoute(ConditionRouteDTO conditionRoute) {
-        String id = ConvertUtil.getIdFromDTO(conditionRoute);
+        String id = ConvertUtil.getIdFromDTO(conditionRoute, conditionRoute.getServiceVersion(),
+                conditionRoute.getServiceGroup());
         String path = getPath(id, Constants.CONDITION_ROUTE);
 
         String config = dynamicConfiguration.getConfig(path);
@@ -236,7 +240,8 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
     @Override
     public void disableConditionRoute(ConditionRouteDTO conditionRoute) {
-        String id = ConvertUtil.getIdFromDTO(conditionRoute);
+        String id = ConvertUtil.getIdFromDTO(conditionRoute, conditionRoute.getServiceVersion(),
+                conditionRoute.getServiceGroup());
         String path = getPath(id, Constants.CONDITION_ROUTE);
 
         String config = dynamicConfiguration.getConfig(path);
@@ -262,7 +267,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
 
     @Override
     public ConditionRouteDTO findConditionRoute(ConditionRouteDTO crDTO) {
-        return findConditionRoute(ConvertUtil.getIdFromDTO(crDTO));
+        return findConditionRoute(ConvertUtil.getIdFromDTO(crDTO, crDTO.getServiceVersion(), crDTO.getServiceGroup()));
     }
 
     @Override
@@ -279,6 +284,8 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
             String[] detachResult = ConvertUtil.detachId(id);
             if (detachResult.length > 1) {
                 conditionRouteDTO.setServiceVersion(detachResult[1]);
+            }
+            if (detachResult.length > 2) {
                 conditionRouteDTO.setServiceGroup(detachResult[2]);
             }
             return conditionRouteDTO;

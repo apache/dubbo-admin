@@ -90,7 +90,7 @@
           >
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.service }}</td>
-              <td class="text-xs-left">{{ props.item.group }}</td>
+              <td class="text-xs-left">{{ props.item.serviceGroup }}</td>
               <td class="text-xs-left">{{ props.item.enabled }}</td>
               <td class="text-xs-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
