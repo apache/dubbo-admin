@@ -17,11 +17,14 @@
 
 package org.apache.dubbo.admin.registry.metadata.impl;
 
+import com.alibaba.nacos.api.PropertyKeyConst;
+import java.util.Map;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
+import org.apache.dubbo.common.utils.StringConstantFieldValuePredicate;
 import org.apache.dubbo.metadata.report.identifier.KeyTypeEnum;
 import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
 
@@ -73,6 +76,9 @@ public class NacosMetaDataCollector implements MetaDataCollector {
         Properties properties = new Properties();
         setServerAddr(url, properties);
         setNamespace(url, properties);
+        Map<String, String> parameters = url.getParameters(
+                StringConstantFieldValuePredicate.of(PropertyKeyConst.class));
+        properties.putAll(parameters);
         return properties;
     }
 

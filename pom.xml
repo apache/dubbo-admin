@@ -67,7 +67,7 @@
 		<apollo-version>1.2.0</apollo-version>
 		<consul-version>1.4.2</consul-version>
 		<consul-embedded-version>2.0.0</consul-embedded-version>
-		<nacos-version>1.0.0</nacos-version>
+		<nacos-version>1.2.0</nacos-version>
 		<guava-version>20.0</guava-version>
 		<snakeyaml-version>1.24</snakeyaml-version>
 		<maven-checkstyle-plugin-version>3.0.0</maven-checkstyle-plugin-version>
