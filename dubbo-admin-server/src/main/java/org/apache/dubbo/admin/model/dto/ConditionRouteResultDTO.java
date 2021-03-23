@@ -17,16 +17,24 @@
 
 package org.apache.dubbo.admin.model.dto;
 
-import java.util.List;
 
-public class ConditionRouteDTO extends RouteDTO{
-    private List<String> conditions;
+public class ConditionRouteResultDTO extends ConditionRouteDTO {
+    private String serviceVersion;
+    private String serviceGroup;
 
-    public List<String> getConditions() {
-        return conditions;
+    public String getServiceVersion() {
+        return serviceVersion;
     }
 
-    public void setConditions(List<String> conditions) {
-        this.conditions = conditions;
+    public void setServiceVersion(String serviceVersion) {
+        this.serviceVersion = serviceVersion;
+    }
+
+    public String getServiceGroup() {
+        return serviceGroup;
+    }
+
+    public void setServiceGroup(String serviceGroup) {
+        this.serviceGroup = serviceGroup;
     }
 }

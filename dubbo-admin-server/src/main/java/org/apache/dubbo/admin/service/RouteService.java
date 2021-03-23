@@ -18,6 +18,7 @@ package org.apache.dubbo.admin.service;
 
 import org.apache.dubbo.admin.model.dto.AccessDTO;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
+import org.apache.dubbo.admin.model.dto.ConditionRouteResultDTO;
 import org.apache.dubbo.admin.model.dto.TagRouteDTO;
 
 /**
@@ -46,9 +47,9 @@ public interface RouteService {
     void disableConditionRoute(ConditionRouteDTO conditionRoute);
 
 
-    ConditionRouteDTO findConditionRoute(ConditionRouteDTO crDTO);
+    ConditionRouteResultDTO findConditionRoute(ConditionRouteDTO crDTO);
 
-    ConditionRouteDTO findConditionRoute(String id);
+    ConditionRouteResultDTO findConditionRoute(String id);
 
     void createTagRoute(TagRouteDTO tagRoute);
 
