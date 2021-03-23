@@ -68,11 +68,7 @@ public class ConditionRoutesController {
         if (StringUtils.isNotEmpty(app) && providerService.findVersionInApplication(app).equals("2.6")) {
             throw new VersionValidationException("dubbo 2.6 does not support application scope routing rule");
         }
-        if (StringUtils.isNotEmpty(routeDTO.getService())) {
-            String newService = ConvertUtil.getIdFromDTO(routeDTO, serviceVersion, serviceGroup);
-            routeDTO.setService(newService);
-        }
-        routeService.createConditionRoute(routeDTO);
+        routeService.createConditionRoute(routeDTO, serviceVersion, serviceGroup);
         return true;
     }
 
@@ -82,14 +78,16 @@ public class ConditionRoutesController {
                               @RequestParam(required = false) String serviceGroup) {
         id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         ConditionRouteDTO crDTO = new ConditionRouteDTO();
+        String serviceName = newConditionRoute.getService();
+        if (StringUtils.isNotEmpty(serviceName)) {
+            id = ConvertUtil.getIdFromDTO(newConditionRoute, serviceVersion, serviceGroup);
+        }
         crDTO.setService(id);
-        String newService = ConvertUtil.getIdFromDTO(newConditionRoute, serviceVersion, serviceGroup);
-        crDTO.setService(newService);
         ConditionRouteDTO oldConditionRoute = routeService.findConditionRoute(crDTO);
         if (oldConditionRoute == null) {
             throw new ResourceNotFoundException("can not find route rule for: " + id);
         }
-        routeService.updateConditionRoute(newConditionRoute);
+        routeService.updateConditionRoute(newConditionRoute, serviceVersion, serviceGroup);
         return true;
     }
 
@@ -106,9 +104,8 @@ public class ConditionRoutesController {
             conditionRoute = routeService.findConditionRoute(crDTO);
         } else if (StringUtils.isNotBlank(service)) {
             crDTO.setService(service);
-            String newService = ConvertUtil.getIdFromDTO(crDTO, serviceVersion, serviceGroup);
-            crDTO.setService(newService);
-            conditionRoute = routeService.findConditionRoute(crDTO);
+            String id = ConvertUtil.getIdFromDTO(crDTO, serviceVersion, serviceGroup);
+            conditionRoute = routeService.findConditionRoute(id);
         } else {
             throw new ParamValidationException("Either Service or application is required.");
         }
@@ -120,13 +117,16 @@ public class ConditionRoutesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public ConditionRouteResultDTO detailRoute(@PathVariable String id, @PathVariable String env,
-                                         @RequestParam(required = false) String serviceVersion,
-                                         @RequestParam(required = false) String serviceGroup) {
+                                               @RequestParam(required = false) String serviceVersion,
+                                               @RequestParam(required = false) String serviceGroup,
+                                               @RequestParam String scope) {
         id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         ConditionRouteDTO crDTO = new ConditionRouteDTO();
         crDTO.setService(id);
-        String newService = ConvertUtil.getIdFromDTO(crDTO, serviceVersion, serviceGroup);
-        crDTO.setService(newService);
+        if (Constants.SERVICE.equals(scope)) {
+            id = ConvertUtil.getIdFromDTO(crDTO, serviceVersion, serviceGroup);
+            crDTO.setService(id);
+        }
         ConditionRouteResultDTO conditionRoute = routeService.findConditionRoute(crDTO);
         if (conditionRoute == null || conditionRoute.getConditions() == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -137,12 +137,15 @@ public class ConditionRoutesController {
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteRoute(@PathVariable String id, @PathVariable String env,
                                @RequestParam(required = false) String serviceVersion,
-                               @RequestParam(required = false) String serviceGroup) {
+                               @RequestParam(required = false) String serviceGroup,
+                               @RequestParam String scope) {
         id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         ConditionRouteDTO crDTO = new ConditionRouteDTO();
         crDTO.setService(id);
-        String newService = ConvertUtil.getIdFromDTO(crDTO, serviceVersion, serviceGroup);
-        crDTO.setService(newService);
+        if (Constants.SERVICE.equals(scope)) {
+            id = ConvertUtil.getIdFromDTO(crDTO, serviceVersion, serviceGroup);
+            crDTO.setService(id);
+        }
         routeService.deleteConditionRoute(crDTO);
         return true;
     }
@@ -150,12 +153,15 @@ public class ConditionRoutesController {
     @RequestMapping(value = "/enable/{id}", method = RequestMethod.PUT)
     public boolean enableRoute(@PathVariable String id, @PathVariable String env,
                                @RequestParam(required = false) String serviceVersion,
-                               @RequestParam(required = false) String serviceGroup) {
+                               @RequestParam(required = false) String serviceGroup,
+                               @RequestParam String scope) {
         id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         ConditionRouteDTO crDTO = new ConditionRouteDTO();
         crDTO.setService(id);
-        String newService = ConvertUtil.getIdFromDTO(crDTO, serviceVersion, serviceGroup);
-        crDTO.setService(newService);
+        if (Constants.SERVICE.equals(scope)) {
+            id = ConvertUtil.getIdFromDTO(crDTO, serviceVersion, serviceGroup);
+            crDTO.setService(id);
+        }
         routeService.enableConditionRoute(crDTO);
         return true;
     }
@@ -163,12 +169,15 @@ public class ConditionRoutesController {
     @RequestMapping(value = "/disable/{id}", method = RequestMethod.PUT)
     public boolean disableRoute(@PathVariable String id, @PathVariable String env,
                                 @RequestParam(required = false) String serviceVersion,
-                                @RequestParam(required = false) String serviceGroup) {
+                                @RequestParam(required = false) String serviceGroup,
+                                @RequestParam String scope) {
         id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         ConditionRouteDTO crDTO = new ConditionRouteDTO();
         crDTO.setService(id);
-        String newService = ConvertUtil.getIdFromDTO(crDTO, serviceVersion, serviceGroup);
-        crDTO.setService(newService);
+        if (Constants.SERVICE.equals(scope)) {
+            id = ConvertUtil.getIdFromDTO(crDTO, serviceVersion, serviceGroup);
+            crDTO.setService(id);
+        }
         routeService.disableConditionRoute(crDTO);
         return true;
     }

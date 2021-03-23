@@ -441,27 +441,32 @@ export default {
       }
       const serviceVersion = item.serviceVersion == null ? '' : item.serviceVersion
       const serviceGroup = item.serviceGroup == null ? '' : item.serviceGroup
+      const scope = item.scope == null ? '' : item.scope
       switch (icon) {
         case 'visibility':
-          this.$axios.get('/rules/route/condition/' + itemId + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup)
+          this.$axios.get('/rules/route/condition/' + itemId + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup + '&scope=' + scope)
             .then(response => {
               const conditionRoute = response.data
               this.serviceVersion = conditionRoute.serviceVersion
               this.serviceGroup = conditionRoute.serviceGroup
+              this.scope = conditionRoute.scope
               delete conditionRoute.serviceVersion
               delete conditionRoute.serviceGroup
+              delete conditionRoute.scope
               this.handleBalance(conditionRoute, true)
               this.updateId = 'close'
             })
           break
         case 'edit':
-          this.$axios.get('/rules/route/condition/' + itemId + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup)
+          this.$axios.get('/rules/route/condition/' + itemId + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup + '&scope=' + scope)
             .then(response => {
               const conditionRoute = response.data
               this.serviceVersion = conditionRoute.serviceVersion
               this.serviceGroup = conditionRoute.serviceGroup
+              this.scope = conditionRoute.scope
               delete conditionRoute.serviceVersion
               delete conditionRoute.serviceGroup
+              delete conditionRoute.scope
               this.handleBalance(conditionRoute, false)
               this.updateId = itemId
             })
@@ -472,6 +477,7 @@ export default {
           this.warnStatus.id = itemId
           this.warnStatus.serviceVersion = serviceVersion
           this.warnStatus.serviceGroup = serviceGroup
+          this.warnStatus.scope = scope
           break
         case 'check_circle_outline':
           this.openWarn(' Are you sure to enable Routing Rule', 'service: ' + oldItemId)
@@ -479,6 +485,7 @@ export default {
           this.warnStatus.id = itemId
           this.warnStatus.serviceVersion = serviceVersion
           this.warnStatus.serviceGroup = serviceGroup
+          this.warnStatus.scope = scope
           break
         case 'delete':
           this.openWarn('warnDeleteRouteRule', 'service: ' + oldItemId)
@@ -486,6 +493,7 @@ export default {
           this.warnStatus.id = itemId
           this.warnStatus.serviceVersion = serviceVersion
           this.warnStatus.serviceGroup = serviceGroup
+          this.warnStatus.scope = scope
       }
     },
     handleBalance: function (conditionRoute, readonly) {
@@ -509,8 +517,9 @@ export default {
       const operation = warnStatus.operation
       const serviceVersion = warnStatus.serviceVersion
       const serviceGroup = warnStatus.serviceGroup
+      const scope = warnStatus.scope
       if (operation === 'delete') {
-        this.$axios.delete('/rules/route/condition/' + id + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup)
+        this.$axios.delete('/rules/route/condition/' + id + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup + '&scope=' + scope)
           .then(response => {
             if (response.status === 200) {
               this.warn = false
@@ -519,7 +528,7 @@ export default {
             }
           })
       } else if (operation === 'disable') {
-        this.$axios.put('/rules/route/condition/disable/' + id + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup)
+        this.$axios.put('/rules/route/condition/disable/' + id + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup + '&scope=' + scope)
           .then(response => {
             if (response.status === 200) {
               this.warn = false
@@ -528,7 +537,7 @@ export default {
             }
           })
       } else if (operation === 'enable') {
-        this.$axios.put('/rules/route/condition/enable/' + id + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup)
+        this.$axios.put('/rules/route/condition/enable/' + id + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup + '&scope=' + scope)
           .then(response => {
             if (response.status === 200) {
               this.warn = false

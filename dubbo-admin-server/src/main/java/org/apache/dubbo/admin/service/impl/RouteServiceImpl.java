@@ -43,8 +43,8 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
     private String prefix = Constants.CONFIG_KEY;
 
     @Override
-    public void createConditionRoute(ConditionRouteDTO conditionRoute) {
-        String id = ConvertUtil.getIdFromDTO(conditionRoute);
+    public void createConditionRoute(ConditionRouteDTO conditionRoute, String serviceVersion, String serviceGroup) {
+        String id = ConvertUtil.getIdFromDTO(conditionRoute, serviceVersion, serviceGroup);
         String path = getPath(id, Constants.CONDITION_ROUTE);
         String existConfig = dynamicConfiguration.getConfig(path);
         RoutingRule existRule = null;
@@ -65,8 +65,8 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
     }
 
     @Override
-    public void updateConditionRoute(ConditionRouteDTO newConditionRoute) {
-        String id = ConvertUtil.getIdFromDTO(newConditionRoute);
+    public void updateConditionRoute(ConditionRouteDTO newConditionRoute, String serviceVersion, String serviceGroup) {
+        String id = ConvertUtil.getIdFromDTO(newConditionRoute, serviceVersion, serviceGroup);
         String path = getPath(id, Constants.CONDITION_ROUTE);
         String existConfig = dynamicConfiguration.getConfig(path);
         if (existConfig == null) {
@@ -280,6 +280,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
             }
             ConditionRouteResultDTO result = new ConditionRouteResultDTO();
             BeanUtils.copyProperties(conditionRouteDTO, result);
+            result.setScope(routingRule.getScope());
             String[] detachResult = ConvertUtil.detachId(id);
             if (detachResult.length > 1) {
                 result.setServiceVersion(detachResult[1]);

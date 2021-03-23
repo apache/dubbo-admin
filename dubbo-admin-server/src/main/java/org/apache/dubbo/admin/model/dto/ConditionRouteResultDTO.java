@@ -21,6 +21,7 @@ package org.apache.dubbo.admin.model.dto;
 public class ConditionRouteResultDTO extends ConditionRouteDTO {
     private String serviceVersion;
     private String serviceGroup;
+    private String scope;
 
     public String getServiceVersion() {
         return serviceVersion;
@@ -36,5 +37,13 @@ public class ConditionRouteResultDTO extends ConditionRouteDTO {
 
     public void setServiceGroup(String serviceGroup) {
         this.serviceGroup = serviceGroup;
+    }
+
+    public String getScope() {
+        return scope;
+    }
+
+    public void setScope(String scope) {
+        this.scope = scope;
     }
 }

@@ -27,9 +27,9 @@ import org.apache.dubbo.admin.model.dto.TagRouteDTO;
  */
 public interface RouteService {
 
-    void createConditionRoute(ConditionRouteDTO conditionRoute);
+    void createConditionRoute(ConditionRouteDTO conditionRoute, String serviceVersion, String serviceGroup);
 
-    void updateConditionRoute(ConditionRouteDTO newConditionRoute);
+    void updateConditionRoute(ConditionRouteDTO newConditionRoute, String serviceVersion, String serviceGroup);
 
     void deleteConditionRoute(ConditionRouteDTO conditionRoute);
 
