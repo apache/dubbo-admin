@@ -14,30 +14,36 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.dubbo.admin.model.dto;
 
-/**
- * BaseDTO
- *
- * For receive ID parameter with @RequestBody
- */
-public abstract class BaseDTO {
-    private String application;
-    private String service;
 
-    public String getApplication() {
-        return application;
+public class ConditionRouteResultDTO extends ConditionRouteDTO {
+    private String serviceVersion;
+    private String serviceGroup;
+    private String scope;
+
+    public String getServiceVersion() {
+        return serviceVersion;
     }
 
-    public void setApplication(String application) {
-        this.application = application;
+    public void setServiceVersion(String serviceVersion) {
+        this.serviceVersion = serviceVersion;
     }
 
-    public String getService() {
-        return service;
+    public String getServiceGroup() {
+        return serviceGroup;
     }
 
-    public void setService(String service) {
-        this.service = service;
+    public void setServiceGroup(String serviceGroup) {
+        this.serviceGroup = serviceGroup;
+    }
+
+    public String getScope() {
+        return scope;
+    }
+
+    public void setScope(String scope) {
+        this.scope = scope;
     }
 }

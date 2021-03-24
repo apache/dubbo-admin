@@ -54,11 +54,18 @@ public class ConvertUtil {
         if (StringUtils.isNotEmpty(baseDTO.getApplication())) {
             id = baseDTO.getApplication();
         } else {
-            // id format: "${class}:${version}:${group}"
-            id = new StringBuilder(baseDTO.getService()).append(COLON).append(null2EmptyString(baseDTO.getServiceVersion()))
-                    .append(COLON).append(null2EmptyString(baseDTO.getServiceGroup())).toString();
+            id = baseDTO.getService();
         }
         return id;
+    }
+
+    public static String getIdFromDTO(BaseDTO baseDTO, String serviceVersion, String serviceGroup) {
+        if (StringUtils.isNotEmpty(baseDTO.getApplication())) {
+            return baseDTO.getApplication();
+        }
+        // id format: "${class}:${version}:${group}"
+        return new StringBuilder(baseDTO.getService()).append(COLON).append(null2EmptyString(serviceVersion))
+                .append(COLON).append(null2EmptyString(serviceGroup)).toString();
     }
 
     /**
@@ -74,17 +81,18 @@ public class ConvertUtil {
         }
     }
 
-    public static String getServiceIdFromDTO(BaseDTO baseDTO, boolean groupAsFolder) {
+    public static String getServiceIdFromDTO(BaseDTO baseDTO, String serviceVersion, String serviceGroup,
+                                             boolean groupAsFolder) {
         StringBuilder buf = new StringBuilder();
         buf.append(baseDTO.getService());
-        if (StringUtils.isNotEmpty(baseDTO.getServiceVersion())) {
-            buf.append(COLON).append(baseDTO.getServiceVersion());
+        if (StringUtils.isNotEmpty(serviceVersion)) {
+            buf.append(COLON).append(serviceVersion);
         }
-        if (StringUtils.isNotEmpty(baseDTO.getServiceGroup())) {
+        if (StringUtils.isNotEmpty(serviceGroup)) {
             if (groupAsFolder) {
-                buf.insert(0, baseDTO.getServiceGroup() + "/");
+                buf.insert(0, serviceGroup + "/");
             } else {
-                buf.append(COLON).append(baseDTO.getServiceGroup());
+                buf.append(COLON).append(serviceGroup);
             }
         }
         return buf.toString();
