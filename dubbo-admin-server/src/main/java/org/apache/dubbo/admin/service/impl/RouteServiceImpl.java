@@ -24,12 +24,14 @@ import org.apache.dubbo.admin.common.util.YamlParser;
 import org.apache.dubbo.admin.model.domain.Route;
 import org.apache.dubbo.admin.model.dto.AccessDTO;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
+import org.apache.dubbo.admin.model.dto.ConditionRouteResultDTO;
 import org.apache.dubbo.admin.model.dto.TagRouteDTO;
 import org.apache.dubbo.admin.model.store.RoutingRule;
 import org.apache.dubbo.admin.model.store.TagRoute;
 import org.apache.dubbo.admin.service.RouteService;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.utils.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.LinkedList;
@@ -41,8 +43,8 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
     private String prefix = Constants.CONFIG_KEY;
 
     @Override
-    public void createConditionRoute(ConditionRouteDTO conditionRoute) {
-        String id = ConvertUtil.getIdFromDTO(conditionRoute);
+    public void createConditionRoute(ConditionRouteDTO conditionRoute, String serviceVersion, String serviceGroup) {
+        String id = ConvertUtil.getIdFromDTO(conditionRoute, serviceVersion, serviceGroup);
         String path = getPath(id, Constants.CONDITION_ROUTE);
         String existConfig = dynamicConfiguration.getConfig(path);
         RoutingRule existRule = null;
@@ -63,8 +65,8 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
     }
 
     @Override
-    public void updateConditionRoute(ConditionRouteDTO newConditionRoute) {
-        String id = ConvertUtil.getIdFromDTO(newConditionRoute);
+    public void updateConditionRoute(ConditionRouteDTO newConditionRoute, String serviceVersion, String serviceGroup) {
+        String id = ConvertUtil.getIdFromDTO(newConditionRoute, serviceVersion, serviceGroup);
         String path = getPath(id, Constants.CONDITION_ROUTE);
         String existConfig = dynamicConfiguration.getConfig(path);
         if (existConfig == null) {
@@ -261,12 +263,12 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
     }
 
     @Override
-    public ConditionRouteDTO findConditionRoute(ConditionRouteDTO crDTO) {
+    public ConditionRouteResultDTO findConditionRoute(ConditionRouteDTO crDTO) {
         return findConditionRoute(ConvertUtil.getIdFromDTO(crDTO));
     }
 
     @Override
-    public ConditionRouteDTO findConditionRoute(String id) {
+    public ConditionRouteResultDTO findConditionRoute(String id) {
         String path = getPath(id, Constants.CONDITION_ROUTE);
         String config = dynamicConfiguration.getConfig(path);
         if (config != null) {
@@ -276,12 +278,17 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
             if (org.apache.commons.lang3.StringUtils.isNotBlank(service)) {
                 conditionRouteDTO.setService(service.replace("*", "/"));
             }
+            ConditionRouteResultDTO result = new ConditionRouteResultDTO();
+            BeanUtils.copyProperties(conditionRouteDTO, result);
+            result.setScope(routingRule.getScope());
             String[] detachResult = ConvertUtil.detachId(id);
             if (detachResult.length > 1) {
-                conditionRouteDTO.setServiceVersion(detachResult[1]);
-                conditionRouteDTO.setServiceGroup(detachResult[2]);
+                result.setServiceVersion(detachResult[1]);
             }
-            return conditionRouteDTO;
+            if (detachResult.length > 2) {
+                result.setServiceGroup(detachResult[2]);
+            }
+            return result;
         }
         return null;
     }
