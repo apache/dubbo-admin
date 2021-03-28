@@ -17,5 +17,5 @@
 import { DefaultFooter } from '@ant-design/pro-layout';
 
 export default () => (
-  <DefaultFooter copyright="Copyright ©2018-2021 The Apache Software Foundation." links={[]} />
+  <DefaultFooter copyright="2018-2021 The Apache Software Foundation." links={[]} />
 );

@@ -15,9 +15,10 @@
  * limitations under the License.
  */
 export default [
-  {
-    path: '/',
-    routes: [
+      {
+        path: '/',
+        redirect: '/service',
+      },
       {
         path: '/service',
         routes:[
@@ -27,53 +28,51 @@ export default [
             component: './Service'
           }
         ]
-      }
-    ],
-  },
-  {
-    path: '/user',
-    layout: false,
-    routes: [
+      },
       {
         path: '/user',
+        layout: false,
         routes: [
           {
-            name: 'login',
-            path: '/user/login',
-            component: './User/login',
+            path: '/user',
+            routes: [
+              {
+                name: 'login',
+                path: '/user/login',
+                component: './User/login',
+              },
+            ],
           },
         ],
       },
-    ],
-  },
-  {
-    path: '/welcome',
-    name: 'welcome',
-    icon: 'smile',
-    component: './Welcome',
-  },
-  {
-    path: '/admin',
-    name: 'admin',
-    icon: 'crown',
-    access: 'canAdmin',
-    component: './Admin',
-    routes: [
       {
-        path: '/admin/sub-page',
-        name: 'sub-page',
+        path: '/welcome',
+        name: 'welcome',
         icon: 'smile',
         component: './Welcome',
       },
-    ],
-  },
-  {
-    name: 'list.table-list',
-    icon: 'table',
-    path: '/list',
-    component: './TableList',
-  },
-  {
-    component: './404',
-  },
-];
+      {
+        path: '/admin',
+        name: 'admin',
+        icon: 'crown',
+        access: 'canAdmin',
+        component: './Admin',
+        routes: [
+          {
+            path: '/admin/sub-page',
+            name: 'sub-page',
+            icon: 'smile',
+            component: './Welcome',
+          },
+        ],
+      },
+      {
+        name: 'list.table-list',
+        icon: 'table',
+        path: '/list',
+        component: './TableList',
+      },
+      {
+        component: './404',
+      },
+]

@@ -35,6 +35,10 @@
     return result?result:'';
   }
 
+  export const removeToken = ()=>{
+    localStorage.removeItem(tokenKey);
+  }
+
   export const setUsername = (username:string) => {
      localStorage.setItem(usernameKey,username);
   }
@@ -42,4 +46,8 @@
   export const getUsername = ():string =>{
     var result = localStorage.getItem(usernameKey);
     return result?result:'';
+  }
+
+  export const removeUsername = ()=>{
+    localStorage.removeItem(usernameKey);
   }

@@ -23,9 +23,9 @@ import { history } from 'umi';
 import RightContent from '@/components/RightContent';
 import Footer from '@/components/Footer';
 import type { ResponseError } from 'umi-request';
-import { currentUser as queryCurrentUser } from './services/ant-design-pro/api';
 import { BookOutlined, LinkOutlined } from '@ant-design/icons';
-import { getToken } from '@/storage/auth'
+import { getToken,removeToken,removeUsername } from '@/storage/auth'
+import HttpStatus from 'http-status'
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -124,13 +124,21 @@ const codeMessage = {
 const errorHandler = (error: ResponseError) => {
   const { response } = error;
   if (response && response.status) {
-    const errorText = codeMessage[response.status] || response.statusText;
-    const { status, url } = response;
+    if(error.response.status === HttpStatus.UNAUTHORIZED){
+      removeToken();
+      removeUsername;
+      history.push('/user/login');
+    }else if(error.response.status >= HttpStatus.BAD_REQUEST){
+      const errorText = codeMessage[response.status] || response.statusText;
+      const { status, url } = response;
 
-    notification.error({
-      message: `Request error ${status}: ${url}`,
-      description: errorText,
-    });
+      notification.error({
+        message: `Request error ${status}: ${url}`,
+        description: errorText,
+      });
+    }
+
+
   }
 
   if (!response) {
@@ -144,8 +152,14 @@ const errorHandler = (error: ResponseError) => {
 
 const devRequestProcessInterceptors = (url: string, options: RequestOptionsInit) => {
   return {
-    url: `/api/dev${url}`,
-    options: { ...options, interceptors: true },
+    url: `/api/${REACT_APP_ENV}${url}`,
+    options: {
+      ...options,
+      interceptors: true,
+      headers: {
+      'Authorization': getToken(),
+      }
+    },
   };
 };
 

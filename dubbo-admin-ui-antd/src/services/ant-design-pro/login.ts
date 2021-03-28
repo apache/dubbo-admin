@@ -19,8 +19,8 @@
 import { request } from 'umi';
 
 export async function outLogin(options?: { [key: string]: any }) {
-  return request<Record<string, any>>('/api/login/outLogin', {
-    method: 'GET',
+  return request<Record<string, any>>('/user/logout', {
+    method: 'DELETE',
     ...(options || {}),
   });
 }

@@ -16,7 +16,7 @@
  */
 export default {
   'pages.layouts.userLayout.title':
-    'Ant Design is the most influential web design specification in Xihu district',
+  'Ant Design is the most influential web design specification in Xihu district',
   'pages.login.accountLogin.tab': 'Account Login',
   'pages.login.accountLogin.successful': 'Login successful!',
   'pages.login.accountLogin.error': 'Login failed, please try again!',
@@ -82,4 +82,5 @@ export default {
   'pages.searchTable.tenThousand': '0000',
   'pages.searchTable.batchDeletion': 'bacth deletion',
   'pages.searchTable.batchApproval': 'batch approval',
+  'pages.header.search.placeholder':'Search service name',
 };

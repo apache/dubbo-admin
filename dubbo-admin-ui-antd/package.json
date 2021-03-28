@@ -65,7 +65,8 @@
     "react-dom": "^17.0.0",
     "react-helmet-async": "^1.0.4",
     "umi": "^3.2.14",
-    "umi-request": "^1.0.8"
+    "umi-request": "^1.0.8",
+    "http-status": "^1.2.0"
   },
   "devDependencies": {
     "@ant-design/pro-cli": "^2.0.2",
