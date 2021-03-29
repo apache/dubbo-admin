@@ -152,7 +152,7 @@ const errorHandler = (error: ResponseError) => {
 
 const devRequestProcessInterceptors = (url: string, options: RequestOptionsInit) => {
   return {
-    url: `/api/${REACT_APP_ENV}${url}`,
+    url: `/api/dev${url}`,
     options: {
       ...options,
       interceptors: true,
