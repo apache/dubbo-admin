@@ -21,6 +21,7 @@ import { useModel, SelectLang } from 'umi';
 import Avatar from './AvatarDropdown';
 import HeaderSearch from '../HeaderSearch';
 import styles from './index.less';
+import { useIntl } from 'umi';
 
 export type SiderTheme = 'light' | 'dark';
 
@@ -43,39 +44,26 @@ const GlobalHeaderRight: React.FC = () => {
   if ((navTheme === 'dark' && layout === 'top') || layout === 'mix') {
     className = `${styles.right}  ${styles.dark}`;
   }
+
+  const intl = useIntl();
+
   return (
     <Space className={className}>
       <HeaderSearch
         className={`${styles.action} ${styles.search}`}
         placeholder="On site search"
-        defaultValue="umi ui"
+        defaultValue={intl.formatMessage(
+          {
+            id: 'pages.header.search.placeholder'
+          }
+        )}
         options={[
           { label: <a href="https://umijs.org/zh/guide/umi-ui.html">umi ui</a>, value: 'umi ui' },
-          {
-            label: <a href="next.ant.design">Ant Design</a>,
-            value: 'Ant Design',
-          },
-          {
-            label: <a href="https://protable.ant.design/">Pro Table</a>,
-            value: 'Pro Table',
-          },
-          {
-            label: <a href="https://prolayout.ant.design/">Pro Layout</a>,
-            value: 'Pro Layout',
-          },
         ]}
         // onSearch={value => {
         //   console.log('input', value);
         // }}
       />
-      <span
-        className={styles.action}
-        onClick={() => {
-          window.open('https://pro.ant.design/docs/getting-started');
-        }}
-      >
-        <QuestionCircleOutlined />
-      </span>
       <Avatar />
       {REACT_APP_ENV && (
         <span>
