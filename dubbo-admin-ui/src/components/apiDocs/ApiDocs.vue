@@ -15,7 +15,7 @@
   - limitations under the License.
   -->
 <template>
-  <v-container grid-list-xl fluid>
+  <v-container grid-list-xl fluid v-scroll:#scroll-target="onScroll">
   <v-layout row wrap>
     <v-flex lg12>
     <breadcrumb title="apiDocs" :items="breads"></breadcrumb>
@@ -50,7 +50,7 @@
   </v-layout>
 
   <v-layout row wrap>
-    <v-flex lg3>
+    <v-flex lg3 :class="{'sticky_top':isApiListDivFixed,'menu_panel_class':isBigScreen}" >
       <v-card id="apiListDiv"
         class="mx-auto"
       >
@@ -59,7 +59,7 @@
           <v-toolbar-title>{{ $t('apiDocsRes.apiListText') }}</v-toolbar-title>
           <v-spacer></v-spacer>
         </v-toolbar>
-        <v-list>
+        <v-list :class="isBigScreen?'menu_panel_content':''">
           <v-list-group
             v-for="item in apiModules"
             :key="item.title"
@@ -87,8 +87,8 @@
         </v-list>
       </v-card>
     </v-flex>
-    <v-flex lg9>
-      <v-card id="apiFormDiv">
+    <v-flex lg9 :class="isBigScreen?'apidocs_content':''">
+      <v-card id="apiFormDiv" ref="apiFormDiv">
         <apiForm :formInfo="formInfo" />
       </v-card>
     </v-flex>
@@ -104,6 +104,21 @@ export default {
   components: {
     Breadcrumb,
     ApiForm
+  },
+  computed:{
+    isBigScreen:function(){
+      const _this = this;
+      var isBigScreen = false;
+      if(_this.$vuetify.breakpoint){
+        isBigScreen = _this.$vuetify.breakpoint.md || _this.$vuetify.breakpoint.lg || _this.$vuetify.breakpoint.xl;
+      }
+
+      return  isBigScreen;
+    }
+  },
+  created(){
+    const _this = this;
+    console.debug(_this.$vuetify.breakpoint.md);
   },
   data: () => ({
     breads: [
@@ -196,17 +211,48 @@ export default {
         document.getElementById('apiListDiv').classList.remove('apiListDiv-fixed')
         document.getElementById('apiListDiv').style.top = '0px'
       }
+    },
+    onScroll () {
+        const _this = this;
+        var scrollTop = document.documentElement.scrollTop || document.body.scrollTop
+        var offsetTop = document.getElementById('apiFormDiv').offsetTop
+
+        if(scrollTop >= offsetTop && _this.isBigScreen){
+          _this.isApiListDivFixed = true;
+        }else{
+          _this.isApiListDivFixed = false;
+        }
+
     }
   },
   mounted () {
-    window.addEventListener('scroll', this.fixedApiListDiv)
+    window.addEventListener('scroll', this.onScroll)
   }
 }
 </script>
 <style scoped>
 
+  .sticky_top{
+    position: fixed;
+    top:64px;
+  }
+
+  .menu_panel_content{
+    max-height: 500px;
+    overflow-y: scroll;
+  }
+
   .apiListDiv-fixed{
     position: fixed;
+  }
+  .menu_panel_class{
+    position: fixed;
+    width: 25%;
+    z-index: 1000;
+  }
+
+  .apidocs_content{
+    margin-left:30%;
   }
 
 </style>
