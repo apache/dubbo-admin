@@ -54,7 +54,9 @@ public class ConvertUtil {
         if (StringUtils.isNotEmpty(baseDTO.getApplication())) {
             id = baseDTO.getApplication();
         } else {
-            id = baseDTO.getService();
+            // id format: "${class}:${version}:${group}"
+            id = new StringBuilder(baseDTO.getService()).append(COLON).append(null2EmptyString(baseDTO.getServiceVersion()))
+                    .append(COLON).append(null2EmptyString(baseDTO.getServiceGroup())).toString();
         }
         return id;
     }
