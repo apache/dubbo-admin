@@ -54,9 +54,7 @@ public class ConvertUtil {
         if (StringUtils.isNotEmpty(baseDTO.getApplication())) {
             id = baseDTO.getApplication();
         } else {
-            // id format: "${class}:${version}:${group}"
-            id = new StringBuilder(baseDTO.getService()).append(COLON).append(null2EmptyString(baseDTO.getServiceVersion()))
-                    .append(COLON).append(null2EmptyString(baseDTO.getServiceGroup())).toString();
+            id = baseDTO.getService();
         }
         return id;
     }
@@ -109,9 +107,9 @@ public class ConvertUtil {
 
     public static String getScopeFromDTO(BaseDTO baseDTO) {
         if (StringUtils.isNotEmpty(baseDTO.getApplication())) {
-            return org.apache.dubbo.admin.common.util.Constants.APPLICATION;
+            return Constants.APPLICATION;
         } else {
-            return org.apache.dubbo.admin.common.util.Constants.SERVICE;
+            return Constants.SERVICE;
         }
     }
 
