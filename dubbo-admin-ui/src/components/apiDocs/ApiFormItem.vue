@@ -220,7 +220,7 @@ export default {
         var defaultValue = this.formItemInfo.get('defaultValue')
         if (defaultValue) {
           this.selectDefaultValue = defaultValue
-          this.formValues.set(this.buildItemId(), defaultValue[0])
+          this.formValues.set(this.buildItemId(), defaultValue)
         } else {
           this.formValues.set(this.buildItemId(), '')
         }
