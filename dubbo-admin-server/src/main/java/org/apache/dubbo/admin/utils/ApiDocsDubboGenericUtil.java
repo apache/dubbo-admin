@@ -175,13 +175,13 @@ public class ApiDocsDubboGenericUtil {
                 } else {
                     future = CompletableFuture.supplyAsync(() -> genericService.$invoke(methodName, paramTypes, paramValues), EXECUTOR);
                 }
+                future.exceptionally(ex -> {
+                    if (StringUtils.contains(ex.toString(), "Failed to invoke remote method")) {
+                        removeReferenceConfig(address, interfaceName, version, group);
+                    }
+                    return ex;
+                });
             }
-            future.exceptionally(ex -> {
-                if (StringUtils.contains(ex.toString(), "Failed to invoke remote method")) {
-                    removeReferenceConfig(address, interfaceName, version, group);
-                }
-                return ex;
-            });
         }
         return future;
     }
