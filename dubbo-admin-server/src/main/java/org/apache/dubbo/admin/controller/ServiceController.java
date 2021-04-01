@@ -19,7 +19,9 @@ package org.apache.dubbo.admin.controller;
 
 import com.google.gson.Gson;
 
+import com.google.gson.JsonParseException;
 import org.apache.dubbo.admin.annotation.Authority;
+import org.apache.dubbo.admin.common.exception.VersionValidationException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.Tool;
 import org.apache.dubbo.admin.model.domain.Consumer;
@@ -44,6 +46,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
 @Authority(needLogin = true)
 @RestController
 @RequestMapping("/api/{env}")
@@ -60,7 +63,7 @@ public class ServiceController {
         this.gson = new Gson();
     }
 
-    @RequestMapping( value = "/service", method = RequestMethod.GET)
+    @RequestMapping(value = "/service", method = RequestMethod.GET)
     public Page<ServiceDTO> searchService(@RequestParam String pattern,
                                           @RequestParam String filter,
                                           @PathVariable String env,
@@ -98,8 +101,14 @@ public class ServiceController {
         serviceDetailDTO.setConsumers(consumers);
         serviceDetailDTO.setProviders(providers);
         if (metadata != null) {
-            FullServiceDefinition serviceDefinition = gson.fromJson(metadata, FullServiceDefinition.class);
-            serviceDetailDTO.setMetadata(serviceDefinition);
+            try {
+                // for dubbo version under 2.7, this metadata will represent as IP address, like 10.0.0.1.
+                // So the json conversion will fail. 
+                FullServiceDefinition serviceDefinition = gson.fromJson(metadata, FullServiceDefinition.class);
+                serviceDetailDTO.setMetadata(serviceDefinition);
+            } catch (JsonParseException e) {
+                throw new VersionValidationException("dubbo 2.6 does not support metadata");
+            }
         }
         serviceDetailDTO.setConsumers(consumers);
         serviceDetailDTO.setProviders(providers);
