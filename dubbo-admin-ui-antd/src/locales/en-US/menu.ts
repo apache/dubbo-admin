@@ -65,5 +65,5 @@ export default {
   'menu.editor.flow': 'Flow Editor',
   'menu.editor.mind': 'Mind Editor',
   'menu.editor.koni': 'Koni Editor',
-  'menu.service':'menu'
+  'menu.service':'search service'
 };

@@ -80,4 +80,12 @@ export default {
   'pages.searchTable.batchDeletion': '批量删除',
   'pages.searchTable.batchApproval': '批量审批',
   'pages.header.search.placeholder':'服务查询',
+  'pages.service.title':'查询服务',
+  'pages.service.searchresult.table.title':'查询结果',
+  'pages.service.searchresult.column.servicename':'服务名',
+  'pages.service.searchresult.column.servicename.tip':'服务名称是唯一的 key',
+  'pages.service.searchresult.column.groupname':'组名',
+  'pages.service.searchresult.column.version':'版本',
+  'pages.service.searchresult.column.appname':'应用名',
+  'pages.common.button.detail':'详情',
 };

@@ -21,13 +21,9 @@ export default [
       },
       {
         path: '/service',
-        routes:[
-          {
-            name: 'service',
-            path: '/service',
-            component: './Service'
-          }
-        ]
+        name: 'service',
+        icon:'SearchOutlined',
+        component: './Service'
       },
       {
         path: '/user',

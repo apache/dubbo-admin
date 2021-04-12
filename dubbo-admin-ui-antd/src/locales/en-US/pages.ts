@@ -83,4 +83,12 @@ export default {
   'pages.searchTable.batchDeletion': 'bacth deletion',
   'pages.searchTable.batchApproval': 'batch approval',
   'pages.header.search.placeholder':'Search service name',
+  'pages.service.title':'search service',
+  'pages.service.searchresult.table.title':'search result',
+  'pages.service.searchresult.column.servicename':'name',
+  'pages.service.searchresult.column.servicename.tip':'service name is unique',
+  'pages.service.searchresult.column.groupname':'group',
+  'pages.service.searchresult.column.version':'version',
+  'pages.service.searchresult.column.appname':'name',
+  'pages.common.button.detail':'detail',
 };
