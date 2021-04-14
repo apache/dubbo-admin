@@ -198,7 +198,9 @@ public class ApiDocsController {
                 "java.lang.Character".equals(typeStr) ||
                 "java.lang.Short".equals(typeStr) ||
                 "java.lang.Boolean".equals(typeStr) ||
-                "java.lang.String".equals(typeStr)) {
+                "java.lang.String".equals(typeStr) ||
+                "java.math.BigDecimal".equals(typeStr) ||
+                "java.math.BigInteger".equals(typeStr)) {
             return true;
         }
         return false;
