@@ -19,7 +19,7 @@ jobs:
       - name: Setup xvfb
         run: sudo apt-get install xvfb ttf-wqy-zenhei -y && fc-cache -v
       - name: Run integration test
-        run: xvfb-run --server-args="-screen 0, 1024x768x24" ./mvnw --batch-mode --projects dubbo-admin-test --activate-profiles dubbo-admin-integration-test -Ddocker.showLogs=true docker:stop docker:remove verify
+        run: xvfb-run --server-args="-screen 0, 1024x768x24" ./mvnw clean install --batch-mode --projects dubbo-admin-test --activate-profiles dubbo-admin-integration-test -Ddocker.showLogs=true docker:stop docker:remove verify
       - name: Save failure screenshots
         if: ${{ failure() }}
         uses: actions/upload-artifact@v2
