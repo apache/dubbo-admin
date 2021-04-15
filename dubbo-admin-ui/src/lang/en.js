@@ -157,7 +157,7 @@ export default {
   },
   methods: 'Methods',
   testModule: {
-    searchServiceHint: 'Service ID, org.apache.dubbo.demo.api.DemoService, * for fuzzy search, press Enter to search'
+    searchServiceHint: 'Entire service ID, org.apache.dubbo.demo.api.DemoService, press Enter to search'
   },
   userName: 'User Name',
   password: 'Password',
