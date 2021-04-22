@@ -44,6 +44,7 @@ import static org.apache.dubbo.metadata.MetadataConstants.META_DATA_STORE_TAG;
 public class RedisMetaDataCollector implements MetaDataCollector {
 
     private final static Logger logger = LoggerFactory.getLogger(RedisMetaDataCollector.class);
+    private final static String REDIS_DATABASE_KEY = "database";
     private URL url;
     private JedisPool pool;
     Set<HostAndPort> jedisClusterNodes;
@@ -72,7 +73,8 @@ public class RedisMetaDataCollector implements MetaDataCollector {
                 jedisClusterNodes.add(new HostAndPort(tmpUrl.getHost(), tmpUrl.getPort()));
             }
         } else {
-            pool = new JedisPool(new JedisPoolConfig(), url.getHost(), url.getPort(), timeout, url.getPassword(), url.getParameter("database", 0));
+            int database = url.getParameter(REDIS_DATABASE_KEY, 0);
+            pool = new JedisPool(new JedisPoolConfig(), url.getHost(), url.getPort(), timeout, url.getPassword(), database);
         }
     }
 
