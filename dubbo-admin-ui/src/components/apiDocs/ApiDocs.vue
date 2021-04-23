@@ -174,7 +174,7 @@ export default {
                   description: menuItem.description,
                   apiVersion: menuItem.apiVersion,
                   apiGroup: menuItem.apiGroup,
-                  paramsDesc: menuItem.paramsDesc
+                  paramsDesc: menuItem.paramsDesc || ''
                 }
               }
               menu2.apis.push(menuItem2)
