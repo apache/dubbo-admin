@@ -44,9 +44,9 @@ import static org.apache.dubbo.metadata.MetadataConstants.META_DATA_STORE_TAG;
 public class RedisMetaDataCollector implements MetaDataCollector {
 
     private final static Logger logger = LoggerFactory.getLogger(RedisMetaDataCollector.class);
+    private final static String REDIS_DATABASE_KEY = "database";
     private URL url;
     private JedisPool pool;
-    private static final String META_DATA_SOTRE_TAG = ".metaData";
     Set<HostAndPort> jedisClusterNodes;
     private int timeout;
     private String password;
@@ -73,7 +73,8 @@ public class RedisMetaDataCollector implements MetaDataCollector {
                 jedisClusterNodes.add(new HostAndPort(tmpUrl.getHost(), tmpUrl.getPort()));
             }
         } else {
-            pool = new JedisPool(new JedisPoolConfig(), url.getHost(), url.getPort(), timeout, url.getPassword());
+            int database = url.getParameter(REDIS_DATABASE_KEY, 0);
+            pool = new JedisPool(new JedisPoolConfig(), url.getHost(), url.getPort(), timeout, url.getPassword(), database);
         }
     }
 
@@ -98,7 +99,7 @@ public class RedisMetaDataCollector implements MetaDataCollector {
             }
         } else {
             try (Jedis jedis = pool.getResource()) {
-                result = jedis.get(identifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY) + META_DATA_SOTRE_TAG);
+                result = jedis.get(identifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY));
             } catch (Throwable e) {
                 logger.error("Failed to get " + identifier + " from redis, cause: " + e.getMessage(), e);
                 throw new RpcException("Failed to get " + identifier + " from redis, cause: " + e.getMessage(), e);
