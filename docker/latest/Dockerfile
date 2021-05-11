@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y tini
 COPY --from=0 /source/dubbo-admin-snapshot/dubbo-admin-distribution/target/dubbo-admin-0.3.0-SNAPSHOT.jar /app.jar
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 
-ENV JAVA_OPTS = ""
+ENV JAVA_OPTS ""
 
 ENTRYPOINT ["tini", "--", "/usr/local/bin/entrypoint.sh"]
 EXPOSE 8080
