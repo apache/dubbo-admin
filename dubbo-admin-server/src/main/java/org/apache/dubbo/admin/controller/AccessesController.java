@@ -19,10 +19,11 @@ package org.apache.dubbo.admin.controller;
 import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
-import org.apache.dubbo.admin.common.exception.VersionValidationException;
 import org.apache.dubbo.admin.common.util.Constants;
+import org.apache.dubbo.admin.common.util.VersionUtils;
 import org.apache.dubbo.admin.model.dto.AccessDTO;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
+import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.admin.service.RouteService;
 import org.apache.dubbo.common.logger.Logger;
@@ -51,11 +52,14 @@ public class AccessesController {
 
     private final RouteService routeService;
     private final ProviderService providerService;
+    private final ConsumerService consumerService;
+
 
     @Autowired
-    public AccessesController(RouteService routeService, ProviderService providerService) {
+    public AccessesController(RouteService routeService, ProviderService providerService, ConsumerService consumerService) {
         this.routeService = routeService;
         this.providerService = providerService;
+        this.consumerService = consumerService;
     }
 
     @RequestMapping(method = RequestMethod.GET)
@@ -99,9 +103,10 @@ public class AccessesController {
             throw new ParamValidationException("Either Service or application is required.");
         }
         String application = accessDTO.getApplication();
-        if (StringUtils.isNotEmpty(application) && "2.6".equals(providerService.findVersionInApplication(application))) {
-            throw new VersionValidationException("dubbo 2.6 does not support application scope blackwhite list config");
-        }
+
+        VersionUtils.versionCheck(application, providerService,consumerService,
+                "dubbo 2.6 does not support application scope blackwhite list config");
+
         if (accessDTO.getBlacklist() == null && accessDTO.getWhitelist() == null) {
             throw new ParamValidationException("One of Blacklist/Whitelist is required.");
         }

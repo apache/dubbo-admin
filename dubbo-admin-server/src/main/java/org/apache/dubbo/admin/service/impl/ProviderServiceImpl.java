@@ -16,7 +16,6 @@
  */
 package org.apache.dubbo.admin.service.impl;
 
-import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.Pair;
 import org.apache.dubbo.admin.common.util.ParseUtils;
@@ -201,7 +200,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
 
     @Override
     public List<Provider> findByAppandService(String app, String serviceName) {
-        return SyncUtils.url2ProviderList(findProviderUrlByAppandService(app, serviceName));
+        return SyncUtils.url2ProviderList(findUrlByAppendService(app, serviceName));
     }
 
     private Map<String, URL> findProviderUrlByService(String service) {
@@ -286,29 +285,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         return SyncUtils.url2ProviderList(findProviderUrlByApplication(application));
     }
 
-    @Override
-    public String findVersionInApplication(String application) {
-        List<String> services = findServicesByApplication(application);
-        if (services == null || services.size() == 0) {
-            throw new ParamValidationException("there is no service for application: " + application);
-        }
-        return findServiceVersion(services.get(0), application);
-    }
-
-    @Override
-    public String findServiceVersion(String serviceName, String application) {
-        String version = "2.6";
-        Map<String, URL> result = findProviderUrlByAppandService(application, serviceName);
-        if (result != null && result.size() > 0) {
-            URL url = result.values().stream().findFirst().get();
-            if (url.getParameter(Constants.SPECIFICATION_VERSION_KEY) != null) {
-                version = url.getParameter(Constants.SPECIFICATION_VERSION_KEY);
-            }
-        }
-        return version;
-    }
-
-    private Map<String, URL> findProviderUrlByAppandService(String app, String service) {
+    public Map<String, URL> findUrlByAppendService(String app, String service) {
         Map<String, String> filter = new HashMap<>();
         filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
         filter.put(Constants.APPLICATION, app);
@@ -327,25 +304,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
 
     @Override
     public List<String> findServicesByApplication(String application) {
-        List<String> ret = new ArrayList<String>();
-
-        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
-        if (providerUrls == null || application == null || application.length() == 0) {
-            return ret;
-        }
-
-        for (Map.Entry<String, Map<String, URL>> e1 : providerUrls.entrySet()) {
-            Map<String, URL> value = e1.getValue();
-            for (Map.Entry<String, URL> e2 : value.entrySet()) {
-                URL u = e2.getValue();
-                if (application.equals(u.getParameter(Constants.APPLICATION))) {
-                    ret.add(e1.getKey());
-                    break;
-                }
-            }
-        }
-
-        return ret;
+        return findServicesByApplication(application,Constants.PROVIDERS_CATEGORY);
     }
 
     @Override

@@ -22,9 +22,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
-import org.apache.dubbo.admin.common.exception.VersionValidationException;
 import org.apache.dubbo.admin.common.util.Constants;
+import org.apache.dubbo.admin.common.util.VersionUtils;
 import org.apache.dubbo.admin.model.dto.DynamicConfigDTO;
+import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.OverrideService;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,11 +47,13 @@ public class OverridesController {
 
     private final OverrideService overrideService;
     private final ProviderService providerService;
+    private final ConsumerService consumerService;
 
     @Autowired
-    public OverridesController(OverrideService overrideService, ProviderService providerService) {
+    public OverridesController(OverrideService overrideService, ProviderService providerService, ConsumerService consumerService) {
         this.overrideService = overrideService;
         this.providerService = providerService;
+        this.consumerService = consumerService;
     }
 
     @RequestMapping(method = RequestMethod.POST)
@@ -61,9 +64,10 @@ public class OverridesController {
         if (StringUtils.isEmpty(serviceName) && StringUtils.isEmpty(application)) {
             throw new ParamValidationException("serviceName and application are Empty!");
         }
-        if (StringUtils.isNotEmpty(application) && providerService.findVersionInApplication(application).equals("2.6")) {
-            throw new VersionValidationException("dubbo 2.6 does not support application scope dynamic config");
-        }
+
+        VersionUtils.versionCheck(application, providerService,consumerService,
+                "dubbo 2.6 does not support application scope dynamic config" );
+
         overrideService.saveOverride(overrideDTO);
         return true;
     }

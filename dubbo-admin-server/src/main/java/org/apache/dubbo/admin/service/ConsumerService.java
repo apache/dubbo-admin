@@ -25,7 +25,7 @@ import java.util.List;
  * Query service for consumer info
  *
  */
-public interface ConsumerService {
+public interface ConsumerService extends SideService{
 
     List<Consumer> findByService(String serviceName);
 

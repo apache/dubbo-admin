@@ -27,7 +27,7 @@ import java.util.Set;
  * ProviderService
  *
  */
-public interface ProviderService {
+public interface ProviderService extends SideService{
 
     void create(Provider provider);
 
@@ -54,9 +54,7 @@ public interface ProviderService {
      */
     Set<String> findServices();
 
-    String findServiceVersion(String serviceName, String application);
 
-    String findVersionInApplication(String application);
 
     List<String> findAddresses();
 
@@ -97,8 +95,6 @@ public interface ProviderService {
      * @return list of provider object
      */
     List<Provider> findByApplication(String application);
-
-    List<String> findServicesByApplication(String application);
 
     List<String> findMethodsByService(String serviceName);
 

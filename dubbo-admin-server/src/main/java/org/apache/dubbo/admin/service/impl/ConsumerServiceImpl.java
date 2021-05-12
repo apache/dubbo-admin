@@ -78,4 +78,13 @@ public class ConsumerServiceImpl extends AbstractService implements ConsumerServ
         return SyncUtils.filterFromCategory(getRegistryCache(), filter);
     }
 
+    @Override
+    public List<String> findServicesByApplication(String application) {
+        return findServicesByApplication(application, Constants.CONSUMERS_CATEGORY);
+    }
+
+    public Map<String, URL> findUrlByAppendService(String app, String service) {
+        return findUrlByAppendService(app, service, Constants.CONSUMERS_CATEGORY);
+    }
+
 }
