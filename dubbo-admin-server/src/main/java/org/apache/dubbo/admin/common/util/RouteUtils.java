@@ -251,7 +251,7 @@ public class RouteUtils {
         List<String> conditions = new ArrayList<>();
         if (whiteList != null && whiteList.size() > 0) {
             StringBuilder sb = new StringBuilder();
-            sb.append("host != ");
+            sb.append("host = ");
             for (String white : whiteList) {
                 sb.append(white).append(",");
             }
@@ -261,7 +261,7 @@ public class RouteUtils {
         }
         if (blackList != null && blackList.size() > 0) {
             StringBuilder sb = new StringBuilder();
-            sb.append("host = ");
+            sb.append("host != ");
             for (String black : blackList) {
                 sb.append(black).append(",");
             }
