@@ -27,7 +27,7 @@ public class VersionUtils {
     public static void versionCheck(String application,ProviderService providerService,
                                     ConsumerService consumerService,String msg) {
         if (StringUtils.isNotEmpty(application)) {
-            String version = "2.6";
+            String version = null;
             try {
                 version = providerService.findVersionInApplication(application);
             } catch (Exception e) {
