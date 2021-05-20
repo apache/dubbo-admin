@@ -80,6 +80,12 @@ public class ApiDocsController {
     @Value("${dubbo.consumer.timeout:1000}")
     private int timeout;
 
+    @Value("${dubbo.api.docs.group:apiDocsGroup}")
+    private String apiDocsGroup;
+
+    @Value("${dubbo.api.docs.version:v1}")
+    private String apiDocsVersion;
+
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         binder.registerCustomEditor(String.class, new StringTrimmerEditor(true));
@@ -164,22 +170,15 @@ public class ApiDocsController {
     @ApiOperation(value = "Get basic information of all modules, excluding API parameter information", notes = "Get basic information of all modules, excluding API parameter information", httpMethod = "GET", produces = "application/json")
     @GetMapping("/apiModuleList")
     public String apiModuleList(ApiInfoRequest apiInfoRequest){
-        CallDubboServiceRequest req = new CallDubboServiceRequest();
-        req.setRegistryCenterUrl("dubbo://" + apiInfoRequest.getDubboIp() + ":" + apiInfoRequest.getDubboPort());
-        req.setInterfaceClassName("org.apache.dubbo.apidocs.core.providers.IDubboDocProvider");
-        req.setMethodName("apiModuleList");
-        req.setAsync(false);
+        CallDubboServiceRequest req = createCallApiDocsServiceRequest("apiModuleList", apiInfoRequest);
+
         return callDubboService(req, null);
     }
 
     @ApiOperation(value = "Get the parameter information of the specified API", notes = "Get the parameter information of the specified API", httpMethod = "GET", produces = "application/json")
     @GetMapping("/apiParamsResp")
     public String apiParamsResp(ApiInfoRequest apiInfoRequest){
-        CallDubboServiceRequest req = new CallDubboServiceRequest();
-        req.setRegistryCenterUrl("dubbo://" + apiInfoRequest.getDubboIp() + ":" + apiInfoRequest.getDubboPort());
-        req.setInterfaceClassName("org.apache.dubbo.apidocs.core.providers.IDubboDocProvider");
-        req.setMethodName("apiParamsResponseInfo");
-        req.setAsync(false);
+        CallDubboServiceRequest req = createCallApiDocsServiceRequest("apiParamsResponseInfo", apiInfoRequest);
 
         List<CallDubboServiceRequestInterfaceParam> methodparams = new ArrayList<>(1);
         CallDubboServiceRequestInterfaceParam param = new CallDubboServiceRequestInterfaceParam();
@@ -204,5 +203,18 @@ public class ApiDocsController {
             return true;
         }
         return false;
+    }
+
+    private CallDubboServiceRequest createCallApiDocsServiceRequest(String methodName, ApiInfoRequest apiInfoRequest) {
+        CallDubboServiceRequest req = new CallDubboServiceRequest();
+        req.setRegistryCenterUrl("dubbo://" + apiInfoRequest.getDubboIp() + ":" + apiInfoRequest.getDubboPort());
+        req.setMethodName(methodName);
+
+        req.setInterfaceClassName("org.apache.dubbo.apidocs.core.providers.IDubboDocProvider");
+        req.setAsync(false);
+        req.setVersion(apiDocsVersion);
+        req.setGroup(apiDocsGroup);
+
+        return req;
     }
 }
