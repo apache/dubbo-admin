@@ -21,7 +21,7 @@ import org.apache.dubbo.admin.AbstractSpringIntegrationTest;
 import org.apache.dubbo.admin.common.util.YamlParser;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
 import org.apache.dubbo.admin.model.store.RoutingRule;
-import org.apache.dubbo.admin.service.ProviderService;
+import org.apache.dubbo.admin.service.ConsumerService;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -52,7 +52,7 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
   private final String env = "whatever";
 
   @MockBean
-  private ProviderService providerService;
+  private ConsumerService consumerService;
 
   @After
   public void tearDown() throws Exception {
@@ -73,7 +73,7 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
     assertThat(responseEntity.getBody(), containsString("serviceName and app is Empty!"));
 
     dto.setApplication("application" + uuid);
-    when(providerService.findVersionInApplication(dto.getApplication())).thenReturn("2.6");
+    when(consumerService.findVersionInApplication(dto.getApplication())).thenReturn("2.6");
     responseEntity = restTemplate.postForEntity(
         url("/api/{env}/rules/route/condition"), dto, String.class, env
     );
@@ -100,7 +100,7 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
     assertThat(responseEntity.getStatusCode(), is(HttpStatus.CREATED));
 
     dto.setApplication(application);
-    when(providerService.findVersionInApplication(dto.getApplication())).thenReturn("2.7");
+    when(consumerService.findVersionInApplication(dto.getApplication())).thenReturn("2.7");
 
     responseEntity = restTemplate.postForEntity(
         url("/api/{env}/rules/route/condition"), dto, String.class, env
