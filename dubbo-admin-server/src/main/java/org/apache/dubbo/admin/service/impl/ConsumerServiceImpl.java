@@ -16,11 +16,13 @@
  */
 package org.apache.dubbo.admin.service.impl;
 
+import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.SyncUtils;
 import org.apache.dubbo.admin.model.domain.Consumer;
 import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
 import org.springframework.stereotype.Component;
 
@@ -78,4 +80,18 @@ public class ConsumerServiceImpl extends AbstractService implements ConsumerServ
         return SyncUtils.filterFromCategory(getRegistryCache(), filter);
     }
 
+    @Override
+    public String findVersionInApplication(String application) {
+        Map<String, String> filter = new HashMap<>();
+        filter.put(Constants.CATEGORY_KEY, Constants.CONSUMERS_CATEGORY);
+        filter.put(Constants.APPLICATION_KEY, application);
+        Map<String, URL> stringURLMap = SyncUtils.filterFromCategory(getRegistryCache(), filter);
+        if (stringURLMap == null || stringURLMap.isEmpty()) {
+            throw new ParamValidationException("there is no consumer for application: " + application);
+        }
+        String defaultVersion = "2.6";
+        URL url = stringURLMap.values().iterator().next();
+        String version = url.getParameter(Constants.SPECIFICATION_VERSION_KEY);
+        return StringUtils.isBlank(version) ? defaultVersion : version;
+    }
 }
