@@ -38,4 +38,11 @@ public interface ConsumerService {
      * query for all consumer addresses
      */
     List<Consumer> findByAddress(String consumerAddress);
+
+    /**
+     * query consumer application version.
+     * @param application application name.
+     * @return version.
+     */
+    String findVersionInApplication(String application);
 }

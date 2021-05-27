@@ -21,9 +21,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.dubbo.admin.AbstractSpringIntegrationTest;
 import org.apache.dubbo.admin.model.dto.AccessDTO;
-import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
 import org.apache.dubbo.admin.model.dto.ConditionRouteResultDTO;
-import org.apache.dubbo.admin.service.ProviderService;
+import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.RouteService;
 import org.junit.After;
 import org.junit.Test;
@@ -50,7 +49,7 @@ public class AccessesControllerTest extends AbstractSpringIntegrationTest {
     @MockBean
     private RouteService routeService;
     @MockBean
-    private ProviderService providerService;
+    private ConsumerService consumerService;
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -111,10 +110,10 @@ public class AccessesControllerTest extends AbstractSpringIntegrationTest {
         restTemplate.postForLocation(url("/api/{env}/rules/access"), accessDTO, env);
         // when application is present & dubbo's version is 2.6
         accessDTO.setApplication(application);
-        when(providerService.findVersionInApplication(application)).thenReturn("2.6");
+        when(consumerService.findVersionInApplication(application)).thenReturn("2.6");
         restTemplate.postForLocation(url("/api/{env}/rules/access"), accessDTO, env);
         // dubbo's version is 2.7
-        when(providerService.findVersionInApplication(application)).thenReturn("2.7");
+        when(consumerService.findVersionInApplication(application)).thenReturn("2.7");
         restTemplate.postForLocation(url("/api/{env}/rules/access"), accessDTO, env);
         // black white list is not null
         accessDTO.setBlacklist(new HashSet<>());
