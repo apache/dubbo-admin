@@ -27,7 +27,7 @@ import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
 import org.apache.dubbo.admin.model.dto.ConditionRouteResultDTO;
-import org.apache.dubbo.admin.service.ProviderService;
+import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.RouteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -47,12 +47,12 @@ import java.util.List;
 public class ConditionRoutesController {
 
     private final RouteService routeService;
-    private final ProviderService providerService;
+    private final ConsumerService consumerService;
 
     @Autowired
-    public ConditionRoutesController(RouteService routeService, ProviderService providerService) {
+    public ConditionRoutesController(RouteService routeService, ConsumerService consumerService) {
         this.routeService = routeService;
-        this.providerService = providerService;
+        this.consumerService = consumerService;
     }
 
     @RequestMapping(method = RequestMethod.POST)
@@ -65,7 +65,7 @@ public class ConditionRoutesController {
         if (StringUtils.isEmpty(serviceName) && StringUtils.isEmpty(app)) {
             throw new ParamValidationException("serviceName and app is Empty!");
         }
-        if (StringUtils.isNotEmpty(app) && providerService.findVersionInApplication(app).equals("2.6")) {
+        if (StringUtils.isNotEmpty(app) && consumerService.findVersionInApplication(app).equals("2.6")) {
             throw new VersionValidationException("dubbo 2.6 does not support application scope routing rule");
         }
         routeService.createConditionRoute(routeDTO, serviceVersion, serviceGroup);

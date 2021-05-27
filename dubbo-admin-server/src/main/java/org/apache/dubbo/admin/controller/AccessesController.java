@@ -23,7 +23,7 @@ import org.apache.dubbo.admin.common.exception.VersionValidationException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.AccessDTO;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
-import org.apache.dubbo.admin.service.ProviderService;
+import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.RouteService;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
@@ -50,12 +50,12 @@ public class AccessesController {
     private static final Logger logger = LoggerFactory.getLogger(AccessesController.class);
 
     private final RouteService routeService;
-    private final ProviderService providerService;
+    private final ConsumerService consumerService;
 
     @Autowired
-    public AccessesController(RouteService routeService, ProviderService providerService) {
+    public AccessesController(RouteService routeService, ConsumerService consumerService) {
         this.routeService = routeService;
-        this.providerService = providerService;
+        this.consumerService = consumerService;
     }
 
     @RequestMapping(method = RequestMethod.GET)
@@ -99,7 +99,7 @@ public class AccessesController {
             throw new ParamValidationException("Either Service or application is required.");
         }
         String application = accessDTO.getApplication();
-        if (StringUtils.isNotEmpty(application) && "2.6".equals(providerService.findVersionInApplication(application))) {
+        if (StringUtils.isNotEmpty(application) && "2.6".equals(consumerService.findVersionInApplication(application))) {
             throw new VersionValidationException("dubbo 2.6 does not support application scope blackwhite list config");
         }
         if (accessDTO.getBlacklist() == null && accessDTO.getWhitelist() == null) {
