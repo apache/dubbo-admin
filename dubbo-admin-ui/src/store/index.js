@@ -25,7 +25,8 @@ export const store = new Vuex.Store({
     appTitle: 'Dubbo Admin',
     area: null,
     serviceItems: null,
-    appItems: null
+    appItems: null,
+    consumerItems: null
   },
   mutations: {
     setArea (state, area) {
@@ -36,6 +37,9 @@ export const store = new Vuex.Store({
     },
     setAppItems (state, appItems) {
       state.appItems = appItems
+    },
+    setConsumerItems (state, consumerItems) {
+      state.consumerItems = consumerItems
     }
   },
   actions: {
@@ -65,6 +69,18 @@ export const store = new Vuex.Store({
             commit('setAppItems', appItems)
           }
         })
+    },
+    /**
+     * Load application items from consumer, put results into storage.
+     */
+    loadConsumerItems ({commit}) {
+      Vue.prototype.$axios.get('/consumers')
+        .then(response => {
+          if (response.status === 200) {
+            const consumerItems = response.data
+            commit('setConsumerItems', consumerItems)
+          }
+        })
     }
   },
   getters: {
@@ -81,6 +97,14 @@ export const store = new Vuex.Store({
      */
     getAppItems: (state) => (filter) => {
       return state.appItems.filter(e => {
+        return (e || '').toLowerCase().indexOf((filter || '').toLowerCase()) > -1
+      })
+    },
+    /**
+     * Get application item arrays with filter
+     */
+    getConsumerItems: (state) => (filter) => {
+      return state.consumerItems.filter(e => {
         return (e || '').toLowerCase().indexOf((filter || '').toLowerCase()) > -1
       })
     }
