@@ -21,10 +21,31 @@
       <v-flex lg12>
         <breadcrumb title="tagRule" :items="breads"></breadcrumb>
       </v-flex>
-      <v-flex xs12 >
-        <search id="serviceSearch" v-model="filter" :submit="submit" :label="$t('searchTagRule')"></search>
-      </v-flex>
     </v-layout>
+    <v-flex lg12>
+      <v-card flat color="transparent">
+        <v-card-text>
+          <v-form>
+            <v-layout row wrap>
+              <v-combobox
+                id="serviceSearch"
+                :loading="searchLoading"
+                :items="typeAhead"
+                :search-input.sync="input"
+                @keyup.enter="submit"
+                v-model="filter"
+                flat
+                append-icon=""
+                hide-no-data
+                :label="$t('searchTagRule')"
+              ></v-combobox>
+              <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
+
+            </v-layout>
+          </v-form>
+        </v-card-text>
+      </v-card>
+    </v-flex>
     <v-flex lg12>
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
@@ -117,6 +138,10 @@
       dialog: false,
       updateId: '',
       application: '',
+      searchLoading: false,
+      typeAhead: [],
+      input: null,
+      timerID: null,
       warn: {
         display: false,
         title: '',
@@ -170,6 +195,22 @@
             width: '115px'
           }
         ]
+      },
+      querySelections (v) {
+        if (this.timerID) {
+          clearTimeout(this.timerID)
+        }
+        // Simulated ajax query
+        this.timerID = setTimeout(() => {
+          if (v && v.length >= 4) {
+            this.searchLoading = true
+            this.typeAhead = this.$store.getters.getAppItems(v)
+            this.searchLoading = false
+            this.timerID = null
+          } else {
+            this.typeAhead = []
+          }
+        }, 500)
       },
       submit: function () {
         if (!this.filter) {
@@ -340,12 +381,16 @@
       }
     },
     watch: {
+      input (val) {
+        this.querySelections(val)
+      },
       area () {
         this.setHeaders()
       }
     },
     mounted: function () {
       this.setHeaders()
+      this.$store.dispatch('loadAppItems')
       this.ruleText = this.template
       let query = this.$route.query
       let filter = null
