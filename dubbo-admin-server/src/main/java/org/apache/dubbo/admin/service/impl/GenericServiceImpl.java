@@ -28,23 +28,9 @@ import org.apache.dubbo.rpc.service.GenericService;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 @Component
 public class GenericServiceImpl {
-
-    private static final int MAX_SERVICE_CACHE = 64;
-
-    private final Map<String, GenericService> serviceMap = Collections.synchronizedMap(
-            new LinkedHashMap<String, GenericService>() {
-                @Override
-                protected boolean removeEldestEntry(Map.Entry eldest) {
-                    return size() > MAX_SERVICE_CACHE;
-                }
-            });
-
     private ApplicationConfig applicationConfig;
     private final Registry registry;
 
@@ -55,6 +41,7 @@ public class GenericServiceImpl {
     @PostConstruct
     public void init() {
         RegistryConfig registryConfig = buildRegistryConfig(registry);
+
         applicationConfig = new ApplicationConfig();
         applicationConfig.setName("dubbo-admin");
         applicationConfig.setRegistry(registryConfig);
@@ -76,21 +63,24 @@ public class GenericServiceImpl {
     }
 
     public Object invoke(String service, String method, String[] parameterTypes, Object[] params) {
-        GenericService genericService = serviceMap.computeIfAbsent(service, key -> {
-            ReferenceConfig<GenericService> reference = new ReferenceConfig<>();
-            String group = Tool.getGroup(service);
-            String version = Tool.getVersion(service);
-            String intf = Tool.getInterface(service);
-            reference.setGeneric(true);
-            reference.setApplication(applicationConfig);
-            reference.setInterface(intf);
-            reference.setVersion(version);
-            reference.setGroup(group);
-            reference.setCheck(false);
-            return reference.get();
-        });
-        removeGenericSymbol(parameterTypes);
-        return genericService.$invoke(method, parameterTypes, params);
+
+        ReferenceConfig<GenericService> reference = new ReferenceConfig<>();
+        String group = Tool.getGroup(service);
+        String version = Tool.getVersion(service);
+        String intf = Tool.getInterface(service);
+        reference.setGeneric(true);
+        reference.setApplication(applicationConfig);
+        reference.setInterface(intf);
+        reference.setVersion(version);
+        reference.setGroup(group);
+
+        try {
+            removeGenericSymbol(parameterTypes);
+            GenericService genericService = reference.get();
+            return genericService.$invoke(method, parameterTypes, params);
+        } finally {
+            reference.destroy();
+        }
     }
 
     /**
