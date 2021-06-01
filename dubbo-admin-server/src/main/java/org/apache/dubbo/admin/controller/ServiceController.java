@@ -126,4 +126,10 @@ public class ServiceController {
     public Set<String> allApplications(@PathVariable String env) {
         return providerService.findApplications();
     }
+
+    @RequestMapping(value = "/consumers", method = RequestMethod.GET)
+    public Set<String> allConsumers(@PathVariable String env) {
+        List<Consumer> consumers = consumerService.findAll();
+        return consumers.stream().map(Consumer::getApplication).collect(Collectors.toSet());
+    }
 }
