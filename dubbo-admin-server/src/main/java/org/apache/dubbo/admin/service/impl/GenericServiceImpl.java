@@ -17,7 +17,9 @@
 
 package org.apache.dubbo.admin.service.impl;
 
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.Tool;
+import org.apache.dubbo.common.URL;
 import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.config.RegistryConfig;
@@ -38,13 +40,26 @@ public class GenericServiceImpl {
 
     @PostConstruct
     public void init() {
-        RegistryConfig registryConfig = new RegistryConfig();
-        registryConfig.setAddress(registry.getUrl().getProtocol() + "://" + registry.getUrl().getAddress());
-        registryConfig.setGroup(registry.getUrl().getParameter("group"));
+        RegistryConfig registryConfig = buildRegistryConfig(registry);
 
         applicationConfig = new ApplicationConfig();
         applicationConfig.setName("dubbo-admin");
         applicationConfig.setRegistry(registryConfig);
+    }
+
+    private RegistryConfig buildRegistryConfig(Registry registry) {
+        URL fromUrl = registry.getUrl();
+
+        RegistryConfig config = new RegistryConfig();
+        config.setGroup(fromUrl.getParameter("group"));
+
+        URL address = URL.valueOf(fromUrl.getProtocol() + "://" + fromUrl.getAddress());
+        if (fromUrl.hasParameter(Constants.NAMESPACE_KEY)) {
+            address = address.addParameter(Constants.NAMESPACE_KEY, fromUrl.getParameter(Constants.NAMESPACE_KEY));
+        }
+
+        config.setAddress(address.toString());
+        return config;
     }
 
     public Object invoke(String service, String method, String[] parameterTypes, Object[] params) {
@@ -73,7 +88,7 @@ public class GenericServiceImpl {
      *
      * @param parameterTypes
      */
-    private void removeGenericSymbol(String[] parameterTypes){
+    private void removeGenericSymbol(String[] parameterTypes) {
         for (int i = 0; i < parameterTypes.length; i++) {
             int index = parameterTypes[i].indexOf("<");
             if (index > -1) {
