@@ -213,7 +213,14 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         String config = dynamicConfiguration.getConfig(path);
         if (config != null) {
             OverrideDTO overrideDTO = YamlParser.loadObject(config, OverrideDTO.class);
-            return OverrideUtils.createFromOverride(overrideDTO);
+            DynamicConfigDTO dynamicConfigDTO = OverrideUtils.createFromOverride(overrideDTO);
+            if (dynamicConfigDTO != null) {
+                dynamicConfigDTO.setId(id);
+                if (overrideDTO.getScope().equals(Constants.SERVICE)) {
+                    ConvertUtil.detachIdToService(id, dynamicConfigDTO);
+                }
+            }
+            return dynamicConfigDTO;
         }
         return null;
     }
@@ -320,6 +327,10 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
                 for (OverrideConfig overrideConfig : configs) {
                     if (Constants.WEIGHT.equals(overrideConfig.getType())) {
                         WeightDTO weightDTO = OverrideUtils.configtoWeightDTO(overrideConfig, overrideDTO.getScope(), id);
+                        weightDTO.setId(id);
+                        if (overrideDTO.getScope().equals(Constants.SERVICE)) {
+                            ConvertUtil.detachIdToService(id, weightDTO);
+                        }
                         return weightDTO;
                     }
                 }
@@ -426,6 +437,10 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
                 for (OverrideConfig overrideConfig : configs) {
                     if (Constants.BALANCING.equals(overrideConfig.getType())) {
                         BalancingDTO balancingDTO = OverrideUtils.configtoBalancingDTO(overrideConfig, overrideDTO.getScope(), id);
+                        balancingDTO.setId(id);
+                        if (overrideDTO.getScope().equals(Constants.SERVICE)) {
+                            ConvertUtil.detachIdToService(id, balancingDTO);
+                        }
                         return balancingDTO;
                     }
                 }

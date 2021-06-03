@@ -50,22 +50,12 @@ public class ConvertUtil {
     }
 
     public static String getIdFromDTO(BaseDTO baseDTO) {
-        String id;
-        if (StringUtils.isNotEmpty(baseDTO.getApplication())) {
-            id = baseDTO.getApplication();
-        } else {
-            id = baseDTO.getService();
-        }
-        return id;
-    }
-
-    public static String getIdFromDTO(BaseDTO baseDTO, String serviceVersion, String serviceGroup) {
         if (StringUtils.isNotEmpty(baseDTO.getApplication())) {
             return baseDTO.getApplication();
         }
         // id format: "${class}:${version}:${group}"
-        return new StringBuilder(baseDTO.getService()).append(COLON).append(null2EmptyString(serviceVersion))
-                .append(COLON).append(null2EmptyString(serviceGroup)).toString();
+        return new StringBuilder(baseDTO.getService()).append(COLON).append(null2EmptyString(baseDTO.getServiceVersion()))
+                .append(COLON).append(null2EmptyString(baseDTO.getServiceGroup())).toString();
     }
 
     /**
@@ -78,6 +68,17 @@ public class ConvertUtil {
             return id.split(COLON);
         } else {
             return new String[]{id};
+        }
+    }
+
+    public static void detachIdToService(String id, BaseDTO baseDTO) {
+        String[] detachResult = detachId(id);
+        baseDTO.setService(detachResult[0]);
+        if (detachResult.length > 1) {
+            baseDTO.setServiceVersion(detachResult[1]);
+        }
+        if (detachResult.length > 2) {
+            baseDTO.setServiceGroup(detachResult[2]);
         }
     }
 
