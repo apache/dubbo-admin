@@ -353,7 +353,7 @@ public class RouteUtils {
 
     public static ConditionRouteDTO createConditionRouteFromRule(RoutingRule routingRule) {
         ConditionRouteDTO conditionRouteDTO = new ConditionRouteDTO();
-        if (routingRule.getScope().equals(Constants.SERVICE)) {
+        if (Constants.SERVICE.equals(routingRule.getScope())) {
             conditionRouteDTO.setService(routingRule.getKey());
         } else {
             conditionRouteDTO.setApplication(routingRule.getKey());
