@@ -23,7 +23,7 @@ import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.common.exception.VersionValidationException;
-import org.apache.dubbo.admin.common.util.Constants;
+import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.model.dto.BalancingDTO;
 import org.apache.dubbo.admin.service.OverrideService;
 import org.apache.dubbo.admin.service.ProviderService;
@@ -73,7 +73,6 @@ public class LoadBalanceController {
         if (id == null) {
             throw new ParamValidationException("Unknown ID!");
         }
-        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         BalancingDTO balancing = overrideService.findBalance(id);
         if (balancing == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -86,7 +85,9 @@ public class LoadBalanceController {
     @RequestMapping(method = RequestMethod.GET)
     public List<BalancingDTO> searchLoadbalances(@RequestParam(required = false) String service,
                                                  @RequestParam(required = false) String application,
-                                                 @PathVariable String env) {
+                                                 @PathVariable String env,
+                                                 @RequestParam(required = false) String serviceVersion,
+                                                 @RequestParam(required = false) String serviceGroup) {
 
         if (StringUtils.isBlank(service) && StringUtils.isBlank(application)) {
             throw new ParamValidationException("Either service or application is required");
@@ -95,7 +96,12 @@ public class LoadBalanceController {
         if (StringUtils.isNotBlank(application)) {
             balancingDTO = overrideService.findBalance(application);
         } else {
-            balancingDTO = overrideService.findBalance(service);
+            BalancingDTO dto = new BalancingDTO();
+            dto.setService(service);
+            dto.setServiceVersion(serviceVersion);
+            dto.setServiceGroup(serviceGroup);
+            String id = ConvertUtil.getIdFromDTO(dto);
+            balancingDTO = overrideService.findBalance(id);
         }
         List<BalancingDTO> balancingDTOS = new ArrayList<>();
         if (balancingDTO != null) {
@@ -106,7 +112,6 @@ public class LoadBalanceController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public BalancingDTO detailLoadBalance(@PathVariable String id, @PathVariable String env) throws ParamValidationException {
-        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         BalancingDTO balancingDTO = overrideService.findBalance(id);
         if (balancingDTO == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -119,7 +124,6 @@ public class LoadBalanceController {
         if (id == null) {
             throw new IllegalArgumentException("Argument of id is null!");
         }
-        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         overrideService.deleteBalance(id);
         return true;
     }

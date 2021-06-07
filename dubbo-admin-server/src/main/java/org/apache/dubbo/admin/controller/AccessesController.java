@@ -20,7 +20,7 @@ import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.common.exception.VersionValidationException;
-import org.apache.dubbo.admin.common.util.Constants;
+import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.model.dto.AccessDTO;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
 import org.apache.dubbo.admin.service.ConsumerService;
@@ -61,7 +61,9 @@ public class AccessesController {
     @RequestMapping(method = RequestMethod.GET)
     public List<AccessDTO> searchAccess(@RequestParam(required = false) String service,
                                         @RequestParam(required = false) String application,
-                                        @PathVariable String env) {
+                                        @PathVariable String env,
+                                        @RequestParam(required = false) String serviceVersion,
+                                        @RequestParam(required = false) String serviceGroup) {
         if (StringUtils.isBlank(service) && StringUtils.isBlank(application)) {
             throw new ParamValidationException("Either service or application is required");
         }
@@ -70,7 +72,12 @@ public class AccessesController {
         if (StringUtils.isNotBlank(application)) {
             accessDTO = routeService.findAccess(application);
         } else {
-            accessDTO = routeService.findAccess(service);
+            AccessDTO dto = new AccessDTO();
+            dto.setService(service);
+            dto.setServiceVersion(serviceVersion);
+            dto.setServiceGroup(serviceGroup);
+            String id = ConvertUtil.getIdFromDTO(dto);
+            accessDTO = routeService.findAccess(id);
         }
         if (accessDTO != null) {
             accessDTO.setEnabled(true);
@@ -81,20 +88,22 @@ public class AccessesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public AccessDTO detailAccess(@PathVariable String id, @PathVariable String env) {
-        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         AccessDTO accessDTO = routeService.findAccess(id);
+        if (accessDTO == null) {
+            throw new ResourceNotFoundException("Unknown ID!");
+        }
         return accessDTO;
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
-    public void deleteAccess(@PathVariable String id, @PathVariable String env) {
-        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
+    public boolean deleteAccess(@PathVariable String id, @PathVariable String env) {
         routeService.deleteAccess(id);
+        return true;
     }
 
     @RequestMapping(method = RequestMethod.POST)
     @ResponseStatus(HttpStatus.CREATED)
-    public void createAccess(@RequestBody AccessDTO accessDTO, @PathVariable String env) {
+    public boolean createAccess(@RequestBody AccessDTO accessDTO, @PathVariable String env) {
         if (StringUtils.isBlank(accessDTO.getService()) && StringUtils.isBlank(accessDTO.getApplication())) {
             throw new ParamValidationException("Either Service or application is required.");
         }
@@ -106,16 +115,16 @@ public class AccessesController {
             throw new ParamValidationException("One of Blacklist/Whitelist is required.");
         }
         routeService.createAccess(accessDTO);
+        return true;
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
-    public void updateAccess(@PathVariable String id, @RequestBody AccessDTO accessDTO, @PathVariable String env) {
-
-        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
+    public boolean updateAccess(@PathVariable String id, @RequestBody AccessDTO accessDTO, @PathVariable String env) {
         ConditionRouteDTO route = routeService.findConditionRoute(id);
         if (Objects.isNull(route)) {
             throw new ResourceNotFoundException("Unknown ID!");
         }
         routeService.updateAccess(accessDTO);
+        return true;
     }
 }

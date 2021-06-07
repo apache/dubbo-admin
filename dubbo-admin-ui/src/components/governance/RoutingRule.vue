@@ -54,13 +54,13 @@
                   </v-list>
                 </v-menu>
                 <v-text-field
-                  v-show="selected == 0"
+                  v-show="selected === 0"
                   label="Version"
                   :hint="$t('dataIdVersionHint')"
                   v-model="serviceVersion4Search"
                 ></v-text-field>
                 <v-text-field
-                  v-show="selected == 0"
+                  v-show="selected === 0"
                   label="Group"
                   :hint="$t('dataIdGroupHint')"
                   v-model="serviceGroup4Search"
@@ -81,7 +81,7 @@
           <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">{{$t('create')}}</v-btn>
         </v-toolbar>
 
-        <v-card-text class="pa-0" v-show="selected == 0">
+        <v-card-text class="pa-0" v-show="selected === 0">
           <v-data-table
             :headers="serviceHeaders"
             :items="serviceRoutingRules"
@@ -91,6 +91,7 @@
             <template slot="items" slot-scope="props">
               <td class="text-xs-left">{{ props.item.service }}</td>
               <td class="text-xs-left">{{ props.item.serviceGroup }}</td>
+              <td class="text-xs-left">{{ props.item.serviceVersion }}</td>
               <td class="text-xs-left">{{ props.item.enabled }}</td>
               <td class="text-xs-center px-0">
                 <v-tooltip bottom v-for="op in operations" :key="op.id">
@@ -103,7 +104,7 @@
             </template>
           </v-data-table>
         </v-card-text>
-        <v-card-text class="pa-0" v-show="selected == 1">
+        <v-card-text class="pa-0" v-show="selected === 1">
           <v-data-table
             :headers="appHeaders"
             :items="appRoutingRules"
@@ -134,21 +135,21 @@
         </v-card-title>
         <v-card-text >
           <v-layout wrap>
-            <v-flex xs12 sm6 md4>
+            <v-flex xs24 sm12 md8>
               <v-text-field
                 label="Service class"
                 :hint="$t('dataIdClassHint')"
                 v-model="service"
               ></v-text-field>
             </v-flex>
-            <v-flex xs12 sm6 md4>
+            <v-flex xs6 sm3 md2>
               <v-text-field
                 label="Version"
                 :hint="$t('dataIdVersionHint')"
                 v-model="serviceVersion"
               ></v-text-field>
             </v-flex>
-            <v-flex xs12 sm6 md4>
+            <v-flex xs6 sm3 md2>
               <v-text-field
                 label="Group"
                 :hint="$t('dataIdGroupHint')"
@@ -287,6 +288,12 @@ export default {
 
         },
         {
+          text: this.$t('version'),
+          value: 'group',
+          align: 'left'
+
+        },
+        {
           text: this.$t('enabled'),
           value: 'enabled',
           sortable: false
@@ -384,12 +391,14 @@ export default {
       const serviceVersion = this.serviceVersion == null ? '' : this.serviceVersion
       const serviceGroup = this.serviceGroup == null ? '' : this.serviceGroup
       rule.application = this.application
+      rule.serviceVersion = serviceVersion
+      rule.serviceGroup = serviceGroup
       if (this.updateId !== '') {
         if (this.updateId === 'close') {
           this.closeDialog()
         } else {
           rule.id = this.updateId
-          this.$axios.put('/rules/route/condition/' + rule.id + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup, rule)
+          this.$axios.put('/rules/route/condition/' + rule.id, rule)
             .then(response => {
               if (response.status === 200) {
                 if (vm.service) {
@@ -407,7 +416,7 @@ export default {
             })
         }
       } else {
-        this.$axios.post('/rules/route/condition/' + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup, rule)
+        this.$axios.post('/rules/route/condition/', rule)
           .then(response => {
             if (response.status === 201) {
               if (vm.service) {
@@ -429,22 +438,13 @@ export default {
       }
     },
     itemOperation: function (icon, item) {
-      let itemId = ''
-      if (this.selected === 0) {
-        itemId = item.service
-      } else {
-        itemId = item.application
-      }
-      const oldItemId = itemId
-      if (itemId.includes('/')) {
-        itemId = itemId.replace('/', '*')
-      }
+      const itemId = item.id
       const serviceVersion = item.serviceVersion == null ? '' : item.serviceVersion
       const serviceGroup = item.serviceGroup == null ? '' : item.serviceGroup
       const scope = item.scope == null ? '' : item.scope
       switch (icon) {
         case 'visibility':
-          this.$axios.get('/rules/route/condition/' + itemId + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup + '&scope=' + scope)
+          this.$axios.get('/rules/route/condition/' + itemId)
             .then(response => {
               const conditionRoute = response.data
               this.serviceVersion = conditionRoute.serviceVersion
@@ -458,7 +458,7 @@ export default {
             })
           break
         case 'edit':
-          this.$axios.get('/rules/route/condition/' + itemId + '?serviceVersion=' + serviceVersion + '&serviceGroup=' + serviceGroup + '&scope=' + scope)
+          this.$axios.get('/rules/route/condition/' + itemId)
             .then(response => {
               const conditionRoute = response.data
               this.serviceVersion = conditionRoute.serviceVersion
@@ -472,7 +472,7 @@ export default {
             })
           break
         case 'block':
-          this.openWarn(' Are you sure to block Routing Rule', 'service: ' + oldItemId)
+          this.openWarn(' Are you sure to block Routing Rule', 'service: ' + itemId)
           this.warnStatus.operation = 'disable'
           this.warnStatus.id = itemId
           this.warnStatus.serviceVersion = serviceVersion
@@ -480,7 +480,7 @@ export default {
           this.warnStatus.scope = scope
           break
         case 'check_circle_outline':
-          this.openWarn(' Are you sure to enable Routing Rule', 'service: ' + oldItemId)
+          this.openWarn(' Are you sure to enable Routing Rule', 'service: ' + itemId)
           this.warnStatus.operation = 'enable'
           this.warnStatus.id = itemId
           this.warnStatus.serviceVersion = serviceVersion
@@ -488,7 +488,7 @@ export default {
           this.warnStatus.scope = scope
           break
         case 'delete':
-          this.openWarn('warnDeleteRouteRule', 'service: ' + oldItemId)
+          this.openWarn('warnDeleteRouteRule', 'service: ' + itemId)
           this.warnStatus.operation = 'delete'
           this.warnStatus.id = itemId
           this.warnStatus.serviceVersion = serviceVersion

@@ -20,8 +20,9 @@ package org.apache.dubbo.admin.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.dubbo.admin.AbstractSpringIntegrationTest;
+import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.model.dto.AccessDTO;
-import org.apache.dubbo.admin.model.dto.ConditionRouteResultDTO;
+import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
 import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.RouteService;
 import org.junit.After;
@@ -79,7 +80,10 @@ public class AccessesControllerTest extends AbstractSpringIntegrationTest {
 
         // when service is present
         String service = "serviceName";
-        when(routeService.findAccess(service)).thenReturn(accessDTO);
+        AccessDTO dto = new AccessDTO();
+        dto.setService(service);
+        String id = ConvertUtil.getIdFromDTO(dto);
+        when(routeService.findAccess(id)).thenReturn(accessDTO);
         response = restTemplate.getForEntity(url("/api/{env}/rules/access?service={service}"), String.class, env, service);
         exceptResponseBody = objectMapper.writeValueAsString(Collections.singletonList(accessDTO));
         assertEquals(exceptResponseBody, response.getBody());
@@ -130,7 +134,7 @@ public class AccessesControllerTest extends AbstractSpringIntegrationTest {
         restTemplate.put(url("/api/{env}/rules/access/{id}"), accessDTO, env, id);
         verify(routeService).findConditionRoute(id);
         //
-        ConditionRouteResultDTO conditionRouteDTO = mock(ConditionRouteResultDTO.class);
+        ConditionRouteDTO conditionRouteDTO = mock(ConditionRouteDTO.class);
         when(routeService.findConditionRoute(id)).thenReturn(conditionRouteDTO);
         restTemplate.put(url("/api/{env}/rules/access/{id}"), accessDTO, env, id);
         verify(routeService).updateAccess(any(AccessDTO.class));

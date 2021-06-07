@@ -23,7 +23,7 @@ import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.common.exception.VersionValidationException;
-import org.apache.dubbo.admin.common.util.Constants;
+import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.model.dto.DynamicConfigDTO;
 import org.apache.dubbo.admin.service.OverrideService;
 import org.apache.dubbo.admin.service.ProviderService;
@@ -70,7 +70,6 @@ public class OverridesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
     public boolean updateOverride(@PathVariable String id, @RequestBody DynamicConfigDTO overrideDTO, @PathVariable String env) {
-        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         DynamicConfigDTO old = overrideService.findOverride(id);
         if (old == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -82,11 +81,18 @@ public class OverridesController {
     @RequestMapping(method = RequestMethod.GET)
     public List<DynamicConfigDTO> searchOverride(@RequestParam(required = false) String service,
                                                  @RequestParam(required = false) String application,
-                                                 @PathVariable String env) {
-        DynamicConfigDTO override = null;
+                                                 @PathVariable String env,
+                                                 @RequestParam(required = false) String serviceVersion,
+                                                 @RequestParam(required = false) String serviceGroup) {
+        DynamicConfigDTO override;
         List<DynamicConfigDTO> result = new ArrayList<>();
         if (StringUtils.isNotBlank(service)) {
-            override = overrideService.findOverride(service);
+            DynamicConfigDTO configDTO = new DynamicConfigDTO();
+            configDTO.setService(service);
+            configDTO.setServiceVersion(serviceVersion);
+            configDTO.setServiceGroup(serviceGroup);
+            String id = ConvertUtil.getIdFromDTO(configDTO);
+            override = overrideService.findOverride(id);
         } else if(StringUtils.isNotBlank(application)){
             override = overrideService.findOverride(application);
         } else {
@@ -100,34 +106,27 @@ public class OverridesController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public DynamicConfigDTO detailOverride(@PathVariable String id, @PathVariable String env) {
-        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         DynamicConfigDTO override = overrideService.findOverride(id);
         if (override == null) {
             throw new ResourceNotFoundException("Unknown ID!");
         }
-
         return override;
     }
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteOverride(@PathVariable String id, @PathVariable String env) {
-        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         overrideService.deleteOverride(id);
         return true;
     }
 
     @RequestMapping(value = "/enable/{id}", method = RequestMethod.PUT)
     public boolean enableRoute(@PathVariable String id, @PathVariable String env) {
-
-        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         overrideService.enableOverride(id);
         return true;
     }
 
     @RequestMapping(value = "/disable/{id}", method = RequestMethod.PUT)
     public boolean disableRoute(@PathVariable String id, @PathVariable String env) {
-        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
-
         overrideService.disableOverride(id);
         return true;
     }

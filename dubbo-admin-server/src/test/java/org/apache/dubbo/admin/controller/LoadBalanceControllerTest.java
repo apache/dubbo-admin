@@ -19,6 +19,7 @@ package org.apache.dubbo.admin.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.dubbo.admin.AbstractSpringIntegrationTest;
+import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.model.dto.BalancingDTO;
 import org.apache.dubbo.admin.service.OverrideService;
 import org.apache.dubbo.admin.service.ProviderService;
@@ -111,7 +112,10 @@ public class LoadBalanceControllerTest extends AbstractSpringIntegrationTest {
         // service is valid
         response = restTemplate.getForEntity(url("/api/{env}/rules/balancing?service={service}&application={application}"), String.class, env, service, null);
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(overrideService).findBalance(service);
+        BalancingDTO dto = new BalancingDTO();
+        dto.setService(service);
+        String id = ConvertUtil.getIdFromDTO(dto);
+        verify(overrideService).findBalance(id);
         // application is valid
         response = restTemplate.getForEntity(url("/api/{env}/rules/balancing?service={service}&application={application}"), String.class, env, null, application);
         assertEquals(HttpStatus.OK, response.getStatusCode());

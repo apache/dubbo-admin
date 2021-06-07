@@ -142,7 +142,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         }
 
         //for 2.6
-        if (overrideDTO.getScope().equals(Constants.SERVICE)) {
+        if (Constants.SERVICE.equals(overrideDTO.getScope())) {
             List<Override> overrides = convertDTOtoOldOverride(old);
             for (Override o : overrides) {
                 registry.unregister(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
@@ -166,7 +166,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         dynamicConfiguration.setConfig(path, YamlParser.dumpObject(override));
 
         //2.6
-        if (override.getScope().equals(Constants.SERVICE)) {
+        if (Constants.SERVICE.equals(override.getScope())) {
             List<Override> overrides = convertDTOtoOldOverride(old);
             for (Override o : overrides) {
                 o.setEnabled(false);
@@ -193,7 +193,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         dynamicConfiguration.setConfig(path, YamlParser.dumpObject(override));
 
         //for 2.6
-        if (override.getScope().equals(Constants.SERVICE)) {
+        if (Constants.SERVICE.equals(override.getScope())) {
             List<Override> overrides = convertDTOtoOldOverride(old);
             for (Override o : overrides) {
                 o.setEnabled(true);
@@ -213,7 +213,14 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         String config = dynamicConfiguration.getConfig(path);
         if (config != null) {
             OverrideDTO overrideDTO = YamlParser.loadObject(config, OverrideDTO.class);
-            return OverrideUtils.createFromOverride(overrideDTO);
+            DynamicConfigDTO dynamicConfigDTO = OverrideUtils.createFromOverride(overrideDTO);
+            if (dynamicConfigDTO != null) {
+                dynamicConfigDTO.setId(id);
+                if (Constants.SERVICE.equals(overrideDTO.getScope())) {
+                    ConvertUtil.detachIdToService(id, dynamicConfigDTO);
+                }
+            }
+            return dynamicConfigDTO;
         }
         return null;
     }
@@ -229,7 +236,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO));
 
         //for 2.6
-        if (scope.equals(Constants.SERVICE)) {
+        if (Constants.SERVICE.equals(scope)) {
             registerWeight(weightDTO);
         }
 
@@ -248,7 +255,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             if (configs != null && configs.size() > 0) {
                 for (OverrideConfig overrideConfig : configs) {
                     if (Constants.WEIGHT.equals(overrideConfig.getType())) {
-                        if (overrideDTO.getScope().equals(Constants.SERVICE)) {
+                        if (Constants.SERVICE.equals(overrideDTO.getScope())) {
                             oldWeight = OverrideUtils.configtoWeightDTO(overrideConfig, scope, id);
                         }
                         int index = configs.indexOf(overrideConfig);
@@ -285,7 +292,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             if (configs != null) {
                 for (OverrideConfig overrideConfig : configs) {
                     if (Constants.WEIGHT.equals(overrideConfig.getType())) {
-                        if (overrideDTO.getScope().equals(Constants.SERVICE)) {
+                        if (Constants.SERVICE.equals(overrideDTO.getScope())) {
                             oldConfig = overrideConfig;
                         }
                         configs.remove(overrideConfig);
@@ -320,6 +327,10 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
                 for (OverrideConfig overrideConfig : configs) {
                     if (Constants.WEIGHT.equals(overrideConfig.getType())) {
                         WeightDTO weightDTO = OverrideUtils.configtoWeightDTO(overrideConfig, overrideDTO.getScope(), id);
+                        weightDTO.setId(id);
+                        if (Constants.SERVICE.equals(overrideDTO.getScope())) {
+                            ConvertUtil.detachIdToService(id, weightDTO);
+                        }
                         return weightDTO;
                     }
                 }
@@ -340,7 +351,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
 
         //for 2.6
 
-        if (scope.equals(Constants.SERVICE)) {
+        if (Constants.SERVICE.equals(scope)) {
             registerBalancing(balancingDTO);
         }
     }
@@ -358,7 +369,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             if (configs != null && configs.size() > 0) {
                 for (OverrideConfig overrideConfig : configs) {
                     if (Constants.BALANCING.equals(overrideConfig.getType())) {
-                        if (overrideDTO.getScope().equals(Constants.SERVICE)) {
+                        if (Constants.SERVICE.equals(overrideDTO.getScope())) {
                             oldBalancing = OverrideUtils.configtoBalancingDTO(overrideConfig, Constants.SERVICE, overrideDTO.getKey());
                         }
                         int index = configs.indexOf(overrideConfig);
@@ -393,7 +404,7 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
             if (configs != null) {
                 for (OverrideConfig overrideConfig : configs) {
                     if (Constants.BALANCING.equals(overrideConfig.getType())) {
-                        if (overrideDTO.getScope().equals(Constants.SERVICE)) {
+                        if (Constants.SERVICE.equals(overrideDTO.getScope())) {
                             oldConfig = overrideConfig;
                         }
                         configs.remove(overrideConfig);
@@ -426,6 +437,10 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
                 for (OverrideConfig overrideConfig : configs) {
                     if (Constants.BALANCING.equals(overrideConfig.getType())) {
                         BalancingDTO balancingDTO = OverrideUtils.configtoBalancingDTO(overrideConfig, overrideDTO.getScope(), id);
+                        balancingDTO.setId(id);
+                        if (Constants.SERVICE.equals(overrideDTO.getScope())) {
+                            ConvertUtil.detachIdToService(id, balancingDTO);
+                        }
                         return balancingDTO;
                     }
                 }

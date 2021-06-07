@@ -23,7 +23,7 @@ import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.common.exception.VersionValidationException;
-import org.apache.dubbo.admin.common.util.Constants;
+import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.model.dto.WeightDTO;
 import org.apache.dubbo.admin.service.OverrideService;
 import org.apache.dubbo.admin.service.ProviderService;
@@ -72,7 +72,6 @@ public class WeightController {
         if (id == null) {
             throw new ParamValidationException("Unknown ID!");
         }
-        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         WeightDTO weight = overrideService.findWeight(id);
         if (weight == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -84,7 +83,9 @@ public class WeightController {
     @RequestMapping(method = RequestMethod.GET)
     public List<WeightDTO> searchWeight(@RequestParam(required = false) String service,
                                         @RequestParam(required = false) String application,
-                                        @PathVariable String env) {
+                                        @PathVariable String env,
+                                        @RequestParam(required = false) String serviceVersion,
+                                        @RequestParam(required = false) String serviceGroup) {
         if (StringUtils.isBlank(service) && StringUtils.isBlank(application)) {
             throw new ParamValidationException("Either service or application is required");
         }
@@ -92,7 +93,12 @@ public class WeightController {
         if (StringUtils.isNotBlank(application)) {
             weightDTO = overrideService.findWeight(application);
         } else {
-            weightDTO = overrideService.findWeight(service);
+            WeightDTO dto = new WeightDTO();
+            dto.setService(service);
+            dto.setServiceVersion(serviceVersion);
+            dto.setServiceGroup(serviceGroup);
+            String id = ConvertUtil.getIdFromDTO(dto);
+            weightDTO = overrideService.findWeight(id);
         }
         List<WeightDTO> weightDTOS = new ArrayList<>();
         if (weightDTO != null) {
@@ -104,7 +110,6 @@ public class WeightController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.GET)
     public WeightDTO detailWeight(@PathVariable String id, @PathVariable String env) {
-        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         WeightDTO weightDTO = overrideService.findWeight(id);
         if (weightDTO == null) {
             throw new ResourceNotFoundException("Unknown ID!");
@@ -114,7 +119,6 @@ public class WeightController {
 
     @RequestMapping(value = "/{id}", method = RequestMethod.DELETE)
     public boolean deleteWeight(@PathVariable String id, @PathVariable String env) {
-        id = id.replace(Constants.ANY_VALUE, Constants.PATH_SEPARATOR);
         overrideService.deleteWeight(id);
         return true;
     }

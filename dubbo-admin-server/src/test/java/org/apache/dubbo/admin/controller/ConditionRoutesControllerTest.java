@@ -18,6 +18,7 @@
 package org.apache.dubbo.admin.controller;
 
 import org.apache.dubbo.admin.AbstractSpringIntegrationTest;
+import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.common.util.YamlParser;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
 import org.apache.dubbo.admin.model.store.RoutingRule;
@@ -130,9 +131,10 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
     dto.setConditions(newConditions);
     dto.setService(service);
 
+    String id = ConvertUtil.getIdFromDTO(dto);
     ResponseEntity<String> responseEntity = restTemplate.exchange(
-        url("/api/{env}/rules/route/condition/{service}"), HttpMethod.PUT,
-        new HttpEntity<>(dto, null), String.class, env, service
+        url("/api/{env}/rules/route/condition/{id}"), HttpMethod.PUT,
+        new HttpEntity<>(dto, null), String.class, env, id
     );
     assertThat(responseEntity.getStatusCode(), is(HttpStatus.OK));
 
@@ -191,9 +193,12 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
 
     assertNotNull("zk path should not be null before deleting", zkClient.checkExists().forPath(path));
 
+    ConditionRouteDTO dto = new ConditionRouteDTO();
+    dto.setService(service);
+    String id = ConvertUtil.getIdFromDTO(dto);
     ResponseEntity<String> responseEntity = restTemplate.exchange(
-            url("/api/{env}/rules/route/condition/{service}" + "?scope=service"), HttpMethod.DELETE,
-            null, String.class, env, service
+            url("/api/{env}/rules/route/condition/{id}" + "?scope=service"), HttpMethod.DELETE,
+            null, String.class, env, id
     );
     assertThat(responseEntity.getStatusCode(), is(HttpStatus.OK));
 
@@ -251,8 +256,11 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
     zkClient.create().creatingParentContainersIfNeeded().forPath(path);
     zkClient.setData().forPath(path, content.getBytes());
 
+    ConditionRouteDTO dto = new ConditionRouteDTO();
+    dto.setService(service);
+    String id = ConvertUtil.getIdFromDTO(dto);
     ResponseEntity<ConditionRouteDTO> responseEntity = restTemplate.getForEntity(
-        url("/api/{env}/rules/route/condition/{id}" + "?scope=service"), ConditionRouteDTO.class, env, service
+        url("/api/{env}/rules/route/condition/{id}" + "?scope=service"), ConditionRouteDTO.class, env, id
     );
     assertThat(responseEntity.getStatusCode(), is(HttpStatus.OK));
 
@@ -310,7 +318,10 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
     RoutingRule rule = YamlParser.loadObject(updatedConfig, RoutingRule.class);
     assertFalse(rule.isEnabled());
 
-    restTemplate.put(url("/api/{env}/rules/route/condition/enable/{id}" + "?scope=service"), null, env, service);
+    ConditionRouteDTO dto = new ConditionRouteDTO();
+    dto.setService(service);
+    String id = ConvertUtil.getIdFromDTO(dto);
+    restTemplate.put(url("/api/{env}/rules/route/condition/enable/{id}" + "?scope=service"), null, env, id);
 
     bytes = zkClient.getData().forPath(path);
     updatedConfig = new String(bytes);
@@ -368,7 +379,10 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
     RoutingRule rule = YamlParser.loadObject(updatedConfig, RoutingRule.class);
     assertTrue(rule.isEnabled());
 
-    restTemplate.put(url("/api/{env}/rules/route/condition/disable/{id}" + "?scope=service"), null, env, service);
+    ConditionRouteDTO dto = new ConditionRouteDTO();
+    dto.setService(service);
+    String id = ConvertUtil.getIdFromDTO(dto);
+    restTemplate.put(url("/api/{env}/rules/route/condition/disable/{id}" + "?scope=service"), null, env, id);
 
     bytes = zkClient.getData().forPath(path);
     updatedConfig = new String(bytes);
@@ -397,7 +411,10 @@ public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest
     RoutingRule rule = YamlParser.loadObject(updatedConfig, RoutingRule.class);
     assertTrue(rule.isEnabled());
 
-    restTemplate.put(url("/api/{env}/rules/route/condition/disable/{id}" + "?scope=application"), null, env, application);
+    ConditionRouteDTO dto = new ConditionRouteDTO();
+    dto.setApplication(application);
+    String id = ConvertUtil.getIdFromDTO(dto);
+    restTemplate.put(url("/api/{env}/rules/route/condition/disable/{id}" + "?scope=application"), null, env, id);
 
     bytes = zkClient.getData().forPath(path);
     updatedConfig = new String(bytes);

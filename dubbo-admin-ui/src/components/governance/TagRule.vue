@@ -332,6 +332,8 @@
         delete tagRoute.application
         delete tagRoute.service
         delete tagRoute.priority
+        delete tagRoute.serviceVersion
+        delete tagRoute.serviceGroup
         this.ruleText = yaml.safeDump(tagRoute)
         this.readonly = readonly
         this.dialog = true
