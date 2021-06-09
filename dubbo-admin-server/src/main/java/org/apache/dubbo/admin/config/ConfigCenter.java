@@ -56,24 +56,6 @@ public class ConfigCenter {
     @Value("${admin.metadata-report.cluster:false}")
     private boolean cluster;
 
-    @Value("${admin.registry.group:dubbo}")
-    private String registryGroup;
-
-    @Value("${admin.config-center.group:dubbo}")
-    private String configCenterGroup;
-
-    @Value("${admin.metadata-report.group:dubbo}")
-    private String metadataGroup;
-
-    @Value("${admin.registry.namespace:dubbo}")
-    private String registryNameSpace;
-
-    @Value("${admin.config-center.namespace:dubbo}")
-    private String configCenterGroupNameSpace;
-
-    @Value("${admin.metadata-report.namespace:dubbo}")
-    private String metadataGroupNameSpace;
-
     @Value("${admin.config-center.username:}")
     private String username;
     @Value("${admin.config-center.password:}")
@@ -95,7 +77,7 @@ public class ConfigCenter {
         GovernanceConfiguration dynamicConfiguration = null;
 
         if (StringUtils.isNotEmpty(configCenter)) {
-            configCenterUrl = formUrl(configCenter, configCenterGroup, configCenterGroupNameSpace, username, password);
+            configCenterUrl = formUrl(configCenter, username, password);
             dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(configCenterUrl.getProtocol());
             dynamicConfiguration.setUrl(configCenterUrl);
             dynamicConfiguration.init();
@@ -105,16 +87,16 @@ public class ConfigCenter {
                 Arrays.stream(config.split("\n")).forEach( s -> {
                     if(s.startsWith(Constants.REGISTRY_ADDRESS)) {
                         String registryAddress = s.split("=")[1].trim();
-                        registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
+                        registryUrl = formUrl(registryAddress, username, password);
                     } else if (s.startsWith(Constants.METADATA_ADDRESS)) {
-                        metadataUrl = formUrl(s.split("=")[1].trim(), metadataGroup, metadataGroupNameSpace, username, password);
+                        metadataUrl = formUrl(s.split("=")[1].trim(), username, password);
                     }
                 });
             }
         }
         if (dynamicConfiguration == null) {
             if (StringUtils.isNotEmpty(registryAddress)) {
-                registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
+                registryUrl = formUrl(registryAddress, username, password);
                 dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(registryUrl.getProtocol());
                 dynamicConfiguration.setUrl(registryUrl);
                 dynamicConfiguration.init();
@@ -138,7 +120,7 @@ public class ConfigCenter {
             if (StringUtils.isBlank(registryAddress)) {
                 throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration");
             }
-            registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
+            registryUrl = formUrl(registryAddress, username, password);
         }
         RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
         registry = registryFactory.getRegistry(registryUrl);
@@ -154,7 +136,7 @@ public class ConfigCenter {
         MetaDataCollector metaDataCollector = new NoOpMetadataCollector();
         if (metadataUrl == null) {
             if (StringUtils.isNotEmpty(metadataAddress)) {
-                metadataUrl = formUrl(metadataAddress, metadataGroup, metadataGroupNameSpace, username, password);
+                metadataUrl = formUrl(metadataAddress, username, password);
                 metadataUrl = metadataUrl.addParameter(CLUSTER_KEY, cluster);
             }
         }
@@ -168,14 +150,8 @@ public class ConfigCenter {
         return metaDataCollector;
     }
 
-    private URL formUrl(String config, String group, String nameSpace, String username, String password) {
+    private URL formUrl(String config, String username, String password) {
         URL url = URL.valueOf(config);
-        if (StringUtils.isNotEmpty(group)) {
-            url = url.addParameter(Constants.GROUP_KEY, group);
-        }
-        if (StringUtils.isNotEmpty(nameSpace)){
-            url = url.addParameter(Constants.NAMESPACE_KEY, nameSpace);
-        }
         if (StringUtils.isNotEmpty(username)) {
             url = url.setUsername(username);
         }
