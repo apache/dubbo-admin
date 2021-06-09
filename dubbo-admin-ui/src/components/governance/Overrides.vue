@@ -453,6 +453,8 @@
         this.serviceGroup = config.serviceGroup
         this.application = config.application
         delete config.service
+        delete config.serviceVersion
+        delete config.serviceGroup
         delete config.application
         delete config.id
         for (let i = 0; i < config.configs.length; i++) {
