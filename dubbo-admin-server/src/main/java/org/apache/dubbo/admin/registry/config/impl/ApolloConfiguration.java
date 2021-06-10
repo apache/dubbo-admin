@@ -25,6 +25,7 @@ import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.SPI;
 import org.apache.dubbo.common.utils.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -39,6 +40,21 @@ public class ApolloConfiguration implements GovernanceConfiguration {
     private static final String TOKEN_KEY = "token";
     private static final String APOLLO_APPID_KEY = "app.id";
     private static final String APOLLO_PROTOCOL_PREFIX = "http://";
+
+    @Value("${admin.apollo.token:}")
+    private String configToken;
+
+    @Value("${admin.apollo.cluster:}")
+    private String configCluster;
+
+    @Value("${admin.apollo.namespace:}")
+    private String configNamespace;
+
+    @Value("${admin.apollo.env:}")
+    private String configEnv;
+
+    @Value("${admin.apollo.appId:}")
+    private String configAppId;
 
     private String token;
     private String cluster;
@@ -61,11 +77,11 @@ public class ApolloConfiguration implements GovernanceConfiguration {
 
     @Override
     public void init() {
-        token = url.getParameter(TOKEN_KEY);
-        cluster = url.getParameter(CLUSTER_KEY);
-        namespace = url.getParameter(Constants.NAMESPACE_KEY);
-        env = url.getParameter(APOLLO_ENV_KEY);
-        appId = url.getParameter(APOLLO_APPID_KEY);
+        token = url.getParameter(TOKEN_KEY, configToken);
+        cluster = url.getParameter(CLUSTER_KEY, configCluster);
+        namespace = url.getParameter(Constants.NAMESPACE_KEY, configNamespace);
+        env = url.getParameter(APOLLO_ENV_KEY, configEnv);
+        appId = url.getParameter(APOLLO_APPID_KEY, configAppId);
         String address = getAddressWithProtocolPrefix(url);
         client = ApolloOpenApiClient.newBuilder().withPortalUrl(address).withToken(token).build();
     }
