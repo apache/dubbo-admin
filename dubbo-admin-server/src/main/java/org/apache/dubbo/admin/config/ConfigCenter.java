@@ -170,10 +170,10 @@ public class ConfigCenter {
 
     private URL formUrl(String config, String group, String nameSpace, String username, String password) {
         URL url = URL.valueOf(config);
-        if (StringUtils.isNotEmpty(group)) {
+        if (StringUtils.isEmpty(url.getParameter(Constants.GROUP_KEY)) && StringUtils.isNotEmpty(group)) {
             url = url.addParameter(Constants.GROUP_KEY, group);
         }
-        if (StringUtils.isNotEmpty(nameSpace)){
+        if (StringUtils.isEmpty(url.getParameter(Constants.NAMESPACE_KEY)) && StringUtils.isNotEmpty(nameSpace)) {
             url = url.addParameter(Constants.NAMESPACE_KEY, nameSpace);
         }
         if (StringUtils.isNotEmpty(username)) {

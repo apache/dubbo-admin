@@ -19,29 +19,48 @@ package org.apache.dubbo.admin.registry.config.impl;
 
 import com.ctrip.framework.apollo.openapi.client.ApolloOpenApiClient;
 import com.ctrip.framework.apollo.openapi.dto.OpenItemDTO;
+
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.SPI;
+import org.apache.dubbo.common.utils.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
+
+import java.util.Arrays;
+import java.util.stream.Collectors;
+
+import static org.apache.dubbo.common.constants.CommonConstants.COMMA_SPLIT_PATTERN;
 
 @SPI("apollo")
 public class ApolloConfiguration implements GovernanceConfiguration {
 
-    @Value("${admin.apollo.token}")
+    private static final String APOLLO_ENV_KEY = "env";
+    private static final String CLUSTER_KEY = "cluster";
+    private static final String TOKEN_KEY = "token";
+    private static final String APOLLO_APPID_KEY = "app.id";
+    private static final String APOLLO_PROTOCOL_PREFIX = "http://";
+
+    @Value("${admin.apollo.token:}")
+    private String configToken;
+
+    @Value("${admin.apollo.cluster:}")
+    private String configCluster;
+
+    @Value("${admin.apollo.namespace:}")
+    private String configNamespace;
+
+    @Value("${admin.apollo.env:}")
+    private String configEnv;
+
+    @Value("${admin.apollo.appId:}")
+    private String configAppId;
+
     private String token;
-
-    @Value("${admin.apollo.cluster}")
     private String cluster;
-
-    @Value("${admin.apollo.namespace}")
     private String namespace;
-
-    @Value("${admin.apollo.env}")
     private String env;
-
-    @Value("${admin.apollo.appId}")
     private String appId;
-
     private URL url;
     private ApolloOpenApiClient client;
 
@@ -58,9 +77,28 @@ public class ApolloConfiguration implements GovernanceConfiguration {
 
     @Override
     public void init() {
-        client = ApolloOpenApiClient.newBuilder().withPortalUrl(url.getAddress()).withToken(token).build();
+        token = url.getParameter(TOKEN_KEY, configToken);
+        cluster = url.getParameter(CLUSTER_KEY, configCluster);
+        namespace = url.getParameter(Constants.NAMESPACE_KEY, configNamespace);
+        env = url.getParameter(APOLLO_ENV_KEY, configEnv);
+        appId = url.getParameter(APOLLO_APPID_KEY, configAppId);
+        String address = getAddressWithProtocolPrefix(url);
+        client = ApolloOpenApiClient.newBuilder().withPortalUrl(address).withToken(token).build();
     }
-
+    private String getAddressWithProtocolPrefix(URL url) {
+        String address = url.getBackupAddress();
+        if (StringUtils.isNotEmpty(address)) {
+            address = Arrays.stream(COMMA_SPLIT_PATTERN.split(address))
+                    .map(addr -> {
+                        if (addr.startsWith(APOLLO_PROTOCOL_PREFIX)) {
+                            return addr;
+                        }
+                        return APOLLO_PROTOCOL_PREFIX + addr;
+                    })
+                    .collect(Collectors.joining(","));
+        }
+        return address;
+    }
     @Override
     public String setConfig(String key, String value) {
         return setConfig(null, key, value);

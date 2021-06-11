@@ -68,8 +68,7 @@ public class ConfigCenterTest {
     @Test
     public void testGetDynamicConfiguration() throws Exception {
         // mock @value inject
-        ReflectionTestUtils.setField(configCenter, "configCenter", zkAddress);
-        ReflectionTestUtils.setField(configCenter, "configCenterGroup", "dubbo");
+        ReflectionTestUtils.setField(configCenter, "configCenter", zkAddress + "?group=" + "dubbo");
         ReflectionTestUtils.setField(configCenter, "username", "username");
         ReflectionTestUtils.setField(configCenter, "password", "password");
 
@@ -128,8 +127,7 @@ public class ConfigCenterTest {
         assertNull(ReflectionTestUtils.getField(configCenter, "registryUrl"));
 
         // mock @value inject
-        ReflectionTestUtils.setField(configCenter, "registryAddress", zkAddress);
-        ReflectionTestUtils.setField(configCenter, "registryGroup", "dubbo");
+        ReflectionTestUtils.setField(configCenter, "registryAddress", zkAddress + "?group=" + "dubbo");
         ReflectionTestUtils.setField(configCenter, "username", "username");
         ReflectionTestUtils.setField(configCenter, "password", "password");
 
@@ -147,8 +145,7 @@ public class ConfigCenterTest {
         assertNull(ReflectionTestUtils.getField(configCenter, "metadataUrl"));
 
         // mock @value inject
-        ReflectionTestUtils.setField(configCenter, "metadataAddress", zkAddress);
-        ReflectionTestUtils.setField(configCenter, "metadataGroup", "dubbo");
+        ReflectionTestUtils.setField(configCenter, "metadataAddress", zkAddress + "?group=" + "dubbo");
         ReflectionTestUtils.setField(configCenter, "username", "username");
         ReflectionTestUtils.setField(configCenter, "password", "password");
 
