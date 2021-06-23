@@ -287,7 +287,12 @@ public class RouteUtils {
         return result;
     }
 
-    public static List<String> filterConditionRuleFromConditions(List<String> conditions) {
+    /**
+     * 目前的设计:黑白名单属于条件路由的一部分功能
+     * @param conditions
+     * @return
+     */
+    public static List<String> filterConditionsExcludeBlackWhiteList(List<String> conditions) {
         List<String> result = new ArrayList<>();
         if (conditions == null || conditions.isEmpty()) {
             return result;
@@ -296,6 +301,39 @@ public class RouteUtils {
             if (!isBlackList(condition) && !isWhiteList(condition)) {
                 result.add(condition);
             }
+        }
+        return result;
+    }
+
+    /**
+     * 目前的设计:黑白名单属于条件路由的一部分功能
+     * @param conditions
+     * @return
+     */
+    public static List<String> filterConditionRuleFromConditions(List<String> conditions) {
+        List<String> result = new ArrayList<>();
+        if (conditions == null || conditions.isEmpty()) {
+            return result;
+        }
+        for (String condition : conditions) {
+//            if (!isBlackList(condition) && !isWhiteList(condition)) {
+//                result.add(condition);
+//            }
+            result.add(condition);
+        }
+        return result;
+    }
+
+    public static List<String> removeBlackWhiteListRuleFromConditions(List<String> conditions) {
+        List<String> result = new ArrayList<>();
+        if (conditions == null || conditions.isEmpty()) {
+            return result;
+        }
+        for (String condition : conditions) {
+            if (!isBlackList(condition) && !isWhiteList(condition)) {
+                result.add(condition);
+            }
+//            result.add(condition);
         }
         return result;
     }

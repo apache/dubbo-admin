@@ -54,8 +54,9 @@ public class ConvertUtil {
             return baseDTO.getApplication();
         }
         // id format: "${class}:${version}:${group}"
-        return new StringBuilder(baseDTO.getService()).append(COLON).append(null2EmptyString(baseDTO.getServiceVersion()))
-                .append(COLON).append(null2EmptyString(baseDTO.getServiceGroup())).toString();
+
+        return new StringBuilder(baseDTO.getService()).append(StringUtils.isEmpty(null2EmptyString(baseDTO.getServiceVersion())) ? "" : COLON).append(null2EmptyString(baseDTO.getServiceVersion()))
+                .append(StringUtils.isEmpty(null2EmptyString(baseDTO.getServiceGroup())) ? "" : COLON).append(null2EmptyString(baseDTO.getServiceGroup())).toString();
     }
 
     /**
