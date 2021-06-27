@@ -109,7 +109,15 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
             RoutingRule originRule = YamlParser.loadObject(config, RoutingRule.class);
             ConditionRouteDTO conditionRouteDTO = RouteUtils.createConditionRouteFromRule(originRule);
             for (Route old : convertRouteToOldRoute(conditionRouteDTO)) {
-                registry.unregister(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
+                URL oldUrl = old.toUrl();
+//                oldUrl.addParameter("rule", "host+%3D+127.0.0.1+%3D%3E+false");
+//                registry.unregister(oldUrl.addParameter("rule", "host+%3D+127.0.0.1+%3D%3E+false"));
+//                registry.unregister(oldUrl.addParameter("rule", "host+%3D+127.0.0.1+%3D%3E+false").addParameter("force", "true"));
+                if(oldUrl.getParameter("rule").contains("host") && oldUrl.getParameter("rule").contains("false")) {
+                    registry.unregister(oldUrl);
+                } else {
+                    registry.unregister(oldUrl.addParameter(Constants.COMPATIBLE_CONFIG, true));
+                }
             }
         }
     }
