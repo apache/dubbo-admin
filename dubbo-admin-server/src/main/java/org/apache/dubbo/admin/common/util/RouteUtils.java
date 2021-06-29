@@ -288,7 +288,7 @@ public class RouteUtils {
     }
 
     /**
-     * 目前的设计:黑白名单属于条件路由的一部分功能
+     * the function of "black white" is part of the function of condition route
      * @param conditions
      * @return
      */
@@ -306,7 +306,7 @@ public class RouteUtils {
     }
 
     /**
-     * 目前的设计:黑白名单属于条件路由的一部分功能
+     * the function of "black white" is part of the function of condition route
      * @param conditions
      * @return
      */
@@ -316,9 +316,6 @@ public class RouteUtils {
             return result;
         }
         for (String condition : conditions) {
-//            if (!isBlackList(condition) && !isWhiteList(condition)) {
-//                result.add(condition);
-//            }
             result.add(condition);
         }
         return result;
