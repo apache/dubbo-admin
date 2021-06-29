@@ -27,8 +27,9 @@ import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.registry.NotifyListener;
 import org.apache.dubbo.registry.Registry;
 import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -41,7 +42,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Component
-public class RegistryServerSync implements InitializingBean, DisposableBean, NotifyListener {
+public class RegistryServerSync implements DisposableBean, NotifyListener {
 
     private static final Logger logger = LoggerFactory.getLogger(RegistryServerSync.class);
 
@@ -76,8 +77,8 @@ public class RegistryServerSync implements InitializingBean, DisposableBean, Not
         return registryCache;
     }
 
-    @Override
-    public void afterPropertiesSet() throws Exception {
+    @EventListener(classes = ApplicationReadyEvent.class)
+    public void startSubscribe() {
         logger.info("Init Dubbo Admin Sync Cache...");
         registry.subscribe(SUBSCRIBE, this);
     }
