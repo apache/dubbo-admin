@@ -26,19 +26,22 @@
           <v-card-text>
             <v-form>
               <v-layout row wrap>
-                <v-combobox
-                  id="serviceSearch"
-                  v-model="filter"
-                  :loading="searchLoading"
-                  :items="typeAhead"
-                  :search-input.sync="input"
-                  @keyup.enter="submit"
-                  flat
-                  append-icon=""
-                  hide-no-data
-                  :suffix="queryBy"
-                  :label="$t('searchRoutingRule')"
-                ></v-combobox>
+                <v-flex>
+                  <v-combobox
+                    id="serviceSearch"
+                    v-model="filter"
+                    :loading="searchLoading"
+                    :items="typeAhead"
+                    :search-input.sync="input"
+                    @keyup.enter="submit"
+                    flat
+                    append-icon=""
+                    hide-no-data
+                    :suffix="queryBy"
+                    :label="$t('searchRoutingRule')"
+                    @input="split($event)"
+                  ></v-combobox>
+                </v-flex>
                 <v-menu class="hidden-xs-only">
                   <v-btn slot="activator" large icon>
                     <v-icon>unfold_more</v-icon>
@@ -53,18 +56,21 @@
                     </v-list-tile>
                   </v-list>
                 </v-menu>
-                <v-text-field
-                  v-show="selected === 0"
-                  label="Version"
-                  :hint="$t('dataIdVersionHint')"
-                  v-model="serviceVersion4Search"
-                ></v-text-field>
-                <v-text-field
-                  v-show="selected === 0"
-                  label="Group"
-                  :hint="$t('dataIdGroupHint')"
-                  v-model="serviceGroup4Search"
-                ></v-text-field>
+                <v-flex xs6 sm3 md2 v-show="selected === 0">
+                  <v-text-field
+                    v-show="selected === 0"
+                    label="Version"
+                    :hint="$t('dataIdVersionHint')"
+                    v-model="serviceVersion4Search"
+                  ></v-text-field>
+                </v-flex>
+                <v-flex xs6 sm3 md2 v-show="selected === 0">
+                  <v-text-field
+                    label="Group"
+                    :hint="$t('dataIdGroupHint')"
+                    v-model="serviceGroup4Search"
+                  ></v-text-field>
+                </v-flex>
                 <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
 
               </v-layout>
@@ -329,6 +335,30 @@ export default {
     submit: function () {
       this.filter = document.querySelector('#serviceSearch').value.trim()
       this.search(true)
+    },
+    split: function (service) {
+      if (this.selected === 0) {
+        const groupSplit = service.split('/')
+        const versionSplit = service.split(':')
+        console.log(groupSplit)
+        console.log(versionSplit)
+        if (groupSplit.length > 1) {
+          this.serviceGroup4Search = groupSplit[0]
+        } else {
+          this.serviceGroup4Search = ''
+        }
+        if (versionSplit.length > 1) {
+          this.serviceVersion4Search = versionSplit[1]
+        } else {
+          this.serviceVersion4Search = ''
+        }
+        const serviceSplit = versionSplit[0].split('/')
+        if (serviceSplit.length === 1) {
+          this.filter = serviceSplit[0]
+        } else {
+          this.filter = serviceSplit[1]
+        }
+      }
     },
     search: function (rewrite) {
       if (!this.filter) {
