@@ -53,7 +53,7 @@ public class RegistryServerSyncTest {
 
     @Test
     public void testAfterPropertiesSet() throws Exception {
-        registryServerSync.afterPropertiesSet();
+        registryServerSync.startSubscribe();
         verify(registry).subscribe(any(URL.class), any(RegistryServerSync.class));
     }
 
