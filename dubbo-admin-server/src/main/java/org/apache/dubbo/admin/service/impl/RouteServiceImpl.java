@@ -96,13 +96,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
             //throw exception
         }
         RoutingRule route = YamlParser.loadObject(config, RoutingRule.class);
-//        List<String> blackWhiteList = RouteUtils.filterBlackWhiteListFromConditions(route.getConditions());
-//        if (blackWhiteList.size() != 0) {
-//           route.setConditions(blackWhiteList);
-//            dynamicConfiguration.setConfig(path, YamlParser.dumpObject(route));
-//        } else {
         dynamicConfiguration.deleteConfig(path);
-//        }
 
         //for 2.6
         if (Constants.SERVICE.equals(route.getScope())) {
@@ -110,9 +104,6 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
             ConditionRouteDTO conditionRouteDTO = RouteUtils.createConditionRouteFromRule(originRule);
             for (Route old : convertRouteToOldRoute(conditionRouteDTO)) {
                 URL oldUrl = old.toUrl();
-//                oldUrl.addParameter("rule", "host+%3D+127.0.0.1+%3D%3E+false");
-//                registry.unregister(oldUrl.addParameter("rule", "host+%3D+127.0.0.1+%3D%3E+false"));
-//                registry.unregister(oldUrl.addParameter("rule", "host+%3D+127.0.0.1+%3D%3E+false").addParameter("force", "true"));
                 if(oldUrl.getParameter("rule").contains("host") && oldUrl.getParameter("rule").contains("false")) {
                     registry.unregister(oldUrl);
                 } else {
@@ -155,11 +146,12 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
             ruleDTO = new RoutingRule();
             ruleDTO.setEnabled(true);
             if (StringUtils.isNoneEmpty(accessDTO.getApplication())) {
+                ruleDTO.setKey(accessDTO.getApplication());
                 ruleDTO.setScope(Constants.APPLICATION);
             } else {
+                ruleDTO.setKey(accessDTO.getService().replace("/", "*"));
                 ruleDTO.setScope(Constants.SERVICE);
             }
-            ruleDTO.setKey(id);
             ruleDTO.setConditions(blackWhiteList);
         } else {
             ruleDTO = YamlParser.loadObject(config, RoutingRule.class);
