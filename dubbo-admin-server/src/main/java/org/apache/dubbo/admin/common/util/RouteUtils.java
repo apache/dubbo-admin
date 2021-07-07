@@ -287,7 +287,41 @@ public class RouteUtils {
         return result;
     }
 
+    /**
+     * the function of "black white" is part of the function of condition route
+     * @param conditions
+     * @return
+     */
+    public static List<String> filterConditionsExcludeBlackWhiteList(List<String> conditions) {
+        List<String> result = new ArrayList<>();
+        if (conditions == null || conditions.isEmpty()) {
+            return result;
+        }
+        for (String condition : conditions) {
+            if (!isBlackList(condition) && !isWhiteList(condition)) {
+                result.add(condition);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * the function of "black white" is part of the function of condition route
+     * @param conditions
+     * @return
+     */
     public static List<String> filterConditionRuleFromConditions(List<String> conditions) {
+        List<String> result = new ArrayList<>();
+        if (conditions == null || conditions.isEmpty()) {
+            return result;
+        }
+        for (String condition : conditions) {
+            result.add(condition);
+        }
+        return result;
+    }
+
+    public static List<String> removeBlackWhiteListRuleFromConditions(List<String> conditions) {
         List<String> result = new ArrayList<>();
         if (conditions == null || conditions.isEmpty()) {
             return result;
