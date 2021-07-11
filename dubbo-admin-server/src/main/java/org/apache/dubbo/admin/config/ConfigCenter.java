@@ -56,22 +56,22 @@ public class ConfigCenter {
     @Value("${admin.metadata-report.cluster:false}")
     private boolean cluster;
 
-    @Value("${admin.registry.group:dubbo}")
+    @Value("${admin.registry.group:}")
     private String registryGroup;
 
-    @Value("${admin.config-center.group:dubbo}")
+    @Value("${admin.config-center.group:}")
     private String configCenterGroup;
 
-    @Value("${admin.metadata-report.group:dubbo}")
+    @Value("${admin.metadata-report.group:}")
     private String metadataGroup;
 
-    @Value("${admin.registry.namespace:dubbo}")
+    @Value("${admin.registry.namespace:}")
     private String registryNameSpace;
 
-    @Value("${admin.config-center.namespace:dubbo}")
+    @Value("${admin.config-center.namespace:}")
     private String configCenterGroupNameSpace;
 
-    @Value("${admin.metadata-report.namespace:dubbo}")
+    @Value("${admin.metadata-report.namespace:}")
     private String metadataGroupNameSpace;
 
     @Value("${admin.config-center.username:}")
