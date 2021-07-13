@@ -19,10 +19,14 @@ package org.apache.dubbo.admin.common.util;
 
 import org.apache.dubbo.admin.model.dto.DynamicConfigDTO;
 import org.apache.dubbo.admin.model.store.OverrideConfig;
+
 import org.junit.Test;
+import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.ConstructorException;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -62,5 +66,24 @@ public class YamlParserTest {
         }
     }
 
+    @Test(expected = ConstructorException.class)
+    public void exploitedTest() throws IOException {
+        try (InputStream yamlStream = this.getClass().getResourceAsStream("/exploited.yml")) {
+            YamlParser.loadObject(streamToString(yamlStream), Exploited.class);
+        }
+    }
+
+
+    public static class Exploited {
+        private Map<Object, Object> data;
+
+        public Map<Object, Object> getData() {
+            return data;
+        }
+
+        public void setData(Map<Object, Object> data) {
+            this.data = data;
+        }
+    }
 
 }
