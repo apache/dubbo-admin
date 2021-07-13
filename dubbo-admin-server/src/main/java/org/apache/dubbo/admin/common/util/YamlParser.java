@@ -17,36 +17,40 @@
 
 package org.apache.dubbo.admin.common.util;
 
+import org.apache.dubbo.common.utils.PojoUtils;
 import org.yaml.snakeyaml.Yaml;
+import org.yaml.snakeyaml.constructor.SafeConstructor;
+import org.yaml.snakeyaml.error.YAMLException;
 import org.yaml.snakeyaml.introspector.Property;
 import org.yaml.snakeyaml.nodes.NodeTuple;
 import org.yaml.snakeyaml.nodes.Tag;
 import org.yaml.snakeyaml.representer.Representer;
 
+import java.util.Map;
+
 public class YamlParser {
 
-    private static Yaml yaml;
-
-    static {
-        Representer representer = new Representer() {
-
-            protected NodeTuple representJavaBeanProperty(Object javaBean, Property property, Object propertyValue, Tag customTag) {
-                if (propertyValue == null) {
-                    return null;
-                }
-                else {
-                    return super.representJavaBeanProperty(javaBean, property, propertyValue, customTag);
-                }
-            }
-        };
-        yaml = new Yaml(representer);
-    }
-
     public static String dumpObject(Object object) {
-        return yaml.dumpAsMap(object);
+        return new Yaml(new SafeConstructor(), new CustomRepresenter()).dumpAsMap(object);
     }
 
     public static <T> T loadObject(String content, Class<T> type) {
-        return yaml.loadAs(content, type);
+        Map<String, Object> map = new Yaml(new SafeConstructor(), new CustomRepresenter()).load(content);
+        try {
+            return (T) PojoUtils.mapToPojo(map, type);
+        } catch (Exception e) {
+            throw new YAMLException(e);
+        }
+    }
+
+    public static class CustomRepresenter extends Representer {
+
+        protected NodeTuple representJavaBeanProperty(Object javaBean, Property property, Object propertyValue, Tag customTag) {
+            if (propertyValue == null) {
+                return null;
+            } else {
+                return super.representJavaBeanProperty(javaBean, property, propertyValue, customTag);
+            }
+        }
     }
 }
