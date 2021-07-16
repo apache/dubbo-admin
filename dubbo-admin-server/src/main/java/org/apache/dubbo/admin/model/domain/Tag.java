@@ -17,9 +17,11 @@
 
 package org.apache.dubbo.admin.model.domain;
 
+import java.util.List;
+
 public class Tag {
-    String name;
-    String[] addresses;
+    private String name;
+    private List<String> addresses;
 
     public String getName() {
         return name;
@@ -29,11 +31,11 @@ public class Tag {
         this.name = name;
     }
 
-    public String[] getAddresses() {
+    public List<String> getAddresses() {
         return addresses;
     }
 
-    public void setAddresses(String[] addresses) {
+    public void setAddresses(List<String> addresses) {
         this.addresses = addresses;
     }
 }
