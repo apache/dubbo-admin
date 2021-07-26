@@ -342,7 +342,7 @@ public class RouteUtils {
         if (scope.equals(Constants.APPLICATION)) {
             accessDTO.setApplication(key);
         } else {
-            accessDTO.setService(key);
+            ConvertUtil.detachIdToService(key, accessDTO);
         }
         if (blackWhiteList != null) {
             for (String condition : blackWhiteList) {
@@ -363,7 +363,7 @@ public class RouteUtils {
 
     public static Route convertAccessDTOtoRoute(AccessDTO accessDTO) {
         Route route = new Route();
-        route.setService(accessDTO.getService());
+        route.setService(ConvertUtil.getIdFromDTO(accessDTO));
         route.setForce(true);
         route.setFilterRule("false");
         route.setEnabled(true);
