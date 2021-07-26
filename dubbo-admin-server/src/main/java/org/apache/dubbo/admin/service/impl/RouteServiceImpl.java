@@ -398,7 +398,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
     	List<Route> oldList = new LinkedList<Route>();
     	for (String condition : route.getConditions()) {
 	        Route old = new Route();
-	        old.setService(route.getService());
+            old.setService(ConvertUtil.getIdFromDTO(route));
 	        old.setEnabled(route.isEnabled());
 	        old.setForce(route.isForce());
 	        old.setRuntime(route.isRuntime());
