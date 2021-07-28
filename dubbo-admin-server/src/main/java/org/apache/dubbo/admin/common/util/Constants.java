@@ -79,7 +79,7 @@ public class Constants {
     public static final String METRICS_PROTOCOL = "metrics.protocol";
     public static final Set<String> CONFIGS = new HashSet<>();
     public static final String COLON = ":";
-
+    public static final String MESH_RULE_SUFFIX = ".MESHAPPRULE";
     static {
         CONFIGS.add(WEIGHT);
         CONFIGS.add(BALANCING);
