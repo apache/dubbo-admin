@@ -21,9 +21,13 @@ import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.common.util.YamlParser;
 import org.apache.dubbo.admin.model.dto.MeshRouteDTO;
+import org.apache.dubbo.admin.model.store.mesh.destination.DestinationRule;
+import org.apache.dubbo.admin.model.store.mesh.virtualservice.VirtualServiceRule;
 import org.apache.dubbo.admin.service.MeshRouteService;
 
 import org.springframework.stereotype.Service;
+
+import java.util.Map;
 
 
 @Service
@@ -49,7 +53,15 @@ public class MeshRouteServiceImpl extends AbstractService implements MeshRouteSe
     }
 
     private void checkMeshRule(String meshRule) {
-        YamlParser.loadAll(meshRule);
+        Iterable<Object> objectIterable = YamlParser.loadAll(meshRule);
+        for (Object result : objectIterable) {
+            Map resultMap = (Map) result;
+            if ("DestinationRule".equals(resultMap.get("kind"))) {
+                YamlParser.loadObject(YamlParser.dumpObject(result), DestinationRule.class);
+            } else if ("VirtualService".equals(resultMap.get("kind"))) {
+                YamlParser.loadObject(YamlParser.dumpObject(result), VirtualServiceRule.class);
+            }
+        }
     }
 
     @Override
