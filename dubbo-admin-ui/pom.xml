@@ -61,7 +61,8 @@
                         <phase>generate-resources</phase>
                         <!-- Optional configuration which provides for running any npm command -->
                         <configuration>
-                            <arguments>install</arguments>
+<!--                            <arguments>install</arguments>-->
+                            <arguments>install --registry=https://registry.npm.taobao.org</arguments>
                         </configuration>
                     </execution>
                     <!-- Build and minify static files -->
@@ -71,7 +72,8 @@
                             <goal>npm</goal>
                         </goals>
                         <configuration>
-                            <arguments>run build</arguments>
+<!--                            <arguments>run build</arguments>-->
+                            <arguments>run build --registry=https://registry.npm.taobao.org</arguments>
                         </configuration>
                     </execution>
                 </executions>

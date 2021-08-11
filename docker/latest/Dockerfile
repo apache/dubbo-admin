@@ -13,7 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM maven:3-openjdk-8
+#FROM maven:3-openjdk-8
+FROM csanchez/maven:3-openjdk-8
 RUN mkdir -p /source/dubbo-admin-snapshot
 ADD . /source/dubbo-admin-snapshot
 WORKDIR /source/dubbo-admin-snapshot
