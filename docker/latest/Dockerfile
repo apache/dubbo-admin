@@ -24,7 +24,7 @@ FROM openjdk:8-jre
 LABEL maintainer="dev@dubbo.apache.org"
 RUN apt-get update && apt-get install -y tini
 COPY --from=0 /source/dubbo-admin-snapshot/dubbo-admin-distribution/target/apache-dubbo-admin-0.3.0-SNAPSHOT-bin-release /app
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY --from=0 /source/dubbo-admin-snapshot/docker/latest/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 ENV JAVA_OPTS ""
 
