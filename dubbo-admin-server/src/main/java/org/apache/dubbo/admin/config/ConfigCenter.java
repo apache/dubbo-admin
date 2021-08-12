@@ -103,11 +103,11 @@ public class ConfigCenter {
 
             if (StringUtils.isNotEmpty(config)) {
                 Arrays.stream(config.split("\n")).forEach( s -> {
-                    if(s.startsWith(Constants.REGISTRY_ADDRESS)) {
-                        String registryAddress = s.split("=")[1].trim();
+                    if (s.startsWith(Constants.REGISTRY_ADDRESS)) {
+                        String registryAddress = removerConfigKey(s);
                         registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
                     } else if (s.startsWith(Constants.METADATA_ADDRESS)) {
-                        metadataUrl = formUrl(s.split("=")[1].trim(), metadataGroup, metadataGroupNameSpace, username, password);
+                        metadataUrl = formUrl(removerConfigKey(s), metadataGroup, metadataGroupNameSpace, username, password);
                     }
                 });
             }
@@ -166,6 +166,13 @@ public class ConfigCenter {
             logger.warn("you are using dubbo.registry.address, which is not recommend, please refer to: https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration");
         }
         return metaDataCollector;
+    }
+
+    public static String removerConfigKey(String properties) {
+        String[] split = properties.split("=");
+        String[] address = new String[split.length - 1];
+        System.arraycopy(split, 1, address, 0, split.length - 1);
+        return String.join("=", address).trim();
     }
 
     private URL formUrl(String config, String group, String nameSpace, String username, String password) {
