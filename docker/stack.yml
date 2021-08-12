@@ -21,7 +21,7 @@ services:
     ports:
       - 2181:2181
   admin:
-    image: apache/dubbo-admin
+    image: apache/dubbo-admin:0.3.0
     depends_on:
       - zookeeper
     ports:

@@ -53,7 +53,7 @@
 	</repositories>
 
 	<properties>
-		<revision>0.3.0-SNAPSHOT</revision>
+		<revision>0.3.0</revision>
 		<main.basedir>${project.basedir}</main.basedir>
 		<dubbo-version>2.7.12</dubbo-version>
 		<springfox-swagger-version>2.9.2</springfox-swagger-version>
