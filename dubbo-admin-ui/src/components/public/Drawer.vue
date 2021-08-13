@@ -28,6 +28,9 @@
       <img src="@/assets/logo.png" width="24" height="24"/>
       <v-toolbar-title class="ml-0 pl-3">
         <span class="hidden-sm-and-down white--text">{{ $store.state.appTitle }}</span>
+        <v-chip color="green" class="v-chip--x-small" disabled text-color="white" label>
+          {{ config.version }}
+        </v-chip>
       </v-toolbar-title>
     </v-toolbar>
 
@@ -68,17 +71,22 @@
 
 <script>
 import menu from '@/api/menu'
+import axios from 'axios'
 
 export default {
   name: 'drawer',
   data: () => ({
     mini: false,
     drawer: true,
-    menus: menu
+    menus: menu,
+    config:{}
   }),
   created () {
     window.getApp.$on('DRAWER_TOGGLED', () => {
       this.drawer = (!this.drawer)
+    })
+    axios.get('/dubbo-admin-info.json').then(response => {
+      this.config = response.data
     })
   },
   computed: {
