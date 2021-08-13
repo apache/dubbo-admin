@@ -1,0 +1,4 @@
+github:
+  protected_branches:
+    master:
+      foo: bar
