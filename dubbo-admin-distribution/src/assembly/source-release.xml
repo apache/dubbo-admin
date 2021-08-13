@@ -59,6 +59,7 @@
                 <exclude>**/.mvn/**</exclude>
                 <exclude>**/*.jar</exclude>
                 <exclude>**/mvnw*</exclude>
+                <exclude>**/.flattened-pom.xml</exclude>
                 <exclude>dubbo-admin-distribution/src/LICENSE</exclude>
                 <exclude>dubbo-admin-distribution/src/NOTICE</exclude>
                 <exclude>dubbo-admin-distribution/src/licenses/**</exclude>
