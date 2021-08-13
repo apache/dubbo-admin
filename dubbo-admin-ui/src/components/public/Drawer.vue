@@ -71,7 +71,7 @@
 
 <script>
 import menu from '@/api/menu'
-import config from '../../../public/dubbo-admin-info.json'
+import axios from 'axios'
 
 export default {
   name: 'drawer',
@@ -79,11 +79,14 @@ export default {
     mini: false,
     drawer: true,
     menus: menu,
-    config
+    config:{}
   }),
   created () {
     window.getApp.$on('DRAWER_TOGGLED', () => {
       this.drawer = (!this.drawer)
+    })
+    axios.get('/dubbo-admin-info.json').then(response => {
+      this.config = response.data
     })
   },
   computed: {

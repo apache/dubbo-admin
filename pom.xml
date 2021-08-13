@@ -213,6 +213,7 @@
 										<exclude>**/assets/**</exclude>
 										<exclude>**/yarn.lock</exclude>
 										<exclude>**/node/**</exclude>
+										<exclude>**/dubbo-admin-info.json</exclude>
 									</excludes>
 								</configuration>
 							</execution>
