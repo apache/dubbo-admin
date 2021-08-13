@@ -77,5 +77,23 @@
                 </executions>
             </plugin>
         </plugins>
+      <resources>
+        <resource>
+          <directory>${basedir}</directory>
+          <targetPath>${basedir}/target/dist</targetPath>
+          <includes>
+            <include>dubbo-admin-info.json</include>
+          </includes>
+          <filtering>true</filtering>
+        </resource>
+        <resource>
+          <directory>${basedir}</directory>
+          <targetPath>${basedir}/public</targetPath>
+          <includes>
+            <include>dubbo-admin-info.json</include>
+          </includes>
+          <filtering>true</filtering>
+        </resource>
+      </resources>
     </build>
 </project>

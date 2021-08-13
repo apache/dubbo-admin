@@ -26,7 +26,7 @@
           <v-card-text>
             <v-form>
               <v-layout row wrap>
-`                <v-flex>
+                <v-flex>
                   <v-combobox
                     id="serviceSearch"
                     v-model="filter"
