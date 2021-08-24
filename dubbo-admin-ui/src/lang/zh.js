@@ -28,6 +28,7 @@ export default {
   loadBalance: '负载均衡',
   serviceTest: '服务测试',
   serviceMock: '服务Mock',
+  mockRule: '规则配置',
   providers: '提供者',
   consumers: '消费者',
   metrics: '统计',

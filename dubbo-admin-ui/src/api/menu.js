@@ -32,7 +32,13 @@ const Menu = [
   },
   { title: 'serviceTest', path: '/test', icon: 'code' },
   { title: 'apiDocs', path: '/apiDocs', icon: 'code' },
-  { title: 'serviceMock', path: '/mock', icon: 'build', badge: 'feature' },
+  { title: 'serviceMock',
+    path: '/mock',
+    icon: 'build',
+    items: [
+      { title: 'mockRule', path: '/mock/rule', badge: 'new' }
+    ]
+  },
   {
     title: 'serviceMetrics',
     path: 'metrics',
