@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -29,13 +30,15 @@ public class MockRuleController {
     private MockRuleService mockRuleService;
 
     @PostMapping
-    public void createMockRule(@RequestBody MockRuleDTO mockRule) {
+    public boolean createMockRule(@RequestBody MockRuleDTO mockRule) {
         mockRuleService.createMockRule(mockRule);
+        return true;
     }
 
     @DeleteMapping
-    public void deleteMockRule(@RequestBody MockRuleDTO mockRule) {
+    public boolean deleteMockRule(@RequestBody MockRuleDTO mockRule) {
         mockRuleService.deleteMockRuleById(mockRule.getId());
+        return true;
     }
 
     @PutMapping
@@ -44,8 +47,8 @@ public class MockRuleController {
     }
 
     @GetMapping("/list")
-    public Page<MockRuleDTO> listMockRules(Pageable pageable) {
-        return mockRuleService.listMockRulesByPage(pageable);
+    public Page<MockRuleDTO> listMockRules(@RequestParam(required = false) String filter, Pageable pageable) {
+        return mockRuleService.listMockRulesByPage(filter, pageable);
     }
 
     @GetMapping("/global")
@@ -54,7 +57,8 @@ public class MockRuleController {
     }
 
     @PostMapping("/global")
-    public void changeGlobalMockRule(@RequestBody GlobalMockRuleDTO globalMockRule) {
+    public boolean changeGlobalMockRule(@RequestBody GlobalMockRuleDTO globalMockRule) {
         mockRuleService.changeGlobalMockRule(globalMockRule);
+        return true;
     }
 }

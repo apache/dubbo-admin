@@ -19,7 +19,7 @@
   <v-container grid-list-xl fluid>
     <v-layout row wrap>
       <v-flex lg12>
-        <breadcrumb title="serviceTest" :items="breads"></breadcrumb>
+        <breadcrumb title="serviceMock" :items="breads"></breadcrumb>
       </v-flex>
       <v-flex lg12>
         <v-card flat color="transparent">
@@ -29,17 +29,16 @@
                 <v-combobox
                   id="serviceTestSearch"
                   :loading="searchLoading"
-                  :items="typeAhead"
                   :search-input.sync="input"
-                  v-model="filter"
+                  :value=filter
                   flat
                   append-icon=""
                   hide-no-data
                   :hint="$t('testModule.searchServiceHint')"
                   :label="$t('placeholders.searchService')"
-                  @keyup.enter="submit"
+                  @keyup.enter="submitSearch"
                 ></v-combobox>
-                <v-btn @click="submit" color="primary" large>{{ $t('search') }}</v-btn>
+                <v-btn @click="submitSearch" color="primary" large>{{ $t('search') }}</v-btn>
               </v-layout>
             </v-form>
           </v-card-text>
@@ -48,29 +47,30 @@
       <v-flex xs12>
         <v-card>
           <v-toolbar flat color="transparent" class="elevation-0">
-            <v-toolbar-title><span class="headline">{{$t('methods')}}</span></v-toolbar-title>
+            <v-toolbar-title><span class="headline">{{'规则列表'}}</span></v-toolbar-title>
             <v-spacer></v-spacer>
+            <v-btn outline color="success" class="mb-2">全局禁用</v-btn>
+
+            <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">{{$t('create')}}</v-btn>
           </v-toolbar>
           <v-card-text class="pa-0">
-            <v-data-table :headers="headers" :items="methods" hide-actions class="elevation-1">
+            <v-data-table :headers="headers"
+                          :items="mockRules"
+                          :pagination.sync="pagination"
+                          :total-items="totalItems"
+                          class="elevation-1">
               <template slot="items" slot-scope="props">
-                <td>{{ props.item.name }}</td>
+                <td>{{ props.item.serviceName }}</td>
                 <td>
-                  <v-chip xs v-for="(type, index) in props.item.parameterTypes" :key="index" label>{{ type }}</v-chip>
+                  <v-chip label>{{ props.item.methodName }}</v-chip>
+                </td>
+                <td>{{ props.item.rule }}
                 </td>
                 <td>
-                  <v-chip label>{{ props.item.returnType }}</v-chip>
+                  <v-switch v-model="props.item.enable" inset></v-switch>
                 </td>
-                <td class="text-xs-right">
-                  <v-tooltip bottom>
-                    <v-btn
-                      fab dark small color="blue" slot="activator"
-                      :href="getHref(props.item.application, props.item.service, props.item.signature)"
-                    >
-                      <v-icon>edit</v-icon>
-                    </v-btn>
-                    <span>{{$t('test')}}</span>
-                  </v-tooltip>
+                <td>
+                  <v-btn class="tiny" color="error" @click="deleteMockRule(props.item.id)"> 删除 </v-btn>
                 </td>
               </template>
             </v-data-table>
@@ -78,15 +78,190 @@
         </v-card>
       </v-flex>
     </v-layout>
+
+    <v-dialog v-model="dialog" width="800px" persistent>
+      <v-card>
+        <v-card-title class="justify-center">
+          <span class="headline">{{$t('createNewRoutingRule')}}</span>
+        </v-card-title>
+        <v-card-text >
+          <v-text-field
+            label="Service Name"
+            :hint="$t('dataIdClassHint')"
+            v-model="mockRule.serviceName"
+          ></v-text-field>
+
+          <v-text-field
+            label="Method Name"
+            hint="Application name the service belongs to"
+            v-model="mockRule.methodName"
+          ></v-text-field>
+
+          <v-subheader class="pa-0 mt-3">{{$t('ruleContent')}}</v-subheader>
+          <ace-editor v-model="mockRule.rule" :readonly="readonly"></ace-editor>
+
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn flat @click.native="closeDialog">{{$t('close')}}</v-btn>
+          <v-btn depressed color="primary" @click.native="saveMockRule">{{$t('save')}}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <script>
+  import JsonEditor from '@/components/public/JsonEditor'
+  import Search from '@/components/public/Search'
+  import Breadcrumb from '@/components/public/Breadcrumb'
+  import yaml from 'js-yaml'
+  import AceEditor from '@/components/public/AceEditor'
+
   export default {
-    name: 'ServiceMock'
+    name: 'ServiceMock',
+    components: {
+      JsonEditor,
+      Search,
+      Breadcrumb,
+      yaml,
+      AceEditor
+    },
+    data() {
+      return {
+        headers: [],
+        mockRules: [],
+        breads: [
+          {
+            text: 'mockRule',
+            href: '/mock'
+          }
+        ],
+        pagination: {
+          page: 1,
+          rowsPerPage: 10 // -1 for All
+        },
+        loadingRules: false,
+        searchLoading: false,
+        filter: null,
+        totalItems: 0,
+        dialog: false,
+        mockRule: {
+          serviceName: '',
+          methodName: '',
+          rule: '',
+          enable: true
+        }
+      }
+    },
+    methods: {
+      setHeaders() {
+        this.headers = [
+          {
+            text: this.$t('serviceName'),
+            value: 'serviceName',
+            sortable: false
+          },
+          {
+            text: this.$t('methodName'),
+            value: 'methodName',
+            sortable: false
+          },
+          {
+            text: '返回数据',
+            value: 'rule',
+            sortable: false
+          },
+          {
+            text: '是否启用',
+            value: 'enable',
+            sortable: false
+          },
+          {
+            text: this.$t('operation'),
+            value: 'operation',
+            sortable: false
+          }
+        ]
+      },
+      listMockRules(filter) {
+        const page = this.pagination.page - 1
+        const size = this.pagination.rowsPerPage === -1 ? this.totalItems : this.pagination.rowsPerPage
+        this.loadingRules = true
+        this.$axios.get('/mock/rule/list', {
+          params: {
+            page,
+            size,
+            filter
+          }
+        }).then(res => {
+          this.mockRules = res.data.content
+        }).catch(e => {
+          this.showSnackbar('error', e.response.data.message)
+        }).finally(() => this.loadingRules = false)
+      },
+      submitSearch() {
+        this.listMockRules(this.filter)
+      },
+      openDialog() {
+        this.dialog = true
+      },
+      closeDialog() {
+        this.dialog = false
+      },
+      saveMockRule() {
+        this.$axios.post("/mock/rule", this.mockRule).then(res => {
+          console.log(res)
+          this.$notify('保存规则成功', 'success')
+          this.mockRule = {
+            serviceName: '',
+            methodName: '',
+            rule: '',
+            enable: true
+          }
+          this.closeDialog()
+          this.listMockRules()
+        }).catch(e => this.showSnackbar('error', e.response.data.message))
+      },
+      deleteMockRule(id) {
+        this.$axios.delete('/mock/rule', {
+          data: {id}}
+          ).then(res => {
+            this.$notify('删除成功', 'success')
+            this.listMockRules(this.filter)
+        })
+        .catch(e => this.$notify(e.response.data.message, 'error'))
+      }
+    },
+    mounted() {
+      this.setHeaders()
+      this.listMockRules(this.filter)
+    },
+    computed: {
+      area () {
+        return this.$i18n.locale
+      }
+    },
+    watch: {
+      input (val) {
+        this.querySelections(val)
+      },
+      area () {
+        this.setHeaders()
+      }
+    }
   }
 </script>
 
 <style scoped>
 
+  .tiny {
+    min-width: 30px;
+    height: 20px;
+    font-size: 8px;
+  }
+
+  .tiny-icon {
+    font-size: 18px;
+  }
 </style>

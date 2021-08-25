@@ -1,5 +1,9 @@
 package org.apache.dubbo.admin.model.dto;
 
+import org.apache.dubbo.admin.model.domain.MockRule;
+
+import org.springframework.beans.BeanUtils;
+
 /**
  * @author chenglu
  * @date 2021-08-24 15:52
@@ -65,5 +69,11 @@ public class MockRuleDTO {
                 ", rule='" + rule + '\'' +
                 ", enable=" + enable +
                 '}';
+    }
+
+    public static MockRuleDTO toMockRuleDTO(MockRule mockRule) {
+        MockRuleDTO mockRuleDTO = new MockRuleDTO();
+        BeanUtils.copyProperties(mockRule, mockRuleDTO);
+        return mockRuleDTO;
     }
 }

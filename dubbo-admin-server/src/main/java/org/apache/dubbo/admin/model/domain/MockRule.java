@@ -8,7 +8,9 @@ import org.springframework.beans.BeanUtils;
  * @author chenglu
  * @date 2021-08-24 17:19
  */
-public class MockRule extends Entity {
+public class MockRule {
+
+    private Long id;
 
     private String serviceName;
 
@@ -54,5 +56,13 @@ public class MockRule extends Entity {
 
     public void setEnable(Boolean enable) {
         this.enable = enable;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 }

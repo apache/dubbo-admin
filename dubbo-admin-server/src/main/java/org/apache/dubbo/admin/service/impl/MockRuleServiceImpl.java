@@ -8,16 +8,20 @@ import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
 import org.apache.dubbo.admin.service.MockRuleService;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import org.apache.dubbo.common.utils.PojoUtils;
+import com.google.gson.Gson;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.mock.api.MockConstants;
 import org.apache.dubbo.mock.api.MockResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * @author chenglu
@@ -50,8 +54,18 @@ public class MockRuleServiceImpl implements MockRuleService {
     }
 
     @Override
-    public Page<MockRuleDTO> listMockRulesByPage(Pageable pageable) {
-        return null;
+    public Page<MockRuleDTO> listMockRulesByPage(String filter, Pageable pageable) {
+        QueryWrapper<MockRule> queryWrapper = new QueryWrapper<>();
+        Optional.ofNullable(filter)
+                .ifPresent(f -> queryWrapper.like("service_name", f));
+        List<MockRule> mockRules = mockRuleMapper.selectList(queryWrapper);
+        int total = mockRules.size();
+        final List<MockRuleDTO> content = mockRules.stream()
+                .skip(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .map(MockRuleDTO::toMockRuleDTO)
+                .collect(Collectors.toList());
+        return new PageImpl<>(content, pageable, total);
     }
 
     @Override
@@ -63,7 +77,7 @@ public class MockRuleServiceImpl implements MockRuleService {
         if (StringUtils.isBlank(content)) {
             return globalMockRule;
         }
-        org.apache.dubbo.mock.api.MockRule mockRule = (org.apache.dubbo.mock.api.MockRule) PojoUtils.realize(content, org.apache.dubbo.mock.api.MockRule.class);
+        org.apache.dubbo.mock.api.MockRule mockRule = new Gson().fromJson(content, org.apache.dubbo.mock.api.MockRule.class);
         if (Objects.isNull(mockRule)) {
             return globalMockRule;
         }
@@ -78,12 +92,12 @@ public class MockRuleServiceImpl implements MockRuleService {
         String content = configuration.getConfig(MockConstants.ADMIN_MOCK_RULE_GROUP, MockConstants.ADMIN_MOCK_RULE_KEY);
         if (StringUtils.isNotEmpty(content)) {
             org.apache.dubbo.mock.api.MockRule existMockRule =
-                    (org.apache.dubbo.mock.api.MockRule) PojoUtils.realize(content, org.apache.dubbo.mock.api.MockRule.class);
+                    new Gson().fromJson(content, org.apache.dubbo.mock.api.MockRule.class);
             if (Objects.nonNull(existMockRule)) {
                 mockRule.setEnabledMockRules(existMockRule.getEnabledMockRules());
             }
         }
-        String newContent = PojoUtils.generalize(mockRule).toString();
+        String newContent = new Gson().toJson(mockRule);
         configuration.setConfig(MockConstants.ADMIN_MOCK_RULE_GROUP, MockConstants.ADMIN_MOCK_RULE_KEY, newContent);
     }
 

@@ -18,7 +18,7 @@ public interface MockRuleService {
 
     void updateMockRule(MockRuleDTO mockRule);
 
-    Page<MockRuleDTO> listMockRulesByPage(Pageable pageable);
+    Page<MockRuleDTO> listMockRulesByPage(String filter, Pageable pageable);
 
     GlobalMockRuleDTO getGlobalMockRule();
 
