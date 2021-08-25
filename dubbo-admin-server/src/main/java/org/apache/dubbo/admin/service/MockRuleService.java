@@ -12,7 +12,7 @@ import org.springframework.data.domain.Pageable;
  * @date 2021-08-24 15:49
  */
 public interface MockRuleService {
-    void createMockRule(MockRuleDTO mockRule);
+    void createOrUpdateMockRule(MockRuleDTO mockRule);
 
     void deleteMockRuleById(Long id);
 

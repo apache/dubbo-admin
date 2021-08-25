@@ -70,6 +70,7 @@
                   <v-switch v-model="props.item.enable" inset></v-switch>
                 </td>
                 <td>
+                  <v-btn class="tiny" color="primary" @click="editMockRule(props.item)"> 编辑 </v-btn>
                   <v-btn class="tiny" color="error" @click="deleteMockRule(props.item.id)"> 删除 </v-btn>
                 </td>
               </template>
@@ -104,7 +105,7 @@
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn flat @click.native="closeDialog">{{$t('close')}}</v-btn>
-          <v-btn depressed color="primary" @click.native="saveMockRule">{{$t('save')}}</v-btn>
+          <v-btn depressed color="primary" @click.native="saveOrUpdateMockRule">{{$t('save')}}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -151,7 +152,8 @@
           methodName: '',
           rule: '',
           enable: true
-        }
+        },
+        dialogType: 1
       }
     },
     methods: {
@@ -208,17 +210,17 @@
       },
       closeDialog() {
         this.dialog = false
+        this.dialogType = 1
+        this.mockRule = {
+          serviceName: '',
+          methodName: '',
+          rule: '',
+          enable: true
+        }
       },
-      saveMockRule() {
+      saveOrUpdateMockRule() {
         this.$axios.post("/mock/rule", this.mockRule).then(res => {
-          console.log(res)
           this.$notify('保存规则成功', 'success')
-          this.mockRule = {
-            serviceName: '',
-            methodName: '',
-            rule: '',
-            enable: true
-          }
           this.closeDialog()
           this.listMockRules()
         }).catch(e => this.showSnackbar('error', e.response.data.message))
@@ -231,6 +233,11 @@
             this.listMockRules(this.filter)
         })
         .catch(e => this.$notify(e.response.data.message, 'error'))
+      },
+      editMockRule(mockRule) {
+        this.mockRule = mockRule
+        this.openDialog()
+        this.dialogType = 2
       }
     },
     mounted() {

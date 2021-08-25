@@ -1,14 +1,13 @@
 package org.apache.dubbo.admin.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.google.gson.Gson;
 import org.apache.dubbo.admin.mapper.MockRuleMapper;
 import org.apache.dubbo.admin.model.domain.MockRule;
 import org.apache.dubbo.admin.model.dto.GlobalMockRuleDTO;
 import org.apache.dubbo.admin.model.dto.MockRuleDTO;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
 import org.apache.dubbo.admin.service.MockRuleService;
-
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.google.gson.Gson;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.mock.api.MockConstants;
 import org.apache.dubbo.mock.api.MockResult;
@@ -37,8 +36,12 @@ public class MockRuleServiceImpl implements MockRuleService {
     private GovernanceConfiguration configuration;
 
     @Override
-    public void createMockRule(MockRuleDTO mockRule) {
+    public void createOrUpdateMockRule(MockRuleDTO mockRule) {
         MockRule rule = MockRule.toMockRule(mockRule);
+        if (Objects.nonNull(rule.getId())) {
+            mockRuleMapper.updateById(rule);
+            return;
+        }
         mockRuleMapper.insert(rule);
     }
 

@@ -30,8 +30,8 @@ public class MockRuleController {
     private MockRuleService mockRuleService;
 
     @PostMapping
-    public boolean createMockRule(@RequestBody MockRuleDTO mockRule) {
-        mockRuleService.createMockRule(mockRule);
+    public boolean createOrUpdateMockRule(@RequestBody MockRuleDTO mockRule) {
+        mockRuleService.createOrUpdateMockRule(mockRule);
         return true;
     }
 
@@ -39,11 +39,6 @@ public class MockRuleController {
     public boolean deleteMockRule(@RequestBody MockRuleDTO mockRule) {
         mockRuleService.deleteMockRuleById(mockRule.getId());
         return true;
-    }
-
-    @PutMapping
-    public void updateMockRule(@RequestBody MockRuleDTO mockRule) {
-        mockRuleService.updateMockRule(mockRule);
     }
 
     @GetMapping("/list")
