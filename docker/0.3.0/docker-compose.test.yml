@@ -1,5 +1,5 @@
 zookeeper:
-  image: zookeeper
+  image: zookeeper:3.5
 admin:
   build: .
   dockerfile: Dockerfile
