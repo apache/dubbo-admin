@@ -27,15 +27,16 @@
             <v-form>
               <v-layout row wrap>
                 <v-combobox
-                  id="serviceTestSearch"
+                  id="mockRule"
                   :loading="searchLoading"
                   :search-input.sync="input"
-                  :value=filter
+                  v-model="filter"
                   flat
                   append-icon=""
                   hide-no-data
                   :hint="$t('testModule.searchServiceHint')"
                   :label="$t('placeholders.searchService')"
+                  @update:searchInput="updateFilter"
                   @keyup.enter="submitSearch"
                 ></v-combobox>
                 <v-btn @click="submitSearch" color="primary" large>{{ $t('search') }}</v-btn>
@@ -49,7 +50,7 @@
           <v-toolbar flat color="transparent" class="elevation-0">
             <v-toolbar-title><span class="headline">{{'规则列表'}}</span></v-toolbar-title>
             <v-spacer></v-spacer>
-            <v-btn outline color="success" class="mb-2">全局禁用</v-btn>
+            <v-btn outline :color="enableMock ? 'error': 'success'" class="mb-2" @click.stop="changeGlobalMock">{{enableMock ? '全局禁用' : '全局启用'}}</v-btn>
 
             <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">{{$t('create')}}</v-btn>
           </v-toolbar>
@@ -58,6 +59,7 @@
                           :items="mockRules"
                           :pagination.sync="pagination"
                           :total-items="totalItems"
+                          :loading="loadingRules"
                           class="elevation-1">
               <template slot="items" slot-scope="props">
                 <td>{{ props.item.serviceName }}</td>
@@ -67,7 +69,7 @@
                 <td>{{ props.item.rule }}
                 </td>
                 <td>
-                  <v-switch v-model="props.item.enable" inset></v-switch>
+                  <v-switch v-model="props.item.enable" inset @change="enableOrDisableMockRule(props.item)"></v-switch>
                 </td>
                 <td>
                   <v-btn class="tiny" color="primary" @click="editMockRule(props.item)"> 编辑 </v-btn>
@@ -99,7 +101,7 @@
           ></v-text-field>
 
           <v-subheader class="pa-0 mt-3">{{$t('ruleContent')}}</v-subheader>
-          <ace-editor v-model="mockRule.rule" :readonly="readonly"></ace-editor>
+          <ace-editor v-model="mockRule.rule"></ace-editor>
 
         </v-card-text>
         <v-card-actions>
@@ -153,7 +155,8 @@
           rule: '',
           enable: true
         },
-        dialogType: 1
+        dialogType: 1,
+        enableMock: true
       }
     },
     methods: {
@@ -198,6 +201,7 @@
           }
         }).then(res => {
           this.mockRules = res.data.content
+          this.totalItems = res.data.totalElements
         }).catch(e => {
           this.showSnackbar('error', e.response.data.message)
         }).finally(() => this.loadingRules = false)
@@ -238,11 +242,37 @@
         this.mockRule = mockRule
         this.openDialog()
         this.dialogType = 2
+      },
+      getGlobalMock() {
+        this.$axios.get('/mock/rule/global')
+        .then(res => {
+          this.enableMock = res.data.enableMock
+        }).catch(e => this.$notify(e.data.response.message, 'error'))
+      },
+      changeGlobalMock() {
+        const enableMock = this.enableMock
+        this.$axios.post('/mock/rule/global', {
+          enableMock: !enableMock
+        }).then(res => {
+          this.enableMock =  !enableMock
+          const text = enableMock ? '禁用成功':'启用成功'
+          this.$notify(text, 'success')
+        }).catch(e => this.$notify(e.data.response.message, 'error'))
+      },
+      enableOrDisableMockRule(mockRule) {
+        this.$axios.post('/mock/rule', mockRule)
+        .then(res => this.$notify(mockRule.enable ? '启用成功':'禁用成功', 'success'))
+        .catch(e => this.$notify(e.data.response.message, 'error'))
+      },
+      updateFilter() {
+        this.filter = document.querySelector('#mockRule').value.trim()
+        console.log()
       }
     },
     mounted() {
       this.setHeaders()
       this.listMockRules(this.filter)
+      this.getGlobalMock()
     },
     computed: {
       area () {
@@ -255,6 +285,16 @@
       },
       area () {
         this.setHeaders()
+      },
+      pagination: {
+        handler (newVal, oldVal) {
+          if (newVal.page === oldVal.page && newVal.rowsPerPage === oldVal.rowsPerPage) {
+            return
+          }
+          const filter = this.filter
+          this.listMockRules(filter)
+        },
+        deep: true
       }
     }
   }

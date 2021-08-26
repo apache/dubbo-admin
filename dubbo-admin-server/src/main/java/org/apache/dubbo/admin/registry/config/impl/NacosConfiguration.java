@@ -17,24 +17,24 @@
 
 package org.apache.dubbo.admin.registry.config.impl;
 
-import com.alibaba.nacos.api.PropertyKeyConst;
-import java.util.Map;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
+
+import com.alibaba.nacos.api.NacosFactory;
+import com.alibaba.nacos.api.PropertyKeyConst;
+import com.alibaba.nacos.api.config.ConfigService;
+import com.alibaba.nacos.api.exception.NacosException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.common.utils.StringConstantFieldValuePredicate;
 
-import com.alibaba.nacos.api.NacosFactory;
-import com.alibaba.nacos.api.config.ConfigService;
-import com.alibaba.nacos.api.exception.NacosException;
-import org.apache.commons.lang3.StringUtils;
-
+import java.util.Map;
 import java.util.Properties;
 
-import static com.alibaba.nacos.api.PropertyKeyConst.SERVER_ADDR;
 import static com.alibaba.nacos.api.PropertyKeyConst.NAMESPACE;
+import static com.alibaba.nacos.api.PropertyKeyConst.SERVER_ADDR;
 
 public class NacosConfiguration implements GovernanceConfiguration {
     private static final Logger logger = LoggerFactory.getLogger(NacosConfiguration.class);
@@ -180,7 +180,7 @@ public class NacosConfiguration implements GovernanceConfiguration {
         String[] groupAndDataId = new String[2];
         String[] split = key.split("/");
         if (split.length != 3) {
-            return null;
+            return new String[] {group, key};
         }
         if (Constants.DUBBO_PROPERTY.equals(split[2])) {
 

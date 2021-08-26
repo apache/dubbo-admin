@@ -1,13 +1,14 @@
 package org.apache.dubbo.admin.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.google.gson.Gson;
 import org.apache.dubbo.admin.mapper.MockRuleMapper;
 import org.apache.dubbo.admin.model.domain.MockRule;
 import org.apache.dubbo.admin.model.dto.GlobalMockRuleDTO;
 import org.apache.dubbo.admin.model.dto.MockRuleDTO;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
 import org.apache.dubbo.admin.service.MockRuleService;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.google.gson.Gson;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.mock.api.MockConstants;
 import org.apache.dubbo.mock.api.MockResult;
@@ -17,6 +18,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -38,6 +40,7 @@ public class MockRuleServiceImpl implements MockRuleService {
     @Override
     public void createOrUpdateMockRule(MockRuleDTO mockRule) {
         MockRule rule = MockRule.toMockRule(mockRule);
+        enableOrDisableMockRuleInConfigurationCenter(mockRule);
         if (Objects.nonNull(rule.getId())) {
             mockRuleMapper.updateById(rule);
             return;
@@ -101,7 +104,7 @@ public class MockRuleServiceImpl implements MockRuleService {
             }
         }
         String newContent = new Gson().toJson(mockRule);
-        configuration.setConfig(MockConstants.ADMIN_MOCK_RULE_GROUP, MockConstants.ADMIN_MOCK_RULE_KEY, newContent);
+        configuration.setConfig(MockConstants.ADMIN_MOCK_RULE_GROUP,  MockConstants.ADMIN_MOCK_RULE_KEY, newContent);
     }
 
     @Override
@@ -119,5 +122,27 @@ public class MockRuleServiceImpl implements MockRuleService {
         return mockResult;
     }
 
-
+    private void enableOrDisableMockRuleInConfigurationCenter(MockRuleDTO mockRule) {
+        String methodName = mockRule.getServiceName() + "#" + mockRule.getMethodName();
+        String content = configuration.getConfig(MockConstants.ADMIN_MOCK_RULE_GROUP,  MockConstants.ADMIN_MOCK_RULE_KEY);
+        org.apache.dubbo.mock.api.MockRule rule;
+        if (StringUtils.isBlank(content)) {
+            rule = new org.apache.dubbo.mock.api.MockRule();
+            rule.setEnableMock(false);
+            if (mockRule.getEnable()) {
+                rule.setEnabledMockRules(Collections.singleton(methodName));
+            }
+        } else {
+            rule = new Gson().fromJson(content, org.apache.dubbo.mock.api.MockRule.class);
+            Optional.ofNullable(rule.getEnabledMockRules())
+                    .ifPresent(rules -> {
+                        if (mockRule.getEnable()) {
+                            rules.add(methodName);
+                        } else {
+                            rules.remove(methodName);
+                        }
+                    });
+        }
+        configuration.setConfig(MockConstants.ADMIN_MOCK_RULE_GROUP,  MockConstants.ADMIN_MOCK_RULE_KEY, new Gson().toJson(rule));
+    }
 }
