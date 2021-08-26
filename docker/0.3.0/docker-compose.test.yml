@@ -9,6 +9,8 @@ admin:
     - admin.registry.address=zookeeper://zookeeper:2181
     - admin.config-center=zookeeper://zookeeper:2181
     - admin.metadata-report.address=zookeeper://zookeeper:2181
+  ports: 
+    - 8080
 sut:
   build: .
   dockerfile: Dockerfile.test
