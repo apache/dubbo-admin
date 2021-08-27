@@ -8,7 +8,7 @@
 ### 快速开始
 
 * 预构建的Docker镜像 https://hub.docker.com/r/apache/dubbo-admin
-* 快速启动一个演示环境 [play-with-docker](https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/apache/dubbo-admin/develop/docker/stack.yml#) (版本:0.1.0)
+* 快速启动一个演示环境 [play-with-docker](https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/apache/dubbo-admin/develop/docker/stack.yml#) (版本:0.3.0)
 
 ### 页面截图
 
