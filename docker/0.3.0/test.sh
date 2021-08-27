@@ -4,27 +4,31 @@
 # The ASF licenses this file to You under the Apache License, Version 2.0
 # (the "License"); you may not use this file except in compliance with
 # the License.  You may obtain a copy of the License at
-#
+
 #     http://www.apache.org/licenses/LICENSE-2.0
-#
+
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM maven:3-openjdk-8
-RUN mkdir /source && wget https://github.com/apache/dubbo-admin/archive/0.3.0.zip && unzip -q 0.3.0.zip -d /source
-WORKDIR /source/dubbo-admin-0.3.0
-RUN mvn --batch-mode clean package -Dmaven.test.skip=true
+LOOP_SIZE=60
+i=0
 
-FROM openjdk:8-jre
-LABEL maintainer="dev@dubbo.apache.org"
-RUN apt-get update && apt-get install -y tini
-COPY --from=0 /source/dubbo-admin-0.3.0/dubbo-admin-distribution/target/dubbo-admin-0.3.0.jar /app.jar
-COPY --from=0 /source/dubbo-admin-0.3.0/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+while [[ $i -lt LOOP_SIZE ]]; do
+	status_code=$(curl --write-out %{http_code} --silent --output /dev/null http://admin:8080)
 
-ENV JAVA_OPTS ""
+  if [[ "$status_code" -eq 200 ]] ; then
+    echo "Tests passed!"
+    exit 0
+  else
+    curl -v http://admin:8080
+    echo "status is incorrect, waiting for next turn"
+  fi
+	sleep 5
+	i=$i+1
+done
 
-ENTRYPOINT ["tini", "--", "/usr/local/bin/entrypoint.sh"]
-EXPOSE 8080
+echo "Tests failed!"
+exit 1
