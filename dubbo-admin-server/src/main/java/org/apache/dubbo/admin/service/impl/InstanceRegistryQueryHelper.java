@@ -27,7 +27,6 @@ import org.apache.dubbo.registry.client.ServiceInstance;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
