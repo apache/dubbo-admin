@@ -20,11 +20,13 @@ package org.apache.dubbo.admin.controller;
 import org.apache.dubbo.admin.AbstractSpringIntegrationTest;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.MeshRouteDTO;
+import org.apache.dubbo.admin.service.ProviderService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -40,6 +42,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.when;
 
 
 public class MeshRouteControllerTest extends AbstractSpringIntegrationTest {
@@ -48,6 +51,9 @@ public class MeshRouteControllerTest extends AbstractSpringIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @MockBean
+    private ProviderService providerService;
 
     @After
     public void tearDown() throws Exception {
@@ -77,6 +83,7 @@ public class MeshRouteControllerTest extends AbstractSpringIntegrationTest {
         // valid mesh rule
         meshRoute.setApplication(application);
         meshRoute.setMeshRule(getFileContent("/MeshRoute.yml"));
+        when(providerService.findVersionInApplication(application)).thenReturn("3.0.0");
         response = restTemplate.postForEntity(url("/api/{env}/rules/route/mesh"), meshRoute, String.class, env);
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         assertTrue(Boolean.valueOf(response.getBody()));
