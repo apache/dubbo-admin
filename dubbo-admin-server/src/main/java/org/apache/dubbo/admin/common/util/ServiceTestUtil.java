@@ -180,10 +180,7 @@ public class ServiceTestUtil {
         keyType = StringUtils.strip(keyType);
 
         Map<Object, Object> map = new HashMap<>();
-        // 生成 key 默认值
         Object key = generateType(sd, keyType);
-
-        // 生成 value 默认值
         String valueType = StringUtils.substringAfter(td.getType(), ",");
         valueType = StringUtils.substringBefore(valueType, ">");
         valueType = StringUtils.strip(valueType);
@@ -197,7 +194,7 @@ public class ServiceTestUtil {
         String type = StringUtils.substringAfter(td.getType(), "<");
         type = StringUtils.substringBefore(type, ">");
         if (StringUtils.isEmpty(type)) {
-            // 如果 collection 类型未声明，则生成空 collection
+            // if type is null return empty collection
             return new Object[] {};
         }
         return new Object[]{generateType(sd, type)};
