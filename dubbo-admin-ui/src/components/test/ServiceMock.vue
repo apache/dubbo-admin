@@ -48,9 +48,9 @@
       <v-flex xs12>
         <v-card>
           <v-toolbar flat color="transparent" class="elevation-0">
-            <v-toolbar-title><span class="headline">{{'规则列表'}}</span></v-toolbar-title>
+            <v-toolbar-title><span class="headline">{{$t('ruleList')}}</span></v-toolbar-title>
             <v-spacer></v-spacer>
-            <v-btn outline :color="enableMock ? 'error': 'success'" class="mb-2" @click.stop="changeGlobalMock">{{enableMock ? '全局禁用' : '全局启用'}}</v-btn>
+            <v-btn outline :color="enableMock ? 'error': 'success'" class="mb-2" @click.stop="changeGlobalMock">{{enableMock ? $t('globalDisable') : $t('globalEnable')}}</v-btn>
 
             <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">{{$t('create')}}</v-btn>
           </v-toolbar>
@@ -72,8 +72,8 @@
                   <v-switch v-model="props.item.enable" inset @change="enableOrDisableMockRule(props.item)"></v-switch>
                 </td>
                 <td>
-                  <v-btn class="tiny" color="primary" @click="editMockRule(props.item)"> 编辑 </v-btn>
-                  <v-btn class="tiny" color="error" @click="deleteMockRule(props.item.id)"> 删除 </v-btn>
+                  <v-btn class="tiny" color="primary" @click="editMockRule(props.item)"> {{$t('edit')}} </v-btn>
+                  <v-btn class="tiny" color="error" @click="deleteMockRule(props.item.id)"> {{$t('delete')}} </v-btn>
                 </td>
               </template>
             </v-data-table>
@@ -85,18 +85,18 @@
     <v-dialog v-model="dialog" width="800px" persistent>
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">{{$t('createNewRoutingRule')}}</span>
+          <span class="headline">{{dialogType === 1 ? $t('createMockRule') : $t('editMockRule')}}</span>
         </v-card-title>
         <v-card-text >
           <v-text-field
-            label="Service Name"
+            :label="$t('serviceName')"
             :hint="$t('dataIdClassHint')"
             v-model="mockRule.serviceName"
           ></v-text-field>
 
           <v-text-field
-            label="Method Name"
-            hint="Application name the service belongs to"
+            :label="$t('methodName')"
+            :hint="$t('methodNameHint')"
             v-model="mockRule.methodName"
           ></v-text-field>
 
@@ -173,12 +173,12 @@
             sortable: false
           },
           {
-            text: '返回数据',
+            text: this.$t('mockData'),
             value: 'rule',
             sortable: false
           },
           {
-            text: '是否启用',
+            text: this.$t('enabled'),
             value: 'enable',
             sortable: false
           },
@@ -224,7 +224,7 @@
       },
       saveOrUpdateMockRule() {
         this.$axios.post("/mock/rule", this.mockRule).then(res => {
-          this.$notify('保存规则成功', 'success')
+          this.$notify(this.$t('saveRuleSuccess'), 'success')
           this.closeDialog()
           this.listMockRules()
         }).catch(e => this.showSnackbar('error', e.response.data.message))
@@ -233,7 +233,7 @@
         this.$axios.delete('/mock/rule', {
           data: {id}}
           ).then(res => {
-            this.$notify('删除成功', 'success')
+            this.$notify(this.$t('deleteRuleSuccess'), 'success')
             this.listMockRules(this.filter)
         })
         .catch(e => this.$notify(e.response.data.message, 'error'))
@@ -255,13 +255,13 @@
           enableMock: !enableMock
         }).then(res => {
           this.enableMock =  !enableMock
-          const text = enableMock ? '禁用成功':'启用成功'
+          const text = enableMock ? this.$t('disableRuleSuccess'): this.$t('enableRuleSuccess')
           this.$notify(text, 'success')
         }).catch(e => this.$notify(e.data.response.message, 'error'))
       },
       enableOrDisableMockRule(mockRule) {
         this.$axios.post('/mock/rule', mockRule)
-        .then(res => this.$notify(mockRule.enable ? '启用成功':'禁用成功', 'success'))
+        .then(res => this.$notify(mockRule.enable ? this.$t('enableRuleSuccess') : this.$t('disableRuleSuccess'), 'success'))
         .catch(e => this.$notify(e.data.response.message, 'error'))
       },
       updateFilter() {

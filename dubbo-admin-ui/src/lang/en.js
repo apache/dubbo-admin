@@ -199,5 +199,18 @@ export default {
       none: 'none'
     }
   },
-  authFailed: 'Authorized failed,please login.'
+  authFailed: 'Authorized failed,please login.',
+
+  ruleList: 'Rule List',
+  mockRule: 'Mock Rule',
+  mockData: 'Mock Data',
+  globalDisable: 'Global Disable',
+  globalEnable: 'Global Enable',
+  saveRuleSuccess: 'Save Rule Successfully',
+  deleteRuleSuccess: 'Delete Rule Successfully',
+  disableRuleSuccess: 'Disable Rule Successfully',
+  enableRuleSuccess: 'Enable Rule Successfully',
+  methodNameHint: 'The method name of Service',
+  createMockRule: 'Create Mock Rule',
+  editMockRule: 'Edit Mock Rule'
 }
