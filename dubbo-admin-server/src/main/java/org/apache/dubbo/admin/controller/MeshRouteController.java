@@ -20,12 +20,13 @@ package org.apache.dubbo.admin.controller;
 import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
+import org.apache.dubbo.admin.common.exception.VersionValidationException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.dto.MeshRouteDTO;
 import org.apache.dubbo.admin.service.MeshRouteService;
+import org.apache.dubbo.admin.service.ProviderService;
 
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -45,9 +46,11 @@ public class MeshRouteController {
 
     private final MeshRouteService meshRouteService;
 
-    @Autowired
-    public MeshRouteController(MeshRouteService meshRouteService) {
+    private final ProviderService providerService;
+
+    public MeshRouteController(MeshRouteService meshRouteService, ProviderService providerService) {
         this.meshRouteService = meshRouteService;
+        this.providerService = providerService;
     }
 
     @RequestMapping(method = RequestMethod.POST)
@@ -57,7 +60,9 @@ public class MeshRouteController {
         if (StringUtils.isEmpty(app)) {
             throw new ParamValidationException("app is Empty!");
         }
-        // todo check appName
+        if (providerService.findVersionInApplication(app).startsWith("2")) {
+            throw new VersionValidationException("dubbo 2.x does not support mesh route");
+        }
 
         return meshRouteService.createMeshRule(meshRoute);
     }

@@ -14,37 +14,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.dubbo.admin.service.impl;
 
-import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
-import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
+import org.apache.dubbo.admin.service.RegistryCache;
 import org.apache.dubbo.common.URL;
-import org.apache.dubbo.common.logger.Logger;
-import org.apache.dubbo.common.logger.LoggerFactory;
-import org.apache.dubbo.registry.Registry;
-import org.springframework.beans.factory.annotation.Autowired;
+
+import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-public class AbstractService {
+/**
+ * interface registry url cache
+ * key --> category,value --> ConcurrentMap<serviceKey, Map<hash, URL>>
+ */
+@Component
+public class InterfaceRegistryCache implements RegistryCache<String, ConcurrentMap<String, Map<String, URL>>> {
 
-    protected static final Logger logger = LoggerFactory.getLogger(AbstractService.class);
+    private final ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>> registryCache = new ConcurrentHashMap<>();
 
-    @Autowired
-    protected Registry registry;
-
-    @Autowired
-    protected GovernanceConfiguration dynamicConfiguration;
-
-    @Autowired
-    protected MetaDataCollector metaDataCollector;
-
-    @Autowired
-    private InterfaceRegistryCache interfaceRegistryCache;
-
-    public ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>> getInterfaceRegistryCache() {
-        return interfaceRegistryCache.getRegistryCache();
+    @Override
+    public void put(String key, ConcurrentMap<String, Map<String, URL>> value) {
+        registryCache.put(key, value);
     }
 
+    @Override
+    public ConcurrentMap<String, Map<String, URL>> get(String key) {
+        return registryCache.get(key);
+    }
+
+    public ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>> getRegistryCache() {
+        return registryCache;
+    }
 }
