@@ -53,7 +53,7 @@
 	</repositories>
 
 	<properties>
-		<revision>0.3.0-SNAPSHOT</revision>
+		<revision>0.3.0</revision>
 		<main.basedir>${project.basedir}</main.basedir>
 		<commons-lang3-version>3.7</commons-lang3-version>
 		<dubbo-version>3.0.2</dubbo-version>
@@ -61,17 +61,11 @@
 		<curator-test-version>4.1.0</curator-test-version>
 		<fastjson-version>1.2.67</fastjson-version>
 		<springfox-swagger-version>2.9.2</springfox-swagger-version>
-		<netty-version>4.1.42.Final</netty-version>
 		<jacoco-version>0.8.2</jacoco-version>
-		<jedis-version>2.9.0</jedis-version>
 		<apollo-version>1.2.0</apollo-version>
-		<consul-version>1.4.2</consul-version>
-		<consul-embedded-version>2.0.0</consul-embedded-version>
-		<nacos-version>1.2.0</nacos-version>
 		<guava-version>20.0</guava-version>
-		<snakeyaml-version>1.24</snakeyaml-version>
 		<maven-checkstyle-plugin-version>3.0.0</maven-checkstyle-plugin-version>
-		<spring-boot-version>2.1.4.RELEASE</spring-boot-version>
+		<spring-boot-version>2.3.12.RELEASE</spring-boot-version>
 		<maven_compiler_version>3.6.0</maven_compiler_version>
 		<maven-flatten-version>1.1.0</maven-flatten-version>
 
@@ -84,11 +78,7 @@
 
 	<dependencyManagement>
         <dependencies>
-			<dependency>
-				<groupId>org.yaml</groupId>
-				<artifactId>snakeyaml</artifactId>
-				<version>${snakeyaml-version}</version>
-			</dependency>
+
 			<dependency>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-starter-parent</artifactId>
@@ -96,27 +86,19 @@
 				<scope>import</scope>
 				<type>pom</type>
 			</dependency>
+
 			<dependency>
-				<groupId>redis.clients</groupId>
-				<artifactId>jedis</artifactId>
-				<version>${jedis-version}</version>
-			</dependency>
-			<dependency>
-				<groupId>org.apache.commons</groupId>
-				<artifactId>commons-lang3</artifactId>
-				<version>${commons-lang3-version}</version>
+				<groupId>org.apache.dubbo</groupId>
+				<artifactId>dubbo-dependencies-bom</artifactId>
+				<version>${dubbo-version}</version>
+				<type>pom</type>
+				<scope>import</scope>
 			</dependency>
 
 			<dependency>
 				<groupId>com.ctrip.framework.apollo</groupId>
 				<artifactId>apollo-openapi</artifactId>
 				<version>${apollo-version}</version>
-			</dependency>
-
-			<dependency>
-				<groupId>com.alibaba.nacos</groupId>
-				<artifactId>nacos-client</artifactId>
-				<version>${nacos-version}</version>
 			</dependency>
 
 			<dependency>
@@ -176,22 +158,6 @@
 				<groupId>io.springfox</groupId>
 				<artifactId>springfox-swagger-ui</artifactId>
 				<version>${springfox-swagger-version}</version>
-			</dependency>
-			<dependency>
-				<groupId>io.netty</groupId>
-				<artifactId>netty-all</artifactId>
-				<version>${netty-version}</version>
-			</dependency>
-
-			<dependency>
-				<groupId>com.ecwid.consul</groupId>
-				<artifactId>consul-api</artifactId>
-				<version>${consul-version}</version>
-			</dependency>
-			<dependency>
-				<groupId>com.pszymczyk.consul</groupId>
-				<artifactId>embedded-consul</artifactId>
-				<version>${consul-embedded-version}</version>
 			</dependency>
 
  			<dependency>
@@ -287,6 +253,8 @@
 										<exclude>**/assets/**</exclude>
 										<exclude>**/yarn.lock</exclude>
 										<exclude>**/node/**</exclude>
+										<exclude>**/dubbo-admin-info.json</exclude>
+										<exclude>.asf.yaml</exclude>
 									</excludes>
 								</configuration>
 							</execution>
