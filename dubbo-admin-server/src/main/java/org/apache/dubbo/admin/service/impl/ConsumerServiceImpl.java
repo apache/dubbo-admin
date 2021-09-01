@@ -52,7 +52,7 @@ public class ConsumerServiceImpl extends AbstractService implements ConsumerServ
     private Map<String, URL> findAllConsumerUrl() {
         Map<String, String> filter = new HashMap<String, String>();
         filter.put(Constants.CATEGORY_KEY, Constants.CONSUMERS_CATEGORY);
-        return SyncUtils.filterFromCategory(getRegistryCache(), filter);
+        return SyncUtils.filterFromCategory(getInterfaceRegistryCache(), filter);
     }
 
 
@@ -69,7 +69,7 @@ public class ConsumerServiceImpl extends AbstractService implements ConsumerServ
         filter.put(Constants.CATEGORY_KEY, Constants.CONSUMERS_CATEGORY);
         filter.put(SyncUtils.ADDRESS_FILTER_KEY, address);
 
-        return SyncUtils.filterFromCategory(getRegistryCache(), filter);
+        return SyncUtils.filterFromCategory(getInterfaceRegistryCache(), filter);
     }
 
     public Map<String, URL> findConsumerUrlByService(String service) {
@@ -77,7 +77,7 @@ public class ConsumerServiceImpl extends AbstractService implements ConsumerServ
         filter.put(Constants.CATEGORY_KEY, Constants.CONSUMERS_CATEGORY);
         filter.put(SyncUtils.SERVICE_FILTER_KEY, service);
 
-        return SyncUtils.filterFromCategory(getRegistryCache(), filter);
+        return SyncUtils.filterFromCategory(getInterfaceRegistryCache(), filter);
     }
 
     @Override
@@ -85,7 +85,7 @@ public class ConsumerServiceImpl extends AbstractService implements ConsumerServ
         Map<String, String> filter = new HashMap<>();
         filter.put(Constants.CATEGORY_KEY, Constants.CONSUMERS_CATEGORY);
         filter.put(Constants.APPLICATION_KEY, application);
-        Map<String, URL> stringURLMap = SyncUtils.filterFromCategory(getRegistryCache(), filter);
+        Map<String, URL> stringURLMap = SyncUtils.filterFromCategory(getInterfaceRegistryCache(), filter);
         if (stringURLMap == null || stringURLMap.isEmpty()) {
             throw new ParamValidationException("there is no consumer for application: " + application);
         }

@@ -18,16 +18,14 @@ package org.apache.dubbo.admin.service.impl;
 
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.util.Constants;
-import org.apache.dubbo.admin.common.util.Pair;
-import org.apache.dubbo.admin.common.util.ParseUtils;
 import org.apache.dubbo.admin.common.util.SyncUtils;
 import org.apache.dubbo.admin.common.util.Tool;
 import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.dto.ServiceDTO;
-import org.apache.dubbo.admin.service.OverrideService;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -37,7 +35,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentMap;
@@ -49,7 +46,7 @@ import java.util.stream.Collectors;
 public class ProviderServiceImpl extends AbstractService implements ProviderService {
 
     @Autowired
-    OverrideService overrideService;
+    private InstanceRegistryQueryHelper instanceRegistryQueryHelper;
 
     @Override
     public void create(Provider provider) {
@@ -63,57 +60,27 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         return metaDataCollector.getProviderMetaData(providerIdentifier);
     }
 
-
-    @Override
-    public void deleteStaticProvider(String id) {
-        URL oldProvider = findProviderUrl(id);
-        if (oldProvider == null) {
-            throw new IllegalStateException("Provider was changed!");
-        }
-        registry.unregister(oldProvider);
-    }
-
-    @Override
-    public void updateProvider(Provider provider) {
-        String hash = provider.getHash();
-        if (hash == null) {
-            throw new IllegalStateException("no provider id");
-        }
-
-        URL oldProvider = findProviderUrl(hash);
-        if (oldProvider == null) {
-            throw new IllegalStateException("Provider was changed!");
-        }
-        URL newProvider = provider.toUrl();
-
-        registry.unregister(oldProvider);
-        registry.register(newProvider);
-    }
-
-    @Override
-    public Provider findProvider(String id) {
-        return SyncUtils.url2Provider(findProviderUrlPair(id));
-    }
-
-    public Pair<String, URL> findProviderUrlPair(String id) {
-        return SyncUtils.filterFromCategory(getRegistryCache(), Constants.PROVIDERS_CATEGORY, id);
-    }
-
     @Override
     public Set<String> findServices() {
         Set<String> ret = new HashSet<>();
-        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
-        if (providerUrls != null){
+        ConcurrentMap<String, Map<String, URL>> providerUrls = getInterfaceRegistryCache().get(Constants.PROVIDERS_CATEGORY);
+        if (providerUrls != null) {
             ret.addAll(providerUrls.keySet());
         }
+        ret.addAll(instanceRegistryQueryHelper.findServices());
         return ret;
+    }
+
+    @Override
+    public Set<String> findInstanceApplications() {
+        return instanceRegistryQueryHelper.findApplications();
     }
 
     @Override
     public List<String> findAddresses() {
         List<String> ret = new ArrayList<String>();
 
-        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
+        ConcurrentMap<String, Map<String, URL>> providerUrls = getInterfaceRegistryCache().get(Constants.PROVIDERS_CATEGORY);
         if (null == providerUrls) {
             return ret;
         }
@@ -128,80 +95,15 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
                 }
             }
         }
-
-        return ret;
-    }
-
-    @Override
-    public List<String> findAddressesByApplication(String application) {
-        List<String> ret = new ArrayList<String>();
-        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
-        for (Map.Entry<String, Map<String, URL>> e1 : providerUrls.entrySet()) {
-            Map<String, URL> value = e1.getValue();
-            for (Map.Entry<String, URL> e2 : value.entrySet()) {
-                URL u = e2.getValue();
-                if (application.equals(u.getParameter(Constants.APPLICATION))) {
-                    String addr = u.getAddress();
-                    if (addr != null) {
-                        ret.add(addr);
-                    }
-                }
-            }
-        }
-
-        return ret;
-    }
-
-    @Override
-    public List<String> findAddressesByService(String service) {
-        List<String> ret = new ArrayList<String>();
-        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
-        if (null == providerUrls) {
-            return ret;
-        }
-
-        for (Map.Entry<String, URL> e2 : providerUrls.get(service).entrySet()) {
-            URL u = e2.getValue();
-            String app = u.getAddress();
-            if (app != null) {
-                ret.add(app);
-            }
-        }
-
-        return ret;
-    }
-
-    @Override
-    public List<String> findApplicationsByServiceName(String service) {
-        List<String> ret = new ArrayList<String>();
-        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
-        if (null == providerUrls) {
-            return ret;
-        }
-
-        Map<String, URL> value = providerUrls.get(service);
-        if (value == null) {
-            return ret;
-        }
-        for (Map.Entry<String, URL> e2 : value.entrySet()) {
-            URL u = e2.getValue();
-            String app = u.getParameter(Constants.APPLICATION);
-            if (app != null){
-                ret.add(app);
-            }
-        }
-
         return ret;
     }
 
     @Override
     public List<Provider> findByService(String serviceName) {
-        return SyncUtils.url2ProviderList(findProviderUrlByService(serviceName));
-    }
-
-    @Override
-    public List<Provider> findByAppandService(String app, String serviceName) {
-        return SyncUtils.url2ProviderList(findProviderUrlByAppandService(app, serviceName));
+        List<Provider> instanceProviders = instanceRegistryQueryHelper.findByService(serviceName);
+        List<Provider> interfaceProviders = SyncUtils.url2ProviderList(findProviderUrlByService(serviceName));
+        instanceProviders.addAll(interfaceProviders);
+        return instanceProviders;
     }
 
     private Map<String, URL> findProviderUrlByService(String service) {
@@ -209,7 +111,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
         filter.put(SyncUtils.SERVICE_FILTER_KEY, service);
 
-        return SyncUtils.filterFromCategory(getRegistryCache(), filter);
+        return SyncUtils.filterFromCategory(getInterfaceRegistryCache(), filter);
     }
 
     @Override
@@ -220,12 +122,15 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
     private Map<String, URL> findAllProviderUrl() {
         Map<String, String> filter = new HashMap<String, String>();
         filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
-        return SyncUtils.filterFromCategory(getRegistryCache(), filter);
+        return SyncUtils.filterFromCategory(getInterfaceRegistryCache(), filter);
     }
 
     @Override
     public List<Provider> findByAddress(String providerAddress) {
-        return SyncUtils.url2ProviderList(findProviderUrlByAddress(providerAddress));
+        List<Provider> instanceProviders = instanceRegistryQueryHelper.findByAddress(providerAddress);
+        List<Provider> interfaceProviders = SyncUtils.url2ProviderList(findProviderUrlByAddress(providerAddress));
+        instanceProviders.addAll(interfaceProviders);
+        return instanceProviders;
     }
 
     public Map<String, URL> findProviderUrlByAddress(String address) {
@@ -233,37 +138,14 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
         filter.put(SyncUtils.ADDRESS_FILTER_KEY, address);
 
-        return SyncUtils.filterFromCategory(getRegistryCache(), filter);
-    }
-
-    @Override
-    public List<String> findServicesByAddress(String address) {
-        List<String> ret = new ArrayList<String>();
-
-        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
-        if (providerUrls == null || address == null || address.length() == 0) {
-            return ret;
-        }
-
-        for (Map.Entry<String, Map<String, URL>> e1 : providerUrls.entrySet()) {
-            Map<String, URL> value = e1.getValue();
-            for (Map.Entry<String, URL> e2 : value.entrySet()) {
-                URL u = e2.getValue();
-                if (address.equals(u.getAddress())) {
-                    ret.add(e1.getKey());
-                    break;
-                }
-            }
-        }
-
-        return ret;
+        return SyncUtils.filterFromCategory(getInterfaceRegistryCache(), filter);
     }
 
     @Override
     public Set<String> findApplications() {
-        Set<String> ret = new HashSet<>();
-        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
-        if (providerUrls == null){
+        Set<String> ret = instanceRegistryQueryHelper.findApplications();
+        ConcurrentMap<String, Map<String, URL>> providerUrls = getInterfaceRegistryCache().get(Constants.PROVIDERS_CATEGORY);
+        if (providerUrls == null) {
             return ret;
         }
 
@@ -283,11 +165,18 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
 
     @Override
     public List<Provider> findByApplication(String application) {
-        return SyncUtils.url2ProviderList(findProviderUrlByApplication(application));
+        List<Provider> instanceProviders = instanceRegistryQueryHelper.findByApplication(application);
+        List<Provider> interfaceProviders = SyncUtils.url2ProviderList(findProviderUrlByApplication(application));
+        instanceProviders.addAll(interfaceProviders);
+        return instanceProviders;
     }
 
     @Override
     public String findVersionInApplication(String application) {
+        String version = instanceRegistryQueryHelper.findVersionInApplication(application);
+        if (StringUtils.isNotBlank(version)){
+            return version;
+        }
         List<String> services = findServicesByApplication(application);
         if (services == null || services.size() == 0) {
             throw new ParamValidationException("there is no service for application: " + application);
@@ -313,23 +202,22 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
         filter.put(Constants.APPLICATION, app);
         filter.put(SyncUtils.SERVICE_FILTER_KEY, service);
-        return SyncUtils.filterFromCategory(getRegistryCache(), filter);
+        return SyncUtils.filterFromCategory(getInterfaceRegistryCache(), filter);
     }
-
 
 
     private Map<String, URL> findProviderUrlByApplication(String application) {
         Map<String, String> filter = new HashMap<>();
         filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
         filter.put(Constants.APPLICATION, application);
-        return SyncUtils.filterFromCategory(getRegistryCache(), filter);
+        return SyncUtils.filterFromCategory(getInterfaceRegistryCache(), filter);
     }
 
     @Override
     public List<String> findServicesByApplication(String application) {
         List<String> ret = new ArrayList<String>();
 
-        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
+        ConcurrentMap<String, Map<String, URL>> providerUrls = getInterfaceRegistryCache().get(Constants.PROVIDERS_CATEGORY);
         if (providerUrls == null || application == null || application.length() == 0) {
             return ret;
         }
@@ -346,59 +234,6 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         }
 
         return ret;
-    }
-
-    @Override
-    public List<String> findMethodsByService(String service) {
-        List<String> ret = new ArrayList<String>();
-
-        ConcurrentMap<String, Map<String, URL>> providerUrls = getRegistryCache().get(Constants.PROVIDERS_CATEGORY);
-        if (providerUrls == null || service == null || service.length() == 0){
-            return ret;
-        }
-
-        Map<String, URL> providers = providerUrls.get(service);
-        if (null == providers || providers.isEmpty()) {
-            return ret;
-        }
-
-        Entry<String, URL> p = providers.entrySet().iterator().next();
-        String value = p.getValue().getParameter("methods");
-        if (value == null || value.length() == 0) {
-            return ret;
-        }
-        String[] methods = value.split(ParseUtils.METHOD_SPLIT);
-        if (methods == null || methods.length == 0) {
-            return ret;
-        }
-
-        for (String m : methods) {
-            ret.add(m);
-        }
-        return ret;
-    }
-
-    private URL findProviderUrl(String id) {
-        return findProvider(id).toUrl();
-    }
-
-    @Override
-    public Provider findByServiceAndAddress(String service, String address) {
-        return SyncUtils.url2Provider(findProviderUrl(service, address));
-    }
-
-    private Pair<String, URL> findProviderUrl(String service, String address) {
-        Map<String, String> filter = new HashMap<String, String>();
-        filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
-        filter.put(SyncUtils.ADDRESS_FILTER_KEY, address);
-
-        Map<String, URL> ret = SyncUtils.filterFromCategory(getRegistryCache(), filter);
-        if (ret.isEmpty()) {
-            return null;
-        } else {
-            String key = ret.entrySet().iterator().next().getKey();
-            return new Pair<String, URL>(key, ret.get(key));
-        }
     }
 
     @Override
@@ -420,15 +255,14 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
                 candidates = findServices();
             } else if (Constants.APPLICATION.equals(pattern)) {
                 candidates = findApplications();
-            }
-            else if (Constants.IP.equals(pattern)) {
+            } else if (Constants.IP.equals(pattern)) {
                 candidates = findAddresses().stream().collect(Collectors.toSet());
             }
             // replace dot symbol and asterisk symbol to java-based regex pattern
             filter = filter.toLowerCase().replace(Constants.PUNCTUATION_POINT, Constants.PUNCTUATION_SEPARATOR_POINT);
             // filter start with [* 、? 、+] will triggering PatternSyntaxException
             if (filter.startsWith(Constants.ANY_VALUE)
-                || filter.startsWith(Constants.INTERROGATION_POINT) || filter.startsWith(Constants.PLUS_SIGNS)) {
+                    || filter.startsWith(Constants.INTERROGATION_POINT) || filter.startsWith(Constants.PLUS_SIGNS)) {
                 filter = Constants.PUNCTUATION_POINT + filter;
             }
             // search with no case insensitive
@@ -438,19 +272,16 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
                 if (matcher.matches() || matcher.lookingAt()) {
                     if (Constants.SERVICE.equals(pattern)) {
                         providers.addAll(findByService(candidate));
-                    }
-                    else if (Constants.IP.equals(pattern)) {
+                    } else if (Constants.IP.equals(pattern)) {
                         providers.addAll(findByAddress(candidate));
-                    }
-                    else {
+                    } else {
                         providers.addAll(findByApplication(candidate));
                     }
                 }
             }
         }
 
-        Set<ServiceDTO> result = convertProviders2DTO(providers);
-        return result;
+        return convertProviders2DTO(providers);
     }
 
     /**
@@ -472,6 +303,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
             s.setService(interfaze);
             s.setGroup(group);
             s.setVersion(version);
+            s.setRegistrySource(provider.getRegistrySource());
             result.add(s);
         }
         return result;

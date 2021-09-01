@@ -17,12 +17,13 @@
 
 package org.apache.dubbo.admin.common.util;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.model.domain.MethodMetadata;
-import org.apache.dubbo.admin.model.domain.FullServiceDefinition;
-import org.apache.dubbo.admin.model.domain.MethodDefinition;
-import org.apache.dubbo.admin.model.domain.ServiceDefinition;
-import org.apache.dubbo.admin.model.domain.TypeDefinition;
+import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
+import org.apache.dubbo.metadata.definition.model.MethodDefinition;
+import org.apache.dubbo.metadata.definition.model.ServiceDefinition;
+import org.apache.dubbo.metadata.definition.model.TypeDefinition;
+
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,7 +33,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class ServiceTestUtil {
+public class ServiceTestV3Util {
     private static Pattern COLLECTION_PATTERN = Pattern.compile("^java\\.util\\..*(Set|List|Queue|Collection|Deque)(<.*>)*$");
     private static Pattern MAP_PATTERN = Pattern.compile("^java\\.util\\..*Map.*(<.*>)*$");
 
@@ -62,6 +63,10 @@ public class ServiceTestUtil {
 
     private static boolean isPrimitiveType(TypeDefinition td) {
         String type = td.getType();
+        return isPrimitiveType(type);
+    }
+
+    private static boolean isPrimitiveType(String type) {
         return type.equals("byte") || type.equals("java.lang.Byte") ||
                 type.equals("short") || type.equals("java.lang.Short") ||
                 type.equals("int") || type.equals("java.lang.Integer") ||
@@ -91,14 +96,15 @@ public class ServiceTestUtil {
     }
 
     private static void generateComplexType(ServiceDefinition sd, TypeDefinition td, Map<String, Object> holder) {
-        for (Map.Entry<String, TypeDefinition> entry : td.getProperties().entrySet()) {
-            if (isPrimitiveType(td)) {
-                holder.put(entry.getKey(), generatePrimitiveType(td));
+        td.getProperties().forEach((name, type) -> {
+            if (isPrimitiveType(type)) {
+                holder.put(name, generatePrimitiveType(type));
             } else {
-                generateEnclosedType(holder, entry.getKey(), sd, entry.getValue());
+                generateEnclosedType(holder, name, sd, type);
             }
-        }
+        });
     }
+
     private static Object generateComplexType(ServiceDefinition sd, TypeDefinition td) {
         Map<String, Object> holder = new HashMap<>();
         generateComplexType(sd, td, holder);
@@ -122,7 +128,10 @@ public class ServiceTestUtil {
     }
 
     private static Object generatePrimitiveType(TypeDefinition td) {
-        String type = td.getType();
+        return generatePrimitiveType(td.getType());
+    }
+
+    private static Object generatePrimitiveType(String type) {
         switch (type) {
             case "byte":
             case "java.lang.Byte":
@@ -195,23 +204,30 @@ public class ServiceTestUtil {
         type = StringUtils.substringBefore(type, ">");
         if (StringUtils.isEmpty(type)) {
             // if type is null return empty collection
-            return new Object[] {};
+            return new Object[]{};
         }
         return new Object[]{generateType(sd, type)};
 
     }
+
     private static Object generateArrayType(ServiceDefinition sd, TypeDefinition td) {
         String type = StringUtils.substringBeforeLast(td.getType(), "[]");
         return new Object[]{generateType(sd, type)};
     }
 
-    private static void generateEnclosedType(Map<String, Object> holder, String key, ServiceDefinition sd, TypeDefinition td) {
-        if (td.getProperties() == null || td.getProperties().size() == 0 || isPrimitiveType(td)) {
-            holder.put(key, generateType(sd, td));
+    private static void generateEnclosedType(Map<String, Object> holder, String key, ServiceDefinition sd, String type) {
+        if (isPrimitiveType(type)) {
+            holder.put(key, generateType(sd, type));
         } else {
-            Map<String, Object> enclosedMap = new HashMap<>();
-            holder.put(key, enclosedMap);
-            generateComplexType(sd, td, enclosedMap);
+            TypeDefinition td = findTypeDefinition(sd, type);
+            if (td.getProperties() == null || td.getProperties().size() == 0) {
+                holder.put(key, generateType(sd, td));
+            } else {
+                Map<String, Object> enclosedMap = new HashMap<>();
+                holder.put(key, enclosedMap);
+                generateComplexType(sd, td, enclosedMap);
+            }
+
         }
     }
 }

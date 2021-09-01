@@ -56,8 +56,8 @@
 		<revision>0.3.0-SNAPSHOT</revision>
 		<main.basedir>${project.basedir}</main.basedir>
 		<commons-lang3-version>3.7</commons-lang3-version>
-		<dubbo-version>2.7.12</dubbo-version>
-		<curator-version>2.12.0</curator-version>
+		<dubbo-version>3.0.2</dubbo-version>
+		<curator-version>4.0.1</curator-version>
 		<curator-test-version>4.1.0</curator-test-version>
 		<fastjson-version>1.2.67</fastjson-version>
 		<springfox-swagger-version>2.9.2</springfox-swagger-version>
@@ -126,12 +126,6 @@
 			</dependency>
 
 			<dependency>
-				<groupId>org.apache.dubbo</groupId>
-				<artifactId>dubbo-serialization-kryo</artifactId>
-				<version>${dubbo-version}</version>
-			</dependency>
-
-			<dependency>
 				<groupId>org.apache.curator</groupId>
 				<artifactId>curator-framework</artifactId>
 				<version>${curator-version}</version>
@@ -154,6 +148,19 @@
 					</exclusion>
 				</exclusions>
 			</dependency>
+
+			<dependency>
+				<groupId>org.apache.curator</groupId>
+				<artifactId>curator-x-discovery</artifactId>
+				<version>${curator-version}</version>
+				<exclusions>
+					<exclusion>
+						<groupId>org.apache.zookeeper</groupId>
+						<artifactId>zookeeper</artifactId>
+					</exclusion>
+				</exclusions>
+			</dependency>
+
 			<dependency>
 				<groupId>com.alibaba</groupId>
 				<artifactId>fastjson</artifactId>

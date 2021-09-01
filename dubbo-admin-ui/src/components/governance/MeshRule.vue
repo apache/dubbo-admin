@@ -403,7 +403,7 @@
     },
     mounted: function () {
       this.setHeaders()
-      this.$store.dispatch('loadAppItems')
+      this.$store.dispatch('loadInstanceAppItems')
       this.ruleText = this.template
       let query = this.$route.query
       let filter = null

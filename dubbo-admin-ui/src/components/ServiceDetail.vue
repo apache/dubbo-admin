@@ -54,6 +54,7 @@
               <template slot="items" slot-scope="props">
                 <td>{{getIp(props.item.address)}}</td>
                 <td>{{getPort(props.item.address)}}</td>
+                <td>{{props.item.registrySource}}</td>
                 <td></td>
                 <td></td>
                 <td>{{props.item.weight}}</td>
@@ -167,6 +168,10 @@
               value: 'port'
             },
             {
+              text: this.$t('registrySource'),
+              value: 'registrySource'
+            },
+            {
               text: this.$t('timeout'),
               value: 'timeout'
             },
@@ -204,7 +209,16 @@
         this.$axios.get('/service/' + service)
             .then(response => {
               this.providerDetails = response.data.providers
+              const instanceRegistry = this.$t('instanceRegistry')
+              const interfaceRegistry = this.$t('interfaceRegistry')
               for (let i = 0; i < this.providerDetails.length; i++) {
+                if (this.providerDetails[i].registrySource === 'INSTANCE') {
+                  this.providerDetails[i].registrySource = instanceRegistry
+                }
+                if (this.providerDetails[i].registrySource === 'INTERFACE') {
+                  this.providerDetails[i].registrySource = interfaceRegistry
+                }
+                console.log(this.providerDetails[i])
                 this.$set(this.providerDetails[i], 'hint', 'url')
               }
               this.consumerDetails = response.data.consumers
