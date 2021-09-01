@@ -17,6 +17,7 @@
 
 package org.apache.dubbo.admin.service.impl;
 
+import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.mapper.MockRuleMapper;
 import org.apache.dubbo.admin.model.domain.MockRule;
 import org.apache.dubbo.admin.model.dto.GlobalMockRuleDTO;
@@ -51,6 +52,9 @@ import java.util.stream.Collectors;
 @Component
 public class MockRuleServiceImpl implements MockRuleService {
 
+    private static final String CONFIG_KEY = Constants.CONFIG_KEY + Constants.PATH_SEPARATOR +
+            MockConstants.ADMIN_MOCK_RULE_KEY;
+
     @Autowired
     private MockRuleMapper mockRuleMapper;
 
@@ -79,7 +83,7 @@ public class MockRuleServiceImpl implements MockRuleService {
             }
         }
 
-        enableOrDisableMockRuleInConfigurationCenter(mockRule);
+        enableOrDisableMockRuleInConfigurationCenter(rule);
         if (Objects.nonNull(rule.getId())) {
             mockRuleMapper.updateById(rule);
             return;
@@ -89,6 +93,13 @@ public class MockRuleServiceImpl implements MockRuleService {
 
     @Override
     public void deleteMockRuleById(Long id) {
+        MockRule mockRule = mockRuleMapper.selectById(id);
+        if (Objects.isNull(mockRule)) {
+            throw new IllegalStateException("Mock Rule cannot find");
+        }
+        // remove the config in config center
+        mockRule.setEnable(false);
+        enableOrDisableMockRuleInConfigurationCenter(mockRule);
         mockRuleMapper.deleteById(id);
     }
 
@@ -112,7 +123,7 @@ public class MockRuleServiceImpl implements MockRuleService {
         GlobalMockRuleDTO globalMockRule = new GlobalMockRuleDTO();
         globalMockRule.setEnableMock(false);
 
-        String content = configuration.getConfig(MockConstants.ADMIN_MOCK_RULE_GROUP, MockConstants.ADMIN_MOCK_RULE_KEY);
+        String content = configuration.getConfig(CONFIG_KEY);
         if (StringUtils.isBlank(content)) {
             return globalMockRule;
         }
@@ -128,7 +139,7 @@ public class MockRuleServiceImpl implements MockRuleService {
     public void changeGlobalMockRule(GlobalMockRuleDTO globalMockRule) {
         GlobalMockRule mockRule = new GlobalMockRule();
         mockRule.setEnableMock(globalMockRule.getEnableMock());
-        String content = configuration.getConfig(MockConstants.ADMIN_MOCK_RULE_GROUP, MockConstants.ADMIN_MOCK_RULE_KEY);
+        String content = configuration.getConfig(CONFIG_KEY);
         if (StringUtils.isNotEmpty(content)) {
             GlobalMockRule existMockRule =
                     new Gson().fromJson(content, GlobalMockRule.class);
@@ -137,7 +148,7 @@ public class MockRuleServiceImpl implements MockRuleService {
             }
         }
         String newContent = new Gson().toJson(mockRule);
-        configuration.setConfig(MockConstants.ADMIN_MOCK_RULE_GROUP,  MockConstants.ADMIN_MOCK_RULE_KEY, newContent);
+        configuration.setConfig(CONFIG_KEY, newContent);
     }
 
     @Override
@@ -155,9 +166,9 @@ public class MockRuleServiceImpl implements MockRuleService {
         return mockResult;
     }
 
-    private void enableOrDisableMockRuleInConfigurationCenter(MockRuleDTO mockRule) {
+    private void enableOrDisableMockRuleInConfigurationCenter(MockRule mockRule) {
         String methodName = mockRule.getServiceName() + "#" + mockRule.getMethodName();
-        String content = configuration.getConfig(MockConstants.ADMIN_MOCK_RULE_GROUP,  MockConstants.ADMIN_MOCK_RULE_KEY);
+        String content = configuration.getConfig(CONFIG_KEY);
         GlobalMockRule rule;
         if (StringUtils.isBlank(content)) {
             rule = new GlobalMockRule();
@@ -176,6 +187,6 @@ public class MockRuleServiceImpl implements MockRuleService {
                         }
                     });
         }
-        configuration.setConfig(MockConstants.ADMIN_MOCK_RULE_GROUP,  MockConstants.ADMIN_MOCK_RULE_KEY, new Gson().toJson(rule));
+        configuration.setConfig(CONFIG_KEY, new Gson().toJson(rule));
     }
 }

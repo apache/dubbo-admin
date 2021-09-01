@@ -2,8 +2,6 @@ package org.apache.dubbo.admin.model.domain;
 
 import org.apache.dubbo.admin.model.dto.MockRuleDTO;
 
-import org.springframework.beans.BeanUtils;
-
 /**
  * @author chenglu
  * @date 2021-08-24 17:19
@@ -22,7 +20,11 @@ public class MockRule {
 
     public static MockRule toMockRule(MockRuleDTO mockRule) {
         MockRule rule = new MockRule();
-        BeanUtils.copyProperties(mockRule, rule);
+        rule.setServiceName(mockRule.getServiceName().trim());
+        rule.setMethodName(mockRule.getMethodName().trim());
+        rule.setEnable(mockRule.getEnable());
+        rule.setId(mockRule.getId());
+        rule.setRule(mockRule.getRule());
         return rule;
     }
 
