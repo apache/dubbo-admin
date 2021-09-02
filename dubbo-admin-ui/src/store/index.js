@@ -71,6 +71,18 @@ export const store = new Vuex.Store({
         })
     },
     /**
+     * Load instance registry application items from server, put results into storage.
+     */
+    loadInstanceAppItems ({commit}) {
+      Vue.prototype.$axios.get('/applications/instance')
+        .then(response => {
+          if (response.status === 200) {
+            const appItems = response.data
+            commit('setAppItems', appItems)
+          }
+        })
+    },
+    /**
      * Load application items from consumer, put results into storage.
      */
     loadConsumerItems ({commit}) {
