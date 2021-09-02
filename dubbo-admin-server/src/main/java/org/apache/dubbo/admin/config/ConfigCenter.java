@@ -18,6 +18,7 @@
 package org.apache.dubbo.admin.config;
 
 import org.apache.commons.lang3.StringUtils;
+
 import org.apache.dubbo.admin.common.exception.ConfigurationException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
@@ -55,7 +56,6 @@ import static org.apache.dubbo.registry.client.ServiceDiscoveryFactory.getExtens
 
 @Configuration
 public class ConfigCenter {
-
 
 
     //centers in dubbo 2.7
@@ -118,7 +118,7 @@ public class ConfigCenter {
             String config = dynamicConfiguration.getConfig(Constants.GLOBAL_CONFIG_PATH);
 
             if (StringUtils.isNotEmpty(config)) {
-                Arrays.stream(config.split("\n")).forEach( s -> {
+                Arrays.stream(config.split("\n")).forEach(s -> {
                     if (s.startsWith(Constants.REGISTRY_ADDRESS)) {
                         String registryAddress = removerConfigKey(s);
                         registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
@@ -148,10 +148,9 @@ public class ConfigCenter {
         Environment env = ApplicationModel.getEnvironment();
         SortedMap<String, String> sortedMap = new TreeMap<>();
         if (registryUrl == null) {
-            if (StringUtils.isBlank(registryAddress)) {
-                throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration");
+            if (StringUtils.isNotBlank(registryAddress)) {
+                registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
             }
-            registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
         }
 
         if (metadataUrl == null) {
@@ -179,8 +178,16 @@ public class ConfigCenter {
     @Bean("dubboRegistry")
     @DependsOn("governanceConfiguration")
     Registry getRegistry() {
+        Registry registry = null;
+        if (registryUrl == null) {
+            if (StringUtils.isBlank(registryAddress)) {
+                throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration");
+            }
+            registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
+        }
         RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
-        return registryFactory.getRegistry(registryUrl);
+        registry = registryFactory.getRegistry(registryUrl);
+        return registry;
     }
 
     /*
@@ -190,6 +197,12 @@ public class ConfigCenter {
     @DependsOn("governanceConfiguration")
     MetaDataCollector getMetadataCollector() {
         MetaDataCollector metaDataCollector = new NoOpMetadataCollector();
+        if (metadataUrl == null) {
+            if (StringUtils.isNotEmpty(metadataAddress)) {
+                metadataUrl = formUrl(metadataAddress, metadataGroup, metadataGroupNameSpace, username, password);
+                metadataUrl = metadataUrl.addParameter(CLUSTER_KEY, cluster);
+            }
+        }
         if (metadataUrl != null) {
             metaDataCollector = ExtensionLoader.getExtensionLoader(MetaDataCollector.class).getExtension(metadataUrl.getProtocol());
             metaDataCollector.setUrl(metadataUrl);
@@ -223,7 +236,7 @@ public class ConfigCenter {
         serviceMapping.init(metadataUrl);
         return serviceMapping;
     }
-  
+
     public static String removerConfigKey(String properties) {
         String[] split = properties.split("=");
         String[] address = new String[split.length - 1];
