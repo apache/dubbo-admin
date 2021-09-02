@@ -18,16 +18,22 @@
 package org.apache.dubbo.admin.service;
 
 import org.apache.dubbo.admin.common.util.Constants;
+import org.apache.dubbo.admin.service.impl.InterfaceRegistryCache;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.url.component.URLParam;
 import org.apache.dubbo.registry.Registry;
+
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 
@@ -46,9 +52,11 @@ public class RegistryServerSyncTest {
     @InjectMocks
     private RegistryServerSync registryServerSync;
 
-    @Test
-    public void testGetRegistryCache() {
-        registryServerSync.getRegistryCache();
+    private InterfaceRegistryCache interfaceRegistryCache = new InterfaceRegistryCache();
+
+    @Before
+    public void setUp() throws Exception {
+        ReflectionTestUtils.setField(registryServerSync, "interfaceRegistryCache", interfaceRegistryCache);
     }
 
     @Test
@@ -71,27 +79,32 @@ public class RegistryServerSyncTest {
         // when url.getProtocol is not empty protocol
         URL consumerUrl = mock(URL.class);
         URL providerUrl = mock(URL.class);
-
-        when(consumerUrl.getParameter(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY)).thenReturn(Constants.CONSUMER_PROTOCOL);
+        HashMap<String, String> consumerUrlParam = new HashMap<>();
+        consumerUrlParam.put(Constants.CATEGORY_KEY,Constants.CONSUMER_PROTOCOL);
+        HashMap<String, String> providerUrlParam = new HashMap<>();
+        providerUrlParam.put(Constants.CATEGORY_KEY,Constants.PROVIDER_PROTOCOL);
+        when(consumerUrl.getUrlParam()).thenReturn(URLParam.parse(consumerUrlParam));
         when(consumerUrl.getServiceInterface()).thenReturn("org.apache.dubbo.consumer");
-        when(consumerUrl.getServiceKey()).thenReturn("org.apache.dubbo.consumer");
         when(consumerUrl.toFullString()).thenReturn("consumer://192.168.1.10/sunbufu.dubbo.consumer?application=dubbo&category=consumer&check=false&dubbo=2.7.0&interface=sunbufu.dubbo.consumer&loadbalabce=roundrobin&mehods=sayHi,sayGoodBye&owner=sunbufu&pid=18&protocol=dubbo&side=consumer&timeout=3000&timestamp=1548127407769");
+        when(providerUrl.getUrlParam()).thenReturn(URLParam.parse(providerUrlParam));
         when(providerUrl.getParameter(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY)).thenReturn(Constants.PROVIDER_PROTOCOL);
         when(providerUrl.getServiceInterface()).thenReturn("org.apache.dubbo.provider");
-        when(providerUrl.getServiceKey()).thenReturn("org.apache.dubbo.provider");
         when(providerUrl.toFullString()).thenReturn("consumer://192.168.1.10/sunbufu.dubbo.consumer?application=dubbo&category=consumer&check=false&dubbo=2.6.2&interface=sunbufu.dubbo.consumer&loadbalabce=roundrobin&mehods=sayHi,sayGoodBye&owner=sunbufu&pid=18&protocol=dubbo&side=consumer&timeout=3000&timestamp=1548127407769");
 
         registryServerSync.notify(Arrays.asList(consumerUrl, consumerUrl, providerUrl));
 
-        ConcurrentMap<String, Map<String, URL>> consumerMap = registryServerSync.getRegistryCache().get(Constants.CONSUMER_PROTOCOL);
+        ConcurrentMap<String, Map<String, URL>> consumerMap = interfaceRegistryCache.get(Constants.CONSUMER_PROTOCOL);
         assertTrue(consumerMap.keySet().contains("org.apache.dubbo.consumer"));
-        ConcurrentMap<String, Map<String, URL>> providerMap = registryServerSync.getRegistryCache().get(Constants.PROVIDER_PROTOCOL);
+        ConcurrentMap<String, Map<String, URL>> providerMap = interfaceRegistryCache.get(Constants.PROVIDER_PROTOCOL);
         assertTrue(providerMap.keySet().contains("org.apache.dubbo.provider"));
 
         // when url.getProtocol is empty protocol
         when(consumerUrl.getProtocol()).thenReturn(Constants.EMPTY_PROTOCOL);
-        when(consumerUrl.getParameter(Constants.GROUP_KEY)).thenReturn("dubbo");
-        when(consumerUrl.getParameter(Constants.VERSION_KEY)).thenReturn("2.7.0");
+        consumerUrlParam = new HashMap<>();
+        consumerUrlParam.put(Constants.CATEGORY_KEY,Constants.CONSUMER_PROTOCOL);
+        consumerUrlParam.put(Constants.GROUP_KEY,"dubbo");
+        consumerUrlParam.put(Constants.VERSION_KEY,"2.7.0");
+        when(consumerUrl.getUrlParam()).thenReturn(URLParam.parse(consumerUrlParam));
         registryServerSync.notify(Collections.singletonList(consumerUrl));
 
         assertTrue(!consumerMap.keySet().contains("org.apache.dubbo.consumer"));

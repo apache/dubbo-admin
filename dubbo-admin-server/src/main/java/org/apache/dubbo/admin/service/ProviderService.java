@@ -25,25 +25,10 @@ import java.util.Set;
 
 /**
  * ProviderService
- *
  */
 public interface ProviderService {
 
     void create(Provider provider);
-
-//    void enableProvider(String id);
-
-//    void disableProvider(String id);
-
-//    void doublingProvider(String id);
-
-//    void halvingProvider(String id);
-
-    void deleteStaticProvider(String id);
-
-    void updateProvider(Provider provider);
-
-    Provider findProvider(String id);
 
     String getProviderMetaData(MetadataIdentifier providerIdentifier);
 
@@ -54,17 +39,19 @@ public interface ProviderService {
      */
     Set<String> findServices();
 
+    /**
+     * Get all instance registry provider's service name
+     *
+     * @return list of all provider's service name
+     */
+    Set<String> findInstanceApplications();
+
+
     String findServiceVersion(String serviceName, String application);
 
     String findVersionInApplication(String application);
 
     List<String> findAddresses();
-
-    List<String> findAddressesByApplication(String application);
-
-    List<String> findAddressesByService(String serviceName);
-
-    List<String> findApplicationsByServiceName(String serviceName);
 
     /**
      * Get provider list with specific service name.
@@ -73,8 +60,6 @@ public interface ProviderService {
      * @return list of provider object
      */
     List<Provider> findByService(String serviceName);
-
-    List<Provider> findByAppandService(String app, String serviceName);
 
     List<Provider> findAll();
 
@@ -85,8 +70,6 @@ public interface ProviderService {
      * @return list of provider object
      */
     List<Provider> findByAddress(String providerAddress);
-
-    List<String> findServicesByAddress(String providerAddress);
 
     Set<String> findApplications();
 
@@ -100,13 +83,9 @@ public interface ProviderService {
 
     List<String> findServicesByApplication(String application);
 
-    List<String> findMethodsByService(String serviceName);
-
-    Provider findByServiceAndAddress(String service, String address);
-
     /**
      * Get a set of service data object.
-     *
+     * <p>
      * ServiceDTO object contains base information include
      * service name , application, group and version.
      *

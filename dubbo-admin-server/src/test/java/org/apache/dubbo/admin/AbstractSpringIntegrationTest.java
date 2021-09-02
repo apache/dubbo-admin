@@ -73,7 +73,7 @@ public abstract class AbstractSpringIntegrationTest {
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(configurableApplicationContext,
                     "admin.registry.address=zookeeper://" + zkServer.getConnectString());
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(configurableApplicationContext,
-                    "admin.metadata.address=zookeeper://" + zkServer.getConnectString());
+                    "admin.metadata-report.address=zookeeper://" + zkServer.getConnectString());
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(configurableApplicationContext,
                     "admin.config-center=zookeeper://" + zkServer.getConnectString());
         }

@@ -22,6 +22,7 @@ import ServiceDetail from '@/components/ServiceDetail'
 import TestMethod from '@/components/test/TestMethod'
 import RoutingRule from '@/components/governance/RoutingRule'
 import TagRule from '@/components/governance/TagRule'
+import MeshRule from '@/components/governance/MeshRule'
 import AccessControl from '@/components/governance/AccessControl'
 import LoadBalance from '@/components/governance/LoadBalance'
 import WeightAdjust from '@/components/governance/WeightAdjust'
@@ -83,6 +84,14 @@ export default new Router({
           path: '/governance/tagRule',
           name: 'TagRule',
           component: TagRule,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/governance/meshRule',
+          name: 'MeshRule',
+          component: MeshRule,
           meta: {
             requireLogin: true
           }

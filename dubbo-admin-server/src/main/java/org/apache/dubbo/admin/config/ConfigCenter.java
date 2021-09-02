@@ -21,14 +21,21 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ConfigurationException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
+import org.apache.dubbo.admin.registry.mapping.ServiceMapping;
+import org.apache.dubbo.admin.registry.mapping.impl.NoOpServiceMapping;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.admin.registry.metadata.impl.NoOpMetadataCollector;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
+import org.apache.dubbo.metadata.MappingListener;
 import org.apache.dubbo.registry.Registry;
 import org.apache.dubbo.registry.RegistryFactory;
+import org.apache.dubbo.registry.RegistryService;
+import org.apache.dubbo.registry.client.ServiceDiscovery;
+import org.apache.dubbo.registry.client.ServiceDiscoveryFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,6 +44,7 @@ import org.springframework.context.annotation.DependsOn;
 import java.util.Arrays;
 
 import static org.apache.dubbo.common.constants.CommonConstants.CLUSTER_KEY;
+import static org.apache.dubbo.registry.client.ServiceDiscoveryFactory.getExtension;
 
 @Configuration
 public class ConfigCenter {
@@ -85,7 +93,8 @@ public class ConfigCenter {
     private URL registryUrl;
     private URL metadataUrl;
 
-
+    @Autowired
+    private MappingListener mappingListener;
 
     /*
      * generate dynamic configuration client
@@ -130,7 +139,7 @@ public class ConfigCenter {
     /*
      * generate registry client
      */
-    @Bean
+    @Bean("dubboRegistry")
     @DependsOn("governanceConfiguration")
     Registry getRegistry() {
         Registry registry = null;
@@ -148,7 +157,7 @@ public class ConfigCenter {
     /*
      * generate metadata client
      */
-    @Bean
+    @Bean("metaDataCollector")
     @DependsOn("governanceConfiguration")
     MetaDataCollector getMetadataCollector() {
         MetaDataCollector metaDataCollector = new NoOpMetadataCollector();
@@ -168,6 +177,30 @@ public class ConfigCenter {
         return metaDataCollector;
     }
 
+
+    @Bean(destroyMethod = "destroy")
+    @DependsOn("dubboRegistry")
+    ServiceDiscovery getServiceDiscoveryRegistry() throws Exception {
+        URL registryURL = registryUrl.setPath(RegistryService.class.getName());
+        ServiceDiscoveryFactory factory = getExtension(registryURL);
+        ServiceDiscovery serviceDiscovery = factory.getServiceDiscovery(registryURL);
+        serviceDiscovery.initialize(registryURL);
+        return serviceDiscovery;
+    }
+
+    @Bean
+    @DependsOn("metaDataCollector")
+    ServiceMapping getServiceMapping() {
+        ServiceMapping serviceMapping = new NoOpServiceMapping();
+        if (metadataUrl == null) {
+            return serviceMapping;
+        }
+        serviceMapping = ExtensionLoader.getExtensionLoader(ServiceMapping.class).getExtension(metadataUrl.getProtocol());
+        serviceMapping.addMappingListener(mappingListener);
+        serviceMapping.init(metadataUrl);
+        return serviceMapping;
+    }
+  
     public static String removerConfigKey(String properties) {
         String[] split = properties.split("=");
         String[] address = new String[split.length - 1];

@@ -19,10 +19,10 @@ package org.apache.dubbo.admin.common.util;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.model.domain.MethodMetadata;
-import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
-import org.apache.dubbo.metadata.definition.model.MethodDefinition;
-import org.apache.dubbo.metadata.definition.model.ServiceDefinition;
-import org.apache.dubbo.metadata.definition.model.TypeDefinition;
+import org.apache.dubbo.admin.model.domain.FullServiceDefinition;
+import org.apache.dubbo.admin.model.domain.MethodDefinition;
+import org.apache.dubbo.admin.model.domain.ServiceDefinition;
+import org.apache.dubbo.admin.model.domain.TypeDefinition;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -180,10 +180,7 @@ public class ServiceTestUtil {
         keyType = StringUtils.strip(keyType);
 
         Map<Object, Object> map = new HashMap<>();
-        // 生成 key 默认值
         Object key = generateType(sd, keyType);
-
-        // 生成 value 默认值
         String valueType = StringUtils.substringAfter(td.getType(), ",");
         valueType = StringUtils.substringBefore(valueType, ">");
         valueType = StringUtils.strip(valueType);
@@ -197,7 +194,7 @@ public class ServiceTestUtil {
         String type = StringUtils.substringAfter(td.getType(), "<");
         type = StringUtils.substringBefore(type, ">");
         if (StringUtils.isEmpty(type)) {
-            // 如果 collection 类型未声明，则生成空 collection
+            // if type is null return empty collection
             return new Object[] {};
         }
         return new Object[]{generateType(sd, type)};

@@ -23,7 +23,8 @@ const Menu = [
     group: 'governance',
     items: [
       { title: 'routingRule', path: '/governance/routingRule' },
-      { title: 'tagRule', path: '/governance/tagRule', badge: 'new' },
+      { title: 'tagRule', path: '/governance/tagRule' },
+      { title: 'meshRule', path: '/governance/meshRule', badge: 'new' },
       { title: 'accessControl', path: '/governance/access' },
       { title: 'dynamicConfig', path: '/governance/config' },
       { title: 'weightAdjust', path: '/governance/weight' },
