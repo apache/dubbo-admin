@@ -26,6 +26,7 @@ import org.apache.dubbo.admin.registry.mapping.impl.NoOpServiceMapping;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.admin.registry.metadata.impl.NoOpMetadataCollector;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.config.Environment;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
@@ -35,6 +36,8 @@ import org.apache.dubbo.registry.RegistryFactory;
 import org.apache.dubbo.registry.RegistryService;
 import org.apache.dubbo.registry.client.ServiceDiscovery;
 import org.apache.dubbo.registry.client.ServiceDiscoveryFactory;
+import org.apache.dubbo.rpc.model.ApplicationModel;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -42,6 +45,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import static org.apache.dubbo.common.constants.CommonConstants.CLUSTER_KEY;
 import static org.apache.dubbo.registry.client.ServiceDiscoveryFactory.getExtension;
@@ -133,7 +140,37 @@ public class ConfigCenter {
                 //throw exception
             }
         }
+        initDubboEnvironment();
         return dynamicConfiguration;
+    }
+
+    private void initDubboEnvironment() {
+        Environment env = ApplicationModel.getEnvironment();
+        SortedMap<String, String> sortedMap = new TreeMap<>();
+        if (registryUrl == null) {
+            if (StringUtils.isBlank(registryAddress)) {
+                throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration");
+            }
+            registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
+        }
+
+        if (metadataUrl == null) {
+            if (StringUtils.isNotEmpty(metadataAddress)) {
+                metadataUrl = formUrl(metadataAddress, metadataGroup, metadataGroupNameSpace, username, password);
+                metadataUrl = metadataUrl.addParameter(CLUSTER_KEY, cluster);
+            }
+        }
+        if (registryUrl != null) {
+            sortedMap.put("dubbo.registry.address", registryUrl.toFullString());
+        }
+        if (configCenterUrl != null) {
+            sortedMap.put("dubbo.config-center.address", configCenterUrl.toFullString());
+        }
+        if (metadataUrl != null) {
+            sortedMap.put("dubbo.metadata-report.address", metadataUrl.toFullString());
+        }
+        Map<String, String> map = Collections.unmodifiableSortedMap(sortedMap);
+        env.updateAppConfigMap(map);
     }
 
     /*
@@ -142,16 +179,8 @@ public class ConfigCenter {
     @Bean("dubboRegistry")
     @DependsOn("governanceConfiguration")
     Registry getRegistry() {
-        Registry registry = null;
-        if (registryUrl == null) {
-            if (StringUtils.isBlank(registryAddress)) {
-                throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration");
-            }
-            registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
-        }
         RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
-        registry = registryFactory.getRegistry(registryUrl);
-        return registry;
+        return registryFactory.getRegistry(registryUrl);
     }
 
     /*
@@ -161,12 +190,6 @@ public class ConfigCenter {
     @DependsOn("governanceConfiguration")
     MetaDataCollector getMetadataCollector() {
         MetaDataCollector metaDataCollector = new NoOpMetadataCollector();
-        if (metadataUrl == null) {
-            if (StringUtils.isNotEmpty(metadataAddress)) {
-                metadataUrl = formUrl(metadataAddress, metadataGroup, metadataGroupNameSpace, username, password);
-                metadataUrl = metadataUrl.addParameter(CLUSTER_KEY, cluster);
-            }
-        }
         if (metadataUrl != null) {
             metaDataCollector = ExtensionLoader.getExtensionLoader(MetaDataCollector.class).getExtension(metadataUrl.getProtocol());
             metaDataCollector.setUrl(metadataUrl);
