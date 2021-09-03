@@ -16,13 +16,10 @@ public class MockRule {
 
     private String rule;
 
-    private Boolean enable;
-
     public static MockRule toMockRule(MockRuleDTO mockRule) {
         MockRule rule = new MockRule();
         rule.setServiceName(mockRule.getServiceName().trim());
         rule.setMethodName(mockRule.getMethodName().trim());
-        rule.setEnable(mockRule.getEnable());
         rule.setId(mockRule.getId());
         rule.setRule(mockRule.getRule());
         return rule;
@@ -52,19 +49,21 @@ public class MockRule {
         this.rule = rule;
     }
 
-    public Boolean getEnable() {
-        return enable;
-    }
-
-    public void setEnable(Boolean enable) {
-        this.enable = enable;
-    }
-
     public Long getId() {
         return id;
     }
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    @java.lang.Override
+    public String toString() {
+        return "MockRule{" +
+                "id=" + id +
+                ", serviceName='" + serviceName + '\'' +
+                ", methodName='" + methodName + '\'' +
+                ", rule='" + rule + '\'' +
+                '}';
     }
 }
