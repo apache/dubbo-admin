@@ -110,11 +110,11 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
                     String version = url.getUrlParam().getParameter(Constants.VERSION_KEY);
                     // NOTE: group and version in empty protocol is *
                     if (!Constants.ANY_VALUE.equals(group) && !Constants.ANY_VALUE.equals(version)) {
-                        services.remove(url.getServiceInterface());
+                        services.remove(getServiceInterface(url));
                     } else {
                         for (Map.Entry<String, Map<String, URL>> serviceEntry : services.entrySet()) {
                             String service = serviceEntry.getKey();
-                            if (Tool.getInterface(service).equals(url.getServiceInterface())
+                            if (Tool.getInterface(service).equals(getServiceInterface(url))
                                     && (Constants.ANY_VALUE.equals(group) || StringUtils.isEquals(group, Tool.getGroup(service)))
                                     && (Constants.ANY_VALUE.equals(version) || StringUtils.isEquals(version, Tool.getVersion(service)))) {
                                 services.remove(service);
@@ -124,7 +124,7 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
                 }
             } else {
                 if (StringUtils.isEmpty(interfaceName)) {
-                    interfaceName = url.getServiceInterface();
+                    interfaceName = getServiceInterface(url);
                 }
                 Map<String, Map<String, URL>> services = categories.get(category);
                 if (services == null) {
@@ -133,7 +133,7 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
                 }
                 String group = url.getUrlParam().getParameter(Constants.GROUP_KEY);
                 String version = url.getUrlParam().getParameter(Constants.VERSION_KEY);
-                String service = BaseServiceMetadata.buildServiceKey(url.getServiceInterface(), group, version);
+                String service = BaseServiceMetadata.buildServiceKey(getServiceInterface(url), group, version);
                 Map<String, URL> ids = services.get(service);
                 if (ids == null) {
                     ids = new HashMap<>();
@@ -170,5 +170,14 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
             services.putAll(categoryEntry.getValue());
         }
     }
+
+    private String getServiceInterface(URL url) {
+        String serviceInterface = url.getServiceInterface();
+        if (StringUtils.isBlank(serviceInterface) || Constants.ANY_VALUE.equals(serviceInterface)) {
+            serviceInterface = url.getPath();
+        }
+        return serviceInterface;
+    }
+
 }
 
