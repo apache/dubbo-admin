@@ -21,6 +21,7 @@ import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.domain.RegistrySource;
 import org.apache.dubbo.common.BaseServiceMetadata;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.utils.StringUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -52,7 +53,7 @@ public class SyncUtils {
         p.setHash(id);
         String group = url.getUrlParam().getParameter(Constants.GROUP_KEY);
         String version = url.getUrlParam().getParameter(Constants.VERSION_KEY);
-        String service = BaseServiceMetadata.buildServiceKey(url.getServiceInterface(), group, version);
+        String service = BaseServiceMetadata.buildServiceKey(getServiceInterface(url), group, version);
         p.setService(service);
         p.setAddress(url.getAddress());
         p.setApplication(url.getParameter(Constants.APPLICATION_KEY));
@@ -91,7 +92,7 @@ public class SyncUtils {
         c.setHash(id);
         String group = url.getUrlParam().getParameter(Constants.GROUP_KEY);
         String version = url.getUrlParam().getParameter(Constants.VERSION_KEY);
-        String service = BaseServiceMetadata.buildServiceKey(url.getServiceInterface(), group, version);
+        String service = BaseServiceMetadata.buildServiceKey(getServiceInterface(url), group, version);
         c.setService(service);
         c.setAddress(url.getHost());
         c.setApplication(url.getParameter(Constants.APPLICATION_KEY));
@@ -188,4 +189,13 @@ public class SyncUtils {
         }
         return null;
     }
+
+    private static String getServiceInterface(URL url) {
+        String serviceInterface = url.getServiceInterface();
+        if (StringUtils.isBlank(serviceInterface) || Constants.ANY_VALUE.equals(serviceInterface)) {
+            serviceInterface = url.getPath();
+        }
+        return serviceInterface;
+    }
+
 }
