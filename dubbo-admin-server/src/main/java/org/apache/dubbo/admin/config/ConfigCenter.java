@@ -18,6 +18,7 @@
 package org.apache.dubbo.admin.config;
 
 import org.apache.commons.lang3.StringUtils;
+
 import org.apache.dubbo.admin.common.exception.ConfigurationException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
@@ -26,6 +27,7 @@ import org.apache.dubbo.admin.registry.mapping.impl.NoOpServiceMapping;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.admin.registry.metadata.impl.NoOpMetadataCollector;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.config.Environment;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
@@ -35,6 +37,8 @@ import org.apache.dubbo.registry.RegistryFactory;
 import org.apache.dubbo.registry.RegistryService;
 import org.apache.dubbo.registry.client.ServiceDiscovery;
 import org.apache.dubbo.registry.client.ServiceDiscoveryFactory;
+import org.apache.dubbo.rpc.model.ApplicationModel;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -42,13 +46,16 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import static org.apache.dubbo.common.constants.CommonConstants.CLUSTER_KEY;
 import static org.apache.dubbo.registry.client.ServiceDiscoveryFactory.getExtension;
 
 @Configuration
 public class ConfigCenter {
-
 
 
     //centers in dubbo 2.7
@@ -111,7 +118,7 @@ public class ConfigCenter {
             String config = dynamicConfiguration.getConfig(Constants.GLOBAL_CONFIG_PATH);
 
             if (StringUtils.isNotEmpty(config)) {
-                Arrays.stream(config.split("\n")).forEach( s -> {
+                Arrays.stream(config.split("\n")).forEach(s -> {
                     if (s.startsWith(Constants.REGISTRY_ADDRESS)) {
                         String registryAddress = removerConfigKey(s);
                         registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
@@ -133,7 +140,36 @@ public class ConfigCenter {
                 //throw exception
             }
         }
+        initDubboEnvironment();
         return dynamicConfiguration;
+    }
+
+    private void initDubboEnvironment() {
+        Environment env = ApplicationModel.getEnvironment();
+        SortedMap<String, String> sortedMap = new TreeMap<>();
+        if (registryUrl == null) {
+            if (StringUtils.isNotBlank(registryAddress)) {
+                registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
+            }
+        }
+
+        if (metadataUrl == null) {
+            if (StringUtils.isNotEmpty(metadataAddress)) {
+                metadataUrl = formUrl(metadataAddress, metadataGroup, metadataGroupNameSpace, username, password);
+                metadataUrl = metadataUrl.addParameter(CLUSTER_KEY, cluster);
+            }
+        }
+        if (registryUrl != null) {
+            sortedMap.put("dubbo.registry.address", registryUrl.toFullString());
+        }
+        if (configCenterUrl != null) {
+            sortedMap.put("dubbo.config-center.address", configCenterUrl.toFullString());
+        }
+        if (metadataUrl != null) {
+            sortedMap.put("dubbo.metadata-report.address", metadataUrl.toFullString());
+        }
+        Map<String, String> map = Collections.unmodifiableSortedMap(sortedMap);
+        env.updateAppConfigMap(map);
     }
 
     /*
@@ -200,7 +236,7 @@ public class ConfigCenter {
         serviceMapping.init(metadataUrl);
         return serviceMapping;
     }
-  
+
     public static String removerConfigKey(String properties) {
         String[] split = properties.split("=");
         String[] address = new String[split.length - 1];

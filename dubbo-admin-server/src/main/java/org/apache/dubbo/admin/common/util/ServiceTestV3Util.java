@@ -91,7 +91,7 @@ public class ServiceTestV3Util {
 
     private static TypeDefinition findTypeDefinition(ServiceDefinition serviceDefinition, String type) {
         return serviceDefinition.getTypes().stream()
-                .filter(t -> t.getType().equals(type))
+                .filter(t -> type.equals(t.getType()))
                 .findFirst().orElse(new TypeDefinition(type));
     }
 
