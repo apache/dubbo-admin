@@ -55,12 +55,14 @@ public class GlobalMockRuleManager {
 
     private void refreshRule() {
         String rule = configuration.getConfig(CONFIG_KEY);
+        globalMockRule.getEnabledMockRules().clear();
         if (StringUtils.isBlank(rule)) {
+            globalMockRule.setEnableMock(false);
             return;
         }
         GlobalMockRule newGlobalMockRule = gson.fromJson(rule, GlobalMockRule.class);
         globalMockRule.setEnableMock(newGlobalMockRule.getEnableMock());
-        globalMockRule.setEnabledMockRules(newGlobalMockRule.getEnabledMockRules());
+        globalMockRule.getEnabledMockRules().addAll(newGlobalMockRule.getEnabledMockRules());
     }
 
     private void updateGlobalMockRule() {
