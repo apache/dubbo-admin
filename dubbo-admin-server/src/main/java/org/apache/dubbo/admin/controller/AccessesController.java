@@ -80,6 +80,7 @@ public class AccessesController {
         if (iterator == null) {
             return accessDTOS;
         }
+
         while (iterator.hasNext()) {
             AccessesAuthentication accessesAuthentication = iterator.next();
             AccessDTO dto = accessesAuthentication.authentication(service, application, env, serviceVersion, serviceGroup);
