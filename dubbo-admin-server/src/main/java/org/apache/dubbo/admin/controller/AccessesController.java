@@ -80,15 +80,19 @@ public class AccessesController {
         if (iterator == null) {
             return accessDTOS;
         }
-
         while (iterator.hasNext()) {
             AccessesAuthentication accessesAuthentication = iterator.next();
             AccessDTO dto = accessesAuthentication.authentication(service, application, env, serviceVersion, serviceGroup);
-            dto.setService(service);
-            dto.setServiceVersion(serviceVersion);
-            dto.setServiceGroup(serviceGroup);
-            String id = ConvertUtil.getIdFromDTO(dto);
-            AccessDTO accessDTO = routeService.findAccess(id);
+            AccessDTO accessDTO;
+            if (StringUtils.isNotBlank(application)) {
+                accessDTO = routeService.findAccess(application);
+            } else {
+                dto.setService(service);
+                dto.setServiceVersion(serviceVersion);
+                dto.setServiceGroup(serviceGroup);
+                String id = ConvertUtil.getIdFromDTO(dto);
+                accessDTO = routeService.findAccess(id);
+            }
             if (accessDTO != null) {
                 accessDTO.setEnabled(true);
                 accessDTOS.add(accessDTO);
