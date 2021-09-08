@@ -17,6 +17,7 @@
 package org.apache.dubbo.admin.controller;
 
 import org.apache.dubbo.admin.annotation.Authority;
+import org.apache.dubbo.admin.authentication.AccessesAuthentication;
 import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.exception.ResourceNotFoundException;
 import org.apache.dubbo.admin.common.exception.VersionValidationException;
@@ -25,6 +26,8 @@ import org.apache.dubbo.admin.model.dto.AccessDTO;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
 import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.RouteService;
+
+import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 
@@ -40,8 +43,10 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 @Authority(needLogin = true)
 @RestController
@@ -58,6 +63,7 @@ public class AccessesController {
         this.consumerService = consumerService;
     }
 
+
     @RequestMapping(method = RequestMethod.GET)
     public List<AccessDTO> searchAccess(@RequestParam(required = false) String service,
                                         @RequestParam(required = false) String application,
@@ -68,20 +74,29 @@ public class AccessesController {
             throw new ParamValidationException("Either service or application is required");
         }
         List<AccessDTO> accessDTOS = new ArrayList<>();
-        AccessDTO accessDTO;
-        if (StringUtils.isNotBlank(application)) {
-            accessDTO = routeService.findAccess(application);
-        } else {
-            AccessDTO dto = new AccessDTO();
-            dto.setService(service);
-            dto.setServiceVersion(serviceVersion);
-            dto.setServiceGroup(serviceGroup);
-            String id = ConvertUtil.getIdFromDTO(dto);
-            accessDTO = routeService.findAccess(id);
+        ExtensionLoader<AccessesAuthentication> extensionLoader = ExtensionLoader.getExtensionLoader(AccessesAuthentication.class);
+        Set<AccessesAuthentication> supportedExtensionInstances = extensionLoader.getSupportedExtensionInstances();
+        Iterator<AccessesAuthentication> iterator = supportedExtensionInstances.iterator();
+        if (iterator == null) {
+            return accessDTOS;
         }
-        if (accessDTO != null) {
-            accessDTO.setEnabled(true);
-            accessDTOS.add(accessDTO);
+        while (iterator.hasNext()) {
+            AccessesAuthentication accessesAuthentication = iterator.next();
+            AccessDTO dto = accessesAuthentication.authentication(service, application, env, serviceVersion, serviceGroup);
+            AccessDTO accessDTO;
+            if (StringUtils.isNotBlank(application)) {
+                accessDTO = routeService.findAccess(application);
+            } else {
+                dto.setService(service);
+                dto.setServiceVersion(serviceVersion);
+                dto.setServiceGroup(serviceGroup);
+                String id = ConvertUtil.getIdFromDTO(dto);
+                accessDTO = routeService.findAccess(id);
+            }
+            if (accessDTO != null) {
+                accessDTO.setEnabled(true);
+                accessDTOS.add(accessDTO);
+            }
         }
         return accessDTOS;
     }
