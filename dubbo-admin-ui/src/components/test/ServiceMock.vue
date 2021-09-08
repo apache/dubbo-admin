@@ -50,8 +50,6 @@
           <v-toolbar flat color="transparent" class="elevation-0">
             <v-toolbar-title><span class="headline">{{$t('ruleList')}}</span></v-toolbar-title>
             <v-spacer></v-spacer>
-            <v-btn outline :color="enableMock ? 'error': 'success'" class="mb-2" @click.stop="changeGlobalMock">{{enableMock ? $t('globalDisable') : $t('globalEnable')}}</v-btn>
-
             <v-btn outline color="primary" @click.stop="openDialog" class="mb-2">{{$t('create')}}</v-btn>
           </v-toolbar>
           <v-card-text class="pa-0">
@@ -155,8 +153,7 @@
           rule: '',
           enable: true
         },
-        dialogType: 1,
-        enableMock: true
+        dialogType: 1
       }
     },
     methods: {
@@ -242,22 +239,6 @@
         this.mockRule = mockRule
         this.openDialog()
         this.dialogType = 2
-      },
-      getGlobalMock() {
-        this.$axios.get('/mock/rule/global')
-        .then(res => {
-          this.enableMock = res.data.enableMock
-        }).catch(e => this.$notify(e.data.response.message, 'error'))
-      },
-      changeGlobalMock() {
-        const enableMock = this.enableMock
-        this.$axios.post('/mock/rule/global', {
-          enableMock: !enableMock
-        }).then(res => {
-          this.enableMock =  !enableMock
-          const text = enableMock ? this.$t('disableRuleSuccess'): this.$t('enableRuleSuccess')
-          this.$notify(text, 'success')
-        }).catch(e => this.$notify(e.data.response.message, 'error'))
       },
       enableOrDisableMockRule(mockRule) {
         this.$axios.post('/mock/rule', mockRule)

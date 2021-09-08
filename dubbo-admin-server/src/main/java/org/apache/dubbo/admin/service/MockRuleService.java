@@ -17,7 +17,6 @@
 
 package org.apache.dubbo.admin.service;
 
-import org.apache.dubbo.admin.model.dto.GlobalMockRuleDTO;
 import org.apache.dubbo.admin.model.dto.MockRuleDTO;
 
 import org.apache.dubbo.mock.api.MockContext;
@@ -36,10 +35,6 @@ public interface MockRuleService {
     void deleteMockRuleById(Long id);
 
     Page<MockRuleDTO> listMockRulesByPage(String filter, Pageable pageable);
-
-    GlobalMockRuleDTO getGlobalMockRule();
-
-    void changeGlobalMockRule(GlobalMockRuleDTO globalMockRule);
 
     MockResult getMockData(MockContext mockContext);
 }

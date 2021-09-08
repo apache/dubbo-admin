@@ -18,7 +18,6 @@
 package org.apache.dubbo.admin.controller;
 
 import org.apache.dubbo.admin.annotation.Authority;
-import org.apache.dubbo.admin.model.dto.GlobalMockRuleDTO;
 import org.apache.dubbo.admin.model.dto.MockRuleDTO;
 import org.apache.dubbo.admin.service.MockRuleService;
 
@@ -62,16 +61,5 @@ public class MockRuleController {
     @GetMapping("/list")
     public Page<MockRuleDTO> listMockRules(@RequestParam(required = false) String filter, Pageable pageable) {
         return mockRuleService.listMockRulesByPage(filter, pageable);
-    }
-
-    @GetMapping("/global")
-    public GlobalMockRuleDTO getGlobalMockRule() {
-        return mockRuleService.getGlobalMockRule();
-    }
-
-    @PostMapping("/global")
-    public boolean changeGlobalMockRule(@RequestBody GlobalMockRuleDTO globalMockRule) {
-        mockRuleService.changeGlobalMockRule(globalMockRule);
-        return true;
     }
 }

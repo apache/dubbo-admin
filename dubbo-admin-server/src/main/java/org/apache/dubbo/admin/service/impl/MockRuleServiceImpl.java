@@ -19,7 +19,6 @@ package org.apache.dubbo.admin.service.impl;
 
 import org.apache.dubbo.admin.mapper.MockRuleMapper;
 import org.apache.dubbo.admin.model.domain.MockRule;
-import org.apache.dubbo.admin.model.dto.GlobalMockRuleDTO;
 import org.apache.dubbo.admin.model.dto.MockRuleDTO;
 import org.apache.dubbo.admin.service.MockRuleService;
 
@@ -48,9 +47,6 @@ public class MockRuleServiceImpl implements MockRuleService {
     @Autowired
     private MockRuleMapper mockRuleMapper;
 
-    @Autowired
-    private GlobalMockRuleManager globalMockRuleManager;
-
     @Override
     public void createOrUpdateMockRule(MockRuleDTO mockRule) {
         if (Objects.isNull(mockRule.getServiceName()) || Objects.isNull(mockRule.getMethodName())
@@ -72,8 +68,7 @@ public class MockRuleServiceImpl implements MockRuleService {
                 }
             }
         }
-        String methodName = mockRule.getServiceName() + "#" + mockRule.getMethodName();
-        globalMockRuleManager.updateMockRule(methodName, mockRule.getEnable());
+
         if (Objects.nonNull(rule.getId())) {
             mockRuleMapper.updateById(rule);
             return;
@@ -87,9 +82,6 @@ public class MockRuleServiceImpl implements MockRuleService {
         if (Objects.isNull(mockRule)) {
             throw new IllegalStateException("Mock Rule cannot find");
         }
-        // remove the config in config center
-        String methodName = mockRule.getServiceName() + "#" + mockRule.getMethodName();
-        globalMockRuleManager.updateMockRule(methodName, false);
         mockRuleMapper.deleteById(id);
     }
 
@@ -103,40 +95,22 @@ public class MockRuleServiceImpl implements MockRuleService {
         final List<MockRuleDTO> content = mockRules.stream()
                 .skip(pageable.getOffset())
                 .limit(pageable.getPageSize())
-                .map(mockRule -> {
-                    MockRuleDTO mockRuleDto = MockRuleDTO.toMockRuleDTO(mockRule);
-                    String rule = mockRule.getServiceName() + "#" + mockRule.getMethodName();
-                    mockRuleDto.setEnable(globalMockRuleManager.isRuleEnable(rule));
-                    return mockRuleDto;
-                })
+                .map(MockRuleDTO::toMockRuleDTO)
                 .collect(Collectors.toList());
         return new PageImpl<>(content, pageable, total);
     }
 
     @Override
-    public GlobalMockRuleDTO getGlobalMockRule() {
-        GlobalMockRuleDTO globalMockRule = new GlobalMockRuleDTO();
-        globalMockRule.setEnableMock(globalMockRuleManager.getEnableMock());
-        return globalMockRule;
-    }
-
-    @Override
-    public void changeGlobalMockRule(GlobalMockRuleDTO globalMockRule) {
-        globalMockRuleManager.updateEnableMock(globalMockRule.getEnableMock());
-    }
-
-    @Override
     public MockResult getMockData(MockContext mockContext) {
-        String rule = mockContext.getServiceName() + "#" + mockContext.getMethodName();
         QueryWrapper<MockRule> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("service_name", mockContext.getServiceName());
         queryWrapper.eq("method_name", mockContext.getMethodName());
         MockRule mockRule = mockRuleMapper.selectOne(queryWrapper);
         MockResult mockResult = new MockResult();
-        mockResult.setEnable(globalMockRuleManager.isRuleEnable(rule));
         if (Objects.isNull(mockRule)) {
             return mockResult;
         }
+        mockResult.setEnable(mockRule.getEnable());
         mockResult.setContent(mockRule.getRule());
         return mockResult;
     }
