@@ -17,8 +17,6 @@
 package org.apache.dubbo.admin.interceptor;
 
 import org.apache.dubbo.admin.authentication.InterceptorAuthentication;
-import org.apache.dubbo.admin.authentication.LoginAuthentication;
-
 
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.springframework.beans.factory.annotation.Value;
