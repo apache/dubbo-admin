@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static com.alibaba.nacos.api.PropertyKeyConst.NAMING_LOAD_CACHE_AT_START;
 import static org.apache.dubbo.common.constants.RegistryConstants.CONFIGURATORS_CATEGORY;
@@ -95,7 +96,7 @@ public class NacosServiceMapping implements ServiceMapping {
     public void listenerAll() {
 
         try {
-            anyServices = getAllServiceNames();
+            anyServices = getAllServiceNames().stream().filter(this::filterApplication).collect(Collectors.toSet());
         } catch (Exception e) {
             LOGGER.error("Get nacos all services fail ", e);
         }
@@ -106,7 +107,7 @@ public class NacosServiceMapping implements ServiceMapping {
             try {
                 Set<String> serviceNames = getAllServiceNames();
                 for (String serviceName : serviceNames) {
-                    if (anyServices.add(serviceName)) {
+                    if (filterApplication(serviceName) && anyServices.add(serviceName)) {
                         notifyMappingChangedEvent(serviceName);
                     }
                 }
@@ -145,16 +146,20 @@ public class NacosServiceMapping implements ServiceMapping {
         return serviceNames;
     }
 
-    private void notifyMappingChangedEvent(String service) {
-        if (StringUtils.isBlank(service)) {
-            return;
+    private boolean filterApplication(String serviceName) {
+        if (StringUtils.isBlank(serviceName)) {
+            return false;
         }
         for (String category : ALL_SUPPORTED_CATEGORIES) {
             String prefix = category + SERVICE_NAME_SEPARATOR;
-            if (service.startsWith(prefix)) {
-                return;
+            if (serviceName.startsWith(prefix)) {
+                return false;
             }
         }
+        return true;
+    }
+
+    private void notifyMappingChangedEvent(String service) {
         MappingChangedEvent event = new MappingChangedEvent(null, Sets.newHashSet(service));
         for (MappingListener listener : listeners) {
             listener.onEvent(event);
