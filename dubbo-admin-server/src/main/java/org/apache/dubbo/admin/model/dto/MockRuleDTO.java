@@ -22,8 +22,7 @@ import org.apache.dubbo.admin.model.domain.MockRule;
 import org.springframework.beans.BeanUtils;
 
 /**
- * @author chenglu
- * @date 2021-08-24 15:52
+ * the dto which provide to front end.
  */
 public class MockRuleDTO {
 

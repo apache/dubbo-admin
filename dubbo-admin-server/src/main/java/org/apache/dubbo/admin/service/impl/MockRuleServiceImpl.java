@@ -38,8 +38,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
- * @author chenglu
- * @date 2021-08-24 15:50
+ * The implement of {@link MockRuleService}.
  */
 @Component
 public class MockRuleServiceImpl implements MockRuleService {

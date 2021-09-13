@@ -25,16 +25,39 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 /**
- * @author chenglu
- * @date 2021-08-24 18:49
+ * The {@link MockRuleService} mainly works on the function of response the request of mock consumer
+ * and maintain the mock rule data.
  */
 public interface MockRuleService {
 
+    /**
+     * create or update mock rule. if the request contains id, then will be an update operation.
+     *
+     * @param mockRule mock rule.
+     */
     void createOrUpdateMockRule(MockRuleDTO mockRule);
 
+    /**
+     * delete the mock rule data by mock rule id.
+     *
+     * @param id mock rule id.
+     */
     void deleteMockRuleById(Long id);
 
+    /**
+     * list the mock rules by filter and return data by page.
+     *
+     * @param filter filter condition.
+     * @param pageable pageable params.
+     * @return mock rules by page.
+     */
     Page<MockRuleDTO> listMockRulesByPage(String filter, Pageable pageable);
 
+    /**
+     * return the mock rule data by {@link MockContext}.
+     *
+     * @param mockContext mock context provide by consumer.
+     * @return mock data.
+     */
     MockResult getMockData(MockContext mockContext);
 }

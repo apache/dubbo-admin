@@ -20,8 +20,7 @@ package org.apache.dubbo.admin.model.domain;
 import org.apache.dubbo.admin.model.dto.MockRuleDTO;
 
 /**
- * @author chenglu
- * @date 2021-08-24 17:19
+ * The entity for database query and insert.
  */
 public class MockRule {
 
@@ -34,16 +33,6 @@ public class MockRule {
     private String rule;
 
     private Boolean enable;
-
-    public static MockRule toMockRule(MockRuleDTO mockRule) {
-        MockRule rule = new MockRule();
-        rule.setServiceName(mockRule.getServiceName().trim());
-        rule.setMethodName(mockRule.getMethodName().trim());
-        rule.setId(mockRule.getId());
-        rule.setRule(mockRule.getRule());
-        rule.setEnable(mockRule.getEnable());
-        return rule;
-    }
 
     public String getServiceName() {
         return serviceName;
@@ -94,5 +83,16 @@ public class MockRule {
                 ", rule='" + rule + '\'' +
                 ", enable=" + enable +
                 '}';
+    }
+
+
+    public static MockRule toMockRule(MockRuleDTO mockRule) {
+        MockRule rule = new MockRule();
+        rule.setServiceName(mockRule.getServiceName().trim());
+        rule.setMethodName(mockRule.getMethodName().trim());
+        rule.setId(mockRule.getId());
+        rule.setRule(mockRule.getRule());
+        rule.setEnable(mockRule.getEnable());
+        return rule;
     }
 }

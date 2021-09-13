@@ -26,8 +26,7 @@ import org.apache.dubbo.mock.api.MockService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * @author chenglu
- * @date 2021-08-24 12:37
+ * The {@link MockServiceProvider} register as a dubbo service, provide the mock function for the consumer of {@link MockService}.
  */
 @DubboService
 public class MockServiceProvider implements MockService {

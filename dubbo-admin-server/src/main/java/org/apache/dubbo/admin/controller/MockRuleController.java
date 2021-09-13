@@ -34,9 +34,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Mock Rule Controller.
- *
- * @author chenglu
- * @date 2021-08-24 18:48
  */
 @Authority(needLogin = true)
 @RestController
