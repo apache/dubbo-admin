@@ -19,6 +19,8 @@ package org.apache.dubbo.admin.service;
 import org.apache.dubbo.admin.common.util.CoderUtil;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.Tool;
+import org.apache.dubbo.admin.service.impl.InterfaceRegistryCache;
+import org.apache.dubbo.common.BaseServiceMetadata;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
@@ -70,13 +72,11 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
      * ConcurrentMap<category, ConcurrentMap<servicename, Map<MD5, URL>>>
      * registryCache
      */
-    private final ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>> registryCache = new ConcurrentHashMap<>();
     @Autowired
     private Registry registry;
 
-    public ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>> getRegistryCache() {
-        return registryCache;
-    }
+    @Autowired
+    private InterfaceRegistryCache interfaceRegistryCache;
 
     @EventListener(classes = ApplicationReadyEvent.class)
     public void startSubscribe() {
@@ -99,20 +99,23 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
         final Map<String, Map<String, Map<String, URL>>> categories = new HashMap<>();
         String interfaceName = null;
         for (URL url : urls) {
-            String category = url.getParameter(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
+            String category = url.getUrlParam().getParameter(Constants.CATEGORY_KEY);
+            if (category == null) {
+                category = Constants.PROVIDERS_CATEGORY;
+            }
             // NOTE: group and version in empty protocol is *
             if (Constants.EMPTY_PROTOCOL.equalsIgnoreCase(url.getProtocol())) {
-                ConcurrentMap<String, Map<String, URL>> services = registryCache.get(category);
+                ConcurrentMap<String, Map<String, URL>> services = interfaceRegistryCache.get(category);
                 if (services != null) {
-                    String group = url.getParameter(Constants.GROUP_KEY);
-                    String version = url.getParameter(Constants.VERSION_KEY);
+                    String group = url.getUrlParam().getParameter(Constants.GROUP_KEY);
+                    String version = url.getUrlParam().getParameter(Constants.VERSION_KEY);
                     // NOTE: group and version in empty protocol is *
                     if (!Constants.ANY_VALUE.equals(group) && !Constants.ANY_VALUE.equals(version)) {
-                        services.remove(url.getServiceKey());
+                        services.remove(getServiceInterface(url));
                     } else {
                         for (Map.Entry<String, Map<String, URL>> serviceEntry : services.entrySet()) {
                             String service = serviceEntry.getKey();
-                            if (Tool.getInterface(service).equals(url.getServiceInterface())
+                            if (Tool.getInterface(service).equals(getServiceInterface(url))
                                     && (Constants.ANY_VALUE.equals(group) || StringUtils.isEquals(group, Tool.getGroup(service)))
                                     && (Constants.ANY_VALUE.equals(version) || StringUtils.isEquals(version, Tool.getVersion(service)))) {
                                 services.remove(service);
@@ -122,7 +125,7 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
                 }
             } else {
                 if (StringUtils.isEmpty(interfaceName)) {
-                    interfaceName = url.getServiceInterface();
+                    interfaceName = getServiceInterface(url);
                 }
                 Map<String, Map<String, URL>> services = categories.computeIfAbsent(category, k -> new HashMap<>());
                 String service = url.getServiceKey();
@@ -143,10 +146,10 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
         }
         for (Map.Entry<String, Map<String, Map<String, URL>>> categoryEntry : categories.entrySet()) {
             String category = categoryEntry.getKey();
-            ConcurrentMap<String, Map<String, URL>> services = registryCache.get(category);
+            ConcurrentMap<String, Map<String, URL>> services = interfaceRegistryCache.get(category);
             if (services == null) {
                 services = new ConcurrentHashMap<String, Map<String, URL>>();
-                registryCache.put(category, services);
+                interfaceRegistryCache.put(category, services);
             } else {// Fix map can not be cleared when service is unregistered: when a unique “group/service:version” service is unregistered, but we still have the same services with different version or group, so empty protocols can not be invoked.
                 Set<String> keys = new HashSet<String>(services.keySet());
                 for (String key : keys) {
@@ -158,5 +161,14 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
             services.putAll(categoryEntry.getValue());
         }
     }
+
+    private String getServiceInterface(URL url) {
+        String serviceInterface = url.getServiceInterface();
+        if (StringUtils.isBlank(serviceInterface) || Constants.ANY_VALUE.equals(serviceInterface)) {
+            serviceInterface = url.getPath();
+        }
+        return serviceInterface;
+    }
+
 }
 
