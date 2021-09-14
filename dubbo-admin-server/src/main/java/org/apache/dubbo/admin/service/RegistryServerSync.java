@@ -40,7 +40,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Component
 public class RegistryServerSync implements DisposableBean, NotifyListener {
@@ -58,8 +57,6 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
             + Constants.CONFIGURATORS_CATEGORY,
             Constants.ENABLED_KEY, Constants.ANY_VALUE,
             Constants.CHECK_KEY, String.valueOf(false));
-
-    private static final AtomicLong ID = new AtomicLong();
 
     /**
      * Make sure ID never changed when the same url notified many times
