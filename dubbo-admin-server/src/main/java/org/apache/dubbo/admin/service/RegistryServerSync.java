@@ -26,6 +26,7 @@ import org.apache.dubbo.common.utils.NetUtils;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.registry.NotifyListener;
 import org.apache.dubbo.registry.Registry;
+
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -88,7 +89,7 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
         registry.unsubscribe(SUBSCRIBE, this);
     }
 
-    // Notification of of any service with any type (override、subcribe、route、provider) is full.
+    // Notification of any service with any type (override、subscribe、route、provider) is full.
     @Override
     public void notify(List<URL> urls) {
         if (urls == null || urls.isEmpty()) {
@@ -123,17 +124,9 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
                 if (StringUtils.isEmpty(interfaceName)) {
                     interfaceName = url.getServiceInterface();
                 }
-                Map<String, Map<String, URL>> services = categories.get(category);
-                if (services == null) {
-                    services = new HashMap<>();
-                    categories.put(category, services);
-                }
+                Map<String, Map<String, URL>> services = categories.computeIfAbsent(category, k -> new HashMap<>());
                 String service = url.getServiceKey();
-                Map<String, URL> ids = services.get(service);
-                if (ids == null) {
-                    ids = new HashMap<>();
-                    services.put(service, ids);
-                }
+                Map<String, URL> ids = services.computeIfAbsent(service, k -> new HashMap<>());
 
                 // Make sure we use the same ID for the same URL
                 if (URL_IDS_MAPPER.containsKey(url.toFullString())) {
@@ -157,7 +150,7 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
             } else {// Fix map can not be cleared when service is unregistered: when a unique “group/service:version” service is unregistered, but we still have the same services with different version or group, so empty protocols can not be invoked.
                 Set<String> keys = new HashSet<String>(services.keySet());
                 for (String key : keys) {
-                    if (Tool.getInterface(key).equals(interfaceName) && !categoryEntry.getValue().entrySet().contains(key)) {
+                    if (Tool.getInterface(key).equals(interfaceName) && !categoryEntry.getValue().containsKey(key)) {
                         services.remove(key);
                     }
                 }
