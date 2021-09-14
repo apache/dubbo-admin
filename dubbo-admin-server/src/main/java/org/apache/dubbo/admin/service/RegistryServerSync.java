@@ -123,9 +123,17 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
                 if (StringUtils.isEmpty(interfaceName)) {
                     interfaceName = getServiceInterface(url);
                 }
-                Map<String, Map<String, URL>> services = categories.computeIfAbsent(category, k -> new HashMap<>());
+                Map<String, Map<String, URL>> services = categories.get(category);
+                if (services == null) {
+                    services = new HashMap<>();
+                    categories.put(category, services);
+                }
                 String service = url.getServiceKey();
-                Map<String, URL> ids = services.computeIfAbsent(service, k -> new HashMap<>());
+                Map<String, URL> ids = services.get(service);
+                if (ids == null) {
+                    ids = new HashMap<>();
+                    services.put(service, ids);
+                }
 
                 // Make sure we use the same ID for the same URL
                 if (URL_IDS_MAPPER.containsKey(url.toFullString())) {
@@ -144,10 +152,10 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
             String category = categoryEntry.getKey();
             ConcurrentMap<String, Map<String, URL>> services = interfaceRegistryCache.get(category);
             if (services == null) {
-                services = new ConcurrentHashMap<String, Map<String, URL>>();
+                services = new ConcurrentHashMap<>();
                 interfaceRegistryCache.put(category, services);
             } else {// Fix map can not be cleared when service is unregistered: when a unique “group/service:version” service is unregistered, but we still have the same services with different version or group, so empty protocols can not be invoked.
-                Set<String> keys = new HashSet<String>(services.keySet());
+                Set<String> keys = new HashSet<>(services.keySet());
                 for (String key : keys) {
                     if (Tool.getInterface(key).equals(interfaceName) && !categoryEntry.getValue().containsKey(key)) {
                         services.remove(key);
