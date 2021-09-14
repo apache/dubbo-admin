@@ -60,6 +60,8 @@ public class Provider extends Entity {
 
     private List<Override> overrides;
 
+    private RegistrySource registrySource;
+
     public Provider() {
     }
 
@@ -179,6 +181,14 @@ public class Provider extends Entity {
 
     public void setOverrides(List<Override> overrides) {
         this.overrides = overrides;
+    }
+
+    public RegistrySource getRegistrySource() {
+        return registrySource;
+    }
+
+    public void setRegistrySource(RegistrySource registrySource) {
+        this.registrySource = registrySource;
     }
 
     public URL toUrl() {

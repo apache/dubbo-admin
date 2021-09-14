@@ -81,11 +81,12 @@
                 <td>{{props.item.group}}</td>
                 <td>{{props.item.version}}</td>
                 <td>{{props.item.appName}}</td>
+                <td>{{props.item.registrySource}}</td>
                 <td class="text-xs-center px-0" nowrap>
                   <v-btn
                     class="tiny"
                     color='success'
-                    :href='getHref(props.item.service, props.item.appName, props.item.group, props.item.version)'
+                    :href='getHref(props.item.service, props.item.appName, props.item.group, props.item.version,props.item.registrySource)'
                   >
                    {{ $t('detail') }}
                   </v-btn>
@@ -112,7 +113,7 @@
                       <v-list-tile
                         v-for="(item, i) in options"
                         :key="i"
-                        :href='governanceHref(item.value, props.item.service, props.item.appName, props.item.group, props.item.version)'
+                        :href='governanceHref(item.value, props.item.service, props.item.appName, props.item.group, props.item.version,props.item.registrySource)'
                       >
                         <v-list-tile-title class="small-list">{{ $t(item.title) }}</v-list-tile-title>
                       </v-list-tile>
@@ -198,7 +199,17 @@ export default {
       if (!this.resultPage || !this.resultPage.content) {
         return []
       }
-      return this.resultPage.content
+      const instanceRegistry = this.$t('instanceRegistry')
+      const interfaceRegistry = this.$t('interfaceRegistry')
+      return this.resultPage.content.filter(function (item) {
+        if (item.registrySource === 'INSTANCE') {
+          item.registrySource = instanceRegistry
+        }
+        if (item.registrySource === 'INTERFACE') {
+          item.registrySource = interfaceRegistry
+        }
+        return item
+      })
     }
   },
   watch: {
@@ -241,6 +252,11 @@ export default {
         {
           text: this.$t('app'),
           value: 'application',
+          align: 'left'
+        },
+        {
+          text: this.$t('registrySource'),
+          value: 'registry',
           align: 'left'
         },
         {

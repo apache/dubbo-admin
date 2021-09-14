@@ -17,8 +17,10 @@
 package org.apache.dubbo.admin.controller;
 
 import org.apache.dubbo.admin.annotation.Authority;
+import org.apache.dubbo.admin.authentication.LoginAuthentication;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,8 +31,10 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -49,15 +53,26 @@ public class UserController {
     private long sessionTimeoutMilli;
 
     @RequestMapping(value = "/login", method = RequestMethod.GET)
-    public String login(@RequestParam String userName, @RequestParam String password) {
-        if (StringUtils.isBlank(rootUserName) || (rootUserName.equals(userName) && rootUserPassword.equals(password))) {
-            UUID uuid = UUID.randomUUID();
-            String token = uuid.toString();
-            User user = new User();
-            user.setUserName(userName);
-            user.setLastUpdateTime(System.currentTimeMillis());
-            tokenMap.put(token, user);
-            return token;
+    public String login(HttpServletRequest httpServletRequest, @RequestParam String userName, @RequestParam String password) {
+        ExtensionLoader<LoginAuthentication> extensionLoader = ExtensionLoader.getExtensionLoader(LoginAuthentication.class);
+        Set<LoginAuthentication> supportedExtensionInstances = extensionLoader.getSupportedExtensionInstances();
+        Iterator<LoginAuthentication> iterator = supportedExtensionInstances.iterator();
+        boolean flag = true;
+        if (iterator == null) {
+            if (StringUtils.isBlank(rootUserName) || (rootUserName.equals(userName) && rootUserPassword.equals(password))) {
+                return creatToken(rootUserName);
+            }
+        }
+        while (iterator.hasNext()) {
+            LoginAuthentication loginAuthentication = iterator.next();
+            boolean b = loginAuthentication.authentication(httpServletRequest, userName, password);
+            flag = b & flag;
+            if (flag == false) {
+                break;
+            }
+        }
+        if (flag) {
+            return creatToken(userName);
         }
         return null;
     }
@@ -97,4 +112,13 @@ public class UserController {
         }
     }
 
+    public String creatToken(String userName) {
+        UUID uuid = UUID.randomUUID();
+        String token = uuid.toString();
+        User user = new User();
+        user.setUserName(userName);
+        user.setLastUpdateTime(System.currentTimeMillis());
+        tokenMap.put(token, user);
+        return token;
+    }
 }
