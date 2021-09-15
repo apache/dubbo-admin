@@ -31,7 +31,6 @@ import org.apache.dubbo.registry.client.event.ServiceInstancesChangedEvent;
 import org.apache.dubbo.registry.client.event.listener.ServiceInstancesChangedListener;
 
 import com.google.common.collect.Sets;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Map;
@@ -40,7 +39,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
-@Component
 public class AdminMappingListener implements MappingListener {
 
     private static final URL CONSUMER_URL = new URL(Constants.ADMIN_PROTOCOL, NetUtils.getLocalHost(), 0, "",

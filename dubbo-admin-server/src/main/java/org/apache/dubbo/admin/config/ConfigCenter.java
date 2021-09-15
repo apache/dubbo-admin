@@ -22,10 +22,12 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.admin.common.exception.ConfigurationException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
+import org.apache.dubbo.admin.registry.mapping.AdminMappingListener;
 import org.apache.dubbo.admin.registry.mapping.ServiceMapping;
 import org.apache.dubbo.admin.registry.mapping.impl.NoOpServiceMapping;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.admin.registry.metadata.impl.NoOpMetadataCollector;
+import org.apache.dubbo.admin.service.impl.InstanceRegistryCache;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.config.Environment;
 import org.apache.dubbo.common.extension.ExtensionLoader;
@@ -39,7 +41,6 @@ import org.apache.dubbo.registry.client.ServiceDiscovery;
 import org.apache.dubbo.registry.client.ServiceDiscoveryFactory;
 import org.apache.dubbo.rpc.model.ApplicationModel;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -99,9 +100,6 @@ public class ConfigCenter {
     private URL configCenterUrl;
     private URL registryUrl;
     private URL metadataUrl;
-
-    @Autowired
-    private MappingListener mappingListener;
 
     /*
      * generate dynamic configuration client
@@ -226,11 +224,12 @@ public class ConfigCenter {
 
     @Bean
     @DependsOn("metaDataCollector")
-    ServiceMapping getServiceMapping() {
+    ServiceMapping getServiceMapping(ServiceDiscovery serviceDiscovery, InstanceRegistryCache instanceRegistryCache) {
         ServiceMapping serviceMapping = new NoOpServiceMapping();
         if (metadataUrl == null) {
             return serviceMapping;
         }
+        MappingListener mappingListener = new AdminMappingListener(serviceDiscovery, instanceRegistryCache);
         serviceMapping = ExtensionLoader.getExtensionLoader(ServiceMapping.class).getExtension(metadataUrl.getProtocol());
         serviceMapping.addMappingListener(mappingListener);
         serviceMapping.init(metadataUrl);
