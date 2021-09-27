@@ -71,7 +71,7 @@
                 </td>
                 <td>
                   <v-btn class="tiny" color="primary" @click="editMockRule(props.item)"> {{$t('edit')}} </v-btn>
-                  <v-btn class="tiny" color="error" @click="deleteMockRule(props.item.id)"> {{$t('delete')}} </v-btn>
+                  <v-btn class="tiny" color="error" @click="openDeleteDialog(props.item)"> {{$t('delete')}} </v-btn>
                 </td>
               </template>
             </v-data-table>
@@ -106,6 +106,17 @@
           <v-spacer></v-spacer>
           <v-btn flat @click.native="closeDialog">{{$t('close')}}</v-btn>
           <v-btn depressed color="primary" @click.native="saveOrUpdateMockRule">{{$t('save')}}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="warnDialog" persistent max-width="500px">
+      <v-card>
+        <v-card-title class="headline">{{$t('deleteRuleTitle')}}</v-card-title>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="darken-1" flat @click.native="closeDeleteDialog">{{$t('cancel')}}</v-btn>
+          <v-btn color="primary darken-1" depressed @click.native="deleteMockRule">{{$t('confirm')}}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -153,7 +164,9 @@
           rule: '',
           enable: true
         },
-        dialogType: 1
+        dialogType: 1,
+        warnDialog: false,
+        deleteRule: null
       }
     },
     methods: {
@@ -187,9 +200,9 @@
         ]
       },
       listMockRules(filter) {
-        const page = this.pagination.page - 1
-        const size = this.pagination.rowsPerPage === -1 ? this.totalItems : this.pagination.rowsPerPage
-        this.loadingRules = true
+        const page = this.pagination.page - 1;
+        const size = this.pagination.rowsPerPage === -1 ? this.totalItems : this.pagination.rowsPerPage;
+        this.loadingRules = true;
         this.$axios.get('/mock/rule/list', {
           params: {
             page,
@@ -197,7 +210,7 @@
             filter
           }
         }).then(res => {
-          this.mockRules = res.data.content
+          this.mockRules = res.data.content;
           this.totalItems = res.data.totalElements
         }).catch(e => {
           this.showSnackbar('error', e.response.data.message)
@@ -210,8 +223,8 @@
         this.dialog = true
       },
       closeDialog() {
-        this.dialog = false
-        this.dialogType = 1
+        this.dialog = false;
+        this.dialogType = 1;
         this.mockRule = {
           serviceName: '',
           methodName: '',
@@ -221,23 +234,24 @@
       },
       saveOrUpdateMockRule() {
         this.$axios.post("/mock/rule", this.mockRule).then(res => {
-          this.$notify(this.$t('saveRuleSuccess'), 'success')
-          this.closeDialog()
+          this.$notify(this.$t('saveRuleSuccess'), 'success');
+          this.closeDialog();
           this.listMockRules()
         }).catch(e => this.showSnackbar('error', e.response.data.message))
       },
-      deleteMockRule(id) {
+      deleteMockRule() {
+        const id = this.deleteRule.id
         this.$axios.delete('/mock/rule', {
           data: {id}}
           ).then(res => {
-            this.$notify(this.$t('deleteRuleSuccess'), 'success')
+            this.$notify(this.$t('deleteRuleSuccess'), 'success');
             this.listMockRules(this.filter)
         })
         .catch(e => this.$notify(e.response.data.message, 'error'))
       },
       editMockRule(mockRule) {
-        this.mockRule = mockRule
-        this.openDialog()
+        this.mockRule = mockRule;
+        this.openDialog();
         this.dialogType = 2
       },
       enableOrDisableMockRule(mockRule) {
@@ -246,14 +260,20 @@
         .catch(e => this.$notify(e.data.response.message, 'error'))
       },
       updateFilter() {
-        this.filter = document.querySelector('#mockRule').value.trim()
-        console.log()
+        this.filter = document.querySelector('#mockRule').value.trim();
+      },
+      closeDeleteDialog() {
+        this.warnDialog = false
+        this.deleteRule = null
+      },
+      openDeleteDialog(rule) {
+        this.warnDialog = true
+        this.deleteRule = rule
       }
     },
     mounted() {
-      this.setHeaders()
-      this.listMockRules(this.filter)
-      this.getGlobalMock()
+      this.setHeaders();
+      this.listMockRules(this.filter);
     },
     computed: {
       area () {
@@ -272,7 +292,7 @@
           if (newVal.page === oldVal.page && newVal.rowsPerPage === oldVal.rowsPerPage) {
             return
           }
-          const filter = this.filter
+          const filter = this.filter;
           this.listMockRules(filter)
         },
         deep: true

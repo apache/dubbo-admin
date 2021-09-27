@@ -212,5 +212,6 @@ export default {
   enableRuleSuccess: '启用成功',
   methodNameHint: '服务方法名',
   createMockRule: '创建规则',
-  editMockRule: '修改规则'
+  editMockRule: '修改规则',
+  deleteRuleTitle: '确定要删除此服务Mock规则吗？'
 }

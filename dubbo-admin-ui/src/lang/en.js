@@ -212,5 +212,6 @@ export default {
   enableRuleSuccess: 'Enable Rule Successfully',
   methodNameHint: 'The method name of Service',
   createMockRule: 'Create Mock Rule',
-  editMockRule: 'Edit Mock Rule'
+  editMockRule: 'Edit Mock Rule',
+  deleteRuleTitle: 'Are you sure to delete this mock rule?'
 }
