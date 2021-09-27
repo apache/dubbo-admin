@@ -245,6 +245,7 @@
           data: {id}}
           ).then(res => {
             this.$notify(this.$t('deleteRuleSuccess'), 'success');
+            this.closeDeleteDialog()
             this.listMockRules(this.filter)
         })
         .catch(e => this.$notify(e.response.data.message, 'error'))
