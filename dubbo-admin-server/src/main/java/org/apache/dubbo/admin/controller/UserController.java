@@ -18,39 +18,28 @@ package org.apache.dubbo.admin.controller;
 
 import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.authentication.LoginAuthentication;
-
-import org.apache.commons.lang3.StringUtils;
+import org.apache.dubbo.admin.utils.JwtTokenUtil;
 import org.apache.dubbo.common.extension.ExtensionLoader;
+import org.apache.commons.lang3.StringUtils;
+
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Iterator;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping("/api/{env}/user")
 public class UserController {
-    public static Map<String /*token*/, User /*user info*/> tokenMap = new ConcurrentHashMap<>();
 
     @Value("${admin.root.user.name:}")
     private String rootUserName;
     @Value("${admin.root.user.password:}")
     private String rootUserPassword;
-    //make session timeout configurable
-    //default to be an hour:1000 * 60 * 60
-    @Value("${admin.check.sessionTimeoutMilli:3600000}")
-    private long sessionTimeoutMilli;
 
     @RequestMapping(value = "/login", method = RequestMethod.GET)
     public String login(HttpServletRequest httpServletRequest, @RequestParam String userName, @RequestParam String password) {
@@ -60,19 +49,19 @@ public class UserController {
         boolean flag = true;
         if (iterator == null) {
             if (StringUtils.isBlank(rootUserName) || (rootUserName.equals(userName) && rootUserPassword.equals(password))) {
-                return creatToken(rootUserName);
+                return JwtTokenUtil.generateToken(userName);
             }
         }
         while (iterator.hasNext()) {
             LoginAuthentication loginAuthentication = iterator.next();
             boolean b = loginAuthentication.authentication(httpServletRequest, userName, password);
             flag = b & flag;
-            if (flag == false) {
+            if (!flag) {
                 break;
             }
         }
         if (flag) {
-            return creatToken(userName);
+            return JwtTokenUtil.generateToken(userName);
         }
         return null;
     }
@@ -80,15 +69,7 @@ public class UserController {
     @Authority(needLogin = true)
     @RequestMapping(value = "/logout", method = RequestMethod.DELETE)
     public boolean logout() {
-        HttpServletRequest request =
-                ((ServletRequestAttributes) Objects.requireNonNull(RequestContextHolder.getRequestAttributes())).getRequest();
-        String token = request.getHeader("Authorization");
-        return null != tokenMap.remove(token);
-    }
-
-    @Scheduled(cron= "0 5 * * * ?")
-    public void clearExpiredToken() {
-        tokenMap.entrySet().removeIf(entry -> entry.getValue() == null || System.currentTimeMillis() - entry.getValue().getLastUpdateTime() > sessionTimeoutMilli);
+        return true;
     }
 
     public static class User {
@@ -112,13 +93,4 @@ public class UserController {
         }
     }
 
-    public String creatToken(String userName) {
-        UUID uuid = UUID.randomUUID();
-        String token = uuid.toString();
-        User user = new User();
-        user.setUserName(userName);
-        user.setLastUpdateTime(System.currentTimeMillis());
-        tokenMap.put(token, user);
-        return token;
-    }
 }
