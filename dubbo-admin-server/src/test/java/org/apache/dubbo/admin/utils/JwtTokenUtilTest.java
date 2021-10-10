@@ -57,13 +57,12 @@ public class JwtTokenUtilTest {
         Boolean aBoolean = JwtTokenUtil.canTokenBeExpiration(testToken);
         Claims claims = Jwts.parser()
                 .setSigningKey(defaultSecret)
-                .parseClaimsJws(testToken)
+                .parseClaimsJws(JwtTokenUtil.generateToken(userName))
                 .getBody();
         Date iat = claims.getIssuedAt();
         Date exp = claims.getExpiration();
-
-        assertThat(aBoolean, is(true));
-        assertThat(defaultExpire, is(exp.getTime()-iat.getTime()));
+        assertThat(aBoolean, is(false));
+        assertThat(JwtTokenUtil.canTokenBeExpiration(JwtTokenUtil.generateToken(userName)), is(true));
     }
 
 }
