@@ -52,7 +52,6 @@ public class DefaultPreHandle implements InterceptorAuthentication {
                 return false;
             }
             if (JwtTokenUtil.canTokenBeExpiration(token)) {
-                JwtTokenUtil.refreshToken(token);
                 return true;
             }
             //while user not found, or token timeout, reject this request(http401).

@@ -30,55 +30,72 @@ import java.util.Map;
  */
 public class JwtTokenUtil {
     /**
-     * Jwt signingKey
+     * Jwt signingKey configurable
      */
-    private static final String secret = "a1g2y47dg3dj59fjhhsd7cnewy73j";
+    public static String defaultSecret = "86295dd0c4ef69a1036b0b0c15158d77";
 
     /**
      * token timeout configurable
      * default to be an hour: 1000 * 60 * 60
      */
-    private static final long expiration = 60 * 60 * 1000;
+    public static long defaultExpiration = 1000 * 60 * 60;
 
     /**
-     * initialise jwt token and claims
-     *
-     * @return jwt token
-     * @param rootUserName
+     * default SignatureAlgorithm
      */
-    public static String generateToken(String rootUserName) {
+    public static final SignatureAlgorithm defaultAlgorithm = SignatureAlgorithm.HS512;
+
+    /**
+     * Generate the token
+     *
+     * @return token
+     * @param rootUserName
+     * @param secret
+     * @param expiration
+     */
+    public static String generateToken(String rootUserName, String secret, long expiration) {
         Map<String, Object> claims = new HashMap<>(1);
         claims.put("sub", rootUserName);
-        return generateToken(claims);
-    }
-
-    /**
-     * generate token
-     *
-     * @return jwt token
-     * @param claims
-     */
-    private static String generateToken(Map<String, Object> claims) {
         return Jwts.builder()
                 .setClaims(claims)
-                .setExpiration(generateExpirationDate())
-                .setIssuedAt(generateCurrentDate())
-                .signWith(SignatureAlgorithm.HS512, secret)
+                .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .signWith(defaultAlgorithm, secret)
                 .compact();
     }
 
     /**
-     * Get the current time
+     * Generate the token
+     *
+     * @return token
+     * @param rootUserName
+     * @param secret
      */
-    private static Date generateCurrentDate() {
-        return new Date(System.currentTimeMillis());
+    public static String generateToken(String rootUserName, String secret) {
+        defaultSecret = secret;
+        return generateToken(rootUserName, secret, defaultExpiration);
     }
 
     /**
-     * Get the token expiration time
+     * Generate the token
+     *
+     * @return token
+     * @param rootUserName
+     * @param expiration
      */
-    private static Date generateExpirationDate() {
-        return new Date(System.currentTimeMillis() + expiration);
+    public static String generateToken(String rootUserName, long expiration) {
+        defaultExpiration = expiration;
+        return generateToken(rootUserName, defaultSecret, expiration);
+    }
+
+    /**
+     * Generate the token
+     *
+     * @return token
+     * @param rootUserName
+     */
+    public static String generateToken(String rootUserName) {
+        return generateToken(rootUserName, defaultSecret, defaultExpiration);
     }
 
     /**
@@ -91,11 +108,11 @@ public class JwtTokenUtil {
         Claims claims;
         try {
             claims = Jwts.parser()
-                    .setSigningKey(secret)
+                    .setSigningKey(defaultSecret)
                     .parseClaimsJws(token)
                     .getBody();
             final Date exp = claims.getExpiration();
-            if (exp.before(generateCurrentDate())) {
+            if (exp.before(new Date(System.currentTimeMillis()))) {
                 return false;
             }
             return true;
@@ -103,25 +120,4 @@ public class JwtTokenUtil {
             return false;
         }
     }
-    
-    /**
-     * refresh token
-     *
-     * @return token
-     * @param token
-     */
-    public static String refreshToken(String token) {
-        String refreshedToken;
-        try {
-            final Claims claims = Jwts.parser()
-                    .setSigningKey(secret)
-                    .parseClaimsJws(token)
-                    .getBody();
-            refreshedToken = generateToken(claims);
-        } catch (Exception e) {
-            refreshedToken = null;
-        }
-        return refreshedToken;
-    }
-
 }

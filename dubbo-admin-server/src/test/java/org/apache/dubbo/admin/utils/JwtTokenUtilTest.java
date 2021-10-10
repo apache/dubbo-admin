@@ -23,49 +23,47 @@ import org.junit.Test;
 
 import java.util.Date;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+
 
 public class JwtTokenUtilTest {
-    private final String secret = "a1g2y47dg3dj59fjhhsd7cnewy73j";
-    public String token;
+    public final String defaultSecret = "86295dd0c4ef69a1036b0b0c15158d77";
+    public final long defaultExpire = 1000 * 60 * 60;
+    public String testToken = "eyJhbGciOiJIUzUxMiJ9.eyJleHAiOjE2MzM4NTI2" +
+            "MDQsInN1YiI6InRlc3QiLCJpYXQiOjE2MzM4NDkwMDR9.e1UqT-3W3EZcI6" +
+            "Dt-35b0Q_MA9ZhARAq59ZvkOYNlWL0Fa-RFk1ZQKs15Hk7LATfVH2DAo0JL" +
+            "rHcY-79jDFnfQ";
+    public long testIat = 1633849279000L;
+    public long testExp = 1633852879000L;
+    public String userName = "test";
 
     @Test
     public void generateTokenTest() {
-        token = JwtTokenUtil.generateToken("test");
-        System.out.println(token);
+        String s = JwtTokenUtil.generateToken(userName);
+        System.out.println(s);
+        Claims claims = Jwts.parser()
+                .setSigningKey(defaultSecret)
+                .parseClaimsJws(s)
+                .getBody();
+        long iat = claims.getIssuedAt().getTime();
+        long exp = claims.getExpiration().getTime();
+        // The generation time is different, so is false
+//        assertThat(s, is(testToken));
     }
 
     @Test
     public void canTokenBeExpirationTest() {
-        generateTokenTest();
-        Boolean aBoolean = JwtTokenUtil.canTokenBeExpiration(token);
+        Boolean aBoolean = JwtTokenUtil.canTokenBeExpiration(testToken);
         Claims claims = Jwts.parser()
-                .setSigningKey(secret)
-                .parseClaimsJws(token)
+                .setSigningKey(defaultSecret)
+                .parseClaimsJws(testToken)
                 .getBody();
         Date iat = claims.getIssuedAt();
         Date exp = claims.getExpiration();
 
-        System.out.println(aBoolean);
-        System.out.println(iat);
-        System.out.println(exp);
-        System.out.println(exp.getTime()-iat.getTime());
-    }
-
-    @Test
-    public void refreshTokenTest() {
-        generateTokenTest();
-        String refreshToken = JwtTokenUtil.refreshToken(token);
-        Claims claims_token = Jwts.parser()
-                .setSigningKey(secret)
-                .parseClaimsJws(token)
-                .getBody();
-        Claims claims_refreshToken = Jwts.parser()
-                .setSigningKey(secret)
-                .parseClaimsJws(refreshToken)
-                .getBody();
-        System.out.println(claims_refreshToken.getIssuedAt());
-        System.out.println(claims_refreshToken.getExpiration());
-//        System.out.println(claims_token.getExpiration());
+        assertThat(aBoolean, is(true));
+        assertThat(defaultExpire, is(exp.getTime()-iat.getTime()));
     }
 
 }

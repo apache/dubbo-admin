@@ -18,6 +18,7 @@ package org.apache.dubbo.admin.controller;
 
 import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.authentication.LoginAuthentication;
+import org.apache.dubbo.admin.interceptor.AuthInterceptor;
 import org.apache.dubbo.admin.utils.JwtTokenUtil;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.commons.lang3.StringUtils;
@@ -29,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -42,12 +44,12 @@ public class UserController {
     private String rootUserPassword;
 
     @RequestMapping(value = "/login", method = RequestMethod.GET)
-    public String login(HttpServletRequest httpServletRequest, @RequestParam String userName, @RequestParam String password) {
+    public String login(HttpServletRequest httpServletRequest, HttpServletResponse response, @RequestParam String userName, @RequestParam String password) {
         ExtensionLoader<LoginAuthentication> extensionLoader = ExtensionLoader.getExtensionLoader(LoginAuthentication.class);
         Set<LoginAuthentication> supportedExtensionInstances = extensionLoader.getSupportedExtensionInstances();
         Iterator<LoginAuthentication> iterator = supportedExtensionInstances.iterator();
         boolean flag = true;
-        if (iterator == null) {
+        if (iterator != null && !iterator.hasNext()) {
             if (StringUtils.isBlank(rootUserName) || (rootUserName.equals(userName) && rootUserPassword.equals(password))) {
                 return JwtTokenUtil.generateToken(userName);
             }
@@ -63,6 +65,7 @@ public class UserController {
         if (flag) {
             return JwtTokenUtil.generateToken(userName);
         }
+        AuthInterceptor.loginFailResponse(response);
         return null;
     }
 
@@ -70,27 +73,6 @@ public class UserController {
     @RequestMapping(value = "/logout", method = RequestMethod.DELETE)
     public boolean logout() {
         return true;
-    }
-
-    public static class User {
-        private String userName;
-        private long lastUpdateTime;
-
-        public String getUserName() {
-            return userName;
-        }
-
-        public void setUserName(String userName) {
-            this.userName = userName;
-        }
-
-        public long getLastUpdateTime() {
-            return lastUpdateTime;
-        }
-
-        public void setLastUpdateTime(long lastUpdateTime) {
-            this.lastUpdateTime = lastUpdateTime;
-        }
     }
 
 }
