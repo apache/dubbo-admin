@@ -23,6 +23,7 @@ import org.apache.dubbo.admin.utils.JwtTokenUtil;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.commons.lang3.StringUtils;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -43,6 +44,9 @@ public class UserController {
     @Value("${admin.root.user.password:}")
     private String rootUserPassword;
 
+    @Autowired
+    private JwtTokenUtil jwtTokenUtil;
+
     @RequestMapping(value = "/login", method = RequestMethod.GET)
     public String login(HttpServletRequest httpServletRequest, HttpServletResponse response, @RequestParam String userName, @RequestParam String password) {
         ExtensionLoader<LoginAuthentication> extensionLoader = ExtensionLoader.getExtensionLoader(LoginAuthentication.class);
@@ -51,7 +55,7 @@ public class UserController {
         boolean flag = true;
         if (iterator != null && !iterator.hasNext()) {
             if (StringUtils.isBlank(rootUserName) || (rootUserName.equals(userName) && rootUserPassword.equals(password))) {
-                return JwtTokenUtil.generateToken(userName);
+                return jwtTokenUtil.generateToken(userName);
             }
         }
         while (iterator.hasNext()) {
@@ -63,7 +67,7 @@ public class UserController {
             }
         }
         if (flag) {
-            return JwtTokenUtil.generateToken(userName);
+            return jwtTokenUtil.generateToken(userName);
         }
         AuthInterceptor.loginFailResponse(response);
         return null;

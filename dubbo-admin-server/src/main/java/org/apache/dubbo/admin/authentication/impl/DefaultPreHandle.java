@@ -22,6 +22,7 @@ import org.apache.dubbo.admin.authentication.InterceptorAuthentication;
 import org.apache.dubbo.admin.interceptor.AuthInterceptor;
 import org.apache.dubbo.admin.utils.JwtTokenUtil;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.web.method.HandlerMethod;
 
@@ -31,6 +32,8 @@ import java.lang.reflect.Method;
 
 
 public class DefaultPreHandle implements InterceptorAuthentication {
+    @Autowired
+    private JwtTokenUtil jwtTokenUtil;
 
     @Override
     public boolean authentication(HttpServletRequest request, HttpServletResponse response, Object handler) {
@@ -51,7 +54,7 @@ public class DefaultPreHandle implements InterceptorAuthentication {
                 AuthInterceptor.authRejectedResponse(response);
                 return false;
             }
-            if (JwtTokenUtil.canTokenBeExpiration(token)) {
+            if (jwtTokenUtil.canTokenBeExpiration(token)) {
                 return true;
             }
             //while user not found, or token timeout, reject this request(http401).

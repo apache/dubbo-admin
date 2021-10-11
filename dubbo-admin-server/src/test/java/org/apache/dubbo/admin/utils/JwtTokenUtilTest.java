@@ -38,31 +38,4 @@ public class JwtTokenUtilTest {
     public long testExp = 1633852879000L;
     public String userName = "test";
 
-    @Test
-    public void generateTokenTest() {
-        String s = JwtTokenUtil.generateToken(userName);
-        System.out.println(s);
-        Claims claims = Jwts.parser()
-                .setSigningKey(defaultSecret)
-                .parseClaimsJws(s)
-                .getBody();
-        long iat = claims.getIssuedAt().getTime();
-        long exp = claims.getExpiration().getTime();
-        // The generation time is different, so is false
-//        assertThat(s, is(testToken));
-    }
-
-    @Test
-    public void canTokenBeExpirationTest() {
-        Boolean aBoolean = JwtTokenUtil.canTokenBeExpiration(testToken);
-        Claims claims = Jwts.parser()
-                .setSigningKey(defaultSecret)
-                .parseClaimsJws(JwtTokenUtil.generateToken(userName))
-                .getBody();
-        Date iat = claims.getIssuedAt();
-        Date exp = claims.getExpiration();
-        assertThat(aBoolean, is(false));
-        assertThat(JwtTokenUtil.canTokenBeExpiration(JwtTokenUtil.generateToken(userName)), is(true));
-    }
-
 }

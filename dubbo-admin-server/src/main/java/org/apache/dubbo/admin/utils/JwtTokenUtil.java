@@ -21,6 +21,9 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,17 +31,20 @@ import java.util.Map;
 /**
  * Jwt token tool class.
  */
+@Component
 public class JwtTokenUtil {
     /**
      * Jwt signingKey configurable
      */
-    public static String defaultSecret = "86295dd0c4ef69a1036b0b0c15158d77";
+    @Value("${admin.check.signSecret:}")
+    public String secret;
 
     /**
      * token timeout configurable
      * default to be an hour: 1000 * 60 * 60
      */
-    public static long defaultExpiration = 1000 * 60 * 60;
+    @Value("${admin.check.tokenTimeoutMilli:}")
+    public long expiration;
 
     /**
      * default SignatureAlgorithm
@@ -50,10 +56,8 @@ public class JwtTokenUtil {
      *
      * @return token
      * @param rootUserName
-     * @param secret
-     * @param expiration
      */
-    public static String generateToken(String rootUserName, String secret, long expiration) {
+    public String generateToken(String rootUserName) {
         Map<String, Object> claims = new HashMap<>(1);
         claims.put("sub", rootUserName);
         return Jwts.builder()
@@ -65,50 +69,16 @@ public class JwtTokenUtil {
     }
 
     /**
-     * Generate the token
-     *
-     * @return token
-     * @param rootUserName
-     * @param secret
-     */
-    public static String generateToken(String rootUserName, String secret) {
-        defaultSecret = secret;
-        return generateToken(rootUserName, secret, defaultExpiration);
-    }
-
-    /**
-     * Generate the token
-     *
-     * @return token
-     * @param rootUserName
-     * @param expiration
-     */
-    public static String generateToken(String rootUserName, long expiration) {
-        defaultExpiration = expiration;
-        return generateToken(rootUserName, defaultSecret, expiration);
-    }
-
-    /**
-     * Generate the token
-     *
-     * @return token
-     * @param rootUserName
-     */
-    public static String generateToken(String rootUserName) {
-        return generateToken(rootUserName, defaultSecret, defaultExpiration);
-    }
-
-    /**
      * Check whether the token is invalid
      *
      * @return boolean type
      * @param token
      */
-    public static Boolean canTokenBeExpiration(String token) {
+    public Boolean canTokenBeExpiration(String token) {
         Claims claims;
         try {
             claims = Jwts.parser()
-                    .setSigningKey(defaultSecret)
+                    .setSigningKey(secret)
                     .parseClaimsJws(token)
                     .getBody();
             final Date exp = claims.getExpiration();
@@ -120,4 +90,5 @@ public class JwtTokenUtil {
             return false;
         }
     }
+
 }
