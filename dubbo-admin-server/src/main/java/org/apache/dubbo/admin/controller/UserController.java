@@ -56,6 +56,8 @@ public class UserController {
         if (iterator != null && !iterator.hasNext()) {
             if (StringUtils.isBlank(rootUserName) || (rootUserName.equals(userName) && rootUserPassword.equals(password))) {
                 return jwtTokenUtil.generateToken(userName);
+            } else {
+                flag = false;
             }
         }
         while (iterator.hasNext()) {

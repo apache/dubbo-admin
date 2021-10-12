@@ -21,8 +21,8 @@ import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.authentication.InterceptorAuthentication;
 import org.apache.dubbo.admin.interceptor.AuthInterceptor;
 import org.apache.dubbo.admin.utils.JwtTokenUtil;
+import org.apache.dubbo.admin.utils.SpringBeanUtils;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.web.method.HandlerMethod;
 
@@ -30,10 +30,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.lang.reflect.Method;
 
-
 public class DefaultPreHandle implements InterceptorAuthentication {
-    @Autowired
-    private JwtTokenUtil jwtTokenUtil;
+
+    private JwtTokenUtil jwtTokenUtil = SpringBeanUtils.getBean(JwtTokenUtil.class);
 
     @Override
     public boolean authentication(HttpServletRequest request, HttpServletResponse response, Object handler) {

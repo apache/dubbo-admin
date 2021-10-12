@@ -15,21 +15,27 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin;
+package org.apache.dubbo.admin.utils;
 
-import org.apache.dubbo.admin.utils.SpringBeanUtils;
+import org.springframework.context.ApplicationContext;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
 
-@SpringBootApplication(exclude={
-		DataSourceAutoConfiguration.class, HibernateJpaAutoConfiguration.class
-})
-public class DubboAdminApplication {
+/**
+ * get spring bean tool class.
+ */
+public class SpringBeanUtils {
+    /**
+     * spring applicationContext
+     */
+    public static ApplicationContext applicationContext;
 
-	public static void main(String[] args) {
-		SpringBeanUtils.applicationContext = SpringApplication.run(DubboAdminApplication.class, args);
-	}
+    /**
+     * get spring bean
+     *
+     * @return spring bean
+     * @param c
+     */
+    public static <T> T getBean(Class<T> c){
+        return applicationContext.getBean(c);
+    }
 }
