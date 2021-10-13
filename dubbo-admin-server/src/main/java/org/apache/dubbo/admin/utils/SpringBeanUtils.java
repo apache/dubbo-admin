@@ -17,13 +17,17 @@
 
 package org.apache.dubbo.admin.utils;
 
+import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
+import org.springframework.stereotype.Component;
 
 
 /**
  * get spring bean tool class.
  */
-public class SpringBeanUtils {
+@Component
+public class SpringBeanUtils implements ApplicationContextAware {
     /**
      * spring applicationContext
      */
@@ -33,9 +37,14 @@ public class SpringBeanUtils {
      * get spring bean
      *
      * @return spring bean
-     * @param c
+     * @param clazz
      */
-    public static <T> T getBean(Class<T> c){
-        return applicationContext.getBean(c);
+    public static <T> T getBean(Class<T> clazz){
+        return applicationContext.getBean(clazz);
+    }
+
+    @Override
+    public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+        SpringBeanUtils.applicationContext = applicationContext;
     }
 }
