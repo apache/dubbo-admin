@@ -35,11 +35,7 @@ import java.util.Set;
 public class AuthInterceptor extends HandlerInterceptorAdapter {
     @Value("${admin.check.authority:true}")
     private boolean checkAuthority;
-    
-    //make session timeout configurable
-    //default to be an hour:1000 * 60 * 60
-    @Value("${admin.check.sessionTimeoutMilli:3600000}")
-    private long sessionTimeoutMilli;
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
         if (!(handler instanceof HandlerMethod) || !checkAuthority) {
@@ -53,14 +49,18 @@ public class AuthInterceptor extends HandlerInterceptorAdapter {
             InterceptorAuthentication interceptorAuthentication = iterator.next();
             boolean b = interceptorAuthentication.authentication(request, response, handler);
             flag = b & flag;
-            if (flag == false) {
+            if (!flag) {
                 break;
             }
         }
         return flag;
     }
 
-    public static void rejectedResponse(@NotNull HttpServletResponse response) {
+    public static void loginFailResponse(@NotNull HttpServletResponse response) {
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
+    }
+
+    public static void authRejectedResponse(@NotNull HttpServletResponse response) {
+        response.setStatus(HttpStatus.FORBIDDEN.value());
     }
 }
