@@ -60,7 +60,7 @@
 		<jacoco-version>0.8.2</jacoco-version>
 		<apollo-version>1.2.0</apollo-version>
 		<guava-version>20.0</guava-version>
-		<dubbo-mock-version>1.0.0-SNAPSHOT</dubbo-mock-version>
+		<dubbo-mock-version>3.0.0</dubbo-mock-version>
 		<mybatis-plus-boot-version>3.4.2</mybatis-plus-boot-version>
 
 		<maven-checkstyle-plugin-version>3.0.0</maven-checkstyle-plugin-version>
