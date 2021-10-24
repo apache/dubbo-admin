@@ -1,0 +1,2 @@
+zookeeper=org.apache.dubbo.admin.registry.mapping.impl.ZookeeperServiceMapping
+nacos=org.apache.dubbo.admin.registry.mapping.impl.NacosServiceMapping

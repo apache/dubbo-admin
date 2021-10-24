@@ -17,7 +17,7 @@
 
 package org.apache.dubbo.admin.common.util;
 
-import org.apache.dubbo.common.utils.PojoUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.SafeConstructor;
 import org.yaml.snakeyaml.error.YAMLException;
@@ -30,6 +30,8 @@ import java.util.Map;
 
 public class YamlParser {
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     public static String dumpObject(Object object) {
         return new Yaml(new SafeConstructor(), new CustomRepresenter()).dumpAsMap(object);
     }
@@ -37,10 +39,14 @@ public class YamlParser {
     public static <T> T loadObject(String content, Class<T> type) {
         Map<String, Object> map = new Yaml(new SafeConstructor(), new CustomRepresenter()).load(content);
         try {
-            return (T) PojoUtils.mapToPojo(map, type);
+            return OBJECT_MAPPER.convertValue(map, type);
         } catch (Exception e) {
             throw new YAMLException(e);
         }
+    }
+
+    public static Iterable<Object> loadAll(String content) {
+        return new Yaml(new SafeConstructor(), new CustomRepresenter()).loadAll(content);
     }
 
     public static class CustomRepresenter extends Representer {
