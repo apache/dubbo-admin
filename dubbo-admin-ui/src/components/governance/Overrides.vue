@@ -396,7 +396,7 @@
         }
         override.service = this.service
         override.application = this.application
-        override.serviceSerion = this.serviceVersion
+        override.serviceVersion = this.serviceVersion
         override.serviceGroup = this.serviceGroup
         let vm = this
         if (this.updateId) {

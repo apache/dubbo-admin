@@ -55,7 +55,9 @@
 	<properties>
 		<revision>0.3.0</revision>
 		<main.basedir>${project.basedir}</main.basedir>
-		<dubbo-version>2.7.12</dubbo-version>
+		<commons-lang3-version>3.7</commons-lang3-version>
+		<dubbo-version>3.0.2.1</dubbo-version>
+		<fastjson-version>1.2.67</fastjson-version>
 		<springfox-swagger-version>2.9.2</springfox-swagger-version>
 		<jacoco-version>0.8.2</jacoco-version>
 		<apollo-version>1.2.0</apollo-version>
@@ -107,9 +109,9 @@
 			</dependency>
 
 			<dependency>
-				<groupId>org.apache.dubbo</groupId>
-				<artifactId>dubbo-serialization-kryo</artifactId>
-				<version>${dubbo-version}</version>
+				<groupId>com.alibaba</groupId>
+				<artifactId>fastjson</artifactId>
+				<version>${fastjson-version}</version>
 			</dependency>
 
 			<dependency>
