@@ -180,7 +180,7 @@ public class NacosConfiguration implements GovernanceConfiguration {
         String[] groupAndDataId = new String[2];
         String[] split = key.split("/");
         if (split.length != 3) {
-            return new String[] {group, key};
+            return null;
         }
         if (Constants.DUBBO_PROPERTY.equals(split[2])) {
 
