@@ -138,36 +138,7 @@ public class ConfigCenter {
                 //throw exception
             }
         }
-        initDubboEnvironment();
         return dynamicConfiguration;
-    }
-
-    private void initDubboEnvironment() {
-        Environment env = ApplicationModel.getEnvironment();
-        SortedMap<String, String> sortedMap = new TreeMap<>();
-        if (registryUrl == null) {
-            if (StringUtils.isNotBlank(registryAddress)) {
-                registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
-            }
-        }
-
-        if (metadataUrl == null) {
-            if (StringUtils.isNotEmpty(metadataAddress)) {
-                metadataUrl = formUrl(metadataAddress, metadataGroup, metadataGroupNameSpace, username, password);
-                metadataUrl = metadataUrl.addParameter(CLUSTER_KEY, cluster);
-            }
-        }
-        if (registryUrl != null) {
-            sortedMap.put("dubbo.registry.address", registryUrl.toFullString());
-        }
-        if (configCenterUrl != null) {
-            sortedMap.put("dubbo.config-center.address", configCenterUrl.toFullString());
-        }
-        if (metadataUrl != null) {
-            sortedMap.put("dubbo.metadata-report.address", metadataUrl.toFullString());
-        }
-        Map<String, String> map = Collections.unmodifiableSortedMap(sortedMap);
-        env.updateAppConfigMap(map);
     }
 
     /*
