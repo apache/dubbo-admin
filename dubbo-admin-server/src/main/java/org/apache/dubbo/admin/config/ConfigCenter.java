@@ -17,8 +17,6 @@
 
 package org.apache.dubbo.admin.config;
 
-import org.apache.commons.lang3.StringUtils;
-
 import org.apache.dubbo.admin.common.exception.ConfigurationException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
@@ -28,8 +26,9 @@ import org.apache.dubbo.admin.registry.mapping.impl.NoOpServiceMapping;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.admin.registry.metadata.impl.NoOpMetadataCollector;
 import org.apache.dubbo.admin.service.impl.InstanceRegistryCache;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.common.URL;
-import org.apache.dubbo.common.config.Environment;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
@@ -39,18 +38,12 @@ import org.apache.dubbo.registry.RegistryFactory;
 import org.apache.dubbo.registry.RegistryService;
 import org.apache.dubbo.registry.client.ServiceDiscovery;
 import org.apache.dubbo.registry.client.ServiceDiscoveryFactory;
-import org.apache.dubbo.rpc.model.ApplicationModel;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
 
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
 import static org.apache.dubbo.common.constants.CommonConstants.CLUSTER_KEY;
 import static org.apache.dubbo.registry.client.ServiceDiscoveryFactory.getExtension;
