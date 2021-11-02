@@ -1,4 +1,4 @@
-CREATE TABLE `mock_rule` (
+CREATE TABLE IF NOT EXISTS `mock_rule` (
     `id` int(11) NOT NULL AUTO_INCREMENT COMMENT '主键',
     `service_name` varchar(255) DEFAULT NULL COMMENT '服务名',
     `method_name` varchar(255) DEFAULT NULL COMMENT '方法名',
