@@ -204,6 +204,30 @@
             <version>${jjwt-version}</version>
         </dependency>
 
+
+        <dependency>
+            <groupId>org.apache.dubbo.extensions</groupId>
+            <artifactId>dubbo-mock-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-boot-starter</artifactId>
+        </dependency>
+
+        <!-- the mysql db driver need user put it in /opt-libs path -->
+<!--        <dependency>-->
+<!--            <groupId>mysql</groupId>-->
+<!--            <artifactId>mysql-connector-java</artifactId>-->
+<!--            <version>5.1.49</version>-->
+<!--            <scope>provided</scope>-->
+<!--        </dependency>-->
+
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -212,6 +236,9 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>2.0.2.RELEASE</version>
+                <configuration>
+                    <layout>ZIP</layout>
+                </configuration>
                 <executions>
                     <execution>
                         <phase>package</phase>

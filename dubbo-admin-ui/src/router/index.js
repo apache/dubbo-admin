@@ -137,7 +137,7 @@ export default new Router({
           }
         },
         {
-          path: '/mock',
+          path: '/mock/rule',
           name: 'ServiceMock',
           component: ServiceMock,
           meta: {

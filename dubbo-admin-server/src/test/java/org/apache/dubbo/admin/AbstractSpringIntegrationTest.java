@@ -76,6 +76,8 @@ public abstract class AbstractSpringIntegrationTest {
                     "admin.metadata-report.address=zookeeper://" + zkServer.getConnectString());
             TestPropertySourceUtils.addInlinedPropertiesToEnvironment(configurableApplicationContext,
                     "admin.config-center=zookeeper://" + zkServer.getConnectString());
+            TestPropertySourceUtils.addInlinedPropertiesToEnvironment(configurableApplicationContext,
+                    "dubbo.config.ignore-duplicated-interface=true");
         }
     }
 }

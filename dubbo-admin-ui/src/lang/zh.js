@@ -206,5 +206,19 @@ export default {
       none: '无'
     }
   },
-  authFailed: '权限验证失败'
+  authFailed: '权限验证失败',
+
+  ruleList: '规则列表',
+  mockRule: '规则配置',
+  mockData: '模拟数据',
+  globalDisable: '全局禁用',
+  globalEnable: '全局启用',
+  saveRuleSuccess: '保存规则成功',
+  deleteRuleSuccess: '删除成功',
+  disableRuleSuccess: '禁用成功',
+  enableRuleSuccess: '启用成功',
+  methodNameHint: '服务方法名',
+  createMockRule: '创建规则',
+  editMockRule: '修改规则',
+  deleteRuleTitle: '确定要删除此服务Mock规则吗？'
 }

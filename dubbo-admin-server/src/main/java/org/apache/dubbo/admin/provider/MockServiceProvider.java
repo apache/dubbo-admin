@@ -15,22 +15,27 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin;
+package org.apache.dubbo.admin.provider;
 
-import org.apache.dubbo.config.spring.context.annotation.EnableDubbo;
-import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
+import org.apache.dubbo.admin.service.MockRuleService;
 
-@SpringBootApplication(exclude={
-		HibernateJpaAutoConfiguration.class
-})
-@EnableDubbo(scanBasePackages = {"org.apache.dubbo.admin.provider"})
-@MapperScan(basePackages = {"org.apache.dubbo.admin.mapper"})
-public class DubboAdminApplication {
+import org.apache.dubbo.config.annotation.DubboService;
+import org.apache.dubbo.mock.api.MockContext;
+import org.apache.dubbo.mock.api.MockResult;
+import org.apache.dubbo.mock.api.MockService;
+import org.springframework.beans.factory.annotation.Autowired;
 
-	public static void main(String[] args) {
-		SpringApplication.run(DubboAdminApplication.class, args);
-	}
+/**
+ * The {@link MockServiceProvider} register as a dubbo service, provide the mock function for the consumer of {@link MockService}.
+ */
+@DubboService
+public class MockServiceProvider implements MockService {
+
+    @Autowired
+    private MockRuleService mockRuleService;
+
+    @Override
+    public MockResult mock(MockContext mockContext) {
+        return mockRuleService.getMockData(mockContext);
+    }
 }
