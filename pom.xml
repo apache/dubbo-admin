@@ -62,6 +62,9 @@
 		<jacoco-version>0.8.2</jacoco-version>
 		<apollo-version>1.2.0</apollo-version>
 		<guava-version>20.0</guava-version>
+		<dubbo-mock-version>3.0.0</dubbo-mock-version>
+		<mybatis-plus-boot-version>3.4.2</mybatis-plus-boot-version>
+
 		<maven-checkstyle-plugin-version>3.0.0</maven-checkstyle-plugin-version>
 		<spring-boot-version>2.3.12.RELEASE</spring-boot-version>
 		<maven_compiler_version>3.6.0</maven_compiler_version>
@@ -127,6 +130,19 @@
 				<artifactId>guava</artifactId>
 				<version>${guava-version}</version>
 			</dependency>
+
+			<dependency>
+				<groupId>org.apache.dubbo.extensions</groupId>
+				<artifactId>dubbo-mock-api</artifactId>
+				<version>${dubbo-mock-version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>com.baomidou</groupId>
+				<artifactId>mybatis-plus-boot-starter</artifactId>
+				<version>${mybatis-plus-boot-version}</version>
+			</dependency>
+
 		</dependencies>
 	</dependencyManagement>
 

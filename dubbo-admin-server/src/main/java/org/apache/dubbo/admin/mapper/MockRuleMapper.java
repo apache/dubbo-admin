@@ -15,22 +15,14 @@
  * limitations under the License.
  */
 
-package org.apache.dubbo.admin;
+package org.apache.dubbo.admin.mapper;
 
-import org.apache.dubbo.config.spring.context.annotation.EnableDubbo;
-import org.mybatis.spring.annotation.MapperScan;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration;
+import org.apache.dubbo.admin.model.domain.MockRule;
 
-@SpringBootApplication(exclude={
-		HibernateJpaAutoConfiguration.class
-})
-@EnableDubbo(scanBasePackages = {"org.apache.dubbo.admin.provider"})
-@MapperScan(basePackages = {"org.apache.dubbo.admin.mapper"})
-public class DubboAdminApplication {
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 
-	public static void main(String[] args) {
-		SpringApplication.run(DubboAdminApplication.class, args);
-	}
+/**
+ * The database operator of mock rule.
+ */
+public interface MockRuleMapper extends BaseMapper<MockRule> {
 }
