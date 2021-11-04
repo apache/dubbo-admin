@@ -31,6 +31,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -63,12 +64,6 @@ public class ManagementControllerTest extends AbstractSpringIntegrationTest {
     );
     assertEquals(responseEntity.getStatusCode(), HttpStatus.CREATED);
     assertEquals(responseEntity.getBody(), true);
-
-    byte[] bytes = zkClient.getData().forPath(getPath(""));
-    String config = new String(bytes);
-    assertEquals(configDTO.getConfig(), config);
-
-    zkClient.delete().forPath(getPath(""));
   }
 
   @Test
@@ -83,10 +78,6 @@ public class ManagementControllerTest extends AbstractSpringIntegrationTest {
     );
     assertEquals(responseEntity.getStatusCode(), HttpStatus.CREATED);
     assertEquals(responseEntity.getBody(), true);
-
-    byte[] bytes = zkClient.getData().forPath(getPath(application));
-    String config = new String(bytes);
-    assertEquals(configDTO.getConfig(), config);
   }
 
   @Test
@@ -104,15 +95,15 @@ public class ManagementControllerTest extends AbstractSpringIntegrationTest {
   @Test
   public void shouldUpdateConfigSpecifiedKey() throws Exception {
     String key = "shouldUpdateConfigSpecifiedKey";
+    String path = getPath(key);
+    zkClient.create().creatingParentContainersIfNeeded().forPath(path);
+    zkClient.setData().forPath(path, "key1=val1\nkey2=val2".getBytes(StandardCharsets.UTF_8));
     ConfigDTO configDTO = new ConfigDTO();
     configDTO.setKey(key);
-    configDTO.setConfig("key1=val1\nkey2=val2");
-    restTemplate.postForEntity(url("/api/{env}/manage/config"), configDTO, Boolean.class, env);
-
     configDTO.setConfig("key1=updatedVal1\nkey2=updatedVal2");
     ResponseEntity<Void> responseEntity = restTemplate.exchange(
-        url("/api/{env}/manage/config/{key}"), HttpMethod.PUT,
-        new HttpEntity<>(configDTO), Void.class, env, key
+            url("/api/{env}/manage/config/{key}"), HttpMethod.PUT,
+            new HttpEntity<>(configDTO), Void.class, env, key
     );
     assertEquals(responseEntity.getStatusCode(), HttpStatus.OK);
 
