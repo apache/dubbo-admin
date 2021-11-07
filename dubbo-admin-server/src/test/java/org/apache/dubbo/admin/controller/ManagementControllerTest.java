@@ -102,8 +102,8 @@ public class ManagementControllerTest extends AbstractSpringIntegrationTest {
     configDTO.setKey(key);
     configDTO.setConfig("key1=updatedVal1\nkey2=updatedVal2");
     ResponseEntity<Void> responseEntity = restTemplate.exchange(
-            url("/api/{env}/manage/config/{key}"), HttpMethod.PUT,
-            new HttpEntity<>(configDTO), Void.class, env, key
+        url("/api/{env}/manage/config/{key}"), HttpMethod.PUT,
+        new HttpEntity<>(configDTO), Void.class, env, key
     );
     assertEquals(responseEntity.getStatusCode(), HttpStatus.OK);
 
