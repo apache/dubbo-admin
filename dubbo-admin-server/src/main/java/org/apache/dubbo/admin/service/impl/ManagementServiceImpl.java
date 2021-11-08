@@ -73,8 +73,7 @@ public class ManagementServiceImpl extends AbstractService implements Management
     }
 
     private String getPath(String key) {
-        return Constants.CONFIG_KEY + Constants.PATH_SEPARATOR + key + Constants.PATH_SEPARATOR
-                + Constants.DUBBO_PROPERTY;
+        return  key + Constants.PATH_SEPARATOR + Constants.DUBBO_PROPERTY;
     }
 
 }
