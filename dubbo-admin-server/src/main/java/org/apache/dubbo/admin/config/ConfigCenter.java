@@ -103,10 +103,10 @@ public class ConfigCenter {
 
         if (StringUtils.isNotEmpty(configCenter)) {
             configCenterUrl = formUrl(configCenter, configCenterGroup, configCenterGroupNameSpace, username, password);
-            dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(configCenterUrl.getProtocol());
+            dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getDefaultExtension();
             dynamicConfiguration.setUrl(configCenterUrl);
             dynamicConfiguration.init();
-            String config = dynamicConfiguration.getConfig(Constants.GLOBAL_CONFIG_PATH);
+            String config = dynamicConfiguration.getConfig(Constants.DUBBO_PROPERTY);
 
             if (StringUtils.isNotEmpty(config)) {
                 Arrays.stream(config.split("\n")).forEach(s -> {
@@ -122,7 +122,7 @@ public class ConfigCenter {
         if (dynamicConfiguration == null) {
             if (StringUtils.isNotEmpty(registryAddress)) {
                 registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
-                dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getExtension(registryUrl.getProtocol());
+                dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getDefaultExtension();
                 dynamicConfiguration.setUrl(registryUrl);
                 dynamicConfiguration.init();
                 logger.warn("you are using dubbo.registry.address, which is not recommend, please refer to: https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration");

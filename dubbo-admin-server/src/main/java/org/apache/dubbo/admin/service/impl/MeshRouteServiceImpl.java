@@ -84,7 +84,7 @@ public class MeshRouteServiceImpl extends AbstractService implements MeshRouteSe
     }
 
     private String getPath(String id) {
-        return Constants.CONFIG_KEY + Constants.PATH_SEPARATOR + id + Constants.MESH_RULE_SUFFIX;
+        return id + Constants.MESH_RULE_SUFFIX;
     }
 
 }

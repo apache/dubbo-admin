@@ -38,8 +38,8 @@ public class NoOpConfiguration implements GovernanceConfiguration {
     }
 
     @Override
-    public String setConfig(String key, String value) {
-        return null;
+    public boolean setConfig(String key, String value) {
+        return false;
     }
 
     @Override
@@ -53,8 +53,8 @@ public class NoOpConfiguration implements GovernanceConfiguration {
     }
 
     @Override
-    public String setConfig(String group, String key, String value) {
-        return null;
+    public boolean setConfig(String group, String key, String value) {
+        return false;
     }
 
     @Override
