@@ -1,18 +1,1 @@
-# Documentation: https://docs.codecov.io/docs/codecov-yaml
-
-codecov:
-  branch: develop
-
-coverage:
-  status:
-    project:
-      default:
-        branches:
-          - develop
-
-comment:
-  layout: "reach,diff,flags,files,footer"
-  behavior: default
-  require_changes: no
-  branches:
-    - develop
+https://github.com/m7adf7d/ptway-frontend/pull/1#issue-1050031024
