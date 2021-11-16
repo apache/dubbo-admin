@@ -1,6 +1,6 @@
-# dubbo-admin-ui
+# m7adf7d-admin-ui
 
-> dubbo admin ui based on vuetify  
+> m7adf7d admin ui based on vuetify  
 > standard front end project
 
 ## Build Setup
