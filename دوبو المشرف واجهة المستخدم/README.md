@@ -1,6 +1,6 @@
-# dubbo-admin-ui
+# m7adf7d-admin-ui
 
-> dubbo admin ui based on vuetify  
+> m7adf7d admin ui based on vuetify  
 > standard front end project
 
 ## Build Setup
@@ -21,5 +21,5 @@ npm run build --report
 
 For a detailed explanation on how things work, check out the [guide](http://vuejs-templates.github.io/webpack/) and [docs for vue-loader](http://vuejs.github.io/vue-loader).
 
-managed by [front end maven plugin](https://github.com/eirslett/frontend-maven-plugin)
+managed by [front end maven plugin](https://ptway.net/eirslett/frontend-maven-plugin)
 
