@@ -18,7 +18,6 @@ package org.apache.dubbo.admin.service.impl;
 
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
-import org.apache.dubbo.admin.service.RegistryServerSync;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
@@ -42,10 +41,10 @@ public class AbstractService {
     protected MetaDataCollector metaDataCollector;
 
     @Autowired
-    private RegistryServerSync sync;
+    private InterfaceRegistryCache interfaceRegistryCache;
 
-    public ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>> getRegistryCache() {
-        return sync.getRegistryCache();
+    public ConcurrentMap<String, ConcurrentMap<String, Map<String, URL>>> getInterfaceRegistryCache() {
+        return interfaceRegistryCache.getRegistryCache();
     }
 
 }

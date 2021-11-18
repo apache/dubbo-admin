@@ -23,7 +23,8 @@ const Menu = [
     group: 'governance',
     items: [
       { title: 'routingRule', path: '/governance/routingRule' },
-      { title: 'tagRule', path: '/governance/tagRule', badge: 'new' },
+      { title: 'tagRule', path: '/governance/tagRule' },
+      { title: 'meshRule', path: '/governance/meshRule', badge: 'new' },
       { title: 'accessControl', path: '/governance/access' },
       { title: 'dynamicConfig', path: '/governance/config' },
       { title: 'weightAdjust', path: '/governance/weight' },
@@ -32,7 +33,13 @@ const Menu = [
   },
   { title: 'serviceTest', path: '/test', icon: 'code' },
   { title: 'apiDocs', path: '/apiDocs', icon: 'code' },
-  { title: 'serviceMock', path: '/mock', icon: 'build', badge: 'feature' },
+  { title: 'serviceMock',
+    path: '/mock',
+    icon: 'build',
+    items: [
+      { title: 'mockRule', path: '/mock/rule', badge: 'new' }
+    ]
+  },
   {
     title: 'serviceMetrics',
     path: 'metrics',

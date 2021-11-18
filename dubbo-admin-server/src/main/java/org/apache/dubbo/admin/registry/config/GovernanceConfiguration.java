@@ -21,20 +21,21 @@ import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.SPI;
 
 
-@SPI("zookeeper")
+@SPI("multi")
 public interface GovernanceConfiguration {
     void init();
 
     void setUrl(URL url);
 
     URL getUrl();
-    String setConfig(String key, String value);
+
+    boolean setConfig(String key, String value);
 
     String getConfig(String key);
 
     boolean deleteConfig(String key);
 
-    String setConfig(String group, String key, String value);
+    boolean setConfig(String group, String key, String value);
 
     String getConfig(String group, String key);
 

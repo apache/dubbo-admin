@@ -18,7 +18,10 @@ package org.apache.dubbo.admin.common.util;
 
 import org.apache.dubbo.admin.model.domain.Consumer;
 import org.apache.dubbo.admin.model.domain.Provider;
+import org.apache.dubbo.admin.model.domain.RegistrySource;
+import org.apache.dubbo.common.BaseServiceMetadata;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.utils.StringUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -48,7 +51,10 @@ public class SyncUtils {
 
         Provider p = new Provider();
         p.setHash(id);
-        p.setService(url.getServiceKey());
+        String group = url.getUrlParam().getParameter(Constants.GROUP_KEY);
+        String version = url.getUrlParam().getParameter(Constants.VERSION_KEY);
+        String service = BaseServiceMetadata.buildServiceKey(getServiceInterface(url), group, version);
+        p.setService(service);
         p.setAddress(url.getAddress());
         p.setApplication(url.getParameter(Constants.APPLICATION_KEY));
         p.setUrl(url.toIdentityString());
@@ -58,6 +64,7 @@ public class SyncUtils {
         p.setEnabled(url.getParameter(Constants.ENABLED_KEY, true));
         p.setWeight(url.getParameter(Constants.WEIGHT_KEY, Constants.DEFAULT_WEIGHT));
         p.setUsername(url.getParameter("owner"));
+        p.setRegistrySource(RegistrySource.INTERFACE);
 
         return p;
     }
@@ -83,7 +90,10 @@ public class SyncUtils {
 
         Consumer c = new Consumer();
         c.setHash(id);
-        c.setService(url.getServiceKey());
+        String group = url.getUrlParam().getParameter(Constants.GROUP_KEY);
+        String version = url.getUrlParam().getParameter(Constants.VERSION_KEY);
+        String service = BaseServiceMetadata.buildServiceKey(getServiceInterface(url), group, version);
+        c.setService(service);
         c.setAddress(url.getHost());
         c.setApplication(url.getParameter(Constants.APPLICATION_KEY));
         c.setParameters(url.toParameterString());
@@ -179,4 +189,13 @@ public class SyncUtils {
         }
         return null;
     }
+
+    private static String getServiceInterface(URL url) {
+        String serviceInterface = url.getServiceInterface();
+        if (StringUtils.isBlank(serviceInterface) || Constants.ANY_VALUE.equals(serviceInterface)) {
+            serviceInterface = url.getPath();
+        }
+        return serviceInterface;
+    }
+
 }

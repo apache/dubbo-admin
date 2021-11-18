@@ -63,6 +63,6 @@ if [ ! -f "${BASE_DIR}/logs/start.out" ]; then
 fi
 
 JAVA_OPT="${JAVA_OPT} -Xms512m -Xmx512m -Xmn256m"
-JAVA_OPT="${JAVA_OPT} -jar ${BASE_DIR}/lib/${SERVER}.jar"
-nohup $JAVA ${JAVA_OPT} dubbo.admin >> ${BASE_DIR}/logs/catlog.out 2>&1 &
+JAVA_OPT="${JAVA_OPT} -Dloader.path=${BASE_DIR}/opt-libs -jar ${BASE_DIR}/lib/${SERVER}.jar"
+nohup "$JAVA" ${JAVA_OPT} dubbo.admin >> ${BASE_DIR}/logs/catlog.out 2>&1 &
 echo "${SERVER} is starting，you can check the ${BASE_DIR}/logs/catlog.out"

@@ -55,11 +55,16 @@
 	<properties>
 		<revision>0.3.0</revision>
 		<main.basedir>${project.basedir}</main.basedir>
-		<dubbo-version>2.7.12</dubbo-version>
+		<commons-lang3-version>3.7</commons-lang3-version>
+		<dubbo-version>3.0.2.1</dubbo-version>
+		<fastjson-version>1.2.67</fastjson-version>
 		<springfox-swagger-version>2.9.2</springfox-swagger-version>
 		<jacoco-version>0.8.2</jacoco-version>
 		<apollo-version>1.2.0</apollo-version>
 		<guava-version>20.0</guava-version>
+		<dubbo-mock-version>3.0.0</dubbo-mock-version>
+		<mybatis-plus-boot-version>3.4.2</mybatis-plus-boot-version>
+
 		<maven-checkstyle-plugin-version>3.0.0</maven-checkstyle-plugin-version>
 		<spring-boot-version>2.3.12.RELEASE</spring-boot-version>
 		<maven_compiler_version>3.6.0</maven_compiler_version>
@@ -104,9 +109,9 @@
 			</dependency>
 
 			<dependency>
-				<groupId>org.apache.dubbo</groupId>
-				<artifactId>dubbo-serialization-kryo</artifactId>
-				<version>${dubbo-version}</version>
+				<groupId>com.alibaba</groupId>
+				<artifactId>fastjson</artifactId>
+				<version>${fastjson-version}</version>
 			</dependency>
 
 			<dependency>
@@ -125,6 +130,19 @@
 				<artifactId>guava</artifactId>
 				<version>${guava-version}</version>
 			</dependency>
+
+			<dependency>
+				<groupId>org.apache.dubbo.extensions</groupId>
+				<artifactId>dubbo-mock-api</artifactId>
+				<version>${dubbo-mock-version}</version>
+			</dependency>
+
+			<dependency>
+				<groupId>com.baomidou</groupId>
+				<artifactId>mybatis-plus-boot-starter</artifactId>
+				<version>${mybatis-plus-boot-version}</version>
+			</dependency>
+
 		</dependencies>
 	</dependencyManagement>
 
@@ -214,6 +232,7 @@
 										<exclude>**/yarn.lock</exclude>
 										<exclude>**/node/**</exclude>
 										<exclude>**/dubbo-admin-info.json</exclude>
+										<exclude>.asf.yaml</exclude>
 									</excludes>
 								</configuration>
 							</execution>
