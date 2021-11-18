@@ -17,84 +17,68 @@
 package org.apache.dubbo.admin.controller;
 
 import org.apache.dubbo.admin.annotation.Authority;
-
+import org.apache.dubbo.admin.authentication.LoginAuthentication;
+import org.apache.dubbo.admin.interceptor.AuthInterceptor;
+import org.apache.dubbo.admin.utils.JwtTokenUtil;
+import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.commons.lang3.StringUtils;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import javax.servlet.http.HttpServletRequest;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import javax.servlet.http.HttpServletResponse;
+import java.util.Iterator;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/{env}/user")
 public class UserController {
-    public static Map<String /*token*/, User /*user info*/> tokenMap = new ConcurrentHashMap<>();
 
     @Value("${admin.root.user.name:}")
     private String rootUserName;
     @Value("${admin.root.user.password:}")
     private String rootUserPassword;
-    //make session timeout configurable
-    //default to be an hour:1000 * 60 * 60
-    @Value("${admin.check.sessionTimeoutMilli:3600000}")
-    private long sessionTimeoutMilli;
+
+    @Autowired
+    private JwtTokenUtil jwtTokenUtil;
 
     @RequestMapping(value = "/login", method = RequestMethod.GET)
-    public String login(@RequestParam String userName, @RequestParam String password) {
-        if (StringUtils.isBlank(rootUserName) || (rootUserName.equals(userName) && rootUserPassword.equals(password))) {
-            UUID uuid = UUID.randomUUID();
-            String token = uuid.toString();
-            User user = new User();
-            user.setUserName(userName);
-            user.setLastUpdateTime(System.currentTimeMillis());
-            tokenMap.put(token, user);
-            return token;
+    public String login(HttpServletRequest httpServletRequest, HttpServletResponse response, @RequestParam String userName, @RequestParam String password) {
+        ExtensionLoader<LoginAuthentication> extensionLoader = ExtensionLoader.getExtensionLoader(LoginAuthentication.class);
+        Set<LoginAuthentication> supportedExtensionInstances = extensionLoader.getSupportedExtensionInstances();
+        Iterator<LoginAuthentication> iterator = supportedExtensionInstances.iterator();
+        boolean flag = true;
+        if (iterator != null && !iterator.hasNext()) {
+            if (StringUtils.isBlank(rootUserName) || (rootUserName.equals(userName) && rootUserPassword.equals(password))) {
+                return jwtTokenUtil.generateToken(userName);
+            } else {
+                flag = false;
+            }
         }
+        while (iterator.hasNext()) {
+            LoginAuthentication loginAuthentication = iterator.next();
+            boolean b = loginAuthentication.authentication(httpServletRequest, userName, password);
+            flag = b & flag;
+            if (!flag) {
+                break;
+            }
+        }
+        if (flag) {
+            return jwtTokenUtil.generateToken(userName);
+        }
+        AuthInterceptor.loginFailResponse(response);
         return null;
     }
 
     @Authority(needLogin = true)
     @RequestMapping(value = "/logout", method = RequestMethod.DELETE)
     public boolean logout() {
-        HttpServletRequest request =
-                ((ServletRequestAttributes) Objects.requireNonNull(RequestContextHolder.getRequestAttributes())).getRequest();
-        String token = request.getHeader("Authorization");
-        return null != tokenMap.remove(token);
-    }
-
-    @Scheduled(cron= "0 5 * * * ?")
-    public void clearExpiredToken() {
-        tokenMap.entrySet().removeIf(entry -> entry.getValue() == null || System.currentTimeMillis() - entry.getValue().getLastUpdateTime() > sessionTimeoutMilli);
-    }
-
-    public static class User {
-        private String userName;
-        private long lastUpdateTime;
-
-        public String getUserName() {
-            return userName;
-        }
-
-        public void setUserName(String userName) {
-            this.userName = userName;
-        }
-
-        public long getLastUpdateTime() {
-            return lastUpdateTime;
-        }
-
-        public void setLastUpdateTime(long lastUpdateTime) {
-            this.lastUpdateTime = lastUpdateTime;
-        }
+        return true;
     }
 
 }

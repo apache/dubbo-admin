@@ -10,7 +10,7 @@
 ### Quick start
 
 * prebuilt docker image https://hub.docker.com/r/apache/dubbo-admin
-* quick start a live demo with [play-with-docker](https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/apache/dubbo-admin/develop/docker/stack.yml#) (version:0.1.0)
+* quick start a live demo with [play-with-docker](https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/apache/dubbo-admin/develop/docker/stack.yml#) (version:0.3.0)
 
 ### Screenshot
 

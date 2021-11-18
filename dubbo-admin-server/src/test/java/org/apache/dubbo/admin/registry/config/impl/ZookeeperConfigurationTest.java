@@ -33,7 +33,7 @@ import static org.junit.Assert.fail;
 public class ZookeeperConfigurationTest {
 
     private TestingServer zkServer;
-    private ZookeeperConfiguration configuration;
+    private MultiDynamicConfiguration configuration;
     private URL registryUrl;
 
     @Before
@@ -42,7 +42,7 @@ public class ZookeeperConfigurationTest {
         zkServer = new TestingServer(zkServerPort, true);
         registryUrl = URL.valueOf("zookeeper://localhost:" + zkServerPort);
 
-        configuration = new ZookeeperConfiguration();
+        configuration = new MultiDynamicConfiguration();
         try {
             configuration.init();
             fail("init should fail before setting registryUrl");
@@ -79,13 +79,11 @@ public class ZookeeperConfigurationTest {
 
     @Test
     public void testDeleteConfig() {
-        assertEquals(false, configuration.deleteConfig("not_exist_key"));
         configuration.setConfig("test_delete", "test_value");
         assertEquals("test_value", configuration.getConfig("test_delete"));
         configuration.deleteConfig("test_delete");
         assertEquals(null, configuration.getConfig("test_delete"));
 
-        assertEquals(false, configuration.deleteConfig("test_group", "not_exist_key"));
         configuration.setConfig("test_group", "test_delete", "test_value");
         assertEquals("test_value", configuration.getConfig("test_group", "test_delete"));
         configuration.deleteConfig("test_group", "test_delete");
@@ -98,16 +96,6 @@ public class ZookeeperConfigurationTest {
         }
     }
 
-    @Test
-    public void testGetPath() {
-        assertEquals(Constants.PATH_SEPARATOR + Constants.DEFAULT_ROOT + Constants.PATH_SEPARATOR + "test_key",
-                configuration.getPath("test_key"));
-        try {
-            configuration.getPath(null);
-            fail("should throw IllegalArgumentException for null path");
-        } catch (IllegalArgumentException e) {
-        }
-    }
 
     @After
     public void tearDown() throws IOException {

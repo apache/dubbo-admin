@@ -103,9 +103,16 @@ public class ServiceController {
         if (metadata != null) {
             try {
                 // for dubbo version under 2.7, this metadata will represent as IP address, like 10.0.0.1.
-                // So the json conversion will fail. 
-                FullServiceDefinition serviceDefinition = gson.fromJson(metadata, FullServiceDefinition.class);
-                serviceDetailDTO.setMetadata(serviceDefinition);
+                // So the json conversion will fail.
+                String release = providerService.findVersionInApplication(application);
+                // serialization compatible 2.x version
+                if (release.startsWith("2")) {
+                    org.apache.dubbo.admin.model.domain.FullServiceDefinition serviceDefinition = gson.fromJson(metadata, org.apache.dubbo.admin.model.domain.FullServiceDefinition.class);
+                    serviceDetailDTO.setMetadata(serviceDefinition);
+                } else {
+                    FullServiceDefinition serviceDefinition = gson.fromJson(metadata, FullServiceDefinition.class);
+                    serviceDetailDTO.setMetadata(serviceDefinition);
+                }
             } catch (JsonParseException e) {
                 throw new VersionValidationException("dubbo 2.6 does not support metadata");
             }
@@ -120,6 +127,11 @@ public class ServiceController {
     @RequestMapping(value = "/services", method = RequestMethod.GET)
     public Set<String> allServices(@PathVariable String env) {
         return new HashSet<>(providerService.findServices());
+    }
+
+    @RequestMapping(value = "/applications/instance", method = RequestMethod.GET)
+    public Set<String> allInstanceServices(@PathVariable String env) {
+        return new HashSet<>(providerService.findInstanceApplications());
     }
 
     @RequestMapping(value = "/applications", method = RequestMethod.GET)

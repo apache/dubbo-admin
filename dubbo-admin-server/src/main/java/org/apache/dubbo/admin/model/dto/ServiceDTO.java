@@ -17,15 +17,17 @@
 
 package org.apache.dubbo.admin.model.dto;
 
+import org.apache.dubbo.admin.model.domain.RegistrySource;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.Objects;
 
-public class ServiceDTO implements Comparable<ServiceDTO>{
+public class ServiceDTO implements Comparable<ServiceDTO> {
     private String service;
     private String appName;
     private String group;
     private String version;
+    private RegistrySource registrySource;
 
     public String getService() {
         return service;
@@ -59,6 +61,14 @@ public class ServiceDTO implements Comparable<ServiceDTO>{
         this.version = version;
     }
 
+    public RegistrySource getRegistrySource() {
+        return registrySource;
+    }
+
+    public void setRegistrySource(RegistrySource registrySource) {
+        this.registrySource = registrySource;
+    }
+
     @Override
     public int compareTo(ServiceDTO o) {
         int result = StringUtils.trimToEmpty(appName).compareTo(StringUtils.trimToEmpty(o.getAppName()));
@@ -69,6 +79,9 @@ public class ServiceDTO implements Comparable<ServiceDTO>{
             }
             if (result == 0) {
                 result = StringUtils.trimToEmpty(version).compareTo(StringUtils.trimToEmpty(o.getVersion()));
+            }
+            if (result == 0) {
+                result = registrySource.compareTo(o.registrySource);
             }
         }
         return result;
@@ -84,11 +97,11 @@ public class ServiceDTO implements Comparable<ServiceDTO>{
         }
         ServiceDTO that = (ServiceDTO) o;
         return Objects.equals(service, that.service) && Objects.equals(appName, that.appName) && Objects
-            .equals(group, that.group) && Objects.equals(version, that.version);
+                .equals(group, that.group) && Objects.equals(version, that.version) && Objects.equals(registrySource, that.registrySource);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(service, appName, group, version);
+        return Objects.hash(service, appName, group, version, registrySource);
     }
 }

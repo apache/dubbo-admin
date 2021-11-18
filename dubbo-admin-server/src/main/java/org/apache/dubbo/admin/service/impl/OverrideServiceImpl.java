@@ -42,7 +42,6 @@ import java.util.Map;
 
 @Component
 public class OverrideServiceImpl extends AbstractService implements OverrideService {
-    private String prefix = Constants.CONFIG_KEY;
 
     @java.lang.Override
     public void saveOverride(DynamicConfigDTO override) {
@@ -528,9 +527,10 @@ public class OverrideServiceImpl extends AbstractService implements OverrideServ
         }
         return result;
     }
+
     private String getPath(String key) {
         key = key.replace("/", "*");
-        return prefix + Constants.PATH_SEPARATOR + key + Constants.CONFIGURATOR_RULE_SUFFIX;
+        return key + Constants.CONFIGURATOR_RULE_SUFFIX;
     }
 
     private void unregisterWeight(WeightDTO weightDTO) {

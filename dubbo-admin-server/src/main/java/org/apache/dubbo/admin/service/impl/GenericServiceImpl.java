@@ -73,7 +73,8 @@ public class GenericServiceImpl {
         reference.setInterface(intf);
         reference.setVersion(version);
         reference.setGroup(group);
-
+        //Keep it consistent with the ConfigManager cache
+        reference.setSticky(false);
         try {
             removeGenericSymbol(parameterTypes);
             GenericService genericService = reference.get();

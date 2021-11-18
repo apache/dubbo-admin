@@ -23,6 +23,7 @@ import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.annotation.Authority;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.common.util.ServiceTestUtil;
+import org.apache.dubbo.admin.common.util.ServiceTestV3Util;
 import org.apache.dubbo.admin.model.domain.MethodMetadata;
 import org.apache.dubbo.admin.model.dto.ServiceTestDTO;
 import org.apache.dubbo.admin.service.ProviderService;
@@ -71,13 +72,29 @@ public class ServiceTestController {
         MethodMetadata methodMetadata = null;
         if (metadata != null) {
             Gson gson = new Gson();
-            FullServiceDefinition serviceDefinition = gson.fromJson(metadata, FullServiceDefinition.class);
-            List<MethodDefinition> methods = serviceDefinition.getMethods();
-            if (methods != null) {
-                for (MethodDefinition m : methods) {
-                    if (ServiceTestUtil.sameMethod(m, method)) {
-                        methodMetadata = ServiceTestUtil.generateMethodMeta(serviceDefinition, m);
-                        break;
+            String release = providerService.findVersionInApplication(application);
+            if (release.startsWith("2.")) {
+                org.apache.dubbo.admin.model.domain.FullServiceDefinition serviceDefinition = gson.fromJson(metadata,
+                        org.apache.dubbo.admin.model.domain.FullServiceDefinition.class);
+                List<org.apache.dubbo.admin.model.domain.MethodDefinition> methods = serviceDefinition.getMethods();
+                if (methods != null) {
+                    for (org.apache.dubbo.admin.model.domain.MethodDefinition m : methods) {
+                        if (ServiceTestUtil.sameMethod(m, method)) {
+                            methodMetadata = ServiceTestUtil.generateMethodMeta(serviceDefinition, m);
+                            break;
+                        }
+                    }
+                }
+            } else {
+                FullServiceDefinition serviceDefinition = gson.fromJson(metadata,
+                        FullServiceDefinition.class);
+                List<MethodDefinition> methods = serviceDefinition.getMethods();
+                if (methods != null) {
+                    for (MethodDefinition m : methods) {
+                        if (ServiceTestV3Util.sameMethod(m, method)) {
+                            methodMetadata = ServiceTestV3Util.generateMethodMeta(serviceDefinition, m);
+                            break;
+                        }
                     }
                 }
             }

@@ -26,6 +26,6 @@ set SERVER=dubbo-admin
 
 set "JAVA_OPT=%JAVA_OPT% -Xms512m -Xmx512m -Xmn256m"
 
-set "JAVA_OPT=%JAVA_OPT% -jar %BASE_DIR%\lib\%SERVER%.jar"
+set "JAVA_OPT=%JAVA_OPT% -Dloader.path=%BASE_DIR%\opt-libs -jar %BASE_DIR%\lib\%SERVER%.jar"
 
 call "%JAVA%" %JAVA_OPT% dubbo.admin %*

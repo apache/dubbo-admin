@@ -26,6 +26,7 @@ public class Constants {
     public static final String REGISTRY_ADDRESS = "dubbo.registry.address";
     public static final String METADATA_ADDRESS = "dubbo.metadata-report.address";
     public static final String DEFAULT_ROOT = "dubbo";
+    public static final String DEFAULT_GROUP = "dubbo";
     public static final String PATH_SEPARATOR = "/";
     public static final String GROUP_KEY = "group";
     public static final String NAMESPACE_KEY = "namespace";
@@ -74,12 +75,13 @@ public class Constants {
     public static final String CONSUMERS_CATEGORY = "consumers";
     public static final String SPECIFICATION_VERSION_KEY = "release";
     public static final String GLOBAL_CONFIG = "global";
-    public static final String GLOBAL_CONFIG_PATH = "config/dubbo/dubbo.properties";
+    public static final String GLOBAL_CONFIG_PATH = "dubbo.properties";
     public static final String METRICS_PORT = "metrics.port";
     public static final String METRICS_PROTOCOL = "metrics.protocol";
     public static final Set<String> CONFIGS = new HashSet<>();
     public static final String COLON = ":";
-
+    public static final String MESH_RULE_SUFFIX = ".MESHAPPRULE";
+    public static final String DEFAULT_MAPPING_GROUP = "mapping";
     static {
         CONFIGS.add(WEIGHT);
         CONFIGS.add(BALANCING);
