@@ -20,7 +20,11 @@
 
 - 使用[Vue.js](https://vuejs.org)作为javascript框架
 - [dubbo-admin-ui/README.md](dubbo-admin-ui/README.md)中有更详细的介绍
-- 设置 npm **代理镜像** : 如果遇到了网络问题，可以设置npm代理镜像来加速npm install的过程：在~/.npmrc中增加 `registry =https://registry.npm.taobao.org`
+- 设置 npm **代理镜像** :
+
+    如果遇到了网络问题，可以设置npm代理镜像来加速npm install的过程：
+
+    在~/.npmrc中增加 `registry=https://registry.npmmirror.com`
 
 ### 后端部分
 
@@ -33,21 +37,25 @@
 1. 下载代码: `git clone https://github.com/apache/dubbo-admin.git`
 2. 在 `dubbo-admin-server/src/main/resources/application.properties`中指定注册中心地址
 3. 构建
-
-    > - `mvn clean package -Dmaven.test.skip=true`  
+    - `mvn clean package -Dmaven.test.skip=true`
 4. 启动 
-   * `mvn --projects dubbo-admin-server spring-boot:run`   
-   或者   
-   * `cd dubbo-admin-distribution/target; java -jar dubbo-admin-0.1.jar`
+    * `mvn --projects dubbo-admin-server spring-boot:run`
+    或者
+    * `cd dubbo-admin-distribution/target; java -jar dubbo-admin-0.1.jar`
 5. 访问 `http://localhost:8080`
 ---
 
 ### 开发环境配置
 * 运行`dubbo admin server`
-   `dubbo admin server`是一个标准的spring boot项目, 可以在任何java IDE中运行它
+
+  `dubbo admin server`是一个标准的spring boot项目, 可以在任何java IDE中运行它
+
 * 运行`dubbo admin ui`
+
   `dubbo admin ui`由npm管理和构建，在开发环境中，可以单独运行: `npm run dev`
+
 * 页面访问
+
   访问 `http://localhost:8081`, 由于前后端分开部署，前端支持热加载，任何页面的修改都可以实时反馈，不需要重启应用。
 
 ### Swagger 支持
