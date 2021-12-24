@@ -77,6 +77,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
         //for 2.6
         if (StringUtils.isNotEmpty(newConditionRoute.getService())) {
             for (Route old : convertRouteToOldRoute(oldConditionRoute)) {
+                old.setService(id);
             	registry.unregister(old.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true));
             }
             for (Route updated : convertRouteToOldRoute(newConditionRoute)) {
@@ -101,6 +102,7 @@ public class RouteServiceImpl extends AbstractService implements RouteService {
             RoutingRule originRule = YamlParser.loadObject(config, RoutingRule.class);
             ConditionRouteDTO conditionRouteDTO = RouteUtils.createConditionRouteFromRule(originRule);
             for (Route old : convertRouteToOldRoute(conditionRouteDTO)) {
+                old.setService(id);
                 URL oldUrl = old.toUrl();
                 if(oldUrl.getParameter("rule").contains("host") && oldUrl.getParameter("rule").contains("false")) {
                     registry.unregister(oldUrl);
