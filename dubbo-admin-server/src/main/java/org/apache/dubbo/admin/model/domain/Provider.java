@@ -50,11 +50,11 @@ public class Provider extends Entity {
 
     private String application; /* application name */
 
-    private String username;      /* operator */
+   // private String username;      /* operator */
 
     private Date expired;   /* time to expire */
 
-    private long alived;    /* time to live in milliseconds */
+    private long lifeSpan;    /* time to live in milliseconds */
 
     private Override override;
 
@@ -109,13 +109,13 @@ public class Provider extends Entity {
         this.registry = registry;
     }
 
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
+//    public String getUsername() {
+//        return username;
+//    }
+//
+//    public void setUsername(String username) {
+//        this.username = username;
+//    }
 
     public String getApplication() {
         return application;
@@ -151,12 +151,12 @@ public class Provider extends Entity {
         this.expired = expired;
     }
 
-    public long getAlived() {
-        return alived;
+    public long getLifeSpan() {
+        return lifeSpan;
     }
 
-    public void setAlived(long aliveSeconds) {
-        this.alived = aliveSeconds;
+    public void setLifeSpan(long aliveSeconds) {
+        this.lifeSpan = aliveSeconds;
     }
 
     public int getWeight() {

@@ -46,6 +46,16 @@ public abstract class Entity implements Serializable {
 
     private boolean miss;
 
+    protected String username;
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
     public Entity() {
     }
 

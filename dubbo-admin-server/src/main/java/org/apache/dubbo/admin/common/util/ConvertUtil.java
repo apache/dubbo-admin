@@ -82,6 +82,10 @@ public class ConvertUtil {
         }
     }
 
+    public static void setServiceMehod(){
+
+    }
+
     public static String getServiceIdFromDTO(BaseDTO baseDTO, String serviceVersion, String serviceGroup,
                                              boolean groupAsFolder) {
         StringBuilder buf = new StringBuilder();

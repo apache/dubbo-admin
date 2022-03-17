@@ -50,6 +50,12 @@ public class SyncUtils {
             return null;
 
         Provider p = new Provider();
+        return setupProvider(id, url, p);
+
+        //return p;
+    }
+
+    private static Provider setupProvider(String id, URL url, Provider p) {
         p.setHash(id);
         String group = url.getUrlParam().getParameter(Constants.GROUP_KEY);
         String version = url.getUrlParam().getParameter(Constants.VERSION_KEY);
@@ -65,7 +71,6 @@ public class SyncUtils {
         p.setWeight(url.getParameter(Constants.WEIGHT_KEY, Constants.DEFAULT_WEIGHT));
         p.setUsername(url.getParameter("owner"));
         p.setRegistrySource(RegistrySource.INTERFACE);
-
         return p;
     }
 

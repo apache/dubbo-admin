@@ -30,7 +30,7 @@ public class LoadBalance extends Entity {
 
     private String strategy;              /*loadbalance policy*/
 
-    private String username;
+   // private String username;
 
     public LoadBalance() {
     }
@@ -63,13 +63,13 @@ public class LoadBalance extends Entity {
         this.strategy = strategy;
     }
 
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
+//    public String getUsername() {
+//        return username;
+//    }
+//
+//    public void setUsername(String username) {
+//        this.username = username;
+//    }
 
 
 }

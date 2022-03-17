@@ -203,6 +203,11 @@ public class RouteUtils {
 
     public static TagRoute convertTagroutetoStore(TagRouteDTO tagRoute) {
         TagRoute store = new TagRoute();
+        return setupTagRoute(tagRoute, store);
+        //return store;
+    }
+
+    private static TagRoute setupTagRoute(TagRouteDTO tagRoute, TagRoute store) {
         store.setKey(tagRoute.getApplication());
         store.setEnabled(tagRoute.isEnabled());
         store.setForce(tagRoute.isForce());
@@ -234,6 +239,11 @@ public class RouteUtils {
                 existRule.setScope(Constants.SERVICE);
             }
         }
+        return setupExitRule(existRule, conditionRoute);
+        //return existRule;
+    }
+
+    private static RoutingRule setupExitRule(RoutingRule existRule, ConditionRouteDTO conditionRoute) {
         existRule.setConditions(conditionRoute.getConditions());
         existRule.setEnabled(conditionRoute.isEnabled());
         existRule.setForce(conditionRoute.isForce());
@@ -241,6 +251,7 @@ public class RouteUtils {
         existRule.setPriority(conditionRoute.getPriority());
         return existRule;
     }
+
     public static List<String> convertToBlackWhiteList(AccessDTO accessDTO) {
         if (accessDTO == null) {
             return null;

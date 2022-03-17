@@ -57,7 +57,7 @@ public class Route extends Entity {
 
     private int priority;
 
-    private String username;
+    //private String username;
 
     private boolean enabled;
 
@@ -84,13 +84,13 @@ public class Route extends Entity {
         this.priority = priority;
     }
 
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
+//    public String getUsername() {
+//        return username;
+//    }
+//
+//    public void setUsername(String username) {
+//        this.username = username;
+//    }
 
     public long getParentId() {
         return parentId;

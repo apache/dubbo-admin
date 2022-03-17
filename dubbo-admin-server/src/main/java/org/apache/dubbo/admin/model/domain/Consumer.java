@@ -31,13 +31,15 @@ import java.util.Map;
  */
 public class Consumer extends Entity {
 
+    private ServiceDetail sd = new ServiceDetail();
+
     private static final long serialVersionUID = -1140894843784583237L;
 
-    private String service; /* The name of the service referenced by the consumer */
+    //private String service; /* The name of the service referenced by the consumer */
 
     private String parameters;
 
-    private String result;    /*route result*/
+    //private String result;    /*route result*/
 
     private String address; /* address of consumer */
 
@@ -45,11 +47,11 @@ public class Consumer extends Entity {
 
     private String application; /* application name */
 
-    private String username;      /* user name of consumer */
+    //private String username;      /* user name of consumer */
 
-    private String statistics;    /* Service call statistics */
+    //private String statistics;    /* Service call statistics */
 
-    private Date collected;  /* Date statistics was recorded */
+   // private Date collected;  /* Date statistics was recorded */
 
     private Override override;
 
@@ -59,9 +61,9 @@ public class Consumer extends Entity {
 
     private List<Provider> providers;
 
-    private Date expired;
+    //private Date expired;
 
-    private long alived;    /*Time to live in milliseconds*/
+    private long lifeSpan;    /*Time to live in milliseconds*/
 
     public Consumer() {
     }
@@ -71,11 +73,11 @@ public class Consumer extends Entity {
     }
 
     public String getService() {
-        return service;
+        return sd.getService();
     }
 
     public void setService(String service) {
-        this.service = service;
+        this.sd.setService(service);
     }
 
     public String getParameters() {
@@ -102,36 +104,36 @@ public class Consumer extends Entity {
         this.registry = registry;
     }
 
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
+//    public String getUsername() {
+//        return username;
+//    }
+//
+//    public void setUsername(String username) {
+//        this.username = username;
+//    }
 
     public String getStatistics() {
-        return statistics;
+        return sd.getStatistics();
     }
 
     public void setStatistics(String statistics) {
-        this.statistics = statistics;
+        this.sd.setStatistics(statistics);
     }
 
     public Date getCollected() {
-        return collected;
+        return sd.getCollected();
     }
 
     public void setCollected(Date collected) {
-        this.collected = collected;
+        this.sd.setCollected(collected);
     }
 
     public String getResult() {
-        return result;
+        return sd.getResult();
     }
 
     public void setResult(String result) {
-        this.result = result;
+        this.sd.setResult(result);
     }
 
     public String getApplication() {
@@ -143,22 +145,22 @@ public class Consumer extends Entity {
     }
 
     public Date getExpired() {
-        return expired;
+        return sd.getExpired();
     }
 
 
     public void setExpired(Date expired) {
-        this.expired = expired;
+        this.sd.setExpired(expired);
     }
 
 
-    public long getAlived() {
-        return alived;
+    public long getLifeSpan() {
+        return lifeSpan;
     }
 
 
-    public void setAlived(long alived) {
-        this.alived = alived;
+    public void setLifeSpan(long lifeSpan) {
+        this.lifeSpan = lifeSpan;
     }
 
     public Override getOverride() {
@@ -194,17 +196,17 @@ public class Consumer extends Entity {
     }
 
     public String toString() {
-        return "Consumer [service=" + service + ", parameters=" + parameters + ", result=" + result
+        return "Consumer [service=" + sd.getService() + ", parameters=" + parameters + ", result=" + sd.getResult()
                 + ", address=" + address + ", registry=" + registry + ", application="
-                + application + ", username=" + username + ", statistics=" + statistics
-                + ", collected=" + collected + ", conditionRoutes=" + conditionRoutes + ", overrides=" + overrides
-                + ", expired=" + expired + ", alived=" + alived + "]";
+                + application + ", username=" + username + ", statistics=" + sd.getStatistics()
+                + ", collected=" + sd.getCollected() + ", conditionRoutes=" + conditionRoutes + ", overrides=" + overrides
+                + ", expired=" + sd.getExpired() + ", alived=" + lifeSpan + "]";
     }
 
     public URL toUrl() {
-        String group = Tool.getGroup(service);
-        String version = Tool.getVersion(service);
-        String interfaze = Tool.getInterface(service);
+        String group = Tool.getGroup(sd.getService());
+        String version = Tool.getVersion(sd.getService());
+        String interfaze = Tool.getInterface(sd.getService());
         Map<String, String> param = StringUtils.parseQueryString(parameters);
         param.put(Constants.CATEGORY_KEY, Constants.CONSUMERS_CATEGORY);
         if (group != null) {

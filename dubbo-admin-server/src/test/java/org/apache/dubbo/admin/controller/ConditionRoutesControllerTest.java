@@ -20,9 +20,11 @@ package org.apache.dubbo.admin.controller;
 import org.apache.dubbo.admin.AbstractSpringIntegrationTest;
 import org.apache.dubbo.admin.common.util.ConvertUtil;
 import org.apache.dubbo.admin.common.util.YamlParser;
+import org.apache.dubbo.admin.model.dto.BaseDTO;
 import org.apache.dubbo.admin.model.dto.ConditionRouteDTO;
 import org.apache.dubbo.admin.model.store.RoutingRule;
 import org.apache.dubbo.admin.service.ConsumerService;
+import org.apache.dubbo.common.utils.StringUtils;
 import org.junit.After;
 import org.junit.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -51,6 +53,7 @@ import static org.mockito.Mockito.when;
 
 public class ConditionRoutesControllerTest extends AbstractSpringIntegrationTest {
   private final String env = "whatever";
+
 
   @MockBean
   private ConsumerService consumerService;

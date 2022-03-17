@@ -174,6 +174,12 @@ public class ParseUtils {
      */
     public static Set<String> filterByGlobPattern(Collection<String> patterns, Collection<String> values) {
         Set<String> ret = new HashSet<String>();
+        Set<String> ret1 = getStringSet(patterns, values, ret);
+        if (ret1 != null) return ret1;
+        return ret;
+    }
+
+    private static Set<String> getStringSet(Collection<String> patterns, Collection<String> values, Set<String> ret) {
         if (null == patterns || values == null || patterns.isEmpty() || values.isEmpty()) {
             return ret;
         }
@@ -185,7 +191,7 @@ public class ParseUtils {
                 }
             }
         }
-        return ret;
+        return null;
     }
 
     /**
@@ -298,6 +304,11 @@ public class ParseUtils {
 
     public static String appendParamToUri(String uri, String name, String value) {
         if (StringUtils.isEmpty(name) || StringUtils.isEmpty(value)) return uri;
+        return modificationOfURI(uri, name, value);
+       // return uri;
+    }
+
+    private static String modificationOfURI(String uri, String name, String value) {
         if (uri.indexOf('?') != -1) {
             uri += "&" + name + "=" + value;
         } else {
