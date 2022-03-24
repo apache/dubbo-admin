@@ -221,4 +221,12 @@ public class Provider extends Entity {
         return url;
     }
 
+//    public boolean isMiss() {
+//        return miss;
+//    }
+//
+//    public void setMiss(boolean miss) {
+//        this.miss = miss;
+//    }
+
 }
