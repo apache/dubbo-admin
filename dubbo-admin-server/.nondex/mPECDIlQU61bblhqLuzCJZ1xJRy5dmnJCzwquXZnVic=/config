@@ -1,0 +1,11 @@
+nondexFilter=.*
+nondexMode=ONE
+nondexSeed=1098954
+nondexStart=0
+nondexEnd=9223372036854775807
+nondexPrintstack=false
+nondexDir=/home/rootadmin/dubbo-admin/dubbo-admin-server/.nondex
+nondexJarDir=/home/rootadmin/dubbo-admin/dubbo-admin-server/.nondex
+nondexExecid=mPECDIlQU61bblhqLuzCJZ1xJRy5dmnJCzwquXZnVic=
+nondexLogging=CONFIG
+test=
