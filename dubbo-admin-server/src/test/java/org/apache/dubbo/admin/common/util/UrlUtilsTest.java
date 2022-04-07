@@ -19,14 +19,14 @@ package org.apache.dubbo.admin.common.util;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class UrlUtilsTest {
 
     @Test
     public void testParamsMapToString() {
-        Map<String, String[]> params = new HashMap<>();
+        Map<String, String[]> params = new LinkedHashMap<>();
         params.put("a", new String[]{"1", "2", "3"});
         params.put("b", new String[]{"8", "7", "6"});
         String result = UrlUtils.paramsMapToString(params);
