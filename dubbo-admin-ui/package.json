@@ -18,7 +18,7 @@
     "http-status": "^1.2.0",
     "js-yaml": "^3.12.0",
     "jsoneditor": "^9.1.5",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.21",
     "vue": "^2.6.11",
     "vue-clipboard2": "^0.2.1",
     "vue-echarts": "^4.0.1",
