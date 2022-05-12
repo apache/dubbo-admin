@@ -23,6 +23,7 @@ import org.apache.dubbo.common.URL;
 import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.ReferenceConfig;
 import org.apache.dubbo.config.RegistryConfig;
+import org.apache.dubbo.config.utils.ReferenceConfigCache;
 import org.apache.dubbo.registry.Registry;
 import org.apache.dubbo.rpc.service.GenericService;
 import org.springframework.stereotype.Component;
@@ -80,7 +81,8 @@ public class GenericServiceImpl {
             GenericService genericService = reference.get();
             return genericService.$invoke(method, parameterTypes, params);
         } finally {
-            reference.destroy();
+            ReferenceConfigCache cache = ReferenceConfigCache.getCache();
+            cache.destroy(reference);
         }
     }
 
