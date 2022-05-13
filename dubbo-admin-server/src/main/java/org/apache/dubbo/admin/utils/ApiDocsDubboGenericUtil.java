@@ -121,6 +121,8 @@ public class ApiDocsDubboGenericUtil {
             referenceConfig.setTimeout(timeout);
             referenceConfig.setVersion(version);
             referenceConfig.setGroup(group);
+            //Keep it consistent with the ConfigManager cache
+            referenceConfig.setSticky(false);
 
             referenceConfig.setApplication(application);
             if (address.startsWith("dubbo")) {
