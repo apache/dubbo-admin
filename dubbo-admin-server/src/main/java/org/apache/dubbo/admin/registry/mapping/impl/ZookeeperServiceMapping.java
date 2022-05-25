@@ -26,6 +26,7 @@ import org.apache.dubbo.metadata.MappingChangedEvent;
 import org.apache.dubbo.metadata.MappingListener;
 import org.apache.dubbo.remoting.zookeeper.ZookeeperClient;
 import org.apache.dubbo.remoting.zookeeper.ZookeeperTransporter;
+import org.apache.dubbo.rpc.model.ApplicationModel;
 
 import java.util.List;
 import java.util.Set;
@@ -45,7 +46,7 @@ public class ZookeeperServiceMapping implements ServiceMapping {
 
     @Override
     public void init(URL url) {
-        ZookeeperTransporter zookeeperTransporter = ZookeeperTransporter.getExtension();
+        ZookeeperTransporter zookeeperTransporter = ZookeeperTransporter.getExtension(ApplicationModel.defaultModel());
         zkClient = zookeeperTransporter.connect(url);
         listenerAll();
     }
