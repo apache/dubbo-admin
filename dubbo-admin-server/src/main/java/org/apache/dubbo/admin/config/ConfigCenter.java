@@ -38,6 +38,7 @@ import org.apache.dubbo.registry.RegistryFactory;
 import org.apache.dubbo.registry.RegistryService;
 import org.apache.dubbo.registry.client.ServiceDiscovery;
 import org.apache.dubbo.registry.client.ServiceDiscoveryFactory;
+import org.apache.dubbo.rpc.model.ApplicationModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -46,6 +47,7 @@ import org.springframework.context.annotation.DependsOn;
 import java.util.Arrays;
 
 import static org.apache.dubbo.common.constants.CommonConstants.CLUSTER_KEY;
+import static org.apache.dubbo.common.constants.RegistryConstants.ENABLE_EMPTY_PROTECTION_KEY;
 import static org.apache.dubbo.registry.client.ServiceDiscoveryFactory.getExtension;
 
 @Configuration
@@ -147,8 +149,8 @@ public class ConfigCenter {
             }
             registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
         }
-        RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
-        registry = registryFactory.getRegistry(registryUrl);
+        RegistryFactory registryFactory = ApplicationModel.defaultModel().getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
+        registry = registryFactory.getRegistry(registryUrl.addParameter(ENABLE_EMPTY_PROTECTION_KEY, String.valueOf(false)));
         return registry;
     }
 
@@ -166,7 +168,7 @@ public class ConfigCenter {
             }
         }
         if (metadataUrl != null) {
-            metaDataCollector = ExtensionLoader.getExtensionLoader(MetaDataCollector.class).getExtension(metadataUrl.getProtocol());
+            metaDataCollector = ApplicationModel.defaultModel().getExtensionLoader(MetaDataCollector.class).getExtension(metadataUrl.getProtocol());
             metaDataCollector.setUrl(metadataUrl);
             metaDataCollector.init();
         } else {
@@ -179,11 +181,10 @@ public class ConfigCenter {
     @Bean(destroyMethod = "destroy")
     @DependsOn("dubboRegistry")
     ServiceDiscovery getServiceDiscoveryRegistry() throws Exception {
-        URL registryURL = registryUrl.setPath(RegistryService.class.getName());
+        URL registryURL = registryUrl.setPath(RegistryService.class.getName())
+                .addParameter(ENABLE_EMPTY_PROTECTION_KEY, String.valueOf(false));
         ServiceDiscoveryFactory factory = getExtension(registryURL);
-        ServiceDiscovery serviceDiscovery = factory.getServiceDiscovery(registryURL);
-        serviceDiscovery.initialize(registryURL);
-        return serviceDiscovery;
+        return factory.getServiceDiscovery(registryURL);
     }
 
     @Bean

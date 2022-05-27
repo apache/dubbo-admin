@@ -56,7 +56,7 @@
 		<revision>0.4.0</revision>
 		<main.basedir>${project.basedir}</main.basedir>
 		<commons-lang3-version>3.7</commons-lang3-version>
-		<dubbo-version>3.0.2.1</dubbo-version>
+		<dubbo-version>3.0.8</dubbo-version>
 		<fastjson-version>1.2.67</fastjson-version>
 		<springfox-swagger-version>2.9.2</springfox-swagger-version>
 		<jacoco-version>0.8.2</jacoco-version>
@@ -64,6 +64,7 @@
 		<guava-version>20.0</guava-version>
 		<dubbo-mock-version>3.0.0</dubbo-mock-version>
 		<mybatis-plus-boot-version>3.4.2</mybatis-plus-boot-version>
+		<curator-test-veriosn>2.12.0</curator-test-veriosn>
 
 		<maven-checkstyle-plugin-version>3.0.0</maven-checkstyle-plugin-version>
 		<spring-boot-version>2.3.12.RELEASE</spring-boot-version>
@@ -143,6 +144,11 @@
 				<version>${mybatis-plus-boot-version}</version>
 			</dependency>
 
+			<dependency>
+				<groupId>org.apache.curator</groupId>
+				<artifactId>curator-test</artifactId>
+				<version>${curator-test-veriosn}</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 

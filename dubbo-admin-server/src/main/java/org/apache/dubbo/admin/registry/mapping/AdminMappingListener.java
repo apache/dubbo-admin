@@ -126,4 +126,8 @@ public class AdminMappingListener implements MappingListener {
         }
     }
 
+    @Override
+    public void stop() {
+        // ignore
+    }
 }
