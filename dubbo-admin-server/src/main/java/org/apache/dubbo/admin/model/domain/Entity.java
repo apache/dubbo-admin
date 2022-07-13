@@ -19,10 +19,10 @@ package org.apache.dubbo.admin.model.domain;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Entity
- *
  */
 public abstract class Entity implements Serializable {
 
@@ -128,4 +128,20 @@ public abstract class Entity implements Serializable {
         this.miss = miss;
     }
 
+    @java.lang.Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        Entity entity = (Entity) o;
+        return miss == entity.miss && Objects.equals(ids, entity.ids) && Objects.equals(id, entity.id) && Objects.equals(hash, entity.hash) && Objects.equals(created, entity.created) && Objects.equals(modified, entity.modified) && Objects.equals(now, entity.now) && Objects.equals(operator, entity.operator) && Objects.equals(operatorAddress, entity.operatorAddress);
+    }
+
+    @java.lang.Override
+    public int hashCode() {
+        return Objects.hash(ids, id, hash, created, modified, now, operator, operatorAddress, miss);
+    }
 }

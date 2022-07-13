@@ -19,6 +19,8 @@ package org.apache.dubbo.admin.model.domain;
 
 public enum RegistrySource {
 
+    ALL,
+
     INTERFACE,
 
     INSTANCE
