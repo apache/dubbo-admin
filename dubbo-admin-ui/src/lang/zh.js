@@ -49,6 +49,7 @@ export default {
   registrySource: '注册来源',
   instanceRegistry: '应用级',
   interfaceRegistry: '接口级',
+  allRegistry: '应用级/接口级',
   operation: '操作',
   searchResult: '查询结果',
   search: '搜索',

@@ -21,6 +21,7 @@ import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.SyncUtils;
 import org.apache.dubbo.admin.common.util.Tool;
 import org.apache.dubbo.admin.model.domain.Provider;
+import org.apache.dubbo.admin.model.domain.RegistrySource;
 import org.apache.dubbo.admin.model.dto.ServiceDTO;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.common.URL;
@@ -33,8 +34,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentMap;
@@ -292,19 +295,40 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
      */
     public Set<ServiceDTO> convertProviders2DTO(List<Provider> providers) {
         Set<ServiceDTO> result = new TreeSet<>();
-        for (Provider provider : providers) {
-            String app = provider.getApplication();
-            String service = provider.getService();
+        Map<String, List<Provider>> providerMap = providers.stream().collect(Collectors.groupingBy(Provider::getService));
+        for (Map.Entry<String, List<Provider>> entry : providerMap.entrySet()) {
+            String service = entry.getKey();
             String group = Tool.getGroup(service);
             String version = Tool.getVersion(service);
             String interfaze = Tool.getInterface(service);
-            ServiceDTO s = new ServiceDTO();
-            s.setAppName(app);
-            s.setService(interfaze);
-            s.setGroup(group);
-            s.setVersion(version);
-            s.setRegistrySource(provider.getRegistrySource());
-            result.add(s);
+
+            List<Provider> value = entry.getValue();
+            if (value.size() == 1) {
+                Provider provider = value.get(0);
+                ServiceDTO s = new ServiceDTO();
+                s.setAppName(provider.getApplication());
+                s.setService(interfaze);
+                s.setGroup(group);
+                s.setVersion(version);
+                s.setRegistrySource(provider.getRegistrySource());
+                result.add(s);
+            } else {
+                String app = value.stream().map(Provider::getApplication).distinct().collect(Collectors.joining(", "));
+                RegistrySource registrySource = value.get(0).getRegistrySource();
+
+                boolean matchInterface = value.stream().map(Provider::getRegistrySource).anyMatch(e -> e.equals(RegistrySource.INTERFACE));
+                boolean matchInstance = value.stream().map(Provider::getRegistrySource).anyMatch(e -> e.equals(RegistrySource.INSTANCE));
+                if (matchInterface && matchInstance) {
+                    registrySource = RegistrySource.ALL;
+                }
+                ServiceDTO s = new ServiceDTO();
+                s.setAppName(app);
+                s.setService(interfaze);
+                s.setGroup(group);
+                s.setVersion(version);
+                s.setRegistrySource(registrySource);
+                result.add(s);
+            }
         }
         return result;
     }

@@ -20,10 +20,14 @@ package org.apache.dubbo.admin.service.impl;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.domain.RegistrySource;
+import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.URLBuilder;
+import org.apache.dubbo.common.url.component.ServiceConfigURL;
 import org.apache.dubbo.common.utils.CollectionUtils;
 import org.apache.dubbo.metadata.MetadataInfo;
 import org.apache.dubbo.registry.client.InstanceAddressURL;
 import org.apache.dubbo.registry.client.ServiceInstance;
+import org.apache.dubbo.rpc.RpcContext;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -136,18 +140,30 @@ public class InstanceRegistryQueryHelper {
             MetadataInfo metadataInfo = url.getMetadataInfo();
 
             metadataInfo.getServices().forEach((serviceKey, serviceInfo) -> {
+                // build consumer url
+
+                ServiceConfigURL consumerUrl = new URLBuilder()
+                        .setProtocol(serviceInfo.getProtocol())
+                        .setPath(serviceInfo.getPath())
+                        .addParameter("group", serviceInfo.getGroup())
+                        .addParameter("version", serviceInfo.getVersion())
+                        .build();
+                RpcContext.getServiceContext().setConsumerUrl(consumerUrl);
+
                 Provider p = new Provider();
                 String service = serviceInfo.getServiceKey();
                 p.setService(service);
                 p.setAddress(url.getAddress());
                 p.setApplication(instance.getServiceName());
-                p.setUrl(url.toParameterString());
+                p.setUrl(url.toFullString());
                 p.setDynamic(url.getParameter("dynamic", true));
                 p.setEnabled(url.getParameter(Constants.ENABLED_KEY, true));
                 p.setWeight(url.getParameter(Constants.WEIGHT_KEY, Constants.DEFAULT_WEIGHT));
                 p.setUsername(url.getParameter("owner"));
                 p.setRegistrySource(RegistrySource.INSTANCE);
                 providers.add(p);
+
+                RpcContext.getServiceContext().setConsumerUrl(null);
             });
         });
         return providers;
