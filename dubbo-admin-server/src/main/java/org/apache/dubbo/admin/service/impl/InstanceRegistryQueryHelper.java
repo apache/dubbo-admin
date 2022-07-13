@@ -18,9 +18,11 @@
 package org.apache.dubbo.admin.service.impl;
 
 import org.apache.dubbo.admin.common.util.Constants;
+import org.apache.dubbo.admin.common.util.Pair;
+import org.apache.dubbo.admin.common.util.SyncUtils;
+import org.apache.dubbo.admin.model.domain.Consumer;
 import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.domain.RegistrySource;
-import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.URLBuilder;
 import org.apache.dubbo.common.url.component.ServiceConfigURL;
 import org.apache.dubbo.common.utils.CollectionUtils;
@@ -33,6 +35,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -86,6 +89,23 @@ public class InstanceRegistryQueryHelper {
                 }));
         return urlsToProviderList(providerUrls).stream()
                 .filter(provider -> provider.getService().equals(serviceName))
+                .collect(Collectors.toList());
+    }
+
+    public List<Consumer> findAllConsumer() {
+        return instanceRegistryCache.getSubscribedCache().values().stream()
+                .flatMap(m -> m.values().stream())
+                .flatMap(Collection::stream)
+                .map(m -> new Pair<>(m.toFullString(), m))
+                .map(SyncUtils::url2Consumer)
+                .collect(Collectors.toList());
+    }
+
+    public List<Consumer> findConsumerByService(String serviceName) {
+        return instanceRegistryCache.getSubscribedCache().values().stream().filter(m -> m.containsKey(serviceName))
+                .flatMap(m -> m.get(serviceName).stream())
+                .map(m -> new Pair<>(m.toFullString(), m))
+                .map(SyncUtils::url2Consumer)
                 .collect(Collectors.toList());
     }
 

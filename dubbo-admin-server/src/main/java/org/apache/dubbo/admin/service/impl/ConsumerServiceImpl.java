@@ -24,6 +24,8 @@ import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -33,15 +35,22 @@ import java.util.Map;
 @Component
 public class ConsumerServiceImpl extends AbstractService implements ConsumerService {
 
+    @Autowired
+    private InstanceRegistryQueryHelper instanceRegistryQueryHelper;
+
     @Override
     public List<Consumer> findByService(String service) {
-        return SyncUtils.url2ConsumerList(findConsumerUrlByService(service));
+        List<Consumer> consumers = SyncUtils.url2ConsumerList(findConsumerUrlByService(service));
+        consumers.addAll(instanceRegistryQueryHelper.findConsumerByService(service));
+        return consumers;
     }
 
 
     @Override
     public List<Consumer> findAll() {
-        return SyncUtils.url2ConsumerList(findAllConsumerUrl());
+        List<Consumer> consumers = SyncUtils.url2ConsumerList(findAllConsumerUrl());
+        consumers.addAll(instanceRegistryQueryHelper.findAllConsumer());
+        return consumers;
     }
 
     @Override
