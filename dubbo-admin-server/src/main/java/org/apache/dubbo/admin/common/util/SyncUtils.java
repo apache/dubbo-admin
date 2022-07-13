@@ -57,7 +57,7 @@ public class SyncUtils {
         p.setService(service);
         p.setAddress(url.getAddress());
         p.setApplication(url.getParameter(Constants.APPLICATION_KEY));
-        p.setUrl(url.toIdentityString());
+        p.setUrl(url.toFullString());
         p.setParameters(url.toParameterString());
 
         p.setDynamic(url.getParameter("dynamic", true));

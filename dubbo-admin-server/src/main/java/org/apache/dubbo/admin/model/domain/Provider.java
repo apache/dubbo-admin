@@ -23,10 +23,10 @@ import org.apache.dubbo.common.URL;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Provider
- *
  */
 public class Provider extends Entity {
 
@@ -221,4 +221,33 @@ public class Provider extends Entity {
         return url;
     }
 
+    public boolean equalsWithoutRegistry(Provider provider) {
+        if (this == provider) {
+            return true;
+        }
+        if (!super.equals(provider)) {
+            return false;
+        }
+        return dynamic == provider.dynamic && enabled == provider.enabled && weight == provider.weight && alived == provider.alived && Objects.equals(service, provider.service) && Objects.equals(parameters, provider.parameters) && Objects.equals(address, provider.address) && Objects.equals(registry, provider.registry) && Objects.equals(application, provider.application) && Objects.equals(username, provider.username) && Objects.equals(expired, provider.expired) && Objects.equals(override, provider.override) && Objects.equals(overrides, provider.overrides);
+    }
+
+    @java.lang.Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        if (!super.equals(o)) {
+            return false;
+        }
+        Provider provider = (Provider) o;
+        return dynamic == provider.dynamic && enabled == provider.enabled && weight == provider.weight && alived == provider.alived && Objects.equals(service, provider.service) && Objects.equals(url, provider.url) && Objects.equals(parameters, provider.parameters) && Objects.equals(address, provider.address) && Objects.equals(registry, provider.registry) && Objects.equals(application, provider.application) && Objects.equals(username, provider.username) && Objects.equals(expired, provider.expired) && Objects.equals(override, provider.override) && Objects.equals(overrides, provider.overrides) && registrySource == provider.registrySource;
+    }
+
+    @java.lang.Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), service, url, parameters, address, registry, dynamic, enabled, weight, application, username, expired, alived, override, overrides, registrySource);
+    }
 }

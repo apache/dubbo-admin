@@ -110,8 +110,11 @@ public class NacosMetaDataCollector implements MetaDataCollector {
 
     private String getMetaData(MetadataIdentifier identifier) {
         try {
-            return configService.getConfig(identifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY),
-                    group, 1000 * 10);
+            String fromDubboGroup = configService.getConfig(identifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY),
+                    "dubbo", 1000 * 10);
+            return org.apache.dubbo.common.utils.StringUtils.isNotEmpty(fromDubboGroup) ? fromDubboGroup :
+                    configService.getConfig(identifier.getUniqueKey(KeyTypeEnum.UNIQUE_KEY),
+                            group, 1000 * 10);
         } catch (NacosException e) {
             logger.warn("Failed to get " + identifier + " from nacos, cause: " + e.getMessage(), e);
         }
