@@ -24,6 +24,7 @@ import org.apache.dubbo.admin.model.domain.Consumer;
 import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.domain.RegistrySource;
 import org.apache.dubbo.common.URLBuilder;
+import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.url.component.ServiceConfigURL;
 import org.apache.dubbo.common.utils.CollectionUtils;
 import org.apache.dubbo.metadata.MetadataInfo;
@@ -178,6 +179,8 @@ public class InstanceRegistryQueryHelper {
                 p.setUrl(url.toFullString());
                 p.setDynamic(url.getParameter("dynamic", true));
                 p.setEnabled(url.getParameter(Constants.ENABLED_KEY, true));
+                p.setSerialization(url.getParameter(org.apache.dubbo.remoting.Constants.SERIALIZATION_KEY, "hessian2"));
+                p.setTimeout(url.getParameter(CommonConstants.TIMEOUT_KEY, CommonConstants.DEFAULT_TIMEOUT));
                 p.setWeight(url.getParameter(Constants.WEIGHT_KEY, Constants.DEFAULT_WEIGHT));
                 p.setUsername(url.getParameter("owner"));
                 p.setRegistrySource(RegistrySource.INSTANCE);

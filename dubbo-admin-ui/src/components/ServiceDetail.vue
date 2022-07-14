@@ -55,8 +55,8 @@
                 <td>{{getIp(props.item.address)}}</td>
                 <td>{{getPort(props.item.address)}}</td>
                 <td>{{props.item.registrySource}}</td>
-                <td></td>
-                <td></td>
+                <td>{{props.item.timeout}}</td>
+                <td>{{props.item.serialization}}</td>
                 <td>{{props.item.weight}}</td>
                 <td>
                   <v-tooltip top>
@@ -84,7 +84,6 @@
             >
               <template slot="items" slot-scope="props">
                 <td>{{getIp(props.item.address)}}</td>
-                <td>{{getPort(props.item.address)}}</td>
                 <td>{{props.item.application}}</td>
               </template>
             </v-data-table>
@@ -177,7 +176,7 @@
             },
             {
               text: this.$t('serialization'),
-              value: 'serial'
+              value: 'serialization'
             },
             {
               text: this.$t('weight'),
@@ -193,10 +192,6 @@
             {
               text: this.$t('ip'),
               value: 'ip'
-            },
-            {
-              text: this.$t('port'),
-              value: 'port'
             },
             {
               text: this.$t('appName'),
