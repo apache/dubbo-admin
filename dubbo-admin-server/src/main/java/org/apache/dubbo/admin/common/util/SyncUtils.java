@@ -21,6 +21,7 @@ import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.domain.RegistrySource;
 import org.apache.dubbo.common.BaseServiceMetadata;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.constants.CommonConstants;
 import org.apache.dubbo.common.utils.StringUtils;
 
 import java.util.ArrayList;
@@ -62,6 +63,8 @@ public class SyncUtils {
 
         p.setDynamic(url.getParameter("dynamic", true));
         p.setEnabled(url.getParameter(Constants.ENABLED_KEY, true));
+        p.setSerialization(url.getParameter(org.apache.dubbo.remoting.Constants.SERIALIZATION_KEY, "hessian2"));
+        p.setTimeout(url.getParameter(CommonConstants.TIMEOUT_KEY, CommonConstants.DEFAULT_TIMEOUT));
         p.setWeight(url.getParameter(Constants.WEIGHT_KEY, Constants.DEFAULT_WEIGHT));
         p.setUsername(url.getParameter("owner"));
         p.setRegistrySource(RegistrySource.INTERFACE);
