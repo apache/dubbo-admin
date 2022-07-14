@@ -201,7 +201,7 @@ export default {
       }
       const instanceRegistry = this.$t('instanceRegistry')
       const interfaceRegistry = this.$t('interfaceRegistry')
-      const allRegistry = this.$t('interfaceRegistry')
+      const allRegistry = this.$t('allRegistry')
       return this.resultPage.content.filter(function (item) {
         if (item.registrySource === 'INSTANCE') {
           item.registrySource = instanceRegistry
