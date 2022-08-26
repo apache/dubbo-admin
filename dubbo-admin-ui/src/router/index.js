@@ -36,6 +36,11 @@ import Management from '@/components/Management'
 import Index from '@/Index'
 import Login from '@/Login'
 
+const originalPush = Router.prototype.push
+Router.prototype.push = function push(location) {
+  return originalPush.call(this, location).catch(err => err)
+}
+
 Vue.use(Router)
 
 export default new Router({
