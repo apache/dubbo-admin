@@ -227,10 +227,10 @@
             })
       },
       getIp: function (address) {
-        return address.split(':')[0]
+        return address != null ? address.split(':')[0] : null
       },
       getPort: function (address) {
-        return address.split(':')[1]
+        return address != null && address.split(':').length >= 1 ? address.split(':')[1] : null
       },
       toCopyText (text) {
         this.$copyText(text).then(() => {

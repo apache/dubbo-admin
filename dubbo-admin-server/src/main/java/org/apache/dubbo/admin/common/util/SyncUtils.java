@@ -22,6 +22,7 @@ import org.apache.dubbo.admin.model.domain.RegistrySource;
 import org.apache.dubbo.common.BaseServiceMetadata;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.constants.CommonConstants;
+import org.apache.dubbo.common.url.component.DubboServiceAddressURL;
 import org.apache.dubbo.common.utils.StringUtils;
 
 import java.util.ArrayList;
@@ -97,7 +98,13 @@ public class SyncUtils {
         String version = url.getUrlParam().getParameter(Constants.VERSION_KEY);
         String service = BaseServiceMetadata.buildServiceKey(getServiceInterface(url), group, version);
         c.setService(service);
-        c.setAddress(url.getHost());
+        if (url.getHost() == null) {
+            if (url instanceof DubboServiceAddressURL) {
+                c.setAddress(((DubboServiceAddressURL) url).getConsumerURL().getRawParameter("host"));
+            }
+        } else {
+            c.setAddress(url.getHost());
+        }
         c.setApplication(url.getParameter(Constants.APPLICATION_KEY));
         c.setParameters(url.toParameterString());
 
