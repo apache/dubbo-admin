@@ -230,7 +230,7 @@
         return address != null ? address.split(':')[0] : null
       },
       getPort: function (address) {
-        return address != null && address.split(':').length >= 1 ? address.split(':')[1] : null
+        return address != null && address.split(':').length >= 2 ? address.split(':')[1] : null
       },
       toCopyText (text) {
         this.$copyText(text).then(() => {
