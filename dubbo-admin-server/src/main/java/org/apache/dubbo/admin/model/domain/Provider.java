@@ -23,10 +23,10 @@ import org.apache.dubbo.common.URL;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Provider
- *
  */
 public class Provider extends Entity {
 
@@ -45,6 +45,10 @@ public class Provider extends Entity {
     private boolean dynamic;          /* provider was registered dynamically */
 
     private boolean enabled;          /* provider enabled or not */
+
+    private int timeout;              /* provider timeout */
+
+    private String serialization;      /* provider serialization */
 
     private int weight;          /* provider weight */
 
@@ -191,6 +195,22 @@ public class Provider extends Entity {
         this.registrySource = registrySource;
     }
 
+    public int getTimeout() {
+        return timeout;
+    }
+
+    public void setTimeout(int timeout) {
+        this.timeout = timeout;
+    }
+
+    public String getSerialization() {
+        return serialization;
+    }
+
+    public void setSerialization(String serialization) {
+        this.serialization = serialization;
+    }
+
     public URL toUrl() {
         Map<String, String> serviceName2Map = ConvertUtil.serviceName2Map(getService());
         /*if(!serviceName2Map.containsKey(Constants.INTERFACE_KEY)) {
@@ -221,4 +241,23 @@ public class Provider extends Entity {
         return url;
     }
 
+    @java.lang.Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        if (!super.equals(o)) {
+            return false;
+        }
+        Provider provider = (Provider) o;
+        return dynamic == provider.dynamic && enabled == provider.enabled && timeout == provider.timeout && weight == provider.weight && alived == provider.alived && Objects.equals(service, provider.service) && Objects.equals(url, provider.url) && Objects.equals(parameters, provider.parameters) && Objects.equals(address, provider.address) && Objects.equals(registry, provider.registry) && Objects.equals(serialization, provider.serialization) && Objects.equals(application, provider.application) && Objects.equals(username, provider.username) && Objects.equals(expired, provider.expired) && Objects.equals(override, provider.override) && Objects.equals(overrides, provider.overrides) && registrySource == provider.registrySource;
+    }
+
+    @java.lang.Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), service, url, parameters, address, registry, dynamic, enabled, timeout, serialization, weight, application, username, expired, alived, override, overrides, registrySource);
+    }
 }

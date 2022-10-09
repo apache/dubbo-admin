@@ -55,8 +55,8 @@
                 <td>{{getIp(props.item.address)}}</td>
                 <td>{{getPort(props.item.address)}}</td>
                 <td>{{props.item.registrySource}}</td>
-                <td></td>
-                <td></td>
+                <td>{{props.item.timeout}}</td>
+                <td>{{props.item.serialization}}</td>
                 <td>{{props.item.weight}}</td>
                 <td>
                   <v-tooltip top>
@@ -84,7 +84,6 @@
             >
               <template slot="items" slot-scope="props">
                 <td>{{getIp(props.item.address)}}</td>
-                <td>{{getPort(props.item.address)}}</td>
                 <td>{{props.item.application}}</td>
               </template>
             </v-data-table>
@@ -177,7 +176,7 @@
             },
             {
               text: this.$t('serialization'),
-              value: 'serial'
+              value: 'serialization'
             },
             {
               text: this.$t('weight'),
@@ -195,10 +194,6 @@
               value: 'ip'
             },
             {
-              text: this.$t('port'),
-              value: 'port'
-            },
-            {
               text: this.$t('appName'),
               value: 'appName'
             }
@@ -211,12 +206,16 @@
               this.providerDetails = response.data.providers
               const instanceRegistry = this.$t('instanceRegistry')
               const interfaceRegistry = this.$t('interfaceRegistry')
+              const allRegistry = this.$t('allRegistry')
               for (let i = 0; i < this.providerDetails.length; i++) {
                 if (this.providerDetails[i].registrySource === 'INSTANCE') {
                   this.providerDetails[i].registrySource = instanceRegistry
                 }
                 if (this.providerDetails[i].registrySource === 'INTERFACE') {
                   this.providerDetails[i].registrySource = interfaceRegistry
+                }
+                if (this.providerDetails[i].registrySource === 'ALL') {
+                  this.providerDetails[i].registrySource = allRegistry
                 }
                 console.log(this.providerDetails[i])
                 this.$set(this.providerDetails[i], 'hint', 'url')
@@ -228,10 +227,10 @@
             })
       },
       getIp: function (address) {
-        return address.split(':')[0]
+        return address != null ? address.split(':')[0] : null
       },
       getPort: function (address) {
-        return address.split(':')[1]
+        return address != null && address.split(':').length >= 2 ? address.split(':')[1] : null
       },
       toCopyText (text) {
         this.$copyText(text).then(() => {

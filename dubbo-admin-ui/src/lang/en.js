@@ -49,6 +49,7 @@ export default {
   registrySource: 'Registry Source',
   instanceRegistry: 'Instance Registry',
   interfaceRegistry: 'Interface Registry',
+  allRegistry: 'Instance / Interface Registry',
   operation: 'Operation',
   searchResult: 'Search Result',
   search: 'Search',

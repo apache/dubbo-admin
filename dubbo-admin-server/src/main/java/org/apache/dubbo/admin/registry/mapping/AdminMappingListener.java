@@ -115,6 +115,7 @@ public class AdminMappingListener implements MappingListener {
                 List<InstanceAddressURL> instanceAddressUrls = urls.stream().map(url -> (InstanceAddressURL) url).collect(Collectors.toList());
                 serviceMap.put(serviceKey, instanceAddressUrls);
             }
+            instanceRegistryCache.refreshConsumer(false);
         }
 
         private String removeProtocol(String protocolServiceKey) {
@@ -124,6 +125,11 @@ public class AdminMappingListener implements MappingListener {
             }
             return protocolServiceKey.substring(0, index);
         }
+    }
+
+    @Override
+    public void stop() {
+        // ignore
     }
 
 }

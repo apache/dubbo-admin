@@ -53,7 +53,15 @@ public class ZookeeperMetaDataCollector implements MetaDataCollector {
             group = Constants.PATH_SEPARATOR + group;
         }
         root = group;
-        client = CuratorFrameworkFactory.newClient(url.getAddress(), new ExponentialBackoffRetry(1000, 3));
+        CuratorFrameworkFactory.Builder builder = CuratorFrameworkFactory.
+                builder()
+                .connectString(url.getAddress())
+                .retryPolicy(new ExponentialBackoffRetry(1000, 3));
+        String userInformation = url.getUserInformation();
+        if (userInformation != null && userInformation.length() > 0) {
+            builder = builder.authorization("digest", userInformation.getBytes());
+        }
+        client = builder.build();
         client.start();
     }
 

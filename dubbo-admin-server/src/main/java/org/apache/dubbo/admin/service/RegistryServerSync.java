@@ -98,7 +98,12 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
         for (URL url : urls) {
             String category = url.getUrlParam().getParameter(Constants.CATEGORY_KEY);
             if (category == null) {
-                category = Constants.PROVIDERS_CATEGORY;
+                // Assign an initial value to category according to the information in url
+                if (Constants.CONSUMER_SIDE.equals(url.getSide()) || Constants.CONSUMER_PROTOCOL.equals(url.getProtocol())) {
+                    category = Constants.CONSUMERS_CATEGORY;
+                } else {
+                    category = Constants.PROVIDERS_CATEGORY;
+                }
             }
             // NOTE: group and version in empty protocol is *
             if (Constants.EMPTY_PROTOCOL.equalsIgnoreCase(url.getProtocol())) {
