@@ -61,7 +61,7 @@
 		<springfox-swagger-version>2.9.2</springfox-swagger-version>
 		<jacoco-version>0.8.2</jacoco-version>
 		<apollo-version>1.2.0</apollo-version>
-		<guava-version>20.0</guava-version>
+		<guava-version>30.0-jre</guava-version>
 		<dubbo-mock-version>3.0.0</dubbo-mock-version>
 		<mybatis-plus-boot-version>3.4.2</mybatis-plus-boot-version>
 		<curator-test-veriosn>2.12.0</curator-test-veriosn>
