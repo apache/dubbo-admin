@@ -91,9 +91,9 @@ public class MetricsCollectController {
             configMap.put("20880", "dubbo");
         }
         List<MetricDTO> metricDTOS = new ArrayList<>();
-        for (String port : configMap.keySet()) {
-            String protocol = configMap.get(port);
-            String res = getOnePortMessage(group, ip, port, protocol);
+        // use entrySet iterator instead of keySet iterator
+        for (Map.Entry<String, String> entry : configMap.entrySet()) {
+            String res = getOnePortMessage(group, ip, entry.getKey(), entry.getValue());
             metricDTOS.addAll(new Gson().fromJson(res, new TypeToken<List<MetricDTO>>(){}.getType()));
         }
 
