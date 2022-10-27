@@ -346,20 +346,21 @@ public class RouteUtils {
         } else {
             ConvertUtil.detachIdToService(key, accessDTO);
         }
-        if (blackWhiteList != null) {
-            for (String condition : blackWhiteList) {
-                if (condition.contains("host != ")) {
-                    //white list
-                    condition = org.apache.commons.lang3.StringUtils.substringBetween(condition, "host !=", " =>").trim();
-                    accessDTO.setWhitelist(new HashSet<>(Arrays.asList(condition.split(","))));
-                }
-                if (condition.contains("host = ")) {
-                    //black list
-                    condition = org.apache.commons.lang3.StringUtils.substringBetween(condition, "host =", " =>").trim();
-                    accessDTO.setBlacklist(new HashSet<>(Arrays.asList(condition.split(","))));
-                }
+        // blackWhiteList must not be null
+        // if (blackWhiteList != null) {
+        for (String condition : blackWhiteList) {
+            if (condition.contains("host != ")) {
+                //white list
+                condition = org.apache.commons.lang3.StringUtils.substringBetween(condition, "host !=", " =>").trim();
+                accessDTO.setWhitelist(new HashSet<>(Arrays.asList(condition.split(","))));
+            }
+            if (condition.contains("host = ")) {
+                //black list
+                condition = org.apache.commons.lang3.StringUtils.substringBetween(condition, "host =", " =>").trim();
+                accessDTO.setBlacklist(new HashSet<>(Arrays.asList(condition.split(","))));
             }
         }
+        // }
         return accessDTO;
     }
 
