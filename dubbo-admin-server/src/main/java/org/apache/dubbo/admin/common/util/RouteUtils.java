@@ -163,7 +163,9 @@ public class RouteUtils {
             return parse(conditionRoute.getRule());
         }
 
-        return parse(conditionRoute == null ? null : conditionRoute.getMatchRule(), conditionRoute == null ? null : conditionRoute.getFilterRule());
+        // conditionRoute must not be null
+        // return parse(conditionRoute == null ? null : conditionRoute.getMatchRule(), conditionRoute == null ? null : conditionRoute.getFilterRule());
+        return parse(conditionRoute.getMatchRule(), conditionRoute.getFilterRule());
     }
 
     public static RouteUtils parse(String whenRule, String thenRule) throws ParseException {
