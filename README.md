@@ -7,16 +7,41 @@
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/apache/dubbo-admin.svg)](http://isitmaintained.com/project/apache/dubbo-admin "Percentage of issues still open")
 
 [中文说明](README_ZH.md)
-### Quick start
-
-* prebuilt docker image https://hub.docker.com/r/apache/dubbo-admin
-* quick start a live demo with [play-with-docker](https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/apache/dubbo-admin/develop/docker/stack.yml#) (version:0.3.0)
-
-### Screenshot
+# Quick start
 
 ![index](https://raw.githubusercontent.com/apache/dubbo-admin/develop/doc/images/index.png)
 
-### Service Governance  
+## Run With Helm
+
+
+## Run With Kubernetes
+
+First, you need to have a Kubernetes cluster and with all the Dubbo services running in it.
+1. Clone source code on `develop` branch `git clone https://github.com/apache/dubbo-admin.git`
+
+2. Deploy Dubbo Admin
+
+From the root directory of the project, execute the following commands:
+
+```sh
+# Change configuration in ./deploy/application.yml before apply
+kubectl apply -f ./deploy
+kubectl port-forward service dubbo-admin 8080:8080
+```
+3. Open web browser and visit `http://localhost:8080`, default username and password are `root`
+
+## Compile From Source
+1. Clone source code on `develop` branch `git clone https://github.com/apache/dubbo-admin.git`
+2. Specify registry address in `dubbo-admin-server/src/main/resources/application.properties`
+3. Build
+    - `mvn clean package -Dmaven.test.skip=true`
+4. Start
+    * `mvn --projects dubbo-admin-server spring-boot:run`
+    OR
+    * `cd dubbo-admin-distribution/target`;   `java -jar dubbo-admin-0.1.jar`
+5. Visit `http://localhost:8080`, default username and password are `root`
+
+# Want To Contribute
 service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.6, please refer to [here](https://github.com/apache/dubbo-admin/wiki/The-compatibility-of-service-governance)
 ### admin UI
 
@@ -34,20 +59,6 @@ service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.
 * [configurations in application.properties](https://github.com/apache/dubbo-admin/wiki/Dubbo-Admin-configuration)
 
 
-### Production Setup
-
-1. Clone source code on develop branch `git clone https://github.com/apache/dubbo-admin.git`
-2. Specify registry address in `dubbo-admin-server/src/main/resources/application.properties`
-3. Build
-    - `mvn clean package -Dmaven.test.skip=true`
-4. Start 
-    * `mvn --projects dubbo-admin-server spring-boot:run`
-    OR
-    * `cd dubbo-admin-distribution/target`;   `java -jar dubbo-admin-0.1.jar`
-5. Visit `http://localhost:8080`
-6. Default username and password is `root`
----
-
 ### Development Setup
 * Run admin server project
 
@@ -59,7 +70,7 @@ service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.
 
 * visit web page
 
-  visit `http://localhost:8081`, frontend supports hot reload.
+  visit `http://localhost:8080`, frontend supports hot reload.
   
 ### Swagger support
 

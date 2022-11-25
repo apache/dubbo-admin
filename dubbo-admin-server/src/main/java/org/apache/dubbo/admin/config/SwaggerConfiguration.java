@@ -45,7 +45,7 @@ public class SwaggerConfiguration {
     private ApiInfo apiInfo() {
         return new ApiInfoBuilder()
                 .title("dubbo admin swagger api")
-                .description("for more information please visit github page: https://github.com/apache/incubator-dubbo-admin")
+                .description("for more information please visit github page: https://github.com/apache/dubbo-admin")
                 .version("1.0")
                 .build();
     }

@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dubbo-admin
+data:
+  # Set the properties you want to override, properties not set here will be using the default values
+  # check application.properties inside dubbo-admin project for the keys supported
+  application.properties: |
+    admin.registry.address: zookeeper://127.0.0.1:2181
+    admin.config-center: zookeeper://127.0.0.1:2181
+    admin.metadata-report.address: zookeeper://127.0.0.1:2181
