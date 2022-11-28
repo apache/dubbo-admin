@@ -7,11 +7,12 @@
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/apache/dubbo-admin.svg)](http://isitmaintained.com/project/apache/dubbo-admin "Percentage of issues still open")
 
 [中文说明](README_ZH.md)
-# 1 Quick start
+
 Dubbo Admin is a console of Dubbo services, it provides fully support for Dubbo3 and is compatible with 2.7.x, 2.6.x and 2.5.x.
 
 ![index](https://raw.githubusercontent.com/apache/dubbo-admin/develop/doc/images/index.png)
 
+# 1 Quick start
 ## 1.1 Run With Helm
 
 There are two ways to deploy Dubbo Admin depending on how you get the helm chart resources, both of them have the same effect.
