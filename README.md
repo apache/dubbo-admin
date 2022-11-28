@@ -13,7 +13,7 @@
 
 ## 1.1 Run With Helm
 
-There are two ways to deploy Dubbo Admin distinguished by how you get the helm chart resources, any one of them is fine.
+There are two ways to deploy Dubbo Admin depending on how you get the helm chart resources, both of them have the same effect.
 
 ### 1.1.1 Run from helm chart sources
 **1. Get helm chart sources**
@@ -35,24 +35,33 @@ $ cd /dubbo-admin/deploy/helm/dubbo-admin
 $ helm install dubbo-admin .
 ```
 
-if you want to customize the configuration of Admin to let it connects to your registry or centers:
+Or, if you need to customize the configuration Admin uses to let it connects to the real registries or configuration centers, specify a customized configuration file using the `-f` helm option:
+
 ```sh
 $ helm install dubbo-admin -f properties.yaml .
 ```
-`properties.yaml` should contain the items in [application.properties]() that you want to override, refer to [example/xxxx]() for how to a demo.
+`properties.yaml` should contain the items in [application.properties](./dubbo-admin-server/src/main/resources/application.properties) that you want to override, check [this file](./deploy/helm/example/properties.yaml) for reference.
 
 **3. Visit Dubbo Admin**
 
-Dubbo Admin should now has been successfully installed, run the following command or follow instruction of helm installation output to get the address of Admin:
+Dubbo Admin should now has been successfully installed, run the following command:
 
 ```sh
 $ kubectl --namespace default port-forward service/dubbo-admin 8080:8080
 ```
 
-Open browser and visit http://127.0.0.1:8080
+Or, you can choose to follow the command instructions from the helm installation process, it should be similar to the following:
+```sh
+export POD_NAME=$(kubectl get pods --namespace default -l "app.kubernetes.io/name=dubbo-admin,app.kubernetes.io/instance=dubbo-admin" -o jsonpath="{.items[0].metadata.name}")
+export CONTAINER_PORT=$(kubectl get pod --namespace default $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
+echo "Visit http://127.0.0.1:8080 to use your application"
+kubectl --namespace default port-forward $POD_NAME 8080:$CONTAINER_PORT
+```
+
+Open browser and visit http://127.0.0.1:8080, default username and password are `root`
 
 ### 1.1.2 Run from helm chart repository
-**1. Add helm chart repository**
+**1. Add helm chart repository (Currently not available)**
 
 ```sh
 $ helm repo add dubbo-charts https://dubbo.apache.org/dubbo-charts
@@ -64,15 +73,16 @@ $ helm repo update
 $ helm install dubbo-admin dubbo-charts/dubbo-admin
 ```
 
-if you want to customize the configuration of Admin to let it connects to your registry or centers:
+Or, if you need to customize the configuration Admin uses to let it connects to the real registries or configuration centers, specify a customized configuration file using the `-f` helm option:
+
 ```sh
 $ helm install dubbo-admin -f properties.yaml dubbo-charts/dubbo-admin
 ```
-`properties.yaml` should contain the items in [application.properties]() that you want to override, refer to [example/xxxx]() for how to a demo.
+`properties.yaml` should contain the items in [application.properties](./dubbo-admin-server/src/main/resources/application.properties) that you want to override, check [this file](./deploy/helm/example/properties.yaml) for reference.
 
 **3. Visit Dubbo Admin**
 
-Dubbo Admin should now has been successfully installed, run the following command or follow instruction of helm installation output to get the address of Admin:
+Dubbo Admin should now has been successfully installed, run the following command:
 
 ```sh
 $ kubectl --namespace default port-forward service/dubbo-admin 8080:8080
@@ -85,16 +95,17 @@ $ kubectl --namespace default port-forward service/dubbo-admin 8080:8080
 $ git clone https://github.com/apache/dubbo-admin.git
 ```
 
-All we need from this step is the Admin kubernetes manifest files in `deploy/k8s`
+All we need from this step is the Admin kubernetes manifests in `deploy/k8s`
 ```sh
 $ cd /dubbo-admin/deploy/k8s
 ```
 
 2. Deploy Dubbo Admin
 ```sh
-# Change configuration in ./deploy/application.yml before apply
+# Change configuration in ./deploy/application.yml before apply if necessary
 $ kubectl apply -f ./
 ```
+
 3. Visit Admin
 ```sh
 $ kubectl port-forward service dubbo-admin 8080:8080
