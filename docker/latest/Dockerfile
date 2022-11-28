@@ -22,9 +22,7 @@ RUN mvn --batch-mode -Prelease clean package -Dmaven.test.skip=true
 FROM openjdk:8-jre
 LABEL maintainer="dev@dubbo.apache.org"
 RUN apt-get update && apt-get install -y tini
-RUN mkdir -p /dubbo-admin
-WORKDIR /dubbo-admin
-COPY --from=0 /source/dubbo-admin-snapshot/dubbo-admin-distribution/target/dubbo-admin-0.3.0-SNAPSHOT.jar ./app.jar
+COPY --from=0 /source/dubbo-admin-snapshot/dubbo-admin-distribution/target/dubbo-admin-0.3.0-SNAPSHOT.jar /app.jar
 COPY --from=0 /source/dubbo-admin-snapshot/docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 ENV JAVA_OPTS "-Dloader.path=/opt-libs"

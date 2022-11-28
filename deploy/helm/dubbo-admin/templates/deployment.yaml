@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: dubbo-admin
+    app: {{ .Chart.Name }}
   name: {{ .Chart.Name }}
 spec:
   replicas: {{ .Values.replicaCount }}
@@ -16,8 +16,6 @@ spec:
     spec:
       containers:
         - name: {{ .Chart.Name }}
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:

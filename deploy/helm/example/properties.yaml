@@ -1,0 +1,5 @@
+properties: |
+  # refer to dubbo-admin-server resources/application.properties for how to configure
+  admin.registry.address=zookeeper://127.0.0.1:2181
+  admin.config-center=zookeeper://127.0.0.1:2181
+  admin.metadata-report.address=zookeeper://127.0.0.1:2181
