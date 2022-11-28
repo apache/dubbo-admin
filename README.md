@@ -8,6 +8,7 @@
 
 [中文说明](README_ZH.md)
 # 1 Quick start
+Dubbo Admin is a console of Dubbo services, it provides fully support for Dubbo3 and is compatible with 2.7.x, 2.6.x and 2.5.x.
 
 ![index](https://raw.githubusercontent.com/apache/dubbo-admin/develop/doc/images/index.png)
 
@@ -125,24 +126,25 @@ Open web browser and visit `http://localhost:8080`, default username and passwor
 5. Visit `http://localhost:8080`, default username and password are `root`
 
 # 2 Want To Contribute
-service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.6, please refer to [here](https://github.com/apache/dubbo-admin/wiki/The-compatibility-of-service-governance)
-## 2.1 admin UI
+Below is the description of the project structure for developers who want to contribute to make Dubbo Admin better.
+
+## 2.1 Admin UI
 
 - [Vue.js](https://vuejs.org) and [Vue Cli](https://cli.vuejs.org/)
 - [dubbo-admin-ui/README.md](dubbo-admin-ui/README.md) for more detail
 - Set npm **proxy mirror**:
 
-  if you have network issue, you can set npm proxy mirror to speedup npm install:
+  If you have network issue, you can set npm proxy mirror to speedup npm install:
 
   add `registry=https://registry.npmmirror.com` to ~/.npmrc
 
-## 2.2 admin Server
+## 2.2 Admin Server
 
 * Standard spring boot project
 * [configurations in application.properties](https://github.com/apache/dubbo-admin/wiki/Dubbo-Admin-configuration)
 
 
-## 2.3 Development Setup
+## 2.3 Setting up a local developing environment
 * Run admin server project
 
   backend is a standard spring boot project, you can run it in any java IDE
@@ -154,11 +156,6 @@ service governance follows the version of Dubbo 2.7, and compatible for Dubbo 2.
 * visit web page
 
   visit `http://localhost:8080`, frontend supports hot reload.
-  
-## 2.4 Swagger support
-
-Once deployed, you can check http://localhost:8080/swagger-ui.html to check all restful api and models
-
 
 # 3 License
 
