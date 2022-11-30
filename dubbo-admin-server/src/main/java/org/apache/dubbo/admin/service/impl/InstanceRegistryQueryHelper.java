@@ -170,7 +170,6 @@ public class InstanceRegistryQueryHelper {
                         .addParameter("version", serviceInfo.getVersion())
                         .build();
                 RpcContext.getServiceContext().setConsumerUrl(consumerUrl);
-
                 Provider p = new Provider();
                 String service = serviceInfo.getServiceKey();
                 p.setService(service);
