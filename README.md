@@ -154,7 +154,7 @@ Open web browser and visit `http://localhost:8080`, default username and passwor
     * `cd dubbo-admin-distribution/target`;   `java -jar dubbo-admin-0.1.jar`
 5. Visit `http://localhost:8080`, default username and password are `root`
 
-# 2 Want To Contribute
+# 2. Want To Contribute
 
 Below contains the description of the project structure for developers who want to contribute to make Dubbo Admin better.
 

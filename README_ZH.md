@@ -156,11 +156,11 @@ $ docker run -it --rm -v /the/host/path/containing/properties:/config -p 8080:80
     * `cd dubbo-admin-distribution/target; java -jar dubbo-admin-${project.version}.jar`
 5. 访问 `http://localhost:8080`
 
-### 服务治理  
+# 2 参与项目贡献
 
 以下是项目架构介绍，适合想贡献源码的开发者阅读。
 
-### 前端部分
+## 2.1 前端部分
 
 - 使用[Vue.js](https://vuejs.org)作为javascript框架
 - [dubbo-admin-ui/README.md](dubbo-admin-ui/README.md)中有更详细的介绍
@@ -170,12 +170,12 @@ $ docker run -it --rm -v /the/host/path/containing/properties:/config -p 8080:80
 
     在~/.npmrc中增加 `registry=https://registry.npmmirror.com`
 
-### 后端部分
+## 2.2 后端部分
 
 * 标准spring boot工程
 * [application.properties配置说明](https://github.com/apache/dubbo-admin/wiki/Dubbo-Admin%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E)
 
-### 开发环境配置
+### 2.2.1 开发环境配置
 * 运行`dubbo admin server`
 
   `dubbo admin server`是一个标准的spring boot项目, 可以在任何java IDE中运行它
@@ -188,6 +188,6 @@ $ docker run -it --rm -v /the/host/path/containing/properties:/config -p 8080:80
 
   访问 `http://localhost:8080`, 由于前后端分开部署，前端支持热加载，任何页面的修改都可以实时反馈，不需要重启应用。
 
-### Swagger 支持
+### 2.2.2 Swagger 支持
 
 部署完成后，可以访问 http://localhost:8080/swagger-ui.html 来查看所有的restful api
