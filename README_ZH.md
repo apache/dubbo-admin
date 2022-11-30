@@ -5,7 +5,8 @@
 ![license](https://img.shields.io/github/license/apache/dubbo-admin.svg)
 
 [English version](README.md).
-Dubbo Admin 是 Dubbo 服务的控制台，为 Dubbo 集群提供更好可视化服务。Admin 支持 Dubbo3 并很好的兼容 2.7.x、2.6.x 和 2.5.x。
+
+Dubbo Admin 是一个控制台，为 Dubbo 集群提供更好可视化服务。Admin 支持 Dubbo3 并很好的兼容 2.7.x、2.6.x 和 2.5.x。
 
 # 快速开始
 
