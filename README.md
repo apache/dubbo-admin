@@ -111,6 +111,8 @@ $ git clone https://github.com/apache/dubbo-admin.git
 
 All we need from this step is the Admin kubernetes manifests in `deploy/k8s`
 
+But before you can apply the manifests, override the default value defined in [application.properties](./dubbo-admin-server/src/main/resources/application.properties) by adding items in `configmap.yaml`.
+
 ```sh
 $ cd /dubbo-admin/deploy/k8s
 ```
@@ -131,7 +133,7 @@ Open web browser and visit `http://localhost:8080`, default username and passwor
 ## 1.3 Run With Docker
 The prebuilt docker image is hosted at: https://hub.docker.com/repository/docker/apache/dubbo-admin
 
-You can run the image directly by mounting a volume from the host contains an `application.properties` file with the accessible registry and config-center addresses specified.
+You can run the image directly by mounting a volume from the host that contains an `application.properties` file with the accessible registry and config-center addresses specified.
 
 ```sh
 $ docker run -it --rm -v /the/host/path/containing/properties:/config -p 8080:8080 apache/dubbo-admin

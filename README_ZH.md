@@ -13,7 +13,7 @@ Dubbo Admin 是一个控制台，为 Dubbo 集群提供更好可视化服务。A
 ![index](https://raw.githubusercontent.com/apache/dubbo-admin/develop/doc/images/index.png)
 
 ## 1.1 使用 Helm 运行
-通过 Helm 运行 Admin 有两种方式，它们起到相同的效果，因此可以选择以下任一一种。
+通过 Helm 运行 Admin 有两种方式，它们起到相同的效果，因此可以选择以下任意一种。
 
 ### 1.1.1 基于 Chart 源文件运行 Admin
 **1. 下载 chart 源文件**
@@ -115,8 +115,12 @@ $ cd /dubbo-admin/deploy/k8s
 ```
 
 **2. 部署 Dubbo Admin**
+
+首先，请参照[application.properties](./dubbo-admin-server/src/main/resources/application.properties) 修改 `configmap.yml` 中的参数配置，只定义要覆盖参数即可。
+
+执行以下命令：
+
 ```sh
-# Change configuration in ./deploy/application.yml before apply if necessary
 $ kubectl apply -f ./
 ```
 
