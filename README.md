@@ -13,6 +13,15 @@ Dubbo Admin is a console for better visualization of Dubbo services, it provides
 ![index](https://raw.githubusercontent.com/apache/dubbo-admin/develop/doc/images/index.png)
 
 # 1 Quick start
+There are 4 methods to run Dubbo Admin in production:
+
+1. [Run With Helm (Recommended)](#11-Run-With-Helm)
+2. [Run With Kubernetes](#12-Run-With-Helm)
+3. [Run With Docker](#13-Run-With-Helm)
+4. [Run From Source Code](#14-Run-With-Helm)
+
+You can choose any of the above methods to run Admin based on your environment. Helm is recommended if your plan to run Admin in a Kubernetes cluster because it will have all the dependencies managed with only one command.
+
 ## 1.1 Run With Helm
 
 There are two ways to deploy Dubbo Admin with helm depending on how you get the helm chart resources, both of them have the same effect.
@@ -86,7 +95,7 @@ $ helm repo update
 $ helm install dubbo-admin dubbo-charts/dubbo-admin
 ```
 
-Check [here](#2-Install-helm-chart) to see how to customize helm value.
+Check the corresponding chapter in [1.1.1 Run from helm chart sources](111-Run-from-helm-chart-sources) to see how to customize helm value.
 
 ```sh
 $ helm install dubbo-admin -f properties.yaml dubbo-charts/dubbo-admin

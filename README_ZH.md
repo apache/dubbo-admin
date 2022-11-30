@@ -8,9 +8,18 @@
 
 Dubbo Admin 是一个控制台，为 Dubbo 集群提供更好可视化服务。Admin 支持 Dubbo3 并很好的兼容 2.7.x、2.6.x 和 2.5.x。
 
+![index](https://raw.githubusercontent.com/apache/dubbo-admin/develop/doc/images/index.png)
+
 # 快速开始
 
-![index](https://raw.githubusercontent.com/apache/dubbo-admin/develop/doc/images/index.png)
+有四种将 Dubbo Admin 部署到生产环境的方式：
+
+1. [基于 Helm 运行 Admin (推荐)](#11-Run-With-Helm)
+2. [基于 Kubernetes 运行 Admin](#12-Run-With-Helm)
+3. [基于 Docker 运行 Admin](#13-Run-With-Helm)
+4. [基于源码打包运行 Admin](#14-Run-With-Helm)
+
+你可以基于自己的环境选择任一方式，其中，Helm 是推荐的安装方式，因为 Helm 可以做到一键安装，自动帮助管理所有 Admin 必须的生产环境依赖。
 
 ## 1.1 使用 Helm 运行
 通过 Helm 运行 Admin 有两种方式，它们起到相同的效果，因此可以选择以下任意一种。
@@ -86,7 +95,7 @@ $ helm repo update
 $ helm install dubbo-admin dubbo-charts/dubbo-admin
 ```
 
-参考 [这里](#2-安装-helm=chart) 了解如何定制安装参数
+参考 [1.1.1 基于 Chart 源文件运行 Admin](1.1.1-Run-from-helm-chart-sources) 中相应环节了解如何定制安装参数
 
 ```sh
 $ helm install dubbo-admin -f properties.yaml dubbo-charts/dubbo-admin
