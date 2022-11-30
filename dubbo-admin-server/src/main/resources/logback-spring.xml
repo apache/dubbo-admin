@@ -24,6 +24,7 @@
     <include resource="org/springframework/boot/logging/logback/file-appender.xml"/>
 
     <logger name="org.apache" level="WARN"/>
+    <logger name="org.apache.dubbo" level="INFO"/>
 
     <appender name="FILE-LOG-ASYNC" class="ch.qos.logback.classic.AsyncAppender">
         <discardingThreshold>0</discardingThreshold>

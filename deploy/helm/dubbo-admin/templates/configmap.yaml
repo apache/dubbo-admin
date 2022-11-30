@@ -3,5 +3,4 @@ kind: ConfigMap
 metadata:
   name: {{ .Chart.Name }}
 data:
-  application.properties: |
-    {{ .Values.properties | quote }}
+  application.properties: {{ .Values.properties | toYaml | indent 1 }}

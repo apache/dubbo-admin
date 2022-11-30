@@ -20,6 +20,8 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: 8080
+              protocol: TCP
+              name: http
           volumeMounts:
             - mountPath: /config
               name: application-properties

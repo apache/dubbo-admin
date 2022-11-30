@@ -41,6 +41,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-to-slf4j</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -193,6 +199,10 @@
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -348,12 +358,12 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-jar-plugin</artifactId>
-                        <configuration>
-                            <excludes>
-                                <exclude>**/application.properties</exclude>
-                                <exclude>**/application-test.properties</exclude>
-                            </excludes>
-                        </configuration>
+<!--                        <configuration>-->
+<!--                            <excludes>-->
+<!--                                <exclude>**/application.properties</exclude>-->
+<!--                                <exclude>**/application-test.properties</exclude>-->
+<!--                            </excludes>-->
+<!--                        </configuration>-->
                     </plugin>
                 </plugins>
             </build>

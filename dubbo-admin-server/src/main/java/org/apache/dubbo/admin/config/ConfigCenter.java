@@ -105,6 +105,7 @@ public class ConfigCenter {
 
         if (StringUtils.isNotEmpty(configCenter)) {
             configCenterUrl = formUrl(configCenter, configCenterGroup, configCenterGroupNameSpace, username, password);
+            logger.info("Admin using config center: " + configCenterUrl);
             dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getDefaultExtension();
             dynamicConfiguration.setUrl(configCenterUrl);
             dynamicConfiguration.init();
@@ -118,6 +119,8 @@ public class ConfigCenter {
                     } else if (s.startsWith(Constants.METADATA_ADDRESS)) {
                         metadataUrl = formUrl(removerConfigKey(s), metadataGroup, metadataGroupNameSpace, username, password);
                     }
+                    logger.info("Registry address found from config center: " + registryUrl);
+                    logger.info("Metadata address found from config center: " + registryUrl);
                 });
             }
         }
@@ -149,6 +152,9 @@ public class ConfigCenter {
             }
             registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
         }
+
+        logger.info("Admin using registry address: " + registryUrl);
+
         RegistryFactory registryFactory = ApplicationModel.defaultModel().getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
         registry = registryFactory.getRegistry(registryUrl.addParameter(ENABLE_EMPTY_PROTECTION_KEY, String.valueOf(false)));
         return registry;
@@ -166,6 +172,7 @@ public class ConfigCenter {
                 metadataUrl = formUrl(metadataAddress, metadataGroup, metadataGroupNameSpace, username, password);
                 metadataUrl = metadataUrl.addParameter(CLUSTER_KEY, cluster);
             }
+            logger.info("Admin using metadata address: " + metadataUrl);
         }
         if (metadataUrl != null) {
             metaDataCollector = ApplicationModel.defaultModel().getExtensionLoader(MetaDataCollector.class).getExtension(metadataUrl.getProtocol());

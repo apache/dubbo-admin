@@ -26,7 +26,6 @@ Clone the Dubbo Admin repo:
 $ git clone https://github.com/apache/dubbo-admin.git
 ```
 
-
 From the repo's root directory, change your working directory to `deploy/helm/dubbo-admin`
 ```sh
 $ cd /dubbo-admin/deploy/helm/dubbo-admin
@@ -37,12 +36,24 @@ $ cd /dubbo-admin/deploy/helm/dubbo-admin
 $ helm install dubbo-admin .
 ```
 
-Or, if you need to customize the configuration Admin uses to let it connects to the real registries or configuration centers, specify a customized configuration file using the `-f` helm option:
+Or, if you need to customize the configuration Admin uses to let it connects to the real registries or configuration centers, specify a customized configuration file using the `-f` helm option, for example, the following `value file` specifies registry, config-center and metadata addresses:
+
+properties.xml
+
+```xml
+properties: |
+  admin.registry.address=zookeeper://30.221.144.85:2181
+  admin.config-center=zookeeper://30.221.144.85:2181
+  admin.metadata-report.address=zookeeper://30.221.144.85:2181
+```
+
+`zookeeper://30.221.144.85:2181` should be a real address that is accessible from inside the kubernetes cluster.
 
 ```sh
 $ helm install dubbo-admin -f properties.yaml .
 ```
-`properties.yaml` should contain the items in [application.properties](./dubbo-admin-server/src/main/resources/application.properties) that you want to override, check [this file](./deploy/helm/example/properties.yaml) for reference.
+
+The items specifies in `properties` will override those in [application.properties](./dubbo-admin-server/src/main/resources/application.properties) of the Admin image. Despite `properties`, you can also set other values defined by Dubbo Admin helm.
 
 **3. Visit Dubbo Admin**
 
@@ -75,12 +86,11 @@ $ helm repo update
 $ helm install dubbo-admin dubbo-charts/dubbo-admin
 ```
 
-Or, if you need to customize the configuration Admin uses to let it connects to the real registries or configuration centers, specify a customized configuration file using the `-f` helm option:
+Check [here](#2-Install helm chart) to see how to customize helm value.
 
 ```sh
 $ helm install dubbo-admin -f properties.yaml dubbo-charts/dubbo-admin
 ```
-`properties.yaml` should contain the items in [application.properties](./dubbo-admin-server/src/main/resources/application.properties) that you want to override, check [this file](./deploy/helm/example/properties.yaml) for reference.
 
 **3. Visit Dubbo Admin**
 
@@ -90,32 +100,48 @@ Dubbo Admin should now has been successfully installed, run the following comman
 $ kubectl --namespace default port-forward service/dubbo-admin 8080:8080
 ```
 
+Open browser and visit http://127.0.0.1:8080, default username and password are `root`
+
 ## 1.2 Run With Kubernetes
 
-1. Get Kubernetes manifests
+**1. Get Kubernetes manifests**
 ```sh
 $ git clone https://github.com/apache/dubbo-admin.git
 ```
 
 All we need from this step is the Admin kubernetes manifests in `deploy/k8s`
+
 ```sh
 $ cd /dubbo-admin/deploy/k8s
 ```
 
-2. Deploy Dubbo Admin
+**2. Deploy Dubbo Admin**
 ```sh
 # Change configuration in ./deploy/application.yml before apply if necessary
 $ kubectl apply -f ./
 ```
 
-3. Visit Admin
+**3. Visit Admin**
 ```sh
 $ kubectl port-forward service dubbo-admin 8080:8080
 ```
 
 Open web browser and visit `http://localhost:8080`, default username and password are `root`
 
-## 1.3 Compile From Source
+## 1.3 Run With Docker
+The prebuilt docker image is hosted at: https://hub.docker.com/repository/docker/apache/dubbo-admin
+
+You can run the image directly by mounting a volume from the host contains an `application.properties` file with the accessible registry and config-center addresses specified.
+
+```sh
+docker run -it --rm -v /the/host/path/containing/properties:/config -p 8080:8080 apache/dubbo-admin
+```
+
+Replace `/the/host/path/containing/properties` with the actual host path (must be an absolute path) that points to a directory containing `application.properties`.
+
+Open web browser and visit `http://localhost:8080`, default username and password are `root`
+
+## 1.4 Compile From Source
 1. Clone source code on `develop` branch `git clone https://github.com/apache/dubbo-admin.git`
 2. Specify registry address in `dubbo-admin-server/src/main/resources/application.properties`
 3. Build
@@ -127,7 +153,8 @@ Open web browser and visit `http://localhost:8080`, default username and passwor
 5. Visit `http://localhost:8080`, default username and password are `root`
 
 # 2 Want To Contribute
-Below is the description of the project structure for developers who want to contribute to make Dubbo Admin better.
+
+Below contains the description of the project structure for developers who want to contribute to make Dubbo Admin better.
 
 ## 2.1 Admin UI
 
