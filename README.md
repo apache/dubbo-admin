@@ -36,9 +36,9 @@ $ cd /dubbo-admin/deploy/helm/dubbo-admin
 $ helm install dubbo-admin .
 ```
 
-Or, if you need to customize the configuration Admin uses to let it connects to the real registries or configuration centers, specify a customized configuration file using the `-f` helm option, for example, the following `value file` specifies registry, config-center and metadata addresses:
+Or, if you need to customize the configuration Admin uses to let it connecting to the real registries or configuration centers, specify a customized configuration file using the `-f` helm option, for example, the following `value file` specifies registry, config-center and metadata addresses:
 
-properties.xml
+Content of `properties.xml`:
 
 ```xml
 properties: |
@@ -53,7 +53,7 @@ properties: |
 $ helm install dubbo-admin -f properties.yaml .
 ```
 
-The items specifies in `properties` will override those in [application.properties](./dubbo-admin-server/src/main/resources/application.properties) of the Admin image. Despite `properties`, you can also set other values defined by Dubbo Admin helm.
+The values specified in `properties` will override those in [application.properties](./dubbo-admin-server/src/main/resources/application.properties) of the Admin image. Despite `properties`, you can also set other values defined by Dubbo Admin helm.
 
 **3. Visit Dubbo Admin**
 
@@ -86,7 +86,7 @@ $ helm repo update
 $ helm install dubbo-admin dubbo-charts/dubbo-admin
 ```
 
-Check [here](#2-Install helm chart) to see how to customize helm value.
+Check [here](#2-Install-helm-chart) to see how to customize helm value.
 
 ```sh
 $ helm install dubbo-admin -f properties.yaml dubbo-charts/dubbo-admin
@@ -134,7 +134,7 @@ The prebuilt docker image is hosted at: https://hub.docker.com/repository/docker
 You can run the image directly by mounting a volume from the host contains an `application.properties` file with the accessible registry and config-center addresses specified.
 
 ```sh
-docker run -it --rm -v /the/host/path/containing/properties:/config -p 8080:8080 apache/dubbo-admin
+$ docker run -it --rm -v /the/host/path/containing/properties:/config -p 8080:8080 apache/dubbo-admin
 ```
 
 Replace `/the/host/path/containing/properties` with the actual host path (must be an absolute path) that points to a directory containing `application.properties`.

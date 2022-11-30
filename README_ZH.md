@@ -85,7 +85,7 @@ $ helm repo update
 $ helm install dubbo-admin dubbo-charts/dubbo-admin
 ```
 
-参考 [这里](#2-安装 helm chart) 了解如何定制安装参数
+参考 [这里](#2-安装-helm=chart) 了解如何定制安装参数
 
 ```sh
 $ helm install dubbo-admin -f properties.yaml dubbo-charts/dubbo-admin
@@ -132,10 +132,10 @@ $ kubectl port-forward service dubbo-admin 8080:8080
 可以直接运行镜像来部署 Admin，并通过绑定宿主机上的 `application.properties` 文件定制镜像默认参数，如注册中心、配置中心地址等。
 
 ```sh
-docker run -it --rm -v /the/host/path/containing/properties:/config -p 8080:8080 apache/dubbo-admin
+$ docker run -it --rm -v /the/host/path/containing/properties:/config -p 8080:8080 apache/dubbo-admin
 ```
 
-将 `/the/host/path/containing/properties` 替换为宿主机上包含 `application.properties` 文件的实际路径（必须是一个有效的目录）。
+将 `/the/host/path/containing/properties` 替换为宿主机上包含 `application.properties` 文件的实际路径（必须是一个有效目录的绝对路径）。
 
 打开浏览器并访问 `http://localhost:8080`, 默认 username 和 password 是 `root`
 
@@ -148,7 +148,7 @@ docker run -it --rm -v /the/host/path/containing/properties:/config -p 8080:8080
 4. 启动
     * `mvn --projects dubbo-admin-server spring-boot:run`
     或者
-    * `cd dubbo-admin-distribution/target; java -jar dubbo-admin-0.1.jar`
+    * `cd dubbo-admin-distribution/target; java -jar dubbo-admin-${project.version}.jar`
 5. 访问 `http://localhost:8080`
 
 ### 服务治理  
