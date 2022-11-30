@@ -239,7 +239,7 @@
 										<exclude>**/node/**</exclude>
 										<exclude>**/dubbo-admin-info.json</exclude>
 										<exclude>.asf.yaml</exclude>
-										<exclude>**/deploy/*</exclude>
+										<exclude>deploy/**</exclude>
 									</excludes>
 								</configuration>
 							</execution>
