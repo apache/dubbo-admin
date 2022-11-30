@@ -16,9 +16,9 @@ Dubbo Admin is a console for better visualization of Dubbo services, it provides
 There are 4 methods to run Dubbo Admin in production:
 
 1. [Run With Helm (Recommended)](#11-Run-With-Helm)
-2. [Run With Kubernetes](#12-Run-With-Helm)
-3. [Run With Docker](#13-Run-With-Helm)
-4. [Run From Source Code](#14-Run-With-Helm)
+2. [Run With Kubernetes](#12-Run-With-Kubernetes)
+3. [Run With Docker](#13-Run-With-Docker)
+4. [Run From Source Code](#14-Compile-From-Source)
 
 You can choose any of the above methods to run Admin based on your environment. Helm is recommended if your plan to run Admin in a Kubernetes cluster because it will have all the dependencies managed with only one command.
 

@@ -14,10 +14,10 @@ Dubbo Admin 是一个控制台，为 Dubbo 集群提供更好可视化服务。A
 
 有四种将 Dubbo Admin 部署到生产环境的方式：
 
-1. [基于 Helm 运行 Admin (推荐)](#11-Run-With-Helm)
-2. [基于 Kubernetes 运行 Admin](#12-Run-With-Helm)
-3. [基于 Docker 运行 Admin](#13-Run-With-Helm)
-4. [基于源码打包运行 Admin](#14-Run-With-Helm)
+1. [基于 Helm 运行 Admin (推荐)](#11-使用-Helm-文件)
+2. [基于 Kubernetes 运行 Admin](#12-使用-Kubernetes-文件)
+3. [基于 Docker 运行 Admin](#13-使用-Docker-文件)
+4. [基于源码打包运行 Admin](#14-通过源码打包运行)
 
 你可以基于自己的环境选择任一方式，其中，Helm 是推荐的安装方式，因为 Helm 可以做到一键安装，自动帮助管理所有 Admin 必须的生产环境依赖。
 
@@ -140,7 +140,7 @@ $ kubectl port-forward service dubbo-admin 8080:8080
 
 打开浏览器并访问 `http://localhost:8080`， 默认 username 和 password 是 `root`
 
-## 1.3 基于 Docker 运行 Admin
+## 1.3 使用 Docker 运行
 预先定义的 Admin 镜像托管在： https://hub.docker.com/repository/docker/apache/dubbo-admin
 
 可以直接运行镜像来部署 Admin，并通过绑定宿主机上的 `application.properties` 文件定制镜像默认参数，如注册中心、配置中心地址等。
@@ -153,7 +153,7 @@ $ docker run -it --rm -v /the/host/path/containing/properties:/config -p 8080:80
 
 打开浏览器并访问 `http://localhost:8080`, 默认 username 和 password 是 `root`
 
-## 1.4 通过源码编译运行
+## 1.4 通过源码打包运行
 
 1. 下载代码: `git clone https://github.com/apache/dubbo-admin.git`
 2. 在 `dubbo-admin-server/src/main/resources/application.properties`中指定注册中心地址
