@@ -97,7 +97,7 @@ public class InstanceRegistryCache implements RegistryCache<String, ConcurrentMa
         origin.keySet().forEach(providers::remove);
 
         for (List<InstanceAddressURL> instanceAddressURLs : providers.values()) {
-            MetadataService metadataService = MetadataUtils.referProxy(instanceAddressURLs.get(0).getInstance());
+            MetadataService metadataService = MetadataUtils.referProxy(instanceAddressURLs.get(0).getInstance()).getProxy();
             try {
                 Set<String> subscribedURLs = metadataService.getSubscribedURLs();
 

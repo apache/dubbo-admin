@@ -1,6 +1,6 @@
 # dubbo-admin-ui
 
-> dubbo admin ui based on vuetify  
+> dubbo admin ui based on vuetify
 > standard front end project
 
 ## Build Setup
@@ -9,7 +9,7 @@
 # install dependencies
 npm install
 
-# serve with hot reload at localhost:8081
+# serve with hot reload at localhost:8080
 npm run dev
 
 # build for production with minification

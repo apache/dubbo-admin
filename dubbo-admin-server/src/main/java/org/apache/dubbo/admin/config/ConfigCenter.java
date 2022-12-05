@@ -105,6 +105,7 @@ public class ConfigCenter {
 
         if (StringUtils.isNotEmpty(configCenter)) {
             configCenterUrl = formUrl(configCenter, configCenterGroup, configCenterGroupNameSpace, username, password);
+            logger.info("Admin using config center: " + configCenterUrl);
             dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getDefaultExtension();
             dynamicConfiguration.setUrl(configCenterUrl);
             dynamicConfiguration.init();
@@ -118,6 +119,8 @@ public class ConfigCenter {
                     } else if (s.startsWith(Constants.METADATA_ADDRESS)) {
                         metadataUrl = formUrl(removerConfigKey(s), metadataGroup, metadataGroupNameSpace, username, password);
                     }
+                    logger.info("Registry address found from config center: " + registryUrl);
+                    logger.info("Metadata address found from config center: " + registryUrl);
                 });
             }
         }
@@ -127,9 +130,9 @@ public class ConfigCenter {
                 dynamicConfiguration = ExtensionLoader.getExtensionLoader(GovernanceConfiguration.class).getDefaultExtension();
                 dynamicConfiguration.setUrl(registryUrl);
                 dynamicConfiguration.init();
-                logger.warn("you are using dubbo.registry.address, which is not recommend, please refer to: https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration");
+                logger.warn("you are using dubbo.registry.address, which is not recommend, please refer to: https://github.com/apache/dubbo-admin/wiki/Dubbo-Admin-configuration");
             } else {
-                throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration");
+                throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/dubbo-admin/wiki/Dubbo-Admin-configuration");
                 //throw exception
             }
         }
@@ -145,10 +148,13 @@ public class ConfigCenter {
         Registry registry = null;
         if (registryUrl == null) {
             if (StringUtils.isBlank(registryAddress)) {
-                throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration");
+                throw new ConfigurationException("Either config center or registry address is needed, please refer to https://github.com/apache/dubbo-admin/wiki/Dubbo-Admin-configuration");
             }
             registryUrl = formUrl(registryAddress, registryGroup, registryNameSpace, username, password);
         }
+
+        logger.info("Admin using registry address: " + registryUrl);
+
         RegistryFactory registryFactory = ApplicationModel.defaultModel().getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
         registry = registryFactory.getRegistry(registryUrl.addParameter(ENABLE_EMPTY_PROTECTION_KEY, String.valueOf(false)));
         return registry;
@@ -166,13 +172,14 @@ public class ConfigCenter {
                 metadataUrl = formUrl(metadataAddress, metadataGroup, metadataGroupNameSpace, username, password);
                 metadataUrl = metadataUrl.addParameter(CLUSTER_KEY, cluster);
             }
+            logger.info("Admin using metadata address: " + metadataUrl);
         }
         if (metadataUrl != null) {
             metaDataCollector = ApplicationModel.defaultModel().getExtensionLoader(MetaDataCollector.class).getExtension(metadataUrl.getProtocol());
             metaDataCollector.setUrl(metadataUrl);
             metaDataCollector.init();
         } else {
-            logger.warn("you are using dubbo.registry.address, which is not recommend, please refer to: https://github.com/apache/incubator-dubbo-admin/wiki/Dubbo-Admin-configuration");
+            logger.warn("you are using dubbo.registry.address, which is not recommend, please refer to: https://github.com/apache/dubbo-admin/wiki/Dubbo-Admin-configuration");
         }
         return metaDataCollector;
     }
