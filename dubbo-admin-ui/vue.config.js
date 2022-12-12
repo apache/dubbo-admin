@@ -21,7 +21,7 @@ module.exports = {
   outputDir: "target/dist",
   lintOnSave: "warning",
   devServer: {
-    port: 8082,
+    port: 38082,
     historyApiFallback: {
       rewrites: [
         {from: /.*/, to: path.posix.join('/', 'index.html')},
@@ -30,7 +30,7 @@ module.exports = {
     publicPath: '/',
     proxy: {
       '/': {
-        target: 'http://localhost:8080/',
+        target: 'http://localhost:38080/',
         changeOrigin: true,
         pathRewrite: {
           '^/': '/'

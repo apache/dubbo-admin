@@ -39,7 +39,7 @@ securityContext: {}
 
 service:
   type: ClusterIP
-  port: 8080
+  port: 38080
 
 ingress:
   enabled: false
