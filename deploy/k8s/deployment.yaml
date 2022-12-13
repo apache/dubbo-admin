@@ -18,7 +18,7 @@ spec:
       - image: apache/dubbo-admin:latest
         name: dubbo-admin
         ports:
-          - containerPort: 8080
+          - containerPort: 38080
         volumeMounts:
         - mountPath: /config
           name: application-properties

@@ -68,18 +68,18 @@ $ helm install dubbo-admin -f properties.yaml .
 Dubbo Admin 现在应该已经成功安装，运行以下命令获得访问地址:
 
 ```sh
-$ kubectl --namespace default port-forward service/dubbo-admin 8080:8080
+$ kubectl --namespace default port-forward service/dubbo-admin 38080:38080
 ```
 
 或者，你可以参考执行 helm 安装后给出的提示命令，类似如下:
 ```sh
 export POD_NAME=$(kubectl get pods --namespace default -l "app.kubernetes.io/name=dubbo-admin,app.kubernetes.io/instance=dubbo-admin" -o jsonpath="{.items[0].metadata.name}")
 export CONTAINER_PORT=$(kubectl get pod --namespace default $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
-echo "Visit http://127.0.0.1:8080 to use your application"
-kubectl --namespace default port-forward $POD_NAME 8080:$CONTAINER_PORT
+echo "Visit http://127.0.0.1:38080 to use your application"
+kubectl --namespace default port-forward $POD_NAME 38080:$CONTAINER_PORT
 ```
 
-打开浏览器并访问 http://127.0.0.1:8080，默认的 username 和 password 是 `root`
+打开浏览器并访问 http://127.0.0.1:38080，默认的 username 和 password 是 `root`
 
 ### 1.1.2 基于 Chart 仓库运行 Admin
 
@@ -106,10 +106,10 @@ $ helm install dubbo-admin -f properties.yaml dubbo-charts/dubbo-admin
 Dubbo Admin 现在应该已经成功安装，运行以下命令获得访问地址:
 
 ```sh
-$ kubectl --namespace default port-forward service/dubbo-admin 8080:8080
+$ kubectl --namespace default port-forward service/dubbo-admin 38080:38080
 ```
 
-打开浏览器并访问 http://127.0.0.1:8080，默认的 username 和 password 是 `root`
+打开浏览器并访问 http://127.0.0.1:38080，默认的 username 和 password 是 `root`
 
 ## 1.2 使用 Kubernetes 运行
 
@@ -135,10 +135,10 @@ $ kubectl apply -f ./
 
 **3. 访问 Admin**
 ```sh
-$ kubectl port-forward service dubbo-admin 8080:8080
+$ kubectl port-forward service dubbo-admin 38080:38080
 ```
 
-打开浏览器并访问 `http://localhost:8080`， 默认 username 和 password 是 `root`
+打开浏览器并访问 `http://localhost:38080`， 默认 username 和 password 是 `root`
 
 ## 1.3 使用 Docker 运行
 预先定义的 Admin 镜像托管在： https://hub.docker.com/repository/docker/apache/dubbo-admin
@@ -146,12 +146,12 @@ $ kubectl port-forward service dubbo-admin 8080:8080
 可以直接运行镜像来部署 Admin，并通过绑定宿主机上的 `application.properties` 文件定制镜像默认参数，如注册中心、配置中心地址等。
 
 ```sh
-$ docker run -it --rm -v /the/host/path/containing/properties:/config -p 8080:8080 apache/dubbo-admin
+$ docker run -it --rm -v /the/host/path/containing/properties:/config -p 38080:38080 apache/dubbo-admin
 ```
 
 将 `/the/host/path/containing/properties` 替换为宿主机上包含 `application.properties` 文件的实际路径（必须是一个有效目录的绝对路径）。
 
-打开浏览器并访问 `http://localhost:8080`, 默认 username 和 password 是 `root`
+打开浏览器并访问 `http://localhost:38080`, 默认 username 和 password 是 `root`
 
 ## 1.4 通过源码打包运行
 
@@ -163,7 +163,7 @@ $ docker run -it --rm -v /the/host/path/containing/properties:/config -p 8080:80
     * `mvn --projects dubbo-admin-server spring-boot:run`
     或者
     * `cd dubbo-admin-distribution/target; java -jar dubbo-admin-${project.version}.jar`
-5. 访问 `http://localhost:8080`
+5. 访问 `http://localhost:38080`
 
 # 2 参与项目贡献
 
@@ -185,18 +185,18 @@ $ docker run -it --rm -v /the/host/path/containing/properties:/config -p 8080:80
 * [application.properties配置说明](https://github.com/apache/dubbo-admin/wiki/Dubbo-Admin%E9%85%8D%E7%BD%AE%E8%AF%B4%E6%98%8E)
 
 ### 2.2.1 开发环境配置
-* 运行`dubbo admin server`
+* 运行`dubbo-admin-server`
 
-  `dubbo admin server`是一个标准的spring boot项目, 可以在任何java IDE中运行它
+  `dubbo-admin-server`是一个标准的spring boot项目, 可以在任何java IDE中运行它
 
-* 运行`dubbo admin ui`
+* 运行`dubbo-admin-ui`
 
-  `dubbo admin ui`由npm管理和构建，在开发环境中，可以单独运行: `npm run dev`
+  `dubbo-admin-ui`由npm管理和构建，在`dubbo-admin-ui`目录中，可以单独运行: `./node/npm run dev`
 
 * 页面访问
 
-  访问 `http://localhost:8080`, 由于前后端分开部署，前端支持热加载，任何页面的修改都可以实时反馈，不需要重启应用。
+  访问 `http://localhost:38082`, 由于前后端分开部署，前端支持热加载，任何页面的修改都可以实时反馈，不需要重启应用。
 
 ### 2.2.2 Swagger 支持
 
-部署完成后，可以访问 http://localhost:8080/swagger-ui.html 来查看所有的restful api
+部署完成后，可以访问 http://localhost:38080/swagger-ui.html 来查看所有的restful api
