@@ -224,7 +224,7 @@
                                     <run>
                                         <dependsOn>zookeeper</dependsOn>
                                         <ports>
-                                            <port>${dubbo-admin.port}:8080</port>
+                                            <port>${dubbo-admin.port}:38080</port>
                                         </ports>
                                         <env>
                                             <admin.registry.address>zookeeper://zookeeper:2181

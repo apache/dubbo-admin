@@ -25,7 +25,7 @@ services:
     depends_on:
       - zookeeper
     ports:
-      - 8080:8080
+      - 38080:38080
 # the db driver path
     volumes:
       - "/mnt/opt-libs:/opt-libs"

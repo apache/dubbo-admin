@@ -69,18 +69,18 @@ The values specified in `properties` will override those in [application.propert
 Dubbo Admin should now has been successfully installed, run the following command:
 
 ```sh
-$ kubectl --namespace default port-forward service/dubbo-admin 8080:8080
+$ kubectl --namespace default port-forward service/dubbo-admin 38080:38080
 ```
 
 Or, you can choose to follow the command instructions from the helm installation process, it should be similar to the following:
 ```sh
 export POD_NAME=$(kubectl get pods --namespace default -l "app.kubernetes.io/name=dubbo-admin,app.kubernetes.io/instance=dubbo-admin" -o jsonpath="{.items[0].metadata.name}")
 export CONTAINER_PORT=$(kubectl get pod --namespace default $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
-echo "Visit http://127.0.0.1:8080 to use your application"
-kubectl --namespace default port-forward $POD_NAME 8080:$CONTAINER_PORT
+echo "Visit http://127.0.0.1:38080 to use your application"
+kubectl --namespace default port-forward $POD_NAME 38080:$CONTAINER_PORT
 ```
 
-Open browser and visit http://127.0.0.1:8080, default username and password are `root`
+Open browser and visit http://127.0.0.1:38080, default username and password are `root`
 
 ### 1.1.2 Run from helm chart repository
 **1. Add helm chart repository (Currently not available)**
@@ -106,10 +106,10 @@ $ helm install dubbo-admin -f properties.yaml dubbo-charts/dubbo-admin
 Dubbo Admin should now has been successfully installed, run the following command:
 
 ```sh
-$ kubectl --namespace default port-forward service/dubbo-admin 8080:8080
+$ kubectl --namespace default port-forward service/dubbo-admin 38080:38080
 ```
 
-Open browser and visit http://127.0.0.1:8080, default username and password are `root`
+Open browser and visit http://127.0.0.1:38080, default username and password are `root`
 
 ## 1.2 Run With Kubernetes
 
@@ -134,10 +134,10 @@ $ kubectl apply -f ./
 
 **3. Visit Admin**
 ```sh
-$ kubectl port-forward service dubbo-admin 8080:8080
+$ kubectl port-forward service dubbo-admin 38080:38080
 ```
 
-Open web browser and visit `http://localhost:8080`, default username and password are `root`
+Open web browser and visit `http://localhost:38080`, default username and password are `root`
 
 ## 1.3 Run With Docker
 The prebuilt docker image is hosted at: https://hub.docker.com/repository/docker/apache/dubbo-admin
@@ -145,12 +145,12 @@ The prebuilt docker image is hosted at: https://hub.docker.com/repository/docker
 You can run the image directly by mounting a volume from the host that contains an `application.properties` file with the accessible registry and config-center addresses specified.
 
 ```sh
-$ docker run -it --rm -v /the/host/path/containing/properties:/config -p 8080:8080 apache/dubbo-admin
+$ docker run -it --rm -v /the/host/path/containing/properties:/config -p 38080:38080 apache/dubbo-admin
 ```
 
 Replace `/the/host/path/containing/properties` with the actual host path (must be an absolute path) that points to a directory containing `application.properties`.
 
-Open web browser and visit `http://localhost:8080`, default username and password are `root`
+Open web browser and visit `http://localhost:38080`, default username and password are `root`
 
 ## 1.4 Compile From Source
 1. Clone source code on `develop` branch `git clone https://github.com/apache/dubbo-admin.git`
@@ -161,7 +161,7 @@ Open web browser and visit `http://localhost:8080`, default username and passwor
     * `mvn --projects dubbo-admin-server spring-boot:run`
     OR
     * `cd dubbo-admin-distribution/target`;   `java -jar dubbo-admin-0.1.jar`
-5. Visit `http://localhost:8080`, default username and password are `root`
+5. Visit `http://localhost:38080`, default username and password are `root`
 
 # 2. Want To Contribute
 
@@ -190,11 +190,11 @@ Below contains the description of the project structure for developers who want 
 
 * Run admin ui project
 
-  run with `npm run dev`.
+  at directory `dubbo-admin-ui`, run with `./node/npm run dev`.
 
 * visit web page
 
-  visit `http://localhost:8080`, frontend supports hot reload.
+  visit `http://localhost:38082`, frontend supports hot reload.
 
 # 3 License
 

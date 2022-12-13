@@ -1,6 +1,3 @@
-The branch of 0.2.0 is master-0.2.0. If your PR is to solve the problem of 0.2.0, please submit the PR to it.
-Please do not create a Pull Request without creating an issue first.
-
 ## What is the purpose of the change
 
 XXXXX
