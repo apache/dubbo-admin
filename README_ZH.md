@@ -191,7 +191,7 @@ $ docker run -it --rm -v /the/host/path/containing/properties:/config -p 38080:3
 
 * 运行`dubbo-admin-ui`
 
-  `dubbo-admin-ui`由npm管理和构建，在`dubbo-admin-ui`目录中，可以单独运行: `./node/npm run dev`
+  `dubbo-admin-ui`由npm管理和构建，在`dubbo-admin-ui`目录中，可以单独运行: `npm run dev`
 
 * 页面访问
 
