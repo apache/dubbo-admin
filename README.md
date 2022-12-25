@@ -190,7 +190,7 @@ Below contains the description of the project structure for developers who want 
 
 * Run admin ui project
 
-  at directory `dubbo-admin-ui`, run with `./node/npm run dev`.
+  at directory `dubbo-admin-ui`, run with `npm run dev`.
 
 * visit web page
 
