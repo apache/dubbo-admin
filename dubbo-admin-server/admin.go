@@ -19,6 +19,8 @@ package main
 
 import "admin/router"
 
+const conf = "/Users/zmx/workspace/dubbo-admin-local/dubbo-admin-server/conf/dubboadmin.yml"
+
 func main() {
 	router := router.InitRouter()
 	router.Run(":38080")
