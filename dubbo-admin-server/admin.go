@@ -23,6 +23,8 @@ import (
 	"admin/services"
 )
 
+const conf = "/Users/zmx/workspace/dubbo-admin-local/dubbo-admin-server/conf/dubboadmin.yml"
+
 func main() {
 	config.LoadConfig()
 	services.StartSubscribe(config.RegistryCenter)
