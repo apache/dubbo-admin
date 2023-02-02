@@ -1,9 +1,10 @@
+{{/* vim: set filetype=mustache: */}}
 {{/*
 Expand the name of the chart.
 */}}
 {{- define "dubbo-admin.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
-{{- end }}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
 
 {{/*
 Create a default fully qualified app name.
@@ -30,9 +31,22 @@ Create chart name and version as used by the chart label.
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
+
+{{/*
+Allow the release namespace to be overridden for multi-namespace deployments in combined charts
+*/}}
+{{- define "dubbo-admin.namespace" -}}
+{{- if .Values.namespaceOverride }}
+{{- .Values.namespaceOverride }}
+{{- else }}
+{{- .Release.Namespace }}
+{{- end }}
+{{- end }}
 {{/*
 Common labels
 */}}
+
+
 {{- define "dubbo-admin.labels" -}}
 helm.sh/chart: {{ include "dubbo-admin.chart" . }}
 {{ include "dubbo-admin.selectorLabels" . }}
@@ -41,6 +55,18 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
+
+{{/*
+Return the appropriate apiVersion for rbac.
+*/}}
+{{- define "dubbo-admin.rbac.apiVersion" -}}
+{{- if $.Capabilities.APIVersions.Has "rbac.authorization.k8s.io/v1" }}
+{{- print "rbac.authorization.k8s.io/v1" }}
+{{- else }}
+{{- print "rbac.authorization.k8s.io/v1beta1" }}
+{{- end }}
+{{- end }}
+
 
 {{/*
 Selector labels
@@ -58,5 +84,27 @@ Create the name of the service account to use
 {{- default (include "dubbo-admin.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
+{{- end }}
+{{- end }}
+
+{{- define "dubbo-admin.serviceAccountNameTest" -}}
+{{- if .Values.serviceAccount.create }}
+{{- default (print (include "dubbo-admin.fullname" .) "-test") .Values.serviceAccount.nameTest }}
+{{- else }}
+{{- default "default" .Values.serviceAccount.nameTest }}
+{{- end }}
+{{- end }}
+
+{{/*
+Formats imagePullSecrets. Input is (dict "root" . "imagePullSecrets" .{specific imagePullSecrets})
+*/}}
+{{- define "dubbo-admin.imagePullSecrets" -}}
+{{- $root := .root }}
+{{- range (concat .root.Values.global.imagePullSecrets .imagePullSecrets) }}
+{{- if eq (typeOf .) "map[string]interface {}" }}
+- {{ toYaml (dict "name" (tpl .name $root)) | trim }}
+{{- else }}
+- name: {{ tpl . $root }}
+{{- end }}
 {{- end }}
 {{- end }}
