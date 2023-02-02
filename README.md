@@ -123,7 +123,7 @@ All we need from this step is the Admin kubernetes manifests in `deploy/k8s`
 But before you can apply the manifests, override the default value defined in [application.properties](./dubbo-admin-server/src/main/resources/application.properties) by adding items in `configmap.yaml`.
 
 ```sh
-$ cd /dubbo-admin/deploy/k8s
+$ cd /dubbo-admin/deploy/kubernetes
 ```
 
 **2. Deploy Dubbo Admin**

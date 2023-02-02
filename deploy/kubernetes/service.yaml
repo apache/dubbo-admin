@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dubbo-admin
+  namespace: default
+spec:
+  type: NodePort
+  ports:
+    - name: dubbo-admin
+      port: 38080
+      targetPort: http
+      protocol: TCP
+  selector:
+    app: dubbo-admin

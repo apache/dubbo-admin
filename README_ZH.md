@@ -120,7 +120,7 @@ $ git clone https://github.com/apache/dubbo-admin.git
 
 切换到 `deploy/k8s` 目录可以看到 Admin kubernetes 资源文件
 ```sh
-$ cd /dubbo-admin/deploy/k8s
+$ cd /dubbo-admin/deploy/kubernetes
 ```
 
 **2. 部署 Dubbo Admin**
