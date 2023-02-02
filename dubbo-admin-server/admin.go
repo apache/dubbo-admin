@@ -17,11 +17,13 @@
 
 package main
 
-import "admin/router"
-
-const conf = "/Users/zmx/workspace/dubbo-admin-local/dubbo-admin-server/conf/dubboadmin.yml"
+import (
+	"admin/config"
+	"admin/router"
+)
 
 func main() {
+	config.LoadConfig()
 	router := router.InitRouter()
 	router.Run(":38080")
 }

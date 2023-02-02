@@ -5,7 +5,11 @@ import (
 	_ "admin/imports"
 	"dubbo.apache.org/dubbo-go/v3/common/extension"
 	"dubbo.apache.org/dubbo-go/v3/config_center"
+	"dubbo.apache.org/dubbo-go/v3/metadata/report"
+	"dubbo.apache.org/dubbo-go/v3/registry"
+	"fmt"
 	"gopkg.in/yaml.v2"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -24,10 +28,12 @@ type Admin struct {
 }
 
 var (
-	ConfigCenter config_center.DynamicConfiguration
+	ConfigCenter         config_center.DynamicConfiguration
+	RegistryCenter       registry.Registry
+	MetadataReportCenter report.MetadataReport
 )
 
-func LoadConfig() Config {
+func LoadConfig() {
 	path, err := filepath.Abs(conf)
 	if err != nil {
 		path = filepath.Clean(conf)
@@ -40,10 +46,9 @@ func LoadConfig() Config {
 	yaml.Unmarshal(content, &config)
 	address := config.Admin.ConfigCenter
 	registryAddress := config.Admin.Registry.Address
-	//metadataReportAddress := config.Admin.MetadataReport.address
+	metadataReportAddress := config.Admin.MetadataReport.Address
 	if len(address) > 0 {
-		c := AddressConfig{}
-		c.Address = address
+		c := newAddressConfig(address)
 		factory, err := extension.GetConfigCenterFactory(c.getProtocol())
 		if err != nil {
 			panic(err)
@@ -63,17 +68,56 @@ func LoadConfig() Config {
 					registryAddress = strings.Split(property, "=")[1]
 				}
 				if strings.HasPrefix(property, constant.MetadataReportAddressKey) {
-					//metadataReportAddress := strings.Split(property, "=")[1]
+					metadataReportAddress = strings.Split(property, "=")[1]
 				}
 			}
 		}
-
 	}
 	if ConfigCenter == nil {
 		if len(registryAddress) == 0 {
 			panic("registry address can not be empty")
 		}
+		c := newAddressConfig(registryAddress)
+		url, err := c.toURL()
+		if err != nil {
+			panic(err)
+		}
+		factory, err := extension.GetConfigCenterFactory(c.getProtocol())
+		ConfigCenter, err = factory.GetDynamicConfiguration(url)
+		if err != nil {
+			panic(err)
+		}
+	}
+	if len(registryAddress) > 0 {
+		c := newAddressConfig(registryAddress)
+		url, err := c.toURL()
+		if err != nil {
+			panic(err)
+		}
+		RegistryCenter, err = extension.GetRegistry(c.getProtocol(), url)
+		if err != nil {
+			panic(err)
+		}
+	}
+	if len(metadataReportAddress) > 0 {
+		c := newAddressConfig(metadataReportAddress)
+		url, err := c.toURL()
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(url.SubURL)
+		factory := extension.GetMetadataReportFactory(c.getProtocol())
+		MetadataReportCenter = factory.CreateMetadataReport(url)
+	}
+}
 
+func newAddressConfig(address string) AddressConfig {
+	config := AddressConfig{}
+	config.Address = address
+	var err error
+	config.url, err = url.Parse(address)
+	if err != nil {
+		panic(err)
 	}
 	return config
 }

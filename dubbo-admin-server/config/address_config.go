@@ -8,16 +8,15 @@ import (
 
 type AddressConfig struct {
 	Address string `yaml:"address"`
+	url     *url.URL
 }
 
 func (c *AddressConfig) getProtocol() string {
-	url, _ := url.Parse(c.Address)
-	return url.Scheme
+	return c.url.Scheme
 }
 
 func (c *AddressConfig) getAddress() string {
-	url, _ := url.Parse(c.Address)
-	return url.Host
+	return c.url.Host
 }
 
 func (c *AddressConfig) GetUrlMap() url.Values {
@@ -28,8 +27,7 @@ func (c *AddressConfig) GetUrlMap() url.Values {
 }
 
 func (c *AddressConfig) param(key string, defaultValue string) string {
-	url, _ := url.Parse(c.Address)
-	param := url.Query().Get(key)
+	param := c.url.Query().Get(key)
 	if len(param) > 0 {
 		return param
 	}
