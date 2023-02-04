@@ -25,6 +25,8 @@ spec:
           volumeMounts:
             - mountPath: /config
               name: application-properties
+            - mountPath: /storage
+              name: dubbo-admin-storage
           livenessProbe:
             httpGet:
               path: /
@@ -52,3 +54,6 @@ spec:
         - name: application-properties
           configMap:
             name: dubbo-admin
+        - name: dubbo-admin-storage
+          persistentVolumeClaim:
+            claimName: dubbo-admin-pvc
