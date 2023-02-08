@@ -98,7 +98,7 @@ $ cd dubbo-admin/deploy/charts/dubbo-admin
 ```
 **2. Install helm chart**
 
-Start parameters of Admin so that Admin can connect to the real production environment registry or configuration center. You can specify a custom configuration file through the following '-f' help parameter:
+Start parameters of Admin so that Admin can connect to the real production environment registry or configuration center. You can specify a custom configuration file through the following `-f` help parameter:
 ```yaml
 properties:
   admin.registry.address: zookeeper://zookeeper:2181
