@@ -14,10 +14,10 @@ Dubbo Admin is a console for better visualization of Dubbo services, it provides
 
 There are four ways to deploy Dubbo Admin to a production environment
 
-1. [Linux with Admin](#11--linux-run-admin)
-2. [Docker with Admin](#12--docker-run-admin)
-3. [Kubernetes with Admin](#13--kubernetes-run-admin)
-4. [Helm with Admin](#14--helm-run-admin)
+1. [Linux with Admin](#11--linux-)
+2. [Docker with Admin](#12--docker-)
+3. [Kubernetes with Admin](#13--kubernetes-)
+4. [Helm with Admin](#14--helm-)
 
 Choose either method based on your environment, where Helm is the recommended installation method because Helm can be installed with a single click and automatically helps manage all of Admin's required production environment dependencies.
 
