@@ -53,9 +53,12 @@ spec:
             - name: {{ .Values.service.name }}
               containerPort: {{ .Values.service.containerPort }}
           volumeMounts:
-            - mountPath: {{ .Values.volumeMounts.mountPath }}
-              name: {{ .Values.volumeMounts.name }}
-              readOnly: {{ .Values.volumeMounts.readOnly }}
+            - mountPath: /config
+              name: application-properties
+              readOnly: true
+            - mountPath: /storage
+              name: storage
+              readOnly: true
           livenessProbe:
             httpGet:
               path: {{ .Values.livenessProbe.httpGet.path }}
@@ -74,9 +77,30 @@ spec:
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
             successThreshold: {{ .Values.readinessProbe.successThreshold }}
             failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.startupProbe.httpGet.path }}
+              port: {{ .Values.startupProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+            timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+            successThreshold: {{ .Values.startupProbe.successThreshold }}
+            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
-        - name: {{ .Values.volumes.name }}
+        - name: application-properties
           secret:
-            secretName: {{ .Chart.Name }}
+            secretName: {{ include "dubbo-admin.fullname" . }}-secret
+        - name: storage
+             {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            {{ if .Values.persistence.ClaimName }}
+            claimName: {{ .Values.persistence.ClaimName }}
+            {{- else -}}
+          emptyDir: {{- if .Values.persistence.emptyDir.sizeLimit }}
+              sizeLimit: {{ .Values.persistence.emptyDir.sizeLimit }}
+             {{- else }} {}
+              {{- end -}}
+              {{- end -}}
+            {{- end -}}
