@@ -21,7 +21,7 @@ There are four ways to deploy Dubbo Admin to a production environment
 
 Choose either method based on your environment, where Helm is the recommended installation method because Helm can be installed with a single click and automatically helps manage all of Admin's required production environment dependencies.
 
-## 1.1 Running from Linux
+## 1.1 Linux with Admin
 
 1. Download code: `git clone https://github.com/apache/dubbo-admin.git`
 2. `dubbo-admin-server/src/main/resources/application.properties` Designated Registration Center Address
@@ -33,7 +33,7 @@ Choose either method based on your environment, where Helm is the recommended in
     * `cd dubbo-admin-distribution/target; java -jar dubbo-admin-${project.version}.jar`
 5. Visit  `http://localhost:38080`
 
-## 1.2 Running from Docker
+## 1.2 Docker with Admin
 Admin image hosting at： https://hub.docker.com/repository/docker/apache/dubbo-admin
 
 modify `application.properties` File default parameters，For example, address of registration center and configuration center, Get the address through 'docker inspect'，172.17.0.2 is the registration center address of zookeeper.
@@ -49,7 +49,7 @@ $ docker run -p 38080:38080 --name dubbo-admin -d dubbo-admin
 
 Visit `http://localhost:38080`
 
-## 1.3 Running from Kubernetes
+## 1.3 Kubernetes with Admin
 
 **1. Download Kubernetes manifests**
 ```sh
@@ -79,7 +79,7 @@ $ kubectl port-forward service dubbo-admin 38080:38080
 Visit `http://localhost:38080`
 
 
-## 1.4 Running from Helm
+## 1.4 Helm with Admin
 There are two ways to run Admin through Help. They have the same effect, so you can choose any of the following.
 
 ### 1.4.1 Run Admin based on Chart source file
