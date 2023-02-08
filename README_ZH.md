@@ -13,10 +13,10 @@ Dubbo Admin 是一个控制台，为 Dubbo 集群提供更好可视化服务。A
 
 有四种将 Dubbo Admin 部署到生产环境的方式
 
-1. [Linux 运行 Admin](#11-使用-Linux-文件)
-2. [Docker 运行 Admin](#12-使用-Docker-文件)
-3. [Kubernetes 运行 Admin](#13-使用-Kubernetes-文件)
-4. [Helm 运行 Admin](#14-使用-Helm-文件)
+1. [Linux 运行 Admin](#11--linux-)
+2. [Docker 运行 Admin](#12--docker-)
+3. [Kubernetes 运行 Admin](#13--kubernetes-)
+4. [Helm 运行 Admin](#14--helm-)
 
 基于环境选择任一方式，其中，Helm 是推荐的安装方式，因为 Helm 可以做到一键安装，自动帮助管理所有 Admin 必须的生产环境依赖。
 
