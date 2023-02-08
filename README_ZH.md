@@ -20,7 +20,7 @@ Dubbo Admin 是一个控制台，为 Dubbo 集群提供更好可视化服务。A
 
 基于环境选择任一方式，其中，Helm 是推荐的安装方式，因为 Helm 可以做到一键安装，自动帮助管理所有 Admin 必须的生产环境依赖。
 
-## 1.1 通过 Linux 运行
+## 1.1 Linux 运行 Admin
 
 1. 下载代码: `git clone https://github.com/apache/dubbo-admin.git`
 2. 在 `dubbo-admin-server/src/main/resources/application.properties`中指定注册中心地址
@@ -32,7 +32,7 @@ Dubbo Admin 是一个控制台，为 Dubbo 集群提供更好可视化服务。A
     * `cd dubbo-admin-distribution/target; java -jar dubbo-admin-${project.version}.jar`
 5. 访问 `http://localhost:38080`
 
-## 1.2 使用 Docker 运行
+## 1.2 Docker 运行 Admin
  Admin 镜像托管在： https://hub.docker.com/repository/docker/apache/dubbo-admin
 
  修改 `application.properties` 文件默认参数，如注册中心、配置中心地址等, 通过 `docker inspect` 获取地址，172.17.0.2 是 zookeeper 的注册中心地址
@@ -48,7 +48,7 @@ $ docker run -p 38080:38080 --name dubbo-admin -d dubbo-admin
 
 打开浏览器并访问 `http://localhost:38080`
 
-## 1.3 使用 Kubernetes 运行
+## 1.3 Kubernetes 运行 Admin
 
 **1. 下载 Kubernetes manifests**
 ```sh
@@ -78,7 +78,7 @@ $ kubectl port-forward service dubbo-admin 38080:38080
 打开浏览器并访问 `http://localhost:38080`
 
 
-## 1.4 使用 Helm 运行
+## 1.4 Helm 运行 Admin
 通过 Helm 运行 Admin 有两种方式，它们起到相同的效果，因此可以选择以下任意一种。
 
 ### 1.4.1 基于 Chart 源文件运行 Admin
