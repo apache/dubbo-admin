@@ -16,9 +16,10 @@
 FROM maven:3-openjdk-8
 RUN mkdir /source && wget https://github.com/apache/dubbo-admin/archive/0.4.0.zip && unzip -q 0.4.0.zip -d /source
 WORKDIR /source/dubbo-admin-0.4.0
+COPY application.properties dubbo-admin-server/src/main/resources/application.properties
 RUN mvn --batch-mode clean package -Dmaven.test.skip=true
 
-FROM openjdk:8-jre
+FROM openjdk:8-jdk
 LABEL maintainer="dev@dubbo.apache.org"
 RUN apt-get update && apt-get install -y tini
 COPY --from=0 /source/dubbo-admin-0.4.0/dubbo-admin-distribution/target/dubbo-admin-0.4.0.jar /app.jar

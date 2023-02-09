@@ -8,7 +8,7 @@ metadata:
     {{- include "dubbo-admin.labels" . | nindent 4 }}
 spec:
   {{- if (or (eq .Values.service.type "ClusterIP") (empty .Values.service.type)) }}
-  type: ClusterIP
+  type: {{ .Values.service.type }}
   {{- with .Values.service.clusterIP }}
   clusterIP: {{ . }}
   {{- end }}
