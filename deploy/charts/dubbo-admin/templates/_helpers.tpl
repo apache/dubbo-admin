@@ -6,6 +6,7 @@ Expand the name of the chart.
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
 
+
 {{/*
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
@@ -23,6 +24,7 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 {{- end }}
 {{- end }}
+
 
 {{/*
 Create chart name and version as used by the chart label.
@@ -56,6 +58,7 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
+
 {{/*
 Return the appropriate apiVersion for rbac.
 */}}
@@ -68,13 +71,11 @@ Return the appropriate apiVersion for rbac.
 {{- end }}
 
 
-{{/*
-Selector labels
-*/}}
 {{- define "dubbo-admin.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "dubbo-admin.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+
 
 {{/*
 Create the name of the service account to use
@@ -87,6 +88,7 @@ Create the name of the service account to use
 {{- end }}
 {{- end }}
 
+
 {{- define "dubbo-admin.serviceAccountNameTest" -}}
 {{- if .Values.serviceAccount.create }}
 {{- default (print (include "dubbo-admin.fullname" .) "-test") .Values.serviceAccount.nameTest }}
@@ -94,6 +96,7 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.nameTest }}
 {{- end }}
 {{- end }}
+
 
 {{/*
 Formats imagePullSecrets. Input is (dict "root" . "imagePullSecrets" .{specific imagePullSecrets})
@@ -106,5 +109,55 @@ Formats imagePullSecrets. Input is (dict "root" . "imagePullSecrets" .{specific 
 {{- else }}
 - name: {{ tpl . $root }}
 {{- end }}
+{{- end }}
+{{- end }}
+
+
+{{/*
+Return if ingress is stable.
+*/}}
+{{- define "dubbo-admin.ingress.isStable" -}}
+{{- eq (include "dubbo-admin.ingress.apiVersion" .) "networking.k8s.io/v1" }}
+{{- end }}
+
+
+{{/*
+Return if ingress supports ingressClassName.
+*/}}
+{{- define "dubbo-admin.ingress.supportsIngressClassName" -}}
+{{- or (eq (include "dubbo-admin.ingress.isStable" .) "true") (and (eq (include "dubbo-admin.ingress.apiVersion" .) "networking.k8s.io/v1beta1") (semverCompare ">= 1.18-0" .Capabilities.KubeVersion.Version)) }}
+{{- end }}
+
+
+{{/*
+Return if ingress supports pathType.
+*/}}
+{{- define "dubbo-admin.ingress.supportsPathType" -}}
+{{- or (eq (include "dubbo-admin.ingress.isStable" .) "true") (and (eq (include "dubbo-admin.ingress.apiVersion" .) "networking.k8s.io/v1beta1") (semverCompare ">= 1.18-0" .Capabilities.KubeVersion.Version)) }}
+{{- end }}
+
+
+{{/*
+Return the appropriate apiVersion for ingress.
+*/}}
+{{- define "dubbo-admin.ingress.apiVersion" -}}
+{{- if and ($.Capabilities.APIVersions.Has "networking.k8s.io/v1") (semverCompare ">= 1.19-0" .Capabilities.KubeVersion.Version) }}
+{{- print "networking.k8s.io/v1" }}
+{{- else if $.Capabilities.APIVersions.Has "networking.k8s.io/v1beta1" }}
+{{- print "networking.k8s.io/v1beta1" }}
+{{- else }}
+{{- print "extensions/v1beta1" }}
+{{- end }}
+{{- end }}
+
+
+{{/*
+Return the appropriate apiVersion for podDisruptionBudget.
+*/}}
+{{- define "dubbo-admin.podDisruptionBudget.apiVersion" -}}
+{{- if $.Capabilities.APIVersions.Has "policy/v1/PodDisruptionBudget" }}
+{{- print "policy/v1" }}
+{{- else }}
+{{- print "policy/v1beta1" }}
 {{- end }}
 {{- end }}

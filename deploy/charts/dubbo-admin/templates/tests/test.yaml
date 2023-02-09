@@ -43,7 +43,7 @@ spec:
           readOnly: true
   volumes:
     - name: tests
-      configMap:
-        name: {{ include "dubbo-admin.fullname" . }}-test
+      secret:
+        secretName: {{ include "dubbo-admin.fullname" . }}-secret
   restartPolicy: Never
 {{- end }}

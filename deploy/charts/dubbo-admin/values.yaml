@@ -1,41 +1,48 @@
+## global.imageRegistry Global Docker image registry
+## global.imagePullSecrets Global Docker registry secret names as an array
+## global.storageClass Global StorageClass for Persistent Volume(s)
+##
 global:
-  # To help compatibility with other charts which use global.imagePullSecrets.
-  # Allow either an array of {name: pullSecret} maps (k8s-style), or an array of strings (more common charts-style).
-  # Can be tempalted.
-  # global:
-  #   imagePullSecrets:
-  #   - name: pullSecret1
-  #   - name: pullSecret2
-  # or
-  # global:
-  #   imagePullSecrets:
-  #   - pullSecret1
-  #   - pullSecret2
+  imageRegistry: ""
+  ## E.g.
+  ## imagePullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
   imagePullSecrets: []
-
-
+  ##
+  ##
+## fullnameOverride String to fully override common.names.fullname template
+##
 fullnameOverride: {}
-
-
+##
+##
+## nameOverride String to partially override common.names.fullname template (will maintain the release name)
+##
 nameOverride: {}
-
-
+##
+##
+## namespaceOverride String to partially override common.names.namespace template
+##
 namespaceOverride: {}
-
-
+##
+##
+## labels String to override common.names.labels template
+##
 labels: {}
-
-
+##
+##
+## annotations String to override common.names.annotations template
+##
 annotations: {}
-
-volumes:
-  name: application-properties
-
-
-volumeMounts:
-  mountPath: /config
-  name: application-properties
-  readOnly: true
+##
+##
+##
+##
+## See `kubectl explain poddisruptionbudget.spec` for more
+## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+podDisruptionBudget:
+  minAvailable: 1
+  # maxUnavailable: 1
 
 
 rbac:
@@ -54,7 +61,7 @@ rbac:
   #   resources: []
   #   verbs: []
 
-## serviceAccount
+  ## serviceAccount Name
 serviceAccount:
   create: true
   name:
@@ -63,7 +70,7 @@ serviceAccount:
   annotations: {}
 
 
-## Number of copies
+## Number of service copies
 replicas: 1
 
 # -- Optional array of imagePullSecrets containing private registry credentials
@@ -90,19 +97,20 @@ autoscaling:
 revisionHistoryLimit: 10
 
 
-## See `kubectl explain poddisruptionbudget.spec` for more
-## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
-podDisruptionBudget: {}
-#  minAvailable: 1
-#  maxUnavailable: 1
-
-
 ## See `kubectl explain deployment.spec.strategy` for more
 ## ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
 deploymentStrategy:
   type: RollingUpdate
 
 
+## @param readinessProbe.enabled Enable readinessProbe on ZooKeeper containers
+## @param readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+## @param readinessProbe.periodSeconds Period seconds for readinessProbe
+## @param readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+## @param readinessProbe.failureThreshold Failure threshold for readinessProbe
+## @param readinessProbe.successThreshold Success threshold for readinessProbe
+## @param readinessProbe.probeCommandTimeout Probe command timeout for readinessProbe
+##
 readinessProbe:
   httpGet:
     path: /
@@ -114,6 +122,14 @@ readinessProbe:
   failureThreshold: 3
 
 
+## @param livenessProbe.enabled Enable livenessProbe on ZooKeeper containers
+## @param livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+## @param livenessProbe.periodSeconds Period seconds for livenessProbe
+## @param livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+## @param livenessProbe.failureThreshold Failure threshold for livenessProbe
+## @param livenessProbe.successThreshold Success threshold for livenessProbe
+## @param livenessProbe.probeCommandTimeout Probe command timeout for livenessProbe
+##
 livenessProbe:
   httpGet:
     path: /
@@ -124,12 +140,35 @@ livenessProbe:
   successThreshold: 1
   failureThreshold: 3
 
+## @param startupProbe.enabled Enable startupProbe on ZooKeeper containers
+## @param startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+## @param startupProbe.periodSeconds Period seconds for startupProbe
+## @param startupProbe.timeoutSeconds Timeout seconds for startupProbe
+## @param startupProbe.failureThreshold Failure threshold for startupProbe
+## @param startupProbe.successThreshold Success threshold for startupProbe
+##
+startupProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 60
+  timeoutSeconds: 30
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
 
+
+## Dubbo-admin image version
 image:
   repository: apache/dubbo-admin
   tag: "0.5.0"
+  ##
+  ## Specify a imagePullPolicy
+  ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
+  ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
+  ##
   pullPolicy: IfNotPresent
-
+  ##
   ## Optionally specify an array of imagePullSecrets.
   ## Secrets must be manually created in the namespace.
   ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
@@ -139,10 +178,12 @@ image:
   #   - RegisterKeySecretName
 
 
+## Configure Pods Security Context
 securityContext:
   # runAsUser: 570
   # runAsGroup: 570
   # fsGroup: 570
+
 
 testFramework:
   enabled: true
@@ -152,12 +193,14 @@ testFramework:
   securityContext: {}
 
 
+## Init container Security Context
 containerSecurityContext: {}
 
 
 ## Sensible environment variables that will be rendered as new secret object
 ## This can be useful for auth tokens, etc
 envRenderSecret: {}
+
 
 # -- `minReadySeconds` to avoid killing pods before we are ready
 ##
@@ -167,9 +210,11 @@ minReadySeconds: 0
 ##
 
 
+## Create or not configmap
 createConfigmap: true
 
 
+## configmap mounts
 ConfigmapMounts: []
   # - name: configMap-file
   #   mountPath: /config
@@ -177,13 +222,14 @@ ConfigmapMounts: []
   #   readOnly: true
 
 
+## secret mounts
 SecretMounts:
 #  - name: secret-file
 #    secret:
 #      secretName: secret-file
 
 
-##
+## extraSecret Mounts
 extraSecretMounts: []
   # - name: secret-files
   #   mountPath: /etc/secrets
@@ -192,14 +238,13 @@ extraSecretMounts: []
   #   subPath: ""
 
 
-##
+## emptyDir mounts
 EmptyDirMounts: []
 # - name: ""
 #   mountPath: /
 
 
-##
-# Apply extra labels to common labels.
+## Apply extra labels to common labels.
 extraLabels: {}
 
 
@@ -319,6 +364,7 @@ ingress:
   #    hosts:
   #      - chart-example.local
 
+
 resources: {}
 #  limits:
 #    cpu: 100m
@@ -327,25 +373,30 @@ resources: {}
 #    cpu: 100m
 #    memory: 128Mi
 
+
 ## Node labels for pod assignment
 ## ref: https://kubernetes.io/docs/user-guide/node-selection/
 #
 nodeSelector: {}
+
 
 ## Tolerations for pod assignment
 ## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
 ##
 tolerations: []
 
+
 ## Affinity for pod assignment (evaluated as template)
 ## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
 ##
 affinity: {}
 
+
 ## Topology Spread Constraints
 ## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
 ##
 topologySpreadConstraints: []
+
 
 ## Additional init containers (evaluated as template)
 ## ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
@@ -359,18 +410,18 @@ InitContainers: []
 persistence:
   enabled: false
   type: pvc
-  # storageClassName: default
+  storageClassName: {}
   accessModes:
     - ReadWriteOnce
   size: 10Gi
-  # annotations: {}
+  annotations: {}
   finalizers:
     - kubernetes.io/pvc-protection
-  # selectorLabels: {}
+  selectorLabels: {}
   ## Sub-directory of the PV to mount. Can be templated.
   # subPath: ""
   ## Name of an existing PVC. Can be templated.
-  # existingClaim:
+  ClaimName: {}
   ## Extra labels to apply to a PVC.
   extraPvcLabels: {}
 
@@ -384,6 +435,11 @@ persistence:
     ## here and the sum of memory limits of all containers in a pod
     ##
     # sizeLimit: 300Mi
+  emptyDir:
+    ## dubbo-admin emptyDir volume size limit
+    ##
+    sizeLimit: ""
+
 
 initChownData:
   ## If false, data ownership will not be reset at startup
@@ -476,6 +532,25 @@ networkPolicy:
       ## - port: 80
       ## - port: 443
 
+## dubbo-admin-server/src/main/resources/application.properties
+#
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+#
 properties:
   admin.registry.address: zookeeper://zookeeper:2181
   admin.config-center: zookeeper://zookeeper:2181

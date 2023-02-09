@@ -12,78 +12,114 @@ Dubbo Admin is a console for better visualization of Dubbo services, it provides
 
 ![index](https://raw.githubusercontent.com/apache/dubbo-admin/develop/doc/images/index.png)
 
-# 1 Quick start
-There are 4 methods to run Dubbo Admin in production:
+There are four ways to deploy Dubbo Admin to a production environment
 
-1. [Run With Helm (Recommended)](#11-Run-With-Helm)
-2. [Run With Kubernetes](#12-Run-With-Kubernetes)
-3. [Run With Docker](#13-Run-With-Docker)
-4. [Run From Source Code](#14-Compile-From-Source)
+1. [Linux with Admin](#11-linux-with-admin)
+2. [Docker with Admin](#12-docker-with-admin)
+3. [Kubernetes with Admin](#13-kubernetes-with-admin)
+4. [Helm with Admin](#14-helm-with-admin)
 
-You can choose any of the above methods to run Admin based on your environment. Helm is recommended if your plan to run Admin in a Kubernetes cluster because it will have all the dependencies managed with only one command.
+Choose either method based on your environment, where Helm is the recommended installation method because Helm can be installed with a single click and automatically helps manage all of Admin's required production environment dependencies.
 
-## 1.1 Run With Helm
+## 1.1 Linux with Admin
 
-There are two ways to deploy Dubbo Admin with helm depending on how you get the helm chart resources, both of them have the same effect.
+1. Download code: `git clone https://github.com/apache/dubbo-admin.git`
+2. `dubbo-admin-server/src/main/resources/application.properties` Designated Registration Center Address
+3. Build
+    - `mvn clean package -Dmaven.test.skip=true`
+4. Start
+    * `mvn --projects dubbo-admin-server spring-boot:run`
+      or
+    * `cd dubbo-admin-distribution/target; java -jar dubbo-admin-${project.version}.jar`
+5. Visit  `http://localhost:38080`
 
-### 1.1.1 Run from helm chart sources
-**1. Get helm chart sources**
+## 1.2 Docker with Admin
+Admin image hosting at： https://hub.docker.com/repository/docker/apache/dubbo-admin
 
-Clone the Dubbo Admin repo:
+modify `application.properties` File default parameters，For example, address of registration center and configuration center, Get the address through 'docker inspect'，172.17.0.2 is the registration center address of zookeeper.
+```
+  admin.registry.address: zookeeper://172.17.0.2:2181
+  admin.config-center: zookeeper://172.17.0.2:2181
+  admin.metadata-report.address: zookeeper://172.17.0.2:2181
+```
+docker start
+```sh
+$ docker run -p 38080:38080 --name dubbo-admin -d dubbo-admin
+```
+
+Visit `http://localhost:38080`
+
+## 1.3 Kubernetes with Admin
+
+**1. Download Kubernetes manifests**
+```sh
+$ git clone https://github.com/apache/dubbo-admin.git
+```
+
+Switch to the 'deploy/k8s' directory to see the Admin kubernetes resource file
+```sh
+$ cd /dubbo-admin/deploy/kubernetes
+```
+
+**2. Install Dubbo Admin**
+
+modify [application.properties](./dubbo-admin-server/src/main/resources/application.properties)  Parameter configuration in `configmap.yaml` ，Just define the parameters to be overwritten。
+
+Run the following command：
+
+```sh
+$ kubectl apply -f ./
+```
+
+**3. Visit Admin**
+```sh
+$ kubectl port-forward service dubbo-admin 38080:38080
+```
+
+Visit `http://localhost:38080`
+
+
+## 1.4 Helm with Admin
+There are two ways to run Admin through Help. They have the same effect, so you can choose any of the following.
+
+### 1.4.1 Run Admin based on Chart source file
+**1. Download chart source file**
+
+clone Dubbo Admin project storehouse:
 
 ```sh
 $ git clone https://github.com/apache/dubbo-admin.git
 ```
 
-From the repo's root directory, change your working directory to `deploy/helm/dubbo-admin`
+Switch from the warehouse root directory to the following directory `deploy/charts/dubbo-admin`
+
 ```sh
-$ cd /dubbo-admin/deploy/helm/dubbo-admin
+$ cd dubbo-admin/deploy/charts/dubbo-admin
 ```
 **2. Install helm chart**
 
+Start parameters of Admin so that Admin can connect to the real production environment registry or configuration center. You can specify a custom configuration file through the following `-f` help parameter:
+```yaml
+properties:
+  admin.registry.address: zookeeper://zookeeper:2181
+  admin.config-center: zookeeper://zookeeper:2181
+  admin.metadata-report.address: zookeeper://zookeeper:2181
+```
+
+`zookeeper://zookeeper:2181`  Visit address of the Kubernetes Cluster registration center zookeeper。
 ```sh
-$ helm install dubbo-admin .
+$ helm install dubbo-admin -f values.yaml .
 ```
 
-Or, if you need to customize the configuration Admin uses to let it connecting to the real registries or configuration centers, specify a customized configuration file using the `-f` helm option, for example, the following `value file` specifies registry, config-center and metadata addresses:
+`properties` The content specified in the field will be overwritten Admin [application.properties](./dubbo-admin-server/src/main/resources/application.properties) Specified default configuration，In addition to 'properties', you can customize other properties defined by Admin help chart，Here is available[Complete parameters](./deploy/helm/dubbo-admin/values.yaml)。
 
-Content of `properties.xml`:
+**3. Visit Admin**
 
-```xml
-properties: |
-  admin.registry.address=zookeeper://30.221.144.85:2181
-  admin.config-center=zookeeper://30.221.144.85:2181
-  admin.metadata-report.address=zookeeper://30.221.144.85:2181
-```
+Visit http://127.0.0.1:38080
 
-`zookeeper://30.221.144.85:2181` should be a real address that is accessible from inside the kubernetes cluster.
+### 1.4.2 Run Admin based on Chart warehouse
 
-```sh
-$ helm install dubbo-admin -f properties.yaml .
-```
-
-The values specified in `properties` will override those in [application.properties](./dubbo-admin-server/src/main/resources/application.properties) of the Admin image. Despite `properties`, you can also set other values defined by Dubbo Admin helm.
-
-**3. Visit Dubbo Admin**
-
-Dubbo Admin should now has been successfully installed, run the following command:
-
-```sh
-$ kubectl --namespace default port-forward service/dubbo-admin 38080:38080
-```
-
-Or, you can choose to follow the command instructions from the helm installation process, it should be similar to the following:
-```sh
-export POD_NAME=$(kubectl get pods --namespace default -l "app.kubernetes.io/name=dubbo-admin,app.kubernetes.io/instance=dubbo-admin" -o jsonpath="{.items[0].metadata.name}")
-export CONTAINER_PORT=$(kubectl get pod --namespace default $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
-echo "Visit http://127.0.0.1:38080 to use your application"
-kubectl --namespace default port-forward $POD_NAME 38080:$CONTAINER_PORT
-```
-
-Open browser and visit http://127.0.0.1:38080, default username and password are `root`
-
-### 1.1.2 Run from helm chart repository
-**1. Add helm chart repository (Currently not available)**
+**1. Add helm chart  (Temporarily unavailable)**
 
 ```sh
 $ helm repo add dubbo-charts https://dubbo.apache.org/dubbo-charts
@@ -95,7 +131,7 @@ $ helm repo update
 $ helm install dubbo-admin dubbo-charts/dubbo-admin
 ```
 
-Check the corresponding chapter in [1.1.1 Run from helm chart sources](111-Run-from-helm-chart-sources) to see how to customize helm value.
+reference resources [1.4.1 Run Admin based on Chart warehouse](1.4.1-Run-from-helm-chart-sources) Learn how to customize installation parameters.
 
 ```sh
 $ helm install dubbo-admin -f properties.yaml dubbo-charts/dubbo-admin
@@ -103,65 +139,13 @@ $ helm install dubbo-admin -f properties.yaml dubbo-charts/dubbo-admin
 
 **3. Visit Dubbo Admin**
 
-Dubbo Admin should now has been successfully installed, run the following command:
+Dubbo Admin Now that the installation should be successful, run the following command to obtain the access address:
 
 ```sh
 $ kubectl --namespace default port-forward service/dubbo-admin 38080:38080
 ```
 
-Open browser and visit http://127.0.0.1:38080, default username and password are `root`
-
-## 1.2 Run With Kubernetes
-
-**1. Get Kubernetes manifests**
-```sh
-$ git clone https://github.com/apache/dubbo-admin.git
-```
-
-All we need from this step is the Admin kubernetes manifests in `deploy/k8s`
-
-But before you can apply the manifests, override the default value defined in [application.properties](./dubbo-admin-server/src/main/resources/application.properties) by adding items in `configmap.yaml`.
-
-```sh
-$ cd /dubbo-admin/deploy/kubernetes
-```
-
-**2. Deploy Dubbo Admin**
-```sh
-# Change configuration in ./deploy/application.yml before apply if necessary
-$ kubectl apply -f ./
-```
-
-**3. Visit Admin**
-```sh
-$ kubectl port-forward service dubbo-admin 38080:38080
-```
-
-Open web browser and visit `http://localhost:38080`, default username and password are `root`
-
-## 1.3 Run With Docker
-The prebuilt docker image is hosted at: https://hub.docker.com/repository/docker/apache/dubbo-admin
-
-You can run the image directly by mounting a volume from the host that contains an `application.properties` file with the accessible registry and config-center addresses specified.
-
-```sh
-$ docker run -it --rm -v /the/host/path/containing/properties:/config -p 38080:38080 apache/dubbo-admin
-```
-
-Replace `/the/host/path/containing/properties` with the actual host path (must be an absolute path) that points to a directory containing `application.properties`.
-
-Open web browser and visit `http://localhost:38080`, default username and password are `root`
-
-## 1.4 Compile From Source
-1. Clone source code on `develop` branch `git clone https://github.com/apache/dubbo-admin.git`
-2. Specify registry address in `dubbo-admin-server/src/main/resources/application.properties`
-3. Build
-    - `mvn clean package -Dmaven.test.skip=true`
-4. Start
-    * `mvn --projects dubbo-admin-server spring-boot:run`
-    OR
-    * `cd dubbo-admin-distribution/target`;   `java -jar dubbo-admin-0.1.jar`
-5. Visit `http://localhost:38080`, default username and password are `root`
+Visit http://127.0.0.1:38080
 
 # 2. Want To Contribute
 
