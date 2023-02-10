@@ -1,0 +1,54 @@
+{{ .Release.Name }} VERSION: {{ .Chart.Version }}
+{{ .Values.fullnameOverride }} VERSION: {{ .Values.image.extratag }}
+
+1.  Get your '{{ .Chart.Name }}' by running:
+
+   kubectl get deploy {{ include "dubbo-admin.fullname" . }} -n {{ include "dubbo-admin.namespace" . }}
+
+2. Login Dubbo-admin default user and password:
+   **********************************************
+               USERNAME: root
+               PASSWORD: root
+   **********************************************
+
+3. The Dubbo-admin server can be accessed via port {{ .Values.service.port }} on the following DNS name from within your cluster:
+
+       {{ include "dubbo-admin.fullname" . }}.{{ include "dubbo-admin.namespace" . }}.svc.cluster.local
+
+   {{ if .Values.ingress.enabled }}
+   If you bind Dubbo-admin to 38080, please update values in values.yaml and reinstall:
+
+   From outside the cluster, the server URL(s) are:
+     {{- range .Values.ingress.hosts }}
+     http://{{ . }}
+     {{- end }}
+   {{- else }}
+4. Get the Dubbo-admin URL to visit by running these commands in the same shell:
+   {{- if contains "NodePort" .Values.service.type }}
+     export NODE_PORT=$(kubectl get --namespace {{ include "dubbo-admin.namespace" . }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "dubbo-admin.fullname" . }})
+
+     export NODE_IP=$(kubectl get nodes --namespace {{ include "dubbo-admin.namespace" . }} -o jsonpath="{.items[0].status.addresses[0].address}")
+
+     echo http://$NODE_IP:$NODE_PORT
+   {{- else if contains "LoadBalancer" .Values.service.type }}
+   NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+        You can watch the status of by running 'kubectl get svc --namespace {{ include "dubbo-admin.namespace" . }} -w {{ include "dubbo-admin.fullname" . }}'
+
+     export SERVICE_IP=$(kubectl get svc --namespace {{ include "dubbo-admin.namespace" . }} {{ include "dubbo-admin.fullname" . }} -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+     http://$SERVICE_IP:{{ .Values.service.port -}}
+   {{- else if contains "ClusterIP"  .Values.service.type }}
+
+     export POD_NAME=$(kubectl get pods --namespace {{ include "dubbo-admin.namespace" . }} -l "app.kubernetes.io/name={{ include "dubbo-admin.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
+
+     kubectl --namespace {{ include "dubbo-admin.namespace" . }} port-forward $POD_NAME 38080
+   {{- end }}
+{{- end }}
+
+
+{{- if not .Values.persistence.enabled }}
+#################################################################################
+######   WARNING: Persistence is disabled!!! You will lose your data when   #####
+######            the Dubbo-admin pod is terminated.                        #####
+#################################################################################
+{{- end }}

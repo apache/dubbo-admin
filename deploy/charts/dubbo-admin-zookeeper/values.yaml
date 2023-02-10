@@ -1,0 +1,878 @@
+## global.imageRegistry Global Docker image registry
+## global.imagePullSecrets Global Docker registry secret names as an array
+## global.storageClass Global StorageClass for Persistent Volume(s)
+##
+global:
+  imageRegistry: ""
+  ## E.g.
+  ## imagePullSecrets:
+  ##   - myRegistryKeySecretName
+  ##
+  imagePullSecrets: []
+  ##
+  ##
+## fullnameOverride String to fully override common.names.fullname template
+##
+fullnameOverride: zookeeper
+##
+##
+## nameOverride String to partially override common.names.fullname template (will maintain the release name)
+##
+nameOverride: zookeeper
+##
+##
+## namespaceOverride String to partially override common.names.namespace template
+##
+namespaceOverride: {}
+##
+##
+## Enable diagnostic mode in the statefulset
+##
+diagnosticMode:
+  ## @param diagnosticMode.enabled Enable diagnostic mode (all probes will be disabled and the command will be overridden)
+  ##
+  enabled: false
+  ## @param diagnosticMode.command Command to override all containers in the statefulset
+  ##
+  command:
+    - sleep
+  ## @param diagnosticMode.args Args to override all containers in the statefulset
+  ##
+  args:
+    - infinity
+## labels String to override common.names.labels template
+##
+labels: {}
+##
+##
+## annotations String to override common.names.annotations template
+##
+annotations: {}
+##
+##
+##
+##
+## See `kubectl explain poddisruptionbudget.spec` for more
+## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+podDisruptionBudget:
+  minAvailable: 1
+  # maxUnavailable: 1
+##
+##
+clusterDomain: cluster.local
+## @param extraDeploy Extra objects to deploy (evaluated as a template)
+##
+##
+##
+rbac:
+  create: true
+  # Use an existing ClusterRole/Role (depending on rbac.namespaced false/true)
+  pspEnabled: true
+  pspUseAppArmor: true
+  namespaced: false
+  extraRoleRules: []
+  useExistingRole: []
+  # - apiGroups: []
+  #   resources: []
+  #   verbs: []
+  extraClusterRoleRules: []
+  # - apiGroups: []
+  #   resources: []
+  #   verbs: []
+
+  ## serviceAccount Name
+serviceAccount:
+  create: true
+  name:
+  ## ServiceAccount labels.
+  labels: {}
+  annotations: {}
+
+
+## dubbo-admin replicas
+replicas: 1
+
+## zookeeper replicas
+extrareplicas: 1
+
+
+# -- Optional array of imagePullSecrets containing private registry credentials
+## Ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+imagePullSecrets: []
+# - name: secretName
+
+
+## Create a headless service for the deployment
+headlessService: false
+
+
+## Create HorizontalPodAutoscaler object for deployment type
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPU: "60"
+  targetMemory: ""
+  behavior: {}
+
+
+## Number of old ReplicaSets to retain
+##
+revisionHistoryLimit: 10
+
+
+## See `kubectl explain deployment.spec.strategy` for more
+## ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
+deploymentStrategy:
+  type: RollingUpdate
+
+
+## zookeeper container Ports
+containerPorts:
+  client: 2181
+  tls: 3181
+  follower: 2888
+  election: 3888
+
+extraVolumes: []
+## @param extraVolumeMounts Optionally specify extra list of additional volumeMounts for the ZooKeeper container(s)
+## Example Use Case: mount certificates to enable TLS
+## e.g:
+## extraVolumeMounts:
+## - name: zookeeper-keystore
+##   mountPath: /certs/keystore
+##   readOnly: true
+## - name: zookeeper-truststore
+##   mountPath: /certs/truststore
+##   readOnly: true
+##
+extraVolumeMounts: []
+## @param sidecars Add additional sidecar containers to the ZooKeeper pod(s)
+## e.g:
+## sidecars:
+##   - name: your-image-name
+##     image: your-image
+##     imagePullPolicy: Always
+##     ports:
+##       - name: portname
+##         containerPort: 1234
+##
+## @param tickTime Basic time unit (in milliseconds) used by ZooKeeper for heartbeats
+##
+auth:
+  client:
+    ## @param auth.client.enabled Enable ZooKeeper client-server authentication. It uses SASL/Digest-MD5
+    ##
+    enabled: false
+    ## @param auth.client.clientUser User that will use ZooKeeper clients to auth
+    ##
+    clientUser: ""
+    ## @param auth.client.clientPassword Password that will use ZooKeeper clients to auth
+    ##
+    clientPassword: ""
+    ## @param auth.client.serverUsers Comma, semicolon or whitespace separated list of user to be created
+    ## Specify them as a string, for example: "user1,user2,admin"
+    ##
+    serverUsers: ""
+    ## @param auth.client.serverPasswords Comma, semicolon or whitespace separated list of passwords to assign to users when created
+    ## Specify them as a string, for example: "pass4user1, pass4user2, pass4admin"
+    ##
+    serverPasswords: ""
+    ## @param auth.client.existingSecret Use existing secret (ignores previous passwords)
+    ##
+    existingSecret: ""
+  quorum:
+    ## @param auth.quorum.enabled Enable ZooKeeper server-server authentication. It uses SASL/Digest-MD5
+    ##
+    enabled: false
+    ## @param auth.quorum.learnerUser User that the ZooKeeper quorumLearner will use to authenticate to quorumServers.
+    ## Note: Make sure the user is included in auth.quorum.serverUsers
+    ##
+    learnerUser: ""
+    ## @param auth.quorum.learnerPassword Password that the ZooKeeper quorumLearner will use to authenticate to quorumServers.
+    ##
+    learnerPassword: ""
+    ## @param auth.quorum.serverUsers Comma, semicolon or whitespace separated list of users for the quorumServers.
+    ## Specify them as a string, for example: "user1,user2,admin"
+    ##
+    serverUsers: ""
+    ## @param auth.quorum.serverPasswords Comma, semicolon or whitespace separated list of passwords to assign to users when created
+    ## Specify them as a string, for example: "pass4user1, pass4user2, pass4admin"
+    ##
+    serverPasswords: ""
+    ## @param auth.quorum.existingSecret Use existing secret (ignores previous passwords)
+    ##
+    existingSecret: ""
+## @param tickTime Basic time unit (in milliseconds) used by ZooKeeper for heartbeats
+##
+tickTime: 2000
+## @param initLimit ZooKeeper uses to limit the length of time the ZooKeeper servers in quorum have to connect to a leader
+##
+initLimit: 10
+## @param syncLimit How far out of date a server can be from a leader
+##
+syncLimit: 5
+## @param preAllocSize Block size for transaction log file
+##
+preAllocSize: 65536
+## @param snapCount The number of transactions recorded in the transaction log before a snapshot can be taken (and the transaction log rolled)
+##
+snapCount: 100000
+## @param maxClientCnxns Limits the number of concurrent connections that a single client may make to a single member of the ZooKeeper ensemble
+##
+maxClientCnxns: 60
+## @param maxSessionTimeout Maximum session timeout (in milliseconds) that the server will allow the client to negotiate
+## Defaults to 20 times the tickTime
+##
+maxSessionTimeout: 40000
+## @param heapSize Size (in MB) for the Java Heap options (Xmx and Xms)
+## This env var is ignored if Xmx an Xms are configured via `jvmFlags`
+##
+heapSize: 1024
+## @param fourlwCommandsWhitelist A list of comma separated Four Letter Words commands that can be executed
+##
+fourlwCommandsWhitelist: srvr, mntr, ruok
+## @param minServerId Minimal SERVER_ID value, nodes increment their IDs respectively
+## Servers increment their ID starting at this minimal value.
+## E.g., with `minServerId=10` and 3 replicas, server IDs will be 10, 11, 12 for z-0, z-1 and z-2 respectively.
+##
+minServerId: 1
+## @param listenOnAllIPs Allow ZooKeeper to listen for connections from its peers on all available IP addresses
+##
+listenOnAllIPs: false
+## Ongoing data directory cleanup configuration
+##
+autopurge:
+  ## @param autopurge.snapRetainCount The most recent snapshots amount (and corresponding transaction logs) to retain
+  ##
+  snapRetainCount: 3
+  ## @param autopurge.purgeInterval The time interval (in hours) for which the purge task has to be triggered
+  ## Set to a positive integer to enable the auto purging
+  ##
+  purgeInterval: 0
+## @param logLevel Log level for the ZooKeeper server. ERROR by default
+## Have in mind if you set it to INFO or WARN the ReadinessProve will produce a lot of logs
+##
+logLevel: ERROR
+## @param jvmFlags Default JVM flags for the ZooKeeper process
+##
+jvmFlags: ""
+## @param dataLogDir Dedicated data log directory
+## This allows a dedicated log device to be used, and helps avoid competition between logging and snapshots.
+## E.g.
+## dataLogDir: /bitnami/zookeeper/dataLog
+##
+dataLogDir: ""
+##
+##
+configuration: ""
+## @param existingConfigmap The name of an existing ConfigMap with your custom configuration for ZooKeeper
+## NOTE: When it's set the `configuration` parameter is ignored
+##
+existingConfigmap: ""
+## @param extraEnvVars Array with extra environment variables to add to ZooKeeper nodes
+## e.g:
+## extraEnvVars:
+##   - name: FOO
+##     value: "bar"
+##
+##
+## @param readinessProbe.enabled Enable readinessProbe on ZooKeeper containers
+## @param readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+## @param readinessProbe.periodSeconds Period seconds for readinessProbe
+## @param readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+## @param readinessProbe.failureThreshold Failure threshold for readinessProbe
+## @param readinessProbe.successThreshold Success threshold for readinessProbe
+## @param readinessProbe.probeCommandTimeout Probe command timeout for readinessProbe
+##
+readinessProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 60
+  timeoutSeconds: 30
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+
+
+## @param livenessProbe.enabled Enable livenessProbe on ZooKeeper containers
+## @param livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+## @param livenessProbe.periodSeconds Period seconds for livenessProbe
+## @param livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+## @param livenessProbe.failureThreshold Failure threshold for livenessProbe
+## @param livenessProbe.successThreshold Success threshold for livenessProbe
+## @param livenessProbe.probeCommandTimeout Probe command timeout for livenessProbe
+##
+livenessProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 60
+  timeoutSeconds: 30
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+
+## @param startupProbe.enabled Enable startupProbe on ZooKeeper containers
+## @param startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+## @param startupProbe.periodSeconds Period seconds for startupProbe
+## @param startupProbe.timeoutSeconds Timeout seconds for startupProbe
+## @param startupProbe.failureThreshold Failure threshold for startupProbe
+## @param startupProbe.successThreshold Success threshold for startupProbe
+##
+startupProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 60
+  timeoutSeconds: 30
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+
+
+## Dubbo-admin image version
+image:
+  registry: docker.io
+  repository: apache/dubbo-admin
+  tag: "0.5.0"
+  ##
+  ## Specify a imagePullPolicy
+  ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
+  ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
+  ##
+  pullPolicy: IfNotPresent
+  ##
+  ## Optionally specify an array of imagePullSecrets.
+  ## Secrets must be manually created in the namespace.
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+  ## Can be templated.
+  ##
+  pullSecrets: []
+  #   - RegisterKeySecretName
+  ##
+  extrarepository: bitnami/zookeeper
+  extratag: 3.8.1-debian-11-r0
+  digest: ""
+  debug: []
+
+
+## Configure Pods Security Context
+securityContext:
+  # runAsUser: 570
+  # runAsGroup: 570
+  # fsGroup: 570
+
+
+testFramework:
+  enabled: true
+  image: busybox
+  tag: ""
+  imagePullPolicy: IfNotPresent
+  securityContext: {}
+
+
+## Init container Security Context
+containerSecurityContext:
+  enabled: false
+
+
+## Sensible environment variables that will be rendered as new secret object
+## This can be useful for auth tokens, etc
+envRenderSecret: {}
+
+podManagementPolicy: Parallel
+## @param priorityClassName Name of the existing priority class to be used by ZooKeeper pods, priority class needs to be created beforehand
+## Ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+##
+
+
+minServerId: 1
+## @param listenOnAllIPs Allow ZooKeeper to listen for connections from its peers on all available IP addresses
+##
+
+
+# -- `minReadySeconds` to avoid killing pods before we are ready
+##
+minReadySeconds: 0
+# -- Node tolerations for server scheduling to nodes with taints
+## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
+##
+
+
+## Create or not configmap
+createConfigmap: true
+
+
+## configmap mounts
+ConfigmapMounts: []
+  # - name: configMap-file
+  #   mountPath: /config
+  #   configMap: configMap-file
+  #   readOnly: true
+
+
+## secret mounts
+SecretMounts:
+#  - name: secret-file
+#    secret:
+#      secretName: secret-file
+
+
+## extraSecret Mounts
+extraSecretMounts: []
+  # - name: secret-files
+  #   mountPath: /etc/secrets
+  #   secretName: secret-files
+  #   readOnly: true
+  #   subPath: ""
+
+
+## emptyDir mounts
+EmptyDirMounts: []
+# - name: ""
+#   mountPath: /
+
+
+## Apply extra labels to common labels.
+extraLabels: {}
+
+
+## Assign a PriorityClassName to pods if set
+# priorityClassName:
+
+
+## Pod Annotations
+# podAnnotations: {}
+
+
+## Pod Labels
+# podLabels: {}
+
+
+## Expose the dubbo-admin service to be accessed from outside the cluster (LoadBalancer service).
+## or access it from within the cluster (ClusterIP service). Set the service type and the port to serve it.
+## ref: http://kubernetes.io/docs/user-guide/services/
+##
+service:
+  name: http
+  ##
+  ##
+  ##
+  enabled: true
+  ##
+  ##
+  ##
+  type: ClusterIP
+  ##
+  ##
+  ##
+  clusterIP: ""
+  ##
+  ## ref: https://kubernetes.io/docs/user-guide/services/#type-loadbalancer
+  ##
+  ##
+  ##
+  loadBalancerIP: ""
+  ## ref: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/#restrict-access-for-loadbalancer-service
+  ## e.g:
+  ## loadBalancerSourceRanges:
+  ##   - 10.10.10.0/24
+  ##
+  ##
+  loadBalancerSourceRanges: []
+  ##
+  ## ref https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip
+  ##
+  externalIPs: []
+  ##
+  ##
+  ##
+  nodePort: []
+  ##
+  ##
+  ##
+  path: /
+  ##
+  ##
+  ##
+  port: 38080
+  ##
+  ##
+  ##
+  targetPort: http
+  ##
+  ##
+  ##
+  containerPort: 8080
+  ##
+  ##
+  ##
+  protocol: TCP
+  ##
+  ##
+  ##
+  ## Service annotations. Can be templated.
+  annotations: {}
+  labels: {}
+  portName: service
+  appProtocol: ""
+
+  ## @param service.type Kubernetes Service type
+  ##
+  ports:
+    client: 2181
+    tls: 3181
+    follower: 2888
+    election: 3888
+  ## Node ports to expose
+  ## NOTE: choose port between <30000-32767>
+  ## @param service.nodePorts.client Node port for clients
+  ## @param service.nodePorts.tls Node port for TLS
+  ##
+  nodePorts:
+    client: ""
+    tls: ""
+  ## @param service.disableBaseClientPort Remove client port from service definitions.
+  ##
+  disableBaseClientPort: false
+  ## @param service.sessionAffinity Control where client requests go, to the same pod or round-robin
+  ## Values: ClientIP or None
+  ## ref: https://kubernetes.io/docs/user-guide/services/
+  ##
+  sessionAffinity: None
+  ## @param service.sessionAffinityConfig Additional settings for the sessionAffinity
+  ## sessionAffinityConfig:
+  ##   clientIP:
+  ##     timeoutSeconds: 300
+  ##
+  sessionAffinityConfig: {}
+  ##
+  ##
+  ##
+  externalTrafficPolicy: Cluster
+  ## @param service.annotations Additional custom annotations for ZooKeeper service
+  ##
+  ##
+  extraPorts: [ ]
+  ## @param service.headless.annotations Annotations for the Headless Service
+  ## @param service.headless.publishNotReadyAddresses If the ZooKeeper headless service should publish DNS records for not ready pods
+  ## @param service.headless.servicenameOverride String to partially override headless service name
+  ##
+  headless:
+    publishNotReadyAddresses: true
+    annotations: { }
+    servicenameOverride: ""
+
+
+ingress:
+  enabled: false
+  # For Kubernetes >= 1.18 you should specify the ingress-controller via the field ingressClassName
+  # See https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/#specifying-the-class-of-an-ingress
+  # ingressClassName: nginx
+  # Values can be templated
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+  # kubernetes.io/tls-acme: "true"
+  labels: {}
+  path: /
+
+
+  # pathType is only for k8s >= 1.1=
+  pathType: Prefix
+
+
+  hosts:
+    - chart-example.local
+  ## Extra paths to prepend to every host configuration. This is useful when working with annotation based services.
+  extraPaths: []
+  # - path: /*
+  #   backend:
+  #     serviceName: ssl-redirect
+  #     servicePort: use-annotation
+  ## Or for k8s > 1.19
+  # - path: /*
+  #   pathType: Prefix
+  #   backend:
+  #     service:
+  #       name: ssl-redirect
+  #       port:
+  #         name: use-annotation
+
+
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+
+resources: {}
+#  limits:
+#    cpu: 100m
+#    memory: 128Mi
+#  requests:
+#    cpu: 100m
+#    memory: 128Mi
+
+
+## Node labels for pod assignment
+## ref: https://kubernetes.io/docs/user-guide/node-selection/
+#
+nodeSelector: {}
+
+
+## Tolerations for pod assignment
+## ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+##
+tolerations: []
+
+
+## Affinity for pod assignment (evaluated as template)
+## ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
+##
+affinity: {}
+
+
+## Topology Spread Constraints
+## ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/
+##
+topologySpreadConstraints: []
+
+
+## Additional init containers (evaluated as template)
+## ref: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+##
+InitContainers: []
+
+
+## Enable persistence using Persistent Volume Claims
+## ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
+##
+persistence:
+  enabled: false
+  type: pvc
+  storageClassName: {}
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  labels: {}
+  annotations: {}
+  finalizers:
+    - kubernetes.io/pvc-protection
+  selectorLabels: {}
+  ## Sub-directory of the PV to mount. Can be templated.
+  # subPath: ""
+  ## Name of an existing PVC. Can be templated.
+  ClaimName: {}
+  ## Extra labels to apply to a PVC.
+  extraPvcLabels: {}
+  ##
+  ##
+  existingClaim: ""
+    ## @param persistence.storageClass PVC Storage Class for ZooKeeper data volume
+    ## If defined, storageClassName: <storageClass>
+    ## If set to "-", storageClassName: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClassName spec is
+    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+  ##   GKE, AWS & OpenStack)
+  ##
+  ##
+  ## If persistence is not enabled, this allows to mount the
+  ## local storage in-memory to improve performance
+  ##
+  inMemory:
+    enabled: false
+    ## The maximum usage on memory medium EmptyDir would be
+    ## the minimum value between the SizeLimit specified
+    ## here and the sum of memory limits of all containers in a pod
+    ##
+    # sizeLimit: 300Mi
+  emptyDir:
+    ## dubbo-admin emptyDir volume size limit
+    ##
+    sizeLimit: ""
+    ##
+    ##
+  selector: {}
+  ## Persistence for a dedicated data log directory
+  ##
+  dataLogDir:
+    ## @param persistence.dataLogDir.size PVC Storage Request for ZooKeeper's dedicated data log directory
+    ##
+    size: 8Gi
+    ## @param persistence.dataLogDir.existingClaim Provide an existing `PersistentVolumeClaim` for ZooKeeper's data log directory
+    ## If defined, PVC must be created manually before volume will be bound
+    ## The value is evaluated as a template
+    ##
+    existingClaim: ""
+    ## @param persistence.dataLogDir.selector Selector to match an existing Persistent Volume for ZooKeeper's data log PVC
+    ## If set, the PVC can't have a PV dynamically provisioned for it
+    ## E.g.
+    ## selector:
+    ##   matchLabels:
+    ##     app: my-app
+    ##
+    selector: {}
+
+
+initChownData:
+  ## If false, data ownership will not be reset at startup
+  ## This allows the dubbo-admin-server to be run with an arbitrary user
+  ##
+  ##
+  ##
+  enabled: true
+  ##
+  ##
+  ## initChownData container image
+  ##
+  ##
+  image:
+    repository: busybox
+    tag: "1.31.1"
+    sha: ""
+    pullPolicy: IfNotPresent
+  ##
+  ##
+  ##
+  ##
+  ## initChownData resource requests and limits
+  ## Ref: http://kubernetes.io/docs/user-guide/compute-resources/
+  ##
+  resources: {}
+  #  limits:
+  #    cpu: 100m
+  #    memory: 128Mi
+  #  requests:
+  #    cpu: 100m
+  #    memory: 128Mi
+
+extraresources: {}
+  #  limits:
+  #    cpu: 250m
+  #    memory: 256Mi
+
+## Container Lifecycle Hooks. Execute a specific bash command or make an HTTP request
+lifecycleHooks: {}
+  # postStart:
+  #   exec:
+#     command: []
+
+
+networkPolicy:
+  ## @param networkPolicy.enabled Enable creation of NetworkPolicy resources. Only Ingress traffic is filtered for now.
+  ##
+  enabled: false
+  ## @param networkPolicy.allowExternal Don't require client label for connections
+  ## The Policy model to apply. When set to false, only pods with the correct
+  ## client label will have network access to  dubbo-admin port defined.
+  ## When true, dubbo-admin will accept connections from any source
+  ## (with the correct destination port).
+  ##
+  ingress: true
+  ## @param networkPolicy.ingress When true enables the creation
+  ## an ingress network policy
+  ##
+  allowExternal: true
+  ## @param networkPolicy.explicitNamespacesSelector A Kubernetes LabelSelector to explicitly select namespaces from which traffic could be allowed
+  ## If explicitNamespacesSelector is missing or set to {}, only client Pods that are in the networkPolicy's namespace
+  ## and that match other criteria, the ones that have the good label, can reach the dubbo-admin.
+  ## But sometimes, we want the dubbo-admin to be accessible to clients from other namespaces, in this case, we can use this
+  ## LabelSelector to select these namespaces, note that the networkPolicy's namespace should also be explicitly added.
+  ##
+  ## Example:
+  ## explicitNamespacesSelector:
+  ##   matchLabels:
+  ##     role: frontend
+  ##   matchExpressions:
+  ##    - {key: role, operator: In, values: [frontend]}
+  ##
+  explicitNamespacesSelector: {}
+  ##
+  ##
+  ##
+  ##
+  ##
+  ##
+  egress:
+    ## @param networkPolicy.egress.enabled When enabled, an egress network policy will be
+    ## created allowing dubbo-admin to connect to external data sources from kubernetes cluster.
+    enabled: false
+    ##
+    ## @param networkPolicy.egress.ports Add individual ports to be allowed by the egress
+    ports: []
+      ## Add ports to the egress by specifying - port: <port number>
+      ## E.X.
+      ## ports:
+      ## - port: 80
+      ## - port: 443
+
+## dubbo-admin-server/src/main/resources/application.properties
+#
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+#
+properties:
+  admin.registry.address: zookeeper://zookeeper:2181
+  admin.config-center: zookeeper://zookeeper:2181
+  admin.metadata-report.address: zookeeper://zookeeper:2181
+  admin.root.user.name: root
+  admin.root.user.password: root
+  admin.check.sessionTimeoutMilli: 3600000
+  server.compression.enabled: true
+  server.compression.mime-types: text/css,text/javascript,application/javascript
+  server.compression.min-response-size: 10240
+  admin.check.tokenTimeoutMilli: 3600000
+  admin.check.signSecret: 86295dd0c4ef69a1036b0b0c15158d77
+  dubbo.application.name: dubbo-admin
+  dubbo.registry.address: ${admin.registry.address}
+  spring.datasource.url: jdbc:h2:mem:~/dubbo-admin;MODE=MYSQL;
+  spring.datasource.username: sa
+  spring.datasource.password:
+  mybatis-plus.global-config.db-config.id-type: none
+  dubbo.application.logger: slf4j
+  
+  # nacos config, add parameters to url like username=nacos&password=nacos
+  # admin.registry.address: nacos://127.0.0.1:8848?group=DEFAULT_GROUP&namespace=public
+  # admin.config-center: nacos://127.0.0.1:8848?group=dubbo
+  # admin.metadata-report.address: nacos://127.0.0.1:8848?group=dubbo
+  
+  
+  # group (Deprecated it is recommended to use URL to add parameters,will be removed in the future)
+  # admin.registry.group: dubbo
+  # admin.config-center.group: dubbo
+  # admin.metadata-report.group: dubbo
+  
+  # namespace used by nacos.(Deprecated it is recommended to use URL to add parameters,will be removed in the future)
+  # admin.registry.namespace: public
+  # admin.config-center.namespace: public
+  # admin.metadata-report.namespace: public
+  
+  # apollo config
+  # admin.config-center: apollo://localhost:8070?token=e16e5cd903fd0c97a116c873b448544b9d086de9&app.id=test&env=dev&cluster=default&namespace=dubbo
+  # admin.apollo.token: e16e5cd903fd0c97a116c873b448544b9d086de9
+  # admin.apollo.appId: test
+  # admin.apollo.env: dev
+  # admin.apollo.cluster: default
+  
+  # mysql
+  # spring.datasource.driver-class-name: com.mysql.jdbc.Driver
+  # spring.datasource.url: jdbc:mysql://localhost:3306/dubbo-admin?characterEncoding=utf8&connectTimeout=1000&socketTimeout=10000&autoReconnect=true
+  # spring.datasource.username: root
+  # spring.datasource.password: mysql
+
