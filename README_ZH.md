@@ -35,7 +35,9 @@ Dubbo Admin 是一个控制台，为 Dubbo 集群提供更好可视化服务。A
 ## 1.2 Docker 运行 Admin
  Admin 镜像托管在： https://hub.docker.com/repository/docker/apache/dubbo-admin
 
- 修改 `application.properties` 文件默认参数，如注册中心、配置中心地址等, 通过 `docker inspect` 获取地址，172.17.0.2 是 zookeeper 的注册中心地址
+  1、下面 `172.17.0.2` 注册中心地址是 docker 运行 zookeeper 注册中心地址，修改 `application.properties` 文件默认参数，如注册中心地址等。
+  2、通过 `docker inspect` 获取 zookeeper 注册中心地址。
+  3、将 `172.17.0.2` 注册中心地址修改成你当前 docker 运行 zookeeper 注册中心地址。
 ```
   admin.registry.address: zookeeper://172.17.0.2:2181
   admin.config-center: zookeeper://172.17.0.2:2181
