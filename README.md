@@ -36,7 +36,9 @@ Choose either method based on your environment, where Helm is the recommended in
 ## 1.2 Docker with Admin
 Admin image hosting at： https://hub.docker.com/repository/docker/apache/dubbo-admin
 
-modify `application.properties` File default parameters，For example, address of registration center and configuration center, Get the address through 'docker inspect'，172.17.0.2 is the registration center address of zookeeper.
+  1, the following `172.17.0.2` registry address is the docker run zookeeper registry address, modify the `application.properties` file default parameters, such as registry address, etc.
+  2、Get the zookeeper registry address through `docker inspect`.
+  3.Change `172.17.0.2` registry address to your current docker running zookeeper registry address.
 ```
   admin.registry.address: zookeeper://172.17.0.2:2181
   admin.config-center: zookeeper://172.17.0.2:2181
