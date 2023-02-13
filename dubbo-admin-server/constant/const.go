@@ -20,4 +20,9 @@ const (
 	EnabledKey            = "enabled"
 	CheckKey              = "check"
 	AdminProtocol         = "admin"
+	Side                  = "side"
+	ConsumerSide          = "consumer"
+	ProviderSide          = "provider"
+	ConsumerProtocol      = "consumer"
+	EmptyProtocol         = "empty"
 )

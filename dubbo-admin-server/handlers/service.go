@@ -18,13 +18,26 @@
 package handlers
 
 import (
+	"admin/cache"
+	"admin/constant"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"sync"
 )
 
 func AllServices(c *gin.Context) {
+	services, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
+	var value []string
+	if !ok {
+		value = []string{}
+	} else {
+		services.(*sync.Map).Range(func(key, v interface{}) bool {
+			value = append(value, key.(string))
+			return true
+		})
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"code": 1,
-		"data": []string{"aa", "bb", "cc"},
+		"data": value,
 	})
 }
