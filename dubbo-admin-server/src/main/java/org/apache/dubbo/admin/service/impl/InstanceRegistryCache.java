@@ -17,6 +17,7 @@
 
 package org.apache.dubbo.admin.service.impl;
 
+import org.apache.dubbo.admin.common.util.ConcurrentHashMapUtils;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.service.RegistryCache;
 import org.apache.dubbo.common.URL;
@@ -25,18 +26,13 @@ import org.apache.dubbo.metadata.MetadataService;
 import org.apache.dubbo.registry.client.InstanceAddressURL;
 import org.apache.dubbo.registry.client.metadata.MetadataUtils;
 import org.apache.dubbo.rpc.service.Destroyable;
-
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -67,7 +63,7 @@ public class InstanceRegistryCache implements RegistryCache<String, ConcurrentMa
     @Override
     public ConcurrentMap<String, Map<String, List<InstanceAddressURL>>> computeIfAbsent(String key,
                                                                                         Function<? super String, ? extends ConcurrentMap<String, Map<String, List<InstanceAddressURL>>>> mappingFunction) {
-        return registryCache.computeIfAbsent(key, mappingFunction);
+        return ConcurrentHashMapUtils.computeIfAbsent(registryCache, key, mappingFunction);
     }
 
     public Map<String, Map<String, List<URL>>> getSubscribedCache() {

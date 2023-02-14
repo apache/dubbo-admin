@@ -17,6 +17,8 @@
 
 package org.apache.dubbo.admin.registry.mapping;
 
+import com.google.common.collect.Sets;
+import org.apache.dubbo.admin.common.util.ConcurrentHashMapUtils;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.service.impl.InstanceRegistryCache;
 import org.apache.dubbo.common.URL;
@@ -29,8 +31,6 @@ import org.apache.dubbo.registry.client.ServiceDiscovery;
 import org.apache.dubbo.registry.client.ServiceInstance;
 import org.apache.dubbo.registry.client.event.ServiceInstancesChangedEvent;
 import org.apache.dubbo.registry.client.event.listener.ServiceInstancesChangedListener;
-
-import com.google.common.collect.Sets;
 
 import java.util.List;
 import java.util.Map;
@@ -108,7 +108,7 @@ public class AdminMappingListener implements MappingListener {
         public void notifyAddressChanged(String protocolServiceKey, List<URL> urls) {
             String serviceKey = removeProtocol(protocolServiceKey);
             ConcurrentMap<String, Map<String, List<InstanceAddressURL>>> appServiceMap = instanceRegistryCache.computeIfAbsent(Constants.PROVIDERS_CATEGORY, key -> new ConcurrentHashMap<>());
-            Map<String, List<InstanceAddressURL>> serviceMap = appServiceMap.computeIfAbsent(serviceName, key -> new ConcurrentHashMap<>());
+            Map<String, List<InstanceAddressURL>> serviceMap = ConcurrentHashMapUtils.computeIfAbsent(appServiceMap, serviceName, key -> new ConcurrentHashMap<>());
             if (CollectionUtils.isEmpty(urls)) {
                 serviceMap.remove(serviceKey);
             } else {
