@@ -1,4 +1,4 @@
-{{- if and .Values.rbac.create (not .Values.rbac.namespaced) }}
+{{- if and .Values.rbac.enabled (not .Values.rbac.namespaced) }}
 apiVersion: {{ include "dubbo-admin.rbac.apiVersion" . }}
 kind: ClusterRoleBinding
 metadata:

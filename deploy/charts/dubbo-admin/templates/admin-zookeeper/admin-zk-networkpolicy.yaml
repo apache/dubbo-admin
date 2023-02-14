@@ -1,0 +1,41 @@
+{{- if .Values.networkPolicy.enabled }}
+kind: NetworkPolicy
+apiVersion: {{ include "zookeeper.networkPolicy.apiVersion" . }}
+metadata:
+  name: {{ include "zookeeper.fullname" . }}
+  namespace: {{ template "zookeeper.namespace" . }}
+  labels: {{- include "zookeeper.labels" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "zookeeper.tplvalues" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "zookeeper.tplvalues" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  podSelector:
+    matchLabels: {{- include "zookeeper.matchLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow inbound connections to ZooKeeper
+    - ports:
+        - port: {{ .Values.containerPorts.client }}
+        {{- if .Values.metrics.enabled }}
+        - port: {{ .Values.metrics.containerPort }}
+        {{- end }}
+      {{- if not .Values.networkPolicy.allowExternal }}
+      from:
+        - podSelector:
+            matchLabels:
+              {{ include "zookeeper.fullname" . }}-client: "true"
+        - podSelector:
+            matchLabels: {{- include "zookeeper.matchLabels" . | nindent 14 }}
+      {{- end }}
+    # Allow internal communications between nodes
+    - ports:
+        - port: {{ .Values.containerPorts.follower }}
+        - port: {{ .Values.containerPorts.election }}
+      from:
+        - podSelector:
+            matchLabels: {{- include "zookeeper.matchLabels" . | nindent 14 }}
+{{- end }}
