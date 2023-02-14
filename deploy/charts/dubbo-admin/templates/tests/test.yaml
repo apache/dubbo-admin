@@ -1,4 +1,4 @@
-{{- if .Values.testFramework.enabled }}
+{{- if .Values.tests.enabled }}
 {{- $root := . }}
 apiVersion: v1
 kind: Pod
@@ -12,7 +12,7 @@ metadata:
   namespace: {{ include "dubbo-admin.namespace" . }}
 spec:
   serviceAccountName: {{ include "dubbo-admin.serviceAccountName" . }}
-  {{- with .Values.testFramework.securityContext }}
+  {{- with .Values.tests.securityContext }}
   securityContext:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -34,8 +34,8 @@ spec:
   {{- end }}
   containers:
     - name: {{ .Release.Name }}-test
-      image: "{{ .Values.testFramework.image}}"
-      imagePullPolicy: "{{ .Values.testFramework.imagePullPolicy}}"
+      image: "{{ .Values.tests.image}}"
+      imagePullPolicy: "{{ .Values.tests.imagePullPolicy}}"
       command: ["wget"]
       volumeMounts:
         - mountPath: /tests

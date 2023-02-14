@@ -1,4 +1,4 @@
-{{- if .Values.rbac.create }}
+{{- if .Values.rbac.enabled }}
 apiVersion: {{ include "dubbo-admin.rbac.apiVersion" . }}
 kind: RoleBinding
 metadata:

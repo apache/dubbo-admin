@@ -1,6 +1,12 @@
+====================================================
 CHART NAME: {{ .Chart.Name }}
-CHART VERSION: {{ .Chart.Version }}
-APP VERSION: {{ .Chart.AppVersion }}
+VERSION: {{ .Chart.Name }}:{{ .Chart.AppVersion }}
+====================================================
+{{- if .Values.zookeeper.enabled }}
+Registration Center：{{ .Values.zookeeper.zoo_name }}
+VERSION: {{ .Values.zookeeper.zoo_name }}:{{ .Values.image.zoo_tag }}
+{{- end }}
+====================================================
 
 1.  Get your '{{ .Chart.Name }}' by running:
 
