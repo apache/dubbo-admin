@@ -7,11 +7,11 @@ metadata:
   namespace: {{ template "zookeeper.namespace" . }}
   labels: {{- include "zookeeper.labels" . | nindent 4 }}
     app.kubernetes.io/component: zookeeper
-    {{- if .Values.commonLabels }}
-    {{- include "zookeeper.tplvalues" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- if .Values.Labels }}
+    {{- include "zookeeper.tplvalues" ( dict "value" .Values.Labels "context" $ ) | nindent 4 }}
     {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "zookeeper.tplvalues" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- if .Values.Annotations }}
+  annotations: {{- include "zookeeper.tplvalues" ( dict "value" .Values.Annotations "context" $ ) | nindent 4 }}
   {{- end }}
 spec:
   {{- if .Values.podDisruptionBudget.minAvailable }}

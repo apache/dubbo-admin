@@ -58,6 +58,20 @@ Return the target Kubernetes version
 
 
 {{/*
+Return the target Kubernetes version
+*/}}
+{{- define "nacos.kubeVersion" -}}
+{{- if .Values.global }}
+    {{- if .Values.global.kubeVersion }}
+    {{- .Values.global.kubeVersion -}}
+    {{- else }}
+    {{- default .Capabilities.KubeVersion.Version .Values.kubeVersion -}}
+    {{- end -}}
+{{- else }}
+{{- default .Capabilities.KubeVersion.Version .Values.kubeVersion -}}
+{{- end -}}
+{{- end -}}
+{{/*
 Return the appropriate apiVersion for statefulset.
 */}}
 {{- define "zookeeper.statefulset.apiVersion" -}}
@@ -79,11 +93,35 @@ Return the appropriate apiVersion for networkpolicy.
 {{- end -}}
 {{- end -}}
 
+
+{{/*
+Return the appropriate apiVersion for networkpolicy.
+*/}}
+{{- define "nacos.networkPolicy.apiVersion" -}}
+{{- if semverCompare "<1.7-0" (include "nacos.kubeVersion" .) -}}
+{{- print "extensions/v1beta1" -}}
+{{- else -}}
+{{- print "networking.k8s.io/v1" -}}
+{{- end -}}
+{{- end -}}
+
 {{/*
 Return the appropriate apiVersion for poddisruptionbudget.
 */}}
 {{- define "zookeeper.policy.apiVersion" -}}
 {{- if semverCompare "<1.21-0" (include "zookeeper.kubeVersion" .) -}}
+{{- print "policy/v1beta1" -}}
+{{- else -}}
+{{- print "policy/v1" -}}
+{{- end -}}
+{{- end -}}
+
+
+{{/*
+Return the appropriate apiVersion for poddisruptionbudget.
+*/}}
+{{- define "nacos.policy.apiVersion" -}}
+{{- if semverCompare "<1.21-0" (include "nacos.kubeVersion" .) -}}
 {{- print "policy/v1beta1" -}}
 {{- else -}}
 {{- print "policy/v1" -}}
