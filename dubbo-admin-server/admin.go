@@ -17,9 +17,13 @@
 
 package main
 
-import "admin/router"
+import (
+	"admin/config"
+	"admin/router"
+)
 
 func main() {
+	config.LoadConfig()
 	router := router.InitRouter()
 	router.Run(":38080")
 }

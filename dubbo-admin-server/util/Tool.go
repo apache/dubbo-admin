@@ -15,29 +15,42 @@
  * limitations under the License.
  */
 
-package handlers
+package util
 
 import (
-	"admin/cache"
-	"admin/constant"
-	"github.com/gin-gonic/gin"
-	"net/http"
-	"sync"
+	"strings"
 )
 
-func AllServices(c *gin.Context) {
-	services, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
-	var value []string
-	if !ok {
-		value = []string{}
-	} else {
-		services.(*sync.Map).Range(func(key, v interface{}) bool {
-			value = append(value, key.(string))
-			return true
-		})
+func GetInterface(service string) string {
+	if len(service) > 0 {
+		index := strings.Index(service, "/")
+		if index >= 0 {
+			service = service[index+1:]
+		}
+		index = strings.LastIndex(service, ":")
+		if index >= 0 {
+			service = service[0:index]
+		}
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": value,
-	})
+	return service
+}
+
+func GetGroup(service string) string {
+	if len(service) > 0 {
+		index := strings.Index(service, "/")
+		if index >= 0 {
+			return service[0:index]
+		}
+	}
+	return ""
+}
+
+func GetVersion(service string) string {
+	if len(service) > 0 {
+		index := strings.LastIndex(service, ":")
+		if index >= 0 {
+			return service[index+1:]
+		}
+	}
+	return ""
 }
