@@ -12,5 +12,14 @@ Expand the name of the chart.
 Expand the name of the chart.
 */}}
 {{- define "zookeeper.name" -}}
-{{- default .Values.zookeeper.zoo_name | trunc 63 | trimSuffix "-" -}}
+{{- default .Values.zookeeper.name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
+
+{{/* vim: set filetype=mustache: */}}
+{{/*
+Expand the name of the chart.
+*/}}
+{{- define "nacos.name" -}}
+{{- default .Values.nacos.name | trunc 63 | trimSuffix "-" -}}
 {{- end -}}

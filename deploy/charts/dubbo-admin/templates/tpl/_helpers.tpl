@@ -36,10 +36,36 @@ If release name contains chart name it will be used as a full name.
 
 
 {{/*
-Labels to use on deploy.spec.selector.matchLabels and svc.spec.selector
+Create a default fully qualified app name.
+We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
+If release name contains chart name it will be used as a full name.
+*/}}
+{{- define "nacos.fullname" -}}
+{{- if .Values.nacos.name -}}
+{{- .Values.nacos.name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default .Values.nacos.name -}}
+{{- if contains $name .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+
+{{/*
+Labels to use on sts.spec.selector.matchLabels and svc.spec.selector
 */}}
 {{- define "zookeeper.matchLabels" -}}
 app.kubernetes.io/name: {{ include "zookeeper.name" . }}
+{{- end -}}
+
+{{/*
+Labels to use on sts.spec.selector.matchLabels and svc.spec.selector
+*/}}
+{{- define "nacos.matchLabels" -}}
+app.kubernetes.io/name: {{ include "nacos.name" . }}
 {{- end -}}
 
 

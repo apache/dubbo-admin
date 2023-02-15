@@ -1,0 +1,18 @@
+{{- $replica := int .Values.replicas }}
+{{- if and .Values.podDisruptionBudget.enabled (gt $replica 1) }}
+apiVersion: {{ include "nacos.policy.apiVersion" . }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "nacos.fullname" . }}
+  namespace: {{ template "nacos.namespace" . }}
+  labels: {{- include "nacos.labels" . | nindent 4 }}
+spec:
+  {{- if .Values.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  {{- end  }}
+  {{- if .Values.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
+  {{- end  }}
+  selector:
+    matchLabels: {{- include "nacos.matchLabels" . | nindent 6 }}
+{{- end }}

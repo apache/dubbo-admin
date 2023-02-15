@@ -39,6 +39,7 @@ global:
   imagePullSecrets: []
 
 
+
 rbac:
   enabled: true
   # Use an existing ClusterRole/Role (depending on rbac.namespaced false/true)
@@ -103,60 +104,59 @@ deploymentStrategy:
 
 
 ## @param readinessProbe.enabled Enable readinessProbe on containers
-## @param readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
-## @param readinessProbe.periodSeconds Period seconds for readinessProbe
-## @param readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
-## @param readinessProbe.failureThreshold Failure threshold for readinessProbe
-## @param readinessProbe.successThreshold Success threshold for readinessProbe
-## @param readinessProbe.probeCommandTimeout Probe command timeout for readinessProbe
-##
 readinessProbe:
   httpGet:
     path: /
     port: 8080
+  ## @param readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
   initialDelaySeconds: 60
+  ## @param readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
   timeoutSeconds: 30
+  ## @param readinessProbe.periodSeconds Period seconds for readinessProbe
   periodSeconds: 10
+  ## @param readinessProbe.successThreshold Success threshold for readinessProbe
   successThreshold: 1
+  ## @param readinessProbe.failureThreshold Failure threshold for readinessProbe
   failureThreshold: 3
+  ## @param readinessProbe.probeCommandTimeout Probe command timeout for readinessProbe
   probeCommandTimeout: 1
 
 
-## @param livenessProbe.enabled Enable livenessProbe on containers
-## @param livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
-## @param livenessProbe.periodSeconds Period seconds for livenessProbe
-## @param livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
-## @param livenessProbe.failureThreshold Failure threshold for livenessProbe
-## @param livenessProbe.successThreshold Success threshold for livenessProbe
-## @param livenessProbe.probeCommandTimeout Probe command timeout for livenessProbe
 ##
+## @param livenessProbe.enabled Enable livenessProbe on containers
 livenessProbe:
   httpGet:
     path: /
     port: 8080
+  ## @param livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
   initialDelaySeconds: 60
+  ## @param livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
   timeoutSeconds: 30
+  ## @param livenessProbe.periodSeconds Period seconds for livenessProbe
   periodSeconds: 10
+  ## @param livenessProbe.successThreshold Success threshold for livenessProbe
   successThreshold: 1
+  ## @param livenessProbe.failureThreshold Failure threshold for livenessProbe
   failureThreshold: 3
+  ## @param livenessProbe.probeCommandTimeout Probe command timeout for livenessProbe
   probeCommandTimeout: 1
 
 
+
 ## @param startupProbe.enabled Enable startupProbe on containers
-## @param startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
-## @param startupProbe.periodSeconds Period seconds for startupProbe
-## @param startupProbe.timeoutSeconds Timeout seconds for startupProbe
-## @param startupProbe.failureThreshold Failure threshold for startupProbe
-## @param startupProbe.successThreshold Success threshold for startupProbe
-##
 startupProbe:
   httpGet:
     path: /
     port: 8080
+  ## @param startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
   initialDelaySeconds: 60
+  ## @param startupProbe.timeoutSeconds Timeout seconds for startupProbe
   timeoutSeconds: 30
+  ## @param startupProbe.periodSeconds Period seconds for startupProbe
   periodSeconds: 10
+  ## @param startupProbe.successThreshold Success threshold for startupProbe
   successThreshold: 1
+  ## @param startupProbe.failureThreshold Failure threshold for startupProbe
   failureThreshold: 3
 
 
@@ -164,21 +164,12 @@ startupProbe:
 image:
   registry: docker.io
   ##  e.g registry.k8s.io
-  ##  e.g k8s.gcr.io
+  ##
   ##
   repository: apache/dubbo-admin
   ##
   ##
   tag: "0.5.0"
-  ## version
-  ##
-  zoo_repository: bitnami/zookeeper
-  ##
-  ##
-  zoo_tag: 3.8.1-debian-11-r0
-  ## zookeeper version
-  ##
-  digest: ""
   ##
   ##
   debug: false
@@ -451,6 +442,15 @@ resources: {}
 #    memory: 128Mi
 
 
+extraresources: {}
+#  limits:
+#    cpu: 100m
+#    memory: 128Mi
+#  requests:
+#    cpu: 100m
+#    memory: 128Mi
+
+
 ## Node labels for pod assignment
 ## ref: https://kubernetes.io/docs/user-guide/node-selection/
 #
@@ -571,6 +571,7 @@ initChown:
   #  requests:
   #    cpu: 100m
   #    memory: 128Mi
+
   securityContext:
     runAsNonRoot: false
     runAsUser: 0
@@ -645,14 +646,24 @@ networkPolicy:
 
 ## Zookeeper Necessary configuration
 zookeeper:
-  enabled: true
+  name: zookeeper
   ##
   ##
-  zoo_name: zookeeper
+  enabled: false
+  ## enabled of false
+  ##
+  ## replicas
+  replicas: 1
   ## Create a headless service for the deployment
   headlessService: false
   ##
   ##
+  image:
+    repository: bitnami/zookeeper
+    tag: 3.8.1-debian-11-r0
+    digest: ""
+    debug: false
+    pullPolicy: IfNotPresent
   ## Create HorizontalPodAutoscaler object for deployment type
   autoscaling:
     enabled: false
@@ -677,7 +688,6 @@ zookeeper:
 ## zookeeper container Ports
 containerPorts:
   client: 2181
-  tls: 3181
   follower: 2888
   election: 3888
 ##
@@ -834,10 +844,10 @@ clusterDomain: cluster.local
 extraDeploy: []
 ## @param commonLabels Add labels to all the deployed resources
 ##
-commonLabels: {}
+Labels: {}
 ## @param commonAnnotations Add annotations to all the deployed resources
 ##
-commonAnnotations: {}
+Annotations: {}
 ## @param namespaceOverride Override namespace for ZooKeeper resources
 ## Useful when including ZooKeeper as a chart dependency, so it can be released into a different namespace than the parent
 ##
@@ -854,9 +864,65 @@ diagnosticMode:
   args:
     - infinity
 
+
 ## Nacos Necessary configuration
 nacos:
-  enabled: false
+  name: nacos
+  ## nacos name
+  ##
+  enabled: true
+  ## true of false
+  ##
+  replicas: 1
+  ## replicas
+  ##
+  mode: standalone
+  # mode: cluster
+  ##
+  ##
+  domainName: cluster.local
+  ##
+  ## image
+  image:
+    registry: docker.io
+    ##  e.g registry.k8s.io
+    repository: nacos/nacos-server
+    tag: latest
+    pullPolicy: IfNotPresent
+  ## plugin
+  plugin:
+    enable: true
+    image:
+      repository: nacos/nacos-peer-finder-plugin
+      tag: 1.1
+      pullPolicy: IfNotPresent
+  ## service
+  service:
+    type: NodePort
+    port: 8848
+    nodePort: 30000
+  ## persistence
+  persistence:
+    enabled: false
+    data:
+      accessModes:
+        - ReadWriteOnce
+      storageClassName: ""
+      resources:
+        requests:
+          storage: 5Gi
+  ## storage
+  storage:
+    type: embedded
+#    type: mysql
+#    db:
+#      host: localhost
+#      name: nacos
+#      port: 3306
+#      username: usernmae
+#      password: password
+#      param: characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false
+
 
 
 
@@ -882,9 +948,9 @@ properties:
   dubbo.application.logger: slf4j
   
   # nacos config, add parameters to url like username=nacos&password=nacos
-  # admin.registry.address: nacos://127.0.0.1:8848?group=DEFAULT_GROUP&namespace=public
-  # admin.config-center: nacos://127.0.0.1:8848?group=dubbo
-  # admin.metadata-report.address: nacos://127.0.0.1:8848?group=dubbo
+  # admin.registry.address: nacos://nacos:8848?group=DEFAULT_GROUP&namespace=public
+  # admin.config-center: nacos://nacos:8848?group=dubbo
+  # admin.metadata-report.address: nacos://nacos:8848?group=dubbo
   
   
   # group (Deprecated it is recommended to use URL to add parameters,will be removed in the future)

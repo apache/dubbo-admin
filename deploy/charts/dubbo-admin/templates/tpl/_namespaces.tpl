@@ -20,3 +20,15 @@ Return ZooKeeper Namespace to use
     {{- .Release.Namespace -}}
 {{- end -}}
 {{- end -}}
+
+
+{{/*
+Nacos Namespace to use
+*/}}
+{{- define "nacos.namespace" -}}
+{{- if .Values.namespaceOverride -}}
+    {{- .Values.namespaceOverride -}}
+{{- else -}}
+    {{- .Release.Namespace -}}
+{{- end -}}
+{{- end -}}

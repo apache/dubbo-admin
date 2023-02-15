@@ -16,8 +16,8 @@ spec:
     spec:
       containers:
         - name: zookeeper
-          image: {{ .Values.image.zoo_repository }}:{{ .Values.image.zoo_tag }}
-          imagePullPolicy: {{ .Values.image.pullPolicy | quote }}
+          image: {{ .Values.zookeeper.image.repository }}:{{ .Values.zookeeper.image.tag }}
+          imagePullPolicy: {{ .Values.zookeeper.image.pullPolicy | quote }}
           {{- if .Values.containerSecurityContext.enabled }}
           securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
           {{- end }}
