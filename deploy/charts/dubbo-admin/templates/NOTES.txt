@@ -3,34 +3,16 @@ CHART NAME: {{ .Chart.Name }}
 VERSION: {{ .Chart.Name }}:{{ .Chart.AppVersion }}
 ====================================================
 {{- if .Values.zookeeper.enabled }}
-Registration Center：{{ .Values.zookeeper.zoo_name }}
-VERSION: {{ .Values.zookeeper.zoo_name }}:{{ .Values.image.zoo_tag }}
+Registration Center：{{ .Values.zookeeper.name }}
+VERSION: {{ .Values.zookeeper.name }}:{{ .Values.zookeeper.image.tag }}
+{{- end }}
+{{- if .Values.nacos.enabled }}
+Registration Center：{{ .Values.nacos.name }}
+VERSION: {{ .Values.nacos.name }}:{{ .Values.nacos.image.tag }}
 {{- end }}
 ====================================================
 
-1.  Get your '{{ .Chart.Name }}' by running:
-
-   kubectl get deploy {{ include "dubbo-admin.fullname" . }} -n {{ include "dubbo-admin.namespace" . }}
-
-2. Login Dubbo-admin default user and password:
-   **********************************************
-               USERNAME: root
-               PASSWORD: root
-   **********************************************
-
-3. The Dubbo-admin server can be accessed via port {{ .Values.service.port }} on the following DNS name from within your cluster:
-
-       {{ include "dubbo-admin.fullname" . }}.{{ include "dubbo-admin.namespace" . }}.svc.cluster.local
-
-   {{ if .Values.ingress.enabled }}
-   If you bind Dubbo-admin to 38080, please update values in values.yaml and reinstall:
-
-   From outside the cluster, the server URL(s) are:
-     {{- range .Values.ingress.hosts }}
-     http://{{ . }}
-     {{- end }}
-   {{- else }}
-4. Get the Dubbo-admin URL to visit by running these commands in the same shell:
+   Get the Dubbo-admin URL to visit by running these commands in the same shell:
    {{- if contains "NodePort" .Values.service.type }}
      export NODE_PORT=$(kubectl get --namespace {{ include "dubbo-admin.namespace" . }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "dubbo-admin.fullname" . }})
 
@@ -50,7 +32,22 @@ VERSION: {{ .Values.zookeeper.zoo_name }}:{{ .Values.image.zoo_tag }}
 
      kubectl --namespace {{ include "dubbo-admin.namespace" . }} port-forward $POD_NAME 38080
    {{- end }}
-{{- end }}
+
+    Login Dubbo-admin default user and password
+   **********************************************
+          {{ .Chart.Name }}-username: root
+          {{ .Chart.Name }}-password: root
+   **********************************************
+
+
+   {{ if .Values.ingress.enabled }}
+   If you bind Dubbo-admin to 38080, please update values in values.yaml and reinstall:
+
+   From outside the cluster, the server URL(s) are:
+     {{- range .Values.ingress.hosts }}
+     http://{{ . }}
+     {{- end }}
+   {{- else }}
 
 
 {{- if not .Values.persistence.enabled }}
@@ -58,4 +55,5 @@ VERSION: {{ .Values.zookeeper.zoo_name }}:{{ .Values.image.zoo_tag }}
 ######   WARNING: Persistence is disabled!!! You will lose your data when   #####
 ######            the Dubbo-admin pod is terminated.                        #####
 #################################################################################
+{{- end }}
 {{- end }}
