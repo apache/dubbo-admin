@@ -32,7 +32,7 @@ import (
 	"strings"
 )
 
-const conf = "../conf/dubboadmin.yml"
+const conf = "conf/dubboadmin.yml"
 
 type Config struct {
 	Admin Admin `yaml:"admin"`
