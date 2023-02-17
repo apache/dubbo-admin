@@ -1,0 +1,499 @@
+image:
+  repository: bitnami/zookeeper
+  tag: 3.8.1-debian-11-r0
+  digest: ""
+  debug: false
+  pullPolicy: IfNotPresent
+
+replicas: 1
+
+persistence:
+  ## @param persistence.enabled Enable ZooKeeper data persistence using PVC. If false, use emptyDir
+  ##
+  enabled: false
+  ## @param persistence.existingClaim Name of an existing PVC to use (only when deploying a single replica)
+  ##
+  existingClaim: ""
+  ## @param persistence.storageClass PVC Storage Class for ZooKeeper data volume
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+  ##   GKE, AWS & OpenStack)
+  ##
+  storageClass: ""
+  ## @param persistence.accessModes PVC Access modes
+  ##
+  accessModes:
+    - ReadWriteOnce
+  ## @param persistence.size PVC Storage Request for ZooKeeper data volume
+  ##
+  size: 8Gi
+  ## @param persistence.labels Labels for the PVC
+  ##
+  labels: {}
+  ## @param persistence.selector Selector to match an existing Persistent Volume for ZooKeeper's data PVC
+  ## If set, the PVC can't have a PV dynamically provisioned for it
+  ## E.g.
+  ## selector:
+  ##   matchLabels:
+  ##     app: my-app
+  ##
+  selector: {}
+  ## Persistence for a dedicated data log directory
+  ##
+  dataLogDir:
+    ## @param persistence.dataLogDir.size PVC Storage Request for ZooKeeper's dedicated data log directory
+    ##
+    size: 8Gi
+    ## @param persistence.dataLogDir.existingClaim Provide an existing `PersistentVolumeClaim` for ZooKeeper's data log directory
+    ## If defined, PVC must be created manually before volume will be bound
+    ## The value is evaluated as a template
+    ##
+    existingClaim: ""
+    ## @param persistence.dataLogDir.selector Selector to match an existing Persistent Volume for ZooKeeper's data log PVC
+    ## If set, the PVC can't have a PV dynamically provisioned for it
+    ## E.g.
+    ## selector:
+    ##   matchLabels:
+    ##     app: my-app
+    ##
+    selector: {}
+
+
+## Create HorizontalPodAutoscaler object for deployment type
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPU: "60"
+  targetMemory: ""
+  behavior: {}
+
+
+service:
+  type: ClusterIP
+  ports:
+    client: 2181
+    follower: 2888
+    election: 3888
+  ## Node ports to expose
+  ## NOTE: choose port between <30000-32767>
+  ## @param service.nodePorts.client Node port for clients
+  ## @param service.nodePorts.tls Node port for TLS
+  ##
+  nodePorts:
+    client: ""
+    tls: ""
+  ## @param service.disableBaseClientPort Remove client port from service definitions.
+  ##
+  disableBaseClientPort: false
+  ## @param service.sessionAffinity Control where client requests go, to the same pod or round-robin
+  ## Values: ClientIP or None
+  ## ref: https://kubernetes.io/docs/user-guide/services/
+  ##
+  sessionAffinity: None
+  ## @param service.sessionAffinityConfig Additional settings for the sessionAffinity
+  ## sessionAffinityConfig:
+  ##   clientIP:
+  ##     timeoutSeconds: 300
+  ##
+  sessionAffinityConfig: {}
+  ## @param service.clusterIP ZooKeeper service Cluster IP
+  ## e.g.:
+  ## clusterIP: None
+  ##
+  clusterIP: ""
+  ## @param service.loadBalancerIP ZooKeeper service Load Balancer IP
+  ## ref: https://kubernetes.io/docs/user-guide/services/#type-loadbalancer
+  ##
+  loadBalancerIP: ""
+  ## @param service.loadBalancerSourceRanges ZooKeeper service Load Balancer sources
+  ## ref: https://kubernetes.io/docs/tasks/access-application-cluster/configure-cloud-provider-firewall/#restrict-access-for-loadbalancer-service
+  ## e.g:
+  ## loadBalancerSourceRanges:
+  ##   - 10.10.10.0/24
+  ##
+  loadBalancerSourceRanges: []
+  ## @param service.externalTrafficPolicy ZooKeeper service external traffic policy
+  ## ref https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip
+  ##
+  externalTrafficPolicy: Cluster
+  ## @param service.annotations Additional custom annotations for ZooKeeper service
+  ##
+  annotations: {}
+  ## @param service.extraPorts Extra ports to expose in the ZooKeeper service (normally used with the `sidecar` value)
+  ##
+  extraPorts: []
+  ## @param service.headless.annotations Annotations for the Headless Service
+  ## @param service.headless.publishNotReadyAddresses If the ZooKeeper headless service should publish DNS records for not ready pods
+  ## @param service.headless.servicenameOverride String to partially override headless service name
+  ##
+  headless:
+    publishNotReadyAddresses: true
+    annotations: {}
+    servicenameOverride: ""
+
+
+## @param containerPorts.client ZooKeeper client container port
+## @param containerPorts.tls ZooKeeper TLS container port
+## @param containerPorts.follower ZooKeeper follower container port
+## @param containerPorts.election ZooKeeper election container port
+##
+containerPorts:
+  client: 2181
+  tls: 3181
+  follower: 2888
+  election: 3888
+## Configure extra options for ZooKeeper containers' liveness, readiness and startup probes
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/#configure-probes
+## @param livenessProbe.enabled Enable livenessProbe on ZooKeeper containers
+## @param livenessProbe.initialDelaySeconds Initial delay seconds for livenessProbe
+## @param livenessProbe.periodSeconds Period seconds for livenessProbe
+## @param livenessProbe.timeoutSeconds Timeout seconds for livenessProbe
+## @param livenessProbe.failureThreshold Failure threshold for livenessProbe
+## @param livenessProbe.successThreshold Success threshold for livenessProbe
+## @param livenessProbe.probeCommandTimeout Probe command timeout for livenessProbe
+##
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+  probeCommandTimeout: 2
+## @param readinessProbe.enabled Enable readinessProbe on ZooKeeper containers
+## @param readinessProbe.initialDelaySeconds Initial delay seconds for readinessProbe
+## @param readinessProbe.periodSeconds Period seconds for readinessProbe
+## @param readinessProbe.timeoutSeconds Timeout seconds for readinessProbe
+## @param readinessProbe.failureThreshold Failure threshold for readinessProbe
+## @param readinessProbe.successThreshold Success threshold for readinessProbe
+## @param readinessProbe.probeCommandTimeout Probe command timeout for readinessProbe
+##
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+  probeCommandTimeout: 2
+## @param startupProbe.enabled Enable startupProbe on ZooKeeper containers
+## @param startupProbe.initialDelaySeconds Initial delay seconds for startupProbe
+## @param startupProbe.periodSeconds Period seconds for startupProbe
+## @param startupProbe.timeoutSeconds Timeout seconds for startupProbe
+## @param startupProbe.failureThreshold Failure threshold for startupProbe
+## @param startupProbe.successThreshold Success threshold for startupProbe
+##
+startupProbe:
+  enabled: false
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 1
+  failureThreshold: 15
+  successThreshold: 1
+## @param customLivenessProbe Custom livenessProbe that overrides the default one
+##
+customLivenessProbe: {}
+## @param customReadinessProbe Custom readinessProbe that overrides the default one
+##
+customReadinessProbe: {}
+## @param customStartupProbe Custom startupProbe that overrides the default one
+##
+customStartupProbe: {}
+## @param lifecycleHooks for the ZooKeeper container(s) to automate configuration before or after startup
+##
+lifecycleHooks: {}
+## ZooKeeper resource requests and limits
+## ref: https://kubernetes.io/docs/user-guide/compute-resources/
+## @param resources.limits The resources limits for the ZooKeeper containers
+## @param resources.requests.memory The requested memory for the ZooKeeper containers
+## @param resources.requests.cpu The requested cpu for the ZooKeeper containers
+##
+resources:
+  limits: {}
+  requests:
+    memory: 256Mi
+    cpu: 250m
+## Configure Pods Security Context
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+## @param podSecurityContext.enabled Enabled ZooKeeper pods' Security Context
+## @param podSecurityContext.fsGroup Set ZooKeeper pod's Security Context fsGroup
+##
+podSecurityContext:
+  enabled: true
+  fsGroup: 1001
+## Configure Container Security Context
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+## @param containerSecurityContext.enabled Enabled ZooKeeper containers' Security Context
+## @param containerSecurityContext.runAsUser Set ZooKeeper containers' Security Context runAsUser
+## @param containerSecurityContext.runAsNonRoot Set ZooKeeper containers' Security Context runAsNonRoot
+## @param containerSecurityContext.allowPrivilegeEscalation Force the child process to be run as nonprivilege
+##
+containerSecurityContext:
+  enabled: true
+  runAsUser: 1001
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+## @param hostAliases ZooKeeper pods host aliases
+## https://kubernetes.io/docs/concepts/services-networking/add-entries-to-pod-etc-hosts-with-host-aliases/
+##
+hostAliases: []
+## @param podLabels Extra labels for ZooKeeper pods
+## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+##
+
+
+extraVolumes: []
+## @param extraVolumeMounts Optionally specify extra list of additional volumeMounts for the ZooKeeper container(s)
+## Example Use Case: mount certificates to enable TLS
+## e.g:
+## extraVolumeMounts:
+## - name: zookeeper-keystore
+##   mountPath: /certs/keystore
+##   readOnly: true
+## - name: zookeeper-truststore
+##   mountPath: /certs/truststore
+##   readOnly: true
+##
+extraVolumeMounts: []
+## @param sidecars Add additional sidecar containers to the ZooKeeper pod(s)
+## e.g:
+## sidecars:
+##   - name: your-image-name
+##     image: your-image
+##     imagePullPolicy: Always
+##     ports:
+##       - name: portname
+##         containerPort: 1234
+##
+## @param tickTime Basic time unit (in milliseconds) used by ZooKeeper for heartbeats
+##
+##
+
+
+auth:
+  client:
+    ## @param auth.client.enabled Enable ZooKeeper client-server authentication. It uses SASL/Digest-MD5
+    ##
+    enabled: false
+    ## @param auth.client.clientUser User that will use ZooKeeper clients to auth
+    ##
+    clientUser: ""
+    ## @param auth.client.clientPassword Password that will use ZooKeeper clients to auth
+    ##
+    clientPassword: ""
+    ## @param auth.client.serverUsers Comma, semicolon or whitespace separated list of user to be created
+    ## Specify them as a string, for example: "user1,user2,admin"
+    ##
+    serverUsers: ""
+    ## @param auth.client.serverPasswords Comma, semicolon or whitespace separated list of passwords to assign to users when created
+    ## Specify them as a string, for example: "pass4user1, pass4user2, pass4admin"
+    ##
+    serverPasswords: ""
+    ## @param auth.client.existingSecret Use existing secret (ignores previous passwords)
+    ##
+    existingSecret: ""
+  quorum:
+    ## @param auth.quorum.enabled Enable ZooKeeper server-server authentication. It uses SASL/Digest-MD5
+    ##
+    enabled: false
+    ## @param auth.quorum.learnerUser User that the ZooKeeper quorumLearner will use to authenticate to quorumServers.
+    ## Note: Make sure the user is included in auth.quorum.serverUsers
+    ##
+    learnerUser: ""
+    ## @param auth.quorum.learnerPassword Password that the ZooKeeper quorumLearner will use to authenticate to quorumServers.
+    ##
+    learnerPassword: ""
+    ## @param auth.quorum.serverUsers Comma, semicolon or whitespace separated list of users for the quorumServers.
+    ## Specify them as a string, for example: "user1,user2,admin"
+    ##
+    serverUsers: ""
+    ## @param auth.quorum.serverPasswords Comma, semicolon or whitespace separated list of passwords to assign to users when created
+    ## Specify them as a string, for example: "pass4user1, pass4user2, pass4admin"
+    ##
+    serverPasswords: ""
+    ## @param auth.quorum.existingSecret Use existing secret (ignores previous passwords)
+    ##
+    existingSecret: ""
+## @param tickTime Basic time unit (in milliseconds) used by ZooKeeper for heartbeats
+##
+tickTime: 2000
+## @param initLimit ZooKeeper uses to limit the length of time the ZooKeeper servers in quorum have to connect to a leader
+##
+initLimit: 10
+## @param syncLimit How far out of date a server can be from a leader
+##
+syncLimit: 5
+## @param preAllocSize Block size for transaction log file
+##
+preAllocSize: 65536
+## @param snapCount The number of transactions recorded in the transaction log before a snapshot can be taken (and the transaction log rolled)
+##
+snapCount: 100000
+## @param maxClientCnxns Limits the number of concurrent connections that a single client may make to a single member of the ZooKeeper ensemble
+##
+maxClientCnxns: 60
+## @param maxSessionTimeout Maximum session timeout (in milliseconds) that the server will allow the client to negotiate
+## Defaults to 20 times the tickTime
+##
+maxSessionTimeout: 40000
+## @param heapSize Size (in MB) for the Java Heap options (Xmx and Xms)
+## This env var is ignored if Xmx an Xms are configured via `jvmFlags`
+##
+heapSize: 1024
+## @param fourlwCommandsWhitelist A list of comma separated Four Letter Words commands that can be executed
+##
+fourlwCommandsWhitelist: srvr, mntr, ruok
+## @param minServerId Minimal SERVER_ID value, nodes increment their IDs respectively
+## Servers increment their ID starting at this minimal value.
+## E.g., with `minServerId=10` and 3 replicas, server IDs will be 10, 11, 12 for z-0, z-1 and z-2 respectively.
+##
+minServerId: 1
+## @param listenOnAllIPs Allow ZooKeeper to listen for connections from its peers on all available IP addresses
+##
+listenOnAllIPs: false
+## Ongoing data directory cleanup configuration
+##
+autopurge:
+  ## @param autopurge.snapRetainCount The most recent snapshots amount (and corresponding transaction logs) to retain
+  ##
+  snapRetainCount: 3
+  ## @param autopurge.purgeInterval The time interval (in hours) for which the purge task has to be triggered
+  ## Set to a positive integer to enable the auto purging
+  ##
+  purgeInterval: 0
+## @param logLevel Log level for the ZooKeeper server. ERROR by default
+## Have in mind if you set it to INFO or WARN the ReadinessProve will produce a lot of logs
+##
+logLevel: ERROR
+## @param jvmFlags Default JVM flags for the ZooKeeper process
+##
+jvmFlags: ""
+## @param dataLogDir Dedicated data log directory
+## This allows a dedicated log device to be used, and helps avoid competition between logging and snapshots.
+## E.g.
+## dataLogDir: /bitnami/zookeeper/dataLog
+##
+dataLogDir: ""
+##
+##
+configuration: ""
+## @param existingConfigmap The name of an existing ConfigMap with your custom configuration for ZooKeeper
+## NOTE: When it's set the `configuration` parameter is ignored
+##
+existingConfigmap: ""
+## @param extraEnvVars Array with extra environment variables to add to ZooKeeper nodes
+## e.g:
+## extraEnvVars:
+##   - name: FOO
+##     value: "bar"
+##
+##
+## @param clusterDomain Kubernetes Cluster Domain
+##
+clusterDomain: cluster.local
+## @param extraDeploy Extra objects to deploy (evaluated as a template)
+##
+extraDeploy: []
+## @param commonLabels Add labels to all the deployed resources
+##
+Labels: {}
+## @param commonAnnotations Add annotations to all the deployed resources
+##
+Annotations: {}
+## @param namespaceOverride Override namespace for ZooKeeper resources
+## Useful when including ZooKeeper as a chart dependency, so it can be released into a different namespace than the parent
+##
+diagnosticMode:
+  ## @param diagnosticMode.enabled Enable diagnostic mode (all probes will be disabled and the command will be overridden)
+  ##
+  enabled: false
+  ## @param diagnosticMode.command Command to override all containers in the statefulset
+  ##
+  command:
+    - sleep
+  ## @param diagnosticMode.args Args to override all containers in the statefulset
+  ##
+  args:
+    - infinity
+
+## See `kubectl explain poddisruptionbudget.spec` for more
+## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+    # maxUnavailable: 1
+
+
+ingress:
+  enabled: false
+  # For Kubernetes >= 1.18 you should specify the ingress-controller via the field ingressClassName
+  # See https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/#specifying-the-class-of-an-ingress
+  # ingressClassName: nginx
+  # Values can be templated
+  annotations: {}
+  # kubernetes.io/ingress.class: nginx
+  # kubernetes.io/tls-acme: "true"
+  labels: {}
+  path: /
+  ##
+  ##
+  # pathType is only for k8s >= 1.1=
+  pathType: Prefix
+  ##
+  ##
+  hosts:
+    - chart-example.local
+  ## Extra paths to prepend to every host configuration. This is useful when working with annotation based services.
+  extraPaths: []
+  # - path: /*
+  #   backend:
+  #     serviceName: ssl-redirect
+  #     servicePort: use-annotation
+  ## Or for k8s > 1.19
+  # - path: /*
+  #   pathType: Prefix
+  #   backend:
+  #     service:
+  #       name: ssl-redirect
+  #       port:
+  #         name: use-annotation
+  ##
+  ##
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+
+networkPolicy:
+  ## @param networkPolicy.enabled Enable creation of NetworkPolicy resources. Only Ingress traffic is filtered for now.
+  ##
+  enabled: false
+  ## @param networkPolicy.allowExternal Don't require client label for connections
+  ## The Policy model to apply. When set to false, only pods with the correct
+  ## client label will have network access to  dubbo-admin port defined.
+  ## When true, dubbo-admin will accept connections from any source
+  ## (with the correct destination port).
+  ##
+  ingress: true
+  ## @param networkPolicy.ingress When true enables the creation
+  ## an ingress network policy
+  ##
+  ##
+  ##
+  ##
+  egress:
+    ## @param networkPolicy.egress.enabled When enabled, an egress network policy will be
+    ## created allowing dubbo-admin to connect to external data sources from kubernetes cluster.
+    enabled: false
+    ##
+    ## @param networkPolicy.egress.ports Add individual ports to be allowed by the egress
+    ports: []
+      ## Add ports to the egress by specifying - port: <port number>
+      ## E.X.
+      ## ports:
+    ## - port: 80
+    ## - port: 443
