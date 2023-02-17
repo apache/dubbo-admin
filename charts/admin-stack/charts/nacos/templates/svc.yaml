@@ -1,0 +1,29 @@
+{{- if .Values.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "nacos.name" . }}
+  namespace: {{ template "nacos.namespace" . }}
+  labels: {{- include "nacos.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}
+      protocol: TCP
+      name: http
+    - port: {{ add .Values.service.port 1000 }}
+      name: client-rpc
+      targetPort: {{add .Values.service.port 1000 }}
+    - port: {{add .Values.service.port 1001 }}
+      name: raft-rpc
+      targetPort: {{add .Values.service.port 1001 }}
+    - port: 7848
+      name: old-raft-rpc
+      targetPort: 7848
+      protocol: TCP
+      {{- if eq .Values.service.type "NodePort" }}
+      nodePort: {{ .Values.service.nodePort }}
+  {{- end }}
+  selector: {{- include "nacos.matchLabels" . | nindent 4 }}
+  {{- end }}

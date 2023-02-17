@@ -1,0 +1,39 @@
+{{- if and .Values.rbac.enabled }}
+apiVersion: {{ include "dubbo-admin.rbac.apiVersion" . }}
+kind: ClusterRole
+metadata:
+  labels:
+    {{- include "dubbo-admin.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  name: {{ include "dubbo-admin.fullname" . }}-clusterrole
+rules:
+  - apiGroups: # "" indicates the core API group
+      - ""
+    resources:
+      - configmaps
+      - secrets
+      - pods
+    verbs:
+      - get
+      - watch
+      - list
+  - apiGroups:
+      - "extensions"
+    resources:
+      - ingresses
+    verbs:
+      - get
+  - apiGroups:
+      - "apps"
+    resources:
+      - configmaps
+      - deployments
+      - services
+    verbs:
+      - get
+      - list
+      - watch
+  {{- end }}

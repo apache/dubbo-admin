@@ -1,0 +1,29 @@
+{{- if and .Values.rbac.enabled -}}
+apiVersion: {{ include "dubbo-admin.rbac.apiVersion" . }}
+kind: Role
+metadata:
+  name: {{ include "dubbo-admin.fullname" . }}
+  namespace: {{ include "dubbo-admin.namespace" . }}
+  labels:
+    {{- include "dubbo-admin.labels" . | nindent 4 }}
+  {{- with .Values.labels }}
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- if .Values.rbac.pspEnabled }}
+rules:
+  {{- if .Values.rbac.pspEnabled }}
+  - apiGroups:
+      - extensions
+    resources:
+      - podsecuritypolicies
+    verbs:
+      - use
+    resourceNames:
+      - {{ include "dubbo-admin.fullname" . }}
+  {{- end }}
+{{- end }}
+{{- end }}

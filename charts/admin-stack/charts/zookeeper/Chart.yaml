@@ -1,0 +1,12 @@
+apiVersion: v2
+appVersion: 3.8.1
+description: Apache ZooKeeper provides a reliable, centralized register of configuration
+  data and services for distributed applications.
+home: https://github.com/bitnami/charts/tree/main/bitnami/zookeeper
+maintainers:
+  - name: Bitnami
+    url: https://github.com/bitnami/charts
+name: zookeeper
+sources:
+  - https://zookeeper.apache.org/
+version: 11.1.2

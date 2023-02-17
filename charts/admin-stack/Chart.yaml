@@ -1,0 +1,13 @@
+apiVersion: v2
+appVersion: ""
+name: dubbo-admin
+description: The ops and reference implementation for Apache Dubbo
+home: https://cn.dubbo.apache.org
+kubeVersion: '>=1.20.0-0'
+maintainers:
+  - email: dev@dubbo.apache.org
+    name: dubbo
+sources:
+  - https://github.com/apache/dubbo
+type: application
+version: 0.5.0

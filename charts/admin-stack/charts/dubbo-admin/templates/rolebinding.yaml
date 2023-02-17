@@ -1,0 +1,24 @@
+{{- if .Values.rbac.enabled }}
+apiVersion: {{ include "dubbo-admin.rbac.apiVersion" . }}
+kind: RoleBinding
+metadata:
+  name: {{ include "dubbo-admin.fullname" . }}
+  namespace: {{ include "dubbo-admin.namespace" . }}
+  labels:
+    {{- include "dubbo-admin.labels" . | nindent 4 }}
+  {{- with .Values.labels }}
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "dubbo-admin.fullname" . }}
+  {{- end }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "dubbo-admin.serviceAccountName" . }}
+    namespace: {{ include "dubbo-admin.namespace" . }}
