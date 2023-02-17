@@ -25,7 +25,7 @@ import (
 func InitRouter() *gin.Engine {
 	router := gin.Default()
 
-	router.GET("/users", handlers.AllServices)
+	router.GET("/api/dev/services", handlers.AllServices)
 
 	return router
 }
