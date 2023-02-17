@@ -1,0 +1,28 @@
+{{- if .Values.enabled }}
+{{- if and (eq .Values.global.mode "cluster") }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "nacos.name" . }}-headless
+  namespace: {{ template "nacos.namespace" }}
+  labels: {{- include "nacos.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}
+      protocol: TCP
+      name: http
+    - port: {{ add .Values.service.port 1000 }}
+      name: client-rpc
+      targetPort: {{ add .Values.service.port 1000 }}
+    - port: {{ add .Values.service.port 1001 }}
+      name: raft-rpc
+      targetPort: {{ add .Values.service.port 1001 }}
+    - port: 7848
+      name: old-raft-rpc
+      targetPort: 7848
+      protocol: TCP
+  selector: {{- include "nacos.matchLabels" . | nindent 4 }}
+  {{- end }}
+  {{- end }}

@@ -1,0 +1,18 @@
+{{- if .Values.enabled }}
+{{- if eq .Values.storage.type "mysql"}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "nacos.fullname" . }}-configmap
+  namespace: {{ template "nacos.namespace" . }}
+data:
+  {{- with .Values.storage.db }}
+  mysql.db.host: {{ .host }}
+  mysql.db.name: {{ .name }}
+  mysql.port: "{{ .port | default 3306 }}"
+  mysql.user: {{ .username }}
+  mysql.password: {{ .password }}
+  mysql.param: {{ .param | default "characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false" }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
