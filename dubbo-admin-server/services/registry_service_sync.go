@@ -50,7 +50,7 @@ func init() {
 	)
 }
 
-func startSubscribe(registry registry.Registry) {
+func StartSubscribe(registry registry.Registry) {
 	registry.Subscribe(SUBSCRIBE, adminNotifyListener{})
 }
 

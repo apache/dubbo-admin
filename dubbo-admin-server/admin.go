@@ -20,10 +20,12 @@ package main
 import (
 	"admin/config"
 	"admin/router"
+	"admin/services"
 )
 
 func main() {
 	config.LoadConfig()
+	services.StartSubscribe(config.RegistryCenter)
 	router := router.InitRouter()
 	router.Run(":38080")
 }
