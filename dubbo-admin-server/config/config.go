@@ -26,13 +26,14 @@ import (
 	"dubbo.apache.org/dubbo-go/v3/registry"
 	"fmt"
 	"gopkg.in/yaml.v2"
+	"log"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 )
 
-const conf = "../conf/dubboadmin.yml"
+const conf = "./conf/dubboadmin.yml"
 
 type Config struct {
 	Admin Admin `yaml:"admin"`
@@ -77,7 +78,7 @@ func LoadConfig() {
 		ConfigCenter, err = factory.GetDynamicConfiguration(url)
 		properties, err := ConfigCenter.GetProperties(constant.DubboPropertyKey)
 		if err != nil {
-			panic(err)
+			log.Print("No configuration found in config center.")
 		}
 		if len(properties) > 0 {
 			for _, property := range strings.Split(properties, "\n") {
