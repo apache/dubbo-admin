@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zookeeper
+  labels:
+    app: zookeeper
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+        - name: zookeeper
+          image: docker.io/bitnami/zookeeper:3.8.0-debian-11-r56
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 2181
+              name: client
+            - containerPort: 2888
+              name: follower
+            - containerPort: 3888
+              name: election
+          command:
+            - /scripts/setup.sh
+          env:
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: ZOO_PORT_NUMBER
+              value: "2181"
+            - name: ZOO_LISTEN_ALLIPS_ENABLED
+              value: "no"
+            - name: ZOO_AUTOPURGE_INTERVAL
+              value: "0"
+            - name: ZOO_AUTOPURGE_RETAIN_COUNT
+              value: "3"
+            - name: ZOO_SERVERS
+              value: $(MY_POD_NAME).zookeeper.journal.svc.cluster.local:2888:3888::1
+            - name: ZOO_ENABLE_AUTH
+              value: "no"
+            - name: ZOO_ENABLE_QUORUM_AUTH
+              value: "no"
+            - name: ALLOW_ANONYMOUS_LOGIN
+              value: "yes"
+            - name: BITNAMI_DEBUG
+              value: "false"
+            - name: ZOO_PRE_ALLOC_SIZE
+              value: "65536"
+            - name: ZOO_4LW_COMMANDS_WHITELIST
+              value: srvr, mntr, ruok
+            - name: ZOO_MAX_SESSION_TIMEOUT
+              value: "40000"
+            - name: ZOO_HEAP_SIZE
+              value: "1024"
+            - name: ZOO_LOG_LEVEL
+              value: ERROR
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - mountPath: /scripts/setup.sh
+              name: scripts
+              subPath: setup.sh
+            - mountPath: /bitnami/zookeeper
+              name: data
+            - mountPath: /etc/zookeeper
+              name: storage
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: storage
+          persistentVolumeClaim:
+            claimName: zookeeper-pvc
+        - configMap:
+            defaultMode: 493
+            name: zookeeper-scripts
+          name: scripts
