@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: grafana
+  namespace: default
+  labels:
+    app: grafana
+  annotations:
+    checksum/config: 4b9517b76dc0f685555140b24fa94df4dff5a5f3ea72c424290168afe0465276
+    checksum/dashboards-json-config: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+    checksum/sc-dashboard-provider-config: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+    checksum/secret: 87b3dc176b564805256e2f3207f32567cf2dcf805f5ff51c0b48650907047595
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      serviceAccountName: grafana
+      containers:
+        - name: grafana
+          image: "grafana/grafana:9.3.6"
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: config
+              mountPath: "/etc/grafana/grafana.ini"
+              subPath: grafana.ini
+            - name: storage
+              mountPath: "/etc/grafana"
+          ports:
+            - name: grafana
+              containerPort: 3000
+              protocol: TCP
+            - name: gossip-tcp
+              containerPort: 9094
+              protocol: TCP
+            - name: gossip-udp
+              containerPort: 9094
+              protocol: UDP
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: grafana
+                  key: admin-user
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: grafana
+                  key: admin-password
+            - name: GF_PATHS_DATA
+              value: /var/lib/grafana/
+            - name: GF_PATHS_LOGS
+              value: /var/log/grafana
+            - name: GF_PATHS_PLUGINS
+              value: /var/lib/grafana/plugins
+            - name: GF_PATHS_PROVISIONING
+              value: /etc/grafana/provisioning
+          livenessProbe:
+            failureThreshold: 10
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 60
+            timeoutSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+      volumes:
+        - name: config
+          configMap:
+            name: grafana
+  volumeClaimTemplates:
+    - metadata:
+        name: storage
+        labels:
+          app: grafana
+      spec:
+        storageClassName: local
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
