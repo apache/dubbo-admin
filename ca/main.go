@@ -40,6 +40,7 @@ type DubboCertificateServiceServerImpl struct {
 
 func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context, req *ca.DubboCertificateRequest) (*ca.DubboCertificateResponse, error) {
 	csr, _ := LoadCSR(req.Csr)
+	// TODO check server token
 	log.Printf("Receive csr request " + req.Csr)
 	csrTemplate := x509.Certificate{
 		Signature:          csr.Signature,
@@ -130,8 +131,8 @@ func main() {
 		pubKey:   caPEM.String(),
 		privKey:  caPrivKey,
 	}
-	//impl.CreateCertificate(nil, &ca.DubboCertificateRequest{Csr: "-----BEGIN CERTIFICATE REQUEST-----\nMIHTMHsCAQAwGTEXMBUGA1UECgwOY2x1c3Rlci5kb21haW4wWTATBgcqhkjOPQIB\nBggqhkjOPQMBBwNCAAQzg1QJajZxbYJOODjl+33guXFHR1Ryit2H5B6qRTC9Dpsl\nYSccYbRzWUnr4m0BLJyXMnZoEEV5zDo67eWzzEhnoAAwCgYIKoZIzj0EAwIDSAAw\nRQIhAM5oYu1r6ceV2SFgJUVrwYsq8ztuN4C0BUM9M3eJJmPfAiBVvnwRCMBkGhOs\nD+RtZ3fXn6aOxQvUMEZiywj9OcYnVA==\n-----END CERTIFICATE REQUEST-----"})
 
+	// TODO bind TLS server
 	grpcServer := grpc.NewServer()
 	ca.RegisterDubboCertificateServiceServer(grpcServer, impl)
 
