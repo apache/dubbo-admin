@@ -20,13 +20,15 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/pem"
+	"github.com/apache/dubbo-admin/ca/cert"
+	"github.com/apache/dubbo-admin/ca/k8s"
 	ca "github.com/apache/dubbo-admin/ca/v1alpha1"
 	"google.golang.org/grpc"
 	"log"
 	"math/big"
 	"net"
+	"os"
 	"time"
 )
 
@@ -58,6 +60,7 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 	}
 	csrTemplate.DNSNames = csr.DNSNames
 
+	// TODO support ecdsa
 	result, err := x509.CreateCertificate(rand.Reader, &csrTemplate, s.rootCert, csrTemplate.PublicKey, s.privKey)
 	if err != nil {
 		log.Fatal(err)
@@ -86,51 +89,42 @@ func LoadCSR(csrString string) (*x509.CertificateRequest, error) {
 	return csr, nil
 }
 
+// TODO read namespace from env
+const namespace = "dubbo-system"
+
 func main() {
-	cert := &x509.Certificate{
-		SerialNumber: big.NewInt(2019),
-		Subject: pkix.Name{
-			CommonName:   "Dubbo",
-			Organization: []string{"Apache Dubbo"},
-		},
-		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(1, 0, 0),
-		IsCA:                  true,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
-		BasicConstraintsValid: true,
+	// TODO bypass k8s work
+	k8sClient := &k8s.Client{}
+	if !k8sClient.Init() {
+		log.Printf("Failed to create kuberentes client.")
+		return
 	}
 
-	caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
-	if err != nil {
-		log.Fatal(err)
+	// TODO inject pod based on Webhook
+
+	var caCert *x509.Certificate
+	var pub string
+	var pri *rsa.PrivateKey
+
+	certStr, priStr := k8sClient.GetCA(namespace)
+	if certStr != "" && priStr != "" {
+		caCert = cert.DecodeCert(certStr)
+		pri = cert.DecodePri(priStr)
+		pub = certStr
 	}
 
-	caBytes, err := x509.CreateCertificate(rand.Reader, cert, cert, &caPrivKey.PublicKey, caPrivKey)
-	if err != nil {
-		log.Fatal(err)
+	if caCert == nil || pri == nil || pub == "" {
+		caCert, pub, pri = cert.CreateCA()
 	}
 
-	caPEM := new(bytes.Buffer)
-	pem.Encode(caPEM, &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: caBytes,
-	})
-	log.Printf(caPEM.String())
-
-	caPrivKeyPEM := new(bytes.Buffer)
-	pem.Encode(caPrivKeyPEM, &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(caPrivKey),
-	})
-	log.Printf(caPrivKeyPEM.String())
+	// TODO lock if multi server
+	k8sClient.UpdateCA(pub, cert.EncodePri(pri), namespace)
 
 	impl := &DubboCertificateServiceServerImpl{
-		rootCert: cert,
-		pubKey:   caPEM.String(),
-		privKey:  caPrivKey,
+		rootCert: caCert,
+		pubKey:   pub,
+		privKey:  pri,
 	}
-	//impl.CreateCertificate(nil, &ca.DubboCertificateRequest{Csr: "-----BEGIN CERTIFICATE REQUEST-----\nMIHTMHsCAQAwGTEXMBUGA1UECgwOY2x1c3Rlci5kb21haW4wWTATBgcqhkjOPQIB\nBggqhkjOPQMBBwNCAAQzg1QJajZxbYJOODjl+33guXFHR1Ryit2H5B6qRTC9Dpsl\nYSccYbRzWUnr4m0BLJyXMnZoEEV5zDo67eWzzEhnoAAwCgYIKoZIzj0EAwIDSAAw\nRQIhAM5oYu1r6ceV2SFgJUVrwYsq8ztuN4C0BUM9M3eJJmPfAiBVvnwRCMBkGhOs\nD+RtZ3fXn6aOxQvUMEZiywj9OcYnVA==\n-----END CERTIFICATE REQUEST-----"})
 
 	grpcServer := grpc.NewServer()
 	ca.RegisterDubboCertificateServiceServer(grpcServer, impl)
@@ -139,5 +133,15 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	grpcServer.Serve(lis)
+	go grpcServer.Serve(lis)
+
+	// TODO add task to update ca
+	log.Printf("Writing ca to config maps.")
+	if k8sClient.UpdateCAPub(pub) {
+		log.Printf("Write ca to config maps success.")
+	} else {
+		log.Printf("Write ca to config maps failed.")
+	}
+	c := make(chan os.Signal)
+	<-c
 }
