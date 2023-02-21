@@ -112,6 +112,7 @@ func main() {
 		pri = cert.DecodePri(priStr)
 		pub = certStr
 	}
+	// TODO check cert if expired
 
 	if caCert == nil || pri == nil || pub == "" {
 		caCert, pub, pri = cert.CreateCA()
