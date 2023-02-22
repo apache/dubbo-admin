@@ -103,7 +103,7 @@ func CreateCA(rootCert *Cert, caValidity int64) *Cert {
 	}
 }
 
-func SignServerCert(authorityCert *Cert, serverName string, certValidity int64) *Cert {
+func SignServerCert(authorityCert *Cert, serverName []string, certValidity int64) *Cert {
 	privKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		log.Fatal(err)
@@ -121,7 +121,7 @@ func SignServerCert(authorityCert *Cert, serverName string, certValidity int64) 
 		KeyUsage:    x509.KeyUsageDigitalSignature,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	}
-	cert.DNSNames = []string{serverName}
+	cert.DNSNames = serverName
 
 	c, err := x509.CreateCertificate(rand.Reader, cert, authorityCert.Cert, &privKey.PublicKey, authorityCert.PrivateKey)
 
@@ -156,9 +156,6 @@ func LoadCSR(csrString string) (*x509.CertificateRequest, error) {
 
 func SignFromCSR(csr *x509.CertificateRequest, authorityCert *Cert, certValidity int64) (string, error) {
 	csrTemplate := x509.Certificate{
-		Signature:          csr.Signature,
-		SignatureAlgorithm: csr.SignatureAlgorithm,
-
 		PublicKeyAlgorithm: csr.PublicKeyAlgorithm,
 		PublicKey:          csr.PublicKey,
 
@@ -187,7 +184,6 @@ func SignFromCSR(csr *x509.CertificateRequest, authorityCert *Cert, certValidity
 		return "", err
 	}
 	pub := pubPEM.String()
-	log.Printf("Sign csr request " + pub)
 
 	return pub, nil
 }

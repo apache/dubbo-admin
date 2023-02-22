@@ -63,13 +63,13 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 	}
 
 	// TODO check server token
-	log.Printf("Receive csr request " + req.Csr)
 	if csr == nil {
 		return &DubboCertificateResponse{}, nil
 	}
 	publicKey, err := cert.SignFromCSR(csr, s.CertStorage.AuthorityCert, s.Options.CertValidity)
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Failed to sign certificate from csr: %v", err)
+		return &DubboCertificateResponse{}, nil
 	}
 	return &DubboCertificateResponse{
 		PublicKey:  publicKey,

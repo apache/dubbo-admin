@@ -34,7 +34,8 @@ type Storage struct {
 	AuthorityCert *Cert
 
 	TrustedCert []*Cert
-	ServerCerts map[string]*Cert
+	ServerNames []string
+	ServerCerts *Cert
 }
 
 type Cert struct {
@@ -88,15 +89,24 @@ func (c *Cert) GetTlsCert() *tls.Certificate {
 }
 
 func (s *Storage) GetServerCert(serverName string) *tls.Certificate {
-	if cert, exist := s.ServerCerts[serverName]; exist && cert.IsValid() {
-		return cert.GetTlsCert()
+	nameSigned := serverName == ""
+	for _, name := range s.ServerNames {
+		if name == serverName {
+			nameSigned = true
+			break
+		}
+	}
+	if nameSigned && s.ServerCerts != nil && s.ServerCerts.IsValid() {
+		return s.ServerCerts.GetTlsCert()
 	}
 	s.Mutex.Lock()
 	defer s.Mutex.Unlock()
-	log.Printf("Generate certificate for %s", serverName)
-	cert := SignServerCert(s.AuthorityCert, serverName, s.CertValidity)
-	s.ServerCerts[serverName] = cert
-	return cert.GetTlsCert()
+	if !nameSigned {
+		s.ServerNames = append(s.ServerNames, serverName)
+	}
+	s.ServerNames = append(s.ServerNames, serverName)
+	s.ServerCerts = SignServerCert(s.AuthorityCert, s.ServerNames, s.CertValidity)
+	return s.ServerCerts.GetTlsCert()
 }
 
 func (s *Storage) RefreshServerCert() {
@@ -104,21 +114,10 @@ func (s *Storage) RefreshServerCert() {
 	for true {
 		time.Sleep(time.Duration(interval) * time.Millisecond)
 		s.Mutex.Lock()
-		wg := sync.WaitGroup{}
-		wg.Add(len(s.ServerCerts))
-		for serverName, cert := range s.ServerCerts {
-			cert := cert
-			serverName := serverName
-			go func() {
-				defer wg.Done()
-				if cert.NeedRefresh() {
-					log.Printf("Server cert for %s is invalid, refresh it.", serverName)
-					cert = SignServerCert(s.AuthorityCert, serverName, s.CertValidity)
-					s.ServerCerts[serverName] = cert
-				}
-			}()
+		if s.ServerCerts == nil || !s.ServerCerts.IsValid() {
+			log.Printf("Server cert is invalid, refresh it.")
+			s.ServerCerts = SignServerCert(s.AuthorityCert, s.ServerNames, s.CertValidity)
 		}
-		wg.Wait()
 		s.Mutex.Unlock()
 	}
 }
