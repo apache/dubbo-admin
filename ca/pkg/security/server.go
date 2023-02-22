@@ -25,8 +25,11 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 	"log"
+	"math"
 	"net"
 	"strconv"
+	"sync"
+	"time"
 )
 
 type Server struct {
@@ -47,27 +50,25 @@ func (s *Server) Init() {
 		panic("Failed to create kubernetes client.")
 	}
 
+	s.CertStorage = &cert.Storage{
+		AuthorityCert: &cert.Cert{},
+		ServerCerts:   map[string]*cert.Cert{},
+		TrustedCert:   []*cert.Cert{},
+		Mutex:         &sync.Mutex{},
+		CertValidity:  s.Options.CertValidity,
+		CaValidity:    s.Options.CaValidity,
+	}
+	go s.CertStorage.RefreshServerCert()
+
 	// TODO inject pod based on Webhook
 
-	// TODO Load root cert
-	certStr, priStr := s.KubeClient.GetCA(s.Options.Namespace)
-	if certStr != "" && priStr != "" {
-		s.CertStorage.AuthorityCert.Cert = cert.DecodeCert(certStr)
-		s.CertStorage.AuthorityCert.CertPem = certStr
-		s.CertStorage.AuthorityCert.PrivateKey = cert.DecodePri(priStr)
-	}
-	// TODO check cert if expired
-
-	if s.CertStorage.AuthorityCert.IsValid() {
-		s.CertStorage.AuthorityCert = cert.CreateCA(s.CertStorage.RootCert, s.Options.CaValidity)
-	}
-
-	// TODO lock if multi server
-	s.KubeClient.UpdateCA(s.CertStorage.AuthorityCert.CertPem, cert.EncodePri(s.CertStorage.AuthorityCert.PrivateKey), s.Options.Namespace)
+	s.LoadRootCert()
+	s.LoadAuthorityCert()
 
 	impl := &v1alpha1.DubboCertificateServiceServerImpl{
 		Options:     s.Options,
 		CertStorage: s.CertStorage,
+		KubeClient:  s.KubeClient,
 	}
 
 	s.PlainServer = grpc.NewServer()
@@ -76,22 +77,73 @@ func (s *Server) Init() {
 
 	tlsConfig := &tls.Config{
 		GetCertificate: func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
-			log.Printf("Get certificate for %s", info.ServerName)
-			// TODO build cert in backend
-			// TODO rotation cert
-			// TODO create cert when start
-			// TODO DNSName
-			if s.CertStorage.ServerCerts[info.ServerName] == nil {
-				serverCert, pri := cert.SignServerCert(s.CertStorage.AuthorityCert, s.Options.CertValidity)
-				c, _ := tls.X509KeyPair([]byte(serverCert), []byte(pri))
-				s.CertStorage.ServerCerts[info.ServerName] = &c
-			}
-			return s.CertStorage.ServerCerts[info.ServerName], nil
+			return s.CertStorage.GetServerCert(info.ServerName), nil
 		},
 	}
+
+	s.CertStorage.GetServerCert("localhost")
+	s.CertStorage.GetServerCert("dubbo-ca." + s.Options.Namespace + ".svc")
+	s.CertStorage.GetServerCert("dubbo-ca." + s.Options.Namespace + ".svc.cluster.local")
+
 	s.SecureServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConfig)))
 	v1alpha1.RegisterDubboCertificateServiceServer(s.SecureServer, impl)
 	reflection.Register(s.SecureServer)
+}
+
+func (s *Server) LoadRootCert() {
+	// todo
+}
+
+func (s *Server) LoadAuthorityCert() {
+	certStr, priStr := s.KubeClient.GetAuthorityCert(s.Options.Namespace)
+	if certStr != "" && priStr != "" {
+		s.CertStorage.AuthorityCert.Cert = cert.DecodeCert(certStr)
+		s.CertStorage.AuthorityCert.CertPem = certStr
+		s.CertStorage.AuthorityCert.PrivateKey = cert.DecodePri(priStr)
+	}
+
+	s.RefreshAuthorityCert()
+	go s.ScheduleRefreshAuthorityCert()
+}
+
+func (s *Server) ScheduleRefreshAuthorityCert() {
+	interval := math.Min(math.Floor(float64(s.Options.CaValidity)/100), 10_000)
+	for true {
+		time.Sleep(time.Duration(interval) * time.Millisecond)
+		if s.CertStorage.AuthorityCert.NeedRefresh() {
+			log.Printf("Authority cert is invalid, refresh it.")
+			// TODO lock if multi server
+			// TODO refresh signed cert
+			s.CertStorage.AuthorityCert = cert.CreateCA(s.CertStorage.RootCert, s.Options.CaValidity)
+			s.KubeClient.UpdateAuthorityCert(s.CertStorage.AuthorityCert.CertPem, cert.EncodePri(s.CertStorage.AuthorityCert.PrivateKey), s.Options.Namespace)
+			if s.KubeClient.UpdateAuthorityPublicKey(s.CertStorage.AuthorityCert.CertPem) {
+				log.Printf("Write ca to config maps success.")
+			} else {
+				log.Printf("Write ca to config maps failed.")
+			}
+		}
+	}
+}
+
+func (s *Server) RefreshAuthorityCert() {
+	if !s.CertStorage.AuthorityCert.IsValid() {
+		log.Printf("Load authority cert from kubernetes secrect success.")
+	} else {
+		log.Printf("Load authority cert from kubernetes secrect failed.")
+		s.CertStorage.AuthorityCert = cert.CreateCA(s.CertStorage.RootCert, s.Options.CaValidity)
+
+		// TODO lock if multi server
+		s.KubeClient.UpdateAuthorityCert(s.CertStorage.AuthorityCert.CertPem, cert.EncodePri(s.CertStorage.AuthorityCert.PrivateKey), s.Options.Namespace)
+	}
+
+	// TODO add task to update ca
+	log.Printf("Writing ca to config maps.")
+	if s.KubeClient.UpdateAuthorityPublicKey(s.CertStorage.AuthorityCert.CertPem) {
+		log.Printf("Write ca to config maps success.")
+	} else {
+		log.Printf("Write ca to config maps failed.")
+	}
+	s.CertStorage.TrustedCert = append(s.CertStorage.TrustedCert, s.CertStorage.AuthorityCert)
 }
 
 func (s *Server) Start() {
@@ -116,11 +168,5 @@ func (s *Server) Start() {
 		}
 	}()
 
-	// TODO add task to update ca
-	log.Printf("Writing ca to config maps.")
-	if s.KubeClient.UpdateCAPub(s.CertStorage.AuthorityCert.CertPem) {
-		log.Printf("Write ca to config maps success.")
-	} else {
-		log.Printf("Write ca to config maps failed.")
-	}
+	log.Printf("Server started.")
 }

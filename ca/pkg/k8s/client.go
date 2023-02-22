@@ -64,15 +64,15 @@ func (c *Client) Init() bool {
 	return true
 }
 
-func (c *Client) GetCA(namespace string) (string, string) {
+func (c *Client) GetAuthorityCert(namespace string) (string, string) {
 	s, err := c.kubeClient.CoreV1().Secrets(namespace).Get(context.TODO(), "dubbo-ca-secret", metav1.GetOptions{})
 	if err != nil {
-		log.Printf("Unable to get ca secret from kubernetes. " + err.Error())
+		log.Printf("Unable to get authority cert secret from kubernetes. " + err.Error())
 	}
 	return string(s.Data["cert.pem"]), string(s.Data["pri.pem"])
 }
 
-func (c *Client) UpdateCA(cert string, pri string, namespace string) {
+func (c *Client) UpdateAuthorityCert(cert string, pri string, namespace string) {
 	s, err := c.kubeClient.CoreV1().Secrets(namespace).Get(context.TODO(), "dubbo-ca-secret", metav1.GetOptions{})
 	if err != nil {
 		log.Printf("Unable to get ca secret from kubernetes. Will try to create. " + err.Error())
@@ -106,7 +106,7 @@ func (c *Client) UpdateCA(cert string, pri string, namespace string) {
 	}
 }
 
-func (c *Client) UpdateCAPub(cert string) bool {
+func (c *Client) UpdateAuthorityPublicKey(cert string) bool {
 	ns, err := c.kubeClient.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		log.Printf("Failed to get namespaces. " + err.Error())
