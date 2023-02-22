@@ -27,7 +27,7 @@ const namespace = "dubbo-system"
 func main() {
 	// TODO read options from env
 	options := &config.Options{
-		EnableKubernetes: true,
+		EnableKubernetes: false,
 		Namespace:        namespace,
 		PlainServerPort:  30060,
 		SecureServerPort: 30062,

@@ -168,7 +168,7 @@ func SignFromCSR(csr *x509.CertificateRequest, authorityCert *Cert, certValidity
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().Add(time.Duration(certValidity) * time.Millisecond),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth | x509.ExtKeyUsageServerAuth},
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	}
 	csrTemplate.DNSNames = csr.DNSNames
 

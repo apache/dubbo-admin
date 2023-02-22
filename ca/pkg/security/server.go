@@ -126,7 +126,7 @@ func (s *Server) ScheduleRefreshAuthorityCert() {
 }
 
 func (s *Server) RefreshAuthorityCert() {
-	if !s.CertStorage.AuthorityCert.IsValid() {
+	if s.CertStorage.AuthorityCert.IsValid() {
 		log.Printf("Load authority cert from kubernetes secrect success.")
 	} else {
 		log.Printf("Load authority cert from kubernetes secrect failed.")
