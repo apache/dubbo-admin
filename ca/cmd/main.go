@@ -16,8 +16,6 @@
 package main
 
 import (
-	"crypto/tls"
-	"github.com/apache/dubbo-admin/ca/pkg/cert"
 	"github.com/apache/dubbo-admin/ca/pkg/config"
 	"github.com/apache/dubbo-admin/ca/pkg/security"
 	"os"
@@ -40,10 +38,6 @@ func main() {
 
 	s := &security.Server{
 		Options: options,
-		CertStorage: &cert.Storage{
-			AuthorityCert: &cert.Cert{},
-			ServerCerts:   map[string]*tls.Certificate{},
-		},
 	}
 
 	s.Init()

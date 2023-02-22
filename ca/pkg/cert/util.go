@@ -103,7 +103,7 @@ func CreateCA(rootCert *Cert, caValidity int64) *Cert {
 	}
 }
 
-func SignServerCert(authorityCert *Cert, certValidity int64) (string, string) {
+func SignServerCert(authorityCert *Cert, serverName string, certValidity int64) *Cert {
 	privKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		log.Fatal(err)
@@ -121,7 +121,7 @@ func SignServerCert(authorityCert *Cert, certValidity int64) (string, string) {
 		KeyUsage:    x509.KeyUsageDigitalSignature,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 	}
-	cert.DNSNames = []string{"localhost"}
+	cert.DNSNames = []string{serverName}
 
 	c, err := x509.CreateCertificate(rand.Reader, cert, authorityCert.Cert, &privKey.PublicKey, authorityCert.PrivateKey)
 
@@ -134,7 +134,11 @@ func SignServerCert(authorityCert *Cert, certValidity int64) (string, string) {
 		log.Printf("Failed to encode certificate. " + err.Error())
 		panic(err)
 	}
-	return certPem.String(), EncodePri(privKey)
+	return &Cert{
+		Cert:       cert,
+		CertPem:    certPem.String(),
+		PrivateKey: privKey,
+	}
 }
 
 func LoadCSR(csrString string) (*x509.CertificateRequest, error) {

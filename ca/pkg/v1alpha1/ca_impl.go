@@ -19,7 +19,10 @@ import (
 	"context"
 	"github.com/apache/dubbo-admin/ca/pkg/cert"
 	"github.com/apache/dubbo-admin/ca/pkg/config"
+	"github.com/apache/dubbo-admin/ca/pkg/k8s"
+	"google.golang.org/grpc/metadata"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -27,10 +30,38 @@ type DubboCertificateServiceServerImpl struct {
 	UnimplementedDubboCertificateServiceServer
 	Options     *config.Options
 	CertStorage *cert.Storage
+	KubeClient  *k8s.Client
 }
 
 func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context, req *DubboCertificateRequest) (*DubboCertificateResponse, error) {
 	csr, _ := cert.LoadCSR(req.Csr)
+	if s.Options.EnableKubernetes {
+		md, ok := metadata.FromIncomingContext(c)
+		if !ok {
+			log.Printf("Failed to get metadata from context.")
+			return &DubboCertificateResponse{}, nil
+		}
+
+		authorization, ok := md["authorization"]
+		if !ok || len(authorization) != 1 {
+			log.Printf("Failed to get Authorization header from context.")
+			return &DubboCertificateResponse{}, nil
+		}
+
+		if !strings.HasPrefix(authorization[0], "Bearer ") {
+			log.Printf("Failed to get Authorization header from context.")
+			return &DubboCertificateResponse{}, nil
+		}
+
+		token := strings.ReplaceAll(authorization[0], "Bearer ", "")
+
+		// TODO load principal from k8s
+		if !s.KubeClient.VerifyServiceAccount(token) {
+			log.Printf("Failed to verify Authorization header from kubernetes.")
+			return &DubboCertificateResponse{}, nil
+		}
+	}
+
 	// TODO check server token
 	log.Printf("Receive csr request " + req.Csr)
 	if csr == nil {

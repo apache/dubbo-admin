@@ -19,23 +19,30 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	"log"
+	"math"
+	"sync"
 	"time"
 )
 
 type Storage struct {
+	Mutex        *sync.Mutex
 	CaValidity   int64
 	CertValidity int64
 
 	RootCert      *Cert
 	AuthorityCert *Cert
 
-	ServerCerts map[string]*tls.Certificate
+	TrustedCert []*Cert
+	ServerCerts map[string]*Cert
 }
 
 type Cert struct {
 	Cert       *x509.Certificate
 	CertPem    string
 	PrivateKey *rsa.PrivateKey
+
+	tlsCert *tls.Certificate
 }
 
 func (c *Cert) IsValid() bool {
@@ -49,4 +56,69 @@ func (c *Cert) IsValid() bool {
 		return false
 	}
 	return true
+}
+
+func (c *Cert) NeedRefresh() bool {
+	if c.Cert == nil || c.CertPem == "" || c.PrivateKey == nil {
+		return true
+	}
+	if time.Now().Before(c.Cert.NotBefore) || time.Now().After(c.Cert.NotAfter) {
+		return true
+	}
+	validity := c.Cert.NotAfter.UnixMilli() - c.Cert.NotBefore.UnixMilli()
+	if time.Now().Add(time.Duration(math.Floor(float64(validity)*0.2)) * time.Millisecond).After(c.Cert.NotAfter) {
+		return true
+	}
+	if c.Cert.PublicKey == c.PrivateKey.Public() {
+		return true
+	}
+	return false
+}
+
+func (c *Cert) GetTlsCert() *tls.Certificate {
+	if c.tlsCert != nil {
+		return c.tlsCert
+	}
+	tlsCert, err := tls.X509KeyPair([]byte(c.CertPem), []byte(EncodePri(c.PrivateKey)))
+	if err != nil {
+		log.Printf("Failed to load x509 cert. %v", err)
+	}
+	c.tlsCert = &tlsCert
+	return c.tlsCert
+}
+
+func (s *Storage) GetServerCert(serverName string) *tls.Certificate {
+	if cert, exist := s.ServerCerts[serverName]; exist && cert.IsValid() {
+		return cert.GetTlsCert()
+	}
+	s.Mutex.Lock()
+	defer s.Mutex.Unlock()
+	log.Printf("Generate certificate for %s", serverName)
+	cert := SignServerCert(s.AuthorityCert, serverName, s.CertValidity)
+	s.ServerCerts[serverName] = cert
+	return cert.GetTlsCert()
+}
+
+func (s *Storage) RefreshServerCert() {
+	interval := math.Min(math.Floor(float64(s.CertValidity)/100), 10_000)
+	for true {
+		time.Sleep(time.Duration(interval) * time.Millisecond)
+		s.Mutex.Lock()
+		wg := sync.WaitGroup{}
+		wg.Add(len(s.ServerCerts))
+		for serverName, cert := range s.ServerCerts {
+			cert := cert
+			serverName := serverName
+			go func() {
+				defer wg.Done()
+				if cert.NeedRefresh() {
+					log.Printf("Server cert for %s is invalid, refresh it.", serverName)
+					cert = SignServerCert(s.AuthorityCert, serverName, s.CertValidity)
+					s.ServerCerts[serverName] = cert
+				}
+			}()
+		}
+		wg.Wait()
+		s.Mutex.Unlock()
+	}
 }
