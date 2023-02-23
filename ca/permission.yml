@@ -1,0 +1,102 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dubbo-ca
+  namespace: dubbo-system
+  labels:
+    app: dubbo-ca
+rules:
+  # For storing CA secret
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create", "get", "watch", "list", "update", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dubbo-ca
+  labels:
+    app: dubbo-ca
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "nodes", "services", "namespaces", "endpoints"]
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["update"]
+
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["create", "get", "list", "watch", "update"]
+
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "watch", "list"]
+
+  - apiGroups: ["authentication.k8s.io"]
+    resources: ["tokenreviews"]
+    verbs: ["create"]
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dubbo-ca
+  namespace: dubbo-system
+  labels:
+    app: dubbo-ca
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dubbo-ca
+roleRef:
+  kind: ClusterRole
+  name: dubbo-ca
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: dubbo-ca
+    namespace: dubbo-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dubbo-ca
+  namespace: dubbo-system
+roleRef:
+  kind: Role
+  name: dubbo-ca
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: dubbo-ca
+    namespace: dubbo-system
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dubbo-ca
+  namespace: dubbo-system
+  labels:
+    app: dubbo-ca
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dubbo-ca
+  template:
+    metadata:
+      labels:
+        app: dubbo-ca
+    spec:
+      serviceAccountName: dubbo-ca
+      containers:
+        - name: ca
+          image: albumen/dubbo-ca:1.0.0
+---

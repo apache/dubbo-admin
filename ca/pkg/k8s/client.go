@@ -37,21 +37,21 @@ func (c *Client) Init() bool {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		logger.Sugar.Infof("Failed to load config from Pod. Will fall back to kube config file.")
-	}
 
-	var kubeconfig *string
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	} else {
-		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-	}
-	flag.Parse()
+		var kubeconfig *string
+		if home := homedir.HomeDir(); home != "" {
+			kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+		} else {
+			kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+		}
+		flag.Parse()
 
-	// use the current context in kubeconfig
-	config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
-	if err != nil {
-		logger.Sugar.Warnf("Failed to load config from kube config file.")
-		return false
+		// use the current context in kubeconfig
+		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+		if err != nil {
+			logger.Sugar.Warnf("Failed to load config from kube config file.")
+			return false
+		}
 	}
 
 	// creates the clientset
