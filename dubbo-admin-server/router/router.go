@@ -18,7 +18,7 @@
 package router
 
 import (
-	"admin/handlers"
+	"admin/pkg/handlers"
 	"github.com/gin-gonic/gin"
 )
 

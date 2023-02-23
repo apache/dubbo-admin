@@ -18,8 +18,8 @@
 package handlers
 
 import (
-	"admin/cache"
-	"admin/constant"
+	"admin/pkg/cache"
+	"admin/pkg/constant"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"sync"
