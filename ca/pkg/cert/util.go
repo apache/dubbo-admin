@@ -22,6 +22,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"github.com/apache/dubbo-admin/ca/pkg/logger"
 	"log"
 	"math/big"
 	"time"
@@ -31,7 +32,7 @@ func DecodeCert(cert string) *x509.Certificate {
 	block, _ := pem.Decode([]byte(cert))
 	p, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		log.Printf("Failed to parse public key. " + err.Error())
+		logger.Sugar.Warnf("Failed to parse public key. " + err.Error())
 		return nil
 	}
 	return p
@@ -40,7 +41,7 @@ func DecodeCert(cert string) *x509.Certificate {
 func DecodePub(cert string) *rsa.PublicKey {
 	p, err := x509.ParsePKCS1PublicKey([]byte(cert))
 	if err != nil {
-		log.Printf("Failed to parse public key. " + err.Error())
+		logger.Sugar.Warnf("Failed to parse public key. " + err.Error())
 		return nil
 	}
 	return p
@@ -51,7 +52,7 @@ func DecodePri(cert string) *rsa.PrivateKey {
 
 	p, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		log.Printf("Failed to parse private key. " + err.Error())
+		logger.Sugar.Warnf("Failed to parse private key. " + err.Error())
 		return nil
 	}
 	return p
@@ -92,7 +93,7 @@ func CreateCA(rootCert *Cert, caValidity int64) *Cert {
 		Bytes: caBytes,
 	})
 	if err != nil {
-		log.Printf("Failed to encode certificate. " + err.Error())
+		logger.Sugar.Warnf("Failed to encode certificate. " + err.Error())
 		panic(err)
 	}
 
@@ -131,7 +132,7 @@ func SignServerCert(authorityCert *Cert, serverName []string, certValidity int64
 		Bytes: c,
 	})
 	if err != nil {
-		log.Printf("Failed to encode certificate. " + err.Error())
+		logger.Sugar.Warnf("Failed to encode certificate. " + err.Error())
 		panic(err)
 	}
 	return &Cert{

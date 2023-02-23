@@ -19,7 +19,7 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
-	"log"
+	"github.com/apache/dubbo-admin/ca/pkg/logger"
 	"math"
 	"sync"
 	"time"
@@ -82,7 +82,7 @@ func (c *Cert) GetTlsCert() *tls.Certificate {
 	}
 	tlsCert, err := tls.X509KeyPair([]byte(c.CertPem), []byte(EncodePri(c.PrivateKey)))
 	if err != nil {
-		log.Printf("Failed to load x509 cert. %v", err)
+		logger.Sugar.Infof("Failed to load x509 cert. %v", err)
 	}
 	c.tlsCert = &tlsCert
 	return c.tlsCert
@@ -115,7 +115,7 @@ func (s *Storage) RefreshServerCert() {
 		time.Sleep(time.Duration(interval) * time.Millisecond)
 		s.Mutex.Lock()
 		if s.ServerCerts == nil || !s.ServerCerts.IsValid() {
-			log.Printf("Server cert is invalid, refresh it.")
+			logger.Sugar.Infof("Server cert is invalid, refresh it.")
 			s.ServerCerts = SignServerCert(s.AuthorityCert, s.ServerNames, s.CertValidity)
 		}
 		s.Mutex.Unlock()

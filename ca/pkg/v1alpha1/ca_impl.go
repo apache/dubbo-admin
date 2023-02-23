@@ -20,9 +20,9 @@ import (
 	"github.com/apache/dubbo-admin/ca/pkg/cert"
 	"github.com/apache/dubbo-admin/ca/pkg/config"
 	"github.com/apache/dubbo-admin/ca/pkg/k8s"
+	"github.com/apache/dubbo-admin/ca/pkg/logger"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
-	"log"
 	"strings"
 	"time"
 )
@@ -41,7 +41,7 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 	if s.Options.EnableKubernetes {
 		md, ok := metadata.FromIncomingContext(c)
 		if !ok {
-			log.Printf("Failed to get metadata from context. RemoteAddr: %s", p.Addr.String())
+			logger.Sugar.Warnf("Failed to get metadata from context. RemoteAddr: %s", p.Addr.String())
 			return &DubboCertificateResponse{
 				Success: false,
 				Message: "Failed to get metadata from context.",
@@ -50,7 +50,7 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 
 		authorization, ok := md["authorization"]
 		if !ok || len(authorization) != 1 {
-			log.Printf("Failed to get Authorization header from context. RemoteAddr: %s", p.Addr.String())
+			logger.Sugar.Warnf("Failed to get Authorization header from context. RemoteAddr: %s", p.Addr.String())
 			return &DubboCertificateResponse{
 				Success: false,
 				Message: "Failed to get Authorization header from context.",
@@ -58,7 +58,7 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 		}
 
 		if !strings.HasPrefix(authorization[0], "Bearer ") {
-			log.Printf("Failed to get Authorization header from context. RemoteAddr: %s", p.Addr.String())
+			logger.Sugar.Warnf("Failed to get Authorization header from context. RemoteAddr: %s", p.Addr.String())
 			return &DubboCertificateResponse{
 				Success: false,
 				Message: "Failed to get Authorization header from context.",
@@ -69,7 +69,7 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 
 		// TODO load principal from k8s
 		if !s.KubeClient.VerifyServiceAccount(token) {
-			log.Printf("Failed to verify Authorization header from kubernetes. RemoteAddr: %s", p.Addr.String())
+			logger.Sugar.Warnf("Failed to verify Authorization header from kubernetes. RemoteAddr: %s", p.Addr.String())
 			return &DubboCertificateResponse{
 				Success: false,
 				Message: "Failed to verify Authorization header from kubernetes.",
@@ -79,7 +79,7 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 
 	// TODO check server token
 	if csr == nil {
-		log.Printf("Failed to decode csr. RemoteAddr: %s", p.Addr.String())
+		logger.Sugar.Warnf("Failed to decode csr. RemoteAddr: %s", p.Addr.String())
 		return &DubboCertificateResponse{
 			Success: false,
 			Message: "Failed to read csr",
@@ -87,14 +87,14 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 	}
 	certPem, err := cert.SignFromCSR(csr, s.CertStorage.AuthorityCert, s.Options.CertValidity)
 	if err != nil {
-		log.Printf("Failed to sign certificate from csr: %v. RemoteAddr: %s", err, p.Addr.String())
+		logger.Sugar.Warnf("Failed to sign certificate from csr: %v. RemoteAddr: %s", err, p.Addr.String())
 		return &DubboCertificateResponse{
 			Success: false,
 			Message: err.Error(),
 		}, nil
 	}
 
-	log.Printf("Success to sign certificate from csr. RemoteAddr: %s", p.Addr.String())
+	logger.Sugar.Infof("Success to sign certificate from csr. RemoteAddr: %s", p.Addr.String())
 
 	return &DubboCertificateResponse{
 		Success:    true,

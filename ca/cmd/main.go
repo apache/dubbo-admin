@@ -17,6 +17,7 @@ package main
 
 import (
 	"github.com/apache/dubbo-admin/ca/pkg/config"
+	"github.com/apache/dubbo-admin/ca/pkg/logger"
 	"github.com/apache/dubbo-admin/ca/pkg/security"
 	"os"
 )
@@ -25,6 +26,7 @@ import (
 const namespace = "dubbo-system"
 
 func main() {
+	logger.Init()
 	// TODO read options from env
 	options := &config.Options{
 		EnableKubernetes: false,

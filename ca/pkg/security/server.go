@@ -20,9 +20,8 @@ import (
 	"github.com/apache/dubbo-admin/ca/pkg/cert"
 	"github.com/apache/dubbo-admin/ca/pkg/config"
 	"github.com/apache/dubbo-admin/ca/pkg/k8s"
+	"github.com/apache/dubbo-admin/ca/pkg/logger"
 	"github.com/apache/dubbo-admin/ca/pkg/v1alpha1"
-	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
@@ -72,12 +71,6 @@ func (s *Server) Init() {
 		KubeClient:  s.KubeClient,
 	}
 
-	logger := zap.NewExample()
-	defer logger.Sync()
-
-	// Make sure that log statements internal to gRPC library are logged using the zapLogger as well.
-	grpc_zap.ReplaceGrpcLoggerV2(logger)
-
 	s.PlainServer = grpc.NewServer()
 	v1alpha1.RegisterDubboCertificateServiceServer(s.PlainServer, impl)
 	reflection.Register(s.PlainServer)
@@ -118,15 +111,15 @@ func (s *Server) ScheduleRefreshAuthorityCert() {
 	for true {
 		time.Sleep(time.Duration(interval) * time.Millisecond)
 		if s.CertStorage.AuthorityCert.NeedRefresh() {
-			log.Printf("Authority cert is invalid, refresh it.")
+			logger.Sugar.Infof("Authority cert is invalid, refresh it.")
 			// TODO lock if multi server
 			// TODO refresh signed cert
 			s.CertStorage.AuthorityCert = cert.CreateCA(s.CertStorage.RootCert, s.Options.CaValidity)
 			s.KubeClient.UpdateAuthorityCert(s.CertStorage.AuthorityCert.CertPem, cert.EncodePri(s.CertStorage.AuthorityCert.PrivateKey), s.Options.Namespace)
 			if s.KubeClient.UpdateAuthorityPublicKey(s.CertStorage.AuthorityCert.CertPem) {
-				log.Printf("Write ca to config maps success.")
+				logger.Sugar.Infof("Write ca to config maps success.")
 			} else {
-				log.Printf("Write ca to config maps failed.")
+				logger.Sugar.Warnf("Write ca to config maps failed.")
 			}
 		}
 	}
@@ -134,9 +127,9 @@ func (s *Server) ScheduleRefreshAuthorityCert() {
 
 func (s *Server) RefreshAuthorityCert() {
 	if s.CertStorage.AuthorityCert.IsValid() {
-		log.Printf("Load authority cert from kubernetes secrect success.")
+		logger.Sugar.Infof("Load authority cert from kubernetes secrect success.")
 	} else {
-		log.Printf("Load authority cert from kubernetes secrect failed.")
+		logger.Sugar.Warnf("Load authority cert from kubernetes secrect failed.")
 		s.CertStorage.AuthorityCert = cert.CreateCA(s.CertStorage.RootCert, s.Options.CaValidity)
 
 		// TODO lock if multi server
@@ -144,11 +137,11 @@ func (s *Server) RefreshAuthorityCert() {
 	}
 
 	// TODO add task to update ca
-	log.Printf("Writing ca to config maps.")
+	logger.Sugar.Info("Writing ca to config maps.")
 	if s.KubeClient.UpdateAuthorityPublicKey(s.CertStorage.AuthorityCert.CertPem) {
-		log.Printf("Write ca to config maps success.")
+		logger.Sugar.Info("Write ca to config maps success.")
 	} else {
-		log.Printf("Write ca to config maps failed.")
+		logger.Sugar.Warnf("Write ca to config maps failed.")
 	}
 	s.CertStorage.TrustedCert = append(s.CertStorage.TrustedCert, s.CertStorage.AuthorityCert)
 }
@@ -175,5 +168,5 @@ func (s *Server) Start() {
 		}
 	}()
 
-	log.Printf("Server started.")
+	logger.Sugar.Info("Server started.")
 }
