@@ -22,7 +22,6 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DubboCertificateServiceClient interface {
-	// Using provided CSR, returns a signed certificate.
 	CreateCertificate(ctx context.Context, in *DubboCertificateRequest, opts ...grpc.CallOption) (*DubboCertificateResponse, error)
 }
 
@@ -47,7 +46,6 @@ func (c *dubboCertificateServiceClient) CreateCertificate(ctx context.Context, i
 // All implementations must embed UnimplementedDubboCertificateServiceServer
 // for forward compatibility
 type DubboCertificateServiceServer interface {
-	// Using provided CSR, returns a signed certificate.
 	CreateCertificate(context.Context, *DubboCertificateRequest) (*DubboCertificateResponse, error)
 	mustEmbedUnimplementedDubboCertificateServiceServer()
 }

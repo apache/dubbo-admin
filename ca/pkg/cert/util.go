@@ -175,17 +175,17 @@ func SignFromCSR(csr *x509.CertificateRequest, authorityCert *Cert, certValidity
 		return "", err
 	}
 
-	pubPEM := new(bytes.Buffer)
-	err = pem.Encode(pubPEM, &pem.Block{
+	certPem := new(bytes.Buffer)
+	err = pem.Encode(certPem, &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: result,
 	})
 	if err != nil {
 		return "", err
 	}
-	pub := pubPEM.String()
+	cert := certPem.String()
 
-	return pub, nil
+	return cert, nil
 }
 
 func EncodePri(caPrivKey *rsa.PrivateKey) string {

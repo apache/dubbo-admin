@@ -21,6 +21,7 @@ import (
 	"github.com/apache/dubbo-admin/ca/pkg/config"
 	"github.com/apache/dubbo-admin/ca/pkg/k8s"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 	"log"
 	"strings"
 	"time"
@@ -35,45 +36,71 @@ type DubboCertificateServiceServerImpl struct {
 
 func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context, req *DubboCertificateRequest) (*DubboCertificateResponse, error) {
 	csr, _ := cert.LoadCSR(req.Csr)
+	p, _ := peer.FromContext(c)
+
 	if s.Options.EnableKubernetes {
 		md, ok := metadata.FromIncomingContext(c)
 		if !ok {
-			log.Printf("Failed to get metadata from context.")
-			return &DubboCertificateResponse{}, nil
+			log.Printf("Failed to get metadata from context. RemoteAddr: %s", p.Addr.String())
+			return &DubboCertificateResponse{
+				Success: false,
+				Message: "Failed to get metadata from context.",
+			}, nil
 		}
 
 		authorization, ok := md["authorization"]
 		if !ok || len(authorization) != 1 {
-			log.Printf("Failed to get Authorization header from context.")
-			return &DubboCertificateResponse{}, nil
+			log.Printf("Failed to get Authorization header from context. RemoteAddr: %s", p.Addr.String())
+			return &DubboCertificateResponse{
+				Success: false,
+				Message: "Failed to get Authorization header from context.",
+			}, nil
 		}
 
 		if !strings.HasPrefix(authorization[0], "Bearer ") {
-			log.Printf("Failed to get Authorization header from context.")
-			return &DubboCertificateResponse{}, nil
+			log.Printf("Failed to get Authorization header from context. RemoteAddr: %s", p.Addr.String())
+			return &DubboCertificateResponse{
+				Success: false,
+				Message: "Failed to get Authorization header from context.",
+			}, nil
 		}
 
 		token := strings.ReplaceAll(authorization[0], "Bearer ", "")
 
 		// TODO load principal from k8s
 		if !s.KubeClient.VerifyServiceAccount(token) {
-			log.Printf("Failed to verify Authorization header from kubernetes.")
-			return &DubboCertificateResponse{}, nil
+			log.Printf("Failed to verify Authorization header from kubernetes. RemoteAddr: %s", p.Addr.String())
+			return &DubboCertificateResponse{
+				Success: false,
+				Message: "Failed to verify Authorization header from kubernetes.",
+			}, nil
 		}
 	}
 
 	// TODO check server token
 	if csr == nil {
-		return &DubboCertificateResponse{}, nil
+		log.Printf("Failed to decode csr. RemoteAddr: %s", p.Addr.String())
+		return &DubboCertificateResponse{
+			Success: false,
+			Message: "Failed to read csr",
+		}, nil
 	}
-	publicKey, err := cert.SignFromCSR(csr, s.CertStorage.AuthorityCert, s.Options.CertValidity)
+	certPem, err := cert.SignFromCSR(csr, s.CertStorage.AuthorityCert, s.Options.CertValidity)
 	if err != nil {
-		log.Printf("Failed to sign certificate from csr: %v", err)
-		return &DubboCertificateResponse{}, nil
+		log.Printf("Failed to sign certificate from csr: %v. RemoteAddr: %s", err, p.Addr.String())
+		return &DubboCertificateResponse{
+			Success: false,
+			Message: err.Error(),
+		}, nil
 	}
+
+	log.Printf("Success to sign certificate from csr. RemoteAddr: %s", p.Addr.String())
+
 	return &DubboCertificateResponse{
-		PublicKey:  publicKey,
+		Success:    true,
+		Message:    "OK",
+		CertPem:    certPem,
 		TrustCerts: []string{s.CertStorage.AuthorityCert.CertPem},
-		ExpireTime: time.Now().AddDate(0, 0, 1).UnixMilli(),
+		ExpireTime: time.Now().UnixMilli() + (s.Options.CertValidity / 2),
 	}, nil
 }

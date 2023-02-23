@@ -21,6 +21,8 @@ import (
 	"github.com/apache/dubbo-admin/ca/pkg/config"
 	"github.com/apache/dubbo-admin/ca/pkg/k8s"
 	"github.com/apache/dubbo-admin/ca/pkg/v1alpha1"
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
@@ -52,7 +54,6 @@ func (s *Server) Init() {
 
 	s.CertStorage = &cert.Storage{
 		AuthorityCert: &cert.Cert{},
-		ServerCerts:   map[string]*cert.Cert{},
 		TrustedCert:   []*cert.Cert{},
 		Mutex:         &sync.Mutex{},
 		CertValidity:  s.Options.CertValidity,
@@ -70,6 +71,12 @@ func (s *Server) Init() {
 		CertStorage: s.CertStorage,
 		KubeClient:  s.KubeClient,
 	}
+
+	logger := zap.NewExample()
+	defer logger.Sync()
+
+	// Make sure that log statements internal to gRPC library are logged using the zapLogger as well.
+	grpc_zap.ReplaceGrpcLoggerV2(logger)
 
 	s.PlainServer = grpc.NewServer()
 	v1alpha1.RegisterDubboCertificateServiceServer(s.PlainServer, impl)
