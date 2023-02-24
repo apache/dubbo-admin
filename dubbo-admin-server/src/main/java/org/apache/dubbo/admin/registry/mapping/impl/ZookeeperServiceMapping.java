@@ -53,7 +53,7 @@ public class ZookeeperServiceMapping implements ServiceMapping {
 
     @Override
     public void listenerAll() {
-        zkClient.create(MAPPING_PATH, false);
+        zkClient.create(MAPPING_PATH, false, false);
         List<String> services = zkClient.addChildListener(MAPPING_PATH, (path, currentChildList) -> {
             for (String child : currentChildList) {
                 if (anyServices.add(child)) {
