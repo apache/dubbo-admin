@@ -968,6 +968,22 @@ imageRenderer:
   # schedulerName: "default-scheduler"
 
 
+# Enable backward compatibility of kubernetes where version below 1.13 doesn't have the enableServiceLinks option
+enableKubeBackwardCompatibility: false
+useStatefulSet: false
+# Create a dynamic manifests via values:
+extraObjects: []
+  # - apiVersion: "kubernetes-client.io/v1"
+  #   kind: ExternalSecret
+  #   metadata:
+  #     name: grafana-secrets
+  #   spec:
+  #     backendType: gcpSecretsManager
+  #     data:
+  #       - key: grafana-admin-password
+  #         name: adminPassword
+
+
 ingress:
   enabled: false
   # For Kubernetes >= 1.18 you should specify the ingress-controller via the field ingressClassName
