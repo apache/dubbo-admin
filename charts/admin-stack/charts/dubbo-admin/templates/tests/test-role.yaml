@@ -1,0 +1,21 @@
+{{- if and (.Capabilities.APIVersions.Has "policy/v1beta1/PodSecurityPolicy") .Values.tests.enabled .Values.rbac.pspEnabled }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "dubbo-admin.fullname" . }}-test
+  namespace: {{ include "dubbo-admin.namespace" . }}
+  annotations:
+    "helm.sh/hook": test-success
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"
+  labels:
+    {{- include "dubbo-admin.labels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - extensions
+    resources:
+      - podsecuritypolicies
+    verbs:
+      - use
+    resourceNames:
+      - {{ include "dubbo-admin.fullname" . }}-test
+{{- end }}

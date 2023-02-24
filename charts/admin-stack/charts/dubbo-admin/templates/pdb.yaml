@@ -1,0 +1,20 @@
+apiVersion: {{ include "dubbo-admin.podDisruptionBudget.apiVersion" . }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "dubbo-admin.fullname" . }}
+  namespace: {{ include "dubbo-admin.namespace" . }}
+  labels:
+    {{- include "dubbo-admin.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- with .Values.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ . }}
+  {{- end }}
+  {{- with .Values.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ . }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "dubbo-admin.selectorLabels" . | nindent 6 }}
