@@ -29,11 +29,23 @@ import (
 	"path/filepath"
 )
 
-type Client struct {
+type Client interface {
+	Init() bool
+	GetAuthorityCert(namespace string) (string, string)
+	UpdateAuthorityCert(cert string, pri string, namespace string)
+	UpdateAuthorityPublicKey(cert string) bool
+	VerifyServiceAccount(token string) bool
+}
+
+type ClientImpl struct {
 	kubeClient *kubernetes.Clientset
 }
 
-func (c *Client) Init() bool {
+func NewClient() Client {
+	return &ClientImpl{}
+}
+
+func (c *ClientImpl) Init() bool {
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		logger.Sugar.Infof("Failed to load config from Pod. Will fall back to kube config file.")
@@ -64,7 +76,7 @@ func (c *Client) Init() bool {
 	return true
 }
 
-func (c *Client) GetAuthorityCert(namespace string) (string, string) {
+func (c *ClientImpl) GetAuthorityCert(namespace string) (string, string) {
 	s, err := c.kubeClient.CoreV1().Secrets(namespace).Get(context.TODO(), "dubbo-ca-secret", metav1.GetOptions{})
 	if err != nil {
 		logger.Sugar.Warnf("Unable to get authority cert secret from kubernetes. " + err.Error())
@@ -72,7 +84,7 @@ func (c *Client) GetAuthorityCert(namespace string) (string, string) {
 	return string(s.Data["cert.pem"]), string(s.Data["pri.pem"])
 }
 
-func (c *Client) UpdateAuthorityCert(cert string, pri string, namespace string) {
+func (c *ClientImpl) UpdateAuthorityCert(cert string, pri string, namespace string) {
 	s, err := c.kubeClient.CoreV1().Secrets(namespace).Get(context.TODO(), "dubbo-ca-secret", metav1.GetOptions{})
 	if err != nil {
 		logger.Sugar.Warnf("Unable to get ca secret from kubernetes. Will try to create. " + err.Error())
@@ -106,7 +118,7 @@ func (c *Client) UpdateAuthorityCert(cert string, pri string, namespace string) 
 	}
 }
 
-func (c *Client) UpdateAuthorityPublicKey(cert string) bool {
+func (c *ClientImpl) UpdateAuthorityPublicKey(cert string) bool {
 	ns, err := c.kubeClient.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logger.Sugar.Warnf("Failed to get namespaces. " + err.Error())
@@ -149,7 +161,7 @@ func (c *Client) UpdateAuthorityPublicKey(cert string) bool {
 	return true
 }
 
-func (c *Client) VerifyServiceAccount(token string) bool {
+func (c *ClientImpl) VerifyServiceAccount(token string) bool {
 	tokenReview := &k8sauth.TokenReview{
 		Spec: k8sauth.TokenReviewSpec{
 			Token: token,

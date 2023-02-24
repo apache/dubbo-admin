@@ -30,6 +30,10 @@ import (
 
 func DecodeCert(cert string) *x509.Certificate {
 	block, _ := pem.Decode([]byte(cert))
+	if block == nil {
+		logger.Sugar.Warnf("Failed to parse public key.")
+		return nil
+	}
 	p, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		logger.Sugar.Warnf("Failed to parse public key. " + err.Error())
@@ -38,18 +42,12 @@ func DecodeCert(cert string) *x509.Certificate {
 	return p
 }
 
-func DecodePub(cert string) *rsa.PublicKey {
-	p, err := x509.ParsePKCS1PublicKey([]byte(cert))
-	if err != nil {
-		logger.Sugar.Warnf("Failed to parse public key. " + err.Error())
+func DecodePrivateKey(cert string) *rsa.PrivateKey {
+	block, _ := pem.Decode([]byte(cert))
+	if block == nil {
+		logger.Sugar.Warnf("Failed to parse private key.")
 		return nil
 	}
-	return p
-}
-
-func DecodePri(cert string) *rsa.PrivateKey {
-	block, _ := pem.Decode([]byte(cert))
-
 	p, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
 		logger.Sugar.Warnf("Failed to parse private key. " + err.Error())
@@ -58,11 +56,11 @@ func DecodePri(cert string) *rsa.PrivateKey {
 	return p
 }
 
-func CreateCA(rootCert *Cert, caValidity int64) *Cert {
+func GenerateAuthorityCert(rootCert *Cert, caValidity int64) *Cert {
 	cert := &x509.Certificate{
 		SerialNumber: big.NewInt(2019),
 		Subject: pkix.Name{
-			CommonName:   "Dubbo",
+			CommonName:   "Dubbo RA",
 			Organization: []string{"Apache Dubbo"},
 		},
 		Issuer: pkix.Name{
@@ -77,12 +75,12 @@ func CreateCA(rootCert *Cert, caValidity int64) *Cert {
 		BasicConstraintsValid: true,
 	}
 
-	caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	caBytes, err := x509.CreateCertificate(rand.Reader, cert, cert, &caPrivKey.PublicKey, caPrivKey)
+	caBytes, err := x509.CreateCertificate(rand.Reader, cert, cert, &privateKey.PublicKey, privateKey)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -98,14 +96,14 @@ func CreateCA(rootCert *Cert, caValidity int64) *Cert {
 	}
 
 	return &Cert{
-		Cert:       cert,
+		Cert:       DecodeCert(caPEM.String()),
 		CertPem:    caPEM.String(),
-		PrivateKey: caPrivKey,
+		PrivateKey: privateKey,
 	}
 }
 
 func SignServerCert(authorityCert *Cert, serverName []string, certValidity int64) *Cert {
-	privKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -124,7 +122,7 @@ func SignServerCert(authorityCert *Cert, serverName []string, certValidity int64
 	}
 	cert.DNSNames = serverName
 
-	c, err := x509.CreateCertificate(rand.Reader, cert, authorityCert.Cert, &privKey.PublicKey, authorityCert.PrivateKey)
+	c, err := x509.CreateCertificate(rand.Reader, cert, authorityCert.Cert, &privateKey.PublicKey, authorityCert.PrivateKey)
 
 	certPem := new(bytes.Buffer)
 	err = pem.Encode(certPem, &pem.Block{
@@ -138,8 +136,40 @@ func SignServerCert(authorityCert *Cert, serverName []string, certValidity int64
 	return &Cert{
 		Cert:       cert,
 		CertPem:    certPem.String(),
-		PrivateKey: privKey,
+		PrivateKey: privateKey,
 	}
+}
+
+func GenerateCSR() (string, *rsa.PrivateKey, error) {
+	csrTemplate := x509.CertificateRequest{
+		Subject: pkix.Name{
+			CommonName:   "Dubbo",
+			Organization: []string{"Apache Dubbo"},
+		},
+	}
+
+	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		log.Fatal(err)
+		return "", nil, err
+	}
+
+	csrBytes, err := x509.CreateCertificateRequest(rand.Reader, &csrTemplate, privateKey)
+	if err != nil {
+		return "", nil, err
+	}
+
+	csr := new(bytes.Buffer)
+	err = pem.Encode(csr, &pem.Block{
+		Type:  "CERTIFICATE REQUEST",
+		Bytes: csrBytes,
+	})
+
+	if err != nil {
+		logger.Sugar.Warnf("Failed to encode certificate. " + err.Error())
+		return "", nil, err
+	}
+	return csr.String(), privateKey, nil
 }
 
 func LoadCSR(csrString string) (*x509.CertificateRequest, error) {

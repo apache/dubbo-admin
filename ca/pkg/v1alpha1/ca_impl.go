@@ -31,11 +31,24 @@ type DubboCertificateServiceServerImpl struct {
 	UnimplementedDubboCertificateServiceServer
 	Options     *config.Options
 	CertStorage *cert.Storage
-	KubeClient  *k8s.Client
+	KubeClient  k8s.Client
 }
 
 func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context, req *DubboCertificateRequest) (*DubboCertificateResponse, error) {
-	csr, _ := cert.LoadCSR(req.Csr)
+	if req.Csr == "" {
+		return &DubboCertificateResponse{
+			Success: false,
+			Message: "CSR is empty.",
+		}, nil
+	}
+
+	csr, err := cert.LoadCSR(req.Csr)
+	if csr == nil || err != nil {
+		return &DubboCertificateResponse{
+			Success: false,
+			Message: "Decode csr failed.",
+		}, nil
+	}
 	p, _ := peer.FromContext(c)
 
 	if s.Options.EnableKubernetes {
@@ -78,13 +91,6 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 	}
 
 	// TODO check server token
-	if csr == nil {
-		logger.Sugar.Warnf("Failed to decode csr. RemoteAddr: %s", p.Addr.String())
-		return &DubboCertificateResponse{
-			Success: false,
-			Message: "Failed to read csr",
-		}, nil
-	}
 	certPem, err := cert.SignFromCSR(csr, s.CertStorage.AuthorityCert, s.Options.CertValidity)
 	if err != nil {
 		logger.Sugar.Warnf("Failed to sign certificate from csr: %v. RemoteAddr: %s", err, p.Addr.String())

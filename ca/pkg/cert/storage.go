@@ -19,14 +19,19 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	"github.com/apache/dubbo-admin/ca/pkg/config"
 	"github.com/apache/dubbo-admin/ca/pkg/logger"
 	"math"
+	"os"
+	"reflect"
 	"sync"
 	"time"
 )
 
 type Storage struct {
-	Mutex        *sync.Mutex
+	Mutex    *sync.Mutex
+	StopChan chan os.Signal
+
 	CaValidity   int64
 	CertValidity int64
 
@@ -46,6 +51,18 @@ type Cert struct {
 	tlsCert *tls.Certificate
 }
 
+func NewStorage(options *config.Options) *Storage {
+	return &Storage{
+		Mutex:    &sync.Mutex{},
+		StopChan: make(chan os.Signal, 1),
+
+		AuthorityCert: &Cert{},
+		TrustedCert:   []*Cert{},
+		CertValidity:  options.CertValidity,
+		CaValidity:    options.CaValidity,
+	}
+}
+
 func (c *Cert) IsValid() bool {
 	if c.Cert == nil || c.CertPem == "" || c.PrivateKey == nil {
 		return false
@@ -53,9 +70,16 @@ func (c *Cert) IsValid() bool {
 	if time.Now().Before(c.Cert.NotBefore) || time.Now().After(c.Cert.NotAfter) {
 		return false
 	}
-	if c.Cert.PublicKey == c.PrivateKey.Public() {
-		return false
+
+	if c.tlsCert == nil || !reflect.DeepEqual(c.tlsCert.PrivateKey, c.PrivateKey) {
+		tlsCert, err := tls.X509KeyPair([]byte(c.CertPem), []byte(EncodePri(c.PrivateKey)))
+		if err != nil {
+			return false
+		}
+
+		c.tlsCert = &tlsCert
 	}
+
 	return true
 }
 
@@ -70,19 +94,19 @@ func (c *Cert) NeedRefresh() bool {
 	if time.Now().Add(time.Duration(math.Floor(float64(validity)*0.2)) * time.Millisecond).After(c.Cert.NotAfter) {
 		return true
 	}
-	if c.Cert.PublicKey == c.PrivateKey.Public() {
+	if !reflect.DeepEqual(c.Cert.PublicKey, c.PrivateKey.Public()) {
 		return true
 	}
 	return false
 }
 
 func (c *Cert) GetTlsCert() *tls.Certificate {
-	if c.tlsCert != nil {
+	if c.tlsCert != nil && reflect.DeepEqual(c.tlsCert.PrivateKey, c.PrivateKey) {
 		return c.tlsCert
 	}
 	tlsCert, err := tls.X509KeyPair([]byte(c.CertPem), []byte(EncodePri(c.PrivateKey)))
 	if err != nil {
-		logger.Sugar.Infof("Failed to load x509 cert. %v", err)
+		logger.Sugar.Warnf("Failed to load x509 cert. %v", err)
 	}
 	c.tlsCert = &tlsCert
 	return c.tlsCert
@@ -104,7 +128,6 @@ func (s *Storage) GetServerCert(serverName string) *tls.Certificate {
 	if !nameSigned {
 		s.ServerNames = append(s.ServerNames, serverName)
 	}
-	s.ServerNames = append(s.ServerNames, serverName)
 	s.ServerCerts = SignServerCert(s.AuthorityCert, s.ServerNames, s.CertValidity)
 	return s.ServerCerts.GetTlsCert()
 }
@@ -119,5 +142,12 @@ func (s *Storage) RefreshServerCert() {
 			s.ServerCerts = SignServerCert(s.AuthorityCert, s.ServerNames, s.CertValidity)
 		}
 		s.Mutex.Unlock()
+
+		select {
+		case <-s.StopChan:
+			return
+		default:
+			continue
+		}
 	}
 }

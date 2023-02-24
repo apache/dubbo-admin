@@ -20,6 +20,8 @@ import (
 	"github.com/apache/dubbo-admin/ca/pkg/logger"
 	"github.com/apache/dubbo-admin/ca/pkg/security"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 // TODO read namespace from env
@@ -38,13 +40,14 @@ func main() {
 		CertValidity:     1 * 60 * 60 * 1000,       // 1 hour
 	}
 
-	s := &security.Server{
-		Options: options,
-	}
+	s := security.NewServer(options)
 
 	s.Init()
 	s.Start()
 
 	c := make(chan os.Signal)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(s.StopChan, syscall.SIGINT, syscall.SIGTERM)
+
 	<-c
 }
