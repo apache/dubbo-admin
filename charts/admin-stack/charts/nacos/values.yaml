@@ -1,0 +1,162 @@
+global:
+  mode: standalone
+  # mode: cluster
+
+
+image:
+  registry: docker.io
+  ##  e.g registry.k8s.io
+  repository: nacos/nacos-server
+  tag: latest
+  pullPolicy: IfNotPresent
+
+
+plugin:
+  enable: true
+  image:
+    repository: nacos/nacos-peer-finder-plugin
+    tag: 1.1
+    pullPolicy: IfNotPresent
+
+
+replicas: 1
+
+
+domainName: cluster.local
+
+
+storage:
+  type: ""
+#    type: mysql
+#    db:
+#      host: localhost
+#      name: nacos
+#      port: 3306
+#      username: usernmae
+#      password: password
+#      param: characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false
+
+
+service:
+  name: http
+  ##
+  ## Service name.
+  ##
+  type: NodePort
+  ##
+  ## Service type.
+  ##
+  port: 8848
+  ##
+  ## Service port.
+  ##
+  nodePort: 30000
+  ##
+  ## Service nodePort.
+  ##
+  clusterIP: ""
+  ##
+  ## Service clusterIP.
+  ##
+  loadBalancerIP: ""
+  ##
+  ## Service loadBalancerIP.
+  ##
+  loadBalancerSourceRanges: ""
+  ##
+  ## Service loadBalancerSourceRanges.
+  ##
+  externalIPs: ""
+  ##
+  ## Service externalIPs.
+
+
+persistence:
+  enabled: false
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ""
+  size: 5Gi
+  ClaimName: {}
+  ## persistence emptyDir
+  emptyDir: {}
+
+
+## See `kubectl explain poddisruptionbudget.spec` for more
+## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1
+
+
+ingress:
+  enabled: false
+  # For Kubernetes >= 1.18 you should specify the ingress-controller via the field ingressClassName
+  # See https://kubernetes.io/blog/2020/04/02/improvements-to-the-ingress-api-in-kubernetes-1.18/#specifying-the-class-of-an-ingress
+  # ingressClassName: nginx
+  # Values can be templated
+  annotations: {}
+  # kubernetes.io/ingress.class: nginx
+  # kubernetes.io/tls-acme: "true"
+  labels: {}
+  path: /
+  ##
+  ##
+  # pathType is only for k8s >= 1.1=
+  pathType: Prefix
+  ##
+  ##
+  hosts:
+    - chart-example.local
+  ## Extra paths to prepend to every host configuration. This is useful when working with annotation based services.
+  extraPaths: []
+  # - path: /*
+  #   backend:
+  #     serviceName: ssl-redirect
+  #     servicePort: use-annotation
+  ## Or for k8s > 1.19
+  # - path: /*
+  #   pathType: Prefix
+  #   backend:
+  #     service:
+  #       name: ssl-redirect
+  #       port:
+  #         name: use-annotation
+  ##
+  ##
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+
+networkPolicy:
+  ## @param networkPolicy.enabled Enable creation of NetworkPolicy resources. Only Ingress traffic is filtered for now.
+  ##
+  enabled: false
+  ## @param networkPolicy.allowExternal Don't require client label for connections
+  ## The Policy model to apply. When set to false, only pods with the correct
+  ## client label will have network access to  dubbo-admin port defined.
+  ## When true, dubbo-admin will accept connections from any source
+  ## (with the correct destination port).
+  ##
+  ingress: true
+  ## @param networkPolicy.ingress When true enables the creation
+  ## an ingress network policy
+  ##
+  ##
+  ##
+  ##
+  egress:
+    ## @param networkPolicy.egress.enabled When enabled, an egress network policy will be
+    ## created allowing dubbo-admin to connect to external data sources from kubernetes cluster.
+    enabled: false
+    ##
+    ## @param networkPolicy.egress.ports Add individual ports to be allowed by the egress
+    ports: []
+      ## Add ports to the egress by specifying - port: <port number>
+      ## E.X.
+      ## ports:
+      ## - port: 80
+    ## - port: 443

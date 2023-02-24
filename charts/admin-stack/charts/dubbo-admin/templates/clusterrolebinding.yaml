@@ -1,0 +1,20 @@
+{{- if and .Values.rbac.enabled }}
+apiVersion: {{ include "dubbo-admin.rbac.apiVersion" . }}
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "dubbo-admin.fullname" . }}-clusterrolebinding
+  labels:
+    {{- include "dubbo-admin.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "dubbo-admin.serviceAccountName" . }}
+    namespace: {{ include "dubbo-admin.namespace" . }}
+roleRef:
+  kind: ClusterRole
+  name: {{ include "dubbo-admin.fullname" . }}-clusterrole
+  {{- end }}
+  apiGroup: rbac.authorization.k8s.io

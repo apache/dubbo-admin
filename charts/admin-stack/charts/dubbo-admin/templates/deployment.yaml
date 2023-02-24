@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "dubbo-admin.fullname" . }}
+  namespace: {{ include "dubbo-admin.namespace" . }}
+  labels:
+    {{- include "dubbo-admin.labels" . | nindent 4 }}
+    {{- with .Values.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.annotations }}
+    annotations:
+        {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if and (not .Values.autoscaling.enabled) (.Values.replicas) }}
+  replicas: {{ .Values.replicas }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "dubbo-admin.selectorLabels" . | nindent 6 }}
+  {{- with .Values.deploymentStrategy }}
+  strategy:
+      {{- toYaml . | trim | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "dubbo-admin.selectorLabels" . | nindent 8 }}
+    spec:
+    {{- if .Values.imagePullSecrets }}
+      imagePullSecrets: {{ toYaml .Values.imagePullSecrets | nindent 8 }}
+    {{- end }}
+    {{- if .Values.nodeSelector }}
+      nodeSelector: {{- toYaml .Values.nodeSelector | nindent 8 }}
+    {{- end }}
+    {{- if .Values.affinity }}
+      affinity: {{- toYaml .Values.affinity | nindent 8 }}
+    {{- end }}
+    {{- if .Values.tolerations }}
+      tolerations: {{- toYaml .Values.tolerations | nindent 8 }}
+    {{- end }}
+      serviceAccountName: {{ include "dubbo-admin.serviceAccountName" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.Version }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: {{ .Values.service.name }}
+              containerPort: {{ .Values.service.containerPort }}
+          volumeMounts:
+            - mountPath: /config
+              name: application-properties
+              readOnly: true
+            - mountPath: /storage
+              name: storage
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.httpGet.path }}
+              port: {{ .Values.livenessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.httpGet.path }}
+              port: {{ .Values.livenessProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          startupProbe:
+            httpGet:
+              path: {{ .Values.startupProbe.httpGet.path }}
+              port: {{ .Values.startupProbe.httpGet.port }}
+            initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
+            timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
+            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
+            successThreshold: {{ .Values.startupProbe.successThreshold }}
+            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: application-properties
+          secret:
+            secretName: {{ include "dubbo-admin.fullname" . }}-secret
+        - name: storage
+             {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            {{ if .Values.persistence.ClaimName }}
+            claimName: {{ .Values.persistence.ClaimName }}
+            {{- else -}}
+          emptyDir: {{ .Values.persistence.emptyDir }}
+              {{- end -}}
+              {{- end -}}

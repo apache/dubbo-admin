@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: dubbo-admin
+  name: dubbo-admin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dubbo-admin
+  template:
+    metadata:
+      labels:
+        app: dubbo-admin
+    spec:
+      serviceAccountName: dubbo-admin
+      containers:
+        - name: dubbo-admin
+          image: apache/dubbo-admin:0.5.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          volumeMounts:
+            - mountPath: /config
+              name: application-properties
+            - mountPath: /storage
+              name: dubbo-admin-storage
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 15
+          resources:
+            limits: {}
+            requests:
+              cpu: 500m
+              memory: 1Gi
+          securityContext:
+            runAsUser: 0
+      volumes:
+        - name: application-properties
+          configMap:
+            name: dubbo-admin
+        - name: dubbo-admin-storage
+          persistentVolumeClaim:
+            claimName: dubbo-admin-pvc

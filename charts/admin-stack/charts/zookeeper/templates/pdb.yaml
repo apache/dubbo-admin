@@ -1,0 +1,26 @@
+{{- $replica := int .Values.replicas }}
+{{- if and .Values.podDisruptionBudget.enabled (gt $replica 1) }}
+apiVersion: {{ include "zookeeper.policy.apiVersion" . }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ template "zookeeper.fullname" . }}
+  namespace: {{ template "zookeeper.namespace" . }}
+  labels: {{- include "zookeeper.labels" . | nindent 4 }}
+    app.kubernetes.io/component: zookeeper
+    {{- if .Values.Labels }}
+    {{- include "zookeeper.tplvalues" ( dict "value" .Values.Labels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.Annotations }}
+  annotations: {{- include "zookeeper.tplvalues" ( dict "value" .Values.Annotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
+  {{- end  }}
+  {{- if .Values.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ .Values.podDisruptionBudget.maxUnavailable }}
+  {{- end  }}
+  selector:
+    matchLabels: {{- include "zookeeper.matchLabels" . | nindent 6 }}
+      app.kubernetes.io/component: zookeeper
+{{- end }}
