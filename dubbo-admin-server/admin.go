@@ -21,11 +21,24 @@ import (
 	"admin/config"
 	"admin/router"
 	"admin/services"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
 	config.LoadConfig()
-	services.StartSubscribe(config.RegistryCenter)
+	go services.StartSubscribe(config.RegistryCenter)
 	router := router.InitRouter()
-	router.Run(":38080")
+	quit := make(chan os.Signal)
+	go func() {
+		_ = router.Run(":38080")
+		close(quit)
+	}()
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	<-quit
+	log.Println("Shutting down server...")
+	services.DestroySubscribe(config.RegistryCenter)
 }

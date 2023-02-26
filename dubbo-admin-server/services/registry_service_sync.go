@@ -21,11 +21,12 @@ import (
 	"admin/cache"
 	"admin/constant"
 	"admin/util"
-	"dubbo.apache.org/dubbo-go/v3/common"
-	"dubbo.apache.org/dubbo-go/v3/registry"
 	"net/url"
 	"strings"
 	"sync"
+
+	"dubbo.apache.org/dubbo-go/v3/common"
+	"dubbo.apache.org/dubbo-go/v3/registry"
 )
 
 var SUBSCRIBE *common.URL
@@ -52,6 +53,10 @@ func init() {
 
 func StartSubscribe(registry registry.Registry) {
 	registry.Subscribe(SUBSCRIBE, adminNotifyListener{})
+}
+
+func DestroySubscribe(registry registry.Registry) {
+	registry.Destroy()
 }
 
 type adminNotifyListener struct{}
