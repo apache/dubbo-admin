@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="AdminRun" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="dubbo-admin" />
+    <working_directory value="$PROJECT_DIR$/dubbo-admin-server" />
+    <kind value="PACKAGE" />
+    <package value="admin/" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/dubbo-admin-server/admin.go" />
+    <method v="2" />
+  </configuration>
+</component>

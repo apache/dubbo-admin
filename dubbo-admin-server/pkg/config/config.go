@@ -18,8 +18,8 @@
 package config
 
 import (
-	_ "admin/imports"
 	"admin/pkg/constant"
+	_ "admin/pkg/imports"
 	"dubbo.apache.org/dubbo-go/v3/common/extension"
 	"dubbo.apache.org/dubbo-go/v3/config_center"
 	"dubbo.apache.org/dubbo-go/v3/metadata/report"

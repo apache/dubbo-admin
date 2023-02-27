@@ -1,10 +1,10 @@
-# Refacter With Go
+# Refactor With Go
 此分支是 Dubbo Admin 正在基于 Go 语言重构的开发分支，目前仍在开发过程中。
-如您正寻求将 Dubbo Admin 用作生产环境，想了解 Admin 的能力及安装方式，请参见 develop 分支及内部相关使用说明。
+如您正寻求将 Dubbo Admin 用作生产环境，想了解 Admin 的能力及安装方式，请参见 [develop 分支](https://github.com/apache/dubbo-admin/tree/develop#dubbo-admin) 及内部相关使用说明。
 
 # 重构版本本地开发说明
 ## 启动 Zookeeper
-首先，你需要在本地启动一个 [zookeeper server]()，用作 Admin 连接的注册/配置中心。
+首先，你需要在本地启动一个 [zookeeper server](https://zookeeper.apache.org/doc/current/zookeeperStarted.html)，用作 Admin 连接的注册/配置中心。
 
 ## 启动 Admin
 ### Java
