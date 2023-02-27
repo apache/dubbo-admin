@@ -29,9 +29,11 @@ git clone -b develop https://github.com/apache/dubbo-admin.git
 
 ### Go
 Once open this project in GoLand, a pre-configured Admin runnable task can be found from "Run Configuration" pop up menu as shown below.
+
 ![image.png](https://intranetproxy.alipay.com/skylark/lark/0/2023/png/54037/1677484872987-5a568293-74f9-4612-86c9-5c7112f3ac70.png#clientId=u4a56b9a9-a507-4&from=paste&height=165&id=ucdc7d17b&name=image.png&originHeight=330&originWidth=672&originalType=binary&ratio=2&rotation=0&showTitle=false&size=115664&status=done&style=none&taskId=u8b7fff84-e1b5-443a-9068-f67902132e5&title=&width=336)
 
 Click the `Run`button and you can get the Admin process started locally. But before doing that, you might need to change the configuration file located at `dubbo-admin/dubbo-admin-server/pkg/conf/dubboadmin.yml`to make sure `registry.address` is pointed to the zookeeper server you started before.
+
 ```yaml
 admin:
   registry:
