@@ -7,6 +7,9 @@
 首先，你需要在本地启动一个 [zookeeper server](https://zookeeper.apache.org/doc/current/zookeeperStarted.html)，用作 Admin 连接的注册/配置中心。
 
 ## 启动 Admin
+1. Java 版本。Java 版本作为对原有功能的参考。
+2. Go 版本。Go 版本是当前实际要开发的版本。
+
 ### Java
 
 1. Clone source code on `develop` branch
@@ -21,6 +24,8 @@ git clone -b develop https://github.com/apache/dubbo-admin.git
      OR
    - `cd dubbo-admin-distribution/target & java -jar dubbo-admin-{the-package-version}.jar`
 5. Visit `http://localhost:38080`, default username and password are `root`
+
+可以在此查看 [Java 版本的更多启动方式](../README.md)。
 
 ### Go
 Once open this project in GoLand, a pre-configured Admin runnable task can be found from "Run Configuration" pop up menu as shown below.

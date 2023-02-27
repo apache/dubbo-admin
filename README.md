@@ -1,3 +1,7 @@
+# NOTICE
+此分支是 Dubbo Admin 正在基于 Go 语言重构的开发分支，目前仍在开发过程中。
+如您正寻求将 Dubbo Admin 用作生产环境，想了解 Admin 的能力及安装方式，请参见 [develop 分支](https://github.com/apache/dubbo-admin/tree/develop#dubbo-admin) 及内部相关使用说明。
+
 # Dubbo Admin
 
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/apache/dubbo-admin/CI)
