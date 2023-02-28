@@ -6,8 +6,12 @@ ADD . /workspace
 
 WORKDIR /workspace
 
+#RUN --mount=type=cache,target=/go \
+#  go build -buildmode=pie -ldflags "-linkmode external -extldflags -static -w" \
+#  -o /workspace/ca
+
 RUN --mount=type=cache,target=/go \
-  go build -buildmode=pie -ldflags "-linkmode external -extldflags -static -w" \
+  go build \
   -o /workspace/ca
 
 FROM alpine:3.17
