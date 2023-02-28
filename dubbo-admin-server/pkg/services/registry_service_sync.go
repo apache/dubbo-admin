@@ -80,7 +80,7 @@ func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
 			if services != nil {
 				group := serviceUrl.GetParam(constant.GroupKey, "")
 				version := serviceUrl.GetParam(constant.VersionKey, "")
-				if constant.AnyValue == group && constant.AnyValue != version {
+				if constant.AnyValue != group && constant.AnyValue != version {
 					services.(*sync.Map).Delete(getServiceInterface(serviceUrl))
 				} else {
 					// iterator services
@@ -103,21 +103,21 @@ func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
 		} else {
 			services = make(map[string]map[string]*common.URL)
 			categories[category] = services
-			group := serviceUrl.GetParam(constant.GroupKey, "")
-			version := serviceUrl.GetParam(constant.VersionKey, "")
-			service := util.BuildServiceKey(getServiceInterface(serviceUrl), group, version)
-			ids, found := services[service]
-			if !found {
-				ids = make(map[string]*common.URL)
-				services[service] = ids
-			}
-			if md5, ok := UrlIdsMapper.Load(serviceUrl.Key()); ok {
-				ids[md5.(string)] = serviceUrl
-			} else {
-				md5 := util.Md5_16bit(serviceUrl.Key())
-				ids[md5] = serviceUrl
-				UrlIdsMapper.LoadOrStore(serviceUrl.Key(), md5)
-			}
+		}
+		group := serviceUrl.GetParam(constant.GroupKey, "")
+		version := serviceUrl.GetParam(constant.VersionKey, "")
+		service := util.BuildServiceKey(getServiceInterface(serviceUrl), group, version)
+		ids, found := services[service]
+		if !found {
+			ids = make(map[string]*common.URL)
+			services[service] = ids
+		}
+		if md5, ok := UrlIdsMapper.Load(serviceUrl.Key()); ok {
+			ids[md5.(string)] = serviceUrl
+		} else {
+			md5 := util.Md5_16bit(serviceUrl.Key())
+			ids[md5] = serviceUrl
+			UrlIdsMapper.LoadOrStore(serviceUrl.Key(), md5)
 		}
 	}
 	// check categories size
@@ -128,7 +128,7 @@ func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
 				// iterator services key set
 				services.(*sync.Map).Range(func(key, inner any) bool {
 					_, ok := value[key.(string)]
-					if util.GetInterface(key.(string)) == interfaceName && ok {
+					if util.GetInterface(key.(string)) == interfaceName && !ok {
 						services.(*sync.Map).Delete(key)
 					}
 					return true
