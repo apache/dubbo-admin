@@ -48,6 +48,7 @@ func main() {
 	c := make(chan os.Signal)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	signal.Notify(s.StopChan, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(s.CertStorage.GetStopChan(), syscall.SIGINT, syscall.SIGTERM)
 
 	<-c
 }

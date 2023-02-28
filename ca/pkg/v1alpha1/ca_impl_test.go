@@ -57,7 +57,7 @@ func TestCSRFailed(t *testing.T) {
 		CaValidity:       365 * 24 * 60 * 60 * 1000,
 	}
 	storage := cert.NewStorage(options)
-	storage.AuthorityCert = cert.GenerateAuthorityCert(nil, options.CaValidity)
+	storage.SetAuthorityCert(cert.GenerateAuthorityCert(nil, options.CaValidity))
 
 	kubeClient := &MockKubeClient{}
 	impl := &DubboCertificateServiceServerImpl{
@@ -122,7 +122,7 @@ func TestTokenFailed(t *testing.T) {
 		CaValidity:       365 * 24 * 60 * 60 * 1000,
 	}
 	storage := cert.NewStorage(options)
-	storage.AuthorityCert = cert.GenerateAuthorityCert(nil, options.CaValidity)
+	storage.SetAuthorityCert(cert.GenerateAuthorityCert(nil, options.CaValidity))
 
 	kubeClient := &MockKubeClient{}
 	impl := &DubboCertificateServiceServerImpl{
@@ -233,7 +233,7 @@ func TestSuccess(t *testing.T) {
 		CaValidity:       365 * 24 * 60 * 60 * 1000,
 	}
 	storage := cert.NewStorage(options)
-	storage.AuthorityCert = cert.GenerateAuthorityCert(nil, options.CaValidity)
+	storage.SetAuthorityCert(cert.GenerateAuthorityCert(nil, options.CaValidity))
 
 	kubeClient := &MockKubeClient{}
 	impl := &DubboCertificateServiceServerImpl{

@@ -126,11 +126,11 @@ func TestGetTlsCert(t *testing.T) {
 func TestGetServerCert(t *testing.T) {
 	cert := GenerateAuthorityCert(nil, 24*60*60*1000)
 
-	s := &Storage{
-		AuthorityCert: cert,
-		Mutex:         &sync.Mutex{},
-		CaValidity:    24 * 60 * 60 * 1000,
-		CertValidity:  2 * 60 * 60 * 1000,
+	s := &storageImpl{
+		authorityCert: cert,
+		mutex:         &sync.Mutex{},
+		caValidity:    24 * 60 * 60 * 1000,
+		certValidity:  2 * 60 * 60 * 1000,
 	}
 
 	c := s.GetServerCert("localhost")
@@ -198,17 +198,17 @@ func TestRefreshServerCert(t *testing.T) {
 		CaValidity:   24 * 60 * 60 * 1000,
 		CertValidity: 10,
 	})
-	s.AuthorityCert = GenerateAuthorityCert(nil, 24*60*60*1000)
+	s.authorityCert = GenerateAuthorityCert(nil, 24*60*60*1000)
 
 	go s.RefreshServerCert()
 
 	c := s.GetServerCert("localhost")
-	origin := s.ServerCerts
+	origin := s.serverCerts
 
 	for i := 0; i < 100; i++ {
 		// at most 10s
 		time.Sleep(100 * time.Millisecond)
-		if origin != s.ServerCerts {
+		if origin != s.serverCerts {
 			break
 		}
 	}
@@ -221,5 +221,5 @@ func TestRefreshServerCert(t *testing.T) {
 		t.Errorf("cert is not equal")
 	}
 
-	s.StopChan <- os.Kill
+	s.stopChan <- os.Kill
 }

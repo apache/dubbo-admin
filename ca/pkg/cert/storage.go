@@ -28,19 +28,37 @@ import (
 	"time"
 )
 
-type Storage struct {
-	Mutex    *sync.Mutex
-	StopChan chan os.Signal
+type storageImpl struct {
+	Storage
 
-	CaValidity   int64
-	CertValidity int64
+	mutex    *sync.Mutex
+	stopChan chan os.Signal
 
-	RootCert      *Cert
-	AuthorityCert *Cert
+	caValidity   int64
+	certValidity int64
 
-	TrustedCert []*Cert
-	ServerNames []string
-	ServerCerts *Cert
+	rootCert      *Cert
+	authorityCert *Cert
+
+	trustedCerts []*Cert
+	serverNames  []string
+	serverCerts  *Cert
+}
+
+type Storage interface {
+	GetServerCert(serverName string) *tls.Certificate
+	RefreshServerCert()
+
+	SetAuthorityCert(*Cert)
+	GetAuthorityCert() *Cert
+
+	SetRootCert(*Cert)
+	GetRootCert() *Cert
+
+	AddTrustedCert(*Cert)
+	GetTrustedCerts() []*Cert
+
+	GetStopChan() chan os.Signal
 }
 
 type Cert struct {
@@ -51,15 +69,15 @@ type Cert struct {
 	tlsCert *tls.Certificate
 }
 
-func NewStorage(options *config.Options) *Storage {
-	return &Storage{
-		Mutex:    &sync.Mutex{},
-		StopChan: make(chan os.Signal, 1),
+func NewStorage(options *config.Options) *storageImpl {
+	return &storageImpl{
+		mutex:    &sync.Mutex{},
+		stopChan: make(chan os.Signal, 1),
 
-		AuthorityCert: &Cert{},
-		TrustedCert:   []*Cert{},
-		CertValidity:  options.CertValidity,
-		CaValidity:    options.CaValidity,
+		authorityCert: &Cert{},
+		trustedCerts:  []*Cert{},
+		certValidity:  options.CertValidity,
+		caValidity:    options.CaValidity,
 	}
 }
 
@@ -72,7 +90,7 @@ func (c *Cert) IsValid() bool {
 	}
 
 	if c.tlsCert == nil || !reflect.DeepEqual(c.tlsCert.PrivateKey, c.PrivateKey) {
-		tlsCert, err := tls.X509KeyPair([]byte(c.CertPem), []byte(EncodePri(c.PrivateKey)))
+		tlsCert, err := tls.X509KeyPair([]byte(c.CertPem), []byte(EncodePrivateKey(c.PrivateKey)))
 		if err != nil {
 			return false
 		}
@@ -104,7 +122,7 @@ func (c *Cert) GetTlsCert() *tls.Certificate {
 	if c.tlsCert != nil && reflect.DeepEqual(c.tlsCert.PrivateKey, c.PrivateKey) {
 		return c.tlsCert
 	}
-	tlsCert, err := tls.X509KeyPair([]byte(c.CertPem), []byte(EncodePri(c.PrivateKey)))
+	tlsCert, err := tls.X509KeyPair([]byte(c.CertPem), []byte(EncodePrivateKey(c.PrivateKey)))
 	if err != nil {
 		logger.Sugar.Warnf("Failed to load x509 cert. %v", err)
 	}
@@ -112,42 +130,74 @@ func (c *Cert) GetTlsCert() *tls.Certificate {
 	return c.tlsCert
 }
 
-func (s *Storage) GetServerCert(serverName string) *tls.Certificate {
+func (s *storageImpl) GetServerCert(serverName string) *tls.Certificate {
 	nameSigned := serverName == ""
-	for _, name := range s.ServerNames {
+	for _, name := range s.serverNames {
 		if name == serverName {
 			nameSigned = true
 			break
 		}
 	}
-	if nameSigned && s.ServerCerts != nil && s.ServerCerts.IsValid() {
-		return s.ServerCerts.GetTlsCert()
+	if nameSigned && s.serverCerts != nil && s.serverCerts.IsValid() {
+		return s.serverCerts.GetTlsCert()
 	}
-	s.Mutex.Lock()
-	defer s.Mutex.Unlock()
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	if !nameSigned {
-		s.ServerNames = append(s.ServerNames, serverName)
+		s.serverNames = append(s.serverNames, serverName)
 	}
-	s.ServerCerts = SignServerCert(s.AuthorityCert, s.ServerNames, s.CertValidity)
-	return s.ServerCerts.GetTlsCert()
+
+	s.serverCerts = SignServerCert(s.authorityCert, s.serverNames, s.certValidity)
+	return s.serverCerts.GetTlsCert()
 }
 
-func (s *Storage) RefreshServerCert() {
-	interval := math.Min(math.Floor(float64(s.CertValidity)/100), 10_000)
+func (s *storageImpl) RefreshServerCert() {
+	interval := math.Min(math.Floor(float64(s.certValidity)/100), 10_000)
 	for true {
-		time.Sleep(time.Duration(interval) * time.Millisecond)
-		s.Mutex.Lock()
-		if s.ServerCerts == nil || !s.ServerCerts.IsValid() {
-			logger.Sugar.Infof("Server cert is invalid, refresh it.")
-			s.ServerCerts = SignServerCert(s.AuthorityCert, s.ServerNames, s.CertValidity)
-		}
-		s.Mutex.Unlock()
-
 		select {
-		case <-s.StopChan:
+		case <-s.stopChan:
 			return
 		default:
+		}
+
+		time.Sleep(time.Duration(interval) * time.Millisecond)
+		s.mutex.Lock()
+		if s.authorityCert == nil || !s.authorityCert.IsValid() {
+			// ignore if authority cert is invalid
 			continue
 		}
+		if s.serverCerts == nil || !s.serverCerts.IsValid() {
+			logger.Sugar.Infof("Server cert is invalid, refresh it.")
+			s.serverCerts = SignServerCert(s.authorityCert, s.serverNames, s.certValidity)
+		}
+		s.mutex.Unlock()
 	}
+}
+
+func (s *storageImpl) SetAuthorityCert(cert *Cert) {
+	s.authorityCert = cert
+}
+
+func (s *storageImpl) GetAuthorityCert() *Cert {
+	return s.authorityCert
+}
+
+func (s *storageImpl) SetRootCert(cert *Cert) {
+	s.rootCert = cert
+}
+
+func (s *storageImpl) GetRootCert() *Cert {
+	return s.rootCert
+}
+
+func (s *storageImpl) AddTrustedCert(cert *Cert) {
+	s.trustedCerts = append(s.trustedCerts, cert)
+}
+
+func (s *storageImpl) GetTrustedCerts() []*Cert {
+	return s.trustedCerts
+}
+
+func (s *storageImpl) GetStopChan() chan os.Signal {
+	return s.stopChan
 }

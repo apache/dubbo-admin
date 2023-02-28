@@ -219,7 +219,7 @@ func SignFromCSR(csr *x509.CertificateRequest, authorityCert *Cert, certValidity
 	return cert, nil
 }
 
-func EncodePri(caPrivKey *rsa.PrivateKey) string {
+func EncodePrivateKey(caPrivKey *rsa.PrivateKey) string {
 	caPrivKeyPEM := new(bytes.Buffer)
 	pem.Encode(caPrivKeyPEM, &pem.Block{
 		Type:  "RSA PRIVATE KEY",

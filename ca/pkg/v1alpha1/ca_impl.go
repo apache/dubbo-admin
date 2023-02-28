@@ -30,7 +30,7 @@ import (
 type DubboCertificateServiceServerImpl struct {
 	UnimplementedDubboCertificateServiceServer
 	Options     *config.Options
-	CertStorage *cert.Storage
+	CertStorage cert.Storage
 	KubeClient  k8s.Client
 }
 
@@ -91,7 +91,7 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 	}
 
 	// TODO check server token
-	certPem, err := cert.SignFromCSR(csr, s.CertStorage.AuthorityCert, s.Options.CertValidity)
+	certPem, err := cert.SignFromCSR(csr, s.CertStorage.GetAuthorityCert(), s.Options.CertValidity)
 	if err != nil {
 		logger.Sugar.Warnf("Failed to sign certificate from csr: %v. RemoteAddr: %s", err, p.Addr.String())
 		return &DubboCertificateResponse{
@@ -106,7 +106,7 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 		Success:    true,
 		Message:    "OK",
 		CertPem:    certPem,
-		TrustCerts: []string{s.CertStorage.AuthorityCert.CertPem},
+		TrustCerts: []string{s.CertStorage.GetAuthorityCert().CertPem},
 		ExpireTime: time.Now().UnixMilli() + (s.Options.CertValidity / 2),
 	}, nil
 }
