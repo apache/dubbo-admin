@@ -1,6 +1,6 @@
-FROM golang:1.20.1 as builder
+FROM golang:1.20.1-alpine3.17 as builder
 
-RUN apt-get update && apt-get install -y gcc libc-dev upx ca-certificates && update-ca-certificates
+RUN apk --update add gcc libc-dev upx ca-certificates && update-ca-certificates
 
 ADD . /workspace
 
