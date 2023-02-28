@@ -22,5 +22,5 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           push: true
-          context: ca
+          context: ca/
           tags: apache/dubbo-ca:dev
