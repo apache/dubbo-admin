@@ -25,4 +25,4 @@ jobs:
           push: true
           context: ca/
           tags: apache/dubbo-ca:dev
-          platforms: linux/amd64, linux/arm64/v8
+          #platforms: linux/amd64, linux/arm64/v8
