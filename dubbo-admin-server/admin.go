@@ -18,9 +18,9 @@
 package main
 
 import (
-	"admin/config"
+	"admin/pkg/config"
+	"admin/pkg/services"
 	"admin/router"
-	"admin/services"
 	"log"
 	"os"
 	"os/signal"
