@@ -51,7 +51,7 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 	}
 	p, _ := peer.FromContext(c)
 
-	if s.Options.EnableKubernetes {
+	if s.Options.IsKubernetesConnected && s.Options.EnableOIDCCheck {
 		md, ok := metadata.FromIncomingContext(c)
 		if !ok {
 			logger.Sugar.Warnf("Failed to get metadata from context. RemoteAddr: %s", p.Addr.String())

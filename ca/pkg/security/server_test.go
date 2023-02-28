@@ -33,7 +33,7 @@ type mockKubeClient struct {
 var certPEM = ""
 var priPEM = ""
 
-func (s *mockKubeClient) Init() bool {
+func (s *mockKubeClient) Init(options *config.Options) bool {
 	return true
 }
 
@@ -94,13 +94,13 @@ func TestInit(t *testing.T) {
 	logger.Init()
 
 	options := &config.Options{
-		EnableKubernetes: false,
-		Namespace:        "dubbo-system",
-		PlainServerPort:  30060,
-		SecureServerPort: 30062,
-		DebugPort:        30070,
-		CaValidity:       30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:     1 * 60 * 60 * 1000,       // 1 hour
+		IsKubernetesConnected: true,
+		Namespace:             "dubbo-system",
+		PlainServerPort:       30060,
+		SecureServerPort:      30062,
+		DebugPort:             30070,
+		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
+		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
 	}
 
 	s := NewServer(options)
@@ -143,12 +143,12 @@ func TestRefresh(t *testing.T) {
 	logger.Init()
 
 	options := &config.Options{
-		EnableKubernetes: false,
-		Namespace:        "dubbo-system",
-		PlainServerPort:  30060,
-		SecureServerPort: 30062,
-		DebugPort:        30070,
-		CaValidity:       10,
+		IsKubernetesConnected: false,
+		Namespace:             "dubbo-system",
+		PlainServerPort:       30060,
+		SecureServerPort:      30062,
+		DebugPort:             30070,
+		CaValidity:            10,
 	}
 
 	s := NewServer(options)

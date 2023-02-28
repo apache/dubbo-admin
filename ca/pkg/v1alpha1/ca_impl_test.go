@@ -52,9 +52,9 @@ func TestCSRFailed(t *testing.T) {
 	c = peer.NewContext(c, &peer.Peer{Addr: &fakeAddr{}})
 
 	options := &config.Options{
-		EnableKubernetes: false,
-		CertValidity:     24 * 60 * 60 * 1000,
-		CaValidity:       365 * 24 * 60 * 60 * 1000,
+		IsKubernetesConnected: false,
+		CertValidity:          24 * 60 * 60 * 1000,
+		CaValidity:            365 * 24 * 60 * 60 * 1000,
 	}
 	storage := cert.NewStorage(options)
 	storage.SetAuthorityCert(cert.GenerateAuthorityCert(nil, options.CaValidity))
@@ -117,9 +117,10 @@ func TestTokenFailed(t *testing.T) {
 	p := peer.NewContext(context.TODO(), &peer.Peer{Addr: &fakeAddr{}})
 
 	options := &config.Options{
-		EnableKubernetes: true,
-		CertValidity:     24 * 60 * 60 * 1000,
-		CaValidity:       365 * 24 * 60 * 60 * 1000,
+		IsKubernetesConnected: true,
+		EnableOIDCCheck:       true,
+		CertValidity:          24 * 60 * 60 * 1000,
+		CaValidity:            365 * 24 * 60 * 60 * 1000,
 	}
 	storage := cert.NewStorage(options)
 	storage.SetAuthorityCert(cert.GenerateAuthorityCert(nil, options.CaValidity))
@@ -228,9 +229,9 @@ func TestSuccess(t *testing.T) {
 	c = peer.NewContext(c, &peer.Peer{Addr: &fakeAddr{}})
 
 	options := &config.Options{
-		EnableKubernetes: false,
-		CertValidity:     24 * 60 * 60 * 1000,
-		CaValidity:       365 * 24 * 60 * 60 * 1000,
+		IsKubernetesConnected: false,
+		CertValidity:          24 * 60 * 60 * 1000,
+		CaValidity:            365 * 24 * 60 * 60 * 1000,
 	}
 	storage := cert.NewStorage(options)
 	storage.SetAuthorityCert(cert.GenerateAuthorityCert(nil, options.CaValidity))

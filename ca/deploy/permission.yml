@@ -39,6 +39,9 @@ rules:
     resources: ["tokenreviews"]
     verbs: ["create"]
 
+  - apiGroups: ["admissionregistration.k8s.io"]
+    resources: ["mutatingwebhookconfigurations"]
+    verbs: ["create", "get", "list", "watch", "update"]
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -47,7 +50,6 @@ metadata:
   namespace: dubbo-system
   labels:
     app: dubbo-ca
-
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -61,7 +63,6 @@ subjects:
   - kind: ServiceAccount
     name: dubbo-ca
     namespace: dubbo-system
-
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -76,27 +77,3 @@ subjects:
   - kind: ServiceAccount
     name: dubbo-ca
     namespace: dubbo-system
-
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: dubbo-ca
-  namespace: dubbo-system
-  labels:
-    app: dubbo-ca
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: dubbo-ca
-  template:
-    metadata:
-      labels:
-        app: dubbo-ca
-    spec:
-      serviceAccountName: dubbo-ca
-      containers:
-        - name: ca
-          image: albumen/dubbo-ca:1.0.0
----

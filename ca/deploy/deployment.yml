@@ -1,0 +1,52 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dubbo-ca
+  namespace: dubbo-system
+  labels:
+    app: dubbo-ca
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dubbo-ca
+  template:
+    metadata:
+      labels:
+        app: dubbo-ca
+    spec:
+      serviceAccountName: dubbo-ca
+      containers:
+        - name: ca
+          image: albumen/dubbo-ca:1.0.0
+          imagePullPolicy: Always
+          env:
+            - name: NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: SERVICE_NAME
+              value: dubbo-ca
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dubbo-ca
+  namespace: dubbo-system
+  labels:
+    app: dubbo-ca
+spec:
+  ports:
+    - port: 30060
+      name: grpc
+      protocol: TCP
+    - port: 30062
+      name: grpc-secure
+      protocol: TCP
+    - port: 30080
+      name: http
+      protocol: TCP
+  selector:
+    app: dubbo-ca
+---
