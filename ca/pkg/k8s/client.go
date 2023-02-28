@@ -18,7 +18,10 @@ package k8s
 import (
 	"context"
 	"flag"
+	"github.com/apache/dubbo-admin/ca/pkg/cert"
+	"github.com/apache/dubbo-admin/ca/pkg/config"
 	"github.com/apache/dubbo-admin/ca/pkg/logger"
+	admissionregistrationV1 "k8s.io/api/admissionregistration/v1"
 	k8sauth "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,14 +30,30 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 	"path/filepath"
+	"reflect"
 )
 
-type Client struct {
+type Client interface {
+	Init(options *config.Options) bool
+	GetAuthorityCert(namespace string) (string, string)
+	UpdateAuthorityCert(cert string, pri string, namespace string)
+	UpdateAuthorityPublicKey(cert string) bool
+	VerifyServiceAccount(token string) bool
+	UpdateWebhookConfig(options *config.Options, storage cert.Storage)
+	GetNamespaceLabels(namespace string) map[string]string
+}
+
+type ClientImpl struct {
 	kubeClient *kubernetes.Clientset
 }
 
-func (c *Client) Init() bool {
+func NewClient() Client {
+	return &ClientImpl{}
+}
+
+func (c *ClientImpl) Init(options *config.Options) bool {
 	config, err := rest.InClusterConfig()
+	options.InPodEnv = err != nil
 	if err != nil {
 		logger.Sugar.Infof("Failed to load config from Pod. Will fall back to kube config file.")
 
@@ -64,7 +83,7 @@ func (c *Client) Init() bool {
 	return true
 }
 
-func (c *Client) GetAuthorityCert(namespace string) (string, string) {
+func (c *ClientImpl) GetAuthorityCert(namespace string) (string, string) {
 	s, err := c.kubeClient.CoreV1().Secrets(namespace).Get(context.TODO(), "dubbo-ca-secret", metav1.GetOptions{})
 	if err != nil {
 		logger.Sugar.Warnf("Unable to get authority cert secret from kubernetes. " + err.Error())
@@ -72,7 +91,7 @@ func (c *Client) GetAuthorityCert(namespace string) (string, string) {
 	return string(s.Data["cert.pem"]), string(s.Data["pri.pem"])
 }
 
-func (c *Client) UpdateAuthorityCert(cert string, pri string, namespace string) {
+func (c *ClientImpl) UpdateAuthorityCert(cert string, pri string, namespace string) {
 	s, err := c.kubeClient.CoreV1().Secrets(namespace).Get(context.TODO(), "dubbo-ca-secret", metav1.GetOptions{})
 	if err != nil {
 		logger.Sugar.Warnf("Unable to get ca secret from kubernetes. Will try to create. " + err.Error())
@@ -106,7 +125,7 @@ func (c *Client) UpdateAuthorityCert(cert string, pri string, namespace string) 
 	}
 }
 
-func (c *Client) UpdateAuthorityPublicKey(cert string) bool {
+func (c *ClientImpl) UpdateAuthorityPublicKey(cert string) bool {
 	ns, err := c.kubeClient.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		logger.Sugar.Warnf("Failed to get namespaces. " + err.Error())
@@ -149,7 +168,19 @@ func (c *Client) UpdateAuthorityPublicKey(cert string) bool {
 	return true
 }
 
-func (c *Client) VerifyServiceAccount(token string) bool {
+func (c *ClientImpl) GetNamespaceLabels(namespace string) map[string]string {
+	ns, err := c.kubeClient.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
+	if err != nil {
+		logger.Sugar.Warnf("Failed to validate token. " + err.Error())
+		return map[string]string{}
+	}
+	if ns.Labels != nil {
+		return ns.Labels
+	}
+	return map[string]string{}
+}
+
+func (c *ClientImpl) VerifyServiceAccount(token string) bool {
 	tokenReview := &k8sauth.TokenReview{
 		Spec: k8sauth.TokenReviewSpec{
 			Token: token,
@@ -166,4 +197,80 @@ func (c *Client) VerifyServiceAccount(token string) bool {
 		return false
 	}
 	return true
+}
+
+func (c *ClientImpl) UpdateWebhookConfig(options *config.Options, storage cert.Storage) {
+	path := "/mutating-services"
+	failurePolicy := admissionregistrationV1.Ignore
+	sideEffects := admissionregistrationV1.SideEffectClassNone
+	bundle := storage.GetAuthorityCert().CertPem
+	mwConfig, err := c.kubeClient.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(context.TODO(), "dubbo-ca", metav1.GetOptions{})
+	if err != nil {
+		logger.Sugar.Warnf("Unable to find dubbo-ca webhook config. Will create. " + err.Error())
+		mwConfig = &admissionregistrationV1.MutatingWebhookConfiguration{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "dubbo-ca",
+			},
+			Webhooks: []admissionregistrationV1.MutatingWebhook{
+				{
+					Name: "dubbo-ca" + ".k8s.io",
+					ClientConfig: admissionregistrationV1.WebhookClientConfig{
+						Service: &admissionregistrationV1.ServiceReference{
+							Name:      options.ServiceName,
+							Namespace: options.Namespace,
+							Port:      &options.WebhookPort,
+							Path:      &path,
+						},
+						CABundle: []byte(bundle),
+					},
+					FailurePolicy: &failurePolicy,
+					Rules: []admissionregistrationV1.RuleWithOperations{
+						{
+							Operations: []admissionregistrationV1.OperationType{
+								admissionregistrationV1.Create,
+							},
+							Rule: admissionregistrationV1.Rule{
+								APIGroups:   []string{""},
+								APIVersions: []string{"v1"},
+								Resources:   []string{"pods"},
+							},
+						},
+					},
+					//NamespaceSelector: &metav1.LabelSelector{
+					//	MatchLabels: map[string]string{
+					//		"dubbo-injection": "enabled",
+					//	},
+					//},
+					//ObjectSelector: &metav1.LabelSelector{
+					//	MatchLabels: map[string]string{
+					//		"dubbo-injection": "enabled",
+					//	},
+					//},
+					SideEffects:             &sideEffects,
+					AdmissionReviewVersions: []string{"v1beta1", "v1"},
+				},
+			},
+		}
+
+		_, err := c.kubeClient.AdmissionregistrationV1().MutatingWebhookConfigurations().Create(context.TODO(), mwConfig, metav1.CreateOptions{})
+		if err != nil {
+			logger.Sugar.Warnf("Failed to create webhook config. " + err.Error())
+		} else {
+			logger.Sugar.Info("Create webhook config success.")
+		}
+		return
+	}
+
+	if reflect.DeepEqual(mwConfig.Webhooks[0].ClientConfig.CABundle, []byte(bundle)) {
+		logger.Sugar.Info("Ignore override webhook config. Cause: Already exist.")
+		return
+	}
+
+	mwConfig.Webhooks[0].ClientConfig.CABundle = []byte(bundle)
+	_, err = c.kubeClient.AdmissionregistrationV1().MutatingWebhookConfigurations().Update(context.TODO(), mwConfig, metav1.UpdateOptions{})
+	if err != nil {
+		logger.Sugar.Warnf("Failed to update webhook config. " + err.Error())
+	} else {
+		logger.Sugar.Info("Update webhook config success.")
+	}
 }

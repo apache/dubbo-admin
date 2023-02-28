@@ -1,0 +1,38 @@
+{{- if .Values.networkPolicy.enabled }}
+kind: NetworkPolicy
+apiVersion: {{ include "zookeeper.networkPolicy.apiVersion" . }}
+metadata:
+  name: {{ include "zookeeper.fullname" . }}
+  namespace: {{ template "zookeeper.namespace" . }}
+  labels: {{- include "zookeeper.labels" . | nindent 4 }}
+    {{- if .Values.Labels }}
+    {{- include "zookeeper.tplvalues" ( dict "value" .Values.Labels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.Annotations }}
+  annotations: {{- include "zookeeper.tplvalues" ( dict "value" .Values.Annotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  podSelector:
+    matchLabels: {{- include "zookeeper.matchLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow inbound connections to ZooKeeper
+    - ports:
+        - port: {{ .Values.containerPorts.client }}
+      {{- if not .Values.networkPolicy.allowExternal }}
+      from:
+        - podSelector:
+            matchLabels:
+              {{ include "zookeeper.fullname" . }}-client: "true"
+        - podSelector:
+            matchLabels: {{- include "zookeeper.matchLabels" . | nindent 14 }}
+      {{- end }}
+    # Allow internal communications between nodes
+    - ports:
+        - port: {{ .Values.containerPorts.follower }}
+        - port: {{ .Values.containerPorts.election }}
+      from:
+        - podSelector:
+            matchLabels: {{- include "zookeeper.matchLabels" . | nindent 14 }}
+{{- end }}

@@ -16,14 +16,21 @@
 package config
 
 type Options struct {
-	EnableKubernetes bool
-
-	Namespace string
+	Namespace   string
+	ServiceName string
 
 	PlainServerPort  int
 	SecureServerPort int
 	DebugPort        int
 
+	WebhookPort       int32
+	WebhookAllowOnErr bool
+
 	CaValidity   int64
 	CertValidity int64
+
+	InPodEnv              bool
+	IsKubernetesConnected bool
+
+	EnableOIDCCheck bool
 }

@@ -20,31 +20,45 @@ import (
 	"github.com/apache/dubbo-admin/ca/pkg/logger"
 	"github.com/apache/dubbo-admin/ca/pkg/security"
 	"os"
+	"os/signal"
+	"syscall"
 )
 
 // TODO read namespace from env
 const namespace = "dubbo-system"
+const serviceName = "dubbo-ca"
 
 func main() {
 	logger.Init()
 	// TODO read options from env
 	options := &config.Options{
-		EnableKubernetes: false,
-		Namespace:        namespace,
+		Namespace:   namespace,
+		ServiceName: serviceName,
+
 		PlainServerPort:  30060,
 		SecureServerPort: 30062,
 		DebugPort:        30070,
-		CaValidity:       30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:     1 * 60 * 60 * 1000,       // 1 hour
+
+		WebhookPort:       30080,
+		WebhookAllowOnErr: false,
+
+		CaValidity:   30 * 24 * 60 * 60 * 1000, // 30 day
+		CertValidity: 1 * 60 * 60 * 1000,       // 1 hour
+
+		InPodEnv:              false,
+		IsKubernetesConnected: false,
+		EnableOIDCCheck:       false,
 	}
 
-	s := &security.Server{
-		Options: options,
-	}
+	s := security.NewServer(options)
 
 	s.Init()
 	s.Start()
 
 	c := make(chan os.Signal)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(s.StopChan, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(s.CertStorage.GetStopChan(), syscall.SIGINT, syscall.SIGTERM)
+
 	<-c
 }

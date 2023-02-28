@@ -21,42 +21,55 @@ import (
 	"github.com/apache/dubbo-admin/ca/pkg/config"
 	"github.com/apache/dubbo-admin/ca/pkg/k8s"
 	"github.com/apache/dubbo-admin/ca/pkg/logger"
+	"github.com/apache/dubbo-admin/ca/pkg/patch"
 	"github.com/apache/dubbo-admin/ca/pkg/v1alpha1"
+	"github.com/apache/dubbo-admin/ca/pkg/webhook"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 	"log"
 	"math"
 	"net"
+	"os"
 	"strconv"
-	"sync"
 	"time"
 )
 
 type Server struct {
-	Options     *config.Options
-	CertStorage *cert.Storage
+	StopChan chan os.Signal
 
-	KubeClient *k8s.Client
+	Options     *config.Options
+	CertStorage cert.Storage
+
+	KubeClient k8s.Client
 
 	CertificateServer *v1alpha1.DubboCertificateServiceServerImpl
 	PlainServer       *grpc.Server
 	SecureServer      *grpc.Server
+
+	WebhookServer *webhook.Webhook
+	JavaInjector  *patch.JavaSdk
+}
+
+func NewServer(options *config.Options) *Server {
+	return &Server{
+		Options:  options,
+		StopChan: make(chan os.Signal, 1),
+	}
 }
 
 func (s *Server) Init() {
 	// TODO bypass k8s work
-	s.KubeClient = &k8s.Client{}
-	if !s.KubeClient.Init() {
-		panic("Failed to create kubernetes client.")
+	if s.KubeClient == nil {
+		s.KubeClient = k8s.NewClient()
+	}
+	if !s.KubeClient.Init(s.Options) {
+		logger.Sugar.Warnf("Failed to connect to Kubernetes cluster. Will ignore OpenID Connect check.")
+		s.Options.IsKubernetesConnected = false
 	}
 
-	s.CertStorage = &cert.Storage{
-		AuthorityCert: &cert.Cert{},
-		TrustedCert:   []*cert.Cert{},
-		Mutex:         &sync.Mutex{},
-		CertValidity:  s.Options.CertValidity,
-		CaValidity:    s.Options.CaValidity,
+	if s.CertStorage == nil {
+		s.CertStorage = cert.NewStorage(s.Options)
 	}
 	go s.CertStorage.RefreshServerCert()
 
@@ -88,6 +101,17 @@ func (s *Server) Init() {
 	s.SecureServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConfig)))
 	v1alpha1.RegisterDubboCertificateServiceServer(s.SecureServer, impl)
 	reflection.Register(s.SecureServer)
+
+	if s.Options.InPodEnv {
+		s.WebhookServer = webhook.NewWebhook(
+			func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+				return s.CertStorage.GetServerCert(info.ServerName), nil
+			})
+		s.WebhookServer.Init(s.Options)
+
+		s.JavaInjector = patch.NewJavaSdk(s.Options)
+		s.WebhookServer.Patches = append(s.WebhookServer.Patches, s.JavaInjector.NewPod)
+	}
 }
 
 func (s *Server) LoadRootCert() {
@@ -95,11 +119,13 @@ func (s *Server) LoadRootCert() {
 }
 
 func (s *Server) LoadAuthorityCert() {
-	certStr, priStr := s.KubeClient.GetAuthorityCert(s.Options.Namespace)
-	if certStr != "" && priStr != "" {
-		s.CertStorage.AuthorityCert.Cert = cert.DecodeCert(certStr)
-		s.CertStorage.AuthorityCert.CertPem = certStr
-		s.CertStorage.AuthorityCert.PrivateKey = cert.DecodePri(priStr)
+	if s.Options.IsKubernetesConnected {
+		certStr, priStr := s.KubeClient.GetAuthorityCert(s.Options.Namespace)
+		if certStr != "" && priStr != "" {
+			s.CertStorage.GetAuthorityCert().Cert = cert.DecodeCert(certStr)
+			s.CertStorage.GetAuthorityCert().CertPem = certStr
+			s.CertStorage.GetAuthorityCert().PrivateKey = cert.DecodePrivateKey(priStr)
+		}
 	}
 
 	s.RefreshAuthorityCert()
@@ -110,40 +136,55 @@ func (s *Server) ScheduleRefreshAuthorityCert() {
 	interval := math.Min(math.Floor(float64(s.Options.CaValidity)/100), 10_000)
 	for true {
 		time.Sleep(time.Duration(interval) * time.Millisecond)
-		if s.CertStorage.AuthorityCert.NeedRefresh() {
+		if s.CertStorage.GetAuthorityCert().NeedRefresh() {
 			logger.Sugar.Infof("Authority cert is invalid, refresh it.")
 			// TODO lock if multi server
 			// TODO refresh signed cert
-			s.CertStorage.AuthorityCert = cert.CreateCA(s.CertStorage.RootCert, s.Options.CaValidity)
-			s.KubeClient.UpdateAuthorityCert(s.CertStorage.AuthorityCert.CertPem, cert.EncodePri(s.CertStorage.AuthorityCert.PrivateKey), s.Options.Namespace)
-			if s.KubeClient.UpdateAuthorityPublicKey(s.CertStorage.AuthorityCert.CertPem) {
-				logger.Sugar.Infof("Write ca to config maps success.")
-			} else {
-				logger.Sugar.Warnf("Write ca to config maps failed.")
+			s.CertStorage.SetAuthorityCert(cert.GenerateAuthorityCert(s.CertStorage.GetRootCert(), s.Options.CaValidity))
+
+			if s.Options.IsKubernetesConnected {
+				s.KubeClient.UpdateAuthorityCert(s.CertStorage.GetAuthorityCert().CertPem, cert.EncodePrivateKey(s.CertStorage.GetAuthorityCert().PrivateKey), s.Options.Namespace)
+				s.KubeClient.UpdateWebhookConfig(s.Options, s.CertStorage)
+				if s.KubeClient.UpdateAuthorityPublicKey(s.CertStorage.GetAuthorityCert().CertPem) {
+					logger.Sugar.Infof("Write ca to config maps success.")
+				} else {
+					logger.Sugar.Warnf("Write ca to config maps failed.")
+				}
 			}
+		}
+
+		select {
+		case <-s.StopChan:
+			return
+		default:
+			continue
 		}
 	}
 }
 
 func (s *Server) RefreshAuthorityCert() {
-	if s.CertStorage.AuthorityCert.IsValid() {
+	if s.CertStorage.GetAuthorityCert().IsValid() {
 		logger.Sugar.Infof("Load authority cert from kubernetes secrect success.")
 	} else {
 		logger.Sugar.Warnf("Load authority cert from kubernetes secrect failed.")
-		s.CertStorage.AuthorityCert = cert.CreateCA(s.CertStorage.RootCert, s.Options.CaValidity)
+		s.CertStorage.SetAuthorityCert(cert.GenerateAuthorityCert(s.CertStorage.GetRootCert(), s.Options.CaValidity))
 
 		// TODO lock if multi server
-		s.KubeClient.UpdateAuthorityCert(s.CertStorage.AuthorityCert.CertPem, cert.EncodePri(s.CertStorage.AuthorityCert.PrivateKey), s.Options.Namespace)
+		if s.Options.IsKubernetesConnected {
+			s.KubeClient.UpdateAuthorityCert(s.CertStorage.GetAuthorityCert().CertPem, cert.EncodePrivateKey(s.CertStorage.GetAuthorityCert().PrivateKey), s.Options.Namespace)
+		}
 	}
 
-	// TODO add task to update ca
-	logger.Sugar.Info("Writing ca to config maps.")
-	if s.KubeClient.UpdateAuthorityPublicKey(s.CertStorage.AuthorityCert.CertPem) {
-		logger.Sugar.Info("Write ca to config maps success.")
-	} else {
-		logger.Sugar.Warnf("Write ca to config maps failed.")
+	if s.Options.IsKubernetesConnected {
+		logger.Sugar.Info("Writing ca to config maps.")
+		if s.KubeClient.UpdateAuthorityPublicKey(s.CertStorage.GetAuthorityCert().CertPem) {
+			logger.Sugar.Info("Write ca to config maps success.")
+		} else {
+			logger.Sugar.Warnf("Write ca to config maps failed.")
+		}
 	}
-	s.CertStorage.TrustedCert = append(s.CertStorage.TrustedCert, s.CertStorage.AuthorityCert)
+
+	s.CertStorage.AddTrustedCert(s.CertStorage.GetAuthorityCert())
 }
 
 func (s *Server) Start() {
@@ -167,6 +208,10 @@ func (s *Server) Start() {
 			log.Fatal(err)
 		}
 	}()
+
+	go s.WebhookServer.Serve()
+
+	s.KubeClient.UpdateWebhookConfig(s.Options, s.CertStorage)
 
 	logger.Sugar.Info("Server started.")
 }
