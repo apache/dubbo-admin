@@ -18,6 +18,7 @@
 syntax = "proto3";
 
 import "google/protobuf/struct.proto";
+import "google/protobuf/any.proto";
 
 package org.apache.dubbo.auth.v1alpha1;
 
@@ -43,5 +44,33 @@ message DubboCertificateResponse {
 service DubboCertificateService {
   rpc CreateCertificate(DubboCertificateRequest)
       returns (DubboCertificateResponse) {
+  }
+}
+
+message ObserveRequest {
+  string nonce = 1;
+  string type = 2;
+}
+
+message ObserveResponse {
+  string version = 1;
+  string nonce = 2;
+  string type = 3;
+  google.protobuf.Any data = 4;
+}
+
+message AuthorizationRule {
+  string version = 1;
+  string rule = 2;
+}
+
+message AuthenticationRule {
+  string version = 1;
+  string rule = 2;
+}
+
+service ObserveService {
+  rpc Observe(stream ObserveRequest)
+      returns (stream ObserveResponse) {
   }
 }

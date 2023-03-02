@@ -104,3 +104,121 @@ var DubboCertificateService_ServiceDesc = grpc.ServiceDesc{
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "v1alpha1/ca.proto",
 }
+
+// ObserveServiceClient is the client API for ObserveService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type ObserveServiceClient interface {
+	Observe(ctx context.Context, opts ...grpc.CallOption) (ObserveService_ObserveClient, error)
+}
+
+type observeServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewObserveServiceClient(cc grpc.ClientConnInterface) ObserveServiceClient {
+	return &observeServiceClient{cc}
+}
+
+func (c *observeServiceClient) Observe(ctx context.Context, opts ...grpc.CallOption) (ObserveService_ObserveClient, error) {
+	stream, err := c.cc.NewStream(ctx, &ObserveService_ServiceDesc.Streams[0], "/org.apache.dubbo.auth.v1alpha1.ObserveService/Observe", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &observeServiceObserveClient{stream}
+	return x, nil
+}
+
+type ObserveService_ObserveClient interface {
+	Send(*ObserveRequest) error
+	Recv() (*ObserveResponse, error)
+	grpc.ClientStream
+}
+
+type observeServiceObserveClient struct {
+	grpc.ClientStream
+}
+
+func (x *observeServiceObserveClient) Send(m *ObserveRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *observeServiceObserveClient) Recv() (*ObserveResponse, error) {
+	m := new(ObserveResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// ObserveServiceServer is the server API for ObserveService service.
+// All implementations must embed UnimplementedObserveServiceServer
+// for forward compatibility
+type ObserveServiceServer interface {
+	Observe(ObserveService_ObserveServer) error
+	mustEmbedUnimplementedObserveServiceServer()
+}
+
+// UnimplementedObserveServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedObserveServiceServer struct {
+}
+
+func (UnimplementedObserveServiceServer) Observe(ObserveService_ObserveServer) error {
+	return status.Errorf(codes.Unimplemented, "method Observe not implemented")
+}
+func (UnimplementedObserveServiceServer) mustEmbedUnimplementedObserveServiceServer() {}
+
+// UnsafeObserveServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to ObserveServiceServer will
+// result in compilation errors.
+type UnsafeObserveServiceServer interface {
+	mustEmbedUnimplementedObserveServiceServer()
+}
+
+func RegisterObserveServiceServer(s grpc.ServiceRegistrar, srv ObserveServiceServer) {
+	s.RegisterService(&ObserveService_ServiceDesc, srv)
+}
+
+func _ObserveService_Observe_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(ObserveServiceServer).Observe(&observeServiceObserveServer{stream})
+}
+
+type ObserveService_ObserveServer interface {
+	Send(*ObserveResponse) error
+	Recv() (*ObserveRequest, error)
+	grpc.ServerStream
+}
+
+type observeServiceObserveServer struct {
+	grpc.ServerStream
+}
+
+func (x *observeServiceObserveServer) Send(m *ObserveResponse) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *observeServiceObserveServer) Recv() (*ObserveRequest, error) {
+	m := new(ObserveRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// ObserveService_ServiceDesc is the grpc.ServiceDesc for ObserveService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var ObserveService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "org.apache.dubbo.auth.v1alpha1.ObserveService",
+	HandlerType: (*ObserveServiceServer)(nil),
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Observe",
+			Handler:       _ObserveService_Observe_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
+	Metadata: "v1alpha1/ca.proto",
+}
