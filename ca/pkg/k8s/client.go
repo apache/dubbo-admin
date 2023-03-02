@@ -21,10 +21,15 @@ import (
 	"github.com/apache/dubbo-admin/ca/pkg/cert"
 	"github.com/apache/dubbo-admin/ca/pkg/config"
 	"github.com/apache/dubbo-admin/ca/pkg/logger"
+	"github.com/apache/dubbo-admin/ca/pkg/rule/authentication"
 	admissionregistrationV1 "k8s.io/api/admissionregistration/v1"
 	k8sauth "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"time"
+
+	infoemerclient "github.com/apache/dubbo-admin/ca/pkg/generated/clientset/versioned"
+	informers "github.com/apache/dubbo-admin/ca/pkg/generated/informers/externalversions"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -41,10 +46,12 @@ type Client interface {
 	VerifyServiceAccount(token string) bool
 	UpdateWebhookConfig(options *config.Options, storage cert.Storage)
 	GetNamespaceLabels(namespace string) map[string]string
+	InitController(paHandler authentication.Handler)
 }
 
 type ClientImpl struct {
-	kubeClient *kubernetes.Clientset
+	kubeClient     *kubernetes.Clientset
+	informerClient *infoemerclient.Clientset
 }
 
 func NewClient() Client {
@@ -79,7 +86,13 @@ func (c *ClientImpl) Init(options *config.Options) bool {
 		logger.Sugar.Warnf("Failed to create client to kubernetes. " + err.Error())
 		return false
 	}
+	informerClient, err := infoemerclient.NewForConfig(config)
+	if err != nil {
+		logger.Sugar.Warnf("Failed to create client to kubernetes. " + err.Error())
+		return false
+	}
 	c.kubeClient = clientSet
+	c.informerClient = informerClient
 	return true
 }
 
@@ -273,4 +286,14 @@ func (c *ClientImpl) UpdateWebhookConfig(options *config.Options, storage cert.S
 	} else {
 		logger.Sugar.Info("Update webhook config success.")
 	}
+}
+
+func (c *ClientImpl) InitController(paHandler authentication.Handler) {
+	informerFactory := informers.NewSharedInformerFactory(c.informerClient, time.Second*30)
+
+	stopCh := make(chan struct{})
+	NewController(c.informerClient,
+		paHandler,
+		informerFactory.Dubbo().V1beta1().PeerAuthentications())
+	informerFactory.Start(stopCh)
 }

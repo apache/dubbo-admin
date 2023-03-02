@@ -5,15 +5,10 @@ metadata:
   namespace: default
 spec:
   action: CLIENT_AUTH
-  rule:
+  rules:
     - from:
-        - source:
-            principals: ["cluster.local/ns/default/sa/sleep"]
-        - source:
-            namespaces: ["test"]
-    - to:
-        - source:
-            principals: ["cluster.local/ns/default/sa/sleep"]
-        - source:
-            namespaces: ["demo"]
+        principals: ["cluster.local/ns/default/sa/sleep"]
+        namespaces: ["test"]
+      to:
+        principals: ["cluster.local/ns/default/sa/sleep"]
   order: 0

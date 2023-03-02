@@ -20,9 +20,10 @@ package v1beta1
 // PeerAuthenticationSpecApplyConfiguration represents an declarative configuration of the PeerAuthenticationSpec type for use
 // with apply.
 type PeerAuthenticationSpecApplyConfiguration struct {
-	Action *string                 `json:"action,omitempty"`
-	Rule   *RuleApplyConfiguration `json:"rule,omitempty"`
-	Order  *int                    `json:"order,omitempty"`
+	Action    *string                  `json:"action,omitempty"`
+	Rules     []RuleApplyConfiguration `json:"rules,omitempty"`
+	Order     *int                     `json:"order,omitempty"`
+	MatchType *string                  `json:"matchType,omitempty"`
 }
 
 // PeerAuthenticationSpecApplyConfiguration constructs an declarative configuration of the PeerAuthenticationSpec type for use with
@@ -39,11 +40,16 @@ func (b *PeerAuthenticationSpecApplyConfiguration) WithAction(value string) *Pee
 	return b
 }
 
-// WithRule sets the Rule field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Rule field is set to the value of the last call.
-func (b *PeerAuthenticationSpecApplyConfiguration) WithRule(value *RuleApplyConfiguration) *PeerAuthenticationSpecApplyConfiguration {
-	b.Rule = value
+// WithRules adds the given value to the Rules field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Rules field.
+func (b *PeerAuthenticationSpecApplyConfiguration) WithRules(values ...*RuleApplyConfiguration) *PeerAuthenticationSpecApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithRules")
+		}
+		b.Rules = append(b.Rules, *values[i])
+	}
 	return b
 }
 
@@ -52,5 +58,13 @@ func (b *PeerAuthenticationSpecApplyConfiguration) WithRule(value *RuleApplyConf
 // If called multiple times, the Order field is set to the value of the last call.
 func (b *PeerAuthenticationSpecApplyConfiguration) WithOrder(value int) *PeerAuthenticationSpecApplyConfiguration {
 	b.Order = &value
+	return b
+}
+
+// WithMatchType sets the MatchType field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the MatchType field is set to the value of the last call.
+func (b *PeerAuthenticationSpecApplyConfiguration) WithMatchType(value string) *PeerAuthenticationSpecApplyConfiguration {
+	b.MatchType = &value
 	return b
 }

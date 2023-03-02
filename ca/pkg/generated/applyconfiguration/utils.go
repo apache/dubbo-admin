@@ -38,6 +38,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &dubboapacheorgv1beta1.RuleApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("Source"):
 		return &dubboapacheorgv1beta1.SourceApplyConfiguration{}
+	case v1beta1.SchemeGroupVersion.WithKind("Target"):
+		return &dubboapacheorgv1beta1.TargetApplyConfiguration{}
 
 	}
 	return nil

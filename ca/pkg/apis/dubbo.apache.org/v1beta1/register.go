@@ -29,6 +29,8 @@ type PeerAuthentication struct {
 	Spec PeerAuthenticationSpec `json:"spec"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
 type PeerAuthenticationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
@@ -37,19 +39,29 @@ type PeerAuthenticationList struct {
 }
 
 type PeerAuthenticationSpec struct {
-	Action string `json:"action,omitempty"`
-	Rule   Rule   `json:"rule,omitempty"`
-	Order  int    `json:"order,omitempty"`
+	Action    string `json:"action,omitempty"`
+	Rules     []Rule `json:"rules,omitempty"`
+	Order     int    `json:"order,omitempty"`
+	MatchType string `json:"matchType,omitempty"`
 }
 
 type Rule struct {
-	From []Source `json:"from,omitempty"`
-	To   []Source `json:"to,omitempty"`
+	From Source `json:"from,omitempty"`
+	To   Target `json:"to,omitempty"`
 }
 
 type Source struct {
 	Namespaces    []string       `json:"namespaces,omitempty"`
 	NotNamespaces []string       `json:"notNamespaces,omitempty"`
+	IpBlocks      []string       `json:"ipBlocks,omitempty"`
+	NotIpBlocks   []string       `json:"notIpBlocks,omitempty"`
+	Principals    []string       `json:"principals,omitempty"`
+	NotPrincipals []string       `json:"notPrincipals,omitempty"`
+	Extends       []ExtendConfig `json:"extends,omitempty"`
+	NotExtends    []ExtendConfig `json:"notExtends,omitempty"`
+}
+
+type Target struct {
 	IpBlocks      []string       `json:"ipBlocks,omitempty"`
 	NotIpBlocks   []string       `json:"notIpBlocks,omitempty"`
 	Principals    []string       `json:"principals,omitempty"`
