@@ -1,0 +1,170 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: peerauthentications.dubbo.apache.org
+spec:
+  group: dubbo.apache.org
+  versions:
+    - name: v1beta1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                action:
+                  type: string
+                  description: "The action to take when a rule is matched."
+                  enum:
+                    - NONE
+                    - CLIENT_AUTH
+                    - SERVER_AUTH
+                rule:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      from:
+                        type: array
+                        description: "The source of the traffic to be matched."
+                        items:
+                          type: object
+                          properties:
+                            source:
+                              type: object
+                              properties:
+                                namespaces:
+                                  type: array
+                                  description: "The namespaces to match of the source workload."
+                                  items:
+                                    type: string
+                                notNamespaces:
+                                  type: array
+                                  description: "The namespaces not to match of the source workload."
+                                  items:
+                                    type: string
+                                ipBlocks:
+                                  type: array
+                                  description: "The IP addresses to match of the source workload."
+                                  items:
+                                    type: string
+                                notIpBlocks:
+                                  type: array
+                                  description: "The IP addresses not to match of the source workload."
+                                  items:
+                                    type: string
+                                principals:
+                                  type: array
+                                  description: "The identities(from spiffe) to match of the source workload."
+                                  items:
+                                    type: string
+                                notPrincipals:
+                                  type: array
+                                  description: "The identities(from spiffe) not to match of the source workload."
+                                  items:
+                                    type: string
+                                extends:
+                                  type: array
+                                  description: "The extended identities(from Dubbo Auth) to match of the source workload."
+                                  items:
+                                    type: object
+                                    properties:
+                                      key:
+                                        type: string
+                                        description: "The key of the extended identity."
+                                      value:
+                                        type: string
+                                        description: "The value of the extended identity."
+                                notExtends:
+                                  type: array
+                                  description: "The extended identities(from Dubbo Auth) not to match of the source workload."
+                                  items:
+                                    type: object
+                                    properties:
+                                      key:
+                                        type: string
+                                        description: "The key of the extended identity."
+                                      value:
+                                        type: string
+                                        description: "The value of the extended identity."
+                      to:
+                        type: array
+                        description: "The destination of the traffic to be matched."
+                        items:
+                          type: object
+                          properties:
+                            source:
+                              type: object
+                              properties:
+                                namespaces:
+                                  type: array
+                                  description: "The namespaces to match of the destination workload."
+                                  items:
+                                    type: string
+                                notNamespaces:
+                                  type: array
+                                  description: "The namespaces not to match of the destination workload."
+                                  items:
+                                    type: string
+                                ipBlocks:
+                                  type: array
+                                  description: "The IP addresses to match of the destination workload."
+                                  items:
+                                    type: string
+                                notIpBlocks:
+                                  type: array
+                                  description: "The IP addresses not to match of the destination workload."
+                                  items:
+                                    type: string
+                                principals:
+                                  type: array
+                                  description: "The identities(from spiffe) to match of the destination workload."
+                                  items:
+                                    type: string
+                                notPrincipals:
+                                  type: array
+                                  description: "The identities(from spiffe) not to match of the destination workload."
+                                  items:
+                                    type: string
+                                extends:
+                                  type: array
+                                  description: "The extended identities(from Dubbo Auth) to match of the destination workload."
+                                  items:
+                                    type: object
+                                    properties:
+                                      key:
+                                        type: string
+                                        description: "The key of the extended identity."
+                                      value:
+                                        type: string
+                                        description: "The value of the extended identity."
+                                notExtends:
+                                  type: array
+                                  description: "The extended identities(from Dubbo Auth) not to match of the destination workload."
+                                  items:
+                                    type: object
+                                    properties:
+                                      key:
+                                        type: string
+                                        description: "The key of the extended identity."
+                                      value:
+                                        type: string
+                                        description: "The value of the extended identity."
+                order:
+                  type: integer
+                  description: "The order of the rule. The rule with the highest precedence is matched first."
+                  minimum: -2147483648
+                  default: 0
+                  maximum: 2147483647
+              required:
+                - action
+  scope: Namespaced
+  names:
+    plural: peerauthentications
+    singular: peerauthentication
+    kind: PeerAuthentication
+    shortNames:
+      - pa

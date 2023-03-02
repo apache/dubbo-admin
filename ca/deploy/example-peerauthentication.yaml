@@ -1,0 +1,19 @@
+apiVersion: dubbo.apache.org/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: default
+spec:
+  action: CLIENT_AUTH
+  rule:
+    - from:
+        - source:
+            principals: ["cluster.local/ns/default/sa/sleep"]
+        - source:
+            namespaces: ["test"]
+    - to:
+        - source:
+            principals: ["cluster.local/ns/default/sa/sleep"]
+        - source:
+            namespaces: ["demo"]
+  order: 0
