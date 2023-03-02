@@ -1,0 +1,13 @@
+apiVersion: v2
+appVersion: v2.42.0
+name: prometheus
+description: Prometheus is a monitoring system and time series database.
+home: https://prometheus.io/
+kubeVersion: '>=1.16.0-0'
+maintainers:
+  - email: dev@dubbo.apache.org
+    name: dubbo
+sources:
+  - https://github.com/prometheus/prometheus
+type: application
+version: 19.6.1

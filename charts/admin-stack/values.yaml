@@ -1,21 +1,41 @@
 nacos:
   enabled: false
-  default: false
+  isDefault: false
 
 
 zookeeper:
   enabled: true
-  default: true
+  isDefault: true
 
 
 grafana:
   enabled: false
-  default: false
+  isDefault: false
+
+
+prometheus:
+  server:
+    enabled: false
+    isDefault: false
+    persistentVolume:
+      enabled: false
+  alertmanager:
+    enabled: false
+    isDefault: false
+    persistentVolume:
+      enabled: false
+  nodeExporter:
+    enabled: false
+    isDefault: false
+  pushgateway:
+    enabled: false
+    isDefault: false
 
 
 dubbo-admin:
   enabled: true
-  default: true
+  isDefault: true
+
   properties:
     admin.registry.address: zookeeper://zookeeper:2181
     admin.config-center: zookeeper://zookeeper:2181
