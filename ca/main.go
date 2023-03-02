@@ -19,6 +19,7 @@ import (
 	"github.com/apache/dubbo-admin/ca/pkg/config"
 	"github.com/apache/dubbo-admin/ca/pkg/logger"
 	"github.com/apache/dubbo-admin/ca/pkg/security"
+	"github.com/ianschenck/envflag"
 	"os"
 	"os/signal"
 	"syscall"
@@ -26,24 +27,36 @@ import (
 
 func main() {
 	logger.Init()
+	namespace := envflag.String("namespace", "dubbo-system", "options")
+	serviceName := envflag.String("serviceName", "dubbo-ca", "options")
+	plainServerPort := envflag.Int("plainServerPort", 30060, "options")
+	secureServerPort := envflag.Int("secureServerPort", 30062, "options")
+	debugPort := envflag.Int("debugPort", 30070, "options")
+	webhookPort := envflag.Int("webhookPort", 30080, "options")
+	webhookAllowOnErr := envflag.Bool("webhookAllowOnErr", false, "options")
+	inPodEnv := envflag.Bool("inPodEnv", false, "options")
+	isKubernetesConnected := envflag.Bool("isKubernetesConnected", false, "options")
+	enableOIDCCheck := envflag.Bool("enableOIDCCheck", false, "options")
+	envflag.Parse()
+
 	// TODO read options from env
 	options := &config.Options{
-		Namespace:   config.GetEnvDefault("namespace", "dubbo-system"),
-		ServiceName: config.GetEnvDefault("serviceName", "dubbo-ca"),
+		Namespace:   *namespace,
+		ServiceName: *serviceName,
 
-		PlainServerPort:  config.GetEnvIntDefault("PlainServerPort", 30060),
-		SecureServerPort: config.GetEnvIntDefault("SecureServerPort", 30062),
-		DebugPort:        config.GetEnvIntDefault("DebugPort", 30070),
+		PlainServerPort:  *plainServerPort,
+		SecureServerPort: *secureServerPort,
+		DebugPort:        *debugPort,
 
-		WebhookPort:       int32(config.GetEnvIntDefault("WebhookPort", 30080)),
-		WebhookAllowOnErr: config.GetEnvBoolDefault("WebhookAllowOnErr", false),
+		WebhookPort:       int32(*webhookPort),
+		WebhookAllowOnErr: *webhookAllowOnErr,
 
 		CaValidity:   30 * 24 * 60 * 60 * 1000, // 30 day
 		CertValidity: 1 * 60 * 60 * 1000,       // 1 hour
 
-		InPodEnv:              config.GetEnvBoolDefault("InPodEnv", false),
-		IsKubernetesConnected: config.GetEnvBoolDefault("IsKubernetesConnected", false),
-		EnableOIDCCheck:       config.GetEnvBoolDefault("EnableOIDCCheck", false),
+		InPodEnv:              *inPodEnv,
+		IsKubernetesConnected: *isKubernetesConnected,
+		EnableOIDCCheck:       *enableOIDCCheck,
 	}
 
 	s := security.NewServer(options)
