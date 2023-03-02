@@ -23,8 +23,10 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// PeerAuthentications returns a PeerAuthenticationInformer.
-	PeerAuthentications() PeerAuthenticationInformer
+	// AuthenticationPolicies returns a AuthenticationPolicyInformer.
+	AuthenticationPolicies() AuthenticationPolicyInformer
+	// AuthorizationPolicies returns a AuthorizationPolicyInformer.
+	AuthorizationPolicies() AuthorizationPolicyInformer
 }
 
 type version struct {
@@ -38,7 +40,12 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// PeerAuthentications returns a PeerAuthenticationInformer.
-func (v *version) PeerAuthentications() PeerAuthenticationInformer {
-	return &peerAuthenticationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+// AuthenticationPolicies returns a AuthenticationPolicyInformer.
+func (v *version) AuthenticationPolicies() AuthenticationPolicyInformer {
+	return &authenticationPolicyInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// AuthorizationPolicies returns a AuthorizationPolicyInformer.
+func (v *version) AuthorizationPolicies() AuthorizationPolicyInformer {
+	return &authorizationPolicyInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

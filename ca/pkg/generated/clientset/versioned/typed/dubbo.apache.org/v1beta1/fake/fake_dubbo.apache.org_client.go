@@ -27,8 +27,12 @@ type FakeDubboV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeDubboV1beta1) PeerAuthentications(namespace string) v1beta1.PeerAuthenticationInterface {
-	return &FakePeerAuthentications{c, namespace}
+func (c *FakeDubboV1beta1) AuthenticationPolicies(namespace string) v1beta1.AuthenticationPolicyInterface {
+	return &FakeAuthenticationPolicies{c, namespace}
+}
+
+func (c *FakeDubboV1beta1) AuthorizationPolicies(namespace string) v1beta1.AuthorizationPolicyInterface {
+	return &FakeAuthorizationPolicies{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

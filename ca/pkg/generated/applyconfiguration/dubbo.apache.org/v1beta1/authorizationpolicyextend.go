@@ -17,23 +17,23 @@
 
 package v1beta1
 
-// ExtendConfigApplyConfiguration represents an declarative configuration of the ExtendConfig type for use
+// AuthorizationPolicyExtendApplyConfiguration represents an declarative configuration of the AuthorizationPolicyExtend type for use
 // with apply.
-type ExtendConfigApplyConfiguration struct {
+type AuthorizationPolicyExtendApplyConfiguration struct {
 	Key   *string `json:"key,omitempty"`
 	Value *string `json:"value,omitempty"`
 }
 
-// ExtendConfigApplyConfiguration constructs an declarative configuration of the ExtendConfig type for use with
+// AuthorizationPolicyExtendApplyConfiguration constructs an declarative configuration of the AuthorizationPolicyExtend type for use with
 // apply.
-func ExtendConfig() *ExtendConfigApplyConfiguration {
-	return &ExtendConfigApplyConfiguration{}
+func AuthorizationPolicyExtend() *AuthorizationPolicyExtendApplyConfiguration {
+	return &AuthorizationPolicyExtendApplyConfiguration{}
 }
 
 // WithKey sets the Key field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Key field is set to the value of the last call.
-func (b *ExtendConfigApplyConfiguration) WithKey(value string) *ExtendConfigApplyConfiguration {
+func (b *AuthorizationPolicyExtendApplyConfiguration) WithKey(value string) *AuthorizationPolicyExtendApplyConfiguration {
 	b.Key = &value
 	return b
 }
@@ -41,7 +41,7 @@ func (b *ExtendConfigApplyConfiguration) WithKey(value string) *ExtendConfigAppl
 // WithValue sets the Value field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Value field is set to the value of the last call.
-func (b *ExtendConfigApplyConfiguration) WithValue(value string) *ExtendConfigApplyConfiguration {
+func (b *AuthorizationPolicyExtendApplyConfiguration) WithValue(value string) *AuthorizationPolicyExtendApplyConfiguration {
 	b.Value = &value
 	return b
 }

@@ -17,23 +17,23 @@
 
 package v1beta1
 
-// RuleApplyConfiguration represents an declarative configuration of the Rule type for use
+// AuthenticationPolicyRuleApplyConfiguration represents an declarative configuration of the AuthenticationPolicyRule type for use
 // with apply.
-type RuleApplyConfiguration struct {
-	From *SourceApplyConfiguration `json:"from,omitempty"`
-	To   *TargetApplyConfiguration `json:"to,omitempty"`
+type AuthenticationPolicyRuleApplyConfiguration struct {
+	From *AuthenticationPolicySourceApplyConfiguration `json:"from,omitempty"`
+	To   *AuthenticationPolicyTargetApplyConfiguration `json:"to,omitempty"`
 }
 
-// RuleApplyConfiguration constructs an declarative configuration of the Rule type for use with
+// AuthenticationPolicyRuleApplyConfiguration constructs an declarative configuration of the AuthenticationPolicyRule type for use with
 // apply.
-func Rule() *RuleApplyConfiguration {
-	return &RuleApplyConfiguration{}
+func AuthenticationPolicyRule() *AuthenticationPolicyRuleApplyConfiguration {
+	return &AuthenticationPolicyRuleApplyConfiguration{}
 }
 
 // WithFrom sets the From field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the From field is set to the value of the last call.
-func (b *RuleApplyConfiguration) WithFrom(value *SourceApplyConfiguration) *RuleApplyConfiguration {
+func (b *AuthenticationPolicyRuleApplyConfiguration) WithFrom(value *AuthenticationPolicySourceApplyConfiguration) *AuthenticationPolicyRuleApplyConfiguration {
 	b.From = value
 	return b
 }
@@ -41,7 +41,7 @@ func (b *RuleApplyConfiguration) WithFrom(value *SourceApplyConfiguration) *Rule
 // WithTo sets the To field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the To field is set to the value of the last call.
-func (b *RuleApplyConfiguration) WithTo(value *TargetApplyConfiguration) *RuleApplyConfiguration {
+func (b *AuthenticationPolicyRuleApplyConfiguration) WithTo(value *AuthenticationPolicyTargetApplyConfiguration) *AuthenticationPolicyRuleApplyConfiguration {
 	b.To = value
 	return b
 }

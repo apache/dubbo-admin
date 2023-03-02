@@ -17,27 +17,49 @@
 
 package v1beta1
 
-// TargetApplyConfiguration represents an declarative configuration of the Target type for use
+// AuthenticationPolicySourceApplyConfiguration represents an declarative configuration of the AuthenticationPolicySource type for use
 // with apply.
-type TargetApplyConfiguration struct {
-	IpBlocks      []string                         `json:"ipBlocks,omitempty"`
-	NotIpBlocks   []string                         `json:"notIpBlocks,omitempty"`
-	Principals    []string                         `json:"principals,omitempty"`
-	NotPrincipals []string                         `json:"notPrincipals,omitempty"`
-	Extends       []ExtendConfigApplyConfiguration `json:"extends,omitempty"`
-	NotExtends    []ExtendConfigApplyConfiguration `json:"notExtends,omitempty"`
+type AuthenticationPolicySourceApplyConfiguration struct {
+	Namespaces    []string                                       `json:"namespaces,omitempty"`
+	NotNamespaces []string                                       `json:"notNamespaces,omitempty"`
+	IpBlocks      []string                                       `json:"ipBlocks,omitempty"`
+	NotIpBlocks   []string                                       `json:"notIpBlocks,omitempty"`
+	Principals    []string                                       `json:"principals,omitempty"`
+	NotPrincipals []string                                       `json:"notPrincipals,omitempty"`
+	Extends       []AuthenticationPolicyExtendApplyConfiguration `json:"extends,omitempty"`
+	NotExtends    []AuthenticationPolicyExtendApplyConfiguration `json:"notExtends,omitempty"`
 }
 
-// TargetApplyConfiguration constructs an declarative configuration of the Target type for use with
+// AuthenticationPolicySourceApplyConfiguration constructs an declarative configuration of the AuthenticationPolicySource type for use with
 // apply.
-func Target() *TargetApplyConfiguration {
-	return &TargetApplyConfiguration{}
+func AuthenticationPolicySource() *AuthenticationPolicySourceApplyConfiguration {
+	return &AuthenticationPolicySourceApplyConfiguration{}
+}
+
+// WithNamespaces adds the given value to the Namespaces field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Namespaces field.
+func (b *AuthenticationPolicySourceApplyConfiguration) WithNamespaces(values ...string) *AuthenticationPolicySourceApplyConfiguration {
+	for i := range values {
+		b.Namespaces = append(b.Namespaces, values[i])
+	}
+	return b
+}
+
+// WithNotNamespaces adds the given value to the NotNamespaces field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the NotNamespaces field.
+func (b *AuthenticationPolicySourceApplyConfiguration) WithNotNamespaces(values ...string) *AuthenticationPolicySourceApplyConfiguration {
+	for i := range values {
+		b.NotNamespaces = append(b.NotNamespaces, values[i])
+	}
+	return b
 }
 
 // WithIpBlocks adds the given value to the IpBlocks field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the IpBlocks field.
-func (b *TargetApplyConfiguration) WithIpBlocks(values ...string) *TargetApplyConfiguration {
+func (b *AuthenticationPolicySourceApplyConfiguration) WithIpBlocks(values ...string) *AuthenticationPolicySourceApplyConfiguration {
 	for i := range values {
 		b.IpBlocks = append(b.IpBlocks, values[i])
 	}
@@ -47,7 +69,7 @@ func (b *TargetApplyConfiguration) WithIpBlocks(values ...string) *TargetApplyCo
 // WithNotIpBlocks adds the given value to the NotIpBlocks field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the NotIpBlocks field.
-func (b *TargetApplyConfiguration) WithNotIpBlocks(values ...string) *TargetApplyConfiguration {
+func (b *AuthenticationPolicySourceApplyConfiguration) WithNotIpBlocks(values ...string) *AuthenticationPolicySourceApplyConfiguration {
 	for i := range values {
 		b.NotIpBlocks = append(b.NotIpBlocks, values[i])
 	}
@@ -57,7 +79,7 @@ func (b *TargetApplyConfiguration) WithNotIpBlocks(values ...string) *TargetAppl
 // WithPrincipals adds the given value to the Principals field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Principals field.
-func (b *TargetApplyConfiguration) WithPrincipals(values ...string) *TargetApplyConfiguration {
+func (b *AuthenticationPolicySourceApplyConfiguration) WithPrincipals(values ...string) *AuthenticationPolicySourceApplyConfiguration {
 	for i := range values {
 		b.Principals = append(b.Principals, values[i])
 	}
@@ -67,7 +89,7 @@ func (b *TargetApplyConfiguration) WithPrincipals(values ...string) *TargetApply
 // WithNotPrincipals adds the given value to the NotPrincipals field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the NotPrincipals field.
-func (b *TargetApplyConfiguration) WithNotPrincipals(values ...string) *TargetApplyConfiguration {
+func (b *AuthenticationPolicySourceApplyConfiguration) WithNotPrincipals(values ...string) *AuthenticationPolicySourceApplyConfiguration {
 	for i := range values {
 		b.NotPrincipals = append(b.NotPrincipals, values[i])
 	}
@@ -77,7 +99,7 @@ func (b *TargetApplyConfiguration) WithNotPrincipals(values ...string) *TargetAp
 // WithExtends adds the given value to the Extends field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Extends field.
-func (b *TargetApplyConfiguration) WithExtends(values ...*ExtendConfigApplyConfiguration) *TargetApplyConfiguration {
+func (b *AuthenticationPolicySourceApplyConfiguration) WithExtends(values ...*AuthenticationPolicyExtendApplyConfiguration) *AuthenticationPolicySourceApplyConfiguration {
 	for i := range values {
 		if values[i] == nil {
 			panic("nil value passed to WithExtends")
@@ -90,7 +112,7 @@ func (b *TargetApplyConfiguration) WithExtends(values ...*ExtendConfigApplyConfi
 // WithNotExtends adds the given value to the NotExtends field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the NotExtends field.
-func (b *TargetApplyConfiguration) WithNotExtends(values ...*ExtendConfigApplyConfiguration) *TargetApplyConfiguration {
+func (b *AuthenticationPolicySourceApplyConfiguration) WithNotExtends(values ...*AuthenticationPolicyExtendApplyConfiguration) *AuthenticationPolicySourceApplyConfiguration {
 	for i := range values {
 		if values[i] == nil {
 			panic("nil value passed to WithNotExtends")

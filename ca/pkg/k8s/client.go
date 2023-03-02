@@ -22,6 +22,7 @@ import (
 	"github.com/apache/dubbo-admin/ca/pkg/config"
 	"github.com/apache/dubbo-admin/ca/pkg/logger"
 	"github.com/apache/dubbo-admin/ca/pkg/rule/authentication"
+	"github.com/apache/dubbo-admin/ca/pkg/rule/authorization"
 	admissionregistrationV1 "k8s.io/api/admissionregistration/v1"
 	k8sauth "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
@@ -46,7 +47,7 @@ type Client interface {
 	VerifyServiceAccount(token string) bool
 	UpdateWebhookConfig(options *config.Options, storage cert.Storage)
 	GetNamespaceLabels(namespace string) map[string]string
-	InitController(paHandler authentication.Handler)
+	InitController(paHandler authentication.Handler, apHandler authorization.Handler)
 }
 
 type ClientImpl struct {
@@ -288,12 +289,14 @@ func (c *ClientImpl) UpdateWebhookConfig(options *config.Options, storage cert.S
 	}
 }
 
-func (c *ClientImpl) InitController(paHandler authentication.Handler) {
+func (c *ClientImpl) InitController(paHandler authentication.Handler, apHandler authorization.Handler) {
 	informerFactory := informers.NewSharedInformerFactory(c.informerClient, time.Second*30)
 
 	stopCh := make(chan struct{})
 	NewController(c.informerClient,
 		paHandler,
-		informerFactory.Dubbo().V1beta1().PeerAuthentications())
+		apHandler,
+		informerFactory.Dubbo().V1beta1().AuthenticationPolicies(),
+		informerFactory.Dubbo().V1beta1().AuthorizationPolicies())
 	informerFactory.Start(stopCh)
 }

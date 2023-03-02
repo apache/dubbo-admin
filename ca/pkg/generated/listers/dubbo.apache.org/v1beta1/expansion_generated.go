@@ -17,10 +17,18 @@
 
 package v1beta1
 
-// PeerAuthenticationListerExpansion allows custom methods to be added to
-// PeerAuthenticationLister.
-type PeerAuthenticationListerExpansion interface{}
+// AuthenticationPolicyListerExpansion allows custom methods to be added to
+// AuthenticationPolicyLister.
+type AuthenticationPolicyListerExpansion interface{}
 
-// PeerAuthenticationNamespaceListerExpansion allows custom methods to be added to
-// PeerAuthenticationNamespaceLister.
-type PeerAuthenticationNamespaceListerExpansion interface{}
+// AuthenticationPolicyNamespaceListerExpansion allows custom methods to be added to
+// AuthenticationPolicyNamespaceLister.
+type AuthenticationPolicyNamespaceListerExpansion interface{}
+
+// AuthorizationPolicyListerExpansion allows custom methods to be added to
+// AuthorizationPolicyLister.
+type AuthorizationPolicyListerExpansion interface{}
+
+// AuthorizationPolicyNamespaceListerExpansion allows custom methods to be added to
+// AuthorizationPolicyNamespaceLister.
+type AuthorizationPolicyNamespaceListerExpansion interface{}

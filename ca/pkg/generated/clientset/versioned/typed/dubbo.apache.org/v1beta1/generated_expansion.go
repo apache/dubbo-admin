@@ -17,4 +17,6 @@
 
 package v1beta1
 
-type PeerAuthenticationExpansion interface{}
+type AuthenticationPolicyExpansion interface{}
+
+type AuthorizationPolicyExpansion interface{}

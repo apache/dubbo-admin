@@ -27,7 +27,8 @@ import (
 
 type DubboV1beta1Interface interface {
 	RESTClient() rest.Interface
-	PeerAuthenticationsGetter
+	AuthenticationPoliciesGetter
+	AuthorizationPoliciesGetter
 }
 
 // DubboV1beta1Client is used to interact with features provided by the dubbo.apache.org group.
@@ -35,8 +36,12 @@ type DubboV1beta1Client struct {
 	restClient rest.Interface
 }
 
-func (c *DubboV1beta1Client) PeerAuthentications(namespace string) PeerAuthenticationInterface {
-	return newPeerAuthentications(c, namespace)
+func (c *DubboV1beta1Client) AuthenticationPolicies(namespace string) AuthenticationPolicyInterface {
+	return newAuthenticationPolicies(c, namespace)
+}
+
+func (c *DubboV1beta1Client) AuthorizationPolicies(namespace string) AuthorizationPolicyInterface {
+	return newAuthorizationPolicies(c, namespace)
 }
 
 // NewForConfig creates a new DubboV1beta1Client for the given config.

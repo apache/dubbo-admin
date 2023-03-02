@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package authentication
+package authorization
 
 type Policy struct {
 	Name string `json:"name,omitempty"`
@@ -24,13 +24,14 @@ type Policy struct {
 type PolicySpec struct {
 	Action    string  `json:"action,omitempty"`
 	Rules     []*Rule `json:"rules,omitempty"`
-	Order     int     `json:"order,omitempty"`
+	Samples   float32 `json:"samples,omitempty"`
 	MatchType string  `json:"matchType,omitempty"`
 }
 
 type Rule struct {
-	From *Source `json:"from,omitempty"`
-	To   *Target `json:"to,omitempty"`
+	From *Source    `json:"from,omitempty"`
+	To   *Target    `json:"to,omitempty"`
+	When *Condition `json:"when,omitempty"`
 }
 
 type Source struct {
@@ -51,6 +52,17 @@ type Target struct {
 	NotPrincipals []string  `json:"notPrincipals,omitempty"`
 	Extends       []*Extend `json:"extends,omitempty"`
 	NotExtends    []*Extend `json:"notExtends,omitempty"`
+}
+
+type Condition struct {
+	Key       string   `json:"key,omitempty"`
+	Values    []*Match `json:"values,omitempty"`
+	NotValues []*Match `json:"notValues,omitempty"`
+}
+
+type Match struct {
+	Type  string `json:"type,omitempty"`
+	Value string `json:"value,omitempty"`
 }
 
 type Extend struct {

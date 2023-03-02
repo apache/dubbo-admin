@@ -22,55 +22,123 @@ import (
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type PeerAuthentication struct {
+type AuthenticationPolicy struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec PeerAuthenticationSpec `json:"spec"`
+	Spec AuthenticationPolicySpec `json:"spec"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type PeerAuthenticationList struct {
+type AuthenticationPolicyList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata"`
 
-	Items []PeerAuthentication `json:"items"`
+	Items []AuthenticationPolicy `json:"items"`
 }
 
-type PeerAuthenticationSpec struct {
-	Action    string `json:"action,omitempty"`
-	Rules     []Rule `json:"rules,omitempty"`
-	Order     int    `json:"order,omitempty"`
-	MatchType string `json:"matchType,omitempty"`
+type AuthenticationPolicySpec struct {
+	Action    string                     `json:"action,omitempty"`
+	Rules     []AuthenticationPolicyRule `json:"rules,omitempty"`
+	Order     int                        `json:"order,omitempty"`
+	MatchType string                     `json:"matchType,omitempty"`
 }
 
-type Rule struct {
-	From Source `json:"from,omitempty"`
-	To   Target `json:"to,omitempty"`
+type AuthenticationPolicyRule struct {
+	From AuthenticationPolicySource `json:"from,omitempty"`
+	To   AuthenticationPolicyTarget `json:"to,omitempty"`
 }
 
-type Source struct {
-	Namespaces    []string       `json:"namespaces,omitempty"`
-	NotNamespaces []string       `json:"notNamespaces,omitempty"`
-	IpBlocks      []string       `json:"ipBlocks,omitempty"`
-	NotIpBlocks   []string       `json:"notIpBlocks,omitempty"`
-	Principals    []string       `json:"principals,omitempty"`
-	NotPrincipals []string       `json:"notPrincipals,omitempty"`
-	Extends       []ExtendConfig `json:"extends,omitempty"`
-	NotExtends    []ExtendConfig `json:"notExtends,omitempty"`
+type AuthenticationPolicySource struct {
+	Namespaces    []string                     `json:"namespaces,omitempty"`
+	NotNamespaces []string                     `json:"notNamespaces,omitempty"`
+	IpBlocks      []string                     `json:"ipBlocks,omitempty"`
+	NotIpBlocks   []string                     `json:"notIpBlocks,omitempty"`
+	Principals    []string                     `json:"principals,omitempty"`
+	NotPrincipals []string                     `json:"notPrincipals,omitempty"`
+	Extends       []AuthenticationPolicyExtend `json:"extends,omitempty"`
+	NotExtends    []AuthenticationPolicyExtend `json:"notExtends,omitempty"`
 }
 
-type Target struct {
-	IpBlocks      []string       `json:"ipBlocks,omitempty"`
-	NotIpBlocks   []string       `json:"notIpBlocks,omitempty"`
-	Principals    []string       `json:"principals,omitempty"`
-	NotPrincipals []string       `json:"notPrincipals,omitempty"`
-	Extends       []ExtendConfig `json:"extends,omitempty"`
-	NotExtends    []ExtendConfig `json:"notExtends,omitempty"`
+type AuthenticationPolicyTarget struct {
+	IpBlocks      []string                     `json:"ipBlocks,omitempty"`
+	NotIpBlocks   []string                     `json:"notIpBlocks,omitempty"`
+	Principals    []string                     `json:"principals,omitempty"`
+	NotPrincipals []string                     `json:"notPrincipals,omitempty"`
+	Extends       []AuthenticationPolicyExtend `json:"extends,omitempty"`
+	NotExtends    []AuthenticationPolicyExtend `json:"notExtends,omitempty"`
 }
 
-type ExtendConfig struct {
+type AuthenticationPolicyExtend struct {
+	Key   string `json:"key,omitempty"`
+	Value string `json:"value,omitempty"`
+}
+
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type AuthorizationPolicy struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec AuthorizationPolicySpec `json:"spec"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+type AuthorizationPolicyList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []AuthorizationPolicy `json:"items"`
+}
+
+type AuthorizationPolicySpec struct {
+	Action    string                    `json:"action,omitempty"`
+	Rules     []AuthorizationPolicyRule `json:"rules,omitempty"`
+	Samples   float32                   `json:"samples,omitempty"`
+	MatchType string                    `json:"matchType,omitempty"`
+}
+
+type AuthorizationPolicyRule struct {
+	From AuthorizationPolicySource    `json:"from,omitempty"`
+	To   AuthorizationPolicyTarget    `json:"to,omitempty"`
+	When AuthorizationPolicyCondition `json:"when,omitempty"`
+}
+
+type AuthorizationPolicySource struct {
+	Namespaces    []string                    `json:"namespaces,omitempty"`
+	NotNamespaces []string                    `json:"notNamespaces,omitempty"`
+	IpBlocks      []string                    `json:"ipBlocks,omitempty"`
+	NotIpBlocks   []string                    `json:"notIpBlocks,omitempty"`
+	Principals    []string                    `json:"principals,omitempty"`
+	NotPrincipals []string                    `json:"notPrincipals,omitempty"`
+	Extends       []AuthorizationPolicyExtend `json:"extends,omitempty"`
+	NotExtends    []AuthorizationPolicyExtend `json:"notExtends,omitempty"`
+}
+
+type AuthorizationPolicyTarget struct {
+	IpBlocks      []string                    `json:"ipBlocks,omitempty"`
+	NotIpBlocks   []string                    `json:"notIpBlocks,omitempty"`
+	Principals    []string                    `json:"principals,omitempty"`
+	NotPrincipals []string                    `json:"notPrincipals,omitempty"`
+	Extends       []AuthorizationPolicyExtend `json:"extends,omitempty"`
+	NotExtends    []AuthorizationPolicyExtend `json:"notExtends,omitempty"`
+}
+
+type AuthorizationPolicyCondition struct {
+	Key       string                     `json:"key,omitempty"`
+	Values    []AuthorizationPolicyMatch `json:"values,omitempty"`
+	NotValues []AuthorizationPolicyMatch `json:"notValues,omitempty"`
+}
+
+type AuthorizationPolicyMatch struct {
+	Type  string `json:"type,omitempty"`
+	Value string `json:"value,omitempty"`
+}
+
+type AuthorizationPolicyExtend struct {
 	Key   string `json:"key,omitempty"`
 	Value string `json:"value,omitempty"`
 }

@@ -31,59 +31,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// PeerAuthenticationInformer provides access to a shared informer and lister for
-// PeerAuthentications.
-type PeerAuthenticationInformer interface {
+// AuthorizationPolicyInformer provides access to a shared informer and lister for
+// AuthorizationPolicies.
+type AuthorizationPolicyInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1beta1.PeerAuthenticationLister
+	Lister() v1beta1.AuthorizationPolicyLister
 }
 
-type peerAuthenticationInformer struct {
+type authorizationPolicyInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewPeerAuthenticationInformer constructs a new informer for PeerAuthentication type.
+// NewAuthorizationPolicyInformer constructs a new informer for AuthorizationPolicy type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewPeerAuthenticationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredPeerAuthenticationInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewAuthorizationPolicyInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredAuthorizationPolicyInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredPeerAuthenticationInformer constructs a new informer for PeerAuthentication type.
+// NewFilteredAuthorizationPolicyInformer constructs a new informer for AuthorizationPolicy type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredPeerAuthenticationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredAuthorizationPolicyInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.DubboV1beta1().PeerAuthentications(namespace).List(context.TODO(), options)
+				return client.DubboV1beta1().AuthorizationPolicies(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.DubboV1beta1().PeerAuthentications(namespace).Watch(context.TODO(), options)
+				return client.DubboV1beta1().AuthorizationPolicies(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&dubboapacheorgv1beta1.PeerAuthentication{},
+		&dubboapacheorgv1beta1.AuthorizationPolicy{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *peerAuthenticationInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredPeerAuthenticationInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *authorizationPolicyInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredAuthorizationPolicyInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *peerAuthenticationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&dubboapacheorgv1beta1.PeerAuthentication{}, f.defaultInformer)
+func (f *authorizationPolicyInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&dubboapacheorgv1beta1.AuthorizationPolicy{}, f.defaultInformer)
 }
 
-func (f *peerAuthenticationInformer) Lister() v1beta1.PeerAuthenticationLister {
-	return v1beta1.NewPeerAuthenticationLister(f.Informer().GetIndexer())
+func (f *authorizationPolicyInformer) Lister() v1beta1.AuthorizationPolicyLister {
+	return v1beta1.NewAuthorizationPolicyLister(f.Informer().GetIndexer())
 }

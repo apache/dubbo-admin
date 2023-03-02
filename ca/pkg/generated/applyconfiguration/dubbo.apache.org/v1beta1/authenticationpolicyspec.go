@@ -17,25 +17,25 @@
 
 package v1beta1
 
-// PeerAuthenticationSpecApplyConfiguration represents an declarative configuration of the PeerAuthenticationSpec type for use
+// AuthenticationPolicySpecApplyConfiguration represents an declarative configuration of the AuthenticationPolicySpec type for use
 // with apply.
-type PeerAuthenticationSpecApplyConfiguration struct {
-	Action    *string                  `json:"action,omitempty"`
-	Rules     []RuleApplyConfiguration `json:"rules,omitempty"`
-	Order     *int                     `json:"order,omitempty"`
-	MatchType *string                  `json:"matchType,omitempty"`
+type AuthenticationPolicySpecApplyConfiguration struct {
+	Action    *string                                      `json:"action,omitempty"`
+	Rules     []AuthenticationPolicyRuleApplyConfiguration `json:"rules,omitempty"`
+	Order     *int                                         `json:"order,omitempty"`
+	MatchType *string                                      `json:"matchType,omitempty"`
 }
 
-// PeerAuthenticationSpecApplyConfiguration constructs an declarative configuration of the PeerAuthenticationSpec type for use with
+// AuthenticationPolicySpecApplyConfiguration constructs an declarative configuration of the AuthenticationPolicySpec type for use with
 // apply.
-func PeerAuthenticationSpec() *PeerAuthenticationSpecApplyConfiguration {
-	return &PeerAuthenticationSpecApplyConfiguration{}
+func AuthenticationPolicySpec() *AuthenticationPolicySpecApplyConfiguration {
+	return &AuthenticationPolicySpecApplyConfiguration{}
 }
 
 // WithAction sets the Action field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Action field is set to the value of the last call.
-func (b *PeerAuthenticationSpecApplyConfiguration) WithAction(value string) *PeerAuthenticationSpecApplyConfiguration {
+func (b *AuthenticationPolicySpecApplyConfiguration) WithAction(value string) *AuthenticationPolicySpecApplyConfiguration {
 	b.Action = &value
 	return b
 }
@@ -43,7 +43,7 @@ func (b *PeerAuthenticationSpecApplyConfiguration) WithAction(value string) *Pee
 // WithRules adds the given value to the Rules field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Rules field.
-func (b *PeerAuthenticationSpecApplyConfiguration) WithRules(values ...*RuleApplyConfiguration) *PeerAuthenticationSpecApplyConfiguration {
+func (b *AuthenticationPolicySpecApplyConfiguration) WithRules(values ...*AuthenticationPolicyRuleApplyConfiguration) *AuthenticationPolicySpecApplyConfiguration {
 	for i := range values {
 		if values[i] == nil {
 			panic("nil value passed to WithRules")
@@ -56,7 +56,7 @@ func (b *PeerAuthenticationSpecApplyConfiguration) WithRules(values ...*RuleAppl
 // WithOrder sets the Order field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the Order field is set to the value of the last call.
-func (b *PeerAuthenticationSpecApplyConfiguration) WithOrder(value int) *PeerAuthenticationSpecApplyConfiguration {
+func (b *AuthenticationPolicySpecApplyConfiguration) WithOrder(value int) *AuthenticationPolicySpecApplyConfiguration {
 	b.Order = &value
 	return b
 }
@@ -64,7 +64,7 @@ func (b *PeerAuthenticationSpecApplyConfiguration) WithOrder(value int) *PeerAut
 // WithMatchType sets the MatchType field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
 // If called multiple times, the MatchType field is set to the value of the last call.
-func (b *PeerAuthenticationSpecApplyConfiguration) WithMatchType(value string) *PeerAuthenticationSpecApplyConfiguration {
+func (b *AuthenticationPolicySpecApplyConfiguration) WithMatchType(value string) *AuthenticationPolicySpecApplyConfiguration {
 	b.MatchType = &value
 	return b
 }

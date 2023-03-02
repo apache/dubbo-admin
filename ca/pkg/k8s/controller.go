@@ -19,9 +19,9 @@ import (
 	"github.com/apache/dubbo-admin/ca/pkg/apis/dubbo.apache.org/v1beta1"
 	clientset "github.com/apache/dubbo-admin/ca/pkg/generated/clientset/versioned"
 	informers "github.com/apache/dubbo-admin/ca/pkg/generated/informers/externalversions/dubbo.apache.org/v1beta1"
-	listers "github.com/apache/dubbo-admin/ca/pkg/generated/listers/dubbo.apache.org/v1beta1"
 	"github.com/apache/dubbo-admin/ca/pkg/logger"
 	"github.com/apache/dubbo-admin/ca/pkg/rule/authentication"
+	"github.com/apache/dubbo-admin/ca/pkg/rule/authorization"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -41,30 +41,47 @@ type Controller struct {
 	// dubboClientSet is a clientset for our own API group
 	dubboClientSet clientset.Interface
 
-	paListener listers.PeerAuthenticationLister
-	paSynced   cache.InformerSynced
+	acSynced cache.InformerSynced
+	apSynced cache.InformerSynced
 
-	paHandler authentication.Handler
+	acHandler authentication.Handler
+	apHandler authorization.Handler
 }
 
 // NewController returns a new sample controller
 func NewController(
 	clientSet clientset.Interface,
-	paHandler authentication.Handler,
-	paInformer informers.PeerAuthenticationInformer) *Controller {
+	acHandler authentication.Handler,
+	apHandler authorization.Handler,
+	acInformer informers.AuthenticationPolicyInformer,
+	apInformer informers.AuthorizationPolicyInformer) *Controller {
 
 	controller := &Controller{
 		dubboClientSet: clientSet,
-		paListener:     paInformer.Lister(),
-		paSynced:       paInformer.Informer().HasSynced,
+		acSynced:       acInformer.Informer().HasSynced,
+		apSynced:       apInformer.Informer().HasSynced,
 
-		//workQueue: workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Dubbo-Authority"),
-		paHandler: paHandler,
+		acHandler: acHandler,
+		apHandler: apHandler,
 	}
 
 	logger.Sugar.Info("Setting up event handlers")
 	// Set up an event handler for when Foo resources change
-	_, err := paInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	_, err := acInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			controller.handleEvent(obj, AddNotification)
+		},
+		UpdateFunc: func(oldObj, newObj interface{}) {
+			controller.handleEvent(newObj, UpdateNotification)
+		},
+		DeleteFunc: func(obj interface{}) {
+			controller.handleEvent(obj, DeleteNotification)
+		},
+	})
+	if err != nil {
+		return nil
+	}
+	_, err = apInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			controller.handleEvent(obj, AddNotification)
 		},
@@ -89,28 +106,41 @@ func (c *Controller) handleEvent(obj interface{}, eventType NotificationType) {
 		return
 	}
 
-	pa, ok := obj.(*v1beta1.PeerAuthentication)
-	if !ok {
+	switch o := obj.(type) {
+	case *v1beta1.AuthenticationPolicy:
+		a := CopyToAuthentication(key, o)
+
+		switch eventType {
+		case AddNotification:
+			c.acHandler.Add(key, a)
+		case UpdateNotification:
+			c.acHandler.Update(key, a)
+		case DeleteNotification:
+			c.acHandler.Delete(key)
+		}
+		return
+	case *v1beta1.AuthorizationPolicy:
+		a := CopyToAuthorization(key, o)
+
+		switch eventType {
+		case AddNotification:
+			c.apHandler.Add(key, a)
+		case UpdateNotification:
+			c.apHandler.Update(key, a)
+		case DeleteNotification:
+			c.apHandler.Delete(key)
+		}
+	default:
 		logger.Sugar.Errorf("unexpected object type: %v", obj)
 		return
 	}
 
-	a := CopyToAuthentication(key, pa)
-
-	switch eventType {
-	case AddNotification:
-		c.paHandler.Add(key, a)
-	case UpdateNotification:
-		c.paHandler.Update(key, a)
-	case DeleteNotification:
-		c.paHandler.Delete(key)
-	}
 }
 
-func CopyToAuthentication(key string, pa *v1beta1.PeerAuthentication) *authentication.PeerAuthentication {
-	a := &authentication.PeerAuthentication{}
+func CopyToAuthentication(key string, pa *v1beta1.AuthenticationPolicy) *authentication.Policy {
+	a := &authentication.Policy{}
 	a.Name = key
-	a.Spec = &authentication.PeerAuthenticationSpec{}
+	a.Spec = &authentication.PolicySpec{}
 	a.Spec.Action = pa.Spec.Action
 	if pa.Spec.Rules != nil {
 		for _, rule := range pa.Spec.Rules {
@@ -132,7 +162,7 @@ func CopyToAuthentication(key string, pa *v1beta1.PeerAuthentication) *authentic
 			}
 			if rule.From.Extends != nil {
 				for _, extends := range rule.From.Extends {
-					r.From.Extends = append(r.From.Extends, &authentication.ExtendConfig{
+					r.From.Extends = append(r.From.Extends, &authentication.Extend{
 						Key:   extends.Key,
 						Value: extends.Value,
 					})
@@ -140,7 +170,7 @@ func CopyToAuthentication(key string, pa *v1beta1.PeerAuthentication) *authentic
 			}
 			if rule.From.NotExtends != nil {
 				for _, notExtend := range rule.From.NotExtends {
-					r.From.NotExtends = append(r.From.NotExtends, &authentication.ExtendConfig{
+					r.From.NotExtends = append(r.From.NotExtends, &authentication.Extend{
 						Key:   notExtend.Key,
 						Value: notExtend.Value,
 					})
@@ -148,7 +178,7 @@ func CopyToAuthentication(key string, pa *v1beta1.PeerAuthentication) *authentic
 			}
 			if rule.To.Extends != nil {
 				for _, extends := range rule.To.Extends {
-					r.To.Extends = append(r.To.Extends, &authentication.ExtendConfig{
+					r.To.Extends = append(r.To.Extends, &authentication.Extend{
 						Key:   extends.Key,
 						Value: extends.Value,
 					})
@@ -156,7 +186,7 @@ func CopyToAuthentication(key string, pa *v1beta1.PeerAuthentication) *authentic
 			}
 			if rule.To.NotExtends != nil {
 				for _, notExtend := range rule.To.NotExtends {
-					r.To.NotExtends = append(r.To.NotExtends, &authentication.ExtendConfig{
+					r.To.NotExtends = append(r.To.NotExtends, &authentication.Extend{
 						Key:   notExtend.Key,
 						Value: notExtend.Value,
 					})
@@ -166,6 +196,89 @@ func CopyToAuthentication(key string, pa *v1beta1.PeerAuthentication) *authentic
 		}
 	}
 	a.Spec.Order = pa.Spec.Order
+	a.Spec.MatchType = pa.Spec.MatchType
+	return a
+}
+
+func CopyToAuthorization(key string, pa *v1beta1.AuthorizationPolicy) *authorization.Policy {
+	a := &authorization.Policy{}
+	a.Name = key
+	a.Spec = &authorization.PolicySpec{}
+	a.Spec.Action = pa.Spec.Action
+	if pa.Spec.Rules != nil {
+		for _, rule := range pa.Spec.Rules {
+			r := &authorization.Rule{
+				From: &authorization.Source{
+					Namespaces:    rule.From.Namespaces,
+					NotNamespaces: rule.From.NotNamespaces,
+					IpBlocks:      rule.From.IpBlocks,
+					NotIpBlocks:   rule.From.NotIpBlocks,
+					Principals:    rule.From.Principals,
+					NotPrincipals: rule.From.NotPrincipals,
+				},
+				To: &authorization.Target{
+					IpBlocks:      rule.To.IpBlocks,
+					NotIpBlocks:   rule.To.NotIpBlocks,
+					Principals:    rule.To.Principals,
+					NotPrincipals: rule.To.NotPrincipals,
+				},
+				When: &authorization.Condition{
+					Key: rule.When.Key,
+				},
+			}
+			if rule.From.Extends != nil {
+				for _, extends := range rule.From.Extends {
+					r.From.Extends = append(r.From.Extends, &authorization.Extend{
+						Key:   extends.Key,
+						Value: extends.Value,
+					})
+				}
+			}
+			if rule.From.NotExtends != nil {
+				for _, notExtend := range rule.From.NotExtends {
+					r.From.NotExtends = append(r.From.NotExtends, &authorization.Extend{
+						Key:   notExtend.Key,
+						Value: notExtend.Value,
+					})
+				}
+			}
+			if rule.To.Extends != nil {
+				for _, extends := range rule.To.Extends {
+					r.To.Extends = append(r.To.Extends, &authorization.Extend{
+						Key:   extends.Key,
+						Value: extends.Value,
+					})
+				}
+			}
+			if rule.To.NotExtends != nil {
+				for _, notExtend := range rule.To.NotExtends {
+					r.To.NotExtends = append(r.To.NotExtends, &authorization.Extend{
+						Key:   notExtend.Key,
+						Value: notExtend.Value,
+					})
+				}
+			}
+			if rule.When.Values != nil {
+				for _, value := range rule.When.Values {
+					r.When.Values = append(r.When.Values, &authorization.Match{
+						Type:  value.Type,
+						Value: value.Value,
+					})
+				}
+			}
+			if rule.When.NotValues != nil {
+				for _, notValue := range rule.When.NotValues {
+					r.When.Values = append(r.When.Values, &authorization.Match{
+						Type:  notValue.Type,
+						Value: notValue.Value,
+					})
+				}
+			}
+
+			a.Spec.Rules = append(a.Spec.Rules, r)
+		}
+	}
+	a.Spec.Samples = pa.Spec.Samples
 	a.Spec.MatchType = pa.Spec.MatchType
 	return a
 }
