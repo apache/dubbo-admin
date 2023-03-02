@@ -42,4 +42,13 @@ const (
 	ProviderSide          = "provider"
 	ConsumerProtocol      = "consumer"
 	EmptyProtocol         = "empty"
+	ApplicationKey        = "application"
+	DynamicKey            = "dynamic"
+	SerializationKey      = "serialization"
+	TimeoutKey            = "timeout"
+	DefaultTimeout        = 1000
+	WeightKey             = "weight"
+	DefaultWeight         = 100
+	OwnerKey              = "owner"
+	Service               = "service"
 )

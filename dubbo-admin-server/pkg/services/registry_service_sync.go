@@ -78,14 +78,14 @@ func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
 	if strings.EqualFold(constant.EmptyProtocol, serviceUrl.Protocol) {
 		if services, ok := cache.InterfaceRegistryCache.Load(category); ok {
 			if services != nil {
-				group := serviceUrl.GetParam(constant.GroupKey, "")
-				version := serviceUrl.GetParam(constant.VersionKey, "")
+				group := serviceUrl.Group()
+				version := serviceUrl.Version()
 				if constant.AnyValue != group && constant.AnyValue != version {
-					services.(*sync.Map).Delete(getServiceInterface(serviceUrl))
+					services.(*sync.Map).Delete(serviceUrl.Service())
 				} else {
 					// iterator services
 					services.(*sync.Map).Range(func(key, value interface{}) bool {
-						if util2.GetInterface(key.(string)) == getServiceInterface(serviceUrl) &&
+						if util2.GetInterface(key.(string)) == serviceUrl.Service() &&
 							(constant.AnyValue == group || group == util2.GetGroup(key.(string))) &&
 							(constant.AnyValue == version || version == util2.GetVersion(key.(string))) {
 							services.(*sync.Map).Delete(key)
@@ -96,7 +96,7 @@ func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
 			}
 		}
 	} else {
-		interfaceName = getServiceInterface(serviceUrl)
+		interfaceName = serviceUrl.Service()
 		var services map[string]map[string]*common.URL
 		if s, ok := categories[category]; ok {
 			services = s
@@ -104,9 +104,7 @@ func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
 			services = make(map[string]map[string]*common.URL)
 			categories[category] = services
 		}
-		group := serviceUrl.GetParam(constant.GroupKey, "")
-		version := serviceUrl.GetParam(constant.VersionKey, "")
-		service := util2.BuildServiceKey(getServiceInterface(serviceUrl), group, version)
+		service := serviceUrl.ServiceKey()
 		ids, found := services[service]
 		if !found {
 			ids = make(map[string]*common.URL)
@@ -142,18 +140,6 @@ func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
 			}
 		}
 	}
-}
-
-func getServiceInterface(url *common.URL) string {
-	path := url.Path
-	if strings.HasPrefix(path, "/") {
-		path = path[1:]
-	}
-	serviceInterface := url.GetParam(constant.InterfaceKey, path)
-	if len(serviceInterface) == 0 || constant.AnyValue == serviceInterface {
-		serviceInterface = path
-	}
-	return serviceInterface
 }
 
 func (adminNotifyListener) NotifyAll(events []*registry.ServiceEvent, f func()) {

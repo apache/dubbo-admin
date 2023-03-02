@@ -18,26 +18,27 @@
 package handlers
 
 import (
-	"admin/pkg/cache"
-	"admin/pkg/constant"
+	"admin/pkg/services"
 	"github.com/gin-gonic/gin"
 	"net/http"
-	"sync"
 )
 
+var providerService services.ProviderService = &services.ProviderServiceImpl{}
+
 func AllServices(c *gin.Context) {
-	services, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
-	var value []string
-	if !ok {
-		value = []string{}
-	} else {
-		services.(*sync.Map).Range(func(key, v interface{}) bool {
-			value = append(value, key.(string))
-			return true
-		})
-	}
+	services := providerService.FindServices()
 	c.JSON(http.StatusOK, gin.H{
 		"code": 1,
-		"data": value,
+		"data": services,
+	})
+}
+
+func SearchService(c *gin.Context) {
+	pattern := c.Query("pattern")
+	filter := c.Query("filter")
+	providers := providerService.FindService(pattern, filter)
+	c.JSON(http.StatusOK, gin.H{
+		"code": 1,
+		"data": providers,
 	})
 }
