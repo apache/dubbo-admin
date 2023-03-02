@@ -24,30 +24,26 @@ import (
 	"syscall"
 )
 
-// TODO read namespace from env
-const namespace = "dubbo-system"
-const serviceName = "dubbo-ca"
-
 func main() {
 	logger.Init()
 	// TODO read options from env
 	options := &config.Options{
-		Namespace:   namespace,
-		ServiceName: serviceName,
+		Namespace:   config.GetEnvDefault("namespace", "dubbo-system"),
+		ServiceName: config.GetEnvDefault("serviceName", "dubbo-ca"),
 
-		PlainServerPort:  30060,
-		SecureServerPort: 30062,
-		DebugPort:        30070,
+		PlainServerPort:  config.GetEnvIntDefault("PlainServerPort", 30060),
+		SecureServerPort: config.GetEnvIntDefault("SecureServerPort", 30062),
+		DebugPort:        config.GetEnvIntDefault("DebugPort", 30070),
 
-		WebhookPort:       30080,
-		WebhookAllowOnErr: false,
+		WebhookPort:       int32(config.GetEnvIntDefault("WebhookPort", 30080)),
+		WebhookAllowOnErr: config.GetEnvBoolDefault("WebhookAllowOnErr", false),
 
 		CaValidity:   30 * 24 * 60 * 60 * 1000, // 30 day
 		CertValidity: 1 * 60 * 60 * 1000,       // 1 hour
 
-		InPodEnv:              false,
-		IsKubernetesConnected: false,
-		EnableOIDCCheck:       false,
+		InPodEnv:              config.GetEnvBoolDefault("InPodEnv", false),
+		IsKubernetesConnected: config.GetEnvBoolDefault("IsKubernetesConnected", false),
+		EnableOIDCCheck:       config.GetEnvBoolDefault("EnableOIDCCheck", false),
 	}
 
 	s := security.NewServer(options)
