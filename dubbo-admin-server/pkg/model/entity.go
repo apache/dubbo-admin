@@ -1,6 +1,6 @@
 package model
 
 type Entity struct {
-	Id   string
+	ID   string
 	Hash string
 }

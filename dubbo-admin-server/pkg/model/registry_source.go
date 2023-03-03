@@ -3,9 +3,9 @@ package model
 type RegistrySource int
 
 const (
-	ALL RegistrySource = iota
+	All RegistrySource = iota
 
-	INTERFACE
+	Interface
 
-	INSTANCE
+	Instance
 )

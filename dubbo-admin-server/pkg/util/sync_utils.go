@@ -6,7 +6,7 @@ import (
 	"dubbo.apache.org/dubbo-go/v3/common"
 )
 
-func Url2Provider(id string, url *common.URL) *model.Provider {
+func URL2Provider(id string, url *common.URL) *model.Provider {
 	if url == nil {
 		return nil
 	}
@@ -16,7 +16,7 @@ func Url2Provider(id string, url *common.URL) *model.Provider {
 		Service:        url.ServiceKey(),
 		Address:        url.Location,
 		Application:    url.GetParam(constant.ApplicationKey, ""),
-		Url:            url.Key(),
+		URL:            url.Key(),
 		Parameters:     url.String(),
 		Dynamic:        url.GetParamBool(constant.DynamicKey, true),
 		Enabled:        url.GetParamBool(constant.EnabledKey, true),
@@ -24,6 +24,6 @@ func Url2Provider(id string, url *common.URL) *model.Provider {
 		Timeout:        url.GetParamInt(constant.TimeoutKey, constant.DefaultTimeout),
 		Weight:         url.GetParamInt(constant.WeightKey, constant.DefaultWeight),
 		Username:       url.GetParam(constant.OwnerKey, ""),
-		RegistrySource: model.INTERFACE,
+		RegistrySource: model.Interface,
 	}
 }

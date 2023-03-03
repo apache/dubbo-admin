@@ -6,11 +6,11 @@ import (
 	"admin/pkg/model"
 	"admin/pkg/util"
 	"dubbo.apache.org/dubbo-go/v3/common"
+	"dubbo.apache.org/dubbo-go/v3/common/logger"
 	"sync"
 )
 
-type ProviderServiceImpl struct {
-}
+type ProviderServiceImpl struct{}
 
 func (p *ProviderServiceImpl) FindServices() []string {
 	servicesMap, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
@@ -29,7 +29,7 @@ func (p *ProviderServiceImpl) findByService(serviceName string) []*model.Provide
 	var providers []*model.Provider
 	addProvider := func(serviceMap any) {
 		for id, url := range serviceMap.(map[string]*common.URL) {
-			provider := util.Url2Provider(id, url)
+			provider := util.URL2Provider(id, url)
 			if provider != nil {
 				providers = append(providers, provider)
 			}
@@ -39,13 +39,19 @@ func (p *ProviderServiceImpl) findByService(serviceName string) []*model.Provide
 	if !ok {
 		return providers
 	}
+	servicesMap, ok := services.(*sync.Map)
+	if !ok {
+		// servicesMap type error
+		logger.Error("servicesMap type not *sync.Map")
+		return providers
+	}
 	if serviceName == constant.AnyValue {
-		services.(*sync.Map).Range(func(key, value any) bool {
+		servicesMap.Range(func(key, value any) bool {
 			addProvider(value)
 			return true
 		})
 	}
-	serviceMap, ok := services.(*sync.Map).Load(serviceName)
+	serviceMap, ok := servicesMap.Load(serviceName)
 	if !ok {
 		return providers
 	}

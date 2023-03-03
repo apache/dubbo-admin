@@ -5,7 +5,7 @@ import "time"
 type Provider struct {
 	Entity
 	Service        string
-	Url            string
+	URL            string
 	Parameters     string
 	Address        string
 	Registry       string
