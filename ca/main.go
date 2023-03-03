@@ -55,7 +55,7 @@ func main() {
 	s.Init()
 	s.Start()
 
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	signal.Notify(s.StopChan, syscall.SIGINT, syscall.SIGTERM)
 	signal.Notify(s.CertStorage.GetStopChan(), syscall.SIGINT, syscall.SIGTERM)

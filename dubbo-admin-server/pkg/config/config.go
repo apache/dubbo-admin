@@ -76,6 +76,9 @@ func LoadConfig() {
 			panic(err)
 		}
 		ConfigCenter, err = factory.GetDynamicConfiguration(url)
+		if err != nil {
+			log.Print("No configuration found in config center.")
+		}
 		properties, err := ConfigCenter.GetProperties(constant.DubboPropertyKey)
 		if err != nil {
 			log.Print("No configuration found in config center.")
@@ -101,6 +104,9 @@ func LoadConfig() {
 			panic(err)
 		}
 		factory, err := extension.GetConfigCenterFactory(c.getProtocol())
+		if err != nil {
+			log.Print("No configuration found in config center.")
+		}
 		ConfigCenter, err = factory.GetDynamicConfiguration(url)
 		if err != nil {
 			panic(err)
