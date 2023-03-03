@@ -9,8 +9,9 @@ jobs:
   docker:
     name: Doploy on ${{matrix.platform}}
     runs-on: ubuntu-latest
-    matrix:
-      platform: [linux/amd64, linux/arm64/v8, linux/arm/v7, linux/arm/v6]
+    strategy:
+      matrix:
+        platform: [linux/amd64, linux/arm64/v8, linux/arm/v7, linux/arm/v6]
     steps:
       - uses: actions/checkout@v2
       - name: Set up QEMU
