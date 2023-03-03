@@ -25,7 +25,10 @@ import (
 
 func main() {
 	config.LoadConfig()
-	services.StartSubscribe(config.RegistryCenter)
+	go services.StartSubscribe(config.RegistryCenter)
+	defer func() {
+		services.DestroySubscribe(config.RegistryCenter)
+	}()
 	router := router.InitRouter()
-	router.Run(":38080")
+	_ = router.Run(":38080")
 }

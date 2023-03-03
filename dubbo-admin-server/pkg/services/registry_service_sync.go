@@ -21,11 +21,13 @@ import (
 	"admin/pkg/cache"
 	"admin/pkg/constant"
 	util2 "admin/pkg/util"
-	"dubbo.apache.org/dubbo-go/v3/common"
-	"dubbo.apache.org/dubbo-go/v3/registry"
+	"dubbo.apache.org/dubbo-go/v3/common/logger"
 	"net/url"
 	"strings"
 	"sync"
+
+	"dubbo.apache.org/dubbo-go/v3/common"
+	"dubbo.apache.org/dubbo-go/v3/registry"
 )
 
 var SUBSCRIBE *common.URL
@@ -54,36 +56,46 @@ func StartSubscribe(registry registry.Registry) {
 	registry.Subscribe(SUBSCRIBE, adminNotifyListener{})
 }
 
+func DestroySubscribe(registry registry.Registry) {
+	registry.Destroy()
+}
+
 type adminNotifyListener struct{}
 
 func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
 	//TODO implement me
-	serviceUrl := event.Service
+	serviceURL := event.Service
 	var interfaceName string
 	categories := make(map[string]map[string]map[string]*common.URL)
-	category := serviceUrl.GetParam(constant.CategoryKey, "")
+	category := serviceURL.GetParam(constant.CategoryKey, "")
 	if len(category) == 0 {
-		if constant.ConsumerSide == serviceUrl.GetParam(constant.Side, "") ||
-			constant.ConsumerProtocol == serviceUrl.Protocol {
+		if constant.ConsumerSide == serviceURL.GetParam(constant.Side, "") ||
+			constant.ConsumerProtocol == serviceURL.Protocol {
 			category = constant.ConsumersCategory
 		} else {
 			category = constant.ProvidersCategory
 		}
 	}
-	if strings.EqualFold(constant.EmptyProtocol, serviceUrl.Protocol) {
+	if strings.EqualFold(constant.EmptyProtocol, serviceURL.Protocol) {
 		if services, ok := cache.InterfaceRegistryCache.Load(category); ok {
 			if services != nil {
-				group := serviceUrl.GetParam(constant.GroupKey, "")
-				version := serviceUrl.GetParam(constant.VersionKey, "")
-				if constant.AnyValue == group && constant.AnyValue != version {
-					services.(*sync.Map).Delete(getServiceInterface(serviceUrl))
+				servicesMap, ok := services.(*sync.Map)
+				if !ok {
+					// servicesMap type error
+					logger.Error("servicesMap type not *sync.Map")
+					return
+				}
+				group := serviceURL.Group()
+				version := serviceURL.Version()
+				if constant.AnyValue != group && constant.AnyValue != version {
+					servicesMap.Delete(serviceURL.Service())
 				} else {
 					// iterator services
-					services.(*sync.Map).Range(func(key, value interface{}) bool {
-						if util2.GetInterface(key.(string)) == getServiceInterface(serviceUrl) &&
+					servicesMap.Range(func(key, value interface{}) bool {
+						if util2.GetInterface(key.(string)) == serviceURL.Service() &&
 							(constant.AnyValue == group || group == util2.GetGroup(key.(string))) &&
 							(constant.AnyValue == version || version == util2.GetVersion(key.(string))) {
-							services.(*sync.Map).Delete(key)
+							servicesMap.Delete(key)
 						}
 						return true
 					})
@@ -91,28 +103,26 @@ func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
 			}
 		}
 	} else {
-		interfaceName = getServiceInterface(serviceUrl)
+		interfaceName = serviceURL.Service()
 		var services map[string]map[string]*common.URL
 		if _, ok := categories[category]; ok {
 			//services = s
 		} else {
 			services = make(map[string]map[string]*common.URL)
 			categories[category] = services
-			group := serviceUrl.GetParam(constant.GroupKey, "")
-			version := serviceUrl.GetParam(constant.VersionKey, "")
-			service := util2.BuildServiceKey(getServiceInterface(serviceUrl), group, version)
-			ids, found := services[service]
-			if !found {
-				ids = make(map[string]*common.URL)
-				services[service] = ids
-			}
-			if md5, ok := UrlIdsMapper.Load(serviceUrl.Key()); ok {
-				ids[md5.(string)] = serviceUrl
-			} else {
-				md5 := util2.Md5_16bit(serviceUrl.Key())
-				ids[md5] = serviceUrl
-				UrlIdsMapper.LoadOrStore(serviceUrl.Key(), md5)
-			}
+		}
+		service := serviceURL.ServiceKey()
+		ids, found := services[service]
+		if !found {
+			ids = make(map[string]*common.URL)
+			services[service] = ids
+		}
+		if md5, ok := UrlIdsMapper.Load(serviceURL.Key()); ok {
+			ids[md5.(string)] = serviceURL
+		} else {
+			md5 := util2.Md5_16bit(serviceURL.Key())
+			ids[md5] = serviceURL
+			UrlIdsMapper.LoadOrStore(serviceURL.Key(), md5)
 		}
 	}
 	// check categories size
@@ -120,11 +130,17 @@ func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
 		for category, value := range categories {
 			services, ok := cache.InterfaceRegistryCache.Load(category)
 			if ok {
+				servicesMap, ok := services.(*sync.Map)
+				if !ok {
+					// servicesMap type error
+					logger.Error("servicesMap type not *sync.Map")
+					return
+				}
 				// iterator services key set
-				services.(*sync.Map).Range(func(key, inner any) bool {
+				servicesMap.Range(func(key, inner any) bool {
 					_, ok := value[key.(string)]
-					if util2.GetInterface(key.(string)) == interfaceName && ok {
-						services.(*sync.Map).Delete(key)
+					if util2.GetInterface(key.(string)) == interfaceName && !ok {
+						servicesMap.Delete(key)
 					}
 					return true
 				})
@@ -137,18 +153,6 @@ func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
 			}
 		}
 	}
-}
-
-func getServiceInterface(url *common.URL) string {
-	path := url.Path
-	if strings.HasPrefix(path, "/") {
-		path = path[1:]
-	}
-	serviceInterface := url.GetParam(constant.InterfaceKey, path)
-	if len(serviceInterface) == 0 || constant.AnyValue == serviceInterface {
-		serviceInterface = path
-	}
-	return serviceInterface
 }
 
 func (adminNotifyListener) NotifyAll(events []*registry.ServiceEvent, f func()) {
