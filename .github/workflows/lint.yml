@@ -49,7 +49,7 @@ jobs:
       - name: Install go ci lint
         run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.48.0
       - name: Run Linter
-        run: cd ca && GO111MODULE=on golangci-lint run --timeout=30m -v --disable-all --enable=govet --enable=staticcheck --enable=ineffassign --enable=misspell
+        run: cd ca && GO111MODULE=on $(go env GOPATH)/bin/golangci-lint run --timeout=30m -v --disable-all --enable=govet --enable=staticcheck --enable=ineffassign --enable=misspell
 
   lint-admin-server:
     name: Lint Admin Server
@@ -76,4 +76,4 @@ jobs:
       - name: Install go ci lint
         run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.48.0
       - name: Run Linter
-        run: cd dubbo-admin-server && GO111MODULE=on golangci-lint run --timeout=30m -v --disable-all --enable=govet --enable=staticcheck --enable=ineffassign --enable=misspell
+        run: cd dubbo-admin-server && GO111MODULE=on $(go env GOPATH)/bin/golangci-lint run --timeout=30m -v --disable-all --enable=govet --enable=staticcheck --enable=ineffassign --enable=misspell
