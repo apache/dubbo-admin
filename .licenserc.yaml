@@ -52,6 +52,8 @@ header:
     - '**/*.handlers'
     - '**/*.schemas'
     - '**/*.nojekyll'
+    - '**/.browserslistrc'
+    - '**/yarn.lock'
     - '.git/'
     - '.github/**'
     - '**/.gitignore'
@@ -59,6 +61,7 @@ header:
     - '.repository/'
     - 'compiler/**'
     - '.gitmodules'
+    - '**/.gitrepo'
     - '.mvn'
     - 'mvnw'
     - 'mvnw.cmd'
@@ -67,7 +70,6 @@ header:
     - 'CNAME'
     - 'Jenkinsfile'
     - '**/vendor/**'
-    - '**/dubbo-admin-ui/**'
     - '**/go.sum'
   comment: on-failure
 

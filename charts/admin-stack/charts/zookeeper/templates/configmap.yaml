@@ -1,12 +1,3 @@
-{{- if .Values.enabled }}
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ printf "%s-scripts" (include "zookeeper.fullname" .) }}
-  namespace: {{ template "zookeeper.namespace" . }}
-data:
-  setup.sh: |-
-    #!/bin/bash
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -22,7 +13,15 @@ data:
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+{{- if .Values.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-scripts" (include "zookeeper.fullname" .) }}
+  namespace: {{ template "zookeeper.namespace" . }}
+data:
+  setup.sh: |-
+    #!/bin/bash
     # Execute entrypoint as usual after obtaining ZOO_SERVER_ID
     # check ZOO_SERVER_ID in persistent volume via myid
     # if not present, set based on POD hostname
