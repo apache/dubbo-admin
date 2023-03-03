@@ -22,7 +22,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"github.com/apache/dubbo-admin/pkg/authority/logger"
+	"github.com/apache/dubbo-admin/pkg/logger"
 	"log"
 	"math/big"
 	"time"

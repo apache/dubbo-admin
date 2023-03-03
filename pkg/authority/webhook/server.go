@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
-	"github.com/apache/dubbo-admin/pkg/authority/logger"
+	"github.com/apache/dubbo-admin/pkg/logger"
 	"github.com/mattbaird/jsonpatch"
 	"io"
 	admissionV1 "k8s.io/api/admission/v1"

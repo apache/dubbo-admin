@@ -18,7 +18,7 @@
 package fake
 
 import (
-	v1beta12 "github.com/apache/dubbo-admin/pkg/authority/generated/clientset/versioned/typed/dubbo.apache.org/v1beta1"
+	v1beta1 "github.com/apache/dubbo-admin/pkg/authority/generated/clientset/versioned/typed/dubbo.apache.org/v1beta1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
@@ -27,11 +27,11 @@ type FakeDubboV1beta1 struct {
 	*testing.Fake
 }
 
-func (c *FakeDubboV1beta1) AuthenticationPolicies(namespace string) v1beta12.AuthenticationPolicyInterface {
+func (c *FakeDubboV1beta1) AuthenticationPolicies(namespace string) v1beta1.AuthenticationPolicyInterface {
 	return &FakeAuthenticationPolicies{c, namespace}
 }
 
-func (c *FakeDubboV1beta1) AuthorizationPolicies(namespace string) v1beta12.AuthorizationPolicyInterface {
+func (c *FakeDubboV1beta1) AuthorizationPolicies(namespace string) v1beta1.AuthorizationPolicyInterface {
 	return &FakeAuthorizationPolicies{c, namespace}
 }
 

@@ -21,9 +21,9 @@ import (
 	"context"
 	json "encoding/json"
 	"fmt"
-	v1beta12 "github.com/apache/dubbo-admin/pkg/authority/apis/dubbo.apache.org/v1beta1"
-	dubboapacheorgv1beta1 "github.com/apache/dubbo-admin/pkg/authority/generated/applyconfiguration/dubbo.apache.org/v1beta1"
 
+	v1beta1 "github.com/apache/dubbo-admin/pkg/authority/apis/dubbo.apache.org/v1beta1"
+	dubboapacheorgv1beta1 "github.com/apache/dubbo-admin/pkg/authority/generated/applyconfiguration/dubbo.apache.org/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	types "k8s.io/apimachinery/pkg/types"
@@ -37,25 +37,25 @@ type FakeAuthenticationPolicies struct {
 	ns   string
 }
 
-var authenticationpoliciesResource = v1beta12.SchemeGroupVersion.WithResource("authenticationpolicies")
+var authenticationpoliciesResource = v1beta1.SchemeGroupVersion.WithResource("authenticationpolicies")
 
-var authenticationpoliciesKind = v1beta12.SchemeGroupVersion.WithKind("AuthenticationPolicy")
+var authenticationpoliciesKind = v1beta1.SchemeGroupVersion.WithKind("AuthenticationPolicy")
 
 // Get takes name of the authenticationPolicy, and returns the corresponding authenticationPolicy object, and an error if there is any.
-func (c *FakeAuthenticationPolicies) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta12.AuthenticationPolicy, err error) {
+func (c *FakeAuthenticationPolicies) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1beta1.AuthenticationPolicy, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(authenticationpoliciesResource, c.ns, name), &v1beta12.AuthenticationPolicy{})
+		Invokes(testing.NewGetAction(authenticationpoliciesResource, c.ns, name), &v1beta1.AuthenticationPolicy{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1beta12.AuthenticationPolicy), err
+	return obj.(*v1beta1.AuthenticationPolicy), err
 }
 
 // List takes label and field selectors, and returns the list of AuthenticationPolicies that match those selectors.
-func (c *FakeAuthenticationPolicies) List(ctx context.Context, opts v1.ListOptions) (result *v1beta12.AuthenticationPolicyList, err error) {
+func (c *FakeAuthenticationPolicies) List(ctx context.Context, opts v1.ListOptions) (result *v1beta1.AuthenticationPolicyList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(authenticationpoliciesResource, authenticationpoliciesKind, c.ns, opts), &v1beta12.AuthenticationPolicyList{})
+		Invokes(testing.NewListAction(authenticationpoliciesResource, authenticationpoliciesKind, c.ns, opts), &v1beta1.AuthenticationPolicyList{})
 
 	if obj == nil {
 		return nil, err
@@ -65,8 +65,8 @@ func (c *FakeAuthenticationPolicies) List(ctx context.Context, opts v1.ListOptio
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v1beta12.AuthenticationPolicyList{ListMeta: obj.(*v1beta12.AuthenticationPolicyList).ListMeta}
-	for _, item := range obj.(*v1beta12.AuthenticationPolicyList).Items {
+	list := &v1beta1.AuthenticationPolicyList{ListMeta: obj.(*v1beta1.AuthenticationPolicyList).ListMeta}
+	for _, item := range obj.(*v1beta1.AuthenticationPolicyList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -82,31 +82,31 @@ func (c *FakeAuthenticationPolicies) Watch(ctx context.Context, opts v1.ListOpti
 }
 
 // Create takes the representation of a authenticationPolicy and creates it.  Returns the server's representation of the authenticationPolicy, and an error, if there is any.
-func (c *FakeAuthenticationPolicies) Create(ctx context.Context, authenticationPolicy *v1beta12.AuthenticationPolicy, opts v1.CreateOptions) (result *v1beta12.AuthenticationPolicy, err error) {
+func (c *FakeAuthenticationPolicies) Create(ctx context.Context, authenticationPolicy *v1beta1.AuthenticationPolicy, opts v1.CreateOptions) (result *v1beta1.AuthenticationPolicy, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(authenticationpoliciesResource, c.ns, authenticationPolicy), &v1beta12.AuthenticationPolicy{})
+		Invokes(testing.NewCreateAction(authenticationpoliciesResource, c.ns, authenticationPolicy), &v1beta1.AuthenticationPolicy{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1beta12.AuthenticationPolicy), err
+	return obj.(*v1beta1.AuthenticationPolicy), err
 }
 
 // Update takes the representation of a authenticationPolicy and updates it. Returns the server's representation of the authenticationPolicy, and an error, if there is any.
-func (c *FakeAuthenticationPolicies) Update(ctx context.Context, authenticationPolicy *v1beta12.AuthenticationPolicy, opts v1.UpdateOptions) (result *v1beta12.AuthenticationPolicy, err error) {
+func (c *FakeAuthenticationPolicies) Update(ctx context.Context, authenticationPolicy *v1beta1.AuthenticationPolicy, opts v1.UpdateOptions) (result *v1beta1.AuthenticationPolicy, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(authenticationpoliciesResource, c.ns, authenticationPolicy), &v1beta12.AuthenticationPolicy{})
+		Invokes(testing.NewUpdateAction(authenticationpoliciesResource, c.ns, authenticationPolicy), &v1beta1.AuthenticationPolicy{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1beta12.AuthenticationPolicy), err
+	return obj.(*v1beta1.AuthenticationPolicy), err
 }
 
 // Delete takes name of the authenticationPolicy and deletes it. Returns an error if one occurs.
 func (c *FakeAuthenticationPolicies) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(authenticationpoliciesResource, c.ns, name, opts), &v1beta12.AuthenticationPolicy{})
+		Invokes(testing.NewDeleteActionWithOptions(authenticationpoliciesResource, c.ns, name, opts), &v1beta1.AuthenticationPolicy{})
 
 	return err
 }
@@ -115,23 +115,23 @@ func (c *FakeAuthenticationPolicies) Delete(ctx context.Context, name string, op
 func (c *FakeAuthenticationPolicies) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
 	action := testing.NewDeleteCollectionAction(authenticationpoliciesResource, c.ns, listOpts)
 
-	_, err := c.Fake.Invokes(action, &v1beta12.AuthenticationPolicyList{})
+	_, err := c.Fake.Invokes(action, &v1beta1.AuthenticationPolicyList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched authenticationPolicy.
-func (c *FakeAuthenticationPolicies) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta12.AuthenticationPolicy, err error) {
+func (c *FakeAuthenticationPolicies) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1beta1.AuthenticationPolicy, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(authenticationpoliciesResource, c.ns, name, pt, data, subresources...), &v1beta12.AuthenticationPolicy{})
+		Invokes(testing.NewPatchSubresourceAction(authenticationpoliciesResource, c.ns, name, pt, data, subresources...), &v1beta1.AuthenticationPolicy{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1beta12.AuthenticationPolicy), err
+	return obj.(*v1beta1.AuthenticationPolicy), err
 }
 
 // Apply takes the given apply declarative configuration, applies it and returns the applied authenticationPolicy.
-func (c *FakeAuthenticationPolicies) Apply(ctx context.Context, authenticationPolicy *dubboapacheorgv1beta1.AuthenticationPolicyApplyConfiguration, opts v1.ApplyOptions) (result *v1beta12.AuthenticationPolicy, err error) {
+func (c *FakeAuthenticationPolicies) Apply(ctx context.Context, authenticationPolicy *dubboapacheorgv1beta1.AuthenticationPolicyApplyConfiguration, opts v1.ApplyOptions) (result *v1beta1.AuthenticationPolicy, err error) {
 	if authenticationPolicy == nil {
 		return nil, fmt.Errorf("authenticationPolicy provided to Apply must not be nil")
 	}
@@ -144,10 +144,10 @@ func (c *FakeAuthenticationPolicies) Apply(ctx context.Context, authenticationPo
 		return nil, fmt.Errorf("authenticationPolicy.Name must be provided to Apply")
 	}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(authenticationpoliciesResource, c.ns, *name, types.ApplyPatchType, data), &v1beta12.AuthenticationPolicy{})
+		Invokes(testing.NewPatchSubresourceAction(authenticationpoliciesResource, c.ns, *name, types.ApplyPatchType, data), &v1beta1.AuthenticationPolicy{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1beta12.AuthenticationPolicy), err
+	return obj.(*v1beta1.AuthenticationPolicy), err
 }

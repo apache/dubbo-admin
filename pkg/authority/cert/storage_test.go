@@ -20,7 +20,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
-	"github.com/apache/dubbo-admin/pkg/authority/logger"
+	"github.com/apache/dubbo-admin/pkg/logger"
 	"os"
 	"reflect"
 	"sync"

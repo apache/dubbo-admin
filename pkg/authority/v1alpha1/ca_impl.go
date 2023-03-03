@@ -20,7 +20,7 @@ import (
 	cert2 "github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
-	"github.com/apache/dubbo-admin/pkg/authority/logger"
+	"github.com/apache/dubbo-admin/pkg/logger"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
 	"strings"

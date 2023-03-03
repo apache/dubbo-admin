@@ -19,9 +19,9 @@ import (
 	"github.com/apache/dubbo-admin/pkg/authority/apis/dubbo.apache.org/v1beta1"
 	clientset "github.com/apache/dubbo-admin/pkg/authority/generated/clientset/versioned"
 	v1beta12 "github.com/apache/dubbo-admin/pkg/authority/generated/informers/externalversions/dubbo.apache.org/v1beta1"
-	"github.com/apache/dubbo-admin/pkg/authority/logger"
 	authentication2 "github.com/apache/dubbo-admin/pkg/authority/rule/authentication"
 	authorization2 "github.com/apache/dubbo-admin/pkg/authority/rule/authorization"
+	"github.com/apache/dubbo-admin/pkg/logger"
 	"k8s.io/client-go/tools/cache"
 )
 

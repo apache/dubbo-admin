@@ -18,7 +18,7 @@
 package v1beta1
 
 import (
-	v1beta12 "github.com/apache/dubbo-admin/pkg/authority/apis/dubbo.apache.org/v1beta1"
+	v1beta1 "github.com/apache/dubbo-admin/pkg/authority/apis/dubbo.apache.org/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
@@ -29,7 +29,7 @@ import (
 type AuthorizationPolicyLister interface {
 	// List lists all AuthorizationPolicies in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1beta12.AuthorizationPolicy, err error)
+	List(selector labels.Selector) (ret []*v1beta1.AuthorizationPolicy, err error)
 	// AuthorizationPolicies returns an object that can list and get AuthorizationPolicies.
 	AuthorizationPolicies(namespace string) AuthorizationPolicyNamespaceLister
 	AuthorizationPolicyListerExpansion
@@ -46,9 +46,9 @@ func NewAuthorizationPolicyLister(indexer cache.Indexer) AuthorizationPolicyList
 }
 
 // List lists all AuthorizationPolicies in the indexer.
-func (s *authorizationPolicyLister) List(selector labels.Selector) (ret []*v1beta12.AuthorizationPolicy, err error) {
+func (s *authorizationPolicyLister) List(selector labels.Selector) (ret []*v1beta1.AuthorizationPolicy, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1beta12.AuthorizationPolicy))
+		ret = append(ret, m.(*v1beta1.AuthorizationPolicy))
 	})
 	return ret, err
 }
@@ -63,10 +63,10 @@ func (s *authorizationPolicyLister) AuthorizationPolicies(namespace string) Auth
 type AuthorizationPolicyNamespaceLister interface {
 	// List lists all AuthorizationPolicies in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1beta12.AuthorizationPolicy, err error)
+	List(selector labels.Selector) (ret []*v1beta1.AuthorizationPolicy, err error)
 	// Get retrieves the AuthorizationPolicy from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1beta12.AuthorizationPolicy, error)
+	Get(name string) (*v1beta1.AuthorizationPolicy, error)
 	AuthorizationPolicyNamespaceListerExpansion
 }
 
@@ -78,21 +78,21 @@ type authorizationPolicyNamespaceLister struct {
 }
 
 // List lists all AuthorizationPolicies in the indexer for a given namespace.
-func (s authorizationPolicyNamespaceLister) List(selector labels.Selector) (ret []*v1beta12.AuthorizationPolicy, err error) {
+func (s authorizationPolicyNamespaceLister) List(selector labels.Selector) (ret []*v1beta1.AuthorizationPolicy, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1beta12.AuthorizationPolicy))
+		ret = append(ret, m.(*v1beta1.AuthorizationPolicy))
 	})
 	return ret, err
 }
 
 // Get retrieves the AuthorizationPolicy from the indexer for a given namespace and name.
-func (s authorizationPolicyNamespaceLister) Get(name string) (*v1beta12.AuthorizationPolicy, error) {
+func (s authorizationPolicyNamespaceLister) Get(name string) (*v1beta1.AuthorizationPolicy, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v1beta12.Resource("authorizationpolicy"), name)
+		return nil, errors.NewNotFound(v1beta1.Resource("authorizationpolicy"), name)
 	}
-	return obj.(*v1beta12.AuthorizationPolicy), nil
+	return obj.(*v1beta1.AuthorizationPolicy), nil
 }

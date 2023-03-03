@@ -19,12 +19,12 @@ package v1beta1
 
 import (
 	"context"
-	dubboapacheorgv1beta1 "github.com/apache/dubbo-admin/pkg/authority/apis/dubbo.apache.org/v1beta1"
-	"github.com/apache/dubbo-admin/pkg/authority/generated/clientset/versioned"
-	"github.com/apache/dubbo-admin/pkg/authority/generated/informers/externalversions/internalinterfaces"
-	"github.com/apache/dubbo-admin/pkg/authority/generated/listers/dubbo.apache.org/v1beta1"
 	time "time"
 
+	dubboapacheorgv1beta1 "github.com/apache/dubbo-admin/pkg/authority/apis/dubbo.apache.org/v1beta1"
+	versioned "github.com/apache/dubbo-admin/pkg/authority/generated/clientset/versioned"
+	internalinterfaces "github.com/apache/dubbo-admin/pkg/authority/generated/informers/externalversions/internalinterfaces"
+	v1beta1 "github.com/apache/dubbo-admin/pkg/authority/generated/listers/dubbo.apache.org/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
