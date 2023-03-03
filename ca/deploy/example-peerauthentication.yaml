@@ -1,0 +1,30 @@
+apiVersion: dubbo.apache.org/v1beta1
+kind: AuthenticationPolicy
+metadata:
+  name: default
+  namespace: default
+spec:
+  action: CLIENT_AUTH
+  rules:
+    - from:
+        principals: ["cluster.local/ns/default/sa/sleep"]
+        namespaces: ["test"]
+      to:
+        principals: ["cluster.local/ns/default/sa/sleep"]
+  order: 0
+
+---
+apiVersion: dubbo.apache.org/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: default
+  namespace: default
+spec:
+  action: ALLOW
+  rules:
+    - from:
+        principals: ["cluster.local/ns/default/sa/sleep"]
+        namespaces: ["test"]
+      to:
+        principals: ["cluster.local/ns/default/sa/sleep"]
+  samples: 0.12
