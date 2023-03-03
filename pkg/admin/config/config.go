@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	_ "github.com/apache/dubbo-admin/pkg/admin/imports"
+	"gopkg.in/yaml.v2"
 	"log"
 	"net/url"
 	"os"

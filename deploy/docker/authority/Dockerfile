@@ -27,7 +27,7 @@ WORKDIR /workspace/cmd/authority
 
 RUN --mount=type=cache,target=/go \
   go build \
-  -o /workspace/authority
+  -o /workspace/cmd/authority/authority
 
 FROM alpine:3.17
 
