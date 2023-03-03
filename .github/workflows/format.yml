@@ -45,16 +45,8 @@ jobs:
             ${{ runner.os }}-go-
       - name: Get dependencies
         run: |
-          cd ca
-          go get -v -t -d ./...
-          cd ../dubbo-admin-server
           go get -v -t -d ./...
       - name: Go Fmt
         run: |
-          cd ca
-          go fmt ./...
-          cd ../dubbo-admin-server
-          go fmt ./...
-          cd ..
-          git status && [[ -z `git status -s` ]]
+          go fmt ./... && git status && [[ -z `git status -s` ]]
           # diff -u <(echo -n) <(gofmt -d -s .)

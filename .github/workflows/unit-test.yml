@@ -23,8 +23,8 @@ on:
   pull_request:
 
 jobs:
-  test-authority:
-    name: Go Test Dubbo Authority
+  unit-test:
+    name: Go Test
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go 1.x
@@ -44,62 +44,15 @@ jobs:
             ${{ runner.os }}-go-
       - name: Get dependencies
         run: |
-          cd ca && go get -v -t -d ./...
+          go get -v -t -d ./...
       - name: Go Test
         run: |
-          cd ca && go mod vendor && go test ./... -gcflags=-l -coverprofile=coverage.txt -covermode=atomic
+          go mod vendor && go test ./... -gcflags=-l -coverprofile=coverage.txt -covermode=atomic
       - name: "Upload test result"
         if: always()
         uses: actions/upload-artifact@v3
         with:
           name: test-coverage
           path: "**/coverage.txt"
-
-  test-admin-server:
-    name: Go Test Dubbo Admin Server
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v2
-        id: go
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-      - name: Cache dependencies
-        uses: actions/cache@v2
-        with:
-          # Cache
-          path: ~/go/pkg/mod
-          # Cache key
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          # An ordered list of keys to use for restoring the cache if no cache hit occurred for key
-          restore-keys: |
-            ${{ runner.os }}-go-
-      - name: Get dependencies
-        run: |
-          cd dubbo-admin-server && go get -v -t -d ./...
-      - name: Go Test
-        run: |
-          cd dubbo-admin-server && go mod vendor && go test ./... -gcflags=-l -coverprofile=coverage.txt -covermode=atomic
-      - name: "Upload test result"
-        if: always()
-        uses: actions/upload-artifact@v3
-        with:
-          name: test-coverage
-          path: "**/coverage.txt"
-
-  upload-coverage:
-    name: Upload coverage
-    runs-on: ubuntu-latest
-    needs: [test-authority, test-admin-server]
-    steps:
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v2
-        id: go
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-      - name: "Download test result"
-        uses: actions/download-artifact@v3
-        with:
-          name: test-coverage
       - name: Coverage
         run: bash <(curl -s https://codecov.io/bash)
