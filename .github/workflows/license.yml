@@ -23,19 +23,12 @@ on:
   pull_request:
 
 jobs:
-
   license-check:
-    name: License Check - Go ${{ matrix.go_version }}
+    name: License Check - Go
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go_version:
-          - 1.20.1
     steps:
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
-        with:
-          go-version: ${{ matrix.go_version }}
         id: go
 
       - name: Check out code into the Go module directory

@@ -24,7 +24,7 @@ on:
 
 jobs:
   test-authority:
-    name: Go Test on Dubbo Authority
+    name: Go Test Dubbo Authority
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go 1.x
@@ -56,7 +56,7 @@ jobs:
           path: "**/coverage.txt"
 
   test-admin-server:
-    name: Go Test on Dubbo Admin Server
+    name: Go Test Dubbo Admin Server
     runs-on: ubuntu-latest
     steps:
       - name: Set up Go 1.x
