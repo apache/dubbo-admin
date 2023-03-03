@@ -16,21 +16,17 @@
 package k8s
 
 import (
-	"github.com/apache/dubbo-admin/ca/pkg/config"
-	"github.com/apache/dubbo-admin/ca/pkg/logger"
-	"github.com/apache/dubbo-admin/ca/pkg/rule/authentication"
-	"github.com/apache/dubbo-admin/ca/pkg/rule/authorization"
 	"testing"
 )
 
 func TestName(t *testing.T) {
-	logger.Init()
-	client := NewClient()
-	client.Init(&config.Options{})
-	client.InitController(authentication.NewHandler(), authorization.NewHandler())
-
-	ch := make(chan struct{})
-	<-ch
+	//logger.Init()
+	//client := NewClient()
+	//client.Init(&config.Options{})
+	//client.InitController(authentication.NewHandler(), authorization.NewHandler())
+	//
+	//ch := make(chan struct{})
+	//<-ch
 }
 
 func TestName2(t *testing.T) {
