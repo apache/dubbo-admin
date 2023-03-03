@@ -19,7 +19,7 @@ header:
 
   paths-ignore:
     - '**/*.versionsBackup'
-    - '**/.idea/'
+    - '**/.idea/**'
     - '**/*.iml'
     - '**/.settings/*'
     - '**/.classpath'
@@ -67,6 +67,8 @@ header:
     - 'CNAME'
     - 'Jenkinsfile'
     - '**/vendor/**'
+    - '**/dubbo-admin-ui/**'
+    - '**/go.sum'
   comment: on-failure
 
   license-location-threshold: 130
