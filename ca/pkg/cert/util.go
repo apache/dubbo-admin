@@ -123,6 +123,9 @@ func SignServerCert(authorityCert *Cert, serverName []string, certValidity int64
 	cert.DNSNames = serverName
 
 	c, err := x509.CreateCertificate(rand.Reader, cert, authorityCert.Cert, &privateKey.PublicKey, authorityCert.PrivateKey)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	certPem := new(bytes.Buffer)
 	err = pem.Encode(certPem, &pem.Block{
