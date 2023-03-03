@@ -49,6 +49,8 @@ var (
 	ConfigCenter         config_center.DynamicConfiguration
 	RegistryCenter       registry.Registry
 	MetadataReportCenter report.MetadataReport
+
+	Group string
 )
 
 func LoadConfig() {
@@ -76,6 +78,7 @@ func LoadConfig() {
 			panic(err)
 		}
 		ConfigCenter, err = factory.GetDynamicConfiguration(url)
+		Group = url.GetParam(constant.GroupKey, constant.DefaultGroup)
 		if err != nil {
 			log.Print("No configuration found in config center.")
 		}
@@ -111,6 +114,7 @@ func LoadConfig() {
 		if err != nil {
 			panic(err)
 		}
+		Group = url.GetParam(constant.GroupKey, constant.DefaultGroup)
 	}
 	if len(registryAddress) > 0 {
 		c := newAddressConfig(registryAddress)
