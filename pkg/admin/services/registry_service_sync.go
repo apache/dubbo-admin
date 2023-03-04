@@ -105,8 +105,8 @@ func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
 	} else {
 		interfaceName = serviceURL.Service()
 		var services map[string]map[string]*common.URL
-		if _, ok := categories[category]; ok {
-			//services = s
+		if s, ok := categories[category]; ok {
+			services = s
 		} else {
 			services = make(map[string]map[string]*common.URL)
 			categories[category] = services

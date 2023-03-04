@@ -51,4 +51,9 @@ const (
 	DefaultWeight         = 100
 	OwnerKey              = "owner"
 	Service               = "service"
+	Colon                 = ":"
+	InterrogationPoint    = "?"
+	IP                    = "ip"
+	PlusSigns             = "+"
+	PunctuationPoint      = "."
 )
