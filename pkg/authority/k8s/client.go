@@ -22,6 +22,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	infoemerclient "github.com/apache/dubbo-admin/pkg/authority/generated/clientset/versioned"
 	informers "github.com/apache/dubbo-admin/pkg/authority/generated/informers/externalversions"
+	"github.com/apache/dubbo-admin/pkg/authority/rule"
 	"github.com/apache/dubbo-admin/pkg/authority/rule/authentication"
 	"github.com/apache/dubbo-admin/pkg/authority/rule/authorization"
 	"github.com/apache/dubbo-admin/pkg/logger"
@@ -29,6 +30,8 @@ import (
 	k8sauth "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"strings"
 	"time"
 
 	"k8s.io/client-go/kubernetes"
@@ -44,7 +47,7 @@ type Client interface {
 	GetAuthorityCert(namespace string) (string, string)
 	UpdateAuthorityCert(cert string, pri string, namespace string)
 	UpdateAuthorityPublicKey(cert string) bool
-	VerifyServiceAccount(token string) bool
+	VerifyServiceAccount(token string) (*rule.Endpoint, bool)
 	UpdateWebhookConfig(options *config.Options, storage cert.Storage)
 	GetNamespaceLabels(namespace string) map[string]string
 	InitController(paHandler authentication.Handler, apHandler authorization.Handler)
@@ -61,7 +64,7 @@ func NewClient() Client {
 
 func (c *ClientImpl) Init(options *config.Options) bool {
 	config, err := rest.InClusterConfig()
-	options.InPodEnv = err != nil
+	options.InPodEnv = err == nil
 	if err != nil {
 		logger.Sugar.Infof("Failed to load config from Pod. Will fall back to kube config file.")
 
@@ -194,23 +197,67 @@ func (c *ClientImpl) GetNamespaceLabels(namespace string) map[string]string {
 	return map[string]string{}
 }
 
-func (c *ClientImpl) VerifyServiceAccount(token string) bool {
+func (c *ClientImpl) VerifyServiceAccount(token string) (*rule.Endpoint, bool) {
 	tokenReview := &k8sauth.TokenReview{
 		Spec: k8sauth.TokenReviewSpec{
 			Token: token,
+			//Audiences: []string{"dubbo-ca"},
 		},
 	}
 	reviewRes, err := c.kubeClient.AuthenticationV1().TokenReviews().Create(context.TODO(), tokenReview, metav1.CreateOptions{})
 	if err != nil {
 		logger.Sugar.Warnf("Failed to validate token. " + err.Error())
-		return false
+		return nil, false
 	}
 	// TODO support aud
 	if reviewRes.Status.Error != "" {
 		logger.Sugar.Warnf("Failed to validate token. " + reviewRes.Status.Error)
-		return false
+		return nil, false
 	}
-	return true
+
+	names := strings.Split(reviewRes.Status.User.Username, ":")
+	if len(names) != 4 {
+		logger.Sugar.Warnf("Token is not a pod service account. " + reviewRes.Status.User.Username)
+		return nil, false
+	}
+
+	namespace := names[2]
+	podName := reviewRes.Status.User.Extra["authentication.kubernetes.io/pod-name"]
+	podUid := reviewRes.Status.User.Extra["authentication.kubernetes.io/pod-uid"]
+
+	if len(podName) != 1 || len(podUid) != 1 {
+		logger.Sugar.Warnf("Token is not a pod service account. " + reviewRes.Status.User.Username)
+		return nil, false
+	}
+
+	pod, err := c.kubeClient.CoreV1().Pods(namespace).Get(context.TODO(), podName[0], metav1.GetOptions{})
+	if err != nil {
+		logger.Sugar.Warnf("Failed to get pod. " + err.Error())
+		return nil, false
+	}
+
+	if pod.UID != types.UID(podUid[0]) {
+		logger.Sugar.Warnf("Token is not a pod service account. " + reviewRes.Status.User.Username)
+		return nil, false
+	}
+
+	e := &rule.Endpoint{}
+
+	e.ID = pod.Namespace + "/" + pod.Name
+	for _, i := range pod.Status.PodIPs {
+		if i.IP != "" {
+			e.Ips = append(e.Ips, i.IP)
+		}
+	}
+
+	e.KubernetesEnv = &rule.KubernetesEnv{
+		Namespace:      pod.Namespace,
+		PodName:        pod.Name,
+		PodLabels:      pod.Labels,
+		PodAnnotations: pod.Annotations,
+	}
+
+	return e, true
 }
 
 func (c *ClientImpl) UpdateWebhookConfig(options *config.Options, storage cert.Storage) {
@@ -289,14 +336,21 @@ func (c *ClientImpl) UpdateWebhookConfig(options *config.Options, storage cert.S
 	}
 }
 
-func (c *ClientImpl) InitController(paHandler authentication.Handler, apHandler authorization.Handler) {
+func (c *ClientImpl) InitController(
+	authenticationHandler authentication.Handler,
+	authorizationHandler authorization.Handler) {
+
+	logger.Sugar.Info("Init rule controller...")
+
 	informerFactory := informers.NewSharedInformerFactory(c.informerClient, time.Second*30)
 
 	stopCh := make(chan struct{})
-	NewController(c.informerClient,
-		paHandler,
-		apHandler,
+	controller := NewController(c.informerClient,
+		authenticationHandler,
+		authorizationHandler,
 		informerFactory.Dubbo().V1beta1().AuthenticationPolicies(),
 		informerFactory.Dubbo().V1beta1().AuthorizationPolicies())
 	informerFactory.Start(stopCh)
+
+	controller.WaitSynced()
 }

@@ -47,7 +47,7 @@ func main() {
 
 		InPodEnv:              false,
 		IsKubernetesConnected: false,
-		EnableOIDCCheck:       false,
+		EnableOIDCCheck:       true,
 	}
 
 	s := security.NewServer(options)

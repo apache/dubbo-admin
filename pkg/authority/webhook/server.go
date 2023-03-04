@@ -37,8 +37,6 @@ type Webhook struct {
 	AllowOnErr     bool
 	getCertificate GetCertificate
 	server         *http.Server
-	cert           string
-	key            string
 }
 
 type AdmitError struct {
@@ -80,18 +78,10 @@ func (wh *Webhook) Init(options *config.Options) {
 }
 
 func (wh *Webhook) Serve() {
-	if wh.cert != "" && wh.key != "" {
-		err := wh.server.ListenAndServeTLS("", "")
-		if err != nil {
-			logger.Sugar.Fatalf("[Webhook] Serve webhook server failed. %v", err.Error())
-			return
-		}
-	} else {
-		err := wh.server.ListenAndServe()
-		if err != nil {
-			logger.Sugar.Fatalf("[Webhook] Serve webhook server failed. %v", err.Error())
-			return
-		}
+	err := wh.server.ListenAndServeTLS("", "")
+	if err != nil {
+		logger.Sugar.Fatalf("[Webhook] Serve webhook server failed. %v", err.Error())
+		return
 	}
 }
 

@@ -21,9 +21,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
 	"github.com/apache/dubbo-admin/pkg/logger"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
-	"strings"
 	"time"
 )
 
@@ -49,49 +47,20 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 			Message: "Decode csr failed.",
 		}, nil
 	}
+
 	p, _ := peer.FromContext(c)
+	endpoint, err := exactEndpoint(c, s.Options, s.KubeClient)
 
-	if s.Options.IsKubernetesConnected && s.Options.EnableOIDCCheck {
-		md, ok := metadata.FromIncomingContext(c)
-		if !ok {
-			logger.Sugar.Warnf("Failed to get metadata from context. RemoteAddr: %s", p.Addr.String())
-			return &DubboCertificateResponse{
-				Success: false,
-				Message: "Failed to get metadata from context.",
-			}, nil
-		}
-
-		authorization, ok := md["authorization"]
-		if !ok || len(authorization) != 1 {
-			logger.Sugar.Warnf("Failed to get Authorization header from context. RemoteAddr: %s", p.Addr.String())
-			return &DubboCertificateResponse{
-				Success: false,
-				Message: "Failed to get Authorization header from context.",
-			}, nil
-		}
-
-		if !strings.HasPrefix(authorization[0], "Bearer ") {
-			logger.Sugar.Warnf("Failed to get Authorization header from context. RemoteAddr: %s", p.Addr.String())
-			return &DubboCertificateResponse{
-				Success: false,
-				Message: "Failed to get Authorization header from context.",
-			}, nil
-		}
-
-		token := strings.ReplaceAll(authorization[0], "Bearer ", "")
-
-		// TODO load principal from k8s
-		if !s.KubeClient.VerifyServiceAccount(token) {
-			logger.Sugar.Warnf("Failed to verify Authorization header from kubernetes. RemoteAddr: %s", p.Addr.String())
-			return &DubboCertificateResponse{
-				Success: false,
-				Message: "Failed to verify Authorization header from kubernetes.",
-			}, nil
-		}
+	if err != nil {
+		logger.Sugar.Warnf("Failed to exact endpoint from context: %v. RemoteAddr: %s", err, p.Addr.String())
+		return &DubboCertificateResponse{
+			Success: false,
+			Message: err.Error(),
+		}, nil
 	}
 
 	// TODO check server token
-	certPem, err := cert2.SignFromCSR(csr, s.CertStorage.GetAuthorityCert(), s.Options.CertValidity)
+	certPem, err := cert2.SignFromCSR(csr, endpoint, s.CertStorage.GetAuthorityCert(), s.Options.CertValidity)
 	if err != nil {
 		logger.Sugar.Warnf("Failed to sign certificate from csr: %v. RemoteAddr: %s", err, p.Addr.String())
 		return &DubboCertificateResponse{

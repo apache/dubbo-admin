@@ -22,6 +22,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"github.com/apache/dubbo-admin/pkg/authority/rule"
 	"github.com/apache/dubbo-admin/pkg/logger"
 	"log"
 	"math/big"
@@ -188,8 +189,8 @@ func LoadCSR(csrString string) (*x509.CertificateRequest, error) {
 	return csr, nil
 }
 
-func SignFromCSR(csr *x509.CertificateRequest, authorityCert *Cert, certValidity int64) (string, error) {
-	csrTemplate := x509.Certificate{
+func SignFromCSR(csr *x509.CertificateRequest, endpoint *rule.Endpoint, authorityCert *Cert, certValidity int64) (string, error) {
+	csrTemplate := &x509.Certificate{
 		PublicKeyAlgorithm: csr.PublicKeyAlgorithm,
 		PublicKey:          csr.PublicKey,
 
@@ -201,10 +202,12 @@ func SignFromCSR(csr *x509.CertificateRequest, authorityCert *Cert, certValidity
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	}
-	csrTemplate.DNSNames = csr.DNSNames
+	if endpoint != nil {
+		AppendEndpoint(endpoint, csrTemplate)
+	}
 
 	// TODO support ecdsa
-	result, err := x509.CreateCertificate(rand.Reader, &csrTemplate, authorityCert.Cert, csrTemplate.PublicKey, authorityCert.PrivateKey)
+	result, err := x509.CreateCertificate(rand.Reader, csrTemplate, authorityCert.Cert, csrTemplate.PublicKey, authorityCert.PrivateKey)
 	if err != nil {
 		return "", err
 	}
@@ -220,6 +223,11 @@ func SignFromCSR(csr *x509.CertificateRequest, authorityCert *Cert, certValidity
 	cert := certPem.String()
 
 	return cert, nil
+}
+
+func AppendEndpoint(endpoint *rule.Endpoint, cert *x509.Certificate) {
+	cert.DNSNames = endpoint.Ips
+
 }
 
 func EncodePrivateKey(caPrivKey *rsa.PrivateKey) string {

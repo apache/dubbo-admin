@@ -15,6 +15,12 @@
 
 package authorization
 
+import (
+	"github.com/apache/dubbo-admin/pkg/authority/rule/connection"
+	"sync"
+	"sync/atomic"
+)
+
 type Handler interface {
 	Add(key string, obj *Policy)
 	Update(key string, newObj *Policy)
@@ -24,23 +30,96 @@ type Handler interface {
 type Impl struct {
 	Handler
 
-	cache map[string]*Policy
+	mutex *sync.RWMutex
+
+	revision int64
+	storage  *connection.Storage
+	cache    map[string]*Policy
 }
 
-func NewHandler() Handler {
+func NewHandler(storage *connection.Storage) Handler {
 	return &Impl{
-		cache: map[string]*Policy{},
+		mutex:    &sync.RWMutex{},
+		storage:  storage,
+		revision: 0,
+		cache:    map[string]*Policy{},
 	}
 }
 
 func (i *Impl) Add(key string, obj *Policy) {
-	i.cache[key] = obj
+	i.mutex.Lock()
+	defer i.mutex.Unlock()
+	cloned := make(map[string]*Policy, len(i.cache)+1)
+
+	for k, v := range i.cache {
+		cloned[k] = v
+	}
+
+	cloned[key] = obj
+
+	i.cache = cloned
+	atomic.AddInt64(&i.revision, 1)
+
+	i.Notify()
 }
 
 func (i *Impl) Update(key string, newObj *Policy) {
-	i.cache[key] = newObj
+	i.mutex.Lock()
+	defer i.mutex.Unlock()
+
+	origin := i.cache[key]
+	if PolicyEquals(origin, newObj) {
+		return
+	}
+
+	cloned := make(map[string]*Policy, len(i.cache))
+
+	for k, v := range i.cache {
+		cloned[k] = v
+	}
+
+	cloned[key] = newObj
+
+	i.cache = cloned
+	atomic.AddInt64(&i.revision, 1)
+
+	i.Notify()
 }
 
 func (i *Impl) Delete(key string) {
-	delete(i.cache, key)
+	i.mutex.Lock()
+	defer i.mutex.Unlock()
+
+	if _, ok := i.cache[key]; !ok {
+		return
+	}
+
+	cloned := make(map[string]*Policy, len(i.cache)-1)
+
+	for k, v := range i.cache {
+		if k == key {
+			continue
+		}
+		cloned[k] = v
+	}
+
+	i.cache = cloned
+	atomic.AddInt64(&i.revision, 1)
+
+	i.Notify()
+}
+
+func (i *Impl) Notify() {
+	originRule := &Origin{
+		revision: i.revision,
+		data:     i.cache,
+	}
+
+	i.storage.LatestRules[RuleType] = originRule
+
+	i.storage.Mutex.RLock()
+	defer i.storage.Mutex.RUnlock()
+	for _, c := range i.storage.Connection {
+		c.RawRuleQueue.Add(originRule)
+	}
 }

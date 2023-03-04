@@ -21,7 +21,10 @@ import (
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
 	"github.com/apache/dubbo-admin/pkg/authority/patch"
-	v1alpha12 "github.com/apache/dubbo-admin/pkg/authority/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/authority/rule/authentication"
+	"github.com/apache/dubbo-admin/pkg/authority/rule/authorization"
+	"github.com/apache/dubbo-admin/pkg/authority/rule/connection"
+	"github.com/apache/dubbo-admin/pkg/authority/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/authority/webhook"
 	"github.com/apache/dubbo-admin/pkg/logger"
 	"google.golang.org/grpc"
@@ -41,9 +44,14 @@ type Server struct {
 	Options     *config.Options
 	CertStorage cert2.Storage
 
+	ConnectionStorage     *connection.Storage
+	AuthenticationHandler authentication.Handler
+	AuthorizationHandler  authorization.Handler
+
 	KubeClient k8s.Client
 
-	CertificateServer *v1alpha12.DubboCertificateServiceServerImpl
+	CertificateServer *v1alpha1.DubboCertificateServiceServerImpl
+	ObserveServer     *v1alpha1.ObserveServiceServerImpl
 	PlainServer       *grpc.Server
 	SecureServer      *grpc.Server
 
@@ -66,6 +74,8 @@ func (s *Server) Init() {
 	if !s.KubeClient.Init(s.Options) {
 		logger.Sugar.Warnf("Failed to connect to Kubernetes cluster. Will ignore OpenID Connect check.")
 		s.Options.IsKubernetesConnected = false
+	} else {
+		s.Options.IsKubernetesConnected = true
 	}
 
 	if s.CertStorage == nil {
@@ -73,19 +83,10 @@ func (s *Server) Init() {
 	}
 	go s.CertStorage.RefreshServerCert()
 
-	// TODO inject pod based on Webhook
-
 	s.LoadRootCert()
 	s.LoadAuthorityCert()
 
-	impl := &v1alpha12.DubboCertificateServiceServerImpl{
-		Options:     s.Options,
-		CertStorage: s.CertStorage,
-		KubeClient:  s.KubeClient,
-	}
-
 	s.PlainServer = grpc.NewServer()
-	v1alpha12.RegisterDubboCertificateServiceServer(s.PlainServer, impl)
 	reflection.Register(s.PlainServer)
 
 	tlsConfig := &tls.Config{
@@ -99,7 +100,12 @@ func (s *Server) Init() {
 	s.CertStorage.GetServerCert("dubbo-ca." + s.Options.Namespace + ".svc.cluster.local")
 
 	s.SecureServer = grpc.NewServer(grpc.Creds(credentials.NewTLS(tlsConfig)))
-	v1alpha12.RegisterDubboCertificateServiceServer(s.SecureServer, impl)
+
+	s.initRuleHandler()
+
+	s.registerCertificateService()
+	s.registerObserveService()
+
 	reflection.Register(s.SecureServer)
 
 	if s.Options.InPodEnv {
@@ -112,6 +118,33 @@ func (s *Server) Init() {
 		s.JavaInjector = patch.NewJavaSdk(s.Options)
 		s.WebhookServer.Patches = append(s.WebhookServer.Patches, s.JavaInjector.NewPod)
 	}
+}
+
+func (s *Server) registerObserveService() {
+	ruleImpl := &v1alpha1.ObserveServiceServerImpl{
+		Storage:    s.ConnectionStorage,
+		KubeClient: s.KubeClient,
+		Options:    s.Options,
+	}
+	v1alpha1.RegisterObserveServiceServer(s.SecureServer, ruleImpl)
+	v1alpha1.RegisterObserveServiceServer(s.PlainServer, ruleImpl)
+}
+
+func (s *Server) initRuleHandler() {
+	s.ConnectionStorage = connection.NewStorage()
+	s.AuthenticationHandler = authentication.NewHandler(s.ConnectionStorage)
+	s.AuthorizationHandler = authorization.NewHandler(s.ConnectionStorage)
+}
+
+func (s *Server) registerCertificateService() {
+	impl := &v1alpha1.DubboCertificateServiceServerImpl{
+		Options:     s.Options,
+		CertStorage: s.CertStorage,
+		KubeClient:  s.KubeClient,
+	}
+
+	v1alpha1.RegisterDubboCertificateServiceServer(s.PlainServer, impl)
+	v1alpha1.RegisterDubboCertificateServiceServer(s.SecureServer, impl)
 }
 
 func (s *Server) LoadRootCert() {
@@ -209,9 +242,12 @@ func (s *Server) Start() {
 		}
 	}()
 
-	go s.WebhookServer.Serve()
+	if s.Options.InPodEnv {
+		go s.WebhookServer.Serve()
+		s.KubeClient.UpdateWebhookConfig(s.Options, s.CertStorage)
+	}
 
-	s.KubeClient.UpdateWebhookConfig(s.Options, s.CertStorage)
+	s.KubeClient.InitController(s.AuthenticationHandler, s.AuthorizationHandler)
 
 	logger.Sugar.Info("Server started.")
 }
