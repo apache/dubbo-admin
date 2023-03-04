@@ -115,7 +115,7 @@ func (s *Server) Init() {
 			})
 		s.WebhookServer.Init(s.Options)
 
-		s.JavaInjector = patch.NewJavaSdk(s.Options)
+		s.JavaInjector = patch.NewJavaSdk(s.Options, s.KubeClient)
 		s.WebhookServer.Patches = append(s.WebhookServer.Patches, s.JavaInjector.NewPod)
 	}
 }
@@ -167,7 +167,7 @@ func (s *Server) LoadAuthorityCert() {
 
 func (s *Server) ScheduleRefreshAuthorityCert() {
 	interval := math.Min(math.Floor(float64(s.Options.CaValidity)/100), 10_000)
-	for true {
+	for {
 		time.Sleep(time.Duration(interval) * time.Millisecond)
 		if s.CertStorage.GetAuthorityCert().NeedRefresh() {
 			logger.Sugar.Infof("Authority cert is invalid, refresh it.")

@@ -15,9 +15,14 @@
 
 package cert
 
-import "testing"
+import (
+	"github.com/apache/dubbo-admin/pkg/logger"
+	"testing"
+)
 
 func TestCSR(t *testing.T) {
+	t.Parallel()
+
 	csr, privateKey, err := GenerateCSR()
 	if err != nil {
 		t.Fatal(err)
@@ -53,6 +58,10 @@ func TestCSR(t *testing.T) {
 }
 
 func TestDecodeCert(t *testing.T) {
+	t.Parallel()
+
+	logger.Init()
+
 	if DecodeCert("") != nil {
 		t.Fatal("DecodeCert should return nil")
 		return
@@ -91,6 +100,8 @@ func TestDecodeCert(t *testing.T) {
 }
 
 func TestDecodePrivateKey(t *testing.T) {
+	t.Parallel()
+
 	if DecodePrivateKey("") != nil {
 		t.Fatal("DecodePrivateKey should return nil")
 		return

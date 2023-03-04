@@ -49,6 +49,10 @@ func (s *mockKubeClient) UpdateAuthorityPublicKey(cert string) bool {
 	return true
 }
 
+func (s *mockKubeClient) UpdateWebhookConfig(options *config.Options, storage cert2.Storage) {
+
+}
+
 type mockStorage struct {
 	cert2.Storage
 	origin cert2.Storage
@@ -91,6 +95,8 @@ func (s *mockStorage) GetStopChan() chan os.Signal {
 }
 
 func TestInit(t *testing.T) {
+	t.Parallel()
+
 	logger.Init()
 
 	options := &config.Options{
@@ -125,11 +131,13 @@ func TestInit(t *testing.T) {
 
 	if !s.CertStorage.GetAuthorityCert().IsValid() {
 		t.Fatal("Authority cert is not valid")
+
 		return
 	}
 
 	if s.CertStorage.GetAuthorityCert().CertPem != certPEM {
 		t.Fatal("Authority cert is not equal")
+
 		return
 	}
 
@@ -140,6 +148,8 @@ func TestInit(t *testing.T) {
 }
 
 func TestRefresh(t *testing.T) {
+	t.Parallel()
+
 	logger.Init()
 
 	options := &config.Options{

@@ -17,6 +17,7 @@ package authorization
 
 import (
 	"github.com/apache/dubbo-admin/pkg/authority/rule/connection"
+	"reflect"
 	"sync"
 	"sync/atomic"
 )
@@ -67,8 +68,7 @@ func (i *Impl) Update(key string, newObj *Policy) {
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
 
-	origin := i.cache[key]
-	if PolicyEquals(origin, newObj) {
+	if origin := i.cache[key]; reflect.DeepEqual(origin, newObj) {
 		return
 	}
 

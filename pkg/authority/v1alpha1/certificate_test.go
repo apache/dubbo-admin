@@ -45,6 +45,8 @@ func (f *fakeAddr) String() string {
 }
 
 func TestCSRFailed(t *testing.T) {
+	t.Parallel()
+
 	logger.Init()
 
 	md := metadata.MD{}
@@ -113,6 +115,8 @@ func TestCSRFailed(t *testing.T) {
 }
 
 func TestTokenFailed(t *testing.T) {
+	t.Parallel()
+
 	logger.Init()
 
 	p := peer.NewContext(context.TODO(), &peer.Peer{Addr: &fakeAddr{}})
@@ -222,6 +226,8 @@ func TestTokenFailed(t *testing.T) {
 }
 
 func TestSuccess(t *testing.T) {
+	t.Parallel()
+
 	logger.Init()
 
 	md := metadata.MD{}
