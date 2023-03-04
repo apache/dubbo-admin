@@ -19,6 +19,7 @@ import (
 	cert2 "github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
+	"github.com/apache/dubbo-admin/pkg/authority/rule"
 	"github.com/apache/dubbo-admin/pkg/logger"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
@@ -31,8 +32,8 @@ type MockKubeClient struct {
 	k8s.Client
 }
 
-func (c MockKubeClient) VerifyServiceAccount(token string) bool {
-	return "expceted-token" == token
+func (c MockKubeClient) VerifyServiceAccount(token string) (*rule.Endpoint, bool) {
+	return nil, "expceted-token" == token
 }
 
 type fakeAddr struct {

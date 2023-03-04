@@ -32,7 +32,7 @@ func TestCSR(t *testing.T) {
 
 	cert := GenerateAuthorityCert(nil, 365*24*60*60*1000)
 
-	target, err := SignFromCSR(request, cert, 365*24*60*60*1000)
+	target, err := SignFromCSR(request, nil, cert, 365*24*60*60*1000)
 	if err != nil {
 		t.Fatal(err)
 		return
