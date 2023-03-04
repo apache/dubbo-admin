@@ -64,7 +64,7 @@ func NewController(
 		authorizationHandler:  authorizationHandler,
 	}
 
-	logger.Sugar.Info("Setting up event handlers")
+	logger.Sugar().Info("Setting up event handlers")
 	// Set up an event handler for when Foo resources change
 	_, err := acInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -99,20 +99,20 @@ func NewController(
 }
 
 func (c *Controller) WaitSynced() {
-	logger.Sugar.Info("Waiting for informer caches to sync")
+	logger.Sugar().Info("Waiting for informer caches to sync")
 
 	if !cache.WaitForCacheSync(make(chan struct{}), c.authenticationSynced, c.authorizationSynced) {
-		logger.Sugar.Error("Timed out waiting for caches to sync")
+		logger.Sugar().Error("Timed out waiting for caches to sync")
 		return
 	} else {
-		logger.Sugar.Info("Caches synced")
+		logger.Sugar().Info("Caches synced")
 	}
 }
 
 func (c *Controller) handleEvent(obj interface{}, eventType NotificationType) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
-		logger.Sugar.Errorf("error getting key for object: %v", err)
+		logger.Sugar().Errorf("error getting key for object: %v", err)
 		return
 	}
 
@@ -141,7 +141,7 @@ func (c *Controller) handleEvent(obj interface{}, eventType NotificationType) {
 			c.authorizationHandler.Delete(key)
 		}
 	default:
-		logger.Sugar.Errorf("unexpected object type: %v", obj)
+		logger.Sugar().Errorf("unexpected object type: %v", obj)
 		return
 	}
 

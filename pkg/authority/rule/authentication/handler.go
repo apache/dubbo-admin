@@ -29,8 +29,6 @@ type Handler interface {
 }
 
 type Impl struct {
-	Handler
-
 	mutex *sync.RWMutex
 
 	revision int64
@@ -38,7 +36,7 @@ type Impl struct {
 	cache    map[string]*Policy
 }
 
-func NewHandler(storage *connection.Storage) Handler {
+func NewHandler(storage *connection.Storage) *Impl {
 	return &Impl{
 		mutex:    &sync.RWMutex{},
 		storage:  storage,

@@ -80,7 +80,7 @@ func (wh *Webhook) Init(options *config.Options) {
 func (wh *Webhook) Serve() {
 	err := wh.server.ListenAndServeTLS("", "")
 	if err != nil {
-		logger.Sugar.Fatalf("[Webhook] Serve webhook server failed. %v", err.Error())
+		logger.Sugar().Fatalf("[Webhook] Serve webhook server failed. %v", err.Error())
 		return
 	}
 }
@@ -88,7 +88,7 @@ func (wh *Webhook) Serve() {
 func (wh *Webhook) Stop() {
 	err := wh.server.Close()
 	if err != nil {
-		logger.Sugar.Fatalf("[Webhook] Stop webhook server failed. %v", err.Error())
+		logger.Sugar().Fatalf("[Webhook] Stop webhook server failed. %v", err.Error())
 		return
 	}
 }
@@ -106,13 +106,13 @@ func (wh *Webhook) Mutate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	logger.Sugar.Infof("[Webhook] Mutation request: " + string(body))
+	logger.Sugar().Infof("[Webhook] Mutation request: " + string(body))
 
 	// verify the content type is accurate
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "application/json" {
 		outputLog := fmt.Sprintf("[Webhook] contentType=%s, expect application/json", contentType)
-		logger.Sugar.Errorf(outputLog)
+		logger.Sugar().Errorf(outputLog)
 		return
 	}
 
@@ -120,7 +120,7 @@ func (wh *Webhook) Mutate(w http.ResponseWriter, r *http.Request) {
 	ar := admissionV1.AdmissionReview{}
 	if err := json.Unmarshal(body, &ar); err != nil {
 		outputLog := fmt.Sprintf("[Webhook] json unmarshal err=%s", err)
-		logger.Sugar.Errorf(outputLog)
+		logger.Sugar().Errorf(outputLog)
 
 		reviewResponse = &admissionV1.AdmissionResponse{
 			Allowed: wh.AllowOnErr,
@@ -133,7 +133,7 @@ func (wh *Webhook) Mutate(w http.ResponseWriter, r *http.Request) {
 	} else {
 		reviewResponse, err = wh.Admit(ar)
 		if err != nil {
-			logger.Sugar.Errorf(err.Error())
+			logger.Sugar().Errorf(err.Error())
 
 			reviewResponse = &admissionV1.AdmissionResponse{
 				Allowed: wh.AllowOnErr,
@@ -151,16 +151,16 @@ func (wh *Webhook) Mutate(w http.ResponseWriter, r *http.Request) {
 	response.TypeMeta.APIVersion = "admission.k8s.io/v1"
 	response.Response = reviewResponse
 
-	logger.Sugar.Infof("[Webhook] AdmissionReview response: %v", response)
+	logger.Sugar().Infof("[Webhook] AdmissionReview response: %v", response)
 
 	resp, err := json.Marshal(response)
 	if err != nil {
 		outputLog := fmt.Sprintf("[Webhook] response json unmarshal err=%s", err)
-		logger.Sugar.Errorf(outputLog)
+		logger.Sugar().Errorf(outputLog)
 	}
 	if _, err := w.Write(resp); err != nil {
 		outputLog := fmt.Sprintf("[Webhook] write resp err=%s", err)
-		logger.Sugar.Errorf(outputLog)
+		logger.Sugar().Errorf(outputLog)
 	}
 }
 
@@ -194,7 +194,7 @@ func (wh *Webhook) Admit(ar admissionV1.AdmissionReview) (*admissionV1.Admission
 
 	reviewResponse.Patch = patchBytes
 
-	logger.Sugar.Infof("[Webhook] Patch after mutate : %s", string(patchBytes))
+	logger.Sugar().Infof("[Webhook] Patch after mutate : %s", string(patchBytes))
 	pt := admissionV1.PatchTypeJSONPatch
 	reviewResponse.PatchType = &pt
 
@@ -205,7 +205,7 @@ func (wh *Webhook) PatchPod(pod *v1.Pod) ([]byte, error) {
 	origin, originErr := json.Marshal(pod)
 
 	if originErr == nil {
-		logger.Sugar.Infof("[Webhook] Pod before mutate: %v", string(origin))
+		logger.Sugar().Infof("[Webhook] Pod before mutate: %v", string(origin))
 	} else {
 		return nil, originErr
 	}
@@ -217,7 +217,7 @@ func (wh *Webhook) PatchPod(pod *v1.Pod) ([]byte, error) {
 	after, afterErr := json.Marshal(pod)
 
 	if afterErr == nil {
-		logger.Sugar.Infof("[Webhook] Pod after mutate: %v", string(after))
+		logger.Sugar().Infof("[Webhook] Pod after mutate: %v", string(after))
 	} else {
 		return nil, afterErr
 	}

@@ -32,12 +32,12 @@ import (
 func DecodeCert(cert string) *x509.Certificate {
 	block, _ := pem.Decode([]byte(cert))
 	if block == nil {
-		logger.Sugar.Warnf("Failed to parse public key.")
+		logger.Sugar().Warnf("Failed to parse public key.")
 		return nil
 	}
 	p, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		logger.Sugar.Warnf("Failed to parse public key. " + err.Error())
+		logger.Sugar().Warnf("Failed to parse public key. " + err.Error())
 		return nil
 	}
 	return p
@@ -46,12 +46,12 @@ func DecodeCert(cert string) *x509.Certificate {
 func DecodePrivateKey(cert string) *rsa.PrivateKey {
 	block, _ := pem.Decode([]byte(cert))
 	if block == nil {
-		logger.Sugar.Warnf("Failed to parse private key.")
+		logger.Sugar().Warnf("Failed to parse private key.")
 		return nil
 	}
 	p, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		logger.Sugar.Warnf("Failed to parse private key. " + err.Error())
+		logger.Sugar().Warnf("Failed to parse private key. " + err.Error())
 		return nil
 	}
 	return p
@@ -92,7 +92,7 @@ func GenerateAuthorityCert(rootCert *Cert, caValidity int64) *Cert {
 		Bytes: caBytes,
 	})
 	if err != nil {
-		logger.Sugar.Warnf("Failed to encode certificate. " + err.Error())
+		logger.Sugar().Warnf("Failed to encode certificate. " + err.Error())
 		panic(err)
 	}
 
@@ -134,7 +134,7 @@ func SignServerCert(authorityCert *Cert, serverName []string, certValidity int64
 		Bytes: c,
 	})
 	if err != nil {
-		logger.Sugar.Warnf("Failed to encode certificate. " + err.Error())
+		logger.Sugar().Warnf("Failed to encode certificate. " + err.Error())
 		panic(err)
 	}
 	return &Cert{
@@ -170,7 +170,7 @@ func GenerateCSR() (string, *rsa.PrivateKey, error) {
 	})
 
 	if err != nil {
-		logger.Sugar.Warnf("Failed to encode certificate. " + err.Error())
+		logger.Sugar().Warnf("Failed to encode certificate. " + err.Error())
 		return "", nil, err
 	}
 	return csr.String(), privateKey, nil

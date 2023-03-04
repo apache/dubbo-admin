@@ -102,6 +102,7 @@ func TestDecodeCert(t *testing.T) {
 func TestDecodePrivateKey(t *testing.T) {
 	t.Parallel()
 
+	logger.Init()
 	if DecodePrivateKey("") != nil {
 		t.Fatal("DecodePrivateKey should return nil")
 		return

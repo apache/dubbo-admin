@@ -67,12 +67,12 @@ func (s *Storage) ListenConnection(c *Connection) {
 		}
 		req, err := c.EndpointConnection.Recv()
 		if err == io.EOF {
-			logger.Sugar.Infof("Observe connection closed. Connection ID: %s", c.Endpoint.ID)
+			logger.Sugar().Infof("Observe connection closed. Connection ID: %s", c.Endpoint.ID)
 			s.Disconnect(c)
 			return
 		}
 		if err != nil {
-			logger.Sugar.Warnf("Observe connection error: %v. Connection ID: %s", err, c.Endpoint.ID)
+			logger.Sugar().Warnf("Observe connection error: %v. Connection ID: %s", err, c.Endpoint.ID)
 			s.Disconnect(c)
 			return
 		}
@@ -91,11 +91,11 @@ func (s *Storage) ObserveRule(c *Connection) {
 
 func (s *Storage) HandleRequest(c *Connection, req *ObserveRequest) {
 	if req.Type == "" {
-		logger.Sugar.Errorf("Empty request type from %v", c.Endpoint.ID)
+		logger.Sugar().Errorf("Empty request type from %v", c.Endpoint.ID)
 		return
 	}
 	if !TypeSupported(req.Type) {
-		logger.Sugar.Errorf("Unsupported request type %s from %s", req.Type, c.Endpoint.ID)
+		logger.Sugar().Errorf("Unsupported request type %s from %s", req.Type, c.Endpoint.ID)
 		return
 	}
 
@@ -105,24 +105,24 @@ func (s *Storage) HandleRequest(c *Connection, req *ObserveRequest) {
 	if req.Nonce != "" {
 		cr := c.ClientRules[req.Type]
 		if cr == nil {
-			logger.Sugar.Errorf("Unexpected request type %s with nonce %s from %s", req.Type, req.Nonce, c.Endpoint.ID)
+			logger.Sugar().Errorf("Unexpected request type %s with nonce %s from %s", req.Type, req.Nonce, c.Endpoint.ID)
 			return
 		}
 
 		if cr.PushingStatus == Pushing {
 			if cr.LastPushNonce != req.Nonce {
-				logger.Sugar.Errorf("Unexpected request nonce %s from %s", req.Nonce, c.Endpoint.ID)
+				logger.Sugar().Errorf("Unexpected request nonce %s from %s", req.Nonce, c.Endpoint.ID)
 				return
 			}
 			cr.ClientVersion = cr.LastPushedVersion
 			cr.PushingStatus = Pushed
-			logger.Sugar.Infof("Client %s pushed %s rule %s success", c.Endpoint.Ips, req.Type, cr.ClientVersion.Revision)
+			logger.Sugar().Infof("Client %s pushed %s rule %s success", c.Endpoint.Ips, req.Type, cr.ClientVersion.Revision)
 		}
 		return
 	}
 
 	if _, ok := c.TypeListened[req.Type]; !ok {
-		logger.Sugar.Infof("Client %s listen %s rule", c.Endpoint.Ips, req.Type)
+		logger.Sugar().Infof("Client %s listen %s rule", c.Endpoint.Ips, req.Type)
 		c.TypeListened[req.Type] = true
 		c.ClientRules[req.Type] = &ClientStatus{
 			PushingStatus: Pushed,
@@ -155,16 +155,16 @@ func (c *Connection) ListenRule() {
 			var key rule.Origin
 			var ok bool
 			if key, ok = obj.(rule.Origin); !ok {
-				logger.Sugar.Errorf("expected rule.Origin in workqueue but got %#v", obj)
+				logger.Sugar().Errorf("expected rule.Origin in workqueue but got %#v", obj)
 				return
 			}
 
 			if err := c.handleRule(key); err != nil {
-				logger.Sugar.Errorf("error syncing '%s': %s", key, err.Error())
+				logger.Sugar().Errorf("error syncing '%s': %s", key, err.Error())
 				return
 			}
 
-			logger.Sugar.Infof("Successfully synced '%s'", key)
+			logger.Sugar().Infof("Successfully synced '%s'", key)
 		}(obj)
 	}
 }
@@ -183,13 +183,13 @@ func (c *Connection) handleRule(rawRule rule.Origin) error {
 
 	if cr.ClientVersion.Data != nil &&
 		(cr.ClientVersion.Data.Data() == targetRule.Data() || cr.ClientVersion.Data.Revision() < targetRule.Revision()) {
-		logger.Sugar.Infof("Client %s %s rule is up to date", c.Endpoint.Ips, targetRule.Type())
+		logger.Sugar().Infof("Client %s %s rule is up to date", c.Endpoint.Ips, targetRule.Type())
 		return nil
 	}
 
 	for cr.PushingStatus == Pushing {
 		time.Sleep(1 * time.Second)
-		logger.Sugar.Infof("Client %s %s rule is pushing, wait for 1 second", c.Endpoint.Ips, targetRule.Type())
+		logger.Sugar().Infof("Client %s %s rule is pushing, wait for 1 second", c.Endpoint.Ips, targetRule.Type())
 	}
 
 	newVersion := atomic.AddInt64(&cr.NonceInc, 1)
@@ -208,7 +208,7 @@ func (c *Connection) handleRule(rawRule rule.Origin) error {
 	cr.LastPushNonce = r.Nonce
 	cr.PushingStatus = Pushing
 
-	logger.Sugar.Infof("Receive new version rule. Client %s %s rule is pushing.", c.Endpoint.Ips, targetRule.Type())
+	logger.Sugar().Infof("Receive new version rule. Client %s %s rule is pushing.", c.Endpoint.Ips, targetRule.Type())
 
 	return c.EndpointConnection.Send(r)
 }

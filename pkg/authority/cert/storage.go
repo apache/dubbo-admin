@@ -124,7 +124,7 @@ func (c *Cert) GetTlsCert() *tls.Certificate {
 	}
 	tlsCert, err := tls.X509KeyPair([]byte(c.CertPem), []byte(EncodePrivateKey(c.PrivateKey)))
 	if err != nil {
-		logger.Sugar.Warnf("Failed to load x509 cert. %v", err)
+		logger.Sugar().Warnf("Failed to load x509 cert. %v", err)
 	}
 	c.tlsCert = &tlsCert
 	return c.tlsCert
@@ -167,7 +167,7 @@ func (s *storageImpl) RefreshServerCert() {
 			continue
 		}
 		if s.serverCerts == nil || !s.serverCerts.IsValid() {
-			logger.Sugar.Infof("Server cert is invalid, refresh it.")
+			logger.Sugar().Infof("Server cert is invalid, refresh it.")
 			s.serverCerts = SignServerCert(s.authorityCert, s.serverNames, s.certValidity)
 		}
 		s.mutex.Unlock()

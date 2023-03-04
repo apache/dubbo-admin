@@ -52,7 +52,7 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 	endpoint, err := exactEndpoint(c, s.Options, s.KubeClient)
 
 	if err != nil {
-		logger.Sugar.Warnf("Failed to exact endpoint from context: %v. RemoteAddr: %s", err, p.Addr.String())
+		logger.Sugar().Warnf("Failed to exact endpoint from context: %v. RemoteAddr: %s", err, p.Addr.String())
 		return &DubboCertificateResponse{
 			Success: false,
 			Message: err.Error(),
@@ -62,14 +62,14 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 	// TODO check server token
 	certPem, err := cert2.SignFromCSR(csr, endpoint, s.CertStorage.GetAuthorityCert(), s.Options.CertValidity)
 	if err != nil {
-		logger.Sugar.Warnf("Failed to sign certificate from csr: %v. RemoteAddr: %s", err, p.Addr.String())
+		logger.Sugar().Warnf("Failed to sign certificate from csr: %v. RemoteAddr: %s", err, p.Addr.String())
 		return &DubboCertificateResponse{
 			Success: false,
 			Message: err.Error(),
 		}, nil
 	}
 
-	logger.Sugar.Infof("Success to sign certificate from csr. RemoteAddr: %s", p.Addr.String())
+	logger.Sugar().Infof("Success to sign certificate from csr. RemoteAddr: %s", p.Addr.String())
 
 	return &DubboCertificateResponse{
 		Success:    true,
