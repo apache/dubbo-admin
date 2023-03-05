@@ -1,0 +1,43 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+{{- if and (not .Values.runAsStatefulSet) .Values.pushgateway.persistentVolume.enabled (not .Values.persistentVolume.existingClaim) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  {{- with .Values.pushgateway.persistentVolume.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "prometheus-pushgateway.defaultLabels" . | nindent 4 }}
+    {{- with .Values.pushgateway.persistentVolumeLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  name: {{ include "prometheus-pushgateway.fullname" . }}
+spec:
+  accessModes:
+    {{- toYaml .Values.pushgateway.persistentVolume.accessModes | nindent 4 }}
+  {{- if .Values.pushgateway.persistentVolume.storageClass }}
+  {{- if (eq "-" .Values.pushgateway.persistentVolume.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: "{{ .Values.pushgateway.persistentVolume.storageClass }}"
+  {{- end }}
+  {{- end }}
+  resources:
+    requests:
+      storage: "{{ .Values.pushgateway.persistentVolume.size }}"
+{{- end }}
