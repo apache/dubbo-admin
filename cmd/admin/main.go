@@ -18,17 +18,15 @@
 package main
 
 import (
-	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/router"
-	"github.com/apache/dubbo-admin/pkg/admin/services"
 )
 
 func main() {
-	config.LoadConfig()
-	go services.StartSubscribe(config.RegistryCenter)
-	defer func() {
-		services.DestroySubscribe(config.RegistryCenter)
-	}()
+	//config.LoadConfig()
+	//go services.StartSubscribe(config.RegistryCenter)
+	//defer func() {
+	//	services.DestroySubscribe(config.RegistryCenter)
+	//}()
 	router := router.InitRouter()
 	_ = router.Run(":38080")
 }
