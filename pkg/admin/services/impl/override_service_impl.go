@@ -2,15 +2,15 @@ package impl
 
 import (
 	"dubbo.apache.org/dubbo-go/v3/common/constant"
+	"dubbo.apache.org/dubbo-go/v3/config_center"
+	"encoding/json"
 	"github.com/apache/dubbo-admin/pkg/admin/model/adapter"
+	//"github.com/apache/dubbo-admin/cmd"
 	//"admin/model/domain"
 	"github.com/apache/dubbo-admin/pkg/admin/model/dto"
 	"github.com/apache/dubbo-admin/pkg/admin/model/store"
 	"github.com/apache/dubbo-admin/pkg/admin/util"
 	_ "github.com/apache/dubbo-admin/pkg/admin/util"
-	//"dubbo.apache.org/dubbo-go/v3/config/parsers/properties"
-	"dubbo.apache.org/dubbo-go/v3/config_center"
-	"encoding/json"
 	set "github.com/dubbogo/gost/container/set"
 	//"log"
 	"reflect"
@@ -25,16 +25,17 @@ var dynamicConfiguration config_center.DynamicConfiguration
 var HashSet set.HashSet
 
 func (s *OverrideServiceImpl) SaveOverride(override dto.DynamicConfigDTO) {
-	//先写上
 	HashSet = set.HashSet{
 		Items: make(map[interface{}]struct{}),
 	}
+	// 怎么设置成动态的
 	dynamicConfiguration = new(config_center.MockDynamicConfiguration)
 
 	convert := util.Convert{}
 	id := convert.GetIdFromDTO(override)
 
 	path := getPath(id.(string))
+
 	//TODO 改不出来了
 	//exitConfig, err := dynamicConfiguration.GetConfigKeysByGroup(path)
 	//if err != nil {

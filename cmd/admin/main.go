@@ -18,11 +18,12 @@
 package main
 
 import (
+	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/router"
 )
 
 func main() {
-	//config.LoadConfig()
+	config.LoadConfig()
 	//go services.StartSubscribe(config.RegistryCenter)
 	//defer func() {
 	//	services.DestroySubscribe(config.RegistryCenter)
