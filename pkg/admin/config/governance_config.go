@@ -18,8 +18,9 @@
 package config
 
 import (
-	"dubbo.apache.org/dubbo-go/v3/config_center"
 	"errors"
+
+	"dubbo.apache.org/dubbo-go/v3/config_center"
 )
 
 func SetConfig(key string, value string) error {
