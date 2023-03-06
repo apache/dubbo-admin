@@ -13,17 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if .Values.pushgateway.ingress.enabled }}
+{{- if .Values.ingress.enabled }}
 {{- $serviceName := include "prometheus-pushgateway.fullname" . }}
-{{- $servicePort := .Values.pushgateway.service.port }}
-{{- $ingressPath := .Values.pushgateway.ingress.path }}
-{{- $ingressClassName := .Values.pushgateway.ingress.className }}
-{{- $ingressPathType := .Values.pushgateway.ingress.pathType }}
-{{- $extraPaths := .Values.pushgateway.ingress.extraPaths }}
+{{- $servicePort := .Values.service.port }}
+{{- $ingressPath := .Values.ingress.path }}
+{{- $ingressClassName := .Values.ingress.className }}
+{{- $ingressPathType := .Values.ingress.pathType }}
+{{- $extraPaths := .Values.ingress.extraPaths }}
 apiVersion: {{ include "prometheus-pushgateway.ingress.apiVersion" . }}
 kind: Ingress
 metadata:
-  {{- with .Values.pushgateway.ingress.annotations }}
+  {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -35,7 +35,7 @@ spec:
   ingressClassName: {{ $ingressClassName }}
   {{- end }}
   rules:
-    {{- range $host := .Values.pushgateway.ingress.hosts }}
+    {{- range $host := .Values.ingress.hosts }}
     - host: {{ $host }}
       http:
         paths:
@@ -57,7 +57,7 @@ spec:
               servicePort: {{ $servicePort }}
               {{- end }}
     {{- end -}}
-  {{- with .Values.pushgateway.ingress.tls }}
+  {{- with .Values.ingress.tls }}
   tls:
     {{- toYaml . | nindent 4 }}
   {{- end }}

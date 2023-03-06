@@ -1,3 +1,4 @@
+{{- if and .Values.enabled .Values.networkPolicy.enabled -}}
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -13,14 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if and .Values.alertmanager.enabled .Values.networkPolicy.enabled -}}
 apiVersion: {{ template "prometheus.networkPolicy.apiVersion" . }}
 kind: NetworkPolicy
 metadata:
-  name: {{ template "prometheus.alertmanager.fullname" . }}
+  name: {{ template "alertmanager.fullname" . }}
 {{ include "prometheus.namespace" . | indent 2 }}
   labels:
-    {{- include "prometheus.alertmanager.labels" . | nindent 4 }}
+    {{- include "alertmanager.labels" . | nindent 4 }}
 spec:
   podSelector:
     matchLabels:

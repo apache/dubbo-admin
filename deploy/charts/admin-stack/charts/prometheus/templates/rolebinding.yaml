@@ -12,9 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-{{- if and .Values.server.enabled .Values.rbac.create .Values.server.useExistingClusterRoleName .Values.server.namespaces -}}
+
+{{- if and .Values.rbac.create .Values.server.useExistingClusterRoleName .Values.server.namespaces -}}
 {{ range $.Values.server.namespaces -}}
----
 apiVersion: {{ template "rbac.apiVersion" $ }}
 kind: RoleBinding
 metadata:

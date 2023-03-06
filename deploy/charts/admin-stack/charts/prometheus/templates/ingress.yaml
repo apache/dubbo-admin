@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if .Values.server.enabled -}}
 {{- if .Values.server.ingress.enabled -}}
 {{- $ingressApiIsStable := eq (include "ingress.isStable" .) "true" -}}
 {{- $ingressSupportsIngressClassName := eq (include "ingress.supportsIngressClassName" .) "true" -}}
@@ -70,5 +69,4 @@ spec:
   tls:
 {{ toYaml .Values.server.ingress.tls | indent 4 }}
   {{- end -}}
-{{- end -}}
 {{- end -}}

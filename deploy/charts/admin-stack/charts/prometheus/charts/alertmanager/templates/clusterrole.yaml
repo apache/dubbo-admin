@@ -1,3 +1,4 @@
+{{- if and .Values.enabled .Values.rbac.create .Values.useClusterRole (not .Values.useExistingRole) -}}
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -13,13 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if and .Values.alertmanager.enabled .Values.rbac.create .Values.alertmanager.useClusterRole (not .Values.alertmanager.useExistingRole) -}}
 apiVersion: {{ template "rbac.apiVersion" . }}
 kind: ClusterRole
 metadata:
   labels:
-    {{- include "prometheus.alertmanager.labels" . | nindent 4 }}
-  name: {{ template "prometheus.alertmanager.fullname" . }}
+    {{- include "alertmanager.labels" . | nindent 4 }}
+  name: {{ template "alertmanager.fullname" . }}
 rules:
 {{- if .Values.podSecurityPolicy.enabled }}
   - apiGroups:
@@ -29,7 +29,7 @@ rules:
     verbs:
     - use
     resourceNames:
-    - {{ template "prometheus.alertmanager.fullname" . }}
+    - {{ template "alertmanager.fullname" . }}
 {{- else }}
   []
 {{- end }}

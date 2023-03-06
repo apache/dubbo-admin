@@ -16,8 +16,6 @@
 *.tmp
 *~
 # Various IDEs
-.vscode
 .project
 .idea/
 *.tmproj
-OWNERS

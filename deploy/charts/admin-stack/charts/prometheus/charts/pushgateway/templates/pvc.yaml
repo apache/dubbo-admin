@@ -1,3 +1,4 @@
+{{- if and (not .Values.runAsStatefulSet) .Values.persistentVolume.enabled (not .Values.persistentVolume.existingClaim) }}
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -13,31 +14,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if and (not .Values.runAsStatefulSet) .Values.pushgateway.persistentVolume.enabled (not .Values.persistentVolume.existingClaim) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  {{- with .Values.pushgateway.persistentVolume.annotations }}
+  {{- with .Values.persistentVolume.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   labels:
     {{- include "prometheus-pushgateway.defaultLabels" . | nindent 4 }}
-    {{- with .Values.pushgateway.persistentVolumeLabels }}
+    {{- with .Values.persistentVolumeLabels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
   name: {{ include "prometheus-pushgateway.fullname" . }}
 spec:
   accessModes:
-    {{- toYaml .Values.pushgateway.persistentVolume.accessModes | nindent 4 }}
-  {{- if .Values.pushgateway.persistentVolume.storageClass }}
-  {{- if (eq "-" .Values.pushgateway.persistentVolume.storageClass) }}
+    {{- toYaml .Values.persistentVolume.accessModes | nindent 4 }}
+  {{- if .Values.persistentVolume.storageClass }}
+  {{- if (eq "-" .Values.persistentVolume.storageClass) }}
   storageClassName: ""
   {{- else }}
-  storageClassName: "{{ .Values.pushgateway.persistentVolume.storageClass }}"
+  storageClassName: "{{ .Values.persistentVolume.storageClass }}"
   {{- end }}
   {{- end }}
   resources:
     requests:
-      storage: "{{ .Values.pushgateway.persistentVolume.size }}"
+      storage: "{{ .Values.persistentVolume.size }}"
 {{- end }}

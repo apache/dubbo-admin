@@ -42,9 +42,23 @@ spec:
     protocol: TCP
     port: {{ .Values.selfMonitor.telemetryPort | default 8081 }}
     targetPort: {{ .Values.selfMonitor.telemetryPort | default 8081 }}
+  {{- if .Values.selfMonitor.telemetryNodePort }}
+    nodePort: {{ .Values.selfMonitor.telemetryNodePort }}
+  {{- end }}
   {{ end }}
 {{- if .Values.service.loadBalancerIP }}
   loadBalancerIP: "{{ .Values.service.loadBalancerIP }}"
+{{- end }}
+{{- if .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+  {{- range $cidr := .Values.service.loadBalancerSourceRanges }}
+    - {{ $cidr }}
+  {{- end }}
+{{- end }}
+{{- if .Values.autosharding.enabled }}
+  clusterIP: None
+{{- else if .Values.service.clusterIP }}
+  clusterIP: "{{ .Values.service.clusterIP }}"
 {{- end }}
   selector:
     {{- include "kube-state-metrics.selectorLabels" . | indent 4 }}

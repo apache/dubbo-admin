@@ -13,17 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if .Values.alertmanager.podDisruptionBudget.enabled }}
-apiVersion: policy/v1beta1
+{{- if .Values.podDisruptionBudget }}
+apiVersion: {{ include "alertmanager.pdb.apiVersion" . }}
 kind: PodDisruptionBudget
 metadata:
-  name: {{ template "prometheus.alertmanager.fullname" . }}
-{{ include "prometheus.namespace" . | indent 2 }}
+  name: {{ include "alertmanager.fullname" . }}
   labels:
-    {{- include "prometheus.alertmanager.labels" . | nindent 4 }}
+    {{- include "alertmanager.labels" . | nindent 4 }}
 spec:
-  maxUnavailable: {{ .Values.alertmanager.podDisruptionBudget.maxUnavailable }}
   selector:
     matchLabels:
-      {{- include "prometheus.alertmanager.labels" . | nindent 6 }}
+      {{- include "alertmanager.selectorLabels" . | nindent 6 }}
+  {{- toYaml .Values.podDisruptionBudget | nindent 2 }}
 {{- end }}

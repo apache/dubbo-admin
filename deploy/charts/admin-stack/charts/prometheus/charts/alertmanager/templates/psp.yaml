@@ -1,3 +1,4 @@
+{{- if and .Values.enabled .Values.rbac.create .Values.podSecurityPolicy.enabled }}
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -13,16 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if and .Values.alertmanager.enabled .Values.rbac.create .Values.podSecurityPolicy.enabled }}
-apiVersion: {{ template "prometheus.podSecurityPolicy.apiVersion" . }}
+apiVersion: {{ template "alertmanager.psp.apiVersion" . }}
 kind: PodSecurityPolicy
 metadata:
   name: {{ template "prometheus.alertmanager.fullname" . }}
   labels:
     {{- include "prometheus.alertmanager.labels" . | nindent 4 }}
   annotations:
-{{- if .Values.alertmanager.podSecurityPolicy.annotations }}
-{{ toYaml .Values.alertmanager.podSecurityPolicy.annotations | indent 4 }}
+{{- if .Values.podSecurityPolicy.annotations }}
+{{ toYaml .Values.podSecurityPolicy.annotations | indent 4 }}
 {{- end }}
 spec:
   privileged: false
@@ -37,7 +37,7 @@ spec:
   allowedHostPaths:
     - pathPrefix: /etc
       readOnly: true
-    - pathPrefix: {{ .Values.alertmanager.persistentVolume.mountPath }}
+    - pathPrefix: {{ .Values.persistentVolume.mountPath }}
   hostNetwork: false
   hostPID: false
   hostIPC: false

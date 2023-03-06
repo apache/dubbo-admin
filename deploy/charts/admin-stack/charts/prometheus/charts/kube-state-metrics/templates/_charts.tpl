@@ -1,3 +1,11 @@
+{{/* vim: set filetype=mustache: */}}
+{{/*
+Expand the name of the chart.
+*/}}
+{{- define "kube-state-metrics.name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+
 {{/*
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
@@ -16,14 +24,6 @@ If release name contains chart name it will be used as a full name.
 {{- end -}}
 {{- end -}}
 
-{{/* vim: set filetype=mustache: */}}
-{{/*
-Expand the name of the chart.
-*/}}
-{{- define "kube-state-metrics.name" -}}
-{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-
 {{/*
 Create the name of the service account to use
 */}}
@@ -39,11 +39,11 @@ Create the name of the service account to use
 Allow the release namespace to be overridden for multi-namespace deployments in combined charts
 */}}
 {{- define "kube-state-metrics.namespace" -}}
-{{- if .Values.namespaceOverride -}}
+  {{- if .Values.namespaceOverride -}}
     {{- .Values.namespaceOverride -}}
-{{- else -}}
+  {{- else -}}
     {{- .Release.Namespace -}}
-{{- end -}}
+  {{- end -}}
 {{- end -}}
 
 {{/*
@@ -77,6 +77,42 @@ release: {{ .Release.Name }}
 Selector labels
 */}}
 {{- define "kube-state-metrics.selectorLabels" }}
+{{- if .Values.selectorOverride }}
+{{ toYaml .Values.selectorOverride }}
+{{- else }}
 app.kubernetes.io/name: {{ include "kube-state-metrics.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
+{{- end }}
+
+{{/* Sets default scrape limits for servicemonitor */}}
+{{- define "servicemonitor.scrapeLimits" -}}
+{{- with .sampleLimit }}
+sampleLimit: {{ . }}
+{{- end }}
+{{- with .targetLimit }}
+targetLimit: {{ . }}
+{{- end }}
+{{- with .labelLimit }}
+labelLimit: {{ . }}
+{{- end }}
+{{- with .labelNameLengthLimit }}
+labelNameLengthLimit: {{ . }}
+{{- end }}
+{{- with .labelValueLengthLimit }}
+labelValueLengthLimit: {{ . }}
+{{- end }}
+{{- end -}}
+
+{{/* 
+Formats imagePullSecrets. Input is (dict "Values" .Values "imagePullSecrets" .{specific imagePullSecrets})
+*/}}
+{{- define "kube-state-metrics.imagePullSecrets" -}}
+{{- range (concat .Values.global.imagePullSecrets .imagePullSecrets) }}
+  {{- if eq (typeOf .) "map[string]interface {}" }}
+- {{ toYaml . | trim }}
+  {{- else }}
+- name: {{ . }}
+  {{- end }}
+{{- end }}
+{{- end -}}

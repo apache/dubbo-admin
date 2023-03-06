@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if not .Values.pushgateway.runAsStatefulSet }}
+{{- if not .Values.runAsStatefulSet }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -21,8 +21,8 @@ metadata:
     {{- include "prometheus-pushgateway.defaultLabels" . | nindent 4 }}
   name: {{ include "prometheus-pushgateway.fullname" . }}
 spec:
-  replicas: {{ .Values.pushgateway.replicaCount }}
-  {{- with .Values.pushgateway.strategy }}
+  replicas: {{ .Values.replicaCount }}
+  {{- with .Values.strategy }}
   strategy:
     {{- toYaml . | nindent 4 }}
   {{- end }}
@@ -31,13 +31,13 @@ spec:
       {{- include "prometheus-pushgateway.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.pushgateway.podAnnotations }}
+      {{- with .Values.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
         {{- include "prometheus-pushgateway.defaultLabels" . | nindent 8 }}
-        {{- with .Values.pushgateway.podLabels }}
+        {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:

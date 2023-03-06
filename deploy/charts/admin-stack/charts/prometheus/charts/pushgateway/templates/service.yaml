@@ -1,3 +1,4 @@
+{{- $stsNoHeadlessSvcTypes := list "LoadBalancer" "NodePort" -}}
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -13,41 +14,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- $stsNoHeadlessSvcTypes := list "LoadBalancer" "NodePort" -}}
 apiVersion: v1
 kind: Service
 metadata:
-  {{- with .Values.pushgateway.serviceAnnotations }}
+  {{- with .Values.serviceAnnotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   labels:
     {{- include "prometheus-pushgateway.defaultLabels" . | nindent 4 }}
-    {{- with .Values.pushgateway.serviceLabels }}
+    {{- with .Values.serviceLables }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
   name: {{ include "prometheus-pushgateway.fullname" . }}
 spec:
-  {{- if .Values.pushgateway.service.clusterIP }}
-  clusterIP: {{ .Values.pushgateway.service.clusterIP }}
-  {{ else if and .Values.pushgateway.runAsStatefulSet (not (has .Values.pushgateway.service.type $stsNoHeadlessSvcTypes)) }}
+  {{- if .Values.service.clusterIP }}
+  clusterIP: {{ .Values.service.clusterIP }}
+  {{ else if and .Values.runAsStatefulSet (not (has .Values.service.type $stsNoHeadlessSvcTypes)) }}
   clusterIP: None # Headless service
   {{- end }}
-  type: {{ .Values.pushgateway.service.type }}
-  {{- with .Values.pushgateway.service.loadBalancerIP }}
+  type: {{ .Values.service.type }}
+  {{- with .Values.service.loadBalancerIP }}
   loadBalancerIP: {{ . }}
   {{- end }}
-  {{- if .Values.pushgateway.service.loadBalancerSourceRanges }}
+  {{- if .Values.service.loadBalancerSourceRanges }}
   loadBalancerSourceRanges:
-  {{- range $cidr := .Values.pushgateway.service.loadBalancerSourceRanges }}
+  {{- range $cidr := .Values.service.loadBalancerSourceRanges }}
     - {{ $cidr }}
   {{- end }}
   {{- end }}
   ports:
-    - port: {{ .Values.pushgateway.service.port }}
-      targetPort: {{ .Values.pushgateway.service.targetPort }}
-      {{- if and (eq .Values.pushgateway.service.type "NodePort") .Values.pushgateway.service.nodePort }}
-      nodePort: {{ .Values.pushgateway.service.nodePort }}
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      {{- if and (eq .Values.service.type "NodePort") .Values.service.nodePort }}
+      nodePort: {{ .Values.service.nodePort }}
       {{- end }}
       protocol: TCP
       name: http

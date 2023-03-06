@@ -25,14 +25,10 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 
 {{/*
-Allow the release namespace to be overridden for multi-namespace deployments in combined charts
+Create chart name and version as used by the chart label.
 */}}
-{{- define "prometheus-node-exporter.namespace" -}}
-{{- if .Values.namespaceOverride }}
-{{- .Values.namespaceOverride }}
-{{- else }}
-{{- .Release.Namespace }}
-{{- end }}
+{{- define "prometheus-node-exporter.chart" -}}
+{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
@@ -56,16 +52,13 @@ release: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Create chart name and version as used by the chart label.
+Selector labels
 */}}
-{{- define "prometheus-node-exporter.chart" -}}
-{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- define "prometheus-node-exporter.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "prometheus-node-exporter.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{- define "prometheus.nodeExporter.matchLabels" -}}
-component: {{ .Values.nodeExporter.name | quote }}
-{{ include "prometheus.common.matchLabels" . }}
-{{- end -}}
 
 {{/*
 Create the name of the service account to use
@@ -82,19 +75,22 @@ Create the name of the service account to use
 The image to use
 */}}
 {{- define "prometheus-node-exporter.image" -}}
-{{- if .Values.nodeExporter.image.sha }}
-{{- printf "%s:%s@%s" .Values.nodeExporter.image.repository (default (printf "v%s" .Chart.AppVersion) .Values.nodeExporter.image.tag) .Values.nodeExporter.image.sha }}
+{{- if .Values.image.sha }}
+{{- printf "%s:%s@%s" .Values.image.repository (default (printf "v%s" .Chart.AppVersion) .Values.image.tag) .Values.image.sha }}
 {{- else }}
-{{- printf "%s:%s" .Values.nodeExporter.image.repository (default (printf "v%s" .Chart.AppVersion) .Values.nodeExporter.image.tag) }}
+{{- printf "%s:%s" .Values.image.repository (default (printf "v%s" .Chart.AppVersion) .Values.image.tag) }}
 {{- end }}
 {{- end }}
 
 {{/*
-Selector labels
+Allow the release namespace to be overridden for multi-namespace deployments in combined charts
 */}}
-{{- define "prometheus-node-exporter.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "prometheus-node-exporter.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
+{{- define "prometheus-node-exporter.namespace" -}}
+{{- if .Values.namespaceOverride }}
+{{- .Values.namespaceOverride }}
+{{- else }}
+{{- .Release.Namespace }}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -109,5 +105,24 @@ Create the namespace name of the service monitor
 {{- else }}
 {{- .Release.Namespace }}
 {{- end }}
+{{- end }}
+{{- end }}
+
+{{/* Sets default scrape limits for servicemonitor */}}
+{{- define "servicemonitor.scrapeLimits" -}}
+{{- with .sampleLimit }}
+sampleLimit: {{ . }}
+{{- end }}
+{{- with .targetLimit }}
+targetLimit: {{ . }}
+{{- end }}
+{{- with .labelLimit }}
+labelLimit: {{ . }}
+{{- end }}
+{{- with .labelNameLengthLimit }}
+labelNameLengthLimit: {{ . }}
+{{- end }}
+{{- with .labelValueLengthLimit }}
+labelValueLengthLimit: {{ . }}
 {{- end }}
 {{- end }}
