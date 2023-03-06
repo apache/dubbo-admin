@@ -18,19 +18,21 @@
 package config
 
 import (
-	"dubbo.apache.org/dubbo-go/v3/common/extension"
-	"dubbo.apache.org/dubbo-go/v3/config_center"
-	"dubbo.apache.org/dubbo-go/v3/metadata/report"
-	"dubbo.apache.org/dubbo-go/v3/registry"
 	"fmt"
-	"github.com/apache/dubbo-admin/pkg/admin/constant"
-	_ "github.com/apache/dubbo-admin/pkg/admin/imports"
-	"gopkg.in/yaml.v2"
 	"log"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"dubbo.apache.org/dubbo-go/v3/common/extension"
+	"dubbo.apache.org/dubbo-go/v3/config_center"
+	"dubbo.apache.org/dubbo-go/v3/metadata/report"
+	"dubbo.apache.org/dubbo-go/v3/registry"
+
+	"github.com/apache/dubbo-admin/pkg/admin/constant"
+	_ "github.com/apache/dubbo-admin/pkg/admin/imports"
+	"gopkg.in/yaml.v2"
 )
 
 const conf = "./conf/dubboadmin.yml"

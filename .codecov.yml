@@ -16,18 +16,17 @@
 # Documentation: https://docs.codecov.io/docs/codecov-yaml
 
 codecov:
-  branch: develop
-
+  require_ci_to_pass: false
+  notify:
+    wait_for_ci: false
 coverage:
   status:
-    project:
+    # pull-requests only
+    patch:
       default:
-        branches:
-          - develop
-
-comment:
-  layout: "reach,diff,flags,files,footer"
-  behavior: default
-  require_changes: no
-  branches:
-    - develop
+        threshold: 0.1%
+ignore:
+  - "**/generated/**"
+  - "**/*generated*"
+  - "**/*.pb.go"
+  - "**/*_test.go"

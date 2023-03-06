@@ -19,9 +19,9 @@ package versioned
 
 import (
 	"fmt"
-	dubbov1beta1 "github.com/apache/dubbo-admin/pkg/authority/generated/clientset/versioned/typed/dubbo.apache.org/v1beta1"
 	"net/http"
 
+	dubbov1beta1 "github.com/apache/dubbo-admin/pkg/authority/generated/clientset/versioned/typed/dubbo.apache.org/v1beta1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"

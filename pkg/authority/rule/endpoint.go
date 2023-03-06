@@ -13,22 +13,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package k8s
+package rule
 
-import (
-	"testing"
-)
-
-func TestName(t *testing.T) {
-	//logger.Init()
-	//client := NewClient()
-	//client.Init(&config.Options{})
-	//client.InitController(authentication.NewHandler(), authorization.NewHandler())
-	//
-	//ch := make(chan struct{})
-	//<-ch
+type Endpoint struct {
+	ID            string
+	Ips           []string
+	SpiffeID      string
+	KubernetesEnv *KubernetesEnv
 }
 
-func TestName2(t *testing.T) {
-
+type KubernetesEnv struct {
+	Namespace       string
+	DeploymentName  string
+	StatefulSetName string
+	PodName         string
+	PodLabels       map[string]string
+	PodAnnotations  map[string]string
 }

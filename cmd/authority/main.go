@@ -16,17 +16,20 @@
 package main
 
 import (
-	"github.com/apache/dubbo-admin/pkg/authority/config"
-	"github.com/apache/dubbo-admin/pkg/authority/logger"
-	"github.com/apache/dubbo-admin/pkg/authority/security"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/apache/dubbo-admin/pkg/authority/config"
+	"github.com/apache/dubbo-admin/pkg/authority/security"
+	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
 // TODO read namespace from env
-const namespace = "dubbo-system"
-const serviceName = "dubbo-ca"
+const (
+	namespace   = "dubbo-system"
+	serviceName = "dubbo-ca"
+)
 
 func main() {
 	logger.Init()
@@ -40,14 +43,14 @@ func main() {
 		DebugPort:        30070,
 
 		WebhookPort:       30080,
-		WebhookAllowOnErr: false,
+		WebhookAllowOnErr: true,
 
 		CaValidity:   30 * 24 * 60 * 60 * 1000, // 30 day
 		CertValidity: 1 * 60 * 60 * 1000,       // 1 hour
 
 		InPodEnv:              false,
 		IsKubernetesConnected: false,
-		EnableOIDCCheck:       false,
+		EnableOIDCCheck:       true,
 	}
 
 	s := security.NewServer(options)

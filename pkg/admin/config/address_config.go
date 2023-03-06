@@ -18,9 +18,10 @@
 package config
 
 import (
+	"net/url"
+
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/common/constant"
-	"net/url"
 )
 
 type AddressConfig struct {

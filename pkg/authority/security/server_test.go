@@ -17,21 +17,24 @@ package security
 
 import (
 	"crypto/tls"
-	cert2 "github.com/apache/dubbo-admin/pkg/authority/cert"
-	"github.com/apache/dubbo-admin/pkg/authority/config"
-	"github.com/apache/dubbo-admin/pkg/authority/k8s"
-	"github.com/apache/dubbo-admin/pkg/authority/logger"
 	"os"
 	"testing"
 	"time"
+
+	cert2 "github.com/apache/dubbo-admin/pkg/authority/cert"
+	"github.com/apache/dubbo-admin/pkg/authority/config"
+	"github.com/apache/dubbo-admin/pkg/authority/k8s"
+	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
 type mockKubeClient struct {
 	k8s.Client
 }
 
-var certPEM = ""
-var priPEM = ""
+var (
+	certPEM = ""
+	priPEM  = ""
+)
 
 func (s *mockKubeClient) Init(options *config.Options) bool {
 	return true
@@ -42,11 +45,13 @@ func (s *mockKubeClient) GetAuthorityCert(namespace string) (string, string) {
 }
 
 func (s *mockKubeClient) UpdateAuthorityCert(cert string, pri string, namespace string) {
-
 }
 
 func (s *mockKubeClient) UpdateAuthorityPublicKey(cert string) bool {
 	return true
+}
+
+func (s *mockKubeClient) UpdateWebhookConfig(options *config.Options, storage cert2.Storage) {
 }
 
 type mockStorage struct {
@@ -59,7 +64,6 @@ func (s *mockStorage) GetServerCert(serverName string) *tls.Certificate {
 }
 
 func (s *mockStorage) RefreshServerCert() {
-
 }
 
 func (s *mockStorage) SetAuthorityCert(cert *cert2.Cert) {
@@ -91,6 +95,8 @@ func (s *mockStorage) GetStopChan() chan os.Signal {
 }
 
 func TestInit(t *testing.T) {
+	t.Parallel()
+
 	logger.Init()
 
 	options := &config.Options{
@@ -125,11 +131,13 @@ func TestInit(t *testing.T) {
 
 	if !s.CertStorage.GetAuthorityCert().IsValid() {
 		t.Fatal("Authority cert is not valid")
+
 		return
 	}
 
 	if s.CertStorage.GetAuthorityCert().CertPem != certPEM {
 		t.Fatal("Authority cert is not equal")
+
 		return
 	}
 
@@ -140,6 +148,8 @@ func TestInit(t *testing.T) {
 }
 
 func TestRefresh(t *testing.T) {
+	t.Parallel()
+
 	logger.Init()
 
 	options := &config.Options{

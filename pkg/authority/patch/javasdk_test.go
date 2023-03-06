@@ -16,14 +16,31 @@
 package patch
 
 import (
-	"encoding/json"
-	"github.com/apache/dubbo-admin/pkg/authority/config"
-	"github.com/mattbaird/jsonpatch"
-	v1 "k8s.io/api/core/v1"
+	"reflect"
 	"testing"
+
+	"github.com/apache/dubbo-admin/pkg/authority/config"
+	"github.com/apache/dubbo-admin/pkg/authority/k8s"
+	v1 "k8s.io/api/core/v1"
 )
 
-func TestName(t *testing.T) {
+type fakeKubeClient struct {
+	k8s.Client
+}
+
+func (f *fakeKubeClient) GetNamespaceLabels(namespace string) map[string]string {
+	if namespace == "matched" {
+		return map[string]string{
+			"dubbo-ca.inject": "true",
+		}
+	} else {
+		return map[string]string{}
+	}
+}
+
+func TestEmpty(t *testing.T) {
+	t.Parallel()
+
 	options := &config.Options{
 		IsKubernetesConnected: false,
 		Namespace:             "dubbo-system",
@@ -37,15 +54,587 @@ func TestName(t *testing.T) {
 		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
 	}
 
-	sdk := NewJavaSdk(options)
+	sdk := NewJavaSdk(options, &fakeKubeClient{})
 	pod := &v1.Pod{}
-	json.Unmarshal([]byte("{\"kind\":\"Pod\",\"apiVersion\":\"v1\",\"metadata\":{\"generateName\":\"nginx-ccc5c45fb-\",\"namespace\":\"default\",\"creationTimestamp\":null,\"labels\":{\"app\":\"nginx\",\"dubbo-ca.inject\":\"true\",\"pod-template-hash\":\"ccc5c45fb\"},\"annotations\":{\"kubernetes.io/psp\":\"ack.privileged\",\"redeploy-timestamp\":\"1677575493160\"},\"ownerReferences\":[{\"apiVersion\":\"apps/v1\",\"kind\":\"ReplicaSet\",\"name\":\"nginx-ccc5c45fb\",\"uid\":\"f3382cb7-dd97-48d2-a01a-1f75e019596d\",\"controller\":true,\"blockOwnerDeletion\":true}],\"managedFields\":[{\"manager\":\"kube-controller-manager\",\"operation\":\"Update\",\"apiVersion\":\"v1\",\"time\":\"2023-02-28T09:23:17Z\",\"fieldsType\":\"FieldsV1\",\"fieldsV1\":{\"f:metadata\":{\"f:annotations\":{\".\":{},\"f:redeploy-timestamp\":{}},\"f:generateName\":{},\"f:labels\":{\".\":{},\"f:app\":{},\"f:dubbo-ca.inject\":{},\"f:pod-template-hash\":{}},\"f:ownerReferences\":{\".\":{},\"k:{\\\"uid\\\":\\\"f3382cb7-dd97-48d2-a01a-1f75e019596d\\\"}\":{}}},\"f:spec\":{\"f:containers\":{\"k:{\\\"name\\\":\\\"nginx\\\"}\":{\".\":{},\"f:image\":{},\"f:imagePullPolicy\":{},\"f:name\":{},\"f:resources\":{\".\":{},\"f:requests\":{\".\":{},\"f:cpu\":{},\"f:memory\":{}}},\"f:terminationMessagePath\":{},\"f:terminationMessagePolicy\":{}}},\"f:dnsPolicy\":{},\"f:enableServiceLinks\":{},\"f:restartPolicy\":{},\"f:schedulerName\":{},\"f:securityContext\":{},\"f:terminationGracePeriodSeconds\":{}}}}]},\"spec\":{\"volumes\":[{\"name\":\"kube-api-access-h9hz2\",\"projected\":{\"sources\":[{\"serviceAccountToken\":{\"expirationSeconds\":3607,\"path\":\"token\"}},{\"configMap\":{\"name\":\"kube-root-ca.crt\",\"items\":[{\"key\":\"ca.crt\",\"path\":\"ca.crt\"}]}},{\"downwardAPI\":{\"items\":[{\"path\":\"namespace\",\"fieldRef\":{\"apiVersion\":\"v1\",\"fieldPath\":\"metadata.namespace\"}}]}}],\"defaultMode\":420}}],\"containers\":[{\"name\":\"nginx\",\"image\":\"nginx:latest\",\"resources\":{\"requests\":{\"cpu\":\"250m\",\"memory\":\"512Mi\"}},\"volumeMounts\":[{\"name\":\"kube-api-access-h9hz2\",\"readOnly\":true,\"mountPath\":\"/var/run/secrets/kubernetes.io/serviceaccount\"}],\"terminationMessagePath\":\"/dev/termination-log\",\"terminationMessagePolicy\":\"File\",\"imagePullPolicy\":\"Always\"}],\"restartPolicy\":\"Always\",\"terminationGracePeriodSeconds\":30,\"dnsPolicy\":\"ClusterFirst\",\"serviceAccountName\":\"default\",\"serviceAccount\":\"default\",\"securityContext\":{},\"schedulerName\":\"default-scheduler\",\"tolerations\":[{\"key\":\"node.kubernetes.io/not-ready\",\"operator\":\"Exists\",\"effect\":\"NoExecute\",\"tolerationSeconds\":300},{\"key\":\"node.kubernetes.io/unreachable\",\"operator\":\"Exists\",\"effect\":\"NoExecute\",\"tolerationSeconds\":300}],\"priority\":0,\"enableServiceLinks\":true,\"preemptionPolicy\":\"PreemptLowerPriority\"},\"status\":{}}"), pod)
 
-	origin, _ := json.Marshal(pod)
 	newPod, _ := sdk.NewPod(pod)
 
-	after, _ := json.Marshal(newPod)
-	patch, _ := jsonpatch.CreatePatch(origin, after)
-	n, _ := json.Marshal(patch)
-	println(string(n))
+	if !reflect.DeepEqual(newPod, pod) {
+		t.Error("should be equal")
+	}
+}
+
+func TestInjectFromLabel(t *testing.T) {
+	t.Parallel()
+
+	options := &config.Options{
+		IsKubernetesConnected: false,
+		Namespace:             "dubbo-system",
+		ServiceName:           "dubbo-ca",
+		PlainServerPort:       30060,
+		SecureServerPort:      30062,
+		DebugPort:             30070,
+		WebhookPort:           30080,
+		WebhookAllowOnErr:     false,
+		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
+		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	}
+
+	sdk := NewJavaSdk(options, &fakeKubeClient{})
+	pod := &v1.Pod{}
+
+	pod.Labels = make(map[string]string)
+	pod.Labels["dubbo-ca.inject"] = "true"
+
+	newPod, _ := sdk.NewPod(pod)
+
+	if reflect.DeepEqual(newPod, pod) {
+		t.Error("should not be equal")
+	}
+}
+
+func TestInjectFromNs(t *testing.T) {
+	t.Parallel()
+
+	options := &config.Options{
+		IsKubernetesConnected: false,
+		Namespace:             "dubbo-system",
+		ServiceName:           "dubbo-ca",
+		PlainServerPort:       30060,
+		SecureServerPort:      30062,
+		DebugPort:             30070,
+		WebhookPort:           30080,
+		WebhookAllowOnErr:     false,
+		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
+		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	}
+
+	sdk := NewJavaSdk(options, &fakeKubeClient{})
+	pod := &v1.Pod{}
+
+	pod.Namespace = "matched"
+
+	newPod, _ := sdk.NewPod(pod)
+
+	if reflect.DeepEqual(newPod, pod) {
+		t.Error("should not be equal")
+	}
+}
+
+func TestInjectVolumes(t *testing.T) {
+	t.Parallel()
+
+	options := &config.Options{
+		IsKubernetesConnected: false,
+		Namespace:             "dubbo-system",
+		ServiceName:           "dubbo-ca",
+		PlainServerPort:       30060,
+		SecureServerPort:      30062,
+		DebugPort:             30070,
+		WebhookPort:           30080,
+		WebhookAllowOnErr:     false,
+		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
+		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	}
+
+	sdk := NewJavaSdk(options, &fakeKubeClient{})
+	pod := &v1.Pod{}
+
+	pod.Namespace = "matched"
+
+	newPod, _ := sdk.NewPod(pod)
+
+	if reflect.DeepEqual(newPod, pod) {
+		t.Error("should not be equal")
+	}
+
+	if len(newPod.Spec.Volumes) != 2 {
+		t.Error("should have 1 volume")
+	}
+
+	if newPod.Spec.Volumes[0].Name != "dubbo-ca-token" {
+		t.Error("should have dubbo-ca-token volume")
+	}
+
+	if len(newPod.Spec.Volumes[0].Projected.Sources) != 1 {
+		t.Error("should have 1 projected source")
+	}
+
+	if newPod.Spec.Volumes[0].Projected.Sources[0].ServiceAccountToken.Path != "token" {
+		t.Error("should have token path")
+	}
+
+	if newPod.Spec.Volumes[0].Projected.Sources[0].ServiceAccountToken.Audience != "dubbo-ca" {
+		t.Error("should have dubbo-ca audience")
+	}
+
+	if *newPod.Spec.Volumes[0].Projected.Sources[0].ServiceAccountToken.ExpirationSeconds != 360 {
+		t.Error("should have 3600 expiration seconds")
+	}
+
+	if newPod.Spec.Volumes[1].Name != "dubbo-ca-cert" {
+		t.Error("should have dubbo-ca-cert volume")
+	}
+
+	if len(newPod.Spec.Volumes[1].Projected.Sources) != 1 {
+		t.Error("should have 1 projected source")
+	}
+
+	if newPod.Spec.Volumes[1].Projected.Sources[0].ConfigMap.Name != "dubbo-ca-cert" {
+		t.Error("should have dubbo-ca-cert configmap")
+	}
+
+	if len(newPod.Spec.Volumes[1].Projected.Sources[0].ConfigMap.Items) != 1 {
+		t.Error("should have 1 item")
+	}
+
+	if newPod.Spec.Volumes[1].Projected.Sources[0].ConfigMap.Items[0].Key != "ca.crt" {
+		t.Error("should have ca.crt key")
+	}
+
+	if newPod.Spec.Volumes[1].Projected.Sources[0].ConfigMap.Items[0].Path != "ca.crt" {
+		t.Error("should have ca.crt path")
+	}
+}
+
+func TestInjectOneContainer(t *testing.T) {
+	t.Parallel()
+
+	options := &config.Options{
+		IsKubernetesConnected: false,
+		Namespace:             "dubbo-system",
+		ServiceName:           "dubbo-ca",
+		PlainServerPort:       30060,
+		SecureServerPort:      30062,
+		DebugPort:             30070,
+		WebhookPort:           30080,
+		WebhookAllowOnErr:     false,
+		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
+		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	}
+
+	sdk := NewJavaSdk(options, &fakeKubeClient{})
+	pod := &v1.Pod{}
+
+	pod.Namespace = "matched"
+
+	pod.Spec.Containers = make([]v1.Container, 1)
+	pod.Spec.Containers[0].Name = "test"
+
+	newPod, _ := sdk.NewPod(pod)
+
+	if reflect.DeepEqual(newPod, pod) {
+		t.Error("should not be equal")
+	}
+
+	if len(newPod.Spec.Containers) != 1 {
+		t.Error("should have 1 container")
+	}
+
+	container := newPod.Spec.Containers[0]
+	checkContainer(t, container)
+}
+
+func TestInjectTwoContainer(t *testing.T) {
+	t.Parallel()
+
+	options := &config.Options{
+		IsKubernetesConnected: false,
+		Namespace:             "dubbo-system",
+		ServiceName:           "dubbo-ca",
+		PlainServerPort:       30060,
+		SecureServerPort:      30062,
+		DebugPort:             30070,
+		WebhookPort:           30080,
+		WebhookAllowOnErr:     false,
+		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
+		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	}
+
+	sdk := NewJavaSdk(options, &fakeKubeClient{})
+	pod := &v1.Pod{}
+
+	pod.Namespace = "matched"
+
+	pod.Spec.Containers = make([]v1.Container, 2)
+	pod.Spec.Containers[0].Name = "test"
+	pod.Spec.Containers[1].Name = "test"
+
+	newPod, _ := sdk.NewPod(pod)
+
+	if reflect.DeepEqual(newPod, pod) {
+		t.Error("should not be equal")
+	}
+
+	if len(newPod.Spec.Containers) != 2 {
+		t.Error("should have 2 container")
+	}
+
+	container := newPod.Spec.Containers[0]
+	checkContainer(t, container)
+
+	container = newPod.Spec.Containers[1]
+	checkContainer(t, container)
+}
+
+func checkContainer(t *testing.T, container v1.Container) {
+	if container.Name != "test" {
+		t.Error("should have test container")
+	}
+
+	if len(container.Env) != 3 {
+		t.Error("should have 3 env")
+	}
+
+	if container.Env[0].Name != "DUBBO_CA_ADDRESS" {
+		t.Error("should have DUBBO_CA_ADDRESS env")
+	}
+
+	if container.Env[0].Value != "dubbo-ca.dubbo-system.svc:30062" {
+		t.Error("should have dubbo-ca.dubbo-system.svc:30062 value")
+	}
+
+	if container.Env[1].Name != "DUBBO_CA_CERT_PATH" {
+		t.Error("should have DUBBO_CA_TOKEN_PATH env")
+	}
+
+	if container.Env[1].Value != "/var/run/secrets/dubbo-ca-cert/ca.crt" {
+		t.Error("should have /var/run/secrets/dubbo-ca-cert/ca.crt value")
+	}
+
+	if container.Env[2].Name != "DUBBO_OIDC_TOKEN" {
+		t.Error("should have DUBBO_OIDC_TOKEN env")
+	}
+
+	if container.Env[2].Value != "/var/run/secrets/dubbo-ca-token/token" {
+		t.Error("should have /var/run/secrets/dubbo-ca-token/token value")
+	}
+
+	if len(container.VolumeMounts) != 2 {
+		t.Error("should have 2 volume mounts")
+	}
+
+	if container.VolumeMounts[0].Name != "dubbo-ca-token" {
+		t.Error("should have dubbo-ca-token volume mount")
+	}
+
+	if container.VolumeMounts[0].MountPath != "/var/run/secrets/dubbo-ca-token" {
+		t.Error("should have /var/run/secrets/dubbo-ca-token mount path")
+	}
+
+	if container.VolumeMounts[1].Name != "dubbo-ca-cert" {
+		t.Error("should have dubbo-ca-cert volume mount")
+	}
+
+	if container.VolumeMounts[1].MountPath != "/var/run/secrets/dubbo-ca-cert" {
+		t.Error("should have /var/run/secrets/dubbo-ca-cert mount path")
+	}
+}
+
+func TestCheckVolume1(t *testing.T) {
+	t.Parallel()
+
+	options := &config.Options{
+		IsKubernetesConnected: false,
+		Namespace:             "dubbo-system",
+		ServiceName:           "dubbo-ca",
+		PlainServerPort:       30060,
+		SecureServerPort:      30062,
+		DebugPort:             30070,
+		WebhookPort:           30080,
+		WebhookAllowOnErr:     false,
+		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
+		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	}
+
+	sdk := NewJavaSdk(options, &fakeKubeClient{})
+	pod := &v1.Pod{}
+
+	pod.Namespace = "matched"
+
+	pod.Spec.Containers = make([]v1.Container, 1)
+	pod.Spec.Containers[0].Name = "test"
+
+	pod.Spec.Volumes = make([]v1.Volume, 1)
+	pod.Spec.Volumes[0].Name = "dubbo-ca-token"
+
+	newPod, _ := sdk.NewPod(pod)
+
+	if !reflect.DeepEqual(newPod, pod) {
+		t.Error("should be equal")
+	}
+}
+
+func TestCheckVolume2(t *testing.T) {
+	t.Parallel()
+
+	options := &config.Options{
+		IsKubernetesConnected: false,
+		Namespace:             "dubbo-system",
+		ServiceName:           "dubbo-ca",
+		PlainServerPort:       30060,
+		SecureServerPort:      30062,
+		DebugPort:             30070,
+		WebhookPort:           30080,
+		WebhookAllowOnErr:     false,
+		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
+		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	}
+
+	sdk := NewJavaSdk(options, &fakeKubeClient{})
+	pod := &v1.Pod{}
+
+	pod.Namespace = "matched"
+
+	pod.Spec.Containers = make([]v1.Container, 1)
+	pod.Spec.Containers[0].Name = "test"
+
+	pod.Spec.Volumes = make([]v1.Volume, 1)
+	pod.Spec.Volumes[0].Name = "dubbo-ca-cert"
+
+	newPod, _ := sdk.NewPod(pod)
+
+	if !reflect.DeepEqual(newPod, pod) {
+		t.Error("should be equal")
+	}
+}
+
+func TestCheckEnv1(t *testing.T) {
+	t.Parallel()
+
+	options := &config.Options{
+		IsKubernetesConnected: false,
+		Namespace:             "dubbo-system",
+		ServiceName:           "dubbo-ca",
+		PlainServerPort:       30060,
+		SecureServerPort:      30062,
+		DebugPort:             30070,
+		WebhookPort:           30080,
+		WebhookAllowOnErr:     false,
+		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
+		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	}
+
+	sdk := NewJavaSdk(options, &fakeKubeClient{})
+	pod := &v1.Pod{}
+
+	pod.Namespace = "matched"
+
+	pod.Spec.Containers = make([]v1.Container, 1)
+	pod.Spec.Containers[0].Name = "test"
+
+	pod.Spec.Containers[0].Env = make([]v1.EnvVar, 1)
+	pod.Spec.Containers[0].Env[0].Name = "DUBBO_CA_ADDRESS"
+
+	newPod, _ := sdk.NewPod(pod)
+
+	if !reflect.DeepEqual(newPod, pod) {
+		t.Error("should be equal")
+	}
+}
+
+func TestCheckEnv2(t *testing.T) {
+	t.Parallel()
+
+	options := &config.Options{
+		IsKubernetesConnected: false,
+		Namespace:             "dubbo-system",
+		ServiceName:           "dubbo-ca",
+		PlainServerPort:       30060,
+		SecureServerPort:      30062,
+		DebugPort:             30070,
+		WebhookPort:           30080,
+		WebhookAllowOnErr:     false,
+		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
+		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	}
+
+	sdk := NewJavaSdk(options, &fakeKubeClient{})
+	pod := &v1.Pod{}
+
+	pod.Namespace = "matched"
+
+	pod.Spec.Containers = make([]v1.Container, 1)
+	pod.Spec.Containers[0].Name = "test"
+
+	pod.Spec.Containers[0].Env = make([]v1.EnvVar, 1)
+	pod.Spec.Containers[0].Env[0].Name = "DUBBO_CA_CERT_PATH"
+
+	newPod, _ := sdk.NewPod(pod)
+
+	if !reflect.DeepEqual(newPod, pod) {
+		t.Error("should be equal")
+	}
+}
+
+func TestCheckEnv3(t *testing.T) {
+	t.Parallel()
+
+	options := &config.Options{
+		IsKubernetesConnected: false,
+		Namespace:             "dubbo-system",
+		ServiceName:           "dubbo-ca",
+		PlainServerPort:       30060,
+		SecureServerPort:      30062,
+		DebugPort:             30070,
+		WebhookPort:           30080,
+		WebhookAllowOnErr:     false,
+		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
+		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	}
+
+	sdk := NewJavaSdk(options, &fakeKubeClient{})
+	pod := &v1.Pod{}
+
+	pod.Namespace = "matched"
+
+	pod.Spec.Containers = make([]v1.Container, 1)
+	pod.Spec.Containers[0].Name = "test"
+
+	pod.Spec.Containers[0].Env = make([]v1.EnvVar, 1)
+	pod.Spec.Containers[0].Env[0].Name = "DUBBO_OIDC_TOKEN"
+
+	newPod, _ := sdk.NewPod(pod)
+
+	if !reflect.DeepEqual(newPod, pod) {
+		t.Error("should be equal")
+	}
+}
+
+func TestCheckEnv4(t *testing.T) {
+	t.Parallel()
+
+	options := &config.Options{
+		IsKubernetesConnected: false,
+		Namespace:             "dubbo-system",
+		ServiceName:           "dubbo-ca",
+		PlainServerPort:       30060,
+		SecureServerPort:      30062,
+		DebugPort:             30070,
+		WebhookPort:           30080,
+		WebhookAllowOnErr:     false,
+		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
+		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	}
+
+	sdk := NewJavaSdk(options, &fakeKubeClient{})
+	pod := &v1.Pod{}
+
+	pod.Namespace = "matched"
+
+	pod.Spec.Containers = make([]v1.Container, 2)
+	pod.Spec.Containers[0].Name = "test"
+	pod.Spec.Containers[1].Name = "test"
+
+	pod.Spec.Containers[1].Env = make([]v1.EnvVar, 1)
+	pod.Spec.Containers[1].Env[0].Name = "DUBBO_OIDC_TOKEN"
+
+	newPod, _ := sdk.NewPod(pod)
+
+	if !reflect.DeepEqual(newPod, pod) {
+		t.Error("should be equal")
+	}
+}
+
+func TestCheckContainerVolume1(t *testing.T) {
+	t.Parallel()
+
+	options := &config.Options{
+		IsKubernetesConnected: false,
+		Namespace:             "dubbo-system",
+		ServiceName:           "dubbo-ca",
+		PlainServerPort:       30060,
+		SecureServerPort:      30062,
+		DebugPort:             30070,
+		WebhookPort:           30080,
+		WebhookAllowOnErr:     false,
+		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
+		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	}
+
+	sdk := NewJavaSdk(options, &fakeKubeClient{})
+	pod := &v1.Pod{}
+
+	pod.Namespace = "matched"
+
+	pod.Spec.Containers = make([]v1.Container, 1)
+	pod.Spec.Containers[0].Name = "test"
+
+	pod.Spec.Containers[0].VolumeMounts = make([]v1.VolumeMount, 1)
+	pod.Spec.Containers[0].VolumeMounts[0].Name = "dubbo-ca-token"
+
+	newPod, _ := sdk.NewPod(pod)
+
+	if !reflect.DeepEqual(newPod, pod) {
+		t.Error("should be equal")
+	}
+}
+
+func TestCheckContainerVolume2(t *testing.T) {
+	t.Parallel()
+
+	options := &config.Options{
+		IsKubernetesConnected: false,
+		Namespace:             "dubbo-system",
+		ServiceName:           "dubbo-ca",
+		PlainServerPort:       30060,
+		SecureServerPort:      30062,
+		DebugPort:             30070,
+		WebhookPort:           30080,
+		WebhookAllowOnErr:     false,
+		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
+		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	}
+
+	sdk := NewJavaSdk(options, &fakeKubeClient{})
+	pod := &v1.Pod{}
+
+	pod.Namespace = "matched"
+
+	pod.Spec.Containers = make([]v1.Container, 1)
+	pod.Spec.Containers[0].Name = "test"
+
+	pod.Spec.Containers[0].VolumeMounts = make([]v1.VolumeMount, 1)
+	pod.Spec.Containers[0].VolumeMounts[0].Name = "dubbo-ca-cert"
+
+	newPod, _ := sdk.NewPod(pod)
+
+	if !reflect.DeepEqual(newPod, pod) {
+		t.Error("should be equal")
+	}
+}
+
+func TestCheckContainerVolume3(t *testing.T) {
+	t.Parallel()
+
+	options := &config.Options{
+		IsKubernetesConnected: false,
+		Namespace:             "dubbo-system",
+		ServiceName:           "dubbo-ca",
+		PlainServerPort:       30060,
+		SecureServerPort:      30062,
+		DebugPort:             30070,
+		WebhookPort:           30080,
+		WebhookAllowOnErr:     false,
+		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
+		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	}
+
+	sdk := NewJavaSdk(options, &fakeKubeClient{})
+	pod := &v1.Pod{}
+
+	pod.Namespace = "matched"
+
+	pod.Spec.Containers = make([]v1.Container, 2)
+	pod.Spec.Containers[0].Name = "test"
+	pod.Spec.Containers[1].Name = "test"
+
+	pod.Spec.Containers[1].VolumeMounts = make([]v1.VolumeMount, 1)
+	pod.Spec.Containers[1].VolumeMounts[0].Name = "dubbo-ca-cert"
+
+	newPod, _ := sdk.NewPod(pod)
+
+	if !reflect.DeepEqual(newPod, pod) {
+		t.Error("should be equal")
+	}
 }
