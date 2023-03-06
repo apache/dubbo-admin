@@ -13,20 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Documentation: https://docs.codecov.io/docs/codecov-yaml
-
-codecov:
-  require_ci_to_pass: false
-  notify:
-    wait_for_ci: false
-coverage:
-  status:
-    # pull-requests only
-    patch:
-      default:
-        threshold: 0.1%
-ignore:
-  - "**/generated/**"
-  - "**/*generated*"
-  - "**/*.pb.go"
-  - "**/*_test.go"
+approvers:
+- dev@dubbo.apache.org
+reviewers:
+- dev@dubbo.apache.org

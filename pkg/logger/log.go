@@ -16,16 +16,29 @@
 package logger
 
 import (
-	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	"os"
+	"sync"
+
+	grpcZap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"os"
 )
 
-var Logger *zap.Logger
-var Sugar *zap.SugaredLogger
+var (
+	mutex   = &sync.Mutex{}
+	hasInit = false
+	logger  *zap.Logger
+	sugar   *zap.SugaredLogger
+)
 
 func Init() {
+	mutex.Lock()
+	defer mutex.Unlock()
+	if hasInit {
+		return
+	}
+	hasInit = true
+
 	encoder := zapcore.NewConsoleEncoder(
 		zapcore.EncoderConfig{
 			MessageKey:     "msg",
@@ -41,11 +54,24 @@ func Init() {
 			EncodeDuration: zapcore.SecondsDurationEncoder,
 		})
 	core := zapcore.NewCore(encoder, os.Stdout, zap.DebugLevel)
-	Logger = zap.New(core)
-	defer Logger.Sync() // flushes buffer, if any
-	Sugar = Logger.Sugar()
+	logger = zap.New(core)
+	defer logger.Sync() // flushes buffer, if any
+	sugar = logger.Sugar()
 
 	// Make sure that log statements internal to gRPC library are logged using the zapLogger as well.
-	grpc_zap.ReplaceGrpcLoggerV2(Logger)
+	grpcZap.ReplaceGrpcLoggerV2(logger)
+}
 
+func Sugar() *zap.SugaredLogger {
+	if sugar == nil {
+		Init()
+	}
+	return sugar
+}
+
+func Logger() *zap.Logger {
+	if logger == nil {
+		Init()
+	}
+	return logger
 }

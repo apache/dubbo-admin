@@ -19,46 +19,34 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/apache/dubbo-admin/pkg/authority/config"
-	"github.com/apache/dubbo-admin/pkg/authority/logger"
-	"github.com/mattbaird/jsonpatch"
 	"io"
+	"net/http"
+
+	"github.com/apache/dubbo-admin/pkg/authority/config"
+	"github.com/apache/dubbo-admin/pkg/logger"
+	"github.com/mattbaird/jsonpatch"
+
 	admissionV1 "k8s.io/api/admission/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/http"
 )
 
-type PodPatch func(*v1.Pod) (*v1.Pod, error)
-type GetCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)
+type (
+	PodPatch       func(*v1.Pod) (*v1.Pod, error)
+	GetCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)
+)
 
 type Webhook struct {
 	Patches        []PodPatch
 	AllowOnErr     bool
 	getCertificate GetCertificate
-	server         *http.Server
-	cert           string
-	key            string
-}
-
-type AdmitError struct {
-	error
-	message string
-}
-
-func NewAdmitError(message string) *AdmitError {
-	return &AdmitError{
-		message: message,
-	}
-}
-
-func (e *AdmitError) Error() string {
-	return e.message
+	Server         *http.Server
 }
 
 func NewWebhook(certificate GetCertificate) *Webhook {
 	return &Webhook{
 		getCertificate: certificate,
+		AllowOnErr:     true,
 	}
 }
 
@@ -76,29 +64,23 @@ func (wh *Webhook) NewServer(port int32) *http.Server {
 }
 
 func (wh *Webhook) Init(options *config.Options) {
-	wh.server = wh.NewServer(options.WebhookPort)
+	wh.Server = wh.NewServer(options.WebhookPort)
+	wh.AllowOnErr = options.WebhookAllowOnErr
 }
 
 func (wh *Webhook) Serve() {
-	if wh.cert != "" && wh.key != "" {
-		err := wh.server.ListenAndServeTLS("", "")
-		if err != nil {
-			logger.Sugar.Fatalf("[Webhook] Serve webhook server failed. %v", err.Error())
-			return
-		}
-	} else {
-		err := wh.server.ListenAndServe()
-		if err != nil {
-			logger.Sugar.Fatalf("[Webhook] Serve webhook server failed. %v", err.Error())
-			return
-		}
+	err := wh.Server.ListenAndServeTLS("", "")
+	if err != nil {
+		logger.Sugar().Warnf("[Webhook] Serve webhook server failed. %v", err.Error())
+
+		return
 	}
 }
 
 func (wh *Webhook) Stop() {
-	err := wh.server.Close()
-	if err != nil {
-		logger.Sugar.Fatalf("[Webhook] Stop webhook server failed. %v", err.Error())
+	if err := wh.Server.Close(); err != nil {
+		logger.Sugar().Warnf("[Webhook] Stop webhook server failed. %v", err.Error())
+
 		return
 	}
 }
@@ -116,13 +98,15 @@ func (wh *Webhook) Mutate(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	logger.Sugar.Infof("[Webhook] Mutation request: " + string(body))
+	logger.Sugar().Infof("[Webhook] Mutation request: " + string(body))
 
 	// verify the content type is accurate
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "application/json" {
 		outputLog := fmt.Sprintf("[Webhook] contentType=%s, expect application/json", contentType)
-		logger.Sugar.Errorf(outputLog)
+		logger.Sugar().Errorf(outputLog)
+		w.WriteHeader(http.StatusUnsupportedMediaType)
+
 		return
 	}
 
@@ -130,7 +114,7 @@ func (wh *Webhook) Mutate(w http.ResponseWriter, r *http.Request) {
 	ar := admissionV1.AdmissionReview{}
 	if err := json.Unmarshal(body, &ar); err != nil {
 		outputLog := fmt.Sprintf("[Webhook] json unmarshal err=%s", err)
-		logger.Sugar.Errorf(outputLog)
+		logger.Sugar().Errorf(outputLog)
 
 		reviewResponse = &admissionV1.AdmissionResponse{
 			Allowed: wh.AllowOnErr,
@@ -143,7 +127,7 @@ func (wh *Webhook) Mutate(w http.ResponseWriter, r *http.Request) {
 	} else {
 		reviewResponse, err = wh.Admit(ar)
 		if err != nil {
-			logger.Sugar.Errorf(err.Error())
+			logger.Sugar().Errorf(err.Error())
 
 			reviewResponse = &admissionV1.AdmissionResponse{
 				Allowed: wh.AllowOnErr,
@@ -161,21 +145,25 @@ func (wh *Webhook) Mutate(w http.ResponseWriter, r *http.Request) {
 	response.TypeMeta.APIVersion = "admission.k8s.io/v1"
 	response.Response = reviewResponse
 
-	logger.Sugar.Infof("[Webhook] AdmissionReview response: %v", response)
+	logger.Sugar().Infof("[Webhook] AdmissionReview response: %v", response)
 
 	resp, err := json.Marshal(response)
 	if err != nil {
 		outputLog := fmt.Sprintf("[Webhook] response json unmarshal err=%s", err)
-		logger.Sugar.Errorf(outputLog)
+		logger.Sugar().Errorf(outputLog)
 	}
 	if _, err := w.Write(resp); err != nil {
 		outputLog := fmt.Sprintf("[Webhook] write resp err=%s", err)
-		logger.Sugar.Errorf(outputLog)
+		logger.Sugar().Errorf(outputLog)
 	}
 }
 
 func (wh *Webhook) Admit(ar admissionV1.AdmissionReview) (*admissionV1.AdmissionResponse, error) {
-	var reviewResponse = &admissionV1.AdmissionResponse{
+	if ar.Request == nil {
+		return nil, fmt.Errorf("[Webhook] AdmissionReview request is nil")
+	}
+
+	reviewResponse := &admissionV1.AdmissionResponse{
 		Allowed: true,
 		UID:     ar.Request.UID,
 	}
@@ -183,29 +171,33 @@ func (wh *Webhook) Admit(ar admissionV1.AdmissionReview) (*admissionV1.Admission
 	podResource := metav1.GroupVersionResource{Group: "", Version: "v1", Resource: "pods"}
 
 	if ar.Request.Resource != podResource {
-		outputLog := fmt.Sprintf("[Webhook] expect resource to be %s", podResource)
-		return nil, NewAdmitError(outputLog)
+		outputLog := fmt.Sprintf("[Webhook] expect resource to be pods, but actual is %s", ar.Request.Resource)
+
+		return nil, fmt.Errorf(outputLog)
 	}
 
 	raw := ar.Request.Object.Raw
-
 	pod := v1.Pod{}
 
 	if err := json.Unmarshal(raw, &pod); err != nil {
 		outputLog := fmt.Sprintf("[Webhook] pod unmarshal error. %s", err)
-		return nil, NewAdmitError(outputLog)
+
+		return nil, fmt.Errorf(outputLog)
 	}
 
 	patchBytes, err := wh.PatchPod(&pod)
 	if err != nil {
-		outputLog := fmt.Sprintf("[Webhook] Patch error: %v", pod.ObjectMeta.Name)
-		return nil, NewAdmitError(outputLog)
+		outputLog := fmt.Sprintf("[Webhook] Patch error: %v. Msg: %s", pod.ObjectMeta.Name, err.Error())
+
+		return nil, fmt.Errorf(outputLog)
 	}
 
 	reviewResponse.Patch = patchBytes
 
-	logger.Sugar.Infof("[Webhook] Patch after mutate : %s", string(patchBytes))
+	logger.Sugar().Infof("[Webhook] Patch after mutate : %s", string(patchBytes))
+
 	pt := admissionV1.PatchTypeJSONPatch
+
 	reviewResponse.PatchType = &pt
 
 	return reviewResponse, nil
@@ -215,19 +207,23 @@ func (wh *Webhook) PatchPod(pod *v1.Pod) ([]byte, error) {
 	origin, originErr := json.Marshal(pod)
 
 	if originErr == nil {
-		logger.Sugar.Infof("[Webhook] Pod before mutate: %v", string(origin))
+		logger.Sugar().Infof("[Webhook] Pod before mutate: %v", string(origin))
 	} else {
 		return nil, originErr
 	}
 
 	for _, patch := range wh.Patches {
-		pod, _ = patch(pod)
+		patched, err := patch(pod)
+		if err != nil {
+			return nil, fmt.Errorf("[Webhook] Pod patch failed: %s", err.Error())
+		}
+		pod = patched
 	}
 
 	after, afterErr := json.Marshal(pod)
 
 	if afterErr == nil {
-		logger.Sugar.Infof("[Webhook] Pod after mutate: %v", string(after))
+		logger.Sugar().Infof("[Webhook] Pod after mutate: %v", string(after))
 	} else {
 		return nil, afterErr
 	}

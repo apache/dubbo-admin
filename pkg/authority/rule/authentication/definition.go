@@ -22,13 +22,13 @@ type Policy struct {
 }
 
 type PolicySpec struct {
-	Action    string  `json:"action,omitempty"`
-	Rules     []*Rule `json:"rules,omitempty"`
-	Order     int     `json:"order,omitempty"`
-	MatchType string  `json:"matchType,omitempty"`
+	Action    string        `json:"action,omitempty"`
+	Rules     []*PolicyRule `json:"rules,omitempty"`
+	Order     int           `json:"order,omitempty"`
+	MatchType string        `json:"matchType,omitempty"`
 }
 
-type Rule struct {
+type PolicyRule struct {
 	From *Source `json:"from,omitempty"`
 	To   *Target `json:"to,omitempty"`
 }

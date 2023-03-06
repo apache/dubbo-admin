@@ -18,10 +18,10 @@
 package v1beta1
 
 import (
-	"github.com/apache/dubbo-admin/pkg/authority/apis/dubbo.apache.org/v1beta1"
-	"github.com/apache/dubbo-admin/pkg/authority/generated/clientset/versioned/scheme"
 	"net/http"
 
+	v1beta1 "github.com/apache/dubbo-admin/pkg/authority/apis/dubbo.apache.org/v1beta1"
+	"github.com/apache/dubbo-admin/pkg/authority/generated/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 

@@ -16,23 +16,25 @@
 package v1alpha1
 
 import (
+	"net"
+	"testing"
+
 	cert2 "github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
-	"github.com/apache/dubbo-admin/pkg/authority/logger"
+	"github.com/apache/dubbo-admin/pkg/authority/rule"
+	"github.com/apache/dubbo-admin/pkg/logger"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
-	"net"
-	"testing"
 )
 
 type MockKubeClient struct {
 	k8s.Client
 }
 
-func (c MockKubeClient) VerifyServiceAccount(token string) bool {
-	return "expceted-token" == token
+func (c MockKubeClient) VerifyServiceAccount(token string) (*rule.Endpoint, bool) {
+	return nil, "expceted-token" == token
 }
 
 type fakeAddr struct {
@@ -44,6 +46,8 @@ func (f *fakeAddr) String() string {
 }
 
 func TestCSRFailed(t *testing.T) {
+	t.Parallel()
+
 	logger.Init()
 
 	md := metadata.MD{}
@@ -69,7 +73,6 @@ func TestCSRFailed(t *testing.T) {
 	certificate, err := impl.CreateCertificate(c, &DubboCertificateRequest{
 		Csr: "",
 	})
-
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -112,6 +115,8 @@ func TestCSRFailed(t *testing.T) {
 }
 
 func TestTokenFailed(t *testing.T) {
+	t.Parallel()
+
 	logger.Init()
 
 	p := peer.NewContext(context.TODO(), &peer.Peer{Addr: &fakeAddr{}})
@@ -141,7 +146,6 @@ func TestTokenFailed(t *testing.T) {
 	certificate, err := impl.CreateCertificate(p, &DubboCertificateRequest{
 		Csr: csr,
 	})
-
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -217,11 +221,10 @@ func TestTokenFailed(t *testing.T) {
 		t.Fatal("Cert is not valid")
 		return
 	}
-
 }
 
 func TestSuccess(t *testing.T) {
-	logger.Init()
+	t.Parallel()
 
 	md := metadata.MD{}
 	md["authorization"] = []string{"Bearer 123"}
@@ -252,7 +255,6 @@ func TestSuccess(t *testing.T) {
 	certificate, err := impl.CreateCertificate(c, &DubboCertificateRequest{
 		Csr: csr,
 	})
-
 	if err != nil {
 		t.Fatal(err)
 		return

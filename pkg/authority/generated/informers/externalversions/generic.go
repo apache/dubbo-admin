@@ -19,8 +19,8 @@ package externalversions
 
 import (
 	"fmt"
-	"github.com/apache/dubbo-admin/pkg/authority/apis/dubbo.apache.org/v1beta1"
 
+	v1beta1 "github.com/apache/dubbo-admin/pkg/authority/apis/dubbo.apache.org/v1beta1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )

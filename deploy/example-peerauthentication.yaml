@@ -39,7 +39,7 @@ spec:
   rules:
     - from:
         principals: ["cluster.local/ns/default/sa/sleep"]
-        namespaces: ["test"]
+        namespaces: ["test23"]
       to:
         principals: ["cluster.local/ns/default/sa/sleep"]
   samples: 0.12

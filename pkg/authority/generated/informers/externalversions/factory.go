@@ -18,13 +18,13 @@
 package externalversions
 
 import (
-	"github.com/apache/dubbo-admin/pkg/authority/generated/clientset/versioned"
-	dubboapacheorg "github.com/apache/dubbo-admin/pkg/authority/generated/informers/externalversions/dubbo.apache.org"
-	"github.com/apache/dubbo-admin/pkg/authority/generated/informers/externalversions/internalinterfaces"
 	reflect "reflect"
 	sync "sync"
 	time "time"
 
+	versioned "github.com/apache/dubbo-admin/pkg/authority/generated/clientset/versioned"
+	dubboapacheorg "github.com/apache/dubbo-admin/pkg/authority/generated/informers/externalversions/dubbo.apache.org"
+	internalinterfaces "github.com/apache/dubbo-admin/pkg/authority/generated/informers/externalversions/internalinterfaces"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

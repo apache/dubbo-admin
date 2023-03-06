@@ -18,9 +18,10 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 	"github.com/gin-gonic/gin"
-	"net/http"
 )
 
 var providerService services.ProviderService = &services.ProviderServiceImpl{}
