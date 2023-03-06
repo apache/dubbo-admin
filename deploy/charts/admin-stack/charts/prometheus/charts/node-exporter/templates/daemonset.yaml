@@ -1,0 +1,240 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "prometheus-node-exporter.fullname" . }}
+  namespace: {{ include "prometheus-node-exporter.namespace" . }}
+  labels:
+    {{- include "prometheus-node-exporter.labels" . | nindent 4 }}
+  {{- with .Values.daemonsetAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "prometheus-node-exporter.selectorLabels" . | nindent 6 }}
+  {{- with .Values.updateStrategy }}
+  updateStrategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "prometheus-node-exporter.labels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
+      {{- with .Values.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      {{- with .Values.extraInitContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "prometheus-node-exporter.serviceAccountName" . }}
+      containers:
+        - name: node-exporter
+          image: {{ include "prometheus-node-exporter.image" . }}
+          imagePullPolicy: {{ .Values.nodeExporter.image.pullPolicy }}
+          args:
+            - --path.procfs=/host/proc
+            - --path.sysfs=/host/sys
+            {{- if .Values.hostRootFsMount.enabled }}
+            - --path.rootfs=/host/root
+            {{- end }}
+            - --web.listen-address=[$(HOST_IP)]:{{ .Values.service.port }}
+            {{- with .Values.extraArgs }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.containerSecurityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          env:
+            - name: HOST_IP
+              {{- if .Values.service.listenOnAllInterfaces }}
+              value: 0.0.0.0
+              {{- else }}
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.hostIP
+              {{- end }}
+            {{- range $key, $value := .Values.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          ports:
+            - name: {{ .Values.service.portName }}
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          livenessProbe:
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+            httpGet:
+              httpHeaders:
+              {{- range $_, $header := .Values.livenessProbe.httpGet.httpHeaders }}
+              - name: {{ $header.name }}
+                value: {{ $header.value }}
+              {{- end }}
+              path: /
+              port: {{ .Values.service.port }}
+              scheme: {{ upper .Values.livenessProbe.httpGet.scheme }}
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            successThreshold: {{ .Values.livenessProbe.successThreshold }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          readinessProbe:
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+            httpGet:
+              httpHeaders:
+              {{- range $_, $header := .Values.readinessProbe.httpGet.httpHeaders }}
+              - name: {{ $header.name }}
+                value: {{ $header.value }}
+              {{- end }}
+              path: /
+              port: {{ .Values.service.port }}
+              scheme: {{ upper .Values.readinessProbe.httpGet.scheme }}
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: proc
+              mountPath: /host/proc
+              readOnly:  true
+            - name: sys
+              mountPath: /host/sys
+              readOnly: true
+            {{- if .Values.hostRootFsMount.enabled }}
+            - name: root
+              mountPath: /host/root
+              {{- with .Values.hostRootFsMount.mountPropagation }}
+              mountPropagation: {{ . }}
+              {{- end }}
+              readOnly: true
+            {{- end }}
+            {{- range $_, $mount := .Values.extraHostVolumeMounts }}
+            - name: {{ $mount.name }}
+              mountPath: {{ $mount.mountPath }}
+              readOnly: {{ $mount.readOnly }}
+              {{- with $mount.mountPropagation }}
+              mountPropagation: {{ . }}
+              {{- end }}
+            {{- end }}
+            {{- range $_, $mount := .Values.sidecarVolumeMount }}
+            - name: {{ $mount.name }}
+              mountPath: {{ $mount.mountPath }}
+              readOnly: true
+            {{- end }}
+            {{- range $_, $mount := .Values.configmaps }}
+            - name: {{ $mount.name }}
+              mountPath: {{ $mount.mountPath }}
+            {{- end }}
+            {{- range $_, $mount := .Values.secrets }}
+            - name: {{ .name }}
+              mountPath: {{ .mountPath }}
+            {{- end }}
+        {{- with .Values.sidecars }}
+        {{- toYaml . | nindent 8 }}
+          {{- if or $.Values.sidecarVolumeMount $.Values.sidecarHostVolumeMounts }}
+          volumeMounts:
+            {{- range $_, $mount := $.Values.sidecarVolumeMount }}
+            - name: {{ $mount.name }}
+              mountPath: {{ $mount.mountPath }}
+              readOnly: {{ $mount.readOnly }}
+            {{- end }}
+            {{- range $_, $mount := $.Values.sidecarHostVolumeMounts }}
+            - name: {{ $mount.name }}
+              mountPath: {{ $mount.mountPath }}
+              readOnly: {{ $mount.readOnly }}
+            {{- if $mount.mountPropagation }}
+              mountPropagation: {{ $mount.mountPropagation }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      hostNetwork: {{ .Values.hostNetwork }}
+      hostPID: {{ .Values.hostPID }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.dnsConfig }}
+      dnsConfig:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+        {{- if .Values.hostRootFsMount.enabled }}
+        - name: root
+          hostPath:
+            path: /
+        {{- end }}
+        {{- range $_, $mount := .Values.extraHostVolumeMounts }}
+        - name: {{ $mount.name }}
+          hostPath:
+            path: {{ $mount.hostPath }}
+        {{- end }}
+        {{- range $_, $mount := .Values.sidecarVolumeMount }}
+        - name: {{ $mount.name }}
+          emptyDir:
+            medium: Memory
+        {{- end }}
+        {{- range $_, $mount := .Values.sidecarHostVolumeMounts }}
+        - name: {{ $mount.name }}
+          hostPath:
+            path: {{ $mount.hostPath }}
+        {{- end }}
+        {{- range $_, $mount := .Values.configmaps }}
+        - name: {{ $mount.name }}
+          configMap:
+            name: {{ $mount.name }}
+        {{- end }}
+        {{- range $_, $mount := .Values.secrets }}
+        - name: {{ $mount.name }}
+          secret:
+            secretName: {{ $mount.name }}
+        {{- end }}

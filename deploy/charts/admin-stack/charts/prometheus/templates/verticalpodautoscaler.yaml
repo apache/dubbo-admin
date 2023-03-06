@@ -1,0 +1,39 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+{{- if .Values.server.enabled -}}
+{{- if .Values.server.verticalAutoscaler.enabled -}}
+apiVersion: autoscaling.k8s.io/v1beta2
+kind: VerticalPodAutoscaler
+metadata:
+  labels:
+    {{- include "prometheus.server.labels" . | nindent 4 }}
+  name: {{ template "prometheus.server.fullname" . }}-vpa
+{{ include "prometheus.namespace" . | indent 2 }}
+spec:
+  targetRef:
+    apiVersion: "apps/v1"
+{{- if .Values.server.statefulSet.enabled }}
+    kind: StatefulSet
+{{- else }}
+    kind: Deployment
+{{- end }}
+    name: {{ template "prometheus.server.fullname" . }}
+  updatePolicy:
+    updateMode: {{ .Values.server.verticalAutoscaler.updateMode | default "Off" | quote }}
+  resourcePolicy:
+    containerPolicies: {{ .Values.server.verticalAutoscaler.containerPolicies | default list | toYaml | trim | nindent 4 }}
+{{- end -}} {{/* if .Values.server.verticalAutoscaler.enabled */}}
+{{- end -}} {{/* .Values.server.enabled */}}
