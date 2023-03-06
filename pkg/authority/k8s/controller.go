@@ -53,8 +53,8 @@ func NewController(
 	authenticationHandler authentication.Handler,
 	authorizationHandler authorization.Handler,
 	acInformer informerV1beta1.AuthenticationPolicyInformer,
-	apInformer informerV1beta1.AuthorizationPolicyInformer) *Controller {
-
+	apInformer informerV1beta1.AuthorizationPolicyInformer,
+) *Controller {
 	controller := &Controller{
 		dubboClientSet:       clientSet,
 		authenticationSynced: acInformer.Informer().HasSynced,
@@ -144,7 +144,6 @@ func (c *Controller) handleEvent(obj interface{}, eventType NotificationType) {
 		logger.Sugar().Errorf("unexpected object type: %v", obj)
 		return
 	}
-
 }
 
 func CopyToAuthentication(key string, pa *apiV1beta1.AuthenticationPolicy) *authentication.Policy {

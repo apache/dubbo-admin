@@ -18,6 +18,11 @@ package k8s
 import (
 	"context"
 	"flag"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"time"
+
 	"github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	infoemerclient "github.com/apache/dubbo-admin/pkg/authority/generated/clientset/versioned"
@@ -31,15 +36,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"strings"
-	"time"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	"path/filepath"
-	"reflect"
 )
 
 type Client interface {
@@ -201,7 +202,7 @@ func (c *ClientImpl) VerifyServiceAccount(token string) (*rule.Endpoint, bool) {
 	tokenReview := &k8sauth.TokenReview{
 		Spec: k8sauth.TokenReviewSpec{
 			Token: token,
-			//Audiences: []string{"dubbo-ca"},
+			// Audiences: []string{"dubbo-ca"},
 		},
 	}
 	reviewRes, err := c.kubeClient.AuthenticationV1().TokenReviews().Create(context.TODO(), tokenReview, metav1.CreateOptions{})
@@ -338,8 +339,8 @@ func (c *ClientImpl) UpdateWebhookConfig(options *config.Options, storage cert.S
 
 func (c *ClientImpl) InitController(
 	authenticationHandler authentication.Handler,
-	authorizationHandler authorization.Handler) {
-
+	authorizationHandler authorization.Handler,
+) {
 	logger.Sugar().Info("Init rule controller...")
 
 	informerFactory := informers.NewSharedInformerFactory(c.informerClient, time.Second*30)

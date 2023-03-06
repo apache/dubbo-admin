@@ -19,13 +19,14 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"github.com/apache/dubbo-admin/pkg/authority/config"
-	"github.com/apache/dubbo-admin/pkg/logger"
 	"os"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/apache/dubbo-admin/pkg/authority/config"
+	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
 func TestIsValid(t *testing.T) {

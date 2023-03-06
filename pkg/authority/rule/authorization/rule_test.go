@@ -16,10 +16,11 @@
 package authorization_test
 
 import (
+	"testing"
+
 	"github.com/apache/dubbo-admin/pkg/authority/rule"
 	"github.com/apache/dubbo-admin/pkg/authority/rule/authorization"
 	"github.com/apache/dubbo-admin/pkg/authority/rule/connection"
-	"testing"
 )
 
 func TestRule(t *testing.T) {
@@ -48,7 +49,6 @@ func TestRule(t *testing.T) {
 		ID:  "test",
 		Ips: []string{"127.0.0.1"},
 	})
-
 	if err != nil {
 		t.Error(err)
 	}

@@ -19,18 +19,22 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/logger"
 	"github.com/mattbaird/jsonpatch"
-	"io"
+
 	admissionV1 "k8s.io/api/admission/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"net/http"
 )
 
-type PodPatch func(*v1.Pod) (*v1.Pod, error)
-type GetCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)
+type (
+	PodPatch       func(*v1.Pod) (*v1.Pod, error)
+	GetCertificate func(*tls.ClientHelloInfo) (*tls.Certificate, error)
+)
 
 type Webhook struct {
 	Patches        []PodPatch
@@ -165,7 +169,7 @@ func (wh *Webhook) Mutate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (wh *Webhook) Admit(ar admissionV1.AdmissionReview) (*admissionV1.AdmissionResponse, error) {
-	var reviewResponse = &admissionV1.AdmissionResponse{
+	reviewResponse := &admissionV1.AdmissionResponse{
 		Allowed: true,
 		UID:     ar.Request.UID,
 	}
@@ -174,28 +178,32 @@ func (wh *Webhook) Admit(ar admissionV1.AdmissionReview) (*admissionV1.Admission
 
 	if ar.Request.Resource != podResource {
 		outputLog := fmt.Sprintf("[Webhook] expect resource to be %s", podResource)
+
 		return nil, NewAdmitError(outputLog)
 	}
 
 	raw := ar.Request.Object.Raw
-
 	pod := v1.Pod{}
 
 	if err := json.Unmarshal(raw, &pod); err != nil {
 		outputLog := fmt.Sprintf("[Webhook] pod unmarshal error. %s", err)
+
 		return nil, NewAdmitError(outputLog)
 	}
 
 	patchBytes, err := wh.PatchPod(&pod)
 	if err != nil {
 		outputLog := fmt.Sprintf("[Webhook] Patch error: %v", pod.ObjectMeta.Name)
+
 		return nil, NewAdmitError(outputLog)
 	}
 
 	reviewResponse.Patch = patchBytes
 
 	logger.Sugar().Infof("[Webhook] Patch after mutate : %s", string(patchBytes))
+
 	pt := admissionV1.PatchTypeJSONPatch
+
 	reviewResponse.PatchType = &pt
 
 	return reviewResponse, nil

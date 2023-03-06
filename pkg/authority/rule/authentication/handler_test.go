@@ -16,12 +16,13 @@
 package authentication_test
 
 import (
-	"github.com/apache/dubbo-admin/pkg/authority/rule/authentication"
-	"github.com/apache/dubbo-admin/pkg/authority/rule/connection"
-	"k8s.io/client-go/util/workqueue"
 	"strconv"
 	"sync"
 	"testing"
+
+	"github.com/apache/dubbo-admin/pkg/authority/rule/authentication"
+	"github.com/apache/dubbo-admin/pkg/authority/rule/connection"
+	"k8s.io/client-go/util/workqueue"
 )
 
 func TestAdd(t *testing.T) {

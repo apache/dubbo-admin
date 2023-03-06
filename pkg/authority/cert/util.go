@@ -22,11 +22,12 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"github.com/apache/dubbo-admin/pkg/authority/rule"
-	"github.com/apache/dubbo-admin/pkg/logger"
 	"log"
 	"math/big"
 	"time"
+
+	"github.com/apache/dubbo-admin/pkg/authority/rule"
+	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
 func DecodeCert(cert string) *x509.Certificate {
@@ -227,7 +228,6 @@ func SignFromCSR(csr *x509.CertificateRequest, endpoint *rule.Endpoint, authorit
 
 func AppendEndpoint(endpoint *rule.Endpoint, cert *x509.Certificate) {
 	cert.DNSNames = endpoint.Ips
-
 }
 
 func EncodePrivateKey(caPrivKey *rsa.PrivateKey) string {

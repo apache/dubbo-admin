@@ -16,10 +16,11 @@
 package authorization
 
 import (
-	"github.com/apache/dubbo-admin/pkg/authority/rule/connection"
 	"reflect"
 	"sync"
 	"sync/atomic"
+
+	"github.com/apache/dubbo-admin/pkg/authority/rule/connection"
 )
 
 type Handler interface {

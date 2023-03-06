@@ -16,12 +16,13 @@
 package main
 
 import (
-	"github.com/apache/dubbo-admin/pkg/authority/config"
-	"github.com/apache/dubbo-admin/pkg/authority/security"
-	"github.com/apache/dubbo-admin/pkg/logger"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/apache/dubbo-admin/pkg/authority/config"
+	"github.com/apache/dubbo-admin/pkg/authority/security"
+	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
 // TODO read namespace from env

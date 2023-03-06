@@ -16,10 +16,11 @@
 package patch
 
 import (
+	"strconv"
+
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
 	v1 "k8s.io/api/core/v1"
-	"strconv"
 )
 
 type JavaSdk struct {
@@ -34,8 +35,10 @@ func NewJavaSdk(options *config.Options, kubeClient k8s.Client) *JavaSdk {
 	}
 }
 
-const ExpireSeconds = 360
-const Labeled = "true"
+const (
+	ExpireSeconds = 360
+	Labeled       = "true"
+)
 
 func (s *JavaSdk) NewPod(origin *v1.Pod) (*v1.Pod, error) {
 	target := origin.DeepCopy()

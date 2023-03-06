@@ -16,14 +16,16 @@
 package connection
 
 import (
-	"github.com/apache/dubbo-admin/pkg/authority/rule"
-	"github.com/apache/dubbo-admin/pkg/logger"
 	"io"
-	"k8s.io/client-go/util/workqueue"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/apache/dubbo-admin/pkg/authority/rule"
+	"github.com/apache/dubbo-admin/pkg/logger"
+
+	"k8s.io/client-go/util/workqueue"
 )
 
 type Storage struct {
@@ -147,7 +149,6 @@ func (s *Storage) ObserveRule(c *Connection) {
 		if c.status == Disconnected {
 			return
 		}
-
 	}
 }
 

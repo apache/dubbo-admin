@@ -16,11 +16,12 @@
 package authentication
 
 import (
-	"github.com/apache/dubbo-admin/pkg/authority/rule/connection"
-	"github.com/apache/dubbo-admin/pkg/logger"
 	"reflect"
 	"sync"
 	"sync/atomic"
+
+	"github.com/apache/dubbo-admin/pkg/authority/rule/connection"
+	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
 type Handler interface {

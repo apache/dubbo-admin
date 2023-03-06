@@ -16,11 +16,12 @@
 package patch
 
 import (
+	"reflect"
+	"testing"
+
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
 	v1 "k8s.io/api/core/v1"
-	"reflect"
-	"testing"
 )
 
 type fakeKubeClient struct {
@@ -396,7 +397,6 @@ func TestCheckVolume2(t *testing.T) {
 	if !reflect.DeepEqual(newPod, pod) {
 		t.Error("should be equal")
 	}
-
 }
 
 func TestCheckEnv1(t *testing.T) {
@@ -431,7 +431,6 @@ func TestCheckEnv1(t *testing.T) {
 	if !reflect.DeepEqual(newPod, pod) {
 		t.Error("should be equal")
 	}
-
 }
 
 func TestCheckEnv2(t *testing.T) {
@@ -466,7 +465,6 @@ func TestCheckEnv2(t *testing.T) {
 	if !reflect.DeepEqual(newPod, pod) {
 		t.Error("should be equal")
 	}
-
 }
 
 func TestCheckEnv3(t *testing.T) {
@@ -501,7 +499,6 @@ func TestCheckEnv3(t *testing.T) {
 	if !reflect.DeepEqual(newPod, pod) {
 		t.Error("should be equal")
 	}
-
 }
 
 func TestCheckEnv4(t *testing.T) {
@@ -537,7 +534,6 @@ func TestCheckEnv4(t *testing.T) {
 	if !reflect.DeepEqual(newPod, pod) {
 		t.Error("should be equal")
 	}
-
 }
 
 func TestCheckContainerVolume1(t *testing.T) {

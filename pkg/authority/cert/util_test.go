@@ -16,8 +16,9 @@
 package cert
 
 import (
-	"github.com/apache/dubbo-admin/pkg/logger"
 	"testing"
+
+	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
 func TestCSR(t *testing.T) {

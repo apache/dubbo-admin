@@ -16,6 +16,9 @@
 package v1alpha1
 
 import (
+	"net"
+	"testing"
+
 	cert2 "github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
@@ -24,8 +27,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
-	"net"
-	"testing"
 )
 
 type MockKubeClient struct {
@@ -72,7 +73,6 @@ func TestCSRFailed(t *testing.T) {
 	certificate, err := impl.CreateCertificate(c, &DubboCertificateRequest{
 		Csr: "",
 	})
-
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -146,7 +146,6 @@ func TestTokenFailed(t *testing.T) {
 	certificate, err := impl.CreateCertificate(p, &DubboCertificateRequest{
 		Csr: csr,
 	})
-
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -222,7 +221,6 @@ func TestTokenFailed(t *testing.T) {
 		t.Fatal("Cert is not valid")
 		return
 	}
-
 }
 
 func TestSuccess(t *testing.T) {
@@ -259,7 +257,6 @@ func TestSuccess(t *testing.T) {
 	certificate, err := impl.CreateCertificate(c, &DubboCertificateRequest{
 		Csr: csr,
 	})
-
 	if err != nil {
 		t.Fatal(err)
 		return

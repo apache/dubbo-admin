@@ -18,12 +18,13 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
 	"github.com/apache/dubbo-admin/pkg/authority/rule"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
-	"strings"
 )
 
 func exactEndpoint(c context.Context, options *config.Options, kubeClient k8s.Client) (*rule.Endpoint, error) {

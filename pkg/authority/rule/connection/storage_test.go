@@ -16,12 +16,13 @@
 package connection_test
 
 import (
-	"github.com/apache/dubbo-admin/pkg/authority/rule"
-	"github.com/apache/dubbo-admin/pkg/authority/rule/connection"
-	"github.com/stretchr/testify/assert"
 	"io"
 	"testing"
 	"time"
+
+	"github.com/apache/dubbo-admin/pkg/authority/rule"
+	"github.com/apache/dubbo-admin/pkg/authority/rule/connection"
+	"github.com/stretchr/testify/assert"
 )
 
 type fakeConnection struct {

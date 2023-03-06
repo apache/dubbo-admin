@@ -17,6 +17,7 @@ package authentication
 
 import (
 	"encoding/json"
+
 	"github.com/apache/dubbo-admin/pkg/authority/rule"
 )
 

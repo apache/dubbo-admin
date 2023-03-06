@@ -17,21 +17,24 @@ package security
 
 import (
 	"crypto/tls"
+	"os"
+	"testing"
+	"time"
+
 	cert2 "github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
 	"github.com/apache/dubbo-admin/pkg/logger"
-	"os"
-	"testing"
-	"time"
 )
 
 type mockKubeClient struct {
 	k8s.Client
 }
 
-var certPEM = ""
-var priPEM = ""
+var (
+	certPEM = ""
+	priPEM  = ""
+)
 
 func (s *mockKubeClient) Init(options *config.Options) bool {
 	return true
@@ -42,7 +45,6 @@ func (s *mockKubeClient) GetAuthorityCert(namespace string) (string, string) {
 }
 
 func (s *mockKubeClient) UpdateAuthorityCert(cert string, pri string, namespace string) {
-
 }
 
 func (s *mockKubeClient) UpdateAuthorityPublicKey(cert string) bool {
@@ -50,7 +52,6 @@ func (s *mockKubeClient) UpdateAuthorityPublicKey(cert string) bool {
 }
 
 func (s *mockKubeClient) UpdateWebhookConfig(options *config.Options, storage cert2.Storage) {
-
 }
 
 type mockStorage struct {
@@ -63,7 +64,6 @@ func (s *mockStorage) GetServerCert(serverName string) *tls.Certificate {
 }
 
 func (s *mockStorage) RefreshServerCert() {
-
 }
 
 func (s *mockStorage) SetAuthorityCert(cert *cert2.Cert) {

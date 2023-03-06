@@ -17,12 +17,13 @@ package v1alpha1
 
 import (
 	"context"
+	"time"
+
 	cert2 "github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
 	"github.com/apache/dubbo-admin/pkg/logger"
 	"google.golang.org/grpc/peer"
-	"time"
 )
 
 type DubboCertificateServiceServerImpl struct {
@@ -50,7 +51,6 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 
 	p, _ := peer.FromContext(c)
 	endpoint, err := exactEndpoint(c, s.Options, s.KubeClient)
-
 	if err != nil {
 		logger.Sugar().Warnf("Failed to exact endpoint from context: %v. RemoteAddr: %s", err, p.Addr.String())
 		return &DubboCertificateResponse{
