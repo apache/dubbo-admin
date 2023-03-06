@@ -16,7 +16,10 @@
 package authentication_test
 
 import (
+	"encoding/json"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/dubbo-admin/pkg/authority/rule"
 	"github.com/apache/dubbo-admin/pkg/authority/rule/authentication"
@@ -65,12 +68,14 @@ func TestRule(t *testing.T) {
 		t.Error("expected toClient data to be [{\"spec\":null}], got " + toClient.Data())
 	}
 
-	handler.Add("test2", &authentication.Policy{
+	policy := &authentication.Policy{
 		Name: "test2",
 		Spec: &authentication.PolicySpec{
 			Action: "ALLOW",
 		},
-	})
+	}
+
+	handler.Add("test2", policy)
 
 	originRule = storage.LatestRules[authentication.RuleType]
 
@@ -103,7 +108,12 @@ func TestRule(t *testing.T) {
 		t.Error("expected toClient revision to be 2")
 	}
 
-	if toClient.Data() != `[{"name":"test2","spec":{"action":"ALLOW"}},{"spec":null}]` {
-		t.Error("expected toClient data to be [{\"name\":\"test2\",\"spec\":{\"action\":\"ALLOW\"}},{\"spec\":null}]], got " + toClient.Data())
-	}
+	target := []*authentication.Policy{}
+
+	err = json.Unmarshal([]byte(toClient.Data()), &target)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(target))
+
+	assert.Contains(t, target, &authentication.Policy{})
+	assert.Contains(t, target, policy)
 }
