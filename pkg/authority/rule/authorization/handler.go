@@ -24,23 +24,22 @@ import (
 
 type Handler interface {
 	Add(key string, obj *Policy)
+	Get(key string) *Policy
 	Update(key string, newObj *Policy)
 	Delete(key string)
 }
 
 type Impl struct {
-	Handler
-
-	mutex *sync.RWMutex
+	mutex *sync.Mutex
 
 	revision int64
 	storage  *connection.Storage
 	cache    map[string]*Policy
 }
 
-func NewHandler(storage *connection.Storage) Handler {
+func NewHandler(storage *connection.Storage) *Impl {
 	return &Impl{
-		mutex:    &sync.RWMutex{},
+		mutex:    &sync.Mutex{},
 		storage:  storage,
 		revision: 0,
 		cache:    map[string]*Policy{},
@@ -50,6 +49,10 @@ func NewHandler(storage *connection.Storage) Handler {
 func (i *Impl) Add(key string, obj *Policy) {
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
+	if origin := i.cache[key]; reflect.DeepEqual(origin, obj) {
+		return
+	}
+
 	cloned := make(map[string]*Policy, len(i.cache)+1)
 
 	for k, v := range i.cache {
@@ -62,6 +65,13 @@ func (i *Impl) Add(key string, obj *Policy) {
 	atomic.AddInt64(&i.revision, 1)
 
 	i.Notify()
+}
+
+func (i *Impl) Get(key string) *Policy {
+	i.mutex.Lock()
+	defer i.mutex.Unlock()
+
+	return i.cache[key]
 }
 
 func (i *Impl) Update(key string, newObj *Policy) {

@@ -17,6 +17,7 @@ package authentication
 
 import (
 	"github.com/apache/dubbo-admin/pkg/authority/rule/connection"
+	"github.com/apache/dubbo-admin/pkg/logger"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -24,12 +25,13 @@ import (
 
 type Handler interface {
 	Add(key string, obj *Policy)
+	Get(key string) *Policy
 	Update(key string, newObj *Policy)
 	Delete(key string)
 }
 
 type Impl struct {
-	mutex *sync.RWMutex
+	mutex *sync.Mutex
 
 	revision int64
 	storage  *connection.Storage
@@ -38,7 +40,7 @@ type Impl struct {
 
 func NewHandler(storage *connection.Storage) *Impl {
 	return &Impl{
-		mutex:    &sync.RWMutex{},
+		mutex:    &sync.Mutex{},
 		storage:  storage,
 		revision: 0,
 		cache:    map[string]*Policy{},
@@ -46,8 +48,17 @@ func NewHandler(storage *connection.Storage) *Impl {
 }
 
 func (i *Impl) Add(key string, obj *Policy) {
+	if !i.validatePolicy(obj) {
+		logger.Sugar().Warnf("invalid policy, key: %s, policy: %v", key, obj)
+		return
+	}
+
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
+	if origin := i.cache[key]; reflect.DeepEqual(origin, obj) {
+		return
+	}
+
 	cloned := make(map[string]*Policy, len(i.cache)+1)
 
 	for k, v := range i.cache {
@@ -62,7 +73,19 @@ func (i *Impl) Add(key string, obj *Policy) {
 	i.Notify()
 }
 
+func (i *Impl) Get(key string) *Policy {
+	i.mutex.Lock()
+	defer i.mutex.Unlock()
+
+	return i.cache[key]
+}
+
 func (i *Impl) Update(key string, newObj *Policy) {
+	if !i.validatePolicy(newObj) {
+		logger.Sugar().Warnf("invalid policy, key: %s, policy: %v", key, newObj)
+		return
+	}
+
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
 
@@ -120,4 +143,8 @@ func (i *Impl) Notify() {
 	for _, c := range i.storage.Connection {
 		c.RawRuleQueue.Add(originRule)
 	}
+}
+
+func (i *Impl) validatePolicy(policy *Policy) bool {
+	return policy != nil
 }

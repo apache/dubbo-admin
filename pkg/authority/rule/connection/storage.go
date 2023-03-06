@@ -33,6 +33,68 @@ type Storage struct {
 	LatestRules map[string]rule.Origin
 }
 
+type EndpointConnection interface {
+	Send(*ObserveResponse) error
+	Recv() (*ObserveRequest, error)
+	Disconnect()
+}
+
+type Connection struct {
+	mutex              *sync.RWMutex
+	status             ConnectionStatus
+	EndpointConnection EndpointConnection
+	Endpoint           *rule.Endpoint
+
+	TypeListened map[string]bool
+
+	RawRuleQueue  workqueue.Interface
+	ExpectedRules map[string]*VersionedRule
+	ClientRules   map[string]*ClientStatus
+}
+
+type VersionedRule struct {
+	Revision int64
+	Type     string
+	Data     rule.ToClient
+}
+
+type PushingStatus int
+
+const (
+	Pushed PushingStatus = iota
+	Pushing
+)
+
+type ConnectionStatus int
+
+const (
+	Connected ConnectionStatus = iota
+	Disconnected
+)
+
+type ClientStatus struct {
+	PushingStatus PushingStatus
+
+	NonceInc int64
+
+	ClientVersion *VersionedRule
+
+	LastPushedTime    int64
+	LastPushedVersion *VersionedRule
+	LastPushNonce     string
+}
+
+type ObserveResponse struct {
+	Nonce string
+	Type  string
+	Data  rule.ToClient
+}
+
+type ObserveRequest struct {
+	Nonce string
+	Type  string
+}
+
 func NewStorage() *Storage {
 	return &Storage{
 		Mutex:       &sync.RWMutex{},
@@ -221,70 +283,8 @@ func (s *Storage) Disconnect(c *Connection) {
 	for i, sc := range s.Connection {
 		if sc == c {
 			s.Connection = append(s.Connection[:i], s.Connection[i+1:]...)
-			return
+			break
 		}
 	}
 	c.EndpointConnection.Disconnect()
-}
-
-type Connection struct {
-	mutex              *sync.RWMutex
-	status             ConnectionStatus
-	EndpointConnection EndpointConnection
-	Endpoint           *rule.Endpoint
-
-	TypeListened map[string]bool
-
-	RawRuleQueue  workqueue.Interface
-	ExpectedRules map[string]*VersionedRule
-	ClientRules   map[string]*ClientStatus
-}
-
-type VersionedRule struct {
-	Revision int64         `json:"revision,omitempty"`
-	Type     string        `json:"type,omitempty"`
-	Data     rule.ToClient `json:"data,omitempty"`
-}
-
-type PushingStatus int
-
-const (
-	Pushed PushingStatus = iota
-	Pushing
-)
-
-type ConnectionStatus int
-
-const (
-	Connected ConnectionStatus = iota
-	Disconnected
-)
-
-type ClientStatus struct {
-	PushingStatus PushingStatus `json:"pushingStatus,omitempty"`
-
-	NonceInc int64 `json:"version,omitempty"`
-
-	ClientVersion *VersionedRule `json:"clientVersion,omitempty"`
-
-	LastPushedTime    int64          `json:"lastPushedTime,omitempty"`
-	LastPushedVersion *VersionedRule `json:"lastPushedData,omitempty"`
-	LastPushNonce     string         `json:"lastPushNonce,omitempty"`
-}
-
-type ObserveResponse struct {
-	Nonce string        `json:"nonce,omitempty"`
-	Type  string        `json:"type,omitempty"`
-	Data  rule.ToClient `json:"data,omitempty"`
-}
-
-type ObserveRequest struct {
-	Nonce string `json:"nonce,omitempty"`
-	Type  string `json:"type,omitempty"`
-}
-
-type EndpointConnection interface {
-	Send(*ObserveResponse) error
-	Recv() (*ObserveRequest, error)
-	Disconnect()
 }

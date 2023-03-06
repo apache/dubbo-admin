@@ -23,8 +23,6 @@ import (
 const RuleType = "authorization/v1beta1"
 
 type ToClient struct {
-	rule.ToClient
-
 	revision int64
 	data     string
 }
@@ -42,8 +40,6 @@ func (r *ToClient) Data() string {
 }
 
 type Origin struct {
-	rule.Origin
-
 	revision int64
 	data     map[string]*Policy
 }
@@ -56,20 +52,20 @@ func (o *Origin) Revision() int64 {
 	return o.revision
 }
 
-func (o *Origin) Exact(endpoint *rule.Endpoint) (rule.ToClient, error) {
-	var matchedRule []interface{}
+func (o *Origin) Exact(endpoint *rule.Endpoint) (rule.ToClient, error) { //nolint:ireturn
+	matchedRule := make([]*Policy, 0, len(o.data))
 
 	for _, v := range o.data {
 		matchedRule = append(matchedRule, v)
 	}
 
-	r, err := json.Marshal(matchedRule)
+	allRules, err := json.Marshal(matchedRule)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ToClient{
 		revision: o.revision,
-		data:     string(r),
+		data:     string(allRules),
 	}, nil
 }
