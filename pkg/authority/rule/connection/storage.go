@@ -16,6 +16,7 @@
 package connection
 
 import (
+	"errors"
 	"io"
 	"strconv"
 	"sync"
@@ -75,6 +76,7 @@ const (
 )
 
 type ClientStatus struct {
+	PushQueued    bool
 	PushingStatus PushingStatus
 
 	NonceInc int64
@@ -120,45 +122,46 @@ func (s *Storage) Connected(endpoint *rule.Endpoint, connection EndpointConnecti
 	}
 	s.Connection = append(s.Connection, c)
 
-	go s.ListenConnection(c)
-	go c.ListenRule()
+	go s.listenConnection(c)
+	go c.listenRule()
 }
 
-func (s *Storage) ListenConnection(c *Connection) {
+func (s *Storage) listenConnection(c *Connection) {
 	for {
 		if c.status == Disconnected {
 			return
 		}
+
 		req, err := c.EndpointConnection.Recv()
-		if err == io.EOF {
+
+		if errors.Is(err, io.EOF) {
 			logger.Sugar().Infof("Observe connection closed. Connection ID: %s", c.Endpoint.ID)
 			s.Disconnect(c)
+
 			return
 		}
+
 		if err != nil {
 			logger.Sugar().Warnf("Observe connection error: %v. Connection ID: %s", err, c.Endpoint.ID)
 			s.Disconnect(c)
-			return
-		}
-		s.HandleRequest(c, req)
-	}
-}
 
-func (s *Storage) ObserveRule(c *Connection) {
-	for {
-		if c.status == Disconnected {
 			return
 		}
+
+		s.HandleRequest(c, req)
 	}
 }
 
 func (s *Storage) HandleRequest(c *Connection, req *ObserveRequest) {
 	if req.Type == "" {
 		logger.Sugar().Errorf("Empty request type from %v", c.Endpoint.ID)
+
 		return
 	}
+
 	if !TypeSupported(req.Type) {
 		logger.Sugar().Errorf("Unsupported request type %s from %s", req.Type, c.Endpoint.ID)
+
 		return
 	}
 
@@ -167,6 +170,7 @@ func (s *Storage) HandleRequest(c *Connection, req *ObserveRequest) {
 
 	if req.Nonce != "" {
 		cr := c.ClientRules[req.Type]
+
 		if cr == nil {
 			logger.Sugar().Errorf("Unexpected request type %s with nonce %s from %s", req.Type, req.Nonce, c.Endpoint.ID)
 			return
@@ -175,9 +179,12 @@ func (s *Storage) HandleRequest(c *Connection, req *ObserveRequest) {
 		if cr.PushingStatus == Pushing {
 			if cr.LastPushNonce != req.Nonce {
 				logger.Sugar().Errorf("Unexpected request nonce %s from %s", req.Nonce, c.Endpoint.ID)
+
 				return
 			}
+
 			cr.ClientVersion = cr.LastPushedVersion
+
 			cr.PushingStatus = Pushed
 			logger.Sugar().Infof("Client %s pushed %s rule %s success", c.Endpoint.Ips, req.Type, cr.ClientVersion.Revision)
 		}
@@ -205,7 +212,7 @@ func (s *Storage) HandleRequest(c *Connection, req *ObserveRequest) {
 	}
 }
 
-func (c *Connection) ListenRule() {
+func (c *Connection) listenRule() {
 	for {
 		obj, shutdown := c.RawRuleQueue.Get()
 		if shutdown {
@@ -216,14 +223,18 @@ func (c *Connection) ListenRule() {
 			defer c.RawRuleQueue.Done(obj)
 
 			var key rule.Origin
+
 			var ok bool
+
 			if key, ok = obj.(rule.Origin); !ok {
 				logger.Sugar().Errorf("expected rule.Origin in workqueue but got %#v", obj)
+
 				return
 			}
 
 			if err := c.handleRule(key); err != nil {
 				logger.Sugar().Errorf("error syncing '%s': %s", key, err.Error())
+
 				return
 			}
 
@@ -244,15 +255,17 @@ func (c *Connection) handleRule(rawRule rule.Origin) error {
 
 	cr := c.ClientRules[targetRule.Type()]
 
+	for cr.PushingStatus == Pushing {
+		cr.PushQueued = true
+		time.Sleep(1 * time.Second)
+		logger.Sugar().Infof("Client %s %s rule is pushing, wait for 1 second", c.Endpoint.Ips, targetRule.Type())
+	}
+	cr.PushQueued = false
+
 	if cr.ClientVersion.Data != nil &&
 		(cr.ClientVersion.Data.Data() == targetRule.Data() || cr.ClientVersion.Data.Revision() < targetRule.Revision()) {
 		logger.Sugar().Infof("Client %s %s rule is up to date", c.Endpoint.Ips, targetRule.Type())
 		return nil
-	}
-
-	for cr.PushingStatus == Pushing {
-		time.Sleep(1 * time.Second)
-		logger.Sugar().Infof("Client %s %s rule is pushing, wait for 1 second", c.Endpoint.Ips, targetRule.Type())
 	}
 
 	newVersion := atomic.AddInt64(&cr.NonceInc, 1)
@@ -287,5 +300,7 @@ func (s *Storage) Disconnect(c *Connection) {
 			break
 		}
 	}
+
 	c.EndpointConnection.Disconnect()
+	c.RawRuleQueue.ShutDown()
 }
