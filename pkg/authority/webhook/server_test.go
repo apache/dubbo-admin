@@ -171,6 +171,7 @@ func TestMutate_BodyError(t *testing.T) {
 	})
 
 	assert.Equal(t, string(expected), string(body))
+	assert.Nil(t, err)
 }
 
 func TestMutate_AdmitEmpty(t *testing.T) {
@@ -212,6 +213,7 @@ func TestMutate_AdmitEmpty(t *testing.T) {
 	})
 
 	assert.Equal(t, string(expected), string(body))
+	assert.Nil(t, err)
 }
 
 func TestMutate_AdmitErrorType(t *testing.T) {
@@ -258,6 +260,7 @@ func TestMutate_AdmitErrorType(t *testing.T) {
 	})
 
 	assert.Equal(t, string(expected), string(body))
+	assert.Nil(t, err)
 }
 
 func TestMutate_AdmitPodPatchErr(t *testing.T) {
@@ -317,6 +320,7 @@ func TestMutate_AdmitPodPatchErr(t *testing.T) {
 	})
 
 	assert.Equal(t, string(expected), string(body))
+	assert.Nil(t, err)
 }
 
 func TestMutate_AdmitPodPatch(t *testing.T) {
@@ -384,4 +388,5 @@ func TestMutate_AdmitPodPatch(t *testing.T) {
 	})
 
 	assert.Equal(t, string(expected), string(body))
+	assert.Nil(t, err)
 }
