@@ -103,7 +103,7 @@ func TestRule(t *testing.T) {
 		t.Error("expected toClient revision to be 2")
 	}
 
-	if toClient.Data() != `[{"spec":null},{"name":"test2","spec":{"action":"ALLOW"}}]` {
-		t.Error("expected toClient data to be [{\"spec\":null},{\"name\":\"test2\",\"spec\":{\"action\":\"ALLOW\"}}], got " + toClient.Data())
+	if toClient.Data() != `[{"name":"test2","spec":{"action":"ALLOW"}},{"spec":null}]` {
+		t.Error("expected toClient data to be [{\"name\":\"test2\",\"spec\":{\"action\":\"ALLOW\"}},{\"spec\":null}]], got " + toClient.Data())
 	}
 }
