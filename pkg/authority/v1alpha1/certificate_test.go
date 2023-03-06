@@ -226,8 +226,6 @@ func TestTokenFailed(t *testing.T) {
 func TestSuccess(t *testing.T) {
 	t.Parallel()
 
-	logger.Init()
-
 	md := metadata.MD{}
 	md["authorization"] = []string{"Bearer 123"}
 	c := metadata.NewIncomingContext(context.TODO(), metadata.MD{})

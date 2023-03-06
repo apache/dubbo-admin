@@ -19,7 +19,7 @@ import (
 	"context"
 	"time"
 
-	cert2 "github.com/apache/dubbo-admin/pkg/authority/cert"
+	"github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
 	"github.com/apache/dubbo-admin/pkg/logger"
@@ -29,11 +29,14 @@ import (
 type DubboCertificateServiceServerImpl struct {
 	UnimplementedDubboCertificateServiceServer
 	Options     *config.Options
-	CertStorage cert2.Storage
+	CertStorage cert.Storage
 	KubeClient  k8s.Client
 }
 
-func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context, req *DubboCertificateRequest) (*DubboCertificateResponse, error) {
+func (s *DubboCertificateServiceServerImpl) CreateCertificate(
+	c context.Context,
+	req *DubboCertificateRequest,
+) (*DubboCertificateResponse, error) {
 	if req.Csr == "" {
 		return &DubboCertificateResponse{
 			Success: false,
@@ -41,7 +44,7 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 		}, nil
 	}
 
-	csr, err := cert2.LoadCSR(req.Csr)
+	csr, err := cert.LoadCSR(req.Csr)
 	if csr == nil || err != nil {
 		return &DubboCertificateResponse{
 			Success: false,
@@ -53,16 +56,17 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(c context.Context,
 	endpoint, err := exactEndpoint(c, s.Options, s.KubeClient)
 	if err != nil {
 		logger.Sugar().Warnf("Failed to exact endpoint from context: %v. RemoteAddr: %s", err, p.Addr.String())
+
 		return &DubboCertificateResponse{
 			Success: false,
 			Message: err.Error(),
 		}, nil
 	}
 
-	// TODO check server token
-	certPem, err := cert2.SignFromCSR(csr, endpoint, s.CertStorage.GetAuthorityCert(), s.Options.CertValidity)
+	certPem, err := cert.SignFromCSR(csr, endpoint, s.CertStorage.GetAuthorityCert(), s.Options.CertValidity)
 	if err != nil {
 		logger.Sugar().Warnf("Failed to sign certificate from csr: %v. RemoteAddr: %s", err, p.Addr.String())
+
 		return &DubboCertificateResponse{
 			Success: false,
 			Message: err.Error(),

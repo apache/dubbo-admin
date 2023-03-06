@@ -51,18 +51,17 @@ func exactEndpoint(c context.Context, options *config.Options, kubeClient k8s.Cl
 		}
 
 		return endpoint, nil
-	} else {
-		// TODO get from SSL context
-
-		p, ok := peer.FromContext(c)
-		if !ok {
-			return nil, fmt.Errorf("failed to get peer from context")
-		}
-
-		// TODO get ip
-		return &rule.Endpoint{
-			ID:  p.Addr.String(),
-			Ips: []string{p.Addr.String()},
-		}, nil
 	}
+	// TODO get from SSL context
+
+	p, ok := peer.FromContext(c)
+	if !ok {
+		return nil, fmt.Errorf("failed to get peer from context")
+	}
+
+	// TODO get ip
+	return &rule.Endpoint{
+		ID:  p.Addr.String(),
+		Ips: []string{p.Addr.String()},
+	}, nil
 }

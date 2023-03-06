@@ -42,12 +42,14 @@ func (s *ObserveServiceServerImpl) Observe(stream ObserveService_ObserveServer) 
 	p, ok := peer.FromContext(stream.Context())
 	if !ok {
 		logger.Sugar().Errorf("failed to get peer from context")
+
 		return fmt.Errorf("failed to get peer from context")
 	}
 
 	endpoint, err := exactEndpoint(stream.Context(), s.Options, s.KubeClient)
 	if err != nil {
 		logger.Sugar().Errorf("failed to get endpoint from context: %v. RemoteAddr: %s", err, p.Addr)
+
 		return err
 	}
 
