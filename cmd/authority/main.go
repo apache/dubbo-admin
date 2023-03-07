@@ -25,33 +25,11 @@ import (
 	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
-// TODO read namespace from env
-const (
-	namespace   = "dubbo-system"
-	serviceName = "dubbo-ca"
-)
-
 func main() {
 	logger.Init()
+
 	// TODO read options from env
-	options := &config.Options{
-		Namespace:   namespace,
-		ServiceName: serviceName,
-
-		PlainServerPort:  30060,
-		SecureServerPort: 30062,
-		DebugPort:        30070,
-
-		WebhookPort:       30080,
-		WebhookAllowOnErr: true,
-
-		CaValidity:   30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity: 1 * 60 * 60 * 1000,       // 1 hour
-
-		InPodEnv:              false,
-		IsKubernetesConnected: false,
-		EnableOIDCCheck:       true,
-	}
+	options := config.GetOptions()
 
 	s := security.NewServer(options)
 
