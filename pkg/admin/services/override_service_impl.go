@@ -22,9 +22,6 @@ type OverrideServiceImpl struct {
 
 var HashSet set.HashSet
 
-// 还有registry
-//var regis registry.MockRegistry
-
 func (s *OverrideServiceImpl) SaveOverride(override dto.DynamicConfigDTO) {
 
 	HashSet = set.HashSet{
@@ -34,7 +31,7 @@ func (s *OverrideServiceImpl) SaveOverride(override dto.DynamicConfigDTO) {
 	id := convert.GetIdFromDTO(override.BaseDTO)
 
 	path := getPath(id.(string))
-	fmt.Println("saveOve哒哒哒啊")
+
 	exitConfig, err := config.GetConfig(path)
 	if err != nil {
 		log.Fatal("", err)
@@ -43,7 +40,6 @@ func (s *OverrideServiceImpl) SaveOverride(override dto.DynamicConfigDTO) {
 
 	adapt, _ := adapter.NewDynamicConfigDTO2OverrideDTOAdapter(override)
 	existOverride := adapt.OverrideDTO
-	//parser := properties.Parser()
 
 	if reflect.ValueOf(exitConfig).IsNil() {
 		exist, err := yaml.LoadYMLConfig(exitConfig)
@@ -73,8 +69,6 @@ func (s *OverrideServiceImpl) SaveOverride(override dto.DynamicConfigDTO) {
 	} else {
 		panic(err)
 	}
-	//放在configCenter初始化的地方
-
 	if override.Service != "" {
 		result := convertDTOtoOldOverride(&override)
 		for _, o := range result {
@@ -293,69 +287,93 @@ func (s *OverrideServiceImpl) FindOverride(id string) {
 	}
 }
 
-//func (s *OverrideServiceImpl) EnableOverride(id string) {
-//	if id == "" {
-//		// throw exception
-//	}
-//
-//	path := getPath(id)
-//	config, _ := config.GetConfig(path)
-//	if config == "" {
-//		// throw exception
-//	}
-//
-//	override := &dto.OverrideDTO{}
-//	YamlParser.LoadObject(config, override)
-//	old := OverrideUtils.CreateFromOverride(*override)
-//	override.Enabled = true
-//	dynamicConfiguration.SetConfig(path, YamlParser.DumpObject(override))
-//
-//	//2.6
-//	if override.Scope == Constants.SERVICE {
-//		overrides := convertDTOtoOldOverride(old)
-//		for _, o := range overrides {
-//			o.Enabled = false
-//			registry.Unregister(o.ToUrl().AddParameter(Constants.COMPATIBLE_CONFIG, true))
-//			o.Enabled = true
-//			registry.Register(o.ToUrl().AddParameter(Constants.COMPATIBLE_CONFIG, true))
-//		}
-//	}
-//}
+func (s *OverrideServiceImpl) EnableOverride(id string) {
+	if id == "" {
+		// throw exception
+	}
 
-//func (s *OverrideServiceImpl) DeleteOverride(id string) {
-//	if id == "" {
-//		// throw exception
-//	}
-//	path := getPath(id)
-//	config := dynamicConfiguration.getConfig(path)
-//	if config == "" {
-//		// throw exception
-//	}
-//	overrideDTO := YamlParser.loadObject(config, OverrideDTO{})
-//	old := OverrideUtils.createFromOverride(overrideDTO)
-//	newConfigs := make([]OverrideConfig, 0)
-//	if overrideDTO.Configs != nil && len(overrideDTO.Configs) > 0 {
-//		for _, overrideConfig := range overrideDTO.Configs {
-//			if Constants.CONFIGS.Contains(overrideConfig.Type) {
-//				newConfigs = append(newConfigs, overrideConfig)
-//			}
-//		}
-//		if len(newConfigs) == 0 {
-//			dynamicConfiguration.deleteConfig(path)
-//		} else {
-//			overrideDTO.Configs = newConfigs
-//			dynamicConfiguration.setConfig(path, YamlParser.dumpObject(overrideDTO))
-//		}
-//	} else {
-//		dynamicConfiguration.deleteConfig(path)
-//	}
-//
-//	// for 2.6
-//	if overrideDTO.Scope == Constants.SERVICE {
-//		overrides := convertDTOtoOldOverride(old)
-//		for _, o := range overrides {
-//			registry.unregister(o.toUrl().addParameter(Constants.COMPATIBLE_CONFIG, true))
-//		}
-//	}
-//
-//}
+	path := getPath(id)
+	conf, _ := config.GetConfig(path)
+	if conf == "" {
+		// throw exception
+	}
+
+	override := &dto.OverrideDTO{}
+	exist, err := yaml.LoadYMLConfig(conf)
+	if err != nil {
+		log.Fatal("", err)
+	}
+	yaml.UnmarshalYML(exist, override)
+
+	old := util.CreateFromOverride(*override)
+	override.Enabled = true
+	if b, err := yaml.MarshalYML(override); err == nil {
+		err := config.SetConfig(path, string(b))
+		if err != nil {
+			return
+		}
+	} else {
+		panic(err)
+	}
+
+	//2.6
+	if override.Scope == constant.ServiceKey {
+		overrides := convertDTOtoOldOverride(old)
+		for _, o := range overrides {
+			o.Enabled = false
+			config.RegistryCenter.UnRegister(o.ToURL())
+			o.Enabled = true
+			config.RegistryCenter.Register(o.ToURL())
+		}
+	}
+}
+
+func (s *OverrideServiceImpl) DeleteOverride(id string) {
+	if id == "" {
+		// throw exception
+	}
+	path := getPath(id)
+	conf, _ := config.GetConfig(path)
+	if conf == "" {
+		// throw exception
+	}
+	var override dto.OverrideDTO
+	exist, err := yaml.LoadYMLConfig(conf)
+	if err != nil {
+		log.Fatal("", err)
+	}
+	yaml.UnmarshalYML(exist, override)
+	old := util.CreateFromOverride(override)
+	newConfigs := make([]store.OverrideConfig, 0)
+	if override.Configs != nil && len(override.Configs) > 0 {
+		for _, overrideConfig := range override.Configs {
+			if HashSet.Contains(overrideConfig.Type) {
+				newConfigs = append(newConfigs, overrideConfig)
+			}
+		}
+		if len(newConfigs) == 0 {
+			config.DeleteConfig(path)
+		} else {
+			override.Configs = newConfigs
+			if b, err := yaml.MarshalYML(override); err == nil {
+				err := config.SetConfig(path, string(b))
+				if err != nil {
+					return
+				}
+			} else {
+				panic(err)
+			}
+		}
+	} else {
+		config.DeleteConfig(path)
+	}
+
+	// for 2.6
+	if override.Scope == constant.ServiceKey {
+		overrides := convertDTOtoOldOverride(old)
+		for _, o := range overrides {
+			config.RegistryCenter.UnRegister(o.ToURL())
+		}
+	}
+
+}
