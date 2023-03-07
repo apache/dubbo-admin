@@ -48,7 +48,7 @@ type Client interface {
 	GetAuthorityCert(namespace string) (string, string)
 	UpdateAuthorityCert(cert string, pri string, namespace string)
 	UpdateAuthorityPublicKey(cert string) bool
-	VerifyServiceAccount(token string) (*rule.Endpoint, bool)
+	VerifyServiceAccount(token string, authorizationType string) (*rule.Endpoint, bool)
 	UpdateWebhookConfig(options *config.Options, storage cert.Storage)
 	GetNamespaceLabels(namespace string) map[string]string
 	InitController(paHandler authentication.Handler, apHandler authorization.Handler)
@@ -198,19 +198,30 @@ func (c *ClientImpl) GetNamespaceLabels(namespace string) map[string]string {
 	return map[string]string{}
 }
 
-func (c *ClientImpl) VerifyServiceAccount(token string) (*rule.Endpoint, bool) {
-	tokenReview := &k8sauth.TokenReview{
-		Spec: k8sauth.TokenReviewSpec{
-			Token: token,
-			// Audiences: []string{"dubbo-ca"},
-		},
+func (c *ClientImpl) VerifyServiceAccount(token string, authorizationType string) (*rule.Endpoint, bool) {
+	var tokenReview *k8sauth.TokenReview
+	if authorizationType == "dubbo-ca-token" {
+		tokenReview = &k8sauth.TokenReview{
+			Spec: k8sauth.TokenReviewSpec{
+				Token:     token,
+				Audiences: []string{"dubbo-ca"},
+			},
+		}
+	} else {
+		tokenReview = &k8sauth.TokenReview{
+			Spec: k8sauth.TokenReviewSpec{
+				Token: token,
+			},
+		}
 	}
-	reviewRes, err := c.kubeClient.AuthenticationV1().TokenReviews().Create(context.TODO(), tokenReview, metav1.CreateOptions{})
+
+	reviewRes, err := c.kubeClient.AuthenticationV1().TokenReviews().Create(
+		context.TODO(), tokenReview, metav1.CreateOptions{})
 	if err != nil {
 		logger.Sugar().Warnf("Failed to validate token. " + err.Error())
 		return nil, false
 	}
-	// TODO support aud
+
 	if reviewRes.Status.Error != "" {
 		logger.Sugar().Warnf("Failed to validate token. " + reviewRes.Status.Error)
 		return nil, false

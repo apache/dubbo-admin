@@ -90,14 +90,20 @@ func (s *JavaSdk) injectContainers(c *v1.Container) {
 		Name:  "DUBBO_OIDC_TOKEN",
 		Value: "/var/run/secrets/dubbo-ca-token/token",
 	})
+	c.Env = append(c.Env, v1.EnvVar{
+		Name:  "DUBBO_OIDC_TOKEN_TYPE",
+		Value: "dubbo-ca-token",
+	})
 
 	c.VolumeMounts = append(c.VolumeMounts, v1.VolumeMount{
 		Name:      "dubbo-ca-token",
 		MountPath: "/var/run/secrets/dubbo-ca-token",
+		ReadOnly:  true,
 	})
 	c.VolumeMounts = append(c.VolumeMounts, v1.VolumeMount{
 		Name:      "dubbo-ca-cert",
 		MountPath: "/var/run/secrets/dubbo-ca-cert",
+		ReadOnly:  true,
 	})
 }
 
@@ -153,6 +159,10 @@ func (s *JavaSdk) checkContainers(c v1.Container, shouldInject bool) bool {
 			break
 		}
 		if e.Name == "DUBBO_OIDC_TOKEN" {
+			shouldInject = false
+			break
+		}
+		if e.Name == "DUBBO_OIDC_TOKEN_TYPE" {
 			shouldInject = false
 			break
 		}

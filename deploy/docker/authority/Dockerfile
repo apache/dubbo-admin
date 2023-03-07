@@ -25,6 +25,8 @@ WORKDIR /workspace/cmd/authority
 #  go build -buildmode=pie -ldflags "-linkmode external -extldflags -static -w" \
 #  -o /workspace/ca
 
+RUN go install github.com/go-delve/delve/cmd/dlv@latest
+
 RUN --mount=type=cache,target=/go \
   go build \
   -o /workspace/cmd/authority/authority
@@ -35,5 +37,7 @@ EXPOSE 30060
 EXPOSE 30062
 
 COPY --from=builder /workspace/cmd/authority/authority /authority
+COPY --from=builder /go/bin/dlv /
 
 CMD ["/authority"]
+#CMD ["/dlv", "--listen=:40000", "--headless=true", "--api-version=2", "--accept-multiclient", "exec", "/authority"]

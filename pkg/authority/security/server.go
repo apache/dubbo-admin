@@ -222,22 +222,22 @@ func (s *Server) RefreshAuthorityCert() {
 }
 
 func (s *Server) Start() {
-	lis, err := net.Listen("tcp", ":"+strconv.Itoa(s.Options.PlainServerPort))
-	if err != nil {
-		log.Fatal(err)
-	}
 	go func() {
-		err := s.PlainServer.Serve(lis)
+		lis, err := net.Listen("tcp", ":"+strconv.Itoa(s.Options.PlainServerPort))
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = s.PlainServer.Serve(lis)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}()
-	lis, err = net.Listen("tcp", ":"+strconv.Itoa(s.Options.SecureServerPort))
-	if err != nil {
-		log.Fatal(err)
-	}
 	go func() {
-		err := s.SecureServer.Serve(lis)
+		lis, err := net.Listen("tcp", ":"+strconv.Itoa(s.Options.SecureServerPort))
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = s.SecureServer.Serve(lis)
 		if err != nil {
 			log.Fatal(err)
 		}
