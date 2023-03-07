@@ -1,14 +1,14 @@
 package store
 
 type OverrideConfig struct {
-	Side              string
-	Addresses         []string
-	ProviderAddresses []string
-	Parameters        map[string]interface{}
-	Applications      []string
-	Services          []string
-	Type              string
-	Enabled           bool
+	Side              string                 `json:"side"`
+	Addresses         []string               `json:"addresses"`
+	ProviderAddresses []string               `json:"providerAddresses"`
+	Parameters        map[string]interface{} `json:"parameters"`
+	Applications      []string               `json:"applications"`
+	Services          []string               `json:"services"`
+	Type              string                 `json:"type"`
+	Enabled           bool                   `json:"enabled"`
 }
 
 func (c *OverrideConfig) GetSide() string {

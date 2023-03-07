@@ -14,7 +14,7 @@ type Convert struct {
 
 func (c Convert) GetIdFromDTO(basedto interface{}) interface{} {
 
-	baseDTO := basedto.(*dto.BaseDTO)
+	baseDTO := basedto.(dto.BaseDTO)
 	if baseDTO.GetApplication() != "" {
 		return baseDTO.GetApplication()
 	}

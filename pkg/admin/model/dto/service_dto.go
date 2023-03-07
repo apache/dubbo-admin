@@ -1,7 +1,7 @@
 package dto
 
 import (
-	"github.com/apache/dubbo-admin/pkg/admin/model/domain"
+	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"hash/fnv"
 	"reflect"
 	"strings"
@@ -12,7 +12,7 @@ type ServiceDTO struct {
 	AppName        string
 	Group          string
 	Version        string
-	RegistrySource domain.RegistrySource
+	RegistrySource model.RegistrySource
 }
 
 //func (s *ServiceDTO) GetAppName() string {
