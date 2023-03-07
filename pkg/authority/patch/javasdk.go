@@ -36,7 +36,7 @@ func NewJavaSdk(options *config.Options, kubeClient k8s.Client) *JavaSdk {
 }
 
 const (
-	ExpireSeconds = 360
+	ExpireSeconds = 1800
 	Labeled       = "true"
 )
 

@@ -168,8 +168,8 @@ func TestInjectVolumes(t *testing.T) {
 		t.Error("should have dubbo-ca audience")
 	}
 
-	if *newPod.Spec.Volumes[0].Projected.Sources[0].ServiceAccountToken.ExpirationSeconds != 360 {
-		t.Error("should have 3600 expiration seconds")
+	if *newPod.Spec.Volumes[0].Projected.Sources[0].ServiceAccountToken.ExpirationSeconds != 1800 {
+		t.Error("should have 1800 expiration seconds")
 	}
 
 	if newPod.Spec.Volumes[1].Name != "dubbo-ca-cert" {

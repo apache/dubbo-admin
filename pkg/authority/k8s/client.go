@@ -309,7 +309,7 @@ func (c *ClientImpl) UpdateWebhookConfig(options *config.Options, storage cert.S
 					//	},
 					//},
 					SideEffects:             &sideEffects,
-					AdmissionReviewVersions: []string{"v1beta1", "v1"},
+					AdmissionReviewVersions: []string{"v1"},
 				},
 			},
 		}
