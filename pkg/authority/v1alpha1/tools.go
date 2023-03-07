@@ -45,7 +45,14 @@ func exactEndpoint(c context.Context, options *config.Options, kubeClient k8s.Cl
 
 		token := strings.ReplaceAll(authorization[0], "Bearer ", "")
 
-		endpoint, ok := kubeClient.VerifyServiceAccount(token)
+		authorizationTypes, ok := md["authorization-type"]
+		authorizationType := "kubernetes"
+
+		if ok && len(authorizationTypes) == 1 {
+			authorizationType = authorizationTypes[0]
+		}
+
+		endpoint, ok := kubeClient.VerifyServiceAccount(token, authorizationType)
 		if !ok {
 			return nil, fmt.Errorf("failed to verify Authorization header from kubernetes")
 		}

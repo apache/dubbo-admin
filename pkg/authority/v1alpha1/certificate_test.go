@@ -33,7 +33,7 @@ type MockKubeClient struct {
 	k8s.Client
 }
 
-func (c MockKubeClient) VerifyServiceAccount(token string) (*rule.Endpoint, bool) {
+func (c MockKubeClient) VerifyServiceAccount(token string, authorizationType string) (*rule.Endpoint, bool) {
 	return nil, "expceted-token" == token
 }
 

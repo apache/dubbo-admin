@@ -282,7 +282,7 @@ func checkContainer(t *testing.T, container v1.Container) {
 		t.Error("should have test container")
 	}
 
-	if len(container.Env) != 3 {
+	if len(container.Env) != 4 {
 		t.Error("should have 3 env")
 	}
 
@@ -308,6 +308,14 @@ func checkContainer(t *testing.T, container v1.Container) {
 
 	if container.Env[2].Value != "/var/run/secrets/dubbo-ca-token/token" {
 		t.Error("should have /var/run/secrets/dubbo-ca-token/token value")
+	}
+
+	if container.Env[3].Name != "DUBBO_OIDC_TOKEN_TYPE" {
+		t.Error("should have DUBBO_OIDC_TOKEN_TYPE env")
+	}
+
+	if container.Env[3].Value != "dubbo-ca-token" {
+		t.Error("should have dubbo-ca-token value")
 	}
 
 	if len(container.VolumeMounts) != 2 {
