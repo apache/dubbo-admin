@@ -32,7 +32,6 @@ func (m *MultiDynamicConfiguration) Init() {
 	}
 	var dynamicConfigFactory config_center.DynamicConfigurationFactory
 	//TODO  多态的实现  存在问题
-
 	//dynamicConfigurationFactory,err := dynamicConfigFactory.GetDynamicConfiguration(&m.url)
 	//if err!=nil{
 	//	log.Fatal("dynamicConfigurationFactory get error",err)

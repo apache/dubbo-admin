@@ -25,23 +25,3 @@ func NewDynamicConfigDTO2OverrideDTOAdapter(dynamicConfigDTO dto.DynamicConfigDT
 	adapter.SetConfigs(dynamicConfigDTO.Configs)
 	return adapter, nil
 }
-
-const (
-	ConstantsAPPLICATION = "APPLICATION"
-	ConstantsSERVICE     = "SERVICE"
-)
-
-//func main() {
-//	// example usage
-//	dynamicConfigDTO := DynamicConfigDTO{
-//		Application:  "myapp",
-//		ConfigVersion: "v1",
-//		Configs:       []string{"config1", "config2"},
-//	}
-//	adapter, err := NewDynamicConfigDTO2OverrideDTOAdapter(dynamicConfigDTO)
-//	if err != nil {
-//		//errors.Wrap(err, "failed to create adapter")
-//	}
-//	// use the adapter object
-//	_ = adapter
-//}

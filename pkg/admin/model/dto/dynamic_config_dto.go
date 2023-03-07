@@ -15,3 +15,15 @@ type DynamicConfigDTO struct {
 func New() *DynamicConfigDTO {
 	return &DynamicConfigDTO{}
 }
+
+func (s *DynamicConfigDTO) SetConfigVersion(configVersion string) {
+	s.ConfigVersion = configVersion
+}
+
+func (s *DynamicConfigDTO) SetConfigs(configs []store.OverrideConfig) {
+	s.Configs = configs
+}
+
+func (s *DynamicConfigDTO) SetEnabled(enabled bool) {
+	s.Enabled = enabled
+}
