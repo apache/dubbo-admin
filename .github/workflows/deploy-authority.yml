@@ -1,6 +1,8 @@
 name: Deploy Authority
 
 on:
+  schedule:
+    - cron: '0 0/6 * * *'
   push:
     branches:
       - 'refactor-with-go'
