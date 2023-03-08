@@ -18,8 +18,8 @@
 package applyconfiguration
 
 import (
-	"github.com/apache/dubbo-admin/pkg/authority/apis/dubbo.apache.org/v1beta1"
-	v1beta12 "github.com/apache/dubbo-admin/pkg/authority/generated/applyconfiguration/dubbo.apache.org/v1beta1"
+	v1beta1 "github.com/apache/dubbo-admin/pkg/authority/apis/dubbo.apache.org/v1beta1"
+	dubboapacheorgv1beta1 "github.com/apache/dubbo-admin/pkg/authority/generated/applyconfiguration/dubbo.apache.org/v1beta1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -29,33 +29,33 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 	switch kind {
 	// Group=dubbo.apache.org, Version=v1beta1
 	case v1beta1.SchemeGroupVersion.WithKind("AuthenticationPolicy"):
-		return &v1beta12.AuthenticationPolicyApplyConfiguration{}
+		return &dubboapacheorgv1beta1.AuthenticationPolicyApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthenticationPolicyExtend"):
-		return &v1beta12.AuthenticationPolicyExtendApplyConfiguration{}
+		return &dubboapacheorgv1beta1.AuthenticationPolicyExtendApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthenticationPolicyRule"):
-		return &v1beta12.AuthenticationPolicyRuleApplyConfiguration{}
+		return &dubboapacheorgv1beta1.AuthenticationPolicyRuleApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthenticationPolicySource"):
-		return &v1beta12.AuthenticationPolicySourceApplyConfiguration{}
+		return &dubboapacheorgv1beta1.AuthenticationPolicySourceApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthenticationPolicySpec"):
-		return &v1beta12.AuthenticationPolicySpecApplyConfiguration{}
+		return &dubboapacheorgv1beta1.AuthenticationPolicySpecApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthenticationPolicyTarget"):
-		return &v1beta12.AuthenticationPolicyTargetApplyConfiguration{}
+		return &dubboapacheorgv1beta1.AuthenticationPolicyTargetApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthorizationPolicy"):
-		return &v1beta12.AuthorizationPolicyApplyConfiguration{}
+		return &dubboapacheorgv1beta1.AuthorizationPolicyApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthorizationPolicyCondition"):
-		return &v1beta12.AuthorizationPolicyConditionApplyConfiguration{}
+		return &dubboapacheorgv1beta1.AuthorizationPolicyConditionApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthorizationPolicyExtend"):
-		return &v1beta12.AuthorizationPolicyExtendApplyConfiguration{}
+		return &dubboapacheorgv1beta1.AuthorizationPolicyExtendApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthorizationPolicyMatch"):
-		return &v1beta12.AuthorizationPolicyMatchApplyConfiguration{}
+		return &dubboapacheorgv1beta1.AuthorizationPolicyMatchApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthorizationPolicyRule"):
-		return &v1beta12.AuthorizationPolicyRuleApplyConfiguration{}
+		return &dubboapacheorgv1beta1.AuthorizationPolicyRuleApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthorizationPolicySource"):
-		return &v1beta12.AuthorizationPolicySourceApplyConfiguration{}
+		return &dubboapacheorgv1beta1.AuthorizationPolicySourceApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthorizationPolicySpec"):
-		return &v1beta12.AuthorizationPolicySpecApplyConfiguration{}
+		return &dubboapacheorgv1beta1.AuthorizationPolicySpecApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthorizationPolicyTarget"):
-		return &v1beta12.AuthorizationPolicyTargetApplyConfiguration{}
+		return &dubboapacheorgv1beta1.AuthorizationPolicyTargetApplyConfiguration{}
 
 	}
 	return nil

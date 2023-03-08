@@ -18,8 +18,8 @@
 package dubbo
 
 import (
-	"github.com/apache/dubbo-admin/pkg/authority/generated/informers/externalversions/dubbo.apache.org/v1beta1"
-	"github.com/apache/dubbo-admin/pkg/authority/generated/informers/externalversions/internalinterfaces"
+	v1beta1 "github.com/apache/dubbo-admin/pkg/authority/generated/informers/externalversions/dubbo.apache.org/v1beta1"
+	internalinterfaces "github.com/apache/dubbo-admin/pkg/authority/generated/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to each of this group's versions.

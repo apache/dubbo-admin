@@ -18,20 +18,23 @@
 package services
 
 import (
+	"net/url"
+	"strings"
+	"sync"
+
 	"dubbo.apache.org/dubbo-go/v3/common/logger"
 	"github.com/apache/dubbo-admin/pkg/admin/cache"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	util2 "github.com/apache/dubbo-admin/pkg/admin/util"
-	"net/url"
-	"strings"
-	"sync"
 
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/registry"
 )
 
-var SUBSCRIBE *common.URL
-var UrlIdsMapper sync.Map
+var (
+	SUBSCRIBE    *common.URL
+	UrlIdsMapper sync.Map
+)
 
 func init() {
 	queryParams := url.Values{
@@ -63,7 +66,7 @@ func DestroySubscribe(registry registry.Registry) {
 type adminNotifyListener struct{}
 
 func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
-	//TODO implement me
+	// TODO implement me
 	serviceURL := event.Service
 	var interfaceName string
 	categories := make(map[string]map[string]map[string]*common.URL)
@@ -106,7 +109,7 @@ func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
 		interfaceName = serviceURL.Service()
 		var services map[string]map[string]*common.URL
 		if _, ok := categories[category]; ok {
-			//services = s
+			// services = s
 		} else {
 			services = make(map[string]map[string]*common.URL)
 			categories[category] = services

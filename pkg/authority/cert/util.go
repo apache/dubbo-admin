@@ -22,21 +22,23 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"github.com/apache/dubbo-admin/pkg/authority/logger"
 	"log"
 	"math/big"
 	"time"
+
+	"github.com/apache/dubbo-admin/pkg/authority/rule"
+	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
 func DecodeCert(cert string) *x509.Certificate {
 	block, _ := pem.Decode([]byte(cert))
 	if block == nil {
-		logger.Sugar.Warnf("Failed to parse public key.")
+		logger.Sugar().Warnf("Failed to parse public key.")
 		return nil
 	}
 	p, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		logger.Sugar.Warnf("Failed to parse public key. " + err.Error())
+		logger.Sugar().Warnf("Failed to parse public key. " + err.Error())
 		return nil
 	}
 	return p
@@ -45,12 +47,12 @@ func DecodeCert(cert string) *x509.Certificate {
 func DecodePrivateKey(cert string) *rsa.PrivateKey {
 	block, _ := pem.Decode([]byte(cert))
 	if block == nil {
-		logger.Sugar.Warnf("Failed to parse private key.")
+		logger.Sugar().Warnf("Failed to parse private key.")
 		return nil
 	}
 	p, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
-		logger.Sugar.Warnf("Failed to parse private key. " + err.Error())
+		logger.Sugar().Warnf("Failed to parse private key. " + err.Error())
 		return nil
 	}
 	return p
@@ -91,7 +93,7 @@ func GenerateAuthorityCert(rootCert *Cert, caValidity int64) *Cert {
 		Bytes: caBytes,
 	})
 	if err != nil {
-		logger.Sugar.Warnf("Failed to encode certificate. " + err.Error())
+		logger.Sugar().Warnf("Failed to encode certificate. " + err.Error())
 		panic(err)
 	}
 
@@ -133,7 +135,7 @@ func SignServerCert(authorityCert *Cert, serverName []string, certValidity int64
 		Bytes: c,
 	})
 	if err != nil {
-		logger.Sugar.Warnf("Failed to encode certificate. " + err.Error())
+		logger.Sugar().Warnf("Failed to encode certificate. " + err.Error())
 		panic(err)
 	}
 	return &Cert{
@@ -169,7 +171,7 @@ func GenerateCSR() (string, *rsa.PrivateKey, error) {
 	})
 
 	if err != nil {
-		logger.Sugar.Warnf("Failed to encode certificate. " + err.Error())
+		logger.Sugar().Warnf("Failed to encode certificate. " + err.Error())
 		return "", nil, err
 	}
 	return csr.String(), privateKey, nil
@@ -188,8 +190,8 @@ func LoadCSR(csrString string) (*x509.CertificateRequest, error) {
 	return csr, nil
 }
 
-func SignFromCSR(csr *x509.CertificateRequest, authorityCert *Cert, certValidity int64) (string, error) {
-	csrTemplate := x509.Certificate{
+func SignFromCSR(csr *x509.CertificateRequest, endpoint *rule.Endpoint, authorityCert *Cert, certValidity int64) (string, error) {
+	csrTemplate := &x509.Certificate{
 		PublicKeyAlgorithm: csr.PublicKeyAlgorithm,
 		PublicKey:          csr.PublicKey,
 
@@ -201,10 +203,12 @@ func SignFromCSR(csr *x509.CertificateRequest, authorityCert *Cert, certValidity
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	}
-	csrTemplate.DNSNames = csr.DNSNames
+	if endpoint != nil {
+		AppendEndpoint(endpoint, csrTemplate)
+	}
 
 	// TODO support ecdsa
-	result, err := x509.CreateCertificate(rand.Reader, &csrTemplate, authorityCert.Cert, csrTemplate.PublicKey, authorityCert.PrivateKey)
+	result, err := x509.CreateCertificate(rand.Reader, csrTemplate, authorityCert.Cert, csrTemplate.PublicKey, authorityCert.PrivateKey)
 	if err != nil {
 		return "", err
 	}
@@ -220,6 +224,10 @@ func SignFromCSR(csr *x509.CertificateRequest, authorityCert *Cert, certValidity
 	cert := certPem.String()
 
 	return cert, nil
+}
+
+func AppendEndpoint(endpoint *rule.Endpoint, cert *x509.Certificate) {
+	cert.DNSNames = endpoint.Ips
 }
 
 func EncodePrivateKey(caPrivKey *rsa.PrivateKey) string {

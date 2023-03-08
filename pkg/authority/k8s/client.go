@@ -18,25 +18,29 @@ package k8s
 import (
 	"context"
 	"flag"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"time"
+
 	"github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	infoemerclient "github.com/apache/dubbo-admin/pkg/authority/generated/clientset/versioned"
 	informers "github.com/apache/dubbo-admin/pkg/authority/generated/informers/externalversions"
-	"github.com/apache/dubbo-admin/pkg/authority/logger"
+	"github.com/apache/dubbo-admin/pkg/authority/rule"
 	"github.com/apache/dubbo-admin/pkg/authority/rule/authentication"
 	"github.com/apache/dubbo-admin/pkg/authority/rule/authorization"
+	"github.com/apache/dubbo-admin/pkg/logger"
 	admissionregistrationV1 "k8s.io/api/admissionregistration/v1"
 	k8sauth "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"time"
+	"k8s.io/apimachinery/pkg/types"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	"path/filepath"
-	"reflect"
 )
 
 type Client interface {
@@ -44,7 +48,7 @@ type Client interface {
 	GetAuthorityCert(namespace string) (string, string)
 	UpdateAuthorityCert(cert string, pri string, namespace string)
 	UpdateAuthorityPublicKey(cert string) bool
-	VerifyServiceAccount(token string) bool
+	VerifyServiceAccount(token string, authorizationType string) (*rule.Endpoint, bool)
 	UpdateWebhookConfig(options *config.Options, storage cert.Storage)
 	GetNamespaceLabels(namespace string) map[string]string
 	InitController(paHandler authentication.Handler, apHandler authorization.Handler)
@@ -61,9 +65,9 @@ func NewClient() Client {
 
 func (c *ClientImpl) Init(options *config.Options) bool {
 	config, err := rest.InClusterConfig()
-	options.InPodEnv = err != nil
+	options.InPodEnv = err == nil
 	if err != nil {
-		logger.Sugar.Infof("Failed to load config from Pod. Will fall back to kube config file.")
+		logger.Sugar().Infof("Failed to load config from Pod. Will fall back to kube config file.")
 
 		var kubeconfig *string
 		if home := homedir.HomeDir(); home != "" {
@@ -76,7 +80,7 @@ func (c *ClientImpl) Init(options *config.Options) bool {
 		// use the current context in kubeconfig
 		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
 		if err != nil {
-			logger.Sugar.Warnf("Failed to load config from kube config file.")
+			logger.Sugar().Warnf("Failed to load config from kube config file.")
 			return false
 		}
 	}
@@ -84,12 +88,12 @@ func (c *ClientImpl) Init(options *config.Options) bool {
 	// creates the clientset
 	clientSet, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		logger.Sugar.Warnf("Failed to create client to kubernetes. " + err.Error())
+		logger.Sugar().Warnf("Failed to create client to kubernetes. " + err.Error())
 		return false
 	}
 	informerClient, err := infoemerclient.NewForConfig(config)
 	if err != nil {
-		logger.Sugar.Warnf("Failed to create client to kubernetes. " + err.Error())
+		logger.Sugar().Warnf("Failed to create client to kubernetes. " + err.Error())
 		return false
 	}
 	c.kubeClient = clientSet
@@ -100,7 +104,7 @@ func (c *ClientImpl) Init(options *config.Options) bool {
 func (c *ClientImpl) GetAuthorityCert(namespace string) (string, string) {
 	s, err := c.kubeClient.CoreV1().Secrets(namespace).Get(context.TODO(), "dubbo-ca-secret", metav1.GetOptions{})
 	if err != nil {
-		logger.Sugar.Warnf("Unable to get authority cert secret from kubernetes. " + err.Error())
+		logger.Sugar().Warnf("Unable to get authority cert secret from kubernetes. " + err.Error())
 	}
 	return string(s.Data["cert.pem"]), string(s.Data["pri.pem"])
 }
@@ -108,7 +112,7 @@ func (c *ClientImpl) GetAuthorityCert(namespace string) (string, string) {
 func (c *ClientImpl) UpdateAuthorityCert(cert string, pri string, namespace string) {
 	s, err := c.kubeClient.CoreV1().Secrets(namespace).Get(context.TODO(), "dubbo-ca-secret", metav1.GetOptions{})
 	if err != nil {
-		logger.Sugar.Warnf("Unable to get ca secret from kubernetes. Will try to create. " + err.Error())
+		logger.Sugar().Warnf("Unable to get ca secret from kubernetes. Will try to create. " + err.Error())
 		s = &v1.Secret{
 			Data: map[string][]byte{
 				"cert.pem": []byte(cert),
@@ -118,14 +122,14 @@ func (c *ClientImpl) UpdateAuthorityCert(cert string, pri string, namespace stri
 		s.Name = "dubbo-ca-secret"
 		_, err = c.kubeClient.CoreV1().Secrets(namespace).Create(context.TODO(), s, metav1.CreateOptions{})
 		if err != nil {
-			logger.Sugar.Warnf("Failed to create ca secret to kubernetes. " + err.Error())
+			logger.Sugar().Warnf("Failed to create ca secret to kubernetes. " + err.Error())
 		} else {
-			logger.Sugar.Info("Create ca secret to kubernetes success. ")
+			logger.Sugar().Info("Create ca secret to kubernetes success. ")
 		}
 	}
 
 	if string(s.Data["cert.pem"]) == cert && string(s.Data["pri.pem"]) == pri {
-		logger.Sugar.Info("Ca secret in kubernetes is already the newest vesion.")
+		logger.Sugar().Info("Ca secret in kubernetes is already the newest vesion.")
 		return
 	}
 
@@ -133,16 +137,16 @@ func (c *ClientImpl) UpdateAuthorityCert(cert string, pri string, namespace stri
 	s.Data["pri.pem"] = []byte(pri)
 	_, err = c.kubeClient.CoreV1().Secrets(namespace).Update(context.TODO(), s, metav1.UpdateOptions{})
 	if err != nil {
-		logger.Sugar.Warnf("Failed to update ca secret to kubernetes. " + err.Error())
+		logger.Sugar().Warnf("Failed to update ca secret to kubernetes. " + err.Error())
 	} else {
-		logger.Sugar.Info("Update ca secret to kubernetes success. ")
+		logger.Sugar().Info("Update ca secret to kubernetes success. ")
 	}
 }
 
 func (c *ClientImpl) UpdateAuthorityPublicKey(cert string) bool {
 	ns, err := c.kubeClient.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		logger.Sugar.Warnf("Failed to get namespaces. " + err.Error())
+		logger.Sugar().Warnf("Failed to get namespaces. " + err.Error())
 		return false
 	}
 	for _, n := range ns.Items {
@@ -151,7 +155,7 @@ func (c *ClientImpl) UpdateAuthorityPublicKey(cert string) bool {
 		}
 		cm, err := c.kubeClient.CoreV1().ConfigMaps(n.Name).Get(context.TODO(), "dubbo-ca-cert", metav1.GetOptions{})
 		if err != nil {
-			logger.Sugar.Warnf("Unable to find dubbo-ca-cert in " + n.Name + ". Will create config map. " + err.Error())
+			logger.Sugar().Warnf("Unable to find dubbo-ca-cert in " + n.Name + ". Will create config map. " + err.Error())
 			cm = &v1.ConfigMap{
 				Data: map[string]string{
 					"ca.crt": cert,
@@ -160,23 +164,23 @@ func (c *ClientImpl) UpdateAuthorityPublicKey(cert string) bool {
 			cm.Name = "dubbo-ca-cert"
 			_, err = c.kubeClient.CoreV1().ConfigMaps(n.Name).Create(context.TODO(), cm, metav1.CreateOptions{})
 			if err != nil {
-				logger.Sugar.Warnf("Failed to create config map for " + n.Name + ". " + err.Error())
+				logger.Sugar().Warnf("Failed to create config map for " + n.Name + ". " + err.Error())
 				return false
 			} else {
-				logger.Sugar.Info("Create ca config map for " + n.Name + " success.")
+				logger.Sugar().Info("Create ca config map for " + n.Name + " success.")
 			}
 		}
 		if cm.Data["ca.crt"] == cert {
-			logger.Sugar.Info("Ignore override ca to " + n.Name + ". Cause: Already exist.")
+			logger.Sugar().Info("Ignore override ca to " + n.Name + ". Cause: Already exist.")
 			continue
 		}
 		cm.Data["ca.crt"] = cert
 		_, err = c.kubeClient.CoreV1().ConfigMaps(n.Name).Update(context.TODO(), cm, metav1.UpdateOptions{})
 		if err != nil {
-			logger.Sugar.Warnf("Failed to update config map for " + n.Name + ". " + err.Error())
+			logger.Sugar().Warnf("Failed to update config map for " + n.Name + ". " + err.Error())
 			return false
 		} else {
-			logger.Sugar.Info("Update ca config map for " + n.Name + " success.")
+			logger.Sugar().Info("Update ca config map for " + n.Name + " success.")
 		}
 	}
 	return true
@@ -185,7 +189,7 @@ func (c *ClientImpl) UpdateAuthorityPublicKey(cert string) bool {
 func (c *ClientImpl) GetNamespaceLabels(namespace string) map[string]string {
 	ns, err := c.kubeClient.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
 	if err != nil {
-		logger.Sugar.Warnf("Failed to validate token. " + err.Error())
+		logger.Sugar().Warnf("Failed to validate token. " + err.Error())
 		return map[string]string{}
 	}
 	if ns.Labels != nil {
@@ -194,23 +198,78 @@ func (c *ClientImpl) GetNamespaceLabels(namespace string) map[string]string {
 	return map[string]string{}
 }
 
-func (c *ClientImpl) VerifyServiceAccount(token string) bool {
-	tokenReview := &k8sauth.TokenReview{
-		Spec: k8sauth.TokenReviewSpec{
-			Token: token,
-		},
+func (c *ClientImpl) VerifyServiceAccount(token string, authorizationType string) (*rule.Endpoint, bool) {
+	var tokenReview *k8sauth.TokenReview
+	if authorizationType == "dubbo-ca-token" {
+		tokenReview = &k8sauth.TokenReview{
+			Spec: k8sauth.TokenReviewSpec{
+				Token:     token,
+				Audiences: []string{"dubbo-ca"},
+			},
+		}
+	} else {
+		tokenReview = &k8sauth.TokenReview{
+			Spec: k8sauth.TokenReviewSpec{
+				Token: token,
+			},
+		}
 	}
-	reviewRes, err := c.kubeClient.AuthenticationV1().TokenReviews().Create(context.TODO(), tokenReview, metav1.CreateOptions{})
+
+	reviewRes, err := c.kubeClient.AuthenticationV1().TokenReviews().Create(
+		context.TODO(), tokenReview, metav1.CreateOptions{})
 	if err != nil {
-		logger.Sugar.Warnf("Failed to validate token. " + err.Error())
-		return false
+		logger.Sugar().Warnf("Failed to validate token. " + err.Error())
+		return nil, false
 	}
-	// TODO support aud
+
 	if reviewRes.Status.Error != "" {
-		logger.Sugar.Warnf("Failed to validate token. " + reviewRes.Status.Error)
-		return false
+		logger.Sugar().Warnf("Failed to validate token. " + reviewRes.Status.Error)
+		return nil, false
 	}
-	return true
+
+	names := strings.Split(reviewRes.Status.User.Username, ":")
+	if len(names) != 4 {
+		logger.Sugar().Warnf("Token is not a pod service account. " + reviewRes.Status.User.Username)
+		return nil, false
+	}
+
+	namespace := names[2]
+	podName := reviewRes.Status.User.Extra["authentication.kubernetes.io/pod-name"]
+	podUid := reviewRes.Status.User.Extra["authentication.kubernetes.io/pod-uid"]
+
+	if len(podName) != 1 || len(podUid) != 1 {
+		logger.Sugar().Warnf("Token is not a pod service account. " + reviewRes.Status.User.Username)
+		return nil, false
+	}
+
+	pod, err := c.kubeClient.CoreV1().Pods(namespace).Get(context.TODO(), podName[0], metav1.GetOptions{})
+	if err != nil {
+		logger.Sugar().Warnf("Failed to get pod. " + err.Error())
+		return nil, false
+	}
+
+	if pod.UID != types.UID(podUid[0]) {
+		logger.Sugar().Warnf("Token is not a pod service account. " + reviewRes.Status.User.Username)
+		return nil, false
+	}
+
+	e := &rule.Endpoint{}
+
+	e.ID = pod.Namespace + "/" + pod.Name
+	for _, i := range pod.Status.PodIPs {
+		if i.IP != "" {
+			e.Ips = append(e.Ips, i.IP)
+		}
+	}
+
+	e.KubernetesEnv = &rule.KubernetesEnv{
+		Namespace:      pod.Namespace,
+		PodName:        pod.Name,
+		PodLabels:      pod.Labels,
+		PodAnnotations: pod.Annotations,
+	}
+
+	return e, true
 }
 
 func (c *ClientImpl) UpdateWebhookConfig(options *config.Options, storage cert.Storage) {
@@ -220,7 +279,7 @@ func (c *ClientImpl) UpdateWebhookConfig(options *config.Options, storage cert.S
 	bundle := storage.GetAuthorityCert().CertPem
 	mwConfig, err := c.kubeClient.AdmissionregistrationV1().MutatingWebhookConfigurations().Get(context.TODO(), "dubbo-ca", metav1.GetOptions{})
 	if err != nil {
-		logger.Sugar.Warnf("Unable to find dubbo-ca webhook config. Will create. " + err.Error())
+		logger.Sugar().Warnf("Unable to find dubbo-ca webhook config. Will create. " + err.Error())
 		mwConfig = &admissionregistrationV1.MutatingWebhookConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "dubbo-ca",
@@ -261,42 +320,49 @@ func (c *ClientImpl) UpdateWebhookConfig(options *config.Options, storage cert.S
 					//	},
 					//},
 					SideEffects:             &sideEffects,
-					AdmissionReviewVersions: []string{"v1beta1", "v1"},
+					AdmissionReviewVersions: []string{"v1"},
 				},
 			},
 		}
 
 		_, err := c.kubeClient.AdmissionregistrationV1().MutatingWebhookConfigurations().Create(context.TODO(), mwConfig, metav1.CreateOptions{})
 		if err != nil {
-			logger.Sugar.Warnf("Failed to create webhook config. " + err.Error())
+			logger.Sugar().Warnf("Failed to create webhook config. " + err.Error())
 		} else {
-			logger.Sugar.Info("Create webhook config success.")
+			logger.Sugar().Info("Create webhook config success.")
 		}
 		return
 	}
 
 	if reflect.DeepEqual(mwConfig.Webhooks[0].ClientConfig.CABundle, []byte(bundle)) {
-		logger.Sugar.Info("Ignore override webhook config. Cause: Already exist.")
+		logger.Sugar().Info("Ignore override webhook config. Cause: Already exist.")
 		return
 	}
 
 	mwConfig.Webhooks[0].ClientConfig.CABundle = []byte(bundle)
 	_, err = c.kubeClient.AdmissionregistrationV1().MutatingWebhookConfigurations().Update(context.TODO(), mwConfig, metav1.UpdateOptions{})
 	if err != nil {
-		logger.Sugar.Warnf("Failed to update webhook config. " + err.Error())
+		logger.Sugar().Warnf("Failed to update webhook config. " + err.Error())
 	} else {
-		logger.Sugar.Info("Update webhook config success.")
+		logger.Sugar().Info("Update webhook config success.")
 	}
 }
 
-func (c *ClientImpl) InitController(paHandler authentication.Handler, apHandler authorization.Handler) {
+func (c *ClientImpl) InitController(
+	authenticationHandler authentication.Handler,
+	authorizationHandler authorization.Handler,
+) {
+	logger.Sugar().Info("Init rule controller...")
+
 	informerFactory := informers.NewSharedInformerFactory(c.informerClient, time.Second*30)
 
 	stopCh := make(chan struct{})
-	NewController(c.informerClient,
-		paHandler,
-		apHandler,
+	controller := NewController(c.informerClient,
+		authenticationHandler,
+		authorizationHandler,
 		informerFactory.Dubbo().V1beta1().AuthenticationPolicies(),
 		informerFactory.Dubbo().V1beta1().AuthorizationPolicies())
 	informerFactory.Start(stopCh)
+
+	controller.WaitSynced()
 }

@@ -24,7 +24,7 @@ import (
 	// registry center
 	_ "dubbo.apache.org/dubbo-go/v3/registry/nacos"
 	_ "dubbo.apache.org/dubbo-go/v3/registry/zookeeper"
-	//config center
+	// config center
 	_ "dubbo.apache.org/dubbo-go/v3/config_center/nacos"
 	_ "dubbo.apache.org/dubbo-go/v3/config_center/zookeeper"
 )

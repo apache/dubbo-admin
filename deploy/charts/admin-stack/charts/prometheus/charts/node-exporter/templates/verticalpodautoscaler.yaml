@@ -1,0 +1,49 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+{{- if and (.Capabilities.APIVersions.Has "autoscaling.k8s.io/v1") (.Values.verticalPodAutoscaler.enabled) }}
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: {{ include "prometheus-node-exporter.fullname" . }}
+  namespace: {{ include "prometheus-node-exporter.namespace" . }}
+  labels:
+    {{- include "prometheus-node-exporter.labels" . | nindent 4 }}
+spec:
+  resourcePolicy:
+    containerPolicies:
+    - containerName: {{ include "prometheus-node-exporter.name" . }}
+      {{- with .Values.verticalPodAutoscaler.controlledResources }}
+      controlledResources: {{ . }}
+      {{- end }}
+      {{- with .Values.verticalPodAutoscaler.maxAllowed }}
+      maxAllowed:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.verticalPodAutoscaler.minAllowed }}
+      minAllowed:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  targetRef:
+    apiVersion: apps/v1
+    kind: DaemonSet
+    name:  {{ include "prometheus-node-exporter.fullname" . }}
+  {{- if .Values.verticalPodAutoscaler.updatePolicy }}
+  updatePolicy:
+    {{- with .Values.verticalPodAutoscaler.updatePolicy.updateMode }}
+    updateMode: {{ . }}
+    {{- end }}
+  {{- end }}
+{{- end }}

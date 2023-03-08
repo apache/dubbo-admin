@@ -18,7 +18,7 @@
 package v1beta1
 
 import (
-	"github.com/apache/dubbo-admin/pkg/authority/generated/informers/externalversions/internalinterfaces"
+	internalinterfaces "github.com/apache/dubbo-admin/pkg/authority/generated/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to all the informers in this group version.

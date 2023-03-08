@@ -19,16 +19,19 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"github.com/apache/dubbo-admin/pkg/authority/config"
-	"github.com/apache/dubbo-admin/pkg/authority/logger"
 	"os"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/apache/dubbo-admin/pkg/authority/config"
+	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
 func TestIsValid(t *testing.T) {
+	t.Parallel()
+
 	c := &Cert{}
 	if c.IsValid() {
 		t.Errorf("cert is not valid")
@@ -62,6 +65,8 @@ func TestIsValid(t *testing.T) {
 }
 
 func TestNeedRefresh(t *testing.T) {
+	t.Parallel()
+
 	c := &Cert{}
 	if !c.NeedRefresh() {
 		t.Errorf("cert is need refresh")
@@ -111,6 +116,8 @@ func TestNeedRefresh(t *testing.T) {
 }
 
 func TestGetTlsCert(t *testing.T) {
+	t.Parallel()
+
 	cert := GenerateAuthorityCert(nil, 2*60*60*1000)
 
 	tlsCert := cert.GetTlsCert()
@@ -124,6 +131,8 @@ func TestGetTlsCert(t *testing.T) {
 }
 
 func TestGetServerCert(t *testing.T) {
+	t.Parallel()
+
 	cert := GenerateAuthorityCert(nil, 24*60*60*1000)
 
 	s := &storageImpl{
@@ -193,6 +202,8 @@ func TestGetServerCert(t *testing.T) {
 }
 
 func TestRefreshServerCert(t *testing.T) {
+	t.Parallel()
+
 	logger.Init()
 	s := NewStorage(&config.Options{
 		CaValidity:   24 * 60 * 60 * 1000,

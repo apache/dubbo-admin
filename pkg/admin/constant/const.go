@@ -42,6 +42,7 @@ const (
 	ProviderSide          = "provider"
 	ConsumerProtocol      = "consumer"
 	EmptyProtocol         = "empty"
+	DefaultGroup          = "dubbo"
 	ApplicationKey        = "application"
 	DynamicKey            = "dynamic"
 	SerializationKey      = "serialization"
