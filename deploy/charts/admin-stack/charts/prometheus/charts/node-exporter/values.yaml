@@ -13,13 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-rbac:
-  create: true
+# Default values for prometheus-node-exporter.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+name: nodeExporter
+nameOverride: ""
+fullnameOverride: ""
+image:
+  repository: quay.io/prometheus/node-exporter
+  # Overrides the image tag whose default is {{ printf "v%s" .Chart.AppVersion }}
+  tag: ""
+  pullPolicy: IfNotPresent
+  sha: ""
 
-podSecurityPolicy:
-  enabled: false
-
-imagePullSecrets:
+imagePullSecrets: []
 # - name: "image-pull-secret"
 
 service:
@@ -31,6 +38,107 @@ service:
   listenOnAllInterfaces: true
   annotations:
     prometheus.io/scrape: "true"
+
+# Additional environment variables that will be passed to the daemonset
+env: {}
+##  env:
+##    VARIABLE: value
+
+prometheus:
+  monitor:
+    enabled: false
+    additionalLabels: {}
+    namespace: ""
+
+    jobLabel: ""
+
+    scheme: http
+    basicAuth: {}
+    bearerTokenFile:
+    tlsConfig: {}
+
+    ## proxyUrl: URL of a proxy that should be used for scraping.
+    ##
+    proxyUrl: ""
+
+    ## Override serviceMonitor selector
+    ##
+    selectorOverride: {}
+
+    relabelings: []
+    metricRelabelings: []
+    interval: ""
+    scrapeTimeout: 10s
+    ## prometheus.monitor.apiVersion ApiVersion for the serviceMonitor Resource(defaults to "monitoring.coreos.com/v1")
+    apiVersion: ""
+
+    ## SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
+    ##
+    sampleLimit: 0
+
+    ## TargetLimit defines a limit on the number of scraped targets that will be accepted.
+    ##
+    targetLimit: 0
+
+    ## Per-scrape limit on number of labels that will be accepted for a sample. Only valid in Prometheus versions 2.27.0 and newer.
+    ##
+    labelLimit: 0
+
+    ## Per-scrape limit on length of labels name that will be accepted for a sample. Only valid in Prometheus versions 2.27.0 and newer.
+    ##
+    labelNameLengthLimit: 0
+
+    ## Per-scrape limit on length of labels value that will be accepted for a sample. Only valid in Prometheus versions 2.27.0 and newer.
+    ##
+    labelValueLengthLimit: 0
+
+## Customize the updateStrategy if set
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 200m
+  #   memory: 50Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 30Mi
+
+serviceAccount:
+  # Specifies whether a ServiceAccount should be created
+  create: true
+  # The name of the ServiceAccount to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+  annotations: {}
+  imagePullSecrets: []
+  automountServiceAccountToken: false
+
+securityContext:
+  fsGroup: 65534
+  runAsGroup: 65534
+  runAsNonRoot: true
+  runAsUser: 65534
+
+containerSecurityContext: {}
+  # capabilities:
+  #   add:
+  #   - SYS_TIME
+
+rbac:
+  ## If true, create & use RBAC resources
+  ##
+  create: true
+  ## If true, create & use Pod Security Policy resources
+  ## https://kubernetes.io/docs/concepts/policy/pod-security-policy/
+  pspEnabled: true
+  pspAnnotations: {}
 
 # for deployments that have node_exporter deployed outside of the cluster, list
 # their addresses here
@@ -192,219 +300,10 @@ verticalPodAutoscaler:
   # memory: 100Mi
   # Define the min allowed resources for the pod
   minAllowed: {}
-    # cpu: 200m
-    # memory: 100Mi
+  # cpu: 200m
+  # memory: 100Mi
 
-    # updatePolicy:
+  # updatePolicy:
     # Specifies whether recommended updates are applied when a Pod is started and whether recommended updates
     # are applied during the life of a Pod. Possible values are "Off", "Initial", "Recreate", and "Auto".
-  # updateMode: Auto
-
-## Define serviceAccount names for components. Defaults to component's fully qualified name.
-##
-serviceAccount:
-  create: true
-  name:
-  annotations: {}
-prometheus:
-  monitor:
-    enabled: false
-    additionalLabels: {}
-    namespace: ""
-
-    jobLabel: ""
-
-    scheme: http
-    basicAuth: {}
-    bearerTokenFile:
-    tlsConfig: {}
-
-    ## proxyUrl: URL of a proxy that should be used for scraping.
-    ##
-    proxyUrl: ""
-
-    ## Override serviceMonitor selector
-    ##
-    selectorOverride: {}
-
-    relabelings: []
-    metricRelabelings: []
-    interval: ""
-    scrapeTimeout: 10s
-    ## prometheus.monitor.apiVersion ApiVersion for the serviceMonitor Resource(defaults to "monitoring.coreos.com/v1")
-    apiVersion: ""
-
-    ## SampleLimit defines per-scrape limit on number of scraped samples that will be accepted.
-    ##
-    sampleLimit: 0
-
-    ## TargetLimit defines a limit on the number of scraped targets that will be accepted.
-    ##
-    targetLimit: 0
-
-    ## Per-scrape limit on number of labels that will be accepted for a sample. Only valid in Prometheus versions 2.27.0 and newer.
-    ##
-    labelLimit: 0
-
-    ## Per-scrape limit on length of labels name that will be accepted for a sample. Only valid in Prometheus versions 2.27.0 and newer.
-    ##
-    labelNameLengthLimit: 0
-
-    ## Per-scrape limit on length of labels value that will be accepted for a sample. Only valid in Prometheus versions 2.27.0 and newer.
-    ##
-    labelValueLengthLimit: 0
-## applications
-nodeExporter:
-  ## If false, node-exporter will not be installed
-  ##
-  enabled: true
-
-  ## If true, node-exporter pods share the host network namespace
-  ##
-  hostNetwork: true
-
-  ## If true, node-exporter pods share the host PID namespace
-  ##
-  hostPID: true
-
-  ## If true, node-exporter pods mounts host / at /host/root
-  ##
-  hostRootfs: true
-
-  ## node-exporter container name
-  ##
-  name: node-exporter
-
-  ## node-exporter container image
-  ##
-  image:
-    repository: quay.io/prometheus/node-exporter
-    tag: v1.3.0
-    pullPolicy: IfNotPresent
-
-  ## Specify if a Pod Security Policy for node-exporter must be created
-  ## Ref: https://kubernetes.io/docs/concepts/policy/pod-security-policy/
-  ##
-  podSecurityPolicy:
-    annotations: {}
-      ## Specify pod annotations
-      ## Ref: https://kubernetes.io/docs/concepts/policy/pod-security-policy/#apparmor
-      ## Ref: https://kubernetes.io/docs/concepts/policy/pod-security-policy/#seccomp
-      ## Ref: https://kubernetes.io/docs/concepts/policy/pod-security-policy/#sysctl
-      ##
-      # seccomp.security.alpha.kubernetes.io/allowedProfileNames: '*'
-      # seccomp.security.alpha.kubernetes.io/defaultProfileName: 'docker/default'
-    # apparmor.security.beta.kubernetes.io/defaultProfileName: 'runtime/default'
-
-  ## node-exporter priorityClassName
-  ##
-  priorityClassName: ""
-
-  ## Custom Update Strategy
-  ##
-  updateStrategy:
-    type: RollingUpdate
-
-  ## Additional node-exporter container arguments
-  ##
-  extraArgs: {}
-
-  ## Additional InitContainers to initialize the pod
-  ##
-  extraInitContainers: []
-
-  ## Additional node-exporter hostPath mounts
-  ##
-  extraHostPathMounts: []
-    # - name: textfile-dir
-    #   mountPath: /srv/txt_collector
-    #   hostPath: /var/lib/node-exporter
-    #   readOnly: true
-  #   mountPropagation: HostToContainer
-
-  extraConfigmapMounts: []
-    # - name: certs-configmap
-    #   mountPath: /prometheus
-    #   configMap: certs-configmap
-  #   readOnly: true
-
-  ## Node tolerations for node-exporter scheduling to nodes with taints
-  ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/
-  ##
-  tolerations: []
-    # - key: "key"
-    #   operator: "Equal|Exists"
-    #   value: "value"
-  #   effect: "NoSchedule|PreferNoSchedule|NoExecute(1.6 only)"
-
-  ## Node labels for node-exporter pod assignment
-  ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
-  ##
-  nodeSelector: {}
-
-  ## Annotations to be added to node-exporter pods
-  ##
-  podAnnotations: {}
-
-  ## Labels to be added to node-exporter pods
-  ##
-  pod:
-    labels: {}
-
-  ## PodDisruptionBudget settings
-  ## ref: https://kubernetes.io/docs/concepts/workloads/pods/disruptions/
-  ##
-  podDisruptionBudget:
-    enabled: false
-    maxUnavailable: 1
-
-  ## node-exporter resource limits & requests
-  ## Ref: https://kubernetes.io/docs/user-guide/compute-resources/
-  ##
-  resources: {}
-    # limits:
-    #   cpu: 200m
-    #   memory: 50Mi
-    # requests:
-    #   cpu: 100m
-  #   memory: 30Mi
-
-  # Custom DNS configuration to be added to node-exporter pods
-  dnsConfig: {}
-    # nameservers:
-    #   - 1.2.3.4
-    # searches:
-    #   - ns1.svc.cluster-domain.example
-    #   - my.dns.search.suffix
-    # options:
-    #   - name: ndots
-  #     value: "2"
-  #   - name: edns0
-
-  ## Security context to be added to node-exporter pods
-  ##
-  securityContext:
-    fsGroup: 65534
-    runAsGroup: 65534
-    runAsNonRoot: true
-    runAsUser: 65534
-
-  service:
-    annotations:
-      prometheus.io/scrape: "true"
-    labels: {}
-
-    # Exposed as a headless service:
-    # https://kubernetes.io/docs/concepts/services-networking/service/#headless-services
-    clusterIP: None
-
-    ## List of IP addresses at which the node-exporter service is available
-    ## Ref: https://kubernetes.io/docs/user-guide/services/#external-ips
-    ##
-    externalIPs: []
-
-    hostPort: 9100
-    loadBalancerIP: ""
-    loadBalancerSourceRanges: []
-    servicePort: 9100
-    type: ClusterIP
+    # updateMode: Auto

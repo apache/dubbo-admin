@@ -57,7 +57,7 @@ spec:
       containers:
         - name: node-exporter
           image: {{ include "prometheus-node-exporter.image" . }}
-          imagePullPolicy: {{ .Values.nodeExporter.image.pullPolicy }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - --path.procfs=/host/proc
             - --path.sysfs=/host/sys

@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if .Values.pushgateway.runAsStatefulSet }}
+{{- if .Values.runAsStatefulSet }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -21,28 +21,28 @@ metadata:
     {{- include "prometheus-pushgateway.defaultLabels" . | nindent 4 }}
   name: {{ include "prometheus-pushgateway.fullname" . }}
 spec:
-  replicas: {{ .Values.pushgateway.replicaCount }}
+  replicas: {{ .Values.replicaCount }}
   serviceName: {{ include "prometheus-pushgateway.fullname" . }}
   selector:
     matchLabels:
       {{- include "prometheus-pushgateway.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.pushgateway.podAnnotations }}
+      {{- with .Values.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
         {{- include "prometheus-pushgateway.defaultLabels" . | nindent 8 }}
-        {{- with .Values.pushgateway.podLabels }}
+        {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
       {{- include "prometheus-pushgateway.podSpec" . | nindent 6 }}
-  {{- if .Values.pushgateway.persistentVolume.enabled }}
+  {{- if .Values.persistentVolume.enabled }}
   volumeClaimTemplates:
     - metadata:
-        {{- with .Values.pushgateway.persistentVolume.annotations }}
+        {{- with .Values.persistentVolume.annotations }}
         annotations:
           {{- toYaml . | nindent 10 }}
         {{- end }}
@@ -51,16 +51,16 @@ spec:
         name: storage-volume
       spec:
         accessModes:
-          {{ toYaml .Values.pushgateway.persistentVolume.accessModes }}
-      {{- if .Values.pushgateway.persistentVolume.storageClass }}
-      {{- if (eq "-" .Values.pushgateway.persistentVolume.storageClass) }}
+          {{ toYaml .Values.persistentVolume.accessModes }}
+      {{- if .Values.persistentVolume.storageClass }}
+      {{- if (eq "-" .Values.persistentVolume.storageClass) }}
         storageClassName: ""
       {{- else }}
-        storageClassName: "{{ .Values.pushgateway.persistentVolume.storageClass }}"
+        storageClassName: "{{ .Values.persistentVolume.storageClass }}"
       {{- end }}
       {{- end }}
         resources:
           requests:
-            storage: "{{ .Values.pushgateway.persistentVolume.size }}"
+            storage: "{{ .Values.persistentVolume.size }}"
   {{- end }}
 {{- end }}

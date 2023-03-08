@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if .Values.server.enabled -}}
 {{- if not .Values.server.statefulSet.enabled -}}
 {{- if .Values.server.persistentVolume.enabled -}}
 {{- if not .Values.server.persistentVolume.existingClaim -}}
@@ -48,6 +47,8 @@ spec:
   selector:
   {{- toYaml .Values.server.persistentVolume.selector | nindent 4 }}
 {{- end -}}
+{{- if .Values.server.persistentVolume.volumeName }}
+  volumeName: "{{ .Values.server.persistentVolume.volumeName }}"
 {{- end -}}
 {{- end -}}
 {{- end -}}

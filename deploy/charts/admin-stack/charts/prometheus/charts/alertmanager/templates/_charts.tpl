@@ -1,51 +1,94 @@
-{{- define "prometheus.alertmanager.fullname" -}}
-{{- if .Values.alertmanager.fullnameOverride -}}
-{{- .Values.alertmanager.fullnameOverride | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- $name := default .Chart.Name .Values.nameOverride -}}
-{{- if contains $name .Release.Name -}}
-{{- printf "%s-%s" .Release.Name .Values.alertmanager.name | trunc 63 | trimSuffix "-" -}}
-{{- else -}}
-{{- printf "%s-%s-%s" .Release.Name $name .Values.alertmanager.name | trunc 63 | trimSuffix "-" -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-
-{{- define "prometheus.alertmanager.matchLabels" -}}
-component: {{ .Values.alertmanager.name | quote }}
-{{ include "prometheus.common.matchLabels" . }}
-{{- end -}}
+{{/* vim: set filetype=mustache: */}}
+{{/*
+Expand the name of the chart.
+*/}}
+{{- define "alertmanager.name" -}}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- end }}
 
 {{/*
-Create the name of the service account to use for the alertmanager component
+Create a default fully qualified app name.
+We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
+If release name contains chart name it will be used as a full name.
 */}}
-{{- define "prometheus.serviceAccountName.alertmanager" -}}
-{{- if .Values.serviceAccounts.alertmanager.create -}}
-    {{ default (include "prometheus.alertmanager.fullname" .) .Values.serviceAccounts.alertmanager.name }}
-{{- else -}}
-    {{ default "default" .Values.serviceAccounts.alertmanager.name }}
-{{- end -}}
-{{- end -}}
-
-{{- define "prometheus.alertmanager.labels" -}}
-{{ include "prometheus.alertmanager.matchLabels" . }}
-{{ include "prometheus.common.metaLabels" . }}
-{{- end -}}
-
-{{/*
-Return the appropriate apiVersion for deployment.
-*/}}
-{{- define "prometheus.deployment.apiVersion" -}}
-{{- print "apps/v1" -}}
-{{- end -}}
+{{- define "alertmanager.fullname" -}}
+{{- if .Values.fullnameOverride }}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- $name := default .Chart.Name .Values.nameOverride }}
+{{- if contains $name .Release.Name }}
+{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- else }}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+{{- end }}
 
 {{/*
-Return the appropriate apiVersion for rbac.
+Create chart name and version as used by the chart label.
 */}}
-{{- define "rbac.apiVersion" -}}
-{{- if .Capabilities.APIVersions.Has "rbac.authorization.k8s.io/v1" }}
-{{- print "rbac.authorization.k8s.io/v1" -}}
-{{- else -}}
-{{- print "rbac.authorization.k8s.io/v1beta1" -}}
-{{- end -}}
+{{- define "alertmanager.chart" -}}
+{{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Common labels
+*/}}
+{{- define "alertmanager.labels" -}}
+helm.sh/chart: {{ include "alertmanager.chart" . }}
+{{ include "alertmanager.selectorLabels" . }}
+{{- with .Chart.AppVersion }}
+app.kubernetes.io/version: {{ . | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end }}
+
+{{/*
+Selector labels
+*/}}
+{{- define "alertmanager.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "alertmanager.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "alertmanager.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create }}
+{{- default (include "alertmanager.fullname" .) .Values.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.serviceAccount.name }}
+{{- end }}
+{{- end }}
+
+{{/*
+Define Ingress apiVersion
+*/}}
+{{- define "alertmanager.ingress.apiVersion" -}}
+{{- if semverCompare ">=1.19-0" .Capabilities.KubeVersion.GitVersion }}
+{{- printf "networking.k8s.io/v1" }}
+{{- else if semverCompare ">=1.14-0" .Capabilities.KubeVersion.GitVersion }}
+{{- printf "networking.k8s.io/v1beta1" }}
+{{- else }}
+{{- printf "extensions/v1beta1" }}
+{{- end }}
+{{- end }}
+
+{{/*
+Define Pdb apiVersion
+*/}}
+{{- define "alertmanager.pdb.apiVersion" -}}
+{{- if $.Capabilities.APIVersions.Has "policy/v1/PodDisruptionBudget" }}
+{{- printf "policy/v1" }}
+{{- else }}
+{{- printf "policy/v1beta1" }}
+{{- end }}
+{{- end }}
+
+{{/*
+Return the appropriate apiVersion for podsecuritypolicy.
+*/}}
+{{- define "alertmanager.psp.apiVersion" -}}
+{{- print "policy/v1beta1" -}}
 {{- end -}}

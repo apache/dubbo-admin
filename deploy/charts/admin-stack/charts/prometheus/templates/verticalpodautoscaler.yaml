@@ -13,9 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if .Values.server.enabled -}}
 {{- if .Values.server.verticalAutoscaler.enabled -}}
+{{- if .Capabilities.APIVersions.Has "autoscaling.k8s.io/v1/VerticalPodAutoscaler" }}
+apiVersion: autoscaling.k8s.io/v1
+{{- else }}
 apiVersion: autoscaling.k8s.io/v1beta2
+{{- end }}
 kind: VerticalPodAutoscaler
 metadata:
   labels:
@@ -35,5 +38,4 @@ spec:
     updateMode: {{ .Values.server.verticalAutoscaler.updateMode | default "Off" | quote }}
   resourcePolicy:
     containerPolicies: {{ .Values.server.verticalAutoscaler.containerPolicies | default list | toYaml | trim | nindent 4 }}
-{{- end -}} {{/* if .Values.server.verticalAutoscaler.enabled */}}
-{{- end -}} {{/* .Values.server.enabled */}}
+{{- end -}}

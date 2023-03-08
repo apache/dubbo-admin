@@ -1,3 +1,4 @@
+{{- if .Values.networkPolicy }}
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -13,15 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if .Values.pushgateway.networkPolicy }}
-apiVersion: networking.k8s.io/v1
+apiVersion: {{ include "prometheus-pushgateway.networkPolicy.apiVersion" . }}
 kind: NetworkPolicy
 metadata:
   labels:
     {{- include "prometheus-pushgateway.defaultLabels" . | nindent 4 }}
-  {{- if .Values.pushgateway.networkPolicy.customSelectors }}
+  {{- if .Values.networkPolicy.customSelectors }}
   name: ingress-allow-customselector-{{ template "prometheus-pushgateway.name" . }}
-  {{- else if .Values.pushgateway.networkPolicy.allowAll }}
+  {{- else if .Values.networkPolicy.allowAll }}
   name: ingress-allow-all-{{ template "prometheus-pushgateway.name" . }}
   {{- else -}}
   {{- fail "One of `allowAll` or `customSelectors` must be specified." }}
@@ -32,8 +32,8 @@ spec:
       {{- include "prometheus-pushgateway.selectorLabels" . | nindent 6 }}
   ingress:
     - ports:
-      - port: {{ .Values.pushgateway.service.targetPort }}
-      {{- with .Values.pushgateway.networkPolicy.customSelectors }}
+      - port: {{ .Values.service.targetPort }}
+      {{- with .Values.networkPolicy.customSelectors }}
       from:
         {{- toYaml . | nindent 8 }}
       {{- end }}

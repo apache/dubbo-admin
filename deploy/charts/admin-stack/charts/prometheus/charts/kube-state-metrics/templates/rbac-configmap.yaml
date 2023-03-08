@@ -1,3 +1,4 @@
+{{- if .Values.kubeRBACProxy.enabled }}
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -13,15 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if .Values.kubeconfig.enabled -}}
 apiVersion: v1
-kind: Secret
+kind: ConfigMap
 metadata:
-  name: {{ template "kube-state-metrics.fullname" . }}-kubeconfig
-  namespace: {{ template "kube-state-metrics.namespace" . }}
-  labels:
-    {{- include "kube-state-metrics.labels" . | indent 4 }}
-type: Opaque
+  name: {{ template "kube-state-metrics.fullname" . }}-rbac-config
 data:
-  config: '{{ .Values.kubeconfig.secret }}'
-{{- end -}}
+  config-file.yaml: |+
+    authorization:
+      resourceAttributes:
+        namespace: {{ template "kube-state-metrics.namespace" . }}
+        apiVersion: v1
+        resource: services
+        subresource: {{ template "kube-state-metrics.fullname" . }}
+        name: {{ template "kube-state-metrics.fullname" . }}
+{{- end }}
