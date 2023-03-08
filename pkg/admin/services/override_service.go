@@ -3,10 +3,10 @@ package services
 import "github.com/apache/dubbo-admin/pkg/admin/model/dto"
 
 type OverrideService interface {
-	SaveOverride(override dto.DynamicConfigDTO)
-	UpdateOverride(overrideDTO dto.DynamicConfigDTO)
-	DisableOverride(id string)
-	FindOverride(id string) interface{}
-	EnableOverride(id string)
-	DeleteOverride(id string)
+	SaveOverride(override *dto.DynamicConfigDTO) error
+	UpdateOverride(overrideDTO *dto.DynamicConfigDTO) error
+	DisableOverride(id string) error
+	FindOverride(id string) (*dto.DynamicConfigDTO, error)
+	EnableOverride(id string) error
+	DeleteOverride(id string) error
 }

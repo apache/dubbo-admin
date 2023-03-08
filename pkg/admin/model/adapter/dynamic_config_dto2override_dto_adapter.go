@@ -10,18 +10,18 @@ type DynamicConfigDTO2OverrideDTOAdapter struct {
 	store.OverrideDTO
 }
 
-func NewDynamicConfigDTO2OverrideDTOAdapter(dynamicConfigDTO dto.DynamicConfigDTO) (*DynamicConfigDTO2OverrideDTOAdapter, error) {
+func NewDynamicConfigDTO2OverrideDTOAdapter(dynamicConfigDTO *dto.DynamicConfigDTO) *DynamicConfigDTO2OverrideDTOAdapter {
 	adapter := &DynamicConfigDTO2OverrideDTOAdapter{}
 
 	if dynamicConfigDTO.Application != "" {
-		adapter.SetScope(constant.ApplicationKey)
-		adapter.SetKey(dynamicConfigDTO.Application)
+		adapter.Scope = constant.ApplicationKey
+		adapter.Key = dynamicConfigDTO.Application
 	} else {
-		adapter.SetScope(constant.ServiceKey)
-		adapter.SetKey(dynamicConfigDTO.Service)
+		adapter.Scope = constant.ServiceKey
+		adapter.Key = dynamicConfigDTO.Service
 	}
 
-	adapter.SetConfigVersion(dynamicConfigDTO.ConfigVersion)
-	adapter.SetConfigs(dynamicConfigDTO.Configs)
-	return adapter, nil
+	adapter.ConfigVersion = dynamicConfigDTO.ConfigVersion
+	adapter.Configs = dynamicConfigDTO.Configs
+	return adapter
 }

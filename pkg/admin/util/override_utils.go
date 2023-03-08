@@ -6,12 +6,12 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/model/store"
 )
 
-func CreateFromOverride(overrideDTO dto.OverrideDTO) *dto.DynamicConfigDTO {
+func CreateFromOverride(overrideDTO store.OverrideDTO) *dto.DynamicConfigDTO {
 	dynamicConfigDTO := &dto.DynamicConfigDTO{}
-	dynamicConfigDTO.SetConfigVersion(overrideDTO.GetConfigVersion())
+	dynamicConfigDTO.ConfigVersion = overrideDTO.ConfigVersion
 	configs := []store.OverrideConfig{}
-	for _, overrideConfig := range overrideDTO.GetConfigs() {
-		if overrideConfig.GetType() == "" {
+	for _, overrideConfig := range overrideDTO.Configs {
+		if overrideConfig.Type == "" {
 			configs = append(configs, overrideConfig)
 		}
 	}
@@ -20,14 +20,14 @@ func CreateFromOverride(overrideDTO dto.OverrideDTO) *dto.DynamicConfigDTO {
 		return nil
 	}
 
-	dynamicConfigDTO.SetConfigs(configs)
+	dynamicConfigDTO.Configs = configs
 
-	if overrideDTO.GetScope() == constant.ApplicationKey {
-		dynamicConfigDTO.SetApplication(overrideDTO.GetKey())
+	if overrideDTO.Scope == constant.ApplicationKey {
+		dynamicConfigDTO.Application = overrideDTO.Key
 	} else {
-		dynamicConfigDTO.SetService(overrideDTO.GetKey())
+		dynamicConfigDTO.Service = overrideDTO.Key
 	}
 
-	dynamicConfigDTO.SetEnabled(overrideDTO.IsEnabled())
+	dynamicConfigDTO.Enabled = overrideDTO.Enabled
 	return dynamicConfigDTO
 }
