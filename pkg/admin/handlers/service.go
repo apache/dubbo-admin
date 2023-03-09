@@ -27,7 +27,13 @@ import (
 var providerService services.ProviderService = &services.ProviderServiceImpl{}
 
 func AllServices(c *gin.Context) {
-	services := providerService.FindServices()
+	services, err := providerService.FindServices()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"code": 1,
 		"data": services,
@@ -37,7 +43,13 @@ func AllServices(c *gin.Context) {
 func SearchService(c *gin.Context) {
 	pattern := c.Query("pattern")
 	filter := c.Query("filter")
-	providers := providerService.FindService(pattern, filter)
+	providers, err := providerService.FindService(pattern, filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"code": 1,
 		"data": providers,
