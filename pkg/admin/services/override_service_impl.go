@@ -266,10 +266,12 @@ func (s *OverrideServiceImpl) FindOverride(id string) (*dto.DynamicConfigDTO, er
 			dynamicConfigDto.ID = id
 			if constant.Service == overrideDto.Scope {
 				// detachIdToService
+				dynamicConfigDto.Service = util.GetInterface(id)
+				dynamicConfigDto.ServiceGroup = util.GetGroup(id)
+				dynamicConfigDto.ServiceVersion = util.GetVersion(id)
 			}
 		}
 		return dynamicConfigDto, nil
-
 	}
 
 	return nil, nil
