@@ -1,0 +1,76 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+{{- if (or .Values.networkPolicy.http.enabled .Values.networkPolicy.transport.enabled) }}
+kind: NetworkPolicy
+apiVersion: networking.k8s.io/v1
+metadata:
+  name: {{ template "elasticsearch.uname" . }}
+  labels:
+    heritage: {{ .Release.Service | quote }}
+    release: {{ .Release.Name | quote }}
+    chart: "{{ .Chart.Name }}"
+    app: "{{ template "elasticsearch.uname" . }}"
+spec:
+  podSelector:
+    matchLabels:
+      app: "{{ template "elasticsearch.uname" . }}"
+  ingress:  # Allow inbound connections
+
+{{- if .Values.networkPolicy.http.enabled }}
+    # For HTTP access
+    - ports:
+      - port: {{ .Values.httpPort }}
+      from:
+        # From authorized Pods (having the correct label)
+        - podSelector:
+            matchLabels:
+              {{ template "elasticsearch.uname" . }}-http-client: "true"
+{{- with .Values.networkPolicy.http.explicitNamespacesSelector }}
+          # From authorized namespaces
+          namespaceSelector:
+{{ toYaml . | indent 12 }}
+{{- end }}
+{{- with .Values.networkPolicy.http.additionalRules }}
+            # Or from custom additional rules
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- end }}
+
+{{- if .Values.networkPolicy.transport.enabled }}
+    # For transport access
+    - ports:
+        - port: {{ .Values.transportPort }}
+      from:
+        # From authorized Pods (having the correct label)
+        - podSelector:
+            matchLabels:
+              {{ template "elasticsearch.uname" . }}-transport-client: "true"
+{{- with .Values.networkPolicy.transport.explicitNamespacesSelector }}
+          # From authorized namespaces
+          namespaceSelector:
+{{ toYaml . | indent 12 }}
+{{- end }}
+{{- with .Values.networkPolicy.transport.additionalRules }}
+        # Or from custom additional rules
+{{ toYaml . | indent 8 }}
+{{- end }}
+        # Or from other ElasticSearch Pods
+        - podSelector:
+            matchLabels:
+              app: "{{ template "elasticsearch.uname" . }}"
+{{- end }}
+
+{{- end }}
