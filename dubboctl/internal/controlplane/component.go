@@ -60,13 +60,13 @@ func (ac *AdminComponent) RenderManifest() (string, error) {
 	return manifest, nil
 }
 
-func NewAdminComponent(spec *v1alpha1.AdminSpec, manifestPath string) (Component, error) {
-	// todo: consider using manifestPath to distinguish the type of renderer
+func NewAdminComponent(spec *v1alpha1.AdminSpec, namespace string, chartPath string) (Component, error) {
+	// todo: consider using chartPath to distinguish the type of renderer
 	// using LocalRenderer by default
 	renderer, err := render.NewLocalRenderer(
 		render.WithName(string(Admin)),
-		render.WithNameSpace(spec.NameSpace),
-		render.WithFS(os.DirFS(manifestPath)),
+		render.WithNameSpace(namespace),
+		render.WithFS(os.DirFS(chartPath)),
 		render.WithDir("dubbo-admin"))
 	if err != nil {
 		return nil, err
@@ -108,13 +108,13 @@ func (gc *GrafanaComponent) RenderManifest() (string, error) {
 	return manifest, nil
 }
 
-func NewGrafanaComponent(spec *v1alpha1.GrafanaSpec, manifestPath string) (Component, error) {
-	// todo: consider using manifestPath to distinguish the type of renderer
+func NewGrafanaComponent(spec *v1alpha1.GrafanaSpec, namespace string, chartPath string) (Component, error) {
+	// todo: consider using chartPath to distinguish the type of renderer
 	// using LocalRenderer by default
 	renderer, err := render.NewLocalRenderer(
 		render.WithName(string(Grafana)),
-		render.WithNameSpace(spec.NameSpace),
-		render.WithFS(os.DirFS(manifestPath)),
+		render.WithNameSpace(namespace),
+		render.WithFS(os.DirFS(chartPath)),
 		render.WithDir("grafana"))
 	if err != nil {
 		return nil, err
@@ -156,13 +156,13 @@ func (nc *NacosComponent) RenderManifest() (string, error) {
 	return manifest, nil
 }
 
-func NewNacosComponent(spec *v1alpha1.NacosSpec, manifestPath string) (Component, error) {
-	// todo: consider using manifestPath to distinguish the type of renderer
+func NewNacosComponent(spec *v1alpha1.NacosSpec, namespace string, chartPath string) (Component, error) {
+	// todo: consider using chartPath to distinguish the type of renderer
 	// using LocalRenderer by default
 	renderer, err := render.NewLocalRenderer(
 		render.WithName(string(Nacos)),
-		render.WithNameSpace(spec.NameSpace),
-		render.WithFS(os.DirFS(manifestPath)),
+		render.WithNameSpace(namespace),
+		render.WithFS(os.DirFS(chartPath)),
 		render.WithDir("nacos"))
 	if err != nil {
 		return nil, err
@@ -204,13 +204,13 @@ func (zc *ZookeeperComponent) RenderManifest() (string, error) {
 	return manifest, nil
 }
 
-func NewZookeeperComponent(spec *v1alpha1.ZookeeperSpec, manifestPath string) (Component, error) {
-	// todo: consider using manifestPath to distinguish the type of renderer
+func NewZookeeperComponent(spec *v1alpha1.ZookeeperSpec, namespace string, chartPath string) (Component, error) {
+	// todo: consider using chartPath to distinguish the type of renderer
 	// using LocalRenderer by default
 	renderer, err := render.NewLocalRenderer(
 		render.WithName(string(Zookeeper)),
-		render.WithNameSpace(spec.NameSpace),
-		render.WithFS(os.DirFS(manifestPath)),
+		render.WithNameSpace(namespace),
+		render.WithFS(os.DirFS(chartPath)),
 		render.WithDir("zookeeper"))
 	if err != nil {
 		return nil, err

@@ -44,28 +44,28 @@ func NewDubboControlPlane(spec *v1alpha1.DubboOperatorSpec) (*DubboControlPlane,
 	// initialized
 	components := make(map[ComponentName]Component)
 	if spec.IsAdminEnabled() {
-		admin, err := NewAdminComponent(spec.Components.Admin, spec.ManifestPath)
+		admin, err := NewAdminComponent(spec.Components.Admin, spec.ComponentsMeta.Admin.Namespace, spec.ChartPath)
 		if err != nil {
 			return nil, err
 		}
 		components[Admin] = admin
 	}
 	if spec.IsGrafanaEnabled() {
-		grafana, err := NewGrafanaComponent(spec.Components.Grafana, spec.ManifestPath)
+		grafana, err := NewGrafanaComponent(spec.Components.Grafana, spec.ComponentsMeta.Grafana.Namespace, spec.ChartPath)
 		if err != nil {
 			return nil, err
 		}
 		components[Grafana] = grafana
 	}
 	if spec.IsNacosEnabled() {
-		nacos, err := NewNacosComponent(spec.Components.Nacos, spec.ManifestPath)
+		nacos, err := NewNacosComponent(spec.Components.Nacos, spec.ComponentsMeta.Nacos.Namespace, spec.ChartPath)
 		if err != nil {
 			return nil, err
 		}
 		components[Nacos] = nacos
 	}
 	if spec.IsZookeeperEnabled() {
-		zookeeper, err := NewZookeeperComponent(spec.Components.Zookeeper, spec.ManifestPath)
+		zookeeper, err := NewZookeeperComponent(spec.Components.Zookeeper, spec.ComponentsMeta.Zookeeper.Namespace, spec.ChartPath)
 		if err != nil {
 			return nil, err
 		}

@@ -1,17 +1,19 @@
 package manifest
 
 import (
+	"fmt"
+	"github.com/dubbogo/dubbogo-cli/internal/apis/dubbo.apache.org/v1alpha1"
 	"github.com/dubbogo/dubbogo-cli/internal/util"
-	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"os"
+	"path"
 	"sigs.k8s.io/yaml"
 	"strings"
 )
 
 func ReadProfileYaml(profilePath string, profile string) (string, error) {
-	path := profilePath + profile
-	// valuate path
-	out, err := ReadAndOverlayYamls([]string{path})
+	filePath := path.Join(profilePath, profile)
+	filePath += ".yaml"
+	out, err := ReadAndOverlayYamls([]string{filePath})
 	if err != nil {
 		return "", err
 	}
@@ -24,8 +26,20 @@ func ReadYamlAndProfile(filenames []string, setFlags []string) (string, string, 
 		return "", "", err
 	}
 	// unmarshal and validate
+	tempOp := &v1alpha1.DubboOperator{}
+	if err := yaml.Unmarshal([]byte(mergedYaml), tempOp); err != nil {
+		return "", "", fmt.Errorf("ReadYamlAndProfile failed, err: %s", err)
+	}
 	// get profile field and overlay with setFlags
-	return mergedYaml, "", nil
+	profile := "default"
+	if opProfile := tempOp.GetProfile(); opProfile != "" {
+		profile = opProfile
+	}
+	if profileVal := GetValueFromSetFlags(setFlags, "profile"); profileVal != "" {
+		profile = profileVal
+	}
+
+	return mergedYaml, profile, nil
 }
 
 func ReadAndOverlayYamls(filenames []string) (string, error) {
@@ -36,7 +50,7 @@ func ReadAndOverlayYamls(filenames []string) (string, error) {
 			return "", err
 		}
 		// inspect that this file only contains one CR
-		output, err = OverlayYaml(output, string(file))
+		output, err = util.OverlayYAML(output, string(file))
 		if err != nil {
 			return "", err
 		}
@@ -44,32 +58,32 @@ func ReadAndOverlayYamls(filenames []string) (string, error) {
 	return output, nil
 }
 
-func OverlayYaml(base string, overlay string) (string, error) {
-	if strings.TrimSpace(base) == "" {
-		return overlay, nil
-	}
-	if strings.TrimSpace(overlay) == "" {
-		return base, nil
-	}
-	baseJson, err := yaml.YAMLToJSON([]byte(base))
-	if err != nil {
-		return "", err
-	}
-	overlayJson, err := yaml.YAMLToJSON([]byte(overlay))
-	if err != nil {
-		return "", err
-	}
-	// todo: create a CRD to represent API
-	mergedJson, err := strategicpatch.StrategicMergePatch(baseJson, overlayJson, nil)
-	if err != nil {
-		return "", err
-	}
-	mergeYaml, err := yaml.JSONToYAML(mergedJson)
-	if err != nil {
-		return "", err
-	}
-	return string(mergeYaml), nil
-}
+//func OverlayYaml(base string, overlay string) (string, error) {
+//	if strings.TrimSpace(base) == "" {
+//		return overlay, nil
+//	}
+//	if strings.TrimSpace(overlay) == "" {
+//		return base, nil
+//	}
+//	baseJson, err := yaml.YAMLToJSON([]byte(base))
+//	if err != nil {
+//		return "", err
+//	}
+//	overlayJson, err := yaml.YAMLToJSON([]byte(overlay))
+//	if err != nil {
+//		return "", err
+//	}
+//	// todo: create a CRD to represent API
+//	mergedJson, err := strategicpatch.StrategicMergePatch(baseJson, overlayJson, nil)
+//	if err != nil {
+//		return "", err
+//	}
+//	mergeYaml, err := yaml.JSONToYAML(mergedJson)
+//	if err != nil {
+//		return "", err
+//	}
+//	return string(mergeYaml), nil
+//}
 
 func OverlaySetFlags(base string, setFlags []string) (string, error) {
 	baseMap := make(map[string]interface{})

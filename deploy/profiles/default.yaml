@@ -1,0 +1,13 @@
+apiVersion: dubbo.apache.org/v1alpha1
+kind: DubboOperator
+metadata:
+  namespace: dubbo-system
+spec:
+  profile: default
+  componentsMeta:
+    zookeeper:
+      enabled: true
+      namespace: dubbo-system
+  components:
+    zookeeper:
+      replicas: 2

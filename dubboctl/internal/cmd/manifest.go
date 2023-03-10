@@ -3,14 +3,18 @@ package cmd
 import (
 	"fmt"
 	"github.com/dubbogo/dubbogo-cli/internal/apis/dubbo.apache.org/v1alpha1"
+	"github.com/dubbogo/dubbogo-cli/internal/controlplane"
 	"github.com/dubbogo/dubbogo-cli/internal/manifest"
+	"github.com/dubbogo/dubbogo-cli/internal/util"
 	"sigs.k8s.io/yaml"
 )
 
 type ManifestArgs struct {
-	FileNames    []string
-	ManifestPath string
-	SetFlags     []string
+	FileNames   []string
+	ChartPath   string
+	ProfilePath string
+	OutputPath  string
+	SetFlags    []string
 }
 
 func GenerateValues(mArgs *ManifestArgs) (*v1alpha1.DubboOperator, string, error) {
@@ -18,11 +22,11 @@ func GenerateValues(mArgs *ManifestArgs) (*v1alpha1.DubboOperator, string, error
 	if err != nil {
 		return nil, "", fmt.Errorf("GenerateValues err: %v", err)
 	}
-	profileYaml, err := manifest.ReadProfileYaml(mArgs.ManifestPath, profile)
+	profileYaml, err := manifest.ReadProfileYaml(mArgs.ProfilePath, profile)
 	if err != nil {
 		return nil, "", err
 	}
-	finalYaml, err := manifest.OverlayYaml(profileYaml, mergedYaml)
+	finalYaml, err := util.OverlayYAML(profileYaml, mergedYaml)
 	if err != nil {
 		return nil, "", err
 	}
@@ -34,10 +38,24 @@ func GenerateValues(mArgs *ManifestArgs) (*v1alpha1.DubboOperator, string, error
 	if err := yaml.Unmarshal([]byte(finalYaml), op); err != nil {
 		return nil, "", err
 	}
-	// validate op
+	// todo: validate op
+	op.Spec.ProfilePath = mArgs.ProfilePath
+	op.Spec.ChartPath = mArgs.ChartPath
 	return op, finalYaml, nil
 }
 
-func GenerateManifests(mArgs *ManifestArgs) {
-
+func GenerateManifests(mArgs *ManifestArgs, op *v1alpha1.DubboOperator) error {
+	cp, err := controlplane.NewDubboControlPlane(op.Spec)
+	if err != nil {
+		return err
+	}
+	if err := cp.Run(); err != nil {
+		return err
+	}
+	manifestMap, err := cp.RenderManifest()
+	if err != nil {
+		return err
+	}
+	fmt.Print(manifestMap)
+	return nil
 }

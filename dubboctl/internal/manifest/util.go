@@ -14,7 +14,6 @@ func StripPrefix(path, prefix string) string {
 }
 
 func SplitSetFlag(flag string) (string, string) {
-	flag = strings.TrimSpace(flag)
 	items := strings.Split(flag, "=")
 	if len(items) != 2 {
 		return flag, ""
@@ -37,6 +36,17 @@ func GetFileNames(f fs.FS, root string) ([]string, error) {
 		return nil, err
 	}
 	return fileNames, nil
+}
+
+func GetValueFromSetFlags(setFlags []string, key string) string {
+	var res string
+	for _, setFlag := range setFlags {
+		k, v := SplitSetFlag(setFlag)
+		if k == key {
+			res = v
+		}
+	}
+	return res
 }
 
 // ParseValue parses string into a value

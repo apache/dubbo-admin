@@ -98,7 +98,7 @@ func (lr *LocalRenderer) RenderManifest(valsYaml string) (string, error) {
 		return "", err
 	}
 	RelOpts := chartutil.ReleaseOptions{
-		Name:      "dubbo",
+		Name:      "zookeeper",
 		Namespace: lr.Opts.NameSpace,
 	}
 	caps := chartutil.DefaultCapabilities
@@ -107,6 +107,7 @@ func (lr *LocalRenderer) RenderManifest(valsYaml string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	resVals["Values"].(chartutil.Values)["enabled"] = true
 	filesMap, err := engine.Render(lr.Chart, resVals)
 	if err != nil {
 		return "", err
