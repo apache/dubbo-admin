@@ -9,3 +9,7 @@ func DumpObject(obj interface{}) (string, error) {
 	}
 	return string(bytes), nil
 }
+
+func LoadObject(content string, obj interface{}) error {
+	return yaml.UnmarshalYML([]byte(content), obj)
+}

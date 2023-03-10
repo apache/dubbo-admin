@@ -46,7 +46,8 @@ func InitRouter() *gin.Engine {
 		override.PUT("/:id", handlers.UpdateOverride)
 	}
 
-	router.POST("/api/{env}/rules/route/tag", tag_routes.CreateRule)
+	router.POST("/api/dev/rules/route/tag", tag_routes.CreateRule)
+	router.GET("/api/dev/rules/route/tag", tag_routes.SearchRoutes)
 
 	return router
 }

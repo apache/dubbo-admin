@@ -229,3 +229,7 @@ func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*mod
 
 	return providers, nil
 }
+
+func (p *ProviderServiceImpl) FindApplications() ([]string, error) {
+	return p.findApplications()
+}

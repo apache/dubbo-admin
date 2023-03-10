@@ -20,35 +20,39 @@ package tag_routes
 import (
 	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
-	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/util"
 	"github.com/gin-gonic/gin"
+	"net/http"
 	"strings"
 )
 
 type Tag struct {
-	name      string
-	addresses []string
+	Name      string
+	Addresses []string
 }
 
 type TagRouteDto struct {
-	tags []Tag
+	Tags []Tag `json:"tags" binding:"required"`
 
-	priority int
-	enable   bool
-	force    bool
-	runtime  bool
+	Priority int  `json:"priority"`
+	Enable   bool `json:"enable"`
+	Force    bool `json:"force"`
+	Runtime  bool `json:"runtime"`
 
-	baseDto model.BaseDto
+	Application    string `json:"application" binding:"required"`
+	Service        string `json:"service"`
+	Id             string `json:"id"`
+	ServiceVersion string `json:"serviceVersion"`
+	ServiceGroup   string `json:"serviceGroup"`
 }
 
 type TagRoute struct {
-	priority int
-	enable   bool
-	force    bool
-	runtime  bool
-	key      string
-	tags     []Tag
+	Priority int
+	Enable   bool
+	Force    bool
+	Runtime  bool
+	Key      string
+	Tags     []Tag
 }
 
 func CreateRule(c *gin.Context) {
@@ -58,7 +62,7 @@ func CreateRule(c *gin.Context) {
 		panic(err)
 	}
 
-	id := util.GetIdFromDto(tagRouteDto.baseDto)
+	id := getIdFromDto(tagRouteDto)
 	path := getPath(id, constant.TagRoute)
 	tagRoute := convertTagRouteToStore(tagRouteDto)
 	tagRouteStr, err := util.DumpObject(tagRoute)
@@ -66,9 +70,38 @@ func CreateRule(c *gin.Context) {
 		panic(err)
 	}
 
+	println("path: " + path)
+	println("tagRouteStr: " + tagRouteStr)
+
 	err = config.SetConfig(path, tagRouteStr)
 	if err != nil {
 		panic(err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": 1,
+		"data": "success",
+	})
+}
+
+func SearchRoutes(c *gin.Context) {
+	application := c.Query("application")
+	path := getPath(application, constant.TagRoute)
+	cfg, err := config.GetConfig(path)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	if cfg != "" {
+		var tagRoute TagRoute
+		_ = util.LoadObject(cfg, &tagRoute)
+		tagRouteDto := convertTagRouteToDto(tagRoute)
+		c.JSON(http.StatusOK, gin.H{
+			"code": 1,
+			"data": []TagRouteDto{tagRouteDto},
+		})
 	}
 }
 
@@ -83,11 +116,30 @@ func getPath(key string, routeType string) string {
 
 func convertTagRouteToStore(tagRoute TagRouteDto) TagRoute {
 	var store TagRoute
-	store.key = tagRoute.baseDto.Application
-	store.enable = tagRoute.enable
-	store.force = tagRoute.force
-	store.priority = tagRoute.priority
-	store.runtime = tagRoute.runtime
-	store.tags = tagRoute.tags
+	store.Key = tagRoute.Application
+	store.Enable = tagRoute.Enable
+	store.Force = tagRoute.Force
+	store.Priority = tagRoute.Priority
+	store.Runtime = tagRoute.Runtime
+	store.Tags = tagRoute.Tags
 	return store
+}
+
+func convertTagRouteToDto(tagRoute TagRoute) TagRouteDto {
+	var dto TagRouteDto
+	dto.Application = tagRoute.Key
+	dto.Enable = tagRoute.Enable
+	dto.Force = tagRoute.Force
+	dto.Priority = tagRoute.Priority
+	dto.Runtime = tagRoute.Runtime
+	dto.Tags = tagRoute.Tags
+	return dto
+}
+
+func getIdFromDto(baseDto TagRouteDto) string {
+	if baseDto.Application != "" {
+		return baseDto.Application
+	}
+	// id format: "${class}:${version}:${group}"
+	return baseDto.Service + constant.Colon + baseDto.ServiceVersion + constant.Colon + baseDto.ServiceGroup
 }
