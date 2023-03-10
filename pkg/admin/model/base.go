@@ -12,15 +12,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package services
+package model
 
-import "github.com/apache/dubbo-admin/pkg/admin/model"
-
-type OverrideService interface {
-	SaveOverride(override *model.DynamicConfig) error
-	UpdateOverride(overrideDTO *model.DynamicConfig) error
-	DisableOverride(id string) error
-	FindOverride(id string) (*model.DynamicConfig, error)
-	EnableOverride(id string) error
-	DeleteOverride(id string) error
+type Base struct {
+	Application    string `json:"application"`
+	Service        string `json:"service"`
+	ID             string `json:"id"`
+	ServiceVersion string `json:"serviceVersion"`
+	ServiceGroup   string `json:"serviceGroup"`
 }

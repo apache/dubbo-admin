@@ -29,6 +29,7 @@ const (
 
 const (
 	AnyValue              = "*"
+	AnyHostValue          = "0.0.0.0"
 	InterfaceKey          = "interface"
 	GroupKey              = "group"
 	VersionKey            = "version"
@@ -46,6 +47,7 @@ const (
 	ProviderSide          = "provider"
 	ConsumerProtocol      = "consumer"
 	EmptyProtocol         = "empty"
+	OverrideProtocol      = "override"
 	DefaultGroup          = "dubbo"
 	ApplicationKey        = "application"
 	DynamicKey            = "dynamic"
