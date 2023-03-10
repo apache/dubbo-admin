@@ -98,7 +98,7 @@ func (lr *LocalRenderer) RenderManifest(valsYaml string) (string, error) {
 		return "", err
 	}
 	RelOpts := chartutil.ReleaseOptions{
-		Name:      "zookeeper",
+		Name:      "dubbo",
 		Namespace: lr.Opts.NameSpace,
 	}
 	caps := chartutil.DefaultCapabilities

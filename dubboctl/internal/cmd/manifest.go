@@ -12,6 +12,7 @@ import (
 	"path"
 	"sigs.k8s.io/yaml"
 	"sort"
+	"strings"
 )
 
 type ManifestGenerateArgs struct {
@@ -112,7 +113,12 @@ func sortManifests(manifestMap map[controlplane.ComponentName]string) ([]string,
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		res = append(res, manifestMap[controlplane.ComponentName(name)+render.YAMLSeparator])
+		file := manifestMap[controlplane.ComponentName(name)]
+		if !strings.HasSuffix(file, render.YAMLSeparator) {
+			res = append(res, file+render.YAMLSeparator)
+		} else {
+			res = append(res, file)
+		}
 	}
 	return res, nil
 }
