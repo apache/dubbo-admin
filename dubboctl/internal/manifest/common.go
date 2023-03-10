@@ -58,33 +58,6 @@ func ReadAndOverlayYamls(filenames []string) (string, error) {
 	return output, nil
 }
 
-//func OverlayYaml(base string, overlay string) (string, error) {
-//	if strings.TrimSpace(base) == "" {
-//		return overlay, nil
-//	}
-//	if strings.TrimSpace(overlay) == "" {
-//		return base, nil
-//	}
-//	baseJson, err := yaml.YAMLToJSON([]byte(base))
-//	if err != nil {
-//		return "", err
-//	}
-//	overlayJson, err := yaml.YAMLToJSON([]byte(overlay))
-//	if err != nil {
-//		return "", err
-//	}
-//	// todo: create a CRD to represent API
-//	mergedJson, err := strategicpatch.StrategicMergePatch(baseJson, overlayJson, nil)
-//	if err != nil {
-//		return "", err
-//	}
-//	mergeYaml, err := yaml.JSONToYAML(mergedJson)
-//	if err != nil {
-//		return "", err
-//	}
-//	return string(mergeYaml), nil
-//}
-
 func OverlaySetFlags(base string, setFlags []string) (string, error) {
 	baseMap := make(map[string]interface{})
 	if err := yaml.Unmarshal([]byte(base), &baseMap); err != nil {

@@ -1,7 +1,7 @@
 package cmd
 
 type InstallArgs struct {
-	ManifestArgs
+	ManifestGenerateArgs
 	KubeConfigPath string
 }
 

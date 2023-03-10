@@ -7,16 +7,16 @@ import (
 
 func TestGenerateValues(t *testing.T) {
 	tests := []struct {
-		args       *ManifestArgs
+		args       *ManifestGenerateArgs
 		expectVals string
 	}{
 		{
-			args: &ManifestArgs{
-				FileNames:   nil,
-				ChartPath:   "../../../deploy/charts/admin-stack/charts",
-				ProfilePath: "../../../deploy/profiles",
-				OutputPath:  "",
-				SetFlags:    nil,
+			args: &ManifestGenerateArgs{
+				FileNames:    nil,
+				ChartsPath:   "../../../deploy/charts/admin-stack/charts",
+				ProfilesPath: "../../../deploy/profiles",
+				OutputPath:   "",
+				SetFlags:     nil,
 			},
 			expectVals: `
 apiVersion: dubbo.apache.org/v1alpha1
@@ -34,14 +34,14 @@ spec:
 	}
 
 	for _, test := range tests {
-		op, vals, err := GenerateValues(test.args)
+		op, vals, err := generateValues(test.args)
 		if err != nil {
 			t.Error(err)
 		}
 		if !reflect.DeepEqual(vals, test.expectVals) {
 			t.Errorf("expect: %s\n res: %s", test.expectVals, vals)
 		}
-		if err := GenerateManifests(test.args, op); err != nil {
+		if err := generateManifests(test.args, op); err != nil {
 			t.Error(err)
 		}
 	}

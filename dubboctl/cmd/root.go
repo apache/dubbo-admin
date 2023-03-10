@@ -32,8 +32,8 @@ var cfgFile string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "dubbogo-cli",
-	Short: "",
+	Use:   "dubboctl",
+	Short: "dubbo control interface",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("hello")
