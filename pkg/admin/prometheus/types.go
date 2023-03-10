@@ -17,8 +17,7 @@
 
 package prometheus
 
-type MetricType struct {
-}
+type MetricType struct{}
 
 type ResultType struct {
 	Metric MetricType    `json:"metric"`

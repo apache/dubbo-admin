@@ -20,11 +20,12 @@ package prometheus
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/apache/dubbo-admin/pkg/admin/config"
-	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/apache/dubbo-admin/pkg/admin/config"
+	"github.com/apache/dubbo-admin/pkg/admin/constant"
 )
 
 // GetPromResult Parse the data read from Prometheus

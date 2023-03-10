@@ -18,11 +18,12 @@
 package handlers
 
 import (
-	"github.com/apache/dubbo-admin/pkg/admin/constant"
-	"github.com/apache/dubbo-admin/pkg/admin/prometheus"
 	"net/http"
 
+	"github.com/apache/dubbo-admin/pkg/admin/constant"
+	"github.com/apache/dubbo-admin/pkg/admin/prometheus"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
+
 	"github.com/gin-gonic/gin"
 )
 
