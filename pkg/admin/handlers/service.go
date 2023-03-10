@@ -62,7 +62,7 @@ func SearchService(c *gin.Context) {
 func FlowMetrics(c *gin.Context) {
 	res := make([]prometheus.Response, 5)
 	// QPS
-	var qpsLabels = []string{""}
+	qpsLabels := []string{""}
 	resQps, err := prometheus.FetchRange(constant.MetricsQps, qpsLabels)
 	if err != nil {
 		panic(err)
@@ -70,8 +70,8 @@ func FlowMetrics(c *gin.Context) {
 	res[0].Status = resQps.Status
 	res[0].Data = resQps.Data.Result[0].Value[1].(string)
 	// Success rate
-	var successLabels1 = []string{""}
-	var successLabels2 = []string{""}
+	successLabels1 := []string{""}
+	successLabels2 := []string{""}
 	resSuccess, err := prometheus.FetchRadio(constant.MetricsHttpRequestSuccessCount,
 		constant.MetricsHttpRequestTotalCount, successLabels1, successLabels2)
 	if err != nil {
@@ -80,8 +80,8 @@ func FlowMetrics(c *gin.Context) {
 	res[1].Status = resSuccess.Status
 	res[1].Data = resSuccess.Data.Result[0].Value[1].(string)
 	// Timeout exception rate
-	var outOfTimeLabels1 = []string{""}
-	var outOfTimeLabels2 = []string{""}
+	outOfTimeLabels1 := []string{""}
+	outOfTimeLabels2 := []string{""}
 	resOutOfTime, err := prometheus.FetchRadio(constant.MetricsHttpRequestOutOfTimeCount,
 		constant.MetricsHttpRequestTotalCount, outOfTimeLabels1, outOfTimeLabels2)
 	if err != nil {
@@ -90,8 +90,8 @@ func FlowMetrics(c *gin.Context) {
 	res[2].Status = resOutOfTime.Status
 	res[2].Data = resOutOfTime.Data.Result[0].Value[1].(string)
 	// Address not found rate
-	var notFoundLabels1 = []string{""}
-	var notFoundLabels2 = []string{""}
+	notFoundLabels1 := []string{""}
+	notFoundLabels2 := []string{""}
 	resnotFount, err := prometheus.FetchRadio(constant.MetricsHttpRequestAddressNotFount,
 		constant.MetricsHttpRequestTotalCount, notFoundLabels1, notFoundLabels2)
 	if err != nil {
@@ -100,8 +100,8 @@ func FlowMetrics(c *gin.Context) {
 	res[3].Status = resnotFount.Status
 	res[3].Data = resnotFount.Data.Result[0].Value[1].(string)
 	// other abnormal rate
-	var otherExceptionLabels1 = []string{""}
-	var otherExceptionLabels2 = []string{""}
+	otherExceptionLabels1 := []string{""}
+	otherExceptionLabels2 := []string{""}
 	resOther, err := prometheus.FetchRadio(constant.MetricsHttpRequestOtherException,
 		constant.MetricsHttpRequestTotalCount, otherExceptionLabels1, otherExceptionLabels2)
 	if err != nil {
@@ -113,5 +113,4 @@ func FlowMetrics(c *gin.Context) {
 }
 
 func ClusterMetrics(c *gin.Context) {
-
 }
