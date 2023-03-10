@@ -22,6 +22,7 @@ metadata:
 data:
   setup.sh: |-
     #!/bin/bash
+
     # Execute entrypoint as usual after obtaining ZOO_SERVER_ID
     # check ZOO_SERVER_ID in persistent volume via myid
     # if not present, set based on POD hostname
