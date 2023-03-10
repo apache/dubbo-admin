@@ -15,20 +15,27 @@
  * limitations under the License.
  */
 
-package router
+package prometheus
 
-import (
-	"github.com/apache/dubbo-admin/pkg/admin/handlers"
-	"github.com/gin-gonic/gin"
-)
+type MetricType struct {
+}
 
-func InitRouter() *gin.Engine {
-	router := gin.Default()
+type ResultType struct {
+	Metric MetricType    `json:"metric"`
+	Value  []interface{} `json:"value"`
+}
 
-	router.GET("/api/dev/services", handlers.AllServices)
-	router.GET("/api/dev/service", handlers.SearchService)
-	router.GET("/api/dev/flow/metrics", handlers.FlowMetrics)
-	router.GET("/api/dev/cluster/metrics", handlers.ClusterMetrics)
+type QueryData struct {
+	ResultType string       `json:"resultType"`
+	Result     []ResultType `json:"result"`
+}
 
-	return router
+type QueryInfo struct {
+	Status string    `json:"status"`
+	Data   QueryData `json:"data"`
+}
+
+type Response struct {
+	Status string `json:"status"`
+	Data   string `json:"data"`
 }
