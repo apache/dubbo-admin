@@ -1,0 +1,34 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+default: test
+
+include ../../../helpers/examples.mk
+
+PREFIX := helm-es-multi
+RELEASE := helm-es-multi-master
+TIMEOUT := 1200s
+
+install:
+	helm upgrade --wait --timeout=$(TIMEOUT) --install --values master.yaml $(PREFIX)-master ../../
+	helm upgrade --wait --timeout=$(TIMEOUT) --install --values data.yaml $(PREFIX)-data ../../
+	helm upgrade --wait --timeout=$(TIMEOUT) --install --values client.yaml $(PREFIX)-client ../../
+
+test: install goss
+
+purge:
+	helm del $(PREFIX)-master
+	helm del $(PREFIX)-data
+	helm del $(PREFIX)-client
