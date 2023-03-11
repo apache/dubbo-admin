@@ -1,0 +1,144 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+{{- if .Values.satellite.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ template "skywalking.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    component: "{{ .Values.satellite.name }}"
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+  name: {{ template "skywalking.satellite.fullname" . }}
+spec:
+  replicas: {{ .Values.satellite.replicas }}
+  selector:
+    matchLabels:
+      app: {{ template "skywalking.name" . }}
+      component: "{{ .Values.satellite.name }}"
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "skywalking.name" . }}
+        component: "{{ .Values.satellite.name }}"
+        release: {{ .Release.Name }}
+        {{- if .Values.satellite.podAnnotations }}
+      annotations:
+{{ toYaml .Values.satellite.podAnnotations | indent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ template "skywalking.serviceAccountName.satellite" . }}
+      {{- with .Values.satellite.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      affinity:
+      {{- if eq .Values.satellite.antiAffinity "hard" }}
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: "kubernetes.io/hostname"
+              labelSelector:
+                matchLabels:
+                  app: "{{ template "skywalking.name" . }}"
+                  release: "{{ .Release.Name }}"
+                  component: "{{ .Values.satellite.name }}"
+      {{- else if eq .Values.satellite.antiAffinity "soft" }}
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: "{{ template "skywalking.name" . }}"
+                  release: "{{ .Release.Name }}"
+                  component: "{{ .Values.satellite.name }}"
+      {{- end }}
+      {{- with .Values.satellite.nodeAffinity }}
+        nodeAffinity:
+{{ toYaml . | indent 10 }}
+      {{- end }}
+{{- if .Values.satellite.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.satellite.nodeSelector | indent 8 }}
+{{- end }}
+{{- if .Values.satellite.tolerations }}
+      tolerations:
+{{ toYaml .Values.satellite.tolerations | indent 8 }}
+{{- end }}
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 8 }}
+{{- end }}
+      containers:
+      - name: {{ .Values.satellite.name }}
+        image: {{ .Values.satellite.image.repository }}:{{ required "satellite.image.tag is required" .Values.satellite.image.tag }}
+        imagePullPolicy: {{ .Values.satellite.image.pullPolicy }}
+        readinessProbe:
+          tcpSocket:
+            port: {{ .Values.oap.ports.grpc }}
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        ports:
+        {{- range $key, $value :=  .Values.satellite.ports }}
+        - containerPort: {{ $value }}
+          name: {{ $key }}
+        {{- end }}
+{{- if .Values.satellite.resources }}
+        resources:
+{{ toYaml .Values.satellite.resources | indent 10 }}
+{{- end }}
+        env:
+        - name: SATELLITE_GRPC_CLIENT_FINDER
+          value: kubernetes
+        - name: SATELLITE_GRPC_CLIENT_KUBERNETES_NAMESPACE
+          value: "{{ .Release.Namespace }}"
+        - name: SATELLITE_GRPC_CLIENT_KUBERNETES_KIND
+          value: pod
+        - name: SATELLITE_GRPC_CLIENT_KUBERNETES_SELECTOR_LABEL
+          value: "{{ template "skywalking.oap.labels" . }}"
+        - name: SATELLITE_GRPC_CLIENT_KUBERNETES_EXTRA_PORT
+          value: "{{ .Values.oap.ports.grpc }}"
+        {{- range $key, $value :=  .Values.satellite.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+
+        volumeMounts:
+          {{- range $path, $config := .Values.satellite.config }}
+          {{- if typeIs "string" $config }}
+          - name: skywalking-satellite-override
+            mountPath: /skywalking/config/{{ $path }}
+            subPath: {{ $path }}
+          {{- else }}
+          {{- range $subpath, $oalContent := $config }}
+          - name: skywalking-satellite-override
+            mountPath: /skywalking/config/{{ $path }}/{{ $subpath }}
+            subPath: {{ print $path "-" $subpath }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+
+      volumes:
+        {{- if (.Files.Glob "files/conf.d/satellite/**") }}
+        - name: skywalking-satellite-override
+          configMap:
+            name: {{ template "skywalking.fullname" . }}-satellite-cm-override
+        {{- end }}
+{{- end }}

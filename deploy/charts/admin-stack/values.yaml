@@ -27,6 +27,20 @@ grafana:
   enabled: false
   default: false
 
+skywalking:
+  enabled: true
+  isDefault: false
+  oap:
+    image:
+      repository: skywalking.docker.scarf.sh/apache/skywalking-oap-server
+    tag: 9.3.0
+    storageType: elasticsearch
+  ui:
+    image:
+      repository: skywalking.docker.scarf.sh/apache/skywalking-ui
+      tag: 9.3.0
+  elasticsearch:
+    enabled: false
 
 dubbo-admin:
   enabled: true
