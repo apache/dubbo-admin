@@ -73,4 +73,7 @@ func setup() {
 
 	ConfigCenter, err = factory.GetDynamicConfiguration(url)
 	Group = url.GetParam(constant.GroupKey, constant.DefaultGroup)
+	if err != nil {
+		panic(err)
+	}
 }
