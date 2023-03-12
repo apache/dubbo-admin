@@ -18,10 +18,10 @@
 package handlers
 
 import (
-	"github.com/apache/dubbo-admin/pkg/version"
 	"net/http"
 
 	"github.com/apache/dubbo-admin/pkg/admin/services"
+	"github.com/apache/dubbo-admin/pkg/version"
 	"github.com/gin-gonic/gin"
 )
 
