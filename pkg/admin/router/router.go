@@ -19,7 +19,7 @@ package router
 
 import (
 	"github.com/apache/dubbo-admin/pkg/admin/handlers"
-	"github.com/apache/dubbo-admin/pkg/admin/handlers/tag_routes"
+	"github.com/apache/dubbo-admin/pkg/admin/handlers/tag_route"
 	"github.com/gin-gonic/gin"
 )
 
@@ -46,8 +46,13 @@ func InitRouter() *gin.Engine {
 		override.PUT("/:id", handlers.UpdateOverride)
 	}
 
-	router.POST("/api/dev/rules/route/tag", tag_routes.CreateRule)
-	router.GET("/api/dev/rules/route/tag", tag_routes.SearchRoutes)
+	router.POST("/api/dev/rules/route/tag", tag_route.CreateRule)
+	router.PUT("/api/dev/rules/route/tag/:id", tag_route.UpdateRule)
+	router.GET("/api/dev/rules/route/tag", tag_route.SearchRoutes)
+	router.GET("/api/dev/rules/route/tag/:id", tag_route.DetailRoute)
+	router.DELETE("/api/dev/rules/route/tag/:id", tag_route.DeleteRoute)
+	router.PUT("/api/dev/rules/route/tag/enable/:id", tag_route.EnableRoute)
+	router.PUT("/api/dev/rules/route/tag/disable/:id", tag_route.DisableRoute)
 
 	return router
 }
