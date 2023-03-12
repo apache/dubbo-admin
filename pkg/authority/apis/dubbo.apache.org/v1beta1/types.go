@@ -54,7 +54,7 @@ type AuthenticationPolicySpec struct {
 	// +optional
 	// +kubebuilder:validation:Type=integer
 	// +kubebuilder:validation:Minimum=-2147483648
-	// +kubebuilder:validation:Maximum=-2147483647
+	// +kubebuilder:validation:Maximum=2147483647
 	// +kubebuilder:default=0
 	Order int `json:"order,omitempty"`
 	// The match type of the rules.

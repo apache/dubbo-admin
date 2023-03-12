@@ -67,7 +67,7 @@ spec:
                 default: 0
                 description: The order of the rule. The rule with the highest precedence
                   is matched first.
-                maximum: -2147483647
+                maximum: 2147483647
                 minimum: -2147483648
                 type: integer
               rules:
