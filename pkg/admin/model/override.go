@@ -38,6 +38,28 @@ type OverrideConfig struct {
 	Services          []string               `json:"services"`
 	Type              string                 `json:"type"`
 	Enabled           bool                   `json:"enabled"`
+	Match             ConditionMatch         `json:"match"`
+}
+
+type ConditionMatch struct {
+	Address     StringMatch  `json:"address"`
+	Service     StringMatch  `json:"service"`
+	Application StringMatch  `json:"application"`
+	Param       []ParamMatch `json:"param"`
+}
+
+type ParamMatch struct {
+	Key   string      `json:"key"`
+	Value StringMatch `json:"value"`
+}
+
+type StringMatch struct {
+	Exact    string `json:"exact"`
+	Prefix   string `json:"prefix"`
+	Regex    string `json:"regex"`
+	NoEmpty  string `json:"noEmpty"`
+	Empty    string `json:"empty"`
+	WildCard string `json:"wildCard"`
 }
 
 func (o *Override) ToDynamicConfig() *DynamicConfig {
