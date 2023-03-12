@@ -19,11 +19,12 @@ package services
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/util"
-	"strings"
 )
 
 type TagRoutesServiceImpl struct{}

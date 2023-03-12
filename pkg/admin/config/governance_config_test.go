@@ -18,11 +18,12 @@
 package config
 
 import (
+	"os"
+	"testing"
+
 	"dubbo.apache.org/dubbo-go/v3/common/extension"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"testing"
 )
 
 func TestMain(m *testing.M) {
