@@ -35,7 +35,6 @@ type Version struct {
 	GitVersion   string `json:"gitVersion"`
 	GitCommit    string `json:"gitCommit"`
 	GitTreeState string `json:"gitTreeState"`
-	GitTag       string `json:"gitTag"`
 	BuildDate    string `json:"buildDate"`
 	GoVersion    string `json:"goVersion"`
 	Compiler     string `json:"compiler"`
@@ -44,10 +43,9 @@ type Version struct {
 
 func GetVersion() Version {
 	version := Version{
-		GitVersion:   gitVersion,
+		GitVersion:   fmt.Sprintf(gitVersion, gitTag),
 		GitCommit:    gitCommit,
 		GitTreeState: gitTreeState,
-		GitTag:       gitTag,
 		BuildDate:    buildDate,
 		GoVersion:    runtime.Version(),
 		Compiler:     runtime.Compiler,

@@ -27,7 +27,7 @@ endif
 
 BUILDDATE = $(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
 
-LDFLAGS = "-X github.com/apache/dubbo-admin/pkg/version.gitVersion=$(GIT_VERSION) \
+LDFLAGS = "-X github.com/apache/dubbo-admin/pkg/version.gitTag=$(GIT_VERSION) \
                       -X github.com/apache/dubbo-admin/pkg/version.gitCommit=$(GIT_COMMIT_HASH) \
                       -X github.com/apache/dubbo-admin/pkg/version.gitTreeState=$(GIT_TREESTATE) \
                       -X github.com/apache/dubbo-admin/pkg/version.buildDate=$(BUILDDATE)"
