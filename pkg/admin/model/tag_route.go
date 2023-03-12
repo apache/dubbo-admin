@@ -17,23 +17,18 @@
 
 package model
 
-type Tag struct {
-	Name      string
-	Addresses []string
-}
-
 type TagRouteDto struct {
 	Tags []Tag `json:"tags" binding:"required"`
 
 	Priority int  `json:"priority"`
-	Enable   bool `json:"enable"`
+	Enable   bool `json:"enable" binding:"required"`
 	Force    bool `json:"force"`
 	Runtime  bool `json:"runtime"`
 
 	Application    string `json:"application" binding:"required"`
 	Service        string `json:"service"`
 	Id             string `json:"id"`
-	ServiceVersion string `json:"serviceVersion"`
+	ServiceVersion string `json:"serviceVersion" binding:"required"`
 	ServiceGroup   string `json:"serviceGroup"`
 }
 
@@ -44,4 +39,24 @@ type TagRoute struct {
 	Runtime  bool
 	Key      string
 	Tags     []Tag
+}
+
+type Tag struct {
+	Name      string `json:"name" binding:"required"`
+	Match     []MatchCondition
+	Addresses []string `json:"addresses"`
+}
+
+type MatchCondition struct {
+	Key   string `json:"key" binding:"required"`
+	Value StringMatch
+}
+
+type StringMatch struct {
+	Exact    string `json:"exact"`
+	Prefix   string `json:"prefix"`
+	Regex    string `json:"regex"`
+	Noempty  string `json:"noempty"`
+	Empty    string `json:"empty"`
+	Wildcard string `json:"wildcard"`
 }
