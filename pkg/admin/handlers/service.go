@@ -57,7 +57,6 @@ func SearchService(c *gin.Context) {
 	})
 }
 
-
 func Version(c *gin.Context) {
 	c.JSON(http.StatusOK, version.GetVersion())
 }

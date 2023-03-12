@@ -47,22 +47,22 @@ type AuthenticationPolicySpec struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Type=string
 	// +kubebuilder:validation:Enum=NONE;CLIENT_AUTH;SERVER_AUTH
-	Action    string                     `json:"action"`
+	Action string `json:"action"`
 	// +optional
-	Rules     []AuthenticationPolicyRule `json:"rules,omitempty"`
+	Rules []AuthenticationPolicyRule `json:"rules,omitempty"`
 	// The order of the rule. The rule with the highest precedence is matched first.
 	// +optional
 	// +kubebuilder:validation:Type=integer
 	// +kubebuilder:validation:Minimum=-2147483648
 	// +kubebuilder:validation:Maximum=-2147483647
 	// +kubebuilder:default=0
-	Order     int                        `json:"order,omitempty"`
+	Order int `json:"order,omitempty"`
 	// The match type of the rules.
 	// +optional
 	// +kubebuilder:validation:Type=string
 	// +kubebuilder:validation:Enum=anyMatch;allMatch
 	// +kubebuilder:default=anyMatch
-	MatchType string                     `json:"matchType,omitempty"`
+	MatchType string `json:"matchType,omitempty"`
 }
 
 type AuthenticationPolicyRule struct {
@@ -71,61 +71,61 @@ type AuthenticationPolicyRule struct {
 	From AuthenticationPolicySource `json:"from,omitempty"`
 	// The destination of the traffic to be matched.
 	// +optional
-	To   AuthenticationPolicyTarget `json:"to,omitempty"`
+	To AuthenticationPolicyTarget `json:"to,omitempty"`
 }
 
 type AuthenticationPolicySource struct {
 	// The namespaces to match of the source workload.
 	// +optional
-	Namespaces    []string                     `json:"namespaces,omitempty"`
+	Namespaces []string `json:"namespaces,omitempty"`
 	// The namespaces not to match of the source workload.
 	// +optional
-	NotNamespaces []string                     `json:"notNamespaces,omitempty"`
+	NotNamespaces []string `json:"notNamespaces,omitempty"`
 	// The IP addresses to match of the source workload.
 	// +optional
-	IpBlocks      []string                     `json:"ipBlocks,omitempty"`
+	IpBlocks []string `json:"ipBlocks,omitempty"`
 	// The IP addresses not to match of the source workload.
 	// +optional
-	NotIpBlocks   []string                     `json:"notIpBlocks,omitempty"`
+	NotIpBlocks []string `json:"notIpBlocks,omitempty"`
 	// The identities(from spiffe) to match of the source workload.
 	// +optional
-	Principals    []string                     `json:"principals,omitempty"`
+	Principals []string `json:"principals,omitempty"`
 	// The identities(from spiffe) not to match of the source workload.
 	// +optional
-	NotPrincipals []string                     `json:"notPrincipals,omitempty"`
+	NotPrincipals []string `json:"notPrincipals,omitempty"`
 	// The extended identities(from Dubbo Auth) to match of the source workload.
 	// +optional
-	Extends       []AuthenticationPolicyExtend `json:"extends,omitempty"`
+	Extends []AuthenticationPolicyExtend `json:"extends,omitempty"`
 	// The extended identities(from Dubbo Auth) not to match of the source workload.
 	// +optional
-	NotExtends    []AuthenticationPolicyExtend `json:"notExtends,omitempty"`
+	NotExtends []AuthenticationPolicyExtend `json:"notExtends,omitempty"`
 }
 
 type AuthenticationPolicyTarget struct {
 	// The IP addresses to match of the destination workload.
 	// +optional
-	IpBlocks      []string                     `json:"ipBlocks,omitempty"`
+	IpBlocks []string `json:"ipBlocks,omitempty"`
 	// The IP addresses not to match of the destination workload.
 	// +optional
-	NotIpBlocks   []string                     `json:"notIpBlocks,omitempty"`
+	NotIpBlocks []string `json:"notIpBlocks,omitempty"`
 	// The identities(from spiffe) to match of the destination workload.
 	// +optional
-	Principals    []string                     `json:"principals,omitempty"`
+	Principals []string `json:"principals,omitempty"`
 	// The identities(from spiffe) not to match of the destination workload.
 	// +optional
-	NotPrincipals []string                     `json:"notPrincipals,omitempty"`
+	NotPrincipals []string `json:"notPrincipals,omitempty"`
 	// The extended identities(from Dubbo Auth) to match of the destination workload.
 	// +optional
-	Extends       []AuthenticationPolicyExtend `json:"extends,omitempty"`
+	Extends []AuthenticationPolicyExtend `json:"extends,omitempty"`
 	// The extended identities(from Dubbo Auth) not to match of the destination workload.
 	// +optional
-	NotExtends    []AuthenticationPolicyExtend `json:"notExtends,omitempty"`
+	NotExtends []AuthenticationPolicyExtend `json:"notExtends,omitempty"`
 }
 
 type AuthenticationPolicyExtend struct {
 	// The key of the extended identity.
 	// +optional
-	Key   string `json:"key,omitempty"`
+	Key string `json:"key,omitempty"`
 	// The value of the extended identity.
 	// +optional
 	Value string `json:"value,omitempty"`
@@ -158,31 +158,31 @@ type AuthorizationPolicySpec struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Type=string
 	// +kubebuilder:validation:Enum=ALLOW;DENY;ADUIT
-	Action    string                    `json:"action"`
+	Action string `json:"action"`
 	// +optional
-	Rules     []AuthorizationPolicyRule `json:"rules,omitempty"`
+	Rules []AuthorizationPolicyRule `json:"rules,omitempty"`
 	// The sample rate of the rule. The value is between 0 and 100.
 	// +optional
 	// +kubebuilder:validation:Type=number
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=100
 	// +kubebuilder:default=100
-	Samples   float32                   `json:"samples,omitempty"`
+	Samples float32 `json:"samples,omitempty"`
 	// The match type of the rules.
 	// +optional
 	// +kubebuilder:validation:Type=string
 	// +kubebuilder:validation:Enum=anyMatch;allMatch
 	// +kubebuilder:default=anyMatch
-	MatchType string                    `json:"matchType,omitempty"`
+	MatchType string `json:"matchType,omitempty"`
 }
 
 type AuthorizationPolicyRule struct {
 	// The source of the traffic to be matched.
 	// +optional
-	From AuthorizationPolicySource    `json:"from,omitempty"`
+	From AuthorizationPolicySource `json:"from,omitempty"`
 	// The destination of the traffic to be matched.
 	// +optional
-	To   AuthorizationPolicyTarget    `json:"to,omitempty"`
+	To AuthorizationPolicyTarget `json:"to,omitempty"`
 	// +optional
 	When AuthorizationPolicyCondition `json:"when,omitempty"`
 }
@@ -190,56 +190,56 @@ type AuthorizationPolicyRule struct {
 type AuthorizationPolicySource struct {
 	// The namespaces to match of the source workload.
 	// +optional
-	Namespaces    []string                    `json:"namespaces,omitempty"`
+	Namespaces []string `json:"namespaces,omitempty"`
 	// The namespaces not to match of the source workload.
 	// +optional
-	NotNamespaces []string                    `json:"notNamespaces,omitempty"`
+	NotNamespaces []string `json:"notNamespaces,omitempty"`
 	// The IP addresses to match of the source workload.
 	// +optional
-	IpBlocks      []string                    `json:"ipBlocks,omitempty"`
+	IpBlocks []string `json:"ipBlocks,omitempty"`
 	// The IP addresses not to match of the source workload.
 	// +optional
-	NotIpBlocks   []string                    `json:"notIpBlocks,omitempty"`
+	NotIpBlocks []string `json:"notIpBlocks,omitempty"`
 	// The identities(from spiffe) to match of the source workload.
 	// +optional
-	Principals    []string                    `json:"principals,omitempty"`
+	Principals []string `json:"principals,omitempty"`
 	// The identities(from spiffe) not to match of the source workload
 	// +optional
-	NotPrincipals []string                    `json:"notPrincipals,omitempty"`
+	NotPrincipals []string `json:"notPrincipals,omitempty"`
 	// The extended identities(from Dubbo Auth) to match of the source workload.
 	// +optional
-	Extends       []AuthorizationPolicyExtend `json:"extends,omitempty"`
+	Extends []AuthorizationPolicyExtend `json:"extends,omitempty"`
 	// The extended identities(from Dubbo Auth) not to match of the source workload.
 	// +optional
-	NotExtends    []AuthorizationPolicyExtend `json:"notExtends,omitempty"`
+	NotExtends []AuthorizationPolicyExtend `json:"notExtends,omitempty"`
 }
 
 type AuthorizationPolicyTarget struct {
 	// The IP addresses to match of the destination workload.
 	// +optional
-	IpBlocks      []string                    `json:"ipBlocks,omitempty"`
+	IpBlocks []string `json:"ipBlocks,omitempty"`
 	// The IP addresses not to match of the destination workload.
 	// +optional
-	NotIpBlocks   []string                    `json:"notIpBlocks,omitempty"`
+	NotIpBlocks []string `json:"notIpBlocks,omitempty"`
 	// The identities(from spiffe) to match of the destination workload.
 	// +optional
-	Principals    []string                    `json:"principals,omitempty"`
+	Principals []string `json:"principals,omitempty"`
 	// The identities(from spiffe) not to match of the destination workload.
 	// +optional
-	NotPrincipals []string                    `json:"notPrincipals,omitempty"`
+	NotPrincipals []string `json:"notPrincipals,omitempty"`
 	// The extended identities(from Dubbo Auth) to match of the destination workload.
 	// +optional
-	Extends       []AuthorizationPolicyExtend `json:"extends,omitempty"`
+	Extends []AuthorizationPolicyExtend `json:"extends,omitempty"`
 	// The extended identities(from Dubbo Auth) not to match of the destination workload.
 	// +optional
-	NotExtends    []AuthorizationPolicyExtend `json:"notExtends,omitempty"`
+	NotExtends []AuthorizationPolicyExtend `json:"notExtends,omitempty"`
 }
 
 type AuthorizationPolicyCondition struct {
 	// +optional
-	Key       string                     `json:"key,omitempty"`
+	Key string `json:"key,omitempty"`
 	// +optional
-	Values    []AuthorizationPolicyMatch `json:"values,omitempty"`
+	Values []AuthorizationPolicyMatch `json:"values,omitempty"`
 	// +optional
 	NotValues []AuthorizationPolicyMatch `json:"notValues,omitempty"`
 }
@@ -249,7 +249,7 @@ type AuthorizationPolicyMatch struct {
 	// +kubebuilder:validation:Type=string
 	// +kubebuilder:validation:Enum=equals;regex;ognl
 	// +kubebuilder:default=equals
-	Type  string `json:"type,omitempty"`
+	Type string `json:"type,omitempty"`
 	// +optional
 	Value string `json:"value,omitempty"`
 }
@@ -257,7 +257,7 @@ type AuthorizationPolicyMatch struct {
 type AuthorizationPolicyExtend struct {
 	// The key of the extended identity.
 	// +optional
-	Key   string `json:"key,omitempty"`
+	Key string `json:"key,omitempty"`
 	// The value of the extended identity
 	// +optional
 	Value string `json:"value,omitempty"`
