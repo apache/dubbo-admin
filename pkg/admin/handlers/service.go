@@ -18,6 +18,7 @@
 package handlers
 
 import (
+	"github.com/apache/dubbo-admin/pkg/version"
 	"net/http"
 
 	"github.com/apache/dubbo-admin/pkg/admin/services"
@@ -54,4 +55,9 @@ func SearchService(c *gin.Context) {
 		"code": 1,
 		"data": providers,
 	})
+}
+
+
+func Version(c *gin.Context) {
+	c.JSON(http.StatusOK, version.GetVersion())
 }
