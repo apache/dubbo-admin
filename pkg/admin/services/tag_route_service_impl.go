@@ -70,7 +70,7 @@ func (t *TagRoutesServiceImpl) EnableTagRoute(id string) error {
 	if cfg != "" {
 		var tagRoute model.TagRoute
 		_ = util.LoadObject(cfg, &tagRoute)
-		tagRoute.Enable = true
+		tagRoute.Enabled = true
 		obj, _ := util.DumpObject(tagRoute)
 		return config.SetConfig(path, obj)
 	}
@@ -83,7 +83,7 @@ func (t *TagRoutesServiceImpl) DisableTagRoute(id string) error {
 	if cfg != "" {
 		var tagRoute model.TagRoute
 		_ = util.LoadObject(cfg, &tagRoute)
-		tagRoute.Enable = false
+		tagRoute.Enabled = false
 		obj, _ := util.DumpObject(tagRoute)
 		return config.SetConfig(path, obj)
 	}
@@ -102,7 +102,7 @@ func getPath(key string, routeType string) string {
 func convertTagRouteToStore(tagRoute model.TagRouteDto) model.TagRoute {
 	var store model.TagRoute
 	store.Key = tagRoute.Application
-	store.Enable = tagRoute.Enable
+	store.Enabled = tagRoute.Enabled
 	store.Force = tagRoute.Force
 	store.Priority = tagRoute.Priority
 	store.Runtime = tagRoute.Runtime
@@ -113,7 +113,7 @@ func convertTagRouteToStore(tagRoute model.TagRouteDto) model.TagRoute {
 func convertTagRouteToDto(tagRoute model.TagRoute) model.TagRouteDto {
 	var dto model.TagRouteDto
 	dto.Application = tagRoute.Key
-	dto.Enable = tagRoute.Enable
+	dto.Enabled = tagRoute.Enabled
 	dto.Force = tagRoute.Force
 	dto.Priority = tagRoute.Priority
 	dto.Runtime = tagRoute.Runtime
@@ -126,5 +126,5 @@ func getIdFromDto(baseDto model.TagRouteDto) string {
 		return baseDto.Application
 	}
 	// id format: "${class}:${version}:${group}"
-	return baseDto.Service + constant.Colon + baseDto.ServiceVersion + constant.Colon + baseDto.ServiceGroup
+	return baseDto.Service + constant.Colon + baseDto.ConfigVersion + constant.Colon + baseDto.ServiceGroup
 }

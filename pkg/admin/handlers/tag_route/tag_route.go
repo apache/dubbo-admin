@@ -54,7 +54,7 @@ func UpdateRule(c *gin.Context) {
 	if err != nil {
 		panic(err)
 	}
-	id := c.Query("id")
+	id := c.Param("id")
 	id = strings.ReplaceAll(id, "*", "/")
 
 	_, err = tagRouteService.FindTagRoute(id)
@@ -97,7 +97,7 @@ func SearchRoutes(c *gin.Context) {
 }
 
 func DetailRoute(c *gin.Context) {
-	id := c.Query("id")
+	id := c.Param("id")
 	id = strings.ReplaceAll(id, "*", "/")
 
 	tagRoute, err := tagRouteService.FindTagRoute(id)
@@ -115,7 +115,7 @@ func DetailRoute(c *gin.Context) {
 }
 
 func DeleteRoute(c *gin.Context) {
-	id := c.Query("id")
+	id := c.Param("id")
 	id = strings.ReplaceAll(id, "*", "/")
 
 	err := tagRouteService.DeleteTagRoute(id)
@@ -133,7 +133,7 @@ func DeleteRoute(c *gin.Context) {
 }
 
 func EnableRoute(c *gin.Context) {
-	id := c.Query("id")
+	id := c.Param("id")
 	id = strings.ReplaceAll(id, "*", "/")
 
 	err := tagRouteService.EnableTagRoute(id)
@@ -151,7 +151,7 @@ func EnableRoute(c *gin.Context) {
 }
 
 func DisableRoute(c *gin.Context) {
-	id := c.Query("id")
+	id := c.Param("id")
 	id = strings.ReplaceAll(id, "*", "/")
 
 	err := tagRouteService.DisableTagRoute(id)

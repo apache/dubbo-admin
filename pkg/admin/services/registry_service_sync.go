@@ -38,9 +38,9 @@ var (
 
 func init() {
 	queryParams := url.Values{
-		constant.InterfaceKey:  {"org.apache.dubbo.springboot.demo.DemoService"},
-		constant.GroupKey:      {""},
-		constant.VersionKey:    {""},
+		constant.InterfaceKey:  {constant.AnyValue},
+		constant.GroupKey:      {constant.AnyValue},
+		constant.VersionKey:    {constant.AnyValue},
 		constant.ClassifierKey: {constant.AnyValue},
 		constant.CategoryKey: {constant.ProvidersCategory +
 			"," + constant.ConsumersCategory +

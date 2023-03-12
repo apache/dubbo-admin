@@ -21,20 +21,20 @@ type TagRouteDto struct {
 	Tags []Tag `json:"tags" binding:"required"`
 
 	Priority int  `json:"priority"`
-	Enable   bool `json:"enable" binding:"required"`
+	Enabled  bool `json:"enabled" binding:"required"`
 	Force    bool `json:"force"`
 	Runtime  bool `json:"runtime"`
 
-	Application    string `json:"application" binding:"required"`
-	Service        string `json:"service"`
-	Id             string `json:"id"`
-	ServiceVersion string `json:"serviceVersion" binding:"required"`
-	ServiceGroup   string `json:"serviceGroup"`
+	Application   string `json:"application" binding:"required"`
+	Service       string `json:"service"`
+	Id            string `json:"id"`
+	ConfigVersion string `json:"configVersion" binding:"required"`
+	ServiceGroup  string `json:"serviceGroup"`
 }
 
 type TagRoute struct {
 	Priority int
-	Enable   bool
+	Enabled  bool
 	Force    bool
 	Runtime  bool
 	Key      string
