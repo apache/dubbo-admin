@@ -39,12 +39,7 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 	existOverride := dynamicConfig.ToOverride()
 	configs := []model.OverrideConfig{}
 	if existConfig != "" {
-		b, err := yaml.LoadYMLConfig(existConfig)
-		if err != nil {
-			logger.Error(err)
-			return err
-		}
-		err = yaml.UnmarshalYML(b, existOverride)
+		err = yaml.UnmarshalYML([]byte(existConfig), existOverride)
 		if err != nil {
 			logger.Error(err)
 			return err
@@ -107,12 +102,7 @@ func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error 
 	}
 
 	var override model.Override
-	b, err := yaml.LoadYMLConfig(existConfig)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-	err = yaml.UnmarshalYML(b, override)
+	err = yaml.UnmarshalYML([]byte(existConfig), override)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -175,13 +165,7 @@ func (s *OverrideServiceImpl) DisableOverride(id string) error {
 	}
 
 	override := &model.Override{}
-
-	b, err := yaml.LoadYMLConfig(conf)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-	err = yaml.UnmarshalYML(b, override)
+	err = yaml.UnmarshalYML([]byte(conf), override)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -234,13 +218,11 @@ func (s *OverrideServiceImpl) FindOverride(id string) (*model.DynamicConfig, err
 
 	if conf != "" {
 		var override model.Override
-
-		b, err := yaml.LoadYMLConfig(conf)
+		err := yaml.UnmarshalYML([]byte(conf), override)
 		if err != nil {
 			logger.Error(err)
 			return nil, err
 		}
-		yaml.UnmarshalYML(b, override)
 
 		dynamicConfig := override.ToDynamicConfig()
 		if dynamicConfig != nil {
@@ -266,12 +248,7 @@ func (s *OverrideServiceImpl) EnableOverride(id string) error {
 	}
 
 	override := &model.Override{}
-	b, err := yaml.LoadYMLConfig(conf)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-	err = yaml.UnmarshalYML(b, override)
+	err = yaml.UnmarshalYML([]byte(conf), override)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -322,12 +299,7 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 	}
 
 	var override model.Override
-	b, err := yaml.LoadYMLConfig(conf)
-	if err != nil {
-		logger.Error(err)
-		return err
-	}
-	err = yaml.UnmarshalYML(b, override)
+	err = yaml.UnmarshalYML([]byte(conf), override)
 	if err != nil {
 		logger.Error(err)
 		return err

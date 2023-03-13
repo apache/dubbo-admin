@@ -43,7 +43,7 @@ func (d *DynamicConfig) ToOldOverride() []*OldOverride {
 	result := []*OldOverride{}
 	configs := d.Configs
 	for _, config := range configs {
-		if constant.Configs.Contains(config) {
+		if constant.Configs.Contains(config.Type) {
 			continue
 		}
 		apps := config.Applications

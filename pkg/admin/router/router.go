@@ -33,8 +33,8 @@ func InitRouter() *gin.Engine {
 		override.GET("/", handlers.SearchOverride)
 		override.DELETE("/:id", handlers.DeleteOverride)
 		override.GET("/:id", handlers.DetailOverride)
-		override.PUT("/enable/:id", handlers.EnableRoute)
-		override.PUT("/disable/:id", handlers.DisableRoute)
+		override.PUT("/enable/:id", handlers.EnableOverride)
+		override.PUT("/disable/:id", handlers.DisableOverride)
 		override.PUT("/:id", handlers.UpdateOverride)
 	}
 	return router
