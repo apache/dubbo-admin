@@ -84,7 +84,6 @@ func SearchRoutes(c *gin.Context) {
 	application := c.Query("application")
 
 	tagRoute, err := tagRouteService.FindTagRoute(application)
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -102,7 +101,6 @@ func DetailRoute(c *gin.Context) {
 	id = strings.ReplaceAll(id, "*", "/")
 
 	tagRoute, err := tagRouteService.FindTagRoute(id)
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -120,7 +118,6 @@ func DeleteRoute(c *gin.Context) {
 	id = strings.ReplaceAll(id, "*", "/")
 
 	err := tagRouteService.DeleteTagRoute(id)
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -138,7 +135,6 @@ func EnableRoute(c *gin.Context) {
 	id = strings.ReplaceAll(id, "*", "/")
 
 	err := tagRouteService.EnableTagRoute(id)
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -156,7 +152,6 @@ func DisableRoute(c *gin.Context) {
 	id = strings.ReplaceAll(id, "*", "/")
 
 	err := tagRouteService.DisableTagRoute(id)
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
