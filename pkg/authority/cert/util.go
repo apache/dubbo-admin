@@ -21,14 +21,28 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
+	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"log"
 	"math/big"
+	"strings"
 	"time"
+
+	"dubbo.apache.org/dubbo-go/v3/common"
 
 	"github.com/apache/dubbo-admin/pkg/authority/rule"
 	"github.com/apache/dubbo-admin/pkg/logger"
 )
+
+const (
+	UNITag int = 6
+)
+
+// The OID for the SAN extension (See
+// http://www.alvestrand.no/objectid/2.5.29.17.html).
+var oidSubjectAlternativeName = asn1.ObjectIdentifier{2, 5, 29, 17}
 
 func DecodeCert(cert string) *x509.Certificate {
 	block, _ := pem.Decode([]byte(cert))
@@ -227,7 +241,89 @@ func SignFromCSR(csr *x509.CertificateRequest, endpoint *rule.Endpoint, authorit
 }
 
 func AppendEndpoint(endpoint *rule.Endpoint, cert *x509.Certificate) {
-	cert.DNSNames = endpoint.Ips
+	if endpoint == nil {
+		return
+	}
+
+	endpointData, _ := json.Marshal(endpoint)
+
+	cert.Subject.ExtraNames = append(cert.Subject.ExtraNames, pkix.AttributeTypeAndValue{
+		Type:  asn1.ObjectIdentifier{2, 5, 4, 13},
+		Value: endpointData,
+	})
+
+	err := BuildSANExtension(endpoint, cert)
+	if err != nil {
+		logger.Sugar().Warnf("Failed to build SAN extension. " + err.Error())
+		return
+	}
+}
+
+func BuildSANExtension(endpoint *rule.Endpoint, cert *x509.Certificate) error {
+	rawValues := []asn1.RawValue{}
+
+	if endpoint.SpiffeID != "" {
+		rawValues = append(rawValues, asn1.RawValue{
+			Bytes: []byte(endpoint.SpiffeID),
+			Class: asn1.ClassContextSpecific,
+			Tag:   UNITag,
+		})
+	}
+
+	u, err := common.NewURL("")
+	if err != nil {
+		return err
+	}
+
+	u.Protocol = "dubbo"
+	if len(endpoint.Ips) != 0 {
+		u.Ip = endpoint.Ips[0]
+		u.AddParam("ips", strings.Join(endpoint.Ips, ","))
+	} else {
+		u.Ip = "localhost"
+	}
+	u.Port = "0"
+
+	if endpoint.KubernetesEnv != nil {
+		u.AddParam("kubernetesEnv.namespace", endpoint.KubernetesEnv.Namespace)
+		u.AddParam("kubernetesEnv.deploymentName", endpoint.KubernetesEnv.DeploymentName)
+		u.AddParam("kubernetesEnv.statefulSetName", endpoint.KubernetesEnv.StatefulSetName)
+		u.AddParam("kubernetesEnv.podName", endpoint.KubernetesEnv.PodName)
+
+		if len(endpoint.KubernetesEnv.PodLabels) != 0 {
+			labels, err := json.Marshal(endpoint.KubernetesEnv.PodLabels)
+			if err != nil {
+				return err
+			}
+			u.AddParam("kubernetesEnv.podLabels", string(labels))
+		}
+
+		if len(endpoint.KubernetesEnv.PodAnnotations) != 0 {
+			annotations, err := json.Marshal(endpoint.KubernetesEnv.PodAnnotations)
+			if err != nil {
+				return err
+			}
+			u.AddParam("kubernetesEnv.podAnnotations", string(annotations))
+		}
+	}
+
+	rawValues = append(rawValues, asn1.RawValue{
+		Bytes: []byte(u.String()),
+		Class: asn1.ClassContextSpecific,
+		Tag:   UNITag,
+	})
+
+	if len(rawValues) != 0 {
+		bs, err := asn1.Marshal(rawValues)
+		if err != nil {
+			return fmt.Errorf("failed to marshal the raw values for SAN field (err: %s)", err)
+		}
+
+		// SAN is Critical because the subject is empty. This is compliant with X.509 and SPIFFE standards.
+		cert.ExtraExtensions = append(cert.ExtraExtensions, pkix.Extension{Id: oidSubjectAlternativeName, Critical: true, Value: bs})
+	}
+
+	return nil
 }
 
 func EncodePrivateKey(caPrivKey *rsa.PrivateKey) string {

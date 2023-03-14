@@ -16,17 +16,17 @@
 package rule
 
 type Endpoint struct {
-	ID            string
-	Ips           []string
-	SpiffeID      string
-	KubernetesEnv *KubernetesEnv
+	ID            string         `json:"id,omitempty"`
+	Ips           []string       `json:"ips,omitempty"`
+	SpiffeID      string         `json:"spiffeId,omitempty"`
+	KubernetesEnv *KubernetesEnv `json:"kubernetesEnv,omitempty"`
 }
 
 type KubernetesEnv struct {
-	Namespace       string
-	DeploymentName  string
-	StatefulSetName string
-	PodName         string
-	PodLabels       map[string]string
-	PodAnnotations  map[string]string
+	Namespace       string            `json:"namespace,omitempty"`
+	DeploymentName  string            `json:"deploymentName,omitempty"`
+	StatefulSetName string            `json:"statefulSetName,omitempty"`
+	PodName         string            `json:"podName,omitempty"`
+	PodLabels       map[string]string `json:"podLabels,omitempty"`
+	PodAnnotations  map[string]string `json:"podAnnotations,omitempty"`
 }
