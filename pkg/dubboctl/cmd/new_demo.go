@@ -26,7 +26,7 @@ import (
 )
 
 import (
-	"github.com/dubbogo/dubbogo-cli/generator/sample"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/generator/sample"
 )
 
 // newDemoCmd represents the new command

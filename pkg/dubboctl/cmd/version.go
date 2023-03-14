@@ -26,8 +26,8 @@ import (
 )
 
 import (
-	"github.com/dubbogo/dubbogo-cli/constant"
-	_ "github.com/dubbogo/dubbogo-cli/metadata/zookeeper"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/constant"
+	_ "github.com/apache/dubbo-admin/pkg/dubboctl/metadata/zookeeper"
 )
 
 // versionCmd represents the version command

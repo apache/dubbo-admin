@@ -30,7 +30,7 @@ import (
 )
 
 import (
-	"github.com/dubbogo/dubbogo-cli/metadata"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/metadata"
 )
 
 func init() {

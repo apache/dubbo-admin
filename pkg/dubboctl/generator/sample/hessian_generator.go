@@ -18,7 +18,7 @@
 package sample
 
 import (
-	"github.com/dubbogo/dubbogo-cli/generator/sample/hessian"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/generator/sample/hessian"
 )
 
 func HessianRegistryGenerate(includePath string, threadMax int, onlyError bool) error {

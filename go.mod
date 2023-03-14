@@ -21,7 +21,6 @@ go 1.19
 require (
 	dubbo.apache.org/dubbo-go/v3 v3.0.2
 	github.com/apache/dubbo-go-hessian2 v1.11.0
-	github.com/dubbogo/dubbogo-cli v0.0.0-20220413120533-af6c98454677
 	github.com/dubbogo/gost v1.11.25
 	github.com/evanphx/json-patch/v5 v5.5.0
 	github.com/gin-gonic/gin v1.8.2

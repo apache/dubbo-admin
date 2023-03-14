@@ -24,8 +24,8 @@ import (
 )
 
 import (
-	"github.com/dubbogo/dubbogo-cli/generator/sample"
-	"github.com/dubbogo/dubbogo-cli/generator/sample/hessian"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/generator/sample"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/generator/sample/hessian"
 )
 
 // hessianCmd represents the hessian-register-generator command

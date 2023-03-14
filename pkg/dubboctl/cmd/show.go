@@ -27,8 +27,8 @@ import (
 )
 
 import (
-	"github.com/dubbogo/dubbogo-cli/metadata"
-	_ "github.com/dubbogo/dubbogo-cli/metadata/zookeeper"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/metadata"
+	_ "github.com/apache/dubbo-admin/pkg/dubboctl/metadata/zookeeper"
 )
 
 // showCmd represents the show command

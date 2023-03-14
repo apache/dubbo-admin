@@ -26,7 +26,7 @@ import (
 )
 
 import (
-	"github.com/dubbogo/dubbogo-cli/generator/application"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/generator/application"
 )
 
 // newApp represents the new command
