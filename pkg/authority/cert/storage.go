@@ -165,6 +165,7 @@ func (s *storageImpl) RefreshServerCert() {
 		s.mutex.Lock()
 		if s.authorityCert == nil || !s.authorityCert.IsValid() {
 			// ignore if authority cert is invalid
+			s.mutex.Unlock()
 			continue
 		}
 		if s.serverCerts == nil || !s.serverCerts.IsValid() {
