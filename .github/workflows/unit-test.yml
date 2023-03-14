@@ -34,6 +34,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           java-version: ${{ env.JDK_VERSION }}
+          distribution: temurin
       - name: Set up Zookeeper
         run: |
           wget https://dlcdn.apache.org/zookeeper/zookeeper-${{ env.ZOOKEEPER_VERSION }}/apache-zookeeper-${{ env.ZOOKEEPER_VERSION }}-bin.tar.gz
