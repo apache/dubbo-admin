@@ -26,7 +26,20 @@ jobs:
   unit-test:
     name: Go Test
     runs-on: ubuntu-latest
+    env:
+      JDK_VERSION: 8
+      ZOOKEEPER_VERSION: 3.6.3
     steps:
+      - name: Set up JDK ${{ env.JDK_VERSION }}
+        uses: actions/setup-java@v3
+        with:
+          java-version: ${{ env.JDK_VERSION }}
+      - name: Set up Zookeeper
+        run: |
+          wget https://dlcdn.apache.org/zookeeper/zookeeper-${{ env.ZOOKEEPER_VERSION }}/apache-zookeeper-${{ env.ZOOKEEPER_VERSION }}-bin.tar.gz
+          tar -zxvf apache-zookeeper-${{ env.ZOOKEEPER_VERSION }}-bin.tar.gz
+          mv apache-zookeeper-${{ env.ZOOKEEPER_VERSION }}-bin/conf/zoo_sample.cfg apache-zookeeper-${{ env.ZOOKEEPER_VERSION }}-bin/conf/zoo.cfg
+          apache-zookeeper-${{ env.ZOOKEEPER_VERSION }}-bin/bin/zkServer.sh start
       - name: Set up Go 1.x
         uses: actions/setup-go@v2
         id: go
