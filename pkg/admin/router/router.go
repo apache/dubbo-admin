@@ -32,5 +32,9 @@ func InitRouter() *gin.Engine {
 	router.GET("api/dev/service/:service", handlers.ServiceDetail)
 	router.GET("/api/dev/version", handlers.Version)
 
+	// ServiceTest
+	router.POST("/api/dev/test", handlers.Test)
+	router.GET("/api/dev/test/method", handlers.MethodDetail)
+
 	return router
 }

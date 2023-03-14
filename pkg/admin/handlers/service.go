@@ -145,3 +145,13 @@ func ServiceDetail(c *gin.Context) {
 func Version(c *gin.Context) {
 	c.JSON(http.StatusOK, version.GetVersion())
 }
+
+// ServiceTest
+
+func Test(c *gin.Context) {
+
+}
+
+func MethodDetail(c *gin.Context) {
+	
+}
