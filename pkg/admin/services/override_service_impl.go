@@ -110,11 +110,10 @@ func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error 
 	old := override.ToDynamicConfig()
 
 	configs := make([]model.OverrideConfig, 0)
-	if override.Configs != nil {
-		overrideConfigs := override.Configs
-		for _, config := range overrideConfigs {
-			if constant.Configs.Contains(config.Type) {
-				configs = append(configs, config)
+	if len(override.Configs) > 0 {
+		for _, c := range override.Configs {
+			if constant.Configs.Contains(c.Type) {
+				configs = append(configs, c)
 			}
 		}
 	}
@@ -308,9 +307,9 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 	old := override.ToDynamicConfig()
 	newConfigs := make([]model.OverrideConfig, 0)
 	if len(override.Configs) > 0 {
-		for _, overrideConfig := range override.Configs {
-			if constant.Configs.Contains(overrideConfig.Type) {
-				newConfigs = append(newConfigs, overrideConfig)
+		for _, c := range override.Configs {
+			if constant.Configs.Contains(c.Type) {
+				newConfigs = append(newConfigs, c)
 			}
 		}
 		if len(newConfigs) == 0 {
