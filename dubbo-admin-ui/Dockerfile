@@ -13,15 +13,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: v2
-appVersion: 3.8.1
-description: Apache ZooKeeper provides a reliable, centralized register of configuration
-  data and services for distributed applications.
-home: https://github.com/bitnami/charts/tree/main/bitnami/zookeeper
-maintainers:
-  - email: dev@dubbo.apache.org
-    name: dubbo
-name: zookeeper
-sources:
-  - https://zookeeper.apache.org/
-version: 11.1.2
+# -- BUILD --
+FROM node:14.17-alpine as build
+
+WORKDIR /app/ui/src
+
+
+COPY . .
+
+RUN npm i
+RUN npm run build
+
+# -- RELEASE --
+FROM nginx:stable-alpine as release
+
+COPY --from=build /app/ui/src/target/dist /usr/share/nginx/html
+
+WORKDIR /usr/share/nginx/html
+EXPOSE 8080
+
+CMD ["/bin/sh", "-c", "nginx -g \"daemon off;\""]

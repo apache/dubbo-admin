@@ -37,3 +37,6 @@ dubbo-admin-ui/node
 dubbo-admin-ui/node-modules
 
 coverage.txt
+
+bin/
+vendor/
