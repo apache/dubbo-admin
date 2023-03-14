@@ -27,6 +27,10 @@ func InitRouter() *gin.Engine {
 
 	router.GET("/api/dev/services", handlers.AllServices)
 	router.GET("/api/dev/service", handlers.SearchService)
+	router.GET("api/dev/applications", handlers.AllApplications)
+	router.GET("api/dev/consumers", handlers.AllConsumers)
+	router.GET("api/dev/service/:service", handlers.ServiceDetail)
 	router.GET("/api/dev/version", handlers.Version)
+
 	return router
 }
