@@ -397,7 +397,7 @@ func (c *ClientImpl) RefreshSignedCert(storage cert.Storage, options *config.Opt
 	if err != nil {
 		namespace = "default"
 	}
-	lock, err := resourcelock.New(resourcelock.ConfigMapsLeasesResourceLock, "dubbo-demo", "dubbo-lock-cert", c.kubeClient.CoreV1(), c.kubeClient.CoordinationV1(), rlConfig)
+	lock, err := resourcelock.New(resourcelock.ConfigMapsLeasesResourceLock, namespace, "dubbo-lock-cert", c.kubeClient.CoreV1(), c.kubeClient.CoordinationV1(), rlConfig)
 	if err != nil {
 		return err
 	}
