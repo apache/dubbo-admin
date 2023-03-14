@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       JDK_VERSION: 8
-      ZOOKEEPER_VERSION: 3.6.3
+      ZOOKEEPER_VERSION: 3.7.1
     steps:
       - name: Set up JDK ${{ env.JDK_VERSION }}
         uses: actions/setup-java@v3
