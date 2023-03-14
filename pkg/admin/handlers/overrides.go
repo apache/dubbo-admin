@@ -83,7 +83,7 @@ func SearchOverride(c *gin.Context) {
 	serviceVersion := c.DefaultQuery("serviceVersion", "")
 	serviceGroup := c.DefaultQuery("serviceGroup", "")
 
-	override := &model.DynamicConfig{}
+	var override *model.DynamicConfig
 	result := make([]*model.DynamicConfig, 0)
 	var err error
 	if service != "" {
