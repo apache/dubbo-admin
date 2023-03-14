@@ -263,7 +263,7 @@ func (c *Connection) handleRule(rawRule rule.Origin) error {
 	cr.PushQueued = false
 
 	if cr.ClientVersion.Data != nil &&
-		(cr.ClientVersion.Data.Data() == targetRule.Data() || cr.ClientVersion.Data.Revision() < targetRule.Revision()) {
+		(cr.ClientVersion.Data.Data() == targetRule.Data() || cr.ClientVersion.Data.Revision() >= targetRule.Revision()) {
 		logger.Sugar().Infof("Client %s %s rule is up to date", c.Endpoint.Ips, targetRule.Type())
 		return nil
 	}
