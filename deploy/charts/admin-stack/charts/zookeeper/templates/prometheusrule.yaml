@@ -13,29 +13,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- $replicaCount := int .Values.replicaCount }}
-{{- if and .Values.pdb.create (gt $replicaCount 1) }}
-apiVersion: {{ include "capabilities.policy.apiVersion" . }}
-kind: PodDisruptionBudget
+{{- if and .Values.metrics.enabled .Values.metrics.prometheusRule.enabled .Values.metrics.prometheusRule.rules }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
 metadata:
-  name: {{ template "names.fullname" . }}
-  namespace: {{ template "zookeeper.namespace" . }}
+  name: {{ include "names.fullname" . }}
+  {{- if .Values.metrics.prometheusRule.namespace }}
+  namespace: {{ .Values.metrics.prometheusRule.namespace }}
+  {{- else }}
+  namespace: {{ .Release.Namespace }}
+  {{- end }}
   labels: {{- include "labels.standard" . | nindent 4 }}
-    app.kubernetes.io/component: zookeeper
+    app.kubernetes.io/component: metrics
     {{- if .Values.Labels }}
     {{- include "tplvalues.render" ( dict "value" .Values.Labels "context" $ ) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.metrics.prometheusRule.additionalLabels }}
+    {{- include "tplvalues.render" ( dict "value" .Values.metrics.prometheusRule.additionalLabels "context" $ ) | nindent 4 }}
     {{- end }}
   {{- if .Values.Annotations }}
   annotations: {{- include "tplvalues.render" ( dict "value" .Values.Annotations "context" $ ) | nindent 4 }}
   {{- end }}
 spec:
-  {{- if .Values.pdb.minAvailable }}
-  minAvailable: {{ .Values.pdb.minAvailable }}
-  {{- end  }}
-  {{- if .Values.pdb.maxUnavailable }}
-  maxUnavailable: {{ .Values.pdb.maxUnavailable }}
-  {{- end  }}
-  selector:
-    matchLabels: {{- include "labels.matchLabels" . | nindent 6 }}
-      app.kubernetes.io/component: zookeeper
+  groups:
+    - name: {{ include "names.fullname" . }}
+      rules: {{- toYaml .Values.metrics.prometheusRule.rules | nindent 8 }}
 {{- end }}
+

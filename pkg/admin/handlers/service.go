@@ -26,6 +26,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/util"
 
 	"github.com/apache/dubbo-admin/pkg/admin/services"
+	"github.com/apache/dubbo-admin/pkg/version"
 	"github.com/gin-gonic/gin"
 )
 
@@ -139,4 +140,7 @@ func ServiceDetail(c *gin.Context) {
 		"code": 1,
 		"data": serviceDetail,
 	})
+
+func Version(c *gin.Context) {
+	c.JSON(http.StatusOK, version.GetVersion())
 }
