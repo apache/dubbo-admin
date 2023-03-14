@@ -26,7 +26,7 @@ func TestManifestGenerate(t *testing.T) {
 		cmd string
 	}{
 		{
-			cmd: "manifest generate --charts ../../deploy/charts/admin-stack/charts --profiles ../../deploy/profiles",
+			cmd: "manifest generate --charts ../../../deploy/charts/admin-stack/charts --profiles ../../../deploy/profiles",
 		},
 	}
 	for _, test := range tests {

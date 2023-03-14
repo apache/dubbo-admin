@@ -17,7 +17,7 @@ package render
 
 import (
 	"errors"
-	"github.com/dubbogo/dubbogo-cli/internal/manifest"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/manifest"
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/chartutil"

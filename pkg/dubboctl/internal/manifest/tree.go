@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dubbogo/dubbogo-cli/internal/util"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/util"
 	"reflect"
 	"regexp"
 	"strconv"

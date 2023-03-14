@@ -26,8 +26,8 @@ import (
 )
 
 import (
-	"github.com/dubbogo/dubbogo-cli/internal/client"
-	"github.com/dubbogo/dubbogo-cli/internal/json_register"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/client"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/json_register"
 )
 
 // callCmd represents the call command

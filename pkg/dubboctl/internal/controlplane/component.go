@@ -16,8 +16,8 @@
 package controlplane
 
 import (
-	"github.com/dubbogo/dubbogo-cli/internal/apis/dubbo.apache.org/v1alpha1"
-	"github.com/dubbogo/dubbogo-cli/internal/manifest/render"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/apis/dubbo.apache.org/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/manifest/render"
 	"os"
 	"sigs.k8s.io/yaml"
 )

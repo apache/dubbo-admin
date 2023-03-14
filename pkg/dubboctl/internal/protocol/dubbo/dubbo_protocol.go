@@ -31,8 +31,8 @@ import (
 )
 
 import (
-	"github.com/dubbogo/dubbogo-cli/internal/common"
-	"github.com/dubbogo/dubbogo-cli/internal/protocol"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/common"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/protocol"
 )
 
 func init() {

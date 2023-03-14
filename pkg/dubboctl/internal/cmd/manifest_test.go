@@ -28,17 +28,19 @@ func TestGenerateValues(t *testing.T) {
 		{
 			args: &ManifestGenerateArgs{
 				FileNames:    nil,
-				ChartsPath:   "../../../deploy/charts/admin-stack/charts",
-				ProfilesPath: "../../../deploy/profiles",
+				ChartsPath:   "../../../../deploy/charts/admin-stack/charts",
+				ProfilesPath: "../../../../deploy/profiles",
 				OutputPath:   "",
 				SetFlags:     nil,
 			},
-			expectVals: `
-apiVersion: dubbo.apache.org/v1alpha1
+			expectVals: `apiVersion: dubbo.apache.org/v1alpha1
 kind: DubboOperator
 metadata:
   namespace: dubbo-system
 spec:
+  components:
+    zookeeper:
+      replicas: 2
   componentsMeta:
     zookeeper:
       enabled: true

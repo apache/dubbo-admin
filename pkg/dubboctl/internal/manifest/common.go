@@ -17,8 +17,8 @@ package manifest
 
 import (
 	"fmt"
-	"github.com/dubbogo/dubbogo-cli/internal/apis/dubbo.apache.org/v1alpha1"
-	"github.com/dubbogo/dubbogo-cli/internal/util"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/apis/dubbo.apache.org/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/util"
 	"os"
 	"path"
 	"sigs.k8s.io/yaml"

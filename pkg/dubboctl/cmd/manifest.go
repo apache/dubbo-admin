@@ -16,7 +16,7 @@
 package cmd
 
 import (
-	"github.com/dubbogo/dubbogo-cli/internal/cmd"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/cmd"
 	"github.com/spf13/cobra"
 )
 
