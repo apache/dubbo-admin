@@ -27,6 +27,7 @@ func InitRouter() *gin.Engine {
 
 	router.GET("/api/dev/services", handlers.AllServices)
 	router.GET("/api/dev/service", handlers.SearchService)
+	router.GET("/api/dev/version", handlers.Version)
 	override := router.Group("/api/:env/rules/override")
 	{
 		override.POST("/create", handlers.CreateOverride)
