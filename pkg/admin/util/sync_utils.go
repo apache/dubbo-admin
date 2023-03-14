@@ -68,6 +68,35 @@ func URL2ProviderList(servicesMap map[string]*common.URL) []*model.Provider {
 	return providers
 }
 
+func URL2Consumer(id string, url *common.URL) *model.Consumer {
+	if url == nil {
+		return nil
+	}
+
+	return &model.Consumer{
+		Entity:      model.Entity{Hash: id},
+		Service:     url.ServiceKey(),
+		Address:     url.Location,
+		Application: url.GetParam(constant.ApplicationKey, ""),
+		Parameters:  url.String(),
+		Username:    url.GetParam(constant.OwnerKey, ""),
+	}
+}
+
+func URL2ConsumerList(servicesMap map[string]*common.URL) []*model.Consumer {
+	var consumers []*model.Consumer
+	if servicesMap == nil {
+		return consumers
+	}
+	for id, url := range servicesMap {
+		consumer := URL2Consumer(id, url)
+		if consumer != nil {
+			consumers = append(consumers, consumer)
+		}
+	}
+	return consumers
+}
+
 func FilterFromCategory(filter map[string]string) (map[string]*common.URL, error) {
 	c, ok := filter[constant.CategoryKey]
 	if !ok {
