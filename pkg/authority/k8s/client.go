@@ -18,11 +18,6 @@ package k8s
 import (
 	"context"
 	"flag"
-	"path/filepath"
-	"reflect"
-	"strings"
-	"time"
-
 	"github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	infoemerclient "github.com/apache/dubbo-admin/pkg/authority/generated/clientset/versioned"
@@ -36,11 +31,17 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/util/homedir"
+	"log"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"time"
 )
 
 type Client interface {
@@ -52,6 +53,7 @@ type Client interface {
 	UpdateWebhookConfig(options *config.Options, storage cert.Storage)
 	GetNamespaceLabels(namespace string) map[string]string
 	InitController(paHandler authentication.Handler, apHandler authorization.Handler)
+	RefreshSignedCert(storage cert.Storage, options *config.Options) error
 }
 
 type ClientImpl struct {
@@ -365,4 +367,43 @@ func (c *ClientImpl) InitController(
 	informerFactory.Start(stopCh)
 
 	controller.WaitSynced()
+}
+
+func (c *ClientImpl) RefreshSignedCert(storage cert.Storage, options *config.Options) error {
+
+	rlConfig := resourcelock.ResourceLockConfig{
+		Identity: "dubbo-cert-refresh",
+	}
+	namespace := options.Namespace
+	_, err := c.kubeClient.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
+	if err != nil {
+		namespace = "default"
+	}
+	lock, err := resourcelock.New(resourcelock.ConfigMapsLeasesResourceLock, "dubbo-demo", "dubbo-lock-cert", c.kubeClient.CoreV1(), c.kubeClient.CoordinationV1(), rlConfig)
+	if err != nil {
+		return err
+	}
+	leaderElectionConfig := leaderelection.LeaderElectionConfig{
+		Lock:          lock,
+		LeaseDuration: 15 * time.Second,
+		RenewDeadline: 10 * time.Second,
+		RetryPeriod:   2 * time.Second,
+		Callbacks: leaderelection.LeaderCallbacks{
+			OnStartedLeading: func(ctx context.Context) {
+				log.Printf("I am the leader now!")
+				storage.SetAuthorityCert(cert.GenerateAuthorityCert(storage.GetRootCert(), options.CaValidity))
+			},
+			OnStoppedLeading: func() {
+				log.Fatalf("I am no longer the leader!")
+			},
+			OnNewLeader: func(identity string) {
+				log.Printf("A new leader has been elected: %v", identity)
+			},
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	leaderelection.RunOrDie(ctx, leaderElectionConfig)
+	return nil
 }
