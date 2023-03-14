@@ -15,33 +15,36 @@
 
 {{- if .Values.networkPolicy.enabled }}
 kind: NetworkPolicy
-apiVersion: {{ include "zookeeper.networkPolicy.apiVersion" . }}
+apiVersion: {{ include "capabilities.networkPolicy.apiVersion" . }}
 metadata:
-  name: {{ include "zookeeper.fullname" . }}
+  name: {{ include "names.fullname" . }}
   namespace: {{ template "zookeeper.namespace" . }}
-  labels: {{- include "zookeeper.labels" . | nindent 4 }}
+  labels: {{- include "labels.standard" . | nindent 4 }}
     {{- if .Values.Labels }}
-    {{- include "zookeeper.tplvalues" ( dict "value" .Values.Labels "context" $ ) | nindent 4 }}
+    {{- include "tplvalues.render" ( dict "value" .Values.Labels "context" $ ) | nindent 4 }}
     {{- end }}
   {{- if .Values.Annotations }}
-  annotations: {{- include "zookeeper.tplvalues" ( dict "value" .Values.Annotations "context" $ ) | nindent 4 }}
+  annotations: {{- include "tplvalues.render" ( dict "value" .Values.Annotations "context" $ ) | nindent 4 }}
   {{- end }}
 spec:
   podSelector:
-    matchLabels: {{- include "zookeeper.matchLabels" . | nindent 6 }}
+    matchLabels: {{- include "labels.matchLabels" . | nindent 6 }}
   policyTypes:
     - Ingress
   ingress:
     # Allow inbound connections to ZooKeeper
     - ports:
         - port: {{ .Values.containerPorts.client }}
+        {{- if .Values.metrics.enabled }}
+        - port: {{ .Values.metrics.containerPort }}
+        {{- end }}
       {{- if not .Values.networkPolicy.allowExternal }}
       from:
         - podSelector:
             matchLabels:
-              {{ include "zookeeper.fullname" . }}-client: "true"
+              {{ include "names.fullname" . }}-client: "true"
         - podSelector:
-            matchLabels: {{- include "zookeeper.matchLabels" . | nindent 14 }}
+            matchLabels: {{- include "labels.matchLabels" . | nindent 14 }}
       {{- end }}
     # Allow internal communications between nodes
     - ports:
@@ -49,5 +52,5 @@ spec:
         - port: {{ .Values.containerPorts.election }}
       from:
         - podSelector:
-            matchLabels: {{- include "zookeeper.matchLabels" . | nindent 14 }}
+            matchLabels: {{- include "labels.matchLabels" . | nindent 14 }}
 {{- end }}

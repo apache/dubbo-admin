@@ -13,45 +13,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+{{- if .Values.metrics.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ printf "%s-%s" (include "names.fullname" .) (default "headless" .Values.service.headless.servicenameOverride) | trunc 63 | trimSuffix "-" }}
+  name: {{ template "names.fullname" . }}-metrics
   namespace: {{ template "zookeeper.namespace" . }}
   labels: {{- include "labels.standard" . | nindent 4 }}
-    app.kubernetes.io/component: zookeeper
+    app.kubernetes.io/component: metrics
     {{- if .Values.Labels }}
     {{- include "tplvalues.render" ( dict "value" .Values.Labels "context" $ ) | nindent 4 }}
     {{- end }}
-  {{- if or .Values.Annotations .Values.service.headless.annotations }}
+  {{- if or .Values.metrics.service.annotations .Values.Annotations }}
   annotations:
-    {{- if .Values.service.headless.annotations }}
-    {{- include "tplvalues.render" ( dict "value" .Values.service.headless.annotations "context" $ ) | nindent 4 }}
+    {{- if .Values.metrics.service.annotations }}
+    {{- include "tplvalues.render" ( dict "value" .Values.metrics.service.annotations "context" $) | nindent 4 }}
     {{- end }}
     {{- if .Values.Annotations }}
     {{- include "tplvalues.render" ( dict "value" .Values.Annotations "context" $ ) | nindent 4 }}
     {{- end }}
   {{- end }}
 spec:
-  type: ClusterIP
-  clusterIP: None
-  publishNotReadyAddresses: {{ .Values.service.headless.publishNotReadyAddresses }}
+  type: {{ .Values.metrics.service.type }}
   ports:
-    {{- if not .Values.service.disableBaseClientPort }}
-    - name: tcp-client
-      port: {{ .Values.service.ports.client }}
-      targetPort: client
-    {{- end }}
-    {{- if .Values.tls.client.enabled }}
-    - name: tcp-client-tls
-      port: {{ .Values.service.ports.tls }}
-      targetPort: client-tls
-    {{- end }}
-    - name: tcp-follower
-      port: {{ .Values.service.ports.follower }}
-      targetPort: follower
-    - name: tcp-election
-      port: {{ .Values.service.ports.election }}
-      targetPort: election
+    - name: tcp-metrics
+      port: {{ .Values.metrics.service.port }}
+      targetPort: metrics
   selector: {{- include "labels.matchLabels" . | nindent 4 }}
     app.kubernetes.io/component: zookeeper
+{{- end }}
