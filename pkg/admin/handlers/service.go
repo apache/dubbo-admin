@@ -140,6 +140,7 @@ func ServiceDetail(c *gin.Context) {
 		"code": 1,
 		"data": serviceDetail,
 	})
+}
 
 func Version(c *gin.Context) {
 	c.JSON(http.StatusOK, version.GetVersion())
