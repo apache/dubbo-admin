@@ -21,6 +21,7 @@ import (
 	"net/http"
 
 	"github.com/apache/dubbo-admin/pkg/admin/services"
+	"github.com/apache/dubbo-admin/pkg/version"
 	"github.com/gin-gonic/gin"
 )
 
@@ -54,4 +55,8 @@ func SearchService(c *gin.Context) {
 		"code": 1,
 		"data": providers,
 	})
+}
+
+func Version(c *gin.Context) {
+	c.JSON(http.StatusOK, version.GetVersion())
 }

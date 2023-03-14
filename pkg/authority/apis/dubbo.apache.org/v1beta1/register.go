@@ -17,128 +17,36 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// SchemeGroupVersion is group version used to register these objects
+var SchemeGroupVersion = schema.GroupVersion{Group: "dubbo.apache.org", Version: "v1beta1"}
 
-type AuthenticationPolicy struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec AuthenticationPolicySpec `json:"spec"`
+// Kind takes an unqualified kind and returns back a Group qualified GroupKind
+func Kind(kind string) schema.GroupKind {
+	return SchemeGroupVersion.WithKind(kind).GroupKind()
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-type AuthenticationPolicyList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-
-	Items []AuthenticationPolicy `json:"items"`
+// Resource takes an unqualified resource and returns a Group qualified GroupResource
+func Resource(resource string) schema.GroupResource {
+	return SchemeGroupVersion.WithResource(resource).GroupResource()
 }
 
-type AuthenticationPolicySpec struct {
-	Action    string                     `json:"action,omitempty"`
-	Rules     []AuthenticationPolicyRule `json:"rules,omitempty"`
-	Order     int                        `json:"order,omitempty"`
-	MatchType string                     `json:"matchType,omitempty"`
-}
+var (
+	// SchemeBuilder initializes a scheme builder
+	SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
+	// AddToScheme is a global function that registers this API group & version to a scheme
+	AddToScheme = SchemeBuilder.AddToScheme
+)
 
-type AuthenticationPolicyRule struct {
-	From AuthenticationPolicySource `json:"from,omitempty"`
-	To   AuthenticationPolicyTarget `json:"to,omitempty"`
-}
-
-type AuthenticationPolicySource struct {
-	Namespaces    []string                     `json:"namespaces,omitempty"`
-	NotNamespaces []string                     `json:"notNamespaces,omitempty"`
-	IpBlocks      []string                     `json:"ipBlocks,omitempty"`
-	NotIpBlocks   []string                     `json:"notIpBlocks,omitempty"`
-	Principals    []string                     `json:"principals,omitempty"`
-	NotPrincipals []string                     `json:"notPrincipals,omitempty"`
-	Extends       []AuthenticationPolicyExtend `json:"extends,omitempty"`
-	NotExtends    []AuthenticationPolicyExtend `json:"notExtends,omitempty"`
-}
-
-type AuthenticationPolicyTarget struct {
-	IpBlocks      []string                     `json:"ipBlocks,omitempty"`
-	NotIpBlocks   []string                     `json:"notIpBlocks,omitempty"`
-	Principals    []string                     `json:"principals,omitempty"`
-	NotPrincipals []string                     `json:"notPrincipals,omitempty"`
-	Extends       []AuthenticationPolicyExtend `json:"extends,omitempty"`
-	NotExtends    []AuthenticationPolicyExtend `json:"notExtends,omitempty"`
-}
-
-type AuthenticationPolicyExtend struct {
-	Key   string `json:"key,omitempty"`
-	Value string `json:"value,omitempty"`
-}
-
-// +genclient
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-type AuthorizationPolicy struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec AuthorizationPolicySpec `json:"spec"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-type AuthorizationPolicyList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-
-	Items []AuthorizationPolicy `json:"items"`
-}
-
-type AuthorizationPolicySpec struct {
-	Action    string                    `json:"action,omitempty"`
-	Rules     []AuthorizationPolicyRule `json:"rules,omitempty"`
-	Samples   float32                   `json:"samples,omitempty"`
-	MatchType string                    `json:"matchType,omitempty"`
-}
-
-type AuthorizationPolicyRule struct {
-	From AuthorizationPolicySource    `json:"from,omitempty"`
-	To   AuthorizationPolicyTarget    `json:"to,omitempty"`
-	When AuthorizationPolicyCondition `json:"when,omitempty"`
-}
-
-type AuthorizationPolicySource struct {
-	Namespaces    []string                    `json:"namespaces,omitempty"`
-	NotNamespaces []string                    `json:"notNamespaces,omitempty"`
-	IpBlocks      []string                    `json:"ipBlocks,omitempty"`
-	NotIpBlocks   []string                    `json:"notIpBlocks,omitempty"`
-	Principals    []string                    `json:"principals,omitempty"`
-	NotPrincipals []string                    `json:"notPrincipals,omitempty"`
-	Extends       []AuthorizationPolicyExtend `json:"extends,omitempty"`
-	NotExtends    []AuthorizationPolicyExtend `json:"notExtends,omitempty"`
-}
-
-type AuthorizationPolicyTarget struct {
-	IpBlocks      []string                    `json:"ipBlocks,omitempty"`
-	NotIpBlocks   []string                    `json:"notIpBlocks,omitempty"`
-	Principals    []string                    `json:"principals,omitempty"`
-	NotPrincipals []string                    `json:"notPrincipals,omitempty"`
-	Extends       []AuthorizationPolicyExtend `json:"extends,omitempty"`
-	NotExtends    []AuthorizationPolicyExtend `json:"notExtends,omitempty"`
-}
-
-type AuthorizationPolicyCondition struct {
-	Key       string                     `json:"key,omitempty"`
-	Values    []AuthorizationPolicyMatch `json:"values,omitempty"`
-	NotValues []AuthorizationPolicyMatch `json:"notValues,omitempty"`
-}
-
-type AuthorizationPolicyMatch struct {
-	Type  string `json:"type,omitempty"`
-	Value string `json:"value,omitempty"`
-}
-
-type AuthorizationPolicyExtend struct {
-	Key   string `json:"key,omitempty"`
-	Value string `json:"value,omitempty"`
+// Adds the list of known types to Scheme.
+func addKnownTypes(scheme *runtime.Scheme) error {
+	scheme.AddKnownTypes(SchemeGroupVersion,
+		&AuthenticationPolicy{},
+		&AuthorizationPolicy{},
+	)
+	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
+	return nil
 }
