@@ -21,5 +21,4 @@ type InstallArgs struct {
 }
 
 func InstallManifests() {
-
 }

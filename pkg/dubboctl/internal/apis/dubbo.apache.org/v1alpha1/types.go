@@ -186,11 +186,9 @@ type DeploymentStrategy struct {
 	Type string `json:"type"`
 }
 
-type GrafanaSpec struct {
-}
+type GrafanaSpec struct{}
 
-type NacosSpec struct {
-}
+type NacosSpec struct{}
 
 type ZookeeperSpec struct {
 	Image                    *ZookeeperImage                   `json:"image,omitempty"`

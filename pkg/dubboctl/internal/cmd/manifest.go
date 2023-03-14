@@ -17,17 +17,19 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path"
+	"sort"
+	"strings"
+
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/apis/dubbo.apache.org/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/controlplane"
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/manifest"
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/manifest/render"
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/util"
 	"github.com/spf13/cobra"
-	"os"
-	"path"
+
 	"sigs.k8s.io/yaml"
-	"sort"
-	"strings"
 )
 
 type ManifestGenerateArgs struct {

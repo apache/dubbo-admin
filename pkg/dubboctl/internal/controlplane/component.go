@@ -16,9 +16,11 @@
 package controlplane
 
 import (
+	"os"
+
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/apis/dubbo.apache.org/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/manifest/render"
-	"os"
+
 	"sigs.k8s.io/yaml"
 )
 
@@ -31,14 +33,12 @@ const (
 	Zookeeper ComponentName = "zookeeper"
 )
 
-var (
-	ComponentMap = map[string]ComponentName{
-		"admin":     Admin,
-		"grafana":   Grafana,
-		"nacos":     Nacos,
-		"zookeeper": Zookeeper,
-	}
-)
+var ComponentMap = map[string]ComponentName{
+	"admin":     Admin,
+	"grafana":   Grafana,
+	"nacos":     Nacos,
+	"zookeeper": Zookeeper,
+}
 
 type Component interface {
 	Run() error

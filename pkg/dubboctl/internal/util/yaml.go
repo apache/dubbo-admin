@@ -17,9 +17,10 @@ package util
 
 import (
 	"fmt"
+	"strings"
+
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	"sigs.k8s.io/yaml"
-	"strings"
 )
 
 // IsYAMLEmpty reports whether the YAML string y is logically empty.

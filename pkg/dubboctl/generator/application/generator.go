@@ -28,9 +28,7 @@ type fileGenerator struct {
 	context string
 }
 
-var (
-	fileMap = make(map[string]*fileGenerator)
-)
+var fileMap = make(map[string]*fileGenerator)
 
 func Generate(rootPath string) error {
 	for _, v := range fileMap {

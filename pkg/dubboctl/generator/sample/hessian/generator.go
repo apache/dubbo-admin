@@ -285,7 +285,7 @@ func genRegistryStatement(file *fileInfo) error {
 		buffer = append(buffer, initFunctionSuffix...)
 	}
 
-	f, err := os.OpenFile(file.path, os.O_CREATE|os.O_WRONLY, 0666)
+	f, err := os.OpenFile(file.path, os.O_CREATE|os.O_WRONLY, 0o666)
 	if err != nil {
 		return err
 	}

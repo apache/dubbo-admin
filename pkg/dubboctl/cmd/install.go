@@ -35,32 +35,32 @@ type InstallFactory interface {
 	GetPackage() string
 }
 
-type InstallFormatter struct {
-}
+type InstallFormatter struct{}
 
 func (InstallFormatter) GetCmdName() string {
 	return "formatter"
 }
+
 func (InstallFormatter) GetPackage() string {
 	return "github.com/dubbogo/tools/cmd/imports-formatter@latest"
 }
 
-type InstallDubbo3Grpc struct {
-}
+type InstallDubbo3Grpc struct{}
 
 func (InstallDubbo3Grpc) GetCmdName() string {
 	return "dubbo3grpc"
 }
+
 func (InstallDubbo3Grpc) GetPackage() string {
 	return "github.com/dubbogo/tools/cmd/protoc-gen-dubbo3grpc@latest"
 }
 
-type Installtriple struct {
-}
+type Installtriple struct{}
 
 func (Installtriple) GetCmdName() string {
 	return "triple"
 }
+
 func (Installtriple) GetPackage() string {
 	return "github.com/dubbogo/tools/cmd/protoc-gen-go-triple@v1.0.10-rc2"
 }
@@ -103,7 +103,7 @@ func InstallCommand(cmd *cobra.Command, args []string) {
 		if f != nil {
 			fmt.Println("go", "install", f.GetPackage())
 			cmd := exec.Command("go", "install", f.GetPackage())
-			if _, err := cmd.StdoutPipe(); err != nil { //获取输出对象，可以从该对象中读取输出结果
+			if _, err := cmd.StdoutPipe(); err != nil { // 获取输出对象，可以从该对象中读取输出结果
 				fmt.Println(err)
 			} else {
 				if err := cmd.Run(); err != nil { // 运行命令
@@ -114,5 +114,4 @@ func InstallCommand(cmd *cobra.Command, args []string) {
 		}
 		fmt.Println("不支持安装 " + k)
 	}
-
 }

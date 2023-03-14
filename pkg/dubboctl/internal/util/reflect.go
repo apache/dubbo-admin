@@ -113,7 +113,7 @@ func IsValueNilOrDefault(value interface{}) bool {
 
 // InsertIntoMap inserts value with key into parent which must be a map, map ptr, or interface to map.
 func InsertIntoMap(parentMap interface{}, key interface{}, value interface{}) error {
-	//scope.Debugf("InsertIntoMap key=%v, value=%v, map=\n%v", key, value, parentMap)
+	// scope.Debugf("InsertIntoMap key=%v, value=%v, map=\n%v", key, value, parentMap)
 	v := reflect.ValueOf(parentMap)
 	kv := reflect.ValueOf(key)
 	vv := reflect.ValueOf(value)
@@ -126,7 +126,7 @@ func InsertIntoMap(parentMap interface{}, key interface{}, value interface{}) er
 	}
 
 	if v.Type().Kind() != reflect.Map {
-		//scope.Debugf("error %v", v.Type().Kind())
+		// scope.Debugf("error %v", v.Type().Kind())
 		return fmt.Errorf("insertIntoMap parent type is %T, must be map", parentMap)
 	}
 
@@ -137,7 +137,7 @@ func InsertIntoMap(parentMap interface{}, key interface{}, value interface{}) er
 
 // DeleteFromMap deletes an entry with the given key parent, which must be a map.
 func DeleteFromMap(parentMap interface{}, key interface{}) error {
-	//scope.Debugf("DeleteFromMap key=%s, parent:\n%v\n", key, parentMap)
+	// scope.Debugf("DeleteFromMap key=%s, parent:\n%v\n", key, parentMap)
 	pv := reflect.ValueOf(parentMap)
 
 	if !IsMap(parentMap) {
@@ -150,7 +150,7 @@ func DeleteFromMap(parentMap interface{}, key interface{}) error {
 
 // DeleteFromSlicePtr deletes an entry at index from the parent, which must be a slice ptr.
 func DeleteFromSlicePtr(parentSlice interface{}, index int) error {
-	//scope.Debugf("DeleteFromSlicePtr index=%d, slice=\n%v", index, parentSlice)
+	// scope.Debugf("DeleteFromSlicePtr index=%d, slice=\n%v", index, parentSlice)
 	pv := reflect.ValueOf(parentSlice)
 
 	if !IsSliceInterfacePtr(parentSlice) {

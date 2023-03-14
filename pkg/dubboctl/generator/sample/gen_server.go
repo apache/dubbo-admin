@@ -56,5 +56,5 @@ func init() {
 		file:    "server.go",
 		context: license + serverCode,
 	}
-	//var str = "`" + `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"` + "`"
+	// var str = "`" + `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"` + "`"
 }
