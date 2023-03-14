@@ -17,7 +17,17 @@ package k8s
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base32"
 	"flag"
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"time"
+
 	"github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	infoemerclient "github.com/apache/dubbo-admin/pkg/authority/generated/clientset/versioned"
@@ -37,11 +47,6 @@ import (
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/util/homedir"
-	"log"
-	"path/filepath"
-	"reflect"
-	"strings"
-	"time"
 )
 
 type Client interface {
@@ -370,9 +375,22 @@ func (c *ClientImpl) InitController(
 }
 
 func (c *ClientImpl) RefreshSignedCert(storage cert.Storage, options *config.Options) error {
-
+	identity := os.Getenv("POD_NAME")
+	if identity == "" {
+		hostname, err := os.Hostname()
+		if err != nil {
+			return err
+		}
+		randomBytes := make([]byte, 5)
+		_, err = rand.Read(randomBytes)
+		if err != nil {
+			return err
+		}
+		randomStr := base32.StdEncoding.EncodeToString(randomBytes)
+		identity = fmt.Sprintf("%s-%s", hostname, randomStr)
+	}
 	rlConfig := resourcelock.ResourceLockConfig{
-		Identity: "dubbo-cert-refresh",
+		Identity: identity,
 	}
 	namespace := options.Namespace
 	_, err := c.kubeClient.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
@@ -390,14 +408,14 @@ func (c *ClientImpl) RefreshSignedCert(storage cert.Storage, options *config.Opt
 		RetryPeriod:   2 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: func(ctx context.Context) {
-				log.Printf("I am the leader now!")
+				log.Printf("++++++++++++++I am the leader now!++++++++++++")
 				storage.SetAuthorityCert(cert.GenerateAuthorityCert(storage.GetRootCert(), options.CaValidity))
 			},
 			OnStoppedLeading: func() {
-				log.Fatalf("I am no longer the leader!")
+				log.Fatalf("++++++++++++++I am no longer the leader!++++++++++++++")
 			},
 			OnNewLeader: func(identity string) {
-				log.Printf("A new leader has been elected: %v", identity)
+				log.Printf("+++++++++++++++++A new leader has been elected: %v", identity)
 			},
 		},
 	}
