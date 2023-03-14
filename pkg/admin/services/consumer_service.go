@@ -17,9 +17,7 @@ package services
 
 import "github.com/apache/dubbo-admin/pkg/admin/model"
 
-type ProviderService interface {
-	FindServices() ([]string, error)
-	FindApplications() ([]string, error)
-	FindService(string, string) ([]*model.Provider, error)
-	FindByService(string) ([]*model.Provider, error)
+type ConsumerService interface {
+	FindAll() ([]*model.Consumer, error)
+	FindByService(string) ([]*model.Consumer, error)
 }

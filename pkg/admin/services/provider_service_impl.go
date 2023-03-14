@@ -48,7 +48,7 @@ func (p *ProviderServiceImpl) FindServices() ([]string, error) {
 	return services, nil
 }
 
-func (p *ProviderServiceImpl) findApplications() ([]string, error) {
+func (p *ProviderServiceImpl) FindApplications() ([]string, error) {
 	var (
 		applications []string
 		err          error
@@ -110,7 +110,7 @@ func (p *ProviderServiceImpl) findAddresses() ([]string, error) {
 	return addresses, err
 }
 
-func (p *ProviderServiceImpl) findByService(providerService string) ([]*model.Provider, error) {
+func (p *ProviderServiceImpl) FindByService(providerService string) ([]*model.Provider, error) {
 	filter := make(map[string]string)
 	filter[constant.CategoryKey] = constant.ProvidersCategory
 	filter[util.ServiceFilterKey] = providerService
@@ -156,7 +156,7 @@ func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*mod
 				return nil, err
 			}
 		} else if pattern == constant.Service {
-			providers, err = p.findByService(filter)
+			providers, err = p.FindByService(filter)
 			if err != nil {
 				return nil, err
 			}
@@ -181,7 +181,7 @@ func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*mod
 				return nil, err
 			}
 		} else if pattern == constant.ApplicationKey {
-			candidates, err = p.findApplications()
+			candidates, err = p.FindApplications()
 			if err != nil {
 				return nil, err
 			}
@@ -206,7 +206,7 @@ func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*mod
 						return nil, err
 					}
 				} else if pattern == constant.Service {
-					providers, err = p.findByService(candidate)
+					providers, err = p.FindByService(candidate)
 					if err != nil {
 						return nil, err
 					}

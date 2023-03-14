@@ -13,13 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package services
+package model
 
-import "github.com/apache/dubbo-admin/pkg/admin/model"
-
-type ProviderService interface {
-	FindServices() ([]string, error)
-	FindApplications() ([]string, error)
-	FindService(string, string) ([]*model.Provider, error)
-	FindByService(string) ([]*model.Provider, error)
+type ServiceDetail struct {
+	Providers   []*Provider
+	Consumers   []*Consumer
+	Service     string
+	Application string
+	Metadata    string
 }

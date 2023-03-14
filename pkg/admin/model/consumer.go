@@ -13,13 +13,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package services
+package model
 
-import "github.com/apache/dubbo-admin/pkg/admin/model"
+import "time"
 
-type ProviderService interface {
-	FindServices() ([]string, error)
-	FindApplications() ([]string, error)
-	FindService(string, string) ([]*model.Provider, error)
-	FindByService(string) ([]*model.Provider, error)
+type Consumer struct {
+	Entity
+	Service     string
+	Parameters  string
+	Result      string
+	Address     string
+	Registry    string
+	Application string
+	Username    string
+	Statistics  string
+	Collected   time.Duration
+	Expired     time.Duration
+	Alived      int64
 }
