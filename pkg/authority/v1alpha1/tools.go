@@ -18,6 +18,7 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/apache/dubbo-admin/pkg/authority/config"
@@ -67,8 +68,13 @@ func exactEndpoint(c context.Context, options *config.Options, kubeClient k8s.Cl
 	}
 
 	// TODO get ip
+	host, _, err := net.SplitHostPort(p.Addr.String())
+	if err != nil {
+		return nil, err
+	}
+
 	return &rule.Endpoint{
 		ID:  p.Addr.String(),
-		Ips: []string{p.Addr.String()},
+		Ips: []string{host},
 	}, nil
 }

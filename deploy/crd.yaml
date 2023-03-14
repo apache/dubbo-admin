@@ -196,7 +196,7 @@ spec:
                   enum:
                     - ALLOW
                     - DENY
-                    - ADUIT
+                    - ADULT
                 rules:
                   type: array
                   items:
@@ -351,9 +351,9 @@ spec:
                   type: string
                   description: "The match type of the rules."
                   enum:
-                    - anyMatch
-                    - allMatch
-                  default: anyMatch
+                    - ANY_MATCH
+                    - ALL_MATCH
+                  default: ANY_MATCH
               required:
                 - action
   scope: Namespaced
