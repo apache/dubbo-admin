@@ -42,7 +42,7 @@ type fakeAddr struct {
 }
 
 func (f *fakeAddr) String() string {
-	return ""
+	return "127.0.0.1:1234"
 }
 
 func TestCSRFailed(t *testing.T) {

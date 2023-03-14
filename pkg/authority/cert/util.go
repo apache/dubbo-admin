@@ -245,13 +245,6 @@ func AppendEndpoint(endpoint *rule.Endpoint, cert *x509.Certificate) {
 		return
 	}
 
-	endpointData, _ := json.Marshal(endpoint)
-
-	cert.Subject.ExtraNames = append(cert.Subject.ExtraNames, pkix.AttributeTypeAndValue{
-		Type:  asn1.ObjectIdentifier{2, 5, 4, 13},
-		Value: endpointData,
-	})
-
 	err := BuildSANExtension(endpoint, cert)
 	if err != nil {
 		logger.Sugar().Warnf("Failed to build SAN extension. " + err.Error())
