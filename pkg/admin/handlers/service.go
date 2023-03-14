@@ -29,8 +29,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var providerService services.ProviderService = &services.ProviderServiceImpl{}
-var consumerService services.ConsumerService = &services.ConsumerServiceImpl{}
+var (
+	providerService services.ProviderService = &services.ProviderServiceImpl{}
+	consumerService services.ConsumerService = &services.ConsumerServiceImpl{}
+)
 
 func AllServices(c *gin.Context) {
 	services, err := providerService.FindServices()
