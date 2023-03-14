@@ -46,7 +46,7 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 		}
 		if len(existOverride.Configs) > 0 {
 			for _, c := range existOverride.Configs {
-				if constant.Configs.Contains(c) {
+				if constant.Configs.Contains(c.Type) {
 					configs = append(configs, c)
 				}
 			}
@@ -113,7 +113,7 @@ func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error 
 	if override.Configs != nil {
 		overrideConfigs := override.Configs
 		for _, config := range overrideConfigs {
-			if constant.Configs.Contains(config) {
+			if constant.Configs.Contains(config.Type) {
 				configs = append(configs, config)
 			}
 		}
