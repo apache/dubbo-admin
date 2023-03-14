@@ -35,7 +35,6 @@ dubbo-admin-server/target
 dubbo-admin-ui/dist
 dubbo-admin-ui/node
 dubbo-admin-ui/node-modules
-pkg/dubboctl/cmd/testGenCode
 
 coverage.txt
 

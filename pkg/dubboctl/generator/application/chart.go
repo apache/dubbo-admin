@@ -256,7 +256,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 `
-	serviceYaml = `# Dubbo-go version control, we do not update service if there is exsiting service, because
+	serviceYaml = `# Dubbo-go version control, we do not update service if there is existing service, because
 # service is an app-level resource, helm install service with a different helmName again to add an app
 # version would cause failed.
 {{- $svc := lookup "v1" "Service" .Release.Namespace  .Chart.Name }}

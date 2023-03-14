@@ -205,7 +205,7 @@ type ZookeeperSpec struct {
 	CustomLivenessProbe      *Probe                            `json:"customLivenessProbe,omitempty"`
 	CustomReadinessProbe     *Probe                            `json:"customReadinessProbe,omitempty"`
 	CustomStartupProbe       *BaseProbe                        `json:"customStartupProbe,omitempty"`
-	lifecycleHooks           *corev1.Lifecycle                 `json:"lifecycleHooks,omitempty"`
+	LifecycleHooks           *corev1.Lifecycle                 `json:"lifecycleHooks,omitempty"`
 	Resources                *corev1.ResourceRequirements      `json:"resources,omitempty"`
 	PodSecurityContext       *PodSecurityContext               `json:"podSecurityContext,omitempty"`
 	ContainerSecurityContext *ContainerSecurityContext         `json:"containerSecurityContext,omitempty"`
@@ -330,7 +330,7 @@ type ContainerSecurityContext struct {
 	corev1.PodSecurityContext
 	RunAsUser                uint64 `json:"runAsUser,omitempty"`
 	RunAsNonRoot             bool   `json:"runAsNonRoot"`
-	allowPrivilegeEscalation bool   `json:"allowPrivilegeEscalation,omitempty"`
+	AllowPrivilegeEscalation bool   `json:"allowPrivilegeEscalation,omitempty"`
 }
 
 type Auth struct {
