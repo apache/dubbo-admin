@@ -24,9 +24,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var (
-	overrideServiceImpl services.OverrideServiceImpl
-)
+var overrideServiceImpl services.OverrideServiceImpl
 
 func CreateOverride(c *gin.Context) {
 	var dynamicConfig *model.DynamicConfig
@@ -57,7 +55,7 @@ func CreateOverride(c *gin.Context) {
 
 func UpdateOverride(c *gin.Context) {
 	id := c.Param("id")
-	//env := c.Param("env")
+	// env := c.Param("env")
 	var dynamicConfig model.DynamicConfig
 	if err := c.ShouldBindJSON(&dynamicConfig); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

@@ -66,6 +66,4 @@ const (
 	PunctuationPoint      = "."
 )
 
-var (
-	Configs = set.NewSet(WeightKey, BalancingKey)
-)
+var Configs = set.NewSet(WeightKey, BalancingKey)
