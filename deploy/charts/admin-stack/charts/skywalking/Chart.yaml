@@ -21,5 +21,5 @@ description: Helm Chart for Apache SkyWalking
 sources:
   - https://github.com/apache/skywalking-kubernetes
 maintainers:
-  - email: dev@dubbo.apache.org
-    name: dubbo
+  - name: dubbo
+    email: dev@dubbo.apache.org
