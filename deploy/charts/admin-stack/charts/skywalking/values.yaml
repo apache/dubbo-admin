@@ -30,15 +30,15 @@ oap:
   name: oap
   image:
     repository: skywalking.docker.scarf.sh/apache/skywalking-oap-server
-    tag: 9.3.0
+    tag: null  # Must be set explicitly
     pullPolicy: IfNotPresent
-  storageType: ""
+  storageType: null
   ports:
     # add more ports here if you need, for example
     # zabbix: 10051
     grpc: 11800
     rest: 12800
-  replicas: 2
+  replicas: 1
   service:
     type: ClusterIP
   javaOpts: -Xmx2g -Xms2g
@@ -52,17 +52,17 @@ oap:
     #   memory: 8Gi
     # requests:
     #   cpu: 8
-  #   memory: 4Gi
+    #   memory: 4Gi
   livenessProbe: {}
     # tcpSocket:
     #   port: 12800
     # initialDelaySeconds: 15
-  # periodSeconds: 20
+    # periodSeconds: 20
   readinessProbe: {}
     # tcpSocket:
     #   port: 12800
     # initialDelaySeconds: 15
-  # periodSeconds: 20
+    # periodSeconds: 20
   # podAnnotations:
   #   example: oap-foo
   securityContext: {}
@@ -74,8 +74,8 @@ oap:
       enabled: false
       # more envoy ALS ,please refer to https://github.com/apache/skywalking/blob/master/docs/en/setup/envoy/als_setting.md#observe-service-mesh-through-als
   env:
-  # more env, please refer to https://hub.docker.com/r/apache/skywalking-oap-server
-  # or https://github.com/apache/skywalking-docker/blob/master/6/6.4/oap/README.md#sw_telemetry
+    # more env, please refer to https://hub.docker.com/r/apache/skywalking-oap-server
+    # or https://github.com/apache/skywalking-docker/blob/master/6/6.4/oap/README.md#sw_telemetry
 
   # Allows you to add any config files in /skywalking/config
   # such as log4j2.xml, oal/core.oal, etc.
@@ -91,7 +91,7 @@ oap:
     # log4j2.xml: |
     #   <Configuration status="DEBUG">
     #     <!-- ... -->
-  #   </Configuration>
+    #   </Configuration>
   # When 'dynamicConfig.enabled' set to true, enable oap dynamic configuration through k8s configmap，
   # Note: The default configmap data is empty, please refer to the detailed documentation (https://github.com/apache/skywalking/blob/master/docs/en/setup/backend/dynamic-config.md)
   # Sync period in seconds. Defaults to 60 seconds.
@@ -117,7 +117,7 @@ ui:
   replicas: 1
   image:
     repository: skywalking.docker.scarf.sh/apache/skywalking-ui
-    tag: 9.3.0
+    tag: null  # Must be set explicitly
     pullPolicy: IfNotPresent
   # podAnnotations:
   #   example: oap-foo
@@ -128,7 +128,7 @@ ui:
     enabled: false
     annotations: {}
       # kubernetes.io/ingress.class: nginx
-    # kubernetes.io/tls-acme: "true"
+      # kubernetes.io/tls-acme: "true"
     path: /
     hosts: []
     # - skywalking.local
@@ -163,7 +163,7 @@ ui:
   securityContext: {}
     # runAsUser: 1000
     # runAsGroup: 1000
-  # fsGroup: 1000
+    # fsGroup: 1000
 
 oapInit:
   nodeAffinity: {}
@@ -171,7 +171,14 @@ oapInit:
   tolerations: []
 
 elasticsearch:
+  # For users of an existing elasticsearch cluster,takes effect when `elasticsearch.enabled` is false
   enabled: false
+  config:
+    host: elasticsearch-master # elasticsearch service on kubernetes or host
+    user: ""
+    password: ""
+    port:
+      http: 9200
   clusterName: "elasticsearch"
   nodeGroup: "master"
 
@@ -194,19 +201,19 @@ elasticsearch:
     - remote_cluster_client
     - transform
 
-  replicas: 1
+  replicas: 3
   minimumMasterNodes: 2
 
   esMajorVersion: ""
 
   # Allows you to add any config files in /usr/share/elasticsearch/config/
   # such as elasticsearch.yml and log4j2.properties
-  esConfig: {}
-  #  elasticsearch.yml: |
-  #    key:
-  #      nestedkey: value
-  #  log4j2.properties: |
-  #    key = value
+  esConfig:
+    #  elasticsearch.yml: |
+    #    key:
+    #      nestedkey: value
+    #  log4j2.properties: |
+    #    key = value
 
   createCert: true
 
@@ -217,9 +224,9 @@ elasticsearch:
   # Extra environment variables to append to this nodeGroup
   # This will be appended to the current 'env:' key. You can use any of the kubernetes env
   # syntax here
-  extraEnvs: []
-  #  - name: MY_ENVIRONMENT_VAR
-  #    value: the_value_goes_here
+  extraEnvs:
+    #  - name: MY_ENVIRONMENT_VAR
+    #    value: the_value_goes_here
 
   # Allows you to load environment variables from kubernetes secret or config map
   envFrom: []
@@ -262,11 +269,11 @@ elasticsearch:
 
   resources:
     requests:
-      cpu: "1000m"
-      memory: "2Gi"
+      cpu: "500m"
+      memory: "1Gi"
     limits:
-      cpu: "1000m"
-      memory: "2Gi"
+      cpu: "500m"
+      memory: "1Gi"
 
   initResources: {}
   # limits:
@@ -310,7 +317,7 @@ elasticsearch:
         - emptyDir
 
   persistence:
-    enabled: false
+    enabled: true
     labels:
       # Add default labels for the volumeClaimTemplate of the StatefulSet
       enabled: false
@@ -511,19 +518,19 @@ satellite:
     #   memory: 8Gi
     # requests:
     #   cpu: 4
-  #   memory: 4Gi
+    #   memory: 4Gi
   podAnnotations:
-  # example: oap-foo
+    # example: oap-foo
   env:
-  # more env, please refer to https://skywalking.apache.org/docs/skywalking-satellite/latest/en/setup/readme/#satellite_configyaml
+    # more env, please refer to https://skywalking.apache.org/docs/skywalking-satellite/latest/en/setup/readme/#satellite_configyaml
   # Allows you to add any config files in /skywalking/config.
   config: {}
     # satellite_config.yaml: |
-  #   key: val
+    #   key: val
   securityContext: {}
     # runAsUser: 1000
     # runAsGroup: 1000
-  # fsGroup: 1000
+    # fsGroup: 1000
 
 nameOverride: ""
 fullnameOverride: ""
