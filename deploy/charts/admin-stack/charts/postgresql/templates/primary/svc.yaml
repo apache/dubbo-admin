@@ -1,0 +1,68 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "postgresql.primary.fullname" . }}
+  namespace: {{ .Release.Namespace | quote }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+    app.kubernetes.io/component: primary
+  {{- if or .Values.commonAnnotations .Values.primary.service.annotations }}
+  annotations:
+    {{- if .Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+    {{- if .Values.primary.service.annotations }}
+    {{- include "common.tplvalues.render" (dict "value" .Values.primary.service.annotations "context" $) | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  type: {{ .Values.primary.service.type }}
+  {{- if or (eq .Values.primary.service.type "LoadBalancer") (eq .Values.primary.service.type "NodePort") }}
+  externalTrafficPolicy: {{ .Values.primary.service.externalTrafficPolicy | quote }}
+  {{- end }}
+  {{- if and (eq .Values.primary.service.type "LoadBalancer") (not (empty .Values.primary.service.loadBalancerSourceRanges)) }}
+  loadBalancerSourceRanges: {{ .Values.primary.service.loadBalancerSourceRanges }}
+  {{- end }}
+  {{- if and (eq .Values.primary.service.type "LoadBalancer") (not (empty .Values.primary.service.loadBalancerIP)) }}
+  loadBalancerIP: {{ .Values.primary.service.loadBalancerIP }}
+  {{- end }}
+  {{- if and .Values.primary.service.clusterIP (eq .Values.primary.service.type "ClusterIP") }}
+  clusterIP: {{ .Values.primary.service.clusterIP }}
+  {{- end }}
+  {{- if .Values.primary.service.sessionAffinity }}
+  sessionAffinity: {{ .Values.primary.service.sessionAffinity }}
+  {{- end }}
+  {{- if .Values.primary.service.sessionAffinityConfig }}
+  sessionAffinityConfig: {{- include "common.tplvalues.render" (dict "value" .Values.primary.service.sessionAffinityConfig "context" $) | nindent 4 }}
+  {{- end }}
+  ports:
+    - name: tcp-postgresql
+      port: {{ template "postgresql.service.port" . }}
+      targetPort: tcp-postgresql
+      {{- if and (or (eq .Values.primary.service.type "NodePort") (eq .Values.primary.service.type "LoadBalancer")) (not (empty .Values.primary.service.nodePorts.postgresql)) }}
+      nodePort: {{ .Values.primary.service.nodePorts.postgresql }}
+      {{- else if eq .Values.primary.service.type "ClusterIP" }}
+      nodePort: null
+      {{- end }}
+    {{- if .Values.primary.service.extraPorts }}
+    {{- include "common.tplvalues.render" (dict "value" .Values.primary.service.extraPorts "context" $) | nindent 4 }}
+    {{- end }}
+  selector: {{- include "common.labels.matchLabels" . | nindent 4 }}
+    app.kubernetes.io/component: primary

@@ -41,13 +41,31 @@ spec:
 {{ toYaml .Values.ui.podAnnotations | indent 8 }}
         {{- end }}
     spec:
+      {{- with .Values.ui.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      affinity:
+      {{- with .Values.ui.nodeAffinity }}
+        nodeAffinity:
+{{ toYaml . | indent 10 }}
+      {{- end }}
+{{- if .Values.ui.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.ui.nodeSelector | indent 8 }}
+{{- end }}
+{{- if .Values.ui.tolerations }}
+      tolerations:
+{{ toYaml .Values.ui.tolerations | indent 8 }}
+{{- end }}
 {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
 {{ toYaml .Values.imagePullSecrets | indent 8 }}
 {{- end }}
       containers:
       - name: {{ .Values.ui.name }}
-        image: {{ .Values.ui.image.repository }}:{{.Values.ui.image.tag }}
+        image: {{ .Values.ui.image.repository }}:{{ required "ui.image.tag is required" .Values.ui.image.tag }}
         imagePullPolicy: {{ .Values.ui.image.pullPolicy }}
         ports:
         - containerPort: {{ .Values.ui.service.internalPort }}

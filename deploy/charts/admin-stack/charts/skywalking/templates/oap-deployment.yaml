@@ -20,6 +20,8 @@ metadata:
     app: {{ template "skywalking.name" . }}
     chart: {{ .Chart.Name }}-{{ .Chart.Version }}
     component: "{{ .Values.oap.name }}"
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
   name: {{ template "skywalking.oap.fullname" . }}
 spec:
   replicas: {{ .Values.oap.replicas }}
@@ -27,19 +29,69 @@ spec:
     matchLabels:
       app: {{ template "skywalking.name" . }}
       component: "{{ .Values.oap.name }}"
+      release: {{ .Release.Name }}
   template:
     metadata:
       labels:
         app: {{ template "skywalking.name" . }}
         component: "{{ .Values.oap.name }}"
+        release: {{ .Release.Name }}
+        {{- if .Values.oap.podAnnotations }}
+      annotations:
+{{ toYaml .Values.oap.podAnnotations | indent 8 }}
+        {{- end }}
     spec:
       serviceAccountName: {{ template "skywalking.serviceAccountName.oap" . }}
+      {{- with .Values.oap.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      affinity:
+      {{- if eq .Values.oap.antiAffinity "hard" }}
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: "kubernetes.io/hostname"
+              labelSelector:
+                matchLabels:
+                  app: "{{ template "skywalking.name" . }}"
+                  release: "{{ .Release.Name }}"
+                  component: "{{ .Values.oap.name }}"
+      {{- else if eq .Values.oap.antiAffinity "soft" }}
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  app: "{{ template "skywalking.name" . }}"
+                  release: "{{ .Release.Name }}"
+                  component: "{{ .Values.oap.name }}"
+      {{- end }}
+      {{- with .Values.oap.nodeAffinity }}
+        nodeAffinity:
+{{ toYaml . | indent 10 }}
+      {{- end }}
+{{- if .Values.oap.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.oap.nodeSelector | indent 8 }}
+{{- end }}
+{{- if .Values.oap.tolerations }}
+      tolerations:
+{{ toYaml .Values.oap.tolerations | indent 8 }}
+{{- end }}
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{ toYaml .Values.imagePullSecrets | indent 8 }}
+{{- end }}
+      initContainers:
+        {{- include "skywalking.containers.wait-for-storage" . | nindent 6 }}
       containers:
       - name: {{ .Values.oap.name }}
-        image: {{ .Values.oap.image.repository }}:{{ .Values.oap.image.tag }}
+        image: {{ .Values.oap.image.repository }}:{{ required "oap.image.tag is required" .Values.oap.image.tag }}
         imagePullPolicy: {{ .Values.oap.image.pullPolicy }}
         livenessProbe:
-{{- if .Values.oap.livenessProbe }}
+{{- if .Values.oap.livenessProbe}}
 {{ toYaml .Values.oap.livenessProbe | indent 10 }}
 {{ else }}
           tcpSocket:
@@ -48,7 +100,7 @@ spec:
           periodSeconds: 20
 {{ end }}
         readinessProbe:
-{{- if .Values.oap.readinessProbe }}
+{{- if .Values.oap.readinessProbe}}
 {{ toYaml .Values.oap.readinessProbe | indent 10 }}
 {{ else }}
           tcpSocket:
@@ -104,6 +156,7 @@ spec:
           {{- end }}
           {{- end }}
           {{- end }}
+
       volumes:
         {{- if .Values.oap.config }}
         - name: skywalking-oap-override

@@ -117,11 +117,23 @@ Create the name of the service account to use for the satellite cluster
 # Storage-related environment variables are defined here.
 {{- define "skywalking.oap.envs.storage" -}}
 - name: SW_STORAGE
-  value: {{ .Values.oap.storageType }}
+  value: {{ required "oap.storageType is required" .Values.oap.storageType }}
 {{- if eq .Values.oap.storageType "elasticsearch" }}
 - name: SW_STORAGE_ES_CLUSTER_NODES
   {{- if .Values.elasticsearch.enabled }}
   value: "{{ .Values.elasticsearch.clusterName }}-{{ .Values.elasticsearch.nodeGroup }}:{{ .Values.elasticsearch.httpPort }}"
+  {{- else }}
+  value: "{{ .Values.elasticsearch.config.host }}:{{ .Values.elasticsearch.config.port.http }}"
+  {{- end }}
+  {{- if not .Values.elasticsearch.enabled }}
+    {{- if .Values.elasticsearch.config.user }}
+- name: SW_ES_USER
+  value: "{{ .Values.elasticsearch.config.user }}"
+    {{- end }}
+    {{- if .Values.elasticsearch.config.password }}
+- name: SW_ES_PASSWORD
+  value: "{{ .Values.elasticsearch.config.password }}"
+    {{- end }}
   {{- end }}
 {{- else if eq .Values.oap.storageType "postgresql" }}
 {{- $postgresqlHost := print (include "skywalking.name" .) "-postgresql" -}}

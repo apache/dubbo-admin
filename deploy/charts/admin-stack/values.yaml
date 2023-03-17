@@ -17,19 +17,21 @@ nacos:
   enabled: false
   default: false
 
-
 zookeeper:
   enabled: true
   default: true
-
 
 grafana:
   enabled: false
   default: false
 
+prometheus:
+  enabled: false
+  default: false
+
 skywalking:
   enabled: true
-  isDefault: false
+  default: false
   oap:
     image:
       repository: skywalking.docker.scarf.sh/apache/skywalking-oap-server
