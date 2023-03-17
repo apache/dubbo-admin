@@ -17,12 +17,7 @@ package k8s
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base32"
 	"flag"
-	"fmt"
-	"log"
-	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -58,7 +53,7 @@ type Client interface {
 	UpdateWebhookConfig(options *config.Options, storage cert.Storage)
 	GetNamespaceLabels(namespace string) map[string]string
 	InitController(paHandler authentication.Handler, apHandler authorization.Handler)
-	RefreshSignedCert(storage cert.Storage, options *config.Options) error
+	Resourcelock(storage cert.Storage, options *config.Options) error
 }
 
 type ClientImpl struct {
@@ -374,21 +369,8 @@ func (c *ClientImpl) InitController(
 	controller.WaitSynced()
 }
 
-func (c *ClientImpl) RefreshSignedCert(storage cert.Storage, options *config.Options) error {
-	identity := os.Getenv("POD_NAME")
-	if identity == "" {
-		hostname, err := os.Hostname()
-		if err != nil {
-			return err
-		}
-		randomBytes := make([]byte, 5)
-		_, err = rand.Read(randomBytes)
-		if err != nil {
-			return err
-		}
-		randomStr := base32.StdEncoding.EncodeToString(randomBytes)
-		identity = fmt.Sprintf("%s-%s", hostname, randomStr)
-	}
+func (c *ClientImpl) Resourcelock(storage cert.Storage, options *config.Options) error {
+	identity := options.ResourcelockIdentity
 	rlConfig := resourcelock.ResourceLockConfig{
 		Identity: identity,
 	}
@@ -407,15 +389,17 @@ func (c *ClientImpl) RefreshSignedCert(storage cert.Storage, options *config.Opt
 		RenewDeadline: 10 * time.Second,
 		RetryPeriod:   2 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
+			// leader
 			OnStartedLeading: func(ctx context.Context) {
-				log.Printf("++++++++++++++I am the leader now!++++++++++++")
+				// lock if multi server，refresh signed cert
 				storage.SetAuthorityCert(cert.GenerateAuthorityCert(storage.GetRootCert(), options.CaValidity))
 			},
+			// not leader
 			OnStoppedLeading: func() {
-				log.Fatalf("++++++++++++++I am no longer the leader!++++++++++++++")
+				// TODO should be listen,when cert resfresh,should be resfresh
 			},
+			// a new leader has been elected
 			OnNewLeader: func(identity string) {
-				log.Printf("+++++++++++++++++A new leader has been elected: %v", identity)
 			},
 		},
 	}

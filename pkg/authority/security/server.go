@@ -174,7 +174,7 @@ func (s *Server) ScheduleRefreshAuthorityCert() {
 			logger.Sugar().Infof("Authority cert is invalid, refresh it.")
 			// TODO lock if multi server
 			// TODO refresh signed cert
-			s.KubeClient.RefreshSignedCert(s.CertStorage, s.Options)
+			s.KubeClient.Resourcelock(s.CertStorage, s.Options)
 			if s.Options.IsKubernetesConnected {
 				s.KubeClient.UpdateAuthorityCert(s.CertStorage.GetAuthorityCert().CertPem, cert2.EncodePrivateKey(s.CertStorage.GetAuthorityCert().PrivateKey), s.Options.Namespace)
 				s.KubeClient.UpdateWebhookConfig(s.Options, s.CertStorage)
