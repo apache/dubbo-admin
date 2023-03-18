@@ -56,6 +56,7 @@ func NewOptions() *Options {
 		InPodEnv:              false,
 		IsKubernetesConnected: false,
 		EnableOIDCCheck:       true,
+		ResourcelockIdentity:  GetStringEnv("POD_NAME", GetDefaultResourcelockIdentity()),
 	}
 }
 
