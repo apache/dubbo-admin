@@ -54,6 +54,11 @@ func (s *mockKubeClient) UpdateAuthorityPublicKey(cert string) bool {
 func (s *mockKubeClient) UpdateWebhookConfig(options *config.Options, storage cert2.Storage) {
 }
 
+func (s *mockKubeClient) Resourcelock(storage cert2.Storage, options *config.Options) error {
+	storage.SetAuthorityCert(cert2.GenerateAuthorityCert(storage.GetRootCert(), options.CaValidity))
+	return nil
+}
+
 type mockStorage struct {
 	cert2.Storage
 	origin cert2.Storage

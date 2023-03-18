@@ -41,8 +41,8 @@ type Source struct {
 	NotIpBlocks   []string  `json:"notIpBlocks,omitempty"`
 	Principals    []string  `json:"principals,omitempty"`
 	NotPrincipals []string  `json:"notPrincipals,omitempty"`
-	Extends       []*Extend `json:"extends,omitempty"`
-	NotExtends    []*Extend `json:"notExtends,omitempty"`
+	Extends       []*Extend `json:"sourceExtends,omitempty"`
+	NotExtends    []*Extend `json:"sourceNotExtends,omitempty"`
 }
 
 type Target struct {
@@ -50,8 +50,8 @@ type Target struct {
 	NotIpBlocks   []string  `json:"notIpBlocks,omitempty"`
 	Principals    []string  `json:"principals,omitempty"`
 	NotPrincipals []string  `json:"notPrincipals,omitempty"`
-	Extends       []*Extend `json:"extends,omitempty"`
-	NotExtends    []*Extend `json:"notExtends,omitempty"`
+	Extends       []*Extend `json:"targetExtends,omitempty"`
+	NotExtends    []*Extend `json:"targetNotExtends,omitempty"`
 }
 
 type Condition struct {
