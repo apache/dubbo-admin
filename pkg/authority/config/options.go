@@ -36,7 +36,8 @@ type Options struct {
 	InPodEnv              bool
 	IsKubernetesConnected bool
 
-	EnableOIDCCheck bool
+	EnableOIDCCheck      bool
+	ResourcelockIdentity string
 }
 
 func NewOptions() *Options {
