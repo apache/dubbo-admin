@@ -18,6 +18,7 @@ package k8s
 import (
 	"context"
 	"flag"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -42,6 +43,15 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 )
+
+var (
+	kubeconfig string
+)
+
+func init() {
+	flag.StringVar(&kubeconfig, "kubeconfig", "",
+		"Paths to a kubeconfig. Only required if out-of-cluster.")
+}
 
 type Client interface {
 	Init(options *config.Options) bool
@@ -68,17 +78,20 @@ func (c *ClientImpl) Init(options *config.Options) bool {
 	options.InPodEnv = err == nil
 	if err != nil {
 		logger.Sugar().Infof("Failed to load config from Pod. Will fall back to kube config file.")
-
-		var kubeconfig *string
-		if home := homedir.HomeDir(); home != "" {
-			kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-		} else {
-			kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+		// Read kubeconfig from command line
+		if len(kubeconfig) <= 0 {
+			// Read kubeconfig from env
+			kubeconfig = os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
+			if len(kubeconfig) <= 0 {
+				// Read kubeconfig form home dir
+				if home := homedir.HomeDir(); home != "" {
+					kubeconfig = filepath.Join(home, ".kube", "config")
+				}
+			}
 		}
-		flag.Parse()
-
 		// use the current context in kubeconfig
-		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+		logger.Sugar().Infof("Read kubeconfig from %s", kubeconfig)
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 		if err != nil {
 			logger.Sugar().Warnf("Failed to load config from kube config file.")
 			return false
