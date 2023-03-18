@@ -33,7 +33,6 @@ import (
 )
 
 var (
-
 	// For example, --webhook-port is bound to DUBBO_WEBHOOK_PORT.
 	envNamePrefix = "DUBBO"
 
@@ -46,7 +45,7 @@ func NewAppCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:  "authority",
-		Long: `The authority app is responsible for manage controllers in dubbo authority`,
+		Long: `The authority app is responsible for controllers in dubbo authority`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			logger.Sugar().Infof("Authority command PersistentPreRun")
 			initialize(cmd)
@@ -66,11 +65,9 @@ func NewAppCommand() *cobra.Command {
 	cmd.Flags().AddGoFlagSet(flag.CommandLine)
 	options.FillFlags(cmd.Flags())
 	return cmd
-
 }
 
 func Run(options *config.Options) error {
-
 	s := security.NewServer(options)
 
 	s.Init()
@@ -84,7 +81,6 @@ func Run(options *config.Options) error {
 	<-c
 
 	return nil
-
 }
 
 func initialize(cmd *cobra.Command) error {
@@ -107,7 +103,6 @@ func initialize(cmd *cobra.Command) error {
 
 func bindFlags(cmd *cobra.Command, v *viper.Viper) {
 	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-
 		configName := f.Name
 
 		//  Replace hyphens with a camelCased string.

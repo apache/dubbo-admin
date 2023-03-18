@@ -45,9 +45,7 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-var (
-	kubeconfig string
-)
+var kubeconfig string
 
 func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "",
@@ -85,7 +83,7 @@ func (c *ClientImpl) Init(options *config.Options) bool {
 			// Read kubeconfig from env
 			kubeconfig = os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
 			if len(kubeconfig) <= 0 {
-				// Read kubeconfig form home dir
+				// Read kubeconfig from home dir
 				if home := homedir.HomeDir(); home != "" {
 					kubeconfig = filepath.Join(home, ".kube", "config")
 				}

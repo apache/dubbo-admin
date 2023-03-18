@@ -41,7 +41,6 @@ type Options struct {
 }
 
 func NewOptions() *Options {
-
 	return &Options{
 		Namespace:         "dubbo-system",
 		ServiceName:       "dubbo-ca",
@@ -61,21 +60,19 @@ func NewOptions() *Options {
 }
 
 func (o *Options) FillFlags(flags *pflag.FlagSet) {
-
 	flags.StringVar(&o.Namespace, "namespace", "dubbo-system", "dubbo namespace")
-	flags.StringVar(&o.ServiceName, "service./a-name", "dubbo-ca", "dubbo service name")
+	flags.StringVar(&o.ServiceName, "service-name", "dubbo-ca", "dubbo service name")
 	flags.IntVar(&o.PlainServerPort, "plain-server-port", 30060, "dubbo plain server port")
 	flags.IntVar(&o.SecureServerPort, "secure-server-port", 30062, "dubbo secure server port")
 	flags.IntVar(&o.DebugPort, "debug-port", 30070, "dubbo debug port")
 	flags.Int32Var(&o.WebhookPort, "webhook-port", 30080, "dubbo webhook port")
 	flags.BoolVar(&o.WebhookAllowOnErr, "webhook-allow-on-err", true, "dubbo webhook allow on error")
-	flags.BoolVar(&o.InPodEnv, "in-pod-env", false, "dubbo run in production environment")
+	flags.BoolVar(&o.InPodEnv, "in-pod-env", false, "dubbo run in pod environment")
 	flags.BoolVar(&o.IsKubernetesConnected, "is-kubernetes-connected", false, "dubbo connected with kubernetes")
 	flags.BoolVar(&o.EnableOIDCCheck, "enable-oidc-check", false, "dubbo enable OIDC check")
-
 }
 
 func (o *Options) Validate() []error {
-	//TODO validate options
+	// TODO validate options
 	return nil
 }
