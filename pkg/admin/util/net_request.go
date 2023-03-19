@@ -15,24 +15,27 @@
  * limitations under the License.
  */
 
-package router
+package util
 
 import (
-	"github.com/apache/dubbo-admin/pkg/admin/handlers"
-	"github.com/gin-gonic/gin"
+	"encoding/json"
+	"net/http"
+	"time"
 )
 
-func InitRouter() *gin.Engine {
-	router := gin.Default()
-
-	router.GET("/api/dev/services", handlers.AllServices)
-	router.GET("/api/dev/service", handlers.SearchService)
-	router.GET("api/dev/applications", handlers.AllApplications)
-	router.GET("api/dev/consumers", handlers.AllConsumers)
-	router.GET("api/dev/service/:service", handlers.ServiceDetail)
-	router.GET("/api/dev/version", handlers.Version)
-	router.GET("/api/dev/metrics/flow", handlers.FlowMetrics)
-	router.GET("/api/dev/metrics/cluster", handlers.ClusterMetrics)
-
-	return router
+// GetPromResult Parse the data read from Prometheus
+func GetPromResult(url string, result interface{}) error {
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+	r, err := httpClient.Get(url)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+	err = json.NewDecoder(r.Body).Decode(result)
+	if err != nil {
+		return err
+	}
+	return nil
 }
