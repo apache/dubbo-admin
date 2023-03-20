@@ -22,6 +22,7 @@ require (
 	dubbo.apache.org/dubbo-go/v3 v3.0.2
 	github.com/dubbogo/gost v1.11.25
 	github.com/gin-gonic/gin v1.8.2
+	github.com/golang/mock v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/mattbaird/jsonpatch v0.0.0-20200820163806-098863c1fc24
 	github.com/stretchr/testify v1.8.2

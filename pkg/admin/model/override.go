@@ -22,41 +22,41 @@ import (
 )
 
 type Override struct {
-	Key           string           `json:"key"`
-	Scope         string           `json:"scope"`
-	ConfigVersion string           `json:"configVersion"`
-	Enabled       bool             `json:"enabled"`
-	Configs       []OverrideConfig `json:"configs"`
+	Key           string           `json:"key" yaml:"key"`
+	Scope         string           `json:"scope" yaml:"scope"`
+	ConfigVersion string           `json:"configVersion" yaml:"configVersion"`
+	Enabled       bool             `json:"enabled" yaml:"enabled"`
+	Configs       []OverrideConfig `json:"configs" yaml:"configs"`
 }
 
 type OverrideConfig struct {
-	Side              string            `json:"side"`
-	Addresses         []string          `json:"addresses"`
-	ProviderAddresses []string          `json:"providerAddresses"`
-	Parameters        map[string]string `json:"parameters"`
-	Applications      []string          `json:"applications"`
-	Services          []string          `json:"services"`
-	Type              string            `json:"type"`
-	Enabled           bool              `json:"enabled"`
-	Match             ConditionMatch    `json:"match"`
+	Side              string            `json:"side" yaml:"side"`
+	Addresses         []string          `json:"addresses" yaml:"addresses"`
+	ProviderAddresses []string          `json:"providerAddresses" yaml:"providerAddresses"`
+	Parameters        map[string]string `json:"parameters" yaml:"parameters"`
+	Applications      []string          `json:"applications" yaml:"applications"`
+	Services          []string          `json:"services" yaml:"services"`
+	Type              string            `json:"type" yaml:"type"`
+	Enabled           bool              `json:"enabled" yaml:"enabled"`
+	Match             ConditionMatch    `json:"match" yaml:"match"`
 }
 
 type ConditionMatch struct {
-	Address     StringMatch  `json:"address"`
-	Service     StringMatch  `json:"service"`
-	Application StringMatch  `json:"application"`
-	Param       []ParamMatch `json:"param"`
+	Address     StringMatch  `json:"address" yaml:"address"`
+	Service     StringMatch  `json:"service" yaml:"service"`
+	Application StringMatch  `json:"application" yaml:"application"`
+	Param       []ParamMatch `json:"param" yaml:"param"`
 }
 
 type ParamMatch struct {
-	Key   string      `json:"key"`
-	Value StringMatch `json:"value"`
+	Key   string      `json:"key" yaml:"key"`
+	Value StringMatch `json:"value" yaml:"value"`
 }
 
 type StringMatch struct {
-	Exact  string `json:"exact"`
-	Prefix string `json:"prefix"`
-	Regex  string `json:"regex"`
+	Exact  string `json:"exact" yaml:"exact"`
+	Prefix string `json:"prefix" yaml:"prefix"`
+	Regex  string `json:"regex" yaml:"regex"`
 }
 
 func (o *Override) ToDynamicConfig() *DynamicConfig {
@@ -88,11 +88,11 @@ func (o *Override) ToDynamicConfig() *DynamicConfig {
 
 type OldOverride struct {
 	Entity
-	Service     string `json:"service"`
-	Address     string `json:"address"`
-	Enabled     bool   `json:"enabled"`
-	Application string `json:"application"`
-	Params      string `json:"params"`
+	Service     string
+	Address     string
+	Enabled     bool
+	Application string
+	Params      string
 }
 
 func (o *OldOverride) SetParamsByOverrideConfig(config OverrideConfig) {

@@ -26,12 +26,14 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/util"
 )
 
-type OverrideServiceImpl struct{}
+type OverrideServiceImpl struct {
+	GovernanceConfig config.GovernanceConfig
+}
 
 func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) error {
-	id := util.BuildServiceKey(dynamicConfig.Service, dynamicConfig.ServiceVersion, dynamicConfig.ServiceGroup)
-	path := getPath(id)
-	existConfig, err := config.GetConfig(path)
+	key := util.BuildServiceKey(dynamicConfig.Service, dynamicConfig.ServiceVersion, dynamicConfig.ServiceGroup)
+	path := getPath(key)
+	existConfig, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -60,7 +62,7 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 		logger.Error(err)
 		return err
 	} else {
-		err := config.SetConfig(path, string(b))
+		err := s.GovernanceConfig.SetConfig(path, string(b))
 		if err != nil {
 			logger.Error(err)
 			return err
@@ -76,7 +78,7 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 				logger.Error(err)
 				return err
 			}
-			err = config.RegistryCenter.Register(url)
+			err = s.GovernanceConfig.Register(url)
 			if err != nil {
 				logger.Error(err)
 				return err
@@ -87,22 +89,22 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 	return nil
 }
 
-// TODO: check key type
+// TODO: check key format
 func getPath(key string) string {
 	key = strings.Replace(key, "/", "*", -1)
-	return key + constant.ConfiguratorsCategory
+	return key + constant.ConfiguratorRuleSuffix
 }
 
 func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error {
-	id := util.BuildServiceKey(update.Service, update.ServiceGroup, update.ServiceVersion)
-	path := getPath(id)
-	existConfig, err := config.GetConfig(path)
+	key := util.BuildServiceKey(update.Service, update.ServiceGroup, update.ServiceVersion)
+	path := getPath(key)
+	existConfig, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
 
-	var override model.Override
+	override := &model.Override{}
 	err = yaml.UnmarshalYML([]byte(existConfig), override)
 	if err != nil {
 		logger.Error(err)
@@ -125,7 +127,7 @@ func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error 
 		logger.Error(err)
 		return err
 	} else {
-		err := config.SetConfig(path, string(b))
+		err := s.GovernanceConfig.SetConfig(path, string(b))
 		if err != nil {
 			logger.Error(err)
 			return err
@@ -141,24 +143,24 @@ func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error 
 			if err != nil {
 				return err
 			}
-			config.RegistryCenter.UnRegister(url)
+			s.GovernanceConfig.UnRegister(url)
 		}
 		for _, o := range updatedOverrides {
 			url, err := util.OldOverride2URL(o)
 			if err != nil {
 				return err
 			}
-			config.RegistryCenter.Register(url)
+			s.GovernanceConfig.Register(url)
 		}
 	}
 
 	return nil
 }
 
-func (s *OverrideServiceImpl) DisableOverride(id string) error {
-	path := getPath(id)
+func (s *OverrideServiceImpl) DisableOverride(key string) error {
+	path := getPath(key)
 
-	conf, err := config.GetConfig(path)
+	conf, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -177,7 +179,7 @@ func (s *OverrideServiceImpl) DisableOverride(id string) error {
 		logger.Error(err)
 		return err
 	} else {
-		err := config.SetConfig(path, string(b))
+		err := s.GovernanceConfig.SetConfig(path, string(b))
 		if err != nil {
 			return err
 		}
@@ -193,7 +195,7 @@ func (s *OverrideServiceImpl) DisableOverride(id string) error {
 				logger.Error(err)
 				return err
 			}
-			config.RegistryCenter.UnRegister(url)
+			s.GovernanceConfig.UnRegister(url)
 
 			o.Enabled = false
 			url, err = util.OldOverride2URL(o)
@@ -201,23 +203,23 @@ func (s *OverrideServiceImpl) DisableOverride(id string) error {
 				logger.Error(err)
 				return err
 			}
-			config.RegistryCenter.Register(url)
+			s.GovernanceConfig.Register(url)
 		}
 	}
 
 	return nil
 }
 
-func (s *OverrideServiceImpl) FindOverride(id string) (*model.DynamicConfig, error) {
-	path := getPath(id)
-	conf, err := config.GetConfig(path)
+func (s *OverrideServiceImpl) FindOverride(key string) (*model.DynamicConfig, error) {
+	path := getPath(key)
+	conf, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
 		logger.Error(err)
 		return nil, err
 	}
 
 	if conf != "" {
-		var override model.Override
+		override := &model.Override{}
 		err := yaml.UnmarshalYML([]byte(conf), override)
 		if err != nil {
 			logger.Error(err)
@@ -226,11 +228,11 @@ func (s *OverrideServiceImpl) FindOverride(id string) (*model.DynamicConfig, err
 
 		dynamicConfig := override.ToDynamicConfig()
 		if dynamicConfig != nil {
-			dynamicConfig.ID = id
+			dynamicConfig.ID = key
 			if constant.Service == override.Scope {
-				dynamicConfig.Service = util.GetInterface(id)
-				dynamicConfig.ServiceGroup = util.GetGroup(id)
-				dynamicConfig.ServiceVersion = util.GetVersion(id)
+				dynamicConfig.Service = util.GetInterface(key)
+				dynamicConfig.ServiceGroup = util.GetGroup(key)
+				dynamicConfig.ServiceVersion = util.GetVersion(key)
 			}
 		}
 		return dynamicConfig, nil
@@ -239,9 +241,9 @@ func (s *OverrideServiceImpl) FindOverride(id string) (*model.DynamicConfig, err
 	return nil, nil
 }
 
-func (s *OverrideServiceImpl) EnableOverride(id string) error {
-	path := getPath(id)
-	conf, err := config.GetConfig(path)
+func (s *OverrideServiceImpl) EnableOverride(key string) error {
+	path := getPath(key)
+	conf, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
 		logger.Error(err)
 		return err
@@ -260,7 +262,7 @@ func (s *OverrideServiceImpl) EnableOverride(id string) error {
 		logger.Error(err)
 		return err
 	} else {
-		err := config.SetConfig(path, string(b))
+		err := s.GovernanceConfig.SetConfig(path, string(b))
 		if err != nil {
 			logger.Error(err)
 			return err
@@ -276,45 +278,45 @@ func (s *OverrideServiceImpl) EnableOverride(id string) error {
 			if err != nil {
 				return err
 			}
-			config.RegistryCenter.UnRegister(url)
+			s.GovernanceConfig.UnRegister(url)
 
 			o.Enabled = true
 			url, err = util.OldOverride2URL(o)
 			if err != nil {
 				return err
 			}
-			config.RegistryCenter.Register(url)
+			s.GovernanceConfig.Register(url)
 		}
 	}
 
 	return nil
 }
 
-func (s *OverrideServiceImpl) DeleteOverride(id string) error {
-	path := getPath(id)
-	conf, err := config.GetConfig(path)
+func (s *OverrideServiceImpl) DeleteOverride(key string) error {
+	path := getPath(key)
+	conf, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
 
-	var override model.Override
+	override := &model.Override{}
 	err = yaml.UnmarshalYML([]byte(conf), override)
 	if err != nil {
 		logger.Error(err)
 		return err
 	}
-
 	old := override.ToDynamicConfig()
-	newConfigs := make([]model.OverrideConfig, 0)
+
 	if len(override.Configs) > 0 {
+		newConfigs := make([]model.OverrideConfig, 0)
 		for _, c := range override.Configs {
 			if constant.Configs.Contains(c.Type) {
 				newConfigs = append(newConfigs, c)
 			}
 		}
 		if len(newConfigs) == 0 {
-			err := config.DeleteConfig(path)
+			err := s.GovernanceConfig.DeleteConfig(path)
 			if err != nil {
 				logger.Error(err)
 				return err
@@ -325,7 +327,7 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 				logger.Error(err)
 				return err
 			} else {
-				err := config.SetConfig(path, string(b))
+				err := s.GovernanceConfig.SetConfig(path, string(b))
 				if err != nil {
 					logger.Error(err)
 					return err
@@ -333,7 +335,7 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 			}
 		}
 	} else {
-		err := config.DeleteConfig(path)
+		err := s.GovernanceConfig.DeleteConfig(path)
 		if err != nil {
 			logger.Error(err)
 			return err
@@ -349,7 +351,7 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 				logger.Error(err)
 				return err
 			}
-			config.RegistryCenter.UnRegister(url)
+			s.GovernanceConfig.UnRegister(url)
 		}
 	}
 

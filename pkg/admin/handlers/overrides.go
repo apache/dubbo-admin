@@ -18,13 +18,16 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 	"github.com/apache/dubbo-admin/pkg/admin/util"
 	"github.com/gin-gonic/gin"
 )
 
-var overrideServiceImpl services.OverrideServiceImpl
+var overrideServiceImpl services.OverrideService = &services.OverrideServiceImpl{
+	GovernanceConfig: &config.GovernanceConfigImpl{},
+}
 
 func CreateOverride(c *gin.Context) {
 	var dynamicConfig *model.DynamicConfig
