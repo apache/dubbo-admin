@@ -22,18 +22,12 @@ type Policy struct {
 }
 
 type PolicySpec struct {
-	Action    string        `json:"action,omitempty"`
-	Rules     []*PolicyRule `json:"rules,omitempty"`
-	Order     int           `json:"order,omitempty"`
-	MatchType string        `json:"matchType,omitempty"`
+	Action    string       `json:"action"`
+	Selector  []*Selector  `json:"selector,omitempty"`
+	PortLevel []*PortLevel `json:"PortLevel,omitempty"`
 }
 
-type PolicyRule struct {
-	From *Source `json:"from,omitempty"`
-	To   *Target `json:"to,omitempty"`
-}
-
-type Source struct {
+type Selector struct {
 	Namespaces    []string  `json:"namespaces,omitempty"`
 	NotNamespaces []string  `json:"notNamespaces,omitempty"`
 	IpBlocks      []string  `json:"ipBlocks,omitempty"`
@@ -44,16 +38,29 @@ type Source struct {
 	NotExtends    []*Extend `json:"notExtends,omitempty"`
 }
 
-type Target struct {
-	IpBlocks      []string  `json:"ipBlocks,omitempty"`
-	NotIpBlocks   []string  `json:"notIpBlocks,omitempty"`
-	Principals    []string  `json:"principals,omitempty"`
-	NotPrincipals []string  `json:"notPrincipals,omitempty"`
-	Extends       []*Extend `json:"extends,omitempty"`
-	NotExtends    []*Extend `json:"notExtends,omitempty"`
+type PortLevel struct {
+	Port   int    `json:"port,omitempty"`
+	Action string `json:"action,omitempty"`
 }
 
 type Extend struct {
 	Key   string `json:"key,omitempty"`
 	Value string `json:"value,omitempty"`
+}
+
+// To Client Rule
+
+type PolicyToClient struct {
+	Name string              `json:"name,omitempty"`
+	Spec *PolicySpecToClient `json:"spec"`
+}
+
+type PolicySpecToClient struct {
+	Action    string               `json:"action"`
+	PortLevel []*PortLevelToClient `json:"PortLevel,omitempty"`
+}
+
+type PortLevelToClient struct {
+	Port   int    `json:"port,omitempty"`
+	Action string `json:"action,omitempty"`
 }
