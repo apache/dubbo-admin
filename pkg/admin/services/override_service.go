@@ -13,38 +13,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package services
 
-import (
-	"reflect"
-	"time"
-)
+import "github.com/apache/dubbo-admin/pkg/admin/model"
 
-type Entity struct {
-	Id              int64     `json:"id"`
-	Ids             []int64   `json:"ids"`
-	Hash            string    `json:"hash"`
-	Created         time.Time `json:"created"`
-	Modified        time.Time `json:"modified"`
-	Now             time.Time `json:"now"`
-	Operator        string    `json:"operator"`
-	OperatorAddress string    `json:"operatorAddress"`
-	Miss            bool      `json:"miss"`
-}
-
-func NewEntity(id int64) Entity {
-	return Entity{
-		Id: id,
-	}
-}
-
-func (e *Entity) SetOperator(operator string) {
-	if len(operator) > 200 {
-		operator = operator[:200]
-	}
-	e.Operator = operator
-}
-
-func (e *Entity) Equals(other *Entity) bool {
-	return reflect.DeepEqual(e, other)
+type OverrideService interface {
+	SaveOverride(override *model.DynamicConfig) error
+	UpdateOverride(overrideDTO *model.DynamicConfig) error
+	DisableOverride(id string) error
+	FindOverride(id string) (*model.DynamicConfig, error)
+	EnableOverride(id string) error
+	DeleteOverride(id string) error
 }

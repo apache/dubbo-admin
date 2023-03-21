@@ -17,6 +17,10 @@
 
 package constant
 
+import (
+	set "github.com/dubbogo/gost/container/set"
+)
+
 const (
 	DubboPropertyKey         = "dubbo.properties"
 	RegistryAddressKey       = "dubbo.registry.address"
@@ -24,37 +28,43 @@ const (
 )
 
 const (
-	AnyValue              = "*"
-	InterfaceKey          = "interface"
-	GroupKey              = "group"
-	VersionKey            = "version"
-	ClassifierKey         = "classifier"
-	CategoryKey           = "category"
-	ProvidersCategory     = "providers"
-	ConsumersCategory     = "consumers"
-	RoutersCategory       = "routers"
-	ConfiguratorsCategory = "configurators"
-	EnabledKey            = "enabled"
-	CheckKey              = "check"
-	AdminProtocol         = "admin"
-	Side                  = "side"
-	ConsumerSide          = "consumer"
-	ProviderSide          = "provider"
-	ConsumerProtocol      = "consumer"
-	EmptyProtocol         = "empty"
-	DefaultGroup          = "dubbo"
-	ApplicationKey        = "application"
-	DynamicKey            = "dynamic"
-	SerializationKey      = "serialization"
-	TimeoutKey            = "timeout"
-	DefaultTimeout        = 1000
-	WeightKey             = "weight"
-	DefaultWeight         = 100
-	OwnerKey              = "owner"
-	Service               = "service"
-	Colon                 = ":"
-	InterrogationPoint    = "?"
-	IP                    = "ip"
-	PlusSigns             = "+"
-	PunctuationPoint      = "."
+	AnyValue               = "*"
+	AnyHostValue           = "0.0.0.0"
+	InterfaceKey           = "interface"
+	GroupKey               = "group"
+	VersionKey             = "version"
+	ClassifierKey          = "classifier"
+	CategoryKey            = "category"
+	ProvidersCategory      = "providers"
+	ConsumersCategory      = "consumers"
+	RoutersCategory        = "routers"
+	ConfiguratorsCategory  = "configurators"
+	ConfiguratorRuleSuffix = ".configurators"
+	EnabledKey             = "enabled"
+	CheckKey               = "check"
+	AdminProtocol          = "admin"
+	Side                   = "side"
+	ConsumerSide           = "consumer"
+	ProviderSide           = "provider"
+	ConsumerProtocol       = "consumer"
+	EmptyProtocol          = "empty"
+	OverrideProtocol       = "override"
+	DefaultGroup           = "dubbo"
+	ApplicationKey         = "application"
+	DynamicKey             = "dynamic"
+	SerializationKey       = "serialization"
+	TimeoutKey             = "timeout"
+	DefaultTimeout         = 1000
+	WeightKey              = "weight"
+	BalancingKey           = "balancing"
+	DefaultWeight          = 100
+	OwnerKey               = "owner"
+	Service                = "service"
+	Colon                  = ":"
+	InterrogationPoint     = "?"
+	IP                     = "ip"
+	PlusSigns              = "+"
+	PunctuationPoint       = "."
 )
+
+var Configs = set.NewSet(WeightKey, BalancingKey)

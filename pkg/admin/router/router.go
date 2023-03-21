@@ -32,5 +32,16 @@ func InitRouter() *gin.Engine {
 	router.GET("api/dev/service/:service", handlers.ServiceDetail)
 	router.GET("/api/dev/version", handlers.Version)
 
+	override := router.Group("/api/:env/rules/override")
+	{
+		override.POST("/create", handlers.CreateOverride)
+		override.GET("/", handlers.SearchOverride)
+		override.DELETE("/:id", handlers.DeleteOverride)
+		override.GET("/:id", handlers.DetailOverride)
+		override.PUT("/enable/:id", handlers.EnableOverride)
+		override.PUT("/disable/:id", handlers.DisableOverride)
+		override.PUT("/:id", handlers.UpdateOverride)
+	}
+
 	return router
 }
