@@ -65,10 +65,10 @@ const (
 	IP                     = "ip"
 	PlusSigns              = "+"
 	PunctuationPoint       = "."
-	ConditionRoute        = "condition_route"
-	TagRoute              = "tag_route"
-	ConditionRuleSuffix   = ".condition-router"
-	TagRuleSuffix         = ".tag-router"
+	ConditionRoute         = "condition_route"
+	TagRoute               = "tag_route"
+	ConditionRuleSuffix    = ".condition-router"
+	TagRuleSuffix          = ".tag-router"
 )
 
 var Configs = set.NewSet(WeightKey, BalancingKey)
