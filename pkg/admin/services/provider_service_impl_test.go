@@ -16,11 +16,40 @@
 package services
 
 import (
+	"net/url"
 	"reflect"
+	"sync"
 	"testing"
+
+	"github.com/apache/dubbo-admin/pkg/admin/util"
+
+	"github.com/apache/dubbo-admin/pkg/admin/constant"
+
+	"github.com/apache/dubbo-admin/pkg/admin/cache"
+
+	"dubbo.apache.org/dubbo-go/v3/common"
 
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 )
+
+var testProvider *model.Provider
+
+func init() {
+	service := &sync.Map{}
+	queryParams := url.Values{
+		constant.ApplicationKey: {"test"},
+	}
+	testURL, _ := common.NewURL(common.GetLocalIp()+":0",
+		common.WithProtocol(constant.AdminProtocol),
+		common.WithParams(queryParams),
+		common.WithLocation(common.GetLocalIp()+":0"),
+	)
+	service.Store("test", map[string]*common.URL{
+		"test": testURL,
+	})
+	cache.InterfaceRegistryCache.Store(constant.ProvidersCategory, service)
+	testProvider = util.URL2Provider("test", testURL)
+}
 
 func TestProviderServiceImpl_FindServices(t *testing.T) {
 	tests := []struct {
@@ -30,17 +59,20 @@ func TestProviderServiceImpl_FindServices(t *testing.T) {
 	}{
 		{
 			name:    "Test",
-			want:    nil,
+			want:    []string{"test"},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &ProviderServiceImpl{}
-			_, err := p.FindServices()
+			got, err := p.FindServices()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("FindServices() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FindServices() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -54,17 +86,20 @@ func TestProviderServiceImpl_FindApplications(t *testing.T) {
 	}{
 		{
 			name:    "Test",
-			want:    nil,
+			want:    []string{"test"},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &ProviderServiceImpl{}
-			_, err := p.FindApplications()
+			got, err := p.FindApplications()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("FindApplications() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FindApplications() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -78,17 +113,20 @@ func TestProviderServiceImpl_findAddresses(t *testing.T) {
 	}{
 		{
 			name:    "Test",
-			want:    nil,
+			want:    []string{common.GetLocalIp() + ":0"},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &ProviderServiceImpl{}
-			_, err := p.findAddresses()
+			got, err := p.findAddresses()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("findAddresses() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("findAddresses() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -109,17 +147,20 @@ func TestProviderServiceImpl_FindByService(t *testing.T) {
 			args: args{
 				providerService: "test",
 			},
-			want:    nil,
+			want:    []*model.Provider{testProvider},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &ProviderServiceImpl{}
-			_, err := p.FindByService(tt.args.providerService)
+			got, err := p.FindByService(tt.args.providerService)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("FindByService() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FindByService() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -138,19 +179,22 @@ func TestProviderServiceImpl_findByAddress(t *testing.T) {
 		{
 			name: "Test",
 			args: args{
-				providerAddress: "test",
+				providerAddress: common.GetLocalIp() + ":0",
 			},
-			want:    nil,
+			want:    []*model.Provider{testProvider},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &ProviderServiceImpl{}
-			_, err := p.findByAddress(tt.args.providerAddress)
+			got, err := p.findByAddress(tt.args.providerAddress)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("findByAddress() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("findByAddress() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -171,17 +215,20 @@ func TestProviderServiceImpl_findByApplication(t *testing.T) {
 			args: args{
 				providerApplication: "test",
 			},
-			want:    nil,
+			want:    []*model.Provider{testProvider},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			p := &ProviderServiceImpl{}
-			_, err := p.findByApplication(tt.args.providerApplication)
+			got, err := p.findByApplication(tt.args.providerApplication)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("findByApplication() error = %v, wantErr %v", err, tt.wantErr)
 				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("findByApplication() got = %v, want %v", got, tt.want)
 			}
 		})
 	}
