@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/apache/dubbo-admin/pkg/admin/config"
+	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/golang/mock/gomock"
 )
@@ -299,6 +300,32 @@ func TestOverrideServiceImpl_DisableOverride(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.s.DisableOverride(tt.args.key); (err != nil) != tt.wantErr {
 				t.Errorf("OverrideServiceImpl.DisableOverride() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_getPath(t *testing.T) {
+	type args struct {
+		key string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "TestOK",
+			args: args{
+				key: "testGroup/testService:testVersion",
+			},
+			want: "testGroup*testService:testVersion" + constant.ConfiguratorRuleSuffix,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := getPath(tt.args.key); got != tt.want {
+				t.Errorf("getPath() = %v, want %v", got, tt.want)
 			}
 		})
 	}

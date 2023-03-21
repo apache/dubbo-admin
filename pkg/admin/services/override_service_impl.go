@@ -89,7 +89,6 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 	return nil
 }
 
-// TODO: check key format
 func getPath(key string) string {
 	key = strings.Replace(key, "/", "*", -1)
 	return key + constant.ConfiguratorRuleSuffix

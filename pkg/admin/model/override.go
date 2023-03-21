@@ -41,24 +41,6 @@ type OverrideConfig struct {
 	Match             ConditionMatch    `json:"match" yaml:"match"`
 }
 
-type ConditionMatch struct {
-	Address     StringMatch  `json:"address" yaml:"address"`
-	Service     StringMatch  `json:"service" yaml:"service"`
-	Application StringMatch  `json:"application" yaml:"application"`
-	Param       []ParamMatch `json:"param" yaml:"param"`
-}
-
-type ParamMatch struct {
-	Key   string      `json:"key" yaml:"key"`
-	Value StringMatch `json:"value" yaml:"value"`
-}
-
-type StringMatch struct {
-	Exact  string `json:"exact" yaml:"exact"`
-	Prefix string `json:"prefix" yaml:"prefix"`
-	Regex  string `json:"regex" yaml:"regex"`
-}
-
 func (o *Override) ToDynamicConfig() *DynamicConfig {
 	d := &DynamicConfig{}
 	d.ConfigVersion = o.ConfigVersion
