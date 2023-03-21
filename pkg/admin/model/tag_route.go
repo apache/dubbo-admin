@@ -46,17 +46,3 @@ type Tag struct {
 	Match     []ParamMatch `json:"match" binding:"required"`
 	Addresses []string     `json:"addresses"`
 }
-
-type ParamMatch struct {
-	Key   string      `json:"key" binding:"required"`
-	Value StringMatch `json:"value" binding:"required"`
-}
-
-type StringMatch struct {
-	Exact    string `json:"exact"`
-	Prefix   string `json:"prefix"`
-	Regex    string `json:"regex"`
-	Noempty  string `json:"noempty"`
-	Empty    string `json:"empty"`
-	Wildcard string `json:"wildcard"`
-}

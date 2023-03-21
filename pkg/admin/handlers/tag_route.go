@@ -15,18 +15,21 @@
  * limitations under the License.
  */
 
-package tag_route
+package handlers
 
 import (
 	"net/http"
 	"strings"
 
+	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 	"github.com/gin-gonic/gin"
 )
 
-var tagRouteService services.TagRoutesService = &services.TagRoutesServiceImpl{}
+var tagRouteService services.TagRoutesService = &services.TagRoutesServiceImpl{
+	GovernanceConfig: &config.GovernanceConfigImpl{},
+}
 
 func CreateRule(c *gin.Context) {
 	var tagRouteDto model.TagRouteDto

@@ -27,36 +27,38 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/util"
 )
 
-type TagRoutesServiceImpl struct{}
+type TagRoutesServiceImpl struct {
+	GovernanceConfig config.GovernanceConfig
+}
 
 func (t *TagRoutesServiceImpl) CreateTagRoute(tagRoute model.TagRouteDto) error {
 	id := getIdFromDto(tagRoute)
-	path := getPath(id, constant.TagRoute)
+	path := getTagRoutePath(id, constant.TagRoute)
 	store := convertTagRouteToStore(tagRoute)
 	obj, _ := util.DumpObject(store)
-	return config.SetConfig(path, obj)
+	return t.GovernanceConfig.SetConfig(path, obj)
 }
 
 func (t *TagRoutesServiceImpl) UpdateTagRoute(tagRoute model.TagRouteDto) error {
 	id := getIdFromDto(tagRoute)
-	path := getPath(id, constant.TagRoute)
-	cfg, _ := config.GetConfig(path)
+	path := getTagRoutePath(id, constant.TagRoute)
+	cfg, _ := t.GovernanceConfig.GetConfig(path)
 	if cfg == "" {
 		return fmt.Errorf("tag route %s not found", id)
 	}
 	store := convertTagRouteToStore(tagRoute)
 	obj, _ := util.DumpObject(store)
-	return config.SetConfig(path, obj)
+	return t.GovernanceConfig.SetConfig(path, obj)
 }
 
 func (t *TagRoutesServiceImpl) DeleteTagRoute(id string) error {
-	path := getPath(id, constant.TagRoute)
-	return config.DeleteConfig(path)
+	path := getTagRoutePath(id, constant.TagRoute)
+	return t.GovernanceConfig.DeleteConfig(path)
 }
 
 func (t *TagRoutesServiceImpl) FindTagRoute(id string) (model.TagRouteDto, error) {
-	path := getPath(id, constant.TagRoute)
-	cfg, err := config.GetConfig(path)
+	path := getTagRoutePath(id, constant.TagRoute)
+	cfg, err := t.GovernanceConfig.GetConfig(path)
 	if cfg != "" {
 		var tagRoute model.TagRoute
 		_ = util.LoadObject(cfg, &tagRoute)
@@ -66,32 +68,32 @@ func (t *TagRoutesServiceImpl) FindTagRoute(id string) (model.TagRouteDto, error
 }
 
 func (t *TagRoutesServiceImpl) EnableTagRoute(id string) error {
-	path := getPath(id, constant.TagRoute)
-	cfg, err := config.GetConfig(path)
+	path := getTagRoutePath(id, constant.TagRoute)
+	cfg, err := t.GovernanceConfig.GetConfig(path)
 	if cfg != "" {
 		var tagRoute model.TagRoute
 		_ = util.LoadObject(cfg, &tagRoute)
 		tagRoute.Enabled = true
 		obj, _ := util.DumpObject(tagRoute)
-		return config.SetConfig(path, obj)
+		return t.GovernanceConfig.SetConfig(path, obj)
 	}
 	return err
 }
 
 func (t *TagRoutesServiceImpl) DisableTagRoute(id string) error {
-	path := getPath(id, constant.TagRoute)
-	cfg, err := config.GetConfig(path)
+	path := getTagRoutePath(id, constant.TagRoute)
+	cfg, err := t.GovernanceConfig.GetConfig(path)
 	if cfg != "" {
 		var tagRoute model.TagRoute
 		_ = util.LoadObject(cfg, &tagRoute)
 		tagRoute.Enabled = false
 		obj, _ := util.DumpObject(tagRoute)
-		return config.SetConfig(path, obj)
+		return t.GovernanceConfig.SetConfig(path, obj)
 	}
 	return err
 }
 
-func getPath(key string, routeType string) string {
+func getTagRoutePath(key string, routeType string) string {
 	key = strings.ReplaceAll(key, "*", "/")
 	if routeType == constant.ConditionRoute {
 		return key + constant.ConditionRuleSuffix
