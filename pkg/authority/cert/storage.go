@@ -16,7 +16,7 @@
 package cert
 
 import (
-	"crypto/rsa"
+	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
 	"math"
@@ -65,7 +65,7 @@ type Storage interface {
 type Cert struct {
 	Cert       *x509.Certificate
 	CertPem    string
-	PrivateKey *rsa.PrivateKey
+	PrivateKey *ecdsa.PrivateKey
 
 	tlsCert *tls.Certificate
 }

@@ -151,61 +151,46 @@ func CopyToAuthentication(key string, pa *apiV1beta1.AuthenticationPolicy) *auth
 	a.Name = key
 	a.Spec = &authentication.PolicySpec{}
 	a.Spec.Action = pa.Spec.Action
-	if pa.Spec.Rules != nil {
-		for _, rule := range pa.Spec.Rules {
-			r := &authentication.PolicyRule{
-				From: &authentication.Source{
-					Namespaces:    rule.From.Namespaces,
-					NotNamespaces: rule.From.NotNamespaces,
-					IpBlocks:      rule.From.IpBlocks,
-					NotIpBlocks:   rule.From.NotIpBlocks,
-					Principals:    rule.From.Principals,
-					NotPrincipals: rule.From.NotPrincipals,
-				},
-				To: &authentication.Target{
-					IpBlocks:      rule.To.IpBlocks,
-					NotIpBlocks:   rule.To.NotIpBlocks,
-					Principals:    rule.To.Principals,
-					NotPrincipals: rule.To.NotPrincipals,
-				},
+	if pa.Spec.Selector != nil {
+		for _, selector := range pa.Spec.Selector {
+			r := &authentication.Selector{
+				Namespaces:    selector.Namespaces,
+				NotNamespaces: selector.NotNamespaces,
+				IpBlocks:      selector.IpBlocks,
+				NotIpBlocks:   selector.NotIpBlocks,
+				Principals:    selector.Principals,
+				NotPrincipals: selector.NotPrincipals,
 			}
-			if rule.From.Extends != nil {
-				for _, extends := range rule.From.Extends {
-					r.From.Extends = append(r.From.Extends, &authentication.Extend{
+			if selector.Extends != nil {
+				for _, extends := range selector.Extends {
+					r.Extends = append(r.Extends, &authentication.Extend{
 						Key:   extends.Key,
 						Value: extends.Value,
 					})
 				}
 			}
-			if rule.From.NotExtends != nil {
-				for _, notExtend := range rule.From.NotExtends {
-					r.From.NotExtends = append(r.From.NotExtends, &authentication.Extend{
+			if selector.NotExtends != nil {
+				for _, notExtend := range selector.NotExtends {
+					r.NotExtends = append(r.NotExtends, &authentication.Extend{
 						Key:   notExtend.Key,
 						Value: notExtend.Value,
 					})
 				}
 			}
-			if rule.To.Extends != nil {
-				for _, extends := range rule.To.Extends {
-					r.To.Extends = append(r.To.Extends, &authentication.Extend{
-						Key:   extends.Key,
-						Value: extends.Value,
-					})
-				}
-			}
-			if rule.To.NotExtends != nil {
-				for _, notExtend := range rule.To.NotExtends {
-					r.To.NotExtends = append(r.To.NotExtends, &authentication.Extend{
-						Key:   notExtend.Key,
-						Value: notExtend.Value,
-					})
-				}
-			}
-			a.Spec.Rules = append(a.Spec.Rules, r)
+			a.Spec.Selector = append(a.Spec.Selector, r)
 		}
 	}
-	a.Spec.Order = pa.Spec.Order
-	a.Spec.MatchType = pa.Spec.MatchType
+
+	if pa.Spec.PortLevel != nil {
+		for _, portLevel := range pa.Spec.PortLevel {
+			r := &authentication.PortLevel{
+				Port:   portLevel.Port,
+				Action: portLevel.Action,
+			}
+
+			a.Spec.PortLevel = append(a.Spec.PortLevel, r)
+		}
+	}
 	return a
 }
 
