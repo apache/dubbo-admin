@@ -13,27 +13,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package config
+package rule_test
 
-type Options struct {
-	Namespace   string
-	ServiceName string
+import (
+	"testing"
 
-	PlainServerPort  int
-	SecureServerPort int
-	DebugPort        int
+	"github.com/stretchr/testify/assert"
 
-	WebhookPort       int32
-	WebhookAllowOnErr bool
+	"github.com/apache/dubbo-admin/pkg/authority/rule"
+)
 
-	CaValidity   int64
-	CertValidity int64
+func TestToString(t *testing.T) {
+	t.Parallel()
 
-	InPodEnv              bool
-	IsKubernetesConnected bool
-	IsTrustAnyone         bool
+	endpoint := &rule.Endpoint{}
 
-	// TODO remove EnableOIDCCheck
-	EnableOIDCCheck      bool
-	ResourcelockIdentity string
+	assert.Equal(t, "{}", endpoint.ToString())
+
+	endpoint.SpiffeID = "spiffe://example.com/ns/default/sa/default"
+
+	assert.Equal(t, "{\"spiffeID\":\"spiffe://example.com/ns/default/sa/default\"}", endpoint.ToString())
 }

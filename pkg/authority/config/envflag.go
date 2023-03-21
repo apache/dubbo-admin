@@ -42,6 +42,7 @@ func GetOptions() *Options {
 
 		InPodEnv:              GetBoolEnv("inpodenv", false),
 		IsKubernetesConnected: GetBoolEnv("iskubernetesconnected", false),
+		IsTrustAnyone:         GetBoolEnv("istrustanyone", false),
 		EnableOIDCCheck:       GetBoolEnv("enableoidccheck", true),
 		ResourcelockIdentity:  GetStringEnv("POD_NAME", GetDefaultResourcelockIdentity()),
 	}

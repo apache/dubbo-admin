@@ -16,7 +16,14 @@
 package cert
 
 import (
+	"bytes"
+	"crypto/ecdsa"
+	"encoding/pem"
+	"net/url"
 	"testing"
+
+	"github.com/apache/dubbo-admin/pkg/authority/rule"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/dubbo-admin/pkg/logger"
 )
@@ -38,7 +45,7 @@ func TestCSR(t *testing.T) {
 
 	cert := GenerateAuthorityCert(nil, 365*24*60*60*1000)
 
-	target, err := SignFromCSR(request, nil, cert, 365*24*60*60*1000)
+	target, err := SignFromCSR(request, &rule.Endpoint{SpiffeID: "spiffe://cluster.local"}, cert, 365*24*60*60*1000)
 	if err != nil {
 		t.Fatal(err)
 		return
@@ -56,6 +63,24 @@ func TestCSR(t *testing.T) {
 		t.Fatal("Cert is not valid")
 		return
 	}
+
+	assert.Equal(t, 1, len(certificate.URIs))
+	assert.Equal(t, &url.URL{Scheme: "spiffe", Host: "cluster.local"}, certificate.URIs[0])
+
+	target, err = SignFromCSR(request, &rule.Endpoint{SpiffeID: "://"}, cert, 365*24*60*60*1000)
+	assert.Nil(t, err)
+
+	certificate = DecodeCert(target)
+
+	check = &Cert{
+		Cert:       certificate,
+		PrivateKey: privateKey,
+		CertPem:    target,
+	}
+
+	assert.True(t, check.IsValid())
+
+	assert.Equal(t, 0, len(certificate.URIs))
 }
 
 func TestDecodeCert(t *testing.T) {
@@ -73,9 +98,14 @@ func TestDecodeCert(t *testing.T) {
 		return
 	}
 
-	if DecodeCert("-----BEGIN CERTIFICATE-----\n"+
-		"123\n"+
-		"-----END CERTIFICATE-----") != nil {
+	certPem := new(bytes.Buffer)
+	err := pem.Encode(certPem, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: []byte("123"),
+	})
+	assert.Nil(t, err)
+
+	if DecodeCert(certPem.String()) != nil {
 		t.Fatal("DecodeCert should return nil")
 		return
 	}
@@ -141,34 +171,31 @@ func TestDecodePrivateKey(t *testing.T) {
 		return
 	}
 
-	if DecodePrivateKey("-----BEGIN RSA PRIVATE KEY-----\n"+
-		"MIIEpgIBAAKCAQEAwQl8A5KYyOmXsz+Mk05NLWS9jHDhvJC1ekWgqOApwrb0Ecio\n"+
-		"tv5dirqAtuEX+dGRVftxJdtZHWto+gKy3H6Ae866FBFt7TWgTZFkt0XW3tMmUmNG\n"+
-		"bdzHAuZGK9+RlNNTNBTZJAx338kxM7/lqqOgEZig5SmX2Xt3u+DQjJPlsWB/lKDD\n"+
-		"OKOc93lGo/8chdmMv70inE/xv6LQ9nugRvBe1XfXafuHEUVyj2rzF1v9y7yF5Tek\n"+
-		"70wK/KV+O7ukBRc4SPwJ7YAWuofMhFneNtWGNHYaLShJBhvC+E7JXD+prJfHNdSc\n"+
-		"ORnTz/LjMWsLbD1lhr/p7vrWXujDSGM6ZDR6EwIDAQABAoIBAQCjqjPwH4HUjmDl\n"+
-		"RBMe7bt3qjsfcLGjm5mSQqh1piEiCtYioduR01ZiAcCRzYTzdWBg4x/Ktg/3ZpMJ\n"+
-		"rfISCltLHTodO63U+auhOI2I6fjE0YdjQPJ8wTwmVDDYj+Qxp36a4LY93yhfn4hM\n"+
-		"1P2XUMWtRZfc1AgAB7O7ol+PYPHVEX4n9ugbRDkn7/hpi05JPAOnGNimKDi61PpS\n"+
-		"rWpkAKYCC6q2hLTOW+EKvfNqUjuK/YAzPQD14zP7KRQ9kkezAluwwVbwwaI2jJ4x\n"+
-		"n6jHwPMOH1eKTQMtUg6Xxv59jBrcPmtD38dZvzzjBZDZYu4xcWJeeY4oP8/UE7uE\n"+
-		"pTFACvBRAoGBAMlErLppeVZcgcW9gOP98qV2CbWK/+aB3oJQEQBlKB3UtQSjCnZ7\n"+
-		"lLzxgMtDD+tcPocY5FY52MzJQ2UFgScSzW04JuBQPbsHcGmuzv/cahuB/S+xwB6m\n"+
-		"I2RXbFkgPPirJ9mqTeuNMwcXgAhoVbPV3otMq45EsxHubATit7QvczabAoGBAPWH\n"+
-		"yt0uxcf/j2k7EH3Ug5TkVKI8IftCM0fRs9eUzy2zPKTVRdTbQY75J/E2zkEQat2B\n"+
-		"8hEONkkV/ScLV5Oon4oeBxCRq17h37H5znkW2yNYSMNLcqUN58ZcVxsRSPj/Eoq5\n"+
-		"Ngotll+JmITrxtd6NpFcGqrDQ/KV9uM1AoqN4EXpAoGBALAXeLRD8dhAaX4TdgCD\n"+
-		"v9dKNeZzLb+EYqRK3wUke/vVjWb4KwBM0W6aMWAlVXlLpJ1YhvZ1+Bv7/w4UydHg\n"+
-		"3oCvfzwEmG3ZbV3ZhtxPATr9+QHQl9F49EAnSPGVhiLexKfpG/F6AWo0Al3Ywxrr\n"+
-		"hKEFvJdlvfJzUmjX33gzh67/AoGBAMAnqBJ2On+NeFUozn1LxjbOg5X8bbPQWYXJ\n"+
-		"jnAXnBTuA3YVG3O8rJASWroi5ERzbs8wlZvXfZCxTtAxxjZfb4yOd4T2HCJDr+f/\n"+
-		"0yFdS99bhoahE3YtbckGF32th2inZ4F99db9WoQmkWDljVax5ObaKFygORsvVmr2\n"+
-		"36hD5NORAoGBALKQZ6j9RYCC3NiV46K6GhN7RMu70u+/ET2skEdChn3Mu0OTYzqa\n"+
-		"+qOCXvV+RWEiUoa2JX7UkSagEs+1O404afQv2+qnhdUOskxzUD+smQJBGOrXmdMq\n"+
-		"ubzSn24LsPYWYGWsgl3AJ+n8rmVMXgPaWZQD9qHkZD9Oe2wwI9W+4K74\n"+
-		"-----END RSA PRIVATE KEY-----\n") == nil {
+	if DecodePrivateKey("-----BEGIN EC PRIVATE KEY-----\n"+
+		"MHcCAQEEIMS+Yc+9GMD0v7a2yz8EwEoF2vsM7d54aeV5jKjHGFzioAoGCCqGSM49\n"+
+		"AwEHoUQDQgAEe6MTHP7f5BKtVMEswm59WTZXyDD7cAbPdeBDtljJRIl6yAYgBtFN\n"+
+		"9RT54nIlNiPnH3P8DKyuvSE3jmsG3IHhcg==\n"+
+		"-----END EC PRIVATE KEY-----\n") == nil {
 		t.Fatal("DecodePrivateKey should not return nil")
 		return
 	}
+}
+
+func TestDecodePublicKey(t *testing.T) {
+	t.Parallel()
+
+	key := DecodePrivateKey("-----BEGIN EC PRIVATE KEY-----\n" +
+		"MHcCAQEEIMS+Yc+9GMD0v7a2yz8EwEoF2vsM7d54aeV5jKjHGFzioAoGCCqGSM49\n" +
+		"AwEHoUQDQgAEe6MTHP7f5BKtVMEswm59WTZXyDD7cAbPdeBDtljJRIl6yAYgBtFN\n" +
+		"9RT54nIlNiPnH3P8DKyuvSE3jmsG3IHhcg==\n" +
+		"-----END EC PRIVATE KEY-----\n")
+
+	assert.NotNil(t, key)
+
+	assert.Equal(t, "-----BEGIN EC PUBLIC KEY-----\n"+
+		"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEe6MTHP7f5BKtVMEswm59WTZXyDD7\n"+
+		"cAbPdeBDtljJRIl6yAYgBtFN9RT54nIlNiPnH3P8DKyuvSE3jmsG3IHhcg==\n"+
+		"-----END EC PUBLIC KEY-----\n", EncodePublicKey(&key.PublicKey))
+
+	assert.Equal(t, "", EncodePublicKey(&ecdsa.PublicKey{}))
 }

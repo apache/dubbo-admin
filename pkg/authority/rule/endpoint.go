@@ -15,11 +15,26 @@
 
 package rule
 
+import (
+	"encoding/json"
+
+	"github.com/apache/dubbo-admin/pkg/logger"
+)
+
 type Endpoint struct {
 	ID            string         `json:"id,omitempty"`
 	Ips           []string       `json:"ips,omitempty"`
-	SpiffeID      string         `json:"spiffeId,omitempty"`
+	SpiffeID      string         `json:"spiffeID,omitempty"`
 	KubernetesEnv *KubernetesEnv `json:"kubernetesEnv,omitempty"`
+}
+
+func (e *Endpoint) ToString() string {
+	j, err := json.Marshal(e)
+	if err != nil {
+		logger.Sugar().Warnf("failed to marshal endpoint: %v", err)
+		return ""
+	}
+	return string(j)
 }
 
 type KubernetesEnv struct {

@@ -4,21 +4,6 @@
 // - protoc             v3.21.6
 // source: v1alpha1/ca.proto
 
-// Licensed to the Apache Software Foundation (ASF) under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// The ASF licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//	http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package v1alpha1
 
 import (
@@ -33,132 +18,131 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// DubboCertificateServiceClient is the client API for DubboCertificateService service.
+// AuthorityServiceClient is the client API for AuthorityService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type DubboCertificateServiceClient interface {
-	CreateCertificate(ctx context.Context, in *DubboCertificateRequest, opts ...grpc.CallOption) (*DubboCertificateResponse, error)
+type AuthorityServiceClient interface {
+	CreateIdentity(ctx context.Context, in *IdentityRequest, opts ...grpc.CallOption) (*IdentityResponse, error)
 }
 
-type dubboCertificateServiceClient struct {
+type authorityServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewDubboCertificateServiceClient(cc grpc.ClientConnInterface) DubboCertificateServiceClient {
-	return &dubboCertificateServiceClient{cc}
+func NewAuthorityServiceClient(cc grpc.ClientConnInterface) AuthorityServiceClient {
+	return &authorityServiceClient{cc}
 }
 
-func (c *dubboCertificateServiceClient) CreateCertificate(ctx context.Context, in *DubboCertificateRequest, opts ...grpc.CallOption) (*DubboCertificateResponse, error) {
-	out := new(DubboCertificateResponse)
-	err := c.cc.Invoke(ctx, "/org.apache.dubbo.auth.v1alpha1.DubboCertificateService/CreateCertificate", in, out, opts...)
+func (c *authorityServiceClient) CreateIdentity(ctx context.Context, in *IdentityRequest, opts ...grpc.CallOption) (*IdentityResponse, error) {
+	out := new(IdentityResponse)
+	err := c.cc.Invoke(ctx, "/org.apache.dubbo.auth.v1alpha1.AuthorityService/CreateIdentity", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// DubboCertificateServiceServer is the server API for DubboCertificateService service.
-// All implementations must embed UnimplementedDubboCertificateServiceServer
+// AuthorityServiceServer is the server API for AuthorityService service.
+// All implementations must embed UnimplementedAuthorityServiceServer
 // for forward compatibility
-type DubboCertificateServiceServer interface {
-	CreateCertificate(context.Context, *DubboCertificateRequest) (*DubboCertificateResponse, error)
-	mustEmbedUnimplementedDubboCertificateServiceServer()
+type AuthorityServiceServer interface {
+	CreateIdentity(context.Context, *IdentityRequest) (*IdentityResponse, error)
+	mustEmbedUnimplementedAuthorityServiceServer()
 }
 
-// UnimplementedDubboCertificateServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedDubboCertificateServiceServer struct {
+// UnimplementedAuthorityServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedAuthorityServiceServer struct {
 }
 
-func (UnimplementedDubboCertificateServiceServer) CreateCertificate(context.Context, *DubboCertificateRequest) (*DubboCertificateResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CreateCertificate not implemented")
+func (UnimplementedAuthorityServiceServer) CreateIdentity(context.Context, *IdentityRequest) (*IdentityResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateIdentity not implemented")
 }
-func (UnimplementedDubboCertificateServiceServer) mustEmbedUnimplementedDubboCertificateServiceServer() {
-}
+func (UnimplementedAuthorityServiceServer) mustEmbedUnimplementedAuthorityServiceServer() {}
 
-// UnsafeDubboCertificateServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to DubboCertificateServiceServer will
+// UnsafeAuthorityServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to AuthorityServiceServer will
 // result in compilation errors.
-type UnsafeDubboCertificateServiceServer interface {
-	mustEmbedUnimplementedDubboCertificateServiceServer()
+type UnsafeAuthorityServiceServer interface {
+	mustEmbedUnimplementedAuthorityServiceServer()
 }
 
-func RegisterDubboCertificateServiceServer(s grpc.ServiceRegistrar, srv DubboCertificateServiceServer) {
-	s.RegisterService(&DubboCertificateService_ServiceDesc, srv)
+func RegisterAuthorityServiceServer(s grpc.ServiceRegistrar, srv AuthorityServiceServer) {
+	s.RegisterService(&AuthorityService_ServiceDesc, srv)
 }
 
-func _DubboCertificateService_CreateCertificate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DubboCertificateRequest)
+func _AuthorityService_CreateIdentity_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IdentityRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DubboCertificateServiceServer).CreateCertificate(ctx, in)
+		return srv.(AuthorityServiceServer).CreateIdentity(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/org.apache.dubbo.auth.v1alpha1.DubboCertificateService/CreateCertificate",
+		FullMethod: "/org.apache.dubbo.auth.v1alpha1.AuthorityService/CreateIdentity",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DubboCertificateServiceServer).CreateCertificate(ctx, req.(*DubboCertificateRequest))
+		return srv.(AuthorityServiceServer).CreateIdentity(ctx, req.(*IdentityRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// DubboCertificateService_ServiceDesc is the grpc.ServiceDesc for DubboCertificateService service.
+// AuthorityService_ServiceDesc is the grpc.ServiceDesc for AuthorityService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var DubboCertificateService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "org.apache.dubbo.auth.v1alpha1.DubboCertificateService",
-	HandlerType: (*DubboCertificateServiceServer)(nil),
+var AuthorityService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "org.apache.dubbo.auth.v1alpha1.AuthorityService",
+	HandlerType: (*AuthorityServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "CreateCertificate",
-			Handler:    _DubboCertificateService_CreateCertificate_Handler,
+			MethodName: "CreateIdentity",
+			Handler:    _AuthorityService_CreateIdentity_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
 	Metadata: "v1alpha1/ca.proto",
 }
 
-// ObserveServiceClient is the client API for ObserveService service.
+// RuleServiceClient is the client API for RuleService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ObserveServiceClient interface {
-	Observe(ctx context.Context, opts ...grpc.CallOption) (ObserveService_ObserveClient, error)
+type RuleServiceClient interface {
+	Observe(ctx context.Context, opts ...grpc.CallOption) (RuleService_ObserveClient, error)
 }
 
-type observeServiceClient struct {
+type ruleServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewObserveServiceClient(cc grpc.ClientConnInterface) ObserveServiceClient {
-	return &observeServiceClient{cc}
+func NewRuleServiceClient(cc grpc.ClientConnInterface) RuleServiceClient {
+	return &ruleServiceClient{cc}
 }
 
-func (c *observeServiceClient) Observe(ctx context.Context, opts ...grpc.CallOption) (ObserveService_ObserveClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ObserveService_ServiceDesc.Streams[0], "/org.apache.dubbo.auth.v1alpha1.ObserveService/Observe", opts...)
+func (c *ruleServiceClient) Observe(ctx context.Context, opts ...grpc.CallOption) (RuleService_ObserveClient, error) {
+	stream, err := c.cc.NewStream(ctx, &RuleService_ServiceDesc.Streams[0], "/org.apache.dubbo.auth.v1alpha1.RuleService/Observe", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &observeServiceObserveClient{stream}
+	x := &ruleServiceObserveClient{stream}
 	return x, nil
 }
 
-type ObserveService_ObserveClient interface {
+type RuleService_ObserveClient interface {
 	Send(*ObserveRequest) error
 	Recv() (*ObserveResponse, error)
 	grpc.ClientStream
 }
 
-type observeServiceObserveClient struct {
+type ruleServiceObserveClient struct {
 	grpc.ClientStream
 }
 
-func (x *observeServiceObserveClient) Send(m *ObserveRequest) error {
+func (x *ruleServiceObserveClient) Send(m *ObserveRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *observeServiceObserveClient) Recv() (*ObserveResponse, error) {
+func (x *ruleServiceObserveClient) Recv() (*ObserveResponse, error) {
 	m := new(ObserveResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -166,53 +150,53 @@ func (x *observeServiceObserveClient) Recv() (*ObserveResponse, error) {
 	return m, nil
 }
 
-// ObserveServiceServer is the server API for ObserveService service.
-// All implementations must embed UnimplementedObserveServiceServer
+// RuleServiceServer is the server API for RuleService service.
+// All implementations must embed UnimplementedRuleServiceServer
 // for forward compatibility
-type ObserveServiceServer interface {
-	Observe(ObserveService_ObserveServer) error
-	mustEmbedUnimplementedObserveServiceServer()
+type RuleServiceServer interface {
+	Observe(RuleService_ObserveServer) error
+	mustEmbedUnimplementedRuleServiceServer()
 }
 
-// UnimplementedObserveServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedObserveServiceServer struct {
+// UnimplementedRuleServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedRuleServiceServer struct {
 }
 
-func (UnimplementedObserveServiceServer) Observe(ObserveService_ObserveServer) error {
+func (UnimplementedRuleServiceServer) Observe(RuleService_ObserveServer) error {
 	return status.Errorf(codes.Unimplemented, "method Observe not implemented")
 }
-func (UnimplementedObserveServiceServer) mustEmbedUnimplementedObserveServiceServer() {}
+func (UnimplementedRuleServiceServer) mustEmbedUnimplementedRuleServiceServer() {}
 
-// UnsafeObserveServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ObserveServiceServer will
+// UnsafeRuleServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to RuleServiceServer will
 // result in compilation errors.
-type UnsafeObserveServiceServer interface {
-	mustEmbedUnimplementedObserveServiceServer()
+type UnsafeRuleServiceServer interface {
+	mustEmbedUnimplementedRuleServiceServer()
 }
 
-func RegisterObserveServiceServer(s grpc.ServiceRegistrar, srv ObserveServiceServer) {
-	s.RegisterService(&ObserveService_ServiceDesc, srv)
+func RegisterRuleServiceServer(s grpc.ServiceRegistrar, srv RuleServiceServer) {
+	s.RegisterService(&RuleService_ServiceDesc, srv)
 }
 
-func _ObserveService_Observe_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(ObserveServiceServer).Observe(&observeServiceObserveServer{stream})
+func _RuleService_Observe_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(RuleServiceServer).Observe(&ruleServiceObserveServer{stream})
 }
 
-type ObserveService_ObserveServer interface {
+type RuleService_ObserveServer interface {
 	Send(*ObserveResponse) error
 	Recv() (*ObserveRequest, error)
 	grpc.ServerStream
 }
 
-type observeServiceObserveServer struct {
+type ruleServiceObserveServer struct {
 	grpc.ServerStream
 }
 
-func (x *observeServiceObserveServer) Send(m *ObserveResponse) error {
+func (x *ruleServiceObserveServer) Send(m *ObserveResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *observeServiceObserveServer) Recv() (*ObserveRequest, error) {
+func (x *ruleServiceObserveServer) Recv() (*ObserveRequest, error) {
 	m := new(ObserveRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -220,17 +204,17 @@ func (x *observeServiceObserveServer) Recv() (*ObserveRequest, error) {
 	return m, nil
 }
 
-// ObserveService_ServiceDesc is the grpc.ServiceDesc for ObserveService service.
+// RuleService_ServiceDesc is the grpc.ServiceDesc for RuleService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var ObserveService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "org.apache.dubbo.auth.v1alpha1.ObserveService",
-	HandlerType: (*ObserveServiceServer)(nil),
+var RuleService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "org.apache.dubbo.auth.v1alpha1.RuleService",
+	HandlerType: (*RuleServiceServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Observe",
-			Handler:       _ObserveService_Observe_Handler,
+			Handler:       _RuleService_Observe_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},

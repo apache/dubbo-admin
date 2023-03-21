@@ -17,20 +17,18 @@ package cert
 
 import (
 	"bytes"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/asn1"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"log"
 	"math/big"
-	"strings"
+	"net/url"
 	"time"
-
-	"dubbo.apache.org/dubbo-go/v3/common"
 
 	"github.com/apache/dubbo-admin/pkg/authority/rule"
 	"github.com/apache/dubbo-admin/pkg/logger"
@@ -58,13 +56,13 @@ func DecodeCert(cert string) *x509.Certificate {
 	return p
 }
 
-func DecodePrivateKey(cert string) *rsa.PrivateKey {
+func DecodePrivateKey(cert string) *ecdsa.PrivateKey {
 	block, _ := pem.Decode([]byte(cert))
 	if block == nil {
 		logger.Sugar().Warnf("Failed to parse private key.")
 		return nil
 	}
-	p, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+	p, err := x509.ParseECPrivateKey(block.Bytes)
 	if err != nil {
 		logger.Sugar().Warnf("Failed to parse private key. " + err.Error())
 		return nil
@@ -91,7 +89,7 @@ func GenerateAuthorityCert(rootCert *Cert, caValidity int64) *Cert {
 		BasicConstraintsValid: true,
 	}
 
-	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -119,7 +117,7 @@ func GenerateAuthorityCert(rootCert *Cert, caValidity int64) *Cert {
 }
 
 func SignServerCert(authorityCert *Cert, serverName []string, certValidity int64) *Cert {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -159,7 +157,7 @@ func SignServerCert(authorityCert *Cert, serverName []string, certValidity int64
 	}
 }
 
-func GenerateCSR() (string, *rsa.PrivateKey, error) {
+func GenerateCSR() (string, *ecdsa.PrivateKey, error) {
 	csrTemplate := x509.CertificateRequest{
 		Subject: pkix.Name{
 			CommonName:   "Dubbo",
@@ -167,7 +165,7 @@ func GenerateCSR() (string, *rsa.PrivateKey, error) {
 		},
 	}
 
-	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		log.Fatal(err)
 		return "", nil, err
@@ -241,89 +239,56 @@ func SignFromCSR(csr *x509.CertificateRequest, endpoint *rule.Endpoint, authorit
 }
 
 func AppendEndpoint(endpoint *rule.Endpoint, cert *x509.Certificate) {
-	if endpoint == nil {
-		return
-	}
-
-	err := BuildSANExtension(endpoint, cert)
+	err := buildSANExtension(endpoint, cert)
 	if err != nil {
 		logger.Sugar().Warnf("Failed to build SAN extension. " + err.Error())
 		return
 	}
 }
 
-func BuildSANExtension(endpoint *rule.Endpoint, cert *x509.Certificate) error {
-	rawValues := []asn1.RawValue{}
-
+func buildSANExtension(endpoint *rule.Endpoint, cert *x509.Certificate) error {
 	if endpoint.SpiffeID != "" {
-		rawValues = append(rawValues, asn1.RawValue{
-			Bytes: []byte(endpoint.SpiffeID),
-			Class: asn1.ClassContextSpecific,
-			Tag:   UNITag,
-		})
-	}
-
-	u, err := common.NewURL("")
-	if err != nil {
-		return err
-	}
-
-	u.Protocol = "dubbo"
-	if len(endpoint.Ips) != 0 {
-		u.Ip = endpoint.Ips[0]
-		u.AddParam("ips", strings.Join(endpoint.Ips, ","))
-	} else {
-		u.Ip = "localhost"
-	}
-	u.Port = "0"
-
-	if endpoint.KubernetesEnv != nil {
-		u.AddParam("kubernetesEnv.namespace", endpoint.KubernetesEnv.Namespace)
-		u.AddParam("kubernetesEnv.deploymentName", endpoint.KubernetesEnv.DeploymentName)
-		u.AddParam("kubernetesEnv.statefulSetName", endpoint.KubernetesEnv.StatefulSetName)
-		u.AddParam("kubernetesEnv.podName", endpoint.KubernetesEnv.PodName)
-
-		if len(endpoint.KubernetesEnv.PodLabels) != 0 {
-			labels, err := json.Marshal(endpoint.KubernetesEnv.PodLabels)
-			if err != nil {
-				return err
-			}
-			u.AddParam("kubernetesEnv.podLabels", string(labels))
-		}
-
-		if len(endpoint.KubernetesEnv.PodAnnotations) != 0 {
-			annotations, err := json.Marshal(endpoint.KubernetesEnv.PodAnnotations)
-			if err != nil {
-				return err
-			}
-			u.AddParam("kubernetesEnv.podAnnotations", string(annotations))
-		}
-	}
-
-	rawValues = append(rawValues, asn1.RawValue{
-		Bytes: []byte(u.String()),
-		Class: asn1.ClassContextSpecific,
-		Tag:   UNITag,
-	})
-
-	if len(rawValues) != 0 {
-		bs, err := asn1.Marshal(rawValues)
+		spiffeId, err := url.Parse(endpoint.SpiffeID)
 		if err != nil {
-			return fmt.Errorf("failed to marshal the raw values for SAN field (err: %s)", err)
+			return fmt.Errorf("failed to parse the spiffe id (err: %s)", err)
 		}
-
-		// SAN is Critical because the subject is empty. This is compliant with X.509 and SPIFFE standards.
-		cert.ExtraExtensions = append(cert.ExtraExtensions, pkix.Extension{Id: oidSubjectAlternativeName, Critical: true, Value: bs})
+		cert.URIs = append(cert.URIs, spiffeId)
 	}
-
 	return nil
 }
 
-func EncodePrivateKey(caPrivKey *rsa.PrivateKey) string {
+func EncodePrivateKey(caPrivKey *ecdsa.PrivateKey) string {
 	caPrivKeyPEM := new(bytes.Buffer)
-	pem.Encode(caPrivKeyPEM, &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(caPrivKey),
+	pri, err := x509.MarshalECPrivateKey(caPrivKey)
+	if err != nil {
+		logger.Sugar().Warnf("Failed to marshal EC private key. " + err.Error())
+		return ""
+	}
+	err = pem.Encode(caPrivKeyPEM, &pem.Block{
+		Type:  "EC PRIVATE KEY",
+		Bytes: pri,
 	})
+	if err != nil {
+		logger.Sugar().Warnf("Failed to encode private key. " + err.Error())
+		return ""
+	}
+	return caPrivKeyPEM.String()
+}
+
+func EncodePublicKey(pub *ecdsa.PublicKey) string {
+	caPrivKeyPEM := new(bytes.Buffer)
+	pri, err := x509.MarshalPKIXPublicKey(pub)
+	if err != nil {
+		logger.Sugar().Warnf("Failed to marshal EC public key. " + err.Error())
+		return ""
+	}
+	err = pem.Encode(caPrivKeyPEM, &pem.Block{
+		Type:  "EC PUBLIC KEY",
+		Bytes: pri,
+	})
+	if err != nil {
+		logger.Sugar().Warnf("Failed to encode public key. " + err.Error())
+		return ""
+	}
 	return caPrivKeyPEM.String()
 }

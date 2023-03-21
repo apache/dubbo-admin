@@ -19,6 +19,9 @@ import (
 	"net"
 	"testing"
 
+	"github.com/apache/dubbo-admin/pkg/authority/jwt"
+	"github.com/stretchr/testify/assert"
+
 	cert2 "github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
@@ -29,12 +32,12 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-type MockKubeClient struct {
+type fakeKubeClient struct {
 	k8s.Client
 }
 
-func (c MockKubeClient) VerifyServiceAccount(token string, authorizationType string) (*rule.Endpoint, bool) {
-	return nil, "expceted-token" == token
+func (c fakeKubeClient) VerifyServiceAccount(token string, authorizationType string) (*rule.Endpoint, bool) {
+	return &rule.Endpoint{}, "expceted-token" == token
 }
 
 type fakeAddr struct {
@@ -63,14 +66,14 @@ func TestCSRFailed(t *testing.T) {
 	storage := cert2.NewStorage(options)
 	storage.SetAuthorityCert(cert2.GenerateAuthorityCert(nil, options.CaValidity))
 
-	kubeClient := &MockKubeClient{}
-	impl := &DubboCertificateServiceServerImpl{
+	kubeClient := &fakeKubeClient{}
+	impl := &AuthorityServiceImpl{
 		Options:     options,
 		CertStorage: storage,
 		KubeClient:  kubeClient.Client,
 	}
 
-	certificate, err := impl.CreateCertificate(c, &DubboCertificateRequest{
+	certificate, err := impl.CreateIdentity(c, &IdentityRequest{
 		Csr: "",
 	})
 	if err != nil {
@@ -83,7 +86,7 @@ func TestCSRFailed(t *testing.T) {
 		return
 	}
 
-	certificate, err = impl.CreateCertificate(c, &DubboCertificateRequest{
+	certificate, err = impl.CreateIdentity(c, &IdentityRequest{
 		Csr: "123",
 	})
 
@@ -97,7 +100,7 @@ func TestCSRFailed(t *testing.T) {
 		return
 	}
 
-	certificate, err = impl.CreateCertificate(c, &DubboCertificateRequest{
+	certificate, err = impl.CreateIdentity(c, &IdentityRequest{
 		Csr: "-----BEGIN CERTIFICATE-----\n" +
 			"123\n" +
 			"-----END CERTIFICATE-----",
@@ -130,8 +133,8 @@ func TestTokenFailed(t *testing.T) {
 	storage := cert2.NewStorage(options)
 	storage.SetAuthorityCert(cert2.GenerateAuthorityCert(nil, options.CaValidity))
 
-	kubeClient := &MockKubeClient{}
-	impl := &DubboCertificateServiceServerImpl{
+	kubeClient := &fakeKubeClient{}
+	impl := &AuthorityServiceImpl{
 		Options:     options,
 		CertStorage: storage,
 		KubeClient:  kubeClient,
@@ -143,7 +146,7 @@ func TestTokenFailed(t *testing.T) {
 		return
 	}
 
-	certificate, err := impl.CreateCertificate(p, &DubboCertificateRequest{
+	certificate, err := impl.CreateIdentity(p, &IdentityRequest{
 		Csr: csr,
 	})
 	if err != nil {
@@ -160,7 +163,7 @@ func TestTokenFailed(t *testing.T) {
 	md["authorization"] = []string{"123"}
 	c := metadata.NewIncomingContext(p, md)
 
-	certificate, err = impl.CreateCertificate(c, &DubboCertificateRequest{
+	certificate, err = impl.CreateIdentity(c, &IdentityRequest{
 		Csr: csr,
 	})
 
@@ -178,7 +181,7 @@ func TestTokenFailed(t *testing.T) {
 	md["authorization"] = []string{"Bearer 123"}
 	c = metadata.NewIncomingContext(p, md)
 
-	certificate, err = impl.CreateCertificate(c, &DubboCertificateRequest{
+	certificate, err = impl.CreateIdentity(c, &IdentityRequest{
 		Csr: csr,
 	})
 
@@ -196,7 +199,7 @@ func TestTokenFailed(t *testing.T) {
 	md["authorization"] = []string{"Bearer expceted-token"}
 	c = metadata.NewIncomingContext(p, md)
 
-	certificate, err = impl.CreateCertificate(c, &DubboCertificateRequest{
+	certificate, err = impl.CreateIdentity(c, &IdentityRequest{
 		Csr: csr,
 	})
 
@@ -233,14 +236,16 @@ func TestSuccess(t *testing.T) {
 
 	options := &config.Options{
 		IsKubernetesConnected: false,
+		IsTrustAnyone:         true,
 		CertValidity:          24 * 60 * 60 * 1000,
 		CaValidity:            365 * 24 * 60 * 60 * 1000,
 	}
 	storage := cert2.NewStorage(options)
 	storage.SetAuthorityCert(cert2.GenerateAuthorityCert(nil, options.CaValidity))
+	storage.AddTrustedCert(storage.GetAuthorityCert())
 
-	kubeClient := &MockKubeClient{}
-	impl := &DubboCertificateServiceServerImpl{
+	kubeClient := &fakeKubeClient{}
+	impl := &AuthorityServiceImpl{
 		Options:     options,
 		CertStorage: storage,
 		KubeClient:  kubeClient,
@@ -252,7 +257,7 @@ func TestSuccess(t *testing.T) {
 		return
 	}
 
-	certificate, err := impl.CreateCertificate(c, &DubboCertificateRequest{
+	certificate, err := impl.CreateIdentity(c, &IdentityRequest{
 		Csr: csr,
 	})
 	if err != nil {
@@ -276,4 +281,11 @@ func TestSuccess(t *testing.T) {
 		t.Fatal("Cert is not valid")
 		return
 	}
+
+	claims, err := jwt.Verify(&storage.GetAuthorityCert().PrivateKey.PublicKey, certificate.Token)
+	assert.Nil(t, err)
+	assert.NotNil(t, claims)
+
+	assert.Equal(t, 1, len(certificate.TrustedTokenPublicKeys))
+	assert.Equal(t, cert2.EncodePublicKey(&storage.GetAuthorityCert().PrivateKey.PublicKey), certificate.TrustedTokenPublicKeys[0])
 }
