@@ -65,7 +65,7 @@ func (c fakeKubeClient) VerifyServiceAccount(token string, authorizationType str
 
 func TestKubernetes(t *testing.T) {
 	t.Parallel()
-	_, err := v1alpha1.ExactEndpoint(nil, nil, nil, nil)
+	_, err := v1alpha1.ExactEndpoint(nil, nil, nil, nil) // nolint: staticcheck
 	assert.NotNil(t, err)
 
 	_, err = v1alpha1.ExactEndpoint(context.TODO(), nil, nil, nil)

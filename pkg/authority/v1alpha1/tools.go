@@ -44,22 +44,19 @@ func ExactEndpoint(c context.Context, certStorage cert.Storage, options *config.
 		return nil, fmt.Errorf("failed to get peer from context")
 	}
 
-	var lastErr error
-
-	endpoint, err := tryFromHeader(c, certStorage, options, kubeClient)
-	if err == nil {
+	endpoint, endpointErr := tryFromHeader(c, certStorage, options, kubeClient)
+	if endpointErr == nil {
 		return endpoint, nil
 	}
-	lastErr = err
 
-	endpoint, err = tryFromConnection(p)
-	if err == nil {
+	endpoint, connectionErr := tryFromConnection(p)
+	if connectionErr == nil {
 		return endpoint, nil
 	}
-	lastErr = err
 
-	if !options.IsTrustAnyone && lastErr != nil {
-		return nil, lastErr
+	if !options.IsTrustAnyone && connectionErr != nil {
+		return nil, fmt.Errorf("Failed to get endpoint from header: %s. Failed to get endpoint from connection: %s. RemoteAddr: %s",
+			endpointErr.Error(), connectionErr.Error(), p.Addr.String())
 	}
 
 	host, _, err := net.SplitHostPort(p.Addr.String())

@@ -174,7 +174,8 @@ func matchNotPrincipals(selector *Selector, endpoint *rule.Endpoint) bool {
 		if principal == endpoint.SpiffeID {
 			return false
 		}
-		if cut, ok := strings.CutPrefix(endpoint.SpiffeID, "spiffe://"); ok && cut == principal {
+		cut, ok := strings.CutPrefix(endpoint.SpiffeID, "spiffe://")
+		if ok && cut == principal {
 			return false
 		}
 	}
@@ -186,7 +187,8 @@ func matchPrincipals(selector *Selector, endpoint *rule.Endpoint) bool {
 		if principal == endpoint.SpiffeID {
 			return true
 		}
-		if cut, ok := strings.CutPrefix(endpoint.SpiffeID, "spiffe://"); ok && cut == principal {
+		cut, ok := strings.CutPrefix(endpoint.SpiffeID, "spiffe://")
+		if ok && cut == principal {
 			return true
 		}
 	}
