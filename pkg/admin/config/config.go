@@ -38,7 +38,13 @@ import (
 const conf = "./conf/dubboadmin.yml"
 
 type Config struct {
-	Admin Admin `yaml:"admin"`
+	Admin      Admin      `yaml:"admin"`
+	Prometheus Prometheus `yaml:"prometheus"`
+}
+
+type Prometheus struct {
+	Ip   string `json:"ip"`
+	Port string `json:"port"`
 }
 
 type Admin struct {
@@ -55,6 +61,11 @@ var (
 	Group string
 )
 
+var (
+	PrometheusIp   string
+	PrometheusPort string
+)
+
 func LoadConfig() {
 	path, err := filepath.Abs(conf)
 	if err != nil {
@@ -69,6 +80,14 @@ func LoadConfig() {
 	address := config.Admin.ConfigCenter
 	registryAddress := config.Admin.Registry.Address
 	metadataReportAddress := config.Admin.MetadataReport.Address
+	PrometheusIp = config.Prometheus.Ip
+	PrometheusPort = config.Prometheus.Port
+	if PrometheusIp == "" {
+		PrometheusIp = "127.0.0.1"
+	}
+	if PrometheusPort == "" {
+		PrometheusPort = "9090"
+	}
 	if len(address) > 0 {
 		c := newAddressConfig(address)
 		factory, err := extension.GetConfigCenterFactory(c.getProtocol())
