@@ -13,21 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package services
+package model
 
-import (
-	"dubbo.apache.org/dubbo-go/v3/common"
-	"github.com/apache/dubbo-admin/pkg/admin/model"
-)
-
-type ProviderService interface {
-	FindProviderUrlByAppandService(string, string) (map[string]*common.URL, error)
-	FindServiceVersion(string, string) (string, error)
-	FindServicesByApplication(string) ([]string, error)
-	FindVersionInApplication(string) (string, error)
-
-	FindServices() ([]string, error)
-	FindApplications() ([]string, error)
-	FindService(string, string) ([]*model.Provider, error)
-	FindByService(string) ([]*model.Provider, error)
+type Base struct {
+	Application    string
+	Service        string
+	Id             string
+	ServiceVersion string
+	ServiceGroup   string
 }

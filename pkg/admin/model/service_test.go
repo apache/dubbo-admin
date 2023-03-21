@@ -13,21 +13,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package services
+package model
 
-import (
-	"dubbo.apache.org/dubbo-go/v3/common"
-	"github.com/apache/dubbo-admin/pkg/admin/model"
-)
+type ServiceTest struct {
+	Service        string
+	Method         string
+	ParameterTypes []string
+	Params         []interface{}
+}
 
-type ProviderService interface {
-	FindProviderUrlByAppandService(string, string) (map[string]*common.URL, error)
-	FindServiceVersion(string, string) (string, error)
-	FindServicesByApplication(string) ([]string, error)
-	FindVersionInApplication(string) (string, error)
+func (p *ServiceTest) GetService() string {
+	return p.Service
+}
 
-	FindServices() ([]string, error)
-	FindApplications() ([]string, error)
-	FindService(string, string) ([]*model.Provider, error)
-	FindByService(string) ([]*model.Provider, error)
+func (p *ServiceTest) GetMethod() string {
+	return p.Method
+}
+
+func (p *ServiceTest) GetParameterTypes() []string {
+	return p.ParameterTypes
+}
+
+func (p *ServiceTest) GetParams() []interface{} {
+	return p.Params
 }

@@ -13,21 +13,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package services
+package util
 
-import (
-	"dubbo.apache.org/dubbo-go/v3/common"
-	"github.com/apache/dubbo-admin/pkg/admin/model"
-)
+import "strings"
 
-type ProviderService interface {
-	FindProviderUrlByAppandService(string, string) (map[string]*common.URL, error)
-	FindServiceVersion(string, string) (string, error)
-	FindServicesByApplication(string) ([]string, error)
-	FindVersionInApplication(string) (string, error)
+func IsNotBlank(str string) bool {
+	return len(strings.TrimSpace(str)) > 0
+}
 
-	FindServices() ([]string, error)
-	FindApplications() ([]string, error)
-	FindService(string, string) ([]*model.Provider, error)
-	FindByService(string) ([]*model.Provider, error)
+func IsEmpty(str string) bool {
+	return str == "" || len(str) == 0
+}
+
+func IsNotEmpty(str string) bool {
+	return !IsEmpty(str)
 }

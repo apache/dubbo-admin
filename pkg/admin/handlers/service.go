@@ -18,7 +18,11 @@
 package handlers
 
 import (
+	"dubbo.apache.org/dubbo-go/v3/metadata/definition"
+	"encoding/json"
+	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"net/http"
+	"strings"
 
 	"dubbo.apache.org/dubbo-go/v3/metadata/identifier"
 	"github.com/apache/dubbo-admin/pkg/admin/config"
@@ -153,5 +157,56 @@ func Test(c *gin.Context) {
 }
 
 func MethodDetail(c *gin.Context) {
-	
+	service := c.Param("service")
+	application := c.Param("application")
+	method := c.Param("method")
+
+	info := util.ServiceName2Map(service)
+	identifier := &identifier.MetadataIdentifier{
+		Application: application,
+		BaseMetadataIdentifier: identifier.BaseMetadataIdentifier{
+			ServiceInterface: info[constant.InterfaceKey],
+			Version:          info[constant.VersionKey],
+			Group:            info[constant.GroupKey],
+			Side:             constant.ProviderSide,
+		},
+	}
+	metadata, _ := config.MetadataReportCenter.GetServiceDefinition(identifier)
+	var methodMetadata model.MethodMetadata
+	if metadata != "" {
+		var serviceTestUtil util.ServiceTestUtil
+		release, _ := providerService.FindVersionInApplication(application)
+		if strings.HasPrefix(release, "2.") {
+			serviceDefinition := &definition.FullServiceDefinition{}
+			json.Unmarshal([]byte(metadata), &serviceDefinition)
+			methods := serviceDefinition.Methods
+			if methods != nil {
+				for _, m := range methods {
+					if serviceTestUtil.SameMethod(m, method) {
+						methodMetadata = serviceTestUtil.GenerateMethodMeta(*serviceDefinition, m)
+						break
+					}
+				}
+			}
+
+		}
+	} else {
+		var serviceTestV3Util util.ServiceTestV3Util
+		serviceDefinition := &definition.FullServiceDefinition{}
+		json.Unmarshal([]byte(metadata), &serviceDefinition)
+		methods := serviceDefinition.Methods
+		if methods != nil {
+			for _, m := range methods {
+				if serviceTestV3Util.SameMethod(m, method) {
+					methodMetadata = serviceTestV3Util.GenerateMethodMeta(*serviceDefinition, m)
+					break
+				}
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": 1,
+		"data": methodMetadata,
+	})
 }

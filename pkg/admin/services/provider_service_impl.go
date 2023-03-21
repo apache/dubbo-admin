@@ -16,6 +16,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -29,6 +30,83 @@ import (
 )
 
 type ProviderServiceImpl struct{}
+
+func (p *ProviderServiceImpl) FindProviderUrlByAppandService(app string, service string) (map[string]*common.URL, error) {
+	var filter map[string]string
+	filter[constant.CategoryKey] = constant.ProvidersCategory
+	filter[constant.ApplicationKey] = app
+	filter[util.ServiceFilterKey] = service
+	return util.FilterFromCategory(filter)
+}
+
+func (p *ProviderServiceImpl) FindServiceVersion(serviceName string, application string) (string, error) {
+	version := "2.6"
+	result, err := p.FindProviderUrlByAppandService(application, serviceName)
+	if err != nil {
+		return version, err
+	}
+	if result != nil && len(result) > 0 {
+		for _, url := range result {
+			// 获取 value 集合中的第一个元素
+			if url.GetParam(constant.SPECIFICATION_VERSION_KEY, "") != "" {
+				version = url.GetParam(constant.SPECIFICATION_VERSION_KEY, "")
+			}
+			break
+		}
+	}
+	return version, nil
+}
+
+func (p *ProviderServiceImpl) FindServicesByApplication(application string) ([]string, error) {
+	var (
+		ret []string
+		err error
+	)
+	providerUrls, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
+	if !ok {
+		return nil, nil
+	}
+	if providerUrls == nil || application == "" || len(application) == 0 {
+		return ret, nil
+	}
+	providerUrlsMap, ok := providerUrls.(*sync.Map)
+	if !ok {
+		return nil, fmt.Errorf("providerUrls type not *sync.Map")
+	}
+	providerUrlsMap.Range(func(key, value any) bool {
+		urls, ok := value.(map[string]*common.URL)
+		if !ok {
+			err = fmt.Errorf("value type not map[string]*common.URL")
+			return false
+		}
+		for _, url := range urls {
+			app := url.GetParam(constant.ApplicationKey, "")
+			if app == application {
+				ret = append(ret, key.(string))
+				break
+			}
+		}
+		return true
+	})
+	return ret, err
+}
+
+func (p *ProviderServiceImpl) FindVersionInApplication(application string) (string, error) {
+	var instanceRegistryQueryHelper InstanceRegistryQueryHelper
+	version, err := instanceRegistryQueryHelper.FindVersionInApplication(application)
+	if err != nil {
+		return "", err
+	}
+	if util.IsNotBlank(version) {
+		return version, nil
+	}
+	services, err := p.FindServicesByApplication(application)
+	if err != nil || services == nil || len(services) == 0 {
+		errMsg := "there is no service for application: " + application
+		return "", errors.New(errMsg)
+	}
+	return p.FindServiceVersion(services[0], application)
+}
 
 func (p *ProviderServiceImpl) FindServices() ([]string, error) {
 	var services []string

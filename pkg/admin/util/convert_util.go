@@ -13,21 +13,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package services
+package util
 
-import (
-	"dubbo.apache.org/dubbo-go/v3/common"
-	"github.com/apache/dubbo-admin/pkg/admin/model"
-)
+import "github.com/apache/dubbo-admin/pkg/admin/constant"
 
-type ProviderService interface {
-	FindProviderUrlByAppandService(string, string) (map[string]*common.URL, error)
-	FindServiceVersion(string, string) (string, error)
-	FindServicesByApplication(string) ([]string, error)
-	FindVersionInApplication(string) (string, error)
+func ServiceName2Map(serviceName string) map[string]string {
+	group := GetGroup(serviceName)
+	version := GetVersion(serviceName)
+	interfaze := GetInterface(serviceName)
 
-	FindServices() ([]string, error)
-	FindApplications() ([]string, error)
-	FindService(string, string) ([]*model.Provider, error)
-	FindByService(string) ([]*model.Provider, error)
+	var ret map[string]string
+	if !IsEmpty(group) {
+		ret[constant.InterfaceKey] = interfaze
+	}
+	if !IsEmpty(version) {
+		ret[constant.VersionKey] = version
+	}
+	if !IsEmpty(group) {
+		ret[constant.GroupKey] = group
+	}
+
+	return ret
 }
+
+//func getIdFromDTO(baseDTO BaseDTO) {
+//
+//}

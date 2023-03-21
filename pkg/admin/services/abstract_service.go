@@ -16,18 +16,15 @@
 package services
 
 import (
-	"dubbo.apache.org/dubbo-go/v3/common"
-	"github.com/apache/dubbo-admin/pkg/admin/model"
+	"dubbo.apache.org/dubbo-go/v3/registry"
+	"sync"
 )
 
-type ProviderService interface {
-	FindProviderUrlByAppandService(string, string) (map[string]*common.URL, error)
-	FindServiceVersion(string, string) (string, error)
-	FindServicesByApplication(string) ([]string, error)
-	FindVersionInApplication(string) (string, error)
+type AbstractService struct {
+	Registry               registry.Registry
+	InterfaceRegistryCache sync.Map
+}
 
-	FindServices() ([]string, error)
-	FindApplications() ([]string, error)
-	FindService(string, string) ([]*model.Provider, error)
-	FindByService(string) ([]*model.Provider, error)
+func (p *AbstractService) GetInterfaceRegistryCache() sync.Map {
+	return sync.Map{}
 }
