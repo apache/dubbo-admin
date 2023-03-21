@@ -42,14 +42,14 @@ type TagRoute struct {
 }
 
 type Tag struct {
-	Name      string `json:"name" binding:"required"`
-	Match     []MatchCondition
-	Addresses []string `json:"addresses"`
+	Name      string       `json:"name" binding:"required"`
+	Match     []ParamMatch `json:"match" binding:"required"`
+	Addresses []string     `json:"addresses"`
 }
 
-type MatchCondition struct {
-	Key   string `json:"key" binding:"required"`
-	Value StringMatch
+type ParamMatch struct {
+	Key   string      `json:"key" binding:"required"`
+	Value StringMatch `json:"value" binding:"required"`
 }
 
 type StringMatch struct {
