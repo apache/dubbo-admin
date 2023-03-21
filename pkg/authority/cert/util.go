@@ -275,8 +275,14 @@ func EncodePrivateKey(caPrivKey *ecdsa.PrivateKey) string {
 	return caPrivKeyPEM.String()
 }
 
-func EncodePublicKey(pub *ecdsa.PublicKey) string {
+func EncodePublicKey(pub *ecdsa.PublicKey) (res string) {
 	caPrivKeyPEM := new(bytes.Buffer)
+	defer func() {
+		if err := recover(); err != nil {
+			logger.Sugar().Warnf("Failed to marshal EC public key. %v", err)
+			res = ""
+		}
+	}()
 	pri, err := x509.MarshalPKIXPublicKey(pub)
 	if err != nil {
 		logger.Sugar().Warnf("Failed to marshal EC public key. " + err.Error())

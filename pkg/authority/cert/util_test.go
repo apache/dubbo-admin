@@ -185,16 +185,16 @@ func TestDecodePublicKey(t *testing.T) {
 	t.Parallel()
 
 	key := DecodePrivateKey("-----BEGIN EC PRIVATE KEY-----\n" +
-		"MHcCAQEEIMS+Yc+9GMD0v7a2yz8EwEoF2vsM7d54aeV5jKjHGFzioAoGCCqGSM49\n" +
-		"AwEHoUQDQgAEe6MTHP7f5BKtVMEswm59WTZXyDD7cAbPdeBDtljJRIl6yAYgBtFN\n" +
-		"9RT54nIlNiPnH3P8DKyuvSE3jmsG3IHhcg==\n" +
-		"-----END EC PRIVATE KEY-----\n")
+		"MHcCAQEEIIyys+L2OLSPvIjqbSJXkjbl6QtFysqhuHWsHwmfpADloAoGCCqGSM49\n" +
+		"AwEHoUQDQgAE4/2iaB+J+yBSdwtbKtyymbOiEXwNPB3v8EYRJBahICOYZFbWz4MK\n" +
+		"3eV88hF7Q91yec8SpAyG2HXVUTKBCh53wg==\n" +
+		"-----END EC PRIVATE KEY-----")
 
 	assert.NotNil(t, key)
 
 	assert.Equal(t, "-----BEGIN EC PUBLIC KEY-----\n"+
-		"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEe6MTHP7f5BKtVMEswm59WTZXyDD7\n"+
-		"cAbPdeBDtljJRIl6yAYgBtFN9RT54nIlNiPnH3P8DKyuvSE3jmsG3IHhcg==\n"+
+		"MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE4/2iaB+J+yBSdwtbKtyymbOiEXwN\n"+
+		"PB3v8EYRJBahICOYZFbWz4MK3eV88hF7Q91yec8SpAyG2HXVUTKBCh53wg==\n"+
 		"-----END EC PUBLIC KEY-----\n", EncodePublicKey(&key.PublicKey))
 
 	assert.Equal(t, "", EncodePublicKey(&ecdsa.PublicKey{}))
