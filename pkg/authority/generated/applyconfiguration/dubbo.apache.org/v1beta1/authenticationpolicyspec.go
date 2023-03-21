@@ -20,10 +20,9 @@ package v1beta1
 // AuthenticationPolicySpecApplyConfiguration represents an declarative configuration of the AuthenticationPolicySpec type for use
 // with apply.
 type AuthenticationPolicySpecApplyConfiguration struct {
-	Action    *string                                      `json:"action,omitempty"`
-	Rules     []AuthenticationPolicyRuleApplyConfiguration `json:"rules,omitempty"`
-	Order     *int                                         `json:"order,omitempty"`
-	MatchType *string                                      `json:"matchType,omitempty"`
+	Action    *string                                           `json:"action,omitempty"`
+	Selector  []AuthenticationPolicySelectorApplyConfiguration  `json:"selector,omitempty"`
+	PortLevel []AuthenticationPolicyPortLevelApplyConfiguration `json:"PortLevel,omitempty"`
 }
 
 // AuthenticationPolicySpecApplyConfiguration constructs an declarative configuration of the AuthenticationPolicySpec type for use with
@@ -40,31 +39,28 @@ func (b *AuthenticationPolicySpecApplyConfiguration) WithAction(value string) *A
 	return b
 }
 
-// WithRules adds the given value to the Rules field in the declarative configuration
+// WithSelector adds the given value to the Selector field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
-// If called multiple times, values provided by each call will be appended to the Rules field.
-func (b *AuthenticationPolicySpecApplyConfiguration) WithRules(values ...*AuthenticationPolicyRuleApplyConfiguration) *AuthenticationPolicySpecApplyConfiguration {
+// If called multiple times, values provided by each call will be appended to the Selector field.
+func (b *AuthenticationPolicySpecApplyConfiguration) WithSelector(values ...*AuthenticationPolicySelectorApplyConfiguration) *AuthenticationPolicySpecApplyConfiguration {
 	for i := range values {
 		if values[i] == nil {
-			panic("nil value passed to WithRules")
+			panic("nil value passed to WithSelector")
 		}
-		b.Rules = append(b.Rules, *values[i])
+		b.Selector = append(b.Selector, *values[i])
 	}
 	return b
 }
 
-// WithOrder sets the Order field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Order field is set to the value of the last call.
-func (b *AuthenticationPolicySpecApplyConfiguration) WithOrder(value int) *AuthenticationPolicySpecApplyConfiguration {
-	b.Order = &value
-	return b
-}
-
-// WithMatchType sets the MatchType field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the MatchType field is set to the value of the last call.
-func (b *AuthenticationPolicySpecApplyConfiguration) WithMatchType(value string) *AuthenticationPolicySpecApplyConfiguration {
-	b.MatchType = &value
+// WithPortLevel adds the given value to the PortLevel field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the PortLevel field.
+func (b *AuthenticationPolicySpecApplyConfiguration) WithPortLevel(values ...*AuthenticationPolicyPortLevelApplyConfiguration) *AuthenticationPolicySpecApplyConfiguration {
+	for i := range values {
+		if values[i] == nil {
+			panic("nil value passed to WithPortLevel")
+		}
+		b.PortLevel = append(b.PortLevel, *values[i])
+	}
 	return b
 }

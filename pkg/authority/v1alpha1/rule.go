@@ -18,6 +18,8 @@ package v1alpha1
 import (
 	"fmt"
 
+	"github.com/apache/dubbo-admin/pkg/authority/cert"
+
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
 	"github.com/apache/dubbo-admin/pkg/authority/rule/connection"
@@ -25,15 +27,16 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-type ObserveServiceServerImpl struct {
-	UnimplementedObserveServiceServer
+type RuleServiceImpl struct {
+	UnimplementedRuleServiceServer
 
-	Options    *config.Options
-	KubeClient k8s.Client
-	Storage    *connection.Storage
+	Options     *config.Options
+	CertStorage cert.Storage
+	KubeClient  k8s.Client
+	Storage     *connection.Storage
 }
 
-func (s *ObserveServiceServerImpl) Observe(stream ObserveService_ObserveServer) error {
+func (s *RuleServiceImpl) Observe(stream RuleService_ObserveServer) error {
 	c := &GrpcEndpointConnection{
 		stream:   stream,
 		stopChan: make(chan int, 1),
@@ -46,7 +49,7 @@ func (s *ObserveServiceServerImpl) Observe(stream ObserveService_ObserveServer) 
 		return fmt.Errorf("failed to get peer from context")
 	}
 
-	endpoint, err := exactEndpoint(stream.Context(), s.Options, s.KubeClient)
+	endpoint, err := ExactEndpoint(stream.Context(), s.CertStorage, s.Options, s.KubeClient)
 	if err != nil {
 		logger.Sugar().Errorf("failed to get endpoint from context: %v. RemoteAddr: %s", err, p.Addr)
 
@@ -63,7 +66,7 @@ func (s *ObserveServiceServerImpl) Observe(stream ObserveService_ObserveServer) 
 type GrpcEndpointConnection struct {
 	connection.EndpointConnection
 
-	stream   ObserveService_ObserveServer
+	stream   RuleService_ObserveServer
 	stopChan chan int
 }
 

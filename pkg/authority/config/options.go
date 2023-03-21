@@ -35,7 +35,9 @@ type Options struct {
 
 	InPodEnv              bool
 	IsKubernetesConnected bool
+	IsTrustAnyone         bool
 
+	// TODO remove EnableOIDCCheck
 	EnableOIDCCheck      bool
 	ResourcelockIdentity string
 }

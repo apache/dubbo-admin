@@ -13,38 +13,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package rule_test
 
 import (
-	"reflect"
-	"time"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/apache/dubbo-admin/pkg/authority/rule"
 )
 
-type Entity struct {
-	Id              int64     `json:"id"`
-	Ids             []int64   `json:"ids"`
-	Hash            string    `json:"hash"`
-	Created         time.Time `json:"created"`
-	Modified        time.Time `json:"modified"`
-	Now             time.Time `json:"now"`
-	Operator        string    `json:"operator"`
-	OperatorAddress string    `json:"operatorAddress"`
-	Miss            bool      `json:"miss"`
-}
+func TestToString(t *testing.T) {
+	t.Parallel()
 
-func NewEntity(id int64) Entity {
-	return Entity{
-		Id: id,
-	}
-}
+	endpoint := &rule.Endpoint{}
 
-func (e *Entity) SetOperator(operator string) {
-	if len(operator) > 200 {
-		operator = operator[:200]
-	}
-	e.Operator = operator
-}
+	assert.Equal(t, "{}", endpoint.ToString())
 
-func (e *Entity) Equals(other *Entity) bool {
-	return reflect.DeepEqual(e, other)
+	endpoint.SpiffeID = "spiffe://example.com/ns/default/sa/default"
+
+	assert.Equal(t, "{\"spiffeID\":\"spiffe://example.com/ns/default/sa/default\"}", endpoint.ToString())
 }
