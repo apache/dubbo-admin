@@ -46,35 +46,16 @@ type AuthenticationPolicySpec struct {
 	// +required
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Type=string
-	// +kubebuilder:validation:Enum=NONE;CLIENT_AUTH;SERVER_AUTH
+	// +kubebuilder:validation:Enum=NONE;DISABLED;PERMISSIVE;STRICT
 	Action string `json:"action"`
 	// +optional
-	Rules []AuthenticationPolicyRule `json:"rules,omitempty"`
-	// The order of the rule. The rule with the highest precedence is matched first.
+	Selector []AuthenticationPolicySelector `json:"selector,omitempty"`
+
 	// +optional
-	// +kubebuilder:validation:Type=integer
-	// +kubebuilder:validation:Minimum=-2147483648
-	// +kubebuilder:validation:Maximum=2147483647
-	// +kubebuilder:default=0
-	Order int `json:"order,omitempty"`
-	// The match type of the rules.
-	// +optional
-	// +kubebuilder:validation:Type=string
-	// +kubebuilder:validation:Enum=anyMatch;allMatch
-	// +kubebuilder:default=anyMatch
-	MatchType string `json:"matchType,omitempty"`
+	PortLevel []AuthenticationPolicyPortLevel `json:"PortLevel,omitempty"`
 }
 
-type AuthenticationPolicyRule struct {
-	// The source of the traffic to be matched.
-	// +optional
-	From AuthenticationPolicySource `json:"from,omitempty"`
-	// The destination of the traffic to be matched.
-	// +optional
-	To AuthenticationPolicyTarget `json:"to,omitempty"`
-}
-
-type AuthenticationPolicySource struct {
+type AuthenticationPolicySelector struct {
 	// The namespaces to match of the source workload.
 	// +optional
 	Namespaces []string `json:"namespaces,omitempty"`
@@ -101,25 +82,20 @@ type AuthenticationPolicySource struct {
 	NotExtends []AuthenticationPolicyExtend `json:"notExtends,omitempty"`
 }
 
-type AuthenticationPolicyTarget struct {
-	// The IP addresses to match of the destination workload.
-	// +optional
-	IpBlocks []string `json:"ipBlocks,omitempty"`
-	// The IP addresses not to match of the destination workload.
-	// +optional
-	NotIpBlocks []string `json:"notIpBlocks,omitempty"`
-	// The identities(from spiffe) to match of the destination workload.
-	// +optional
-	Principals []string `json:"principals,omitempty"`
-	// The identities(from spiffe) not to match of the destination workload.
-	// +optional
-	NotPrincipals []string `json:"notPrincipals,omitempty"`
-	// The extended identities(from Dubbo Auth) to match of the destination workload.
-	// +optional
-	Extends []AuthenticationPolicyExtend `json:"extends,omitempty"`
-	// The extended identities(from Dubbo Auth) not to match of the destination workload.
-	// +optional
-	NotExtends []AuthenticationPolicyExtend `json:"notExtends,omitempty"`
+type AuthenticationPolicyPortLevel struct {
+	// The key of the extended identity.
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Type=number
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=65535
+	// +kubebuilder:default=0
+	Port int `json:"port,omitempty"`
+	// +required
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Enum=NONE;DISABLED;PERMISSIVE;STRICT
+	Action string `json:"action,omitempty"`
 }
 
 type AuthenticationPolicyExtend struct {

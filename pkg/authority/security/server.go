@@ -51,8 +51,8 @@ type Server struct {
 
 	KubeClient k8s.Client
 
-	CertificateServer *v1alpha1.DubboCertificateServiceServerImpl
-	ObserveServer     *v1alpha1.ObserveServiceServerImpl
+	CertificateServer *v1alpha1.AuthorityServiceImpl
+	ObserveServer     *v1alpha1.RuleServiceImpl
 	PlainServer       *grpc.Server
 	SecureServer      *grpc.Server
 
@@ -122,13 +122,14 @@ func (s *Server) Init() {
 }
 
 func (s *Server) registerObserveService() {
-	ruleImpl := &v1alpha1.ObserveServiceServerImpl{
-		Storage:    s.ConnectionStorage,
-		KubeClient: s.KubeClient,
-		Options:    s.Options,
+	ruleImpl := &v1alpha1.RuleServiceImpl{
+		Storage:     s.ConnectionStorage,
+		KubeClient:  s.KubeClient,
+		Options:     s.Options,
+		CertStorage: s.CertStorage,
 	}
-	v1alpha1.RegisterObserveServiceServer(s.SecureServer, ruleImpl)
-	v1alpha1.RegisterObserveServiceServer(s.PlainServer, ruleImpl)
+	v1alpha1.RegisterRuleServiceServer(s.SecureServer, ruleImpl)
+	v1alpha1.RegisterRuleServiceServer(s.PlainServer, ruleImpl)
 }
 
 func (s *Server) initRuleHandler() {
@@ -138,14 +139,14 @@ func (s *Server) initRuleHandler() {
 }
 
 func (s *Server) registerCertificateService() {
-	impl := &v1alpha1.DubboCertificateServiceServerImpl{
+	impl := &v1alpha1.AuthorityServiceImpl{
 		Options:     s.Options,
 		CertStorage: s.CertStorage,
 		KubeClient:  s.KubeClient,
 	}
 
-	v1alpha1.RegisterDubboCertificateServiceServer(s.PlainServer, impl)
-	v1alpha1.RegisterDubboCertificateServiceServer(s.SecureServer, impl)
+	v1alpha1.RegisterAuthorityServiceServer(s.PlainServer, impl)
+	v1alpha1.RegisterAuthorityServiceServer(s.SecureServer, impl)
 }
 
 func (s *Server) LoadRootCert() {

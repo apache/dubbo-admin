@@ -19,6 +19,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/apache/dubbo-admin/pkg/authority/jwt"
+
 	"github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
@@ -26,19 +28,19 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-type DubboCertificateServiceServerImpl struct {
-	UnimplementedDubboCertificateServiceServer
+type AuthorityServiceImpl struct {
+	UnimplementedAuthorityServiceServer
 	Options     *config.Options
 	CertStorage cert.Storage
 	KubeClient  k8s.Client
 }
 
-func (s *DubboCertificateServiceServerImpl) CreateCertificate(
+func (s *AuthorityServiceImpl) CreateIdentity(
 	c context.Context,
-	req *DubboCertificateRequest,
-) (*DubboCertificateResponse, error) {
+	req *IdentityRequest,
+) (*IdentityResponse, error) {
 	if req.Csr == "" {
-		return &DubboCertificateResponse{
+		return &IdentityResponse{
 			Success: false,
 			Message: "CSR is empty.",
 		}, nil
@@ -46,18 +48,18 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(
 
 	csr, err := cert.LoadCSR(req.Csr)
 	if csr == nil || err != nil {
-		return &DubboCertificateResponse{
+		return &IdentityResponse{
 			Success: false,
 			Message: "Decode csr failed.",
 		}, nil
 	}
 
 	p, _ := peer.FromContext(c)
-	endpoint, err := exactEndpoint(c, s.Options, s.KubeClient)
+	endpoint, err := ExactEndpoint(c, s.CertStorage, s.Options, s.KubeClient)
 	if err != nil {
 		logger.Sugar().Warnf("Failed to exact endpoint from context: %v. RemoteAddr: %s", err, p.Addr.String())
 
-		return &DubboCertificateResponse{
+		return &IdentityResponse{
 			Success: false,
 			Message: err.Error(),
 		}, nil
@@ -67,7 +69,7 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(
 	if err != nil {
 		logger.Sugar().Warnf("Failed to sign certificate from csr: %v. RemoteAddr: %s", err, p.Addr.String())
 
-		return &DubboCertificateResponse{
+		return &IdentityResponse{
 			Success: false,
 			Message: err.Error(),
 		}, nil
@@ -75,11 +77,29 @@ func (s *DubboCertificateServiceServerImpl) CreateCertificate(
 
 	logger.Sugar().Infof("Success to sign certificate from csr. RemoteAddr: %s", p.Addr.String())
 
-	return &DubboCertificateResponse{
-		Success:    true,
-		Message:    "OK",
-		CertPem:    certPem,
-		TrustCerts: []string{s.CertStorage.GetAuthorityCert().CertPem},
-		ExpireTime: time.Now().UnixMilli() + (s.Options.CertValidity / 2),
+	token, err := jwt.NewClaims(endpoint.SpiffeID, endpoint.ToString(), s.Options.CertValidity).Sign(s.CertStorage.GetAuthorityCert().PrivateKey)
+	if err != nil {
+		logger.Sugar().Warnf("Failed to sign jwt token: %v. RemoteAddr: %s", err, p.Addr.String())
+
+		return &IdentityResponse{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
+	var trustedCerts []string
+	var trustedTokenPublicKeys []string
+	for _, c := range s.CertStorage.GetTrustedCerts() {
+		trustedCerts = append(trustedCerts, c.CertPem)
+		trustedTokenPublicKeys = append(trustedTokenPublicKeys, cert.EncodePublicKey(&c.PrivateKey.PublicKey))
+	}
+	return &IdentityResponse{
+		Success:                true,
+		Message:                "OK",
+		CertPem:                certPem,
+		TrustCerts:             trustedCerts,
+		Token:                  token,
+		TrustedTokenPublicKeys: trustedTokenPublicKeys,
+		ExpireTime:             time.Now().UnixMilli() + (s.Options.CertValidity / 2),
 	}, nil
 }
