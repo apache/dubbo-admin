@@ -32,7 +32,7 @@ type TagRoutesServiceImpl struct {
 }
 
 func (t *TagRoutesServiceImpl) CreateTagRoute(tagRoute model.TagRouteDto) error {
-	id := getIdFromDto(tagRoute)
+	id := util.BuildServiceKey(tagRoute.Service, tagRoute.ConfigVersion, tagRoute.ServiceGroup)
 	path := getTagRoutePath(id, constant.TagRoute)
 	store := convertTagRouteToStore(tagRoute)
 	obj, _ := util.DumpObject(store)
@@ -40,7 +40,7 @@ func (t *TagRoutesServiceImpl) CreateTagRoute(tagRoute model.TagRouteDto) error 
 }
 
 func (t *TagRoutesServiceImpl) UpdateTagRoute(tagRoute model.TagRouteDto) error {
-	id := getIdFromDto(tagRoute)
+	id := util.BuildServiceKey(tagRoute.Service, tagRoute.ConfigVersion, tagRoute.ServiceGroup)
 	path := getTagRoutePath(id, constant.TagRoute)
 	cfg, _ := t.GovernanceConfig.GetConfig(path)
 	if cfg == "" {
@@ -122,12 +122,4 @@ func convertTagRouteToDto(tagRoute model.TagRoute) model.TagRouteDto {
 	dto.Runtime = tagRoute.Runtime
 	dto.Tags = tagRoute.Tags
 	return dto
-}
-
-func getIdFromDto(baseDto model.TagRouteDto) string {
-	if baseDto.Application != "" {
-		return baseDto.Application
-	}
-	// id format: "${class}:${version}:${group}"
-	return baseDto.Service + constant.Colon + baseDto.ConfigVersion + constant.Colon + baseDto.ServiceGroup
 }
