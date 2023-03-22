@@ -24,6 +24,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/apache/dubbo-admin/pkg/authority/election"
+
 	cert2 "github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
@@ -58,7 +60,7 @@ type Server struct {
 
 	WebhookServer *webhook.Webhook
 	JavaInjector  *patch.JavaSdk
-	Elec          cert2.LeaderElection
+	Elec          election.LeaderElection
 }
 
 func NewServer(options *config.Options) *Server {
@@ -84,7 +86,7 @@ func (s *Server) Init() {
 		s.CertStorage = cert2.NewStorage(s.Options)
 	}
 	if s.Elec == nil {
-		s.Elec = cert2.NewleaderElection()
+		s.Elec = election.NewleaderElection()
 	}
 	go s.CertStorage.RefreshServerCert()
 

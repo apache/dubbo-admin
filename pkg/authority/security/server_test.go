@@ -21,6 +21,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/apache/dubbo-admin/pkg/authority/election"
+
 	"k8s.io/client-go/kubernetes"
 
 	cert2 "github.com/apache/dubbo-admin/pkg/authority/cert"
@@ -101,7 +103,7 @@ func (s *mockStorage) GetStopChan() chan os.Signal {
 }
 
 type mockLeaderElection struct {
-	cert2.LeaderElection
+	election.LeaderElection
 }
 
 func (s *mockLeaderElection) Election(storage cert2.Storage, options *config.Options, kubeClient *kubernetes.Clientset) error {

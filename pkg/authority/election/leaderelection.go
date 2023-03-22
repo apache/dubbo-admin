@@ -12,12 +12,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package cert
+package election
 
 import (
 	"context"
 	"time"
 
+	"github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -26,7 +27,7 @@ import (
 )
 
 type LeaderElection interface {
-	Election(storage Storage, options *config.Options, kubeClient *kubernetes.Clientset) error
+	Election(storage cert.Storage, options *config.Options, kubeClient *kubernetes.Clientset) error
 }
 
 type leaderElectionImpl struct{}
@@ -35,7 +36,7 @@ func NewleaderElection() LeaderElection {
 	return &leaderElectionImpl{}
 }
 
-func (c *leaderElectionImpl) Election(storage Storage, options *config.Options, kubeClient *kubernetes.Clientset) error {
+func (c *leaderElectionImpl) Election(storage cert.Storage, options *config.Options, kubeClient *kubernetes.Clientset) error {
 	identity := options.ResourcelockIdentity
 	rlConfig := resourcelock.ResourceLockConfig{
 		Identity: identity,
@@ -58,7 +59,7 @@ func (c *leaderElectionImpl) Election(storage Storage, options *config.Options, 
 			// leader
 			OnStartedLeading: func(ctx context.Context) {
 				// lock if multi server，refresh signed cert
-				storage.SetAuthorityCert(GenerateAuthorityCert(storage.GetRootCert(), options.CaValidity))
+				storage.SetAuthorityCert(cert.GenerateAuthorityCert(storage.GetRootCert(), options.CaValidity))
 			},
 			// not leader
 			OnStoppedLeading: func() {
