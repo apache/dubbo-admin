@@ -34,7 +34,7 @@ import (
 
 var testProvider *model.Provider
 
-func init() {
+func initCacheMock() {
 	service := &sync.Map{}
 	queryParams := url.Values{
 		constant.ApplicationKey: {"test"},
@@ -52,6 +52,8 @@ func init() {
 }
 
 func TestProviderServiceImpl_FindServices(t *testing.T) {
+	initCacheMock()
+	defer cache.InterfaceRegistryCache.Delete(constant.ProvidersCategory)
 	tests := []struct {
 		name    string
 		want    []string
@@ -79,6 +81,8 @@ func TestProviderServiceImpl_FindServices(t *testing.T) {
 }
 
 func TestProviderServiceImpl_FindApplications(t *testing.T) {
+	initCacheMock()
+	defer cache.InterfaceRegistryCache.Delete(constant.ProvidersCategory)
 	tests := []struct {
 		name    string
 		want    []string
@@ -106,6 +110,8 @@ func TestProviderServiceImpl_FindApplications(t *testing.T) {
 }
 
 func TestProviderServiceImpl_findAddresses(t *testing.T) {
+	initCacheMock()
+	defer cache.InterfaceRegistryCache.Delete(constant.ProvidersCategory)
 	tests := []struct {
 		name    string
 		want    []string
@@ -133,6 +139,8 @@ func TestProviderServiceImpl_findAddresses(t *testing.T) {
 }
 
 func TestProviderServiceImpl_FindByService(t *testing.T) {
+	initCacheMock()
+	defer cache.InterfaceRegistryCache.Delete(constant.ProvidersCategory)
 	type args struct {
 		providerService string
 	}
@@ -167,6 +175,8 @@ func TestProviderServiceImpl_FindByService(t *testing.T) {
 }
 
 func TestProviderServiceImpl_findByAddress(t *testing.T) {
+	initCacheMock()
+	defer cache.InterfaceRegistryCache.Delete(constant.ProvidersCategory)
 	type args struct {
 		providerAddress string
 	}
@@ -201,6 +211,8 @@ func TestProviderServiceImpl_findByAddress(t *testing.T) {
 }
 
 func TestProviderServiceImpl_findByApplication(t *testing.T) {
+	initCacheMock()
+	defer cache.InterfaceRegistryCache.Delete(constant.ProvidersCategory)
 	type args struct {
 		providerApplication string
 	}
