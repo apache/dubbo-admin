@@ -25,7 +25,17 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
 
-func Resourcelock(storage Storage, options *config.Options, kubeClient *kubernetes.Clientset) error {
+type LeaderElection interface {
+	Election(storage Storage, options *config.Options, kubeClient *kubernetes.Clientset) error
+}
+
+type leaderElectionImpl struct{}
+
+func NewleaderElection() LeaderElection {
+	return &leaderElectionImpl{}
+}
+
+func (c *leaderElectionImpl) Election(storage Storage, options *config.Options, kubeClient *kubernetes.Clientset) error {
 	identity := options.ResourcelockIdentity
 	rlConfig := resourcelock.ResourceLockConfig{
 		Identity: identity,

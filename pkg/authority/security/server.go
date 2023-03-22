@@ -58,6 +58,7 @@ type Server struct {
 
 	WebhookServer *webhook.Webhook
 	JavaInjector  *patch.JavaSdk
+	Elec          cert2.LeaderElection
 }
 
 func NewServer(options *config.Options) *Server {
@@ -81,6 +82,9 @@ func (s *Server) Init() {
 
 	if s.CertStorage == nil {
 		s.CertStorage = cert2.NewStorage(s.Options)
+	}
+	if s.Elec == nil {
+		s.Elec = cert2.NewleaderElection()
 	}
 	go s.CertStorage.RefreshServerCert()
 
@@ -170,21 +174,22 @@ func (s *Server) ScheduleRefreshAuthorityCert() {
 	interval := math.Min(math.Floor(float64(s.Options.CaValidity)/100), 10_000)
 	for {
 		time.Sleep(time.Duration(interval) * time.Millisecond)
-		if s.CertStorage.GetAuthorityCert().NeedRefresh() {
-			logger.Sugar().Infof("Authority cert is invalid, refresh it.")
-			// TODO lock if multi server
-			// TODO refresh signed cert
-			cert2.Resourcelock(s.CertStorage, s.Options, s.KubeClient.GetKubClient())
-			if s.Options.IsKubernetesConnected {
-				s.KubeClient.UpdateAuthorityCert(s.CertStorage.GetAuthorityCert().CertPem, cert2.EncodePrivateKey(s.CertStorage.GetAuthorityCert().PrivateKey), s.Options.Namespace)
-				s.KubeClient.UpdateWebhookConfig(s.Options, s.CertStorage)
-				if s.KubeClient.UpdateAuthorityPublicKey(s.CertStorage.GetAuthorityCert().CertPem) {
-					logger.Sugar().Infof("Write ca to config maps success.")
-				} else {
-					logger.Sugar().Warnf("Write ca to config maps failed.")
-				}
+		// if s.CertStorage.GetAuthorityCert().NeedRefresh() {
+		logger.Sugar().Infof("Authority cert is invalid, refresh it.")
+		// TODO lock if multi server
+		// TODO refresh signed cert
+
+		s.Elec.Election(s.CertStorage, s.Options, s.KubeClient.GetKubClient())
+		if s.Options.IsKubernetesConnected {
+			s.KubeClient.UpdateAuthorityCert(s.CertStorage.GetAuthorityCert().CertPem, cert2.EncodePrivateKey(s.CertStorage.GetAuthorityCert().PrivateKey), s.Options.Namespace)
+			s.KubeClient.UpdateWebhookConfig(s.Options, s.CertStorage)
+			if s.KubeClient.UpdateAuthorityPublicKey(s.CertStorage.GetAuthorityCert().CertPem) {
+				logger.Sugar().Infof("Write ca to config maps success.")
+			} else {
+				logger.Sugar().Warnf("Write ca to config maps failed.")
 			}
 		}
+		//}
 
 		select {
 		case <-s.StopChan:
