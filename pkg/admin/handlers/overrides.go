@@ -88,7 +88,11 @@ func SearchOverride(c *gin.Context) {
 	result := make([]*model.DynamicConfig, 0)
 	var err error
 	if service != "" {
-		id := util.BuildServiceKey(service, serviceGroup, serviceVersion)
+		id := util.BuildServiceKey(model.Base{
+			Service:        service,
+			ServiceGroup:   serviceGroup,
+			ServiceVersion: serviceVersion,
+		})
 		override, err = overrideServiceImpl.FindOverride(id)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

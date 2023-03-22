@@ -31,7 +31,7 @@ type OverrideServiceImpl struct {
 }
 
 func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) error {
-	key := util.BuildServiceKey(dynamicConfig.Service, dynamicConfig.ServiceVersion, dynamicConfig.ServiceGroup)
+	key := util.BuildServiceKey(dynamicConfig.Base)
 	path := getPath(key)
 	existConfig, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
@@ -95,7 +95,7 @@ func getPath(key string) string {
 }
 
 func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error {
-	key := util.BuildServiceKey(update.Service, update.ServiceGroup, update.ServiceVersion)
+	key := util.BuildServiceKey(update.Base)
 	path := getPath(key)
 	existConfig, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
