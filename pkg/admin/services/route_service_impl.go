@@ -96,10 +96,7 @@ func (t *RouteServiceImpl) DisableTagRoute(id string) error {
 func (t *RouteServiceImpl) CreateConditionRoute(conditionRouteDto model.ConditionRouteDto) error {
 	id := util.BuildServiceKey(conditionRouteDto.Base)
 	path := getRoutePath(id, constant.ConditionRoute)
-	existConfig, err := t.GovernanceConfig.GetConfig(path)
-	if err != nil {
-		return err
-	}
+	existConfig, _ := t.GovernanceConfig.GetConfig(path)
 
 	var existRule model.ConditionRoute
 	if existConfig != "" {

@@ -20,12 +20,13 @@ package model
 type ConditionRouteDto struct {
 	Base
 
-	Priority int  `json:"priority"`
-	Enabled  bool `json:"enabled" binding:"required"`
-	Force    bool `json:"force"`
-	Runtime  bool `json:"runtime"`
-
 	Conditions []string `json:"conditions" binding:"required"`
+
+	Priority      int    `json:"priority"`
+	Enabled       bool   `json:"enabled" binding:"required"`
+	Force         bool   `json:"force"`
+	Runtime       bool   `json:"runtime"`
+	ConfigVersion string `json:"configVersion" binding:"required"`
 }
 
 type ConditionRoute struct {

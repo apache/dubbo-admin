@@ -39,6 +39,10 @@ func CreateConditionRule(c *gin.Context) {
 		})
 		return
 	}
+	c.JSON(http.StatusOK, gin.H{
+		"code": 1,
+		"data": "success",
+	})
 }
 
 func UpdateConditionRule(c *gin.Context) {
@@ -46,6 +50,15 @@ func UpdateConditionRule(c *gin.Context) {
 	err := c.BindJSON(&routeDto)
 	if err != nil {
 		panic(err)
+	}
+	id := c.Param("id")
+
+	_, err = routeService.FindConditionRouteById(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
 	}
 
 	err = routeService.UpdateConditionRoute(routeDto)
@@ -56,6 +69,10 @@ func UpdateConditionRule(c *gin.Context) {
 		})
 		return
 	}
+	c.JSON(http.StatusOK, gin.H{
+		"code": 1,
+		"data": "success",
+	})
 }
 
 func SearchConditionRoutes(c *gin.Context) {

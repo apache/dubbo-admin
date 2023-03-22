@@ -58,13 +58,13 @@ func InitRouter() *gin.Engine {
 
 	conditionRoute := router.Group("/api/:env/rules/route/condition")
 	{
-		conditionRoute.POST("/", handlers.CreateRule)
-		conditionRoute.PUT("/:id", handlers.UpdateRule)
-		conditionRoute.GET("/", handlers.SearchRoutes)
-		conditionRoute.GET("/:id", handlers.DetailRoute)
-		conditionRoute.DELETE("/:id", handlers.DeleteRoute)
-		conditionRoute.PUT("/enable/:id", handlers.EnableRoute)
-		conditionRoute.PUT("/disable/:id", handlers.DisableRoute)
+		conditionRoute.POST("/", handlers.CreateConditionRule)
+		conditionRoute.PUT("/:id", handlers.UpdateConditionRule)
+		conditionRoute.GET("/", handlers.SearchConditionRoutes)
+		conditionRoute.GET("/:id", handlers.DetailConditionRoute)
+		conditionRoute.DELETE("/:id", handlers.DeleteConditionRoute)
+		conditionRoute.PUT("/enable/:id", handlers.EnableConditionRoute)
+		conditionRoute.PUT("/disable/:id", handlers.DisableConditionRoute)
 	}
 
 	return router
