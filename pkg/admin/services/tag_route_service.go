@@ -15,17 +15,15 @@
  * limitations under the License.
  */
 
-package util
+package services
 
-import (
-	"github.com/apache/dubbo-admin/pkg/admin/constant"
-	"github.com/apache/dubbo-admin/pkg/admin/model"
-)
+import "github.com/apache/dubbo-admin/pkg/admin/model"
 
-func BuildServiceKey(baseDto model.Base) string {
-	if baseDto.Application != "" {
-		return baseDto.Application
-	}
-	// id format: "${class}:${version}:${group}"
-	return baseDto.Service + constant.Colon + baseDto.ServiceVersion + constant.Colon + baseDto.ServiceGroup
+type TagRoutesService interface {
+	CreateTagRoute(model.TagRouteDto) error
+	UpdateTagRoute(model.TagRouteDto) error
+	DeleteTagRoute(string) error
+	FindTagRoute(string) (model.TagRouteDto, error)
+	EnableTagRoute(string) error
+	DisableTagRoute(string) error
 }

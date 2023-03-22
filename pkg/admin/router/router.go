@@ -45,5 +45,16 @@ func InitRouter() *gin.Engine {
 		override.PUT("/:id", handlers.UpdateOverride)
 	}
 
+	tagRoute := router.Group("/api/:env/rules/route/tag")
+	{
+		tagRoute.POST("/", handlers.CreateRule)
+		tagRoute.PUT("/:id", handlers.UpdateRule)
+		tagRoute.GET("/", handlers.SearchRoutes)
+		tagRoute.GET("/:id", handlers.DetailRoute)
+		tagRoute.DELETE("/:id", handlers.DeleteRoute)
+		tagRoute.PUT("/enable/:id", handlers.EnableRoute)
+		tagRoute.PUT("/disable/:id", handlers.DisableRoute)
+	}
+
 	return router
 }

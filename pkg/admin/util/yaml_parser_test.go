@@ -18,14 +18,44 @@
 package util
 
 import (
-	"github.com/apache/dubbo-admin/pkg/admin/constant"
-	"github.com/apache/dubbo-admin/pkg/admin/model"
+	"testing"
 )
 
-func BuildServiceKey(baseDto model.Base) string {
-	if baseDto.Application != "" {
-		return baseDto.Application
+type TagRoute struct {
+	Priority int
+	Enable   bool
+	Force    bool
+	Runtime  bool
+	Key      string
+}
+
+func TestDumpObject(t *testing.T) {
+	tagRoute := TagRoute{
+		Priority: 1,
+		Enable:   true,
+		Force:    true,
+		Runtime:  true,
 	}
-	// id format: "${class}:${version}:${group}"
-	return baseDto.Service + constant.Colon + baseDto.ServiceVersion + constant.Colon + baseDto.ServiceGroup
+	str, err := DumpObject(tagRoute)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(str)
+}
+
+func TestLoadObject(t *testing.T) {
+	str := `configVersion: v3.0
+force: true
+enabled: true
+key: shop-detail
+tags:
+  - name: gray
+    match:
+      - key: env
+        value:
+          exact: gray
+`
+	var tagRoute TagRoute
+	LoadObject(str, &tagRoute)
+	println(tagRoute.Key)
 }
