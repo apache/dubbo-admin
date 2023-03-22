@@ -15,15 +15,25 @@
  * limitations under the License.
  */
 
-package services
+package model
 
-import "github.com/apache/dubbo-admin/pkg/admin/model"
+type ConditionRouteDto struct {
+	Base
 
-type TagRoutesService interface {
-	CreateTagRoute(model.TagRouteDto) error
-	UpdateTagRoute(model.TagRouteDto) error
-	DeleteTagRoute(string) error
-	FindTagRoute(string) (model.TagRouteDto, error)
-	EnableTagRoute(string) error
-	DisableTagRoute(string) error
+	Priority int  `json:"priority"`
+	Enabled  bool `json:"enabled" binding:"required"`
+	Force    bool `json:"force"`
+	Runtime  bool `json:"runtime"`
+
+	Conditions []string `json:"conditions" binding:"required"`
+}
+
+type ConditionRoute struct {
+	Priority   int      `json:"priority"`
+	Enabled    bool     `json:"enabled"`
+	Force      bool     `json:"force"`
+	Runtime    bool     `json:"runtime"`
+	Key        string   `json:"key"`
+	Scope      string   `json:"scope"`
+	Conditions []string `json:"conditions"`
 }
