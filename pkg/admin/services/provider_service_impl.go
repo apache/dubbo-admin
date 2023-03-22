@@ -30,6 +30,7 @@ import (
 
 type ProviderServiceImpl struct{}
 
+// FindServices finds all services
 func (p *ProviderServiceImpl) FindServices() ([]string, error) {
 	var services []string
 	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
