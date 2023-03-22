@@ -68,3 +68,12 @@ const (
 )
 
 var Configs = set.NewSet(WeightKey, BalancingKey)
+
+const (
+	MetricsQps                        = "" // QPS
+	MetricsHttpRequestTotalCount      = "" // Total number of http requests
+	MetricsHttpRequestSuccessCount    = "" // Total number of http successful requests
+	MetricsHttpRequestOutOfTimeCount  = "" // Total number of http out of time requests
+	MetricsHttpRequestAddressNotFount = "" // Total number of HTTP requests where the address cannot be found
+	MetricsHttpRequestOtherException  = "" // Total number of other errors for http requests
+)

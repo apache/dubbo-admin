@@ -22,10 +22,12 @@ require (
 	dubbo.apache.org/dubbo-go/v3 v3.0.2
 	github.com/dubbogo/gost v1.11.25
 	github.com/gin-gonic/gin v1.8.2
-	github.com/golang/mock v1.6.0
 	github.com/golang-jwt/jwt/v4 v4.5.0
+	github.com/golang/mock v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/mattbaird/jsonpatch v0.0.0-20200820163806-098863c1fc24
+	github.com/prometheus/client_golang v1.12.2
+	github.com/prometheus/common v0.32.1
 	github.com/stretchr/testify v1.8.2
 	github.com/tidwall/gjson v1.14.4
 	go.uber.org/zap v1.24.0
@@ -104,9 +106,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_golang v1.12.2 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
-	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/prometheus/statsd_exporter v0.21.0 // indirect
 	github.com/satori/go.uuid v1.2.1-0.20181028125025-b2ce2384e17b // indirect

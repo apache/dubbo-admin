@@ -31,8 +31,9 @@ import (
 )
 
 var (
-	providerService services.ProviderService = &services.ProviderServiceImpl{}
-	consumerService services.ConsumerService = &services.ConsumerServiceImpl{}
+	providerService   services.ProviderService = &services.ProviderServiceImpl{}
+	consumerService   services.ConsumerService = &services.ConsumerServiceImpl{}
+	prometheusService services.MonitorService  = &services.PrometheusServiceImpl{}
 )
 
 func AllServices(c *gin.Context) {
@@ -144,4 +145,24 @@ func ServiceDetail(c *gin.Context) {
 
 func Version(c *gin.Context) {
 	c.JSON(http.StatusOK, version.GetVersion())
+}
+
+func FlowMetrics(c *gin.Context) {
+	res, err := prometheusService.FlowMetrics()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+func ClusterMetrics(c *gin.Context) {
+	res, err := prometheusService.ClusterMetrics()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+	}
+	c.JSON(http.StatusOK, res)
 }
