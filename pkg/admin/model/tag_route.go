@@ -30,12 +30,12 @@ type TagRouteDto struct {
 }
 
 type TagRoute struct {
-	Priority int
-	Enabled  bool
-	Force    bool
-	Runtime  bool
-	Key      string
-	Tags     []Tag
+	Priority int    `json:"priority"`
+	Enabled  bool   `json:"enabled"`
+	Force    bool   `json:"force"`
+	Runtime  bool   `json:"runtime"`
+	Key      string `json:"key"`
+	Tags     []Tag  `json:"tags"`
 }
 
 type Tag struct {
