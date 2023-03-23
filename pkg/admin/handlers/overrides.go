@@ -74,7 +74,10 @@ func UpdateOverride(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "override not found"})
 		return
 	}
-	overrideServiceImpl.UpdateOverride(&dynamicConfig)
+	if err := overrideServiceImpl.UpdateOverride(&dynamicConfig); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, true)
 }
 
