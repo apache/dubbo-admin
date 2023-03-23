@@ -56,5 +56,16 @@ func InitRouter() *gin.Engine {
 		tagRoute.PUT("/disable/:id", handlers.DisableRoute)
 	}
 
+	conditionRoute := router.Group("/api/:env/rules/route/condition")
+	{
+		conditionRoute.POST("/", handlers.CreateConditionRule)
+		conditionRoute.PUT("/:id", handlers.UpdateConditionRule)
+		conditionRoute.GET("/", handlers.SearchConditionRoutes)
+		conditionRoute.GET("/:id", handlers.DetailConditionRoute)
+		conditionRoute.DELETE("/:id", handlers.DeleteConditionRoute)
+		conditionRoute.PUT("/enable/:id", handlers.EnableConditionRoute)
+		conditionRoute.PUT("/disable/:id", handlers.DisableConditionRoute)
+	}
+
 	return router
 }

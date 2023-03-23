@@ -19,26 +19,19 @@ package handlers
 
 import (
 	"net/http"
-	"strings"
 
-	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
-	"github.com/apache/dubbo-admin/pkg/admin/services"
 	"github.com/gin-gonic/gin"
 )
 
-var routeService services.RouteService = &services.RouteServiceImpl{
-	GovernanceConfig: &config.GovernanceConfigImpl{},
-}
-
-func CreateRule(c *gin.Context) {
-	var tagRouteDto model.TagRouteDto
-	err := c.BindJSON(&tagRouteDto)
+func CreateConditionRule(c *gin.Context) {
+	var routeDto model.ConditionRouteDto
+	err := c.BindJSON(&routeDto)
 	if err != nil {
 		panic(err)
 	}
 
-	err = routeService.CreateTagRoute(tagRouteDto)
+	err = routeService.CreateConditionRoute(routeDto)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -52,16 +45,15 @@ func CreateRule(c *gin.Context) {
 	})
 }
 
-func UpdateRule(c *gin.Context) {
-	var tagRouteDto model.TagRouteDto
-	err := c.BindJSON(&tagRouteDto)
+func UpdateConditionRule(c *gin.Context) {
+	var routeDto model.ConditionRouteDto
+	err := c.BindJSON(&routeDto)
 	if err != nil {
 		panic(err)
 	}
 	id := c.Param("id")
-	id = strings.ReplaceAll(id, "*", "/")
 
-	_, err = routeService.FindTagRoute(id)
+	_, err = routeService.FindConditionRouteById(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -69,7 +61,7 @@ func UpdateRule(c *gin.Context) {
 		return
 	}
 
-	err = routeService.UpdateTagRoute(tagRouteDto)
+	err = routeService.UpdateConditionRoute(routeDto)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -83,10 +75,30 @@ func UpdateRule(c *gin.Context) {
 	})
 }
 
-func SearchRoutes(c *gin.Context) {
+func SearchConditionRoutes(c *gin.Context) {
 	application := c.Query("application")
+	service := c.Query("service")
+	serviceVersion := c.Query("serviceVersion")
+	serviceGroup := c.Query("serviceGroup")
 
-	tagRoute, err := routeService.FindTagRoute(application)
+	var routeDto model.ConditionRouteDto
+	var err error
+	crDto := model.ConditionRouteDto{}
+	if application != "" {
+		crDto.Application = application
+		routeDto, err = routeService.FindConditionRoute(crDto)
+	} else if service != "" {
+		crDto.Service = service
+		crDto.ServiceVersion = serviceVersion
+		crDto.ServiceGroup = serviceGroup
+		routeDto, err = routeService.FindConditionRoute(crDto)
+	} else {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Either Service or application is required.",
+		})
+		return
+	}
+
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -95,15 +107,13 @@ func SearchRoutes(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"code": 1,
-		"data": []model.TagRouteDto{tagRoute},
+		"data": []model.ConditionRouteDto{routeDto},
 	})
 }
 
-func DetailRoute(c *gin.Context) {
+func DetailConditionRoute(c *gin.Context) {
 	id := c.Param("id")
-	id = strings.ReplaceAll(id, "*", "/")
-
-	tagRoute, err := routeService.FindTagRoute(id)
+	routeDto, err := routeService.FindConditionRouteById(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -112,15 +122,13 @@ func DetailRoute(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"code": 1,
-		"data": tagRoute,
+		"data": routeDto,
 	})
 }
 
-func DeleteRoute(c *gin.Context) {
+func DeleteConditionRoute(c *gin.Context) {
 	id := c.Param("id")
-	id = strings.ReplaceAll(id, "*", "/")
-
-	err := routeService.DeleteTagRoute(id)
+	err := routeService.DeleteConditionRoute(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -133,11 +141,9 @@ func DeleteRoute(c *gin.Context) {
 	})
 }
 
-func EnableRoute(c *gin.Context) {
+func EnableConditionRoute(c *gin.Context) {
 	id := c.Param("id")
-	id = strings.ReplaceAll(id, "*", "/")
-
-	err := routeService.EnableTagRoute(id)
+	err := routeService.EnableConditionRoute(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -150,11 +156,9 @@ func EnableRoute(c *gin.Context) {
 	})
 }
 
-func DisableRoute(c *gin.Context) {
+func DisableConditionRoute(c *gin.Context) {
 	id := c.Param("id")
-	id = strings.ReplaceAll(id, "*", "/")
-
-	err := routeService.DisableTagRoute(id)
+	err := routeService.DisableConditionRoute(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),

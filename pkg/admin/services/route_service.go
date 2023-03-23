@@ -19,11 +19,19 @@ package services
 
 import "github.com/apache/dubbo-admin/pkg/admin/model"
 
-type TagRoutesService interface {
+type RouteService interface {
 	CreateTagRoute(model.TagRouteDto) error
 	UpdateTagRoute(model.TagRouteDto) error
 	DeleteTagRoute(string) error
 	FindTagRoute(string) (model.TagRouteDto, error)
 	EnableTagRoute(string) error
 	DisableTagRoute(string) error
+
+	CreateConditionRoute(model.ConditionRouteDto) error
+	UpdateConditionRoute(model.ConditionRouteDto) error
+	DeleteConditionRoute(string) error
+	FindConditionRouteById(string) (model.ConditionRouteDto, error)
+	FindConditionRoute(model.ConditionRouteDto) (model.ConditionRouteDto, error)
+	EnableConditionRoute(string) error
+	DisableConditionRoute(string) error
 }
