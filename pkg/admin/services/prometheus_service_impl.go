@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/prometheus/client_golang/api"
@@ -31,10 +32,63 @@ import (
 	"github.com/apache/dubbo-admin/pkg/monitor/prometheus"
 )
 
+var (
+	providerService ProviderService = &ProviderServiceImpl{}
+	consumerService ConsumerService = &ConsumerServiceImpl{}
+)
+
 type PrometheusServiceImpl struct{}
 
 func (p *PrometheusServiceImpl) ClusterMetrics() ([]model.Response, error) {
-	return nil, nil
+	res := make([]model.Response, 5)
+	applications, err := providerService.FindApplications()
+	appNum := 0
+	if err != nil {
+		logger.Sugar().Errorf("Error find applications: %v\n", err)
+		res[0].Status = http.StatusInternalServerError
+		res[0].Data = ""
+	} else {
+		appNum = len(applications)
+		res[0].Status = http.StatusOK
+		res[0].Data = strconv.Itoa(appNum)
+	}
+	services, err := providerService.FindServices()
+	svc := 0
+	if err != nil {
+		logger.Sugar().Errorf("Error find services: %v\n", err)
+		res[1].Status = http.StatusInternalServerError
+		res[1].Data = ""
+	} else {
+		svc = len(services)
+		res[1].Status = http.StatusOK
+		res[1].Data = strconv.Itoa(svc)
+	}
+	providers, err := providerService.FindService(constant.IP, constant.AnyValue)
+	pro := 0
+	if err != nil {
+		logger.Sugar().Errorf("Error find providers: %v\n", err)
+		res[2].Status = http.StatusInternalServerError
+		res[2].Data = ""
+	} else {
+		pro = len(providers)
+		res[2].Status = http.StatusOK
+		res[2].Data = strconv.Itoa(pro)
+	}
+	consumers, err := consumerService.FindAll()
+	con := 0
+	if err != nil {
+		logger.Sugar().Errorf("Error find consumers: %v\n", err)
+		res[3].Status = http.StatusInternalServerError
+		res[3].Data = ""
+	} else {
+		con = len(consumers)
+		res[3].Status = http.StatusOK
+		res[3].Data = strconv.Itoa(con)
+	}
+	allInstance := pro + con
+	res[5].Status = http.StatusOK
+	res[5].Data = strconv.Itoa(allInstance)
+	return res, nil
 }
 
 func (p *PrometheusServiceImpl) FlowMetrics() ([]model.Response, error) {
