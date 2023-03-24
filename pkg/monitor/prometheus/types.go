@@ -13,15 +13,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package services
+package prometheus
 
-import "github.com/apache/dubbo-admin/pkg/admin/model"
+import "github.com/prometheus/common/model"
 
-type OverrideService interface {
-	SaveOverride(override *model.DynamicConfig) error
-	UpdateOverride(update *model.DynamicConfig) error
-	DisableOverride(id string) error
-	FindOverride(id string) (*model.DynamicConfig, error)
-	EnableOverride(id string) error
-	DeleteOverride(id string) error
+type Metric struct {
+	Vector model.Vector `json:"vector"`
+	Err    error        `json:"-"`
 }

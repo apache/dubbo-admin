@@ -59,12 +59,26 @@ const (
 	BalancingKey           = "balancing"
 	DefaultWeight          = 100
 	OwnerKey               = "owner"
+	Application            = "application"
 	Service                = "service"
 	Colon                  = ":"
 	InterrogationPoint     = "?"
 	IP                     = "ip"
 	PlusSigns              = "+"
 	PunctuationPoint       = "."
+	ConditionRoute         = "condition_route"
+	TagRoute               = "tag_route"
+	ConditionRuleSuffix    = ".condition-router"
+	TagRuleSuffix          = ".tag-router"
 )
 
 var Configs = set.NewSet(WeightKey, BalancingKey)
+
+const (
+	MetricsQps                        = "" // QPS
+	MetricsHttpRequestTotalCount      = "" // Total number of http requests
+	MetricsHttpRequestSuccessCount    = "" // Total number of http successful requests
+	MetricsHttpRequestOutOfTimeCount  = "" // Total number of http out of time requests
+	MetricsHttpRequestAddressNotFount = "" // Total number of HTTP requests where the address cannot be found
+	MetricsHttpRequestOtherException  = "" // Total number of other errors for http requests
+)

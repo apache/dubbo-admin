@@ -17,15 +17,16 @@
 
 package util
 
-import (
-	"github.com/apache/dubbo-admin/pkg/admin/constant"
-	"github.com/apache/dubbo-admin/pkg/admin/model"
-)
+import "dubbo.apache.org/dubbo-go/v3/common/yaml"
 
-func BuildServiceKey(baseDto model.Base) string {
-	if baseDto.Application != "" {
-		return baseDto.Application
+func DumpObject(obj interface{}) (string, error) {
+	bytes, err := yaml.MarshalYML(obj)
+	if err != nil {
+		return "", err
 	}
-	// id format: "${class}:${version}:${group}"
-	return baseDto.Service + constant.Colon + baseDto.ServiceVersion + constant.Colon + baseDto.ServiceGroup
+	return string(bytes), nil
+}
+
+func LoadObject(content string, obj interface{}) error {
+	return yaml.UnmarshalYML([]byte(content), obj)
 }

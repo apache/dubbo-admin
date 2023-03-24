@@ -31,8 +31,8 @@ type OverrideServiceImpl struct {
 }
 
 func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) error {
-	key := util.BuildServiceKey(dynamicConfig.Service, dynamicConfig.ServiceVersion, dynamicConfig.ServiceGroup)
-	path := getPath(key)
+	id := util.BuildServiceKey(dynamicConfig.Base)
+	path := getOverridePath(id)
 	existConfig, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
 		logger.Error(err)
@@ -42,7 +42,7 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 	existOverride := dynamicConfig.ToOverride()
 	configs := []model.OverrideConfig{}
 	if existConfig != "" {
-		err = yaml.UnmarshalYML([]byte(existConfig), existOverride)
+		err := yaml.UnmarshalYML([]byte(existConfig), existOverride)
 		if err != nil {
 			logger.Error(err)
 			return err
@@ -89,14 +89,9 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 	return nil
 }
 
-func getPath(key string) string {
-	key = strings.Replace(key, "/", "*", -1)
-	return key + constant.ConfiguratorRuleSuffix
-}
-
 func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error {
-	key := util.BuildServiceKey(update.Service, update.ServiceGroup, update.ServiceVersion)
-	path := getPath(key)
+	id := util.BuildServiceKey(update.Base)
+	path := getOverridePath(id)
 	existConfig, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
 		logger.Error(err)
@@ -156,8 +151,8 @@ func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error 
 	return nil
 }
 
-func (s *OverrideServiceImpl) DisableOverride(key string) error {
-	path := getPath(key)
+func (s *OverrideServiceImpl) DisableOverride(id string) error {
+	path := getOverridePath(id)
 
 	conf, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
@@ -209,8 +204,8 @@ func (s *OverrideServiceImpl) DisableOverride(key string) error {
 	return nil
 }
 
-func (s *OverrideServiceImpl) FindOverride(key string) (*model.DynamicConfig, error) {
-	path := getPath(key)
+func (s *OverrideServiceImpl) FindOverride(id string) (*model.DynamicConfig, error) {
+	path := getOverridePath(id)
 	conf, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
 		logger.Error(err)
@@ -227,11 +222,11 @@ func (s *OverrideServiceImpl) FindOverride(key string) (*model.DynamicConfig, er
 
 		dynamicConfig := override.ToDynamicConfig()
 		if dynamicConfig != nil {
-			dynamicConfig.ID = key
+			dynamicConfig.ID = id
 			if constant.Service == override.Scope {
-				dynamicConfig.Service = util.GetInterface(key)
-				dynamicConfig.ServiceGroup = util.GetGroup(key)
-				dynamicConfig.ServiceVersion = util.GetVersion(key)
+				dynamicConfig.Service = util.GetInterface(id)
+				dynamicConfig.ServiceGroup = util.GetGroup(id)
+				dynamicConfig.ServiceVersion = util.GetVersion(id)
 			}
 		}
 		return dynamicConfig, nil
@@ -240,8 +235,8 @@ func (s *OverrideServiceImpl) FindOverride(key string) (*model.DynamicConfig, er
 	return nil, nil
 }
 
-func (s *OverrideServiceImpl) EnableOverride(key string) error {
-	path := getPath(key)
+func (s *OverrideServiceImpl) EnableOverride(id string) error {
+	path := getOverridePath(id)
 	conf, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
 		logger.Error(err)
@@ -291,8 +286,8 @@ func (s *OverrideServiceImpl) EnableOverride(key string) error {
 	return nil
 }
 
-func (s *OverrideServiceImpl) DeleteOverride(key string) error {
-	path := getPath(key)
+func (s *OverrideServiceImpl) DeleteOverride(id string) error {
+	path := getOverridePath(id)
 	conf, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
 		logger.Error(err)
@@ -355,4 +350,9 @@ func (s *OverrideServiceImpl) DeleteOverride(key string) error {
 	}
 
 	return nil
+}
+
+func getOverridePath(key string) string {
+	key = strings.Replace(key, "/", "*", -1)
+	return key + constant.ConfiguratorRuleSuffix
 }

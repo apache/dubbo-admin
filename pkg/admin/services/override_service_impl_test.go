@@ -85,7 +85,7 @@ func TestOverrideServiceImpl_UpdateOverride(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
 	mockGovernanceConfig.EXPECT().SetConfig(gomock.Any(), gomock.Any()).Return(nil)
-	mockGovernanceConfig.EXPECT().GetConfig(getPath("testGroup/testService:testVersion")).Return("configVersion: v2.7\nconfigs:\n- addresses:\n  - 0.0.0.0\n  enabled: false\n  parameters:\n    timeout: 6000\n  side: consumer\nenabled: true\nkey: testService\nscope: service\n", nil)
+	mockGovernanceConfig.EXPECT().GetConfig(getOverridePath("testService:testVersion:testGroup")).Return("configVersion: v2.7\nconfigs:\n- addresses:\n  - 0.0.0.0\n  enabled: false\n  parameters:\n    timeout: 6000\n  side: consumer\nenabled: true\nkey: testService\nscope: service\n", nil)
 	mockGovernanceConfig.EXPECT().Register(gomock.Any()).Return(nil)
 	mockGovernanceConfig.EXPECT().UnRegister(gomock.Any()).Return(nil)
 
@@ -139,7 +139,7 @@ func TestOverrideServiceImpl_UpdateOverride(t *testing.T) {
 func TestOverrideServiceImpl_FindOverride(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
-	mockGovernanceConfig.EXPECT().GetConfig(getPath("testGroup/testService:testVersion")).Return("configVersion: v2.7\nconfigs:\n- addresses:\n  - 0.0.0.0\n  enabled: false\n  parameters:\n    timeout: 6000\n  side: consumer\nenabled: true\nkey: testService\nscope: service\n", nil)
+	mockGovernanceConfig.EXPECT().GetConfig(getOverridePath("testGroup/testService:testVersion")).Return("configVersion: v2.7\nconfigs:\n- addresses:\n  - 0.0.0.0\n  enabled: false\n  parameters:\n    timeout: 6000\n  side: consumer\nenabled: true\nkey: testService\nscope: service\n", nil)
 
 	type args struct {
 		key string
@@ -198,8 +198,8 @@ func TestOverrideServiceImpl_FindOverride(t *testing.T) {
 func TestOverrideServiceImpl_DeleteOverride(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
-	mockGovernanceConfig.EXPECT().GetConfig(getPath("testGroup/testService:testVersion")).Return("configVersion: v2.7\nconfigs:\n- addresses:\n  - 0.0.0.0\n  enabled: false\n  parameters:\n    timeout: 6000\n  side: consumer\nenabled: true\nkey: testService\nscope: service\n", nil)
-	mockGovernanceConfig.EXPECT().DeleteConfig(getPath("testGroup/testService:testVersion")).Return(nil)
+	mockGovernanceConfig.EXPECT().GetConfig(getOverridePath("testGroup/testService:testVersion")).Return("configVersion: v2.7\nconfigs:\n- addresses:\n  - 0.0.0.0\n  enabled: false\n  parameters:\n    timeout: 6000\n  side: consumer\nenabled: true\nkey: testService\nscope: service\n", nil)
+	mockGovernanceConfig.EXPECT().DeleteConfig(getOverridePath("testGroup/testService:testVersion")).Return(nil)
 	mockGovernanceConfig.EXPECT().UnRegister(gomock.Any()).Return(nil)
 
 	type args struct {
@@ -234,8 +234,8 @@ func TestOverrideServiceImpl_DeleteOverride(t *testing.T) {
 func TestOverrideServiceImpl_EnableOverride(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
-	mockGovernanceConfig.EXPECT().GetConfig(getPath("testGroup/testService:testVersion")).Return("configVersion: v2.7\nconfigs:\n- addresses:\n  - 0.0.0.0\n  enabled: false\n  parameters:\n    timeout: 6000\n  side: consumer\nenabled: true\nkey: testService\nscope: service\n", nil)
-	mockGovernanceConfig.EXPECT().SetConfig(getPath("testGroup/testService:testVersion"), gomock.Any()).Return(nil)
+	mockGovernanceConfig.EXPECT().GetConfig(getOverridePath("testGroup/testService:testVersion")).Return("configVersion: v2.7\nconfigs:\n- addresses:\n  - 0.0.0.0\n  enabled: false\n  parameters:\n    timeout: 6000\n  side: consumer\nenabled: true\nkey: testService\nscope: service\n", nil)
+	mockGovernanceConfig.EXPECT().SetConfig(getOverridePath("testGroup/testService:testVersion"), gomock.Any()).Return(nil)
 	mockGovernanceConfig.EXPECT().Register(gomock.Any()).Return(nil)
 	mockGovernanceConfig.EXPECT().UnRegister(gomock.Any()).Return(nil)
 
@@ -271,8 +271,8 @@ func TestOverrideServiceImpl_EnableOverride(t *testing.T) {
 func TestOverrideServiceImpl_DisableOverride(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
-	mockGovernanceConfig.EXPECT().GetConfig(getPath("testGroup/testService:testVersion")).Return("configVersion: v2.7\nconfigs:\n- addresses:\n  - 0.0.0.0\n  enabled: false\n  parameters:\n    timeout: 6000\n  side: consumer\nenabled: true\nkey: testService\nscope: service\n", nil)
-	mockGovernanceConfig.EXPECT().SetConfig(getPath("testGroup/testService:testVersion"), gomock.Any()).Return(nil)
+	mockGovernanceConfig.EXPECT().GetConfig(getOverridePath("testGroup/testService:testVersion")).Return("configVersion: v2.7\nconfigs:\n- addresses:\n  - 0.0.0.0\n  enabled: false\n  parameters:\n    timeout: 6000\n  side: consumer\nenabled: true\nkey: testService\nscope: service\n", nil)
+	mockGovernanceConfig.EXPECT().SetConfig(getOverridePath("testGroup/testService:testVersion"), gomock.Any()).Return(nil)
 	mockGovernanceConfig.EXPECT().Register(gomock.Any()).Return(nil)
 	mockGovernanceConfig.EXPECT().UnRegister(gomock.Any()).Return(nil)
 
@@ -324,7 +324,7 @@ func Test_getPath(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getPath(tt.args.key); got != tt.want {
+			if got := getOverridePath(tt.args.key); got != tt.want {
 				t.Errorf("getPath() = %v, want %v", got, tt.want)
 			}
 		})

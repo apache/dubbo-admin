@@ -74,7 +74,10 @@ func UpdateOverride(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "override not found"})
 		return
 	}
-	overrideServiceImpl.UpdateOverride(&dynamicConfig)
+	if err := overrideServiceImpl.UpdateOverride(&dynamicConfig); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, true)
 }
 
@@ -88,7 +91,11 @@ func SearchOverride(c *gin.Context) {
 	result := make([]*model.DynamicConfig, 0)
 	var err error
 	if service != "" {
-		id := util.BuildServiceKey(service, serviceGroup, serviceVersion)
+		id := util.BuildServiceKey(model.Base{
+			Service:        service,
+			ServiceGroup:   serviceGroup,
+			ServiceVersion: serviceVersion,
+		})
 		override, err = overrideServiceImpl.FindOverride(id)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
