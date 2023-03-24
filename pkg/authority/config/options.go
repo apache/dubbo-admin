@@ -16,6 +16,12 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/base32"
+	"fmt"
+	"os"
+	"strconv"
+
 	"github.com/spf13/pflag"
 )
 
@@ -77,4 +83,55 @@ func (o *Options) FillFlags(flags *pflag.FlagSet) {
 func (o *Options) Validate() []error {
 	// TODO validate options
 	return nil
+}
+
+func GetStringEnv(name string, defvalue string) string {
+	val, ex := os.LookupEnv(name)
+	if ex {
+		return val
+	} else {
+		return defvalue
+	}
+}
+
+func GetIntEnv(name string, defvalue int) int {
+	val, ex := os.LookupEnv(name)
+	if ex {
+		num, err := strconv.Atoi(val)
+		if err != nil {
+			return defvalue
+		} else {
+			return num
+		}
+	} else {
+		return defvalue
+	}
+}
+
+func GetBoolEnv(name string, defvalue bool) bool {
+	val, ex := os.LookupEnv(name)
+	if ex {
+		boolVal, err := strconv.ParseBool(val)
+		if err != nil {
+			return defvalue
+		} else {
+			return boolVal
+		}
+	} else {
+		return defvalue
+	}
+}
+
+func GetDefaultResourcelockIdentity() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+	randomBytes := make([]byte, 5)
+	_, err = rand.Read(randomBytes)
+	if err != nil {
+		panic(err)
+	}
+	randomStr := base32.StdEncoding.EncodeToString(randomBytes)
+	return fmt.Sprintf("%s-%s", hostname, randomStr)
 }
