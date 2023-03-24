@@ -20,26 +20,26 @@ package model
 type TagRouteDto struct {
 	Base
 
-	Tags []Tag `json:"tags" binding:"required"`
+	Tags []Tag `json:"tags" yaml:"tags" binding:"required"`
 
-	Priority      int    `json:"priority"`
-	Enabled       bool   `json:"enabled" binding:"required"`
-	Force         bool   `json:"force"`
-	Runtime       bool   `json:"runtime"`
-	ConfigVersion string `json:"configVersion" binding:"required"`
+	Priority      int    `json:"priority" yaml:"priority"`
+	Enabled       bool   `json:"enabled" yaml:"enabled" binding:"required"`
+	Force         bool   `json:"force" yaml:"force"`
+	Runtime       bool   `json:"runtime" yaml:"runtime"`
+	ConfigVersion string `json:"configVersion" yaml:"configVersion" binding:"required"`
 }
 
 type TagRoute struct {
-	Priority int    `json:"priority"`
-	Enabled  bool   `json:"enabled"`
-	Force    bool   `json:"force"`
-	Runtime  bool   `json:"runtime"`
-	Key      string `json:"key"`
-	Tags     []Tag  `json:"tags"`
+	Priority int    `json:"priority" yaml:"priority"`
+	Enabled  bool   `json:"enabled" yaml:"enabled"`
+	Force    bool   `json:"force" yaml:"force"`
+	Runtime  bool   `json:"runtime" yaml:"runtime"`
+	Key      string `json:"key" yaml:"key"`
+	Tags     []Tag  `json:"tags" yaml:"tags"`
 }
 
 type Tag struct {
-	Name      string       `json:"name" binding:"required"`
-	Match     []ParamMatch `json:"match" binding:"required"`
-	Addresses []string     `json:"addresses"`
+	Name      string       `json:"name" yaml:"name" binding:"required"`
+	Match     []ParamMatch `json:"match" yaml:"match" binding:"required"`
+	Addresses []string     `json:"addresses" yaml:"addresses"`
 }
