@@ -615,3 +615,35 @@ func TestRouteServiceImpl_DisableConditionRoute(t *testing.T) {
 		})
 	}
 }
+
+func TestRouteServiceImpl_getRoutePath(t *testing.T) {
+	type args struct {
+		key       string
+		routeType string
+	}
+	tests := []struct {
+		name string
+		s    *RouteServiceImpl
+		args args
+		want string
+	}{
+		{
+			name: "test get route path",
+			s: &RouteServiceImpl{
+				GovernanceConfig: nil,
+			},
+			args: args{
+				key:       "testService:testVersion:testGroup",
+				routeType: constant.TagRoute,
+			},
+			want: "testService:testVersion:testGroup" + constant.TagRuleSuffix,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := getRoutePath(tt.args.key, tt.args.routeType); got != tt.want {
+				t.Errorf("RouteServiceImpl.getRoutePath() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
