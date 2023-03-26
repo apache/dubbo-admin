@@ -61,8 +61,6 @@ func (o *Origin) Revision() int64 {
 func (o *Origin) Exact(endpoint *rule.Endpoint) (rule.ToClient, error) {
 	matchedRule := make([]*PolicyToClient, 0, len(o.data))
 
-	// TODO match endpoint
-
 	for _, v := range o.data {
 		if v.Spec == nil {
 			continue
@@ -81,20 +79,7 @@ func (o *Origin) Exact(endpoint *rule.Endpoint) (rule.ToClient, error) {
 			}
 		}
 
-		toClient := &PolicyToClient{
-			Name: v.Name,
-			Spec: &PolicySpecToClient{
-				Action: v.Spec.Action,
-			},
-		}
-		if v.Spec.PortLevel != nil {
-			for _, p := range v.Spec.PortLevel {
-				toClient.Spec.PortLevel = append(toClient.Spec.PortLevel, &PortLevelToClient{
-					Port:   p.Port,
-					Action: p.Action,
-				})
-			}
-		}
+		toClient := v.CopyToClient()
 		matchedRule = append(matchedRule, toClient)
 	}
 

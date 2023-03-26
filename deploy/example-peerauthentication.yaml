@@ -32,7 +32,7 @@ metadata:
   name: default
   namespace: dubbo-demo-new
 spec:
-  action: ALLOW
+  action: DENY
   rules:
     -  from:
         namespaces: ["dubbo-demo"]
