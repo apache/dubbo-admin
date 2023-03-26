@@ -24,7 +24,6 @@ import (
 	"crypto/x509/pkix"
 	"encoding/asn1"
 	"encoding/pem"
-	"fmt"
 	"log"
 	"math/big"
 	"net/url"
@@ -239,22 +238,17 @@ func SignFromCSR(csr *x509.CertificateRequest, endpoint *rule.Endpoint, authorit
 }
 
 func AppendEndpoint(endpoint *rule.Endpoint, cert *x509.Certificate) {
-	err := buildSANExtension(endpoint, cert)
-	if err != nil {
-		logger.Sugar().Warnf("Failed to build SAN extension. " + err.Error())
-		return
+	if endpoint.ID != "" {
+		cert.Subject.CommonName = endpoint.ID
 	}
-}
-
-func buildSANExtension(endpoint *rule.Endpoint, cert *x509.Certificate) error {
 	if endpoint.SpiffeID != "" {
 		spiffeId, err := url.Parse(endpoint.SpiffeID)
 		if err != nil {
-			return fmt.Errorf("failed to parse the spiffe id (err: %s)", err)
+			logger.Sugar().Warnf("failed to parse the spiffe id (err: %s)", err)
+			return
 		}
 		cert.URIs = append(cert.URIs, spiffeId)
 	}
-	return nil
 }
 
 func EncodePrivateKey(caPrivKey *ecdsa.PrivateKey) string {

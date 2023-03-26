@@ -57,6 +57,9 @@ rules:
   - apiGroups: ["admissionregistration.k8s.io"]
     resources: ["mutatingwebhookconfigurations"]
     verbs: ["create", "get", "list", "watch", "update"]
+  - apiGroups: ["dubbo.apache.org"]
+    resources: ["authenticationpolicies", "authorizationpolicies"]
+    verbs: ["create", "get", "list", "watch", "update"]
 ---
 apiVersion: v1
 kind: ServiceAccount
