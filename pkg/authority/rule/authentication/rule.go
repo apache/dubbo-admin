@@ -61,8 +61,6 @@ func (o *Origin) Revision() int64 {
 func (o *Origin) Exact(endpoint *rule.Endpoint) (rule.ToClient, error) {
 	matchedRule := make([]*PolicyToClient, 0, len(o.data))
 
-	// TODO match endpoint
-
 	for _, v := range o.data {
 		if v.Spec == nil {
 			continue
@@ -81,20 +79,7 @@ func (o *Origin) Exact(endpoint *rule.Endpoint) (rule.ToClient, error) {
 			}
 		}
 
-		toClient := &PolicyToClient{
-			Name: v.Name,
-			Spec: &PolicySpecToClient{
-				Action: v.Spec.Action,
-			},
-		}
-		if v.Spec.PortLevel != nil {
-			for _, p := range v.Spec.PortLevel {
-				toClient.Spec.PortLevel = append(toClient.Spec.PortLevel, &PortLevelToClient{
-					Port:   p.Port,
-					Action: p.Action,
-				})
-			}
-		}
+		toClient := v.CopyToClient()
 		matchedRule = append(matchedRule, toClient)
 	}
 
@@ -152,6 +137,9 @@ func matchSelector(selector *Selector, endpoint *rule.Endpoint) bool {
 }
 
 func matchNotExtends(selector *Selector, endpointJSON []byte) bool {
+	if len(selector.NotExtends) == 0 {
+		return true
+	}
 	for _, extend := range selector.NotExtends {
 		if gjson.Get(string(endpointJSON), extend.Key).String() == extend.Value {
 			return false
@@ -161,15 +149,21 @@ func matchNotExtends(selector *Selector, endpointJSON []byte) bool {
 }
 
 func matchExtends(selector *Selector, endpointJSON []byte) bool {
+	if len(selector.Extends) == 0 {
+		return true
+	}
 	for _, extend := range selector.Extends {
 		if gjson.Get(string(endpointJSON), extend.Key).String() == extend.Value {
 			return true
 		}
 	}
-	return len(selector.Extends) == 0
+	return false
 }
 
 func matchNotPrincipals(selector *Selector, endpoint *rule.Endpoint) bool {
+	if len(selector.NotPrincipals) == 0 {
+		return true
+	}
 	for _, principal := range selector.NotPrincipals {
 		if principal == endpoint.SpiffeID {
 			return false
@@ -182,6 +176,9 @@ func matchNotPrincipals(selector *Selector, endpoint *rule.Endpoint) bool {
 }
 
 func matchPrincipals(selector *Selector, endpoint *rule.Endpoint) bool {
+	if len(selector.Principals) == 0 {
+		return true
+	}
 	for _, principal := range selector.Principals {
 		if principal == endpoint.SpiffeID {
 			return true
@@ -190,10 +187,13 @@ func matchPrincipals(selector *Selector, endpoint *rule.Endpoint) bool {
 			return true
 		}
 	}
-	return len(selector.Principals) == 0
+	return false
 }
 
 func matchNotIPBlocks(selector *Selector, endpoint *rule.Endpoint) bool {
+	if len(selector.NotIpBlocks) == 0 {
+		return true
+	}
 	for _, ipBlock := range selector.NotIpBlocks {
 		prefix, err := netip.ParsePrefix(ipBlock)
 		if err != nil {
@@ -215,6 +215,9 @@ func matchNotIPBlocks(selector *Selector, endpoint *rule.Endpoint) bool {
 }
 
 func matchIPBlocks(selector *Selector, endpoint *rule.Endpoint) bool {
+	if len(selector.IpBlocks) == 0 {
+		return true
+	}
 	for _, ipBlock := range selector.IpBlocks {
 		prefix, err := netip.ParsePrefix(ipBlock)
 		if err != nil {
@@ -232,12 +235,15 @@ func matchIPBlocks(selector *Selector, endpoint *rule.Endpoint) bool {
 			}
 		}
 	}
-	return len(selector.IpBlocks) == 0
+	return false
 }
 
 func matchNotNamespace(selector *Selector, endpoint *rule.Endpoint) bool {
+	if len(selector.NotNamespaces) == 0 {
+		return true
+	}
 	for _, namespace := range selector.NotNamespaces {
-		if namespace == endpoint.KubernetesEnv.Namespace {
+		if endpoint.KubernetesEnv != nil && namespace == endpoint.KubernetesEnv.Namespace {
 			return false
 		}
 	}
@@ -245,11 +251,13 @@ func matchNotNamespace(selector *Selector, endpoint *rule.Endpoint) bool {
 }
 
 func matchNamespace(selector *Selector, endpoint *rule.Endpoint) bool {
-	match := len(selector.Namespaces) == 0
+	if len(selector.Namespaces) == 0 {
+		return true
+	}
 	for _, namespace := range selector.Namespaces {
-		if namespace == endpoint.KubernetesEnv.Namespace {
-			match = true
+		if endpoint.KubernetesEnv != nil && namespace == endpoint.KubernetesEnv.Namespace {
+			return true
 		}
 	}
-	return match
+	return false
 }

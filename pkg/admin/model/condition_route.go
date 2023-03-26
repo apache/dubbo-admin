@@ -20,21 +20,21 @@ package model
 type ConditionRouteDto struct {
 	Base
 
-	Conditions []string `json:"conditions" binding:"required"`
+	Conditions []string `json:"conditions" yaml:"conditions" binding:"required"`
 
-	Priority      int    `json:"priority"`
-	Enabled       bool   `json:"enabled" binding:"required"`
-	Force         bool   `json:"force"`
-	Runtime       bool   `json:"runtime"`
-	ConfigVersion string `json:"configVersion" binding:"required"`
+	Priority      int    `json:"priority" yaml:"priority"`
+	Enabled       bool   `json:"enabled" yaml:"enabled" binding:"required"`
+	Force         bool   `json:"force" yaml:"force"`
+	Runtime       bool   `json:"runtime" yaml:"runtime"`
+	ConfigVersion string `json:"configVersion" yaml:"configVersion" binding:"required"`
 }
 
 type ConditionRoute struct {
-	Priority   int      `json:"priority"`
-	Enabled    bool     `json:"enabled"`
-	Force      bool     `json:"force"`
-	Runtime    bool     `json:"runtime"`
-	Key        string   `json:"key"`
-	Scope      string   `json:"scope"`
-	Conditions []string `json:"conditions"`
+	Priority   int      `json:"priority" yaml:"priority"`
+	Enabled    bool     `json:"enabled" yaml:"enabled"`
+	Force      bool     `json:"force" yaml:"force"`
+	Runtime    bool     `json:"runtime" yaml:"runtime"`
+	Key        string   `json:"key" yaml:"key"`
+	Scope      string   `json:"scope" yaml:"scope"`
+	Conditions []string `json:"conditions" yaml:"conditions"`
 }

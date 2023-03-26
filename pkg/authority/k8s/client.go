@@ -65,6 +65,7 @@ type Client interface {
 }
 
 type ClientImpl struct {
+	options        *config.Options
 	kubeClient     *kubernetes.Clientset
 	informerClient *infoemerclient.Clientset
 }
@@ -74,6 +75,7 @@ func NewClient() Client {
 }
 
 func (c *ClientImpl) Init(options *config.Options) bool {
+	c.options = options
 	config, err := rest.InClusterConfig()
 	options.InPodEnv = err == nil
 	if err != nil {
@@ -268,10 +270,19 @@ func (c *ClientImpl) VerifyServiceAccount(token string, authorizationType string
 
 	e := &rule.Endpoint{}
 
-	e.ID = pod.Namespace + "/" + pod.Name
+	e.ID = string(pod.UID)
 	for _, i := range pod.Status.PodIPs {
 		if i.IP != "" {
 			e.Ips = append(e.Ips, i.IP)
+		}
+	}
+
+	e.SpiffeID = "spiffe://cluster.local/ns/" + pod.Namespace + "/sa/" + pod.Spec.ServiceAccountName
+
+	if strings.HasPrefix(reviewRes.Status.User.Username, "system:serviceaccount:") {
+		names := strings.Split(reviewRes.Status.User.Username, ":")
+		if len(names) == 4 {
+			e.SpiffeID = "spiffe://cluster.local/ns/" + names[2] + "/sa/" + names[3]
 		}
 	}
 
@@ -371,6 +382,7 @@ func (c *ClientImpl) InitController(
 
 	stopCh := make(chan struct{})
 	controller := NewController(c.informerClient,
+		c.options.Namespace,
 		authenticationHandler,
 		authorizationHandler,
 		informerFactory.Dubbo().V1beta1().AuthenticationPolicies(),

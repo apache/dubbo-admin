@@ -17,29 +17,23 @@ apiVersion: dubbo.apache.org/v1beta1
 kind: AuthenticationPolicy
 metadata:
   name: default
-  namespace: default
+  namespace: dubbo-demo
 spec:
-  action: CLIENT_AUTH
-  rules:
-    - from:
-        principals: ["cluster.local/ns/default/sa/sleep"]
-        namespaces: ["test"]
-      to:
-        principals: ["cluster.local/ns/default/sa/sleep"]
-  order: 0
+  action: STRICT
+  selector:
+    - namespaces:
+        - dubbo-demo
+        - dubbo-demo-new
 
 ---
 apiVersion: dubbo.apache.org/v1beta1
 kind: AuthorizationPolicy
 metadata:
   name: default
-  namespace: default
+  namespace: dubbo-demo-new
 spec:
-  action: ALLOW
+  action: DENY
   rules:
-    - from:
-        principals: ["cluster.local/ns/default/sa/sleep"]
-        namespaces: ["test23"]
-      to:
-        principals: ["cluster.local/ns/default/sa/sleep"]
+    -  from:
+        namespaces: ["dubbo-demo"]
   samples: 0.12

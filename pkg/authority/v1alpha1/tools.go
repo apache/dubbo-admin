@@ -22,11 +22,11 @@ import (
 	"net"
 	"strings"
 
+	"github.com/apache/dubbo-admin/pkg/authority/jwt"
+
 	"google.golang.org/grpc/credentials"
 
 	"github.com/apache/dubbo-admin/pkg/authority/cert"
-	"github.com/apache/dubbo-admin/pkg/authority/jwt"
-
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
 	"github.com/apache/dubbo-admin/pkg/authority/rule"
