@@ -17,6 +17,7 @@ package security
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"log"
 	"math"
 	"net"
@@ -90,10 +91,16 @@ func (s *Server) Init() {
 	s.PlainServer = grpc.NewServer()
 	reflection.Register(s.PlainServer)
 
+	pool := x509.NewCertPool()
 	tlsConfig := &tls.Config{
 		GetCertificate: func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+			for _, cert := range s.CertStorage.GetTrustedCerts() {
+				pool.AddCert(cert.Cert)
+			}
 			return s.CertStorage.GetServerCert(info.ServerName), nil
 		},
+		ClientCAs:  pool,
+		ClientAuth: tls.VerifyClientCertIfGiven,
 	}
 
 	s.CertStorage.GetServerCert("localhost")

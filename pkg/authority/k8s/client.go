@@ -257,10 +257,19 @@ func (c *ClientImpl) VerifyServiceAccount(token string, authorizationType string
 
 	e := &rule.Endpoint{}
 
-	e.ID = pod.Namespace + "/" + pod.Name
+	e.ID = string(pod.UID)
 	for _, i := range pod.Status.PodIPs {
 		if i.IP != "" {
 			e.Ips = append(e.Ips, i.IP)
+		}
+	}
+
+	e.SpiffeID = "spiffe://cluster.local/ns/" + pod.Namespace + "/sa/" + pod.Spec.ServiceAccountName
+
+	if strings.HasPrefix(reviewRes.Status.User.Username, "system:serviceaccount:") {
+		names := strings.Split(reviewRes.Status.User.Username, ":")
+		if len(names) == 4 {
+			e.SpiffeID = "spiffe://cluster.local/ns/" + names[2] + "/sa/" + names[3]
 		}
 	}
 
