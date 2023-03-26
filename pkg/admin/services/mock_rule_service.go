@@ -29,5 +29,5 @@ type MockRuleService interface {
 	// list the mock rules by filter and return data by page.
 	ListMockRulesByPage(filter string, offset, limit int) ([]*model.MockRule, int64, error)
 
-	// TODO add getMockData method
+	// TODO getMockData method, which depends on the implementation corresponding to mock of dubbo-go.
 }
