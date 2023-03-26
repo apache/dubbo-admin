@@ -207,7 +207,7 @@ func TestRouteServiceImpl_FindTagRoute(t *testing.T) {
 		name    string
 		s       RouteService
 		args    args
-		want    *model.TagRouteDto
+		want    model.TagRouteDto
 		wantErr bool
 	}{
 		{
@@ -218,7 +218,7 @@ func TestRouteServiceImpl_FindTagRoute(t *testing.T) {
 			args: args{
 				key: "testService:testVersion:testGroup",
 			},
-			want: &model.TagRouteDto{
+			want: model.TagRouteDto{
 				Base: model.Base{
 					Application: "testService:testVersion:testGroup",
 				},
@@ -248,8 +248,8 @@ func TestRouteServiceImpl_FindTagRoute(t *testing.T) {
 				t.Errorf("RouteServiceImpl.FindTagRoute() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(&got, tt.want) {
-				t.Errorf("RouteServiceImpl.FindTagRoute() = %+v, want %+v", &got, tt.want)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("RouteServiceImpl.FindTagRoute() = %+v, want %+v", got, tt.want)
 			}
 		})
 	}
@@ -317,7 +317,7 @@ func TestRouteServiceImpl_DisableTagRoute(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test enable tag route",
+			name: "test disable tag route",
 			s: &RouteServiceImpl{
 				GovernanceConfig: mockGovernanceConfig,
 			},
@@ -332,6 +332,285 @@ func TestRouteServiceImpl_DisableTagRoute(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.s.DisableTagRoute(tt.args.key); (err != nil) != tt.wantErr {
 				t.Errorf("RouteServiceImpl.DisableTagRoute() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRouteServiceImpl_CreateConditionRoute(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig.EXPECT().SetConfig(gomock.Any(), gomock.Any()).Return(nil)
+	mockGovernanceConfig.EXPECT().GetConfig(getRoutePath(util.BuildServiceKey(model.Base{
+		Application:    "",
+		Service:        "testService",
+		ServiceVersion: "testVersion",
+		ServiceGroup:   "testGroup",
+	}), constant.ConditionRoute)).Return("", nil)
+
+	type args struct {
+		route *model.ConditionRouteDto
+	}
+	tests := []struct {
+		name    string
+		s       RouteService
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "test create condition route",
+			s: &RouteServiceImpl{
+				GovernanceConfig: mockGovernanceConfig,
+			},
+			args: args{
+				route: &model.ConditionRouteDto{
+					Base: model.Base{
+						Application:    "",
+						Service:        "testService",
+						ServiceGroup:   "testGroup",
+						ServiceVersion: "testVersion",
+					},
+					Enabled:    true,
+					Force:      true,
+					Runtime:    true,
+					Conditions: []string{"method=getComment => region=Hangzhou"},
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.s.CreateConditionRoute(*tt.args.route); (err != nil) != tt.wantErr {
+				t.Errorf("RouteServiceImpl.CreateConditionRoute() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRouteServiceImpl_UpdateConditionRoute(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig.EXPECT().SetConfig(gomock.Any(), gomock.Any()).Return(nil)
+	mockGovernanceConfig.EXPECT().GetConfig(getRoutePath(util.BuildServiceKey(model.Base{
+		Application:    "",
+		Service:        "testService",
+		ServiceVersion: "testVersion",
+		ServiceGroup:   "testGroup",
+	}), constant.ConditionRoute)).Return(`{"enabled":true,"force":false,"runtime":true,"key":"testService:testVersion:testGroup","conditions":["method=getComment => region=Hangzhou"]}`, nil)
+
+	type args struct {
+		route model.ConditionRouteDto
+	}
+	tests := []struct {
+		name    string
+		s       RouteService
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "test update condition route",
+			s: &RouteServiceImpl{
+				GovernanceConfig: mockGovernanceConfig,
+			},
+			args: args{
+				route: model.ConditionRouteDto{
+					Base: model.Base{
+						Application:    "",
+						Service:        "testService",
+						ServiceGroup:   "testGroup",
+						ServiceVersion: "testVersion",
+					},
+					Enabled:    true,
+					Force:      true,
+					Runtime:    true,
+					Conditions: []string{"method=getComment => region=Hangzhou"},
+				},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.s.UpdateConditionRoute(tt.args.route); (err != nil) != tt.wantErr {
+				t.Errorf("RouteServiceImpl.UpdateConditionRoute() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRouteServiceImpl_DeleteConditionRoute(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig.EXPECT().DeleteConfig(gomock.Any()).Return(nil)
+
+	type args struct {
+		key string
+	}
+	tests := []struct {
+		name    string
+		s       RouteService
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "test delete condition route",
+			s: &RouteServiceImpl{
+				GovernanceConfig: mockGovernanceConfig,
+			},
+			args: args{
+				key: "testService:testVersion:testGroup",
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.s.DeleteConditionRoute(tt.args.key); (err != nil) != tt.wantErr {
+				t.Errorf("RouteServiceImpl.DeleteConditionRoute() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRouteServiceImpl_FindConditionRouteById(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig.EXPECT().GetConfig(getRoutePath(util.BuildServiceKey(model.Base{
+		Application:    "",
+		Service:        "testService",
+		ServiceVersion: "testVersion",
+		ServiceGroup:   "testGroup",
+	}), constant.ConditionRoute)).Return(`{"enabled":true,"force":true,"runtime":true,"key":"testService:testVersion:testGroup","conditions":["method=getComment => region=Hangzhou"]}`, nil)
+
+	type args struct {
+		key string
+	}
+	tests := []struct {
+		name    string
+		s       RouteService
+		args    args
+		want    model.ConditionRouteDto
+		wantErr bool
+	}{
+		{
+			name: "test find condition route by id",
+			s: &RouteServiceImpl{
+				GovernanceConfig: mockGovernanceConfig,
+			},
+			args: args{
+				key: "testService:testVersion:testGroup",
+			},
+			want: model.ConditionRouteDto{
+				Base: model.Base{
+					ID:             "testService:testVersion:testGroup",
+					Service:        "testService:testVersion:testGroup",
+					ServiceGroup:   "testGroup",
+					ServiceVersion: "testVersion",
+				},
+				Enabled:    true,
+				Force:      true,
+				Runtime:    true,
+				Conditions: []string{"method=getComment => region=Hangzhou"},
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.s.FindConditionRouteById(tt.args.key)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("RouteServiceImpl.FindConditionRouteById() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("RouteServiceImpl.FindConditionRouteById() = %v\n, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestRouteServiceImpl_EnableConditionRoute(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig.EXPECT().SetConfig(gomock.Any(), gomock.Any()).Return(nil)
+	mockGovernanceConfig.EXPECT().GetConfig(getRoutePath(util.BuildServiceKey(model.Base{
+		Application:    "",
+		Service:        "testService",
+		ServiceVersion: "testVersion",
+		ServiceGroup:   "testGroup",
+	}), constant.ConditionRoute)).Return(`{"enabled":false,"force":true,"runtime":true,"key":"testService:testVersion:testGroup","conditions":["method=getComment => region=Hangzhou"]}`, nil)
+
+	type args struct {
+		key string
+	}
+	tests := []struct {
+		name    string
+		s       RouteService
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "test enable condition route",
+			s: &RouteServiceImpl{
+				GovernanceConfig: mockGovernanceConfig,
+			},
+			args: args{
+				key: "testService:testVersion:testGroup",
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.s.EnableConditionRoute(tt.args.key); (err != nil) != tt.wantErr {
+				t.Errorf("RouteServiceImpl.EnableConditionRoute() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRouteServiceImpl_DisableConditionRoute(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig.EXPECT().SetConfig(gomock.Any(), gomock.Any()).Return(nil)
+	mockGovernanceConfig.EXPECT().GetConfig(getRoutePath(util.BuildServiceKey(model.Base{
+		Application:    "",
+		Service:        "testService",
+		ServiceVersion: "testVersion",
+		ServiceGroup:   "testGroup",
+	}), constant.ConditionRoute)).Return(`{"enabled":true,"force":true,"runtime":true,"key":"testService:testVersion:testGroup","conditions":["method=getComment => region=Hangzhou"]}`, nil)
+
+	type args struct {
+		key string
+	}
+	tests := []struct {
+		name    string
+		s       RouteService
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "test disable condition route",
+			s: &RouteServiceImpl{
+				GovernanceConfig: mockGovernanceConfig,
+			},
+			args: args{
+				key: "testService:testVersion:testGroup",
+			},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.s.DisableConditionRoute(tt.args.key); (err != nil) != tt.wantErr {
+				t.Errorf("RouteServiceImpl.DisableConditionRoute() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
