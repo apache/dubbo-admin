@@ -222,6 +222,16 @@ spec:
                         type: object
                         description: "The destination of the traffic to be matched."
                         properties:
+                          namespaces:
+                            type: array
+                            description: "The namespaces to match of the source workload."
+                            items:
+                              type: string
+                          notNamespaces:
+                            type: array
+                            description: "The namespaces not to match of the source workload."
+                            items:
+                              type: string
                           ipBlocks:
                             type: array
                             description: "The IP addresses to match of the destination workload."
@@ -305,6 +315,12 @@ spec:
                   minimum: 0
                   default: 100
                   maximum: 100
+                order:
+                    type: number
+                    description: "The order of the rule."
+                    minimum: -2147483648
+                    default: 0
+                    maximum: 2147483647
                 matchType:
                   type: string
                   description: "The match type of the rules."

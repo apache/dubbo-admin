@@ -21,10 +21,37 @@ type Policy struct {
 	Spec *PolicySpec `json:"spec"`
 }
 
+func (p *Policy) CopyToClient() *PolicyToClient {
+	toClient := &PolicyToClient{
+		Name: p.Name,
+	}
+
+	if p.Spec != nil {
+		toClient.Spec = p.Spec.CopyToClient()
+	}
+
+	return toClient
+}
+
 type PolicySpec struct {
 	Action    string       `json:"action"`
 	Selector  []*Selector  `json:"selector,omitempty"`
 	PortLevel []*PortLevel `json:"PortLevel,omitempty"`
+}
+
+func (p *PolicySpec) CopyToClient() *PolicySpecToClient {
+	toClient := &PolicySpecToClient{
+		Action: p.Action,
+	}
+
+	if p.PortLevel != nil {
+		toClient.PortLevel = make([]*PortLevelToClient, 0, len(p.PortLevel))
+		for _, portLevel := range p.PortLevel {
+			toClient.PortLevel = append(toClient.PortLevel, portLevel.CopyToClient())
+		}
+	}
+
+	return toClient
 }
 
 type Selector struct {
@@ -41,6 +68,13 @@ type Selector struct {
 type PortLevel struct {
 	Port   int    `json:"port,omitempty"`
 	Action string `json:"action,omitempty"`
+}
+
+func (p *PortLevel) CopyToClient() *PortLevelToClient {
+	return &PortLevelToClient{
+		Port:   p.Port,
+		Action: p.Action,
+	}
 }
 
 type Extend struct {

@@ -57,6 +57,7 @@ type Client interface {
 }
 
 type ClientImpl struct {
+	options        *config.Options
 	kubeClient     *kubernetes.Clientset
 	informerClient *infoemerclient.Clientset
 }
@@ -66,6 +67,7 @@ func NewClient() Client {
 }
 
 func (c *ClientImpl) Init(options *config.Options) bool {
+	c.options = options
 	config, err := rest.InClusterConfig()
 	options.InPodEnv = err == nil
 	if err != nil {
@@ -369,6 +371,7 @@ func (c *ClientImpl) InitController(
 
 	stopCh := make(chan struct{})
 	controller := NewController(c.informerClient,
+		c.options.Namespace,
 		authenticationHandler,
 		authorizationHandler,
 		informerFactory.Dubbo().V1beta1().AuthenticationPolicies(),

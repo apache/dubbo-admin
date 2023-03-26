@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package authorization_test
+package authorization
 
 import (
 	"encoding/json"
@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/dubbo-admin/pkg/authority/rule"
-	"github.com/apache/dubbo-admin/pkg/authority/rule/authorization"
 	"github.com/apache/dubbo-admin/pkg/authority/rule/connection"
 )
 
@@ -30,17 +29,17 @@ func TestRule(t *testing.T) {
 	t.Parallel()
 
 	storage := connection.NewStorage()
-	handler := authorization.NewHandler(storage)
+	handler := NewHandler(storage)
 
-	handler.Add("test", &authorization.Policy{})
+	handler.Add("test", &Policy{})
 
-	originRule := storage.LatestRules[authorization.RuleType]
+	originRule := storage.LatestRules[RuleType]
 
 	if originRule == nil {
 		t.Error("expected origin rule to be added")
 	}
 
-	if originRule.Type() != authorization.RuleType {
+	if originRule.Type() != RuleType {
 		t.Error("expected origin rule type to be authorization/v1beta1")
 	}
 
@@ -56,7 +55,7 @@ func TestRule(t *testing.T) {
 		t.Error(err)
 	}
 
-	if toClient.Type() != authorization.RuleType {
+	if toClient.Type() != RuleType {
 		t.Error("expected toClient type to be authorization/v1beta1")
 	}
 
@@ -64,26 +63,26 @@ func TestRule(t *testing.T) {
 		t.Error("expected toClient revision to be 1")
 	}
 
-	if toClient.Data() != `[{"spec":null}]` {
-		t.Error("expected toClient data to be [{\"spec\":null}], got " + toClient.Data())
+	if toClient.Data() != `[]` {
+		t.Error("expected toClient data to be [], got " + toClient.Data())
 	}
 
-	policy := &authorization.Policy{
+	policy := &Policy{
 		Name: "test2",
-		Spec: &authorization.PolicySpec{
+		Spec: &PolicySpec{
 			Action: "ALLOW",
 		},
 	}
 
 	handler.Add("test2", policy)
 
-	originRule = storage.LatestRules[authorization.RuleType]
+	originRule = storage.LatestRules[RuleType]
 
 	if originRule == nil {
 		t.Error("expected origin rule to be added")
 	}
 
-	if originRule.Type() != authorization.RuleType {
+	if originRule.Type() != RuleType {
 		t.Error("expected origin rule type to be authorization/v1beta1")
 	}
 
@@ -100,7 +99,7 @@ func TestRule(t *testing.T) {
 		t.Error(err)
 	}
 
-	if toClient.Type() != authorization.RuleType {
+	if toClient.Type() != RuleType {
 		t.Error("expected toClient type to be authorization/v1beta1")
 	}
 
@@ -108,12 +107,837 @@ func TestRule(t *testing.T) {
 		t.Error("expected toClient revision to be 2")
 	}
 
-	target := []*authorization.Policy{}
+	target := []*Policy{}
 
 	err = json.Unmarshal([]byte(toClient.Data()), &target)
 	assert.Nil(t, err)
-	assert.Equal(t, 2, len(target))
+	assert.Equal(t, 1, len(target))
 
-	assert.Contains(t, target, &authorization.Policy{})
 	assert.Contains(t, target, policy)
+}
+
+func TestRule_Empty(t *testing.T) {
+	t.Parallel()
+
+	origin := &Origin{
+		revision: 1,
+		data: map[string]*Policy{
+			"test": {
+				Spec: &PolicySpec{
+					Action: "ALLOW",
+					Rules: []*PolicyRule{
+						{},
+					},
+				},
+			},
+			"demo": {},
+		},
+	}
+
+	generated, err := origin.Exact(nil)
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	var decoded []*PolicyToClient
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+}
+
+func TestRule_Namespace(t *testing.T) {
+	t.Parallel()
+
+	origin := &Origin{
+		revision: 1,
+		data: map[string]*Policy{
+			"test": {
+				Spec: &PolicySpec{
+					Action: "ALLOW",
+					Rules: []*PolicyRule{
+						{
+							To: &Target{
+								Namespaces: []string{"test"},
+							},
+						},
+					},
+				},
+			},
+			"demo": {},
+		},
+	}
+
+	// success
+	generated, err := origin.Exact(&rule.Endpoint{
+		KubernetesEnv: &rule.KubernetesEnv{
+			Namespace: "test",
+		},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	var decoded []*PolicyToClient
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{
+		KubernetesEnv: &rule.KubernetesEnv{
+			Namespace: "test-new",
+		},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{
+		KubernetesEnv: &rule.KubernetesEnv{},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+}
+
+func TestRule_NotNamespace(t *testing.T) {
+	t.Parallel()
+
+	origin := &Origin{
+		revision: 1,
+		data: map[string]*Policy{
+			"test": {
+				Spec: &PolicySpec{
+					Action: "ALLOW",
+					Rules: []*PolicyRule{
+						{
+							To: &Target{
+								NotNamespaces: []string{"test"},
+							},
+						},
+					},
+				},
+			},
+			"demo": {},
+		},
+	}
+
+	// success
+	generated, err := origin.Exact(&rule.Endpoint{
+		KubernetesEnv: &rule.KubernetesEnv{
+			Namespace: "test-new",
+		},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	var decoded []*PolicyToClient
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{
+		KubernetesEnv: &rule.KubernetesEnv{
+			Namespace: "test",
+		},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+
+	// success
+	generated, err = origin.Exact(&rule.Endpoint{
+		KubernetesEnv: &rule.KubernetesEnv{},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+}
+
+func TestRule_IPBlocks(t *testing.T) {
+	t.Parallel()
+
+	origin := &Origin{
+		revision: 1,
+		data: map[string]*Policy{
+			"test": {
+				Spec: &PolicySpec{
+					Action: "ALLOW",
+					Rules: []*PolicyRule{
+						{
+							To: &Target{
+								IpBlocks: []string{"127.0.0.1/24"},
+							},
+						},
+					},
+				},
+			},
+			"demo": {},
+		},
+	}
+
+	// success
+	generated, err := origin.Exact(&rule.Endpoint{
+		Ips: []string{"127.0.0.1"},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	var decoded []*PolicyToClient
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{
+		Ips: []string{"127.0.1.1"},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{
+		Ips: []string{"127"},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+}
+
+func TestRule_IPBlocks_ErrFmt(t *testing.T) {
+	t.Parallel()
+
+	origin := &Origin{
+		revision: 1,
+		data: map[string]*Policy{
+			"test": {
+				Spec: &PolicySpec{
+					Action: "ALLOW",
+					Rules: []*PolicyRule{
+						{
+							To: &Target{
+								IpBlocks: []string{"127"},
+							},
+						},
+					},
+				},
+			},
+			"demo": {},
+		},
+	}
+
+	// failed
+	generated, err := origin.Exact(&rule.Endpoint{
+		Ips: []string{"127.0.0.1"},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	var decoded []*PolicyToClient
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{
+		Ips: []string{"127.0.1.1"},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+}
+
+func TestRule_NotIPBlocks(t *testing.T) {
+	t.Parallel()
+
+	origin := &Origin{
+		revision: 1,
+		data: map[string]*Policy{
+			"test": {
+				Spec: &PolicySpec{
+					Action: "ALLOW",
+					Rules: []*PolicyRule{
+						{
+							To: &Target{
+								NotIpBlocks: []string{"127.0.0.1/24"},
+							},
+						},
+					},
+				},
+			},
+			"demo": {},
+		},
+	}
+
+	// success
+	generated, err := origin.Exact(&rule.Endpoint{
+		Ips: []string{"127.0.1.1"},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	var decoded []*PolicyToClient
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+
+	// success
+	generated, err = origin.Exact(&rule.Endpoint{
+		Ips: []string{"127"},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{
+		Ips: []string{"127.0.0.1"},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+
+	// success
+	generated, err = origin.Exact(&rule.Endpoint{})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+}
+
+func TestRule_NotIPBlocks_ErrFmt(t *testing.T) {
+	t.Parallel()
+
+	origin := &Origin{
+		revision: 1,
+		data: map[string]*Policy{
+			"test": {
+				Spec: &PolicySpec{
+					Action: "ALLOW",
+					Rules: []*PolicyRule{
+						{
+							To: &Target{
+								NotIpBlocks: []string{"127"},
+							},
+						},
+					},
+				},
+			},
+			"demo": {},
+		},
+	}
+
+	// success
+	generated, err := origin.Exact(&rule.Endpoint{
+		Ips: []string{"127.0.0.1"},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	var decoded []*PolicyToClient
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+
+	// success
+	generated, err = origin.Exact(&rule.Endpoint{
+		Ips: []string{"127.0.1.1"},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+
+	// success
+	generated, err = origin.Exact(&rule.Endpoint{})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+}
+
+func TestRule_Principals(t *testing.T) {
+	t.Parallel()
+
+	origin := &Origin{
+		revision: 1,
+		data: map[string]*Policy{
+			"test": {
+				Spec: &PolicySpec{
+					Action: "ALLOW",
+					Rules: []*PolicyRule{
+						{
+							To: &Target{
+								Principals: []string{"cluster.local/ns/default/sa/default"},
+							},
+						},
+					},
+				},
+			},
+			"demo": {},
+		},
+	}
+
+	// success
+	generated, err := origin.Exact(&rule.Endpoint{
+		SpiffeID: "cluster.local/ns/default/sa/default",
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	var decoded []*PolicyToClient
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+
+	// success
+	generated, err = origin.Exact(&rule.Endpoint{
+		SpiffeID: "spiffe://cluster.local/ns/default/sa/default",
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{
+		SpiffeID: "cluster.local/ns/test/sa/default",
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+}
+
+func TestRule_NotPrincipals(t *testing.T) {
+	t.Parallel()
+
+	origin := &Origin{
+		revision: 1,
+		data: map[string]*Policy{
+			"test": {
+				Spec: &PolicySpec{
+					Action: "ALLOW",
+					Rules: []*PolicyRule{
+						{
+							To: &Target{
+								NotPrincipals: []string{"cluster.local/ns/default/sa/default"},
+							},
+						},
+					},
+				},
+			},
+			"demo": {},
+		},
+	}
+
+	// success
+	generated, err := origin.Exact(&rule.Endpoint{
+		SpiffeID: "cluster.local/ns/test/sa/default",
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	var decoded []*PolicyToClient
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+
+	// success
+	generated, err = origin.Exact(&rule.Endpoint{
+		SpiffeID: "spiffe://cluster.local/ns/test/sa/default",
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{
+		SpiffeID: "cluster.local/ns/default/sa/default",
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{
+		SpiffeID: "spiffe://cluster.local/ns/default/sa/default",
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+}
+
+func TestRule_Extends(t *testing.T) {
+	t.Parallel()
+
+	origin := &Origin{
+		revision: 1,
+		data: map[string]*Policy{
+			"test": {
+				Spec: &PolicySpec{
+					Action: "ALLOW",
+					Rules: []*PolicyRule{
+						{
+							To: &Target{
+								Extends: []*Extend{
+									{
+										Key:   "kubernetesEnv.podName",
+										Value: "test",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			"demo": {},
+		},
+	}
+
+	// success
+	generated, err := origin.Exact(&rule.Endpoint{
+		KubernetesEnv: &rule.KubernetesEnv{
+			PodName: "test",
+		},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	var decoded []*PolicyToClient
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{
+		KubernetesEnv: &rule.KubernetesEnv{
+			PodName: "test-new",
+		},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+}
+
+func TestRule_NotExtends(t *testing.T) {
+	t.Parallel()
+
+	origin := &Origin{
+		revision: 1,
+		data: map[string]*Policy{
+			"test": {
+				Spec: &PolicySpec{
+					Action: "ALLOW",
+					Rules: []*PolicyRule{
+						{
+							To: &Target{
+								NotExtends: []*Extend{
+									{
+										Key:   "kubernetesEnv.podName",
+										Value: "test",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			"demo": {},
+		},
+	}
+
+	// success
+	generated, err := origin.Exact(&rule.Endpoint{
+		KubernetesEnv: &rule.KubernetesEnv{
+			PodName: "test-new",
+		},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	var decoded []*PolicyToClient
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
+
+	// failed
+	generated, err = origin.Exact(&rule.Endpoint{
+		KubernetesEnv: &rule.KubernetesEnv{
+			PodName: "test",
+		},
+	})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 0, len(decoded))
+
+	// success
+	generated, err = origin.Exact(&rule.Endpoint{})
+	assert.Nil(t, err)
+
+	assert.NotNil(t, generated)
+	assert.Equal(t, generated.Type(), RuleType)
+	assert.Equal(t, generated.Revision(), int64(1))
+
+	err = json.Unmarshal([]byte(generated.Data()), &decoded)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(decoded))
+	assert.Equal(t, "ALLOW", decoded[0].Spec.Action)
 }
