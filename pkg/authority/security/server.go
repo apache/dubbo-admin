@@ -25,6 +25,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/apache/dubbo-admin/pkg/authority/election"
+
 	cert2 "github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
@@ -59,6 +61,7 @@ type Server struct {
 
 	WebhookServer *webhook.Webhook
 	JavaInjector  *patch.JavaSdk
+	Elec          election.LeaderElection
 }
 
 func NewServer(options *config.Options) *Server {
@@ -82,6 +85,9 @@ func (s *Server) Init() {
 
 	if s.CertStorage == nil {
 		s.CertStorage = cert2.NewStorage(s.Options)
+	}
+	if s.Elec == nil {
+		s.Elec = election.NewleaderElection()
 	}
 	go s.CertStorage.RefreshServerCert()
 
@@ -182,7 +188,8 @@ func (s *Server) ScheduleRefreshAuthorityCert() {
 			logger.Sugar().Infof("Authority cert is invalid, refresh it.")
 			// TODO lock if multi server
 			// TODO refresh signed cert
-			s.KubeClient.Resourcelock(s.CertStorage, s.Options)
+
+			s.Elec.Election(s.CertStorage, s.Options, s.KubeClient.GetKubClient())
 			if s.Options.IsKubernetesConnected {
 				s.KubeClient.UpdateAuthorityCert(s.CertStorage.GetAuthorityCert().CertPem, cert2.EncodePrivateKey(s.CertStorage.GetAuthorityCert().PrivateKey), s.Options.Namespace)
 				s.KubeClient.UpdateWebhookConfig(s.Options, s.CertStorage)
