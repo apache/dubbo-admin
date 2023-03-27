@@ -166,3 +166,13 @@ func ClusterMetrics(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, res)
 }
+
+func PromDiscovery(c *gin.Context) {
+	err := prometheusService.PromDiscovery(c.Writer)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+	}
+	c.JSON(http.StatusOK, "ok")
+}

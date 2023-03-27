@@ -33,6 +33,7 @@ func InitRouter() *gin.Engine {
 	router.GET("/api/dev/version", handlers.Version)
 	router.GET("/api/dev/metrics/flow", handlers.FlowMetrics)
 	router.GET("/api/dev/metrics/cluster", handlers.ClusterMetrics)
+	router.GET("/api/dev/http_sd", handlers.PromDiscovery)
 
 	override := router.Group("/api/:env/rules/override")
 	{
