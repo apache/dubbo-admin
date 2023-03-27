@@ -100,6 +100,9 @@ func (c *ClientImpl) Init(options *config.Options) bool {
 		}
 	}
 
+	// set qps and burst for rest config
+	config.QPS = float32(c.options.RestConfigQps)
+	config.Burst = c.options.RestConfigBurst
 	// creates the clientset
 	clientSet, err := kubernetes.NewForConfig(config)
 	if err != nil {
