@@ -46,6 +46,11 @@ type Options struct {
 	// TODO remove EnableOIDCCheck
 	EnableOIDCCheck      bool
 	ResourcelockIdentity string
+
+	// Qps for rest config
+	RestConfigQps int
+	// Burst for rest config
+	RestConfigBurst int
 }
 
 func NewOptions() *Options {
@@ -64,6 +69,8 @@ func NewOptions() *Options {
 		IsKubernetesConnected: false,
 		EnableOIDCCheck:       true,
 		ResourcelockIdentity:  GetStringEnv("POD_NAME", GetDefaultResourcelockIdentity()),
+		RestConfigQps:         50,
+		RestConfigBurst:       100,
 	}
 }
 
@@ -78,6 +85,8 @@ func (o *Options) FillFlags(flags *pflag.FlagSet) {
 	flags.BoolVar(&o.InPodEnv, "in-pod-env", false, "dubbo run in pod environment")
 	flags.BoolVar(&o.IsKubernetesConnected, "is-kubernetes-connected", false, "dubbo connected with kubernetes")
 	flags.BoolVar(&o.EnableOIDCCheck, "enable-oidc-check", false, "dubbo enable OIDC check")
+	flags.IntVar(&o.RestConfigQps, "rest-config-qps", 50, "qps for rest config")
+	flags.IntVar(&o.RestConfigBurst, "rest-config-burst", 100, "burst for rest config")
 }
 
 func (o *Options) Validate() []error {
