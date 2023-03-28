@@ -67,5 +67,12 @@ func InitRouter() *gin.Engine {
 		conditionRoute.PUT("/disable/:id", handlers.DisableConditionRoute)
 	}
 
+	mockRoute := router.Group("/api/:env/mock/rule")
+	{
+		mockRoute.POST("/", handlers.CreateOrUpdateMockRule)
+		mockRoute.DELETE("/", handlers.DeleteMockRuleById)
+		mockRoute.GET("/list", handlers.ListMockRulesByPage)
+	}
+
 	return router
 }

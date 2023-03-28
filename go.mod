@@ -46,6 +46,13 @@ require (
 )
 
 require (
+	github.com/go-sql-driver/mysql v1.7.0 // indirect
+	github.com/jinzhu/inflection v1.0.0 // indirect
+	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/mattn/go-sqlite3 v1.14.16 // indirect
+)
+
+require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.1 // indirect
 	github.com/RoaringBitmap/roaring v1.1.0 // indirect
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
@@ -144,6 +151,9 @@ require (
 	gopkg.in/ini.v1 v1.51.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gorm.io/driver/mysql v1.4.7
+	gorm.io/driver/sqlite v1.4.4
+	gorm.io/gorm v1.24.6
 	k8s.io/klog/v2 v2.80.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280 // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect

@@ -29,9 +29,13 @@ import (
 	"dubbo.apache.org/dubbo-go/v3/config_center"
 	"dubbo.apache.org/dubbo-go/v3/metadata/report"
 	"dubbo.apache.org/dubbo-go/v3/registry"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	_ "github.com/apache/dubbo-admin/pkg/admin/imports"
+	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"gopkg.in/yaml.v2"
 )
 
@@ -51,12 +55,15 @@ type Admin struct {
 	ConfigCenter   string        `yaml:"config-center"`
 	MetadataReport AddressConfig `yaml:"metadata-report"`
 	Registry       AddressConfig `yaml:"registry"`
+	MysqlDsn       string        `yaml:"mysql-dsn"`
 }
 
 var (
 	ConfigCenter         config_center.DynamicConfiguration
 	RegistryCenter       registry.Registry
 	MetadataReportCenter report.MetadataReport
+
+	DataBase *gorm.DB // for service mock
 
 	Group string
 )
@@ -77,9 +84,13 @@ func LoadConfig() {
 	}
 	var config Config
 	yaml.Unmarshal(content, &config)
+
 	address := config.Admin.ConfigCenter
 	registryAddress := config.Admin.Registry.Address
 	metadataReportAddress := config.Admin.MetadataReport.Address
+
+	loadDatabaseConfig(config.Admin.MysqlDsn)
+
 	PrometheusIp = config.Prometheus.Ip
 	PrometheusPort = config.Prometheus.Port
 	if PrometheusIp == "" {
@@ -88,6 +99,7 @@ func LoadConfig() {
 	if PrometheusPort == "" {
 		PrometheusPort = "9090"
 	}
+
 	if len(address) > 0 {
 		c := newAddressConfig(address)
 		factory, err := extension.GetConfigCenterFactory(c.getProtocol())
@@ -169,4 +181,22 @@ func newAddressConfig(address string) AddressConfig {
 		panic(err)
 	}
 	return config
+}
+
+// load database for mock rule storage, if dsn is empty, use sqlite in memory
+func loadDatabaseConfig(dsn string) {
+	var db *gorm.DB
+	var err error
+	if dsn == "" {
+		db, err = gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	} else {
+		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	}
+	if err != nil {
+		panic(err)
+	} else {
+		DataBase = db
+		// init table
+		DataBase.AutoMigrate(&model.MockRuleEntity{})
+	}
 }
