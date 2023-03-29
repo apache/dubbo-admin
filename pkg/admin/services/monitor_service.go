@@ -15,9 +15,14 @@
 
 package services
 
-import "github.com/apache/dubbo-admin/pkg/admin/model"
+import (
+	"net/http"
+
+	"github.com/apache/dubbo-admin/pkg/admin/model"
+)
 
 type MonitorService interface {
 	FlowMetrics() ([]model.Response, error)    // Traffic overview
 	ClusterMetrics() ([]model.Response, error) // Cluster overview
+	PromDiscovery(w http.ResponseWriter) error // prometheus http_sd discovery
 }

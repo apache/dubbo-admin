@@ -17,6 +17,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -38,6 +39,37 @@ var (
 )
 
 type PrometheusServiceImpl struct{}
+
+func (p *PrometheusServiceImpl) PromDiscovery(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	prosvc, err := providerService.FindService(constant.IP, constant.AnyValue)
+	if err != nil {
+		logger.Sugar().Errorf("Error find provider service: %v\n", err)
+		return err
+	}
+	var targets []string
+	for i := 0; i < len(prosvc); i++ {
+		url := prosvc[i].Address
+		targets = append(targets, url)
+	}
+	consvc, err := consumerService.FindAll()
+	if err != nil {
+		logger.Sugar().Errorf("Error find consumer service: %v\n", err)
+		return err
+	}
+	for i := 0; i < len(consvc); i++ {
+		url := consvc[i].Address
+		targets = append(targets, url)
+	}
+	target := []model.Target{
+		{
+			Targets: targets,
+			Labels:  map[string]string{},
+		},
+	}
+	err = json.NewEncoder(w).Encode(target)
+	return err
+}
 
 func (p *PrometheusServiceImpl) ClusterMetrics() ([]model.Response, error) {
 	res := make([]model.Response, 5)
