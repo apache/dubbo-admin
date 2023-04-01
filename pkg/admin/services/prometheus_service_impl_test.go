@@ -162,7 +162,7 @@ func TestPrometheusServiceImpl_PromDiscovery(t *testing.T) {
 				t.Errorf("Error: %v\n", err)
 			}
 			var target []model.Target
-			err = json.Unmarshal(resp, &target)
+			_ = json.Unmarshal(resp, &target)
 			if !reflect.DeepEqual(target, tt.want) {
 				t.Errorf("PromDiscovery() got = %v, want %v", target, tt.want)
 			}
