@@ -35,9 +35,7 @@ import (
 	"dubbo.apache.org/dubbo-go/v3/common"
 )
 
-var (
-	prometheusService MonitorService = &PrometheusServiceImpl{}
-)
+var prometheusService MonitorService = &PrometheusServiceImpl{}
 
 type args struct {
 	address []string
@@ -51,8 +49,8 @@ type test struct {
 }
 
 func initCache(test []test) {
-	proservice := &sync.Map{}
-	conservice := &sync.Map{}
+	proService := &sync.Map{}
+	conService := &sync.Map{}
 	// protest1
 	protest1QueryParams := url.Values{
 		constant.ApplicationKey: {"protest1QueryParams"},
@@ -90,18 +88,18 @@ func initCache(test []test) {
 		common.WithParams(contest2QueryParams),
 		common.WithLocation(test[0].args.address[3]),
 	)
-	proservice.Store("providers", map[string]*common.URL{
+	proService.Store("providers", map[string]*common.URL{
 		"protest1": protest1,
 		"protest2": protest2,
 	})
 
-	conservice.Store("consumers", map[string]*common.URL{
+	conService.Store("consumers", map[string]*common.URL{
 		"contest1": contest1,
 		"contest2": contest2,
 	})
 
-	cache.InterfaceRegistryCache.Store(constant.ProvidersCategory, proservice)
-	cache.InterfaceRegistryCache.Store(constant.ConsumersCategory, conservice)
+	cache.InterfaceRegistryCache.Store(constant.ProvidersCategory, proService)
+	cache.InterfaceRegistryCache.Store(constant.ConsumersCategory, conService)
 }
 
 // Simulate Prometheus to send requests for http_sd service discovery.
@@ -120,7 +118,6 @@ func initPromClient(url string) ([]byte, error) {
 
 // Simulate Prometheus to periodically send requests to admin to realize http_ds service discovery.
 func TestPrometheusServiceImpl_PromDiscovery(t *testing.T) {
-
 	tests := []test{
 		{
 			name: "TEST",
