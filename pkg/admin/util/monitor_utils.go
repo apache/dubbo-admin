@@ -11,17 +11,16 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
-// limitations under the License.package services
+// limitations under the License.
 
-package services
+package util
 
-import (
-	"github.com/apache/dubbo-admin/pkg/admin/model"
-	"net/http"
-)
+import "strings"
 
-type MonitorService interface {
-	FlowMetrics() ([]model.Response, error)    // Traffic overview
-	ClusterMetrics() ([]model.Response, error) // Cluster overview
-	PromDiscovery(w http.ResponseWriter) error // prometheus http_sd discovery
+func GetDiscoveryPath(address string) string {
+	if strings.Contains(address, ":") {
+		index := strings.Index(address, ":")
+		return address[0:index] + ":22222"
+	}
+	return address + ":22222"
 }

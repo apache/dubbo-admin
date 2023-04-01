@@ -11,17 +11,45 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
-// limitations under the License.package services
+// limitations under the License.
 
-package services
+package util
 
 import (
-	"github.com/apache/dubbo-admin/pkg/admin/model"
-	"net/http"
+	"reflect"
+	"testing"
 )
 
-type MonitorService interface {
-	FlowMetrics() ([]model.Response, error)    // Traffic overview
-	ClusterMetrics() ([]model.Response, error) // Cluster overview
-	PromDiscovery(w http.ResponseWriter) error // prometheus http_sd discovery
+func TestGetDiscoveryPath(t *testing.T) {
+	type args struct {
+		address string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "RightTest1",
+			args: args{
+				address: "127.0.0.1:0",
+			},
+			want: "127.0.0.1:22222",
+		},
+		{
+			name: "RightTest2",
+			args: args{
+				address: "192.168.127.153",
+			},
+			want: "192.168.127.153:22222",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := GetDiscoveryPath(tt.args.address)
+			if !reflect.DeepEqual(path, tt.want) {
+				t.Errorf("GetDiscoveryPath() = %v, want %v", path, tt.want)
+			}
+		})
+	}
 }
