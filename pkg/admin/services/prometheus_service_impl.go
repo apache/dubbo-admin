@@ -46,6 +46,10 @@ func (p *PrometheusServiceImpl) PromDiscovery(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	// Reduce the call chain and improve performance.
 	proAddr, err := providerServiceImpl.findAddresses()
+	if err != nil {
+		logger.Sugar().Errorf("Error provider findAddresses: %v\n", err)
+		return err
+	}
 	var targets []string
 	for i := 0; i < len(proAddr); i++ {
 		targets = append(targets, util.GetDiscoveryPath(proAddr[i]))
