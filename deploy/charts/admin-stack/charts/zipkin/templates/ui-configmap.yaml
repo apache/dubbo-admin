@@ -1,0 +1,116 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "zipkin.ui.fullname" . }}
+  labels:
+    {{- include "zipkin.ui.labels" . | nindent 4 }}
+data:
+  zipkin.conf.template: |
+    user  nginx nginx;
+    worker_processes  2;
+
+    error_log  /dev/stderr warn;
+    pid        /var/run/nginx.pid;
+
+    daemon off;
+
+    events {
+        worker_connections  1024;
+    }
+
+
+    http {
+        include       /etc/nginx/mime.types;
+        default_type  application/octet-stream;
+
+        log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                        '$status $body_bytes_sent "$http_referer" '
+                        '"$http_user_agent" "$http_x_forwarded_for"';
+
+        access_log  /dev/stdout  main;
+
+        sendfile        on;
+        #tcp_nopush     on;
+
+        keepalive_timeout  65;
+
+        gzip  on;
+        gzip_types    application/javascript application/json text/css;
+
+        server_tokens off;
+
+        types {
+            application/font-woff2  woff2;
+        }
+
+        server {
+            listen {{ .Values.ui.service.port }};
+
+            root /var/www/html;
+
+            index index.html;
+
+            # Make site accessible from http://set-ip-address.xip.io
+            server_name localhost;
+
+            charset utf-8;
+
+            # redirect root as UI is hosted under /zipkin
+            location / {
+            return 302 /zipkin/;
+            }
+
+            # the entrypoint of the app will expire every day.
+            # this includes links to js assets with random names.
+            location /zipkin/index.html {
+                expires 1d;
+            }
+
+            location /zipkin {
+            try_files $uri /zipkin/index.html = 404;
+            }
+
+            # accept UI config from the server
+            location /zipkin/config.json {
+                expires 10m;
+                proxy_pass ${ZIPKIN_BASE_URL};
+            }
+
+            # the UI looks for the api under the same relative path
+            location /zipkin/api {
+                expires off;
+                proxy_pass ${ZIPKIN_BASE_URL};
+            }
+
+            # due to minification, the js assets will change names.
+            # this makes them safe to cache longer
+            location ~* \.(?:ico|css|js|gif|jpe?g|png)$ {
+                expires 1y;
+                add_header Cache-Control "public";
+            }
+
+            location = /favicon.ico { log_not_found off; access_log off; }
+            location = /robots.txt  { access_log off; log_not_found off; }
+
+            # Deny .htaccess file access
+            location ~ /\.ht {
+                deny all;
+            }
+
+        }
+    }

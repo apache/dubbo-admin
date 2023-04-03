@@ -36,10 +36,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/leaderelection"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/util/homedir"
 )
 
@@ -52,6 +53,7 @@ type Client interface {
 	UpdateWebhookConfig(options *config.Options, storage cert.Storage)
 	GetNamespaceLabels(namespace string) map[string]string
 	InitController(paHandler authentication.Handler, apHandler authorization.Handler)
+	Resourcelock(storage cert.Storage, options *config.Options) error
 }
 
 type ClientImpl struct {
@@ -365,4 +367,45 @@ func (c *ClientImpl) InitController(
 	informerFactory.Start(stopCh)
 
 	controller.WaitSynced()
+}
+
+func (c *ClientImpl) Resourcelock(storage cert.Storage, options *config.Options) error {
+	identity := options.ResourcelockIdentity
+	rlConfig := resourcelock.ResourceLockConfig{
+		Identity: identity,
+	}
+	namespace := options.Namespace
+	_, err := c.kubeClient.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
+	if err != nil {
+		namespace = "default"
+	}
+	lock, err := resourcelock.New(resourcelock.ConfigMapsLeasesResourceLock, namespace, "dubbo-lock-cert", c.kubeClient.CoreV1(), c.kubeClient.CoordinationV1(), rlConfig)
+	if err != nil {
+		return err
+	}
+	leaderElectionConfig := leaderelection.LeaderElectionConfig{
+		Lock:          lock,
+		LeaseDuration: 15 * time.Second,
+		RenewDeadline: 10 * time.Second,
+		RetryPeriod:   2 * time.Second,
+		Callbacks: leaderelection.LeaderCallbacks{
+			// leader
+			OnStartedLeading: func(ctx context.Context) {
+				// lock if multi server，refresh signed cert
+				storage.SetAuthorityCert(cert.GenerateAuthorityCert(storage.GetRootCert(), options.CaValidity))
+			},
+			// not leader
+			OnStoppedLeading: func() {
+				// TODO should be listen,when cert resfresh,should be resfresh
+			},
+			// a new leader has been elected
+			OnNewLeader: func(identity string) {
+			},
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	leaderelection.RunOrDie(ctx, leaderElectionConfig)
+	return nil
 }

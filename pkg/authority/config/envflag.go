@@ -16,7 +16,10 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/base32"
 	"flag"
+	"fmt"
 	"os"
 	"strconv"
 )
@@ -40,6 +43,7 @@ func GetOptions() *Options {
 		InPodEnv:              GetBoolEnv("inpodenv", false),
 		IsKubernetesConnected: GetBoolEnv("iskubernetesconnected", false),
 		EnableOIDCCheck:       GetBoolEnv("enableoidccheck", true),
+		ResourcelockIdentity:  GetStringEnv("POD_NAME", GetDefaultResourcelockIdentity()),
 	}
 
 	flag.StringVar(&options.Namespace, "namespace", options.Namespace, "dubbo namespace")
@@ -94,4 +98,18 @@ func GetBoolEnv(name string, defvalue bool) bool {
 	} else {
 		return defvalue
 	}
+}
+
+func GetDefaultResourcelockIdentity() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		panic(err)
+	}
+	randomBytes := make([]byte, 5)
+	_, err = rand.Read(randomBytes)
+	if err != nil {
+		panic(err)
+	}
+	randomStr := base32.StdEncoding.EncodeToString(randomBytes)
+	return fmt.Sprintf("%s-%s", hostname, randomStr)
 }
