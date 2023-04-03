@@ -213,7 +213,7 @@ admin:
   passwordKey: admin-password
 
 ## Define command to be executed at startup by grafana container
-## Needed if using `vault-env` to manage secrets (ref: https://banzaicloud.com/blog/inject-secrets-into-pods-vault/)
+## Needed if using `vault-identifier` to manage secrets (ref: https://banzaicloud.com/blog/inject-secrets-into-pods-vault/)
 ## Default is "run.sh" as defined in grafana's Dockerfile
 # command:
 # - "sh"
@@ -230,9 +230,9 @@ admin:
 ##  "oidc.eks.us-east-1.amazonaws.com/id/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX:sub": "system:serviceaccount:NAMESPACE:prometheus-operator-grafana",
 ##
 ## 3. attach a policy to the role, you can use a built in policy called CloudWatchReadOnlyAccess
-## 4. use the following env: (replace 123456789000 and iam-role-name-here with your aws account number and role name)
+## 4. use the following identifier: (replace 123456789000 and iam-role-name-here with your aws account number and role name)
 ##
-## env:
+## identifier:
 ##   AWS_ROLE_ARN: arn:aws:iam::123456789000:role/iam-role-name-here
 ##   AWS_WEB_IDENTITY_TOKEN_FILE: /var/run/secrets/eks.amazonaws.com/serviceaccount/token
 ##   AWS_REGION: us-east-1
@@ -246,7 +246,7 @@ env: {}
 ## "valueFrom" environment variable references that will be added to deployment pods. Name is templated.
 ## ref: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.19/#envvarsource-v1-core
 ## Renders in container spec as:
-##   env:
+##   identifier:
 ##     ...
 ##     - name: <key>
 ##       valueFrom:
@@ -293,7 +293,7 @@ extraSecretMounts: []
   #   readOnly: true
   #   subPath: ""
   #
-  # for AWS EKS (cloudwatch) use the following (see also instruction in env: above)
+  # for AWS EKS (cloudwatch) use the following (see also instruction in identifier: above)
   # - name: aws-iam-token
   #   mountPath: /var/run/secrets/eks.amazonaws.com/serviceaccount
   #   readOnly: true
@@ -334,7 +334,7 @@ extraVolumeMounts: []
   #     driver: secrets-store.csi.k8s.io
   #     readOnly: true
   #     volumeAttributes:
-#       secretProviderClass: "grafana-env-spc"
+#       secretProviderClass: "grafana-identifier-spc"
 
 ## Container Lifecycle Hooks. Execute a specific bash command or make an HTTP request
 lifecycleHooks: {}

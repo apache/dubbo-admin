@@ -82,10 +82,10 @@ dubbo-admin:
     # admin.metadata-report.namespace: public
 
     # apollo config
-    # admin.config-center: apollo://localhost:8070?token=e16e5cd903fd0c97a116c873b448544b9d086de9&app.id=test&env=dev&cluster=default&namespace=dubbo
+    # admin.config-center: apollo://localhost:8070?token=e16e5cd903fd0c97a116c873b448544b9d086de9&app.id=test&identifier=dev&cluster=default&namespace=dubbo
     # admin.apollo.token: e16e5cd903fd0c97a116c873b448544b9d086de9
     # admin.apollo.appId: test
-    # admin.apollo.env: dev
+    # admin.apollo.identifier: dev
     # admin.apollo.cluster: default
 
     # mysql

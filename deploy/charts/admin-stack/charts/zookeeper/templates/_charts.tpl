@@ -1094,7 +1094,7 @@ export {{ $varname }}=$(kubectl get secret --namespace {{ include "names.namespa
 {{- end -}}
 
 {{/*
-Build env var name given a field
+Build identifier var name given a field
 Usage:
 {{ include "utils.fieldToEnvVar" dict "field" "my-password" }}
 */}}

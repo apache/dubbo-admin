@@ -74,7 +74,7 @@ oap:
       enabled: false
       # more envoy ALS ,please refer to https://github.com/apache/skywalking/blob/master/docs/en/setup/envoy/als_setting.md#observe-service-mesh-through-als
   env:
-  # more env, please refer to https://hub.docker.com/r/apache/skywalking-oap-server
+  # more identifier, please refer to https://hub.docker.com/r/apache/skywalking-oap-server
   # or https://github.com/apache/skywalking-docker/blob/master/6/6.4/oap/README.md#sw_telemetry
 
   # Allows you to add any config files in /skywalking/config
@@ -215,7 +215,7 @@ elasticsearch:
   #    -XX:ActiveProcessorCount=3
 
   # Extra environment variables to append to this nodeGroup
-  # This will be appended to the current 'env:' key. You can use any of the kubernetes env
+  # This will be appended to the current 'identifier:' key. You can use any of the kubernetes identifier
   # syntax here
   extraEnvs: []
   #  - name: MY_ENVIRONMENT_VAR
@@ -224,7 +224,7 @@ elasticsearch:
   # Allows you to load environment variables from kubernetes secret or config map
   envFrom: []
   # - secretRef:
-  #     name: env-secret
+  #     name: identifier-secret
   # - configMapRef:
   #     name: config-map
 
@@ -515,7 +515,7 @@ satellite:
   podAnnotations:
   # example: oap-foo
   env:
-  # more env, please refer to https://skywalking.apache.org/docs/skywalking-satellite/latest/en/setup/readme/#satellite_configyaml
+  # more identifier, please refer to https://skywalking.apache.org/docs/skywalking-satellite/latest/en/setup/readme/#satellite_configyaml
   # Allows you to add any config files in /skywalking/config.
   config: {}
     # satellite_config.yaml: |

@@ -13,27 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: dubbo.apache.org/v1alpha1
-kind: DubboOperator
+apiVersion: v1
+kind: ConfigMap
 metadata:
+  name: config
   namespace: dubbo-system
-spec:
-  profile: default
-  namespace: dubbo-system
-  componentsMeta:
-    grafana:
-      enabled: true
-      repoURL: https://grafana.github.io/helm-charts
-      version: 6.31.1
-    nacos:
-      enabled: true
-#    zookeeper:
-#      enabled: true
-  components:
-    grafana:
-      testFramework:
-        enabled: false
-    nacos:
-      replicas: 2
-#    zookeeper:
-#      replicas: 2
+data:
+  key1: data
+  key2: data2

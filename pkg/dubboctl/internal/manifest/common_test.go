@@ -16,34 +16,60 @@
 package manifest
 
 import (
-	"reflect"
 	"testing"
 )
 
 func TestOverlaySetFlags(t *testing.T) {
+	testBase := `spec:
+  components:
+    nacos:
+      enabled: true
+`
 	tests := []struct {
+		desc     string
 		base     string
 		setFlags []string
 		expect   string
 	}{
 		{
-			base: `
-spec:
-  nacos:
-    enabled: true
-`,
+			desc: "create missing leaf",
+			base: testBase,
 			setFlags: []string{
-				"spec.nacos.enabled=false",
-				"spec.nacos.default=true",
-				"spec.zookeeper.enabled=true",
+				"spec.components.nacos.replicas=2",
 			},
-			expect: `
-spec:
-  nacos:
-    enabled: false
-    default: true
-  zookeeper:
-    enabled: true
+			expect: `spec:
+  components:
+    nacos:
+      enabled: true
+      replicas: 2
+`,
+		},
+		{
+			desc: "create missing object",
+			base: testBase,
+			setFlags: []string{
+				"spec.components.zookeeper.enabled=true",
+				"spec.components.zookeeper.replicas=2",
+			},
+			expect: `spec:
+  components:
+    nacos:
+      enabled: true
+    zookeeper:
+      enabled: true
+      replicas: 2
+`,
+		},
+		{
+			desc: "replace leaf",
+			base: testBase,
+			setFlags: []string{
+				"spec.components.nacos.enabled=false",
+			},
+			expect: `spec:
+  components:
+    nacos:
+      enabled: false
 `,
 		},
 	}
@@ -52,9 +78,8 @@ spec:
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		if reflect.DeepEqual(res, test.expect) {
-			t.Errorf("expect %s\n but got %s\n", test.expect, res)
+		if res != test.expect {
+			t.Errorf("expect:\n%s\nbut got:\n%s\n", test.expect, res)
 		}
 	}
 }

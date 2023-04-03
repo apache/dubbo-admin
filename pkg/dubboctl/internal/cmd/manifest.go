@@ -17,15 +17,16 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/identifier"
 	"os"
 	"path"
 	"sort"
 	"strings"
 
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/apis/dubbo.apache.org/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/controlplane"
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/manifest"
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/manifest/render"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/operator"
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/util"
 	"github.com/spf13/cobra"
 
@@ -40,19 +41,31 @@ type ManifestGenerateArgs struct {
 	SetFlags     []string
 }
 
+func (mga *ManifestGenerateArgs) setDefault() {
+	if mga == nil {
+		return
+	}
+	if mga.ProfilesPath == "" {
+		mga.ProfilesPath = identifier.Profiles
+	}
+	if mga.ChartsPath == "" {
+		mga.ChartsPath = identifier.Charts
+	}
+}
+
 func ConfigManifestGenerateCmd(baseCmd *cobra.Command) {
 	mgArgs := &ManifestGenerateArgs{}
 	mgCmd := &cobra.Command{
 		Use:     "generate",
-		Short:   "",
-		Long:    "",
+		Short:   "Generate dubbo control plane manifest to apply",
 		Example: ``,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			op, _, err := generateValues(mgArgs)
+			mgArgs.setDefault()
+			cfg, _, err := generateValues(mgArgs)
 			if err != nil {
 				return err
 			}
-			if err := generateManifests(mgArgs, op); err != nil {
+			if err := generateManifests(mgArgs, cfg); err != nil {
 				return err
 			}
 			return nil
@@ -68,7 +81,7 @@ func ConfigManifestGenerateCmd(baseCmd *cobra.Command) {
 	baseCmd.AddCommand(mgCmd)
 }
 
-func generateValues(mgArgs *ManifestGenerateArgs) (*v1alpha1.DubboOperator, string, error) {
+func generateValues(mgArgs *ManifestGenerateArgs) (*v1alpha1.DubboConfig, string, error) {
 	mergedYaml, profile, err := manifest.ReadYamlAndProfile(mgArgs.FileNames, mgArgs.SetFlags)
 	if err != nil {
 		return nil, "", fmt.Errorf("generateValues err: %v", err)
@@ -85,25 +98,26 @@ func generateValues(mgArgs *ManifestGenerateArgs) (*v1alpha1.DubboOperator, stri
 	if err != nil {
 		return nil, "", err
 	}
-	op := &v1alpha1.DubboOperator{}
-	if err := yaml.Unmarshal([]byte(finalYaml), op); err != nil {
+	cfg := &v1alpha1.DubboConfig{}
+	if err := yaml.Unmarshal([]byte(finalYaml), cfg); err != nil {
 		return nil, "", err
 	}
 	// todo: validate op
-	op.Spec.ProfilePath = mgArgs.ProfilesPath
-	op.Spec.ChartPath = mgArgs.ChartsPath
-	return op, finalYaml, nil
+	cfg.Spec.ProfilePath = mgArgs.ProfilesPath
+	cfg.Spec.ChartPath = mgArgs.ChartsPath
+	return cfg, finalYaml, nil
 }
 
-func generateManifests(mgArgs *ManifestGenerateArgs, op *v1alpha1.DubboOperator) error {
-	cp, err := controlplane.NewDubboControlPlane(op.Spec)
+func generateManifests(mgArgs *ManifestGenerateArgs, cfg *v1alpha1.DubboConfig) error {
+	// for now, there is no need to use kube cli, so we use dryRun mode
+	op, err := operator.NewDubboOperator(cfg.Spec, "", "", true)
 	if err != nil {
 		return err
 	}
-	if err := cp.Run(); err != nil {
+	if err := op.Run(); err != nil {
 		return err
 	}
-	manifestMap, err := cp.RenderManifest()
+	manifestMap, err := op.RenderManifest()
 	if err != nil {
 		return err
 	}
@@ -122,7 +136,7 @@ func generateManifests(mgArgs *ManifestGenerateArgs, op *v1alpha1.DubboOperator)
 	return nil
 }
 
-func sortManifests(manifestMap map[controlplane.ComponentName]string) ([]string, error) {
+func sortManifests(manifestMap map[operator.ComponentName]string) ([]string, error) {
 	var names []string
 	var res []string
 	for name := range manifestMap {
@@ -130,7 +144,7 @@ func sortManifests(manifestMap map[controlplane.ComponentName]string) ([]string,
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		file := manifestMap[controlplane.ComponentName(name)]
+		file := manifestMap[operator.ComponentName(name)]
 		if !strings.HasSuffix(file, render.YAMLSeparator) {
 			res = append(res, file+render.YAMLSeparator)
 		} else {
@@ -140,7 +154,7 @@ func sortManifests(manifestMap map[controlplane.ComponentName]string) ([]string,
 	return res, nil
 }
 
-func writeManifests(manifestMap map[controlplane.ComponentName]string, outputPath string) error {
+func writeManifests(manifestMap map[operator.ComponentName]string, outputPath string) error {
 	if err := os.MkdirAll(outputPath, os.ModePerm); err != nil {
 		return err
 	}

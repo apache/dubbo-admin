@@ -17,16 +17,50 @@ package cmd
 
 import (
 	"bytes"
+	"os"
 	"strings"
 	"testing"
 )
 
+const (
+	TestPath = "./testdata"
+)
+
 func TestManifestGenerate(t *testing.T) {
 	tests := []struct {
-		cmd string
+		desc string
+		cmd  string
+		temp string
 	}{
 		{
-			cmd: "manifest generate --charts ../../../deploy/charts/admin-stack/charts --profiles ../../../deploy/profiles",
+			desc: "without any flag",
+			cmd:  "manifest generate",
+		},
+		{
+			desc: "setting specification of built-in component",
+			cmd:  "manifest generate --set spec.components.nacos.replicas=3",
+		},
+		{
+			desc: "setting specification of add-on component",
+			cmd:  "manifest generate --set spec.components.grafana.replicas=3",
+		},
+		{
+			desc: "disabling component",
+			cmd:  "manifest generate --set spec.componentsMeta.nacos.enabled=false",
+		},
+		{
+			desc: "setting repository url and version of remote chart",
+			cmd: "manifest generate --set spec.componentsMeta.grafana.repoURL=https://grafana.github.io/helm-charts" +
+				" --set spec.componentsMeta.grafana.version=6.31.0",
+		},
+		{
+			desc: "generate manifest to target path",
+			cmd:  "manifest generate -o ./testdata/temp",
+			temp: "./testdata/temp",
+		},
+		{
+			desc: "input user specified yaml",
+			cmd:  "manifest generate -f ./testdata/customization/user.yaml",
 		},
 	}
 	for _, test := range tests {
@@ -37,6 +71,40 @@ func TestManifestGenerate(t *testing.T) {
 		if err := rootCmd.Execute(); err != nil {
 			t.Error(err)
 		}
+		// remove temporary dir
+		if test.temp != "" {
+			os.RemoveAll(test.temp)
+		}
 		t.Log(out.String())
 	}
 }
+
+// todo: // need to make use of envtest
+//func TestManifestInstall(t *testing.T) {
+//	tests := []struct {
+//		desc string
+//		cmd  string
+//	}{
+//		{
+//			desc: "without any flag",
+//			cmd:  "manifest install",
+//		},
+//	}
+//	testEnv := envtest.Environment{}
+//	cfg, err := testEnv.Start()
+//	if err != nil {
+//		t.Fatalf("k8s test env start failed: %s", err)
+//	}
+//	t.Log(cfg.String())
+//
+//	//for _, test := range tests {
+//	//	var out bytes.Buffer
+//	//	args := strings.Split(test.cmd, " ")
+//	//	rootCmd.SetArgs(args)
+//	//	rootCmd.SetOut(&out)
+//	//	if err := rootCmd.Execute(); err != nil {
+//	//		t.Error(err)
+//	//	}
+//	//	t.Log(out.String())
+//	//}
+//}

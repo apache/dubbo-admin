@@ -13,21 +13,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package render
 
 import (
-	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/cmd"
-	"github.com/spf13/cobra"
+	"bufio"
+	"strings"
 )
 
-var manifestCmd = &cobra.Command{
-	Use:   "manifest",
-	Short: "Commands related to manifest",
-	Long:  "Commands help user to generate manifest and install manifest",
+// FilterFunc is used to filter some contents of manifest
+type FilterFunc func(string) string
+
+var (
+	DefaultFilters = []FilterFunc{
+		CommentFilter,
+		SpaceFilter,
+	}
+)
+
+// CommentFilter removes all comments in manifest
+func CommentFilter(input string) string {
+	var builder strings.Builder
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "#") || line == "" {
+			continue
+		}
+		builder.WriteString(line)
+		builder.WriteString("\n")
+	}
+	return builder.String()
 }
 
-func init() {
-	cmd.ConfigManifestGenerateCmd(manifestCmd)
-	cmd.ConfigManifestInstallCmd(manifestCmd)
-	rootCmd.AddCommand(manifestCmd)
+// SpaceFilter removes all leading and trailing space of manifest
+func SpaceFilter(input string) string {
+	return strings.TrimSpace(input)
 }

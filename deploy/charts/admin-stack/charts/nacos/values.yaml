@@ -92,7 +92,7 @@ persistence:
     - ReadWriteOnce
   storageClassName: ""
   size: 5Gi
-  ClaimName: {}
+  claimName: ""
   ## persistence emptyDir
   emptyDir: {}
 

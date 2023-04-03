@@ -28,7 +28,7 @@ import (
 func main() {
 	logger.Init()
 
-	// TODO read options from env
+	// TODO read options from identifier
 	options := config.GetOptions()
 
 	s := security.NewServer(options)

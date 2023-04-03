@@ -381,10 +381,10 @@ primary:
   ##     value: "bar"
   ##
   extraEnvVars: []
-  ## @param primary.extraEnvVarsCM Name of existing ConfigMap containing extra env vars for PostgreSQL Primary nodes
+  ## @param primary.extraEnvVarsCM Name of existing ConfigMap containing extra identifier vars for PostgreSQL Primary nodes
   ##
   extraEnvVarsCM: ""
-  ## @param primary.extraEnvVarsSecret Name of existing Secret containing extra env vars for PostgreSQL Primary nodes
+  ## @param primary.extraEnvVarsSecret Name of existing Secret containing extra identifier vars for PostgreSQL Primary nodes
   ##
   extraEnvVarsSecret: ""
   ## @param primary.command Override default container command (useful when using custom images)
@@ -718,10 +718,10 @@ readReplicas:
   ##     value: "bar"
   ##
   extraEnvVars: []
-  ## @param readReplicas.extraEnvVarsCM Name of existing ConfigMap containing extra env vars for PostgreSQL read only nodes
+  ## @param readReplicas.extraEnvVarsCM Name of existing ConfigMap containing extra identifier vars for PostgreSQL read only nodes
   ##
   extraEnvVarsCM: ""
-  ## @param readReplicas.extraEnvVarsSecret Name of existing Secret containing extra env vars for PostgreSQL read only nodes
+  ## @param readReplicas.extraEnvVarsSecret Name of existing Secret containing extra identifier vars for PostgreSQL read only nodes
   ##
   extraEnvVarsSecret: ""
   ## @param readReplicas.command Override default container command (useful when using custom images)

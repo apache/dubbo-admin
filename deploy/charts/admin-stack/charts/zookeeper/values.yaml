@@ -178,7 +178,7 @@ maxClientCnxns: 60
 ##
 maxSessionTimeout: 40000
 ## @param heapSize Size (in MB) for the Java Heap options (Xmx and Xms)
-## This env var is ignored if Xmx an Xms are configured via `jvmFlags`
+## This identifier var is ignored if Xmx an Xms are configured via `jvmFlags`
 ##
 heapSize: 1024
 ## @param fourlwCommandsWhitelist A list of comma separated Four Letter Words commands that can be executed
@@ -234,10 +234,10 @@ existingConfigmap: ""
 ##     value: "bar"
 ##
 extraEnvVars: []
-## @param extraEnvVarsCM Name of existing ConfigMap containing extra env vars for ZooKeeper nodes
+## @param extraEnvVarsCM Name of existing ConfigMap containing extra identifier vars for ZooKeeper nodes
 ##
 extraEnvVarsCM: ""
-## @param extraEnvVarsSecret Name of existing Secret containing extra env vars for ZooKeeper nodes
+## @param extraEnvVarsSecret Name of existing Secret containing extra identifier vars for ZooKeeper nodes
 ##
 extraEnvVarsSecret: ""
 ## @param command Override default container command (useful when using custom images)

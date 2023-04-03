@@ -13,21 +13,48 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package render
 
-import (
-	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/cmd"
-	"github.com/spf13/cobra"
-)
+import "testing"
 
-var manifestCmd = &cobra.Command{
-	Use:   "manifest",
-	Short: "Commands related to manifest",
-	Long:  "Commands help user to generate manifest and install manifest",
+func TestCommentFilter(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{
+			input: `# comment line
+content line`,
+			want: `content line
+`,
+		},
+	}
+
+	for _, test := range tests {
+		res := CommentFilter(test.input)
+		if res != test.want {
+			t.Errorf("want %s\n but got %s", test.want, res)
+		}
+	}
 }
 
-func init() {
-	cmd.ConfigManifestGenerateCmd(manifestCmd)
-	cmd.ConfigManifestInstallCmd(manifestCmd)
-	rootCmd.AddCommand(manifestCmd)
+func TestSpaceFilter(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{
+			input: `
+content line
+`,
+			want: "content line",
+		},
+	}
+
+	for _, test := range tests {
+		res := SpaceFilter(test.input)
+		if res != test.want {
+			t.Errorf("want %s\n but got %s", test.want, res)
+		}
+	}
 }

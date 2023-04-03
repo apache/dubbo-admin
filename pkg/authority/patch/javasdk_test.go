@@ -283,11 +283,11 @@ func checkContainer(t *testing.T, container v1.Container) {
 	}
 
 	if len(container.Env) != 4 {
-		t.Error("should have 3 env")
+		t.Error("should have 3 identifier")
 	}
 
 	if container.Env[0].Name != "DUBBO_CA_ADDRESS" {
-		t.Error("should have DUBBO_CA_ADDRESS env")
+		t.Error("should have DUBBO_CA_ADDRESS identifier")
 	}
 
 	if container.Env[0].Value != "dubbo-ca.dubbo-system.svc:30062" {
@@ -295,7 +295,7 @@ func checkContainer(t *testing.T, container v1.Container) {
 	}
 
 	if container.Env[1].Name != "DUBBO_CA_CERT_PATH" {
-		t.Error("should have DUBBO_CA_TOKEN_PATH env")
+		t.Error("should have DUBBO_CA_TOKEN_PATH identifier")
 	}
 
 	if container.Env[1].Value != "/var/run/secrets/dubbo-ca-cert/ca.crt" {
@@ -303,7 +303,7 @@ func checkContainer(t *testing.T, container v1.Container) {
 	}
 
 	if container.Env[2].Name != "DUBBO_OIDC_TOKEN" {
-		t.Error("should have DUBBO_OIDC_TOKEN env")
+		t.Error("should have DUBBO_OIDC_TOKEN identifier")
 	}
 
 	if container.Env[2].Value != "/var/run/secrets/dubbo-ca-token/token" {
@@ -311,7 +311,7 @@ func checkContainer(t *testing.T, container v1.Container) {
 	}
 
 	if container.Env[3].Name != "DUBBO_OIDC_TOKEN_TYPE" {
-		t.Error("should have DUBBO_OIDC_TOKEN_TYPE env")
+		t.Error("should have DUBBO_OIDC_TOKEN_TYPE identifier")
 	}
 
 	if container.Env[3].Value != "dubbo-ca-token" {

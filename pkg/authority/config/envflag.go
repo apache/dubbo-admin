@@ -22,7 +22,7 @@ import (
 )
 
 func GetOptions() *Options {
-	// TODO read options from env
+	// TODO read options from identifier
 	options := Options{
 		Namespace:   GetStringEnv("namespace", "dubbo-system"),
 		ServiceName: GetStringEnv("servicename", "dubbo-ca"),

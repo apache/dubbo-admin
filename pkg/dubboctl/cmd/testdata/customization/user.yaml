@@ -18,22 +18,6 @@ kind: DubboOperator
 metadata:
   namespace: dubbo-system
 spec:
-  profile: default
-  namespace: dubbo-system
-  componentsMeta:
-    grafana:
-      enabled: true
-      repoURL: https://grafana.github.io/helm-charts
-      version: 6.31.1
-    nacos:
-      enabled: true
-#    zookeeper:
-#      enabled: true
   components:
-    grafana:
-      testFramework:
-        enabled: false
     nacos:
-      replicas: 2
-#    zookeeper:
-#      replicas: 2
+      replicas: 3

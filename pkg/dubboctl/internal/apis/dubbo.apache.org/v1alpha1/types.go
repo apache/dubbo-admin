@@ -23,50 +23,51 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type DubboOperator struct {
+type DubboConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              *DubboOperatorSpec `json:"spec,omitempty"`
+	Spec              *DubboConfigSpec `json:"spec,omitempty"`
 }
 
-func (do *DubboOperator) GetProfile() string {
+func (do *DubboConfig) GetProfile() string {
 	if do.Spec != nil {
 		return do.Spec.Profile
 	}
 	return ""
 }
 
-type DubboOperatorSpec struct {
+type DubboConfigSpec struct {
 	ProfilePath    string               `json:"profilePath,omitempty"`
 	Profile        string               `json:"profile,omitempty"`
 	ChartPath      string               `json:"chartPath,omitempty"`
+	Namespace      string               `json:"namespace,omitempty"`
 	ComponentsMeta *DubboComponentsMeta `json:"componentsMeta,omitempty"`
 	Components     *DubboComponentsSpec `json:"components,omitempty"`
 }
 
-func (dos *DubboOperatorSpec) IsAdminEnabled() bool {
-	if dos.ComponentsMeta != nil && dos.ComponentsMeta.IsAdminEnabled() {
+func (dcs *DubboConfigSpec) IsAdminEnabled() bool {
+	if dcs.ComponentsMeta != nil && dcs.ComponentsMeta.IsAdminEnabled() {
 		return true
 	}
 	return false
 }
 
-func (dos *DubboOperatorSpec) IsGrafanaEnabled() bool {
-	if dos.ComponentsMeta != nil && dos.ComponentsMeta.IsGrafanaEnabled() {
+func (dcs *DubboConfigSpec) IsGrafanaEnabled() bool {
+	if dcs.ComponentsMeta != nil && dcs.ComponentsMeta.IsGrafanaEnabled() {
 		return true
 	}
 	return false
 }
 
-func (dos *DubboOperatorSpec) IsNacosEnabled() bool {
-	if dos.ComponentsMeta != nil && dos.ComponentsMeta.IsNacosEnabled() {
+func (dcs *DubboConfigSpec) IsNacosEnabled() bool {
+	if dcs.ComponentsMeta != nil && dcs.ComponentsMeta.IsNacosEnabled() {
 		return true
 	}
 	return false
 }
 
-func (dos *DubboOperatorSpec) IsZookeeperEnabled() bool {
-	if dos.ComponentsMeta != nil && dos.ComponentsMeta.IsZookeeperEnabled() {
+func (dcs *DubboConfigSpec) IsZookeeperEnabled() bool {
+	if dcs.ComponentsMeta != nil && dcs.ComponentsMeta.IsZookeeperEnabled() {
 		return true
 	}
 	return false
@@ -80,8 +81,12 @@ type DubboComponentsMeta struct {
 }
 
 type BaseMeta struct {
-	Enabled   bool   `json:"enabled,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
+	Enabled bool `json:"enabled,omitempty"`
+}
+
+type RemoteMeta struct {
+	RepoURL string `json:"repoURL,omitempty"`
+	Version string `json:"version,omitempty"`
 }
 
 type AdminMeta struct {
@@ -90,6 +95,7 @@ type AdminMeta struct {
 
 type GrafanaMeta struct {
 	BaseMeta
+	RemoteMeta
 }
 
 type NacosMeta struct {
@@ -98,6 +104,7 @@ type NacosMeta struct {
 
 type ZookeeperMeta struct {
 	BaseMeta
+	RemoteMeta
 }
 
 func (dcm *DubboComponentsMeta) IsAdminEnabled() bool {
@@ -138,7 +145,7 @@ type DubboComponentsSpec struct {
 type AdminSpec struct {
 	Image              *Image              `json:"image,omitempty"`
 	Replicas           uint32              `json:"replicas"`
-	Global             *Global             `json:"global,omitempty"`
+	Global             *AdminGlobal        `json:"global,omitempty"`
 	Rbac               *Rbac               `json:"rbac,omitempty"`
 	ServiceAccount     *ServiceAccount     `json:"serviceAccount,omitempty"`
 	ImagePullSecrets   []string            `json:"imagePullSecrets,omitempty"`
@@ -155,7 +162,7 @@ type Image struct {
 	PullSecrets []string `json:"pullSecrets,omitempty"`
 }
 
-type Global struct {
+type AdminGlobal struct {
 	ImageRegistry    string   `json:"imageRegistry"`
 	ImagePullSecrets []string `json:"imagePullSecrets,omitempty"`
 }
@@ -186,202 +193,95 @@ type DeploymentStrategy struct {
 	Type string `json:"type"`
 }
 
-type GrafanaSpec struct{}
+type GrafanaSpec map[string]interface{}
 
-type NacosSpec struct{}
-
-type ZookeeperSpec struct {
-	Image                    *ZookeeperImage                   `json:"image,omitempty"`
-	Replicas                 uint32                            `json:"replicas,omitempty"`
-	Persistence              *Persistence                      `json:"persistence,omitempty"`
-	Autoscaling              *Autoscaling                      `json:"autoscaling,omitempty"`
-	Service                  *Service                          `json:"service,omitempty"`
-	ContainerPorts           *ContainerPorts                   `json:"containerPorts,omitempty"`
-	LivenessProbe            *Probe                            `json:"livenessProbe,omitempty"`
-	ReadinessProbe           *Probe                            `json:"readinessProbe,omitempty"`
-	StartupProbe             *BaseProbe                        `json:"startupProbe,omitempty"`
-	CustomLivenessProbe      *Probe                            `json:"customLivenessProbe,omitempty"`
-	CustomReadinessProbe     *Probe                            `json:"customReadinessProbe,omitempty"`
-	CustomStartupProbe       *BaseProbe                        `json:"customStartupProbe,omitempty"`
-	LifecycleHooks           *corev1.Lifecycle                 `json:"lifecycleHooks,omitempty"`
-	Resources                *corev1.ResourceRequirements      `json:"resources,omitempty"`
-	PodSecurityContext       *PodSecurityContext               `json:"podSecurityContext,omitempty"`
-	ContainerSecurityContext *ContainerSecurityContext         `json:"containerSecurityContext,omitempty"`
-	HostAliases              []*corev1.HostAlias               `json:"hostAliases,omitempty"`
-	ExtraVolume              []*corev1.Volume                  `json:"extraVolume,omitempty"`
-	ExtraVolumeMounts        []*corev1.VolumeMount             `json:"extraVolumeMounts,omitempty"`
-	Auth                     *Auth                             `json:"auth,omitempty"`
-	TickTime                 uint32                            `json:"tickTime,omitempty"`
-	InitLimit                uint32                            `json:"initLimit,omitempty"`
-	SyncLimit                uint32                            `json:"syncLimit,omitempty"`
-	PreAllocSize             uint32                            `json:"preAllocSize,omitempty"`
-	SnapCount                uint32                            `json:"snapCount,omitempty"`
-	MaxClientCnxns           uint32                            `json:"maxClientCnxns,omitempty"`
-	MaxSessionTimeout        uint32                            `json:"maxSessionTimeout,omitempty"`
-	HeapSize                 uint32                            `json:"heapSize,omitempty"`
-	FourlwCommandsWhitelist  []string                          `json:"fourlwCommandsWhitelist,omitempty"`
-	MinServerId              uint32                            `json:"minServerId,omitempty"`
-	ListenOnAllIPs           bool                              `json:"listenOnAllIPs,omitempty"`
-	Autopurge                *Autopurge                        `json:"autopurge,omitempty"`
-	LogLevel                 LogLevel                          `json:"logLevel,omitempty"`
-	JvmFlags                 string                            `json:"jvmFlags,omitempty"`
-	DataLogDir               string                            `json:"dataLogDir,omitempty"`
-	Configuration            string                            `json:"configuration,omitempty"`
-	ExistingConfigmap        string                            `json:"existingConfigmap,omitempty"`
-	ClusterDomain            string                            `json:"clusterDomain,omitempty"`
-	ExtraDeploy              []string                          `json:"extraDeploy,omitempty"`
-	Labels                   map[string]string                 `json:"labels,omitempty"`
-	Annotations              map[string]string                 `json:"annotations,omitempty"`
-	DiagnosticMode           *DiagnosticMode                   `json:"diagnosticMode,omitempty"`
-	PodDisruptionBudget      *policyv1.PodDisruptionBudgetSpec `json:"podDisruptionBudget,omitempty"`
-	Ingress                  *Ingress                          `json:"ingress,omitempty"`
-	NetworkPolicy            *NetworkPolicy                    `json:"networkPolicy,omitempty"`
+type NacosSpec struct {
+	Global              *NacosGlobal                  `json:"global,omitempty"`
+	Image               *NacosImage                   `json:"image,omitempty"`
+	Plugin              *NacosPlugin                  `json:"plugin,omitempty"`
+	Replicas            uint32                        `json:"replicas,omitempty"`
+	DomainName          string                        `json:"domainName,omitempty"`
+	Storage             *NacosStorage                 `json:"storage,omitempty"`
+	Service             *NacosService                 `json:"service,omitempty"`
+	Persistence         *NacosPersistence             `json:"persistence,omitempty"`
+	PodDisruptionBudget *policyv1.PodDisruptionBudget `json:"podDisruptionBudget,omitempty"`
+	Ingress             *Ingress                      `json:"ingress,omitempty"`
+	NetworkPolicy       *NetworkPolicy                `json:"networkPolicy,omitempty"`
 }
 
-type ZookeeperImage struct {
-	Repository    string            `json:"repository,omitempty"`
-	Tag           string            `json:"tag,omitempty"`
-	Digest        string            `json:"digest,omitempty"`
-	Debug         bool              `json:"debug,omitempty"`
-	PullPolicy    corev1.PullPolicy `json:"pullPolicy,omitempty"`
-	NetworkPolicy *NetworkPolicy    `json:"networkPolicy,omitempty"`
-}
-
-type Persistence struct {
-	Enabled       bool                                `json:"enabled,omitempty"`
-	ExistingClaim string                              `json:"existingClaim,omitempty"`
-	StorageClass  string                              `json:"storageClass,omitempty"`
-	AccessModes   []corev1.PersistentVolumeAccessMode `json:"accessModes,omitempty"`
-	Size          *resource.Quantity                  `json:"size,omitempty"`
-	Labels        map[string]string                   `json:"labels,omitempty"`
-	Selector      *metav1.LabelSelector               `json:"selector,omitempty"`
-	DataLogDir    *DataLogDir                         `json:"dataLogDir,omitempty"`
-}
-
-type DataLogDir struct {
-	Size          *resource.Quantity    `json:"size,omitempty"`
-	ExistingClaim string                `json:"existingClaim,omitempty"`
-	Selector      *metav1.LabelSelector `json:"selector,omitempty"`
-}
-
-type Service struct {
-	Type                     corev1.ServiceType                      `json:"type,omitempty"`
-	Ports                    *Ports                                  `json:"ports,omitempty"`
-	NodePorts                *NodePorts                              `json:"nodePorts,omitempty"`
-	DisableBaseClientPort    bool                                    `json:"disableBaseClientPort,omitempty"`
-	SessionAffinity          corev1.ServiceAffinity                  `json:"sessionAffinity,omitempty"`
-	SessionAffinityConfig    *corev1.SessionAffinityConfig           `json:"sessionAffinityConfig,omitempty"`
-	ClusterIP                string                                  `json:"clusterIP,omitempty"`
-	LoadBalancerIP           string                                  `json:"loadBalancerIP,omitempty"`
-	LoadBalancerSourceRanges []string                                `json:"LoadBalancerSourceRanges,omitempty"`
-	ExternalTrafficPolicy    corev1.ServiceExternalTrafficPolicyType `json:"externalTrafficPolicy,omitempty"`
-	Annotations              map[string]string                       `json:"annotations,omitempty"`
-	ExtraPorts               []uint32                                `json:"extraPorts,omitempty"`
-	Headless                 *Headless                               `json:"headless,omitempty"`
-}
-
-type Ports struct {
-	Client   uint32 `json:"client,omitempty"`
-	Follower uint32 `json:"follower,omitempty"`
-	Election uint32 `json:"election,omitempty"`
-}
-
-type NodePorts struct {
-	Client string `json:"client,omitempty"`
-	Tls    string `json:"tls,omitempty"`
-}
-
-type Headless struct {
-	PublishNotReadyAddresses bool              `json:"publishNotReadyAddresses,omitempty"`
-	Annotations              map[string]string `json:"annotations,omitempty"`
-	ServicenameOverride      string            `json:"servicenameOverride,omitempty"`
-}
-
-type ContainerPorts struct {
-	Client   uint32 `json:"client,omitempty"`
-	Tls      uint32 `json:"tls,omitempty"`
-	Follower uint32 `json:"follower,omitempty"`
-	Election uint32 `json:"election,omitempty"`
-}
-
-type BaseProbe struct {
-	Enabled             bool   `json:"enabled,omitempty"`
-	InitialDelaySeconds uint32 `json:"initialDelaySeconds,omitempty"`
-	PeriodSeconds       uint32 `json:"periodSeconds,omitempty"`
-	TimeoutSeconds      uint32 `json:"timeoutSeconds,omitempty"`
-	FailureThreshold    uint32 `json:"failureThreshold,omitempty"`
-	SuccessThreshold    uint32 `json:"successThreshold,omitempty"`
-}
-
-type Probe struct {
-	BaseProbe
-	ProbeCommandTimeout uint32 `json:"probeCommandTimeout,omitempty"`
-}
-
-type PodSecurityContext struct {
-	Enabled bool   `json:"enabled,omitempty"`
-	FsGroup uint64 `json:"fsGroup,omitempty"`
-}
-
-type ContainerSecurityContext struct {
-	Enabled bool `json:"enabled,omitempty"`
-	corev1.PodSecurityContext
-	RunAsUser                uint64 `json:"runAsUser,omitempty"`
-	RunAsNonRoot             bool   `json:"runAsNonRoot"`
-	AllowPrivilegeEscalation bool   `json:"allowPrivilegeEscalation,omitempty"`
-}
-
-type Auth struct {
-	Client *Client `json:"client,omitempty"`
-	Quorum *Quorum `json:"quorum,omitempty"`
-}
-
-type Client struct {
-	Enabled         bool   `json:"enabled,omitempty"`
-	ClientUser      string `json:"clientUser,omitempty"`
-	ClientPassword  string `json:"clientPassword,omitempty"`
-	ServerUsers     string `json:"serverUsers,omitempty"`
-	ServerPasswords string `json:"serverPasswords,omitempty"`
-	ExistingSecret  string `json:"existingSecret,omitempty"`
-}
-
-type Quorum struct {
-	Enabled         bool   `json:"enabled,omitempty"`
-	LearnerUser     string `json:"LearnerUser,omitempty"`
-	LearnerPassword string `json:"LearnerPassword,omitempty"`
-	ServerUsers     string `json:"serverUsers,omitempty"`
-	ServerPasswords string `json:"serverPasswords,omitempty"`
-	ExistingSecret  string `json:"existingSecret,omitempty"`
-}
-
-type Autopurge struct {
-	SnapRetainCount uint32 `json:"snapRetainCount,omitempty"`
-	PurgeInterval   uint32 `json:"purgeInterval,omitempty"`
-}
-
-type LogLevel string
+type Mode string
 
 const (
-	INFO  LogLevel = "INFO"
-	ERROR LogLevel = "ERROR"
-	WARN  LogLevel = "WARN"
+	Cluster    Mode = "cluster"
+	Standalone Mode = "standalone"
 )
 
-type DiagnosticMode struct {
-	Enabled bool     `json:"enabled,omitempty"`
-	Command []string `json:"command,omitempty"`
-	Args    []string `json:"args,omitempty"`
+type NacosGlobal struct {
+	Mode Mode `json:"mode,omitempty"`
+}
+
+type NacosImage struct {
+	Registry   string `json:"registry,omitempty"`
+	Repository string `json:"repository,omitempty"`
+	Tag        string `json:"tag,omitempty"`
+	PullPolicy string `json:"pullPolicy,omitempty"`
+}
+
+type NacosPlugin struct {
+	Enable bool              `json:"enable,omitempty"`
+	Image  *NacosPluginImage `json:"image,omitempty"`
+}
+
+type NacosPluginImage struct {
+	Repository string `json:"repository,omitempty"`
+	Tag        string `json:"tag,omitempty"`
+	PullPolicy string `json:"pullPolicy,omitempty"`
+}
+
+type NacosStorage struct {
+	Type string          `json:"type,omitempty"`
+	Db   *NacosStorageDb `json:"db,omitempty"`
+}
+
+type NacosStorageDb struct {
+	Host     string `json:"host,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Port     uint32 `json:"port,omitempty"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+	Param    string `json:"param,omitempty"`
+}
+
+type NacosService struct {
+	Name                     string             `json:"name,omitempty"`
+	Type                     corev1.ServiceType `json:"type,omitempty"`
+	Port                     uint32             `json:"port,omitempty"`
+	NodePort                 uint32             `json:"nodePort,omitempty"`
+	ClusterIP                string             `json:"clusterIP,omitempty"`
+	LoadBalancerIP           string             `json:"loadBalancerIP,omitempty"`
+	LoadBalancerSourceRanges string             `json:"loadBalancerSourceRanges,omitempty"`
+	ExternalIPs              string             `json:"externalIPs,omitempty"`
+}
+
+type NacosPersistence struct {
+	Enabled          bool                                `json:"enabled,omitempty"`
+	AccessModes      []corev1.PersistentVolumeAccessMode `json:"accessModes,omitempty"`
+	StorageClassName string                              `json:"storageClassName,omitempty"`
+	Size             *resource.Quantity                  `json:"size,omitempty"`
+	// todo: need to reconcile between this struct and values.yaml
+	ClaimName string                       `json:"claimName,omitempty"`
+	EmptyDir  *corev1.EmptyDirVolumeSource `json:"emptyDir,omitempty"`
 }
 
 type Ingress struct {
-	Enabled     bool               `json:"enabled,omitempty"`
-	Annotations map[string]string  `json:"annotations,omitempty"`
-	Labels      map[string]string  `json:"labels,omitempty"`
-	Path        string             `json:"path,omitempty"`
-	PathType    netv1.PathType     `json:"pathType,omitempty"`
-	Hosts       []string           `json:"hosts,omitempty"`
-	ExtraPaths  []ExtraPath        `json:"extraPaths,omitempty"`
-	Tls         []netv1.IngressTLS `json:"tls,omitempty"`
+	Enabled     bool                `json:"enabled,omitempty"`
+	Annotations map[string]string   `json:"annotations,omitempty"`
+	Labels      map[string]string   `json:"labels,omitempty"`
+	Path        string              `json:"path,omitempty"`
+	PathType    netv1.PathType      `json:"pathType,omitempty"`
+	Hosts       []string            `json:"hosts,omitempty"`
+	ExtraPaths  []*ExtraPath        `json:"extraPaths,omitempty"`
+	Tls         []*netv1.IngressTLS `json:"tls,omitempty"`
 }
 
 type ExtraPath struct {
@@ -400,3 +300,5 @@ type Egress struct {
 	Enabled bool     `json:"enabled,omitempty"`
 	Ports   []uint32 `json:"ports,omitempty"`
 }
+
+type ZookeeperSpec map[string]interface{}

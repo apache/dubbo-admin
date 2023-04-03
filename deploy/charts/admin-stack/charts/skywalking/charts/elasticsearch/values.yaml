@@ -56,7 +56,7 @@ esJvmOptions: {}
 #    -XX:ActiveProcessorCount=3
 
 # Extra environment variables to append to this nodeGroup
-# This will be appended to the current 'env:' key. You can use any of the kubernetes env
+# This will be appended to the current 'identifier:' key. You can use any of the kubernetes identifier
 # syntax here
 extraEnvs: []
 #  - name: MY_ENVIRONMENT_VAR
@@ -65,7 +65,7 @@ extraEnvs: []
 # Allows you to load environment variables from kubernetes secret or config map
 envFrom: []
 # - secretRef:
-#     name: env-secret
+#     name: identifier-secret
 # - configMapRef:
 #     name: config-map
 

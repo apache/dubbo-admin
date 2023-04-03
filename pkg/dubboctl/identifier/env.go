@@ -13,21 +13,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package identifier
 
 import (
-	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/cmd"
-	"github.com/spf13/cobra"
+	"path/filepath"
+	"runtime"
 )
 
-var manifestCmd = &cobra.Command{
-	Use:   "manifest",
-	Short: "Commands related to manifest",
-	Long:  "Commands help user to generate manifest and install manifest",
-}
-
-func init() {
-	cmd.ConfigManifestGenerateCmd(manifestCmd)
-	cmd.ConfigManifestInstallCmd(manifestCmd)
-	rootCmd.AddCommand(manifestCmd)
-}
+var (
+	_, b, _, _ = runtime.Caller(0)
+	// Root folder of dubbo-admin
+	// This relies on the fact this file is 3 levels up from the root; if this changes, adjust the path below
+	Root     = filepath.Join(filepath.Dir(b), "../../..")
+	Deploy   = filepath.Join(Root, "/deploy")
+	Charts   = filepath.Join(Deploy, "/charts/admin-stack/charts")
+	Profiles = filepath.Join(Deploy, "profiles")
+)

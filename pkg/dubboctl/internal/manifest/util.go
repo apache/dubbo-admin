@@ -16,7 +16,6 @@
 package manifest
 
 import (
-	"io/fs"
 	"strconv"
 	"strings"
 )
@@ -34,23 +33,6 @@ func SplitSetFlag(flag string) (string, string) {
 		return flag, ""
 	}
 	return strings.TrimSpace(items[0]), strings.TrimSpace(items[1])
-}
-
-func GetFileNames(f fs.FS, root string) ([]string, error) {
-	var fileNames []string
-	if err := fs.WalkDir(f, root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		fileNames = append(fileNames, path)
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-	return fileNames, nil
 }
 
 func GetValueFromSetFlags(setFlags []string, key string) string {

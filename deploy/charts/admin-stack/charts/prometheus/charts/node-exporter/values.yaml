@@ -41,7 +41,7 @@ service:
 
 # Additional environment variables that will be passed to the daemonset
 env: {}
-##  env:
+##  identifier:
 ##    VARIABLE: value
 
 prometheus:

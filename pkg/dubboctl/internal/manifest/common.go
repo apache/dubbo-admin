@@ -28,8 +28,7 @@ import (
 )
 
 func ReadProfileYaml(profilePath string, profile string) (string, error) {
-	filePath := path.Join(profilePath, profile)
-	filePath += ".yaml"
+	filePath := path.Join(profilePath, profile+".yaml")
 	out, err := ReadAndOverlayYamls([]string{filePath})
 	if err != nil {
 		return "", err
@@ -43,7 +42,7 @@ func ReadYamlAndProfile(filenames []string, setFlags []string) (string, string, 
 		return "", "", err
 	}
 	// unmarshal and validate
-	tempOp := &v1alpha1.DubboOperator{}
+	tempOp := &v1alpha1.DubboConfig{}
 	if err := yaml.Unmarshal([]byte(mergedYaml), tempOp); err != nil {
 		return "", "", fmt.Errorf("ReadYamlAndProfile failed, err: %s", err)
 	}
@@ -66,7 +65,7 @@ func ReadAndOverlayYamls(filenames []string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		// inspect that this file only contains one CR
+		// todo:// inspect that this file only contains one CR
 		output, err = util.OverlayYAML(output, string(file))
 		if err != nil {
 			return "", err

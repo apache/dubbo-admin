@@ -15,10 +15,68 @@
 
 package cmd
 
-type InstallArgs struct {
+import (
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/apis/dubbo.apache.org/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/operator"
+	"github.com/spf13/cobra"
+)
+
+type ManifestInstallArgs struct {
 	ManifestGenerateArgs
 	KubeConfigPath string
+	// selected cluster info of kubeconfig
+	Context string
 }
 
-func InstallManifests() {
+func (mia *ManifestInstallArgs) setDefault() {
+	mia.ManifestGenerateArgs.setDefault()
+}
+
+func ConfigManifestInstallCmd(baseCmd *cobra.Command) {
+	miArgs := &ManifestInstallArgs{}
+	mgArgs := &miArgs.ManifestGenerateArgs
+	miCmd := &cobra.Command{
+		Use:     "install",
+		Short:   "",
+		Example: ``,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			miArgs.setDefault()
+			cfg, _, err := generateValues(mgArgs)
+			if err != nil {
+				return err
+			}
+			if err := installManifests(miArgs, cfg); err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+	// add manifest generate flag
+	miCmd.PersistentFlags().StringSliceVarP(&miArgs.FileNames, "filename", "f", nil, "")
+	miCmd.PersistentFlags().StringVarP(&miArgs.ChartsPath, "charts", "", "", "")
+	miCmd.PersistentFlags().StringVarP(&miArgs.ProfilesPath, "profiles", "", "", "")
+	miCmd.PersistentFlags().StringVarP(&miArgs.OutputPath, "want", "o", "", "")
+	miCmd.PersistentFlags().StringArrayVarP(&miArgs.SetFlags, "set", "s", nil, "")
+	miCmd.PersistentFlags().StringVarP(&miArgs.KubeConfigPath, "kubeconfig", "", "", "")
+	miCmd.PersistentFlags().StringVarP(&miArgs.Context, "context", "", "", "")
+
+	baseCmd.AddCommand(miCmd)
+}
+
+func installManifests(miArgs *ManifestInstallArgs, cfg *v1alpha1.DubboConfig) error {
+	op, err := operator.NewDubboOperator(cfg.Spec, miArgs.KubeConfigPath, miArgs.Context, false)
+	if err != nil {
+		return err
+	}
+	if err := op.Run(); err != nil {
+		return err
+	}
+	manifestMap, err := op.RenderManifest()
+	if err != nil {
+		return err
+	}
+	if err := op.ApplyManifest(manifestMap); err != nil {
+		return err
+	}
+	return nil
 }

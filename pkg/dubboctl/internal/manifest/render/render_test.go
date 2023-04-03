@@ -22,12 +22,82 @@ import (
 )
 
 const (
-	TestChart string = "./testchart"
+	TestDir       string = "testchart"
+	TestName      string = "nginx"
+	TestNamespace string = "dubbo-operator"
 )
 
-func TestRenderManifest(t *testing.T) {
+var (
+	TestFS = os.DirFS(".")
+)
+
+func TestNewLocalRenderer(t *testing.T) {
+	tests := []struct {
+		desc      string
+		opts      []RendererOption
+		expectErr string
+	}{
+		{
+			desc: "correct invocation",
+			opts: []RendererOption{
+				WithName(TestName),
+				WithNamespace(TestNamespace),
+				WithFS(TestFS),
+				WithDir(TestDir),
+			},
+			expectErr: "",
+		},
+		{
+			desc:      "missing name",
+			opts:      []RendererOption{},
+			expectErr: "Render - NewLocalRenderer - verify err: missing component name for Renderer",
+		},
+		{
+			desc: "missing chart FS",
+			opts: []RendererOption{
+				WithName(TestName),
+				WithNamespace(TestNamespace),
+			},
+			expectErr: "Render - NewLocalRenderer - verify err: missing chart FS for Renderer",
+		},
+		{
+			desc: "missing chart dir",
+			opts: []RendererOption{
+				WithName(TestName),
+				WithNamespace(TestNamespace),
+				WithFS(TestFS),
+			},
+			expectErr: "Render - NewLocalRenderer - verify err: missing chart dir for Renderer",
+		},
+		{
+			desc: "using default namespace",
+			opts: []RendererOption{
+				WithName(TestName),
+				WithFS(TestFS),
+				WithDir(TestDir),
+			},
+			expectErr: "",
+		},
+	}
+
+	for _, test := range tests {
+		_, err := NewLocalRenderer(test.opts...)
+		if err == nil {
+			if test.expectErr != "" {
+				t.Fatalf("expect err: %s", test.expectErr)
+			}
+		} else {
+			if err.Error() != test.expectErr {
+				t.Fatalf("expect err: %s\nbut got %s", test.expectErr, err)
+			}
+		}
+	}
+}
+
+func TestLocalRenderer_RenderManifest(t *testing.T) {
 	renderer, err := NewLocalRenderer(
-		WithNameSpace("dubbo-system"),
+		WithName("test"),
+		WithNamespace("dubbo-system"),
 		WithFS(os.DirFS(".")),
 		WithDir("testchart"))
 	if err != nil {
@@ -293,4 +363,23 @@ spec:
 			t.Errorf("expect %s\nbut got %s\n", test.expect, manifest)
 		}
 	}
+}
+
+func TestRemoteRenderer_Init(t *testing.T) {
+	rr, err := NewRemoteRenderer([]RendererOption{
+		WithName("grafana"),
+		WithNamespace(TestNamespace),
+		WithRepoURL("https://grafana.github.io/helm-charts/"),
+		WithVersion("6.31.1"),
+	}...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := rr.Init(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRemoteRenderer_RenderManifest(t *testing.T) {
+	
 }
