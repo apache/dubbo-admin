@@ -27,13 +27,9 @@ spec:
       version: 6.31.1
     nacos:
       enabled: true
-#    zookeeper:
-#      enabled: true
   components:
     grafana:
       testFramework:
         enabled: false
     nacos:
       replicas: 2
-#    zookeeper:
-#      replicas: 2

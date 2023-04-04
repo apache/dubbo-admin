@@ -26,6 +26,7 @@ var (
 	// This relies on the fact this file is 3 levels up from the root; if this changes, adjust the path below
 	Root     = filepath.Join(filepath.Dir(b), "../../..")
 	Deploy   = filepath.Join(Root, "/deploy")
-	Charts   = filepath.Join(Deploy, "/charts/admin-stack/charts")
+	Charts   = filepath.Join(Deploy, "/charts")
 	Profiles = filepath.Join(Deploy, "profiles")
+	Addons   = filepath.Join(Deploy, "addons")
 )

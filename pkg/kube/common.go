@@ -16,21 +16,18 @@
 package kube
 
 import (
-	"context"
 	"fmt"
-	jsonpatch "github.com/evanphx/json-patch/v5"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/kubectl/pkg/scheme"
 	"os"
 	"strconv"
 	"strings"
+
+	jsonpatch "github.com/evanphx/json-patch/v5"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/kubectl/pkg/scheme"
 )
 
 // OverlayObject uses JSON patch strategy to overlay two unstructured objects
@@ -103,7 +100,7 @@ func createPortMap(current *unstructured.Unstructured) map[string]uint32 {
 	portMap := make(map[string]uint32)
 	svc := &v1.Service{}
 	if err := scheme.Scheme.Convert(current, svc, nil); err != nil {
-		//log.Error(err.Error())
+		// log.Error(err.Error())
 		return portMap
 	}
 	for _, p := range svc.Spec.Ports {
@@ -112,6 +109,11 @@ func createPortMap(current *unstructured.Unstructured) map[string]uint32 {
 	return portMap
 }
 
+// BuildConfig loading rules:
+// 1. kubeconfig if it not empty string
+// 2. Config(s) in KUBECONFIG environment variable
+// 3. In cluster config if running in-cluster
+// 4. Use $HOME/.kube/config
 func BuildConfig(kubecfgPath string, ctx string) (*rest.Config, error) {
 	if kubecfgPath != "" {
 		info, err := os.Stat(kubecfgPath)
@@ -122,11 +124,6 @@ func BuildConfig(kubecfgPath string, ctx string) (*rest.Config, error) {
 		}
 	}
 
-	// Config loading rules:
-	// 1. kubeconfig if it not empty string
-	// 2. Config(s) in KUBECONFIG environment variable
-	// 3. In cluster config if running in-cluster
-	// 4. Use $HOME/.kube/config
 	loadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
 	loadingRules.DefaultClientConfig = &clientcmd.DefaultClientConfig
 	loadingRules.ExplicitPath = kubecfgPath
@@ -138,38 +135,10 @@ func BuildConfig(kubecfgPath string, ctx string) (*rest.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	setDefaults(cfg)
+	// setDefaults(cfg)
 	return cfg, nil
 }
 
 func setDefaults(cfg *rest.Config) {
 	// todo:// add schema
-}
-
-// CreateNamespace creates a namespace using the given k8s interface.
-func CreateNamespace(cs kubernetes.Interface, namespace string, network string, dryRun bool) error {
-	if dryRun {
-		//scope.Infof("Not applying Namespace %s because of dry run.", namespace)
-		return nil
-	}
-
-	// check if the namespace already exists. If yes, do nothing. If no, create a new one.
-	if _, err := cs.CoreV1().Namespaces().Get(context.Background(), namespace, metav1.GetOptions{}); err != nil {
-		if errors.IsNotFound(err) {
-			ns := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{
-				Name:   namespace,
-				Labels: map[string]string{},
-			}}
-			_, err := cs.CoreV1().Namespaces().Create(context.Background(), ns, metav1.CreateOptions{})
-			if err != nil {
-				return fmt.Errorf("failed to create namespace %v: %v", namespace, err)
-			}
-
-			return nil
-		}
-
-		return fmt.Errorf("failed to check if namespace %v exists: %v", namespace, err)
-	}
-
-	return nil
 }

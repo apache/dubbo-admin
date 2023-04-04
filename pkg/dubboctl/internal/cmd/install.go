@@ -36,9 +36,11 @@ func ConfigManifestInstallCmd(baseCmd *cobra.Command) {
 	miArgs := &ManifestInstallArgs{}
 	mgArgs := &miArgs.ManifestGenerateArgs
 	miCmd := &cobra.Command{
-		Use:     "install",
-		Short:   "",
-		Example: ``,
+		Use:   "install",
+		Short: "install dubbo control plane",
+		Example: `  # Install a default Dubbo control plane
+  dubboctl install
+`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			miArgs.setDefault()
 			cfg, _, err := generateValues(mgArgs)
@@ -51,14 +53,11 @@ func ConfigManifestInstallCmd(baseCmd *cobra.Command) {
 			return nil
 		},
 	}
-	// add manifest generate flag
-	miCmd.PersistentFlags().StringSliceVarP(&miArgs.FileNames, "filename", "f", nil, "")
-	miCmd.PersistentFlags().StringVarP(&miArgs.ChartsPath, "charts", "", "", "")
-	miCmd.PersistentFlags().StringVarP(&miArgs.ProfilesPath, "profiles", "", "", "")
-	miCmd.PersistentFlags().StringVarP(&miArgs.OutputPath, "want", "o", "", "")
-	miCmd.PersistentFlags().StringArrayVarP(&miArgs.SetFlags, "set", "s", nil, "")
-	miCmd.PersistentFlags().StringVarP(&miArgs.KubeConfigPath, "kubeconfig", "", "", "")
-	miCmd.PersistentFlags().StringVarP(&miArgs.Context, "context", "", "", "")
+	addManifestGenerateFlags(miCmd, mgArgs)
+	miCmd.PersistentFlags().StringVarP(&miArgs.KubeConfigPath, "kubeconfig", "", "",
+		"Path to kubeconfig")
+	miCmd.PersistentFlags().StringVarP(&miArgs.Context, "context", "", "",
+		"Context in kubeconfig to use")
 
 	baseCmd.AddCommand(miCmd)
 }

@@ -18,10 +18,6 @@ package render
 import (
 	"errors"
 	"fmt"
-	"helm.sh/helm/v3/pkg/cli"
-	"helm.sh/helm/v3/pkg/downloader"
-	"helm.sh/helm/v3/pkg/getter"
-	"helm.sh/helm/v3/pkg/repo"
 	"io/fs"
 	"net/url"
 	"os"
@@ -29,6 +25,11 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"helm.sh/helm/v3/pkg/cli"
+	"helm.sh/helm/v3/pkg/downloader"
+	"helm.sh/helm/v3/pkg/getter"
+	"helm.sh/helm/v3/pkg/repo"
 
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/manifest"
 	"helm.sh/helm/v3/pkg/action"
@@ -190,7 +191,7 @@ func (rr *RemoteRenderer) Init() error {
 	if err != nil {
 		return err
 	}
-	//debug("CHART PATH: %s\n", cp)
+	// debug("CHART PATH: %s\n", cp)
 
 	//p := getter.All(settings)
 	//vals, err := valueOpts.MergeValues(p)
@@ -210,7 +211,7 @@ func (rr *RemoteRenderer) Init() error {
 
 	if chartRequested.Metadata.Deprecated {
 		// log.Warn
-		//warning("This chart is deprecated")
+		// warning("This chart is deprecated")
 	}
 
 	if deps := chartRequested.Metadata.Dependencies; deps != nil {
@@ -436,7 +437,7 @@ func locateChart(cpOpts *action.ChartPathOptions, name string, settings *cli.Env
 	}
 
 	// if RepositoryCache doesn't exist, create it
-	if err := os.MkdirAll(settings.RepositoryCache, 0755); err != nil {
+	if err := os.MkdirAll(settings.RepositoryCache, 0o755); err != nil {
 		return "", err
 	}
 

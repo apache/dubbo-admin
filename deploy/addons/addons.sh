@@ -41,7 +41,7 @@ function extraDashboard() {
 
   kubectl create configmap -n default external-dashboard \
     --dry-run=client -oyaml \
-    --from-file=external-dashboard.json="${TMP}/external-dashboard.json" \
+    --from-file=external-dashboard.json="${TMP}/external-dashboard.json"
 }
 
 # Set up sw
@@ -50,7 +50,7 @@ function extraDashboard() {
   --namespace default \
   --version 4.3.0 \
   --repo https://apache.jfrog.io/artifactory/skywalking-helm \
-  -f "${WORKDIR}/values-sw.yaml"
+  -f "${WORKDIR}/values-skywalking.yaml"
 }
 
 # Set up zipkin

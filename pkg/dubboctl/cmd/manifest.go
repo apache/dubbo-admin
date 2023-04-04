@@ -26,7 +26,7 @@ var manifestCmd = &cobra.Command{
 	Long:  "Commands help user to generate manifest and install manifest",
 }
 
-func init() {
+func addManifest(rootCmd *cobra.Command) {
 	cmd.ConfigManifestGenerateCmd(manifestCmd)
 	cmd.ConfigManifestInstallCmd(manifestCmd)
 	rootCmd.AddCommand(manifestCmd)

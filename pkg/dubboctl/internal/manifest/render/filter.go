@@ -23,12 +23,10 @@ import (
 // FilterFunc is used to filter some contents of manifest
 type FilterFunc func(string) string
 
-var (
-	DefaultFilters = []FilterFunc{
-		CommentFilter,
-		SpaceFilter,
-	}
-)
+var DefaultFilters = []FilterFunc{
+	CommentFilter,
+	SpaceFilter,
+}
 
 // CommentFilter removes all comments in manifest
 func CommentFilter(input string) string {

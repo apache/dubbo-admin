@@ -17,6 +17,11 @@ package operator
 
 import (
 	"os"
+	"path"
+
+	"github.com/apache/dubbo-admin/pkg/dubboctl/identifier"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/manifest"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/util"
 
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/apis/dubbo.apache.org/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/manifest/render"
@@ -33,14 +38,12 @@ const (
 	Zookeeper ComponentName = "zookeeper"
 )
 
-var (
-	ComponentMap = map[string]ComponentName{
-		"admin":     Admin,
-		"grafana":   Grafana,
-		"nacos":     Nacos,
-		"zookeeper": Zookeeper,
-	}
-)
+var ComponentMap = map[string]ComponentName{
+	"admin":     Admin,
+	"grafana":   Grafana,
+	"nacos":     Nacos,
+	"zookeeper": Zookeeper,
+}
 
 // Component is used to represent dubbo control plane module, eg: zookeeper
 type Component interface {
@@ -103,16 +106,7 @@ func (ac *AdminComponent) RenderManifest() (string, error) {
 	if !ac.started {
 		return "", nil
 	}
-	// todo: considering operator action(CR change or whatever), we may introduce a valsYaml field to reduce Marshal cost
-	var valsYaml []byte
-	var err error
-	if ac.spec != nil {
-		valsYaml, err = yaml.Marshal(ac.spec)
-		if err != nil {
-			return "", err
-		}
-	}
-	manifest, err := ac.renderer.RenderManifest(string(valsYaml))
+	manifest, err := renderManifest(ac.spec, ac.renderer, false, Admin)
 	if err != nil {
 		return "", err
 	}
@@ -159,15 +153,7 @@ func (gc *GrafanaComponent) RenderManifest() (string, error) {
 	if !gc.started {
 		return "", nil
 	}
-	var valsYaml []byte
-	var err error
-	if gc.spec != nil {
-		valsYaml, err = yaml.Marshal(gc.spec)
-		if err != nil {
-			return "", err
-		}
-	}
-	manifest, err := gc.renderer.RenderManifest(string(valsYaml))
+	manifest, err := renderManifest(gc.spec, gc.renderer, true, Grafana)
 	if err != nil {
 		return "", err
 	}
@@ -230,15 +216,7 @@ func (nc *NacosComponent) RenderManifest() (string, error) {
 	if !nc.started {
 		return "", nil
 	}
-	var valsYaml []byte
-	var err error
-	if nc.spec != nil {
-		valsYaml, err = yaml.Marshal(nc.spec)
-		if err != nil {
-			return "", err
-		}
-	}
-	manifest, err := nc.renderer.RenderManifest(string(valsYaml))
+	manifest, err := renderManifest(nc.spec, nc.renderer, false, Nacos)
 	if err != nil {
 		return "", err
 	}
@@ -285,15 +263,39 @@ func (zc *ZookeeperComponent) RenderManifest() (string, error) {
 	if !zc.started {
 		return "", nil
 	}
-	var valsYaml []byte
+	manifest, err := renderManifest(zc.spec, zc.renderer, true, Zookeeper)
+	if err != nil {
+		return "", err
+	}
+	return manifest, nil
+}
+
+func renderManifest(spec any, renderer render.Renderer, addOn bool, name ComponentName) (string, error) {
+	var valsBytes []byte
+	var valsYaml string
 	var err error
-	if zc.spec != nil {
-		valsYaml, err = yaml.Marshal(zc.spec)
+	if addOn {
+		// see /deploy/addons
+		// values-*.yaml is the base yaml for addon component
+		valsYaml, err = manifest.ReadAndOverlayYamls([]string{
+			path.Join(identifier.Addons, "values-"+string(name)+".yaml"),
+		})
 		if err != nil {
 			return "", err
 		}
 	}
-	manifest, err := zc.renderer.RenderManifest(string(valsYaml))
+
+	if spec != nil {
+		valsBytes, err = yaml.Marshal(spec)
+		if err != nil {
+			return "", err
+		}
+		valsYaml, err = util.OverlayYAML(valsYaml, string(valsBytes))
+		if err != nil {
+			return "", err
+		}
+	}
+	manifest, err := renderer.RenderManifest(valsYaml)
 	if err != nil {
 		return "", err
 	}

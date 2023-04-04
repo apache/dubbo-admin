@@ -27,9 +27,7 @@ const (
 	TestNamespace string = "dubbo-operator"
 )
 
-var (
-	TestFS = os.DirFS(".")
-)
+var TestFS = os.DirFS(".")
 
 func TestNewLocalRenderer(t *testing.T) {
 	tests := []struct {
@@ -381,5 +379,4 @@ func TestRemoteRenderer_Init(t *testing.T) {
 }
 
 func TestRemoteRenderer_RenderManifest(t *testing.T) {
-	
 }

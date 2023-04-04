@@ -18,6 +18,8 @@ package kube
 import (
 	"context"
 	"fmt"
+	"time"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"time"
 )
 
 // CtlClient wraps controller-runtime client and is used by dubboctl
@@ -33,6 +34,8 @@ type CtlClient struct {
 	client.Client
 }
 
+// ApplyManifest applies manifest to certain namespace
+// If there is not this namespace, create it first
 func (cli *CtlClient) ApplyManifest(manifest string, ns string) error {
 	if err := cli.createNamespace(ns); err != nil {
 		return err
@@ -49,6 +52,7 @@ func (cli *CtlClient) ApplyManifest(manifest string, ns string) error {
 	return nil
 }
 
+// ApplyObject creates or updates unstructured object
 func (cli *CtlClient) ApplyObject(obj *unstructured.Unstructured) error {
 	if obj.GetKind() == "List" {
 		objList, err := obj.ToList()
@@ -119,7 +123,6 @@ func (cli *CtlClient) createNamespace(ns string) error {
 }
 
 func NewCtlClient(kubeConfigPath string, ctx string) (*CtlClient, error) {
-	// if we need to specify the detail of BuildConfig, rewrite this function
 	cfg, err := BuildConfig(kubeConfigPath, ctx)
 	if err != nil {
 		return nil, err

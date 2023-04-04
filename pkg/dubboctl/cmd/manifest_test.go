@@ -66,16 +66,19 @@ func TestManifestGenerate(t *testing.T) {
 	for _, test := range tests {
 		var out bytes.Buffer
 		args := strings.Split(test.cmd, " ")
+		addSubCommands(rootCmd)
 		rootCmd.SetArgs(args)
 		rootCmd.SetOut(&out)
 		if err := rootCmd.Execute(); err != nil {
 			t.Error(err)
+			return
 		}
 		// remove temporary dir
 		if test.temp != "" {
 			os.RemoveAll(test.temp)
 		}
-		t.Log(out.String())
+		// todo:// use output to test
+		// t.Log(out.String())
 	}
 }
 

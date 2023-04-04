@@ -17,11 +17,12 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/apache/dubbo-admin/pkg/dubboctl/identifier"
 	"os"
 	"path"
 	"sort"
 	"strings"
+
+	"github.com/apache/dubbo-admin/pkg/dubboctl/identifier"
 
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/apis/dubbo.apache.org/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/manifest"
@@ -56,9 +57,29 @@ func (mga *ManifestGenerateArgs) setDefault() {
 func ConfigManifestGenerateCmd(baseCmd *cobra.Command) {
 	mgArgs := &ManifestGenerateArgs{}
 	mgCmd := &cobra.Command{
-		Use:     "generate",
-		Short:   "Generate dubbo control plane manifest to apply",
-		Example: ``,
+		Use:   "generate",
+		Short: "Generate dubbo control plane manifest to apply",
+		Example: `  # Generate a default Dubbo control plane manifest
+  dubboctl manifest generate
+
+  # Setting specification of built-in component
+  dubboctl manifest generate --set spec.components.nacos.replicas=3
+
+  # Setting specification of add-on component
+  dubboctl manifest generate --set spec.components.grafana.replicas=3
+
+  # Disabling component
+  dubboctl manifest generate --set spec.componentsMeta.nacos.enabled=false
+
+  # Setting repository url and version of remote chart
+  dubboctl manifest generate --set spec.componentsMeta.grafana.repoURL=https://grafana.github.io/helm-charts --set spec.componentsMeta.grafana.version=6.31.0
+
+  # Generate manifest to target path
+  dubboctl manifest generate -o /path/to/temp
+
+  # Input user specified yaml
+  dubboctl manifest generate -f /path/to/user.yaml
+`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			mgArgs.setDefault()
 			cfg, _, err := generateValues(mgArgs)
@@ -71,16 +92,43 @@ func ConfigManifestGenerateCmd(baseCmd *cobra.Command) {
 			return nil
 		},
 	}
-	// add manifest generate flag
-	mgCmd.PersistentFlags().StringSliceVarP(&mgArgs.FileNames, "filename", "f", nil, "")
-	mgCmd.PersistentFlags().StringVarP(&mgArgs.ChartsPath, "charts", "", "", "")
-	mgCmd.PersistentFlags().StringVarP(&mgArgs.ProfilesPath, "profiles", "", "", "")
-	mgCmd.PersistentFlags().StringVarP(&mgArgs.OutputPath, "output", "o", "", "")
-	mgCmd.PersistentFlags().StringArrayVarP(&mgArgs.SetFlags, "set", "s", nil, "")
+	addManifestGenerateFlags(mgCmd, mgArgs)
 
 	baseCmd.AddCommand(mgCmd)
 }
 
+func addManifestGenerateFlags(cmd *cobra.Command, args *ManifestGenerateArgs) {
+	cmd.PersistentFlags().StringSliceVarP(&args.FileNames, "filename", "f", nil,
+		"User-defined DubboOperator yaml files, the previous file would be overlaid by later file")
+	cmd.PersistentFlags().StringVarP(&args.ChartsPath, "charts", "", "",
+		"Path to charts directory, this directory contains components charts")
+	cmd.PersistentFlags().StringVarP(&args.ProfilesPath, "profiles", "", "",
+		"Path to profiles directory, this directory contains preset profiles")
+	cmd.PersistentFlags().StringVarP(&args.OutputPath, "output", "o", "",
+		"Path to output manifest, if not set, dubboctl would print the manifest")
+	cmd.PersistentFlags().StringArrayVarP(&args.SetFlags, "set", "s", nil,
+		"Set DubboOperator fields, see /pkg/dubboctl/internal/apis/dubbo.apache.org/v1alpha1/types.go")
+}
+
+// In order to generate values.yaml for helm charts, dubboctl takes following order to overlay:
+//
+//  1. mergedYaml, profile <- user1.yaml <- user2.yaml <- user3.yaml ...
+//
+//     User set FileNames, dubboctl reads these user-defined DubboOperator yamls and overlays them from back to front.
+//     mergedYaml is the overlaid result.
+//     User could set required profile name by user-defined DubboOperator yamls or SetFlag. If none are set, dubboctl
+//     would use default profile. The priority is default profile < user-defined DubboOperator yaml < SetFlag.
+//
+//  2. profileYaml <- profile
+//
+//     dubboctl reads profile yaml. Profile can be considered the recommended configuration in some classic scenarios.
+//     For now, there is only default.yaml.
+//
+//  3. finalYaml <- profileYaml <- mergedYaml <- SetFlags
+//
+//     Based on profileYaml, user-defined yaml and setFlags are overlaid in order.
+//
+//  4. Marshal finalYaml to DubboConfig, And use DubboConfig to represent values.yaml and other information.
 func generateValues(mgArgs *ManifestGenerateArgs) (*v1alpha1.DubboConfig, string, error) {
 	mergedYaml, profile, err := manifest.ReadYamlAndProfile(mgArgs.FileNames, mgArgs.SetFlags)
 	if err != nil {
@@ -122,6 +170,7 @@ func generateManifests(mgArgs *ManifestGenerateArgs, cfg *v1alpha1.DubboConfig) 
 		return err
 	}
 	if mgArgs.OutputPath == "" {
+		// in order to have the same manifest output every time with the same input
 		res, err := sortManifests(manifestMap)
 		if err != nil {
 			return err
