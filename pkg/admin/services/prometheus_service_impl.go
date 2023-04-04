@@ -17,6 +17,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -28,16 +29,50 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
+	"github.com/apache/dubbo-admin/pkg/admin/util"
 	"github.com/apache/dubbo-admin/pkg/logger"
 	"github.com/apache/dubbo-admin/pkg/monitor/prometheus"
 )
 
 var (
-	providerService ProviderService = &ProviderServiceImpl{}
-	consumerService ConsumerService = &ConsumerServiceImpl{}
+	providerService     ProviderService = &ProviderServiceImpl{}
+	consumerService     ConsumerService = &ConsumerServiceImpl{}
+	providerServiceImpl                 = &ProviderServiceImpl{}
 )
 
 type PrometheusServiceImpl struct{}
+
+func (p *PrometheusServiceImpl) PromDiscovery(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	// Reduce the call chain and improve performance.
+	proAddr, err := providerServiceImpl.findAddresses()
+	if err != nil {
+		logger.Sugar().Errorf("Error provider findAddresses: %v\n", err)
+		return err
+	}
+	var targets []string
+	for i := 0; i < len(proAddr); i++ {
+		targets = append(targets, util.GetDiscoveryPath(proAddr[i]))
+	}
+	filterCon := make(map[string]string)
+	filterCon[constant.CategoryKey] = constant.ConsumersCategory
+	servicesMap, err := util.FilterFromCategory(filterCon)
+	if err != nil {
+		logger.Sugar().Errorf("Error filter category: %v\n", err)
+		return err
+	}
+	for _, url := range servicesMap {
+		targets = append(targets, util.GetDiscoveryPath(url.Location))
+	}
+	target := []model.Target{
+		{
+			Targets: targets,
+			Labels:  map[string]string{},
+		},
+	}
+	err = json.NewEncoder(w).Encode(target)
+	return err
+}
 
 func (p *PrometheusServiceImpl) ClusterMetrics() ([]model.Response, error) {
 	res := make([]model.Response, 5)

@@ -13,14 +13,43 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package util
 
-type Response struct {
-	Status int    `json:"status"`
-	Data   string `json:"data"`
-}
+import (
+	"reflect"
+	"testing"
+)
 
-type Target struct {
-	Targets []string          `json:"targets"`
-	Labels  map[string]string `json:"labels"`
+func TestGetDiscoveryPath(t *testing.T) {
+	type args struct {
+		address string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "RightTest1",
+			args: args{
+				address: "127.0.0.1:0",
+			},
+			want: "127.0.0.1:22222",
+		},
+		{
+			name: "RightTest2",
+			args: args{
+				address: "192.168.127.153",
+			},
+			want: "192.168.127.153:22222",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			path := GetDiscoveryPath(tt.args.address)
+			if !reflect.DeepEqual(path, tt.want) {
+				t.Errorf("GetDiscoveryPath() = %v, want %v", path, tt.want)
+			}
+		})
+	}
 }
