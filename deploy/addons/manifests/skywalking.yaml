@@ -86,7 +86,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: skywalking-oap
-    namespace: default
+    namespace: dubbo-system
 ---
 # Source: skywalking/templates/oap-svc.yaml
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -246,7 +246,7 @@ spec:
         - name: SW_CLUSTER
           value: kubernetes
         - name: SW_CLUSTER_K8S_NAMESPACE
-          value: "default"
+          value: "dubbo-system"
         - name: SW_CLUSTER_K8S_LABEL
           value: "app=skywalking,release=skywalking,component=oap"
         - name: SKYWALKING_COLLECTOR_UID
