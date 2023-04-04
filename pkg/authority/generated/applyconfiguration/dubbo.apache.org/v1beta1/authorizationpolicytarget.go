@@ -20,6 +20,8 @@ package v1beta1
 // AuthorizationPolicyTargetApplyConfiguration represents an declarative configuration of the AuthorizationPolicyTarget type for use
 // with apply.
 type AuthorizationPolicyTargetApplyConfiguration struct {
+	Namespaces    []string                                      `json:"namespaces,omitempty"`
+	NotNamespaces []string                                      `json:"notNamespaces,omitempty"`
 	IpBlocks      []string                                      `json:"ipBlocks,omitempty"`
 	NotIpBlocks   []string                                      `json:"notIpBlocks,omitempty"`
 	Principals    []string                                      `json:"principals,omitempty"`
@@ -32,6 +34,26 @@ type AuthorizationPolicyTargetApplyConfiguration struct {
 // apply.
 func AuthorizationPolicyTarget() *AuthorizationPolicyTargetApplyConfiguration {
 	return &AuthorizationPolicyTargetApplyConfiguration{}
+}
+
+// WithNamespaces adds the given value to the Namespaces field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the Namespaces field.
+func (b *AuthorizationPolicyTargetApplyConfiguration) WithNamespaces(values ...string) *AuthorizationPolicyTargetApplyConfiguration {
+	for i := range values {
+		b.Namespaces = append(b.Namespaces, values[i])
+	}
+	return b
+}
+
+// WithNotNamespaces adds the given value to the NotNamespaces field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the NotNamespaces field.
+func (b *AuthorizationPolicyTargetApplyConfiguration) WithNotNamespaces(values ...string) *AuthorizationPolicyTargetApplyConfiguration {
+	for i := range values {
+		b.NotNamespaces = append(b.NotNamespaces, values[i])
+	}
+	return b
 }
 
 // WithIpBlocks adds the given value to the IpBlocks field in the declarative configuration

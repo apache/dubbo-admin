@@ -32,6 +32,7 @@ const (
 	IDFilterKey      = ".id"
 )
 
+// URL2Provider transforms a URL into a Service
 func URL2Provider(id string, url *common.URL) *model.Provider {
 	if url == nil {
 		return nil
@@ -54,6 +55,7 @@ func URL2Provider(id string, url *common.URL) *model.Provider {
 	}
 }
 
+// URL2ProviderList transforms URLs to a list of providers
 func URL2ProviderList(servicesMap map[string]*common.URL) []*model.Provider {
 	var providers []*model.Provider
 	if servicesMap == nil {
@@ -68,6 +70,7 @@ func URL2ProviderList(servicesMap map[string]*common.URL) []*model.Provider {
 	return providers
 }
 
+// URL2Consumer transforms a URL to a consumer
 func URL2Consumer(id string, url *common.URL) *model.Consumer {
 	if url == nil {
 		return nil
@@ -83,6 +86,7 @@ func URL2Consumer(id string, url *common.URL) *model.Consumer {
 	}
 }
 
+// URL2ConsumerList transforms URLs into a list of consumers
 func URL2ConsumerList(servicesMap map[string]*common.URL) []*model.Consumer {
 	var consumers []*model.Consumer
 	if servicesMap == nil {
@@ -97,6 +101,7 @@ func URL2ConsumerList(servicesMap map[string]*common.URL) []*model.Consumer {
 	return consumers
 }
 
+// FilterFromCategory get URLs from cache by filter
 func FilterFromCategory(filter map[string]string) (map[string]*common.URL, error) {
 	c, ok := filter[constant.CategoryKey]
 	if !ok {
@@ -114,6 +119,7 @@ func FilterFromCategory(filter map[string]string) (map[string]*common.URL, error
 	return filterFromService(servicesMap, filter)
 }
 
+// filterFromService get URLs from service by filter
 func filterFromService(servicesMap *sync.Map, filter map[string]string) (map[string]*common.URL, error) {
 	ret := make(map[string]*common.URL)
 	var err error
@@ -143,6 +149,7 @@ func filterFromService(servicesMap *sync.Map, filter map[string]string) (map[str
 	return ret, err
 }
 
+// filterFromURLs filter URLs
 func filterFromURLs(from, to map[string]*common.URL, filter map[string]string) {
 	if from == nil || to == nil {
 		return

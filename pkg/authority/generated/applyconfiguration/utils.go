@@ -32,14 +32,12 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &dubboapacheorgv1beta1.AuthenticationPolicyApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthenticationPolicyExtend"):
 		return &dubboapacheorgv1beta1.AuthenticationPolicyExtendApplyConfiguration{}
-	case v1beta1.SchemeGroupVersion.WithKind("AuthenticationPolicyRule"):
-		return &dubboapacheorgv1beta1.AuthenticationPolicyRuleApplyConfiguration{}
-	case v1beta1.SchemeGroupVersion.WithKind("AuthenticationPolicySource"):
-		return &dubboapacheorgv1beta1.AuthenticationPolicySourceApplyConfiguration{}
+	case v1beta1.SchemeGroupVersion.WithKind("AuthenticationPolicyPortLevel"):
+		return &dubboapacheorgv1beta1.AuthenticationPolicyPortLevelApplyConfiguration{}
+	case v1beta1.SchemeGroupVersion.WithKind("AuthenticationPolicySelector"):
+		return &dubboapacheorgv1beta1.AuthenticationPolicySelectorApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthenticationPolicySpec"):
 		return &dubboapacheorgv1beta1.AuthenticationPolicySpecApplyConfiguration{}
-	case v1beta1.SchemeGroupVersion.WithKind("AuthenticationPolicyTarget"):
-		return &dubboapacheorgv1beta1.AuthenticationPolicyTargetApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthorizationPolicy"):
 		return &dubboapacheorgv1beta1.AuthorizationPolicyApplyConfiguration{}
 	case v1beta1.SchemeGroupVersion.WithKind("AuthorizationPolicyCondition"):

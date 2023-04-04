@@ -17,33 +17,15 @@
 
 package util
 
-import "strings"
+import (
+	"github.com/apache/dubbo-admin/pkg/admin/constant"
+	"github.com/apache/dubbo-admin/pkg/admin/model"
+)
 
-func BuildServiceKey(path, group, version string) string {
-	var length int
-	if path != "" {
-		length += len(path)
+func BuildServiceKey(baseDto model.Base) string {
+	if baseDto.Application != "" {
+		return baseDto.Application
 	}
-	if group != "" {
-		length += len(group)
-	}
-	if version != "" {
-		length += len(version)
-	}
-	length += 2
-
-	var buf strings.Builder
-	buf.Grow(length)
-
-	if group != "" {
-		buf.WriteString(group)
-		buf.WriteString("/")
-	}
-	buf.WriteString(path)
-	if version != "" {
-		buf.WriteString(":")
-		buf.WriteString(version)
-	}
-
-	return buf.String()
+	// id format: "${class}:${version}:${group}"
+	return baseDto.Service + constant.Colon + baseDto.ServiceVersion + constant.Colon + baseDto.ServiceGroup
 }

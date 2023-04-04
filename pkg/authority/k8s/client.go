@@ -18,6 +18,7 @@ package k8s
 import (
 	"context"
 	"flag"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -39,10 +40,15 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/util/homedir"
 )
+
+var kubeconfig string
+
+func init() {
+	flag.StringVar(&kubeconfig, "kubeconfig", "",
+		"Paths to a kubeconfig. Only required if out-of-cluster.")
+}
 
 type Client interface {
 	Init(options *config.Options) bool
@@ -53,10 +59,11 @@ type Client interface {
 	UpdateWebhookConfig(options *config.Options, storage cert.Storage)
 	GetNamespaceLabels(namespace string) map[string]string
 	InitController(paHandler authentication.Handler, apHandler authorization.Handler)
-	Resourcelock(storage cert.Storage, options *config.Options) error
+	GetKubClient() *kubernetes.Clientset
 }
 
 type ClientImpl struct {
+	options        *config.Options
 	kubeClient     *kubernetes.Clientset
 	informerClient *infoemerclient.Clientset
 }
@@ -66,27 +73,34 @@ func NewClient() Client {
 }
 
 func (c *ClientImpl) Init(options *config.Options) bool {
+	c.options = options
 	config, err := rest.InClusterConfig()
 	options.InPodEnv = err == nil
 	if err != nil {
 		logger.Sugar().Infof("Failed to load config from Pod. Will fall back to kube config file.")
-
-		var kubeconfig *string
-		if home := homedir.HomeDir(); home != "" {
-			kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-		} else {
-			kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+		// Read kubeconfig from command line
+		if len(kubeconfig) <= 0 {
+			// Read kubeconfig from env
+			kubeconfig = os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
+			if len(kubeconfig) <= 0 {
+				// Read kubeconfig from home dir
+				if home := homedir.HomeDir(); home != "" {
+					kubeconfig = filepath.Join(home, ".kube", "config")
+				}
+			}
 		}
-		flag.Parse()
-
 		// use the current context in kubeconfig
-		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+		logger.Sugar().Infof("Read kubeconfig from %s", kubeconfig)
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 		if err != nil {
 			logger.Sugar().Warnf("Failed to load config from kube config file.")
 			return false
 		}
 	}
 
+	// set qps and burst for rest config
+	config.QPS = float32(c.options.RestConfigQps)
+	config.Burst = c.options.RestConfigBurst
 	// creates the clientset
 	clientSet, err := kubernetes.NewForConfig(config)
 	if err != nil {
@@ -257,10 +271,19 @@ func (c *ClientImpl) VerifyServiceAccount(token string, authorizationType string
 
 	e := &rule.Endpoint{}
 
-	e.ID = pod.Namespace + "/" + pod.Name
+	e.ID = string(pod.UID)
 	for _, i := range pod.Status.PodIPs {
 		if i.IP != "" {
 			e.Ips = append(e.Ips, i.IP)
+		}
+	}
+
+	e.SpiffeID = "spiffe://cluster.local/ns/" + pod.Namespace + "/sa/" + pod.Spec.ServiceAccountName
+
+	if strings.HasPrefix(reviewRes.Status.User.Username, "system:serviceaccount:") {
+		names := strings.Split(reviewRes.Status.User.Username, ":")
+		if len(names) == 4 {
+			e.SpiffeID = "spiffe://cluster.local/ns/" + names[2] + "/sa/" + names[3]
 		}
 	}
 
@@ -360,6 +383,7 @@ func (c *ClientImpl) InitController(
 
 	stopCh := make(chan struct{})
 	controller := NewController(c.informerClient,
+		c.options.Namespace,
 		authenticationHandler,
 		authorizationHandler,
 		informerFactory.Dubbo().V1beta1().AuthenticationPolicies(),
@@ -369,43 +393,6 @@ func (c *ClientImpl) InitController(
 	controller.WaitSynced()
 }
 
-func (c *ClientImpl) Resourcelock(storage cert.Storage, options *config.Options) error {
-	identity := options.ResourcelockIdentity
-	rlConfig := resourcelock.ResourceLockConfig{
-		Identity: identity,
-	}
-	namespace := options.Namespace
-	_, err := c.kubeClient.CoreV1().Namespaces().Get(context.TODO(), namespace, metav1.GetOptions{})
-	if err != nil {
-		namespace = "default"
-	}
-	lock, err := resourcelock.New(resourcelock.ConfigMapsLeasesResourceLock, namespace, "dubbo-lock-cert", c.kubeClient.CoreV1(), c.kubeClient.CoordinationV1(), rlConfig)
-	if err != nil {
-		return err
-	}
-	leaderElectionConfig := leaderelection.LeaderElectionConfig{
-		Lock:          lock,
-		LeaseDuration: 15 * time.Second,
-		RenewDeadline: 10 * time.Second,
-		RetryPeriod:   2 * time.Second,
-		Callbacks: leaderelection.LeaderCallbacks{
-			// leader
-			OnStartedLeading: func(ctx context.Context) {
-				// lock if multi server，refresh signed cert
-				storage.SetAuthorityCert(cert.GenerateAuthorityCert(storage.GetRootCert(), options.CaValidity))
-			},
-			// not leader
-			OnStoppedLeading: func() {
-				// TODO should be listen,when cert resfresh,should be resfresh
-			},
-			// a new leader has been elected
-			OnNewLeader: func(identity string) {
-			},
-		},
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	leaderelection.RunOrDie(ctx, leaderElectionConfig)
-	return nil
+func (c *ClientImpl) GetKubClient() *kubernetes.Clientset {
+	return c.kubeClient
 }

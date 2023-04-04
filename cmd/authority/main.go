@@ -16,30 +16,21 @@
 package main
 
 import (
+	"fmt"
 	"os"
-	"os/signal"
-	"syscall"
 
-	"github.com/apache/dubbo-admin/pkg/authority/config"
-	"github.com/apache/dubbo-admin/pkg/authority/security"
+	"github.com/apache/dubbo-admin/cmd/authority/app"
 	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
 func main() {
 	logger.Init()
 
-	// TODO read options from identifier
-	options := config.GetOptions()
+	// Convert signal to ctx
+	// ctx := signals.SetupSignalHandler()
 
-	s := security.NewServer(options)
-
-	s.Init()
-	s.Start()
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-	signal.Notify(s.StopChan, syscall.SIGINT, syscall.SIGTERM)
-	signal.Notify(s.CertStorage.GetStopChan(), syscall.SIGINT, syscall.SIGTERM)
-
-	<-c
+	if err := app.NewAppCommand().Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
 }

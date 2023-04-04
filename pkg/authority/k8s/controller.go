@@ -23,6 +23,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/authority/rule/authorization"
 	"github.com/apache/dubbo-admin/pkg/logger"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/utils/strings/slices"
 )
 
 type NotificationType int
@@ -40,6 +41,8 @@ const (
 type Controller struct {
 	dubboClientSet clientSet.Interface
 
+	rootNamespace string
+
 	authenticationSynced cache.InformerSynced
 	authorizationSynced  cache.InformerSynced
 
@@ -50,13 +53,16 @@ type Controller struct {
 // NewController returns a new sample controller
 func NewController(
 	clientSet clientSet.Interface,
+	rootNamespace string,
 	authenticationHandler authentication.Handler,
 	authorizationHandler authorization.Handler,
 	acInformer informerV1beta1.AuthenticationPolicyInformer,
 	apInformer informerV1beta1.AuthorizationPolicyInformer,
 ) *Controller {
 	controller := &Controller{
-		dubboClientSet:       clientSet,
+		dubboClientSet: clientSet,
+		rootNamespace:  rootNamespace,
+
 		authenticationSynced: acInformer.Informer().HasSynced,
 		authorizationSynced:  apInformer.Informer().HasSynced,
 
@@ -118,7 +124,7 @@ func (c *Controller) handleEvent(obj interface{}, eventType NotificationType) {
 
 	switch o := obj.(type) {
 	case *apiV1beta1.AuthenticationPolicy:
-		a := CopyToAuthentication(key, o)
+		a := CopyToAuthentication(key, c.rootNamespace, o)
 
 		switch eventType {
 		case AddNotification:
@@ -130,7 +136,7 @@ func (c *Controller) handleEvent(obj interface{}, eventType NotificationType) {
 		}
 		return
 	case *apiV1beta1.AuthorizationPolicy:
-		a := CopyToAuthorization(key, o)
+		a := CopyToAuthorization(key, c.rootNamespace, o)
 
 		switch eventType {
 		case AddNotification:
@@ -146,70 +152,72 @@ func (c *Controller) handleEvent(obj interface{}, eventType NotificationType) {
 	}
 }
 
-func CopyToAuthentication(key string, pa *apiV1beta1.AuthenticationPolicy) *authentication.Policy {
+func CopyToAuthentication(key, rootNamespace string, pa *apiV1beta1.AuthenticationPolicy) *authentication.Policy {
 	a := &authentication.Policy{}
 	a.Name = key
 	a.Spec = &authentication.PolicySpec{}
 	a.Spec.Action = pa.Spec.Action
-	if pa.Spec.Rules != nil {
-		for _, rule := range pa.Spec.Rules {
-			r := &authentication.PolicyRule{
-				From: &authentication.Source{
-					Namespaces:    rule.From.Namespaces,
-					NotNamespaces: rule.From.NotNamespaces,
-					IpBlocks:      rule.From.IpBlocks,
-					NotIpBlocks:   rule.From.NotIpBlocks,
-					Principals:    rule.From.Principals,
-					NotPrincipals: rule.From.NotPrincipals,
-				},
-				To: &authentication.Target{
-					IpBlocks:      rule.To.IpBlocks,
-					NotIpBlocks:   rule.To.NotIpBlocks,
-					Principals:    rule.To.Principals,
-					NotPrincipals: rule.To.NotPrincipals,
-				},
+	if pa.Spec.Selector != nil {
+		for _, selector := range pa.Spec.Selector {
+			r := &authentication.Selector{
+				Namespaces:    selector.Namespaces,
+				NotNamespaces: selector.NotNamespaces,
+				IpBlocks:      selector.IpBlocks,
+				NotIpBlocks:   selector.NotIpBlocks,
+				Principals:    selector.Principals,
+				NotPrincipals: selector.NotPrincipals,
 			}
-			if rule.From.Extends != nil {
-				for _, extends := range rule.From.Extends {
-					r.From.Extends = append(r.From.Extends, &authentication.Extend{
+			if selector.Extends != nil {
+				for _, extends := range selector.Extends {
+					r.Extends = append(r.Extends, &authentication.Extend{
 						Key:   extends.Key,
 						Value: extends.Value,
 					})
 				}
 			}
-			if rule.From.NotExtends != nil {
-				for _, notExtend := range rule.From.NotExtends {
-					r.From.NotExtends = append(r.From.NotExtends, &authentication.Extend{
+			if selector.NotExtends != nil {
+				for _, notExtend := range selector.NotExtends {
+					r.NotExtends = append(r.NotExtends, &authentication.Extend{
 						Key:   notExtend.Key,
 						Value: notExtend.Value,
 					})
 				}
 			}
-			if rule.To.Extends != nil {
-				for _, extends := range rule.To.Extends {
-					r.To.Extends = append(r.To.Extends, &authentication.Extend{
-						Key:   extends.Key,
-						Value: extends.Value,
-					})
-				}
-			}
-			if rule.To.NotExtends != nil {
-				for _, notExtend := range rule.To.NotExtends {
-					r.To.NotExtends = append(r.To.NotExtends, &authentication.Extend{
-						Key:   notExtend.Key,
-						Value: notExtend.Value,
-					})
-				}
-			}
-			a.Spec.Rules = append(a.Spec.Rules, r)
+			a.Spec.Selector = append(a.Spec.Selector, r)
 		}
 	}
-	a.Spec.Order = pa.Spec.Order
-	a.Spec.MatchType = pa.Spec.MatchType
+
+	if pa.Spec.PortLevel != nil {
+		for _, portLevel := range pa.Spec.PortLevel {
+			r := &authentication.PortLevel{
+				Port:   portLevel.Port,
+				Action: portLevel.Action,
+			}
+
+			a.Spec.PortLevel = append(a.Spec.PortLevel, r)
+		}
+	}
+
+	if rootNamespace == pa.Namespace {
+		return a
+	}
+
+	if len(a.Spec.Selector) == 0 {
+		a.Spec.Selector = append(a.Spec.Selector, &authentication.Selector{
+			Namespaces: []string{pa.Namespace},
+		})
+	} else {
+		for _, selector := range a.Spec.Selector {
+			if !slices.Contains(selector.Namespaces, pa.Namespace) {
+				selector.Namespaces = append(selector.Namespaces, pa.Namespace)
+			}
+		}
+	}
+
 	return a
 }
 
-func CopyToAuthorization(key string, pa *apiV1beta1.AuthorizationPolicy) *authorization.Policy {
+func CopyToAuthorization(key, rootNamespace string, pa *apiV1beta1.AuthorizationPolicy) *authorization.Policy {
 	a := &authorization.Policy{}
 	a.Name = key
 	a.Spec = &authorization.PolicySpec{}
@@ -226,6 +234,8 @@ func CopyToAuthorization(key string, pa *apiV1beta1.AuthorizationPolicy) *author
 					NotPrincipals: rule.From.NotPrincipals,
 				},
 				To: &authorization.Target{
+					Namespaces:    rule.To.Namespaces,
+					NotNamespaces: rule.To.NotNamespaces,
 					IpBlocks:      rule.To.IpBlocks,
 					NotIpBlocks:   rule.To.NotIpBlocks,
 					Principals:    rule.To.Principals,
@@ -288,6 +298,28 @@ func CopyToAuthorization(key string, pa *apiV1beta1.AuthorizationPolicy) *author
 		}
 	}
 	a.Spec.Samples = pa.Spec.Samples
+	a.Spec.Order = pa.Spec.Order
 	a.Spec.MatchType = pa.Spec.MatchType
+
+	if rootNamespace == pa.Namespace {
+		return a
+	}
+
+	if len(a.Spec.Rules) == 0 {
+		a.Spec.Rules = append(a.Spec.Rules, &authorization.PolicyRule{
+			To: &authorization.Target{
+				Namespaces: []string{pa.Namespace},
+			},
+		})
+	} else {
+		for _, rule := range a.Spec.Rules {
+			if rule.To != nil {
+				rule.To = &authorization.Target{}
+			}
+			if !slices.Contains(rule.To.Namespaces, pa.Namespace) {
+				rule.To.Namespaces = append(rule.To.Namespaces, pa.Namespace)
+			}
+		}
+	}
 	return a
 }

@@ -17,10 +17,16 @@ package v1alpha1
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"strings"
 
+	"github.com/apache/dubbo-admin/pkg/authority/jwt"
+
+	"google.golang.org/grpc/credentials"
+
+	"github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
 	"github.com/apache/dubbo-admin/pkg/authority/rule"
@@ -28,46 +34,31 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-func exactEndpoint(c context.Context, options *config.Options, kubeClient k8s.Client) (*rule.Endpoint, error) {
-	if options.IsKubernetesConnected && options.EnableOIDCCheck {
-		md, ok := metadata.FromIncomingContext(c)
-		if !ok {
-			return nil, fmt.Errorf("failed to get metadata from context")
-		}
-
-		authorization, ok := md["authorization"]
-		if !ok || len(authorization) != 1 {
-			return nil, fmt.Errorf("failed to get Authorization header from context")
-		}
-
-		if !strings.HasPrefix(authorization[0], "Bearer ") {
-			return nil, fmt.Errorf("failed to get Authorization header from context")
-		}
-
-		token := strings.ReplaceAll(authorization[0], "Bearer ", "")
-
-		authorizationTypes, ok := md["authorization-type"]
-		authorizationType := "kubernetes"
-
-		if ok && len(authorizationTypes) == 1 {
-			authorizationType = authorizationTypes[0]
-		}
-
-		endpoint, ok := kubeClient.VerifyServiceAccount(token, authorizationType)
-		if !ok {
-			return nil, fmt.Errorf("failed to verify Authorization header from kubernetes")
-		}
-
-		return endpoint, nil
+func ExactEndpoint(c context.Context, certStorage cert.Storage, options *config.Options, kubeClient k8s.Client) (*rule.Endpoint, error) {
+	if c == nil {
+		return nil, fmt.Errorf("context is nil")
 	}
-	// TODO get from SSL context
 
 	p, ok := peer.FromContext(c)
 	if !ok {
 		return nil, fmt.Errorf("failed to get peer from context")
 	}
 
-	// TODO get ip
+	endpoint, endpointErr := tryFromHeader(c, certStorage, options, kubeClient)
+	if endpointErr == nil {
+		return endpoint, nil
+	}
+
+	endpoint, connectionErr := tryFromConnection(p)
+	if connectionErr == nil {
+		return endpoint, nil
+	}
+
+	if !options.IsTrustAnyone && connectionErr != nil {
+		return nil, fmt.Errorf("Failed to get endpoint from header: %s. Failed to get endpoint from connection: %s. RemoteAddr: %s",
+			endpointErr.Error(), connectionErr.Error(), p.Addr.String())
+	}
+
 	host, _, err := net.SplitHostPort(p.Addr.String())
 	if err != nil {
 		return nil, err
@@ -77,4 +68,74 @@ func exactEndpoint(c context.Context, options *config.Options, kubeClient k8s.Cl
 		ID:  p.Addr.String(),
 		Ips: []string{host},
 	}, nil
+}
+
+func tryFromHeader(c context.Context, certStorage cert.Storage, options *config.Options, kubeClient k8s.Client) (*rule.Endpoint, error) {
+	// TODO refactor as coreos/go-oidc
+	authorization := metadata.ValueFromIncomingContext(c, "authorization")
+	if len(authorization) != 1 {
+		return nil, fmt.Errorf("failed to get Authorization header from context")
+	}
+
+	if !strings.HasPrefix(authorization[0], "Bearer ") {
+		return nil, fmt.Errorf("failed to get Authorization header from context")
+	}
+
+	token := strings.ReplaceAll(authorization[0], "Bearer ", "")
+
+	authorizationTypes := metadata.ValueFromIncomingContext(c, "authorization-type")
+	authorizationType := "kubernetes"
+
+	if len(authorizationTypes) == 1 {
+		authorizationType = authorizationTypes[0]
+	}
+
+	if authorizationType == "dubbo-jwt" {
+		for _, c := range certStorage.GetTrustedCerts() {
+			claims, err := jwt.Verify(&c.PrivateKey.PublicKey, token)
+			if err != nil {
+				continue
+			}
+			endpoint := &rule.Endpoint{SpiffeID: claims.Subject}
+			err = json.Unmarshal([]byte(claims.Extensions), endpoint)
+			if err != nil {
+				continue
+			}
+			return endpoint, nil
+		}
+		return nil, fmt.Errorf("failed to verify Authorization header from dubbo-jwt")
+	}
+
+	if options.IsKubernetesConnected && options.EnableOIDCCheck {
+		endpoint, ok := kubeClient.VerifyServiceAccount(token, authorizationType)
+		if !ok {
+			return nil, fmt.Errorf("failed to verify Authorization header from kubernetes")
+		}
+		return endpoint, nil
+	}
+
+	return nil, fmt.Errorf("failed to verify Authorization header")
+}
+
+func tryFromConnection(p *peer.Peer) (*rule.Endpoint, error) {
+	if p.AuthInfo != nil && p.AuthInfo.AuthType() == "tls" {
+		tlsInfo, ok := p.AuthInfo.(credentials.TLSInfo)
+		if !ok {
+			return nil, fmt.Errorf("failed to get TLSInfo from peer")
+		}
+
+		host, _, err := net.SplitHostPort(p.Addr.String())
+		if err != nil {
+			return nil, err
+		}
+		if tlsInfo.SPIFFEID == nil {
+			return nil, fmt.Errorf("failed to get SPIFFE ID from peer")
+		}
+		return &rule.Endpoint{
+			ID:       p.Addr.String(),
+			SpiffeID: tlsInfo.SPIFFEID.String(),
+			Ips:      []string{host},
+		}, nil
+	}
+	return nil, fmt.Errorf("failed to get TLSInfo from peer")
 }

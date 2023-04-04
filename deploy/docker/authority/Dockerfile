@@ -25,6 +25,7 @@ WORKDIR /workspace/cmd/authority
 #  go build -buildmode=pie -ldflags "-linkmode external -extldflags -static -w" \
 #  -o /workspace/ca
 
+RUN go env -w GOPROXY=https://goproxy.cn,direct
 RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
 RUN --mount=type=cache,target=/go \

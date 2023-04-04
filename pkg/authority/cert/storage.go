@@ -16,7 +16,7 @@
 package cert
 
 import (
-	"crypto/rsa"
+	"crypto/ecdsa"
 	"crypto/tls"
 	"crypto/x509"
 	"math"
@@ -65,7 +65,7 @@ type Storage interface {
 type Cert struct {
 	Cert       *x509.Certificate
 	CertPem    string
-	PrivateKey *rsa.PrivateKey
+	PrivateKey *ecdsa.PrivateKey
 
 	tlsCert *tls.Certificate
 }
@@ -162,17 +162,18 @@ func (s *storageImpl) RefreshServerCert() {
 		}
 
 		time.Sleep(time.Duration(interval) * time.Millisecond)
-		s.mutex.Lock()
-		if s.authorityCert == nil || !s.authorityCert.IsValid() {
-			// ignore if authority cert is invalid
-			s.mutex.Unlock()
-			continue
-		}
-		if s.serverCerts == nil || !s.serverCerts.IsValid() {
-			logger.Sugar().Infof("Server cert is invalid, refresh it.")
-			s.serverCerts = SignServerCert(s.authorityCert, s.serverNames, s.certValidity)
-		}
-		s.mutex.Unlock()
+		func() {
+			s.mutex.Lock()
+			defer s.mutex.Unlock()
+			if s.authorityCert == nil || !s.authorityCert.IsValid() {
+				// ignore if authority cert is invalid
+				return
+			}
+			if s.serverCerts == nil || !s.serverCerts.IsValid() {
+				logger.Sugar().Infof("Server cert is invalid, refresh it.")
+				s.serverCerts = SignServerCert(s.authorityCert, s.serverNames, s.certValidity)
+			}
+		}()
 	}
 }
 
