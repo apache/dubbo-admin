@@ -10,7 +10,7 @@ metadata:
     chart: prometheus-20.0.2
     heritage: Helm
   name: prometheus-server
-  namespace: default
+  namespace: dubbo-system
   annotations:
     {}
 ---
@@ -25,7 +25,7 @@ metadata:
     chart: prometheus-20.0.2
     heritage: Helm
   name: prometheus-server
-  namespace: default
+  namespace: dubbo-system
 data:
   allow-snippet-annotations: "false"
   alerting_rules.yml: |
@@ -395,7 +395,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: prometheus-server
-    namespace: default
+    namespace: dubbo-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -412,7 +412,7 @@ metadata:
     chart: prometheus-20.0.2
     heritage: Helm
   name: prometheus-server
-  namespace: default
+  namespace: dubbo-system
 spec:
   ports:
     - name: http
@@ -437,7 +437,7 @@ metadata:
     chart: prometheus-20.0.2
     heritage: Helm
   name: prometheus-server
-  namespace: default
+  namespace: dubbo-system
 spec:
   selector:
     matchLabels:
