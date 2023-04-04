@@ -32,8 +32,8 @@ COPY go.sum go.sum
 
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
-RUN if [[ "${BUILD}" != "CI" ]]; then go identifier -w GOPROXY=https://goproxy.cn,direct; fi
-RUN go identifier
+RUN if [[ "${BUILD}" != "CI" ]]; then go env -w GOPROXY=https://goproxy.cn,direct; fi
+RUN go env
 RUN go mod download
 
 # Copy the go source
@@ -41,7 +41,7 @@ COPY pkg pkg/
 COPY cmd cmd/
 
 # Build
-RUN identifier
+RUN env
 RUN go build -ldflags="${LDFLAGS}" -a -o ${PKGNAME} /go/src/github.com/apache/dubbo-admin/cmd/${PKGNAME}/main.go
 
 
