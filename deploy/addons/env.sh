@@ -17,7 +17,9 @@
 
 WORKDIR=$(dirname "$0")
 DASHBOARDS=${WORKDIR}
+MANIFESTS_DIR=${WORKDIR}/manifests
 
+set -eux
 
 # Set up zookeeper
 helm template zookeeper zookeeper \
@@ -25,6 +27,7 @@ helm template zookeeper zookeeper \
   --version 11.1.6 \
   --repo https://charts.bitnami.com/bitnami  \
   -f "${WORKDIR}/values-zookeeper.yaml" \
+  > "${MANIFESTS_DIR}/zookeeper.yaml"
 
 
 # Set up prometheus
@@ -33,18 +36,22 @@ helm template prometheus prometheus \
   --version 20.0.2 \
   --repo https://prometheus-community.github.io/helm-charts \
   -f "${WORKDIR}/values-prometheus.yaml" \
-
+  > "${MANIFESTS_DIR}/prometheus.yaml"
 
 # Set up grafana
-helm template grafana grafana \
-  --namespace default \
-  --version 6.52.4 \
-  --repo https://grafana.github.io/helm-charts \
-  -f "${WORKDIR}/values-grafana.yaml"
+{
+  helm template grafana grafana \
+    --namespace default \
+    --version 6.52.4 \
+    --repo https://grafana.github.io/helm-charts \
+    -f "${WORKDIR}/values-grafana.yaml"
 
-kubectl create configmap -n default admin-extra-dashboards \
-  --dry-run=client -oyaml \
-  --from-file=extra-dashboard.json="${DASHBOARDS}/dashboards/external-dashboard.json"
+  echo -e "\n---\n"
+
+  kubectl create configmap -n default admin-extra-dashboards \
+    --dry-run=client -oyaml \
+    --from-file=extra-dashboard.json="${DASHBOARDS}/dashboards/external-dashboard.json"
+} > "${MANIFESTS_DIR}/grafana.yaml"
 
 
 # Set up skywalking
@@ -52,12 +59,13 @@ helm template skywalking skywalking \
   --namespace default \
   --version 4.3.0 \
   --repo https://apache.jfrog.io/artifactory/skywalking-helm \
-  -f "${WORKDIR}/values-skywalking.yaml"
-
+  -f "${WORKDIR}/values-skywalking.yaml" \
+  > "${MANIFESTS_DIR}/skywalking.yaml"
 
 # Set up zipkin
 helm template zipkin zipkin \
   --namespace default \
   --version 0.3.0 \
   --repo https://openzipkin.github.io/zipkin \
-  -f "${WORKDIR}/values-zipkin.yaml"
+  -f "${WORKDIR}/values-zipkin.yaml" \
+  > "${MANIFESTS_DIR}/zipkin.yaml"
