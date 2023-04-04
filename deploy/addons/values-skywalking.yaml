@@ -13,16 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-skywalking:
-  enabled: true
-  oap:
-    image:
-      repository: skywalking.docker.scarf.sh/apache/skywalking-oap-server
+oap:
+  image:
+    repository: skywalking.docker.scarf.sh/apache/skywalking-oap-server
     tag: 9.3.0
-    storageType: elasticsearch
-  ui:
-    image:
-      repository: skywalking.docker.scarf.sh/apache/skywalking-ui
-      tag: 9.3.0
-  elasticsearch:
-    enabled: false
+  storageType: elasticsearch
+ui:
+  image:
+    repository: skywalking.docker.scarf.sh/apache/skywalking-ui
+    tag: 9.3.0
+
+elasticsearch:
+  enabled: false
