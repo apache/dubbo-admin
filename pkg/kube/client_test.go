@@ -35,21 +35,21 @@ const (
 	wantPath  = "./testdata/want"
 )
 
+// we have tested ApplyObject, so we just need to test createNamespace
 func TestCtlClient_ApplyManifest(t *testing.T) {
 	tests := []struct {
 		input string
-		want  string
 	}{
 		{
 			input: "ctl_client-apply_manifest.yaml",
-			want:  "ctl_client-apply_manifest.yaml",
 		},
 	}
 
 	for _, test := range tests {
 		var fakeCli client.Client
+		fakeCli = fake.NewClientBuilder().Build()
 		ctlCli := CtlClient{Client: fakeCli}
-		inputManifest, err := readManifest(test.input)
+		inputManifest, err := readManifest(path.Join(inputPath, test.input))
 		if err != nil {
 			t.Fatalf("read input manifest %s err: %s", test.input, err)
 		}
@@ -65,6 +65,7 @@ func TestCtlClient_ApplyManifest(t *testing.T) {
 		receiver := &corev1.Namespace{}
 		if err := ctlCli.Get(context.Background(), nsKey, receiver); err != nil {
 			t.Errorf("createNamespace failed, err: %s", err)
+			return
 		}
 		assert.Equal(t, testNs, receiver.Name)
 	}

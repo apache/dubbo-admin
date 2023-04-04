@@ -26,6 +26,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/apache/dubbo-admin/pkg/dubboctl/identifier"
+
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/downloader"
 	"helm.sh/helm/v3/pkg/getter"
@@ -42,8 +44,6 @@ import (
 )
 
 const (
-	DefaultNamespace = "dubbo-system"
-
 	YAMLSeparator       = "\n---\n"
 	NotesFileNameSuffix = ".txt"
 )
@@ -191,13 +191,6 @@ func (rr *RemoteRenderer) Init() error {
 	if err != nil {
 		return err
 	}
-	// debug("CHART PATH: %s\n", cp)
-
-	//p := getter.All(settings)
-	//vals, err := valueOpts.MergeValues(p)
-	//if err != nil {
-	//	return nil, err
-	//}
 
 	// Check chart dependencies to make sure all are present in /charts
 	chartRequested, err := loader.Load(cp)
@@ -209,37 +202,6 @@ func (rr *RemoteRenderer) Init() error {
 		return err
 	}
 
-	if chartRequested.Metadata.Deprecated {
-		// log.Warn
-		// warning("This chart is deprecated")
-	}
-
-	if deps := chartRequested.Metadata.Dependencies; deps != nil {
-		// If CheckDependencies returns an error, we have unfulfilled dependencies.
-		// As of Helm 2.4.0, this is treated as a stopping condition:
-		// https://github.com/helm/helm/issues/2209
-		if err := action.CheckDependencies(chartRequested, deps); err != nil {
-			//err = errors.Wrap(err, "An error occurred while checking for chart dependencies. You may need to refer `helm dependency build` to fetch missing dependencies")
-			//man := &downloader.Manager{
-			//	Out:              out,
-			//	ChartPath:        cp,
-			//	Keyring:          cpOpts.Keyring,
-			//	SkipUpdate:       false,
-			//	Getters:          p,
-			//	RepositoryConfig: settings.RepositoryConfig,
-			//	RepositoryCache:  settings.RepositoryCache,
-			//	Debug:            settings.Debug,
-			//}
-			//if err := man.Update(); err != nil {
-			//	return err
-			//}
-			//// Reload the chart with the updated Chart.lock file.
-			//if chartRequested, err = loader.Load(cp); err != nil {
-			//	return errors.Wrap(err, "failed reloading chart after repo update")
-			//}
-			//return err
-		}
-	}
 	rr.Chart = chartRequested
 	rr.Started = true
 
@@ -273,7 +235,7 @@ func verifyRendererOptions(opts *RendererOptions) error {
 	}
 	if opts.Namespace == "" {
 		// logger.Log("using default namespace)
-		opts.Namespace = DefaultNamespace
+		opts.Namespace = identifier.DubboSystemNamespace
 	}
 	if opts.FS == nil {
 		return errors.New("missing chart FS for Renderer")

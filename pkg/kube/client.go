@@ -107,7 +107,8 @@ func (cli *CtlClient) createNamespace(ns string) error {
 		if errors.IsNotFound(err) {
 			nsObj := &corev1.Namespace{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: ns,
+					Namespace: metav1.NamespaceSystem,
+					Name:      ns,
 				},
 			}
 			if err := cli.Create(context.Background(), nsObj); err != nil {

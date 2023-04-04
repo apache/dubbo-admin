@@ -1,3 +1,18 @@
+// Licensed to the Apache Software Foundation (ASF) under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// The ASF licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // Copyright Istio Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,8 +43,6 @@ import (
 	"gopkg.in/yaml.v2"
 	yaml2 "sigs.k8s.io/yaml"
 )
-
-// var scope = log.RegisterScope("tpath", "tree traverser", 0)
 
 // PathContext provides a means for traversing a tree towards the root.
 type PathContext struct {
@@ -66,13 +79,10 @@ func GetPathContext(root interface{}, path util.Path, createMissing bool) (*Path
 
 // WritePathContext writes the given value to the Node in the given PathContext.
 func WritePathContext(nc *PathContext, value interface{}, merge bool) error {
-	// scope.Debugf("WritePathContext PathContext=%s, value=%v", nc, value)
-
 	if !util.IsValueNil(value) {
 		return setPathContext(nc, value, merge)
 	}
 
-	// scope.Debug("delete")
 	if nc.Parent == nil {
 		return errors.New("cannot delete root element")
 	}
@@ -116,7 +126,6 @@ func MergeNode(root interface{}, path util.Path, value interface{}) error {
 // It behaves differently from GetPathContext in that it never creates map entries at the leaf and does not provide
 // a way to mutate the parent of the found node.
 func Find(inputTree map[string]interface{}, path util.Path) (interface{}, bool, error) {
-	// scope.Debugf("Find path=%s", path)
 	if len(path) == 0 {
 		return nil, false, fmt.Errorf("path is empty")
 	}
@@ -136,7 +145,6 @@ func Delete(root map[string]interface{}, path util.Path) (bool, error) {
 // getPathContext is the internal implementation of GetPathContext.
 // If createMissing is true, it creates any missing map (but NOT list) path entries in root.
 func getPathContext(nc *PathContext, fullPath, remainPath util.Path, createMissing bool) (*PathContext, bool, error) {
-	// scope.Debugf("getPathContext remainPath=%s, Node=%v", remainPath, nc.Node)
 	if len(remainPath) == 0 {
 		return nc, true, nil
 	}
@@ -162,7 +170,6 @@ func getPathContext(nc *PathContext, fullPath, remainPath util.Path, createMissi
 	// For list types, we need a key to identify the selected list item. This can be either a value key of the
 	// form :matching_value in the case of a leaf list, or a matching key:value in the case of a non-leaf list.
 	if lst, ok := ncNode.([]interface{}); ok {
-		// scope.Debug("list type")
 		// If the path element has the form [N], a list element is being selected by index. Return the element at index
 		// N if it exists.
 		if util.IsNPathElement(pe) {
@@ -198,7 +205,6 @@ func getPathContext(nc *PathContext, fullPath, remainPath util.Path, createMissi
 					return nil, false, fmt.Errorf("path %s: %s", fullPath, err)
 				}
 				if stringsEqual(lm[k], v) {
-					// scope.Debugf("found matching kv %v:%v", k, v)
 					nn := &PathContext{
 						Parent: nc,
 						Node:   lm,
@@ -206,7 +212,6 @@ func getPathContext(nc *PathContext, fullPath, remainPath util.Path, createMissi
 					nc.KeyToChild = idx
 					nn.KeyToChild = k
 					if len(remainPath) == 1 {
-						// scope.Debug("KV terminate")
 						return nn, true, nil
 					}
 					return getPathContext(nn, fullPath, remainPath[1:], createMissing)
@@ -221,7 +226,6 @@ func getPathContext(nc *PathContext, fullPath, remainPath util.Path, createMissi
 					return nil, false, fmt.Errorf("path %s: %s", fullPath, err)
 				}
 				if stringsEqual(lm[k], v) {
-					// scope.Debugf("found matching kv %v:%v", k, v)
 					nn := &PathContext{
 						Parent: nc,
 						Node:   lm,
@@ -229,7 +233,6 @@ func getPathContext(nc *PathContext, fullPath, remainPath util.Path, createMissi
 					nc.KeyToChild = idx
 					nn.KeyToChild = k
 					if len(remainPath) == 1 {
-						// scope.Debug("KV terminate")
 						return nn, true, nil
 					}
 					return getPathContext(nn, fullPath, remainPath[1:], createMissing)
@@ -242,7 +245,6 @@ func getPathContext(nc *PathContext, fullPath, remainPath util.Path, createMissi
 				return nil, false, fmt.Errorf("path %s: %s", fullPath, err)
 			}
 			if matchesRegex(v, le) {
-				// scope.Debugf("found matching key %v, index %d", le, idx)
 				nn := &PathContext{
 					Parent: nc,
 					Node:   le,
@@ -255,7 +257,6 @@ func getPathContext(nc *PathContext, fullPath, remainPath util.Path, createMissi
 	}
 
 	if util.IsMap(ncNode) {
-		// scope.Debug("map type")
 		var nn interface{}
 		if m, ok := ncNode.(map[interface{}]interface{}); ok {
 			nn, ok = m[pe]
@@ -280,10 +281,8 @@ func getPathContext(nc *PathContext, fullPath, remainPath util.Path, createMissi
 				if createMissing || len(remainPath) == 1 {
 					nextElementNPath := len(remainPath) > 1 && util.IsNPathElement(remainPath[1])
 					if nextElementNPath {
-						// scope.Debug("map type, slice child")
 						m[pe] = make([]interface{}, 0)
 					} else {
-						// scope.Debug("map type, map child")
 						m[pe] = make(map[string]interface{})
 					}
 					nn = m[pe]
@@ -505,7 +504,6 @@ func matchesRegex(pattern, str interface{}) bool {
 		// log.Errorf("bad regex expression %s", fmt.Sprint(pattern))
 		return false
 	}
-	// scope.Debugf("%v regex %v? %v\n", pattern, str, match)
 	return match
 }
 
