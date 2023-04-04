@@ -13,14 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package model
+package util
 
-type Response struct {
-	Status int    `json:"status"`
-	Data   string `json:"data"`
-}
+import "strings"
 
-type Target struct {
-	Targets []string          `json:"targets"`
-	Labels  map[string]string `json:"labels"`
+func GetDiscoveryPath(address string) string {
+	if strings.Contains(address, ":") {
+		index := strings.Index(address, ":")
+		return address[0:index] + ":22222"
+	}
+	return address + ":22222"
 }
