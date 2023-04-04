@@ -16,50 +16,59 @@
 # limitations under the License.
 
 WORKDIR=$(dirname "$0")
-DASHBOARDS="${WORKDIR}/dashboards"
+DASHBOARDS=${WORKDIR}
+
+
+# Set up zookeeper
+helm template zookeeper zookeeper \
+  --namespace default \
+  --version 11.1.6 \
+  --repo https://charts.bitnami.com/bitnami  \
+  -f "${WORKDIR}/values-zookeeper.yaml" \
+
 
 # Set up prometheus
-helm3 template prometheus prometheus \
+helm template prometheus prometheus \
   --namespace default \
   --version 20.0.2 \
   --repo https://prometheus-community.github.io/helm-charts \
   -f "${WORKDIR}/values-prometheus.yaml" \
 
-function extraDashboard() {
-  < "${DASHBOARDS}/$1" jq -c  > "${TMP}/$1"
-}
 
 # Set up grafana
 {
-  helm3 template grafana grafana \
+  helm template grafana grafana \
     --namespace default \
     --version 6.52.4 \
     --repo https://grafana.github.io/helm-charts \
-    -f "${WD}/values-grafana.yaml"
+    -f "${WORKDIR}/values-grafana.yaml"
 
-  extraDashboard "external-dashboard.json"
+  kubectl create configmap -n default admin-extra-dashboards \
+    --dry-run=client -oyaml \
+    --from-file=extra-dashboard.json="${DASHBOARDS}/dashboards/external-dashboard.json"
+
 
   kubectl create configmap -n default external-dashboard \
     --dry-run=client -oyaml \
     --from-file=external-dashboard.json="${TMP}/external-dashboard.json"
-}
+} > "${MANIFESTS_DIR}/grafana.yaml"
 
-# Set up sw
-{
-  helm3 template skywalking skywalking \
+
+# Set up skywalking
+helm template skywalking skywalking \
   --namespace default \
   --version 4.3.0 \
   --repo https://apache.jfrog.io/artifactory/skywalking-helm \
   -f "${WORKDIR}/values-skywalking.yaml"
+<<<<<<< HEAD:deploy/addons/addons.sh
 }
+=======
+
+>>>>>>> 2577ec729fe9ba363b9ac1d24edaac0214508bec:deploy/addons/env.sh
 
 # Set up zipkin
-{
-  helm3 template zipkin zipkin \
+helm template zipkin zipkin \
   --namespace default \
   --version 0.3.0 \
   --repo https://openzipkin.github.io/zipkin \
   -f "${WORKDIR}/values-zipkin.yaml"
-}
-
-

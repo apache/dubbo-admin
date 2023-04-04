@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-<<<<<<< HEAD
 containerSecurityContext:
   enabled: true
 podSecurityContext:
@@ -26,17 +25,3 @@ pdb:
   create: false
 
 
-=======
-oap:
-  image:
-    repository: skywalking.docker.scarf.sh/apache/skywalking-oap-server
-    tag: 9.3.0
-  storageType: elasticsearch
-ui:
-  image:
-    repository: skywalking.docker.scarf.sh/apache/skywalking-ui
-    tag: 9.3.0
-
-elasticsearch:
-  enabled: false
->>>>>>> 2577ec729fe9ba363b9ac1d24edaac0214508bec
