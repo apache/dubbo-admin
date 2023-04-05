@@ -4,7 +4,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: zookeeper-scripts
-  namespace: default
+  namespace: dubbo-system
   labels:
     app.kubernetes.io/name: zookeeper
     helm.sh/chart: zookeeper-11.1.6
@@ -39,7 +39,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: zookeeper-headless
-  namespace: default
+  namespace: dubbo-system
   labels:
     app.kubernetes.io/name: zookeeper
     helm.sh/chart: zookeeper-11.1.6
@@ -70,7 +70,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: zookeeper
-  namespace: default
+  namespace: dubbo-system
   labels:
     app.kubernetes.io/name: zookeeper
     helm.sh/chart: zookeeper-11.1.6
@@ -101,7 +101,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: zookeeper
-  namespace: default
+  namespace: dubbo-system
   labels:
     app.kubernetes.io/name: zookeeper
     helm.sh/chart: zookeeper-11.1.6
@@ -196,7 +196,7 @@ spec:
             - name: ZOO_MAX_SESSION_TIMEOUT
               value: "40000"
             - name: ZOO_SERVERS
-              value: zookeeper-0.zookeeper-headless.default.svc.cluster.local:2888:3888::1 
+              value: zookeeper-0.zookeeper-headless.dubbo-system.svc.cluster.local:2888:3888::1 
             - name: ZOO_ENABLE_AUTH
               value: "no"
             - name: ZOO_ENABLE_QUORUM_AUTH
