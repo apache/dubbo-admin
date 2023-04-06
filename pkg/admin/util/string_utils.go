@@ -15,24 +15,16 @@
 
 package util
 
-import "github.com/apache/dubbo-admin/pkg/admin/constant"
+import "strings"
 
-func ServiceName2Map(serviceName string) map[string]string {
-	group := GetGroup(serviceName)
-	version := GetVersion(serviceName)
-	interfaze := GetInterface(serviceName)
+func IsNotBlank(str string) bool {
+	return len(strings.TrimSpace(str)) > 0
+}
 
-	var ret map[string]string
+func IsEmpty(str string) bool {
+	return str == "" || len(str) == 0
+}
 
-	if group != "" {
-		ret[constant.InterfaceKey] = interfaze
-	}
-	if version != "" {
-		ret[constant.VersionKey] = version
-	}
-	if group != "" {
-		ret[constant.GroupKey] = group
-	}
-
-	return ret
+func IsNotEmpty(str string) bool {
+	return !IsEmpty(str)
 }
