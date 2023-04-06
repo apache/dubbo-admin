@@ -162,6 +162,7 @@ func MethodDetail(c *gin.Context) {
 	method := c.Param("method")
 
 	info := util.ServiceName2Map(service)
+
 	identifier := &identifier.MetadataIdentifier{
 		Application: application,
 		BaseMetadataIdentifier: identifier.BaseMetadataIdentifier{
@@ -175,7 +176,13 @@ func MethodDetail(c *gin.Context) {
 	var methodMetadata model.MethodMetadata
 	if metadata != "" {
 		var serviceTestUtil util.ServiceTestUtil
-		release, _ := providerService.FindVersionInApplication(application)
+		release, err := providerService.FindVersionInApplication(application)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
 		if strings.HasPrefix(release, "2.") {
 			serviceDefinition := &definition.FullServiceDefinition{}
 			json.Unmarshal([]byte(metadata), &serviceDefinition)
@@ -188,7 +195,6 @@ func MethodDetail(c *gin.Context) {
 					}
 				}
 			}
-
 		}
 	} else {
 		var serviceTestV3Util util.ServiceTestV3Util

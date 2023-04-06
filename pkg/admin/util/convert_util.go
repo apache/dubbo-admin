@@ -23,19 +23,16 @@ func ServiceName2Map(serviceName string) map[string]string {
 	interfaze := GetInterface(serviceName)
 
 	var ret map[string]string
-	if !IsEmpty(group) {
+
+	if group != "" {
 		ret[constant.InterfaceKey] = interfaze
 	}
-	if !IsEmpty(version) {
+	if version != "" {
 		ret[constant.VersionKey] = version
 	}
-	if !IsEmpty(group) {
+	if group != "" {
 		ret[constant.GroupKey] = group
 	}
 
 	return ret
 }
-
-//func getIdFromDTO(baseDTO BaseDTO) {
-//
-//}

@@ -22,8 +22,7 @@ import (
 	"sync"
 )
 
-type InstanceRegistryQueryHelper struct {
-}
+type InstanceRegistryQueryHelper struct{}
 
 func (p *InstanceRegistryQueryHelper) FindVersionInApplication(application string) (string, error) {
 	var (

@@ -24,8 +24,8 @@ import (
 )
 
 var (
-	collectionPattern = regexp.MustCompile("^golang\\.org/x/tools/container/intsets\\..*(Set|List|Queue|Collection|Deque)(<.*>)*$")
-	mapPattern        = regexp.MustCompile("^golang\\.org/x/tools/container/intmaps\\..*Map.*(<.*>)*$")
+	collectionPattern = regexp.MustCompile(`^java\.util\..*(Set|List|Queue|Collection|Deque)(<.*>)*$`)
+	mapPattern        = regexp.MustCompile(`^java\.util\..*Map.*(<.*>)*$`)
 )
 
 type ServiceTestUtil struct{}
@@ -65,18 +65,18 @@ func (p *ServiceTestUtil) GenerateParameterTypes(parameterTypes []string, servic
 	return parameters
 }
 
-func (p *ServiceTestUtil) FindTypeDefinition(serviceDefinition definition.ServiceDefinition, typeName string) *definition.TypeDefinition {
+func (p *ServiceTestUtil) FindTypeDefinition(serviceDefinition definition.ServiceDefinition, typeName string) definition.TypeDefinition {
 	for _, t := range serviceDefinition.Types {
 		if t.Type == typeName {
-			return &t
+			return t
 		}
 	}
-	return &definition.TypeDefinition{Type: typeName}
+	return definition.TypeDefinition{Type: typeName}
 }
 
 func (p *ServiceTestUtil) GenerateType(sd definition.ServiceDefinition, typeName string) interface{} {
 	td := p.FindTypeDefinition(sd, typeName)
-	return p.GenerateTypeHelper(sd, *td)
+	return p.GenerateTypeHelper(sd, td)
 }
 
 func (p *ServiceTestUtil) GenerateTypeHelper(sd definition.ServiceDefinition, td definition.TypeDefinition) interface{} {
@@ -94,35 +94,33 @@ func (p *ServiceTestUtil) GenerateTypeHelper(sd definition.ServiceDefinition, td
 }
 
 func (p *ServiceTestUtil) IsPrimitiveType(td definition.TypeDefinition) bool {
-	switch td.Type {
-	case "byte", "Byte", "int8", "rune":
-		return true
-	case "short", "Short", "int16":
-		return true
-	case "int", "Integer", "int32":
-		return true
-	case "long", "Long", "int64":
-		return true
-	case "float", "Float", "float32":
-		return true
-	case "double", "Double", "float64":
-		return true
-	case "boolean", "Boolean":
-		return true
-	case "void":
-		return true
-	case "string", "String":
-		return true
-	case "time.Time":
-		return true
-	default:
-		return false
+	primitiveTypes := map[string]bool{
+		"byte":              true,
+		"java.lang.Byte":    true,
+		"short":             true,
+		"java.lang.Short":   true,
+		"int":               true,
+		"java.lang.Integer": true,
+		"long":              true,
+		"java.lang.Long":    true,
+		"float":             true,
+		"java.lang.Float":   true,
+		"double":            true,
+		"java.lang.Double":  true,
+		"boolean":           true,
+		"java.lang.Boolean": true,
+		"void":              true,
+		"java.lang.Void":    true,
+		"java.lang.String":  true,
+		"java.util.Date":    true,
+		"java.lang.Object":  true,
 	}
+	return primitiveTypes[td.Type]
 }
 
 func (p *ServiceTestUtil) IsMap(td definition.TypeDefinition) bool {
-	typeString := strings.Split(td.Type, "<")[0]
-	return strings.Contains(typeString, "map[")
+	mapType := strings.Split(td.Type, "<")[0]
+	return mapPattern.MatchString(mapType)
 }
 
 func (p *ServiceTestUtil) IsArray(td definition.TypeDefinition) bool {
@@ -130,67 +128,59 @@ func (p *ServiceTestUtil) IsArray(td definition.TypeDefinition) bool {
 }
 
 func (p *ServiceTestUtil) IsCollection(td definition.TypeDefinition) bool {
-	typeString := strings.Split(td.Type, "<")[0]
-	return strings.Contains(typeString, "[]") || strings.Contains(typeString, "slice") || strings.Contains(typeString, "map[")
+	typeStr := strings.Split(td.Type, "<")[0]
+	return collectionPattern.MatchString(typeStr)
 }
 
 func (p *ServiceTestUtil) GeneratePrimitiveType(td definition.TypeDefinition) interface{} {
 	switch td.Type {
-	case "byte", "Byte", "int8", "rune",
-		"short", "Short", "int16",
-		"int", "Integer", "int32",
-		"long", "Long", "int64":
+	case "byte", "java.lang.Byte", "short", "java.lang.Short",
+		"int", "java.lang.Integer", "long", "java.lang.Long":
 		return 0
-	case "float", "Float", "float32",
-		"double", "Double", "float64":
+	case "float", "java.lang.Float", "double", "java.lang.Double":
 		return 0.0
-	case "boolean", "Boolean":
+	case "boolean", "java.lang.Boolean":
 		return true
-	case "void", "Void":
+	case "void", "java.lang.Void":
 		return nil
-	case "string", "String":
+	case "java.lang.String":
 		return ""
-	case "interface{}", "EmptyInterface":
-		return make(map[interface{}]interface{})
-	case "time.Time":
+	case "java.lang.Object":
+		return make(map[string]interface{})
+	case "java.util.Date":
 		return time.Now().UnixNano() / int64(time.Millisecond)
 	default:
-		return make(map[interface{}]interface{})
+		return make(map[string]interface{})
 	}
 }
 
 func (p *ServiceTestUtil) GenerateMapType(sd definition.ServiceDefinition, td definition.TypeDefinition) interface{} {
-	keyType := strings.TrimSpace(strings.Split(td.Type, "<")[1])
-	keyType = strings.Split(keyType, ",")[0]
+	keyType := strings.TrimSpace(strings.Split(strings.Split(td.Type, "<")[1], ",")[0])
 	key := p.GenerateType(sd, keyType)
-
-	valueType := strings.TrimSpace(strings.Split(td.Type, ",")[1])
-	valueType = strings.TrimRight(valueType, ">")
-	valueType = strings.TrimSpace(valueType)
-
-	if IsEmpty(valueType) {
-		valueType = "interface{}"
+	valueType := strings.TrimSpace(strings.Split(strings.Split(td.Type, ",")[1], ">")[0])
+	if valueType == "" {
+		valueType = "java.lang.Object"
 	}
 	value := p.GenerateType(sd, valueType)
 
-	m := make(map[interface{}]interface{})
-	m[key] = value
-	return m
+	mapObj := make(map[interface{}]interface{})
+	mapObj[key] = value
+	return mapObj
 }
 
 func (p *ServiceTestUtil) GenerateArrayType(sd definition.ServiceDefinition, td definition.TypeDefinition) interface{} {
-	typeString := strings.TrimSuffix(td.Type, "[]")
-	elem := p.GenerateType(sd, typeString)
+	typeStr := strings.TrimSuffix(td.Type, "[]")
+	elem := p.GenerateType(sd, typeStr)
 	return []interface{}{elem}
 }
 
 func (p *ServiceTestUtil) GenerateCollectionType(sd definition.ServiceDefinition, td definition.TypeDefinition) interface{} {
-	typeString := strings.TrimSuffix(strings.Split(td.Type, "<")[1], ">")
-	if IsEmpty(typeString) {
+	typeStr := strings.SplitAfterN(td.Type, "<", 2)[1]
+	if typeStr == "" {
 		// if type is null return empty collection
 		return []interface{}{}
 	}
-	elem := p.GenerateType(sd, typeString)
+	elem := p.GenerateType(sd, typeStr)
 	return []interface{}{elem}
 }
 
@@ -211,7 +201,7 @@ func (p *ServiceTestUtil) GenerateComplexTypeHelper(sd definition.ServiceDefinit
 }
 
 func (p *ServiceTestUtil) GenerateEnclosedType(holder map[string]interface{}, key string, sd definition.ServiceDefinition, td definition.TypeDefinition) {
-	if len(td.Properties) == 0 || p.IsPrimitiveType(td) {
+	if td.Properties == nil || len(td.Properties) == 0 || p.IsPrimitiveType(td) {
 		holder[key] = p.GenerateTypeHelper(sd, td)
 	} else {
 		enclosedHolder := make(map[string]interface{})

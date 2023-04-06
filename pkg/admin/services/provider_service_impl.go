@@ -63,11 +63,11 @@ func (p *ProviderServiceImpl) FindServicesByApplication(application string) ([]s
 		err error
 	)
 	providerUrls, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
-	if !ok {
-		return nil, nil
+	if providerUrls == nil || !ok {
+		return nil, fmt.Errorf("can not get providerUrls")
 	}
-	if providerUrls == nil || application == "" || len(application) == 0 {
-		return ret, nil
+	if application == "" || len(application) == 0 {
+		return ret, fmt.Errorf("application is empty")
 	}
 	providerUrlsMap, ok := providerUrls.(*sync.Map)
 	if !ok {
@@ -97,8 +97,8 @@ func (p *ProviderServiceImpl) FindVersionInApplication(application string) (stri
 	if err != nil {
 		return "", err
 	}
-	if util.IsNotBlank(version) {
-		return version, nil
+	if len(strings.TrimSpace(version)) > 0 {
+		return version, fmt.Errorf("version is blank")
 	}
 	services, err := p.FindServicesByApplication(application)
 	if err != nil || services == nil || len(services) == 0 {
@@ -112,7 +112,7 @@ func (p *ProviderServiceImpl) FindServices() ([]string, error) {
 	var services []string
 	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
 	if !ok {
-		return nil, nil
+		return nil, fmt.Errorf("can not get servicesAny")
 	}
 	servicesMap, ok := servicesAny.(*sync.Map)
 	if !ok {
@@ -133,7 +133,7 @@ func (p *ProviderServiceImpl) FindApplications() ([]string, error) {
 	)
 	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
 	if !ok {
-		return nil, nil
+		return nil, fmt.Errorf("can not get servicesAny")
 	}
 	servicesMap, ok := servicesAny.(*sync.Map)
 	if !ok {
@@ -164,7 +164,7 @@ func (p *ProviderServiceImpl) findAddresses() ([]string, error) {
 	)
 	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
 	if !ok {
-		return nil, nil
+		return nil, fmt.Errorf("can not get servicesAny")
 	}
 	servicesMap, ok := servicesAny.(*sync.Map)
 	if !ok {
