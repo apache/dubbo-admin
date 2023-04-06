@@ -10,14 +10,14 @@ metadata:
     app.kubernetes.io/version: "9.4.3"
     app.kubernetes.io/managed-by: Helm
   name: grafana
-  namespace: default
+  namespace: dubbo-system
 ---
 # Source: grafana/templates/secret.yaml
 apiVersion: v1
 kind: Secret
 metadata:
   name: grafana
-  namespace: default
+  namespace: dubbo-system
   labels:
     helm.sh/chart: grafana-6.52.4
     app.kubernetes.io/name: grafana
@@ -27,7 +27,7 @@ metadata:
 type: Opaque
 data:
   admin-user: "YWRtaW4="
-  admin-password: "MFNySGpsTTA1aXpINjdTYWtIS3NGUHQ3enNRaG5wamYxQXBURHkyMg=="
+  admin-password: "bUQ3TVJUZGVldXhpdm81M3Aza1BCZFJZWnpLaDR1bW1YR0xGOWtkaw=="
   ldap-toml: ""
 ---
 # Source: grafana/templates/configmap.yaml
@@ -35,7 +35,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: grafana
-  namespace: default
+  namespace: dubbo-system
   labels:
     helm.sh/chart: grafana-6.52.4
     app.kubernetes.io/name: grafana
@@ -75,7 +75,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: grafana
-  namespace: default
+  namespace: dubbo-system
   labels:
     helm.sh/chart: grafana-6.52.4
     app.kubernetes.io/name: grafana
@@ -98,7 +98,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: grafana
-  namespace: default
+  namespace: dubbo-system
   labels:
     helm.sh/chart: grafana-6.52.4
     app.kubernetes.io/name: grafana
@@ -120,10 +120,10 @@ spec:
         app.kubernetes.io/name: grafana
         app.kubernetes.io/instance: grafana
       annotations:
-        checksum/config: c2da9676ce31adcdec3a27e4fb4ed80d6419f0433fadd6f14c4934ed86452bbd
+        checksum/config: 0c27d16dbbabad20d998414abcdfc495b6010b53d06681fa1027b0d09f2c21c8
         checksum/dashboards-json-config: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
         checksum/sc-dashboard-provider-config: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
-        checksum/secret: c1df260c18b02e6be98f9ccebd93f9ea58cf4e9429b356300668c9e0c643de2e
+        checksum/secret: c17362d51cee6598140d6d25cc8a3248b38898952732f2a93c96f9b854c34012
     spec:
       
       serviceAccountName: grafana
@@ -4564,4 +4564,4 @@ kind: ConfigMap
 metadata:
   creationTimestamp: null
   name: admin-extra-dashboards
-  namespace: default
+  namespace: dubbo-system
