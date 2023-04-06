@@ -50,6 +50,7 @@ const (
 	TimeoutKey                = "timeout"
 	DefaultTimeout            = 1000
 	WeightKey                 = "weight"
+	BalancingKey              = "balancing"
 	DefaultWeight             = 100
 	OwnerKey                  = "owner"
 	Service                   = "service"
