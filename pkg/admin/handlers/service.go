@@ -162,6 +162,7 @@ func MethodDetail(c *gin.Context) {
 	method := c.Param("method")
 
 	info := util.ServiceName2Map(service)
+
 	identifier := &identifier.MetadataIdentifier{
 		Application: application,
 		BaseMetadataIdentifier: identifier.BaseMetadataIdentifier{
