@@ -157,27 +157,29 @@ func Version(c *gin.Context) {
 // ServiceTest
 
 func Test(c *gin.Context) {
-	env := c.Param("env")
 	var serviceTestDTO model.ServiceTest
 	err := c.BindJSON(&serviceTestDTO)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	result := genericService.Invoke(serviceTestDTO.Service, serviceTestDTO.Method, serviceTestDTO.ParameterTypes, serviceTestDTO.Params)
-	c.JSON(http.StatusOK, result)
-
-	return genericService.invoke(serviceTestDTO.getService(), serviceTestDTO.getMethod(), serviceTestDTO.getParameterTypes(), serviceTestDTO.getParams())
-
-	refConf := genericServiceImpl.NewRefConf("dubbo-admin", serviceTestDTO)
+	refConf := genericServiceImpl.NewRefConf("dubbo-admin", serviceTestDTO.Method, "dubbo")
 	resp, err := refConf.
 		GetRPCService().(*generic.GenericService).
 		Invoke(
-			context.TODO(),
-			"GetUser",
-			[]string{"java.lang.String"},
+			c,
+			serviceTestDTO.Method,
+			serviceTestDTO.ParameterTypes,
 			[]hessian.Object{"A003"},
 		)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"code": 1,
+		"data": resp,
+	})
 }
 
 func MethodDetail(c *gin.Context) {
