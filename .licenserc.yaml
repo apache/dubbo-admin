@@ -72,6 +72,7 @@ header:
     - 'Jenkinsfile'
     - '**/vendor/**'
     - '**/go.sum'
+    - '**/addons/manifests/**'
   comment: on-failure
 
   license-location-threshold: 130

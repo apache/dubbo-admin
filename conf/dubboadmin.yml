@@ -19,3 +19,4 @@ admin:
   config-center: zookeeper://127.0.0.1:2181
   metadata-report:
     address: zookeeper://127.0.0.1:2181
+  # mysql-dsn: root:password@tcp(127.0.0.1:3306)/dubbo-admin?charset=utf8&parseTime=true

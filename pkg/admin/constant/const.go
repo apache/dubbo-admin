@@ -17,6 +17,10 @@
 
 package constant
 
+import (
+	set "github.com/dubbogo/gost/container/set"
+)
+
 const (
 	DubboPropertyKey         = "dubbo.properties"
 	RegistryAddressKey       = "dubbo.registry.address"
@@ -25,39 +29,59 @@ const (
 
 const (
 	AnyValue                  = "*"
+	AnyHostValue              = "0.0.0.0"
 	InterfaceKey              = "interface"
 	GroupKey                  = "group"
 	VersionKey                = "version"
 	SPECIFICATION_VERSION_KEY = "release"
-	ClassifierKey             = "classifier"
-	CategoryKey               = "category"
-	ProvidersCategory         = "providers"
-	ConsumersCategory         = "consumers"
-	RoutersCategory           = "routers"
-	ConfiguratorsCategory     = "configurators"
-	EnabledKey                = "enabled"
-	CheckKey                  = "check"
-	AdminProtocol             = "admin"
-	Side                      = "side"
-	ConsumerSide              = "consumer"
-	ProviderSide              = "provider"
-	ConsumerProtocol          = "consumer"
-	EmptyProtocol             = "empty"
-	DefaultGroup              = "dubbo"
-	ApplicationKey            = "application"
-	DynamicKey                = "dynamic"
-	SerializationKey          = "serialization"
-	TimeoutKey                = "timeout"
-	DefaultTimeout            = 1000
-	WeightKey                 = "weight"
-	BalancingKey              = "balancing"
-	DefaultWeight             = 100
-	OwnerKey                  = "owner"
-	Service                   = "service"
-	Colon                     = ":"
-	InterrogationPoint        = "?"
-	IP                        = "ip"
-	PlusSigns                 = "+"
-	PunctuationPoint          = "."
-	NAMESPACE_KEY             = "namespace"
+
+	ClassifierKey          = "classifier"
+	CategoryKey            = "category"
+	ProvidersCategory      = "providers"
+	ConsumersCategory      = "consumers"
+	RoutersCategory        = "routers"
+	ConfiguratorsCategory  = "configurators"
+	ConfiguratorRuleSuffix = ".configurators"
+	EnabledKey             = "enabled"
+	CheckKey               = "check"
+	AdminProtocol          = "admin"
+	Side                   = "side"
+	ConsumerSide           = "consumer"
+	ProviderSide           = "provider"
+	ConsumerProtocol       = "consumer"
+	EmptyProtocol          = "empty"
+	OverrideProtocol       = "override"
+	DefaultGroup           = "dubbo"
+	ApplicationKey         = "application"
+	DynamicKey             = "dynamic"
+	SerializationKey       = "serialization"
+	TimeoutKey             = "timeout"
+	DefaultTimeout         = 1000
+	WeightKey              = "weight"
+	BalancingKey           = "balancing"
+	DefaultWeight          = 100
+	OwnerKey               = "owner"
+	Application            = "application"
+	Service                = "service"
+	Colon                  = ":"
+	InterrogationPoint     = "?"
+	IP                     = "ip"
+	PlusSigns              = "+"
+	PunctuationPoint       = "."
+	ConditionRoute         = "condition_route"
+	TagRoute               = "tag_route"
+	ConditionRuleSuffix    = ".condition-router"
+	TagRuleSuffix          = ".tag-router"
+	NAMESPACE_KEY          = "namespace"
+)
+
+var Configs = set.NewSet(WeightKey, BalancingKey)
+
+const (
+	MetricsQps                        = "" // QPS
+	MetricsHttpRequestTotalCount      = "" // Total number of http requests
+	MetricsHttpRequestSuccessCount    = "" // Total number of http successful requests
+	MetricsHttpRequestOutOfTimeCount  = "" // Total number of http out of time requests
+	MetricsHttpRequestAddressNotFount = "" // Total number of HTTP requests where the address cannot be found
+	MetricsHttpRequestOtherException  = "" // Total number of other errors for http requests
 )

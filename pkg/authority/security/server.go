@@ -17,12 +17,15 @@ package security
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"log"
 	"math"
 	"net"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/apache/dubbo-admin/pkg/authority/election"
 
 	cert2 "github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
@@ -51,13 +54,14 @@ type Server struct {
 
 	KubeClient k8s.Client
 
-	CertificateServer *v1alpha1.DubboCertificateServiceServerImpl
-	ObserveServer     *v1alpha1.ObserveServiceServerImpl
+	CertificateServer *v1alpha1.AuthorityServiceImpl
+	ObserveServer     *v1alpha1.RuleServiceImpl
 	PlainServer       *grpc.Server
 	SecureServer      *grpc.Server
 
 	WebhookServer *webhook.Webhook
 	JavaInjector  *patch.JavaSdk
+	Elec          election.LeaderElection
 }
 
 func NewServer(options *config.Options) *Server {
@@ -82,6 +86,9 @@ func (s *Server) Init() {
 	if s.CertStorage == nil {
 		s.CertStorage = cert2.NewStorage(s.Options)
 	}
+	if s.Elec == nil {
+		s.Elec = election.NewleaderElection()
+	}
 	go s.CertStorage.RefreshServerCert()
 
 	s.LoadRootCert()
@@ -90,10 +97,16 @@ func (s *Server) Init() {
 	s.PlainServer = grpc.NewServer()
 	reflection.Register(s.PlainServer)
 
+	pool := x509.NewCertPool()
 	tlsConfig := &tls.Config{
 		GetCertificate: func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+			for _, cert := range s.CertStorage.GetTrustedCerts() {
+				pool.AddCert(cert.Cert)
+			}
 			return s.CertStorage.GetServerCert(info.ServerName), nil
 		},
+		ClientCAs:  pool,
+		ClientAuth: tls.VerifyClientCertIfGiven,
 	}
 
 	s.CertStorage.GetServerCert("localhost")
@@ -122,13 +135,14 @@ func (s *Server) Init() {
 }
 
 func (s *Server) registerObserveService() {
-	ruleImpl := &v1alpha1.ObserveServiceServerImpl{
-		Storage:    s.ConnectionStorage,
-		KubeClient: s.KubeClient,
-		Options:    s.Options,
+	ruleImpl := &v1alpha1.RuleServiceImpl{
+		Storage:     s.ConnectionStorage,
+		KubeClient:  s.KubeClient,
+		Options:     s.Options,
+		CertStorage: s.CertStorage,
 	}
-	v1alpha1.RegisterObserveServiceServer(s.SecureServer, ruleImpl)
-	v1alpha1.RegisterObserveServiceServer(s.PlainServer, ruleImpl)
+	v1alpha1.RegisterRuleServiceServer(s.SecureServer, ruleImpl)
+	v1alpha1.RegisterRuleServiceServer(s.PlainServer, ruleImpl)
 }
 
 func (s *Server) initRuleHandler() {
@@ -138,14 +152,14 @@ func (s *Server) initRuleHandler() {
 }
 
 func (s *Server) registerCertificateService() {
-	impl := &v1alpha1.DubboCertificateServiceServerImpl{
+	impl := &v1alpha1.AuthorityServiceImpl{
 		Options:     s.Options,
 		CertStorage: s.CertStorage,
 		KubeClient:  s.KubeClient,
 	}
 
-	v1alpha1.RegisterDubboCertificateServiceServer(s.PlainServer, impl)
-	v1alpha1.RegisterDubboCertificateServiceServer(s.SecureServer, impl)
+	v1alpha1.RegisterAuthorityServiceServer(s.PlainServer, impl)
+	v1alpha1.RegisterAuthorityServiceServer(s.SecureServer, impl)
 }
 
 func (s *Server) LoadRootCert() {
@@ -174,8 +188,8 @@ func (s *Server) ScheduleRefreshAuthorityCert() {
 			logger.Sugar().Infof("Authority cert is invalid, refresh it.")
 			// TODO lock if multi server
 			// TODO refresh signed cert
-			s.CertStorage.SetAuthorityCert(cert2.GenerateAuthorityCert(s.CertStorage.GetRootCert(), s.Options.CaValidity))
 
+			s.Elec.Election(s.CertStorage, s.Options, s.KubeClient.GetKubClient())
 			if s.Options.IsKubernetesConnected {
 				s.KubeClient.UpdateAuthorityCert(s.CertStorage.GetAuthorityCert().CertPem, cert2.EncodePrivateKey(s.CertStorage.GetAuthorityCert().PrivateKey), s.Options.Namespace)
 				s.KubeClient.UpdateWebhookConfig(s.Options, s.CertStorage)

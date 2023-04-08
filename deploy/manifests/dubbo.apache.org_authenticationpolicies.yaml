@@ -49,147 +49,93 @@ spec:
             type: object
           spec:
             properties:
+              PortLevel:
+                items:
+                  properties:
+                    action:
+                      enum:
+                      - NONE
+                      - DISABLED
+                      - PERMISSIVE
+                      - STRICT
+                      type: string
+                    port:
+                      default: 0
+                      description: The key of the extended identity.
+                      maximum: 65535
+                      minimum: 0
+                      type: number
+                  type: object
+                type: array
               action:
                 description: The action to take when a rule is matched.
                 enum:
                 - NONE
-                - CLIENT_AUTH
-                - SERVER_AUTH
+                - DISABLED
+                - PERMISSIVE
+                - STRICT
                 type: string
-              matchType:
-                default: anyMatch
-                description: The match type of the rules.
-                enum:
-                - anyMatch
-                - allMatch
-                type: string
-              order:
-                default: 0
-                description: The order of the rule. The rule with the highest precedence
-                  is matched first.
-                maximum: 2147483647
-                minimum: -2147483648
-                type: integer
-              rules:
+              selector:
                 items:
                   properties:
-                    from:
-                      description: The source of the traffic to be matched.
-                      properties:
-                        extends:
-                          description: The extended identities(from Dubbo Auth) to
-                            match of the source workload.
-                          items:
-                            properties:
-                              key:
-                                description: The key of the extended identity.
-                                type: string
-                              value:
-                                description: The value of the extended identity.
-                                type: string
-                            type: object
-                          type: array
-                        ipBlocks:
-                          description: The IP addresses to match of the source workload.
-                          items:
+                    extends:
+                      description: The extended identities(from Dubbo Auth) to match
+                        of the source workload.
+                      items:
+                        properties:
+                          key:
+                            description: The key of the extended identity.
                             type: string
-                          type: array
-                        namespaces:
-                          description: The namespaces to match of the source workload.
-                          items:
+                          value:
+                            description: The value of the extended identity.
                             type: string
-                          type: array
-                        notExtends:
-                          description: The extended identities(from Dubbo Auth) not
-                            to match of the source workload.
-                          items:
-                            properties:
-                              key:
-                                description: The key of the extended identity.
-                                type: string
-                              value:
-                                description: The value of the extended identity.
-                                type: string
-                            type: object
-                          type: array
-                        notIpBlocks:
-                          description: The IP addresses not to match of the source
-                            workload.
-                          items:
+                        type: object
+                      type: array
+                    ipBlocks:
+                      description: The IP addresses to match of the source workload.
+                      items:
+                        type: string
+                      type: array
+                    namespaces:
+                      description: The namespaces to match of the source workload.
+                      items:
+                        type: string
+                      type: array
+                    notExtends:
+                      description: The extended identities(from Dubbo Auth) not to
+                        match of the source workload.
+                      items:
+                        properties:
+                          key:
+                            description: The key of the extended identity.
                             type: string
-                          type: array
-                        notNamespaces:
-                          description: The namespaces not to match of the source workload.
-                          items:
+                          value:
+                            description: The value of the extended identity.
                             type: string
-                          type: array
-                        notPrincipals:
-                          description: The identities(from spiffe) not to match of
-                            the source workload.
-                          items:
-                            type: string
-                          type: array
-                        principals:
-                          description: The identities(from spiffe) to match of the
-                            source workload.
-                          items:
-                            type: string
-                          type: array
-                      type: object
-                    to:
-                      description: The destination of the traffic to be matched.
-                      properties:
-                        extends:
-                          description: The extended identities(from Dubbo Auth) to
-                            match of the destination workload.
-                          items:
-                            properties:
-                              key:
-                                description: The key of the extended identity.
-                                type: string
-                              value:
-                                description: The value of the extended identity.
-                                type: string
-                            type: object
-                          type: array
-                        ipBlocks:
-                          description: The IP addresses to match of the destination
-                            workload.
-                          items:
-                            type: string
-                          type: array
-                        notExtends:
-                          description: The extended identities(from Dubbo Auth) not
-                            to match of the destination workload.
-                          items:
-                            properties:
-                              key:
-                                description: The key of the extended identity.
-                                type: string
-                              value:
-                                description: The value of the extended identity.
-                                type: string
-                            type: object
-                          type: array
-                        notIpBlocks:
-                          description: The IP addresses not to match of the destination
-                            workload.
-                          items:
-                            type: string
-                          type: array
-                        notPrincipals:
-                          description: The identities(from spiffe) not to match of
-                            the destination workload.
-                          items:
-                            type: string
-                          type: array
-                        principals:
-                          description: The identities(from spiffe) to match of the
-                            destination workload.
-                          items:
-                            type: string
-                          type: array
-                      type: object
+                        type: object
+                      type: array
+                    notIpBlocks:
+                      description: The IP addresses not to match of the source workload.
+                      items:
+                        type: string
+                      type: array
+                    notNamespaces:
+                      description: The namespaces not to match of the source workload.
+                      items:
+                        type: string
+                      type: array
+                    notPrincipals:
+                      description: The identities(from spiffe) not to match of the
+                        source workload.
+                      items:
+                        type: string
+                      type: array
+                    principals:
+                      description: The identities(from spiffe) to match of the source
+                        workload.
+                      items:
+                        type: string
+                      type: array
                   type: object
                 type: array
             required:

@@ -18,6 +18,7 @@ package k8s
 import (
 	"context"
 	"flag"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -36,12 +37,18 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 )
+
+var kubeconfig string
+
+func init() {
+	flag.StringVar(&kubeconfig, "kubeconfig", "",
+		"Paths to a kubeconfig. Only required if out-of-cluster.")
+}
 
 type Client interface {
 	Init(options *config.Options) bool
@@ -52,9 +59,11 @@ type Client interface {
 	UpdateWebhookConfig(options *config.Options, storage cert.Storage)
 	GetNamespaceLabels(namespace string) map[string]string
 	InitController(paHandler authentication.Handler, apHandler authorization.Handler)
+	GetKubClient() *kubernetes.Clientset
 }
 
 type ClientImpl struct {
+	options        *config.Options
 	kubeClient     *kubernetes.Clientset
 	informerClient *infoemerclient.Clientset
 }
@@ -64,27 +73,34 @@ func NewClient() Client {
 }
 
 func (c *ClientImpl) Init(options *config.Options) bool {
+	c.options = options
 	config, err := rest.InClusterConfig()
 	options.InPodEnv = err == nil
 	if err != nil {
 		logger.Sugar().Infof("Failed to load config from Pod. Will fall back to kube config file.")
-
-		var kubeconfig *string
-		if home := homedir.HomeDir(); home != "" {
-			kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-		} else {
-			kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
+		// Read kubeconfig from command line
+		if len(kubeconfig) <= 0 {
+			// Read kubeconfig from env
+			kubeconfig = os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
+			if len(kubeconfig) <= 0 {
+				// Read kubeconfig from home dir
+				if home := homedir.HomeDir(); home != "" {
+					kubeconfig = filepath.Join(home, ".kube", "config")
+				}
+			}
 		}
-		flag.Parse()
-
 		// use the current context in kubeconfig
-		config, err = clientcmd.BuildConfigFromFlags("", *kubeconfig)
+		logger.Sugar().Infof("Read kubeconfig from %s", kubeconfig)
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 		if err != nil {
 			logger.Sugar().Warnf("Failed to load config from kube config file.")
 			return false
 		}
 	}
 
+	// set qps and burst for rest config
+	config.QPS = float32(c.options.RestConfigQps)
+	config.Burst = c.options.RestConfigBurst
 	// creates the clientset
 	clientSet, err := kubernetes.NewForConfig(config)
 	if err != nil {
@@ -255,10 +271,19 @@ func (c *ClientImpl) VerifyServiceAccount(token string, authorizationType string
 
 	e := &rule.Endpoint{}
 
-	e.ID = pod.Namespace + "/" + pod.Name
+	e.ID = string(pod.UID)
 	for _, i := range pod.Status.PodIPs {
 		if i.IP != "" {
 			e.Ips = append(e.Ips, i.IP)
+		}
+	}
+
+	e.SpiffeID = "spiffe://cluster.local/ns/" + pod.Namespace + "/sa/" + pod.Spec.ServiceAccountName
+
+	if strings.HasPrefix(reviewRes.Status.User.Username, "system:serviceaccount:") {
+		names := strings.Split(reviewRes.Status.User.Username, ":")
+		if len(names) == 4 {
+			e.SpiffeID = "spiffe://cluster.local/ns/" + names[2] + "/sa/" + names[3]
 		}
 	}
 
@@ -358,6 +383,7 @@ func (c *ClientImpl) InitController(
 
 	stopCh := make(chan struct{})
 	controller := NewController(c.informerClient,
+		c.options.Namespace,
 		authenticationHandler,
 		authorizationHandler,
 		informerFactory.Dubbo().V1beta1().AuthenticationPolicies(),
@@ -365,4 +391,8 @@ func (c *ClientImpl) InitController(
 	informerFactory.Start(stopCh)
 
 	controller.WaitSynced()
+}
+
+func (c *ClientImpl) GetKubClient() *kubernetes.Clientset {
+	return c.kubeClient
 }

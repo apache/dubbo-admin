@@ -16,9 +16,9 @@
 package model
 
 type Base struct {
-	Application    string
-	Service        string
-	Id             string
-	ServiceVersion string
-	ServiceGroup   string
+	Application    string `json:"application" yaml:"application"`
+	Service        string `json:"service" yaml:"service"`
+	ID             string `json:"id" yaml:"id"`
+	ServiceVersion string `json:"serviceVersion" yaml:"serviceVersion"`
+	ServiceGroup   string `json:"serviceGroup" yaml:"serviceGroup"`
 }

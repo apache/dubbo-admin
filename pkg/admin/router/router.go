@@ -31,6 +31,48 @@ func InitRouter() *gin.Engine {
 	router.GET("api/dev/consumers", handlers.AllConsumers)
 	router.GET("api/dev/service/:service", handlers.ServiceDetail)
 	router.GET("/api/dev/version", handlers.Version)
+	router.GET("/api/dev/metrics/flow", handlers.FlowMetrics)
+	router.GET("/api/dev/metrics/cluster", handlers.ClusterMetrics)
+
+	override := router.Group("/api/:env/rules/override")
+	{
+		override.POST("/create", handlers.CreateOverride)
+		override.GET("/", handlers.SearchOverride)
+		override.DELETE("/:id", handlers.DeleteOverride)
+		override.GET("/:id", handlers.DetailOverride)
+		override.PUT("/enable/:id", handlers.EnableOverride)
+		override.PUT("/disable/:id", handlers.DisableOverride)
+		override.PUT("/:id", handlers.UpdateOverride)
+	}
+
+	tagRoute := router.Group("/api/:env/rules/route/tag")
+	{
+		tagRoute.POST("/", handlers.CreateRule)
+		tagRoute.PUT("/:id", handlers.UpdateRule)
+		tagRoute.GET("/", handlers.SearchRoutes)
+		tagRoute.GET("/:id", handlers.DetailRoute)
+		tagRoute.DELETE("/:id", handlers.DeleteRoute)
+		tagRoute.PUT("/enable/:id", handlers.EnableRoute)
+		tagRoute.PUT("/disable/:id", handlers.DisableRoute)
+	}
+
+	conditionRoute := router.Group("/api/:env/rules/route/condition")
+	{
+		conditionRoute.POST("/", handlers.CreateConditionRule)
+		conditionRoute.PUT("/:id", handlers.UpdateConditionRule)
+		conditionRoute.GET("/", handlers.SearchConditionRoutes)
+		conditionRoute.GET("/:id", handlers.DetailConditionRoute)
+		conditionRoute.DELETE("/:id", handlers.DeleteConditionRoute)
+		conditionRoute.PUT("/enable/:id", handlers.EnableConditionRoute)
+		conditionRoute.PUT("/disable/:id", handlers.DisableConditionRoute)
+	}
+
+	mockRoute := router.Group("/api/:env/mock/rule")
+	{
+		mockRoute.POST("/", handlers.CreateOrUpdateMockRule)
+		mockRoute.DELETE("/", handlers.DeleteMockRuleById)
+		mockRoute.GET("/list", handlers.ListMockRulesByPage)
+	}
 
 	// ServiceTest
 	router.POST("/api/dev/test", handlers.Test)

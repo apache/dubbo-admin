@@ -16,8 +16,9 @@
 package cert
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"os"
 	"reflect"
@@ -47,7 +48,7 @@ func TestIsValid(t *testing.T) {
 		t.Errorf("cert is not valid")
 	}
 
-	c.PrivateKey, _ = rsa.GenerateKey(rand.Reader, 4096)
+	c.PrivateKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if c.IsValid() {
 		t.Errorf("cert is not valid")
 	}
@@ -82,7 +83,7 @@ func TestNeedRefresh(t *testing.T) {
 		t.Errorf("cert is need refresh")
 	}
 
-	c.PrivateKey, _ = rsa.GenerateKey(rand.Reader, 4096)
+	c.PrivateKey, _ = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if !c.NeedRefresh() {
 		t.Errorf("cert is need refresh")
 	}

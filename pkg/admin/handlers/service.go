@@ -41,6 +41,7 @@ var (
 	providerService    services.ProviderService    = &services.ProviderServiceImpl{}
 	consumerService    services.ConsumerService    = &services.ConsumerServiceImpl{}
 	genericServiceImpl services.GenericServiceImpl = services.GenericServiceImpl{}
+	prometheusService  services.MonitorService     = &services.PrometheusServiceImpl{}
 )
 
 func AllServices(c *gin.Context) {
@@ -241,4 +242,24 @@ func MethodDetail(c *gin.Context) {
 		"code": 1,
 		"data": methodMetadata,
 	})
+}
+
+func FlowMetrics(c *gin.Context) {
+	res, err := prometheusService.FlowMetrics()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+func ClusterMetrics(c *gin.Context) {
+	res, err := prometheusService.ClusterMetrics()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+	}
+	c.JSON(http.StatusOK, res)
 }

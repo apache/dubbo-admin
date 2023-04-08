@@ -17,8 +17,13 @@ package authentication
 
 import (
 	"encoding/json"
+	"net/netip"
+	"strings"
+
+	"github.com/tidwall/gjson"
 
 	"github.com/apache/dubbo-admin/pkg/authority/rule"
+	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
 const RuleType = "authentication/v1beta1"
@@ -53,13 +58,29 @@ func (o *Origin) Revision() int64 {
 	return o.revision
 }
 
-func (o *Origin) Exact(endpoint *rule.Endpoint) (rule.ToClient, error) { //nolint:ireturn
-	matchedRule := make([]*Policy, 0, len(o.data))
-
-	// TODO match endpoint
+func (o *Origin) Exact(endpoint *rule.Endpoint) (rule.ToClient, error) {
+	matchedRule := make([]*PolicyToClient, 0, len(o.data))
 
 	for _, v := range o.data {
-		matchedRule = append(matchedRule, v)
+		if v.Spec == nil {
+			continue
+		}
+
+		if v.Spec.Selector != nil {
+			match := true
+			for _, selector := range v.Spec.Selector {
+				if !matchSelector(selector, endpoint) {
+					match = false
+					break
+				}
+			}
+			if !match {
+				continue
+			}
+		}
+
+		toClient := v.CopyToClient()
+		matchedRule = append(matchedRule, toClient)
 	}
 
 	allRule, err := json.Marshal(matchedRule)
@@ -71,4 +92,172 @@ func (o *Origin) Exact(endpoint *rule.Endpoint) (rule.ToClient, error) { //nolin
 		revision: o.revision,
 		data:     string(allRule),
 	}, nil
+}
+
+func matchSelector(selector *Selector, endpoint *rule.Endpoint) bool {
+	if endpoint == nil {
+		return true
+	}
+
+	if !matchNamespace(selector, endpoint) {
+		return false
+	}
+
+	if !matchNotNamespace(selector, endpoint) {
+		return false
+	}
+
+	if !matchIPBlocks(selector, endpoint) {
+		return false
+	}
+
+	if !matchNotIPBlocks(selector, endpoint) {
+		return false
+	}
+
+	if !matchPrincipals(selector, endpoint) {
+		return false
+	}
+
+	if !matchNotPrincipals(selector, endpoint) {
+		return false
+	}
+
+	endpointJSON, err := json.Marshal(endpoint)
+	if err != nil {
+		logger.Sugar().Warnf("marshal endpoint failed, %v", err)
+		return false
+	}
+
+	if !matchExtends(selector, endpointJSON) {
+		return false
+	}
+
+	return matchNotExtends(selector, endpointJSON)
+}
+
+func matchNotExtends(selector *Selector, endpointJSON []byte) bool {
+	if len(selector.NotExtends) == 0 {
+		return true
+	}
+	for _, extend := range selector.NotExtends {
+		if gjson.Get(string(endpointJSON), extend.Key).String() == extend.Value {
+			return false
+		}
+	}
+	return true
+}
+
+func matchExtends(selector *Selector, endpointJSON []byte) bool {
+	if len(selector.Extends) == 0 {
+		return true
+	}
+	for _, extend := range selector.Extends {
+		if gjson.Get(string(endpointJSON), extend.Key).String() == extend.Value {
+			return true
+		}
+	}
+	return false
+}
+
+func matchNotPrincipals(selector *Selector, endpoint *rule.Endpoint) bool {
+	if len(selector.NotPrincipals) == 0 {
+		return true
+	}
+	for _, principal := range selector.NotPrincipals {
+		if principal == endpoint.SpiffeID {
+			return false
+		}
+		if strings.ReplaceAll(endpoint.SpiffeID, "spiffe://", "") == principal {
+			return false
+		}
+	}
+	return true
+}
+
+func matchPrincipals(selector *Selector, endpoint *rule.Endpoint) bool {
+	if len(selector.Principals) == 0 {
+		return true
+	}
+	for _, principal := range selector.Principals {
+		if principal == endpoint.SpiffeID {
+			return true
+		}
+		if strings.ReplaceAll(endpoint.SpiffeID, "spiffe://", "") == principal {
+			return true
+		}
+	}
+	return false
+}
+
+func matchNotIPBlocks(selector *Selector, endpoint *rule.Endpoint) bool {
+	if len(selector.NotIpBlocks) == 0 {
+		return true
+	}
+	for _, ipBlock := range selector.NotIpBlocks {
+		prefix, err := netip.ParsePrefix(ipBlock)
+		if err != nil {
+			logger.Sugar().Warnf("parse ip block %s failed, %v", ipBlock, err)
+			continue
+		}
+		for _, ip := range endpoint.Ips {
+			addr, err := netip.ParseAddr(ip)
+			if err != nil {
+				logger.Sugar().Warnf("parse ip %s failed, %v", ip, err)
+				continue
+			}
+			if prefix.Contains(addr) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func matchIPBlocks(selector *Selector, endpoint *rule.Endpoint) bool {
+	if len(selector.IpBlocks) == 0 {
+		return true
+	}
+	for _, ipBlock := range selector.IpBlocks {
+		prefix, err := netip.ParsePrefix(ipBlock)
+		if err != nil {
+			logger.Sugar().Warnf("parse ip block %s failed, %v", ipBlock, err)
+			continue
+		}
+		for _, ip := range endpoint.Ips {
+			addr, err := netip.ParseAddr(ip)
+			if err != nil {
+				logger.Sugar().Warnf("parse ip %s failed, %v", ip, err)
+				continue
+			}
+			if prefix.Contains(addr) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func matchNotNamespace(selector *Selector, endpoint *rule.Endpoint) bool {
+	if len(selector.NotNamespaces) == 0 {
+		return true
+	}
+	for _, namespace := range selector.NotNamespaces {
+		if endpoint.KubernetesEnv != nil && namespace == endpoint.KubernetesEnv.Namespace {
+			return false
+		}
+	}
+	return true
+}
+
+func matchNamespace(selector *Selector, endpoint *rule.Endpoint) bool {
+	if len(selector.Namespaces) == 0 {
+		return true
+	}
+	for _, namespace := range selector.Namespaces {
+		if endpoint.KubernetesEnv != nil && namespace == endpoint.KubernetesEnv.Namespace {
+			return true
+		}
+	}
+	return false
 }

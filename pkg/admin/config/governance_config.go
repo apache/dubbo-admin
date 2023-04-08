@@ -20,38 +20,66 @@ package config
 import (
 	"errors"
 
+	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/config_center"
 )
 
-func SetConfig(key string, value string) error {
-	return SetConfigWithGroup(Group, key, value)
+type GovernanceConfig interface {
+	SetConfig(key string, value string) error
+	GetConfig(key string) (string, error)
+	DeleteConfig(key string) error
+	SetConfigWithGroup(group string, key string, value string) error
+	GetConfigWithGroup(group string, key string) (string, error)
+	DeleteConfigWithGroup(group string, key string) error
+	Register(url *common.URL) error
+	UnRegister(url *common.URL) error
 }
 
-func GetConfig(key string) (string, error) {
-	return GetConfigWithGroup(Group, key)
+type GovernanceConfigImpl struct{}
+
+func (g *GovernanceConfigImpl) SetConfig(key string, value string) error {
+	return g.SetConfigWithGroup(Group, key, value)
 }
 
-func DeleteConfig(key string) error {
-	return DeleteConfigWithGroup(Group, key)
+func (g *GovernanceConfigImpl) GetConfig(key string) (string, error) {
+	return g.GetConfigWithGroup(Group, key)
 }
 
-func SetConfigWithGroup(group string, key string, value string) error {
+func (g *GovernanceConfigImpl) DeleteConfig(key string) error {
+	return g.DeleteConfigWithGroup(Group, key)
+}
+
+func (g *GovernanceConfigImpl) SetConfigWithGroup(group string, key string, value string) error {
 	if key == "" || value == "" {
 		return errors.New("key or value is empty")
 	}
 	return ConfigCenter.PublishConfig(key, group, value)
 }
 
-func GetConfigWithGroup(group string, key string) (string, error) {
+func (g *GovernanceConfigImpl) GetConfigWithGroup(group string, key string) (string, error) {
 	if key == "" {
 		return "", errors.New("key is empty")
 	}
 	return ConfigCenter.GetProperties(key, config_center.WithGroup(group))
 }
 
-func DeleteConfigWithGroup(group string, key string) error {
+func (g *GovernanceConfigImpl) DeleteConfigWithGroup(group string, key string) error {
 	if key == "" {
 		return errors.New("key is empty")
 	}
 	return ConfigCenter.RemoveConfig(key, group)
+}
+
+func (g *GovernanceConfigImpl) Register(url *common.URL) error {
+	if url.String() == "" {
+		return errors.New("url is empty")
+	}
+	return RegistryCenter.Register(url)
+}
+
+func (g *GovernanceConfigImpl) UnRegister(url *common.URL) error {
+	if url.String() == "" {
+		return errors.New("url is empty")
+	}
+	return RegistryCenter.UnRegister(url)
 }

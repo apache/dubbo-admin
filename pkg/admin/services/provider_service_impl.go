@@ -108,6 +108,7 @@ func (p *ProviderServiceImpl) FindVersionInApplication(application string) (stri
 	return p.FindServiceVersion(services[0], application)
 }
 
+// FindServices finds all services
 func (p *ProviderServiceImpl) FindServices() ([]string, error) {
 	var services []string
 	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
@@ -126,6 +127,7 @@ func (p *ProviderServiceImpl) FindServices() ([]string, error) {
 	return services, nil
 }
 
+// FindApplications finds all applications
 func (p *ProviderServiceImpl) FindApplications() ([]string, error) {
 	var (
 		applications []string
@@ -157,6 +159,7 @@ func (p *ProviderServiceImpl) FindApplications() ([]string, error) {
 	return applications, err
 }
 
+// findAddresses finds all addresses
 func (p *ProviderServiceImpl) findAddresses() ([]string, error) {
 	var (
 		addresses []string
@@ -188,6 +191,7 @@ func (p *ProviderServiceImpl) findAddresses() ([]string, error) {
 	return addresses, err
 }
 
+// FindByService finds providers by service name and returns a list of providers
 func (p *ProviderServiceImpl) FindByService(providerService string) ([]*model.Provider, error) {
 	filter := make(map[string]string)
 	filter[constant.CategoryKey] = constant.ProvidersCategory
@@ -199,6 +203,7 @@ func (p *ProviderServiceImpl) FindByService(providerService string) ([]*model.Pr
 	return util.URL2ProviderList(servicesMap), nil
 }
 
+// FindByApplication finds providers by address and returns a list of providers
 func (p *ProviderServiceImpl) findByAddress(providerAddress string) ([]*model.Provider, error) {
 	filter := make(map[string]string)
 	filter[constant.CategoryKey] = constant.ProvidersCategory
@@ -210,6 +215,7 @@ func (p *ProviderServiceImpl) findByAddress(providerAddress string) ([]*model.Pr
 	return util.URL2ProviderList(servicesMap), nil
 }
 
+// findByApplication finds providers by application and returns a list of providers
 func (p *ProviderServiceImpl) findByApplication(providerApplication string) ([]*model.Provider, error) {
 	filter := make(map[string]string)
 	filter[constant.CategoryKey] = constant.ProvidersCategory
@@ -221,6 +227,7 @@ func (p *ProviderServiceImpl) findByApplication(providerApplication string) ([]*
 	return util.URL2ProviderList(servicesMap), nil
 }
 
+// FindService by patterns and filters, patterns support IP, service and application.
 func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*model.Provider, error) {
 	var (
 		providers []*model.Provider

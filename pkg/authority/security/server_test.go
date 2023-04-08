@@ -21,6 +21,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/apache/dubbo-admin/pkg/authority/election"
+
+	"k8s.io/client-go/kubernetes"
+
 	cert2 "github.com/apache/dubbo-admin/pkg/authority/cert"
 	"github.com/apache/dubbo-admin/pkg/authority/config"
 	"github.com/apache/dubbo-admin/pkg/authority/k8s"
@@ -52,6 +56,10 @@ func (s *mockKubeClient) UpdateAuthorityPublicKey(cert string) bool {
 }
 
 func (s *mockKubeClient) UpdateWebhookConfig(options *config.Options, storage cert2.Storage) {
+}
+
+func (s *mockKubeClient) GetKubClient() *kubernetes.Clientset {
+	return nil
 }
 
 type mockStorage struct {
@@ -92,6 +100,15 @@ func (s *mockStorage) GetTrustedCerts() []*cert2.Cert {
 
 func (s *mockStorage) GetStopChan() chan os.Signal {
 	return s.origin.GetStopChan()
+}
+
+type mockLeaderElection struct {
+	election.LeaderElection
+}
+
+func (s *mockLeaderElection) Election(storage cert2.Storage, options *config.Options, kubeClient *kubernetes.Clientset) error {
+	storage.SetAuthorityCert(cert2.GenerateAuthorityCert(storage.GetRootCert(), options.CaValidity))
+	return nil
 }
 
 func TestInit(t *testing.T) {
@@ -165,6 +182,7 @@ func TestRefresh(t *testing.T) {
 
 	s.KubeClient = &mockKubeClient{}
 	storage := &mockStorage{}
+	s.Elec = &mockLeaderElection{}
 	storage.origin = cert2.NewStorage(options)
 	s.CertStorage = storage
 
