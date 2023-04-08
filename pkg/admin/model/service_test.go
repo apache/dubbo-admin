@@ -21,19 +21,3 @@ type ServiceTest struct {
 	ParameterTypes []string
 	Params         []interface{}
 }
-
-func (p *ServiceTest) GetService() string {
-	return p.Service
-}
-
-func (p *ServiceTest) GetMethod() string {
-	return p.Method
-}
-
-func (p *ServiceTest) GetParameterTypes() []string {
-	return p.ParameterTypes
-}
-
-func (p *ServiceTest) GetParams() []interface{} {
-	return p.Params
-}

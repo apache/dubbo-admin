@@ -20,6 +20,7 @@ go 1.19
 
 require (
 	dubbo.apache.org/dubbo-go/v3 v3.0.2
+	github.com/apache/dubbo-go v1.5.9
 	github.com/gin-gonic/gin v1.8.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/mattbaird/jsonpatch v0.0.0-20200820163806-098863c1fc24

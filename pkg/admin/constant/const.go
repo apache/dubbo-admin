@@ -59,4 +59,5 @@ const (
 	IP                        = "ip"
 	PlusSigns                 = "+"
 	PunctuationPoint          = "."
+	NAMESPACE_KEY             = "namespace"
 )

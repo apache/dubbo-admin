@@ -16,43 +16,50 @@
 package services
 
 import (
-	"dubbo.apache.org/dubbo-go/v3/config"
-	"dubbo.apache.org/dubbo-go/v3/registry"
+	"dubbo.apache.org/dubbo-go/v3/common"
+	dubboConfig "dubbo.apache.org/dubbo-go/v3/config"
+	"github.com/apache/dubbo-admin/pkg/admin/config"
+	"github.com/apache/dubbo-admin/pkg/admin/constant"
 )
 
-var (
-	ApplicationConfig config.ApplicationConfig
-	Registry          registry.Registry
-)
+type GenericServiceImpl struct{}
 
-//func (c *ConsumerServiceImpl) FindAll() ([]*model.Consumer, error) {
-//	filter := make(map[string]string)
-//	filter[constant.CategoryKey] = constant.ConsumersCategory
-//	servicesMap, err := util.FilterFromCategory(filter)
-//	if err != nil {
-//		return nil, err
-//	}
-//	return util.URL2ConsumerList(servicesMap), nil
-//}
+func (p *GenericServiceImpl) NewRefConf(appName, iface, protocol string) dubboConfig.ReferenceConfig {
 
-//func Init() {
-//	registryConfig, _ := BuildRegistryConfig(Registry)
-//	ApplicationConfig := &config.ApplicationConfig{}
-//	ApplicationConfig.Name = "dubbo-admin"
-//	ApplicationConfig.
-//}
+	fromUrl := common.NewURLWithOptions(common.WithParams(config.RegistryCenter.GetURL().GetParams()))
 
-//func BuildRegistryConfig(r registry.Registry) interface{} {
-//
-//}
+	registryConfig := dubboConfig.RegistryConfig{}
+	registryConfig.Group = fromUrl.GetParam("group", "")
 
-//func BuildRegistryConfig(sregistry registry.Registry) (config.RegistryConfig, error) {
-//	fromUrl := registry.GetURL()
-//
-//	config := &config.RegistryConfig{}
-//	config.Group = fromUrl.GetRawParam("group")
-//
-//	//address := common.URL(fromUrl.Protocol + "://" + fromUrl.PrimitiveURL)
-//
-//	return *config, nil
-//}
+	address, _ := common.NewURL(fromUrl.Protocol + "://" + fromUrl.Location)
+	if fromUrl.GetParam(constant.NAMESPACE_KEY, "") != "" {
+		address.AddParam(constant.NAMESPACE_KEY, fromUrl.GetParam(constant.NAMESPACE_KEY, ""))
+	}
+	registryConfig.Address = address.String()
+
+	//registryConfig := &config.RegistryConfig{
+	//	Protocol: "zookeeper",
+	//	Address:  "127.0.0.1:2181",
+	//	Group:    fromUrl.Group(),
+	//}
+
+	refConf := dubboConfig.ReferenceConfig{
+		InterfaceName: iface,
+		Cluster:       "failover",
+		RegistryIDs:   []string{"zk"},
+		Protocol:      protocol,
+		Generic:       "true",
+	}
+
+	var registerMap map[string]*dubboConfig.RegistryConfig
+	registerMap["zk"] = &registryConfig
+
+	rootConfig := dubboConfig.RootConfig{
+		Registries: registerMap,
+	}
+
+	_ = refConf.Init(&rootConfig)
+	refConf.GenericLoad(appName)
+
+	return refConf
+}
