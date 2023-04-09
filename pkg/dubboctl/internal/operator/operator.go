@@ -19,9 +19,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/apache/dubbo-admin/pkg/dubboctl/identifier"
-	"github.com/apache/dubbo-admin/pkg/kube"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/kube"
 
+	"github.com/apache/dubbo-admin/pkg/dubboctl/identifier"
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/apis/dubbo.apache.org/v1alpha1"
 )
 
@@ -30,9 +30,9 @@ type DubboOperator struct {
 	started    bool
 	components map[ComponentName]Component
 	kubeCli    *kube.CtlClient
-	namespace  string
 }
 
+// Run must be invoked before invoking other functions.
 func (do *DubboOperator) Run() error {
 	for name, component := range do.components {
 		if err := component.Run(); err != nil {
@@ -43,6 +43,7 @@ func (do *DubboOperator) Run() error {
 	return nil
 }
 
+// RenderManifest renders component manifests specified by DubboConfigSpec.
 func (do *DubboOperator) RenderManifest() (map[ComponentName]string, error) {
 	if !do.started {
 		return nil, errors.New("DubboOperator is not running")
@@ -58,9 +59,13 @@ func (do *DubboOperator) RenderManifest() (map[ComponentName]string, error) {
 	return res, nil
 }
 
+// ApplyManifest apply component manifests to k8s cluster
 func (do *DubboOperator) ApplyManifest(manifestMap map[ComponentName]string) error {
+	if do.kubeCli == nil {
+		return errors.New("no injected k8s cli into DubboOperator")
+	}
 	for _, manifest := range manifestMap {
-		if err := do.kubeCli.ApplyManifest(manifest, do.namespace); err != nil {
+		if err := do.kubeCli.ApplyManifest(manifest, do.spec.Namespace); err != nil {
 			// log component
 			return err
 		}
@@ -68,7 +73,9 @@ func (do *DubboOperator) ApplyManifest(manifestMap map[ComponentName]string) err
 	return nil
 }
 
-func NewDubboOperator(spec *v1alpha1.DubboConfigSpec, kubecfgPath string, ctx string, dryRun bool) (*DubboOperator, error) {
+// NewDubboOperator accepts cli directly for testing and normal use.
+// For now, every related command needs a dedicated DubboOperator.
+func NewDubboOperator(spec *v1alpha1.DubboConfigSpec, cli *kube.CtlClient) (*DubboOperator, error) {
 	if spec == nil {
 		return nil, errors.New("DubboConfigSpec is empty")
 	}
@@ -76,7 +83,7 @@ func NewDubboOperator(spec *v1alpha1.DubboConfigSpec, kubecfgPath string, ctx st
 	if ns == "" {
 		ns = identifier.DubboSystemNamespace
 	}
-	// initialized
+	// initialize components
 	components := make(map[ComponentName]Component)
 	if spec.IsAdminEnabled() {
 		admin, err := NewAdminComponent(spec.Components.Admin,
@@ -125,14 +132,7 @@ func NewDubboOperator(spec *v1alpha1.DubboConfigSpec, kubecfgPath string, ctx st
 	do := &DubboOperator{
 		spec:       spec,
 		components: components,
-		namespace:  ns,
-	}
-	if !dryRun {
-		ctlCli, err := kube.NewCtlClient(kubecfgPath, ctx)
-		if err != nil {
-			return nil, err
-		}
-		do.kubeCli = ctlCli
+		kubeCli:    cli,
 	}
 
 	return do, nil

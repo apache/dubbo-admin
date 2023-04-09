@@ -32,6 +32,38 @@ import (
 // CtlClient wraps controller-runtime client and is used by dubboctl
 type CtlClient struct {
 	client.Client
+	opts *CtlClientOptions
+}
+
+type CtlClientOptions struct {
+	// for normal use
+	// path to kubeconfig
+	KubeConfigPath string
+	// specify cluster in kubeconfig to use
+	Context string
+
+	// for test
+	Cli client.Client
+}
+
+type CtlClientOption func(*CtlClientOptions)
+
+func WithKubeConfigPath(path string) CtlClientOption {
+	return func(opts *CtlClientOptions) {
+		opts.KubeConfigPath = path
+	}
+}
+
+func WithContext(ctx string) CtlClientOption {
+	return func(opts *CtlClientOptions) {
+		opts.Context = ctx
+	}
+}
+
+func WithCli(cli client.Client) CtlClientOption {
+	return func(opts *CtlClientOptions) {
+		opts.Cli = cli
+	}
 }
 
 // ApplyManifest applies manifest to certain namespace
@@ -123,8 +155,22 @@ func (cli *CtlClient) createNamespace(ns string) error {
 	return nil
 }
 
-func NewCtlClient(kubeConfigPath string, ctx string) (*CtlClient, error) {
-	cfg, err := BuildConfig(kubeConfigPath, ctx)
+func NewCtlClient(opts ...CtlClientOption) (*CtlClient, error) {
+	var ctlCli *CtlClient
+	newOptions := &CtlClientOptions{}
+	for _, opt := range opts {
+		opt(newOptions)
+	}
+	// for test
+	if newOptions.Cli != nil {
+		ctlCli = &CtlClient{
+			Client: newOptions.Cli,
+			opts:   newOptions,
+		}
+		return ctlCli, nil
+	}
+
+	cfg, err := BuildConfig(newOptions.KubeConfigPath, newOptions.Context)
 	if err != nil {
 		return nil, err
 	}
@@ -132,8 +178,9 @@ func NewCtlClient(kubeConfigPath string, ctx string) (*CtlClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctlCli := &CtlClient{
-		cli,
+	ctlCli = &CtlClient{
+		Client: cli,
+		opts:   newOptions,
 	}
 	return ctlCli, nil
 }

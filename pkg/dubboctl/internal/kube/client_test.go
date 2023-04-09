@@ -48,7 +48,10 @@ func TestCtlClient_ApplyManifest(t *testing.T) {
 	for _, test := range tests {
 		var fakeCli client.Client
 		fakeCli = fake.NewClientBuilder().Build()
-		ctlCli := CtlClient{Client: fakeCli}
+		ctlCli, err := NewCtlClient(WithCli(fakeCli))
+		if err != nil {
+			t.Fatalf("NewCtlClient failed, err: %s", err)
+		}
 		inputManifest, err := readManifest(path.Join(inputPath, test.input))
 		if err != nil {
 			t.Fatalf("read input manifest %s err: %s", test.input, err)
@@ -107,7 +110,10 @@ func TestCtlClient_ApplyObject(t *testing.T) {
 		} else {
 			fakeCli = fake.NewClientBuilder().Build()
 		}
-		ctlCli := &CtlClient{Client: fakeCli}
+		ctlCli, err := NewCtlClient(WithCli(fakeCli))
+		if err != nil {
+			t.Fatalf("NewCtlClient failed, err: %s", err)
+		}
 
 		inputManifest, err := readManifest(path.Join(inputPath, test.input))
 		if err != nil {

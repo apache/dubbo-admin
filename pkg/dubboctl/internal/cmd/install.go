@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/apis/dubbo.apache.org/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/kube"
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/operator"
 	"github.com/spf13/cobra"
 )
@@ -63,7 +64,20 @@ func ConfigManifestInstallCmd(baseCmd *cobra.Command) {
 }
 
 func installManifests(miArgs *ManifestInstallArgs, cfg *v1alpha1.DubboConfig) error {
-	op, err := operator.NewDubboOperator(cfg.Spec, miArgs.KubeConfigPath, miArgs.Context, false)
+	var cliOpts []kube.CtlClientOption
+	if TestInstallFlag {
+		cliOpts = []kube.CtlClientOption{kube.WithCli(TestCli)}
+	} else {
+		cliOpts = []kube.CtlClientOption{
+			kube.WithKubeConfigPath(miArgs.KubeConfigPath),
+			kube.WithContext(miArgs.Context),
+		}
+	}
+	cli, err := kube.NewCtlClient(cliOpts...)
+	if err != nil {
+		return err
+	}
+	op, err := operator.NewDubboOperator(cfg.Spec, cli)
 	if err != nil {
 		return err
 	}

@@ -157,8 +157,7 @@ func generateValues(mgArgs *ManifestGenerateArgs) (*v1alpha1.DubboConfig, string
 }
 
 func generateManifests(mgArgs *ManifestGenerateArgs, cfg *v1alpha1.DubboConfig) error {
-	// for now, there is no need to use kube cli, so we use dryRun mode
-	op, err := operator.NewDubboOperator(cfg.Spec, "", "", true)
+	op, err := operator.NewDubboOperator(cfg.Spec, nil)
 	if err != nil {
 		return err
 	}

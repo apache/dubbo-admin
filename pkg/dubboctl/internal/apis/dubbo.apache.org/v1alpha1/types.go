@@ -23,10 +23,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// +genclient
+// +genclient:noStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// DubboConfig describes configuration for DubboOperator
 type DubboConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              *DubboConfigSpec `json:"spec,omitempty"`
+
+	Spec *DubboConfigSpec `json:"spec,omitempty"`
 }
 
 func (do *DubboConfig) GetProfile() string {
@@ -34,6 +40,16 @@ func (do *DubboConfig) GetProfile() string {
 		return do.Spec.Profile
 	}
 	return ""
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// DubboConfigList is a list of DubboConfig resources
+type DubboConfigList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	Items []DubboConfig `json:"items"`
 }
 
 type DubboConfigSpec struct {
@@ -74,10 +90,13 @@ func (dcs *DubboConfigSpec) IsZookeeperEnabled() bool {
 }
 
 type DubboComponentsMeta struct {
-	Admin     *AdminMeta     `json:"admin,omitempty"`
-	Grafana   *GrafanaMeta   `json:"grafana,omitempty"`
-	Nacos     *NacosMeta     `json:"nacos,omitempty"`
-	Zookeeper *ZookeeperMeta `json:"zookeeper,omitempty"`
+	Admin      *AdminMeta      `json:"admin,omitempty"`
+	Grafana    *GrafanaMeta    `json:"grafana,omitempty"`
+	Nacos      *NacosMeta      `json:"nacos,omitempty"`
+	Zookeeper  *ZookeeperMeta  `json:"zookeeper,omitempty"`
+	Prometheus *PrometheusMeta `json:"prometheus,omitempty"`
+	Skywalking *SkywalkingMeta `json:"skywalking,omitempty"`
+	Zipkin     *ZipkinMeta     `json:"zipkin,omitempty"`
 }
 
 type BaseMeta struct {
@@ -103,6 +122,21 @@ type NacosMeta struct {
 }
 
 type ZookeeperMeta struct {
+	BaseMeta
+	RemoteMeta
+}
+
+type PrometheusMeta struct {
+	BaseMeta
+	RemoteMeta
+}
+
+type SkywalkingMeta struct {
+	BaseMeta
+	RemoteMeta
+}
+
+type ZipkinMeta struct {
 	BaseMeta
 	RemoteMeta
 }
@@ -135,11 +169,35 @@ func (dcm *DubboComponentsMeta) IsZookeeperEnabled() bool {
 	return false
 }
 
+func (dcm *DubboComponentsMeta) IsPrometheusEnabled() bool {
+	if dcm.Prometheus != nil && dcm.Prometheus.Enabled {
+		return true
+	}
+	return false
+}
+
+func (dcm *DubboComponentsMeta) IsSkywalkingEnabled() bool {
+	if dcm.Skywalking != nil && dcm.Skywalking.Enabled {
+		return true
+	}
+	return false
+}
+
+func (dcm *DubboComponentsMeta) IsZipkinEnabled() bool {
+	if dcm.Zipkin != nil && dcm.Zipkin.Enabled {
+		return true
+	}
+	return false
+}
+
 type DubboComponentsSpec struct {
-	Admin     *AdminSpec     `json:"admin,omitempty"`
-	Grafana   *GrafanaSpec   `json:"grafana,omitempty"`
-	Nacos     *NacosSpec     `json:"nacos,omitempty"`
-	Zookeeper *ZookeeperSpec `json:"zookeeper,omitempty"`
+	Admin      *AdminSpec      `json:"admin,omitempty"`
+	Grafana    *GrafanaSpec    `json:"grafana,omitempty"`
+	Nacos      *NacosSpec      `json:"nacos,omitempty"`
+	Zookeeper  *ZookeeperSpec  `json:"zookeeper,omitempty"`
+	Prometheus *PrometheusSpec `json:"prometheus,omitempty"`
+	Skywalking *SkywalkingSpec `json:"skywalking,omitempty"`
+	Zipkin     *ZipkinSpec     `json:"zipkin,omitempty"`
 }
 
 type AdminSpec struct {
@@ -193,7 +251,18 @@ type DeploymentStrategy struct {
 	Type string `json:"type"`
 }
 
-type GrafanaSpec map[string]interface{}
+type GrafanaSpec map[string]any
+
+func (in *GrafanaSpec) DeepCopyInto(out *GrafanaSpec) {
+	if in == nil {
+		return
+	}
+	var spec GrafanaSpec
+	for key, val := range *in {
+		spec[key] = val
+	}
+	*out = spec
+}
 
 type NacosSpec struct {
 	Global              *NacosGlobal                  `json:"global,omitempty"`
@@ -301,4 +370,54 @@ type Egress struct {
 	Ports   []uint32 `json:"ports,omitempty"`
 }
 
-type ZookeeperSpec map[string]interface{}
+type ZookeeperSpec map[string]any
+
+func (in *ZookeeperSpec) DeepCopyInto(out *ZookeeperSpec) {
+	if in == nil {
+		return
+	}
+	var spec ZookeeperSpec
+	for key, val := range *in {
+		spec[key] = val
+	}
+	*out = spec
+}
+
+type PrometheusSpec map[string]any
+
+func (in *PrometheusSpec) DeepCopyInto(out *PrometheusSpec) {
+	if in == nil {
+		return
+	}
+	var spec PrometheusSpec
+	for key, val := range *in {
+		spec[key] = val
+	}
+	*out = spec
+}
+
+type SkywalkingSpec map[string]any
+
+func (in *SkywalkingSpec) DeepCopyInto(out *SkywalkingSpec) {
+	if in == nil {
+		return
+	}
+	var spec SkywalkingSpec
+	for key, val := range *in {
+		spec[key] = val
+	}
+	*out = spec
+}
+
+type ZipkinSpec map[string]any
+
+func (in *ZipkinSpec) DeepCopyInto(out *ZipkinSpec) {
+	if in == nil {
+		return
+	}
+	var spec ZipkinSpec
+	for key, val := range *in {
+		spec[key] = val
+	}
+	*out = spec
+}

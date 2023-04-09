@@ -20,11 +20,26 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/cmd"
+	"github.com/spf13/cobra"
+
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+var TestCmd = &cobra.Command{
+	Use:   "dubboctl",
+	Short: "dubbo control interface commands for testing",
+}
 
 const (
 	TestPath = "./testdata"
 )
+
+func TestMain(m *testing.M) {
+	addSubCommands(TestCmd)
+	m.Run()
+}
 
 func TestManifestGenerate(t *testing.T) {
 	tests := []struct {
@@ -66,10 +81,9 @@ func TestManifestGenerate(t *testing.T) {
 	for _, test := range tests {
 		var out bytes.Buffer
 		args := strings.Split(test.cmd, " ")
-		addSubCommands(rootCmd)
-		rootCmd.SetArgs(args)
-		rootCmd.SetOut(&out)
-		if err := rootCmd.Execute(); err != nil {
+		TestCmd.SetArgs(args)
+		TestCmd.SetOut(&out)
+		if err := TestCmd.Execute(); err != nil {
 			t.Error(err)
 			return
 		}
@@ -82,32 +96,29 @@ func TestManifestGenerate(t *testing.T) {
 	}
 }
 
-// todo: // need to make use of envtest
-//func TestManifestInstall(t *testing.T) {
-//	tests := []struct {
-//		desc string
-//		cmd  string
-//	}{
-//		{
-//			desc: "without any flag",
-//			cmd:  "manifest install",
-//		},
-//	}
-//	testEnv := envtest.Environment{}
-//	cfg, err := testEnv.Start()
-//	if err != nil {
-//		t.Fatalf("k8s test env start failed: %s", err)
-//	}
-//	t.Log(cfg.String())
-//
-//	//for _, test := range tests {
-//	//	var out bytes.Buffer
-//	//	args := strings.Split(test.cmd, " ")
-//	//	rootCmd.SetArgs(args)
-//	//	rootCmd.SetOut(&out)
-//	//	if err := rootCmd.Execute(); err != nil {
-//	//		t.Error(err)
-//	//	}
-//	//	t.Log(out.String())
-//	//}
-//}
+func TestManifestInstall(t *testing.T) {
+	addSubCommands(rootCmd)
+	tests := []struct {
+		desc string
+		cmd  string
+	}{
+		{
+			desc: "without any flag",
+			cmd:  "manifest install",
+		},
+	}
+	// For now, we do not use envTest to do black box testing
+	cmd.TestInstallFlag = true
+	cmd.TestCli = fake.NewClientBuilder().Build()
+
+	for _, test := range tests {
+		var out bytes.Buffer
+		args := strings.Split(test.cmd, " ")
+		TestCmd.SetArgs(args)
+		TestCmd.SetOut(&out)
+		if err := TestCmd.Execute(); err != nil {
+			t.Error(err)
+			return
+		}
+	}
+}

@@ -26,6 +26,7 @@ import (
 
 type Objects []*Object
 
+// Object wraps k8s Unstructured and exposes the fields we need
 type Object struct {
 	internal *unstructured.Unstructured
 
