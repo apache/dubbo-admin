@@ -66,7 +66,6 @@ func (do *DubboOperator) ApplyManifest(manifestMap map[ComponentName]string) err
 	}
 	for name, manifest := range manifestMap {
 		if err := do.kubeCli.ApplyManifest(manifest, do.spec.Namespace); err != nil {
-			// log component
 			return fmt.Errorf("component %s ApplyManifest err: %v", name, err)
 		}
 	}
@@ -91,7 +90,7 @@ func NewDubboOperator(spec *v1alpha1.DubboConfigSpec, cli *kube.CtlClient) (*Dub
 			WithChartPath(spec.ChartPath),
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("NewAdminComponent failed, err: %s", err)
 		}
 		components[Admin] = admin
 	}
@@ -103,7 +102,7 @@ func NewDubboOperator(spec *v1alpha1.DubboConfigSpec, cli *kube.CtlClient) (*Dub
 			WithVersion(spec.ComponentsMeta.Grafana.Version),
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("NewGrafanaComponent failed, err: %s", err)
 		}
 		components[Grafana] = grafana
 	}
@@ -113,7 +112,7 @@ func NewDubboOperator(spec *v1alpha1.DubboConfigSpec, cli *kube.CtlClient) (*Dub
 			WithChartPath(spec.ChartPath),
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("NewNacosComponent failed, err: %s", err)
 		}
 		components[Nacos] = nacos
 	}
@@ -125,7 +124,7 @@ func NewDubboOperator(spec *v1alpha1.DubboConfigSpec, cli *kube.CtlClient) (*Dub
 			WithVersion(spec.ComponentsMeta.Zookeeper.Version),
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("NewZookeeperComponent failed, err: %s", err)
 		}
 		components[Zookeeper] = zookeeper
 	}
@@ -137,7 +136,7 @@ func NewDubboOperator(spec *v1alpha1.DubboConfigSpec, cli *kube.CtlClient) (*Dub
 			WithVersion(spec.ComponentsMeta.Prometheus.Version),
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("NewPrometheusComponent failed, err: %s", err)
 		}
 		components[Prometheus] = prometheus
 	}
@@ -149,7 +148,7 @@ func NewDubboOperator(spec *v1alpha1.DubboConfigSpec, cli *kube.CtlClient) (*Dub
 			WithVersion(spec.ComponentsMeta.Skywalking.Version),
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("NewSkywalkingComponent failed, err: %s", err)
 		}
 		components[Skywalking] = skywalking
 	}
@@ -161,7 +160,7 @@ func NewDubboOperator(spec *v1alpha1.DubboConfigSpec, cli *kube.CtlClient) (*Dub
 			WithVersion(spec.ComponentsMeta.Zipkin.Version),
 		)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("NewZipkinComponent failed, err: %s", err)
 		}
 		components[Zipkin] = zipkin
 	}

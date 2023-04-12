@@ -25,6 +25,7 @@ func TestIsTestYAMLEqual(t *testing.T) {
 		golden   string
 		result   string
 		wantFlag bool
+		wantErr  bool
 		diff     string
 	}{
 		{
@@ -94,6 +95,18 @@ keyG:valR
 			wantFlag: true,
 		},
 		{
+			desc:     "key:val lines that golden line has invalid regular expression",
+			golden:   "keyG:*",
+			result:   "keyG:valG",
+			wantFlag: false,
+			diff: `line 1 diff:
+--golden--
+keyG:*
+--result--
+keyG:valG
+`,
+		},
+		{
 			desc: "key:val lines are effective but with different indentation",
 			golden: `keyG:
   - keyGG: valGG`,
@@ -102,10 +115,74 @@ keyG:valR
 			wantFlag: true,
 		},
 		{
+			desc:     "key:val lines that are the same after being formatted",
+			golden:   "obj: { }",
+			result:   "obj: {}",
+			wantFlag: true,
+		},
+		{
+			desc: "key:val lines with golden file having wrong format",
+			golden: `keyG: valG
+  keyGG: valGG`,
+			result: `keyG: valG
+keyGG: valGG`,
+			wantFlag: false,
+			wantErr:  true,
+		},
+		{
+			desc: "key:val lines with result file having wrong format",
+			golden: `keyG: valG
+keyGG: valGG`,
+			result: `keyG: valG
+  keyGG: valGG`,
+			wantFlag: false,
+			wantErr:  true,
+		},
+		{
+			desc: "key:val lines that golden line is longer than result line",
+			golden: `keyG:
+  - keyGG: valGG
+  - keyGGG: valGGG
+  - keyGGGG: valGGGG`,
+			result: `keyG:
+  - keyGG: valGG`,
+			wantFlag: false,
+			diff: `line 3 to 4:
+--golden addition--
+  - keyGGG: valGGG
+  - keyGGGG: valGGGG
+`,
+		},
+		{
+			desc: "key:val lines that result line is longer than golden line",
+			golden: `keyG:
+  - keyGG: valGG`,
+			result: `keyG:
+  - keyGG: valGG
+  - keyGGG: valGGG`,
+			wantFlag: false,
+			diff: `line 3 to 3:
+--result addition--
+  - keyGGG: valGGG
+`,
+		},
+		{
 			desc:     "multi : lines are equal",
 			golden:   "keyG:valG:valGG",
 			result:   "keyG:valG:valGG",
 			wantFlag: true,
+		},
+		{
+			desc:     "formats of golden line and result line are different",
+			golden:   "keyG:valG",
+			result:   "keyG:valG:valGG",
+			wantFlag: false,
+			diff: `line 1 diff:
+--golden--
+keyG:valG
+--result--
+keyG:valG:valGG
+`,
 		},
 		{
 			desc: "intact yaml",
@@ -121,7 +198,7 @@ lineG`,
 
 	for _, test := range tests {
 		resFlag, diff, err := TestYAMLEqual(test.golden, test.result)
-		if err != nil {
+		if err != nil && !test.wantErr {
 			t.Fatalf("%s failed, err: %s", test.desc, err)
 		}
 		if resFlag != test.wantFlag {

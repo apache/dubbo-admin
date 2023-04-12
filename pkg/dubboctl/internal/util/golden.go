@@ -18,10 +18,9 @@ package util
 import (
 	"bufio"
 	"fmt"
+	"github.com/google/yamlfmt/formatters/basic"
 	"regexp"
 	"strings"
-
-	"github.com/google/yamlfmt/formatters/basic"
 )
 
 var (
@@ -35,15 +34,38 @@ var (
 	}
 )
 
+// TestYAMLEqual judges whether golden and result yaml are the same and return the diff if they are different.
+// If this function returns error, it means that golden file or result file could not be formatted.
+// eg:
+//
+//	 golden: line
+//	 result: line
+//	 return: true, ""
+//
+//	 golden: lineG
+//	 result: lineR
+//	 return: false, line 1 diff:
+//	                --golden--
+//	                lineG
+//	                --result--
+//	                lineR
+//
+//	golden: line
+//	result: line
+//	        lineAdd
+//	return: false, line 2 to 2:
+//	               --result addition--
+//	               lineAdd
 func TestYAMLEqual(golden, result string) (bool, string, error) {
+	// think about panic
 	var err error
 	golden, err = formatTestYAML(golden)
 	if err != nil {
-		return false, "", err
+		return false, "", fmt.Errorf("golden file format err: %s", err)
 	}
 	result, err = formatTestYAML(result)
 	if err != nil {
-		return false, "", err
+		return false, "", fmt.Errorf("result file format err: %s", err)
 	}
 
 	var diffBuilder strings.Builder
@@ -55,6 +77,7 @@ func TestYAMLEqual(golden, result string) (bool, string, error) {
 		line += 1
 		lineG := scannerG.Text()
 		lineR := scannerR.Text()
+		// judge whether lineG and lindR are the same. if not, add this diff line to diffBuilder.
 		if !isTestYAMLLineEqual(lineG, lineR) {
 			diffFlag = true
 			diffBuilder.WriteString(
@@ -62,6 +85,10 @@ func TestYAMLEqual(golden, result string) (bool, string, error) {
 			)
 		}
 	}
+	// additional lines processing
+	// [lineStart, lineEnd] represents additional lines
+
+	// scan golden ends.
 	if len(scannerG.Text()) == 0 {
 		var addBuilder strings.Builder
 		lineStart, lineEnd := line+1, line
@@ -69,24 +96,29 @@ func TestYAMLEqual(golden, result string) (bool, string, error) {
 			lineEnd += 1
 			addBuilder.WriteString(scannerR.Text() + "\n")
 		}
+		// length of result is equal to length of golden
 		if lineStart > lineEnd {
+			// result is equal to golden
 			if !diffFlag {
 				return true, "", nil
 			}
 			return false, diffBuilder.String(), nil
 		}
+		// result is longer than golden, we add these additional lines to diffBuilder
 		diffBuilder.WriteString(
 			fmt.Sprintf("line %d to %d:\n--result addition--\n%s", lineStart, lineEnd, addBuilder.String()),
 		)
 		return false, diffBuilder.String(), nil
 	}
 
+	// scan result ends, we know that golden is longer than result.
+	// due to scannerG.Scan has been invoked before, we add the first additional line.
 	var addBuilder strings.Builder
 	lineStart, lineEnd := line+1, line+1
 	addBuilder.WriteString(scannerG.Text() + "\n")
 	for scannerG.Scan() {
 		lineEnd += 1
-		addBuilder.WriteString(scannerR.Text() + "\n")
+		addBuilder.WriteString(scannerG.Text() + "\n")
 	}
 	diffBuilder.WriteString(
 		fmt.Sprintf("line %d to %d:\n--golden addition--\n%s", lineStart, lineEnd, addBuilder.String()),
@@ -103,21 +135,22 @@ func formatTestYAML(original string) (string, error) {
 }
 
 func isTestYAMLLineEqual(golden, result string) bool {
-	keyG, valG, flagG := splitKeyVal(golden)
-	keyR, valR, flagR := splitKeyVal(result)
-	if flagG != flagR {
+	keyG, valG, typG := splitKeyVal(golden)
+	keyR, valR, typR := splitKeyVal(result)
+	if typG != typR {
 		return false
 	}
 	if keyG != keyR {
 		return false
 	}
 	// golden and result strings could not be split by ":", compare them directly
-	if flagG == false {
+	if typG == complete {
 		return true
 	}
 	if valG == valR {
 		return true
 	}
+	// valG may contain regular expression
 	reg, err := regexp.Compile(valG)
 	if err != nil {
 		return false
@@ -128,28 +161,39 @@ func isTestYAMLLineEqual(golden, result string) bool {
 	return true
 }
 
-// split key:val format str and return whether this str could be split by ":".
-// if str is not with this format, eg:
+type keyValType uint8
+
+const (
+	// eg: line
+	complete keyValType = iota + 1
+	// eg: key:val
+	singlePair
+	// eg: key:val:val
+	multiPairs
+)
+
+// split key:val format str and return keyValType.
+// eg:
 //
-//	key:val:val1, it returns key, val:val1, true;
-//	key,          it returns key, "", false.
-//
-// do not trim space cause that's a part of key and val.
-func splitKeyVal(str string) (string, string, bool) {
+//		 key,          it returns key, "", complete.
+//	     key:val,      it returns key, val, singlePair
+//		 key:val:val1, it returns key, val:val1, multiPairs;
+func splitKeyVal(str string) (string, string, keyValType) {
 	var key, val string
-	var flag bool
+	var typ keyValType
 	elems := strings.Split(str, ":")
 	switch len(elems) {
 	case 1:
 		key = elems[0]
+		typ = complete
 	case 2:
 		key = elems[0]
 		val = elems[1]
-		flag = true
+		typ = singlePair
 	default:
 		key = elems[0]
 		val = strings.Join(elems[1:], "")
-		flag = true
+		typ = multiPairs
 	}
-	return strings.TrimSpace(key), strings.TrimSpace(val), flag
+	return strings.TrimSpace(key), strings.TrimSpace(val), typ
 }
