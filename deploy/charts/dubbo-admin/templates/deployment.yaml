@@ -24,7 +24,10 @@ metadata:
     {{- toYaml . | nindent 4 }}
     {{- end }}
     {{- with .Values.annotations }}
-    annotations:
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade,post-rollback
+    "helm.sh/weight": "0"
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"
         {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
