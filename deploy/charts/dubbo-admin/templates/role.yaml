@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if and .Values.rbac.enabled -}}
+{{- if and .Values.rbac.enabled }}
 apiVersion: {{ include "dubbo-admin.rbac.apiVersion" . }}
 kind: Role
 metadata:
@@ -26,6 +26,8 @@ metadata:
   {{- end }}
   {{- with .Values.annotations }}
   annotations:
+    "helm.sh/hook": test-success
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"
     {{- toYaml . | nindent 4 }}
   {{- end }}
 {{- if .Values.rbac.pspEnabled }}
