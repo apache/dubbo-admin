@@ -18,9 +18,10 @@ package util
 import (
 	"bufio"
 	"fmt"
-	"github.com/google/yamlfmt/formatters/basic"
 	"regexp"
 	"strings"
+
+	"github.com/google/yamlfmt/formatters/basic"
 )
 
 var (

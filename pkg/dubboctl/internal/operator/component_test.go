@@ -60,7 +60,7 @@ func TestRenderManifest(t *testing.T) {
 				grafana, err := NewGrafanaComponent(testSpec, []ComponentOption{
 					WithNamespace(identifier.DubboSystemNamespace),
 					WithRepoURL("https://grafana.github.io/helm-charts"),
-					WithVersion("6.31.1"),
+					WithVersion("6.52.4"),
 				}...)
 				if err != nil {
 					t.Fatalf("NewGrafanaComponent failed, err: %s", err)
