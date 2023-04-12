@@ -89,6 +89,27 @@ func (dcs *DubboConfigSpec) IsZookeeperEnabled() bool {
 	return false
 }
 
+func (dcs *DubboConfigSpec) IsPrometheusEnabled() bool {
+	if dcs.ComponentsMeta != nil && dcs.ComponentsMeta.IsPrometheusEnabled() {
+		return true
+	}
+	return false
+}
+
+func (dcs *DubboConfigSpec) IsSkywalkingEnabled() bool {
+	if dcs.ComponentsMeta != nil && dcs.ComponentsMeta.IsSkywalkingEnabled() {
+		return true
+	}
+	return false
+}
+
+func (dcs *DubboConfigSpec) IsZipkinEnabled() bool {
+	if dcs.ComponentsMeta != nil && dcs.ComponentsMeta.IsZipkinEnabled() {
+		return true
+	}
+	return false
+}
+
 type DubboComponentsMeta struct {
 	Admin      *AdminMeta      `json:"admin,omitempty"`
 	Grafana    *GrafanaMeta    `json:"grafana,omitempty"`

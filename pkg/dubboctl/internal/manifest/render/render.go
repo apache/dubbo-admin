@@ -210,7 +210,7 @@ func (rr *RemoteRenderer) Init() error {
 
 func (rr *RemoteRenderer) RenderManifest(valsYaml string) (string, error) {
 	if !rr.Started {
-		return "", errors.New("LocalRenderer has not been init")
+		return "", errors.New("RemoteRenderer has not been init")
 	}
 	return renderManifest(valsYaml, rr.Chart, false, rr.Opts, DefaultFilters...)
 }

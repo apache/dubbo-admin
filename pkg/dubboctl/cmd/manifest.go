@@ -20,13 +20,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var manifestCmd = &cobra.Command{
-	Use:   "manifest",
-	Short: "Commands related to manifest",
-	Long:  "Commands help user to generate manifest and install manifest",
-}
-
 func addManifest(rootCmd *cobra.Command) {
+	manifestCmd := &cobra.Command{
+		Use:   "manifest",
+		Short: "Commands related to manifest",
+		Long:  "Commands help user to generate manifest and install manifest",
+	}
 	cmd.ConfigManifestGenerateCmd(manifestCmd)
 	cmd.ConfigManifestInstallCmd(manifestCmd)
 	rootCmd.AddCommand(manifestCmd)

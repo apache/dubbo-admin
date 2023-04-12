@@ -58,3 +58,30 @@ content line
 		}
 	}
 }
+
+func TestFormatterFilter(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{
+			input: `key1: val1  `,
+			want: `key1: val1
+`,
+		},
+		{
+			input: `key1:
+    key2: val2`,
+			want: `key1:
+  key2: val2
+`,
+		},
+	}
+
+	for _, test := range tests {
+		res := FormatterFilter(test.input)
+		if res != test.want {
+			t.Errorf("want \n%s\n but got \n%s\n", test.want, res)
+		}
+	}
+}

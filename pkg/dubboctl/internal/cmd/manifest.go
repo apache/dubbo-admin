@@ -151,6 +151,10 @@ func generateValues(mgArgs *ManifestGenerateArgs) (*v1alpha1.DubboConfig, string
 		return nil, "", err
 	}
 	// todo: validate op
+	// we should ensure that Components field would not be nil
+	if cfg.Spec.Components == nil {
+		cfg.Spec.Components = &v1alpha1.DubboComponentsSpec{}
+	}
 	cfg.Spec.ProfilePath = mgArgs.ProfilesPath
 	cfg.Spec.ChartPath = mgArgs.ChartsPath
 	return cfg, finalYaml, nil
@@ -170,12 +174,12 @@ func generateManifests(mgArgs *ManifestGenerateArgs, cfg *v1alpha1.DubboConfig) 
 	}
 	if mgArgs.OutputPath == "" {
 		// in order to have the same manifest output every time with the same input
-		res, err := sortManifests(manifestMap)
+		_, err := sortManifests(manifestMap)
 		if err != nil {
 			return err
 		}
 		// todo: using specific logger module
-		fmt.Println(res)
+		// fmt.Println(res)
 	} else {
 		if err := writeManifests(manifestMap, mgArgs.OutputPath); err != nil {
 			return err

@@ -64,10 +64,10 @@ func (do *DubboOperator) ApplyManifest(manifestMap map[ComponentName]string) err
 	if do.kubeCli == nil {
 		return errors.New("no injected k8s cli into DubboOperator")
 	}
-	for _, manifest := range manifestMap {
+	for name, manifest := range manifestMap {
 		if err := do.kubeCli.ApplyManifest(manifest, do.spec.Namespace); err != nil {
 			// log component
-			return err
+			return fmt.Errorf("component %s ApplyManifest err: %v", name, err)
 		}
 	}
 	return nil
@@ -128,6 +128,42 @@ func NewDubboOperator(spec *v1alpha1.DubboConfigSpec, cli *kube.CtlClient) (*Dub
 			return nil, err
 		}
 		components[Zookeeper] = zookeeper
+	}
+	if spec.IsPrometheusEnabled() {
+		prometheus, err := NewPrometheusComponent(spec.Components.Prometheus,
+			WithNamespace(ns),
+			WithChartPath(spec.ChartPath),
+			WithRepoURL(spec.ComponentsMeta.Prometheus.RepoURL),
+			WithVersion(spec.ComponentsMeta.Prometheus.Version),
+		)
+		if err != nil {
+			return nil, err
+		}
+		components[Prometheus] = prometheus
+	}
+	if spec.IsSkywalkingEnabled() {
+		skywalking, err := NewSkywalkingComponent(spec.Components.Skywalking,
+			WithNamespace(ns),
+			WithChartPath(spec.ChartPath),
+			WithRepoURL(spec.ComponentsMeta.Skywalking.RepoURL),
+			WithVersion(spec.ComponentsMeta.Skywalking.Version),
+		)
+		if err != nil {
+			return nil, err
+		}
+		components[Skywalking] = skywalking
+	}
+	if spec.IsZipkinEnabled() {
+		zipkin, err := NewZipkinComponent(spec.Components.Zipkin,
+			WithNamespace(ns),
+			WithChartPath(spec.ChartPath),
+			WithRepoURL(spec.ComponentsMeta.Zipkin.RepoURL),
+			WithVersion(spec.ComponentsMeta.Zipkin.Version),
+		)
+		if err != nil {
+			return nil, err
+		}
+		components[Zipkin] = zipkin
 	}
 	do := &DubboOperator{
 		spec:       spec,

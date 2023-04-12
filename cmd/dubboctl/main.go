@@ -18,9 +18,11 @@
 package main
 
 import (
+	"os"
+
 	"github.com/apache/dubbo-admin/pkg/dubboctl/cmd"
 )
 
 func main() {
-	cmd.Execute()
+	cmd.Execute(os.Args[1:])
 }

@@ -25,6 +25,7 @@ require (
 	github.com/gin-gonic/gin v1.8.2
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/golang/mock v1.6.0
+	github.com/google/yamlfmt v0.9.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/mattbaird/jsonpatch v0.0.0-20200820163806-098863c1fc24
 	github.com/prometheus/client_golang v1.14.0
@@ -51,6 +52,9 @@ require (
 )
 
 require (
+	github.com/RageCage64/multilinediff v0.2.0 // indirect
+	github.com/bmatcuk/doublestar/v4 v4.6.0 // indirect
+	github.com/braydonk/yaml v0.7.0 // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/go-gorp/gorp/v3 v3.0.5 // indirect

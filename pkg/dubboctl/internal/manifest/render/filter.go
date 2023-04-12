@@ -18,6 +18,19 @@ package render
 import (
 	"bufio"
 	"strings"
+
+	"github.com/google/yamlfmt/formatters/basic"
+)
+
+var (
+	formatterConfig = func() *basic.Config {
+		cfg := basic.DefaultConfig()
+		return cfg
+	}()
+	formatter = &basic.BasicFormatter{
+		Config:   formatterConfig,
+		Features: basic.ConfigureFeaturesFromConfig(formatterConfig),
+	}
 )
 
 // FilterFunc is used to filter some contents of manifest
@@ -25,10 +38,11 @@ type FilterFunc func(string) string
 
 var DefaultFilters = []FilterFunc{
 	CommentFilter,
+	FormatterFilter,
 	SpaceFilter,
 }
 
-// CommentFilter removes all comments in manifest
+// CommentFilter removes all leading comments in manifest
 func CommentFilter(input string) string {
 	var builder strings.Builder
 	scanner := bufio.NewScanner(strings.NewReader(input))
@@ -46,4 +60,14 @@ func CommentFilter(input string) string {
 // SpaceFilter removes all leading and trailing space of manifest
 func SpaceFilter(input string) string {
 	return strings.TrimSpace(input)
+}
+
+// FormatterFilter uses github.com/google/yamlfmt to format yaml file
+func FormatterFilter(input string) string {
+	resBytes, err := formatter.Format([]byte(input))
+	// todo: think about log
+	if err != nil {
+		return input
+	}
+	return string(resBytes)
 }

@@ -19,20 +19,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var cfgFile string
-
-// rootCmd represents the base command when called without any subcommands
-var rootCmd = &cobra.Command{
-	Use:   "dubboctl",
-	Short: "dubbo control interface",
-	Long:  ``,
-}
-
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
-	addSubCommands(rootCmd)
+func Execute(args []string) {
+	rootCmd := getRootCmd(args)
 	cobra.CheckErr(rootCmd.Execute())
+}
+
+func getRootCmd(args []string) *cobra.Command {
+	// rootCmd represents the base command when called without any subcommands
+	rootCmd := &cobra.Command{
+		Use:   "dubboctl",
+		Short: "dubbo control interface",
+		Long:  ``,
+	}
+	addSubCommands(rootCmd)
+	rootCmd.SetArgs(args)
+	return rootCmd
 }
 
 func addSubCommands(rootCmd *cobra.Command) {

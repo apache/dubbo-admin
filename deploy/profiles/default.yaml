@@ -21,15 +21,27 @@ spec:
   profile: default
   namespace: dubbo-system
   componentsMeta:
+    admin:
+      enabled: true
     grafana:
       enabled: true
       repoURL: https://grafana.github.io/helm-charts
-      version: 6.31.1
+      version: 6.52.4
     nacos:
       enabled: true
-  components:
-    grafana:
-      testFramework:
-        enabled: false
-    nacos:
-      replicas: 2
+    zookeeper:
+      enabled: true
+      repoURL: https://charts.bitnami.com/bitnami
+      version: 11.1.6
+    prometheus:
+      enabled: true
+      repoURL: https://prometheus-community.github.io/helm-charts
+      version: 20.0.2
+    skywalking:
+      enabled: true
+      repoURL: https://apache.jfrog.io/artifactory/skywalking-helm
+      version: 4.3.0
+    zipkin:
+      enabled: true
+      repoURL: https://openzipkin.github.io/zipkin
+      version: 0.3.0

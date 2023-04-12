@@ -129,12 +129,10 @@ spec:
         app.kubernetes.io/instance: nginx
     spec:
       serviceAccountName: nginx-testchart
-      securityContext:
-        {}
+      securityContext: {}
       containers:
         - name: testchart
-          securityContext:
-            {}
+          securityContext: {}
           image: "nginx:1.16.0"
           imagePullPolicy: IfNotPresent
           ports:
@@ -149,8 +147,7 @@ spec:
             httpGet:
               path: /
               port: http
-          resources:
-            {}
+          resources: {}
 ---
 apiVersion: v1
 kind: Service
@@ -238,12 +235,10 @@ spec:
         app.kubernetes.io/instance: nginx
     spec:
       serviceAccountName: nginx-testchart
-      securityContext:
-        {}
+      securityContext: {}
       containers:
         - name: testchart
-          securityContext:
-            {}
+          securityContext: {}
           image: "nginx:1.16.0"
           imagePullPolicy: IfNotPresent
           ports:

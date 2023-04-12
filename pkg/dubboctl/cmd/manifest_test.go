@@ -22,24 +22,8 @@ import (
 	"testing"
 
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/cmd"
-	"github.com/spf13/cobra"
-
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
-
-var TestCmd = &cobra.Command{
-	Use:   "dubboctl",
-	Short: "dubbo control interface commands for testing",
-}
-
-const (
-	TestPath = "./testdata"
-)
-
-func TestMain(m *testing.M) {
-	addSubCommands(TestCmd)
-	m.Run()
-}
 
 func TestManifestGenerate(t *testing.T) {
 	tests := []struct {
@@ -81,9 +65,9 @@ func TestManifestGenerate(t *testing.T) {
 	for _, test := range tests {
 		var out bytes.Buffer
 		args := strings.Split(test.cmd, " ")
-		TestCmd.SetArgs(args)
-		TestCmd.SetOut(&out)
-		if err := TestCmd.Execute(); err != nil {
+		rootCmd := getRootCmd(args)
+		rootCmd.SetOut(&out)
+		if err := rootCmd.Execute(); err != nil {
 			t.Error(err)
 			return
 		}
@@ -91,13 +75,10 @@ func TestManifestGenerate(t *testing.T) {
 		if test.temp != "" {
 			os.RemoveAll(test.temp)
 		}
-		// todo:// use output to test
-		// t.Log(out.String())
 	}
 }
 
 func TestManifestInstall(t *testing.T) {
-	addSubCommands(rootCmd)
 	tests := []struct {
 		desc string
 		cmd  string
@@ -114,9 +95,9 @@ func TestManifestInstall(t *testing.T) {
 	for _, test := range tests {
 		var out bytes.Buffer
 		args := strings.Split(test.cmd, " ")
-		TestCmd.SetArgs(args)
-		TestCmd.SetOut(&out)
-		if err := TestCmd.Execute(); err != nil {
+		rootCmd := getRootCmd(args)
+		rootCmd.SetOut(&out)
+		if err := rootCmd.Execute(); err != nil {
 			t.Error(err)
 			return
 		}
