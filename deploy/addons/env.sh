@@ -15,11 +15,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 WORKDIR=$(dirname "$0")
-DASHBOARDS=${WORKDIR}
-MANIFESTS_DIR=${WORKDIR}/manifests
+WORKDIR=$(cd "$WORKDIR"; pwd)
 
 set -eux
+
+# script set up the plain text rendered
+
+KUBERNETES=${WORKDIR}/../kubernetes
+DASHBOARDS=${WORKDIR}
+mkdir -p "${KUBERNETES}"
+kubectl delete ns dubbo-system && kubectl create ns dubbo-system
+
 
 # Set up zookeeper
 helm template zookeeper zookeeper \
@@ -27,7 +35,7 @@ helm template zookeeper zookeeper \
   --version 11.1.6 \
   --repo https://charts.bitnami.com/bitnami  \
   -f "${WORKDIR}/values-zookeeper.yaml" \
-  > "${MANIFESTS_DIR}/zookeeper.yaml"
+  > "${KUBERNETES}/zookeeper.yaml"
 
 
 # Set up prometheus
@@ -36,7 +44,8 @@ helm template prometheus prometheus \
   --version 20.0.2 \
   --repo https://prometheus-community.github.io/helm-charts \
   -f "${WORKDIR}/values-prometheus.yaml" \
-  > "${MANIFESTS_DIR}/prometheus.yaml"
+  > "${KUBERNETES}/prometheus.yaml"
+
 
 # Set up grafana
 {
@@ -44,14 +53,14 @@ helm template prometheus prometheus \
     --namespace dubbo-system \
     --version 6.52.4 \
     --repo https://grafana.github.io/helm-charts \
-    -f "${WORKDIR}/values-grafana.yaml"
+    -f "${WORKDIR}/values-grafana.yaml" \
 
   echo -e "\n---\n"
 
   kubectl create configmap -n dubbo-system admin-extra-dashboards \
     --dry-run=client -oyaml \
     --from-file=extra-dashboard.json="${DASHBOARDS}/dashboards/external-dashboard.json"
-} > "${MANIFESTS_DIR}/grafana.yaml"
+} > "${KUBERNETES}/grafana.yaml"
 
 
 # Set up skywalking
@@ -60,7 +69,8 @@ helm template skywalking skywalking \
   --version 4.3.0 \
   --repo https://apache.jfrog.io/artifactory/skywalking-helm \
   -f "${WORKDIR}/values-skywalking.yaml" \
-  > "${MANIFESTS_DIR}/skywalking.yaml"
+  > "${KUBERNETES}/skywalking.yaml"
+
 
 # Set up zipkin
 helm template zipkin zipkin \
@@ -68,4 +78,4 @@ helm template zipkin zipkin \
   --version 0.3.0 \
   --repo https://openzipkin.github.io/zipkin \
   -f "${WORKDIR}/values-zipkin.yaml" \
-  > "${MANIFESTS_DIR}/zipkin.yaml"
+  > "${KUBERNETES}/zipkin.yaml"
