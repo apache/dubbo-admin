@@ -225,6 +225,7 @@ spec:
           curl -XGET --fail 'elasticsearch-master:9200/_cluster/health?wait_for_status=green&timeout=1s'
   restartPolicy: Never
 ---
+# https://docs.sentry.io/server/installation/docker/#running-migrations
 apiVersion: batch/v1
 kind: Job
 metadata:

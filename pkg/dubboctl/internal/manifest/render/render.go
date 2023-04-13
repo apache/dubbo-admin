@@ -18,6 +18,7 @@ package render
 import (
 	"errors"
 	"fmt"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/util"
 	"io/fs"
 	"net/url"
 	"os"
@@ -47,6 +48,12 @@ const (
 	YAMLSeparator       = "\n---\n"
 	NotesFileNameSuffix = ".txt"
 )
+
+var DefaultFilters = []util.FilterFunc{
+	util.LicenseFilter,
+	util.FormatterFilter,
+	util.SpaceFilter,
+}
 
 // Renderer is responsible for rendering helm chart with new values.
 // For using RenderManifest, we must invoke Init firstly.
@@ -272,7 +279,7 @@ func verifyInstallable(cht *chart.Chart) error {
 	return fmt.Errorf("%s chart %s is not installable", typ, cht.Name())
 }
 
-func renderManifest(valsYaml string, cht *chart.Chart, builtIn bool, opts *RendererOptions, filters ...FilterFunc) (string, error) {
+func renderManifest(valsYaml string, cht *chart.Chart, builtIn bool, opts *RendererOptions, filters ...util.FilterFunc) (string, error) {
 	valsMap := make(map[string]any)
 	if err := yaml.Unmarshal([]byte(valsYaml), &valsMap); err != nil {
 		return "", fmt.Errorf("unmarshal failed err: %s", err)
@@ -310,10 +317,7 @@ func renderManifest(valsYaml string, cht *chart.Chart, builtIn bool, opts *Rende
 	var builder strings.Builder
 	for i := 0; i < len(keys); i++ {
 		file := filesMap[keys[i]]
-		// using filters from left to right to filter every manifest
-		for _, filter := range filters {
-			file = filter(file)
-		}
+		file = util.ApplyFilters(file, filters...)
 		// ignore empty manifest
 		if file == "" {
 			continue

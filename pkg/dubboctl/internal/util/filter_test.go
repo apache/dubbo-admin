@@ -13,25 +13,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package render
+package util
 
-import "testing"
+import (
+	"testing"
+)
 
-func TestCommentFilter(t *testing.T) {
+func TestLicenseFilter(t *testing.T) {
 	tests := []struct {
 		input string
 		want  string
 	}{
 		{
-			input: `# comment line
+			input: `# license line
 content line`,
+			want: `content line`,
+		},
+		{
+			input: `# license line`,
+			want:  "",
+		},
+		{
+			input: `# license line
+content line
+# comment line`,
 			want: `content line
-`,
+# comment line`,
 		},
 	}
 
 	for _, test := range tests {
-		res := CommentFilter(test.input)
+		res := LicenseFilter(test.input)
 		if res != test.want {
 			t.Errorf("want %s\n but got %s", test.want, res)
 		}

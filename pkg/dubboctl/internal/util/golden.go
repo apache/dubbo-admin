@@ -20,19 +20,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-
-	"github.com/google/yamlfmt/formatters/basic"
-)
-
-var (
-	formatterConfig = func() *basic.Config {
-		cfg := basic.DefaultConfig()
-		return cfg
-	}()
-	formatter = &basic.BasicFormatter{
-		Config:   formatterConfig,
-		Features: basic.ConfigureFeaturesFromConfig(formatterConfig),
-	}
 )
 
 // TestYAMLEqual judges whether golden and result yaml are the same and return the diff if they are different.
@@ -58,7 +45,9 @@ var (
 //	               --result addition--
 //	               lineAdd
 func TestYAMLEqual(golden, result string) (bool, string, error) {
-	// think about panic
+	golden = ApplyFilters(golden, LicenseFilter, SpaceLineFilter)
+	result = ApplyFilters(result, LicenseFilter, SpaceLineFilter)
+	// do not use FormatterFilter here because we need to know whether manifest could be formatted
 	var err error
 	golden, err = formatTestYAML(golden)
 	if err != nil {

@@ -13,10 +13,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package render
+package util
 
 import (
 	"bufio"
+	"io"
 	"strings"
 
 	"github.com/google/yamlfmt/formatters/basic"
@@ -33,33 +34,51 @@ var (
 	}
 )
 
-// FilterFunc is used to filter some contents of manifest
+// FilterFunc is used to filter some contents of manifest.
 type FilterFunc func(string) string
 
-var DefaultFilters = []FilterFunc{
-	CommentFilter,
-	FormatterFilter,
-	SpaceFilter,
+func ApplyFilters(input string, filters ...FilterFunc) string {
+	for _, filter := range filters {
+		input = filter(input)
+	}
+	return input
 }
 
-// CommentFilter removes all leading comments in manifest
-func CommentFilter(input string) string {
+// LicenseFilter assumes that license is at the beginning.
+// So we just remove all the leading comments until the first non-comment line appears.
+func LicenseFilter(input string) string {
+	var index int
+	buf := bufio.NewReader(strings.NewReader(input))
+	for {
+		line, err := buf.ReadString('\n')
+		if !strings.HasPrefix(line, "#") {
+			return input[index:]
+		}
+		index += len(line)
+		if err == io.EOF {
+			return input[index:]
+		}
+	}
+}
+
+// SpaceFilter removes all leading and trailing space.
+func SpaceFilter(input string) string {
+	return strings.TrimSpace(input)
+}
+
+// SpaceLineFilter removes all space lines.
+func SpaceLineFilter(input string) string {
 	var builder strings.Builder
 	scanner := bufio.NewScanner(strings.NewReader(input))
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.HasPrefix(line, "#") || line == "" {
+		if strings.TrimSpace(line) == "" {
 			continue
 		}
 		builder.WriteString(line)
 		builder.WriteString("\n")
 	}
 	return builder.String()
-}
-
-// SpaceFilter removes all leading and trailing space of manifest
-func SpaceFilter(input string) string {
-	return strings.TrimSpace(input)
 }
 
 // FormatterFilter uses github.com/google/yamlfmt to format yaml file
