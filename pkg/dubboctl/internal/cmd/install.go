@@ -19,7 +19,9 @@ import (
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/apis/dubbo.apache.org/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/kube"
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/operator"
+	"github.com/apache/dubbo-admin/pkg/logger"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap/zapcore"
 )
 
 type ManifestInstallArgs struct {
@@ -43,6 +45,7 @@ func ConfigManifestInstallCmd(baseCmd *cobra.Command) {
   dubboctl install
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			logger.InitCmdSugar(zapcore.AddSync(cmd.OutOrStdout()))
 			miArgs.setDefault()
 			cfg, _, err := generateValues(mgArgs)
 			if err != nil {

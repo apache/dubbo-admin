@@ -17,6 +17,8 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/apache/dubbo-admin/pkg/logger"
+	"go.uber.org/zap/zapcore"
 	"os"
 	"path"
 	"sort"
@@ -81,6 +83,7 @@ func ConfigManifestGenerateCmd(baseCmd *cobra.Command) {
   dubboctl manifest generate -f /path/to/user.yaml
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			logger.InitCmdSugar(zapcore.AddSync(cmd.OutOrStdout()))
 			mgArgs.setDefault()
 			cfg, _, err := generateValues(mgArgs)
 			if err != nil {
@@ -174,12 +177,12 @@ func generateManifests(mgArgs *ManifestGenerateArgs, cfg *v1alpha1.DubboConfig) 
 	}
 	if mgArgs.OutputPath == "" {
 		// in order to have the same manifest output every time with the same input
-		_, err := sortManifests(manifestMap)
+		res, err := sortManifests(manifestMap)
 		if err != nil {
 			return err
 		}
 		// todo: using specific logger module
-		// fmt.Println(res)
+		logger.CmdSugar().Info(res)
 	} else {
 		if err := writeManifests(manifestMap, mgArgs.OutputPath); err != nil {
 			return err
@@ -188,9 +191,9 @@ func generateManifests(mgArgs *ManifestGenerateArgs, cfg *v1alpha1.DubboConfig) 
 	return nil
 }
 
-func sortManifests(manifestMap map[operator.ComponentName]string) ([]string, error) {
+func sortManifests(manifestMap map[operator.ComponentName]string) (string, error) {
 	var names []string
-	var res []string
+	var resBuilder strings.Builder
 	for name := range manifestMap {
 		names = append(names, string(name))
 	}
@@ -198,12 +201,12 @@ func sortManifests(manifestMap map[operator.ComponentName]string) ([]string, err
 	for _, name := range names {
 		file := manifestMap[operator.ComponentName(name)]
 		if !strings.HasSuffix(file, render.YAMLSeparator) {
-			res = append(res, file+render.YAMLSeparator)
+			resBuilder.WriteString(file + render.YAMLSeparator)
 		} else {
-			res = append(res, file)
+			resBuilder.WriteString(file)
 		}
 	}
-	return res, nil
+	return resBuilder.String(), nil
 }
 
 func writeManifests(manifestMap map[operator.ComponentName]string, outputPath string) error {

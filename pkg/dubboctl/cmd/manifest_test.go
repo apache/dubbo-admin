@@ -68,7 +68,7 @@ func TestManifestGenerate(t *testing.T) {
 		rootCmd := getRootCmd(args)
 		rootCmd.SetOut(&out)
 		if err := rootCmd.Execute(); err != nil {
-			t.Error(err)
+			t.Errorf("execute\n%s failed, err: %s", test.cmd, err)
 			return
 		}
 		// remove temporary dir
