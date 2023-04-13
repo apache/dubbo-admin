@@ -72,6 +72,11 @@ func (obj *Object) Unstructured() *unstructured.Unstructured {
 	return obj.internal
 }
 
+func (obj *Object) SetNamespace(ns string) {
+	obj.Namespace = ns
+	obj.internal.SetNamespace(ns)
+}
+
 func NewObject(obj *unstructured.Unstructured) *Object {
 	newObj := &Object{internal: obj}
 	newObj.Namespace = obj.GetNamespace()

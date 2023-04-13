@@ -32,7 +32,7 @@ func TestManifestGenerate(t *testing.T) {
 		temp string
 	}{
 		{
-			desc: "without any flag",
+			desc: "using default configuration without any flag",
 			cmd:  "manifest generate",
 		},
 		{

@@ -77,6 +77,9 @@ func (cli *CtlClient) ApplyManifest(manifest string, ns string) error {
 		return err
 	}
 	for _, obj := range objs {
+		if obj.Namespace == "" {
+			obj.SetNamespace(ns)
+		}
 		if err := cli.ApplyObject(obj.Unstructured()); err != nil {
 			return err
 		}
