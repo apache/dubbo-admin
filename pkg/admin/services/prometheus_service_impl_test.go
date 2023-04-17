@@ -25,6 +25,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"sort"
 	"sync"
 	"testing"
 
@@ -163,6 +164,14 @@ func TestPrometheusServiceImpl_PromDiscovery(t *testing.T) {
 			}
 			var target []model.Target
 			_ = json.Unmarshal(resp, &target)
+			for i := 0; i < len(target); i++ {
+				gots := target[i].Targets
+				targets := tt.want[i].Targets
+				sort.Strings(gots)
+				sort.Strings(targets)
+				target[i].Targets = gots
+				tt.want[i].Targets = targets
+			}
 			if !reflect.DeepEqual(target, tt.want) {
 				t.Errorf("PromDiscovery() got = %v, want %v", target, tt.want)
 			}

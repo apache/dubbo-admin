@@ -65,7 +65,7 @@ spec:
             timeoutSeconds: 10
             httpGet:
               scheme: HTTP
-              port: {{ .Values.nacos.service.port }}
+              port: {{ .Values.service.port }}
               path: /nacos/v1/console/health/readiness
           livenessProbe:
             initialDelaySeconds: 10
@@ -94,7 +94,7 @@ spec:
               value: {{ .Values.service.port | quote }}
             - name: PREFER_HOST_MODE
               value: {{ .Values.service.port | quote }}
-            {{- if eq .Values.nacos.mode "standalone" }}
+            {{- if eq .Values.global.mode "standalone" }}
             - name: MODE
               value: "standalone"
 
@@ -102,7 +102,7 @@ spec:
             - name: SERVICE_NAME
               value: "nacos-hs"
             - name: DOMAIN_NAME
-              value: {{ .Values.nacos.domainName | quote }}
+              value: {{ .Values.domainName | quote }}
             - name: POD_NAMESPACE
               valueFrom:
                 fieldRef:
