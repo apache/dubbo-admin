@@ -125,7 +125,7 @@ func (p *ProviderServiceImpl) FindByService(providerService string) ([]*model.Pr
 	return util.URL2ProviderList(servicesMap), nil
 }
 
-// FindByApplication finds providers by address and returns a list of providers
+// findByAddress finds providers by address and returns a list of providers
 func (p *ProviderServiceImpl) findByAddress(providerAddress string) ([]*model.Provider, error) {
 	filter := make(map[string]string)
 	filter[constant.CategoryKey] = constant.ProvidersCategory
