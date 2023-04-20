@@ -15,6 +15,7 @@
 
 
 GOOS ?= $(shell go env GOOS)
+GOARCH ?= $(shell go env GOARCH)
 
 # Git information
 GIT_VERSION ?= $(shell git describe --tags --always)
@@ -62,7 +63,8 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 KUSTOMIZE_VERSION ?= v3.8.7
 CONTROLLER_TOOLS_VERSION ?= v0.10.0
 
-
+## docker buildx support platform
+PLATFORMS ?= linux/arm64,linux/amd64
 
 ##@ General
 
@@ -138,9 +140,33 @@ images: image-dubbo-admin image-dubbo-authority  image-dubbo-admin-ui
 image-dubbo-admin: ## Build docker image with the dubbo admin.
 	docker build --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=admin -t ${DUBBO_ADMIN_IMG} .
 
+
+
+.PHONY: image-dubbo-admin-buildx
+image-dubbo-admin-buildx:  ## Build and push docker image for the dubbo admin for cross-platform support
+	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
+	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile_admin.cross
+	- docker buildx create --name project-dubbo-admin-builder
+	docker buildx use project-dubbo-admin-builder
+	- docker buildx build --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=admin  --push --platform=$(PLATFORMS) --tag ${DUBBO_ADMIN_IMG} -f Dockerfile_admin.cross .
+	#- docker buildx build --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=admin  --output type=local,dest=./bin/buildx/dubbo-admin --platform=$(PLATFORMS) --tag ${DUBBO_ADMIN_IMG} -f Dockerfile_admin.cross .
+	- docker buildx rm project-dubbo-admin-builder
+	rm Dockerfile_admin.cross
+
 .PHONY: image-dubbo-authority
 image-dubbo-authority: ## Build docker image with the dubbo authority.
 	docker build --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=authority -t ${DUBBO_AUTHORITY_IMG} .
+
+.PHONY: image-dubbo-authority-buildx
+image-dubbo-authority-buildx:  ## Build and push docker image for the dubbo authority for cross-platform support
+	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
+	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile_authority.cross
+	- docker buildx create --name project-dubbo-authority-builder
+	docker buildx use project-dubbo-authority-builder
+	- docker buildx build --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=authority  --push --platform=$(PLATFORMS) --tag ${DUBBO_AUTHORITY_IMG} -f Dockerfile_authority.cross .
+	#- docker buildx build --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=authority  --output type=local,dest=./bin/buildx/dubbo-authority --platform=$(PLATFORMS) --tag ${DUBBO_AUTHORITY_IMG} -f Dockerfile_authority.cross .
+	- docker buildx rm project-dubbo-authority-builder
+	rm Dockerfile_authority.cross
 
 .PHONY: image-dubbo-admin-ui
 image-dubbo-admin-ui: ## Build docker image with the dubbo-admin-ui.
