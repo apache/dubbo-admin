@@ -18,6 +18,7 @@
 package config
 
 import (
+	"dubbo.apache.org/dubbo-go/v3/common"
 	"fmt"
 	"log"
 	"net/url"
@@ -100,76 +101,79 @@ func LoadConfig() {
 		PrometheusPort = "9090"
 	}
 
-	if len(address) > 0 {
-		c := newAddressConfig(address)
-		factory, err := extension.GetConfigCenterFactory(c.getProtocol())
-		if err != nil {
-			panic(err)
-		}
-		url, err := c.toURL()
-		if err != nil {
-			panic(err)
-		}
-		ConfigCenter, err = factory.GetDynamicConfiguration(url)
-		Group = url.GetParam(constant.GroupKey, constant.DefaultGroup)
-		if err != nil {
-			log.Print("No configuration found in config center.")
-		}
-		properties, err := ConfigCenter.GetProperties(constant.DubboPropertyKey)
-		if err != nil {
-			log.Print("No configuration found in config center.")
-		}
-		if len(properties) > 0 {
-			for _, property := range strings.Split(properties, "\n") {
-				if strings.HasPrefix(property, constant.RegistryAddressKey) {
-					registryAddress = strings.Split(property, "=")[1]
-				}
-				if strings.HasPrefix(property, constant.MetadataReportAddressKey) {
-					metadataReportAddress = strings.Split(property, "=")[1]
-				}
+	c, addrUrl := getValidAddressConfig(address, registryAddress)
+	ConfigCenter = newConfigCenter(c, addrUrl)
+	properties, err := ConfigCenter.GetProperties(constant.DubboPropertyKey)
+	if err != nil {
+		log.Print("No configuration found in config center.")
+	}
+
+	if len(properties) > 0 {
+		for _, property := range strings.Split(properties, "\n") {
+			if strings.HasPrefix(property, constant.RegistryAddressKey) {
+				registryAddress = strings.Split(property, "=")[1]
+			}
+			if strings.HasPrefix(property, constant.MetadataReportAddressKey) {
+				metadataReportAddress = strings.Split(property, "=")[1]
 			}
 		}
 	}
-	if ConfigCenter == nil {
-		if len(registryAddress) == 0 {
-			panic("registry address can not be empty")
-		}
-		c := newAddressConfig(registryAddress)
-		url, err := c.toURL()
-		if err != nil {
-			panic(err)
-		}
-		factory, err := extension.GetConfigCenterFactory(c.getProtocol())
-		if err != nil {
-			log.Print("No configuration found in config center.")
-		}
-		ConfigCenter, err = factory.GetDynamicConfiguration(url)
-		if err != nil {
-			panic(err)
-		}
-		Group = url.GetParam(constant.GroupKey, constant.DefaultGroup)
-	}
+
 	if len(registryAddress) > 0 {
 		c := newAddressConfig(registryAddress)
-		url, err := c.toURL()
+		addrUrl, err := c.toURL()
 		if err != nil {
 			panic(err)
 		}
-		RegistryCenter, err = extension.GetRegistry(c.getProtocol(), url)
+		RegistryCenter, err = extension.GetRegistry(c.getProtocol(), addrUrl)
 		if err != nil {
 			panic(err)
 		}
 	}
 	if len(metadataReportAddress) > 0 {
 		c := newAddressConfig(metadataReportAddress)
-		url, err := c.toURL()
+		addrUrl, err := c.toURL()
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(url.SubURL)
+		fmt.Println(addrUrl.SubURL)
 		factory := extension.GetMetadataReportFactory(c.getProtocol())
-		MetadataReportCenter = factory.CreateMetadataReport(url)
+		MetadataReportCenter = factory.CreateMetadataReport(addrUrl)
 	}
+}
+
+func getValidAddressConfig(address string, registryAddress string) (AddressConfig, *common.URL) {
+	if len(address) <= 0 && len(registryAddress) <= 0 {
+		panic("Must at least specify `admin.config-center.address` or `admin.registry.address`!")
+	}
+
+	var c AddressConfig
+	if len(address) > 0 {
+		c = newAddressConfig(address)
+	} else {
+		c = newAddressConfig(registryAddress)
+	}
+
+	url, err := c.toURL()
+	if err != nil {
+		panic(err)
+	}
+	return c, url
+}
+
+func newConfigCenter(c AddressConfig, url *common.URL) config_center.DynamicConfiguration {
+	factory, err := extension.GetConfigCenterFactory(c.getProtocol())
+	if err != nil {
+		log.Print(err.Error())
+		panic(err)
+	}
+
+	configCenter, err := factory.GetDynamicConfiguration(url)
+	if err != nil {
+		log.Printf("Failed to init config center, error msg is %s.", err.Error())
+		panic(err)
+	}
+	return configCenter
 }
 
 func newAddressConfig(address string) AddressConfig {
