@@ -18,6 +18,8 @@ FROM golang:1.20.1-alpine3.17 as builder
 
 
 # Build argments
+ARG TARGETOS
+ARG TARGETARCH
 ARG LDFLAGS
 ARG PKGNAME
 ARG BUILD
@@ -42,10 +44,15 @@ COPY cmd cmd/
 
 # Build
 RUN env
-RUN go build -ldflags="${LDFLAGS}" -a -o ${PKGNAME} /go/src/github.com/apache/dubbo-admin/cmd/${PKGNAME}/main.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -ldflags="${LDFLAGS}" -a -o ${PKGNAME} /go/src/github.com/apache/dubbo-admin/cmd/${PKGNAME}/main.go
 
 
 FROM alpine:3.17
+# Add tzdata package
+RUN apk add --no-cache tzdata
+# Set Timezone
+
+# Build
 WORKDIR /
 ARG PKGNAME
 COPY --from=builder /go/src/github.com/apache/dubbo-admin/${PKGNAME} .

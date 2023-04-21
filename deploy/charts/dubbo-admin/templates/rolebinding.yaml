@@ -26,6 +26,8 @@ metadata:
   {{- end }}
   {{- with .Values.annotations }}
   annotations:
+    "helm.sh/hook": test-success
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"
     {{- toYaml . | nindent 4 }}
   {{- end }}
 roleRef:

@@ -77,7 +77,7 @@ func (s *AuthorityServiceImpl) CreateIdentity(
 
 	logger.Sugar().Infof("Success to sign certificate from csr. RemoteAddr: %s", p.Addr.String())
 
-	token, err := jwt.NewClaims(endpoint.SpiffeID, endpoint.ToString(), s.Options.CertValidity).Sign(s.CertStorage.GetAuthorityCert().PrivateKey)
+	token, err := jwt.NewClaims(endpoint.SpiffeID, endpoint.ToString(), endpoint.ID, s.Options.CertValidity).Sign(s.CertStorage.GetAuthorityCert().PrivateKey)
 	if err != nil {
 		logger.Sugar().Warnf("Failed to sign jwt token: %v. RemoteAddr: %s", err, p.Addr.String())
 

@@ -25,21 +25,10 @@ import (
 )
 
 var (
-	mutex   = &sync.Mutex{}
-	hasInit = false
-	logger  *zap.Logger
-	sugar   *zap.SugaredLogger
-)
-
-func Init() {
-	mutex.Lock()
-	defer mutex.Unlock()
-	if hasInit {
-		return
-	}
-	hasInit = true
-
-	encoder := zapcore.NewConsoleEncoder(
+	mutex      = &sync.Mutex{}
+	hasInit    = false
+	cmdHasInit = false
+	encoder    = zapcore.NewConsoleEncoder(
 		zapcore.EncoderConfig{
 			MessageKey:     "msg",
 			LevelKey:       "level",
@@ -53,6 +42,20 @@ func Init() {
 			EncodeCaller:   zapcore.ShortCallerEncoder,
 			EncodeDuration: zapcore.SecondsDurationEncoder,
 		})
+	logger    *zap.Logger
+	sugar     *zap.SugaredLogger
+	cmdLogger *zap.Logger
+	cmdSugar  *zap.SugaredLogger
+)
+
+func Init() {
+	mutex.Lock()
+	defer mutex.Unlock()
+	if hasInit {
+		return
+	}
+	hasInit = true
+
 	core := zapcore.NewCore(encoder, os.Stdout, zap.DebugLevel)
 	logger = zap.New(core)
 	defer logger.Sync() // flushes buffer, if any
@@ -60,6 +63,20 @@ func Init() {
 
 	// Make sure that log statements internal to gRPC library are logged using the zapLogger as well.
 	grpcZap.ReplaceGrpcLoggerV2(logger)
+}
+
+func InitCmdSugar(ws zapcore.WriteSyncer) {
+	mutex.Lock()
+	defer mutex.Unlock()
+	if cmdHasInit {
+		return
+	}
+	cmdHasInit = true
+
+	core := zapcore.NewCore(encoder, ws, zap.DebugLevel)
+	cmdLogger = zap.New(core)
+	defer cmdLogger.Sync() // flushes buffer, if any
+	cmdSugar = cmdLogger.Sugar()
 }
 
 func Sugar() *zap.SugaredLogger {
@@ -74,4 +91,11 @@ func Logger() *zap.Logger {
 		Init()
 	}
 	return logger
+}
+
+func CmdSugar() *zap.SugaredLogger {
+	if cmdSugar == nil {
+		InitCmdSugar(os.Stdout)
+	}
+	return cmdSugar
 }

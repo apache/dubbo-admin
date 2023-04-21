@@ -21,6 +21,8 @@ metadata:
     {{- include "dubbo-admin.labels" . | nindent 4 }}
   {{- with .Values.annotations }}
   annotations:
+    "helm.sh/hook": test-success
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"
     {{- toYaml . | nindent 4 }}
   {{- end }}
   name: {{ include "dubbo-admin.fullname" . }}-clusterrole

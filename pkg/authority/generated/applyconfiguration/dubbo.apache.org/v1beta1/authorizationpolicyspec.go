@@ -23,6 +23,7 @@ type AuthorizationPolicySpecApplyConfiguration struct {
 	Action    *string                                     `json:"action,omitempty"`
 	Rules     []AuthorizationPolicyRuleApplyConfiguration `json:"rules,omitempty"`
 	Samples   *float32                                    `json:"samples,omitempty"`
+	Order     *float32                                    `json:"order,omitempty"`
 	MatchType *string                                     `json:"matchType,omitempty"`
 }
 
@@ -58,6 +59,14 @@ func (b *AuthorizationPolicySpecApplyConfiguration) WithRules(values ...*Authori
 // If called multiple times, the Samples field is set to the value of the last call.
 func (b *AuthorizationPolicySpecApplyConfiguration) WithSamples(value float32) *AuthorizationPolicySpecApplyConfiguration {
 	b.Samples = &value
+	return b
+}
+
+// WithOrder sets the Order field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the Order field is set to the value of the last call.
+func (b *AuthorizationPolicySpecApplyConfiguration) WithOrder(value float32) *AuthorizationPolicySpecApplyConfiguration {
+	b.Order = &value
 	return b
 }
 

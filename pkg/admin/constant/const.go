@@ -59,6 +59,7 @@ const (
 	BalancingKey           = "balancing"
 	DefaultWeight          = 100
 	OwnerKey               = "owner"
+	Application            = "application"
 	Service                = "service"
 	Colon                  = ":"
 	InterrogationPoint     = "?"

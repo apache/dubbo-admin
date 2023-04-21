@@ -1,0 +1,473 @@
+---
+# Source: dubbo-admin/templates/pdb.yaml
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: dubbo-admin
+  namespace: dubbo-system
+  labels:
+    app.kubernetes.io/name: dubbo-admin
+    helm.sh/chart: dubbo-admin-0.5.0
+    app.kubernetes.io/instance: dubbo-admin
+    app.kubernetes.io/managed-by: Helm
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dubbo-admin
+      app.kubernetes.io/instance: dubbo-admin
+---
+# Source: dubbo-admin/templates/serviceaccount.yaml
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/name: dubbo-admin
+    helm.sh/chart: dubbo-admin-0.5.0
+    app.kubernetes.io/instance: dubbo-admin
+    app.kubernetes.io/managed-by: Helm
+  name: dubbo-admin
+  namespace: dubbo-system
+---
+# Source: dubbo-admin/templates/secret.yaml
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: dubbo-admin-secret
+  namespace: dubbo-system
+  labels:
+    app.kubernetes.io/name: dubbo-admin
+    helm.sh/chart: dubbo-admin-0.5.0
+    app.kubernetes.io/instance: dubbo-admin
+    app.kubernetes.io/managed-by: Helm
+type: Opaque
+data:
+  application.properties: YWRtaW4uY2hlY2suc2Vzc2lvblRpbWVvdXRNaWxsaTogMzYwMDAwMAphZG1pbi5jaGVjay5zaWduU2VjcmV0OiA4NjI5NWRkMGM0ZWY2OWExMDM2YjBiMGMxNTE1OGQ3NwphZG1pbi5jaGVjay50b2tlblRpbWVvdXRNaWxsaTogMzYwMDAwMAphZG1pbi5jb25maWctY2VudGVyOiB6b29rZWVwZXI6Ly96b29rZWVwZXI6MjE4MQphZG1pbi5tZXRhZGF0YS1yZXBvcnQuYWRkcmVzczogem9va2VlcGVyOi8vem9va2VlcGVyOjIxODEKYWRtaW4ucmVnaXN0cnkuYWRkcmVzczogem9va2VlcGVyOi8vem9va2VlcGVyOjIxODEKYWRtaW4ucm9vdC51c2VyLm5hbWU6IHJvb3QKYWRtaW4ucm9vdC51c2VyLnBhc3N3b3JkOiByb290CmR1YmJvLmFwcGxpY2F0aW9uLmxvZ2dlcjogc2xmNGoKZHViYm8uYXBwbGljYXRpb24ubmFtZTogZHViYm8tYWRtaW4KZHViYm8ucmVnaXN0cnkuYWRkcmVzczogJHthZG1pbi5yZWdpc3RyeS5hZGRyZXNzfQpteWJhdGlzLXBsdXMuZ2xvYmFsLWNvbmZpZy5kYi1jb25maWcuaWQtdHlwZTogbm9uZQpzZXJ2ZXIuY29tcHJlc3Npb24uZW5hYmxlZDogdHJ1ZQpzZXJ2ZXIuY29tcHJlc3Npb24ubWltZS10eXBlczogdGV4dC9jc3MsdGV4dC9qYXZhc2NyaXB0LGFwcGxpY2F0aW9uL2phdmFzY3JpcHQKc2VydmVyLmNvbXByZXNzaW9uLm1pbi1yZXNwb25zZS1zaXplOiAxMDI0MApzcHJpbmcuZGF0YXNvdXJjZS51cmw6IGpkYmM6aDI6bWVtOn4vZHViYm8tYWRtaW47TU9ERT1NWVNRTDsKc3ByaW5nLmRhdGFzb3VyY2UudXNlcm5hbWU6IHNh
+---
+# Source: dubbo-admin/templates/clusterrole.yaml
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: dubbo-admin
+    helm.sh/chart: dubbo-admin-0.5.0
+    app.kubernetes.io/instance: dubbo-admin
+    app.kubernetes.io/managed-by: Helm
+  name: dubbo-admin-clusterrole
+rules:
+  - apiGroups: # "" indicates the core API group
+      - ""
+    resources:
+      - configmaps
+      - secrets
+      - pods
+    verbs:
+      - get
+      - watch
+      - list
+  - apiGroups:
+      - "extensions"
+    resources:
+      - ingresses
+    verbs:
+      - get
+  - apiGroups:
+      - "apps"
+    resources:
+      - configmaps
+      - deployments
+      - services
+    verbs:
+      - get
+      - list
+      - watch
+---
+# Source: dubbo-admin/templates/clusterrolebinding.yaml
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dubbo-admin-clusterrolebinding
+  labels:
+    app.kubernetes.io/name: dubbo-admin
+    helm.sh/chart: dubbo-admin-0.5.0
+    app.kubernetes.io/instance: dubbo-admin
+    app.kubernetes.io/managed-by: Helm
+subjects:
+  - kind: ServiceAccount
+    name: dubbo-admin
+    namespace: dubbo-system
+roleRef:
+  kind: ClusterRole
+  name: dubbo-admin-clusterrole
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: dubbo-admin/templates/role.yaml
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: dubbo-admin
+  namespace: dubbo-system
+  labels:
+    app.kubernetes.io/name: dubbo-admin
+    helm.sh/chart: dubbo-admin-0.5.0
+    app.kubernetes.io/instance: dubbo-admin
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups:
+      - extensions
+    resources:
+      - podsecuritypolicies
+    verbs:
+      - use
+    resourceNames:
+      - dubbo-admin
+---
+# Source: dubbo-admin/templates/rolebinding.yaml
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: dubbo-admin
+  namespace: dubbo-system
+  labels:
+    app.kubernetes.io/name: dubbo-admin
+    helm.sh/chart: dubbo-admin-0.5.0
+    app.kubernetes.io/instance: dubbo-admin
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: dubbo-admin
+subjects:
+  - kind: ServiceAccount
+    name: dubbo-admin
+    namespace: dubbo-system
+---
+# Source: dubbo-admin/templates/svc-headless.yaml
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+apiVersion: v1
+kind: Service
+metadata:
+  name: dubbo-admin-headless
+  namespace: dubbo-system
+  labels:
+    app.kubernetes.io/name: dubbo-admin
+    helm.sh/chart: dubbo-admin-0.5.0
+    app.kubernetes.io/instance: dubbo-admin
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+    - name: service
+      port: 38080
+      protocol: TCP
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: dubbo-admin
+    app.kubernetes.io/instance: dubbo-admin
+---
+# Source: dubbo-admin/templates/svc.yaml
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+apiVersion: v1
+kind: Service
+metadata:
+  name: dubbo-admin
+  namespace: dubbo-system
+  labels:
+    app.kubernetes.io/name: dubbo-admin
+    helm.sh/chart: dubbo-admin-0.5.0
+    app.kubernetes.io/instance: dubbo-admin
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - name: service
+      port: 38080
+      protocol: TCP
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: dubbo-admin
+    app.kubernetes.io/instance: dubbo-admin
+---
+# Source: dubbo-admin/templates/deployment.yaml
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dubbo-admin
+  namespace: dubbo-system
+  labels:
+    app.kubernetes.io/name: dubbo-admin
+    helm.sh/chart: dubbo-admin-0.5.0
+    app.kubernetes.io/instance: dubbo-admin
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: dubbo-admin
+      app.kubernetes.io/instance: dubbo-admin
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: dubbo-admin
+        app.kubernetes.io/instance: dubbo-admin
+    spec:
+      serviceAccountName: dubbo-admin
+      containers:
+        - name: dubbo-admin
+          securityContext:
+            runAsNonRoot: false
+            runAsUser: 0
+          image: "apache/dubbo-admin:0.5.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - mountPath: /config
+              name: application-properties
+              readOnly: true
+            - mountPath: /storage
+              name: storage
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 60
+            timeoutSeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 60
+            timeoutSeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 60
+            timeoutSeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            {}
+      volumes:
+        - name: application-properties
+          secret:
+            secretName: dubbo-admin-secret
+        - name: storage
+---
+# Source: dubbo-admin/templates/ingress.yaml
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+# Source: dubbo-admin/templates/networkpolicy.yaml
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+# Source: dubbo-admin/templates/psp.yaml
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+# Source: dubbo-admin/templates/pvc.yaml
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.

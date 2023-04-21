@@ -144,6 +144,13 @@ type AuthorizationPolicySpec struct {
 	// +kubebuilder:validation:Maximum=100
 	// +kubebuilder:default=100
 	Samples float32 `json:"samples,omitempty"`
+	// The order of the rule.
+	// +optional
+	// +kubebuilder:validation:Type=number
+	// +kubebuilder:validation:Minimum=-2147483648
+	// +kubebuilder:validation:Maximum=2147483647
+	// +kubebuilder:default=0
+	Order float32 `json:"order,omitempty"`
 	// The match type of the rules.
 	// +optional
 	// +kubebuilder:validation:Type=string
@@ -191,6 +198,12 @@ type AuthorizationPolicySource struct {
 }
 
 type AuthorizationPolicyTarget struct {
+	// The namespaces to match of the source workload.
+	// +optional
+	Namespaces []string `json:"namespaces,omitempty"`
+	// The namespaces not to match of the source workload.
+	// +optional
+	NotNamespaces []string `json:"notNamespaces,omitempty"`
 	// The IP addresses to match of the destination workload.
 	// +optional
 	IpBlocks []string `json:"ipBlocks,omitempty"`

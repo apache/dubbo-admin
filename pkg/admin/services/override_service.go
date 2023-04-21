@@ -19,7 +19,7 @@ import "github.com/apache/dubbo-admin/pkg/admin/model"
 
 type OverrideService interface {
 	SaveOverride(override *model.DynamicConfig) error
-	UpdateOverride(overrideDTO *model.DynamicConfig) error
+	UpdateOverride(update *model.DynamicConfig) error
 	DisableOverride(id string) error
 	FindOverride(id string) (*model.DynamicConfig, error)
 	EnableOverride(id string) error

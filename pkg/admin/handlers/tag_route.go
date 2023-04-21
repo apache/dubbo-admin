@@ -27,7 +27,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var tagRouteService services.TagRoutesService = &services.TagRoutesServiceImpl{
+var routeService services.RouteService = &services.RouteServiceImpl{
 	GovernanceConfig: &config.GovernanceConfigImpl{},
 }
 
@@ -38,7 +38,7 @@ func CreateRule(c *gin.Context) {
 		panic(err)
 	}
 
-	err = tagRouteService.CreateTagRoute(tagRouteDto)
+	err = routeService.CreateTagRoute(tagRouteDto)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -61,7 +61,7 @@ func UpdateRule(c *gin.Context) {
 	id := c.Param("id")
 	id = strings.ReplaceAll(id, "*", "/")
 
-	_, err = tagRouteService.FindTagRoute(id)
+	_, err = routeService.FindTagRoute(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -69,7 +69,7 @@ func UpdateRule(c *gin.Context) {
 		return
 	}
 
-	err = tagRouteService.UpdateTagRoute(tagRouteDto)
+	err = routeService.UpdateTagRoute(tagRouteDto)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -86,7 +86,7 @@ func UpdateRule(c *gin.Context) {
 func SearchRoutes(c *gin.Context) {
 	application := c.Query("application")
 
-	tagRoute, err := tagRouteService.FindTagRoute(application)
+	tagRoute, err := routeService.FindTagRoute(application)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -103,7 +103,7 @@ func DetailRoute(c *gin.Context) {
 	id := c.Param("id")
 	id = strings.ReplaceAll(id, "*", "/")
 
-	tagRoute, err := tagRouteService.FindTagRoute(id)
+	tagRoute, err := routeService.FindTagRoute(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -120,7 +120,7 @@ func DeleteRoute(c *gin.Context) {
 	id := c.Param("id")
 	id = strings.ReplaceAll(id, "*", "/")
 
-	err := tagRouteService.DeleteTagRoute(id)
+	err := routeService.DeleteTagRoute(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -137,7 +137,7 @@ func EnableRoute(c *gin.Context) {
 	id := c.Param("id")
 	id = strings.ReplaceAll(id, "*", "/")
 
-	err := tagRouteService.EnableTagRoute(id)
+	err := routeService.EnableTagRoute(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -154,7 +154,7 @@ func DisableRoute(c *gin.Context) {
 	id := c.Param("id")
 	id = strings.ReplaceAll(id, "*", "/")
 
-	err := tagRouteService.DisableTagRoute(id)
+	err := routeService.DisableTagRoute(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),

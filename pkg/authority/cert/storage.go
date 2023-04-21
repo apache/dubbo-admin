@@ -162,16 +162,18 @@ func (s *storageImpl) RefreshServerCert() {
 		}
 
 		time.Sleep(time.Duration(interval) * time.Millisecond)
-		s.mutex.Lock()
-		if s.authorityCert == nil || !s.authorityCert.IsValid() {
-			// ignore if authority cert is invalid
-			continue
-		}
-		if s.serverCerts == nil || !s.serverCerts.IsValid() {
-			logger.Sugar().Infof("Server cert is invalid, refresh it.")
-			s.serverCerts = SignServerCert(s.authorityCert, s.serverNames, s.certValidity)
-		}
-		s.mutex.Unlock()
+		func() {
+			s.mutex.Lock()
+			defer s.mutex.Unlock()
+			if s.authorityCert == nil || !s.authorityCert.IsValid() {
+				// ignore if authority cert is invalid
+				return
+			}
+			if s.serverCerts == nil || !s.serverCerts.IsValid() {
+				logger.Sugar().Infof("Server cert is invalid, refresh it.")
+				s.serverCerts = SignServerCert(s.authorityCert, s.serverNames, s.certValidity)
+			}
+		}()
 	}
 }
 

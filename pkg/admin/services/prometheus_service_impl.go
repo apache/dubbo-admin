@@ -17,8 +17,10 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/prometheus/client_golang/api"
@@ -27,14 +29,101 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
+	"github.com/apache/dubbo-admin/pkg/admin/util"
 	"github.com/apache/dubbo-admin/pkg/logger"
 	"github.com/apache/dubbo-admin/pkg/monitor/prometheus"
 )
 
+var (
+	providerService     ProviderService = &ProviderServiceImpl{}
+	consumerService     ConsumerService = &ConsumerServiceImpl{}
+	providerServiceImpl                 = &ProviderServiceImpl{}
+)
+
 type PrometheusServiceImpl struct{}
 
+func (p *PrometheusServiceImpl) PromDiscovery(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	// Reduce the call chain and improve performance.
+	proAddr, err := providerServiceImpl.findAddresses()
+	if err != nil {
+		logger.Sugar().Errorf("Error provider findAddresses: %v\n", err)
+		return err
+	}
+	var targets []string
+	for i := 0; i < len(proAddr); i++ {
+		targets = append(targets, util.GetDiscoveryPath(proAddr[i]))
+	}
+	filterCon := make(map[string]string)
+	filterCon[constant.CategoryKey] = constant.ConsumersCategory
+	servicesMap, err := util.FilterFromCategory(filterCon)
+	if err != nil {
+		logger.Sugar().Errorf("Error filter category: %v\n", err)
+		return err
+	}
+	for _, url := range servicesMap {
+		targets = append(targets, util.GetDiscoveryPath(url.Location))
+	}
+	target := []model.Target{
+		{
+			Targets: targets,
+			Labels:  map[string]string{},
+		},
+	}
+	err = json.NewEncoder(w).Encode(target)
+	return err
+}
+
 func (p *PrometheusServiceImpl) ClusterMetrics() ([]model.Response, error) {
-	return nil, nil
+	res := make([]model.Response, 5)
+	applications, err := providerService.FindApplications()
+	appNum := 0
+	if err != nil {
+		logger.Sugar().Errorf("Error find applications: %v\n", err)
+		res[0].Status = http.StatusInternalServerError
+		res[0].Data = ""
+	} else {
+		appNum = len(applications)
+		res[0].Status = http.StatusOK
+		res[0].Data = strconv.Itoa(appNum)
+	}
+	services, err := providerService.FindServices()
+	svc := 0
+	if err != nil {
+		logger.Sugar().Errorf("Error find services: %v\n", err)
+		res[1].Status = http.StatusInternalServerError
+		res[1].Data = ""
+	} else {
+		svc = len(services)
+		res[1].Status = http.StatusOK
+		res[1].Data = strconv.Itoa(svc)
+	}
+	providers, err := providerService.FindService(constant.IP, constant.AnyValue)
+	pro := 0
+	if err != nil {
+		logger.Sugar().Errorf("Error find providers: %v\n", err)
+		res[2].Status = http.StatusInternalServerError
+		res[2].Data = ""
+	} else {
+		pro = len(providers)
+		res[2].Status = http.StatusOK
+		res[2].Data = strconv.Itoa(pro)
+	}
+	consumers, err := consumerService.FindAll()
+	con := 0
+	if err != nil {
+		logger.Sugar().Errorf("Error find consumers: %v\n", err)
+		res[3].Status = http.StatusInternalServerError
+		res[3].Data = ""
+	} else {
+		con = len(consumers)
+		res[3].Status = http.StatusOK
+		res[3].Data = strconv.Itoa(con)
+	}
+	allInstance := pro + con
+	res[5].Status = http.StatusOK
+	res[5].Data = strconv.Itoa(allInstance)
+	return res, nil
 }
 
 func (p *PrometheusServiceImpl) FlowMetrics() ([]model.Response, error) {

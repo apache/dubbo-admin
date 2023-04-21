@@ -19,3 +19,8 @@ type Response struct {
 	Status int    `json:"status"`
 	Data   string `json:"data"`
 }
+
+type Target struct {
+	Targets []string          `json:"targets"`
+	Labels  map[string]string `json:"labels"`
+}

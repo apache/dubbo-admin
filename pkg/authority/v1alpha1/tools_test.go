@@ -172,7 +172,7 @@ func TestJwt(t *testing.T) {
 	assert.NotNil(t, err)
 
 	// invalid jwt data
-	token, err := jwt.NewClaims("123", "123", 60*1000).Sign(storage.GetAuthorityCert().PrivateKey)
+	token, err := jwt.NewClaims("123", "123", "test", 60*1000).Sign(storage.GetAuthorityCert().PrivateKey)
 	assert.Nil(t, err)
 
 	md["authorization"] = []string{"Bearer " + token}
@@ -191,7 +191,7 @@ func TestJwt(t *testing.T) {
 			Namespace: "default",
 		},
 	}
-	token, err = jwt.NewClaims(originEndpoint.SpiffeID, originEndpoint.ToString(), 60*1000).Sign(storage.GetAuthorityCert().PrivateKey)
+	token, err = jwt.NewClaims(originEndpoint.SpiffeID, originEndpoint.ToString(), "test", 60*1000).Sign(storage.GetAuthorityCert().PrivateKey)
 	assert.Nil(t, err)
 
 	md["authorization"] = []string{"Bearer " + token}

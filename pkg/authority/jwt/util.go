@@ -26,6 +26,7 @@ import (
 const (
 	IssuerKey     = "iss"
 	SubjectKey    = "sub"
+	CommonNameKey = "cn"
 	ExpireKey     = "exp"
 	ExtensionsKey = "ext"
 )
@@ -33,14 +34,16 @@ const (
 type Claims struct {
 	Subject    string
 	Extensions string
+	CommonName string
 	ExpireTime int64
 }
 
-func NewClaims(subject, extensions string, cardinality int64) *Claims {
+func NewClaims(subject, extensions, commonName string, cardinality int64) *Claims {
 	return &Claims{
 		Subject:    subject,
 		Extensions: extensions,
-		ExpireTime: time.Now().Add(time.Duration(cardinality) * time.Millisecond).UnixMilli(),
+		CommonName: commonName,
+		ExpireTime: time.Now().Add(time.Duration(cardinality) * time.Millisecond).Unix(),
 	}
 }
 
@@ -48,6 +51,7 @@ func (t *Claims) Sign(pri *ecdsa.PrivateKey) (string, error) {
 	return jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{
 		IssuerKey:     "dubbo-authority",
 		SubjectKey:    t.Subject,
+		CommonNameKey: t.CommonName,
 		ExpireKey:     t.ExpireTime,
 		ExtensionsKey: t.Extensions,
 	}).SignedString(pri)
@@ -67,6 +71,7 @@ func Verify(pub *ecdsa.PublicKey, token string) (*Claims, error) {
 	return &Claims{
 		Subject:    claims.Claims.(jwt.MapClaims)[SubjectKey].(string),
 		Extensions: claims.Claims.(jwt.MapClaims)[ExtensionsKey].(string),
+		CommonName: claims.Claims.(jwt.MapClaims)[CommonNameKey].(string),
 		ExpireTime: int64(claims.Claims.(jwt.MapClaims)[ExpireKey].(float64)),
 	}, nil
 }

@@ -33,7 +33,7 @@ func TestGenerate(t *testing.T) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	assert.Nil(t, err)
 
-	token, err := jwt.NewClaims("test", "test", 60*1000).Sign(key)
+	token, err := jwt.NewClaims("test", "test", "test123", 60*1000).Sign(key)
 	assert.Nil(t, err)
 
 	claims, err := jwt.Verify(&key.PublicKey, token)
@@ -42,6 +42,7 @@ func TestGenerate(t *testing.T) {
 
 	assert.NotNil(t, claims)
 	assert.Equal(t, "test", claims.Subject)
+	assert.Equal(t, "test123", claims.CommonName)
 	assert.Equal(t, "test", claims.Extensions)
 }
 
