@@ -229,4 +229,3 @@ require (
 	sigs.k8s.io/kustomize/kyaml v0.13.9 // indirect
 )
 
-replace dubbo.apache.org/dubbo-go/v3 => /Users/ken/aliware/dubbo3/golang/dubbo-go
