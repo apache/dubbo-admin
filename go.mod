@@ -19,7 +19,7 @@ module github.com/apache/dubbo-admin
 go 1.18
 
 require (
-	dubbo.apache.org/dubbo-go/v3 v3.0.2
+	dubbo.apache.org/dubbo-go/v3 v3.0.6-0.20230418092059-4b13d2b8637a
 	github.com/dubbogo/gost v1.13.2
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/gin-gonic/gin v1.8.2
@@ -228,4 +228,3 @@ require (
 	sigs.k8s.io/kustomize/api v0.12.1 // indirect
 	sigs.k8s.io/kustomize/kyaml v0.13.9 // indirect
 )
-
