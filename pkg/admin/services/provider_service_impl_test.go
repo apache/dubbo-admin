@@ -254,7 +254,7 @@ func TestProviderServiceImpl_FindService(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    []*model.Provider
+		want    []*model.ServiceDTO
 		wantErr bool
 	}{
 		{
@@ -263,7 +263,7 @@ func TestProviderServiceImpl_FindService(t *testing.T) {
 				pattern: "ip",
 				filter:  "test",
 			},
-			want:    nil,
+			want:    make([]*model.ServiceDTO, 0),
 			wantErr: false,
 		},
 	}

@@ -74,9 +74,13 @@ var (
 )
 
 func LoadConfig() {
-	path, err := filepath.Abs(conf)
+	configPath := conf
+	if configPathFromEnv := os.Getenv(constant.ConfigFileEnvKey); configPathFromEnv != "" {
+		configPath = configPathFromEnv
+	}
+	path, err := filepath.Abs(configPath)
 	if err != nil {
-		path = filepath.Clean(conf)
+		path = filepath.Clean(configPath)
 	}
 	content, err := os.ReadFile(path)
 	if err != nil {

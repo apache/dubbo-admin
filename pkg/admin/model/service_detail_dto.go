@@ -15,10 +15,10 @@
 
 package model
 
-type ServiceDetail struct {
-	Providers   []*Provider
-	Consumers   []*Consumer
-	Service     string
-	Application string
-	Metadata    string
+type ServiceDetailDTO struct {
+	Providers   []*Provider `json:"providers"`
+	Consumers   []*Consumer `json:"consumers"`
+	Service     string      `json:"service"`
+	Application string      `json:"application"`
+	Metadata    interface{} `json:"metadata"`
 }
