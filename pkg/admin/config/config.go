@@ -29,8 +29,8 @@ import (
 	"dubbo.apache.org/dubbo-go/v3/config_center"
 	"dubbo.apache.org/dubbo-go/v3/metadata/report"
 	"dubbo.apache.org/dubbo-go/v3/registry"
+	"github.com/glebarez/sqlite"
 	"gorm.io/driver/mysql"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
@@ -192,7 +192,7 @@ func loadDatabaseConfig(dsn string) {
 	var db *gorm.DB
 	var err error
 	if dsn == "" {
-		db, err = gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+		db, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
 	} else {
 		db, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 	}
