@@ -106,8 +106,8 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
         - name: application-properties
-          secret:
-            secretName: {{ include "dubbo-admin.fullname" . }}-secret
+          configMap:
+            name: {{ include "dubbo-admin.fullname" . }}-config
         - name: storage
              {{- if .Values.persistence.enabled }}
           persistentVolumeClaim:
