@@ -63,14 +63,7 @@ func TestManifestGenerate(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		var out bytes.Buffer
-		args := strings.Split(test.cmd, " ")
-		rootCmd := getRootCmd(args)
-		rootCmd.SetOut(&out)
-		if err := rootCmd.Execute(); err != nil {
-			t.Errorf("execute\n%s failed, err: %s", test.cmd, err)
-			return
-		}
+		testExecute(t, test.cmd)
 		// remove temporary dir
 		if test.temp != "" {
 			os.RemoveAll(test.temp)
@@ -93,13 +86,74 @@ func TestManifestInstall(t *testing.T) {
 	cmd.TestCli = fake.NewClientBuilder().Build()
 
 	for _, test := range tests {
-		var out bytes.Buffer
-		args := strings.Split(test.cmd, " ")
-		rootCmd := getRootCmd(args)
-		rootCmd.SetOut(&out)
-		if err := rootCmd.Execute(); err != nil {
-			t.Error(err)
-			return
+		testExecute(t, test.cmd)
+	}
+}
+
+func TestManifestUninstall(t *testing.T) {
+	tests := []struct {
+		desc string
+		// cmd has been executed before
+		before string
+		cmd    string
+	}{
+		{
+			desc:   "without any flag",
+			before: "manifest install",
+			cmd:    "manifest uninstall",
+		},
+	}
+	// For now, we do not use envTest to do black box testing
+	cmd.TestInstallFlag = true
+	cmd.TestCli = fake.NewClientBuilder().Build()
+
+	for _, test := range tests {
+		// prepare existing resources
+		testExecute(t, test.before)
+		testExecute(t, test.cmd)
+	}
+}
+
+func TestManifestDiff(t *testing.T) {
+	tests := []struct {
+		desc    string
+		befores []string
+		cmd     string
+		temps   []string
+	}{
+		{
+			desc: "compare two dirs",
+			befores: []string{
+				"manifest generate -f ./testdata/diff/profileA.yaml -o ./testdata/tempA",
+				"manifest generate -f ./testdata/diff/profileB.yaml -o ./testdata/tempB",
+			},
+			cmd: "manifest diff ./testdata/tempA ./testdata/tempB --compareDir=true",
+			temps: []string{
+				"./testdata/tempA",
+				"./testdata/tempB",
+			},
+		},
+	}
+	for _, test := range tests {
+		for _, before := range test.befores {
+			testExecute(t, before)
 		}
+		testExecute(t, test.cmd)
+		for _, temp := range test.temps {
+			if temp != "" {
+				os.RemoveAll(temp)
+			}
+		}
+	}
+}
+
+func testExecute(t *testing.T, cmd string) {
+	var out bytes.Buffer
+	args := strings.Split(cmd, " ")
+	rootCmd := getRootCmd(args)
+	rootCmd.SetOut(&out)
+	if err := rootCmd.Execute(); err != nil {
+		t.Errorf("execute %s failed, err: %s", cmd, err)
+		return
 	}
 }

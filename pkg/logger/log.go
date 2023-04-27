@@ -45,8 +45,20 @@ var (
 	logger    *zap.Logger
 	sugar     *zap.SugaredLogger
 	cmdLogger *zap.Logger
-	cmdSugar  *zap.SugaredLogger
+	cmdSugar  *CmdSugarLogger
 )
+
+// CmdSugarLogger wraps zap.SugaredLogger and zapcore.WriteSyncer in order to use Sugar
+// while being able to use low-level writers.
+type CmdSugarLogger struct {
+	*zap.SugaredLogger
+	// wrap ws to print directly
+	ws zapcore.WriteSyncer
+}
+
+func (log *CmdSugarLogger) Print(s string) {
+	_, _ = log.ws.Write([]byte(s))
+}
 
 func Init() {
 	mutex.Lock()
@@ -76,7 +88,10 @@ func InitCmdSugar(ws zapcore.WriteSyncer) {
 	core := zapcore.NewCore(encoder, ws, zap.DebugLevel)
 	cmdLogger = zap.New(core)
 	defer cmdLogger.Sync() // flushes buffer, if any
-	cmdSugar = cmdLogger.Sugar()
+	cmdSugar = &CmdSugarLogger{
+		SugaredLogger: cmdLogger.Sugar(),
+		ws:            ws,
+	}
 }
 
 func Sugar() *zap.SugaredLogger {
@@ -93,7 +108,7 @@ func Logger() *zap.Logger {
 	return logger
 }
 
-func CmdSugar() *zap.SugaredLogger {
+func CmdSugar() *CmdSugarLogger {
 	if cmdSugar == nil {
 		InitCmdSugar(os.Stdout)
 	}

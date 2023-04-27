@@ -1,30 +1,17 @@
-# Licensed to the Apache Software Foundation (ASF) under one or more
-# contributor license agreements.  See the NOTICE file distributed with
-# this work for additional information regarding copyright ownership.
-# The ASF licenses this file to You under the Apache License, Version 2.0
-# (the "License"); you may not use this file except in compliance with
-# the License.  You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: grafana
-  namespace: dubbo-system
-  labels:
-    helm.sh/chart: grafana-6.52.4
-    app.kubernetes.io/name: grafana
-    app.kubernetes.io/instance: grafana
-    app.kubernetes.io/version: "9.4.3"
-    app.kubernetes.io/managed-by: Helm
 data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - access: proxy
+      editable: true
+      isDefault: true
+      jsonData:
+        timeInterval: 5s
+      name: Prometheus
+      orgId: 1
+      type: prometheus
+      url: http://prometheus:9090
   grafana.ini: |
     [analytics]
     check_for_updates = true
@@ -39,171 +26,174 @@ data:
     provisioning = /etc/grafana/provisioning
     [server]
     domain = ''
-  datasources.yaml: |
-    apiVersion: 1
-    datasources:
-    - access: proxy
-      editable: true
-      isDefault: true
-      jsonData:
-        timeInterval: 5s
-      name: Prometheus
-      orgId: 1
-      type: prometheus
-      url: http://prometheus:9090
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 9.4.3
+    helm.sh/chart: grafana-6.52.4
+  name: grafana
+  namespace: dubbo-system
+
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  labels:
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 9.4.3
+    helm.sh/chart: grafana-6.52.4
   name: grafana
   namespace: dubbo-system
-  labels:
-    helm.sh/chart: grafana-6.52.4
-    app.kubernetes.io/name: grafana
-    app.kubernetes.io/instance: grafana
-    app.kubernetes.io/version: "9.4.3"
-    app.kubernetes.io/managed-by: Helm
 spec:
   replicas: 1
   revisionHistoryLimit: 10
   selector:
     matchLabels:
-      app.kubernetes.io/name: grafana
       app.kubernetes.io/instance: grafana
+      app.kubernetes.io/name: grafana
   strategy:
     type: RollingUpdate
   template:
     metadata:
-      labels:
-        app.kubernetes.io/name: grafana
-        app.kubernetes.io/instance: grafana
       annotations:
         checksum/config: 0c27d16dbbabad20d998414abcdfc495b6010b53d06681fa1027b0d09f2c21c8
         checksum/dashboards-json-config: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
         checksum/sc-dashboard-provider-config: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
         checksum/secret: .*
+      labels:
+        app.kubernetes.io/instance: grafana
+        app.kubernetes.io/name: grafana
     spec:
-      serviceAccountName: grafana
       automountServiceAccountToken: true
+      containers:
+      - env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: GF_SECURITY_ADMIN_USER
+          valueFrom:
+            secretKeyRef:
+              key: admin-user
+              name: grafana
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: admin-password
+              name: grafana
+        - name: GF_PATHS_DATA
+          value: /var/lib/grafana/
+        - name: GF_PATHS_LOGS
+          value: /var/log/grafana
+        - name: GF_PATHS_PLUGINS
+          value: /var/lib/grafana/plugins
+        - name: GF_PATHS_PROVISIONING
+          value: /etc/grafana/provisioning
+        image: grafana/grafana:9.4.3
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 10
+          httpGet:
+            path: /api/health
+            port: 3000
+          initialDelaySeconds: 60
+          timeoutSeconds: 30
+        name: grafana
+        ports:
+        - containerPort: 3000
+          name: grafana
+          protocol: TCP
+        - containerPort: 9094
+          name: gossip-tcp
+          protocol: TCP
+        - containerPort: 9094
+          name: gossip-udp
+          protocol: UDP
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 3000
+        volumeMounts:
+        - mountPath: /etc/grafana/grafana.ini
+          name: config
+          subPath: grafana.ini
+        - mountPath: /var/lib/grafana
+          name: storage
+        - mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
+          name: config
+          subPath: datasources.yaml
+      enableServiceLinks: true
       securityContext:
         fsGroup: 472
         runAsGroup: 472
         runAsUser: 472
-      enableServiceLinks: true
-      containers:
-        - name: grafana
-          image: "grafana/grafana:9.4.3"
-          imagePullPolicy: IfNotPresent
-          volumeMounts:
-            - name: config
-              mountPath: "/etc/grafana/grafana.ini"
-              subPath: grafana.ini
-            - name: storage
-              mountPath: "/var/lib/grafana"
-            - name: config
-              mountPath: "/etc/grafana/provisioning/datasources/datasources.yaml"
-              subPath: "datasources.yaml"
-          ports:
-            - name: grafana
-              containerPort: 3000
-              protocol: TCP
-            - name: gossip-tcp
-              containerPort: 9094
-              protocol: TCP
-            - name: gossip-udp
-              containerPort: 9094
-              protocol: UDP
-          env:
-            - name: POD_IP
-              valueFrom:
-                fieldRef:
-                  fieldPath: status.podIP
-            - name: GF_SECURITY_ADMIN_USER
-              valueFrom:
-                secretKeyRef:
-                  name: grafana
-                  key: admin-user
-            - name: GF_SECURITY_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: grafana
-                  key: admin-password
-            - name: GF_PATHS_DATA
-              value: /var/lib/grafana/
-            - name: GF_PATHS_LOGS
-              value: /var/log/grafana
-            - name: GF_PATHS_PLUGINS
-              value: /var/lib/grafana/plugins
-            - name: GF_PATHS_PROVISIONING
-              value: /etc/grafana/provisioning
-          livenessProbe:
-            failureThreshold: 10
-            httpGet:
-              path: /api/health
-              port: 3000
-            initialDelaySeconds: 60
-            timeoutSeconds: 30
-          readinessProbe:
-            httpGet:
-              path: /api/health
-              port: 3000
+      serviceAccountName: grafana
       volumes:
-        - name: config
-          configMap:
-            name: grafana
-        - name: storage
-          emptyDir: {}
+      - configMap:
+          name: grafana
+        name: config
+      - emptyDir: {}
+        name: storage
+
 ---
 apiVersion: v1
+data:
+  admin-password: .*
+  admin-user: YWRtaW4=
+  ldap-toml: ""
 kind: Secret
 metadata:
+  labels:
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 9.4.3
+    helm.sh/chart: grafana-6.52.4
   name: grafana
   namespace: dubbo-system
-  labels:
-    helm.sh/chart: grafana-6.52.4
-    app.kubernetes.io/name: grafana
-    app.kubernetes.io/instance: grafana
-    app.kubernetes.io/version: "9.4.3"
-    app.kubernetes.io/managed-by: Helm
 type: Opaque
-data:
-  admin-user: "YWRtaW4="
-  admin-password: ".*"
-  ldap-toml: ""
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
+  labels:
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 9.4.3
+    helm.sh/chart: grafana-6.52.4
   name: grafana
   namespace: dubbo-system
-  labels:
-    helm.sh/chart: grafana-6.52.4
-    app.kubernetes.io/name: grafana
-    app.kubernetes.io/instance: grafana
-    app.kubernetes.io/version: "9.4.3"
-    app.kubernetes.io/managed-by: Helm
 spec:
-  type: ClusterIP
   ports:
-    - name: service
-      port: 3000
-      protocol: TCP
-      targetPort: 3000
+  - name: service
+    port: 3000
+    protocol: TCP
+    targetPort: 3000
   selector:
-    app.kubernetes.io/name: grafana
     app.kubernetes.io/instance: grafana
+    app.kubernetes.io/name: grafana
+  type: ClusterIP
+
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   labels:
-    helm.sh/chart: grafana-6.52.4
-    app.kubernetes.io/name: grafana
     app.kubernetes.io/instance: grafana
-    app.kubernetes.io/version: "9.4.3"
     app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 9.4.3
+    helm.sh/chart: grafana-6.52.4
   name: grafana
   namespace: dubbo-system
+
 ---
 apiVersion: v1
 data:
@@ -4571,4 +4561,5 @@ metadata:
   creationTimestamp: null
   name: admin-extra-dashboards
   namespace: dubbo-system
+
 ---

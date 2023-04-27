@@ -16,41 +16,36 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: zipkin
   labels:
-    helm.sh/chart: zipkin-0.3.0
-    app.kubernetes.io/name: zipkin
     app.kubernetes.io/instance: zipkin
-    app.kubernetes.io/version: "2.23.16"
     app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: zipkin
+    app.kubernetes.io/version: 2.23.16
+    helm.sh/chart: zipkin-0.3.0
+  name: zipkin
+  namespace: dubbo-system
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: zipkin
       app.kubernetes.io/instance: zipkin
+      app.kubernetes.io/name: zipkin
   template:
     metadata:
       annotations:
         sidecar.istio.io/inject: "false"
       labels:
-        app.kubernetes.io/name: zipkin
         app.kubernetes.io/instance: zipkin
+        app.kubernetes.io/name: zipkin
     spec:
       automountServiceAccountToken: false
-      serviceAccountName: zipkin
-      securityContext: {}
       containers:
-        - name: zipkin
-          securityContext:
-            readOnlyRootFilesystem: true
-            runAsNonRoot: true
-            runAsUser: 1000
-          image: "openzipkin/zipkin-slim:2.23.16"
-          env:
+        - env:
             - name: STORAGE_TYPE
-              value: "mem"
+              value: mem
+          image: openzipkin/zipkin-slim:2.23.16
           imagePullPolicy: IfNotPresent
+          name: zipkin
           readinessProbe:
             httpGet:
               path: /health
@@ -64,36 +59,47 @@ spec:
             requests:
               cpu: 100m
               memory: 128Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1000
+      securityContext: {}
+      serviceAccountName: zipkin
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: zipkin
   labels:
-    helm.sh/chart: zipkin-0.3.0
-    app.kubernetes.io/name: zipkin
     app.kubernetes.io/instance: zipkin
-    app.kubernetes.io/version: "2.23.16"
     app.kubernetes.io/managed-by: Helm
-spec:
-  type: ClusterIP
-  ports:
-    - port: 9411
-      targetPort: 9411
-      protocol: TCP
-      name: http-query
-  selector:
     app.kubernetes.io/name: zipkin
+    app.kubernetes.io/version: 2.23.16
+    helm.sh/chart: zipkin-0.3.0
+  name: zipkin
+  namespace: dubbo-system
+spec:
+  ports:
+    - name: http-query
+      port: 9411
+      protocol: TCP
+      targetPort: 9411
+  selector:
     app.kubernetes.io/instance: zipkin
+    app.kubernetes.io/name: zipkin
+  type: ClusterIP
+
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: zipkin
   labels:
-    helm.sh/chart: zipkin-0.3.0
-    app.kubernetes.io/name: zipkin
     app.kubernetes.io/instance: zipkin
-    app.kubernetes.io/version: "2.23.16"
     app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: zipkin
+    app.kubernetes.io/version: 2.23.16
+    helm.sh/chart: zipkin-0.3.0
+  name: zipkin
+  namespace: dubbo-system
+
 ---

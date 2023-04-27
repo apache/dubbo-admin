@@ -18,6 +18,7 @@ package operator
 import (
 	"errors"
 	"fmt"
+	"github.com/apache/dubbo-admin/pkg/logger"
 
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/kube"
 
@@ -65,9 +66,26 @@ func (do *DubboOperator) ApplyManifest(manifestMap map[ComponentName]string) err
 		return errors.New("no injected k8s cli into DubboOperator")
 	}
 	for name, manifest := range manifestMap {
+		logger.CmdSugar().Infof("Start applying component %s\n", name)
 		if err := do.kubeCli.ApplyManifest(manifest, do.spec.Namespace); err != nil {
 			return fmt.Errorf("component %s ApplyManifest err: %v", name, err)
 		}
+		logger.CmdSugar().Infof("Applying component %s successfully\n", name)
+	}
+	return nil
+}
+
+// RemoveManifest removes resources represented by component manifests
+func (do *DubboOperator) RemoveManifest(manifestMap map[ComponentName]string) error {
+	if do.kubeCli == nil {
+		return errors.New("no injected k8s cli into DubboOperator")
+	}
+	for name, manifest := range manifestMap {
+		logger.CmdSugar().Infof("Start removing component %s\n", name)
+		if err := do.kubeCli.RemoveManifest(manifest, do.spec.Namespace); err != nil {
+			return fmt.Errorf("component %s RemoveManifest err: %v", name, err)
+		}
+		logger.CmdSugar().Infof("Removing component %s successfully\n", name)
 	}
 	return nil
 }

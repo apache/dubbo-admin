@@ -27,6 +27,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/yamlfmt v0.9.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
+	github.com/kylelemons/godebug v1.1.0
 	github.com/mattbaird/jsonpatch v0.0.0-20200820163806-098863c1fc24
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/common v0.37.0
