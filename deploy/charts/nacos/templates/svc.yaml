@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if .Values.enabled }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -41,4 +40,3 @@ spec:
       nodePort: {{ .Values.service.nodePort }}
   {{- end }}
   selector: {{- include "nacos.matchLabels" . | nindent 4 }}
-  {{- end }}

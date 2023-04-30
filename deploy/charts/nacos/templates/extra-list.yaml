@@ -13,19 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if eq .Values.storage.type "mysql"}}
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ template "nacos.fullname" . }}-configmap
-  namespace: {{ template "nacos.namespace" . }}
-data:
-  {{- with .Values.storage.db }}
-  mysql.db.host: {{ .host }}
-  mysql.db.name: {{ .name }}
-  mysql.port: "{{ .port | default 3306 }}"
-  mysql.user: {{ .username }}
-  mysql.password: {{ .password }}
-  mysql.param: {{ .param | default "characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false" }}
-  {{- end }}
-  {{- end }}
+{{- range .Values.extraDeploy }}
+---
+{{ include "tplvalues.render" (dict "value" . "context" $) }}
+{{- end }}

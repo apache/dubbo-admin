@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if .Values.enabled }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -97,10 +96,9 @@ spec:
             {{- if eq .Values.global.mode "standalone" }}
             - name: MODE
               value: "standalone"
-
             {{- else if eq .Values.global.mode "cluster" }}
             - name: SERVICE_NAME
-              value: "nacos-hs"
+              value: "nacos-headless"
             - name: DOMAIN_NAME
               value: {{ .Values.domainName | quote }}
             - name: POD_NAMESPACE
@@ -115,32 +113,32 @@ spec:
             - name: MYSQL_SERVICE_HOST
               valueFrom:
                 configMapKeyRef:
-                  name: nacos-cm
+                  name: nacos-configmap
                   key: mysql.db.host
             - name: MYSQL_SERVICE_DB_NAME
               valueFrom:
                 configMapKeyRef:
-                  name: nacos-cm
+                  name: nacos-configmap
                   key: mysql.db.name
             - name: MYSQL_SERVICE_PORT
               valueFrom:
                 configMapKeyRef:
-                  name: nacos-cm
+                  name: nacos-configmap
                   key: mysql.port
             - name: MYSQL_SERVICE_USER
               valueFrom:
                 configMapKeyRef:
-                  name: nacos-cm
+                  name: nacos-configmap
                   key: mysql.user
             - name: MYSQL_SERVICE_PASSWORD
               valueFrom:
                 configMapKeyRef:
-                  name: nacos-cm
+                  name: nacos-configmap
                   key: mysql.password
             - name: MYSQL_SERVICE_DB_PARAM
               valueFrom:
                 configMapKeyRef:
-                  name: nacos-cm
+                  name: nacos-configmap
                   key: mysql.param
             {{- else }}
             - name: EMBEDDED_STORAGE
@@ -156,7 +154,7 @@ spec:
             - name: data
               mountPath: /home/nacos/logs
               subPath: logs
-      {{- if not .Values.persistence.enabled  }}
+      {{- if not .Values.persistence.enabled }}
       volumes:
         - name: data
           emptyDir: {}
@@ -177,6 +175,5 @@ spec:
             claimName: {{ .Values.persistence.ClaimName }}
         {{- else -}}
             emptyDir: {{ .Values.persistence.emptyDir }}
-  {{- end }}
   {{- end }}
   {{- end }}
