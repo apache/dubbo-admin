@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if .Values.enabled }}
 {{- if and (eq .Values.global.mode "cluster") }}
 apiVersion: v1
 kind: Service
@@ -39,5 +38,4 @@ spec:
       targetPort: 7848
       protocol: TCP
   selector: {{- include "nacos.matchLabels" . | nindent 4 }}
-  {{- end }}
   {{- end }}
