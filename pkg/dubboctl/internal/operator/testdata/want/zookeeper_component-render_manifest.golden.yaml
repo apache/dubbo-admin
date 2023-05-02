@@ -14,21 +14,11 @@
 # limitations under the License.
 
 apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: zookeeper-scripts
-  namespace: dubbo-system
-  labels:
-    app.kubernetes.io/name: zookeeper
-    helm.sh/chart: zookeeper-11.1.6
-    app.kubernetes.io/instance: zookeeper
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/component: zookeeper
 data:
-  init-certs.sh: |-
-    #!/bin/bash
+  init-certs.sh: '#!/bin/bash'
   setup.sh: |-
     #!/bin/bash
+
     # Execute entrypoint as usual after obtaining ZOO_SERVER_ID
     # check ZOO_SERVER_ID in persistent volume via myid
     # if not present, set based on POD hostname
@@ -45,76 +35,65 @@ data:
         fi
     fi
     exec /entrypoint.sh /run.sh
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/component: zookeeper
+    app.kubernetes.io/instance: zookeeper
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: zookeeper
+    helm.sh/chart: zookeeper-11.1.6
+  name: zookeeper-scripts
+  namespace: dubbo-system
+
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: zookeeper
-  namespace: dubbo-system
   labels:
-    app.kubernetes.io/name: zookeeper
-    helm.sh/chart: zookeeper-11.1.6
+    app.kubernetes.io/component: zookeeper
     app.kubernetes.io/instance: zookeeper
     app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/component: zookeeper
+    app.kubernetes.io/name: zookeeper
+    helm.sh/chart: zookeeper-11.1.6
     role: zookeeper
+  name: zookeeper
+  namespace: dubbo-system
 spec:
-  replicas: 1
   podManagementPolicy: Parallel
+  replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: zookeeper
-      app.kubernetes.io/instance: zookeeper
       app.kubernetes.io/component: zookeeper
+      app.kubernetes.io/instance: zookeeper
+      app.kubernetes.io/name: zookeeper
   serviceName: zookeeper-headless
-  updateStrategy:
-    rollingUpdate: { }
-    type: RollingUpdate
   template:
     metadata:
-      annotations:
+      annotations: null
       labels:
-        app.kubernetes.io/name: zookeeper
-        helm.sh/chart: zookeeper-11.1.6
+        app.kubernetes.io/component: zookeeper
         app.kubernetes.io/instance: zookeeper
         app.kubernetes.io/managed-by: Helm
-        app.kubernetes.io/component: zookeeper
+        app.kubernetes.io/name: zookeeper
+        helm.sh/chart: zookeeper-11.1.6
     spec:
-      serviceAccountName: default
-
       affinity:
-        podAffinity:
-
+        nodeAffinity: null
+        podAffinity: null
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
             - podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    app.kubernetes.io/name: zookeeper
-                    app.kubernetes.io/instance: zookeeper
                     app.kubernetes.io/component: zookeeper
+                    app.kubernetes.io/instance: zookeeper
+                    app.kubernetes.io/name: zookeeper
                 topologyKey: kubernetes.io/hostname
               weight: 1
-        nodeAffinity:
-
-      securityContext:
-        fsGroup: 1001
-      initContainers:
       containers:
-        - name: zookeeper
-          image: docker.io/bitnami/zookeeper:3.8.1-debian-11-r18
-          imagePullPolicy: "IfNotPresent"
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            runAsUser: 1001
-          command:
+        - command:
             - /scripts/setup.sh
-          resources:
-            limits: { }
-            requests:
-              cpu: 250m
-              memory: 256Mi
           env:
             - name: BITNAMI_DEBUG
               value: "false"
@@ -135,7 +114,7 @@ spec:
             - name: ZOO_MAX_CLIENT_CNXNS
               value: "60"
             - name: ZOO_4LW_COMMANDS_WHITELIST
-              value: "srvr, mntr, ruok"
+              value: srvr, mntr, ruok
             - name: ZOO_LISTEN_ALLIPS_ENABLED
               value: "no"
             - name: ZOO_AUTOPURGE_INTERVAL
@@ -153,7 +132,7 @@ spec:
             - name: ZOO_HEAP_SIZE
               value: "1024"
             - name: ZOO_LOG_LEVEL
-              value: "ERROR"
+              value: ERROR
             - name: ALLOW_ANONYMOUS_LOGIN
               value: "yes"
             - name: POD_NAME
@@ -161,58 +140,82 @@ spec:
                 fieldRef:
                   apiVersion: v1
                   fieldPath: metadata.name
-          ports:
-            - name: client
-              containerPort: 2181
-            - name: follower
-              containerPort: 2888
-            - name: election
-              containerPort: 3888
+          image: docker.io/bitnami/zookeeper:3.8.1-debian-11-r18
+          imagePullPolicy: IfNotPresent
           livenessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok
             failureThreshold: 6
             initialDelaySeconds: 30
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 5
-            exec:
-              command: [ '/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok' ]
+          name: zookeeper
+          ports:
+            - containerPort: 2181
+              name: client
+            - containerPort: 2888
+              name: follower
+            - containerPort: 3888
+              name: election
           readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok
             failureThreshold: 6
             initialDelaySeconds: 5
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 5
-            exec:
-              command: [ '/bin/bash', '-c', 'echo "ruok" | timeout 2 nc -w 2 localhost 2181 | grep imok' ]
+          resources:
+            limits: {}
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1001
           volumeMounts:
-            - name: scripts
-              mountPath: /scripts/setup.sh
+            - mountPath: /scripts/setup.sh
+              name: scripts
               subPath: setup.sh
-            - name: data
-              mountPath: /bitnami/zookeeper
+            - mountPath: /bitnami/zookeeper
+              name: data
+      initContainers: null
+      securityContext:
+        fsGroup: 1001
+      serviceAccountName: default
       volumes:
-        - name: scripts
-          configMap:
+        - configMap:
+            defaultMode: 493
             name: zookeeper-scripts
-            defaultMode: 0755
-        - name: data
-          emptyDir: { }
+          name: scripts
+        - emptyDir: {}
+          name: data
+  updateStrategy:
+    rollingUpdate: {}
+    type: RollingUpdate
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
+  labels:
+    app.kubernetes.io/component: zookeeper
+    app.kubernetes.io/instance: zookeeper
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: zookeeper
+    helm.sh/chart: zookeeper-11.1.6
   name: zookeeper-headless
   namespace: dubbo-system
-  labels:
-    app.kubernetes.io/name: zookeeper
-    helm.sh/chart: zookeeper-11.1.6
-    app.kubernetes.io/instance: zookeeper
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/component: zookeeper
 spec:
-  type: ClusterIP
   clusterIP: None
-  publishNotReadyAddresses: true
   ports:
     - name: tcp-client
       port: 2181
@@ -223,30 +226,31 @@ spec:
     - name: tcp-election
       port: 3888
       targetPort: election
+  publishNotReadyAddresses: true
   selector:
-    app.kubernetes.io/name: zookeeper
-    app.kubernetes.io/instance: zookeeper
     app.kubernetes.io/component: zookeeper
+    app.kubernetes.io/instance: zookeeper
+    app.kubernetes.io/name: zookeeper
+  type: ClusterIP
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: zookeeper
-  namespace: dubbo-system
   labels:
-    app.kubernetes.io/name: zookeeper
-    helm.sh/chart: zookeeper-11.1.6
+    app.kubernetes.io/component: zookeeper
     app.kubernetes.io/instance: zookeeper
     app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/component: zookeeper
+    app.kubernetes.io/name: zookeeper
+    helm.sh/chart: zookeeper-11.1.6
+  name: zookeeper
+  namespace: dubbo-system
 spec:
-  type: ClusterIP
-  sessionAffinity: None
   ports:
     - name: tcp-client
+      nodePort: null
       port: 2181
       targetPort: client
-      nodePort: null
     - name: tcp-follower
       port: 2888
       targetPort: follower
@@ -254,7 +258,10 @@ spec:
       port: 3888
       targetPort: election
   selector:
-    app.kubernetes.io/name: zookeeper
-    app.kubernetes.io/instance: zookeeper
     app.kubernetes.io/component: zookeeper
+    app.kubernetes.io/instance: zookeeper
+    app.kubernetes.io/name: zookeeper
+  sessionAffinity: None
+  type: ClusterIP
+
 ---

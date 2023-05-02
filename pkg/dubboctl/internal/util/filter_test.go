@@ -71,6 +71,29 @@ content line
 	}
 }
 
+func TestSpaceLineFilter(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{
+			input: `
+content line
+    
+`,
+			want: `content line
+`,
+		},
+	}
+
+	for _, test := range tests {
+		res := SpaceLineFilter(test.input)
+		if res != test.want {
+			t.Errorf("want %s\n but got %s", test.want, res)
+		}
+	}
+}
+
 func TestFormatterFilter(t *testing.T) {
 	tests := []struct {
 		input string

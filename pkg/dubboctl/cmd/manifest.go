@@ -28,5 +28,7 @@ func addManifest(rootCmd *cobra.Command) {
 	}
 	cmd.ConfigManifestGenerateCmd(manifestCmd)
 	cmd.ConfigManifestInstallCmd(manifestCmd)
+	cmd.ConfigManifestUninstallCmd(manifestCmd)
+	cmd.ConfigManifestDiffCmd(manifestCmd)
 	rootCmd.AddCommand(manifestCmd)
 }

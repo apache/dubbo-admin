@@ -16,15 +16,19 @@
 package kube
 
 import (
-	"bufio"
 	"bytes"
+	"fmt"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/util"
+	"sort"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
-type Objects []*Object
+const (
+	hashPrompt = "Namespace:Kind:Name=>"
+)
 
 // Object wraps k8s Unstructured and exposes the fields we need
 type Object struct {
@@ -34,6 +38,8 @@ type Object struct {
 	Name      string
 	Group     string
 	Kind      string
+
+	yamlStr string
 }
 
 func (obj *Object) IsValid() bool {
@@ -72,13 +78,41 @@ func (obj *Object) Unstructured() *unstructured.Unstructured {
 	return obj.internal
 }
 
+func (obj *Object) Hash() string {
+	return strings.Join([]string{obj.Namespace, obj.Kind, obj.Name}, ":")
+}
+
+func (obj *Object) YAML() string {
+	return obj.yamlStr
+}
+
 func (obj *Object) SetNamespace(ns string) {
 	obj.Namespace = ns
 	obj.internal.SetNamespace(ns)
 }
 
-func NewObject(obj *unstructured.Unstructured) *Object {
-	newObj := &Object{internal: obj}
+type Objects []*Object
+
+// SortMap generates corresponding map and sorted keys
+func (objs Objects) SortMap() (map[string]*Object, []string) {
+	var keys []string
+	res := make(map[string]*Object)
+	for _, obj := range objs {
+		if obj.IsValid() {
+			hash := obj.Hash()
+			res[hash] = obj
+			keys = append(keys, hash)
+		}
+	}
+	sort.Strings(keys)
+	return res, keys
+}
+
+func NewObject(obj *unstructured.Unstructured, yamlStr string) *Object {
+	newObj := &Object{
+		internal: obj,
+		yamlStr:  yamlStr,
+	}
 	newObj.Namespace = obj.GetNamespace()
 	newObj.Name = obj.GetName()
 
@@ -91,28 +125,9 @@ func NewObject(obj *unstructured.Unstructured) *Object {
 
 // ParseObjectsFromManifest parse Objects from manifest which divided by YAML separator "\n---\n"
 func ParseObjectsFromManifest(manifest string, continueOnErr bool) (Objects, error) {
-	var buf bytes.Buffer
-	var segments []string
-	scanner := bufio.NewScanner(strings.NewReader(manifest))
-	for scanner.Scan() {
-		line := scanner.Text()
-		// ignore comment line and empty line
-		if strings.HasPrefix(line, "#") || line == "" {
-			continue
-		}
-		// yaml separator
-		if strings.HasPrefix(line, "---") {
-			segments = append(segments, buf.String())
-			buf.Reset()
-			continue
-		}
-		if _, err := buf.WriteString(line + "\n"); err != nil {
-			return nil, err
-		}
-	}
-	// add the last yaml(not empty)
-	if buf.String() != "" {
-		segments = append(segments, buf.String())
+	segments, err := util.SplitYAML(manifest)
+	if err != nil {
+		return nil, err
 	}
 
 	var objects Objects
@@ -141,6 +156,68 @@ func ParseObjectFromManifest(manifest string) (*Object, error) {
 	if err := decoder.Decode(internal); err != nil {
 		return nil, err
 	}
-	newObj := NewObject(internal)
+	newObj := NewObject(internal, manifest)
 	return newObj, nil
+}
+
+// CompareObjects compares object lists and returns diff, add, err using util.DiffYAML.
+// It compares objects with same hash value(Namespace:Kind:Name) and returns diff.
+// For objects that only one list have, it returns add.
+// For objects that could not be parsed successfully, it returns err.
+// Refer to TestCompareObjects for examples.
+func CompareObjects(objsA, objsB Objects) (string, string, string) {
+	var diffRes strings.Builder
+	var addRes strings.Builder
+	var errRes strings.Builder
+	sep := "\n------\n"
+	mapA, keysA := objsA.SortMap()
+	mapB, keysB := objsB.SortMap()
+
+	for _, hashA := range keysA {
+		objA := mapA[hashA]
+		if objB, ok := mapB[hashA]; ok {
+			diff, err := util.DiffYAML(objA.YAML(), objB.YAML())
+			if err != nil {
+				errRes.WriteString(fmt.Sprintf("%s%s parse failed, err:\n%s", hashPrompt, hashA, err))
+				errRes.WriteString(sep)
+				continue
+			}
+			if diff != "" {
+				diffRes.WriteString(fmt.Sprintf("%s%s diff:\n", hashPrompt, hashA))
+				diffRes.WriteString(diff)
+				diffRes.WriteString(sep)
+			}
+		} else {
+			add, err := util.DiffYAML(objA.YAML(), "")
+			if err != nil {
+				errRes.WriteString(fmt.Sprintf("%s%s in previous section parse failed, err:\n%s", hashPrompt, hashA, err))
+				errRes.WriteString(sep)
+				continue
+			}
+			if add != "" {
+				addRes.WriteString(fmt.Sprintf("%s%s in previous addition:\n", hashPrompt, hashA))
+				addRes.WriteString(add)
+				addRes.WriteString(sep)
+			}
+		}
+	}
+
+	for _, hashB := range keysB {
+		objB := mapB[hashB]
+		if _, ok := mapA[hashB]; !ok {
+			add, err := util.DiffYAML(objB.YAML(), "")
+			if err != nil {
+				errRes.WriteString(fmt.Sprintf("%s%s in next section parse failed, err:\n%s", hashPrompt, hashB, err))
+				errRes.WriteString(sep)
+				continue
+			}
+			if add != "" {
+				addRes.WriteString(fmt.Sprintf("%s%s in next addition:\n", hashPrompt, hashB))
+				addRes.WriteString(add)
+				addRes.WriteString(sep)
+			}
+		}
+	}
+
+	return diffRes.String(), addRes.String(), errRes.String()
 }
