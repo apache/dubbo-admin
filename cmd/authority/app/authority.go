@@ -18,7 +18,6 @@ package app
 import (
 	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"strings"
@@ -47,17 +46,17 @@ func NewAppCommand() *cobra.Command {
 		Use:  "authority",
 		Long: `The authority app is responsible for controllers in dubbo authority`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			logger.Sugar().Infof("Authority command PersistentPreRun")
+			logger.Infof("Authority command PersistentPreRun")
 			initialize(cmd)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			logger.Sugar().Infof("Authority command Run with options: %+v", options)
+			logger.Infof("Authority command Run with options: %+v", options)
 			if errs := options.Validate(); len(errs) != 0 {
-				log.Fatal(errs)
+				logger.Fatal(errs)
 			}
 
 			if err := Run(options); err != nil {
-				log.Fatal(err)
+				logger.Fatal(err)
 			}
 		},
 	}
