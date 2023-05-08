@@ -43,3 +43,4 @@ coverage.txt
 
 bin/
 vendor/
+hack/swagger/docs

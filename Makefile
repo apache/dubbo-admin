@@ -58,10 +58,12 @@ $(LOCALBIN):
 ## Tool Binaries
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+SWAGGER ?= $(LOCALBIN)/swag
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7
 CONTROLLER_TOOLS_VERSION ?= v0.10.0
+SWAGGER_VERSION ?= v1.16.1
 
 ## docker buildx support platform
 PLATFORMS ?= linux/arm64,linux/amd64
@@ -92,6 +94,15 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	#$(CONTROLLER_GEN) object:headerFile="./hack/boilerplate.go.txt"  crd:allowDangerousTypes=true paths="./..."
+
+.PHONY: dubbo-admin-swagger-gen
+dubbo-admin-swagger-gen: swagger-install ## Generate dubbo-admin swagger docs.
+	$(SWAGGER) init -d cmd/admin,pkg/admin -o hack/swagger/docs
+
+.PHONY: dubbo-admin-swagger-ui
+dubbo-admin-swagger-ui: dubbo-admin-swagger-gen ## Generate dubbo-admin swagger docs and start swagger ui.
+	@echo "access swagger url: http://127.0.0.1:38081/swagger/index.html"
+	cd hack/swagger; go run main.go
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -214,3 +225,9 @@ controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessar
 $(CONTROLLER_GEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+
+.PHONY: swagger-install
+swagger-install: $(SWAGGER) ## Download swagger locally if necessary.
+$(SWAGGER): $(LOCALBIN)
+	test -s $(LOCALBIN)/swag  || \
+	GOBIN=$(LOCALBIN) go install  github.com/swaggo/swag/cmd/swag@$(SWAGGER_VERSION)
