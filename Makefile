@@ -58,10 +58,12 @@ $(LOCALBIN):
 ## Tool Binaries
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+SWAGGER ?= $(LOCALBIN)/swag
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7
 CONTROLLER_TOOLS_VERSION ?= v0.10.0
+SWAGGER_VERSION ?= v1.16.1
 
 ## docker buildx support platform
 PLATFORMS ?= linux/arm64,linux/amd64
@@ -92,6 +94,15 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	#$(CONTROLLER_GEN) object:headerFile="./hack/boilerplate.go.txt"  crd:allowDangerousTypes=true paths="./..."
+
+.PHONY: dubbo-admin-swagger-gen
+dubbo-admin-swagger-gen: swagger-install ## Generate dubbo-admin swagger docs.
+	$(SWAGGER) init -d cmd/admin,pkg/admin -o hack/swagger/docs
+
+.PHONY: dubbo-admin-swagger-ui
+dubbo-admin-swagger-ui: dubbo-admin-swagger-gen ## Generate dubbo-admin swagger docs and start swagger ui.
+	@echo "access swagger url: http://127.0.0.1:38081/swagger/index.html"
+	cd hack/swagger; go run main.go
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -126,7 +137,7 @@ build: dubbo-admin dubbo-authority
 all: generate test dubbo-admin dubbo-authority
 
 .PHONY: dubbo-admin
-dubbo-admin: ## Build binary with the dubbo admin.
+dubbo-admin: ## Build binary with the dubbo swagger.
 	CGO_ENABLED=0 GOOS=$(GOOS) go build -ldflags $(LDFLAGS) -o bin/admi cmd/admin/main.go
 
 .PHONY: dubbo-authority
@@ -137,19 +148,19 @@ dubbo-authority: ## Build binary with the dubbo authority.
 images: image-dubbo-admin image-dubbo-authority  image-dubbo-admin-ui
 
 .PHONY: image-dubbo-admin
-image-dubbo-admin: ## Build docker image with the dubbo admin.
+image-dubbo-admin: ## Build docker image with the dubbo swagger.
 	docker build --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=admin -t ${DUBBO_ADMIN_IMG} .
 
 
 
 .PHONY: image-dubbo-admin-buildx
-image-dubbo-admin-buildx:  ## Build and push docker image for the dubbo admin for cross-platform support
+image-dubbo-admin-buildx:  ## Build and push docker image for the dubbo swagger for cross-platform support
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
 	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile_admin.cross
 	- docker buildx create --name project-dubbo-admin-builder
 	docker buildx use project-dubbo-admin-builder
 	- docker buildx build --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=admin  --push --platform=$(PLATFORMS) --tag ${DUBBO_ADMIN_IMG} -f Dockerfile_admin.cross .
-	#- docker buildx build --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=admin  --output type=local,dest=./bin/buildx/dubbo-admin --platform=$(PLATFORMS) --tag ${DUBBO_ADMIN_IMG} -f Dockerfile_admin.cross .
+	#- docker buildx build --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=swagger  --output type=local,dest=./bin/buildx/dubbo-swagger --platform=$(PLATFORMS) --tag ${DUBBO_ADMIN_IMG} -f Dockerfile_admin.cross .
 	- docker buildx rm project-dubbo-admin-builder
 	rm Dockerfile_admin.cross
 
@@ -169,7 +180,7 @@ image-dubbo-authority-buildx:  ## Build and push docker image for the dubbo auth
 	rm Dockerfile_authority.cross
 
 .PHONY: image-dubbo-admin-ui
-image-dubbo-admin-ui: ## Build docker image with the dubbo-admin-ui.
+image-dubbo-admin-ui: ## Build docker image with the dubbo-swagger-ui.
 	docker build --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=dubbo-admin-ui -t ${DUBBO_ADMIN_UI_IMG} ./dubbo-admin-ui
 
 
@@ -177,7 +188,7 @@ image-dubbo-admin-ui: ## Build docker image with the dubbo-admin-ui.
 push-images: push-image-admin push-image-admin-ui push-image-authority
 
 .PHONY: push-image-admin
-push-image-admin: ## Push admin images.
+push-image-admin: ## Push swagger images.
 ifneq ($(REGISTRY_USER_NAME), "")
 	docker login -u $(REGISTRY_USER_NAME) -p $(REGISTRY_PASSWORD) ${REGISTRY}
 endif
@@ -191,7 +202,7 @@ endif
 	docker push ${DUBBO_AUTHORITY_IMG}
 
 .PHONY: push-image-admin-ui
-push-image-admin-ui: ## Push admin ui images.
+push-image-admin-ui: ## Push swagger ui images.
 ifneq ($(REGISTRY_USER_NAME), "")
 	docker login -u $(REGISTRY_USER_NAME) -p $(REGISTRY_PASSWORD) ${REGISTRY}
 endif
@@ -214,3 +225,9 @@ controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessar
 $(CONTROLLER_GEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
+
+.PHONY: swagger-install
+swagger-install: $(SWAGGER) ## Download swagger locally if necessary.
+$(SWAGGER): $(LOCALBIN)
+	test -s $(LOCALBIN)/swag  || \
+	GOBIN=$(LOCALBIN) go install  github.com/swaggo/swag/cmd/swag@$(SWAGGER_VERSION)
