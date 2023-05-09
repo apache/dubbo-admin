@@ -17,19 +17,20 @@ package cmd
 
 import (
 	"bytes"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/cmd/subcmd"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/cmd"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func TestManifestGenerate(t *testing.T) {
 	tests := []struct {
-		desc string
-		cmd  string
-		temp string
+		desc    string
+		cmd     string
+		temp    string
+		wantErr bool
 	}{
 		{
 			desc: "using default configuration without any flag",
@@ -53,6 +54,14 @@ func TestManifestGenerate(t *testing.T) {
 				" --set spec.componentsMeta.grafana.version=6.31.0",
 		},
 		{
+			desc: "setting specification of built-in component with wrong path",
+			cmd:  "manifest generate --set components.nacos.replicas=3",
+		},
+		{
+			desc: "setting specification of built-in component with wrong path",
+			cmd:  "manifest generate --set components.grafana.replicas=3",
+		},
+		{
 			desc: "generate manifest to target path",
 			cmd:  "manifest generate -o ./testdata/temp",
 			temp: "./testdata/temp",
@@ -63,18 +72,21 @@ func TestManifestGenerate(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		testExecute(t, test.cmd)
-		// remove temporary dir
-		if test.temp != "" {
-			os.RemoveAll(test.temp)
-		}
+		t.Run(test.desc, func(t *testing.T) {
+			testExecute(t, test.cmd, test.wantErr)
+			// remove temporary dir
+			if test.temp != "" {
+				os.RemoveAll(test.temp)
+			}
+		})
 	}
 }
 
 func TestManifestInstall(t *testing.T) {
 	tests := []struct {
-		desc string
-		cmd  string
+		desc    string
+		cmd     string
+		wantErr bool
 	}{
 		{
 			desc: "without any flag",
@@ -82,11 +94,13 @@ func TestManifestInstall(t *testing.T) {
 		},
 	}
 	// For now, we do not use envTest to do black box testing
-	cmd.TestInstallFlag = true
-	cmd.TestCli = fake.NewClientBuilder().Build()
+	subcmd.TestInstallFlag = true
+	subcmd.TestCli = fake.NewClientBuilder().Build()
 
 	for _, test := range tests {
-		testExecute(t, test.cmd)
+		t.Run(test.desc, func(t *testing.T) {
+			testExecute(t, test.cmd, test.wantErr)
+		})
 	}
 }
 
@@ -94,8 +108,9 @@ func TestManifestUninstall(t *testing.T) {
 	tests := []struct {
 		desc string
 		// cmd has been executed before
-		before string
-		cmd    string
+		before  string
+		cmd     string
+		wantErr bool
 	}{
 		{
 			desc:   "without any flag",
@@ -104,13 +119,15 @@ func TestManifestUninstall(t *testing.T) {
 		},
 	}
 	// For now, we do not use envTest to do black box testing
-	cmd.TestInstallFlag = true
-	cmd.TestCli = fake.NewClientBuilder().Build()
+	subcmd.TestInstallFlag = true
+	subcmd.TestCli = fake.NewClientBuilder().Build()
 
 	for _, test := range tests {
-		// prepare existing resources
-		testExecute(t, test.before)
-		testExecute(t, test.cmd)
+		t.Run(test.desc, func(t *testing.T) {
+			// prepare existing resources
+			testExecute(t, test.before, false)
+			testExecute(t, test.cmd, test.wantErr)
+		})
 	}
 }
 
@@ -120,6 +137,7 @@ func TestManifestDiff(t *testing.T) {
 		befores []string
 		cmd     string
 		temps   []string
+		wantErr bool
 	}{
 		{
 			desc: "compare two dirs",
@@ -135,25 +153,35 @@ func TestManifestDiff(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		for _, before := range test.befores {
-			testExecute(t, before)
-		}
-		testExecute(t, test.cmd)
-		for _, temp := range test.temps {
-			if temp != "" {
-				os.RemoveAll(temp)
+		t.Run(test.desc, func(t *testing.T) {
+			for _, before := range test.befores {
+				testExecute(t, before, false)
 			}
-		}
+			testExecute(t, test.cmd, test.wantErr)
+			for _, temp := range test.temps {
+				if temp != "" {
+					os.RemoveAll(temp)
+				}
+			}
+		})
 	}
 }
 
-func testExecute(t *testing.T, cmd string) {
+func testExecute(t *testing.T, cmd string, wantErr bool) string {
 	var out bytes.Buffer
 	args := strings.Split(cmd, " ")
 	rootCmd := getRootCmd(args)
 	rootCmd.SetOut(&out)
 	if err := rootCmd.Execute(); err != nil {
+		if wantErr {
+			return ""
+		}
 		t.Errorf("execute %s failed, err: %s", cmd, err)
-		return
+		return ""
 	}
+	if wantErr {
+		t.Errorf("want err but got no err")
+		return ""
+	}
+	return out.String()
 }

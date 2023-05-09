@@ -221,3 +221,12 @@ func CompareObjects(objsA, objsB Objects) (string, string, string) {
 
 	return diffRes.String(), addRes.String(), errRes.String()
 }
+
+// CompareObject compares two objects and returns diff.
+func CompareObject(objA, objB *Object) (string, error) {
+	diff, err := util.DiffYAML(objA.YAML(), objB.YAML())
+	if err != nil {
+		return "", err
+	}
+	return diff, nil
+}

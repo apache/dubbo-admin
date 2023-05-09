@@ -30,6 +30,8 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/kylelemons/godebug v1.1.0
 	github.com/mattbaird/jsonpatch v0.0.0-20200820163806-098863c1fc24
+	github.com/onsi/ginkgo/v2 v2.6.0
+	github.com/onsi/gomega v1.24.1
 	github.com/prometheus/client_golang v1.14.0
 	github.com/prometheus/common v0.37.0
 	github.com/spf13/cobra v1.6.1
@@ -44,6 +46,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	helm.sh/helm/v3 v3.11.2
 	k8s.io/api v0.26.1
+	k8s.io/apiextensions-apiserver v0.26.1
 	k8s.io/apimachinery v0.26.1
 	k8s.io/client-go v0.26.1
 	k8s.io/kubectl v0.26.0
@@ -62,6 +65,7 @@ require (
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/glebarez/go-sqlite v1.21.1 // indirect
 	github.com/go-gorp/gorp/v3 v3.0.5 // indirect
+	github.com/go-logr/zapr v1.2.3 // indirect
 	github.com/go-sql-driver/mysql v1.7.0 // indirect
 	github.com/gosuri/uitable v0.0.4 // indirect
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
@@ -74,7 +78,7 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
-	k8s.io/apiextensions-apiserver v0.26.1 // indirect
+	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	k8s.io/apiserver v0.26.1 // indirect
 	k8s.io/cli-runtime v0.26.0 // indirect
 	k8s.io/component-base v0.26.1 // indirect

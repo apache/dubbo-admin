@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package subcmd
 
 import (
 	"fmt"
@@ -135,11 +135,11 @@ func addManifestGenerateFlags(cmd *cobra.Command, args *ManifestGenerateArgs) {
 func generateValues(mgArgs *ManifestGenerateArgs) (*v1alpha1.DubboConfig, string, error) {
 	mergedYaml, profile, err := manifest.ReadYamlAndProfile(mgArgs.FileNames, mgArgs.SetFlags)
 	if err != nil {
-		return nil, "", fmt.Errorf("generateValues err: %v", err)
+		return nil, "", fmt.Errorf("process user specification failed, err: %s", err)
 	}
-	profileYaml, err := manifest.ReadProfileYaml(mgArgs.ProfilesPath, profile)
+	profileYaml, err := manifest.ReadOverlayProfileYaml(mgArgs.ProfilesPath, profile)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("process profile failed, err: %s", err)
 	}
 	finalYaml, err := util.OverlayYAML(profileYaml, mergedYaml)
 	if err != nil {
@@ -147,13 +147,12 @@ func generateValues(mgArgs *ManifestGenerateArgs) (*v1alpha1.DubboConfig, string
 	}
 	finalYaml, err = manifest.OverlaySetFlags(finalYaml, mgArgs.SetFlags)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("process set flags failed, err: %s", err)
 	}
 	cfg := &v1alpha1.DubboConfig{}
 	if err := yaml.Unmarshal([]byte(finalYaml), cfg); err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("set flags specification is wrong, err: %s", err)
 	}
-	// todo: validate op
 	// we should ensure that Components field would not be nil
 	if cfg.Spec.Components == nil {
 		cfg.Spec.Components = &v1alpha1.DubboComponentsSpec{}
