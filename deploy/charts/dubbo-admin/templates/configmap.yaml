@@ -19,8 +19,8 @@
 {{- $defaulttoken := "e16e5cd903fd0c97a116c873b448544b9d086de9" -}}
 {{- $defaultname := "dubbo-admin" -}}
 {{- $defaultdriverclassname := "com.mysql.jdbc.Driver" -}}
-{{- $apollotoken := (coalesce .Values.apollo.token $defaulttoken ) -}}
-{{- $dubboname := (coalesce .Values.dubbo.application.name $defaultname ) -}}
+{{- $apollotoken := (coalesce .Values.apollo.token $defaulttoken) -}}
+{{- $dubboname := (coalesce .Values.dubbo.application.name $defaultname) -}}
 {{- $springdriverclassname := (coalesce .Values.spring.datasource.driverclassname $defaultdriverclassname) -}}
 ---
 apiVersion: v1
@@ -91,11 +91,13 @@ data:
     dubbo.application.logger: {{ .application.logger }}
     dubbo.registry.address: {{ .registry.address }}
     {{- end }}
-    {{- with .Values.spring.datasource }}
+    {{- with .Values.spring }}
+    {{- if .datasource.enabled }}
     spring.datasource.driver-class-name: {{ $springdriverclassname }}
-    spring.datasource.url: {{ .url }}
-    spring.datasource.username: {{ .username }}
-    spring.datasource.password: {{ .password }}
+    spring.datasource.url: {{ .datasource.url }}
+    spring.datasource.username: {{ .datasource.username }}
+    spring.datasource.password: {{ .datasource.password }}
+    {{- end }}
     {{- end }}
     {{- with .Values.mybatis }}
     mybatis-plus.global-config.db-config.id-type: {{ .type }}
