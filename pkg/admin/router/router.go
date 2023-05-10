@@ -77,7 +77,7 @@ func InitRouter() *gin.Engine {
 	}
 
 	// Admin UI
-	router.StaticFS("/admin", http.FS(ui.UiFS()))
+	router.StaticFS("/admin", http.FS(ui.FS()))
 
 	return router
 }

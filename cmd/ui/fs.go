@@ -26,10 +26,10 @@ import (
 
 // UiData Run 'make build-ui' first to generate the distribution of the ui pages.
 //go:embed dist/*
-var UiData embed.FS
+var Data embed.FS
 
-var UiFS = func() fs.FS {
-	fsys, err := fs.Sub(UiData, "dist")
+var FS = func() fs.FS {
+	fsys, err := fs.Sub(Data, "dist")
 	if err != nil {
 		panic(err)
 	}
