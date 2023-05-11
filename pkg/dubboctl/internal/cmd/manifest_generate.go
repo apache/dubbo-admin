@@ -181,8 +181,7 @@ func generateManifests(mgArgs *ManifestGenerateArgs, cfg *v1alpha1.DubboConfig) 
 		if err != nil {
 			return err
 		}
-		// todo: using specific logger module
-		logger.CmdSugar().Info(res)
+		logger.CmdSugar().Print(res)
 	} else {
 		if err := writeManifests(manifestMap, mgArgs.OutputPath); err != nil {
 			return err
