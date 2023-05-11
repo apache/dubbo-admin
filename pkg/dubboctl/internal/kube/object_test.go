@@ -155,3 +155,142 @@ wrong format###`,
 		}
 	}
 }
+
+func TestCompareObjects(t *testing.T) {
+	testNamespace := "test"
+	tests := []struct {
+		desc  string
+		objsA []*Object
+		objsB []*Object
+		diff  string
+		add   string
+		err   string
+	}{
+		{
+			desc: "objects could be parsed correctly",
+			objsA: []*Object{
+				{
+					Namespace: testNamespace,
+					Kind:      "kind1",
+					Name:      "name1",
+					yamlStr: `key1: val1
+key2: val2`,
+				},
+				{
+					Namespace: testNamespace,
+					Kind:      "kind2",
+					Name:      "name2",
+					yamlStr:   `key1: val1`,
+				},
+				{
+					Namespace: testNamespace,
+					Kind:      "kind3",
+					Name:      "name3",
+					yamlStr:   `key1: val1`,
+				},
+			},
+			objsB: []*Object{
+				{
+					Namespace: testNamespace,
+					Kind:      "kind1",
+					Name:      "name1",
+					yamlStr:   `key1: val`,
+				},
+				{
+					Namespace: testNamespace,
+					Kind:      "kind2",
+					Name:      "name2",
+					yamlStr: `key1: val1
+key2: val2`,
+				},
+				{
+					Namespace: testNamespace,
+					Kind:      "kind4",
+					Name:      "name4",
+					yamlStr:   `key1: val`,
+				},
+			},
+			diff: `Namespace:Kind:Name=>test:kind1:name1 diff:
+-key1: val1
+-key2: val2
++key1: val
+ 
+------
+Namespace:Kind:Name=>test:kind2:name2 diff:
+ key1: val1
++key2: val2
+ 
+------
+`,
+			add: `Namespace:Kind:Name=>test:kind3:name3 in previous addition:
+-key1: val1
+ 
+------
+Namespace:Kind:Name=>test:kind4:name4 in next addition:
+-key1: val
+ 
+------
+`,
+		},
+		{
+			desc: "objects with wrong format",
+			objsA: []*Object{
+				{
+					Namespace: testNamespace,
+					Kind:      "kind1",
+					Name:      "name1",
+					yamlStr: `key1: val1
+  key2: val2`,
+				},
+				{
+					Namespace: testNamespace,
+					Kind:      "kind2",
+					Name:      "name2",
+					yamlStr: `key1: val1
+  key2: val2`,
+				},
+			},
+			objsB: []*Object{
+				{
+					Namespace: testNamespace,
+					Kind:      "kind1",
+					Name:      "name1",
+					yamlStr: `key1: val1
+key2: val2`,
+				},
+				{
+					Namespace: testNamespace,
+					Kind:      "kind3",
+					Name:      "name3",
+					yamlStr: `key1: val1
+ key2: val2`,
+				},
+			},
+			err: `Namespace:Kind:Name=>test:kind1:name1 parse failed, err:
+error converting YAML to JSON: yaml: line 2: mapping values are not allowed in this context
+------
+Namespace:Kind:Name=>test:kind2:name2 in previous section parse failed, err:
+error converting YAML to JSON: yaml: line 2: mapping values are not allowed in this context
+------
+Namespace:Kind:Name=>test:kind3:name3 in next section parse failed, err:
+error converting YAML to JSON: yaml: line 2: mapping values are not allowed in this context
+------
+`,
+		},
+	}
+	for _, test := range tests {
+		diffRes, addRes, errRes := CompareObjects(test.objsA, test.objsB)
+		if diffRes != test.diff {
+			t.Errorf("want diff:\n%s\nbut got:\n%s\n", test.diff, diffRes)
+			return
+		}
+		if addRes != test.add {
+			t.Errorf("want add:\n%s\nbut got:\n%s\n", test.add, addRes)
+			return
+		}
+		if errRes != test.err {
+			t.Errorf("want err:\n%s\nbut got:\n%s\n", test.err, errRes)
+			return
+		}
+	}
+}

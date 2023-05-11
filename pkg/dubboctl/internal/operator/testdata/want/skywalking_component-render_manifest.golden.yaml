@@ -16,94 +16,95 @@
 apiVersion: policy/v1beta1
 kind: PodDisruptionBudget
 metadata:
-  name: "elasticsearch-master-pdb"
+  name: elasticsearch-master-pdb
+  namespace: dubbo-system
 spec:
   maxUnavailable: 1
   selector:
     matchLabels:
-      app: "elasticsearch-master"
+      app: elasticsearch-master
+
 ---
-kind: Service
 apiVersion: v1
+kind: Service
 metadata:
-  name: elasticsearch-master
-  labels:
-    heritage: "Helm"
-    release: "skywalking"
-    chart: "elasticsearch"
-    app: "elasticsearch-master"
   annotations: {}
+  labels:
+    app: elasticsearch-master
+    chart: elasticsearch
+    heritage: Helm
+    release: skywalking
+  name: elasticsearch-master
+  namespace: dubbo-system
 spec:
-  type: ClusterIP
-  selector:
-    heritage: "Helm"
-    release: "skywalking"
-    chart: "elasticsearch"
-    app: "elasticsearch-master"
   ports:
     - name: http
-      protocol: TCP
       port: 9200
-    - name: transport
       protocol: TCP
+    - name: transport
       port: 9300
+      protocol: TCP
+  selector:
+    app: elasticsearch-master
+    chart: elasticsearch
+    heritage: Helm
+    release: skywalking
+  type: ClusterIP
+
 ---
-kind: Service
 apiVersion: v1
+kind: Service
 metadata:
-  name: elasticsearch-master-headless
-  labels:
-    heritage: "Helm"
-    release: "skywalking"
-    chart: "elasticsearch"
-    app: "elasticsearch-master"
   annotations:
     service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+  labels:
+    app: elasticsearch-master
+    chart: elasticsearch
+    heritage: Helm
+    release: skywalking
+  name: elasticsearch-master-headless
+  namespace: dubbo-system
 spec:
-  clusterIP: None # This is needed for statefulset hostnames like elasticsearch-0 to resolve
-  # Create endpoints also if the related pod isn't ready
-  publishNotReadyAddresses: true
-  selector:
-    app: "elasticsearch-master"
+  clusterIP: None
   ports:
     - name: http
       port: 9200
     - name: transport
       port: 9300
+  publishNotReadyAddresses: true
+  selector:
+    app: elasticsearch-master
+
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: elasticsearch-master
-  labels:
-    heritage: "Helm"
-    release: "skywalking"
-    chart: "elasticsearch"
-    app: "elasticsearch-master"
   annotations:
     esMajorVersion: "6"
+  labels:
+    app: elasticsearch-master
+    chart: elasticsearch
+    heritage: Helm
+    release: skywalking
+  name: elasticsearch-master
+  namespace: dubbo-system
 spec:
-  serviceName: elasticsearch-master-headless
+  podManagementPolicy: Parallel
+  replicas: 3
   selector:
     matchLabels:
-      app: "elasticsearch-master"
-  replicas: 3
-  podManagementPolicy: Parallel
-  updateStrategy:
-    type: RollingUpdate
+      app: elasticsearch-master
+  serviceName: elasticsearch-master-headless
   template:
     metadata:
-      name: "elasticsearch-master"
+      annotations: null
       labels:
-        heritage: "Helm"
-        release: "skywalking"
-        chart: "elasticsearch"
-        app: "elasticsearch-master"
-      annotations:
+        app: elasticsearch-master
+        chart: elasticsearch
+        heritage: Helm
+        release: skywalking
+      name: elasticsearch-master
     spec:
-      securityContext:
-        fsGroup: 1000
-        runAsUser: 1000
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -112,35 +113,39 @@ spec:
                   - key: app
                     operator: In
                     values:
-                      - "elasticsearch-master"
+                      - elasticsearch-master
               topologyKey: kubernetes.io/hostname
-      terminationGracePeriodSeconds: 120
-      volumes:
-      initContainers:
-        - name: configure-sysctl
-          securityContext:
-            runAsUser: 0
-            privileged: true
-          image: "docker.elastic.co/elasticsearch/elasticsearch:6.8.6"
-          imagePullPolicy: "IfNotPresent"
-          command: ["sysctl", "-w", "vm.max_map_count=262144"]
-          resources: {}
       containers:
-        - name: "elasticsearch"
-          securityContext:
-            capabilities:
-              drop:
-                - ALL
-            runAsNonRoot: true
-            runAsUser: 1000
-          image: "docker.elastic.co/elasticsearch/elasticsearch:6.8.6"
-          imagePullPolicy: "IfNotPresent"
+        - env:
+            - name: node.name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: discovery.zen.minimum_master_nodes
+              value: "2"
+            - name: discovery.zen.ping.unicast.hosts
+              value: elasticsearch-master-headless
+            - name: cluster.name
+              value: elasticsearch
+            - name: network.host
+              value: 0.0.0.0
+            - name: ES_JAVA_OPTS
+              value: -Xmx1g -Xms1g
+            - name: node.data
+              value: "true"
+            - name: node.ingest
+              value: "true"
+            - name: node.master
+              value: "true"
+          image: docker.elastic.co/elasticsearch/elasticsearch:6.8.6
+          imagePullPolicy: IfNotPresent
+          name: elasticsearch
+          ports:
+            - containerPort: 9200
+              name: http
+            - containerPort: 9300
+              name: transport
           readinessProbe:
-            failureThreshold: 3
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            successThreshold: 3
-            timeoutSeconds: 5
             exec:
               command:
                 - sh
@@ -150,6 +155,7 @@ spec:
                   # If the node is starting up wait for the cluster to be ready (request params: 'wait_for_status=green&timeout=1s' )
                   # Once it has started only check that the node itself is responding
                   START_FILE=/tmp/.es_start_file
+                  
                   http () {
                       local path="${1}"
                       if [ -n "${ELASTIC_USERNAME}" ] && [ -n "${ELASTIC_PASSWORD}" ]; then
@@ -159,6 +165,7 @@ spec:
                       fi
                       curl -XGET -s -k --fail ${BASIC_AUTH} http://127.0.0.1:9200${path}
                   }
+                  
                   if [ -f "${START_FILE}" ]; then
                       echo 'Elasticsearch is already running, lets check the node is healthy and there are master nodes available'
                       http "/_cluster/health?timeout=0s"
@@ -172,11 +179,11 @@ spec:
                           exit 1
                       fi
                   fi
-          ports:
-            - name: http
-              containerPort: 9200
-            - name: transport
-              containerPort: 9300
+            failureThreshold: 3
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 3
+            timeoutSeconds: 5
           resources:
             limits:
               cpu: 1000m
@@ -184,91 +191,103 @@ spec:
             requests:
               cpu: 100m
               memory: 2Gi
-          env:
-            - name: node.name
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: discovery.zen.minimum_master_nodes
-              value: "2"
-            - name: discovery.zen.ping.unicast.hosts
-              value: "elasticsearch-master-headless"
-            - name: cluster.name
-              value: "elasticsearch"
-            - name: network.host
-              value: "0.0.0.0"
-            - name: ES_JAVA_OPTS
-              value: "-Xmx1g -Xms1g"
-            - name: node.data
-              value: "true"
-            - name: node.ingest
-              value: "true"
-            - name: node.master
-              value: "true"
-          volumeMounts:
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            runAsUser: 1000
+          volumeMounts: null
+      initContainers:
+        - command:
+            - sysctl
+            - -w
+            - vm.max_map_count=262144
+          image: docker.elastic.co/elasticsearch/elasticsearch:6.8.6
+          imagePullPolicy: IfNotPresent
+          name: configure-sysctl
+          resources: {}
+          securityContext:
+            privileged: true
+            runAsUser: 0
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 1000
+      terminationGracePeriodSeconds: 120
+      volumes: null
+  updateStrategy:
+    type: RollingUpdate
+
 ---
 apiVersion: v1
 kind: Pod
 metadata:
-  name: "skywalking-[A-Za-z0-9]+-test"
   annotations:
-    "helm.sh/hook": test-success
+    helm.sh/hook: test-success
+  name: skywalking-[A-Za-z0-9]+-test
+  namespace: dubbo-system
 spec:
   containers:
-    - name: "skywalking-[A-Za-z0-9]+-test"
-      image: "docker.elastic.co/elasticsearch/elasticsearch:6.8.6"
-      command:
-        - "sh"
-        - "-c"
+    - command:
+        - sh
+        - -c
         - |
           #!/usr/bin/env bash -e
           curl -XGET --fail 'elasticsearch-master:9200/_cluster/health?wait_for_status=green&timeout=1s'
+      image: docker.elastic.co/elasticsearch/elasticsearch:6.8.6
+      name: skywalking-[A-Za-z0-9]+-test
   restartPolicy: Never
+
 ---
-# https://docs.sentry.io/server/installation/docker/#running-migrations
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: "skywalking-es-init"
   labels:
     app: skywalking
     chart: skywalking-4.3.0
-    component: "skywalking-job"
+    component: skywalking-job
     heritage: Helm
     release: skywalking
+  name: skywalking-es-init
+  namespace: dubbo-system
 spec:
   template:
     metadata:
-      name: "skywalking-es-init"
       labels:
         app: skywalking
-        component: "skywalking-job"
+        component: skywalking-job
         release: skywalking
+      name: skywalking-es-init
     spec:
-      serviceAccountName: skywalking-oap
-      restartPolicy: Never
-      initContainers:
-        - name: wait-for-elasticsearch
-          image: busybox:1.30
-          imagePullPolicy: IfNotPresent
-          command: ['sh', '-c', 'for i in $(seq 1 60); do nc -z -w3 elasticsearch 9200 && exit 0 || sleep 5; done; exit 1']
       containers:
-        - name: oap
-          image: skywalking.docker.scarf.sh/apache/skywalking-oap-server:9.3.0
-          imagePullPolicy: IfNotPresent
-          env:
+        - env:
             - name: JAVA_OPTS
-              value: "-Xmx2g -Xms2g -Dmode=init"
+              value: -Xmx2g -Xms2g -Dmode=init
             - name: SW_STORAGE
               value: elasticsearch
             - name: SW_STORAGE_ES_CLUSTER_NODES
-              value: "elasticsearch:9200"
+              value: elasticsearch:9200
             - name: SW_ES_USER
-              value: "xxx"
+              value: xxx
             - name: SW_ES_PASSWORD
-              value: "xxx"
-          volumeMounts:
-      volumes:
+              value: xxx
+          image: skywalking.docker.scarf.sh/apache/skywalking-oap-server:9.3.0
+          imagePullPolicy: IfNotPresent
+          name: oap
+          volumeMounts: null
+      initContainers:
+        - command:
+            - sh
+            - -c
+            - for i in $(seq 1 60); do nc -z -w3 elasticsearch 9200 && exit 0 || sleep
+              5; done; exit 1
+          image: busybox:1.30
+          imagePullPolicy: IfNotPresent
+          name: wait-for-elasticsearch
+      restartPolicy: Never
+      serviceAccountName: skywalking-oap
+      volumes: null
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -276,69 +295,46 @@ metadata:
   labels:
     app: skywalking
     chart: skywalking-4.3.0
-    component: "oap"
+    component: oap
     heritage: Helm
     release: skywalking
   name: skywalking-oap
+  namespace: dubbo-system
 spec:
   replicas: 2
   selector:
     matchLabels:
       app: skywalking
-      component: "oap"
+      component: oap
       release: skywalking
   template:
     metadata:
       labels:
         app: skywalking
-        component: "oap"
+        component: oap
         release: skywalking
     spec:
-      serviceAccountName: skywalking-oap
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 1
-              podAffinityTerm:
-                topologyKey: kubernetes.io/hostname
+            - podAffinityTerm:
                 labelSelector:
                   matchLabels:
-                    app: "skywalking"
-                    release: "skywalking"
-                    component: "oap"
-      initContainers:
-        - name: wait-for-elasticsearch
-          image: busybox:1.30
-          imagePullPolicy: IfNotPresent
-          command: ['sh', '-c', 'for i in $(seq 1 60); do nc -z -w3 elasticsearch 9200 && exit 0 || sleep 5; done; exit 1']
+                    app: skywalking
+                    component: oap
+                    release: skywalking
+                topologyKey: kubernetes.io/hostname
+              weight: 1
       containers:
-        - name: oap
-          image: skywalking.docker.scarf.sh/apache/skywalking-oap-server:9.3.0
-          imagePullPolicy: IfNotPresent
-          livenessProbe:
-            tcpSocket:
-              port: 12800
-            initialDelaySeconds: 15
-            periodSeconds: 20
-          readinessProbe:
-            tcpSocket:
-              port: 12800
-            initialDelaySeconds: 15
-            periodSeconds: 20
-          ports:
-            - containerPort: 11800
-              name: grpc
-            - containerPort: 12800
-              name: rest
-          env:
+        - env:
             - name: JAVA_OPTS
-              value: "-Dmode=no-init -Xmx2g -Xms2g"
+              value: -Dmode=no-init -Xmx2g -Xms2g
             - name: SW_CLUSTER
               value: kubernetes
             - name: SW_CLUSTER_K8S_NAMESPACE
-              value: "dubbo-system"
+              value: dubbo-system
             - name: SW_CLUSTER_K8S_LABEL
-              value: "app=skywalking,release=skywalking,component=oap"
+              value: app=skywalking,release=skywalking,component=oap
             - name: SKYWALKING_COLLECTOR_UID
               valueFrom:
                 fieldRef:
@@ -346,37 +342,75 @@ spec:
             - name: SW_STORAGE
               value: elasticsearch
             - name: SW_STORAGE_ES_CLUSTER_NODES
-              value: "elasticsearch:9200"
+              value: elasticsearch:9200
             - name: SW_ES_USER
-              value: "xxx"
+              value: xxx
             - name: SW_ES_PASSWORD
-              value: "xxx"
-          volumeMounts:
-      volumes:
+              value: xxx
+          image: skywalking.docker.scarf.sh/apache/skywalking-oap-server:9.3.0
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            tcpSocket:
+              port: 12800
+          name: oap
+          ports:
+            - containerPort: 11800
+              name: grpc
+            - containerPort: 12800
+              name: rest
+          readinessProbe:
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            tcpSocket:
+              port: 12800
+          volumeMounts: null
+      initContainers:
+        - command:
+            - sh
+            - -c
+            - for i in $(seq 1 60); do nc -z -w3 elasticsearch 9200 && exit 0 || sleep
+              5; done; exit 1
+          image: busybox:1.30
+          imagePullPolicy: IfNotPresent
+          name: wait-for-elasticsearch
+      serviceAccountName: skywalking-oap
+      volumes: null
+
 ---
-kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
 metadata:
-  name: skywalking
   labels:
     app: skywalking
-    chart: "skywalking-4.3.0"
-    release: "skywalking"
-    heritage: "Helm"
+    chart: skywalking-4.3.0
+    heritage: Helm
+    release: skywalking
+  name: skywalking
+  namespace: dubbo-system
 rules:
-  - apiGroups: [""]
-    resources: ["pods", "configmaps"]
-    verbs: ["get", "watch", "list"]
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - configmaps
+    verbs:
+      - get
+      - watch
+      - list
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: skywalking
   labels:
     app: skywalking
-    chart: "skywalking-4.3.0"
-    release: "skywalking"
-    heritage: "Helm"
+    chart: skywalking-4.3.0
+    heritage: Helm
+    release: skywalking
+  name: skywalking
+  namespace: dubbo-system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -385,6 +419,7 @@ subjects:
   - kind: ServiceAccount
     name: skywalking-oap
     namespace: dubbo-system
+
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -392,68 +427,74 @@ metadata:
   labels:
     app: skywalking
     chart: skywalking-4.3.0
-    component: "oap"
+    component: oap
     heritage: Helm
     release: skywalking
   name: skywalking-oap
+  namespace: dubbo-system
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: skywalking-oap
   labels:
     app: skywalking
     chart: skywalking-4.3.0
-    component: "oap"
+    component: oap
     heritage: Helm
     release: skywalking
+  name: skywalking-oap
+  namespace: dubbo-system
 spec:
-  type: ClusterIP
   ports:
-    - port: 11800
-      name: grpc
-    - port: 12800
-      name: rest
+    - name: grpc
+      port: 11800
+    - name: rest
+      port: 12800
   selector:
     app: skywalking
-    component: "oap"
+    component: oap
     release: skywalking
+  type: ClusterIP
+
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: skywalking-ui
   labels:
     app: skywalking
     chart: skywalking-4.3.0
-    component: "ui"
+    component: ui
     heritage: Helm
     release: skywalking
+  name: skywalking-ui
+  namespace: dubbo-system
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: skywalking
-      component: "ui"
+      component: ui
       release: skywalking
   template:
     metadata:
       labels:
         app: skywalking
-        component: "ui"
+        component: ui
         release: skywalking
     spec:
-      affinity:
+      affinity: null
       containers:
-        - name: ui
+        - env:
+            - name: SW_OAP_ADDRESS
+              value: http://skywalking-oap:12800
           image: skywalking.docker.scarf.sh/apache/skywalking-ui:9.3.0
           imagePullPolicy: IfNotPresent
+          name: ui
           ports:
             - containerPort: 8080
               name: page
-          env:
-            - name: SW_OAP_ADDRESS
-              value: http://skywalking-oap:12800
+
 ---
 apiVersion: v1
 kind: Service
@@ -461,18 +502,20 @@ metadata:
   labels:
     app: skywalking
     chart: skywalking-4.3.0
-    component: "ui"
+    component: ui
     heritage: Helm
     release: skywalking
   name: skywalking-ui
+  namespace: dubbo-system
 spec:
-  type: ClusterIP
   ports:
     - port: 80
-      targetPort: 8080
       protocol: TCP
+      targetPort: 8080
   selector:
     app: skywalking
-    component: "ui"
+    component: ui
     release: skywalking
+  type: ClusterIP
+
 ---

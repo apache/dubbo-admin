@@ -23,16 +23,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// +genclient
-// +genclient:noStatus
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:subresource:status
+// +kubebuilder:object:root=true
 
 // DubboConfig describes configuration for DubboOperator
 type DubboConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec *DubboConfigSpec `json:"spec,omitempty"`
+	Spec   *DubboConfigSpec   `json:"spec,omitempty"`
+	Status *DubboConfigStatus `json:"status,omitempty"`
 }
 
 func (do *DubboConfig) GetProfile() string {
@@ -40,6 +40,9 @@ func (do *DubboConfig) GetProfile() string {
 		return do.Spec.Profile
 	}
 	return ""
+}
+
+type DubboConfigStatus struct {
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

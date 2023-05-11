@@ -1,0 +1,104 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+{{- $defaultsessionTimeoutMilli := 3600000 -}}
+{{- $defaulttokenTimeoutMilli := 3600000 -}}
+{{- $defaultsignSecret := "86295dd0c4ef69a1036b0b0c15158d77" -}}
+{{- $defaulttoken := "e16e5cd903fd0c97a116c873b448544b9d086de9" -}}
+{{- $defaultname := "dubbo-admin" -}}
+{{- $defaultdriverclassname := "com.mysql.jdbc.Driver" -}}
+{{- $apollotoken := (coalesce .Values.apollo.token $defaulttoken) -}}
+{{- $dubboname := (coalesce .Values.dubbo.application.name $defaultname) -}}
+{{- $springdriverclassname := (coalesce .Values.spring.datasource.driverclassname $defaultdriverclassname) -}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "dubbo-admin.fullname" . }}-config
+  namespace: {{ include "dubbo-admin.namespace" . }}
+  labels:
+    {{- include "dubbo-admin.labels" . | nindent 4 }}
+  {{- with .Values.labels }}
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
+data:
+  application.properties: |-
+    {{- with .Values.admin }}
+    {{- if .zookeeper.enabled }}
+    admin.registry.address: {{ .zookeeper.address }}
+    admin.metadata-report.address: {{ .report.zookeeper.address }}
+    admin.config-center: {{ .zookeeper.center }}
+    {{- end }}
+    {{- if .nacos.enabled }}
+    admin.registry.address: {{ .nacos.address }}
+    admin.registry.group: {{ .nacos.group }}
+    admin.registry.namespace: {{ .nacos.namespace }}
+    admin.config-center: {{ .nacos.center }}
+    admin.config-center.group: {{ .nacos.group }}
+    admin.config-center.namespace: {{ .nacos.namespace }}
+    admin.metadata-report.address: {{ .report.nacos.address }}
+    admin.metadata-report.group: {{ .report.nacos.group }}
+    admin.metadata-report.namespace: {{ .report.nacos.namespace }}
+    {{- end }}
+    {{- end }}
+    {{- with .Values.root.user }}
+    admin.root.user.name: {{ .name }}
+    admin.root.user.password: {{ .password }}
+    {{- end }}
+    {{- if .Values.check.enabled }}
+    {{- if $defaultsessionTimeoutMilli }}
+    admin.check.sessionTimeoutMilli: {{ $defaultsessionTimeoutMilli }}
+    {{- end }}
+    {{- if $defaulttokenTimeoutMilli }}
+    admin.check.tokenTimeoutMilli: {{ $defaulttokenTimeoutMilli }}
+    {{- end }}
+    {{- if $defaultsignSecret }}
+    admin.check.signSecret: {{ $defaultsignSecret }}
+    {{- end }}
+    {{- end }}
+    {{- with .Values.apollo }}
+    {{- if .enabled }}
+    {{- if $apollotoken }}
+    admin.apollo.token: {{ $apollotoken }}
+    {{- end }}
+    admin.apollo.appId: {{ .appid }}
+    admin.apollo.env: {{ .env }}
+    admin.apollo.cluster: {{ .cluster }}
+    admin.config-center: {{ .center }}
+    {{- end }}
+    {{- end }}
+    {{- with .Values.server.compression }}
+    server.compression.enabled: {{ .enabled }}
+    server.compression.mime-types: {{ .types }}
+    server.compression.min-response-size: {{ .size }}
+    {{- end }}
+    {{- with .Values.dubbo }}
+    {{- if $dubboname }}
+    dubbo.application.name: {{ $dubboname }}
+    {{- end }}
+    dubbo.application.logger: {{ .application.logger }}
+    dubbo.registry.address: {{ .registry.address }}
+    {{- end }}
+    {{- with .Values.spring }}
+    {{- if .datasource.enabled }}
+    spring.datasource.driver-class-name: {{ $springdriverclassname }}
+    spring.datasource.url: {{ .datasource.url }}
+    spring.datasource.username: {{ .datasource.username }}
+    spring.datasource.password: {{ .datasource.password }}
+    {{- end }}
+    {{- end }}
+    {{- with .Values.mybatis }}
+    mybatis-plus.global-config.db-config.id-type: {{ .type }}
+    {{- end }}

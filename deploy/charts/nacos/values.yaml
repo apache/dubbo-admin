@@ -17,40 +17,48 @@ global:
   mode: standalone
   # mode: cluster
 
-
 image:
   registry: docker.io
-  ##  e.g registry.k8s.io
+  #  e.g registry.k8s.io
   repository: nacos/nacos-server
   tag: latest
   pullPolicy: IfNotPresent
 
-
 plugin:
   enable: true
+  # true or false
   image:
     repository: nacos/nacos-peer-finder-plugin
     tag: 1.1
     pullPolicy: IfNotPresent
 
-
 replicas: 1
-
 
 domainName: cluster.local
 
+extraDeploy: []
+
+nodeSelector: []
+
+affinity: []
+
+tolerations: []
+
+maxUnavailable: []
+
+resources:
+  limits: {}
+  requests: {}
 
 storage:
-  type: ""
-#    type: mysql
-#    db:
-#      host: localhost
-#      name: nacos
-#      port: 3306
-#      username: usernmae
-#      password: password
-#      param: characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false
-
+  type: ~
+  # db:
+    # host: localhost
+    # name: nacos
+    # port: 3306
+    # username: usernmae
+    # password: password
+    # param: characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false
 
 service:
   name: http
@@ -85,17 +93,15 @@ service:
   ##
   ## Service externalIPs.
 
-
 persistence:
   enabled: false
   accessModes:
     - ReadWriteOnce
   storageClassName: ""
   size: 5Gi
-  claimName: ""
+  ClaimName: {}
   ## persistence emptyDir
   emptyDir: {}
-
 
 ## See `kubectl explain poddisruptionbudget.spec` for more
 ## ref: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
@@ -103,7 +109,6 @@ podDisruptionBudget:
   enabled: false
   minAvailable: 1
   # maxUnavailable: 1
-
 
 ingress:
   enabled: false
@@ -144,7 +149,6 @@ ingress:
   #  - secretName: chart-example-tls
   #    hosts:
   #      - chart-example.local
-
 
 networkPolicy:
   ## @param networkPolicy.enabled Enable creation of NetworkPolicy resources. Only Ingress traffic is filtered for now.

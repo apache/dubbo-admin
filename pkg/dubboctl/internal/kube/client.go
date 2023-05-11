@@ -158,6 +158,86 @@ func (cli *CtlClient) createNamespace(ns string) error {
 	return nil
 }
 
+func (cli *CtlClient) RemoveManifest(manifest string, ns string) error {
+	objs, err := ParseObjectsFromManifest(manifest, false)
+	if err != nil {
+		return err
+	}
+	for _, obj := range objs {
+		if obj.Namespace == "" {
+			obj.SetNamespace(ns)
+		}
+		if err := cli.RemoveObject(obj.Unstructured()); err != nil {
+			return err
+		}
+	}
+	if err := cli.deleteNamespace(ns); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (cli *CtlClient) RemoveObject(obj *unstructured.Unstructured) error {
+	if obj.GetKind() == "List" {
+		objList, err := obj.ToList()
+		if err != nil {
+			return err
+		}
+		for _, item := range objList.Items {
+			if err := cli.RemoveObject(&item); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	key := client.ObjectKeyFromObject(obj)
+	receiver := &unstructured.Unstructured{}
+	receiver.SetGroupVersionKind(obj.GroupVersionKind())
+
+	if err := retry.RetryOnConflict(wait.Backoff{
+		Duration: time.Millisecond * 10,
+		Factor:   2,
+		Steps:    3,
+	}, func() error {
+		if err := cli.Get(context.Background(), key, receiver); err != nil {
+			if !errors.IsNotFound(err) {
+				// log
+				return err
+			}
+			return nil
+		}
+		if err := cli.Delete(context.Background(), receiver, client.PropagationPolicy(metav1.DeletePropagationBackground)); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (cli *CtlClient) deleteNamespace(ns string) error {
+	key := client.ObjectKey{
+		Namespace: metav1.NamespaceSystem,
+		Name:      ns,
+	}
+	nsObj := &corev1.Namespace{}
+	if err := cli.Get(context.Background(), key, nsObj); err != nil {
+		if !errors.IsNotFound(err) {
+			// log
+			return fmt.Errorf("failed to check if namespace %v exists: %v", ns, err)
+		}
+		return nil
+	} else {
+		// todo: learn how to use deleteOption
+		if err := cli.Delete(context.Background(), nsObj); err != nil {
+			return fmt.Errorf("failed to delete namespace: %s, err: %s", ns, err)
+		}
+		return nil
+	}
+}
+
 func NewCtlClient(opts ...CtlClientOption) (*CtlClient, error) {
 	var ctlCli *CtlClient
 	newOptions := &CtlClientOptions{}

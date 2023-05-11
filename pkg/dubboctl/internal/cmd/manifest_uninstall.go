@@ -24,56 +24,56 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-type ManifestInstallArgs struct {
+type ManifestUninstallArgs struct {
 	ManifestGenerateArgs
 	KubeConfigPath string
 	// selected cluster info of kubeconfig
 	Context string
 }
 
-func (mia *ManifestInstallArgs) setDefault() {
-	mia.ManifestGenerateArgs.setDefault()
+func (mua *ManifestUninstallArgs) setDefault() {
+	mua.ManifestGenerateArgs.setDefault()
 }
 
-func ConfigManifestInstallCmd(baseCmd *cobra.Command) {
-	miArgs := &ManifestInstallArgs{}
-	mgArgs := &miArgs.ManifestGenerateArgs
-	miCmd := &cobra.Command{
-		Use:   "install",
-		Short: "install dubbo control plane",
-		Example: `  # Install a default Dubbo control plane
-  dubboctl install
+func ConfigManifestUninstallCmd(baseCmd *cobra.Command) {
+	muArgs := &ManifestUninstallArgs{}
+	mgArgs := &muArgs.ManifestGenerateArgs
+	muCmd := &cobra.Command{
+		Use:   "uninstall",
+		Short: "uninstall dubbo control plane",
+		Example: `  # Uninstall a default Dubbo control plane
+  dubboctl manifest uninstall
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logger.InitCmdSugar(zapcore.AddSync(cmd.OutOrStdout()))
-			miArgs.setDefault()
+			muArgs.setDefault()
 			cfg, _, err := generateValues(mgArgs)
 			if err != nil {
 				return err
 			}
-			if err := installManifests(miArgs, cfg); err != nil {
+			if err := uninstallManifests(muArgs, cfg); err != nil {
 				return err
 			}
 			return nil
 		},
 	}
-	addManifestGenerateFlags(miCmd, mgArgs)
-	miCmd.PersistentFlags().StringVarP(&miArgs.KubeConfigPath, "kubeconfig", "", "",
+	addManifestGenerateFlags(muCmd, mgArgs)
+	muCmd.PersistentFlags().StringVarP(&muArgs.KubeConfigPath, "kubeconfig", "", "",
 		"Path to kubeconfig")
-	miCmd.PersistentFlags().StringVarP(&miArgs.Context, "context", "", "",
+	muCmd.PersistentFlags().StringVarP(&muArgs.Context, "context", "", "",
 		"Context in kubeconfig to use")
 
-	baseCmd.AddCommand(miCmd)
+	baseCmd.AddCommand(muCmd)
 }
 
-func installManifests(miArgs *ManifestInstallArgs, cfg *v1alpha1.DubboConfig) error {
+func uninstallManifests(muArgs *ManifestUninstallArgs, cfg *v1alpha1.DubboConfig) error {
 	var cliOpts []kube.CtlClientOption
 	if TestInstallFlag {
 		cliOpts = []kube.CtlClientOption{kube.WithCli(TestCli)}
 	} else {
 		cliOpts = []kube.CtlClientOption{
-			kube.WithKubeConfigPath(miArgs.KubeConfigPath),
-			kube.WithContext(miArgs.Context),
+			kube.WithKubeConfigPath(muArgs.KubeConfigPath),
+			kube.WithContext(muArgs.Context),
 		}
 	}
 	cli, err := kube.NewCtlClient(cliOpts...)
@@ -91,7 +91,7 @@ func installManifests(miArgs *ManifestInstallArgs, cfg *v1alpha1.DubboConfig) er
 	if err != nil {
 		return err
 	}
-	if err := op.ApplyManifest(manifestMap); err != nil {
+	if err := op.RemoveManifest(manifestMap); err != nil {
 		return err
 	}
 	return nil

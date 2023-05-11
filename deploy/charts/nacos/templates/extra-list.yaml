@@ -13,16 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: v1
-kind: Secret
-metadata:
-  name: {{ include "dubbo-admin.fullname" . }}-secret
-  namespace: {{ include "dubbo-admin.namespace" . }}
-  labels:
-    {{- include "dubbo-admin.labels" . | nindent 4 }}
-  {{- with .Values.labels }}
-  {{- toYaml . | nindent 4 }}
-  {{- end }}
-type: Opaque
-data:
-  application.properties: {{ tpl (toYaml .Values.properties) . | b64enc }}
+{{- range .Values.extraDeploy }}
+---
+{{ include "tplvalues.render" (dict "value" . "context" $) }}
+{{- end }}

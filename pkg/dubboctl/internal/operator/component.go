@@ -558,6 +558,11 @@ func renderManifest(spec any, renderer render.Renderer, addOn bool, name Compone
 			return "", err
 		}
 	}
+	// manifest rendered by some charts may lack namespace, we set it there
+	final, err = setNamespace(final, namespace)
+	if err != nil {
+		return "", err
+	}
 	return final, nil
 }
 
@@ -594,5 +599,34 @@ func addDashboards(base string, namespace string) (string, error) {
 	}
 	yamlStr := strings.TrimSpace(string(yamlBytes))
 	final := base + yamlStr + render.YAMLSeparator
+	return final, nil
+}
+
+// setNamespace split base and set namespace.
+func setNamespace(base string, namespace string) (string, error) {
+	var newSegs []string
+	segs, err := util.SplitYAML(base)
+	if err != nil {
+		return "", err
+	}
+	for _, seg := range segs {
+		segMap := make(map[string]interface{})
+		if err := yaml.Unmarshal([]byte(seg), &segMap); err != nil {
+			return "", err
+		}
+		pathCtx, _, err := manifest.GetPathContext(segMap, util.PathFromString("metadata.namespace"), true)
+		if err != nil {
+			return "", err
+		}
+		if err := manifest.WritePathContext(pathCtx, manifest.ParseValue(namespace), false); err != nil {
+			return "", err
+		}
+		newSeg, err := yaml.Marshal(segMap)
+		if err != nil {
+			return "", err
+		}
+		newSegs = append(newSegs, string(newSeg))
+	}
+	final := util.JoinYAML(newSegs)
 	return final, nil
 }
