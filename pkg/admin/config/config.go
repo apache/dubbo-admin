@@ -19,8 +19,6 @@ package config
 
 import (
 	"dubbo.apache.org/dubbo-go/v3/common"
-	"fmt"
-	"log"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -37,6 +35,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	_ "github.com/apache/dubbo-admin/pkg/admin/imports"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
+	"github.com/apache/dubbo-admin/pkg/logger"
 	"gopkg.in/yaml.v2"
 )
 
@@ -105,10 +104,11 @@ func LoadConfig() {
 	ConfigCenter = newConfigCenter(c, addrUrl)
 	properties, err := ConfigCenter.GetProperties(constant.DubboPropertyKey)
 	if err != nil {
-		log.Print("No configuration found in config center.")
+		logger.Info("No configuration found in config center.")
 	}
 
 	if len(properties) > 0 {
+		logger.Info("Loaded remote configuration from config center:\n %s", properties)
 		for _, property := range strings.Split(properties, "\n") {
 			if strings.HasPrefix(property, constant.RegistryAddressKey) {
 				registryAddress = strings.Split(property, "=")[1]
@@ -120,6 +120,7 @@ func LoadConfig() {
 	}
 
 	if len(registryAddress) > 0 {
+		logger.Info("Valid registry address is %s", registryAddress)
 		c := newAddressConfig(registryAddress)
 		addrUrl, err := c.toURL()
 		if err != nil {
@@ -131,12 +132,12 @@ func LoadConfig() {
 		}
 	}
 	if len(metadataReportAddress) > 0 {
+		logger.Info("Valid meta center address is %s", metadataReportAddress)
 		c := newAddressConfig(metadataReportAddress)
 		addrUrl, err := c.toURL()
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(addrUrl.SubURL)
 		factory := extension.GetMetadataReportFactory(c.getProtocol())
 		MetadataReportCenter = factory.CreateMetadataReport(addrUrl)
 	}
@@ -149,28 +150,30 @@ func getValidAddressConfig(address string, registryAddress string) (AddressConfi
 
 	var c AddressConfig
 	if len(address) > 0 {
+		logger.Info("Specified config center address is %s", address)
 		c = newAddressConfig(address)
 	} else {
+		logger.Info("Using registry address as default config center address")
 		c = newAddressConfig(registryAddress)
 	}
 
-	url, err := c.toURL()
+	configUrl, err := c.toURL()
 	if err != nil {
 		panic(err)
 	}
-	return c, url
+	return c, configUrl
 }
 
 func newConfigCenter(c AddressConfig, url *common.URL) config_center.DynamicConfiguration {
 	factory, err := extension.GetConfigCenterFactory(c.getProtocol())
 	if err != nil {
-		log.Print(err.Error())
+		logger.Info(err.Error())
 		panic(err)
 	}
 
 	configCenter, err := factory.GetDynamicConfiguration(url)
 	if err != nil {
-		log.Printf("Failed to init config center, error msg is %s.", err.Error())
+		logger.Info("Failed to init config center, error msg is %s.", err.Error())
 		panic(err)
 	}
 	return configCenter
@@ -201,6 +204,9 @@ func loadDatabaseConfig(dsn string) {
 	} else {
 		DataBase = db
 		// init table
-		DataBase.AutoMigrate(&model.MockRuleEntity{})
+		initErr := DataBase.AutoMigrate(&model.MockRuleEntity{})
+		if initErr != nil {
+			panic(initErr)
+		}
 	}
 }
