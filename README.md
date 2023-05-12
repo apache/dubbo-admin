@@ -2,205 +2,92 @@
 此分支是 Dubbo Admin 正在基于 Go 语言重构的开发分支，目前仍在开发过程中。
 如您正寻求将 Dubbo Admin 用作生产环境，想了解 Admin 的能力及安装方式，请参见 [develop 分支](https://github.com/apache/dubbo-admin/tree/develop#dubbo-admin) 及内部相关使用说明。
 
-# Dubbo Admin
+# 运行 Admin
+## 启动 Zookeeper
+首先，你需要在本地启动一个 [zookeeper server](https://zookeeper.apache.org/doc/current/zookeeperStarted.html)，用作 Admin 连接的注册/配置中心。
 
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/apache/dubbo-admin/CI)
-[![codecov](https://codecov.io/gh/apache/dubbo-admin/branch/develop/graph/badge.svg)](https://codecov.io/gh/apache/dubbo-admin/branches/develop)
-![license](https://img.shields.io/github/license/apache/dubbo-admin.svg)
-[![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/apache/dubbo-admin.svg)](http://isitmaintained.com/project/apache/dubbo-admin "Average time to resolve an issue")
-[![Percentage of issues still open](http://isitmaintained.com/badge/open/apache/dubbo-admin.svg)](http://isitmaintained.com/project/apache/dubbo-admin "Percentage of issues still open")
+## 启动 Admin
 
-[中文说明](README_ZH.md)
+### Run with IDE
+Once open this project in GoLand, a pre-configured Admin runnable task can be found from "Run Configuration" pop up menu as shown below.
 
-Dubbo Admin is a console for better visualization of Dubbo services, it provides fully support for Dubbo3 and is compatible with 2.7.x, 2.6.x and 2.5.x.
+![image.png](../../docs/images/ide_configuration.png)
 
-![index](https://raw.githubusercontent.com/apache/dubbo-admin/develop/doc/images/index.png)
+Click the `Run`button and you can get the Admin process started locally. But before doing that, you might need to change the configuration file located at `dubbo-admin/dubbo-admin-server/pkg/conf/dubboadmin.yml`to make sure `registry.address` is pointed to the zookeeper server you started before.
 
-# 1 Quick start
-There are 4 methods to run Dubbo Admin in production:
-
-1. [Run With Helm (Recommended)](#11-Run-With-Helm)
-2. [Run With Kubernetes](#12-Run-With-Kubernetes)
-3. [Run With Docker](#13-Run-With-Docker)
-4. [Run From Source Code](#14-Compile-From-Source)
-
-You can choose any of the above methods to run Admin based on your environment. Helm is recommended if your plan to run Admin in a Kubernetes cluster because it will have all the dependencies managed with only one command.
-
-## 1.1 Run With Helm
-
-There are two ways to deploy Dubbo Admin with helm depending on how you get the helm chart resources, both of them have the same effect.
-
-### 1.1.1 Run from helm chart sources
-**1. Get helm chart sources**
-
-Clone the Dubbo Admin repo:
-
-```sh
-$ git clone https://github.com/apache/dubbo-admin.git
+```yaml
+admin:
+  registry:
+    address: zookeeper://127.0.0.1:2181
+  config-center: zookeeper://127.0.0.1:2181
+  metadata-report:
+    address: zookeeper://127.0.0.1:2181
 ```
 
-From the repo's root directory, change your working directory to `deploy/helm/dubbo-admin`
-```sh
-$ cd /dubbo-admin/deploy/helm/dubbo-admin
-```
-**2. Install helm chart**
-
-```sh
-$ helm install dubbo-admin .
+### Run with command line
+```shell
+$ export ADMIN_CONFIG_PATH=/path/to/your/admin/project/conf/dubboadmin.yml
+$ cd cmd/admin
+$ go run . 
 ```
 
-Or, if you need to customize the configuration Admin uses to let it connecting to the real registries or configuration centers, specify a customized configuration file using the `-f` helm option, for example, the following `value file` specifies registry, config-center and metadata addresses:
+Open the browser and visit http://localhost:38080/admin/ to open the console.
 
-Content of `properties.xml`:
+> If you also have the Java version admin running, make sure to use different port to avoid conflict.
 
-```xml
-properties: |
-  admin.registry.address=zookeeper://30.221.144.85:2181
-  admin.config-center=zookeeper://30.221.144.85:2181
-  admin.metadata-report.address=zookeeper://30.221.144.85:2181
+### 一些 Dubbo 客户端示例
+为了能在 Admin 控制台看到一些示例数据，可以在本地启动一些示例项目。可参考以下两个链接，务必确保示例使用的注册中心指向你之前启动的 zookeeper server，如果示例中有使用 embeded zookeeper 则应该进行修改并指向你本地起的 zookeeper 集群。
+
+1. https://github.com/apache/dubbo-samples/tree/master/1-basic/dubbo-samples-spring-boot
+2. https://dubbo.apache.org/zh-cn/overview/quickstart/java/brief/
+
+## 前端开发
+
+前端开发步骤...
+
+### 前后端打包
+如果你有修改前端代码，则按照以下方式重新打包前端代码后，重新启动 Admin 进程。
+
+## 贡献代码
+开发过程中，可以使用预先定义好的 Makefile 任务来完成代码检查、测试等一系列工作。以下是一些命令说明
+
+### 代码检查
+To run all code formatting, linting and vetting tools use the target:
+
+```shell
+make check
 ```
 
-`zookeeper://30.221.144.85:2181` should be a real address that is accessible from inside the kubernetes cluster.
+### 测试代码
+For all tests, run:
 
-```sh
-$ helm install dubbo-admin -f properties.yaml .
+```shell
+make test
 ```
 
-The values specified in `properties` will override those in [application.properties](./dubbo-admin-server/src/main/resources/application.properties) of the Admin image. Despite `properties`, you can also set other values defined by Dubbo Admin helm.
+And you can run tests that are specific to a part of Admin by appending the app name as shown below:
 
-**3. Visit Dubbo Admin**
-
-Dubbo Admin should now has been successfully installed, run the following command:
-
-```sh
-$ kubectl --namespace default port-forward service/dubbo-admin 38080:38080
+```shell
+make test/dubboctl
 ```
 
-Or, you can choose to follow the command instructions from the helm installation process, it should be similar to the following:
-```sh
-export POD_NAME=$(kubectl get pods --namespace default -l "app.kubernetes.io/name=dubbo-admin,app.kubernetes.io/instance=dubbo-admin" -o jsonpath="{.items[0].metadata.name}")
-export CONTAINER_PORT=$(kubectl get pod --namespace default $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
-echo "Visit http://127.0.0.1:38080 to use your application"
-kubectl --namespace default port-forward $POD_NAME 38080:$CONTAINER_PORT
+### Swagger API
+```shell
+make swagger
 ```
 
-Open browser and visit http://127.0.0.1:38080, default username and password are `root`
+### 打包
+To build all the binaries run:
 
-### 1.1.2 Run from helm chart repository
-**1. Add helm chart repository (Currently not available)**
-
-```sh
-$ helm repo add dubbo-charts https://dubbo.apache.org/dubbo-charts
-$ helm repo update
+```shell
+make build
 ```
 
-**2. Install helm chart**
-```sh
-$ helm install dubbo-admin dubbo-charts/dubbo-admin
+Like `make test`, you can append the app name to the target to build a specific binary. For example, here is how you would build the binary for only dubboctl:
+
+```shell
+make build/dubboctl
 ```
 
-Check the corresponding chapter in [1.1.1 Run from helm chart sources](111-Run-from-helm-chart-sources) to see how to customize helm value.
-
-```sh
-$ helm install dubbo-admin -f properties.yaml dubbo-charts/dubbo-admin
-```
-
-**3. Visit Dubbo Admin**
-
-Dubbo Admin should now has been successfully installed, run the following command:
-
-```sh
-$ kubectl --namespace default port-forward service/dubbo-admin 38080:38080
-```
-
-Open browser and visit http://127.0.0.1:38080, default username and password are `root`
-
-## 1.2 Run With Kubernetes
-
-**1. Get Kubernetes manifests**
-```sh
-$ git clone https://github.com/apache/dubbo-admin.git
-```
-
-All we need from this step is the Admin kubernetes manifests in `deploy/k8s`
-
-But before you can apply the manifests, override the default value defined in [application.properties](./dubbo-admin-server/src/main/resources/application.properties) by adding items in `configmap.yaml`.
-
-```sh
-$ cd /dubbo-admin/deploy/k8s
-```
-
-**2. Deploy Dubbo Admin**
-```sh
-# Change configuration in ./deploy/application.yml before apply if necessary
-$ kubectl apply -f ./
-```
-
-**3. Visit Admin**
-```sh
-$ kubectl port-forward service dubbo-admin 38080:38080
-```
-
-Open web browser and visit `http://localhost:38080`, default username and password are `root`
-
-## 1.3 Run With Docker
-The prebuilt docker image is hosted at: https://hub.docker.com/repository/docker/apache/dubbo-admin
-
-You can run the image directly by mounting a volume from the host that contains an `application.properties` file with the accessible registry and config-center addresses specified.
-
-```sh
-$ docker run -it --rm -v /the/host/path/containing/properties:/config -p 38080:38080 apache/dubbo-admin
-```
-
-Replace `/the/host/path/containing/properties` with the actual host path (must be an absolute path) that points to a directory containing `application.properties`.
-
-Open web browser and visit `http://localhost:38080`, default username and password are `root`
-
-## 1.4 Compile From Source
-1. Clone source code on `develop` branch `git clone https://github.com/apache/dubbo-admin.git`
-2. Specify registry address in `dubbo-admin-server/src/main/resources/application.properties`
-3. Build
-    - `mvn clean package -Dmaven.test.skip=true`
-4. Start
-    * `mvn --projects dubbo-admin-server spring-boot:run`
-    OR
-    * `cd dubbo-admin-distribution/target`;   `java -jar dubbo-admin-0.1.jar`
-5. Visit `http://localhost:38080`, default username and password are `root`
-
-# 2. Want To Contribute
-
-Below contains the description of the project structure for developers who want to contribute to make Dubbo Admin better.
-
-## 2.1 Admin UI
-
-- [Vue.js](https://vuejs.org) and [Vue Cli](https://cli.vuejs.org/)
-- [dubbo-admin-ui/README.md](dubbo-admin-ui/README.md) for more detail
-- Set npm **proxy mirror**:
-
-  If you have network issue, you can set npm proxy mirror to speedup npm install:
-
-  add `registry=https://registry.npmmirror.com` to ~/.npmrc
-
-## 2.2 Admin Server
-
-* Standard spring boot project
-* [configurations in application.properties](https://github.com/apache/dubbo-admin/wiki/Dubbo-Admin-configuration)
-
-
-## 2.3 Setting up a local developing environment
-* Run admin server project
-
-  backend is a standard spring boot project, you can run it in any java IDE
-
-* Run admin ui project
-
-  at directory `dubbo-admin-ui`, run with `npm run dev`.
-
-* visit web page
-
-  visit `http://localhost:38082`, frontend supports hot reload.
-
-# 3 License
-
-Apache Dubbo admin is under the Apache 2.0 license, Version 2.0.
-See [LICENSE](https://github.com/apache/dubbo-admin/blob/develop/LICENSE) for full license text.
+## 发布指南
+正式发布的一些 make 命令

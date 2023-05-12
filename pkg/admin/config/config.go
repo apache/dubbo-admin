@@ -40,6 +40,7 @@ import (
 )
 
 const conf = "./conf/dubboadmin.yml"
+const confPathKey = "ADMIN_CONFIG_PATH"
 
 type Config struct {
 	Admin      Admin      `yaml:"admin"`
@@ -74,16 +75,24 @@ var (
 )
 
 func LoadConfig() {
-	path, err := filepath.Abs(conf)
+	var configFilePath = conf
+	if envPath := os.Getenv(confPathKey); envPath != "" {
+		configFilePath = envPath
+	}
+	path, err := filepath.Abs(configFilePath)
 	if err != nil {
-		path = filepath.Clean(conf)
+		path = filepath.Clean(configFilePath)
 	}
 	content, err := os.ReadFile(path)
 	if err != nil {
 		panic(err)
 	}
 	var config Config
-	yaml.Unmarshal(content, &config)
+	err = yaml.Unmarshal(content, &config)
+	if err != nil {
+		logger.Errorf("Invalid configuration: \n %s", content)
+		panic(err)
+	}
 
 	address := config.Admin.ConfigCenter
 	registryAddress := config.Admin.Registry.Address
@@ -108,7 +117,7 @@ func LoadConfig() {
 	}
 
 	if len(properties) > 0 {
-		logger.Info("Loaded remote configuration from config center:\n %s", properties)
+		logger.Infof("Loaded remote configuration from config center:\n %s", properties)
 		for _, property := range strings.Split(properties, "\n") {
 			if strings.HasPrefix(property, constant.RegistryAddressKey) {
 				registryAddress = strings.Split(property, "=")[1]
@@ -120,7 +129,7 @@ func LoadConfig() {
 	}
 
 	if len(registryAddress) > 0 {
-		logger.Info("Valid registry address is %s", registryAddress)
+		logger.Infof("Valid registry address is %s", registryAddress)
 		c := newAddressConfig(registryAddress)
 		addrUrl, err := c.toURL()
 		if err != nil {
@@ -132,7 +141,7 @@ func LoadConfig() {
 		}
 	}
 	if len(metadataReportAddress) > 0 {
-		logger.Info("Valid meta center address is %s", metadataReportAddress)
+		logger.Infof("Valid meta center address is %s", metadataReportAddress)
 		c := newAddressConfig(metadataReportAddress)
 		addrUrl, err := c.toURL()
 		if err != nil {
@@ -150,7 +159,7 @@ func getValidAddressConfig(address string, registryAddress string) (AddressConfi
 
 	var c AddressConfig
 	if len(address) > 0 {
-		logger.Info("Specified config center address is %s", address)
+		logger.Infof("Specified config center address is %s", address)
 		c = newAddressConfig(address)
 	} else {
 		logger.Info("Using registry address as default config center address")
