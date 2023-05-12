@@ -22,7 +22,8 @@ import (
 	"strings"
 	"sync"
 
-	"dubbo.apache.org/dubbo-go/v3/common/logger"
+	"github.com/apache/dubbo-admin/pkg/logger"
+
 	"github.com/apache/dubbo-admin/pkg/admin/cache"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	util2 "github.com/apache/dubbo-admin/pkg/admin/util"
@@ -85,7 +86,7 @@ func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
 				servicesMap, ok := services.(*sync.Map)
 				if !ok {
 					// servicesMap type error
-					logger.Error("servicesMap type not *sync.Map")
+					logger.Logger().Error("servicesMap type not *sync.Map")
 					return
 				}
 				group := serviceURL.Group()
@@ -136,7 +137,7 @@ func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
 				servicesMap, ok := services.(*sync.Map)
 				if !ok {
 					// servicesMap type error
-					logger.Error("servicesMap type not *sync.Map")
+					logger.Logger().Error("servicesMap type not *sync.Map")
 					return
 				}
 				// iterator services key set
