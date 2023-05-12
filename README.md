@@ -11,9 +11,11 @@
 ### Run with IDE
 Once open this project in GoLand, a pre-configured Admin runnable task can be found from "Run Configuration" pop up menu as shown below.
 
-![image.png](../../docs/images/ide_configuration.png)
+![image.png](docs/images/ide_configuration.png)
 
-Click the `Run`button and you can get the Admin process started locally. But before doing that, you might need to change the configuration file located at `dubbo-admin/dubbo-admin-server/pkg/conf/dubboadmin.yml`to make sure `registry.address` is pointed to the zookeeper server you started before.
+Click the `Run` button and you can get the Admin process started locally.
+
+> But before doing that, you might need to change the configuration file located at `/conf/dubboadmin.yml` to make sure `registry.address` is pointed to the zookeeper server you started before.
 
 ```yaml
 admin:
@@ -25,6 +27,7 @@ admin:
 ```
 
 ### Run with command line
+
 ```shell
 $ export ADMIN_CONFIG_PATH=/path/to/your/admin/project/conf/dubboadmin.yml
 $ cd cmd/admin
@@ -41,7 +44,7 @@ Open the browser and visit http://localhost:38080/admin/ to open the console.
 1. https://github.com/apache/dubbo-samples/tree/master/1-basic/dubbo-samples-spring-boot
 2. https://dubbo.apache.org/zh-cn/overview/quickstart/java/brief/
 
-## 前端开发
+## 前端开发步骤
 
 前端开发步骤...
 
