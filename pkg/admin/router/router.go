@@ -18,8 +18,10 @@
 package router
 
 import (
+	"github.com/apache/dubbo-admin/cmd/ui"
 	"github.com/apache/dubbo-admin/pkg/admin/handlers"
 	"github.com/gin-gonic/gin"
+	"net/http"
 )
 
 func InitRouter() *gin.Engine {
@@ -73,6 +75,9 @@ func InitRouter() *gin.Engine {
 		mockRoute.DELETE("/", handlers.DeleteMockRuleById)
 		mockRoute.GET("/list", handlers.ListMockRulesByPage)
 	}
+
+	// Admin UI
+	router.StaticFS("/admin", http.FS(ui.FS()))
 
 	return router
 }

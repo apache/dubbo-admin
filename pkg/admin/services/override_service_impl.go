@@ -18,12 +18,13 @@ package services
 import (
 	"strings"
 
-	"dubbo.apache.org/dubbo-go/v3/common/logger"
-	"dubbo.apache.org/dubbo-go/v3/common/yaml"
+	"github.com/dubbogo/gost/encoding/yaml"
+
 	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/util"
+	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
 type OverrideServiceImpl struct {
@@ -35,7 +36,7 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 	path := getOverridePath(id)
 	existConfig, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
-		logger.Error(err)
+		logger.Logger().Error(err.Error())
 		return err
 	}
 
@@ -44,7 +45,7 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 	if existConfig != "" {
 		err := yaml.UnmarshalYML([]byte(existConfig), existOverride)
 		if err != nil {
-			logger.Error(err)
+			logger.Logger().Error(err.Error())
 			return err
 		}
 		if len(existOverride.Configs) > 0 {
@@ -59,12 +60,12 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 	existOverride.Enabled = dynamicConfig.Enabled
 	existOverride.Configs = configs
 	if b, err := yaml.MarshalYML(existOverride); err != nil {
-		logger.Error(err)
+		logger.Logger().Error(err.Error())
 		return err
 	} else {
 		err := s.GovernanceConfig.SetConfig(path, string(b))
 		if err != nil {
-			logger.Error(err)
+			logger.Logger().Error(err.Error())
 			return err
 		}
 	}
@@ -75,12 +76,12 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 		for _, o := range result {
 			url, err := util.OldOverride2URL(o)
 			if err != nil {
-				logger.Error(err)
+				logger.Logger().Error(err.Error())
 				return err
 			}
 			err = s.GovernanceConfig.Register(url)
 			if err != nil {
-				logger.Error(err)
+				logger.Logger().Error(err.Error())
 				return err
 			}
 		}
@@ -94,14 +95,14 @@ func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error 
 	path := getOverridePath(id)
 	existConfig, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
-		logger.Error(err)
+		logger.Logger().Error(err.Error())
 		return err
 	}
 
 	override := &model.Override{}
 	err = yaml.UnmarshalYML([]byte(existConfig), override)
 	if err != nil {
-		logger.Error(err)
+		logger.Logger().Error(err.Error())
 		return err
 	}
 	old := override.ToDynamicConfig()
@@ -118,12 +119,12 @@ func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error 
 	override.Configs = configs
 	override.Enabled = update.Enabled
 	if b, err := yaml.MarshalYML(override); err != nil {
-		logger.Error(err)
+		logger.Logger().Error(err.Error())
 		return err
 	} else {
 		err := s.GovernanceConfig.SetConfig(path, string(b))
 		if err != nil {
-			logger.Error(err)
+			logger.Logger().Error(err.Error())
 			return err
 		}
 	}
@@ -156,21 +157,21 @@ func (s *OverrideServiceImpl) DisableOverride(id string) error {
 
 	conf, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
-		logger.Error(err)
+		logger.Logger().Error(err.Error())
 		return err
 	}
 
 	override := &model.Override{}
 	err = yaml.UnmarshalYML([]byte(conf), override)
 	if err != nil {
-		logger.Error(err)
+		logger.Logger().Error(err.Error())
 		return err
 	}
 	old := override.ToDynamicConfig()
 	override.Enabled = false
 
 	if b, err := yaml.MarshalYML(override); err != nil {
-		logger.Error(err)
+		logger.Logger().Error(err.Error())
 		return err
 	} else {
 		err := s.GovernanceConfig.SetConfig(path, string(b))
@@ -186,7 +187,7 @@ func (s *OverrideServiceImpl) DisableOverride(id string) error {
 			o.Enabled = true
 			url, err := util.OldOverride2URL(o)
 			if err != nil {
-				logger.Error(err)
+				logger.Logger().Error(err.Error())
 				return err
 			}
 			s.GovernanceConfig.UnRegister(url)
@@ -194,7 +195,7 @@ func (s *OverrideServiceImpl) DisableOverride(id string) error {
 			o.Enabled = false
 			url, err = util.OldOverride2URL(o)
 			if err != nil {
-				logger.Error(err)
+				logger.Logger().Error(err.Error())
 				return err
 			}
 			s.GovernanceConfig.Register(url)
@@ -208,7 +209,7 @@ func (s *OverrideServiceImpl) FindOverride(id string) (*model.DynamicConfig, err
 	path := getOverridePath(id)
 	conf, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
-		logger.Error(err)
+		logger.Logger().Error(err.Error())
 		return nil, err
 	}
 
@@ -216,7 +217,7 @@ func (s *OverrideServiceImpl) FindOverride(id string) (*model.DynamicConfig, err
 		override := &model.Override{}
 		err := yaml.UnmarshalYML([]byte(conf), override)
 		if err != nil {
-			logger.Error(err)
+			logger.Logger().Error(err.Error())
 			return nil, err
 		}
 
@@ -239,26 +240,26 @@ func (s *OverrideServiceImpl) EnableOverride(id string) error {
 	path := getOverridePath(id)
 	conf, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
-		logger.Error(err)
+		logger.Logger().Error(err.Error())
 		return err
 	}
 
 	override := &model.Override{}
 	err = yaml.UnmarshalYML([]byte(conf), override)
 	if err != nil {
-		logger.Error(err)
+		logger.Logger().Error(err.Error())
 		return err
 	}
 
 	old := override.ToDynamicConfig()
 	override.Enabled = true
 	if b, err := yaml.MarshalYML(override); err != nil {
-		logger.Error(err)
+		logger.Logger().Error(err.Error())
 		return err
 	} else {
 		err := s.GovernanceConfig.SetConfig(path, string(b))
 		if err != nil {
-			logger.Error(err)
+			logger.Logger().Error(err.Error())
 			return err
 		}
 	}
@@ -290,14 +291,14 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 	path := getOverridePath(id)
 	conf, err := s.GovernanceConfig.GetConfig(path)
 	if err != nil {
-		logger.Error(err)
+		logger.Logger().Error(err.Error())
 		return err
 	}
 
 	override := &model.Override{}
 	err = yaml.UnmarshalYML([]byte(conf), override)
 	if err != nil {
-		logger.Error(err)
+		logger.Logger().Error(err.Error())
 		return err
 	}
 	old := override.ToDynamicConfig()
@@ -312,18 +313,18 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 		if len(newConfigs) == 0 {
 			err := s.GovernanceConfig.DeleteConfig(path)
 			if err != nil {
-				logger.Error(err)
+				logger.Logger().Error(err.Error())
 				return err
 			}
 		} else {
 			override.Configs = newConfigs
 			if b, err := yaml.MarshalYML(override); err != nil {
-				logger.Error(err)
+				logger.Logger().Error(err.Error())
 				return err
 			} else {
 				err := s.GovernanceConfig.SetConfig(path, string(b))
 				if err != nil {
-					logger.Error(err)
+					logger.Logger().Error(err.Error())
 					return err
 				}
 			}
@@ -331,7 +332,7 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 	} else {
 		err := s.GovernanceConfig.DeleteConfig(path)
 		if err != nil {
-			logger.Error(err)
+			logger.Logger().Error(err.Error())
 			return err
 		}
 	}
@@ -342,7 +343,7 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 		for _, o := range overrides {
 			url, err := util.OldOverride2URL(o)
 			if err != nil {
-				logger.Error(err)
+				logger.Logger().Error(err.Error())
 				return err
 			}
 			s.GovernanceConfig.UnRegister(url)

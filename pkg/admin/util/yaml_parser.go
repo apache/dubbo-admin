@@ -17,7 +17,7 @@
 
 package util
 
-import "dubbo.apache.org/dubbo-go/v3/common/yaml"
+import "github.com/dubbogo/gost/encoding/yaml"
 
 func DumpObject(obj interface{}) (string, error) {
 	bytes, err := yaml.MarshalYML(obj)
