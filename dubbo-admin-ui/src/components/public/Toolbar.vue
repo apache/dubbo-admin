@@ -95,74 +95,74 @@
 import Util from '@/util'
 
 export default {
-    name: 'toolbar',
-    data: () => ({
-      selectedLang: '',
-      global: '',
-      lang: [
-        '简体中文',
-        'English'
-      ],
-      items: [
-        {
-          icon: 'account_circle',
-          href: '#',
-          title: 'Profile',
-          click: (e) => {
-            console.log(e)
-          }
-        },
-        {
-          icon: 'fullscreen_exit',
-          href: '#',
-          title: 'Logout',
-          click: (e) => {
-            window.getApp.$emit('APP_LOGOUT')
-          }
+  name: 'toolbar',
+  data: () => ({
+    selectedLang: '',
+    global: '',
+    lang: [
+      '简体中文',
+      'English'
+    ],
+    items: [
+      {
+        icon: 'account_circle',
+        href: '#',
+        title: 'Profile',
+        click: (e) => {
+          console.log(e)
         }
-      ]
-    }),
-    methods: {
-      submit () {
-        if (window.location.href.includes('#/service')) {
-          window.location.href = '#/service?filter=' + this.global + '&pattern=service'
-          window.location.reload()
-        } else {
-          window.location.href = '#/service?filter=' + this.global + '&pattern=service'
+      },
+      {
+        icon: 'fullscreen_exit',
+        href: '#',
+        title: 'Logout',
+        click: (e) => {
+          window.getApp.$emit('APP_LOGOUT')
         }
-        this.global = ''
-      },
-      handleDrawerToggle () {
-        window.getApp.$emit('DRAWER_TOGGLED')
-      },
-      change (index) {
-        this.selectedLang = this.lang[index]
-        if (index === 0) {
-          this.$i18n.locale = 'zh'
-        } else {
-          this.$i18n.locale = 'en'
-        }
-        this.$store.dispatch('changeArea', {area: this.$i18n.locale})
-        window.localStorage.setItem('locale', this.$i18n.locale)
-        window.localStorage.setItem('selectedLang', this.selectedLang)
-      },
-      handleTheme () {
-        window.getApp.$emit('CHANGE_THEME')
-      },
-      handleFullScreen () {
-        Util.toggleFullScreen()
       }
-    },
-    mounted: function () {
-      if (this.$i18n.locale === 'zh') {
-        this.selectedLang = '简体中文'
+    ]
+  }),
+  methods: {
+    submit () {
+      if (window.location.href.includes('#/service')) {
+        window.location.href = '#/service?filter=' + this.global + '&pattern=service'
+        window.location.reload()
       } else {
-        this.selectedLang = 'English'
+        window.location.href = '#/service?filter=' + this.global + '&pattern=service'
       }
-      let username = localStorage.getItem('username')
-      if (username) {
-        this.items[0].title = this.$t('userName') + ':' + username
+      this.global = ''
+    },
+    handleDrawerToggle () {
+      window.getApp.$emit('DRAWER_TOGGLED')
+    },
+    change (index) {
+      this.selectedLang = this.lang[index]
+      if (index === 0) {
+        this.$i18n.locale = 'zh'
+      } else {
+        this.$i18n.locale = 'en'
       }
+      this.$store.dispatch('changeArea', { area: this.$i18n.locale })
+      window.localStorage.setItem('locale', this.$i18n.locale)
+      window.localStorage.setItem('selectedLang', this.selectedLang)
+    },
+    handleTheme () {
+      window.getApp.$emit('CHANGE_THEME')
+    },
+    handleFullScreen () {
+      Util.toggleFullScreen()
+    }
+  },
+  mounted: function () {
+    if (this.$i18n.locale === 'zh') {
+      this.selectedLang = '简体中文'
+    } else {
+      this.selectedLang = 'English'
+    }
+    const username = localStorage.getItem('username')
+    if (username) {
+      this.items[0].title = this.$t('userName') + ':' + username
     }
   }
+}
 </script>

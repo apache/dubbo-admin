@@ -130,175 +130,174 @@ import yaml from 'js-yaml'
 import AceEditor from '@/components/public/AceEditor'
 
 export default {
-    name: 'ServiceMock',
-    components: {
-      JsonEditor,
-      Search,
-      Breadcrumb,
-      yaml,
-      AceEditor
+  name: 'ServiceMock',
+  components: {
+    JsonEditor,
+    Search,
+    Breadcrumb,
+    yaml,
+    AceEditor
+  },
+  data () {
+    return {
+      headers: [],
+      mockRules: [],
+      breads: [
+        {
+          text: 'mockRule',
+          href: '/mock'
+        }
+      ],
+      pagination: {
+        page: 1,
+        rowsPerPage: 10 // -1 for All
+      },
+      loadingRules: false,
+      searchLoading: false,
+      filter: null,
+      totalItems: 0,
+      dialog: false,
+      mockRule: {
+        serviceName: '',
+        methodName: '',
+        rule: '',
+        enable: true
+      },
+      dialogType: 1,
+      warnDialog: false,
+      deleteRule: null
+    }
+  },
+  methods: {
+    setHeaders () {
+      this.headers = [
+        {
+          text: this.$t('serviceName'),
+          value: 'serviceName',
+          sortable: false
+        },
+        {
+          text: this.$t('methodName'),
+          value: 'methodName',
+          sortable: false
+        },
+        {
+          text: this.$t('mockData'),
+          value: 'rule',
+          sortable: false
+        },
+        {
+          text: this.$t('enabled'),
+          value: 'enable',
+          sortable: false
+        },
+        {
+          text: this.$t('operation'),
+          value: 'operation',
+          sortable: false
+        }
+      ]
     },
-    data() {
-      return {
-        headers: [],
-        mockRules: [],
-        breads: [
-          {
-            text: 'mockRule',
-            href: '/mock'
-          }
-        ],
-        pagination: {
-          page: 1,
-          rowsPerPage: 10 // -1 for All
-        },
-        loadingRules: false,
-        searchLoading: false,
-        filter: null,
-        totalItems: 0,
-        dialog: false,
-        mockRule: {
-          serviceName: '',
-          methodName: '',
-          rule: '',
-          enable: true
-        },
-        dialogType: 1,
-        warnDialog: false,
-        deleteRule: null
+    listMockRules (filter) {
+      const page = this.pagination.page - 1
+      const size = this.pagination.rowsPerPage === -1 ? this.totalItems : this.pagination.rowsPerPage
+      this.loadingRules = true
+      this.$axios.get('/mock/rule/list', {
+        params: {
+          page,
+          size,
+          filter
+        }
+      }).then(res => {
+        this.mockRules = res.data.content
+        this.totalItems = res.data.totalElements
+      }).catch(e => {
+        this.showSnackbar('error', e.response.data.message)
+      }).finally(() => this.loadingRules = false)
+    },
+    submitSearch () {
+      this.listMockRules(this.filter)
+    },
+    openDialog () {
+      this.dialog = true
+    },
+    closeDialog () {
+      this.dialog = false
+      this.dialogType = 1
+      this.mockRule = {
+        serviceName: '',
+        methodName: '',
+        rule: '',
+        enable: true
       }
     },
-    methods: {
-      setHeaders() {
-        this.headers = [
-          {
-            text: this.$t('serviceName'),
-            value: 'serviceName',
-            sortable: false
-          },
-          {
-            text: this.$t('methodName'),
-            value: 'methodName',
-            sortable: false
-          },
-          {
-            text: this.$t('mockData'),
-            value: 'rule',
-            sortable: false
-          },
-          {
-            text: this.$t('enabled'),
-            value: 'enable',
-            sortable: false
-          },
-          {
-            text: this.$t('operation'),
-            value: 'operation',
-            sortable: false
-          }
-        ]
-      },
-      listMockRules(filter) {
-        const page = this.pagination.page - 1;
-        const size = this.pagination.rowsPerPage === -1 ? this.totalItems : this.pagination.rowsPerPage;
-        this.loadingRules = true;
-        this.$axios.get('/mock/rule/list', {
-          params: {
-            page,
-            size,
-            filter
-          }
-        }).then(res => {
-          this.mockRules = res.data.content;
-          this.totalItems = res.data.totalElements
-        }).catch(e => {
-          this.showSnackbar('error', e.response.data.message)
-        }).finally(() => this.loadingRules = false)
-      },
-      submitSearch() {
+    saveOrUpdateMockRule () {
+      this.$axios.post('/mock/rule', this.mockRule).then(res => {
+        this.$notify(this.$t('saveRuleSuccess'), 'success')
+        this.closeDialog()
+        this.listMockRules()
+      }).catch(e => this.showSnackbar('error', e.response.data.message))
+    },
+    deleteMockRule () {
+      const id = this.deleteRule.id
+      this.$axios.delete('/mock/rule', { data: { id } }
+      ).then(res => {
+        this.$notify(this.$t('deleteRuleSuccess'), 'success')
+        this.closeDeleteDialog()
         this.listMockRules(this.filter)
-      },
-      openDialog() {
-        this.dialog = true
-      },
-      closeDialog() {
-        this.dialog = false;
-        this.dialogType = 1;
-        this.mockRule = {
-          serviceName: '',
-          methodName: '',
-          rule: '',
-          enable: true
-        }
-      },
-      saveOrUpdateMockRule() {
-        this.$axios.post("/mock/rule", this.mockRule).then(res => {
-          this.$notify(this.$t('saveRuleSuccess'), 'success');
-          this.closeDialog();
-          this.listMockRules()
-        }).catch(e => this.showSnackbar('error', e.response.data.message))
-      },
-      deleteMockRule() {
-        const id = this.deleteRule.id
-        this.$axios.delete('/mock/rule', {
-          data: {id}}
-          ).then(res => {
-            this.$notify(this.$t('deleteRuleSuccess'), 'success');
-            this.closeDeleteDialog()
-            this.listMockRules(this.filter)
-        })
+      })
         .catch(e => this.$notify(e.response.data.message, 'error'))
-      },
-      editMockRule(mockRule) {
-        this.mockRule = mockRule;
-        this.openDialog();
-        this.dialogType = 2
-      },
-      enableOrDisableMockRule(mockRule) {
-        this.$axios.post('/mock/rule', mockRule)
+    },
+    editMockRule (mockRule) {
+      this.mockRule = mockRule
+      this.openDialog()
+      this.dialogType = 2
+    },
+    enableOrDisableMockRule (mockRule) {
+      this.$axios.post('/mock/rule', mockRule)
         .then(res => this.$notify(mockRule.enable ? this.$t('enableRuleSuccess') : this.$t('disableRuleSuccess'), 'success'))
         .catch(e => this.$notify(e.data.response.message, 'error'))
-      },
-      updateFilter() {
-        this.filter = document.querySelector('#mockRule').value.trim();
-      },
-      closeDeleteDialog() {
-        this.warnDialog = false
-        this.deleteRule = null
-      },
-      openDeleteDialog(rule) {
-        this.warnDialog = true
-        this.deleteRule = rule
-      }
     },
-    mounted() {
-      this.setHeaders();
-      this.listMockRules(this.filter);
+    updateFilter () {
+      this.filter = document.querySelector('#mockRule').value.trim()
     },
-    computed: {
-      area () {
-        return this.$i18n.locale
-      }
+    closeDeleteDialog () {
+      this.warnDialog = false
+      this.deleteRule = null
     },
-    watch: {
-      input (val) {
-        this.querySelections(val)
+    openDeleteDialog (rule) {
+      this.warnDialog = true
+      this.deleteRule = rule
+    }
+  },
+  mounted () {
+    this.setHeaders()
+    this.listMockRules(this.filter)
+  },
+  computed: {
+    area () {
+      return this.$i18n.locale
+    }
+  },
+  watch: {
+    input (val) {
+      this.querySelections(val)
+    },
+    area () {
+      this.setHeaders()
+    },
+    pagination: {
+      handler (newVal, oldVal) {
+        if (newVal.page === oldVal.page && newVal.rowsPerPage === oldVal.rowsPerPage) {
+          return
+        }
+        const filter = this.filter
+        this.listMockRules(filter)
       },
-      area () {
-        this.setHeaders()
-      },
-      pagination: {
-        handler (newVal, oldVal) {
-          if (newVal.page === oldVal.page && newVal.rowsPerPage === oldVal.rowsPerPage) {
-            return
-          }
-          const filter = this.filter;
-          this.listMockRules(filter)
-        },
-        deep: true
-      }
+      deep: true
     }
   }
+}
 </script>
 
 <style scoped>

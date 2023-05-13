@@ -35,81 +35,81 @@
 import Breadcrumb from '@/components/public/Breadcrumb'
 
 export default {
-    components: {
-      Breadcrumb
-    },
-    data: () => ({
-      success: null,
-      breads: [
-        {
-          text: 'serviceMetrics',
-          href: ''
-        },
-        {
-          text: 'serviceRelation',
-          href: ''
-        }
-      ],
-      responseData: null
-    }),
-    methods: {
-      initData: function () {
-        // eslint-disable-next-line no-undef
-        this.chartContent = echarts.init(document.getElementById('chartContent'))
-        this.chartContent.showLoading()
-        this.$axios.get('/metrics/relation')
-          .then(response => {
-            if (response && response.status === 200) {
-              this.success = true
-              this.responseData = response.data
-              this.responseData.type = 'force'
-              this.initChart(this.responseData)
-            }
-          })
-          .catch(error => {
-            this.success = false
-            this.responseData = error.response.data
-          })
+  components: {
+    Breadcrumb
+  },
+  data: () => ({
+    success: null,
+    breads: [
+      {
+        text: 'serviceMetrics',
+        href: ''
       },
-      initChart: function (data) {
-        this.chartContent.hideLoading()
-
-        const option = {
-          legend: {
-            top: 'bottom',
-            data: data.categories.map(i => i.name)
-          },
-          series: [{
-            type: 'graph',
-            layout: 'force',
-            animation: false,
-            label: {
-              normal: {
-                show: true,
-                position: 'right'
-              }
-            },
-            draggable: true,
-            data: data.nodes.map(function (node, idx) {
-              node.id = idx
-              return node
-            }),
-            categories: this.responseData.categories,
-            force: {
-              edgeLength: 100,
-              repulsion: 10
-            },
-            edges: data.links,
-            edgeSymbol: ['', 'arrow'],
-            edgeSymbolSize: 7
-          }]
-        }
-        this.chartContent.setOption(option)
+      {
+        text: 'serviceRelation',
+        href: ''
       }
+    ],
+    responseData: null
+  }),
+  methods: {
+    initData: function () {
+      // eslint-disable-next-line no-undef
+      this.chartContent = echarts.init(document.getElementById('chartContent'))
+      this.chartContent.showLoading()
+      this.$axios.get('/metrics/relation')
+        .then(response => {
+          if (response && response.status === 200) {
+            this.success = true
+            this.responseData = response.data
+            this.responseData.type = 'force'
+            this.initChart(this.responseData)
+          }
+        })
+        .catch(error => {
+          this.success = false
+          this.responseData = error.response.data
+        })
     },
-    mounted: function () {
-      this.initData()
-    }
+    initChart: function (data) {
+      this.chartContent.hideLoading()
 
+      const option = {
+        legend: {
+          top: 'bottom',
+          data: data.categories.map(i => i.name)
+        },
+        series: [{
+          type: 'graph',
+          layout: 'force',
+          animation: false,
+          label: {
+            normal: {
+              show: true,
+              position: 'right'
+            }
+          },
+          draggable: true,
+          data: data.nodes.map(function (node, idx) {
+            node.id = idx
+            return node
+          }),
+          categories: this.responseData.categories,
+          force: {
+            edgeLength: 100,
+            repulsion: 10
+          },
+          edges: data.links,
+          edgeSymbol: ['', 'arrow'],
+          edgeSymbolSize: 7
+        }]
+      }
+      this.chartContent.setOption(option)
+    }
+  },
+  mounted: function () {
+    this.initData()
   }
+
+}
 </script>

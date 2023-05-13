@@ -31,25 +31,25 @@
 </template>
 
 <script>
-  export default {
-    name: 'v-widget',
-    props: {
-      title: {
-        type: String
-      },
-      enableHeader: {
-        type: Boolean,
-        default: true
-      },
-      contentBg: {
-        type: String,
-        default: 'white'
-      }
+export default {
+  name: 'v-widget',
+  props: {
+    title: {
+      type: String
     },
+    enableHeader: {
+      type: Boolean,
+      default: true
+    },
+    contentBg: {
+      type: String,
+      default: 'white'
+    }
+  },
 
-    data () {
-      return {}
-    },
-    computed: {}
-  }
+  data () {
+    return {}
+  },
+  computed: {}
+}
 </script>

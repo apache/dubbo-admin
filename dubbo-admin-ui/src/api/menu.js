@@ -33,7 +33,8 @@ const Menu = [
   },
   { title: 'serviceTest', path: '/test', icon: 'code' },
   { title: 'apiDocs', path: '/apiDocs', icon: 'code' },
-  { title: 'serviceMock',
+  {
+    title: 'serviceMock',
     path: '/mock',
     icon: 'build',
     items: [

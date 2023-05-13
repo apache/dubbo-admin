@@ -21,8 +21,8 @@ const shortMonth = [
 ]
 const monthVisitData = shortMonth.map(m => {
   return {
-    'time': m,
-    'Value': Math.floor(Math.random() * 1000) + 200
+    time: m,
+    Value: Math.floor(Math.random() * 1000) + 200
   }
 })
 
@@ -74,15 +74,15 @@ const locationData = [
 const StackMainData = [220, 182, 191, 234, 290, 330, 310, 123, 442, 321, 90, 149, 210, 122, 133, 334, 198, 123, 125, 220]
 const StackData = StackMainData.map((item, key) => {
   return {
-    'label': key + 'D',
-    'max': 500,
-    'sales': item
+    label: key + 'D',
+    max: 500,
+    sales: item
   }
 })
 const SinData = range(1, 12).map(i => {
   return {
-    'cate': 'Cat' + i,
-    'value': ((Math.sin(i / 5) * (i / 5 - 0.1) + i / 6) * 5)
+    cate: 'Cat' + i,
+    value: ((Math.sin(i / 5) * (i / 5 - 0.1) + i / 6) * 5)
   }
 })
 

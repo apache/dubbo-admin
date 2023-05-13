@@ -422,7 +422,7 @@ export default {
           methodName: this.formItemMethodName,
           registryCenterUrl: this.formItemRegistryCenterUrl,
           version: this.apiInfoData.apiVersion || '',
-          group: this.apiInfoData.apiGroup || '',
+          group: this.apiInfoData.apiGroup || ''
         },
         headers: {
           'Content-Type': 'application/json; charset=UTF-8'

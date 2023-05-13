@@ -63,43 +63,43 @@
 import Footers from '@/components/public/Footers'
 
 export default {
-    name: 'Login',
-    data: () => ({
-      userName: '',
-      password: '',
-      e2: true
-    }),
-    components: {
-      Footers
-    },
-    methods: {
-      login: function () {
-        let userName = this.userName
-        let password = this.password
-        let vm = this
-        this.$axios.get('/user/login', {
-          params: {
-            userName,
-            password
-          }
-        }).then(response => {
-          if (response.status === 200 && response.data) {
-            localStorage.setItem('token', response.data)
-            localStorage.setItem('username', userName)
-            //login and redirect
-            let redirect = this.$route.query.redirect
-            if(redirect) {
-                this.$router.replace(redirect)
-            } else {
-                this.$router.replace('/')
-            }
+  name: 'Login',
+  data: () => ({
+    userName: '',
+    password: '',
+    e2: true
+  }),
+  components: {
+    Footers
+  },
+  methods: {
+    login: function () {
+      const userName = this.userName
+      const password = this.password
+      const vm = this
+      this.$axios.get('/user/login', {
+        params: {
+          userName,
+          password
+        }
+      }).then(response => {
+        if (response.status === 200 && response.data) {
+          localStorage.setItem('token', response.data)
+          localStorage.setItem('username', userName)
+          // login and redirect
+          const redirect = this.$route.query.redirect
+          if (redirect) {
+            this.$router.replace(redirect)
           } else {
-            vm.$notify('Username or password error,please try again')
+            this.$router.replace('/')
           }
-        })
-      }
+        } else {
+          vm.$notify('Username or password error,please try again')
+        }
+      })
     }
   }
+}
 </script>
 
 <style scoped>
