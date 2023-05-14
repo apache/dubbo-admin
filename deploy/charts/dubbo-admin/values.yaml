@@ -173,11 +173,10 @@ server:
 
 ## Spring datasource configuration
 spring:
-  ## spring enabled
-  enabled: true
-
   ## spring datasource
   datasource:
+    ## spring datasource enabled
+    enabled: false
     driverclassname: ~
     # url: jdbc:mysql://localhost:3306/dubbo-admin?characterEncoding=utf8&connectTimeout=1000&socketTimeout=10000&autoReconnect=true
     url: jdbc:h2:mem:~/dubbo-admin;MODE=MYSQL;

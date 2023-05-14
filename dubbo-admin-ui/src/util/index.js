@@ -23,11 +23,11 @@ const kebab = (str) => {
 }
 
 const toggleFullScreen = () => {
-  let doc = window.document
-  let docEl = doc.documentElement
+  const doc = window.document
+  const docEl = doc.documentElement
 
-  let requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen
-  let cancelFullScreen = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen
+  const requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen
+  const cancelFullScreen = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen
 
   if (!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
     requestFullScreen.call(docEl)
@@ -41,14 +41,14 @@ const toggleFullScreen = () => {
 const flattenObject = obj => {
   const toReturn = {}
 
-  for (let i in obj) {
+  for (const i in obj) {
     if (!obj.hasOwnProperty(i)) {
       continue
     }
 
     if ((typeof obj[i]) === 'object' && obj[i] !== null) {
       const flatObject = flattenObject(obj[i])
-      for (let x in flatObject) {
+      for (const x in flatObject) {
         if (!flatObject.hasOwnProperty(x)) {
           continue
         }

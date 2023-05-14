@@ -122,18 +122,18 @@ export default {
   mounted () {
     this.$ace = brace.edit(this.$el)
     this.$ace.$blockScrolling = Infinity
-    let {
-        lang,
-        theme,
-        readonly,
-        fontsize,
-        tabsize,
-        overrideValueHistory
-      } = this
+    const {
+      lang,
+      theme,
+      readonly,
+      fontsize,
+      tabsize,
+      overrideValueHistory
+    } = this
 
     this.$emit('init', this.$ace)
 
-    let session = this.$ace.getSession()
+    const session = this.$ace.getSession()
 
     require(`brace/mode/${lang}`)
     session.setMode(`ace/mode/${lang}`)

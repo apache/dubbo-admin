@@ -32,32 +32,32 @@ import Toolbar from '@/components/public/Toolbar'
 import Footers from '@/components/public/Footers'
 
 export default {
-    name: 'Index',
-    components: {
-      Drawer,
-      Toolbar,
-      Footers
-    },
-    data () {
-      return {
-        dark: false
-      }
-    },
-    created () {
-      window.getApp = this
-      window.getApp.$on('APP_LOGOUT', () => {
-        console.log('logout')
-        window.getApp.$axios.delete('/user/logout')
-          .then(response => {
-            if (response.status === 200 && response.data) {
-              localStorage.removeItem('token')
-              localStorage.removeItem('username')
-              window.getApp.$router.replace('/login')
-            }
-          })
-      })
+  name: 'Index',
+  components: {
+    Drawer,
+    Toolbar,
+    Footers
+  },
+  data () {
+    return {
+      dark: false
     }
+  },
+  created () {
+    window.getApp = this
+    window.getApp.$on('APP_LOGOUT', () => {
+      console.log('logout')
+      window.getApp.$axios.delete('/user/logout')
+        .then(response => {
+          if (response.status === 200 && response.data) {
+            localStorage.removeItem('token')
+            localStorage.removeItem('username')
+            window.getApp.$router.replace('/login')
+          }
+        })
+    })
   }
+}
 </script>
 
 <style scoped>

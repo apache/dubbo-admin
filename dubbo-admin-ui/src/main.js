@@ -22,9 +22,9 @@ import App from './App'
 import router from './router'
 import Vuetify from 'vuetify'
 import 'vuetify/dist/vuetify.min.css'
-import {store} from './store'
+import { store } from './store'
 import Notify from './components/public/notify'
-import {AXIOS} from './components/http-common'
+import { AXIOS } from './components/http-common'
 import i18n from './lang'
 import ECharts from 'vue-echarts/components/ECharts'
 import 'echarts/lib/chart/line'
@@ -54,7 +54,7 @@ router.beforeEach((to, from, next) => {
     } else {
       next({
         path: '/login',
-        query: {redirect: to.fullPath}
+        query: { redirect: to.fullPath }
       })
     }
   } else {

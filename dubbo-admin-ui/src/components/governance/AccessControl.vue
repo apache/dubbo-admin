@@ -273,8 +273,8 @@ export default {
   name: 'AccessControl',
   data: () => ({
     items: [
-      {id: 0, title: 'serviceName', value: 'service'},
-      {id: 1, title: 'app', value: 'application'}
+      { id: 0, title: 'serviceName', value: 'service' },
+      { id: 1, title: 'app', value: 'application' }
     ],
     breads: [
       {
@@ -414,7 +414,7 @@ export default {
         this.$notify.error('Either service or application is needed')
         return
       }
-      let type = this.items[this.selected].value
+      const type = this.items[this.selected].value
       this.loading = true
       if (rewrite) {
         if (this.selected === 0) {
@@ -429,11 +429,11 @@ export default {
         } else if (this.selected === 1) {
           this.$router.push({
             path: 'access',
-            query: {application: this.filter}
+            query: { application: this.filter }
           })
         }
       }
-      let url = '/rules/access/?' + type + '=' + this.filter + '&serviceVersion=' + this.serviceVersion4Search + '&serviceGroup=' + this.serviceGroup4Search
+      const url = '/rules/access/?' + type + '=' + this.filter + '&serviceVersion=' + this.serviceVersion4Search + '&serviceGroup=' + this.serviceGroup4Search
       this.$axios.get(url)
         .then(response => {
           this.accesses = response.data
@@ -469,7 +469,7 @@ export default {
         this.$notify.error('You can not set both service ID and application name')
         return
       }
-      let vm = this
+      const vm = this
       let blackList = []
       let whiteList = []
       if (this.modal.blackList) {
@@ -527,7 +527,7 @@ export default {
       if (this.modal.whiteList) {
         whiteList = this.modal.whiteList.split(',')
       }
-      let vm = this
+      const vm = this
       this.$axios.put('/rules/access/' + this.modal.id, {
         whitelist: whiteList,
         blacklist: blackList,
@@ -561,10 +561,10 @@ export default {
     },
     deleteItem (id) {
       this.$axios.delete('/rules/access/' + id)
-      .then(response => {
-        this.showSnackbar('success', 'Delete success')
-        this.search(this.filter)
-      }).catch(error => this.showSnackbar('error', error.response.data.message))
+        .then(response => {
+          this.showSnackbar('success', 'Delete success')
+          this.search(this.filter)
+        }).catch(error => this.showSnackbar('error', error.response.data.message))
     },
     showSnackbar (color, message) {
       this.$notify(message, color)
@@ -593,11 +593,11 @@ export default {
     this.setServiceHeaders()
     this.$store.dispatch('loadServiceItems')
     this.$store.dispatch('loadConsumerItems')
-    let query = this.$route.query
+    const query = this.$route.query
     let queryServiceVersion = null
     let queryServiceGroup = null
     if ('service' in query) {
-      this.filter = query['service']
+      this.filter = query.service
       if (query.serviceVersion) {
         queryServiceVersion = query.serviceVersion
       }
@@ -607,7 +607,7 @@ export default {
       this.selected = 0
     }
     if ('application' in query) {
-      this.filter = query['application']
+      this.filter = query.application
       this.selected = 1
     }
     if (queryServiceVersion != null) {

@@ -35,55 +35,55 @@
 import EChart from '@/util/echart'
 
 export default {
-    components: {
-      EChart
-    },
-    props: {
-      title: String,
-      subTitle: String,
-      icon: String,
-      iconColor: {
-        type: String,
-        default: 'success'
-      },
+  components: {
+    EChart
+  },
+  props: {
+    title: String,
+    subTitle: String,
+    icon: String,
+    iconColor: {
       type: String,
-      chartColor: String,
-      data: Array
+      default: 'success'
     },
-    data () {
-      return {
-        defaultOption: [
-          ['dataset.source', this.data],
-          ['xAxis.show', false],
-          ['yAxis.show', false],
-          ['color', [this.chartColor]]
-        ]
-      }
-    },
+    type: String,
+    chartColor: String,
+    data: Array
+  },
+  data () {
+    return {
+      defaultOption: [
+        ['dataset.source', this.data],
+        ['xAxis.show', false],
+        ['yAxis.show', false],
+        ['color', [this.chartColor]]
+      ]
+    }
+  },
 
-    computed: {
-      computeChartOption () {
-        switch (this.type) {
-          case 'bar':
-            this.defaultOption.push(['series[0].type', 'bar'])
-            break
-          case 'area':
-            this.defaultOption.push(['series[0].type', 'line'])
-            this.defaultOption.push(['series[0].areaStyle', {}])
-            break
-          default:
-            break
-        }
-        return this.defaultOption
+  computed: {
+    computeChartOption () {
+      switch (this.type) {
+        case 'bar':
+          this.defaultOption.push(['series[0].type', 'bar'])
+          break
+        case 'area':
+          this.defaultOption.push(['series[0].type', 'line'])
+          this.defaultOption.push(['series[0].areaStyle', {}])
+          break
+        default:
+          break
       }
-    },
+      return this.defaultOption
+    }
+  },
 
-    watch: {
-      data (curVal, oldVal) {
-        return this.defaultOption
-      }
+  watch: {
+    data (curVal, oldVal) {
+      return this.defaultOption
     }
   }
+}
 </script>
 
 <style scoped>

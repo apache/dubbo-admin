@@ -143,43 +143,43 @@ import Search from '@/components/public/Search'
 import Breadcrumb from '@/components/public/Breadcrumb'
 
 export default {
-    components: {
-      AceEditor,
-      Search,
-      Breadcrumb
+  components: {
+    AceEditor,
+    Search,
+    Breadcrumb
+  },
+  data: () => ({
+    dropdown_font: ['Service', 'App', 'IP'],
+    ruleKeys: ['enabled', 'force', 'dynamic', 'runtime', 'group', 'version', 'rule'],
+    pattern: 'Service',
+    filter: '',
+    dialog: false,
+    updateId: '',
+    application: '',
+    searchLoading: false,
+    typeAhead: [],
+    input: null,
+    timerID: null,
+    warn: {
+      display: false,
+      title: '',
+      text: '',
+      status: {}
     },
-    data: () => ({
-      dropdown_font: ['Service', 'App', 'IP'],
-      ruleKeys: ['enabled', 'force', 'dynamic', 'runtime', 'group', 'version', 'rule'],
-      pattern: 'Service',
-      filter: '',
-      dialog: false,
-      updateId: '',
-      application: '',
-      searchLoading: false,
-      typeAhead: [],
-      input: null,
-      timerID: null,
-      warn: {
-        display: false,
-        title: '',
-        text: '',
-        status: {}
+    breads: [
+      {
+        text: 'serviceGovernance',
+        href: ''
       },
-      breads: [
-        {
-          text: 'serviceGovernance',
-          href: ''
-        },
-        {
-          text: 'meshRule',
-          href: ''
-        }
-      ],
-      height: 0,
-      operations: operations,
-      meshRoutingRules: [],
-      template: 'apiVersion: service.dubbo.apache.org/v1alpha1\n' +
+      {
+        text: 'meshRule',
+        href: ''
+      }
+    ],
+    height: 0,
+    operations: operations,
+    meshRoutingRules: [],
+    template: 'apiVersion: service.dubbo.apache.org/v1alpha1\n' +
         'kind: DestinationRule\n' +
         'metadata: { name: demo-route }\n' +
         'spec:\n' +
@@ -218,203 +218,203 @@ export default {
         '      services:\n' +
         '        - {regex: ccc}\n' +
         '  hosts: [demo]',
-      ruleText: '',
-      readonly: false,
-      headers: []
-    }),
-    methods: {
-      setHeaders: function () {
-        this.headers = [
-          {
-            text: this.$t('appName'),
-            value: 'application',
-            align: 'left'
-          },
-          {
-            text: this.$t('operation'),
-            value: 'operation',
-            sortable: false,
-            width: '115px'
-          }
-        ]
-      },
-      querySelections(v) {
-        if (this.timerID) {
-          clearTimeout(this.timerID)
+    ruleText: '',
+    readonly: false,
+    headers: []
+  }),
+  methods: {
+    setHeaders: function () {
+      this.headers = [
+        {
+          text: this.$t('appName'),
+          value: 'application',
+          align: 'left'
+        },
+        {
+          text: this.$t('operation'),
+          value: 'operation',
+          sortable: false,
+          width: '115px'
         }
-        // Simulated ajax query
-        this.timerID = setTimeout(() => {
-          if (v && v.length >= 4) {
-            this.searchLoading = true
-            this.typeAhead = this.$store.getters.getAppItems(v)
-            this.searchLoading = false
-            this.timerID = null
-          } else {
-            this.typeAhead = []
-          }
-        }, 500)
-      },
-      submit: function () {
-        if (!this.filter) {
-          this.$notify.error('application is needed')
-          return
-        }
-        this.filter = this.filter.trim()
-        this.search(true)
-      },
-      search: function (rewrite) {
-        let url = '/rules/route/mesh/?application' + '=' + this.filter
-        this.$axios.get(url)
-          .then(response => {
-            this.meshRoutingRules = response.data
-            if (rewrite) {
-              this.$router.push({path: 'meshRule', query: {application: this.filter}})
-            }
-          })
-      },
-      closeDialog: function () {
-        this.ruleText = this.template
-        this.updateId = ''
-        this.application = ''
-        this.dialog = false
-        this.readonly = false
-      },
-      openDialog: function () {
-        this.dialog = true
-      },
-      openWarn: function (title, text) {
-        this.warn.title = title
-        this.warn.text = text
-        this.warn.display = true
-      },
-      closeWarn: function () {
-        this.warn.title = ''
-        this.warn.text = ''
-        this.warn.display = false
-      },
-      saveItem: function () {
-        const rule = {}
-        rule.meshRule = this.ruleText
-        if (!this.application) {
-          this.$notify.error('application is required')
-          return
-        }
-        rule.application = this.application
-        let vm = this
-        if (this.updateId) {
-          if (this.updateId === 'close') {
-            this.closeDialog()
-          } else {
-            rule.id = this.updateId
-            this.$axios.put('/rules/route/mesh/' + rule.id, rule)
-              .then(response => {
-                if (response.status === 200) {
-                  vm.search(vm.application, true)
-                  vm.closeDialog()
-                  vm.$notify.success('Update success')
-                }
-              })
-          }
+      ]
+    },
+    querySelections (v) {
+      if (this.timerID) {
+        clearTimeout(this.timerID)
+      }
+      // Simulated ajax query
+      this.timerID = setTimeout(() => {
+        if (v && v.length >= 4) {
+          this.searchLoading = true
+          this.typeAhead = this.$store.getters.getAppItems(v)
+          this.searchLoading = false
+          this.timerID = null
         } else {
-          this.$axios.post('/rules/route/mesh/', rule)
-            .then(response => {
-              if (response.status === 201) {
-                vm.search(vm.application, true)
-                vm.filter = vm.application
-                vm.closeDialog()
-                vm.$notify.success('Create success')
-              }
-            })
-            .catch(error => {
-              console.log(error)
-            })
+          this.typeAhead = []
         }
-      },
-      itemOperation: function (icon, item) {
-        let itemId = item.application
-        switch (icon) {
-          case 'visibility':
-            this.$axios.get('/rules/route/mesh/' + itemId)
-              .then(response => {
-                let meshRoute = response.data
-                this.handleBalance(meshRoute, true)
-                this.updateId = 'close'
-              })
-            break
-          case 'edit':
-            let id = {}
-            id.id = itemId
-            this.$axios.get('/rules/route/mesh/' + itemId)
-              .then(response => {
-                let meshRoute = response.data
-                this.handleBalance(meshRoute, false)
-                this.updateId = itemId
-              })
-            break
-          case 'delete':
-            this.openWarn('warnDeleteMeshRule', 'application: ' + item.application)
-            this.warn.status.operation = 'delete'
-            this.warn.status.id = itemId
-        }
-      },
-      handleBalance: function (meshRoute, readonly) {
-        this.application = meshRoute.application
-        delete meshRoute.id
-        delete meshRoute.application
-        this.ruleText = meshRoute.meshRule
-        this.readonly = readonly
-        this.dialog = true
-      },
-      setHeight: function () {
-        this.height = window.innerHeight * 0.5
-      },
-      deleteItem: function (warnStatus) {
-        let id = warnStatus.id
-        let operation = warnStatus.operation
-        if (operation === 'delete') {
-          this.$axios.delete('/rules/route/mesh/' + id)
+      }, 500)
+    },
+    submit: function () {
+      if (!this.filter) {
+        this.$notify.error('application is needed')
+        return
+      }
+      this.filter = this.filter.trim()
+      this.search(true)
+    },
+    search: function (rewrite) {
+      const url = '/rules/route/mesh/?application' + '=' + this.filter
+      this.$axios.get(url)
+        .then(response => {
+          this.meshRoutingRules = response.data
+          if (rewrite) {
+            this.$router.push({ path: 'meshRule', query: { application: this.filter } })
+          }
+        })
+    },
+    closeDialog: function () {
+      this.ruleText = this.template
+      this.updateId = ''
+      this.application = ''
+      this.dialog = false
+      this.readonly = false
+    },
+    openDialog: function () {
+      this.dialog = true
+    },
+    openWarn: function (title, text) {
+      this.warn.title = title
+      this.warn.text = text
+      this.warn.display = true
+    },
+    closeWarn: function () {
+      this.warn.title = ''
+      this.warn.text = ''
+      this.warn.display = false
+    },
+    saveItem: function () {
+      const rule = {}
+      rule.meshRule = this.ruleText
+      if (!this.application) {
+        this.$notify.error('application is required')
+        return
+      }
+      rule.application = this.application
+      const vm = this
+      if (this.updateId) {
+        if (this.updateId === 'close') {
+          this.closeDialog()
+        } else {
+          rule.id = this.updateId
+          this.$axios.put('/rules/route/mesh/' + rule.id, rule)
             .then(response => {
               if (response.status === 200) {
-                this.warn.display = false
-                this.search(this.filter, false)
-                this.$notify.success('Delete success')
+                vm.search(vm.application, true)
+                vm.closeDialog()
+                vm.$notify.success('Update success')
               }
             })
         }
+      } else {
+        this.$axios.post('/rules/route/mesh/', rule)
+          .then(response => {
+            if (response.status === 201) {
+              vm.search(vm.application, true)
+              vm.filter = vm.application
+              vm.closeDialog()
+              vm.$notify.success('Create success')
+            }
+          })
+          .catch(error => {
+            console.log(error)
+          })
       }
     },
-    created() {
-      this.setHeight()
-    },
-    computed: {
-      area() {
-        return this.$i18n.locale
+    itemOperation: function (icon, item) {
+      const itemId = item.application
+      switch (icon) {
+        case 'visibility':
+          this.$axios.get('/rules/route/mesh/' + itemId)
+            .then(response => {
+              const meshRoute = response.data
+              this.handleBalance(meshRoute, true)
+              this.updateId = 'close'
+            })
+          break
+        case 'edit':
+          const id = {}
+          id.id = itemId
+          this.$axios.get('/rules/route/mesh/' + itemId)
+            .then(response => {
+              const meshRoute = response.data
+              this.handleBalance(meshRoute, false)
+              this.updateId = itemId
+            })
+          break
+        case 'delete':
+          this.openWarn('warnDeleteMeshRule', 'application: ' + item.application)
+          this.warn.status.operation = 'delete'
+          this.warn.status.id = itemId
       }
     },
-    watch: {
-      input(val) {
-        this.querySelections(val)
-      },
-      area() {
-        this.setHeaders()
-      }
+    handleBalance: function (meshRoute, readonly) {
+      this.application = meshRoute.application
+      delete meshRoute.id
+      delete meshRoute.application
+      this.ruleText = meshRoute.meshRule
+      this.readonly = readonly
+      this.dialog = true
     },
-    mounted: function () {
-      this.setHeaders()
-      this.$store.dispatch('loadInstanceAppItems')
-      this.ruleText = this.template
-      let query = this.$route.query
-      let filter = null
-      Object.keys(query).forEach(function (key) {
-        if (key === 'application') {
-          filter = query[key]
-        }
-      })
-      if (filter !== null) {
-        this.filter = filter
-        this.search(false)
+    setHeight: function () {
+      this.height = window.innerHeight * 0.5
+    },
+    deleteItem: function (warnStatus) {
+      const id = warnStatus.id
+      const operation = warnStatus.operation
+      if (operation === 'delete') {
+        this.$axios.delete('/rules/route/mesh/' + id)
+          .then(response => {
+            if (response.status === 200) {
+              this.warn.display = false
+              this.search(this.filter, false)
+              this.$notify.success('Delete success')
+            }
+          })
       }
     }
-
+  },
+  created () {
+    this.setHeight()
+  },
+  computed: {
+    area () {
+      return this.$i18n.locale
+    }
+  },
+  watch: {
+    input (val) {
+      this.querySelections(val)
+    },
+    area () {
+      this.setHeaders()
+    }
+  },
+  mounted: function () {
+    this.setHeaders()
+    this.$store.dispatch('loadInstanceAppItems')
+    this.ruleText = this.template
+    const query = this.$route.query
+    let filter = null
+    Object.keys(query).forEach(function (key) {
+      if (key === 'application') {
+        filter = query[key]
+      }
+    })
+    if (filter !== null) {
+      this.filter = filter
+      this.search(false)
+    }
   }
+
+}
 </script>
