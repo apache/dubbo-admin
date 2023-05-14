@@ -13,22 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package subcmd
 
-import (
-	subcmd "github.com/apache/dubbo-admin/pkg/dubboctl/cmd/subcmd"
-	"github.com/spf13/cobra"
+import "sigs.k8s.io/controller-runtime/pkg/client"
+
+var (
+	// TestInstallFlag and TestCli are uses for black box testing
+	TestInstallFlag bool
+	TestCli         client.Client
 )
-
-func addManifest(rootCmd *cobra.Command) {
-	manifestCmd := &cobra.Command{
-		Use:   "manifest",
-		Short: "Commands related to manifest",
-		Long:  "Commands help user to generate manifest and install manifest",
-	}
-	subcmd.ConfigManifestGenerateCmd(manifestCmd)
-	subcmd.ConfigManifestInstallCmd(manifestCmd)
-	subcmd.ConfigManifestUninstallCmd(manifestCmd)
-	subcmd.ConfigManifestDiffCmd(manifestCmd)
-	rootCmd.AddCommand(manifestCmd)
-}
