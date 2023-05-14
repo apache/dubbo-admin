@@ -13,11 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package services
+package model
 
-import "github.com/apache/dubbo-admin/pkg/admin/model"
-
-type ConsumerService interface {
-	FindAll() ([]string, error)
-	FindByService(string) ([]*model.Consumer, error)
+// ServiceDTO is the transforming format of service
+type ServiceDTO struct {
+	Service        string         `json:"service"`
+	AppName        string         `json:"appName"`
+	Group          string         `json:"group"`
+	Version        string         `json:"version"`
+	RegistrySource RegistrySource `json:"registrySource"`
 }

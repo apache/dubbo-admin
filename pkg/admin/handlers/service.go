@@ -19,6 +19,11 @@ package handlers
 
 import (
 	"net/http"
+	"strconv"
+
+	"github.com/apache/dubbo-admin/pkg/admin/constant"
+	"github.com/vcraescu/go-paginator"
+	"github.com/vcraescu/go-paginator/adapter"
 
 	"dubbo.apache.org/dubbo-go/v3/metadata/identifier"
 	"github.com/apache/dubbo-admin/pkg/admin/config"
@@ -44,25 +49,51 @@ func AllServices(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": services,
-	})
+	c.JSON(http.StatusOK, services)
 }
 
 func SearchService(c *gin.Context) {
 	pattern := c.Query("pattern")
 	filter := c.Query("filter")
-	providers, err := providerService.FindService(pattern, filter)
+	page := c.Query("page")
+	pageInt, err := strconv.Atoi(page)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
+	size := c.Query("size")
+	sizeInt, err := strconv.Atoi(page)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	// get services
+	serviceDTOS, err := providerService.FindService(pattern, filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+	// paging
+	p := paginator.New(adapter.NewSliceAdapter(serviceDTOS), sizeInt)
+	p.SetPage(pageInt)
+	var serviceResults []*model.ServiceDTO
+	p.Results(&serviceResults)
+	// return results
 	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": providers,
+		"content":       serviceResults,
+		"totalPages":    p.PageNums(),
+		"totalElements": p.Nums(),
+		"size":          size,
+		"first":         pageInt == 0,
+		"last":          pageInt == p.PageNums()-1,
+		"pageNumber":    page,
+		"offset":        (pageInt - 1) * sizeInt,
 	})
 }
 
@@ -74,10 +105,7 @@ func AllApplications(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": applications,
-	})
+	c.JSON(http.StatusOK, applications)
 }
 
 func AllConsumers(c *gin.Context) {
@@ -88,10 +116,7 @@ func AllConsumers(c *gin.Context) {
 		})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": consumers,
-	})
+	c.JSON(http.StatusOK, consumers)
 }
 
 func ServiceDetail(c *gin.Context) {
@@ -125,22 +150,19 @@ func ServiceDetail(c *gin.Context) {
 			ServiceInterface: interfaze,
 			Version:          version,
 			Group:            group,
-			Side:             "provider",
+			Side:             constant.ProviderSide,
 		},
 	}
 	metadata, _ := config.MetadataReportCenter.GetServiceDefinition(identifier)
 
-	serviceDetail := &model.ServiceDetail{
+	serviceDetail := &model.ServiceDetailDTO{
 		Providers:   providers,
 		Consumers:   consumers,
 		Service:     service,
 		Application: application,
 		Metadata:    metadata,
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": serviceDetail,
-	})
+	c.JSON(http.StatusOK, serviceDetail)
 }
 
 func Version(c *gin.Context) {

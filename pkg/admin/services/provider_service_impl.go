@@ -150,7 +150,7 @@ func (p *ProviderServiceImpl) findByApplication(providerApplication string) ([]*
 }
 
 // FindService by patterns and filters, patterns support IP, service and application.
-func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*model.Provider, error) {
+func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*model.ServiceDTO, error) {
 	var (
 		providers []*model.Provider
 		reg       *regexp.Regexp
@@ -227,5 +227,5 @@ func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*mod
 		}
 	}
 
-	return providers, nil
+	return util.Providers2DTO(providers), nil
 }

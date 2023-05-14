@@ -181,3 +181,18 @@ func filterFromURLs(from, to map[string]*common.URL, filter map[string]string) {
 		}
 	}
 }
+
+// Providers2DTO converts a list of providers to a list of servicesDTOs
+func Providers2DTO(providers []*model.Provider) []*model.ServiceDTO {
+	serviceDTOs := make([]*model.ServiceDTO, len(providers))
+	for i := range providers {
+		serviceDTOs[i] = &model.ServiceDTO{
+			Service:        providers[i].Service,
+			AppName:        providers[i].Application,
+			Group:          GetGroup(providers[i].Service),
+			Version:        GetVersion(providers[i].Service),
+			RegistrySource: providers[i].RegistrySource,
+		}
+	}
+	return serviceDTOs
+}
