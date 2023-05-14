@@ -95,14 +95,10 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	#$(CONTROLLER_GEN) object:headerFile="./hack/boilerplate.go.txt"  crd:allowDangerousTypes=true paths="./..."
 
-.PHONY: dubbo-admin-swagger-gen
-dubbo-admin-swagger-gen: swagger-install ## Generate dubbo-admin swagger docs.
-	$(SWAGGER) init -d cmd/admin,pkg/admin -o hack/swagger/docs
-
-.PHONY: dubbo-admin-swagger-ui
-dubbo-admin-swagger-ui: dubbo-admin-swagger-gen ## Generate dubbo-admin swagger docs and start swagger ui.
-	@echo "access swagger url: http://127.0.0.1:38081/swagger/index.html"
-	cd hack/swagger; go run main.go
+.PHONY: dubbo-admin-swagger
+dubbo-admin-swagger: swagger-install ## Generate dubbo-admin swagger docs.
+	$(SWAGGER) init -d cmd/admin,pkg/admin -o hack/swagger
+	@rm -f hack/swagger/docs.go hack/swagger/swagger.yaml
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
