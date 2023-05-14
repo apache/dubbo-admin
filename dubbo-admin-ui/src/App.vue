@@ -21,15 +21,15 @@
   </div>
 </template>
 <script>
-  export default {
-    data () {
-      return {
-        dark: false
-      }
-    },
-    created () {
-      window.getApp = this
-    },
-    name: 'App'
-  }
+export default {
+  data () {
+    return {
+      dark: false
+    }
+  },
+  created () {
+    window.getApp = this
+  },
+  name: 'App'
+}
 </script>

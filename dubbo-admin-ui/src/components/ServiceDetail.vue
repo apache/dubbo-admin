@@ -118,171 +118,171 @@
   </v-container>
 </template>
 <script>
-  export default {
-    data: () => ({
-      metaHeaders: [],
-      detailHeaders: {},
-      providerDetails: [],
-      consumerDetails: [],
-      methodMetaData: [],
-      basic: []
-    }),
-    methods: {
-      setmetaHeaders: function () {
-        this.metaHeaders = [
+export default {
+  data: () => ({
+    metaHeaders: [],
+    detailHeaders: {},
+    providerDetails: [],
+    consumerDetails: [],
+    methodMetaData: [],
+    basic: []
+  }),
+  methods: {
+    setmetaHeaders: function () {
+      this.metaHeaders = [
+        {
+          text: this.$t('methodName'),
+          value: 'method',
+          sortable: false
+        },
+        {
+          text: this.$t('parameterList'),
+          value: 'parameter',
+          sortable: false
+        },
+        {
+          text: this.$t('returnType'),
+          value: 'returnType',
+          sortable: false
+        }
+      ]
+    },
+    setHoverHint: function (item) {
+      this.$set(item, 'hint', 'copy')
+    },
+
+    setoutHint: function (item) {
+      this.$set(item, 'hint', 'url')
+    },
+    setdetailHeaders: function () {
+      this.detailHeaders = {
+        providers: [
           {
-            text: this.$t('methodName'),
-            value: 'method',
-            sortable: false
+            text: this.$t('ip'),
+            value: 'ip'
           },
           {
-            text: this.$t('parameterList'),
-            value: 'parameter',
-            sortable: false
+            text: this.$t('port'),
+            value: 'port'
           },
           {
-            text: this.$t('returnType'),
-            value: 'returnType',
-            sortable: false
+            text: this.$t('registrySource'),
+            value: 'registrySource'
+          },
+          {
+            text: this.$t('timeout'),
+            value: 'timeout'
+          },
+          {
+            text: this.$t('serialization'),
+            value: 'serialization'
+          },
+          {
+            text: this.$t('weight'),
+            value: 'weight'
+          },
+          {
+            text: this.$t('operation'),
+            value: 'operate'
+          }
+
+        ],
+        consumers: [
+          {
+            text: this.$t('ip'),
+            value: 'ip'
+          },
+          {
+            text: this.$t('appName'),
+            value: 'appName'
           }
         ]
-      },
-      setHoverHint: function (item) {
-        this.$set(item, 'hint', 'copy')
-      },
-
-      setoutHint: function (item) {
-        this.$set(item, 'hint', 'url')
-      },
-      setdetailHeaders: function () {
-        this.detailHeaders = {
-          providers: [
-            {
-              text: this.$t('ip'),
-              value: 'ip'
-            },
-            {
-              text: this.$t('port'),
-              value: 'port'
-            },
-            {
-              text: this.$t('registrySource'),
-              value: 'registrySource'
-            },
-            {
-              text: this.$t('timeout'),
-              value: 'timeout'
-            },
-            {
-              text: this.$t('serialization'),
-              value: 'serialization'
-            },
-            {
-              text: this.$t('weight'),
-              value: 'weight'
-            },
-            {
-              text: this.$t('operation'),
-              value: 'operate'
+      }
+    },
+    detail: function (service) {
+      this.$axios.get('/service/' + service)
+        .then(response => {
+          this.providerDetails = response.data.providers
+          const instanceRegistry = this.$t('instanceRegistry')
+          const interfaceRegistry = this.$t('interfaceRegistry')
+          const allRegistry = this.$t('allRegistry')
+          for (let i = 0; i < this.providerDetails.length; i++) {
+            if (this.providerDetails[i].registrySource === 'INSTANCE') {
+              this.providerDetails[i].registrySource = instanceRegistry
             }
-
-          ],
-          consumers: [
-            {
-              text: this.$t('ip'),
-              value: 'ip'
-            },
-            {
-              text: this.$t('appName'),
-              value: 'appName'
+            if (this.providerDetails[i].registrySource === 'INTERFACE') {
+              this.providerDetails[i].registrySource = interfaceRegistry
             }
-          ]
-        }
-      },
-      detail: function (service) {
-        this.$axios.get('/service/' + service)
-            .then(response => {
-              this.providerDetails = response.data.providers
-              const instanceRegistry = this.$t('instanceRegistry')
-              const interfaceRegistry = this.$t('interfaceRegistry')
-              const allRegistry = this.$t('allRegistry')
-              for (let i = 0; i < this.providerDetails.length; i++) {
-                if (this.providerDetails[i].registrySource === 'INSTANCE') {
-                  this.providerDetails[i].registrySource = instanceRegistry
-                }
-                if (this.providerDetails[i].registrySource === 'INTERFACE') {
-                  this.providerDetails[i].registrySource = interfaceRegistry
-                }
-                if (this.providerDetails[i].registrySource === 'ALL') {
-                  this.providerDetails[i].registrySource = allRegistry
-                }
-                console.log(this.providerDetails[i])
-                this.$set(this.providerDetails[i], 'hint', 'url')
-              }
-              this.consumerDetails = response.data.consumers
-              if (response.data.metadata !== null) {
-                this.methodMetaData = response.data.metadata.methods
-              }
-            })
-      },
-      getIp: function (address) {
-        return address != null ? address.split(':')[0] : null
-      },
-      getPort: function (address) {
-        return address != null && address.split(':').length >= 2 ? address.split(':')[1] : null
-      },
-      toCopyText (text) {
-        this.$copyText(text).then(() => {
-          this.$notify.success(this.$t('copySuccessfully'))
-        }, () => {})
-      }
-    },
-    computed: {
-      area () {
-        return this.$i18n.locale
-      }
-    },
-    watch: {
-      area () {
-        this.setdetailHeaders()
-        this.setmetaHeaders()
-      }
-    },
-    mounted: function () {
-      this.setmetaHeaders()
-      this.setdetailHeaders()
-      let query = this.$route.query
-      let meta = {
-        'service': '',
-        'app': '',
-        'group': '',
-        'version': ''
-      }
-      var vm = this
-      Object.keys(query).forEach(function (key) {
-        if (key in meta) {
-          meta[key] = query[key]
-        }
-      })
-      let dataId = meta['service']
-      if (meta['group'] !== '') {
-        dataId = meta['group'] + '*' + dataId
-      }
-      if (meta['version'] !== '') {
-        dataId = dataId + ':' + meta['version']
-      }
-
-      if (dataId !== '') {
-        this.detail(dataId)
-        Object.keys(meta).forEach(function (key) {
-          let item = {}
-          item.value = meta[key]
-          item.name = key
-          vm.basic.push(item)
+            if (this.providerDetails[i].registrySource === 'ALL') {
+              this.providerDetails[i].registrySource = allRegistry
+            }
+            console.log(this.providerDetails[i])
+            this.$set(this.providerDetails[i], 'hint', 'url')
+          }
+          this.consumerDetails = response.data.consumers
+          if (response.data.metadata !== null) {
+            this.methodMetaData = response.data.metadata.methods
+          }
         })
+    },
+    getIp: function (address) {
+      return address != null ? address.split(':')[0] : null
+    },
+    getPort: function (address) {
+      return address != null && address.split(':').length >= 2 ? address.split(':')[1] : null
+    },
+    toCopyText (text) {
+      this.$copyText(text).then(() => {
+        this.$notify.success(this.$t('copySuccessfully'))
+      }, () => {})
+    }
+  },
+  computed: {
+    area () {
+      return this.$i18n.locale
+    }
+  },
+  watch: {
+    area () {
+      this.setdetailHeaders()
+      this.setmetaHeaders()
+    }
+  },
+  mounted: function () {
+    this.setmetaHeaders()
+    this.setdetailHeaders()
+    const query = this.$route.query
+    const meta = {
+      service: '',
+      app: '',
+      group: '',
+      version: ''
+    }
+    var vm = this
+    Object.keys(query).forEach(function (key) {
+      if (key in meta) {
+        meta[key] = query[key]
       }
+    })
+    let dataId = meta.service
+    if (meta.group !== '') {
+      dataId = meta.group + '*' + dataId
+    }
+    if (meta.version !== '') {
+      dataId = dataId + ':' + meta.version
+    }
+
+    if (dataId !== '') {
+      this.detail(dataId)
+      Object.keys(meta).forEach(function (key) {
+        const item = {}
+        item.value = meta[key]
+        item.name = key
+        vm.basic.push(item)
+      })
     }
   }
+}
 </script>
 
 <style scoped>
@@ -292,4 +292,3 @@
     font-size: 8px;
   }
 </style>
-

@@ -34,7 +34,7 @@ const Notify = {}
 Notify.install = function (Vue) {
   const SnackbarConstructor = Vue.extend(Snackbar)
   const instance = new SnackbarConstructor()
-  let vm = instance.$mount()
+  const vm = instance.$mount()
   document.querySelector('body').appendChild(vm.$el)
 
   Vue.prototype.$notify = (text, color) => {

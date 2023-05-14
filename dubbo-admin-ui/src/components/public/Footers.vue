@@ -22,9 +22,9 @@
   </v-footer>
 </template>
 <script>
-  export default {
-    name: 'footers'
-  }
+export default {
+  name: 'footers'
+}
 </script>
 
 <style>
@@ -32,4 +32,3 @@
     border-top: solid 1px rgba(0,0,0,.12);
   }
 </style>
-

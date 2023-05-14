@@ -43,13 +43,13 @@ export const store = new Vuex.Store({
     }
   },
   actions: {
-    changeArea ({commit}, area) {
+    changeArea ({ commit }, area) {
       commit('setArea', area)
     },
     /**
      * Load service items from server, put results into storage.
      */
-    loadServiceItems ({commit}) {
+    loadServiceItems ({ commit }) {
       Vue.prototype.$axios.get('/services')
         .then(response => {
           if (response.status === 200) {
@@ -61,7 +61,7 @@ export const store = new Vuex.Store({
     /**
      * Load application items from server, put results into storage.
      */
-    loadAppItems ({commit}) {
+    loadAppItems ({ commit }) {
       Vue.prototype.$axios.get('/applications')
         .then(response => {
           if (response.status === 200) {
@@ -73,7 +73,7 @@ export const store = new Vuex.Store({
     /**
      * Load instance registry application items from server, put results into storage.
      */
-    loadInstanceAppItems ({commit}) {
+    loadInstanceAppItems ({ commit }) {
       Vue.prototype.$axios.get('/applications/instance')
         .then(response => {
           if (response.status === 200) {
@@ -85,7 +85,7 @@ export const store = new Vuex.Store({
     /**
      * Load application items from consumer, put results into storage.
      */
-    loadConsumerItems ({commit}) {
+    loadConsumerItems ({ commit }) {
       Vue.prototype.$axios.get('/consumers')
         .then(response => {
           if (response.status === 200) {

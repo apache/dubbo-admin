@@ -106,20 +106,20 @@ export default {
     Breadcrumb,
     ApiForm
   },
-  computed:{
-    isBigScreen:function(){
-      const _this = this;
-      var isBigScreen = false;
-      if(_this.$vuetify.breakpoint){
-        isBigScreen = _this.$vuetify.breakpoint.md || _this.$vuetify.breakpoint.lg || _this.$vuetify.breakpoint.xl;
+  computed: {
+    isBigScreen: function () {
+      const _this = this
+      var isBigScreen = false
+      if (_this.$vuetify.breakpoint) {
+        isBigScreen = _this.$vuetify.breakpoint.md || _this.$vuetify.breakpoint.lg || _this.$vuetify.breakpoint.xl
       }
 
-      return  isBigScreen;
+      return isBigScreen
     }
   },
-  created(){
-    const _this = this;
-    console.debug(_this.$vuetify.breakpoint.md);
+  created () {
+    const _this = this
+    console.debug(_this.$vuetify.breakpoint.md)
   },
   data: () => ({
     breads: [
@@ -215,16 +215,15 @@ export default {
       }
     },
     onScroll () {
-        const _this = this;
-        var scrollTop = document.documentElement.scrollTop || document.body.scrollTop
-        var offsetTop = document.getElementById('apiFormDiv').offsetTop
+      const _this = this
+      var scrollTop = document.documentElement.scrollTop || document.body.scrollTop
+      var offsetTop = document.getElementById('apiFormDiv').offsetTop
 
-        if(scrollTop >= offsetTop && _this.isBigScreen){
-          _this.isApiListDivFixed = true;
-        }else{
-          _this.isApiListDivFixed = false;
-        }
-
+      if (scrollTop >= offsetTop && _this.isBigScreen) {
+        _this.isApiListDivFixed = true
+      } else {
+        _this.isApiListDivFixed = false
+      }
     }
   },
   mounted () {
