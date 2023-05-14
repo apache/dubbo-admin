@@ -124,44 +124,44 @@ import Search from '@/components/public/Search'
 import Breadcrumb from '@/components/public/Breadcrumb'
 
 export default {
-    components: {
-      AceEditor,
-      Search,
-      Breadcrumb
+  components: {
+    AceEditor,
+    Search,
+    Breadcrumb
+  },
+  data: () => ({
+    dropdown_font: ['Service', 'App', 'IP'],
+    ruleKeys: ['enabled', 'force', 'dynamic', 'runtime', 'group', 'version', 'rule'],
+    pattern: 'Service',
+    filter: '',
+    dialog: false,
+    updateId: '',
+    application: '',
+    searchLoading: false,
+    typeAhead: [],
+    input: null,
+    timerID: null,
+    warn: {
+      display: false,
+      title: '',
+      text: '',
+      status: {}
     },
-    data: () => ({
-      dropdown_font: [ 'Service', 'App', 'IP' ],
-      ruleKeys: ['enabled', 'force', 'dynamic', 'runtime', 'group', 'version', 'rule'],
-      pattern: 'Service',
-      filter: '',
-      dialog: false,
-      updateId: '',
-      application: '',
-      searchLoading: false,
-      typeAhead: [],
-      input: null,
-      timerID: null,
-      warn: {
-        display: false,
-        title: '',
-        text: '',
-        status: {}
+    breads: [
+      {
+        text: 'serviceGovernance',
+        href: ''
       },
-      breads: [
-        {
-          text: 'serviceGovernance',
-          href: ''
-        },
-        {
-          text: 'tagRule',
-          href: ''
-        }
-      ],
-      height: 0,
-      operations: operations,
-      tagRoutingRules: [
-      ],
-      template:
+      {
+        text: 'tagRule',
+        href: ''
+      }
+    ],
+    height: 0,
+    operations: operations,
+    tagRoutingRules: [
+    ],
+    template:
         'force: false\n' +
         'enabled: true\n' +
         'runtime: false\n' +
@@ -170,241 +170,241 @@ export default {
         '   addresses: [192.168.0.1:20881]\n' +
         ' - name: tag2\n' +
         '   addresses: [192.168.0.2:20882]\n',
-      ruleText: '',
-      readonly: false,
-      headers: []
-    }),
-    methods: {
-      setHeaders: function () {
-        this.headers = [
-          {
-            text: this.$t('appName'),
-            value: 'application',
-            align: 'left'
-          },
-          {
-            text: this.$t('enabled'),
-            value: 'enabled',
-            sortable: false
-          },
-          {
-            text: this.$t('operation'),
-            value: 'operation',
-            sortable: false,
-            width: '115px'
-          }
-        ]
-      },
-      querySelections (v) {
-        if (this.timerID) {
-          clearTimeout(this.timerID)
+    ruleText: '',
+    readonly: false,
+    headers: []
+  }),
+  methods: {
+    setHeaders: function () {
+      this.headers = [
+        {
+          text: this.$t('appName'),
+          value: 'application',
+          align: 'left'
+        },
+        {
+          text: this.$t('enabled'),
+          value: 'enabled',
+          sortable: false
+        },
+        {
+          text: this.$t('operation'),
+          value: 'operation',
+          sortable: false,
+          width: '115px'
         }
-        // Simulated ajax query
-        this.timerID = setTimeout(() => {
-          if (v && v.length >= 4) {
-            this.searchLoading = true
-            this.typeAhead = this.$store.getters.getAppItems(v)
-            this.searchLoading = false
-            this.timerID = null
-          } else {
-            this.typeAhead = []
-          }
-        }, 500)
-      },
-      submit: function () {
-        if (!this.filter) {
-          this.$notify.error('application is needed')
-          return
+      ]
+    },
+    querySelections (v) {
+      if (this.timerID) {
+        clearTimeout(this.timerID)
+      }
+      // Simulated ajax query
+      this.timerID = setTimeout(() => {
+        if (v && v.length >= 4) {
+          this.searchLoading = true
+          this.typeAhead = this.$store.getters.getAppItems(v)
+          this.searchLoading = false
+          this.timerID = null
+        } else {
+          this.typeAhead = []
         }
-        this.filter = this.filter.trim()
-        this.search(true)
-      },
-      search: function (rewrite) {
-        let url = '/rules/route/tag/?application' + '=' + this.filter
-        this.$axios.get(url)
+      }, 500)
+    },
+    submit: function () {
+      if (!this.filter) {
+        this.$notify.error('application is needed')
+        return
+      }
+      this.filter = this.filter.trim()
+      this.search(true)
+    },
+    search: function (rewrite) {
+      const url = '/rules/route/tag/?application' + '=' + this.filter
+      this.$axios.get(url)
+        .then(response => {
+          this.tagRoutingRules = response.data
+          if (rewrite) {
+            this.$router.push({ path: 'tagRule', query: { application: this.filter } })
+          }
+        })
+    },
+    closeDialog: function () {
+      this.ruleText = this.template
+      this.updateId = ''
+      this.application = ''
+      this.dialog = false
+      this.readonly = false
+    },
+    openDialog: function () {
+      this.dialog = true
+    },
+    openWarn: function (title, text) {
+      this.warn.title = title
+      this.warn.text = text
+      this.warn.display = true
+    },
+    closeWarn: function () {
+      this.warn.title = ''
+      this.warn.text = ''
+      this.warn.display = false
+    },
+    saveItem: function () {
+      const rule = yaml.safeLoad(this.ruleText)
+      if (!this.application) {
+        this.$notify.error('application is required')
+        return
+      }
+      rule.application = this.application
+      const vm = this
+      if (this.updateId) {
+        if (this.updateId === 'close') {
+          this.closeDialog()
+        } else {
+          rule.id = this.updateId
+          this.$axios.put('/rules/route/tag/' + rule.id, rule)
+            .then(response => {
+              if (response.status === 200) {
+                vm.search(vm.application, true)
+                vm.closeDialog()
+                vm.$notify.success('Update success')
+              }
+            })
+        }
+      } else {
+        this.$axios.post('/rules/route/tag/', rule)
           .then(response => {
-            this.tagRoutingRules = response.data
-            if (rewrite) {
-              this.$router.push({path: 'tagRule', query: {application: this.filter}})
+            if (response.status === 201) {
+              vm.search(vm.application, true)
+              vm.filter = vm.application
+              vm.closeDialog()
+              vm.$notify.success('Create success')
             }
           })
-      },
-      closeDialog: function () {
-        this.ruleText = this.template
-        this.updateId = ''
-        this.application = ''
-        this.dialog = false
-        this.readonly = false
-      },
-      openDialog: function () {
-        this.dialog = true
-      },
-      openWarn: function (title, text) {
-        this.warn.title = title
-        this.warn.text = text
-        this.warn.display = true
-      },
-      closeWarn: function () {
-        this.warn.title = ''
-        this.warn.text = ''
-        this.warn.display = false
-      },
-      saveItem: function () {
-        let rule = yaml.safeLoad(this.ruleText)
-        if (!this.application) {
-          this.$notify.error('application is required')
-          return
-        }
-        rule.application = this.application
-        let vm = this
-        if (this.updateId) {
-          if (this.updateId === 'close') {
-            this.closeDialog()
-          } else {
-            rule.id = this.updateId
-            this.$axios.put('/rules/route/tag/' + rule.id, rule)
-              .then(response => {
-                if (response.status === 200) {
-                  vm.search(vm.application, true)
-                  vm.closeDialog()
-                  vm.$notify.success('Update success')
-                }
-              })
-          }
-        } else {
-          this.$axios.post('/rules/route/tag/', rule)
-            .then(response => {
-              if (response.status === 201) {
-                vm.search(vm.application, true)
-                vm.filter = vm.application
-                vm.closeDialog()
-                vm.$notify.success('Create success')
-              }
-            })
-            .catch(error => {
-              console.log(error)
-            })
-        }
-      },
-      itemOperation: function (icon, item) {
-        let itemId = item.application
-        switch (icon) {
-          case 'visibility':
-            this.$axios.get('/rules/route/tag/' + itemId)
-              .then(response => {
-                let tagRoute = response.data
-                this.handleBalance(tagRoute, true)
-                this.updateId = 'close'
-              })
-            break
-          case 'edit':
-            let id = {}
-            id.id = itemId
-            this.$axios.get('/rules/route/tag/' + itemId)
-              .then(response => {
-                let conditionRoute = response.data
-                this.handleBalance(conditionRoute, false)
-                this.updateId = itemId
-              })
-            break
-          case 'block':
-            this.openWarn(' Are you sure to block Tag Rule', 'application: ' + item.application)
-            this.warn.status.operation = 'disable'
-            this.warn.status.id = itemId
-            break
-          case 'check_circle_outline':
-            this.openWarn(' Are you sure to enable Tag Rule', 'application: ' + item.application)
-            this.warn.status.operation = 'enable'
-            this.warn.status.id = itemId
-            break
-          case 'delete':
-            this.openWarn('warnDeleteTagRule', 'application: ' + item.application)
-            this.warn.status.operation = 'delete'
-            this.warn.status.id = itemId
-        }
-      },
-      handleBalance: function (tagRoute, readonly) {
-        this.application = tagRoute.application
-        delete tagRoute.id
-        delete tagRoute.app
-        delete tagRoute.group
-        delete tagRoute.application
-        delete tagRoute.service
-        delete tagRoute.priority
-        delete tagRoute.serviceVersion
-        delete tagRoute.serviceGroup
-        this.ruleText = yaml.safeDump(tagRoute)
-        this.readonly = readonly
-        this.dialog = true
-      },
-      setHeight: function () {
-        this.height = window.innerHeight * 0.5
-      },
-      deleteItem: function (warnStatus) {
-        let id = warnStatus.id
-        let operation = warnStatus.operation
-        if (operation === 'delete') {
-          this.$axios.delete('/rules/route/tag/' + id)
-            .then(response => {
-              if (response.status === 200) {
-                this.warn.display = false
-                this.search(this.filter, false)
-                this.$notify.success('Delete success')
-              }
-            })
-        } else if (operation === 'disable') {
-          this.$axios.put('/rules/route/tag/disable/' + id)
-            .then(response => {
-              if (response.status === 200) {
-                this.warn.display = false
-                this.search(this.filter, false)
-                this.$notify.success('Disable success')
-              }
-            })
-        } else if (operation === 'enable') {
-          this.$axios.put('/rules/route/tag/enable/' + id)
-            .then(response => {
-              if (response.status === 200) {
-                this.warn.display = false
-                this.search(this.filter, false)
-                this.$notify.success('Enable success')
-              }
-            })
-        }
+          .catch(error => {
+            console.log(error)
+          })
       }
     },
-    created () {
-      this.setHeight()
-    },
-    computed: {
-      area () {
-        return this.$i18n.locale
+    itemOperation: function (icon, item) {
+      const itemId = item.application
+      switch (icon) {
+        case 'visibility':
+          this.$axios.get('/rules/route/tag/' + itemId)
+            .then(response => {
+              const tagRoute = response.data
+              this.handleBalance(tagRoute, true)
+              this.updateId = 'close'
+            })
+          break
+        case 'edit':
+          const id = {}
+          id.id = itemId
+          this.$axios.get('/rules/route/tag/' + itemId)
+            .then(response => {
+              const conditionRoute = response.data
+              this.handleBalance(conditionRoute, false)
+              this.updateId = itemId
+            })
+          break
+        case 'block':
+          this.openWarn(' Are you sure to block Tag Rule', 'application: ' + item.application)
+          this.warn.status.operation = 'disable'
+          this.warn.status.id = itemId
+          break
+        case 'check_circle_outline':
+          this.openWarn(' Are you sure to enable Tag Rule', 'application: ' + item.application)
+          this.warn.status.operation = 'enable'
+          this.warn.status.id = itemId
+          break
+        case 'delete':
+          this.openWarn('warnDeleteTagRule', 'application: ' + item.application)
+          this.warn.status.operation = 'delete'
+          this.warn.status.id = itemId
       }
     },
-    watch: {
-      input (val) {
-        this.querySelections(val)
-      },
-      area () {
-        this.setHeaders()
-      }
+    handleBalance: function (tagRoute, readonly) {
+      this.application = tagRoute.application
+      delete tagRoute.id
+      delete tagRoute.app
+      delete tagRoute.group
+      delete tagRoute.application
+      delete tagRoute.service
+      delete tagRoute.priority
+      delete tagRoute.serviceVersion
+      delete tagRoute.serviceGroup
+      this.ruleText = yaml.safeDump(tagRoute)
+      this.readonly = readonly
+      this.dialog = true
     },
-    mounted: function () {
-      this.setHeaders()
-      this.$store.dispatch('loadAppItems')
-      this.ruleText = this.template
-      let query = this.$route.query
-      let filter = null
-      Object.keys(query).forEach(function (key) {
-        if (key === 'application') {
-          filter = query[key]
-        }
-      })
-      if (filter !== null) {
-        this.filter = filter
-        this.search(false)
+    setHeight: function () {
+      this.height = window.innerHeight * 0.5
+    },
+    deleteItem: function (warnStatus) {
+      const id = warnStatus.id
+      const operation = warnStatus.operation
+      if (operation === 'delete') {
+        this.$axios.delete('/rules/route/tag/' + id)
+          .then(response => {
+            if (response.status === 200) {
+              this.warn.display = false
+              this.search(this.filter, false)
+              this.$notify.success('Delete success')
+            }
+          })
+      } else if (operation === 'disable') {
+        this.$axios.put('/rules/route/tag/disable/' + id)
+          .then(response => {
+            if (response.status === 200) {
+              this.warn.display = false
+              this.search(this.filter, false)
+              this.$notify.success('Disable success')
+            }
+          })
+      } else if (operation === 'enable') {
+        this.$axios.put('/rules/route/tag/enable/' + id)
+          .then(response => {
+            if (response.status === 200) {
+              this.warn.display = false
+              this.search(this.filter, false)
+              this.$notify.success('Enable success')
+            }
+          })
       }
     }
-
+  },
+  created () {
+    this.setHeight()
+  },
+  computed: {
+    area () {
+      return this.$i18n.locale
+    }
+  },
+  watch: {
+    input (val) {
+      this.querySelections(val)
+    },
+    area () {
+      this.setHeaders()
+    }
+  },
+  mounted: function () {
+    this.setHeaders()
+    this.$store.dispatch('loadAppItems')
+    this.ruleText = this.template
+    const query = this.$route.query
+    let filter = null
+    Object.keys(query).forEach(function (key) {
+      if (key === 'application') {
+        filter = query[key]
+      }
+    })
+    if (filter !== null) {
+      this.filter = filter
+      this.search(false)
+    }
   }
+
+}
 </script>

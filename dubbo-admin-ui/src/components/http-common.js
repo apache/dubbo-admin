@@ -20,12 +20,12 @@ import HttpStatus from 'http-status'
 import router from '@/router'
 import i18n from '@/lang'
 
-let instance = axios.create({
+const instance = axios.create({
   baseURL: '/api/dev'
 })
 
 instance.interceptors.request.use(config => {
-  let token = localStorage.getItem('token')
+  const token = localStorage.getItem('token')
   if (token) {
     config.headers.Authorization = token
   }
@@ -41,12 +41,12 @@ instance.interceptors.response.use((response) => {
     localStorage.removeItem('token')
     localStorage.removeItem('username')
     Vue.prototype.$notify.error(i18n.t('authFailed'))
-    let paths = location.href.split('#')
+    const paths = location.href.split('#')
     if (paths.length > 1 && paths[1].startsWith('/login')) {
       // avoid splicing multiple redirects
       return
     }
-    router.push({path: '/login', query: {redirect: paths.length === 1 ? '/' : paths[1]}})
+    router.push({ path: '/login', query: { redirect: paths.length === 1 ? '/' : paths[1] } })
   } else if (error.response.status >= HttpStatus.BAD_REQUEST) {
     Vue.prototype.$notify.error(error.response.data.message)
   }

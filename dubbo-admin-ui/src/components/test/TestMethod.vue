@@ -54,92 +54,92 @@ import set from 'lodash/set'
 import util from '@/util'
 
 export default {
-    name: 'TestMethod',
-    components: {
-      JsonEditor,
-      Breadcrumb
-    },
-    data () {
-      return {
-        success: null,
-        breads: [
-          {
-            text: 'serviceSearch',
-            href: 'test'
-          },
-          {
-            text: 'serviceTest',
-            href: '',
-            strong: this.$route.query['service']
-          }
-        ],
-        service: this.$route.query['service'],
-        application: this.$route.query['application'],
-        method: {
-          name: null,
-          signature: this.$route.query['method'],
-          parameterTypes: [],
-          json: [],
-          jsonTypes: []
+  name: 'TestMethod',
+  components: {
+    JsonEditor,
+    Breadcrumb
+  },
+  data () {
+    return {
+      success: null,
+      breads: [
+        {
+          text: 'serviceSearch',
+          href: 'test'
         },
-        result: null
-      }
-    },
-    methods: {
-      executeMethod () {
-        this.convertType(this.method.json, this.method.jsonTypes)
-        let serviceTestDTO = {
-          service: this.service,
-          method: this.method.name,
-          parameterTypes: this.method.parameterTypes,
-          params: this.method.json
+        {
+          text: 'serviceTest',
+          href: '',
+          strong: this.$route.query.service
         }
-        this.$axios.post('/test', serviceTestDTO)
-          .then(response => {
-            if (response && response.status === 200) {
-              this.success = true
-              this.result = response.data
-            }
-          })
-          .catch(error => {
-            this.success = false
-            this.result = error.response.data
-          })
+      ],
+      service: this.$route.query.service,
+      application: this.$route.query.application,
+      method: {
+        name: null,
+        signature: this.$route.query.method,
+        parameterTypes: [],
+        json: [],
+        jsonTypes: []
       },
-
-      convertType (params, types) {
-        const p = util.flattenObject(params)
-        const t = util.flattenObject(types)
-        Object.keys(p).forEach(key => {
-          if (typeof t[key] === 'string' && typeof p[key] !== 'string') {
-            set(params, key, String(p[key]))
+      result: null
+    }
+  },
+  methods: {
+    executeMethod () {
+      this.convertType(this.method.json, this.method.jsonTypes)
+      const serviceTestDTO = {
+        service: this.service,
+        method: this.method.name,
+        parameterTypes: this.method.parameterTypes,
+        params: this.method.json
+      }
+      this.$axios.post('/test', serviceTestDTO)
+        .then(response => {
+          if (response && response.status === 200) {
+            this.success = true
+            this.result = response.data
           }
         })
-      }
-    },
-    mounted () {
-      const query = this.$route.query
-      const method = query['method']
-
-      if (method) {
-        const [methodName, parametersTypes] = method.split('~')
-        this.method.name = methodName
-        if (parametersTypes) {
-          this.method.parameterTypes = parametersTypes.split(';')
-        } else { // if parametersTypes === "",  "".split(";") will produce [""], which is wrong
-          this.method.parameterTypes = []
-        }
-      }
-
-      let url = '/test/method?' + 'application=' + this.application +
-                '&service=' + this.service + '&method=' + method
-      this.$axios.get(encodeURI(url))
-        .then(response => {
-          this.method.json = response.data.parameterTypes
-          this.method.jsonTypes = response.data.parameterTypes
+        .catch(error => {
+          this.success = false
+          this.result = error.response.data
         })
+    },
+
+    convertType (params, types) {
+      const p = util.flattenObject(params)
+      const t = util.flattenObject(types)
+      Object.keys(p).forEach(key => {
+        if (typeof t[key] === 'string' && typeof p[key] !== 'string') {
+          set(params, key, String(p[key]))
+        }
+      })
     }
+  },
+  mounted () {
+    const query = this.$route.query
+    const method = query.method
+
+    if (method) {
+      const [methodName, parametersTypes] = method.split('~')
+      this.method.name = methodName
+      if (parametersTypes) {
+        this.method.parameterTypes = parametersTypes.split(';')
+      } else { // if parametersTypes === "",  "".split(";") will produce [""], which is wrong
+        this.method.parameterTypes = []
+      }
+    }
+
+    const url = '/test/method?' + 'application=' + this.application +
+                '&service=' + this.service + '&method=' + method
+    this.$axios.get(encodeURI(url))
+      .then(response => {
+        this.method.json = response.data.parameterTypes
+        this.method.jsonTypes = response.data.parameterTypes
+      })
   }
+}
 </script>
 
 <style scoped>

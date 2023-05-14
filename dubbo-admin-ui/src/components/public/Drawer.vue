@@ -78,7 +78,7 @@ export default {
     mini: false,
     drawer: true,
     menus: menu,
-    config:{}
+    config: {}
   }),
   created () {
     window.getApp.$on('DRAWER_TOGGLED', () => {

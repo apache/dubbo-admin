@@ -9,7 +9,9 @@ Once open this project in GoLand, a pre-configured Admin runnable task can be fo
 
 ![image.png](../../docs/images/ide_configuration.png)
 
-Click the `Run`button and you can get the Admin process started locally. But before doing that, you might need to change the configuration file located at `dubbo-admin/dubbo-admin-server/pkg/conf/dubboadmin.yml`to make sure `registry.address` is pointed to the zookeeper server you started before.
+Click the `Run` button and you can get the Admin process started locally. 
+
+> But before doing that, you might need to change the configuration file located at `/conf/dubboadmin.yml` to make sure `registry.address` is pointed to the zookeeper server you started before.
 
 ```yaml
 admin:

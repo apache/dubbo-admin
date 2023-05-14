@@ -110,186 +110,186 @@ import AceEditor from '@/components/public/AceEditor'
 import Search from '@/components/public/Search'
 
 export default {
-      name: 'Management',
-      components: {
-        AceEditor,
-        Search
-      },
-      data: () => ({
-        configCenter: '',
-        rule: '',
-        updateId: '',
-        key: '',
-        filter: '',
-        readonly: false,
-        dialog: false,
-        operations: [
-          {id: 0, icon: 'visibility', tooltip: 'view'},
-          {id: 1, icon: 'edit', tooltip: 'edit'},
-          {id: 3, icon: 'delete', tooltip: 'delete'}
-        ],
-        warn: {
-          display: false,
-          title: '',
-          text: '',
-          status: {}
+  name: 'Management',
+  components: {
+    AceEditor,
+    Search
+  },
+  data: () => ({
+    configCenter: '',
+    rule: '',
+    updateId: '',
+    key: '',
+    filter: '',
+    readonly: false,
+    dialog: false,
+    operations: [
+      { id: 0, icon: 'visibility', tooltip: 'view' },
+      { id: 1, icon: 'edit', tooltip: 'edit' },
+      { id: 3, icon: 'delete', tooltip: 'delete' }
+    ],
+    warn: {
+      display: false,
+      title: '',
+      text: '',
+      status: {}
+    },
+    warnStatus: {},
+    dubboConfig: [],
+    headers: []
+  }),
+  methods: {
+    setHeaders () {
+      this.headers = [
+        {
+          text: this.$t('name'),
+          value: 'name',
+          align: 'left'
         },
-        warnStatus: {},
-        dubboConfig: [],
-        headers: []
-      }),
-      methods: {
-        setHeaders () {
-          this.headers = [
-            {
-              text: this.$t('name'),
-              value: 'name',
-              align: 'left'
-            },
-            {
-              text: this.$t('scope'),
-              value: 'scope',
-              sortable: false
-            },
-            {
-              text: this.$t('operation'),
-              value: 'operation',
-              sortable: false,
-              width: '115px'
-            }
-          ]
+        {
+          text: this.$t('scope'),
+          value: 'scope',
+          sortable: false
         },
-        itemOperation (icon, item) {
-          switch (icon) {
-            case 'visibility':
-              this.dialog = true
-              this.rule = item.config
-              this.key = item.key
-              this.readonly = true
-              this.updateId = 'close'
-              break
-            case 'edit':
-              this.dialog = true
-              this.rule = item.config
-              this.key = item.key
-              this.updateId = item.key
-              this.readonly = false
-              break
-            case 'delete':
-              this.openWarn('warnDeleteConfig')
-              this.warnStatus.id = item.key
-          }
-        },
-        deleteItem: function (warnStatus) {
-          this.$axios.delete('/manage/config/' + warnStatus.id)
-            .then(response => {
-              if (response.status === 200) {
-                this.warn.display = false
-                this.search(this.filter)
-                this.$notify.success('Delete success')
-              }
-            })
-        },
-        closeDialog: function () {
-          this.rule = ''
-          this.key = ''
-          this.dialog = false
-          this.readonly = false
-        },
-        openDialog: function () {
-          this.dialog = true
-        },
-        openWarn: function (title, text) {
-          this.warn.title = title
-          this.warn.text = text
-          this.warn.display = true
-        },
-        closeWarn: function () {
-          this.warn.title = ''
-          this.warn.text = ''
-          this.warn.display = false
-        },
-        saveItem: function () {
-          let configDTO = {}
-          if (!this.key) {
-            this.$notify.error('Config key is needed')
-            return
-          }
-          configDTO.key = this.key
-          configDTO.config = this.rule
-          let vm = this
-          if (this.updateId) {
-            if (this.updateId === 'close') {
-              this.closeDialog()
-            } else {
-              this.$axios.put('/manage/config/' + this.updateId, configDTO)
-                .then(response => {
-                  if (response.status === 200) {
-                    vm.search(vm.key)
-                    vm.filter = vm.key
-                    this.closeDialog()
-                    this.$notify.success('Update success')
-                  }
-                })
-            }
-          } else {
-            this.$axios.post('/manage/config/', configDTO)
-              .then(response => {
-                if (response.status === 201) {
-                  vm.search(vm.key)
-                  vm.filter = vm.key
-                  vm.closeDialog()
-                  vm.$notify.success('Create success')
-                }
-              })
-          }
-        },
-        getColor (scope) {
-          if (scope === 'global') {
-            return 'red'
-          }
-          if (scope === 'application') {
-            return 'green'
-          }
-          if (scope === 'service') {
-            return 'blue'
-          }
-        },
-        submit () {
-          if (!this.filter) {
-            this.$notify.error('application is needed')
-            return
-          }
-          this.filter = this.filter.trim()
-          this.search()
-        },
-        search () {
-          this.$axios.get('/manage/config/' + this.filter)
-            .then(response => {
-              if (response.status === 200) {
-                this.dubboConfig = response.data
-                this.$router.push({path: 'management', query: {key: this.filter}})
-              }
-            })
+        {
+          text: this.$t('operation'),
+          value: 'operation',
+          sortable: false,
+          width: '115px'
         }
-      },
-      mounted () {
-        this.setHeaders()
-        let query = this.$route.query
-        let filter = null
-        Object.keys(query).forEach(function (key) {
-          if (key === 'key') {
-            filter = query[key]
+      ]
+    },
+    itemOperation (icon, item) {
+      switch (icon) {
+        case 'visibility':
+          this.dialog = true
+          this.rule = item.config
+          this.key = item.key
+          this.readonly = true
+          this.updateId = 'close'
+          break
+        case 'edit':
+          this.dialog = true
+          this.rule = item.config
+          this.key = item.key
+          this.updateId = item.key
+          this.readonly = false
+          break
+        case 'delete':
+          this.openWarn('warnDeleteConfig')
+          this.warnStatus.id = item.key
+      }
+    },
+    deleteItem: function (warnStatus) {
+      this.$axios.delete('/manage/config/' + warnStatus.id)
+        .then(response => {
+          if (response.status === 200) {
+            this.warn.display = false
+            this.search(this.filter)
+            this.$notify.success('Delete success')
           }
         })
-        if (filter !== null) {
-          this.filter = filter
-        } else {
-          this.filter = 'global'
-        }
-        this.search()
+    },
+    closeDialog: function () {
+      this.rule = ''
+      this.key = ''
+      this.dialog = false
+      this.readonly = false
+    },
+    openDialog: function () {
+      this.dialog = true
+    },
+    openWarn: function (title, text) {
+      this.warn.title = title
+      this.warn.text = text
+      this.warn.display = true
+    },
+    closeWarn: function () {
+      this.warn.title = ''
+      this.warn.text = ''
+      this.warn.display = false
+    },
+    saveItem: function () {
+      const configDTO = {}
+      if (!this.key) {
+        this.$notify.error('Config key is needed')
+        return
       }
+      configDTO.key = this.key
+      configDTO.config = this.rule
+      const vm = this
+      if (this.updateId) {
+        if (this.updateId === 'close') {
+          this.closeDialog()
+        } else {
+          this.$axios.put('/manage/config/' + this.updateId, configDTO)
+            .then(response => {
+              if (response.status === 200) {
+                vm.search(vm.key)
+                vm.filter = vm.key
+                this.closeDialog()
+                this.$notify.success('Update success')
+              }
+            })
+        }
+      } else {
+        this.$axios.post('/manage/config/', configDTO)
+          .then(response => {
+            if (response.status === 201) {
+              vm.search(vm.key)
+              vm.filter = vm.key
+              vm.closeDialog()
+              vm.$notify.success('Create success')
+            }
+          })
+      }
+    },
+    getColor (scope) {
+      if (scope === 'global') {
+        return 'red'
+      }
+      if (scope === 'application') {
+        return 'green'
+      }
+      if (scope === 'service') {
+        return 'blue'
+      }
+    },
+    submit () {
+      if (!this.filter) {
+        this.$notify.error('application is needed')
+        return
+      }
+      this.filter = this.filter.trim()
+      this.search()
+    },
+    search () {
+      this.$axios.get('/manage/config/' + this.filter)
+        .then(response => {
+          if (response.status === 200) {
+            this.dubboConfig = response.data
+            this.$router.push({ path: 'management', query: { key: this.filter } })
+          }
+        })
     }
+  },
+  mounted () {
+    this.setHeaders()
+    const query = this.$route.query
+    let filter = null
+    Object.keys(query).forEach(function (key) {
+      if (key === 'key') {
+        filter = query[key]
+      }
+    })
+    if (filter !== null) {
+      this.filter = filter
+    } else {
+      this.filter = 'global'
+    }
+    this.search()
+  }
+}
 </script>
 
 <style scoped>

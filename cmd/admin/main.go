@@ -23,6 +23,13 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 )
 
+// @title           Dubbo-Admin API
+// @version         1.0
+// @description     This is a dubbo-admin swagger ui server.
+// @license.name  Apache 2.0
+// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
+// @host      127.0.0.1:38080
+// @BasePath  /
 func main() {
 	config.LoadConfig()
 	go services.StartSubscribe(config.RegistryCenter)

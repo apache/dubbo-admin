@@ -86,171 +86,171 @@ import Search from '@/components/public/Search'
 import Breadcrumb from '@/components/public/Breadcrumb'
 
 export default {
-    name: 'ServiceTest',
-    components: {
-      JsonEditor,
-      Search,
-      Breadcrumb
-    },
-    data () {
-      return {
-        typeAhead: [],
-        input: null,
-        searchLoading: false,
-        timerID: null,
-        filter: '',
-        breads: [
-          {
-            text: 'serviceSearch',
-            href: '/test'
-          }
-        ],
-        headers: [
-        ],
-        service: null,
-        methods: [],
-        services: [],
-        loading: false
-      }
-    },
-    methods: {
-      querySelections (v) {
-        if (this.timerID) {
-          clearTimeout(this.timerID)
+  name: 'ServiceTest',
+  components: {
+    JsonEditor,
+    Search,
+    Breadcrumb
+  },
+  data () {
+    return {
+      typeAhead: [],
+      input: null,
+      searchLoading: false,
+      timerID: null,
+      filter: '',
+      breads: [
+        {
+          text: 'serviceSearch',
+          href: '/test'
         }
-        // Simulated ajax query
-        this.timerID = setTimeout(() => {
-          if (v && v.length >= 4) {
-            this.searchLoading = true
-            this.typeAhead = this.$store.getters.getServiceItems(v)
-            this.searchLoading = false
-            this.timerID = null
-          } else {
-            this.typeAhead = []
-          }
-        }, 500)
-      },
-      submit () {
-        this.filter = document.querySelector('#serviceTestSearch').value.trim()
-        if (this.filter) {
-          let filter = this.filter.replace('/', '*')
-          this.search(filter)
+      ],
+      headers: [
+      ],
+      service: null,
+      methods: [],
+      services: [],
+      loading: false
+    }
+  },
+  methods: {
+    querySelections (v) {
+      if (this.timerID) {
+        clearTimeout(this.timerID)
+      }
+      // Simulated ajax query
+      this.timerID = setTimeout(() => {
+        if (v && v.length >= 4) {
+          this.searchLoading = true
+          this.typeAhead = this.$store.getters.getServiceItems(v)
+          this.searchLoading = false
+          this.timerID = null
         } else {
-          this.$notify.error('service is needed')
-          return false
+          this.typeAhead = []
         }
-      },
-
-      setHeaders: function () {
-        this.headers = [
-          {
-            text: this.$t('methodName'),
-            value: 'method',
-            sortable: false
-          },
-          {
-            text: this.$t('parameterList'),
-            value: 'parameter',
-            sortable: false
-          },
-          {
-            text: this.$t('returnType'),
-            value: 'returnType',
-            sortable: false
-          },
-          {
-            text: '',
-            value: 'operation',
-            sortable: false
-          }
-        ]
-      },
-      search (filter) {
-        if (!filter) {
-          return
-        }
-        this.$axios.get('/service/' + filter).then(response => {
-          this.service = response.data
-          this.methods = []
-          if (this.service.metadata) {
-            let methods = this.service.metadata.methods
-            for (let i = 0; i < methods.length; i++) {
-              let method = {}
-              let sig = methods[i].name + '~'
-              let parameters = methods[i].parameterTypes
-              let length = parameters.length
-              for (let j = 0; j < length; j++) {
-                sig = sig + parameters[j]
-                if (j !== length - 1) {
-                  sig = sig + ';'
-                }
-              }
-              method.signature = sig
-              method.name = methods[i].name
-              method.parameterTypes = methods[i].parameterTypes
-              method.returnType = methods[i].returnType
-              method.service = response.data.service
-              method.application = response.data.application
-              this.methods.push(method)
-            }
-          }
-        }).catch(error => {
-          this.showSnackbar('error', error.response.data.message)
-        })
-      },
-      searchServices () {
-        let filter = this.filter || ''
-        if (!filter.startsWith('*')) {
-          filter = '*' + filter
-        }
-        if (!filter.endsWith('*')) {
-          filter += '*'
-        }
-        const pattern = 'service'
-        this.loading = true
-        this.$axios.get('/service', {
-          params: {
-            pattern, filter
-          }
-        }).then(response => {
-          this.services = response.data
-        }).finally(() => {
-          this.loading = false
-        })
-      },
-      getHref (application, service, method) {
-        return `/#/testMethod?application=${application}&service=${service}&method=${method}`
-      }
+      }, 500)
     },
-    computed: {
-      area () {
-        return this.$i18n.locale
-      }
-    },
-    watch: {
-      input (val) {
-        this.querySelections(val)
-      },
-      area () {
-        this.setHeaders()
-      }
-    },
-    mounted () {
-      this.$store.dispatch('loadServiceItems')
-      let query = this.$route.query
-      this.filter = query['service'] || ''
-      if ('group' in query) {
-        this.filter = query['group'] + '/' + this.filter
-      }
-      if ('version' in query) {
-        this.filter = this.filter + ':' + query['version']
-      }
+    submit () {
+      this.filter = document.querySelector('#serviceTestSearch').value.trim()
       if (this.filter) {
-        this.search(this.filter.replace('/', '*'))
+        const filter = this.filter.replace('/', '*')
+        this.search(filter)
+      } else {
+        this.$notify.error('service is needed')
+        return false
       }
+    },
+
+    setHeaders: function () {
+      this.headers = [
+        {
+          text: this.$t('methodName'),
+          value: 'method',
+          sortable: false
+        },
+        {
+          text: this.$t('parameterList'),
+          value: 'parameter',
+          sortable: false
+        },
+        {
+          text: this.$t('returnType'),
+          value: 'returnType',
+          sortable: false
+        },
+        {
+          text: '',
+          value: 'operation',
+          sortable: false
+        }
+      ]
+    },
+    search (filter) {
+      if (!filter) {
+        return
+      }
+      this.$axios.get('/service/' + filter).then(response => {
+        this.service = response.data
+        this.methods = []
+        if (this.service.metadata) {
+          const methods = this.service.metadata.methods
+          for (let i = 0; i < methods.length; i++) {
+            const method = {}
+            let sig = methods[i].name + '~'
+            const parameters = methods[i].parameterTypes
+            const length = parameters.length
+            for (let j = 0; j < length; j++) {
+              sig = sig + parameters[j]
+              if (j !== length - 1) {
+                sig = sig + ';'
+              }
+            }
+            method.signature = sig
+            method.name = methods[i].name
+            method.parameterTypes = methods[i].parameterTypes
+            method.returnType = methods[i].returnType
+            method.service = response.data.service
+            method.application = response.data.application
+            this.methods.push(method)
+          }
+        }
+      }).catch(error => {
+        this.showSnackbar('error', error.response.data.message)
+      })
+    },
+    searchServices () {
+      let filter = this.filter || ''
+      if (!filter.startsWith('*')) {
+        filter = '*' + filter
+      }
+      if (!filter.endsWith('*')) {
+        filter += '*'
+      }
+      const pattern = 'service'
+      this.loading = true
+      this.$axios.get('/service', {
+        params: {
+          pattern, filter
+        }
+      }).then(response => {
+        this.services = response.data
+      }).finally(() => {
+        this.loading = false
+      })
+    },
+    getHref (application, service, method) {
+      return `/#/testMethod?application=${application}&service=${service}&method=${method}`
+    }
+  },
+  computed: {
+    area () {
+      return this.$i18n.locale
+    }
+  },
+  watch: {
+    input (val) {
+      this.querySelections(val)
+    },
+    area () {
       this.setHeaders()
     }
+  },
+  mounted () {
+    this.$store.dispatch('loadServiceItems')
+    const query = this.$route.query
+    this.filter = query.service || ''
+    if ('group' in query) {
+      this.filter = query.group + '/' + this.filter
+    }
+    if ('version' in query) {
+      this.filter = this.filter + ':' + query.version
+    }
+    if (this.filter) {
+      this.search(this.filter.replace('/', '*'))
+    }
+    this.setHeaders()
   }
+}
 </script>
 <style>
   .v-breadcrumbs {

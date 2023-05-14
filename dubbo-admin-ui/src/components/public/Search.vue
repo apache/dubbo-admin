@@ -32,28 +32,27 @@
 </template>
 
 <script>
-  export default {
-    name: 'search',
-    props: {
-      value: String,
-      submit: {
-        type: Function,
-        default: null
-      },
-      label: {
-        type: String,
-        default: ''
-      },
-      hint: {
-        type: String,
-        default: ''
-      }
+export default {
+  name: 'search',
+  props: {
+    value: String,
+    submit: {
+      type: Function,
+      default: null
     },
-    data: () => ({
-    }),
-    methods: {
+    label: {
+      type: String,
+      default: ''
+    },
+    hint: {
+      type: String,
+      default: ''
     }
-
+  },
+  data: () => ({
+  }),
+  methods: {
   }
-</script>
 
+}
+</script>
