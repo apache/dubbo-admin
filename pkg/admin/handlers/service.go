@@ -18,6 +18,9 @@
 package handlers
 
 import (
+	"dubbo.apache.org/dubbo-go/v3/metadata/definition"
+	"encoding/json"
+	"github.com/apache/dubbo-admin/pkg/logger"
 	"net/http"
 	"strconv"
 
@@ -155,12 +158,18 @@ func ServiceDetail(c *gin.Context) {
 	}
 	metadata, _ := config.MetadataReportCenter.GetServiceDefinition(identifier)
 
+	typed_meta := definition.ServiceDefinition{}
+	err = json.Unmarshal([]byte(metadata), &typed_meta)
+	if err != nil {
+		logger.Errorf("Error parsing metadata, err msg is %s", err.Error())
+	}
+
 	serviceDetail := &model.ServiceDetailDTO{
 		Providers:   providers,
 		Consumers:   consumers,
 		Service:     service,
 		Application: application,
-		Metadata:    metadata,
+		Metadata:    typed_meta,
 	}
 	c.JSON(http.StatusOK, serviceDetail)
 }

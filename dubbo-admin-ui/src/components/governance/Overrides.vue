@@ -248,7 +248,7 @@ export default {
     ],
     template:
 
-        'configVersion: v2.7\n' +
+        'configVersion: \'v3.0\'\n' +
         'enabled: true\n' +
         'configs: \n' +
         '  - addresses: [0.0.0.0]  # 0.0.0.0 for all addresses\n' +

@@ -18,6 +18,8 @@
 package handlers
 
 import (
+	"github.com/apache/dubbo-admin/pkg/admin/config"
+	"github.com/apache/dubbo-admin/pkg/logger"
 	"net/http"
 
 	"github.com/apache/dubbo-admin/pkg/admin/model"
@@ -28,21 +30,26 @@ func CreateConditionRule(c *gin.Context) {
 	var routeDto model.ConditionRouteDto
 	err := c.BindJSON(&routeDto)
 	if err != nil {
-		panic(err)
+		logger.Errorf("Parsing condition rule input error, err msg is: %s", err.Error())
+		c.JSON(http.StatusBadRequest, false)
+		return
 	}
 
 	err = routeService.CreateConditionRoute(routeDto)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		if _, ok := err.(*config.RuleExists); ok {
+			logger.Infof("Condition rule for service %s already exists!", routeDto.Service)
+			c.JSON(http.StatusOK, true)
+		} else {
+			logger.Errorf("Creating condition rule for service %s failed, err msg is: %s", routeDto.Service, err.Error())
+			//fixme, return more information of the exact failure type.
+			c.JSON(http.StatusInternalServerError, false)
+		}
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": "success",
-	})
+	c.JSON(http.StatusOK, true)
+	return
 }
 
 func UpdateConditionRule(c *gin.Context) {
@@ -55,24 +62,19 @@ func UpdateConditionRule(c *gin.Context) {
 
 	_, err = routeService.FindConditionRouteById(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		logger.Errorf("Check failed before trying to update condition rule for service %s , err msg is: %s", routeDto.Service, err.Error())
+		c.JSON(http.StatusInternalServerError, false)
 		return
 	}
 
 	err = routeService.UpdateConditionRoute(routeDto)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		logger.Errorf("Update condition rule for service %s failed, err msg is: %s", routeDto.Service, err.Error())
+		c.JSON(http.StatusInternalServerError, false)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": "success",
-	})
+	c.JSON(http.StatusOK, true)
 }
 
 func SearchConditionRoutes(c *gin.Context) {
@@ -93,80 +95,65 @@ func SearchConditionRoutes(c *gin.Context) {
 		crDto.ServiceGroup = serviceGroup
 		routeDto, err = routeService.FindConditionRoute(crDto)
 	} else {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Either Service or application is required.",
-		})
+		logger.Errorf("Unsupported query type for condition rule, only application and service is available: %s", err.Error())
+		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
 		return
 	}
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		if _, ok := err.(*config.RuleNotFound); ok {
+			logger.Infof("No condition rule for query parameters: service %s, application %s, group %s, version %s ", service, application, serviceGroup, serviceVersion)
+			c.JSON(http.StatusOK, []model.ConditionRouteDto{})
+		} else {
+			logger.Errorf("Check condition rule detail failed, err msg is: %s", err.Error())
+			c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
+		}
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": []model.ConditionRouteDto{routeDto},
-	})
+	c.JSON(http.StatusOK, []model.ConditionRouteDto{routeDto})
 }
 
 func DetailConditionRoute(c *gin.Context) {
 	id := c.Param("id")
 	routeDto, err := routeService.FindConditionRouteById(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		logger.Errorf("Check condition rule detail with id %s failed, err msg is: %s", id, err.Error())
+		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": routeDto,
-	})
+
+	c.JSON(http.StatusOK, routeDto)
 }
 
 func DeleteConditionRoute(c *gin.Context) {
 	id := c.Param("id")
 	err := routeService.DeleteConditionRoute(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		logger.Errorf("Delete condition rule with id %s failed, err msg is: %s", id, err.Error())
+		c.JSON(http.StatusInternalServerError, false)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": "success",
-	})
+	c.JSON(http.StatusOK, true)
 }
 
 func EnableConditionRoute(c *gin.Context) {
 	id := c.Param("id")
 	err := routeService.EnableConditionRoute(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		logger.Errorf("Enable condition rule with id %s failed, err msg is: %s", id, err.Error())
+		c.JSON(http.StatusInternalServerError, false)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": "success",
-	})
+	c.JSON(http.StatusOK, true)
 }
 
 func DisableConditionRoute(c *gin.Context) {
 	id := c.Param("id")
 	err := routeService.DisableConditionRoute(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		logger.Errorf("Disable condition rule with id %s failed, err msg is: %s", id, err.Error())
+		c.JSON(http.StatusInternalServerError, false)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": "success",
-	})
+	c.JSON(http.StatusOK, true)
 }

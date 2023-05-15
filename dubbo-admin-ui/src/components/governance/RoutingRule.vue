@@ -250,6 +250,7 @@ export default {
     appRoutingRules: [
     ],
     template:
+        'configVersion: \'v3.0\'\n' +
         'enabled: true\n' +
         'runtime: false\n' +
         'force: true\n' +

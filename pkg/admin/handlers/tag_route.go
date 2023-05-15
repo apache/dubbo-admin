@@ -18,38 +18,39 @@
 package handlers
 
 import (
+	"github.com/apache/dubbo-admin/pkg/admin/config"
+	"github.com/apache/dubbo-admin/pkg/logger"
 	"net/http"
 	"strings"
 
-	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 	"github.com/gin-gonic/gin"
 )
 
-var routeService services.RouteService = &services.RouteServiceImpl{
-	GovernanceConfig: &config.GovernanceConfigImpl{},
-}
+var routeService services.RouteService = &services.RouteServiceImpl{}
 
 func CreateRule(c *gin.Context) {
 	var tagRouteDto model.TagRouteDto
 	err := c.BindJSON(&tagRouteDto)
 	if err != nil {
-		panic(err)
+		logger.Errorf("Parsing tag rule input error, err msg is: %s", err.Error())
+		c.JSON(http.StatusBadRequest, false)
+		return
 	}
 
 	err = routeService.CreateTagRoute(tagRouteDto)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		if _, ok := err.(*config.RuleExists); ok {
+			logger.Infof("Condition rule for service %s already exists!", tagRouteDto.Service)
+		} else {
+			logger.Infof("Create tag rule for service %s failed, err msg is %s", tagRouteDto.Service, err.Error())
+			c.JSON(http.StatusInternalServerError, false)
+		}
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": "success",
-	})
+	c.JSON(http.StatusOK, true)
 }
 
 func UpdateRule(c *gin.Context) {
@@ -63,24 +64,19 @@ func UpdateRule(c *gin.Context) {
 
 	_, err = routeService.FindTagRoute(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		logger.Errorf("Check failed before trying to update condition rule for service %s , err msg is: %s", tagRouteDto.Service, err.Error())
+		c.JSON(http.StatusInternalServerError, false)
 		return
 	}
 
 	err = routeService.UpdateTagRoute(tagRouteDto)
 
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		logger.Errorf("Update tag rule for service %s failed, err msg is: %s", tagRouteDto.Service, err.Error())
+		c.JSON(http.StatusInternalServerError, false)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": "success",
-	})
+	c.JSON(http.StatusOK, true)
 }
 
 func SearchRoutes(c *gin.Context) {
@@ -88,15 +84,16 @@ func SearchRoutes(c *gin.Context) {
 
 	tagRoute, err := routeService.FindTagRoute(application)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		if _, ok := err.(*config.RuleNotFound); ok {
+			logger.Infof("No tag rule for query parameters: application %s", application)
+			c.JSON(http.StatusOK, []model.TagRouteDto{})
+		} else {
+			logger.Errorf("Check tag rule detail failed, err msg is: %s", err.Error())
+			c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
+		}
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": []model.TagRouteDto{tagRoute},
-	})
+	c.JSON(http.StatusOK, []model.TagRouteDto{tagRoute})
 }
 
 func DetailRoute(c *gin.Context) {
@@ -105,15 +102,11 @@ func DetailRoute(c *gin.Context) {
 
 	tagRoute, err := routeService.FindTagRoute(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		logger.Errorf("Check tag rule detail with id %s failed, err msg is: %s", id, err.Error())
+		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": tagRoute,
-	})
+	c.JSON(http.StatusOK, tagRoute)
 }
 
 func DeleteRoute(c *gin.Context) {
@@ -122,15 +115,11 @@ func DeleteRoute(c *gin.Context) {
 
 	err := routeService.DeleteTagRoute(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		logger.Errorf("Delete tag rule with id %s failed, err msg is: %s", id, err.Error())
+		c.JSON(http.StatusInternalServerError, false)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": "success",
-	})
+	c.JSON(http.StatusOK, true)
 }
 
 func EnableRoute(c *gin.Context) {
@@ -139,15 +128,11 @@ func EnableRoute(c *gin.Context) {
 
 	err := routeService.EnableTagRoute(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		logger.Errorf("Enable tag rule with id %s failed, err msg is: %s", id, err.Error())
+		c.JSON(http.StatusInternalServerError, false)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": "success",
-	})
+	c.JSON(http.StatusOK, true)
 }
 
 func DisableRoute(c *gin.Context) {
@@ -156,13 +141,9 @@ func DisableRoute(c *gin.Context) {
 
 	err := routeService.DisableTagRoute(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": err.Error(),
-		})
+		logger.Errorf("Disable tag rule with id %s failed, err msg is: %s", id, err.Error())
+		c.JSON(http.StatusInternalServerError, false)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"code": 1,
-		"data": "success",
-	})
+	c.JSON(http.StatusOK, true)
 }

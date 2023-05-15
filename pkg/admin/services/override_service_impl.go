@@ -27,14 +27,12 @@ import (
 	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
-type OverrideServiceImpl struct {
-	GovernanceConfig config.GovernanceConfig
-}
+type OverrideServiceImpl struct{}
 
 func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) error {
 	id := util.BuildServiceKey(dynamicConfig.Base)
 	path := getOverridePath(id)
-	existConfig, err := s.GovernanceConfig.GetConfig(path)
+	existConfig, err := config.Governance.GetConfig(path)
 	if err != nil {
 		logger.Logger().Error(err.Error())
 		return err
@@ -63,7 +61,7 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 		logger.Logger().Error(err.Error())
 		return err
 	} else {
-		err := s.GovernanceConfig.SetConfig(path, string(b))
+		err := config.Governance.SetConfig(path, string(b))
 		if err != nil {
 			logger.Logger().Error(err.Error())
 			return err
@@ -79,7 +77,7 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 				logger.Logger().Error(err.Error())
 				return err
 			}
-			err = s.GovernanceConfig.Register(url)
+			err = config.Governance.Register(url)
 			if err != nil {
 				logger.Logger().Error(err.Error())
 				return err
@@ -93,7 +91,7 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error {
 	id := util.BuildServiceKey(update.Base)
 	path := getOverridePath(id)
-	existConfig, err := s.GovernanceConfig.GetConfig(path)
+	existConfig, err := config.Governance.GetConfig(path)
 	if err != nil {
 		logger.Logger().Error(err.Error())
 		return err
@@ -122,7 +120,7 @@ func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error 
 		logger.Logger().Error(err.Error())
 		return err
 	} else {
-		err := s.GovernanceConfig.SetConfig(path, string(b))
+		err := config.Governance.SetConfig(path, string(b))
 		if err != nil {
 			logger.Logger().Error(err.Error())
 			return err
@@ -138,14 +136,14 @@ func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error 
 			if err != nil {
 				return err
 			}
-			s.GovernanceConfig.UnRegister(url)
+			config.Governance.UnRegister(url)
 		}
 		for _, o := range updatedOverrides {
 			url, err := util.OldOverride2URL(o)
 			if err != nil {
 				return err
 			}
-			s.GovernanceConfig.Register(url)
+			config.Governance.Register(url)
 		}
 	}
 
@@ -155,7 +153,7 @@ func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error 
 func (s *OverrideServiceImpl) DisableOverride(id string) error {
 	path := getOverridePath(id)
 
-	conf, err := s.GovernanceConfig.GetConfig(path)
+	conf, err := config.Governance.GetConfig(path)
 	if err != nil {
 		logger.Logger().Error(err.Error())
 		return err
@@ -174,7 +172,7 @@ func (s *OverrideServiceImpl) DisableOverride(id string) error {
 		logger.Logger().Error(err.Error())
 		return err
 	} else {
-		err := s.GovernanceConfig.SetConfig(path, string(b))
+		err := config.Governance.SetConfig(path, string(b))
 		if err != nil {
 			return err
 		}
@@ -190,7 +188,7 @@ func (s *OverrideServiceImpl) DisableOverride(id string) error {
 				logger.Logger().Error(err.Error())
 				return err
 			}
-			s.GovernanceConfig.UnRegister(url)
+			config.Governance.UnRegister(url)
 
 			o.Enabled = false
 			url, err = util.OldOverride2URL(o)
@@ -198,7 +196,7 @@ func (s *OverrideServiceImpl) DisableOverride(id string) error {
 				logger.Logger().Error(err.Error())
 				return err
 			}
-			s.GovernanceConfig.Register(url)
+			config.Governance.Register(url)
 		}
 	}
 
@@ -207,7 +205,7 @@ func (s *OverrideServiceImpl) DisableOverride(id string) error {
 
 func (s *OverrideServiceImpl) FindOverride(id string) (*model.DynamicConfig, error) {
 	path := getOverridePath(id)
-	conf, err := s.GovernanceConfig.GetConfig(path)
+	conf, err := config.Governance.GetConfig(path)
 	if err != nil {
 		logger.Logger().Error(err.Error())
 		return nil, err
@@ -238,7 +236,7 @@ func (s *OverrideServiceImpl) FindOverride(id string) (*model.DynamicConfig, err
 
 func (s *OverrideServiceImpl) EnableOverride(id string) error {
 	path := getOverridePath(id)
-	conf, err := s.GovernanceConfig.GetConfig(path)
+	conf, err := config.Governance.GetConfig(path)
 	if err != nil {
 		logger.Logger().Error(err.Error())
 		return err
@@ -257,7 +255,7 @@ func (s *OverrideServiceImpl) EnableOverride(id string) error {
 		logger.Logger().Error(err.Error())
 		return err
 	} else {
-		err := s.GovernanceConfig.SetConfig(path, string(b))
+		err := config.Governance.SetConfig(path, string(b))
 		if err != nil {
 			logger.Logger().Error(err.Error())
 			return err
@@ -273,14 +271,14 @@ func (s *OverrideServiceImpl) EnableOverride(id string) error {
 			if err != nil {
 				return err
 			}
-			s.GovernanceConfig.UnRegister(url)
+			config.Governance.UnRegister(url)
 
 			o.Enabled = true
 			url, err = util.OldOverride2URL(o)
 			if err != nil {
 				return err
 			}
-			s.GovernanceConfig.Register(url)
+			config.Governance.Register(url)
 		}
 	}
 
@@ -289,7 +287,7 @@ func (s *OverrideServiceImpl) EnableOverride(id string) error {
 
 func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 	path := getOverridePath(id)
-	conf, err := s.GovernanceConfig.GetConfig(path)
+	conf, err := config.Governance.GetConfig(path)
 	if err != nil {
 		logger.Logger().Error(err.Error())
 		return err
@@ -311,7 +309,7 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 			}
 		}
 		if len(newConfigs) == 0 {
-			err := s.GovernanceConfig.DeleteConfig(path)
+			err := config.Governance.DeleteConfig(path)
 			if err != nil {
 				logger.Logger().Error(err.Error())
 				return err
@@ -322,7 +320,7 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 				logger.Logger().Error(err.Error())
 				return err
 			} else {
-				err := s.GovernanceConfig.SetConfig(path, string(b))
+				err := config.Governance.SetConfig(path, string(b))
 				if err != nil {
 					logger.Logger().Error(err.Error())
 					return err
@@ -330,7 +328,7 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 			}
 		}
 	} else {
-		err := s.GovernanceConfig.DeleteConfig(path)
+		err := config.Governance.DeleteConfig(path)
 		if err != nil {
 			logger.Logger().Error(err.Error())
 			return err
@@ -346,7 +344,7 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 				logger.Logger().Error(err.Error())
 				return err
 			}
-			s.GovernanceConfig.UnRegister(url)
+			config.Governance.UnRegister(url)
 		}
 	}
 

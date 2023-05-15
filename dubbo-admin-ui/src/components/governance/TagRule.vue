@@ -162,6 +162,7 @@ export default {
     tagRoutingRules: [
     ],
     template:
+        'configVersion: \'v3.0\'\n' +
         'force: false\n' +
         'enabled: true\n' +
         'runtime: false\n' +

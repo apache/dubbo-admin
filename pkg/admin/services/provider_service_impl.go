@@ -196,10 +196,9 @@ func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*mod
 			return nil, fmt.Errorf("unsupport the pattern: %s", pattern)
 		}
 
-		filter = strings.ToLower(filter)
-		if strings.HasPrefix(filter, constant.AnyValue) || strings.HasPrefix(filter, constant.InterrogationPoint) ||
-			strings.HasPrefix(filter, constant.PlusSigns) {
-			filter = constant.PunctuationPoint + filter
+		filter = strings.ReplaceAll(filter, constant.PunctuationPoint, "\\.")
+		if hasPrefixOrSuffix(filter) {
+			filter = strings.ReplaceAll(filter, constant.AnyValue, constant.PunctuationPoint+constant.AnyValue)
 		}
 		reg, err = regexp.Compile(filter)
 		if err != nil {
@@ -228,4 +227,10 @@ func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*mod
 	}
 
 	return util.Providers2DTO(providers), nil
+}
+
+func hasPrefixOrSuffix(filter string) bool {
+	return strings.HasPrefix(filter, constant.AnyValue) || strings.HasPrefix(filter, constant.InterrogationPoint) ||
+		strings.HasPrefix(filter, constant.PlusSigns) || strings.HasSuffix(filter, constant.AnyValue) || strings.HasSuffix(filter, constant.InterrogationPoint) ||
+		strings.HasSuffix(filter, constant.PlusSigns)
 }

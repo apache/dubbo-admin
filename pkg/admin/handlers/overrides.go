@@ -16,18 +16,17 @@
 package handlers
 
 import (
+	"github.com/apache/dubbo-admin/pkg/admin/config"
+	"github.com/apache/dubbo-admin/pkg/logger"
 	"net/http"
 
-	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 	"github.com/apache/dubbo-admin/pkg/admin/util"
 	"github.com/gin-gonic/gin"
 )
 
-var overrideServiceImpl services.OverrideService = &services.OverrideServiceImpl{
-	GovernanceConfig: &config.GovernanceConfigImpl{},
-}
+var overrideServiceImpl services.OverrideService = &services.OverrideServiceImpl{}
 
 func CreateOverride(c *gin.Context) {
 	var dynamicConfig *model.DynamicConfig
@@ -49,7 +48,12 @@ func CreateOverride(c *gin.Context) {
 	// }
 	err := overrideServiceImpl.SaveOverride(dynamicConfig)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if _, ok := err.(*config.RuleExists); ok {
+			logger.Infof("Override rule already exists!")
+		} else {
+			logger.Infof("Override rule create failed, err msg is %s.", err.Error())
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 		return
 	}
 
@@ -67,6 +71,7 @@ func UpdateOverride(c *gin.Context) {
 
 	old, err := overrideServiceImpl.FindOverride(id)
 	if err != nil {
+		logger.Errorf("Check failed before trying to update override rule for service %s , err msg is: %s", dynamicConfig.Service, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -75,6 +80,7 @@ func UpdateOverride(c *gin.Context) {
 		return
 	}
 	if err := overrideServiceImpl.UpdateOverride(&dynamicConfig); err != nil {
+		logger.Errorf("Update tag rule for service %s failed, err msg is: %s", dynamicConfig.Service, err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -121,7 +127,7 @@ func DetailOverride(c *gin.Context) {
 	id := c.Param("id")
 	override, err := overrideServiceImpl.FindOverride(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	if override == nil {
@@ -145,7 +151,7 @@ func DeleteOverride(c *gin.Context) {
 	id := c.Param("id")
 	err := overrideServiceImpl.DeleteOverride(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, true)
@@ -155,7 +161,8 @@ func DisableOverride(c *gin.Context) {
 	id := c.Param("id")
 	err := overrideServiceImpl.DisableOverride(id)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		logger.Errorf("Disable override rule with id %s failed, err msg is: %s", id, err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, true)
