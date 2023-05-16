@@ -19,7 +19,7 @@ module github.com/apache/dubbo-admin
 go 1.19
 
 require (
-	dubbo.apache.org/dubbo-go/v3 v3.0.6-0.20230512025008-3af77e40f892
+	dubbo.apache.org/dubbo-go/v3 v3.0.6-0.20230516071747-5b2397c8b0b0
 	github.com/dubbogo/gost v1.13.2
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/gin-gonic/gin v1.9.0
