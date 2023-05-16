@@ -130,7 +130,7 @@ func DeleteConditionRoute(c *gin.Context) {
 	err := routeService.DeleteConditionRoute(id)
 	if err != nil {
 		logger.Errorf("Delete condition rule with id %s failed, err msg is: %s", id, err.Error())
-		c.JSON(http.StatusInternalServerError, false)
+		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, true)
@@ -141,7 +141,7 @@ func EnableConditionRoute(c *gin.Context) {
 	err := routeService.EnableConditionRoute(id)
 	if err != nil {
 		logger.Errorf("Enable condition rule with id %s failed, err msg is: %s", id, err.Error())
-		c.JSON(http.StatusInternalServerError, false)
+		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, true)
@@ -152,7 +152,7 @@ func DisableConditionRoute(c *gin.Context) {
 	err := routeService.DisableConditionRoute(id)
 	if err != nil {
 		logger.Errorf("Disable condition rule with id %s failed, err msg is: %s", id, err.Error())
-		c.JSON(http.StatusInternalServerError, false)
+		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, true)

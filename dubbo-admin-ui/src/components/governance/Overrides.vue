@@ -251,10 +251,9 @@ export default {
         'configVersion: \'v3.0\'\n' +
         'enabled: true\n' +
         'configs: \n' +
-        '  - addresses: [0.0.0.0]  # 0.0.0.0 for all addresses\n' +
-        '    side: consumer        # effective side, consumer or addresses\n' +
-        '    parameters: \n' +
-        '      timeout: 6000       # dynamic config parameter\n',
+        ' - side: consumer\n' +
+        '   parameters:\n' +
+        '     retries: \'4\'',
     ruleText: '',
     readonly: false,
     serviceHeaders: [],

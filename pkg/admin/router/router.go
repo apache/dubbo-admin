@@ -42,7 +42,7 @@ func InitRouter() *gin.Engine {
 
 	override := router.Group("/api/:env/rules/override")
 	{
-		override.POST("/create", handlers.CreateOverride)
+		override.POST("/", handlers.CreateOverride)
 		override.GET("/", handlers.SearchOverride)
 		override.DELETE("/:id", handlers.DeleteOverride)
 		override.GET("/:id", handlers.DetailOverride)

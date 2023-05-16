@@ -34,8 +34,10 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 	path := getOverridePath(id)
 	existConfig, err := config.Governance.GetConfig(path)
 	if err != nil {
-		logger.Logger().Error(err.Error())
-		return err
+		if _, ok := err.(*config.RuleNotFound); !ok {
+			logger.Logger().Error(err.Error())
+			return err
+		}
 	}
 
 	existOverride := dynamicConfig.ToOverride()

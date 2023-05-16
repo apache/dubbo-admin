@@ -19,9 +19,9 @@ package config
 
 import (
 	"errors"
-	"strings"
-
 	perrors "github.com/pkg/errors"
+
+	gozk "github.com/dubbogo/go-zookeeper/zk"
 
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/config_center"
@@ -147,8 +147,7 @@ func (zk *ZkGovImpl) GetConfig(key string) (string, error) {
 	}
 	rule, err := zk.configCenter.GetRule(key, config_center.WithGroup(zk.group))
 	if err != nil {
-		err = perrors.Cause(err)
-		if strings.Contains(err.Error(), "node does not exist") {
+		if perrors.Is(err, gozk.ErrNoNode) {
 			return "", &RuleNotFound{err}
 		}
 		return "", err
@@ -163,8 +162,7 @@ func (zk *ZkGovImpl) SetConfig(key string, value string) error {
 	}
 	err := zk.configCenter.PublishConfig(key, zk.group, value)
 	if err != nil {
-		err = perrors.Cause(err)
-		if strings.Contains(err.Error(), "node already exist") {
+		if perrors.Is(err, gozk.ErrNodeExists) {
 			return &RuleExists{err}
 		}
 		return err

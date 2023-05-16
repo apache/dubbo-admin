@@ -210,6 +210,7 @@ func convertTagRouteToStore(tagRoute model.TagRouteDto) model.TagRoute {
 	store.Priority = tagRoute.Priority
 	store.Runtime = tagRoute.Runtime
 	store.Tags = tagRoute.Tags
+	store.ConfigVersion = tagRoute.ConfigVersion
 	return store
 }
 
@@ -221,6 +222,7 @@ func convertTagRouteToDto(tagRoute model.TagRoute) model.TagRouteDto {
 	dto.Priority = tagRoute.Priority
 	dto.Runtime = tagRoute.Runtime
 	dto.Tags = tagRoute.Tags
+	dto.ConfigVersion = tagRoute.ConfigVersion
 	return dto
 }
 
@@ -240,6 +242,7 @@ func convertConditionRouteToStore(existRule model.ConditionRoute, conditionRoute
 	existRule.Priority = conditionRouteDto.Priority
 	existRule.Runtime = conditionRouteDto.Runtime
 	existRule.Conditions = conditionRouteDto.Conditions
+	existRule.ConfigVersion = conditionRouteDto.ConfigVersion
 	return existRule
 }
 
@@ -255,6 +258,7 @@ func convertConditionRouteToDto(conditionRoute model.ConditionRoute) model.Condi
 	dto.Priority = conditionRoute.Priority
 	dto.Runtime = conditionRoute.Runtime
 	dto.Conditions = conditionRoute.Conditions
+	dto.ConfigVersion = conditionRoute.ConfigVersion
 	return dto
 }
 
