@@ -75,6 +75,7 @@ header:
     - '**/addons/manifests/**'
     - '**/cmd/ui/dist/**'
     - '**/dubbo-admin-ui/public/echarts-en.min.js'
+    - '**/dubbo-admin-ui/tests/**'
   comment: on-failure
 
   license-location-threshold: 130
