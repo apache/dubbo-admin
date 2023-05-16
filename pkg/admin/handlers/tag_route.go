@@ -30,6 +30,18 @@ import (
 
 var routeService services.RouteService = &services.RouteServiceImpl{}
 
+// CreateRule create a new tag rule
+// @Summary      Create a new tag rule
+// @Description  Create a new tag rule
+// @Tags         TagRule
+// @Accept       json
+// @Produce      json
+// @Param        env       		path  string          		   false  "environment"       default(dev)
+// @Param        tagRoute       body  model.TagRouteDto        true   "rule input"
+// @Success      200  {boolean} true
+// @Failure      400  {object}  model.HTTPError
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/rules/route/tag [post]
 func CreateRule(c *gin.Context) {
 	var tagRouteDto model.TagRouteDto
 	err := c.BindJSON(&tagRouteDto)
@@ -53,11 +65,25 @@ func CreateRule(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
+// UpdateRule update rule
+// @Summary      Update rule
+// @Description  Update rule
+// @Tags         TagRule
+// @Accept       json
+// @Produce      json
+// @Param        env       path  string          		  false  "environment"       default(dev)
+// @Param        id        path  string          		  true   "rule id"
+// @Param        tagRoute  body  model.TagRouteDto  true   "rule input"
+// @Success      200  {boolean} true
+// @Failure      400  {object}  model.HTTPError
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/rules/route/tag/{id} [post]
 func UpdateRule(c *gin.Context) {
 	var tagRouteDto model.TagRouteDto
 	err := c.BindJSON(&tagRouteDto)
 	if err != nil {
-		panic(err)
+		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
+		return
 	}
 	id := c.Param("id")
 	id = strings.ReplaceAll(id, "*", "/")
@@ -79,6 +105,18 @@ func UpdateRule(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
+// SearchRoutes search rule with key word
+// @Summary      Search rule
+// @Description  Search rule
+// @Tags         TagRule
+// @Accept       json
+// @Produce      json
+// @Param        env       			path     string     false  "environment"       default(dev)
+// @Param        application        query    string     false  "application and service must not left empty at the same time"
+// @Success      200  {object}  []model.TagRouteDto
+// @Failure      400  {object}  model.HTTPError
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/rules/route/tag [get]
 func SearchRoutes(c *gin.Context) {
 	application := c.Query("application")
 
@@ -96,6 +134,17 @@ func SearchRoutes(c *gin.Context) {
 	c.JSON(http.StatusOK, []model.TagRouteDto{tagRoute})
 }
 
+// DetailRoute show the detail of one specified rule
+// @Summary      Show the detail of one specified rule
+// @Description  Show the detail of one specified rule
+// @Tags         TagRule
+// @Accept       json
+// @Produce      json
+// @Param        env       path  string          		  false  "environment"       default(dev)
+// @Param        id        path  string          		  true   "rule id"
+// @Success      200  {object}  model.TagRouteDto
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/rules/route/tag/{id} [get]
 func DetailRoute(c *gin.Context) {
 	id := c.Param("id")
 	id = strings.ReplaceAll(id, "*", "/")
@@ -109,6 +158,17 @@ func DetailRoute(c *gin.Context) {
 	c.JSON(http.StatusOK, tagRoute)
 }
 
+// DeleteRoute delete the specified rule
+// @Summary      Delete the specified rule
+// @Description  Delete the specified rule
+// @Tags         TagRule
+// @Accept       json
+// @Produce      json
+// @Param        env       path  string          		  false  "environment"       default(dev)
+// @Param        id        path  string          		  true   "rule id"
+// @Success      200  {boolean} true
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/rules/route/tag/{id} [delete]
 func DeleteRoute(c *gin.Context) {
 	id := c.Param("id")
 	id = strings.ReplaceAll(id, "*", "/")
@@ -122,6 +182,17 @@ func DeleteRoute(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
+// EnableRoute Enable the specified rule
+// @Summary      Enable the specified rule
+// @Description  Enable the specified rule
+// @Tags         TagRule
+// @Accept       json
+// @Produce      json
+// @Param        env       path  string          		  false  "environment"       default(dev)
+// @Param        id        path  string          		  true   "rule id"
+// @Success      200  {boolean} true
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/rules/route/tag/enable/{id} [put]
 func EnableRoute(c *gin.Context) {
 	id := c.Param("id")
 	id = strings.ReplaceAll(id, "*", "/")
@@ -135,6 +206,17 @@ func EnableRoute(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
+// DisableRoute Disable the specified rule
+// @Summary      Disable the specified rule
+// @Description  Disable the specified rule
+// @Tags         TagRule
+// @Accept       json
+// @Produce      json
+// @Param        env       path  string          		  false  "environment"       default(dev)
+// @Param        id        path  string          		  true   "rule id"
+// @Success      200  {boolean} true
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/rules/route/tag/disable/{id} [put]
 func DisableRoute(c *gin.Context) {
 	id := c.Param("id")
 	id = strings.ReplaceAll(id, "*", "/")

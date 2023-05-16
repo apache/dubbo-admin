@@ -44,17 +44,41 @@ var (
 	prometheusService services.MonitorService  = &services.PrometheusServiceImpl{}
 )
 
+// AllServices get all services
+// @Summary      Get all services
+// @Description  Get all services
+// @Tags         Services
+// @Accept       json
+// @Produce      json
+// @Param        env       			path     string     false  "environment"       default(dev)
+// @Success      200  {object}  []string
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/services [get]
 func AllServices(c *gin.Context) {
-	services, err := providerService.FindServices()
+	allServices, err := providerService.FindServices()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 		return
 	}
-	c.JSON(http.StatusOK, services)
+	c.JSON(http.StatusOK, allServices)
 }
 
+// SearchService search services by different patterns and keywords
+// @Summary      Search services by different patterns and keywords
+// @Description  Search services by different patterns and keywords
+// @Tags         Services
+// @Accept       json
+// @Produce      json
+// @Param        env       	path     string     false   "environment"       default(dev)
+// @Param        pattern    query    string     true    "supported values: application, service or ip"
+// @Param        filter     query    string     true    "keyword to search"
+// @Param        page       query    string     false   "page number"
+// @Param        size       query    string     false   "page size"
+// @Success      200  {object}  model.ListServiceByPage
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/service [get]
 func SearchService(c *gin.Context) {
 	pattern := c.Query("pattern")
 	filter := c.Query("filter")
@@ -88,18 +112,28 @@ func SearchService(c *gin.Context) {
 	var serviceResults []*model.ServiceDTO
 	p.Results(&serviceResults)
 	// return results
-	c.JSON(http.StatusOK, gin.H{
-		"content":       serviceResults,
-		"totalPages":    p.PageNums(),
-		"totalElements": p.Nums(),
-		"size":          size,
-		"first":         pageInt == 0,
-		"last":          pageInt == p.PageNums()-1,
-		"pageNumber":    page,
-		"offset":        (pageInt - 1) * sizeInt,
+	c.JSON(http.StatusOK, model.ListServiceByPage{
+		Content:       serviceResults,
+		TotalPages:    p.PageNums(),
+		TotalElements: p.Nums(),
+		Size:          size,
+		First:         pageInt == 0,
+		Last:          pageInt == p.PageNums()-1,
+		PageNumber:    page,
+		Offset:        (pageInt - 1) * sizeInt,
 	})
 }
 
+// AllApplications get all applications
+// @Summary      Get all applications
+// @Description  Get all applications
+// @Tags         Services
+// @Accept       json
+// @Produce      json
+// @Param        env       			path     string     false  "environment"       default(dev)
+// @Success      200  {object}  []string
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/applications [get]
 func AllApplications(c *gin.Context) {
 	applications, err := providerService.FindApplications()
 	if err != nil {
@@ -111,6 +145,16 @@ func AllApplications(c *gin.Context) {
 	c.JSON(http.StatusOK, applications)
 }
 
+// AllConsumers get all consumers
+// @Summary      Get all consumers
+// @Description  Get all consumers
+// @Tags         Services
+// @Accept       json
+// @Produce      json
+// @Param        env       			path     string     false  "environment"       default(dev)
+// @Success      200  {object}  []string
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/consumers [get]
 func AllConsumers(c *gin.Context) {
 	consumers, err := consumerService.FindAll()
 	if err != nil {
@@ -122,6 +166,17 @@ func AllConsumers(c *gin.Context) {
 	c.JSON(http.StatusOK, consumers)
 }
 
+// ServiceDetail show detail of the specified service
+// @Summary      Show detail of the specified service
+// @Description  Show detail of the specified service
+// @Tags         Services
+// @Accept       json
+// @Produce      json
+// @Param        env       	path     string     false   "environment"       default(dev)
+// @Param        service    path     string     true    "service format: 'group/service:version'"
+// @Success      200  {object}  model.ServiceDetailDTO
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/service/{service} [get]
 func ServiceDetail(c *gin.Context) {
 	service := c.Param("service")
 	group := util.GetGroup(service)

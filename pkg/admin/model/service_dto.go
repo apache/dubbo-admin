@@ -23,3 +23,14 @@ type ServiceDTO struct {
 	Version        string         `json:"version"`
 	RegistrySource RegistrySource `json:"registrySource"`
 }
+
+type ListServiceByPage struct {
+	Content       []*ServiceDTO `json:"content"`
+	TotalPages    int           `json:"totalPages"`
+	TotalElements int           `json:"totalElements"`
+	Size          string        `json:"size"`
+	First         bool          `json:"first"`
+	Last          bool          `json:"last"`
+	PageNumber    string        `json:"pageNumber"`
+	Offset        int           `json:"offset"`
+}
