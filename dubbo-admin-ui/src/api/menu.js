@@ -24,15 +24,15 @@ const Menu = [
     items: [
       { title: 'routingRule', path: '/governance/routingRule' },
       { title: 'tagRule', path: '/governance/tagRule' },
-      { title: 'meshRule', path: '/governance/meshRule', badge: 'new' },
-      { title: 'accessControl', path: '/governance/access' },
-      { title: 'dynamicConfig', path: '/governance/config' },
-      { title: 'weightAdjust', path: '/governance/weight' },
-      { title: 'loadBalance', path: '/governance/loadbalance' }
+      // { title: 'meshRule', path: '/governance/meshRule', badge: 'new' },
+      // { title: 'accessControl', path: '/governance/access' },
+      { title: 'dynamicConfig', path: '/governance/config' }
+      // { title: 'weightAdjust', path: '/governance/weight' },
+      // { title: 'loadBalance', path: '/governance/loadbalance' }
     ]
   },
-  { title: 'serviceTest', path: '/test', icon: 'code' },
-  { title: 'apiDocs', path: '/apiDocs', icon: 'code' },
+  // { title: 'serviceTest', path: '/test', icon: 'code' },
+  // { title: 'apiDocs', path: '/apiDocs', icon: 'code' },
   {
     title: 'serviceMock',
     path: '/mock',
@@ -49,8 +49,8 @@ const Menu = [
       { title: 'serviceMetrics', path: '/metrics/index', badge: 'feature' },
       { title: 'serviceRelation', path: '/metrics/relation', badge: 'new' }
     ]
-  },
-  { title: 'configManage', path: '/management', icon: 'build' }
+  }
+  // { title: 'configManage', path: '/management', icon: 'build' }
 ]
 
 export default Menu

@@ -130,53 +130,55 @@
 </template>
 <script>
 export default {
-  data: () => ({
-    items: [
-      { id: 0, title: 'serviceName', value: 'service' },
-      { id: 1, title: 'ip', value: 'ip' },
-      { id: 2, title: 'app', value: 'application' }
-    ],
-    options: [
-      {
-        title: 'routingRule',
-        value: 'routingRule'
+  data () {
+    return {
+      items: [
+        { id: 0, title: 'serviceName', value: 'service' },
+        { id: 1, title: 'ip', value: 'ip' },
+        { id: 2, title: 'app', value: 'application' }
+      ],
+      options: [
+        {
+          title: 'routingRule',
+          value: 'routingRule'
+        },
+        {
+          title: 'tagRule',
+          value: 'tagRule'
+        },
+        {
+          title: 'dynamicConfig',
+          value: 'config'
+        },
+        {
+          title: 'accessControl',
+          value: 'access'
+        },
+        {
+          title: 'weightAdjust',
+          value: 'weight'
+        },
+        {
+          title: 'loadBalance',
+          value: 'loadbalance'
+        }
+      ],
+      timerID: null,
+      searchLoading: false,
+      selected: 0,
+      input: null,
+      typeAhead: [],
+      resultPage: {},
+      filter: '',
+      headers: [],
+      pagination: {
+        page: 1,
+        rowsPerPage: 10 // -1 for All
       },
-      {
-        title: 'tagRule',
-        value: 'tagRule'
-      },
-      {
-        title: 'dynamicConfig',
-        value: 'config'
-      },
-      {
-        title: 'accessControl',
-        value: 'access'
-      },
-      {
-        title: 'weightAdjust',
-        value: 'weight'
-      },
-      {
-        title: 'loadBalance',
-        value: 'loadbalance'
-      }
-    ],
-    timerID: null,
-    searchLoading: false,
-    selected: 0,
-    input: null,
-    typeAhead: [],
-    resultPage: {},
-    filter: '',
-    headers: [],
-    pagination: {
-      page: 1,
-      rowsPerPage: 10 // -1 for All
-    },
-    totalItems: 0,
-    loadingServices: false
-  }),
+      totalItems: 0,
+      loadingServices: false
+    }
+  },
   computed: {
     queryBy () {
       return this.$t('by') + this.$t(this.items[this.selected].title)
@@ -338,8 +340,11 @@ export default {
           size
         }
       }).then(response => {
+        console.log(response)
         this.resultPage = response.data
-        this.totalItems = this.resultPage.totalElements
+        console.log(this.resultPage)
+        this.totalItems = 1
+        console.log(this.totalItems)
         if (rewrite) {
           this.$router.push({ path: 'service', query: { filter: filter, pattern: pattern } })
         }
