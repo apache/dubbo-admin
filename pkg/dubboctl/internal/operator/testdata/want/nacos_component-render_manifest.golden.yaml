@@ -62,7 +62,9 @@ spec:
               name: raft-rpc
             - containerPort: 7848
               name: old-raft-rpc
-          resources: null
+          resources:
+            limits: {}
+            requests: {}
           startupProbe:
             httpGet:
               path: /nacos/v1/console/health/readiness
@@ -84,7 +86,6 @@ spec:
       volumes:
         - emptyDir: {}
           name: data
-
 ---
 apiVersion: v1
 kind: Service
@@ -116,5 +117,4 @@ spec:
   selector:
     app.kubernetes.io/name: nacos
   type: NodePort
-
 ---

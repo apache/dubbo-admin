@@ -25,10 +25,9 @@ import (
 )
 
 var (
-	mutex      = &sync.Mutex{}
-	hasInit    = false
-	cmdHasInit = false
-	encoder    = zapcore.NewConsoleEncoder(
+	mutex   = &sync.Mutex{}
+	hasInit = false
+	encoder = zapcore.NewConsoleEncoder(
 		zapcore.EncoderConfig{
 			MessageKey:     "msg",
 			LevelKey:       "level",
@@ -80,10 +79,6 @@ func Init() {
 func InitCmdSugar(ws zapcore.WriteSyncer) {
 	mutex.Lock()
 	defer mutex.Unlock()
-	if cmdHasInit {
-		return
-	}
-	cmdHasInit = true
 
 	core := zapcore.NewCore(encoder, ws, zap.DebugLevel)
 	cmdLogger = zap.New(core)

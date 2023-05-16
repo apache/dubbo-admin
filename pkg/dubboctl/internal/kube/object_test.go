@@ -16,6 +16,7 @@
 package kube
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -292,5 +293,61 @@ error converting YAML to JSON: yaml: line 2: mapping values are not allowed in t
 			t.Errorf("want err:\n%s\nbut got:\n%s\n", test.err, errRes)
 			return
 		}
+	}
+}
+
+func TestCompareObject(t *testing.T) {
+	tests := []struct {
+		desc    string
+		objA    *Object
+		objB    *Object
+		diff    string
+		wantErr bool
+	}{
+		{
+			desc: "objects could be parsed correctly",
+			objA: &Object{
+				yamlStr: `key1: val1
+key2: val2`,
+			},
+			objB: &Object{
+				yamlStr: `key1: val1
+key2: val3`,
+			},
+			diff: `key1: val1
+-key2: val2
++key2: val3`,
+		},
+		{
+			desc: "objects with wrong format",
+			objA: &Object{
+				yamlStr: `key1: val1
+  key2: val2`,
+			},
+			objB: &Object{
+				yamlStr: `key1: val1
+key2: val3`,
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			diff, err := CompareObject(test.objA, test.objB)
+			if err != nil {
+				if !test.wantErr {
+					t.Errorf("execute failed, err: %s", err)
+				}
+			} else {
+				if test.wantErr {
+					t.Errorf("execution expected to fail, but succeed")
+				} else {
+					if strings.TrimSpace(diff) != test.diff {
+						t.Errorf("want:\n%s\nbut got:\n%s", test.diff, diff)
+					}
+				}
+			}
+		})
 	}
 }

@@ -16,19 +16,18 @@
 package cmd
 
 import (
-	subcmd "github.com/apache/dubbo-admin/pkg/dubboctl/cmd/subcmd"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/cmd/subcmd"
 	"github.com/spf13/cobra"
 )
 
-func addManifest(rootCmd *cobra.Command) {
-	manifestCmd := &cobra.Command{
-		Use:   "manifest",
-		Short: "Commands related to manifest",
-		Long:  "Commands help user to generate manifest and install manifest",
+func addProfile(rootCmd *cobra.Command) {
+	profileCmd := &cobra.Command{
+		Use:   "profile",
+		Short: "Commands related to profiles",
+		Long:  "Commands help user to list and describe profiles",
 	}
-	subcmd.ConfigManifestGenerateCmd(manifestCmd)
-	subcmd.ConfigManifestInstallCmd(manifestCmd)
-	subcmd.ConfigManifestUninstallCmd(manifestCmd)
-	subcmd.ConfigManifestDiffCmd(manifestCmd)
-	rootCmd.AddCommand(manifestCmd)
+	subcmd.ConfigProfileListArgs(profileCmd)
+	subcmd.ConfigProfileDiffArgs(profileCmd)
+
+	rootCmd.AddCommand(profileCmd)
 }

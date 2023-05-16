@@ -1,0 +1,228 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "This is a dubbo-admin swagger ui server.",
+        "title": "Dubbo-Admin API",
+        "contact": {},
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0"
+    },
+    "host": "127.0.0.1:38080",
+    "basePath": "/",
+    "paths": {
+        "/api/{env}/mock/rule": {
+            "post": {
+                "description": "Create or update MockRule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "MockRules"
+                ],
+                "summary": "Create or update MockRule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "description": "MockRule",
+                        "name": "mockRule",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MockRule"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete MockRule by id",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "MockRules"
+                ],
+                "summary": "Delete MockRule by id",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "description": "MockRule",
+                        "name": "mockRule",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MockRule"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/mock/rule/list": {
+            "get": {
+                "description": "Get MockRules by page",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "MockRules"
+                ],
+                "summary": "Get MockRules by page",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter condition",
+                        "name": "filter",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page limit",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.ListMockRulesByPage"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "model.HTTPError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "description": "error message",
+                    "type": "string"
+                }
+            }
+        },
+        "model.ListMockRulesByPage": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.MockRule"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.MockRule": {
+            "type": "object",
+            "properties": {
+                "enable": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "methodName": {
+                    "type": "string"
+                },
+                "rule": {
+                    "type": "string"
+                },
+                "serviceName": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}
