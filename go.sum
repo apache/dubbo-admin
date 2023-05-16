@@ -366,8 +366,6 @@ cloud.google.com/go/workflows v1.9.0/go.mod h1:ZGkj1aFIOd9c8Gerkjjq7OW7I5+l6cSvT
 contrib.go.opencensus.io/exporter/prometheus v0.4.1 h1:oObVeKo2NxpdF/fIfrPsNj6K0Prg0R0mHM+uANlYMiM=
 contrib.go.opencensus.io/exporter/prometheus v0.4.1/go.mod h1:t9wvfitlUjGXG2IXAZsuFq26mDGid/JwCEXp+gTG/9U=
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
-dubbo.apache.org/dubbo-go/v3 v3.0.6-0.20230512025008-3af77e40f892 h1:FYUalYd0vcqDJiKSkuZDacmwF29NwDjikWAEaEkgznI=
-dubbo.apache.org/dubbo-go/v3 v3.0.6-0.20230512025008-3af77e40f892/go.mod h1:V65HgmjrKf6xOK35nJCBk24jssuoLDF2G1LAQ1IjRuw=
 dubbo.apache.org/dubbo-go/v3 v3.0.6-0.20230516071747-5b2397c8b0b0 h1:i3ISiXADEOlzWu9jmksVTIZFWPElO+6UxlYtriYE3D8=
 dubbo.apache.org/dubbo-go/v3 v3.0.6-0.20230516071747-5b2397c8b0b0/go.mod h1:V65HgmjrKf6xOK35nJCBk24jssuoLDF2G1LAQ1IjRuw=
 github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 h1:UQHMgLO+TxOElx5B5HZ4hJQsoJ/PvUvKRhJHDQXO8P8=
