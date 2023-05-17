@@ -45,11 +45,7 @@ Open the browser and visit http://localhost:38080/admin/ to open the console.
 2. https://dubbo.apache.org/zh-cn/overview/quickstart/java/brief/
 
 ## 前端开发步骤
-
-前端开发步骤...
-
-### 前后端打包
-如果你有修改前端代码，则按照以下方式重新打包前端代码后，重新启动 Admin 进程。
+项目完整前端代码存放在：`[dubbo-admin-ui](./dubbo-admin-ui/README.md)`。
 
 ## 贡献代码
 开发过程中，可以使用预先定义好的 Makefile 任务来完成代码检查、测试等一系列工作。以下是一些命令说明
@@ -93,4 +89,4 @@ make build/dubboctl
 ```
 
 ## 发布指南
-正式发布的一些 make 命令
+正式发布的一些 make 命令...

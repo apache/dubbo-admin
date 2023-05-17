@@ -162,14 +162,16 @@ export default {
     tagRoutingRules: [
     ],
     template:
+        'configVersion: \'v3.0\'\n' +
         'force: false\n' +
         'enabled: true\n' +
         'runtime: false\n' +
         'tags:\n' +
-        ' - name: tag1\n' +
-        '   addresses: [192.168.0.1:20881]\n' +
-        ' - name: tag2\n' +
-        '   addresses: [192.168.0.2:20882]\n',
+        '  - name: gray\n' +
+        '    match:\n' +
+        '      - key: env\n' +
+        '        value:\n' +
+        '          exact: gray',
     ruleText: '',
     readonly: false,
     headers: []

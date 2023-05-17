@@ -23,14 +23,19 @@ import (
 
 type ConsumerServiceImpl struct{}
 
-func (c *ConsumerServiceImpl) FindAll() ([]*model.Consumer, error) {
+// FindAll finds all consumers names
+func (c *ConsumerServiceImpl) FindAll() ([]string, error) {
 	filter := make(map[string]string)
 	filter[constant.CategoryKey] = constant.ConsumersCategory
 	servicesMap, err := util.FilterFromCategory(filter)
 	if err != nil {
 		return nil, err
 	}
-	return util.URL2ConsumerList(servicesMap), nil
+	consumers := make([]string, len(servicesMap))
+	for k := range servicesMap {
+		consumers = append(consumers, k)
+	}
+	return consumers, nil
 }
 
 func (c *ConsumerServiceImpl) FindByService(service string) ([]*model.Consumer, error) {

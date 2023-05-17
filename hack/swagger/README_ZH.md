@@ -5,5 +5,5 @@
 
 # 生成 dubbo-admin swagger 文档
 
-在项目根目录下执行 make dubbo-admin-swagger ,在 hack/swagger 目录下生成 swagger.json
+在项目根目录下执行 `make dubbo-admin-swagger` 后即会在 hack/swagger 目录下生成 swagger.json
 

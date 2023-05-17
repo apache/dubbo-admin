@@ -43,8 +43,8 @@ func URL2Provider(id string, url *common.URL) *model.Provider {
 		Service:        url.ServiceKey(),
 		Address:        url.Location,
 		Application:    url.GetParam(constant.ApplicationKey, ""),
-		URL:            url.Key(),
-		Parameters:     url.String(),
+		URL:            url.String(),
+		Parameters:     mapToString(url.ToMap()),
 		Dynamic:        url.GetParamBool(constant.DynamicKey, true),
 		Enabled:        url.GetParamBool(constant.EnabledKey, true),
 		Serialization:  url.GetParam(constant.SerializationKey, "hessian2"),
@@ -55,9 +55,17 @@ func URL2Provider(id string, url *common.URL) *model.Provider {
 	}
 }
 
+func mapToString(params map[string]string) string {
+	pairs := make([]string, 0, len(params))
+	for key, val := range params {
+		pairs = append(pairs, fmt.Sprintf("%s=%s", key, val))
+	}
+	return strings.Join(pairs, "&")
+}
+
 // URL2ProviderList transforms URLs to a list of providers
 func URL2ProviderList(servicesMap map[string]*common.URL) []*model.Provider {
-	var providers []*model.Provider
+	providers := make([]*model.Provider, 0, len(servicesMap))
 	if servicesMap == nil {
 		return providers
 	}
@@ -88,7 +96,7 @@ func URL2Consumer(id string, url *common.URL) *model.Consumer {
 
 // URL2ConsumerList transforms URLs into a list of consumers
 func URL2ConsumerList(servicesMap map[string]*common.URL) []*model.Consumer {
-	var consumers []*model.Consumer
+	consumers := make([]*model.Consumer, 0, len(servicesMap))
 	if servicesMap == nil {
 		return consumers
 	}
@@ -180,4 +188,19 @@ func filterFromURLs(from, to map[string]*common.URL, filter map[string]string) {
 			to[id] = url
 		}
 	}
+}
+
+// Providers2DTO converts a list of providers to a list of servicesDTOs
+func Providers2DTO(providers []*model.Provider) []*model.ServiceDTO {
+	serviceDTOs := make([]*model.ServiceDTO, len(providers))
+	for i := range providers {
+		serviceDTOs[i] = &model.ServiceDTO{
+			Service:        providers[i].Service,
+			AppName:        providers[i].Application,
+			Group:          GetGroup(providers[i].Service),
+			Version:        GetVersion(providers[i].Service),
+			RegistrySource: providers[i].RegistrySource,
+		}
+	}
+	return serviceDTOs
 }
