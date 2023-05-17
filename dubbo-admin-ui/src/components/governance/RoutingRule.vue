@@ -253,6 +253,7 @@ export default {
         'enabled: true\n' +
         'runtime: false\n' +
         'force: true\n' +
+        'ConfigVersion:\n' +
         'conditions:\n' +
         ' - \'=> host != 172.22.3.91\'\n',
     ruleText: '',
@@ -317,21 +318,21 @@ export default {
       if (this.timerID) {
         clearTimeout(this.timerID)
       }
-      // Simulated ajax query
-      this.timerID = setTimeout(() => {
-        if (v && v.length >= 4) {
-          this.searchLoading = true
-          if (this.selected === 0) {
-            this.typeAhead = this.$store.getters.getServiceItems(v)
-          } else if (this.selected === 1) {
-            this.typeAhead = this.$store.getters.getConsumerItems(v)
-          }
-          this.searchLoading = false
-          this.timerID = null
-        } else {
-          this.typeAhead = []
-        }
-      }, 500)
+      // // Simulated ajax query
+      // this.timerID = setTimeout(() => {
+      //   if (v && v.length >= 4) {
+      //     this.searchLoading = true
+      //     if (this.selected === 0) {
+      //       this.typeAhead = this.$store.getters.getServiceItems(v)
+      //     } else if (this.selected === 1) {
+      //       this.typeAhead = this.$store.getters.getConsumerItems(v)
+      //     }
+      //     this.searchLoading = false
+      //     this.timerID = null
+      //   } else {
+      //     this.typeAhead = []
+      //   }
+      // }, 500)
     },
     submit: function () {
       this.filter = document.querySelector('#serviceSearch').value.trim()
@@ -371,9 +372,9 @@ export default {
       this.$axios.get(url)
         .then(response => {
           if (this.selected === 0) {
-            this.serviceRoutingRules = response.data
+            this.serviceRoutingRules = response.data.data
           } else {
-            this.appRoutingRules = response.data
+            this.appRoutingRules = response.data.data
           }
           if (rewrite) {
             if (this.selected === 0) {
@@ -449,7 +450,8 @@ export default {
       } else {
         this.$axios.post('/rules/route/condition/', rule)
           .then(response => {
-            if (response.status === 201) {
+            console.log(response)
+            if (response.status === 200) {
               if (vm.service) {
                 vm.selected = 0
                 vm.search(vm.service, true)
@@ -466,7 +468,9 @@ export default {
           .catch(error => {
             console.log(error)
           })
-      }
+      };
+      document.querySelector('#serviceSearch').value = this.service
+      this.submit()
     },
     itemOperation: function (icon, item) {
       const itemId = item.id
