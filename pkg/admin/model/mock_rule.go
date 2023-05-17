@@ -62,3 +62,8 @@ func (m *MockRuleEntity) ToMockRule() *MockRule {
 func (m *MockRuleEntity) TableName() string {
 	return "mock_rule"
 }
+
+type ListMockRulesByPage struct {
+	Total   int64       `json:"total"`
+	Content []*MockRule `json:"content"`
+}

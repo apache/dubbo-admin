@@ -13,12 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package model
 
-import "sigs.k8s.io/controller-runtime/pkg/client"
+type HTTPError struct {
+	// error message
+	Error string `json:"error"`
+}
 
-var (
-	// TestInstallFlag and TestCli are uses for black box testing
-	TestInstallFlag bool
-	TestCli         client.Client
-)
+type ResponseAny struct {
+	Code int `json:"code"`
+	Data any `json:"data"`
+}

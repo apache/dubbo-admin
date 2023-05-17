@@ -230,7 +230,6 @@ func (cli *CtlClient) deleteNamespace(ns string) error {
 		}
 		return nil
 	} else {
-		// todo: learn how to use deleteOption
 		if err := cli.Delete(context.Background(), nsObj); err != nil {
 			return fmt.Errorf("failed to delete namespace: %s, err: %s", ns, err)
 		}
