@@ -27,7 +27,7 @@ yarn build
 
 ```shell
 rm -rf ../cmd/ui/dist
-cp -R ./target/dist ../cmd/ui/
+cp -R ./dist ../cmd/ui/
 ```
 
 
