@@ -60,13 +60,11 @@ type Admin struct {
 }
 
 var (
-	ConfigCenter         config_center.DynamicConfiguration
+	Governance           GovernanceConfig
 	RegistryCenter       registry.Registry
 	MetadataReportCenter report.MetadataReport
 
 	DataBase *gorm.DB // for service mock
-
-	Group string
 )
 
 var (
@@ -110,8 +108,9 @@ func LoadConfig() {
 	}
 
 	c, addrUrl := getValidAddressConfig(address, registryAddress)
-	ConfigCenter = newConfigCenter(c, addrUrl)
-	properties, err := ConfigCenter.GetProperties(constant.DubboPropertyKey)
+	configCenter := newConfigCenter(c, addrUrl)
+	Governance = newGovernanceConfig(configCenter, c.getProtocol())
+	properties, err := configCenter.GetProperties(constant.DubboPropertyKey)
 	if err != nil {
 		logger.Info("No configuration found in config center.")
 	}

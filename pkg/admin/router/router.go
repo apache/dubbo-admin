@@ -27,18 +27,22 @@ import (
 func InitRouter() *gin.Engine {
 	router := gin.Default()
 
-	router.GET("/api/dev/services", handlers.AllServices)
-	router.GET("/api/dev/service", handlers.SearchService)
-	router.GET("api/dev/applications", handlers.AllApplications)
-	router.GET("api/dev/consumers", handlers.AllConsumers)
-	router.GET("api/dev/service/:service", handlers.ServiceDetail)
+	server := router.Group("/api/:env")
+	{
+		server.GET("/services", handlers.AllServices)
+		server.GET("/service", handlers.SearchService)
+		server.GET("/applications", handlers.AllApplications)
+		server.GET("/consumers", handlers.AllConsumers)
+		server.GET("/service/:service", handlers.ServiceDetail)
+	}
+
 	router.GET("/api/dev/version", handlers.Version)
 	router.GET("/api/dev/metrics/flow", handlers.FlowMetrics)
 	router.GET("/api/dev/metrics/cluster", handlers.ClusterMetrics)
 
 	override := router.Group("/api/:env/rules/override")
 	{
-		override.POST("/create", handlers.CreateOverride)
+		override.POST("/", handlers.CreateOverride)
 		override.GET("/", handlers.SearchOverride)
 		override.DELETE("/:id", handlers.DeleteOverride)
 		override.GET("/:id", handlers.DetailOverride)
