@@ -30,11 +30,12 @@ type ConditionRouteDto struct {
 }
 
 type ConditionRoute struct {
-	Priority   int      `json:"priority" yaml:"priority"`
-	Enabled    bool     `json:"enabled" yaml:"enabled"`
-	Force      bool     `json:"force" yaml:"force"`
-	Runtime    bool     `json:"runtime" yaml:"runtime"`
-	Key        string   `json:"key" yaml:"key"`
-	Scope      string   `json:"scope" yaml:"scope"`
-	Conditions []string `json:"conditions" yaml:"conditions"`
+	Priority      int      `json:"priority" yaml:"priority"`
+	Enabled       bool     `json:"enabled" yaml:"enabled"`
+	Force         bool     `json:"force" yaml:"force"`
+	Runtime       bool     `json:"runtime" yaml:"runtime"`
+	Key           string   `json:"key" yaml:"key"`
+	Scope         string   `json:"scope" yaml:"scope"`
+	Conditions    []string `json:"conditions" yaml:"conditions"`
+	ConfigVersion string   `json:"configVersion" yaml:"configVersion"`
 }

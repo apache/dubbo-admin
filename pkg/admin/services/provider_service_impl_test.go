@@ -16,8 +16,10 @@
 package services
 
 import (
+	"fmt"
 	"net/url"
 	"reflect"
+	"regexp"
 	"sync"
 	"testing"
 
@@ -254,7 +256,7 @@ func TestProviderServiceImpl_FindService(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    []*model.Provider
+		want    []*model.ServiceDTO
 		wantErr bool
 	}{
 		{
@@ -263,7 +265,7 @@ func TestProviderServiceImpl_FindService(t *testing.T) {
 				pattern: "ip",
 				filter:  "test",
 			},
-			want:    nil,
+			want:    make([]*model.ServiceDTO, 0),
 			wantErr: false,
 		},
 	}
@@ -280,4 +282,13 @@ func TestProviderServiceImpl_FindService(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestReg(t *testing.T) {
+	reg, _ := regexp.Compile(".*DemoService*")
+	match := reg.MatchString("org.apache.dubbo.springboot.demo.DemoService")
+	if match {
+		fmt.Print("Matched!")
+	}
+
 }

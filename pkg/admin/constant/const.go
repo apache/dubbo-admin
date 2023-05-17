@@ -70,6 +70,7 @@ const (
 	TagRoute               = "tag_route"
 	ConditionRuleSuffix    = ".condition-router"
 	TagRuleSuffix          = ".tag-router"
+	ConfigFileEnvKey       = "conf" // config file path
 )
 
 var Configs = set.NewSet(WeightKey, BalancingKey)

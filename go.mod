@@ -19,7 +19,7 @@ module github.com/apache/dubbo-admin
 go 1.19
 
 require (
-	dubbo.apache.org/dubbo-go/v3 v3.0.6-0.20230512025008-3af77e40f892
+	dubbo.apache.org/dubbo-go/v3 v3.0.6-0.20230516071747-5b2397c8b0b0
 	github.com/dubbogo/gost v1.13.2
 	github.com/evanphx/json-patch/v5 v5.6.0
 	github.com/gin-gonic/gin v1.9.0
@@ -37,6 +37,7 @@ require (
 	github.com/spf13/viper v1.8.1
 	github.com/stretchr/testify v1.8.2
 	github.com/tidwall/gjson v1.14.4
+	github.com/vcraescu/go-paginator v1.0.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/net v0.8.0
 	google.golang.org/grpc v1.53.0
@@ -68,6 +69,7 @@ require (
 	github.com/gosuri/uitable v0.0.4 // indirect
 	github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
+	github.com/jinzhu/gorm v1.9.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.3 // indirect
@@ -127,7 +129,7 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
-	github.com/dubbogo/go-zookeeper v1.0.4-0.20211212162352-f9d2183d89d5 // indirect
+	github.com/dubbogo/go-zookeeper v1.0.4-0.20211212162352-f9d2183d89d5
 	github.com/dubbogo/triple v1.2.2-rc3 // indirect
 	github.com/emicklei/go-restful/v3 v3.10.1 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
@@ -197,7 +199,7 @@ require (
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
-	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect

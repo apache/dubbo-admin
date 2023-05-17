@@ -18,8 +18,10 @@
 const path = require('path');
 
 module.exports = {
-  outputDir: "target/dist",
+  outputDir: "dist",
   lintOnSave: "warning",
+  assetsDir: 'static',
+  publicPath: '/',
   devServer: {
     port: 38082,
     historyApiFallback: {
@@ -27,7 +29,6 @@ module.exports = {
         {from: /.*/, to: path.posix.join('/', 'index.html')},
       ],
     },
-    publicPath: '/',
     proxy: {
       '/': {
         target: 'http://localhost:38080/',

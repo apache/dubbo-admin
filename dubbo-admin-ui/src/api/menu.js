@@ -18,39 +18,36 @@
 const Menu = [
   { title: 'serviceSearch', path: '/service', icon: 'search' },
   {
+    title: 'trafficManagement',
+    icon: 'show_chart',
+    group: 'traffic',
+    items: [
+      { title: 'trafficTimeout', path: '/traffic/timeout' },
+      { title: 'trafficRetry', path: '/traffic/retry' },
+      { title: 'trafficRegion', path: '/traffic/region' },
+      { title: 'trafficIsolation', path: '/traffic/isolation' },
+      { title: 'trafficWeight', path: '/traffic/weight' },
+      { title: 'trafficArguments', path: '/traffic/arguments' },
+      { title: 'trafficMock', path: '/traffic/mock' },
+      { title: 'trafficAccesslog', path: '/traffic/accesslog' },
+      { title: 'trafficHost', path: '/traffic/host' }
+    ]
+  },
+  {
     title: 'serviceGovernance',
     icon: 'edit',
     group: 'governance',
     items: [
       { title: 'routingRule', path: '/governance/routingRule' },
       { title: 'tagRule', path: '/governance/tagRule' },
-      { title: 'meshRule', path: '/governance/meshRule', badge: 'new' },
-      { title: 'accessControl', path: '/governance/access' },
-      { title: 'dynamicConfig', path: '/governance/config' },
-      { title: 'weightAdjust', path: '/governance/weight' },
-      { title: 'loadBalance', path: '/governance/loadbalance' }
+      { title: 'dynamicConfig', path: '/governance/config' }
     ]
   },
   { title: 'serviceTest', path: '/test', icon: 'code' },
-  { title: 'apiDocs', path: '/apiDocs', icon: 'code' },
-  {
-    title: 'serviceMock',
-    path: '/mock',
-    icon: 'build',
-    items: [
-      { title: 'mockRule', path: '/mock/rule', badge: 'new' }
-    ]
-  },
-  {
-    title: 'serviceMetrics',
-    path: 'metrics',
-    icon: 'show_chart',
-    items: [
-      { title: 'serviceMetrics', path: '/metrics/index', badge: 'feature' },
-      { title: 'serviceRelation', path: '/metrics/relation', badge: 'new' }
-    ]
-  },
-  { title: 'configManage', path: '/management', icon: 'build' }
+  { title: 'serviceMock', path: '/mock/rule', icon: 'build' },
+  { title: 'serviceMetrics', path: '/metrics/index', icon: 'show_chart' }
+  // { title: 'configManage', path: '/management', icon: 'build' },
+  // { title: 'apiDocs', path: '/apiDocs', icon: 'code' }
 ]
 
 export default Menu
