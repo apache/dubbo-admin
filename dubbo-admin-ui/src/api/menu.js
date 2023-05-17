@@ -46,8 +46,8 @@ const Menu = [
   { title: 'serviceTest', path: '/test', icon: 'code' },
   { title: 'serviceMock', path: '/mock/rule', icon: 'build' },
   { title: 'serviceMetrics', path: '/metrics/index', icon: 'show_chart' }
-  // { title: 'configManage', path: '/management', icon: 'build' }
-  // { title: 'apiDocs', path: '/apiDocs', icon: 'code' },
+  // { title: 'configManage', path: '/management', icon: 'build' },
+  // { title: 'apiDocs', path: '/apiDocs', icon: 'code' }
 ]
 
 export default Menu
