@@ -26,7 +26,8 @@ yarn build
 3. 拷贝构建结果到 admin 发布包
 
 ```shell
-cp -r ./target/dist/* ../cmd/ui/dist/
+rm -rf ../cmd/ui/dist
+cp -R ./target/dist ../cmd/ui/
 ```
 
 
