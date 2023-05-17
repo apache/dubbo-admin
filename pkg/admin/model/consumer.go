@@ -19,15 +19,15 @@ import "time"
 
 type Consumer struct {
 	Entity
-	Service     string
-	Parameters  string
-	Result      string
-	Address     string
-	Registry    string
-	Application string
-	Username    string
-	Statistics  string
-	Collected   time.Duration
-	Expired     time.Duration
-	Alived      int64
+	Service     string        `json:"service"`
+	Parameters  string        `json:"parameters"`
+	Result      string        `json:"result"`
+	Address     string        `json:"address"`
+	Registry    string        `json:"registry"`
+	Application string        `json:"application"`
+	Username    string        `json:"username"`
+	Statistics  string        `json:"statistics"`
+	Collected   time.Duration `json:"collected"`
+	Expired     time.Duration `json:"expired"`
+	Alived      int64         `json:"alived"`
 }

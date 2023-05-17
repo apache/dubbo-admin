@@ -178,9 +178,843 @@
                     }
                 }
             }
+        },
+        "/api/{env}/rules/override": {
+            "get": {
+                "description": "Search override rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OverrideRule"
+                ],
+                "summary": "Search override rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "application and service must not left empty at the same time",
+                        "name": "application",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "application and service must not left empty at the same time",
+                        "name": "service",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "version of dubbo service",
+                        "name": "serviceVersion",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "group of dubbo service",
+                        "name": "serviceGroup",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.DynamicConfig"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new override rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OverrideRule"
+                ],
+                "summary": "Create a new override rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "description": "Override Rule Input",
+                        "name": "dynamicConfig",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.DynamicConfig"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/rules/override/disable/{id}": {
+            "put": {
+                "description": "Disable the specified rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OverrideRule"
+                ],
+                "summary": "Disable the specified rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "rule id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/rules/override/enable/{id}": {
+            "put": {
+                "description": "Enable the specified rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OverrideRule"
+                ],
+                "summary": "Enable the specified rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "rule id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/rules/override/{id}": {
+            "get": {
+                "description": "Show the detail of one specified rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OverrideRule"
+                ],
+                "summary": "Show the detail of one specified rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "rule id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Update override rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OverrideRule"
+                ],
+                "summary": "Update override rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Override Rule Id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Override Rule Input",
+                        "name": "dynamicConfig",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.DynamicConfig"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete the specified rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OverrideRule"
+                ],
+                "summary": "Delete the specified rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "rule id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/rules/route/condition": {
+            "get": {
+                "description": "Search condition rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ConditionRule"
+                ],
+                "summary": "Search condition rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "application and service must not left empty at the same time",
+                        "name": "application",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "application and service must not left empty at the same time",
+                        "name": "service",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "version of dubbo service",
+                        "name": "serviceVersion",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "group of dubbo service",
+                        "name": "serviceGroup",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.ConditionRouteDto"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new condition rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ConditionRule"
+                ],
+                "summary": "Create a new condition rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "description": "Condition Rule Input",
+                        "name": "routeDto",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ConditionRouteDto"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/rules/route/condition/disable/{id}": {
+            "put": {
+                "description": "Disable the specified condition rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ConditionRule"
+                ],
+                "summary": "Disable the specified condition rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Condition Rule Id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/rules/route/condition/enable/{id}": {
+            "put": {
+                "description": "Enable the specified condition rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ConditionRule"
+                ],
+                "summary": "Enable the specified condition rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Condition Rule Id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/rules/route/condition/{id}": {
+            "get": {
+                "description": "Show the detail of one specified condition rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ConditionRule"
+                ],
+                "summary": "Show the detail of one specified condition rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Condition Rule Id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Update condition rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ConditionRule"
+                ],
+                "summary": "Update condition rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Condition Rule Id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Condition Rule Input",
+                        "name": "routeDto",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ConditionRouteDto"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete the specified condition rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ConditionRule"
+                ],
+                "summary": "Delete the specified condition rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Condition Rule Id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "model.AddressMatch": {
+            "type": "object",
+            "properties": {
+                "cird": {
+                    "type": "string"
+                },
+                "exact": {
+                    "type": "string"
+                },
+                "wildcard": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ConditionMatch": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "$ref": "#/definitions/model.AddressMatch"
+                },
+                "application": {
+                    "$ref": "#/definitions/model.ListStringMatch"
+                },
+                "param": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ParamMatch"
+                    }
+                },
+                "service": {
+                    "$ref": "#/definitions/model.ListStringMatch"
+                }
+            }
+        },
+        "model.ConditionRouteDto": {
+            "type": "object",
+            "required": [
+                "conditions",
+                "configVersion",
+                "enabled"
+            ],
+            "properties": {
+                "application": {
+                    "type": "string"
+                },
+                "conditions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "configVersion": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "force": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "runtime": {
+                    "type": "boolean"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "serviceGroup": {
+                    "type": "string"
+                },
+                "serviceVersion": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DynamicConfig": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "string"
+                },
+                "configVersion": {
+                    "type": "string"
+                },
+                "configs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OverrideConfig"
+                    }
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "serviceGroup": {
+                    "type": "string"
+                },
+                "serviceVersion": {
+                    "type": "string"
+                }
+            }
+        },
         "model.HTTPError": {
             "type": "object",
             "properties": {
@@ -204,6 +1038,17 @@
                 }
             }
         },
+        "model.ListStringMatch": {
+            "type": "object",
+            "properties": {
+                "oneof": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.StringMatch"
+                    }
+                }
+            }
+        },
         "model.MockRule": {
             "type": "object",
             "properties": {
@@ -220,6 +1065,87 @@
                     "type": "string"
                 },
                 "serviceName": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.OverrideConfig": {
+            "type": "object",
+            "properties": {
+                "addresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "applications": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "match": {
+                    "$ref": "#/definitions/model.ConditionMatch"
+                },
+                "parameters": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "providerAddresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "side": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ParamMatch": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "value": {
+                    "$ref": "#/definitions/model.StringMatch"
+                }
+            }
+        },
+        "model.StringMatch": {
+            "type": "object",
+            "properties": {
+                "empty": {
+                    "type": "string"
+                },
+                "exact": {
+                    "type": "string"
+                },
+                "noempty": {
+                    "type": "string"
+                },
+                "prefix": {
+                    "type": "string"
+                },
+                "regex": {
+                    "type": "string"
+                },
+                "wildcard": {
                     "type": "string"
                 }
             }

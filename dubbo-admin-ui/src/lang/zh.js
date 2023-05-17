@@ -17,7 +17,8 @@
 export default {
   service: '服务',
   serviceSearch: '服务查询',
-  serviceGovernance: '服务治理',
+  serviceGovernance: '路由规则',
+  trafficManagement: '流量管控',
   serviceMetrics: '服务统计',
   serviceRelation: '服务关系',
   routingRule: '条件路由',
@@ -221,5 +222,15 @@ export default {
   methodNameHint: '服务方法名',
   createMockRule: '创建规则',
   editMockRule: '修改规则',
-  deleteRuleTitle: '确定要删除此服务Mock规则吗？'
+  deleteRuleTitle: '确定要删除此服务Mock规则吗？',
+
+  trafficTimeout: '超时时间',
+  trafficRetry: '调用重试',
+  trafficRegion: '同区域优先',
+  trafficIsolation: '环境隔离',
+  trafficWeight: '权重比例',
+  trafficArguments: '条件路由',
+  trafficMock: '调用降级',
+  trafficAccesslog: '访问日志',
+  trafficHost: '固定机器导流'
 }

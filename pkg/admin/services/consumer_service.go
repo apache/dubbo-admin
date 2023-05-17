@@ -18,6 +18,6 @@ package services
 import "github.com/apache/dubbo-admin/pkg/admin/model"
 
 type ConsumerService interface {
-	FindAll() ([]*model.Consumer, error)
+	FindAll() ([]string, error)
 	FindByService(string) ([]*model.Consumer, error)
 }

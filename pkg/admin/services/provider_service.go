@@ -20,6 +20,6 @@ import "github.com/apache/dubbo-admin/pkg/admin/model"
 type ProviderService interface {
 	FindServices() ([]string, error)
 	FindApplications() ([]string, error)
-	FindService(string, string) ([]*model.Provider, error)
+	FindService(string, string) ([]*model.ServiceDTO, error)
 	FindByService(string) ([]*model.Provider, error)
 }

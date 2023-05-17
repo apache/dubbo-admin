@@ -18,7 +18,6 @@ package render
 import (
 	"errors"
 	"fmt"
-	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/util"
 	"io/fs"
 	"net/url"
 	"os"
@@ -26,6 +25,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/util"
 
 	"github.com/apache/dubbo-admin/pkg/dubboctl/identifier"
 

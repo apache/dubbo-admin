@@ -17,7 +17,8 @@
 export default {
   service: 'Service',
   serviceSearch: 'Search service name',
-  serviceGovernance: 'Service Governance',
+  serviceGovernance: 'Routing Rule',
+  trafficManagement: 'Traffic Management',
   routingRule: 'Condition Rule',
   tagRule: 'Tag Rule',
   meshRule: 'Mesh Rule',
@@ -221,5 +222,15 @@ export default {
   methodNameHint: 'The method name of Service',
   createMockRule: 'Create Mock Rule',
   editMockRule: 'Edit Mock Rule',
-  deleteRuleTitle: 'Are you sure to delete this mock rule?'
+  deleteRuleTitle: 'Are you sure to delete this mock rule?',
+
+  trafficTimeout: 'Timeout',
+  trafficRetry: 'Retry',
+  trafficRegion: 'Region Aware',
+  trafficIsolation: 'Isolation',
+  trafficWeight: 'Weight Percentage',
+  trafficArguments: 'Arg Routing',
+  trafficMock: 'Mock',
+  trafficAccesslog: 'Accesslog',
+  trafficHost: 'Host'
 }

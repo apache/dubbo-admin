@@ -15,12 +15,12 @@
 
 package model
 
-type RegistrySource int
+type RegistrySource string
 
 const (
-	All RegistrySource = iota
+	All RegistrySource = "ALL"
 
-	Interface
+	Interface = "INTERFACE"
 
-	Instance
+	Instance = "INSTANCE"
 )
