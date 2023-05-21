@@ -31,6 +31,7 @@ import 'echarts/lib/chart/line'
 import 'echarts/lib/component/tooltip'
 import 'echarts/lib/component/title'
 import VueClipboard from 'vue-clipboard2'
+import './mock/mockServer'
 
 Vue.use(Vuetify, {
   lang: {

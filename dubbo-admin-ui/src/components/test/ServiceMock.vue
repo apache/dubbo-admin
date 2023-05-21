@@ -123,19 +123,13 @@
 </template>
 
 <script>
-import JsonEditor from '@/components/public/JsonEditor'
-import Search from '@/components/public/Search'
 import Breadcrumb from '@/components/public/Breadcrumb'
-import yaml from 'js-yaml'
 import AceEditor from '@/components/public/AceEditor'
 
 export default {
   name: 'ServiceMock',
   components: {
-    JsonEditor,
-    Search,
     Breadcrumb,
-    yaml,
     AceEditor
   },
   data () {
@@ -213,7 +207,7 @@ export default {
         this.totalItems = res.data.totalElements
       }).catch(e => {
         this.showSnackbar('error', e.response.data.message)
-      }).finally(() => this.loadingRules = false)
+      }).finally(this.loadingRules = false)
     },
     submitSearch () {
       this.listMockRules(this.filter)

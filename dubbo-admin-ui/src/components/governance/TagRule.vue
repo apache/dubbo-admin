@@ -120,13 +120,11 @@
 import yaml from 'js-yaml'
 import AceEditor from '@/components/public/AceEditor'
 import operations from '@/api/operation'
-import Search from '@/components/public/Search'
 import Breadcrumb from '@/components/public/Breadcrumb'
 
 export default {
   components: {
     AceEditor,
-    Search,
     Breadcrumb
   },
   data: () => ({
@@ -300,8 +298,6 @@ export default {
             })
           break
         case 'edit':
-          const id = {}
-          id.id = itemId
           this.$axios.get('/rules/route/tag/' + itemId)
             .then(response => {
               const conditionRoute = response.data
