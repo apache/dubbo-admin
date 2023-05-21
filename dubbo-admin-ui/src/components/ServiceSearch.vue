@@ -340,11 +340,8 @@ export default {
           size
         }
       }).then(response => {
-        console.log(response)
         this.resultPage = response.data
-        console.log(this.resultPage)
         this.totalItems = 1
-        console.log(this.totalItems)
         if (rewrite) {
           this.$router.push({ path: 'service', query: { filter: filter, pattern: pattern } })
         }
@@ -396,8 +393,10 @@ export default {
       pattern = 'service'
       this.search(this.filter, pattern, true)
     }
+    // this.$axios.get('/user/list').then((res) => {
+    //   console.log(res)
+    // })
   }
-
 }
 </script>
 

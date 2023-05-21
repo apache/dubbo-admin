@@ -51,7 +51,7 @@
                       v-for="(item, i) in items"
                       :key="i"
                       @click="selected = i">
-                      <v-list-tile-title>{{ $t(item.title) }}</v-list-tile-title>
+                      <v-list-tile-title>{{ $t(item.service) }}</v-list-tile-title>
                     </v-list-tile>
                   </v-list>
                 </v-menu>
@@ -195,14 +195,12 @@
 <script>
 import AceEditor from '@/components/public/AceEditor'
 import yaml from 'js-yaml'
-import Search from '@/components/public/Search'
 import operations from '@/api/operation'
 import Breadcrumb from '@/components/public/Breadcrumb'
 
 export default {
   components: {
     AceEditor,
-    Search,
     Breadcrumb
   },
   data: () => ({
