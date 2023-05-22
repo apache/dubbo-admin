@@ -20,6 +20,9 @@
     <v-layout row wrap>
       <v-flex lg12>
         <breadcrumb title="routingRule" :items="breads"></breadcrumb>
+        <v-flex lg12>
+      <a href="https://cn.dubbo.apache.org/zh-cn/overview/core-features/traffic/condition-rule/">条件路由规则</a>
+    </v-flex>
       </v-flex>
       <v-flex lg12>
         <v-card flat color="transparent">
@@ -198,13 +201,11 @@
 </template>
 <script>
 import yaml from 'js-yaml'
-import AceEditor from '@/components/public/AceEditor'
 import operations from '@/api/operation'
 import Breadcrumb from '@/components/public/Breadcrumb'
 
 export default {
   components: {
-    AceEditor,
     Breadcrumb
   },
   data: () => ({

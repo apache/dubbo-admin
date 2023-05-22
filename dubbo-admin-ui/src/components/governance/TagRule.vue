@@ -20,6 +20,9 @@
       <v-flex lg12>
         <breadcrumb title="tagRule" :items="breads"></breadcrumb>
       </v-flex>
+      <v-flex lg12>
+      <a href="https://cn.dubbo.apache.org/zh-cn/overview/core-features/traffic/tag-rule/">标签路由规则</a>
+    </v-flex>
     </v-layout>
     <v-flex lg12>
       <v-card flat color="transparent">
@@ -118,13 +121,11 @@
 </template>
 <script>
 import yaml from 'js-yaml'
-import AceEditor from '@/components/public/AceEditor'
 import operations from '@/api/operation'
 import Breadcrumb from '@/components/public/Breadcrumb'
 
 export default {
   components: {
-    AceEditor,
     Breadcrumb
   },
   data: () => ({
