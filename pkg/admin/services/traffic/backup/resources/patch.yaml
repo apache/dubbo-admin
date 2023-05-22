@@ -1,8 +1,0 @@
-configVersion: v3.0
-scope: application
-key: shop-detail
-configs:
-  - side: consumer
-    parameters:
-      timeout: '5000'
-      accesslog: 'true'
