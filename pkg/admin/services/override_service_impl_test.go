@@ -61,7 +61,7 @@ func TestOverrideServiceImpl_SaveOverride(t *testing.T) {
 					Configs: []model.OverrideConfig{
 						{
 							Addresses: []string{"0.0.0.0"},
-							Parameters: map[string]string{
+							Parameters: map[string]interface{}{
 								"timeout": "1000",
 							},
 							Side: "consumer",
@@ -115,7 +115,7 @@ func TestOverrideServiceImpl_UpdateOverride(t *testing.T) {
 					Configs: []model.OverrideConfig{
 						{
 							Addresses: []string{"0.0.0.0"},
-							Parameters: map[string]string{
+							Parameters: map[string]interface{}{
 								"timeout": "1000",
 							},
 							Side: "consumer",
@@ -169,8 +169,8 @@ func TestOverrideServiceImpl_FindOverride(t *testing.T) {
 				Configs: []model.OverrideConfig{
 					{
 						Addresses: []string{"0.0.0.0"},
-						Parameters: map[string]string{
-							"timeout": "6000",
+						Parameters: map[string]interface{}{
+							"timeout": 6000,
 						},
 						Enabled: false,
 						Side:    "consumer",
