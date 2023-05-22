@@ -36,7 +36,7 @@ jobs:
         with:
           version: latest
           # Optional: golangci-lint command line arguments.
-          args: -v --disable-all --enable=gofumpt --enable=govet --enable=staticcheck --enable=ineffassign --enable=misspell
+          args: --timeout=30m -v --disable-all --enable=gofumpt --enable=govet --enable=staticcheck --enable=ineffassign --enable=misspell
 
   unit-test:
     name: Go Test
