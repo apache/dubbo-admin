@@ -18,11 +18,12 @@
 package router
 
 import (
+	"net/http"
+
 	"github.com/apache/dubbo-admin/cmd/ui"
 	"github.com/apache/dubbo-admin/pkg/admin/handlers"
 	"github.com/apache/dubbo-admin/pkg/admin/handlers/traffic"
 	"github.com/gin-gonic/gin"
-	"net/http"
 )
 
 func InitRouter() *gin.Engine {

@@ -19,6 +19,7 @@ package config
 
 import (
 	"errors"
+
 	perrors "github.com/pkg/errors"
 
 	gozk "github.com/dubbogo/go-zookeeper/zk"

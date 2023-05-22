@@ -18,9 +18,10 @@ package kube
 import (
 	"bytes"
 	"fmt"
-	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/util"
 	"sort"
 	"strings"
+
+	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/util"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"

@@ -27,8 +27,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/util"
 )
 
-type RouteServiceImpl struct {
-}
+type RouteServiceImpl struct{}
 
 func (t *RouteServiceImpl) CreateTagRoute(tagRoute model.TagRouteDto) error {
 	id := util.BuildServiceKey(tagRoute.Base.Application, tagRoute.Base.Service, tagRoute.Base.ServiceVersion, tagRoute.Base.ServiceGroup)

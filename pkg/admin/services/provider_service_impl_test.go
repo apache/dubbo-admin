@@ -18,10 +18,11 @@ package services
 import (
 	"fmt"
 	"net/url"
-	"reflect"
 	"regexp"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/dubbo-admin/pkg/admin/util"
 
@@ -75,9 +76,7 @@ func TestProviderServiceImpl_FindServices(t *testing.T) {
 				t.Errorf("FindServices() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FindServices() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -104,9 +103,7 @@ func TestProviderServiceImpl_FindApplications(t *testing.T) {
 				t.Errorf("FindApplications() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FindApplications() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -133,9 +130,7 @@ func TestProviderServiceImpl_findAddresses(t *testing.T) {
 				t.Errorf("findAddresses() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("findAddresses() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -169,9 +164,7 @@ func TestProviderServiceImpl_FindByService(t *testing.T) {
 				t.Errorf("FindByService() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FindByService() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -205,9 +198,7 @@ func TestProviderServiceImpl_findByAddress(t *testing.T) {
 				t.Errorf("findByAddress() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("findByAddress() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -241,9 +232,7 @@ func TestProviderServiceImpl_findByApplication(t *testing.T) {
 				t.Errorf("findByApplication() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("findByApplication() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -277,9 +266,7 @@ func TestProviderServiceImpl_FindService(t *testing.T) {
 				t.Errorf("FindService() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FindService() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -290,5 +277,4 @@ func TestReg(t *testing.T) {
 	if match {
 		fmt.Print("Matched!")
 	}
-
 }

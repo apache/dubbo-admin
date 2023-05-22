@@ -18,12 +18,12 @@
 package config
 
 import (
-	"dubbo.apache.org/dubbo-go/v3/common"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/common/extension"
 	"dubbo.apache.org/dubbo-go/v3/config_center"
 	"dubbo.apache.org/dubbo-go/v3/metadata/report"
@@ -39,8 +39,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const conf = "./conf/dubboadmin.yml"
-const confPathKey = "ADMIN_CONFIG_PATH"
+const (
+	conf        = "./conf/dubboadmin.yml"
+	confPathKey = "ADMIN_CONFIG_PATH"
+)
 
 type Config struct {
 	Admin      Admin      `yaml:"admin"`
@@ -73,7 +75,7 @@ var (
 )
 
 func LoadConfig() {
-	var configFilePath = conf
+	configFilePath := conf
 	if envPath := os.Getenv(confPathKey); envPath != "" {
 		configFilePath = envPath
 	}

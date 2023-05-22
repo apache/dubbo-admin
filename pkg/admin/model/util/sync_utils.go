@@ -17,10 +17,11 @@ package util
 
 import (
 	"fmt"
-	"github.com/apache/dubbo-admin/pkg/admin/util"
+	"sort"
 	"strings"
 	"sync"
 
+	"github.com/apache/dubbo-admin/pkg/admin/util"
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"github.com/apache/dubbo-admin/pkg/admin/cache"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
@@ -61,6 +62,7 @@ func mapToString(params map[string]string) string {
 	for key, val := range params {
 		pairs = append(pairs, fmt.Sprintf("%s=%s", key, val))
 	}
+	sort.Strings(pairs)
 	return strings.Join(pairs, "&")
 }
 
