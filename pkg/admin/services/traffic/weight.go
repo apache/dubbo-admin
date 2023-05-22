@@ -18,12 +18,13 @@
 package traffic
 
 import (
+	"strings"
+
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 	"github.com/apache/dubbo-admin/pkg/admin/util"
 	"gopkg.in/yaml.v2"
-	"strings"
 )
 
 type WeightService struct{}
@@ -47,7 +48,7 @@ func (tm *WeightService) Delete(p *model.Percentage) error {
 }
 
 func (tm *WeightService) Search(p *model.Percentage) ([]*model.Percentage, error) {
-	var result = make([]*model.Percentage, 0)
+	result := make([]*model.Percentage, 0)
 
 	var con string
 	if p.Service != "" {

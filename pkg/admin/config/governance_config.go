@@ -138,13 +138,12 @@ func (g *GovernanceConfigImpl) UnRegister(url *common.URL) error {
 
 func (g *GovernanceConfigImpl) GetList(group string) (map[string]string, error) {
 	keys, err := g.configCenter.GetConfigKeysByGroup(group)
-
 	if err != nil {
 		return nil, err
 	}
 
 	list := make(map[string]string)
-	for k, _ := range keys.Items {
+	for k := range keys.Items {
 		rule, err := g.configCenter.GetRule(k.(string), config_center.WithGroup(group))
 		if err != nil {
 			return nil, err

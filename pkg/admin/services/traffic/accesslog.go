@@ -18,10 +18,11 @@
 package traffic
 
 import (
+	"strings"
+
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
-	"strings"
 )
 
 type AccesslogService struct{}
@@ -45,7 +46,7 @@ func (tm *AccesslogService) Delete(a *model.Accesslog) error {
 }
 
 func (tm *AccesslogService) Search(a *model.Accesslog) ([]*model.Accesslog, error) {
-	var result = make([]*model.Accesslog, 0)
+	result := make([]*model.Accesslog, 0)
 
 	list, err := getRules(a.Application)
 	if err != nil {

@@ -18,11 +18,12 @@
 package traffic
 
 import (
+	"strings"
+
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 	"github.com/apache/dubbo-admin/pkg/admin/util"
-	"strings"
 )
 
 type RetryService struct{}
@@ -46,7 +47,7 @@ func (tm *RetryService) Delete(r *model.Retry) error {
 }
 
 func (tm *RetryService) Search(r *model.Retry) ([]*model.Retry, error) {
-	var result = make([]*model.Retry, 0)
+	result := make([]*model.Retry, 0)
 
 	var con string
 	if r.Service != "" {

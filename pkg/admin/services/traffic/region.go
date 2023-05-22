@@ -18,12 +18,13 @@
 package traffic
 
 import (
+	"strings"
+
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 	"github.com/apache/dubbo-admin/pkg/admin/util"
 	"gopkg.in/yaml.v2"
-	"strings"
 )
 
 type RegionService struct{}
@@ -47,7 +48,7 @@ func (tm *RegionService) Delete(r *model.Region) error {
 }
 
 func (tm *RegionService) Search(r *model.Region) ([]*model.Region, error) {
-	var result = make([]*model.Region, 0)
+	result := make([]*model.Region, 0)
 
 	var con string
 	if r.Service != "" {
@@ -74,7 +75,7 @@ func (tm *RegionService) Search(r *model.Region) ([]*model.Region, error) {
 			return result, err
 		}
 		for _, c := range route.Conditions {
-			//fixme, regex match
+			// fixme, regex match
 			if strings.Contains(c, model.AdminIdentifier) {
 				region.Rule = c
 				break

@@ -19,8 +19,9 @@ package util
 
 import (
 	"bytes"
-	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"strings"
+
+	"github.com/apache/dubbo-admin/pkg/admin/constant"
 )
 
 func BuildServiceKey(app, service, version, group string) string {

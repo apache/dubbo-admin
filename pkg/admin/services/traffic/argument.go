@@ -18,12 +18,13 @@
 package traffic
 
 import (
+	"strings"
+
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 	"github.com/apache/dubbo-admin/pkg/admin/util"
 	"gopkg.in/yaml.v2"
-	"strings"
 )
 
 type ArgumentService struct{}
@@ -47,7 +48,7 @@ func (tm *ArgumentService) Delete(a *model.Argument) error {
 }
 
 func (tm *ArgumentService) Search(a *model.Argument) ([]*model.Argument, error) {
-	var result = make([]*model.Argument, 0)
+	result := make([]*model.Argument, 0)
 
 	var con string
 	if a.Service != "" {
@@ -74,7 +75,7 @@ func (tm *ArgumentService) Search(a *model.Argument) ([]*model.Argument, error) 
 			return result, err
 		}
 		for _, c := range route.Conditions {
-			//fixme, regex match
+			// fixme, regex match
 			if strings.Contains(c, model.AdminIdentifier) {
 				argument.Rule = c
 				break

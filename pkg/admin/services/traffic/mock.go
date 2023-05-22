@@ -18,11 +18,12 @@
 package traffic
 
 import (
+	"strings"
+
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 	"github.com/apache/dubbo-admin/pkg/admin/util"
-	"strings"
 )
 
 type MockService struct{}
@@ -46,7 +47,7 @@ func (tm *MockService) Delete(m *model.Mock) error {
 }
 
 func (tm *MockService) Search(m *model.Mock) ([]*model.Mock, error) {
-	var result = make([]*model.Mock, 0)
+	result := make([]*model.Mock, 0)
 
 	var con string
 	if m.Service != "" {

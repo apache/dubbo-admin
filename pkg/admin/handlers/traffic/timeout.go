@@ -18,11 +18,12 @@
 package traffic
 
 import (
+	"net/http"
+
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services/traffic"
 	"github.com/apache/dubbo-admin/pkg/logger"
 	"github.com/gin-gonic/gin"
-	"net/http"
 )
 
 var timeoutSvc = &traffic.TimeoutService{}

@@ -18,11 +18,12 @@
 package traffic
 
 import (
+	"strings"
+
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 	"gopkg.in/yaml.v2"
-	"strings"
 )
 
 type GrayService struct{}
@@ -46,7 +47,7 @@ func (tm *GrayService) Delete(g *model.Gray) error {
 }
 
 func (tm *GrayService) Search(g *model.Gray) ([]*model.Gray, error) {
-	var result = make([]*model.Gray, 0)
+	result := make([]*model.Gray, 0)
 
 	list, err := getRules(g.Application)
 	if err != nil {

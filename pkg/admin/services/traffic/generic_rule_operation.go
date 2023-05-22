@@ -150,7 +150,7 @@ func mergeOverride(override *model.Override, side string, param string, newRule 
 func mergeWeight(override *model.Override, side string, param string, newRule model.Override) {
 	for i, c := range override.Configs {
 		if c.Side == side && c.Parameters[param] != "" {
-			//todo, add warning promote
+			// todo, add warning promote
 			override.Configs = append(override.Configs[:i], override.Configs[i+1:]...)
 		}
 	}
@@ -175,7 +175,7 @@ func getValue(rawRule, side, param string) (interface{}, error) {
 }
 
 func getRules(con string) (map[string]string, error) {
-	var list = make(map[string]string)
+	list := make(map[string]string)
 	if con == "" {
 		rules, err := config.Governance.GetList("dubbo")
 		if err != nil {

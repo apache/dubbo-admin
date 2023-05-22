@@ -18,11 +18,12 @@
 package traffic
 
 import (
+	"strings"
+
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 	"github.com/apache/dubbo-admin/pkg/admin/util"
-	"strings"
 )
 
 type TimeoutService struct{}
@@ -46,7 +47,7 @@ func (tm *TimeoutService) Delete(t *model.Timeout) error {
 }
 
 func (tm *TimeoutService) Search(t *model.Timeout) ([]*model.Timeout, error) {
-	var result = make([]*model.Timeout, 0)
+	result := make([]*model.Timeout, 0)
 
 	var con string
 	if t.Service != "" {
