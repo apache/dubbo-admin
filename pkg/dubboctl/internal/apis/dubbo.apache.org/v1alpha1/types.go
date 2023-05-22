@@ -42,8 +42,7 @@ func (do *DubboConfig) GetProfile() string {
 	return ""
 }
 
-type DubboConfigStatus struct {
-}
+type DubboConfigStatus struct{}
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
@@ -281,7 +280,7 @@ func (in *GrafanaSpec) DeepCopyInto(out *GrafanaSpec) {
 	if in == nil {
 		return
 	}
-	var spec GrafanaSpec
+	var spec GrafanaSpec = map[string]any{}
 	for key, val := range *in {
 		spec[key] = val
 	}
@@ -400,7 +399,7 @@ func (in *ZookeeperSpec) DeepCopyInto(out *ZookeeperSpec) {
 	if in == nil {
 		return
 	}
-	var spec ZookeeperSpec
+	var spec ZookeeperSpec = map[string]any{}
 	for key, val := range *in {
 		spec[key] = val
 	}
@@ -413,7 +412,7 @@ func (in *PrometheusSpec) DeepCopyInto(out *PrometheusSpec) {
 	if in == nil {
 		return
 	}
-	var spec PrometheusSpec
+	var spec PrometheusSpec = map[string]any{}
 	for key, val := range *in {
 		spec[key] = val
 	}
@@ -426,7 +425,7 @@ func (in *SkywalkingSpec) DeepCopyInto(out *SkywalkingSpec) {
 	if in == nil {
 		return
 	}
-	var spec SkywalkingSpec
+	var spec SkywalkingSpec = map[string]any{}
 	for key, val := range *in {
 		spec[key] = val
 	}
@@ -439,7 +438,7 @@ func (in *ZipkinSpec) DeepCopyInto(out *ZipkinSpec) {
 	if in == nil {
 		return
 	}
-	var spec ZipkinSpec
+	var spec ZipkinSpec = map[string]any{}
 	for key, val := range *in {
 		spec[key] = val
 	}
