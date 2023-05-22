@@ -18,6 +18,7 @@
 package services
 
 import (
+	"github.com/apache/dubbo-admin/pkg/admin/config/mock_config"
 	"reflect"
 	"testing"
 
@@ -30,7 +31,7 @@ import (
 
 func TestRouteServiceImpl_CreateTagRoute(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig := mock_config.NewMockGovernanceConfig(ctrl)
 	mockGovernanceConfig.EXPECT().SetConfig(gomock.Any(), gomock.Any()).Return(nil)
 	config.Governance = mockGovernanceConfig
 
@@ -87,14 +88,9 @@ func TestRouteServiceImpl_CreateTagRoute(t *testing.T) {
 
 func TestRouteServiceImpl_UpdateTagRoute(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig := mock_config.NewMockGovernanceConfig(ctrl)
 	mockGovernanceConfig.EXPECT().SetConfig(gomock.Any(), gomock.Any()).Return(nil)
-	mockGovernanceConfig.EXPECT().GetConfig(getRoutePath(util.BuildServiceKey(model.Base{
-		Application:    "",
-		Service:        "testService",
-		ServiceVersion: "testVersion",
-		ServiceGroup:   "testGroup",
-	}), constant.TagRoute)).Return(`{"enabled":true,"force":true,"key":"testService:testVersion:testGroup","tags":[{"name":"gray","match":[{"key":"env","value":{"exact":"gray"}}]}]}`, nil)
+	mockGovernanceConfig.EXPECT().GetConfig(GetRoutePath(util.BuildServiceKey("", "testService", "testVersion", "testGroup"), constant.TagRoute)).Return(`{"enabled":true,"force":true,"key":"testService:testVersion:testGroup","tags":[{"name":"gray","match":[{"key":"env","value":{"exact":"gray"}}]}]}`, nil)
 	config.Governance = mockGovernanceConfig
 
 	type args struct {
@@ -150,13 +146,8 @@ func TestRouteServiceImpl_UpdateTagRoute(t *testing.T) {
 
 func TestRouteServiceImpl_DeleteTagRoute(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
-	mockGovernanceConfig.EXPECT().DeleteConfig(getRoutePath(util.BuildServiceKey(model.Base{
-		Application:    "",
-		Service:        "testService",
-		ServiceVersion: "testVersion",
-		ServiceGroup:   "testGroup",
-	}), constant.TagRoute)).Return(nil)
+	mockGovernanceConfig := mock_config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig.EXPECT().DeleteConfig(GetRoutePath(util.BuildServiceKey("", "testService", "testVersion", "testGroup"), constant.TagRoute)).Return(nil)
 	config.Governance = mockGovernanceConfig
 
 	type args struct {
@@ -189,13 +180,8 @@ func TestRouteServiceImpl_DeleteTagRoute(t *testing.T) {
 
 func TestRouteServiceImpl_FindTagRoute(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
-	mockGovernanceConfig.EXPECT().GetConfig(getRoutePath(util.BuildServiceKey(model.Base{
-		Application:    "",
-		Service:        "testService",
-		ServiceVersion: "testVersion",
-		ServiceGroup:   "testGroup",
-	}), constant.TagRoute)).Return(`{"enabled":true,"force":true,"key":"testService:testVersion:testGroup","tags":[{"name":"gray","match":[{"key":"env","value":{"exact":"gray"}}]}]}`, nil)
+	mockGovernanceConfig := mock_config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig.EXPECT().GetConfig(GetRoutePath(util.BuildServiceKey("", "testService", "testVersion", "testGroup"), constant.TagRoute)).Return(`{"enabled":true,"force":true,"key":"testService:testVersion:testGroup","tags":[{"name":"gray","match":[{"key":"env","value":{"exact":"gray"}}]}]}`, nil)
 	config.Governance = mockGovernanceConfig
 
 	type args struct {
@@ -253,14 +239,9 @@ func TestRouteServiceImpl_FindTagRoute(t *testing.T) {
 
 func TestRouteServiceImpl_EnableTagRoute(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig := mock_config.NewMockGovernanceConfig(ctrl)
 	mockGovernanceConfig.EXPECT().SetConfig(gomock.Any(), gomock.Any()).Return(nil)
-	mockGovernanceConfig.EXPECT().GetConfig(getRoutePath(util.BuildServiceKey(model.Base{
-		Application:    "",
-		Service:        "testService",
-		ServiceVersion: "testVersion",
-		ServiceGroup:   "testGroup",
-	}), constant.TagRoute)).Return(`{"enabled":true,"force":true,"key":"testService:testVersion:testGroup","tags":[{"name":"gray","match":[{"key":"env","value":{"exact":"gray"}}]}]}`, nil)
+	mockGovernanceConfig.EXPECT().GetConfig(GetRoutePath(util.BuildServiceKey("", "testService", "testVersion", "testGroup"), constant.TagRoute)).Return(`{"enabled":true,"force":true,"key":"testService:testVersion:testGroup","tags":[{"name":"gray","match":[{"key":"env","value":{"exact":"gray"}}]}]}`, nil)
 	config.Governance = mockGovernanceConfig
 
 	type args struct {
@@ -293,14 +274,9 @@ func TestRouteServiceImpl_EnableTagRoute(t *testing.T) {
 
 func TestRouteServiceImpl_DisableTagRoute(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig := mock_config.NewMockGovernanceConfig(ctrl)
 	mockGovernanceConfig.EXPECT().SetConfig(gomock.Any(), gomock.Any()).Return(nil)
-	mockGovernanceConfig.EXPECT().GetConfig(getRoutePath(util.BuildServiceKey(model.Base{
-		Application:    "",
-		Service:        "testService",
-		ServiceVersion: "testVersion",
-		ServiceGroup:   "testGroup",
-	}), constant.TagRoute)).Return(`{"enabled":false,"force":true,"key":"testService:testVersion:testGroup","tags":[{"name":"gray","match":[{"key":"env","value":{"exact":"gray"}}]}]}`, nil)
+	mockGovernanceConfig.EXPECT().GetConfig(GetRoutePath(util.BuildServiceKey("", "testService", "testVersion", "testGroup"), constant.TagRoute)).Return(`{"enabled":false,"force":true,"key":"testService:testVersion:testGroup","tags":[{"name":"gray","match":[{"key":"env","value":{"exact":"gray"}}]}]}`, nil)
 	config.Governance = mockGovernanceConfig
 
 	type args struct {
@@ -333,14 +309,9 @@ func TestRouteServiceImpl_DisableTagRoute(t *testing.T) {
 
 func TestRouteServiceImpl_CreateConditionRoute(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig := mock_config.NewMockGovernanceConfig(ctrl)
 	mockGovernanceConfig.EXPECT().SetConfig(gomock.Any(), gomock.Any()).Return(nil)
-	mockGovernanceConfig.EXPECT().GetConfig(getRoutePath(util.BuildServiceKey(model.Base{
-		Application:    "",
-		Service:        "testService",
-		ServiceVersion: "testVersion",
-		ServiceGroup:   "testGroup",
-	}), constant.ConditionRoute)).Return("", nil)
+	mockGovernanceConfig.EXPECT().GetConfig(GetRoutePath(util.BuildServiceKey("", "testService", "testVersion", "testGroup"), constant.ConditionRoute)).Return("", nil)
 	config.Governance = mockGovernanceConfig
 
 	type args struct {
@@ -384,14 +355,9 @@ func TestRouteServiceImpl_CreateConditionRoute(t *testing.T) {
 
 func TestRouteServiceImpl_UpdateConditionRoute(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig := mock_config.NewMockGovernanceConfig(ctrl)
 	mockGovernanceConfig.EXPECT().SetConfig(gomock.Any(), gomock.Any()).Return(nil)
-	mockGovernanceConfig.EXPECT().GetConfig(getRoutePath(util.BuildServiceKey(model.Base{
-		Application:    "",
-		Service:        "testService",
-		ServiceVersion: "testVersion",
-		ServiceGroup:   "testGroup",
-	}), constant.ConditionRoute)).Return(`{"enabled":true,"force":false,"runtime":true,"key":"testService:testVersion:testGroup","conditions":["method=getComment => region=Hangzhou"]}`, nil)
+	mockGovernanceConfig.EXPECT().GetConfig(GetRoutePath(util.BuildServiceKey("", "testService", "testVersion", "testGroup"), constant.ConditionRoute)).Return(`{"enabled":true,"force":false,"runtime":true,"key":"testService:testVersion:testGroup","conditions":["method=getComment => region=Hangzhou"]}`, nil)
 	config.Governance = mockGovernanceConfig
 
 	type args struct {
@@ -435,7 +401,7 @@ func TestRouteServiceImpl_UpdateConditionRoute(t *testing.T) {
 
 func TestRouteServiceImpl_DeleteConditionRoute(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig := mock_config.NewMockGovernanceConfig(ctrl)
 	mockGovernanceConfig.EXPECT().DeleteConfig(gomock.Any()).Return(nil)
 	config.Governance = mockGovernanceConfig
 
@@ -469,13 +435,8 @@ func TestRouteServiceImpl_DeleteConditionRoute(t *testing.T) {
 
 func TestRouteServiceImpl_FindConditionRouteById(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
-	mockGovernanceConfig.EXPECT().GetConfig(getRoutePath(util.BuildServiceKey(model.Base{
-		Application:    "",
-		Service:        "testService",
-		ServiceVersion: "testVersion",
-		ServiceGroup:   "testGroup",
-	}), constant.ConditionRoute)).Return(`{"enabled":true,"force":true,"runtime":true,"key":"testService:testVersion:testGroup","conditions":["method=getComment => region=Hangzhou"]}`, nil)
+	mockGovernanceConfig := mock_config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig.EXPECT().GetConfig(GetRoutePath(util.BuildServiceKey("", "testService", "testVersion", "testGroup"), constant.ConditionRoute)).Return(`{"enabled":true,"force":true,"runtime":true,"key":"testService:testVersion:testGroup","conditions":["method=getComment => region=Hangzhou"]}`, nil)
 	config.Governance = mockGovernanceConfig
 
 	type args struct {
@@ -526,14 +487,9 @@ func TestRouteServiceImpl_FindConditionRouteById(t *testing.T) {
 
 func TestRouteServiceImpl_EnableConditionRoute(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig := mock_config.NewMockGovernanceConfig(ctrl)
 	mockGovernanceConfig.EXPECT().SetConfig(gomock.Any(), gomock.Any()).Return(nil)
-	mockGovernanceConfig.EXPECT().GetConfig(getRoutePath(util.BuildServiceKey(model.Base{
-		Application:    "",
-		Service:        "testService",
-		ServiceVersion: "testVersion",
-		ServiceGroup:   "testGroup",
-	}), constant.ConditionRoute)).Return(`{"enabled":false,"force":true,"runtime":true,"key":"testService:testVersion:testGroup","conditions":["method=getComment => region=Hangzhou"]}`, nil)
+	mockGovernanceConfig.EXPECT().GetConfig(GetRoutePath(util.BuildServiceKey("", "testService", "testVersion", "testGroup"), constant.ConditionRoute)).Return(`{"enabled":false,"force":true,"runtime":true,"key":"testService:testVersion:testGroup","conditions":["method=getComment => region=Hangzhou"]}`, nil)
 	config.Governance = mockGovernanceConfig
 
 	type args struct {
@@ -566,14 +522,9 @@ func TestRouteServiceImpl_EnableConditionRoute(t *testing.T) {
 
 func TestRouteServiceImpl_DisableConditionRoute(t *testing.T) {
 	ctrl := gomock.NewController(t)
-	mockGovernanceConfig := config.NewMockGovernanceConfig(ctrl)
+	mockGovernanceConfig := mock_config.NewMockGovernanceConfig(ctrl)
 	mockGovernanceConfig.EXPECT().SetConfig(gomock.Any(), gomock.Any()).Return(nil)
-	mockGovernanceConfig.EXPECT().GetConfig(getRoutePath(util.BuildServiceKey(model.Base{
-		Application:    "",
-		Service:        "testService",
-		ServiceVersion: "testVersion",
-		ServiceGroup:   "testGroup",
-	}), constant.ConditionRoute)).Return(`{"enabled":true,"force":true,"runtime":true,"key":"testService:testVersion:testGroup","conditions":["method=getComment => region=Hangzhou"]}`, nil)
+	mockGovernanceConfig.EXPECT().GetConfig(GetRoutePath(util.BuildServiceKey("", "testService", "testVersion", "testGroup"), constant.ConditionRoute)).Return(`{"enabled":true,"force":true,"runtime":true,"key":"testService:testVersion:testGroup","conditions":["method=getComment => region=Hangzhou"]}`, nil)
 	config.Governance = mockGovernanceConfig
 
 	type args struct {
@@ -628,8 +579,8 @@ func TestRouteServiceImpl_getRoutePath(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := getRoutePath(tt.args.key, tt.args.routeType); got != tt.want {
-				t.Errorf("RouteServiceImpl.getRoutePath() = %v, want %v", got, tt.want)
+			if got := GetRoutePath(tt.args.key, tt.args.routeType); got != tt.want {
+				t.Errorf("RouteServiceImpl.GetRoutePath() = %v, want %v", got, tt.want)
 			}
 		})
 	}

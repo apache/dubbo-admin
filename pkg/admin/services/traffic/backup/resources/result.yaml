@@ -1,0 +1,17 @@
+configVersion: v3.0
+scope: application
+key: shop-detail
+configs:
+  - side: provider
+    parameters:
+      accesslog: 'true'
+
+---
+configVersion: v3.0
+scope: service
+key: org.apache.dubbo.demo.DemoService
+configs:
+  - side: consumer
+    parameters:
+      timeout: '5000'
+      retries: '3'

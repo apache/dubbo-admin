@@ -54,6 +54,7 @@ type GovernanceConfig interface {
 	DeleteConfigWithGroup(group string, key string) error
 	Register(url *common.URL) error
 	UnRegister(url *common.URL) error
+	GetList(group string) (map[string]string, error)
 }
 
 var impls map[string]func(cc config_center.DynamicConfiguration) GovernanceConfig
@@ -134,6 +135,24 @@ func (g *GovernanceConfigImpl) UnRegister(url *common.URL) error {
 	return RegistryCenter.UnRegister(url)
 }
 
+func (g *GovernanceConfigImpl) GetList(group string) (map[string]string, error) {
+	keys, err := g.configCenter.GetConfigKeysByGroup(group)
+
+	if err != nil {
+		return nil, err
+	}
+
+	list := make(map[string]string)
+	for k, _ := range keys.Items {
+		rule, err := g.configCenter.GetRule(k.(string), config_center.WithGroup(group))
+		if err != nil {
+			return nil, err
+		}
+		list[k.(string)] = rule
+	}
+	return list, nil
+}
+
 type ZkGovImpl struct {
 	GovernanceConfig
 	configCenter config_center.DynamicConfiguration
@@ -170,6 +189,10 @@ func (zk *ZkGovImpl) SetConfig(key string, value string) error {
 	return nil
 }
 
+func (zk *ZkGovImpl) GetList(group string) (map[string]string, error) {
+	return zk.GovernanceConfig.GetList(group)
+}
+
 type NacosGovImpl struct {
 	GovernanceConfig
 	configCenter config_center.DynamicConfiguration
@@ -184,4 +207,8 @@ func (n *NacosGovImpl) GetConfig(key string) (string, error) {
 // SetConfig transform Nacos specified 'node already exist' err into unified admin rule error
 func (n *NacosGovImpl) SetConfig(key string, value string) error {
 	return n.GovernanceConfig.SetConfig(key, value)
+}
+
+func (n *NacosGovImpl) GetList(group string) (map[string]string, error) {
+	return n.GovernanceConfig.GetList(group)
 }

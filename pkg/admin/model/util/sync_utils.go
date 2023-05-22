@@ -17,6 +17,7 @@ package util
 
 import (
 	"fmt"
+	"github.com/apache/dubbo-admin/pkg/admin/util"
 	"strings"
 	"sync"
 
@@ -197,8 +198,8 @@ func Providers2DTO(providers []*model.Provider) []*model.ServiceDTO {
 		serviceDTOs[i] = &model.ServiceDTO{
 			Service:        providers[i].Service,
 			AppName:        providers[i].Application,
-			Group:          GetGroup(providers[i].Service),
-			Version:        GetVersion(providers[i].Service),
+			Group:          util.GetGroup(providers[i].Service),
+			Version:        util.GetVersion(providers[i].Service),
 			RegistrySource: providers[i].RegistrySource,
 		}
 	}

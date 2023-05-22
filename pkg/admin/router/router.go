@@ -20,6 +20,7 @@ package router
 import (
 	"github.com/apache/dubbo-admin/cmd/ui"
 	"github.com/apache/dubbo-admin/pkg/admin/handlers"
+	"github.com/apache/dubbo-admin/pkg/admin/handlers/traffic"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -78,6 +79,70 @@ func InitRouter() *gin.Engine {
 		mockRoute.POST("/", handlers.CreateOrUpdateMockRule)
 		mockRoute.DELETE("/", handlers.DeleteMockRuleById)
 		mockRoute.GET("/list", handlers.ListMockRulesByPage)
+	}
+
+	trafficTimeout := router.Group("/api/:env/traffic/timeout")
+	{
+		trafficTimeout.POST("/", traffic.CreateTimeout)
+		trafficTimeout.PUT("/", traffic.UpdateTimeout)
+		trafficTimeout.DELETE("/", traffic.DeleteTimeout)
+		trafficTimeout.GET("/", traffic.SearchTimeout)
+	}
+
+	trafficRetry := router.Group("/api/:env/traffic/retry")
+	{
+		trafficRetry.POST("/", traffic.CreateRetry)
+		trafficRetry.PUT("/", traffic.UpdateRetry)
+		trafficRetry.DELETE("/", traffic.DeleteRetry)
+		trafficRetry.GET("/", traffic.SearchRetry)
+	}
+
+	trafficAccesslog := router.Group("/api/:env/traffic/accesslog")
+	{
+		trafficAccesslog.POST("/", traffic.CreateAccesslog)
+		trafficAccesslog.PUT("/", traffic.UpdateAccesslog)
+		trafficAccesslog.DELETE("/", traffic.DeleteAccesslog)
+		trafficAccesslog.GET("/", traffic.SearchAccesslog)
+	}
+
+	trafficMock := router.Group("/api/:env/traffic/mock")
+	{
+		trafficMock.POST("/", traffic.CreateMock)
+		trafficMock.PUT("/", traffic.UpdateMock)
+		trafficMock.DELETE("/", traffic.DeleteMock)
+		trafficMock.GET("/", traffic.SearchMock)
+	}
+
+	trafficWeight := router.Group("/api/:env/traffic/weight")
+	{
+		trafficWeight.POST("/", traffic.CreateWeight)
+		trafficWeight.PUT("/", traffic.UpdateWeight)
+		trafficWeight.DELETE("/", traffic.DeleteWeight)
+		trafficWeight.GET("/", traffic.SearchWeight)
+	}
+
+	trafficArgument := router.Group("/api/:env/traffic/argument")
+	{
+		trafficArgument.POST("/", traffic.CreateArgument)
+		trafficArgument.PUT("/", traffic.UpdateArgument)
+		trafficArgument.DELETE("/", traffic.DeleteArgument)
+		trafficArgument.GET("/", traffic.SearchArgument)
+	}
+
+	trafficGray := router.Group("/api/:env/traffic/gray")
+	{
+		trafficGray.POST("/", traffic.CreateGray)
+		trafficGray.PUT("/", traffic.UpdateGray)
+		trafficGray.DELETE("/", traffic.DeleteGray)
+		trafficGray.GET("/", traffic.SearchGray)
+	}
+
+	trafficRegion := router.Group("/api/:env/traffic/region")
+	{
+		trafficRegion.POST("/", traffic.CreateRegion)
+		trafficRegion.PUT("/", traffic.UpdateRegion)
+		trafficRegion.DELETE("/", traffic.DeleteRegion)
+		trafficRegion.GET("/", traffic.SearchRegion)
 	}
 
 	// Admin UI

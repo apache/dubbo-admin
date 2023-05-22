@@ -30,7 +30,7 @@ type ConditionRouteDto struct {
 }
 
 type ConditionRoute struct {
-	Priority      int      `json:"priority" yaml:"priority"`
+	Priority      int      `json:"priority" yaml:"priority,omitempty"`
 	Enabled       bool     `json:"enabled" yaml:"enabled"`
 	Force         bool     `json:"force" yaml:"force"`
 	Runtime       bool     `json:"runtime" yaml:"runtime"`

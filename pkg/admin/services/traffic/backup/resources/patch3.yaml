@@ -1,0 +1,7 @@
+configVersion: v3.0
+scope: application
+key: shop-detail
+configs:
+  - side: provider
+    parameters:
+      timeout: '7000'
