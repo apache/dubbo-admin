@@ -17,6 +17,7 @@ package util
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 
@@ -60,6 +61,7 @@ func mapToString(params map[string]string) string {
 	for key, val := range params {
 		pairs = append(pairs, fmt.Sprintf("%s=%s", key, val))
 	}
+	sort.Strings(pairs)
 	return strings.Join(pairs, "&")
 }
 

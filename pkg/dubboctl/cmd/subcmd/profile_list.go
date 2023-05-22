@@ -17,13 +17,14 @@ package subcmd
 
 import (
 	"errors"
+	"strings"
+
 	"github.com/apache/dubbo-admin/pkg/dubboctl/identifier"
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/manifest"
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/util"
 	"github.com/apache/dubbo-admin/pkg/logger"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap/zapcore"
-	"strings"
 )
 
 type ProfileListArgs struct {
