@@ -298,7 +298,7 @@ func TestSearchTimeout(t *testing.T) {
 				capturedRule = tt.existingRule
 				return tt.existingRule, nil
 			})
-			fmt.Printf(capturedRule)
+			fmt.Print(capturedRule)
 			config.Governance = mockGovernanceConfig
 
 			if timeouts, err := timeoutSvc.Search(tt.args); err != nil && !tt.wantErr {

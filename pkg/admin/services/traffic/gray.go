@@ -18,8 +18,6 @@
 package traffic
 
 import (
-	"strings"
-
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
@@ -54,8 +52,7 @@ func (tm *GrayService) Search(g *model.Gray) ([]*model.Gray, error) {
 		return result, err
 	}
 
-	for k, v := range list {
-		k, _ = strings.CutSuffix(k, constant.TagRuleSuffix)
+	for _, v := range list {
 		gray := &model.Gray{
 			Application: g.Application,
 		}

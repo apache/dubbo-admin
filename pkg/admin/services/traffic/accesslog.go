@@ -18,9 +18,6 @@
 package traffic
 
 import (
-	"strings"
-
-	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 )
@@ -53,8 +50,7 @@ func (tm *AccesslogService) Search(a *model.Accesslog) ([]*model.Accesslog, erro
 		return result, err
 	}
 
-	for k, v := range list {
-		k, _ = strings.CutSuffix(k, constant.ConfiguratorRuleSuffix)
+	for _, v := range list {
 		accesslog := &model.Accesslog{
 			Application: a.Application,
 		}

@@ -105,7 +105,7 @@ func createOrUpdateOverride(key string, side, param string, newRule model.Overri
 		//timeoutPatch, _ := jsonpatch.DecodePatch(testTimeout)
 
 		override := &model.Override{}
-		err = yaml.Unmarshal([]byte(oldRule), override)
+		_ = yaml.Unmarshal([]byte(oldRule), override)
 
 		if param == "weight" {
 			mergeWeight(override, side, param, newRule)
@@ -215,7 +215,7 @@ func createOrUpdateCondition(key string, newRule model.ConditionRoute) error {
 
 	if oldRule != "" {
 		route := &model.ConditionRoute{}
-		err = yaml.Unmarshal([]byte(oldRule), route)
+		_ = yaml.Unmarshal([]byte(oldRule), route)
 
 		exist := false
 		for _, c := range route.Conditions {
