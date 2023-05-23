@@ -18,7 +18,7 @@ package services
 import (
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
-	"github.com/apache/dubbo-admin/pkg/admin/util"
+	"github.com/apache/dubbo-admin/pkg/admin/model/util"
 )
 
 type ConsumerServiceImpl struct{}

@@ -18,13 +18,14 @@ package subcmd
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/apache/dubbo-admin/pkg/dubboctl/internal/kube"
 	"github.com/apache/dubbo-admin/pkg/logger"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap/zapcore"
-	"os"
-	"path/filepath"
-	"strings"
 )
 
 type ManifestDiffArgs struct {

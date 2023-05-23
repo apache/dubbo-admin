@@ -29,7 +29,8 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
-	"github.com/apache/dubbo-admin/pkg/admin/util"
+	"github.com/apache/dubbo-admin/pkg/admin/model/util"
+	util2 "github.com/apache/dubbo-admin/pkg/admin/util"
 	"github.com/apache/dubbo-admin/pkg/logger"
 	"github.com/apache/dubbo-admin/pkg/monitor/prometheus"
 )
@@ -52,7 +53,7 @@ func (p *PrometheusServiceImpl) PromDiscovery(w http.ResponseWriter) error {
 	}
 	var targets []string
 	for i := 0; i < len(proAddr); i++ {
-		targets = append(targets, util.GetDiscoveryPath(proAddr[i]))
+		targets = append(targets, util2.GetDiscoveryPath(proAddr[i]))
 	}
 	filterCon := make(map[string]string)
 	filterCon[constant.CategoryKey] = constant.ConsumersCategory
@@ -62,7 +63,7 @@ func (p *PrometheusServiceImpl) PromDiscovery(w http.ResponseWriter) error {
 		return err
 	}
 	for _, url := range servicesMap {
-		targets = append(targets, util.GetDiscoveryPath(url.Location))
+		targets = append(targets, util2.GetDiscoveryPath(url.Location))
 	}
 	target := []model.Target{
 		{

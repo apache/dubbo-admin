@@ -16,9 +16,10 @@
 package handlers
 
 import (
+	"net/http"
+
 	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/logger"
-	"net/http"
 
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
@@ -138,11 +139,7 @@ func SearchOverride(c *gin.Context) {
 	result := make([]*model.DynamicConfig, 0)
 	var err error
 	if service != "" {
-		id := util.BuildServiceKey(model.Base{
-			Service:        service,
-			ServiceGroup:   serviceGroup,
-			ServiceVersion: serviceVersion,
-		})
+		id := util.BuildServiceKey("", service, serviceGroup, serviceVersion)
 		override, err = overrideServiceImpl.FindOverride(id)
 	} else if application != "" {
 		override, err = overrideServiceImpl.FindOverride(application)
