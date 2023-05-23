@@ -97,7 +97,7 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 
 .PHONY: dubbo-admin-swagger
 dubbo-admin-swagger: swagger-install ## Generate dubbo-admin swagger docs.
-	$(SWAGGER) init -d cmd/admin,pkg/admin -o hack/swagger
+	$(SWAGGER) init --parseDependency -d cmd/admin,pkg/admin -o hack/swagger
 	@rm -f hack/swagger/docs.go hack/swagger/swagger.yaml
 
 .PHONY: fmt
