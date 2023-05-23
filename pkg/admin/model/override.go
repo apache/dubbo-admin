@@ -16,6 +16,7 @@
 package model
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
@@ -30,15 +31,15 @@ type Override struct {
 }
 
 type OverrideConfig struct {
-	Side              string            `json:"side" yaml:"side"`
-	Addresses         []string          `json:"addresses" yaml:"addresses"`
-	ProviderAddresses []string          `json:"providerAddresses" yaml:"providerAddresses"`
-	Parameters        map[string]string `json:"parameters" yaml:"parameters"`
-	Applications      []string          `json:"applications" yaml:"applications"`
-	Services          []string          `json:"services" yaml:"services"`
-	Type              string            `json:"type" yaml:"type"`
-	Enabled           bool              `json:"enabled" yaml:"enabled"`
-	Match             ConditionMatch    `json:"match" yaml:"match"`
+	Side              string                 `json:"side" yaml:"side"`
+	Addresses         []string               `json:"addresses" yaml:"addresses,omitempty"`
+	ProviderAddresses []string               `json:"providerAddresses" yaml:"providerAddresses,omitempty"`
+	Parameters        map[string]interface{} `json:"parameters" yaml:"parameters"`
+	Applications      []string               `json:"applications" yaml:"applications,omitempty"`
+	Services          []string               `json:"services" yaml:"services,omitempty"`
+	Type              string                 `json:"type" yaml:"type,omitempty"`
+	Enabled           bool                   `json:"enabled" yaml:"enabled,omitempty"`
+	Match             ConditionMatch         `json:"match" yaml:"match,omitempty"`
 }
 
 func (o *Override) ToDynamicConfig() *DynamicConfig {
@@ -82,7 +83,7 @@ func (o *OldOverride) SetParamsByOverrideConfig(config OverrideConfig) {
 	var params strings.Builder
 
 	for key, value := range parameters {
-		param := key + "=" + value
+		param := key + "=" + fmt.Sprintf("%f", value)
 		params.WriteString(param)
 		params.WriteString("&")
 	}

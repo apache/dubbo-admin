@@ -23,15 +23,16 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
-	"github.com/apache/dubbo-admin/pkg/admin/util"
+	"github.com/apache/dubbo-admin/pkg/admin/model/util"
+	util2 "github.com/apache/dubbo-admin/pkg/admin/util"
 	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
 type OverrideServiceImpl struct{}
 
 func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) error {
-	id := util.BuildServiceKey(dynamicConfig.Base)
-	path := getOverridePath(id)
+	id := util2.BuildServiceKey(dynamicConfig.Base.Application, dynamicConfig.Base.Service, dynamicConfig.Base.ServiceVersion, dynamicConfig.Base.ServiceGroup)
+	path := GetOverridePath(id)
 	existConfig, err := config.Governance.GetConfig(path)
 	if err != nil {
 		if _, ok := err.(*config.RuleNotFound); !ok {
@@ -91,8 +92,8 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 }
 
 func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error {
-	id := util.BuildServiceKey(update.Base)
-	path := getOverridePath(id)
+	id := util2.BuildServiceKey(update.Base.Application, update.Base.Service, update.Base.ServiceVersion, update.Base.ServiceGroup)
+	path := GetOverridePath(id)
 	existConfig, err := config.Governance.GetConfig(path)
 	if err != nil {
 		logger.Logger().Error(err.Error())
@@ -153,7 +154,7 @@ func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error 
 }
 
 func (s *OverrideServiceImpl) DisableOverride(id string) error {
-	path := getOverridePath(id)
+	path := GetOverridePath(id)
 
 	conf, err := config.Governance.GetConfig(path)
 	if err != nil {
@@ -206,7 +207,7 @@ func (s *OverrideServiceImpl) DisableOverride(id string) error {
 }
 
 func (s *OverrideServiceImpl) FindOverride(id string) (*model.DynamicConfig, error) {
-	path := getOverridePath(id)
+	path := GetOverridePath(id)
 	conf, err := config.Governance.GetConfig(path)
 	if err != nil {
 		logger.Logger().Error(err.Error())
@@ -225,9 +226,9 @@ func (s *OverrideServiceImpl) FindOverride(id string) (*model.DynamicConfig, err
 		if dynamicConfig != nil {
 			dynamicConfig.ID = id
 			if constant.Service == override.Scope {
-				dynamicConfig.Service = util.GetInterface(id)
-				dynamicConfig.ServiceGroup = util.GetGroup(id)
-				dynamicConfig.ServiceVersion = util.GetVersion(id)
+				dynamicConfig.Service = util2.GetInterface(id)
+				dynamicConfig.ServiceGroup = util2.GetGroup(id)
+				dynamicConfig.ServiceVersion = util2.GetVersion(id)
 			}
 		}
 		return dynamicConfig, nil
@@ -237,7 +238,7 @@ func (s *OverrideServiceImpl) FindOverride(id string) (*model.DynamicConfig, err
 }
 
 func (s *OverrideServiceImpl) EnableOverride(id string) error {
-	path := getOverridePath(id)
+	path := GetOverridePath(id)
 	conf, err := config.Governance.GetConfig(path)
 	if err != nil {
 		logger.Logger().Error(err.Error())
@@ -288,7 +289,7 @@ func (s *OverrideServiceImpl) EnableOverride(id string) error {
 }
 
 func (s *OverrideServiceImpl) DeleteOverride(id string) error {
-	path := getOverridePath(id)
+	path := GetOverridePath(id)
 	conf, err := config.Governance.GetConfig(path)
 	if err != nil {
 		logger.Logger().Error(err.Error())
@@ -353,7 +354,7 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 	return nil
 }
 
-func getOverridePath(key string) string {
+func GetOverridePath(key string) string {
 	key = strings.Replace(key, "/", "*", -1)
 	return key + constant.ConfiguratorRuleSuffix
 }
