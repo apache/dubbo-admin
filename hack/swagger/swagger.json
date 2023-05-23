@@ -13,6 +13,88 @@
     "host": "127.0.0.1:38080",
     "basePath": "/",
     "paths": {
+        "/api/{env}/applications": {
+            "get": {
+                "description": "Get all applications",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Services"
+                ],
+                "summary": "Get all applications",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/consumers": {
+            "get": {
+                "description": "Get all consumers",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Services"
+                ],
+                "summary": "Get all consumers",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/{env}/mock/rule": {
             "post": {
                 "description": "Create or update MockRule",
@@ -424,7 +506,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "boolean"
+                            "$ref": "#/definitions/model.DynamicConfig"
                         }
                     },
                     "400": {
@@ -788,7 +870,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "boolean"
+                            "$ref": "#/definitions/model.ConditionRouteDto"
                         }
                     },
                     "500": {
@@ -900,9 +982,1962 @@
                     }
                 }
             }
+        },
+        "/api/{env}/rules/route/tag": {
+            "get": {
+                "description": "Search rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TagRule"
+                ],
+                "summary": "Search rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "application and service must not left empty at the same time",
+                        "name": "application",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.TagRouteDto"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new tag rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TagRule"
+                ],
+                "summary": "Create a new tag rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "description": "rule input",
+                        "name": "tagRoute",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.TagRouteDto"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/rules/route/tag/disable/{id}": {
+            "put": {
+                "description": "Disable the specified rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TagRule"
+                ],
+                "summary": "Disable the specified rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "rule id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/rules/route/tag/enable/{id}": {
+            "put": {
+                "description": "Enable the specified rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TagRule"
+                ],
+                "summary": "Enable the specified rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "rule id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/rules/route/tag/{id}": {
+            "get": {
+                "description": "Show the detail of one specified rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TagRule"
+                ],
+                "summary": "Show the detail of one specified rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "rule id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.TagRouteDto"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Update rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TagRule"
+                ],
+                "summary": "Update rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "rule id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "rule input",
+                        "name": "tagRoute",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.TagRouteDto"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete the specified rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TagRule"
+                ],
+                "summary": "Delete the specified rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "rule id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/service": {
+            "get": {
+                "description": "Search services by different patterns and keywords",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Services"
+                ],
+                "summary": "Search services by different patterns and keywords",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "supported values: application, service or ip",
+                        "name": "pattern",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "keyword to search",
+                        "name": "filter",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "page size",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.ListServiceByPage"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/service/{service}": {
+            "get": {
+                "description": "Show detail of the specified service",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Services"
+                ],
+                "summary": "Show detail of the specified service",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    },
+                    {
+                        "type": "string",
+                        "description": "service format: 'group/service:version'",
+                        "name": "service",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.ServiceDetailDTO"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/services": {
+            "get": {
+                "description": "Get all services",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Services"
+                ],
+                "summary": "Get all services",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "default": "dev",
+                        "description": "environment",
+                        "name": "env",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/traffic/accesslog": {
+            "get": {
+                "description": "get rule list",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficAccesslog"
+                ],
+                "summary": "get rule list",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "accesslog",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Accesslog"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Accesslog"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "create rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficAccesslog"
+                ],
+                "summary": "create rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "accesslog",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Accesslog"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "create rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficAccesslog"
+                ],
+                "summary": "create rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "accesslog",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Accesslog"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "delete rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficAccesslog"
+                ],
+                "summary": "delete rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "accesslog",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Accesslog"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/traffic/argument": {
+            "get": {
+                "description": "get rule list",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficArgument"
+                ],
+                "summary": "get rule list",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "argument",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Argument"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Argument"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "update rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficArgument"
+                ],
+                "summary": "update rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "argument",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Argument"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "create rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficArgument"
+                ],
+                "summary": "create rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "argument",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Argument"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "delete rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficArgument"
+                ],
+                "summary": "delete rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "argument",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Argument"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/traffic/gray": {
+            "get": {
+                "description": "get rule list",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficGray"
+                ],
+                "summary": "get rule list",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "gray",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Gray"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Gray"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "update rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficGray"
+                ],
+                "summary": "update rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "gray",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Gray"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "create rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficGray"
+                ],
+                "summary": "create rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "gray",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Gray"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "delete rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficGray"
+                ],
+                "summary": "delete rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "gray",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Gray"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/traffic/mock": {
+            "get": {
+                "description": "get rule list",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficMock"
+                ],
+                "summary": "get rule list",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "mock",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Mock"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Mock"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "update rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficMock"
+                ],
+                "summary": "update rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "mock",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Mock"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "create rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficMock"
+                ],
+                "summary": "create rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "mock",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Mock"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "delete rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficMock"
+                ],
+                "summary": "delete rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "mock",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Mock"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/traffic/region": {
+            "get": {
+                "description": "get rule list",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficRegion"
+                ],
+                "summary": "get rule list",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "region",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Region"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Region"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "update rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficRegion"
+                ],
+                "summary": "update rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "region",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Region"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "create rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficRegion"
+                ],
+                "summary": "create rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "region",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Region"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "delete rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficRegion"
+                ],
+                "summary": "delete rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "region",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Region"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/traffic/retry": {
+            "get": {
+                "description": "get rule list",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficRetry"
+                ],
+                "summary": "get rule list",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "retry",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Retry"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Retry"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "update rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficRetry"
+                ],
+                "summary": "update rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "retry",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Retry"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "create rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficRetry"
+                ],
+                "summary": "create rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "retry",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Retry"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "delete rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficRetry"
+                ],
+                "summary": "delete rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "retry",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Retry"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/traffic/timeout": {
+            "get": {
+                "description": "get timeout rule list",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficTimeout"
+                ],
+                "summary": "get timeout rule list",
+                "parameters": [
+                    {
+                        "description": "timeout rule",
+                        "name": "timeout",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Timeout"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Timeout"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "update a new timeout rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficTimeout"
+                ],
+                "summary": "update a new timeout rule",
+                "parameters": [
+                    {
+                        "description": "timeout rule",
+                        "name": "timeout",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Timeout"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Create a new timeout rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficTimeout"
+                ],
+                "summary": "Create a new timeout rule",
+                "parameters": [
+                    {
+                        "description": "timeout rule",
+                        "name": "timeout",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Timeout"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "delete a new timeout rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficTimeout"
+                ],
+                "summary": "delete a new timeout rule",
+                "parameters": [
+                    {
+                        "description": "timeout rule",
+                        "name": "timeout",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Timeout"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "boolean"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/traffic/weight": {
+            "get": {
+                "description": "get rule list",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficWeight"
+                ],
+                "summary": "get rule list",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "weight",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Weight"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Weight"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "update rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficWeight"
+                ],
+                "summary": "update rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "weight",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Weight"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "create rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficWeight"
+                ],
+                "summary": "create rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "weight",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Weight"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "delete rule",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "TrafficWeight"
+                ],
+                "summary": "delete rule",
+                "parameters": [
+                    {
+                        "description": "rule",
+                        "name": "weight",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Weight"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "bool"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "model.Accesslog": {
+            "type": "object",
+            "required": [
+                "accesslog",
+                "application"
+            ],
+            "properties": {
+                "accesslog": {
+                    "type": "string"
+                },
+                "application": {
+                    "type": "string"
+                }
+            }
+        },
         "model.AddressMatch": {
             "type": "object",
             "properties": {
@@ -913,6 +2948,27 @@
                     "type": "string"
                 },
                 "wildcard": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Argument": {
+            "type": "object",
+            "required": [
+                "application",
+                "rule"
+            ],
+            "properties": {
+                "application": {
+                    "type": "string"
+                },
+                "group": {
+                    "type": "string"
+                },
+                "rule": {
+                    "type": "string"
+                },
+                "version": {
                     "type": "string"
                 }
             }
@@ -983,6 +3039,74 @@
                 }
             }
         },
+        "model.Consumer": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "alived": {
+                    "type": "integer"
+                },
+                "application": {
+                    "type": "string"
+                },
+                "collected": {
+                    "$ref": "#/definitions/time.Duration"
+                },
+                "created": {
+                    "type": "string"
+                },
+                "expired": {
+                    "$ref": "#/definitions/time.Duration"
+                },
+                "hash": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "miss": {
+                    "type": "boolean"
+                },
+                "modified": {
+                    "type": "string"
+                },
+                "now": {
+                    "type": "string"
+                },
+                "operator": {
+                    "type": "string"
+                },
+                "operatorAddress": {
+                    "type": "string"
+                },
+                "parameters": {
+                    "type": "string"
+                },
+                "registry": {
+                    "type": "string"
+                },
+                "result": {
+                    "type": "string"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "statistics": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "model.DynamicConfig": {
             "type": "object",
             "properties": {
@@ -1015,6 +3139,24 @@
                 }
             }
         },
+        "model.Gray": {
+            "type": "object",
+            "required": [
+                "application",
+                "tags"
+            ],
+            "properties": {
+                "application": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Tag"
+                    }
+                }
+            }
+        },
         "model.HTTPError": {
             "type": "object",
             "properties": {
@@ -1038,6 +3180,38 @@
                 }
             }
         },
+        "model.ListServiceByPage": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ServiceDTO"
+                    }
+                },
+                "first": {
+                    "type": "boolean"
+                },
+                "last": {
+                    "type": "boolean"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "pageNumber": {
+                    "type": "string"
+                },
+                "size": {
+                    "type": "string"
+                },
+                "totalElements": {
+                    "type": "integer"
+                },
+                "totalPages": {
+                    "type": "integer"
+                }
+            }
+        },
         "model.ListStringMatch": {
             "type": "object",
             "properties": {
@@ -1046,6 +3220,27 @@
                     "items": {
                         "$ref": "#/definitions/model.StringMatch"
                     }
+                }
+            }
+        },
+        "model.Mock": {
+            "type": "object",
+            "required": [
+                "mock",
+                "service"
+            ],
+            "properties": {
+                "group": {
+                    "type": "string"
+                },
+                "mock": {
+                    "type": "string"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
                 }
             }
         },
@@ -1092,9 +3287,7 @@
                 },
                 "parameters": {
                     "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
+                    "additionalProperties": true
                 },
                 "providerAddresses": {
                     "type": "array",
@@ -1127,6 +3320,181 @@
                 }
             }
         },
+        "model.Provider": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "alived": {
+                    "type": "integer"
+                },
+                "application": {
+                    "type": "string"
+                },
+                "created": {
+                    "type": "string"
+                },
+                "dynamic": {
+                    "type": "boolean"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "expired": {
+                    "$ref": "#/definitions/time.Duration"
+                },
+                "hash": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "miss": {
+                    "type": "boolean"
+                },
+                "modified": {
+                    "type": "string"
+                },
+                "now": {
+                    "type": "string"
+                },
+                "operator": {
+                    "type": "string"
+                },
+                "operatorAddress": {
+                    "type": "string"
+                },
+                "parameters": {
+                    "type": "string"
+                },
+                "registry": {
+                    "type": "string"
+                },
+                "registrySource": {
+                    "$ref": "#/definitions/model.RegistrySource"
+                },
+                "serialization": {
+                    "type": "string"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "timeout": {
+                    "type": "integer"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "weight": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.Region": {
+            "type": "object",
+            "required": [
+                "rule",
+                "service"
+            ],
+            "properties": {
+                "group": {
+                    "type": "string"
+                },
+                "rule": {
+                    "type": "string"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.RegistrySource": {
+            "type": "string",
+            "enum": [
+                "ALL"
+            ],
+            "x-enum-varnames": [
+                "All"
+            ]
+        },
+        "model.Retry": {
+            "type": "object",
+            "required": [
+                "retry",
+                "service"
+            ],
+            "properties": {
+                "group": {
+                    "type": "string"
+                },
+                "retry": {
+                    "type": "integer"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ServiceDTO": {
+            "type": "object",
+            "properties": {
+                "appName": {
+                    "type": "string"
+                },
+                "group": {
+                    "type": "string"
+                },
+                "registrySource": {
+                    "$ref": "#/definitions/model.RegistrySource"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ServiceDetailDTO": {
+            "type": "object",
+            "properties": {
+                "application": {
+                    "type": "string"
+                },
+                "consumers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Consumer"
+                    }
+                },
+                "metadata": {},
+                "providers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Provider"
+                    }
+                },
+                "service": {
+                    "type": "string"
+                }
+            }
+        },
         "model.StringMatch": {
             "type": "object",
             "properties": {
@@ -1149,6 +3517,151 @@
                     "type": "string"
                 }
             }
+        },
+        "model.Tag": {
+            "type": "object",
+            "required": [
+                "match",
+                "name"
+            ],
+            "properties": {
+                "addresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "match": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ParamMatch"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.TagRouteDto": {
+            "type": "object",
+            "required": [
+                "configVersion",
+                "enabled",
+                "tags"
+            ],
+            "properties": {
+                "application": {
+                    "type": "string"
+                },
+                "configVersion": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "force": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "runtime": {
+                    "type": "boolean"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "serviceGroup": {
+                    "type": "string"
+                },
+                "serviceVersion": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Tag"
+                    }
+                }
+            }
+        },
+        "model.Timeout": {
+            "type": "object",
+            "required": [
+                "service",
+                "timeout"
+            ],
+            "properties": {
+                "group": {
+                    "type": "string"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "timeout": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Weight": {
+            "type": "object",
+            "required": [
+                "match",
+                "weight"
+            ],
+            "properties": {
+                "match": {
+                    "$ref": "#/definitions/model.ConditionMatch"
+                },
+                "weight": {
+                    "type": "integer"
+                }
+            }
+        },
+        "time.Duration": {
+            "type": "integer",
+            "enum": [
+                -9223372036854775808,
+                9223372036854775807,
+                1,
+                1000,
+                1000000,
+                1000000000,
+                60000000000,
+                3600000000000,
+                -9223372036854775808,
+                9223372036854775807,
+                1,
+                1000,
+                1000000,
+                1000000000,
+                60000000000,
+                3600000000000
+            ],
+            "x-enum-varnames": [
+                "minDuration",
+                "maxDuration",
+                "Nanosecond",
+                "Microsecond",
+                "Millisecond",
+                "Second",
+                "Minute",
+                "Hour",
+                "minDuration",
+                "maxDuration",
+                "Nanosecond",
+                "Microsecond",
+                "Millisecond",
+                "Second",
+                "Minute",
+                "Hour"
+            ]
         }
     }
 }

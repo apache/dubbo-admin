@@ -23,12 +23,14 @@ import (
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
+
+	"github.com/apache/dubbo-admin/pkg/admin/util"
 )
 
 func OldOverride2URL(o *model.OldOverride) (*common.URL, error) {
-	group := GetGroup(o.Service)
-	version := GetVersion(o.Service)
-	interfaceName := GetInterface(o.Service)
+	group := util.GetGroup(o.Service)
+	version := util.GetVersion(o.Service)
+	interfaceName := util.GetInterface(o.Service)
 	var sb strings.Builder
 	sb.WriteString(constant.OverrideProtocol)
 	sb.WriteString("://")

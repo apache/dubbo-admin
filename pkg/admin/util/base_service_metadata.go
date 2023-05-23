@@ -18,14 +18,53 @@
 package util
 
 import (
+	"bytes"
+	"strings"
+
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
-	"github.com/apache/dubbo-admin/pkg/admin/model"
 )
 
-func BuildServiceKey(baseDto model.Base) string {
-	if baseDto.Application != "" {
-		return baseDto.Application
+func BuildServiceKey(app, service, version, group string) string {
+	if app != "" {
+		return app
 	}
 	// id format: "${class}:${version}:${group}"
-	return baseDto.Service + constant.Colon + baseDto.ServiceVersion + constant.Colon + baseDto.ServiceGroup
+	return service + constant.Colon + version + constant.Colon + group
+}
+
+func ServiceKey(intf string, group string, version string) string {
+	if intf == "" {
+		return ""
+	}
+	buf := &bytes.Buffer{}
+	if group != "" {
+		buf.WriteString(group)
+		buf.WriteString("/")
+	}
+
+	buf.WriteString(intf)
+
+	if version != "" && version != "0.0.0" {
+		buf.WriteString(":")
+		buf.WriteString(version)
+	}
+
+	return buf.String()
+}
+
+func ColonSeparatedKey(intf string, group string, version string) string {
+	if intf == "" {
+		return ""
+	}
+	var buf strings.Builder
+	buf.WriteString(intf)
+	buf.WriteString(":")
+	if version != "" && version != "0.0.0" {
+		buf.WriteString(version)
+	}
+	buf.WriteString(":")
+	if group != "" {
+		buf.WriteString(group)
+	}
+	return buf.String()
 }

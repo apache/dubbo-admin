@@ -72,15 +72,22 @@ subjects:
 ---
 apiVersion: v1
 data:
-  application.properties: "admin.registry.address: zookeeper://zookeeper:2181\nadmin.metadata-report.address:
-    zookeeper://zookeeper:2181\nadmin.config-center: zookeeper://zookeeper:2181\nadmin.root.user.name:
-    root\nadmin.root.user.password: root\nadmin.check.sessionTimeoutMilli: 3600000\nadmin.check.tokenTimeoutMilli:
-    3600000\nadmin.check.signSecret: 86295dd0c4ef69a1036b0b0c15158d77\nserver.compression.enabled:
-    true\nserver.compression.mime-types: text/css,text/javascript,application/javascript\nserver.compression.min-response-size:
-    10240\ndubbo.application.name: dubbo-admin\ndubbo.application.logger: slf4j\ndubbo.registry.address:
-    ${admin.registry.address}\nspring.datasource.driver-class-name: com.mysql.jdbc.Driver\nspring.datasource.url:
-    jdbc:h2:mem:~/dubbo-admin;MODE=MYSQL;\nspring.datasource.username: sa\nspring.datasource.password:
-    \nmybatis-plus.global-config.db-config.id-type: none"
+  application.properties: |-
+    admin.registry.address: zookeeper://zookeeper:2181
+    admin.metadata-report.address: zookeeper://zookeeper:2181
+    admin.config-center: zookeeper://zookeeper:2181
+    admin.root.user.name: root
+    admin.root.user.password: root
+    admin.check.sessionTimeoutMilli: 3600000
+    admin.check.tokenTimeoutMilli: 3600000
+    admin.check.signSecret: 86295dd0c4ef69a1036b0b0c15158d77
+    server.compression.enabled: true
+    server.compression.mime-types: text/css,text/javascript,application/javascript
+    server.compression.min-response-size: 10240
+    dubbo.application.name: dubbo-admin
+    dubbo.application.logger: slf4j
+    dubbo.registry.address: ${admin.registry.address}
+    mybatis-plus.global-config.db-config.id-type: none
 kind: ConfigMap
 metadata:
   labels:

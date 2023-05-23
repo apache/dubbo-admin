@@ -17,6 +17,7 @@ package util
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/cache"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
+	"github.com/apache/dubbo-admin/pkg/admin/util"
 )
 
 const (
@@ -60,6 +62,7 @@ func mapToString(params map[string]string) string {
 	for key, val := range params {
 		pairs = append(pairs, fmt.Sprintf("%s=%s", key, val))
 	}
+	sort.Strings(pairs)
 	return strings.Join(pairs, "&")
 }
 
@@ -197,8 +200,8 @@ func Providers2DTO(providers []*model.Provider) []*model.ServiceDTO {
 		serviceDTOs[i] = &model.ServiceDTO{
 			Service:        providers[i].Service,
 			AppName:        providers[i].Application,
-			Group:          GetGroup(providers[i].Service),
-			Version:        GetVersion(providers[i].Service),
+			Group:          util.GetGroup(providers[i].Service),
+			Version:        util.GetVersion(providers[i].Service),
 			RegistrySource: providers[i].RegistrySource,
 		}
 	}
