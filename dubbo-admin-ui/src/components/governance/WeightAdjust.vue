@@ -212,14 +212,10 @@
 </template>
 
 <script>
-import AceEditor from '@/components/public/AceEditor'
-import Search from '@/components/public/Search'
 import Breadcrumb from '@/components/public/Breadcrumb'
 
 export default {
   components: {
-    AceEditor,
-    Search,
     Breadcrumb
   },
   data: () => ({

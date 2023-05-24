@@ -33,6 +33,15 @@ import ServiceMock from '@/components/test/ServiceMock'
 import ServiceMetrics from '@/components/metrics/ServiceMetrics'
 import ServiceRelation from '@/components/metrics/ServiceRelation'
 import Management from '@/components/Management'
+import Accesslog from '@/components/traffic/Accesslog'
+import Arguments from '@/components/traffic/Arguments'
+import Host from '@/components/traffic/Host'
+import Isolation from '@/components/traffic/Isolation'
+import Mock from '@/components/traffic/Mock'
+import Region from '@/components/traffic/Region'
+import Retry from '@/components/traffic/Retry'
+import Timeout from '@/components/traffic/Timeout'
+import Weight from '@/components/traffic/Weight'
 import Index from '@/Index'
 import Login from '@/Login'
 
@@ -177,6 +186,71 @@ export default new Router({
           path: '/apiDocs',
           name: 'apiDocs',
           component: ApiDocs,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/traffic/accesslog',
+          name: 'accesslog',
+          component: Accesslog,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/traffic/retry',
+          name: 'retry',
+          component: Retry,
+          meta: {
+            requireLogin: true
+          }
+        }, {
+          path: '/traffic/region',
+          name: 'region',
+          component: Region,
+          meta: {
+            requireLogin: true
+          }
+        }, {
+          path: '/traffic/isolation',
+          name: 'isolation',
+          component: Isolation,
+          meta: {
+            requireLogin: true
+          }
+        }, {
+          path: '/traffic/weight',
+          name: 'weight',
+          component: Weight,
+          meta: {
+            requireLogin: true
+          }
+        }, {
+          path: '/traffic/arguments',
+          name: 'arguments',
+          component: Arguments,
+          meta: {
+            requireLogin: true
+          }
+        }, {
+          path: '/traffic/mock',
+          name: 'mock',
+          component: Mock,
+          meta: {
+            requireLogin: true
+          }
+        }, {
+          path: '/traffic/host',
+          name: 'host',
+          component: Host,
+          meta: {
+            requireLogin: true
+          }
+        }, {
+          path: '/traffic/timeout',
+          name: 'timeout',
+          component: Timeout,
           meta: {
             requireLogin: true
           }
