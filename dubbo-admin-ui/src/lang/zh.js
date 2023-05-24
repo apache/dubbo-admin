@@ -232,5 +232,8 @@ export default {
   trafficArguments: '条件路由',
   trafficMock: '调用降级',
   trafficAccesslog: '访问日志',
-  trafficHost: '固定机器导流'
+  trafficHost: '固定机器导流',
+
+  homePage: '集群概览',
+  serviceManagement: '开发测试'
 }
