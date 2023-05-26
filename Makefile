@@ -216,11 +216,11 @@ buildx-authority:  ## Build and push docker image with the dubbo authority for c
 buildx-dubboctl:  ## Build the dubboctl distribution for cross-platform support
 	@rm -f -R $(DUBBO_DUBBOCTL_BUILDX_DIR)
 	@mkdir $(DUBBO_DUBBOCTL_BUILDX_DIR)
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags $(LDFLAGS) -o $(DUBBO_DUBBOCTL_BUILDX_DIR)/linux/amd64/dubboctl cmd/admin/main.go
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags $(LDFLAGS) -o $(DUBBO_DUBBOCTL_BUILDX_DIR)/linux/arm64/dubboctl cmd/admin/main.go
-	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags $(LDFLAGS) -o $(DUBBO_DUBBOCTL_BUILDX_DIR)/darwin/amd64/dubboctl cmd/admin/main.go
-	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags $(LDFLAGS) -o $(DUBBO_DUBBOCTL_BUILDX_DIR)/darwin/arm64/dubboctl cmd/admin/main.go
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags $(LDFLAGS) -o $(DUBBO_DUBBOCTL_BUILDX_DIR)/windows/amd64/dubboctl.exe cmd/admin/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags $(LDFLAGS) -o $(DUBBO_DUBBOCTL_BUILDX_DIR)/linux/amd64/dubboctl cmd/dubboctl/main.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags $(LDFLAGS) -o $(DUBBO_DUBBOCTL_BUILDX_DIR)/linux/arm64/dubboctl cmd/dubboctl/main.go
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags $(LDFLAGS) -o $(DUBBO_DUBBOCTL_BUILDX_DIR)/darwin/amd64/dubboctl cmd/dubboctl/main.go
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags $(LDFLAGS) -o $(DUBBO_DUBBOCTL_BUILDX_DIR)/darwin/arm64/dubboctl cmd/dubboctl/main.go
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags $(LDFLAGS) -o $(DUBBO_DUBBOCTL_BUILDX_DIR)/windows/amd64/dubboctl.exe cmd/dubboctl/main.go
 
 	tar -cvzf $(DUBBO_DUBBOCTL_BUILDX_DIR)/dubboctl-${GIT_VERSION}-linux-amd64.tar.gz  -C $(DUBBO_DUBBOCTL_BUILDX_DIR)/linux/amd64/ dubboctl
 	tar -cvzf $(DUBBO_DUBBOCTL_BUILDX_DIR)/dubboctl-${GIT_VERSION}-linux-arm64.tar.gz  -C $(DUBBO_DUBBOCTL_BUILDX_DIR)/linux/arm64/ dubboctl
