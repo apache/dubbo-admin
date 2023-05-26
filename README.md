@@ -50,6 +50,11 @@ Open the browser and visit http://localhost:38080/admin/ to open the console.
 ## 贡献代码
 开发过程中，可以使用预先定义好的 Makefile 任务来完成代码检查、测试等一系列工作。以下是一些命令说明
 
+### 代码格式化
+```shell
+make fmt   #Run gofumpt against code.
+```
+
 ### 代码检查
 To run all code formatting, linting and vetting tools use the target:
 

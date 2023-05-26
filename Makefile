@@ -61,13 +61,15 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 SWAGGER ?= $(LOCALBIN)/swag
 GOLANG_LINT ?= $(LOCALBIN)/golangci-lint
+GOFUMPT  ?= $(LOCALBIN)/gofumpt
+
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v3.8.7
 CONTROLLER_TOOLS_VERSION ?= v0.10.0
 SWAGGER_VERSION ?= v1.16.1
 GOLANG_LINT_VERSION ?= v1.48.0
-
+GOFUMPT_VERSION ?= latest
 ## docker buildx support platform
 PLATFORMS ?= linux/arm64,linux/amd64
 
@@ -104,8 +106,8 @@ dubbo-admin-swagger: swagger-install ## Generate dubbo-admin swagger docs.
 	@rm -f hack/swagger/docs.go hack/swagger/swagger.yaml
 
 .PHONY: fmt
-fmt: ## Run go fmt against code.
-	go fmt ./...
+fmt: gofumpt-install ## Run gofumpt against code.
+	$(GOFUMPT) -l -w .
 
 .PHONY: vet
 vet: ## Run go vet against code.
@@ -285,3 +287,10 @@ golangci-lint-install: $(GOLANG_LINT) ## Download golangci lint locally if neces
 $(GOLANG_LINT): $(LOCALBIN)
 	test -s $(LOCALBIN)/golangci-lint || \
 	GOBIN=$(LOCALBIN) go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANG_LINT_VERSION)
+
+
+.PHONY: gofumpt-install
+gofumpt-install: $(GOFUMPT) ## Download gofumpt locally if necessary.
+$(GOFUMPT): $(LOCALBIN)
+	test -s $(LOCALBIN)/gofumpt || \
+	GOBIN=$(LOCALBIN) go install mvdan.cc/gofumpt@$(GOFUMPT_VERSION)
