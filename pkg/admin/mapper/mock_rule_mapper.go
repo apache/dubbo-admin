@@ -18,6 +18,8 @@
 package mapper
 
 import (
+	"context"
+
 	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 )
@@ -26,7 +28,7 @@ type MockRuleMapper interface {
 	Create(mockRule *model.MockRuleEntity) error
 	Update(mockRule *model.MockRuleEntity) error
 	DeleteById(id int64) error
-	FindByServiceNameAndMethodName(serviceName, methodName string) (*model.MockRuleEntity, error)
+	FindByServiceNameAndMethodName(ctx context.Context, serviceName, methodName string) (*model.MockRuleEntity, error)
 	FindByPage(filter string, offset, limit int) ([]*model.MockRuleEntity, int64, error)
 }
 
@@ -44,9 +46,9 @@ func (m *MockRuleMapperImpl) DeleteById(id int64) error {
 	return config.DataBase.Delete(&model.MockRuleEntity{}, id).Error
 }
 
-func (m *MockRuleMapperImpl) FindByServiceNameAndMethodName(serviceName, methodName string) (*model.MockRuleEntity, error) {
+func (m *MockRuleMapperImpl) FindByServiceNameAndMethodName(ctx context.Context, serviceName, methodName string) (*model.MockRuleEntity, error) {
 	var mockRule model.MockRuleEntity
-	err := config.DataBase.Where("service_name = ? and method_name = ?", serviceName, methodName).Limit(1).Find(&mockRule).Error
+	err := config.DataBase.WithContext(ctx).Where("service_name = ? and method_name = ?", serviceName, methodName).Limit(1).Find(&mockRule).Error
 	return &mockRule, err
 }
 

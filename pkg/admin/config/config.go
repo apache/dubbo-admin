@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"dubbo.apache.org/dubbo-go/v3/common"
+
 	"dubbo.apache.org/dubbo-go/v3/common/extension"
 	"dubbo.apache.org/dubbo-go/v3/config_center"
 	"dubbo.apache.org/dubbo-go/v3/metadata/report"
@@ -43,6 +44,8 @@ const (
 	conf        = "./conf/dubboadmin.yml"
 	confPathKey = "ADMIN_CONFIG_PATH"
 )
+
+const MockProviderConf = "./conf/mock_provider.yml"
 
 type Config struct {
 	Admin      Admin      `yaml:"admin"`
