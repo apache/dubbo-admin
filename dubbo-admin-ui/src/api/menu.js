@@ -16,6 +16,7 @@
  */
 
 const Menu = [
+  { title: 'homePage', path: '/', icon: 'home' },
   { title: 'serviceSearch', path: '/service', icon: 'search' },
   {
     title: 'trafficManagement',
@@ -30,22 +31,23 @@ const Menu = [
       { title: 'trafficArguments', path: '/traffic/arguments' },
       { title: 'trafficMock', path: '/traffic/mock' },
       { title: 'trafficAccesslog', path: '/traffic/accesslog' },
-      { title: 'trafficHost', path: '/traffic/host' }
-    ]
-  },
-  {
-    title: 'serviceGovernance',
-    icon: 'edit',
-    group: 'governance',
-    items: [
+      { title: 'trafficHost', path: '/traffic/host' },
       { title: 'routingRule', path: '/governance/routingRule' },
       { title: 'tagRule', path: '/governance/tagRule' },
       { title: 'dynamicConfig', path: '/governance/config' }
     ]
   },
-  { title: 'serviceTest', path: '/test', icon: 'code' },
-  { title: 'serviceMock', path: '/mock/rule', icon: 'build' },
-  { title: 'serviceMetrics', path: '/metrics/index', icon: 'show_chart' }
+  {
+    title: 'serviceManagement',
+    group: 'services',
+    icon: 'build',
+    items: [
+      { title: 'serviceTest', path: '/test' },
+      { title: 'serviceMock', path: '/mock/rule' }
+    ]
+  },
+  { title: 'serviceMetrics', path: '/metrics/index', icon: 'show_chart' },
+  { title: 'kubernetes', path: '/kubernetes', icon: 'cloud' }
   // { title: 'configManage', path: '/management', icon: 'build' },
   // { title: 'apiDocs', path: '/apiDocs', icon: 'code' }
 ]

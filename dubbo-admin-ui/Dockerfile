@@ -27,9 +27,9 @@ RUN npm run build
 # -- RELEASE --
 FROM nginx:stable-alpine as release
 
-COPY --from=build /app/ui/src/target/dist /usr/share/nginx/html
+COPY --from=build /app/ui/src/dist /usr/share/nginx/html
 
 WORKDIR /usr/share/nginx/html
-EXPOSE 8080
+EXPOSE 80
 
 CMD ["/bin/sh", "-c", "nginx -g \"daemon off;\""]

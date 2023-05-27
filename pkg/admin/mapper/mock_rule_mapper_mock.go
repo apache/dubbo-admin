@@ -22,6 +22,7 @@
 package mapper
 
 import (
+	context "context"
 	reflect "reflect"
 
 	model "github.com/apache/dubbo-admin/pkg/admin/model"
@@ -96,18 +97,18 @@ func (mr *MockMockRuleMapperMockRecorder) FindByPage(arg0, arg1, arg2 interface{
 }
 
 // FindByServiceNameAndMethodName mocks base method.
-func (m *MockMockRuleMapper) FindByServiceNameAndMethodName(arg0, arg1 string) (*model.MockRuleEntity, error) {
+func (m *MockMockRuleMapper) FindByServiceNameAndMethodName(arg0 context.Context, arg1, arg2 string) (*model.MockRuleEntity, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindByServiceNameAndMethodName", arg0, arg1)
+	ret := m.ctrl.Call(m, "FindByServiceNameAndMethodName", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*model.MockRuleEntity)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindByServiceNameAndMethodName indicates an expected call of FindByServiceNameAndMethodName.
-func (mr *MockMockRuleMapperMockRecorder) FindByServiceNameAndMethodName(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockMockRuleMapperMockRecorder) FindByServiceNameAndMethodName(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByServiceNameAndMethodName", reflect.TypeOf((*MockMockRuleMapper)(nil).FindByServiceNameAndMethodName), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindByServiceNameAndMethodName", reflect.TypeOf((*MockMockRuleMapper)(nil).FindByServiceNameAndMethodName), arg0, arg1, arg2)
 }
 
 // Update mocks base method.

@@ -50,42 +50,53 @@ Open the browser and visit http://localhost:38080/admin/ to open the console.
 ## 贡献代码
 开发过程中，可以使用预先定义好的 Makefile 任务来完成代码检查、测试等一系列工作。以下是一些命令说明
 
+### 代码格式化
+```shell
+make fmt   #Run gofumpt against code.
+```
+
 ### 代码检查
 To run all code formatting, linting and vetting tools use the target:
 
 ```shell
-make check
+make lint     #Run golang lint against code
 ```
 
 ### 测试代码
-For all tests, run:
 
 ```shell
-make test
-```
-
-And you can run tests that are specific to a part of Admin by appending the app name as shown below:
-
-```shell
-make test/dubboctl
+make test             #Run all tests
+make test-dubboctl    #Run tests for dubboctl
+make test-admin       #Run tests for admin
+make test-authority   #Run tests for authority
 ```
 
 ### Swagger API
 ```shell
-make swagger
+make  dubbo-admin-swagger  #Generate dubbo-admin swagger docs in hack/swagger
 ```
 
 ### 打包
-To build all the binaries run:
-
 ```shell
-make build
+make build            #Build binary with the dubbo admin, authority, and dubboctl
+make build-admin      #Build binary with the dubbo admin.
+make build-authority  #Build binary with the dubbo authority.
+make build-dubboctl   #Build binary with the dubbo dubboctl.
+make build-ui         #Build the distribution of the admin ui pages.
 ```
-
-Like `make test`, you can append the app name to the target to build a specific binary. For example, here is how you would build the binary for only dubboctl:
-
+### 生成镜像
 ```shell
-make build/dubboctl
+make image            #Build docker image with the dubbo admin, authority and admin-ui
+make image-admin      #Build docker image with the dubbo admin.
+make image-authority  #Build docker image with the dubbo authority.
+make image-ui         #Build docker image with the dubbo admin ui.
+```
+### 多平台生成镜像和打包
+```shell
+make buildx            #Build and push docker cross-platform image for the dubbo admin and authority
+make buildx-admin      #Build and push docker image with the dubbo admin for cross-platform support
+make buildx-authority  #Build and push docker image with the dubbo authority for cross-platform support
+make buildx-dubboctl   #Build the dubboctl distribution for cross-platform support
 ```
 
 ## 发布指南
