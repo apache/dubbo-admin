@@ -17,10 +17,11 @@ package services
 
 import (
 	"fmt"
-	set "github.com/dubbogo/gost/container/set"
 	"regexp"
 	"strings"
 	"sync"
+
+	set "github.com/dubbogo/gost/container/set"
 
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"github.com/apache/dubbo-admin/pkg/admin/cache"
@@ -33,7 +34,7 @@ type ProviderServiceImpl struct{}
 
 // FindServices finds all services
 func (p *ProviderServiceImpl) FindServices() (*set.HashSet, error) {
-	var services = set.NewSet()
+	services := set.NewSet()
 	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
 	if !ok {
 		return nil, nil

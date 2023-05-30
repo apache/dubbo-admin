@@ -17,11 +17,12 @@ package services
 
 import (
 	"fmt"
-	set "github.com/dubbogo/gost/container/set"
 	"net/url"
 	"regexp"
 	"sync"
 	"testing"
+
+	set "github.com/dubbogo/gost/container/set"
 
 	"github.com/stretchr/testify/assert"
 

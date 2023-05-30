@@ -19,9 +19,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	set "github.com/dubbogo/gost/container/set"
 	"net/http"
 	"time"
+
+	set "github.com/dubbogo/gost/container/set"
 
 	"github.com/prometheus/client_golang/api"
 	prom_v1 "github.com/prometheus/client_golang/api/prometheus/v1"
@@ -230,7 +231,7 @@ func (p *PrometheusServiceImpl) Metadata() (model.Metadata, error) {
 		return model.Metadata{}, err
 	}
 	keys := make([]string, 0, len(rules))
-	for k, _ := range rules {
+	for k := range rules {
 		keys = append(keys, k)
 	}
 	metadata.Rules = keys
