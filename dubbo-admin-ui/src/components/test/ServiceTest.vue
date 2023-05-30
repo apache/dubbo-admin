@@ -81,15 +81,11 @@
 </template>
 
 <script>
-import JsonEditor from '@/components/public/JsonEditor'
-import Search from '@/components/public/Search'
 import Breadcrumb from '@/components/public/Breadcrumb'
 
 export default {
   name: 'ServiceTest',
   components: {
-    JsonEditor,
-    Search,
     Breadcrumb
   },
   data () {

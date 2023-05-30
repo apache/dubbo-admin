@@ -20,6 +20,63 @@
             <v-flex lg12>
         <Breadcrumb title="trafficMock" :items="breads"></breadcrumb>
       </v-flex>
+      <v-flex lg12>
+          <v-card flat color="transparent">
+            <v-card-text>
+              <v-form>
+                <v-layout row wrap>
+                  <v-combobox
+                    id="serviceTestSearch"
+                    :loading="searchLoading"
+                    :items="typeAhead"
+                    :search-input.sync="input"
+                    v-model="filter"
+                    flat
+                    append-icon=""
+                    hide-no-data
+                    :hint="$t('testModule.searchServiceHint')"
+                    :label="$t('placeholders.searchService')"
+                    @keyup.enter="submit"
+                  ></v-combobox>
+                  <v-btn @click="submit" color="primary" large>{{ $t('search') }}</v-btn>
+                  <v-btn @click="submit" color="primary" large>新建</v-btn>
+                </v-layout>
+              </v-form>
+            </v-card-text>
+          </v-card>
+        </v-flex>
+      <v-flex xs12>
+        <v-card>
+          <v-toolbar flat color="transparent" class="elevation-0">
+            <v-toolbar-title><span class="headline">{{$t('trafficAccesslog')}}</span></v-toolbar-title>
+            <v-spacer></v-spacer>
+          </v-toolbar>
+          <v-card-text class="pa-0">
+            <v-data-table :headers="headers" :items="methods" hide-actions class="elevation-1">
+              <template slot="items" slot-scope="props">
+                <td>{{ props.item.name }}</td>
+                <td>
+                  <v-chip xs v-for="(type, index) in props.item.parameterTypes" :key="index" label>{{ type }}</v-chip>
+                </td>
+                <td>
+                  <v-chip label>{{ props.item.returnType }}</v-chip>
+                </td>
+                <td class="text-xs-right">
+                  <v-tooltip bottom>
+                    <v-btn
+                      fab dark small color="blue" slot="activator"
+                      :href="getHref(props.item.application, props.item.service, props.item.signature)"
+                    >
+                      <v-icon>edit</v-icon>
+                    </v-btn>
+                    <span>{{$t('test')}}</span>
+                  </v-tooltip>
+                </td>
+              </template>
+            </v-data-table>
+          </v-card-text>
+        </v-card>
+      </v-flex>
         </v-layout>
     </v-container>
 </template>
