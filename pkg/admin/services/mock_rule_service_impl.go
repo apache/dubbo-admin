@@ -18,6 +18,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 
 	"github.com/apache/dubbo-admin/pkg/admin/mapper"
@@ -35,7 +36,7 @@ func (m *MockRuleServiceImpl) CreateOrUpdateMockRule(mockRule *model.MockRule) e
 		return nil
 	}
 
-	existRule, err := m.MockRuleMapper.FindByServiceNameAndMethodName(mockRule.ServiceName, mockRule.MethodName)
+	existRule, err := m.MockRuleMapper.FindByServiceNameAndMethodName(context.TODO(), mockRule.ServiceName, mockRule.MethodName)
 	if err != nil {
 		m.Logger.Error(err.Error())
 		return err
@@ -82,4 +83,13 @@ func (m *MockRuleServiceImpl) ListMockRulesByPage(filter string, offset, limit i
 		morkRules = append(morkRules, mockRuleEntity.ToMockRule())
 	}
 	return morkRules, total, nil
+}
+
+func (m *MockRuleServiceImpl) GetMockData(ctx context.Context, serviceName, methodName string) (rule string, enable bool, err error) {
+	mockRule, err := m.MockRuleMapper.FindByServiceNameAndMethodName(ctx, serviceName, methodName)
+	if err != nil {
+		m.Logger.Error(err.Error())
+		return "", false, err
+	}
+	return mockRule.Rule, mockRule.Enable, nil
 }

@@ -17,7 +17,11 @@
 
 package services
 
-import "github.com/apache/dubbo-admin/pkg/admin/model"
+import (
+	"context"
+
+	"github.com/apache/dubbo-admin/pkg/admin/model"
+)
 
 type MockRuleService interface {
 	// create or update mock rule. if the request contains id, then will be an update operation.
@@ -30,4 +34,5 @@ type MockRuleService interface {
 	ListMockRulesByPage(filter string, offset, limit int) ([]*model.MockRule, int64, error)
 
 	// TODO getMockData method, which depends on the implementation corresponding to mock of dubbo-go.
+	GetMockData(ctx context.Context, serviceName, methodName string) (rule string, enable bool, err error)
 }

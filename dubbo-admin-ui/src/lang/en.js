@@ -16,7 +16,7 @@
  */
 export default {
   service: 'Service',
-  serviceSearch: 'Search service name',
+  serviceSearch: 'Search Service',
   serviceGovernance: 'Routing Rule',
   trafficManagement: 'Traffic Management',
   routingRule: 'Condition Rule',
@@ -232,5 +232,7 @@ export default {
   trafficArguments: 'Arg Routing',
   trafficMock: 'Mock',
   trafficAccesslog: 'Accesslog',
-  trafficHost: 'Host'
+  trafficHost: 'Host',
+  homePage: 'Cluster Overview',
+  serviceManagement: 'Dev & Test'
 }

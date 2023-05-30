@@ -18,6 +18,7 @@
 package services
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -36,9 +37,9 @@ func TestMockRuleServiceImpl_CreateOrUpdateMockRule(t *testing.T) {
 	mockExistData := &model.MockRule{ID: 1, ServiceName: "testService2", MethodName: "testMethod2", Rule: "exampleRule", Enable: true}
 	updateData := &model.MockRule{ID: 1, ServiceName: "testService2", MethodName: "testMethod2", Rule: "exampleRuleAfterUpdate", Enable: true}
 
-	mockMockRuleMapper.EXPECT().FindByServiceNameAndMethodName(createData.ServiceName, createData.MethodName).Return(mockUnExistData.ToMockRuleEntity(), nil)
+	mockMockRuleMapper.EXPECT().FindByServiceNameAndMethodName(context.Background(), createData.ServiceName, createData.MethodName).Return(mockUnExistData.ToMockRuleEntity(), nil)
 	mockMockRuleMapper.EXPECT().Create(createData.ToMockRuleEntity()).Return(nil)
-	mockMockRuleMapper.EXPECT().FindByServiceNameAndMethodName(mockExistData.ServiceName, mockExistData.MethodName).Return(mockExistData.ToMockRuleEntity(), nil)
+	mockMockRuleMapper.EXPECT().FindByServiceNameAndMethodName(context.Background(), mockExistData.ServiceName, mockExistData.MethodName).Return(mockExistData.ToMockRuleEntity(), nil)
 	mockMockRuleMapper.EXPECT().Update(updateData.ToMockRuleEntity()).Return(nil)
 
 	type args struct {
