@@ -297,3 +297,22 @@ func Metadata(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, res)
 }
+
+// PromDiscovery expose the interface of Prometheus http_sd service discovery.
+// @Summary      expose the interface of Prometheus http_sd service discovery.
+// @Description  expose the interface of Prometheus http_sd service discovery.
+// @Tags         metrics
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  nil
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/metrics/prometheus [get]
+func PromDiscovery(c *gin.Context) {
+	err := monitorService.PromDiscovery(c.Writer)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+	}
+	c.JSON(http.StatusOK, nil)
+}

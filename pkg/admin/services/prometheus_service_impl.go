@@ -147,6 +147,9 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	if err != nil {
 		logger.Sugar().Errorf("Error query qps: %v\n", err)
 	} else {
+		if vector1.Vector.Len() != 0 {
+			qps = float64(vector1.Vector[0].Value)
+		}
 		qps = float64(vector1.Vector[0].Value)
 		res.Data["qps"] = qps
 	}
@@ -157,6 +160,9 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	if vector3.Err != nil {
 		logger.Sugar().Errorf("Error query total count: %v\n", err)
 	} else {
+		if vector3.Vector.Len() != 0 {
+			total = float64(vector3.Vector[0].Value)
+		}
 		total = float64(vector3.Vector[0].Value)
 		res.Data["total"] = total
 	}
@@ -167,6 +173,9 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	if vector2.Err != nil {
 		logger.Sugar().Errorf("Error query success count: %v\n", err)
 	} else {
+		if vector2.Vector.Len() != 0 {
+			success = float64(vector2.Vector[0].Value)
+		}
 		success = float64(vector2.Vector[0].Value)
 		res.Data["total"] = success
 	}
@@ -177,6 +186,9 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	if vector4.Err != nil {
 		logger.Sugar().Errorf("Error query timeout count: %v\n", err)
 	} else {
+		if vector4.Vector.Len() != 0 {
+			timeout = float64(vector4.Vector[0].Value)
+		}
 		timeout = float64(vector4.Vector[0].Value)
 		res.Data["timeout"] = timeout
 	}
@@ -187,6 +199,9 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	if vector5.Err != nil {
 		logger.Sugar().Errorf("Error query address not found count: %v\n", err)
 	} else {
+		if vector5.Vector.Len() != 0 {
+			addrNotFound = float64(vector5.Vector[0].Value)
+		}
 		addrNotFound = float64(vector5.Vector[0].Value)
 		res.Data["addressNotFound"] = addrNotFound
 	}
@@ -197,6 +212,9 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	if vector6.Err != nil {
 		logger.Sugar().Errorf("Error query othere exceptions count: %v\n", err)
 	} else {
+		if vector6.Vector.Len() != 0 {
+			others = float64(vector6.Vector[0].Value)
+		}
 		others = float64(vector6.Vector[0].Value)
 		res.Data["others"] = others
 	}
