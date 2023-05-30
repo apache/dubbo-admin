@@ -87,15 +87,13 @@ func DeleteRegion(c *gin.Context) {
 // @Produce      json
 // @Param        region  body  model.Region      true   "rule"
 // @Success      200  {object}  []model.Region
-// @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/region [get]
 func SearchRegion(c *gin.Context) {
-	var r *model.Region
-	if err := c.ShouldBindJSON(&r); err != nil {
-		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
-		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
-		return
+	r := &model.Region{
+		Service: c.Query("service"),
+		Group:   c.Query("group"),
+		Version: c.Query("version"),
 	}
 
 	result, err := regionSVC.Search(r)

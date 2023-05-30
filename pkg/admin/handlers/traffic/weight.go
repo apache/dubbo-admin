@@ -87,15 +87,13 @@ func DeleteWeight(c *gin.Context) {
 // @Produce      json
 // @Param        weight  body  model.Weight      true   "rule"
 // @Success      200  {object}  []model.Weight
-// @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/weight [get]
 func SearchWeight(c *gin.Context) {
-	var p *model.Percentage
-	if err := c.ShouldBindJSON(&p); err != nil {
-		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
-		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
-		return
+	p := &model.Percentage{
+		Service: c.Query("service"),
+		Group:   c.Query("group"),
+		Version: c.Query("version"),
 	}
 
 	result, err := weightSvc.Search(p)
