@@ -22,6 +22,8 @@ import (
 	"sync"
 	"testing"
 
+	set "github.com/dubbogo/gost/container/set"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/dubbo-admin/pkg/admin/model/util"
@@ -59,12 +61,12 @@ func TestProviderServiceImpl_FindServices(t *testing.T) {
 	defer cache.InterfaceRegistryCache.Delete(constant.ProvidersCategory)
 	tests := []struct {
 		name    string
-		want    []string
+		want    *set.HashSet
 		wantErr bool
 	}{
 		{
 			name:    "Test",
-			want:    []string{"test"},
+			want:    set.NewSet("test"),
 			wantErr: false,
 		},
 	}
@@ -86,12 +88,12 @@ func TestProviderServiceImpl_FindApplications(t *testing.T) {
 	defer cache.InterfaceRegistryCache.Delete(constant.ProvidersCategory)
 	tests := []struct {
 		name    string
-		want    []string
+		want    *set.HashSet
 		wantErr bool
 	}{
 		{
 			name:    "Test",
-			want:    []string{"test"},
+			want:    set.NewSet("test"),
 			wantErr: false,
 		},
 	}
@@ -113,12 +115,12 @@ func TestProviderServiceImpl_findAddresses(t *testing.T) {
 	defer cache.InterfaceRegistryCache.Delete(constant.ProvidersCategory)
 	tests := []struct {
 		name    string
-		want    []string
+		want    *set.HashSet
 		wantErr bool
 	}{
 		{
 			name:    "Test",
-			want:    []string{common.GetLocalIp() + ":0"},
+			want:    set.NewSet(common.GetLocalIp() + ":0"),
 			wantErr: false,
 		},
 	}
