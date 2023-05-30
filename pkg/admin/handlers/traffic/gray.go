@@ -87,15 +87,11 @@ func DeleteGray(c *gin.Context) {
 // @Produce      json
 // @Param        gray  body  model.Gray      true   "rule"
 // @Success      200  {object}  []model.Gray
-// @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/gray [get]
 func SearchGray(c *gin.Context) {
-	var g *model.Gray
-	if err := c.ShouldBindJSON(&g); err != nil {
-		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
-		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
-		return
+	g := &model.Gray{
+		Application: c.Query("application"),
 	}
 
 	result, err := graySVC.Search(g)

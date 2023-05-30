@@ -87,15 +87,13 @@ func DeleteMock(c *gin.Context) {
 // @Produce      json
 // @Param        mock  body  model.Mock      true   "rule"
 // @Success      200  {object}  []model.Mock
-// @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/mock [get]
 func SearchMock(c *gin.Context) {
-	var m *model.Mock
-	if err := c.ShouldBindJSON(&m); err != nil {
-		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
-		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
-		return
+	m := &model.Mock{
+		Service: c.Query("service"),
+		Group:   c.Query("group"),
+		Version: c.Query("version"),
 	}
 
 	result, err := mockSvc.Search(m)

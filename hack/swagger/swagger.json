@@ -1507,12 +1507,6 @@
                             }
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/model.HTTPError"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -1686,12 +1680,6 @@
                             "items": {
                                 "$ref": "#/definitions/model.Argument"
                             }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/model.HTTPError"
                         }
                     },
                     "500": {
@@ -1869,12 +1857,6 @@
                             }
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/model.HTTPError"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2050,12 +2032,6 @@
                             }
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/model.HTTPError"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2229,12 +2205,6 @@
                             "items": {
                                 "$ref": "#/definitions/model.Region"
                             }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/model.HTTPError"
                         }
                     },
                     "500": {
@@ -2593,12 +2563,6 @@
                             }
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/model.HTTPError"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2772,12 +2736,6 @@
                             "items": {
                                 "$ref": "#/definitions/model.Weight"
                             }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/model.HTTPError"
                         }
                     },
                     "500": {
@@ -2955,17 +2913,17 @@
         "model.Argument": {
             "type": "object",
             "required": [
-                "application",
-                "rule"
+                "rule",
+                "service"
             ],
             "properties": {
-                "application": {
-                    "type": "string"
-                },
                 "group": {
                     "type": "string"
                 },
                 "rule": {
+                    "type": "string"
+                },
+                "service": {
                     "type": "string"
                 },
                 "version": {
@@ -3627,16 +3585,17 @@
         "time.Duration": {
             "type": "integer",
             "enum": [
-                -9223372036854775808,
-                9223372036854775807,
+                1,
+                1000,
+                1000000,
+                1000000000,
+                60000000000,
                 1,
                 1000,
                 1000000,
                 1000000000,
                 60000000000,
                 3600000000000,
-                -9223372036854775808,
-                9223372036854775807,
                 1,
                 1000,
                 1000000,
@@ -3645,16 +3604,17 @@
                 3600000000000
             ],
             "x-enum-varnames": [
-                "minDuration",
-                "maxDuration",
+                "Nanosecond",
+                "Microsecond",
+                "Millisecond",
+                "Second",
+                "Minute",
                 "Nanosecond",
                 "Microsecond",
                 "Millisecond",
                 "Second",
                 "Minute",
                 "Hour",
-                "minDuration",
-                "maxDuration",
                 "Nanosecond",
                 "Microsecond",
                 "Millisecond",
