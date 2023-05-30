@@ -91,7 +91,11 @@ func DeleteRetry(c *gin.Context) {
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/retry [get]
 func SearchRetry(c *gin.Context) {
-	var r *model.Retry
+	r := &model.Retry{
+		Service: c.Query("service"),
+		Group:   c.Query("group"),
+		Version: c.Query("version"),
+	}
 	if err := c.ShouldBindJSON(&r); err != nil {
 		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
 		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
