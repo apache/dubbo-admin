@@ -45,7 +45,7 @@ func (tm *AccesslogService) Delete(a *model.Accesslog) error {
 func (tm *AccesslogService) Search(a *model.Accesslog) ([]*model.Accesslog, error) {
 	result := make([]*model.Accesslog, 0)
 
-	list, err := getRules(a.Application)
+	list, err := services.GetRules(a.Application)
 	if err != nil {
 		return result, err
 	}
