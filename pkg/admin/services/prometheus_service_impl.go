@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	set "github.com/dubbogo/gost/container/set"
 	"net/http"
 	"time"
 
@@ -28,7 +29,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
-	"github.com/apache/dubbo-admin/pkg/admin/model/util"
 	util2 "github.com/apache/dubbo-admin/pkg/admin/util"
 	"github.com/apache/dubbo-admin/pkg/logger"
 	"github.com/apache/dubbo-admin/pkg/monitor/prometheus"
@@ -45,25 +45,25 @@ type PrometheusServiceImpl struct{}
 func (p *PrometheusServiceImpl) PromDiscovery(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	// Reduce the call chain and improve performance.
+
+	// Find all provider addresses
 	proAddr, err := providerServiceImpl.findAddresses()
 	if err != nil {
 		logger.Sugar().Errorf("Error provider findAddresses: %v\n", err)
 		return err
 	}
-	var targets []string
-	for i := 0; i < proAddr.Size(); i++ {
-		targets = append(targets, util2.GetDiscoveryPath(proAddr.Values()[i].(string)))
+	addresses := set.NewSet()
+	items := proAddr.Values()
+	for i := 0; i < len(items); i++ {
+		addresses.Add(util2.GetDiscoveryPath(items[i].(string)))
 	}
-	filterCon := make(map[string]string)
-	filterCon[constant.CategoryKey] = constant.ConsumersCategory
-	servicesMap, err := util.FilterFromCategory(filterCon)
-	if err != nil {
-		logger.Sugar().Errorf("Error filter category: %v\n", err)
-		return err
+
+	targets := make([]string, 0, addresses.Size())
+	items = addresses.Values()
+	for _, v := range items {
+		targets = append(targets, v.(string))
 	}
-	for _, url := range servicesMap {
-		targets = append(targets, util2.GetDiscoveryPath(url.Location))
-	}
+
 	target := []model.Target{
 		{
 			Targets: targets,
@@ -229,7 +229,7 @@ func (p *PrometheusServiceImpl) Metadata() (model.Metadata, error) {
 	if err != nil {
 		return model.Metadata{}, err
 	}
-	keys := make([]string, len(rules))
+	keys := make([]string, 0, len(rules))
 	for k, _ := range rules {
 		keys = append(keys, k)
 	}

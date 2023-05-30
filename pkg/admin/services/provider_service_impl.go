@@ -33,7 +33,7 @@ type ProviderServiceImpl struct{}
 
 // FindServices finds all services
 func (p *ProviderServiceImpl) FindServices() (*set.HashSet, error) {
-	var services *set.HashSet
+	var services = set.NewSet()
 	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
 	if !ok {
 		return nil, nil
@@ -53,7 +53,7 @@ func (p *ProviderServiceImpl) FindServices() (*set.HashSet, error) {
 // FindApplications finds all applications
 func (p *ProviderServiceImpl) FindApplications() (*set.HashSet, error) {
 	var (
-		applications *set.HashSet
+		applications = set.NewSet()
 		err          error
 	)
 	providersAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
@@ -103,7 +103,7 @@ func extractApplications(servicesAny any, applications *set.HashSet) error {
 // findAddresses finds all addresses
 func (p *ProviderServiceImpl) findAddresses() (*set.HashSet, error) {
 	var (
-		addresses *set.HashSet
+		addresses = set.NewSet()
 		err       error
 	)
 	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
@@ -154,7 +154,7 @@ func extractAddresses(servicesAny any, addresses *set.HashSet) error {
 // FindVersions finds all versions
 func (p *ProviderServiceImpl) FindVersions() (*set.HashSet, error) {
 	var (
-		versions *set.HashSet
+		versions = set.NewSet()
 		err      error
 	)
 	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
@@ -224,7 +224,7 @@ func extractProtocols(servicesAny any, protocols *set.HashSet) error {
 // FindProtocols finds all protocols
 func (p *ProviderServiceImpl) FindProtocols() (*set.HashSet, error) {
 	var (
-		addresses *set.HashSet
+		addresses = set.NewSet()
 		err       error
 	)
 	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
@@ -331,7 +331,8 @@ func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*mod
 		if err != nil {
 			return nil, err
 		}
-		for _, candidateAny := range candidates.Values() {
+		items := candidates.Values()
+		for _, candidateAny := range items {
 			candidate := candidateAny.(string)
 			if reg.MatchString(candidate) {
 				if pattern == constant.IP {
