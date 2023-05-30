@@ -37,11 +37,11 @@ func (p *ProviderServiceImpl) FindServices() (*set.HashSet, error) {
 	services := set.NewSet()
 	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
 	if !ok {
-		return nil, nil
+		return services, nil
 	}
 	servicesMap, ok := servicesAny.(*sync.Map)
 	if !ok {
-		return nil, fmt.Errorf("servicesMap type not *sync.Map")
+		return services, fmt.Errorf("servicesMap type not *sync.Map")
 	}
 
 	servicesMap.Range(func(key, value any) bool {
@@ -59,7 +59,7 @@ func (p *ProviderServiceImpl) FindApplications() (*set.HashSet, error) {
 	)
 	providersAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
 	if !ok {
-		return nil, nil
+		return applications, nil
 	}
 	err = extractApplications(providersAny, applications)
 	if err != nil {
@@ -68,7 +68,7 @@ func (p *ProviderServiceImpl) FindApplications() (*set.HashSet, error) {
 
 	consumersAny, ok := cache.InterfaceRegistryCache.Load(constant.ConsumersCategory)
 	if !ok {
-		return nil, nil
+		return applications, nil
 	}
 	err = extractApplications(consumersAny, applications)
 	if err != nil {
@@ -109,20 +109,20 @@ func (p *ProviderServiceImpl) findAddresses() (*set.HashSet, error) {
 	)
 	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
 	if !ok {
-		return nil, nil
+		return addresses, nil
 	}
 	err = extractAddresses(servicesAny, addresses)
 	if err != nil {
-		return nil, err
+		return addresses, err
 	}
 
 	consumersAny, ok := cache.InterfaceRegistryCache.Load(constant.ConsumersCategory)
 	if !ok {
-		return nil, nil
+		return addresses, nil
 	}
 	err = extractAddresses(consumersAny, addresses)
 	if err != nil {
-		return nil, err
+		return addresses, err
 	}
 
 	return addresses, err
@@ -160,12 +160,12 @@ func (p *ProviderServiceImpl) FindVersions() (*set.HashSet, error) {
 	)
 	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
 	if !ok {
-		return nil, nil
+		return versions, nil
 	}
 
 	err = extractVersions(servicesAny, versions)
 	if err != nil {
-		return nil, err
+		return versions, err
 	}
 
 	return versions, err
@@ -198,6 +198,25 @@ func extractVersions(servicesAny any, versions *set.HashSet) error {
 	return err
 }
 
+// FindProtocols finds all protocols
+func (p *ProviderServiceImpl) FindProtocols() (*set.HashSet, error) {
+	var (
+		protocols = set.NewSet()
+		err       error
+	)
+	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
+	if !ok {
+		return protocols, nil
+	}
+
+	err = extractProtocols(servicesAny, protocols)
+	if err != nil {
+		return protocols, err
+	}
+
+	return protocols, err
+}
+
 func extractProtocols(servicesAny any, protocols *set.HashSet) error {
 	servicesMap, ok := servicesAny.(*sync.Map)
 	if !ok {
@@ -220,25 +239,6 @@ func extractProtocols(servicesAny any, protocols *set.HashSet) error {
 		return true
 	})
 	return err
-}
-
-// FindProtocols finds all protocols
-func (p *ProviderServiceImpl) FindProtocols() (*set.HashSet, error) {
-	var (
-		addresses = set.NewSet()
-		err       error
-	)
-	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
-	if !ok {
-		return nil, nil
-	}
-
-	err = extractApplications(servicesAny, addresses)
-	if err != nil {
-		return nil, err
-	}
-
-	return addresses, err
 }
 
 // FindByService finds providers by service name and returns a list of providers
