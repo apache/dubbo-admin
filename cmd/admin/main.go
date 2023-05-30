@@ -18,7 +18,11 @@
 package main
 
 import (
+	"os"
+
+	"dubbo.apache.org/dubbo-go/v3/common/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/config"
+	mock "github.com/apache/dubbo-admin/pkg/admin/providers/mock"
 	"github.com/apache/dubbo-admin/pkg/admin/router"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 )
@@ -36,6 +40,8 @@ func main() {
 	defer func() {
 		services.DestroySubscribe(config.RegistryCenter)
 	}()
+	os.Setenv(constant.ConfigFileEnvKey, config.MockProviderConf)
+	go mock.RunMockServiceServer()
 	router := router.InitRouter()
 	_ = router.Run(":38080")
 }

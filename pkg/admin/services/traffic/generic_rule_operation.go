@@ -176,17 +176,19 @@ func getValue(rawRule, side, param string) (interface{}, error) {
 
 func getRules(con string) (map[string]string, error) {
 	list := make(map[string]string)
-	if con == "" {
+	if con == "" || con == "*" {
 		rules, err := config.Governance.GetList("dubbo")
-		if err != nil {
-			return nil, err
+		if _, ok := err.(*config.RuleNotFound); ok {
+			logger.Infof("No rule found from config center, err msg is %s", err.Error())
+			return list, nil
 		}
 		list = rules
 	} else {
 		key := services.GetOverridePath(con)
 		rule, err := config.Governance.GetConfig(key)
-		if err != nil {
-			return nil, err
+		if _, ok := err.(*config.RuleNotFound); ok {
+			logger.Infof("No rule found from config center, err msg is %s", err.Error())
+			return list, nil
 		}
 		list[key] = rule
 	}

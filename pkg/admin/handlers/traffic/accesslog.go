@@ -87,15 +87,11 @@ func DeleteAccesslog(c *gin.Context) {
 // @Produce      json
 // @Param        accesslog  body  model.Accesslog      true   "rule"
 // @Success      200  {object}  []model.Accesslog
-// @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/accesslog [get]
 func SearchAccesslog(c *gin.Context) {
-	var a *model.Accesslog
-	if err := c.ShouldBindJSON(&a); err != nil {
-		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
-		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
-		return
+	a := &model.Accesslog{
+		Application: c.Query("application"),
 	}
 
 	result, err := accesslogSvc.Search(a)
