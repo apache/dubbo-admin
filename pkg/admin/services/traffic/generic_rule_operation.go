@@ -20,7 +20,6 @@ package traffic
 import (
 	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
-	"github.com/apache/dubbo-admin/pkg/admin/services"
 	"github.com/apache/dubbo-admin/pkg/logger"
 	perrors "github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -172,27 +171,6 @@ func getValue(rawRule, side, param string) (interface{}, error) {
 	}
 
 	return "", nil
-}
-
-func getRules(con string) (map[string]string, error) {
-	list := make(map[string]string)
-	if con == "" || con == "*" {
-		rules, err := config.Governance.GetList("dubbo")
-		if _, ok := err.(*config.RuleNotFound); ok {
-			logger.Infof("No rule found from config center, err msg is %s", err.Error())
-			return list, nil
-		}
-		list = rules
-	} else {
-		key := services.GetOverridePath(con)
-		rule, err := config.Governance.GetConfig(key)
-		if _, ok := err.(*config.RuleNotFound); ok {
-			logger.Infof("No rule found from config center, err msg is %s", err.Error())
-			return list, nil
-		}
-		list[key] = rule
-	}
-	return list, nil
 }
 
 func createOrUpdateCondition(key string, newRule model.ConditionRoute) error {

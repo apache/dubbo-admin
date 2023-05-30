@@ -47,7 +47,7 @@ func (tm *GrayService) Delete(g *model.Gray) error {
 func (tm *GrayService) Search(g *model.Gray) ([]*model.Gray, error) {
 	result := make([]*model.Gray, 0)
 
-	list, err := getRules(g.Application)
+	list, err := services.GetRules(g.Application)
 	if err != nil {
 		return result, err
 	}

@@ -54,7 +54,7 @@ func (tm *TimeoutService) Search(t *model.Timeout) ([]*model.Timeout, error) {
 		con = util.ColonSeparatedKey(t.Service, t.Group, t.Version)
 	}
 
-	list, err := getRules(con)
+	list, err := services.GetRules(con)
 	if err != nil {
 		return result, err
 	}

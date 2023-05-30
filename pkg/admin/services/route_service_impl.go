@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/apache/dubbo-admin/pkg/logger"
+
 	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
@@ -267,4 +269,25 @@ func detachId(id string) []string {
 	} else {
 		return []string{id}
 	}
+}
+
+func GetRules(con string) (map[string]string, error) {
+	list := make(map[string]string)
+	if con == "" || con == "*" {
+		rules, err := config.Governance.GetList("dubbo")
+		if _, ok := err.(*config.RuleNotFound); ok {
+			logger.Infof("No rule found from config center, err msg is %s", err.Error())
+			return list, nil
+		}
+		list = rules
+	} else {
+		key := GetOverridePath(con)
+		rule, err := config.Governance.GetConfig(key)
+		if _, ok := err.(*config.RuleNotFound); ok {
+			logger.Infof("No rule found from config center, err msg is %s", err.Error())
+			return list, nil
+		}
+		list[key] = rule
+	}
+	return list, nil
 }
