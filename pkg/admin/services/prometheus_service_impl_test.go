@@ -18,8 +18,6 @@
 package services
 
 import (
-	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -150,30 +148,27 @@ func TestPrometheusServiceImpl_PromDiscovery(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				err := prometheusService.PromDiscovery(w)
+				target, err := prometheusService.PromDiscovery(w)
 				if err != nil {
 					t.Errorf("Server Start Error: %v\n", err)
+				}
+				for i := 0; i < len(target); i++ {
+					gots := target[i].Targets
+					targets := tt.want[i].Targets
+					sort.Strings(gots)
+					sort.Strings(targets)
+					target[i].Targets = gots
+					tt.want[i].Targets = targets
+				}
+				if !reflect.DeepEqual(target, tt.want) {
+					t.Errorf("PromDiscovery() got = %v, want %v", target, tt.want)
 				}
 			}))
 			defer ts.Close()
 			addr := ts.URL
-			resp, err := initPromClient(addr)
-			fmt.Println(string(resp))
+			_, err := initPromClient(addr)
 			if err != nil {
 				t.Errorf("Error: %v\n", err)
-			}
-			var target []model.Target
-			_ = json.Unmarshal(resp, &target)
-			for i := 0; i < len(target); i++ {
-				gots := target[i].Targets
-				targets := tt.want[i].Targets
-				sort.Strings(gots)
-				sort.Strings(targets)
-				target[i].Targets = gots
-				tt.want[i].Targets = targets
-			}
-			if !reflect.DeepEqual(target, tt.want) {
-				t.Errorf("PromDiscovery() got = %v, want %v", target, tt.want)
 			}
 		})
 	}
