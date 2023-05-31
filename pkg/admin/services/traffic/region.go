@@ -55,7 +55,7 @@ func (tm *RegionService) Search(r *model.Region) ([]*model.Region, error) {
 		con = util.ColonSeparatedKey(r.Service, r.Group, r.Version)
 	}
 
-	list, err := getRules(con)
+	list, err := services.GetRules(con)
 	if err != nil {
 		return result, err
 	}

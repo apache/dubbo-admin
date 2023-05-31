@@ -87,15 +87,13 @@ func DeleteArgument(c *gin.Context) {
 // @Produce      json
 // @Param        argument  body  model.Argument      true   "rule"
 // @Success      200  {object}  []model.Argument
-// @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/argument [get]
 func SearchArgument(c *gin.Context) {
-	var a *model.Argument
-	if err := c.ShouldBindJSON(&a); err != nil {
-		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
-		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
-		return
+	a := &model.Argument{
+		Service: c.Query("service"),
+		Group:   c.Query("group"),
+		Version: c.Query("version"),
 	}
 
 	result, err := argumentSvc.Search(a)

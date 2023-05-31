@@ -118,7 +118,7 @@ func (g Gray) ToRule() TagRoute {
 }
 
 type Argument struct {
-	Service string `json:"application" binding:"required"`
+	Service string `json:"service" binding:"required"`
 	Group   string `json:"group"`
 	Version string `json:"version"`
 	Rule    string `json:"rule" binding:"required"`

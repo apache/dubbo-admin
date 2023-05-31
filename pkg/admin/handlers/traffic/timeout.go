@@ -87,15 +87,13 @@ func DeleteTimeout(c *gin.Context) {
 // @Produce      json
 // @Param        timeout  body  model.Timeout      true   "timeout rule"
 // @Success      200  {object}  []model.Timeout
-// @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/timeout [get]
 func SearchTimeout(c *gin.Context) {
-	var t *model.Timeout
-	if err := c.ShouldBindJSON(&t); err != nil {
-		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
-		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
-		return
+	t := &model.Timeout{
+		Service: c.Query("service"),
+		Group:   c.Query("group"),
+		Version: c.Query("version"),
 	}
 
 	result, err := timeoutSvc.Search(t)

@@ -55,7 +55,7 @@ func (tm *ArgumentService) Search(a *model.Argument) ([]*model.Argument, error) 
 		con = util.ColonSeparatedKey(a.Service, a.Group, a.Version)
 	}
 
-	list, err := getRules(con)
+	list, err := services.GetRules(con)
 	if err != nil {
 		return result, err
 	}

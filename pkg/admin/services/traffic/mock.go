@@ -53,7 +53,7 @@ func (tm *MockService) Search(m *model.Mock) ([]*model.Mock, error) {
 	if m.Service != "" {
 		con = util.ColonSeparatedKey(m.Service, m.Group, m.Version)
 	}
-	list, err := getRules(con)
+	list, err := services.GetRules(con)
 	if err != nil {
 		return result, err
 	}
