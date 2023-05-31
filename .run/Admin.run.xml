@@ -16,16 +16,16 @@
 -->
 
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Admin" type="GoApplicationRunConfiguration" factoryName="Go Application">
-    <module name="dubbo-admin" />
-    <working_directory value="$PROJECT_DIR$" />
-    <envs>
-      <env name="ADMIN_CONFIG_PATH" value="conf/dubboadmin.yml" />
-    </envs>
-    <kind value="PACKAGE" />
-    <package value="github.com/apache/dubbo-admin/cmd/admin" />
-    <directory value="$PROJECT_DIR$" />
-    <filePath value="$PROJECT_DIR$/cmd/admin/main.go" />
-    <method v="2" />
-  </configuration>
+    <configuration default="false" name="Admin" type="GoApplicationRunConfiguration" factoryName="Go Application">
+        <module name="dubbo-admin" />
+        <working_directory value="$PROJECT_DIR$" />
+        <envs>
+            <env name="ADMIN_CONFIG_PATH" value="conf/dubboadmin.yml" />
+        </envs>
+        <kind value="PACKAGE" />
+        <package value="github.com/apache/dubbo-admin/cmd/admin" />
+        <directory value="$PROJECT_DIR$" />
+        <filePath value="$PROJECT_DIR$/cmd/admin/main.go" />
+        <method v="2" />
+    </configuration>
 </component>

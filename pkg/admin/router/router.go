@@ -42,6 +42,7 @@ func InitRouter() *gin.Engine {
 	router.GET("/api/:env/metrics/flow", handlers.FlowMetrics)
 	router.GET("/api/:env/metrics/cluster", handlers.ClusterMetrics)
 	router.GET("/api/:env/metrics/metadata", handlers.Metadata)
+	router.GET("/api/:env/metrics/prometheus", handlers.PromDiscovery)
 
 	override := router.Group("/api/:env/rules/override")
 	{
