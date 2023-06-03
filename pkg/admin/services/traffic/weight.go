@@ -55,7 +55,7 @@ func (tm *WeightService) Search(p *model.Percentage) ([]*model.Percentage, error
 		con = util.ColonSeparatedKey(p.Service, p.Group, p.Version)
 	}
 
-	list, err := getRules(con)
+	list, err := services.GetRules(con)
 	if err != nil {
 		return result, err
 	}

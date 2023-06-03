@@ -15,12 +15,24 @@
 
 package model
 
-type Response struct {
-	Status int    `json:"status"`
-	Data   string `json:"data"`
-}
-
 type Target struct {
 	Targets []string          `json:"targets"`
 	Labels  map[string]string `json:"labels"`
+}
+
+type ClusterMetricsRes struct {
+	Data map[string]int `json:"data"`
+}
+
+type FlowMetricsRes struct {
+	Data map[string]float64 `json:"data"`
+}
+
+type Metadata struct {
+	Versions       []interface{} `json:"versions"`
+	ConfigCenter   string        `json:"configCenter"`
+	Registry       string        `json:"registry"`
+	MetadataCenter string        `json:"metadataCenter"`
+	Protocols      []interface{} `json:"protocols"`
+	Rules          []string      `json:"rules"`
 }
