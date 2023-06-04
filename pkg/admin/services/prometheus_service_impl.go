@@ -17,7 +17,6 @@ package services
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -43,7 +42,7 @@ var (
 
 type PrometheusServiceImpl struct{}
 
-func (p *PrometheusServiceImpl) PromDiscovery(w http.ResponseWriter) error {
+func (p *PrometheusServiceImpl) PromDiscovery(w http.ResponseWriter) ([]model.Target, error) {
 	w.Header().Set("Content-Type", "application/json")
 	// Reduce the call chain and improve performance.
 
@@ -51,7 +50,7 @@ func (p *PrometheusServiceImpl) PromDiscovery(w http.ResponseWriter) error {
 	proAddr, err := providerServiceImpl.findAddresses()
 	if err != nil {
 		logger.Sugar().Errorf("Error provider findAddresses: %v\n", err)
-		return err
+		return nil, err
 	}
 	addresses := set.NewSet()
 	items := proAddr.Values()
@@ -71,8 +70,7 @@ func (p *PrometheusServiceImpl) PromDiscovery(w http.ResponseWriter) error {
 			Labels:  map[string]string{},
 		},
 	}
-	err = json.NewEncoder(w).Encode(target)
-	return err
+	return target, err
 }
 
 func (p *PrometheusServiceImpl) ClusterMetrics() (model.ClusterMetricsRes, error) {
@@ -147,7 +145,9 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	if err != nil {
 		logger.Sugar().Errorf("Error query qps: %v\n", err)
 	} else {
-		qps = float64(vector1.Vector[0].Value)
+		if vector1.Vector.Len() != 0 {
+			qps = float64(vector1.Vector[0].Value)
+		}
 		res.Data["qps"] = qps
 	}
 
@@ -157,7 +157,9 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	if vector3.Err != nil {
 		logger.Sugar().Errorf("Error query total count: %v\n", err)
 	} else {
-		total = float64(vector3.Vector[0].Value)
+		if vector3.Vector.Len() != 0 {
+			total = float64(vector3.Vector[0].Value)
+		}
 		res.Data["total"] = total
 	}
 
@@ -167,7 +169,9 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	if vector2.Err != nil {
 		logger.Sugar().Errorf("Error query success count: %v\n", err)
 	} else {
-		success = float64(vector2.Vector[0].Value)
+		if vector2.Vector.Len() != 0 {
+			success = float64(vector2.Vector[0].Value)
+		}
 		res.Data["total"] = success
 	}
 
@@ -177,7 +181,9 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	if vector4.Err != nil {
 		logger.Sugar().Errorf("Error query timeout count: %v\n", err)
 	} else {
-		timeout = float64(vector4.Vector[0].Value)
+		if vector4.Vector.Len() != 0 {
+			timeout = float64(vector4.Vector[0].Value)
+		}
 		res.Data["timeout"] = timeout
 	}
 
@@ -187,7 +193,9 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	if vector5.Err != nil {
 		logger.Sugar().Errorf("Error query address not found count: %v\n", err)
 	} else {
-		addrNotFound = float64(vector5.Vector[0].Value)
+		if vector5.Vector.Len() != 0 {
+			addrNotFound = float64(vector5.Vector[0].Value)
+		}
 		res.Data["addressNotFound"] = addrNotFound
 	}
 
@@ -197,7 +205,9 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	if vector6.Err != nil {
 		logger.Sugar().Errorf("Error query othere exceptions count: %v\n", err)
 	} else {
-		others = float64(vector6.Vector[0].Value)
+		if vector6.Vector.Len() != 0 {
+			others = float64(vector6.Vector[0].Value)
+		}
 		res.Data["others"] = others
 	}
 	return res, nil
