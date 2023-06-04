@@ -73,7 +73,7 @@ make test-authority   #Run tests for authority
 
 ### Swagger API
 ```shell
-make  dubbo-admin-swagger  #Generate dubbo-admin swagger docs in hack/swagger
+make swagger  #Generate dubbo-admin swagger docs in hack/swagger
 ```
 
 ### 打包
