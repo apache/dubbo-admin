@@ -68,15 +68,25 @@ func UpdateWeight(c *gin.Context) {
 // @Tags         TrafficWeight
 // @Accept       json
 // @Produce      json
-// @Param        weight  body  model.Weight      true   "rule"
+// @Param        service  query  string  true   "service name"
+// @Param        version  query  string  true   "service version"
+// @Param        group    query  string  true   "service group"
 // @Success      200  {bool}    true
-// @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/weight [delete]
 func DeleteWeight(c *gin.Context) {
-	doWeightUpdate(c, func(p *model.Percentage) error {
-		return weightSvc.Delete(p)
-	})
+	p := &model.Percentage{
+		Service: c.Query("service"),
+		Group:   c.Query("group"),
+		Version: c.Query("version"),
+	}
+
+	err := weightSvc.Delete(p)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
+	}
+
+	c.JSON(http.StatusOK, true)
 }
 
 // SearchWeight get rule list
@@ -85,7 +95,9 @@ func DeleteWeight(c *gin.Context) {
 // @Tags         TrafficWeight
 // @Accept       json
 // @Produce      json
-// @Param        weight  body  model.Weight      true   "rule"
+// @Param        service  query  string  true   "service name"
+// @Param        version  query  string  true   "service version"
+// @Param        group    query  string  true   "service group"
 // @Success      200  {object}  []model.Weight
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/weight [get]

@@ -68,15 +68,21 @@ func UpdateAccesslog(c *gin.Context) {
 // @Tags         TrafficAccesslog
 // @Accept       json
 // @Produce      json
-// @Param        accesslog  body  model.Accesslog      true   "rule"
+// @Param        application  query  string  true   "application name"
 // @Success      200  {bool}    true
-// @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/accesslog [delete]
 func DeleteAccesslog(c *gin.Context) {
-	doAccesslogUpdate(c, func(a *model.Accesslog) error {
-		return accesslogSvc.Delete(a)
-	})
+	a := &model.Accesslog{
+		Application: c.Query("application"),
+	}
+
+	err := accesslogSvc.Delete(a)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
+	}
+
+	c.JSON(http.StatusOK, true)
 }
 
 // SearchAccesslog   get rule list
@@ -85,7 +91,7 @@ func DeleteAccesslog(c *gin.Context) {
 // @Tags         TrafficAccesslog
 // @Accept       json
 // @Produce      json
-// @Param        accesslog  body  model.Accesslog      true   "rule"
+// @Param        application  query  string  true   "application name"
 // @Success      200  {object}  []model.Accesslog
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/accesslog [get]
