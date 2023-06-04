@@ -22,8 +22,8 @@ import (
 )
 
 type MonitorService interface {
-	FlowMetrics() (model.FlowMetricsRes, error)       // Traffic overview
-	ClusterMetrics() (model.ClusterMetricsRes, error) // Cluster overview
-	PromDiscovery(w http.ResponseWriter) error        // prometheus http_sd discovery
+	FlowMetrics() (model.FlowMetricsRes, error)                  // Traffic overview
+	ClusterMetrics() (model.ClusterMetricsRes, error)            // Cluster overview
+	PromDiscovery(w http.ResponseWriter) ([]model.Target, error) // prometheus http_sd discovery
 	Metadata() (model.Metadata, error)
 }

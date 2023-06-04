@@ -100,6 +100,7 @@ func (s *AuthorityServiceImpl) CreateIdentity(
 		TrustCerts:             trustedCerts,
 		Token:                  token,
 		TrustedTokenPublicKeys: trustedTokenPublicKeys,
-		ExpireTime:             time.Now().UnixMilli() + (s.Options.CertValidity / 2),
+		RefreshTime:            time.Now().UnixMilli() + (s.Options.CertValidity / 2),
+		ExpireTime:             time.Now().UnixMilli() + s.Options.CertValidity,
 	}, nil
 }
