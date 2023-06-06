@@ -68,15 +68,25 @@ func UpdateTimeout(c *gin.Context) {
 // @Tags         TrafficTimeout
 // @Accept       json
 // @Produce      json
-// @Param        timeout  body  model.Timeout      true   "timeout rule"
+// @Param        service  query  string  true   "service name"
+// @Param        version  query  string  true   "service version"
+// @Param        group    query  string  true   "service group"
 // @Success      200  {boolean} true
-// @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/timeout [delete]
 func DeleteTimeout(c *gin.Context) {
-	doTimeoutUpdate(c, func(t *model.Timeout) error {
-		return timeoutSvc.Delete(t)
-	})
+	t := &model.Timeout{
+		Service: c.Query("service"),
+		Group:   c.Query("group"),
+		Version: c.Query("version"),
+	}
+
+	err := timeoutSvc.Delete(t)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
+	}
+
+	c.JSON(http.StatusOK, true)
 }
 
 // SearchTimeout get timeout rule list
@@ -85,7 +95,9 @@ func DeleteTimeout(c *gin.Context) {
 // @Tags         TrafficTimeout
 // @Accept       json
 // @Produce      json
-// @Param        timeout  body  model.Timeout      true   "timeout rule"
+// @Param        service  query  string  true   "service name"
+// @Param        version  query  string  true   "service version"
+// @Param        group    query  string  true   "service group"
 // @Success      200  {object}  []model.Timeout
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/timeout [get]

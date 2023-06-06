@@ -95,6 +95,93 @@
                 }
             }
         },
+        "/api/{env}/metrics/cluster": {
+            "get": {
+                "description": "show cluster overview",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "show cluster overview",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.ClusterMetricsRes"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/metrics/flow": {
+            "get": {
+                "description": "show Prometheus collected metrics",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "show Prometheus collected metrics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.FlowMetricsRes"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/metrics/metadata": {
+            "get": {
+                "description": "show metadata of the cluster, like dubbo versions, protocols, etc.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "show metadata of the cluster, like dubbo versions, protocols, etc.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Metadata"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
         "/api/{env}/mock/rule": {
             "post": {
                 "description": "Create or update MockRule",
@@ -1488,13 +1575,11 @@
                 "summary": "get rule list",
                 "parameters": [
                     {
-                        "description": "rule",
-                        "name": "accesslog",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Accesslog"
-                        }
+                        "type": "string",
+                        "description": "application name",
+                        "name": "application",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -1617,13 +1702,11 @@
                 "summary": "delete rule",
                 "parameters": [
                     {
-                        "description": "rule",
-                        "name": "accesslog",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Accesslog"
-                        }
+                        "type": "string",
+                        "description": "application name",
+                        "name": "application",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -1631,12 +1714,6 @@
                         "description": "OK",
                         "schema": {
                             "type": "bool"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/model.HTTPError"
                         }
                     },
                     "500": {
@@ -1663,13 +1740,25 @@
                 "summary": "get rule list",
                 "parameters": [
                     {
-                        "description": "rule",
-                        "name": "argument",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Argument"
-                        }
+                        "type": "string",
+                        "description": "service name",
+                        "name": "service",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service version",
+                        "name": "version",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service group",
+                        "name": "group",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -1792,13 +1881,25 @@
                 "summary": "delete rule",
                 "parameters": [
                     {
-                        "description": "rule",
-                        "name": "argument",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Argument"
-                        }
+                        "type": "string",
+                        "description": "service name",
+                        "name": "service",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service version",
+                        "name": "version",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service group",
+                        "name": "group",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -1806,12 +1907,6 @@
                         "description": "OK",
                         "schema": {
                             "type": "bool"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/model.HTTPError"
                         }
                     },
                     "500": {
@@ -1838,13 +1933,11 @@
                 "summary": "get rule list",
                 "parameters": [
                     {
-                        "description": "rule",
-                        "name": "gray",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Gray"
-                        }
+                        "type": "string",
+                        "description": "application name",
+                        "name": "application",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -1967,13 +2060,11 @@
                 "summary": "delete rule",
                 "parameters": [
                     {
-                        "description": "rule",
-                        "name": "gray",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Gray"
-                        }
+                        "type": "string",
+                        "description": "application name",
+                        "name": "application",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -1981,12 +2072,6 @@
                         "description": "OK",
                         "schema": {
                             "type": "bool"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/model.HTTPError"
                         }
                     },
                     "500": {
@@ -2013,13 +2098,25 @@
                 "summary": "get rule list",
                 "parameters": [
                     {
-                        "description": "rule",
-                        "name": "mock",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Mock"
-                        }
+                        "type": "string",
+                        "description": "service name",
+                        "name": "service",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service version",
+                        "name": "version",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service group",
+                        "name": "group",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -2142,13 +2239,25 @@
                 "summary": "delete rule",
                 "parameters": [
                     {
-                        "description": "rule",
-                        "name": "mock",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Mock"
-                        }
+                        "type": "string",
+                        "description": "service name",
+                        "name": "service",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service version",
+                        "name": "version",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service group",
+                        "name": "group",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -2188,13 +2297,25 @@
                 "summary": "get rule list",
                 "parameters": [
                     {
-                        "description": "rule",
-                        "name": "region",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Region"
-                        }
+                        "type": "string",
+                        "description": "service name",
+                        "name": "service",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service version",
+                        "name": "version",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service group",
+                        "name": "group",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -2317,13 +2438,25 @@
                 "summary": "delete rule",
                 "parameters": [
                     {
-                        "description": "rule",
-                        "name": "region",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Region"
-                        }
+                        "type": "string",
+                        "description": "service name",
+                        "name": "service",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service version",
+                        "name": "version",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service group",
+                        "name": "group",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -2363,13 +2496,25 @@
                 "summary": "get rule list",
                 "parameters": [
                     {
-                        "description": "rule",
-                        "name": "retry",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Retry"
-                        }
+                        "type": "string",
+                        "description": "service name",
+                        "name": "service",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service version",
+                        "name": "version",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service group",
+                        "name": "group",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -2380,12 +2525,6 @@
                             "items": {
                                 "$ref": "#/definitions/model.Retry"
                             }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/model.HTTPError"
                         }
                     },
                     "500": {
@@ -2498,13 +2637,25 @@
                 "summary": "delete rule",
                 "parameters": [
                     {
-                        "description": "rule",
-                        "name": "retry",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Retry"
-                        }
+                        "type": "string",
+                        "description": "service name",
+                        "name": "service",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service version",
+                        "name": "version",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service group",
+                        "name": "group",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -2512,12 +2663,6 @@
                         "description": "OK",
                         "schema": {
                             "type": "bool"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/model.HTTPError"
                         }
                     },
                     "500": {
@@ -2544,13 +2689,25 @@
                 "summary": "get timeout rule list",
                 "parameters": [
                     {
-                        "description": "timeout rule",
-                        "name": "timeout",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Timeout"
-                        }
+                        "type": "string",
+                        "description": "service name",
+                        "name": "service",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service version",
+                        "name": "version",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service group",
+                        "name": "group",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -2673,13 +2830,25 @@
                 "summary": "delete a new timeout rule",
                 "parameters": [
                     {
-                        "description": "timeout rule",
-                        "name": "timeout",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Timeout"
-                        }
+                        "type": "string",
+                        "description": "service name",
+                        "name": "service",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service version",
+                        "name": "version",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service group",
+                        "name": "group",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -2687,12 +2856,6 @@
                         "description": "OK",
                         "schema": {
                             "type": "boolean"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/model.HTTPError"
                         }
                     },
                     "500": {
@@ -2719,13 +2882,25 @@
                 "summary": "get rule list",
                 "parameters": [
                     {
-                        "description": "rule",
-                        "name": "weight",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Weight"
-                        }
+                        "type": "string",
+                        "description": "service name",
+                        "name": "service",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service version",
+                        "name": "version",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service group",
+                        "name": "group",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -2848,13 +3023,25 @@
                 "summary": "delete rule",
                 "parameters": [
                     {
-                        "description": "rule",
-                        "name": "weight",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Weight"
-                        }
+                        "type": "string",
+                        "description": "service name",
+                        "name": "service",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service version",
+                        "name": "version",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "service group",
+                        "name": "group",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {
@@ -2864,16 +3051,33 @@
                             "type": "bool"
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/model.HTTPError"
-                        }
-                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/model.HTTPError"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/{env}/version": {
+            "get": {
+                "description": "show basic information of the Admin process",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "metrics"
+                ],
+                "summary": "show basic information of the Admin process",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/version.Version"
                         }
                     }
                 }
@@ -2928,6 +3132,17 @@
                 },
                 "version": {
                     "type": "string"
+                }
+            }
+        },
+        "model.ClusterMetricsRes": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
                 }
             }
         },
@@ -3097,6 +3312,17 @@
                 }
             }
         },
+        "model.FlowMetricsRes": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "number"
+                    }
+                }
+            }
+        },
         "model.Gray": {
             "type": "object",
             "required": [
@@ -3178,6 +3404,34 @@
                     "items": {
                         "$ref": "#/definitions/model.StringMatch"
                     }
+                }
+            }
+        },
+        "model.Metadata": {
+            "type": "object",
+            "properties": {
+                "configCenter": {
+                    "type": "string"
+                },
+                "metadataCenter": {
+                    "type": "string"
+                },
+                "protocols": {
+                    "type": "array",
+                    "items": {}
+                },
+                "registry": {
+                    "type": "string"
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "versions": {
+                    "type": "array",
+                    "items": {}
                 }
             }
         },
@@ -3590,11 +3844,6 @@
                 1000000,
                 1000000000,
                 60000000000,
-                1,
-                1000,
-                1000000,
-                1000000000,
-                60000000000,
                 3600000000000,
                 1,
                 1000,
@@ -3609,11 +3858,6 @@
                 "Millisecond",
                 "Second",
                 "Minute",
-                "Nanosecond",
-                "Microsecond",
-                "Millisecond",
-                "Second",
-                "Minute",
                 "Hour",
                 "Nanosecond",
                 "Microsecond",
@@ -3622,6 +3866,32 @@
                 "Minute",
                 "Hour"
             ]
+        },
+        "version.Version": {
+            "type": "object",
+            "properties": {
+                "buildDate": {
+                    "type": "string"
+                },
+                "compiler": {
+                    "type": "string"
+                },
+                "gitCommit": {
+                    "type": "string"
+                },
+                "gitTreeState": {
+                    "type": "string"
+                },
+                "gitVersion": {
+                    "type": "string"
+                },
+                "goVersion": {
+                    "type": "string"
+                },
+                "platform": {
+                    "type": "string"
+                }
+            }
         }
     }
 }

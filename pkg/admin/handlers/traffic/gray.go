@@ -68,15 +68,21 @@ func UpdateGray(c *gin.Context) {
 // @Tags         TrafficGray
 // @Accept       json
 // @Produce      json
-// @Param        gray  body  model.Gray      true   "rule"
+// @Param        application  query  string  true   "application name"
 // @Success      200  {bool}    true
-// @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/gray [delete]
 func DeleteGray(c *gin.Context) {
-	doGrayUpdate(c, func(g *model.Gray) error {
-		return graySVC.Delete(g)
-	})
+	g := &model.Gray{
+		Application: c.Query("application"),
+	}
+
+	err := graySVC.Delete(g)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
+	}
+
+	c.JSON(http.StatusOK, true)
 }
 
 // SearchGray   get rule list
@@ -85,7 +91,7 @@ func DeleteGray(c *gin.Context) {
 // @Tags         TrafficGray
 // @Accept       json
 // @Produce      json
-// @Param        gray  body  model.Gray      true   "rule"
+// @Param        application  query  string  true   "application name"
 // @Success      200  {object}  []model.Gray
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/gray [get]

@@ -68,15 +68,26 @@ func UpdateRegion(c *gin.Context) {
 // @Tags         TrafficRegion
 // @Accept       json
 // @Produce      json
-// @Param        region  body  model.Region      true   "rule"
+// @Param        service  query  string  true   "service name"
+// @Param        version  query  string  true   "service version"
+// @Param        group    query  string  true   "service group"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/region [delete]
 func DeleteRegion(c *gin.Context) {
-	doRegionUpdate(c, func(r *model.Region) error {
-		return regionSVC.Delete(r)
-	})
+	r := &model.Region{
+		Service: c.Query("service"),
+		Group:   c.Query("group"),
+		Version: c.Query("version"),
+	}
+
+	err := regionSVC.Delete(r)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
+	}
+
+	c.JSON(http.StatusOK, true)
 }
 
 // SearchRegion   get rule list
@@ -85,7 +96,9 @@ func DeleteRegion(c *gin.Context) {
 // @Tags         TrafficRegion
 // @Accept       json
 // @Produce      json
-// @Param        region  body  model.Region      true   "rule"
+// @Param        service  query  string  true   "service name"
+// @Param        version  query  string  true   "service version"
+// @Param        group    query  string  true   "service group"
 // @Success      200  {object}  []model.Region
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/region [get]
