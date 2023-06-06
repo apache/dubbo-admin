@@ -68,15 +68,25 @@ func UpdateRetry(c *gin.Context) {
 // @Tags         TrafficRetry
 // @Accept       json
 // @Produce      json
-// @Param        retry  body  model.Retry      true   "rule"
+// @Param        service  query  string  true   "service name"
+// @Param        version  query  string  true   "service version"
+// @Param        group    query  string  true   "service group"
 // @Success      200  {bool}    true
-// @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/retry [delete]
 func DeleteRetry(c *gin.Context) {
-	doRetryUpdate(c, func(r *model.Retry) error {
-		return retrySvc.Delete(r)
-	})
+	r := &model.Retry{
+		Service: c.Query("service"),
+		Group:   c.Query("group"),
+		Version: c.Query("version"),
+	}
+
+	err := retrySvc.Delete(r)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
+	}
+
+	c.JSON(http.StatusOK, true)
 }
 
 // SearchRetry   get rule list
@@ -85,9 +95,10 @@ func DeleteRetry(c *gin.Context) {
 // @Tags         TrafficRetry
 // @Accept       json
 // @Produce      json
-// @Param        retry  body  model.Retry      true   "rule"
+// @Param        service  query  string  true   "service name"
+// @Param        version  query  string  true   "service version"
+// @Param        group    query  string  true   "service group"
 // @Success      200  {object}  []model.Retry
-// @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/retry [get]
 func SearchRetry(c *gin.Context) {
@@ -95,11 +106,6 @@ func SearchRetry(c *gin.Context) {
 		Service: c.Query("service"),
 		Group:   c.Query("group"),
 		Version: c.Query("version"),
-	}
-	if err := c.ShouldBindJSON(&r); err != nil {
-		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
-		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
-		return
 	}
 
 	result, err := retrySvc.Search(r)

@@ -68,15 +68,25 @@ func UpdateArgument(c *gin.Context) {
 // @Tags         TrafficArgument
 // @Accept       json
 // @Produce      json
-// @Param        argument  body  model.Argument      true   "rule"
+// @Param        service  query  string  true   "service name"
+// @Param        version  query  string  true   "service version"
+// @Param        group    query  string  true   "service group"
 // @Success      200  {bool}    true
-// @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/argument [delete]
 func DeleteArgument(c *gin.Context) {
-	doArgumentUpdate(c, func(a *model.Argument) error {
-		return argumentSvc.Delete(a)
-	})
+	a := &model.Argument{
+		Service: c.Query("service"),
+		Group:   c.Query("group"),
+		Version: c.Query("version"),
+	}
+
+	err := argumentSvc.Delete(a)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
+	}
+
+	c.JSON(http.StatusOK, true)
 }
 
 // SearchArgument   get rule list
@@ -85,7 +95,9 @@ func DeleteArgument(c *gin.Context) {
 // @Tags         TrafficArgument
 // @Accept       json
 // @Produce      json
-// @Param        argument  body  model.Argument      true   "rule"
+// @Param        service  query  string  true   "service name"
+// @Param        version  query  string  true   "service version"
+// @Param        group    query  string  true   "service group"
 // @Success      200  {object}  []model.Argument
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/argument [get]
