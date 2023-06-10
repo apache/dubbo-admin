@@ -1,0 +1,48 @@
+{{- if .Values.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "zookeeper.name" . }}
+  namespace: {{ template "zookeeper.namespace" . }}
+  labels: {{- include "zookeeper.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  {{- if and .Values.service.clusterIP (eq .Values.service.type "ClusterIP") }}
+  clusterIP: {{ .Values.service.clusterIP }}
+  {{- end }}
+  {{- if or (eq .Values.service.type "LoadBalancer") (eq .Values.service.type "NodePort") }}
+  externalTrafficPolicy: {{ .Values.service.externalTrafficPolicy | quote }}
+  {{- end }}
+  {{- if and (eq .Values.service.type "LoadBalancer") (not (empty .Values.service.loadBalancerSourceRanges)) }}
+  loadBalancerSourceRanges: {{ .Values.service.loadBalancerSourceRanges }}
+  {{- end }}
+  {{- if and (eq .Values.service.type "LoadBalancer") (not (empty .Values.service.loadBalancerIP)) }}
+  loadBalancerIP: {{ .Values.service.loadBalancerIP }}
+  {{- end }}
+  {{- if .Values.service.sessionAffinity }}
+  sessionAffinity: {{ .Values.service.sessionAffinity }}
+  {{- end }}
+  {{- if .Values.service.sessionAffinityConfig }}
+  sessionAffinityConfig: {{- include "zookeeper.tplvalues" (dict "value" .Values.service.sessionAffinityConfig "context" $) | nindent 4 }}
+  {{- end }}
+  ports:
+    {{- if not .Values.service.disableBaseClientPort }}
+    - name: tcp-client
+      port: {{ .Values.service.ports.client }}
+      targetPort: client
+      {{- if and (or (eq .Values.service.type "NodePort") (eq .Values.service.type "LoadBalancer")) (not (empty .Values.service.nodePorts.client)) }}
+      nodePort: {{ .Values.service.nodePorts.client }}
+      {{- else if eq .Values.service.type "ClusterIP" }}
+      {{- end }}
+    {{- end }}
+    - name: tcp-follower
+      port: {{ .Values.service.ports.follower }}
+      targetPort: follower
+    - name: tcp-election
+      port: {{ .Values.service.ports.election }}
+      targetPort: election
+    {{- if .Values.service.extraPorts }}
+    {{- include "zookeeper.tplvalues" (dict "value" .Values.service.extraPorts "context" $) | nindent 4 }}
+    {{- end }}
+  selector: {{- include "zookeeper.matchLabels" . | nindent 4 }}
+  {{- end }}
