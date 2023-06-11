@@ -68,7 +68,7 @@ GOFUMPT  ?= $(LOCALBIN)/gofumpt
 KUSTOMIZE_VERSION ?= v3.8.7
 CONTROLLER_TOOLS_VERSION ?= v0.10.0
 SWAGGER_VERSION ?= v1.16.1
-GOLANG_LINT_VERSION ?= v1.48.0
+GOLANG_LINT_VERSION ?= v1.52.2
 GOFUMPT_VERSION ?= latest
 ## docker buildx support platform
 PLATFORMS ?= linux/arm64,linux/amd64
@@ -100,8 +100,8 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	#$(CONTROLLER_GEN) object:headerFile="./hack/boilerplate.go.txt"  crd:allowDangerousTypes=true paths="./..."
 
-.PHONY: dubbo-admin-swagger
-dubbo-admin-swagger: swagger-install ## Generate dubbo-admin swagger docs.
+.PHONY: swagger
+swagger: swagger-install ## Generate dubbo-admin swagger docs.
 	$(SWAGGER) init --parseDependency -d cmd/admin,pkg/admin -o hack/swagger
 	@rm -f hack/swagger/docs.go hack/swagger/swagger.yaml
 
@@ -166,6 +166,7 @@ build-dubboctl: ## Build binary with the dubbo dubboctl.
 build-ui: ## Build  the distribution of the admin ui pages.
 	docker build --build-arg LDFLAGS=$(LDFLAGS) --build-arg PKGNAME=dubbo-admin-ui -t ${DUBBO_ADMIN_UI_IMG} ./dubbo-admin-ui -o type=local,dest=./bin/build/dubbo-admin-ui
 	rm -f -R ./cmd/ui/dist/*
+	rm -f ./bin/build/dubbo-admin-ui/usr/share/nginx/html/50x.html
 	cp -R ./bin/build/dubbo-admin-ui/usr/share/nginx/html/* ./cmd/ui/dist/
 	rm -f -R ./bin/build/dubbo-admin-ui
 
@@ -260,8 +261,7 @@ endif
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
-kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
-$(KUSTOMIZE): $(LOCALBIN)
+kustomize: $(LOCALBIN) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
 	@if test -x $(LOCALBIN)/kustomize && ! $(LOCALBIN)/kustomize version | grep -q $(KUSTOMIZE_VERSION); then \
 		echo "$(LOCALBIN)/kustomize version is not expected $(KUSTOMIZE_VERSION). Removing it before installing."; \
 		rm -rf $(LOCALBIN)/kustomize; \
@@ -269,28 +269,24 @@ $(KUSTOMIZE): $(LOCALBIN)
 	test -s $(LOCALBIN)/kustomize || { curl -Ss $(KUSTOMIZE_INSTALL_SCRIPT) | bash -s -- $(subst v,,$(KUSTOMIZE_VERSION)) $(LOCALBIN); }
 
 .PHONY: controller-gen
-controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary. If wrong version is installed, it will be overwritten.
-$(CONTROLLER_GEN): $(LOCALBIN)
+controller-gen: $(LOCALBIN) ## Download controller-gen locally if necessary. If wrong version is installed, it will be overwritten.
 	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
 
 .PHONY: swagger-install
-swagger-install: $(SWAGGER) ## Download swagger locally if necessary.
-$(SWAGGER): $(LOCALBIN)
+swagger-install: $(LOCALBIN) ## Download swagger locally if necessary.
 	test -s $(LOCALBIN)/swag  || \
 	GOBIN=$(LOCALBIN) go install  github.com/swaggo/swag/cmd/swag@$(SWAGGER_VERSION)
 
 
 GOLANG_LINT_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh"
 .PHONY: golangci-lint-install
-golangci-lint-install: $(GOLANG_LINT) ## Download golangci lint locally if necessary.
-$(GOLANG_LINT): $(LOCALBIN)
-	test -s $(LOCALBIN)/golangci-lint || \
+golangci-lint-install: $(LOCALBIN) ## Download golangci lint locally if necessary.
+	test -s $(LOCALBIN)/golangci-lint  && $(LOCALBIN)/golangci-lint --version | grep -q $(GOLANG_LINT_VERSION) || \
 	GOBIN=$(LOCALBIN) go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANG_LINT_VERSION)
 
 
 .PHONY: gofumpt-install
-gofumpt-install: $(GOFUMPT) ## Download gofumpt locally if necessary.
-$(GOFUMPT): $(LOCALBIN)
+gofumpt-install: $(LOCALBIN) ## Download gofumpt locally if necessary.
 	test -s $(LOCALBIN)/gofumpt || \
 	GOBIN=$(LOCALBIN) go install mvdan.cc/gofumpt@$(GOFUMPT_VERSION)

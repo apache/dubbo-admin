@@ -41,9 +41,9 @@ import (
 )
 
 var (
-	providerService   services.ProviderService = &services.ProviderServiceImpl{}
-	consumerService   services.ConsumerService = &services.ConsumerServiceImpl{}
-	prometheusService services.MonitorService  = &services.PrometheusServiceImpl{}
+	providerService services.ProviderService = &services.ProviderServiceImpl{}
+	consumerService services.ConsumerService = &services.ConsumerServiceImpl{}
+	monitorService  services.MonitorService  = &services.PrometheusServiceImpl{}
 )
 
 // AllServices get all services
@@ -231,12 +231,46 @@ func ServiceDetail(c *gin.Context) {
 	c.JSON(http.StatusOK, serviceDetail)
 }
 
+// Version show basic information of the Admin process
+// @Summary      show basic information of the Admin process
+// @Description  show basic information of the Admin process
+// @Tags         metrics
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  version.Version
+// @Router       /api/{env}/version [get]
 func Version(c *gin.Context) {
 	c.JSON(http.StatusOK, version.GetVersion())
 }
 
+// FlowMetrics show Prometheus collected metrics
+// @Summary      show Prometheus collected metrics
+// @Description  show Prometheus collected metrics
+// @Tags         metrics
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  model.FlowMetricsRes
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/metrics/flow [get]
 func FlowMetrics(c *gin.Context) {
-	res, err := prometheusService.FlowMetrics()
+	res, err := monitorService.FlowMetrics()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
+	}
+	c.JSON(http.StatusOK, res)
+}
+
+// ClusterMetrics show cluster overview
+// @Summary      show cluster overview
+// @Description  show cluster overview
+// @Tags         metrics
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  model.ClusterMetricsRes
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/metrics/cluster [get]
+func ClusterMetrics(c *gin.Context) {
+	res, err := monitorService.ClusterMetrics()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
@@ -245,12 +279,40 @@ func FlowMetrics(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
-func ClusterMetrics(c *gin.Context) {
-	res, err := prometheusService.ClusterMetrics()
+// Metadata show metadata of the cluster, like dubbo versions, protocols, etc.
+// @Summary      show metadata of the cluster, like dubbo versions, protocols, etc.
+// @Description  show metadata of the cluster, like dubbo versions, protocols, etc.
+// @Tags         metrics
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  model.Metadata
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/metrics/metadata [get]
+func Metadata(c *gin.Context) {
+	res, err := monitorService.ClusterMetrics()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 	}
 	c.JSON(http.StatusOK, res)
+}
+
+// PromDiscovery expose the interface of Prometheus http_sd service discovery.
+// @Summary      expose the interface of Prometheus http_sd service discovery.
+// @Description  expose the interface of Prometheus http_sd service discovery.
+// @Tags         metrics
+// @Accept       json
+// @Produce      json
+// @Success      200  {object}  []model.Target
+// @Failure      500  {object}  model.HTTPError
+// @Router       /api/{env}/metrics/prometheus [get]
+func PromDiscovery(c *gin.Context) {
+	targets, err := monitorService.PromDiscovery(c.Writer)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+	}
+	c.JSON(http.StatusOK, targets)
 }

@@ -68,15 +68,26 @@ func UpdateMock(c *gin.Context) {
 // @Tags         TrafficMock
 // @Accept       json
 // @Produce      json
-// @Param        mock  body  model.Mock      true   "rule"
+// @Param        service  query  string  true   "service name"
+// @Param        version  query  string  true   "service version"
+// @Param        group    query  string  true   "service group"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/mock [delete]
 func DeleteMock(c *gin.Context) {
-	doMockUpdate(c, func(m *model.Mock) error {
-		return mockSvc.Delete(m)
-	})
+	m := &model.Mock{
+		Service: c.Query("service"),
+		Group:   c.Query("group"),
+		Version: c.Query("version"),
+	}
+
+	err := mockSvc.Delete(m)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
+	}
+
+	c.JSON(http.StatusOK, true)
 }
 
 // SearchMock   get rule list
@@ -85,7 +96,9 @@ func DeleteMock(c *gin.Context) {
 // @Tags         TrafficMock
 // @Accept       json
 // @Produce      json
-// @Param        mock  body  model.Mock      true   "rule"
+// @Param        service  query  string  true   "service name"
+// @Param        version  query  string  true   "service version"
+// @Param        group    query  string  true   "service group"
 // @Success      200  {object}  []model.Mock
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/traffic/mock [get]

@@ -54,7 +54,7 @@ func (tm *RetryService) Search(r *model.Retry) ([]*model.Retry, error) {
 		con = util.ColonSeparatedKey(r.Service, r.Group, r.Version)
 	}
 
-	list, err := getRules(con)
+	list, err := services.GetRules(con)
 	if err != nil {
 		return result, err
 	}
