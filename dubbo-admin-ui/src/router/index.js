@@ -35,6 +35,7 @@ import ServiceRelation from '@/components/metrics/ServiceRelation'
 import Management from '@/components/Management'
 import Accesslog from '@/components/traffic/Accesslog'
 import Arguments from '@/components/traffic/Arguments'
+import Gray from '@/components/traffic/Gray'
 import Host from '@/components/traffic/Host'
 import Isolation from '@/components/traffic/Isolation'
 import Mock from '@/components/traffic/Mock'
@@ -251,6 +252,14 @@ export default new Router({
           path: '/traffic/timeout',
           name: 'timeout',
           component: Timeout,
+          meta: {
+            requireLogin: true
+          }
+        },
+        {
+          path: '/traffic/gray',
+          name: 'gray',
+          component: Gray,
           meta: {
             requireLogin: true
           }

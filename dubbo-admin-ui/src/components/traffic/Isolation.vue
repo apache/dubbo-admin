@@ -15,70 +15,167 @@
   ~ limitations under the License.
 -->
 <template>
-    <v-container grid-list-xl fluid>
-        <v-layout row wrap>
-            <v-flex lg12>
-        <Breadcrumb title="trafficIsolation" :items="breads"></breadcrumb>
-      </v-flex>
-      <v-flex lg12>
-          <v-card flat color="transparent">
-            <v-card-text>
-              <v-form>
-                <v-layout row wrap>
+  <v-container grid-list-xl fluid>
+      <v-layout row wrap>
+          <v-flex lg12>
+      <Breadcrumb title="trafficAccesslog" :items="breads"></breadcrumb>
+    </v-flex>
+    <v-flex lg12>
+        <v-card flat color="transparent">
+          <v-card-text>
+            <v-form>
+              <v-layout row wrap>
+                <v-combobox
+                  :loading="searchLoading"
+                  :items="typeAhead"
+                  :search-input.sync="application"
+                  flat
+                  append-icon=""
+                  hide-no-data
+                  label="请输入application"
+                  hint="请输入application"
+                ></v-combobox>
                   <v-combobox
-                    id="serviceTestSearch"
-                    :loading="searchLoading"
-                    :items="typeAhead"
-                    :search-input.sync="input"
-                    v-model="filter"
-                    flat
-                    append-icon=""
-                    hide-no-data
-                    :hint="$t('testModule.searchServiceHint')"
-                    :label="$t('placeholders.searchService')"
-                    @keyup.enter="submit"
-                  ></v-combobox>
-                  <v-btn @click="submit" color="primary" large>{{ $t('search') }}</v-btn>
-                  <v-btn @click="submit" color="primary" large>新建</v-btn>
-                </v-layout>
-              </v-form>
-            </v-card-text>
-          </v-card>
-        </v-flex>
-      <v-flex xs12>
-        <v-card>
-          <v-toolbar flat color="transparent" class="elevation-0">
-            <v-toolbar-title><span class="headline">{{$t('trafficAccesslog')}}</span></v-toolbar-title>
-            <v-spacer></v-spacer>
-          </v-toolbar>
-          <v-card-text class="pa-0">
-            <v-data-table :headers="headers" :items="methods" hide-actions class="elevation-1">
-              <template slot="items" slot-scope="props">
-                <td>{{ props.item.name }}</td>
-                <td>
-                  <v-chip xs v-for="(type, index) in props.item.parameterTypes" :key="index" label>{{ type }}</v-chip>
-                </td>
-                <td>
-                  <v-chip label>{{ props.item.returnType }}</v-chip>
-                </td>
-                <td class="text-xs-right">
-                  <v-tooltip bottom>
-                    <v-btn
-                      fab dark small color="blue" slot="activator"
-                      :href="getHref(props.item.application, props.item.service, props.item.signature)"
-                    >
-                      <v-icon>edit</v-icon>
-                    </v-btn>
-                    <span>{{$t('test')}}</span>
-                  </v-tooltip>
-                </td>
-              </template>
-            </v-data-table>
+                  style="margin-left: 20px;"
+                  :loading="searchLoading"
+                  :items="typeAhead"
+                  :search-input.sync="accesslog"
+                  flat
+                  append-icon=""
+                  hide-no-data
+                  label="请输入accesslog"
+                  hint="请输入accesslog"
+                ></v-combobox>
+
+                <v-btn @click="submit" color="primary" large>搜索</v-btn>
+                <v-btn @click="create" color="primary" large>新建</v-btn>
+              </v-layout>
+            </v-form>
           </v-card-text>
         </v-card>
       </v-flex>
+    <v-flex xs12>
+      <v-card>
+        <v-toolbar flat color="transparent" class="elevation-0">
+          <v-toolbar-title><span class="headline">{{$t('trafficAccesslog')}}</span></v-toolbar-title>
+          <v-spacer></v-spacer>
+        </v-toolbar>
+          <v-data-table :headers="headers" :items="tableData" hide-actions class="elevation-1">
+            <template slot="items" slot-scope="props">
+              <td >{{props.item.application}}</td>
+              <td>{{props.item.accesslog}}</td>
+              <td class="text-xs-center px-0" nowrap>
+                <v-btn
+                  class="tiny"
+                  color='success'
+                  @click="update(props.item)"
+                >
+                 修改
+                </v-btn>
+                <v-btn
+                  class="tiny"
+                  outline
+                  @click="deleteItem(props.item)"
+                >
+                  删除
+                </v-btn>
+                <v-btn
+                  class="tiny"
+                  outline
+                >
+                  启用
+                </v-btn>
+              </td>
+                </template>
+          </v-data-table>
+      </v-card>
+    </v-flex>
+    <v-dialog v-model="dialog" width="800px" persistent >
+    <v-card>
+      <v-card-title class="justify-center">
+        <span class="headline">{{$t('createNewRoutingRule')}}</span>
+      </v-card-title>
+      <v-card-text >
+        <v-layout wrap>
+          <v-flex>
+            <v-text-field
+              label="Application Name"
+              hint="请输入Application Name"
+              v-model="createApplication"
+            ></v-text-field>
+          </v-flex>
         </v-layout>
-    </v-container>
+        <v-text-field
+          label="Accesslog"
+          hint="请输入Accesslog"
+          v-model="createAccesslog"
+        ></v-text-field>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn flat @click.native="closeDialog">{{$t('close')}}</v-btn>
+        <v-btn depressed color="primary" @click.native="save">{{$t('save')}}</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+  <v-dialog v-model="updateDialog" width="800px" persistent >
+    <v-card>
+      <v-card-title class="justify-center">
+        <span class="headline">{{$t('createNewRoutingRule')}}</span>
+      </v-card-title>
+      <v-card-text >
+        <v-layout wrap>
+          <v-flex>
+            <v-text-field
+              label="Application Name"
+              hint="请输入Application Name"
+              v-model="updateApplication"
+            ></v-text-field>
+          </v-flex>
+        </v-layout>
+        <v-text-field
+          label="Accesslog"
+          hint="请输入Accesslog"
+          v-model="updateAccesslog"
+        ></v-text-field>
+      </v-card-text>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn flat @click.native="closeUpdateDialog">{{$t('close')}}</v-btn>
+        <v-btn depressed color="primary" @click.native="saveUpdate">{{$t('save')}}</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+  <v-dialog
+    v-model="deleteDialog"
+    persistent
+    max-width="290"
+  >
+    <v-card>
+      <v-card-title class="text-h5">
+        您确认删除这条数据嘛?
+      </v-card-title>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn
+          color="green darken-1"
+          text
+          @click="deleteDialog = false"
+        >
+          取消
+        </v-btn>
+        <v-btn
+          color="green darken-1"
+          text
+          @click="confirmDelete"
+        >
+        确定
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
+    </v-layout>
+  </v-container>
 </template>
 <script>
 import Breadcrumb from '../public/Breadcrumb.vue'
@@ -92,10 +189,133 @@ export default {
         href: ''
       },
       {
-        text: 'trafficIsolation',
+        text: 'trafficAccesslog',
         href: ''
       }
-    ]
-  })
+    ],
+    typeAhead: [],
+    input: null,
+    searchLoading: false,
+    timerID: null,
+    application: '',
+    accesslog: '',
+    deleteDialog: false,
+    createApplication: '',
+    createAccesslog: '',
+    deleteApplication: '',
+    deleteAccesslog: '',
+    dialog: false,
+    headers: [
+    ],
+    service: null,
+    tableData: [],
+    services: [],
+    loading: false,
+    updateDialog: false,
+    updateApplication: '',
+    updateAccesslog: ''
+  }),
+  methods: {
+    submit () {
+      if (this.accesslog && this.application) {
+        this.search()
+      } else {
+        this.$notify.error('service is needed')
+        return false
+      }
+    },
+    search () {
+      this.$axios.get('/traffic/accesslog', {
+        params: {
+          application: this.application,
+          accesslog: this.accesslog
+        }
+      }).then(response => {
+        console.log(response)
+        this.tableData = []
+        response.data.forEach(element => {
+          this.tableData.push(element)
+        })
+        console.log(this.tableData)
+      })
+    },
+    saveUpdate () {
+      console.log(this.updateAccesslog)
+      this.updateDialog = false
+      this.$axios.put('/traffic/accesslog', {
+        application: this.updateApplication,
+        accesslog: this.updateAccesslog
+      }).then((res) => {
+        if (res) {
+          alert('操作成功')
+        }
+      })
+    },
+    setHeaders: function () {
+      this.headers = [
+        {
+          text: '服务',
+          value: 'application'
+        },
+        {
+          text: 'accesslog',
+          value: 'accesslog'
+        }
+      ]
+    },
+    closeUpdateDialog () {
+      this.updateDialog = false
+    },
+    create () {
+      this.dialog = true
+    },
+    confirmDelete () {
+      console.log(this.deleteAccesslog)
+      this.$axios.delete('/traffic/accesslog', {
+        application: this.deleteApplication,
+        accesslog: this.deleteAccesslog
+      }).then((res) => {
+        if (res) {
+          alert('操作成功')
+        }
+      })
+      this.deleteAccesslog = false
+    },
+    deleteItem (props) {
+      this.deleteDialog = true
+      this.deleteAccesslog = props.accesslog
+      this.deleteApplication = props.application
+    },
+    update (props) {
+      console.log(props)
+      this.updateApplication = props.application
+      this.updateAccesslog = props.accesslog
+      this.updateDialog = true
+      console.log(this.updateApplication)
+      console.log(this.updateAccesslog)
+    },
+    save () {
+      this.$axios.post('/traffic/accesslog', {
+        application: this.createApplication,
+        accesslog: this.createAccesslog
+      }).then((res) => {
+        if (res) {
+          alert('操作成功')
+        }
+      })
+    },
+    closeDialog () {
+      this.dialog = false
+    }
+  },
+  watch: {
+    area () {
+      this.setHeaders()
+    }
+  },
+  mounted () {
+    this.setHeaders()
+  }
 }
+
 </script>

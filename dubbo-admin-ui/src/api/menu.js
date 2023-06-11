@@ -31,6 +31,7 @@ const Menu = [
       { title: 'trafficArguments', path: '/traffic/arguments' },
       { title: 'trafficMock', path: '/traffic/mock' },
       { title: 'trafficAccesslog', path: '/traffic/accesslog' },
+      { title: 'trafficGray', path: '/traffic/gray' },
       { title: 'trafficHost', path: '/traffic/host' },
       { title: 'routingRule', path: '/governance/routingRule' },
       { title: 'tagRule', path: '/governance/tagRule' },

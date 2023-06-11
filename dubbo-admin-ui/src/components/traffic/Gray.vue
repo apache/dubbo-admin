@@ -18,38 +18,45 @@
     <v-container grid-list-xl fluid>
         <v-layout row wrap>
             <v-flex lg12>
-        <Breadcrumb title="trafficAccesslog" :items="breads"></breadcrumb>
+        <Breadcrumb title="trafficGray" :items="breads"></breadcrumb>
       </v-flex>
       <v-flex lg12>
           <v-card flat color="transparent">
             <v-card-text>
               <v-form>
                 <v-layout row wrap>
-                  <v-combobox
-                    :loading="searchLoading"
-                    :items="typeAhead"
-                    :search-input.sync="application"
-                    flat
-                    append-icon=""
-                    hide-no-data
-                    label="请输入application"
-                    hint="请输入application"
-                  ></v-combobox>
-                    <v-combobox
-                    style="margin-left: 20px;"
-                    :loading="searchLoading"
-                    :items="typeAhead"
-                    :search-input.sync="accesslog"
-                    flat
-                    append-icon=""
-                    hide-no-data
-                    label="请输入accesslog"
-                    hint="请输入accesslog"
-                  ></v-combobox>
-
-                  <v-btn @click="submit" color="primary" large>搜索</v-btn>
+                  <v-flex xs6 sm3 md3>
+                    <v-text-field
+                      v-model="service"
+                      flat
+                      label="请输入应用名"
+                    ></v-text-field>
+                  </v-flex>
+                  <v-flex  xs6 sm3 md3>
+                    <v-text-field
+                      v-model="mock"
+                      flat
+                      label="请输入应用规则"
+                    ></v-text-field>
+                  </v-flex>
+                  <v-flex xs6 sm3 md2 >
+                    <v-text-field
+                      label="Version"
+                      :hint="$t('dataIdVersionHint')"
+                      v-model="group"
+                    ></v-text-field>
+                  </v-flex>
+                  <v-flex xs6 sm3 md2 >
+                    <v-text-field
+                      label="Group"
+                      :hint="$t('dataIdGroupHint')"
+                      v-model="version"
+                    ></v-text-field>
+                  </v-flex>
+                  <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
                   <v-btn @click="create" color="primary" large>新建</v-btn>
                 </v-layout>
+
               </v-form>
             </v-card-text>
           </v-card>
@@ -62,8 +69,10 @@
           </v-toolbar>
             <v-data-table :headers="headers" :items="tableData" hide-actions class="elevation-1">
               <template slot="items" slot-scope="props">
-                <td >{{props.item.application}}</td>
-                <td>{{props.item.accesslog}}</td>
+                <td >{{props.item.service}}</td>
+                <td>{{props.item.mock}}</td>
+                <td>{{props.item.group}}</td>
+                <td>{{props.item.version}}</td>
                 <td class="text-xs-center px-0" nowrap>
                   <v-btn
                     class="tiny"
@@ -93,16 +102,26 @@
           <v-layout wrap>
             <v-flex>
               <v-text-field
-                label="Application Name"
-                hint="请输入Application Name"
-                v-model="createApplication"
+                label="应用名"
+                hint="请输入应用名"
+                v-model="createService"
               ></v-text-field>
             </v-flex>
           </v-layout>
           <v-text-field
-            label="Accesslog"
-            hint="请输入Accesslog"
-            v-model="createAccesslog"
+            label="应用规则"
+            hint="请输入应用规则"
+            v-model="createMock"
+          ></v-text-field>
+          <v-text-field
+            label="Group"
+            hint="请输入Group"
+            v-model="createGroup"
+          ></v-text-field>
+          <v-text-field
+            label="Version"
+            hint="请输入Version"
+            v-model="createVersion"
           ></v-text-field>
         </v-card-text>
         <v-card-actions>
@@ -121,16 +140,26 @@
           <v-layout wrap>
             <v-flex>
               <v-text-field
-                label="Application Name"
-                hint="请输入Application Name"
-                v-model="updateApplication"
+                label="应用名"
+                hint="请输入应用名"
+                v-model="updateService"
               ></v-text-field>
             </v-flex>
           </v-layout>
           <v-text-field
-            label="Accesslog"
-            hint="请输入Accesslog"
-            v-model="updateAccesslog"
+            label="应用规则"
+            hint="请输入应用规则"
+            v-model="updateMock"
+          ></v-text-field>
+          <v-text-field
+            label="Group"
+            hint="请输入Group"
+            v-model="updateGroup"
+          ></v-text-field>
+          <v-text-field
+            label="Version"
+            hint="请输入Version"
+            v-model="updateVersion"
           ></v-text-field>
         </v-card-text>
         <v-card-actions>
@@ -170,11 +199,11 @@
     </v-dialog>
       </v-layout>
     </v-container>
-</template>
+  </template>
 <script>
 import Breadcrumb from '../public/Breadcrumb.vue'
 export default {
-  name: 'Accesslog',
+  name: 'Gray',
   components: { Breadcrumb },
   data: () => ({
     breads: [
@@ -183,7 +212,7 @@ export default {
         href: ''
       },
       {
-        text: 'trafficAccesslog',
+        text: 'trafficMock',
         href: ''
       }
     ],
@@ -191,27 +220,34 @@ export default {
     input: null,
     searchLoading: false,
     timerID: null,
-    application: '',
-    accesslog: '',
+    service: '',
+    mock: '',
+    group: '',
+    version: '',
+    createGroup: '',
+    createVersion: '',
+    updateService: '',
+    updateMock: '',
+    updateGroup: '',
+    updateVersion: '',
     deleteDialog: false,
-    createApplication: '',
-    createAccesslog: '',
-    deleteApplication: '',
-    deleteAccesslog: '',
+    createService: '',
+    createMock: '',
+    deleteService: '',
+    deleteMock: '',
+    deleteVersion: '',
+    deleteGroup: '',
     dialog: false,
     headers: [
     ],
-    service: null,
     tableData: [],
     services: [],
     loading: false,
-    updateDialog: false,
-    updateApplication: '',
-    updateAccesslog: ''
+    updateDialog: false
   }),
   methods: {
     submit () {
-      if (this.accesslog && this.application) {
+      if (this.service && this.mock) {
         this.search()
       } else {
         this.$notify.error('service is needed')
@@ -219,13 +255,14 @@ export default {
       }
     },
     search () {
-      this.$axios.get('/traffic/accesslog', {
+      this.$axios.get('/traffic/mock', {
         params: {
-          application: this.application,
-          accesslog: this.accesslog
+          service: this.service,
+          mock: this.mock,
+          group: this.group,
+          version: this.version
         }
       }).then(response => {
-        console.log(response)
         this.tableData = []
         response.data.forEach(element => {
           this.tableData.push(element)
@@ -234,11 +271,12 @@ export default {
       })
     },
     saveUpdate () {
-      console.log(this.updateAccesslog)
       this.updateDialog = false
-      this.$axios.put('/traffic/accesslog', {
-        application: this.updateApplication,
-        accesslog: this.updateAccesslog
+      this.$axios.put('/traffic/mock', {
+        service: this.updateService,
+        mock: this.updateMock,
+        group: this.updateGroup,
+        version: this.updateVersion
       }).then((res) => {
         if (res) {
           alert('操作成功')
@@ -248,12 +286,20 @@ export default {
     setHeaders: function () {
       this.headers = [
         {
-          text: '服务',
-          value: 'application'
+          text: '应用',
+          value: 'service'
         },
         {
-          text: 'accesslog',
-          value: 'accesslog'
+          text: 'Mock',
+          value: 'mock'
+        },
+        {
+          text: 'Group',
+          value: 'group'
+        },
+        {
+          text: 'Version',
+          value: 'version'
         }
       ]
     },
@@ -265,9 +311,11 @@ export default {
     },
     confirmDelete () {
       console.log(this.deleteAccesslog)
-      this.$axios.delete('/traffic/accesslog', {
-        application: this.deleteApplication,
-        accesslog: this.deleteAccesslog
+      this.$axios.delete('/traffic/mock', {
+        service: this.deleteService,
+        mock: this.deleteMock,
+        group: this.deleteGroup,
+        version: this.deleteVersion
       }).then((res) => {
         if (res) {
           alert('操作成功')
@@ -277,26 +325,30 @@ export default {
     },
     deleteItem (props) {
       this.deleteDialog = true
-      this.deleteAccesslog = props.accesslog
-      this.deleteApplication = props.application
+      this.deleteService = props.service
+      this.deleteMock = props.mock
+      this.deleteGroup = props.group
+      this.deleteVersion = props.version
     },
     update (props) {
-      console.log(props)
-      this.updateApplication = props.application
-      this.updateAccesslog = props.accesslog
+      this.updateService = props.service
+      this.updateMock = props.mock
+      this.updateGroup = props.group
+      this.updateVersion = props.version
       this.updateDialog = true
-      console.log(this.updateApplication)
-      console.log(this.updateAccesslog)
     },
     save () {
-      this.$axios.post('/traffic/accesslog', {
-        application: this.createApplication,
-        accesslog: this.createAccesslog
+      this.$axios.post('/traffic/mock', {
+        service: this.createService,
+        mock: this.createMock,
+        group: this.createGroup,
+        version: this.createVersion
       }).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
+      this.dialog = false
     },
     closeDialog () {
       this.dialog = false
