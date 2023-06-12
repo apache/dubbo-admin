@@ -24,15 +24,17 @@ import org.apache.dubbo.admin.registry.mapping.AdminMappingListener;
 import org.apache.dubbo.admin.registry.mapping.ServiceMapping;
 import org.apache.dubbo.admin.registry.mapping.impl.NoOpServiceMapping;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
-import org.apache.dubbo.admin.registry.metadata.impl.NoOpMetadataCollector;
 import org.apache.dubbo.admin.service.impl.InstanceRegistryCache;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.beans.factory.ScopeBeanFactory;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.metadata.MappingListener;
+import org.apache.dubbo.metadata.report.MetadataReport;
+import org.apache.dubbo.metadata.report.MetadataReportInstance;
 import org.apache.dubbo.registry.Registry;
 import org.apache.dubbo.registry.RegistryFactory;
 import org.apache.dubbo.registry.RegistryService;
@@ -45,8 +47,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
 
 import java.util.Arrays;
+import java.util.Optional;
 
-import static org.apache.dubbo.common.constants.CommonConstants.CLUSTER_KEY;
 import static org.apache.dubbo.common.constants.RegistryConstants.ENABLE_EMPTY_PROTECTION_KEY;
 import static org.apache.dubbo.registry.client.ServiceDiscoveryFactory.getExtension;
 
@@ -166,22 +168,19 @@ public class ConfigCenter {
     @Bean("metaDataCollector")
     @DependsOn("governanceConfiguration")
     MetaDataCollector getMetadataCollector() {
-        MetaDataCollector metaDataCollector = new NoOpMetadataCollector();
-        if (metadataUrl == null) {
-            if (StringUtils.isNotEmpty(metadataAddress)) {
-                metadataUrl = formUrl(metadataAddress, metadataGroup, metadataGroupNameSpace, username, password);
-                metadataUrl = metadataUrl.addParameter(CLUSTER_KEY, cluster);
-            }
-            logger.info("Admin using metadata address: " + metadataUrl);
-        }
-        if (metadataUrl != null) {
-            metaDataCollector = ApplicationModel.defaultModel().getExtensionLoader(MetaDataCollector.class).getExtension(metadataUrl.getProtocol());
-            metaDataCollector.setUrl(metadataUrl);
-            metaDataCollector.init();
+        ApplicationModel applicationModel = ApplicationModel.defaultModel();
+        ScopeBeanFactory beanFactory = applicationModel.getBeanFactory();
+        MetadataReportInstance metadataReportInstance = beanFactory.registerBean(MetadataReportInstance.class);
+
+        Optional<MetadataReport> metadataReport = metadataReportInstance.getMetadataReports(true)
+                .values().stream().findAny();
+
+        if (metadataReport.isPresent()) {
+            return metadataReport.get()::getServiceDefinition;
         } else {
-            logger.warn("you are using dubbo.registry.address, which is not recommend, please refer to: https://github.com/apache/dubbo-admin/wiki/Dubbo-Admin-configuration");
+            //NoOpMetadataCollector
+            return key -> null;
         }
-        return metaDataCollector;
     }
 
 
