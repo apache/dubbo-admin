@@ -55,7 +55,7 @@ public class ConsumerServiceImpl extends AbstractService implements ConsumerServ
 
     @Override
     public String getConsumerMetadata(MetadataIdentifier consumerIdentifier) {
-        return metaDataCollector.getConsumerMetaData(consumerIdentifier);
+        return metaDataCollector.getMetaData(consumerIdentifier);
     }
 
     private Map<String, URL> findAllConsumerUrl() {
