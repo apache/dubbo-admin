@@ -303,6 +303,10 @@ export default {
         {
           text: 'Version',
           value: 'version'
+        },
+        {
+          text: '操作',
+          value: ''
         }
       ]
     },

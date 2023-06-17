@@ -254,6 +254,10 @@ export default {
         {
           text: 'accesslog',
           value: 'accesslog'
+        },
+        {
+          text: '操作',
+          value: ''
         }
       ]
     },

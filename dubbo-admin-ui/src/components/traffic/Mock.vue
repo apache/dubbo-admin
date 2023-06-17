@@ -36,7 +36,7 @@
                   <v-text-field
                     v-model="mock"
                     flat
-                    label="请输入应用规则"
+                    label="请输入应用Mock"
                   ></v-text-field>
                 </v-flex>
                 <v-flex xs6 sm3 md2 >
@@ -109,8 +109,8 @@
           </v-flex>
         </v-layout>
         <v-text-field
-          label="应用规则"
-          hint="请输入应用规则"
+          label="应用Mock"
+          hint="请输入Mock"
           v-model="createMock"
         ></v-text-field>
         <v-text-field
@@ -147,8 +147,8 @@
           </v-flex>
         </v-layout>
         <v-text-field
-          label="应用规则"
-          hint="请输入应用规则"
+          label="应用Mock"
+          hint="请输入Mock"
           v-model="updateMock"
         ></v-text-field>
         <v-text-field
@@ -300,6 +300,10 @@ export default {
         {
           text: 'Version',
           value: 'version'
+        },
+        {
+          text: '操作',
+          value: ''
         }
       ]
     },

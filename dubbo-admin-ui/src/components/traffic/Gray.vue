@@ -25,38 +25,16 @@
             <v-card-text>
               <v-form>
                 <v-layout row wrap>
-                  <v-flex xs6 sm3 md3>
+                  <v-flex xs6 sm3 md9>
                     <v-text-field
                       v-model="service"
                       flat
                       label="请输入应用名"
                     ></v-text-field>
                   </v-flex>
-                  <v-flex  xs6 sm3 md3>
-                    <v-text-field
-                      v-model="mock"
-                      flat
-                      label="请输入应用规则"
-                    ></v-text-field>
-                  </v-flex>
-                  <v-flex xs6 sm3 md2 >
-                    <v-text-field
-                      label="Version"
-                      :hint="$t('dataIdVersionHint')"
-                      v-model="group"
-                    ></v-text-field>
-                  </v-flex>
-                  <v-flex xs6 sm3 md2 >
-                    <v-text-field
-                      label="Group"
-                      :hint="$t('dataIdGroupHint')"
-                      v-model="version"
-                    ></v-text-field>
-                  </v-flex>
                   <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
                   <v-btn @click="create" color="primary" large>新建</v-btn>
                 </v-layout>
-
               </v-form>
             </v-card-text>
           </v-card>
@@ -74,6 +52,13 @@
                 <td>{{props.item.group}}</td>
                 <td>{{props.item.version}}</td>
                 <td class="text-xs-center px-0" nowrap>
+                  <v-btn
+                    class="tiny"
+                    color='success'
+                    @click="Check(props.item)"
+                  >
+                   查看
+                  </v-btn>
                   <v-btn
                     class="tiny"
                     color='success'
@@ -96,33 +81,54 @@
       <v-dialog v-model="dialog" width="800px" persistent >
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">{{$t('createNewRoutingRule')}}</span>
+          <span class="headline">新增GAY</span>
         </v-card-title>
-        <v-card-text >
-          <v-layout wrap>
+        <v-card-text v-for="(modal,index) in createGay.tags" :key="index">
             <v-flex>
               <v-text-field
-                label="应用名"
-                hint="请输入应用名"
-                v-model="createService"
+                label="名称"
+                hint="请输入名称"
+                v-model="modal.name"
               ></v-text-field>
             </v-flex>
-          </v-layout>
-          <v-text-field
-            label="应用规则"
-            hint="请输入应用规则"
-            v-model="createMock"
-          ></v-text-field>
-          <v-text-field
-            label="Group"
-            hint="请输入Group"
-            v-model="createGroup"
-          ></v-text-field>
-          <v-text-field
-            label="Version"
-            hint="请输入Version"
-            v-model="createVersion"
-          ></v-text-field>
+          <v-layout row wrap v-for="(item,idx) in modal.match" :key="idx">
+            <v-flex xs6 sm3 md3>
+              <v-text-field
+                label="key"
+                hint="请输入key"
+                v-model="item.key"
+              ></v-text-field>
+            </v-flex>
+            <v-flex xs6 sm3 md3>
+              <v-select
+                style="margin-left: 20px;"
+                :items="items"
+                label="Outlined style"
+                v-model="selectedOption[idx]"
+                @change="updateValue"
+                outlined
+              ></v-select>
+            </v-flex>
+            <v-flex xs6 sm3 md>
+              <v-text-field
+                style="margin-left: 20px;"
+                label="value"
+                hint="请输入匹配的值"
+                v-model="item.value[selectedOption[idx]]"
+              ></v-text-field>
+            </v-flex>
+            <v-flex xs6 sm3 md3>
+               <v-btn
+                style="margin-left: 20px;"
+                    class="tiny"
+                    color='success'
+                    outline
+                    @click="addItem(index)"
+                  >
+                    新增一条
+                </v-btn>
+            </v-flex>
+      </v-layout>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -134,33 +140,54 @@
     <v-dialog v-model="updateDialog" width="800px" persistent >
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">{{$t('createNewRoutingRule')}}</span>
+          <span class="headline">修改GAY</span>
         </v-card-title>
-        <v-card-text >
-          <v-layout wrap>
+        <v-card-text v-for="(modal,index) in gay.tags" :key="index">
             <v-flex>
               <v-text-field
-                label="应用名"
-                hint="请输入应用名"
-                v-model="updateService"
+                label="名称"
+                hint="请输入名称"
+                v-model="modal.name"
               ></v-text-field>
             </v-flex>
-          </v-layout>
-          <v-text-field
-            label="应用规则"
-            hint="请输入应用规则"
-            v-model="updateMock"
-          ></v-text-field>
-          <v-text-field
-            label="Group"
-            hint="请输入Group"
-            v-model="updateGroup"
-          ></v-text-field>
-          <v-text-field
-            label="Version"
-            hint="请输入Version"
-            v-model="updateVersion"
-          ></v-text-field>
+          <v-layout row wrap v-for="(item,idx) in modal.match" :key="idx">
+            <v-flex xs6 sm3 md3>
+              <v-text-field
+                label="key"
+                hint="请输入key"
+                v-model="item.key"
+              ></v-text-field>
+            </v-flex>
+            <v-flex xs6 sm3 md3>
+              <v-select
+                style="margin-left: 20px;"
+                :items="items"
+                label="Outlined style"
+                v-model="selectedOption[idx]"
+                @change="updateValue"
+                outlined
+              ></v-select>
+            </v-flex>
+            <v-flex xs6 sm3 md>
+              <v-text-field
+                style="margin-left: 20px;"
+                label="value"
+                hint="请输入匹配的值"
+                v-model="item.value[selectedOption[idx]]"
+              ></v-text-field>
+            </v-flex>
+            <v-flex xs6 sm3 md3>
+               <v-btn
+                style="margin-left: 20px;"
+                    class="tiny"
+                    color='success'
+                    outline
+                    @click="addItem(index)"
+                  >
+                    新增一条
+                </v-btn>
+            </v-flex>
+      </v-layout>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -212,7 +239,7 @@ export default {
         href: ''
       },
       {
-        text: 'trafficMock',
+        text: 'trafficGray',
         href: ''
       }
     ],
@@ -221,6 +248,7 @@ export default {
     searchLoading: false,
     timerID: null,
     service: '',
+    gay: '',
     mock: '',
     group: '',
     version: '',
@@ -238,29 +266,68 @@ export default {
     deleteVersion: '',
     deleteGroup: '',
     dialog: false,
+    selectedOption: [],
     headers: [
     ],
+    items: ['empty', 'exact', 'noempty', 'prefix', 'regex', 'wildcard'],
     tableData: [],
     services: [],
     loading: false,
-    updateDialog: false
+    updateDialog: false,
+    createGay:
+      {
+        application: '244',
+        tags: [
+          {
+            name: '233',
+            match: [
+              {
+                key: 'string',
+                value: {
+                  empty: '',
+                  exact: '',
+                  noempty: '',
+                  prefix: '',
+                  regex: '',
+                  wildcard: ''
+                }
+              }
+            ]
+          }
+        ]
+      }
   }),
   methods: {
+    updateValue () {
+      console.log(this.selectedOption)
+    },
     submit () {
-      if (this.service && this.mock) {
+      if (this.service) {
         this.search()
       } else {
         this.$notify.error('service is needed')
         return false
       }
     },
+    addItem (params) {
+      const temp = {
+        key: 'string',
+        value: {
+          empty: '',
+          exact: '',
+          noempty: '',
+          prefix: '',
+          regex: '',
+          wildcard: ''
+        }
+      }
+      const index = parseInt(params)
+      this.createGay.tags[index].match.push(temp)
+    },
     search () {
-      this.$axios.get('/traffic/mock', {
+      this.$axios.get('/traffic/gray', {
         params: {
-          service: this.service,
-          mock: this.mock,
-          group: this.group,
-          version: this.version
+          application: this.service
         }
       }).then(response => {
         this.tableData = []
@@ -272,33 +339,25 @@ export default {
     },
     saveUpdate () {
       this.updateDialog = false
-      this.$axios.put('/traffic/mock', {
-        service: this.updateService,
-        mock: this.updateMock,
-        group: this.updateGroup,
-        version: this.updateVersion
-      }).then((res) => {
+      this.$axios.put('/traffic/gray', this.gay).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
+      this.dialog = false
     },
     setHeaders: function () {
       this.headers = [
         {
-          text: '应用',
+          text: '应用名',
           value: 'service'
         },
         {
-          text: 'Mock',
+          text: '灰度环境',
           value: 'mock'
         },
         {
-          text: 'Group',
-          value: 'group'
-        },
-        {
-          text: 'Version',
+          text: '操作',
           value: 'version'
         }
       ]
@@ -338,12 +397,7 @@ export default {
       this.updateDialog = true
     },
     save () {
-      this.$axios.post('/traffic/mock', {
-        service: this.createService,
-        mock: this.createMock,
-        group: this.createGroup,
-        version: this.createVersion
-      }).then((res) => {
+      this.$axios.post('/traffic/gray', this.createGay).then((res) => {
         if (res) {
           alert('操作成功')
         }

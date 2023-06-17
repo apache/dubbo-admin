@@ -91,32 +91,57 @@
       </v-card>
     </v-flex>
     <v-dialog v-model="dialog" width="800px" persistent >
-    <v-card>
-      <v-card-title class="justify-center">
-        <span class="headline">{{$t('createNewRoutingRule')}}</span>
-      </v-card-title>
-      <v-card-text >
-        <v-layout wrap>
-          <v-flex>
-            <v-text-field
-              label="Application Name"
-              hint="请输入Application Name"
-              v-model="createApplication"
-            ></v-text-field>
-          </v-flex>
-        </v-layout>
-        <v-text-field
-          label="Accesslog"
-          hint="请输入Accesslog"
-          v-model="createAccesslog"
-        ></v-text-field>
-      </v-card-text>
-      <v-card-actions>
-        <v-spacer></v-spacer>
-        <v-btn flat @click.native="closeDialog">{{$t('close')}}</v-btn>
-        <v-btn depressed color="primary" @click.native="save">{{$t('save')}}</v-btn>
-      </v-card-actions>
-    </v-card>
+      <v-card>
+        <v-card-title class="justify-center">
+          <span class="headline">新增GAY</span>
+        </v-card-title>
+        <v-card-text>
+          <v-flex xs6 sm3 md3>
+              <v-select
+                hint="请选择key"
+                style="margin-left: 20px;"
+                :items="keys"
+                label="Outlined style"
+                outlined
+              ></v-select>
+            </v-flex>
+          <v-layout row wrap v-for="(item,idx) in createWeight.match.application.oneof" :key="idx">
+            <v-flex xs6 sm3 md3>
+              <v-select
+                style="margin-left: 20px;"
+                :items="items"
+                label="Outlined style"
+                v-model="selectedOption[idx]"
+                outlined
+              ></v-select>
+            </v-flex>
+            <v-flex xs6 sm3 md>
+              <v-text-field
+                style="margin-left: 20px;"
+                label="value"
+                hint="请输入匹配的值"
+                v-model="item[selectedOption[idx]]"
+              ></v-text-field>
+            </v-flex>
+            <v-flex xs6 sm3 md3>
+               <v-btn
+                style="margin-left: 20px;"
+                    class="tiny"
+                    color='success'
+                    outline
+                    @click="addItem(index)"
+                  >
+                    新增一条
+                </v-btn>
+            </v-flex>
+      </v-layout>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn flat @click.native="closeDialog">{{$t('close')}}</v-btn>
+          <v-btn depressed color="primary" @click.native="save">{{$t('save')}}</v-btn>
+        </v-card-actions>
+      </v-card>
   </v-dialog>
   <v-dialog v-model="updateDialog" width="800px" persistent >
     <v-card>
@@ -199,10 +224,56 @@ export default {
     timerID: null,
     application: '',
     accesslog: '',
+    items: ['empty', 'exact', 'noempty', 'prefix', 'regex', 'wildcard'],
+    keys: ['application', 'service', 'param'],
+    selectedKey: [],
     deleteDialog: false,
     createApplication: '',
+    selectedOption: [],
     createAccesslog: '',
     deleteApplication: '',
+    createWeight: {
+      match: {
+        application: {
+          oneof: [
+            {
+              empty: '',
+              exact: '',
+              noempty: '',
+              prefix: '',
+              regex: '',
+              wildcard: ''
+            }
+          ]
+        },
+        param: [
+          {
+            key: '',
+            value: {
+              empty: '',
+              exact: '',
+              noempty: '',
+              prefix: '',
+              regex: '',
+              wildcard: ''
+            }
+          }
+        ],
+        service: {
+          oneof: [
+            {
+              empty: '',
+              exact: '',
+              noempty: '',
+              prefix: '',
+              regex: '',
+              wildcard: ''
+            }
+          ]
+        }
+      },
+      weight: 0
+    },
     deleteAccesslog: '',
     dialog: false,
     headers: [
