@@ -200,13 +200,15 @@
 
 </template>
 <script>
+import AceEditor from '@/components/public/AceEditor'
 import yaml from 'js-yaml'
 import operations from '@/api/operation'
 import Breadcrumb from '@/components/public/Breadcrumb'
 
 export default {
   components: {
-    Breadcrumb
+    Breadcrumb,
+    AceEditor
   },
   data: () => ({
     items: [
@@ -587,6 +589,7 @@ export default {
   },
   created () {
     this.setHeight()
+    this.ruleText = this.template
   },
   computed: {
     queryBy () {

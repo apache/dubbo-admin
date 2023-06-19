@@ -123,10 +123,11 @@
 import yaml from 'js-yaml'
 import operations from '@/api/operation'
 import Breadcrumb from '@/components/public/Breadcrumb'
-
+import AceEditor from '@/components/public/AceEditor'
 export default {
   components: {
-    Breadcrumb
+    Breadcrumb,
+    AceEditor
   },
   data: () => ({
     dropdown_font: ['Service', 'App', 'IP'],

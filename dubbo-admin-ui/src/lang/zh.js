@@ -229,10 +229,11 @@ export default {
   trafficRegion: '同区域优先',
   trafficIsolation: '环境隔离',
   trafficWeight: '权重比例',
-  trafficArguments: '条件路由',
+  trafficArguments: '参数路由',
   trafficMock: '调用降级',
   trafficAccesslog: '访问日志',
   trafficHost: '固定机器导流',
+  trafficGray: '流量灰度',
 
   homePage: '集群概览',
   serviceManagement: '开发测试'
