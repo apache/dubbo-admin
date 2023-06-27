@@ -29,14 +29,7 @@
                   <v-text-field
                     v-model="service"
                     flat
-                    label="请输入应用名"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex  xs6 sm3 md3>
-                  <v-text-field
-                    v-model="mock"
-                    flat
-                    label="请输入应用Mock"
+                    label="请输入服务名"
                   ></v-text-field>
                 </v-flex>
                 <v-flex xs6 sm3 md2 >
@@ -64,7 +57,7 @@
     <v-flex xs12>
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
-          <v-toolbar-title><span class="headline">{{$t('trafficAccesslog')}}</span></v-toolbar-title>
+          <v-toolbar-title><span class="headline">{{$t('trafficMock')}}</span></v-toolbar-title>
           <v-spacer></v-spacer>
         </v-toolbar>
           <v-data-table :headers="headers" :items="tableData" hide-actions class="elevation-1">
@@ -96,33 +89,48 @@
     <v-dialog v-model="dialog" width="800px" persistent >
     <v-card>
       <v-card-title class="justify-center">
-        <span class="headline">{{$t('createNewRoutingRule')}}</span>
+        <span class="headline">{{$t('createMockCircuitRule')}}</span>
       </v-card-title>
       <v-card-text >
         <v-layout wrap>
-          <v-flex>
+          <v-flex xs6 sm3 md3>
             <v-text-field
-              label="应用名"
-              hint="请输入应用名"
+              label="服务名"
+              hint="请输入服务名"
               v-model="createService"
             ></v-text-field>
           </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="Group"
+              hint="{{$t('groupInputPrompt')}}"
+              v-model="createGroup"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="Version"
+              hint="{{$t('versionInputPrompt')}}"
+              v-model="createVersion"
+            ></v-text-field>
+          </v-flex>
         </v-layout>
-        <v-text-field
-          label="应用Mock"
-          hint="请输入Mock"
-          v-model="createMock"
-        ></v-text-field>
-        <v-text-field
-          label="Group"
-          hint="请输入Group"
-          v-model="createGroup"
-        ></v-text-field>
-        <v-text-field
-          label="Version"
-          hint="请输入Version"
-          v-model="createVersion"
-        ></v-text-field>
+        <v-layout wrap>
+          <v-flex xs6 sm3 md3>
+            <v-text-field
+              label="这里应该是个下拉框，有两个选项：当调用失败时返回、强制返回"
+              hint=""
+              v-model="updateMock"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md3>
+            <v-text-field
+              label="请输入具体返回值（如 json 结构体或字符串，具体取决于方法签名的返回值）"
+              hint="请点击链接查看如何配置 mock 值。"
+              v-model="updateMock"
+            ></v-text-field>
+          </v-flex>
+        </v-layout>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
@@ -134,33 +142,48 @@
   <v-dialog v-model="updateDialog" width="800px" persistent >
     <v-card>
       <v-card-title class="justify-center">
-        <span class="headline">{{$t('createNewRoutingRule')}}</span>
+        <span class="headline">{{$t('createMockCircuitRule')}}</span>
       </v-card-title>
       <v-card-text >
         <v-layout wrap>
-          <v-flex>
+          <v-flex xs6 sm3 md3>
             <v-text-field
-              label="应用名"
-              hint="请输入应用名"
+              label="服务名"
+              hint="请输入服务名"
               v-model="updateService"
             ></v-text-field>
           </v-flex>
+          <v-flex xs6 sm3 md2>
+           <v-text-field
+              label="Group"
+              hint="{{$t('groupInputPrompt')}}"
+              v-model="updateGroup"
+            ></v-text-field>
+           </v-flex>
+           <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="Version"
+              hint="{{$t('versionInputPrompt')}}"
+              v-model="updateVersion"
+            ></v-text-field>
+           </v-flex>
         </v-layout>
-        <v-text-field
-          label="应用Mock"
-          hint="请输入Mock"
-          v-model="updateMock"
-        ></v-text-field>
-        <v-text-field
-          label="Group"
-          hint="请输入Group"
-          v-model="updateGroup"
-        ></v-text-field>
-        <v-text-field
-          label="Version"
-          hint="请输入Version"
-          v-model="updateVersion"
-        ></v-text-field>
+        <v-layout wrap>
+          <v-flex xs6 sm3 md3>
+            <v-text-field
+              label="这里应该是个下拉框，有两个选项：当调用失败时返回、强制返回"
+              hint=""
+              v-model="updateMock"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md3>
+            <v-text-field
+              label="请输入具体返回值（如 json 结构体或字符串，具体取决于方法签名的返回值）"
+              hint="请点击链接查看如何配置 mock 值。"
+              v-model="updateMock"
+            ></v-text-field>
+          </v-flex>
+        </v-layout>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
@@ -314,7 +337,7 @@ export default {
       this.dialog = true
     },
     confirmDelete () {
-      console.log(this.deleteAccesslog)
+      console.log(this.deleteMock)
       this.$axios.delete('/traffic/mock', {
         service: this.deleteService,
         mock: this.deleteMock,

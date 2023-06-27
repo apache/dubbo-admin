@@ -29,15 +29,7 @@
                   <v-text-field
                     v-model="service"
                     flat
-                    label="请输入应用名"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex  xs6 sm3 md3>
-                  <v-text-field
-                    v-model="timeout"
-                    flat
-                    type="number"
-                    label="请输入Timeout"
+                    label="请输入服务名"
                   ></v-text-field>
                 </v-flex>
                 <v-flex xs6 sm3 md2 >
@@ -65,7 +57,7 @@
     <v-flex xs12>
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
-          <v-toolbar-title><span class="headline">{{$t('trafficAccesslog')}}</span></v-toolbar-title>
+          <v-toolbar-title><span class="headline">{{$t('trafficTimeout')}}</span></v-toolbar-title>
           <v-spacer></v-spacer>
         </v-toolbar>
           <v-data-table :headers="headers" :items="tableData" hide-actions class="elevation-1">
@@ -97,34 +89,40 @@
     <v-dialog v-model="dialog" width="800px" persistent >
     <v-card>
       <v-card-title class="justify-center">
-        <span class="headline">{{$t('createNewRoutingRule')}}</span>
+        <span class="headline">{{$t('createTimeoutRule')}}</span>
       </v-card-title>
       <v-card-text >
-        <v-layout wrap>
-          <v-flex>
+        <v-layout row wrap>
+          <v-flex xs6 sm3 md3>
             <v-text-field
-              label="应用名"
-              hint="请输入应用名"
+              label="服务名"
+              hint="请输入服务名"
               v-model="createService"
             ></v-text-field>
           </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+                label="服务分组"
+              hint="请输入服务group(可选)"
+              v-model="createGroup"
+            ></v-text-field>
+           </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="服务版本"
+              hint="请输入服务version(可选)"
+              v-model="createVersion"
+            ></v-text-field>
+           </v-flex>
         </v-layout>
-        <v-text-field
-          label="Timeout"
-          hint="请输入Timeout"
-          type="number"
-          v-model="createTimeout"
-        ></v-text-field>
-        <v-text-field
-          label="Group"
-          hint="请输入Group"
-          v-model="createGroup"
-        ></v-text-field>
-        <v-text-field
-          label="Version"
-          hint="请输入Version"
-          v-model="createVersion"
-        ></v-text-field>
+        <v-flex xs6 sm3 md3>
+          <v-text-field
+            label="超时时间"
+            hint="请输入一个整数值作为超时时间(单位ms)"
+            type="number"
+            v-model="createTimeout"
+          ></v-text-field>
+         </v-flex>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
@@ -136,33 +134,37 @@
   <v-dialog v-model="updateDialog" width="800px" persistent >
     <v-card>
       <v-card-title class="justify-center">
-        <span class="headline">{{$t('createNewRoutingRule')}}</span>
+        <span class="headline">{{$t('createTimeoutRule')}}</span>
       </v-card-title>
       <v-card-text >
         <v-layout wrap>
-          <v-flex>
+          <v-flex xs6 sm3 md3>
             <v-text-field
-              label="应用名"
-              hint="请输入应用名"
+              label="服务名"
+              hint="请输入服务名"
               v-model="updateService"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="服务分组"
+              hint="请输入服务group(可选)"
+              v-model="updateGroup"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="服务版本"
+              hint="请输入服务version(可选)"
+              v-model="updateVersion"
             ></v-text-field>
           </v-flex>
         </v-layout>
         <v-text-field
-          label="应用规则"
-          hint="请输入应用规则"
+          label="超时时间"
+          hint="请输入一个整数值作为超时时间(单位ms)"
           type="number"
           v-model="updateTimeout"
-        ></v-text-field>
-        <v-text-field
-          label="Group"
-          hint="请输入Group"
-          v-model="updateGroup"
-        ></v-text-field>
-        <v-text-field
-          label="Version"
-          hint="请输入Version"
-          v-model="updateVersion"
         ></v-text-field>
       </v-card-text>
       <v-card-actions>
@@ -317,7 +319,7 @@ export default {
       this.dialog = true
     },
     confirmDelete () {
-      console.log(this.deleteAccesslog)
+      console.log(this.deleteTimeout)
       this.$axios.delete('/traffic/timeout', {
         service: this.deleteService,
         timeout: parseInt(this.deleteTimeout),
@@ -328,7 +330,7 @@ export default {
           alert('操作成功')
         }
       })
-      this.deleteAccesslog = false
+      this.deleteTimeout = false
     },
     deleteItem (props) {
       this.deleteDialog = true
