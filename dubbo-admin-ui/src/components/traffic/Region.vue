@@ -29,14 +29,7 @@
                   <v-text-field
                     v-model="service"
                     flat
-                    label="请输入应用名"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex  xs6 sm3 md3>
-                  <v-text-field
-                    v-model="rule"
-                    flat
-                    label="请输入应用规则"
+                    label="请输入服务名"
                   ></v-text-field>
                 </v-flex>
                 <v-flex xs6 sm3 md2 >
@@ -64,7 +57,7 @@
     <v-flex xs12>
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
-          <v-toolbar-title><span class="headline">{{$t('trafficAccesslog')}}</span></v-toolbar-title>
+          <v-toolbar-title><span class="headline">{{$t('trafficRegion')}}</span></v-toolbar-title>
           <v-spacer></v-spacer>
         </v-toolbar>
           <v-data-table :headers="headers" :items="tableData" hide-actions class="elevation-1">
@@ -100,28 +93,37 @@
       </v-card-title>
       <v-card-text >
         <v-layout wrap>
-          <v-flex>
+          <v-flex xs6 sm3 md3>
             <v-text-field
-              label="应用名"
-              hint="请输入应用名"
+              label="服务名"
+              hint="请输入服务名"
               v-model="createService"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="Group"
+              hint="{{$t('groupInputPrompt')}}"
+              v-model="createGroup"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="Version"
+              hint="{{$t('versionInputPrompt')}}"
+              v-model="createVersion"
             ></v-text-field>
           </v-flex>
         </v-layout>
         <v-text-field
-          label="应用规则"
-          hint="请输入应用规则"
+          label="开启或关闭同区域优先（这里应该是一个开关，让用户选择打开或关闭同区域优先）"
+          hint=""
           v-model="createRule"
         ></v-text-field>
         <v-text-field
-          label="Group"
-          hint="请输入Group"
-          v-model="createGroup"
-        ></v-text-field>
-        <v-text-field
-          label="Version"
-          hint="请输入Version"
-          v-model="createVersion"
+          label="匹配以下条件的流量开启同区域优先（默认不显示，用户点击后才显示出来让用户输入）"
+          hint="请输入流量匹配规则（默认不设置，则对所有流量生效），配置后只有匹配规则的流量才会执行同区域优先调用，如 method=sayHello"
+          v-model="createRule"
         ></v-text-field>
       </v-card-text>
       <v-card-actions>
@@ -140,26 +142,31 @@
         <v-layout wrap>
           <v-flex>
             <v-text-field
-              label="应用名"
-              hint="请输入应用名"
+              label="服务名"
+              hint="请输入服务名"
               v-model="updateService"
             ></v-text-field>
           </v-flex>
         </v-layout>
         <v-text-field
-          label="应用规则"
-          hint="请输入应用规则"
-          v-model="updateRule"
-        ></v-text-field>
-        <v-text-field
           label="Group"
-          hint="请输入Group"
+          hint="{{$t('groupInputPrompt')}}"
           v-model="updateGroup"
         ></v-text-field>
         <v-text-field
           label="Version"
-          hint="请输入Version"
+          hint="{{$t('versionInputPrompt')}}"
           v-model="updateVersion"
+        ></v-text-field>
+        <v-text-field
+          label="开启或关闭同区域优先（这里应该是一个开关，让用户选择打开或关闭同区域优先）"
+          hint="这应该是一个 radio button，让用户选择是否开启同区域优先？"
+          v-model="updateRule1"
+        ></v-text-field>
+        <v-text-field
+          label="匹配以下条件的流量开启同区域优先（默认不显示，用户点击后才显示出来让用户输入）"
+          hint="请输入流量匹配规则（默认不设置，则对所有流量生效），配置后只有匹配规则的流量才会执行同区域优先调用，如 method=sayHello"
+          v-model="updateRule2"
         ></v-text-field>
       </v-card-text>
       <v-card-actions>
@@ -314,7 +321,7 @@ export default {
       this.dialog = true
     },
     confirmDelete () {
-      console.log(this.deleteAccesslog)
+      console.log(this.deleteRegion)
       this.$axios.delete('/traffic/region', {
         service: this.deleteService,
         rule: this.deleteRule,
@@ -325,7 +332,7 @@ export default {
           alert('操作成功')
         }
       })
-      this.deleteAccesslog = false
+      this.deleteRegion = false
     },
     deleteItem (props) {
       this.deleteDialog = true

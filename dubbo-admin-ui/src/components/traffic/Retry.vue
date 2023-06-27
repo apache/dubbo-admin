@@ -29,14 +29,7 @@
                   <v-text-field
                     v-model="service"
                     flat
-                    label="请输入应用名"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex  xs6 sm3 md3>
-                  <v-text-field
-                    v-model="retry"
-                    flat
-                    label="请输入Retry"
+                    label="请输入服务名"
                   ></v-text-field>
                 </v-flex>
                 <v-flex xs6 sm3 md2 >
@@ -64,7 +57,7 @@
     <v-flex xs12>
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
-          <v-toolbar-title><span class="headline">{{$t('trafficAccesslog')}}</span></v-toolbar-title>
+          <v-toolbar-title><span class="headline">{{$t('trafficRetry')}}</span></v-toolbar-title>
           <v-spacer></v-spacer>
         </v-toolbar>
           <v-data-table :headers="headers" :items="tableData" hide-actions class="elevation-1">
@@ -96,33 +89,40 @@
     <v-dialog v-model="dialog" width="800px" persistent >
     <v-card>
       <v-card-title class="justify-center">
-        <span class="headline">{{$t('createNewRoutingRule')}}</span>
+        <span class="headline">{{$t('createRetryRule')}}</span>
       </v-card-title>
       <v-card-text >
         <v-layout wrap>
-          <v-flex>
+          <v-flex xs6 sm3 md3>
             <v-text-field
-              label="应用名"
-              hint="请输入应用名"
+              label="服务名"
+              hint="请输入服务名"
               v-model="createService"
             ></v-text-field>
           </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="Group"
+              hint="请输入服务group(可选)"
+              v-model="createGroup"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="Version"
+              hint="请输入服务version(可选)"
+              v-model="createVersion"
+            ></v-text-field>
+         </v-flex>
         </v-layout>
-        <v-text-field
-          label="应用规则"
-          hint="请输入应用规则"
-          v-model="createRetry"
-        ></v-text-field>
-        <v-text-field
-          label="Group"
-          hint="请输入Group"
-          v-model="createGroup"
-        ></v-text-field>
-        <v-text-field
-          label="Version"
-          hint="请输入Version"
-          v-model="createVersion"
-        ></v-text-field>
+        <v-flex xs6 sm3 md3>
+          <v-text-field
+            label="重试次数"
+            hint="请输入一个整数值(如 3 代表在服务调用失败后重试 3 次)"
+            type="number"
+            v-model="createRetry"
+          ></v-text-field>
+        </v-flex>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
@@ -134,32 +134,36 @@
   <v-dialog v-model="updateDialog" width="800px" persistent >
     <v-card>
       <v-card-title class="justify-center">
-        <span class="headline">{{$t('createNewRoutingRule')}}</span>
+        <span class="headline">{{$t('createRetryRule')}}</span>
       </v-card-title>
       <v-card-text >
         <v-layout wrap>
-          <v-flex>
+          <v-flex xs6 sm3 md3>
             <v-text-field
-              label="应用名"
-              hint="请输入应用名"
+              label="服务名"
+              hint="请输入服务名"
               v-model="updateService"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="Group"
+              hint="请输入服务group(可选)"
+              v-model="updateGroup"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="Version"
+              hint="请输入服务version(可选)"
+              v-model="updateVersion"
             ></v-text-field>
           </v-flex>
         </v-layout>
         <v-text-field
-          label="应用规则"
-          hint="请输入应用规则"
+          label="重试次数"
+          hint="请输入一个整数值(如 3 代表在服务调用失败后重试 3 次)"
           v-model="updateRetry"
-        ></v-text-field>
-        <v-text-field
-          label="Group"
-          hint="请输入Group"
-          v-model="updateGroup"
-        ></v-text-field>
-        <v-text-field
-          label="Version"
-          hint="请输入Version"
-          v-model="updateVersion"
         ></v-text-field>
       </v-card-text>
       <v-card-actions>
@@ -314,7 +318,7 @@ export default {
       this.dialog = true
     },
     confirmDelete () {
-      console.log(this.deleteAccesslog)
+      console.log(this.deleteRetry)
       this.$axios.delete('/traffic/retry', {
         service: this.deleteService,
         retry: this.deleteRetry,
@@ -325,7 +329,7 @@ export default {
           alert('操作成功')
         }
       })
-      this.deleteAccesslog = false
+      this.deleteRetry = false
     },
     deleteItem (props) {
       this.deleteDialog = true

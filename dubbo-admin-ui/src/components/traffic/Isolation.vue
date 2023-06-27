@@ -18,7 +18,7 @@
   <v-container grid-list-xl fluid>
       <v-layout row wrap>
           <v-flex lg12>
-      <Breadcrumb title="trafficAccesslog" :items="breads"></breadcrumb>
+      <Breadcrumb title="trafficIsolation" :items="breads"></breadcrumb>
     </v-flex>
     <v-flex lg12>
         <v-card flat color="transparent">
@@ -57,7 +57,7 @@
     <v-flex xs12>
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
-          <v-toolbar-title><span class="headline">{{$t('trafficAccesslog')}}</span></v-toolbar-title>
+          <v-toolbar-title><span class="headline">{{$t('trafficIsolation')}}</span></v-toolbar-title>
           <v-spacer></v-spacer>
         </v-toolbar>
           <v-data-table :headers="headers" :items="tableData" hide-actions class="elevation-1">
@@ -180,7 +180,7 @@
 <script>
 import Breadcrumb from '../public/Breadcrumb.vue'
 export default {
-  name: 'Accesslog',
+  name: 'Isolation',
   components: { Breadcrumb },
   data: () => ({
     breads: [
@@ -189,7 +189,7 @@ export default {
         href: ''
       },
       {
-        text: 'trafficAccesslog',
+        text: 'trafficIsolation',
         href: ''
       }
     ],
