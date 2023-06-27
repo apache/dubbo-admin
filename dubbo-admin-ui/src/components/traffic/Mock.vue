@@ -103,14 +103,14 @@
           <v-flex xs6 sm3 md2>
             <v-text-field
               label="Group"
-              hint="{{$t('groupInputPrompt')}}"
+              hint="$t('groupInputPrompt')"
               v-model="createGroup"
             ></v-text-field>
           </v-flex>
           <v-flex xs6 sm3 md2>
             <v-text-field
               label="Version"
-              hint="{{$t('versionInputPrompt')}}"
+              hint="$t('versionInputPrompt')"
               v-model="createVersion"
             ></v-text-field>
           </v-flex>
@@ -156,14 +156,14 @@
           <v-flex xs6 sm3 md2>
            <v-text-field
               label="Group"
-              hint="{{$t('groupInputPrompt')}}"
+              hint="$t('groupInputPrompt')"
               v-model="updateGroup"
             ></v-text-field>
            </v-flex>
            <v-flex xs6 sm3 md2>
             <v-text-field
               label="Version"
-              hint="{{$t('versionInputPrompt')}}"
+              hint="$t('versionInputPrompt')"
               v-model="updateVersion"
             ></v-text-field>
            </v-flex>
