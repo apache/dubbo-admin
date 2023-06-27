@@ -103,14 +103,14 @@
           <v-flex xs6 sm3 md2>
             <v-text-field
               label="Group"
-              hint="请输入Group"
+              hint="$t('versionInputPrompt')"
               v-model="createGroup"
             ></v-text-field>
           </v-flex>
           <v-flex xs6 sm3 md2>
             <v-text-field
               label="Version"
-              hint="请输入Version"
+              hint="$t('versionInputPrompt')"
               v-model="createVersion"
             ></v-text-field>
           </v-flex>
@@ -120,7 +120,7 @@
             <v-text-field
               label="方法名"
               hint="请输入方法名"
-              v-model="createRule"
+              v-model="createRuleMethod"
             ></v-text-field>
           </v-flex>
           <v-flex xs6 sm3 md2>
@@ -128,14 +128,14 @@
               label="参数索引"
               hint="如第一个参数，请输入0"
               type="number"
-              v-model="createRule"
+              v-model="createRuleIndex"
             ></v-text-field>
           </v-flex>
           <v-flex xs6 sm3 md2>
             <v-text-field
               label="参数匹配条件"
               hint="请输入参数匹配条件"
-              v-model="createRule"
+              v-model="createRuleMatch"
             ></v-text-field>
           </v-flex>
         </v-layout>
@@ -164,14 +164,14 @@
           <v-flex xs6 sm3 md2>
             <v-text-field
               label="Group"
-              hint="请输入Group"
+              hint="$t('versionInputPrompt')"
               v-model="updateGroup"
             ></v-text-field>
            </v-flex>
           <v-flex xs6 sm3 md2>
             <v-text-field
               label="Version"
-              hint="请输入Version"
+              hint="$t('versionInputPrompt')"
               v-model="updateVersion"
             ></v-text-field>
            </v-flex>
@@ -181,7 +181,7 @@
             <v-text-field
               label="方法名"
               hint="请输入方法名"
-              v-model="createRule"
+              v-model="createRuleMethod"
             ></v-text-field>
           </v-flex>
           <v-flex xs6 sm3 md2>
@@ -189,14 +189,14 @@
               label="参数索引"
               hint="如第一个参数，请输入0"
               type="number"
-              v-model="createRule"
+              v-model="createRuleIndex"
             ></v-text-field>
           </v-flex>
           <v-flex xs6 sm3 md2>
             <v-text-field
               label="参数匹配条件"
               hint="请输入参数匹配条件"
-              v-model="createRule"
+              v-model="createRuleMatch"
             ></v-text-field>
           </v-flex>
         </v-layout>
