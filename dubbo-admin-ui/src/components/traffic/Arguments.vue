@@ -29,14 +29,7 @@
                   <v-text-field
                     v-model="service"
                     flat
-                    label="请输入应用名"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex  xs6 sm3 md3>
-                  <v-text-field
-                    v-model="rule"
-                    flat
-                    label="请输入应用规则"
+                    label="请输入服务名"
                   ></v-text-field>
                 </v-flex>
                 <v-flex xs6 sm3 md2 >
@@ -64,7 +57,7 @@
     <v-flex xs12>
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
-          <v-toolbar-title><span class="headline">{{$t('trafficAccesslog')}}</span></v-toolbar-title>
+          <v-toolbar-title><span class="headline">{{$t('trafficArguments')}}</span></v-toolbar-title>
           <v-spacer></v-spacer>
         </v-toolbar>
           <v-data-table :headers="headers" :items="tableData" hide-actions class="elevation-1">
@@ -96,33 +89,56 @@
     <v-dialog v-model="dialog" width="800px" persistent >
     <v-card>
       <v-card-title class="justify-center">
-        <span class="headline">{{$t('createNewRoutingRule')}}</span>
+        <span class="headline">{{$t('createArgumentRule')}}</span>
       </v-card-title>
       <v-card-text >
         <v-layout wrap>
-          <v-flex>
+          <v-flex xs6 sm3 md3>
             <v-text-field
-              label="应用名"
-              hint="请输入应用名"
+              label="服务名"
+              hint="请输入服务名"
               v-model="createService"
             ></v-text-field>
           </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="Group"
+              hint="请输入Group"
+              v-model="createGroup"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="Version"
+              hint="请输入Version"
+              v-model="createVersion"
+            ></v-text-field>
+          </v-flex>
         </v-layout>
-        <v-text-field
-          label="应用规则"
-          hint="请输入应用规则"
-          v-model="createRule"
-        ></v-text-field>
-        <v-text-field
-          label="Group"
-          hint="请输入Group"
-          v-model="createGroup"
-        ></v-text-field>
-        <v-text-field
-          label="Version"
-          hint="请输入Version"
-          v-model="createVersion"
-        ></v-text-field>
+        <v-layout wrap>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="方法名"
+              hint="请输入方法名"
+              v-model="createRule"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="参数索引"
+              hint="如第一个参数，请输入0"
+              type="number"
+              v-model="createRule"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="参数匹配条件"
+              hint="请输入参数匹配条件"
+              v-model="createRule"
+            ></v-text-field>
+          </v-flex>
+        </v-layout>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
@@ -134,33 +150,56 @@
   <v-dialog v-model="updateDialog" width="800px" persistent >
     <v-card>
       <v-card-title class="justify-center">
-        <span class="headline">{{$t('createNewRoutingRule')}}</span>
+        <span class="headline">{{$t('createArgumentRule')}}</span>
       </v-card-title>
       <v-card-text >
         <v-layout wrap>
-          <v-flex>
+          <v-flex xs6 sm3 md3>
             <v-text-field
-              label="应用名"
-              hint="请输入应用名"
+              label="服务名"
+              hint="请输入服务名"
               v-model="updateService"
             ></v-text-field>
           </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="Group"
+              hint="请输入Group"
+              v-model="updateGroup"
+            ></v-text-field>
+           </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="Version"
+              hint="请输入Version"
+              v-model="updateVersion"
+            ></v-text-field>
+           </v-flex>
         </v-layout>
-        <v-text-field
-          label="应用规则"
-          hint="请输入应用规则"
-          v-model="updateRule"
-        ></v-text-field>
-        <v-text-field
-          label="Group"
-          hint="请输入Group"
-          v-model="updateGroup"
-        ></v-text-field>
-        <v-text-field
-          label="Version"
-          hint="请输入Version"
-          v-model="updateVersion"
-        ></v-text-field>
+        <v-layout wrap>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="方法名"
+              hint="请输入方法名"
+              v-model="createRule"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="参数索引"
+              hint="如第一个参数，请输入0"
+              type="number"
+              v-model="createRule"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md2>
+            <v-text-field
+              label="参数匹配条件"
+              hint="请输入参数匹配条件"
+              v-model="createRule"
+            ></v-text-field>
+          </v-flex>
+        </v-layout>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
@@ -314,7 +353,7 @@ export default {
       this.dialog = true
     },
     confirmDelete () {
-      console.log(this.deleteAccesslog)
+      console.log(this.deleteArguments)
       this.$axios.delete('/traffic/argument', {
         service: this.deleteService,
         rule: this.deleteRule,
@@ -325,7 +364,7 @@ export default {
           alert('操作成功')
         }
       })
-      this.deleteAccesslog = false
+      this.deleteArguments = false
     },
     deleteItem (props) {
       this.deleteDialog = true

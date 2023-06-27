@@ -42,7 +42,7 @@
       <v-flex xs12>
         <v-card>
           <v-toolbar flat color="transparent" class="elevation-0">
-            <v-toolbar-title><span class="headline">{{$t('trafficAccesslog')}}</span></v-toolbar-title>
+            <v-toolbar-title><span class="headline">{{$t('trafficGray')}}</span></v-toolbar-title>
             <v-spacer></v-spacer>
           </v-toolbar>
             <v-data-table :headers="headers" :items="tableData" hide-actions class="elevation-1">
@@ -369,7 +369,7 @@ export default {
       this.dialog = true
     },
     confirmDelete () {
-      console.log(this.deleteAccesslog)
+      console.log(this.deleteArguments)
       this.$axios.delete('/traffic/mock', {
         service: this.deleteService,
         mock: this.deleteMock,
@@ -380,7 +380,7 @@ export default {
           alert('操作成功')
         }
       })
-      this.deleteAccesslog = false
+      this.deleteArguments = false
     },
     deleteItem (props) {
       this.deleteDialog = true

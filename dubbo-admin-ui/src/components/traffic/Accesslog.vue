@@ -35,18 +35,6 @@
                     label="请输入application"
                     hint="请输入application"
                   ></v-combobox>
-                    <v-combobox
-                    style="margin-left: 20px;"
-                    :loading="searchLoading"
-                    :items="typeAhead"
-                    :search-input.sync="accesslog"
-                    flat
-                    append-icon=""
-                    hide-no-data
-                    label="请输入accesslog"
-                    hint="请输入accesslog"
-                  ></v-combobox>
-
                   <v-btn @click="submit" color="primary" large>搜索</v-btn>
                   <v-btn @click="create" color="primary" large>新建</v-btn>
                 </v-layout>
@@ -87,11 +75,11 @@
       <v-dialog v-model="dialog" width="800px" persistent >
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">{{$t('createNewRoutingRule')}}</span>
+          <span class="headline">{{$t('createAccesslogRule')}}</span>
         </v-card-title>
         <v-card-text >
           <v-layout wrap>
-            <v-flex>
+            <v-flex xs6 sm3 md5>
               <v-text-field
                 label="Application Name"
                 hint="请输入Application Name"
@@ -99,11 +87,20 @@
               ></v-text-field>
             </v-flex>
           </v-layout>
-          <v-text-field
-            label="Accesslog"
-            hint="请输入Accesslog"
-            v-model="createAccesslog"
-          ></v-text-field>
+          <v-flex xs6 sm3 md5>
+            <v-text-field
+              label="开启 Accesslog(这里应该是一个开关按钮，用户点击打开或关闭)"
+              hint=""
+              v-model="createAccesslog"
+            ></v-text-field>
+          </v-flex>
+         <v-flex xs6 sm3 md5>
+            <v-text-field
+              label="日志文件存储路径（此输入框默认隐藏，用户点击显示出来）"
+              hint="输入 accesslog 存储的目标文件绝对路径（如/home/user1/access.log）"
+              v-model="createAccesslog"
+            ></v-text-field>
+          </v-flex>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -115,11 +112,11 @@
     <v-dialog v-model="updateDialog" width="800px" persistent >
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">{{$t('createNewRoutingRule')}}</span>
+          <span class="headline">{{$t('createAccesslogRule')}}</span>
         </v-card-title>
         <v-card-text >
           <v-layout wrap>
-            <v-flex>
+            <v-flex xs6 sm3 md5>
               <v-text-field
                 label="Application Name"
                 hint="请输入Application Name"
@@ -127,11 +124,20 @@
               ></v-text-field>
             </v-flex>
           </v-layout>
-          <v-text-field
-            label="Accesslog"
-            hint="请输入Accesslog"
-            v-model="updateAccesslog"
-          ></v-text-field>
+          <v-flex xs6 sm3 md5>
+            <v-text-field
+              label="开启 Accesslog(这里应该是一个开关按钮，用户点击打开或关闭)"
+              hint=""
+              v-model="updateAccesslog"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md5>
+            <v-text-field
+              label="日志文件存储路径（此输入框默认隐藏，用户点击后显示出来）"
+              hint="输入 accesslog 存储的目标文件绝对路径（如/home/user1/access.log）"
+              v-model="updateAccesslog"
+            ></v-text-field>
+          </v-flex>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
