@@ -100,22 +100,21 @@
               v-model="createService"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="Group"
               hint="请输入服务group(可选)"
               v-model="createGroup"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="Version"
               hint="请输入服务version(可选)"
               v-model="createVersion"
             ></v-text-field>
          </v-flex>
-        </v-layout>
-        <v-flex xs6 sm3 md3>
+         <v-flex style="margin-left: 10px;" xs6 sm3 md3>
           <v-text-field
             label="重试次数"
             hint="请输入一个整数值(如 3 代表在服务调用失败后重试 3 次)"
@@ -123,6 +122,7 @@
             v-model="createRetry"
           ></v-text-field>
         </v-flex>
+        </v-layout>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
@@ -145,26 +145,28 @@
               v-model="updateService"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="Group"
               hint="请输入服务group(可选)"
               v-model="updateGroup"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="Version"
               hint="请输入服务version(可选)"
               v-model="updateVersion"
             ></v-text-field>
           </v-flex>
-        </v-layout>
-        <v-text-field
-          label="重试次数"
-          hint="请输入一个整数值(如 3 代表在服务调用失败后重试 3 次)"
-          v-model="updateRetry"
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
+            <v-text-field
+              label="重试次数"
+              hint="请输入一个整数值(如 3 代表在服务调用失败后重试 3 次)"
+              v-model="updateRetry"
         ></v-text-field>
+          </v-flex>
+        </v-layout>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
@@ -251,7 +253,7 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.service && this.retry) {
+      if (this.service) {
         this.search()
       } else {
         this.$notify.error('service is needed')
@@ -262,7 +264,6 @@ export default {
       this.$axios.get('/traffic/retry', {
         params: {
           service: this.service,
-          retry: this.retry,
           group: this.group,
           version: this.version
         }
@@ -278,13 +279,14 @@ export default {
       this.updateDialog = false
       this.$axios.put('/traffic/retry', {
         service: this.updateService,
-        retry: this.updateRetry,
+        retry: parseInt(this.updateRetry),
         group: this.updateGroup,
         version: this.updateVersion
       }).then((res) => {
         if (res) {
           alert('操作成功')
         }
+        this.search()
       })
     },
     setHeaders: function () {
@@ -318,10 +320,8 @@ export default {
       this.dialog = true
     },
     confirmDelete () {
-      console.log(this.deleteRetry)
       this.$axios.delete('/traffic/retry', {
         service: this.deleteService,
-        retry: this.deleteRetry,
         group: this.deleteGroup,
         version: this.deleteVersion
       }).then((res) => {
@@ -348,7 +348,7 @@ export default {
     save () {
       this.$axios.post('/traffic/retry', {
         service: this.createService,
-        retry: this.createRetry,
+        retry: parseInt(this.createRetry),
         group: this.createGroup,
         version: this.createVersion
       }).then((res) => {

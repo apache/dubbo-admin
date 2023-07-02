@@ -100,14 +100,14 @@
               v-model="createService"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="Group"
               hint="$t('groupInputPrompt')"
               v-model="createGroup"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="Version"
               hint="$t('versionInputPrompt')"
@@ -116,19 +116,19 @@
           </v-flex>
         </v-layout>
         <v-layout wrap>
-          <v-flex xs6 sm3 md3>
-            <v-text-field
-              label="这里应该是个下拉框，有两个选项：当调用失败时返回、强制返回"
-              hint=""
-              v-model="updateMock"
-            ></v-text-field>
+          <v-flex xs6 sm3 md6>
+            <v-select
+              v-model="mockMethod"
+              label="调用方式"
+              :items="['失败返回', '强制返回']"
+              variant="outlined"
+            ></v-select>
           </v-flex>
-          <v-flex xs6 sm3 md3>
-            <v-text-field
-              label="请输入具体返回值（如 json 结构体或字符串，具体取决于方法签名的返回值）"
-              hint="请点击链接查看如何配置 mock 值。"
-              v-model="updateMock"
-            ></v-text-field>
+        </v-layout>
+        <v-layout wrap>
+          <v-flex xs6 sm3 md6>
+            <v-textarea v-model="createMock" label="请输入具体返回值（如 json 结构体或字符串，具体取决于方法签名的返回值）"
+              hint="请点击链接查看如何配置 mock 值。"  variant="outlined"></v-textarea>
           </v-flex>
         </v-layout>
       </v-card-text>
@@ -169,19 +169,19 @@
            </v-flex>
         </v-layout>
         <v-layout wrap>
-          <v-flex xs6 sm3 md3>
-            <v-text-field
-              label="这里应该是个下拉框，有两个选项：当调用失败时返回、强制返回"
-              hint=""
-              v-model="updateMock"
-            ></v-text-field>
+          <v-flex xs6 sm3 md6>
+            <v-select
+              v-model="mockUpdateMethod"
+              label="调用方式"
+              :items="['失败返回', '强制返回']"
+              variant="outlined"
+            ></v-select>
           </v-flex>
-          <v-flex xs6 sm3 md3>
-            <v-text-field
-              label="请输入具体返回值（如 json 结构体或字符串，具体取决于方法签名的返回值）"
-              hint="请点击链接查看如何配置 mock 值。"
-              v-model="updateMock"
-            ></v-text-field>
+        </v-layout>
+        <v-layout wrap>
+          <v-flex xs6 sm3 md6>
+            <v-textarea v-model="updateMock" label="请输入具体返回值（如 json 结构体或字符串，具体取决于方法签名的返回值）"
+              hint="请点击链接查看如何配置 mock 值。"  variant="outlined"></v-textarea>
           </v-flex>
         </v-layout>
       </v-card-text>
@@ -253,9 +253,11 @@ export default {
     updateMock: '',
     updateGroup: '',
     updateVersion: '',
+    mockMethod: '',
     deleteDialog: false,
     createService: '',
     createMock: '',
+    mockUpdateMethod: '',
     deleteService: '',
     deleteMock: '',
     deleteVersion: '',
@@ -270,7 +272,7 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.service && this.mock) {
+      if (this.service) {
         this.search()
       } else {
         this.$notify.error('service is needed')
@@ -278,6 +280,7 @@ export default {
       }
     },
     search () {
+      console.log('mock: force:return Mock Comment'.split(/:\s(.*?):(.*)/)[2].replace(/^return\s/, ''))
       this.$axios.get('/traffic/mock', {
         params: {
           service: this.service,
@@ -297,7 +300,7 @@ export default {
       this.updateDialog = false
       this.$axios.put('/traffic/mock', {
         service: this.updateService,
-        mock: this.updateMock,
+        mock: `${this.mockUpdateMethod === '失败返回' ? `mock: fail:return ${this.updateMock}` : `mock: force:return ${this.updateMock}`}`,
         group: this.updateGroup,
         version: this.updateVersion
       }).then((res) => {
@@ -340,7 +343,6 @@ export default {
       console.log(this.deleteMock)
       this.$axios.delete('/traffic/mock', {
         service: this.deleteService,
-        mock: this.deleteMock,
         group: this.deleteGroup,
         version: this.deleteVersion
       }).then((res) => {
@@ -359,15 +361,19 @@ export default {
     },
     update (props) {
       this.updateService = props.service
-      this.updateMock = props.mock
+      var parts = props.mock.split(/:\s(.*?):(.*)/)
+      console.log(parts)
+      this.mockUpdateMethod = parts[1] === 'force' ? '强制返回' : '失败返回'
+      this.updateMock = parts[2].replace(/^return\s/, '')
       this.updateGroup = props.group
       this.updateVersion = props.version
       this.updateDialog = true
     },
     save () {
+      console.log(this.mockMethod)
       this.$axios.post('/traffic/mock', {
         service: this.createService,
-        mock: this.createMock,
+        mock: `${this.mockMethod === '失败返回' ? `mock: fail:return ${this.createMock}` : `mock: force:return ${this.createMock}`}`,
         group: this.createGroup,
         version: this.createVersion
       }).then((res) => {

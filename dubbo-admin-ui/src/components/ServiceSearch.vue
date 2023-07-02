@@ -129,6 +129,7 @@
   </v-container>
 </template>
 <script>
+import { store } from '../store/index'
 export default {
   data () {
     return {
@@ -281,9 +282,9 @@ export default {
         if (v && v.length >= 4) {
           this.searchLoading = true
           if (this.selected === 0) {
-            this.typeAhead = this.$store.getters.getServiceItems(v)
+            this.typeAhead = store.getters.getServiceItems(v)
           } else if (this.selected === 2) {
-            this.typeAhead = this.$store.getters.getAppItems(v)
+            this.typeAhead = store.getters.getAppItems(v)
           }
           this.searchLoading = false
           this.timerID = null
@@ -363,8 +364,8 @@ export default {
   },
   mounted: function () {
     this.setHeaders()
-    this.$store.dispatch('loadServiceItems')
-    this.$store.dispatch('loadAppItems')
+    store.dispatch('loadServiceItems')
+    store.dispatch('loadAppItems')
     const query = this.$route.query
     let filter = null
     let pattern = null

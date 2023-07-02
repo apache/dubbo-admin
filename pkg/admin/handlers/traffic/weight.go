@@ -34,7 +34,7 @@ var weightSvc = &traffic.WeightService{}
 // @Tags         TrafficWeight
 // @Accept       json
 // @Produce      json
-// @Param        weight  body  model.Weight      true   "rule"
+// @Param        weight  body  model.Percentage      true   "rule"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
@@ -51,7 +51,7 @@ func CreateWeight(c *gin.Context) {
 // @Tags         TrafficWeight
 // @Accept       json
 // @Produce      json
-// @Param        weight  body  model.Weight      true   "rule"
+// @Param        weight  body  model.Percentage      true   "rule"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError

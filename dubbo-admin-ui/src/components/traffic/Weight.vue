@@ -25,29 +25,31 @@
           <v-card-text>
             <v-form>
               <v-layout row wrap>
-                <v-combobox
-                  :loading="searchLoading"
-                  :items="typeAhead"
-                  :search-input.sync="application"
-                  flat
-                  append-icon=""
-                  hide-no-data
-                  label="请输入application"
-                  hint="请输入application"
-                ></v-combobox>
-                  <v-combobox
-                  style="margin-left: 20px;"
-                  :loading="searchLoading"
-                  :items="typeAhead"
-                  :search-input.sync="accesslog"
-                  flat
-                  append-icon=""
-                  hide-no-data
-                  label="请输入accesslog"
-                  hint="请输入accesslog"
-                ></v-combobox>
-
-                <v-btn @click="submit" color="primary" large>搜索</v-btn>
+                <v-flex xs6 sm3 md3>
+                  <v-text-field
+                    v-model="service"
+                    label="Service"
+                    flat
+                    hint="请输入应用名"
+                  ></v-text-field>
+                </v-flex>
+                <v-flex xs6 sm3 md3>
+                  <v-text-field
+                    v-model="version"
+                    label="Version"
+                    flat
+                    hint="请输入应用名"
+                  ></v-text-field>
+                </v-flex>
+                <v-flex xs6 sm3 md3>
+                  <v-text-field
+                    v-model="group"
+                    label="Group"
+                    flat
+                    hint="请输入应用名"
+                  ></v-text-field>
+                </v-flex>
+                <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
                 <v-btn @click="create" color="primary" large>新建</v-btn>
               </v-layout>
             </v-form>
@@ -57,14 +59,21 @@
     <v-flex xs12>
       <v-card>
         <v-toolbar flat color="transparent" class="elevation-0">
-          <v-toolbar-title><span class="headline">{{$t('trafficWeight')}}</span></v-toolbar-title>
+          <v-toolbar-title><span class="headline">{{$t('trafficweight')}}</span></v-toolbar-title>
           <v-spacer></v-spacer>
         </v-toolbar>
           <v-data-table :headers="headers" :items="tableData" hide-actions class="elevation-1">
             <template slot="items" slot-scope="props">
-              <td >{{props.item.application}}</td>
-              <td>{{props.item.accesslog}}</td>
+              <td >{{props.item.service}}</td>
+              <td>{{props.item.weight}}</td>
               <td class="text-xs-center px-0" nowrap>
+                <!-- <v-btn
+                  class="tiny"
+                  color='success'
+                  @click="Check(props.item)"
+                >
+                 查看
+                </v-btn> -->
                 <v-btn
                   class="tiny"
                   color='success'
@@ -79,91 +88,199 @@
                 >
                   删除
                 </v-btn>
-                <v-btn
-                  class="tiny"
-                  outline
-                >
-                  启用
-                </v-btn>
               </td>
                 </template>
           </v-data-table>
       </v-card>
     </v-flex>
     <v-dialog v-model="dialog" width="800px" persistent >
+    <v-card>
+      <v-card-title class="justify-center">
+        <span class="headline">新增权重</span>
+      </v-card-title>
       <v-card>
-        <v-card-title class="justify-center">
-          <span class="headline">新增GRAY</span>
-        </v-card-title>
         <v-card-text>
-          <v-flex xs6 sm3 md3>
-              <v-select
-                hint="请选择key"
-                style="margin-left: 20px;"
-                :items="keys"
-                label="Outlined style"
-                outlined
-              ></v-select>
-            </v-flex>
-          <v-layout row wrap v-for="(item,idx) in createWeight.match.application.oneof" :key="idx">
+          <v-layout row warp>
             <v-flex xs6 sm3 md3>
-              <v-select
-                style="margin-left: 20px;"
-                :items="items"
-                label="Outlined style"
-                v-model="selectedOption[idx]"
-                outlined
-              ></v-select>
-            </v-flex>
-            <v-flex xs6 sm3 md>
-              <v-text-field
-                style="margin-left: 20px;"
-                label="value"
-                hint="请输入匹配的值"
-                v-model="item[selectedOption[idx]]"
-              ></v-text-field>
-            </v-flex>
-            <v-flex xs6 sm3 md3>
-               <v-btn
-                style="margin-left: 20px;"
-                    class="tiny"
-                    color='success'
-                    outline
-                    @click="addItem(index)"
-                  >
-                    新增一条
-                </v-btn>
-            </v-flex>
-      </v-layout>
+            <v-text-field
+              label="service"
+              hint="请输入service"
+              v-model="createWeight.service"
+            ></v-text-field>
+          </v-flex>
+          <v-flex style="margin-left: 20px;" xs6 sm3 md3>
+            <v-text-field
+              label="version"
+              hint="请输入version"
+              v-model="createWeight.version"
+            ></v-text-field>
+          </v-flex>
+          <v-flex style="margin-left: 20px;" xs6 sm3 md3>
+            <v-text-field
+              label="group"
+              hint="请输入group"
+              v-model="createWeight.group"
+            ></v-text-field>
+          </v-flex>
+          <v-flex style="margin-left: 20px;" xs6 sm3 md2>
+             <v-btn
+              depressed
+              color="primary"
+              @click="addCreateWeight"
+                >
+                  新增
+              </v-btn>
+          </v-flex>
+          </v-layout>
         </v-card-text>
-        <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn flat @click.native="closeDialog">{{$t('close')}}</v-btn>
-          <v-btn depressed color="primary" @click.native="save">{{$t('save')}}</v-btn>
-        </v-card-actions>
-      </v-card>
+      <v-card-text v-for="(modal,index) in createWeight.weights" :key="index">
+          <v-flex  xs6 sm3 md6>
+            <v-text-field
+              label="权重"
+              hint="请输入权重"
+              type="number"
+              v-model="modal.weight"
+              @input="handleInputWeight(index)"
+            ></v-text-field>
+          </v-flex>
+        <v-layout row wrap v-for="(item,idx) in modal.match.param" :key="idx">
+          <v-flex xs6 sm3 md3>
+            <v-text-field
+              label="key"
+              hint="请输入key"
+              v-model="item.key"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md3>
+            <v-select
+              style="margin-left: 20px;"
+              :items="items"
+              label="Outlined style"
+              v-model="selectedOption[index][idx]"
+              @change="updateValue"
+              outlined
+            ></v-select>
+          </v-flex>
+          <v-flex xs6 sm3 md>
+            <v-text-field
+              style="margin-left: 20px;"
+              label="value"
+              hint="请输入匹配的值"
+              v-model="item.value[selectedOption[index][idx]]"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md3>
+             <v-btn
+              style="margin-left: 20px;"
+                  class="tiny"
+                  color='success'
+                  outline
+                  @click="addItem(index)"
+                >
+                  新增一条
+              </v-btn>
+          </v-flex>
+    </v-layout>
+      </v-card-text>
+    </v-card>
+      <v-card-actions>
+        <v-spacer></v-spacer>
+        <v-btn flat @click.native="closeDialog">{{$t('close')}}</v-btn>
+        <v-btn depressed color="primary" @click.native="save">{{$t('save')}}</v-btn>
+      </v-card-actions>
+    </v-card>
   </v-dialog>
   <v-dialog v-model="updateDialog" width="800px" persistent >
     <v-card>
       <v-card-title class="justify-center">
-        <span class="headline">{{$t('createNewRoutingRule')}}</span>
+        <span class="headline">修改权重</span>
       </v-card-title>
-      <v-card-text >
-        <v-layout wrap>
-          <v-flex>
-            <v-text-field
-              label="Application Name"
-              hint="请输入Application Name"
-              v-model="updateApplication"
+      <v-card>
+        <v-card-text>
+          <v-layout row warp>
+            <v-flex xs6 sm3 md3>
+              <v-text-field
+                label="service"
+                hint="请输入service"
+                v-model="updateWeight.service"
+            ></v-text-field>
+            </v-flex>
+            <v-flex xs6 sm3 md3>
+              <v-text-field
+                label="version"
+                hint="请输入version"
+                v-model="updateWeight.version"
+            ></v-text-field>
+            </v-flex>
+            <v-flex xs6 sm3 md3>
+              <v-text-field
+                label="group"
+                hint="请输入group"
+                v-model="updateWeight.group"
             ></v-text-field>
           </v-flex>
-        </v-layout>
-        <v-text-field
-          label="Accesslog"
-          hint="请输入Accesslog"
-          v-model="updateAccesslog"
-        ></v-text-field>
+          <v-flex xs6 sm3 md4>
+             <v-btn
+              style="margin-left: 20px;"
+              depressed
+              color="primary"
+              @click="addUpdateWeight"
+                >
+                  新增
+              </v-btn>
+          </v-flex>
+          </v-layout>
+        </v-card-text>
+      <v-card-text v-for="(modal,index) in updateWeight.weights" :key="index">
+          <v-flex  xs6 sm3 md6>
+            <v-text-field
+              label="权重"
+              hint="请输入权重"
+              type="number"
+              v-model="modal.weight"
+              @input="handleUpdateInputWeight(index)"
+            ></v-text-field>
+          </v-flex>
+        <v-layout row wrap v-for="(item,idx) in modal.match.param" :key="idx">
+          <v-flex xs6 sm3 md3>
+            <v-text-field
+              label="key"
+              hint="请输入key"
+              v-model="item.key"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md3>
+            <v-select
+              style="margin-left: 20px;"
+              :items="items"
+              label="Outlined style"
+              v-model="selectedUpdateOption[index][idx]"
+              @change="updateValue(index, idx)"
+              outlined
+            ></v-select>
+          </v-flex>
+          <v-flex xs6 sm3 md>
+            <v-text-field
+              style="margin-left: 20px;"
+              label="value"
+              hint="请输入匹配的值"
+              v-model="item.value[selectedUpdateOption[index][idx]]"
+            ></v-text-field>
+          </v-flex>
+          <v-flex xs6 sm3 md3>
+             <v-btn
+              style="margin-left: 20px;"
+                  class="tiny"
+                  color='success'
+                  outline
+                  @click="addUpdateItem(index)"
+                >
+                  新增一条
+              </v-btn>
+          </v-flex>
+    </v-layout>
       </v-card-text>
+    </v-card>
       <v-card-actions>
         <v-spacer></v-spacer>
         <v-btn flat @click.native="closeUpdateDialog">{{$t('close')}}</v-btn>
@@ -205,7 +322,7 @@
 <script>
 import Breadcrumb from '../public/Breadcrumb.vue'
 export default {
-  name: 'Accesslog',
+  name: 'weight',
   components: { Breadcrumb },
   data: () => ({
     breads: [
@@ -222,115 +339,210 @@ export default {
     input: null,
     searchLoading: false,
     timerID: null,
-    application: '',
-    accesslog: '',
-    items: ['empty', 'exact', 'noempty', 'prefix', 'regex', 'wildcard'],
-    keys: ['application', 'service', 'param'],
-    selectedKey: [],
+    service: '',
+    weight: '',
+    mock: '',
+    group: '',
+    version: '',
+    createGroup: '',
+    createVersion: '',
+    updateService: '',
+    updateMock: '',
+    updateGroup: '',
+    updateVersion: '',
     deleteDialog: false,
-    createApplication: '',
-    selectedOption: [],
-    createAccesslog: '',
-    deleteApplication: '',
-    createWeight: {
-      match: {
-        application: {
-          oneof: [
-            {
-              empty: '',
-              exact: '',
-              noempty: '',
-              prefix: '',
-              regex: '',
-              wildcard: ''
-            }
-          ]
-        },
-        param: [
-          {
-            key: '',
-            value: {
-              empty: '',
-              exact: '',
-              noempty: '',
-              prefix: '',
-              regex: '',
-              wildcard: ''
-            }
-          }
-        ],
-        service: {
-          oneof: [
-            {
-              empty: '',
-              exact: '',
-              noempty: '',
-              prefix: '',
-              regex: '',
-              wildcard: ''
-            }
-          ]
-        }
-      },
-      weight: 0
-    },
-    deleteAccesslog: '',
+    createService: '',
+    createMock: '',
+    deleteService: '',
+    deleteMock: '',
+    deleteVersion: '',
+    deleteGroup: '',
     dialog: false,
+    selectedOption: [[]],
+    selectedUpdateOption: [[]],
     headers: [
     ],
-    service: null,
+    items: ['empty', 'exact', 'noempty', 'prefix', 'regex', 'wildcard'],
     tableData: [],
     services: [],
     loading: false,
     updateDialog: false,
-    updateApplication: '',
-    updateAccesslog: ''
+    updateWeight: {},
+    createWeight:
+    {
+      service: '',
+      group: '',
+      version: '',
+      weights: [
+        {
+          weight: '',
+          match: {
+            param: [
+              {
+                key: '',
+                value: {
+                  empty: '',
+                  exact: '',
+                  noempty: '',
+                  prefix: '',
+                  regex: '',
+                  wildcard: ''
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
   }),
   methods: {
+    handleInputWeight (index) {
+      this.createWeight.weights[index].weight = Number(this.createWeight.weights[index].weight)
+    },
+    handleUpdateInputWeight (index) {
+      this.updateWeight.weights[index].weight = Number(this.updateWeight.weights[index].weight)
+    },
+    updateValue (index, idx) {
+      const temp = {
+        empty: '',
+        exact: '',
+        noempty: '',
+        prefix: '',
+        regex: '',
+        wildcard: ''
+      }
+      this.updateWeight.weights[index].match[idx].value = temp
+    },
     submit () {
-      if (this.accesslog && this.application) {
+      if (this.service) {
         this.search()
       } else {
         this.$notify.error('service is needed')
         return false
       }
     },
+    addCreateWeight () {
+      const temp = {
+        weight: '',
+        match: {
+          param: [
+            {
+              key: '',
+              value: {
+                empty: '',
+                exact: '',
+                noempty: '',
+                prefix: '',
+                regex: '',
+                wildcard: ''
+              }
+            }
+          ]
+        }
+      }
+      this.selectedOption.push([])
+      this.createWeight.weights.push(temp)
+    },
+    addUpdateWeight () {
+      const temp = {
+        weight: '',
+        match: {
+          param: [
+            {
+              key: '',
+              value: {
+                empty: '',
+                exact: '',
+                noempty: '',
+                prefix: '',
+                regex: '',
+                wildcard: ''
+              }
+            }
+          ]
+        }
+      }
+      this.selectedUpdateOption.push([])
+      this.updateWeights.push(temp)
+    },
+    addItem (params) {
+      const temp = {
+        key: '',
+        value: {
+          empty: '',
+          exact: '',
+          noempty: '',
+          prefix: '',
+          regex: '',
+          wildcard: ''
+        }
+      }
+      const index = parseInt(params)
+      this.createWeight.weights[index].match.param.push(temp)
+    },
+    addUpdateItem (params) {
+      const temp = {
+        key: '',
+        value: {
+          empty: '',
+          exact: '',
+          noempty: '',
+          prefix: '',
+          regex: '',
+          wildcard: ''
+        }
+      }
+      const index = parseInt(params)
+      this.updateWeight.weights[index].match.param.push(temp)
+    },
     search () {
-      this.$axios.get('/traffic/accesslog', {
+      this.$axios.get('/traffic/weight', {
         params: {
-          application: this.application,
-          accesslog: this.accesslog
+          service: this.service,
+          version: this.version,
+          group: this.group
         }
       }).then(response => {
-        console.log(response)
         this.tableData = []
+        console.log(response)
         response.data.forEach(element => {
-          this.tableData.push(element)
+          let sum = 0
+          element.weights.forEach(item => {
+            sum += item.weight
+          })
+          const weight = sum / element.weights.length
+          const result = {
+            service: element.service,
+            weight,
+            element
+          }
+          this.tableData.push(result)
         })
         console.log(this.tableData)
       })
     },
     saveUpdate () {
-      console.log(this.updateAccesslog)
       this.updateDialog = false
-      this.$axios.put('/traffic/accesslog', {
-        application: this.updateApplication,
-        accesslog: this.updateAccesslog
-      }).then((res) => {
+      this.$axios.put('/traffic/weight', this.updateWeight).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
+      this.search()
     },
     setHeaders: function () {
       this.headers = [
         {
-          text: '服务',
-          value: 'application'
+          text: '应用名',
+          value: 'service'
         },
         {
-          text: 'accesslog',
-          value: 'accesslog'
+          text: '权重',
+          value: 'weight'
+        },
+        {
+          text: '操作',
+          value: 'version'
         }
       ]
     },
@@ -341,39 +553,55 @@ export default {
       this.dialog = true
     },
     confirmDelete () {
-      console.log(this.deleteAccesslog)
-      this.$axios.delete('/traffic/accesslog', {
-        application: this.deleteApplication,
-        accesslog: this.deleteAccesslog
+      console.log(this.deleteArguments)
+      this.$axios.delete('/traffic/mock', {
+        service: this.deleteService,
+        group: this.deleteGroup,
+        version: this.deleteVersion
       }).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
-      this.deleteAccesslog = false
+      this.deleteArguments = false
     },
     deleteItem (props) {
       this.deleteDialog = true
-      this.deleteAccesslog = props.accesslog
-      this.deleteApplication = props.application
+      this.deleteService = props.element.service
+      this.deleteGroup = props.element.group
+      this.deleteVersion = props.element.version
     },
     update (props) {
-      console.log(props)
-      this.updateApplication = props.application
-      this.updateAccesslog = props.accesslog
+      this.updateWeight = props.element
+      props.element.weights.forEach((item, index) => {
+        this.selectedUpdateOption[index] = []
+        item.match.param.forEach((it, idx) => {
+          console.log(index, idx)
+          if (it.value.empty !== '') {
+            this.selectedUpdateOption[index][idx] = 'empty'
+          } else if (it.value.exact !== '') {
+            this.selectedUpdateOption[index][idx] = 'exact'
+          } else if (it.value.noempty !== '') {
+            this.selectedUpdateOption[index][idx] = 'noempty'
+          } else if (it.value.prefix !== '') {
+            this.selectedUpdateOption[index][idx] = 'prefix'
+          } else if (it.value.regex !== '') {
+            this.selectedUpdateOption[index][idx] = 'regex'
+          } else if (it.value.wildcard !== '') {
+            this.selectedUpdateOption[index][idx] = 'wildcard'
+          }
+        })
+      })
       this.updateDialog = true
-      console.log(this.updateApplication)
-      console.log(this.updateAccesslog)
     },
     save () {
-      this.$axios.post('/traffic/accesslog', {
-        application: this.createApplication,
-        accesslog: this.createAccesslog
-      }).then((res) => {
+      console.log(this.createWeight)
+      this.$axios.post('/traffic/weight', this.createWeight).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
+      this.dialog = false
     },
     closeDialog () {
       this.dialog = false

@@ -87,20 +87,18 @@
               ></v-text-field>
             </v-flex>
           </v-layout>
+          <v-layout row wrap>
+          <v-switch label="开启或关闭访问日志" v-model="handleAccesslog"></v-switch>
+        </v-layout>
+        <v-layout v-if="handleAccesslog" row wrap>
           <v-flex xs6 sm3 md5>
             <v-text-field
-              label="开启 Accesslog(这里应该是一个开关按钮，用户点击打开或关闭)"
-              hint=""
-              v-model="createAccesslog"
-            ></v-text-field>
-          </v-flex>
-         <v-flex xs6 sm3 md5>
-            <v-text-field
-              label="日志文件存储路径（此输入框默认隐藏，用户点击显示出来）"
+              label="日志文件存储路径"
               hint="输入 accesslog 存储的目标文件绝对路径（如/home/user1/access.log）"
               v-model="createAccesslog"
-            ></v-text-field>
+             ></v-text-field>
           </v-flex>
+        </v-layout>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -124,20 +122,18 @@
               ></v-text-field>
             </v-flex>
           </v-layout>
+          <v-layout row wrap>
+          <v-switch label="开启或关闭访问日志" v-model="handleUpdateAccesslog"></v-switch>
+        </v-layout>
+        <v-layout v-if="handleUpdateAccesslog" row wrap>
           <v-flex xs6 sm3 md5>
             <v-text-field
-              label="开启 Accesslog(这里应该是一个开关按钮，用户点击打开或关闭)"
-              hint=""
-              v-model="updateAccesslog"
-            ></v-text-field>
-          </v-flex>
-          <v-flex xs6 sm3 md5>
-            <v-text-field
-              label="日志文件存储路径（此输入框默认隐藏，用户点击后显示出来）"
+              label="日志文件存储路径"
               hint="输入 accesslog 存储的目标文件绝对路径（如/home/user1/access.log）"
               v-model="updateAccesslog"
-            ></v-text-field>
+             ></v-text-field>
           </v-flex>
+        </v-layout>
         </v-card-text>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -204,6 +200,8 @@ export default {
     createAccesslog: '',
     deleteApplication: '',
     deleteAccesslog: '',
+    handleUpdateAccesslog: '',
+    handleAccesslog: false,
     dialog: false,
     headers: [
     ],
@@ -217,7 +215,7 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.accesslog && this.application) {
+      if (this.application) {
         this.search()
       } else {
         this.$notify.error('service is needed')
@@ -244,7 +242,7 @@ export default {
       this.updateDialog = false
       this.$axios.put('/traffic/accesslog', {
         application: this.updateApplication,
-        accesslog: this.updateAccesslog
+        accesslog: this.handleUpdateAccesslog ? this.updateAccesslog : 'false'
       }).then((res) => {
         if (res) {
           alert('操作成功')
@@ -274,10 +272,8 @@ export default {
       this.dialog = true
     },
     confirmDelete () {
-      console.log(this.deleteAccesslog)
       this.$axios.delete('/traffic/accesslog', {
-        application: this.deleteApplication,
-        accesslog: this.deleteAccesslog
+        application: this.deleteApplication
       }).then((res) => {
         if (res) {
           alert('操作成功')
@@ -291,22 +287,32 @@ export default {
       this.deleteApplication = props.application
     },
     update (props) {
-      console.log(props)
       this.updateApplication = props.application
-      this.updateAccesslog = props.accesslog
+      this.handleUpdateAccesslog = props.accesslog !== 'false'
+      this.updateAccesslog = props.accesslog === 'false' ? '' : props.accesslog
       this.updateDialog = true
-      console.log(this.updateApplication)
-      console.log(this.updateAccesslog)
     },
     save () {
-      this.$axios.post('/traffic/accesslog', {
-        application: this.createApplication,
-        accesslog: this.createAccesslog
-      }).then((res) => {
-        if (res) {
-          alert('操作成功')
-        }
-      })
+      if (this.handleAccesslog) {
+        this.$axios.post('/traffic/accesslog', {
+          application: this.createApplication,
+          accesslog: this.createAccesslog
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      } else {
+        this.$axios.post('/traffic/accesslog', {
+          application: this.createApplication,
+          accesslog: this.handleAccesslog.toString()
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      }
+      this.dialog = false
     },
     closeDialog () {
       this.dialog = false

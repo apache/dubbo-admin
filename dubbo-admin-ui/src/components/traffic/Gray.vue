@@ -27,7 +27,7 @@
                 <v-layout row wrap>
                   <v-flex xs6 sm3 md9>
                     <v-text-field
-                      v-model="service"
+                      v-model="application"
                       flat
                       label="请输入应用名"
                     ></v-text-field>
@@ -48,23 +48,21 @@
             <v-data-table :headers="headers" :items="tableData" hide-actions class="elevation-1">
               <template slot="items" slot-scope="props">
                 <td >{{props.item.service}}</td>
-                <td>{{props.item.mock}}</td>
-                <td>{{props.item.group}}</td>
-                <td>{{props.item.version}}</td>
+                <td>{{props.item.Gary}}</td>
                 <td class="text-xs-center px-0" nowrap>
-                  <v-btn
+                  <!-- <v-btn
                     class="tiny"
                     color='success'
                     @click="Check(props.item)"
                   >
                    查看
-                  </v-btn>
+                  </v-btn> -->
                   <v-btn
                     class="tiny"
                     color='success'
                     @click="update(props.item)"
                   >
-                   修改
+                   查看修改
                   </v-btn>
                   <v-btn
                     class="tiny"
@@ -81,10 +79,32 @@
       <v-dialog v-model="dialog" width="800px" persistent >
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">新增GAY</span>
+          <span class="headline">新增灰度</span>
         </v-card-title>
-        <v-card-text v-for="(modal,index) in createGay.tags" :key="index">
-            <v-flex>
+        <v-card>
+          <v-card-text>
+            <v-layout row warp>
+              <v-flex xs6 sm3 md8>
+              <v-text-field
+                label="application"
+                hint="请输入application"
+                v-model="createGary.application"
+              ></v-text-field>
+            </v-flex>
+            <v-flex xs6 sm3 md4>
+               <v-btn
+                style="margin-left: 20px;"
+                depressed
+                color="primary"
+                @click="addCreateGary"
+                  >
+                    新增
+                </v-btn>
+            </v-flex>
+            </v-layout>
+          </v-card-text>
+        <v-card-text v-for="(modal,index) in createGary.tags" :key="index">
+            <v-flex  xs6 sm3 md6>
               <v-text-field
                 label="名称"
                 hint="请输入名称"
@@ -104,7 +124,7 @@
                 style="margin-left: 20px;"
                 :items="items"
                 label="Outlined style"
-                v-model="selectedOption[idx]"
+                v-model="selectedOption[index][idx]"
                 @change="updateValue"
                 outlined
               ></v-select>
@@ -114,7 +134,7 @@
                 style="margin-left: 20px;"
                 label="value"
                 hint="请输入匹配的值"
-                v-model="item.value[selectedOption[idx]]"
+                v-model="item.value[selectedOption[index][idx]]"
               ></v-text-field>
             </v-flex>
             <v-flex xs6 sm3 md3>
@@ -130,6 +150,7 @@
             </v-flex>
       </v-layout>
         </v-card-text>
+      </v-card>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn flat @click.native="closeDialog">{{$t('close')}}</v-btn>
@@ -140,10 +161,32 @@
     <v-dialog v-model="updateDialog" width="800px" persistent >
       <v-card>
         <v-card-title class="justify-center">
-          <span class="headline">修改GAY</span>
+          <span class="headline">修改灰度</span>
         </v-card-title>
-        <v-card-text v-for="(modal,index) in gay.tags" :key="index">
-            <v-flex>
+        <v-card>
+          <v-card-text>
+            <v-layout row warp>
+              <v-flex xs6 sm3 md8>
+              <v-text-field
+                label="application"
+                hint="请输入application"
+                v-model="updateGary.application"
+              ></v-text-field>
+            </v-flex>
+            <v-flex xs6 sm3 md4>
+               <v-btn
+                style="margin-left: 20px;"
+                depressed
+                color="primary"
+                @click="addUpdateGary"
+                  >
+                    新增
+                </v-btn>
+            </v-flex>
+            </v-layout>
+          </v-card-text>
+        <v-card-text v-for="(modal,index) in updateGary.tags" :key="index">
+            <v-flex  xs6 sm3 md6>
               <v-text-field
                 label="名称"
                 hint="请输入名称"
@@ -163,8 +206,8 @@
                 style="margin-left: 20px;"
                 :items="items"
                 label="Outlined style"
-                v-model="selectedOption[idx]"
-                @change="updateValue"
+                v-model="selectedUpdateOption[index][idx]"
+                @change="updateValue(index, idx)"
                 outlined
               ></v-select>
             </v-flex>
@@ -173,7 +216,7 @@
                 style="margin-left: 20px;"
                 label="value"
                 hint="请输入匹配的值"
-                v-model="item.value[selectedOption[idx]]"
+                v-model="item.value[selectedUpdateOption[index][idx]]"
               ></v-text-field>
             </v-flex>
             <v-flex xs6 sm3 md3>
@@ -182,13 +225,14 @@
                     class="tiny"
                     color='success'
                     outline
-                    @click="addItem(index)"
+                    @click="addUpdateItem(index)"
                   >
                     新增一条
                 </v-btn>
             </v-flex>
       </v-layout>
         </v-card-text>
+      </v-card>
         <v-card-actions>
           <v-spacer></v-spacer>
           <v-btn flat @click.native="closeUpdateDialog">{{$t('close')}}</v-btn>
@@ -248,7 +292,7 @@ export default {
     searchLoading: false,
     timerID: null,
     service: '',
-    gay: '',
+    Gary: '',
     mock: '',
     group: '',
     version: '',
@@ -266,7 +310,8 @@ export default {
     deleteVersion: '',
     deleteGroup: '',
     dialog: false,
-    selectedOption: [],
+    selectedOption: [[]],
+    selectedUpdateOption: [[]],
     headers: [
     ],
     items: ['empty', 'exact', 'noempty', 'prefix', 'regex', 'wildcard'],
@@ -274,15 +319,17 @@ export default {
     services: [],
     loading: false,
     updateDialog: false,
-    createGay:
+    application: '',
+    updateGary: {},
+    createGary:
       {
-        application: '244',
+        application: '',
         tags: [
           {
-            name: '233',
+            name: '',
             match: [
               {
-                key: 'string',
+                key: '',
                 value: {
                   empty: '',
                   exact: '',
@@ -298,20 +345,68 @@ export default {
       }
   }),
   methods: {
-    updateValue () {
-      console.log(this.selectedOption)
+    updateValue (index, idx) {
+      const temp = {
+        empty: '',
+        exact: '',
+        noempty: '',
+        prefix: '',
+        regex: '',
+        wildcard: ''
+      }
+      this.updateGary.tags[index].match[idx].value = temp
     },
     submit () {
-      if (this.service) {
+      if (this.application) {
         this.search()
       } else {
         this.$notify.error('service is needed')
         return false
       }
     },
+    addCreateGary () {
+      const temp = {
+        name: '',
+        match: [
+          {
+            key: '',
+            value: {
+              empty: '',
+              exact: '',
+              noempty: '',
+              prefix: '',
+              regex: '',
+              wildcard: ''
+            }
+          }
+        ]
+      }
+      this.selectedOption.push([])
+      this.createGary.tags.push(temp)
+    },
+    addUpdateGary () {
+      const temp = {
+        name: '',
+        match: [
+          {
+            key: '',
+            value: {
+              empty: '',
+              exact: '',
+              noempty: '',
+              prefix: '',
+              regex: '',
+              wildcard: ''
+            }
+          }
+        ]
+      }
+      this.selectedUpdateOption.push([])
+      this.updateGary.tags.push(temp)
+    },
     addItem (params) {
       const temp = {
-        key: 'string',
+        key: '',
         value: {
           empty: '',
           exact: '',
@@ -322,24 +417,50 @@ export default {
         }
       }
       const index = parseInt(params)
-      this.createGay.tags[index].match.push(temp)
+      this.createGary.tags[index].match.push(temp)
+    },
+    addUpdateItem (params) {
+      const temp = {
+        key: '',
+        value: {
+          empty: '',
+          exact: '',
+          noempty: '',
+          prefix: '',
+          regex: '',
+          wildcard: ''
+        }
+      }
+      const index = parseInt(params)
+      this.updateGary.tags[index].match.push(temp)
     },
     search () {
       this.$axios.get('/traffic/gray', {
         params: {
-          application: this.service
+          application: this.application
         }
       }).then(response => {
         this.tableData = []
+        const array = []
         response.data.forEach(element => {
-          this.tableData.push(element)
+          element.tags.forEach(item => {
+            array.push(item.name)
+          })
+          const uniqueArray = Array.from(new Set(array))
+          const Gary = uniqueArray.join('|')
+          const result = {
+            service: element.application,
+            Gary,
+            element
+          }
+          this.tableData.push(result)
         })
         console.log(this.tableData)
       })
     },
     saveUpdate () {
       this.updateDialog = false
-      this.$axios.put('/traffic/gray', this.gay).then((res) => {
+      this.$axios.put('/traffic/gray', this.upda).then((res) => {
         if (res) {
           alert('操作成功')
         }
@@ -354,7 +475,7 @@ export default {
         },
         {
           text: '灰度环境',
-          value: 'mock'
+          value: 'Gary'
         },
         {
           text: '操作',
@@ -371,10 +492,7 @@ export default {
     confirmDelete () {
       console.log(this.deleteArguments)
       this.$axios.delete('/traffic/mock', {
-        service: this.deleteService,
-        mock: this.deleteMock,
-        group: this.deleteGroup,
-        version: this.deleteVersion
+        service: this.deleteService
       }).then((res) => {
         if (res) {
           alert('操作成功')
@@ -385,19 +503,31 @@ export default {
     deleteItem (props) {
       this.deleteDialog = true
       this.deleteService = props.service
-      this.deleteMock = props.mock
-      this.deleteGroup = props.group
-      this.deleteVersion = props.version
     },
     update (props) {
-      this.updateService = props.service
-      this.updateMock = props.mock
-      this.updateGroup = props.group
-      this.updateVersion = props.version
+      this.updateGary = props.element
+      props.element.tags.forEach((item, index) => {
+        this.selectedUpdateOption[index] = []
+        item.match.forEach((it, idx) => {
+          if (it.value.empty !== '') {
+            this.selectedUpdateOption[index][idx] = 'empty'
+          } else if (it.value.exact !== '') {
+            this.selectedUpdateOption[index][idx] = 'exact'
+          } else if (it.value.noempty !== '') {
+            this.selectedUpdateOption[index][idx] = 'noempty'
+          } else if (it.value.prefix !== '') {
+            this.selectedUpdateOption[index][idx] = 'prefix'
+          } else if (it.value.regex !== '') {
+            this.selectedUpdateOption[index][idx] = 'regex'
+          } else if (it.value.wildcard !== '') {
+            this.selectedUpdateOption[index][idx] = 'wildcard'
+          }
+        })
+      })
       this.updateDialog = true
     },
     save () {
-      this.$axios.post('/traffic/gray', this.createGay).then((res) => {
+      this.$axios.post('/traffic/gray', this.createGary).then((res) => {
         if (res) {
           alert('操作成功')
         }
