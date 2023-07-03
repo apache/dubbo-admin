@@ -18,8 +18,11 @@
     <v-container grid-list-xl fluid>
         <v-layout row wrap>
             <v-flex lg12>
-        <Breadcrumb title="trafficGray" :items="breads"></breadcrumb>
-      </v-flex>
+              <Breadcrumb title="trafficGray" :items="breads"></breadcrumb>
+            </v-flex>
+            <v-flex lg12>
+              可在这里了解应用 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/isolation/" target="_blank">灰度环境隔离</a> 的工作原理与使用方式！
+            </v-flex>
       <v-flex lg12>
           <v-card flat color="transparent">
             <v-card-text>
@@ -81,6 +84,11 @@
         <v-card-title class="justify-center">
           <span class="headline">新增灰度</span>
         </v-card-title>
+        <v-layout row wrap>
+          <v-flex lg12>
+            可在这里了解如何为应用设置不同的 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/gray/" target="_blank">灰度流量隔离环境</a> ！
+          </v-flex>
+        </v-layout>
         <v-card>
           <v-card-text>
             <v-layout row warp>
@@ -106,8 +114,8 @@
         <v-card-text v-for="(modal,index) in createGary.tags" :key="index">
             <v-flex  xs6 sm3 md6>
               <v-text-field
-                label="名称"
-                hint="请输入名称"
+                label="灰度隔离环境名称"
+                hint="请输入名称，该值将作为灰度流量的匹配条件"
                 v-model="modal.name"
               ></v-text-field>
             </v-flex>
@@ -145,7 +153,7 @@
                     outline
                     @click="addItem(index)"
                   >
-                    新增一条
+                    新增灰度环境
                 </v-btn>
             </v-flex>
       </v-layout>
@@ -163,13 +171,18 @@
         <v-card-title class="justify-center">
           <span class="headline">修改灰度</span>
         </v-card-title>
+        <v-layout row wrap>
+          <v-flex lg12>
+            可在这里了解如何为应用设置不同的 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/gray/" target="_blank">灰度流量隔离环境</a> ！
+          </v-flex>
+        </v-layout>
         <v-card>
           <v-card-text>
             <v-layout row warp>
               <v-flex xs6 sm3 md8>
               <v-text-field
                 label="application"
-                hint="请输入application"
+                hint="请输入 Provider 应用名"
                 v-model="updateGary.application"
               ></v-text-field>
             </v-flex>
@@ -188,8 +201,8 @@
         <v-card-text v-for="(modal,index) in updateGary.tags" :key="index">
             <v-flex  xs6 sm3 md6>
               <v-text-field
-                label="名称"
-                hint="请输入名称"
+                label="灰度隔离环境名称"
+                hint="请输入名称，该值将作为灰度流量的匹配条件"
                 v-model="modal.name"
               ></v-text-field>
             </v-flex>
@@ -227,11 +240,11 @@
                     outline
                     @click="addUpdateItem(index)"
                   >
-                    新增一条
+                    新增灰度环境
                 </v-btn>
             </v-flex>
       </v-layout>
-        </v-card-text>
+    </v-card-text>
       </v-card>
         <v-card-actions>
           <v-spacer></v-spacer>

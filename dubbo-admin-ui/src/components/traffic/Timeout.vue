@@ -18,8 +18,11 @@
   <v-container grid-list-xl fluid>
       <v-layout row wrap>
           <v-flex lg12>
-      <Breadcrumb title="trafficTimeout" :items="breads"></breadcrumb>
-    </v-flex>
+            <Breadcrumb title="trafficTimeout" :items="breads"></breadcrumb>
+          </v-flex>
+          <v-flex lg12>
+            可在这里了解 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/timeout/" target="_blank">超时时间</a> 配置的工作原理与使用方式！
+          </v-flex>
     <v-flex lg12>
         <v-card flat color="transparent">
           <v-card-text>
@@ -91,6 +94,11 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createTimeoutRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何动态调整服务的 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/timeout/" target="_blank">超时时间配置</a>！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout row wrap>
           <v-flex xs6 sm3 md2>
@@ -114,6 +122,8 @@
               v-model="createVersion"
             ></v-text-field>
            </v-flex>
+        </v-layout>
+        <v-layout row wrap>
           <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="超时时间"
@@ -121,7 +131,7 @@
               type="number"
               v-model="createTimeout"
             ></v-text-field>
-         </v-flex>
+          </v-flex>
         </v-layout>
       </v-card-text>
       <v-card-actions>
@@ -136,6 +146,11 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createTimeoutRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何动态调整服务的 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/timeout/" target="_blank">超时时间配置</a>！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout wrap>
           <v-flex xs6 sm3 md2>
@@ -159,13 +174,14 @@
               v-model="updateVersion"
             ></v-text-field>
           </v-flex>
+        <v-layout wrap>
           <v-flex style="margin-left: 10px;" xs6 sm3 md2>
               <v-text-field
                 label="超时时间"
                 hint="请输入一个整数值作为超时时间(单位ms)"
                 type="number"
                 v-model="updateTimeout"
-          ></v-text-field>
+              ></v-text-field>
           </v-flex>
         </v-layout>
       </v-card-text>
@@ -292,19 +308,19 @@ export default {
     setHeaders: function () {
       this.headers = [
         {
-          text: '应用',
+          text: '服务',
           value: 'service'
         },
         {
-          text: 'Timeout',
+          text: '超时时间',
           value: 'timeout'
         },
         {
-          text: 'Group',
+          text: '分组',
           value: 'group'
         },
         {
-          text: 'Version',
+          text: '版本',
           value: 'version'
         },
         {

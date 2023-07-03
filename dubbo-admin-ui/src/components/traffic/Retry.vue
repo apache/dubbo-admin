@@ -18,8 +18,11 @@
   <v-container grid-list-xl fluid>
       <v-layout row wrap>
           <v-flex lg12>
-      <Breadcrumb title="trafficRetry" :items="breads"></breadcrumb>
-    </v-flex>
+            <Breadcrumb title="trafficRetry" :items="breads"></breadcrumb>
+          </v-flex>
+          <v-flex lg12>
+            可在这里了解 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/retry/" target="_blank">服务重试</a> 配置的工作原理与使用方式！
+          </v-flex>
     <v-flex lg12>
         <v-card flat color="transparent">
           <v-card-text>
@@ -91,6 +94,11 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createRetryRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何动态调整服务的 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/retry/" target="_blank">重试次数配置</a>！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout wrap>
           <v-flex xs6 sm3 md3>
@@ -114,14 +122,16 @@
               v-model="createVersion"
             ></v-text-field>
          </v-flex>
-         <v-flex style="margin-left: 10px;" xs6 sm3 md3>
-          <v-text-field
-            label="重试次数"
-            hint="请输入一个整数值(如 3 代表在服务调用失败后重试 3 次)"
-            type="number"
-            v-model="createRetry"
-          ></v-text-field>
-        </v-flex>
+        </v-layout>
+        <v-layout wrap>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md3>
+            <v-text-field
+              label="重试次数"
+              hint="请输入一个整数值(如 3 代表在服务调用失败后重试 3 次)"
+              type="number"
+              v-model="createRetry"
+            ></v-text-field>
+          </v-flex>
         </v-layout>
       </v-card-text>
       <v-card-actions>
@@ -136,6 +146,11 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createRetryRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何动态调整服务的 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/retry/" target="_blank">重试次数配置</a>！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout wrap>
           <v-flex xs6 sm3 md3>
@@ -159,12 +174,14 @@
               v-model="updateVersion"
             ></v-text-field>
           </v-flex>
+        </v-layout>
+        <v-layout wrap>
           <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="重试次数"
               hint="请输入一个整数值(如 3 代表在服务调用失败后重试 3 次)"
               v-model="updateRetry"
-        ></v-text-field>
+            ></v-text-field>
           </v-flex>
         </v-layout>
       </v-card-text>
@@ -292,19 +309,19 @@ export default {
     setHeaders: function () {
       this.headers = [
         {
-          text: '应用',
+          text: '服务',
           value: 'service'
         },
         {
-          text: 'Retry',
+          text: '重试次数',
           value: 'retry'
         },
         {
-          text: 'Group',
+          text: '分组',
           value: 'group'
         },
         {
-          text: 'Version',
+          text: '版本',
           value: 'version'
         },
         {

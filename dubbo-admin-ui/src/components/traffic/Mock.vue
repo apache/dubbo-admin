@@ -18,8 +18,11 @@
   <v-container grid-list-xl fluid>
       <v-layout row wrap>
           <v-flex lg12>
-      <Breadcrumb title="trafficMock" :items="breads"></breadcrumb>
-    </v-flex>
+            <Breadcrumb title="trafficMock" :items="breads"></breadcrumb>
+          </v-flex>
+          <v-flex lg12>
+            可在这里了解 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/mock/" target="_blank">服务降级</a> 配置的工作原理与使用方式！
+          </v-flex>
     <v-flex lg12>
         <v-card flat color="transparent">
           <v-card-text>
@@ -91,6 +94,11 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createMockCircuitRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何配置服务 <a href="https://dubbo.apache.org/zh-cn/overview/tasks/traffic-management/mock/" target="_blank">降级或容错策略</a> ！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout wrap>
           <v-flex xs6 sm3 md3>
@@ -119,16 +127,16 @@
           <v-flex xs6 sm3 md6>
             <v-select
               v-model="mockMethod"
-              label="调用方式"
-              :items="['失败返回', '强制返回']"
+              label="调用降级行为"
+              :items="['失败时返回', '强制返回']"
               variant="outlined"
             ></v-select>
           </v-flex>
         </v-layout>
         <v-layout wrap>
           <v-flex xs6 sm3 md6>
-            <v-textarea v-model="createMock" label="请输入具体返回值（如 json 结构体或字符串，具体取决于方法签名的返回值）"
-              hint="请点击链接查看如何配置 mock 值。"  variant="outlined"></v-textarea>
+            <v-textarea v-model="createMock" label="请输入模拟的返回值"
+              hint="如 json 结构体或字符串，具体取决于方法签名的返回值。请通过上面的链接查看如何配置返回值。"  variant="outlined"></v-textarea>
           </v-flex>
         </v-layout>
       </v-card-text>
@@ -144,6 +152,11 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createMockCircuitRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何配置服务 <a href="https://dubbo.apache.org/zh-cn/overview/tasks/traffic-management/mock/" target="_blank">降级或容错策略</a> ！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout wrap>
           <v-flex xs6 sm3 md3>
@@ -156,14 +169,14 @@
           <v-flex xs6 sm3 md2>
            <v-text-field
               label="Group"
-              hint="$t('groupInputPrompt')"
+              hint="请输入服务版本group（可选）"
               v-model="updateGroup"
             ></v-text-field>
            </v-flex>
            <v-flex xs6 sm3 md2>
             <v-text-field
               label="Version"
-              hint="$t('versionInputPrompt')"
+              hint="请输入服务分组version（可选）"
               v-model="updateVersion"
             ></v-text-field>
            </v-flex>
@@ -172,16 +185,16 @@
           <v-flex xs6 sm3 md6>
             <v-select
               v-model="mockUpdateMethod"
-              label="调用方式"
-              :items="['失败返回', '强制返回']"
+              label="调用降级行为"
+              :items="['失败时返回', '强制返回']"
               variant="outlined"
             ></v-select>
           </v-flex>
         </v-layout>
         <v-layout wrap>
           <v-flex xs6 sm3 md6>
-            <v-textarea v-model="updateMock" label="请输入具体返回值（如 json 结构体或字符串，具体取决于方法签名的返回值）"
-              hint="请点击链接查看如何配置 mock 值。"  variant="outlined"></v-textarea>
+            <v-textarea v-model="createMock" label="请输入模拟的返回值"
+              hint="如 json 结构体或字符串，具体取决于方法签名的返回值。请通过上面的链接查看如何配置返回值。"  variant="outlined"></v-textarea>
           </v-flex>
         </v-layout>
       </v-card-text>
@@ -300,7 +313,7 @@ export default {
       this.updateDialog = false
       this.$axios.put('/traffic/mock', {
         service: this.updateService,
-        mock: `${this.mockUpdateMethod === '失败返回' ? `mock: fail:return ${this.updateMock}` : `mock: force:return ${this.updateMock}`}`,
+        mock: `${this.mockUpdateMethod === '失败时返回' ? `mock: fail:return ${this.updateMock}` : `mock: force:return ${this.updateMock}`}`,
         group: this.updateGroup,
         version: this.updateVersion
       }).then((res) => {
@@ -312,19 +325,19 @@ export default {
     setHeaders: function () {
       this.headers = [
         {
-          text: '应用',
+          text: '服务',
           value: 'service'
         },
         {
-          text: 'Mock',
+          text: '降级返回值',
           value: 'mock'
         },
         {
-          text: 'Group',
+          text: '分组',
           value: 'group'
         },
         {
-          text: 'Version',
+          text: '版本',
           value: 'version'
         },
         {
@@ -363,7 +376,7 @@ export default {
       this.updateService = props.service
       var parts = props.mock.split(/:\s(.*?):(.*)/)
       console.log(parts)
-      this.mockUpdateMethod = parts[1] === 'force' ? '强制返回' : '失败返回'
+      this.mockUpdateMethod = parts[1] === 'force' ? '强制返回' : '失败时返回'
       this.updateMock = parts[2].replace(/^return\s/, '')
       this.updateGroup = props.group
       this.updateVersion = props.version
@@ -373,7 +386,7 @@ export default {
       console.log(this.mockMethod)
       this.$axios.post('/traffic/mock', {
         service: this.createService,
-        mock: `${this.mockMethod === '失败返回' ? `mock: fail:return ${this.createMock}` : `mock: force:return ${this.createMock}`}`,
+        mock: `${this.mockMethod === '失败时返回' ? `mock: fail:return ${this.createMock}` : `mock: force:return ${this.createMock}`}`,
         group: this.createGroup,
         version: this.createVersion
       }).then((res) => {

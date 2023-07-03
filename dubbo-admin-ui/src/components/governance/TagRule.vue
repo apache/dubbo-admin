@@ -21,8 +21,8 @@
         <breadcrumb title="tagRule" :items="breads"></breadcrumb>
       </v-flex>
       <v-flex lg12>
-      <a href="https://cn.dubbo.apache.org/zh-cn/overview/core-features/traffic/tag-rule/">标签路由规则</a>
-    </v-flex>
+        可在这里了解 <a href="https://cn.dubbo.apache.org/zh-cn/overview/core-features/traffic/tag-rule/" target="_blank">标签路由规则</a> 的工作原理与使用方式！
+      </v-flex>
     </v-layout>
     <v-flex lg12>
       <v-card flat color="transparent">
