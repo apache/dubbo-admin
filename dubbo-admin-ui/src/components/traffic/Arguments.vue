@@ -100,14 +100,14 @@
               v-model="createService"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="Group"
               hint="$t('versionInputPrompt')"
               v-model="createGroup"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="Version"
               hint="$t('versionInputPrompt')"
@@ -123,7 +123,7 @@
               v-model="createRuleMethod"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="参数索引"
               hint="如第一个参数，请输入0"
@@ -131,7 +131,7 @@
               v-model="createRuleIndex"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="参数匹配条件"
               hint="请输入参数匹配条件"
@@ -161,14 +161,14 @@
               v-model="updateService"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="Group"
               hint="$t('versionInputPrompt')"
               v-model="updateGroup"
             ></v-text-field>
            </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="Version"
               hint="$t('versionInputPrompt')"
@@ -181,22 +181,22 @@
             <v-text-field
               label="方法名"
               hint="请输入方法名"
-              v-model="createRuleMethod"
+              v-model="updateRuleMethod"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="参数索引"
               hint="如第一个参数，请输入0"
               type="number"
-              v-model="createRuleIndex"
+              v-model="updateRuleIndex"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="参数匹配条件"
               hint="请输入参数匹配条件"
-              v-model="createRuleMatch"
+              v-model="updateRuleMatch"
             ></v-text-field>
           </v-flex>
         </v-layout>
@@ -260,13 +260,17 @@ export default {
     searchLoading: false,
     timerID: null,
     service: '',
-    rule: '',
     group: '',
     version: '',
     createGroup: '',
     createVersion: '',
+    createRuleMethod: '',
+    createRuleIndex: '',
+    createRuleMatch: '',
     updateService: '',
-    updateRule: '',
+    updateRuleMethod: '',
+    updateRuleIndex: '',
+    updateRuleMatch: '',
     updateGroup: '',
     updateVersion: '',
     deleteDialog: false,
@@ -286,7 +290,7 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.service && this.rule) {
+      if (this.service) {
         this.search()
       } else {
         this.$notify.error('service is needed')
@@ -297,7 +301,6 @@ export default {
       this.$axios.get('/traffic/argument', {
         params: {
           service: this.service,
-          rule: this.rule,
           group: this.group,
           version: this.version
         }
@@ -313,7 +316,7 @@ export default {
       this.updateDialog = false
       this.$axios.put('/traffic/argument', {
         service: this.updateService,
-        rule: this.updateRule,
+        rule: `${this.updateRuleMethod}[${this.updateRuleIndex}]=${this.updateRuleMatch}`,
         group: this.updateGroup,
         version: this.updateVersion
       }).then((res) => {
@@ -329,7 +332,7 @@ export default {
           value: 'service'
         },
         {
-          text: '应用规则',
+          text: '规则',
           value: 'rule'
         },
         {
@@ -356,7 +359,6 @@ export default {
       console.log(this.deleteArguments)
       this.$axios.delete('/traffic/argument', {
         service: this.deleteService,
-        rule: this.deleteRule,
         group: this.deleteGroup,
         version: this.deleteVersion
       }).then((res) => {
@@ -369,13 +371,15 @@ export default {
     deleteItem (props) {
       this.deleteDialog = true
       this.deleteService = props.service
-      this.deleteRule = props.rule
       this.deleteGroup = props.group
       this.deleteVersion = props.version
     },
     update (props) {
       this.updateService = props.service
-      this.updateRule = props.rule
+      var parts = props.rule.split(/(\w+)\[(\w+)\]=(\w+)/)
+      this.updateRuleMethod = parts[1]
+      this.updateRuleIndex = parts[2]
+      this.updateRuleMatch = parts[3]
       this.updateGroup = props.group
       this.updateVersion = props.version
       this.updateDialog = true
@@ -383,7 +387,7 @@ export default {
     save () {
       this.$axios.post('/traffic/argument', {
         service: this.createService,
-        rule: this.createRule,
+        rule: `${this.createRuleMethod}[${this.createRuleIndex}]=${this.createRuleMatch}`,
         group: this.createGroup,
         version: this.createVersion
       }).then((res) => {

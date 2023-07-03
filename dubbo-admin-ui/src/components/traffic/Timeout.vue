@@ -93,36 +93,36 @@
       </v-card-title>
       <v-card-text >
         <v-layout row wrap>
-          <v-flex xs6 sm3 md3>
+          <v-flex xs6 sm3 md2>
             <v-text-field
               label="服务名"
               hint="请输入服务名"
               v-model="createService"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
                 label="服务分组"
               hint="请输入服务group(可选)"
               v-model="createGroup"
             ></v-text-field>
            </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="服务版本"
               hint="请输入服务version(可选)"
               v-model="createVersion"
             ></v-text-field>
            </v-flex>
-        </v-layout>
-        <v-flex xs6 sm3 md3>
-          <v-text-field
-            label="超时时间"
-            hint="请输入一个整数值作为超时时间(单位ms)"
-            type="number"
-            v-model="createTimeout"
-          ></v-text-field>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
+            <v-text-field
+              label="超时时间"
+              hint="请输入一个整数值作为超时时间(单位ms)"
+              type="number"
+              v-model="createTimeout"
+            ></v-text-field>
          </v-flex>
+        </v-layout>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
@@ -138,34 +138,36 @@
       </v-card-title>
       <v-card-text >
         <v-layout wrap>
-          <v-flex xs6 sm3 md3>
+          <v-flex xs6 sm3 md2>
             <v-text-field
               label="服务名"
               hint="请输入服务名"
               v-model="updateService"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="服务分组"
               hint="请输入服务group(可选)"
               v-model="updateGroup"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="服务版本"
               hint="请输入服务version(可选)"
               v-model="updateVersion"
             ></v-text-field>
           </v-flex>
+          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
+              <v-text-field
+                label="超时时间"
+                hint="请输入一个整数值作为超时时间(单位ms)"
+                type="number"
+                v-model="updateTimeout"
+          ></v-text-field>
+          </v-flex>
         </v-layout>
-        <v-text-field
-          label="超时时间"
-          hint="请输入一个整数值作为超时时间(单位ms)"
-          type="number"
-          v-model="updateTimeout"
-        ></v-text-field>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
@@ -252,7 +254,7 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.service && this.timeout) {
+      if (this.service) {
         this.search()
       } else {
         this.$notify.error('service is needed')
@@ -263,7 +265,6 @@ export default {
       this.$axios.get('/traffic/timeout', {
         params: {
           service: this.service,
-          timeout: parseInt(this.timeout),
           group: this.group,
           version: this.version
         }
@@ -322,7 +323,6 @@ export default {
       console.log(this.deleteTimeout)
       this.$axios.delete('/traffic/timeout', {
         service: this.deleteService,
-        timeout: parseInt(this.deleteTimeout),
         group: this.deleteGroup,
         version: this.deleteVersion
       }).then((res) => {
