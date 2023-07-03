@@ -24,10 +24,10 @@ import (
 )
 
 type ConditionMatch struct {
-	Address     AddressMatch    `json:"address" yaml:"address"`
-	Service     ListStringMatch `json:"service" yaml:"service"`
-	Application ListStringMatch `json:"application" yaml:"application"`
-	Param       []ParamMatch    `json:"param" yaml:"param"`
+	Address     AddressMatch    `json:"address" yaml:"address,omitempty"`
+	Service     ListStringMatch `json:"service" yaml:"service,omitempty"`
+	Application ListStringMatch `json:"application" yaml:"application,omitempty"`
+	Param       []ParamMatch    `json:"param" yaml:"param,omitempty"`
 }
 
 type AddressMatch struct {

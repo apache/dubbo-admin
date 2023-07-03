@@ -21,49 +21,69 @@ import (
 	"strings"
 	"sync"
 
+	set "github.com/dubbogo/gost/container/set"
+
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"github.com/apache/dubbo-admin/pkg/admin/cache"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
-	"github.com/apache/dubbo-admin/pkg/admin/util"
+	"github.com/apache/dubbo-admin/pkg/admin/model/util"
 )
 
 type ProviderServiceImpl struct{}
 
 // FindServices finds all services
-func (p *ProviderServiceImpl) FindServices() ([]string, error) {
-	var services []string
+func (p *ProviderServiceImpl) FindServices() (*set.HashSet, error) {
+	services := set.NewSet()
 	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
 	if !ok {
-		return nil, nil
+		return services, nil
 	}
 	servicesMap, ok := servicesAny.(*sync.Map)
 	if !ok {
-		return nil, fmt.Errorf("servicesMap type not *sync.Map")
+		return services, fmt.Errorf("servicesMap type not *sync.Map")
 	}
 
 	servicesMap.Range(func(key, value any) bool {
-		services = append(services, key.(string))
+		services.Add(key.(string))
 		return true
 	})
 	return services, nil
 }
 
 // FindApplications finds all applications
-func (p *ProviderServiceImpl) FindApplications() ([]string, error) {
+func (p *ProviderServiceImpl) FindApplications() (*set.HashSet, error) {
 	var (
-		applications []string
+		applications = set.NewSet()
 		err          error
 	)
-	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
+	providersAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
 	if !ok {
-		return nil, nil
+		return applications, nil
 	}
-	servicesMap, ok := servicesAny.(*sync.Map)
-	if !ok {
-		return nil, fmt.Errorf("servicesMap type not *sync.Map")
+	err = extractApplications(providersAny, applications)
+	if err != nil {
+		return applications, err
 	}
 
+	consumersAny, ok := cache.InterfaceRegistryCache.Load(constant.ConsumersCategory)
+	if !ok {
+		return applications, nil
+	}
+	err = extractApplications(consumersAny, applications)
+	if err != nil {
+		return applications, err
+	}
+	return applications, err
+}
+
+func extractApplications(servicesAny any, applications *set.HashSet) error {
+	servicesMap, ok := servicesAny.(*sync.Map)
+	if !ok {
+		return fmt.Errorf("servicesMap type not *sync.Map")
+	}
+
+	var err error
 	servicesMap.Range(func(key, value any) bool {
 		service, ok := value.(map[string]*common.URL)
 		if !ok {
@@ -73,29 +93,48 @@ func (p *ProviderServiceImpl) FindApplications() ([]string, error) {
 		for _, url := range service {
 			app := url.GetParam(constant.ApplicationKey, "")
 			if app != "" {
-				applications = append(applications, app)
+				applications.Add(app)
 			}
 		}
 		return true
 	})
-	return applications, err
+	return err
 }
 
 // findAddresses finds all addresses
-func (p *ProviderServiceImpl) findAddresses() ([]string, error) {
+func (p *ProviderServiceImpl) findAddresses() (*set.HashSet, error) {
 	var (
-		addresses []string
+		addresses = set.NewSet()
 		err       error
 	)
 	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
 	if !ok {
-		return nil, nil
+		return addresses, nil
 	}
-	servicesMap, ok := servicesAny.(*sync.Map)
-	if !ok {
-		return nil, fmt.Errorf("servicesMap type not *sync.Map")
+	err = extractAddresses(servicesAny, addresses)
+	if err != nil {
+		return addresses, err
 	}
 
+	consumersAny, ok := cache.InterfaceRegistryCache.Load(constant.ConsumersCategory)
+	if !ok {
+		return addresses, nil
+	}
+	err = extractAddresses(consumersAny, addresses)
+	if err != nil {
+		return addresses, err
+	}
+
+	return addresses, err
+}
+
+func extractAddresses(servicesAny any, addresses *set.HashSet) error {
+	servicesMap, ok := servicesAny.(*sync.Map)
+	if !ok {
+		return fmt.Errorf("servicesMap type not *sync.Map")
+	}
+
+	var err error
 	servicesMap.Range(func(key, value any) bool {
 		service, ok := value.(map[string]*common.URL)
 		if !ok {
@@ -105,12 +144,101 @@ func (p *ProviderServiceImpl) findAddresses() ([]string, error) {
 		for _, url := range service {
 			loc := url.Location
 			if loc != "" {
-				addresses = append(addresses, loc)
+				addresses.Add(loc)
 			}
 		}
 		return true
 	})
-	return addresses, err
+	return err
+}
+
+// FindVersions finds all versions
+func (p *ProviderServiceImpl) FindVersions() (*set.HashSet, error) {
+	var (
+		versions = set.NewSet()
+		err      error
+	)
+	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
+	if !ok {
+		return versions, nil
+	}
+
+	err = extractVersions(servicesAny, versions)
+	if err != nil {
+		return versions, err
+	}
+
+	return versions, err
+}
+
+func extractVersions(servicesAny any, versions *set.HashSet) error {
+	servicesMap, ok := servicesAny.(*sync.Map)
+	if !ok {
+		return fmt.Errorf("servicesMap type not *sync.Map")
+	}
+
+	var err error
+	servicesMap.Range(func(key, value any) bool {
+		service, ok := value.(map[string]*common.URL)
+		if !ok {
+			err = fmt.Errorf("service type not map[string]*common.URL")
+			return false
+		}
+		for _, url := range service {
+			release := url.GetParam("release", "")
+			if release == "" {
+				release = url.GetParam("revision", "")
+			}
+			if release != "" {
+				versions.Add(release)
+			}
+		}
+		return true
+	})
+	return err
+}
+
+// FindProtocols finds all protocols
+func (p *ProviderServiceImpl) FindProtocols() (*set.HashSet, error) {
+	var (
+		protocols = set.NewSet()
+		err       error
+	)
+	servicesAny, ok := cache.InterfaceRegistryCache.Load(constant.ProvidersCategory)
+	if !ok {
+		return protocols, nil
+	}
+
+	err = extractProtocols(servicesAny, protocols)
+	if err != nil {
+		return protocols, err
+	}
+
+	return protocols, err
+}
+
+func extractProtocols(servicesAny any, protocols *set.HashSet) error {
+	servicesMap, ok := servicesAny.(*sync.Map)
+	if !ok {
+		return fmt.Errorf("servicesMap type not *sync.Map")
+	}
+
+	var err error
+	servicesMap.Range(func(key, value any) bool {
+		service, ok := value.(map[string]*common.URL)
+		if !ok {
+			err = fmt.Errorf("service type not map[string]*common.URL")
+			return false
+		}
+		for _, url := range service {
+			proto := url.Protocol
+			if proto != "" && proto != "consumer" {
+				protocols.Add(proto)
+			}
+		}
+		return true
+	})
+	return err
 }
 
 // FindByService finds providers by service name and returns a list of providers
@@ -150,7 +278,7 @@ func (p *ProviderServiceImpl) findByApplication(providerApplication string) ([]*
 }
 
 // FindService by patterns and filters, patterns support IP, service and application.
-func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*model.Provider, error) {
+func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*model.ServiceDTO, error) {
 	var (
 		providers []*model.Provider
 		reg       *regexp.Regexp
@@ -176,7 +304,7 @@ func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*mod
 			return nil, fmt.Errorf("unsupport the pattern: %s", pattern)
 		}
 	} else {
-		var candidates []string
+		var candidates *set.HashSet
 		if pattern == constant.IP {
 			candidates, err = p.findAddresses()
 			if err != nil {
@@ -196,16 +324,17 @@ func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*mod
 			return nil, fmt.Errorf("unsupport the pattern: %s", pattern)
 		}
 
-		filter = strings.ToLower(filter)
-		if strings.HasPrefix(filter, constant.AnyValue) || strings.HasPrefix(filter, constant.InterrogationPoint) ||
-			strings.HasPrefix(filter, constant.PlusSigns) {
-			filter = constant.PunctuationPoint + filter
+		filter = strings.ReplaceAll(filter, constant.PunctuationPoint, "\\.")
+		if hasPrefixOrSuffix(filter) {
+			filter = strings.ReplaceAll(filter, constant.AnyValue, constant.PunctuationPoint+constant.AnyValue)
 		}
 		reg, err = regexp.Compile(filter)
 		if err != nil {
 			return nil, err
 		}
-		for _, candidate := range candidates {
+		items := candidates.Values()
+		for _, candidateAny := range items {
+			candidate := candidateAny.(string)
 			if reg.MatchString(candidate) {
 				if pattern == constant.IP {
 					providers, err = p.findByAddress(candidate)
@@ -227,5 +356,11 @@ func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*mod
 		}
 	}
 
-	return providers, nil
+	return util.Providers2DTO(providers), nil
+}
+
+func hasPrefixOrSuffix(filter string) bool {
+	return strings.HasPrefix(filter, constant.AnyValue) || strings.HasPrefix(filter, constant.InterrogationPoint) ||
+		strings.HasPrefix(filter, constant.PlusSigns) || strings.HasSuffix(filter, constant.AnyValue) || strings.HasSuffix(filter, constant.InterrogationPoint) ||
+		strings.HasSuffix(filter, constant.PlusSigns)
 }

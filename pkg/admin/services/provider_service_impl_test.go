@@ -16,12 +16,17 @@
 package services
 
 import (
+	"fmt"
 	"net/url"
-	"reflect"
+	"regexp"
 	"sync"
 	"testing"
 
-	"github.com/apache/dubbo-admin/pkg/admin/util"
+	set "github.com/dubbogo/gost/container/set"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/apache/dubbo-admin/pkg/admin/model/util"
 
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 
@@ -56,12 +61,12 @@ func TestProviderServiceImpl_FindServices(t *testing.T) {
 	defer cache.InterfaceRegistryCache.Delete(constant.ProvidersCategory)
 	tests := []struct {
 		name    string
-		want    []string
+		want    *set.HashSet
 		wantErr bool
 	}{
 		{
 			name:    "Test",
-			want:    []string{"test"},
+			want:    set.NewSet("test"),
 			wantErr: false,
 		},
 	}
@@ -73,9 +78,7 @@ func TestProviderServiceImpl_FindServices(t *testing.T) {
 				t.Errorf("FindServices() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FindServices() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -85,12 +88,12 @@ func TestProviderServiceImpl_FindApplications(t *testing.T) {
 	defer cache.InterfaceRegistryCache.Delete(constant.ProvidersCategory)
 	tests := []struct {
 		name    string
-		want    []string
+		want    *set.HashSet
 		wantErr bool
 	}{
 		{
 			name:    "Test",
-			want:    []string{"test"},
+			want:    set.NewSet("test"),
 			wantErr: false,
 		},
 	}
@@ -102,9 +105,7 @@ func TestProviderServiceImpl_FindApplications(t *testing.T) {
 				t.Errorf("FindApplications() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FindApplications() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -114,12 +115,12 @@ func TestProviderServiceImpl_findAddresses(t *testing.T) {
 	defer cache.InterfaceRegistryCache.Delete(constant.ProvidersCategory)
 	tests := []struct {
 		name    string
-		want    []string
+		want    *set.HashSet
 		wantErr bool
 	}{
 		{
 			name:    "Test",
-			want:    []string{common.GetLocalIp() + ":0"},
+			want:    set.NewSet(common.GetLocalIp() + ":0"),
 			wantErr: false,
 		},
 	}
@@ -131,9 +132,7 @@ func TestProviderServiceImpl_findAddresses(t *testing.T) {
 				t.Errorf("findAddresses() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("findAddresses() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -167,9 +166,7 @@ func TestProviderServiceImpl_FindByService(t *testing.T) {
 				t.Errorf("FindByService() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FindByService() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -203,9 +200,7 @@ func TestProviderServiceImpl_findByAddress(t *testing.T) {
 				t.Errorf("findByAddress() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("findByAddress() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -239,9 +234,7 @@ func TestProviderServiceImpl_findByApplication(t *testing.T) {
 				t.Errorf("findByApplication() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("findByApplication() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
@@ -254,7 +247,7 @@ func TestProviderServiceImpl_FindService(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    []*model.Provider
+		want    []*model.ServiceDTO
 		wantErr bool
 	}{
 		{
@@ -263,7 +256,7 @@ func TestProviderServiceImpl_FindService(t *testing.T) {
 				pattern: "ip",
 				filter:  "test",
 			},
-			want:    nil,
+			want:    make([]*model.ServiceDTO, 0),
 			wantErr: false,
 		},
 	}
@@ -275,9 +268,15 @@ func TestProviderServiceImpl_FindService(t *testing.T) {
 				t.Errorf("FindService() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FindService() got = %v, want %v", got, tt.want)
-			}
+			assert.Equal(t, tt.want, got)
 		})
+	}
+}
+
+func TestReg(t *testing.T) {
+	reg, _ := regexp.Compile(".*DemoService*")
+	match := reg.MatchString("org.apache.dubbo.springboot.demo.DemoService")
+	if match {
+		fmt.Print("Matched!")
 	}
 }

@@ -17,7 +17,8 @@
 export default {
   service: '服务',
   serviceSearch: '服务查询',
-  serviceGovernance: '服务治理',
+  serviceGovernance: '路由规则',
+  trafficManagement: '流量管控',
   serviceMetrics: '服务统计',
   serviceRelation: '服务关系',
   routingRule: '条件路由',
@@ -70,6 +71,14 @@ export default {
   createNewDynamicConfigRule: '创建新动态配置规则',
   createNewWeightRule: '新建权重规则',
   createNewLoadBalanceRule: '新建负载均衡规则',
+  createTimeoutRule: '创建超时时间规则',
+  createRetryRule: '创建重试规则',
+  createRegionRule: '创建同区域优先规则',
+  createArgumentRule: '创建参数路由规则',
+  createMockCircuitRule: '创建调用降级规则',
+  createAccesslogRule: '创建访问日志规则',
+  createGrayRule: '创建灰度隔离规则',
+  createWeightRule: '创建权重比例规则',
   serviceIdHint: '服务名',
   view: '查看',
   edit: '编辑',
@@ -221,5 +230,22 @@ export default {
   methodNameHint: '服务方法名',
   createMockRule: '创建规则',
   editMockRule: '修改规则',
-  deleteRuleTitle: '确定要删除此服务Mock规则吗？'
+  deleteRuleTitle: '确定要删除此服务Mock规则吗？',
+
+  trafficTimeout: '超时时间',
+  trafficRetry: '调用重试',
+  trafficRegion: '同区域优先',
+  trafficIsolation: '环境隔离',
+  trafficWeight: '权重比例',
+  trafficArguments: '参数路由',
+  trafficMock: '调用降级',
+  trafficAccesslog: '访问日志',
+  trafficHost: '固定机器导流',
+  trafficGray: '流量灰度',
+
+  homePage: '集群概览',
+  serviceManagement: '开发测试',
+
+  groupInputPrompt: '请输入服务group(可选)',
+  versionInputPrompt: '请输入服务version(可选)'
 }

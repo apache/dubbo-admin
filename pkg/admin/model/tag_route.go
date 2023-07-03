@@ -30,16 +30,17 @@ type TagRouteDto struct {
 }
 
 type TagRoute struct {
-	Priority int    `json:"priority" yaml:"priority"`
-	Enabled  bool   `json:"enabled" yaml:"enabled"`
-	Force    bool   `json:"force" yaml:"force"`
-	Runtime  bool   `json:"runtime" yaml:"runtime"`
-	Key      string `json:"key" yaml:"key"`
-	Tags     []Tag  `json:"tags" yaml:"tags"`
+	Priority      int    `json:"priority" yaml:"priority,omitempty"`
+	Enabled       bool   `json:"enabled" yaml:"enabled"`
+	Force         bool   `json:"force" yaml:"force"`
+	Runtime       bool   `json:"runtime" yaml:"runtime"`
+	Key           string `json:"key" yaml:"key"`
+	Tags          []Tag  `json:"tags" yaml:"tags"`
+	ConfigVersion string `json:"configVersion" yaml:"configVersion"`
 }
 
 type Tag struct {
 	Name      string       `json:"name" yaml:"name" binding:"required"`
-	Match     []ParamMatch `json:"match" yaml:"match" binding:"required"`
-	Addresses []string     `json:"addresses" yaml:"addresses"`
+	Match     []ParamMatch `json:"match" yaml:"match" binding:"required,omitempty"`
+	Addresses []string     `json:"addresses" yaml:"addresses,omitempty"`
 }

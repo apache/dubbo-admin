@@ -16,41 +16,41 @@
  */
 
 const Menu = [
+  { title: 'homePage', path: '/', icon: 'home' },
   { title: 'serviceSearch', path: '/service', icon: 'search' },
   {
-    title: 'serviceGovernance',
-    icon: 'edit',
-    group: 'governance',
+    title: 'trafficManagement',
+    icon: 'show_chart',
+    group: 'traffic',
     items: [
+      { title: 'trafficTimeout', path: '/traffic/timeout' },
+      { title: 'trafficRetry', path: '/traffic/retry' },
+      { title: 'trafficRegion', path: '/traffic/region' },
+      // { title: 'trafficIsolation', path: '/traffic/isolation' },
+      { title: 'trafficWeight', path: '/traffic/weight' },
+      { title: 'trafficArguments', path: '/traffic/arguments' },
+      { title: 'trafficMock', path: '/traffic/mock' },
+      { title: 'trafficAccesslog', path: '/traffic/accesslog' },
+      { title: 'trafficGray', path: '/traffic/gray' },
+      //  { title: 'trafficHost', path: '/traffic/host' },
       { title: 'routingRule', path: '/governance/routingRule' },
       { title: 'tagRule', path: '/governance/tagRule' },
-      { title: 'meshRule', path: '/governance/meshRule', badge: 'new' },
-      { title: 'accessControl', path: '/governance/access' },
-      { title: 'dynamicConfig', path: '/governance/config' },
-      { title: 'weightAdjust', path: '/governance/weight' },
-      { title: 'loadBalance', path: '/governance/loadbalance' }
+      { title: 'dynamicConfig', path: '/governance/config' }
     ]
   },
-  { title: 'serviceTest', path: '/test', icon: 'code' },
-  { title: 'apiDocs', path: '/apiDocs', icon: 'code' },
   {
-    title: 'serviceMock',
-    path: '/mock',
+    title: 'serviceManagement',
+    group: 'services',
     icon: 'build',
     items: [
-      { title: 'mockRule', path: '/mock/rule', badge: 'new' }
+      { title: 'serviceTest', path: '/test' },
+      { title: 'serviceMock', path: '/mock/rule' }
     ]
   },
-  {
-    title: 'serviceMetrics',
-    path: 'metrics',
-    icon: 'show_chart',
-    items: [
-      { title: 'serviceMetrics', path: '/metrics/index', badge: 'feature' },
-      { title: 'serviceRelation', path: '/metrics/relation', badge: 'new' }
-    ]
-  },
-  { title: 'configManage', path: '/management', icon: 'build' }
+  { title: 'serviceMetrics', path: '/metrics/index', icon: 'show_chart' },
+  { title: 'kubernetes', path: '/kubernetes', icon: 'cloud' }
+  // { title: 'configManage', path: '/management', icon: 'build' },
+  // { title: 'apiDocs', path: '/apiDocs', icon: 'code' }
 ]
 
 export default Menu

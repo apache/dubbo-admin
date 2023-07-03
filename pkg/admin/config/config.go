@@ -18,11 +18,12 @@
 package config
 
 import (
-	"dubbo.apache.org/dubbo-go/v3/common"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"dubbo.apache.org/dubbo-go/v3/common"
 
 	"dubbo.apache.org/dubbo-go/v3/common/extension"
 	"dubbo.apache.org/dubbo-go/v3/config_center"
@@ -39,8 +40,12 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-const conf = "./conf/dubboadmin.yml"
-const confPathKey = "ADMIN_CONFIG_PATH"
+const (
+	conf        = "./conf/dubboadmin.yml"
+	confPathKey = "ADMIN_CONFIG_PATH"
+)
+
+const MockProviderConf = "./conf/mock_provider.yml"
 
 type Config struct {
 	Admin      Admin      `yaml:"admin"`
@@ -60,13 +65,11 @@ type Admin struct {
 }
 
 var (
-	ConfigCenter         config_center.DynamicConfiguration
+	Governance           GovernanceConfig
 	RegistryCenter       registry.Registry
 	MetadataReportCenter report.MetadataReport
 
 	DataBase *gorm.DB // for service mock
-
-	Group string
 )
 
 var (
@@ -75,7 +78,7 @@ var (
 )
 
 func LoadConfig() {
-	var configFilePath = conf
+	configFilePath := conf
 	if envPath := os.Getenv(confPathKey); envPath != "" {
 		configFilePath = envPath
 	}
@@ -110,8 +113,9 @@ func LoadConfig() {
 	}
 
 	c, addrUrl := getValidAddressConfig(address, registryAddress)
-	ConfigCenter = newConfigCenter(c, addrUrl)
-	properties, err := ConfigCenter.GetProperties(constant.DubboPropertyKey)
+	configCenter := newConfigCenter(c, addrUrl)
+	Governance = newGovernanceConfig(configCenter, c.getProtocol())
+	properties, err := configCenter.GetProperties(constant.DubboPropertyKey)
 	if err != nil {
 		logger.Info("No configuration found in config center.")
 	}

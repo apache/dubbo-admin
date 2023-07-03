@@ -70,15 +70,16 @@ const (
 	TagRoute               = "tag_route"
 	ConditionRuleSuffix    = ".condition-router"
 	TagRuleSuffix          = ".tag-router"
+	ConfigFileEnvKey       = "conf" // config file path
 )
 
 var Configs = set.NewSet(WeightKey, BalancingKey)
 
 const (
-	MetricsQps                        = "" // QPS
-	MetricsHttpRequestTotalCount      = "" // Total number of http requests
-	MetricsHttpRequestSuccessCount    = "" // Total number of http successful requests
-	MetricsHttpRequestOutOfTimeCount  = "" // Total number of http out of time requests
-	MetricsHttpRequestAddressNotFount = "" // Total number of HTTP requests where the address cannot be found
-	MetricsHttpRequestOtherException  = "" // Total number of other errors for http requests
+	MetricsQps                        = "dubbo_consumer_qps_total"                                 // QPS
+	MetricsHttpRequestTotalCount      = "dubbo_consumer_requests_total"                            // Total number of http requests
+	MetricsHttpRequestSuccessCount    = "dubbo_consumer_requests_succeed_total"                    // Total number of http successful requests
+	MetricsHttpRequestOutOfTimeCount  = "dubbo_consumer_requests_timeout_total"                    // Total number of http out of time requests
+	MetricsHttpRequestAddressNotFount = "dubbo_consumer_requests_failed_service_unavailable_total" // Total number of HTTP requests where the address cannot be found
+	MetricsHttpRequestOtherException  = "dubbo_consumer_requests_unknown_failed_total"             // Total number of other errors for http requests
 )

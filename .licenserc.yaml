@@ -75,6 +75,8 @@ header:
     - '**/addons/manifests/**'
     - '**/cmd/ui/dist/**'
     - '**/dubbo-admin-ui/public/echarts-en.min.js'
+    - '**/dubbo-admin-ui/tests/**'
+    - '**/governance_config_mock.go'
   comment: on-failure
 
   license-location-threshold: 130

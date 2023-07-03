@@ -23,21 +23,22 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
-	"github.com/apache/dubbo-admin/pkg/admin/util"
+	"github.com/apache/dubbo-admin/pkg/admin/model/util"
+	util2 "github.com/apache/dubbo-admin/pkg/admin/util"
 	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
-type OverrideServiceImpl struct {
-	GovernanceConfig config.GovernanceConfig
-}
+type OverrideServiceImpl struct{}
 
 func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) error {
-	id := util.BuildServiceKey(dynamicConfig.Base)
-	path := getOverridePath(id)
-	existConfig, err := s.GovernanceConfig.GetConfig(path)
+	id := util2.BuildServiceKey(dynamicConfig.Base.Application, dynamicConfig.Base.Service, dynamicConfig.Base.ServiceVersion, dynamicConfig.Base.ServiceGroup)
+	path := GetOverridePath(id)
+	existConfig, err := config.Governance.GetConfig(path)
 	if err != nil {
-		logger.Logger().Error(err.Error())
-		return err
+		if _, ok := err.(*config.RuleNotFound); !ok {
+			logger.Logger().Error(err.Error())
+			return err
+		}
 	}
 
 	existOverride := dynamicConfig.ToOverride()
@@ -63,7 +64,7 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 		logger.Logger().Error(err.Error())
 		return err
 	} else {
-		err := s.GovernanceConfig.SetConfig(path, string(b))
+		err := config.Governance.SetConfig(path, string(b))
 		if err != nil {
 			logger.Logger().Error(err.Error())
 			return err
@@ -79,7 +80,7 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 				logger.Logger().Error(err.Error())
 				return err
 			}
-			err = s.GovernanceConfig.Register(url)
+			err = config.Governance.Register(url)
 			if err != nil {
 				logger.Logger().Error(err.Error())
 				return err
@@ -91,9 +92,9 @@ func (s *OverrideServiceImpl) SaveOverride(dynamicConfig *model.DynamicConfig) e
 }
 
 func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error {
-	id := util.BuildServiceKey(update.Base)
-	path := getOverridePath(id)
-	existConfig, err := s.GovernanceConfig.GetConfig(path)
+	id := util2.BuildServiceKey(update.Base.Application, update.Base.Service, update.Base.ServiceVersion, update.Base.ServiceGroup)
+	path := GetOverridePath(id)
+	existConfig, err := config.Governance.GetConfig(path)
 	if err != nil {
 		logger.Logger().Error(err.Error())
 		return err
@@ -122,7 +123,7 @@ func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error 
 		logger.Logger().Error(err.Error())
 		return err
 	} else {
-		err := s.GovernanceConfig.SetConfig(path, string(b))
+		err := config.Governance.SetConfig(path, string(b))
 		if err != nil {
 			logger.Logger().Error(err.Error())
 			return err
@@ -138,14 +139,14 @@ func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error 
 			if err != nil {
 				return err
 			}
-			s.GovernanceConfig.UnRegister(url)
+			config.Governance.UnRegister(url)
 		}
 		for _, o := range updatedOverrides {
 			url, err := util.OldOverride2URL(o)
 			if err != nil {
 				return err
 			}
-			s.GovernanceConfig.Register(url)
+			config.Governance.Register(url)
 		}
 	}
 
@@ -153,9 +154,9 @@ func (s *OverrideServiceImpl) UpdateOverride(update *model.DynamicConfig) error 
 }
 
 func (s *OverrideServiceImpl) DisableOverride(id string) error {
-	path := getOverridePath(id)
+	path := GetOverridePath(id)
 
-	conf, err := s.GovernanceConfig.GetConfig(path)
+	conf, err := config.Governance.GetConfig(path)
 	if err != nil {
 		logger.Logger().Error(err.Error())
 		return err
@@ -174,7 +175,7 @@ func (s *OverrideServiceImpl) DisableOverride(id string) error {
 		logger.Logger().Error(err.Error())
 		return err
 	} else {
-		err := s.GovernanceConfig.SetConfig(path, string(b))
+		err := config.Governance.SetConfig(path, string(b))
 		if err != nil {
 			return err
 		}
@@ -190,7 +191,7 @@ func (s *OverrideServiceImpl) DisableOverride(id string) error {
 				logger.Logger().Error(err.Error())
 				return err
 			}
-			s.GovernanceConfig.UnRegister(url)
+			config.Governance.UnRegister(url)
 
 			o.Enabled = false
 			url, err = util.OldOverride2URL(o)
@@ -198,7 +199,7 @@ func (s *OverrideServiceImpl) DisableOverride(id string) error {
 				logger.Logger().Error(err.Error())
 				return err
 			}
-			s.GovernanceConfig.Register(url)
+			config.Governance.Register(url)
 		}
 	}
 
@@ -206,8 +207,8 @@ func (s *OverrideServiceImpl) DisableOverride(id string) error {
 }
 
 func (s *OverrideServiceImpl) FindOverride(id string) (*model.DynamicConfig, error) {
-	path := getOverridePath(id)
-	conf, err := s.GovernanceConfig.GetConfig(path)
+	path := GetOverridePath(id)
+	conf, err := config.Governance.GetConfig(path)
 	if err != nil {
 		logger.Logger().Error(err.Error())
 		return nil, err
@@ -225,9 +226,9 @@ func (s *OverrideServiceImpl) FindOverride(id string) (*model.DynamicConfig, err
 		if dynamicConfig != nil {
 			dynamicConfig.ID = id
 			if constant.Service == override.Scope {
-				dynamicConfig.Service = util.GetInterface(id)
-				dynamicConfig.ServiceGroup = util.GetGroup(id)
-				dynamicConfig.ServiceVersion = util.GetVersion(id)
+				dynamicConfig.Service = util2.GetInterface(id)
+				dynamicConfig.ServiceGroup = util2.GetGroup(id)
+				dynamicConfig.ServiceVersion = util2.GetVersion(id)
 			}
 		}
 		return dynamicConfig, nil
@@ -237,8 +238,8 @@ func (s *OverrideServiceImpl) FindOverride(id string) (*model.DynamicConfig, err
 }
 
 func (s *OverrideServiceImpl) EnableOverride(id string) error {
-	path := getOverridePath(id)
-	conf, err := s.GovernanceConfig.GetConfig(path)
+	path := GetOverridePath(id)
+	conf, err := config.Governance.GetConfig(path)
 	if err != nil {
 		logger.Logger().Error(err.Error())
 		return err
@@ -257,7 +258,7 @@ func (s *OverrideServiceImpl) EnableOverride(id string) error {
 		logger.Logger().Error(err.Error())
 		return err
 	} else {
-		err := s.GovernanceConfig.SetConfig(path, string(b))
+		err := config.Governance.SetConfig(path, string(b))
 		if err != nil {
 			logger.Logger().Error(err.Error())
 			return err
@@ -273,14 +274,14 @@ func (s *OverrideServiceImpl) EnableOverride(id string) error {
 			if err != nil {
 				return err
 			}
-			s.GovernanceConfig.UnRegister(url)
+			config.Governance.UnRegister(url)
 
 			o.Enabled = true
 			url, err = util.OldOverride2URL(o)
 			if err != nil {
 				return err
 			}
-			s.GovernanceConfig.Register(url)
+			config.Governance.Register(url)
 		}
 	}
 
@@ -288,8 +289,8 @@ func (s *OverrideServiceImpl) EnableOverride(id string) error {
 }
 
 func (s *OverrideServiceImpl) DeleteOverride(id string) error {
-	path := getOverridePath(id)
-	conf, err := s.GovernanceConfig.GetConfig(path)
+	path := GetOverridePath(id)
+	conf, err := config.Governance.GetConfig(path)
 	if err != nil {
 		logger.Logger().Error(err.Error())
 		return err
@@ -311,7 +312,7 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 			}
 		}
 		if len(newConfigs) == 0 {
-			err := s.GovernanceConfig.DeleteConfig(path)
+			err := config.Governance.DeleteConfig(path)
 			if err != nil {
 				logger.Logger().Error(err.Error())
 				return err
@@ -322,7 +323,7 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 				logger.Logger().Error(err.Error())
 				return err
 			} else {
-				err := s.GovernanceConfig.SetConfig(path, string(b))
+				err := config.Governance.SetConfig(path, string(b))
 				if err != nil {
 					logger.Logger().Error(err.Error())
 					return err
@@ -330,7 +331,7 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 			}
 		}
 	} else {
-		err := s.GovernanceConfig.DeleteConfig(path)
+		err := config.Governance.DeleteConfig(path)
 		if err != nil {
 			logger.Logger().Error(err.Error())
 			return err
@@ -346,14 +347,14 @@ func (s *OverrideServiceImpl) DeleteOverride(id string) error {
 				logger.Logger().Error(err.Error())
 				return err
 			}
-			s.GovernanceConfig.UnRegister(url)
+			config.Governance.UnRegister(url)
 		}
 	}
 
 	return nil
 }
 
-func getOverridePath(key string) string {
+func GetOverridePath(key string) string {
 	key = strings.Replace(key, "/", "*", -1)
 	return key + constant.ConfiguratorRuleSuffix
 }

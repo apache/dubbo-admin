@@ -17,10 +17,11 @@ package cmd
 
 import (
 	"bytes"
-	"github.com/apache/dubbo-admin/pkg/dubboctl/cmd/subcmd"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/apache/dubbo-admin/pkg/dubboctl/cmd/subcmd"
 
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )

@@ -129,54 +129,57 @@
   </v-container>
 </template>
 <script>
+import { store } from '../store/index'
 export default {
-  data: () => ({
-    items: [
-      { id: 0, title: 'serviceName', value: 'service' },
-      { id: 1, title: 'ip', value: 'ip' },
-      { id: 2, title: 'app', value: 'application' }
-    ],
-    options: [
-      {
-        title: 'routingRule',
-        value: 'routingRule'
+  data () {
+    return {
+      items: [
+        { id: 0, title: 'serviceName', value: 'service' },
+        { id: 1, title: 'ip', value: 'ip' },
+        { id: 2, title: 'app', value: 'application' }
+      ],
+      options: [
+        {
+          title: 'routingRule',
+          value: 'routingRule'
+        },
+        {
+          title: 'tagRule',
+          value: 'tagRule'
+        },
+        {
+          title: 'dynamicConfig',
+          value: 'config'
+        },
+        {
+          title: 'accessControl',
+          value: 'access'
+        },
+        {
+          title: 'weightAdjust',
+          value: 'weight'
+        },
+        {
+          title: 'loadBalance',
+          value: 'loadbalance'
+        }
+      ],
+      timerID: null,
+      searchLoading: false,
+      selected: 0,
+      input: null,
+      typeAhead: [],
+      resultPage: {},
+      filter: '',
+      headers: [],
+      pagination: {
+        page: 1,
+        rowsPerPage: 10 // -1 for All
       },
-      {
-        title: 'tagRule',
-        value: 'tagRule'
-      },
-      {
-        title: 'dynamicConfig',
-        value: 'config'
-      },
-      {
-        title: 'accessControl',
-        value: 'access'
-      },
-      {
-        title: 'weightAdjust',
-        value: 'weight'
-      },
-      {
-        title: 'loadBalance',
-        value: 'loadbalance'
-      }
-    ],
-    timerID: null,
-    searchLoading: false,
-    selected: 0,
-    input: null,
-    typeAhead: [],
-    resultPage: {},
-    filter: '',
-    headers: [],
-    pagination: {
-      page: 1,
-      rowsPerPage: 10 // -1 for All
-    },
-    totalItems: 0,
-    loadingServices: false
-  }),
+      totalItems: 0,
+      loadingServices: false
+    }
+  },
   computed: {
     queryBy () {
       return this.$t('by') + this.$t(this.items[this.selected].title)
@@ -279,9 +282,9 @@ export default {
         if (v && v.length >= 4) {
           this.searchLoading = true
           if (this.selected === 0) {
-            this.typeAhead = this.$store.getters.getServiceItems(v)
+            this.typeAhead = store.getters.getServiceItems(v)
           } else if (this.selected === 2) {
-            this.typeAhead = this.$store.getters.getAppItems(v)
+            this.typeAhead = store.getters.getAppItems(v)
           }
           this.searchLoading = false
           this.timerID = null
@@ -339,7 +342,7 @@ export default {
         }
       }).then(response => {
         this.resultPage = response.data
-        this.totalItems = this.resultPage.totalElements
+        this.totalItems = 1
         if (rewrite) {
           this.$router.push({ path: 'service', query: { filter: filter, pattern: pattern } })
         }
@@ -361,8 +364,8 @@ export default {
   },
   mounted: function () {
     this.setHeaders()
-    this.$store.dispatch('loadServiceItems')
-    this.$store.dispatch('loadAppItems')
+    store.dispatch('loadServiceItems')
+    store.dispatch('loadAppItems')
     const query = this.$route.query
     let filter = null
     let pattern = null
@@ -391,8 +394,10 @@ export default {
       pattern = 'service'
       this.search(this.filter, pattern, true)
     }
+    // this.$axios.get('/user/list').then((res) => {
+    //   console.log(res)
+    // })
   }
-
 }
 </script>
 

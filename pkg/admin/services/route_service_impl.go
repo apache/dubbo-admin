@@ -21,44 +21,44 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/apache/dubbo-admin/pkg/logger"
+
 	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/util"
 )
 
-type RouteServiceImpl struct {
-	GovernanceConfig config.GovernanceConfig
-}
+type RouteServiceImpl struct{}
 
 func (t *RouteServiceImpl) CreateTagRoute(tagRoute model.TagRouteDto) error {
-	id := util.BuildServiceKey(tagRoute.Base)
-	path := getRoutePath(id, constant.TagRoute)
+	id := util.BuildServiceKey(tagRoute.Base.Application, tagRoute.Base.Service, tagRoute.Base.ServiceVersion, tagRoute.Base.ServiceGroup)
+	path := GetRoutePath(id, constant.TagRoute)
 	store := convertTagRouteToStore(tagRoute)
 	obj, _ := util.DumpObject(store)
-	return t.GovernanceConfig.SetConfig(path, obj)
+	return config.Governance.SetConfig(path, obj)
 }
 
 func (t *RouteServiceImpl) UpdateTagRoute(tagRoute model.TagRouteDto) error {
-	id := util.BuildServiceKey(tagRoute.Base)
-	path := getRoutePath(id, constant.TagRoute)
-	cfg, _ := t.GovernanceConfig.GetConfig(path)
+	id := util.BuildServiceKey(tagRoute.Base.Application, tagRoute.Base.Service, tagRoute.Base.ServiceVersion, tagRoute.Base.ServiceGroup)
+	path := GetRoutePath(id, constant.TagRoute)
+	cfg, _ := config.Governance.GetConfig(path)
 	if cfg == "" {
 		return fmt.Errorf("tag route %s not found", id)
 	}
 	store := convertTagRouteToStore(tagRoute)
 	obj, _ := util.DumpObject(store)
-	return t.GovernanceConfig.SetConfig(path, obj)
+	return config.Governance.SetConfig(path, obj)
 }
 
 func (t *RouteServiceImpl) DeleteTagRoute(id string) error {
-	path := getRoutePath(id, constant.TagRoute)
-	return t.GovernanceConfig.DeleteConfig(path)
+	path := GetRoutePath(id, constant.TagRoute)
+	return config.Governance.DeleteConfig(path)
 }
 
 func (t *RouteServiceImpl) FindTagRoute(id string) (model.TagRouteDto, error) {
-	path := getRoutePath(id, constant.TagRoute)
-	cfg, err := t.GovernanceConfig.GetConfig(path)
+	path := GetRoutePath(id, constant.TagRoute)
+	cfg, err := config.Governance.GetConfig(path)
 	if cfg != "" {
 		var tagRoute model.TagRoute
 		_ = util.LoadObject(cfg, &tagRoute)
@@ -68,35 +68,35 @@ func (t *RouteServiceImpl) FindTagRoute(id string) (model.TagRouteDto, error) {
 }
 
 func (t *RouteServiceImpl) EnableTagRoute(id string) error {
-	path := getRoutePath(id, constant.TagRoute)
-	cfg, err := t.GovernanceConfig.GetConfig(path)
+	path := GetRoutePath(id, constant.TagRoute)
+	cfg, err := config.Governance.GetConfig(path)
 	if cfg != "" {
 		var tagRoute model.TagRoute
 		_ = util.LoadObject(cfg, &tagRoute)
 		tagRoute.Enabled = true
 		obj, _ := util.DumpObject(tagRoute)
-		return t.GovernanceConfig.SetConfig(path, obj)
+		return config.Governance.SetConfig(path, obj)
 	}
 	return err
 }
 
 func (t *RouteServiceImpl) DisableTagRoute(id string) error {
-	path := getRoutePath(id, constant.TagRoute)
-	cfg, err := t.GovernanceConfig.GetConfig(path)
+	path := GetRoutePath(id, constant.TagRoute)
+	cfg, err := config.Governance.GetConfig(path)
 	if cfg != "" {
 		var tagRoute model.TagRoute
 		_ = util.LoadObject(cfg, &tagRoute)
 		tagRoute.Enabled = false
 		obj, _ := util.DumpObject(tagRoute)
-		return t.GovernanceConfig.SetConfig(path, obj)
+		return config.Governance.SetConfig(path, obj)
 	}
 	return err
 }
 
 func (t *RouteServiceImpl) CreateConditionRoute(conditionRouteDto model.ConditionRouteDto) error {
-	id := util.BuildServiceKey(conditionRouteDto.Base)
-	path := getRoutePath(id, constant.ConditionRoute)
-	existConfig, _ := t.GovernanceConfig.GetConfig(path)
+	id := util.BuildServiceKey(conditionRouteDto.Base.Application, conditionRouteDto.Base.Service, conditionRouteDto.Base.ServiceVersion, conditionRouteDto.Base.ServiceGroup)
+	path := GetRoutePath(id, constant.ConditionRoute)
+	existConfig, _ := config.Governance.GetConfig(path)
 
 	var existRule model.ConditionRoute
 	if existConfig != "" {
@@ -105,13 +105,13 @@ func (t *RouteServiceImpl) CreateConditionRoute(conditionRouteDto model.Conditio
 	store := convertConditionRouteToStore(existRule, conditionRouteDto)
 
 	obj, _ := util.DumpObject(store)
-	return t.GovernanceConfig.SetConfig(path, obj)
+	return config.Governance.SetConfig(path, obj)
 }
 
 func (t *RouteServiceImpl) UpdateConditionRoute(conditionRouteDto model.ConditionRouteDto) error {
-	id := util.BuildServiceKey(conditionRouteDto.Base)
-	path := getRoutePath(id, constant.ConditionRoute)
-	cfg, err := t.GovernanceConfig.GetConfig(path)
+	id := util.BuildServiceKey(conditionRouteDto.Base.Application, conditionRouteDto.Base.Service, conditionRouteDto.Base.ServiceVersion, conditionRouteDto.Base.ServiceGroup)
+	path := GetRoutePath(id, constant.ConditionRoute)
+	cfg, err := config.Governance.GetConfig(path)
 	if err != nil {
 		return err
 	}
@@ -124,17 +124,17 @@ func (t *RouteServiceImpl) UpdateConditionRoute(conditionRouteDto model.Conditio
 	store := convertConditionRouteToStore(existRule, conditionRouteDto)
 
 	obj, _ := util.DumpObject(store)
-	return t.GovernanceConfig.SetConfig(path, obj)
+	return config.Governance.SetConfig(path, obj)
 }
 
 func (t *RouteServiceImpl) DeleteConditionRoute(id string) error {
-	path := getRoutePath(id, constant.ConditionRoute)
-	return t.GovernanceConfig.DeleteConfig(path)
+	path := GetRoutePath(id, constant.ConditionRoute)
+	return config.Governance.DeleteConfig(path)
 }
 
 func (t *RouteServiceImpl) FindConditionRouteById(id string) (model.ConditionRouteDto, error) {
-	path := getRoutePath(id, constant.ConditionRoute)
-	cfg, err := t.GovernanceConfig.GetConfig(path)
+	path := GetRoutePath(id, constant.ConditionRoute)
+	cfg, err := config.Governance.GetConfig(path)
 	if err != nil {
 		return model.ConditionRouteDto{}, err
 	}
@@ -158,13 +158,13 @@ func (t *RouteServiceImpl) FindConditionRouteById(id string) (model.ConditionRou
 	return model.ConditionRouteDto{}, nil
 }
 
-func (t *RouteServiceImpl) FindConditionRoute(dto model.ConditionRouteDto) (model.ConditionRouteDto, error) {
-	return t.FindConditionRouteById(util.BuildServiceKey(dto.Base))
+func (t *RouteServiceImpl) FindConditionRoute(conditionRouteDto model.ConditionRouteDto) (model.ConditionRouteDto, error) {
+	return t.FindConditionRouteById(util.BuildServiceKey(conditionRouteDto.Base.Application, conditionRouteDto.Base.Service, conditionRouteDto.Base.ServiceVersion, conditionRouteDto.Base.ServiceGroup))
 }
 
 func (t *RouteServiceImpl) EnableConditionRoute(id string) error {
-	path := getRoutePath(id, constant.ConditionRoute)
-	cfg, err := t.GovernanceConfig.GetConfig(path)
+	path := GetRoutePath(id, constant.ConditionRoute)
+	cfg, err := config.Governance.GetConfig(path)
 	if err != nil {
 		return err
 	}
@@ -173,14 +173,14 @@ func (t *RouteServiceImpl) EnableConditionRoute(id string) error {
 		_ = util.LoadObject(cfg, &conditionRoute)
 		conditionRoute.Enabled = true
 		obj, _ := util.DumpObject(conditionRoute)
-		return t.GovernanceConfig.SetConfig(path, obj)
+		return config.Governance.SetConfig(path, obj)
 	}
 	return fmt.Errorf("no existing condition route for path: %s", path)
 }
 
 func (t *RouteServiceImpl) DisableConditionRoute(id string) error {
-	path := getRoutePath(id, constant.ConditionRoute)
-	cfg, err := t.GovernanceConfig.GetConfig(path)
+	path := GetRoutePath(id, constant.ConditionRoute)
+	cfg, err := config.Governance.GetConfig(path)
 	if err != nil {
 		return err
 	}
@@ -189,12 +189,12 @@ func (t *RouteServiceImpl) DisableConditionRoute(id string) error {
 		_ = util.LoadObject(cfg, &conditionRoute)
 		conditionRoute.Enabled = false
 		obj, _ := util.DumpObject(conditionRoute)
-		return t.GovernanceConfig.SetConfig(path, obj)
+		return config.Governance.SetConfig(path, obj)
 	}
 	return fmt.Errorf("no existing condition route for path: %s", path)
 }
 
-func getRoutePath(key string, routeType string) string {
+func GetRoutePath(key string, routeType string) string {
 	key = strings.ReplaceAll(key, "/", "*")
 	if routeType == constant.ConditionRoute {
 		return key + constant.ConditionRuleSuffix
@@ -211,6 +211,7 @@ func convertTagRouteToStore(tagRoute model.TagRouteDto) model.TagRoute {
 	store.Priority = tagRoute.Priority
 	store.Runtime = tagRoute.Runtime
 	store.Tags = tagRoute.Tags
+	store.ConfigVersion = tagRoute.ConfigVersion
 	return store
 }
 
@@ -222,6 +223,7 @@ func convertTagRouteToDto(tagRoute model.TagRoute) model.TagRouteDto {
 	dto.Priority = tagRoute.Priority
 	dto.Runtime = tagRoute.Runtime
 	dto.Tags = tagRoute.Tags
+	dto.ConfigVersion = tagRoute.ConfigVersion
 	return dto
 }
 
@@ -241,6 +243,7 @@ func convertConditionRouteToStore(existRule model.ConditionRoute, conditionRoute
 	existRule.Priority = conditionRouteDto.Priority
 	existRule.Runtime = conditionRouteDto.Runtime
 	existRule.Conditions = conditionRouteDto.Conditions
+	existRule.ConfigVersion = conditionRouteDto.ConfigVersion
 	return existRule
 }
 
@@ -256,6 +259,7 @@ func convertConditionRouteToDto(conditionRoute model.ConditionRoute) model.Condi
 	dto.Priority = conditionRoute.Priority
 	dto.Runtime = conditionRoute.Runtime
 	dto.Conditions = conditionRoute.Conditions
+	dto.ConfigVersion = conditionRoute.ConfigVersion
 	return dto
 }
 
@@ -265,4 +269,25 @@ func detachId(id string) []string {
 	} else {
 		return []string{id}
 	}
+}
+
+func GetRules(con string) (map[string]string, error) {
+	list := make(map[string]string)
+	if con == "" || con == "*" {
+		rules, err := config.Governance.GetList("dubbo")
+		if _, ok := err.(*config.RuleNotFound); ok {
+			logger.Infof("No rule found from config center, err msg is %s", err.Error())
+			return list, nil
+		}
+		list = rules
+	} else {
+		key := GetOverridePath(con)
+		rule, err := config.Governance.GetConfig(key)
+		if _, ok := err.(*config.RuleNotFound); ok {
+			logger.Infof("No rule found from config center, err msg is %s", err.Error())
+			return list, nil
+		}
+		list[key] = rule
+	}
+	return list, nil
 }

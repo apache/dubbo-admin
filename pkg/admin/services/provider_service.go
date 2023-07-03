@@ -15,11 +15,16 @@
 
 package services
 
-import "github.com/apache/dubbo-admin/pkg/admin/model"
+import (
+	"github.com/apache/dubbo-admin/pkg/admin/model"
+	set "github.com/dubbogo/gost/container/set"
+)
 
 type ProviderService interface {
-	FindServices() ([]string, error)
-	FindApplications() ([]string, error)
-	FindService(string, string) ([]*model.Provider, error)
+	FindServices() (*set.HashSet, error)
+	FindApplications() (*set.HashSet, error)
+	FindProtocols() (*set.HashSet, error)
+	FindVersions() (*set.HashSet, error)
+	FindService(string, string) ([]*model.ServiceDTO, error)
 	FindByService(string) ([]*model.Provider, error)
 }

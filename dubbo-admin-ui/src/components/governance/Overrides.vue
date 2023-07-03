@@ -19,6 +19,9 @@
     <v-layout row wrap>
       <v-flex lg12>
         <breadcrumb title="dynamicConfig" :items="breads"></breadcrumb>
+        <v-flex lg12>
+      <a  href="https://cn.dubbo.apache.org/zh-cn/overview/core-features/traffic/configuration-rule/">动态配置规则</a>
+    </v-flex>
       </v-flex>
       <v-flex lg12>
         <v-card flat color="transparent">
@@ -51,7 +54,7 @@
                       v-for="(item, i) in items"
                       :key="i"
                       @click="selected = i">
-                      <v-list-tile-title>{{ $t(item.title) }}</v-list-tile-title>
+                      <v-list-tile-title>{{ $t(item.service) }}</v-list-tile-title>
                     </v-list-tile>
                   </v-list>
                 </v-menu>
@@ -195,14 +198,12 @@
 <script>
 import AceEditor from '@/components/public/AceEditor'
 import yaml from 'js-yaml'
-import Search from '@/components/public/Search'
 import operations from '@/api/operation'
 import Breadcrumb from '@/components/public/Breadcrumb'
 
 export default {
   components: {
     AceEditor,
-    Search,
     Breadcrumb
   },
   data: () => ({
@@ -248,13 +249,12 @@ export default {
     ],
     template:
 
-        'configVersion: v2.7\n' +
+        'configVersion: \'v3.0\'\n' +
         'enabled: true\n' +
         'configs: \n' +
-        '  - addresses: [0.0.0.0]  # 0.0.0.0 for all addresses\n' +
-        '    side: consumer        # effective side, consumer or addresses\n' +
-        '    parameters: \n' +
-        '      timeout: 6000       # dynamic config parameter\n',
+        ' - side: consumer\n' +
+        '   parameters:\n' +
+        '     retries: \'4\'',
     ruleText: '',
     readonly: false,
     serviceHeaders: [],

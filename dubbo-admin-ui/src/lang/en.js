@@ -16,8 +16,9 @@
  */
 export default {
   service: 'Service',
-  serviceSearch: 'Search service name',
-  serviceGovernance: 'Service Governance',
+  serviceSearch: 'Search Service',
+  serviceGovernance: 'Routing Rule',
+  trafficManagement: 'Traffic Management',
   routingRule: 'Condition Rule',
   tagRule: 'Tag Rule',
   meshRule: 'Mesh Rule',
@@ -70,6 +71,14 @@ export default {
   createNewDynamicConfigRule: 'Create New Dynamic Config Rule',
   createNewWeightRule: 'Create New Weight Rule',
   createNewLoadBalanceRule: 'Create new load balancing rule',
+  createTimeoutRule: 'Create timeout rule',
+  createRetryRule: 'Create timeout rule',
+  createRegionRule: 'Create retry rule',
+  createArgumentRule: 'Create argument routing rule',
+  createMockCircuitRule: 'Create mock (circuit breaking) rule',
+  createAccesslogRule: 'Create accesslog rule',
+  createGrayRule: 'Create gray rule',
+  createWeightRule: 'Create weighting rule',
   serviceIdHint: 'Service ID',
   view: 'View',
   edit: 'Edit',
@@ -221,5 +230,17 @@ export default {
   methodNameHint: 'The method name of Service',
   createMockRule: 'Create Mock Rule',
   editMockRule: 'Edit Mock Rule',
-  deleteRuleTitle: 'Are you sure to delete this mock rule?'
+  deleteRuleTitle: 'Are you sure to delete this mock rule?',
+
+  trafficTimeout: 'Timeout',
+  trafficRetry: 'Retry',
+  trafficRegion: 'Region Aware',
+  trafficIsolation: 'Isolation',
+  trafficWeight: 'Weight Percentage',
+  trafficArguments: 'Arg Routing',
+  trafficMock: 'Mock',
+  trafficAccesslog: 'Accesslog',
+  trafficHost: 'Host',
+  homePage: 'Cluster Overview',
+  serviceManagement: 'Dev & Test'
 }
