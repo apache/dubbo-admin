@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package v1alpha1;
+
+option go_package="./";
+
+// +kubetype-gen
+// +kubetype-gen:groupVersion=dubbo.apache.org/v1alpha1
+// +genclient
+// +k8s:deepcopy-gen=true
+
+message ServiceNameMapping{
+  string interfaceName = 1;
+  repeated string applicationNames = 2;
+}
