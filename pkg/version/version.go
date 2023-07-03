@@ -20,6 +20,7 @@ package version
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/spf13/cobra"
 	"runtime"
 )
 
@@ -59,4 +60,27 @@ func GetVersionInfo() string {
 	version := GetVersion()
 	result, _ := json.Marshal(version)
 	return string(result)
+}
+
+func NewVersionCmd() *cobra.Command {
+	args := struct {
+		detailed bool
+	}{}
+	cmd := &cobra.Command{
+		Use:   "version",
+		Short: "Print version",
+		Long:  `Print version.`,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			if args.detailed {
+				cmd.Println(GetVersionInfo())
+			} else {
+				cmd.Printf("%s\n", gitVersion)
+			}
+
+			return nil
+		},
+	}
+	// flags
+	cmd.PersistentFlags().BoolVarP(&args.detailed, "detailed", "a", false, "Print detailed version")
+	return cmd
 }

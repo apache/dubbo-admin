@@ -61,26 +61,24 @@ serviceAccount:
 imagePullSecrets: []
 # - name: secretName
 
-
-##  @param Admin Default Enable Configuration
-dubbo:
-  ## dubbo enabled
-  enabled: true
-
-  ## dubbo application
-  application:
-    ## dubbo application name
-    name: ~
-
-    ## dubbo application logger
-    logger: slf4j
-
-  registry:
-    ## dubbo registry address
-    address: ${admin.registry.address}
-
 ## admin configuration
 admin:
+  ## dubbo configuration when admin works as a provider
+  dubbo:
+    ## dubbo enabled
+    enabled: true
+
+    ## dubbo application
+    application:
+      ## dubbo application name
+      name: ~
+
+      ## dubbo application logger
+      logger: slf4j
+
+    registry:
+      ## dubbo registry address
+      address: ${admin.registry.address}
   ## zookeeper configuration
   zookeeper:
     ## zookeeper enabled
@@ -123,8 +121,11 @@ admin:
 
       ## nacos namespace
       namespace: public
-
-
+  prometheus:
+    address: prometheus.dubbo-system.svc.cluster.local:3000
+  grafana:
+    address: grafana.dubbo-system.svc.cluster.local
+  mysql-dsn: "root:password@tcp(127.0.0.1:3306)/dubbo-admin?charset=utf8&parseTime=true"
 
 ## apollo configuration
 apollo:

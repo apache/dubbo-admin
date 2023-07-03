@@ -29,7 +29,7 @@ admin:
 ### Run with command line
 
 ```shell
-$ export ADMIN_CONFIG_PATH=/path/to/your/admin/project/conf/dubboadmin.yml
+$ export ADMIN_CONFIG_PATH=/path/to/your/admin/project/conf/admin.yml
 $ cd cmd/admin
 $ go run . 
 ```

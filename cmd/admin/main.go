@@ -18,30 +18,14 @@
 package main
 
 import (
+	"fmt"
+	"github.com/apache/dubbo-admin/cmd/admin/cmd"
 	"os"
-
-	"dubbo.apache.org/dubbo-go/v3/common/constant"
-	"github.com/apache/dubbo-admin/pkg/admin/config"
-	mock "github.com/apache/dubbo-admin/pkg/admin/providers/mock"
-	"github.com/apache/dubbo-admin/pkg/admin/router"
-	"github.com/apache/dubbo-admin/pkg/admin/services"
 )
 
-// @title           Dubbo-Admin API
-// @version         1.0
-// @description     This is a dubbo-admin swagger ui server.
-// @license.name  Apache 2.0
-// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
-// @host      127.0.0.1:38080
-// @BasePath  /
 func main() {
-	config.LoadConfig()
-	go services.StartSubscribe(config.RegistryCenter)
-	defer func() {
-		services.DestroySubscribe(config.RegistryCenter)
-	}()
-	os.Setenv(constant.ConfigFileEnvKey, config.MockProviderConf)
-	go mock.RunMockServiceServer()
-	router := router.InitRouter()
-	_ = router.Run(":38080")
+	if err := cmd.GetRootCmd(os.Args[1:]).Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
 }

@@ -113,6 +113,9 @@ spec:
             {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: ADMIN_CONFIG_PATH
+              value: /config/admin.yml
       volumes:
         - name: application-properties
           configMap:
