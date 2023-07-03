@@ -18,8 +18,11 @@
   <v-container grid-list-xl fluid>
       <v-layout row wrap>
           <v-flex lg12>
-      <Breadcrumb title="trafficHost" :items="breads"></breadcrumb>
-    </v-flex>
+            <Breadcrumb title="trafficHost" :items="breads"></breadcrumb>
+          </v-flex>
+          <v-flex lg12>
+            可在这里了解如何 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/host/" target="_blank">将流量转发到指定机器</a> 的工作原理与使用方式！
+          </v-flex>
     <v-flex lg12>
         <v-card flat color="transparent">
           <v-card-text>
@@ -95,6 +98,11 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createNewRoutingRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何配置 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/host/" target="_blank">将服务流量转发到固定机器</a> ！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout wrap>
           <v-flex>
@@ -123,6 +131,11 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createNewRoutingRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何配置 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/host/" target="_blank">将服务流量转发到固定机器</a> ！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout wrap>
           <v-flex>

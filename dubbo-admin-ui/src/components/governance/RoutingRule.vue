@@ -21,8 +21,8 @@
       <v-flex lg12>
         <breadcrumb title="routingRule" :items="breads"></breadcrumb>
         <v-flex lg12>
-      <a href="https://cn.dubbo.apache.org/zh-cn/overview/core-features/traffic/condition-rule/">条件路由规则</a>
-    </v-flex>
+        可在这里了解 <a href="https://cn.dubbo.apache.org/zh-cn/overview/core-features/traffic/condition-rule/" target="_blank">标签路由规则</a> 的工作原理与使用方式！
+        </v-flex>
       </v-flex>
       <v-flex lg12>
         <v-card flat color="transparent">

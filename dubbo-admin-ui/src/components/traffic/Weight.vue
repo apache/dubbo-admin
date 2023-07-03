@@ -18,8 +18,11 @@
   <v-container grid-list-xl fluid>
       <v-layout row wrap>
           <v-flex lg12>
-      <Breadcrumb title="trafficWeight" :items="breads"></breadcrumb>
-    </v-flex>
+            <Breadcrumb title="trafficWeight" :items="breads"></breadcrumb>
+          </v-flex>
+          <v-flex lg12>
+            可在这里了解 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/weight/" target="_blank">服务权重</a> 配置的工作原理与使用方式！
+          </v-flex>
     <v-flex lg12>
         <v-card flat color="transparent">
           <v-card-text>
@@ -98,6 +101,11 @@
       <v-card-title class="justify-center">
         <span class="headline">新增权重</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何动态调整服务的 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/weight/" target="_blank">权重值配置</a>！
+        </v-flex>
+      </v-layout>
       <v-card>
         <v-card-text>
           <v-layout row warp>
@@ -136,8 +144,8 @@
       <v-card-text v-for="(modal,index) in createWeight.weights" :key="index">
           <v-flex  xs6 sm3 md6>
             <v-text-field
-              label="权重"
-              hint="请输入权重"
+              label="请输入匹配实例的目标权重"
+              hint="所有实例的默认权重为 100，如想要目标实例的流量为普通实例的 20%，则可以设置值为 25"
               type="number"
               v-model="modal.weight"
               @input="handleInputWeight(index)"
@@ -177,7 +185,7 @@
                   outline
                   @click="addItem(index)"
                 >
-                  新增一条
+                  新增权重条件
               </v-btn>
           </v-flex>
     </v-layout>
@@ -195,6 +203,11 @@
       <v-card-title class="justify-center">
         <span class="headline">修改权重</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何动态调整服务的 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/weight/" target="_blank">权重值配置</a>！
+        </v-flex>
+      </v-layout>
       <v-card>
         <v-card-text>
           <v-layout row warp>
@@ -234,8 +247,8 @@
       <v-card-text v-for="(modal,index) in updateWeight.weights" :key="index">
           <v-flex  xs6 sm3 md6>
             <v-text-field
-              label="权重"
-              hint="请输入权重"
+              label="请输入匹配实例的目标权重"
+              hint="所有实例的默认权重为 100，如想要目标实例的流量为普通实例的 20%，则可以设置值为 25"
               type="number"
               v-model="modal.weight"
               @input="handleUpdateInputWeight(index)"
@@ -275,7 +288,7 @@
                   outline
                   @click="addUpdateItem(index)"
                 >
-                  新增一条
+                  新增权重条件
               </v-btn>
           </v-flex>
     </v-layout>
@@ -533,7 +546,7 @@ export default {
     setHeaders: function () {
       this.headers = [
         {
-          text: '应用名',
+          text: '服务',
           value: 'service'
         },
         {
