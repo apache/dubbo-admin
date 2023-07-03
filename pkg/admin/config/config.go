@@ -41,7 +41,7 @@ import (
 )
 
 const (
-	conf        = "./conf/dubboadmin.yml"
+	conf        = "./conf/admin.yml"
 	confPathKey = "ADMIN_CONFIG_PATH"
 )
 
