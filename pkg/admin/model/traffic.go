@@ -19,9 +19,11 @@ package model
 
 import (
 	"github.com/apache/dubbo-admin/pkg/admin/util"
+	"strings"
 )
 
-const AdminIdentifier string = "& admin_rule!=false"
+const RegionAdminIdentifier string = " & region_admin_rule!=false"
+const ArgumentAdminIdentifier string = " & arg_admin_rule!=false"
 
 type Timeout struct {
 	Service string `json:"service" binding:"required"`
@@ -66,7 +68,7 @@ func (t Retry) ToRule() Override {
 
 type Accesslog struct {
 	Application string `json:"application" binding:"required"`
-	Accesslog   string `json:"accesslog" binding:"required"`
+	Accesslog   string `json:"accesslog"`
 }
 
 func (t Accesslog) ToRule() Override {
@@ -86,7 +88,7 @@ type Region struct {
 	Service string `json:"service" binding:"required"`
 	Group   string `json:"group"`
 	Version string `json:"version"`
-	Rule    string `json:"rule" binding:"required"`
+	Rule    string `json:"rule"`
 }
 
 func (r Region) ToRule() ConditionRoute {
@@ -97,7 +99,7 @@ func (r Region) ToRule() ConditionRoute {
 		Key:           r.Service,
 		Scope:         "service",
 		ConfigVersion: "v3.0",
-		Conditions:    []string{r.Rule + AdminIdentifier},
+		Conditions:    []string{strings.Join([]string{"=> ", r.Rule, "=$", r.Rule, RegionAdminIdentifier}, "")},
 	}
 }
 
@@ -132,7 +134,7 @@ func (r Argument) ToRule() ConditionRoute {
 		Key:           r.Service,
 		Scope:         "service",
 		ConfigVersion: "v3.0",
-		Conditions:    []string{r.Rule + AdminIdentifier},
+		Conditions:    []string{r.Rule + ArgumentAdminIdentifier},
 	}
 }
 

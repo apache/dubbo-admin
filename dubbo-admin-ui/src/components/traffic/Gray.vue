@@ -370,12 +370,7 @@ export default {
       this.updateGary.tags[index].match[idx].value = temp
     },
     submit () {
-      if (this.application) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     addCreateGary () {
       const temp = {
@@ -454,8 +449,8 @@ export default {
         }
       }).then(response => {
         this.tableData = []
-        const array = []
         response.data.forEach(element => {
+          const array = []
           element.tags.forEach(item => {
             array.push(item.name)
           })
@@ -468,7 +463,6 @@ export default {
           }
           this.tableData.push(result)
         })
-        console.log(this.tableData)
       })
     },
     saveUpdate () {

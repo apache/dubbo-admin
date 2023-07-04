@@ -285,12 +285,7 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.service) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     search () {
       console.log('mock: force:return Mock Comment'.split(/:\s(.*?):(.*)/)[2].replace(/^return\s/, ''))
@@ -313,7 +308,7 @@ export default {
       this.updateDialog = false
       this.$axios.put('/traffic/mock', {
         service: this.updateService,
-        mock: `${this.mockUpdateMethod === '失败时返回' ? `mock: fail:return ${this.updateMock}` : `mock: force:return ${this.updateMock}`}`,
+        mock: `${this.mockUpdateMethod === '失败时返回' ? `fail:return ${this.updateMock}` : `force:return ${this.updateMock}`}`,
         group: this.updateGroup,
         version: this.updateVersion
       }).then((res) => {

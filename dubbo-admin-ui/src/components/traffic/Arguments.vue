@@ -124,6 +124,11 @@
           </v-flex>
         </v-layout>
         <v-layout wrap>
+          <v-flex lg12>
+            符合以下条件的参数调用：
+          </v-flex>
+        </v-layout>
+        <v-layout wrap>
           <v-flex xs6 sm3 md2>
             <v-text-field
               label="方法名"
@@ -144,6 +149,20 @@
               label="参数匹配条件"
               hint="请输入参数匹配条件（仅支持字符串类型参数）"
               v-model="createRuleMatch"
+            ></v-text-field>
+          </v-flex>
+        </v-layout>
+        <v-layout wrap>
+          <v-flex lg12>
+            将被路由到符合以下条件的目标机器上：
+          </v-flex>
+        </v-layout>
+        <v-layout wrap>
+          <v-flex xs6 sm3 md5>
+            <v-text-field
+              label="输入目标机器过滤条件"
+              hint="可以使用 URL 上的任意参数进行匹配，如 orderVersion=v2 & region=hangzhou，具体可参见文档说明。"
+              v-model="createFilterCondition"
             ></v-text-field>
           </v-flex>
         </v-layout>
@@ -190,6 +209,11 @@
            </v-flex>
         </v-layout>
         <v-layout wrap>
+          <v-flex lg12>
+            符合以下条件的参数调用：
+          </v-flex>
+        </v-layout>
+        <v-layout wrap>
           <v-flex xs6 sm3 md2>
             <v-text-field
               label="方法名"
@@ -210,6 +234,20 @@
               label="参数匹配条件"
               hint="请输入参数匹配条件（仅支持字符串类型参数）"
               v-model="updateRuleMatch"
+            ></v-text-field>
+          </v-flex>
+        </v-layout>
+        <v-layout wrap>
+          <v-flex lg12>
+            将被路由到符合以下条件的目标机器上：
+          </v-flex>
+        </v-layout>
+        <v-layout wrap>
+          <v-flex xs6 sm3 md5>
+            <v-text-field
+              label="输入目标机器过滤条件"
+              hint="可以是使用 URL 上的任意参数进行匹配，如 orderVersion=v2 & region=hangzhou，具体可参见文档说明。"
+              v-model="updateFilterCondition"
             ></v-text-field>
           </v-flex>
         </v-layout>
@@ -280,10 +318,12 @@ export default {
     createRuleMethod: '',
     createRuleIndex: '',
     createRuleMatch: '',
+    createFilterCondition: '',
     updateService: '',
     updateRuleMethod: '',
     updateRuleIndex: '',
     updateRuleMatch: '',
+    updateFilterCondition: '',
     updateGroup: '',
     updateVersion: '',
     deleteDialog: false,
@@ -303,12 +343,7 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.service) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     search () {
       this.$axios.get('/traffic/argument', {
@@ -327,16 +362,22 @@ export default {
     },
     saveUpdate () {
       this.updateDialog = false
-      this.$axios.put('/traffic/argument', {
-        service: this.updateService,
-        rule: `${this.updateRuleMethod}[${this.updateRuleIndex}]=${this.updateRuleMatch}`,
-        group: this.updateGroup,
-        version: this.updateVersion
-      }).then((res) => {
-        if (res) {
-          alert('操作成功')
-        }
-      })
+      if (!this.updateRuleMethod || !this.updateRuleMatch || !this.updateRuleIndex || !this.updateFilterCondition) {
+        alert('请分别输入方法匹配条件和机器过滤条件')
+      } else {
+        const matchCondition = `method=${this.updateRuleMethod} & arguments[${this.updateRuleIndex}]=${this.updateRuleMatch}`
+        const filterCondition = ` => ${this.updateFilterCondition}`
+        this.$axios.put('/traffic/argument', {
+          service: this.updateService,
+          rule: matchCondition + filterCondition,
+          group: this.updateGroup,
+          version: this.updateVersion
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      }
     },
     setHeaders: function () {
       this.headers = [
@@ -398,9 +439,14 @@ export default {
       this.updateDialog = true
     },
     save () {
+      // if (!this.createRuleMethod || !this.createRuleMatch || !this.createRuleIndex || !this.createFilterCondition) {
+      //  alert('请分别输入方法匹配条件和机器过滤条件')
+      // } else {
+      const matchCondition = `method=${this.createRuleMethod} & arguments[${this.createRuleIndex}]=${this.createRuleMatch}`
+      const filterCondition = ` => ${this.createFilterCondition}`
       this.$axios.post('/traffic/argument', {
         service: this.createService,
-        rule: `${this.createRuleMethod}[${this.createRuleIndex}]=${this.createRuleMatch}`,
+        rule: matchCondition + filterCondition,
         group: this.createGroup,
         version: this.createVersion
       }).then((res) => {
@@ -408,6 +454,7 @@ export default {
           alert('操作成功')
         }
       })
+      // }
       this.dialog = false
     },
     closeDialog () {
