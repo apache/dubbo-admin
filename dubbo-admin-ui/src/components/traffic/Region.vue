@@ -18,8 +18,11 @@
   <v-container grid-list-xl fluid>
       <v-layout row wrap>
           <v-flex lg12>
-      <Breadcrumb title="trafficRegion" :items="breads"></breadcrumb>
-    </v-flex>
+            <Breadcrumb title="trafficRegion" :items="breads"></breadcrumb>
+          </v-flex>
+          <v-flex lg12>
+            可在这里了解 <a href="https://dubbo.apache.org/zh-cn/overview/tasks/traffic-management/region/" target="_blank">同区域优先</a> 配置的工作原理与使用方式！
+          </v-flex>
     <v-flex lg12>
         <v-card flat color="transparent">
           <v-card-text>
@@ -91,6 +94,11 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createNewRoutingRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何让服务调用遵循 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/region/" target="_blank">同区域优先</a> 规则！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout row wrap>
           <v-flex xs6 sm3 md3>
@@ -103,14 +111,14 @@
           <v-flex style="margin-left: 10px;" xs6 sm3 md3>
             <v-text-field
               label="服务版本"
-              hint="$t('versionInputPrompt')"
+              hint="请输入服务版本version（可选）"
               v-model="createVersion"
             ></v-text-field>
           </v-flex>
           <v-flex style="margin-left: 10px;" xs6 sm3 md3>
             <v-text-field
               label="服务组"
-              hint="$t('groupInputPrompt')"
+              hint="请输入服务分组group（可选）"
               v-model="createGroup"
             ></v-text-field>
           </v-flex>
@@ -121,9 +129,9 @@
         <v-layout v-if="handleRule" row wrap>
           <v-flex xs6 sm3 md5>
             <v-text-field
-              label="匹配规则"
-              hint="请输入流量匹配规则（默认不设置，则对所有流量生效），配置后只有匹配规则的流量才会执行同区域优先调用，如 method=sayHello"
-              v-model="createRule"
+               label="（可选）同区域规则已开启，可继续输入过滤条件"
+               hint="如果要过滤部分匹配流量才执行同区域规则，请继续输入匹配条件。如 method=sayHello & key=value 表示只有匹配 method、key 的流量才执行同区域优先。"
+               v-model="createRule"
              ></v-text-field>
           </v-flex>
         </v-layout>
@@ -140,6 +148,11 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createNewRoutingRule')}}</span>
       </v-card-title>
+       <v-layout row wrap>
+          <v-flex lg12>
+            可在这里了解如何让服务调用遵循 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/region/" target="_blank">同区域优先</a> 规则！
+          </v-flex>
+       </v-layout>
       <v-card-text >
         <v-layout row wrap>
           <v-flex xs6 sm3 md3>
@@ -152,14 +165,14 @@
           <v-flex style="margin-left: 10px;" xs6 sm3 md3>
             <v-text-field
               label="Group"
-              hint="$t('groupInputPrompt')"
+              hint="请输入服务分组group（可选）"
               v-model="updateGroup"
         ></v-text-field>
           </v-flex>
           <v-flex style="margin-left: 10px;" xs6 sm3 md3>
             <v-text-field
               label="Version"
-              hint="$t('versionInputPrompt')"
+              hint="请输入服务版本version（可选）"
               v-model="updateVersion"
         ></v-text-field>
           </v-flex>
@@ -170,8 +183,8 @@
         <v-layout v-if="handleUpdateRule" row wrap>
           <v-flex xs6 sm3 md5>
             <v-text-field
-              label="匹配规则"
-              hint="请输入流量匹配规则（默认不设置，则对所有流量生效），配置后只有匹配规则的流量才会执行同区域优先调用，如 method=sayHello"
+              label="（可选）同区域规则已开启，可继续输入过滤条件"
+              hint="如果要过滤部分匹配流量才执行同区域规则，请继续输入匹配条件。如 method=sayHello & key=value 表示只有匹配 method、key 的流量才执行同区域优先。"
               v-model="updateRule"
         ></v-text-field>
           </v-flex>
@@ -315,19 +328,19 @@ export default {
     setHeaders: function () {
       this.headers = [
         {
-          text: '应用',
+          text: '服务',
           value: 'service'
         },
         {
-          text: '应用规则',
+          text: '同区域(状态)',
           value: 'rule'
         },
         {
-          text: 'Group',
+          text: '分组',
           value: 'group'
         },
         {
-          text: 'Version',
+          text: '版本',
           value: 'version'
         },
         {

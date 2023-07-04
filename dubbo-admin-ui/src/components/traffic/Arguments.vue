@@ -18,8 +18,11 @@
   <v-container grid-list-xl fluid>
       <v-layout row wrap>
           <v-flex lg12>
-      <Breadcrumb title="trafficArguments" :items="breads"></breadcrumb>
-    </v-flex>
+            <Breadcrumb title="trafficArguments" :items="breads"></breadcrumb>
+          </v-flex>
+          <v-flex lg12>
+            可在这里了解服务 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/arguments/" target="_blank">参数路由</a> 的工作原理与使用方式！
+          </v-flex>
     <v-flex lg12>
         <v-card flat color="transparent">
           <v-card-text>
@@ -91,6 +94,11 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createArgumentRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何配置服务的 <a href="https://dubbo.apache.org/zh-cn/overview/tasks/traffic-management/arguments/" target="_blank">参数路由</a>！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout wrap>
           <v-flex xs6 sm3 md3>
@@ -103,14 +111,14 @@
           <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="Group"
-              hint="$t('versionInputPrompt')"
+              hint="请输入服务分组group（可选）"
               v-model="createGroup"
             ></v-text-field>
           </v-flex>
           <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="Version"
-              hint="$t('versionInputPrompt')"
+              hint="请输入服务版本version（可选）"
               v-model="createVersion"
             ></v-text-field>
           </v-flex>
@@ -134,7 +142,7 @@
           <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="参数匹配条件"
-              hint="请输入参数匹配条件"
+              hint="请输入参数匹配条件（仅支持字符串类型参数）"
               v-model="createRuleMatch"
             ></v-text-field>
           </v-flex>
@@ -152,6 +160,11 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createArgumentRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何配置服务的 <a href="https://dubbo.apache.org/zh-cn/overview/tasks/traffic-management/arguments/" target="_blank">参数路由</a>！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout wrap>
           <v-flex xs6 sm3 md3>
@@ -164,14 +177,14 @@
           <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="Group"
-              hint="$t('versionInputPrompt')"
+              hint="请输入服务分组group（可选）"
               v-model="updateGroup"
             ></v-text-field>
            </v-flex>
           <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="Version"
-              hint="$t('versionInputPrompt')"
+              hint="请输入服务版本version（可选）"
               v-model="updateVersion"
             ></v-text-field>
            </v-flex>
@@ -195,7 +208,7 @@
           <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="参数匹配条件"
-              hint="请输入参数匹配条件"
+              hint="请输入参数匹配条件（仅支持字符串类型参数）"
               v-model="updateRuleMatch"
             ></v-text-field>
           </v-flex>
@@ -328,19 +341,19 @@ export default {
     setHeaders: function () {
       this.headers = [
         {
-          text: '应用',
+          text: '服务',
           value: 'service'
         },
         {
-          text: '规则',
+          text: '参数路由条件',
           value: 'rule'
         },
         {
-          text: 'Group',
+          text: '分组',
           value: 'group'
         },
         {
-          text: 'Version',
+          text: '版本',
           value: 'version'
         },
         {

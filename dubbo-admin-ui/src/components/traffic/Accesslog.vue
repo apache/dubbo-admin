@@ -18,8 +18,11 @@
     <v-container grid-list-xl fluid>
         <v-layout row wrap>
             <v-flex lg12>
-        <Breadcrumb title="trafficAccesslog" :items="breads"></breadcrumb>
-      </v-flex>
+              <Breadcrumb title="trafficAccesslog" :items="breads"></breadcrumb>
+            </v-flex>
+            <v-flex lg12>
+              可在这里了解如何开启/关闭应用的 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/accesslog/" target="_blank">访问日志</a>！
+            </v-flex>
       <v-flex lg12>
           <v-card flat color="transparent">
             <v-card-text>
@@ -77,12 +80,17 @@
         <v-card-title class="justify-center">
           <span class="headline">{{$t('createAccesslogRule')}}</span>
         </v-card-title>
+        <v-layout row wrap>
+          <v-flex lg12>
+            可在这里了解如何动态开启/关闭应用的 <a href="https://dubbo.apache.org/zh-cn/overview/tasks/traffic-management/accesslog/" target="_blank">访问日志</a>！
+          </v-flex>
+        </v-layout>
         <v-card-text >
           <v-layout wrap>
             <v-flex xs6 sm3 md5>
               <v-text-field
                 label="Application Name"
-                hint="请输入Application Name"
+                hint="请输入应用名"
                 v-model="createApplication"
               ></v-text-field>
             </v-flex>
@@ -93,8 +101,8 @@
         <v-layout v-if="handleAccesslog" row wrap>
           <v-flex xs6 sm3 md5>
             <v-text-field
-              label="日志文件存储路径"
-              hint="输入 accesslog 存储的目标文件绝对路径（如/home/user1/access.log）"
+              label="（可选）访问日志已开启，可继续调整存储路径"
+              hint="请参考文档开启日志路径修改权限后再配置，否则日志仍会输入到默认路径。请输入目标文件绝对路径（如/home/user1/access.log）"
               v-model="createAccesslog"
              ></v-text-field>
           </v-flex>
@@ -112,12 +120,17 @@
         <v-card-title class="justify-center">
           <span class="headline">{{$t('createAccesslogRule')}}</span>
         </v-card-title>
+        <v-layout row wrap>
+          <v-flex lg12>
+            可在这里了解如何动态开启/关闭应用的 <a href="https://dubbo.apache.org/zh-cn/overview/tasks/traffic-management/accesslog/" target="_blank">访问日志</a>！
+          </v-flex>
+        </v-layout>
         <v-card-text >
           <v-layout wrap>
             <v-flex xs6 sm3 md5>
               <v-text-field
                 label="Application Name"
-                hint="请输入Application Name"
+                hint="请输入应用名"
                 v-model="updateApplication"
               ></v-text-field>
             </v-flex>
@@ -128,9 +141,9 @@
         <v-layout v-if="handleUpdateAccesslog" row wrap>
           <v-flex xs6 sm3 md5>
             <v-text-field
-              label="日志文件存储路径"
-              hint="输入 accesslog 存储的目标文件绝对路径（如/home/user1/access.log）"
-              v-model="updateAccesslog"
+              label="（可选）访问日志已开启，可继续调整存储路径"
+              hint="请参考文档开启日志路径修改权限后再配置，否则日志仍会输入到默认路径。请输入目标文件绝对路径（如/home/user1/access.log）"
+               v-model="updateAccesslog"
              ></v-text-field>
           </v-flex>
         </v-layout>
@@ -252,11 +265,11 @@ export default {
     setHeaders: function () {
       this.headers = [
         {
-          text: '服务',
+          text: '应用名',
           value: 'application'
         },
         {
-          text: 'accesslog',
+          text: '访问日志(状态)',
           value: 'accesslog'
         },
         {
