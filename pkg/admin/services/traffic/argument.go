@@ -40,7 +40,7 @@ func (tm *ArgumentService) CreateOrUpdate(a *model.Argument) error {
 
 func (tm *ArgumentService) Delete(a *model.Argument) error {
 	key := services.GetRoutePath(util.ColonSeparatedKey(a.Service, a.Group, a.Version), constant.ConditionRoute)
-	err2 := removeCondition(key, a.Rule)
+	err2 := removeCondition(key, a.Rule, model.RegionAdminIdentifier)
 	if err2 != nil {
 		return err2
 	}
@@ -51,11 +51,11 @@ func (tm *ArgumentService) Search(a *model.Argument) ([]*model.Argument, error) 
 	result := make([]*model.Argument, 0)
 
 	var con string
-	if a.Service != "" {
+	if a.Service != "" && a.Service != "*" {
 		con = util.ColonSeparatedKey(a.Service, a.Group, a.Version)
 	}
 
-	list, err := services.GetRules(con)
+	list, err := services.GetRules(con, constant.ConditionRuleSuffix)
 	if err != nil {
 		return result, err
 	}
@@ -65,8 +65,6 @@ func (tm *ArgumentService) Search(a *model.Argument) ([]*model.Argument, error) 
 		split := strings.Split(k, ":")
 		argument := &model.Argument{
 			Service: split[0],
-			Group:   split[1],
-			Version: split[2],
 		}
 
 		route := &model.ConditionRoute{}
@@ -76,13 +74,15 @@ func (tm *ArgumentService) Search(a *model.Argument) ([]*model.Argument, error) 
 		}
 		for _, c := range route.Conditions {
 			// fixme, regex match
-			if strings.Contains(c, model.AdminIdentifier) {
-				argument.Rule = c
+			if i := strings.Index(c, model.ArgumentAdminIdentifier); i > 0 {
+				argument.Rule = strings.TrimSpace(c[0:i])
 				break
 			}
 		}
 
-		result = append(result, argument)
+		if argument.Rule != "" {
+			result = append(result, argument)
+		}
 	}
 
 	return result, nil

@@ -228,12 +228,7 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.application) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     search () {
       this.$axios.get('/traffic/accesslog', {
@@ -251,16 +246,26 @@ export default {
       })
     },
     saveUpdate () {
-      console.log(this.updateAccesslog)
       this.updateDialog = false
-      this.$axios.put('/traffic/accesslog', {
-        application: this.updateApplication,
-        accesslog: this.handleUpdateAccesslog ? this.updateAccesslog : 'false'
-      }).then((res) => {
-        if (res) {
-          alert('操作成功')
-        }
-      })
+      if (this.handleUpdateAccesslog) {
+        this.$axios.put('/traffic/accesslog', {
+          application: this.updateApplication,
+          accesslog: this.updateAccesslog === '' ? 'true' : this.updateAccesslog
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      } else {
+        this.$axios.put('/traffic/accesslog', {
+          application: this.updateApplication,
+          accesslog: '' // 删除
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      }
     },
     setHeaders: function () {
       this.headers = [
@@ -309,21 +314,14 @@ export default {
       if (this.handleAccesslog) {
         this.$axios.post('/traffic/accesslog', {
           application: this.createApplication,
-          accesslog: this.createAccesslog
+          accesslog: this.createAccesslog === '' ? 'true' : this.createAccesslog
         }).then((res) => {
           if (res) {
             alert('操作成功')
           }
         })
       } else {
-        this.$axios.post('/traffic/accesslog', {
-          application: this.createApplication,
-          accesslog: this.handleAccesslog.toString()
-        }).then((res) => {
-          if (res) {
-            alert('操作成功')
-          }
-        })
+        alert('访问日志未开启，请选中开关后再保存！')
       }
       this.dialog = false
     },

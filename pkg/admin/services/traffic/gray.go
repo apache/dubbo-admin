@@ -47,23 +47,25 @@ func (tm *GrayService) Delete(g *model.Gray) error {
 func (tm *GrayService) Search(g *model.Gray) ([]*model.Gray, error) {
 	result := make([]*model.Gray, 0)
 
-	list, err := services.GetRules(g.Application)
+	list, err := services.GetRules(g.Application, constant.TagRuleSuffix)
 	if err != nil {
 		return result, err
 	}
 
 	for _, v := range list {
-		gray := &model.Gray{
-			Application: g.Application,
-		}
-
 		route := &model.TagRoute{}
 		err = yaml.Unmarshal([]byte(v), route)
 		if err != nil {
 			return result, err
 		}
-		gray.Tags = route.Tags
-		result = append(result, gray)
+
+		if len(route.Tags) > 0 {
+			gray := &model.Gray{
+				Application: route.Key,
+			}
+			gray.Tags = route.Tags
+			result = append(result, gray)
+		}
 	}
 
 	return result, nil

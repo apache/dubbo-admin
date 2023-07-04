@@ -427,12 +427,7 @@ export default {
       this.updateWeight.weights[index].match[idx].value = temp
     },
     submit () {
-      if (this.service) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     addCreateWeight () {
       const temp = {
@@ -536,12 +531,16 @@ export default {
     },
     saveUpdate () {
       this.updateDialog = false
-      this.$axios.put('/traffic/weight', this.updateWeight).then((res) => {
-        if (res) {
-          alert('操作成功')
-        }
-      })
-      this.search()
+      if (this.updateWeight) {
+        this.$axios.put('/traffic/weight', this.updateWeight).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+        this.search()
+      } else {
+        alert('请输入权重值')
+      }
     },
     setHeaders: function () {
       this.headers = [
@@ -608,12 +607,15 @@ export default {
       this.updateDialog = true
     },
     save () {
-      console.log(this.createWeight)
-      this.$axios.post('/traffic/weight', this.createWeight).then((res) => {
-        if (res) {
-          alert('操作成功')
-        }
-      })
+      if (this.createWeight) {
+        this.$axios.post('/traffic/weight', this.createWeight).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      } else {
+        alert('请输入权重值')
+      }
       this.dialog = false
     },
     closeDialog () {

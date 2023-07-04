@@ -33,7 +33,7 @@ type ConditionRoute struct {
 	Priority      int      `json:"priority" yaml:"priority,omitempty"`
 	Enabled       bool     `json:"enabled" yaml:"enabled"`
 	Force         bool     `json:"force" yaml:"force"`
-	Runtime       bool     `json:"runtime" yaml:"runtime"`
+	Runtime       bool     `json:"runtime" yaml:"runtime,omitempty"`
 	Key           string   `json:"key" yaml:"key"`
 	Scope         string   `json:"scope" yaml:"scope"`
 	Conditions    []string `json:"conditions" yaml:"conditions"`

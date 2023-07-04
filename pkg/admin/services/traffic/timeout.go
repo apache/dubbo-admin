@@ -50,11 +50,11 @@ func (tm *TimeoutService) Search(t *model.Timeout) ([]*model.Timeout, error) {
 	result := make([]*model.Timeout, 0)
 
 	var con string
-	if t.Service != "" {
+	if t.Service != "" && t.Service != "*" {
 		con = util.ColonSeparatedKey(t.Service, t.Group, t.Version)
 	}
 
-	list, err := services.GetRules(con)
+	list, err := services.GetRules(con, constant.ConfiguratorRuleSuffix)
 	if err != nil {
 		return result, err
 	}
@@ -62,17 +62,26 @@ func (tm *TimeoutService) Search(t *model.Timeout) ([]*model.Timeout, error) {
 	for k, v := range list {
 		k, _ = strings.CutSuffix(k, constant.ConfiguratorRuleSuffix)
 		split := strings.Split(k, ":")
+
 		t := &model.Timeout{
 			Service: split[0],
-			Group:   split[1],
-			Version: split[2],
 		}
+		if len(split) >= 2 {
+			t.Version = split[1]
+		}
+		if len(split) >= 3 {
+			t.Group = split[2]
+		}
+
 		tv, err2 := getValue(v, "consumer", "timeout")
 		if err2 != nil {
 			return result, err2
 		}
-		t.Timeout = tv.(int)
-		result = append(result, t)
+
+		if tv != nil {
+			t.Timeout = tv.(int)
+			result = append(result, t)
+		}
 	}
 
 	return result, nil
