@@ -174,6 +174,7 @@
               v-model="updateVersion"
             ></v-text-field>
           </v-flex>
+         </v-layout>
         <v-layout wrap>
           <v-flex style="margin-left: 10px;" xs6 sm3 md2>
               <v-text-field
@@ -270,12 +271,7 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.service) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     search () {
       this.$axios.get('/traffic/timeout', {
@@ -294,16 +290,20 @@ export default {
     },
     saveUpdate () {
       this.updateDialog = false
-      this.$axios.put('/traffic/timeout', {
-        service: this.updateService,
-        timeout: parseInt(this.updateTimeout),
-        group: this.updateGroup,
-        version: this.updateVersion
-      }).then((res) => {
-        if (res) {
-          alert('操作成功')
-        }
-      })
+      if (this.updateTimeout) {
+        this.$axios.put('/traffic/timeout', {
+          service: this.updateService,
+          timeout: parseInt(this.updateTimeout),
+          group: this.updateGroup,
+          version: this.updateVersion
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      } else {
+        alert('请输入超时时间')
+      }
     },
     setHeaders: function () {
       this.headers = [
@@ -363,16 +363,20 @@ export default {
       this.updateDialog = true
     },
     save () {
-      this.$axios.post('/traffic/timeout', {
-        service: this.createService,
-        timeout: parseInt(this.createTimeout),
-        group: this.createGroup,
-        version: this.createVersion
-      }).then((res) => {
-        if (res) {
-          alert('操作成功')
-        }
-      })
+      if (this.createTimeout) {
+        this.$axios.post('/traffic/timeout', {
+          service: this.createService,
+          timeout: parseInt(this.createTimeout),
+          group: this.createGroup,
+          version: this.createVersion
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      } else {
+        alert('请输入超时时间')
+      }
       this.dialog = false
     },
     closeDialog () {

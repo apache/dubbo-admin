@@ -34,13 +34,19 @@ func (tm *RegionService) CreateOrUpdate(r *model.Region) error {
 	key := services.GetRoutePath(util.ColonSeparatedKey(r.Service, r.Group, r.Version), constant.ConditionRoute)
 	newRule := r.ToRule()
 
-	err := createOrUpdateCondition(key, newRule)
+	var err error
+	if r.Rule == "" {
+		err = tm.Delete(r)
+	} else {
+		err = createOrUpdateCondition(key, newRule)
+	}
+
 	return err
 }
 
 func (tm *RegionService) Delete(r *model.Region) error {
 	key := services.GetRoutePath(util.ColonSeparatedKey(r.Service, r.Group, r.Version), constant.ConditionRoute)
-	err2 := removeCondition(key, r.Rule)
+	err2 := removeCondition(key, r.Rule, model.RegionAdminIdentifier)
 	if err2 != nil {
 		return err2
 	}
@@ -51,11 +57,11 @@ func (tm *RegionService) Search(r *model.Region) ([]*model.Region, error) {
 	result := make([]*model.Region, 0)
 
 	var con string
-	if r.Service != "" {
+	if r.Service != "" && r.Service != "*" {
 		con = util.ColonSeparatedKey(r.Service, r.Group, r.Version)
 	}
 
-	list, err := services.GetRules(con)
+	list, err := services.GetRules(con, constant.ConditionRuleSuffix)
 	if err != nil {
 		return result, err
 	}
@@ -65,8 +71,12 @@ func (tm *RegionService) Search(r *model.Region) ([]*model.Region, error) {
 		split := strings.Split(k, ":")
 		region := &model.Region{
 			Service: split[0],
-			Group:   split[1],
-			Version: split[2],
+		}
+		if len(split) >= 2 {
+			region.Version = split[1]
+		}
+		if len(split) >= 3 {
+			region.Group = split[2]
 		}
 
 		route := &model.ConditionRoute{}
@@ -76,13 +86,18 @@ func (tm *RegionService) Search(r *model.Region) ([]*model.Region, error) {
 		}
 		for _, c := range route.Conditions {
 			// fixme, regex match
-			if strings.Contains(c, model.AdminIdentifier) {
-				region.Rule = c
-				break
+			if strings.Contains(c, model.RegionAdminIdentifier) {
+				i := strings.Index(c, "=$")
+				if i > 3 {
+					region.Rule = strings.TrimSpace(c[3:i])
+					break
+				}
 			}
 		}
 
-		result = append(result, region)
+		if region.Rule != "" {
+			result = append(result, region)
+		}
 	}
 
 	return result, nil

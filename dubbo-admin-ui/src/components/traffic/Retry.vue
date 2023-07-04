@@ -270,12 +270,7 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.service) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     search () {
       this.$axios.get('/traffic/retry', {
@@ -294,17 +289,21 @@ export default {
     },
     saveUpdate () {
       this.updateDialog = false
-      this.$axios.put('/traffic/retry', {
-        service: this.updateService,
-        retry: parseInt(this.updateRetry),
-        group: this.updateGroup,
-        version: this.updateVersion
-      }).then((res) => {
-        if (res) {
-          alert('操作成功')
-        }
-        this.search()
-      })
+      if (this.updateRetry) {
+        this.$axios.put('/traffic/retry', {
+          service: this.updateService,
+          retry: parseInt(this.updateRetry),
+          group: this.updateGroup,
+          version: this.updateVersion
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+          this.search()
+        })
+      } else {
+        alert('请输入重试值')
+      }
     },
     setHeaders: function () {
       this.headers = [
@@ -363,16 +362,20 @@ export default {
       this.updateDialog = true
     },
     save () {
-      this.$axios.post('/traffic/retry', {
-        service: this.createService,
-        retry: parseInt(this.createRetry),
-        group: this.createGroup,
-        version: this.createVersion
-      }).then((res) => {
-        if (res) {
-          alert('操作成功')
-        }
-      })
+      if (this.createRetry) {
+        this.$axios.post('/traffic/retry', {
+          service: this.createService,
+          retry: parseInt(this.createRetry),
+          group: this.createGroup,
+          version: this.createVersion
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      } else {
+        alert('请输入重试值')
+      }
       this.dialog = false
     },
     closeDialog () {

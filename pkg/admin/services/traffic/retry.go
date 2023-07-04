@@ -50,11 +50,11 @@ func (tm *RetryService) Search(r *model.Retry) ([]*model.Retry, error) {
 	result := make([]*model.Retry, 0)
 
 	var con string
-	if r.Service != "" {
+	if r.Service != "" && r.Service != "*" {
 		con = util.ColonSeparatedKey(r.Service, r.Group, r.Version)
 	}
 
-	list, err := services.GetRules(con)
+	list, err := services.GetRules(con, constant.ConfiguratorRuleSuffix)
 	if err != nil {
 		return result, err
 	}
@@ -64,15 +64,22 @@ func (tm *RetryService) Search(r *model.Retry) ([]*model.Retry, error) {
 		split := strings.Split(k, ":")
 		retry := &model.Retry{
 			Service: split[0],
-			Group:   split[1],
-			Version: split[2],
 		}
+		if len(split) >= 2 {
+			retry.Version = split[1]
+		}
+		if len(split) >= 3 {
+			retry.Group = split[2]
+		}
+
 		rv, err2 := getValue(v, "consumer", "retries")
 		if err2 != nil {
 			return result, err2
 		}
-		retry.Retry = rv.(int)
-		result = append(result, retry)
+		if rv != nil {
+			retry.Retry = rv.(int)
+			result = append(result, retry)
+		}
 	}
 
 	return result, nil

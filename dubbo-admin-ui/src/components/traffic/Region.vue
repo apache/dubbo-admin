@@ -129,8 +129,8 @@
         <v-layout v-if="handleRule" row wrap>
           <v-flex xs6 sm3 md5>
             <v-text-field
-               label="（可选）同区域规则已开启，可继续输入过滤条件"
-               hint="如果要过滤部分匹配流量才执行同区域规则，请继续输入匹配条件。如 method=sayHello & key=value 表示只有匹配 method、key 的流量才执行同区域优先。"
+               label="请输入表示同区域的 key 值"
+               hint="每个公司的区域标识可能不同，比如对于以下地址：tri://host:port/service?timeout=1000&region=hangzhou&...，则同区域key值为：region。"
                v-model="createRule"
              ></v-text-field>
           </v-flex>
@@ -183,8 +183,8 @@
         <v-layout v-if="handleUpdateRule" row wrap>
           <v-flex xs6 sm3 md5>
             <v-text-field
-              label="（可选）同区域规则已开启，可继续输入过滤条件"
-              hint="如果要过滤部分匹配流量才执行同区域规则，请继续输入匹配条件。如 method=sayHello & key=value 表示只有匹配 method、key 的流量才执行同区域优先。"
+              label="请输入表示同区域的 key 值"
+              hint="每个公司的区域标识可能不同，比如对于以下地址：tri://host:port/service?timeout=1000&region=hangzhou&...，则同区域key值为：region。"
               v-model="updateRule"
         ></v-text-field>
           </v-flex>
@@ -277,12 +277,7 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.service) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     search () {
       this.$axios.get('/traffic/region', {
@@ -315,7 +310,7 @@ export default {
       } else {
         this.$axios.put('/traffic/region', {
           service: this.updateService,
-          rule: this.handleUpdateRule.toString(),
+          rule: '',
           group: this.updateGroup,
           version: this.updateVersion
         }).then((res) => {
@@ -332,7 +327,7 @@ export default {
           value: 'service'
         },
         {
-          text: '同区域(状态)',
+          text: '同区域Key',
           value: 'rule'
         },
         {
@@ -401,16 +396,7 @@ export default {
           }
         })
       } else {
-        this.$axios.post('/traffic/region', {
-          service: this.createService,
-          rule: this.handleRule.toString(),
-          group: this.createGroup,
-          version: this.createVersion
-        }).then((res) => {
-          if (res) {
-            alert('操作成功')
-          }
-        })
+        alert('同区域优先未开启，请选中开关后再保存！')
       }
       this.dialog = false
     },

@@ -50,10 +50,10 @@ func (tm *MockService) Search(m *model.Mock) ([]*model.Mock, error) {
 	result := make([]*model.Mock, 0)
 
 	var con string
-	if m.Service != "" {
+	if m.Service != "" && m.Service != "*" {
 		con = util.ColonSeparatedKey(m.Service, m.Group, m.Version)
 	}
-	list, err := services.GetRules(con)
+	list, err := services.GetRules(con, constant.ConfiguratorRuleSuffix)
 	if err != nil {
 		return result, err
 	}
@@ -63,15 +63,22 @@ func (tm *MockService) Search(m *model.Mock) ([]*model.Mock, error) {
 		split := strings.Split(k, ":")
 		mock := &model.Mock{
 			Service: split[0],
-			Group:   split[1],
-			Version: split[2],
 		}
+		if len(split) >= 2 {
+			mock.Version = split[1]
+		}
+		if len(split) >= 3 {
+			mock.Group = split[2]
+		}
+
 		mv, err2 := getValue(v, "consumer", "mock")
 		if err2 != nil {
 			return result, err2
 		}
-		mock.Mock = mv.(string)
-		result = append(result, mock)
+		if mv != nil {
+			mock.Mock = mv.(string)
+			result = append(result, mock)
+		}
 	}
 
 	return result, nil
