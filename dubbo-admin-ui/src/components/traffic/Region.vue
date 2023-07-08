@@ -28,25 +28,12 @@
           <v-card-text>
             <v-form>
               <v-layout row wrap>
-                <v-flex xs6 sm3 md3>
+                <v-flex xs6 sm3 md9>
                   <v-text-field
-                    v-model="service"
+                    v-model="searchService"
                     flat
                     label="请输入服务名"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md2 >
-                  <v-text-field
-                    label="Version"
-                    :hint="$t('dataIdVersionHint')"
-                    v-model="version"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md2 >
-                  <v-text-field
-                    label="Group"
-                    :hint="$t('dataIdGroupHint')"
-                    v-model="group"
+                    hint="请输入service,如有group和version，请按照group/service:version格式输入"
                   ></v-text-field>
                 </v-flex>
                 <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
@@ -101,25 +88,11 @@
       </v-layout>
       <v-card-text >
         <v-layout row wrap>
-          <v-flex xs6 sm3 md3>
+          <v-flex xs6 sm3 md9>
             <v-text-field
               label="服务名"
-              hint="请输入服务名"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
               v-model="createService"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md3>
-            <v-text-field
-              label="服务版本"
-              hint="请输入服务版本version（可选）"
-              v-model="createVersion"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md3>
-            <v-text-field
-              label="服务组"
-              hint="请输入服务分组group（可选）"
-              v-model="createGroup"
             ></v-text-field>
           </v-flex>
         </v-layout>
@@ -155,26 +128,13 @@
        </v-layout>
       <v-card-text >
         <v-layout row wrap>
-          <v-flex xs6 sm3 md3>
+          <v-flex xs6 sm3 md9>
             <v-text-field
               label="服务名"
-              hint="请输入服务名"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
+              disabled
               v-model="updateService"
             ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md3>
-            <v-text-field
-              label="Group"
-              hint="请输入服务分组group（可选）"
-              v-model="updateGroup"
-        ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md3>
-            <v-text-field
-              label="Version"
-              hint="请输入服务版本version（可选）"
-              v-model="updateVersion"
-        ></v-text-field>
           </v-flex>
         </v-layout>
         <v-layout row wrap>
@@ -249,6 +209,7 @@ export default {
     searchLoading: false,
     timerID: null,
     service: '',
+    searchService: '',
     rule: '',
     group: '',
     version: '',
@@ -280,6 +241,18 @@ export default {
       this.search()
     },
     search () {
+      if (this.searchService === '*') {
+        this.service = '*'
+      } else {
+        const matches = this.searchService.split(/^(.*?)\/(.*?):(.*)$/)
+        if (matches.length === 1) {
+          this.service = matches[0]
+        } else {
+          this.group = matches[1]
+          this.service = matches[2]
+          this.version = matches[3]
+        }
+      }
       this.$axios.get('/traffic/region', {
         params: {
           service: this.service,
@@ -298,7 +271,7 @@ export default {
       this.updateDialog = false
       if (this.handleUpdateRule) {
         this.$axios.put('/traffic/region', {
-          service: this.updateService,
+          service: this.tempService,
           rule: this.updateRule,
           group: this.updateGroup,
           version: this.updateVersion
@@ -319,6 +292,9 @@ export default {
           }
         })
       }
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     setHeaders: function () {
       this.headers = [
@@ -349,19 +325,27 @@ export default {
     },
     create () {
       this.dialog = true
+      this.createService = ''
+      this.handleRule = false
+      this.createRule = ''
     },
     confirmDelete () {
-      this.$axios.delete('/traffic/region', {
-        service: this.deleteService,
-        rule: this.deleteRule,
-        group: this.deleteGroup,
-        version: this.deleteVersion
-      }).then((res) => {
+      this.$axios.delete('/traffic/region',
+        {
+          params: {
+            service: this.deleteService,
+            group: this.deleteGroup,
+            version: this.deleteVersion
+          }
+        }).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
-      this.deleteRegion = false
+      this.deleteDialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     deleteItem (props) {
       this.deleteDialog = true
@@ -371,7 +355,12 @@ export default {
       this.deleteVersion = props.version
     },
     update (props) {
-      this.updateService = props.service
+      if (props.version && props.group) {
+        this.updateService = `${props.group}/${props.service}:${props.version}`
+      } else {
+        this.updateService = props.service
+      }
+      this.tempService = props.service
       if (props.rule === 'false') {
         this.handleUpdateRule = false
         this.updateRule = ''
@@ -384,6 +373,14 @@ export default {
       this.updateDialog = true
     },
     save () {
+      const matches = this.createService.split(/^(.*?)\/(.*?):(.*)$/)
+      if (matches.length === 1) {
+        this.createService = matches[0]
+      } else {
+        this.createGroup = matches[1]
+        this.createService = matches[2]
+        this.createVersion = matches[3]
+      }
       if (this.handleRule) {
         this.$axios.post('/traffic/region', {
           service: this.createService,
@@ -399,6 +396,9 @@ export default {
         alert('同区域优先未开启，请选中开关后再保存！')
       }
       this.dialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     closeDialog () {
       this.dialog = false
@@ -411,6 +411,8 @@ export default {
   },
   mounted () {
     this.setHeaders()
+    this.searchService = '*'
+    this.search()
   }
 }
 
