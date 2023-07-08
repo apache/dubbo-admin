@@ -76,12 +76,15 @@ export default new Router({
           component: TestMethod
         },
         {
-          path: '/governance/routingRule',
+          path: '/traffic/routingRule',
           name: 'RoutingRule',
-          component: RoutingRule
+          component: RoutingRule,
+          meta: {
+            requireLogin: false
+          }
         },
         {
-          path: '/governance/tagRule',
+          path: '/traffic/tagRule',
           name: 'TagRule',
           component: TagRule
         },
@@ -106,7 +109,7 @@ export default new Router({
         //   component: WeightAdjust
         // },
         {
-          path: '/governance/config',
+          path: '/traffic/config',
           name: 'Overrides',
           component: Overrides
         },

@@ -28,25 +28,12 @@
           <v-card-text>
             <v-form>
               <v-layout row wrap>
-                <v-flex xs6 sm3 md3>
+                <v-flex xs6 sm3 md9>
                   <v-text-field
-                    v-model="service"
+                    v-model="searchService"
                     flat
                     label="请输入服务名"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md2 >
-                  <v-text-field
-                    label="Version"
-                    :hint="$t('dataIdVersionHint')"
-                    v-model="group"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md2 >
-                  <v-text-field
-                    label="Group"
-                    :hint="$t('dataIdGroupHint')"
-                    v-model="version"
+                    hint="请输入service,如有group和version，请按照group/service:version格式输入"
                   ></v-text-field>
                 </v-flex>
                 <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
@@ -101,25 +88,11 @@
       </v-layout>
       <v-card-text >
         <v-layout wrap>
-          <v-flex xs6 sm3 md3>
+          <v-flex xs6 sm3 md9>
             <v-text-field
               label="服务名"
-              hint="请输入服务名"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
               v-model="createService"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="Group"
-              hint="请输入服务分组group（可选）"
-              v-model="createGroup"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="Version"
-              hint="请输入服务版本version（可选）"
-              v-model="createVersion"
             ></v-text-field>
           </v-flex>
         </v-layout>
@@ -186,27 +159,14 @@
       </v-layout>
       <v-card-text >
         <v-layout wrap>
-          <v-flex xs6 sm3 md3>
+          <v-flex xs6 sm3 md9>
             <v-text-field
               label="服务名"
-              hint="请输入服务名"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
+              disabled
               v-model="updateService"
             ></v-text-field>
           </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="Group"
-              hint="请输入服务分组group（可选）"
-              v-model="updateGroup"
-            ></v-text-field>
-           </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="Version"
-              hint="请输入服务版本version（可选）"
-              v-model="updateVersion"
-            ></v-text-field>
-           </v-flex>
         </v-layout>
         <v-layout wrap>
           <v-flex lg12>
@@ -315,6 +275,7 @@ export default {
     version: '',
     createGroup: '',
     createVersion: '',
+    searchService: '',
     createRuleMethod: '',
     createRuleIndex: '',
     createRuleMatch: '',
@@ -346,6 +307,18 @@ export default {
       this.search()
     },
     search () {
+      if (this.searchService === '*') {
+        this.service = '*'
+      } else {
+        const matches = this.searchService.split(/^(.*?)\/(.*?):(.*)$/)
+        if (matches.length === 1) {
+          this.service = matches[0]
+        } else {
+          this.group = matches[1]
+          this.service = matches[2]
+          this.version = matches[3]
+        }
+      }
       this.$axios.get('/traffic/argument', {
         params: {
           service: this.service,
@@ -368,7 +341,7 @@ export default {
         const matchCondition = `method=${this.updateRuleMethod} & arguments[${this.updateRuleIndex}]=${this.updateRuleMatch}`
         const filterCondition = ` => ${this.updateFilterCondition}`
         this.$axios.put('/traffic/argument', {
-          service: this.updateService,
+          service: this.tempService,
           rule: matchCondition + filterCondition,
           group: this.updateGroup,
           version: this.updateVersion
@@ -378,6 +351,9 @@ export default {
           }
         })
       }
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     setHeaders: function () {
       this.headers = [
@@ -408,19 +384,27 @@ export default {
     },
     create () {
       this.dialog = true
+      this.createService = ''
+      this.createRule = ''
     },
     confirmDelete () {
       console.log(this.deleteArguments)
       this.$axios.delete('/traffic/argument', {
-        service: this.deleteService,
-        group: this.deleteGroup,
-        version: this.deleteVersion
-      }).then((res) => {
+        params: {
+          service: this.deleteService,
+          group: this.deleteGroup,
+          version: this.deleteVersion
+        }
+      }
+      ).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
-      this.deleteArguments = false
+      this.deleteDialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     deleteItem (props) {
       this.deleteDialog = true
@@ -429,7 +413,12 @@ export default {
       this.deleteVersion = props.version
     },
     update (props) {
-      this.updateService = props.service
+      if (props.version && props.group) {
+        this.updateService = `${props.group}/${props.service}:${props.version}`
+      } else {
+        this.updateService = props.service
+      }
+      this.tempService = props.service
       var parts = props.rule.split(/(\w+)\[(\w+)\]=(\w+)/)
       this.updateRuleMethod = parts[1]
       this.updateRuleIndex = parts[2]
@@ -439,9 +428,14 @@ export default {
       this.updateDialog = true
     },
     save () {
-      // if (!this.createRuleMethod || !this.createRuleMatch || !this.createRuleIndex || !this.createFilterCondition) {
-      //  alert('请分别输入方法匹配条件和机器过滤条件')
-      // } else {
+      const matches = this.createService.split(/^(.*?)\/(.*?):(.*)$/)
+      if (matches.length === 1) {
+        this.createService = matches[0]
+      } else {
+        this.createGroup = matches[1]
+        this.createService = matches[2]
+        this.createVersion = matches[3]
+      }
       const matchCondition = `method=${this.createRuleMethod} & arguments[${this.createRuleIndex}]=${this.createRuleMatch}`
       const filterCondition = ` => ${this.createFilterCondition}`
       this.$axios.post('/traffic/argument', {
@@ -454,8 +448,10 @@ export default {
           alert('操作成功')
         }
       })
-      // }
       this.dialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     closeDialog () {
       this.dialog = false
@@ -468,6 +464,8 @@ export default {
   },
   mounted () {
     this.setHeaders()
+    this.searchService = '*'
+    this.search()
   }
 }
 

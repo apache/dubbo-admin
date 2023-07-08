@@ -28,25 +28,12 @@
           <v-card-text>
             <v-form>
               <v-layout row wrap>
-                <v-flex xs6 sm3 md3>
+                <v-flex xs6 sm3 md9>
                   <v-text-field
-                    v-model="service"
+                    v-model="searchService"
                     flat
                     label="请输入服务名"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md2 >
-                  <v-text-field
-                    label="Version"
-                    :hint="$t('dataIdVersionHint')"
-                    v-model="group"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md2 >
-                  <v-text-field
-                    label="Group"
-                    :hint="$t('dataIdGroupHint')"
-                    v-model="version"
+                    hint="请输入service,如有group和version，请按照group/service:version格式输入"
                   ></v-text-field>
                 </v-flex>
                 <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
@@ -101,25 +88,11 @@
       </v-layout>
       <v-card-text >
         <v-layout wrap>
-          <v-flex xs6 sm3 md3>
+          <v-flex xs6 sm3 md9>
             <v-text-field
               label="服务名"
-              hint="请输入服务名"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
               v-model="createService"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="Group"
-              hint="$t('groupInputPrompt')"
-              v-model="createGroup"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="Version"
-              hint="$t('versionInputPrompt')"
-              v-model="createVersion"
             ></v-text-field>
           </v-flex>
         </v-layout>
@@ -159,27 +132,14 @@
       </v-layout>
       <v-card-text >
         <v-layout wrap>
-          <v-flex xs6 sm3 md3>
+          <v-flex xs6 sm3 md9>
             <v-text-field
               label="服务名"
-              hint="请输入服务名"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
+              disabled
               v-model="updateService"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
-           <v-text-field
-              label="Group"
-              hint="请输入服务版本group（可选）"
-              v-model="updateGroup"
-            ></v-text-field>
-           </v-flex>
-           <v-flex xs6 sm3 md2>
-            <v-text-field
-              label="Version"
-              hint="请输入服务分组version（可选）"
-              v-model="updateVersion"
-            ></v-text-field>
-           </v-flex>
         </v-layout>
         <v-layout wrap>
           <v-flex xs6 sm3 md6>
@@ -193,7 +153,7 @@
         </v-layout>
         <v-layout wrap>
           <v-flex xs6 sm3 md6>
-            <v-textarea v-model="createMock" label="请输入模拟的返回值"
+            <v-textarea v-model="updateMock" label="请输入模拟的返回值"
               hint="如 json 结构体或字符串，具体取决于方法签名的返回值。请通过上面的链接查看如何配置返回值。"  variant="outlined"></v-textarea>
           </v-flex>
         </v-layout>
@@ -257,6 +217,7 @@ export default {
     searchLoading: false,
     timerID: null,
     service: '',
+    searchService: '',
     mock: '',
     group: '',
     version: '',
@@ -266,7 +227,7 @@ export default {
     updateMock: '',
     updateGroup: '',
     updateVersion: '',
-    mockMethod: '',
+    mockMethod: '强制返回',
     deleteDialog: false,
     createService: '',
     createMock: '',
@@ -288,7 +249,18 @@ export default {
       this.search()
     },
     search () {
-      console.log('mock: force:return Mock Comment'.split(/:\s(.*?):(.*)/)[2].replace(/^return\s/, ''))
+      if (this.searchService === '*') {
+        this.service = '*'
+      } else {
+        const matches = this.searchService.split(/^(.*?)\/(.*?):(.*)$/)
+        if (matches.length === 1) {
+          this.service = matches[0]
+        } else {
+          this.group = matches[1]
+          this.service = matches[2]
+          this.version = matches[3]
+        }
+      }
       this.$axios.get('/traffic/mock', {
         params: {
           service: this.service,
@@ -307,7 +279,7 @@ export default {
     saveUpdate () {
       this.updateDialog = false
       this.$axios.put('/traffic/mock', {
-        service: this.updateService,
+        service: this.tempService,
         mock: `${this.mockUpdateMethod === '失败时返回' ? `fail:return ${this.updateMock}` : `force:return ${this.updateMock}`}`,
         group: this.updateGroup,
         version: this.updateVersion
@@ -316,6 +288,9 @@ export default {
           alert('操作成功')
         }
       })
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     setHeaders: function () {
       this.headers = [
@@ -346,19 +321,28 @@ export default {
     },
     create () {
       this.dialog = true
+      this.createService = ''
+      this.mockMethod = '强制返回'
+      this.createMock = ''
     },
     confirmDelete () {
       console.log(this.deleteMock)
-      this.$axios.delete('/traffic/mock', {
-        service: this.deleteService,
-        group: this.deleteGroup,
-        version: this.deleteVersion
-      }).then((res) => {
+      this.$axios.delete('/traffic/mock',
+        {
+          params: {
+            service: this.deleteService,
+            group: this.deleteGroup,
+            version: this.deleteVersion
+          }
+        }).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
-      this.deleteAccesslog = false
+      this.deleteDialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     deleteItem (props) {
       this.deleteDialog = true
@@ -368,17 +352,28 @@ export default {
       this.deleteVersion = props.version
     },
     update (props) {
-      this.updateService = props.service
-      var parts = props.mock.split(/:\s(.*?):(.*)/)
-      console.log(parts)
-      this.mockUpdateMethod = parts[1] === 'force' ? '强制返回' : '失败时返回'
-      this.updateMock = parts[2].replace(/^return\s/, '')
+      if (props.version && props.group) {
+        this.updateService = `${props.group}/${props.service}:${props.version}`
+      } else {
+        this.updateService = props.service
+      }
+      this.tempService = props.service
       this.updateGroup = props.group
       this.updateVersion = props.version
+      var parts = props.mock.split(/:\s(.*?):(.*)/)
+      this.mockUpdateMethod = parts[1] === 'force' ? '强制返回' : '失败时返回'
+      this.updateMock = parts[2].replace(/^return\s/, '')
       this.updateDialog = true
     },
     save () {
-      console.log(this.mockMethod)
+      const matches = this.createService.split(/^(.*?)\/(.*?):(.*)$/)
+      if (matches.length === 1) {
+        this.createService = matches[0]
+      } else {
+        this.createGroup = matches[1]
+        this.createService = matches[2]
+        this.createVersion = matches[3]
+      }
       this.$axios.post('/traffic/mock', {
         service: this.createService,
         mock: `${this.mockMethod === '失败时返回' ? `mock: fail:return ${this.createMock}` : `mock: force:return ${this.createMock}`}`,
@@ -390,6 +385,9 @@ export default {
         }
       })
       this.dialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     closeDialog () {
       this.dialog = false
@@ -402,6 +400,8 @@ export default {
   },
   mounted () {
     this.setHeaders()
+    this.searchService = '*'
+    this.search()
   }
 }
 
