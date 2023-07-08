@@ -100,7 +100,7 @@
           <template slot="items" slot-scope="props">
             <td>{{props.item.name}}</td>
             <td>
-              <v-chip v-for="(type, index) in props.item.parameterTypes" :key="type.id" label>{{type}}</v-chip>
+              <v-chip v-for="(type) in props.item.parameterTypes" :key="type.id" label>{{type}}</v-chip>
             </td>
             <td>
               <v-chip label>{{props.item.returnType}}</v-chip>

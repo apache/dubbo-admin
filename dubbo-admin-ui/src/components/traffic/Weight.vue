@@ -28,28 +28,12 @@
           <v-card-text>
             <v-form>
               <v-layout row wrap>
-                <v-flex xs6 sm3 md3>
+                <v-flex xs6 sm3 md9>
                   <v-text-field
-                    v-model="service"
+                    v-model="searchService"
                     label="Service"
                     flat
-                    hint="请输入应用名"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md3>
-                  <v-text-field
-                    v-model="version"
-                    label="Version"
-                    flat
-                    hint="请输入应用名"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md3>
-                  <v-text-field
-                    v-model="group"
-                    label="Group"
-                    flat
-                    hint="请输入应用名"
+                    hint="请输入service,如有group和version，请按照group/service:version格式输入"
                   ></v-text-field>
                 </v-flex>
                 <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
@@ -69,6 +53,7 @@
             <template slot="items" slot-scope="props">
               <td >{{props.item.service}}</td>
               <td>{{props.item.weight}}</td>
+              <td>{{props.item.matchRule}}</td>
               <td class="text-xs-center px-0" nowrap>
                 <!-- <v-btn
                   class="tiny"
@@ -109,25 +94,11 @@
       <v-card>
         <v-card-text>
           <v-layout row warp>
-            <v-flex xs6 sm3 md3>
+            <v-flex xs6 sm3 md9>
             <v-text-field
               label="service"
-              hint="请输入service"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
               v-model="createWeight.service"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 20px;" xs6 sm3 md3>
-            <v-text-field
-              label="version"
-              hint="请输入version"
-              v-model="createWeight.version"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 20px;" xs6 sm3 md3>
-            <v-text-field
-              label="group"
-              hint="请输入group"
-              v-model="createWeight.group"
             ></v-text-field>
           </v-flex>
           <v-flex style="margin-left: 20px;" xs6 sm3 md2>
@@ -211,27 +182,13 @@
       <v-card>
         <v-card-text>
           <v-layout row warp>
-            <v-flex xs6 sm3 md3>
+            <v-flex xs6 sm3 md9>
               <v-text-field
                 label="service"
-                hint="请输入service"
+                disabled
                 v-model="updateWeight.service"
             ></v-text-field>
             </v-flex>
-            <v-flex xs6 sm3 md3>
-              <v-text-field
-                label="version"
-                hint="请输入version"
-                v-model="updateWeight.version"
-            ></v-text-field>
-            </v-flex>
-            <v-flex xs6 sm3 md3>
-              <v-text-field
-                label="group"
-                hint="请输入group"
-                v-model="updateWeight.group"
-            ></v-text-field>
-          </v-flex>
           <v-flex xs6 sm3 md4>
              <v-btn
               style="margin-left: 20px;"
@@ -322,7 +279,7 @@
         <v-btn
           color="green darken-1"
           text
-          @click="confirmDelete"
+          @click="confirmDelete()"
         >
         确定
         </v-btn>
@@ -352,6 +309,7 @@ export default {
     input: null,
     searchLoading: false,
     timerID: null,
+    searchService: '',
     service: '',
     weight: '',
     mock: '',
@@ -504,6 +462,18 @@ export default {
       this.updateWeight.weights[index].match.param.push(temp)
     },
     search () {
+      if (this.searchService === '*') {
+        this.service = '*'
+      } else {
+        const matches = this.searchService.split(/^(.*?)\/(.*?):(.*)$/)
+        if (matches.length === 1) {
+          this.service = matches[0]
+        } else {
+          this.group = matches[1]
+          this.service = matches[2]
+          this.version = matches[3]
+        }
+      }
       this.$axios.get('/traffic/weight', {
         params: {
           service: this.service,
@@ -512,35 +482,58 @@ export default {
         }
       }).then(response => {
         this.tableData = []
-        console.log(response)
         response.data.forEach(element => {
           let sum = 0
+          let matchRule = ''
           element.weights.forEach(item => {
             sum += item.weight
+            const matchParams = [] // 用于存储参数的数组
+            item.match.param.forEach(it => {
+              let param = `${it.key}-`
+              if (it.value.empty !== '') {
+                param += 'empty-' + it.value.empty
+              } else if (it.value.exact !== '') {
+                param += 'exact-' + it.value.exact
+              } else if (it.value.noempty !== '') {
+                param += 'noempty-' + it.value.noempty
+              } else if (it.value.prefix !== '') {
+                param += 'prefix-' + it.value.prefix
+              } else if (it.value.regex !== '') {
+                param += 'regex-' + it.value.regex
+              } else if (it.value.wildcard !== '') {
+                param += 'wildcard-' + it.value.wildcard
+              }
+              matchParams.push(param) // 将参数添加到数组中
+            })
+            matchRule += (matchParams.length > 0) ? (matchParams.join(',') + ',') : ''
           })
+          matchRule = matchRule.slice(0, -1)
           const weight = sum / element.weights.length
           const result = {
             service: element.service,
             weight,
+            matchRule,
             element
           }
           this.tableData.push(result)
         })
-        console.log(this.tableData)
       })
     },
     saveUpdate () {
       this.updateDialog = false
+      this.updateWeight.service = this.tempService
       if (this.updateWeight) {
         this.$axios.put('/traffic/weight', this.updateWeight).then((res) => {
           if (res) {
             alert('操作成功')
           }
         })
-        this.search()
       } else {
         alert('请输入权重值')
       }
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     setHeaders: function () {
       this.headers = [
@@ -553,6 +546,10 @@ export default {
           value: 'weight'
         },
         {
+          text: '匹配条件',
+          value: 'matchRule'
+        },
+        {
           text: '操作',
           value: 'version'
         }
@@ -563,21 +560,52 @@ export default {
     },
     create () {
       this.dialog = true
+      this.createWeight = {
+        service: '',
+        group: '',
+        version: '',
+        weights: [
+          {
+            weight: '',
+            match: {
+              param: [
+                {
+                  key: '',
+                  value: {
+                    empty: '',
+                    exact: '',
+                    noempty: '',
+                    prefix: '',
+                    regex: '',
+                    wildcard: ''
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      }
     },
     confirmDelete () {
-      console.log(this.deleteArguments)
+      console.log(this.deleteService)
       this.$axios.delete('/traffic/mock', {
-        service: this.deleteService,
-        group: this.deleteGroup,
-        version: this.deleteVersion
+        params: {
+          service: this.deleteService,
+          group: this.deleteGroup,
+          version: this.deleteVersion
+        }
       }).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
-      this.deleteArguments = false
+      this.deleteDialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     deleteItem (props) {
+      console.log(props)
       this.deleteDialog = true
       this.deleteService = props.element.service
       this.deleteGroup = props.element.group
@@ -585,10 +613,13 @@ export default {
     },
     update (props) {
       this.updateWeight = props.element
+      this.tempService = this.updateWeight.service
+      if (this.updateWeight.group && this.updateWeight.version) {
+        this.updateWeight.service = `${this.updateWeight.group}/${this.updateWeight.service}:${this.updateWeight.version}`
+      }
       props.element.weights.forEach((item, index) => {
         this.selectedUpdateOption[index] = []
         item.match.param.forEach((it, idx) => {
-          console.log(index, idx)
           if (it.value.empty !== '') {
             this.selectedUpdateOption[index][idx] = 'empty'
           } else if (it.value.exact !== '') {
@@ -607,6 +638,14 @@ export default {
       this.updateDialog = true
     },
     save () {
+      const matches = this.createWeight.service.split(/^(.*?)\/(.*?):(.*)$/)
+      if (matches.length === 1) {
+        this.createWeight.service = matches[0]
+      } else {
+        this.createWeight.group = matches[1]
+        this.createWeight.service = matches[2]
+        this.createWeight.version = matches[3]
+      }
       if (this.createWeight) {
         this.$axios.post('/traffic/weight', this.createWeight).then((res) => {
           if (res) {
@@ -617,6 +656,9 @@ export default {
         alert('请输入权重值')
       }
       this.dialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     closeDialog () {
       this.dialog = false
@@ -629,6 +671,8 @@ export default {
   },
   mounted () {
     this.setHeaders()
+    this.searchService = '*'
+    this.search()
   }
 }
 
