@@ -40,7 +40,7 @@ func (pda *ProfileDiffArgs) setDefault() {
 	}
 }
 
-func ConfigProfileDiffArgs(baseCmd *cobra.Command) {
+func ConfigProfileDiffCmd(baseCmd *cobra.Command) {
 	pdArgs := &ProfileDiffArgs{}
 	pdCmd := &cobra.Command{
 		Use:   "diff",
