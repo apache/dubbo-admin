@@ -379,6 +379,7 @@ export default {
         }
         var tempMapValueArray = tempMap.get(tempMapKey)
         if (!tempMapValueArray) {
+          // eslint-disable-next-line no-array-constructor
           tempMapValueArray = new Array()
           tempMap.set(tempMapKey, tempMapValueArray)
         }

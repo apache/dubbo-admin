@@ -33,9 +33,9 @@ const Menu = [
       { title: 'trafficAccesslog', path: '/traffic/accesslog' },
       { title: 'trafficGray', path: '/traffic/gray' },
       //  { title: 'trafficHost', path: '/traffic/host' },
-      { title: 'routingRule', path: '/governance/routingRule' },
-      { title: 'tagRule', path: '/governance/tagRule' },
-      { title: 'dynamicConfig', path: '/governance/config' }
+      { title: 'routingRule', path: '/traffic/routingRule' },
+      { title: 'tagRule', path: '/traffic/tagRule' },
+      { title: 'dynamicConfig', path: '/traffic/config' }
     ]
   },
   {

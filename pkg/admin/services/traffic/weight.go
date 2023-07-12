@@ -51,11 +51,11 @@ func (tm *WeightService) Search(p *model.Percentage) ([]*model.Percentage, error
 	result := make([]*model.Percentage, 0)
 
 	var con string
-	if p.Service != "" {
+	if p.Service != "" && p.Service != "*" {
 		con = util.ColonSeparatedKey(p.Service, p.Group, p.Version)
 	}
 
-	list, err := services.GetRules(con)
+	list, err := services.GetRules(con, constant.ConfiguratorRuleSuffix)
 	if err != nil {
 		return result, err
 	}
@@ -65,9 +65,13 @@ func (tm *WeightService) Search(p *model.Percentage) ([]*model.Percentage, error
 		split := strings.Split(k, ":")
 		percentage := &model.Percentage{
 			Service: split[0],
-			Group:   split[1],
-			Version: split[2],
 			Weights: make([]model.Weight, 0),
+		}
+		if len(split) >= 2 {
+			percentage.Version = split[1]
+		}
+		if len(split) >= 3 {
+			percentage.Group = split[2]
 		}
 
 		override := &model.Override{}
@@ -76,7 +80,7 @@ func (tm *WeightService) Search(p *model.Percentage) ([]*model.Percentage, error
 			return result, err
 		}
 		for _, c := range override.Configs {
-			if c.Side == "provider" && c.Parameters["weight"] != "" {
+			if c.Side == "provider" && c.Parameters["weight"] != nil {
 				percentage.Weights = append(percentage.Weights, model.Weight{
 					Weight: c.Parameters["weight"].(int),
 					Match:  c.Match,
@@ -84,7 +88,9 @@ func (tm *WeightService) Search(p *model.Percentage) ([]*model.Percentage, error
 			}
 		}
 
-		result = append(result, percentage)
+		if len(percentage.Weights) > 0 {
+			result = append(result, percentage)
+		}
 	}
 
 	return result, nil

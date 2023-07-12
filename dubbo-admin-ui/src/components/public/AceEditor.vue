@@ -80,6 +80,7 @@ export default {
   data () {
     return {
       $ace: null,
+      // eslint-disable-next-line vue/no-reserved-keys
       _content: ''
     }
   },

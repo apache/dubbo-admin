@@ -33,6 +33,16 @@ rbac:
 
 replicas: 1
 
+labels: {}
+
+annotations: {}
+
+nodeSelector: {}
+
+affinity: {}
+
+tolerations: {}
+
 ## serviceAccount
 serviceAccount:
   enabled: true
