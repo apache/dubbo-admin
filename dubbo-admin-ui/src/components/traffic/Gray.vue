@@ -183,6 +183,7 @@
               <v-text-field
                 label="application"
                 hint="请输入 Provider 应用名"
+                disabled
                 v-model="updateGary.application"
               ></v-text-field>
             </v-flex>
@@ -323,7 +324,7 @@ export default {
     deleteVersion: '',
     deleteGroup: '',
     dialog: false,
-    selectedOption: [[]],
+    selectedOption: [['exact']],
     selectedUpdateOption: [[]],
     headers: [
     ],
@@ -370,12 +371,7 @@ export default {
       this.updateGary.tags[index].match[idx].value = temp
     },
     submit () {
-      if (this.application) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     addCreateGary () {
       const temp = {
@@ -394,7 +390,7 @@ export default {
           }
         ]
       }
-      this.selectedOption.push([])
+      this.selectedOption.push(['exact'])
       this.createGary.tags.push(temp)
     },
     addUpdateGary () {
@@ -430,6 +426,7 @@ export default {
         }
       }
       const index = parseInt(params)
+      this.selectedOption[index].push('exact')
       this.createGary.tags[index].match.push(temp)
     },
     addUpdateItem (params) {
@@ -454,8 +451,8 @@ export default {
         }
       }).then(response => {
         this.tableData = []
-        const array = []
         response.data.forEach(element => {
+          const array = []
           element.tags.forEach(item => {
             array.push(item.name)
           })
@@ -468,17 +465,19 @@ export default {
           }
           this.tableData.push(result)
         })
-        console.log(this.tableData)
       })
     },
     saveUpdate () {
       this.updateDialog = false
-      this.$axios.put('/traffic/gray', this.upda).then((res) => {
+      this.$axios.put('/traffic/gray', this.updateGary).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
       this.dialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     setHeaders: function () {
       this.headers = [
@@ -501,17 +500,45 @@ export default {
     },
     create () {
       this.dialog = true
+      this.createGary = {
+        application: '',
+        tags: [
+          {
+            name: '',
+            match: [
+              {
+                key: '',
+                value: {
+                  empty: '',
+                  exact: '',
+                  noempty: '',
+                  prefix: '',
+                  regex: '',
+                  wildcard: ''
+                }
+              }
+            ]
+          }
+        ]
+      }
     },
     confirmDelete () {
-      console.log(this.deleteArguments)
-      this.$axios.delete('/traffic/mock', {
-        service: this.deleteService
-      }).then((res) => {
+      this.$axios.delete('/traffic/mock',
+        {
+          params: {
+            service: this.deleteService,
+            group: this.deleteGroup,
+            version: this.deleteVersion
+          }
+        }).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
-      this.deleteArguments = false
+      this.deleteDialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     deleteItem (props) {
       this.deleteDialog = true
@@ -546,6 +573,9 @@ export default {
         }
       })
       this.dialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     closeDialog () {
       this.dialog = false
@@ -558,6 +588,8 @@ export default {
   },
   mounted () {
     this.setHeaders()
+    this.application = '*'
+    this.search()
   }
 }
 

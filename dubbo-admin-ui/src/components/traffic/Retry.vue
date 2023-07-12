@@ -28,25 +28,12 @@
           <v-card-text>
             <v-form>
               <v-layout row wrap>
-                <v-flex xs6 sm3 md3>
+                <v-flex xs6 sm3 md9>
                   <v-text-field
-                    v-model="service"
+                    v-model="searchService"
                     flat
                     label="请输入服务名"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md2 >
-                  <v-text-field
-                    label="Version"
-                    :hint="$t('dataIdVersionHint')"
-                    v-model="group"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md2 >
-                  <v-text-field
-                    label="Group"
-                    :hint="$t('dataIdGroupHint')"
-                    v-model="version"
+                    hint="请输入service,如有group和version，请按照group/service:version格式输入"
                   ></v-text-field>
                 </v-flex>
                 <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
@@ -101,27 +88,13 @@
       </v-layout>
       <v-card-text >
         <v-layout wrap>
-          <v-flex xs6 sm3 md3>
+          <v-flex xs6 sm3 md9>
             <v-text-field
               label="服务名"
-              hint="请输入服务名"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
               v-model="createService"
             ></v-text-field>
           </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="Group"
-              hint="请输入服务group(可选)"
-              v-model="createGroup"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="Version"
-              hint="请输入服务version(可选)"
-              v-model="createVersion"
-            ></v-text-field>
-         </v-flex>
         </v-layout>
         <v-layout wrap>
           <v-flex style="margin-left: 10px;" xs6 sm3 md3>
@@ -153,25 +126,12 @@
       </v-layout>
       <v-card-text >
         <v-layout wrap>
-          <v-flex xs6 sm3 md3>
+          <v-flex xs6 sm3 md9>
             <v-text-field
               label="服务名"
-              hint="请输入服务名"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
+              disabled
               v-model="updateService"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="Group"
-              hint="请输入服务group(可选)"
-              v-model="updateGroup"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="Version"
-              hint="请输入服务version(可选)"
-              v-model="updateVersion"
             ></v-text-field>
           </v-flex>
         </v-layout>
@@ -247,6 +207,7 @@ export default {
     retry: '',
     group: '',
     version: '',
+    searchService: '',
     createGroup: '',
     createVersion: '',
     updateService: '',
@@ -270,14 +231,21 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.service) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     search () {
+      if (this.searchService === '*') {
+        this.service = '*'
+      } else {
+        const matches = this.searchService.split(/^(.*?)\/(.*?):(.*)$/)
+        if (matches.length === 1) {
+          this.service = matches[0]
+        } else {
+          this.group = matches[1]
+          this.service = matches[2]
+          this.version = matches[3]
+        }
+      }
       this.$axios.get('/traffic/retry', {
         params: {
           service: this.service,
@@ -294,17 +262,23 @@ export default {
     },
     saveUpdate () {
       this.updateDialog = false
-      this.$axios.put('/traffic/retry', {
-        service: this.updateService,
-        retry: parseInt(this.updateRetry),
-        group: this.updateGroup,
-        version: this.updateVersion
-      }).then((res) => {
-        if (res) {
-          alert('操作成功')
-        }
+      if (this.updateRetry) {
+        this.$axios.put('/traffic/retry', {
+          service: this.tempService,
+          retry: parseInt(this.updateRetry),
+          group: this.updateGroup,
+          version: this.updateVersion
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      } else {
+        alert('请输入重试值')
+      }
+      setTimeout(() => {
         this.search()
-      })
+      }, 1000)
     },
     setHeaders: function () {
       this.headers = [
@@ -335,18 +309,25 @@ export default {
     },
     create () {
       this.dialog = true
+      this.createService = ''
+      this.createRetry = ''
     },
     confirmDelete () {
       this.$axios.delete('/traffic/retry', {
-        service: this.deleteService,
-        group: this.deleteGroup,
-        version: this.deleteVersion
+        params: {
+          service: this.deleteService,
+          group: this.deleteGroup,
+          version: this.deleteVersion
+        }
       }).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
-      this.deleteRetry = false
+      this.deleteDialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     deleteItem (props) {
       this.deleteDialog = true
@@ -356,24 +337,44 @@ export default {
       this.deleteVersion = props.version
     },
     update (props) {
-      this.updateService = props.service
+      if (props.version && props.group) {
+        this.updateService = `${props.group}/${props.service}:${props.version}`
+      } else {
+        this.updateService = props.service
+      }
+      this.tempService = props.service
       this.updateRetry = props.retry
       this.updateGroup = props.group
       this.updateVersion = props.version
       this.updateDialog = true
     },
     save () {
-      this.$axios.post('/traffic/retry', {
-        service: this.createService,
-        retry: parseInt(this.createRetry),
-        group: this.createGroup,
-        version: this.createVersion
-      }).then((res) => {
-        if (res) {
-          alert('操作成功')
-        }
-      })
+      const matches = this.createService.split(/^(.*?)\/(.*?):(.*)$/)
+      if (matches.length === 1) {
+        this.createService = matches[0]
+      } else {
+        this.createGroup = matches[1]
+        this.createService = matches[2]
+        this.createVersion = matches[3]
+      }
+      if (this.createRetry) {
+        this.$axios.post('/traffic/retry', {
+          service: this.createService,
+          retry: parseInt(this.createRetry),
+          group: this.createGroup,
+          version: this.createVersion
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      } else {
+        alert('请输入重试值')
+      }
       this.dialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     closeDialog () {
       this.dialog = false
@@ -386,6 +387,8 @@ export default {
   },
   mounted () {
     this.setHeaders()
+    this.searchService = '*'
+    this.search()
   }
 }
 

@@ -28,16 +28,11 @@
             <v-card-text>
               <v-form>
                 <v-layout row wrap>
-                  <v-combobox
-                    :loading="searchLoading"
-                    :items="typeAhead"
-                    :search-input.sync="application"
-                    flat
-                    append-icon=""
-                    hide-no-data
-                    label="请输入application"
+                  <v-text-field
+                    label="Application Name"
                     hint="请输入application"
-                  ></v-combobox>
+                    v-model="application"
+                  ></v-text-field>
                   <v-btn @click="submit" color="primary" large>搜索</v-btn>
                   <v-btn @click="create" color="primary" large>新建</v-btn>
                 </v-layout>
@@ -131,6 +126,7 @@
               <v-text-field
                 label="Application Name"
                 hint="请输入应用名"
+                disabled
                 v-model="updateApplication"
               ></v-text-field>
             </v-flex>
@@ -176,7 +172,7 @@
           <v-btn
             color="green darken-1"
             text
-            @click="confirmDelete"
+            @click="confirmDelete()"
           >
           确定
           </v-btn>
@@ -228,12 +224,7 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.application) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     search () {
       this.$axios.get('/traffic/accesslog', {
@@ -251,16 +242,29 @@ export default {
       })
     },
     saveUpdate () {
-      console.log(this.updateAccesslog)
       this.updateDialog = false
-      this.$axios.put('/traffic/accesslog', {
-        application: this.updateApplication,
-        accesslog: this.handleUpdateAccesslog ? this.updateAccesslog : 'false'
-      }).then((res) => {
-        if (res) {
-          alert('操作成功')
-        }
-      })
+      if (this.handleUpdateAccesslog) {
+        this.$axios.put('/traffic/accesslog', {
+          application: this.updateApplication,
+          accesslog: this.updateAccesslog === '' ? 'true' : this.updateAccesslog
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      } else {
+        this.$axios.put('/traffic/accesslog', {
+          application: this.updateApplication,
+          accesslog: '' // 删除
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      }
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     setHeaders: function () {
       this.headers = [
@@ -283,18 +287,30 @@ export default {
     },
     create () {
       this.dialog = true
+      this.createAccesslog = ''
+      this.createApplication = ''
     },
     confirmDelete () {
+      console.log(this.deleteApplication)
       this.$axios.delete('/traffic/accesslog', {
-        application: this.deleteApplication
-      }).then((res) => {
+        params: {
+          application: this.deleteApplication,
+          group: this.group,
+          version: this.version
+        }
+      }
+      ).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
-      this.deleteAccesslog = false
+      this.deleteDialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     deleteItem (props) {
+      console.log(props)
       this.deleteDialog = true
       this.deleteAccesslog = props.accesslog
       this.deleteApplication = props.application
@@ -309,23 +325,19 @@ export default {
       if (this.handleAccesslog) {
         this.$axios.post('/traffic/accesslog', {
           application: this.createApplication,
-          accesslog: this.createAccesslog
+          accesslog: this.createAccesslog === '' ? 'true' : this.createAccesslog
         }).then((res) => {
           if (res) {
             alert('操作成功')
           }
         })
       } else {
-        this.$axios.post('/traffic/accesslog', {
-          application: this.createApplication,
-          accesslog: this.handleAccesslog.toString()
-        }).then((res) => {
-          if (res) {
-            alert('操作成功')
-          }
-        })
+        alert('访问日志未开启，请选中开关后再保存！')
       }
       this.dialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     closeDialog () {
       this.dialog = false
@@ -338,6 +350,8 @@ export default {
   },
   mounted () {
     this.setHeaders()
+    this.application = '*'
+    this.search()
   }
 }
 
