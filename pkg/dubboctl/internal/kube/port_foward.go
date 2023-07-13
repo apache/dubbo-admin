@@ -39,7 +39,7 @@ type PortForward struct {
 	podPort int
 	stopCh  chan struct{}
 	cfg     *rest.Config
-	client  rest.Interface
+	client  *rest.RESTClient
 }
 
 func (pf *PortForward) Run() error {
@@ -85,6 +85,7 @@ func (pf *PortForward) Run() error {
 // inspectPodStatus check status of the target pod. If this pod is not running, fail fast.
 func (pf *PortForward) inspectPodStatus() error {
 	podReq := pf.client.Get().Resource("pods").Namespace(pf.namespace).Name(pf.podName)
+	logger.CmdSugar().Info(podReq.URL().String())
 	obj, err := podReq.Do(context.Background()).Get()
 	if err != nil {
 		return fmt.Errorf("get information of pod %s in %s namespace failed, err: %s", pf.podName, pf.namespace, err)
@@ -127,7 +128,12 @@ func (pf *PortForward) Stop() {
 	close(pf.stopCh)
 }
 
-func NewPortForward(podName, namespace, localAddress string, localPort, podPort int, cli rest.Interface, cfg *rest.Config) (*PortForward, error) {
+// Wait wait for closing stopCh which means that Stop function is the only way to trigger
+func (pf *PortForward) Wait() {
+	<-pf.stopCh
+}
+
+func NewPortForward(podName, namespace, localAddress string, localPort, podPort int, cfg *rest.Config) (*PortForward, error) {
 	pf := &PortForward{
 		podName:      podName,
 		namespace:    namespace,
@@ -136,6 +142,10 @@ func NewPortForward(podName, namespace, localAddress string, localPort, podPort 
 		podPort:      podPort,
 		stopCh:       make(chan struct{}),
 		cfg:          cfg,
+	}
+	cli, err := rest.RESTClientFor(cfg)
+	if err != nil {
+		return nil, err
 	}
 	pf.client = cli
 	return pf, nil

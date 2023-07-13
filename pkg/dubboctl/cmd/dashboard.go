@@ -24,7 +24,7 @@ func addDashboard(rootCmd *cobra.Command) {
 	dashboardCmd := &cobra.Command{
 		Use:   "dashboard",
 		Short: "Commands related to control plane components dashboards",
-		Long:  "Commands help user to open control plane components dashboards directly",
+		Long:  "Commands help user to open control plane components dashboards directly. Now support Admin, Grafana, Nacos, Prometheus, Skywalking and Zipkin",
 	}
 	subcmd.ConfigDashboardAdminCmd(dashboardCmd)
 	subcmd.ConfigDashboardGrafanaCmd(dashboardCmd)
@@ -32,7 +32,6 @@ func addDashboard(rootCmd *cobra.Command) {
 	subcmd.ConfigDashboardPrometheusCmd(dashboardCmd)
 	subcmd.ConfigDashboardSkywalkingCmd(dashboardCmd)
 	subcmd.ConfigDashboardZipkinCmd(dashboardCmd)
-	subcmd.ConfigDashboardZookeeperCmd(dashboardCmd)
 
 	rootCmd.AddCommand(dashboardCmd)
 }

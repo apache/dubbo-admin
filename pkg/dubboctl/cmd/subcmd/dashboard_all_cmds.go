@@ -46,7 +46,6 @@ var (
 		operator.Prometheus: 9090,
 		operator.Skywalking: 8080,
 		operator.Zipkin:     9411,
-		operator.Zookeeper:  2181,
 	}
 	// selectors are coming from /deploy/charts and /deploy/kubernetes
 	ComponentSelectorMap = map[operator.ComponentName]string{
@@ -56,7 +55,6 @@ var (
 		operator.Prometheus: "app=prometheus",
 		operator.Skywalking: "app=skywalking",
 		operator.Zipkin:     "app.kubernetes.io/name=zipkin",
-		operator.Zookeeper:  "app.kubernetes.io/name: zookeeper",
 	}
 )
 
@@ -114,7 +112,7 @@ func commonDashboardCmd(baseCmd *cobra.Command, compName operator.ComponentName)
 	// openBrowser is default behaviour
 	cmd.PersistentFlags().BoolVarP(&dcArgs.openBrowser, "openBrowser", "", true,
 		"whether to open browser automatically")
-	cmd.PersistentFlags().StringVarP(&dcArgs.namespace, "namespace", "ns", "",
+	cmd.PersistentFlags().StringVarP(&dcArgs.namespace, "namespace", "n", "",
 		fmt.Sprintf("namespace in which component %s is located", nameStr))
 	cmd.PersistentFlags().StringVarP(&dcArgs.KubeConfigPath, "kubeConfig", "", "",
 		"Path to kubeConfig")
@@ -148,10 +146,6 @@ func ConfigDashboardZipkinCmd(baseCmd *cobra.Command) {
 	commonDashboardCmd(baseCmd, operator.Zipkin)
 }
 
-func ConfigDashboardZookeeperCmd(baseCmd *cobra.Command) {
-	commonDashboardCmd(baseCmd, operator.Zookeeper)
-}
-
 func portForward(args *DashboardCommonArgs, compName operator.ComponentName, writer io.Writer) error {
 	// process args
 	var podPort int
@@ -180,7 +174,7 @@ func portForward(args *DashboardCommonArgs, compName operator.ComponentName, wri
 	// use name of the first pod
 	podName := pods.Items[0].Name
 
-	pf, err := kube.NewPortForward(podName, args.namespace, args.host, args.port, podPort, cli.RESTClient(), cfg)
+	pf, err := kube.NewPortForward(podName, args.namespace, args.host, args.port, podPort, cfg)
 	if err != nil {
 		return fmt.Errorf("create PortForward failed, err: %s", err)
 	}
@@ -206,6 +200,8 @@ func portForward(args *DashboardCommonArgs, compName operator.ComponentName, wri
 		url := "http://" + address
 		openBrowser(url, writer)
 	}
+
+	pf.Wait()
 
 	return nil
 }
