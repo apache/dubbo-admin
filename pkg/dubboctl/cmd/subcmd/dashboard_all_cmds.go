@@ -53,7 +53,7 @@ var (
 		operator.Grafana:    "app.kubernetes.io/name=grafana",
 		operator.Nacos:      "app.kubernetes.io/name=nacos",
 		operator.Prometheus: "app=prometheus",
-		operator.Skywalking: "app=skywalking",
+		operator.Skywalking: "app=skywalking, component=ui",
 		operator.Zipkin:     "app.kubernetes.io/name=zipkin",
 	}
 )
