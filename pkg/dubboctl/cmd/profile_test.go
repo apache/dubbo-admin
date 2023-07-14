@@ -29,6 +29,7 @@ func TestProfileList(t *testing.T) {
 			cmd:  "profile list",
 			want: `Dubbo-admin profiles:
     default
+    demo
 `,
 		},
 		{
