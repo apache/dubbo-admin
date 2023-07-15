@@ -17,14 +17,18 @@ package kube
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/runtime/serializer"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"os"
 	"strconv"
 	"strings"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	kubescheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubectl/pkg/scheme"
@@ -135,10 +139,33 @@ func BuildConfig(kubecfgPath string, ctx string) (*rest.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	// setDefaults(cfg)
+	setDefaults(cfg)
 	return cfg, nil
 }
 
-func setDefaults(cfg *rest.Config) {
-	// todo:// add schema
+func setDefaults(config *rest.Config) *rest.Config {
+	if config.GroupVersion == nil || config.GroupVersion.Empty() {
+		config.GroupVersion = &corev1.SchemeGroupVersion
+	}
+	if len(config.APIPath) == 0 {
+		if len(config.GroupVersion.Group) == 0 {
+			config.APIPath = "/api"
+		} else {
+			config.APIPath = "/apis"
+		}
+	}
+	if len(config.ContentType) == 0 {
+		config.ContentType = runtime.ContentTypeJSON
+	}
+	if config.NegotiatedSerializer == nil {
+		config.NegotiatedSerializer = serializer.NewCodecFactory(dubboScheme()).WithoutConversion()
+	}
+
+	return config
+}
+
+func dubboScheme() *runtime.Scheme {
+	newScheme := runtime.NewScheme()
+	utilruntime.Must(kubescheme.AddToScheme(newScheme))
+	return newScheme
 }
