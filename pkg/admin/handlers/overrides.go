@@ -16,11 +16,10 @@
 package handlers
 
 import (
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"net/http"
 
 	"github.com/apache/dubbo-admin/pkg/admin/config"
-	"github.com/apache/dubbo-admin/pkg/logger"
-
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 	"github.com/apache/dubbo-admin/pkg/admin/util"

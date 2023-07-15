@@ -160,16 +160,16 @@ check:
   ## check signSecret
   signSecret: ~
 
-## server.compression configuration
+## cp-server.compression configuration
 server:
   compression:
-    ## server compression enabled
+    ## cp-server compression enabled
     enabled: true
 
-    ## server compression mime-types
+    ## cp-server compression mime-types
     types: text/css,text/javascript,application/javascript
 
-    ## server compression min-response-size
+    ## cp-server compression min-response-size
     size: 10240
 
 ## Spring datasource configuration
@@ -478,9 +478,9 @@ networkPolicy:
   ## @param networkPolicy.enabled Enable creation of NetworkPolicy resources. Only Ingress traffic is filtered for now.
   ##
   enabled: false
-  ## @param networkPolicy.allowExternal Don't require client label for connections
+  ## @param networkPolicy.allowExternal Don't require clientgen label for connections
   ## The Policy model to apply. When set to false, only pods with the correct
-  ## client label will have network access to  dubbo-admin port defined.
+  ## clientgen label will have network access to  dubbo-admin port defined.
   ## When true, dubbo-admin will accept connections from any source
   ## (with the correct destination port).
   ##

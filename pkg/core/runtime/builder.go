@@ -1,117 +1,125 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package runtime
 
 import (
 	"context"
 	"fmt"
+	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
 	"github.com/apache/dubbo-admin/pkg/core"
+	"github.com/apache/dubbo-admin/pkg/core/cert/provider"
 	"github.com/apache/dubbo-admin/pkg/core/runtime/component"
+	"github.com/apache/dubbo-admin/pkg/cp-server/server"
+	"github.com/pkg/errors"
 	"os"
 	"time"
-
-	"github.com/pkg/errors"
 )
 
-// BuilderContext provides access to Builder's interim state.
 type BuilderContext interface {
 	ComponentManager() component.Manager
-	ResourceStore() core_store.ResourceStore
-	SecretStore() store.SecretStore
-	ConfigStore() core_store.ResourceStore
-	ResourceManager() core_manager.CustomizableResourceManager
-	Config() kuma_cp.Config
-	DataSourceLoader() datasource.Loader
-	Extensions() context.Context
-	ConfigManager() config_manager.ConfigManager
-	LeaderInfo() component.LeaderInfo
-	Metrics() metrics.Metrics
-	EventReaderFactory() events.ListenerFactory
-	APIManager() api_server.APIManager
-	XDSHooks() *xds_hooks.Hooks
-	CAProvider() secrets.CaProvider
-	DpServer() *dp_server.DpServer
-	ResourceValidators() ResourceValidators
-	KDSContext() *kds_context.Context
-	APIServerAuthenticator() authn.Authenticator
-	Access() Access
-	TokenIssuers() builtin.TokenIssuers
-	MeshCache() *mesh.Cache
-	InterCPClientPool() *client.Pool
+	Config() *dubbo_cp.Config
+	CertStorage() provider.Storage
+	KubuClient() provider.Client
 }
 
 var _ BuilderContext = &Builder{}
 
-// Builder represents a multi-step initialization process.
 type Builder struct {
-	cfg kuma_cp.Config
-	cm  component.Manager
-	rs  core_store.ResourceStore
+	cfg    *dubbo_cp.Config
+	cm     component.Manager
+	appCtx context.Context
+
+	grpcServer  *server.GrpcServer
+	kubuClient  provider.Client
+	certStorage provider.Storage
 	*runtimeInfo
 }
 
-func BuilderFor(appCtx context.Context, cfg kuma_cp.Config) (*Builder, error) {
+func (b *Builder) KubuClient() provider.Client {
+	return b.kubuClient
+}
+
+func (b *Builder) CertStorage() provider.Storage {
+	return b.certStorage
+}
+
+func (b *Builder) Config() *dubbo_cp.Config {
+	return b.cfg
+}
+
+func (b *Builder) ComponentManager() component.Manager {
+	return b.cm
+}
+
+func BuilderFor(appCtx context.Context, cfg *dubbo_cp.Config) (*Builder, error) {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get hostname")
 	}
 	suffix := core.NewUUID()[0:4]
 	return &Builder{
-		cfg: cfg,
-		ext: context.Background(),
-		cam: core_ca.Managers{},
+		cfg:    cfg,
+		appCtx: appCtx,
 		runtimeInfo: &runtimeInfo{
 			instanceId: fmt.Sprintf("%s-%s", hostname, suffix),
 			startTime:  time.Now(),
 		},
-		appCtx: appCtx,
 	}, nil
 }
 
-func (b *Builder) WithComponentManager(cm component.Manager) *Builder {
-	b.cm = cm
-	return b
-}
-
 func (b *Builder) Build() (Runtime, error) {
-	if b.cm == nil {
-		return nil, errors.Errorf("ComponentManager has not been configured")
+	if b.grpcServer == nil {
+		return nil, errors.Errorf("grpcServer has not been configured")
+	}
+	if b.certStorage == nil {
+		return nil, errors.Errorf("certStorage has not been configured")
+	}
+	if b.kubuClient == nil {
+		return nil, errors.Errorf("kubuClient has not been configured")
 	}
 	return &runtime{
 		RuntimeInfo: b.runtimeInfo,
 		RuntimeContext: &runtimeContext{
-			cfg:            b.cfg,
-			rm:             b.rm,
-			rom:            b.rom,
-			rs:             b.rs,
-			ss:             b.ss,
-			cam:            b.cam,
-			dsl:            b.dsl,
-			ext:            b.ext,
-			configm:        b.configm,
-			leadInfo:       b.leadInfo,
-			lif:            b.lif,
-			eac:            b.eac,
-			metrics:        b.metrics,
-			erf:            b.erf,
-			apim:           b.apim,
-			xdsauth:        b.xdsauth,
-			xdsCallbacks:   b.xdsCallbacks,
-			xdsh:           b.xdsh,
-			cap:            b.cap,
-			dps:            b.dps,
-			kdsctx:         b.kdsctx,
-			rv:             b.rv,
-			au:             b.au,
-			acc:            b.acc,
-			appCtx:         b.appCtx,
-			extraReportsFn: b.extraReportsFn,
-			tokenIssuers:   b.tokenIssuers,
-			meshCache:      b.meshCache,
-			interCpPool:    b.interCpPool,
+			cfg:         b.cfg,
+			grpcServer:  b.grpcServer,
+			certStorage: b.certStorage,
+			kubuClient:  b.kubuClient,
 		},
 		Manager: b.cm,
 	}, nil
 }
 
-func (b *Builder) ComponentManager() component.Manager {
-	return b.cm
+func (b *Builder) WithCertStorage(storage provider.Storage) *Builder {
+	b.certStorage = storage
+	return b
+}
+
+func (b *Builder) WithKubuClient(client provider.Client) *Builder {
+	b.kubuClient = client
+	return b
+}
+
+func (b *Builder) WithGrpcServer(grpcServer server.GrpcServer) *Builder {
+	b.grpcServer = &grpcServer
+	return b
+}
+
+func (b *Builder) WithComponentManager(cm component.Manager) *Builder {
+	b.cm = cm
+	return b
 }

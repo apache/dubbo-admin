@@ -41,7 +41,7 @@ import (
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc_go.SupportPackageIsVersion7
 
-// MockServiceClient is the client API for MockService service.
+// MockServiceClient is the clientgen API for MockService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MockServiceClient interface {
@@ -74,7 +74,7 @@ func (c *mockServiceClient) GetMockData(ctx context.Context, in *GetMockDataReq,
 	return out, c.cc.Invoke(ctx, "/"+interfaceKey+"/GetMockData", in, out)
 }
 
-// MockServiceServer is the server API for MockService service.
+// MockServiceServer is the cp-server API for MockService service.
 // All implementations must embed UnimplementedMockServiceServer
 // for forward compatibility
 type MockServiceServer interface {

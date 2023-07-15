@@ -19,13 +19,13 @@ package mock
 
 import (
 	"context"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 
 	"dubbo.apache.org/dubbo-go/v3/config"
 	_ "dubbo.apache.org/dubbo-go/v3/imports"
 	"github.com/apache/dubbo-admin/pkg/admin/mapper"
 	"github.com/apache/dubbo-admin/pkg/admin/providers/mock/api"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
-	"github.com/apache/dubbo-admin/pkg/logger"
 )
 
 var _ api.MockServiceServer = (*MockServiceServer)(nil)

@@ -16,19 +16,19 @@
 package patch
 
 import (
+	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
+	"github.com/apache/dubbo-admin/pkg/core/cert/provider"
 	"strconv"
 
-	"github.com/apache/dubbo-admin/pkg/authority/config"
-	"github.com/apache/dubbo-admin/pkg/authority/k8s"
 	v1 "k8s.io/api/core/v1"
 )
 
 type JavaSdk struct {
-	options    *config.Options
-	kubeClient k8s.Client
+	options    *dubbo_cp.Config
+	kubeClient provider.Client
 }
 
-func NewJavaSdk(options *config.Options, kubeClient k8s.Client) *JavaSdk {
+func NewJavaSdk(options *dubbo_cp.Config, kubeClient provider.Client) *JavaSdk {
 	return &JavaSdk{
 		options:    options,
 		kubeClient: kubeClient,
@@ -80,7 +80,7 @@ func (s *JavaSdk) NewPod(origin *v1.Pod) (*v1.Pod, error) {
 func (s *JavaSdk) injectContainers(c *v1.Container) {
 	c.Env = append(c.Env, v1.EnvVar{
 		Name:  "DUBBO_CA_ADDRESS",
-		Value: s.options.ServiceName + "." + s.options.Namespace + ".svc:" + strconv.Itoa(s.options.SecureServerPort),
+		Value: s.options.KubeConfig.ServiceName + "." + s.options.KubeConfig.Namespace + ".svc:" + strconv.Itoa(s.options.GrpcServer.SecureServerPort),
 	})
 	c.Env = append(c.Env, v1.EnvVar{
 		Name:  "DUBBO_CA_CERT_PATH",

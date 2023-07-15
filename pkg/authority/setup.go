@@ -1,73 +1,55 @@
+// Licensed to the Apache Software Foundation (ASF) under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// The ASF licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package authority
 
 import (
-	"fmt"
-	"github.com/apache/dubbo-admin/pkg/authority/config"
-	"github.com/apache/dubbo-admin/pkg/authority/security"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
+	"crypto/tls"
+	"github.com/apache/dubbo-admin/api/mesh"
+	"github.com/apache/dubbo-admin/pkg/authority/patch"
+	"github.com/apache/dubbo-admin/pkg/authority/server"
+	"github.com/apache/dubbo-admin/pkg/authority/webhook"
+	core_runtime "github.com/apache/dubbo-admin/pkg/core/runtime"
+	"github.com/pkg/errors"
 )
 
-var (
-	// For example, --webhook-port is bound to DUBBO_WEBHOOK_PORT.
-	envNamePrefix = "DUBBO"
+func Setup(rt core_runtime.Runtime) error {
+	server := server.NewServer(rt.Config())
+	if rt.Config().KubeConfig.InPodEnv {
+		server.WebhookServer = webhook.NewWebhook(
+			func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+				return rt.CertStorage().GetServerCert(info.ServerName), nil
+			})
+		server.WebhookServer.Init(rt.Config())
+		server.JavaInjector = patch.NewJavaSdk(rt.Config(), rt.KubuClient())
+		server.WebhookServer.Patches = append(server.WebhookServer.Patches, server.JavaInjector.NewPod)
+		server.KubuClient = rt.KubuClient()
+		server.CertStorage = rt.CertStorage()
+	}
+	if err := RegisterCertificateService(rt, server); err != nil {
+		return errors.Wrap(err, "CertificateService register failed")
+	}
 
-	// Replace hyphenated flag names with camelCase
-	replaceWithCamelCase = false
-)
-
-func Run(options *config.Options) error {
-	s := security.NewServer(options)
-
-	s.Init()
-	s.Start()
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-	signal.Notify(s.StopChan, syscall.SIGINT, syscall.SIGTERM)
-	signal.Notify(s.CertStorage.GetStopChan(), syscall.SIGINT, syscall.SIGTERM)
-
-	<-c
-
+	if err := rt.Add(server); err != nil {
+		return errors.Wrap(err, "Add Authority Component failed")
+	}
 	return nil
 }
 
-func Initialize(cmd *cobra.Command) error {
-	v := viper.New()
-
-	// For example, --webhook-port is bound to DUBBO_WEBHOOK_PORT.
-	v.SetEnvPrefix(envNamePrefix)
-
-	// keys with underscores, e.g. DUBBO-WEBHOOK-PORT to DUBBO_WEBHOOK_PORT
-	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
-
-	// Bind to environment variables
-	v.AutomaticEnv()
-
-	// Bind the current command's flags to viper
-	bindFlags(cmd, v)
-
+func RegisterCertificateService(rt core_runtime.Runtime, service *server.AuthorityService) error {
+	mesh.RegisterAuthorityServiceServer(rt.GrpcServer().PlainServer, service)
+	mesh.RegisterAuthorityServiceServer(rt.GrpcServer().SecureServer, service)
 	return nil
-}
-
-func bindFlags(cmd *cobra.Command, v *viper.Viper) {
-	cmd.Flags().VisitAll(func(f *pflag.Flag) {
-		configName := f.Name
-
-		//  Replace hyphens with a camelCased string.
-		if replaceWithCamelCase {
-			configName = strings.ReplaceAll(f.Name, "-", "")
-		}
-
-		// Apply the viper config value to the flag when the flag is not set and viper has a value
-		if !f.Changed && v.IsSet(configName) {
-			val := v.Get(configName)
-			cmd.Flags().Set(f.Name, fmt.Sprintf("%v", val))
-		}
-	})
 }

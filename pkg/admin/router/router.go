@@ -18,15 +18,66 @@
 package router
 
 import (
+	"context"
+	"github.com/apache/dubbo-admin/pkg/admin/config"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"net/http"
+	"strconv"
 
-	"github.com/apache/dubbo-admin/cmd/ui"
+	"github.com/apache/dubbo-admin/app/dubbo-ui"
 	"github.com/apache/dubbo-admin/pkg/admin/handlers"
 	"github.com/apache/dubbo-admin/pkg/admin/handlers/traffic"
 	"github.com/gin-gonic/gin"
 )
 
-func InitRouter() *gin.Engine {
+type Router struct {
+	Engine *gin.Engine
+}
+
+// TODO maybe tls?
+func (r *Router) Start(stop <-chan struct{}) error {
+	errChan := make(chan error)
+
+	var httpServer *http.Server
+	httpServer = r.startHttpServer(errChan)
+	select {
+	case <-stop:
+		logger.Sugar().Info("stopping admin")
+		if httpServer != nil {
+			return httpServer.Shutdown(context.Background())
+		}
+	case err := <-errChan:
+		return err
+	}
+	return nil
+}
+
+func (r *Router) startHttpServer(errChan chan error) *http.Server {
+	server := &http.Server{
+		Addr:    ":" + strconv.Itoa(config.AdminPort),
+		Handler: r.Engine,
+	}
+
+	go func() {
+		err := server.ListenAndServe()
+		if err != nil {
+			switch err {
+			case http.ErrServerClosed:
+				logger.Sugar().Info("shutting down HTTP Server")
+			default:
+				logger.Sugar().Error(err, "could not start an HTTP Server")
+				errChan <- err
+			}
+		}
+	}()
+	return server
+}
+
+func (r *Router) NeedLeaderElection() bool {
+	return false
+}
+
+func InitRouter() *Router {
 	router := gin.Default()
 
 	server := router.Group("/api/:env")
@@ -151,5 +202,7 @@ func InitRouter() *gin.Engine {
 	// Admin UI
 	router.StaticFS("/admin", http.FS(ui.FS()))
 
-	return router
+	return &Router{
+		Engine: router,
+	}
 }
