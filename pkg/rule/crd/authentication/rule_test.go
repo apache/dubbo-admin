@@ -27,14 +27,14 @@ import (
 func TestRule(t *testing.T) {
 	t.Parallel()
 
-	storage := storage.NewStorage()
-	handler := NewHandler(storage)
+	storages := storage.NewStorage()
+	handler := NewHandler(storages)
 
 	handler.Add("test", &Policy{
 		Spec: &PolicySpec{},
 	})
 
-	originRule := storage.LatestRules[storage.Authentication]
+	originRule := storages.LatestRules[storage.Authentication]
 
 	if originRule == nil {
 		t.Error("expected origin rule to be added")
@@ -75,7 +75,7 @@ func TestRule(t *testing.T) {
 
 	handler.Add("test2", policy)
 
-	originRule = storage.LatestRules[storage.Authentication]
+	originRule = storages.LatestRules[storage.Authentication]
 
 	if originRule == nil {
 		t.Error("expected origin rule to be added")

@@ -28,15 +28,15 @@ import (
 func TestAdd(t *testing.T) {
 	t.Parallel()
 
-	storage := storage.NewStorage()
+	storages := storage.NewStorage()
 	wq := workqueue.NewNamed("raw-rule")
-	storage.Connection = []*storage.Connection{
+	storages.Connection = []*storage.Connection{
 		{
 			RawRuleQueue: wq,
 		},
 	}
 
-	handler := authentication2.NewHandler(storage)
+	handler := authentication2.NewHandler(storages)
 
 	handler.Add("test", nil)
 
@@ -117,15 +117,15 @@ func TestAdd(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	t.Parallel()
 
-	storage := storage.NewStorage()
+	storages := storage.NewStorage()
 	wq := workqueue.NewNamed("raw-rule")
-	storage.Connection = []*storage.Connection{
+	storages.Connection = []*storage.Connection{
 		{
 			RawRuleQueue: wq,
 		},
 	}
 
-	handler := authentication2.NewHandler(storage)
+	handler := authentication2.NewHandler(storages)
 
 	handler.Update("test", nil)
 
@@ -206,15 +206,15 @@ func TestUpdate(t *testing.T) {
 func TestDelete(t *testing.T) {
 	t.Parallel()
 
-	storage := storage.NewStorage()
+	storages := storage.NewStorage()
 	wq := workqueue.NewNamed("raw-rule")
-	storage.Connection = []*storage.Connection{
+	storages.Connection = []*storage.Connection{
 		{
 			RawRuleQueue: wq,
 		},
 	}
 
-	handler := authentication2.NewHandler(storage)
+	handler := authentication2.NewHandler(storages)
 
 	policy := &authentication2.Policy{}
 	handler.Add("test", policy)

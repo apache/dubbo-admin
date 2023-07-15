@@ -34,8 +34,8 @@ limitations under the License.
 package versioned
 
 import (
-	dubbov1beta1 "github.com/apache/dubbo-admin/pkg/rule/clientgen/clientset/versioned/typed/dubbo.apache.org/v1beta1"
 	"fmt"
+	dubbov1beta1 "github.com/apache/dubbo-admin/pkg/rule/clientgen/clientset/versioned/typed/dubbo.apache.org/v1beta1"
 	"net/http"
 
 	discovery "k8s.io/client-go/discovery"

@@ -16,6 +16,7 @@
 package util
 
 import (
+	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"reflect"
 	"testing"
 )
@@ -34,14 +35,14 @@ func TestGetDiscoveryPath(t *testing.T) {
 			args: args{
 				address: "127.0.0.1:0",
 			},
-			want: "127.0.0.1:22222",
+			want: "127.0.0.1:" + config.PrometheusMonitorPort,
 		},
 		{
 			name: "RightTest2",
 			args: args{
 				address: "192.168.127.153",
 			},
-			want: "192.168.127.153:22222",
+			want: "192.168.127.153:" + config.PrometheusMonitorPort,
 		},
 	}
 	for _, tt := range tests {

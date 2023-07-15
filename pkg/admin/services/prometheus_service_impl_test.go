@@ -18,6 +18,7 @@
 package services
 
 import (
+	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -133,10 +134,10 @@ func TestPrometheusServiceImpl_PromDiscovery(t *testing.T) {
 				{
 					Labels: map[string]string{},
 					Targets: []string{
-						"127.0.0.1:22222",
-						"198.127.163.150:22222",
-						"198.127.163.153:22222",
-						"198.127.163.151:22222",
+						"127.0.0.1:" + config.PrometheusMonitorPort,
+						"198.127.163.150:" + config.PrometheusMonitorPort,
+						"198.127.163.153:" + config.PrometheusMonitorPort,
+						"198.127.163.151:" + config.PrometheusMonitorPort,
 					},
 				},
 			},
