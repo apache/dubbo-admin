@@ -110,12 +110,12 @@ func TestStorage_CloseErr(t *testing.T) {
 func TestStorage_UnknownType(t *testing.T) {
 	t.Parallel()
 
-	storage := storage.NewStorage()
+	store := storage.NewStorage()
 	fake := &fakeConnection{
 		recvChan: make(chan recvResult, 1),
 	}
 
-	storage.Connected(&endpoint.Endpoint{
+	store.Connected(&endpoint.Endpoint{
 		ID: "test",
 	}, fake)
 
@@ -135,7 +135,7 @@ func TestStorage_UnknownType(t *testing.T) {
 		err: nil,
 	}
 
-	conn := storage.Connection[0]
+	conn := store.Connection[0]
 
 	fake.recvChan <- recvResult{
 		request: nil,
@@ -154,12 +154,12 @@ func TestStorage_UnknownType(t *testing.T) {
 func TestStorage_StartNonEmptyNonce(t *testing.T) {
 	t.Parallel()
 
-	storage := storage.NewStorage()
+	store := storage.NewStorage()
 	fake := &fakeConnection{
 		recvChan: make(chan recvResult, 1),
 	}
 
-	storage.Connected(&endpoint.Endpoint{
+	store.Connected(&endpoint.Endpoint{
 		ID: "test",
 	}, fake)
 
@@ -171,7 +171,7 @@ func TestStorage_StartNonEmptyNonce(t *testing.T) {
 		err: nil,
 	}
 
-	conn := storage.Connection[0]
+	conn := store.Connection[0]
 
 	fake.recvChan <- recvResult{
 		request: nil,
@@ -190,12 +190,12 @@ func TestStorage_StartNonEmptyNonce(t *testing.T) {
 func TestStorage_Listen(t *testing.T) {
 	t.Parallel()
 
-	storage := storage.NewStorage()
+	storages := storage.NewStorage()
 	fake := &fakeConnection{
 		recvChan: make(chan recvResult, 1),
 	}
 
-	storage.Connected(&endpoint.Endpoint{
+	storages.Connected(&endpoint.Endpoint{
 		ID: "test",
 	}, fake)
 
@@ -207,7 +207,7 @@ func TestStorage_Listen(t *testing.T) {
 		err: nil,
 	}
 
-	conn := storage.Connection[0]
+	conn := storages.Connection[0]
 
 	fake.recvChan <- recvResult{
 		request: nil,
@@ -230,9 +230,9 @@ func TestStorage_Listen(t *testing.T) {
 func TestStorage_PreNotify(t *testing.T) {
 	t.Parallel()
 
-	storage := storage.NewStorage()
+	storages := storage.NewStorage()
 
-	handler := authorization2.NewHandler(storage)
+	handler := authorization2.NewHandler(storages)
 	handler.Add("test", &authorization2.Policy{
 		Name: "test",
 		Spec: &authorization2.PolicySpec{
@@ -244,7 +244,7 @@ func TestStorage_PreNotify(t *testing.T) {
 		recvChan: make(chan recvResult, 1),
 	}
 
-	storage.Connected(&endpoint.Endpoint{
+	storages.Connected(&endpoint.Endpoint{
 		ID: "test",
 	}, fake)
 
@@ -292,7 +292,7 @@ func TestStorage_PreNotify(t *testing.T) {
 		err: nil,
 	}
 
-	conn := storage.Connection[0]
+	conn := storages.Connection[0]
 
 	assert.Eventually(t, func() bool {
 		return conn.ClientRules[storage.Authorization].PushingStatus == storage.Pushed
@@ -319,15 +319,15 @@ func TestStorage_PreNotify(t *testing.T) {
 func TestStorage_AfterNotify(t *testing.T) {
 	t.Parallel()
 
-	storage := storage.NewStorage()
+	store := storage.NewStorage()
 
-	handler := authorization2.NewHandler(storage)
+	handler := authorization2.NewHandler(store)
 
 	fake := &fakeConnection{
 		recvChan: make(chan recvResult, 1),
 	}
 
-	storage.Connected(&endpoint.Endpoint{
+	store.Connected(&endpoint.Endpoint{
 		ID: "test",
 	}, fake)
 
@@ -339,7 +339,7 @@ func TestStorage_AfterNotify(t *testing.T) {
 		err: nil,
 	}
 
-	conn := storage.Connection[0]
+	conn := store.Connection[0]
 
 	assert.Eventually(t, func() bool {
 		return conn.TypeListened[storage.Authorization]
@@ -413,16 +413,16 @@ func TestStorage_AfterNotify(t *testing.T) {
 func TestStorage_MissNotify(t *testing.T) {
 	t.Parallel()
 
-	storage := storage.NewStorage()
+	store := storage.NewStorage()
 
-	handler1 := authorization2.NewHandler(storage)
-	handler2 := authentication2.NewHandler(storage)
+	handler1 := authorization2.NewHandler(store)
+	handler2 := authentication2.NewHandler(store)
 
 	fake := &fakeConnection{
 		recvChan: make(chan recvResult, 1),
 	}
 
-	storage.Connected(&endpoint.Endpoint{
+	store.Connected(&endpoint.Endpoint{
 		ID: "test",
 	}, fake)
 
@@ -434,7 +434,7 @@ func TestStorage_MissNotify(t *testing.T) {
 		err: nil,
 	}
 
-	conn := storage.Connection[0]
+	conn := store.Connection[0]
 
 	assert.Eventually(t, func() bool {
 		return conn.TypeListened[storage.Authorization]
@@ -563,13 +563,13 @@ func (f *fakeToClient) Data() string {
 func TestStorage_MulitiNotify(t *testing.T) {
 	t.Parallel()
 
-	storage := storage.NewStorage()
+	store := storage.NewStorage()
 
 	fake := &fakeConnection{
 		recvChan: make(chan recvResult, 1),
 	}
 
-	storage.Connected(&endpoint.Endpoint{
+	store.Connected(&endpoint.Endpoint{
 		ID: "test",
 	}, fake)
 
@@ -581,7 +581,7 @@ func TestStorage_MulitiNotify(t *testing.T) {
 		err: nil,
 	}
 
-	conn := storage.Connection[0]
+	conn := store.Connection[0]
 
 	assert.Eventually(t, func() bool {
 		return conn.TypeListened[storage.Authorization]
@@ -673,9 +673,9 @@ func TestStorage_MulitiNotify(t *testing.T) {
 func TestStorage_ReturnMisNonce(t *testing.T) {
 	t.Parallel()
 
-	storage := storage.NewStorage()
+	store := storage.NewStorage()
 
-	handler := authorization2.NewHandler(storage)
+	handler := authorization2.NewHandler(store)
 	handler.Add("test", &authorization2.Policy{
 		Name: "test",
 		Spec: &authorization2.PolicySpec{
@@ -687,7 +687,7 @@ func TestStorage_ReturnMisNonce(t *testing.T) {
 		recvChan: make(chan recvResult, 1),
 	}
 
-	storage.Connected(&endpoint.Endpoint{
+	store.Connected(&endpoint.Endpoint{
 		ID: "test",
 	}, fake)
 
@@ -735,7 +735,7 @@ func TestStorage_ReturnMisNonce(t *testing.T) {
 		err: nil,
 	}
 
-	conn := storage.Connection[0]
+	conn := store.Connection[0]
 
 	fake.recvChan <- recvResult{
 		request: nil,
