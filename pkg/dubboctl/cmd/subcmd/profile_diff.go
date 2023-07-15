@@ -49,7 +49,7 @@ func ConfigProfileDiffArgs(baseCmd *cobra.Command) {
   dubboctl profile diff default demo
 
   # show the difference between two profiles specified by user
-  dubboctl profile diff profile_you_specify0 profile_you_specify1 --profiles /path/to/profiles
+  dubboctl profile diff profile_name0 profile_name1 --profiles /path/to/profiles
 `,
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 2 {

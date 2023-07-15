@@ -102,7 +102,7 @@ func ConfigManifestGenerateCmd(baseCmd *cobra.Command) {
 }
 
 func addManifestGenerateFlags(cmd *cobra.Command, args *ManifestGenerateArgs) {
-	cmd.PersistentFlags().StringSliceVarP(&args.FileNames, "filename", "f", nil,
+	cmd.PersistentFlags().StringSliceVarP(&args.FileNames, "filenames", "f", nil,
 		"User-defined DubboOperator yaml files, the previous file would be overlaid by later file")
 	cmd.PersistentFlags().StringVarP(&args.ChartsPath, "charts", "", "",
 		"Path to charts directory, this directory contains components charts")
