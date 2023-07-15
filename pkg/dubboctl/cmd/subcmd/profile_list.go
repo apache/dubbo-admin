@@ -40,7 +40,7 @@ func (pla *ProfileListArgs) setDefault() {
 	}
 }
 
-func ConfigProfileListArgs(baseCmd *cobra.Command) {
+func ConfigProfileListCmd(baseCmd *cobra.Command) {
 	plArgs := &ProfileListArgs{}
 	plCmd := &cobra.Command{
 		Use:   "list",

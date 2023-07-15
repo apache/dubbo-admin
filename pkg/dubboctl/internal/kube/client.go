@@ -31,8 +31,8 @@ import (
 
 // CtlClient wraps controller-runtime client and is used by dubboctl
 type CtlClient struct {
-	client.Client
 	opts *CtlClientOptions
+	client.Client
 }
 
 type CtlClientOptions struct {

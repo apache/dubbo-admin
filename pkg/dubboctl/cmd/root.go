@@ -41,4 +41,5 @@ func getRootCmd(args []string) *cobra.Command {
 func addSubCommands(rootCmd *cobra.Command) {
 	addManifest(rootCmd)
 	addProfile(rootCmd)
+	addDashboard(rootCmd)
 }

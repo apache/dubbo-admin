@@ -103,7 +103,7 @@ func ConfigManifestGenerateCmd(baseCmd *cobra.Command) {
 
 func addManifestGenerateFlags(cmd *cobra.Command, args *ManifestGenerateArgs) {
 	cmd.PersistentFlags().StringSliceVarP(&args.FileNames, "filenames", "f", nil,
-		"User-defined DubboOperator yaml files, the previous file would be overlaid by later file")
+		"User-defined DubboConfig yaml files, the previous file would be overlaid by later file")
 	cmd.PersistentFlags().StringVarP(&args.ChartsPath, "charts", "", "",
 		"Path to charts directory, this directory contains components charts")
 	cmd.PersistentFlags().StringVarP(&args.ProfilesPath, "profiles", "", "",
@@ -111,17 +111,17 @@ func addManifestGenerateFlags(cmd *cobra.Command, args *ManifestGenerateArgs) {
 	cmd.PersistentFlags().StringVarP(&args.OutputPath, "output", "o", "",
 		"Path to output manifest, if not set, dubboctl would print the manifest")
 	cmd.PersistentFlags().StringArrayVarP(&args.SetFlags, "set", "s", nil,
-		"Set DubboOperator fields, see /pkg/dubboctl/internal/apis/dubbo.apache.org/v1alpha1/types.go")
+		"Set DubboConfig fields, see /pkg/dubboctl/internal/apis/dubbo.apache.org/v1alpha1/types.go")
 }
 
 // In order to generate values.yaml for helm charts, dubboctl takes following order to overlay:
 //
 //  1. mergedYaml, profile <- user1.yaml <- user2.yaml <- user3.yaml ...
 //
-//     User set FileNames, dubboctl reads these user-defined DubboOperator yamls and overlays them from back to front.
+//     User set FileNames, dubboctl reads these user-defined DubboConfig yamls and overlays them from back to front.
 //     mergedYaml is the overlaid result.
-//     User could set required profile name by user-defined DubboOperator yamls or SetFlag. If none are set, dubboctl
-//     would use default profile. The priority is default profile < user-defined DubboOperator yaml < SetFlag.
+//     User could set required profile name by user-defined DubboConfig yamls or SetFlag. If none are set, dubboctl
+//     would use default profile. The priority is default profile < user-defined DubboConfig yaml < SetFlag.
 //
 //  2. profileYaml <- profile
 //
