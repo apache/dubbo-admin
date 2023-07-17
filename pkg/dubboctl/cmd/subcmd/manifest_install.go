@@ -58,7 +58,7 @@ func ConfigManifestInstallCmd(baseCmd *cobra.Command) {
 		},
 	}
 	addManifestGenerateFlags(miCmd, mgArgs)
-	miCmd.PersistentFlags().StringVarP(&miArgs.KubeConfigPath, "kubeconfig", "", "",
+	miCmd.PersistentFlags().StringVarP(&miArgs.KubeConfigPath, "kubeConfig", "", "",
 		"Path to kubeconfig")
 	miCmd.PersistentFlags().StringVarP(&miArgs.Context, "context", "", "",
 		"Context in kubeconfig to use")
