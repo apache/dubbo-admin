@@ -14,7 +14,7 @@
 # limitations under the License.
 
 apiVersion: dubbo.apache.org/v1alpha1
-kind: DubboOperator
+kind: DubboConfig
 metadata:
   namespace: dubbo-system
 spec:

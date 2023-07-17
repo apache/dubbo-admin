@@ -49,7 +49,7 @@ func ConfigProfileListCmd(baseCmd *cobra.Command) {
   dubboctl profile list
 
   # list all profiles in path specified by user
-  dubboctl profile list --profiles /path/to/profiles
+  dubboctl profile list --profiles path/to/profiles
 
   # display selected profile
   dubboctl profile list default

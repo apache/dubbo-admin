@@ -90,12 +90,12 @@ func commonDashboardCmd(baseCmd *cobra.Command, compName operator.ComponentName)
 		Example: fmt.Sprintf(`  # create PortForward in 127.0.0.1:%d and open browser directly
   dubboctl dashboard %s
   # specify port
-  dubboctl dashboard %s --port 8888
+  dubboctl dashboard %s --port %d
   # do not open browser
   dubboctl dashboard %s --openBrowser false
   # specify namespace of Admin
-  dubboctl dashboard %s --namespace user_specified
-`, ComponentPortMap[compName], lowerNameStr, lowerNameStr, lowerNameStr, lowerNameStr),
+  dubboctl dashboard %s --namespace ns_user_specified
+`, ComponentPortMap[compName], lowerNameStr, lowerNameStr, ComponentPortMap[compName], lowerNameStr, lowerNameStr),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			logger.InitCmdSugar(zapcore.AddSync(cmd.OutOrStdout()))
 			dcArgs.setDefault()
@@ -107,7 +107,7 @@ func commonDashboardCmd(baseCmd *cobra.Command, compName operator.ComponentName)
 	}
 	cmd.PersistentFlags().IntVarP(&dcArgs.port, "port", "p", 0,
 		fmt.Sprintf("local port to listen on. If not set, it would be same as the default port of component %s", nameStr))
-	cmd.PersistentFlags().StringVarP(&dcArgs.host, "host", "", "",
+	cmd.PersistentFlags().StringVarP(&dcArgs.host, "host", "h", "",
 		"local host to bind. If not set, it would be 127.0.0.1")
 	// openBrowser is default behaviour
 	cmd.PersistentFlags().BoolVarP(&dcArgs.openBrowser, "openBrowser", "", true,
@@ -115,9 +115,9 @@ func commonDashboardCmd(baseCmd *cobra.Command, compName operator.ComponentName)
 	cmd.PersistentFlags().StringVarP(&dcArgs.namespace, "namespace", "n", "",
 		fmt.Sprintf("namespace in which component %s is located", nameStr))
 	cmd.PersistentFlags().StringVarP(&dcArgs.KubeConfigPath, "kubeConfig", "", "",
-		"Path to kubeConfig")
+		"Path to kubeconfig")
 	cmd.PersistentFlags().StringVarP(&dcArgs.Context, "context", "", "",
-		"Context in kubeConfig to use")
+		"Context in kubeconfig to use")
 
 	baseCmd.AddCommand(cmd)
 }

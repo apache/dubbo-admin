@@ -45,7 +45,7 @@ func TestProfileList(t *testing.T) {
 			desc: "display selected profile",
 			cmd:  "profile list test0 --profiles ./testdata/profile",
 			want: `apiVersion: dubbo.apache.org/v1alpha1
-kind: DubboOperator
+kind: DubboConfig
 metadata:
   namespace: dubbo-system
 spec:
@@ -107,7 +107,7 @@ func TestProfileDiff(t *testing.T) {
 			desc: "show the difference between two profiled specified by user",
 			cmd:  "profile diff test0 test1 --profiles ./testdata/profile",
 			want: ` apiVersion: dubbo.apache.org/v1alpha1
- kind: DubboOperator
+ kind: DubboConfig
  metadata:
    namespace: dubbo-system
  spec:
