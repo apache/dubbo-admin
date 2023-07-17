@@ -66,9 +66,9 @@ spec:
   clusterIP: None
   publishNotReadyAddresses: true
   ports:
-    - name: tcp-client
+    - name: tcp-clientgen
       port: 2181
-      targetPort: client
+      targetPort: clientgen
     - name: tcp-follower
       port: 2888
       targetPort: follower
@@ -96,9 +96,9 @@ spec:
   type: ClusterIP
   sessionAffinity: None
   ports:
-    - name: tcp-client
+    - name: tcp-clientgen
       port: 2181
-      targetPort: client
+      targetPort: clientgen
       nodePort: null
     - name: tcp-follower
       port: 2888
@@ -228,7 +228,7 @@ spec:
                   apiVersion: v1
                   fieldPath: metadata.name
           ports:
-            - name: client
+            - name: clientgen
               containerPort: 2181
             - name: follower
               containerPort: 2888

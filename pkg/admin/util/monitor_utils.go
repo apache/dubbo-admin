@@ -15,12 +15,16 @@
 
 package util
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/apache/dubbo-admin/pkg/admin/config"
+)
 
 func GetDiscoveryPath(address string) string {
 	if strings.Contains(address, ":") {
 		index := strings.Index(address, ":")
-		return address[0:index] + ":22222"
+		return address[0:index] + ":" + config.PrometheusMonitorPort
 	}
-	return address + ":22222"
+	return address + ":" + config.PrometheusMonitorPort
 }

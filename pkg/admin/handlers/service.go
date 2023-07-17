@@ -19,12 +19,12 @@ package handlers
 
 import (
 	"encoding/json"
+	"github.com/apache/dubbo-admin/pkg/core/cmd/version"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"net/http"
 	"strconv"
 
 	"dubbo.apache.org/dubbo-go/v3/metadata/definition"
-
-	"github.com/apache/dubbo-admin/pkg/logger"
 
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/vcraescu/go-paginator"
@@ -36,7 +36,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/util"
 
 	"github.com/apache/dubbo-admin/pkg/admin/services"
-	"github.com/apache/dubbo-admin/pkg/version"
+
 	"github.com/gin-gonic/gin"
 )
 

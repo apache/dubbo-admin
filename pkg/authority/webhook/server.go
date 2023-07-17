@@ -19,11 +19,11 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"io"
 	"net/http"
 
-	"github.com/apache/dubbo-admin/pkg/authority/config"
-	"github.com/apache/dubbo-admin/pkg/logger"
 	"github.com/mattbaird/jsonpatch"
 
 	admissionV1 "k8s.io/api/admission/v1"
@@ -63,23 +63,25 @@ func (wh *Webhook) NewServer(port int32) *http.Server {
 	}
 }
 
-func (wh *Webhook) Init(options *config.Options) {
-	wh.Server = wh.NewServer(options.WebhookPort)
-	wh.AllowOnErr = options.WebhookAllowOnErr
+func (wh *Webhook) Init(options *dubbo_cp.Config) {
+	wh.Server = wh.NewServer(options.Security.WebhookPort)
+	wh.AllowOnErr = options.Security.WebhookAllowOnErr
 }
 
+// Serve only for test
 func (wh *Webhook) Serve() {
 	err := wh.Server.ListenAndServeTLS("", "")
 	if err != nil {
-		logger.Sugar().Warnf("[Webhook] Serve webhook server failed. %v", err.Error())
+		logger.Sugar().Warnf("[Webhook] Serve webhook cp-server failed. %v", err.Error())
 
 		return
 	}
 }
 
+// Stop only for test
 func (wh *Webhook) Stop() {
 	if err := wh.Server.Close(); err != nil {
-		logger.Sugar().Warnf("[Webhook] Stop webhook server failed. %v", err.Error())
+		logger.Sugar().Warnf("[Webhook] Stop webhook cp-server failed. %v", err.Error())
 
 		return
 	}

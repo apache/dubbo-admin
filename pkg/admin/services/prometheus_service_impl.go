@@ -18,6 +18,7 @@ package services
 import (
 	"context"
 	"fmt"
+	logger2 "github.com/apache/dubbo-admin/pkg/core/logger"
 	"net/http"
 	"time"
 
@@ -30,8 +31,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	util2 "github.com/apache/dubbo-admin/pkg/admin/util"
-	"github.com/apache/dubbo-admin/pkg/logger"
-	"github.com/apache/dubbo-admin/pkg/monitor/prometheus"
+	"github.com/apache/dubbo-admin/pkg/core/monitor/prometheus"
 )
 
 var (
@@ -49,7 +49,7 @@ func (p *PrometheusServiceImpl) PromDiscovery(w http.ResponseWriter) ([]model.Ta
 	// Find all provider addresses
 	proAddr, err := providerServiceImpl.findAddresses()
 	if err != nil {
-		logger.Sugar().Errorf("Error provider findAddresses: %v\n", err)
+		logger2.Sugar().Errorf("Error provider findAddresses: %v\n", err)
 		return nil, err
 	}
 	addresses := set.NewSet()
@@ -81,7 +81,7 @@ func (p *PrometheusServiceImpl) ClusterMetrics() (model.ClusterMetricsRes, error
 	applications, err := providerService.FindApplications()
 	appNum := 0
 	if err != nil {
-		logger.Sugar().Errorf("Error find applications: %v\n", err)
+		logger2.Sugar().Errorf("Error find applications: %v\n", err)
 	} else {
 		appNum = applications.Size()
 	}
@@ -91,7 +91,7 @@ func (p *PrometheusServiceImpl) ClusterMetrics() (model.ClusterMetricsRes, error
 	services, err := providerService.FindServices()
 	svc := 0
 	if err != nil {
-		logger.Sugar().Errorf("Error find services: %v\n", err)
+		logger2.Sugar().Errorf("Error find services: %v\n", err)
 	} else {
 		svc = services.Size()
 	}
@@ -100,7 +100,7 @@ func (p *PrometheusServiceImpl) ClusterMetrics() (model.ClusterMetricsRes, error
 	providers, err := providerService.FindService(constant.IP, constant.AnyValue)
 	pro := 0
 	if err != nil {
-		logger.Sugar().Errorf("Error find providers: %v\n", err)
+		logger2.Sugar().Errorf("Error find providers: %v\n", err)
 	} else {
 		pro = len(providers)
 	}
@@ -109,7 +109,7 @@ func (p *PrometheusServiceImpl) ClusterMetrics() (model.ClusterMetricsRes, error
 	consumers, err := consumerService.FindAll()
 	con := 0
 	if err != nil {
-		logger.Sugar().Errorf("Error find consumers: %v\n", err)
+		logger2.Sugar().Errorf("Error find consumers: %v\n", err)
 	} else {
 		con = len(consumers)
 	}
@@ -131,7 +131,7 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 		Address: address,
 	})
 	if err != nil {
-		logger.Sugar().Errorf("Error creating client: %v\n", err)
+		logger2.Sugar().Errorf("Error creating clientgen: %v\n", err)
 		return res, err
 	}
 	v1api := prom_v1.NewAPI(client)
@@ -143,7 +143,7 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	err = vector1.Err
 	qps := float64(0)
 	if err != nil {
-		logger.Sugar().Errorf("Error query qps: %v\n", err)
+		logger2.Sugar().Errorf("Error query qps: %v\n", err)
 	} else {
 		if vector1.Vector.Len() != 0 {
 			qps = float64(vector1.Vector[0].Value)
@@ -155,7 +155,7 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	vector3 := prometheus.FetchQuery(ctx, v1api, constant.MetricsHttpRequestTotalCount, nil)
 	total := float64(0)
 	if vector3.Err != nil {
-		logger.Sugar().Errorf("Error query total count: %v\n", err)
+		logger2.Sugar().Errorf("Error query total count: %v\n", err)
 	} else {
 		if vector3.Vector.Len() != 0 {
 			total = float64(vector3.Vector[0].Value)
@@ -167,7 +167,7 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	vector2 := prometheus.FetchQuery(ctx, v1api, constant.MetricsHttpRequestSuccessCount, nil)
 	success := float64(0)
 	if vector2.Err != nil {
-		logger.Sugar().Errorf("Error query success count: %v\n", err)
+		logger2.Sugar().Errorf("Error query success count: %v\n", err)
 	} else {
 		if vector2.Vector.Len() != 0 {
 			success = float64(vector2.Vector[0].Value)
@@ -179,7 +179,7 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	vector4 := prometheus.FetchQuery(ctx, v1api, constant.MetricsHttpRequestOutOfTimeCount, nil)
 	timeout := float64(0)
 	if vector4.Err != nil {
-		logger.Sugar().Errorf("Error query timeout count: %v\n", err)
+		logger2.Sugar().Errorf("Error query timeout count: %v\n", err)
 	} else {
 		if vector4.Vector.Len() != 0 {
 			timeout = float64(vector4.Vector[0].Value)
@@ -191,7 +191,7 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	vector5 := prometheus.FetchQuery(ctx, v1api, constant.MetricsHttpRequestAddressNotFount, nil)
 	addrNotFound := float64(0)
 	if vector5.Err != nil {
-		logger.Sugar().Errorf("Error query address not found count: %v\n", err)
+		logger2.Sugar().Errorf("Error query address not found count: %v\n", err)
 	} else {
 		if vector5.Vector.Len() != 0 {
 			addrNotFound = float64(vector5.Vector[0].Value)
@@ -203,7 +203,7 @@ func (p *PrometheusServiceImpl) FlowMetrics() (model.FlowMetricsRes, error) {
 	vector6 := prometheus.FetchQuery(ctx, v1api, constant.MetricsHttpRequestOtherException, nil)
 	others := float64(0)
 	if vector6.Err != nil {
-		logger.Sugar().Errorf("Error query othere exceptions count: %v\n", err)
+		logger2.Sugar().Errorf("Error query othere exceptions count: %v\n", err)
 	} else {
 		if vector6.Vector.Len() != 0 {
 			others = float64(vector6.Vector[0].Value)
@@ -219,14 +219,14 @@ func (p *PrometheusServiceImpl) Metadata() (model.Metadata, error) {
 	// versions
 	versions, err := providerService.FindVersions()
 	if err != nil {
-		logger.Error("Failed to parse versions!")
+		logger2.Error("Failed to parse versions!")
 	}
 	metadata.Versions = versions.Values()
 
 	// protocols
 	protocols, err := providerService.FindProtocols()
 	if err != nil {
-		logger.Error("Failed to parse protocols!")
+		logger2.Error("Failed to parse protocols!")
 	}
 	metadata.Protocols = protocols.Values()
 

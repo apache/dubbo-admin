@@ -16,16 +16,19 @@
 package patch
 
 import (
+	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
+	"github.com/apache/dubbo-admin/pkg/config/kube"
+	"github.com/apache/dubbo-admin/pkg/config/security"
+	"github.com/apache/dubbo-admin/pkg/config/server"
+	kube2 "github.com/apache/dubbo-admin/pkg/core/cert/provider"
 	"reflect"
 	"testing"
 
-	"github.com/apache/dubbo-admin/pkg/authority/config"
-	"github.com/apache/dubbo-admin/pkg/authority/k8s"
 	v1 "k8s.io/api/core/v1"
 )
 
 type fakeKubeClient struct {
-	k8s.Client
+	kube2.Client
 }
 
 func (f *fakeKubeClient) GetNamespaceLabels(namespace string) map[string]string {
@@ -41,17 +44,23 @@ func (f *fakeKubeClient) GetNamespaceLabels(namespace string) map[string]string 
 func TestEmpty(t *testing.T) {
 	t.Parallel()
 
-	options := &config.Options{
-		IsKubernetesConnected: false,
-		Namespace:             "dubbo-system",
-		ServiceName:           "dubbo-ca",
-		PlainServerPort:       30060,
-		SecureServerPort:      30062,
-		DebugPort:             30070,
-		WebhookPort:           30080,
-		WebhookAllowOnErr:     false,
-		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	options := &dubbo_cp.Config{
+		KubeConfig: kube.KubeConfig{
+			IsKubernetesConnected: false,
+			Namespace:             "dubbo-system",
+			ServiceName:           "dubbo-ca",
+		},
+		Security: security.SecurityConfig{
+			CaValidity:        30 * 24 * 60 * 60 * 1000, // 30 day
+			CertValidity:      1 * 60 * 60 * 1000,       // 1 hour
+			WebhookPort:       30080,
+			WebhookAllowOnErr: false,
+		},
+		GrpcServer: server.ServerConfig{
+			PlainServerPort:  30060,
+			SecureServerPort: 30062,
+			DebugPort:        30070,
+		},
 	}
 
 	sdk := NewJavaSdk(options, &fakeKubeClient{})
@@ -67,17 +76,23 @@ func TestEmpty(t *testing.T) {
 func TestInjectFromLabel(t *testing.T) {
 	t.Parallel()
 
-	options := &config.Options{
-		IsKubernetesConnected: false,
-		Namespace:             "dubbo-system",
-		ServiceName:           "dubbo-ca",
-		PlainServerPort:       30060,
-		SecureServerPort:      30062,
-		DebugPort:             30070,
-		WebhookPort:           30080,
-		WebhookAllowOnErr:     false,
-		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	options := &dubbo_cp.Config{
+		KubeConfig: kube.KubeConfig{
+			IsKubernetesConnected: false,
+			Namespace:             "dubbo-system",
+			ServiceName:           "dubbo-ca",
+		},
+		Security: security.SecurityConfig{
+			CaValidity:        30 * 24 * 60 * 60 * 1000, // 30 day
+			CertValidity:      1 * 60 * 60 * 1000,       // 1 hour
+			WebhookPort:       30080,
+			WebhookAllowOnErr: false,
+		},
+		GrpcServer: server.ServerConfig{
+			PlainServerPort:  30060,
+			SecureServerPort: 30062,
+			DebugPort:        30070,
+		},
 	}
 
 	sdk := NewJavaSdk(options, &fakeKubeClient{})
@@ -96,19 +111,24 @@ func TestInjectFromLabel(t *testing.T) {
 func TestInjectFromNs(t *testing.T) {
 	t.Parallel()
 
-	options := &config.Options{
-		IsKubernetesConnected: false,
-		Namespace:             "dubbo-system",
-		ServiceName:           "dubbo-ca",
-		PlainServerPort:       30060,
-		SecureServerPort:      30062,
-		DebugPort:             30070,
-		WebhookPort:           30080,
-		WebhookAllowOnErr:     false,
-		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	options := &dubbo_cp.Config{
+		KubeConfig: kube.KubeConfig{
+			IsKubernetesConnected: false,
+			Namespace:             "dubbo-system",
+			ServiceName:           "dubbo-ca",
+		},
+		Security: security.SecurityConfig{
+			CaValidity:        30 * 24 * 60 * 60 * 1000, // 30 day
+			CertValidity:      1 * 60 * 60 * 1000,       // 1 hour
+			WebhookPort:       30080,
+			WebhookAllowOnErr: false,
+		},
+		GrpcServer: server.ServerConfig{
+			PlainServerPort:  30060,
+			SecureServerPort: 30062,
+			DebugPort:        30070,
+		},
 	}
-
 	sdk := NewJavaSdk(options, &fakeKubeClient{})
 	pod := &v1.Pod{}
 
@@ -124,19 +144,24 @@ func TestInjectFromNs(t *testing.T) {
 func TestInjectVolumes(t *testing.T) {
 	t.Parallel()
 
-	options := &config.Options{
-		IsKubernetesConnected: false,
-		Namespace:             "dubbo-system",
-		ServiceName:           "dubbo-ca",
-		PlainServerPort:       30060,
-		SecureServerPort:      30062,
-		DebugPort:             30070,
-		WebhookPort:           30080,
-		WebhookAllowOnErr:     false,
-		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	options := &dubbo_cp.Config{
+		KubeConfig: kube.KubeConfig{
+			IsKubernetesConnected: false,
+			Namespace:             "dubbo-system",
+			ServiceName:           "dubbo-ca",
+		},
+		Security: security.SecurityConfig{
+			CaValidity:        30 * 24 * 60 * 60 * 1000, // 30 day
+			CertValidity:      1 * 60 * 60 * 1000,       // 1 hour
+			WebhookPort:       30080,
+			WebhookAllowOnErr: false,
+		},
+		GrpcServer: server.ServerConfig{
+			PlainServerPort:  30060,
+			SecureServerPort: 30062,
+			DebugPort:        30070,
+		},
 	}
-
 	sdk := NewJavaSdk(options, &fakeKubeClient{})
 	pod := &v1.Pod{}
 
@@ -200,17 +225,23 @@ func TestInjectVolumes(t *testing.T) {
 func TestInjectOneContainer(t *testing.T) {
 	t.Parallel()
 
-	options := &config.Options{
-		IsKubernetesConnected: false,
-		Namespace:             "dubbo-system",
-		ServiceName:           "dubbo-ca",
-		PlainServerPort:       30060,
-		SecureServerPort:      30062,
-		DebugPort:             30070,
-		WebhookPort:           30080,
-		WebhookAllowOnErr:     false,
-		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	options := &dubbo_cp.Config{
+		KubeConfig: kube.KubeConfig{
+			IsKubernetesConnected: false,
+			Namespace:             "dubbo-system",
+			ServiceName:           "dubbo-ca",
+		},
+		Security: security.SecurityConfig{
+			CaValidity:        30 * 24 * 60 * 60 * 1000, // 30 day
+			CertValidity:      1 * 60 * 60 * 1000,       // 1 hour
+			WebhookPort:       30080,
+			WebhookAllowOnErr: false,
+		},
+		GrpcServer: server.ServerConfig{
+			PlainServerPort:  30060,
+			SecureServerPort: 30062,
+			DebugPort:        30070,
+		},
 	}
 
 	sdk := NewJavaSdk(options, &fakeKubeClient{})
@@ -238,19 +269,24 @@ func TestInjectOneContainer(t *testing.T) {
 func TestInjectTwoContainer(t *testing.T) {
 	t.Parallel()
 
-	options := &config.Options{
-		IsKubernetesConnected: false,
-		Namespace:             "dubbo-system",
-		ServiceName:           "dubbo-ca",
-		PlainServerPort:       30060,
-		SecureServerPort:      30062,
-		DebugPort:             30070,
-		WebhookPort:           30080,
-		WebhookAllowOnErr:     false,
-		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	options := &dubbo_cp.Config{
+		KubeConfig: kube.KubeConfig{
+			IsKubernetesConnected: false,
+			Namespace:             "dubbo-system",
+			ServiceName:           "dubbo-ca",
+		},
+		Security: security.SecurityConfig{
+			CaValidity:        30 * 24 * 60 * 60 * 1000, // 30 day
+			CertValidity:      1 * 60 * 60 * 1000,       // 1 hour
+			WebhookPort:       30080,
+			WebhookAllowOnErr: false,
+		},
+		GrpcServer: server.ServerConfig{
+			PlainServerPort:  30060,
+			SecureServerPort: 30062,
+			DebugPort:        30070,
+		},
 	}
-
 	sdk := NewJavaSdk(options, &fakeKubeClient{})
 	pod := &v1.Pod{}
 
@@ -342,17 +378,23 @@ func checkContainer(t *testing.T, container v1.Container) {
 func TestCheckVolume1(t *testing.T) {
 	t.Parallel()
 
-	options := &config.Options{
-		IsKubernetesConnected: false,
-		Namespace:             "dubbo-system",
-		ServiceName:           "dubbo-ca",
-		PlainServerPort:       30060,
-		SecureServerPort:      30062,
-		DebugPort:             30070,
-		WebhookPort:           30080,
-		WebhookAllowOnErr:     false,
-		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	options := &dubbo_cp.Config{
+		KubeConfig: kube.KubeConfig{
+			IsKubernetesConnected: false,
+			Namespace:             "dubbo-system",
+			ServiceName:           "dubbo-ca",
+		},
+		Security: security.SecurityConfig{
+			CaValidity:        30 * 24 * 60 * 60 * 1000, // 30 day
+			CertValidity:      1 * 60 * 60 * 1000,       // 1 hour
+			WebhookPort:       30080,
+			WebhookAllowOnErr: false,
+		},
+		GrpcServer: server.ServerConfig{
+			PlainServerPort:  30060,
+			SecureServerPort: 30062,
+			DebugPort:        30070,
+		},
 	}
 
 	sdk := NewJavaSdk(options, &fakeKubeClient{})
@@ -376,17 +418,23 @@ func TestCheckVolume1(t *testing.T) {
 func TestCheckVolume2(t *testing.T) {
 	t.Parallel()
 
-	options := &config.Options{
-		IsKubernetesConnected: false,
-		Namespace:             "dubbo-system",
-		ServiceName:           "dubbo-ca",
-		PlainServerPort:       30060,
-		SecureServerPort:      30062,
-		DebugPort:             30070,
-		WebhookPort:           30080,
-		WebhookAllowOnErr:     false,
-		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	options := &dubbo_cp.Config{
+		KubeConfig: kube.KubeConfig{
+			IsKubernetesConnected: false,
+			Namespace:             "dubbo-system",
+			ServiceName:           "dubbo-ca",
+		},
+		Security: security.SecurityConfig{
+			CaValidity:        30 * 24 * 60 * 60 * 1000, // 30 day
+			CertValidity:      1 * 60 * 60 * 1000,       // 1 hour
+			WebhookPort:       30080,
+			WebhookAllowOnErr: false,
+		},
+		GrpcServer: server.ServerConfig{
+			PlainServerPort:  30060,
+			SecureServerPort: 30062,
+			DebugPort:        30070,
+		},
 	}
 
 	sdk := NewJavaSdk(options, &fakeKubeClient{})
@@ -410,17 +458,23 @@ func TestCheckVolume2(t *testing.T) {
 func TestCheckEnv1(t *testing.T) {
 	t.Parallel()
 
-	options := &config.Options{
-		IsKubernetesConnected: false,
-		Namespace:             "dubbo-system",
-		ServiceName:           "dubbo-ca",
-		PlainServerPort:       30060,
-		SecureServerPort:      30062,
-		DebugPort:             30070,
-		WebhookPort:           30080,
-		WebhookAllowOnErr:     false,
-		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	options := &dubbo_cp.Config{
+		KubeConfig: kube.KubeConfig{
+			IsKubernetesConnected: false,
+			Namespace:             "dubbo-system",
+			ServiceName:           "dubbo-ca",
+		},
+		Security: security.SecurityConfig{
+			CaValidity:        30 * 24 * 60 * 60 * 1000, // 30 day
+			CertValidity:      1 * 60 * 60 * 1000,       // 1 hour
+			WebhookPort:       30080,
+			WebhookAllowOnErr: false,
+		},
+		GrpcServer: server.ServerConfig{
+			PlainServerPort:  30060,
+			SecureServerPort: 30062,
+			DebugPort:        30070,
+		},
 	}
 
 	sdk := NewJavaSdk(options, &fakeKubeClient{})
@@ -444,17 +498,23 @@ func TestCheckEnv1(t *testing.T) {
 func TestCheckEnv2(t *testing.T) {
 	t.Parallel()
 
-	options := &config.Options{
-		IsKubernetesConnected: false,
-		Namespace:             "dubbo-system",
-		ServiceName:           "dubbo-ca",
-		PlainServerPort:       30060,
-		SecureServerPort:      30062,
-		DebugPort:             30070,
-		WebhookPort:           30080,
-		WebhookAllowOnErr:     false,
-		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	options := &dubbo_cp.Config{
+		KubeConfig: kube.KubeConfig{
+			IsKubernetesConnected: false,
+			Namespace:             "dubbo-system",
+			ServiceName:           "dubbo-ca",
+		},
+		Security: security.SecurityConfig{
+			CaValidity:        30 * 24 * 60 * 60 * 1000, // 30 day
+			CertValidity:      1 * 60 * 60 * 1000,       // 1 hour
+			WebhookPort:       30080,
+			WebhookAllowOnErr: false,
+		},
+		GrpcServer: server.ServerConfig{
+			PlainServerPort:  30060,
+			SecureServerPort: 30062,
+			DebugPort:        30070,
+		},
 	}
 
 	sdk := NewJavaSdk(options, &fakeKubeClient{})
@@ -478,17 +538,23 @@ func TestCheckEnv2(t *testing.T) {
 func TestCheckEnv3(t *testing.T) {
 	t.Parallel()
 
-	options := &config.Options{
-		IsKubernetesConnected: false,
-		Namespace:             "dubbo-system",
-		ServiceName:           "dubbo-ca",
-		PlainServerPort:       30060,
-		SecureServerPort:      30062,
-		DebugPort:             30070,
-		WebhookPort:           30080,
-		WebhookAllowOnErr:     false,
-		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	options := &dubbo_cp.Config{
+		KubeConfig: kube.KubeConfig{
+			IsKubernetesConnected: false,
+			Namespace:             "dubbo-system",
+			ServiceName:           "dubbo-ca",
+		},
+		Security: security.SecurityConfig{
+			CaValidity:        30 * 24 * 60 * 60 * 1000, // 30 day
+			CertValidity:      1 * 60 * 60 * 1000,       // 1 hour
+			WebhookPort:       30080,
+			WebhookAllowOnErr: false,
+		},
+		GrpcServer: server.ServerConfig{
+			PlainServerPort:  30060,
+			SecureServerPort: 30062,
+			DebugPort:        30070,
+		},
 	}
 
 	sdk := NewJavaSdk(options, &fakeKubeClient{})
@@ -512,17 +578,23 @@ func TestCheckEnv3(t *testing.T) {
 func TestCheckEnv4(t *testing.T) {
 	t.Parallel()
 
-	options := &config.Options{
-		IsKubernetesConnected: false,
-		Namespace:             "dubbo-system",
-		ServiceName:           "dubbo-ca",
-		PlainServerPort:       30060,
-		SecureServerPort:      30062,
-		DebugPort:             30070,
-		WebhookPort:           30080,
-		WebhookAllowOnErr:     false,
-		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	options := &dubbo_cp.Config{
+		KubeConfig: kube.KubeConfig{
+			IsKubernetesConnected: false,
+			Namespace:             "dubbo-system",
+			ServiceName:           "dubbo-ca",
+		},
+		Security: security.SecurityConfig{
+			CaValidity:        30 * 24 * 60 * 60 * 1000, // 30 day
+			CertValidity:      1 * 60 * 60 * 1000,       // 1 hour
+			WebhookPort:       30080,
+			WebhookAllowOnErr: false,
+		},
+		GrpcServer: server.ServerConfig{
+			PlainServerPort:  30060,
+			SecureServerPort: 30062,
+			DebugPort:        30070,
+		},
 	}
 
 	sdk := NewJavaSdk(options, &fakeKubeClient{})
@@ -547,17 +619,23 @@ func TestCheckEnv4(t *testing.T) {
 func TestCheckContainerVolume1(t *testing.T) {
 	t.Parallel()
 
-	options := &config.Options{
-		IsKubernetesConnected: false,
-		Namespace:             "dubbo-system",
-		ServiceName:           "dubbo-ca",
-		PlainServerPort:       30060,
-		SecureServerPort:      30062,
-		DebugPort:             30070,
-		WebhookPort:           30080,
-		WebhookAllowOnErr:     false,
-		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	options := &dubbo_cp.Config{
+		KubeConfig: kube.KubeConfig{
+			IsKubernetesConnected: false,
+			Namespace:             "dubbo-system",
+			ServiceName:           "dubbo-ca",
+		},
+		Security: security.SecurityConfig{
+			CaValidity:        30 * 24 * 60 * 60 * 1000, // 30 day
+			CertValidity:      1 * 60 * 60 * 1000,       // 1 hour
+			WebhookPort:       30080,
+			WebhookAllowOnErr: false,
+		},
+		GrpcServer: server.ServerConfig{
+			PlainServerPort:  30060,
+			SecureServerPort: 30062,
+			DebugPort:        30070,
+		},
 	}
 
 	sdk := NewJavaSdk(options, &fakeKubeClient{})
@@ -581,17 +659,23 @@ func TestCheckContainerVolume1(t *testing.T) {
 func TestCheckContainerVolume2(t *testing.T) {
 	t.Parallel()
 
-	options := &config.Options{
-		IsKubernetesConnected: false,
-		Namespace:             "dubbo-system",
-		ServiceName:           "dubbo-ca",
-		PlainServerPort:       30060,
-		SecureServerPort:      30062,
-		DebugPort:             30070,
-		WebhookPort:           30080,
-		WebhookAllowOnErr:     false,
-		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	options := &dubbo_cp.Config{
+		KubeConfig: kube.KubeConfig{
+			IsKubernetesConnected: false,
+			Namespace:             "dubbo-system",
+			ServiceName:           "dubbo-ca",
+		},
+		Security: security.SecurityConfig{
+			CaValidity:        30 * 24 * 60 * 60 * 1000, // 30 day
+			CertValidity:      1 * 60 * 60 * 1000,       // 1 hour
+			WebhookPort:       30080,
+			WebhookAllowOnErr: false,
+		},
+		GrpcServer: server.ServerConfig{
+			PlainServerPort:  30060,
+			SecureServerPort: 30062,
+			DebugPort:        30070,
+		},
 	}
 
 	sdk := NewJavaSdk(options, &fakeKubeClient{})
@@ -615,17 +699,23 @@ func TestCheckContainerVolume2(t *testing.T) {
 func TestCheckContainerVolume3(t *testing.T) {
 	t.Parallel()
 
-	options := &config.Options{
-		IsKubernetesConnected: false,
-		Namespace:             "dubbo-system",
-		ServiceName:           "dubbo-ca",
-		PlainServerPort:       30060,
-		SecureServerPort:      30062,
-		DebugPort:             30070,
-		WebhookPort:           30080,
-		WebhookAllowOnErr:     false,
-		CaValidity:            30 * 24 * 60 * 60 * 1000, // 30 day
-		CertValidity:          1 * 60 * 60 * 1000,       // 1 hour
+	options := &dubbo_cp.Config{
+		KubeConfig: kube.KubeConfig{
+			IsKubernetesConnected: false,
+			Namespace:             "dubbo-system",
+			ServiceName:           "dubbo-ca",
+		},
+		Security: security.SecurityConfig{
+			CaValidity:        30 * 24 * 60 * 60 * 1000, // 30 day
+			CertValidity:      1 * 60 * 60 * 1000,       // 1 hour
+			WebhookPort:       30080,
+			WebhookAllowOnErr: false,
+		},
+		GrpcServer: server.ServerConfig{
+			PlainServerPort:  30060,
+			SecureServerPort: 30062,
+			DebugPort:        30070,
+		},
 	}
 
 	sdk := NewJavaSdk(options, &fakeKubeClient{})
