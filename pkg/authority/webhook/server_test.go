@@ -20,6 +20,9 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
+	"github.com/apache/dubbo-admin/pkg/config/security"
+	"github.com/apache/dubbo-admin/pkg/core/cert/provider"
 	"io"
 	"net"
 	"net/http"
@@ -38,18 +41,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/apache/dubbo-admin/pkg/authority/config"
-
 	"github.com/apache/dubbo-admin/pkg/authority/webhook"
-
-	"github.com/apache/dubbo-admin/pkg/authority/cert"
 )
 
 func TestServe(t *testing.T) {
 	t.Parallel()
 
-	authority := cert.GenerateAuthorityCert(nil, 60*60*1000)
-	c := cert.SignServerCert(authority, []string{"localhost"}, 60*60*1000)
+	authority := provider.GenerateAuthorityCert(nil, 60*60*1000)
+	c := provider.SignServerCert(authority, []string{"localhost"}, 60*60*1000)
 
 	server := webhook.NewWebhook(func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
 		return c.GetTlsCert(), nil
@@ -57,8 +56,10 @@ func TestServe(t *testing.T) {
 
 	port := getAvailablePort()
 
-	server.Init(&config.Options{
-		WebhookPort: port,
+	server.Init(&dubbo_cp.Config{
+		Security: security.SecurityConfig{
+			WebhookPort: port,
+		},
 	})
 
 	go server.Serve()
@@ -75,7 +76,7 @@ func TestServe(t *testing.T) {
 		client := http.Client{Transport: trans, Timeout: 15 * time.Second}
 		res, err := client.Get("https://localhost:" + strconv.Itoa(int(port)) + "/health")
 		if err != nil {
-			t.Log("server is not ready: ", err)
+			t.Log("cp-server is not ready: ", err)
 
 			return false
 		}
@@ -87,7 +88,7 @@ func TestServe(t *testing.T) {
 		}
 
 		return true
-	}, 30*time.Second, 1*time.Second, "server should be ready")
+	}, 30*time.Second, 1*time.Second, "cp-server should be ready")
 
 	server.Stop()
 }

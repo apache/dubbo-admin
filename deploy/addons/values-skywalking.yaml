@@ -15,7 +15,7 @@
 
 oap:
   image:
-    repository: skywalking.docker.scarf.sh/apache/skywalking-oap-server
+    repository: skywalking.docker.scarf.sh/apache/skywalking-oap-cp-server
     tag: 9.3.0
   storageType: elasticsearch
 ui:

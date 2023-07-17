@@ -20,7 +20,7 @@ global:
 image:
   registry: docker.io
   #  e.g registry.k8s.io
-  repository: nacos/nacos-server
+  repository: nacos/nacos-cp-server
   tag: latest
   pullPolicy: IfNotPresent
 
@@ -154,9 +154,9 @@ networkPolicy:
   ## @param networkPolicy.enabled Enable creation of NetworkPolicy resources. Only Ingress traffic is filtered for now.
   ##
   enabled: false
-  ## @param networkPolicy.allowExternal Don't require client label for connections
+  ## @param networkPolicy.allowExternal Don't require clientgen label for connections
   ## The Policy model to apply. When set to false, only pods with the correct
-  ## client label will have network access to  dubbo-admin port defined.
+  ## clientgen label will have network access to  dubbo-admin port defined.
   ## When true, dubbo-admin will accept connections from any source
   ## (with the correct destination port).
   ##

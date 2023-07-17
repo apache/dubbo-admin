@@ -1,10 +1,28 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package component
 
 import (
+	"errors"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
+	"github.com/apache/dubbo-admin/pkg/core/tools/channels"
 	"sync"
 )
-
-var log = core.Log.WithName("bootstrap")
 
 // Component defines a process that will be run in the application
 // Component should be designed in such a way that it can be stopped by stop channel and started again (for example when instance is reelected for a leader).
@@ -72,17 +90,41 @@ func NewManager(leaderElector LeaderElector) Manager {
 	}
 }
 
+var LeaderComponentAddAfterStartErr = errors.New("cannot add leader component after component manager is started")
+
 type manager struct {
-	components    []Component
 	leaderElector LeaderElector
+
+	sync.Mutex // protects access to fields below
+	components []Component
+	started    bool
+	stopCh     <-chan struct{}
+	errCh      chan error
 }
 
 func (cm *manager) Add(c ...Component) error {
+	cm.Lock()
+	defer cm.Unlock()
 	cm.components = append(cm.components, c...)
+	if cm.started {
+		// start component if it's added in runtime after Start is called.
+		for _, component := range c {
+			if component.NeedLeaderElection() {
+				return LeaderComponentAddAfterStartErr
+			}
+			go func(c Component, stopCh <-chan struct{}, errCh chan error) {
+				if err := c.Start(stopCh); err != nil {
+					errCh <- err
+				}
+			}(component, cm.stopCh, cm.errCh)
+		}
+	}
 	return nil
 }
 
 func (cm *manager) waitForDone() {
+	// limitation: waitForDone does not wait for components added after Start() is called.
+	// This is ok for now, because it's used only in context of Kuma DP where we are not adding components in runtime.
 	for _, c := range cm.components {
 		if gc, ok := c.(GracefulComponent); ok {
 			gc.WaitForDone()
@@ -93,7 +135,13 @@ func (cm *manager) waitForDone() {
 func (cm *manager) Start(stop <-chan struct{}) error {
 	errCh := make(chan error)
 
+	cm.Lock()
 	cm.startNonLeaderComponents(stop, errCh)
+	cm.started = true
+	cm.stopCh = stop
+	cm.errCh = errCh
+	cm.Unlock()
+	// this has to be called outside of lock because it can be leader at any time, and it locks in leader callbacks.
 	cm.startLeaderComponents(stop, errCh)
 
 	defer cm.waitForDone()
@@ -133,10 +181,13 @@ func (cm *manager) startLeaderComponents(stop <-chan struct{}, errCh chan error)
 
 	cm.leaderElector.AddCallbacks(LeaderCallbacks{
 		OnStartedLeading: func() {
-			log.Info("leader acquired")
+			logger.Sugar().Info("leader acquired")
 			mutex.Lock()
 			defer mutex.Unlock()
 			leaderStopCh = make(chan struct{})
+
+			cm.Lock()
+			defer cm.Unlock()
 			for _, component := range cm.components {
 				if component.NeedLeaderElection() {
 					go func(c Component) {
@@ -148,7 +199,7 @@ func (cm *manager) startLeaderComponents(stop <-chan struct{}, errCh chan error)
 			}
 		},
 		OnStoppedLeading: func() {
-			log.Info("leader lost")
+			logger.Sugar().Info("leader lost")
 			closeLeaderCh()
 		},
 	})

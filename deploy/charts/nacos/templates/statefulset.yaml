@@ -79,7 +79,7 @@ spec:
               containerPort: {{ .Values.service.port }}
               protocol: TCP
             - containerPort: {{ add .Values.service.port 1000 }}
-              name: client-rpc
+              name: clientgen-rpc
             - containerPort: {{ add .Values.service.port 1001 }}
               name: raft-rpc
             - containerPort: 7848

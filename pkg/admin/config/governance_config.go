@@ -81,7 +81,7 @@ func init() {
 	}
 }
 
-func newGovernanceConfig(cc config_center.DynamicConfiguration, p string) GovernanceConfig {
+func NewGovernanceConfig(cc config_center.DynamicConfiguration, p string) GovernanceConfig {
 	return impls[p](cc)
 }
 
