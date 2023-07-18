@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-{{- if .Values.admin.zookeeper.enabled }}
+{{- if .Values.admin.nacos.enabled }}
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
-  name: {{ include "dubbo-admin.fullname" . }}
+  name: {{ include "dubbo-admin.name" . }}
   namespace: {{ include "dubbo-admin.namespace" . }}
   labels:
     {{- include "dubbo-admin.labels" . | nindent 4 }}
@@ -29,48 +29,42 @@ metadata:
     "helm.sh/hook": post-install,post-upgrade,post-rollback
     "helm.sh/weight": "0"
     "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"
-        {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
+  serviceName: {{ include "dubbo-admin.name" . }}
+  {{- if .Values.updateStrategy }}
+  updateStrategy: {{- toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
   {{- if and (not .Values.autoscaling.enabled) (.Values.replicas) }}
   replicas: {{ .Values.replicas }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "dubbo-admin.selectorLabels" . | nindent 6 }}
-  {{- with .Values.deploymentStrategy }}
-  strategy:
-      {{- toYaml . | trim | nindent 4 }}
-  {{- end }}
+      {{- include "dubbo-admin.selectorLabels" . | nindent 8 }}
   template:
     metadata:
       labels:
         {{- include "dubbo-admin.selectorLabels" . | nindent 8 }}
     spec:
-    {{- if .Values.imagePullSecrets }}
+      {{- if .Values.imagePullSecrets }}
       imagePullSecrets: {{ toYaml .Values.imagePullSecrets | nindent 8 }}
-    {{- end }}
-    {{- if .Values.nodeSelector }}
+      {{- end }}
+      {{- if .Values.nodeSelector }}
       nodeSelector: {{- toYaml .Values.nodeSelector | nindent 8 }}
-    {{- end }}
-    {{- if .Values.affinity }}
+      {{- end }}
+      {{- if .Values.affinity }}
       affinity: {{- toYaml .Values.affinity | nindent 8 }}
-    {{- end }}
-    {{- if .Values.tolerations }}
+      {{- end }}
+      {{- if .Values.tolerations }}
       tolerations: {{- toYaml .Values.tolerations | nindent 8 }}
-    {{- end }}
+      {{- end }}
       serviceAccountName: {{ include "dubbo-admin.serviceAccountName" . }}
       containers:
         - name: {{ .Chart.Name }}
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.Version }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            {{- with .Values.service }}
-            - name: {{ .name }}
-              containerPort: {{ .containerPort }}
-            {{- end }}
+            - name: {{ .Values.service.name }}
+              containerPort: {{ .Values.service.containerPort }}
           volumeMounts:
             - mountPath: /config
               name: application-properties
@@ -80,7 +74,7 @@ spec:
               readOnly: true
           livenessProbe:
             httpGet:
-              {{- with .Values.livenessProbe }}
+            {{- with .Values.livenessProbe }}
               path: {{ .httpGet.path }}
               port: {{ .httpGet.port }}
             initialDelaySeconds: {{ .initialDelaySeconds }}
@@ -88,28 +82,28 @@ spec:
             periodSeconds: {{ .periodSeconds }}
             successThreshold: {{ .successThreshold }}
             failureThreshold: {{ .failureThreshold }}
-          readinessProbe:
-            httpGet:
-              path: {{ .httpGet.path }}
-              port: {{ .httpGet.port }}
-            initialDelaySeconds: {{ .initialDelaySeconds }}
             {{- end }}
-            {{- with .Values.readinessProbe }}
-            timeoutSeconds: {{ .timeoutSeconds }}
-            periodSeconds: {{ .periodSeconds }}
-            successThreshold: {{ .successThreshold }}
-            failureThreshold: {{ .failureThreshold }}
+          readinessProbe:
+              httpGet:
+            {{- with .Values.livenessProbe }}
+                path: {{ .httpGet.path }}
+                port: {{ .httpGet.port }}
+              initialDelaySeconds: {{ .initialDelaySeconds }}
+              timeoutSeconds: {{ .timeoutSeconds }}
+              periodSeconds: {{ .periodSeconds }}
+              successThreshold: {{ .successThreshold }}
+              failureThreshold: {{ .failureThreshold }}
             {{- end }}
           startupProbe:
-            httpGet:
-              {{- with .Values.startupProbe }}
-              path: {{ .httpGet.path }}
-              port: {{ .httpGet.port }}
-            initialDelaySeconds: {{ .initialDelaySeconds }}
-            timeoutSeconds: {{ .timeoutSeconds }}
-            periodSeconds: {{ .periodSeconds }}
-            successThreshold: {{ .successThreshold }}
-            failureThreshold: {{ .failureThreshold }}
+              httpGet:
+            {{- with .Values.startupProbe }}
+                path: {{ .httpGet.path }}
+                port: {{ .httpGet.port }}
+              initialDelaySeconds: {{ .initialDelaySeconds }}
+              timeoutSeconds: {{ .timeoutSeconds }}
+              periodSeconds: {{ .periodSeconds }}
+              successThreshold: {{ .successThreshold }}
+              failureThreshold: {{ .failureThreshold }}
             {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
@@ -117,15 +111,14 @@ spec:
         - name: application-properties
           configMap:
             name: {{ include "dubbo-admin.fullname" . }}-config
-        - name: storage
-             {{- if .Values.persistence.enabled }}
-          persistentVolumeClaim:
-            {{- with .Values.persistence }}
-            {{ if .ClaimName }}
-            claimName: {{ .ClaimName }}
-            {{- else -}}
-          emptyDir: {{ .emptyDir }}
-              {{- end -}}
-              {{- end -}}
-              {{- end -}}
-              {{- end -}}
+  volumeClaimTemplates:
+    - metadata:
+        name: storage
+      spec:
+        {{- with .Values.persistence }}
+        accessModes: {{ .accessModes }}
+        resources:
+          requests:
+            storage: {{ .size }}
+        {{- end -}}
+        {{- end -}}
