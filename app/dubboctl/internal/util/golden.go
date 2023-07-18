@@ -22,11 +22,6 @@ import (
 	"strings"
 )
 
-const (
-	ConfigString = "  admin-password: dmtWZk9qZ1NON3UyTllmbm1kVElJNUNhNFVPcnA2N2ptZW1NWWYwRw=="
-	SecretStrig  = "        checksum/secret: fcc7025ab369db4fb572806572b15300f643341d253750f1b1a770372cb8457c"
-)
-
 // TestYAMLEqual judges whether golden and result yaml are the same and return the diff if they are different.
 // If this function returns error, it means that golden file or result file could not be formatted.
 // eg:
@@ -71,9 +66,6 @@ func TestYAMLEqual(golden, result string) (bool, string, error) {
 	for scannerG.Scan() && scannerR.Scan() {
 		line += 1
 		lineG := scannerG.Text()
-		if lineG == ConfigString || lineG == SecretStrig {
-			continue
-		}
 		lineR := scannerR.Text()
 		// judge whether lineG and lindR are the same. if not, add this diff line to diffBuilder.
 		if !isTestYAMLLineEqual(lineG, lineR) {
@@ -92,7 +84,7 @@ func TestYAMLEqual(golden, result string) (bool, string, error) {
 		lineStart, lineEnd := line+1, line
 		for scannerR.Scan() {
 			lineEnd += 1
-			addBuilder.WriteString(scannerR.Text())
+			addBuilder.WriteString(scannerR.Text() + "\n")
 		}
 		// length of result is equal to length of golden
 		if lineStart > lineEnd {
