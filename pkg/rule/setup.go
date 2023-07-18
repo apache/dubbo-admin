@@ -16,6 +16,8 @@
 package rule
 
 import (
+	"time"
+
 	"github.com/apache/dubbo-admin/api/mesh"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	core_runtime "github.com/apache/dubbo-admin/pkg/core/runtime"
@@ -27,7 +29,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/rule/crd/dynamicconfig"
 	"github.com/apache/dubbo-admin/pkg/rule/crd/servicemapping"
 	"github.com/pkg/errors"
-	"time"
 
 	"github.com/apache/dubbo-admin/pkg/rule/crd/tagroute"
 	"github.com/apache/dubbo-admin/pkg/rule/server"

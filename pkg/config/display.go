@@ -58,5 +58,5 @@ func DumpToFile(filename string, cfg Config) error {
 		return err
 	}
 
-	return os.WriteFile(filename, b, 0666)
+	return os.WriteFile(filename, b, 0o666)
 }

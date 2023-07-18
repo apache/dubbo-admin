@@ -16,10 +16,11 @@
 package tagroute
 
 import (
-	"github.com/apache/dubbo-admin/pkg/rule/storage"
 	"reflect"
 	"sync"
 	"sync/atomic"
+
+	"github.com/apache/dubbo-admin/pkg/rule/storage"
 )
 
 type Handler interface {

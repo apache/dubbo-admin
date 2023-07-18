@@ -19,14 +19,15 @@ package kube
 
 import (
 	"context"
+	syncatomic "sync/atomic"
+	"time"
+
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/runtime/component"
 	"go.uber.org/atomic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
-	syncatomic "sync/atomic"
-	"time"
 )
 
 const (

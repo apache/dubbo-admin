@@ -16,12 +16,13 @@
 package dynamicconfig_test
 
 import (
-	"github.com/apache/dubbo-admin/pkg/rule/crd/dynamicconfig"
-	"github.com/apache/dubbo-admin/pkg/rule/storage"
-	"k8s.io/client-go/util/workqueue"
 	"strconv"
 	"sync"
 	"testing"
+
+	"github.com/apache/dubbo-admin/pkg/rule/crd/dynamicconfig"
+	"github.com/apache/dubbo-admin/pkg/rule/storage"
+	"k8s.io/client-go/util/workqueue"
 )
 
 func TestAdd(t *testing.T) {

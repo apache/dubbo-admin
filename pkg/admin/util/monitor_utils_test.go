@@ -16,9 +16,10 @@
 package util
 
 import (
-	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"reflect"
 	"testing"
+
+	"github.com/apache/dubbo-admin/pkg/admin/config"
 )
 
 func TestGetDiscoveryPath(t *testing.T) {

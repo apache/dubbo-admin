@@ -20,8 +20,9 @@ package retry
 import (
 	"errors"
 	"fmt"
-	"github.com/apache/dubbo-admin/test"
 	"time"
+
+	"github.com/apache/dubbo-admin/test"
 )
 
 const (
@@ -35,13 +36,11 @@ const (
 	DefaultConverge = 1
 )
 
-var (
-	defaultConfig = config{
-		timeout:  DefaultTimeout,
-		delay:    DefaultDelay,
-		converge: DefaultConverge,
-	}
-)
+var defaultConfig = config{
+	timeout:  DefaultTimeout,
+	delay:    DefaultDelay,
+	converge: DefaultConverge,
+}
 
 type config struct {
 	error    string

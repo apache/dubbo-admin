@@ -18,12 +18,13 @@
 package config
 
 import (
-	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"os"
+	"path/filepath"
+
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
-	"path/filepath"
 )
 
 func Load(file string, cfg Config) error {

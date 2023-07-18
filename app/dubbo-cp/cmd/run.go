@@ -19,6 +19,8 @@ package cmd
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/apache/dubbo-admin/pkg/admin"
 	"github.com/apache/dubbo-admin/pkg/authority"
 	"github.com/apache/dubbo-admin/pkg/config"
@@ -30,7 +32,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/cp-server"
 	"github.com/apache/dubbo-admin/pkg/rule"
 	"github.com/spf13/cobra"
-	"time"
 )
 
 const gracefullyShutdownDuration = 3 * time.Second

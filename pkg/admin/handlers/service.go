@@ -19,10 +19,11 @@ package handlers
 
 import (
 	"encoding/json"
-	"github.com/apache/dubbo-admin/pkg/core/cmd/version"
-	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"net/http"
 	"strconv"
+
+	"github.com/apache/dubbo-admin/pkg/core/cmd/version"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 
 	"dubbo.apache.org/dubbo-go/v3/metadata/definition"
 

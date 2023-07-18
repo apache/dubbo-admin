@@ -16,6 +16,9 @@
 package crd
 
 import (
+	"reflect"
+	"time"
+
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/queue"
 	apiV1beta1 "github.com/apache/dubbo-admin/pkg/rule/apis/dubbo.apache.org/v1beta1"
@@ -28,8 +31,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/rule/crd/tagroute"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/strings/slices"
-	"reflect"
-	"time"
 )
 
 type NotificationType int

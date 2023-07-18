@@ -15,7 +15,7 @@
 
 module github.com/apache/dubbo-admin
 
-go 1.20
+go 1.19
 
 require (
 	dubbo.apache.org/dubbo-go/v3 v3.0.5

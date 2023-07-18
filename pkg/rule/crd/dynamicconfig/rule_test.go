@@ -17,10 +17,11 @@ package dynamicconfig
 
 import (
 	"encoding/json"
+	"testing"
+
 	"github.com/apache/dubbo-admin/pkg/core/endpoint"
 	"github.com/apache/dubbo-admin/pkg/rule/storage"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestRule(t *testing.T) {

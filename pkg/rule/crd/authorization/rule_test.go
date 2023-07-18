@@ -17,9 +17,10 @@ package authorization
 
 import (
 	"encoding/json"
+	"testing"
+
 	"github.com/apache/dubbo-admin/pkg/core/endpoint"
 	"github.com/apache/dubbo-admin/pkg/rule/storage"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )

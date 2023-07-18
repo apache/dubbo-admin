@@ -19,33 +19,32 @@ package core
 
 import (
 	"context"
-	"github.com/apache/dubbo-admin/pkg/core/logger"
-	"github.com/google/uuid"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/apache/dubbo-admin/pkg/core/logger"
+	"github.com/google/uuid"
 )
 
-var (
-	SetupSignalHandler = func() (context.Context, context.Context) {
-		gracefulCtx, gracefulCancel := context.WithCancel(context.Background())
-		ctx, cancel := context.WithCancel(context.Background())
-		c := make(chan os.Signal, 3)
-		signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-		go func() {
-			s := <-c
-			logger.Sugar().Info("Received signal, stopping instance gracefully", "signal", s.String())
-			gracefulCancel()
-			s = <-c
-			logger.Sugar().Info("Received second signal, stopping instance", "signal", s.String())
-			cancel()
-			s = <-c
-			logger.Sugar().Info("Received third signal, force exit", "signal", s.String())
-			os.Exit(1)
-		}()
-		return gracefulCtx, ctx
-	}
-)
+var SetupSignalHandler = func() (context.Context, context.Context) {
+	gracefulCtx, gracefulCancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	c := make(chan os.Signal, 3)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		s := <-c
+		logger.Sugar().Info("Received signal, stopping instance gracefully", "signal", s.String())
+		gracefulCancel()
+		s = <-c
+		logger.Sugar().Info("Received second signal, stopping instance", "signal", s.String())
+		cancel()
+		s = <-c
+		logger.Sugar().Info("Received third signal, force exit", "signal", s.String())
+		os.Exit(1)
+	}()
+	return gracefulCtx, ctx
+}
 
 func NewUUID() string {
 	return uuid.NewString()

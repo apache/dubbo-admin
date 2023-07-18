@@ -18,12 +18,13 @@
 package traffic
 
 import (
+	"strings"
+
 	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	perrors "github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
-	"strings"
 )
 
 func removeFromOverride(key, side, param string) error {

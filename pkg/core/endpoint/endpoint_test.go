@@ -16,8 +16,9 @@
 package endpoint_test
 
 import (
-	"github.com/apache/dubbo-admin/pkg/core/endpoint"
 	"testing"
+
+	"github.com/apache/dubbo-admin/pkg/core/endpoint"
 
 	"github.com/stretchr/testify/assert"
 )

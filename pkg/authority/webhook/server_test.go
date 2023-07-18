@@ -20,9 +20,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
-	"github.com/apache/dubbo-admin/pkg/config/security"
-	"github.com/apache/dubbo-admin/pkg/core/cert/provider"
 	"io"
 	"net"
 	"net/http"
@@ -31,6 +28,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
+	"github.com/apache/dubbo-admin/pkg/config/security"
+	"github.com/apache/dubbo-admin/pkg/core/cert/provider"
 
 	v1 "k8s.io/api/core/v1"
 

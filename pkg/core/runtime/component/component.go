@@ -19,9 +19,10 @@ package component
 
 import (
 	"errors"
+	"sync"
+
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/tools/channels"
-	"sync"
 )
 
 // Component defines a process that will be run in the application
@@ -72,7 +73,6 @@ func (f LeaderComponentFunc) Start(stop <-chan struct{}) error {
 }
 
 type Manager interface {
-
 	// Add registers a component, i.e. gRPC Server, HTTP server, reconciliation loop.
 	Add(...Component) error
 

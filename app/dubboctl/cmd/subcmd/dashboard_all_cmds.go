@@ -18,15 +18,7 @@ package subcmd
 import (
 	"context"
 	"fmt"
-	"github.com/apache/dubbo-admin/app/dubboctl/identifier"
-	"github.com/apache/dubbo-admin/app/dubboctl/internal/kube"
-	"github.com/apache/dubbo-admin/app/dubboctl/internal/operator"
-	"github.com/apache/dubbo-admin/pkg/core/logger"
-	"github.com/spf13/cobra"
-	"go.uber.org/zap/zapcore"
 	"io"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
 	"net"
 	"os"
 	"os/exec"
@@ -34,6 +26,16 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/apache/dubbo-admin/app/dubboctl/identifier"
+	"github.com/apache/dubbo-admin/app/dubboctl/internal/kube"
+	"github.com/apache/dubbo-admin/app/dubboctl/internal/operator"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
+	"github.com/spf13/cobra"
+	"go.uber.org/zap/zapcore"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 var (

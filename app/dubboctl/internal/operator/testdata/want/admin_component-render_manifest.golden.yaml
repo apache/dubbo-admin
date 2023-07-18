@@ -72,22 +72,36 @@ subjects:
 ---
 apiVersion: v1
 data:
-  application.properties: |-
-    admin.registry.address: zookeeper://zookeeper:2181
-    admin.metadata-report.address: zookeeper://zookeeper:2181
-    admin.config-center: zookeeper://zookeeper:2181
-    admin.root.user.name: root
-    admin.root.user.password: root
-    admin.check.sessionTimeoutMilli: 3600000
-    admin.check.tokenTimeoutMilli: 3600000
-    admin.check.signSecret: 86295dd0c4ef69a1036b0b0c15158d77
-    server.compression.enabled: true
-    server.compression.mime-types: text/css,text/javascript,application/javascript
-    server.compression.min-response-size: 10240
-    dubbo.application.name: dubbo-admin
-    dubbo.application.logger: slf4j
-    dubbo.registry.address: ${admin.registry.address}
-    mybatis-plus.global-config.db-config.id-type: none
+  admin.yml: |-
+    dubbo:
+      application:
+        logger: slf4j
+        name: null
+      enabled: true
+      registry:
+        address: ${admin.registry.address}
+    grafana:
+      address: grafana.dubbo-system.svc.cluster.local
+    mysql-dsn: root:password@tcp(127.0.0.1:3306)/dubbo-admin?charset=utf8&parseTime=true
+    nacos:
+      address: nacos://nacos:8848?group=DEFAULT_GROUP&namespace=public
+      center: nacos://nacos:8848?group=dubbo
+      enabled: false
+      group: dubbo
+      namespace: public
+    prometheus:
+      address: prometheus.dubbo-system.svc.cluster.local:3000
+    report:
+      nacos:
+        address: nacos://nacos:8848?group=dubbo
+        group: dubbo
+        namespace: public
+      zookeeper:
+        address: zookeeper://zookeeper:2181
+    zookeeper:
+      address: zookeeper://zookeeper:2181
+      center: zookeeper://zookeeper:2181
+      enabled: true
 kind: ConfigMap
 metadata:
   labels:
@@ -122,7 +136,10 @@ spec:
         app.kubernetes.io/name: dubbo-admin
     spec:
       containers:
-        - image: apache/dubbo-admin:0.5.0
+        - env:
+            - name: ADMIN_CONFIG_PATH
+              value: /config/admin.yml
+          image: apache/dubbo-admin:0.5.0
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 3
@@ -283,3 +300,4 @@ spec:
     app.kubernetes.io/name: dubbo-admin
   type: ClusterIP
 ---
+

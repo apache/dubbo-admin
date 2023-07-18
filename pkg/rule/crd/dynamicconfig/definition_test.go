@@ -16,8 +16,9 @@
 package dynamicconfig
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCopy(t *testing.T) {
@@ -136,5 +137,4 @@ func TestCopy(t *testing.T) {
 	assert.Equal(t, policy.Spec.Configs[0].Match.Param[0].Value.Noempty, toClient.Spec.Configs[0].Match.Param[0].Value.Noempty)
 	assert.Equal(t, policy.Spec.Configs[0].Match.Param[0].Value.Empty, toClient.Spec.Configs[0].Match.Param[0].Value.Empty)
 	assert.Equal(t, policy.Spec.Configs[0].Match.Param[0].Value.Wildcard, toClient.Spec.Configs[0].Match.Param[0].Value.Wildcard)
-
 }
