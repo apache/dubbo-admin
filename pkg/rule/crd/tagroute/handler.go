@@ -16,7 +16,6 @@
 package tagroute
 
 import (
-	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/rule/storage"
 	"reflect"
 	"sync"
@@ -47,27 +46,7 @@ func NewHandler(storage *storage.Storage) *Impl {
 	}
 }
 
-func (i *Impl) Notify() {
-	originRule := &Origin{
-		revision: i.revision,
-		data:     i.cache,
-	}
-
-	i.storage.LatestRules[storage.TagRoute] = originRule
-
-	i.storage.Mutex.RLock()
-	defer i.storage.Mutex.RUnlock()
-	for _, c := range i.storage.Connection {
-		c.RawRuleQueue.Add(originRule)
-	}
-}
-
 func (i *Impl) Add(key string, obj *Policy) {
-	if !i.validatePolicy(obj) {
-		logger.Sugar().Warnf("invalid policy, key: %s, policy: %v", key, obj)
-		return
-	}
-
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
 	if origin := i.cache[key]; reflect.DeepEqual(origin, obj) {
@@ -96,11 +75,6 @@ func (i *Impl) Get(key string) *Policy {
 }
 
 func (i *Impl) Update(key string, newObj *Policy) {
-	if !i.validatePolicy(newObj) {
-		logger.Sugar().Warnf("invalid policy, key: %s, policy: %v", key, newObj)
-		return
-	}
-
 	i.mutex.Lock()
 	defer i.mutex.Unlock()
 
@@ -145,6 +119,17 @@ func (i *Impl) Delete(key string) {
 	i.Notify()
 }
 
-func (i *Impl) validatePolicy(policy *Policy) bool {
-	return policy != nil
+func (i *Impl) Notify() {
+	originRule := &Origin{
+		revision: i.revision,
+		data:     i.cache,
+	}
+
+	i.storage.LatestRules[storage.TagRoute] = originRule
+
+	i.storage.Mutex.RLock()
+	defer i.storage.Mutex.RUnlock()
+	for _, c := range i.storage.Connection {
+		c.RawRuleQueue.Add(originRule)
+	}
 }

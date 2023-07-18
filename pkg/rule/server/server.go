@@ -53,6 +53,7 @@ func (s *RuleServer) NeedLeaderElection() bool {
 func (s *RuleServer) Start(stop <-chan struct{}) error {
 	s.InformerFactory.Start(stop)
 	s.Controller.WaitSynced(stop)
+	s.Controller.Queue.Run(stop)
 	return nil
 }
 

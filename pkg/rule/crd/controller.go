@@ -17,6 +17,7 @@ package crd
 
 import (
 	"github.com/apache/dubbo-admin/pkg/core/logger"
+	"github.com/apache/dubbo-admin/pkg/core/queue"
 	apiV1beta1 "github.com/apache/dubbo-admin/pkg/rule/apis/dubbo.apache.org/v1beta1"
 	informerV1beta1 "github.com/apache/dubbo-admin/pkg/rule/clientgen/informers/externalversions/dubbo.apache.org/v1beta1"
 	"github.com/apache/dubbo-admin/pkg/rule/crd/authentication"
@@ -27,6 +28,8 @@ import (
 	"github.com/apache/dubbo-admin/pkg/rule/crd/tagroute"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/utils/strings/slices"
+	"reflect"
+	"time"
 )
 
 type NotificationType int
@@ -44,6 +47,8 @@ const (
 type Controller struct {
 	rootNamespace string
 
+	Queue queue.Instance
+
 	authenticationSynced cache.InformerSynced
 	authorizationSynced  cache.InformerSynced
 	serviceMappingSynced cache.InformerSynced
@@ -57,16 +62,6 @@ type Controller struct {
 	conditionRouteHandler conditionroute.Handler
 	tagRouteHandler       tagroute.Handler
 	dynamicConfigHandler  dynamicconfig.Handler
-}
-
-func (c *Controller) NeedLeaderElection() bool {
-	return false
-}
-
-func (c *Controller) Start(stop <-chan struct{}) error {
-	logger.Sugar().Info("Init rule controller...")
-
-	return nil
 }
 
 // NewController returns a new sample controller
@@ -88,6 +83,8 @@ func NewController(
 	controller := &Controller{
 		rootNamespace: rootNamespace,
 
+		Queue: queue.NewQueue(time.Second * 1),
+
 		authenticationSynced: acInformer.Informer().HasSynced,
 		authorizationSynced:  apInformer.Informer().HasSynced,
 		serviceMappingSynced: smInformer.Informer().HasSynced,
@@ -105,13 +102,22 @@ func NewController(
 	logger.Sugar().Info("Setting up event handlers")
 	_, err := acInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			controller.handleEvent(obj, AddNotification)
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(obj, AddNotification)
+			})
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			controller.handleEvent(newObj, UpdateNotification)
+			if reflect.DeepEqual(oldObj, newObj) {
+				return
+			}
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(newObj, UpdateNotification)
+			})
 		},
 		DeleteFunc: func(obj interface{}) {
-			controller.handleEvent(obj, DeleteNotification)
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(obj, DeleteNotification)
+			})
 		},
 	})
 	if err != nil {
@@ -120,13 +126,22 @@ func NewController(
 
 	_, err = apInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			controller.handleEvent(obj, AddNotification)
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(obj, AddNotification)
+			})
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			controller.handleEvent(newObj, UpdateNotification)
+			if reflect.DeepEqual(oldObj, newObj) {
+				return
+			}
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(newObj, UpdateNotification)
+			})
 		},
 		DeleteFunc: func(obj interface{}) {
-			controller.handleEvent(obj, DeleteNotification)
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(obj, DeleteNotification)
+			})
 		},
 	})
 	if err != nil {
@@ -135,13 +150,22 @@ func NewController(
 
 	_, err = smInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			controller.handleEvent(obj, AddNotification)
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(obj, AddNotification)
+			})
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			controller.handleEvent(newObj, UpdateNotification)
+			if reflect.DeepEqual(oldObj, newObj) {
+				return
+			}
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(newObj, UpdateNotification)
+			})
 		},
 		DeleteFunc: func(obj interface{}) {
-			controller.handleEvent(obj, DeleteNotification)
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(obj, DeleteNotification)
+			})
 		},
 	})
 	if err != nil {
@@ -150,13 +174,22 @@ func NewController(
 
 	_, err = tgInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			controller.handleEvent(obj, AddNotification)
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(obj, AddNotification)
+			})
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			controller.handleEvent(newObj, UpdateNotification)
+			if reflect.DeepEqual(oldObj, newObj) {
+				return
+			}
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(newObj, UpdateNotification)
+			})
 		},
 		DeleteFunc: func(obj interface{}) {
-			controller.handleEvent(obj, DeleteNotification)
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(obj, DeleteNotification)
+			})
 		},
 	})
 	if err != nil {
@@ -165,13 +198,22 @@ func NewController(
 
 	_, err = cdInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			controller.handleEvent(obj, AddNotification)
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(obj, AddNotification)
+			})
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			controller.handleEvent(newObj, UpdateNotification)
+			if reflect.DeepEqual(oldObj, newObj) {
+				return
+			}
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(newObj, UpdateNotification)
+			})
 		},
 		DeleteFunc: func(obj interface{}) {
-			controller.handleEvent(obj, DeleteNotification)
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(obj, DeleteNotification)
+			})
 		},
 	})
 	if err != nil {
@@ -180,13 +222,22 @@ func NewController(
 
 	_, err = dcInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			controller.handleEvent(obj, AddNotification)
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(obj, AddNotification)
+			})
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			controller.handleEvent(newObj, UpdateNotification)
+			if reflect.DeepEqual(oldObj, newObj) {
+				return
+			}
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(newObj, UpdateNotification)
+			})
 		},
 		DeleteFunc: func(obj interface{}) {
-			controller.handleEvent(obj, DeleteNotification)
+			controller.Queue.Push(func() error {
+				return controller.handleEvent(obj, DeleteNotification)
+			})
 		},
 	})
 	if err != nil {
@@ -195,11 +246,11 @@ func NewController(
 	return controller
 }
 
-func (c *Controller) handleEvent(obj interface{}, eventType NotificationType) {
+func (c *Controller) handleEvent(obj interface{}, eventType NotificationType) error {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
 		logger.Sugar().Errorf("error getting key for object: %v", err)
-		return
+		return nil
 	}
 	switch o := obj.(type) {
 	case *apiV1beta1.AuthenticationPolicy:
@@ -212,7 +263,6 @@ func (c *Controller) handleEvent(obj interface{}, eventType NotificationType) {
 		case DeleteNotification:
 			c.authenticationHandler.Delete(key)
 		}
-		return
 	case *apiV1beta1.AuthorizationPolicy:
 		a := CopyToAuthorization(key, c.rootNamespace, o)
 
@@ -270,8 +320,8 @@ func (c *Controller) handleEvent(obj interface{}, eventType NotificationType) {
 		}
 	default:
 		logger.Sugar().Errorf("unexpected object type: %v", obj)
-		return
 	}
+	return nil
 }
 
 func CopyToServiceMapping(key, rootNamespace string, pa *apiV1beta1.ServiceNameMapping) *servicemapping.Policy {
