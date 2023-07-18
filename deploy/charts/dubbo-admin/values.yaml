@@ -241,6 +241,11 @@ autoscaling:
 deploymentStrategy:
   type: RollingUpdate
 
+## See `kubectl explain statefulset.spec.strategy` for more
+## ref: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#update-strategies
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate: {}
 
 ## @param readinessProbe.enabled Enable readinessProbe on containers
 readinessProbe:
