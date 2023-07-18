@@ -31,9 +31,9 @@ type ConditionMatch struct {
 }
 
 type AddressMatch struct {
-	Wildcard string `json:"wildcard" yaml:"wildcard"`
-	Cird     string `json:"cird" yaml:"cird"`
-	Exact    string `json:"exact" yaml:"exact"`
+	Wildcard string `json:"wildcard" yaml:"wildcard,omitempty"`
+	Cird     string `json:"cird" yaml:"cird,omitempty"`
+	Exact    string `json:"exact" yaml:"exact,omitempty"`
 }
 
 func (m *AddressMatch) IsMatch(input string) bool {
@@ -67,7 +67,7 @@ func (m *ParamMatch) IsMatch(url *common.URL) bool {
 }
 
 type ListStringMatch struct {
-	Oneof []StringMatch `json:"oneof" yaml:"oneof"`
+	Oneof []StringMatch `json:"oneof" yaml:"oneof,omitempty"`
 }
 
 func (l *ListStringMatch) IsMatch(input string) bool {
@@ -80,12 +80,12 @@ func (l *ListStringMatch) IsMatch(input string) bool {
 }
 
 type StringMatch struct {
-	Exact    string `json:"exact" yaml:"exact"`
-	Prefix   string `json:"prefix" yaml:"prefix"`
-	Regex    string `json:"regex" yaml:"regex"`
-	Noempty  string `json:"noempty" yaml:"noempty"`
-	Empty    string `json:"empty" yaml:"empty"`
-	Wildcard string `json:"wildcard" yaml:"wildcard"`
+	Exact    string `json:"exact" yaml:"exact,omitempty"`
+	Prefix   string `json:"prefix" yaml:"prefix,omitempty"`
+	Regex    string `json:"regex" yaml:"regex,omitempty"`
+	Noempty  string `json:"noempty" yaml:"noempty,omitempty"`
+	Empty    string `json:"empty" yaml:"empty,omitempty"`
+	Wildcard string `json:"wildcard" yaml:"wildcard,omitempty"`
 }
 
 func (m *StringMatch) IsMatch(input string) bool {

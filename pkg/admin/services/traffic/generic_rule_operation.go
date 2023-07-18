@@ -23,6 +23,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	perrors "github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
+	"strings"
 )
 
 func removeFromOverride(key, side, param string) error {
@@ -162,15 +163,15 @@ func getValue(rawRule, side, param string) (interface{}, error) {
 	override := &model.Override{}
 	err := yaml.Unmarshal([]byte(rawRule), override)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	for _, c := range override.Configs {
-		if c.Side == side && c.Parameters[param] != "" {
+		if c.Side == side && c.Parameters[param] != nil {
 			return c.Parameters[param], nil
 		}
 	}
 
-	return "", nil
+	return nil, nil
 }
 
 func createOrUpdateCondition(key string, newRule model.ConditionRoute) error {
@@ -226,7 +227,7 @@ func createOrUpdateCondition(key string, newRule model.ConditionRoute) error {
 	return nil
 }
 
-func removeCondition(key, rule string) error {
+func removeCondition(key, rule string, identifier string) error {
 	oldRule, err := config.Governance.GetConfig(key)
 	if err != nil {
 		return err
@@ -243,7 +244,7 @@ func removeCondition(key, rule string) error {
 		return err
 	}
 	for i, c := range route.Conditions {
-		if c == rule {
+		if strings.Contains(c, identifier) {
 			route.Conditions = append(route.Conditions[:i], route.Conditions[i+1:]...)
 			break
 		}

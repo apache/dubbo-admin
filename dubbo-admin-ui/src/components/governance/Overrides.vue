@@ -20,8 +20,8 @@
       <v-flex lg12>
         <breadcrumb title="dynamicConfig" :items="breads"></breadcrumb>
         <v-flex lg12>
-      <a  href="https://cn.dubbo.apache.org/zh-cn/overview/core-features/traffic/configuration-rule/">动态配置规则</a>
-    </v-flex>
+        可在这里了解 <a href="https://cn.dubbo.apache.org/zh-cn/overview/core-features/traffic/configuration-rule/" target="_blank">动态配置规则</a> 的工作原理与使用方式！
+        </v-flex>
       </v-flex>
       <v-flex lg12>
         <v-card flat color="transparent">

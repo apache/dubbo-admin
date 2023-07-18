@@ -16,18 +16,22 @@
 package cmd
 
 import (
-	"github.com/apache/dubbo-admin/app/dubboctl/cmd/subcmd"
+	"github.com/apache/dubbo-admin/pkg/dubboctl/cmd/subcmd"
 	"github.com/spf13/cobra"
 )
 
-func addProfile(rootCmd *cobra.Command) {
-	profileCmd := &cobra.Command{
-		Use:   "profile",
-		Short: "Commands related to profiles",
-		Long:  "Commands help user to list and describe profiles",
+func addDashboard(rootCmd *cobra.Command) {
+	dashboardCmd := &cobra.Command{
+		Use:   "dashboard",
+		Short: "Commands related to control plane components dashboards",
+		Long:  "Commands help user to open control plane components dashboards directly. Now support Admin, Grafana, Nacos, Prometheus, Skywalking and Zipkin",
 	}
-	subcmd.ConfigProfileListCmd(profileCmd)
-	subcmd.ConfigProfileDiffCmd(profileCmd)
+	subcmd.ConfigDashboardAdminCmd(dashboardCmd)
+	subcmd.ConfigDashboardGrafanaCmd(dashboardCmd)
+	subcmd.ConfigDashboardNacosCmd(dashboardCmd)
+	subcmd.ConfigDashboardPrometheusCmd(dashboardCmd)
+	subcmd.ConfigDashboardSkywalkingCmd(dashboardCmd)
+	subcmd.ConfigDashboardZipkinCmd(dashboardCmd)
 
-	rootCmd.AddCommand(profileCmd)
+	rootCmd.AddCommand(dashboardCmd)
 }

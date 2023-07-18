@@ -18,23 +18,21 @@
     <v-container grid-list-xl fluid>
         <v-layout row wrap>
             <v-flex lg12>
-        <Breadcrumb title="trafficAccesslog" :items="breads"></breadcrumb>
-      </v-flex>
+              <Breadcrumb title="trafficAccesslog" :items="breads"></breadcrumb>
+            </v-flex>
+            <v-flex lg12>
+              可在这里了解如何开启/关闭应用的 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/accesslog/" target="_blank">访问日志</a>！
+            </v-flex>
       <v-flex lg12>
           <v-card flat color="transparent">
             <v-card-text>
               <v-form>
                 <v-layout row wrap>
-                  <v-combobox
-                    :loading="searchLoading"
-                    :items="typeAhead"
-                    :search-input.sync="application"
-                    flat
-                    append-icon=""
-                    hide-no-data
-                    label="请输入application"
+                  <v-text-field
+                    label="Application Name"
                     hint="请输入application"
-                  ></v-combobox>
+                    v-model="application"
+                  ></v-text-field>
                   <v-btn @click="submit" color="primary" large>搜索</v-btn>
                   <v-btn @click="create" color="primary" large>新建</v-btn>
                 </v-layout>
@@ -77,12 +75,17 @@
         <v-card-title class="justify-center">
           <span class="headline">{{$t('createAccesslogRule')}}</span>
         </v-card-title>
+        <v-layout row wrap>
+          <v-flex lg12>
+            可在这里了解如何动态开启/关闭应用的 <a href="https://dubbo.apache.org/zh-cn/overview/tasks/traffic-management/accesslog/" target="_blank">访问日志</a>！
+          </v-flex>
+        </v-layout>
         <v-card-text >
           <v-layout wrap>
             <v-flex xs6 sm3 md5>
               <v-text-field
                 label="Application Name"
-                hint="请输入Application Name"
+                hint="请输入应用名"
                 v-model="createApplication"
               ></v-text-field>
             </v-flex>
@@ -93,8 +96,8 @@
         <v-layout v-if="handleAccesslog" row wrap>
           <v-flex xs6 sm3 md5>
             <v-text-field
-              label="日志文件存储路径"
-              hint="输入 accesslog 存储的目标文件绝对路径（如/home/user1/access.log）"
+              label="（可选）访问日志已开启，可继续调整存储路径"
+              hint="请参考文档开启日志路径修改权限后再配置，否则日志仍会输入到默认路径。请输入目标文件绝对路径（如/home/user1/access.log）"
               v-model="createAccesslog"
              ></v-text-field>
           </v-flex>
@@ -112,12 +115,18 @@
         <v-card-title class="justify-center">
           <span class="headline">{{$t('createAccesslogRule')}}</span>
         </v-card-title>
+        <v-layout row wrap>
+          <v-flex lg12>
+            可在这里了解如何动态开启/关闭应用的 <a href="https://dubbo.apache.org/zh-cn/overview/tasks/traffic-management/accesslog/" target="_blank">访问日志</a>！
+          </v-flex>
+        </v-layout>
         <v-card-text >
           <v-layout wrap>
             <v-flex xs6 sm3 md5>
               <v-text-field
                 label="Application Name"
-                hint="请输入Application Name"
+                hint="请输入应用名"
+                disabled
                 v-model="updateApplication"
               ></v-text-field>
             </v-flex>
@@ -128,9 +137,9 @@
         <v-layout v-if="handleUpdateAccesslog" row wrap>
           <v-flex xs6 sm3 md5>
             <v-text-field
-              label="日志文件存储路径"
-              hint="输入 accesslog 存储的目标文件绝对路径（如/home/user1/access.log）"
-              v-model="updateAccesslog"
+              label="（可选）访问日志已开启，可继续调整存储路径"
+              hint="请参考文档开启日志路径修改权限后再配置，否则日志仍会输入到默认路径。请输入目标文件绝对路径（如/home/user1/access.log）"
+               v-model="updateAccesslog"
              ></v-text-field>
           </v-flex>
         </v-layout>
@@ -163,7 +172,7 @@
           <v-btn
             color="green darken-1"
             text
-            @click="confirmDelete"
+            @click="confirmDelete()"
           >
           确定
           </v-btn>
@@ -215,12 +224,7 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.application) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     search () {
       this.$axios.get('/traffic/accesslog', {
@@ -238,25 +242,38 @@ export default {
       })
     },
     saveUpdate () {
-      console.log(this.updateAccesslog)
       this.updateDialog = false
-      this.$axios.put('/traffic/accesslog', {
-        application: this.updateApplication,
-        accesslog: this.handleUpdateAccesslog ? this.updateAccesslog : 'false'
-      }).then((res) => {
-        if (res) {
-          alert('操作成功')
-        }
-      })
+      if (this.handleUpdateAccesslog) {
+        this.$axios.put('/traffic/accesslog', {
+          application: this.updateApplication,
+          accesslog: this.updateAccesslog === '' ? 'true' : this.updateAccesslog
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      } else {
+        this.$axios.put('/traffic/accesslog', {
+          application: this.updateApplication,
+          accesslog: '' // 删除
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      }
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     setHeaders: function () {
       this.headers = [
         {
-          text: '服务',
+          text: '应用名',
           value: 'application'
         },
         {
-          text: 'accesslog',
+          text: '访问日志(状态)',
           value: 'accesslog'
         },
         {
@@ -270,18 +287,30 @@ export default {
     },
     create () {
       this.dialog = true
+      this.createAccesslog = ''
+      this.createApplication = ''
     },
     confirmDelete () {
+      console.log(this.deleteApplication)
       this.$axios.delete('/traffic/accesslog', {
-        application: this.deleteApplication
-      }).then((res) => {
+        params: {
+          application: this.deleteApplication,
+          group: this.group,
+          version: this.version
+        }
+      }
+      ).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
-      this.deleteAccesslog = false
+      this.deleteDialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     deleteItem (props) {
+      console.log(props)
       this.deleteDialog = true
       this.deleteAccesslog = props.accesslog
       this.deleteApplication = props.application
@@ -296,23 +325,19 @@ export default {
       if (this.handleAccesslog) {
         this.$axios.post('/traffic/accesslog', {
           application: this.createApplication,
-          accesslog: this.createAccesslog
+          accesslog: this.createAccesslog === '' ? 'true' : this.createAccesslog
         }).then((res) => {
           if (res) {
             alert('操作成功')
           }
         })
       } else {
-        this.$axios.post('/traffic/accesslog', {
-          application: this.createApplication,
-          accesslog: this.handleAccesslog.toString()
-        }).then((res) => {
-          if (res) {
-            alert('操作成功')
-          }
-        })
+        alert('访问日志未开启，请选中开关后再保存！')
       }
       this.dialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     closeDialog () {
       this.dialog = false
@@ -325,6 +350,8 @@ export default {
   },
   mounted () {
     this.setHeaders()
+    this.application = '*'
+    this.search()
   }
 }
 

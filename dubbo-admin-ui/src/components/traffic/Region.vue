@@ -18,32 +18,22 @@
   <v-container grid-list-xl fluid>
       <v-layout row wrap>
           <v-flex lg12>
-      <Breadcrumb title="trafficRegion" :items="breads"></breadcrumb>
-    </v-flex>
+            <Breadcrumb title="trafficRegion" :items="breads"></breadcrumb>
+          </v-flex>
+          <v-flex lg12>
+            可在这里了解 <a href="https://dubbo.apache.org/zh-cn/overview/tasks/traffic-management/region/" target="_blank">同区域优先</a> 配置的工作原理与使用方式！
+          </v-flex>
     <v-flex lg12>
         <v-card flat color="transparent">
           <v-card-text>
             <v-form>
               <v-layout row wrap>
-                <v-flex xs6 sm3 md3>
+                <v-flex xs6 sm3 md9>
                   <v-text-field
-                    v-model="service"
+                    v-model="searchService"
                     flat
                     label="请输入服务名"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md2 >
-                  <v-text-field
-                    label="Version"
-                    :hint="$t('dataIdVersionHint')"
-                    v-model="version"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md2 >
-                  <v-text-field
-                    label="Group"
-                    :hint="$t('dataIdGroupHint')"
-                    v-model="group"
+                    hint="请输入service,如有group和version，请按照group/service:version格式输入"
                   ></v-text-field>
                 </v-flex>
                 <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
@@ -91,27 +81,18 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createNewRoutingRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何让服务调用遵循 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/region/" target="_blank">同区域优先</a> 规则！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout row wrap>
-          <v-flex xs6 sm3 md3>
+          <v-flex xs6 sm3 md9>
             <v-text-field
               label="服务名"
-              hint="请输入服务名"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
               v-model="createService"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md3>
-            <v-text-field
-              label="服务版本"
-              hint="$t('versionInputPrompt')"
-              v-model="createVersion"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md3>
-            <v-text-field
-              label="服务组"
-              hint="$t('groupInputPrompt')"
-              v-model="createGroup"
             ></v-text-field>
           </v-flex>
         </v-layout>
@@ -121,9 +102,9 @@
         <v-layout v-if="handleRule" row wrap>
           <v-flex xs6 sm3 md5>
             <v-text-field
-              label="匹配规则"
-              hint="请输入流量匹配规则（默认不设置，则对所有流量生效），配置后只有匹配规则的流量才会执行同区域优先调用，如 method=sayHello"
-              v-model="createRule"
+               label="请输入表示同区域的 key 值"
+               hint="每个公司的区域标识可能不同，比如对于以下地址：tri://host:port/service?timeout=1000&region=hangzhou&...，则同区域key值为：region。"
+               v-model="createRule"
              ></v-text-field>
           </v-flex>
         </v-layout>
@@ -140,28 +121,20 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createNewRoutingRule')}}</span>
       </v-card-title>
+       <v-layout row wrap>
+          <v-flex lg12>
+            可在这里了解如何让服务调用遵循 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/region/" target="_blank">同区域优先</a> 规则！
+          </v-flex>
+       </v-layout>
       <v-card-text >
         <v-layout row wrap>
-          <v-flex xs6 sm3 md3>
+          <v-flex xs6 sm3 md9>
             <v-text-field
               label="服务名"
-              hint="请输入服务名"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
+              disabled
               v-model="updateService"
             ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md3>
-            <v-text-field
-              label="Group"
-              hint="$t('groupInputPrompt')"
-              v-model="updateGroup"
-        ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md3>
-            <v-text-field
-              label="Version"
-              hint="$t('versionInputPrompt')"
-              v-model="updateVersion"
-        ></v-text-field>
           </v-flex>
         </v-layout>
         <v-layout row wrap>
@@ -170,8 +143,8 @@
         <v-layout v-if="handleUpdateRule" row wrap>
           <v-flex xs6 sm3 md5>
             <v-text-field
-              label="匹配规则"
-              hint="请输入流量匹配规则（默认不设置，则对所有流量生效），配置后只有匹配规则的流量才会执行同区域优先调用，如 method=sayHello"
+              label="请输入表示同区域的 key 值"
+              hint="每个公司的区域标识可能不同，比如对于以下地址：tri://host:port/service?timeout=1000&region=hangzhou&...，则同区域key值为：region。"
               v-model="updateRule"
         ></v-text-field>
           </v-flex>
@@ -236,6 +209,7 @@ export default {
     searchLoading: false,
     timerID: null,
     service: '',
+    searchService: '',
     rule: '',
     group: '',
     version: '',
@@ -264,14 +238,21 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.service) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     search () {
+      if (this.searchService === '*') {
+        this.service = '*'
+      } else {
+        const matches = this.searchService.split(/^(.*?)\/(.*?):(.*)$/)
+        if (matches.length === 1) {
+          this.service = matches[0]
+        } else {
+          this.group = matches[1]
+          this.service = matches[2]
+          this.version = matches[3]
+        }
+      }
       this.$axios.get('/traffic/region', {
         params: {
           service: this.service,
@@ -290,7 +271,7 @@ export default {
       this.updateDialog = false
       if (this.handleUpdateRule) {
         this.$axios.put('/traffic/region', {
-          service: this.updateService,
+          service: this.tempService,
           rule: this.updateRule,
           group: this.updateGroup,
           version: this.updateVersion
@@ -302,7 +283,7 @@ export default {
       } else {
         this.$axios.put('/traffic/region', {
           service: this.updateService,
-          rule: this.handleUpdateRule.toString(),
+          rule: '',
           group: this.updateGroup,
           version: this.updateVersion
         }).then((res) => {
@@ -311,23 +292,26 @@ export default {
           }
         })
       }
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     setHeaders: function () {
       this.headers = [
         {
-          text: '应用',
+          text: '服务',
           value: 'service'
         },
         {
-          text: '应用规则',
+          text: '同区域Key',
           value: 'rule'
         },
         {
-          text: 'Group',
+          text: '分组',
           value: 'group'
         },
         {
-          text: 'Version',
+          text: '版本',
           value: 'version'
         },
         {
@@ -341,19 +325,27 @@ export default {
     },
     create () {
       this.dialog = true
+      this.createService = ''
+      this.handleRule = false
+      this.createRule = ''
     },
     confirmDelete () {
-      this.$axios.delete('/traffic/region', {
-        service: this.deleteService,
-        rule: this.deleteRule,
-        group: this.deleteGroup,
-        version: this.deleteVersion
-      }).then((res) => {
+      this.$axios.delete('/traffic/region',
+        {
+          params: {
+            service: this.deleteService,
+            group: this.deleteGroup,
+            version: this.deleteVersion
+          }
+        }).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
-      this.deleteRegion = false
+      this.deleteDialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     deleteItem (props) {
       this.deleteDialog = true
@@ -363,7 +355,12 @@ export default {
       this.deleteVersion = props.version
     },
     update (props) {
-      this.updateService = props.service
+      if (props.version && props.group) {
+        this.updateService = `${props.group}/${props.service}:${props.version}`
+      } else {
+        this.updateService = props.service
+      }
+      this.tempService = props.service
       if (props.rule === 'false') {
         this.handleUpdateRule = false
         this.updateRule = ''
@@ -376,6 +373,14 @@ export default {
       this.updateDialog = true
     },
     save () {
+      const matches = this.createService.split(/^(.*?)\/(.*?):(.*)$/)
+      if (matches.length === 1) {
+        this.createService = matches[0]
+      } else {
+        this.createGroup = matches[1]
+        this.createService = matches[2]
+        this.createVersion = matches[3]
+      }
       if (this.handleRule) {
         this.$axios.post('/traffic/region', {
           service: this.createService,
@@ -388,18 +393,12 @@ export default {
           }
         })
       } else {
-        this.$axios.post('/traffic/region', {
-          service: this.createService,
-          rule: this.handleRule.toString(),
-          group: this.createGroup,
-          version: this.createVersion
-        }).then((res) => {
-          if (res) {
-            alert('操作成功')
-          }
-        })
+        alert('同区域优先未开启，请选中开关后再保存！')
       }
       this.dialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     closeDialog () {
       this.dialog = false
@@ -412,6 +411,8 @@ export default {
   },
   mounted () {
     this.setHeaders()
+    this.searchService = '*'
+    this.search()
   }
 }
 

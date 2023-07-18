@@ -18,32 +18,22 @@
   <v-container grid-list-xl fluid>
       <v-layout row wrap>
           <v-flex lg12>
-      <Breadcrumb title="trafficArguments" :items="breads"></breadcrumb>
-    </v-flex>
+            <Breadcrumb title="trafficArguments" :items="breads"></breadcrumb>
+          </v-flex>
+          <v-flex lg12>
+            可在这里了解服务 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/arguments/" target="_blank">参数路由</a> 的工作原理与使用方式！
+          </v-flex>
     <v-flex lg12>
         <v-card flat color="transparent">
           <v-card-text>
             <v-form>
               <v-layout row wrap>
-                <v-flex xs6 sm3 md3>
+                <v-flex xs6 sm3 md9>
                   <v-text-field
-                    v-model="service"
+                    v-model="searchService"
                     flat
                     label="请输入服务名"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md2 >
-                  <v-text-field
-                    label="Version"
-                    :hint="$t('dataIdVersionHint')"
-                    v-model="group"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md2 >
-                  <v-text-field
-                    label="Group"
-                    :hint="$t('dataIdGroupHint')"
-                    v-model="version"
+                    hint="请输入service,如有group和version，请按照group/service:version格式输入"
                   ></v-text-field>
                 </v-flex>
                 <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
@@ -91,28 +81,24 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createArgumentRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何配置服务的 <a href="https://dubbo.apache.org/zh-cn/overview/tasks/traffic-management/arguments/" target="_blank">参数路由</a>！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout wrap>
-          <v-flex xs6 sm3 md3>
+          <v-flex xs6 sm3 md9>
             <v-text-field
               label="服务名"
-              hint="请输入服务名"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
               v-model="createService"
             ></v-text-field>
           </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="Group"
-              hint="$t('versionInputPrompt')"
-              v-model="createGroup"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="Version"
-              hint="$t('versionInputPrompt')"
-              v-model="createVersion"
-            ></v-text-field>
+        </v-layout>
+        <v-layout wrap>
+          <v-flex lg12>
+            符合以下条件的参数调用：
           </v-flex>
         </v-layout>
         <v-layout wrap>
@@ -134,8 +120,22 @@
           <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="参数匹配条件"
-              hint="请输入参数匹配条件"
+              hint="请输入参数匹配条件（仅支持字符串类型参数）"
               v-model="createRuleMatch"
+            ></v-text-field>
+          </v-flex>
+        </v-layout>
+        <v-layout wrap>
+          <v-flex lg12>
+            将被路由到符合以下条件的目标机器上：
+          </v-flex>
+        </v-layout>
+        <v-layout wrap>
+          <v-flex xs6 sm3 md5>
+            <v-text-field
+              label="输入目标机器过滤条件"
+              hint="可以使用 URL 上的任意参数进行匹配，如 orderVersion=v2 & region=hangzhou，具体可参见文档说明。"
+              v-model="createFilterCondition"
             ></v-text-field>
           </v-flex>
         </v-layout>
@@ -152,29 +152,26 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createArgumentRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何配置服务的 <a href="https://dubbo.apache.org/zh-cn/overview/tasks/traffic-management/arguments/" target="_blank">参数路由</a>！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout wrap>
-          <v-flex xs6 sm3 md3>
+          <v-flex xs6 sm3 md9>
             <v-text-field
               label="服务名"
-              hint="请输入服务名"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
+              disabled
               v-model="updateService"
             ></v-text-field>
           </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="Group"
-              hint="$t('versionInputPrompt')"
-              v-model="updateGroup"
-            ></v-text-field>
-           </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="Version"
-              hint="$t('versionInputPrompt')"
-              v-model="updateVersion"
-            ></v-text-field>
-           </v-flex>
+        </v-layout>
+        <v-layout wrap>
+          <v-flex lg12>
+            符合以下条件的参数调用：
+          </v-flex>
         </v-layout>
         <v-layout wrap>
           <v-flex xs6 sm3 md2>
@@ -195,8 +192,22 @@
           <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="参数匹配条件"
-              hint="请输入参数匹配条件"
+              hint="请输入参数匹配条件（仅支持字符串类型参数）"
               v-model="updateRuleMatch"
+            ></v-text-field>
+          </v-flex>
+        </v-layout>
+        <v-layout wrap>
+          <v-flex lg12>
+            将被路由到符合以下条件的目标机器上：
+          </v-flex>
+        </v-layout>
+        <v-layout wrap>
+          <v-flex xs6 sm3 md5>
+            <v-text-field
+              label="输入目标机器过滤条件"
+              hint="可以是使用 URL 上的任意参数进行匹配，如 orderVersion=v2 & region=hangzhou，具体可参见文档说明。"
+              v-model="updateFilterCondition"
             ></v-text-field>
           </v-flex>
         </v-layout>
@@ -264,13 +275,16 @@ export default {
     version: '',
     createGroup: '',
     createVersion: '',
+    searchService: '',
     createRuleMethod: '',
     createRuleIndex: '',
     createRuleMatch: '',
+    createFilterCondition: '',
     updateService: '',
     updateRuleMethod: '',
     updateRuleIndex: '',
     updateRuleMatch: '',
+    updateFilterCondition: '',
     updateGroup: '',
     updateVersion: '',
     deleteDialog: false,
@@ -290,14 +304,21 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.service) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     search () {
+      if (this.searchService === '*') {
+        this.service = '*'
+      } else {
+        const matches = this.searchService.split(/^(.*?)\/(.*?):(.*)$/)
+        if (matches.length === 1) {
+          this.service = matches[0]
+        } else {
+          this.group = matches[1]
+          this.service = matches[2]
+          this.version = matches[3]
+        }
+      }
       this.$axios.get('/traffic/argument', {
         params: {
           service: this.service,
@@ -314,33 +335,42 @@ export default {
     },
     saveUpdate () {
       this.updateDialog = false
-      this.$axios.put('/traffic/argument', {
-        service: this.updateService,
-        rule: `${this.updateRuleMethod}[${this.updateRuleIndex}]=${this.updateRuleMatch}`,
-        group: this.updateGroup,
-        version: this.updateVersion
-      }).then((res) => {
-        if (res) {
-          alert('操作成功')
-        }
-      })
+      if (!this.updateRuleMethod || !this.updateRuleMatch || !this.updateRuleIndex || !this.updateFilterCondition) {
+        alert('请分别输入方法匹配条件和机器过滤条件')
+      } else {
+        const matchCondition = `method=${this.updateRuleMethod} & arguments[${this.updateRuleIndex}]=${this.updateRuleMatch}`
+        const filterCondition = ` => ${this.updateFilterCondition}`
+        this.$axios.put('/traffic/argument', {
+          service: this.tempService,
+          rule: matchCondition + filterCondition,
+          group: this.updateGroup,
+          version: this.updateVersion
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      }
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     setHeaders: function () {
       this.headers = [
         {
-          text: '应用',
+          text: '服务',
           value: 'service'
         },
         {
-          text: '规则',
+          text: '参数路由条件',
           value: 'rule'
         },
         {
-          text: 'Group',
+          text: '分组',
           value: 'group'
         },
         {
-          text: 'Version',
+          text: '版本',
           value: 'version'
         },
         {
@@ -354,19 +384,27 @@ export default {
     },
     create () {
       this.dialog = true
+      this.createService = ''
+      this.createRule = ''
     },
     confirmDelete () {
       console.log(this.deleteArguments)
       this.$axios.delete('/traffic/argument', {
-        service: this.deleteService,
-        group: this.deleteGroup,
-        version: this.deleteVersion
-      }).then((res) => {
+        params: {
+          service: this.deleteService,
+          group: this.deleteGroup,
+          version: this.deleteVersion
+        }
+      }
+      ).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
-      this.deleteArguments = false
+      this.deleteDialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     deleteItem (props) {
       this.deleteDialog = true
@@ -375,7 +413,12 @@ export default {
       this.deleteVersion = props.version
     },
     update (props) {
-      this.updateService = props.service
+      if (props.version && props.group) {
+        this.updateService = `${props.group}/${props.service}:${props.version}`
+      } else {
+        this.updateService = props.service
+      }
+      this.tempService = props.service
       var parts = props.rule.split(/(\w+)\[(\w+)\]=(\w+)/)
       this.updateRuleMethod = parts[1]
       this.updateRuleIndex = parts[2]
@@ -385,9 +428,19 @@ export default {
       this.updateDialog = true
     },
     save () {
+      const matches = this.createService.split(/^(.*?)\/(.*?):(.*)$/)
+      if (matches.length === 1) {
+        this.createService = matches[0]
+      } else {
+        this.createGroup = matches[1]
+        this.createService = matches[2]
+        this.createVersion = matches[3]
+      }
+      const matchCondition = `method=${this.createRuleMethod} & arguments[${this.createRuleIndex}]=${this.createRuleMatch}`
+      const filterCondition = ` => ${this.createFilterCondition}`
       this.$axios.post('/traffic/argument', {
         service: this.createService,
-        rule: `${this.createRuleMethod}[${this.createRuleIndex}]=${this.createRuleMatch}`,
+        rule: matchCondition + filterCondition,
         group: this.createGroup,
         version: this.createVersion
       }).then((res) => {
@@ -396,6 +449,9 @@ export default {
         }
       })
       this.dialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     closeDialog () {
       this.dialog = false
@@ -408,6 +464,8 @@ export default {
   },
   mounted () {
     this.setHeaders()
+    this.searchService = '*'
+    this.search()
   }
 }
 

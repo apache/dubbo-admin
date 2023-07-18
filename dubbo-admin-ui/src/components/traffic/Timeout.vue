@@ -18,32 +18,22 @@
   <v-container grid-list-xl fluid>
       <v-layout row wrap>
           <v-flex lg12>
-      <Breadcrumb title="trafficTimeout" :items="breads"></breadcrumb>
-    </v-flex>
+            <Breadcrumb title="trafficTimeout" :items="breads"></breadcrumb>
+          </v-flex>
+          <v-flex lg12>
+            可在这里了解 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/timeout/" target="_blank">超时时间</a> 配置的工作原理与使用方式！
+          </v-flex>
     <v-flex lg12>
         <v-card flat color="transparent">
           <v-card-text>
             <v-form>
               <v-layout row wrap>
-                <v-flex xs6 sm3 md3>
+                <v-flex xs6 sm3 md9>
                   <v-text-field
-                    v-model="service"
+                    v-model="searchService"
                     flat
                     label="请输入服务名"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md2 >
-                  <v-text-field
-                    label="Version"
-                    :hint="$t('dataIdVersionHint')"
-                    v-model="group"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md2 >
-                  <v-text-field
-                    label="Group"
-                    :hint="$t('dataIdGroupHint')"
-                    v-model="version"
+                    hint="请输入service,如有group和version，请按照group/service:version格式输入"
                   ></v-text-field>
                 </v-flex>
                 <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
@@ -91,29 +81,22 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createTimeoutRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何动态调整服务的 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/timeout/" target="_blank">超时时间配置</a>！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout row wrap>
-          <v-flex xs6 sm3 md2>
+          <v-flex xs6 sm3 md9>
             <v-text-field
               label="服务名"
-              hint="请输入服务名"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
               v-model="createService"
             ></v-text-field>
           </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-                label="服务分组"
-              hint="请输入服务group(可选)"
-              v-model="createGroup"
-            ></v-text-field>
-           </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="服务版本"
-              hint="请输入服务version(可选)"
-              v-model="createVersion"
-            ></v-text-field>
-           </v-flex>
+        </v-layout>
+        <v-layout row wrap>
           <v-flex style="margin-left: 10px;" xs6 sm3 md2>
             <v-text-field
               label="超时时间"
@@ -121,7 +104,7 @@
               type="number"
               v-model="createTimeout"
             ></v-text-field>
-         </v-flex>
+          </v-flex>
         </v-layout>
       </v-card-text>
       <v-card-actions>
@@ -136,36 +119,30 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createTimeoutRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何动态调整服务的 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/timeout/" target="_blank">超时时间配置</a>！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout wrap>
-          <v-flex xs6 sm3 md2>
+          <v-flex xs6 sm3 md9>
             <v-text-field
               label="服务名"
-              hint="请输入服务名"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
               v-model="updateService"
+              disabled
             ></v-text-field>
           </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="服务分组"
-              hint="请输入服务group(可选)"
-              v-model="updateGroup"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="服务版本"
-              hint="请输入服务version(可选)"
-              v-model="updateVersion"
-            ></v-text-field>
-          </v-flex>
+         </v-layout>
+        <v-layout wrap>
           <v-flex style="margin-left: 10px;" xs6 sm3 md2>
               <v-text-field
                 label="超时时间"
                 hint="请输入一个整数值作为超时时间(单位ms)"
                 type="number"
                 v-model="updateTimeout"
-          ></v-text-field>
+              ></v-text-field>
           </v-flex>
         </v-layout>
       </v-card-text>
@@ -231,6 +208,7 @@ export default {
     timeout: null,
     group: '',
     version: '',
+    searchService: '',
     createGroup: '',
     createVersion: '',
     updateService: '',
@@ -254,14 +232,21 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.service) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     search () {
+      if (this.searchService === '*') {
+        this.service = '*'
+      } else {
+        const matches = this.searchService.split(/^(.*?)\/(.*?):(.*)$/)
+        if (matches.length === 1) {
+          this.service = matches[0]
+        } else {
+          this.group = matches[1]
+          this.service = matches[2]
+          this.version = matches[3]
+        }
+      }
       this.$axios.get('/traffic/timeout', {
         params: {
           service: this.service,
@@ -278,33 +263,40 @@ export default {
     },
     saveUpdate () {
       this.updateDialog = false
-      this.$axios.put('/traffic/timeout', {
-        service: this.updateService,
-        timeout: parseInt(this.updateTimeout),
-        group: this.updateGroup,
-        version: this.updateVersion
-      }).then((res) => {
-        if (res) {
-          alert('操作成功')
-        }
-      })
+      if (this.updateTimeout) {
+        this.$axios.put('/traffic/timeout', {
+          service: this.tempService,
+          timeout: parseInt(this.updateTimeout),
+          group: this.updateGroup,
+          version: this.updateVersion
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      } else {
+        alert('请输入超时时间')
+      }
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     setHeaders: function () {
       this.headers = [
         {
-          text: '应用',
+          text: '服务',
           value: 'service'
         },
         {
-          text: 'Timeout',
+          text: '超时时间',
           value: 'timeout'
         },
         {
-          text: 'Group',
+          text: '分组',
           value: 'group'
         },
         {
-          text: 'Version',
+          text: '版本',
           value: 'version'
         },
         {
@@ -318,19 +310,27 @@ export default {
     },
     create () {
       this.dialog = true
+      this.createService = ''
+      this.createTimeout = ''
     },
     confirmDelete () {
       console.log(this.deleteTimeout)
-      this.$axios.delete('/traffic/timeout', {
-        service: this.deleteService,
-        group: this.deleteGroup,
-        version: this.deleteVersion
-      }).then((res) => {
+      this.$axios.delete('/traffic/timeout',
+        {
+          params: {
+            service: this.deleteService,
+            group: this.deleteGroup,
+            version: this.deleteVersion
+          }
+        }).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
-      this.deleteTimeout = false
+      this.deleteDialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     deleteItem (props) {
       this.deleteDialog = true
@@ -340,24 +340,44 @@ export default {
       this.deleteVersion = props.version
     },
     update (props) {
-      this.updateService = props.service
+      if (props.version && props.group) {
+        this.updateService = `${props.group}/${props.service}:${props.version}`
+      } else {
+        this.updateService = props.service
+      }
+      this.tempService = props.service
       this.updateTimeout = props.timeout
       this.updateGroup = props.group
       this.updateVersion = props.version
       this.updateDialog = true
     },
     save () {
-      this.$axios.post('/traffic/timeout', {
-        service: this.createService,
-        timeout: parseInt(this.createTimeout),
-        group: this.createGroup,
-        version: this.createVersion
-      }).then((res) => {
-        if (res) {
-          alert('操作成功')
-        }
-      })
+      const matches = this.createService.split(/^(.*?)\/(.*?):(.*)$/)
+      if (matches.length === 1) {
+        this.createService = matches[0]
+      } else {
+        this.createGroup = matches[1]
+        this.createService = matches[2]
+        this.createVersion = matches[3]
+      }
+      if (this.createTimeout) {
+        this.$axios.post('/traffic/timeout', {
+          service: this.createService,
+          timeout: parseInt(this.createTimeout),
+          group: this.createGroup,
+          version: this.createVersion
+        }).then((res) => {
+          if (res) {
+            alert('操作成功')
+          }
+        })
+      } else {
+        alert('请输入超时时间')
+      }
       this.dialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     closeDialog () {
       this.dialog = false
@@ -370,6 +390,8 @@ export default {
   },
   mounted () {
     this.setHeaders()
+    this.searchService = '*'
+    this.search()
   }
 }
 

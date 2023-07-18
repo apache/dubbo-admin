@@ -22,10 +22,10 @@ import ServiceDetail from '@/components/ServiceDetail'
 import TestMethod from '@/components/test/TestMethod'
 import RoutingRule from '@/components/governance/RoutingRule'
 import TagRule from '@/components/governance/TagRule'
-import MeshRule from '@/components/governance/MeshRule'
-import AccessControl from '@/components/governance/AccessControl'
-import LoadBalance from '@/components/governance/LoadBalance'
-import WeightAdjust from '@/components/governance/WeightAdjust'
+// import MeshRule from '@/components/governance/MeshRule'
+// import AccessControl from '@/components/governance/AccessControl'
+// import LoadBalance from '@/components/governance/LoadBalance'
+// import WeightAdjust from '@/components/governance/WeightAdjust'
 import Overrides from '@/components/governance/Overrides'
 import ServiceTest from '@/components/test/ServiceTest'
 import ApiDocs from '@/components/apiDocs/ApiDocs'
@@ -76,37 +76,40 @@ export default new Router({
           component: TestMethod
         },
         {
-          path: '/governance/routingRule',
+          path: '/traffic/routingRule',
           name: 'RoutingRule',
-          component: RoutingRule
+          component: RoutingRule,
+          meta: {
+            requireLogin: false
+          }
         },
         {
-          path: '/governance/tagRule',
+          path: '/traffic/tagRule',
           name: 'TagRule',
           component: TagRule
         },
+        // {
+        //   path: '/governance/meshRule',
+        //   name: 'MeshRule',
+        //   component: MeshRule
+        // },
+        // {
+        //   path: '/governance/access',
+        //   name: 'AccessControl',
+        //   component: AccessControl
+        // },
+        // {
+        //   path: '/governance/loadbalance',
+        //   name: 'LoadBalance',
+        //   component: LoadBalance
+        // },
+        // {
+        //   path: '/governance/weight',
+        //   name: 'WeightAdjust',
+        //   component: WeightAdjust
+        // },
         {
-          path: '/governance/meshRule',
-          name: 'MeshRule',
-          component: MeshRule
-        },
-        {
-          path: '/governance/access',
-          name: 'AccessControl',
-          component: AccessControl
-        },
-        {
-          path: '/governance/loadbalance',
-          name: 'LoadBalance',
-          component: LoadBalance
-        },
-        {
-          path: '/governance/weight',
-          name: 'WeightAdjust',
-          component: WeightAdjust
-        },
-        {
-          path: '/governance/config',
+          path: '/traffic/config',
           name: 'Overrides',
           component: Overrides
         },

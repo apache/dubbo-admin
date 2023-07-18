@@ -22,10 +22,10 @@ type TagRouteDto struct {
 
 	Tags []Tag `json:"tags" yaml:"tags" binding:"required"`
 
-	Priority      int    `json:"priority" yaml:"priority"`
+	Priority      int    `json:"priority" yaml:"priority,omitempty"`
 	Enabled       bool   `json:"enabled" yaml:"enabled" binding:"required"`
 	Force         bool   `json:"force" yaml:"force"`
-	Runtime       bool   `json:"runtime" yaml:"runtime"`
+	Runtime       bool   `json:"runtime" yaml:"runtime,omitempty"`
 	ConfigVersion string `json:"configVersion" yaml:"configVersion" binding:"required"`
 }
 
@@ -33,7 +33,7 @@ type TagRoute struct {
 	Priority      int    `json:"priority" yaml:"priority,omitempty"`
 	Enabled       bool   `json:"enabled" yaml:"enabled"`
 	Force         bool   `json:"force" yaml:"force"`
-	Runtime       bool   `json:"runtime" yaml:"runtime"`
+	Runtime       bool   `json:"runtime" yaml:"runtime,omitempty"`
 	Key           string `json:"key" yaml:"key"`
 	Tags          []Tag  `json:"tags" yaml:"tags"`
 	ConfigVersion string `json:"configVersion" yaml:"configVersion"`

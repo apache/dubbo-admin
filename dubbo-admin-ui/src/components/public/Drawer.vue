@@ -1,3 +1,4 @@
+<!-- eslint-disable vue/valid-v-for -->
 <!--
   ~ Licensed to the Apache Software Foundation (ASF) under one or more
   ~ contributor license agreements.  See the NOTICE file distributed with
@@ -34,7 +35,7 @@
     </v-toolbar>
 
     <v-list expand>
-      <template v-for="(item, i) in menus">
+      <template v-for="(item) in menus">
         <v-list-group v-if="item.items" :group="item.group" :prepend-icon="item.icon" no-action>
           <v-list-tile slot="activator" ripple>
             <v-list-tile-content>
@@ -42,7 +43,7 @@
             </v-list-tile-content>
           </v-list-tile>
 
-          <template v-for="(subItem, i) in item.items">
+          <template v-for="(subItem) in item.items">
             <v-list-tile :to="subItem.path" ripple>
               <v-list-tile-content>
                 <v-list-tile-title>{{ $t(subItem.title) }}</v-list-tile-title>

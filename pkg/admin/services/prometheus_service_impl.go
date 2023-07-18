@@ -236,7 +236,7 @@ func (p *PrometheusServiceImpl) Metadata() (model.Metadata, error) {
 	metadata.ConfigCenter = config.RegistryCenter.GetURL().Location
 
 	// rules
-	rules, err := GetRules("")
+	rules, err := GetRules("", "*")
 	if err != nil {
 		return model.Metadata{}, err
 	}

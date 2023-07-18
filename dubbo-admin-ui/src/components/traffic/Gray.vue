@@ -18,8 +18,11 @@
     <v-container grid-list-xl fluid>
         <v-layout row wrap>
             <v-flex lg12>
-        <Breadcrumb title="trafficGray" :items="breads"></breadcrumb>
-      </v-flex>
+              <Breadcrumb title="trafficGray" :items="breads"></breadcrumb>
+            </v-flex>
+            <v-flex lg12>
+              可在这里了解应用 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/isolation/" target="_blank">灰度环境隔离</a> 的工作原理与使用方式！
+            </v-flex>
       <v-flex lg12>
           <v-card flat color="transparent">
             <v-card-text>
@@ -81,6 +84,11 @@
         <v-card-title class="justify-center">
           <span class="headline">新增灰度</span>
         </v-card-title>
+        <v-layout row wrap>
+          <v-flex lg12>
+            可在这里了解如何为应用设置不同的 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/gray/" target="_blank">灰度流量隔离环境</a> ！
+          </v-flex>
+        </v-layout>
         <v-card>
           <v-card-text>
             <v-layout row warp>
@@ -106,8 +114,8 @@
         <v-card-text v-for="(modal,index) in createGary.tags" :key="index">
             <v-flex  xs6 sm3 md6>
               <v-text-field
-                label="名称"
-                hint="请输入名称"
+                label="灰度隔离环境名称"
+                hint="请输入名称，该值将作为灰度流量的匹配条件"
                 v-model="modal.name"
               ></v-text-field>
             </v-flex>
@@ -145,7 +153,7 @@
                     outline
                     @click="addItem(index)"
                   >
-                    新增一条
+                    新增灰度环境
                 </v-btn>
             </v-flex>
       </v-layout>
@@ -163,13 +171,19 @@
         <v-card-title class="justify-center">
           <span class="headline">修改灰度</span>
         </v-card-title>
+        <v-layout row wrap>
+          <v-flex lg12>
+            可在这里了解如何为应用设置不同的 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/gray/" target="_blank">灰度流量隔离环境</a> ！
+          </v-flex>
+        </v-layout>
         <v-card>
           <v-card-text>
             <v-layout row warp>
               <v-flex xs6 sm3 md8>
               <v-text-field
                 label="application"
-                hint="请输入application"
+                hint="请输入 Provider 应用名"
+                disabled
                 v-model="updateGary.application"
               ></v-text-field>
             </v-flex>
@@ -188,8 +202,8 @@
         <v-card-text v-for="(modal,index) in updateGary.tags" :key="index">
             <v-flex  xs6 sm3 md6>
               <v-text-field
-                label="名称"
-                hint="请输入名称"
+                label="灰度隔离环境名称"
+                hint="请输入名称，该值将作为灰度流量的匹配条件"
                 v-model="modal.name"
               ></v-text-field>
             </v-flex>
@@ -227,11 +241,11 @@
                     outline
                     @click="addUpdateItem(index)"
                   >
-                    新增一条
+                    新增灰度环境
                 </v-btn>
             </v-flex>
       </v-layout>
-        </v-card-text>
+    </v-card-text>
       </v-card>
         <v-card-actions>
           <v-spacer></v-spacer>
@@ -310,7 +324,7 @@ export default {
     deleteVersion: '',
     deleteGroup: '',
     dialog: false,
-    selectedOption: [[]],
+    selectedOption: [['exact']],
     selectedUpdateOption: [[]],
     headers: [
     ],
@@ -357,12 +371,7 @@ export default {
       this.updateGary.tags[index].match[idx].value = temp
     },
     submit () {
-      if (this.application) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     addCreateGary () {
       const temp = {
@@ -381,7 +390,7 @@ export default {
           }
         ]
       }
-      this.selectedOption.push([])
+      this.selectedOption.push(['exact'])
       this.createGary.tags.push(temp)
     },
     addUpdateGary () {
@@ -417,6 +426,7 @@ export default {
         }
       }
       const index = parseInt(params)
+      this.selectedOption[index].push('exact')
       this.createGary.tags[index].match.push(temp)
     },
     addUpdateItem (params) {
@@ -441,8 +451,8 @@ export default {
         }
       }).then(response => {
         this.tableData = []
-        const array = []
         response.data.forEach(element => {
+          const array = []
           element.tags.forEach(item => {
             array.push(item.name)
           })
@@ -455,17 +465,19 @@ export default {
           }
           this.tableData.push(result)
         })
-        console.log(this.tableData)
       })
     },
     saveUpdate () {
       this.updateDialog = false
-      this.$axios.put('/traffic/gray', this.upda).then((res) => {
+      this.$axios.put('/traffic/gray', this.updateGary).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
       this.dialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     setHeaders: function () {
       this.headers = [
@@ -488,17 +500,45 @@ export default {
     },
     create () {
       this.dialog = true
+      this.createGary = {
+        application: '',
+        tags: [
+          {
+            name: '',
+            match: [
+              {
+                key: '',
+                value: {
+                  empty: '',
+                  exact: '',
+                  noempty: '',
+                  prefix: '',
+                  regex: '',
+                  wildcard: ''
+                }
+              }
+            ]
+          }
+        ]
+      }
     },
     confirmDelete () {
-      console.log(this.deleteArguments)
-      this.$axios.delete('/traffic/mock', {
-        service: this.deleteService
-      }).then((res) => {
+      this.$axios.delete('/traffic/mock',
+        {
+          params: {
+            service: this.deleteService,
+            group: this.deleteGroup,
+            version: this.deleteVersion
+          }
+        }).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
-      this.deleteArguments = false
+      this.deleteDialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     deleteItem (props) {
       this.deleteDialog = true
@@ -533,6 +573,9 @@ export default {
         }
       })
       this.dialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     closeDialog () {
       this.dialog = false
@@ -545,6 +588,8 @@ export default {
   },
   mounted () {
     this.setHeaders()
+    this.application = '*'
+    this.search()
   }
 }
 

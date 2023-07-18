@@ -66,8 +66,10 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.Version }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: {{ .Values.service.name }}
-              containerPort: {{ .Values.service.containerPort }}
+            {{- with .Values.service }}
+            - name: {{ .name }}
+              containerPort: {{ .containerPort }}
+            {{- end }}
           volumeMounts:
             - mountPath: /config
               name: application-properties
@@ -77,31 +79,37 @@ spec:
               readOnly: true
           livenessProbe:
             httpGet:
-              path: {{ .Values.livenessProbe.httpGet.path }}
-              port: {{ .Values.livenessProbe.httpGet.port }}
-            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
-            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
-            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
-            successThreshold: {{ .Values.livenessProbe.successThreshold }}
-            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+              {{- with .Values.livenessProbe }}
+              path: {{ .httpGet.path }}
+              port: {{ .httpGet.port }}
+            initialDelaySeconds: {{ .initialDelaySeconds }}
+            timeoutSeconds: {{ .timeoutSeconds }}
+            periodSeconds: {{ .periodSeconds }}
+            successThreshold: {{ .successThreshold }}
+            failureThreshold: {{ .failureThreshold }}
           readinessProbe:
             httpGet:
-              path: {{ .Values.livenessProbe.httpGet.path }}
-              port: {{ .Values.livenessProbe.httpGet.port }}
-            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
-            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
-            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
-            successThreshold: {{ .Values.readinessProbe.successThreshold }}
-            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+              path: {{ .httpGet.path }}
+              port: {{ .httpGet.port }}
+            initialDelaySeconds: {{ .initialDelaySeconds }}
+            {{- end }}
+            {{- with .Values.readinessProbe }}
+            timeoutSeconds: {{ .timeoutSeconds }}
+            periodSeconds: {{ .periodSeconds }}
+            successThreshold: {{ .successThreshold }}
+            failureThreshold: {{ .failureThreshold }}
+            {{- end }}
           startupProbe:
             httpGet:
-              path: {{ .Values.startupProbe.httpGet.path }}
-              port: {{ .Values.startupProbe.httpGet.port }}
-            initialDelaySeconds: {{ .Values.startupProbe.initialDelaySeconds }}
-            timeoutSeconds: {{ .Values.startupProbe.timeoutSeconds }}
-            periodSeconds: {{ .Values.startupProbe.periodSeconds }}
-            successThreshold: {{ .Values.startupProbe.successThreshold }}
-            failureThreshold: {{ .Values.startupProbe.failureThreshold }}
+              {{- with .Values.startupProbe }}
+              path: {{ .httpGet.path }}
+              port: {{ .httpGet.port }}
+            initialDelaySeconds: {{ .initialDelaySeconds }}
+            timeoutSeconds: {{ .timeoutSeconds }}
+            periodSeconds: {{ .periodSeconds }}
+            successThreshold: {{ .successThreshold }}
+            failureThreshold: {{ .failureThreshold }}
+            {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
@@ -114,9 +122,11 @@ spec:
         - name: storage
              {{- if .Values.persistence.enabled }}
           persistentVolumeClaim:
-            {{ if .Values.persistence.ClaimName }}
-            claimName: {{ .Values.persistence.ClaimName }}
+            {{- with .Values.persistence }}
+            {{ if .ClaimName }}
+            claimName: {{ .ClaimName }}
             {{- else -}}
-          emptyDir: {{ .Values.persistence.emptyDir }}
+          emptyDir: {{ .emptyDir }}
+              {{- end -}}
               {{- end -}}
               {{- end -}}

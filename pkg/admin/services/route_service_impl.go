@@ -270,7 +270,7 @@ func detachId(id string) []string {
 	}
 }
 
-func GetRules(con string) (map[string]string, error) {
+func GetRules(con string, ruleType string) (map[string]string, error) {
 	list := make(map[string]string)
 	if con == "" || con == "*" {
 		rules, err := config.Governance.GetList("dubbo")
@@ -278,7 +278,12 @@ func GetRules(con string) (map[string]string, error) {
 			logger.Infof("No rule found from config center, err msg is %s", err.Error())
 			return list, nil
 		}
-		list = rules
+
+		for k, v := range rules {
+			if ruleType == "*" || strings.HasSuffix(k, ruleType) {
+				list[k] = v
+			}
+		}
 	} else {
 		key := GetOverridePath(con)
 		rule, err := config.Governance.GetConfig(key)

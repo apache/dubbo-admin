@@ -18,32 +18,22 @@
   <v-container grid-list-xl fluid>
       <v-layout row wrap>
           <v-flex lg12>
-      <Breadcrumb title="trafficMock" :items="breads"></breadcrumb>
-    </v-flex>
+            <Breadcrumb title="trafficMock" :items="breads"></breadcrumb>
+          </v-flex>
+          <v-flex lg12>
+            可在这里了解 <a href="https://cn.dubbo.apache.org/zh-cn/overview/tasks/traffic-management/mock/" target="_blank">服务降级</a> 配置的工作原理与使用方式！
+          </v-flex>
     <v-flex lg12>
         <v-card flat color="transparent">
           <v-card-text>
             <v-form>
               <v-layout row wrap>
-                <v-flex xs6 sm3 md3>
+                <v-flex xs6 sm3 md9>
                   <v-text-field
-                    v-model="service"
+                    v-model="searchService"
                     flat
                     label="请输入服务名"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md2 >
-                  <v-text-field
-                    label="Version"
-                    :hint="$t('dataIdVersionHint')"
-                    v-model="group"
-                  ></v-text-field>
-                </v-flex>
-                <v-flex xs6 sm3 md2 >
-                  <v-text-field
-                    label="Group"
-                    :hint="$t('dataIdGroupHint')"
-                    v-model="version"
+                    hint="请输入service,如有group和version，请按照group/service:version格式输入"
                   ></v-text-field>
                 </v-flex>
                 <v-btn @click="submit" color="primary" large>{{$t('search')}}</v-btn>
@@ -91,27 +81,18 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createMockCircuitRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何配置服务 <a href="https://dubbo.apache.org/zh-cn/overview/tasks/traffic-management/mock/" target="_blank">降级或容错策略</a> ！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout wrap>
-          <v-flex xs6 sm3 md3>
+          <v-flex xs6 sm3 md9>
             <v-text-field
               label="服务名"
-              hint="请输入服务名"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
               v-model="createService"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="Group"
-              hint="$t('groupInputPrompt')"
-              v-model="createGroup"
-            ></v-text-field>
-          </v-flex>
-          <v-flex style="margin-left: 10px;" xs6 sm3 md2>
-            <v-text-field
-              label="Version"
-              hint="$t('versionInputPrompt')"
-              v-model="createVersion"
             ></v-text-field>
           </v-flex>
         </v-layout>
@@ -119,16 +100,16 @@
           <v-flex xs6 sm3 md6>
             <v-select
               v-model="mockMethod"
-              label="调用方式"
-              :items="['失败返回', '强制返回']"
+              label="调用降级行为"
+              :items="['失败时返回', '强制返回']"
               variant="outlined"
             ></v-select>
           </v-flex>
         </v-layout>
         <v-layout wrap>
           <v-flex xs6 sm3 md6>
-            <v-textarea v-model="createMock" label="请输入具体返回值（如 json 结构体或字符串，具体取决于方法签名的返回值）"
-              hint="请点击链接查看如何配置 mock 值。"  variant="outlined"></v-textarea>
+            <v-textarea v-model="createMock" label="请输入模拟的返回值"
+              hint="如 json 结构体或字符串，具体取决于方法签名的返回值。请通过上面的链接查看如何配置返回值。"  variant="outlined"></v-textarea>
           </v-flex>
         </v-layout>
       </v-card-text>
@@ -144,44 +125,36 @@
       <v-card-title class="justify-center">
         <span class="headline">{{$t('createMockCircuitRule')}}</span>
       </v-card-title>
+      <v-layout row wrap>
+        <v-flex lg12>
+          可在这里了解如何配置服务 <a href="https://dubbo.apache.org/zh-cn/overview/tasks/traffic-management/mock/" target="_blank">降级或容错策略</a> ！
+        </v-flex>
+      </v-layout>
       <v-card-text >
         <v-layout wrap>
-          <v-flex xs6 sm3 md3>
+          <v-flex xs6 sm3 md9>
             <v-text-field
               label="服务名"
-              hint="请输入服务名"
+              hint="请输入service,如有group和version，请按照group/service:version格式输入"
+              disabled
               v-model="updateService"
             ></v-text-field>
           </v-flex>
-          <v-flex xs6 sm3 md2>
-           <v-text-field
-              label="Group"
-              hint="$t('groupInputPrompt')"
-              v-model="updateGroup"
-            ></v-text-field>
-           </v-flex>
-           <v-flex xs6 sm3 md2>
-            <v-text-field
-              label="Version"
-              hint="$t('versionInputPrompt')"
-              v-model="updateVersion"
-            ></v-text-field>
-           </v-flex>
         </v-layout>
         <v-layout wrap>
           <v-flex xs6 sm3 md6>
             <v-select
               v-model="mockUpdateMethod"
-              label="调用方式"
-              :items="['失败返回', '强制返回']"
+              label="调用降级行为"
+              :items="['失败时返回', '强制返回']"
               variant="outlined"
             ></v-select>
           </v-flex>
         </v-layout>
         <v-layout wrap>
           <v-flex xs6 sm3 md6>
-            <v-textarea v-model="updateMock" label="请输入具体返回值（如 json 结构体或字符串，具体取决于方法签名的返回值）"
-              hint="请点击链接查看如何配置 mock 值。"  variant="outlined"></v-textarea>
+            <v-textarea v-model="updateMock" label="请输入模拟的返回值"
+              hint="如 json 结构体或字符串，具体取决于方法签名的返回值。请通过上面的链接查看如何配置返回值。"  variant="outlined"></v-textarea>
           </v-flex>
         </v-layout>
       </v-card-text>
@@ -244,6 +217,7 @@ export default {
     searchLoading: false,
     timerID: null,
     service: '',
+    searchService: '',
     mock: '',
     group: '',
     version: '',
@@ -253,7 +227,7 @@ export default {
     updateMock: '',
     updateGroup: '',
     updateVersion: '',
-    mockMethod: '',
+    mockMethod: '强制返回',
     deleteDialog: false,
     createService: '',
     createMock: '',
@@ -272,15 +246,21 @@ export default {
   }),
   methods: {
     submit () {
-      if (this.service) {
-        this.search()
-      } else {
-        this.$notify.error('service is needed')
-        return false
-      }
+      this.search()
     },
     search () {
-      console.log('mock: force:return Mock Comment'.split(/:\s(.*?):(.*)/)[2].replace(/^return\s/, ''))
+      if (this.searchService === '*') {
+        this.service = '*'
+      } else {
+        const matches = this.searchService.split(/^(.*?)\/(.*?):(.*)$/)
+        if (matches.length === 1) {
+          this.service = matches[0]
+        } else {
+          this.group = matches[1]
+          this.service = matches[2]
+          this.version = matches[3]
+        }
+      }
       this.$axios.get('/traffic/mock', {
         params: {
           service: this.service,
@@ -299,8 +279,8 @@ export default {
     saveUpdate () {
       this.updateDialog = false
       this.$axios.put('/traffic/mock', {
-        service: this.updateService,
-        mock: `${this.mockUpdateMethod === '失败返回' ? `mock: fail:return ${this.updateMock}` : `mock: force:return ${this.updateMock}`}`,
+        service: this.tempService,
+        mock: `${this.mockUpdateMethod === '失败时返回' ? `fail:return ${this.updateMock}` : `force:return ${this.updateMock}`}`,
         group: this.updateGroup,
         version: this.updateVersion
       }).then((res) => {
@@ -308,23 +288,26 @@ export default {
           alert('操作成功')
         }
       })
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     setHeaders: function () {
       this.headers = [
         {
-          text: '应用',
+          text: '服务',
           value: 'service'
         },
         {
-          text: 'Mock',
+          text: '降级返回值',
           value: 'mock'
         },
         {
-          text: 'Group',
+          text: '分组',
           value: 'group'
         },
         {
-          text: 'Version',
+          text: '版本',
           value: 'version'
         },
         {
@@ -338,19 +321,28 @@ export default {
     },
     create () {
       this.dialog = true
+      this.createService = ''
+      this.mockMethod = '强制返回'
+      this.createMock = ''
     },
     confirmDelete () {
       console.log(this.deleteMock)
-      this.$axios.delete('/traffic/mock', {
-        service: this.deleteService,
-        group: this.deleteGroup,
-        version: this.deleteVersion
-      }).then((res) => {
+      this.$axios.delete('/traffic/mock',
+        {
+          params: {
+            service: this.deleteService,
+            group: this.deleteGroup,
+            version: this.deleteVersion
+          }
+        }).then((res) => {
         if (res) {
           alert('操作成功')
         }
       })
-      this.deleteAccesslog = false
+      this.deleteDialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     deleteItem (props) {
       this.deleteDialog = true
@@ -360,20 +352,31 @@ export default {
       this.deleteVersion = props.version
     },
     update (props) {
-      this.updateService = props.service
-      var parts = props.mock.split(/:\s(.*?):(.*)/)
-      console.log(parts)
-      this.mockUpdateMethod = parts[1] === 'force' ? '强制返回' : '失败返回'
-      this.updateMock = parts[2].replace(/^return\s/, '')
+      if (props.version && props.group) {
+        this.updateService = `${props.group}/${props.service}:${props.version}`
+      } else {
+        this.updateService = props.service
+      }
+      this.tempService = props.service
       this.updateGroup = props.group
       this.updateVersion = props.version
+      var parts = props.mock.split(/:\s(.*?):(.*)/)
+      this.mockUpdateMethod = parts[1] === 'force' ? '强制返回' : '失败时返回'
+      this.updateMock = parts[2].replace(/^return\s/, '')
       this.updateDialog = true
     },
     save () {
-      console.log(this.mockMethod)
+      const matches = this.createService.split(/^(.*?)\/(.*?):(.*)$/)
+      if (matches.length === 1) {
+        this.createService = matches[0]
+      } else {
+        this.createGroup = matches[1]
+        this.createService = matches[2]
+        this.createVersion = matches[3]
+      }
       this.$axios.post('/traffic/mock', {
         service: this.createService,
-        mock: `${this.mockMethod === '失败返回' ? `mock: fail:return ${this.createMock}` : `mock: force:return ${this.createMock}`}`,
+        mock: `${this.mockMethod === '失败时返回' ? `mock: fail:return ${this.createMock}` : `mock: force:return ${this.createMock}`}`,
         group: this.createGroup,
         version: this.createVersion
       }).then((res) => {
@@ -382,6 +385,9 @@ export default {
         }
       })
       this.dialog = false
+      setTimeout(() => {
+        this.search()
+      }, 1000)
     },
     closeDialog () {
       this.dialog = false
@@ -394,6 +400,8 @@ export default {
   },
   mounted () {
     this.setHeaders()
+    this.searchService = '*'
+    this.search()
   }
 }
 
