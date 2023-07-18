@@ -66,6 +66,9 @@ func (tm *AccesslogService) Search(a *model.Accesslog) ([]*model.Accesslog, erro
 
 		override := &model.Override{}
 		err = yaml.Unmarshal([]byte(v), override)
+		if err != nil {
+			return nil, err
+		}
 
 		if alv != nil {
 			accesslog := &model.Accesslog{

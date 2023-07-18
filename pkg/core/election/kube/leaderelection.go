@@ -30,10 +30,6 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
 
-const (
-	backoffTime = time.Millisecond
-)
-
 type LeaderElection struct {
 	leader    int32
 	namespace string
@@ -76,7 +72,6 @@ func (l *LeaderElection) Start(stop <-chan struct{}) {
 			logger.Sugar().Errorf("Leader election cycle %v lost. Trying again", l.cycle.Load())
 		}
 	}
-	logger.Sugar().Info("Leader Elector stopped")
 }
 
 func (l *LeaderElection) create() (*leaderelection.LeaderElector, error) {

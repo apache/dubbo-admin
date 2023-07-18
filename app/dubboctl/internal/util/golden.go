@@ -92,7 +92,7 @@ func TestYAMLEqual(golden, result string) (bool, string, error) {
 		lineStart, lineEnd := line+1, line
 		for scannerR.Scan() {
 			lineEnd += 1
-			addBuilder.WriteString(scannerR.Text() + "\n")
+			addBuilder.WriteString(scannerR.Text())
 		}
 		// length of result is equal to length of golden
 		if lineStart > lineEnd {
