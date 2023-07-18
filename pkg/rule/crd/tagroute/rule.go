@@ -52,18 +52,18 @@ func (o *Origin) Revision() int64 {
 }
 
 func (o *Origin) Exact(endpoint *endpoint.Endpoint) (storage.ToClient, error) {
-	matchedRule := make([]*PolicyToClient, 0, len(o.data))
+	matchedRuled := make([]*PolicyToClient, 0, len(o.data))
 
 	for _, v := range o.data {
-		if v.Spec != nil {
+		if v.Spec == nil {
 			continue
 		}
 
 		toClient := v.CopyToClient()
-		matchedRule = append(matchedRule, toClient)
+		matchedRuled = append(matchedRuled, toClient)
 	}
 
-	allRule, err := json.Marshal(matchedRule)
+	allRule, err := json.Marshal(matchedRuled)
 	if err != nil {
 		return nil, err
 	}
