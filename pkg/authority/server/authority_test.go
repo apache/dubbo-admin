@@ -77,7 +77,7 @@ func TestCSRFailed(t *testing.T) {
 	impl := &AuthorityService{
 		Options:     options,
 		CertStorage: storage,
-		KubuClient:  kubeClient.Client,
+		CertClient:  kubeClient.Client,
 	}
 
 	certificate, err := impl.CreateIdentity(c, &mesh.IdentityRequest{
@@ -148,7 +148,7 @@ func TestTokenFailed(t *testing.T) {
 	impl := &AuthorityService{
 		Options:     options,
 		CertStorage: storage,
-		KubuClient:  kubeClient,
+		CertClient:  kubeClient,
 	}
 
 	csr, privateKey, err := provider.GenerateCSR()
@@ -264,7 +264,7 @@ func TestSuccess(t *testing.T) {
 	impl := &AuthorityService{
 		Options:     options,
 		CertStorage: storage,
-		KubuClient:  kubeClient,
+		CertClient:  kubeClient,
 	}
 
 	csr, privateKey, err := provider.GenerateCSR()

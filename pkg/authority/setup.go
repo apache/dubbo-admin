@@ -34,9 +34,9 @@ func Setup(rt core_runtime.Runtime) error {
 				return rt.CertStorage().GetServerCert(info.ServerName), nil
 			})
 		server.WebhookServer.Init(rt.Config())
-		server.JavaInjector = patch.NewJavaSdk(rt.Config(), rt.KubuClient())
+		server.JavaInjector = patch.NewJavaSdk(rt.Config(), rt.CertStorage().GetCertClient())
 		server.WebhookServer.Patches = append(server.WebhookServer.Patches, server.JavaInjector.NewPod)
-		server.KubuClient = rt.KubuClient()
+		server.CertClient = rt.CertStorage().GetCertClient()
 		server.CertStorage = rt.CertStorage()
 	}
 	if err := RegisterCertificateService(rt, server); err != nil {

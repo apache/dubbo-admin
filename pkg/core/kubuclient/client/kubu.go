@@ -36,7 +36,7 @@ type kubuClientImpl struct {
 	kubernetesClientSet *kubernetes.Clientset
 }
 
-func NewKubuClientImpl() *kubuClientImpl {
+func NewKubuClient() *kubuClientImpl {
 	return &kubuClientImpl{}
 }
 

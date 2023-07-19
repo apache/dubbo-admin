@@ -27,6 +27,8 @@ type KubeConfig struct {
 	RestConfigQps int `yaml:"rest-config-qps"`
 	// Burst for rest config
 	RestConfigBurst int `yaml:"rest-config-burst"`
+
+	KubeFileConfig string `yaml:"kube-file-config"`
 }
 
 func (o *KubeConfig) Sanitize() {}

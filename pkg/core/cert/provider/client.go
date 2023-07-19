@@ -17,37 +17,22 @@ package provider
 
 import (
 	"context"
-	"flag"
-	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 
+	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
 	"github.com/apache/dubbo-admin/pkg/core/endpoint"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 
-	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
-	informerclient "github.com/apache/dubbo-admin/pkg/rule/clientgen/clientset/versioned"
 	admissionregistrationV1 "k8s.io/api/admissionregistration/v1"
 	k8sauth "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/util/homedir"
 )
 
-var kubeconfig string
-
-func init() {
-	flag.StringVar(&kubeconfig, "kubeconfig", "",
-		"Paths to a kubeconfig. Only required if out-of-cluster.")
-}
-
 type Client interface {
-	Init(options *dubbo_cp.Config) bool
 	GetAuthorityCert(namespace string) (string, string)
 	UpdateAuthorityCert(cert string, pri string, namespace string)
 	UpdateAuthorityPublicKey(cert string) bool
@@ -55,62 +40,16 @@ type Client interface {
 	UpdateWebhookConfig(options *dubbo_cp.Config, storage Storage)
 	GetNamespaceLabels(namespace string) map[string]string
 	GetKubClient() *kubernetes.Clientset
-	GetInformerClient() *informerclient.Clientset
 }
 
 type ClientImpl struct {
-	options        *dubbo_cp.Config
-	kubeClient     *kubernetes.Clientset
-	informerClient *informerclient.Clientset
+	kubeClient *kubernetes.Clientset
 }
 
-func NewClient() Client {
-	return &ClientImpl{}
-}
-
-func (c *ClientImpl) Init(options *dubbo_cp.Config) bool {
-	c.options = options
-	config, err := rest.InClusterConfig()
-	options.KubeConfig.InPodEnv = err == nil
-	if err != nil {
-		logger.Sugar().Infof("Failed to load config from Pod. Will fall back to kube config file.")
-		// Read kubeconfig from command line
-		if len(kubeconfig) <= 0 {
-			// Read kubeconfig from env
-			kubeconfig = os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
-			if len(kubeconfig) <= 0 {
-				// Read kubeconfig from home dir
-				if home := homedir.HomeDir(); home != "" {
-					kubeconfig = filepath.Join(home, ".kube", "config")
-				}
-			}
-		}
-		// use the current context in kubeconfig
-		logger.Sugar().Infof("Read kubeconfig from %s", kubeconfig)
-		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
-		if err != nil {
-			logger.Sugar().Warnf("Failed to load config from kube config file.")
-			return false
-		}
+func NewClient(kubeClient *kubernetes.Clientset) Client {
+	return &ClientImpl{
+		kubeClient: kubeClient,
 	}
-
-	// set qps and burst for rest config
-	config.QPS = float32(c.options.KubeConfig.RestConfigQps)
-	config.Burst = c.options.KubeConfig.RestConfigBurst
-	// creates the clientset
-	clientSet, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		logger.Sugar().Warnf("Failed to create clientgen to kubernetes. " + err.Error())
-		return false
-	}
-	informerClient, err := informerclient.NewForConfig(config)
-	if err != nil {
-		logger.Sugar().Warnf("Failed to create clientgen to kubernetes. " + err.Error())
-		return false
-	}
-	c.kubeClient = clientSet
-	c.informerClient = informerClient
-	return true
 }
 
 func (c *ClientImpl) GetAuthorityCert(namespace string) (string, string) {
@@ -371,8 +310,4 @@ func (c *ClientImpl) UpdateWebhookConfig(options *dubbo_cp.Config, storage Stora
 
 func (c *ClientImpl) GetKubClient() *kubernetes.Clientset {
 	return c.kubeClient
-}
-
-func (c *ClientImpl) GetInformerClient() *informerclient.Clientset {
-	return c.informerClient
 }

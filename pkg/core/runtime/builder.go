@@ -20,6 +20,7 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"github.com/apache/dubbo-admin/pkg/core/kubuclient/client"
 	"os"
 	"time"
 
@@ -35,7 +36,7 @@ type BuilderContext interface {
 	ComponentManager() component.Manager
 	Config() *dubbo_cp.Config
 	CertStorage() provider.Storage
-	KubuClient() provider.Client
+	KubuClient() client.KubuClient
 }
 
 var _ BuilderContext = &Builder{}
@@ -45,13 +46,13 @@ type Builder struct {
 	cm     component.Manager
 	appCtx context.Context
 
+	kubuClient  client.KubuClient
 	grpcServer  *server.GrpcServer
-	kubuClient  provider.Client
 	certStorage provider.Storage
 	*runtimeInfo
 }
 
-func (b *Builder) KubuClient() provider.Client {
+func (b *Builder) KubuClient() client.KubuClient {
 	return b.kubuClient
 }
 
@@ -84,14 +85,20 @@ func BuilderFor(appCtx context.Context, cfg *dubbo_cp.Config) (*Builder, error) 
 }
 
 func (b *Builder) Build() (Runtime, error) {
+	if !b.cfg.KubeConfig.IsKubernetesConnected {
+		return &runtime{
+			RuntimeInfo: b.runtimeInfo,
+			RuntimeContext: &runtimeContext{
+				cfg: b.cfg,
+			},
+			Manager: b.cm,
+		}, nil
+	}
 	if b.grpcServer == nil {
 		return nil, errors.Errorf("grpcServer has not been configured")
 	}
 	if b.certStorage == nil {
 		return nil, errors.Errorf("certStorage has not been configured")
-	}
-	if b.kubuClient == nil {
-		return nil, errors.Errorf("kubuClient has not been configured")
 	}
 	return &runtime{
 		RuntimeInfo: b.runtimeInfo,
@@ -99,19 +106,18 @@ func (b *Builder) Build() (Runtime, error) {
 			cfg:         b.cfg,
 			grpcServer:  b.grpcServer,
 			certStorage: b.certStorage,
-			kubuClient:  b.kubuClient,
 		},
 		Manager: b.cm,
 	}, nil
 }
 
-func (b *Builder) WithCertStorage(storage provider.Storage) *Builder {
-	b.certStorage = storage
+func (b *Builder) WithKubuClient(kubuClient client.KubuClient) *Builder {
+	b.kubuClient = kubuClient
 	return b
 }
 
-func (b *Builder) WithKubuClient(client provider.Client) *Builder {
-	b.kubuClient = client
+func (b *Builder) WithCertStorage(storage provider.Storage) *Builder {
+	b.certStorage = storage
 	return b
 }
 

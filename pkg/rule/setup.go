@@ -16,6 +16,12 @@
 package rule
 
 import (
+	informerclient "github.com/apache/dubbo-admin/pkg/rule/clientgen/clientset/versioned"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/util/homedir"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/apache/dubbo-admin/api/mesh"
@@ -38,8 +44,11 @@ import (
 func Setup(rt core_runtime.Runtime) error {
 	ruleServer := server.NewRuleServer(rt.Config())
 	ruleServer.CertStorage = rt.CertStorage()
-	ruleServer.KubeClient = rt.KubuClient()
+	ruleServer.CertClient = rt.CertStorage().GetCertClient()
 	ruleServer.Storage = storage.NewStorage()
+	if err := initInformerClient(rt, ruleServer); err != nil {
+		return errors.Wrap(err, "InformerClient Register failed")
+	}
 	if err := RegisterController(ruleServer); err != nil {
 		return errors.Wrap(err, "Controller Register failed")
 	}
@@ -52,9 +61,45 @@ func Setup(rt core_runtime.Runtime) error {
 	return nil
 }
 
+func initInformerClient(rt core_runtime.Runtime, server *server.RuleServer) error {
+	config, err := rest.InClusterConfig()
+	rt.Config().KubeConfig.InPodEnv = err == nil
+	kubeconfig := rt.Config().KubeConfig.KubeFileConfig
+	if err != nil {
+		logger.Sugar().Infof("Failed to load config from Pod. Will fall back to kube config file.")
+		if len(kubeconfig) <= 0 {
+			// Read kubeconfig from env
+			kubeconfig = os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
+			if len(kubeconfig) <= 0 {
+				// Read kubeconfig from home dir
+				if home := homedir.HomeDir(); home != "" {
+					kubeconfig = filepath.Join(home, ".kube", "config")
+				}
+			}
+		}
+		// use the current context in kubeconfig
+		logger.Sugar().Infof("Read kubeconfig from %s", kubeconfig)
+		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
+		if err != nil {
+			logger.Sugar().Warnf("Failed to load config from kube config file.")
+			return err
+		}
+	}
+	// set qps and burst for rest config
+	config.QPS = float32(rt.Config().KubeConfig.RestConfigQps)
+	config.Burst = rt.Config().KubeConfig.RestConfigBurst
+	informerClient, err := informerclient.NewForConfig(config)
+	if err != nil {
+		logger.Sugar().Warnf("Failed to create informerclient to kubernetes. " + err.Error())
+		return err
+	}
+	server.InformerClient = informerClient
+	return nil
+}
+
 func RegisterController(s *server.RuleServer) error {
 	logger.Sugar().Info("Init rule controller...")
-	informerFactory := informers.NewSharedInformerFactory(s.KubeClient.GetInformerClient(), time.Second*30)
+	informerFactory := informers.NewSharedInformerFactory(s.InformerClient, time.Second*30)
 	s.InformerFactory = informerFactory
 	authenticationHandler := authentication.NewHandler(s.Storage)
 	authorizationHandler := authorization.NewHandler(s.Storage)

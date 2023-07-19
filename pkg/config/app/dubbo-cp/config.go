@@ -100,6 +100,7 @@ var DefaultConfig = func() Config {
 			IsKubernetesConnected: false,
 			RestConfigQps:         50,
 			RestConfigBurst:       100,
+			KubeFileConfig:        "",
 		},
 	}
 }

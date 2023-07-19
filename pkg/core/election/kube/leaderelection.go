@@ -30,7 +30,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
 
-type LeaderElection struct {
+type KubuLeaderElection struct {
 	leader    int32
 	namespace string
 	name      string
@@ -45,13 +45,13 @@ type LeaderElection struct {
 }
 
 // Start will start leader election, calling all runFns when we become the leader.
-func (l *LeaderElection) Start(stop <-chan struct{}) {
+func (l *KubuLeaderElection) Start(stop <-chan struct{}) {
 	logger.Sugar().Info("starting Leader Elector")
 	for {
 		le, err := l.create()
 		if err != nil {
 			// This should never happen; errors are only from invalid input and the input is not user modifiable
-			panic("LeaderElection creation failed: " + err.Error())
+			panic("KubuLeaderElection creation failed: " + err.Error())
 		}
 		l.cycle.Inc()
 		ctx, cancel := context.WithCancel(context.Background())
@@ -74,7 +74,7 @@ func (l *LeaderElection) Start(stop <-chan struct{}) {
 	}
 }
 
-func (l *LeaderElection) create() (*leaderelection.LeaderElector, error) {
+func (l *KubuLeaderElection) create() (*leaderelection.LeaderElector, error) {
 	callbacks := leaderelection.LeaderCallbacks{
 		OnStartedLeading: func(ctx context.Context) {
 			l.setLeader(true)
@@ -119,15 +119,15 @@ func (l *LeaderElection) create() (*leaderelection.LeaderElector, error) {
 	})
 }
 
-func (p *LeaderElection) AddCallbacks(callbacks component.LeaderCallbacks) {
+func (p *KubuLeaderElection) AddCallbacks(callbacks component.LeaderCallbacks) {
 	p.callbacks = append(p.callbacks, callbacks)
 }
 
-func (p *LeaderElection) IsLeader() bool {
+func (p *KubuLeaderElection) IsLeader() bool {
 	return syncatomic.LoadInt32(&(p.leader)) == 1
 }
 
-func (p *LeaderElection) setLeader(leader bool) {
+func (p *KubuLeaderElection) setLeader(leader bool) {
 	var value int32 = 0
 	if leader {
 		value = 1
@@ -135,11 +135,11 @@ func (p *LeaderElection) setLeader(leader bool) {
 	syncatomic.StoreInt32(&p.leader, value)
 }
 
-func NewLeaderElection(namespace, name, electionID string, client kubernetes.Interface) *LeaderElection {
+func NewLeaderElection(namespace, name, electionID string, client kubernetes.Interface) *KubuLeaderElection {
 	if name == "" {
 		name = "unknown"
 	}
-	return &LeaderElection{
+	return &KubuLeaderElection{
 		namespace:  namespace,
 		name:       name,
 		electionID: electionID,
