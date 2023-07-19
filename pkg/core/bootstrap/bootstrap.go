@@ -76,14 +76,14 @@ func Bootstrap(appCtx context.Context, cfg *dubbo_cp.Config) (core_runtime.Runti
 }
 
 func initKubuClient(cfg *dubbo_cp.Config, builder *core_runtime.Builder) bool {
-	kubuClient := client.NewKubuClient()
+	kubuClient := client.NewKubeClient()
 	if !kubuClient.Init(cfg) {
 		logger.Sugar().Warnf("Failed to connect to Kubernetes cluster. Will ignore OpenID Connect check.")
 		cfg.KubeConfig.IsKubernetesConnected = false
 	} else {
 		cfg.KubeConfig.IsKubernetesConnected = true
 	}
-	builder.WithKubuClient(kubuClient)
+	builder.WithKubeClient(kubuClient)
 	return cfg.KubeConfig.IsKubernetesConnected
 }
 

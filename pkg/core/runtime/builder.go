@@ -111,8 +111,8 @@ func (b *Builder) Build() (Runtime, error) {
 	}, nil
 }
 
-func (b *Builder) WithKubuClient(kubuClient client.KubeClient) *Builder {
-	b.kubuClient = kubuClient
+func (b *Builder) WithKubeClient(kubeClient client.KubeClient) *Builder {
+	b.kubuClient = kubeClient
 	return b
 }
 
