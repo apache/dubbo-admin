@@ -26,7 +26,7 @@ func TestCopy(t *testing.T) {
 		Name: "test-policy",
 		Spec: &PolicySpec{
 			InterfaceName:    "test-interface",
-			ApplicationNames: []string{"test-aplication"},
+			ApplicationNames: []string{"test-application"},
 		},
 	}
 

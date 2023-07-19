@@ -17,6 +17,7 @@ package server
 
 import (
 	"fmt"
+	informerclient "github.com/apache/dubbo-admin/pkg/rule/clientgen/clientset/versioned"
 
 	"github.com/apache/dubbo-admin/api/mesh"
 	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
@@ -35,7 +36,8 @@ type RuleServer struct {
 
 	Options         *dubbo_cp.Config
 	CertStorage     provider.Storage
-	KubeClient      provider.Client
+	CertClient      provider.Client
+	InformerClient  *informerclient.Clientset
 	Storage         *storage.Storage
 	Controller      *crd.Controller
 	InformerFactory informFactory.SharedInformerFactory
@@ -71,7 +73,7 @@ func (s *RuleServer) Observe(stream mesh.RuleService_ObserveServer) error {
 		return fmt.Errorf("failed to get peer from context")
 	}
 
-	endpoint, err := endpoint.ExactEndpoint(stream.Context(), s.CertStorage, s.Options, s.KubeClient)
+	endpoint, err := endpoint.ExactEndpoint(stream.Context(), s.CertStorage, s.Options, s.CertClient)
 	if err != nil {
 		logger.Sugar().Errorf("failed to get endpoint from context: %v. RemoteAddr: %s", err, p.Addr)
 

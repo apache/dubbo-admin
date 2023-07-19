@@ -19,6 +19,8 @@ package bootstrap
 
 import (
 	"context"
+	"github.com/apache/dubbo-admin/pkg/core/election/universe"
+	"github.com/apache/dubbo-admin/pkg/core/kubeclient/client"
 
 	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
 	"github.com/apache/dubbo-admin/pkg/core/cert/provider"
@@ -35,16 +37,11 @@ func buildRuntime(appCtx context.Context, cfg *dubbo_cp.Config) (core_runtime.Ru
 		return nil, err
 	}
 
-	if err := initKubuClient(cfg, builder); err != nil {
-		return nil, err
-	}
+	kubeenv := true
 
-	if cfg.KubeConfig.IsKubernetesConnected == false {
-		rt, err := builder.Build()
-		if err != nil {
-			return nil, err
-		}
-		return rt, nil
+	if !initKubeClient(cfg, builder) {
+		// Non-k8s environment
+		kubeenv = false
 	}
 
 	if err := initCertStorage(cfg, builder); err != nil {
@@ -55,10 +52,14 @@ func buildRuntime(appCtx context.Context, cfg *dubbo_cp.Config) (core_runtime.Ru
 		return nil, err
 	}
 
-	builder.WithComponentManager(component.NewManager(kube.NewLeaderElection(builder.Config().KubeConfig.Namespace,
-		builder.Config().KubeConfig.ServiceName,
-		"dubbo-cp-lock",
-		builder.KubuClient().GetKubClient())))
+	if kubeenv == true {
+		builder.WithComponentManager(component.NewManager(kube.NewLeaderElection(builder.Config().KubeConfig.Namespace,
+			builder.Config().KubeConfig.ServiceName,
+			"dubbo-cp-lock",
+			builder.CertStorage().GetCertClient().GetKubClient())))
+	} else {
+		builder.WithComponentManager(component.NewManager(universe.NewLeaderElection()))
+	}
 	rt, err := builder.Build()
 	if err != nil {
 		return nil, err
@@ -74,20 +75,21 @@ func Bootstrap(appCtx context.Context, cfg *dubbo_cp.Config) (core_runtime.Runti
 	return runtime, nil
 }
 
-func initKubuClient(cfg *dubbo_cp.Config, builder *core_runtime.Builder) error {
-	client := provider.NewClient()
-	if !client.Init(cfg) {
+func initKubeClient(cfg *dubbo_cp.Config, builder *core_runtime.Builder) bool {
+	kubeClient := client.NewKubeClient()
+	if !kubeClient.Init(cfg) {
 		logger.Sugar().Warnf("Failed to connect to Kubernetes cluster. Will ignore OpenID Connect check.")
 		cfg.KubeConfig.IsKubernetesConnected = false
 	} else {
 		cfg.KubeConfig.IsKubernetesConnected = true
 	}
-	builder.WithKubuClient(client)
-	return nil
+	builder.WithKubeClient(kubeClient)
+	return cfg.KubeConfig.IsKubernetesConnected
 }
 
 func initCertStorage(cfg *dubbo_cp.Config, builder *core_runtime.Builder) error {
-	storage := provider.NewStorage(cfg, builder.KubuClient())
+	client := provider.NewClient(builder.KubeClient().GetKubernetesClientSet())
+	storage := provider.NewStorage(cfg, client)
 	loadRootCert()
 	loadAuthorityCert(storage, cfg, builder)
 
@@ -99,12 +101,12 @@ func initCertStorage(cfg *dubbo_cp.Config, builder *core_runtime.Builder) error 
 }
 
 func loadRootCert() {
-	// TODO
+	// TODO loadRootCert
 }
 
 func loadAuthorityCert(storage provider.Storage, cfg *dubbo_cp.Config, builder *core_runtime.Builder) {
 	if cfg.KubeConfig.IsKubernetesConnected {
-		certStr, priStr := builder.KubuClient().GetAuthorityCert(cfg.KubeConfig.Namespace)
+		certStr, priStr := storage.GetCertClient().GetAuthorityCert(cfg.KubeConfig.Namespace)
 		if certStr != "" && priStr != "" {
 			storage.GetAuthorityCert().Cert = provider.DecodeCert(certStr)
 			storage.GetAuthorityCert().CertPem = certStr
@@ -123,14 +125,14 @@ func refreshAuthorityCert(storage provider.Storage, cfg *dubbo_cp.Config) {
 
 		// TODO lock if multi cp-server
 		if storage.GetConfig().KubeConfig.IsKubernetesConnected {
-			storage.GetKubuClient().UpdateAuthorityCert(storage.GetAuthorityCert().CertPem,
+			storage.GetCertClient().UpdateAuthorityCert(storage.GetAuthorityCert().CertPem,
 				provider.EncodePrivateKey(storage.GetAuthorityCert().PrivateKey), storage.GetConfig().KubeConfig.Namespace)
 		}
 	}
 
 	if storage.GetConfig().KubeConfig.IsKubernetesConnected {
 		logger.Sugar().Info("Writing ca to config maps.")
-		if storage.GetKubuClient().UpdateAuthorityPublicKey(storage.GetAuthorityCert().CertPem) {
+		if storage.GetCertClient().UpdateAuthorityPublicKey(storage.GetAuthorityCert().CertPem) {
 			logger.Sugar().Info("Write ca to config maps success.")
 		} else {
 			logger.Sugar().Warnf("Write ca to config maps failed.")

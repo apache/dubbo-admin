@@ -36,6 +36,7 @@ kube-config:
   in-pod-env: false
   rest-config-qps: 50
   rest-config-burst: 100
+  kube-file-config: ""
 grpc-server:
   plain-server-port: 30060
   secure-server-port: 30062

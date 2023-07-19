@@ -55,7 +55,6 @@ func GetRootCmd(args []string) *cobra.Command {
 
 	// sub-commands
 	cmd.AddCommand(newRunCmdWithOpts(cmd2.DefaultRunCmdOpts))
-	cmd.AddCommand(newConsoleCmdWithOpts(cmd2.DefaultRunCmdOpts))
 	cmd.AddCommand(version.NewVersionCmd())
 
 	return cmd

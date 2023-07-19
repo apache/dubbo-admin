@@ -72,7 +72,6 @@ type RuntimeContext interface {
 	Config() *dubbo_cp.Config
 	GrpcServer() *server.GrpcServer
 	CertStorage() provider.Storage
-	KubuClient() provider.Client
 }
 
 type runtime struct {
@@ -89,11 +88,6 @@ type runtimeContext struct {
 	cfg         *dubbo_cp.Config
 	grpcServer  *server.GrpcServer
 	certStorage provider.Storage
-	kubuClient  provider.Client
-}
-
-func (rc *runtimeContext) KubuClient() provider.Client {
-	return rc.kubuClient
 }
 
 func (rc *runtimeContext) CertStorage() provider.Storage {

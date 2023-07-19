@@ -31,7 +31,7 @@ import (
 type storageImpl struct {
 	config *dubbo_cp.Config
 
-	kubuClient Client
+	certClient Client
 
 	mutex *sync.Mutex
 
@@ -57,13 +57,13 @@ type Storage interface {
 	GetTrustedCerts() []*Cert
 
 	GetConfig() *dubbo_cp.Config
-	GetKubuClient() Client
+	GetCertClient() Client
 
 	Start(stop <-chan struct{}) error
 	NeedLeaderElection() bool
 }
 
-func (s storageImpl) Start(stop <-chan struct{}) error {
+func (s *storageImpl) Start(stop <-chan struct{}) error {
 	go s.RefreshServerCert(stop)
 	go func(stop <-chan struct{}) {
 		interval := math.Min(math.Floor(float64(s.config.Security.CaValidity)/100), 10_000)
@@ -74,11 +74,11 @@ func (s storageImpl) Start(stop <-chan struct{}) error {
 				// TODO lock if multi cp-server
 				// TODO refresh signed cert
 
-				NewleaderElection().Election(&s, s.config, s.kubuClient.GetKubClient())
+				NewleaderElection().Election(s, s.config, s.certClient.GetKubClient())
 				if s.config.KubeConfig.IsKubernetesConnected {
-					s.kubuClient.UpdateAuthorityCert(s.GetAuthorityCert().CertPem, EncodePrivateKey(s.GetAuthorityCert().PrivateKey), s.config.KubeConfig.Namespace)
-					s.kubuClient.UpdateWebhookConfig(s.config, &s)
-					if s.kubuClient.UpdateAuthorityPublicKey(s.GetAuthorityCert().CertPem) {
+					s.certClient.UpdateAuthorityCert(s.GetAuthorityCert().CertPem, EncodePrivateKey(s.GetAuthorityCert().PrivateKey), s.config.KubeConfig.Namespace)
+					s.certClient.UpdateWebhookConfig(s.config, s)
+					if s.certClient.UpdateAuthorityPublicKey(s.GetAuthorityCert().CertPem) {
 						logger.Sugar().Infof("Write ca to config maps success.")
 					} else {
 						logger.Sugar().Warnf("Write ca to config maps failed.")
@@ -97,7 +97,7 @@ func (s storageImpl) Start(stop <-chan struct{}) error {
 	return nil
 }
 
-func (s storageImpl) NeedLeaderElection() bool {
+func (s *storageImpl) NeedLeaderElection() bool {
 	return false
 }
 
@@ -109,14 +109,14 @@ type Cert struct {
 	tlsCert *tls.Certificate
 }
 
-func NewStorage(options *dubbo_cp.Config, kubuClient Client) *storageImpl {
+func NewStorage(options *dubbo_cp.Config, certClient Client) *storageImpl {
 	return &storageImpl{
 		mutex: &sync.Mutex{},
 
 		authorityCert: &Cert{},
 		trustedCerts:  []*Cert{},
 		config:        options,
-		kubuClient:    kubuClient,
+		certClient:    certClient,
 	}
 }
 
@@ -243,6 +243,6 @@ func (s *storageImpl) GetConfig() *dubbo_cp.Config {
 	return s.config
 }
 
-func (s *storageImpl) GetKubuClient() Client {
-	return s.kubuClient
+func (s *storageImpl) GetCertClient() Client {
+	return s.certClient
 }

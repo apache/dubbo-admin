@@ -34,7 +34,7 @@ import (
 type AuthorityService struct {
 	mesh.UnimplementedAuthorityServiceServer
 	Options     *dubbo_cp.Config
-	KubuClient  cert.Client
+	CertClient  cert.Client
 	CertStorage cert.Storage
 
 	WebhookServer *webhook.Webhook
@@ -60,7 +60,7 @@ func (s *AuthorityService) Start(stop <-chan struct{}) error {
 				}
 			}
 		}()
-		s.KubuClient.UpdateWebhookConfig(s.Options, s.CertStorage)
+		s.CertClient.UpdateWebhookConfig(s.Options, s.CertStorage)
 		select {
 		case <-stop:
 			logger.Sugar().Info("stopping admin")
@@ -100,7 +100,7 @@ func (s *AuthorityService) CreateIdentity(
 	}
 
 	p, _ := peer.FromContext(c)
-	endpoint, err := endpoint.ExactEndpoint(c, s.CertStorage, s.Options, s.KubuClient)
+	endpoint, err := endpoint.ExactEndpoint(c, s.CertStorage, s.Options, s.CertClient)
 	if err != nil {
 		logger.Sugar().Warnf("Failed to exact endpoint from context: %v. RemoteAddr: %s", err, p.Addr.String())
 

@@ -15,25 +15,22 @@
  * limitations under the License.
  */
 
-package kube
+package universe
 
-type KubeConfig struct {
-	Namespace   string `yaml:"namespace"`
-	ServiceName string `yaml:"service-name"`
+import "github.com/apache/dubbo-admin/pkg/core/runtime/component"
 
-	InPodEnv              bool `yaml:"in-pod-env"`
-	IsKubernetesConnected bool `yaml:"is-kubernetes-connected"`
-	// Qps for rest config
-	RestConfigQps int `yaml:"rest-config-qps"`
-	// Burst for rest config
-	RestConfigBurst int `yaml:"rest-config-burst"`
-
-	KubeFileConfig string `yaml:"kube-file-config"`
+type UniverseLeaderElection struct {
+	// TODO Implement a leader election mechanism that does not depend on k8s
 }
 
-func (o *KubeConfig) Sanitize() {}
+func (l *UniverseLeaderElection) Start(stop <-chan struct{}) {}
 
-func (o *KubeConfig) Validate() error {
-	// TODO Validate options config
-	return nil
+func (l *UniverseLeaderElection) AddCallbacks(callbacks component.LeaderCallbacks) {}
+
+func (l *UniverseLeaderElection) IsLeader() bool {
+	return false
+}
+
+func NewLeaderElection() *UniverseLeaderElection {
+	return &UniverseLeaderElection{}
 }
