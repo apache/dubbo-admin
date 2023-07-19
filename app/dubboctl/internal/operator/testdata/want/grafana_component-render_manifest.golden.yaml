@@ -1,0 +1,1748 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: v1
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - access: proxy
+      editable: true
+      isDefault: true
+      jsonData:
+        timeInterval: 5s
+      name: Prometheus
+      orgId: 1
+      type: prometheus
+      url: http://prometheus:9090
+  grafana.ini: |
+    [analytics]
+    check_for_updates = true
+    [grafana_net]
+    url = https://grafana.net
+    [log]
+    mode = console
+    [paths]
+    data = /var/lib/grafana/
+    logs = /var/log/grafana
+    plugins = /var/lib/grafana/plugins
+    provisioning = /etc/grafana/provisioning
+    [server]
+    domain = ''
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 9.4.3
+    helm.sh/chart: grafana-6.52.4
+  name: grafana
+  namespace: dubbo-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 9.4.3
+    helm.sh/chart: grafana-6.52.4
+  name: grafana
+  namespace: dubbo-system
+spec:
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: grafana
+      app.kubernetes.io/name: grafana
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        checksum/config: 0c27d16dbbabad20d998414abcdfc495b6010b53d06681fa1027b0d09f2c21c8
+        checksum/dashboards-json-config: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/sc-dashboard-provider-config: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/secret: .*
+      labels:
+        app.kubernetes.io/instance: grafana
+        app.kubernetes.io/name: grafana
+    spec:
+      automountServiceAccountToken: true
+      containers:
+        - env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  key: admin-user
+                  name: grafana
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: admin-password
+                  name: grafana
+            - name: GF_PATHS_DATA
+              value: /var/lib/grafana/
+            - name: GF_PATHS_LOGS
+              value: /var/log/grafana
+            - name: GF_PATHS_PLUGINS
+              value: /var/lib/grafana/plugins
+            - name: GF_PATHS_PROVISIONING
+              value: /etc/grafana/provisioning
+          image: grafana/grafana:9.4.3
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            failureThreshold: 10
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 60
+            timeoutSeconds: 30
+          name: grafana
+          ports:
+            - containerPort: 3000
+              name: grafana
+              protocol: TCP
+            - containerPort: 9094
+              name: gossip-tcp
+              protocol: TCP
+            - containerPort: 9094
+              name: gossip-udp
+              protocol: UDP
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+          volumeMounts:
+            - mountPath: /etc/grafana/grafana.ini
+              name: config
+              subPath: grafana.ini
+            - mountPath: /var/lib/grafana
+              name: storage
+            - mountPath: /etc/grafana/provisioning/datasources/datasources.yaml
+              name: config
+              subPath: datasources.yaml
+      enableServiceLinks: true
+      securityContext:
+        fsGroup: 472
+        runAsGroup: 472
+        runAsUser: 472
+      serviceAccountName: grafana
+      volumes:
+        - configMap:
+            name: grafana
+          name: config
+        - emptyDir: {}
+          name: storage
+---
+apiVersion: v1
+data:
+  admin-password: .*
+  admin-user: YWRtaW4=
+  ldap-toml: ""
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 9.4.3
+    helm.sh/chart: grafana-6.52.4
+  name: grafana
+  namespace: dubbo-system
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 9.4.3
+    helm.sh/chart: grafana-6.52.4
+  name: grafana
+  namespace: dubbo-system
+spec:
+  ports:
+    - name: service
+      port: 3000
+      protocol: TCP
+      targetPort: 3000
+  selector:
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/name: grafana
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/version: 9.4.3
+    helm.sh/chart: grafana-6.52.4
+  name: grafana
+  namespace: dubbo-system
+---
+apiVersion: v1
+data:
+  external-dashboard.json: "{\r\n  \"annotations\": {\r\n    \"list\": [\r\n      {\r\n
+    \       \"builtIn\": 1,\r\n        \"datasource\": {\r\n          \"type\": \"datasource\",\r\n
+    \         \"uid\": \"grafana\"\r\n        },\r\n        \"enable\": true,\r\n
+    \       \"hide\": true,\r\n        \"iconColor\": \"rgba(0, 211, 255, 1)\",\r\n
+    \       \"name\": \"Annotations & Alerts\",\r\n        \"target\": {\r\n          \"limit\":
+    100,\r\n          \"matchAny\": false,\r\n          \"tags\": [],\r\n          \"type\":
+    \"dashboard\"\r\n        },\r\n        \"type\": \"dashboard\"\r\n      }\r\n
+    \   ]\r\n  },\r\n  \"editable\": true,\r\n  \"fiscalYearStartMonth\": 0,\r\n  \"graphTooltip\":
+    0,\r\n  \"id\": 9,\r\n  \"links\": [\r\n    {\r\n      \"asDropdown\": false,\r\n
+    \     \"icon\": \"external link\",\r\n      \"includeVars\": false,\r\n      \"keepTime\":
+    false,\r\n      \"tags\": [],\r\n      \"targetBlank\": false,\r\n      \"title\":
+    \"New link\",\r\n      \"tooltip\": \"\",\r\n      \"type\": \"dashboards\",\r\n
+    \     \"url\": \"\"\r\n    }\r\n  ],\r\n  \"liveNow\": false,\r\n  \"panels\":
+    [\r\n    {\r\n      \"collapsed\": true,\r\n      \"gridPos\": {\r\n        \"h\":
+    1,\r\n        \"w\": 24,\r\n        \"x\": 0,\r\n        \"y\": 0\r\n      },\r\n
+    \     \"id\": 57,\r\n      \"panels\": [\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"description\": \"application_name\",\r\n          \"gridPos\":
+    {\r\n            \"h\": 3,\r\n            \"w\": 24,\r\n            \"x\": 0,\r\n
+    \           \"y\": 17\r\n          },\r\n          \"id\": 42,\r\n          \"options\":
+    {\r\n            \"code\": {\r\n              \"language\": \"html\",\r\n              \"showLineNumbers\":
+    false,\r\n              \"showMiniMap\": false\r\n            },\r\n            \"content\":
+    \"<div style=\\\"text-align:center;font-size:30px\\\">${application_name}</div>\",\r\n
+    \           \"mode\": \"html\"\r\n          },\r\n          \"pluginVersion\":
+    \"9.3.2\",\r\n          \"targets\": [\r\n            {\r\n              \"datasource\":
+    {\r\n                \"type\": \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n
+    \             },\r\n              \"editorMode\": \"builder\",\r\n              \"expr\":
+    \"qps{application_name=\\\"$application_name\\\"}\",\r\n              \"legendFormat\":
+    \"__auto\",\r\n              \"range\": true,\r\n              \"refId\": \"A\"\r\n
+    \           }\r\n          ],\r\n          \"title\": \"application_name\",\r\n
+    \         \"type\": \"text\"\r\n        },\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"fieldConfig\": {\r\n            \"defaults\": {\r\n
+    \             \"color\": {\r\n                \"mode\": \"thresholds\"\r\n              },\r\n
+    \             \"mappings\": [],\r\n              \"thresholds\": {\r\n                \"mode\":
+    \"absolute\",\r\n                \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  }\r\n                ]\r\n
+    \             },\r\n              \"unit\": \"percentunit\"\r\n            },\r\n
+    \           \"overrides\": []\r\n          },\r\n          \"gridPos\": {\r\n
+    \           \"h\": 5,\r\n            \"w\": 4,\r\n            \"x\": 0,\r\n            \"y\":
+    20\r\n          },\r\n          \"id\": 47,\r\n          \"options\": {\r\n            \"colorMode\":
+    \"value\",\r\n            \"graphMode\": \"area\",\r\n            \"justifyMode\":
+    \"auto\",\r\n            \"orientation\": \"auto\",\r\n            \"reduceOptions\":
+    {\r\n              \"calcs\": [\r\n                \"lastNotNull\"\r\n              ],\r\n
+    \             \"fields\": \"\",\r\n              \"values\": false\r\n            },\r\n
+    \           \"textMode\": \"auto\"\r\n          },\r\n          \"pluginVersion\":
+    \"9.3.2\",\r\n          \"targets\": [\r\n            {\r\n              \"datasource\":
+    {\r\n                \"type\": \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n
+    \             },\r\n              \"editorMode\": \"code\",\r\n              \"expr\":
+    \"sum(dubbo_provider_requests_succeed_total{application_name=\\\"$application_name\\\"})
+    / sum(dubbo_provider_requests_total{application_name=\\\"$application_name\\\"})\",\r\n
+    \             \"legendFormat\": \"__auto\",\r\n              \"range\": true,\r\n
+    \             \"refId\": \"A\"\r\n            }\r\n          ],\r\n          \"title\":
+    \"provider_success_rate\",\r\n          \"type\": \"stat\"\r\n        },\r\n        {\r\n
+    \         \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n            \"uid\":
+    \"U_7pLbpnk\"\r\n          },\r\n          \"fieldConfig\": {\r\n            \"defaults\":
+    {\r\n              \"color\": {\r\n                \"mode\": \"thresholds\"\r\n
+    \             },\r\n              \"mappings\": [],\r\n              \"thresholds\":
+    {\r\n                \"mode\": \"absolute\",\r\n                \"steps\": [\r\n
+    \                 {\r\n                    \"color\": \"green\",\r\n                    \"value\":
+    null\r\n                  },\r\n                  {\r\n                    \"color\":
+    \"red\",\r\n                    \"value\": 0\r\n                  }\r\n                ]\r\n
+    \             },\r\n              \"unit\": \"percentunit\"\r\n            },\r\n
+    \           \"overrides\": []\r\n          },\r\n          \"gridPos\": {\r\n
+    \           \"h\": 5,\r\n            \"w\": 4,\r\n            \"x\": 4,\r\n            \"y\":
+    20\r\n          },\r\n          \"id\": 53,\r\n          \"options\": {\r\n            \"colorMode\":
+    \"value\",\r\n            \"graphMode\": \"area\",\r\n            \"justifyMode\":
+    \"auto\",\r\n            \"orientation\": \"auto\",\r\n            \"reduceOptions\":
+    {\r\n              \"calcs\": [\r\n                \"lastNotNull\"\r\n              ],\r\n
+    \             \"fields\": \"\",\r\n              \"values\": false\r\n            },\r\n
+    \           \"textMode\": \"auto\"\r\n          },\r\n          \"pluginVersion\":
+    \"9.3.2\",\r\n          \"targets\": [\r\n            {\r\n              \"datasource\":
+    {\r\n                \"type\": \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n
+    \             },\r\n              \"editorMode\": \"code\",\r\n              \"expr\":
+    \"sum(dubbo_provider_requests_failed_total{application_name=\\\"$application_name\\\"})
+    OR on() vector(0)  / sum(dubbo_provider_requests_total{application_name=\\\"$application_name\\\"})\",\r\n
+    \             \"legendFormat\": \"__auto\",\r\n              \"range\": true,\r\n
+    \             \"refId\": \"A\"\r\n            }\r\n          ],\r\n          \"title\":
+    \"provider_failed_rate\",\r\n          \"type\": \"stat\"\r\n        },\r\n        {\r\n
+    \         \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n            \"uid\":
+    \"U_7pLbpnk\"\r\n          },\r\n          \"fieldConfig\": {\r\n            \"defaults\":
+    {\r\n              \"color\": {\r\n                \"fixedColor\": \"red\",\r\n
+    \               \"mode\": \"fixed\"\r\n              },\r\n              \"mappings\":
+    [],\r\n              \"thresholds\": {\r\n                \"mode\": \"absolute\",\r\n
+    \               \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  }\r\n                ]\r\n
+    \             }\r\n            },\r\n            \"overrides\": []\r\n          },\r\n
+    \         \"gridPos\": {\r\n            \"h\": 5,\r\n            \"w\": 4,\r\n
+    \           \"x\": 8,\r\n            \"y\": 20\r\n          },\r\n          \"id\":
+    48,\r\n          \"options\": {\r\n            \"colorMode\": \"value\",\r\n            \"graphMode\":
+    \"area\",\r\n            \"justifyMode\": \"auto\",\r\n            \"orientation\":
+    \"auto\",\r\n            \"reduceOptions\": {\r\n              \"calcs\": [\r\n
+    \               \"lastNotNull\"\r\n              ],\r\n              \"fields\":
+    \"\",\r\n              \"values\": false\r\n            },\r\n            \"text\":
+    {},\r\n            \"textMode\": \"auto\"\r\n          },\r\n          \"pluginVersion\":
+    \"9.3.2\",\r\n          \"targets\": [\r\n            {\r\n              \"datasource\":
+    {\r\n                \"type\": \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n
+    \             },\r\n              \"editorMode\": \"code\",\r\n              \"expr\":
+    \"sum(dubbo_provider_requests_failed_total{application_name=\\\"$application_name\\\"})
+    OR on() vector(0)\",\r\n              \"legendFormat\": \"__auto\",\r\n              \"range\":
+    true,\r\n              \"refId\": \"A\"\r\n            }\r\n          ],\r\n          \"title\":
+    \"provider_error_total\",\r\n          \"type\": \"stat\"\r\n        },\r\n        {\r\n
+    \         \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n            \"uid\":
+    \"U_7pLbpnk\"\r\n          },\r\n          \"fieldConfig\": {\r\n            \"defaults\":
+    {\r\n              \"color\": {\r\n                \"fixedColor\": \"red\",\r\n
+    \               \"mode\": \"fixed\"\r\n              },\r\n              \"mappings\":
+    [],\r\n              \"thresholds\": {\r\n                \"mode\": \"absolute\",\r\n
+    \               \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  }\r\n                ]\r\n
+    \             }\r\n            },\r\n            \"overrides\": []\r\n          },\r\n
+    \         \"gridPos\": {\r\n            \"h\": 5,\r\n            \"w\": 4,\r\n
+    \           \"x\": 12,\r\n            \"y\": 20\r\n          },\r\n          \"id\":
+    51,\r\n          \"options\": {\r\n            \"colorMode\": \"value\",\r\n            \"graphMode\":
+    \"area\",\r\n            \"justifyMode\": \"auto\",\r\n            \"orientation\":
+    \"auto\",\r\n            \"reduceOptions\": {\r\n              \"calcs\": [\r\n
+    \               \"lastNotNull\"\r\n              ],\r\n              \"fields\":
+    \"\",\r\n              \"values\": false\r\n            },\r\n            \"text\":
+    {},\r\n            \"textMode\": \"auto\"\r\n          },\r\n          \"pluginVersion\":
+    \"9.3.2\",\r\n          \"targets\": [\r\n            {\r\n              \"datasource\":
+    {\r\n                \"type\": \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n
+    \             },\r\n              \"editorMode\": \"code\",\r\n              \"expr\":
+    \"sum(dubbo_provider_requests_timeout_total{application_name=\\\"$application_name\\\"})
+    OR on() vector(0)\",\r\n              \"legendFormat\": \"__auto\",\r\n              \"range\":
+    true,\r\n              \"refId\": \"A\"\r\n            }\r\n          ],\r\n          \"title\":
+    \"timeout_total\",\r\n          \"type\": \"stat\"\r\n        },\r\n        {\r\n
+    \         \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n            \"uid\":
+    \"U_7pLbpnk\"\r\n          },\r\n          \"fieldConfig\": {\r\n            \"defaults\":
+    {\r\n              \"color\": {\r\n                \"fixedColor\": \"red\",\r\n
+    \               \"mode\": \"fixed\"\r\n              },\r\n              \"mappings\":
+    [],\r\n              \"thresholds\": {\r\n                \"mode\": \"absolute\",\r\n
+    \               \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  }\r\n                ]\r\n
+    \             }\r\n            },\r\n            \"overrides\": []\r\n          },\r\n
+    \         \"gridPos\": {\r\n            \"h\": 5,\r\n            \"w\": 4,\r\n
+    \           \"x\": 16,\r\n            \"y\": 20\r\n          },\r\n          \"id\":
+    50,\r\n          \"options\": {\r\n            \"colorMode\": \"value\",\r\n            \"graphMode\":
+    \"area\",\r\n            \"justifyMode\": \"auto\",\r\n            \"orientation\":
+    \"auto\",\r\n            \"reduceOptions\": {\r\n              \"calcs\": [\r\n
+    \               \"lastNotNull\"\r\n              ],\r\n              \"fields\":
+    \"\",\r\n              \"values\": false\r\n            },\r\n            \"text\":
+    {},\r\n            \"textMode\": \"auto\"\r\n          },\r\n          \"pluginVersion\":
+    \"9.3.2\",\r\n          \"targets\": [\r\n            {\r\n              \"datasource\":
+    {\r\n                \"type\": \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n
+    \             },\r\n              \"editorMode\": \"code\",\r\n              \"expr\":
+    \"sum(dubbo_provider_requests_limit_total{application_name=\\\"$application_name\\\"})
+    OR on() vector(0)\",\r\n              \"legendFormat\": \"__auto\",\r\n              \"range\":
+    true,\r\n              \"refId\": \"A\"\r\n            }\r\n          ],\r\n          \"title\":
+    \"limit_total\",\r\n          \"type\": \"stat\"\r\n        },\r\n        {\r\n
+    \         \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n            \"uid\":
+    \"U_7pLbpnk\"\r\n          },\r\n          \"fieldConfig\": {\r\n            \"defaults\":
+    {\r\n              \"color\": {\r\n                \"fixedColor\": \"red\",\r\n
+    \               \"mode\": \"fixed\"\r\n              },\r\n              \"mappings\":
+    [],\r\n              \"thresholds\": {\r\n                \"mode\": \"absolute\",\r\n
+    \               \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  }\r\n                ]\r\n
+    \             }\r\n            },\r\n            \"overrides\": []\r\n          },\r\n
+    \         \"gridPos\": {\r\n            \"h\": 5,\r\n            \"w\": 4,\r\n
+    \           \"x\": 20,\r\n            \"y\": 20\r\n          },\r\n          \"id\":
+    52,\r\n          \"options\": {\r\n            \"colorMode\": \"value\",\r\n            \"graphMode\":
+    \"area\",\r\n            \"justifyMode\": \"auto\",\r\n            \"orientation\":
+    \"auto\",\r\n            \"reduceOptions\": {\r\n              \"calcs\": [\r\n
+    \               \"lastNotNull\"\r\n              ],\r\n              \"fields\":
+    \"\",\r\n              \"values\": false\r\n            },\r\n            \"text\":
+    {},\r\n            \"textMode\": \"auto\"\r\n          },\r\n          \"pluginVersion\":
+    \"9.3.2\",\r\n          \"targets\": [\r\n            {\r\n              \"datasource\":
+    {\r\n                \"type\": \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n
+    \             },\r\n              \"editorMode\": \"code\",\r\n              \"expr\":
+    \"sum(dubbo_provider_requests_unknown_total{application_name=\\\"$application_name\\\"})OR
+    on() vector(0)\",\r\n              \"legendFormat\": \"__auto\",\r\n              \"range\":
+    true,\r\n              \"refId\": \"A\"\r\n            }\r\n          ],\r\n          \"title\":
+    \"unknown_total\",\r\n          \"type\": \"stat\"\r\n        },\r\n        {\r\n
+    \         \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n            \"uid\":
+    \"U_7pLbpnk\"\r\n          },\r\n          \"fieldConfig\": {\r\n            \"defaults\":
+    {\r\n              \"color\": {\r\n                \"mode\": \"thresholds\"\r\n
+    \             },\r\n              \"mappings\": [],\r\n              \"thresholds\":
+    {\r\n                \"mode\": \"absolute\",\r\n                \"steps\": [\r\n
+    \                 {\r\n                    \"color\": \"green\",\r\n                    \"value\":
+    null\r\n                  }\r\n                ]\r\n              },\r\n              \"unit\":
+    \"s\"\r\n            },\r\n            \"overrides\": []\r\n          },\r\n          \"gridPos\":
+    {\r\n            \"h\": 6,\r\n            \"w\": 12,\r\n            \"x\": 0,\r\n
+    \           \"y\": 25\r\n          },\r\n          \"id\": 54,\r\n          \"options\":
+    {\r\n            \"colorMode\": \"value\",\r\n            \"graphMode\": \"area\",\r\n
+    \           \"justifyMode\": \"auto\",\r\n            \"orientation\": \"auto\",\r\n
+    \           \"reduceOptions\": {\r\n              \"calcs\": [\r\n                \"lastNotNull\"\r\n
+    \             ],\r\n              \"fields\": \"\",\r\n              \"values\":
+    false\r\n            },\r\n            \"textMode\": \"auto\"\r\n          },\r\n
+    \         \"pluginVersion\": \"9.3.2\",\r\n          \"targets\": [\r\n            {\r\n
+    \             \"datasource\": {\r\n                \"type\": \"prometheus\",\r\n
+    \               \"uid\": \"U_7pLbpnk\"\r\n              },\r\n              \"editorMode\":
+    \"code\",\r\n              \"expr\": \"max(dubbo_provider_rt_seconds_max{application_name=\\\"$application_name\\\"})\",\r\n
+    \             \"legendFormat\": \"__auto\",\r\n              \"range\": true,\r\n
+    \             \"refId\": \"A\"\r\n            }\r\n          ],\r\n          \"title\":
+    \"rt_max\",\r\n          \"type\": \"stat\"\r\n        },\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"fieldConfig\": {\r\n            \"defaults\": {\r\n
+    \             \"color\": {\r\n                \"mode\": \"thresholds\"\r\n              },\r\n
+    \             \"mappings\": [],\r\n              \"thresholds\": {\r\n                \"mode\":
+    \"absolute\",\r\n                \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  }\r\n                ]\r\n
+    \             },\r\n              \"unit\": \"s\"\r\n            },\r\n            \"overrides\":
+    []\r\n          },\r\n          \"gridPos\": {\r\n            \"h\": 6,\r\n            \"w\":
+    12,\r\n            \"x\": 12,\r\n            \"y\": 25\r\n          },\r\n          \"id\":
+    55,\r\n          \"options\": {\r\n            \"colorMode\": \"value\",\r\n            \"graphMode\":
+    \"area\",\r\n            \"justifyMode\": \"auto\",\r\n            \"orientation\":
+    \"auto\",\r\n            \"reduceOptions\": {\r\n              \"calcs\": [\r\n
+    \               \"lastNotNull\"\r\n              ],\r\n              \"fields\":
+    \"\",\r\n              \"values\": false\r\n            },\r\n            \"textMode\":
+    \"auto\"\r\n          },\r\n          \"pluginVersion\": \"9.3.2\",\r\n          \"targets\":
+    [\r\n            {\r\n              \"datasource\": {\r\n                \"type\":
+    \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n              },\r\n
+    \             \"editorMode\": \"code\",\r\n              \"expr\": \"min(dubbo_provider_rt_seconds_min{application_name=\\\"$application_name\\\"})\",\r\n
+    \             \"legendFormat\": \"__auto\",\r\n              \"range\": true,\r\n
+    \             \"refId\": \"A\"\r\n            }\r\n          ],\r\n          \"title\":
+    \"rt_min\",\r\n          \"type\": \"stat\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"Dubbo Stat\",\r\n      \"type\": \"row\"\r\n    },\r\n    {\r\n      \"collapsed\":
+    false,\r\n      \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n        \"uid\":
+    \"U_7pLbpnk\"\r\n      },\r\n      \"gridPos\": {\r\n        \"h\": 1,\r\n        \"w\":
+    24,\r\n        \"x\": 0,\r\n        \"y\": 1\r\n      },\r\n      \"id\": 10,\r\n
+    \     \"panels\": [],\r\n      \"targets\": [\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"Provider Request\",\r\n      \"type\": \"row\"\r\n    },\r\n    {\r\n      \"datasource\":
+    {\r\n        \"type\": \"prometheus\",\r\n        \"uid\": \"U_7pLbpnk\"\r\n      },\r\n
+    \     \"description\": \"\",\r\n      \"fieldConfig\": {\r\n        \"defaults\":
+    {\r\n          \"color\": {\r\n            \"mode\": \"palette-classic\"\r\n          },\r\n
+    \         \"custom\": {\r\n            \"axisCenteredZero\": false,\r\n            \"axisColorMode\":
+    \"text\",\r\n            \"axisLabel\": \"\",\r\n            \"axisPlacement\":
+    \"auto\",\r\n            \"axisSoftMin\": 1,\r\n            \"axisWidth\": 0,\r\n
+    \           \"barAlignment\": 0,\r\n            \"drawStyle\": \"line\",\r\n            \"fillOpacity\":
+    15,\r\n            \"gradientMode\": \"opacity\",\r\n            \"hideFrom\":
+    {\r\n              \"legend\": false,\r\n              \"tooltip\": false,\r\n
+    \             \"viz\": false\r\n            },\r\n            \"lineInterpolation\":
+    \"linear\",\r\n            \"lineStyle\": {\r\n              \"fill\": \"solid\"\r\n
+    \           },\r\n            \"lineWidth\": 1,\r\n            \"pointSize\":
+    4,\r\n            \"scaleDistribution\": {\r\n              \"type\": \"linear\"\r\n
+    \           },\r\n            \"showPoints\": \"auto\",\r\n            \"spanNulls\":
+    false,\r\n            \"stacking\": {\r\n              \"group\": \"A\",\r\n              \"mode\":
+    \"none\"\r\n            },\r\n            \"thresholdsStyle\": {\r\n              \"mode\":
+    \"off\"\r\n            }\r\n          },\r\n          \"mappings\": [],\r\n          \"thresholds\":
+    {\r\n            \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"red\",\r\n                \"value\":
+    80\r\n              }\r\n            ]\r\n          }\r\n        },\r\n        \"overrides\":
+    []\r\n      },\r\n      \"gridPos\": {\r\n        \"h\": 7,\r\n        \"w\":
+    24,\r\n        \"x\": 0,\r\n        \"y\": 2\r\n      },\r\n      \"id\": 18,\r\n
+    \     \"options\": {\r\n        \"legend\": {\r\n          \"calcs\": [\r\n            \"min\",\r\n
+    \           \"max\"\r\n          ],\r\n          \"displayMode\": \"table\",\r\n
+    \         \"placement\": \"bottom\",\r\n          \"showLegend\": true\r\n        },\r\n
+    \       \"tooltip\": {\r\n          \"mode\": \"single\",\r\n          \"sort\":
+    \"none\"\r\n        }\r\n      },\r\n      \"pluginVersion\": \"8.2.5\",\r\n      \"targets\":
+    [\r\n        {\r\n          \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n
+    \           \"uid\": \"U_7pLbpnk\"\r\n          },\r\n          \"editorMode\":
+    \"code\",\r\n          \"exemplar\": false,\r\n          \"expr\": \"dubbo_provider_qps_seconds{application_name=\\\"$application_name\\\"}\",\r\n
+    \         \"instant\": false,\r\n          \"interval\": \"\",\r\n          \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n          \"range\": true,\r\n          \"refId\":
+    \"A\"\r\n        }\r\n      ],\r\n      \"title\": \"provider_qps\",\r\n      \"type\":
+    \"timeseries\"\r\n    },\r\n    {\r\n      \"datasource\": {\r\n        \"type\":
+    \"prometheus\",\r\n        \"uid\": \"U_7pLbpnk\"\r\n      },\r\n      \"description\":
+    \"\",\r\n      \"fieldConfig\": {\r\n        \"defaults\": {\r\n          \"color\":
+    {\r\n            \"mode\": \"palette-classic\"\r\n          },\r\n          \"custom\":
+    {\r\n            \"axisCenteredZero\": false,\r\n            \"axisColorMode\":
+    \"text\",\r\n            \"axisLabel\": \"\",\r\n            \"axisPlacement\":
+    \"auto\",\r\n            \"barAlignment\": 0,\r\n            \"drawStyle\": \"line\",\r\n
+    \           \"fillOpacity\": 15,\r\n            \"gradientMode\": \"none\",\r\n
+    \           \"hideFrom\": {\r\n              \"legend\": false,\r\n              \"tooltip\":
+    false,\r\n              \"viz\": false\r\n            },\r\n            \"lineInterpolation\":
+    \"linear\",\r\n            \"lineWidth\": 1,\r\n            \"pointSize\": 5,\r\n
+    \           \"scaleDistribution\": {\r\n              \"type\": \"linear\"\r\n
+    \           },\r\n            \"showPoints\": \"auto\",\r\n            \"spanNulls\":
+    false,\r\n            \"stacking\": {\r\n              \"group\": \"A\",\r\n              \"mode\":
+    \"none\"\r\n            },\r\n            \"thresholdsStyle\": {\r\n              \"mode\":
+    \"off\"\r\n            }\r\n          },\r\n          \"decimals\": 0,\r\n          \"mappings\":
+    [],\r\n          \"thresholds\": {\r\n            \"mode\": \"absolute\",\r\n
+    \           \"steps\": [\r\n              {\r\n                \"color\": \"green\",\r\n
+    \               \"value\": null\r\n              },\r\n              {\r\n                \"color\":
+    \"red\",\r\n                \"value\": 80\r\n              }\r\n            ]\r\n
+    \         },\r\n          \"unit\": \"none\"\r\n        },\r\n        \"overrides\":
+    []\r\n      },\r\n      \"gridPos\": {\r\n        \"h\": 6,\r\n        \"w\":
+    24,\r\n        \"x\": 0,\r\n        \"y\": 9\r\n      },\r\n      \"id\": 36,\r\n
+    \     \"options\": {\r\n        \"legend\": {\r\n          \"calcs\": [],\r\n
+    \         \"displayMode\": \"list\",\r\n          \"placement\": \"bottom\",\r\n
+    \         \"showLegend\": true\r\n        },\r\n        \"tooltip\": {\r\n          \"mode\":
+    \"single\",\r\n          \"sort\": \"none\"\r\n        }\r\n      },\r\n      \"pluginVersion\":
+    \"8.2.5\",\r\n      \"targets\": [\r\n        {\r\n          \"datasource\": {\r\n
+    \           \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"editorMode\": \"code\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"increase(dubbo_provider_requests_total{application_name=\\\"$application_name\\\"}[2m])\",\r\n
+    \         \"instant\": false,\r\n          \"interval\": \"\",\r\n          \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n          \"range\": true,\r\n          \"refId\":
+    \"A\"\r\n        }\r\n      ],\r\n      \"title\": \"provider_requests_total(2m)\",\r\n
+    \     \"type\": \"timeseries\"\r\n    },\r\n    {\r\n      \"datasource\": {\r\n
+    \       \"type\": \"prometheus\",\r\n        \"uid\": \"U_7pLbpnk\"\r\n      },\r\n
+    \     \"description\": \"\",\r\n      \"fieldConfig\": {\r\n        \"defaults\":
+    {\r\n          \"color\": {\r\n            \"mode\": \"palette-classic\"\r\n          },\r\n
+    \         \"custom\": {\r\n            \"axisCenteredZero\": false,\r\n            \"axisColorMode\":
+    \"text\",\r\n            \"axisLabel\": \"\",\r\n            \"axisPlacement\":
+    \"auto\",\r\n            \"barAlignment\": 0,\r\n            \"drawStyle\": \"line\",\r\n
+    \           \"fillOpacity\": 19,\r\n            \"gradientMode\": \"none\",\r\n
+    \           \"hideFrom\": {\r\n              \"legend\": false,\r\n              \"tooltip\":
+    false,\r\n              \"viz\": false\r\n            },\r\n            \"lineInterpolation\":
+    \"linear\",\r\n            \"lineWidth\": 1,\r\n            \"pointSize\": 5,\r\n
+    \           \"scaleDistribution\": {\r\n              \"type\": \"linear\"\r\n
+    \           },\r\n            \"showPoints\": \"auto\",\r\n            \"spanNulls\":
+    false,\r\n            \"stacking\": {\r\n              \"group\": \"A\",\r\n              \"mode\":
+    \"none\"\r\n            },\r\n            \"thresholdsStyle\": {\r\n              \"mode\":
+    \"off\"\r\n            }\r\n          },\r\n          \"mappings\": [],\r\n          \"thresholds\":
+    {\r\n            \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"red\",\r\n                \"value\":
+    80\r\n              }\r\n            ]\r\n          }\r\n        },\r\n        \"overrides\":
+    []\r\n      },\r\n      \"gridPos\": {\r\n        \"h\": 8,\r\n        \"w\":
+    12,\r\n        \"x\": 0,\r\n        \"y\": 15\r\n      },\r\n      \"id\": 32,\r\n
+    \     \"options\": {\r\n        \"legend\": {\r\n          \"calcs\": [],\r\n
+    \         \"displayMode\": \"table\",\r\n          \"placement\": \"bottom\",\r\n
+    \         \"showLegend\": true\r\n        },\r\n        \"tooltip\": {\r\n          \"mode\":
+    \"single\",\r\n          \"sort\": \"none\"\r\n        }\r\n      },\r\n      \"pluginVersion\":
+    \"8.2.5\",\r\n      \"targets\": [\r\n        {\r\n          \"datasource\": {\r\n
+    \           \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"editorMode\": \"builder\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"dubbo_provider_requests_processing{application_name=\\\"$application_name\\\"}\",\r\n
+    \         \"format\": \"time_series\",\r\n          \"instant\": false,\r\n          \"interval\":
+    \"\",\r\n          \"legendFormat\": \"{{interface}}.{{method}}\",\r\n          \"range\":
+    true,\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"provider_requests_processing\",\r\n      \"type\": \"timeseries\"\r\n    },\r\n
+    \   {\r\n      \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n        \"uid\":
+    \"U_7pLbpnk\"\r\n      },\r\n      \"description\": \"\",\r\n      \"fieldConfig\":
+    {\r\n        \"defaults\": {\r\n          \"color\": {\r\n            \"mode\":
+    \"palette-classic\"\r\n          },\r\n          \"custom\": {\r\n            \"axisCenteredZero\":
+    false,\r\n            \"axisColorMode\": \"text\",\r\n            \"axisLabel\":
+    \"\",\r\n            \"axisPlacement\": \"auto\",\r\n            \"barAlignment\":
+    0,\r\n            \"drawStyle\": \"line\",\r\n            \"fillOpacity\": 18,\r\n
+    \           \"gradientMode\": \"none\",\r\n            \"hideFrom\": {\r\n              \"legend\":
+    false,\r\n              \"tooltip\": false,\r\n              \"viz\": false\r\n
+    \           },\r\n            \"lineInterpolation\": \"linear\",\r\n            \"lineWidth\":
+    1,\r\n            \"pointSize\": 5,\r\n            \"scaleDistribution\": {\r\n
+    \             \"type\": \"linear\"\r\n            },\r\n            \"showPoints\":
+    \"auto\",\r\n            \"spanNulls\": false,\r\n            \"stacking\": {\r\n
+    \             \"group\": \"A\",\r\n              \"mode\": \"none\"\r\n            },\r\n
+    \           \"thresholdsStyle\": {\r\n              \"mode\": \"off\"\r\n            }\r\n
+    \         },\r\n          \"decimals\": 0,\r\n          \"mappings\": [],\r\n
+    \         \"thresholds\": {\r\n            \"mode\": \"absolute\",\r\n            \"steps\":
+    [\r\n              {\r\n                \"color\": \"green\",\r\n                \"value\":
+    null\r\n              },\r\n              {\r\n                \"color\": \"red\",\r\n
+    \               \"value\": 80\r\n              }\r\n            ]\r\n          },\r\n
+    \         \"unit\": \"none\"\r\n        },\r\n        \"overrides\": []\r\n      },\r\n
+    \     \"gridPos\": {\r\n        \"h\": 8,\r\n        \"w\": 12,\r\n        \"x\":
+    12,\r\n        \"y\": 15\r\n      },\r\n      \"id\": 33,\r\n      \"options\":
+    {\r\n        \"legend\": {\r\n          \"calcs\": [],\r\n          \"displayMode\":
+    \"table\",\r\n          \"placement\": \"bottom\",\r\n          \"showLegend\":
+    true\r\n        },\r\n        \"tooltip\": {\r\n          \"mode\": \"single\",\r\n
+    \         \"sort\": \"none\"\r\n        }\r\n      },\r\n      \"pluginVersion\":
+    \"8.2.5\",\r\n      \"targets\": [\r\n        {\r\n          \"datasource\": {\r\n
+    \           \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"editorMode\": \"code\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"increase(dubbo_provider_requests_succeed_total{application_name=\\\"$application_name\\\"}[2m])\",\r\n
+    \         \"format\": \"time_series\",\r\n          \"instant\": false,\r\n          \"interval\":
+    \"\",\r\n          \"legendFormat\": \"{{interface}}.{{method}}\",\r\n          \"range\":
+    true,\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"provider_requests_succeed(2m)\",\r\n      \"type\": \"timeseries\"\r\n    },\r\n
+    \   {\r\n      \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n        \"uid\":
+    \"U_7pLbpnk\"\r\n      },\r\n      \"description\": \"\",\r\n      \"fieldConfig\":
+    {\r\n        \"defaults\": {\r\n          \"color\": {\r\n            \"mode\":
+    \"palette-classic\"\r\n          },\r\n          \"custom\": {\r\n            \"axisCenteredZero\":
+    false,\r\n            \"axisColorMode\": \"text\",\r\n            \"axisLabel\":
+    \"\",\r\n            \"axisPlacement\": \"auto\",\r\n            \"barAlignment\":
+    0,\r\n            \"drawStyle\": \"line\",\r\n            \"fillOpacity\": 13,\r\n
+    \           \"gradientMode\": \"none\",\r\n            \"hideFrom\": {\r\n              \"legend\":
+    false,\r\n              \"tooltip\": false,\r\n              \"viz\": false\r\n
+    \           },\r\n            \"lineInterpolation\": \"linear\",\r\n            \"lineWidth\":
+    1,\r\n            \"pointSize\": 5,\r\n            \"scaleDistribution\": {\r\n
+    \             \"type\": \"linear\"\r\n            },\r\n            \"showPoints\":
+    \"auto\",\r\n            \"spanNulls\": false,\r\n            \"stacking\": {\r\n
+    \             \"group\": \"A\",\r\n              \"mode\": \"none\"\r\n            },\r\n
+    \           \"thresholdsStyle\": {\r\n              \"mode\": \"off\"\r\n            }\r\n
+    \         },\r\n          \"mappings\": [],\r\n          \"thresholds\": {\r\n
+    \           \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"red\",\r\n                \"value\":
+    80\r\n              }\r\n            ]\r\n          }\r\n        },\r\n        \"overrides\":
+    []\r\n      },\r\n      \"gridPos\": {\r\n        \"h\": 7,\r\n        \"w\":
+    12,\r\n        \"x\": 0,\r\n        \"y\": 23\r\n      },\r\n      \"id\": 38,\r\n
+    \     \"options\": {\r\n        \"legend\": {\r\n          \"calcs\": [],\r\n
+    \         \"displayMode\": \"list\",\r\n          \"placement\": \"bottom\",\r\n
+    \         \"showLegend\": true\r\n        },\r\n        \"tooltip\": {\r\n          \"mode\":
+    \"single\",\r\n          \"sort\": \"none\"\r\n        }\r\n      },\r\n      \"pluginVersion\":
+    \"8.2.5\",\r\n      \"targets\": [\r\n        {\r\n          \"datasource\": {\r\n
+    \           \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"editorMode\": \"code\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"dubbo_provider_requests_total_aggregate{application_name=\\\"$application_name\\\"}\",\r\n
+    \         \"instant\": false,\r\n          \"interval\": \"\",\r\n          \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n          \"range\": true,\r\n          \"refId\":
+    \"A\"\r\n        }\r\n      ],\r\n      \"title\": \"provider_requests_total_aggregate\",\r\n
+    \     \"type\": \"timeseries\"\r\n    },\r\n    {\r\n      \"datasource\": {\r\n
+    \       \"type\": \"prometheus\",\r\n        \"uid\": \"U_7pLbpnk\"\r\n      },\r\n
+    \     \"description\": \"\",\r\n      \"fieldConfig\": {\r\n        \"defaults\":
+    {\r\n          \"color\": {\r\n            \"mode\": \"palette-classic\"\r\n          },\r\n
+    \         \"custom\": {\r\n            \"axisCenteredZero\": false,\r\n            \"axisColorMode\":
+    \"text\",\r\n            \"axisLabel\": \"\",\r\n            \"axisPlacement\":
+    \"auto\",\r\n            \"barAlignment\": 0,\r\n            \"drawStyle\": \"line\",\r\n
+    \           \"fillOpacity\": 13,\r\n            \"gradientMode\": \"none\",\r\n
+    \           \"hideFrom\": {\r\n              \"legend\": false,\r\n              \"tooltip\":
+    false,\r\n              \"viz\": false\r\n            },\r\n            \"lineInterpolation\":
+    \"linear\",\r\n            \"lineWidth\": 1,\r\n            \"pointSize\": 5,\r\n
+    \           \"scaleDistribution\": {\r\n              \"type\": \"linear\"\r\n
+    \           },\r\n            \"showPoints\": \"auto\",\r\n            \"spanNulls\":
+    false,\r\n            \"stacking\": {\r\n              \"group\": \"A\",\r\n              \"mode\":
+    \"none\"\r\n            },\r\n            \"thresholdsStyle\": {\r\n              \"mode\":
+    \"off\"\r\n            }\r\n          },\r\n          \"mappings\": [],\r\n          \"thresholds\":
+    {\r\n            \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"red\",\r\n                \"value\":
+    80\r\n              }\r\n            ]\r\n          }\r\n        },\r\n        \"overrides\":
+    []\r\n      },\r\n      \"gridPos\": {\r\n        \"h\": 7,\r\n        \"w\":
+    12,\r\n        \"x\": 12,\r\n        \"y\": 23\r\n      },\r\n      \"id\": 60,\r\n
+    \     \"options\": {\r\n        \"legend\": {\r\n          \"calcs\": [],\r\n
+    \         \"displayMode\": \"list\",\r\n          \"placement\": \"bottom\",\r\n
+    \         \"showLegend\": true\r\n        },\r\n        \"tooltip\": {\r\n          \"mode\":
+    \"single\",\r\n          \"sort\": \"none\"\r\n        }\r\n      },\r\n      \"pluginVersion\":
+    \"8.2.5\",\r\n      \"targets\": [\r\n        {\r\n          \"datasource\": {\r\n
+    \           \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"editorMode\": \"builder\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"dubbo_provider_requests_succeed_aggregate{application_name=\\\"$application_name\\\"}\",\r\n
+    \         \"instant\": false,\r\n          \"interval\": \"\",\r\n          \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n          \"range\": true,\r\n          \"refId\":
+    \"A\"\r\n        }\r\n      ],\r\n      \"title\": \"provider_requests_succeed_aggregate\",\r\n
+    \     \"type\": \"timeseries\"\r\n    },\r\n    {\r\n      \"collapsed\": false,\r\n
+    \     \"gridPos\": {\r\n        \"h\": 1,\r\n        \"w\": 24,\r\n        \"x\":
+    0,\r\n        \"y\": 30\r\n      },\r\n      \"id\": 44,\r\n      \"panels\":
+    [],\r\n      \"title\": \"Provider RT\",\r\n      \"type\": \"row\"\r\n    },\r\n
+    \   {\r\n      \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n        \"uid\":
+    \"U_7pLbpnk\"\r\n      },\r\n      \"description\": \"\",\r\n      \"fieldConfig\":
+    {\r\n        \"defaults\": {\r\n          \"color\": {\r\n            \"mode\":
+    \"palette-classic\"\r\n          },\r\n          \"custom\": {\r\n            \"axisCenteredZero\":
+    false,\r\n            \"axisColorMode\": \"text\",\r\n            \"axisLabel\":
+    \"\",\r\n            \"axisPlacement\": \"auto\",\r\n            \"barAlignment\":
+    0,\r\n            \"drawStyle\": \"bars\",\r\n            \"fillOpacity\": 72,\r\n
+    \           \"gradientMode\": \"opacity\",\r\n            \"hideFrom\": {\r\n
+    \             \"legend\": false,\r\n              \"tooltip\": false,\r\n              \"viz\":
+    false\r\n            },\r\n            \"lineInterpolation\": \"linear\",\r\n
+    \           \"lineWidth\": 1,\r\n            \"pointSize\": 5,\r\n            \"scaleDistribution\":
+    {\r\n              \"type\": \"linear\"\r\n            },\r\n            \"showPoints\":
+    \"auto\",\r\n            \"spanNulls\": false,\r\n            \"stacking\": {\r\n
+    \             \"group\": \"A\",\r\n              \"mode\": \"none\"\r\n            },\r\n
+    \           \"thresholdsStyle\": {\r\n              \"mode\": \"off\"\r\n            }\r\n
+    \         },\r\n          \"mappings\": [],\r\n          \"thresholds\": {\r\n
+    \           \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"red\",\r\n                \"value\":
+    80\r\n              }\r\n            ]\r\n          },\r\n          \"unit\":
+    \"ms\"\r\n        },\r\n        \"overrides\": []\r\n      },\r\n      \"gridPos\":
+    {\r\n        \"h\": 7,\r\n        \"w\": 23,\r\n        \"x\": 0,\r\n        \"y\":
+    31\r\n      },\r\n      \"id\": 45,\r\n      \"options\": {\r\n        \"legend\":
+    {\r\n          \"calcs\": [\r\n            \"min\",\r\n            \"max\"\r\n
+    \         ],\r\n          \"displayMode\": \"table\",\r\n          \"placement\":
+    \"bottom\",\r\n          \"showLegend\": true\r\n        },\r\n        \"tooltip\":
+    {\r\n          \"mode\": \"single\",\r\n          \"sort\": \"none\"\r\n        }\r\n
+    \     },\r\n      \"pluginVersion\": \"8.2.5\",\r\n      \"targets\": [\r\n        {\r\n
+    \         \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n            \"uid\":
+    \"U_7pLbpnk\"\r\n          },\r\n          \"editorMode\": \"code\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"increase(dubbo_provider_rt_seconds_sum{application_name=\\\"$application_name\\\"}[1m])\",\r\n
+    \         \"format\": \"time_series\",\r\n          \"instant\": false,\r\n          \"interval\":
+    \"\",\r\n          \"legendFormat\": \"{{interface}}.{{method}}\",\r\n          \"range\":
+    true,\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"provider_rt_sum(1m)\",\r\n      \"type\": \"timeseries\"\r\n    },\r\n    {\r\n
+    \     \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n        \"uid\":
+    \"U_7pLbpnk\"\r\n      },\r\n      \"description\": \"\",\r\n      \"fieldConfig\":
+    {\r\n        \"defaults\": {\r\n          \"color\": {\r\n            \"mode\":
+    \"thresholds\"\r\n          },\r\n          \"mappings\": [],\r\n          \"thresholds\":
+    {\r\n            \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"red\",\r\n                \"value\":
+    80\r\n              }\r\n            ]\r\n          },\r\n          \"unit\":
+    \"ms\"\r\n        },\r\n        \"overrides\": []\r\n      },\r\n      \"gridPos\":
+    {\r\n        \"h\": 7,\r\n        \"w\": 12,\r\n        \"x\": 0,\r\n        \"y\":
+    38\r\n      },\r\n      \"id\": 29,\r\n      \"options\": {\r\n        \"colorMode\":
+    \"value\",\r\n        \"graphMode\": \"area\",\r\n        \"justifyMode\": \"auto\",\r\n
+    \       \"orientation\": \"auto\",\r\n        \"reduceOptions\": {\r\n          \"calcs\":
+    [\r\n            \"lastNotNull\"\r\n          ],\r\n          \"fields\": \"\",\r\n
+    \         \"values\": false\r\n        },\r\n        \"textMode\": \"auto\"\r\n
+    \     },\r\n      \"pluginVersion\": \"9.3.2\",\r\n      \"targets\": [\r\n        {\r\n
+    \         \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n            \"uid\":
+    \"U_7pLbpnk\"\r\n          },\r\n          \"editorMode\": \"builder\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"dubbo_provider_rt_seconds_min{application_name=\\\"$application_name\\\"}\",\r\n
+    \         \"format\": \"time_series\",\r\n          \"instant\": false,\r\n          \"interval\":
+    \"\",\r\n          \"legendFormat\": \"{{interface}}.{{method}}\",\r\n          \"range\":
+    true,\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"provider_rt_min\",\r\n      \"type\": \"stat\"\r\n    },\r\n    {\r\n      \"datasource\":
+    {\r\n        \"type\": \"prometheus\",\r\n        \"uid\": \"U_7pLbpnk\"\r\n      },\r\n
+    \     \"description\": \"\",\r\n      \"fieldConfig\": {\r\n        \"defaults\":
+    {\r\n          \"color\": {\r\n            \"mode\": \"thresholds\"\r\n          },\r\n
+    \         \"mappings\": [],\r\n          \"thresholds\": {\r\n            \"mode\":
+    \"absolute\",\r\n            \"steps\": [\r\n              {\r\n                \"color\":
+    \"green\",\r\n                \"value\": null\r\n              },\r\n              {\r\n
+    \               \"color\": \"red\",\r\n                \"value\": 80\r\n              }\r\n
+    \           ]\r\n          },\r\n          \"unit\": \"ms\"\r\n        },\r\n
+    \       \"overrides\": []\r\n      },\r\n      \"gridPos\": {\r\n        \"h\":
+    7,\r\n        \"w\": 12,\r\n        \"x\": 12,\r\n        \"y\": 38\r\n      },\r\n
+    \     \"id\": 30,\r\n      \"options\": {\r\n        \"colorMode\": \"value\",\r\n
+    \       \"graphMode\": \"area\",\r\n        \"justifyMode\": \"auto\",\r\n        \"orientation\":
+    \"auto\",\r\n        \"reduceOptions\": {\r\n          \"calcs\": [\r\n            \"lastNotNull\"\r\n
+    \         ],\r\n          \"fields\": \"\",\r\n          \"values\": false\r\n
+    \       },\r\n        \"textMode\": \"auto\"\r\n      },\r\n      \"pluginVersion\":
+    \"9.3.2\",\r\n      \"targets\": [\r\n        {\r\n          \"datasource\": {\r\n
+    \           \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"editorMode\": \"code\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"dubbo_provider_rt_seconds_max{application_name=\\\"$application_name\\\"}\",\r\n
+    \         \"format\": \"time_series\",\r\n          \"instant\": false,\r\n          \"interval\":
+    \"\",\r\n          \"legendFormat\": \"{{interface}}.{{method}}\",\r\n          \"range\":
+    true,\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"provider_rt_max\",\r\n      \"type\": \"stat\"\r\n    },\r\n    {\r\n      \"datasource\":
+    {\r\n        \"type\": \"prometheus\",\r\n        \"uid\": \"U_7pLbpnk\"\r\n      },\r\n
+    \     \"description\": \"\",\r\n      \"fieldConfig\": {\r\n        \"defaults\":
+    {\r\n          \"color\": {\r\n            \"mode\": \"palette-classic\"\r\n          },\r\n
+    \         \"custom\": {\r\n            \"axisCenteredZero\": false,\r\n            \"axisColorMode\":
+    \"text\",\r\n            \"axisLabel\": \"\",\r\n            \"axisPlacement\":
+    \"auto\",\r\n            \"barAlignment\": 0,\r\n            \"drawStyle\": \"bars\",\r\n
+    \           \"fillOpacity\": 24,\r\n            \"gradientMode\": \"opacity\",\r\n
+    \           \"hideFrom\": {\r\n              \"legend\": false,\r\n              \"tooltip\":
+    false,\r\n              \"viz\": false\r\n            },\r\n            \"lineInterpolation\":
+    \"linear\",\r\n            \"lineWidth\": 1,\r\n            \"pointSize\": 5,\r\n
+    \           \"scaleDistribution\": {\r\n              \"type\": \"linear\"\r\n
+    \           },\r\n            \"showPoints\": \"auto\",\r\n            \"spanNulls\":
+    false,\r\n            \"stacking\": {\r\n              \"group\": \"A\",\r\n              \"mode\":
+    \"none\"\r\n            },\r\n            \"thresholdsStyle\": {\r\n              \"mode\":
+    \"off\"\r\n            }\r\n          },\r\n          \"mappings\": [],\r\n          \"thresholds\":
+    {\r\n            \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"red\",\r\n                \"value\":
+    80\r\n              }\r\n            ]\r\n          },\r\n          \"unit\":
+    \"ms\"\r\n        },\r\n        \"overrides\": []\r\n      },\r\n      \"gridPos\":
+    {\r\n        \"h\": 7,\r\n        \"w\": 12,\r\n        \"x\": 0,\r\n        \"y\":
+    45\r\n      },\r\n      \"id\": 78,\r\n      \"options\": {\r\n        \"legend\":
+    {\r\n          \"calcs\": [],\r\n          \"displayMode\": \"table\",\r\n          \"placement\":
+    \"bottom\",\r\n          \"showLegend\": true\r\n        },\r\n        \"tooltip\":
+    {\r\n          \"mode\": \"single\",\r\n          \"sort\": \"none\"\r\n        }\r\n
+    \     },\r\n      \"pluginVersion\": \"8.2.5\",\r\n      \"targets\": [\r\n        {\r\n
+    \         \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n            \"uid\":
+    \"U_7pLbpnk\"\r\n          },\r\n          \"editorMode\": \"builder\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"dubbo_provider_rt_seconds_avg{application_name=\\\"$application_name\\\"}\",\r\n
+    \         \"format\": \"time_series\",\r\n          \"instant\": false,\r\n          \"interval\":
+    \"\",\r\n          \"legendFormat\": \"{{interface}}.{{method}}\",\r\n          \"range\":
+    true,\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"provider_rt_avg \",\r\n      \"type\": \"timeseries\"\r\n    },\r\n    {\r\n
+    \     \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n        \"uid\":
+    \"U_7pLbpnk\"\r\n      },\r\n      \"description\": \"\",\r\n      \"fieldConfig\":
+    {\r\n        \"defaults\": {\r\n          \"color\": {\r\n            \"mode\":
+    \"palette-classic\"\r\n          },\r\n          \"custom\": {\r\n            \"axisCenteredZero\":
+    false,\r\n            \"axisColorMode\": \"text\",\r\n            \"axisLabel\":
+    \"\",\r\n            \"axisPlacement\": \"auto\",\r\n            \"barAlignment\":
+    0,\r\n            \"drawStyle\": \"bars\",\r\n            \"fillOpacity\": 35,\r\n
+    \           \"gradientMode\": \"opacity\",\r\n            \"hideFrom\": {\r\n
+    \             \"legend\": false,\r\n              \"tooltip\": false,\r\n              \"viz\":
+    false\r\n            },\r\n            \"lineInterpolation\": \"linear\",\r\n
+    \           \"lineWidth\": 1,\r\n            \"pointSize\": 5,\r\n            \"scaleDistribution\":
+    {\r\n              \"type\": \"linear\"\r\n            },\r\n            \"showPoints\":
+    \"auto\",\r\n            \"spanNulls\": false,\r\n            \"stacking\": {\r\n
+    \             \"group\": \"A\",\r\n              \"mode\": \"none\"\r\n            },\r\n
+    \           \"thresholdsStyle\": {\r\n              \"mode\": \"off\"\r\n            }\r\n
+    \         },\r\n          \"mappings\": [],\r\n          \"thresholds\": {\r\n
+    \           \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"red\",\r\n                \"value\":
+    80\r\n              }\r\n            ]\r\n          },\r\n          \"unit\":
+    \"s\"\r\n        },\r\n        \"overrides\": []\r\n      },\r\n      \"gridPos\":
+    {\r\n        \"h\": 7,\r\n        \"w\": 12,\r\n        \"x\": 12,\r\n        \"y\":
+    45\r\n      },\r\n      \"id\": 39,\r\n      \"options\": {\r\n        \"legend\":
+    {\r\n          \"calcs\": [],\r\n          \"displayMode\": \"list\",\r\n          \"placement\":
+    \"bottom\",\r\n          \"showLegend\": true\r\n        },\r\n        \"tooltip\":
+    {\r\n          \"mode\": \"single\",\r\n          \"sort\": \"none\"\r\n        }\r\n
+    \     },\r\n      \"pluginVersion\": \"8.2.5\",\r\n      \"targets\": [\r\n        {\r\n
+    \         \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n            \"uid\":
+    \"U_7pLbpnk\"\r\n          },\r\n          \"editorMode\": \"builder\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"dubbo_provider_rt_seconds_last{application_name=\\\"$application_name\\\"}\",\r\n
+    \         \"instant\": false,\r\n          \"interval\": \"\",\r\n          \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n          \"range\": true,\r\n          \"refId\":
+    \"A\"\r\n        }\r\n      ],\r\n      \"title\": \"provider_rt_last\",\r\n      \"type\":
+    \"timeseries\"\r\n    },\r\n    {\r\n      \"datasource\": {\r\n        \"type\":
+    \"prometheus\",\r\n        \"uid\": \"U_7pLbpnk\"\r\n      },\r\n      \"description\":
+    \"\",\r\n      \"fieldConfig\": {\r\n        \"defaults\": {\r\n          \"color\":
+    {\r\n            \"mode\": \"palette-classic\"\r\n          },\r\n          \"custom\":
+    {\r\n            \"axisCenteredZero\": false,\r\n            \"axisColorMode\":
+    \"text\",\r\n            \"axisLabel\": \"\",\r\n            \"axisPlacement\":
+    \"auto\",\r\n            \"barAlignment\": 0,\r\n            \"drawStyle\": \"bars\",\r\n
+    \           \"fillOpacity\": 34,\r\n            \"gradientMode\": \"opacity\",\r\n
+    \           \"hideFrom\": {\r\n              \"legend\": false,\r\n              \"tooltip\":
+    false,\r\n              \"viz\": false\r\n            },\r\n            \"lineInterpolation\":
+    \"linear\",\r\n            \"lineWidth\": 1,\r\n            \"pointSize\": 5,\r\n
+    \           \"scaleDistribution\": {\r\n              \"type\": \"linear\"\r\n
+    \           },\r\n            \"showPoints\": \"auto\",\r\n            \"spanNulls\":
+    false,\r\n            \"stacking\": {\r\n              \"group\": \"A\",\r\n              \"mode\":
+    \"none\"\r\n            },\r\n            \"thresholdsStyle\": {\r\n              \"mode\":
+    \"off\"\r\n            }\r\n          },\r\n          \"mappings\": [],\r\n          \"thresholds\":
+    {\r\n            \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"red\",\r\n                \"value\":
+    80\r\n              }\r\n            ]\r\n          },\r\n          \"unit\":
+    \"ms\"\r\n        },\r\n        \"overrides\": []\r\n      },\r\n      \"gridPos\":
+    {\r\n        \"h\": 7,\r\n        \"w\": 12,\r\n        \"x\": 0,\r\n        \"y\":
+    52\r\n      },\r\n      \"id\": 40,\r\n      \"options\": {\r\n        \"legend\":
+    {\r\n          \"calcs\": [],\r\n          \"displayMode\": \"table\",\r\n          \"placement\":
+    \"bottom\",\r\n          \"showLegend\": true\r\n        },\r\n        \"tooltip\":
+    {\r\n          \"mode\": \"single\",\r\n          \"sort\": \"none\"\r\n        }\r\n
+    \     },\r\n      \"pluginVersion\": \"8.2.5\",\r\n      \"targets\": [\r\n        {\r\n
+    \         \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n            \"uid\":
+    \"U_7pLbpnk\"\r\n          },\r\n          \"editorMode\": \"builder\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"dubbo_provider_rt_seconds_p95{application_name=\\\"$application_name\\\"}\",\r\n
+    \         \"format\": \"time_series\",\r\n          \"instant\": false,\r\n          \"interval\":
+    \"\",\r\n          \"legendFormat\": \"{{interface}}.{{method}}\",\r\n          \"range\":
+    true,\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \" provider_rt_p95\",\r\n      \"type\": \"timeseries\"\r\n    },\r\n    {\r\n
+    \     \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n        \"uid\":
+    \"U_7pLbpnk\"\r\n      },\r\n      \"description\": \"\",\r\n      \"fieldConfig\":
+    {\r\n        \"defaults\": {\r\n          \"color\": {\r\n            \"mode\":
+    \"palette-classic\"\r\n          },\r\n          \"custom\": {\r\n            \"axisCenteredZero\":
+    false,\r\n            \"axisColorMode\": \"text\",\r\n            \"axisLabel\":
+    \"\",\r\n            \"axisPlacement\": \"auto\",\r\n            \"barAlignment\":
+    0,\r\n            \"drawStyle\": \"bars\",\r\n            \"fillOpacity\": 31,\r\n
+    \           \"gradientMode\": \"opacity\",\r\n            \"hideFrom\": {\r\n
+    \             \"legend\": false,\r\n              \"tooltip\": false,\r\n              \"viz\":
+    false\r\n            },\r\n            \"lineInterpolation\": \"linear\",\r\n
+    \           \"lineWidth\": 1,\r\n            \"pointSize\": 5,\r\n            \"scaleDistribution\":
+    {\r\n              \"type\": \"linear\"\r\n            },\r\n            \"showPoints\":
+    \"auto\",\r\n            \"spanNulls\": false,\r\n            \"stacking\": {\r\n
+    \             \"group\": \"A\",\r\n              \"mode\": \"none\"\r\n            },\r\n
+    \           \"thresholdsStyle\": {\r\n              \"mode\": \"off\"\r\n            }\r\n
+    \         },\r\n          \"mappings\": [],\r\n          \"thresholds\": {\r\n
+    \           \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"red\",\r\n                \"value\":
+    80\r\n              }\r\n            ]\r\n          },\r\n          \"unit\":
+    \"ms\"\r\n        },\r\n        \"overrides\": [\r\n          {\r\n            \"__systemRef\":
+    \"hideSeriesFrom\",\r\n            \"matcher\": {\r\n              \"id\": \"byNames\",\r\n
+    \             \"options\": {\r\n                \"mode\": \"exclude\",\r\n                \"names\":
+    [\r\n                  \"org.apache.dubbo.samples.metrics.prometheus.api.DemoService.sayHello\"\r\n
+    \               ],\r\n                \"prefix\": \"All except:\",\r\n                \"readOnly\":
+    true\r\n              }\r\n            },\r\n            \"properties\": [\r\n
+    \             {\r\n                \"id\": \"custom.hideFrom\",\r\n                \"value\":
+    {\r\n                  \"legend\": false,\r\n                  \"tooltip\": false,\r\n
+    \                 \"viz\": true\r\n                }\r\n              }\r\n            ]\r\n
+    \         }\r\n        ]\r\n      },\r\n      \"gridPos\": {\r\n        \"h\":
+    7,\r\n        \"w\": 12,\r\n        \"x\": 12,\r\n        \"y\": 52\r\n      },\r\n
+    \     \"id\": 35,\r\n      \"options\": {\r\n        \"legend\": {\r\n          \"calcs\":
+    [],\r\n          \"displayMode\": \"table\",\r\n          \"placement\": \"bottom\",\r\n
+    \         \"showLegend\": true\r\n        },\r\n        \"tooltip\": {\r\n          \"mode\":
+    \"single\",\r\n          \"sort\": \"none\"\r\n        }\r\n      },\r\n      \"pluginVersion\":
+    \"8.2.5\",\r\n      \"targets\": [\r\n        {\r\n          \"datasource\": {\r\n
+    \           \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"editorMode\": \"builder\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"dubbo_provider_rt_seconds_p99{application_name=\\\"$application_name\\\"}\",\r\n
+    \         \"format\": \"time_series\",\r\n          \"instant\": false,\r\n          \"interval\":
+    \"\",\r\n          \"legendFormat\": \"{{interface}}.{{method}}\",\r\n          \"range\":
+    true,\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"provider_rt_p99\",\r\n      \"type\": \"timeseries\"\r\n    },\r\n    {\r\n
+    \     \"collapsed\": true,\r\n      \"gridPos\": {\r\n        \"h\": 1,\r\n        \"w\":
+    24,\r\n        \"x\": 0,\r\n        \"y\": 59\r\n      },\r\n      \"id\": 59,\r\n
+    \     \"panels\": [\r\n        {\r\n          \"datasource\": {\r\n            \"type\":
+    \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n          },\r\n          \"description\":
+    \"\",\r\n          \"fieldConfig\": {\r\n            \"defaults\": {\r\n              \"color\":
+    {\r\n                \"mode\": \"palette-classic\"\r\n              },\r\n              \"custom\":
+    {\r\n                \"axisCenteredZero\": false,\r\n                \"axisColorMode\":
+    \"text\",\r\n                \"axisLabel\": \"\",\r\n                \"axisPlacement\":
+    \"auto\",\r\n                \"barAlignment\": 0,\r\n                \"drawStyle\":
+    \"line\",\r\n                \"fillOpacity\": 14,\r\n                \"gradientMode\":
+    \"none\",\r\n                \"hideFrom\": {\r\n                  \"legend\":
+    false,\r\n                  \"tooltip\": false,\r\n                  \"viz\":
+    false\r\n                },\r\n                \"lineInterpolation\": \"linear\",\r\n
+    \               \"lineWidth\": 1,\r\n                \"pointSize\": 5,\r\n                \"scaleDistribution\":
+    {\r\n                  \"type\": \"linear\"\r\n                },\r\n                \"showPoints\":
+    \"auto\",\r\n                \"spanNulls\": false,\r\n                \"stacking\":
+    {\r\n                  \"group\": \"A\",\r\n                  \"mode\": \"none\"\r\n
+    \               },\r\n                \"thresholdsStyle\": {\r\n                  \"mode\":
+    \"off\"\r\n                }\r\n              },\r\n              \"mappings\":
+    [],\r\n              \"thresholds\": {\r\n                \"mode\": \"absolute\",\r\n
+    \               \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  },\r\n
+    \                 {\r\n                    \"color\": \"red\",\r\n                    \"value\":
+    80\r\n                  }\r\n                ]\r\n              }\r\n            },\r\n
+    \           \"overrides\": []\r\n          },\r\n          \"gridPos\": {\r\n
+    \           \"h\": 5,\r\n            \"w\": 24,\r\n            \"x\": 0,\r\n            \"y\":
+    4\r\n          },\r\n          \"id\": 31,\r\n          \"options\": {\r\n            \"legend\":
+    {\r\n              \"calcs\": [],\r\n              \"displayMode\": \"table\",\r\n
+    \             \"placement\": \"bottom\",\r\n              \"showLegend\": true\r\n
+    \           },\r\n            \"tooltip\": {\r\n              \"mode\": \"single\",\r\n
+    \             \"sort\": \"none\"\r\n            }\r\n          },\r\n          \"pluginVersion\":
+    \"8.2.5\",\r\n          \"targets\": [\r\n            {\r\n              \"datasource\":
+    {\r\n                \"type\": \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n
+    \             },\r\n              \"editorMode\": \"code\",\r\n              \"exemplar\":
+    false,\r\n              \"expr\": \"dubbo_provider_requests_failed_total{application_name=\\\"$application_name\\\"}
+    OR on() vector(0)\",\r\n              \"format\": \"time_series\",\r\n              \"instant\":
+    false,\r\n              \"interval\": \"\",\r\n              \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n              \"range\": true,\r\n              \"refId\":
+    \"A\"\r\n            }\r\n          ],\r\n          \"title\": \"provider_requests_failed_total\",\r\n
+    \         \"type\": \"timeseries\"\r\n        },\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"description\": \"\",\r\n          \"fieldConfig\":
+    {\r\n            \"defaults\": {\r\n              \"color\": {\r\n                \"mode\":
+    \"palette-classic\"\r\n              },\r\n              \"custom\": {\r\n                \"axisCenteredZero\":
+    false,\r\n                \"axisColorMode\": \"text\",\r\n                \"axisLabel\":
+    \"\",\r\n                \"axisPlacement\": \"auto\",\r\n                \"barAlignment\":
+    0,\r\n                \"drawStyle\": \"line\",\r\n                \"fillOpacity\":
+    14,\r\n                \"gradientMode\": \"none\",\r\n                \"hideFrom\":
+    {\r\n                  \"legend\": false,\r\n                  \"tooltip\": false,\r\n
+    \                 \"viz\": false\r\n                },\r\n                \"lineInterpolation\":
+    \"linear\",\r\n                \"lineWidth\": 1,\r\n                \"pointSize\":
+    5,\r\n                \"scaleDistribution\": {\r\n                  \"type\":
+    \"linear\"\r\n                },\r\n                \"showPoints\": \"auto\",\r\n
+    \               \"spanNulls\": false,\r\n                \"stacking\": {\r\n                  \"group\":
+    \"A\",\r\n                  \"mode\": \"none\"\r\n                },\r\n                \"thresholdsStyle\":
+    {\r\n                  \"mode\": \"off\"\r\n                }\r\n              },\r\n
+    \             \"mappings\": [],\r\n              \"thresholds\": {\r\n                \"mode\":
+    \"absolute\",\r\n                \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  },\r\n
+    \                 {\r\n                    \"color\": \"red\",\r\n                    \"value\":
+    80\r\n                  }\r\n                ]\r\n              }\r\n            },\r\n
+    \           \"overrides\": []\r\n          },\r\n          \"gridPos\": {\r\n
+    \           \"h\": 7,\r\n            \"w\": 12,\r\n            \"x\": 0,\r\n            \"y\":
+    9\r\n          },\r\n          \"id\": 62,\r\n          \"options\": {\r\n            \"legend\":
+    {\r\n              \"calcs\": [],\r\n              \"displayMode\": \"table\",\r\n
+    \             \"placement\": \"bottom\",\r\n              \"showLegend\": true\r\n
+    \           },\r\n            \"tooltip\": {\r\n              \"mode\": \"single\",\r\n
+    \             \"sort\": \"none\"\r\n            }\r\n          },\r\n          \"pluginVersion\":
+    \"8.2.5\",\r\n          \"targets\": [\r\n            {\r\n              \"datasource\":
+    {\r\n                \"type\": \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n
+    \             },\r\n              \"editorMode\": \"code\",\r\n              \"exemplar\":
+    false,\r\n              \"expr\": \"dubbo_provider_requests_limit_total{application_name=\\\"$application_name\\\"}
+    OR on() vector(0)\",\r\n              \"format\": \"time_series\",\r\n              \"instant\":
+    false,\r\n              \"interval\": \"\",\r\n              \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n              \"range\": true,\r\n              \"refId\":
+    \"A\"\r\n            }\r\n          ],\r\n          \"title\": \"provider_requests_limit\",\r\n
+    \         \"type\": \"timeseries\"\r\n        },\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"description\": \"\",\r\n          \"fieldConfig\":
+    {\r\n            \"defaults\": {\r\n              \"color\": {\r\n                \"mode\":
+    \"palette-classic\"\r\n              },\r\n              \"custom\": {\r\n                \"axisCenteredZero\":
+    false,\r\n                \"axisColorMode\": \"text\",\r\n                \"axisLabel\":
+    \"\",\r\n                \"axisPlacement\": \"auto\",\r\n                \"barAlignment\":
+    0,\r\n                \"drawStyle\": \"line\",\r\n                \"fillOpacity\":
+    14,\r\n                \"gradientMode\": \"none\",\r\n                \"hideFrom\":
+    {\r\n                  \"legend\": false,\r\n                  \"tooltip\": false,\r\n
+    \                 \"viz\": false\r\n                },\r\n                \"lineInterpolation\":
+    \"linear\",\r\n                \"lineWidth\": 1,\r\n                \"pointSize\":
+    5,\r\n                \"scaleDistribution\": {\r\n                  \"type\":
+    \"linear\"\r\n                },\r\n                \"showPoints\": \"auto\",\r\n
+    \               \"spanNulls\": false,\r\n                \"stacking\": {\r\n                  \"group\":
+    \"A\",\r\n                  \"mode\": \"none\"\r\n                },\r\n                \"thresholdsStyle\":
+    {\r\n                  \"mode\": \"off\"\r\n                }\r\n              },\r\n
+    \             \"mappings\": [],\r\n              \"thresholds\": {\r\n                \"mode\":
+    \"absolute\",\r\n                \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  },\r\n
+    \                 {\r\n                    \"color\": \"red\",\r\n                    \"value\":
+    80\r\n                  }\r\n                ]\r\n              }\r\n            },\r\n
+    \           \"overrides\": []\r\n          },\r\n          \"gridPos\": {\r\n
+    \           \"h\": 7,\r\n            \"w\": 12,\r\n            \"x\": 12,\r\n
+    \           \"y\": 9\r\n          },\r\n          \"id\": 64,\r\n          \"options\":
+    {\r\n            \"legend\": {\r\n              \"calcs\": [],\r\n              \"displayMode\":
+    \"table\",\r\n              \"placement\": \"bottom\",\r\n              \"showLegend\":
+    true\r\n            },\r\n            \"tooltip\": {\r\n              \"mode\":
+    \"single\",\r\n              \"sort\": \"none\"\r\n            }\r\n          },\r\n
+    \         \"pluginVersion\": \"8.2.5\",\r\n          \"targets\": [\r\n            {\r\n
+    \             \"datasource\": {\r\n                \"type\": \"prometheus\",\r\n
+    \               \"uid\": \"U_7pLbpnk\"\r\n              },\r\n              \"editorMode\":
+    \"code\",\r\n              \"exemplar\": false,\r\n              \"expr\": \"dubbo_provider_requests_business_failed_total{application_name=\\\"$application_name\\\"}
+    OR on() vector(0)\",\r\n              \"format\": \"time_series\",\r\n              \"instant\":
+    false,\r\n              \"interval\": \"\",\r\n              \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n              \"range\": true,\r\n              \"refId\":
+    \"A\"\r\n            }\r\n          ],\r\n          \"title\": \"provider_requests_business_failed\",\r\n
+    \         \"type\": \"timeseries\"\r\n        },\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"description\": \"\",\r\n          \"fieldConfig\":
+    {\r\n            \"defaults\": {\r\n              \"color\": {\r\n                \"mode\":
+    \"palette-classic\"\r\n              },\r\n              \"custom\": {\r\n                \"axisCenteredZero\":
+    false,\r\n                \"axisColorMode\": \"text\",\r\n                \"axisLabel\":
+    \"\",\r\n                \"axisPlacement\": \"auto\",\r\n                \"barAlignment\":
+    0,\r\n                \"drawStyle\": \"line\",\r\n                \"fillOpacity\":
+    14,\r\n                \"gradientMode\": \"none\",\r\n                \"hideFrom\":
+    {\r\n                  \"legend\": false,\r\n                  \"tooltip\": false,\r\n
+    \                 \"viz\": false\r\n                },\r\n                \"lineInterpolation\":
+    \"linear\",\r\n                \"lineWidth\": 1,\r\n                \"pointSize\":
+    5,\r\n                \"scaleDistribution\": {\r\n                  \"type\":
+    \"linear\"\r\n                },\r\n                \"showPoints\": \"auto\",\r\n
+    \               \"spanNulls\": false,\r\n                \"stacking\": {\r\n                  \"group\":
+    \"A\",\r\n                  \"mode\": \"none\"\r\n                },\r\n                \"thresholdsStyle\":
+    {\r\n                  \"mode\": \"off\"\r\n                }\r\n              },\r\n
+    \             \"mappings\": [],\r\n              \"thresholds\": {\r\n                \"mode\":
+    \"absolute\",\r\n                \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  },\r\n
+    \                 {\r\n                    \"color\": \"red\",\r\n                    \"value\":
+    80\r\n                  }\r\n                ]\r\n              }\r\n            },\r\n
+    \           \"overrides\": []\r\n          },\r\n          \"gridPos\": {\r\n
+    \           \"h\": 7,\r\n            \"w\": 12,\r\n            \"x\": 0,\r\n            \"y\":
+    16\r\n          },\r\n          \"id\": 63,\r\n          \"options\": {\r\n            \"legend\":
+    {\r\n              \"calcs\": [],\r\n              \"displayMode\": \"table\",\r\n
+    \             \"placement\": \"bottom\",\r\n              \"showLegend\": true\r\n
+    \           },\r\n            \"tooltip\": {\r\n              \"mode\": \"single\",\r\n
+    \             \"sort\": \"none\"\r\n            }\r\n          },\r\n          \"pluginVersion\":
+    \"8.2.5\",\r\n          \"targets\": [\r\n            {\r\n              \"datasource\":
+    {\r\n                \"type\": \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n
+    \             },\r\n              \"editorMode\": \"code\",\r\n              \"exemplar\":
+    false,\r\n              \"expr\": \"dubbo_provider_requests_unknown_failed_total{application_name=\\\"$application_name\\\"}OR
+    on() vector(0)\",\r\n              \"format\": \"time_series\",\r\n              \"instant\":
+    false,\r\n              \"interval\": \"\",\r\n              \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n              \"range\": true,\r\n              \"refId\":
+    \"A\"\r\n            }\r\n          ],\r\n          \"title\": \"provider_requests_unknown_failed\",\r\n
+    \         \"type\": \"timeseries\"\r\n        },\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"description\": \"\",\r\n          \"fieldConfig\":
+    {\r\n            \"defaults\": {\r\n              \"color\": {\r\n                \"mode\":
+    \"palette-classic\"\r\n              },\r\n              \"custom\": {\r\n                \"axisCenteredZero\":
+    false,\r\n                \"axisColorMode\": \"text\",\r\n                \"axisLabel\":
+    \"\",\r\n                \"axisPlacement\": \"auto\",\r\n                \"barAlignment\":
+    0,\r\n                \"drawStyle\": \"line\",\r\n                \"fillOpacity\":
+    14,\r\n                \"gradientMode\": \"none\",\r\n                \"hideFrom\":
+    {\r\n                  \"legend\": false,\r\n                  \"tooltip\": false,\r\n
+    \                 \"viz\": false\r\n                },\r\n                \"lineInterpolation\":
+    \"linear\",\r\n                \"lineWidth\": 1,\r\n                \"pointSize\":
+    5,\r\n                \"scaleDistribution\": {\r\n                  \"type\":
+    \"linear\"\r\n                },\r\n                \"showPoints\": \"auto\",\r\n
+    \               \"spanNulls\": false,\r\n                \"stacking\": {\r\n                  \"group\":
+    \"A\",\r\n                  \"mode\": \"none\"\r\n                },\r\n                \"thresholdsStyle\":
+    {\r\n                  \"mode\": \"off\"\r\n                }\r\n              },\r\n
+    \             \"mappings\": [],\r\n              \"thresholds\": {\r\n                \"mode\":
+    \"absolute\",\r\n                \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  },\r\n
+    \                 {\r\n                    \"color\": \"red\",\r\n                    \"value\":
+    80\r\n                  }\r\n                ]\r\n              }\r\n            },\r\n
+    \           \"overrides\": []\r\n          },\r\n          \"gridPos\": {\r\n
+    \           \"h\": 7,\r\n            \"w\": 12,\r\n            \"x\": 12,\r\n
+    \           \"y\": 16\r\n          },\r\n          \"id\": 61,\r\n          \"options\":
+    {\r\n            \"legend\": {\r\n              \"calcs\": [],\r\n              \"displayMode\":
+    \"table\",\r\n              \"placement\": \"bottom\",\r\n              \"showLegend\":
+    true\r\n            },\r\n            \"tooltip\": {\r\n              \"mode\":
+    \"single\",\r\n              \"sort\": \"none\"\r\n            }\r\n          },\r\n
+    \         \"pluginVersion\": \"8.2.5\",\r\n          \"targets\": [\r\n            {\r\n
+    \             \"datasource\": {\r\n                \"type\": \"prometheus\",\r\n
+    \               \"uid\": \"U_7pLbpnk\"\r\n              },\r\n              \"editorMode\":
+    \"code\",\r\n              \"exemplar\": false,\r\n              \"expr\": \"dubbo_provider_requests_timeout_total{application_name=\\\"$application_name\\\"}
+    OR on() vector(0)\",\r\n              \"format\": \"time_series\",\r\n              \"instant\":
+    false,\r\n              \"interval\": \"\",\r\n              \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n              \"range\": true,\r\n              \"refId\":
+    \"A\"\r\n            }\r\n          ],\r\n          \"title\": \"provider_requests_timeout\",\r\n
+    \         \"type\": \"timeseries\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"Provider Error\",\r\n      \"type\": \"row\"\r\n    },\r\n    {\r\n      \"collapsed\":
+    true,\r\n      \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n        \"uid\":
+    \"U_7pLbpnk\"\r\n      },\r\n      \"gridPos\": {\r\n        \"h\": 1,\r\n        \"w\":
+    24,\r\n        \"x\": 0,\r\n        \"y\": 60\r\n      },\r\n      \"id\": 12,\r\n
+    \     \"panels\": [\r\n        {\r\n          \"datasource\": {\r\n            \"type\":
+    \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n          },\r\n          \"description\":
+    \"\",\r\n          \"fieldConfig\": {\r\n            \"defaults\": {\r\n              \"color\":
+    {\r\n                \"mode\": \"palette-classic\"\r\n              },\r\n              \"custom\":
+    {\r\n                \"axisCenteredZero\": false,\r\n                \"axisColorMode\":
+    \"text\",\r\n                \"axisLabel\": \"\",\r\n                \"axisPlacement\":
+    \"auto\",\r\n                \"axisSoftMin\": 1,\r\n                \"axisWidth\":
+    0,\r\n                \"barAlignment\": 0,\r\n                \"drawStyle\": \"line\",\r\n
+    \               \"fillOpacity\": 15,\r\n                \"gradientMode\": \"opacity\",\r\n
+    \               \"hideFrom\": {\r\n                  \"legend\": false,\r\n                  \"tooltip\":
+    false,\r\n                  \"viz\": false\r\n                },\r\n                \"lineInterpolation\":
+    \"linear\",\r\n                \"lineStyle\": {\r\n                  \"fill\":
+    \"solid\"\r\n                },\r\n                \"lineWidth\": 1,\r\n                \"pointSize\":
+    4,\r\n                \"scaleDistribution\": {\r\n                  \"type\":
+    \"linear\"\r\n                },\r\n                \"showPoints\": \"auto\",\r\n
+    \               \"spanNulls\": false,\r\n                \"stacking\": {\r\n                  \"group\":
+    \"A\",\r\n                  \"mode\": \"none\"\r\n                },\r\n                \"thresholdsStyle\":
+    {\r\n                  \"mode\": \"off\"\r\n                }\r\n              },\r\n
+    \             \"mappings\": [],\r\n              \"thresholds\": {\r\n                \"mode\":
+    \"absolute\",\r\n                \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  },\r\n
+    \                 {\r\n                    \"color\": \"red\",\r\n                    \"value\":
+    80\r\n                  }\r\n                ]\r\n              }\r\n            },\r\n
+    \           \"overrides\": [\r\n              {\r\n                \"__systemRef\":
+    \"hideSeriesFrom\",\r\n                \"matcher\": {\r\n                  \"id\":
+    \"byNames\",\r\n                  \"options\": {\r\n                    \"mode\":
+    \"exclude\",\r\n                    \"names\": [\r\n                      \"org.apache.dubbo.samples.metrics.prometheus.api.DemoService.sayHello\"\r\n
+    \                   ],\r\n                    \"prefix\": \"All except:\",\r\n
+    \                   \"readOnly\": true\r\n                  }\r\n                },\r\n
+    \               \"properties\": [\r\n                  {\r\n                    \"id\":
+    \"custom.hideFrom\",\r\n                    \"value\": {\r\n                      \"legend\":
+    false,\r\n                      \"tooltip\": false,\r\n                      \"viz\":
+    true\r\n                    }\r\n                  }\r\n                ]\r\n
+    \             }\r\n            ]\r\n          },\r\n          \"gridPos\": {\r\n
+    \           \"h\": 7,\r\n            \"w\": 24,\r\n            \"x\": 0,\r\n            \"y\":
+    35\r\n          },\r\n          \"id\": 65,\r\n          \"options\": {\r\n            \"legend\":
+    {\r\n              \"calcs\": [\r\n                \"min\",\r\n                \"max\"\r\n
+    \             ],\r\n              \"displayMode\": \"table\",\r\n              \"placement\":
+    \"bottom\",\r\n              \"showLegend\": true\r\n            },\r\n            \"tooltip\":
+    {\r\n              \"mode\": \"single\",\r\n              \"sort\": \"none\"\r\n
+    \           }\r\n          },\r\n          \"pluginVersion\": \"8.2.5\",\r\n          \"targets\":
+    [\r\n            {\r\n              \"datasource\": {\r\n                \"type\":
+    \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n              },\r\n
+    \             \"editorMode\": \"code\",\r\n              \"exemplar\": false,\r\n
+    \             \"expr\": \"dubbo_consumer_qps_seconds{application_name=\\\"$application_name\\\"}\",\r\n
+    \             \"instant\": false,\r\n              \"interval\": \"\",\r\n              \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n              \"range\": true,\r\n              \"refId\":
+    \"A\"\r\n            }\r\n          ],\r\n          \"title\": \"consumer_qps\",\r\n
+    \         \"type\": \"timeseries\"\r\n        },\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"description\": \"\",\r\n          \"fieldConfig\":
+    {\r\n            \"defaults\": {\r\n              \"color\": {\r\n                \"mode\":
+    \"palette-classic\"\r\n              },\r\n              \"custom\": {\r\n                \"axisCenteredZero\":
+    false,\r\n                \"axisColorMode\": \"text\",\r\n                \"axisLabel\":
+    \"\",\r\n                \"axisPlacement\": \"auto\",\r\n                \"barAlignment\":
+    0,\r\n                \"drawStyle\": \"line\",\r\n                \"fillOpacity\":
+    15,\r\n                \"gradientMode\": \"none\",\r\n                \"hideFrom\":
+    {\r\n                  \"legend\": false,\r\n                  \"tooltip\": false,\r\n
+    \                 \"viz\": false\r\n                },\r\n                \"lineInterpolation\":
+    \"linear\",\r\n                \"lineWidth\": 1,\r\n                \"pointSize\":
+    5,\r\n                \"scaleDistribution\": {\r\n                  \"type\":
+    \"linear\"\r\n                },\r\n                \"showPoints\": \"auto\",\r\n
+    \               \"spanNulls\": false,\r\n                \"stacking\": {\r\n                  \"group\":
+    \"A\",\r\n                  \"mode\": \"none\"\r\n                },\r\n                \"thresholdsStyle\":
+    {\r\n                  \"mode\": \"off\"\r\n                }\r\n              },\r\n
+    \             \"decimals\": 0,\r\n              \"mappings\": [],\r\n              \"thresholds\":
+    {\r\n                \"mode\": \"absolute\",\r\n                \"steps\": [\r\n
+    \                 {\r\n                    \"color\": \"green\",\r\n                    \"value\":
+    null\r\n                  },\r\n                  {\r\n                    \"color\":
+    \"red\",\r\n                    \"value\": 80\r\n                  }\r\n                ]\r\n
+    \             },\r\n              \"unit\": \"none\"\r\n            },\r\n            \"overrides\":
+    []\r\n          },\r\n          \"gridPos\": {\r\n            \"h\": 6,\r\n            \"w\":
+    24,\r\n            \"x\": 0,\r\n            \"y\": 42\r\n          },\r\n          \"id\":
+    66,\r\n          \"options\": {\r\n            \"legend\": {\r\n              \"calcs\":
+    [],\r\n              \"displayMode\": \"list\",\r\n              \"placement\":
+    \"bottom\",\r\n              \"showLegend\": true\r\n            },\r\n            \"tooltip\":
+    {\r\n              \"mode\": \"single\",\r\n              \"sort\": \"none\"\r\n
+    \           }\r\n          },\r\n          \"pluginVersion\": \"8.2.5\",\r\n          \"targets\":
+    [\r\n            {\r\n              \"datasource\": {\r\n                \"type\":
+    \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n              },\r\n
+    \             \"editorMode\": \"code\",\r\n              \"exemplar\": false,\r\n
+    \             \"expr\": \"increase(dubbo_consumer_requests_total{application_name=\\\"$application_name\\\"}[2m])\",\r\n
+    \             \"instant\": false,\r\n              \"interval\": \"\",\r\n              \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n              \"range\": true,\r\n              \"refId\":
+    \"A\"\r\n            }\r\n          ],\r\n          \"title\": \"consumer_request_total(2m)\",\r\n
+    \         \"type\": \"timeseries\"\r\n        },\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"description\": \"\",\r\n          \"fieldConfig\":
+    {\r\n            \"defaults\": {\r\n              \"color\": {\r\n                \"mode\":
+    \"palette-classic\"\r\n              },\r\n              \"custom\": {\r\n                \"axisCenteredZero\":
+    false,\r\n                \"axisColorMode\": \"text\",\r\n                \"axisLabel\":
+    \"\",\r\n                \"axisPlacement\": \"auto\",\r\n                \"barAlignment\":
+    0,\r\n                \"drawStyle\": \"line\",\r\n                \"fillOpacity\":
+    19,\r\n                \"gradientMode\": \"none\",\r\n                \"hideFrom\":
+    {\r\n                  \"legend\": false,\r\n                  \"tooltip\": false,\r\n
+    \                 \"viz\": false\r\n                },\r\n                \"lineInterpolation\":
+    \"linear\",\r\n                \"lineWidth\": 1,\r\n                \"pointSize\":
+    5,\r\n                \"scaleDistribution\": {\r\n                  \"type\":
+    \"linear\"\r\n                },\r\n                \"showPoints\": \"auto\",\r\n
+    \               \"spanNulls\": false,\r\n                \"stacking\": {\r\n                  \"group\":
+    \"A\",\r\n                  \"mode\": \"none\"\r\n                },\r\n                \"thresholdsStyle\":
+    {\r\n                  \"mode\": \"off\"\r\n                }\r\n              },\r\n
+    \             \"mappings\": [],\r\n              \"thresholds\": {\r\n                \"mode\":
+    \"absolute\",\r\n                \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  },\r\n
+    \                 {\r\n                    \"color\": \"red\",\r\n                    \"value\":
+    80\r\n                  }\r\n                ]\r\n              }\r\n            },\r\n
+    \           \"overrides\": []\r\n          },\r\n          \"gridPos\": {\r\n
+    \           \"h\": 8,\r\n            \"w\": 12,\r\n            \"x\": 0,\r\n            \"y\":
+    48\r\n          },\r\n          \"id\": 67,\r\n          \"options\": {\r\n            \"legend\":
+    {\r\n              \"calcs\": [],\r\n              \"displayMode\": \"table\",\r\n
+    \             \"placement\": \"bottom\",\r\n              \"showLegend\": true\r\n
+    \           },\r\n            \"tooltip\": {\r\n              \"mode\": \"single\",\r\n
+    \             \"sort\": \"none\"\r\n            }\r\n          },\r\n          \"pluginVersion\":
+    \"8.2.5\",\r\n          \"targets\": [\r\n            {\r\n              \"datasource\":
+    {\r\n                \"type\": \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n
+    \             },\r\n              \"editorMode\": \"code\",\r\n              \"exemplar\":
+    false,\r\n              \"expr\": \"dubbo_consumer_requests_processing{application_name=\\\"$application_name\\\"}\",\r\n
+    \             \"format\": \"time_series\",\r\n              \"instant\": false,\r\n
+    \             \"interval\": \"\",\r\n              \"legendFormat\": \"{{interface}}.{{method}}\",\r\n
+    \             \"range\": true,\r\n              \"refId\": \"A\"\r\n            }\r\n
+    \         ],\r\n          \"title\": \"consumer_requests_processing\",\r\n          \"type\":
+    \"timeseries\"\r\n        },\r\n        {\r\n          \"datasource\": {\r\n            \"type\":
+    \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n          },\r\n          \"description\":
+    \"\",\r\n          \"fieldConfig\": {\r\n            \"defaults\": {\r\n              \"color\":
+    {\r\n                \"mode\": \"palette-classic\"\r\n              },\r\n              \"custom\":
+    {\r\n                \"axisCenteredZero\": false,\r\n                \"axisColorMode\":
+    \"text\",\r\n                \"axisLabel\": \"\",\r\n                \"axisPlacement\":
+    \"auto\",\r\n                \"barAlignment\": 0,\r\n                \"drawStyle\":
+    \"line\",\r\n                \"fillOpacity\": 18,\r\n                \"gradientMode\":
+    \"none\",\r\n                \"hideFrom\": {\r\n                  \"legend\":
+    false,\r\n                  \"tooltip\": false,\r\n                  \"viz\":
+    false\r\n                },\r\n                \"lineInterpolation\": \"linear\",\r\n
+    \               \"lineWidth\": 1,\r\n                \"pointSize\": 5,\r\n                \"scaleDistribution\":
+    {\r\n                  \"type\": \"linear\"\r\n                },\r\n                \"showPoints\":
+    \"auto\",\r\n                \"spanNulls\": false,\r\n                \"stacking\":
+    {\r\n                  \"group\": \"A\",\r\n                  \"mode\": \"none\"\r\n
+    \               },\r\n                \"thresholdsStyle\": {\r\n                  \"mode\":
+    \"off\"\r\n                }\r\n              },\r\n              \"decimals\":
+    0,\r\n              \"mappings\": [],\r\n              \"thresholds\": {\r\n                \"mode\":
+    \"absolute\",\r\n                \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  },\r\n
+    \                 {\r\n                    \"color\": \"red\",\r\n                    \"value\":
+    80\r\n                  }\r\n                ]\r\n              },\r\n              \"unit\":
+    \"none\"\r\n            },\r\n            \"overrides\": []\r\n          },\r\n
+    \         \"gridPos\": {\r\n            \"h\": 8,\r\n            \"w\": 12,\r\n
+    \           \"x\": 12,\r\n            \"y\": 48\r\n          },\r\n          \"id\":
+    68,\r\n          \"options\": {\r\n            \"legend\": {\r\n              \"calcs\":
+    [],\r\n              \"displayMode\": \"table\",\r\n              \"placement\":
+    \"bottom\",\r\n              \"showLegend\": true\r\n            },\r\n            \"tooltip\":
+    {\r\n              \"mode\": \"single\",\r\n              \"sort\": \"none\"\r\n
+    \           }\r\n          },\r\n          \"pluginVersion\": \"8.2.5\",\r\n          \"targets\":
+    [\r\n            {\r\n              \"datasource\": {\r\n                \"type\":
+    \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n              },\r\n
+    \             \"editorMode\": \"code\",\r\n              \"exemplar\": false,\r\n
+    \             \"expr\": \"increase(dubbo_consumer_requests_succeed_total{application_name=\\\"$application_name\\\"}[2m])\",\r\n
+    \             \"format\": \"time_series\",\r\n              \"instant\": false,\r\n
+    \             \"interval\": \"\",\r\n              \"legendFormat\": \"{{interface}}.{{method}}\",\r\n
+    \             \"range\": true,\r\n              \"refId\": \"A\"\r\n            }\r\n
+    \         ],\r\n          \"title\": \"consumer_requests_succeed(2m)\",\r\n          \"type\":
+    \"timeseries\"\r\n        },\r\n        {\r\n          \"datasource\": {\r\n            \"type\":
+    \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n          },\r\n          \"description\":
+    \"\",\r\n          \"fieldConfig\": {\r\n            \"defaults\": {\r\n              \"color\":
+    {\r\n                \"mode\": \"palette-classic\"\r\n              },\r\n              \"custom\":
+    {\r\n                \"axisCenteredZero\": false,\r\n                \"axisColorMode\":
+    \"text\",\r\n                \"axisLabel\": \"\",\r\n                \"axisPlacement\":
+    \"auto\",\r\n                \"barAlignment\": 0,\r\n                \"drawStyle\":
+    \"line\",\r\n                \"fillOpacity\": 13,\r\n                \"gradientMode\":
+    \"none\",\r\n                \"hideFrom\": {\r\n                  \"legend\":
+    false,\r\n                  \"tooltip\": false,\r\n                  \"viz\":
+    false\r\n                },\r\n                \"lineInterpolation\": \"linear\",\r\n
+    \               \"lineWidth\": 1,\r\n                \"pointSize\": 5,\r\n                \"scaleDistribution\":
+    {\r\n                  \"type\": \"linear\"\r\n                },\r\n                \"showPoints\":
+    \"auto\",\r\n                \"spanNulls\": false,\r\n                \"stacking\":
+    {\r\n                  \"group\": \"A\",\r\n                  \"mode\": \"none\"\r\n
+    \               },\r\n                \"thresholdsStyle\": {\r\n                  \"mode\":
+    \"off\"\r\n                }\r\n              },\r\n              \"mappings\":
+    [],\r\n              \"thresholds\": {\r\n                \"mode\": \"absolute\",\r\n
+    \               \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  },\r\n
+    \                 {\r\n                    \"color\": \"red\",\r\n                    \"value\":
+    80\r\n                  }\r\n                ]\r\n              }\r\n            },\r\n
+    \           \"overrides\": []\r\n          },\r\n          \"gridPos\": {\r\n
+    \           \"h\": 7,\r\n            \"w\": 12,\r\n            \"x\": 0,\r\n            \"y\":
+    56\r\n          },\r\n          \"id\": 69,\r\n          \"options\": {\r\n            \"legend\":
+    {\r\n              \"calcs\": [],\r\n              \"displayMode\": \"list\",\r\n
+    \             \"placement\": \"bottom\",\r\n              \"showLegend\": true\r\n
+    \           },\r\n            \"tooltip\": {\r\n              \"mode\": \"single\",\r\n
+    \             \"sort\": \"none\"\r\n            }\r\n          },\r\n          \"pluginVersion\":
+    \"8.2.5\",\r\n          \"targets\": [\r\n            {\r\n              \"datasource\":
+    {\r\n                \"type\": \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n
+    \             },\r\n              \"editorMode\": \"code\",\r\n              \"exemplar\":
+    false,\r\n              \"expr\": \"dubbo_consumer_requests_total_aggregate{application_name=\\\"$application_name\\\"}\",\r\n
+    \             \"instant\": false,\r\n              \"interval\": \"\",\r\n              \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n              \"range\": true,\r\n              \"refId\":
+    \"A\"\r\n            }\r\n          ],\r\n          \"title\": \"consumer_requests_total_aggregate\",\r\n
+    \         \"type\": \"timeseries\"\r\n        },\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"description\": \"\",\r\n          \"fieldConfig\":
+    {\r\n            \"defaults\": {\r\n              \"color\": {\r\n                \"mode\":
+    \"palette-classic\"\r\n              },\r\n              \"custom\": {\r\n                \"axisCenteredZero\":
+    false,\r\n                \"axisColorMode\": \"text\",\r\n                \"axisLabel\":
+    \"\",\r\n                \"axisPlacement\": \"auto\",\r\n                \"barAlignment\":
+    0,\r\n                \"drawStyle\": \"line\",\r\n                \"fillOpacity\":
+    13,\r\n                \"gradientMode\": \"none\",\r\n                \"hideFrom\":
+    {\r\n                  \"legend\": false,\r\n                  \"tooltip\": false,\r\n
+    \                 \"viz\": false\r\n                },\r\n                \"lineInterpolation\":
+    \"linear\",\r\n                \"lineWidth\": 1,\r\n                \"pointSize\":
+    5,\r\n                \"scaleDistribution\": {\r\n                  \"type\":
+    \"linear\"\r\n                },\r\n                \"showPoints\": \"auto\",\r\n
+    \               \"spanNulls\": false,\r\n                \"stacking\": {\r\n                  \"group\":
+    \"A\",\r\n                  \"mode\": \"none\"\r\n                },\r\n                \"thresholdsStyle\":
+    {\r\n                  \"mode\": \"off\"\r\n                }\r\n              },\r\n
+    \             \"mappings\": [],\r\n              \"thresholds\": {\r\n                \"mode\":
+    \"absolute\",\r\n                \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  },\r\n
+    \                 {\r\n                    \"color\": \"red\",\r\n                    \"value\":
+    80\r\n                  }\r\n                ]\r\n              }\r\n            },\r\n
+    \           \"overrides\": []\r\n          },\r\n          \"gridPos\": {\r\n
+    \           \"h\": 7,\r\n            \"w\": 12,\r\n            \"x\": 12,\r\n
+    \           \"y\": 56\r\n          },\r\n          \"id\": 70,\r\n          \"options\":
+    {\r\n            \"legend\": {\r\n              \"calcs\": [],\r\n              \"displayMode\":
+    \"list\",\r\n              \"placement\": \"bottom\",\r\n              \"showLegend\":
+    true\r\n            },\r\n            \"tooltip\": {\r\n              \"mode\":
+    \"single\",\r\n              \"sort\": \"none\"\r\n            }\r\n          },\r\n
+    \         \"pluginVersion\": \"8.2.5\",\r\n          \"targets\": [\r\n            {\r\n
+    \             \"datasource\": {\r\n                \"type\": \"prometheus\",\r\n
+    \               \"uid\": \"U_7pLbpnk\"\r\n              },\r\n              \"editorMode\":
+    \"code\",\r\n              \"exemplar\": false,\r\n              \"expr\": \"dubbo_consumer_requests_succeed_aggregate{application_name=\\\"$application_name\\\"}\",\r\n
+    \             \"instant\": false,\r\n              \"interval\": \"\",\r\n              \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n              \"range\": true,\r\n              \"refId\":
+    \"A\"\r\n            }\r\n          ],\r\n          \"title\": \"consumer_requests_succeed_aggregate\",\r\n
+    \         \"type\": \"timeseries\"\r\n        }\r\n      ],\r\n      \"targets\":
+    [\r\n        {\r\n          \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n
+    \           \"uid\": \"U_7pLbpnk\"\r\n          },\r\n          \"refId\": \"A\"\r\n
+    \       }\r\n      ],\r\n      \"title\": \"Consumer Request\",\r\n      \"type\":
+    \"row\"\r\n    },\r\n    {\r\n      \"collapsed\": false,\r\n      \"gridPos\":
+    {\r\n        \"h\": 1,\r\n        \"w\": 24,\r\n        \"x\": 0,\r\n        \"y\":
+    61\r\n      },\r\n      \"id\": 72,\r\n      \"panels\": [],\r\n      \"title\":
+    \"Consumer RT\",\r\n      \"type\": \"row\"\r\n    },\r\n    {\r\n      \"datasource\":
+    {\r\n        \"type\": \"prometheus\",\r\n        \"uid\": \"U_7pLbpnk\"\r\n      },\r\n
+    \     \"description\": \"\",\r\n      \"fieldConfig\": {\r\n        \"defaults\":
+    {\r\n          \"color\": {\r\n            \"mode\": \"palette-classic\"\r\n          },\r\n
+    \         \"custom\": {\r\n            \"axisCenteredZero\": false,\r\n            \"axisColorMode\":
+    \"text\",\r\n            \"axisLabel\": \"\",\r\n            \"axisPlacement\":
+    \"auto\",\r\n            \"barAlignment\": 0,\r\n            \"drawStyle\": \"bars\",\r\n
+    \           \"fillOpacity\": 72,\r\n            \"gradientMode\": \"opacity\",\r\n
+    \           \"hideFrom\": {\r\n              \"legend\": false,\r\n              \"tooltip\":
+    false,\r\n              \"viz\": false\r\n            },\r\n            \"lineInterpolation\":
+    \"linear\",\r\n            \"lineWidth\": 1,\r\n            \"pointSize\": 5,\r\n
+    \           \"scaleDistribution\": {\r\n              \"type\": \"linear\"\r\n
+    \           },\r\n            \"showPoints\": \"auto\",\r\n            \"spanNulls\":
+    false,\r\n            \"stacking\": {\r\n              \"group\": \"A\",\r\n              \"mode\":
+    \"none\"\r\n            },\r\n            \"thresholdsStyle\": {\r\n              \"mode\":
+    \"off\"\r\n            }\r\n          },\r\n          \"mappings\": [],\r\n          \"thresholds\":
+    {\r\n            \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"red\",\r\n                \"value\":
+    80\r\n              }\r\n            ]\r\n          },\r\n          \"unit\":
+    \"ms\"\r\n        },\r\n        \"overrides\": []\r\n      },\r\n      \"gridPos\":
+    {\r\n        \"h\": 7,\r\n        \"w\": 23,\r\n        \"x\": 0,\r\n        \"y\":
+    62\r\n      },\r\n      \"id\": 75,\r\n      \"options\": {\r\n        \"legend\":
+    {\r\n          \"calcs\": [\r\n            \"min\",\r\n            \"max\"\r\n
+    \         ],\r\n          \"displayMode\": \"table\",\r\n          \"placement\":
+    \"bottom\",\r\n          \"showLegend\": true\r\n        },\r\n        \"tooltip\":
+    {\r\n          \"mode\": \"single\",\r\n          \"sort\": \"none\"\r\n        }\r\n
+    \     },\r\n      \"pluginVersion\": \"8.2.5\",\r\n      \"targets\": [\r\n        {\r\n
+    \         \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n            \"uid\":
+    \"U_7pLbpnk\"\r\n          },\r\n          \"editorMode\": \"code\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"increase(dubbo_consumer_rt_seconds_sum{application_name=\\\"$application_name\\\"}[1m])\",\r\n
+    \         \"format\": \"time_series\",\r\n          \"instant\": false,\r\n          \"interval\":
+    \"\",\r\n          \"legendFormat\": \"{{interface}}.{{method}}\",\r\n          \"range\":
+    true,\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"consumer_rt_sum(1m)\",\r\n      \"type\": \"timeseries\"\r\n    },\r\n    {\r\n
+    \     \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n        \"uid\":
+    \"U_7pLbpnk\"\r\n      },\r\n      \"description\": \"\",\r\n      \"fieldConfig\":
+    {\r\n        \"defaults\": {\r\n          \"color\": {\r\n            \"mode\":
+    \"thresholds\"\r\n          },\r\n          \"mappings\": [],\r\n          \"thresholds\":
+    {\r\n            \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"red\",\r\n                \"value\":
+    80\r\n              }\r\n            ]\r\n          },\r\n          \"unit\":
+    \"ms\"\r\n        },\r\n        \"overrides\": []\r\n      },\r\n      \"gridPos\":
+    {\r\n        \"h\": 7,\r\n        \"w\": 12,\r\n        \"x\": 0,\r\n        \"y\":
+    69\r\n      },\r\n      \"id\": 76,\r\n      \"options\": {\r\n        \"colorMode\":
+    \"value\",\r\n        \"graphMode\": \"area\",\r\n        \"justifyMode\": \"auto\",\r\n
+    \       \"orientation\": \"auto\",\r\n        \"reduceOptions\": {\r\n          \"calcs\":
+    [\r\n            \"lastNotNull\"\r\n          ],\r\n          \"fields\": \"\",\r\n
+    \         \"values\": false\r\n        },\r\n        \"textMode\": \"auto\"\r\n
+    \     },\r\n      \"pluginVersion\": \"9.3.2\",\r\n      \"targets\": [\r\n        {\r\n
+    \         \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n            \"uid\":
+    \"U_7pLbpnk\"\r\n          },\r\n          \"editorMode\": \"builder\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"dubbo_provider_rt_seconds_min{application_name=\\\"$application_name\\\"}\",\r\n
+    \         \"format\": \"time_series\",\r\n          \"instant\": false,\r\n          \"interval\":
+    \"\",\r\n          \"legendFormat\": \"{{interface}}.{{method}}\",\r\n          \"range\":
+    true,\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"consumer_rt_min\",\r\n      \"type\": \"stat\"\r\n    },\r\n    {\r\n      \"datasource\":
+    {\r\n        \"type\": \"prometheus\",\r\n        \"uid\": \"U_7pLbpnk\"\r\n      },\r\n
+    \     \"description\": \"\",\r\n      \"fieldConfig\": {\r\n        \"defaults\":
+    {\r\n          \"color\": {\r\n            \"mode\": \"thresholds\"\r\n          },\r\n
+    \         \"mappings\": [],\r\n          \"thresholds\": {\r\n            \"mode\":
+    \"absolute\",\r\n            \"steps\": [\r\n              {\r\n                \"color\":
+    \"green\",\r\n                \"value\": null\r\n              },\r\n              {\r\n
+    \               \"color\": \"red\",\r\n                \"value\": 80\r\n              }\r\n
+    \           ]\r\n          },\r\n          \"unit\": \"ms\"\r\n        },\r\n
+    \       \"overrides\": []\r\n      },\r\n      \"gridPos\": {\r\n        \"h\":
+    7,\r\n        \"w\": 12,\r\n        \"x\": 12,\r\n        \"y\": 69\r\n      },\r\n
+    \     \"id\": 77,\r\n      \"options\": {\r\n        \"colorMode\": \"value\",\r\n
+    \       \"graphMode\": \"area\",\r\n        \"justifyMode\": \"auto\",\r\n        \"orientation\":
+    \"auto\",\r\n        \"reduceOptions\": {\r\n          \"calcs\": [\r\n            \"lastNotNull\"\r\n
+    \         ],\r\n          \"fields\": \"\",\r\n          \"values\": false\r\n
+    \       },\r\n        \"textMode\": \"auto\"\r\n      },\r\n      \"pluginVersion\":
+    \"9.3.2\",\r\n      \"targets\": [\r\n        {\r\n          \"datasource\": {\r\n
+    \           \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"editorMode\": \"code\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"dubbo_consumer_rt_seconds_max{application_name=\\\"$application_name\\\"}\",\r\n
+    \         \"format\": \"time_series\",\r\n          \"instant\": false,\r\n          \"interval\":
+    \"\",\r\n          \"legendFormat\": \"{{interface}}.{{method}}\",\r\n          \"range\":
+    true,\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"consumer_rt_max\",\r\n      \"type\": \"stat\"\r\n    },\r\n    {\r\n      \"datasource\":
+    {\r\n        \"type\": \"prometheus\",\r\n        \"uid\": \"U_7pLbpnk\"\r\n      },\r\n
+    \     \"description\": \"\",\r\n      \"fieldConfig\": {\r\n        \"defaults\":
+    {\r\n          \"color\": {\r\n            \"mode\": \"palette-classic\"\r\n          },\r\n
+    \         \"custom\": {\r\n            \"axisCenteredZero\": false,\r\n            \"axisColorMode\":
+    \"text\",\r\n            \"axisLabel\": \"\",\r\n            \"axisPlacement\":
+    \"auto\",\r\n            \"barAlignment\": 0,\r\n            \"drawStyle\": \"bars\",\r\n
+    \           \"fillOpacity\": 24,\r\n            \"gradientMode\": \"opacity\",\r\n
+    \           \"hideFrom\": {\r\n              \"legend\": false,\r\n              \"tooltip\":
+    false,\r\n              \"viz\": false\r\n            },\r\n            \"lineInterpolation\":
+    \"linear\",\r\n            \"lineWidth\": 1,\r\n            \"pointSize\": 5,\r\n
+    \           \"scaleDistribution\": {\r\n              \"type\": \"linear\"\r\n
+    \           },\r\n            \"showPoints\": \"auto\",\r\n            \"spanNulls\":
+    false,\r\n            \"stacking\": {\r\n              \"group\": \"A\",\r\n              \"mode\":
+    \"none\"\r\n            },\r\n            \"thresholdsStyle\": {\r\n              \"mode\":
+    \"off\"\r\n            }\r\n          },\r\n          \"mappings\": [],\r\n          \"thresholds\":
+    {\r\n            \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"red\",\r\n                \"value\":
+    80\r\n              }\r\n            ]\r\n          },\r\n          \"unit\":
+    \"ms\"\r\n        },\r\n        \"overrides\": []\r\n      },\r\n      \"gridPos\":
+    {\r\n        \"h\": 7,\r\n        \"w\": 12,\r\n        \"x\": 0,\r\n        \"y\":
+    76\r\n      },\r\n      \"id\": 34,\r\n      \"options\": {\r\n        \"legend\":
+    {\r\n          \"calcs\": [],\r\n          \"displayMode\": \"table\",\r\n          \"placement\":
+    \"bottom\",\r\n          \"showLegend\": true\r\n        },\r\n        \"tooltip\":
+    {\r\n          \"mode\": \"single\",\r\n          \"sort\": \"none\"\r\n        }\r\n
+    \     },\r\n      \"pluginVersion\": \"8.2.5\",\r\n      \"targets\": [\r\n        {\r\n
+    \         \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n            \"uid\":
+    \"U_7pLbpnk\"\r\n          },\r\n          \"editorMode\": \"code\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"dubbo_consumer_rt_seconds_avg{application_name=\\\"$application_name\\\"}\",\r\n
+    \         \"format\": \"time_series\",\r\n          \"instant\": false,\r\n          \"interval\":
+    \"\",\r\n          \"legendFormat\": \"{{interface}}.{{method}}\",\r\n          \"range\":
+    true,\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"consumer_rt_avg \",\r\n      \"type\": \"timeseries\"\r\n    },\r\n    {\r\n
+    \     \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n        \"uid\":
+    \"U_7pLbpnk\"\r\n      },\r\n      \"description\": \"\",\r\n      \"fieldConfig\":
+    {\r\n        \"defaults\": {\r\n          \"color\": {\r\n            \"mode\":
+    \"palette-classic\"\r\n          },\r\n          \"custom\": {\r\n            \"axisCenteredZero\":
+    false,\r\n            \"axisColorMode\": \"text\",\r\n            \"axisLabel\":
+    \"\",\r\n            \"axisPlacement\": \"auto\",\r\n            \"barAlignment\":
+    0,\r\n            \"drawStyle\": \"bars\",\r\n            \"fillOpacity\": 35,\r\n
+    \           \"gradientMode\": \"opacity\",\r\n            \"hideFrom\": {\r\n
+    \             \"legend\": false,\r\n              \"tooltip\": false,\r\n              \"viz\":
+    false\r\n            },\r\n            \"lineInterpolation\": \"linear\",\r\n
+    \           \"lineWidth\": 1,\r\n            \"pointSize\": 5,\r\n            \"scaleDistribution\":
+    {\r\n              \"type\": \"linear\"\r\n            },\r\n            \"showPoints\":
+    \"auto\",\r\n            \"spanNulls\": false,\r\n            \"stacking\": {\r\n
+    \             \"group\": \"A\",\r\n              \"mode\": \"none\"\r\n            },\r\n
+    \           \"thresholdsStyle\": {\r\n              \"mode\": \"off\"\r\n            }\r\n
+    \         },\r\n          \"mappings\": [],\r\n          \"thresholds\": {\r\n
+    \           \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"red\",\r\n                \"value\":
+    80\r\n              }\r\n            ]\r\n          },\r\n          \"unit\":
+    \"ms\"\r\n        },\r\n        \"overrides\": []\r\n      },\r\n      \"gridPos\":
+    {\r\n        \"h\": 7,\r\n        \"w\": 12,\r\n        \"x\": 12,\r\n        \"y\":
+    76\r\n      },\r\n      \"id\": 79,\r\n      \"options\": {\r\n        \"legend\":
+    {\r\n          \"calcs\": [],\r\n          \"displayMode\": \"list\",\r\n          \"placement\":
+    \"bottom\",\r\n          \"showLegend\": true\r\n        },\r\n        \"tooltip\":
+    {\r\n          \"mode\": \"single\",\r\n          \"sort\": \"none\"\r\n        }\r\n
+    \     },\r\n      \"pluginVersion\": \"8.2.5\",\r\n      \"targets\": [\r\n        {\r\n
+    \         \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n            \"uid\":
+    \"U_7pLbpnk\"\r\n          },\r\n          \"editorMode\": \"code\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"dubbo_consumer_rt_seconds_last{application_name=\\\"$application_name\\\"}\",\r\n
+    \         \"instant\": false,\r\n          \"interval\": \"\",\r\n          \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n          \"range\": true,\r\n          \"refId\":
+    \"A\"\r\n        }\r\n      ],\r\n      \"title\": \"consumer_rt_last\",\r\n      \"type\":
+    \"timeseries\"\r\n    },\r\n    {\r\n      \"datasource\": {\r\n        \"type\":
+    \"prometheus\",\r\n        \"uid\": \"U_7pLbpnk\"\r\n      },\r\n      \"description\":
+    \"\",\r\n      \"fieldConfig\": {\r\n        \"defaults\": {\r\n          \"color\":
+    {\r\n            \"mode\": \"palette-classic\"\r\n          },\r\n          \"custom\":
+    {\r\n            \"axisCenteredZero\": false,\r\n            \"axisColorMode\":
+    \"text\",\r\n            \"axisLabel\": \"\",\r\n            \"axisPlacement\":
+    \"auto\",\r\n            \"barAlignment\": 0,\r\n            \"drawStyle\": \"bars\",\r\n
+    \           \"fillOpacity\": 34,\r\n            \"gradientMode\": \"opacity\",\r\n
+    \           \"hideFrom\": {\r\n              \"legend\": false,\r\n              \"tooltip\":
+    false,\r\n              \"viz\": false\r\n            },\r\n            \"lineInterpolation\":
+    \"linear\",\r\n            \"lineWidth\": 1,\r\n            \"pointSize\": 5,\r\n
+    \           \"scaleDistribution\": {\r\n              \"type\": \"linear\"\r\n
+    \           },\r\n            \"showPoints\": \"auto\",\r\n            \"spanNulls\":
+    false,\r\n            \"stacking\": {\r\n              \"group\": \"A\",\r\n              \"mode\":
+    \"none\"\r\n            },\r\n            \"thresholdsStyle\": {\r\n              \"mode\":
+    \"off\"\r\n            }\r\n          },\r\n          \"mappings\": [],\r\n          \"thresholds\":
+    {\r\n            \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"red\",\r\n                \"value\":
+    80\r\n              }\r\n            ]\r\n          },\r\n          \"unit\":
+    \"ms\"\r\n        },\r\n        \"overrides\": []\r\n      },\r\n      \"gridPos\":
+    {\r\n        \"h\": 7,\r\n        \"w\": 12,\r\n        \"x\": 0,\r\n        \"y\":
+    83\r\n      },\r\n      \"id\": 80,\r\n      \"options\": {\r\n        \"legend\":
+    {\r\n          \"calcs\": [],\r\n          \"displayMode\": \"table\",\r\n          \"placement\":
+    \"bottom\",\r\n          \"showLegend\": true\r\n        },\r\n        \"tooltip\":
+    {\r\n          \"mode\": \"single\",\r\n          \"sort\": \"none\"\r\n        }\r\n
+    \     },\r\n      \"pluginVersion\": \"8.2.5\",\r\n      \"targets\": [\r\n        {\r\n
+    \         \"datasource\": {\r\n            \"type\": \"prometheus\",\r\n            \"uid\":
+    \"U_7pLbpnk\"\r\n          },\r\n          \"editorMode\": \"code\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"dubbo_consumer_rt_seconds_p95{application_name=\\\"$application_name\\\"}\",\r\n
+    \         \"format\": \"time_series\",\r\n          \"instant\": false,\r\n          \"interval\":
+    \"\",\r\n          \"legendFormat\": \"{{interface}}.{{method}}\",\r\n          \"range\":
+    true,\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"consumer_rt_p95\",\r\n      \"type\": \"timeseries\"\r\n    },\r\n    {\r\n
+    \     \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n        \"uid\":
+    \"U_7pLbpnk\"\r\n      },\r\n      \"description\": \"\",\r\n      \"fieldConfig\":
+    {\r\n        \"defaults\": {\r\n          \"color\": {\r\n            \"mode\":
+    \"palette-classic\"\r\n          },\r\n          \"custom\": {\r\n            \"axisCenteredZero\":
+    false,\r\n            \"axisColorMode\": \"text\",\r\n            \"axisLabel\":
+    \"\",\r\n            \"axisPlacement\": \"auto\",\r\n            \"barAlignment\":
+    0,\r\n            \"drawStyle\": \"bars\",\r\n            \"fillOpacity\": 31,\r\n
+    \           \"gradientMode\": \"opacity\",\r\n            \"hideFrom\": {\r\n
+    \             \"legend\": false,\r\n              \"tooltip\": false,\r\n              \"viz\":
+    false\r\n            },\r\n            \"lineInterpolation\": \"linear\",\r\n
+    \           \"lineWidth\": 1,\r\n            \"pointSize\": 5,\r\n            \"scaleDistribution\":
+    {\r\n              \"type\": \"linear\"\r\n            },\r\n            \"showPoints\":
+    \"auto\",\r\n            \"spanNulls\": false,\r\n            \"stacking\": {\r\n
+    \             \"group\": \"A\",\r\n              \"mode\": \"none\"\r\n            },\r\n
+    \           \"thresholdsStyle\": {\r\n              \"mode\": \"off\"\r\n            }\r\n
+    \         },\r\n          \"mappings\": [],\r\n          \"thresholds\": {\r\n
+    \           \"mode\": \"absolute\",\r\n            \"steps\": [\r\n              {\r\n
+    \               \"color\": \"green\",\r\n                \"value\": null\r\n              },\r\n
+    \             {\r\n                \"color\": \"red\",\r\n                \"value\":
+    80\r\n              }\r\n            ]\r\n          },\r\n          \"unit\":
+    \"ms\"\r\n        },\r\n        \"overrides\": [\r\n          {\r\n            \"__systemRef\":
+    \"hideSeriesFrom\",\r\n            \"matcher\": {\r\n              \"id\": \"byNames\",\r\n
+    \             \"options\": {\r\n                \"mode\": \"exclude\",\r\n                \"names\":
+    [\r\n                  \"org.apache.dubbo.samples.metrics.prometheus.api.DemoService.sayHello\"\r\n
+    \               ],\r\n                \"prefix\": \"All except:\",\r\n                \"readOnly\":
+    true\r\n              }\r\n            },\r\n            \"properties\": [\r\n
+    \             {\r\n                \"id\": \"custom.hideFrom\",\r\n                \"value\":
+    {\r\n                  \"legend\": false,\r\n                  \"tooltip\": false,\r\n
+    \                 \"viz\": true\r\n                }\r\n              }\r\n            ]\r\n
+    \         }\r\n        ]\r\n      },\r\n      \"gridPos\": {\r\n        \"h\":
+    7,\r\n        \"w\": 12,\r\n        \"x\": 12,\r\n        \"y\": 83\r\n      },\r\n
+    \     \"id\": 81,\r\n      \"options\": {\r\n        \"legend\": {\r\n          \"calcs\":
+    [],\r\n          \"displayMode\": \"table\",\r\n          \"placement\": \"bottom\",\r\n
+    \         \"showLegend\": true\r\n        },\r\n        \"tooltip\": {\r\n          \"mode\":
+    \"single\",\r\n          \"sort\": \"none\"\r\n        }\r\n      },\r\n      \"pluginVersion\":
+    \"8.2.5\",\r\n      \"targets\": [\r\n        {\r\n          \"datasource\": {\r\n
+    \           \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"editorMode\": \"code\",\r\n          \"exemplar\":
+    false,\r\n          \"expr\": \"dubbo_consumer_rt_seconds_p99{application_name=\\\"$application_name\\\"}\",\r\n
+    \         \"format\": \"time_series\",\r\n          \"instant\": false,\r\n          \"interval\":
+    \"\",\r\n          \"legendFormat\": \"{{interface}}.{{method}}\",\r\n          \"range\":
+    true,\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"consumer_rt_p99\",\r\n      \"type\": \"timeseries\"\r\n    },\r\n    {\r\n
+    \     \"collapsed\": true,\r\n      \"gridPos\": {\r\n        \"h\": 1,\r\n        \"w\":
+    24,\r\n        \"x\": 0,\r\n        \"y\": 90\r\n      },\r\n      \"id\": 74,\r\n
+    \     \"panels\": [\r\n        {\r\n          \"datasource\": {\r\n            \"type\":
+    \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n          },\r\n          \"description\":
+    \"\",\r\n          \"fieldConfig\": {\r\n            \"defaults\": {\r\n              \"color\":
+    {\r\n                \"mode\": \"palette-classic\"\r\n              },\r\n              \"custom\":
+    {\r\n                \"axisCenteredZero\": false,\r\n                \"axisColorMode\":
+    \"text\",\r\n                \"axisLabel\": \"\",\r\n                \"axisPlacement\":
+    \"auto\",\r\n                \"barAlignment\": 0,\r\n                \"drawStyle\":
+    \"line\",\r\n                \"fillOpacity\": 14,\r\n                \"gradientMode\":
+    \"none\",\r\n                \"hideFrom\": {\r\n                  \"legend\":
+    false,\r\n                  \"tooltip\": false,\r\n                  \"viz\":
+    false\r\n                },\r\n                \"lineInterpolation\": \"linear\",\r\n
+    \               \"lineWidth\": 1,\r\n                \"pointSize\": 5,\r\n                \"scaleDistribution\":
+    {\r\n                  \"type\": \"linear\"\r\n                },\r\n                \"showPoints\":
+    \"auto\",\r\n                \"spanNulls\": false,\r\n                \"stacking\":
+    {\r\n                  \"group\": \"A\",\r\n                  \"mode\": \"none\"\r\n
+    \               },\r\n                \"thresholdsStyle\": {\r\n                  \"mode\":
+    \"off\"\r\n                }\r\n              },\r\n              \"mappings\":
+    [],\r\n              \"thresholds\": {\r\n                \"mode\": \"absolute\",\r\n
+    \               \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  },\r\n
+    \                 {\r\n                    \"color\": \"red\",\r\n                    \"value\":
+    80\r\n                  }\r\n                ]\r\n              }\r\n            },\r\n
+    \           \"overrides\": []\r\n          },\r\n          \"gridPos\": {\r\n
+    \           \"h\": 5,\r\n            \"w\": 24,\r\n            \"x\": 0,\r\n            \"y\":
+    7\r\n          },\r\n          \"id\": 82,\r\n          \"options\": {\r\n            \"legend\":
+    {\r\n              \"calcs\": [],\r\n              \"displayMode\": \"table\",\r\n
+    \             \"placement\": \"bottom\",\r\n              \"showLegend\": true\r\n
+    \           },\r\n            \"tooltip\": {\r\n              \"mode\": \"single\",\r\n
+    \             \"sort\": \"none\"\r\n            }\r\n          },\r\n          \"pluginVersion\":
+    \"8.2.5\",\r\n          \"targets\": [\r\n            {\r\n              \"datasource\":
+    {\r\n                \"type\": \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n
+    \             },\r\n              \"editorMode\": \"code\",\r\n              \"exemplar\":
+    false,\r\n              \"expr\": \"dubbo_consumer_requests_failed_total{application_name=\\\"$application_name\\\"}
+    OR on() vector(0)\",\r\n              \"format\": \"time_series\",\r\n              \"instant\":
+    false,\r\n              \"interval\": \"\",\r\n              \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n              \"range\": true,\r\n              \"refId\":
+    \"A\"\r\n            }\r\n          ],\r\n          \"title\": \"consumer_requests_failed_total\",\r\n
+    \         \"type\": \"timeseries\"\r\n        },\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"description\": \"\",\r\n          \"fieldConfig\":
+    {\r\n            \"defaults\": {\r\n              \"color\": {\r\n                \"mode\":
+    \"palette-classic\"\r\n              },\r\n              \"custom\": {\r\n                \"axisCenteredZero\":
+    false,\r\n                \"axisColorMode\": \"text\",\r\n                \"axisLabel\":
+    \"\",\r\n                \"axisPlacement\": \"auto\",\r\n                \"barAlignment\":
+    0,\r\n                \"drawStyle\": \"line\",\r\n                \"fillOpacity\":
+    14,\r\n                \"gradientMode\": \"none\",\r\n                \"hideFrom\":
+    {\r\n                  \"legend\": false,\r\n                  \"tooltip\": false,\r\n
+    \                 \"viz\": false\r\n                },\r\n                \"lineInterpolation\":
+    \"linear\",\r\n                \"lineWidth\": 1,\r\n                \"pointSize\":
+    5,\r\n                \"scaleDistribution\": {\r\n                  \"type\":
+    \"linear\"\r\n                },\r\n                \"showPoints\": \"auto\",\r\n
+    \               \"spanNulls\": false,\r\n                \"stacking\": {\r\n                  \"group\":
+    \"A\",\r\n                  \"mode\": \"none\"\r\n                },\r\n                \"thresholdsStyle\":
+    {\r\n                  \"mode\": \"off\"\r\n                }\r\n              },\r\n
+    \             \"mappings\": [],\r\n              \"thresholds\": {\r\n                \"mode\":
+    \"absolute\",\r\n                \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  },\r\n
+    \                 {\r\n                    \"color\": \"red\",\r\n                    \"value\":
+    80\r\n                  }\r\n                ]\r\n              }\r\n            },\r\n
+    \           \"overrides\": []\r\n          },\r\n          \"gridPos\": {\r\n
+    \           \"h\": 7,\r\n            \"w\": 12,\r\n            \"x\": 0,\r\n            \"y\":
+    12\r\n          },\r\n          \"id\": 83,\r\n          \"options\": {\r\n            \"legend\":
+    {\r\n              \"calcs\": [],\r\n              \"displayMode\": \"table\",\r\n
+    \             \"placement\": \"bottom\",\r\n              \"showLegend\": true\r\n
+    \           },\r\n            \"tooltip\": {\r\n              \"mode\": \"single\",\r\n
+    \             \"sort\": \"none\"\r\n            }\r\n          },\r\n          \"pluginVersion\":
+    \"8.2.5\",\r\n          \"targets\": [\r\n            {\r\n              \"datasource\":
+    {\r\n                \"type\": \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n
+    \             },\r\n              \"editorMode\": \"code\",\r\n              \"exemplar\":
+    false,\r\n              \"expr\": \"dubbo_consumer_requests_limit_total{application_name=\\\"$application_name\\\"}
+    OR on() vector(0)\",\r\n              \"format\": \"time_series\",\r\n              \"instant\":
+    false,\r\n              \"interval\": \"\",\r\n              \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n              \"range\": true,\r\n              \"refId\":
+    \"A\"\r\n            }\r\n          ],\r\n          \"title\": \"consumer_requests_limit\",\r\n
+    \         \"type\": \"timeseries\"\r\n        },\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"description\": \"\",\r\n          \"fieldConfig\":
+    {\r\n            \"defaults\": {\r\n              \"color\": {\r\n                \"mode\":
+    \"palette-classic\"\r\n              },\r\n              \"custom\": {\r\n                \"axisCenteredZero\":
+    false,\r\n                \"axisColorMode\": \"text\",\r\n                \"axisLabel\":
+    \"\",\r\n                \"axisPlacement\": \"auto\",\r\n                \"barAlignment\":
+    0,\r\n                \"drawStyle\": \"line\",\r\n                \"fillOpacity\":
+    14,\r\n                \"gradientMode\": \"none\",\r\n                \"hideFrom\":
+    {\r\n                  \"legend\": false,\r\n                  \"tooltip\": false,\r\n
+    \                 \"viz\": false\r\n                },\r\n                \"lineInterpolation\":
+    \"linear\",\r\n                \"lineWidth\": 1,\r\n                \"pointSize\":
+    5,\r\n                \"scaleDistribution\": {\r\n                  \"type\":
+    \"linear\"\r\n                },\r\n                \"showPoints\": \"auto\",\r\n
+    \               \"spanNulls\": false,\r\n                \"stacking\": {\r\n                  \"group\":
+    \"A\",\r\n                  \"mode\": \"none\"\r\n                },\r\n                \"thresholdsStyle\":
+    {\r\n                  \"mode\": \"off\"\r\n                }\r\n              },\r\n
+    \             \"mappings\": [],\r\n              \"thresholds\": {\r\n                \"mode\":
+    \"absolute\",\r\n                \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  },\r\n
+    \                 {\r\n                    \"color\": \"red\",\r\n                    \"value\":
+    80\r\n                  }\r\n                ]\r\n              }\r\n            },\r\n
+    \           \"overrides\": []\r\n          },\r\n          \"gridPos\": {\r\n
+    \           \"h\": 7,\r\n            \"w\": 12,\r\n            \"x\": 12,\r\n
+    \           \"y\": 12\r\n          },\r\n          \"id\": 84,\r\n          \"options\":
+    {\r\n            \"legend\": {\r\n              \"calcs\": [],\r\n              \"displayMode\":
+    \"table\",\r\n              \"placement\": \"bottom\",\r\n              \"showLegend\":
+    true\r\n            },\r\n            \"tooltip\": {\r\n              \"mode\":
+    \"single\",\r\n              \"sort\": \"none\"\r\n            }\r\n          },\r\n
+    \         \"pluginVersion\": \"8.2.5\",\r\n          \"targets\": [\r\n            {\r\n
+    \             \"datasource\": {\r\n                \"type\": \"prometheus\",\r\n
+    \               \"uid\": \"U_7pLbpnk\"\r\n              },\r\n              \"editorMode\":
+    \"code\",\r\n              \"exemplar\": false,\r\n              \"expr\": \"dubbo_consumer_requests_business_failed_total{application_name=\\\"$application_name\\\"}
+    OR on() vector(0)\",\r\n              \"format\": \"time_series\",\r\n              \"instant\":
+    false,\r\n              \"interval\": \"\",\r\n              \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n              \"range\": true,\r\n              \"refId\":
+    \"A\"\r\n            }\r\n          ],\r\n          \"title\": \"consumer_requests_business_failed\",\r\n
+    \         \"type\": \"timeseries\"\r\n        },\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"description\": \"\",\r\n          \"fieldConfig\":
+    {\r\n            \"defaults\": {\r\n              \"color\": {\r\n                \"mode\":
+    \"palette-classic\"\r\n              },\r\n              \"custom\": {\r\n                \"axisCenteredZero\":
+    false,\r\n                \"axisColorMode\": \"text\",\r\n                \"axisLabel\":
+    \"\",\r\n                \"axisPlacement\": \"auto\",\r\n                \"barAlignment\":
+    0,\r\n                \"drawStyle\": \"line\",\r\n                \"fillOpacity\":
+    14,\r\n                \"gradientMode\": \"none\",\r\n                \"hideFrom\":
+    {\r\n                  \"legend\": false,\r\n                  \"tooltip\": false,\r\n
+    \                 \"viz\": false\r\n                },\r\n                \"lineInterpolation\":
+    \"linear\",\r\n                \"lineWidth\": 1,\r\n                \"pointSize\":
+    5,\r\n                \"scaleDistribution\": {\r\n                  \"type\":
+    \"linear\"\r\n                },\r\n                \"showPoints\": \"auto\",\r\n
+    \               \"spanNulls\": false,\r\n                \"stacking\": {\r\n                  \"group\":
+    \"A\",\r\n                  \"mode\": \"none\"\r\n                },\r\n                \"thresholdsStyle\":
+    {\r\n                  \"mode\": \"off\"\r\n                }\r\n              },\r\n
+    \             \"mappings\": [],\r\n              \"thresholds\": {\r\n                \"mode\":
+    \"absolute\",\r\n                \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  },\r\n
+    \                 {\r\n                    \"color\": \"red\",\r\n                    \"value\":
+    80\r\n                  }\r\n                ]\r\n              }\r\n            },\r\n
+    \           \"overrides\": []\r\n          },\r\n          \"gridPos\": {\r\n
+    \           \"h\": 7,\r\n            \"w\": 12,\r\n            \"x\": 0,\r\n            \"y\":
+    19\r\n          },\r\n          \"id\": 85,\r\n          \"options\": {\r\n            \"legend\":
+    {\r\n              \"calcs\": [],\r\n              \"displayMode\": \"table\",\r\n
+    \             \"placement\": \"bottom\",\r\n              \"showLegend\": true\r\n
+    \           },\r\n            \"tooltip\": {\r\n              \"mode\": \"single\",\r\n
+    \             \"sort\": \"none\"\r\n            }\r\n          },\r\n          \"pluginVersion\":
+    \"8.2.5\",\r\n          \"targets\": [\r\n            {\r\n              \"datasource\":
+    {\r\n                \"type\": \"prometheus\",\r\n                \"uid\": \"U_7pLbpnk\"\r\n
+    \             },\r\n              \"editorMode\": \"code\",\r\n              \"exemplar\":
+    false,\r\n              \"expr\": \"dubbo_consumer_requests_unknown_failed_total{application_name=\\\"$application_name\\\"}OR
+    on() vector(0)\",\r\n              \"format\": \"time_series\",\r\n              \"instant\":
+    false,\r\n              \"interval\": \"\",\r\n              \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n              \"range\": true,\r\n              \"refId\":
+    \"A\"\r\n            }\r\n          ],\r\n          \"title\": \"consumer_requests_unknown_failed\",\r\n
+    \         \"type\": \"timeseries\"\r\n        },\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"description\": \"\",\r\n          \"fieldConfig\":
+    {\r\n            \"defaults\": {\r\n              \"color\": {\r\n                \"mode\":
+    \"palette-classic\"\r\n              },\r\n              \"custom\": {\r\n                \"axisCenteredZero\":
+    false,\r\n                \"axisColorMode\": \"text\",\r\n                \"axisLabel\":
+    \"\",\r\n                \"axisPlacement\": \"auto\",\r\n                \"barAlignment\":
+    0,\r\n                \"drawStyle\": \"line\",\r\n                \"fillOpacity\":
+    14,\r\n                \"gradientMode\": \"none\",\r\n                \"hideFrom\":
+    {\r\n                  \"legend\": false,\r\n                  \"tooltip\": false,\r\n
+    \                 \"viz\": false\r\n                },\r\n                \"lineInterpolation\":
+    \"linear\",\r\n                \"lineWidth\": 1,\r\n                \"pointSize\":
+    5,\r\n                \"scaleDistribution\": {\r\n                  \"type\":
+    \"linear\"\r\n                },\r\n                \"showPoints\": \"auto\",\r\n
+    \               \"spanNulls\": false,\r\n                \"stacking\": {\r\n                  \"group\":
+    \"A\",\r\n                  \"mode\": \"none\"\r\n                },\r\n                \"thresholdsStyle\":
+    {\r\n                  \"mode\": \"off\"\r\n                }\r\n              },\r\n
+    \             \"mappings\": [],\r\n              \"thresholds\": {\r\n                \"mode\":
+    \"absolute\",\r\n                \"steps\": [\r\n                  {\r\n                    \"color\":
+    \"green\",\r\n                    \"value\": null\r\n                  },\r\n
+    \                 {\r\n                    \"color\": \"red\",\r\n                    \"value\":
+    80\r\n                  }\r\n                ]\r\n              }\r\n            },\r\n
+    \           \"overrides\": []\r\n          },\r\n          \"gridPos\": {\r\n
+    \           \"h\": 7,\r\n            \"w\": 12,\r\n            \"x\": 12,\r\n
+    \           \"y\": 19\r\n          },\r\n          \"id\": 86,\r\n          \"options\":
+    {\r\n            \"legend\": {\r\n              \"calcs\": [],\r\n              \"displayMode\":
+    \"table\",\r\n              \"placement\": \"bottom\",\r\n              \"showLegend\":
+    true\r\n            },\r\n            \"tooltip\": {\r\n              \"mode\":
+    \"single\",\r\n              \"sort\": \"none\"\r\n            }\r\n          },\r\n
+    \         \"pluginVersion\": \"8.2.5\",\r\n          \"targets\": [\r\n            {\r\n
+    \             \"datasource\": {\r\n                \"type\": \"prometheus\",\r\n
+    \               \"uid\": \"U_7pLbpnk\"\r\n              },\r\n              \"editorMode\":
+    \"code\",\r\n              \"exemplar\": false,\r\n              \"expr\": \"dubbo_consumer_requests_timeout_total{application_name=\\\"$application_name\\\"}
+    OR on() vector(0)\",\r\n              \"format\": \"time_series\",\r\n              \"instant\":
+    false,\r\n              \"interval\": \"\",\r\n              \"legendFormat\":
+    \"{{interface}}.{{method}}\",\r\n              \"range\": true,\r\n              \"refId\":
+    \"A\"\r\n            }\r\n          ],\r\n          \"title\": \"consumer_requests_timeout\",\r\n
+    \         \"type\": \"timeseries\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"Consumer Error\",\r\n      \"type\": \"row\"\r\n    },\r\n    {\r\n      \"collapsed\":
+    true,\r\n      \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n        \"uid\":
+    \"U_7pLbpnk\"\r\n      },\r\n      \"gridPos\": {\r\n        \"h\": 1,\r\n        \"w\":
+    24,\r\n        \"x\": 0,\r\n        \"y\": 91\r\n      },\r\n      \"id\": 4,\r\n
+    \     \"panels\": [],\r\n      \"targets\": [\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"注册中心\",\r\n      \"type\": \"row\"\r\n    },\r\n    {\r\n      \"collapsed\":
+    true,\r\n      \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n        \"uid\":
+    \"U_7pLbpnk\"\r\n      },\r\n      \"gridPos\": {\r\n        \"h\": 1,\r\n        \"w\":
+    24,\r\n        \"x\": 0,\r\n        \"y\": 92\r\n      },\r\n      \"id\": 2,\r\n
+    \     \"panels\": [],\r\n      \"targets\": [\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"配置中心\",\r\n      \"type\": \"row\"\r\n    },\r\n    {\r\n      \"collapsed\":
+    true,\r\n      \"datasource\": {\r\n        \"type\": \"prometheus\",\r\n        \"uid\":
+    \"U_7pLbpnk\"\r\n      },\r\n      \"gridPos\": {\r\n        \"h\": 1,\r\n        \"w\":
+    24,\r\n        \"x\": 0,\r\n        \"y\": 93\r\n      },\r\n      \"id\": 8,\r\n
+    \     \"panels\": [],\r\n      \"targets\": [\r\n        {\r\n          \"datasource\":
+    {\r\n            \"type\": \"prometheus\",\r\n            \"uid\": \"U_7pLbpnk\"\r\n
+    \         },\r\n          \"refId\": \"A\"\r\n        }\r\n      ],\r\n      \"title\":
+    \"元数据中心\",\r\n      \"type\": \"row\"\r\n    }\r\n  ],\r\n  \"refresh\": \"\",\r\n
+    \ \"schemaVersion\": 37,\r\n  \"style\": \"dark\",\r\n  \"tags\": [],\r\n  \"templating\":
+    {\r\n    \"list\": [\r\n      {\r\n        \"current\": {\r\n          \"selected\":
+    false,\r\n          \"text\": \"metrics-demo-consumer\",\r\n          \"value\":
+    \"metrics-demo-consumer\"\r\n        },\r\n        \"datasource\": {\r\n          \"type\":
+    \"prometheus\",\r\n          \"uid\": \"U_7pLbpnk\"\r\n        },\r\n        \"definition\":
+    \"dubbo_provider_rt_seconds_p99\",\r\n        \"description\": \"\",\r\n        \"hide\":
+    1,\r\n        \"includeAll\": false,\r\n        \"label\": \"application_name\",\r\n
+    \       \"multi\": false,\r\n        \"name\": \"application_name\",\r\n        \"options\":
+    [],\r\n        \"query\": {\r\n          \"query\": \"dubbo_provider_rt_seconds_p99\",\r\n
+    \         \"refId\": \"StandardVariableQuery\"\r\n        },\r\n        \"refresh\":
+    1,\r\n        \"regex\": \"/.*application_name=\\\"([^\\\"]*).*/\",\r\n        \"skipUrlSync\":
+    false,\r\n        \"sort\": 0,\r\n        \"type\": \"query\"\r\n      }\r\n    ]\r\n
+    \ },\r\n  \"time\": {\r\n    \"from\": \"now-24h\",\r\n    \"to\": \"now\"\r\n
+    \ },\r\n  \"timepicker\": {},\r\n  \"timezone\": \"\",\r\n  \"title\": \"Dubbo可观测性面板\",\r\n
+    \ \"uid\": \"ewNiYNcVk\",\r\n  \"version\": 42,\r\n  \"weekStart\": \"\"\r\n}"
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: admin-extra-dashboards
+  namespace: dubbo-system
+---
