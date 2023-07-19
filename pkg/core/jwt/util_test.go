@@ -20,9 +20,10 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
-	"github.com/apache/dubbo-admin/pkg/core/jwt"
 	"testing"
 	"time"
+
+	"github.com/apache/dubbo-admin/pkg/core/jwt"
 
 	v4 "github.com/golang-jwt/jwt/v4"
 	"github.com/stretchr/testify/assert"

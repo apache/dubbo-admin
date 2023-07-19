@@ -156,7 +156,7 @@ spec:
           name: zookeeper
           ports:
             - containerPort: 2181
-              name: clientgen
+              name: client
             - containerPort: 2888
               name: follower
             - containerPort: 3888
@@ -217,9 +217,9 @@ metadata:
 spec:
   clusterIP: None
   ports:
-    - name: tcp-clientgen
+    - name: tcp-client
       port: 2181
-      targetPort: clientgen
+      targetPort: client
     - name: tcp-follower
       port: 2888
       targetPort: follower
@@ -247,10 +247,10 @@ metadata:
   namespace: dubbo-system
 spec:
   ports:
-    - name: tcp-clientgen
+    - name: tcp-client
       nodePort: null
       port: 2181
-      targetPort: clientgen
+      targetPort: client
     - name: tcp-follower
       port: 2888
       targetPort: follower

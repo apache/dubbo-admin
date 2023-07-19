@@ -16,11 +16,12 @@
 package authentication_test
 
 import (
-	authentication2 "github.com/apache/dubbo-admin/pkg/rule/crd/authentication"
-	"github.com/apache/dubbo-admin/pkg/rule/storage"
 	"strconv"
 	"sync"
 	"testing"
+
+	authentication2 "github.com/apache/dubbo-admin/pkg/rule/crd/authentication"
+	"github.com/apache/dubbo-admin/pkg/rule/storage"
 
 	"k8s.io/client-go/util/workqueue"
 )

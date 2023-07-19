@@ -19,6 +19,8 @@ package cmd
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/apache/dubbo-admin/pkg/admin"
 	"github.com/apache/dubbo-admin/pkg/config"
 	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
@@ -26,7 +28,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/cmd"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/spf13/cobra"
-	"time"
 )
 
 func newConsoleCmdWithOpts(opts cmd.RunCmdOpts) *cobra.Command {

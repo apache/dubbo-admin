@@ -18,8 +18,9 @@
 package traffic
 
 import (
-	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"net/http"
+
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services/traffic"

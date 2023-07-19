@@ -18,12 +18,15 @@
 package model
 
 import (
-	"github.com/apache/dubbo-admin/pkg/admin/util"
 	"strings"
+
+	"github.com/apache/dubbo-admin/pkg/admin/util"
 )
 
-const RegionAdminIdentifier string = " & region_admin_rule!=false"
-const ArgumentAdminIdentifier string = " & arg_admin_rule!=false"
+const (
+	RegionAdminIdentifier   string = " & region_admin_rule!=false"
+	ArgumentAdminIdentifier string = " & arg_admin_rule!=false"
+)
 
 type Timeout struct {
 	Service string `json:"service" binding:"required"`

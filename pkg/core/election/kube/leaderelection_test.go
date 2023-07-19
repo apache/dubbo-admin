@@ -20,10 +20,11 @@ package kube
 import (
 	"context"
 	"fmt"
-	"github.com/apache/dubbo-admin/pkg/core/runtime/component"
-	"github.com/apache/dubbo-admin/test/util/retry"
 	"testing"
 	"time"
+
+	"github.com/apache/dubbo-admin/pkg/core/runtime/component"
+	"github.com/apache/dubbo-admin/test/util/retry"
 
 	"go.uber.org/atomic"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -36,7 +37,8 @@ import (
 const testLock = "test-lock"
 
 func createElection(t *testing.T, name string, expectLeader bool, client kubernetes.Interface,
-	fns ...component.LeaderCallbacks) (*LeaderElection, chan struct{}) {
+	fns ...component.LeaderCallbacks,
+) (*LeaderElection, chan struct{}) {
 	t.Helper()
 	l := NewLeaderElection("ns", name, testLock, client)
 	l.ttl = time.Second

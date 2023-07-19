@@ -17,6 +17,7 @@ package server
 
 import (
 	"fmt"
+
 	"github.com/apache/dubbo-admin/api/mesh"
 	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
 
@@ -53,6 +54,7 @@ func (s *RuleServer) NeedLeaderElection() bool {
 func (s *RuleServer) Start(stop <-chan struct{}) error {
 	s.InformerFactory.Start(stop)
 	s.Controller.WaitSynced(stop)
+	s.Controller.Queue.Run(stop)
 	return nil
 }
 

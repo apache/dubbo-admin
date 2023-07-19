@@ -16,11 +16,12 @@
 package authorization_test
 
 import (
-	authorization2 "github.com/apache/dubbo-admin/pkg/rule/crd/authorization"
-	"github.com/apache/dubbo-admin/pkg/rule/storage"
 	"strconv"
 	"sync"
 	"testing"
+
+	authorization2 "github.com/apache/dubbo-admin/pkg/rule/crd/authorization"
+	"github.com/apache/dubbo-admin/pkg/rule/storage"
 
 	"k8s.io/client-go/util/workqueue"
 )

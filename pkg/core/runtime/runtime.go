@@ -18,12 +18,13 @@
 package runtime
 
 import (
+	"sync"
+	"time"
+
 	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
 	"github.com/apache/dubbo-admin/pkg/core/cert/provider"
 	"github.com/apache/dubbo-admin/pkg/core/runtime/component"
 	"github.com/apache/dubbo-admin/pkg/cp-server/server"
-	"sync"
-	"time"
 )
 
 type Runtime interface {

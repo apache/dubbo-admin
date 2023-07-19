@@ -19,10 +19,11 @@ package router
 
 import (
 	"context"
-	"github.com/apache/dubbo-admin/pkg/admin/config"
-	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"net/http"
 	"strconv"
+
+	"github.com/apache/dubbo-admin/pkg/admin/config"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 
 	"github.com/apache/dubbo-admin/app/dubbo-ui"
 	"github.com/apache/dubbo-admin/pkg/admin/handlers"

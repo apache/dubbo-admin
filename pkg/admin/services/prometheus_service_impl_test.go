@@ -18,7 +18,6 @@
 package services
 
 import (
-	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -27,6 +26,8 @@ import (
 	"sort"
 	"sync"
 	"testing"
+
+	"github.com/apache/dubbo-admin/pkg/admin/config"
 
 	"github.com/apache/dubbo-admin/pkg/admin/cache"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"

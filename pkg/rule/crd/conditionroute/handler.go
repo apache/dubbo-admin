@@ -16,11 +16,12 @@
 package conditionroute
 
 import (
-	"github.com/apache/dubbo-admin/pkg/core/logger"
-	"github.com/apache/dubbo-admin/pkg/rule/storage"
 	"reflect"
 	"sync"
 	"sync/atomic"
+
+	"github.com/apache/dubbo-admin/pkg/core/logger"
+	"github.com/apache/dubbo-admin/pkg/rule/storage"
 )
 
 type Handler interface {

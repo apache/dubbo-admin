@@ -18,6 +18,11 @@ package provider
 import (
 	"context"
 	"flag"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+
 	"github.com/apache/dubbo-admin/pkg/core/endpoint"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 
@@ -32,10 +37,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
-	"os"
-	"path/filepath"
-	"reflect"
-	"strings"
 )
 
 var kubeconfig string

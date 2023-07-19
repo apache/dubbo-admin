@@ -22,8 +22,9 @@ import (
 	"encoding/base32"
 	"fmt"
 	"os"
-	"sigs.k8s.io/yaml"
 	"strconv"
+
+	"sigs.k8s.io/yaml"
 )
 
 func FromYAML(content []byte, cfg Config) error {

@@ -16,7 +16,7 @@
 package cmd
 
 import (
-	"github.com/apache/dubbo-admin/pkg/dubboctl/cmd/subcmd"
+	"github.com/apache/dubbo-admin/app/dubboctl/cmd/subcmd"
 	"github.com/spf13/cobra"
 )
 

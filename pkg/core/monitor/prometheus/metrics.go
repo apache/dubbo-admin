@@ -18,8 +18,9 @@ package prometheus
 import (
 	"context"
 	"fmt"
-	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"time"
+
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 
 	prom_v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"

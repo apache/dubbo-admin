@@ -17,8 +17,9 @@ package provider
 
 import (
 	"context"
-	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
 	"time"
+
+	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"

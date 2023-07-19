@@ -17,6 +17,7 @@ package tagroute
 
 import (
 	"encoding/json"
+
 	"github.com/apache/dubbo-admin/pkg/core/endpoint"
 	"github.com/apache/dubbo-admin/pkg/rule/storage"
 )
@@ -55,7 +56,7 @@ func (o *Origin) Exact(endpoint *endpoint.Endpoint) (storage.ToClient, error) {
 	matchedRule := make([]*PolicyToClient, 0, len(o.data))
 
 	for _, v := range o.data {
-		if v.Spec != nil {
+		if v.Spec == nil {
 			continue
 		}
 
