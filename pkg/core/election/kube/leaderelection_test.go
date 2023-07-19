@@ -38,7 +38,7 @@ const testLock = "test-lock"
 
 func createElection(t *testing.T, name string, expectLeader bool, client kubernetes.Interface,
 	fns ...component.LeaderCallbacks,
-) (*KubuLeaderElection, chan struct{}) {
+) (*KubeLeaderElection, chan struct{}) {
 	t.Helper()
 	l := NewLeaderElection("ns", name, testLock, client)
 	l.ttl = time.Second

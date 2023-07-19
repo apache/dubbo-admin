@@ -20,7 +20,7 @@ package bootstrap
 import (
 	"context"
 	"github.com/apache/dubbo-admin/pkg/core/election/universe"
-	"github.com/apache/dubbo-admin/pkg/core/kubuclient/client"
+	"github.com/apache/dubbo-admin/pkg/core/kubeclient/client"
 
 	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
 	"github.com/apache/dubbo-admin/pkg/core/cert/provider"
@@ -88,7 +88,7 @@ func initKubuClient(cfg *dubbo_cp.Config, builder *core_runtime.Builder) bool {
 }
 
 func initCertStorage(cfg *dubbo_cp.Config, builder *core_runtime.Builder) error {
-	client := provider.NewClient(builder.KubuClient().GetKubernetesClientSet())
+	client := provider.NewClient(builder.KubeClient().GetKubernetesClientSet())
 	storage := provider.NewStorage(cfg, client)
 	loadRootCert()
 	loadAuthorityCert(storage, cfg, builder)

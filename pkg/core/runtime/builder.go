@@ -20,7 +20,7 @@ package runtime
 import (
 	"context"
 	"fmt"
-	"github.com/apache/dubbo-admin/pkg/core/kubuclient/client"
+	"github.com/apache/dubbo-admin/pkg/core/kubeclient/client"
 	"os"
 	"time"
 
@@ -36,7 +36,7 @@ type BuilderContext interface {
 	ComponentManager() component.Manager
 	Config() *dubbo_cp.Config
 	CertStorage() provider.Storage
-	KubuClient() client.KubuClient
+	KubeClient() client.KubeClient
 }
 
 var _ BuilderContext = &Builder{}
@@ -46,13 +46,13 @@ type Builder struct {
 	cm     component.Manager
 	appCtx context.Context
 
-	kubuClient  client.KubuClient
+	kubuClient  client.KubeClient
 	grpcServer  *server.GrpcServer
 	certStorage provider.Storage
 	*runtimeInfo
 }
 
-func (b *Builder) KubuClient() client.KubuClient {
+func (b *Builder) KubeClient() client.KubeClient {
 	return b.kubuClient
 }
 
@@ -111,7 +111,7 @@ func (b *Builder) Build() (Runtime, error) {
 	}, nil
 }
 
-func (b *Builder) WithKubuClient(kubuClient client.KubuClient) *Builder {
+func (b *Builder) WithKubuClient(kubuClient client.KubeClient) *Builder {
 	b.kubuClient = kubuClient
 	return b
 }

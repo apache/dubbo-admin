@@ -29,23 +29,23 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-type KubuClient interface {
+type KubeClient interface {
 	GetKubernetesClientSet() *kubernetes.Clientset
 }
 
-type kubuClientImpl struct {
+type kubeClientImpl struct {
 	kubernetesClientSet *kubernetes.Clientset
 }
 
-func NewKubuClient() *kubuClientImpl {
-	return &kubuClientImpl{}
+func NewKubuClient() *kubeClientImpl {
+	return &kubeClientImpl{}
 }
 
-func (k *kubuClientImpl) GetKubernetesClientSet() *kubernetes.Clientset {
+func (k *kubeClientImpl) GetKubernetesClientSet() *kubernetes.Clientset {
 	return k.kubernetesClientSet
 }
 
-func (k *kubuClientImpl) Init(options *dubbo_cp.Config) bool {
+func (k *kubeClientImpl) Init(options *dubbo_cp.Config) bool {
 	config, err := rest.InClusterConfig()
 	options.KubeConfig.InPodEnv = err == nil
 	kubeconfig := options.KubeConfig.KubeFileConfig
