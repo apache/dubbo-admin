@@ -39,7 +39,7 @@ func buildRuntime(appCtx context.Context, cfg *dubbo_cp.Config) (core_runtime.Ru
 
 	kubeenv := true
 
-	if !initKubuClient(cfg, builder) {
+	if !initKubeClient(cfg, builder) {
 		// Non-k8s environment
 		kubeenv = false
 	}
@@ -75,15 +75,15 @@ func Bootstrap(appCtx context.Context, cfg *dubbo_cp.Config) (core_runtime.Runti
 	return runtime, nil
 }
 
-func initKubuClient(cfg *dubbo_cp.Config, builder *core_runtime.Builder) bool {
-	kubuClient := client.NewKubeClient()
-	if !kubuClient.Init(cfg) {
+func initKubeClient(cfg *dubbo_cp.Config, builder *core_runtime.Builder) bool {
+	kubeClient := client.NewKubeClient()
+	if !kubeClient.Init(cfg) {
 		logger.Sugar().Warnf("Failed to connect to Kubernetes cluster. Will ignore OpenID Connect check.")
 		cfg.KubeConfig.IsKubernetesConnected = false
 	} else {
 		cfg.KubeConfig.IsKubernetesConnected = true
 	}
-	builder.WithKubeClient(kubuClient)
+	builder.WithKubeClient(kubeClient)
 	return cfg.KubeConfig.IsKubernetesConnected
 }
 

@@ -46,14 +46,14 @@ type Builder struct {
 	cm     component.Manager
 	appCtx context.Context
 
-	kubuClient  client.KubeClient
+	kubeClient  client.KubeClient
 	grpcServer  *server.GrpcServer
 	certStorage provider.Storage
 	*runtimeInfo
 }
 
 func (b *Builder) KubeClient() client.KubeClient {
-	return b.kubuClient
+	return b.kubeClient
 }
 
 func (b *Builder) CertStorage() provider.Storage {
@@ -112,7 +112,7 @@ func (b *Builder) Build() (Runtime, error) {
 }
 
 func (b *Builder) WithKubeClient(kubeClient client.KubeClient) *Builder {
-	b.kubuClient = kubeClient
+	b.kubeClient = kubeClient
 	return b
 }
 
