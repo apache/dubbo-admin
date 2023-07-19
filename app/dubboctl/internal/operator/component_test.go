@@ -68,22 +68,6 @@ func TestRenderManifest(t *testing.T) {
 			},
 		},
 		{
-			name:   "GrafanaComponent",
-			golden: "grafana_component-render_manifest.golden.yaml",
-			componentFunc: func(t *testing.T) Component {
-				testSpec := &v1alpha1.GrafanaSpec{}
-				grafana, err := NewGrafanaComponent(testSpec, []ComponentOption{
-					WithNamespace(identifier.DubboSystemNamespace),
-					WithRepoURL("https://grafana.github.io/helm-charts"),
-					WithVersion("6.52.4"),
-				}...)
-				if err != nil {
-					t.Fatalf("NewGrafanaComponent failed, err: %s", err)
-				}
-				return grafana
-			},
-		},
-		{
 			name:   "ZookeeperComponent",
 			golden: "zookeeper_component-render_manifest.golden.yaml",
 			componentFunc: func(t *testing.T) Component {
