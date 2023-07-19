@@ -19,7 +19,6 @@ package admin
 
 import (
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/apache/dubbo-admin/pkg/admin/providers/mock"
@@ -36,7 +35,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/config"
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
-	conf "github.com/apache/dubbo-admin/pkg/config"
 	"github.com/apache/dubbo-admin/pkg/config/admin"
 	core_runtime "github.com/apache/dubbo-admin/pkg/core/runtime"
 )
@@ -119,8 +117,7 @@ func RegisterOther(rt core_runtime.Runtime) error {
 	}()
 
 	// start mock cp-server
-	os.Setenv(constant.ConfigFileEnvKey, conf.MockProviderConf)
-	go mock.RunMockServiceServer()
+	go mock.RunMockServiceServer(rt.Config().Admin, rt.Config().Dubbo)
 
 	return nil
 }

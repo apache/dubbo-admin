@@ -84,15 +84,15 @@ func BuilderFor(appCtx context.Context, cfg *dubbo_cp.Config) (*Builder, error) 
 }
 
 func (b *Builder) Build() (Runtime, error) {
-	if b.grpcServer == nil {
-		return nil, errors.Errorf("grpcServer has not been configured")
-	}
-	if b.certStorage == nil {
-		return nil, errors.Errorf("certStorage has not been configured")
-	}
-	if b.kubuClient == nil {
-		return nil, errors.Errorf("kubuClient has not been configured")
-	}
+	//if b.grpcServer == nil && {
+	//	return nil, errors.Errorf("grpcServer has not been configured. ")
+	//}
+	//if b.certStorage == nil {
+	//	return nil, errors.Errorf("certStorage has not been configured")
+	//}
+	//if b.kubuClient == nil {
+	//	return nil, errors.Errorf("kubuClient has not been configured")
+	//}
 	return &runtime{
 		RuntimeInfo: b.runtimeInfo,
 		RuntimeContext: &runtimeContext{

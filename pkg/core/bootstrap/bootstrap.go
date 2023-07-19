@@ -19,6 +19,7 @@ package bootstrap
 
 import (
 	"context"
+	"github.com/apache/dubbo-admin/pkg/core/election/universal"
 
 	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
 	"github.com/apache/dubbo-admin/pkg/core/cert/provider"
@@ -40,6 +41,7 @@ func buildRuntime(appCtx context.Context, cfg *dubbo_cp.Config) (core_runtime.Ru
 	}
 
 	if cfg.KubeConfig.IsKubernetesConnected == false {
+		builder.WithComponentManager(component.NewManager(universal.NewLeaderElection()))
 		rt, err := builder.Build()
 		if err != nil {
 			return nil, err
