@@ -29,6 +29,7 @@ type Admin struct {
 	Registry       AddressConfig `yaml:"registry"`
 	Prometheus     Prometheus    `yaml:"prometheus"`
 	MysqlDSN       string        `yaml:"mysql-dsn"`
+	AdminOnly      bool          `yaml:"admin-only"`
 }
 
 type Prometheus struct {

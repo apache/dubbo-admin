@@ -27,6 +27,7 @@ import (
 )
 
 func Setup(rt core_runtime.Runtime) error {
+
 	server := server.NewServer(rt.Config())
 	if rt.Config().KubeConfig.InPodEnv {
 		server.WebhookServer = webhook.NewWebhook(

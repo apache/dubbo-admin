@@ -19,10 +19,11 @@ package mock
 
 import (
 	"context"
+	"github.com/apache/dubbo-admin/pkg/config/admin"
 
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 
-	"dubbo.apache.org/dubbo-go/v3/config"
+	dubbogo "dubbo.apache.org/dubbo-go/v3/config"
 	_ "dubbo.apache.org/dubbo-go/v3/imports"
 	"github.com/apache/dubbo-admin/pkg/admin/mapper"
 	"github.com/apache/dubbo-admin/pkg/admin/providers/mock/api"
@@ -47,16 +48,28 @@ func (s *MockServiceServer) GetMockData(ctx context.Context, req *api.GetMockDat
 	}, nil
 }
 
-func RunMockServiceServer() {
+func RunMockServiceServer(admin admin.Admin, dubboConfig dubbogo.RootConfig) {
 	var mockRuleService services.MockRuleService = &services.MockRuleServiceImpl{
 		MockRuleMapper: &mapper.MockRuleMapperImpl{},
 		Logger:         logger.Logger(),
 	}
-	config.SetProviderService(&MockServiceServer{
+	dubbogo.SetProviderService(&MockServiceServer{
 		mockRuleService: mockRuleService,
 	})
-	if err := config.Load(); err != nil {
+
+	builder := dubbogo.NewRootConfigBuilder().
+		SetProvider(dubbogo.NewProviderConfigBuilder().AddService("GreeterProvider", dubbogo.NewServiceConfigBuilder().SetRPCService(MockServiceServer{mockRuleService: mockRuleService}).Build()).Build()).
+		AddRegistry("zkRegistryKey", dubbogo.NewRegistryConfigBuilder().SetAddress(admin.Registry.Address).Build())
+
+	for k, v := range dubboConfig.Protocols {
+		builder.AddProtocol(k, dubbogo.NewProtocolConfigBuilder().SetName(v.Name).SetPort(v.Port).Build())
+	}
+
+	rootConfig := builder.Build()
+
+	if err := dubbogo.Load(dubbogo.WithRootConfig(rootConfig)); err != nil {
 		panic(err)
 	}
+
 	select {}
 }
