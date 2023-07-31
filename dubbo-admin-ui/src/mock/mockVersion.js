@@ -24,16 +24,17 @@ const random = Mock.Random
 console.log(random) // 简单使用就不操作了，需要操作的可以去看文档
 
 // 3、基本用法 Mock.mock(url, type, data) // 参数文档 https://github.com/nuysoft/Mock/wiki
-Mock.mock('/mock/metrics/metadata', 'get', {
+Mock.mock('/mock/version', 'get', {
   code: 200,
   message: '成功',
   data: {
     // 生成十个如下格式的数据
-      versions:[],
-      configCenter:"127.0.0.1:2181",
-      registry:"127.0.0.1:2181",
-      metadataCenter:"127.0.0.1:2181",
-      protocols:[],
-      rules:["DemoService:1.0.0:test.configurators","DemoService4:bb:aa.configurators"]
+    gitVersion:"dubbo-admin-",
+    gitCommit:"$Format:%H$",
+    gitTreeState:"",
+    buildDate:"1970-01-01T00:00:00Z",
+    goVersion:"go1.20.4",
+    compiler:"gc",
+    platform:"darwin/arm64"
   }
 })
