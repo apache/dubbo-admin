@@ -85,19 +85,10 @@ func BuilderFor(appCtx context.Context, cfg *dubbo_cp.Config) (*Builder, error) 
 }
 
 func (b *Builder) Build() (Runtime, error) {
-	if !b.cfg.KubeConfig.IsKubernetesConnected {
-		return &runtime{
-			RuntimeInfo: b.runtimeInfo,
-			RuntimeContext: &runtimeContext{
-				cfg: b.cfg,
-			},
-			Manager: b.cm,
-		}, nil
-	}
-	if b.grpcServer == nil {
+	if b.grpcServer == nil && b.cfg.KubeConfig.IsKubernetesConnected {
 		return nil, errors.Errorf("grpcServer has not been configured")
 	}
-	if b.certStorage == nil {
+	if b.certStorage == nil && b.cfg.KubeConfig.IsKubernetesConnected {
 		return nil, errors.Errorf("certStorage has not been configured")
 	}
 	return &runtime{
