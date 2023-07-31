@@ -19,7 +19,7 @@ const path = require('path');
 
 module.exports = {
   outputDir: "dist",
-  lintOnSave: "warning",
+  lintOnSave: false,
   assetsDir: 'static',
   publicPath: '/',
   devServer: {

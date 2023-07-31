@@ -43,6 +43,7 @@ import Region from '@/components/traffic/Region'
 import Retry from '@/components/traffic/Retry'
 import Timeout from '@/components/traffic/Timeout'
 import Weight from '@/components/traffic/Weight'
+import Home from '@/components/Home'
 import Index from '@/Index'
 import Login from '@/Login'
 
@@ -63,17 +64,34 @@ export default new Router({
         {
           path: '/service',
           name: 'ServiceSearch',
-          component: ServiceSearch
+          component: ServiceSearch,
+          meta: {
+            requireLogin: false
+          }
+        },
+        {
+          path: '/home',
+          name: 'Home',
+          component: Home,
+          meta: {
+            requireLogin: false
+          }
         },
         {
           path: '/serviceDetail',
           name: 'ServiceDetail',
-          component: ServiceDetail
+          component: ServiceDetail,
+          meta: {
+            requireLogin: false
+          }
         },
         {
           path: '/testMethod',
           name: 'TestMethod',
-          component: TestMethod
+          component: TestMethod,
+          meta: {
+            requireLogin: false
+          }
         },
         {
           path: '/traffic/routingRule',
