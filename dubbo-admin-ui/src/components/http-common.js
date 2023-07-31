@@ -21,7 +21,7 @@ import router from '@/router'
 import i18n from '@/lang'
 
 const instance = axios.create({
-  // baseURL: '/mock'  // 本地mock接口
+   // baseURL: '/mock'  // 本地mock接口
   baseURL: '/api/dev'
 })
 
