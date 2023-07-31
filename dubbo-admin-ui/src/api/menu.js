@@ -16,7 +16,7 @@
  */
 
 const Menu = [
-  { title: 'homePage', path: '/', icon: 'home' },
+  { title: 'homePage', path: '/home', icon: 'home' },
   { title: 'serviceSearch', path: '/service', icon: 'search' },
   {
     title: 'trafficManagement',
