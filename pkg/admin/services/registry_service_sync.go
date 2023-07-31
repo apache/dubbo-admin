@@ -18,7 +18,7 @@
 package services
 
 import (
-	"net/url"
+	"github.com/apache/dubbo-admin/pkg/admin/cache/registry"
 	"strings"
 	"sync"
 
@@ -29,47 +29,33 @@ import (
 	util2 "github.com/apache/dubbo-admin/pkg/admin/util"
 
 	"dubbo.apache.org/dubbo-go/v3/common"
-	"dubbo.apache.org/dubbo-go/v3/registry"
 )
 
 var (
-	SUBSCRIBE    *common.URL
 	UrlIdsMapper sync.Map
 )
 
-func init() {
-	queryParams := url.Values{
-		constant.InterfaceKey:  {constant.AnyValue},
-		constant.GroupKey:      {constant.AnyValue},
-		constant.VersionKey:    {constant.AnyValue},
-		constant.ClassifierKey: {constant.AnyValue},
-		constant.CategoryKey: {constant.ProvidersCategory +
-			"," + constant.ConsumersCategory +
-			"," + constant.RoutersCategory +
-			"," + constant.ConfiguratorsCategory},
-		constant.EnabledKey: {constant.AnyValue},
-		constant.CheckKey:   {"false"},
+func StartSubscribe(registry registry.AdminRegistry) {
+	err := registry.Subscribe(&adminNotifyListener{})
+	if err != nil {
+		return
 	}
-	SUBSCRIBE, _ = common.NewURL(common.GetLocalIp()+":0",
-		common.WithProtocol(constant.AdminProtocol),
-		common.WithParams(queryParams),
-	)
 }
 
-func StartSubscribe(registry registry.Registry) {
-	registry.Subscribe(SUBSCRIBE, adminNotifyListener{})
+func DestroySubscribe(registry registry.AdminRegistry) {
+	err := registry.Destroy()
+	if err != nil {
+		return
+	}
 }
 
-func DestroySubscribe(registry registry.Registry) {
-	registry.Destroy()
+type adminNotifyListener struct {
+	mu sync.Mutex
 }
 
-type adminNotifyListener struct{}
-
-func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
-	// TODO implement me
-	serviceURL := event.Service
+func (al *adminNotifyListener) Notify(serviceURL *common.URL) {
 	var interfaceName string
+	al.mu.Lock()
 	categories := make(map[string]map[string]map[string]*common.URL)
 	category := serviceURL.GetParam(constant.CategoryKey, "")
 	if len(category) == 0 {
@@ -157,10 +143,6 @@ func (adminNotifyListener) Notify(event *registry.ServiceEvent) {
 			}
 		}
 	}
-}
 
-func (adminNotifyListener) NotifyAll(events []*registry.ServiceEvent, f func()) {
-	for _, event := range events {
-		adminNotifyListener{}.Notify(event)
-	}
+	al.mu.Unlock()
 }

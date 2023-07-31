@@ -62,6 +62,7 @@ func (c *AddressConfig) ToURL() (*common.URL, error) {
 	return common.NewURL(c.GetAddress(),
 		common.WithProtocol(c.GetProtocol()),
 		common.WithParams(c.GetUrlMap()),
+		common.WithParamsValue("registry", c.GetProtocol()),
 		common.WithUsername(c.param("username", "")),
 		common.WithPassword(c.param("password", "")),
 	)

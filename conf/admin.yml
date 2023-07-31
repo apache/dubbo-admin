@@ -49,7 +49,3 @@ dubbo:
     triple:
       name: tri
       port: 20000
-  provider:
-    services:
-      MockServiceServer:
-        interface: "" # must be compatible with grpc or dubbo-java

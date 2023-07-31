@@ -19,7 +19,8 @@ package config
 
 import (
 	"dubbo.apache.org/dubbo-go/v3/metadata/report"
-	"dubbo.apache.org/dubbo-go/v3/registry"
+	dubboRegistry "dubbo.apache.org/dubbo-go/v3/registry"
+	"github.com/apache/dubbo-admin/pkg/admin/cache/registry"
 	"gorm.io/gorm"
 
 	_ "github.com/apache/dubbo-admin/pkg/admin/imports"
@@ -27,7 +28,8 @@ import (
 
 var (
 	Governance           GovernanceConfig
-	RegistryCenter       registry.Registry
+	RegistryCenter       dubboRegistry.Registry
+	AdminRegistry        registry.AdminRegistry
 	MetadataReportCenter report.MetadataReport
 
 	DataBase *gorm.DB // for service mock

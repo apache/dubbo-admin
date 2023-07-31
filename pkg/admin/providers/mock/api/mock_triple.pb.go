@@ -102,7 +102,7 @@ func (s *UnimplementedMockServiceServer) XXX_ServiceDesc() *grpc_go.ServiceDesc 
 	return &MockService_ServiceDesc
 }
 func (s *UnimplementedMockServiceServer) XXX_InterfaceName() string {
-	return "api.MockService"
+	return "org.apache.dubbo.mock.api.MockService"
 }
 
 func (UnimplementedMockServiceServer) mustEmbedUnimplementedMockServiceServer() {}

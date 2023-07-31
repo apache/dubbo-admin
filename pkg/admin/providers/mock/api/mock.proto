@@ -18,7 +18,7 @@
 syntax = "proto3";
 package api;
 
-option go_package = "./;api";
+option go_package = "./;org.apache.dubbo.mock.api";
 
 service MockService {
   rpc GetMockData (GetMockDataReq) returns (GetMockDataResp) {}

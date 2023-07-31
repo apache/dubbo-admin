@@ -122,6 +122,7 @@ func (g *GovernanceConfigImpl) DeleteConfigWithGroup(group string, key string) e
 	return g.configCenter.RemoveConfig(key, group)
 }
 
+// Register only works for MockService
 func (g *GovernanceConfigImpl) Register(url *common.URL) error {
 	if url.String() == "" {
 		return errors.New("url is empty")
@@ -129,6 +130,7 @@ func (g *GovernanceConfigImpl) Register(url *common.URL) error {
 	return RegistryCenter.Register(url)
 }
 
+// UnRegister only works for MockService
 func (g *GovernanceConfigImpl) UnRegister(url *common.URL) error {
 	if url.String() == "" {
 		return errors.New("url is empty")

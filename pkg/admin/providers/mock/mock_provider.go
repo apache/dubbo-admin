@@ -57,9 +57,7 @@ func RunMockServiceServer(admin admin.Admin, dubboConfig dubbogo.RootConfig) {
 		mockRuleService: mockRuleService,
 	})
 
-	builder := dubbogo.NewRootConfigBuilder().
-		SetProvider(dubbogo.NewProviderConfigBuilder().AddService("GreeterProvider", dubbogo.NewServiceConfigBuilder().SetRPCService(MockServiceServer{mockRuleService: mockRuleService}).Build()).Build()).
-		AddRegistry("zkRegistryKey", dubbogo.NewRegistryConfigBuilder().SetAddress(admin.Registry.Address).Build())
+	builder := dubbogo.NewRootConfigBuilder().AddRegistry("zkRegistryKey", dubbogo.NewRegistryConfigBuilder().SetAddress(admin.Registry.Address).Build())
 
 	for k, v := range dubboConfig.Protocols {
 		builder.AddProtocol(k, dubbogo.NewProtocolConfigBuilder().SetName(v.Name).SetPort(v.Port).Build())

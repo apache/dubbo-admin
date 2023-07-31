@@ -18,6 +18,7 @@
 package admin
 
 import (
+	"github.com/apache/dubbo-admin/pkg/admin/cache/registry"
 	"net/url"
 	"strings"
 
@@ -37,6 +38,9 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/config/admin"
 	core_runtime "github.com/apache/dubbo-admin/pkg/core/runtime"
+
+	_ "github.com/apache/dubbo-admin/pkg/admin/cache/registry/kube"
+	_ "github.com/apache/dubbo-admin/pkg/admin/cache/registry/universal"
 )
 
 func RegisterDatabase(rt core_runtime.Runtime) error {
@@ -94,7 +98,9 @@ func RegisterOther(rt core_runtime.Runtime) error {
 		if err != nil {
 			panic(err)
 		}
+
 		config.RegistryCenter, err = extension.GetRegistry(c.GetProtocol(), addrUrl)
+		config.AdminRegistry, err = registry.Registry(c.GetProtocol(), addrUrl)
 		if err != nil {
 			panic(err)
 		}
@@ -110,10 +116,10 @@ func RegisterOther(rt core_runtime.Runtime) error {
 		config.MetadataReportCenter = factory.CreateMetadataReport(addrUrl)
 	}
 
-	// subscribe to registries
-	go services.StartSubscribe(config.RegistryCenter)
+	// start go routines to subscribe to registries
+	services.StartSubscribe(config.AdminRegistry)
 	defer func() {
-		services.DestroySubscribe(config.RegistryCenter)
+		services.DestroySubscribe(config.AdminRegistry)
 	}()
 
 	// start mock cp-server
