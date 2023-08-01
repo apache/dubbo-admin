@@ -31,7 +31,7 @@ spec:
     singular: authorizationpolicy
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         properties:
@@ -50,7 +50,7 @@ spec:
           spec:
             properties:
               action:
-                description: The action to take when a rule is matched
+                description: The action to take when a dds is matched
                 enum:
                 - ALLOW
                 - DENY
@@ -67,7 +67,7 @@ spec:
                 items:
                   properties:
                     from:
-                      description: The source of the traffic to be matched.
+                      description: The source of the resource to be matched.
                       properties:
                         extends:
                           description: The extended identities(from Dubbo Auth) to
@@ -130,7 +130,7 @@ spec:
                           type: array
                       type: object
                     to:
-                      description: The destination of the traffic to be matched.
+                      description: The destination of the resource to be matched.
                       properties:
                         extends:
                           description: The extended identities(from Dubbo Auth) to
@@ -220,7 +220,7 @@ spec:
                 type: array
               samples:
                 default: 100
-                description: The sample rate of the rule. The value is between 0 and
+                description: The sample rate of the dds. The value is between 0 and
                   100.
                 maximum: 100
                 minimum: 0

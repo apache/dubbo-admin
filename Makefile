@@ -98,7 +98,7 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
-	#$(CONTROLLER_GEN) object:headerFile="./hack/boilerplate.go.txt"  crd:allowDangerousTypes=true paths="./..."
+	#$(CONTROLLER_GEN) object:headerFile="./hack/boilerplate.go.txt"  resource:allowDangerousTypes=true paths="./..."
 
 .PHONY: swagger
 swagger: swagger-install ## Generate dubbo-admin swagger docs.

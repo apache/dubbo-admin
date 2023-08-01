@@ -24,10 +24,10 @@ import (
 )
 
 type MockRuleService interface {
-	// create or update mock rule. if the request contains id, then will be an update operation.
+	// create or update mock dds. if the request contains id, then will be an update operation.
 	CreateOrUpdateMockRule(mockRule *model.MockRule) error
 
-	// delete the mock rule data by mock rule id.
+	// delete the mock dds data by mock dds id.
 	DeleteMockRuleById(id int64) error
 
 	// list the mock rules by filter and return data by page.

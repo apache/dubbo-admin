@@ -34,13 +34,13 @@ func removeFromOverride(key, side, param string) error {
 	}
 
 	if oldRule == "" {
-		return perrors.Errorf("Override rule does not exist!")
+		return perrors.Errorf("Override dds does not exist!")
 	}
 
 	override := &model.Override{}
 	err = yaml.Unmarshal([]byte(oldRule), override)
 	if err != nil {
-		logger.Error("Unrecognized override rule!")
+		logger.Error("Unrecognized override dds!")
 		return err
 	}
 	for i, c := range override.Configs {
@@ -56,7 +56,7 @@ func removeFromOverride(key, side, param string) error {
 	if len(override.Configs) == 0 {
 		err = config.Governance.DeleteConfig(key)
 		if err != nil {
-			logger.Error("Failed to delete override rule!")
+			logger.Error("Failed to delete override dds!")
 			return err
 		}
 	} else {
@@ -124,7 +124,7 @@ func createOrUpdateOverride(key string, side, param string, newRule model.Overri
 
 	err = config.Governance.SetConfig(key, mergedRule)
 	if err != nil {
-		logger.Errorf("Failed to save timeout yaml rule!", err)
+		logger.Errorf("Failed to save timeout yaml dds!", err)
 	}
 	return nil
 }
@@ -223,7 +223,7 @@ func createOrUpdateCondition(key string, newRule model.ConditionRoute) error {
 
 	err = config.Governance.SetConfig(key, mergedRule)
 	if err != nil {
-		logger.Errorf("Failed to save region condition rule!", err)
+		logger.Errorf("Failed to save region condition dds!", err)
 	}
 	return nil
 }
@@ -235,13 +235,13 @@ func removeCondition(key, rule string, identifier string) error {
 	}
 
 	if oldRule == "" {
-		return perrors.Errorf("Condition rule does not exist!")
+		return perrors.Errorf("Condition dds does not exist!")
 	}
 
 	route := &model.ConditionRoute{}
 	err = yaml.Unmarshal([]byte(oldRule), route)
 	if err != nil {
-		logger.Error("Unrecognized condition rule!")
+		logger.Error("Unrecognized condition dds!")
 		return err
 	}
 	for i, c := range route.Conditions {
@@ -254,7 +254,7 @@ func removeCondition(key, rule string, identifier string) error {
 	if len(route.Conditions) == 0 {
 		err = config.Governance.DeleteConfig(key)
 		if err != nil {
-			logger.Error("Failed to delete override rule!")
+			logger.Error("Failed to delete override dds!")
 			return err
 		}
 	} else {
@@ -288,13 +288,13 @@ func createOrUpdateTag(key string, newRule model.TagRoute) error {
 	}
 
 	if oldRule != "" {
-		logger.Warn("Will override the existing tag rule with the new one!")
+		logger.Warn("Will override the existing tag dds with the new one!")
 	}
 	mergedRule = string(newRuleByte)
 
 	err = config.Governance.SetConfig(key, mergedRule)
 	if err != nil {
-		logger.Errorf("Failed to save region condition rule!", err)
+		logger.Errorf("Failed to save region condition dds!", err)
 	}
 	return nil
 }
@@ -306,7 +306,7 @@ func deleteTag(key string) error {
 	}
 
 	if oldRule == "" {
-		logger.Errorf("Tag rule does not exist!")
+		logger.Errorf("Tag dds does not exist!")
 		return nil
 	}
 

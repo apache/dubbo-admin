@@ -29,43 +29,43 @@ import (
 
 var weightSvc = &traffic.WeightService{}
 
-// CreateWeight create rule
-// @Summary      create rule
-// @Description  create rule
+// CreateWeight create dds
+// @Summary      create dds
+// @Description  create dds
 // @Tags         TrafficWeight
 // @Accept       json
 // @Produce      json
-// @Param        weight  body  model.Percentage      true   "rule"
+// @Param        weight  body  model.Percentage      true   "dds"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/weight [post]
+// @Router       /api/{env}/resource/weight [post]
 func CreateWeight(c *gin.Context) {
 	doWeightUpdate(c, func(p *model.Percentage) error {
 		return weightSvc.CreateOrUpdate(p)
 	})
 }
 
-// UpdateWeight update rule
-// @Summary      update rule
-// @Description  update rule
+// UpdateWeight update dds
+// @Summary      update dds
+// @Description  update dds
 // @Tags         TrafficWeight
 // @Accept       json
 // @Produce      json
-// @Param        weight  body  model.Percentage      true   "rule"
+// @Param        weight  body  model.Percentage      true   "dds"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/weight [put]
+// @Router       /api/{env}/resource/weight [put]
 func UpdateWeight(c *gin.Context) {
 	doWeightUpdate(c, func(p *model.Percentage) error {
 		return weightSvc.CreateOrUpdate(p)
 	})
 }
 
-// DeleteWeight delete rule
-// @Summary      delete rule
-// @Description  delete rule
+// DeleteWeight delete dds
+// @Summary      delete dds
+// @Description  delete dds
 // @Tags         TrafficWeight
 // @Accept       json
 // @Produce      json
@@ -74,7 +74,7 @@ func UpdateWeight(c *gin.Context) {
 // @Param        group    query  string  true   "service group"
 // @Success      200  {bool}    true
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/weight [delete]
+// @Router       /api/{env}/resource/weight [delete]
 func DeleteWeight(c *gin.Context) {
 	p := &model.Percentage{
 		Service: c.Query("service"),
@@ -90,9 +90,9 @@ func DeleteWeight(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
-// SearchWeight get rule list
-// @Summary      get rule list
-// @Description  get rule list
+// SearchWeight get dds list
+// @Summary      get dds list
+// @Description  get dds list
 // @Tags         TrafficWeight
 // @Accept       json
 // @Produce      json
@@ -101,7 +101,7 @@ func DeleteWeight(c *gin.Context) {
 // @Param        group    query  string  true   "service group"
 // @Success      200  {object}  []model.Weight
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/weight [get]
+// @Router       /api/{env}/resource/weight [get]
 func SearchWeight(c *gin.Context) {
 	p := &model.Percentage{
 		Service: c.Query("service"),
@@ -120,7 +120,7 @@ func SearchWeight(c *gin.Context) {
 func doWeightUpdate(c *gin.Context, handle func(p *model.Percentage) error) {
 	var p *model.Percentage
 	if err := c.ShouldBindJSON(&p); err != nil {
-		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
+		logger.Errorf("Error parsing dds input when trying to create override dds, err msg is %s.", err.Error())
 		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
 		return
 	}

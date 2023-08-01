@@ -19,7 +19,7 @@ import (
 	"net"
 	"testing"
 
-	"github.com/apache/dubbo-admin/api/mesh"
+	"github.com/apache/dubbo-admin/api/ca"
 	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
 	"github.com/apache/dubbo-admin/pkg/config/kube"
 	"github.com/apache/dubbo-admin/pkg/config/security"
@@ -80,7 +80,7 @@ func TestCSRFailed(t *testing.T) {
 		CertClient:  kubeClient.Client,
 	}
 
-	certificate, err := impl.CreateIdentity(c, &mesh.IdentityRequest{
+	certificate, err := impl.CreateIdentity(c, &ca.IdentityRequest{
 		Csr: "",
 	})
 	if err != nil {
@@ -93,7 +93,7 @@ func TestCSRFailed(t *testing.T) {
 		return
 	}
 
-	certificate, err = impl.CreateIdentity(c, &mesh.IdentityRequest{
+	certificate, err = impl.CreateIdentity(c, &ca.IdentityRequest{
 		Csr: "123",
 	})
 
@@ -107,7 +107,7 @@ func TestCSRFailed(t *testing.T) {
 		return
 	}
 
-	certificate, err = impl.CreateIdentity(c, &mesh.IdentityRequest{
+	certificate, err = impl.CreateIdentity(c, &ca.IdentityRequest{
 		Csr: "-----BEGIN CERTIFICATE-----\n" +
 			"123\n" +
 			"-----END CERTIFICATE-----",
@@ -157,7 +157,7 @@ func TestTokenFailed(t *testing.T) {
 		return
 	}
 
-	certificate, err := impl.CreateIdentity(p, &mesh.IdentityRequest{
+	certificate, err := impl.CreateIdentity(p, &ca.IdentityRequest{
 		Csr: csr,
 	})
 	if err != nil {
@@ -174,7 +174,7 @@ func TestTokenFailed(t *testing.T) {
 	md["authorization"] = []string{"123"}
 	c := metadata.NewIncomingContext(p, md)
 
-	certificate, err = impl.CreateIdentity(c, &mesh.IdentityRequest{
+	certificate, err = impl.CreateIdentity(c, &ca.IdentityRequest{
 		Csr: csr,
 	})
 
@@ -192,7 +192,7 @@ func TestTokenFailed(t *testing.T) {
 	md["authorization"] = []string{"Bearer 123"}
 	c = metadata.NewIncomingContext(p, md)
 
-	certificate, err = impl.CreateIdentity(c, &mesh.IdentityRequest{
+	certificate, err = impl.CreateIdentity(c, &ca.IdentityRequest{
 		Csr: csr,
 	})
 
@@ -210,7 +210,7 @@ func TestTokenFailed(t *testing.T) {
 	md["authorization"] = []string{"Bearer expceted-token"}
 	c = metadata.NewIncomingContext(p, md)
 
-	certificate, err = impl.CreateIdentity(c, &mesh.IdentityRequest{
+	certificate, err = impl.CreateIdentity(c, &ca.IdentityRequest{
 		Csr: csr,
 	})
 
@@ -273,7 +273,7 @@ func TestSuccess(t *testing.T) {
 		return
 	}
 
-	certificate, err := impl.CreateIdentity(c, &mesh.IdentityRequest{
+	certificate, err := impl.CreateIdentity(c, &ca.IdentityRequest{
 		Csr: csr,
 	})
 	if err != nil {

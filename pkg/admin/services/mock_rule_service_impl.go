@@ -43,7 +43,7 @@ func (m *MockRuleServiceImpl) CreateOrUpdateMockRule(mockRule *model.MockRule) e
 	}
 
 	isExist := existRule.ID != 0
-	// check if we can save or update the rule, we need keep the serviceName + methodName is unique.
+	// check if we can save or update the dds, we need keep the serviceName + methodName is unique.
 	if isExist {
 		if mockRule.ID != existRule.ID {
 			err := errors.New("service name and method name must be unique")

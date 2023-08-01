@@ -28,7 +28,7 @@ import (
 
 type MockService struct{}
 
-// CreateOrUpdate create or update timeout rule
+// CreateOrUpdate create or update timeout dds
 func (tm *MockService) CreateOrUpdate(m *model.Mock) error {
 	key := services.GetOverridePath(util.ColonSeparatedKey(m.Service, m.Group, m.Version))
 	newRule := m.ToRule()

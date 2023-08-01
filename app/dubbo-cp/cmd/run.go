@@ -19,6 +19,8 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/apache/dubbo-admin/pkg/core/kubeclient"
+	"github.com/apache/dubbo-admin/pkg/snp"
 	"time"
 
 	"github.com/apache/dubbo-admin/pkg/admin"
@@ -30,7 +32,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/cmd"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/cp-server"
-	"github.com/apache/dubbo-admin/pkg/rule"
+	"github.com/apache/dubbo-admin/pkg/dds"
 	"github.com/spf13/cobra"
 )
 
@@ -86,12 +88,21 @@ func newRunCmdWithOpts(opts cmd.RunCmdOpts) *cobra.Command {
 				logger.Sugar().Error(err, "unable to set up authority")
 			}
 
-			if err := rule.Setup(rt); err != nil {
-				logger.Sugar().Error(err, "unable to set up rule")
+			if err := dds.Setup(rt); err != nil {
+				logger.Sugar().Error(err, "unable to set up dds")
+			}
+
+			if err := snp.Setup(rt); err != nil {
+				logger.Sugar().Error(err, "unable to set up snp")
 			}
 
 			if err := cp_server.Setup(rt); err != nil {
 				logger.Sugar().Error(err, "unable to set up grpc server")
+			}
+
+			// This must be last, otherwise we will not know which informers to register
+			if err := kubeclient.Setup(rt); err != nil {
+				logger.Sugar().Error(err, "unable to set up kube client")
 			}
 
 			logger.Sugar().Info("starting Control Plane")

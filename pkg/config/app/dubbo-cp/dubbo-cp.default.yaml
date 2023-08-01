@@ -37,7 +37,12 @@ kube-config:
   rest-config-qps: 50
   rest-config-burst: 100
   kube-file-config: ""
+  domain-suffix: cluster.local
 grpc-server:
   plain-server-port: 30060
   secure-server-port: 30062
   debug-port: 30070
+options:
+  debounce-after: 1000000
+  debounce-max: 1000000000
+  enable-debounce: true

@@ -400,7 +400,7 @@ func setValueContext(nc *PathContext, value interface{}, merge bool) (bool, erro
 			parentNode[key] = vv
 			nc.Node = vv
 		}
-	// TODO `map[interface{}]interface{}` is used by tests in operator/cmd/mesh, we should add our own tests
+	// TODO `map[interface{}]interface{}` is used by tests in operator/cmd/ca, we should add our own tests
 	case map[interface{}]interface{}:
 		key := nc.Parent.KeyToChild.(string)
 		parentNode[key] = vv

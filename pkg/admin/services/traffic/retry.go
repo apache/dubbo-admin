@@ -28,7 +28,7 @@ import (
 
 type RetryService struct{}
 
-// CreateOrUpdate create or update timeout rule
+// CreateOrUpdate create or update timeout dds
 func (tm *RetryService) CreateOrUpdate(r *model.Retry) error {
 	key := services.GetOverridePath(util.ColonSeparatedKey(r.Service, r.Group, r.Version))
 	newRule := r.ToRule()

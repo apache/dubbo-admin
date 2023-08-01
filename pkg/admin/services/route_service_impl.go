@@ -276,7 +276,7 @@ func GetRules(con string, ruleType string) (map[string]string, error) {
 	if con == "" || con == "*" {
 		rules, err := config.Governance.GetList("dubbo")
 		if _, ok := err.(*config.RuleNotFound); ok {
-			logger.Infof("No rule found from config center, err msg is %s", err.Error())
+			logger.Infof("No dds found from config center, err msg is %s", err.Error())
 			return list, nil
 		}
 
@@ -289,7 +289,7 @@ func GetRules(con string, ruleType string) (map[string]string, error) {
 		key := GetOverridePath(con)
 		rule, err := config.Governance.GetConfig(key)
 		if _, ok := err.(*config.RuleNotFound); ok {
-			logger.Infof("No rule found from config center, err msg is %s", err.Error())
+			logger.Infof("No dds found from config center, err msg is %s", err.Error())
 			return list, nil
 		}
 		list[key] = rule

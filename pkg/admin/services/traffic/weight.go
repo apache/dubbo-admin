@@ -29,7 +29,7 @@ import (
 
 type WeightService struct{}
 
-// CreateOrUpdate create or update timeout rule
+// CreateOrUpdate create or update timeout dds
 func (tm *WeightService) CreateOrUpdate(p *model.Percentage) error {
 	key := services.GetOverridePath(util.ColonSeparatedKey(p.Service, p.Group, p.Version))
 	newRule := p.ToRule()

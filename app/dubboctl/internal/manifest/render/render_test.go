@@ -546,17 +546,17 @@ func TestRemoteRenderer_Init(t *testing.T) {
 //  hostIPC: false
 //  hostPID: false
 //  runAsUser:
-//    rule: 'RunAsAny'
+//    dds: 'RunAsAny'
 //  seLinux:
-//    rule: 'RunAsAny'
+//    dds: 'RunAsAny'
 //  supplementalGroups:
-//    rule: 'MustRunAs'
+//    dds: 'MustRunAs'
 //    ranges:
 //      # Forbid adding the root group.
 //      - min: 1
 //        max: 65535
 //  fsGroup:
-//    rule: 'MustRunAs'
+//    dds: 'MustRunAs'
 //    ranges:
 //      # Forbid adding the root group.
 //      - min: 1
@@ -687,13 +687,13 @@ func TestRemoteRenderer_Init(t *testing.T) {
 //  hostIPC: false
 //  hostPID: false
 //  fsGroup:
-//    rule: RunAsAny
+//    dds: RunAsAny
 //  seLinux:
-//    rule: RunAsAny
+//    dds: RunAsAny
 //  supplementalGroups:
-//    rule: RunAsAny
+//    dds: RunAsAny
 //  runAsUser:
-//    rule: RunAsAny
+//    dds: RunAsAny
 //  volumes:
 //  - configMap
 //  - downwardAPI

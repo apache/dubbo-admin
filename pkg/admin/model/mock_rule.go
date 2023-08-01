@@ -25,7 +25,7 @@ type MockRule struct {
 	ID          uint   `json:"id"`
 	ServiceName string `json:"serviceName"`
 	MethodName  string `json:"methodName"`
-	Rule        string `json:"rule"`
+	Rule        string `json:"dds"`
 	Enable      bool   `json:"enable"`
 }
 

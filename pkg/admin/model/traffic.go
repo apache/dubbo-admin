@@ -91,7 +91,7 @@ type Region struct {
 	Service string `json:"service" binding:"required"`
 	Group   string `json:"group"`
 	Version string `json:"version"`
-	Rule    string `json:"rule"`
+	Rule    string `json:"dds"`
 }
 
 func (r Region) ToRule() ConditionRoute {
@@ -126,7 +126,7 @@ type Argument struct {
 	Service string `json:"service" binding:"required"`
 	Group   string `json:"group"`
 	Version string `json:"version"`
-	Rule    string `json:"rule" binding:"required"`
+	Rule    string `json:"dds" binding:"required"`
 }
 
 func (r Argument) ToRule() ConditionRoute {

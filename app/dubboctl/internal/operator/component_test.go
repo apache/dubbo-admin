@@ -143,7 +143,7 @@ func TestRenderManifest(t *testing.T) {
 			}
 			comp := tt.componentFunc(t)
 			if err := comp.Run(); err != nil {
-				t.Fatalf("%s Run failed, err: %s", tt.name, err)
+				t.Fatalf("%s Start failed, err: %s", tt.name, err)
 			}
 			res, err := comp.RenderManifest()
 			if err != nil {

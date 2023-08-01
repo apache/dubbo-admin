@@ -151,7 +151,7 @@ ingress:
   #      - chart-example.local
 
 networkPolicy:
-  ## @param networkPolicy.enabled Enable creation of NetworkPolicy resources. Only Ingress traffic is filtered for now.
+  ## @param networkPolicy.enabled Enable creation of NetworkPolicy resources. Only Ingress resource is filtered for now.
   ##
   enabled: false
   ## @param networkPolicy.allowExternal Don't require clientgen label for connections

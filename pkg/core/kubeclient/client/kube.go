@@ -18,6 +18,9 @@
 package client
 
 import (
+	clientset "github.com/apache/dubbo-admin/pkg/core/gen/generated/clientset/versioned"
+	"github.com/apache/dubbo-admin/pkg/core/gen/generated/informers/externalversions"
+	kubeExtClient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"os"
 	"path/filepath"
 
@@ -30,19 +33,59 @@ import (
 )
 
 type KubeClient interface {
+	Init(options *dubbo_cp.Config) bool
+
+	GetGenClientSet() *clientset.Clientset
+	GetGenInformer() externalversions.SharedInformerFactory
 	GetKubernetesClientSet() *kubernetes.Clientset
+	GetKubeConfig() *rest.Config
+	// Ext returns the API extensions client.
+	Ext() kubeExtClient.Interface
+
+	Start(stop <-chan struct{}) error
+	NeedLeaderElection() bool
 }
 
 type kubeClientImpl struct {
 	kubernetesClientSet *kubernetes.Clientset
+	kubeConfig          *rest.Config
+	genClientSet        *clientset.Clientset
+	genInformer         externalversions.SharedInformerFactory
+	extSet              kubeExtClient.Interface
 }
 
-func NewKubeClient() *kubeClientImpl {
+func NewKubeClient() KubeClient {
 	return &kubeClientImpl{}
+}
+
+func (c *kubeClientImpl) GetGenInformer() externalversions.SharedInformerFactory {
+	return c.genInformer
+}
+
+func (c *kubeClientImpl) Ext() kubeExtClient.Interface {
+	return c.extSet
+}
+
+func (k *kubeClientImpl) GetGenClientSet() *clientset.Clientset {
+	return k.genClientSet
+}
+
+func (k *kubeClientImpl) GetKubeConfig() *rest.Config {
+	return k.kubeConfig
 }
 
 func (k *kubeClientImpl) GetKubernetesClientSet() *kubernetes.Clientset {
 	return k.kubernetesClientSet
+}
+
+func (k *kubeClientImpl) Start(stop <-chan struct{}) error {
+	k.genInformer.Start(stop)
+	k.genInformer.WaitForCacheSync(stop)
+	return nil
+}
+
+func (k *kubeClientImpl) NeedLeaderElection() bool {
+	return false
 }
 
 func (k *kubeClientImpl) Init(options *dubbo_cp.Config) bool {
@@ -74,7 +117,8 @@ func (k *kubeClientImpl) Init(options *dubbo_cp.Config) bool {
 	// set qps and burst for rest config
 	config.QPS = float32(options.KubeConfig.RestConfigQps)
 	config.Burst = options.KubeConfig.RestConfigBurst
-	// creates the clientset
+	k.kubeConfig = config
+	// creates the client
 	clientSet, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		logger.Sugar().Warnf("Failed to create clientgen to kubernetes. " + err.Error())
@@ -85,5 +129,19 @@ func (k *kubeClientImpl) Init(options *dubbo_cp.Config) bool {
 		return false
 	}
 	k.kubernetesClientSet = clientSet
+	genClient, err := clientset.NewForConfig(config)
+	if err != nil {
+		logger.Sugar().Warnf("Failed to create clientgen to kubernetes. " + err.Error())
+		return false
+	}
+	factory := externalversions.NewSharedInformerFactory(genClient, 0)
+	k.genInformer = factory
+	k.genClientSet = genClient
+	ext, err := kubeExtClient.NewForConfig(config)
+	if err != nil {
+		logger.Sugar().Warnf("Failed to create kubeExtClient to kubernetes. " + err.Error())
+		return false
+	}
+	k.extSet = ext
 	return true
 }

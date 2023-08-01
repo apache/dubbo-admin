@@ -29,9 +29,9 @@ import (
 
 var overrideServiceImpl services.OverrideService = &services.OverrideServiceImpl{}
 
-// CreateOverride create a new override rule
-// @Summary      Create a new override rule
-// @Description  Create a new override rule
+// CreateOverride create a new override dds
+// @Summary      Create a new override dds
+// @Description  Create a new override dds
 // @Tags         OverrideRule
 // @Accept       json
 // @Produce      json
@@ -44,7 +44,7 @@ var overrideServiceImpl services.OverrideService = &services.OverrideServiceImpl
 func CreateOverride(c *gin.Context) {
 	var dynamicConfig *model.DynamicConfig
 	if err := c.ShouldBindJSON(&dynamicConfig); err != nil {
-		logger.Errorf("Error parsing override rule input when trying to create override rule, err msg is %s.", err.Error())
+		logger.Errorf("Error parsing override dds input when trying to create override dds, err msg is %s.", err.Error())
 		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
 		return
 	}
@@ -63,9 +63,9 @@ func CreateOverride(c *gin.Context) {
 	err := overrideServiceImpl.SaveOverride(dynamicConfig)
 	if err != nil {
 		if _, ok := err.(*config.RuleExists); ok {
-			logger.Infof("Override rule already exists!")
+			logger.Infof("Override dds already exists!")
 		} else {
-			logger.Infof("Override rule create failed, err msg is %s.", err.Error())
+			logger.Infof("Override dds create failed, err msg is %s.", err.Error())
 			c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		}
 		return
@@ -74,9 +74,9 @@ func CreateOverride(c *gin.Context) {
 	c.JSON(http.StatusCreated, true)
 }
 
-// UpdateOverride update override rule
-// @Summary      Update override rule
-// @Description  Update override rule
+// UpdateOverride update override dds
+// @Summary      Update override dds
+// @Description  Update override dds
 // @Tags         OverrideRule
 // @Accept       json
 // @Produce      json
@@ -98,7 +98,7 @@ func UpdateOverride(c *gin.Context) {
 
 	old, err := overrideServiceImpl.FindOverride(id)
 	if err != nil {
-		logger.Errorf("Check failed before trying to update override rule for service %s , err msg is: %s", dynamicConfig.Service, err.Error())
+		logger.Errorf("Check failed before trying to update override dds for service %s , err msg is: %s", dynamicConfig.Service, err.Error())
 		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
 		return
 	}
@@ -107,16 +107,16 @@ func UpdateOverride(c *gin.Context) {
 		return
 	}
 	if err := overrideServiceImpl.UpdateOverride(&dynamicConfig); err != nil {
-		logger.Errorf("Update tag rule for service %s failed, err msg is: %s", dynamicConfig.Service, err.Error())
+		logger.Errorf("Update tag dds for service %s failed, err msg is: %s", dynamicConfig.Service, err.Error())
 		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, true)
 }
 
-// SearchOverride search override rule with key word
-// @Summary      Search override rule
-// @Description  Search override rule
+// SearchOverride search override dds with key word
+// @Summary      Search override dds
+// @Description  Search override dds
 // @Tags         OverrideRule
 // @Accept       json
 // @Produce      json
@@ -150,10 +150,10 @@ func SearchOverride(c *gin.Context) {
 
 	if err != nil {
 		if _, ok := err.(*config.RuleNotFound); ok {
-			logger.Infof("No override rule found for query parameters: application %s, service %, group %, version %", application, service, serviceGroup, serviceVersion)
+			logger.Infof("No override dds found for query parameters: application %s, service %, group %, version %", application, service, serviceGroup, serviceVersion)
 			c.JSON(http.StatusOK, []*model.DynamicConfig{})
 		} else {
-			logger.Errorf("Check override rule failed, err msg is: %s", err.Error())
+			logger.Errorf("Check override dds failed, err msg is: %s", err.Error())
 			c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		}
 	}
@@ -164,14 +164,14 @@ func SearchOverride(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-// DetailOverride show the detail of one specified rule
-// @Summary      Show the detail of one specified rule
-// @Description  Show the detail of one specified rule
+// DetailOverride show the detail of one specified dds
+// @Summary      Show the detail of one specified dds
+// @Description  Show the detail of one specified dds
 // @Tags         OverrideRule
 // @Accept       json
 // @Produce      json
 // @Param        env       path  string          		  false  "environment"       default(dev)
-// @Param        id        path  string          		  true   "rule id"
+// @Param        id        path  string          		  true   "dds id"
 // @Success      200  {object}  model.DynamicConfig
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
@@ -180,7 +180,7 @@ func DetailOverride(c *gin.Context) {
 	id := c.Param("id")
 	override, err := overrideServiceImpl.FindOverride(id)
 	if err != nil {
-		logger.Errorf("Check override rule detail with id %s failed, err msg is: %s", id, err.Error())
+		logger.Errorf("Check override dds detail with id %s failed, err msg is: %s", id, err.Error())
 		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		return
 	}
@@ -191,14 +191,14 @@ func DetailOverride(c *gin.Context) {
 	c.JSON(http.StatusOK, override)
 }
 
-// EnableOverride Enable the specified rule
-// @Summary      Enable the specified rule
-// @Description  Enable the specified rule
+// EnableOverride Enable the specified dds
+// @Summary      Enable the specified dds
+// @Description  Enable the specified dds
 // @Tags         OverrideRule
 // @Accept       json
 // @Produce      json
 // @Param        env       path  string          		  false  "environment"       default(dev)
-// @Param        id        path  string          		  true   "rule id"
+// @Param        id        path  string          		  true   "dds id"
 // @Success      200  {boolean} true
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/rules/override/enable/{id} [put]
@@ -206,21 +206,21 @@ func EnableOverride(c *gin.Context) {
 	id := c.Param("id")
 	err := overrideServiceImpl.EnableOverride(id)
 	if err != nil {
-		logger.Errorf("Enable override rule with id %s failed, err msg is: %s", id, err.Error())
+		logger.Errorf("Enable override dds with id %s failed, err msg is: %s", id, err.Error())
 		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, true)
 }
 
-// DeleteOverride delete the specified rule
-// @Summary      Delete the specified rule
-// @Description  Delete the specified rule
+// DeleteOverride delete the specified dds
+// @Summary      Delete the specified dds
+// @Description  Delete the specified dds
 // @Tags         OverrideRule
 // @Accept       json
 // @Produce      json
 // @Param        env       path  string          		  false  "environment"       default(dev)
-// @Param        id        path  string          		  true   "rule id"
+// @Param        id        path  string          		  true   "dds id"
 // @Success      200  {boolean} true
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/rules/override/{id} [delete]
@@ -228,21 +228,21 @@ func DeleteOverride(c *gin.Context) {
 	id := c.Param("id")
 	err := overrideServiceImpl.DeleteOverride(id)
 	if err != nil {
-		logger.Errorf("Delete override rule with id %s failed, err msg is: %s", id, err.Error())
+		logger.Errorf("Delete override dds with id %s failed, err msg is: %s", id, err.Error())
 		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, true)
 }
 
-// DisableOverride Disable the specified rule
-// @Summary      Disable the specified rule
-// @Description  Disable the specified rule
+// DisableOverride Disable the specified dds
+// @Summary      Disable the specified dds
+// @Description  Disable the specified dds
 // @Tags         OverrideRule
 // @Accept       json
 // @Produce      json
 // @Param        env       path  string          		  false  "environment"       default(dev)
-// @Param        id        path  string          		  true   "rule id"
+// @Param        id        path  string          		  true   "dds id"
 // @Success      200  {boolean} true
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/rules/override/disable/{id} [put]
@@ -250,7 +250,7 @@ func DisableOverride(c *gin.Context) {
 	id := c.Param("id")
 	err := overrideServiceImpl.DisableOverride(id)
 	if err != nil {
-		logger.Errorf("Disable override rule with id %s failed, err msg is: %s", id, err.Error())
+		logger.Errorf("Disable override dds with id %s failed, err msg is: %s", id, err.Error())
 		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		return
 	}

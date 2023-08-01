@@ -31,7 +31,7 @@ spec:
     singular: dynamicconfig
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: DynamicConfig is the Schema for the dynamicconfigs API
@@ -52,13 +52,13 @@ spec:
             description: DynamicConfigSpec defines the desired state of DynamicConfig
             properties:
               configVersion:
-                description: The version of the tag rule definition, currently available
+                description: The version of the tag dds definition, currently available
                   version is v3.0
                 enum:
                 - v3.0
                 type: string
               configs:
-                description: The match condition and configuration of this rule.
+                description: The match condition and configuration of this dds.
                 items:
                   properties:
                     addresses:
@@ -74,12 +74,12 @@ spec:
                     enabled:
                       type: boolean
                     match:
-                      description: A set of criterion to be met in order for the rule/config
+                      description: A set of criterion to be met in order for the dds/config
                         to be applied to the Dubbo instance.
                       properties:
                         address:
                           description: 'The instance address matching condition for
-                            this config rule to take effect. xact: “value” for exact
+                            this config dds to take effect. xact: “value” for exact
                             string match prefix: “value” for prefix-based match regex:
                             “value” for RE2 style regex-based match (https://github.com/google/re2/wiki/Syntax)).'
                           properties:
@@ -92,7 +92,7 @@ spec:
                           type: object
                         application:
                           description: "The application matching condition for this
-                            config rule to take effect. Effective when scope: service
+                            config dds to take effect. Effective when scope: service
                             is set. \n exact: “value” for exact string match prefix:
                             “value” for prefix-based match regex: “value” for RE2
                             style regex-based match (https://github.com/google/re2/wiki/Syntax))."
@@ -117,7 +117,7 @@ spec:
                           type: object
                         param:
                           description: The Dubbo url keys and values matching condition
-                            for this config rule to take effect.
+                            for this config dds to take effect.
                           items:
                             properties:
                               key:
@@ -145,7 +145,7 @@ spec:
                           type: array
                         service:
                           description: 'The service matching condition for this config
-                            rule to take effect. Effective when scope: application
+                            dds to take effect. Effective when scope: application
                             is set. exact: “value” for exact string match prefix:
                             “value” for prefix-based match regex: “value” for RE2
                             style regex-based match (https://github.com/google/re2/wiki/Syntax)).'
@@ -196,15 +196,15 @@ spec:
                 type: array
               enabled:
                 default: true
-                description: Whether enable this rule or not, set enabled:false to
-                  disable this rule.
+                description: Whether enable this dds or not, set enabled:false to
+                  disable this dds.
                 type: boolean
               key:
                 description: The identifier of the target service or application that
-                  this rule is about to apply to. If scope:serviceis set, then keyshould
-                  be specified as the Dubbo service key that this rule targets to
+                  this dds is about to apply to. If scope:serviceis set, then keyshould
+                  be specified as the Dubbo service key that this dds targets to
                   control. If scope:application is set, then keyshould be specified
-                  as the name of the application that this rule targets to control,
+                  as the name of the application that this dds targets to control,
                   application should always be a Dubbo Consumer.
                 type: string
               scope:

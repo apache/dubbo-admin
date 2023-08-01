@@ -31,7 +31,7 @@ spec:
     singular: conditionroute
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: ConditionRoute is the Schema for the conditionroutes API
@@ -52,39 +52,39 @@ spec:
             description: ConditionRouteSpec defines the desired state of ConditionRoute
             properties:
               conditions:
-                description: The condition routing rule definition of this configuration.
+                description: The condition routing dds definition of this configuration.
                   Check Condition for details
                 items:
                   type: string
                 type: array
               configVersion:
-                description: The version of the condition rule definition, currently
+                description: The version of the condition dds definition, currently
                   available version is v3.0
                 enum:
                 - v3.0
                 type: string
               enabled:
                 default: true
-                description: Whether enable this rule or not, set enabled:false to
-                  disable this rule.
+                description: Whether enable this dds or not, set enabled:false to
+                  disable this dds.
                 type: boolean
               force:
                 description: The behaviour when the instance subset is empty after
                   after routing. true means return no provider exception while false
-                  means ignore this rule.
+                  means ignore this dds.
                 type: boolean
               key:
                 description: The identifier of the target service or application that
-                  this rule is about to apply to. If scope:serviceis set, then keyshould
-                  be specified as the Dubbo service key that this rule targets to
+                  this dds is about to apply to. If scope:serviceis set, then keyshould
+                  be specified as the Dubbo service key that this dds targets to
                   control. If scope:application is set, then keyshould be specified
-                  as the name of the application that this rule targets to control,
+                  as the name of the application that this dds targets to control,
                   application should always be a Dubbo Consumer.
                 type: string
               priority:
                 type: integer
               runtime:
-                description: Whether run routing rule for every rpc invocation or
+                description: Whether run routing dds for every rpc invocation or
                   use routing cache if available.
                 type: boolean
               scope:

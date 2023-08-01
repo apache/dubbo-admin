@@ -53,7 +53,7 @@ func TestMockRuleServiceImpl_CreateOrUpdateMockRule(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test create mock rule",
+			name: "test create mock dds",
 			m: &MockRuleServiceImpl{
 				MockRuleMapper: mockMockRuleMapper,
 				Logger:         logger.Logger(),
@@ -64,7 +64,7 @@ func TestMockRuleServiceImpl_CreateOrUpdateMockRule(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "test update mock rule",
+			name: "test update mock dds",
 			m: &MockRuleServiceImpl{
 				MockRuleMapper: mockMockRuleMapper,
 				Logger:         logger.Logger(),
@@ -100,7 +100,7 @@ func TestMockRuleServiceImpl_DeleteMockRuleById(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test delete mock rule",
+			name: "test delete mock dds",
 			m: &MockRuleServiceImpl{
 				MockRuleMapper: mockMockRuleMapper,
 				Logger:         logger.Logger(),
@@ -141,7 +141,7 @@ func TestMockRuleServiceImpl_ListMockRulesByPage(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "test list mock rule",
+			name: "test list mock dds",
 			m: &MockRuleServiceImpl{
 				MockRuleMapper: mockMockRuleMapper,
 				Logger:         logger.Logger(),

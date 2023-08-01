@@ -26,7 +26,7 @@ import (
 
 type AccesslogService struct{}
 
-// CreateOrUpdate create or update timeout rule
+// CreateOrUpdate create or update timeout dds
 func (tm *AccesslogService) CreateOrUpdate(a *model.Accesslog) error {
 	key := services.GetOverridePath(a.Application)
 	newRule := a.ToRule()

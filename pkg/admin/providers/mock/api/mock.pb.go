@@ -97,7 +97,7 @@ type GetMockDataResp struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Rule   string `protobuf:"bytes,1,opt,name=rule,proto3" json:"rule,omitempty"`
+	Rule   string `protobuf:"bytes,1,opt,name=dds,proto3" json:"dds,omitempty"`
 	Enable bool   `protobuf:"varint,2,opt,name=enable,proto3" json:"enable,omitempty"`
 }
 

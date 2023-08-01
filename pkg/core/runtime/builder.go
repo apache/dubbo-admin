@@ -37,6 +37,7 @@ type BuilderContext interface {
 	Config() *dubbo_cp.Config
 	CertStorage() provider.Storage
 	KubeClient() client.KubeClient
+	CertClient() provider.Client
 }
 
 var _ BuilderContext = &Builder{}
@@ -49,7 +50,12 @@ type Builder struct {
 	kubeClient  client.KubeClient
 	grpcServer  *server.GrpcServer
 	certStorage provider.Storage
+	certClient  provider.Client
 	*runtimeInfo
+}
+
+func (b *Builder) CertClient() provider.Client {
+	return b.certClient
 }
 
 func (b *Builder) KubeClient() client.KubeClient {
@@ -106,9 +112,16 @@ func (b *Builder) Build() (Runtime, error) {
 			cfg:         b.cfg,
 			grpcServer:  b.grpcServer,
 			certStorage: b.certStorage,
+			kubeClient:  b.kubeClient,
+			certClient:  b.certClient,
 		},
 		Manager: b.cm,
 	}, nil
+}
+
+func (b *Builder) WithCertClient(certClient provider.Client) *Builder {
+	b.certClient = certClient
+	return b
 }
 
 func (b *Builder) WithKubeClient(kubeClient client.KubeClient) *Builder {

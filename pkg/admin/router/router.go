@@ -129,14 +129,14 @@ func InitRouter() *Router {
 		conditionRoute.PUT("/disable/:id", handlers.DisableConditionRoute)
 	}
 
-	mockRoute := router.Group("/api/:env/mock/rule")
+	mockRoute := router.Group("/api/:env/mock/dds")
 	{
 		mockRoute.POST("/", handlers.CreateOrUpdateMockRule)
 		mockRoute.DELETE("/", handlers.DeleteMockRuleById)
 		mockRoute.GET("/list", handlers.ListMockRulesByPage)
 	}
 
-	trafficTimeout := router.Group("/api/:env/traffic/timeout")
+	trafficTimeout := router.Group("/api/:env/resource/timeout")
 	{
 		trafficTimeout.POST("/", traffic.CreateTimeout)
 		trafficTimeout.PUT("/", traffic.UpdateTimeout)
@@ -144,7 +144,7 @@ func InitRouter() *Router {
 		trafficTimeout.GET("/", traffic.SearchTimeout)
 	}
 
-	trafficRetry := router.Group("/api/:env/traffic/retry")
+	trafficRetry := router.Group("/api/:env/resource/retry")
 	{
 		trafficRetry.POST("/", traffic.CreateRetry)
 		trafficRetry.PUT("/", traffic.UpdateRetry)
@@ -152,7 +152,7 @@ func InitRouter() *Router {
 		trafficRetry.GET("/", traffic.SearchRetry)
 	}
 
-	trafficAccesslog := router.Group("/api/:env/traffic/accesslog")
+	trafficAccesslog := router.Group("/api/:env/resource/accesslog")
 	{
 		trafficAccesslog.POST("/", traffic.CreateAccesslog)
 		trafficAccesslog.PUT("/", traffic.UpdateAccesslog)
@@ -160,7 +160,7 @@ func InitRouter() *Router {
 		trafficAccesslog.GET("/", traffic.SearchAccesslog)
 	}
 
-	trafficMock := router.Group("/api/:env/traffic/mock")
+	trafficMock := router.Group("/api/:env/resource/mock")
 	{
 		trafficMock.POST("/", traffic.CreateMock)
 		trafficMock.PUT("/", traffic.UpdateMock)
@@ -168,7 +168,7 @@ func InitRouter() *Router {
 		trafficMock.GET("/", traffic.SearchMock)
 	}
 
-	trafficWeight := router.Group("/api/:env/traffic/weight")
+	trafficWeight := router.Group("/api/:env/resource/weight")
 	{
 		trafficWeight.POST("/", traffic.CreateWeight)
 		trafficWeight.PUT("/", traffic.UpdateWeight)
@@ -176,7 +176,7 @@ func InitRouter() *Router {
 		trafficWeight.GET("/", traffic.SearchWeight)
 	}
 
-	trafficArgument := router.Group("/api/:env/traffic/argument")
+	trafficArgument := router.Group("/api/:env/resource/argument")
 	{
 		trafficArgument.POST("/", traffic.CreateArgument)
 		trafficArgument.PUT("/", traffic.UpdateArgument)
@@ -184,7 +184,7 @@ func InitRouter() *Router {
 		trafficArgument.GET("/", traffic.SearchArgument)
 	}
 
-	trafficGray := router.Group("/api/:env/traffic/gray")
+	trafficGray := router.Group("/api/:env/resource/gray")
 	{
 		trafficGray.POST("/", traffic.CreateGray)
 		trafficGray.PUT("/", traffic.UpdateGray)
@@ -192,7 +192,7 @@ func InitRouter() *Router {
 		trafficGray.GET("/", traffic.SearchGray)
 	}
 
-	trafficRegion := router.Group("/api/:env/traffic/region")
+	trafficRegion := router.Group("/api/:env/resource/region")
 	{
 		trafficRegion.POST("/", traffic.CreateRegion)
 		trafficRegion.PUT("/", traffic.UpdateRegion)

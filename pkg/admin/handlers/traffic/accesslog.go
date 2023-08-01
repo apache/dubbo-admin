@@ -29,50 +29,50 @@ import (
 
 var accesslogSvc = &traffic.AccesslogService{}
 
-// CreateAccesslog   create rule
-// @Summary          create rule
-// @Description      create rule
+// CreateAccesslog   create dds
+// @Summary          create dds
+// @Description      create dds
 // @Tags         TrafficAccesslog
 // @Accept       json
 // @Produce      json
-// @Param        accesslog  body  model.Accesslog    true   "rule"
+// @Param        accesslog  body  model.Accesslog    true   "dds"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/accesslog [post]
+// @Router       /api/{env}/resource/accesslog [post]
 func CreateAccesslog(c *gin.Context) {
 	doAccesslogUpdate(c, func(a *model.Accesslog) error {
 		return accesslogSvc.CreateOrUpdate(a)
 	})
 }
 
-// UpdateAccesslog   create rule
-// @Summary          create rule
-// @Description      create rule
+// UpdateAccesslog   create dds
+// @Summary          create dds
+// @Description      create dds
 // @Tags         TrafficAccesslog
 // @Accept       json
 // @Produce      json
-// @Param        accesslog  body  model.Accesslog      true   "rule"
+// @Param        accesslog  body  model.Accesslog      true   "dds"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/accesslog [put]
+// @Router       /api/{env}/resource/accesslog [put]
 func UpdateAccesslog(c *gin.Context) {
 	doAccesslogUpdate(c, func(a *model.Accesslog) error {
 		return accesslogSvc.CreateOrUpdate(a)
 	})
 }
 
-// DeleteAccesslog   delete rule
-// @Summary          delete rule
-// @Description      delete rule
+// DeleteAccesslog   delete dds
+// @Summary          delete dds
+// @Description      delete dds
 // @Tags         TrafficAccesslog
 // @Accept       json
 // @Produce      json
 // @Param        application  query  string  true   "application name"
 // @Success      200  {bool}    true
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/accesslog [delete]
+// @Router       /api/{env}/resource/accesslog [delete]
 func DeleteAccesslog(c *gin.Context) {
 	a := &model.Accesslog{
 		Application: c.Query("application"),
@@ -86,16 +86,16 @@ func DeleteAccesslog(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
-// SearchAccesslog   get rule list
-// @Summary          get rule list
-// @Description      get rule list
+// SearchAccesslog   get dds list
+// @Summary          get dds list
+// @Description      get dds list
 // @Tags         TrafficAccesslog
 // @Accept       json
 // @Produce      json
 // @Param        application  query  string  true   "application name"
 // @Success      200  {object}  []model.Accesslog
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/accesslog [get]
+// @Router       /api/{env}/resource/accesslog [get]
 func SearchAccesslog(c *gin.Context) {
 	a := &model.Accesslog{
 		Application: c.Query("application"),
@@ -112,7 +112,7 @@ func SearchAccesslog(c *gin.Context) {
 func doAccesslogUpdate(c *gin.Context, handle func(a *model.Accesslog) error) {
 	var a *model.Accesslog
 	if err := c.ShouldBindJSON(&a); err != nil {
-		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
+		logger.Errorf("Error parsing dds input when trying to create override dds, err msg is %s.", err.Error())
 		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
 		return
 	}

@@ -29,43 +29,43 @@ import (
 
 var regionSVC = &traffic.RegionService{}
 
-// CreateRegion   create rule
-// @Summary      create rule
-// @Description  create rule
+// CreateRegion   create dds
+// @Summary      create dds
+// @Description  create dds
 // @Tags         TrafficRegion
 // @Accept       json
 // @Produce      json
-// @Param        region  body  model.Region      true   "rule"
+// @Param        region  body  model.Region      true   "dds"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/region [post]
+// @Router       /api/{env}/resource/region [post]
 func CreateRegion(c *gin.Context) {
 	doRegionUpdate(c, func(r *model.Region) error {
 		return regionSVC.CreateOrUpdate(r)
 	})
 }
 
-// UpdateRegion   update rule
-// @Summary      update rule
-// @Description  update rule
+// UpdateRegion   update dds
+// @Summary      update dds
+// @Description  update dds
 // @Tags         TrafficRegion
 // @Accept       json
 // @Produce      json
-// @Param        region  body  model.Region      true   "rule"
+// @Param        region  body  model.Region      true   "dds"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/region [put]
+// @Router       /api/{env}/resource/region [put]
 func UpdateRegion(c *gin.Context) {
 	doRegionUpdate(c, func(r *model.Region) error {
 		return regionSVC.CreateOrUpdate(r)
 	})
 }
 
-// DeleteRegion   delete rule
-// @Summary      delete rule
-// @Description  delete rule
+// DeleteRegion   delete dds
+// @Summary      delete dds
+// @Description  delete dds
 // @Tags         TrafficRegion
 // @Accept       json
 // @Produce      json
@@ -75,7 +75,7 @@ func UpdateRegion(c *gin.Context) {
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/region [delete]
+// @Router       /api/{env}/resource/region [delete]
 func DeleteRegion(c *gin.Context) {
 	r := &model.Region{
 		Service: c.Query("service"),
@@ -91,9 +91,9 @@ func DeleteRegion(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
-// SearchRegion   get rule list
-// @Summary      get rule list
-// @Description  get rule list
+// SearchRegion   get dds list
+// @Summary      get dds list
+// @Description  get dds list
 // @Tags         TrafficRegion
 // @Accept       json
 // @Produce      json
@@ -102,7 +102,7 @@ func DeleteRegion(c *gin.Context) {
 // @Param        group    query  string  true   "service group"
 // @Success      200  {object}  []model.Region
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/region [get]
+// @Router       /api/{env}/resource/region [get]
 func SearchRegion(c *gin.Context) {
 	r := &model.Region{
 		Service: c.Query("service"),
@@ -121,7 +121,7 @@ func SearchRegion(c *gin.Context) {
 func doRegionUpdate(c *gin.Context, handle func(r *model.Region) error) {
 	var r *model.Region
 	if err := c.ShouldBindJSON(&r); err != nil {
-		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
+		logger.Errorf("Error parsing dds input when trying to create override dds, err msg is %s.", err.Error())
 		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
 		return
 	}

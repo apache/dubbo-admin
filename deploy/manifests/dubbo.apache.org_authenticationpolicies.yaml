@@ -31,7 +31,7 @@ spec:
     singular: authenticationpolicy
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         properties:
@@ -68,7 +68,7 @@ spec:
                   type: object
                 type: array
               action:
-                description: The action to take when a rule is matched.
+                description: The action to take when a dds is matched.
                 enum:
                 - NONE
                 - DISABLED

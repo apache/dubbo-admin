@@ -29,43 +29,43 @@ import (
 
 var timeoutSvc = &traffic.TimeoutService{}
 
-// CreateTimeout create a new timeout rule
-// @Summary      Create a new timeout rule
-// @Description  Create a new timeout rule
+// CreateTimeout create a new timeout dds
+// @Summary      Create a new timeout dds
+// @Description  Create a new timeout dds
 // @Tags         TrafficTimeout
 // @Accept       json
 // @Produce      json
-// @Param        timeout  body  model.Timeout      true   "timeout rule"
+// @Param        timeout  body  model.Timeout      true   "timeout dds"
 // @Success      200  {boolean} true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/timeout [post]
+// @Router       /api/{env}/resource/timeout [post]
 func CreateTimeout(c *gin.Context) {
 	doTimeoutUpdate(c, func(t *model.Timeout) error {
 		return timeoutSvc.CreateOrUpdate(t)
 	})
 }
 
-// UpdateTimeout update a new timeout rule
-// @Summary      update a new timeout rule
-// @Description  update a new timeout rule
+// UpdateTimeout update a new timeout dds
+// @Summary      update a new timeout dds
+// @Description  update a new timeout dds
 // @Tags         TrafficTimeout
 // @Accept       json
 // @Produce      json
-// @Param        timeout  body  model.Timeout      true   "timeout rule"
+// @Param        timeout  body  model.Timeout      true   "timeout dds"
 // @Success      200  {boolean} true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/timeout [put]
+// @Router       /api/{env}/resource/timeout [put]
 func UpdateTimeout(c *gin.Context) {
 	doTimeoutUpdate(c, func(t *model.Timeout) error {
 		return timeoutSvc.CreateOrUpdate(t)
 	})
 }
 
-// DeleteTimeout delete a new timeout rule
-// @Summary      delete a new timeout rule
-// @Description  delete a new timeout rule
+// DeleteTimeout delete a new timeout dds
+// @Summary      delete a new timeout dds
+// @Description  delete a new timeout dds
 // @Tags         TrafficTimeout
 // @Accept       json
 // @Produce      json
@@ -74,7 +74,7 @@ func UpdateTimeout(c *gin.Context) {
 // @Param        group    query  string  true   "service group"
 // @Success      200  {boolean} true
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/timeout [delete]
+// @Router       /api/{env}/resource/timeout [delete]
 func DeleteTimeout(c *gin.Context) {
 	t := &model.Timeout{
 		Service: c.Query("service"),
@@ -90,9 +90,9 @@ func DeleteTimeout(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
-// SearchTimeout get timeout rule list
-// @Summary      get timeout rule list
-// @Description  get timeout rule list
+// SearchTimeout get timeout dds list
+// @Summary      get timeout dds list
+// @Description  get timeout dds list
 // @Tags         TrafficTimeout
 // @Accept       json
 // @Produce      json
@@ -101,7 +101,7 @@ func DeleteTimeout(c *gin.Context) {
 // @Param        group    query  string  true   "service group"
 // @Success      200  {object}  []model.Timeout
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/timeout [get]
+// @Router       /api/{env}/resource/timeout [get]
 func SearchTimeout(c *gin.Context) {
 	t := &model.Timeout{
 		Service: c.Query("service"),
@@ -120,7 +120,7 @@ func SearchTimeout(c *gin.Context) {
 func doTimeoutUpdate(c *gin.Context, handle func(t *model.Timeout) error) {
 	var t *model.Timeout
 	if err := c.ShouldBindJSON(&t); err != nil {
-		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
+		logger.Errorf("Error parsing dds input when trying to create override dds, err msg is %s.", err.Error())
 		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
 		return
 	}

@@ -45,7 +45,7 @@ var mockRuleService services.MockRuleService = &services.MockRuleServiceImpl{
 // @Success      201  {boolean} true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/mock/rule [post]
+// @Router       /api/{env}/mock/dds [post]
 func CreateOrUpdateMockRule(c *gin.Context) {
 	var mockRule *model.MockRule
 	if err := c.ShouldBindJSON(&mockRule); err != nil {
@@ -72,7 +72,7 @@ func CreateOrUpdateMockRule(c *gin.Context) {
 // @Success      200  {boolean} true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/mock/rule [delete]
+// @Router       /api/{env}/mock/dds [delete]
 func DeleteMockRuleById(c *gin.Context) {
 	// TODO use c.Param("id") instead of http body
 	// id, err := strconv.ParseInt(c.Param("id"), 10, 64)
@@ -106,7 +106,7 @@ func DeleteMockRuleById(c *gin.Context) {
 // @Success      200  {object}  model.ListMockRulesByPage
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/mock/rule/list [get]
+// @Router       /api/{env}/mock/dds/list [get]
 func ListMockRulesByPage(c *gin.Context) {
 	filter := c.Query("filter")
 	offset, err := strconv.Atoi(c.DefaultQuery("offset", "0"))

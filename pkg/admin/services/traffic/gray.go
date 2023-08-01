@@ -26,7 +26,7 @@ import (
 
 type GrayService struct{}
 
-// CreateOrUpdate create or update timeout rule
+// CreateOrUpdate create or update timeout dds
 func (tm *GrayService) CreateOrUpdate(g *model.Gray) error {
 	key := services.GetRoutePath(g.Application, constant.TagRuleSuffix)
 	newRule := g.ToRule()

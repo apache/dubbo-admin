@@ -31,7 +31,7 @@ spec:
     singular: tagroute
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: TagRoute is the Schema for the tagroutes API
@@ -52,24 +52,24 @@ spec:
             description: TagRouteSpec defines the desired state of TagRoute
             properties:
               configVersion:
-                description: The version of the tag rule definition, currently available
+                description: The version of the tag dds definition, currently available
                   version is v3.0
                 enum:
                 - v3.0
                 type: string
               enabled:
                 default: true
-                description: Whether enable this rule or not, set enabled:false to
-                  disable this rule.
+                description: Whether enable this dds or not, set enabled:false to
+                  disable this dds.
                 type: boolean
               force:
                 default: true
                 description: The behaviour when the instance subset is empty after
                   after routing. true means return no provider exception while false
-                  means ignore this rule.
+                  means ignore this dds.
                 type: boolean
               key:
-                description: The identifier of the target application that this rule
+                description: The identifier of the target application that this dds
                   is about to control
                 type: string
               priority:
@@ -78,11 +78,11 @@ spec:
                 type: integer
               runtime:
                 default: true
-                description: Whether run routing rule for every rpc invocation or
+                description: Whether run routing dds for every rpc invocation or
                   use routing cache if available.
                 type: boolean
               tags:
-                description: The tag definition of this rule.
+                description: The tag definition of this dds.
                 items:
                   properties:
                     addresses:

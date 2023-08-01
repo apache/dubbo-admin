@@ -33,16 +33,16 @@ import ServiceMock from '@/components/test/ServiceMock'
 import ServiceMetrics from '@/components/metrics/ServiceMetrics'
 import ServiceRelation from '@/components/metrics/ServiceRelation'
 import Management from '@/components/Management'
-import Accesslog from '@/components/traffic/Accesslog'
-import Arguments from '@/components/traffic/Arguments'
-import Gray from '@/components/traffic/Gray'
-// import Host from '@/components/traffic/Host'
-// import Isolation from '@/components/traffic/Isolation'
-import Mock from '@/components/traffic/Mock'
-import Region from '@/components/traffic/Region'
-import Retry from '@/components/traffic/Retry'
-import Timeout from '@/components/traffic/Timeout'
-import Weight from '@/components/traffic/Weight'
+import Accesslog from '@/components/resource/Accesslog'
+import Arguments from '@/components/resource/Arguments'
+import Gray from '@/components/resource/Gray'
+// import Host from '@/components/resource/Host'
+// import Isolation from '@/components/resource/Isolation'
+import Mock from '@/components/resource/Mock'
+import Region from '@/components/resource/Region'
+import Retry from '@/components/resource/Retry'
+import Timeout from '@/components/resource/Timeout'
+import Weight from '@/components/resource/Weight'
 import Index from '@/Index'
 import Login from '@/Login'
 
@@ -76,7 +76,7 @@ export default new Router({
           component: TestMethod
         },
         {
-          path: '/traffic/routingRule',
+          path: '/resource/routingRule',
           name: 'RoutingRule',
           component: RoutingRule,
           meta: {
@@ -84,7 +84,7 @@ export default new Router({
           }
         },
         {
-          path: '/traffic/tagRule',
+          path: '/resource/tagRule',
           name: 'TagRule',
           component: TagRule
         },
@@ -109,7 +109,7 @@ export default new Router({
         //   component: WeightAdjust
         // },
         {
-          path: '/traffic/config',
+          path: '/resource/config',
           name: 'Overrides',
           component: Overrides
         },
@@ -119,7 +119,7 @@ export default new Router({
           component: ServiceTest
         },
         {
-          path: '/mock/rule',
+          path: '/mock/dds',
           name: 'ServiceMock',
           component: ServiceMock,
           meta: {
@@ -159,7 +159,7 @@ export default new Router({
           }
         },
         {
-          path: '/traffic/accesslog',
+          path: '/resource/accesslog',
           name: 'accesslog',
           component: Accesslog,
           meta: {
@@ -167,14 +167,14 @@ export default new Router({
           }
         },
         {
-          path: '/traffic/retry',
+          path: '/resource/retry',
           name: 'retry',
           component: Retry,
           meta: {
             requireLogin: false
           }
         }, {
-          path: '/traffic/region',
+          path: '/resource/region',
           name: 'region',
           component: Region,
           meta: {
@@ -182,7 +182,7 @@ export default new Router({
           }
         },
         //  {
-        //   path: '/traffic/isolation',
+        //   path: '/resource/isolation',
         //   name: 'isolation',
         //   component: Isolation,
         //   meta: {
@@ -190,21 +190,21 @@ export default new Router({
         //   }
         // },
         {
-          path: '/traffic/weight',
+          path: '/resource/weight',
           name: 'weight',
           component: Weight,
           meta: {
             requireLogin: false
           }
         }, {
-          path: '/traffic/arguments',
+          path: '/resource/arguments',
           name: 'arguments',
           component: Arguments,
           meta: {
             requireLogin: false
           }
         }, {
-          path: '/traffic/mock',
+          path: '/resource/mock',
           name: 'mock',
           component: Mock,
           meta: {
@@ -212,7 +212,7 @@ export default new Router({
           }
         },
         // {
-        //   path: '/traffic/host',
+        //   path: '/resource/host',
         //   name: 'host',
         //   component: Host,
         //   meta: {
@@ -220,7 +220,7 @@ export default new Router({
         //   }
         // },
         {
-          path: '/traffic/timeout',
+          path: '/resource/timeout',
           name: 'timeout',
           component: Timeout,
           meta: {
@@ -228,7 +228,7 @@ export default new Router({
           }
         },
         {
-          path: '/traffic/gray',
+          path: '/resource/gray',
           name: 'gray',
           component: Gray,
           meta: {

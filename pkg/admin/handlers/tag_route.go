@@ -31,14 +31,14 @@ import (
 
 var routeService services.RouteService = &services.RouteServiceImpl{}
 
-// CreateRule create a new tag rule
-// @Summary      Create a new tag rule
-// @Description  Create a new tag rule
+// CreateRule create a new tag dds
+// @Summary      Create a new tag dds
+// @Description  Create a new tag dds
 // @Tags         TagRule
 // @Accept       json
 // @Produce      json
 // @Param        env       		path  string          		   false  "environment"       default(dev)
-// @Param        tagRoute       body  model.TagRouteDto        true   "rule input"
+// @Param        tagRoute       body  model.TagRouteDto        true   "dds input"
 // @Success      200  {boolean} true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
@@ -47,7 +47,7 @@ func CreateRule(c *gin.Context) {
 	var tagRouteDto model.TagRouteDto
 	err := c.BindJSON(&tagRouteDto)
 	if err != nil {
-		logger.Errorf("Parsing tag rule input error, err msg is: %s", err.Error())
+		logger.Errorf("Parsing tag dds input error, err msg is: %s", err.Error())
 		c.JSON(http.StatusBadRequest, false)
 		return
 	}
@@ -56,9 +56,9 @@ func CreateRule(c *gin.Context) {
 
 	if err != nil {
 		if _, ok := err.(*config.RuleExists); ok {
-			logger.Infof("Condition rule for service %s already exists!", tagRouteDto.Service)
+			logger.Infof("Condition dds for service %s already exists!", tagRouteDto.Service)
 		} else {
-			logger.Infof("Create tag rule for service %s failed, err msg is %s", tagRouteDto.Service, err.Error())
+			logger.Infof("Create tag dds for service %s failed, err msg is %s", tagRouteDto.Service, err.Error())
 			c.JSON(http.StatusInternalServerError, false)
 		}
 		return
@@ -66,15 +66,15 @@ func CreateRule(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
-// UpdateRule update rule
-// @Summary      Update rule
-// @Description  Update rule
+// UpdateRule update dds
+// @Summary      Update dds
+// @Description  Update dds
 // @Tags         TagRule
 // @Accept       json
 // @Produce      json
 // @Param        env       path  string          		  false  "environment"       default(dev)
-// @Param        id        path  string          		  true   "rule id"
-// @Param        tagRoute  body  model.TagRouteDto  true   "rule input"
+// @Param        id        path  string          		  true   "dds id"
+// @Param        tagRoute  body  model.TagRouteDto  true   "dds input"
 // @Success      200  {boolean} true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
@@ -91,7 +91,7 @@ func UpdateRule(c *gin.Context) {
 
 	_, err = routeService.FindTagRoute(id)
 	if err != nil {
-		logger.Errorf("Check failed before trying to update condition rule for service %s , err msg is: %s", tagRouteDto.Service, err.Error())
+		logger.Errorf("Check failed before trying to update condition dds for service %s , err msg is: %s", tagRouteDto.Service, err.Error())
 		c.JSON(http.StatusInternalServerError, false)
 		return
 	}
@@ -99,16 +99,16 @@ func UpdateRule(c *gin.Context) {
 	err = routeService.UpdateTagRoute(tagRouteDto)
 
 	if err != nil {
-		logger.Errorf("Update tag rule for service %s failed, err msg is: %s", tagRouteDto.Service, err.Error())
+		logger.Errorf("Update tag dds for service %s failed, err msg is: %s", tagRouteDto.Service, err.Error())
 		c.JSON(http.StatusInternalServerError, false)
 		return
 	}
 	c.JSON(http.StatusOK, true)
 }
 
-// SearchRoutes search rule with key word
-// @Summary      Search rule
-// @Description  Search rule
+// SearchRoutes search dds with key word
+// @Summary      Search dds
+// @Description  Search dds
 // @Tags         TagRule
 // @Accept       json
 // @Produce      json
@@ -124,10 +124,10 @@ func SearchRoutes(c *gin.Context) {
 	tagRoute, err := routeService.FindTagRoute(application)
 	if err != nil {
 		if _, ok := err.(*config.RuleNotFound); ok {
-			logger.Infof("No tag rule for query parameters: application %s", application)
+			logger.Infof("No tag dds for query parameters: application %s", application)
 			c.JSON(http.StatusOK, []model.TagRouteDto{})
 		} else {
-			logger.Errorf("Check tag rule detail failed, err msg is: %s", err.Error())
+			logger.Errorf("Check tag dds detail failed, err msg is: %s", err.Error())
 			c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		}
 		return
@@ -135,14 +135,14 @@ func SearchRoutes(c *gin.Context) {
 	c.JSON(http.StatusOK, []model.TagRouteDto{tagRoute})
 }
 
-// DetailRoute show the detail of one specified rule
-// @Summary      Show the detail of one specified rule
-// @Description  Show the detail of one specified rule
+// DetailRoute show the detail of one specified dds
+// @Summary      Show the detail of one specified dds
+// @Description  Show the detail of one specified dds
 // @Tags         TagRule
 // @Accept       json
 // @Produce      json
 // @Param        env       path  string          		  false  "environment"       default(dev)
-// @Param        id        path  string          		  true   "rule id"
+// @Param        id        path  string          		  true   "dds id"
 // @Success      200  {object}  model.TagRouteDto
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/rules/route/tag/{id} [get]
@@ -152,21 +152,21 @@ func DetailRoute(c *gin.Context) {
 
 	tagRoute, err := routeService.FindTagRoute(id)
 	if err != nil {
-		logger.Errorf("Check tag rule detail with id %s failed, err msg is: %s", id, err.Error())
+		logger.Errorf("Check tag dds detail with id %s failed, err msg is: %s", id, err.Error())
 		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, tagRoute)
 }
 
-// DeleteRoute delete the specified rule
-// @Summary      Delete the specified rule
-// @Description  Delete the specified rule
+// DeleteRoute delete the specified dds
+// @Summary      Delete the specified dds
+// @Description  Delete the specified dds
 // @Tags         TagRule
 // @Accept       json
 // @Produce      json
 // @Param        env       path  string          		  false  "environment"       default(dev)
-// @Param        id        path  string          		  true   "rule id"
+// @Param        id        path  string          		  true   "dds id"
 // @Success      200  {boolean} true
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/rules/route/tag/{id} [delete]
@@ -176,21 +176,21 @@ func DeleteRoute(c *gin.Context) {
 
 	err := routeService.DeleteTagRoute(id)
 	if err != nil {
-		logger.Errorf("Delete tag rule with id %s failed, err msg is: %s", id, err.Error())
+		logger.Errorf("Delete tag dds with id %s failed, err msg is: %s", id, err.Error())
 		c.JSON(http.StatusInternalServerError, false)
 		return
 	}
 	c.JSON(http.StatusOK, true)
 }
 
-// EnableRoute Enable the specified rule
-// @Summary      Enable the specified rule
-// @Description  Enable the specified rule
+// EnableRoute Enable the specified dds
+// @Summary      Enable the specified dds
+// @Description  Enable the specified dds
 // @Tags         TagRule
 // @Accept       json
 // @Produce      json
 // @Param        env       path  string          		  false  "environment"       default(dev)
-// @Param        id        path  string          		  true   "rule id"
+// @Param        id        path  string          		  true   "dds id"
 // @Success      200  {boolean} true
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/rules/route/tag/enable/{id} [put]
@@ -200,21 +200,21 @@ func EnableRoute(c *gin.Context) {
 
 	err := routeService.EnableTagRoute(id)
 	if err != nil {
-		logger.Errorf("Enable tag rule with id %s failed, err msg is: %s", id, err.Error())
+		logger.Errorf("Enable tag dds with id %s failed, err msg is: %s", id, err.Error())
 		c.JSON(http.StatusInternalServerError, false)
 		return
 	}
 	c.JSON(http.StatusOK, true)
 }
 
-// DisableRoute Disable the specified rule
-// @Summary      Disable the specified rule
-// @Description  Disable the specified rule
+// DisableRoute Disable the specified dds
+// @Summary      Disable the specified dds
+// @Description  Disable the specified dds
 // @Tags         TagRule
 // @Accept       json
 // @Produce      json
 // @Param        env       path  string          		  false  "environment"       default(dev)
-// @Param        id        path  string          		  true   "rule id"
+// @Param        id        path  string          		  true   "dds id"
 // @Success      200  {boolean} true
 // @Failure      500  {object}  model.HTTPError
 // @Router       /api/{env}/rules/route/tag/disable/{id} [put]
@@ -224,7 +224,7 @@ func DisableRoute(c *gin.Context) {
 
 	err := routeService.DisableTagRoute(id)
 	if err != nil {
-		logger.Errorf("Disable tag rule with id %s failed, err msg is: %s", id, err.Error())
+		logger.Errorf("Disable tag dds with id %s failed, err msg is: %s", id, err.Error())
 		c.JSON(http.StatusInternalServerError, false)
 		return
 	}

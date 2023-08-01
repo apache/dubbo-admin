@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: dubbo.apache.org/v1beta1
+apiVersion: dubbo.apache.org/v1alpha1
 kind: AuthenticationPolicy
 metadata:
   name: default
@@ -26,7 +26,7 @@ spec:
         - dubbo-demo-new
 
 ---
-apiVersion: dubbo.apache.org/v1beta1
+apiVersion: dubbo.apache.org/v1alpha1
 kind: AuthorizationPolicy
 metadata:
   name: default

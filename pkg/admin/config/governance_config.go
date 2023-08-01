@@ -159,7 +159,7 @@ type ZkGovImpl struct {
 	group        string
 }
 
-// GetConfig transform ZK specified 'node does not exist' err into unified admin rule error
+// GetConfig transform ZK specified 'node does not exist' err into unified admin dds error
 func (zk *ZkGovImpl) GetConfig(key string) (string, error) {
 	if key == "" {
 		return "", errors.New("key is empty")
@@ -174,7 +174,7 @@ func (zk *ZkGovImpl) GetConfig(key string) (string, error) {
 	return rule, nil
 }
 
-// SetConfig transform ZK specified 'node already exist' err into unified admin rule error
+// SetConfig transform ZK specified 'node already exist' err into unified admin dds error
 func (zk *ZkGovImpl) SetConfig(key string, value string) error {
 	if key == "" || value == "" {
 		return errors.New("key or value is empty")
@@ -199,12 +199,12 @@ type NacosGovImpl struct {
 	group        string
 }
 
-// GetConfig transform Nacos specified 'node does not exist' err into unified admin rule error
+// GetConfig transform Nacos specified 'node does not exist' err into unified admin dds error
 func (n *NacosGovImpl) GetConfig(key string) (string, error) {
 	return n.GovernanceConfig.GetConfig(key)
 }
 
-// SetConfig transform Nacos specified 'node already exist' err into unified admin rule error
+// SetConfig transform Nacos specified 'node already exist' err into unified admin dds error
 func (n *NacosGovImpl) SetConfig(key string, value string) error {
 	return n.GovernanceConfig.SetConfig(key, value)
 }

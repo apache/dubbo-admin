@@ -29,43 +29,43 @@ import (
 
 var retrySvc = &traffic.RetryService{}
 
-// CreateRetry   create rule
-// @Summary      create rule
-// @Description  create rule
+// CreateRetry   create dds
+// @Summary      create dds
+// @Description  create dds
 // @Tags         TrafficRetry
 // @Accept       json
 // @Produce      json
-// @Param        retry  body  model.Retry      true   "rule"
+// @Param        retry  body  model.Retry      true   "dds"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/retry [post]
+// @Router       /api/{env}/resource/retry [post]
 func CreateRetry(c *gin.Context) {
 	doRetryUpdate(c, func(r *model.Retry) error {
 		return retrySvc.CreateOrUpdate(r)
 	})
 }
 
-// UpdateRetry   update rule
-// @Summary      update rule
-// @Description  update rule
+// UpdateRetry   update dds
+// @Summary      update dds
+// @Description  update dds
 // @Tags         TrafficRetry
 // @Accept       json
 // @Produce      json
-// @Param        retry  body  model.Retry      true   "rule"
+// @Param        retry  body  model.Retry      true   "dds"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/retry [put]
+// @Router       /api/{env}/resource/retry [put]
 func UpdateRetry(c *gin.Context) {
 	doRetryUpdate(c, func(r *model.Retry) error {
 		return retrySvc.CreateOrUpdate(r)
 	})
 }
 
-// DeleteRetry   delete rule
-// @Summary      delete rule
-// @Description  delete rule
+// DeleteRetry   delete dds
+// @Summary      delete dds
+// @Description  delete dds
 // @Tags         TrafficRetry
 // @Accept       json
 // @Produce      json
@@ -74,7 +74,7 @@ func UpdateRetry(c *gin.Context) {
 // @Param        group    query  string  true   "service group"
 // @Success      200  {bool}    true
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/retry [delete]
+// @Router       /api/{env}/resource/retry [delete]
 func DeleteRetry(c *gin.Context) {
 	r := &model.Retry{
 		Service: c.Query("service"),
@@ -90,9 +90,9 @@ func DeleteRetry(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
-// SearchRetry   get rule list
-// @Summary      get rule list
-// @Description  get rule list
+// SearchRetry   get dds list
+// @Summary      get dds list
+// @Description  get dds list
 // @Tags         TrafficRetry
 // @Accept       json
 // @Produce      json
@@ -101,7 +101,7 @@ func DeleteRetry(c *gin.Context) {
 // @Param        group    query  string  true   "service group"
 // @Success      200  {object}  []model.Retry
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/retry [get]
+// @Router       /api/{env}/resource/retry [get]
 func SearchRetry(c *gin.Context) {
 	r := &model.Retry{
 		Service: c.Query("service"),
@@ -120,7 +120,7 @@ func SearchRetry(c *gin.Context) {
 func doRetryUpdate(c *gin.Context, handle func(r *model.Retry) error) {
 	var r *model.Retry
 	if err := c.ShouldBindJSON(&r); err != nil {
-		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
+		logger.Errorf("Error parsing dds input when trying to create override dds, err msg is %s.", err.Error())
 		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
 		return
 	}

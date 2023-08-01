@@ -29,7 +29,7 @@ import (
 
 type RegionService struct{}
 
-// CreateOrUpdate create or update timeout rule
+// CreateOrUpdate create or update timeout dds
 func (tm *RegionService) CreateOrUpdate(r *model.Region) error {
 	key := services.GetRoutePath(util.ColonSeparatedKey(r.Service, r.Group, r.Version), constant.ConditionRoute)
 	newRule := r.ToRule()

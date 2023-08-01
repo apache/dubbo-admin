@@ -20,7 +20,7 @@ metadata:
 spec:
   group: dubbo.apache.org
   versions:
-    - name: v1beta1
+    - name: v1alpha1
       served: true
       storage: true
       schema:
@@ -32,7 +32,7 @@ spec:
               properties:
                 action:
                   type: string
-                  description: "The action to take when a rule is matched."
+                  description: "The action to take when a dds is matched."
                   enum:
                     - NONE
                     - DISABLED
@@ -42,7 +42,7 @@ spec:
                   type: array
                   items:
                     type: object
-                    description: "The source of the traffic to be matched."
+                    description: "The source of the resource to be matched."
                     properties:
                       namespaces:
                         type: array
@@ -110,7 +110,7 @@ spec:
                         maximum: 65535
                       action:
                         type: string
-                        description: "The action to take when a rule is matched."
+                        description: "The action to take when a dds is matched."
                         enum:
                           - NONE
                           - DISABLED
@@ -138,7 +138,7 @@ metadata:
 spec:
   group: dubbo.apache.org
   versions:
-    - name: v1beta1
+    - name: v1alpha1
       served: true
       storage: true
       schema:
@@ -150,7 +150,7 @@ spec:
               properties:
                 action:
                   type: string
-                  description: "The action to take when a rule is matched."
+                  description: "The action to take when a dds is matched."
                   enum:
                     - ALLOW
                     - DENY
@@ -162,7 +162,7 @@ spec:
                     properties:
                       from:
                         type: object
-                        description: "The source of the traffic to be matched."
+                        description: "The source of the resource to be matched."
                         properties:
                           namespaces:
                             type: array
@@ -220,7 +220,7 @@ spec:
                                   description: "The value of the extended identity."
                       to:
                         type: object
-                        description: "The destination of the traffic to be matched."
+                        description: "The destination of the resource to be matched."
                         properties:
                           namespaces:
                             type: array
@@ -311,13 +311,13 @@ spec:
                                   type: string
                 samples:
                   type: number
-                  description: "The sample rate of the rule. The value is between 0 and 100."
+                  description: "The sample rate of the dds. The value is between 0 and 100."
                   minimum: 0
                   default: 100
                   maximum: 100
                 order:
                     type: number
-                    description: "The order of the rule."
+                    description: "The order of the dds."
                     minimum: -2147483648
                     default: 0
                     maximum: 2147483647
@@ -394,7 +394,7 @@ spec:
     singular: conditionroute
   scope: Namespaced
   versions:
-    - name: v1beta1
+    - name: v1alpha1
       schema:
         openAPIV3Schema:
           description: ConditionRoute is the Schema for the conditionroutes API
@@ -415,39 +415,39 @@ spec:
               description: ConditionRouteSpec defines the desired state of ConditionRoute
               properties:
                 conditions:
-                  description: The condition routing rule definition of this configuration.
+                  description: The condition routing dds definition of this configuration.
                     Check Condition for details
                   items:
                     type: string
                   type: array
                 configVersion:
-                  description: The version of the condition rule definition, currently
+                  description: The version of the condition dds definition, currently
                     available version is v3.0
                   enum:
                     - v3.0
                   type: string
                 enabled:
                   default: true
-                  description: Whether enable this rule or not, set enabled:false to
-                    disable this rule.
+                  description: Whether enable this dds or not, set enabled:false to
+                    disable this dds.
                   type: boolean
                 force:
                   description: The behaviour when the instance subset is empty after
                     after routing. true means return no provider exception while false
-                    means ignore this rule.
+                    means ignore this dds.
                   type: boolean
                 key:
                   description: The identifier of the target service or application that
-                    this rule is about to apply to. If scope:serviceis set, then keyshould
-                    be specified as the Dubbo service key that this rule targets to
+                    this dds is about to apply to. If scope:serviceis set, then keyshould
+                    be specified as the Dubbo service key that this dds targets to
                     control. If scope:application is set, then keyshould be specified
-                    as the name of the application that this rule targets to control,
+                    as the name of the application that this dds targets to control,
                     application should always be a Dubbo Consumer.
                   type: string
                 priority:
                   type: integer
                 runtime:
-                  description: Whether run routing rule for every rpc invocation or
+                  description: Whether run routing dds for every rpc invocation or
                     use routing cache if available.
                   type: boolean
                 scope:
@@ -485,7 +485,7 @@ spec:
     singular: dynamicconfig
   scope: Namespaced
   versions:
-    - name: v1beta1
+    - name: v1alpha1
       schema:
         openAPIV3Schema:
           description: DynamicConfig is the Schema for the dynamicconfigs API
@@ -506,13 +506,13 @@ spec:
               description: DynamicConfigSpec defines the desired state of DynamicConfig
               properties:
                 configVersion:
-                  description: The version of the tag rule definition, currently available
+                  description: The version of the tag dds definition, currently available
                     version is v3.0
                   enum:
                     - v3.0
                   type: string
                 configs:
-                  description: The match condition and configuration of this rule.
+                  description: The match condition and configuration of this dds.
                   items:
                     properties:
                       addresses:
@@ -528,12 +528,12 @@ spec:
                       enabled:
                         type: boolean
                       match:
-                        description: A set of criterion to be met in order for the rule/config
+                        description: A set of criterion to be met in order for the dds/config
                           to be applied to the Dubbo instance.
                         properties:
                           address:
                             description: 'The instance address matching condition for
-                            this config rule to take effect. xact: “value” for exact
+                            this config dds to take effect. xact: “value” for exact
                             string match prefix: “value” for prefix-based match regex:
                             “value” for RE2 style regex-based match (https://github.com/google/re2/wiki/Syntax)).'
                             properties:
@@ -546,7 +546,7 @@ spec:
                             type: object
                           application:
                             description: "The application matching condition for this
-                            config rule to take effect. Effective when scope: service
+                            config dds to take effect. Effective when scope: service
                             is set. \n exact: “value” for exact string match prefix:
                             “value” for prefix-based match regex: “value” for RE2
                             style regex-based match (https://github.com/google/re2/wiki/Syntax))."
@@ -571,7 +571,7 @@ spec:
                             type: object
                           param:
                             description: The Dubbo url keys and values matching condition
-                              for this config rule to take effect.
+                              for this config dds to take effect.
                             items:
                               properties:
                                 key:
@@ -599,7 +599,7 @@ spec:
                             type: array
                           service:
                             description: 'The service matching condition for this config
-                            rule to take effect. Effective when scope: application
+                            dds to take effect. Effective when scope: application
                             is set. exact: “value” for exact string match prefix:
                             “value” for prefix-based match regex: “value” for RE2
                             style regex-based match (https://github.com/google/re2/wiki/Syntax)).'
@@ -650,15 +650,15 @@ spec:
                   type: array
                 enabled:
                   default: true
-                  description: Whether enable this rule or not, set enabled:false to
-                    disable this rule.
+                  description: Whether enable this dds or not, set enabled:false to
+                    disable this dds.
                   type: boolean
                 key:
                   description: The identifier of the target service or application that
-                    this rule is about to apply to. If scope:serviceis set, then keyshould
-                    be specified as the Dubbo service key that this rule targets to
+                    this dds is about to apply to. If scope:serviceis set, then keyshould
+                    be specified as the Dubbo service key that this dds targets to
                     control. If scope:application is set, then keyshould be specified
-                    as the name of the application that this rule targets to control,
+                    as the name of the application that this dds targets to control,
                     application should always be a Dubbo Consumer.
                   type: string
                 scope:
@@ -690,7 +690,7 @@ spec:
     singular: tagroute
   scope: Namespaced
   versions:
-    - name: v1beta1
+    - name: v1alpha1
       schema:
         openAPIV3Schema:
           description: TagRoute is the Schema for the tagroutes API
@@ -711,24 +711,24 @@ spec:
               description: TagRouteSpec defines the desired state of TagRoute
               properties:
                 configVersion:
-                  description: The version of the tag rule definition, currently available
+                  description: The version of the tag dds definition, currently available
                     version is v3.0
                   enum:
                     - v3.0
                   type: string
                 enabled:
                   default: true
-                  description: Whether enable this rule or not, set enabled:false to
-                    disable this rule.
+                  description: Whether enable this dds or not, set enabled:false to
+                    disable this dds.
                   type: boolean
                 force:
                   default: true
                   description: The behaviour when the instance subset is empty after
                     after routing. true means return no provider exception while false
-                    means ignore this rule.
+                    means ignore this dds.
                   type: boolean
                 key:
-                  description: The identifier of the target application that this rule
+                  description: The identifier of the target application that this dds
                     is about to control
                   type: string
                 priority:
@@ -737,11 +737,11 @@ spec:
                   type: integer
                 runtime:
                   default: true
-                  description: Whether run routing rule for every rpc invocation or
+                  description: Whether run routing dds for every rpc invocation or
                     use routing cache if available.
                   type: boolean
                 tags:
-                  description: The tag definition of this rule.
+                  description: The tag definition of this dds.
                   items:
                     properties:
                       addresses:

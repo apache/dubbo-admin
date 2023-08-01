@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: dubbo.apache.org/v1beta1
+apiVersion: dubbo.apache.org/v1alpha1
 kind: ConditionRoute
 metadata:
   namespace: dubbo-demo
@@ -30,7 +30,7 @@ spec:
 
 ---
 
-apiVersion: dubbo.apache.org/v1beta1
+apiVersion: dubbo.apache.org/v1alpha1
 kind: DynamicConfig
 metadata:
   name: dynamicconfig-sample
@@ -50,7 +50,7 @@ spec:
 
 ---
 
-apiVersion: dubbo.apache.org/v1beta1
+apiVersion: dubbo.apache.org/v1alpha1
 kind: TagRoute
 metadata:
   namespace: dubbo-demo

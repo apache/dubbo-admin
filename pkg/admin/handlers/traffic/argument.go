@@ -29,43 +29,43 @@ import (
 
 var argumentSvc = &traffic.ArgumentService{}
 
-// CreateArgument   create rule
-// @Summary      create rule
-// @Description  create rule
+// CreateArgument   create dds
+// @Summary      create dds
+// @Description  create dds
 // @Tags         TrafficArgument
 // @Accept       json
 // @Produce      json
-// @Param        argument  body  model.Argument      true   "rule"
+// @Param        argument  body  model.Argument      true   "dds"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/argument [post]
+// @Router       /api/{env}/resource/argument [post]
 func CreateArgument(c *gin.Context) {
 	doArgumentUpdate(c, func(a *model.Argument) error {
 		return argumentSvc.CreateOrUpdate(a)
 	})
 }
 
-// UpdateArgument   update rule
-// @Summary      update rule
-// @Description  update rule
+// UpdateArgument   update dds
+// @Summary      update dds
+// @Description  update dds
 // @Tags         TrafficArgument
 // @Accept       json
 // @Produce      json
-// @Param        argument  body  model.Argument      true   "rule"
+// @Param        argument  body  model.Argument      true   "dds"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/argument [put]
+// @Router       /api/{env}/resource/argument [put]
 func UpdateArgument(c *gin.Context) {
 	doArgumentUpdate(c, func(a *model.Argument) error {
 		return argumentSvc.CreateOrUpdate(a)
 	})
 }
 
-// DeleteArgument   delete rule
-// @Summary      delete rule
-// @Description  delete rule
+// DeleteArgument   delete dds
+// @Summary      delete dds
+// @Description  delete dds
 // @Tags         TrafficArgument
 // @Accept       json
 // @Produce      json
@@ -74,7 +74,7 @@ func UpdateArgument(c *gin.Context) {
 // @Param        group    query  string  true   "service group"
 // @Success      200  {bool}    true
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/argument [delete]
+// @Router       /api/{env}/resource/argument [delete]
 func DeleteArgument(c *gin.Context) {
 	a := &model.Argument{
 		Service: c.Query("service"),
@@ -90,9 +90,9 @@ func DeleteArgument(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
-// SearchArgument   get rule list
-// @Summary      get rule list
-// @Description  get rule list
+// SearchArgument   get dds list
+// @Summary      get dds list
+// @Description  get dds list
 // @Tags         TrafficArgument
 // @Accept       json
 // @Produce      json
@@ -101,7 +101,7 @@ func DeleteArgument(c *gin.Context) {
 // @Param        group    query  string  true   "service group"
 // @Success      200  {object}  []model.Argument
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/argument [get]
+// @Router       /api/{env}/resource/argument [get]
 func SearchArgument(c *gin.Context) {
 	a := &model.Argument{
 		Service: c.Query("service"),
@@ -120,7 +120,7 @@ func SearchArgument(c *gin.Context) {
 func doArgumentUpdate(c *gin.Context, handle func(a *model.Argument) error) {
 	var a *model.Argument
 	if err := c.ShouldBindJSON(&a); err != nil {
-		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
+		logger.Errorf("Error parsing dds input when trying to create override dds, err msg is %s.", err.Error())
 		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
 		return
 	}

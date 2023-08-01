@@ -29,50 +29,50 @@ import (
 
 var graySVC = &traffic.GrayService{}
 
-// CreateGray   create rule
-// @Summary      create rule
-// @Description  create rule
+// CreateGray   create dds
+// @Summary      create dds
+// @Description  create dds
 // @Tags         TrafficGray
 // @Accept       json
 // @Produce      json
-// @Param        gray  body  model.Gray      true   "rule"
+// @Param        gray  body  model.Gray      true   "dds"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/gray [post]
+// @Router       /api/{env}/resource/gray [post]
 func CreateGray(c *gin.Context) {
 	doGrayUpdate(c, func(g *model.Gray) error {
 		return graySVC.CreateOrUpdate(g)
 	})
 }
 
-// UpdateGray   update rule
-// @Summary      update rule
-// @Description  update rule
+// UpdateGray   update dds
+// @Summary      update dds
+// @Description  update dds
 // @Tags         TrafficGray
 // @Accept       json
 // @Produce      json
-// @Param        gray  body  model.Gray      true   "rule"
+// @Param        gray  body  model.Gray      true   "dds"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/gray [put]
+// @Router       /api/{env}/resource/gray [put]
 func UpdateGray(c *gin.Context) {
 	doGrayUpdate(c, func(g *model.Gray) error {
 		return graySVC.CreateOrUpdate(g)
 	})
 }
 
-// DeleteGray   delete rule
-// @Summary      delete rule
-// @Description  delete rule
+// DeleteGray   delete dds
+// @Summary      delete dds
+// @Description  delete dds
 // @Tags         TrafficGray
 // @Accept       json
 // @Produce      json
 // @Param        application  query  string  true   "application name"
 // @Success      200  {bool}    true
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/gray [delete]
+// @Router       /api/{env}/resource/gray [delete]
 func DeleteGray(c *gin.Context) {
 	g := &model.Gray{
 		Application: c.Query("application"),
@@ -86,16 +86,16 @@ func DeleteGray(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
-// SearchGray   get rule list
-// @Summary      get rule list
-// @Description  get rule list
+// SearchGray   get dds list
+// @Summary      get dds list
+// @Description  get dds list
 // @Tags         TrafficGray
 // @Accept       json
 // @Produce      json
 // @Param        application  query  string  true   "application name"
 // @Success      200  {object}  []model.Gray
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/gray [get]
+// @Router       /api/{env}/resource/gray [get]
 func SearchGray(c *gin.Context) {
 	g := &model.Gray{
 		Application: c.Query("application"),
@@ -112,7 +112,7 @@ func SearchGray(c *gin.Context) {
 func doGrayUpdate(c *gin.Context, handle func(g *model.Gray) error) {
 	var g *model.Gray
 	if err := c.ShouldBindJSON(&g); err != nil {
-		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
+		logger.Errorf("Error parsing dds input when trying to create override dds, err msg is %s.", err.Error())
 		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
 		return
 	}

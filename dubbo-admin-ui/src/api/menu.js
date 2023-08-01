@@ -21,21 +21,21 @@ const Menu = [
   {
     title: 'trafficManagement',
     icon: 'show_chart',
-    group: 'traffic',
+    group: 'resource',
     items: [
-      { title: 'trafficTimeout', path: '/traffic/timeout' },
-      { title: 'trafficRetry', path: '/traffic/retry' },
-      { title: 'trafficRegion', path: '/traffic/region' },
-      // { title: 'trafficIsolation', path: '/traffic/isolation' },
-      { title: 'trafficWeight', path: '/traffic/weight' },
-      { title: 'trafficArguments', path: '/traffic/arguments' },
-      { title: 'trafficMock', path: '/traffic/mock' },
-      { title: 'trafficAccesslog', path: '/traffic/accesslog' },
-      { title: 'trafficGray', path: '/traffic/gray' },
-      //  { title: 'trafficHost', path: '/traffic/host' },
-      { title: 'routingRule', path: '/traffic/routingRule' },
-      { title: 'tagRule', path: '/traffic/tagRule' },
-      { title: 'dynamicConfig', path: '/traffic/config' }
+      { title: 'trafficTimeout', path: '/resource/timeout' },
+      { title: 'trafficRetry', path: '/resource/retry' },
+      { title: 'trafficRegion', path: '/resource/region' },
+      // { title: 'trafficIsolation', path: '/resource/isolation' },
+      { title: 'trafficWeight', path: '/resource/weight' },
+      { title: 'trafficArguments', path: '/resource/arguments' },
+      { title: 'trafficMock', path: '/resource/mock' },
+      { title: 'trafficAccesslog', path: '/resource/accesslog' },
+      { title: 'trafficGray', path: '/resource/gray' },
+      //  { title: 'trafficHost', path: '/resource/host' },
+      { title: 'routingRule', path: '/resource/routingRule' },
+      { title: 'tagRule', path: '/resource/tagRule' },
+      { title: 'dynamicConfig', path: '/resource/config' }
     ]
   },
   {
@@ -44,7 +44,7 @@ const Menu = [
     icon: 'build',
     items: [
       { title: 'serviceTest', path: '/test' },
-      { title: 'serviceMock', path: '/mock/rule' }
+      { title: 'serviceMock', path: '/mock/dds' }
     ]
   },
   { title: 'serviceMetrics', path: '/metrics/index', icon: 'show_chart' },

@@ -29,43 +29,43 @@ import (
 
 var mockSvc = &traffic.MockService{}
 
-// CreateMock   create rule
-// @Summary      create rule
-// @Description  create rule
+// CreateMock   create dds
+// @Summary      create dds
+// @Description  create dds
 // @Tags         TrafficMock
 // @Accept       json
 // @Produce      json
-// @Param        mock  body  model.Mock      true   "rule"
+// @Param        mock  body  model.Mock      true   "dds"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/mock [post]
+// @Router       /api/{env}/resource/mock [post]
 func CreateMock(c *gin.Context) {
 	doMockUpdate(c, func(m *model.Mock) error {
 		return mockSvc.CreateOrUpdate(m)
 	})
 }
 
-// UpdateMock   update rule
-// @Summary      update rule
-// @Description  update rule
+// UpdateMock   update dds
+// @Summary      update dds
+// @Description  update dds
 // @Tags         TrafficMock
 // @Accept       json
 // @Produce      json
-// @Param        mock  body  model.Mock      true   "rule"
+// @Param        mock  body  model.Mock      true   "dds"
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/mock [put]
+// @Router       /api/{env}/resource/mock [put]
 func UpdateMock(c *gin.Context) {
 	doMockUpdate(c, func(m *model.Mock) error {
 		return mockSvc.CreateOrUpdate(m)
 	})
 }
 
-// DeleteMock   delete rule
-// @Summary      delete rule
-// @Description  delete rule
+// DeleteMock   delete dds
+// @Summary      delete dds
+// @Description  delete dds
 // @Tags         TrafficMock
 // @Accept       json
 // @Produce      json
@@ -75,7 +75,7 @@ func UpdateMock(c *gin.Context) {
 // @Success      200  {bool}    true
 // @Failure      400  {object}  model.HTTPError
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/mock [delete]
+// @Router       /api/{env}/resource/mock [delete]
 func DeleteMock(c *gin.Context) {
 	m := &model.Mock{
 		Service: c.Query("service"),
@@ -91,9 +91,9 @@ func DeleteMock(c *gin.Context) {
 	c.JSON(http.StatusOK, true)
 }
 
-// SearchMock   get rule list
-// @Summary      get rule list
-// @Description  get rule list
+// SearchMock   get dds list
+// @Summary      get dds list
+// @Description  get dds list
 // @Tags         TrafficMock
 // @Accept       json
 // @Produce      json
@@ -102,7 +102,7 @@ func DeleteMock(c *gin.Context) {
 // @Param        group    query  string  true   "service group"
 // @Success      200  {object}  []model.Mock
 // @Failure      500  {object}  model.HTTPError
-// @Router       /api/{env}/traffic/mock [get]
+// @Router       /api/{env}/resource/mock [get]
 func SearchMock(c *gin.Context) {
 	m := &model.Mock{
 		Service: c.Query("service"),
@@ -121,7 +121,7 @@ func SearchMock(c *gin.Context) {
 func doMockUpdate(c *gin.Context, handle func(m *model.Mock) error) {
 	var m *model.Mock
 	if err := c.ShouldBindJSON(&m); err != nil {
-		logger.Errorf("Error parsing rule input when trying to create override rule, err msg is %s.", err.Error())
+		logger.Errorf("Error parsing dds input when trying to create override dds, err msg is %s.", err.Error())
 		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
 		return
 	}

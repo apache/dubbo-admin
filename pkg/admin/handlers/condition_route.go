@@ -27,9 +27,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// CreateConditionRule create a new condition rule
-// @Summary      Create a new condition rule
-// @Description  Create a new condition rule
+// CreateConditionRule create a new condition dds
+// @Summary      Create a new condition dds
+// @Description  Create a new condition dds
 // @Tags         ConditionRule
 // @Accept       json
 // @Produce      json
@@ -43,7 +43,7 @@ func CreateConditionRule(c *gin.Context) {
 	var routeDto model.ConditionRouteDto
 	err := c.BindJSON(&routeDto)
 	if err != nil {
-		logger.Errorf("Parsing condition rule input error, err msg is: %s", err.Error())
+		logger.Errorf("Parsing condition dds input error, err msg is: %s", err.Error())
 		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
 		return
 	}
@@ -52,10 +52,10 @@ func CreateConditionRule(c *gin.Context) {
 
 	if err != nil {
 		if _, ok := err.(*config.RuleExists); ok {
-			logger.Infof("Condition rule for service %s already exists!", routeDto.Service)
+			logger.Infof("Condition dds for service %s already exists!", routeDto.Service)
 			c.JSON(http.StatusOK, true)
 		} else {
-			logger.Errorf("Creating condition rule for service %s failed, err msg is: %s", routeDto.Service, err.Error())
+			logger.Errorf("Creating condition dds for service %s failed, err msg is: %s", routeDto.Service, err.Error())
 			c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		}
 		return
@@ -64,9 +64,9 @@ func CreateConditionRule(c *gin.Context) {
 	return
 }
 
-// UpdateConditionRule update condition rule
-// @Summary      Update condition rule
-// @Description  Update condition rule
+// UpdateConditionRule update condition dds
+// @Summary      Update condition dds
+// @Description  Update condition dds
 // @Tags         ConditionRule
 // @Accept       json
 // @Produce      json
@@ -88,7 +88,7 @@ func UpdateConditionRule(c *gin.Context) {
 
 	_, err = routeService.FindConditionRouteById(id)
 	if err != nil {
-		logger.Errorf("Check failed before trying to update condition rule for service %s , err msg is: %s", routeDto.Service, err.Error())
+		logger.Errorf("Check failed before trying to update condition dds for service %s , err msg is: %s", routeDto.Service, err.Error())
 		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		return
 	}
@@ -96,16 +96,16 @@ func UpdateConditionRule(c *gin.Context) {
 	err = routeService.UpdateConditionRoute(routeDto)
 
 	if err != nil {
-		logger.Errorf("Update condition rule for service %s failed, err msg is: %s", routeDto.Service, err.Error())
+		logger.Errorf("Update condition dds for service %s failed, err msg is: %s", routeDto.Service, err.Error())
 		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, true)
 }
 
-// SearchConditionRoutes search condition rule with key word
-// @Summary      Search condition rule
-// @Description  Search condition rule
+// SearchConditionRoutes search condition dds with key word
+// @Summary      Search condition dds
+// @Description  Search condition dds
 // @Tags         ConditionRule
 // @Accept       json
 // @Produce      json
@@ -136,17 +136,17 @@ func SearchConditionRoutes(c *gin.Context) {
 		crDto.ServiceGroup = serviceGroup
 		routeDto, err = routeService.FindConditionRoute(crDto)
 	} else {
-		logger.Errorf("Unsupported query type for condition rule, only application and service is available: %s", err.Error())
+		logger.Errorf("Unsupported query type for condition dds, only application and service is available: %s", err.Error())
 		c.JSON(http.StatusBadRequest, model.HTTPError{Error: err.Error()})
 		return
 	}
 
 	if err != nil {
 		if _, ok := err.(*config.RuleNotFound); ok {
-			logger.Infof("No condition rule for query parameters: service %s, application %s, group %s, version %s ", service, application, serviceGroup, serviceVersion)
+			logger.Infof("No condition dds for query parameters: service %s, application %s, group %s, version %s ", service, application, serviceGroup, serviceVersion)
 			c.JSON(http.StatusOK, []model.ConditionRouteDto{})
 		} else {
-			logger.Errorf("Check condition rule detail failed, err msg is: %s", err.Error())
+			logger.Errorf("Check condition dds detail failed, err msg is: %s", err.Error())
 			c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		}
 		return
@@ -154,9 +154,9 @@ func SearchConditionRoutes(c *gin.Context) {
 	c.JSON(http.StatusOK, []model.ConditionRouteDto{routeDto})
 }
 
-// DetailConditionRoute show the detail of one specified condition rule
-// @Summary      Show the detail of one specified condition rule
-// @Description  Show the detail of one specified condition rule
+// DetailConditionRoute show the detail of one specified condition dds
+// @Summary      Show the detail of one specified condition dds
+// @Description  Show the detail of one specified condition dds
 // @Tags         ConditionRule
 // @Accept       json
 // @Produce      json
@@ -169,7 +169,7 @@ func DetailConditionRoute(c *gin.Context) {
 	id := c.Param("id")
 	routeDto, err := routeService.FindConditionRouteById(id)
 	if err != nil {
-		logger.Errorf("Check condition rule detail with id %s failed, err msg is: %s", id, err.Error())
+		logger.Errorf("Check condition dds detail with id %s failed, err msg is: %s", id, err.Error())
 		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		return
 	}
@@ -177,9 +177,9 @@ func DetailConditionRoute(c *gin.Context) {
 	c.JSON(http.StatusOK, routeDto)
 }
 
-// DeleteConditionRoute delete the specified condition rule
-// @Summary      Delete the specified condition rule
-// @Description  Delete the specified condition rule
+// DeleteConditionRoute delete the specified condition dds
+// @Summary      Delete the specified condition dds
+// @Description  Delete the specified condition dds
 // @Tags         ConditionRule
 // @Accept       json
 // @Produce      json
@@ -192,16 +192,16 @@ func DeleteConditionRoute(c *gin.Context) {
 	id := c.Param("id")
 	err := routeService.DeleteConditionRoute(id)
 	if err != nil {
-		logger.Errorf("Delete condition rule with id %s failed, err msg is: %s", id, err.Error())
+		logger.Errorf("Delete condition dds with id %s failed, err msg is: %s", id, err.Error())
 		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, true)
 }
 
-// EnableConditionRoute Enable the specified condition rule
-// @Summary      Enable the specified condition rule
-// @Description  Enable the specified condition rule
+// EnableConditionRoute Enable the specified condition dds
+// @Summary      Enable the specified condition dds
+// @Description  Enable the specified condition dds
 // @Tags         ConditionRule
 // @Accept       json
 // @Produce      json
@@ -214,16 +214,16 @@ func EnableConditionRoute(c *gin.Context) {
 	id := c.Param("id")
 	err := routeService.EnableConditionRoute(id)
 	if err != nil {
-		logger.Errorf("Enable condition rule with id %s failed, err msg is: %s", id, err.Error())
+		logger.Errorf("Enable condition dds with id %s failed, err msg is: %s", id, err.Error())
 		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, true)
 }
 
-// DisableConditionRoute Disable the specified condition rule
-// @Summary      Disable the specified condition rule
-// @Description  Disable the specified condition rule
+// DisableConditionRoute Disable the specified condition dds
+// @Summary      Disable the specified condition dds
+// @Description  Disable the specified condition dds
 // @Tags         ConditionRule
 // @Accept       json
 // @Produce      json
@@ -236,7 +236,7 @@ func DisableConditionRoute(c *gin.Context) {
 	id := c.Param("id")
 	err := routeService.DisableConditionRoute(id)
 	if err != nil {
-		logger.Errorf("Disable condition rule with id %s failed, err msg is: %s", id, err.Error())
+		logger.Errorf("Disable condition dds with id %s failed, err msg is: %s", id, err.Error())
 		c.JSON(http.StatusInternalServerError, model.HTTPError{Error: err.Error()})
 		return
 	}

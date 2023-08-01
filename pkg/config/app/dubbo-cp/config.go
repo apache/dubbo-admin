@@ -19,7 +19,9 @@ package dubbo_cp
 
 import (
 	"github.com/apache/dubbo-admin/pkg/config"
+	"github.com/apache/dubbo-admin/pkg/config/option"
 	"github.com/pkg/errors"
+	"time"
 
 	"github.com/apache/dubbo-admin/pkg/config/admin"
 	"github.com/apache/dubbo-admin/pkg/config/kube"
@@ -29,9 +31,10 @@ import (
 
 type Config struct {
 	Admin      admin.Admin             `yaml:"admin"`
-	GrpcServer server.ServerConfig     `yaml:"grpc-cp-server"`
+	GrpcServer server.ServerConfig     `yaml:"grpc-server"`
 	Security   security.SecurityConfig `yaml:"security"`
-	KubeConfig kube.KubeConfig         `yaml:"KubeConfig-config"`
+	KubeConfig kube.KubeConfig         `yaml:"kube-config"`
+	Options    option.Options          `yaml:"options"`
 }
 
 func (c *Config) Sanitize() {
@@ -39,6 +42,7 @@ func (c *Config) Sanitize() {
 	c.Admin.Sanitize()
 	c.GrpcServer.Sanitize()
 	c.KubeConfig.Sanitize()
+	c.Options.Sanitize()
 }
 
 func (c *Config) Validate() error {
@@ -57,6 +61,10 @@ func (c *Config) Validate() error {
 	err = c.KubeConfig.Validate()
 	if err != nil {
 		return errors.Wrap(err, "KubeConfig validation failed")
+	}
+	err = c.Options.Validate()
+	if err != nil {
+		return errors.Wrap(err, "options validation failed")
 	}
 	return nil
 }
@@ -101,6 +109,12 @@ var DefaultConfig = func() Config {
 			RestConfigQps:         50,
 			RestConfigBurst:       100,
 			KubeFileConfig:        "",
+			DomainSuffix:          "cluster.local",
+		},
+		Options: option.Options{
+			DebounceAfter:  100 * time.Millisecond,
+			DebounceMax:    10 * time.Second,
+			EnableDebounce: true,
 		},
 	}
 }

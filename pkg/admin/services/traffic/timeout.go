@@ -28,7 +28,7 @@ import (
 
 type TimeoutService struct{}
 
-// CreateOrUpdate create or update timeout rule
+// CreateOrUpdate create or update timeout dds
 func (tm *TimeoutService) CreateOrUpdate(t *model.Timeout) error {
 	key := services.GetOverridePath(util.ColonSeparatedKey(t.Service, t.Group, t.Version))
 	newRule := t.ToRule()
