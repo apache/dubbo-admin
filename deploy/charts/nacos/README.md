@@ -55,39 +55,57 @@ curl -X GET "http://$NODE_IP:$NODE_PORT/nacos/v1/cs/configs?dataId=nacos.cfg.dat
 
 The following table lists the configurable parameters of the Skywalking chart and their default values.
 
-| Parameter                             | Description                                                        | Default                             |
-|---------------------------------------|--------------------------------------------------------------------|-------------------------------------|
-| `global.mode`                         | Run Mode (~~quickstart,~~ standalone, cluster; )   | `standalone`            |
-| `resources`                          | The [resources] to allocate for nacos container                    | `{}`                                |
-| `nodeSelector`                       | Nacos labels for pod assignment                   | `{}`                                |
-| `affinity`                           | Nacos affinity policy                                              | `{}`                                |
-| `tolerations`                         | Nacos tolerations                                                  | `{}`                                |
-| `resources.requests.cpu`|nacos requests cpu resource|`500m`|
-| `resources.requests.memory`|nacos requests memory resource|`2G`|
-| `nacos.replicaCount`                        | Number of desired nacos pods, the number should be 1 as run standalone mode| `1`           |
-| `nacos.image.repository`                    | Nacos container image name                                      | `nacos/nacos-server`                   |
-| `nacos.image.tag`                           | Nacos container image tag                                       | `latest`                                |
-| `nacos.image.pullPolicy`                    | Nacos container image pull policy                                | `IfNotPresent`                        |
-| `nacos.plugin.enable`                    | Nacos cluster plugin that is auto scale                                       | `true`                   |
-| `nacos.plugin.image.repository`                    | Nacos cluster plugin image name                                      | `nacos/nacos-peer-finder-plugin`                   |
-| `nacos.plugin.image.tag`                           | Nacos cluster plugin image tag                                       | `1.1`                                |
-| `nacos.health.enabled`                      | Enable health check or not                                         | `false`                              |
-| `nacos.env.preferhostmode`                  | Enable Nacos cluster node domain name support                      | `hostname`                         |
-| `nacos.env.serverPort`                      | Nacos port                                                         | `8848`                               |
-| `nacos.storage.type`                      | Nacos data storage method `mysql` or `embedded`. The `embedded` supports either standalone or cluster mode                                                       | `embedded`                               |
-| `nacos.storage.db.host`                      | mysql  host                                                       |                                |
-| `nacos.storage.db.name`                      | mysql  database name                                                      |                                |
-| `nacos.storage.db.port`                      | mysql port                                                       | 3306                               |
-| `nacos.storage.db.username`                      | username of  database                                                       |                               |
-| `nacos.storage.db.password`                      | password of  database                                                       |                               |
-| `nacos.storage.db.param`                      | Database url parameter                                                       | `characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false`                               |
-| `persistence.enabled`                 | Enable the nacos data persistence or not                           | `false`                              |
-| `persistence.data.accessModes`					| Nacos data pvc access mode										| `ReadWriteOnce`		|
-| `persistence.data.storageClassName`				| Nacos data pvc storage class name									| `manual`			|
-| `persistence.data.resources.requests.storage`		| Nacos data pvc requests storage									| `5G`					|
-| `service.type`									| http service type													| `NodePort`			|
-| `service.port`									| http service port													| `8848`				|
-| `service.nodePort`								| http service nodeport												| `30000`				|
-| `ingress.enabled`									| Enable ingress or not												| `false`				|
-| `ingress.annotations`								| The annotations used in ingress									| `{}`					|
-| `ingress.hosts`									| The host of nacos service in ingress rule							| `nacos.example.com`	|
+| Parameter                    | Description                                                                                            | Default                                                                                         |
+|------------------------------|--------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| `global.mode`                | Nacos Mode standalone or cluster.                                                                      | `standalone`                                                                                    |
+| `nodeSelector`               | Nacos labels for pod assignment.                                                                       | `{}`                                                                                            |
+| `affinity`                   | Nacos affinity policy.                                                                                 | `{}`                                                                                            |
+| `tolerations`                | Nacos tolerations.                                                                                     | `{}`                                                                                            |
+| `replicas`                   | Number of desired nacos pods, the number should be 1 as run standalone mode.                           | `1`                                                                                             |
+| `maxUnavailable`             | The parameter for specifying the maximum allowed number of unavailable replicas.                       | `[]`                                                                                            |
+| `tolerations`                | allow pods to be scheduled on nodes with specific taints by tolerating those taints.                   | `[]`                                                                                            |
+| `domainName`                 | Enable Nacos cluster node domain name support.                                                         | `cluster.local`                                                                                 |
+| `resources.limits`           | Resource Object Limits.                                                                                | `{}`                                                                                            |
+| `resources.requests`         | Resource Object Requests.                                                                              | `{}`                                                                                            |
+| `image.registry`             | Nacos container image registry.                                                                        | `nacos/nacos-server`                                                                            |
+| `image.repository`           | Nacos container image repository.                                                                      | `nacos/nacos-server`                                                                            |
+| `image.tag`                  | Nacos container image tag.                                                                             | `latest`                                                                                        |
+| `image.pullPolicy`           | Nacos container image pull policy.                                                                     | `IfNotPresent`                                                                                  |
+| `plugin.enabled`             | Nacos cluster plugin that is auto scale.                                                               | `true`                                                                                          |
+| `plugin.image.repository`    | Nacos cluster plugin image name.                                                                       | `nacos/nacos-peer-finder-plugin`                                                                |
+| `plugin.image.tag`           | Nacos cluster plugin image tag.                                                                        | `1.1`                                                                                           |
+| `plugin.image.pullPolicy`    | Nacos cluster plugin image pull policy.                                                                | `IfNotPresent`                                                                                  |
+| `health.enabled`             | Enable health check or not.                                                                            | `false`                                                                                         |
+| `env.preferhostmode`         | Nacos env Preferred Host Mode.                                                                         | `hostname`                                                                                      |
+| `env.serverPort`             | Nacos env Server Port.                                                                                 | `8848`                                                                                          |
+| `storage.type`               | Nacos storage method `mysql` or `embedded`. The `embedded` supports either standalone or cluster mode. | `embedded`                                                                                      |
+| `storage.db.host`            | Nacos Mysql storage host.                                                                              | `""`                                                                                            |
+| `storage.db.name`            | Nacos Mysql storage database name.                                                                     | `""`                                                                                            |
+| `storage.db.port`            | Nacos Mysql storage port.                                                                              | `3306`                                                                                          |
+| `storage.db.username`        | Username of database.                                                                                  | `""`                                                                                            |
+| `storage.db.password`        | Password of database.                                                                                  | `""`                                                                                            |
+| `storage.db.param`           | Database url parameter.                                                                                | `characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false` |
+| `persistence.enabled`        | Enable or disable persistence functionality.                                                           | `false`                                                                                         |
+| `persistence.accessModes`    | Defining Access Patterns for Persistent Storage Volume.                                                | `ReadWriteOnce`		                                                                               |
+| `persistence.storageClassName` | Defines the type or class of persistent storage volume.                                                | `manual`                                                                                        |
+| `persistence.size`           | Defines the size of the Kubernetes persistent storage volume.                                          | `5G`                                                                                            |
+| `persistence.ClaimName`      | Define the name of the persistence store declaration to bind to.                                       | `{}`                                                                                            |
+| `persistence.emptyDir`       | Configuration for creating a temporary blank directory.                                                | `{}`                                                                                            |
+| `podDisruptionBudget.enabled` | Enable or disable podDisruptionBudget functionality.                                                   | `false`                                                                                         |
+| `podDisruptionBudget.minAvailable` | Defines the minimum number of available Pods that must be maintained in a Kubernetes cluster.          | `1`                                                                                             |
+| `podDisruptionBudget.maxUnavailable` | Defines the maximum number of available Pods that must be maintained in a Kubernetes cluster.          | `1`                                                                                             |
+| `service.type`               | Nacos http service type.                                                                               | `NodePort`                                                                                      |
+| `service.port`               | Nacos http service port.                                                                               | `8848`                                                                                          |
+| `service.nodePort`           | Nacos http service nodeport.                                                                           | `30000`                                                                                         |
+| `ingress.enabled`            | Enable or disable ingress functionality.                                                               | `false`                                                                                         |
+| `ingress.annotations`        | Adding additional configuration and metadata information to ingress.                                   | `{}`                                                                                            |
+| `ingress.labels`             | Add custom labels for Ingress objects.                                                                 | `{}`                                                                                            |
+| `ingress.hosts`              | The host of nacos service in ingress rule.                                                             | `nacos.example.com`	                                                                            |
+| `ingress.path`               | Ingress defines mapping rules between request paths and backend services.                              | `/`                                                                                             |
+| `ingress.pathType`           | Ingress specifies the type of request path matching.                                                   | `Prefix`                                                                                        |
+| `ingress.extraPaths`         | Ingress defines mapping rules between request extra paths and backend services.                        | `[]`                                                                                            |
+| `ingress.tls`                | Configure TLS certificate information for encrypted connections received through Ingress objects.      | `[]`                                                                                            |
+| `networkPolicy.enabled`      | Enable or disable networkpolicy functionality.                                                         | `false`                                                                                         |
+| `networkPolicy.ingress`      | Enable or disable networkpolicy ingress.                                                               | `true`                                                                                          |
+| `networkPolicy.egress.enabled` | Enable or disable networkpolicy egress.                                                                | `false`                                                                                         |
+| `networkPolicy.egress.ports` | Enable or disable networkpolicy egress ports.                                                          | `80`                                                                                            |

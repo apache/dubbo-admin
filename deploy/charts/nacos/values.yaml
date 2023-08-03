@@ -19,14 +19,13 @@ global:
 
 image:
   registry: docker.io
-  #  e.g registry.k8s.io
+  # registry: registry.k8s.io
   repository: nacos/nacos-server
   tag: latest
   pullPolicy: IfNotPresent
 
 plugin:
-  enable: true
-  # true or false
+  enabled: true
   image:
     repository: nacos/nacos-peer-finder-plugin
     tag: 1.1
@@ -50,15 +49,19 @@ resources:
   limits: {}
   requests: {}
 
+env:
+  preferhostmode: hostname
+  serverPort: 8848
+
 storage:
   type: ~
-  # db:
+    # db:
     # host: localhost
     # name: nacos
     # port: 3306
     # username: usernmae
     # password: password
-    # param: characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false
+  # param: characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false
 
 service:
   name: http
@@ -100,7 +103,6 @@ persistence:
   storageClassName: ""
   size: 5Gi
   ClaimName: {}
-  ## persistence emptyDir
   emptyDir: {}
 
 ## See `kubectl explain poddisruptionbudget.spec` for more
@@ -178,4 +180,4 @@ networkPolicy:
       ## E.X.
       ## ports:
       ## - port: 80
-    ## - port: 443
+      ## - port: 443
