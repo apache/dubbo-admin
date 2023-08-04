@@ -200,6 +200,10 @@ func InitRouter() *Router {
 		trafficRegion.GET("/", traffic.SearchRegion)
 	}
 
+	// ServiceTest
+	router.POST("/api/:env/test", handlers.Test)
+	router.GET("/api/:env/test/method", handlers.MethodDetail)
+
 	// Admin UI
 	router.StaticFS("/admin", http.FS(ui.FS()))
 

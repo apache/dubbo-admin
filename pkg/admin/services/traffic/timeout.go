@@ -18,19 +18,21 @@
 package traffic
 
 import (
+	"fmt"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
+	"strconv"
 	"strings"
 
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
-	"github.com/apache/dubbo-admin/pkg/admin/util"
 )
 
 type TimeoutService struct{}
 
 // CreateOrUpdate create or update timeout rule
 func (tm *TimeoutService) CreateOrUpdate(t *model.Timeout) error {
-	key := services.GetOverridePath(util.ColonSeparatedKey(t.Service, t.Group, t.Version))
+	key := services.GetOverridePath(t.GetKey())
 	newRule := t.ToRule()
 
 	err := createOrUpdateOverride(key, "consumer", "timeout", newRule)
@@ -38,7 +40,7 @@ func (tm *TimeoutService) CreateOrUpdate(t *model.Timeout) error {
 }
 
 func (tm *TimeoutService) Delete(t *model.Timeout) error {
-	key := services.GetOverridePath(util.ColonSeparatedKey(t.Service, t.Group, t.Version))
+	key := services.GetOverridePath(t.GetKey())
 	err2 := removeFromOverride(key, "consumer", "timeout")
 	if err2 != nil {
 		return err2
@@ -51,7 +53,7 @@ func (tm *TimeoutService) Search(t *model.Timeout) ([]*model.Timeout, error) {
 
 	var con string
 	if t.Service != "" && t.Service != "*" {
-		con = util.ColonSeparatedKey(t.Service, t.Group, t.Version)
+		con = t.GetKey()
 	}
 
 	list, err := services.GetRules(con, constant.ConfiguratorRuleSuffix)
@@ -79,7 +81,16 @@ func (tm *TimeoutService) Search(t *model.Timeout) ([]*model.Timeout, error) {
 		}
 
 		if tv != nil {
-			t.Timeout = tv.(int)
+			if tvStr, ok := tv.(string); ok {
+				tvInt, err := strconv.Atoi(tvStr)
+				if err != nil {
+					logger.Error(fmt.Sprintf("Error parsing timeout rule %s", v), err)
+					return result, err
+				}
+				t.Timeout = tvInt
+			} else {
+				t.Timeout = tv.(int)
+			}
 			result = append(result, t)
 		}
 	}

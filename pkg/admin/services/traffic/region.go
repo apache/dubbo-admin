@@ -23,7 +23,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
-	"github.com/apache/dubbo-admin/pkg/admin/util"
 	"gopkg.in/yaml.v2"
 )
 
@@ -31,7 +30,7 @@ type RegionService struct{}
 
 // CreateOrUpdate create or update timeout rule
 func (tm *RegionService) CreateOrUpdate(r *model.Region) error {
-	key := services.GetRoutePath(util.ColonSeparatedKey(r.Service, r.Group, r.Version), constant.ConditionRoute)
+	key := services.GetRoutePath(r.GetKey(), constant.ConditionRoute)
 	newRule := r.ToRule()
 
 	var err error
@@ -45,7 +44,7 @@ func (tm *RegionService) CreateOrUpdate(r *model.Region) error {
 }
 
 func (tm *RegionService) Delete(r *model.Region) error {
-	key := services.GetRoutePath(util.ColonSeparatedKey(r.Service, r.Group, r.Version), constant.ConditionRoute)
+	key := services.GetRoutePath(r.GetKey(), constant.ConditionRoute)
 	err2 := removeCondition(key, r.Rule, model.RegionAdminIdentifier)
 	if err2 != nil {
 		return err2
@@ -58,7 +57,7 @@ func (tm *RegionService) Search(r *model.Region) ([]*model.Region, error) {
 
 	var con string
 	if r.Service != "" && r.Service != "*" {
-		con = util.ColonSeparatedKey(r.Service, r.Group, r.Version)
+		con = r.GetKey()
 	}
 
 	list, err := services.GetRules(con, constant.ConditionRuleSuffix)

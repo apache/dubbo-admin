@@ -23,6 +23,7 @@ import (
 
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 
+	dubboconstant "dubbo.apache.org/dubbo-go/v3/common/constant"
 	dubbogo "dubbo.apache.org/dubbo-go/v3/config"
 	_ "dubbo.apache.org/dubbo-go/v3/imports"
 	"github.com/apache/dubbo-admin/pkg/admin/mapper"
@@ -57,7 +58,9 @@ func RunMockServiceServer(admin admin.Admin, dubboConfig dubbogo.RootConfig) {
 		mockRuleService: mockRuleService,
 	})
 
-	builder := dubbogo.NewRootConfigBuilder().AddRegistry("zkRegistryKey", dubbogo.NewRegistryConfigBuilder().SetAddress(admin.Registry.Address).Build())
+	builder := dubbogo.NewRootConfigBuilder().
+		AddRegistry("zkRegistryKey", dubbogo.NewRegistryConfigBuilder().SetAddress(admin.Registry.Address).SetRegistryType(dubboconstant.RegistryTypeAll).
+			Build()).SetApplication(dubbogo.NewApplicationConfigBuilder().SetName("dubbo-admin").Build())
 
 	for k, v := range dubboConfig.Protocols {
 		builder.AddProtocol(k, dubbogo.NewProtocolConfigBuilder().SetName(v.Name).SetPort(v.Port).Build())

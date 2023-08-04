@@ -17,11 +17,11 @@ package model
 
 // ServiceDTO is the transforming format of service
 type ServiceDTO struct {
-	Service        string         `json:"service"`
-	AppName        string         `json:"appName"`
-	Group          string         `json:"group"`
-	Version        string         `json:"version"`
-	RegistrySource RegistrySource `json:"registrySource"`
+	Service        string `json:"service"`
+	AppName        string `json:"appName"`
+	Group          string `json:"group"`
+	Version        string `json:"version"`
+	RegistrySource string `json:"registrySource"`
 }
 
 type ListServiceByPage struct {
@@ -33,4 +33,17 @@ type ListServiceByPage struct {
 	Last          bool          `json:"last"`
 	PageNumber    string        `json:"pageNumber"`
 	Offset        int           `json:"offset"`
+}
+
+type ServiceTest struct {
+	Service        string        `json:"service"`
+	Method         string        `json:"method"`
+	ParameterTypes []string      `json:"ParameterTypes"`
+	Params         []interface{} `json:"params"`
+}
+
+type MethodMetadata struct {
+	Signature      string        `json:"signature"`
+	ParameterTypes []interface{} `json:"parameterTypes"`
+	ReturnType     string        `json:"returnType"`
 }

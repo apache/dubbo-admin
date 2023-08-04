@@ -23,14 +23,13 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
-	"github.com/apache/dubbo-admin/pkg/admin/util"
 )
 
 type MockService struct{}
 
 // CreateOrUpdate create or update timeout rule
 func (tm *MockService) CreateOrUpdate(m *model.Mock) error {
-	key := services.GetOverridePath(util.ColonSeparatedKey(m.Service, m.Group, m.Version))
+	key := services.GetOverridePath(m.GetKey())
 	newRule := m.ToRule()
 
 	err := createOrUpdateOverride(key, "consumer", "mock", newRule)
@@ -38,7 +37,7 @@ func (tm *MockService) CreateOrUpdate(m *model.Mock) error {
 }
 
 func (tm *MockService) Delete(m *model.Mock) error {
-	key := services.GetOverridePath(util.ColonSeparatedKey(m.Service, m.Group, m.Version))
+	key := services.GetOverridePath(m.GetKey())
 	err2 := removeFromOverride(key, "consumer", "mock")
 	if err2 != nil {
 		return err2
@@ -51,7 +50,7 @@ func (tm *MockService) Search(m *model.Mock) ([]*model.Mock, error) {
 
 	var con string
 	if m.Service != "" && m.Service != "*" {
-		con = util.ColonSeparatedKey(m.Service, m.Group, m.Version)
+		con = m.GetKey()
 	}
 	list, err := services.GetRules(con, constant.ConfiguratorRuleSuffix)
 	if err != nil {

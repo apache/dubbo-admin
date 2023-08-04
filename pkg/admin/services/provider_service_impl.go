@@ -284,6 +284,7 @@ func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*mod
 		reg       *regexp.Regexp
 		err       error
 	)
+	result := make([]*model.Provider, 0)
 	if !strings.Contains(filter, constant.AnyValue) && !strings.Contains(filter, constant.InterrogationPoint) {
 		if pattern == constant.IP {
 			providers, err = p.findByAddress(filter)
@@ -303,6 +304,7 @@ func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*mod
 		} else {
 			return nil, fmt.Errorf("unsupport the pattern: %s", pattern)
 		}
+		result = providers
 	} else {
 		var candidates *set.HashSet
 		if pattern == constant.IP {
@@ -352,11 +354,12 @@ func (p *ProviderServiceImpl) FindService(pattern string, filter string) ([]*mod
 						return nil, err
 					}
 				}
+				result = append(result, providers...)
 			}
 		}
 	}
 
-	return util.Providers2DTO(providers), nil
+	return util.Providers2DTO(result), nil
 }
 
 func hasPrefixOrSuffix(filter string) bool {

@@ -18,10 +18,9 @@
 package config
 
 const (
-	SanitizedValue   = "*****"
-	conf             = "./conf/admin.yml"
-	confPathKey      = "ADMIN_CONFIG_PATH"
-	MockProviderConf = "./conf/mock_provider.yml"
+	SanitizedValue = "*****"
+	conf           = "./conf/admin.yml"
+	confPathKey    = "ADMIN_CONFIG_PATH"
 )
 
 type Config interface {

@@ -68,6 +68,10 @@ func NewRegistry(delegate dubboRegistry.Registry, sdDelegate dubboRegistry.Servi
 	}
 }
 
+func (kr *Registry) Delegate() dubboRegistry.Registry {
+	return kr.delegate
+}
+
 func (kr *Registry) Subscribe(listener registry.AdminNotifyListener) error {
 	delRegistryListener := DubboRegistryNotifyListener{listener: listener}
 	go func() {
@@ -115,9 +119,7 @@ type DubboRegistryNotifyListener struct {
 }
 
 func (l DubboRegistryNotifyListener) Notify(event *dubboRegistry.ServiceEvent) {
-	// TODO implement me
-	serviceURL := event.Service
-	l.listener.Notify(serviceURL)
+	l.listener.Notify(event)
 }
 
 func (l DubboRegistryNotifyListener) NotifyAll(events []*dubboRegistry.ServiceEvent, f func()) {

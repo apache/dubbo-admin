@@ -18,6 +18,9 @@
 package traffic
 
 import (
+	"fmt"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
+	"strconv"
 	"strings"
 
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
@@ -77,7 +80,16 @@ func (tm *RetryService) Search(r *model.Retry) ([]*model.Retry, error) {
 			return result, err2
 		}
 		if rv != nil {
-			retry.Retry = rv.(int)
+			if rvStr, ok := rv.(string); ok {
+				rvInt, err := strconv.Atoi(rvStr)
+				if err != nil {
+					logger.Error(fmt.Sprintf("Error parsing retry rule %s", v), err)
+					return result, err
+				}
+				retry.Retry = rvInt
+			} else {
+				retry.Retry = rv.(int)
+			}
 			result = append(result, retry)
 		}
 	}

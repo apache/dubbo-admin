@@ -49,6 +49,13 @@ func (t Timeout) ToRule() Override {
 	}
 }
 
+func (t Timeout) GetKey() string {
+	interfaze := util.GetInterface(t.Service)
+	group := util.GetGroup(t.Service)
+	version := util.GetVersion(t.Service)
+	return util.ColonSeparatedKey(interfaze, group, version)
+}
+
 type Retry struct {
 	Service string `json:"service" binding:"required"`
 	Group   string `json:"group"`
@@ -67,6 +74,13 @@ func (t Retry) ToRule() Override {
 			Parameters: map[string]interface{}{"retries": t.Retry},
 		}},
 	}
+}
+
+func (r Retry) GetKey() string {
+	interfaze := util.GetInterface(r.Service)
+	group := util.GetGroup(r.Service)
+	version := util.GetVersion(r.Service)
+	return util.ColonSeparatedKey(interfaze, group, version)
 }
 
 type Accesslog struct {
@@ -106,6 +120,13 @@ func (r Region) ToRule() ConditionRoute {
 	}
 }
 
+func (r Region) GetKey() string {
+	interfaze := util.GetInterface(r.Service)
+	group := util.GetGroup(r.Service)
+	version := util.GetVersion(r.Service)
+	return util.ColonSeparatedKey(interfaze, group, version)
+}
+
 type Gray struct {
 	Application string `json:"application" binding:"required"`
 	Tags        []Tag  `json:"tags" binding:"required"`
@@ -141,6 +162,13 @@ func (r Argument) ToRule() ConditionRoute {
 	}
 }
 
+func (a Argument) GetKey() string {
+	interfaze := util.GetInterface(a.Service)
+	group := util.GetGroup(a.Service)
+	version := util.GetVersion(a.Service)
+	return util.ColonSeparatedKey(interfaze, group, version)
+}
+
 type Percentage struct {
 	Service string   `json:"service" binding:"required"`
 	Group   string   `json:"group"`
@@ -170,6 +198,13 @@ func (p Percentage) ToRule() Override {
 	}
 }
 
+func (p Percentage) GetKey() string {
+	interfaze := util.GetInterface(p.Service)
+	group := util.GetGroup(p.Service)
+	version := util.GetVersion(p.Service)
+	return util.ColonSeparatedKey(interfaze, group, version)
+}
+
 type Mock struct {
 	Service string `json:"service" binding:"required"`
 	Group   string `json:"group"`
@@ -177,17 +212,24 @@ type Mock struct {
 	Mock    string `json:"mock" binding:"required"`
 }
 
-func (t Mock) ToRule() Override {
+func (m Mock) ToRule() Override {
 	return Override{
-		Key:           t.Service,
+		Key:           m.Service,
 		Scope:         "service",
 		ConfigVersion: "v3.0",
 		Enabled:       true,
 		Configs: []OverrideConfig{{
 			Side:       "consumer",
-			Parameters: map[string]interface{}{"mock": t.Mock},
+			Parameters: map[string]interface{}{"mock": m.Mock},
 		}},
 	}
+}
+
+func (m Mock) GetKey() string {
+	interfaze := util.GetInterface(m.Service)
+	group := util.GetGroup(m.Service)
+	version := util.GetVersion(m.Service)
+	return util.ColonSeparatedKey(interfaze, group, version)
 }
 
 type Host struct {

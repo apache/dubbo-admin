@@ -18,12 +18,14 @@
 package handlers
 
 import (
+	"dubbo.apache.org/dubbo-go/v3/config/generic"
 	"encoding/json"
-	"net/http"
-	"strconv"
-
 	"github.com/apache/dubbo-admin/pkg/core/cmd/version"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
+	hessian "github.com/apache/dubbo-go-hessian2"
+	"net/http"
+	"strconv"
+	"time"
 
 	"dubbo.apache.org/dubbo-go/v3/metadata/definition"
 
@@ -42,9 +44,11 @@ import (
 )
 
 var (
-	providerService services.ProviderService = &services.ProviderServiceImpl{}
-	consumerService services.ConsumerService = &services.ConsumerServiceImpl{}
-	monitorService  services.MonitorService  = &services.PrometheusServiceImpl{}
+	providerService    services.ProviderService     = &services.ProviderServiceImpl{}
+	consumerService    services.ConsumerService     = &services.ConsumerServiceImpl{}
+	monitorService     services.MonitorService      = &services.PrometheusServiceImpl{}
+	genericServiceImpl *services.GenericServiceImpl = &services.GenericServiceImpl{}
+	serviceTesting     *services.ServiceTestingV3   = &services.ServiceTestingV3{}
 )
 
 // AllServices get all services
@@ -316,4 +320,88 @@ func PromDiscovery(c *gin.Context) {
 		})
 	}
 	c.JSON(http.StatusOK, targets)
+}
+
+// Test works for dubbo2 tcp protocol
+func Test(c *gin.Context) {
+	var serviceTestDTO model.ServiceTest
+
+	err := c.BindJSON(&serviceTestDTO)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	refConf := genericServiceImpl.NewRefConf("dubbo-admin", serviceTestDTO.Service, "dubbo")
+	time.Sleep(2 * time.Second)
+	resp, err := refConf.
+		GetRPCService().(*generic.GenericService).
+		Invoke(
+			c,
+			serviceTestDTO.Method,
+			serviceTestDTO.ParameterTypes,
+			[]hessian.Object{"A003"}, //fixme
+		)
+	refConf.GetInvoker().Destroy()
+	if err != nil {
+		logger.Error("Error do generic invoke for service test", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, resp)
+}
+
+// HttpTest works for triple protocol
+func HttpTest(c *gin.Context) {
+	//pattern := c.Query("service")
+	//filter := c.Query("method")
+	//address := c.Query("address")
+
+	// send standard http request to backend http://address/service/method content-type:json
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": 1,
+		"data": "implement me",
+	})
+}
+
+func MethodDetail(c *gin.Context) {
+	service := c.Query("service")
+	group := util.GetGroup(service)
+	version := util.GetVersion(service)
+	interfaze := util.GetInterface(service)
+	application := c.Query("application")
+	method := c.Query("method")
+
+	identifier := &identifier.MetadataIdentifier{
+		Application: application,
+		BaseMetadataIdentifier: identifier.BaseMetadataIdentifier{
+			ServiceInterface: interfaze,
+			Version:          version,
+			Group:            group,
+			Side:             constant.ProviderSide,
+		},
+	}
+	metadata, _ := config.MetadataReportCenter.GetServiceDefinition(identifier)
+	var methodMetadata model.MethodMetadata
+	if metadata != "" {
+		serviceDefinition := &definition.FullServiceDefinition{}
+		err := json.Unmarshal([]byte(metadata), &serviceDefinition)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
+		methods := serviceDefinition.Methods
+		if methods != nil {
+			for _, m := range methods {
+				if serviceTesting.SameMethod(m, method) {
+					methodMetadata = serviceTesting.GenerateMethodMeta(*serviceDefinition, m)
+					break
+				}
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, methodMetadata)
 }

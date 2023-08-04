@@ -19,6 +19,7 @@ package admin
 
 import (
 	"net/url"
+	"strings"
 
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/common/constant"
@@ -46,7 +47,9 @@ func (c *AddressConfig) GetAddress() string {
 func (c *AddressConfig) GetUrlMap() url.Values {
 	urlMap := url.Values{}
 	urlMap.Set(constant.ConfigNamespaceKey, c.param("namespace", ""))
-	urlMap.Set(constant.ConfigGroupKey, c.param("group", ""))
+	urlMap.Set(constant.ConfigGroupKey, c.param(constant.GroupKey, "dubbo"))
+	urlMap.Set(constant.MetadataReportGroupKey, c.param(constant.GroupKey, "dubbo"))
+	urlMap.Set(constant.ClientNameKey, clientNameID(c.Url.Scheme, c.Url.Host))
 	return urlMap
 }
 
@@ -66,4 +69,8 @@ func (c *AddressConfig) ToURL() (*common.URL, error) {
 		common.WithUsername(c.param("username", "")),
 		common.WithPassword(c.param("password", "")),
 	)
+}
+
+func clientNameID(protocol, address string) string {
+	return strings.Join([]string{protocol, address}, "-")
 }

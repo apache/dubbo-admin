@@ -19,19 +19,19 @@ import "time"
 
 type Provider struct {
 	Entity
-	Service        string         `json:"service"`
-	URL            string         `json:"url"`
-	Parameters     string         `json:"parameters"`
-	Address        string         `json:"address"`
-	Registry       string         `json:"registry"`
-	Dynamic        bool           `json:"dynamic"`
-	Enabled        bool           `json:"enabled"`
-	Timeout        int64          `json:"timeout"`
-	Serialization  string         `json:"serialization"`
-	Weight         int64          `json:"weight"`
-	Application    string         `json:"application"`
-	Username       string         `json:"username"`
-	Expired        time.Duration  `json:"expired"`
-	Alived         int64          `json:"alived"`
-	RegistrySource RegistrySource `json:"registrySource"`
+	Service        string        `json:"service"`
+	URL            string        `json:"url"`
+	Parameters     string        `json:"parameters"`
+	Address        string        `json:"address"`
+	Registry       string        `json:"registry"`
+	Dynamic        bool          `json:"dynamic"`
+	Enabled        bool          `json:"enabled"`
+	Timeout        int64         `json:"timeout"`
+	Serialization  string        `json:"serialization"`
+	Weight         int64         `json:"weight"`
+	Application    string        `json:"application"`
+	Username       string        `json:"username"`
+	Expired        time.Duration `json:"expired"`
+	Alived         int64         `json:"alived"`
+	RegistrySource string        `json:"registrySource"`
 }

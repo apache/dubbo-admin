@@ -2,6 +2,7 @@ package registry
 
 import (
 	"dubbo.apache.org/dubbo-go/v3/common"
+	dubboRegistry "dubbo.apache.org/dubbo-go/v3/registry"
 )
 
 var registries = make(map[string]func(u *common.URL) (AdminRegistry, error))
@@ -25,8 +26,9 @@ func Registry(name string, config *common.URL) (AdminRegistry, error) {
 type AdminRegistry interface {
 	Subscribe(listener AdminNotifyListener) error
 	Destroy() error
+	Delegate() dubboRegistry.Registry
 }
 
 type AdminNotifyListener interface {
-	Notify(url *common.URL)
+	Notify(event *dubboRegistry.ServiceEvent)
 }

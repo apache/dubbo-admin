@@ -18,7 +18,9 @@
 package universal
 
 import (
+	"dubbo.apache.org/dubbo-go/v3/metadata/service/local"
 	"reflect"
+	"sync"
 )
 
 import (
@@ -29,10 +31,12 @@ import (
 
 import (
 	"dubbo.apache.org/dubbo-go/v3/common"
-	"dubbo.apache.org/dubbo-go/v3/common/constant"
+	dubboconstant "dubbo.apache.org/dubbo-go/v3/common/constant"
 	"dubbo.apache.org/dubbo-go/v3/common/extension"
 	"dubbo.apache.org/dubbo-go/v3/registry"
 	"dubbo.apache.org/dubbo-go/v3/remoting"
+
+	"github.com/apache/dubbo-admin/pkg/admin/constant"
 )
 
 // DubboSDNotifyListener The Service Discovery Changed  Event Listener
@@ -42,6 +46,8 @@ type DubboSDNotifyListener struct {
 	serviceUrls        map[string][]*common.URL
 	revisionToMetadata map[string]*common.MetadataInfo
 	allInstances       map[string][]registry.ServiceInstance
+
+	mutex sync.Mutex
 }
 
 func NewDubboSDNotifyListener(services *gxset.HashSet) registry.ServiceInstancesChangedListener {
@@ -61,6 +67,10 @@ func (lstn *DubboSDNotifyListener) OnEvent(e observer.Event) error {
 		return nil
 	}
 	var err error
+
+	lstn.mutex.Lock()
+	defer lstn.mutex.Unlock()
+
 	lstn.allInstances[ce.ServiceName] = ce.Instances
 	revisionToInstances := make(map[string][]registry.ServiceInstance)
 	newRevisionToMetadata := make(map[string]*common.MetadataInfo)
@@ -76,7 +86,7 @@ func (lstn *DubboSDNotifyListener) OnEvent(e observer.Event) error {
 				logger.Warnf("Instance metadata is nil: %s", instance.GetHost())
 				continue
 			}
-			revision := instance.GetMetadata()[constant.ExportedServicesRevisionPropertyName]
+			revision := instance.GetMetadata()[dubboconstant.ExportedServicesRevisionPropertyName]
 			if "0" == revision {
 				logger.Infof("Find instance without valid service metadata: %s", instance.GetHost())
 				continue
@@ -134,7 +144,7 @@ func (lstn *DubboSDNotifyListener) OnEvent(e observer.Event) error {
 			urls := lstn.serviceUrls[key]
 			events := make([]*registry.ServiceEvent, 0, len(urls))
 			for _, url := range urls {
-				url.AddParam("TYPE", "instance")
+				url.SetParam(constant.RegistryType, constant.RegistryInstance)
 				events = append(events, &registry.ServiceEvent{
 					Action:  remoting.EventTypeAdd,
 					Service: url,
@@ -151,6 +161,7 @@ func (lstn *DubboSDNotifyListener) AddListenerAndNotify(serviceKey string, notif
 	lstn.listeners[serviceKey] = notify
 	urls := lstn.serviceUrls[serviceKey]
 	for _, url := range urls {
+		url.SetParam(constant.RegistryType, constant.RegistryInstance)
 		notify.Notify(&registry.ServiceEvent{
 			Action:  remoting.EventTypeAdd,
 			Service: url,
@@ -191,11 +202,11 @@ func GetMetadataInfo(instance registry.ServiceInstance, revision string) (*commo
 	var metadataStorageType string
 	var metadataInfo *common.MetadataInfo
 	if instance.GetMetadata() == nil {
-		metadataStorageType = constant.DefaultMetadataStorageType
+		metadataStorageType = dubboconstant.DefaultMetadataStorageType
 	} else {
-		metadataStorageType = instance.GetMetadata()[constant.MetadataStorageTypePropertyName]
+		metadataStorageType = instance.GetMetadata()[dubboconstant.MetadataStorageTypePropertyName]
 	}
-	if metadataStorageType == constant.RemoteMetadataStorageType {
+	if metadataStorageType == dubboconstant.RemoteMetadataStorageType {
 		remoteMetadataServiceImpl, err := extension.GetRemoteMetadataService()
 		if err != nil {
 			return nil, err
@@ -206,8 +217,9 @@ func GetMetadataInfo(instance registry.ServiceInstance, revision string) (*commo
 		}
 	} else {
 		var err error
-		proxyFactory := extension.GetMetadataServiceProxyFactory(constant.DefaultKey)
+		proxyFactory := extension.GetMetadataServiceProxyFactory(dubboconstant.DefaultKey)
 		metadataService := proxyFactory.GetProxy(instance)
+		defer metadataService.(*local.MetadataServiceProxy).Invoker.Destroy()
 		metadataInfo, err = metadataService.GetMetadataInfo(revision)
 		if err != nil {
 			return nil, err

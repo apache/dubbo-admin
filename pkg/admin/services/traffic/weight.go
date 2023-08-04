@@ -23,7 +23,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
-	"github.com/apache/dubbo-admin/pkg/admin/util"
 	"gopkg.in/yaml.v2"
 )
 
@@ -31,7 +30,7 @@ type WeightService struct{}
 
 // CreateOrUpdate create or update timeout rule
 func (tm *WeightService) CreateOrUpdate(p *model.Percentage) error {
-	key := services.GetOverridePath(util.ColonSeparatedKey(p.Service, p.Group, p.Version))
+	key := services.GetOverridePath(p.GetKey())
 	newRule := p.ToRule()
 
 	err := createOrUpdateOverride(key, "provider", "weight", newRule)
@@ -39,7 +38,7 @@ func (tm *WeightService) CreateOrUpdate(p *model.Percentage) error {
 }
 
 func (tm *WeightService) Delete(p *model.Percentage) error {
-	key := services.GetOverridePath(util.ColonSeparatedKey(p.Service, p.Group, p.Version))
+	key := services.GetOverridePath(p.GetKey())
 	err := removeFromOverride(key, "provider", "weight")
 	if err != nil {
 		return err
@@ -52,7 +51,7 @@ func (tm *WeightService) Search(p *model.Percentage) ([]*model.Percentage, error
 
 	var con string
 	if p.Service != "" && p.Service != "*" {
-		con = util.ColonSeparatedKey(p.Service, p.Group, p.Version)
+		con = p.GetKey()
 	}
 
 	list, err := services.GetRules(con, constant.ConfiguratorRuleSuffix)

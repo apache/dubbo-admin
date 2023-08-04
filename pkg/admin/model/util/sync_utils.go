@@ -53,7 +53,7 @@ func URL2Provider(id string, url *common.URL) *model.Provider {
 		Timeout:        url.GetParamInt(constant.TimeoutKey, constant.DefaultTimeout),
 		Weight:         url.GetParamInt(constant.WeightKey, constant.DefaultWeight),
 		Username:       url.GetParam(constant.OwnerKey, ""),
-		RegistrySource: model.Interface,
+		RegistrySource: url.GetParam(constant.RegistryType, constant.RegistryInterface),
 	}
 }
 
@@ -198,7 +198,7 @@ func Providers2DTO(providers []*model.Provider) []*model.ServiceDTO {
 	serviceDTOs := make([]*model.ServiceDTO, len(providers))
 	for i := range providers {
 		serviceDTOs[i] = &model.ServiceDTO{
-			Service:        providers[i].Service,
+			Service:        util.GetInterface(providers[i].Service),
 			AppName:        providers[i].Application,
 			Group:          util.GetGroup(providers[i].Service),
 			Version:        util.GetVersion(providers[i].Service),

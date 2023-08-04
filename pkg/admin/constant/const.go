@@ -71,6 +71,11 @@ const (
 	ConditionRuleSuffix    = ".condition-router"
 	TagRuleSuffix          = ".tag-router"
 	ConfigFileEnvKey       = "conf" // config file path
+	RegistryAll            = "ALL"
+	RegistryInterface      = "INTERFACE"
+	RegistryInstance       = "INSTANCE"
+	RegistryType           = "TYPE"
+	NamespaceKey           = "namespace"
 )
 
 var Configs = set.NewSet(WeightKey, BalancingKey)

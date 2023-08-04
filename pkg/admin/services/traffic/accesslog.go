@@ -22,6 +22,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
 	"gopkg.in/yaml.v2"
+	"strconv"
 )
 
 type AccesslogService struct{}
@@ -74,7 +75,11 @@ func (tm *AccesslogService) Search(a *model.Accesslog) ([]*model.Accesslog, erro
 			accesslog := &model.Accesslog{
 				Application: override.Key,
 			}
-			accesslog.Accesslog = alv.(string)
+			if alvBool, ok := alv.(bool); ok {
+				accesslog.Accesslog = strconv.FormatBool(alvBool)
+			} else {
+				accesslog.Accesslog = alv.(string)
+			}
 			result = append(result, accesslog)
 		}
 	}
