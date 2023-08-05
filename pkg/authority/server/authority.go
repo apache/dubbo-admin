@@ -20,7 +20,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/apache/dubbo-admin/api/mesh"
+	"github.com/apache/dubbo-admin/api/ca"
 	"github.com/apache/dubbo-admin/pkg/authority/patch"
 	"github.com/apache/dubbo-admin/pkg/authority/webhook"
 	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
@@ -32,7 +32,7 @@ import (
 )
 
 type AuthorityService struct {
-	mesh.UnimplementedAuthorityServiceServer
+	ca.UnimplementedAuthorityServiceServer
 	Options     *dubbo_cp.Config
 	CertClient  cert.Client
 	CertStorage cert.Storage
@@ -82,10 +82,10 @@ func NewServer(options *dubbo_cp.Config) *AuthorityService {
 
 func (s *AuthorityService) CreateIdentity(
 	c context.Context,
-	req *mesh.IdentityRequest,
-) (*mesh.IdentityResponse, error) {
+	req *ca.IdentityRequest,
+) (*ca.IdentityResponse, error) {
 	if req.Csr == "" {
-		return &mesh.IdentityResponse{
+		return &ca.IdentityResponse{
 			Success: false,
 			Message: "CSR is empty.",
 		}, nil
@@ -93,7 +93,7 @@ func (s *AuthorityService) CreateIdentity(
 
 	csr, err := cert.LoadCSR(req.Csr)
 	if csr == nil || err != nil {
-		return &mesh.IdentityResponse{
+		return &ca.IdentityResponse{
 			Success: false,
 			Message: "Decode csr failed.",
 		}, nil
@@ -104,7 +104,7 @@ func (s *AuthorityService) CreateIdentity(
 	if err != nil {
 		logger.Sugar().Warnf("Failed to exact endpoint from context: %v. RemoteAddr: %s", err, p.Addr.String())
 
-		return &mesh.IdentityResponse{
+		return &ca.IdentityResponse{
 			Success: false,
 			Message: err.Error(),
 		}, nil
@@ -114,7 +114,7 @@ func (s *AuthorityService) CreateIdentity(
 	if err != nil {
 		logger.Sugar().Warnf("Failed to sign certificate from csr: %v. RemoteAddr: %s", err, p.Addr.String())
 
-		return &mesh.IdentityResponse{
+		return &ca.IdentityResponse{
 			Success: false,
 			Message: err.Error(),
 		}, nil
@@ -126,7 +126,7 @@ func (s *AuthorityService) CreateIdentity(
 	if err != nil {
 		logger.Sugar().Warnf("Failed to sign jwt token: %v. RemoteAddr: %s", err, p.Addr.String())
 
-		return &mesh.IdentityResponse{
+		return &ca.IdentityResponse{
 			Success: false,
 			Message: err.Error(),
 		}, nil
@@ -138,7 +138,7 @@ func (s *AuthorityService) CreateIdentity(
 		trustedCerts = append(trustedCerts, c.CertPem)
 		trustedTokenPublicKeys = append(trustedTokenPublicKeys, cert.EncodePublicKey(&c.PrivateKey.PublicKey))
 	}
-	return &mesh.IdentityResponse{
+	return &ca.IdentityResponse{
 		Success:                true,
 		Message:                "OK",
 		CertPem:                certPem,

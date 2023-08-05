@@ -18,6 +18,7 @@
 package runtime
 
 import (
+	"github.com/apache/dubbo-admin/pkg/core/kubeclient/client"
 	"sync"
 	"time"
 
@@ -72,6 +73,8 @@ type RuntimeContext interface {
 	Config() *dubbo_cp.Config
 	GrpcServer() *server.GrpcServer
 	CertStorage() provider.Storage
+	CertClient() provider.Client
+	KubeClient() client.KubeClient
 }
 
 type runtime struct {
@@ -88,6 +91,12 @@ type runtimeContext struct {
 	cfg         *dubbo_cp.Config
 	grpcServer  *server.GrpcServer
 	certStorage provider.Storage
+	kubeClient  client.KubeClient
+	certClient  provider.Client
+}
+
+func (rc *runtimeContext) CertClient() provider.Client {
+	return rc.certClient
 }
 
 func (rc *runtimeContext) CertStorage() provider.Storage {
@@ -100,4 +109,8 @@ func (rc *runtimeContext) Config() *dubbo_cp.Config {
 
 func (rc *runtimeContext) GrpcServer() *server.GrpcServer {
 	return rc.grpcServer
+}
+
+func (rc *runtimeContext) KubeClient() client.KubeClient {
+	return rc.kubeClient
 }

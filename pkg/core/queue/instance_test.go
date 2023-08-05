@@ -1,19 +1,17 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// Licensed to the Apache Software Foundation (ASF) under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// The ASF licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 package queue
 
@@ -88,4 +86,31 @@ func TestRetry(t *testing.T) {
 
 	// wait for the task to run twice.
 	wg.Wait()
+}
+
+func TestResourceFree(t *testing.T) {
+	q := NewQueue(1 * time.Microsecond)
+	stop := make(chan struct{})
+	signal := make(chan struct{})
+	go func() {
+		q.Run(stop)
+		signal <- struct{}{}
+	}()
+
+	q.Push(func() error {
+		t.Log("mock exec")
+		return nil
+	})
+
+	// mock queue block wait cond signal
+	time.AfterFunc(10*time.Millisecond, func() {
+		close(stop)
+	})
+
+	select {
+	case <-time.After(200 * time.Millisecond):
+		t.Error("close stop, method exit timeout.")
+	case <-signal:
+		t.Log("queue return.")
+	}
 }

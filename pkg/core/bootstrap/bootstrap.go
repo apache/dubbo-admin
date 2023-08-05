@@ -19,12 +19,11 @@ package bootstrap
 
 import (
 	"context"
-	"github.com/apache/dubbo-admin/pkg/core/election/universe"
-	"github.com/apache/dubbo-admin/pkg/core/kubeclient/client"
-
 	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
 	"github.com/apache/dubbo-admin/pkg/core/cert/provider"
 	"github.com/apache/dubbo-admin/pkg/core/election/kube"
+	"github.com/apache/dubbo-admin/pkg/core/election/universe"
+	"github.com/apache/dubbo-admin/pkg/core/kubeclient/client"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	core_runtime "github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/core/runtime/component"
@@ -45,6 +44,10 @@ func buildRuntime(appCtx context.Context, cfg *dubbo_cp.Config) (core_runtime.Ru
 	}
 
 	if err := initCertStorage(cfg, builder); err != nil {
+		return nil, err
+	}
+
+	if err := initCertClient(cfg, builder); err != nil {
 		return nil, err
 	}
 
@@ -73,6 +76,12 @@ func Bootstrap(appCtx context.Context, cfg *dubbo_cp.Config) (core_runtime.Runti
 		return nil, err
 	}
 	return runtime, nil
+}
+
+func initCertClient(cfg *dubbo_cp.Config, builder *core_runtime.Builder) error {
+	certClient := provider.NewClient(builder.KubeClient().GetKubernetesClientSet())
+	builder.WithCertClient(certClient)
+	return nil
 }
 
 func initKubeClient(cfg *dubbo_cp.Config, builder *core_runtime.Builder) bool {

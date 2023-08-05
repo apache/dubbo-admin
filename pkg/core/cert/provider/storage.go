@@ -109,7 +109,7 @@ type Cert struct {
 	tlsCert *tls.Certificate
 }
 
-func NewStorage(options *dubbo_cp.Config, certClient Client) *storageImpl {
+func NewStorage(options *dubbo_cp.Config, certClient Client) Storage {
 	return &storageImpl{
 		mutex: &sync.Mutex{},
 

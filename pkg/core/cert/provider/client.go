@@ -39,14 +39,14 @@ type Client interface {
 	VerifyServiceAccount(token string, authorizationType string) (*endpoint.Endpoint, bool)
 	UpdateWebhookConfig(options *dubbo_cp.Config, storage Storage)
 	GetNamespaceLabels(namespace string) map[string]string
-	GetKubClient() *kubernetes.Clientset
+	GetKubClient() kubernetes.Interface
 }
 
 type ClientImpl struct {
-	kubeClient *kubernetes.Clientset
+	kubeClient kubernetes.Interface
 }
 
-func NewClient(kubeClient *kubernetes.Clientset) Client {
+func NewClient(kubeClient kubernetes.Interface) Client {
 	return &ClientImpl{
 		kubeClient: kubeClient,
 	}
@@ -308,6 +308,6 @@ func (c *ClientImpl) UpdateWebhookConfig(options *dubbo_cp.Config, storage Stora
 	}
 }
 
-func (c *ClientImpl) GetKubClient() *kubernetes.Clientset {
+func (c *ClientImpl) GetKubClient() kubernetes.Interface {
 	return c.kubeClient
 }

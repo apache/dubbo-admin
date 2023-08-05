@@ -20,7 +20,9 @@ package dubbo_cp
 import (
 	dubbogo "dubbo.apache.org/dubbo-go/v3/config"
 	"github.com/apache/dubbo-admin/pkg/config"
+	"github.com/apache/dubbo-admin/pkg/config/option"
 	"github.com/pkg/errors"
+	"time"
 
 	"github.com/apache/dubbo-admin/pkg/config/admin"
 	"github.com/apache/dubbo-admin/pkg/config/kube"
@@ -34,6 +36,7 @@ type Config struct {
 	Security   security.SecurityConfig `yaml:"security"`
 	KubeConfig kube.KubeConfig         `yaml:"kube-config"`
 	Dubbo      dubbogo.RootConfig      `yaml:"dubbo"`
+	Options    option.Options          `yaml:"options"`
 }
 
 func (c *Config) Sanitize() {
@@ -41,6 +44,7 @@ func (c *Config) Sanitize() {
 	c.Admin.Sanitize()
 	c.GrpcServer.Sanitize()
 	c.KubeConfig.Sanitize()
+	c.Options.Sanitize()
 }
 
 func (c *Config) Validate() error {
@@ -59,6 +63,10 @@ func (c *Config) Validate() error {
 	err = c.KubeConfig.Validate()
 	if err != nil {
 		return errors.Wrap(err, "KubeConfig validation failed")
+	}
+	err = c.Options.Validate()
+	if err != nil {
+		return errors.Wrap(err, "options validation failed")
 	}
 	return nil
 }
@@ -105,5 +113,12 @@ var DefaultConfig = func() Config {
 			KubeFileConfig:        "",
 		},
 		Dubbo: dubbogo.RootConfig{},
+		Options: option.Options{
+			DebounceAfter:   100 * time.Millisecond,
+			DebounceMax:     10 * time.Second,
+			EnableDebounce:  true,
+			SendTimeout:     5 * time.Second,
+			DdsBlockMaxTime: 15 * time.Second,
+		},
 	}
 }

@@ -28,7 +28,7 @@ import (
 )
 
 type LeaderElection interface {
-	Election(storage Storage, options *dubbo_cp.Config, kubeClient *kubernetes.Clientset) error
+	Election(storage Storage, options *dubbo_cp.Config, kubeClient kubernetes.Interface) error
 }
 
 type leaderElectionImpl struct{}
@@ -37,7 +37,7 @@ func NewleaderElection() LeaderElection {
 	return &leaderElectionImpl{}
 }
 
-func (c *leaderElectionImpl) Election(storage Storage, options *dubbo_cp.Config, kubeClient *kubernetes.Clientset) error {
+func (c *leaderElectionImpl) Election(storage Storage, options *dubbo_cp.Config, kubeClient kubernetes.Interface) error {
 	identity := options.Security.ResourcelockIdentity
 	rlConfig := resourcelock.ResourceLockConfig{
 		Identity: identity,
