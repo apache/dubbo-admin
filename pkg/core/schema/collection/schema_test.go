@@ -89,5 +89,5 @@ func TestSchema_String(t *testing.T) {
 		}.MustBuild(),
 	}.MustBuild()
 
-	g.Expect(s.String()).To(Equal(`[Schema](foo, "github.com/gogo/protobuf/types", google.protobuf.Empty)`))
+	g.Expect(s.String()).To(Equal(`[Schema](foo, google.protobuf.Empty)`))
 }
