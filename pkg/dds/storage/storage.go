@@ -19,7 +19,6 @@ package storage
 
 import (
 	"github.com/apache/dubbo-admin/api/dds"
-	api "github.com/apache/dubbo-admin/api/resource/v1alpha1"
 	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
 	"github.com/apache/dubbo-admin/pkg/core/endpoint"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
@@ -40,6 +39,7 @@ type Storage struct {
 	Mutex      *sync.RWMutex
 	Connection []*Connection
 	Config     *dubbo_cp.Config
+	Generators map[string]DdsResourceGenerator
 
 	LatestRules map[string]Origin
 }
@@ -54,12 +54,20 @@ func TypeSupported(gvk string) bool {
 }
 
 func NewStorage(cfg *dubbo_cp.Config) *Storage {
-	return &Storage{
+	s := &Storage{
 		Mutex:       &sync.RWMutex{},
 		Connection:  []*Connection{},
 		LatestRules: map[string]Origin{},
 		Config:      cfg,
+		Generators:  map[string]DdsResourceGenerator{},
 	}
+	s.Generators[gvks.Authentication] = &AuthenticationGenerator{}
+	s.Generators[gvks.Authorization] = &AuthorizationGenerator{}
+	s.Generators[gvks.ServiceMapping] = &ServiceMappingGenerator{}
+	s.Generators[gvks.ConditionRoute] = &ConditionRoutesGenerator{}
+	s.Generators[gvks.TagRoute] = &TagRoutesGenerator{}
+	s.Generators[gvks.DynamicConfig] = &DynamicConfigsGenerator{}
+	return s
 }
 
 func (s *Storage) Connected(endpoint *endpoint.Endpoint, connection EndpointConnection) {
@@ -77,6 +85,7 @@ func (s *Storage) Connected(endpoint *endpoint.Endpoint, connection EndpointConn
 		DdsBlockMaxTime:    s.Config.Options.DdsBlockMaxTime,
 		BlockedPushed:      make([]Origin, 0),
 		blockedPushedMutex: &sync.RWMutex{},
+		Generator:          s.Generators,
 	}
 
 	s.Connection = append(s.Connection, c)
@@ -213,7 +222,7 @@ func (c *Connection) listenRule() {
 }
 
 func (c *Connection) handleRule(rawRule Origin) error {
-	targetRule, err := rawRule.Exact(rawRule.Type(), c.Endpoint)
+	targetRule, err := rawRule.Exact(c.Generator, c.Endpoint)
 	if err != nil {
 		return err
 	}
@@ -294,6 +303,7 @@ const (
 )
 
 type Connection struct {
+	Generator          map[string]DdsResourceGenerator
 	mutex              *sync.RWMutex
 	status             ConnectionStatus
 	EndpointConnection EndpointConnection
@@ -342,7 +352,7 @@ type ClientStatus struct {
 
 type Origin interface {
 	Type() string
-	Exact(gvk string, endpoint *endpoint.Endpoint) (*VersionedRule, error)
+	Exact(gen map[string]DdsResourceGenerator, endpoint *endpoint.Endpoint) (*VersionedRule, error)
 	Revision() int64
 }
 
@@ -360,86 +370,12 @@ func (o *OriginImpl) Type() string {
 	return o.Gvk
 }
 
-func (o *OriginImpl) Exact(gvk string, endpoint *endpoint.Endpoint) (*VersionedRule, error) {
-	res := make([]*anypb.Any, 0)
-	if gvk == gvks.Authorization {
-		for _, v := range o.Data {
-			deepCopy := v.DeepCopy()
-			policy := deepCopy.Spec.(*api.AuthorizationPolicy)
-			if policy.GetRules() != nil {
-				match := true
-				for _, policyRule := range policy.Rules {
-					if !MatchAuthrSelector(policyRule.To, endpoint) {
-						match = false
-						break
-					}
-					policyRule.To = nil
-				}
-				if !match {
-					continue
-				}
-			}
-			gogo, err := model.ToProtoGogo(policy)
-			if err != nil {
-				return nil, err
-			}
-			res = append(res, gogo)
-		}
-	} else if gvk == gvks.Authentication {
-		for _, v := range o.Data {
-			deepCopy := v.DeepCopy()
-			policy := deepCopy.Spec.(*api.AuthenticationPolicy)
-			if policy.GetSelector() != nil {
-				match := true
-				for _, selector := range policy.Selector {
-					if !MatchAuthnSelector(selector, endpoint) {
-						match = false
-						break
-					}
-				}
-				if !match {
-					continue
-				}
-			}
-			policy.Selector = nil
-			gogo, err := model.ToProtoGogo(policy)
-			if err != nil {
-				return nil, err
-			}
-			res = append(res, gogo)
-		}
-	} else if gvk == gvks.ServiceMapping {
-		for _, data := range o.Data {
-			gogo, err := model.ToProtoGogo(data.Spec.(*api.ServiceNameMapping))
-			if err != nil {
-				return nil, err
-			}
-			res = append(res, gogo)
-		}
-	} else if gvk == gvks.TagRoute {
-		for _, data := range o.Data {
-			gogo, err := model.ToProtoGogo(data.Spec.(*api.TagRoute))
-			if err != nil {
-				return nil, err
-			}
-			res = append(res, gogo)
-		}
-	} else if gvk == gvks.ConditionRoute {
-		for _, data := range o.Data {
-			gogo, err := model.ToProtoGogo(data.Spec.(*api.ConditionRoute))
-			if err != nil {
-				return nil, err
-			}
-			res = append(res, gogo)
-		}
-	} else if gvk == gvks.DynamicConfig {
-		for _, data := range o.Data {
-			gogo, err := model.ToProtoGogo(data.Spec.(*api.DynamicConfig))
-			if err != nil {
-				return nil, err
-			}
-			res = append(res, gogo)
-		}
+func (o *OriginImpl) Exact(gen map[string]DdsResourceGenerator, endpoint *endpoint.Endpoint) (*VersionedRule, error) {
+	gvk := o.Type()
+	g := gen[gvk]
+	res, err := g.Generate(o.Data, endpoint)
+	if err != nil {
+		return nil, err
 	}
 	return &VersionedRule{
 		Revision: o.Rev,
