@@ -18,7 +18,7 @@ package authority
 import (
 	"crypto/tls"
 
-	"github.com/apache/dubbo-admin/api/mesh"
+	"github.com/apache/dubbo-admin/api/ca"
 	"github.com/apache/dubbo-admin/pkg/authority/patch"
 	"github.com/apache/dubbo-admin/pkg/authority/server"
 	"github.com/apache/dubbo-admin/pkg/authority/webhook"
@@ -27,7 +27,6 @@ import (
 )
 
 func Setup(rt core_runtime.Runtime) error {
-
 	server := server.NewServer(rt.Config())
 	if rt.Config().KubeConfig.InPodEnv {
 		server.WebhookServer = webhook.NewWebhook(
@@ -51,7 +50,7 @@ func Setup(rt core_runtime.Runtime) error {
 }
 
 func RegisterCertificateService(rt core_runtime.Runtime, service *server.AuthorityService) error {
-	mesh.RegisterAuthorityServiceServer(rt.GrpcServer().PlainServer, service)
-	mesh.RegisterAuthorityServiceServer(rt.GrpcServer().SecureServer, service)
+	ca.RegisterAuthorityServiceServer(rt.GrpcServer().PlainServer, service)
+	ca.RegisterAuthorityServiceServer(rt.GrpcServer().SecureServer, service)
 	return nil
 }

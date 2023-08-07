@@ -37,6 +37,7 @@ type BuilderContext interface {
 	Config() *dubbo_cp.Config
 	CertStorage() provider.Storage
 	KubeClient() client.KubeClient
+	CertClient() provider.Client
 }
 
 var _ BuilderContext = &Builder{}
@@ -49,7 +50,12 @@ type Builder struct {
 	kubeClient  client.KubeClient
 	grpcServer  *server.GrpcServer
 	certStorage provider.Storage
+	certClient  provider.Client
 	*runtimeInfo
+}
+
+func (b *Builder) CertClient() provider.Client {
+	return b.certClient
 }
 
 func (b *Builder) KubeClient() client.KubeClient {
@@ -85,10 +91,19 @@ func BuilderFor(appCtx context.Context, cfg *dubbo_cp.Config) (*Builder, error) 
 }
 
 func (b *Builder) Build() (Runtime, error) {
-	if b.grpcServer == nil && b.cfg.KubeConfig.IsKubernetesConnected {
+	if !b.cfg.KubeConfig.IsKubernetesConnected {
+		return &runtime{
+			RuntimeInfo: b.runtimeInfo,
+			RuntimeContext: &runtimeContext{
+				cfg: b.cfg,
+			},
+			Manager: b.cm,
+		}, nil
+	}
+	if b.grpcServer == nil {
 		return nil, errors.Errorf("grpcServer has not been configured")
 	}
-	if b.certStorage == nil && b.cfg.KubeConfig.IsKubernetesConnected {
+	if b.certStorage == nil {
 		return nil, errors.Errorf("certStorage has not been configured")
 	}
 	return &runtime{
@@ -97,9 +112,16 @@ func (b *Builder) Build() (Runtime, error) {
 			cfg:         b.cfg,
 			grpcServer:  b.grpcServer,
 			certStorage: b.certStorage,
+			kubeClient:  b.kubeClient,
+			certClient:  b.certClient,
 		},
 		Manager: b.cm,
 	}, nil
+}
+
+func (b *Builder) WithCertClient(certClient provider.Client) *Builder {
+	b.certClient = certClient
+	return b
 }
 
 func (b *Builder) WithKubeClient(kubeClient client.KubeClient) *Builder {

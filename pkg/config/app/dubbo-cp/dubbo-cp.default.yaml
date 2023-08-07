@@ -37,10 +37,17 @@ kube-config:
   rest-config-qps: 50
   rest-config-burst: 100
   kube-file-config: ""
+  domain-suffix: cluster.local
 grpc-cp-server:
   plain-server-port: 30060
   secure-server-port: 30062
   debug-port: 30070
+options:
+  debounce-after: 100000000
+  debounce-max: 10000000000
+  enable-debounce: true
+  send-timeout: 5000000000
+  dds-block-max-time: 15000000000
 dubbo:
   registries:
     demoZK:

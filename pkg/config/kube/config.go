@@ -29,6 +29,8 @@ type KubeConfig struct {
 	RestConfigBurst int `yaml:"rest-config-burst"`
 
 	KubeFileConfig string `yaml:"kube-file-config"`
+
+	DomainSuffix string `yaml:"domain-suffix"`
 }
 
 func (o *KubeConfig) Sanitize() {}

@@ -33,7 +33,7 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-func ExactEndpoint(c context.Context, certStorage provider.Storage, options *dubbo_cp.Config, kubeClient provider.Client) (*endpoint.Endpoint, error) {
+func ExactEndpoint(c context.Context, certStorage provider.Storage, options *dubbo_cp.Config, certClient provider.Client) (*endpoint.Endpoint, error) {
 	if c == nil {
 		return nil, fmt.Errorf("context is nil")
 	}
@@ -43,7 +43,7 @@ func ExactEndpoint(c context.Context, certStorage provider.Storage, options *dub
 		return nil, fmt.Errorf("failed to get peer from context")
 	}
 
-	endpoints, endpointErr := tryFromHeader(c, certStorage, options, kubeClient)
+	endpoints, endpointErr := tryFromHeader(c, certStorage, options, certClient)
 	if endpointErr == nil {
 		return endpoints, nil
 	}

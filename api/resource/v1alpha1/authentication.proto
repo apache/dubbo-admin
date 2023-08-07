@@ -1,0 +1,49 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package dubbo.apache.org.v1alpha1;
+
+option java_multiple_files = true;
+
+message AuthenticationPolicy {
+  string action = 1;
+  repeated AuthenticationPolicySelector selector = 2;
+  repeated AuthenticationPolicyPortLevel portLevel = 3;
+}
+
+message AuthenticationPolicySelector {
+  repeated string namespaces = 1;
+  repeated string notNamespaces = 2;
+  repeated string ipBlocks = 3;
+  repeated string notIpBlocks = 4;
+  repeated string principals = 5;
+  repeated string notPrincipals = 6;
+  repeated AuthenticationPolicyExtend extends = 7;
+  repeated AuthenticationPolicyExtend notExtends = 8;
+}
+
+message AuthenticationPolicyPortLevel {
+  int32 port = 1;
+  string action = 2;
+}
+
+message AuthenticationPolicyExtend {
+  string key = 1;
+  string value = 2;
+}
