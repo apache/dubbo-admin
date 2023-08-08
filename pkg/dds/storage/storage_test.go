@@ -462,10 +462,6 @@ func TestStorage_AfterNotify(t *testing.T) {
 				return len(fake.sends) == 1
 			}, 10*time.Second, time.Millisecond)
 
-			if len(fake.sends) == 0 {
-				fmt.Println("")
-			}
-
 			if fake.sends[0].Type != c.Resource().GroupVersionKind().String() {
 				t.Error("expected rule type")
 			}
