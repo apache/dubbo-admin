@@ -37,7 +37,7 @@ type Client interface {
 	UpdateAuthorityCert(cert string, pri string, namespace string)
 	UpdateAuthorityPublicKey(cert string) bool
 	VerifyServiceAccount(token string, authorizationType string) (*endpoint.Endpoint, bool)
-	UpdateWebhookConfig(options *dubbo_cp.Config, storage Storage)
+	UpdateWebhookConfig(options *dubbo_cp.Config, storage *Storage)
 	GetNamespaceLabels(namespace string) map[string]string
 	GetKubClient() kubernetes.Interface
 }
@@ -232,7 +232,7 @@ func (c *ClientImpl) VerifyServiceAccount(token string, authorizationType string
 	return e, true
 }
 
-func (c *ClientImpl) UpdateWebhookConfig(options *dubbo_cp.Config, storage Storage) {
+func (c *ClientImpl) UpdateWebhookConfig(options *dubbo_cp.Config, storage *Storage) {
 	path := "/mutating-services"
 	failurePolicy := admissionregistrationV1.Ignore
 	sideEffects := admissionregistrationV1.SideEffectClassNone

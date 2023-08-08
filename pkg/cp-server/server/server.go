@@ -38,7 +38,7 @@ type GrpcServer struct {
 	SecureServerPort int
 }
 
-func NewGrpcServer(s provider.Storage, config *dubbo_cp.Config) GrpcServer {
+func NewGrpcServer(s *provider.Storage, config *dubbo_cp.Config) GrpcServer {
 	srv := GrpcServer{
 		PlainServerPort:  config.GrpcServer.PlainServerPort,
 		SecureServerPort: config.GrpcServer.SecureServerPort,

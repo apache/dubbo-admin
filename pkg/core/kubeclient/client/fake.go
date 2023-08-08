@@ -34,13 +34,8 @@ import (
 
 const resyncInterval = 0
 
-// ExtendedClient only for test
-type ExtendedClient interface {
-	KubeClient
-}
-
-func NewFakeClient(objects ...runtime.Object) ExtendedClient {
-	c := &kubeClientImpl{
+func NewFakeClient(objects ...runtime.Object) *KubeClient {
+	c := KubeClient{
 		informerWatchesPending: atomic.NewInt32(0),
 	}
 	fakeClient := fake.NewSimpleClientset(objects...)
@@ -80,5 +75,5 @@ func NewFakeClient(objects ...runtime.Object) ExtendedClient {
 	dubboFake.PrependWatchReactor("*", watchReactor(dubboFake.Tracker()))
 	c.fastSync = true
 
-	return c
+	return &c
 }

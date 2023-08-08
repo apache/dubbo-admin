@@ -35,7 +35,7 @@ type AuthorityService struct {
 	ca.UnimplementedAuthorityServiceServer
 	Options     *dubbo_cp.Config
 	CertClient  cert.Client
-	CertStorage cert.Storage
+	CertStorage *cert.Storage
 
 	WebhookServer *webhook.Webhook
 	JavaInjector  *patch.JavaSdk

@@ -35,8 +35,8 @@ import (
 type BuilderContext interface {
 	ComponentManager() component.Manager
 	Config() *dubbo_cp.Config
-	CertStorage() provider.Storage
-	KubeClient() client.KubeClient
+	CertStorage() *provider.Storage
+	KubeClient() *client.KubeClient
 	CertClient() provider.Client
 }
 
@@ -47,9 +47,9 @@ type Builder struct {
 	cm     component.Manager
 	appCtx context.Context
 
-	kubeClient  client.KubeClient
+	kubeClient  *client.KubeClient
 	grpcServer  *server.GrpcServer
-	certStorage provider.Storage
+	certStorage *provider.Storage
 	certClient  provider.Client
 	*runtimeInfo
 }
@@ -58,11 +58,11 @@ func (b *Builder) CertClient() provider.Client {
 	return b.certClient
 }
 
-func (b *Builder) KubeClient() client.KubeClient {
+func (b *Builder) KubeClient() *client.KubeClient {
 	return b.kubeClient
 }
 
-func (b *Builder) CertStorage() provider.Storage {
+func (b *Builder) CertStorage() *provider.Storage {
 	return b.certStorage
 }
 
@@ -124,12 +124,12 @@ func (b *Builder) WithCertClient(certClient provider.Client) *Builder {
 	return b
 }
 
-func (b *Builder) WithKubeClient(kubeClient client.KubeClient) *Builder {
+func (b *Builder) WithKubeClient(kubeClient *client.KubeClient) *Builder {
 	b.kubeClient = kubeClient
 	return b
 }
 
-func (b *Builder) WithCertStorage(storage provider.Storage) *Builder {
+func (b *Builder) WithCertStorage(storage *provider.Storage) *Builder {
 	b.certStorage = storage
 	return b
 }

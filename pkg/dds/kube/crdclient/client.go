@@ -222,12 +222,12 @@ func TranslateObject(r runtime.Object, gvk model.GroupVersionKind, domainSuffix 
 	return c
 }
 
-func New(client client.KubeClient, domainSuffix string) (ConfigStoreCache, error) {
+func New(client *client.KubeClient, domainSuffix string) (ConfigStoreCache, error) {
 	schemas := collections.Rule
 	return NewForSchemas(client, domainSuffix, schemas)
 }
 
-func NewForSchemas(client client.KubeClient, domainSuffix string, schemas collection.Schemas) (ConfigStoreCache, error) {
+func NewForSchemas(client *client.KubeClient, domainSuffix string, schemas collection.Schemas) (ConfigStoreCache, error) {
 	out := &Client{
 		schemas:      schemas,
 		domainSuffix: domainSuffix,

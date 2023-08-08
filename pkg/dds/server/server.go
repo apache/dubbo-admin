@@ -37,7 +37,7 @@ type DdsServer struct {
 	dds.UnimplementedRuleServiceServer
 
 	Config      *dubbo_cp.Config
-	CertStorage provider.Storage
+	CertStorage *provider.Storage
 	CertClient  provider.Client
 	Storage     *storage.Storage
 	CrdClient   model2.ConfigStoreCache
@@ -96,7 +96,7 @@ type GrpcEndpointConnection struct {
 }
 
 // Send with timeout
-func (c *GrpcEndpointConnection) Send(r *dds.ObserveResponse) error {
+func (c *GrpcEndpointConnection) Send(targetRule *storage.VersionedRule, cr *storage.ClientStatus, r *dds.ObserveResponse) error {
 	errChan := make(chan error, 1)
 
 	// sendTimeout may be modified via environment
@@ -116,15 +116,20 @@ func (c *GrpcEndpointConnection) Send(r *dds.ObserveResponse) error {
 		logger.Infof("Timeout writing %s", c.endpoint.ID)
 		return status.Errorf(codes.DeadlineExceeded, "timeout sending")
 	case err := <-errChan:
-		if err != nil {
-			// To ensure the channel is empty after a call to Stop, check the
-			// return value and drain the channel (from Stop docs).
-			if !t.Stop() {
-				<-t.C
-			}
-			return err
+		if err == nil {
+			cr.Lock()
+			cr.LastPushedTime = time.Now().Unix()
+			cr.LastPushedVersion = targetRule
+			cr.LastPushNonce = r.Nonce
+			cr.PushingStatus = storage.Pushing
+			cr.Unlock()
 		}
-		return nil
+		// To ensure the channel is empty after a call to Stop, check the
+		// return value and drain the channel (from Stop docs).
+		if !t.Stop() {
+			<-t.C
+		}
+		return err
 	}
 }
 

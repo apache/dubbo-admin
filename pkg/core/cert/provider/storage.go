@@ -28,7 +28,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 )
 
-type storageImpl struct {
+type Storage struct {
 	config *dubbo_cp.Config
 
 	certClient Client
@@ -43,27 +43,7 @@ type storageImpl struct {
 	serverCerts  *Cert
 }
 
-type Storage interface {
-	GetServerCert(serverName string) *tls.Certificate
-	RefreshServerCert(<-chan struct{})
-
-	SetAuthorityCert(*Cert)
-	GetAuthorityCert() *Cert
-
-	SetRootCert(*Cert)
-	GetRootCert() *Cert
-
-	AddTrustedCert(*Cert)
-	GetTrustedCerts() []*Cert
-
-	GetConfig() *dubbo_cp.Config
-	GetCertClient() Client
-
-	Start(stop <-chan struct{}) error
-	NeedLeaderElection() bool
-}
-
-func (s *storageImpl) Start(stop <-chan struct{}) error {
+func (s *Storage) Start(stop <-chan struct{}) error {
 	go s.RefreshServerCert(stop)
 	go func(stop <-chan struct{}) {
 		interval := math.Min(math.Floor(float64(s.config.Security.CaValidity)/100), 10_000)
@@ -97,7 +77,7 @@ func (s *storageImpl) Start(stop <-chan struct{}) error {
 	return nil
 }
 
-func (s *storageImpl) NeedLeaderElection() bool {
+func (s *Storage) NeedLeaderElection() bool {
 	return false
 }
 
@@ -109,8 +89,8 @@ type Cert struct {
 	tlsCert *tls.Certificate
 }
 
-func NewStorage(options *dubbo_cp.Config, certClient Client) Storage {
-	return &storageImpl{
+func NewStorage(options *dubbo_cp.Config, certClient Client) *Storage {
+	return &Storage{
 		mutex: &sync.Mutex{},
 
 		authorityCert: &Cert{},
@@ -169,7 +149,7 @@ func (c *Cert) GetTlsCert() *tls.Certificate {
 	return c.tlsCert
 }
 
-func (s *storageImpl) RefreshServerCert(stop <-chan struct{}) {
+func (s *Storage) RefreshServerCert(stop <-chan struct{}) {
 	interval := math.Min(math.Floor(float64(s.config.Security.CertValidity)/100), 10_000)
 	for true {
 		select {
@@ -194,7 +174,7 @@ func (s *storageImpl) RefreshServerCert(stop <-chan struct{}) {
 	}
 }
 
-func (s *storageImpl) GetServerCert(serverName string) *tls.Certificate {
+func (s *Storage) GetServerCert(serverName string) *tls.Certificate {
 	nameSigned := serverName == ""
 	for _, name := range s.serverNames {
 		if name == serverName {
@@ -215,34 +195,34 @@ func (s *storageImpl) GetServerCert(serverName string) *tls.Certificate {
 	return s.serverCerts.GetTlsCert()
 }
 
-func (s *storageImpl) SetAuthorityCert(cert *Cert) {
+func (s *Storage) SetAuthorityCert(cert *Cert) {
 	s.authorityCert = cert
 }
 
-func (s *storageImpl) GetAuthorityCert() *Cert {
+func (s *Storage) GetAuthorityCert() *Cert {
 	return s.authorityCert
 }
 
-func (s *storageImpl) SetRootCert(cert *Cert) {
+func (s *Storage) SetRootCert(cert *Cert) {
 	s.rootCert = cert
 }
 
-func (s *storageImpl) GetRootCert() *Cert {
+func (s *Storage) GetRootCert() *Cert {
 	return s.rootCert
 }
 
-func (s *storageImpl) AddTrustedCert(cert *Cert) {
+func (s *Storage) AddTrustedCert(cert *Cert) {
 	s.trustedCerts = append(s.trustedCerts, cert)
 }
 
-func (s *storageImpl) GetTrustedCerts() []*Cert {
+func (s *Storage) GetTrustedCerts() []*Cert {
 	return s.trustedCerts
 }
 
-func (s *storageImpl) GetConfig() *dubbo_cp.Config {
+func (s *Storage) GetConfig() *dubbo_cp.Config {
 	return s.config
 }
 
-func (s *storageImpl) GetCertClient() Client {
+func (s *Storage) GetCertClient() Client {
 	return s.certClient
 }

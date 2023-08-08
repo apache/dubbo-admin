@@ -135,7 +135,7 @@ func TestGetServerCert(t *testing.T) {
 
 	cert := GenerateAuthorityCert(nil, 24*60*60*1000)
 
-	s := &storageImpl{
+	s := &Storage{
 		authorityCert: cert,
 		mutex:         &sync.Mutex{},
 		config: &dubbo_cp.Config{

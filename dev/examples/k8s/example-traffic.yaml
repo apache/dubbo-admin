@@ -16,7 +16,6 @@
 apiVersion: dubbo.apache.org/v1beta1
 kind: ConditionRoute
 metadata:
-  namespace: dubbo-demo
   name: conditionroute-sample
 spec:
   configVersion: v3.0
@@ -34,7 +33,6 @@ apiVersion: dubbo.apache.org/v1beta1
 kind: DynamicConfig
 metadata:
   name: dynamicconfig-sample
-  namespace: dubbo-demo
 spec:
   configVersion: v3.0
   scope: service
@@ -53,7 +51,6 @@ spec:
 apiVersion: dubbo.apache.org/v1beta1
 kind: TagRoute
 metadata:
-  namespace: dubbo-demo
   name: tagroute-sample
 spec:
   configVersion: v3.0

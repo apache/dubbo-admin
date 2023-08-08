@@ -54,7 +54,11 @@ type recvResult struct {
 	err     error
 }
 
-func (f *fakeConnection) Send(response *dds.ObserveResponse) error {
+func (f *fakeConnection) Send(targetRule *storage.VersionedRule, cr *storage.ClientStatus, response *dds.ObserveResponse) error {
+	cr.LastPushedTime = time.Now().Unix()
+	cr.LastPushedVersion = targetRule
+	cr.LastPushNonce = response.Nonce
+	cr.PushingStatus = storage.Pushing
 	f.sends = append(f.sends, response)
 	return nil
 }
@@ -458,6 +462,10 @@ func TestStorage_AfterNotify(t *testing.T) {
 				return len(fake.sends) == 1
 			}, 10*time.Second, time.Millisecond)
 
+			if len(fake.sends) == 0 {
+				fmt.Println("")
+			}
+
 			if fake.sends[0].Type != c.Resource().GroupVersionKind().String() {
 				t.Error("expected rule type")
 			}
@@ -651,9 +659,9 @@ func (f *fakeOrigin) Revision() int64 {
 	return 1
 }
 
-func (f *fakeOrigin) Exact(gvk string, endpoint *endpoint.Endpoint) (*storage.VersionedRule, error) {
+func (f *fakeOrigin) Exact(gen map[string]storage.DdsResourceGenerator, endpoint *endpoint.Endpoint) (*storage.VersionedRule, error) {
 	return &storage.VersionedRule{
-		Type:     gvk,
+		Type:     gvk.TagRoute,
 		Revision: 1,
 		Data:     []*anypb.Any{},
 	}, nil
@@ -669,7 +677,7 @@ func (e errOrigin) Revision() int64 {
 	return 1
 }
 
-func (e errOrigin) Exact(gvk string, endpoint *endpoint.Endpoint) (*storage.VersionedRule, error) {
+func (e errOrigin) Exact(gen map[string]storage.DdsResourceGenerator, endpoint *endpoint.Endpoint) (*storage.VersionedRule, error) {
 	return nil, fmt.Errorf("test")
 }
 
@@ -817,7 +825,14 @@ func TestStorage_Exact(t *testing.T) {
 				},
 			}
 
-			generated, err := origin.Exact(r.GroupVersionKind().String(), &endpoint.Endpoint{})
+			gen := map[string]storage.DdsResourceGenerator{}
+			gen[gvk.Authentication] = &storage.AuthenticationGenerator{}
+			gen[gvk.Authorization] = &storage.AuthorizationGenerator{}
+			gen[gvk.ServiceMapping] = &storage.ServiceMappingGenerator{}
+			gen[gvk.ConditionRoute] = &storage.ConditionRoutesGenerator{}
+			gen[gvk.TagRoute] = &storage.TagRoutesGenerator{}
+			gen[gvk.DynamicConfig] = &storage.DynamicConfigsGenerator{}
+			generated, err := origin.Exact(gen, &endpoint.Endpoint{})
 			assert.Nil(t, err)
 
 			assert.NotNil(t, generated)
