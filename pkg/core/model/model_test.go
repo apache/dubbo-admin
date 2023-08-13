@@ -65,10 +65,6 @@ func TestDeepCopy(t *testing.T) {
 	}
 }
 
-type TestStruct struct {
-	Name string `json:"name"`
-}
-
 func TestDeepCopyTypes(t *testing.T) {
 	cases := []struct {
 		input  Spec

@@ -33,6 +33,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// nolint
 const (
 	ApiTypePrefix         = "type.googleapis.com/"
 	AuthenticationTypeUrl = ApiTypePrefix + "dubbo.apache.org.v1alpha1.AuthenticationPolicy"

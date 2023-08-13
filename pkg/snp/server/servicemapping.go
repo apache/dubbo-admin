@@ -56,6 +56,7 @@ func (s *Snp) NeedLeaderElection() bool {
 	return false
 }
 
+// nolint
 func (s *Snp) RegisterServiceAppMapping(ctx context.Context, req *mesh.ServiceMappingRequest) (*mesh.ServiceMappingResponse, error) {
 	namespace := req.GetNamespace()
 	interfaces := req.GetInterfaceNames()

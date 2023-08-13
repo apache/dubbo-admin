@@ -37,6 +37,7 @@ const (
 	UNITag int = 6
 )
 
+// nolint
 // The OID for the SAN extension (See
 // http://www.alvestrand.no/objectid/2.5.29.17.html).
 var oidSubjectAlternativeName = asn1.ObjectIdentifier{2, 5, 29, 17}
