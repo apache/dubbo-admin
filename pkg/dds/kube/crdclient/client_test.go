@@ -37,19 +37,27 @@ import (
 func makeClient(t *testing.T, schemas collection.Schemas) ConfigStoreCache {
 	fake := client.NewFakeClient()
 	for _, s := range schemas.All() {
-		fake.Ext().ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), &v1.CustomResourceDefinition{
+		_, err := fake.Ext().ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), &v1.CustomResourceDefinition{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("%s.%s", s.Resource().Plural(), s.Resource().Group()),
 			},
 		}, metav1.CreateOptions{})
+		if err != nil {
+			return nil
+		}
 	}
 	stop := make(chan struct{})
 	config, err := New(fake, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	go config.Start(stop)
-	fake.Start(stop)
+	go func() {
+		err := config.Start(stop)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+	_ = fake.Start(stop)
 	cache.WaitForCacheSync(stop, config.HasSynced)
 	t.Cleanup(func() {
 		close(stop)
