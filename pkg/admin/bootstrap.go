@@ -101,6 +101,9 @@ func RegisterOther(rt core_runtime.Runtime) error {
 		}
 
 		config.RegistryCenter, err = extension.GetRegistry(c.GetProtocol(), addrUrl)
+		if err != nil {
+			panic(err)
+		}
 		config.AdminRegistry, err = registry.Registry(c.GetProtocol(), addrUrl)
 		if err != nil {
 			panic(err)
