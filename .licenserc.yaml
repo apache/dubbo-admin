@@ -76,6 +76,7 @@ header:
     - '**/cmd/ui/dist/**'
     - '**/ui/public/echarts-en.min.js'
     - '**/ui/tests/**'
+    - '**/dubbo-ui/**'
     - '**/governance_config_mock.go'
   comment: on-failure
 
