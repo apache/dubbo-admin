@@ -59,7 +59,6 @@ type Client struct {
 }
 
 // Create implements store interface
-// nolint
 func (cl *Client) Create(cfg model.Config) (string, error) {
 	if cfg.Spec == nil {
 		return "", fmt.Errorf("nil spec for %v/%v", cfg.Name, cfg.Namespace)
@@ -72,7 +71,6 @@ func (cl *Client) Create(cfg model.Config) (string, error) {
 	return meta.GetResourceVersion(), nil
 }
 
-// nolint
 func (cl *Client) Update(cfg model.Config) (string, error) {
 	if cfg.Spec == nil {
 		return "", fmt.Errorf("nil spec for %v/%v", cfg.Name, cfg.Namespace)
@@ -85,12 +83,10 @@ func (cl *Client) Update(cfg model.Config) (string, error) {
 	return meta.GetResourceVersion(), nil
 }
 
-// nolint
 func (cl *Client) Delete(typ model.GroupVersionKind, name, namespace string, resourceVersion *string) error {
 	return delete(cl.dubboClient, typ, name, namespace, resourceVersion)
 }
 
-// nolint
 func getObjectMetadata(config model.Config) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
 		Name:            config.Name,
@@ -103,7 +99,6 @@ func getObjectMetadata(config model.Config) metav1.ObjectMeta {
 	}
 }
 
-// nolint
 func (cl *Client) HasSynced() bool {
 	for kind, ctl := range cl.kinds {
 		if !ctl.informer.HasSynced() {
@@ -115,7 +110,6 @@ func (cl *Client) HasSynced() bool {
 }
 
 // Start the queue and all informers. Callers should  wait for HasSynced() before depending on results.
-// nolint
 func (cl *Client) Start(stop <-chan struct{}) error {
 	t0 := time.Now()
 	logger.Sugar().Info("Starting Rule K8S CRD controller")
@@ -131,7 +125,6 @@ func (cl *Client) Start(stop <-chan struct{}) error {
 	return nil
 }
 
-// nolint
 func (cl *Client) RegisterEventHandler(kind model.GroupVersionKind, handler EventHandler) {
 	h, exists := cl.kinds[kind]
 	if !exists {
@@ -142,7 +135,6 @@ func (cl *Client) RegisterEventHandler(kind model.GroupVersionKind, handler Even
 }
 
 // Validate we are ready to handle events. Until the informers are synced, we will block the queue
-// nolint
 func (cl *Client) checkReadyForEvents(curr interface{}) error {
 	if !cl.HasSynced() {
 		return errors.New("waiting till full synchronization")
@@ -155,7 +147,6 @@ func (cl *Client) checkReadyForEvents(curr interface{}) error {
 }
 
 // knownCRDs returns all CRDs present in the cluster, with retries
-// nolint
 func knownCRDs(crdClient apiextensionsclient.Interface) map[string]struct{} {
 	delay := time.Second
 	maxDelay := time.Minute
@@ -182,7 +173,6 @@ func knownCRDs(crdClient apiextensionsclient.Interface) map[string]struct{} {
 }
 
 // List implements store interface
-// nolint
 func (cl *Client) List(kind model.GroupVersionKind, namespace string) ([]model.Config, error) {
 	h, f := cl.kinds[kind]
 	if !f {
@@ -201,12 +191,10 @@ func (cl *Client) List(kind model.GroupVersionKind, namespace string) ([]model.C
 	return out, err
 }
 
-// nolint
 func (cl *Client) Schemas() collection.Schemas {
 	return cl.schemas
 }
 
-// nolint
 func (cl *Client) Get(typ model.GroupVersionKind, name, namespace string) *model.Config {
 	h, f := cl.kinds[typ]
 	if !f {
@@ -224,7 +212,6 @@ func (cl *Client) Get(typ model.GroupVersionKind, name, namespace string) *model
 	return cfg
 }
 
-// nolint
 func TranslateObject(r runtime.Object, gvk model.GroupVersionKind, domainSuffix string) *model.Config {
 	translateFunc, f := translationMap[gvk]
 	if !f {
@@ -236,13 +223,11 @@ func TranslateObject(r runtime.Object, gvk model.GroupVersionKind, domainSuffix 
 	return c
 }
 
-// nolint
 func New(client *client.KubeClient, domainSuffix string) (ConfigStoreCache, error) {
 	schemas := collections.Rule
 	return NewForSchemas(client, domainSuffix, schemas)
 }
 
-// nolint
 func NewForSchemas(client *client.KubeClient, domainSuffix string, schemas collection.Schemas) (ConfigStoreCache, error) {
 	out := &Client{
 		schemas:      schemas,

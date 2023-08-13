@@ -27,7 +27,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// nolint
 func Setup(rt core_runtime.Runtime) error {
 	if !rt.Config().KubeConfig.IsKubernetesConnected {
 		return nil
@@ -56,7 +55,6 @@ func Setup(rt core_runtime.Runtime) error {
 	return nil
 }
 
-// nolint
 func RegisterObserveService(rt core_runtime.Runtime, service *server.DdsServer) error {
 	dds.RegisterRuleServiceServer(rt.GrpcServer().PlainServer, service)
 	dds.RegisterRuleServiceServer(rt.GrpcServer().SecureServer, service)

@@ -28,7 +28,6 @@ import (
 	"github.com/tidwall/gjson"
 )
 
-// nolint
 func MatchAuthnSelector(selector *api.AuthenticationPolicySelector, endpoint *endpoint.Endpoint) bool {
 	if endpoint == nil {
 		return true
@@ -71,7 +70,6 @@ func MatchAuthnSelector(selector *api.AuthenticationPolicySelector, endpoint *en
 	return matchAuthnNotExtends(selector, endpointJSON)
 }
 
-// nolint
 func matchAuthnNotExtends(selector *api.AuthenticationPolicySelector, endpointJSON []byte) bool {
 	if len(selector.NotExtends) == 0 {
 		return true
@@ -84,7 +82,6 @@ func matchAuthnNotExtends(selector *api.AuthenticationPolicySelector, endpointJS
 	return true
 }
 
-// nolint
 func matchAuthnExtends(selector *api.AuthenticationPolicySelector, endpointJSON []byte) bool {
 	if len(selector.Extends) == 0 {
 		return true
@@ -97,7 +94,6 @@ func matchAuthnExtends(selector *api.AuthenticationPolicySelector, endpointJSON 
 	return false
 }
 
-// nolint
 func matchAuthnNotPrincipals(selector *api.AuthenticationPolicySelector, endpoint *endpoint.Endpoint) bool {
 	if len(selector.NotPrincipals) == 0 {
 		return true
@@ -113,7 +109,6 @@ func matchAuthnNotPrincipals(selector *api.AuthenticationPolicySelector, endpoin
 	return true
 }
 
-// nolint
 func matchAuthnPrincipals(selector *api.AuthenticationPolicySelector, endpoint *endpoint.Endpoint) bool {
 	if len(selector.Principals) == 0 {
 		return true
@@ -129,7 +124,6 @@ func matchAuthnPrincipals(selector *api.AuthenticationPolicySelector, endpoint *
 	return false
 }
 
-// nolint
 func matchAuthnNotIPBlocks(selector *api.AuthenticationPolicySelector, endpoint *endpoint.Endpoint) bool {
 	if len(selector.NotIpBlocks) == 0 {
 		return true
@@ -154,7 +148,6 @@ func matchAuthnNotIPBlocks(selector *api.AuthenticationPolicySelector, endpoint 
 	return true
 }
 
-// nolint
 func matchAuthnIPBlocks(selector *api.AuthenticationPolicySelector, endpoint *endpoint.Endpoint) bool {
 	if len(selector.IpBlocks) == 0 {
 		return true
@@ -179,7 +172,6 @@ func matchAuthnIPBlocks(selector *api.AuthenticationPolicySelector, endpoint *en
 	return false
 }
 
-// nolint
 func matchAuthnNotNamespace(selector *api.AuthenticationPolicySelector, endpoint *endpoint.Endpoint) bool {
 	if len(selector.NotNamespaces) == 0 {
 		return true
@@ -192,7 +184,6 @@ func matchAuthnNotNamespace(selector *api.AuthenticationPolicySelector, endpoint
 	return true
 }
 
-// nolint
 func matchAuthnNamespace(selector *api.AuthenticationPolicySelector, endpoint *endpoint.Endpoint) bool {
 	if len(selector.Namespaces) == 0 {
 		return true
@@ -205,7 +196,6 @@ func matchAuthnNamespace(selector *api.AuthenticationPolicySelector, endpoint *e
 	return false
 }
 
-// nolint
 func MatchAuthrSelector(target *api.AuthorizationPolicyTarget, endpoint *endpoint.Endpoint) bool {
 	if endpoint == nil {
 		return true
@@ -248,7 +238,6 @@ func MatchAuthrSelector(target *api.AuthorizationPolicyTarget, endpoint *endpoin
 	return matchAuthrNotExtends(target, endpointJSON)
 }
 
-// nolint
 func matchAuthrNotExtends(target *api.AuthorizationPolicyTarget, endpointJSON []byte) bool {
 	if len(target.NotExtends) == 0 {
 		return true
@@ -261,7 +250,6 @@ func matchAuthrNotExtends(target *api.AuthorizationPolicyTarget, endpointJSON []
 	return true
 }
 
-// nolint
 func matchAuthrExtends(target *api.AuthorizationPolicyTarget, endpointJSON []byte) bool {
 	if len(target.Extends) == 0 {
 		return true
@@ -274,7 +262,6 @@ func matchAuthrExtends(target *api.AuthorizationPolicyTarget, endpointJSON []byt
 	return false
 }
 
-// nolint
 func matchAuthrNotPrincipals(target *api.AuthorizationPolicyTarget, endpoint *endpoint.Endpoint) bool {
 	if len(target.NotPrincipals) == 0 {
 		return true
@@ -290,7 +277,6 @@ func matchAuthrNotPrincipals(target *api.AuthorizationPolicyTarget, endpoint *en
 	return true
 }
 
-// nolint
 func matchAuthrPrincipals(target *api.AuthorizationPolicyTarget, endpoint *endpoint.Endpoint) bool {
 	if len(target.Principals) == 0 {
 		return true
@@ -306,7 +292,6 @@ func matchAuthrPrincipals(target *api.AuthorizationPolicyTarget, endpoint *endpo
 	return false
 }
 
-// nolint
 func matchAuthrNotIPBlocks(target *api.AuthorizationPolicyTarget, endpoint *endpoint.Endpoint) bool {
 	if len(target.NotIpBlocks) == 0 {
 		return true
@@ -331,7 +316,6 @@ func matchAuthrNotIPBlocks(target *api.AuthorizationPolicyTarget, endpoint *endp
 	return true
 }
 
-// nolint
 func matchAuthrIPBlocks(target *api.AuthorizationPolicyTarget, endpoint *endpoint.Endpoint) bool {
 	if len(target.IpBlocks) == 0 {
 		return true
@@ -356,7 +340,6 @@ func matchAuthrIPBlocks(target *api.AuthorizationPolicyTarget, endpoint *endpoin
 	return false
 }
 
-// nolint
 func matchAuthrNotNamespace(target *api.AuthorizationPolicyTarget, endpoint *endpoint.Endpoint) bool {
 	if len(target.NotNamespaces) == 0 {
 		return true
@@ -369,7 +352,6 @@ func matchAuthrNotNamespace(target *api.AuthorizationPolicyTarget, endpoint *end
 	return true
 }
 
-// nolint
 func matchAuthrNamespace(target *api.AuthorizationPolicyTarget, endpoint *endpoint.Endpoint) bool {
 	if len(target.Namespaces) == 0 {
 		return true

@@ -55,7 +55,6 @@ func (s *DdsServer) NeedLeaderElection() bool {
 	return false
 }
 
-// nolint
 func (s *DdsServer) Observe(stream dds.RuleService_ObserveServer) error {
 	c := &GrpcEndpointConnection{
 		stream:      stream,
@@ -98,7 +97,6 @@ type GrpcEndpointConnection struct {
 }
 
 // Send with timeout
-// nolint
 func (c *GrpcEndpointConnection) Send(targetRule *storage.VersionedRule, cr *storage.ClientStatus, r *dds.ObserveResponse) error {
 	errChan := make(chan error, 1)
 
@@ -136,7 +134,6 @@ func (c *GrpcEndpointConnection) Send(targetRule *storage.VersionedRule, cr *sto
 	}
 }
 
-// nolint
 func (c *GrpcEndpointConnection) Recv() (*dds.ObserveRequest, error) {
 	in, err := c.stream.Recv()
 	if err != nil {

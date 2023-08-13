@@ -31,7 +31,6 @@ type EventHandler struct {
 
 // cacheHandler abstracts the logic of an informer with a set of handlers. Handlers can be added at runtime
 // and will be invoked on each informer event.
-// nolint
 type cacheHandler struct {
 	client   *Client
 	informer cache.SharedIndexInformer
@@ -40,7 +39,6 @@ type cacheHandler struct {
 	lister   func(namespace string) cache.GenericNamespaceLister
 }
 
-// nolint
 func (h *cacheHandler) onEvent(curr interface{}) error {
 	if err := h.client.checkReadyForEvents(curr); err != nil {
 		return err
@@ -55,7 +53,6 @@ func (h *cacheHandler) onEvent(curr interface{}) error {
 	return nil
 }
 
-// nolint
 func createCacheHandler(cl *Client, schema collection.Schema, i informers.GenericInformer) *cacheHandler {
 	h := &cacheHandler{
 		client:   cl,

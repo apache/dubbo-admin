@@ -75,7 +75,6 @@ func (f *fakeConnection) Disconnect() {
 	f.disconnected = true
 }
 
-// nolint
 func TestStorage_CloseEOF(t *testing.T) {
 	t.Parallel()
 
@@ -102,7 +101,6 @@ func TestStorage_CloseEOF(t *testing.T) {
 	}
 }
 
-// nolint
 func TestStorage_CloseErr(t *testing.T) {
 	t.Parallel()
 
@@ -129,7 +127,6 @@ func TestStorage_CloseErr(t *testing.T) {
 	}
 }
 
-// nolint
 func TestStorage_UnknowType(t *testing.T) {
 	t.Parallel()
 
@@ -174,7 +171,6 @@ func TestStorage_UnknowType(t *testing.T) {
 	}
 }
 
-// nolint
 func TestStorage_StartNonEmptyNonce(t *testing.T) {
 	t.Parallel()
 
@@ -210,7 +206,6 @@ func TestStorage_StartNonEmptyNonce(t *testing.T) {
 	}
 }
 
-// nolint
 func TestStorage_Listen(t *testing.T) {
 	t.Parallel()
 
@@ -251,7 +246,6 @@ func TestStorage_Listen(t *testing.T) {
 	}
 }
 
-// nolint
 func makeClient(t *testing.T, schemas collection.Schemas) crdclient.ConfigStoreCache {
 	fake := client.NewFakeClient()
 	for _, s := range schemas.All() {
@@ -284,7 +278,6 @@ func makeClient(t *testing.T, schemas collection.Schemas) crdclient.ConfigStoreC
 	return config
 }
 
-// nolint
 func TestStorage_PreNotify(t *testing.T) {
 	t.Parallel()
 
@@ -401,7 +394,6 @@ func TestStorage_PreNotify(t *testing.T) {
 	}
 }
 
-// nolint
 func TestStorage_AfterNotify(t *testing.T) {
 	t.Parallel()
 
@@ -529,7 +521,6 @@ func TestStorage_AfterNotify(t *testing.T) {
 	}
 }
 
-// nolint
 func TestStore_MissNotify(t *testing.T) {
 	t.Parallel()
 
@@ -699,7 +690,6 @@ func (e errOrigin) Exact(gen map[string]storage.DdsResourceGenerator, endpoint *
 	return nil, fmt.Errorf("test")
 }
 
-// nolint
 func TestStorage_MulitiNotify(t *testing.T) {
 	t.Parallel()
 
@@ -796,7 +786,6 @@ func TestStorage_MulitiNotify(t *testing.T) {
 	}
 }
 
-// nolint
 func TestStorage_Exact(t *testing.T) {
 	t.Parallel()
 
@@ -862,7 +851,6 @@ func TestStorage_Exact(t *testing.T) {
 	}
 }
 
-// nolint
 func TestStorage_ReturnMisNonce(t *testing.T) {
 	t.Parallel()
 

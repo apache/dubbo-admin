@@ -55,7 +55,6 @@ func TypeSupported(gvk string) bool {
 		gvk == gvks.ConditionRoute
 }
 
-// nolint
 func NewStorage(cfg *dubbo_cp.Config) *Storage {
 	s := &Storage{
 		Mutex:       &sync.RWMutex{},
@@ -98,7 +97,6 @@ func (s *Storage) Connected(endpoint *endpoint.Endpoint, connection EndpointConn
 	go c.listenRule()
 }
 
-// nolint
 func (s *Storage) listenConnection(c *Connection) {
 	for {
 		if c.status == Disconnected {
@@ -125,7 +123,6 @@ func (s *Storage) listenConnection(c *Connection) {
 	}
 }
 
-// nolint
 func (s *Storage) HandleRequest(c *Connection, req *dds.ObserveRequest) {
 	if req.Type == "" {
 		logger.Sugar().Errorf("Empty request type from %v", c.Endpoint.ID)
@@ -196,7 +193,6 @@ func (s *Storage) HandleRequest(c *Connection, req *dds.ObserveRequest) {
 	}
 }
 
-// nolint
 func (c *Connection) listenRule() {
 	for {
 		obj, shutdown := c.RawRuleQueue.Get()
@@ -228,7 +224,6 @@ func (c *Connection) listenRule() {
 	}
 }
 
-// nolint
 func (c *Connection) handleRule(rawRule Origin) error {
 	targetRule, err := rawRule.Exact(c.Generator, c.Endpoint)
 	if err != nil {
@@ -280,7 +275,6 @@ func (c *Connection) handleRule(rawRule Origin) error {
 	return c.EndpointConnection.Send(targetRule, cr, r)
 }
 
-// nolint
 func (s *Storage) Disconnect(c *Connection) {
 	for i, sc := range s.Connection {
 		if sc == c {
@@ -376,7 +370,6 @@ func (o *OriginImpl) Type() string {
 	return o.Gvk
 }
 
-// nolint
 func (o *OriginImpl) Exact(gen map[string]DdsResourceGenerator, endpoint *endpoint.Endpoint) (*VersionedRule, error) {
 	gvk := o.Type()
 	g := gen[gvk]

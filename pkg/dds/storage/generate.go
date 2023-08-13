@@ -30,7 +30,6 @@ type DdsResourceGenerator interface {
 
 type AuthenticationGenerator struct{}
 
-// nolint
 func (g *AuthenticationGenerator) Generate(data []model.Config, endpoint *endpoint.Endpoint) ([]*anypb.Any, error) {
 	res := make([]*anypb.Any, 0)
 	for _, v := range data {
@@ -60,7 +59,6 @@ func (g *AuthenticationGenerator) Generate(data []model.Config, endpoint *endpoi
 
 type AuthorizationGenerator struct{}
 
-// nolint
 func (g *AuthorizationGenerator) Generate(data []model.Config, endpoint *endpoint.Endpoint) ([]*anypb.Any, error) {
 	res := make([]*anypb.Any, 0)
 	for _, v := range data {
@@ -90,10 +88,11 @@ func (g *AuthorizationGenerator) Generate(data []model.Config, endpoint *endpoin
 
 type ConditionRoutesGenerator struct{}
 
+// nolint
 func (g *ConditionRoutesGenerator) Generate(data []model.Config, endpoint *endpoint.Endpoint) ([]*anypb.Any, error) {
 	res := make([]*anypb.Any, 0)
-	for _, data := range data {
-		gogo, err := model.ToProtoGogo(data.Spec.(*api.ConditionRoute))
+	for _, config := range data {
+		gogo, err := model.ToProtoGogo(config.Spec.(*api.ConditionRoute))
 		if err != nil {
 			return nil, err
 		}
@@ -104,6 +103,7 @@ func (g *ConditionRoutesGenerator) Generate(data []model.Config, endpoint *endpo
 
 type DynamicConfigsGenerator struct{}
 
+// nolint
 func (g *DynamicConfigsGenerator) Generate(data []model.Config, endpoint *endpoint.Endpoint) ([]*anypb.Any, error) {
 	res := make([]*anypb.Any, 0)
 	for _, config := range data {
@@ -118,6 +118,7 @@ func (g *DynamicConfigsGenerator) Generate(data []model.Config, endpoint *endpoi
 
 type ServiceMappingGenerator struct{}
 
+// nolint
 func (g *ServiceMappingGenerator) Generate(data []model.Config, endpoint *endpoint.Endpoint) ([]*anypb.Any, error) {
 	res := make([]*anypb.Any, 0)
 	for _, config := range data {
@@ -132,6 +133,7 @@ func (g *ServiceMappingGenerator) Generate(data []model.Config, endpoint *endpoi
 
 type TagRoutesGenerator struct{}
 
+// nolint
 func (g *TagRoutesGenerator) Generate(data []model.Config, endpoint *endpoint.Endpoint) ([]*anypb.Any, error) {
 	res := make([]*anypb.Any, 0)
 	for _, config := range data {
