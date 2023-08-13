@@ -26,7 +26,7 @@ import (
 )
 
 type EventHandler struct {
-	//Resource Handler
+	Resource Handler
 }
 
 // cacheHandler abstracts the logic of an informer with a set of handlers. Handlers can be added at runtime
@@ -44,12 +44,12 @@ func (h *cacheHandler) onEvent(curr interface{}) error {
 		return err
 	}
 
-	//for _, f := range h.handlers {
-	//	err := f.Resource.NotifyWithIndex(h.schema)
-	//	if err != nil {
-	//		return err
-	//	}
-	//}
+	for _, f := range h.handlers {
+		err := f.Resource.NotifyWithIndex(h.schema)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
