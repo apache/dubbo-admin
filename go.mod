@@ -15,10 +15,10 @@
 
 module github.com/apache/dubbo-admin
 
-go 1.20
+go 1.19
 
 require (
-	dubbo.apache.org/dubbo-go/v3 v3.0.5
+	dubbo.apache.org/dubbo-go/v3 v3.0.6-0.20230516071747-5b2397c8b0b0
 	github.com/apache/dubbo-go-hessian2 v1.12.2
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dubbogo/go-zookeeper v1.0.4-0.20211212162352-f9d2183d89d5

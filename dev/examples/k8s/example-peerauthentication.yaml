@@ -13,27 +13,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-apiVersion: dubbo.apache.org/v1beta1
+apiVersion: dubbo.apache.org/v1alpha1
 kind: AuthenticationPolicy
 metadata:
   name: default
-  namespace: dubbo-demo
+  namespace: dubbo-system
 spec:
   action: STRICT
   selector:
     - namespaces:
-        - dubbo-demo
-        - dubbo-demo-new
+        - dubbo-system
+        - dubbo-system-new
 
 ---
-apiVersion: dubbo.apache.org/v1beta1
+apiVersion: dubbo.apache.org/v1alpha1
 kind: AuthorizationPolicy
 metadata:
   name: default
-  namespace: dubbo-demo-new
+  namespace: dubbo-system
 spec:
   action: DENY
   rules:
     -  from:
-        namespaces: ["dubbo-demo"]
+        namespaces: ["dubbo-system"]
   samples: 0.12

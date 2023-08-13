@@ -105,12 +105,13 @@ var DefaultConfig = func() Config {
 		},
 		KubeConfig: kube.KubeConfig{
 			Namespace:             "dubbo-system",
-			ServiceName:           "dubbo-ca",
+			ServiceName:           "dubbo-cp",
 			InPodEnv:              false,
 			IsKubernetesConnected: false,
 			RestConfigQps:         50,
 			RestConfigBurst:       100,
 			KubeFileConfig:        "",
+			DomainSuffix:          "cluster.local",
 		},
 		Dubbo: dubbogo.RootConfig{},
 		Options: option.Options{

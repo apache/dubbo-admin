@@ -25,6 +25,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/kubeclient/client"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/schema/collections"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -35,7 +36,6 @@ import (
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 
 	"github.com/apache/dubbo-admin/pkg/core/schema/collection"
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"time"
@@ -149,10 +149,10 @@ func (cl *Client) checkReadyForEvents(curr interface{}) error {
 func knownCRDs(crdClient apiextensionsclient.Interface) map[string]struct{} {
 	delay := time.Second
 	maxDelay := time.Minute
-	var res *v1beta1.CustomResourceDefinitionList
+	var res *v1.CustomResourceDefinitionList
 	for {
 		var err error
-		res, err = crdClient.ApiextensionsV1beta1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
+		res, err = crdClient.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
 		if err == nil {
 			break
 		}

@@ -37,7 +37,7 @@ type DdsServer struct {
 	dds.UnimplementedRuleServiceServer
 
 	Config      *dubbo_cp.Config
-	CertStorage *provider.Storage
+	CertStorage *provider.CertStorage
 	CertClient  provider.Client
 	Storage     *storage.Storage
 	CrdClient   model2.ConfigStoreCache

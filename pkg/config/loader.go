@@ -33,12 +33,13 @@ func Load(file string, cfg Config) error {
 
 func LoadWithOption(file string, cfg Config, validate bool) error {
 	if file == "" {
-		file = conf
+		file = Conf
 		if envPath := os.Getenv(confPathKey); envPath != "" {
 			file = envPath
 		}
 	}
 	path, err := filepath.Abs(file)
+	logger.Info("config path: ", path)
 	if err != nil {
 		path = filepath.Clean(file)
 	}

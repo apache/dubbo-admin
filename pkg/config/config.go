@@ -17,9 +17,19 @@
 
 package config
 
+import (
+	"path/filepath"
+	"runtime"
+)
+
+var (
+	_, b, _, _ = runtime.Caller(0)
+	Root       = filepath.Join(filepath.Dir(b), "../../")
+	Conf       = filepath.Join(Root, "/conf/admin.yml")
+)
+
 const (
 	SanitizedValue = "*****"
-	conf           = "./conf/admin.yml"
 	confPathKey    = "ADMIN_CONFIG_PATH"
 )
 

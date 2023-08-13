@@ -35,7 +35,7 @@ import (
 type BuilderContext interface {
 	ComponentManager() component.Manager
 	Config() *dubbo_cp.Config
-	CertStorage() *provider.Storage
+	CertStorage() *provider.CertStorage
 	KubeClient() *client.KubeClient
 	CertClient() provider.Client
 }
@@ -49,7 +49,7 @@ type Builder struct {
 
 	kubeClient  *client.KubeClient
 	grpcServer  *server.GrpcServer
-	certStorage *provider.Storage
+	certStorage *provider.CertStorage
 	certClient  provider.Client
 	*runtimeInfo
 }
@@ -62,7 +62,7 @@ func (b *Builder) KubeClient() *client.KubeClient {
 	return b.kubeClient
 }
 
-func (b *Builder) CertStorage() *provider.Storage {
+func (b *Builder) CertStorage() *provider.CertStorage {
 	return b.certStorage
 }
 
@@ -91,15 +91,6 @@ func BuilderFor(appCtx context.Context, cfg *dubbo_cp.Config) (*Builder, error) 
 }
 
 func (b *Builder) Build() (Runtime, error) {
-	if !b.cfg.KubeConfig.IsKubernetesConnected {
-		return &runtime{
-			RuntimeInfo: b.runtimeInfo,
-			RuntimeContext: &runtimeContext{
-				cfg: b.cfg,
-			},
-			Manager: b.cm,
-		}, nil
-	}
 	if b.grpcServer == nil {
 		return nil, errors.Errorf("grpcServer has not been configured")
 	}
@@ -129,7 +120,7 @@ func (b *Builder) WithKubeClient(kubeClient *client.KubeClient) *Builder {
 	return b
 }
 
-func (b *Builder) WithCertStorage(storage *provider.Storage) *Builder {
+func (b *Builder) WithCertStorage(storage *provider.CertStorage) *Builder {
 	b.certStorage = storage
 	return b
 }

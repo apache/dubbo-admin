@@ -28,6 +28,9 @@ import (
 )
 
 func Setup(rt core_runtime.Runtime) error {
+	if !rt.Config().KubeConfig.IsKubernetesConnected {
+		return nil
+	}
 	cache, err := crdclient.New(rt.KubeClient(), rt.Config().KubeConfig.DomainSuffix)
 	if err != nil {
 		return errors.Wrap(err, "crd client New error")

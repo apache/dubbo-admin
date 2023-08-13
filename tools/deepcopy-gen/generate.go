@@ -38,16 +38,13 @@ type Resource struct {
 }
 
 func readYAMLFile(filePath string) (*Resource, error) {
-	// 读取YAML文件内容
 	yamlFile, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	// 定义一个变量用于存储解析后的数据
 	var config Resource
 
-	// 解析YAML文件内容
 	err = yaml.Unmarshal(yamlFile, &config)
 	if err != nil {
 		return nil, err

@@ -104,7 +104,7 @@ func initCertStorage(cfg *dubbo_cp.Config, builder *core_runtime.Builder) error 
 
 	storage.GetServerCert("localhost")
 	storage.GetServerCert("dubbo-ca." + storage.GetConfig().KubeConfig.Namespace + ".svc")
-	storage.GetServerCert("dubbo-ca." + storage.GetConfig().KubeConfig.Namespace + ".svc.cluster.local")
+	storage.GetServerCert("dubbo-ca." + storage.GetConfig().KubeConfig.Namespace + ".svc." + storage.GetConfig().KubeConfig.DomainSuffix)
 	builder.WithCertStorage(storage)
 	return nil
 }
@@ -113,7 +113,7 @@ func loadRootCert() {
 	// TODO loadRootCert
 }
 
-func loadAuthorityCert(storage *provider.Storage, cfg *dubbo_cp.Config, builder *core_runtime.Builder) {
+func loadAuthorityCert(storage *provider.CertStorage, cfg *dubbo_cp.Config, builder *core_runtime.Builder) {
 	if cfg.KubeConfig.IsKubernetesConnected {
 		certStr, priStr := storage.GetCertClient().GetAuthorityCert(cfg.KubeConfig.Namespace)
 		if certStr != "" && priStr != "" {
@@ -125,7 +125,7 @@ func loadAuthorityCert(storage *provider.Storage, cfg *dubbo_cp.Config, builder 
 	refreshAuthorityCert(storage, cfg)
 }
 
-func refreshAuthorityCert(storage *provider.Storage, cfg *dubbo_cp.Config) {
+func refreshAuthorityCert(storage *provider.CertStorage, cfg *dubbo_cp.Config) {
 	if storage.GetAuthorityCert().IsValid() {
 		logger.Sugar().Infof("Load authority cert from kubernetes secrect success.")
 	} else {

@@ -38,7 +38,7 @@ type GrpcServer struct {
 	SecureServerPort int
 }
 
-func NewGrpcServer(s *provider.Storage, config *dubbo_cp.Config) GrpcServer {
+func NewGrpcServer(s *provider.CertStorage, config *dubbo_cp.Config) GrpcServer {
 	srv := GrpcServer{
 		PlainServerPort:  config.GrpcServer.PlainServerPort,
 		SecureServerPort: config.GrpcServer.SecureServerPort,
@@ -76,23 +76,24 @@ func (d *GrpcServer) Start(stop <-chan struct{}) error {
 	if err != nil {
 		return err
 	}
-	errChan := make(chan error)
+	plainErrChan := make(chan error)
+	secureErrChan := make(chan error)
 	go func() {
-		defer close(errChan)
+		defer close(plainErrChan)
 		if err = d.PlainServer.Serve(plainLis); err != nil {
 			logger.Sugar().Error(err, "terminated with an error")
-			errChan <- err
+			plainErrChan <- err
 		} else {
-			logger.Sugar().Error("terminated normally")
+			logger.Sugar().Info("terminated normally")
 		}
 	}()
 	go func() {
-		defer close(errChan)
+		defer close(secureErrChan)
 		if err = d.SecureServer.Serve(secureLis); err != nil {
 			logger.Sugar().Error(err, "terminated with an error")
-			errChan <- err
+			secureErrChan <- err
 		} else {
-			logger.Sugar().Error("terminated normally")
+			logger.Sugar().Info("terminated normally")
 		}
 	}()
 
@@ -102,7 +103,9 @@ func (d *GrpcServer) Start(stop <-chan struct{}) error {
 		d.PlainServer.GracefulStop()
 		d.SecureServer.GracefulStop()
 		return nil
-	case err := <-errChan:
+	case err := <-secureErrChan:
+		return err
+	case err := <-plainErrChan:
 		return err
 	}
 }

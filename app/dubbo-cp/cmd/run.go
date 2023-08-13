@@ -19,11 +19,11 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/apache/dubbo-admin/pkg/admin"
 	"github.com/apache/dubbo-admin/pkg/core/kubeclient"
 	"github.com/apache/dubbo-admin/pkg/snp"
 	"time"
 
-	"github.com/apache/dubbo-admin/pkg/admin"
 	"github.com/apache/dubbo-admin/pkg/authority"
 	"github.com/apache/dubbo-admin/pkg/config"
 	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"

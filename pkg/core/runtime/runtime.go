@@ -72,7 +72,7 @@ func (i *runtimeInfo) GetStartTime() time.Time {
 type RuntimeContext interface {
 	Config() *dubbo_cp.Config
 	GrpcServer() *server.GrpcServer
-	CertStorage() *provider.Storage
+	CertStorage() *provider.CertStorage
 	CertClient() provider.Client
 	KubeClient() *client.KubeClient
 }
@@ -90,7 +90,7 @@ var _ RuntimeContext = &runtimeContext{}
 type runtimeContext struct {
 	cfg         *dubbo_cp.Config
 	grpcServer  *server.GrpcServer
-	certStorage *provider.Storage
+	certStorage *provider.CertStorage
 	kubeClient  *client.KubeClient
 	certClient  provider.Client
 }
@@ -99,7 +99,7 @@ func (rc *runtimeContext) CertClient() provider.Client {
 	return rc.certClient
 }
 
-func (rc *runtimeContext) CertStorage() *provider.Storage {
+func (rc *runtimeContext) CertStorage() *provider.CertStorage {
 	return rc.certStorage
 }
 
