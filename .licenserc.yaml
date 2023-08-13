@@ -74,8 +74,8 @@ header:
     - '**/go.sum'
     - '**/addons/manifests/**'
     - '**/cmd/ui/dist/**'
-    - '**/dubbo-admin-ui/public/echarts-en.min.js'
-    - '**/dubbo-admin-ui/tests/**'
+    - '**/ui/public/echarts-en.min.js'
+    - '**/ui/tests/**'
     - '**/governance_config_mock.go'
   comment: on-failure
 
