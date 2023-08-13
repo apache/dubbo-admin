@@ -739,8 +739,6 @@ func TestAuthenticationSelect_Principals(t *testing.T) {
 	assert.Equal(t, generated.Type, gvk.Authentication)
 	assert.Equal(t, generated.Revision, int64(1))
 
-	data = generated.Data
-
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
@@ -848,8 +846,6 @@ func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 	assert.NotNil(t, generated)
 	assert.Equal(t, generated.Type, gvk.Authentication)
 	assert.Equal(t, generated.Revision, int64(1))
-
-	data = generated.Data
 
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
@@ -965,8 +961,6 @@ func TestAuthenticationSelect_Extends(t *testing.T) {
 	assert.NotNil(t, generated)
 	assert.Equal(t, generated.Type, gvk.Authentication)
 	assert.Equal(t, generated.Revision, int64(1))
-
-	data = generated.Data
 
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value

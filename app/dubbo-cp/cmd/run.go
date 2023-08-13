@@ -23,6 +23,7 @@ import (
 
 	"github.com/apache/dubbo-admin/pkg/admin"
 	"github.com/apache/dubbo-admin/pkg/core/kubeclient"
+	"github.com/apache/dubbo-admin/pkg/dds"
 	"github.com/apache/dubbo-admin/pkg/snp"
 
 	"github.com/apache/dubbo-admin/pkg/authority"
@@ -88,9 +89,9 @@ func newRunCmdWithOpts(opts cmd.RunCmdOpts) *cobra.Command {
 				logger.Sugar().Error(err, "unable to set up authority")
 			}
 
-			//if err := dds.Setup(rt); err != nil {
-			//	logger.Sugar().Error(err, "unable to set up dds")
-			//}
+			if err := dds.Setup(rt); err != nil {
+				logger.Sugar().Error(err, "unable to set up dds")
+			}
 
 			if err := snp.Setup(rt); err != nil {
 				logger.Sugar().Error(err, "unable to set up snp")
