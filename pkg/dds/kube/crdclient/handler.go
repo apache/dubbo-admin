@@ -51,6 +51,7 @@ func NewHandler(storage *storage.Storage, rootNamespace string, cache ConfigStor
 	}
 }
 
+// nolint
 func (p *PushContext) NotifyWithIndex(schema collection.Schema) error {
 	gvk := schema.Resource().GroupVersionKind()
 	configs, err := p.cache.List(gvk, NamespaceAll)
