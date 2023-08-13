@@ -18,7 +18,7 @@ module github.com/apache/dubbo-admin
 go 1.20
 
 require (
-	dubbo.apache.org/dubbo-go/v3 v3.0.5
+	dubbo.apache.org/dubbo-go/v3 v3.1.0
 	github.com/apache/dubbo-go-hessian2 v1.12.2
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dubbogo/go-zookeeper v1.0.4-0.20211212162352-f9d2183d89d5
@@ -156,6 +156,7 @@ require (
 	github.com/huandu/xstrings v1.4.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
+	github.com/influxdata/tdigest v0.0.1 // indirect
 	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/jinzhu/gorm v1.9.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
