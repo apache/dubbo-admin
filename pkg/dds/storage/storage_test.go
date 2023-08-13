@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"reflect"
 	"testing"
 	"time"
@@ -40,7 +39,7 @@ import (
 	"github.com/apache/dubbo-admin/test/util/retry"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/anypb"
-
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 )

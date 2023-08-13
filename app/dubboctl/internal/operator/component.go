@@ -45,6 +45,7 @@ const (
 	Zipkin     ComponentName = "zipkin"
 )
 
+// nolint
 var ComponentMap = map[string]ComponentName{
 	"admin":      Admin,
 	"grafana":    Grafana,
