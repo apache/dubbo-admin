@@ -85,12 +85,12 @@ func (k *KubeClient) Start(stop <-chan struct{}) error {
 		// This triggers a 100ms delay per call, which is often called 2-3 times in a test, delaying tests.
 		// Instead, we add an aggressive sync polling
 		fastWaitForCacheSync(k.dubboInformer)
-		_ = wait.PollImmediate(time.Microsecond, wait.ForeverTestTimeout, func() (bool, error) {
+		for {
 			if k.informerWatchesPending.Load() == 0 {
-				return true, nil
+				return nil
 			}
-			return false, nil
-		})
+			time.Sleep(time.Microsecond)
+		}
 	} else {
 		k.dubboInformer.WaitForCacheSync(stop)
 	}

@@ -27,7 +27,8 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 
 	gogoproto "github.com/gogo/protobuf/proto"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
+
 	"google.golang.org/protobuf/reflect/protoreflect"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -119,23 +120,22 @@ func ToProtoGogo(s Spec) (*anypb.Any, error) {
 func MessageToAny(msg proto.Message) *anypb.Any {
 	out, err := MessageToAnyWithError(msg)
 	if err != nil {
-		logger.Sugar().Error(fmt.Sprintf("error marshaling Any %s: %v", msg.String(), err))
+		logger.Sugar().Error(fmt.Sprintf("error marshaling Any %s: %v", msg, err))
 		return nil
 	}
 	return out
 }
 
 // MessageToAnyWithError converts from proto message to proto Any
+// nolint
 func MessageToAnyWithError(msg proto.Message) (*anypb.Any, error) {
-	b := proto.NewBuffer(nil)
-	b.SetDeterministic(true)
-	err := b.Marshal(msg)
+	data, err := proto.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}
 	return &anypb.Any{
-		TypeUrl: "type.googleapis.com/" + proto.MessageName(msg),
-		Value:   b.Bytes(),
+		TypeUrl: "type.googleapis.com/" + string(proto.MessageName(msg)),
+		Value:   data,
 	}, nil
 }
 

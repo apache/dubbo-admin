@@ -24,6 +24,7 @@ import (
 	"go/format"
 	"io/ioutil"
 	"log"
+	"os"
 	"text/template"
 
 	"gopkg.in/yaml.v2"
@@ -39,7 +40,7 @@ type Resource struct {
 }
 
 func readYAMLFile(filePath string) (*Resource, error) {
-	yamlFile, err := ioutil.ReadFile(filePath)
+	yamlFile, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
