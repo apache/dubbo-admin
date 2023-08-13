@@ -78,6 +78,7 @@ func (k *KubeClient) GetKubernetesClientSet() kubernetes.Interface {
 	return k.kubernetesClientSet
 }
 
+// nolint
 func (k *KubeClient) Start(stop <-chan struct{}) error {
 	k.dubboInformer.Start(stop)
 	if k.fastSync {
@@ -85,12 +86,12 @@ func (k *KubeClient) Start(stop <-chan struct{}) error {
 		// This triggers a 100ms delay per call, which is often called 2-3 times in a test, delaying tests.
 		// Instead, we add an aggressive sync polling
 		fastWaitForCacheSync(k.dubboInformer)
-		for {
+		_ = wait.PollImmediate(time.Microsecond, wait.ForeverTestTimeout, func() (bool, error) {
 			if k.informerWatchesPending.Load() == 0 {
-				return nil
+				return true, nil
 			}
-			time.Sleep(time.Microsecond)
-		}
+			return false, nil
+		})
 	} else {
 		k.dubboInformer.WaitForCacheSync(stop)
 	}
@@ -165,10 +166,11 @@ type reflectInformerSync interface {
 
 // Wait for cache sync immediately, rather than with 100ms delay which slows tests
 // See https://github.com/kubernetes/kubernetes/issues/95262#issuecomment-703141573
+// nolint
 func fastWaitForCacheSync(informerFactory reflectInformerSync) {
 	returnImmediately := make(chan struct{})
 	close(returnImmediately)
-	_ = wait.e(time.Microsecond, wait.ForeverTestTimeout, func() (bool, error) {
+	_ = wait.PollImmediate(time.Microsecond, wait.ForeverTestTimeout, func() (bool, error) {
 		for _, synced := range informerFactory.WaitForCacheSync(returnImmediately) {
 			if !synced {
 				return false, nil
