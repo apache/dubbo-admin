@@ -104,8 +104,8 @@ type DynamicConfigsGenerator struct{}
 
 func (g *DynamicConfigsGenerator) Generate(data []model.Config, endpoint *endpoint.Endpoint) ([]*anypb.Any, error) {
 	res := make([]*anypb.Any, 0)
-	for _, data := range data {
-		gogo, err := model.ToProtoGogo(data.Spec.(*api.DynamicConfig))
+	for _, config := range data {
+		gogo, err := model.ToProtoGogo(config.Spec.(*api.DynamicConfig))
 		if err != nil {
 			return nil, err
 		}
@@ -118,8 +118,8 @@ type ServiceMappingGenerator struct{}
 
 func (g *ServiceMappingGenerator) Generate(data []model.Config, endpoint *endpoint.Endpoint) ([]*anypb.Any, error) {
 	res := make([]*anypb.Any, 0)
-	for _, data := range data {
-		gogo, err := model.ToProtoGogo(data.Spec.(*api.ServiceNameMapping))
+	for _, config := range data {
+		gogo, err := model.ToProtoGogo(config.Spec.(*api.ServiceNameMapping))
 		if err != nil {
 			return nil, err
 		}
@@ -132,8 +132,8 @@ type TagRoutesGenerator struct{}
 
 func (g *TagRoutesGenerator) Generate(data []model.Config, endpoint *endpoint.Endpoint) ([]*anypb.Any, error) {
 	res := make([]*anypb.Any, 0)
-	for _, data := range data {
-		gogo, err := model.ToProtoGogo(data.Spec.(*api.TagRoute))
+	for _, config := range data {
+		gogo, err := model.ToProtoGogo(config.Spec.(*api.TagRoute))
 		if err != nil {
 			return nil, err
 		}

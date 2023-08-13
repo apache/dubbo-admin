@@ -168,7 +168,7 @@ type reflectInformerSync interface {
 func fastWaitForCacheSync(informerFactory reflectInformerSync) {
 	returnImmediately := make(chan struct{})
 	close(returnImmediately)
-	_ = wait.PollImmediate(time.Microsecond, wait.ForeverTestTimeout, func() (bool, error) {
+	_ = wait.e(time.Microsecond, wait.ForeverTestTimeout, func() (bool, error) {
 		for _, synced := range informerFactory.WaitForCacheSync(returnImmediately) {
 			if !synced {
 				return false, nil
