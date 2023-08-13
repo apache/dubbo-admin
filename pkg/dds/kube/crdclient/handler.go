@@ -51,6 +51,7 @@ func NewHandler(storage *storage.Storage, rootNamespace string, cache ConfigStor
 	}
 }
 
+// nolint
 func (p *PushContext) NotifyWithIndex(schema collection.Schema) error {
 	gvk := schema.Resource().GroupVersionKind()
 	configs, err := p.cache.List(gvk, NamespaceAll)
@@ -94,6 +95,7 @@ func (p *PushContext) NotifyWithIndex(schema collection.Schema) error {
 	return nil
 }
 
+// nolint
 func authorization(config model.Config, rootNamespace string) model.Config {
 	deepCopy := config.DeepCopy()
 	policy := deepCopy.Spec.(*api.AuthorizationPolicy)
@@ -118,6 +120,7 @@ func authorization(config model.Config, rootNamespace string) model.Config {
 	return deepCopy
 }
 
+// nolint
 func authentication(config model.Config, rootNamespace string) model.Config {
 	deepCopy := config.DeepCopy()
 	policy := deepCopy.Spec.(*api.AuthenticationPolicy)

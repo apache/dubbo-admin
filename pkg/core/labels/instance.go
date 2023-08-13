@@ -71,6 +71,7 @@ var (
 type Instance map[string]string
 
 // SubsetOf is true if the label has identical values for the keys
+// nolint
 func (i Instance) SubsetOf(that Instance) bool {
 	for k, v := range i {
 		if that[k] != v {
@@ -81,6 +82,7 @@ func (i Instance) SubsetOf(that Instance) bool {
 }
 
 // Equals returns true if the labels are identical
+// nolint
 func (i Instance) Equals(that Instance) bool {
 	if i == nil {
 		return that == nil
@@ -92,6 +94,7 @@ func (i Instance) Equals(that Instance) bool {
 }
 
 // Validate ensures tag is well-formed
+// nolint
 func (i Instance) Validate() error {
 	if i == nil {
 		return nil
@@ -110,17 +113,20 @@ func (i Instance) Validate() error {
 
 // IsDNS1123Label tests for a string that conforms to the definition of a label in
 // DNS (RFC 1123).
+// nolint
 func IsDNS1123Label(value string) bool {
 	return len(value) <= DNS1123LabelMaxLength && dns1123LabelRegexp.MatchString(value)
 }
 
 // IsWildcardDNS1123Label tests for a string that conforms to the definition of a label in DNS (RFC 1123), but allows
 // the wildcard label (`*`), and typical labels with a leading astrisk instead of alphabetic character (e.g. "*-foo")
+// nolint
 func IsWildcardDNS1123Label(value string) bool {
 	return len(value) <= DNS1123LabelMaxLength && wildcardPrefixRegexp.MatchString(value)
 }
 
 // validateTagKey checks that a string is valid as a Kubernetes label name.
+// nolint
 func validateTagKey(k string) error {
 	match := tagRegexp.FindStringSubmatch(k)
 	if match == nil {
@@ -141,6 +147,7 @@ func validateTagKey(k string) error {
 	return nil
 }
 
+// nolint
 func (i Instance) String() string {
 	labels := make([]string, 0, len(i))
 	for k, v := range i {

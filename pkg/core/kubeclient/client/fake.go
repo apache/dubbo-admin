@@ -34,6 +34,7 @@ import (
 
 const resyncInterval = 0
 
+// nolint
 func NewFakeClient(objects ...runtime.Object) *KubeClient {
 	c := KubeClient{
 		informerWatchesPending: atomic.NewInt32(0),

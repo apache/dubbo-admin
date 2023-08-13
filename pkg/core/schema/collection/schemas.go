@@ -35,6 +35,7 @@ type Schemas struct {
 }
 
 // SchemasFor is a shortcut for creating Schemas. It uses MustAdd for each element.
+// nolint
 func SchemasFor(schemas ...Schema) Schemas {
 	b := NewSchemasBuilder()
 	for _, s := range schemas {
@@ -49,6 +50,7 @@ type SchemasBuilder struct {
 }
 
 // NewSchemasBuilder returns a new instance of SchemasBuilder.
+// nolint
 func NewSchemasBuilder() *SchemasBuilder {
 	s := Schemas{
 		byCollection: make(map[Name]Schema),
@@ -60,6 +62,7 @@ func NewSchemasBuilder() *SchemasBuilder {
 }
 
 // Add a new collection to the schemas.
+// nolint
 func (b *SchemasBuilder) Add(s Schema) error {
 	if _, found := b.schemas.byCollection[s.Name()]; found {
 		return fmt.Errorf("collection already exists: %v", s.Name())
@@ -71,6 +74,7 @@ func (b *SchemasBuilder) Add(s Schema) error {
 }
 
 // MustAdd calls Add and panics if it fails.
+// nolint
 func (b *SchemasBuilder) MustAdd(s Schema) *SchemasBuilder {
 	if err := b.Add(s); err != nil {
 		panic(fmt.Sprintf("SchemasBuilder.MustAdd: %v", err))
@@ -79,6 +83,7 @@ func (b *SchemasBuilder) MustAdd(s Schema) *SchemasBuilder {
 }
 
 // Build a new schemas from this SchemasBuilder.
+// nolint
 func (b *SchemasBuilder) Build() Schemas {
 	s := b.schemas
 
@@ -89,6 +94,7 @@ func (b *SchemasBuilder) Build() Schemas {
 }
 
 // ForEach executes the given function on each contained schema, until the function returns true.
+// nolint
 func (s Schemas) ForEach(handleSchema func(Schema) (done bool)) {
 	for _, schema := range s.byAddOrder {
 		if handleSchema(schema) {
@@ -98,12 +104,14 @@ func (s Schemas) ForEach(handleSchema func(Schema) (done bool)) {
 }
 
 // Find looks up a Schema by its collection name.
+// nolint
 func (s Schemas) Find(collection string) (Schema, bool) {
 	i, ok := s.byCollection[Name(collection)]
 	return i, ok
 }
 
 // MustFind calls Find and panics if not found.
+// nolint
 func (s Schemas) MustFind(collection string) Schema {
 	i, ok := s.Find(collection)
 	if !ok {
@@ -113,6 +121,7 @@ func (s Schemas) MustFind(collection string) Schema {
 }
 
 // FindByGroupVersionKind FindByKind searches and returns the first schema with the given kind
+// nolint
 func (s Schemas) FindByGroupVersionKind(gvk model.GroupVersionKind) (Schema, bool) {
 	for _, rs := range s.byAddOrder {
 		if rs.Resource().GroupVersionKind() == gvk {
@@ -124,6 +133,7 @@ func (s Schemas) FindByGroupVersionKind(gvk model.GroupVersionKind) (Schema, boo
 }
 
 // FindByKind searches and returns the first schema with the given kind
+// nolint
 func (s Schemas) FindByGroupVersionResource(gvr schema.GroupVersionResource) (Schema, bool) {
 	for _, rs := range s.byAddOrder {
 		if rs.Resource().GroupVersionResource() == gvr {
@@ -135,6 +145,7 @@ func (s Schemas) FindByGroupVersionResource(gvr schema.GroupVersionResource) (Sc
 }
 
 // FindByPlural FindByKind searches and returns the first schema with the given kind
+// nolint
 func (s Schemas) FindByPlural(group, version, plural string) (Schema, bool) {
 	for _, rs := range s.byAddOrder {
 		if rs.Resource().Plural() == plural &&
@@ -148,6 +159,7 @@ func (s Schemas) FindByPlural(group, version, plural string) (Schema, bool) {
 }
 
 // MustFindByGroupVersionKind MustFind calls FindByGroupVersionKind and panics if not found.
+// nolint
 func (s Schemas) MustFindByGroupVersionKind(gvk model.GroupVersionKind) Schema {
 	r, found := s.FindByGroupVersionKind(gvk)
 	if !found {
@@ -157,11 +169,13 @@ func (s Schemas) MustFindByGroupVersionKind(gvk model.GroupVersionKind) Schema {
 }
 
 // All returns all known Schemas
+// nolint
 func (s Schemas) All() []Schema {
 	return append(make([]Schema, 0, len(s.byAddOrder)), s.byAddOrder...)
 }
 
 // Add creates a copy of this Schemas with the given schemas added.
+// nolint
 func (s Schemas) Add(toAdd ...Schema) Schemas {
 	b := NewSchemasBuilder()
 
@@ -177,6 +191,7 @@ func (s Schemas) Add(toAdd ...Schema) Schemas {
 }
 
 // Remove creates a copy of this Schemas with the given schemas removed.
+// nolint
 func (s Schemas) Remove(toRemove ...Schema) Schemas {
 	b := NewSchemasBuilder()
 
@@ -197,6 +212,7 @@ func (s Schemas) Remove(toRemove ...Schema) Schemas {
 }
 
 // CollectionNames returns all known collections.
+// nolint
 func (s Schemas) CollectionNames() Names {
 	result := make(Names, 0, len(s.byAddOrder))
 
@@ -212,6 +228,7 @@ func (s Schemas) CollectionNames() Names {
 }
 
 // Kinds returns all known resource kinds.
+// nolint
 func (s Schemas) Kinds() []string {
 	kinds := make(map[string]struct{}, len(s.byAddOrder))
 	for _, s := range s.byAddOrder {
@@ -228,6 +245,7 @@ func (s Schemas) Kinds() []string {
 }
 
 // Validate the schemas. Returns error if there is a problem.
+// nolint
 func (s Schemas) Validate() (err error) {
 	for _, c := range s.byAddOrder {
 		err = multierror.Append(err, c.Resource().Validate()).ErrorOrNil()

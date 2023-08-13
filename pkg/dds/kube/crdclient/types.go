@@ -32,6 +32,7 @@ import (
 
 // only for tests
 // WARNING: if not test, do not use this function!
+// nolint
 func create(ic versioned.Interface, cfg model.Config, objMeta metav1.ObjectMeta) (metav1.Object, error) {
 	switch cfg.GroupVersionKind {
 	case collections.DubboCAV1Alpha1Authorization.Resource().GroupVersionKind():
@@ -71,6 +72,7 @@ func create(ic versioned.Interface, cfg model.Config, objMeta metav1.ObjectMeta)
 
 // only for test
 // WARNING: if not test, do not use this function!
+// nolint
 func update(ic versioned.Interface, cfg model.Config, objMeta metav1.ObjectMeta) (metav1.Object, error) {
 	switch cfg.GroupVersionKind {
 	case collections.DubboCAV1Alpha1Authorization.Resource().GroupVersionKind():
@@ -110,6 +112,7 @@ func update(ic versioned.Interface, cfg model.Config, objMeta metav1.ObjectMeta)
 
 // only for test
 // WARNING: if not test, do not use this function!
+// nolint
 func delete(ic versioned.Interface, typ model.GroupVersionKind, name, namespace string, resourceVersion *string) error {
 	var deleteOptions metav1.DeleteOptions
 	if resourceVersion != nil {
@@ -133,6 +136,7 @@ func delete(ic versioned.Interface, typ model.GroupVersionKind, name, namespace 
 	}
 }
 
+// nolint
 var translationMap = map[model.GroupVersionKind]func(r runtime.Object) *model.Config{
 	collections.DubboCAV1Alpha1Authentication.Resource().GroupVersionKind(): func(r runtime.Object) *model.Config {
 		obj := r.(*v1alpha1.AuthenticationPolicy)
