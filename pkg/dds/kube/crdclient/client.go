@@ -71,7 +71,7 @@ func (cl *Client) Create(cfg model.Config) (string, error) {
 	return meta.GetResourceVersion(), nil
 }
 
-func (cl *Client) Update(cfg model.Config) (newRevision string, err error) {
+func (cl *Client) Update(cfg model.Config) (string, error) {
 	if cfg.Spec == nil {
 		return "", fmt.Errorf("nil spec for %v/%v", cfg.Name, cfg.Namespace)
 	}

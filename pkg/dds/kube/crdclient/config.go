@@ -38,14 +38,14 @@ type ConfigStore interface {
 	// Create adds a new configuration object to the store. If an object with the
 	// same name and namespace for the type already exists, the operation fails
 	// with no side effects.
-	Create(config model.Config) (revision string, err error)
+	Create(config model.Config) (string, error)
 
 	// Update modifies an existing configuration object in the store.  Update
 	// requires that the object has been created.  Resource version prevents
 	// overriding a value that has been changed between prior _Get_ and _Put_
 	// operation to achieve optimistic concurrency. This method returns a new
 	// revision if the operation succeeds.
-	Update(config model.Config) (newRevision string, err error)
+	Update(config model.Config) (string, error)
 
 	// Delete removes an object from the store by key
 	// For k8s, resourceVersion must be fulfilled before a deletion is carried out.
