@@ -24,22 +24,23 @@ import (
 	"time"
 
 	"github.com/apache/dubbo-admin/pkg/core/logger"
-	"google.golang.org/protobuf/types/known/anypb"
 
 	gogoproto "github.com/gogo/protobuf/proto"
-	"google.golang.org/protobuf/proto"
-
+	// nolint
+	"github.com/golang/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/known/anypb"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	AuthenticationTypeUrl = "type.googleapis.com/dubbo.apache.org.v1alpha1.AuthenticationPolicy"
-	AuthorizationTypeUrl  = "type.googleapis.com/dubbo.apache.org.v1alpha1.AuthorizationPolicy"
-	TagRouteTypeUrl       = "type.googleapis.com/dubbo.apache.org.v1alpha1.TagRoute"
-	DynamicConfigTypeUrl  = "type.googleapis.com/dubbo.apache.org.v1alpha1.DynamicConfig"
-	ServiceMappingTypeUrl = "type.googleapis.com/dubbo.apache.org.v1alpha1.ServiceNameMapping"
-	ConditionRouteTypeUrl = "type.googleapis.com/dubbo.apache.org.v1alpha1.ConditionRoute"
+	ApiTypePrefix         = "type.googleapis.com/"
+	AuthenticationTypeUrl = ApiTypePrefix + "dubbo.apache.org.v1alpha1.AuthenticationPolicy"
+	AuthorizationTypeUrl  = ApiTypePrefix + "dubbo.apache.org.v1alpha1.AuthorizationPolicy"
+	TagRouteTypeUrl       = ApiTypePrefix + "dubbo.apache.org.v1alpha1.TagRoute"
+	DynamicConfigTypeUrl  = ApiTypePrefix + "dubbo.apache.org.v1alpha1.DynamicConfig"
+	ServiceMappingTypeUrl = ApiTypePrefix + "dubbo.apache.org.v1alpha1.ServiceNameMapping"
+	ConditionRouteTypeUrl = ApiTypePrefix + "dubbo.apache.org.v1alpha1.ConditionRoute"
 )
 
 // Meta is metadata attached to each configuration unit.
@@ -120,7 +121,7 @@ func ToProtoGogo(s Spec) (*anypb.Any, error) {
 func MessageToAny(msg proto.Message) *anypb.Any {
 	out, err := MessageToAnyWithError(msg)
 	if err != nil {
-		logger.Sugar().Error(fmt.Sprintf("error marshaling Any %s: %v", msg, err))
+		logger.Sugar().Error(fmt.Sprintf("error marshaling Any %s: %v", msg.String(), err))
 		return nil
 	}
 	return out
@@ -129,13 +130,15 @@ func MessageToAny(msg proto.Message) *anypb.Any {
 // MessageToAnyWithError converts from proto message to proto Any
 // nolint
 func MessageToAnyWithError(msg proto.Message) (*anypb.Any, error) {
-	data, err := proto.Marshal(msg)
+	b := proto.NewBuffer(nil)
+	b.SetDeterministic(true)
+	err := b.Marshal(msg)
 	if err != nil {
 		return nil, err
 	}
 	return &anypb.Any{
-		TypeUrl: "type.googleapis.com/" + string(proto.MessageName(msg)),
-		Value:   data,
+		TypeUrl: "type.googleapis.com/" + proto.MessageName(msg),
+		Value:   b.Bytes(),
 	}, nil
 }
 

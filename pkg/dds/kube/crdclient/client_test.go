@@ -20,6 +20,7 @@ package crdclient
 import (
 	"context"
 	"fmt"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"reflect"
 	"testing"
 	"time"
@@ -29,7 +30,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/schema/collection"
 	"github.com/apache/dubbo-admin/pkg/core/schema/collections"
 	"github.com/apache/dubbo-admin/test/util/retry"
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -37,7 +37,7 @@ import (
 func makeClient(t *testing.T, schemas collection.Schemas) ConfigStoreCache {
 	fake := client.NewFakeClient()
 	for _, s := range schemas.All() {
-		fake.Ext().ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), &v1beta1.CustomResourceDefinition{
+		fake.Ext().ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), &v1.CustomResourceDefinition{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("%s.%s", s.Resource().Plural(), s.Resource().Group()),
 			},
