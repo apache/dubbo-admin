@@ -18,6 +18,8 @@
 package universal
 
 import (
+	"net/url"
+
 	"dubbo.apache.org/dubbo-go/v3/common"
 	"dubbo.apache.org/dubbo-go/v3/common/extension"
 	dubboRegistry "dubbo.apache.org/dubbo-go/v3/registry"
@@ -26,12 +28,9 @@ import (
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	gxset "github.com/dubbogo/gost/container/set"
-	"net/url"
 )
 
-var (
-	SUBSCRIBE *common.URL
-)
+var SUBSCRIBE *common.URL
 
 func init() {
 	registry.AddRegistry("universal", func(u *common.URL) (registry.AdminRegistry, error) {
@@ -70,8 +69,7 @@ func init() {
 	)
 }
 
-type MappingListener struct {
-}
+type MappingListener struct{}
 
 type Registry struct {
 	delegate   dubboRegistry.Registry
@@ -104,7 +102,7 @@ func (kr *Registry) Subscribe(listener registry.AdminNotifyListener) error {
 			mappingListener := NewMappingListener(oldApps, delRegistryListener)
 			apps, _ := config.MetadataReportCenter.GetServiceAppMapping(interfaceKey, "mapping", mappingListener)
 			delSDListener := NewDubboSDNotifyListener(apps)
-			for appTmp, _ := range apps.Items {
+			for appTmp := range apps.Items {
 				app := appTmp.(string)
 				instances := kr.sdDelegate.GetInstances(app)
 				logger.Infof("Synchronized instance notification on subscription, instance list size %s", len(instances))
@@ -127,7 +125,6 @@ func (kr *Registry) Subscribe(listener registry.AdminNotifyListener) error {
 }
 
 func (kr *Registry) Destroy() error {
-
 	return nil
 }
 

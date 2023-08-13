@@ -21,15 +21,18 @@ package dubbo_apache_org_v1alpha1
 
 import (
 	fmt "fmt"
+	math "math"
+
 	proto "github.com/gogo/protobuf/proto"
 	_ "github.com/gogo/protobuf/types"
-	math "math"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
-var _ = proto.Marshal
-var _ = fmt.Errorf
-var _ = math.Inf
+var (
+	_ = proto.Marshal
+	_ = fmt.Errorf
+	_ = math.Inf
+)
 
 // DeepCopyInto supports using AuthorizationPolicy within kubernetes types, where deepcopy-gen is used.
 func (in *AuthorizationPolicy) DeepCopyInto(out *AuthorizationPolicy) {

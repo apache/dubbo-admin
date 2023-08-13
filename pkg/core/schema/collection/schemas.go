@@ -19,9 +19,10 @@ package collection
 
 import (
 	"fmt"
-	"github.com/apache/dubbo-admin/pkg/core/model"
 	"sort"
 	"strings"
+
+	"github.com/apache/dubbo-admin/pkg/core/model"
 
 	"github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -173,7 +174,6 @@ func (s Schemas) Add(toAdd ...Schema) Schemas {
 	}
 
 	return b.Build()
-
 }
 
 // Remove creates a copy of this Schemas with the given schemas removed.

@@ -18,11 +18,12 @@
 package dubbo_cp
 
 import (
+	"time"
+
 	dubbogo "dubbo.apache.org/dubbo-go/v3/config"
 	"github.com/apache/dubbo-admin/pkg/config"
 	"github.com/apache/dubbo-admin/pkg/config/option"
 	"github.com/pkg/errors"
-	"time"
 
 	"github.com/apache/dubbo-admin/pkg/config/admin"
 	"github.com/apache/dubbo-admin/pkg/config/kube"
@@ -87,7 +88,7 @@ var DefaultConfig = func() Config {
 				Port:        "9090",
 				MonitorPort: "22222",
 			},
-			//MysqlDSN: "root:password@tcp(127.0.0.1:3306)/dubbo-admin?charset=utf8&parseTime=true",
+			// MysqlDSN: "root:password@tcp(127.0.0.1:3306)/dubbo-admin?charset=utf8&parseTime=true",
 		},
 		GrpcServer: server.ServerConfig{
 			PlainServerPort:  30060,

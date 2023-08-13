@@ -18,10 +18,11 @@
 package collection_test
 
 import (
+	"testing"
+
 	"github.com/apache/dubbo-admin/pkg/core/model"
 	"github.com/apache/dubbo-admin/pkg/core/schema/collection"
 	"github.com/apache/dubbo-admin/pkg/core/schema/resource"
-	"testing"
 
 	_ "github.com/gogo/protobuf/types"
 	. "github.com/onsi/gomega"

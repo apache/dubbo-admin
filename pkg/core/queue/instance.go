@@ -16,9 +16,10 @@
 package queue
 
 import (
-	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"sync"
 	"time"
+
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 )
 
 // Task to be performed.

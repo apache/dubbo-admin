@@ -18,9 +18,10 @@
 package universal
 
 import (
-	"dubbo.apache.org/dubbo-go/v3/metadata/service/local"
 	"reflect"
 	"sync"
+
+	"dubbo.apache.org/dubbo-go/v3/metadata/service/local"
 )
 
 import (

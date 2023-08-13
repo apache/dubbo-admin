@@ -20,8 +20,8 @@ package versioned
 
 import (
 	"fmt"
-	"net/http"
 	dubbov1alpha1 "github.com/apache/dubbo-admin/pkg/core/gen/generated/clientset/versioned/typed/dubbo.apache.org/v1alpha1"
+	"net/http"
 
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"

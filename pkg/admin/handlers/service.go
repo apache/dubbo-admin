@@ -18,14 +18,16 @@
 package handlers
 
 import (
-	"dubbo.apache.org/dubbo-go/v3/config/generic"
 	"encoding/json"
-	"github.com/apache/dubbo-admin/pkg/core/cmd/version"
-	"github.com/apache/dubbo-admin/pkg/core/logger"
-	hessian "github.com/apache/dubbo-go-hessian2"
 	"net/http"
 	"strconv"
 	"time"
+
+	"dubbo.apache.org/dubbo-go/v3/config/generic"
+
+	"github.com/apache/dubbo-admin/pkg/core/cmd/version"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
+	hessian "github.com/apache/dubbo-go-hessian2"
 
 	"dubbo.apache.org/dubbo-go/v3/metadata/definition"
 
@@ -339,7 +341,7 @@ func Test(c *gin.Context) {
 			c,
 			serviceTestDTO.Method,
 			serviceTestDTO.ParameterTypes,
-			[]hessian.Object{"A003"}, //fixme
+			[]hessian.Object{"A003"}, // fixme
 		)
 	refConf.GetInvoker().Destroy()
 	if err != nil {
@@ -352,9 +354,9 @@ func Test(c *gin.Context) {
 
 // HttpTest works for triple protocol
 func HttpTest(c *gin.Context) {
-	//pattern := c.Query("service")
-	//filter := c.Query("method")
-	//address := c.Query("address")
+	// pattern := c.Query("service")
+	// filter := c.Query("method")
+	// address := c.Query("address")
 
 	// send standard http request to backend http://address/service/method content-type:json
 

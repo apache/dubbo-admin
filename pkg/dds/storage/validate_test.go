@@ -18,6 +18,8 @@
 package storage
 
 import (
+	"testing"
+
 	dubbo_apache_org_v1alpha1 "github.com/apache/dubbo-admin/api/resource/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/core/endpoint"
 	"github.com/apache/dubbo-admin/pkg/core/model"
@@ -26,7 +28,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/schema/gvk"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestAuthenticationSelect_Empty(t *testing.T) {

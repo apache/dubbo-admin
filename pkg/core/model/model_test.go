@@ -19,10 +19,11 @@ package model
 
 import (
 	"fmt"
-	network "github.com/apache/dubbo-admin/api/resource/v1alpha1"
-	"github.com/google/go-cmp/cmp"
 	"testing"
 	"time"
+
+	network "github.com/apache/dubbo-admin/api/resource/v1alpha1"
+	"github.com/google/go-cmp/cmp"
 )
 
 func TestDeepCopy(t *testing.T) {

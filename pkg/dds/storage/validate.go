@@ -19,12 +19,13 @@ package storage
 
 import (
 	"encoding/json"
+	"net/netip"
+	"strings"
+
 	api "github.com/apache/dubbo-admin/api/resource/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/core/endpoint"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/tidwall/gjson"
-	"net/netip"
-	"strings"
 )
 
 func MatchAuthnSelector(selector *api.AuthenticationPolicySelector, endpoint *endpoint.Endpoint) bool {

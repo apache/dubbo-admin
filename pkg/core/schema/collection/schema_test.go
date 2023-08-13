@@ -18,9 +18,10 @@
 package collection_test
 
 import (
+	"testing"
+
 	"github.com/apache/dubbo-admin/pkg/core/schema/collection"
 	"github.com/apache/dubbo-admin/pkg/core/schema/resource"
-	"testing"
 
 	. "github.com/onsi/gomega"
 )

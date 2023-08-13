@@ -18,9 +18,10 @@
 package universal
 
 import (
-	"dubbo.apache.org/dubbo-go/v3/registry"
 	"strings"
 	"sync"
+
+	"dubbo.apache.org/dubbo-go/v3/registry"
 )
 
 import (
@@ -49,7 +50,7 @@ func parseServices(literalServices string) *gxset.HashSet {
 	if len(literalServices) == 0 {
 		return set
 	}
-	var splitServices = strings.Split(literalServices, ",")
+	splitServices := strings.Split(literalServices, ",")
 	for _, s := range splitServices {
 		if len(s) != 0 {
 			set.Add(s)
@@ -92,5 +93,4 @@ func (lstn *ServiceMappingChangedListenerImpl) updateListener(interfaceKey strin
 
 // Stop on ServiceMappingChangedEvent the service mapping change event
 func (lstn *ServiceMappingChangedListenerImpl) Stop() {
-
 }

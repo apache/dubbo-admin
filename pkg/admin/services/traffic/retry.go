@@ -19,9 +19,10 @@ package traffic
 
 import (
 	"fmt"
-	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"strconv"
 	"strings"
+
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 
 	"github.com/apache/dubbo-admin/pkg/admin/constant"
 	"github.com/apache/dubbo-admin/pkg/admin/model"

@@ -18,6 +18,8 @@
 package crdclient
 
 import (
+	"sync"
+
 	api "github.com/apache/dubbo-admin/api/resource/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/model"
@@ -25,7 +27,6 @@ import (
 	gvks "github.com/apache/dubbo-admin/pkg/core/schema/gvk"
 	"github.com/apache/dubbo-admin/pkg/dds/storage"
 	"k8s.io/utils/strings/slices"
-	"sync"
 )
 
 type PushContext struct {

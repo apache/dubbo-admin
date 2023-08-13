@@ -16,15 +16,18 @@
 package services
 
 import (
-	"dubbo.apache.org/dubbo-go/v3/metadata/definition"
-	"github.com/apache/dubbo-admin/pkg/admin/model"
 	"regexp"
 	"strings"
 	"time"
+
+	"dubbo.apache.org/dubbo-go/v3/metadata/definition"
+	"github.com/apache/dubbo-admin/pkg/admin/model"
 )
 
-var COLLECTION_PATTERN = regexp.MustCompile("^java\\.util\\..*(Set|List|Queue|Collection|Deque)(<.*>)*$")
-var MAP_PATTERN = regexp.MustCompile("^java\\.util\\..*Map.*(<.*>)*$")
+var (
+	COLLECTION_PATTERN = regexp.MustCompile("^java\\.util\\..*(Set|List|Queue|Collection|Deque)(<.*>)*$")
+	MAP_PATTERN        = regexp.MustCompile("^java\\.util\\..*Map.*(<.*>)*$")
+)
 
 type ServiceTestingV3 struct{}
 

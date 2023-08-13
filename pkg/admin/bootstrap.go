@@ -18,9 +18,10 @@
 package admin
 
 import (
-	"github.com/apache/dubbo-admin/pkg/admin/cache/registry"
 	"net/url"
 	"strings"
+
+	"github.com/apache/dubbo-admin/pkg/admin/cache/registry"
 
 	"github.com/apache/dubbo-admin/pkg/admin/providers/mock"
 	"github.com/apache/dubbo-admin/pkg/admin/services"

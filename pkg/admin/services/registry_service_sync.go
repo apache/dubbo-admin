@@ -18,11 +18,12 @@
 package services
 
 import (
+	"strings"
+	"sync"
+
 	dubboRegistry "dubbo.apache.org/dubbo-go/v3/registry"
 	"dubbo.apache.org/dubbo-go/v3/remoting"
 	"github.com/apache/dubbo-admin/pkg/admin/cache/registry"
-	"strings"
-	"sync"
 
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 
@@ -33,9 +34,7 @@ import (
 	"dubbo.apache.org/dubbo-go/v3/common"
 )
 
-var (
-	UrlIdsMapper sync.Map
-)
+var UrlIdsMapper sync.Map
 
 func StartSubscribe(registry registry.AdminRegistry) {
 	err := registry.Subscribe(&adminNotifyListener{})

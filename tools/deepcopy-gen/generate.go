@@ -22,10 +22,11 @@ import (
 	"flag"
 	"fmt"
 	"go/format"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"text/template"
+
+	"gopkg.in/yaml.v2"
 )
 
 type ConfigData struct {
@@ -85,7 +86,7 @@ func main() {
 	// Output
 	if outputFile == "" {
 		fmt.Println(string(out))
-	} else if err := ioutil.WriteFile(outputFile, out, 0644); err != nil {
+	} else if err := ioutil.WriteFile(outputFile, out, 0o644); err != nil {
 		panic(err)
 	}
 }
