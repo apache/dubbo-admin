@@ -167,7 +167,6 @@ func (s *schemaImpl) Proto() string {
 	return s.proto
 }
 
-// nolint
 func (s *schemaImpl) Validate() (err error) {
 	if !labels.IsDNS1123Label(s.Kind()) {
 		err = multierror.Append(err, fmt.Errorf("invalid kind: %s", s.Kind()))

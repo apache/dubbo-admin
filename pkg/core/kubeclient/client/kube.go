@@ -102,6 +102,7 @@ func (k *KubeClient) NeedLeaderElection() bool {
 	return false
 }
 
+// nolint
 func (k *KubeClient) Init(options *dubbo_cp.Config) bool {
 	config, err := rest.InClusterConfig()
 	options.KubeConfig.InPodEnv = err == nil

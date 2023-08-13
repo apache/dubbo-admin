@@ -34,6 +34,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
+// nolint
 func makeClient(t *testing.T, schemas collection.Schemas) ConfigStoreCache {
 	fake := client.NewFakeClient()
 	for _, s := range schemas.All() {
@@ -66,6 +67,7 @@ func makeClient(t *testing.T, schemas collection.Schemas) ConfigStoreCache {
 }
 
 // Ensure that the client can run without CRDs present
+// nolint
 func TestClientNoCRDs(t *testing.T) {
 	schema := collection.NewSchemasBuilder().MustAdd(collections.DubboServiceV1Alpha1ServiceMapping).Build()
 	store := makeClient(t, schema)
@@ -105,6 +107,7 @@ func TestClientNoCRDs(t *testing.T) {
 }
 
 // CheckDubboConfigTypes validates that an empty store can do CRUD operators on all given types
+// nolint
 func TestClient(t *testing.T) {
 	store := makeClient(t, collections.Rule)
 	configName := "name"

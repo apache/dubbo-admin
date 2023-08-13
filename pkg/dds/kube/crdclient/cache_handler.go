@@ -39,7 +39,6 @@ type cacheHandler struct {
 	lister   func(namespace string) cache.GenericNamespaceLister
 }
 
-// nolint
 func (h *cacheHandler) onEvent(curr interface{}) error {
 	if err := h.client.checkReadyForEvents(curr); err != nil {
 		return err
@@ -54,7 +53,6 @@ func (h *cacheHandler) onEvent(curr interface{}) error {
 	return nil
 }
 
-// nolint
 func createCacheHandler(cl *Client, schema collection.Schema, i informers.GenericInformer) *cacheHandler {
 	h := &cacheHandler{
 		client:   cl,

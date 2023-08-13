@@ -41,7 +41,6 @@ type Builder struct {
 }
 
 // Build a Schema instance.
-// nolint
 func (b Builder) Build() (Schema, error) {
 	if !IsValidName(b.Name) {
 		return nil, fmt.Errorf("invalid collection name: %s", b.Name)
@@ -57,7 +56,6 @@ func (b Builder) Build() (Schema, error) {
 }
 
 // MustBuild calls Build and panics if it fails.
-// nolint
 func (b Builder) MustBuild() Schema {
 	s, err := b.Build()
 	if err != nil {
@@ -75,7 +73,6 @@ type schemaImpl struct {
 }
 
 // String interface method implementation.
-// nolint
 func (s *schemaImpl) String() string {
 	return fmt.Sprintf("[Schema](%s, %s)", s.name, s.resource.Proto())
 }

@@ -30,6 +30,7 @@ type DdsResourceGenerator interface {
 
 type AuthenticationGenerator struct{}
 
+// nolint
 func (g *AuthenticationGenerator) Generate(data []model.Config, endpoint *endpoint.Endpoint) ([]*anypb.Any, error) {
 	res := make([]*anypb.Any, 0)
 	for _, v := range data {
@@ -59,6 +60,7 @@ func (g *AuthenticationGenerator) Generate(data []model.Config, endpoint *endpoi
 
 type AuthorizationGenerator struct{}
 
+// nolint
 func (g *AuthorizationGenerator) Generate(data []model.Config, endpoint *endpoint.Endpoint) ([]*anypb.Any, error) {
 	res := make([]*anypb.Any, 0)
 	for _, v := range data {

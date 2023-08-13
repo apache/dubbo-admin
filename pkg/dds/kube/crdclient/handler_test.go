@@ -30,6 +30,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
+// nolint
 func TestAuthentication(t *testing.T) {
 	configName := "name"
 	configNamespace := "namespace"
@@ -91,6 +92,7 @@ func TestAuthentication(t *testing.T) {
 	})
 }
 
+// nolint
 func TestAuthorization(t *testing.T) {
 	configName := "name"
 	configNamespace := "namespace"
@@ -186,6 +188,7 @@ func TestAuthorization(t *testing.T) {
 	})
 }
 
+// nolint
 func TestNotifyWithIndex(t *testing.T) {
 	store := makeClient(t, collections.Rule)
 	configName := "name"

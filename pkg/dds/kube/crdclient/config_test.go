@@ -30,6 +30,7 @@ import (
 // getByMessageName finds a schema by message name if it is available
 // In test setup, we do not have more than one descriptor with the same message type, so this
 // function is ok for testing purpose.
+// nolint
 func getByMessageName(schemas collection.Schemas, name string) (collection.Schema, bool) {
 	for _, s := range schemas.All() {
 		if s.Resource().Proto() == name {
@@ -39,6 +40,7 @@ func getByMessageName(schemas collection.Schemas, name string) (collection.Schem
 	return nil, false
 }
 
+// nolint
 func schemaFor(kind, proto string) collection.Schema {
 	return collection.Builder{
 		Name: kind,
@@ -50,6 +52,7 @@ func schemaFor(kind, proto string) collection.Schema {
 	}.MustBuild()
 }
 
+// nolint
 func TestConfigDescriptor(t *testing.T) {
 	a := schemaFor("a", "proxy.A")
 	schemas := collection.SchemasFor(
@@ -80,6 +83,7 @@ func TestConfigDescriptor(t *testing.T) {
 	}
 }
 
+// nolint
 func TestEventString(t *testing.T) {
 	cases := []struct {
 		in   Event
