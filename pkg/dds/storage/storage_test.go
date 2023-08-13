@@ -879,7 +879,7 @@ func TestStorage_ReturnMisNonce(t *testing.T) {
 
 	s := storage.NewStorage(&dubbocp.Config{})
 
-	tagHanlder := crdclient.NewHandler(s, "dubbo-demo", store)
+	tagHanlder := crdclient.NewHandler(s, "dubbo-system", store)
 	err = tagHanlder.NotifyWithIndex(collections.DubboNetWorkV1Alpha1TagRoute)
 	if err != nil {
 		t.Fatal(err)
