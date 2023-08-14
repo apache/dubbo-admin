@@ -18,12 +18,13 @@
 package crdclient
 
 import (
+	"reflect"
+	"testing"
+
 	"github.com/apache/dubbo-admin/pkg/core/model"
 	"github.com/apache/dubbo-admin/pkg/core/schema/collection"
 	"github.com/apache/dubbo-admin/pkg/core/schema/resource"
 	"github.com/davecgh/go-spew/spew"
-	"reflect"
-	"testing"
 )
 
 // getByMessageName finds a schema by message name if it is available

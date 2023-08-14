@@ -18,6 +18,8 @@
 package storage
 
 import (
+	"testing"
+
 	dubbo_apache_org_v1alpha1 "github.com/apache/dubbo-admin/api/resource/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/core/endpoint"
 	"github.com/apache/dubbo-admin/pkg/core/model"
@@ -26,7 +28,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/schema/gvk"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestAuthenticationSelect_Empty(t *testing.T) {
@@ -64,7 +65,14 @@ func TestAuthenticationSelect_Empty(t *testing.T) {
 		},
 	}
 
-	generated, err := origin.Exact(gvk.Authentication, nil)
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{})
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
@@ -116,8 +124,14 @@ func TestAuthenticationSelect_NoSelector(t *testing.T) {
 			},
 		},
 	}
-
-	generated, err := origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{
 			Namespace: "test",
 		},
@@ -176,8 +190,14 @@ func TestAuthenticationSelect_Namespace(t *testing.T) {
 			},
 		},
 	}
-
-	generated, err := origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{
 			Namespace: "test",
 		},
@@ -202,7 +222,7 @@ func TestAuthenticationSelect_Namespace(t *testing.T) {
 		}
 	}
 
-	generated, err = origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{
 			Namespace: "demo",
 		},
@@ -247,8 +267,14 @@ func TestAuthenticationSelect_EndpointNil(t *testing.T) {
 			},
 		},
 	}
-
-	generated, err := origin.Exact(gvk.Authentication, nil)
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
+	generated, err := origin.Exact(gen, nil)
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
@@ -303,8 +329,14 @@ func TestAuthenticationSelect_NotNamespace(t *testing.T) {
 			},
 		},
 	}
-
-	generated, err := origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{
 			Namespace: "test",
 		},
@@ -327,8 +359,7 @@ func TestAuthenticationSelect_NotNamespace(t *testing.T) {
 			}
 		}
 	}
-
-	generated, err = origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{
 			Namespace: "demo",
 		},
@@ -387,8 +418,14 @@ func TestAuthenticationSelect_IpBlocks_ErrFmt(t *testing.T) {
 			},
 		},
 	}
-
-	generated, err := origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		Ips: []string{"127.0.0.2"},
 	})
 	assert.Nil(t, err)
@@ -410,7 +447,7 @@ func TestAuthenticationSelect_IpBlocks_ErrFmt(t *testing.T) {
 		}
 	}
 
-	generated, err = origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		Ips: []string{"127.0.0.3"},
 	})
 	assert.Nil(t, err)
@@ -466,8 +503,14 @@ func TestAuthenticationSelect_IpBlocks(t *testing.T) {
 			},
 		},
 	}
-
-	generated, err := origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		Ips: []string{"127.0.0.2"},
 	})
 	assert.Nil(t, err)
@@ -490,7 +533,7 @@ func TestAuthenticationSelect_IpBlocks(t *testing.T) {
 		}
 	}
 
-	generated, err = origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		Ips: []string{"127"},
 	})
 	assert.Nil(t, err)
@@ -547,8 +590,14 @@ func TestAuthenticationSelect_NotIpBlocks_ErrFmt(t *testing.T) {
 			},
 		},
 	}
-
-	generated, err := origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		Ips: []string{"127.0.0.2"},
 	})
 	assert.Nil(t, err)
@@ -571,7 +620,7 @@ func TestAuthenticationSelect_NotIpBlocks_ErrFmt(t *testing.T) {
 		}
 	}
 
-	generated, err = origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		Ips: []string{"127.0.0.3"},
 	})
 	assert.Nil(t, err)
@@ -628,8 +677,14 @@ func TestAuthenticationSelect_Principals(t *testing.T) {
 			},
 		},
 	}
-
-	generated, err := origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		SpiffeID: "cluster.local/ns/default/sa/dubbo-demo-new",
 	})
 	assert.Nil(t, err)
@@ -652,7 +707,7 @@ func TestAuthenticationSelect_Principals(t *testing.T) {
 		}
 	}
 
-	generated, err = origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		SpiffeID: "cluster.local/ns/default/sa/dubbo-demo",
 	})
 	assert.Nil(t, err)
@@ -675,7 +730,7 @@ func TestAuthenticationSelect_Principals(t *testing.T) {
 		}
 	}
 
-	generated, err = origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		SpiffeID: "spiffe://cluster.local/ns/default/sa/dubbo-demo",
 	})
 	assert.Nil(t, err)
@@ -683,8 +738,6 @@ func TestAuthenticationSelect_Principals(t *testing.T) {
 	assert.NotNil(t, generated)
 	assert.Equal(t, generated.Type, gvk.Authentication)
 	assert.Equal(t, generated.Revision, int64(1))
-
-	data = generated.Data
 
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
@@ -732,8 +785,14 @@ func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 			},
 		},
 	}
-
-	generated, err := origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		SpiffeID: "cluster.local/ns/default/sa/dubbo-demo-new",
 	})
 	assert.Nil(t, err)
@@ -756,7 +815,7 @@ func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 		}
 	}
 
-	generated, err = origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		SpiffeID: "cluster.local/ns/default/sa/dubbo-demo",
 	})
 	assert.Nil(t, err)
@@ -779,7 +838,7 @@ func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 		}
 	}
 
-	generated, err = origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		SpiffeID: "spiffe://cluster.local/ns/default/sa/dubbo-demo",
 	})
 	assert.Nil(t, err)
@@ -787,8 +846,6 @@ func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 	assert.NotNil(t, generated)
 	assert.Equal(t, generated.Type, gvk.Authentication)
 	assert.Equal(t, generated.Revision, int64(1))
-
-	data = generated.Data
 
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
@@ -841,8 +898,14 @@ func TestAuthenticationSelect_Extends(t *testing.T) {
 			},
 		},
 	}
-
-	generated, err := origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{
 			PodName: "dubbo-demo",
 		},
@@ -867,7 +930,7 @@ func TestAuthenticationSelect_Extends(t *testing.T) {
 		}
 	}
 
-	generated, err = origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		SpiffeID: "cluster.local/ns/default/sa/dubbo-demo",
 	})
 	assert.Nil(t, err)
@@ -890,7 +953,7 @@ func TestAuthenticationSelect_Extends(t *testing.T) {
 		}
 	}
 
-	generated, err = origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		SpiffeID: "spiffe://cluster.local/ns/default/sa/dubbo-demo",
 	})
 	assert.Nil(t, err)
@@ -898,8 +961,6 @@ func TestAuthenticationSelect_Extends(t *testing.T) {
 	assert.NotNil(t, generated)
 	assert.Equal(t, generated.Type, gvk.Authentication)
 	assert.Equal(t, generated.Revision, int64(1))
-
-	data = generated.Data
 
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
@@ -952,8 +1013,14 @@ func TestAuthenticationSelect_NotExtends(t *testing.T) {
 			},
 		},
 	}
-
-	generated, err := origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{
 			PodName: "dubbo-demo",
 		},
@@ -978,7 +1045,7 @@ func TestAuthenticationSelect_NotExtends(t *testing.T) {
 		}
 	}
 
-	generated, err = origin.Exact(gvk.Authentication, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{
 			PodName: "dubbo-demo-new",
 		},
@@ -1033,8 +1100,14 @@ func TestAuthorization_Empty(t *testing.T) {
 			},
 		},
 	}
-
-	generated, err := origin.Exact(gvk.Authorization, nil)
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
+	generated, err := origin.Exact(gen, nil)
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
@@ -1092,9 +1165,15 @@ func TestAuthorization_Namespace(t *testing.T) {
 			},
 		},
 	}
-
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
 	// success
-	generated, err := origin.Exact(gvk.Authorization, nil)
+	generated, err := origin.Exact(gen, nil)
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
@@ -1116,7 +1195,7 @@ func TestAuthorization_Namespace(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{
 			Namespace: "test-new",
 		},
@@ -1142,7 +1221,7 @@ func TestAuthorization_Namespace(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{},
 	})
 	assert.Nil(t, err)
@@ -1204,9 +1283,15 @@ func TestAuthorization_NotNamespace(t *testing.T) {
 			},
 		},
 	}
-
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
 	// success
-	generated, err := origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{
 			Namespace: "test-new",
 		},
@@ -1232,7 +1317,7 @@ func TestAuthorization_NotNamespace(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{
 			Namespace: "test",
 		},
@@ -1258,7 +1343,7 @@ func TestAuthorization_NotNamespace(t *testing.T) {
 	}
 
 	// success
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{},
 	})
 	assert.Nil(t, err)
@@ -1320,9 +1405,15 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 			},
 		},
 	}
-
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
 	// success
-	generated, err := origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		Ips: []string{"127.0.0.1"},
 	})
 	assert.Nil(t, err)
@@ -1346,7 +1437,7 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		Ips: []string{"127.0.1.1"},
 	})
 	assert.Nil(t, err)
@@ -1370,7 +1461,7 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		Ips: []string{"127"},
 	})
 	assert.Nil(t, err)
@@ -1394,7 +1485,7 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{})
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{})
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
@@ -1454,9 +1545,15 @@ func TestAuthorization_ErrFmt(t *testing.T) {
 			},
 		},
 	}
-
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
 	// failed
-	generated, err := origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		Ips: []string{"127.0.0.1"},
 	})
 	assert.Nil(t, err)
@@ -1480,7 +1577,7 @@ func TestAuthorization_ErrFmt(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		Ips: []string{"127.0.1.1"},
 	})
 	assert.Nil(t, err)
@@ -1504,7 +1601,7 @@ func TestAuthorization_ErrFmt(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{})
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{})
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
@@ -1564,9 +1661,15 @@ func TestAuthorization_NotIPBlocks(t *testing.T) {
 			},
 		},
 	}
-
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
 	// success
-	generated, err := origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		Ips: []string{"127.0.1.1"},
 	})
 	assert.Nil(t, err)
@@ -1590,7 +1693,7 @@ func TestAuthorization_NotIPBlocks(t *testing.T) {
 	}
 
 	// success
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		Ips: []string{"127"},
 	})
 	assert.Nil(t, err)
@@ -1614,7 +1717,7 @@ func TestAuthorization_NotIPBlocks(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		Ips: []string{"127.0.0.1"},
 	})
 	assert.Nil(t, err)
@@ -1676,9 +1779,15 @@ func TestAuthorization_NotIPBlocks_ErrFmt(t *testing.T) {
 			},
 		},
 	}
-
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
 	// success
-	generated, err := origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		Ips: []string{"127.0.1.1"},
 	})
 	assert.Nil(t, err)
@@ -1702,7 +1811,7 @@ func TestAuthorization_NotIPBlocks_ErrFmt(t *testing.T) {
 	}
 
 	// success
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		Ips: []string{"127.0.1.1"},
 	})
 	assert.Nil(t, err)
@@ -1726,7 +1835,7 @@ func TestAuthorization_NotIPBlocks_ErrFmt(t *testing.T) {
 	}
 
 	// success
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{})
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{})
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
@@ -1786,9 +1895,15 @@ func TestAuthorization_Principals(t *testing.T) {
 			},
 		},
 	}
-
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
 	// success
-	generated, err := origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		SpiffeID: "cluster.local/ns/default/sa/default",
 	})
 	assert.Nil(t, err)
@@ -1812,7 +1927,7 @@ func TestAuthorization_Principals(t *testing.T) {
 	}
 
 	// success
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		SpiffeID: "spiffe://cluster.local/ns/default/sa/default",
 	})
 	assert.Nil(t, err)
@@ -1836,7 +1951,7 @@ func TestAuthorization_Principals(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		SpiffeID: "cluster.local/ns/test/sa/default",
 	})
 	assert.Nil(t, err)
@@ -1860,7 +1975,7 @@ func TestAuthorization_Principals(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{})
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{})
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
@@ -1920,9 +2035,15 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 			},
 		},
 	}
-
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
 	// success
-	generated, err := origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		SpiffeID: "cluster.local/ns/test/sa/default",
 	})
 	assert.Nil(t, err)
@@ -1946,7 +2067,7 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	}
 
 	// success
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		SpiffeID: "spiffe://cluster.local/ns/test/sa/default",
 	})
 	assert.Nil(t, err)
@@ -1970,7 +2091,7 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		SpiffeID: "cluster.local/ns/default/sa/default",
 	})
 	assert.Nil(t, err)
@@ -1994,7 +2115,7 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		SpiffeID: "spiffe://cluster.local/ns/default/sa/default",
 	})
 	assert.Nil(t, err)
@@ -2018,7 +2139,7 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{})
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{})
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
@@ -2083,9 +2204,15 @@ func TestAuthorization_Extends(t *testing.T) {
 			},
 		},
 	}
-
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
 	// success
-	generated, err := origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{
 			PodName: "test",
 		},
@@ -2111,7 +2238,7 @@ func TestAuthorization_Extends(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{
 			PodName: "test-new",
 		},
@@ -2137,7 +2264,7 @@ func TestAuthorization_Extends(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{})
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{})
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
@@ -2202,9 +2329,15 @@ func TestAuthorization_NotExtends(t *testing.T) {
 			},
 		},
 	}
-
+	gen := map[string]DdsResourceGenerator{}
+	gen[gvk.Authentication] = &AuthenticationGenerator{}
+	gen[gvk.Authorization] = &AuthorizationGenerator{}
+	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
+	gen[gvk.TagRoute] = &TagRoutesGenerator{}
+	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
 	// success
-	generated, err := origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err := origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{
 			PodName: "test-new",
 		},
@@ -2230,7 +2363,7 @@ func TestAuthorization_NotExtends(t *testing.T) {
 	}
 
 	// failed
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{
 		KubernetesEnv: &endpoint.KubernetesEnv{
 			PodName: "test",
 		},
@@ -2256,7 +2389,7 @@ func TestAuthorization_NotExtends(t *testing.T) {
 	}
 
 	// success
-	generated, err = origin.Exact(gvk.Authorization, &endpoint.Endpoint{})
+	generated, err = origin.Exact(gen, &endpoint.Endpoint{})
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)

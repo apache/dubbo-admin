@@ -20,9 +20,10 @@ package runtime
 import (
 	"context"
 	"fmt"
-	"github.com/apache/dubbo-admin/pkg/core/kubeclient/client"
 	"os"
 	"time"
+
+	"github.com/apache/dubbo-admin/pkg/core/kubeclient/client"
 
 	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
 	"github.com/apache/dubbo-admin/pkg/core"
@@ -35,8 +36,8 @@ import (
 type BuilderContext interface {
 	ComponentManager() component.Manager
 	Config() *dubbo_cp.Config
-	CertStorage() provider.Storage
-	KubeClient() client.KubeClient
+	CertStorage() *provider.CertStorage
+	KubeClient() *client.KubeClient
 	CertClient() provider.Client
 }
 
@@ -47,9 +48,9 @@ type Builder struct {
 	cm     component.Manager
 	appCtx context.Context
 
-	kubeClient  client.KubeClient
+	kubeClient  *client.KubeClient
 	grpcServer  *server.GrpcServer
-	certStorage provider.Storage
+	certStorage *provider.CertStorage
 	certClient  provider.Client
 	*runtimeInfo
 }
@@ -58,11 +59,11 @@ func (b *Builder) CertClient() provider.Client {
 	return b.certClient
 }
 
-func (b *Builder) KubeClient() client.KubeClient {
+func (b *Builder) KubeClient() *client.KubeClient {
 	return b.kubeClient
 }
 
-func (b *Builder) CertStorage() provider.Storage {
+func (b *Builder) CertStorage() *provider.CertStorage {
 	return b.certStorage
 }
 
@@ -91,15 +92,6 @@ func BuilderFor(appCtx context.Context, cfg *dubbo_cp.Config) (*Builder, error) 
 }
 
 func (b *Builder) Build() (Runtime, error) {
-	if !b.cfg.KubeConfig.IsKubernetesConnected {
-		return &runtime{
-			RuntimeInfo: b.runtimeInfo,
-			RuntimeContext: &runtimeContext{
-				cfg: b.cfg,
-			},
-			Manager: b.cm,
-		}, nil
-	}
 	if b.grpcServer == nil {
 		return nil, errors.Errorf("grpcServer has not been configured")
 	}
@@ -124,12 +116,12 @@ func (b *Builder) WithCertClient(certClient provider.Client) *Builder {
 	return b
 }
 
-func (b *Builder) WithKubeClient(kubeClient client.KubeClient) *Builder {
+func (b *Builder) WithKubeClient(kubeClient *client.KubeClient) *Builder {
 	b.kubeClient = kubeClient
 	return b
 }
 
-func (b *Builder) WithCertStorage(storage provider.Storage) *Builder {
+func (b *Builder) WithCertStorage(storage *provider.CertStorage) *Builder {
 	b.certStorage = storage
 	return b
 }

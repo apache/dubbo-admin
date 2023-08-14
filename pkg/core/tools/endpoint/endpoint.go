@@ -33,7 +33,7 @@ import (
 	"google.golang.org/grpc/peer"
 )
 
-func ExactEndpoint(c context.Context, certStorage provider.Storage, options *dubbo_cp.Config, certClient provider.Client) (*endpoint.Endpoint, error) {
+func ExactEndpoint(c context.Context, certStorage *provider.CertStorage, options *dubbo_cp.Config, certClient provider.Client) (*endpoint.Endpoint, error) {
 	if c == nil {
 		return nil, fmt.Errorf("context is nil")
 	}
@@ -69,7 +69,7 @@ func ExactEndpoint(c context.Context, certStorage provider.Storage, options *dub
 	}, nil
 }
 
-func tryFromHeader(c context.Context, certStorage provider.Storage, options *dubbo_cp.Config, kubeClient provider.Client) (*endpoint.Endpoint, error) {
+func tryFromHeader(c context.Context, certStorage *provider.CertStorage, options *dubbo_cp.Config, kubeClient provider.Client) (*endpoint.Endpoint, error) {
 	// TODO refactor as coreos/go-oidc
 	authorization := metadata.ValueFromIncomingContext(c, "authorization")
 	if len(authorization) != 1 {

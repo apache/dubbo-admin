@@ -31,7 +31,7 @@ spec:
     singular: dynamicconfig
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: DynamicConfig is the Schema for the dynamicconfigs API

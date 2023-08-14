@@ -170,6 +170,9 @@ func portForward(args *DashboardCommonArgs, compName operator.ComponentName, wri
 	pods, err := cli.CoreV1().Pods(args.namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: labelSelector,
 	})
+	if err != nil {
+		return fmt.Errorf("list pod failed, err: %s", err)
+	}
 	if len(pods.Items) < 1 {
 		return fmt.Errorf("no %s pods found", string(compName))
 	}

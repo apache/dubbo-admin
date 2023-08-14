@@ -18,6 +18,9 @@
 package crdclient
 
 import (
+	"sync"
+	"testing"
+
 	dubbo_apache_org_v1alpha1 "github.com/apache/dubbo-admin/api/resource/v1alpha1"
 	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
 	"github.com/apache/dubbo-admin/pkg/core/model"
@@ -25,8 +28,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/dds/storage"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/util/workqueue"
-	"sync"
-	"testing"
 )
 
 func TestAuthentication(t *testing.T) {
@@ -183,9 +184,9 @@ func TestAuthorization(t *testing.T) {
 		afterPolicy := m.Spec.(*dubbo_apache_org_v1alpha1.AuthorizationPolicy)
 		assert.Equal(t, afterPolicy.Rules[0].To.Namespaces[0], configNamespace)
 	})
-
 }
 
+// nolint
 func TestNotifyWithIndex(t *testing.T) {
 	store := makeClient(t, collections.Rule)
 	configName := "name"

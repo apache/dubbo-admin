@@ -75,7 +75,7 @@ func NewVersionCmd() *cobra.Command {
 			if args.detailed {
 				cmd.Println(GetVersionInfo())
 			} else {
-				cmd.Printf("%s\n", gitVersion)
+				cmd.Println(gitVersion)
 			}
 
 			return nil

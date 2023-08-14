@@ -20,35 +20,44 @@ package crdclient
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"testing"
+	"time"
+
 	"github.com/apache/dubbo-admin/pkg/core/kubeclient/client"
 	"github.com/apache/dubbo-admin/pkg/core/model"
 	"github.com/apache/dubbo-admin/pkg/core/schema/collection"
 	"github.com/apache/dubbo-admin/pkg/core/schema/collections"
 	"github.com/apache/dubbo-admin/test/util/retry"
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
-	"reflect"
-	"testing"
-	"time"
 )
 
 func makeClient(t *testing.T, schemas collection.Schemas) ConfigStoreCache {
 	fake := client.NewFakeClient()
 	for _, s := range schemas.All() {
-		fake.Ext().ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), &v1beta1.CustomResourceDefinition{
+		_, err := fake.Ext().ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), &v1.CustomResourceDefinition{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("%s.%s", s.Resource().Plural(), s.Resource().Group()),
 			},
 		}, metav1.CreateOptions{})
+		if err != nil {
+			return nil
+		}
 	}
 	stop := make(chan struct{})
 	config, err := New(fake, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	go config.Start(stop)
-	fake.Start(stop)
+	go func() {
+		err := config.Start(stop)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
+	_ = fake.Start(stop)
 	cache.WaitForCacheSync(stop, config.HasSynced)
 	t.Cleanup(func() {
 		close(stop)

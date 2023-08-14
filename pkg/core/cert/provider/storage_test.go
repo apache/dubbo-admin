@@ -20,13 +20,14 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
-	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
-	"github.com/apache/dubbo-admin/pkg/config/security"
-	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
+
+	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
+	"github.com/apache/dubbo-admin/pkg/config/security"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 )
 
 func TestIsValid(t *testing.T) {
@@ -135,7 +136,7 @@ func TestGetServerCert(t *testing.T) {
 
 	cert := GenerateAuthorityCert(nil, 24*60*60*1000)
 
-	s := &storageImpl{
+	s := &CertStorage{
 		authorityCert: cert,
 		mutex:         &sync.Mutex{},
 		config: &dubbo_cp.Config{

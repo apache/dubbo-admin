@@ -25,6 +25,9 @@ import (
 )
 
 func Setup(rt core_runtime.Runtime) error {
+	if !rt.Config().KubeConfig.IsKubernetesConnected {
+		return nil
+	}
 	snp := server.NewSnp(rt.Config(), rt.KubeClient().DubboClientSet())
 	mesh.RegisterServiceNameMappingServiceServer(rt.GrpcServer().SecureServer, snp)
 	mesh.RegisterServiceNameMappingServiceServer(rt.GrpcServer().PlainServer, snp)

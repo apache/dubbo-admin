@@ -31,7 +31,7 @@ spec:
     singular: tagroute
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: TagRoute is the Schema for the tagroutes API

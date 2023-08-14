@@ -29,7 +29,6 @@ import (
 type GenericServiceImpl struct{}
 
 func (p *GenericServiceImpl) NewRefConf(appName, iface, protocol string) dubboConfig.ReferenceConfig {
-
 	fromUrl := config.AdminRegistry.Delegate().GetURL().Clone()
 
 	registryConfig := dubboConfig.RegistryConfig{}

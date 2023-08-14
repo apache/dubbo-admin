@@ -20,13 +20,14 @@ package resource
 import (
 	"errors"
 	"fmt"
+	"reflect"
+
 	"github.com/apache/dubbo-admin/pkg/core/labels"
 	"github.com/apache/dubbo-admin/pkg/core/model"
 	"github.com/apache/dubbo-admin/pkg/core/validation"
 	"github.com/gogo/protobuf/proto"
 	"github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"reflect"
 )
 
 // Schema for a resource

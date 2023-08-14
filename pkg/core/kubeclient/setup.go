@@ -23,6 +23,9 @@ import (
 )
 
 func Setup(rt core_runtime.Runtime) error {
+	if !rt.Config().KubeConfig.IsKubernetesConnected {
+		return nil
+	}
 	if err := rt.Add(rt.KubeClient()); err != nil {
 		return errors.Wrap(err, "Add CertClient recurring event failed")
 	}

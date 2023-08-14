@@ -28,7 +28,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 )
 
-type storageImpl struct {
+type CertStorage struct {
 	config *dubbo_cp.Config
 
 	certClient Client
@@ -43,27 +43,7 @@ type storageImpl struct {
 	serverCerts  *Cert
 }
 
-type Storage interface {
-	GetServerCert(serverName string) *tls.Certificate
-	RefreshServerCert(<-chan struct{})
-
-	SetAuthorityCert(*Cert)
-	GetAuthorityCert() *Cert
-
-	SetRootCert(*Cert)
-	GetRootCert() *Cert
-
-	AddTrustedCert(*Cert)
-	GetTrustedCerts() []*Cert
-
-	GetConfig() *dubbo_cp.Config
-	GetCertClient() Client
-
-	Start(stop <-chan struct{}) error
-	NeedLeaderElection() bool
-}
-
-func (s *storageImpl) Start(stop <-chan struct{}) error {
+func (s *CertStorage) Start(stop <-chan struct{}) error {
 	go s.RefreshServerCert(stop)
 	go func(stop <-chan struct{}) {
 		interval := math.Min(math.Floor(float64(s.config.Security.CaValidity)/100), 10_000)
@@ -74,7 +54,10 @@ func (s *storageImpl) Start(stop <-chan struct{}) error {
 				// TODO lock if multi cp-server
 				// TODO refresh signed cert
 
-				NewleaderElection().Election(s, s.config, s.certClient.GetKubClient())
+				err := NewleaderElection().Election(s, s.config, s.certClient.GetKubClient())
+				if err != nil {
+					return
+				}
 				if s.config.KubeConfig.IsKubernetesConnected {
 					s.certClient.UpdateAuthorityCert(s.GetAuthorityCert().CertPem, EncodePrivateKey(s.GetAuthorityCert().PrivateKey), s.config.KubeConfig.Namespace)
 					s.certClient.UpdateWebhookConfig(s.config, s)
@@ -97,7 +80,7 @@ func (s *storageImpl) Start(stop <-chan struct{}) error {
 	return nil
 }
 
-func (s *storageImpl) NeedLeaderElection() bool {
+func (s *CertStorage) NeedLeaderElection() bool {
 	return false
 }
 
@@ -109,8 +92,8 @@ type Cert struct {
 	tlsCert *tls.Certificate
 }
 
-func NewStorage(options *dubbo_cp.Config, certClient Client) Storage {
-	return &storageImpl{
+func NewStorage(options *dubbo_cp.Config, certClient Client) *CertStorage {
+	return &CertStorage{
 		mutex: &sync.Mutex{},
 
 		authorityCert: &Cert{},
@@ -169,7 +152,7 @@ func (c *Cert) GetTlsCert() *tls.Certificate {
 	return c.tlsCert
 }
 
-func (s *storageImpl) RefreshServerCert(stop <-chan struct{}) {
+func (s *CertStorage) RefreshServerCert(stop <-chan struct{}) {
 	interval := math.Min(math.Floor(float64(s.config.Security.CertValidity)/100), 10_000)
 	for true {
 		select {
@@ -194,7 +177,7 @@ func (s *storageImpl) RefreshServerCert(stop <-chan struct{}) {
 	}
 }
 
-func (s *storageImpl) GetServerCert(serverName string) *tls.Certificate {
+func (s *CertStorage) GetServerCert(serverName string) *tls.Certificate {
 	nameSigned := serverName == ""
 	for _, name := range s.serverNames {
 		if name == serverName {
@@ -215,34 +198,34 @@ func (s *storageImpl) GetServerCert(serverName string) *tls.Certificate {
 	return s.serverCerts.GetTlsCert()
 }
 
-func (s *storageImpl) SetAuthorityCert(cert *Cert) {
+func (s *CertStorage) SetAuthorityCert(cert *Cert) {
 	s.authorityCert = cert
 }
 
-func (s *storageImpl) GetAuthorityCert() *Cert {
+func (s *CertStorage) GetAuthorityCert() *Cert {
 	return s.authorityCert
 }
 
-func (s *storageImpl) SetRootCert(cert *Cert) {
+func (s *CertStorage) SetRootCert(cert *Cert) {
 	s.rootCert = cert
 }
 
-func (s *storageImpl) GetRootCert() *Cert {
+func (s *CertStorage) GetRootCert() *Cert {
 	return s.rootCert
 }
 
-func (s *storageImpl) AddTrustedCert(cert *Cert) {
+func (s *CertStorage) AddTrustedCert(cert *Cert) {
 	s.trustedCerts = append(s.trustedCerts, cert)
 }
 
-func (s *storageImpl) GetTrustedCerts() []*Cert {
+func (s *CertStorage) GetTrustedCerts() []*Cert {
 	return s.trustedCerts
 }
 
-func (s *storageImpl) GetConfig() *dubbo_cp.Config {
+func (s *CertStorage) GetConfig() *dubbo_cp.Config {
 	return s.config
 }
 
-func (s *storageImpl) GetCertClient() Client {
+func (s *CertStorage) GetCertClient() Client {
 	return s.certClient
 }

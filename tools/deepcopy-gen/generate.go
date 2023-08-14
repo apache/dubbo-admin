@@ -22,10 +22,11 @@ import (
 	"flag"
 	"fmt"
 	"go/format"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
 	"log"
+	"os"
 	"text/template"
+
+	"gopkg.in/yaml.v2"
 )
 
 type ConfigData struct {
@@ -38,16 +39,13 @@ type Resource struct {
 }
 
 func readYAMLFile(filePath string) (*Resource, error) {
-	// 读取YAML文件内容
-	yamlFile, err := ioutil.ReadFile(filePath)
+	yamlFile, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	// 定义一个变量用于存储解析后的数据
 	var config Resource
 
-	// 解析YAML文件内容
 	err = yaml.Unmarshal(yamlFile, &config)
 	if err != nil {
 		return nil, err
@@ -88,7 +86,16 @@ func main() {
 	// Output
 	if outputFile == "" {
 		fmt.Println(string(out))
-	} else if err := ioutil.WriteFile(outputFile, out, 0644); err != nil {
-		panic(err)
+	} else {
+		file, err := os.Create(outputFile)
+		if err != nil {
+			panic(err)
+		}
+		defer file.Close()
+
+		_, err = file.Write(out)
+		if err != nil {
+			panic(err)
+		}
 	}
 }

@@ -17,10 +17,11 @@ package queue
 
 import (
 	"container/heap"
-	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 )
 
 type delayTask struct {

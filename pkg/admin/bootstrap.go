@@ -18,9 +18,10 @@
 package admin
 
 import (
-	"github.com/apache/dubbo-admin/pkg/admin/cache/registry"
 	"net/url"
 	"strings"
+
+	"github.com/apache/dubbo-admin/pkg/admin/cache/registry"
 
 	"github.com/apache/dubbo-admin/pkg/admin/providers/mock"
 	"github.com/apache/dubbo-admin/pkg/admin/services"
@@ -100,6 +101,9 @@ func RegisterOther(rt core_runtime.Runtime) error {
 		}
 
 		config.RegistryCenter, err = extension.GetRegistry(c.GetProtocol(), addrUrl)
+		if err != nil {
+			panic(err)
+		}
 		config.AdminRegistry, err = registry.Registry(c.GetProtocol(), addrUrl)
 		if err != nil {
 			panic(err)

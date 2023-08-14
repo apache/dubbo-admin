@@ -18,15 +18,16 @@
 package client
 
 import (
+	"os"
+	"path/filepath"
+	"reflect"
+	"time"
+
 	clientset "github.com/apache/dubbo-admin/pkg/core/gen/generated/clientset/versioned"
 	"github.com/apache/dubbo-admin/pkg/core/gen/generated/informers/externalversions"
 	kubeExtClient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
-	"os"
-	"path/filepath"
-	"reflect"
-	"time"
 
 	"go.uber.org/atomic"
 
@@ -38,23 +39,7 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
-type KubeClient interface {
-	Init(options *dubbo_cp.Config) bool
-
-	DubboClientSet() clientset.Interface
-	DubboInformer() externalversions.SharedInformerFactory
-	GetKubernetesClientSet() kubernetes.Interface
-	GetKubeConfig() *rest.Config
-	// Ext returns the API extensions client.
-	Ext() kubeExtClient.Interface
-
-	// Start starts all informers and waits for their caches to sync.
-	// Warning: this must be called AFTER .Informer() is called, which will register the informer.
-	Start(stop <-chan struct{}) error
-	NeedLeaderElection() bool
-}
-
-type kubeClientImpl struct {
+type KubeClient struct {
 	kubernetes.Interface
 
 	kubernetesClientSet kubernetes.Interface
@@ -69,31 +54,32 @@ type kubeClientImpl struct {
 	informerWatchesPending *atomic.Int32
 }
 
-func NewKubeClient() KubeClient {
-	return &kubeClientImpl{}
+func NewKubeClient() *KubeClient {
+	return &KubeClient{}
 }
 
-func (c *kubeClientImpl) DubboInformer() externalversions.SharedInformerFactory {
+func (c *KubeClient) DubboInformer() externalversions.SharedInformerFactory {
 	return c.dubboInformer
 }
 
-func (c *kubeClientImpl) Ext() kubeExtClient.Interface {
+func (c *KubeClient) Ext() kubeExtClient.Interface {
 	return c.extSet
 }
 
-func (k *kubeClientImpl) DubboClientSet() clientset.Interface {
+func (k *KubeClient) DubboClientSet() clientset.Interface {
 	return k.dubboClientSet
 }
 
-func (k *kubeClientImpl) GetKubeConfig() *rest.Config {
+func (k *KubeClient) GetKubeConfig() *rest.Config {
 	return k.kubeConfig
 }
 
-func (k *kubeClientImpl) GetKubernetesClientSet() kubernetes.Interface {
+func (k *KubeClient) GetKubernetesClientSet() kubernetes.Interface {
 	return k.kubernetesClientSet
 }
 
-func (k *kubeClientImpl) Start(stop <-chan struct{}) error {
+// nolint
+func (k *KubeClient) Start(stop <-chan struct{}) error {
 	k.dubboInformer.Start(stop)
 	if k.fastSync {
 		// WaitForCacheSync will virtually never be synced on the first call, as its called immediately after Start()
@@ -112,11 +98,11 @@ func (k *kubeClientImpl) Start(stop <-chan struct{}) error {
 	return nil
 }
 
-func (k *kubeClientImpl) NeedLeaderElection() bool {
+func (k *KubeClient) NeedLeaderElection() bool {
 	return false
 }
 
-func (k *kubeClientImpl) Init(options *dubbo_cp.Config) bool {
+func (k *KubeClient) Init(options *dubbo_cp.Config) bool {
 	config, err := rest.InClusterConfig()
 	options.KubeConfig.InPodEnv = err == nil
 	kubeconfig := options.KubeConfig.KubeFileConfig
@@ -180,6 +166,7 @@ type reflectInformerSync interface {
 
 // Wait for cache sync immediately, rather than with 100ms delay which slows tests
 // See https://github.com/kubernetes/kubernetes/issues/95262#issuecomment-703141573
+// nolint
 func fastWaitForCacheSync(informerFactory reflectInformerSync) {
 	returnImmediately := make(chan struct{})
 	close(returnImmediately)

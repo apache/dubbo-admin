@@ -21,10 +21,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/apache/dubbo-admin/pkg/core/gen/generated/clientset/versioned"
 	"github.com/apache/dubbo-admin/pkg/core/kubeclient/client"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/schema/collections"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	klabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -35,10 +38,8 @@ import (
 	apiextensionsclient "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 
 	"github.com/apache/dubbo-admin/pkg/core/schema/collection"
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
-	"time"
 )
 
 // Client is a client for Dubbo CRDs, implementing config store cache
@@ -70,7 +71,7 @@ func (cl *Client) Create(cfg model.Config) (string, error) {
 	return meta.GetResourceVersion(), nil
 }
 
-func (cl *Client) Update(cfg model.Config) (newRevision string, err error) {
+func (cl *Client) Update(cfg model.Config) (string, error) {
 	if cfg.Spec == nil {
 		return "", fmt.Errorf("nil spec for %v/%v", cfg.Name, cfg.Namespace)
 	}
@@ -149,10 +150,10 @@ func (cl *Client) checkReadyForEvents(curr interface{}) error {
 func knownCRDs(crdClient apiextensionsclient.Interface) map[string]struct{} {
 	delay := time.Second
 	maxDelay := time.Minute
-	var res *v1beta1.CustomResourceDefinitionList
+	var res *v1.CustomResourceDefinitionList
 	for {
 		var err error
-		res, err = crdClient.ApiextensionsV1beta1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
+		res, err = crdClient.ApiextensionsV1().CustomResourceDefinitions().List(context.TODO(), metav1.ListOptions{})
 		if err == nil {
 			break
 		}
@@ -222,12 +223,12 @@ func TranslateObject(r runtime.Object, gvk model.GroupVersionKind, domainSuffix 
 	return c
 }
 
-func New(client client.KubeClient, domainSuffix string) (ConfigStoreCache, error) {
+func New(client *client.KubeClient, domainSuffix string) (ConfigStoreCache, error) {
 	schemas := collections.Rule
 	return NewForSchemas(client, domainSuffix, schemas)
 }
 
-func NewForSchemas(client client.KubeClient, domainSuffix string, schemas collection.Schemas) (ConfigStoreCache, error) {
+func NewForSchemas(client *client.KubeClient, domainSuffix string, schemas collection.Schemas) (ConfigStoreCache, error) {
 	out := &Client{
 		schemas:      schemas,
 		domainSuffix: domainSuffix,

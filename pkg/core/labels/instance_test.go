@@ -31,8 +31,9 @@
 package labels_test
 
 import (
-	"github.com/apache/dubbo-admin/pkg/core/labels"
 	"testing"
+
+	"github.com/apache/dubbo-admin/pkg/core/labels"
 )
 
 func TestInstance(t *testing.T) {

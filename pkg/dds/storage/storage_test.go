@@ -20,9 +20,14 @@ package storage_test
 import (
 	"context"
 	"fmt"
+	"io"
+	"reflect"
+	"testing"
+	"time"
+
 	"github.com/apache/dubbo-admin/api/dds"
-	dubbo_apache_org_v1alpha1 "github.com/apache/dubbo-admin/api/resource/v1alpha1"
-	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
+	dubboapacheorgv1alpha1 "github.com/apache/dubbo-admin/api/resource/v1alpha1"
+	dubbocp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
 	"github.com/apache/dubbo-admin/pkg/core/endpoint"
 	"github.com/apache/dubbo-admin/pkg/core/kubeclient/client"
 	"github.com/apache/dubbo-admin/pkg/core/model"
@@ -34,13 +39,9 @@ import (
 	"github.com/apache/dubbo-admin/test/util/retry"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/anypb"
-	"io"
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
-	"reflect"
-	"testing"
-	"time"
 )
 
 type fakeConnection struct {
@@ -54,7 +55,11 @@ type recvResult struct {
 	err     error
 }
 
-func (f *fakeConnection) Send(response *dds.ObserveResponse) error {
+func (f *fakeConnection) Send(targetRule *storage.VersionedRule, cr *storage.ClientStatus, response *dds.ObserveResponse) error {
+	cr.LastPushedTime = time.Now().Unix()
+	cr.LastPushedVersion = targetRule
+	cr.LastPushNonce = response.Nonce
+	cr.PushingStatus = storage.Pushing
 	f.sends = append(f.sends, response)
 	return nil
 }
@@ -72,7 +77,7 @@ func (f *fakeConnection) Disconnect() {
 func TestStorage_CloseEOF(t *testing.T) {
 	t.Parallel()
 
-	s := storage.NewStorage(&dubbo_cp.Config{})
+	s := storage.NewStorage(&dubbocp.Config{})
 	fake := &fakeConnection{
 		recvChan: make(chan recvResult, 1),
 	}
@@ -98,7 +103,7 @@ func TestStorage_CloseEOF(t *testing.T) {
 func TestStorage_CloseErr(t *testing.T) {
 	t.Parallel()
 
-	s := storage.NewStorage(&dubbo_cp.Config{})
+	s := storage.NewStorage(&dubbocp.Config{})
 	fake := &fakeConnection{
 		recvChan: make(chan recvResult, 1),
 	}
@@ -124,7 +129,7 @@ func TestStorage_CloseErr(t *testing.T) {
 func TestStorage_UnknowType(t *testing.T) {
 	t.Parallel()
 
-	s := storage.NewStorage(&dubbo_cp.Config{})
+	s := storage.NewStorage(&dubbocp.Config{})
 	fake := &fakeConnection{
 		recvChan: make(chan recvResult, 1),
 	}
@@ -168,7 +173,7 @@ func TestStorage_UnknowType(t *testing.T) {
 func TestStorage_StartNonEmptyNonce(t *testing.T) {
 	t.Parallel()
 
-	s := storage.NewStorage(&dubbo_cp.Config{})
+	s := storage.NewStorage(&dubbocp.Config{})
 	fake := &fakeConnection{
 		recvChan: make(chan recvResult, 1),
 	}
@@ -203,7 +208,7 @@ func TestStorage_StartNonEmptyNonce(t *testing.T) {
 func TestStorage_Listen(t *testing.T) {
 	t.Parallel()
 
-	s := storage.NewStorage(&dubbo_cp.Config{})
+	s := storage.NewStorage(&dubbocp.Config{})
 	fake := &fakeConnection{
 		recvChan: make(chan recvResult, 1),
 	}
@@ -243,19 +248,28 @@ func TestStorage_Listen(t *testing.T) {
 func makeClient(t *testing.T, schemas collection.Schemas) crdclient.ConfigStoreCache {
 	fake := client.NewFakeClient()
 	for _, s := range schemas.All() {
-		fake.Ext().ApiextensionsV1beta1().CustomResourceDefinitions().Create(context.TODO(), &v1beta1.CustomResourceDefinition{
+		_, err := fake.Ext().ApiextensionsV1().CustomResourceDefinitions().Create(context.TODO(), &v1.CustomResourceDefinition{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: fmt.Sprintf("%s.%s", s.Resource().Plural(), s.Resource().Group()),
 			},
 		}, metav1.CreateOptions{})
+		if err != nil {
+			return nil
+		}
 	}
 	stop := make(chan struct{})
 	config, err := crdclient.New(fake, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	go config.Start(stop)
-	fake.Start(stop)
+	go func() {
+		err := config.Start(stop)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}()
+	_ = fake.Start(stop)
 	cache.WaitForCacheSync(stop, config.HasSynced)
 	t.Cleanup(func() {
 		close(stop)
@@ -301,7 +315,7 @@ func TestStorage_PreNotify(t *testing.T) {
 				}
 				return nil
 			}, timeout)
-			s := storage.NewStorage(&dubbo_cp.Config{})
+			s := storage.NewStorage(&dubbocp.Config{})
 
 			handler := crdclient.NewHandler(s, "dubbo-demo", store)
 			err = handler.NotifyWithIndex(c)
@@ -403,7 +417,7 @@ func TestStorage_AfterNotify(t *testing.T) {
 				t.Fatal(err)
 			}
 			if r.GroupVersionKind().String() == gvk.ServiceMapping {
-				mapping := pb.(*dubbo_apache_org_v1alpha1.ServiceNameMapping)
+				mapping := pb.(*dubboapacheorgv1alpha1.ServiceNameMapping)
 				mapping.InterfaceName = "test"
 				mapping.ApplicationNames = []string{
 					"test-app",
@@ -423,7 +437,7 @@ func TestStorage_AfterNotify(t *testing.T) {
 				}
 				return nil
 			}, timeout)
-			s := storage.NewStorage(&dubbo_cp.Config{})
+			s := storage.NewStorage(&dubbocp.Config{})
 
 			handler := crdclient.NewHandler(s, "dubbo-demo", store)
 
@@ -551,7 +565,7 @@ func TestStore_MissNotify(t *testing.T) {
 		t.Fatalf("Create(%v) => got %v", tag.Kind(), err)
 	}
 
-	s := storage.NewStorage(&dubbo_cp.Config{})
+	s := storage.NewStorage(&dubbocp.Config{})
 
 	tagHanlder := crdclient.NewHandler(s, "dubbo-demo", store)
 	conditionHandler := crdclient.NewHandler(s, "dubbo-demo", store)
@@ -651,9 +665,9 @@ func (f *fakeOrigin) Revision() int64 {
 	return 1
 }
 
-func (f *fakeOrigin) Exact(gvk string, endpoint *endpoint.Endpoint) (*storage.VersionedRule, error) {
+func (f *fakeOrigin) Exact(gen map[string]storage.DdsResourceGenerator, endpoint *endpoint.Endpoint) (*storage.VersionedRule, error) {
 	return &storage.VersionedRule{
-		Type:     gvk,
+		Type:     gvk.TagRoute,
 		Revision: 1,
 		Data:     []*anypb.Any{},
 	}, nil
@@ -669,14 +683,14 @@ func (e errOrigin) Revision() int64 {
 	return 1
 }
 
-func (e errOrigin) Exact(gvk string, endpoint *endpoint.Endpoint) (*storage.VersionedRule, error) {
+func (e errOrigin) Exact(gen map[string]storage.DdsResourceGenerator, endpoint *endpoint.Endpoint) (*storage.VersionedRule, error) {
 	return nil, fmt.Errorf("test")
 }
 
 func TestStorage_MulitiNotify(t *testing.T) {
 	t.Parallel()
 
-	s := storage.NewStorage(&dubbo_cp.Config{})
+	s := storage.NewStorage(&dubbocp.Config{})
 
 	fake := &fakeConnection{
 		recvChan: make(chan recvResult, 1),
@@ -794,9 +808,9 @@ func TestStorage_Exact(t *testing.T) {
 			}
 
 			if r.GroupVersionKind().String() == gvk.TagRoute {
-				route := pb.(*dubbo_apache_org_v1alpha1.TagRoute)
+				route := pb.(*dubboapacheorgv1alpha1.TagRoute)
 				route.Key = "test-key"
-				route.Tags = []*dubbo_apache_org_v1alpha1.Tag{
+				route.Tags = []*dubboapacheorgv1alpha1.Tag{
 					{
 						Name: "zyq",
 						Addresses: []string{
@@ -817,7 +831,14 @@ func TestStorage_Exact(t *testing.T) {
 				},
 			}
 
-			generated, err := origin.Exact(r.GroupVersionKind().String(), &endpoint.Endpoint{})
+			gen := map[string]storage.DdsResourceGenerator{}
+			gen[gvk.Authentication] = &storage.AuthenticationGenerator{}
+			gen[gvk.Authorization] = &storage.AuthorizationGenerator{}
+			gen[gvk.ServiceMapping] = &storage.ServiceMappingGenerator{}
+			gen[gvk.ConditionRoute] = &storage.ConditionRoutesGenerator{}
+			gen[gvk.TagRoute] = &storage.TagRoutesGenerator{}
+			gen[gvk.DynamicConfig] = &storage.DynamicConfigsGenerator{}
+			generated, err := origin.Exact(gen, &endpoint.Endpoint{})
 			assert.Nil(t, err)
 
 			assert.NotNil(t, generated)
@@ -856,9 +877,9 @@ func TestStorage_ReturnMisNonce(t *testing.T) {
 		t.Fatalf("Create(%v) => got %v", tag.Kind(), err)
 	}
 
-	s := storage.NewStorage(&dubbo_cp.Config{})
+	s := storage.NewStorage(&dubbocp.Config{})
 
-	tagHanlder := crdclient.NewHandler(s, "dubbo-demo", store)
+	tagHanlder := crdclient.NewHandler(s, "dubbo-system", store)
 	err = tagHanlder.NotifyWithIndex(collections.DubboNetWorkV1Alpha1TagRoute)
 	if err != nil {
 		t.Fatal(err)
