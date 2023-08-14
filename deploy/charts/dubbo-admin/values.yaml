@@ -25,6 +25,14 @@ global:
   ##
   imagePullSecrets: []
 
+auth:
+  rbac:
+    enabled: true
+
+  serviceAccount:
+    enabled: true
+
+enableDubboAuthCRD: true
 
 rbac:
   # Use an existing ClusterRole/Role (depending on rbac.namespaced false/true)
