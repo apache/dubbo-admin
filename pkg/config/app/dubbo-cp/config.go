@@ -98,7 +98,7 @@ var DefaultConfig = func() Config {
 		Security: security.SecurityConfig{
 			CaValidity:           30 * 24 * 60 * 60 * 1000,
 			CertValidity:         1 * 60 * 60 * 1000,
-			IsTrustAnyone:        true,
+			IsTrustAnyone:        false,
 			EnableOIDCCheck:      true,
 			ResourcelockIdentity: config.GetStringEnv("POD_NAME", config.GetDefaultResourcelockIdentity()),
 			WebhookPort:          30080,
