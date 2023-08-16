@@ -50,21 +50,21 @@ func (s *CertStorage) Start(stop <-chan struct{}) error {
 		for {
 			time.Sleep(time.Duration(interval) * time.Millisecond)
 			if s.GetAuthorityCert().NeedRefresh() {
-				logger.Sugar().Infof("Authority cert is invalid, refresh it.")
+				logger.Sugar().Infof("[Authority] Authority cert is invalid, refresh it.")
 				// TODO lock if multi cp-server
 				// TODO refresh signed cert
 
 				err := NewleaderElection().Election(s, s.config, s.certClient.GetKubClient())
 				if err != nil {
-					return
+					logger.Sugar().Error("[Authority] Leader Election failed")
 				}
 				if s.config.KubeConfig.IsKubernetesConnected {
 					s.certClient.UpdateAuthorityCert(s.GetAuthorityCert().CertPem, EncodePrivateKey(s.GetAuthorityCert().PrivateKey), s.config.KubeConfig.Namespace)
 					s.certClient.UpdateWebhookConfig(s.config, s)
 					if s.certClient.UpdateAuthorityPublicKey(s.GetAuthorityCert().CertPem) {
-						logger.Sugar().Infof("Write ca to config maps success.")
+						logger.Sugar().Infof("[Authority] Write ca to config maps success.")
 					} else {
-						logger.Sugar().Warnf("Write ca to config maps failed.")
+						logger.Sugar().Warnf("[Authority] Write ca to config maps failed.")
 					}
 				}
 			}
@@ -146,7 +146,7 @@ func (c *Cert) GetTlsCert() *tls.Certificate {
 	}
 	tlsCert, err := tls.X509KeyPair([]byte(c.CertPem), []byte(EncodePrivateKey(c.PrivateKey)))
 	if err != nil {
-		logger.Sugar().Warnf("Failed to load x509 cert. %v", err)
+		logger.Sugar().Warnf("[Authority] Failed to load x509 cert. %v", err)
 	}
 	c.tlsCert = &tlsCert
 	return c.tlsCert
@@ -170,7 +170,7 @@ func (s *CertStorage) RefreshServerCert(stop <-chan struct{}) {
 				return
 			}
 			if s.serverCerts == nil || !s.serverCerts.IsValid() {
-				logger.Sugar().Infof("Server cert is invalid, refresh it.")
+				logger.Sugar().Infof("[Authority] Server cert is invalid, refresh it.")
 				s.serverCerts = SignServerCert(s.authorityCert, s.serverNames, s.config.Security.CertValidity)
 			}
 		}()

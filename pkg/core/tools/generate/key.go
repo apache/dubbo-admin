@@ -15,30 +15,11 @@
  * limitations under the License.
  */
 
-syntax = "proto3";
+package generate
 
-package v1alpha1;
-
-option go_package = "./";
-
-// Provides an service for reporting the mapping relationship between interface => cluster
-// the cluster name will be versioned FQDN. such as "demo.default.svc.cluster.local"
-service ServiceNameMappingService{
-  rpc registerServiceAppMapping(ServiceMappingRequest) returns (ServiceMappingResponse);
-}
-
-// When dubbo provider start up, it reports its applicationName and its interfaceName,
-// and Dubbo consumer will get the service name mapping info by dds.
-message ServiceMappingRequest{
-  // This is namespace of dubbo server
-  string namespace = 1;
-
-  string applicationName = 2;
-
-  repeated string interfaceNames = 3;
-}
-
-message ServiceMappingResponse{
-  bool success = 1;
-  string message = 2;
+func GenerateKey(name, namespace string) string {
+	if namespace != "" {
+		return name + "/" + namespace
+	}
+	return name
 }

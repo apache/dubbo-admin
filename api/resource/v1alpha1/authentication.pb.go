@@ -22,7 +22,7 @@ package dubbo_apache_org_v1alpha1
 
 import (
 	fmt "fmt"
-	proto "github.com/gogo/protobuf/proto"
+	proto "github.com/golang/protobuf/proto"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -37,7 +37,117 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
-const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
+const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
+
+type AuthenticationPolicyToClient struct {
+	Key                  string                      `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	Spec                 *AuthenticationSpecToClient `protobuf:"bytes,2,opt,name=spec,proto3" json:"spec,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                    `json:"-"`
+	XXX_unrecognized     []byte                      `json:"-"`
+	XXX_sizecache        int32                       `json:"-"`
+}
+
+func (m *AuthenticationPolicyToClient) Reset()         { *m = AuthenticationPolicyToClient{} }
+func (m *AuthenticationPolicyToClient) String() string { return proto.CompactTextString(m) }
+func (*AuthenticationPolicyToClient) ProtoMessage()    {}
+func (*AuthenticationPolicyToClient) Descriptor() ([]byte, []int) {
+	return fileDescriptor_d0dbc99083440df2, []int{0}
+}
+func (m *AuthenticationPolicyToClient) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthenticationPolicyToClient) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthenticationPolicyToClient.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *AuthenticationPolicyToClient) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthenticationPolicyToClient.Merge(m, src)
+}
+func (m *AuthenticationPolicyToClient) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthenticationPolicyToClient) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthenticationPolicyToClient.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthenticationPolicyToClient proto.InternalMessageInfo
+
+func (m *AuthenticationPolicyToClient) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+func (m *AuthenticationPolicyToClient) GetSpec() *AuthenticationSpecToClient {
+	if m != nil {
+		return m.Spec
+	}
+	return nil
+}
+
+type AuthenticationSpecToClient struct {
+	Action               string                           `protobuf:"bytes,1,opt,name=action,proto3" json:"action,omitempty"`
+	PortLevel            []*AuthenticationPolicyPortLevel `protobuf:"bytes,2,rep,name=portLevel,proto3" json:"portLevel,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                         `json:"-"`
+	XXX_unrecognized     []byte                           `json:"-"`
+	XXX_sizecache        int32                            `json:"-"`
+}
+
+func (m *AuthenticationSpecToClient) Reset()         { *m = AuthenticationSpecToClient{} }
+func (m *AuthenticationSpecToClient) String() string { return proto.CompactTextString(m) }
+func (*AuthenticationSpecToClient) ProtoMessage()    {}
+func (*AuthenticationSpecToClient) Descriptor() ([]byte, []int) {
+	return fileDescriptor_d0dbc99083440df2, []int{1}
+}
+func (m *AuthenticationSpecToClient) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *AuthenticationSpecToClient) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_AuthenticationSpecToClient.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *AuthenticationSpecToClient) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthenticationSpecToClient.Merge(m, src)
+}
+func (m *AuthenticationSpecToClient) XXX_Size() int {
+	return m.Size()
+}
+func (m *AuthenticationSpecToClient) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthenticationSpecToClient.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthenticationSpecToClient proto.InternalMessageInfo
+
+func (m *AuthenticationSpecToClient) GetAction() string {
+	if m != nil {
+		return m.Action
+	}
+	return ""
+}
+
+func (m *AuthenticationSpecToClient) GetPortLevel() []*AuthenticationPolicyPortLevel {
+	if m != nil {
+		return m.PortLevel
+	}
+	return nil
+}
 
 type AuthenticationPolicy struct {
 	Action               string                           `protobuf:"bytes,1,opt,name=action,proto3" json:"action,omitempty"`
@@ -52,7 +162,7 @@ func (m *AuthenticationPolicy) Reset()         { *m = AuthenticationPolicy{} }
 func (m *AuthenticationPolicy) String() string { return proto.CompactTextString(m) }
 func (*AuthenticationPolicy) ProtoMessage()    {}
 func (*AuthenticationPolicy) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d0dbc99083440df2, []int{0}
+	return fileDescriptor_d0dbc99083440df2, []int{2}
 }
 func (m *AuthenticationPolicy) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -120,7 +230,7 @@ func (m *AuthenticationPolicySelector) Reset()         { *m = AuthenticationPoli
 func (m *AuthenticationPolicySelector) String() string { return proto.CompactTextString(m) }
 func (*AuthenticationPolicySelector) ProtoMessage()    {}
 func (*AuthenticationPolicySelector) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d0dbc99083440df2, []int{1}
+	return fileDescriptor_d0dbc99083440df2, []int{3}
 }
 func (m *AuthenticationPolicySelector) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -217,7 +327,7 @@ func (m *AuthenticationPolicyPortLevel) Reset()         { *m = AuthenticationPol
 func (m *AuthenticationPolicyPortLevel) String() string { return proto.CompactTextString(m) }
 func (*AuthenticationPolicyPortLevel) ProtoMessage()    {}
 func (*AuthenticationPolicyPortLevel) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d0dbc99083440df2, []int{2}
+	return fileDescriptor_d0dbc99083440df2, []int{4}
 }
 func (m *AuthenticationPolicyPortLevel) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -272,7 +382,7 @@ func (m *AuthenticationPolicyExtend) Reset()         { *m = AuthenticationPolicy
 func (m *AuthenticationPolicyExtend) String() string { return proto.CompactTextString(m) }
 func (*AuthenticationPolicyExtend) ProtoMessage()    {}
 func (*AuthenticationPolicyExtend) Descriptor() ([]byte, []int) {
-	return fileDescriptor_d0dbc99083440df2, []int{3}
+	return fileDescriptor_d0dbc99083440df2, []int{5}
 }
 func (m *AuthenticationPolicyExtend) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
@@ -316,6 +426,8 @@ func (m *AuthenticationPolicyExtend) GetValue() string {
 }
 
 func init() {
+	proto.RegisterType((*AuthenticationPolicyToClient)(nil), "dubbo.apache.org.v1alpha1.AuthenticationPolicyToClient")
+	proto.RegisterType((*AuthenticationSpecToClient)(nil), "dubbo.apache.org.v1alpha1.AuthenticationSpecToClient")
 	proto.RegisterType((*AuthenticationPolicy)(nil), "dubbo.apache.org.v1alpha1.AuthenticationPolicy")
 	proto.RegisterType((*AuthenticationPolicySelector)(nil), "dubbo.apache.org.v1alpha1.AuthenticationPolicySelector")
 	proto.RegisterType((*AuthenticationPolicyPortLevel)(nil), "dubbo.apache.org.v1alpha1.AuthenticationPolicyPortLevel")
@@ -325,31 +437,129 @@ func init() {
 func init() { proto.RegisterFile("authentication.proto", fileDescriptor_d0dbc99083440df2) }
 
 var fileDescriptor_d0dbc99083440df2 = []byte{
-	// 377 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x93, 0xcf, 0x4a, 0xeb, 0x40,
-	0x14, 0xc6, 0x99, 0xa6, 0xff, 0x72, 0xca, 0xbd, 0x5c, 0x86, 0x72, 0xc9, 0x2d, 0xd7, 0x10, 0x82,
-	0x8b, 0xae, 0x02, 0x55, 0x44, 0xb7, 0x16, 0xbb, 0x10, 0x45, 0x43, 0x8a, 0xee, 0xa7, 0xd3, 0xc1,
-	0x86, 0x8e, 0x33, 0x43, 0x32, 0x2d, 0xf6, 0x2d, 0x7c, 0x2c, 0x97, 0xee, 0xdd, 0x48, 0x9f, 0x44,
-	0x32, 0x4d, 0x9b, 0x14, 0x6c, 0xa1, 0xb8, 0x9b, 0xf3, 0xcd, 0x39, 0xbf, 0x7c, 0xcc, 0xf9, 0x02,
-	0x6d, 0x32, 0xd3, 0x13, 0x26, 0x74, 0x4c, 0x89, 0x8e, 0xa5, 0x08, 0x54, 0x22, 0xb5, 0xc4, 0xff,
-	0xc6, 0xb3, 0xd1, 0x48, 0x06, 0x44, 0x11, 0x3a, 0x61, 0x81, 0x4c, 0x9e, 0x82, 0x79, 0x8f, 0x70,
-	0x35, 0x21, 0x3d, 0xff, 0x03, 0x41, 0xfb, 0x72, 0x6b, 0x26, 0x94, 0x3c, 0xa6, 0x0b, 0xfc, 0x17,
-	0xea, 0x84, 0x66, 0xb5, 0x83, 0x3c, 0xd4, 0xb5, 0xa3, 0xbc, 0xc2, 0x43, 0x68, 0xa6, 0x8c, 0x33,
-	0xaa, 0x65, 0xe2, 0x54, 0x3c, 0xab, 0xdb, 0x3a, 0x39, 0x0f, 0x76, 0xe2, 0x83, 0xef, 0xd0, 0xc3,
-	0x7c, 0x3c, 0xda, 0x80, 0xf0, 0x23, 0xd8, 0x4a, 0x26, 0xfa, 0x96, 0xcd, 0x19, 0x77, 0x2c, 0x43,
-	0xbd, 0x38, 0x90, 0x1a, 0xae, 0xe7, 0xa3, 0x02, 0xe5, 0xbf, 0x5a, 0xf0, 0x7f, 0x9f, 0x05, 0xec,
-	0x02, 0x08, 0xf2, 0xcc, 0x52, 0x45, 0x28, 0x4b, 0x1d, 0xe4, 0x59, 0x5d, 0x3b, 0x2a, 0x29, 0xf8,
-	0x18, 0x7e, 0x09, 0xa9, 0xef, 0x8a, 0x96, 0x8a, 0x69, 0xd9, 0x16, 0x71, 0x07, 0x9a, 0xb1, 0xea,
-	0x73, 0x49, 0xa7, 0xa9, 0x71, 0x6f, 0x47, 0x9b, 0x1a, 0x7b, 0xd0, 0x12, 0x52, 0x5f, 0xaf, 0xaf,
-	0xab, 0xe6, 0xba, 0x2c, 0x65, 0x1e, 0x54, 0x12, 0x0b, 0x1a, 0x2b, 0xc2, 0x53, 0xa7, 0xb6, 0xf2,
-	0x50, 0x28, 0xb9, 0x87, 0xb0, 0x68, 0xa9, 0x6f, 0x3c, 0x14, 0x22, 0xbe, 0x87, 0x06, 0x7b, 0xd1,
-	0x4c, 0x8c, 0x53, 0xa7, 0x61, 0x1e, 0xf0, 0xec, 0xc0, 0x07, 0x1c, 0x98, 0xe9, 0x68, 0x4d, 0xc1,
-	0x0f, 0x00, 0x42, 0xea, 0x41, 0xce, 0x6c, 0xfe, 0x84, 0x59, 0x02, 0xf9, 0x37, 0x70, 0xb4, 0x77,
-	0x7d, 0x18, 0x43, 0x35, 0x5b, 0xa0, 0x89, 0x5d, 0x2d, 0x32, 0xe7, 0x52, 0x18, 0x2b, 0xe5, 0x30,
-	0xfa, 0x57, 0xd0, 0xd9, 0xfd, 0x59, 0xfc, 0x07, 0xac, 0x29, 0x5b, 0xe4, 0xf9, 0xcd, 0x8e, 0xb8,
-	0x0d, 0xb5, 0x39, 0xe1, 0x33, 0x96, 0x63, 0x56, 0x45, 0xff, 0xf7, 0xdb, 0xd2, 0x45, 0xef, 0x4b,
-	0x17, 0x7d, 0x2e, 0x5d, 0x14, 0xa2, 0x51, 0xdd, 0xfc, 0x35, 0xa7, 0x5f, 0x01, 0x00, 0x00, 0xff,
-	0xff, 0x36, 0x39, 0xa9, 0x31, 0x4d, 0x03, 0x00, 0x00,
+	// 438 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x94, 0xc1, 0x8e, 0xd3, 0x30,
+	0x10, 0x86, 0x71, 0xd2, 0x76, 0x9b, 0xa9, 0x90, 0x90, 0x55, 0xa1, 0xb0, 0x82, 0x28, 0x8a, 0x38,
+	0xe4, 0x14, 0x69, 0x17, 0xad, 0xe0, 0xca, 0xc2, 0x1e, 0x56, 0x20, 0x88, 0x5c, 0xe0, 0xee, 0xba,
+	0x16, 0x8d, 0x6a, 0x6c, 0x2b, 0x71, 0x2b, 0x2a, 0x5e, 0x81, 0x03, 0x47, 0x1e, 0x89, 0x23, 0x77,
+	0x2e, 0xa8, 0xbc, 0x08, 0x8a, 0x9b, 0x34, 0x09, 0x6a, 0x11, 0x15, 0x7b, 0x8b, 0x7f, 0xcf, 0x7c,
+	0xfe, 0xc7, 0x33, 0x0e, 0x8c, 0xe9, 0xd2, 0xcc, 0xb9, 0x34, 0x19, 0xa3, 0x26, 0x53, 0x32, 0xd1,
+	0xb9, 0x32, 0x0a, 0xdf, 0x9b, 0x2d, 0xa7, 0x53, 0x95, 0x50, 0x4d, 0xd9, 0x9c, 0x27, 0x2a, 0x7f,
+	0x9f, 0xac, 0xce, 0xa8, 0xd0, 0x73, 0x7a, 0x16, 0x7d, 0x82, 0xfb, 0x4f, 0x3b, 0x29, 0xa9, 0x12,
+	0x19, 0x5b, 0xbf, 0x51, 0xcf, 0x44, 0xc6, 0xa5, 0xc1, 0x77, 0xc0, 0x5d, 0xf0, 0xb5, 0x8f, 0x42,
+	0x14, 0x7b, 0xa4, 0xfc, 0xc4, 0xd7, 0xd0, 0x2b, 0x34, 0x67, 0xbe, 0x13, 0xa2, 0x78, 0x74, 0x7e,
+	0x91, 0x1c, 0x64, 0x27, 0x5d, 0xf0, 0x44, 0x73, 0x56, 0x63, 0x89, 0x45, 0x44, 0x9f, 0x11, 0x9c,
+	0x1e, 0x0e, 0xc2, 0x77, 0x61, 0x40, 0x59, 0xa9, 0x56, 0xc7, 0x57, 0x2b, 0xfc, 0x0e, 0x3c, 0xad,
+	0x72, 0xf3, 0x92, 0xaf, 0xb8, 0xf0, 0x9d, 0xd0, 0x8d, 0x47, 0xe7, 0x4f, 0xfe, 0xd9, 0xc6, 0xb6,
+	0xbe, 0xb4, 0xce, 0x27, 0x0d, 0x2a, 0xfa, 0x81, 0x60, 0xbc, 0x2f, 0xf8, 0xa0, 0x91, 0x09, 0x0c,
+	0x0b, 0x2e, 0x38, 0x33, 0x2a, 0xaf, 0x7c, 0x3c, 0x3e, 0xd2, 0xc7, 0xa4, 0x4a, 0x27, 0x3b, 0x50,
+	0xb7, 0x3a, 0xf7, 0xe6, 0xaa, 0xfb, 0xe2, 0xee, 0x6f, 0x75, 0x6d, 0x01, 0x07, 0x00, 0x92, 0x7e,
+	0xe0, 0x85, 0xa6, 0x8c, 0x17, 0x3e, 0x0a, 0xdd, 0xd8, 0x23, 0x2d, 0x05, 0x3f, 0x84, 0xdb, 0x52,
+	0x99, 0x57, 0x4d, 0x88, 0x63, 0x43, 0xba, 0x22, 0x3e, 0x85, 0x61, 0xa6, 0x2f, 0x85, 0x62, 0x8b,
+	0xc2, 0xba, 0xf7, 0xc8, 0x6e, 0x8d, 0x43, 0x18, 0x49, 0x65, 0xae, 0xeb, 0xed, 0x9e, 0xdd, 0x6e,
+	0x4b, 0xa5, 0x07, 0x9d, 0x67, 0x92, 0x65, 0x9a, 0x8a, 0xc2, 0xef, 0x6f, 0x3d, 0x34, 0x4a, 0xe5,
+	0x21, 0x6d, 0x42, 0x06, 0x3b, 0x0f, 0x8d, 0x88, 0x5f, 0xc3, 0x09, 0xff, 0x68, 0xb8, 0x9c, 0x15,
+	0xfe, 0x89, 0xbd, 0xc0, 0x8b, 0x23, 0x2f, 0xf0, 0xca, 0x66, 0x93, 0x9a, 0x82, 0xdf, 0x02, 0x48,
+	0x65, 0xae, 0x2a, 0xe6, 0xf0, 0x7f, 0x98, 0x2d, 0x50, 0xf4, 0x02, 0x1e, 0xfc, 0xb5, 0x7d, 0x18,
+	0x43, 0xaf, 0x6c, 0xa0, 0x1d, 0xbb, 0x3e, 0xb1, 0xdf, 0xad, 0x61, 0x74, 0xda, 0xc3, 0x18, 0x3d,
+	0xff, 0xf3, 0x2d, 0xb5, 0x8f, 0xdd, 0xf3, 0x8e, 0xc7, 0xd0, 0x5f, 0x51, 0xb1, 0xe4, 0x15, 0x66,
+	0xbb, 0xb8, 0xc4, 0xdf, 0x36, 0x01, 0xfa, 0xbe, 0x09, 0xd0, 0xcf, 0x4d, 0x80, 0xbe, 0xfe, 0x0a,
+	0x6e, 0xa5, 0x68, 0x3a, 0xb0, 0x7f, 0x91, 0x47, 0xbf, 0x03, 0x00, 0x00, 0xff, 0xff, 0x5f, 0x05,
+	0xef, 0xb0, 0x5d, 0x04, 0x00, 0x00,
+}
+
+func (m *AuthenticationPolicyToClient) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthenticationPolicyToClient) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AuthenticationPolicyToClient) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	if m.Spec != nil {
+		{
+			size, err := m.Spec.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintAuthentication(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.Key) > 0 {
+		i -= len(m.Key)
+		copy(dAtA[i:], m.Key)
+		i = encodeVarintAuthentication(dAtA, i, uint64(len(m.Key)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *AuthenticationSpecToClient) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *AuthenticationSpecToClient) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *AuthenticationSpecToClient) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.XXX_unrecognized != nil {
+		i -= len(m.XXX_unrecognized)
+		copy(dAtA[i:], m.XXX_unrecognized)
+	}
+	if len(m.PortLevel) > 0 {
+		for iNdEx := len(m.PortLevel) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.PortLevel[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintAuthentication(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	if len(m.Action) > 0 {
+		i -= len(m.Action)
+		copy(dAtA[i:], m.Action)
+		i = encodeVarintAuthentication(dAtA, i, uint64(len(m.Action)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
 }
 
 func (m *AuthenticationPolicy) Marshal() (dAtA []byte, err error) {
@@ -614,6 +824,48 @@ func encodeVarintAuthentication(dAtA []byte, offset int, v uint64) int {
 	dAtA[offset] = uint8(v)
 	return base
 }
+func (m *AuthenticationPolicyToClient) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovAuthentication(uint64(l))
+	}
+	if m.Spec != nil {
+		l = m.Spec.Size()
+		n += 1 + l + sovAuthentication(uint64(l))
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
+func (m *AuthenticationSpecToClient) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Action)
+	if l > 0 {
+		n += 1 + l + sovAuthentication(uint64(l))
+	}
+	if len(m.PortLevel) > 0 {
+		for _, e := range m.PortLevel {
+			l = e.Size()
+			n += 1 + l + sovAuthentication(uint64(l))
+		}
+	}
+	if m.XXX_unrecognized != nil {
+		n += len(m.XXX_unrecognized)
+	}
+	return n
+}
+
 func (m *AuthenticationPolicy) Size() (n int) {
 	if m == nil {
 		return 0
@@ -746,6 +998,242 @@ func sovAuthentication(x uint64) (n int) {
 }
 func sozAuthentication(x uint64) (n int) {
 	return sovAuthentication(uint64((x << 1) ^ uint64((int64(x) >> 63))))
+}
+func (m *AuthenticationPolicyToClient) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAuthentication
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: AuthenticationPolicyToClient: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: AuthenticationPolicyToClient: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuthentication
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAuthentication
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthAuthentication
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Key = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Spec", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuthentication
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthAuthentication
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthAuthentication
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Spec == nil {
+				m.Spec = &AuthenticationSpecToClient{}
+			}
+			if err := m.Spec.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAuthentication(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthAuthentication
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *AuthenticationSpecToClient) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowAuthentication
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: AuthenticationSpecToClient: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: AuthenticationSpecToClient: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Action", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuthentication
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthAuthentication
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthAuthentication
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Action = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field PortLevel", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowAuthentication
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthAuthentication
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthAuthentication
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.PortLevel = append(m.PortLevel, &AuthenticationPolicyPortLevel{})
+			if err := m.PortLevel[len(m.PortLevel)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipAuthentication(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthAuthentication
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.XXX_unrecognized = append(m.XXX_unrecognized, dAtA[iNdEx:iNdEx+skippy]...)
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
 }
 func (m *AuthenticationPolicy) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)

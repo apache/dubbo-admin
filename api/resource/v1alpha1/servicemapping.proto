@@ -21,6 +21,11 @@ package dubbo.apache.org.v1alpha1;
 
 option java_multiple_files = true;
 
+message ServiceNameMappingToClient {
+  string key = 1;
+  ServiceNameMapping spec = 2;
+}
+
 message ServiceNameMapping {
   string interfaceName = 1;
   repeated string applicationNames = 2;

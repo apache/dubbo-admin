@@ -24,6 +24,10 @@ import (
 	"time"
 
 	"github.com/apache/dubbo-admin/api/mesh"
+	cert "github.com/apache/dubbo-admin/pkg/core/cert/provider"
+	endpoint2 "github.com/apache/dubbo-admin/pkg/core/tools/endpoint"
+	"google.golang.org/grpc/peer"
+
 	api "github.com/apache/dubbo-admin/api/resource/v1alpha1"
 	dubbo_cp "github.com/apache/dubbo-admin/pkg/config/app/dubbo-cp"
 	apisv1alpha1 "github.com/apache/dubbo-admin/pkg/core/gen/apis/dubbo.apache.org/v1alpha1"
@@ -42,8 +46,11 @@ type RegisterRequest struct {
 type Snp struct {
 	mesh.UnimplementedServiceNameMappingServiceServer
 
-	queue      chan *RegisterRequest
-	config     *dubbo_cp.Config
+	queue       chan *RegisterRequest
+	config      *dubbo_cp.Config
+	CertClient  cert.Client
+	CertStorage *cert.CertStorage
+
 	KubeClient versioned.Interface
 }
 
@@ -61,6 +68,16 @@ func (s *Snp) RegisterServiceAppMapping(ctx context.Context, req *mesh.ServiceMa
 	interfaces := req.GetInterfaceNames()
 	applicationName := req.GetApplicationName()
 
+	p, _ := peer.FromContext(ctx)
+	_, err := endpoint2.ExactEndpoint(ctx, s.CertStorage, s.config, s.CertClient)
+	if err != nil {
+		logger.Sugar().Warnf("[ServiceMapping] Failed to exact endpoint from context: %v. RemoteAddr: %s", err, p.Addr.String())
+		return &mesh.ServiceMappingResponse{
+			Success: false,
+			Message: err.Error(),
+		}, nil
+	}
+
 	registerReq := &RegisterRequest{ConfigsUpdated: map[model.ConfigKey]map[string]struct{}{}}
 	for _, interfaceName := range interfaces {
 		key := model.ConfigKey{
@@ -74,7 +91,10 @@ func (s *Snp) RegisterServiceAppMapping(ctx context.Context, req *mesh.ServiceMa
 	}
 	s.queue <- registerReq
 
-	return &mesh.ServiceMappingResponse{}, nil
+	return &mesh.ServiceMappingResponse{
+		Success: true,
+		Message: "success",
+	}, nil
 }
 
 func NewSnp(config *dubbo_cp.Config, kubeClient versioned.Interface) *Snp {
@@ -108,7 +128,7 @@ func (s *Snp) push(req *RegisterRequest) {
 		}
 		for i := 0; i < 3; i++ {
 			if err := tryRegister(s.KubeClient, key.Namespace, key.Name, appNames); err != nil {
-				logger.Errorf(" register [%v] failed: %v, try again later", key, err)
+				logger.Errorf("[ServiceMapping] register [%v] failed: %v, try again later", key, err)
 			} else {
 				break
 			}
@@ -143,7 +163,7 @@ func (s *Snp) debounce(stopCh <-chan struct{}, pushFn func(req *RegisterRequest)
 				pushCounter++
 
 				if req.ConfigsUpdated != nil {
-					logger.Infof(" Push debounce stable[%d] %d for config %s: %v since last change, %v since last push",
+					logger.Infof("[ServiceMapping] Push debounce stable[%d] %d for config %s: %v since last change, %v since last push",
 						pushCounter, debouncedEvents, configsUpdated(req),
 						quietTime, eventDelay)
 				}
@@ -226,10 +246,10 @@ func getOrCreateSnp(kubeClient versioned.Interface, namespace string, interfaceN
 }
 
 func tryRegister(kubeClient versioned.Interface, namespace, interfaceName string, newApps []string) error {
-	logger.Debugf("try register [%s] in namespace [%s] with [%v] apps", interfaceName, namespace, len(newApps))
+	logger.Debugf("[ServiceMapping] try register [%s] in namespace [%s] with [%v] apps", interfaceName, namespace, len(newApps))
 	snp, created, err := getOrCreateSnp(kubeClient, namespace, interfaceName, newApps)
 	if created {
-		logger.Debugf("register success, revision:%s", snp.ResourceVersion)
+		logger.Debugf("[ServiceMapping] register success, revision:%s", snp.ResourceVersion)
 		return nil
 	}
 	if err != nil {
@@ -245,7 +265,7 @@ func tryRegister(kubeClient versioned.Interface, namespace, interfaceName string
 		previousAppNames[newApp] = struct{}{}
 	}
 	if len(previousAppNames) == previousLen {
-		logger.Debugf("[%s] has been registered: %v", interfaceName, newApps)
+		logger.Debugf("[ServiceMapping] [%s] has been registered: %v", interfaceName, newApps)
 		return nil
 	}
 
@@ -259,7 +279,7 @@ func tryRegister(kubeClient versioned.Interface, namespace, interfaceName string
 	if err != nil {
 		return errors.Wrap(err, " update failed")
 	}
-	logger.Debugf("register update success, revision:%s", snp.ResourceVersion)
+	logger.Debugf("[ServiceMapping] register update success, revision:%s", snp.ResourceVersion)
 	return nil
 }
 

@@ -29,6 +29,8 @@ func Setup(rt core_runtime.Runtime) error {
 		return nil
 	}
 	snp := server.NewSnp(rt.Config(), rt.KubeClient().DubboClientSet())
+	snp.CertStorage = rt.CertStorage()
+	snp.CertClient = rt.CertClient()
 	mesh.RegisterServiceNameMappingServiceServer(rt.GrpcServer().SecureServer, snp)
 	mesh.RegisterServiceNameMappingServiceServer(rt.GrpcServer().PlainServer, snp)
 	if err := rt.Add(snp); err != nil {

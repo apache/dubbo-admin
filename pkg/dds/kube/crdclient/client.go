@@ -102,7 +102,7 @@ func getObjectMetadata(config model.Config) metav1.ObjectMeta {
 func (cl *Client) HasSynced() bool {
 	for kind, ctl := range cl.kinds {
 		if !ctl.informer.HasSynced() {
-			logger.Sugar().Infof("controller %q is syncing...", kind)
+			logger.Sugar().Infof("[DDS] controller %q is syncing...", kind)
 			return false
 		}
 	}
@@ -112,16 +112,16 @@ func (cl *Client) HasSynced() bool {
 // Start the queue and all informers. Callers should  wait for HasSynced() before depending on results.
 func (cl *Client) Start(stop <-chan struct{}) error {
 	t0 := time.Now()
-	logger.Sugar().Info("Starting Rule K8S CRD controller")
+	logger.Sugar().Info("[DDS] Starting Rule K8S CRD controller")
 
 	go func() {
 		cache.WaitForCacheSync(stop, cl.HasSynced)
-		logger.Sugar().Info("Rule K8S CRD controller synced", time.Since(t0))
+		logger.Sugar().Info("[DDS] Rule K8S CRD controller synced", time.Since(t0))
 		cl.queue.Run(stop)
 	}()
 
 	<-stop
-	logger.Sugar().Info("controller terminated")
+	logger.Sugar().Info("[DDS] controller terminated")
 	return nil
 }
 
@@ -141,7 +141,7 @@ func (cl *Client) checkReadyForEvents(curr interface{}) error {
 	}
 	_, err := cache.DeletionHandlingMetaNamespaceKeyFunc(curr)
 	if err != nil {
-		logger.Sugar().Infof("Error retrieving key: %v", err)
+		logger.Sugar().Infof("[DDS] Error retrieving key: %v", err)
 	}
 	return nil
 }
@@ -157,7 +157,7 @@ func knownCRDs(crdClient apiextensionsclient.Interface) map[string]struct{} {
 		if err == nil {
 			break
 		}
-		logger.Sugar().Errorf("failed to list CRDs: %v", err)
+		logger.Sugar().Errorf("[DDS] failed to list CRDs: %v", err)
 		time.Sleep(delay)
 		delay *= 2
 		if delay > maxDelay {
@@ -198,13 +198,13 @@ func (cl *Client) Schemas() collection.Schemas {
 func (cl *Client) Get(typ model.GroupVersionKind, name, namespace string) *model.Config {
 	h, f := cl.kinds[typ]
 	if !f {
-		logger.Sugar().Warnf("unknown type: %s", typ)
+		logger.Sugar().Warnf("[DDS] unknown type: %s", typ)
 		return nil
 	}
 
 	obj, err := h.lister(namespace).Get(name)
 	if err != nil {
-		logger.Sugar().Warnf("error on get %v/%v: %v", name, namespace, err)
+		logger.Sugar().Warnf("[DDS] error on get %v/%v: %v", name, namespace, err)
 		return nil
 	}
 
@@ -215,7 +215,7 @@ func (cl *Client) Get(typ model.GroupVersionKind, name, namespace string) *model
 func TranslateObject(r runtime.Object, gvk model.GroupVersionKind, domainSuffix string) *model.Config {
 	translateFunc, f := translationMap[gvk]
 	if !f {
-		logger.Sugar().Errorf("unknown type %v", gvk)
+		logger.Sugar().Errorf("[DDS] unknown type %v", gvk)
 		return nil
 	}
 	c := translateFunc(r)
@@ -248,7 +248,7 @@ func NewForSchemas(client *client.KubeClient, domainSuffix string, schemas colle
 			}
 			out.kinds[s.Resource().GroupVersionKind()] = createCacheHandler(out, s, i)
 		} else {
-			logger.Sugar().Warnf("Skipping CRD %v as it is not present", s.Resource().GroupVersionKind())
+			logger.Sugar().Warnf("[DDS] Skipping CRD %v as it is not present", s.Resource().GroupVersionKind())
 		}
 	}
 

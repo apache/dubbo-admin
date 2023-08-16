@@ -51,13 +51,12 @@ func NewHandler(storage *storage.Storage, rootNamespace string, cache ConfigStor
 	}
 }
 
-// nolint
 func (p *PushContext) NotifyWithIndex(schema collection.Schema) error {
 	gvk := schema.Resource().GroupVersionKind()
 	configs, err := p.cache.List(gvk, NamespaceAll)
 	data := make([]model.Config, 0)
 	if err != nil {
-		logger.Sugar().Error("fail to get the cache from client-go Index")
+		logger.Sugar().Error("[DDS] fail to get the cache from client-go Index")
 		return err
 	}
 	if gvk.String() == gvks.Authorization {
@@ -98,21 +97,21 @@ func (p *PushContext) NotifyWithIndex(schema collection.Schema) error {
 func authorization(config model.Config, rootNamespace string) model.Config {
 	deepCopy := config.DeepCopy()
 	policy := deepCopy.Spec.(*api.AuthorizationPolicy)
-	if rootNamespace != config.Namespace {
-		if len(policy.Rules) == 0 {
-			policy.Rules = append(policy.Rules, &api.AuthorizationPolicyRule{
-				To: &api.AuthorizationPolicyTarget{
-					Namespaces: []string{config.Namespace},
-				},
-			})
-		} else {
-			for _, rule := range policy.Rules {
-				if rule.To != nil {
-					rule.To = &api.AuthorizationPolicyTarget{}
-				}
-				if !slices.Contains(rule.To.Namespaces, config.Namespace) {
-					rule.To.Namespaces = append(rule.To.Namespaces, config.Namespace)
-				}
+	if rootNamespace == deepCopy.Namespace {
+		return deepCopy
+	}
+	if policy.GetRules() == nil {
+		policy.Rules = []*api.AuthorizationPolicyRule{}
+		policy.Rules = append(policy.Rules, &api.AuthorizationPolicyRule{
+			To: &api.AuthorizationPolicyTarget{
+				Namespaces: []string{deepCopy.Namespace},
+			},
+		})
+	} else {
+		for _, rule := range policy.Rules {
+			rule.To = &api.AuthorizationPolicyTarget{}
+			if !slices.Contains(rule.To.Namespaces, deepCopy.Namespace) {
+				rule.To.Namespaces = append(rule.To.Namespaces, deepCopy.Namespace)
 			}
 		}
 	}
@@ -123,7 +122,8 @@ func authentication(config model.Config, rootNamespace string) model.Config {
 	deepCopy := config.DeepCopy()
 	policy := deepCopy.Spec.(*api.AuthenticationPolicy)
 	if rootNamespace != config.Namespace {
-		if len(policy.Selector) == 0 {
+		if policy.GetSelector() == nil {
+			policy.Selector = []*api.AuthenticationPolicySelector{}
 			policy.Selector = append(policy.Selector, &api.AuthenticationPolicySelector{
 				Namespaces: []string{config.Namespace},
 			})
