@@ -42,10 +42,10 @@ var (
 )
 
 type Config struct {
-	// InitialDiscoveryRequests is a list of resources to watch at first, represented as URLs (for new XDS resource naming)
+	// InitialDiscoveryRequests is a list of resources to watch at first, represented as URLs (for new DDS resource naming)
 	// or type URLs.
 	InitialDiscoveryRequest []*dds.ObserveRequest
-	// BackoffPolicy determines the reconnect policy. Based on MCP ddsclient.
+	// BackoffPolicy determines the reconnect policy. Based on ddsclient.
 	BackoffPolicy backoff.BackOff
 	GrpcOpts      []grpc.DialOption
 
@@ -87,7 +87,7 @@ type DDSC struct {
 
 	mutex sync.RWMutex
 
-	// RecvWg is for letting goroutines know when the goroutine handling the ADS stream finishes.
+	// RecvWg is for letting goroutines know when the goroutine handling the DDS stream finishes.
 	RecvWg sync.WaitGroup
 
 	cfg *Config

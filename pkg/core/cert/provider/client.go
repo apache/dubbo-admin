@@ -80,7 +80,7 @@ func (c *ClientImpl) UpdateAuthorityCert(cert string, pri string, namespace stri
 	}
 
 	if string(s.Data["cert.pem"]) == cert && string(s.Data["pri.pem"]) == pri {
-		logger.Sugar().Info("[Authority] Ca secret in kubernetes is already the newest vesion.")
+		logger.Sugar().Info("[Authority] Ca secret in kubernetes is already the newest version.")
 		return
 	}
 
