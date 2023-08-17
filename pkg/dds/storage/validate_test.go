@@ -84,14 +84,15 @@ func TestAuthenticationSelect_Empty(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
-			assert.Equal(t, 1, len(authentication.PortLevel))
-			assert.Equal(t, "DENY", authentication.PortLevel[0].Action)
+			assert.Equal(t, "name/ns", authentication.Key)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
+			assert.Equal(t, 1, len(authentication.Spec.PortLevel))
+			assert.Equal(t, "DENY", authentication.Spec.PortLevel[0].Action)
 		}
 	}
 }
@@ -147,12 +148,13 @@ func TestAuthenticationSelect_NoSelector(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "name/ns", authentication.Key)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 }
@@ -213,12 +215,12 @@ func TestAuthenticationSelect_Namespace(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 
@@ -286,12 +288,12 @@ func TestAuthenticationSelect_EndpointNil(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 }
@@ -352,7 +354,7 @@ func TestAuthenticationSelect_NotNamespace(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -375,12 +377,12 @@ func TestAuthenticationSelect_NotNamespace(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 }
@@ -439,7 +441,7 @@ func TestAuthenticationSelect_IpBlocks_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -461,7 +463,7 @@ func TestAuthenticationSelect_IpBlocks_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -524,12 +526,12 @@ func TestAuthenticationSelect_IpBlocks(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 
@@ -547,7 +549,7 @@ func TestAuthenticationSelect_IpBlocks(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -611,12 +613,12 @@ func TestAuthenticationSelect_NotIpBlocks_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 
@@ -634,12 +636,12 @@ func TestAuthenticationSelect_NotIpBlocks_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 }
@@ -698,7 +700,7 @@ func TestAuthenticationSelect_Principals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -721,12 +723,12 @@ func TestAuthenticationSelect_Principals(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 
@@ -742,12 +744,12 @@ func TestAuthenticationSelect_Principals(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 }
@@ -806,12 +808,12 @@ func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 
@@ -829,7 +831,7 @@ func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -850,7 +852,7 @@ func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -921,12 +923,12 @@ func TestAuthenticationSelect_Extends(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 
@@ -944,7 +946,7 @@ func TestAuthenticationSelect_Extends(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -965,7 +967,7 @@ func TestAuthenticationSelect_Extends(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -1036,7 +1038,7 @@ func TestAuthenticationSelect_NotExtends(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -1061,12 +1063,12 @@ func TestAuthenticationSelect_NotExtends(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 }
@@ -1119,12 +1121,12 @@ func TestAuthorization_Empty(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 }
@@ -1185,12 +1187,12 @@ func TestAuthorization_Namespace(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1211,7 +1213,7 @@ func TestAuthorization_Namespace(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1235,7 +1237,7 @@ func TestAuthorization_Namespace(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1307,12 +1309,12 @@ func TestAuthorization_NotNamespace(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1333,7 +1335,7 @@ func TestAuthorization_NotNamespace(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1357,12 +1359,12 @@ func TestAuthorization_NotNamespace(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 }
@@ -1427,12 +1429,12 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1451,7 +1453,7 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1475,7 +1477,7 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1497,7 +1499,7 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1567,7 +1569,7 @@ func TestAuthorization_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1591,7 +1593,7 @@ func TestAuthorization_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1613,7 +1615,7 @@ func TestAuthorization_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1683,12 +1685,12 @@ func TestAuthorization_NotIPBlocks(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1707,12 +1709,12 @@ func TestAuthorization_NotIPBlocks(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1731,7 +1733,7 @@ func TestAuthorization_NotIPBlocks(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1801,12 +1803,12 @@ func TestAuthorization_NotIPBlocks_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1825,12 +1827,12 @@ func TestAuthorization_NotIPBlocks_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1847,12 +1849,12 @@ func TestAuthorization_NotIPBlocks_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 }
@@ -1917,12 +1919,12 @@ func TestAuthorization_Principals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1941,12 +1943,12 @@ func TestAuthorization_Principals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1965,7 +1967,7 @@ func TestAuthorization_Principals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1987,7 +1989,7 @@ func TestAuthorization_Principals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -2057,12 +2059,12 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -2081,12 +2083,12 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -2105,7 +2107,7 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -2129,7 +2131,7 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -2151,12 +2153,12 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 }
@@ -2228,12 +2230,12 @@ func TestAuthorization_Extends(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -2254,7 +2256,7 @@ func TestAuthorization_Extends(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -2276,7 +2278,7 @@ func TestAuthorization_Extends(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -2353,12 +2355,12 @@ func TestAuthorization_NotExtends(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -2379,7 +2381,7 @@ func TestAuthorization_NotExtends(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -2401,12 +2403,12 @@ func TestAuthorization_NotExtends(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 }

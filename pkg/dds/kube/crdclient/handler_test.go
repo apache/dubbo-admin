@@ -186,7 +186,49 @@ func TestAuthorization(t *testing.T) {
 	})
 }
 
-// nolint
+func TestAuthorizationNilField(t *testing.T) {
+	configName := "name"
+	configNamespace := "namespace"
+	c := collections.DubboCAV1Alpha1Authorization
+	name := c.Resource().Kind()
+	t.Run(name, func(t *testing.T) {
+		r := c.Resource()
+		configMeta := model.Meta{
+			GroupVersionKind: r.GroupVersionKind(),
+			Name:             configName,
+		}
+		if !r.IsClusterScoped() {
+			configMeta.Namespace = configNamespace
+		}
+
+		pb, err := r.NewInstance()
+		if err != nil {
+			t.Fatal(err)
+		}
+		authorizationPolicy := pb.(*dubbo_apache_org_v1alpha1.AuthorizationPolicy)
+		authorizationPolicy.Action = "DENY"
+		authorizationPolicy.Rules = []*dubbo_apache_org_v1alpha1.AuthorizationPolicyRule{
+			{
+				From: &dubbo_apache_org_v1alpha1.AuthorizationPolicySource{
+					Namespaces: []string{"dubbo-system"},
+				},
+				To: &dubbo_apache_org_v1alpha1.AuthorizationPolicyTarget{
+					Namespaces: []string{"ns"},
+				},
+			},
+		}
+
+		config := model.Config{
+			Meta: configMeta,
+			Spec: authorizationPolicy,
+		}
+
+		m := authorization(config, "dubbo-system")
+		afterPolicy := m.Spec.(*dubbo_apache_org_v1alpha1.AuthorizationPolicy)
+		assert.Equal(t, afterPolicy.Rules[0].To.Namespaces[0], configNamespace)
+	})
+}
+
 func TestNotifyWithIndex(t *testing.T) {
 	store := makeClient(t, collections.Rule)
 	configName := "name"

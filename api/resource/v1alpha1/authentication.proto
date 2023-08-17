@@ -21,6 +21,16 @@ package dubbo.apache.org.v1alpha1;
 
 option java_multiple_files = true;
 
+message AuthenticationPolicyToClient {
+  string key = 1;
+  AuthenticationSpecToClient spec = 2;
+}
+
+message AuthenticationSpecToClient {
+  string action = 1;
+  repeated AuthenticationPolicyPortLevel portLevel = 2;
+}
+
 message AuthenticationPolicy {
   string action = 1;
   repeated AuthenticationPolicySelector selector = 2;

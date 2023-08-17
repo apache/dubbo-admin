@@ -30,6 +30,7 @@ security:
   enable-oidc-check: true
   webhook-port: 30080
   webhook-allow-on-err: true
+  is-trust-anyone: false
 kube-config:
   namespace: dubbo-system
   service-name: dubbo-cp

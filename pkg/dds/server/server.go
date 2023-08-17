@@ -64,19 +64,19 @@ func (s *DdsServer) Observe(stream dds.RuleService_ObserveServer) error {
 
 	p, ok := peer.FromContext(stream.Context())
 	if !ok {
-		logger.Sugar().Errorf("failed to get peer from context")
+		logger.Sugar().Errorf("[DDS] failed to get peer from context")
 
 		return fmt.Errorf("failed to get peer from context")
 	}
 
 	endpoints, err := endpoint2.ExactEndpoint(stream.Context(), s.CertStorage, s.Config, s.CertClient)
 	if err != nil {
-		logger.Sugar().Errorf("failed to get endpoint from context: %v. RemoteAddr: %s", err, p.Addr)
+		logger.Sugar().Errorf("[DDS] failed to get endpoint from context: %v. RemoteAddr: %s", err, p.Addr)
 
 		return err
 	}
 	c.endpoint = endpoints
-	logger.Sugar().Infof("New observe storage from %s", endpoints)
+	logger.Sugar().Infof("[DDS] New observe storage from %s", endpoints)
 	s.Storage.Connected(endpoints, c)
 
 	<-c.stopChan
@@ -114,7 +114,7 @@ func (c *GrpcEndpointConnection) Send(targetRule *storage.VersionedRule, cr *sto
 
 	select {
 	case <-t.C:
-		logger.Infof("Timeout writing %s", c.endpoint.ID)
+		logger.Infof("[DDS] Timeout writing %s", c.endpoint.ID)
 		return status.Errorf(codes.DeadlineExceeded, "timeout sending")
 	case err := <-errChan:
 		if err == nil {
