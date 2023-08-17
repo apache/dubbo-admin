@@ -121,6 +121,7 @@ func New(discoveryAddr string, opts *Config) (*DDSC, error) {
 }
 
 // Dial connects to a dds server
+// nolint
 func (a *DDSC) Dial() error {
 	opts := a.cfg
 	var err error
