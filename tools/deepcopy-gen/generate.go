@@ -26,76 +26,45 @@ import (
 	"os"
 	"text/template"
 
-	"gopkg.in/yaml.v2"
+	"github.com/apache/dubbo-admin/pkg/core/schema/collections"
 )
 
 type ConfigData struct {
-	ProtoResource string
-}
-
-type Resource struct {
-	OutPut string   `yaml:"out-put"`
-	Name   []string `yaml:"name"`
-}
-
-func readYAMLFile(filePath string) (*Resource, error) {
-	yamlFile, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	var config Resource
-
-	err = yaml.Unmarshal(yamlFile, &config)
-	if err != nil {
-		return nil, err
-	}
-
-	return &config, nil
+	Kind string
 }
 
 func main() {
-	config, err := readYAMLFile("tools/deepcopy-gen/metadata.yaml")
-	if err != nil {
-		panic(err)
-	}
-	outputFile := config.OutPut
-	names := config.Name
+	output := flag.String("output", "../../api/resource/v1alpha1/resource_deepcopy.go", "output Path")
+	tem := flag.String("template", "./template.go.tmpl", "Template file")
 	flag.Parse()
 
-	tmpl := template.Must(template.ParseFiles("tools/deepcopy-gen/template.go.tmpl"))
+	var kindList []ConfigData
 
-	var typeList []ConfigData
-
-	for _, name := range names {
-		data := ConfigData{
-			ProtoResource: name,
-		}
-		typeList = append(typeList, data)
+	for _, s := range collections.Rule.All() {
+		kindList = append(kindList, ConfigData{Kind: s.Resource().Kind()})
 	}
 
+	tmpl := template.Must(template.ParseFiles(*tem))
 	var buffer bytes.Buffer
-	if err := tmpl.Execute(&buffer, typeList); err != nil {
-		log.Fatal(err)
+	if err := tmpl.Execute(&buffer, kindList); err != nil {
+		log.Fatal(fmt.Errorf("template: %v", err))
 	}
 
 	out, err := format.Source(buffer.Bytes())
 	if err != nil {
 		log.Fatal(err)
 	}
-	// Output
-	if outputFile == "" {
-		fmt.Println(string(out))
-	} else {
-		file, err := os.Create(outputFile)
-		if err != nil {
-			panic(err)
-		}
-		defer file.Close()
+	if output == nil || *output == "" {
+		fmt.Println(output)
+	}
+	file, err := os.Create(*output)
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
 
-		_, err = file.Write(out)
-		if err != nil {
-			panic(err)
-		}
+	_, err = file.Write(out)
+	if err != nil {
+		panic(err)
 	}
 }

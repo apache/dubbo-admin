@@ -47,9 +47,9 @@ type Storage struct {
 }
 
 func TypeSupported(gvk string) bool {
-	return gvk == gvks.Authentication ||
-		gvk == gvks.Authorization ||
-		gvk == gvks.ServiceMapping ||
+	return gvk == gvks.AuthenticationPolicy ||
+		gvk == gvks.AuthorizationPolicy ||
+		gvk == gvks.ServiceNameMapping ||
 		gvk == gvks.TagRoute ||
 		gvk == gvks.DynamicConfig ||
 		gvk == gvks.ConditionRoute
@@ -63,9 +63,9 @@ func NewStorage(cfg *dubbo_cp.Config) *Storage {
 		Config:      cfg,
 		Generators:  map[string]DdsResourceGenerator{},
 	}
-	s.Generators[gvks.Authentication] = &AuthenticationGenerator{}
-	s.Generators[gvks.Authorization] = &AuthorizationGenerator{}
-	s.Generators[gvks.ServiceMapping] = &ServiceMappingGenerator{}
+	s.Generators[gvks.AuthenticationPolicy] = &AuthenticationGenerator{}
+	s.Generators[gvks.AuthorizationPolicy] = &AuthorizationGenerator{}
+	s.Generators[gvks.ServiceNameMapping] = &ServiceMappingGenerator{}
 	s.Generators[gvks.ConditionRoute] = &ConditionRoutesGenerator{}
 	s.Generators[gvks.TagRoute] = &TagRoutesGenerator{}
 	s.Generators[gvks.DynamicConfig] = &DynamicConfigsGenerator{}

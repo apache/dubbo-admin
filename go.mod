@@ -27,6 +27,7 @@ require (
 	github.com/dubbogo/grpc-go v1.42.10
 	github.com/dubbogo/triple v1.2.2-rc3
 	github.com/evanphx/json-patch/v5 v5.6.0
+	github.com/ghodss/yaml v1.0.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/gogo/protobuf v1.3.2
 	github.com/golang-jwt/jwt/v4 v4.5.0

@@ -33,7 +33,7 @@ import (
 func TestAuthentication(t *testing.T) {
 	configName := "name"
 	configNamespace := "namespace"
-	c := collections.DubboCAV1Alpha1Authentication
+	c := collections.DubboApacheOrgV1Alpha1AuthenticationPolicy
 	name := c.Resource().Kind()
 	t.Run(name, func(t *testing.T) {
 		r := c.Resource()
@@ -94,7 +94,7 @@ func TestAuthentication(t *testing.T) {
 func TestAuthorization(t *testing.T) {
 	configName := "name"
 	configNamespace := "namespace"
-	c := collections.DubboCAV1Alpha1Authorization
+	c := collections.DubboApacheOrgV1Alpha1AuthorizationPolicy
 	name := c.Resource().Kind()
 	t.Run(name, func(t *testing.T) {
 		r := c.Resource()
@@ -189,7 +189,7 @@ func TestAuthorization(t *testing.T) {
 func TestAuthorizationNilField(t *testing.T) {
 	configName := "name"
 	configNamespace := "namespace"
-	c := collections.DubboCAV1Alpha1Authorization
+	c := collections.DubboApacheOrgV1Alpha1AuthorizationPolicy
 	name := c.Resource().Kind()
 	t.Run(name, func(t *testing.T) {
 		r := c.Resource()

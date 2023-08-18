@@ -243,7 +243,7 @@ func (a *DDSC) handleRecv() {
 		var tagRoute []*api.TagRouteToClient
 		var dynamicConfig []*api.DynamicConfigToClient
 		switch msg.Type {
-		case gvks.Authentication:
+		case gvks.AuthenticationPolicy:
 			for _, d := range msg.Data {
 				valBytes := d.Value
 				auth := &api.AuthenticationPolicyToClient{}
@@ -254,7 +254,7 @@ func (a *DDSC) handleRecv() {
 				authentication = append(authentication, auth)
 				a.handleAuthentication(authentication)
 			}
-		case gvks.Authorization:
+		case gvks.AuthorizationPolicy:
 			for _, d := range msg.Data {
 				valBytes := d.Value
 				auth := &api.AuthorizationPolicyToClient{}
@@ -265,7 +265,7 @@ func (a *DDSC) handleRecv() {
 				authorization = append(authorization, auth)
 				a.handleAuthorization(authorization)
 			}
-		case gvks.ServiceMapping:
+		case gvks.ServiceNameMapping:
 			for _, d := range msg.Data {
 				valBytes := d.Value
 				auth := &api.ServiceNameMappingToClient{}
@@ -373,11 +373,11 @@ func main() {
 	initialWatch := []*dds.ObserveRequest{
 		{
 			Nonce: "",
-			Type:  gvks.Authorization,
+			Type:  gvks.AuthorizationPolicy,
 		},
 		{
 			Nonce: "",
-			Type:  gvks.Authentication,
+			Type:  gvks.AuthenticationPolicy,
 		},
 		{
 			Nonce: "",
@@ -393,7 +393,7 @@ func main() {
 		},
 		{
 			Nonce: "",
-			Type:  gvks.ServiceMapping,
+			Type:  gvks.ServiceNameMapping,
 		},
 	}
 	ddscConn, err := New(grpcUpstreamAddr, &Config{

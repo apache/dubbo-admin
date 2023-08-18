@@ -27,96 +27,102 @@ import (
 )
 
 var (
-	DubboCAV1Alpha1Authentication = collection.Builder{
-		Name: "dubbo/apache/org/v1alpha1/AuthenticationPolicy",
+	DubboApacheOrgV1Alpha1AuthenticationPolicy = collection.Builder{
+		Name:         "dubbo/apache/org/v1alpha1/AuthenticationPolicy",
+		VariableName: "DubboApacheOrgV1Alpha1AuthenticationPolicy",
 		Resource: resource.Builder{
-			ClusterScoped: false,
+			Group:         "dubbo.apache.org",
 			Kind:          "AuthenticationPolicy",
 			Plural:        "authenticationpolicies",
-			Group:         "dubbo.apache.org",
 			Version:       "v1alpha1",
 			Proto:         "dubbo.apache.org.v1alpha1.AuthenticationPolicy",
 			ReflectType:   reflect.TypeOf(&api.AuthenticationPolicy{}).Elem(),
+			ClusterScoped: false,
 			ValidateProto: validation.EmptyValidate,
 		}.MustBuild(),
 	}.MustBuild()
 
-	DubboCAV1Alpha1Authorization = collection.Builder{
-		Name: "dubbo/apache/org/v1alpha1/AuthorizationPolicy",
+	DubboApacheOrgV1Alpha1AuthorizationPolicy = collection.Builder{
+		Name:         "dubbo/apache/org/v1alpha1/AuthorizationPolicy",
+		VariableName: "DubboApacheOrgV1Alpha1AuthorizationPolicy",
 		Resource: resource.Builder{
-			ClusterScoped: false,
+			Group:         "dubbo.apache.org",
 			Kind:          "AuthorizationPolicy",
 			Plural:        "authorizationpolicies",
-			Group:         "dubbo.apache.org",
 			Version:       "v1alpha1",
 			Proto:         "dubbo.apache.org.v1alpha1.AuthorizationPolicy",
 			ReflectType:   reflect.TypeOf(&api.AuthorizationPolicy{}).Elem(),
+			ClusterScoped: false,
 			ValidateProto: validation.EmptyValidate,
 		}.MustBuild(),
 	}.MustBuild()
 
-	DubboNetWorkV1Alpha1ConditionRoute = collection.Builder{
-		Name: "dubbo/apache/org/v1alpha1/ConditionRoute",
+	DubboApacheOrgV1Alpha1ConditionRoute = collection.Builder{
+		Name:         "dubbo/apache/org/v1alpha1/ConditionRoute",
+		VariableName: "DubboApacheOrgV1Alpha1ConditionRoute",
 		Resource: resource.Builder{
-			ClusterScoped: false,
+			Group:         "dubbo.apache.org",
 			Kind:          "ConditionRoute",
 			Plural:        "conditionroutes",
-			Group:         "dubbo.apache.org",
 			Version:       "v1alpha1",
 			Proto:         "dubbo.apache.org.v1alpha1.ConditionRoute",
 			ReflectType:   reflect.TypeOf(&api.ConditionRoute{}).Elem(),
+			ClusterScoped: false,
 			ValidateProto: validation.EmptyValidate,
 		}.MustBuild(),
 	}.MustBuild()
 
-	DubboNetWorkV1Alpha1TagRoute = collection.Builder{
-		Name: "dubbo/apache/org/v1alpha1/TagRoute",
+	DubboApacheOrgV1Alpha1DynamicConfig = collection.Builder{
+		Name:         "dubbo/apache/org/v1alpha1/DynamicConfig",
+		VariableName: "DubboApacheOrgV1Alpha1DynamicConfig",
 		Resource: resource.Builder{
-			ClusterScoped: false,
-			Kind:          "TagRoute",
-			Plural:        "tagroutes",
 			Group:         "dubbo.apache.org",
-			Version:       "v1alpha1",
-			Proto:         "dubbo.apache.org.v1alpha1.TagRoute",
-			ReflectType:   reflect.TypeOf(&api.TagRoute{}).Elem(),
-			ValidateProto: validation.EmptyValidate,
-		}.MustBuild(),
-	}.MustBuild()
-
-	DubboNetWorkV1Alpha1DynamicConfig = collection.Builder{
-		Name: "dubbo/apache/org/v1alpha1/DynamicConfig",
-		Resource: resource.Builder{
-			ClusterScoped: false,
 			Kind:          "DynamicConfig",
 			Plural:        "dynamicconfigs",
-			Group:         "dubbo.apache.org",
 			Version:       "v1alpha1",
 			Proto:         "dubbo.apache.org.v1alpha1.DynamicConfig",
 			ReflectType:   reflect.TypeOf(&api.DynamicConfig{}).Elem(),
+			ClusterScoped: false,
 			ValidateProto: validation.EmptyValidate,
 		}.MustBuild(),
 	}.MustBuild()
 
-	DubboServiceV1Alpha1ServiceMapping = collection.Builder{
-		Name: "dubbo/apache/org/v1alpha1/ServiceNameMapping",
+	DubboApacheOrgV1Alpha1ServiceNameMapping = collection.Builder{
+		Name:         "dubbo/apache/org/v1alpha1/ServiceNameMapping",
+		VariableName: "DubboApacheOrgV1Alpha1ServiceNameMapping",
 		Resource: resource.Builder{
-			ClusterScoped: false,
+			Group:         "dubbo.apache.org",
 			Kind:          "ServiceNameMapping",
 			Plural:        "servicenamemappings",
-			Group:         "dubbo.apache.org",
 			Version:       "v1alpha1",
 			Proto:         "dubbo.apache.org.v1alpha1.ServiceNameMapping",
 			ReflectType:   reflect.TypeOf(&api.ServiceNameMapping{}).Elem(),
+			ClusterScoped: false,
+			ValidateProto: validation.EmptyValidate,
+		}.MustBuild(),
+	}.MustBuild()
+
+	DubboApacheOrgV1Alpha1TagRoute = collection.Builder{
+		Name:         "dubbo/apache/org/v1alpha1/TagRoute",
+		VariableName: "DubboApacheOrgV1Alpha1TagRoute",
+		Resource: resource.Builder{
+			Group:         "dubbo.apache.org",
+			Kind:          "TagRoute",
+			Plural:        "tagroutes",
+			Version:       "v1alpha1",
+			Proto:         "dubbo.apache.org.v1alpha1.TagRoute",
+			ReflectType:   reflect.TypeOf(&api.TagRoute{}).Elem(),
+			ClusterScoped: false,
 			ValidateProto: validation.EmptyValidate,
 		}.MustBuild(),
 	}.MustBuild()
 
 	Rule = collection.NewSchemasBuilder().
-		MustAdd(DubboCAV1Alpha1Authentication).
-		MustAdd(DubboCAV1Alpha1Authorization).
-		MustAdd(DubboServiceV1Alpha1ServiceMapping).
-		MustAdd(DubboNetWorkV1Alpha1ConditionRoute).
-		MustAdd(DubboNetWorkV1Alpha1DynamicConfig).
-		MustAdd(DubboNetWorkV1Alpha1TagRoute).
+		MustAdd(DubboApacheOrgV1Alpha1AuthenticationPolicy).
+		MustAdd(DubboApacheOrgV1Alpha1AuthorizationPolicy).
+		MustAdd(DubboApacheOrgV1Alpha1ConditionRoute).
+		MustAdd(DubboApacheOrgV1Alpha1DynamicConfig).
+		MustAdd(DubboApacheOrgV1Alpha1ServiceNameMapping).
+		MustAdd(DubboApacheOrgV1Alpha1TagRoute).
 		Build()
 )

@@ -1,0 +1,92 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# The total set of collections
+collections:
+  - name: "dubbo/apache/org/v1alpha1/AuthenticationPolicy"
+    kind: "AuthenticationPolicy"
+    group: "dubbo.apache.org"
+    dds: true
+
+  - name: "dubbo/apache/org/v1alpha1/AuthorizationPolicy"
+    kind: "AuthorizationPolicy"
+    group: "dubbo.apache.org"
+    dds: true
+
+  - name: "dubbo/apache/org/v1alpha1/ConditionRoute"
+    kind: "ConditionRoute"
+    group: "dubbo.apache.org"
+    dds: true
+
+  - name: "dubbo/apache/org/v1alpha1/TagRoute"
+    kind: "TagRoute"
+    group: "dubbo.apache.org"
+    dds: true
+
+  - name: "dubbo/apache/org/v1alpha1/DynamicConfig"
+    kind: "DynamicConfig"
+    group: "dubbo.apache.org"
+    dds: true
+
+  - name: "dubbo/apache/org/v1alpha1/ServiceNameMapping"
+    kind: "ServiceNameMapping"
+    group: "dubbo.apache.org"
+    dds: true
+
+
+
+# Configuration for resource types
+resources:
+  - kind: "AuthenticationPolicy"
+    plural: "authenticationpolicies"
+    group: "dubbo.apache.org"
+    version: "v1alpha1"
+    validate: "EmptyValidate"
+    proto: "dubbo.apache.org.v1alpha1.AuthenticationPolicy"
+
+  - kind: "AuthorizationPolicy"
+    plural: "authorizationpolicies"
+    group: "dubbo.apache.org"
+    version: "v1alpha1"
+    validate: "EmptyValidate"
+    proto: "dubbo.apache.org.v1alpha1.AuthorizationPolicy"
+
+  - kind: "ConditionRoute"
+    plural: "conditionroutes"
+    group: "dubbo.apache.org"
+    version: "v1alpha1"
+    validate: "EmptyValidate"
+    proto: "dubbo.apache.org.v1alpha1.ConditionRoute"
+
+  - kind: "TagRoute"
+    plural: "tagroutes"
+    group: "dubbo.apache.org"
+    version: "v1alpha1"
+    validate: "EmptyValidate"
+    proto: "dubbo.apache.org.v1alpha1.TagRoute"
+
+  - kind: "DynamicConfig"
+    plural: "dynamicconfigs"
+    group: "dubbo.apache.org"
+    version: "v1alpha1"
+    validate: "EmptyValidate"
+    proto: "dubbo.apache.org.v1alpha1.DynamicConfig"
+
+  - kind: "ServiceNameMapping"
+    plural: "servicenamemappings"
+    group: "dubbo.apache.org"
+    version: "v1alpha1"
+    validate: "EmptyValidate"
+    proto: "dubbo.apache.org.v1alpha1.ServiceNameMapping"

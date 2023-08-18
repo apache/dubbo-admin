@@ -203,7 +203,7 @@ func TestStorage_StartNonEmptyNonce(t *testing.T) {
 	fake.recvChan <- recvResult{
 		request: &dds.ObserveRequest{
 			Nonce: "test",
-			Type:  gvk.Authentication,
+			Type:  gvk.AuthenticationPolicy,
 		},
 		err: nil,
 	}
@@ -242,7 +242,7 @@ func TestStorage_Listen(t *testing.T) {
 	fake.recvChan <- recvResult{
 		request: &dds.ObserveRequest{
 			Nonce: "",
-			Type:  gvk.Authorization,
+			Type:  gvk.AuthorizationPolicy,
 		},
 		err: nil,
 	}
@@ -262,7 +262,7 @@ func TestStorage_Listen(t *testing.T) {
 		t.Error("expected type listened")
 	}
 
-	if !conn.TypeListened[gvk.Authorization] {
+	if !conn.TypeListened[gvk.AuthorizationPolicy] {
 		t.Error("expected type listened")
 	}
 }
@@ -442,7 +442,7 @@ func TestStorage_AfterNotify(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if r.GroupVersionKind().String() == gvk.ServiceMapping {
+			if r.GroupVersionKind().String() == gvk.ServiceNameMapping {
 				mapping := pb.(*dubboapacheorgv1alpha1.ServiceNameMapping)
 				mapping.InterfaceName = "test"
 				mapping.ApplicationNames = []string{
@@ -555,10 +555,10 @@ func TestStore_MissNotify(t *testing.T) {
 	store := makeClient(t, collections.Rule)
 	configName := "name"
 	configNamespace := "namespace"
-	collection.NewSchemasBuilder().MustAdd(collections.DubboNetWorkV1Alpha1TagRoute).Build()
-	tag := collections.DubboNetWorkV1Alpha1TagRoute.Resource()
-	collection.NewSchemasBuilder().MustAdd(collections.DubboNetWorkV1Alpha1ConditionRoute).Build()
-	condition := collections.DubboNetWorkV1Alpha1ConditionRoute.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1TagRoute).Build()
+	tag := collections.DubboApacheOrgV1Alpha1TagRoute.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1ConditionRoute).Build()
+	condition := collections.DubboApacheOrgV1Alpha1ConditionRoute.Resource()
 	tagconfigMeta := model.Meta{
 		GroupVersionKind: tag.GroupVersionKind(),
 		Name:             configName,
@@ -624,10 +624,10 @@ func TestStore_MissNotify(t *testing.T) {
 		return conn.TypeListened[condition.GroupVersionKind().String()]
 	}, 10*time.Second, time.Millisecond)
 
-	if err := conditionHandler.NotifyWithIndex(collections.DubboNetWorkV1Alpha1ConditionRoute); err != nil {
+	if err := conditionHandler.NotifyWithIndex(collections.DubboApacheOrgV1Alpha1ConditionRoute); err != nil {
 		t.Fatal(err)
 	}
-	if err := tagHanlder.NotifyWithIndex(collections.DubboNetWorkV1Alpha1TagRoute); err != nil {
+	if err := tagHanlder.NotifyWithIndex(collections.DubboApacheOrgV1Alpha1TagRoute); err != nil {
 		t.Fatal(err)
 	}
 
@@ -867,9 +867,9 @@ func TestStorage_Exact(t *testing.T) {
 			}
 
 			gen := map[string]storage.DdsResourceGenerator{}
-			gen[gvk.Authentication] = &storage.AuthenticationGenerator{}
-			gen[gvk.Authorization] = &storage.AuthorizationGenerator{}
-			gen[gvk.ServiceMapping] = &storage.ServiceMappingGenerator{}
+			gen[gvk.AuthenticationPolicy] = &storage.AuthenticationGenerator{}
+			gen[gvk.AuthorizationPolicy] = &storage.AuthorizationGenerator{}
+			gen[gvk.ServiceNameMapping] = &storage.ServiceMappingGenerator{}
 			gen[gvk.ConditionRoute] = &storage.ConditionRoutesGenerator{}
 			gen[gvk.TagRoute] = &storage.TagRoutesGenerator{}
 			gen[gvk.DynamicConfig] = &storage.DynamicConfigsGenerator{}
@@ -889,8 +889,8 @@ func TestStorage_ReturnMisNonce(t *testing.T) {
 	store := makeClient(t, collections.Rule)
 	configName := "name"
 	configNamespace := "namespace"
-	collection.NewSchemasBuilder().MustAdd(collections.DubboNetWorkV1Alpha1TagRoute).Build()
-	tag := collections.DubboNetWorkV1Alpha1TagRoute.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1TagRoute).Build()
+	tag := collections.DubboApacheOrgV1Alpha1TagRoute.Resource()
 	tagconfigMeta := model.Meta{
 		GroupVersionKind: tag.GroupVersionKind(),
 		Name:             configName,
@@ -918,7 +918,7 @@ func TestStorage_ReturnMisNonce(t *testing.T) {
 		},
 	})
 	tagHanlder := crdclient.NewHandler(s, "dubbo-system", store)
-	err = tagHanlder.NotifyWithIndex(collections.DubboNetWorkV1Alpha1TagRoute)
+	err = tagHanlder.NotifyWithIndex(collections.DubboApacheOrgV1Alpha1TagRoute)
 	if err != nil {
 		t.Fatal(err)
 	}

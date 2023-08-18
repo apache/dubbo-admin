@@ -59,13 +59,13 @@ func (p *PushContext) NotifyWithIndex(schema collection.Schema) error {
 		logger.Sugar().Error("[DDS] fail to get the cache from client-go Index")
 		return err
 	}
-	if gvk.String() == gvks.Authorization {
+	if gvk.String() == gvks.AuthorizationPolicy {
 		// WARNING: the client-go cache is read-only, if we must change the resource, we need to deep copy first
 		for _, config := range configs {
 			deepCopy := authorization(config, p.rootNamespace)
 			data = append(data, deepCopy)
 		}
-	} else if gvk.String() == gvks.Authentication {
+	} else if gvk.String() == gvks.AuthenticationPolicy {
 		// WARNING: the client-go cache is read-only, if we must change the resource, we need to deep copy first
 		for _, config := range configs {
 			deepCopy := authentication(config, p.rootNamespace)

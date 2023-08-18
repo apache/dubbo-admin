@@ -67,10 +67,10 @@ func makeClient(t *testing.T, schemas collection.Schemas) ConfigStoreCache {
 
 // Ensure that the client can run without CRDs present
 func TestClientNoCRDs(t *testing.T) {
-	schema := collection.NewSchemasBuilder().MustAdd(collections.DubboServiceV1Alpha1ServiceMapping).Build()
+	schema := collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1ServiceNameMapping).Build()
 	store := makeClient(t, schema)
 	retry.UntilOrFail(t, store.HasSynced, retry.Timeout(time.Second))
-	r := collections.DubboCAV1Alpha1Authorization.Resource()
+	r := collections.DubboApacheOrgV1Alpha1AuthorizationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
