@@ -47,9 +47,9 @@ type Storage struct {
 }
 
 func TypeSupported(gvk string) bool {
-	return gvk == gvks.Authentication ||
-		gvk == gvks.Authorization ||
-		gvk == gvks.ServiceMapping ||
+	return gvk == gvks.AuthenticationPolicy ||
+		gvk == gvks.AuthorizationPolicy ||
+		gvk == gvks.ServiceNameMapping ||
 		gvk == gvks.TagRoute ||
 		gvk == gvks.DynamicConfig ||
 		gvk == gvks.ConditionRoute
@@ -63,9 +63,9 @@ func NewStorage(cfg *dubbo_cp.Config) *Storage {
 		Config:      cfg,
 		Generators:  map[string]DdsResourceGenerator{},
 	}
-	s.Generators[gvks.Authentication] = &AuthenticationGenerator{}
-	s.Generators[gvks.Authorization] = &AuthorizationGenerator{}
-	s.Generators[gvks.ServiceMapping] = &ServiceMappingGenerator{}
+	s.Generators[gvks.AuthenticationPolicy] = &AuthenticationGenerator{}
+	s.Generators[gvks.AuthorizationPolicy] = &AuthorizationGenerator{}
+	s.Generators[gvks.ServiceNameMapping] = &ServiceMappingGenerator{}
 	s.Generators[gvks.ConditionRoute] = &ConditionRoutesGenerator{}
 	s.Generators[gvks.TagRoute] = &TagRoutesGenerator{}
 	s.Generators[gvks.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -84,8 +84,6 @@ func (s *Storage) Connected(endpoint *endpoint.Endpoint, connection EndpointConn
 		RawRuleQueue:       workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "raw-dds"),
 		ExpectedRules:      map[string]*VersionedRule{},
 		ClientRules:        map[string]*ClientStatus{},
-		DdsBlockMaxTime:    s.Config.Options.DdsBlockMaxTime,
-		BlockedPushed:      make([]Origin, 0),
 		blockedPushedMutex: &sync.RWMutex{},
 		Generator:          s.Generators,
 	}
@@ -124,13 +122,13 @@ func (s *Storage) listenConnection(c *Connection) {
 
 func (s *Storage) HandleRequest(c *Connection, req *dds.ObserveRequest) {
 	if req.Type == "" {
-		logger.Sugar().Errorf("Empty request type from %v", c.Endpoint.ID)
+		logger.Sugar().Errorf("[DDS] Empty request type from %v", c.Endpoint.ID)
 
 		return
 	}
 
 	if !TypeSupported(req.Type) {
-		logger.Sugar().Errorf("Unsupported request type %s from %s", req.Type, c.Endpoint.ID)
+		logger.Sugar().Errorf("[DDS] Unsupported request type %s from %s", req.Type, c.Endpoint.ID)
 
 		return
 	}
@@ -141,13 +139,13 @@ func (s *Storage) HandleRequest(c *Connection, req *dds.ObserveRequest) {
 		cr := c.ClientRules[req.Type]
 
 		if cr == nil {
-			logger.Sugar().Errorf("Unexpected request type %s with nonce %s from %s", req.Type, req.Nonce, c.Endpoint.ID)
+			logger.Sugar().Errorf("[DDS] Unexpected request type %s with nonce %s from %s", req.Type, req.Nonce, c.Endpoint.ID)
 			return
 		}
 
 		if cr.PushingStatus == Pushing {
 			if cr.LastPushNonce != req.Nonce {
-				logger.Sugar().Errorf("Unexpected request nonce %s from %s", req.Nonce, c.Endpoint.ID)
+				logger.Sugar().Errorf("[DDS] Unexpected request nonce %s from %s", req.Nonce, c.Endpoint.ID)
 
 				return
 			}
@@ -155,21 +153,13 @@ func (s *Storage) HandleRequest(c *Connection, req *dds.ObserveRequest) {
 			cr.ClientVersion = cr.LastPushedVersion
 
 			cr.PushingStatus = Pushed
-			cr.StatusChan <- struct{}{}
-			logger.Sugar().Infof("Client %s pushed %s dds %d success", c.Endpoint.Ips, req.Type, cr.ClientVersion.Revision)
-			// At this time, we should judge whether there is a blocked request in the blocking queue,
-			// and if so, it should be sent to the dubbo side
-			for len(c.BlockedPushed) > 0 {
-				rule := c.BlockedPushed[0]
-				c.RawRuleQueue.Add(rule)
-				c.BlockedPushed = c.BlockedPushed[1:]
-			}
+			logger.Sugar().Infof("[DDS] Client %s pushed %s dds %d success", c.Endpoint.Ips, req.Type, cr.ClientVersion.Revision)
 		}
 		return
 	}
 
 	if _, ok := c.TypeListened[req.Type]; !ok {
-		logger.Sugar().Infof("Client %s listen %s dds", c.Endpoint.Ips, req.Type)
+		logger.Sugar().Infof("[DDS] Client %s listen %s dds", c.Endpoint.Ips, req.Type)
 		c.TypeListened[req.Type] = true
 		c.ClientRules[req.Type] = &ClientStatus{
 			PushingStatus: Pushed,
@@ -181,10 +171,7 @@ func (s *Storage) HandleRequest(c *Connection, req *dds.ObserveRequest) {
 			LastPushedTime:    0,
 			LastPushedVersion: nil,
 			LastPushNonce:     "",
-			StatusChan:        make(chan struct{}, 1),
 		}
-		cr := c.ClientRules[req.Type]
-		cr.StatusChan <- struct{}{}
 		latestRule := s.LatestRules[req.Type]
 		if latestRule != nil {
 			c.RawRuleQueue.Add(latestRule)
@@ -207,18 +194,18 @@ func (c *Connection) listenRule() {
 			var ok bool
 
 			if key, ok = obj.(Origin); !ok {
-				logger.Sugar().Errorf("expected dds.Origin in workqueue but got %#v", obj)
+				logger.Sugar().Errorf("[DDS] expected dds.Origin in workqueue but got %#v", obj)
 
 				return
 			}
 
 			if err := c.handleRule(key); err != nil {
-				logger.Sugar().Errorf("error syncing '%s': %s", key, err.Error())
+				logger.Sugar().Errorf("[DDS] error syncing '%s': %s", key, err.Error())
 
 				return
 			}
 
-			logger.Sugar().Infof("Successfully synced '%s'", key)
+			logger.Sugar().Infof("[DDS] Successfully synced '%s'", key)
 		}(obj)
 	}
 }
@@ -235,30 +222,17 @@ func (c *Connection) handleRule(rawRule Origin) error {
 
 	cr := c.ClientRules[targetRule.Type]
 
-	maxBlockingTime := c.DdsBlockMaxTime
-
-	// can be modified via environment
-	t := time.NewTimer(maxBlockingTime)
-	select {
-	case <-t.C:
+	// TODO how to improve this one
+	for cr.PushingStatus == Pushing {
 		cr.PushQueued = true
-		// dds has been blocked for too long, perhaps because the dubbo side is very busy now,
-		// and we have not received the ACK of the last push.
-		// so, instead of pushing now, which may overload dubbo,
-		// we will wait until the last push is ACK and trigger the push
-		logger.Sugar().Warnf("QUEUE for node:%s", c.Endpoint.ID)
-		c.blockedPushedMutex.Lock()
-		c.BlockedPushed = append(c.BlockedPushed, rawRule)
-		c.blockedPushedMutex.Unlock()
-		// then we should return this function
-		return nil
-	case <-cr.StatusChan:
-		cr.PushQueued = false
+		time.Sleep(1 * time.Second)
+		logger.Sugar().Infof("[DDS] Client %s %s rule is pushing, wait for 1 second", c.Endpoint.Ips, targetRule.Type)
 	}
+	cr.PushQueued = false
 
 	if cr.ClientVersion.Data != nil &&
 		(reflect.DeepEqual(cr.ClientVersion.Data, targetRule.Data) || cr.ClientVersion.Revision >= targetRule.Revision) {
-		logger.Sugar().Infof("Client %s %s dds is up to date", c.Endpoint.Ips, targetRule.Type)
+		logger.Sugar().Infof("[DDS] Client %s %s dds is up to date", c.Endpoint.Ips, targetRule.Type)
 		return nil
 	}
 	newVersion := atomic.AddInt64(&cr.NonceInc, 1)
@@ -269,7 +243,7 @@ func (c *Connection) handleRule(rawRule Origin) error {
 		Data:     targetRule.Data,
 	}
 
-	logger.Sugar().Infof("Receive new version dds. Client %s %s dds is pushing.", c.Endpoint.Ips, targetRule.Type)
+	logger.Sugar().Infof("[DDS] Receive new version dds. Client %s %s dds is pushing.", c.Endpoint.Ips, targetRule.Type)
 
 	return c.EndpointConnection.Send(targetRule, cr, r)
 }
@@ -309,15 +283,9 @@ type Connection struct {
 
 	TypeListened map[string]bool
 
-	RawRuleQueue    workqueue.RateLimitingInterface
-	ExpectedRules   map[string]*VersionedRule
-	ClientRules     map[string]*ClientStatus
-	DdsBlockMaxTime time.Duration
-
-	// blockedPushes is a map of TypeUrl to push request. This is set when we attempt to push to a busy Dubbo
-	// (last push not ACKed). When we get an ACK from Dubbo, if the type is populated here, we will trigger
-	// the push.
-	BlockedPushed []Origin
+	RawRuleQueue  workqueue.RateLimitingInterface
+	ExpectedRules map[string]*VersionedRule
+	ClientRules   map[string]*ClientStatus
 
 	blockedPushedMutex *sync.RWMutex
 }
@@ -338,7 +306,6 @@ type ClientStatus struct {
 	sync.RWMutex
 	PushQueued    bool
 	PushingStatus PushingStatus
-	StatusChan    chan struct{}
 
 	NonceInc int64
 

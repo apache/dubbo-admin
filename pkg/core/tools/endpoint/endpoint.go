@@ -54,7 +54,7 @@ func ExactEndpoint(c context.Context, certStorage *provider.CertStorage, options
 	}
 
 	if !options.Security.IsTrustAnyone && connectionErr != nil {
-		return nil, fmt.Errorf("Failed to get endpoint from header: %s. Failed to get endpoint from storage: %s. RemoteAddr: %s",
+		return nil, fmt.Errorf("failed to get endpoint from header: %s. Failed to get endpoint from storage: %s. RemoteAddr: %s",
 			endpointErr.Error(), connectionErr.Error(), p.Addr.String())
 	}
 

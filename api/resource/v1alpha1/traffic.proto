@@ -22,6 +22,21 @@ package dubbo.apache.org.v1alpha1;
 
 option java_multiple_files = true;
 
+message ConditionRouteToClient {
+  string key = 1;
+  ConditionRoute spec = 2;
+}
+
+message DynamicConfigToClient {
+  string key = 1;
+  DynamicConfig spec = 2;
+}
+
+message TagRouteToClient {
+  string key = 1;
+  TagRoute spec = 2;
+}
+
 message ConditionRoute {
   int32 priority = 1;
   bool enabled = 2;
@@ -90,7 +105,8 @@ message TagRoute {
   bool runtime = 3;
   string key = 4;
   string configVersion = 5;
-  repeated Tag tags = 6;
+  bool force = 6;
+  repeated Tag tags = 7;
 }
 
 message Tag {

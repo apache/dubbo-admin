@@ -35,12 +35,12 @@ import (
 
 const (
 	ApiTypePrefix         = "type.googleapis.com/"
-	AuthenticationTypeUrl = ApiTypePrefix + "dubbo.apache.org.v1alpha1.AuthenticationPolicy"
-	AuthorizationTypeUrl  = ApiTypePrefix + "dubbo.apache.org.v1alpha1.AuthorizationPolicy"
-	TagRouteTypeUrl       = ApiTypePrefix + "dubbo.apache.org.v1alpha1.TagRoute"
-	DynamicConfigTypeUrl  = ApiTypePrefix + "dubbo.apache.org.v1alpha1.DynamicConfig"
-	ServiceMappingTypeUrl = ApiTypePrefix + "dubbo.apache.org.v1alpha1.ServiceNameMapping"
-	ConditionRouteTypeUrl = ApiTypePrefix + "dubbo.apache.org.v1alpha1.ConditionRoute"
+	AuthenticationTypeUrl = ApiTypePrefix + "dubbo.apache.org.v1alpha1.AuthenticationPolicyToClient"
+	AuthorizationTypeUrl  = ApiTypePrefix + "dubbo.apache.org.v1alpha1.AuthorizationPolicyToClient"
+	TagRouteTypeUrl       = ApiTypePrefix + "dubbo.apache.org.v1alpha1.TagRouteToClient"
+	DynamicConfigTypeUrl  = ApiTypePrefix + "dubbo.apache.org.v1alpha1.DynamicConfigToClient"
+	ServiceMappingTypeUrl = ApiTypePrefix + "dubbo.apache.org.v1alpha1.ServiceNameMappingToClient"
+	ConditionRouteTypeUrl = ApiTypePrefix + "dubbo.apache.org.v1alpha1.ConditionRouteToClient"
 )
 
 // Meta is metadata attached to each configuration unit.

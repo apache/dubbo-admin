@@ -44,12 +44,12 @@ var oidSubjectAlternativeName = asn1.ObjectIdentifier{2, 5, 29, 17}
 func DecodeCert(cert string) *x509.Certificate {
 	block, _ := pem.Decode([]byte(cert))
 	if block == nil {
-		logger.Sugar().Warnf("Failed to parse public key.")
+		logger.Sugar().Warnf("[Authority] Failed to parse public key.")
 		return nil
 	}
 	p, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		logger.Sugar().Warnf("Failed to parse public key. " + err.Error())
+		logger.Sugar().Warnf("[Authority] Failed to parse public key. " + err.Error())
 		return nil
 	}
 	return p
@@ -58,12 +58,12 @@ func DecodeCert(cert string) *x509.Certificate {
 func DecodePrivateKey(cert string) *ecdsa.PrivateKey {
 	block, _ := pem.Decode([]byte(cert))
 	if block == nil {
-		logger.Sugar().Warnf("Failed to parse private key.")
+		logger.Sugar().Warnf("[Authority] Failed to parse private key.")
 		return nil
 	}
 	p, err := x509.ParseECPrivateKey(block.Bytes)
 	if err != nil {
-		logger.Sugar().Warnf("Failed to parse private key. " + err.Error())
+		logger.Sugar().Warnf("[Authority] Failed to parse private key. " + err.Error())
 		return nil
 	}
 	return p
@@ -104,7 +104,7 @@ func GenerateAuthorityCert(rootCert *Cert, caValidity int64) *Cert {
 		Bytes: caBytes,
 	})
 	if err != nil {
-		logger.Sugar().Warnf("Failed to encode certificate. " + err.Error())
+		logger.Sugar().Warnf("[Authority] Failed to encode certificate. " + err.Error())
 		panic(err)
 	}
 
@@ -146,7 +146,7 @@ func SignServerCert(authorityCert *Cert, serverName []string, certValidity int64
 		Bytes: c,
 	})
 	if err != nil {
-		logger.Sugar().Warnf("Failed to encode certificate. " + err.Error())
+		logger.Sugar().Warnf("[Authority] Failed to encode certificate. " + err.Error())
 		panic(err)
 	}
 	return &Cert{
@@ -182,7 +182,7 @@ func GenerateCSR() (string, *ecdsa.PrivateKey, error) {
 	})
 
 	if err != nil {
-		logger.Sugar().Warnf("Failed to encode certificate. " + err.Error())
+		logger.Sugar().Warnf("[Authority] Failed to encode certificate. " + err.Error())
 		return "", nil, err
 	}
 	return csr.String(), privateKey, nil
@@ -244,7 +244,7 @@ func AppendEndpoint(endpoint *endpoint.Endpoint, cert *x509.Certificate) {
 	if endpoint.SpiffeID != "" {
 		spiffeId, err := url.Parse(endpoint.SpiffeID)
 		if err != nil {
-			logger.Sugar().Warnf("failed to parse the spiffe id (err: %s)", err)
+			logger.Sugar().Warnf("[Authority] failed to parse the spiffe id (err: %s)", err)
 			return
 		}
 		cert.URIs = append(cert.URIs, spiffeId)
@@ -255,7 +255,7 @@ func EncodePrivateKey(caPrivKey *ecdsa.PrivateKey) string {
 	caPrivKeyPEM := new(bytes.Buffer)
 	pri, err := x509.MarshalECPrivateKey(caPrivKey)
 	if err != nil {
-		logger.Sugar().Warnf("Failed to marshal EC private key. " + err.Error())
+		logger.Sugar().Warnf("[Authority] Failed to marshal EC private key. " + err.Error())
 		return ""
 	}
 	err = pem.Encode(caPrivKeyPEM, &pem.Block{
@@ -263,7 +263,7 @@ func EncodePrivateKey(caPrivKey *ecdsa.PrivateKey) string {
 		Bytes: pri,
 	})
 	if err != nil {
-		logger.Sugar().Warnf("Failed to encode private key. " + err.Error())
+		logger.Sugar().Warnf("[Authority] Failed to encode private key. " + err.Error())
 		return ""
 	}
 	return caPrivKeyPEM.String()
@@ -273,13 +273,13 @@ func EncodePublicKey(pub *ecdsa.PublicKey) (res string) {
 	caPrivKeyPEM := new(bytes.Buffer)
 	defer func() {
 		if err := recover(); err != nil {
-			logger.Sugar().Warnf("Failed to marshal EC public key. %v", err)
+			logger.Sugar().Warnf("[Authority] Failed to marshal EC public key. %v", err)
 			res = ""
 		}
 	}()
 	pri, err := x509.MarshalPKIXPublicKey(pub)
 	if err != nil {
-		logger.Sugar().Warnf("Failed to marshal EC public key. " + err.Error())
+		logger.Sugar().Warnf("[Authority] Failed to marshal EC public key. " + err.Error())
 		return ""
 	}
 	err = pem.Encode(caPrivKeyPEM, &pem.Block{
@@ -287,7 +287,7 @@ func EncodePublicKey(pub *ecdsa.PublicKey) (res string) {
 		Bytes: pri,
 	})
 	if err != nil {
-		logger.Sugar().Warnf("Failed to encode public key. " + err.Error())
+		logger.Sugar().Warnf("[Authority] Failed to encode public key. " + err.Error())
 		return ""
 	}
 	return caPrivKeyPEM.String()

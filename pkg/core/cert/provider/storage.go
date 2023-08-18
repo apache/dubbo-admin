@@ -43,37 +43,41 @@ type CertStorage struct {
 	serverCerts  *Cert
 }
 
+func calculateInterval(caValidity int64) time.Duration {
+	interval := math.Max(math.Min(float64(caValidity/100), 10_000), 1)
+	return time.Duration(interval) * time.Millisecond
+}
+
 func (s *CertStorage) Start(stop <-chan struct{}) error {
 	go s.RefreshServerCert(stop)
 	go func(stop <-chan struct{}) {
-		interval := math.Min(math.Floor(float64(s.config.Security.CaValidity)/100), 10_000)
+		ticker := time.NewTicker(calculateInterval(s.config.Security.CaValidity))
+		defer ticker.Stop()
+
 		for {
-			time.Sleep(time.Duration(interval) * time.Millisecond)
-			if s.GetAuthorityCert().NeedRefresh() {
-				logger.Sugar().Infof("Authority cert is invalid, refresh it.")
-				// TODO lock if multi cp-server
-				// TODO refresh signed cert
-
-				err := NewleaderElection().Election(s, s.config, s.certClient.GetKubClient())
-				if err != nil {
-					return
-				}
-				if s.config.KubeConfig.IsKubernetesConnected {
-					s.certClient.UpdateAuthorityCert(s.GetAuthorityCert().CertPem, EncodePrivateKey(s.GetAuthorityCert().PrivateKey), s.config.KubeConfig.Namespace)
-					s.certClient.UpdateWebhookConfig(s.config, s)
-					if s.certClient.UpdateAuthorityPublicKey(s.GetAuthorityCert().CertPem) {
-						logger.Sugar().Infof("Write ca to config maps success.")
-					} else {
-						logger.Sugar().Warnf("Write ca to config maps failed.")
-					}
-				}
-			}
-
 			select {
 			case <-stop:
 				return
-			default:
-				continue
+			case <-ticker.C:
+				if s.GetAuthorityCert().NeedRefresh() {
+					logger.Sugar().Infof("[Authority] Authority cert is invalid, refresh it.")
+					// TODO lock if multi cp-server
+					// TODO refresh signed cert
+
+					err := NewleaderElection().Election(s, s.config, s.certClient.GetKubClient())
+					if err != nil {
+						logger.Sugar().Error("[Authority] Leader Election failed")
+					}
+					if s.config.KubeConfig.IsKubernetesConnected {
+						s.certClient.UpdateAuthorityCert(s.GetAuthorityCert().CertPem, EncodePrivateKey(s.GetAuthorityCert().PrivateKey), s.config.KubeConfig.Namespace)
+						s.certClient.UpdateWebhookConfig(s.config, s)
+						if s.certClient.UpdateAuthorityPublicKey(s.GetAuthorityCert().CertPem) {
+							logger.Sugar().Infof("[Authority] Write ca to config maps success.")
+						} else {
+							logger.Sugar().Warnf("[Authority] Write ca to config maps failed.")
+						}
+					}
+				}
 			}
 		}
 	}(stop)
@@ -146,34 +150,34 @@ func (c *Cert) GetTlsCert() *tls.Certificate {
 	}
 	tlsCert, err := tls.X509KeyPair([]byte(c.CertPem), []byte(EncodePrivateKey(c.PrivateKey)))
 	if err != nil {
-		logger.Sugar().Warnf("Failed to load x509 cert. %v", err)
+		logger.Sugar().Warnf("[Authority] Failed to load x509 cert. %v", err)
 	}
 	c.tlsCert = &tlsCert
 	return c.tlsCert
 }
 
 func (s *CertStorage) RefreshServerCert(stop <-chan struct{}) {
-	interval := math.Min(math.Floor(float64(s.config.Security.CertValidity)/100), 10_000)
-	for true {
+	interval := math.Max(math.Min(math.Floor(float64(s.config.Security.CertValidity)/100), 10_000), 1)
+	ticker := time.NewTicker(time.Duration(interval) * time.Millisecond)
+	defer ticker.Stop()
+	for {
 		select {
 		case <-stop:
 			return
-		default:
+		case <-ticker.C:
+			func() {
+				s.mutex.Lock()
+				defer s.mutex.Unlock()
+				if s.authorityCert == nil || !s.authorityCert.IsValid() {
+					// ignore if authority cert is invalid
+					return
+				}
+				if s.serverCerts == nil || !s.serverCerts.IsValid() {
+					logger.Sugar().Infof("[Authority] Server cert is invalid, refresh it.")
+					s.serverCerts = SignServerCert(s.authorityCert, s.serverNames, s.config.Security.CertValidity)
+				}
+			}()
 		}
-
-		time.Sleep(time.Duration(interval) * time.Millisecond)
-		func() {
-			s.mutex.Lock()
-			defer s.mutex.Unlock()
-			if s.authorityCert == nil || !s.authorityCert.IsValid() {
-				// ignore if authority cert is invalid
-				return
-			}
-			if s.serverCerts == nil || !s.serverCerts.IsValid() {
-				logger.Sugar().Infof("Server cert is invalid, refresh it.")
-				s.serverCerts = SignServerCert(s.authorityCert, s.serverNames, s.config.Security.CertValidity)
-			}
-		}()
 	}
 }
 

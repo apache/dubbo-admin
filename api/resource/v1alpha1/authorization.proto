@@ -21,6 +21,24 @@ package dubbo.apache.org.v1alpha1;
 
 option java_multiple_files = true;
 
+message AuthorizationPolicyToClient {
+  string key = 1;
+  AuthorizationPolicySpecToClient spec = 2;
+}
+
+message AuthorizationPolicySpecToClient {
+  string action = 1;
+  repeated AuthorizationPolicyRuleToClient rules = 2;
+  float samples = 3;
+  float order = 4;
+  string matchType = 5;
+}
+
+message AuthorizationPolicyRuleToClient {
+  AuthorizationPolicySource from = 1;
+  AuthorizationPolicyCondition when = 2;
+}
+
 message AuthorizationPolicy {
   string action = 1;
   repeated AuthorizationPolicyRule rules = 2;

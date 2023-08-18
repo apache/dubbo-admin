@@ -28,9 +28,9 @@ service ServiceNameMappingService{
 }
 
 // When dubbo provider start up, it reports its applicationName and its interfaceName,
-// and Dubbo consumer will get the service name mapping info by xDS.
+// and Dubbo consumer will get the service name mapping info by dds.
 message ServiceMappingRequest{
-  // This is namespace of proxyless dubbo server
+  // This is namespace of dubbo server
   string namespace = 1;
 
   string applicationName = 2;
@@ -39,4 +39,6 @@ message ServiceMappingRequest{
 }
 
 message ServiceMappingResponse{
+  bool success = 1;
+  string message = 2;
 }

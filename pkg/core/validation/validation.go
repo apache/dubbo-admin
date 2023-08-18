@@ -38,3 +38,13 @@ func registerValidateFunc(name string, f ValidateFunc) ValidateFunc {
 	validateFuncs[name] = f
 	return f
 }
+
+// IsValidateFunc indicates whether there is a validation function with the given name.
+func IsValidateFunc(name string) bool {
+	return GetValidateFunc(name) != nil
+}
+
+// GetValidateFunc returns the validation function with the given name, or null if it does not exist.
+func GetValidateFunc(name string) ValidateFunc {
+	return validateFuncs[name]
+}

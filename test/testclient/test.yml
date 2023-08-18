@@ -1,0 +1,64 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# It is only for test
+
+admin:
+  admin-port: 38080
+  config-center: nacos://127.0.0.1:8848
+  metadata-report:
+    address: nacos://127.0.0.1:8848
+  registry:
+    address: nacos://127.0.0.1:8848
+  prometheus:
+    ip: 127.0.0.1
+    port: 9090
+    monitor-port: 22222
+#  mysql-dsn: root:password@tcp(127.0.0.1:3306)/dubbo-admin?charset=utf8&parseTime=true
+security:
+  ca-validity: 2592000000 #30 * 24 * 60 * 60 * 1000ms
+  cert-validity: 3600000 #1 * 60 * 60 * 1000ms
+  enable-oidc-check: true
+  webhook-port: 30080
+  webhook-allow-on-err: true
+  # we trust anyone when test
+  is-trust-anyone: true
+kube-config:
+  namespace: dubbo-system
+  service-name: dubbo-cp
+  in-pod-env: false
+  rest-config-qps: 50
+  rest-config-burst: 100
+  kube-file-config: ""
+  domain-suffix: cluster.local
+grpc-cp-server:
+  plain-server-port: 30060
+  secure-server-port: 30062
+  debug-port: 30070
+options:
+  debounce-after: 100000000
+  debounce-max: 10000000000
+  enable-debounce: true
+  send-timeout: 5000000000
+  dds-block-max-time: 15000000000
+dubbo:
+  registries:
+    demoZK:
+      protocol: zookeeper
+      address: 127.0.0.1:2181
+  protocols:
+    triple:
+      name: tri
+      port: 20000

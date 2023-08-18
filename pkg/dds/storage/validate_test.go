@@ -33,8 +33,8 @@ import (
 func TestAuthenticationSelect_Empty(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authentication).Build()
-	r := collections.DubboCAV1Alpha1Authentication.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthenticationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthenticationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -55,7 +55,7 @@ func TestAuthenticationSelect_Empty(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authentication,
+		Gvk: gvk.AuthenticationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -66,9 +66,9 @@ func TestAuthenticationSelect_Empty(t *testing.T) {
 	}
 
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -76,7 +76,7 @@ func TestAuthenticationSelect_Empty(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -84,14 +84,15 @@ func TestAuthenticationSelect_Empty(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
-			assert.Equal(t, 1, len(authentication.PortLevel))
-			assert.Equal(t, "DENY", authentication.PortLevel[0].Action)
+			assert.Equal(t, "name/ns", authentication.Key)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
+			assert.Equal(t, 1, len(authentication.Spec.PortLevel))
+			assert.Equal(t, "DENY", authentication.Spec.PortLevel[0].Action)
 		}
 	}
 }
@@ -99,8 +100,8 @@ func TestAuthenticationSelect_Empty(t *testing.T) {
 func TestAuthenticationSelect_NoSelector(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authentication).Build()
-	r := collections.DubboCAV1Alpha1Authentication.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthenticationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthenticationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -115,7 +116,7 @@ func TestAuthenticationSelect_NoSelector(t *testing.T) {
 	policy.Action = "ALLOW"
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authentication,
+		Gvk: gvk.AuthenticationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -125,9 +126,9 @@ func TestAuthenticationSelect_NoSelector(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -139,7 +140,7 @@ func TestAuthenticationSelect_NoSelector(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -147,12 +148,13 @@ func TestAuthenticationSelect_NoSelector(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "name/ns", authentication.Key)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 }
@@ -160,8 +162,8 @@ func TestAuthenticationSelect_NoSelector(t *testing.T) {
 func TestAuthenticationSelect_Namespace(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authentication).Build()
-	r := collections.DubboCAV1Alpha1Authentication.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthenticationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthenticationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -181,7 +183,7 @@ func TestAuthenticationSelect_Namespace(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authentication,
+		Gvk: gvk.AuthenticationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -191,9 +193,9 @@ func TestAuthenticationSelect_Namespace(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -205,7 +207,7 @@ func TestAuthenticationSelect_Namespace(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -213,12 +215,12 @@ func TestAuthenticationSelect_Namespace(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 
@@ -230,15 +232,15 @@ func TestAuthenticationSelect_Namespace(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 }
 
 func TestAuthenticationSelect_EndpointNil(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authentication).Build()
-	r := collections.DubboCAV1Alpha1Authentication.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthenticationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthenticationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -258,7 +260,7 @@ func TestAuthenticationSelect_EndpointNil(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authentication,
+		Gvk: gvk.AuthenticationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -268,9 +270,9 @@ func TestAuthenticationSelect_EndpointNil(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -278,7 +280,7 @@ func TestAuthenticationSelect_EndpointNil(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -286,12 +288,12 @@ func TestAuthenticationSelect_EndpointNil(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 }
@@ -299,8 +301,8 @@ func TestAuthenticationSelect_EndpointNil(t *testing.T) {
 func TestAuthenticationSelect_NotNamespace(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authentication).Build()
-	r := collections.DubboCAV1Alpha1Authentication.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthenticationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthenticationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -320,7 +322,7 @@ func TestAuthenticationSelect_NotNamespace(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authentication,
+		Gvk: gvk.AuthenticationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -330,9 +332,9 @@ func TestAuthenticationSelect_NotNamespace(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -344,7 +346,7 @@ func TestAuthenticationSelect_NotNamespace(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -352,7 +354,7 @@ func TestAuthenticationSelect_NotNamespace(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -367,7 +369,7 @@ func TestAuthenticationSelect_NotNamespace(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data1 := generated.Data
@@ -375,12 +377,12 @@ func TestAuthenticationSelect_NotNamespace(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 }
@@ -388,8 +390,8 @@ func TestAuthenticationSelect_NotNamespace(t *testing.T) {
 func TestAuthenticationSelect_IpBlocks_ErrFmt(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authentication).Build()
-	r := collections.DubboCAV1Alpha1Authentication.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthenticationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthenticationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -409,7 +411,7 @@ func TestAuthenticationSelect_IpBlocks_ErrFmt(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authentication,
+		Gvk: gvk.AuthenticationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -419,9 +421,9 @@ func TestAuthenticationSelect_IpBlocks_ErrFmt(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -431,7 +433,7 @@ func TestAuthenticationSelect_IpBlocks_ErrFmt(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -439,7 +441,7 @@ func TestAuthenticationSelect_IpBlocks_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -453,7 +455,7 @@ func TestAuthenticationSelect_IpBlocks_ErrFmt(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data1 := generated.Data
@@ -461,7 +463,7 @@ func TestAuthenticationSelect_IpBlocks_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -473,8 +475,8 @@ func TestAuthenticationSelect_IpBlocks_ErrFmt(t *testing.T) {
 func TestAuthenticationSelect_IpBlocks(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authentication).Build()
-	r := collections.DubboCAV1Alpha1Authentication.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthenticationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthenticationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -494,7 +496,7 @@ func TestAuthenticationSelect_IpBlocks(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authentication,
+		Gvk: gvk.AuthenticationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -504,9 +506,9 @@ func TestAuthenticationSelect_IpBlocks(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -516,7 +518,7 @@ func TestAuthenticationSelect_IpBlocks(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -524,12 +526,12 @@ func TestAuthenticationSelect_IpBlocks(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 
@@ -539,7 +541,7 @@ func TestAuthenticationSelect_IpBlocks(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data1 := generated.Data
@@ -547,7 +549,7 @@ func TestAuthenticationSelect_IpBlocks(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -560,8 +562,8 @@ func TestAuthenticationSelect_IpBlocks(t *testing.T) {
 func TestAuthenticationSelect_NotIpBlocks_ErrFmt(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authentication).Build()
-	r := collections.DubboCAV1Alpha1Authentication.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthenticationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthenticationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -581,7 +583,7 @@ func TestAuthenticationSelect_NotIpBlocks_ErrFmt(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authentication,
+		Gvk: gvk.AuthenticationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -591,9 +593,9 @@ func TestAuthenticationSelect_NotIpBlocks_ErrFmt(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -603,7 +605,7 @@ func TestAuthenticationSelect_NotIpBlocks_ErrFmt(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -611,12 +613,12 @@ func TestAuthenticationSelect_NotIpBlocks_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 
@@ -626,7 +628,7 @@ func TestAuthenticationSelect_NotIpBlocks_ErrFmt(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data1 := generated.Data
@@ -634,12 +636,12 @@ func TestAuthenticationSelect_NotIpBlocks_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 }
@@ -647,8 +649,8 @@ func TestAuthenticationSelect_NotIpBlocks_ErrFmt(t *testing.T) {
 func TestAuthenticationSelect_Principals(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authentication).Build()
-	r := collections.DubboCAV1Alpha1Authentication.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthenticationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthenticationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -668,7 +670,7 @@ func TestAuthenticationSelect_Principals(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authentication,
+		Gvk: gvk.AuthenticationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -678,9 +680,9 @@ func TestAuthenticationSelect_Principals(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -690,7 +692,7 @@ func TestAuthenticationSelect_Principals(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -698,7 +700,7 @@ func TestAuthenticationSelect_Principals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -713,7 +715,7 @@ func TestAuthenticationSelect_Principals(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data1 := generated.Data
@@ -721,12 +723,12 @@ func TestAuthenticationSelect_Principals(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 
@@ -736,18 +738,18 @@ func TestAuthenticationSelect_Principals(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 }
@@ -755,8 +757,8 @@ func TestAuthenticationSelect_Principals(t *testing.T) {
 func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authentication).Build()
-	r := collections.DubboCAV1Alpha1Authentication.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthenticationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthenticationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -776,7 +778,7 @@ func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authentication,
+		Gvk: gvk.AuthenticationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -786,9 +788,9 @@ func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -798,7 +800,7 @@ func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -806,12 +808,12 @@ func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 
@@ -821,7 +823,7 @@ func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data1 := generated.Data
@@ -829,7 +831,7 @@ func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -844,13 +846,13 @@ func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -863,8 +865,8 @@ func TestAuthenticationSelect_NotPrincipals(t *testing.T) {
 func TestAuthenticationSelect_Extends(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authentication).Build()
-	r := collections.DubboCAV1Alpha1Authentication.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthenticationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthenticationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -889,7 +891,7 @@ func TestAuthenticationSelect_Extends(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authentication,
+		Gvk: gvk.AuthenticationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -899,9 +901,9 @@ func TestAuthenticationSelect_Extends(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -913,7 +915,7 @@ func TestAuthenticationSelect_Extends(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -921,12 +923,12 @@ func TestAuthenticationSelect_Extends(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 
@@ -936,7 +938,7 @@ func TestAuthenticationSelect_Extends(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data1 := generated.Data
@@ -944,7 +946,7 @@ func TestAuthenticationSelect_Extends(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -959,13 +961,13 @@ func TestAuthenticationSelect_Extends(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -978,8 +980,8 @@ func TestAuthenticationSelect_Extends(t *testing.T) {
 func TestAuthenticationSelect_NotExtends(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authentication).Build()
-	r := collections.DubboCAV1Alpha1Authentication.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthenticationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthenticationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -1004,7 +1006,7 @@ func TestAuthenticationSelect_NotExtends(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authentication,
+		Gvk: gvk.AuthenticationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -1014,9 +1016,9 @@ func TestAuthenticationSelect_NotExtends(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -1028,7 +1030,7 @@ func TestAuthenticationSelect_NotExtends(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -1036,7 +1038,7 @@ func TestAuthenticationSelect_NotExtends(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
@@ -1053,7 +1055,7 @@ func TestAuthenticationSelect_NotExtends(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authentication)
+	assert.Equal(t, generated.Type, gvk.AuthenticationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data1 := generated.Data
@@ -1061,12 +1063,12 @@ func TestAuthenticationSelect_NotExtends(t *testing.T) {
 	for _, anyMessage := range data1 {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthenticationTypeUrl {
-			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicy{}
+			authentication := &dubbo_apache_org_v1alpha1.AuthenticationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authentication)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authentication.Action)
+			assert.Equal(t, "ALLOW", authentication.Spec.Action)
 		}
 	}
 }
@@ -1074,8 +1076,8 @@ func TestAuthenticationSelect_NotExtends(t *testing.T) {
 func TestAuthorization_Empty(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authorization).Build()
-	r := collections.DubboCAV1Alpha1Authorization.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthorizationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthorizationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -1091,7 +1093,7 @@ func TestAuthorization_Empty(t *testing.T) {
 	policy.Rules = []*dubbo_apache_org_v1alpha1.AuthorizationPolicyRule{}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authorization,
+		Gvk: gvk.AuthorizationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -1101,9 +1103,9 @@ func TestAuthorization_Empty(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -1111,7 +1113,7 @@ func TestAuthorization_Empty(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -1119,12 +1121,12 @@ func TestAuthorization_Empty(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 }
@@ -1132,8 +1134,8 @@ func TestAuthorization_Empty(t *testing.T) {
 func TestAuthorization_Namespace(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authorization).Build()
-	r := collections.DubboCAV1Alpha1Authorization.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthorizationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthorizationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -1156,7 +1158,7 @@ func TestAuthorization_Namespace(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authorization,
+		Gvk: gvk.AuthorizationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -1166,9 +1168,9 @@ func TestAuthorization_Namespace(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -1177,7 +1179,7 @@ func TestAuthorization_Namespace(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -1185,12 +1187,12 @@ func TestAuthorization_Namespace(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1203,7 +1205,7 @@ func TestAuthorization_Namespace(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -1211,7 +1213,7 @@ func TestAuthorization_Namespace(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1227,7 +1229,7 @@ func TestAuthorization_Namespace(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -1235,7 +1237,7 @@ func TestAuthorization_Namespace(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1248,8 +1250,8 @@ func TestAuthorization_Namespace(t *testing.T) {
 func TestAuthorization_NotNamespace(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authorization).Build()
-	r := collections.DubboCAV1Alpha1Authorization.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthorizationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthorizationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -1274,7 +1276,7 @@ func TestAuthorization_NotNamespace(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authorization,
+		Gvk: gvk.AuthorizationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -1284,9 +1286,9 @@ func TestAuthorization_NotNamespace(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -1299,7 +1301,7 @@ func TestAuthorization_NotNamespace(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -1307,12 +1309,12 @@ func TestAuthorization_NotNamespace(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1325,7 +1327,7 @@ func TestAuthorization_NotNamespace(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -1333,7 +1335,7 @@ func TestAuthorization_NotNamespace(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1349,7 +1351,7 @@ func TestAuthorization_NotNamespace(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -1357,12 +1359,12 @@ func TestAuthorization_NotNamespace(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 }
@@ -1370,8 +1372,8 @@ func TestAuthorization_NotNamespace(t *testing.T) {
 func TestAuthorization_IPBlocks(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authorization).Build()
-	r := collections.DubboCAV1Alpha1Authorization.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthorizationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthorizationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -1396,7 +1398,7 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authorization,
+		Gvk: gvk.AuthorizationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -1406,9 +1408,9 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -1419,7 +1421,7 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -1427,12 +1429,12 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1443,7 +1445,7 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -1451,7 +1453,7 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1467,7 +1469,7 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -1475,7 +1477,7 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1489,7 +1491,7 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -1497,7 +1499,7 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1510,8 +1512,8 @@ func TestAuthorization_IPBlocks(t *testing.T) {
 func TestAuthorization_ErrFmt(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authorization).Build()
-	r := collections.DubboCAV1Alpha1Authorization.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthorizationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthorizationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -1536,7 +1538,7 @@ func TestAuthorization_ErrFmt(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authorization,
+		Gvk: gvk.AuthorizationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -1546,9 +1548,9 @@ func TestAuthorization_ErrFmt(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -1559,7 +1561,7 @@ func TestAuthorization_ErrFmt(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -1567,7 +1569,7 @@ func TestAuthorization_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1583,7 +1585,7 @@ func TestAuthorization_ErrFmt(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -1591,7 +1593,7 @@ func TestAuthorization_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1605,7 +1607,7 @@ func TestAuthorization_ErrFmt(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -1613,7 +1615,7 @@ func TestAuthorization_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1626,8 +1628,8 @@ func TestAuthorization_ErrFmt(t *testing.T) {
 func TestAuthorization_NotIPBlocks(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authorization).Build()
-	r := collections.DubboCAV1Alpha1Authorization.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthorizationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthorizationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -1652,7 +1654,7 @@ func TestAuthorization_NotIPBlocks(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authorization,
+		Gvk: gvk.AuthorizationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -1662,9 +1664,9 @@ func TestAuthorization_NotIPBlocks(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -1675,7 +1677,7 @@ func TestAuthorization_NotIPBlocks(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -1683,12 +1685,12 @@ func TestAuthorization_NotIPBlocks(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1699,7 +1701,7 @@ func TestAuthorization_NotIPBlocks(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -1707,12 +1709,12 @@ func TestAuthorization_NotIPBlocks(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1723,7 +1725,7 @@ func TestAuthorization_NotIPBlocks(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -1731,7 +1733,7 @@ func TestAuthorization_NotIPBlocks(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1744,8 +1746,8 @@ func TestAuthorization_NotIPBlocks(t *testing.T) {
 func TestAuthorization_NotIPBlocks_ErrFmt(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authorization).Build()
-	r := collections.DubboCAV1Alpha1Authorization.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthorizationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthorizationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -1770,7 +1772,7 @@ func TestAuthorization_NotIPBlocks_ErrFmt(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authorization,
+		Gvk: gvk.AuthorizationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -1780,9 +1782,9 @@ func TestAuthorization_NotIPBlocks_ErrFmt(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -1793,7 +1795,7 @@ func TestAuthorization_NotIPBlocks_ErrFmt(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -1801,12 +1803,12 @@ func TestAuthorization_NotIPBlocks_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1817,7 +1819,7 @@ func TestAuthorization_NotIPBlocks_ErrFmt(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -1825,12 +1827,12 @@ func TestAuthorization_NotIPBlocks_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1839,7 +1841,7 @@ func TestAuthorization_NotIPBlocks_ErrFmt(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -1847,12 +1849,12 @@ func TestAuthorization_NotIPBlocks_ErrFmt(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 }
@@ -1860,8 +1862,8 @@ func TestAuthorization_NotIPBlocks_ErrFmt(t *testing.T) {
 func TestAuthorization_Principals(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authorization).Build()
-	r := collections.DubboCAV1Alpha1Authorization.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthorizationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthorizationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -1886,7 +1888,7 @@ func TestAuthorization_Principals(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authorization,
+		Gvk: gvk.AuthorizationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -1896,9 +1898,9 @@ func TestAuthorization_Principals(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -1909,7 +1911,7 @@ func TestAuthorization_Principals(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -1917,12 +1919,12 @@ func TestAuthorization_Principals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1933,7 +1935,7 @@ func TestAuthorization_Principals(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -1941,12 +1943,12 @@ func TestAuthorization_Principals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -1957,7 +1959,7 @@ func TestAuthorization_Principals(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -1965,7 +1967,7 @@ func TestAuthorization_Principals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -1979,7 +1981,7 @@ func TestAuthorization_Principals(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -1987,7 +1989,7 @@ func TestAuthorization_Principals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -2000,8 +2002,8 @@ func TestAuthorization_Principals(t *testing.T) {
 func TestAuthorization_NotPrincipals(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authorization).Build()
-	r := collections.DubboCAV1Alpha1Authorization.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthorizationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthorizationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -2026,7 +2028,7 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authorization,
+		Gvk: gvk.AuthorizationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -2036,9 +2038,9 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -2049,7 +2051,7 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -2057,12 +2059,12 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -2073,7 +2075,7 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -2081,12 +2083,12 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -2097,7 +2099,7 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -2105,7 +2107,7 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -2121,7 +2123,7 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -2129,7 +2131,7 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -2143,7 +2145,7 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -2151,12 +2153,12 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 }
@@ -2164,8 +2166,8 @@ func TestAuthorization_NotPrincipals(t *testing.T) {
 func TestAuthorization_Extends(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authorization).Build()
-	r := collections.DubboCAV1Alpha1Authorization.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthorizationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthorizationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -2195,7 +2197,7 @@ func TestAuthorization_Extends(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authorization,
+		Gvk: gvk.AuthorizationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -2205,9 +2207,9 @@ func TestAuthorization_Extends(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -2220,7 +2222,7 @@ func TestAuthorization_Extends(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -2228,12 +2230,12 @@ func TestAuthorization_Extends(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -2246,7 +2248,7 @@ func TestAuthorization_Extends(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -2254,7 +2256,7 @@ func TestAuthorization_Extends(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -2268,7 +2270,7 @@ func TestAuthorization_Extends(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -2276,7 +2278,7 @@ func TestAuthorization_Extends(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -2289,8 +2291,8 @@ func TestAuthorization_Extends(t *testing.T) {
 func TestAuthorization_NotExtends(t *testing.T) {
 	t.Parallel()
 
-	collection.NewSchemasBuilder().MustAdd(collections.DubboCAV1Alpha1Authorization).Build()
-	r := collections.DubboCAV1Alpha1Authorization.Resource()
+	collection.NewSchemasBuilder().MustAdd(collections.DubboApacheOrgV1Alpha1AuthorizationPolicy).Build()
+	r := collections.DubboApacheOrgV1Alpha1AuthorizationPolicy.Resource()
 	configMeta := model.Meta{
 		Name:             "name",
 		Namespace:        "ns",
@@ -2320,7 +2322,7 @@ func TestAuthorization_NotExtends(t *testing.T) {
 	}
 
 	origin := &OriginImpl{
-		Gvk: gvk.Authorization,
+		Gvk: gvk.AuthorizationPolicy,
 		Rev: 1,
 		Data: []model.Config{
 			{
@@ -2330,9 +2332,9 @@ func TestAuthorization_NotExtends(t *testing.T) {
 		},
 	}
 	gen := map[string]DdsResourceGenerator{}
-	gen[gvk.Authentication] = &AuthenticationGenerator{}
-	gen[gvk.Authorization] = &AuthorizationGenerator{}
-	gen[gvk.ServiceMapping] = &ServiceMappingGenerator{}
+	gen[gvk.AuthenticationPolicy] = &AuthenticationGenerator{}
+	gen[gvk.AuthorizationPolicy] = &AuthorizationGenerator{}
+	gen[gvk.ServiceNameMapping] = &ServiceMappingGenerator{}
 	gen[gvk.ConditionRoute] = &ConditionRoutesGenerator{}
 	gen[gvk.TagRoute] = &TagRoutesGenerator{}
 	gen[gvk.DynamicConfig] = &DynamicConfigsGenerator{}
@@ -2345,7 +2347,7 @@ func TestAuthorization_NotExtends(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data := generated.Data
@@ -2353,12 +2355,12 @@ func TestAuthorization_NotExtends(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 
@@ -2371,7 +2373,7 @@ func TestAuthorization_NotExtends(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -2379,7 +2381,7 @@ func TestAuthorization_NotExtends(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
@@ -2393,7 +2395,7 @@ func TestAuthorization_NotExtends(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotNil(t, generated)
-	assert.Equal(t, generated.Type, gvk.Authorization)
+	assert.Equal(t, generated.Type, gvk.AuthorizationPolicy)
 	assert.Equal(t, generated.Revision, int64(1))
 
 	data = generated.Data
@@ -2401,12 +2403,12 @@ func TestAuthorization_NotExtends(t *testing.T) {
 	for _, anyMessage := range data {
 		valBytes := anyMessage.Value
 		if anyMessage.TypeUrl == model.AuthorizationTypeUrl {
-			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicy{}
+			authorization := &dubbo_apache_org_v1alpha1.AuthorizationPolicyToClient{}
 			err := proto.Unmarshal(valBytes, authorization)
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(t, "ALLOW", authorization.Action)
+			assert.Equal(t, "ALLOW", authorization.Spec.Action)
 		}
 	}
 }
