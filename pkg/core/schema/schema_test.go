@@ -18,32 +18,14 @@
 package schema
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/apache/dubbo-admin/pkg/core/schema/collection"
 	"github.com/apache/dubbo-admin/pkg/core/schema/collections"
-	"github.com/google/go-cmp/cmp"
 	. "github.com/onsi/gomega"
 )
 
-var Authentication = collections.DubboCAV1Alpha1Authentication.Resource()
-
-// ExpectEqual calls CheckEqual and fails the test if it returns an error.
-func ExpectEqual(t *testing.T, o1 interface{}, o2 interface{}) {
-	t.Helper()
-	if err := CheckEqual(o1, o2); err != nil {
-		t.Fatal(err)
-	}
-}
-
-// CheckEqual checks that o1 and o2 are equal. If not, returns an error with the diff.
-func CheckEqual(o1 interface{}, o2 interface{}) error {
-	if diff := cmp.Diff(o1, o2); diff != "" {
-		return fmt.Errorf(diff)
-	}
-	return nil
-}
+var Authentication = collections.DubboApacheOrgV1Alpha1AuthenticationPolicy.Resource()
 
 func TestSchema_ParseAndBuild(t *testing.T) {
 	cases := []struct {
