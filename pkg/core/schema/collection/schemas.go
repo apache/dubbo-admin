@@ -24,6 +24,7 @@ import (
 
 	"github.com/apache/dubbo-admin/pkg/core/model"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/go-multierror"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -123,7 +124,7 @@ func (s Schemas) FindByGroupVersionKind(gvk model.GroupVersionKind) (Schema, boo
 	return nil, false
 }
 
-// FindByKind searches and returns the first schema with the given kind
+// FindByGroupVersionResource FindByKind searches and returns the first schema with the given kind
 func (s Schemas) FindByGroupVersionResource(gvr schema.GroupVersionResource) (Schema, bool) {
 	for _, rs := range s.byAddOrder {
 		if rs.Resource().GroupVersionResource() == gvr {
@@ -233,4 +234,8 @@ func (s Schemas) Validate() (err error) {
 		err = multierror.Append(err, c.Resource().Validate()).ErrorOrNil()
 	}
 	return
+}
+
+func (s Schemas) Equal(o Schemas) bool {
+	return cmp.Equal(s.byAddOrder, o.byAddOrder)
 }

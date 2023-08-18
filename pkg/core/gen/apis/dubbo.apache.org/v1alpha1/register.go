@@ -44,18 +44,24 @@ var (
 // Adds the list of known types to Scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
+
 		&AuthenticationPolicy{},
+		&AuthenticationPolicyList{},
+
 		&AuthorizationPolicy{},
-		&ServiceNameMapping{},
+		&AuthorizationPolicyList{},
+
 		&ConditionRoute{},
+		&ConditionRouteList{},
+
 		&DynamicConfig{},
+		&DynamicConfigList{},
+
+		&ServiceNameMapping{},
+		&ServiceNameMappingList{},
+
 		&TagRoute{},
 		&TagRouteList{},
-		&DynamicConfigList{},
-		&ServiceNameMappingList{},
-		&ConditionRouteList{},
-		&AuthorizationPolicyList{},
-		&AuthenticationPolicyList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

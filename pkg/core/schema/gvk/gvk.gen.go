@@ -20,34 +20,10 @@ package gvk
 import "github.com/apache/dubbo-admin/pkg/core/model"
 
 var (
-	Authentication = model.GroupVersionKind{
-		Group:   "dubbo.apache.org",
-		Version: "v1alpha1",
-		Kind:    "AuthenticationPolicy",
-	}.String()
-	Authorization = model.GroupVersionKind{
-		Group:   "dubbo.apache.org",
-		Version: "v1alpha1",
-		Kind:    "AuthorizationPolicy",
-	}.String()
-	ConditionRoute = model.GroupVersionKind{
-		Group:   "dubbo.apache.org",
-		Version: "v1alpha1",
-		Kind:    "ConditionRoute",
-	}.String()
-	TagRoute = model.GroupVersionKind{
-		Group:   "dubbo.apache.org",
-		Version: "v1alpha1",
-		Kind:    "TagRoute",
-	}.String()
-	DynamicConfig = model.GroupVersionKind{
-		Group:   "dubbo.apache.org",
-		Version: "v1alpha1",
-		Kind:    "DynamicConfig",
-	}.String()
-	ServiceMapping = model.GroupVersionKind{
-		Group:   "dubbo.apache.org",
-		Version: "v1alpha1",
-		Kind:    "ServiceNameMapping",
-	}.String()
+	AuthenticationPolicy = model.GroupVersionKind{Group: "dubbo.apache.org", Version: "v1alpha1", Kind: "AuthenticationPolicy"}.String()
+	AuthorizationPolicy  = model.GroupVersionKind{Group: "dubbo.apache.org", Version: "v1alpha1", Kind: "AuthorizationPolicy"}.String()
+	ConditionRoute       = model.GroupVersionKind{Group: "dubbo.apache.org", Version: "v1alpha1", Kind: "ConditionRoute"}.String()
+	DynamicConfig        = model.GroupVersionKind{Group: "dubbo.apache.org", Version: "v1alpha1", Kind: "DynamicConfig"}.String()
+	ServiceNameMapping   = model.GroupVersionKind{Group: "dubbo.apache.org", Version: "v1alpha1", Kind: "ServiceNameMapping"}.String()
+	TagRoute             = model.GroupVersionKind{Group: "dubbo.apache.org", Version: "v1alpha1", Kind: "TagRoute"}.String()
 )

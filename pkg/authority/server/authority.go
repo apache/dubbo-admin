@@ -49,13 +49,13 @@ func (s *AuthorityService) Start(stop <-chan struct{}) error {
 	errChan := make(chan error)
 	if s.Options.KubeConfig.InPodEnv {
 		go func() {
-			err := s.WebhookServer.Server.ListenAndServe()
+			err := s.WebhookServer.Server.ListenAndServeTLS("", "")
 			if err != nil {
 				switch err {
 				case http.ErrServerClosed:
-					logger.Sugar().Info("shutting down HTTP Server")
+					logger.Sugar().Info("[Webhook] shutting down HTTP Server")
 				default:
-					logger.Sugar().Error(err, "could not start an HTTP Server")
+					logger.Sugar().Error(err, "[Webhook] could not start an HTTP Server")
 					errChan <- err
 				}
 			}
@@ -63,7 +63,7 @@ func (s *AuthorityService) Start(stop <-chan struct{}) error {
 		s.CertClient.UpdateWebhookConfig(s.Options, s.CertStorage)
 		select {
 		case <-stop:
-			logger.Sugar().Info("stopping admin")
+			logger.Sugar().Info("[Webhook] stopping Authority")
 			if s.WebhookServer.Server != nil {
 				return s.WebhookServer.Server.Shutdown(context.Background())
 			}
@@ -102,7 +102,7 @@ func (s *AuthorityService) CreateIdentity(
 	p, _ := peer.FromContext(c)
 	endpoint, err := endpoint.ExactEndpoint(c, s.CertStorage, s.Options, s.CertClient)
 	if err != nil {
-		logger.Sugar().Warnf("Failed to exact endpoint from context: %v. RemoteAddr: %s", err, p.Addr.String())
+		logger.Sugar().Warnf("[Authority] Failed to exact endpoint from context: %v. RemoteAddr: %s", err, p.Addr.String())
 
 		return &ca.IdentityResponse{
 			Success: false,
@@ -112,7 +112,7 @@ func (s *AuthorityService) CreateIdentity(
 
 	certPem, err := cert.SignFromCSR(csr, endpoint, s.CertStorage.GetAuthorityCert(), s.Options.Security.CertValidity)
 	if err != nil {
-		logger.Sugar().Warnf("Failed to sign certificate from csr: %v. RemoteAddr: %s", err, p.Addr.String())
+		logger.Sugar().Warnf("[Authority] Failed to sign certificate from csr: %v. RemoteAddr: %s", err, p.Addr.String())
 
 		return &ca.IdentityResponse{
 			Success: false,
@@ -120,11 +120,11 @@ func (s *AuthorityService) CreateIdentity(
 		}, nil
 	}
 
-	logger.Sugar().Infof("Success to sign certificate from csr. RemoteAddr: %s", p.Addr.String())
+	logger.Sugar().Infof("[Authority] Success to sign certificate from csr. RemoteAddr: %s", p.Addr.String())
 
 	token, err := jwt.NewClaims(endpoint.SpiffeID, endpoint.ToString(), endpoint.ID, s.Options.Security.CertValidity).Sign(s.CertStorage.GetAuthorityCert().PrivateKey)
 	if err != nil {
-		logger.Sugar().Warnf("Failed to sign jwt token: %v. RemoteAddr: %s", err, p.Addr.String())
+		logger.Sugar().Warnf("[Authority] Failed to sign jwt token: %v. RemoteAddr: %s", err, p.Addr.String())
 
 		return &ca.IdentityResponse{
 			Success: false,

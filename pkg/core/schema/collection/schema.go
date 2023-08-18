@@ -30,14 +30,18 @@ type Schema interface {
 	// Name of the collection.
 	Name() Name
 
+	// VariableName is a utility method used to help with codegen. It provides the name of a Schema instance variable.
+	VariableName() string
+
 	// Resource is the schema for resources contained in this collection.
 	Resource() resource.Schema
 }
 
 // Builder Config for the creation of a Schema
 type Builder struct {
-	Name     string
-	Resource resource.Schema
+	Name         string
+	VariableName string
+	Resource     resource.Schema
 }
 
 // Build a Schema instance.
@@ -50,8 +54,9 @@ func (b Builder) Build() (Schema, error) {
 	}
 
 	return &schemaImpl{
-		name:     NewName(b.Name),
-		resource: b.Resource,
+		name:         NewName(b.Name),
+		variableName: b.VariableName,
+		resource:     b.Resource,
 	}, nil
 }
 
@@ -69,7 +74,6 @@ type schemaImpl struct {
 	resource     resource.Schema
 	name         Name
 	variableName string
-	disabled     bool
 }
 
 // String interface method implementation.
@@ -79,6 +83,10 @@ func (s *schemaImpl) String() string {
 
 func (s *schemaImpl) Name() Name {
 	return s.name
+}
+
+func (s *schemaImpl) VariableName() string {
+	return s.variableName
 }
 
 func (s *schemaImpl) Resource() resource.Schema {

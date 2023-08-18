@@ -81,25 +81,25 @@ func (d *GrpcServer) Start(stop <-chan struct{}) error {
 	go func() {
 		defer close(plainErrChan)
 		if err = d.PlainServer.Serve(plainLis); err != nil {
-			logger.Sugar().Error(err, "terminated with an error")
+			logger.Sugar().Error(err, "[cp-server] terminated with an error")
 			plainErrChan <- err
 		} else {
-			logger.Sugar().Info("terminated normally")
+			logger.Sugar().Info("[cp-server] terminated normally")
 		}
 	}()
 	go func() {
 		defer close(secureErrChan)
 		if err = d.SecureServer.Serve(secureLis); err != nil {
-			logger.Sugar().Error(err, "terminated with an error")
+			logger.Sugar().Error(err, "[cp-server] terminated with an error")
 			secureErrChan <- err
 		} else {
-			logger.Sugar().Info("terminated normally")
+			logger.Sugar().Info("[cp-server] terminated normally")
 		}
 	}()
 
 	select {
 	case <-stop:
-		logger.Sugar().Info("stopping gracefully")
+		logger.Sugar().Info("[cp-server] stopping gracefully")
 		d.PlainServer.GracefulStop()
 		d.SecureServer.GracefulStop()
 		return nil
