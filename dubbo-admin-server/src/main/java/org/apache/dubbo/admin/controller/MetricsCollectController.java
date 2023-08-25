@@ -103,24 +103,36 @@ public class MetricsCollectController {
     protected void addMetricsConfigToMap(Map<String, String> configMap, String ip) {
         List<Provider> providers = providerService.findByAddress(ip);
         if (providers.size() > 0) {
-            Provider provider = providers.get(0);
-            String service = provider.getService();
-            MetadataIdentifier providerIdentifier = new MetadataIdentifier(Tool.getInterface(service), Tool.getVersion(service), Tool.getGroup(service),
-                    Constants.PROVIDER_SIDE, provider.getApplication());
-            String metaData = providerService.getProviderMetaData(providerIdentifier);
-            FullServiceDefinition providerServiceDefinition = new Gson().fromJson(metaData, FullServiceDefinition.class);
-            Map<String, String> parameters = providerServiceDefinition.getParameters();
-            configMap.put(parameters.get(Constants.METRICS_PORT), parameters.get(Constants.METRICS_PROTOCOL));
+            for (int i = 0; i < providers.size() && configMap.isEmpty(); i++) {
+                Provider provider = providers.get(i);
+                String service = provider.getService();
+                MetadataIdentifier providerIdentifier = new MetadataIdentifier(Tool.getInterface(service), Tool.getVersion(service), Tool.getGroup(service),
+                        Constants.PROVIDER_SIDE, provider.getApplication());
+                String metaData = providerService.getProviderMetaData(providerIdentifier);
+                FullServiceDefinition providerServiceDefinition = new Gson().fromJson(metaData, FullServiceDefinition.class);
+                Map<String, String> parameters = providerServiceDefinition.getParameters();
+                String metricsPort = parameters.get(Constants.METRICS_PORT);
+                String metricsProtocol = parameters.get(Constants.METRICS_PROTOCOL);
+                if (metricsPort != null && metricsProtocol != null) {
+                    configMap.put(metricsPort, metricsProtocol);
+                }
+            }
         } else {
             List<Consumer> consumers = consumerService.findByAddress(ip);
             if (consumers.size() > 0) {
-                Consumer consumer = consumers.get(0);
-                String service = consumer.getService();
-                MetadataIdentifier consumerIdentifier = new MetadataIdentifier(Tool.getInterface(service), Tool.getVersion(service), Tool.getGroup(service),
-                        Constants.CONSUMER_SIDE, consumer.getApplication());
-                String metaData = consumerService.getConsumerMetadata(consumerIdentifier);
-                Map<String, String> consumerParameters = new Gson().fromJson(metaData, Map.class);
-                configMap.put(consumerParameters.get(Constants.METRICS_PORT), consumerParameters.get(Constants.METRICS_PROTOCOL));
+                for (int i = 0; i < consumers.size() && configMap.isEmpty(); i++) {
+                    Consumer consumer = consumers.get(i);
+                    String service = consumer.getService();
+                    MetadataIdentifier consumerIdentifier = new MetadataIdentifier(Tool.getInterface(service), Tool.getVersion(service), Tool.getGroup(service),
+                            Constants.CONSUMER_SIDE, consumer.getApplication());
+                    String metaData = consumerService.getConsumerMetadata(consumerIdentifier);
+                    Map<String, String> consumerParameters = new Gson().fromJson(metaData, Map.class);
+                    String metricsPort = consumerParameters.get(Constants.METRICS_PORT);
+                    String metricsProtocol = consumerParameters.get(Constants.METRICS_PROTOCOL);
+                    if (metricsPort != null && metricsProtocol != null) {
+                        configMap.put(metricsPort, metricsProtocol);
+                    }
+                }
             }
         }
     }
