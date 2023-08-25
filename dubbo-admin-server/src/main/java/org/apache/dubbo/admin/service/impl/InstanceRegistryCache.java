@@ -23,7 +23,9 @@ import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.utils.NamedThreadFactory;
 import org.apache.dubbo.metadata.MetadataService;
 import org.apache.dubbo.registry.client.InstanceAddressURL;
+import org.apache.dubbo.registry.client.ServiceInstance;
 import org.apache.dubbo.registry.client.metadata.MetadataUtils;
+import org.apache.dubbo.registry.client.metadata.ServiceInstanceMetadataUtils;
 import org.apache.dubbo.rpc.service.Destroyable;
 
 import org.springframework.stereotype.Component;
@@ -40,6 +42,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static org.apache.dubbo.common.constants.CommonConstants.REMOTE_METADATA_STORAGE_TYPE;
 
 /**
  * instance registry url {@link InstanceAddressURL} cache
@@ -97,16 +101,22 @@ public class InstanceRegistryCache implements RegistryCache<String, ConcurrentMa
         origin.keySet().forEach(providers::remove);
 
         for (List<InstanceAddressURL> instanceAddressURLs : providers.values()) {
-            MetadataService metadataService = MetadataUtils.referProxy(instanceAddressURLs.get(0).getInstance()).getProxy();
-            try {
-                Set<String> subscribedURLs = metadataService.getSubscribedURLs();
+            ServiceInstance instance = instanceAddressURLs.get(0).getInstance();
+            String metadataType = ServiceInstanceMetadataUtils.getMetadataStorageType(instance);
 
-                Map<String, List<URL>> subscribed = subscribedURLs.stream().map(URL::valueOf).collect(Collectors.groupingBy(URL::getServiceKey));
-                origin.put(instanceAddressURLs.get(0).getAddress(), subscribed);
-            } catch (Throwable ignored) {
+            if (!REMOTE_METADATA_STORAGE_TYPE.equals(metadataType)) {
+                MetadataService metadataService = MetadataUtils.referProxy(instance).getProxy();
+                try {
+                    Set<String> subscribedURLs = metadataService.getSubscribedURLs();
 
+                    Map<String, List<URL>> subscribed = subscribedURLs.stream().map(URL::valueOf).collect(Collectors.groupingBy(URL::getServiceKey));
+                    origin.put(instanceAddressURLs.get(0).getAddress(), subscribed);
+                } catch (Throwable ignored) {
+
+                }
+                ((Destroyable) metadataService).$destroy();
             }
-            ((Destroyable) metadataService).$destroy();
+            
         }
     }
 }
