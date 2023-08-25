@@ -29,6 +29,8 @@ public class MetrcisCollectServiceImpl {
         referenceConfig = new ReferenceConfig<>();
         referenceConfig.setApplication(new ApplicationConfig("dubbo-admin"));
         referenceConfig.setInterface(MetricsService.class);
+        //Keep it consistent with the ConfigManager cache
+        referenceConfig.setSticky(false);
     }
 
     public void setUrl(String url) {

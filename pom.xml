@@ -58,7 +58,7 @@
 		<commons-lang3-version>3.7</commons-lang3-version>
 		<dubbo-version>3.2.5</dubbo-version>
 		<fastjson-version>1.2.83</fastjson-version>
-		<springfox-swagger-version>2.9.2</springfox-swagger-version>
+		<springfox-swagger-version>2.10.0</springfox-swagger-version>
 		<jacoco-version>0.8.2</jacoco-version>
 		<apollo-version>1.2.0</apollo-version>
 		<guava-version>20.0</guava-version>

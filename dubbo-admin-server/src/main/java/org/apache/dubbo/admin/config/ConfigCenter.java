@@ -22,6 +22,7 @@ import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.registry.config.GovernanceConfiguration;
 import org.apache.dubbo.admin.registry.mapping.AdminMappingListener;
 import org.apache.dubbo.admin.registry.mapping.ServiceMapping;
+import org.apache.dubbo.admin.registry.mapping.impl.NacosServiceMapping;
 import org.apache.dubbo.admin.registry.mapping.impl.NoOpServiceMapping;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
 import org.apache.dubbo.admin.service.impl.InstanceRegistryCache;
@@ -203,7 +204,11 @@ public class ConfigCenter {
         MappingListener mappingListener = new AdminMappingListener(serviceDiscovery, instanceRegistryCache);
         serviceMapping = ExtensionLoader.getExtensionLoader(ServiceMapping.class).getExtension(metadataUrl.getProtocol());
         serviceMapping.addMappingListener(mappingListener);
-        serviceMapping.init(metadataUrl);
+        if (serviceMapping instanceof NacosServiceMapping) {
+            serviceMapping.init(registryUrl);
+        } else {
+            serviceMapping.init(metadataUrl);
+        }
         return serviceMapping;
     }
 
