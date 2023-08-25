@@ -17,11 +17,13 @@
 
 package org.apache.dubbo.admin.registry.mapping;
 
+import org.apache.dubbo.common.ProtocolServiceKey;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.registry.client.ServiceDiscovery;
 import org.apache.dubbo.registry.client.event.listener.ServiceInstancesChangedListener;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +34,7 @@ public class AdminServiceInstancesChangedListener extends ServiceInstancesChange
 
     private AddressChangeListener addressChangeListener;
 
-    private Map<String, List<ServiceInstancesChangedListener.ProtocolServiceKeyWithUrls>> oldServiceUrls;
+    private Map<ProtocolServiceKey, List<ServiceInstancesChangedListener.ProtocolServiceKeyWithUrls>> oldServiceUrls;
 
     public AdminServiceInstancesChangedListener(Set<String> serviceNames, ServiceDiscovery serviceDiscovery, AddressChangeListener addressChangeListener) {
         super(serviceNames, serviceDiscovery);
@@ -41,12 +43,18 @@ public class AdminServiceInstancesChangedListener extends ServiceInstancesChange
     }
 
     protected void notifyAddressChanged() {
-        oldServiceUrls.keySet().stream()
-                .filter(protocolServiceKey -> !serviceUrls.containsKey(protocolServiceKey))
-                .forEach(protocolServiceKey -> addressChangeListener.notifyAddressChanged(protocolServiceKey, new ArrayList<>()));
-        serviceUrls.forEach((protocolServiceKey, urls) -> addressChangeListener.notifyAddressChanged(protocolServiceKey, extractUrls(urls)));
+        Map<ProtocolServiceKey, List<ProtocolServiceKeyWithUrls>> protocolServiceUrls = serviceUrls.values().stream()
+                .flatMap(Collection::stream)
+                .collect(Collectors.groupingBy(ProtocolServiceKeyWithUrls::getProtocolServiceKey));
 
-        oldServiceUrls = serviceUrls;
+        oldServiceUrls.keySet().stream()
+                .filter(protocolServiceKey -> !protocolServiceUrls.containsKey(protocolServiceKey))
+                .forEach(protocolServiceKey -> addressChangeListener.notifyAddressChanged(protocolServiceKey.toString(), new ArrayList<>()));
+
+        protocolServiceUrls
+                .forEach((protocolServiceKey, urls) -> addressChangeListener.notifyAddressChanged(protocolServiceKey.toString(), extractUrls(urls)));
+
+        oldServiceUrls = protocolServiceUrls;
     }
 
     private List<URL> extractUrls(List<ServiceInstancesChangedListener.ProtocolServiceKeyWithUrls> keyUrls) {
