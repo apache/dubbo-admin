@@ -79,13 +79,13 @@ public class AdminMappingListener implements MappingListener {
                     if (serviceInstancesChangedListener == null) {
                         AddressChangeListener addressChangeListener = new DefaultAddressChangeListener(serviceName, instanceRegistryCache);
                         serviceInstancesChangedListener = new AdminServiceInstancesChangedListener(Sets.newHashSet(serviceName), serviceDiscovery, addressChangeListener);
-                        serviceInstancesChangedListener.setUrl(CONSUMER_URL);
+//                        serviceInstancesChangedListener.setUrl(CONSUMER_URL);
                         List<ServiceInstance> serviceInstances = serviceDiscovery.getInstances(serviceName);
                         if (CollectionUtils.isNotEmpty(serviceInstances)) {
                             serviceInstancesChangedListener.onEvent(new ServiceInstancesChangedEvent(serviceName, serviceInstances));
                         }
                         serviceListeners.put(serviceName, serviceInstancesChangedListener);
-                        serviceInstancesChangedListener.setUrl(CONSUMER_URL);
+//                        serviceInstancesChangedListener.setUrl(CONSUMER_URL);
                         serviceDiscovery.addServiceInstancesChangedListener(serviceInstancesChangedListener);
                     }
                 }
