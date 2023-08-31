@@ -20,10 +20,16 @@ import org.apache.dubbo.admin.common.exception.ParamValidationException;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.SyncUtils;
 import org.apache.dubbo.admin.model.domain.Consumer;
+import org.apache.dubbo.admin.registry.nacos.NacosData;
+import org.apache.dubbo.admin.registry.nacos.NacosOpenapiUtil;
 import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.utils.NetUtils;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
+import org.apache.dubbo.registry.Registry;
+import org.apache.dubbo.registry.client.DefaultServiceInstance;
+import org.apache.dubbo.registry.nacos.NacosRegistry;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -31,6 +37,7 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
 public class ConsumerServiceImpl extends AbstractService implements ConsumerService {
@@ -38,13 +45,38 @@ public class ConsumerServiceImpl extends AbstractService implements ConsumerServ
     @Autowired
     private InstanceRegistryQueryHelper instanceRegistryQueryHelper;
 
+    @Autowired
+    private Registry registry;
+
     @Override
     public List<Consumer> findByService(String service) {
         List<Consumer> consumers = SyncUtils.url2ConsumerList(findConsumerUrlByService(service));
+        if (registry.getUrl().getProtocol().equals("nacos")) {
+            consumers.addAll(convertToConsumer(NacosOpenapiUtil.getSubscribeAddressesWithHttpEndpoint(registry.getUrl(), getNacosDastaId(service))));
+        }
         consumers.addAll(instanceRegistryQueryHelper.findConsumerByService(service));
         return consumers;
     }
 
+    private static String getNacosDastaId(String service) {
+        // interface:version:group
+        int len = service.split(":").length;
+        if (len == 1) {
+            service += "::";
+        } else if (len == 2) {
+            service += ":";
+        }
+        return service;
+    }
+
+    private List<Consumer> convertToConsumer(List<NacosData> nacosData) {
+        return nacosData.stream().map(nacos -> {
+            Consumer c = new Consumer();
+            c.setAddress(nacos.getIp() + ":" + nacos.getPort());
+            c.setApplication(nacos.getApp());
+            return c;
+        }).collect(Collectors.toList());
+    }
 
     @Override
     public List<Consumer> findAll() {

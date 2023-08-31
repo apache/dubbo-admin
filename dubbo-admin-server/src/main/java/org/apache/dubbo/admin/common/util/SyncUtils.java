@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.apache.dubbo.admin.common.util.Constants.COLON;
+import static org.apache.dubbo.admin.common.util.Constants.INTERFACE_KEY;
 
 public class SyncUtils {
 
@@ -201,7 +202,7 @@ public class SyncUtils {
     }
 
     private static String getServiceInterface(URL url) {
-        String serviceInterface = url.getServiceInterface();
+        String serviceInterface = url.getOriginalParameter(INTERFACE_KEY);
         if (StringUtils.isBlank(serviceInterface) || Constants.ANY_VALUE.equals(serviceInterface)) {
             serviceInterface = url.getPath();
         }

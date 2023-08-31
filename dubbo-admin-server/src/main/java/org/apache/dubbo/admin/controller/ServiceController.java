@@ -32,6 +32,8 @@ import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.admin.service.ProviderService;
 import org.apache.dubbo.metadata.definition.model.FullServiceDefinition;
 import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
+import org.apache.dubbo.registry.Registry;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -55,6 +57,9 @@ public class ServiceController {
     private final ProviderService providerService;
     private final ConsumerService consumerService;
     private final Gson gson;
+
+    @Autowired
+    private Registry registry;
 
     @Autowired
     public ServiceController(ProviderService providerService, ConsumerService consumerService) {
