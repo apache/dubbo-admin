@@ -148,5 +148,10 @@ public class ConfigCenterTest {
         ReflectionTestUtils.setField(configCenter, "metadataAddress", zkAddress + "?group=" + "dubbo");
         ReflectionTestUtils.setField(configCenter, "username", "username");
         ReflectionTestUtils.setField(configCenter, "password", "password");
+
+        configCenter.getMetadataCollector();
+        Object metadataUrl = ReflectionTestUtils.getField(configCenter, "metadataUrl");
+        assertNotNull(metadataUrl);
+        assertEquals("127.0.0.1", ((URL) metadataUrl).getHost());
     }
 }
