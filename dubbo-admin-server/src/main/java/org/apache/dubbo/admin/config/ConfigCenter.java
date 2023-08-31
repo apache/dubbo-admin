@@ -25,15 +25,19 @@ import org.apache.dubbo.admin.registry.mapping.ServiceMapping;
 import org.apache.dubbo.admin.registry.mapping.impl.NacosServiceMapping;
 import org.apache.dubbo.admin.registry.mapping.impl.NoOpServiceMapping;
 import org.apache.dubbo.admin.registry.metadata.MetaDataCollector;
+import org.apache.dubbo.admin.registry.metadata.impl.DubboDelegateMetadataCollector;
 import org.apache.dubbo.admin.registry.metadata.impl.NoOpMetadataCollector;
 import org.apache.dubbo.admin.service.impl.InstanceRegistryCache;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.beans.factory.ScopeBeanFactory;
 import org.apache.dubbo.common.extension.ExtensionLoader;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.metadata.MappingListener;
+import org.apache.dubbo.metadata.report.MetadataReport;
+import org.apache.dubbo.metadata.report.MetadataReportInstance;
 import org.apache.dubbo.registry.Registry;
 import org.apache.dubbo.registry.RegistryFactory;
 import org.apache.dubbo.registry.RegistryService;
@@ -46,6 +50,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
 
 import java.util.Arrays;
+import java.util.Optional;
 
 import static org.apache.dubbo.common.constants.CommonConstants.CLUSTER_KEY;
 import static org.apache.dubbo.common.constants.RegistryConstants.ENABLE_EMPTY_PROTECTION_KEY;
@@ -181,6 +186,15 @@ public class ConfigCenter {
             metaDataCollector.init();
         } else {
             logger.warn("you are using dubbo.registry.address, which is not recommend, please refer to: https://github.com/apache/dubbo-admin/wiki/Dubbo-Admin-configuration");
+            ApplicationModel applicationModel = ApplicationModel.defaultModel();
+            ScopeBeanFactory beanFactory = applicationModel.getBeanFactory();
+            MetadataReportInstance metadataReportInstance = beanFactory.registerBean(MetadataReportInstance.class);
+
+            Optional<MetadataReport> metadataReport = metadataReportInstance.getMetadataReports(true)
+                    .values().stream().findAny();
+
+            metaDataCollector = new DubboDelegateMetadataCollector(metadataReport.get());
+            metaDataCollector.setUrl(registryUrl);
         }
         return metaDataCollector;
     }

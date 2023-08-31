@@ -138,14 +138,18 @@ public class ApiDocsController {
         if (null == paramValues) {
             paramValues = new Object[0];
         }
-        CompletableFuture<Object> future = ApiDocsDubboGenericUtil.invoke(dubboCfg.getRegistryCenterUrl(), dubboCfg.getInterfaceClassName(),
-                dubboCfg.getMethodName(), dubboCfg.isAsync(), dubboCfg.getVersion(), paramTypes, paramValues, dubboCfg.getGroup());
         try {
-            Object objResult = future.get();
-            return JSON.toJSONString(objResult, CLASS_NAME_PRE_FILTER);
-        } catch (InterruptedException | ExecutionException e) {
-            LOG.error(e.getMessage(), e);
-            return "Some exceptions have occurred, please check the log.";
+            CompletableFuture<Object> future = ApiDocsDubboGenericUtil.invoke(dubboCfg.getRegistryCenterUrl(), dubboCfg.getInterfaceClassName(),
+                    dubboCfg.getMethodName(), dubboCfg.isAsync(), dubboCfg.getVersion(), paramTypes, paramValues, dubboCfg.getGroup());
+            try {
+                Object objResult = future.get();
+                return JSON.toJSONString(objResult, CLASS_NAME_PRE_FILTER);
+            } catch (InterruptedException | ExecutionException e) {
+                LOG.error(e.getMessage(), e);
+                return "Some exceptions have occurred, please check the log.";
+            }
+        } catch (Exception e) {
+            return "Error '" + e.getMessage() + "' happened when loading docs from remote. Please make sure api-docs dependency is correctly added to Dubbo providers, check the following link for more instructions: https://cn.dubbo.apache.org/zh-cn/overview/reference/admin/";
         }
     }
 

@@ -54,7 +54,7 @@ public class InstanceRegistryCache implements RegistryCache<String, ConcurrentMa
 
     private final ConcurrentMap<String, ConcurrentMap<String, Map<String, List<InstanceAddressURL>>>> registryCache = new ConcurrentHashMap<>();
 
-    private final Map<String, Map<String, List<URL>>> subscribedCache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Map<String, List<URL>>> subscribedCache = new ConcurrentHashMap<>();
 
     private final AtomicBoolean startRefresh = new AtomicBoolean(false);
 
