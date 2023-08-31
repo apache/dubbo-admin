@@ -24,6 +24,7 @@ import org.apache.dubbo.admin.registry.nacos.NacosData;
 import org.apache.dubbo.admin.registry.nacos.NacosOpenapiUtil;
 import org.apache.dubbo.admin.service.ConsumerService;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.utils.NetUtils;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
 import org.apache.dubbo.registry.Registry;

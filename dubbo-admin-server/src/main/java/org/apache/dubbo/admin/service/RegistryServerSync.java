@@ -28,6 +28,7 @@ import org.apache.dubbo.common.utils.NetUtils;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.registry.NotifyListener;
 import org.apache.dubbo.registry.Registry;
+import org.apache.dubbo.registry.client.InstanceAddressURL;
 import org.apache.dubbo.registry.nacos.NacosRegistry;
 
 import org.springframework.beans.factory.DisposableBean;
@@ -44,13 +45,15 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import static org.apache.dubbo.admin.common.util.Constants.INTERFACE_KEY;
+
 @Component
 public class RegistryServerSync implements DisposableBean, NotifyListener {
 
     private static final Logger logger = LoggerFactory.getLogger(RegistryServerSync.class);
 
     private static final URL SUBSCRIBE = new URL(Constants.ADMIN_PROTOCOL, NetUtils.getLocalHost(), 0, "",
-            Constants.INTERFACE_KEY, Constants.ANY_VALUE,
+            INTERFACE_KEY, Constants.ANY_VALUE,
             Constants.GROUP_KEY, Constants.ANY_VALUE,
             Constants.VERSION_KEY, Constants.ANY_VALUE,
             Constants.CLASSIFIER_KEY, Constants.ANY_VALUE,
@@ -97,6 +100,9 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
         final Map<String, Map<String, Map<String, URL>>> categories = new HashMap<>();
         String interfaceName = null;
         for (URL url : urls) {
+            if (url instanceof InstanceAddressURL) {
+                continue;
+            }
             String category = url.getUrlParam().getParameter(Constants.CATEGORY_KEY);
             if (category == null) {
                 // Assign an initial value to category according to the information in url
@@ -176,7 +182,7 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
     }
 
     private String getServiceInterface(URL url) {
-        String serviceInterface = url.getServiceInterface();
+        String serviceInterface = url.getOriginalParameter(INTERFACE_KEY);
         if (StringUtils.isBlank(serviceInterface) || Constants.ANY_VALUE.equals(serviceInterface)) {
             serviceInterface = url.getPath();
         }
