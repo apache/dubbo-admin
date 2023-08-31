@@ -28,6 +28,7 @@ import org.apache.dubbo.common.utils.NetUtils;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.registry.NotifyListener;
 import org.apache.dubbo.registry.Registry;
+import org.apache.dubbo.registry.nacos.NacosRegistry;
 
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -171,6 +172,10 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
                 }
             }
             services.putAll(categoryEntry.getValue());
+        }
+
+        if (registry instanceof NacosRegistry) {
+
         }
     }
 

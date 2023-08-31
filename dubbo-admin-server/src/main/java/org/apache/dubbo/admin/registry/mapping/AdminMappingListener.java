@@ -18,26 +18,33 @@
 package org.apache.dubbo.admin.registry.mapping;
 
 import org.apache.dubbo.admin.common.util.Constants;
+import org.apache.dubbo.admin.registry.nacos.NacosData;
+import org.apache.dubbo.admin.registry.nacos.NacosOpenapiUtil;
 import org.apache.dubbo.admin.service.impl.InstanceRegistryCache;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.utils.CollectionUtils;
 import org.apache.dubbo.common.utils.NetUtils;
 import org.apache.dubbo.metadata.MappingChangedEvent;
 import org.apache.dubbo.metadata.MappingListener;
+import org.apache.dubbo.registry.client.DefaultServiceInstance;
 import org.apache.dubbo.registry.client.InstanceAddressURL;
 import org.apache.dubbo.registry.client.ServiceDiscovery;
 import org.apache.dubbo.registry.client.ServiceInstance;
 import org.apache.dubbo.registry.client.event.ServiceInstancesChangedEvent;
 import org.apache.dubbo.registry.client.event.listener.ServiceInstancesChangedListener;
+import org.apache.dubbo.registry.nacos.NacosServiceDiscovery;
 
 import com.google.common.collect.Sets;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
+
+import static org.apache.dubbo.admin.common.util.Constants.CATEGORY_KEY;
 
 public class AdminMappingListener implements MappingListener {
 
@@ -46,7 +53,7 @@ public class AdminMappingListener implements MappingListener {
             Constants.GROUP_KEY, Constants.ANY_VALUE,
             Constants.VERSION_KEY, Constants.ANY_VALUE,
             Constants.CLASSIFIER_KEY, Constants.ANY_VALUE,
-            Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY + ","
+            CATEGORY_KEY, Constants.PROVIDERS_CATEGORY + ","
             + Constants.CONSUMERS_CATEGORY + ","
             + Constants.ROUTERS_CATEGORY + ","
             + Constants.CONFIGURATORS_CATEGORY,
@@ -80,9 +87,15 @@ public class AdminMappingListener implements MappingListener {
                         AddressChangeListener addressChangeListener = new DefaultAddressChangeListener(serviceName, instanceRegistryCache);
                         serviceInstancesChangedListener = new AdminServiceInstancesChangedListener(Sets.newHashSet(serviceName), serviceDiscovery, addressChangeListener);
 //                        serviceInstancesChangedListener.setUrl(CONSUMER_URL);
+                        List<ServiceInstance> allInstances = new ArrayList<>();
                         List<ServiceInstance> serviceInstances = serviceDiscovery.getInstances(serviceName);
+                        if (serviceDiscovery instanceof NacosServiceDiscovery) {
+                            List<ServiceInstance> consumerInstances = convertToInstance(NacosOpenapiUtil.getSubscribeAddressesWithHttpEndpoint(serviceDiscovery.getUrl(), serviceName));
+                            allInstances.addAll(consumerInstances);
+                        }
                         if (CollectionUtils.isNotEmpty(serviceInstances)) {
-                            serviceInstancesChangedListener.onEvent(new ServiceInstancesChangedEvent(serviceName, serviceInstances));
+                            allInstances.addAll(serviceInstances);
+                            serviceInstancesChangedListener.onEvent(new ServiceInstancesChangedEvent(serviceName, allInstances));
                         }
                         serviceListeners.put(serviceName, serviceInstancesChangedListener);
 //                        serviceInstancesChangedListener.setUrl(CONSUMER_URL);
@@ -91,6 +104,15 @@ public class AdminMappingListener implements MappingListener {
                 }
             }
         }
+    }
+
+    private List<ServiceInstance> convertToInstance(List<NacosData> nacosData) {
+       return nacosData.stream().map(nacos -> {
+           DefaultServiceInstance instance = new DefaultServiceInstance();
+           instance.setHost(nacos.getIp());
+           instance.setPort(nacos.getPort());
+           return instance;
+       }).collect(Collectors.toList());
     }
 
     private static class DefaultAddressChangeListener implements AddressChangeListener {
@@ -107,13 +129,22 @@ public class AdminMappingListener implements MappingListener {
         @Override
         public void notifyAddressChanged(String protocolServiceKey, List<URL> urls) {
             String serviceKey = removeProtocol(protocolServiceKey);
+
             ConcurrentMap<String, Map<String, List<InstanceAddressURL>>> appServiceMap = instanceRegistryCache.computeIfAbsent(Constants.PROVIDERS_CATEGORY, key -> new ConcurrentHashMap<>());
+
             Map<String, List<InstanceAddressURL>> serviceMap = appServiceMap.computeIfAbsent(serviceName, key -> new ConcurrentHashMap<>());
+            Map<String, List<URL>> consumerServiceMap = instanceRegistryCache.getSubscribedCache().computeIfAbsent(serviceName, key -> new ConcurrentHashMap<>());
+
             if (CollectionUtils.isEmpty(urls)) {
                 serviceMap.remove(serviceKey);
+                consumerServiceMap.remove(serviceKey);
             } else {
-                List<InstanceAddressURL> instanceAddressUrls = urls.stream().map(url -> (InstanceAddressURL) url).collect(Collectors.toList());
-                serviceMap.put(serviceKey, instanceAddressUrls);
+                if ("consumer".equals(urls.get(0).getParameter(CATEGORY_KEY))) {
+                    consumerServiceMap.put(serviceKey, urls);
+                } else {
+                    List<InstanceAddressURL> instanceAddressUrls = urls.stream().map(url -> (InstanceAddressURL) url).collect(Collectors.toList());
+                    serviceMap.put(serviceKey, instanceAddressUrls);
+                }
             }
             instanceRegistryCache.refreshConsumer(false);
         }
