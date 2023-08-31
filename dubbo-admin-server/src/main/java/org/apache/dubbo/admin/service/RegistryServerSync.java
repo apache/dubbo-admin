@@ -173,10 +173,6 @@ public class RegistryServerSync implements DisposableBean, NotifyListener {
             }
             services.putAll(categoryEntry.getValue());
         }
-
-        if (registry instanceof NacosRegistry) {
-
-        }
     }
 
     private String getServiceInterface(URL url) {
