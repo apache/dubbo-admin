@@ -53,7 +53,7 @@
 	</repositories>
 
 	<properties>
-		<revision>0.6.0</revision>
+		<revision>0.7.0-SNAPSHOT</revision>
 		<main.basedir>${project.basedir}</main.basedir>
 		<commons-lang3-version>3.7</commons-lang3-version>
 		<dubbo-version>3.2.5</dubbo-version>

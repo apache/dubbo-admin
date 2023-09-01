@@ -6,8 +6,6 @@
 [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/apache/dubbo-admin.svg)](http://isitmaintained.com/project/apache/dubbo-admin "Average time to resolve an issue")
 [![Percentage of issues still open](http://isitmaintained.com/badge/open/apache/dubbo-admin.svg)](http://isitmaintained.com/project/apache/dubbo-admin "Percentage of issues still open")
 
-[中文说明](README_ZH.md)
-
 Dubbo Admin is the console designed for better visualization of Dubbo services, it provides support for Dubbo3 and is compatible with 2.7.x, 2.6.x and 2.5.x.
 
 ![index](https://raw.githubusercontent.com/apache/dubbo-admin/develop/doc/images/index.png)
