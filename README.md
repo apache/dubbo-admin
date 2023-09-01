@@ -1,6 +1,6 @@
 # Dubbo Admin
 
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/apache/dubbo-admin/CI)
+[![Build](https://github.com/apache/dubbo-admin/actions/workflows/ci.yml/badge.svg)](https://github.com/apache/dubbo-admin/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/apache/dubbo-admin/branch/develop/graph/badge.svg)](https://codecov.io/gh/apache/dubbo-admin/branches/develop)
 ![license](https://img.shields.io/github/license/apache/dubbo-admin.svg)
 [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/apache/dubbo-admin.svg)](http://isitmaintained.com/project/apache/dubbo-admin "Average time to resolve an issue")
