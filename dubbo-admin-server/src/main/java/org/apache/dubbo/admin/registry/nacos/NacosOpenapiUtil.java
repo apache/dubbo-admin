@@ -16,10 +16,14 @@
  */
 package org.apache.dubbo.admin.registry.nacos;
 
+import org.apache.dubbo.admin.controller.AccessesController;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.logger.Logger;
+import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.common.utils.StringUtils;
 
 import com.alibaba.fastjson2.JSON;
+import net.bytebuddy.implementation.bytecode.Throw;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -30,6 +34,9 @@ import java.util.Collections;
 import java.util.List;
 
 public class NacosOpenapiUtil {
+
+    private static final Logger logger = LoggerFactory.getLogger(NacosOpenapiUtil.class);
+
     public static List<NacosData> getSubscribeAddressesWithHttpEndpoint(URL url, String serviceName) {
         // 定义Nacos OpenAPI的URL
         String nacosUrl = "http://" + url.getAddress() + "/nacos/v1/ns/service/subscribers?serviceName=" + serviceName;
@@ -60,23 +67,25 @@ public class NacosOpenapiUtil {
             // 发送请求并获取响应状态码
             int responseCode = connection.getResponseCode();
 
-            // 读取响应内容
-            BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-            String line;
-            StringBuilder response = new StringBuilder();
-            while ((line = reader.readLine()) != null) {
-                response.append(line);
+            if (responseCode == 200) {
+                // 读取响应内容
+                StringBuilder response = new StringBuilder();
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                } catch (Throwable t) {
+                    logger.error("Error requesting nacos openapi, " + nacosUrl, t);
+                }
+
+                NacosResponse nacosResponse = JSON.parseObject(response.toString(), NacosResponse.class);
+                return nacosResponse.getSubscribers();
+            } else {
+                logger.error("Error requesting nacos openapi, " + nacosUrl + ", error code is " + responseCode);
             }
-            reader.close();
-
-            // 打印响应结果
-            System.out.println("Response Code: " + responseCode);
-            System.out.println("Response Body: " + response.toString());
-
-            NacosResponse nacosResponse = JSON.parseObject(response.toString(), NacosResponse.class);
-            return nacosResponse.getSubscribers();
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error("Error requesting nacos openapi, " + nacosUrl, e);
         } finally {
             // 关闭连接
             if (connection != null) {
