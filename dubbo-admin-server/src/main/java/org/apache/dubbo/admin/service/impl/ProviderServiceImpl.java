@@ -258,7 +258,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
             } else if (Constants.APPLICATION.equals(pattern)) {
                 candidates = findApplications();
             } else if (Constants.IP.equals(pattern)) {
-                candidates = findAddresses().stream().collect(Collectors.toSet());
+                candidates = new HashSet<>(findAddresses());
             }
             // replace dot symbol and asterisk symbol to java-based regex pattern
             filter = filter.toLowerCase().replace(Constants.PUNCTUATION_POINT, Constants.PUNCTUATION_SEPARATOR_POINT);
