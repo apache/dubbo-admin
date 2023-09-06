@@ -15,16 +15,13 @@
   ~  See the License for the specific language governing permissions and
   ~  limitations under the License.
   -->
-
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
     <parent>
-        <artifactId>dubbo-admin</artifactId>
         <groupId>org.apache.dubbo</groupId>
+        <artifactId>dubbo-admin</artifactId>
         <version>${revision}</version>
     </parent>
-    <modelVersion>4.0.0</modelVersion>
 
     <artifactId>dubbo-admin-server</artifactId>
 
@@ -59,8 +56,8 @@
             <artifactId>spring-boot-starter-data-jpa</artifactId>
             <exclusions>
                 <exclusion>
-                    <artifactId>hibernate-core</artifactId>
                     <groupId>org.hibernate</groupId>
+                    <artifactId>hibernate-core</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -86,8 +83,8 @@
             <artifactId>apollo-openapi</artifactId>
             <exclusions>
                 <exclusion>
-                    <artifactId>guava</artifactId>
                     <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -97,8 +94,8 @@
             <artifactId>nacos-client</artifactId>
             <exclusions>
                 <exclusion>
-                    <artifactId>guava</artifactId>
                     <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -123,12 +120,12 @@
             <artifactId>curator-framework</artifactId>
             <exclusions>
                 <exclusion>
-                    <artifactId>guava</artifactId>
                     <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
                 </exclusion>
                 <exclusion>
-                    <artifactId>netty</artifactId>
                     <groupId>io.netty</groupId>
+                    <artifactId>netty</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -149,17 +146,17 @@
         <dependency>
             <groupId>org.apache.curator</groupId>
             <artifactId>curator-test</artifactId>
+            <scope>test</scope>
             <exclusions>
                 <exclusion>
-                    <artifactId>guava</artifactId>
                     <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
                 </exclusion>
                 <exclusion>
-                    <artifactId>netty</artifactId>
                     <groupId>io.netty</groupId>
+                    <artifactId>netty</artifactId>
                 </exclusion>
             </exclusions>
-            <scope>test</scope>
         </dependency>
 
         <dependency>
@@ -220,7 +217,6 @@
             <version>${jjwt-version}</version>
         </dependency>
 
-
         <dependency>
             <groupId>org.apache.dubbo.extensions</groupId>
             <artifactId>dubbo-mock-api</artifactId>
@@ -232,12 +228,12 @@
         </dependency>
 
         <!-- the mysql db driver need user put it in /opt-libs path -->
-<!--        <dependency>-->
-<!--            <groupId>mysql</groupId>-->
-<!--            <artifactId>mysql-connector-java</artifactId>-->
-<!--            <version>5.1.49</version>-->
-<!--            <scope>provided</scope>-->
-<!--        </dependency>-->
+        <!--        <dependency>-->
+        <!--            <groupId>mysql</groupId>-->
+        <!--            <artifactId>mysql-connector-java</artifactId>-->
+        <!--            <version>5.1.49</version>-->
+        <!--            <scope>provided</scope>-->
+        <!--        </dependency>-->
 
         <dependency>
             <groupId>com.h2database</groupId>
@@ -278,10 +274,10 @@
                 </configuration>
                 <executions>
                     <execution>
-                        <phase>package</phase>
                         <goals>
                             <goal>repackage</goal>
                         </goals>
+                        <phase>package</phase>
                     </execution>
                 </executions>
             </plugin>
@@ -290,16 +286,15 @@
                 <version>1.8</version>
                 <executions>
                     <execution>
-                        <phase>verify</phase>
-                        <configuration>
-                            <tasks>
-                                <copy file="target/dubbo-admin-server-${project.version}.jar"
-                                      tofile="../dubbo-admin-distribution/target/dubbo-admin-${project.version}.jar"/>
-                            </tasks>
-                        </configuration>
                         <goals>
                             <goal>run</goal>
                         </goals>
+                        <phase>verify</phase>
+                        <configuration>
+                            <tasks>
+                                <copy file="target/dubbo-admin-server-${project.version}.jar" tofile="../dubbo-admin-distribution/target/dubbo-admin-${project.version}.jar"></copy>
+                            </tasks>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -318,10 +313,10 @@
                 <executions>
                     <execution>
                         <id>copy Vue.js frontend content</id>
-                        <phase>generate-resources</phase>
                         <goals>
                             <goal>copy-resources</goal>
                         </goals>
+                        <phase>generate-resources</phase>
                         <configuration>
                             <outputDirectory>src/main/resources/public</outputDirectory>
                             <overwrite>true</overwrite>
@@ -358,12 +353,12 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-jar-plugin</artifactId>
-<!--                        <configuration>-->
-<!--                            <excludes>-->
-<!--                                <exclude>**/application.properties</exclude>-->
-<!--                                <exclude>**/application-test.properties</exclude>-->
-<!--                            </excludes>-->
-<!--                        </configuration>-->
+                        <!--                        <configuration>-->
+                        <!--                            <excludes>-->
+                        <!--                                <exclude>**/application.properties</exclude>-->
+                        <!--                                <exclude>**/application-test.properties</exclude>-->
+                        <!--                            </excludes>-->
+                        <!--                        </configuration>-->
                     </plugin>
                 </plugins>
             </build>
