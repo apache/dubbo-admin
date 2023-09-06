@@ -81,7 +81,7 @@
                 <td>{{props.item.group}}</td>
                 <td>{{props.item.version}}</td>
                 <td>{{props.item.appName}}</td>
-                <td>{{props.item.registrySource}}</td>
+                <td>{{this.$t(props.item.registrySource)}}</td>
                 <td class="text-xs-center px-0" nowrap>
                   <v-btn
                     class="tiny"
@@ -199,18 +199,15 @@ export default {
       if (!this.resultPage || !this.resultPage.content) {
         return []
       }
-      const instanceRegistry = this.$t('instanceRegistry')
-      const interfaceRegistry = this.$t('interfaceRegistry')
-      const allRegistry = this.$t('allRegistry')
       return this.resultPage.content.filter(function (item) {
         if (item.registrySource === 'INSTANCE') {
-          item.registrySource = instanceRegistry
+          item.registrySource = 'instanceRegistry'
         }
         if (item.registrySource === 'INTERFACE') {
-          item.registrySource = interfaceRegistry
+          item.registrySource = 'interfaceRegistry'
         }
         if (item.registrySource === 'ALL') {
-          item.registrySource = allRegistry
+          item.registrySource = 'allRegistry'
         }
         return item
       })
