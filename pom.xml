@@ -271,6 +271,7 @@
                                 <phase>verify</phase>
                                 <configuration>
                                     <excludes>
+                                        <exclude>**/.mvn</exclude>
                                         <exclude>**/*.versionsBackup</exclude>
                                         <exclude>**/.idea/</exclude>
                                         <exclude>**/*.iml</exclude>
@@ -297,6 +298,7 @@
                                         <exclude>**/.babelrc</exclude>
                                         <exclude>**/.editorconfig</exclude>
                                         <exclude>**/package-lock.json</exclude>
+                                        <exclude>**/pnpm-lock.yaml</exclude>
                                         <exclude>**/package.json</exclude>
                                         <exclude>**/OpenSans.css</exclude>
                                         <exclude>**/.eslintignore</exclude>
