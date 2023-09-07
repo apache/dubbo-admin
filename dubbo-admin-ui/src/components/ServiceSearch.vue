@@ -81,7 +81,7 @@
                 <td>{{props.item.group}}</td>
                 <td>{{props.item.version}}</td>
                 <td>{{props.item.appName}}</td>
-                <td>{{this.$t(props.item.registrySource)}}</td>
+                <td>{{$t(props.item.registrySource)}}</td>
                 <td class="text-xs-center px-0" nowrap>
                   <v-btn
                     class="tiny"

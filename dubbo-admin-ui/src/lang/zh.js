@@ -149,6 +149,7 @@ export default {
   configNameHint: '配置所属的应用名, global 表示全局配置',
   configContent: '配置内容',
   testMethod: '测试方法',
+  selectProvider: '选择提供者，默认负载均衡策略',
   execute: '执行',
   result: '结果: ',
   success: ' 成功',
