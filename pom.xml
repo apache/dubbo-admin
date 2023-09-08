@@ -271,7 +271,9 @@
                                 <phase>verify</phase>
                                 <configuration>
                                     <excludes>
-                                        <exclude>**/.mvn</exclude>
+                                        <exclude>**/.mvn/**</exclude>
+                                        <exclude>**/charts/**</exclude>
+                                        <exclude>**/kubernetes/**</exclude>
                                         <exclude>**/*.versionsBackup</exclude>
                                         <exclude>**/.idea/</exclude>
                                         <exclude>**/*.iml</exclude>
