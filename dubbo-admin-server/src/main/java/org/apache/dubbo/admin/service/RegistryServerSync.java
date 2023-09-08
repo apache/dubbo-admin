@@ -20,6 +20,7 @@ import org.apache.dubbo.admin.common.util.CoderUtil;
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.Tool;
 import org.apache.dubbo.admin.service.impl.InterfaceRegistryCache;
+
 import org.apache.dubbo.common.BaseServiceMetadata;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
@@ -29,8 +30,6 @@ import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.registry.NotifyListener;
 import org.apache.dubbo.registry.Registry;
 import org.apache.dubbo.registry.client.InstanceAddressURL;
-import org.apache.dubbo.registry.nacos.NacosRegistry;
-
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
