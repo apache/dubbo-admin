@@ -32,17 +32,27 @@ Choose either method based on your environment, where Helm is the recommended in
 5. Visit  `http://localhost:38080`, default username and password are `root`
 
 ## 1.2 Run with Docker
-Admin image is hosted at： https://hub.docker.com/repository/docker/apache/dubbo-admin
+
+> **Note: This method only supports running under linux system. Docker support for windows and mac systems will be released soon!**
+
+Dubbo-Admin image is hosted at： https://hub.docker.com/repository/docker/apache/dubbo-admin.
 
 You can run the image directly by mounting a volume from the host that contains an `application.properties` file with the accessible registry and config-center addresses specified.
 
-```sh
-$ docker run --net=host -it --rm -v /the/host/path/containing/properties:/config -p 8080:8080 apache/dubbo-admin
+```shell
+$ docker run -itd --net=host --name dubbo-admin -v /dubbo/dubbo-admin/properties:/config apache/dubbo-admin
 ```
 
-> Replace `/the/host/path/containing/properties` with the actual host path (must be an absolute path) that points to a directory containing `application.properties`.
+> Replace `/dubbo/dubbo-admin/properties` with the actual host path (must be an absolute path) that points to a directory containing `application.properties`.
 
-Open web browser and visit `http://localhost:8080`, default username and password are `root`
+The `application.properties` configuration file is as follows (taking the `zookeeper` registration center as an example):
+
+```properties
+admin.registry.address=zookeeper://127.0.0.1:2181
+admin.config-center=zookeeper://127.0.0.1:2181
+```
+
+Open web browser and visit `http://localhost:38080`, default username and password are `root`.
 
 ## 1.3 Run with Kubernetes
 
