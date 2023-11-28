@@ -33,7 +33,7 @@
 
     <profiles>
         <profile>
-            <id>ui-build</id>
+            <id>ui</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>

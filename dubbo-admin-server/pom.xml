@@ -142,7 +142,6 @@
                 </exclusion>
             </exclusions>
         </dependency>
-
         <dependency>
             <groupId>com.ecwid.consul</groupId>
             <artifactId>consul-api</artifactId>
@@ -234,6 +233,10 @@
             <artifactId>logback-core</artifactId>
             <version>1.2.8</version>
         </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
@@ -307,10 +310,17 @@
         </profile>
 
         <profile>
-            <id>ui-build</id>
+            <id>ui</id>
             <activation>
                 <activeByDefault>true</activeByDefault>
             </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.dubbo</groupId>
+                    <artifactId>dubbo-admin-ui</artifactId>
+                    <version>${revision}</version>
+                </dependency>
+            </dependencies>
             <build>
                 <plugins>
                     <plugin>
