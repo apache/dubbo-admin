@@ -128,13 +128,6 @@ Below contains the description of the project structure for developers who want 
 
 - [Vue.js](https://vuejs.org) and [Vue Cli](https://cli.vuejs.org/)
 - [dubbo-admin-ui/README.md](dubbo-admin-ui/README.md) for more detail
-- Set npm **proxy mirror
-Below contains the description of the project structure for developers who want to contribute to make Dubbo Admin better.
-
-## 2.1 Admin UI
-
-- [Vue.js](https://vuejs.org) and [Vue Cli](https://cli.vuejs.org/)
-- [dubbo-admin-ui/README.md](dubbo-admin-ui/README.md) for more detail
 - Set npm **proxy mirror**:
 
   If you have network issue, you can set npm proxy mirror to speedup npm install:
