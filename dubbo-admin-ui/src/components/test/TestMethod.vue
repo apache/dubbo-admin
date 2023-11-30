@@ -21,23 +21,32 @@
       <v-flex lg12>
         <breadcrumb title="testMethod" :items="breads"></breadcrumb>
       </v-flex>
-    <v-flex class="test-form" lg12 xl6>
+      <v-flex class="test-form" lg12 xl6>
         <v-card>
-          <v-card-title class="headline">{{$t('testMethod') + ': ' + method.signature}}</v-card-title>
+          <v-card-title class="headline">{{ $t('testMethod') + ': ' + method.signature }}</v-card-title>
+          <v-card-text>
+            <v-select
+              :label="$t(provider.defaultLabel)"
+              v-model="provider.selected"
+              :items="provider.items"
+              @change="changeProviderSelection"
+              clearable
+            ></v-select>
+          </v-card-text>
           <v-card-text>
             <json-editor id="test" v-model="method.json"/>
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn id="execute" mt-0 color="primary" @click="executeMethod()">{{$t('execute')}}</v-btn>
+            <v-btn id="execute" mt-0 color="primary" @click="executeMethod()">{{ $t('execute') }}</v-btn>
           </v-card-actions>
         </v-card>
       </v-flex>
       <v-flex class="test-result" lg12 xl6>
         <v-card>
-          <v-card-title class="headline">{{$t('result') }}
-            <span class="green--text" v-if="success===true">{{ $t('success')}}</span>
-            <span class="red--text" v-if="success===false">{{ $t('fail')}}</span>
+          <v-card-title class="headline">{{ $t('result') }}
+            <span class="green--text" v-if="success===true">{{ $t('success') }}</span>
+            <span class="red--text" v-if="success===false">{{ $t('fail') }}</span>
           </v-card-title>
           <v-card-text>
             <json-editor v-model="result" name="Result" class="it-test-method-result-container" readonly></json-editor>
@@ -49,98 +58,115 @@
 </template>
 
 <script>
-  import JsonEditor from '@/components/public/JsonEditor'
-  import Breadcrumb from '@/components/public/Breadcrumb'
-  import set from 'lodash/set'
-  import util from '@/util'
+import JsonEditor from '@/components/public/JsonEditor'
+import Breadcrumb from '@/components/public/Breadcrumb'
+import set from 'lodash/set'
+import util from '@/util'
 
-  export default {
-    name: 'TestMethod',
-    components: {
-      JsonEditor,
-      Breadcrumb
-    },
-    data () {
-      return {
-        success: null,
-        breads: [
-          {
-            text: 'serviceSearch',
-            href: 'test'
-          },
-          {
-            text: 'serviceTest',
-            href: '',
-            strong: this.$route.query['service']
-          }
-        ],
-        service: this.$route.query['service'],
-        application: this.$route.query['application'],
-        method: {
-          name: null,
-          signature: this.$route.query['method'],
-          parameterTypes: [],
-          json: [],
-          jsonTypes: []
-        },
-        result: null
-      }
-    },
-    methods: {
-      executeMethod () {
-        this.convertType(this.method.json, this.method.jsonTypes)
-        let serviceTestDTO = {
-          service: this.service,
-          method: this.method.name,
-          parameterTypes: this.method.parameterTypes,
-          params: this.method.json
-        }
-        this.$axios.post('/test', serviceTestDTO)
-          .then(response => {
-            if (response && response.status === 200) {
-              this.success = true
-              this.result = response.data
-            }
-          })
-          .catch(error => {
-            this.success = false
-            this.result = error.response.data
-          })
+export default {
+  name: 'TestMethod',
+  components: {
+    JsonEditor,
+    Breadcrumb
+  },
+  data() {
+    return {
+      success: null,
+      provider: {
+        selected: null,
+        items: [],
+        defaultLabel: 'selectProvider'
       },
-
-      convertType (params, types) {
-        const p = util.flattenObject(params)
-        const t = util.flattenObject(types)
-        Object.keys(p).forEach(key => {
-          if (typeof t[key] === 'string' && typeof p[key] !== 'string') {
-            set(params, key, String(p[key]))
+      breads: [
+        {
+          text: 'serviceSearch',
+          href: 'test'
+        },
+        {
+          text: 'serviceTest',
+          href: '',
+          strong: this.$route.query['service']
+        }
+      ],
+      service: this.$route.query['service'],
+      application: this.$route.query['application'],
+      method: {
+        name: null,
+        signature: this.$route.query['method'],
+        parameterTypes: [],
+        json: [],
+        jsonTypes: []
+      },
+      result: null
+    }
+  },
+  methods: {
+    searchProviderAddress() {
+      this.$axios.get('/provider/addresses', {params: {service: this.service}})
+        .then(response => {
+          this.provider.items = response.data
+        })
+    },
+    changeProviderSelection() {
+      this.provider.defaultLabel = this.provider.selected ? '' : 'selectProvider';
+      console.log(JSON.stringify(this.provider.selected))
+    },
+    executeMethod() {
+      this.convertType(this.method.json, this.method.jsonTypes)
+      let serviceTestDTO = {
+        service: this.service,
+        method: this.method.name,
+        parameterTypes: this.method.parameterTypes,
+        params: this.method.json,
+        address: this.provider.selected
+      }
+      this.$axios.post('/test', serviceTestDTO)
+        .then(response => {
+          if (response && response.status === 200) {
+            this.success = true
+            this.result = response.data
           }
         })
-      }
-    },
-    mounted () {
-      const query = this.$route.query
-      const method = query['method']
-
-      if (method) {
-        const [methodName, parametersTypes] = method.split('~')
-        this.method.name = methodName
-        if (parametersTypes) {
-          this.method.parameterTypes = parametersTypes.split(';')
-        } else { // if parametersTypes === "",  "".split(";") will produce [""], which is wrong
-          this.method.parameterTypes = []
-        }
-      }
-
-      let url = '/test/method?' + 'application=' + this.application +
-                '&service=' + this.service + '&method=' + method
-      this.$axios.get(encodeURI(url))
-        .then(response => {
-          this.method.json = response.data.parameterTypes
-          this.method.jsonTypes = response.data.parameterTypes
+        .catch(error => {
+          this.success = false
+          this.result = error.response.data
         })
+    },
+
+    convertType(params, types) {
+      const p = util.flattenObject(params)
+      const t = util.flattenObject(types)
+      Object.keys(p).forEach(key => {
+        if (typeof t[key] === 'string' && typeof p[key] !== 'string') {
+          set(params, key, String(p[key]))
+        }
+      })
     }
+  },
+  mounted() {
+    const query = this.$route.query
+    const method = query['method']
+
+    if (method) {
+      const [methodName, parametersTypes] = method.split('~')
+      this.method.name = methodName
+      if (parametersTypes) {
+        this.method.parameterTypes = parametersTypes.split(';')
+      } else { // if parametersTypes === "",  "".split(";") will produce [""], which is wrong
+        this.method.parameterTypes = []
+      }
+    }
+
+    let url = '/test/method?' + 'application=' + this.application +
+      '&service=' + this.service + '&method=' + method
+    this.$axios.get(encodeURI(url))
+      .then(response => {
+        this.method.json = response.data.parameterTypes
+        this.method.jsonTypes = response.data.parameterTypes
+      });
+    this.searchProviderAddress();
   }
+}
 </script>
 
 <style scoped>

@@ -15,22 +15,17 @@
   ~  See the License for the specific language governing permissions and
   ~  limitations under the License.
   -->
-
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
     <parent>
-        <artifactId>dubbo-admin</artifactId>
         <groupId>org.apache.dubbo</groupId>
+        <artifactId>dubbo-admin</artifactId>
         <version>${revision}</version>
     </parent>
-    <modelVersion>4.0.0</modelVersion>
 
     <artifactId>dubbo-admin-test</artifactId>
 
     <properties>
-        <source.level>1.8</source.level>
-        <target.level>1.8</target.level>
         <spring.version>4.3.16.RELEASE</spring.version>
         <junit.version>4.12</junit.version>
         <jib-maven-plugin.version>2.4.0</jib-maven-plugin.version>
@@ -62,70 +57,59 @@
             <artifactId>dubbo</artifactId>
             <version>${dubbo-version}</version>
         </dependency>
-
         <dependency>
             <groupId>org.apache.dubbo</groupId>
             <artifactId>dubbo-dependencies-zookeeper</artifactId>
             <version>${dubbo-version}</version>
             <type>pom</type>
         </dependency>
-
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
             <artifactId>selenium-java</artifactId>
             <version>3.141.59</version>
         </dependency>
-
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
         </dependency>
-
         <dependency>
             <groupId>com.sun.jersey</groupId>
             <artifactId>jersey-servlet</artifactId>
             <version>1.19.4</version>
         </dependency>
-
         <dependency>
             <groupId>com.sun.jersey</groupId>
             <artifactId>jersey-json</artifactId>
             <version>1.19.4</version>
         </dependency>
-
         <dependency>
             <groupId>com.sun.jersey</groupId>
             <artifactId>jersey-client</artifactId>
             <version>1.19.4</version>
         </dependency>
-
         <dependency>
             <groupId>org.eclipse.jetty.aggregate</groupId>
             <artifactId>jetty-all-server</artifactId>
             <version>8.2.0.v20160908</version>
         </dependency>
-
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.13</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>io.github.bonigarcia</groupId>
             <artifactId>webdrivermanager</artifactId>
             <version>3.4.0</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.fluentlenium</groupId>
             <artifactId>fluentlenium-junit</artifactId>
             <version>3.9.1</version>
             <scope>test</scope>
         </dependency>
-
         <dependency>
             <groupId>org.hamcrest</groupId>
             <artifactId>hamcrest-all</artifactId>
@@ -185,10 +169,10 @@
                         <version>1.7</version>
                         <executions>
                             <execution>
-                                <phase>compile</phase>
                                 <goals>
                                     <goal>run</goal>
                                 </goals>
+                                <phase>compile</phase>
                                 <configuration>
                                     <target>
                                         <echo>===== LocalIP: ${local.ip}</echo>
@@ -227,12 +211,9 @@
                                             <port>${dubbo-admin.port}:38080</port>
                                         </ports>
                                         <env>
-                                            <admin.registry.address>zookeeper://zookeeper:2181
-                                            </admin.registry.address>
-                                            <admin.config-center>zookeeper://zookeeper:2181
-                                            </admin.config-center>
-                                            <admin.metadata-report.address>zookeeper://zookeeper:2181
-                                            </admin.metadata-report.address>
+                                            <admin.registry.address>zookeeper://zookeeper:2181</admin.registry.address>
+                                            <admin.config-center>zookeeper://zookeeper:2181</admin.config-center>
+                                            <admin.metadata-report.address>zookeeper://zookeeper:2181</admin.metadata-report.address>
                                             <JAVA_OPTS>-javaagent:/jacoco/jacoco.jar=destfile=/jacoco/jacoco.exec</JAVA_OPTS>
                                         </env>
                                         <volumes>
@@ -260,8 +241,7 @@
                                     <run>
                                         <dependsOn>dubbo-admin</dependsOn>
                                         <env>
-                                            <dubbo.config-center.address>zookeeper://${local.ip}:${zookeeper.port}
-                                            </dubbo.config-center.address>
+                                            <dubbo.config-center.address>zookeeper://${local.ip}:${zookeeper.port}</dubbo.config-center.address>
                                         </env>
                                         <wait>
                                             <log>dubbo service started</log>
@@ -274,8 +254,7 @@
                                     <run>
                                         <dependsOn>dubbo-admin-provider</dependsOn>
                                         <env>
-                                            <dubbo.config-center.address>zookeeper://${local.ip}:${zookeeper.port}
-                                            </dubbo.config-center.address>
+                                            <dubbo.config-center.address>zookeeper://${local.ip}:${zookeeper.port}</dubbo.config-center.address>
                                             <rest.api.port>${rest.api.port}</rest.api.port>
                                         </env>
                                         <wait>
@@ -288,17 +267,17 @@
                         <executions>
                             <execution>
                                 <id>start</id>
-                                <phase>pre-integration-test</phase>
                                 <goals>
                                     <goal>start</goal>
                                 </goals>
+                                <phase>pre-integration-test</phase>
                             </execution>
                             <execution>
                                 <id>stop</id>
-                                <phase>post-integration-test</phase>
                                 <goals>
                                     <goal>stop</goal>
                                 </goals>
+                                <phase>post-integration-test</phase>
                             </execution>
                         </executions>
                     </plugin>
@@ -307,14 +286,6 @@
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-failsafe-plugin</artifactId>
                         <version>${maven-failsafe-plugin.version}</version>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>integration-test</goal>
-                                    <goal>verify</goal>
-                                </goals>
-                            </execution>
-                        </executions>
                         <configuration>
                             <environmentVariables>
                                 <BASEURL>http://localhost:${dubbo-admin.port}</BASEURL>
@@ -323,6 +294,14 @@
                                 <include>**/*IT.java</include>
                             </includes>
                         </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>integration-test</goal>
+                                    <goal>verify</goal>
+                                </goals>
+                            </execution>
+                        </executions>
                     </plugin>
                 </plugins>
             </build>
@@ -348,10 +327,10 @@
                         </configuration>
                         <executions>
                             <execution>
-                                <phase>package</phase>
                                 <goals>
                                     <goal>dockerBuild</goal>
                                 </goals>
+                                <phase>package</phase>
                             </execution>
                         </executions>
                     </plugin>
@@ -379,10 +358,10 @@
                         </configuration>
                         <executions>
                             <execution>
-                                <phase>package</phase>
                                 <goals>
                                     <goal>dockerBuild</goal>
                                 </goals>
+                                <phase>package</phase>
                             </execution>
                         </executions>
                     </plugin>
@@ -390,18 +369,4 @@
             </build>
         </profile>
     </profiles>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>${maven-compiler-plugin.version}</version>
-                <configuration>
-                    <source>${source.level}</source>
-                    <target>${target.level}</target>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 </project>

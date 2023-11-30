@@ -15,16 +15,13 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
   -->
-
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
     <parent>
-        <artifactId>dubbo-admin</artifactId>
         <groupId>org.apache.dubbo</groupId>
+        <artifactId>dubbo-admin</artifactId>
         <version>${revision}</version>
     </parent>
-    <modelVersion>4.0.0</modelVersion>
 
     <artifactId>dubbo-admin-distribution</artifactId>
 
@@ -48,18 +45,16 @@
                 <version>1.8</version>
                 <executions>
                     <execution>
-                        <phase>package</phase>
-                        <configuration>
-                            <tasks>
-                                <copy file="../dubbo-admin-server/target/dubbo-admin-server-${project.version}.jar"
-                                      tofile="target/dubbo-admin-${project.version}.jar"/>
-                                <copy file="../dubbo-admin-server/target/classes/application.properties"
-                                      tofile="src/bin/config/application.properties"/>
-                            </tasks>
-                        </configuration>
                         <goals>
                             <goal>run</goal>
                         </goals>
+                        <phase>package</phase>
+                        <configuration>
+                            <tasks>
+                                <copy file="../dubbo-admin-server/target/dubbo-admin-server-${project.version}.jar" tofile="target/dubbo-admin-${project.version}.jar"></copy>
+                                <copy file="../dubbo-admin-server/target/classes/application.properties" tofile="src/bin/config/application.properties"></copy>
+                            </tasks>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -78,10 +73,10 @@
                         <executions>
                             <execution>
                                 <id>bin-release</id>
-                                <phase>package</phase>
                                 <goals>
                                     <goal>single</goal>
                                 </goals>
+                                <phase>package</phase>
                                 <configuration>
                                     <descriptors>
                                         <descriptor>src/assembly/bin-release.xml</descriptor>
@@ -90,10 +85,10 @@
                             </execution>
                             <execution>
                                 <id>source-release</id>
-                                <phase>package</phase>
                                 <goals>
                                     <goal>single</goal>
                                 </goals>
+                                <phase>package</phase>
                                 <configuration>
                                     <descriptors>
                                         <descriptor>src/assembly/source-release.xml</descriptor>
@@ -108,10 +103,10 @@
                         <version>1.6</version>
                         <executions>
                             <execution>
-                                <phase>verify</phase>
                                 <goals>
                                     <goal>sign</goal>
                                 </goals>
+                                <phase>verify</phase>
                             </execution>
                         </executions>
                     </plugin>
@@ -119,5 +114,4 @@
             </build>
         </profile>
     </profiles>
-
 </project>

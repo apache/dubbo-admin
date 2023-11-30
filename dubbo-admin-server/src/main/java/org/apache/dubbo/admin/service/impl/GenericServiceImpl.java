@@ -19,6 +19,10 @@ package org.apache.dubbo.admin.service.impl;
 
 import org.apache.dubbo.admin.common.util.Constants;
 import org.apache.dubbo.admin.common.util.Tool;
+import org.apache.dubbo.admin.model.domain.Provider;
+import org.apache.dubbo.admin.model.dto.ServiceTestDTO;
+import org.apache.dubbo.admin.service.ProviderService;
+
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.config.ApplicationConfig;
 import org.apache.dubbo.config.ReferenceConfig;
@@ -28,14 +32,17 @@ import org.apache.dubbo.rpc.service.GenericService;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import java.util.Optional;
 
 @Component
 public class GenericServiceImpl {
-    private ApplicationConfig applicationConfig;
     private final Registry registry;
+    private final ProviderService providerService;
+    private ApplicationConfig applicationConfig;
 
-    public GenericServiceImpl(Registry registry) {
+    public GenericServiceImpl(Registry registry, ProviderService providerService) {
         this.registry = registry;
+        this.providerService = providerService;
     }
 
     @PostConstruct
@@ -62,8 +69,15 @@ public class GenericServiceImpl {
         return config;
     }
 
-    public Object invoke(String service, String method, String[] parameterTypes, Object[] params) {
-
+    /**
+     * @param service
+     * @param method
+     * @param parameterTypes
+     * @param params
+     * @param address
+     * @return {@link Object}
+     */
+    public Object invoke(String service, String method, String[] parameterTypes, Object[] params, String address) {
         ReferenceConfig<GenericService> reference = new ReferenceConfig<>();
         String group = Tool.getGroup(service);
         String version = Tool.getVersion(service);
@@ -76,12 +90,27 @@ public class GenericServiceImpl {
         //Keep it consistent with the ConfigManager cache
         reference.setSticky(false);
         try {
+            // @formatter:off
+            Optional.ofNullable(address)
+                    .flatMap(addr -> providerService.find(service, addr))
+                    .map(Provider::getUrl)
+                    .ifPresent(reference::setUrl);
+            // @formatter:on
+
             removeGenericSymbol(parameterTypes);
             GenericService genericService = reference.get();
             return genericService.$invoke(method, parameterTypes, params);
         } finally {
             reference.destroy();
         }
+    }
+
+    /**
+     * @param serviceTestDTO
+     * @return {@link Object}
+     */
+    public Object invoke(ServiceTestDTO serviceTestDTO) {
+        return invoke(serviceTestDTO.getService(), serviceTestDTO.getMethod(), serviceTestDTO.getParameterTypes(), serviceTestDTO.getParams(), serviceTestDTO.getAddress());
     }
 
     /**

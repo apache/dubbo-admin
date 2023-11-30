@@ -21,15 +21,30 @@
   </div>
 </template>
 <script>
-  export default {
-    data () {
-      return {
-        dark: false
-      }
-    },
-    created () {
-      window.getApp = this
-    },
-    name: 'App'
+import Vue from "vue";
+
+export default {
+  name: 'App',
+  data() {
+    return {
+      dark: false
+    }
+  },
+  mounted() {
+    this.loadAppTitle()
+  },
+  created() {
+    window.getApp = this
+  },
+  methods: {
+    loadAppTitle: function () {
+      Vue.prototype.$axios.get('/common/app/config')
+        .then(response => {
+          if (response.status === 200) {
+            document.title = response.data.adminTitle
+          }
+        })
+    }
   }
+}
 </script>

@@ -23,14 +23,11 @@ import org.apache.dubbo.admin.model.domain.Consumer;
 import org.apache.dubbo.admin.registry.nacos.NacosData;
 import org.apache.dubbo.admin.registry.nacos.NacosOpenapiUtil;
 import org.apache.dubbo.admin.service.ConsumerService;
+
 import org.apache.dubbo.common.URL;
-import org.apache.dubbo.common.utils.NetUtils;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
 import org.apache.dubbo.registry.Registry;
-import org.apache.dubbo.registry.client.DefaultServiceInstance;
-import org.apache.dubbo.registry.nacos.NacosRegistry;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 

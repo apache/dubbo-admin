@@ -17,11 +17,17 @@
 
 package org.apache.dubbo.admin.model.dto;
 
+
+/**
+ * @author XS <tonycody@qq.com>
+ * @date 2023/09/07
+ */
 public class ServiceTestDTO {
     private String service;
     private String method;
     private String[] parameterTypes;
     private Object[] params;
+    private String address;
 
     public String getService() {
         return service;
@@ -53,5 +59,13 @@ public class ServiceTestDTO {
 
     public void setParams(Object[] params) {
         this.params = params;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
     }
 }

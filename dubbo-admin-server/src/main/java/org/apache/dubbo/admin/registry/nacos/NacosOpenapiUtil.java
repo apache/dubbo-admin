@@ -16,14 +16,11 @@
  */
 package org.apache.dubbo.admin.registry.nacos;
 
-import org.apache.dubbo.admin.controller.AccessesController;
+import com.alibaba.fastjson2.JSON;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.common.utils.StringUtils;
-
-import com.alibaba.fastjson2.JSON;
-import net.bytebuddy.implementation.bytecode.Throw;
 
 import java.io.BufferedReader;
 import java.io.IOException;

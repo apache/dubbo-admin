@@ -24,10 +24,10 @@ import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.domain.RegistrySource;
 import org.apache.dubbo.admin.model.dto.ServiceDTO;
 import org.apache.dubbo.admin.service.ProviderService;
-import org.apache.dubbo.common.URL;
-import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.dubbo.common.URL;
+import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentMap;
@@ -135,6 +136,24 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
         return instanceProviders;
     }
 
+    /**
+     * @param serviceName
+     * @param address
+     * @return {@link Optional}<{@link Provider}>
+     */
+    @Override
+    public Optional<Provider> find(String serviceName, String address) {
+        // @formatter:off
+        return Optional.ofNullable(serviceName)
+                .filter(s -> StringUtils.isNotBlank(address))
+                .map(this::findByService)
+                .orElse(Collections.emptyList())
+                .stream()
+                .filter(provider -> address.equals(provider.getAddress()))
+                .findFirst();
+        // @formatter:on
+    }
+
     public Map<String, URL> findProviderUrlByAddress(String address) {
         Map<String, String> filter = new HashMap<String, String>();
         filter.put(Constants.CATEGORY_KEY, Constants.PROVIDERS_CATEGORY);
@@ -176,7 +195,7 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
     @Override
     public String findVersionInApplication(String application) {
         String version = instanceRegistryQueryHelper.findVersionInApplication(application);
-        if (StringUtils.isNotBlank(version)){
+        if (StringUtils.isNotBlank(version)) {
             return version;
         }
         List<String> services = findServicesByApplication(application);
@@ -258,13 +277,12 @@ public class ProviderServiceImpl extends AbstractService implements ProviderServ
             } else if (Constants.APPLICATION.equals(pattern)) {
                 candidates = findApplications();
             } else if (Constants.IP.equals(pattern)) {
-                candidates = findAddresses().stream().collect(Collectors.toSet());
+                candidates = new HashSet<>(findAddresses());
             }
             // replace dot symbol and asterisk symbol to java-based regex pattern
             filter = filter.toLowerCase().replace(Constants.PUNCTUATION_POINT, Constants.PUNCTUATION_SEPARATOR_POINT);
             // filter start with [* 、? 、+] will triggering PatternSyntaxException
-            if (filter.startsWith(Constants.ANY_VALUE)
-                    || filter.startsWith(Constants.INTERROGATION_POINT) || filter.startsWith(Constants.PLUS_SIGNS)) {
+            if (filter.startsWith(Constants.ANY_VALUE) || filter.startsWith(Constants.INTERROGATION_POINT) || filter.startsWith(Constants.PLUS_SIGNS)) {
                 filter = Constants.PUNCTUATION_POINT + filter;
             }
             // search with no case insensitive
