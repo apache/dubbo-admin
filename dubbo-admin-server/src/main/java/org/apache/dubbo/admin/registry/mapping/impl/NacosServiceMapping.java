@@ -18,6 +18,11 @@
 package org.apache.dubbo.admin.registry.mapping.impl;
 
 import org.apache.dubbo.admin.registry.mapping.ServiceMapping;
+
+import com.alibaba.nacos.api.common.Constants;
+import com.alibaba.nacos.api.exception.NacosException;
+import com.alibaba.nacos.api.naming.pojo.ListView;
+import com.google.common.collect.Sets;
 import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
@@ -25,19 +30,9 @@ import org.apache.dubbo.common.utils.ConcurrentHashSet;
 import org.apache.dubbo.common.utils.StringUtils;
 import org.apache.dubbo.metadata.MappingChangedEvent;
 import org.apache.dubbo.metadata.MappingListener;
-import org.apache.dubbo.registry.client.ServiceInstance;
 import org.apache.dubbo.registry.nacos.NacosNamingServiceWrapper;
 import org.apache.dubbo.registry.nacos.util.NacosNamingServiceUtils;
 
-import com.alibaba.nacos.api.common.Constants;
-import com.alibaba.nacos.api.exception.NacosException;
-import com.alibaba.nacos.api.naming.pojo.ListView;
-import com.google.common.collect.Sets;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;

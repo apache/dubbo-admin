@@ -18,9 +18,11 @@ package org.apache.dubbo.admin.service;
 
 import org.apache.dubbo.admin.model.domain.Provider;
 import org.apache.dubbo.admin.model.dto.ServiceDTO;
+
 import org.apache.dubbo.metadata.report.identifier.MetadataIdentifier;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -70,6 +72,13 @@ public interface ProviderService {
      * @return list of provider object
      */
     List<Provider> findByAddress(String providerAddress);
+
+    /**
+     * @param serviceName
+     * @param address
+     * @return {@link Optional}<{@link Provider}>
+     */
+    Optional<Provider> find(String serviceName, String address);
 
     Set<String> findApplications();
 

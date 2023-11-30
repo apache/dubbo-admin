@@ -149,6 +149,7 @@ export default {
   configNameHint: "Application name the config belongs to, use 'global'(without quotes) for global config",
   configContent: 'Config Content',
   testMethod: 'Test Method',
+  selectProvider: 'Select provider, default load balancing policy',
   execute: 'EXECUTE',
   result: 'Result: ',
   success: 'SUCCESS',
