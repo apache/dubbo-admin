@@ -5,7 +5,7 @@ image:
   repository: apache/dubbo-admin
   ##
   ##
-  tag: "0.5.0"
+  tag: "0.6.0"
   ##
   ##
   debug: false

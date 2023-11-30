@@ -85,3 +85,19 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.nameTest }}
 {{- end }}
 {{- end }}
+
+{{- define "dubbo-admin.rbac.apiVersion" -}}
+{{- if $.Capabilities.APIVersions.Has "rbac.authorization.k8s.io/v1" }}
+{{- print "rbac.authorization.k8s.io/v1" }}
+{{- else }}
+{{- print "rbac.authorization.k8s.io/v1beta1" }}
+{{- end }}
+{{- end }}
+
+{{- define "dubbo-admin.podDisruptionBudget.apiVersion" -}}
+{{- if $.Capabilities.APIVersions.Has "policy/v1/PodDisruptionBudget" }}
+{{- print "policy/v1" }}
+{{- else }}
+{{- print "policy/v1beta1" }}
+{{- end }}
+{{- end }}
