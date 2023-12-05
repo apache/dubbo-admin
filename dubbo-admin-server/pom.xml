@@ -231,7 +231,7 @@
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-core</artifactId>
-            <version>1.2.8</version>
+            <version>1.2.13</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
