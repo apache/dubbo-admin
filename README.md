@@ -31,6 +31,8 @@ Choose either method based on your environment, where Helm is the recommended in
     * `cd dubbo-admin-distribution/target; java -jar dubbo-admin-${project.version}.jar`
 5. Visit  `http://localhost:38080`, default username and password are `root`
 
+> **Security Notice: Please remember to change the `admin.check.signSecret`, `admin.root.user.name` and `admin.root.user.password` before you deploy to production environment.**
+
 ## 1.2 Run with Docker
 
 > **Note: This method only supports running under linux system. Docker support for windows and mac systems will be released soon!**
@@ -50,7 +52,12 @@ The `application.properties` configuration file is as follows (taking the `zooke
 ```properties
 admin.registry.address=zookeeper://127.0.0.1:2181
 admin.config-center=zookeeper://127.0.0.1:2181
+admin.root.user.name=root
+admin.root.user.password=root
+admin.check.signSecret=86295dd0c4ef69a1036b0b0c15158d77
 ```
+
+> **Security Notice: Please remember to change the `admin.check.signSecret`, `admin.root.user.name` and `admin.root.user.password` before you deploy to production environment.**
 
 Open web browser and visit `http://localhost:38080`, default username and password are `root`.
 
@@ -69,6 +76,8 @@ $ cd dubbo-admin/kubernetes/dubbo-admin
 **2. Install Dubbo Admin**
 
 Open `configmap.yaml` and modify accordingly to override configurations in [application.properties](./dubbo-admin-server/src/main/resources/application.properties).
+
+> **Security Notice: Please remember to change the `admin.check.signSecret`, `admin.root.user.name` and `admin.root.user.password` before you deploy to production environment.**
 
 Run the following command:
 
@@ -108,7 +117,12 @@ properties:
   admin.registry.address: zookeeper://zookeeper:2181
   admin.config-center: zookeeper://zookeeper:2181
   admin.metadata-report.address: zookeeper://zookeeper:2181
+  admin.root.user.name: root
+  admin.root.user.password: root
+  admin.check.signSecret: 86295dd0c4ef69a1036b0b0c15158d77
 ```
+
+> **Security Notice: Please remember to change the `admin.check.signSecret`, `admin.root.user.name` and `admin.root.user.password` before you deploy to production environment.**
 
 ```sh
 $ helm install dubbo-admin -f values.yaml .
