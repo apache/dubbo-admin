@@ -1,4 +1,4 @@
-> **Security Notice: Please remember to change the `admin.check.signSecret`, `admin.root.user.name` and `admin.root.user.password` before you deploy to production environment.**
+> **Security Notice: Please remember to change the `admin.check.signSecret`, `admin.root.user.name` and `admin.root.user.password` value before you deploy to production environment.**
 
 ## 1. Project download to local
 ```
