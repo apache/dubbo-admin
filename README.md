@@ -31,7 +31,7 @@ Choose either method based on your environment, where Helm is the recommended in
     * `cd dubbo-admin-distribution/target; java -jar dubbo-admin-${project.version}.jar`
 5. Visit  `http://localhost:38080`, default username and password are `root`
 
-> **Security Notice: Please remember to change the `admin.check.signSecret`, `admin.root.user.name` and `admin.root.user.password` before you deploy to production environment.**
+> **Security Notice: Please remember to change the `admin.check.signSecret`, `admin.root.user.name` and `admin.root.user.password` value before you deploy to production environment.**
 
 ## 1.2 Run with Docker
 
@@ -57,7 +57,7 @@ admin.root.user.password=root
 admin.check.signSecret=86295dd0c4ef69a1036b0b0c15158d77
 ```
 
-> **Security Notice: Please remember to change the `admin.check.signSecret`, `admin.root.user.name` and `admin.root.user.password` before you deploy to production environment.**
+> **Security Notice: Please remember to change the `admin.check.signSecret`, `admin.root.user.name` and `admin.root.user.password` value before you deploy to production environment.**
 
 Open web browser and visit `http://localhost:38080`, default username and password are `root`.
 
@@ -77,7 +77,7 @@ $ cd dubbo-admin/kubernetes/dubbo-admin
 
 Open `configmap.yaml` and modify accordingly to override configurations in [application.properties](./dubbo-admin-server/src/main/resources/application.properties).
 
-> **Security Notice: Please remember to change the `admin.check.signSecret`, `admin.root.user.name` and `admin.root.user.password` before you deploy to production environment.**
+> **Security Notice: Please remember to change the `admin.check.signSecret`, `admin.root.user.name` and `admin.root.user.password` value before you deploy to production environment.**
 
 Run the following command:
 
@@ -122,7 +122,7 @@ properties:
   admin.check.signSecret: 86295dd0c4ef69a1036b0b0c15158d77
 ```
 
-> **Security Notice: Please remember to change the `admin.check.signSecret`, `admin.root.user.name` and `admin.root.user.password` before you deploy to production environment.**
+> **Security Notice: Please remember to change the `admin.check.signSecret`, `admin.root.user.name` and `admin.root.user.password` value before you deploy to production environment.**
 
 ```sh
 $ helm install dubbo-admin -f values.yaml .
