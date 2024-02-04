@@ -1,0 +1,166 @@
+nameOverride: ~
+
+namespaceOverride: ~
+
+nodeSelector: ~
+
+affinity: ~
+
+tolerations: ~
+
+replicas: 1
+
+imagePullSecrets: ~
+
+image:
+  registry: docker.io
+  repository: apache/dubbo-admin
+  tag: 0.5.0
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  enabled: false
+  labels: {}
+  annotations: {}
+
+rbac:
+  enabled: false
+
+psp:
+  enabled: false
+  labels: {}
+  annotations: {}
+
+pdb:
+  enabled: false
+  labels: {}
+  annotations: {}
+  minAvailable: 1
+  maxUnavailable: 1
+
+networkPolicy:
+  enabled: false
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 60
+  timeoutSeconds: 30
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+  probeCommandTimeout: 1
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 60
+  timeoutSeconds: 30
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+  probeCommandTimeout: 1
+
+startupProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 60
+  timeoutSeconds: 30
+  periodSeconds: 10
+  successThreshold: 1
+  failureThreshold: 3
+
+resources: {}
+#  limits:
+#    cpu: 100m
+#    memory: 128Mi
+#  requests:
+#    cpu: 100m
+#    memory: 128Mi
+
+service:
+  labels: {}
+  annotations: {}
+  type: ClusterIP
+  clusterIP: ""
+  externalIPs: ""
+  loadBalancerIP: ""
+  loadBalancerSourceRanges: ""
+  nodePort: ""
+  port: 38080
+  targetPort: http
+  containerPort: 8080
+  protocol: TCP
+  appProtocol: ""
+
+persistence:
+  enabled: false
+  labels: {}
+  annotations: {}
+  storageClass: ""
+  accessModes: ReadWriteOnce
+  size: 10Gi
+  ClaimName: {}
+  emptyDir: {}
+
+user:
+  name: root
+  password: root
+
+dubbo:
+  name: dubbo-admin
+  logger: slf4j
+
+check:
+  sessionTimeoutMilli: 3600000
+  tokenTimeoutMilli: 3600000
+  signSecret: ~
+
+serverCompression:
+  enabled: true
+  mimeTypes: text/css,text/javascript,application/javascript
+  minResponseSize: 10240
+
+zookeeper:
+  enabled: true
+  address: zookeeper://zookeeper:2181
+
+nacos:
+  enabled: false
+  address: nacos://nacos:8848
+
+apollo:
+  enabled: false
+  address: apollo://apollo:8070
+  token: ~
+  appId: test
+  env: dev
+  cluster: default
+  namespace: dubbo
+
+mysql:
+  enabled: false
+  driverClassName: com.mysql.jdbc.Driver
+  address: mysql://mysql:3306/dubbo-admin
+  encode: utf8
+  connectTimeout: 1000
+  socketTimeout: 10000
+  autoReconnect: true
+  username: sa
+  password: ~
+
+h2:
+  enabled: true
+  mode: MYSQL
+  mem: ~/dubbo-admin
+  username: sa
+  password:
+
+mybatisPlus:
+  global:
+    db:
+      idType: none
+

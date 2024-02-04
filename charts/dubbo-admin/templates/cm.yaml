@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "dubbo-admin.name" . }}-cm
+  namespace: {{ include "dubbo-admin.namespace" . }}
+data:
+  application.properties: |-
+    {{- if .Values.zookeeper.enabled }}
+    admin.registry.address: {{ .Values.zookeeper.address }}
+    admin.config-center: {{ .Values.zookeeper.address }}
+    admin.metadata-report.address: {{ .Values.zookeeper.address }}
+    {{- end }}
+    {{- if .Values.nacos.enabled }}
+    admin.registry.address: {{ .Values.nacos.address }}?group=DEFAULT_GROUP&namespace={{ .Values.nacos.namespace }}
+    admin.config-center: {{ .Values.nacos.address }}?group={{ .Values.nacos.group }}
+    admin.metadata-report.address: {{.Values.nacos.address }}?group={{ .Values.nacos.group }}
+    {{- end }}
+    admin.root.user.name: {{ .Values.user.name }}
+    admin.root.user.password: {{ .Values.user.password }}
+    admin.check.tokenTimeoutMilli: {{ .Values.check.tokenTimeoutMilli | int64 }}
+    admin.check.sessionTimeoutMilli: {{ .Values.check.sessionTimeoutMilli | int64 }}
+    admin.check.signSecret: {{ .Values.check.signSecret }}
+    {{- if .Values.apollo.enabled }}
+    admin.config-center: {{ .Values.apollo.address }}?token={{ .Values.apollo.token }}&app.id={{ .Values.apollo.appId }}&env={{ .Values.apollo.env }}&cluster={{ .Values.apollo.cluster }}&namespace={{ .Values.apollo.namespace }}
+    admin.apollo.token: {{ .Values.apollo.token }}
+    admin.apollo.appId: {{ .Values.apollo.appId }}
+    admin.apollo.env: {{ .Values.apollo.env }}
+    admin.apollo.cluster: {{ .Values.apollo.cluster }}
+    {{- end }}
+    server.compression.enabled: {{ .Values.serverCompression.enabled }}
+    server.compression.mime-types: {{ .Values.serverCompression.mimeTypes }}
+    server.compression.min-response-size: {{ .Values.serverCompression.minResponseSize }}
+    dubbo.application.name: {{ .Values.dubbo.name }}
+    dubbo.application.logger: {{ .Values.dubbo.logger }}
+    dubbo.registry.address: ${admin.registry.address}
+    {{- if .Values.mysql.enabled }}
+    spring.datasource.driver-class-name: {{ .Values.mysql.driverClassName }}
+    spring.datasource.url: jdbc:{{ .Values.mysql.address }}?characterEncoding={{ .Values.mysql.encode }}&connectTimeout={{ .Values.mysql.connectTimeout }}&socketTimeout={{ .Values.mysql.socketTimeout }}&autoReconnect={{ .Values.mysql.autoReconnect }}
+    spring.datasource.username: {{ .Values.mysql.username }}
+    spring.datasource.password: {{ .Values.mysql.password }}
+    {{- end }}
+    {{- if .Values.h2.enabled }}
+    spring.datasource.url: jdbc:h2:mem:{{ .Values.h2.mem }};MODE={{ .Values.h2.mode }};
+    spring.datasource.username: {{ .Values.mysql.username }}
+    spring.datasource.password: {{ .Values.mysql.password }}
+    {{- end }}
+    mybatis-plus.global-config.db-config.id-type: {{ .Values.mybatisPlus.global.db.idType }}
