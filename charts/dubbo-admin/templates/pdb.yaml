@@ -1,0 +1,17 @@
+{{- if .Values.pdb.enabled }}
+apiVersion: {{ include "dubbo-admin.podDisruptionBudget.apiVersion" . }}
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "dubbo-admin.name" . }}
+  namespace: {{ include "dubbo-admin.namespace" . }}
+spec:
+  {{- with .Values.pdb.minAvailable }}
+  minAvailable: {{ . }}
+  {{- end }}
+  {{- with .Values.pdb.maxUnavailable }}
+  maxUnavailable: {{ . }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "dubbo-admin.matchLabels" . | nindent 6 }}
+{{- end -}}
