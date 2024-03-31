@@ -1,0 +1,138 @@
+---
+# Source: dubbo-admin/templates/cm.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dubbo-admin-cm
+  namespace: default
+data:
+  application.properties: |-
+    admin.registry.address: zookeeper://zookeeper:2181
+    admin.config-center: zookeeper://zookeeper:2181
+    admin.metadata-report.address: zookeeper://zookeeper:2181
+    admin.root.user.name: root
+    admin.root.user.password: root
+    admin.check.tokenTimeoutMilli: 3600000
+    admin.check.sessionTimeoutMilli: 3600000
+    admin.check.signSecret: 
+    server.compression.enabled: true
+    server.compression.mime-types: text/css,text/javascript,application/javascript
+    server.compression.min-response-size: 10240
+    dubbo.application.name: dubbo-admin
+    dubbo.application.logger: slf4j
+    dubbo.registry.address: ${admin.registry.address}
+    spring.datasource.url: jdbc:h2:mem:~/dubbo-admin;MODE=MYSQL;
+    spring.datasource.username: sa
+    spring.datasource.password: 
+    mybatis-plus.global-config.db-config.id-type: none
+---
+# Source: dubbo-admin/templates/svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: dubbo-admin
+  namespace: default
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 38080
+    protocol: TCP
+    targetPort: http
+---
+# Source: dubbo-admin/templates/svc.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: dubbo-admin-headless
+  namespace: default
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: http
+    port: 38080
+    protocol: TCP
+    targetPort: http
+    appProtocol:
+---
+# Source: dubbo-admin/templates/deploy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dubbo-admin
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      
+      app.kubernetes.io/name: dubbo-admin
+      helm.sh/chart: dubbo-admin-0.5.0
+      app.kubernetes.io/instance: dubbo-admin
+      app.kubernetes.io/managed-by: Helm
+  template:
+    metadata:
+      labels:
+        
+        app.kubernetes.io/name: dubbo-admin
+        helm.sh/chart: dubbo-admin-0.5.0
+        app.kubernetes.io/instance: dubbo-admin
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      imagePullSecrets: 
+        null
+      nodeSelector:
+        null
+      affinity:
+        null
+      tolerations:
+        null
+      containers:
+        - name: dubbo-admin
+          image: "apache/dubbo-admin:0.5.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          volumeMounts:
+            - mountPath: /config
+              name: application-properties
+              readOnly: true
+            - mountPath: /storage
+              name: storage
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 60
+            timeoutSeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 60
+            timeoutSeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 60
+            timeoutSeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            {}
+      volumes:
+      - name: application-properties
+        configMap:
+          name: dubbo-admin-cm
+      - name: storage

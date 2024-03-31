@@ -125,11 +125,11 @@ serverCompression:
   minResponseSize: 10240
 
 zookeeper:
-  enabled: false
+  enabled: true
   address: zookeeper://zookeeper:2181
 
 nacos:
-  enabled: true
+  enabled: false
   address: nacos://nacos:8848
   group: DEFAULT_GROUP
   namespace: public
