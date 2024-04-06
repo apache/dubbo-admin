@@ -1,76 +1,120 @@
+# Used to override the default deployment name.
 nameOverride: ~
-
+# Used to override the default namespace.
 namespaceOverride: ~
-
+# Used to specify node labels for pod scheduling.
 nodeSelector: ~
-
+# Used to define affinity rules for pods.
 affinity: ~
-
+# Used to define toleration rules for pods.
 tolerations: ~
-
+# Defines the number of replicas for pods.
 replicas: 1
-
+# Used to specify secrets needed for pulling images.
 imagePullSecrets: ~
 
 image:
+  # Docker registry where the image is located.
   registry: docker.io
+  # Repository containing the image.
   repository: apache/dubbo-admin
+  # Tag of the image
   tag: 0.5.0
+  # Pull policy for the image: IfNotPresent, Always, Never.
   pullPolicy: IfNotPresent
 
 serviceAccount:
+  # Enable or disable the creation of a service account.
   enabled: false
+  # Labels to be applied to the service account.
   labels: {}
+  # Annotations to be applied to the service account.
   annotations: {}
 
 rbac:
+  # Enable or disable Role-Based Access Control.
   enabled: false
 
 psp:
+  # Enable or disable the use of Pod Security Policies.
   enabled: false
+  # Labels to be applied to Pod Security Policies.
   labels: {}
+  # Annotations to be applied to Pod Security Policies.
   annotations: {}
 
 pdb:
+  # Enable or disable Pod Disruption Budget.
   enabled: false
+  # Labels to be applied to the Pod Disruption Budget.
   labels: {}
+  # Annotations to be applied to the Pod Disruption Budget.
   annotations: {}
+  # Minimum number of pods that must remain available.
   minAvailable: 1
+  # Maximum number of unavailable pods during disruptions.
   maxUnavailable: 1
 
 networkPolicy:
+  # Enable or disable the use of Network Policies.
   enabled: false
 
 readinessProbe:
+  # Configuration for HTTP GET probe.
   httpGet:
+    # Path to perform HTTP GET request.
     path: /
+    # Port on which to perform the HTTP GET request.
     port: 8080
+  # Number of seconds after the container has started before readiness probes are initiated.
   initialDelaySeconds: 60
+  # Number of seconds after which the probe times out.
   timeoutSeconds: 30
+  # How often (in seconds) to perform the probe.
   periodSeconds: 10
+  # Minimum consecutive successes for the probe to be considered successful after it has succeeded at least once.
   successThreshold: 1
+  # Minimum consecutive failures for the probe to be considered failed after it has failed at least once.
   failureThreshold: 3
+  # Timeout for executing the probe command.
   probeCommandTimeout: 1
 
 livenessProbe:
+  # Configuration for HTTP GET probe.
   httpGet:
+    # Path to perform HTTP GET request.
     path: /
+    # Port on which to perform the HTTP GET request.
     port: 8080
+  # Number of seconds after the container has started before liveness probes are initiated.
   initialDelaySeconds: 60
+  # Number of seconds after which the probe times out.
   timeoutSeconds: 30
+  # How often (in seconds) to perform the probe.
   periodSeconds: 10
+  # Minimum consecutive successes for the probe to be considered successful after it has succeeded at least once.
   successThreshold: 1
+  # Minimum consecutive failures for the probe to be considered failed after it has failed at least once.
   failureThreshold: 3
+  # Timeout for executing the probe command.
   probeCommandTimeout: 1
 
 startupProbe:
+  # Configuration for HTTP GET probe.
   httpGet:
+    # Path to perform HTTP GET request.
     path: /
+    # Port on which to perform the HTTP GET request.
     port: 8080
+  # Number of seconds after the container has started before startup probes are initiated.
   initialDelaySeconds: 60
+  # Number of seconds after which the probe times out.
   timeoutSeconds: 30
+  # How often (in seconds) to perform the probe.
   periodSeconds: 10
+  # Minimum consecutive successes for the probe to be considered successful after it has succeeded at least once.
   successThreshold: 1
+  # Minimum consecutive failures for the probe to be considered failed after it has failed at least once.
   failureThreshold: 3
 
 resources: {}
@@ -82,87 +126,149 @@ resources: {}
 #    memory: 128Mi
 
 service:
+  # Labels to be applied to the service.
   labels: {}
+  # Annotations to be applied to the service.
   annotations: {}
+  # Type of service (ClusterIP, NodePort, LoadBalancer, ExternalName).
   type: ClusterIP
+  # Cluster IP address assigned to the service.
   clusterIP: ""
+  # External IP addresses for the service.
   externalIPs: ""
+  # LoadBalancer IP address for the service.
   loadBalancerIP: ""
+  # IP ranges allowed to access the load balancer.
   loadBalancerSourceRanges: ""
+  # Node port number for the service (if type is NodePort).
   nodePort: ""
+  # Port on which the service is exposed.
   port: 38080
+  # Target port to forward traffic to inside the pod.
   targetPort: http
+  # Port that the container listens on.
   containerPort: 8080
+  # Protocol used for the service (TCP, UDP, SCTP).
   protocol: TCP
+  # Application protocol name.
   appProtocol: ""
 
 persistence:
+  # Enable or disable persistence
   enabled: false
+  # Labels to be applied to the persistence volume claim
   labels: {}
+  # Annotations to be applied to the persistence volume claim
   annotations: {}
+  # Storage class to use for the persistent volume claim
   storageClass: ""
+  # Access modes for the persistent volume claim (e.g., ReadWriteOnce, ReadOnlyMany, ReadWriteMany)
   accessModes: ReadWriteOnce
+  # Size of the persistent volume claim
   size: 10Gi
+  # Name of an existing PersistentVolumeClaim to use
   ClaimName: {}
+  # Configuration for emptyDir volume if used
   emptyDir: {}
 
 user:
+  # Default username for the application
   name: root
+  # Default password for the application
   password: root
 
 dubbo:
+  # Name of the Dubbo instance
   name: dubbo-admin
+  # Logger configuration for Dubbo
   logger: slf4j
 
 check:
+  # Session timeout in milliseconds
   sessionTimeoutMilli: 3600000
+  # Token timeout in milliseconds
   tokenTimeoutMilli: 3600000
+  # Secret used for signing (leave as ~ for no value)
   signSecret: ~
 
 serverCompression:
+  # Enable or disable server compression
   enabled: true
+  # Mime types to be compressed
   mimeTypes: text/css,text/javascript,application/javascript
+  # Minimum response size (in bytes) to trigger compression
   minResponseSize: 10240
 
 zookeeper:
+  # Enable or disable Zookeeper
   enabled: true
+  # Address of the Zookeeper instance
   address: zookeeper://zookeeper:2181
 
 nacos:
+  # Enable or disable Nacos
   enabled: false
+  # Address of the Nacos instance
   address: nacos://nacos:8848
+  # Nacos group
   group: DEFAULT_GROUP
+  # Nacos namespace
   namespace: public
 
 apollo:
+  # Enable or disable Apollo
   enabled: false
+  # Address of the Apollo instance
   address: apollo://apollo:8070
+  # Token for authentication with Apollo (leave as ~ for no value)
   token: ~
+  # Application ID registered in Apollo
   appId: test
+  # Environment in Apollo
   env: dev
+  # Cluster in Apollo
   cluster: default
+  # Namespace in Apollo
   namespace: dubbo
 
 mysql:
+  # Enable or disable MySQL
   enabled: false
+  # MySQL driver class name
   driverClassName: com.mysql.jdbc.Driver
+  # Address of the MySQL instance
   address: mysql://mysql:3306/dubbo-admin
+  # Encoding used by MySQL
   encode: utf8
+  # Connection timeout in milliseconds
   connectTimeout: 1000
+  # Socket timeout in milliseconds
   socketTimeout: 10000
+  # Whether to automatically reconnect to MySQL on failure
   autoReconnect: true
+  # MySQL username
   username: sa
+  # MySQL password (leave as ~ for no value)
   password: ~
 
 h2:
+  # Enable or disable H2 database
   enabled: true
+  # Mode of the H2 database (e.g., MYSQL, ORACLE)
   mode: MYSQL
+  # Location of H2 memory database
   mem: ~/dubbo-admin
+  # H2 username
   username: sa
+  # H2 password (leave empty if not needed)
   password:
 
 mybatisPlus:
+  # Global configuration for MyBatis Plus
   global:
     db:
+      # ID type configuration for MyBatis Plus (e.g., auto, input, none)
       idType: none
+
+
 

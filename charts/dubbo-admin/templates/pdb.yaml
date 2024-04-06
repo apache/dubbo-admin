@@ -13,5 +13,5 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "dubbo-admin.matchLabels" . | nindent 6 }}
+    {{- include "dubbo-admin.matchLabels" . | nindent 6 }}
 {{- end -}}

@@ -13,15 +13,15 @@ metadata:
   name: {{ include "dubbo-admin.name" . }}
   namespace: {{ include "dubbo-admin.namespace" . }}
 rules:
-  - apiGroups:
-    - ""
-    resources:
-    - pods
-    - deployments
-    verbs:
-    - get
-    - watch
-    - list
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - deployments
+  verbs:
+  - get
+  - watch
+  - list
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -42,24 +42,24 @@ kind: ClusterRole
 metadata:
   name: {{ include "dubbo-admin.name" . }}-clusterrole
 rules:
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-      - deployments
-    verbs:
-      - get
-      - watch
-      - list
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - deployments
+  verbs:
+  - get
+  - watch
+  - list
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: {{ include "dubbo-admin.name" . }}-clusterrolebinding
 subjects:
-  - kind: ServiceAccount
-    name: dubbo-admin
-    namespace: default
+- kind: ServiceAccount
+  name: dubbo-admin
+  namespace: default
 roleRef:
   kind: ClusterRole
   name: {{ include "dubbo-admin.name" . }}-clusterrole

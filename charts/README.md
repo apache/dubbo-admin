@@ -1,20 +1,17 @@
-# Apache Dubbo Admin
+# Apache Dubbo Admin for Kubernetes
 
-A Helm chart for Dubbo Admin The ops and reference implementation for Apache Dubbo.
+Apache Dubbo Admin is an Distributed application monitoring and management platform.
+
+![license](https://img.shields.io/badge/license-Apache--2.0-green.svg)
+![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
 ## Prerequisites
 
 * Kubernetes v1.14+
 * Helm v3+
 
-### Install
+## Usage 
 
 ```bash
-helm install [RELEASE_NAME] dubbo-admin --namespace dubbo-system --create-namespace
-```
-
-### Uninstall
-
-```bash
-helm delete [RELEASE_NAME] --namespace dubbo-system
+helm install dubbo-admin charts/dubbo-admin
 ```

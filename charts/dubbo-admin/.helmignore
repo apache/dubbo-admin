@@ -14,10 +14,10 @@
 *.swp
 *.bak
 *.tmp
+*.orig
 *~
 # Various IDEs
-.vscode
 .project
 .idea/
 *.tmproj
-OWNERS
+.vscode/
