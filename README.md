@@ -8,7 +8,8 @@
 
 Dubbo Admin is the console designed for better visualization of Dubbo services, it provides support for Dubbo3 and is compatible with 2.7.x, 2.6.x and 2.5.x.
 
-![index](https://raw.githubusercontent.com/apache/dubbo-admin/develop/doc/images/index.png)
+![index](https://raw.githubusercontent.com/apache/dubbo-admin/develop/docs/images/index.png)
+
 
 There are four ways to deploy Dubbo Admin to a production environment.
 
