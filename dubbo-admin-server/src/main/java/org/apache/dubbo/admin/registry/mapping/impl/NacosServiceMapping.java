@@ -112,26 +112,12 @@ public class NacosServiceMapping implements ServiceMapping {
 
         Set<String> serviceNames = new HashSet<>();
         int pageIndex = 1;
-        ListView<String> listView = namingService.getServicesOfServer(pageIndex, PAGINATION_SIZE,
-                Constants.DEFAULT_GROUP);
-        // First page data
-        List<String> firstPageData = listView.getData();
-        // Append first page into list
-        serviceNames.addAll(firstPageData);
-        // the total count
-        int count = listView.getCount();
-        // the number of pages
-        int pageNumbers = count / PAGINATION_SIZE;
-        int remainder = count % PAGINATION_SIZE;
-        // remain
-        if (remainder > 0) {
-            pageNumbers += 1;
-        }
-        // If more than 1 page
-        while (pageIndex < pageNumbers) {
-            listView = namingService.getServicesOfServer(++pageIndex, PAGINATION_SIZE, Constants.DEFAULT_GROUP);
+        ListView<String> listView;
+
+        do {
+            listView = namingService.getServicesOfServer(pageIndex++, PAGINATION_SIZE, Constants.DEFAULT_GROUP);
             serviceNames.addAll(listView.getData());
-        }
+        } while (listView.getData().size() == PAGINATION_SIZE && !listView.getData().isEmpty());
 
         return serviceNames;
     }
