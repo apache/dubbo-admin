@@ -16,7 +16,7 @@
  */
 package org.apache.dubbo.admin.model.dto.docs;
 
-import io.swagger.annotations.ApiParam;
+import io.swagger.v3.oas.annotations.Parameter;
 
 
 /**
@@ -24,22 +24,38 @@ import io.swagger.annotations.ApiParam;
  */
 public class CallDubboServiceRequest {
 
-    @ApiParam(value = "Address of registration center, such as: nacos://127.0.0.1:8848", required = true)
+    @Parameter(
+            description = "Address of registration center, such as: nacos://127.0.0.1:8848",
+            required = true
+    )
+
     private String registryCenterUrl;
 
-    @ApiParam(value = "Dubbo interface full package path", required = true)
+    @Parameter(
+            description = "Dubbo interface full package path",
+            required = true
+    )
     private String interfaceClassName;
 
-    @ApiParam(value = "Method name of the service", required = true)
+    @Parameter(
+            description = "Method name of the service",
+            required = true
+    )
     private String methodName;
 
-    @ApiParam(value = "Whether to call asynchronously, false by default")
+    @Parameter(
+            description = "Whether to call asynchronously, false by default"
+    )
     private boolean async = false;
 
-    @ApiParam(value = "The version of API")
+    @Parameter(
+            description = "The version of API"
+    )
     private String version;
 
-    @ApiParam(value = "The group of API")
+    @Parameter(
+            description = "The group of API"
+    )
     private String group;
 
     public String getVersion() {

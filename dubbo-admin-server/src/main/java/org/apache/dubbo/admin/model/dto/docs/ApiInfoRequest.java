@@ -16,20 +16,30 @@
  */
 package org.apache.dubbo.admin.model.dto.docs;
 
-import io.swagger.annotations.ApiParam;
+import io.swagger.v3.oas.annotations.Parameter;
 
 /**
  * Obtain the API module list and the request parameters of the API parameter information interface.
  */
 public class ApiInfoRequest {
 
-    @ApiParam(value = "IP of Dubbo provider", required = true)
+    @Parameter(
+            description = "IP of Dubbo provider",
+            required = true
+    )
+
     private String dubboIp;
 
-    @ApiParam(value = "Port of Dubbo provider", required = true)
+    @Parameter(
+            description = "Port of Dubbo provider",
+            required = true
+    )
     private String dubboPort;
 
-    @ApiParam(value = "API full name (interface class full name. Method name), which must be passed when getting API parameter information")
+    @Parameter(
+            description = "API full name (interface class full name. Method name), which must be passed when getting API parameter information"
+    )
+
     private String apiName;
 
     public String getDubboIp() {

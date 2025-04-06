@@ -15,18 +15,24 @@
  * limitations under the License.
  */
 package org.apache.dubbo.admin.model.dto.docs;
-
-import io.swagger.annotations.ApiParam;
+import io.swagger.v3.oas.annotations.*;
 
 /**
  * Parameters passed to duboo service api.
  */
 public class CallDubboServiceRequestInterfaceParam {
 
-    @ApiParam(value = "Parameter type (full package path), such as: java.lang.String", required = true)
+    @Parameter(
+            description = "Parameter type (full package path), such as: java.lang.String",
+            required = true
+    )
     private String paramType;
 
-    @ApiParam(value = "Parameter value", required = true)
+    @Parameter(
+            description = "Parameter value",
+            required = true
+    )
+
     private Object paramValue;
 
     public String getParamType() {

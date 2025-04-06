@@ -28,8 +28,8 @@ import org.apache.dubbo.common.logger.LoggerFactory;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SimplePropertyPreFilter;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.propertyeditors.StringTrimmerEditor;
@@ -55,7 +55,7 @@ import java.util.concurrent.ExecutionException;
  * dubbo doc ui server api.
  */
 @Authority(needLogin = true)
-@Api(tags = {"dubbo-api-docs-api"})
+@Tag(name = "dubbo-api-docs-api")
 @RestController
 @RequestMapping("/api/{env}/docs")
 public class ApiDocsController {
@@ -104,7 +104,10 @@ public class ApiDocsController {
         ApiDocsDubboGenericUtil.setRetriesAndTimeout(retries, timeout);
     }
 
-    @ApiOperation(value = "request dubbo api", notes = "request dubbo api", httpMethod = "POST", produces = "application/json")
+    @Operation(
+            summary = "request dubbo api",
+            description = "request dubbo api"
+    )
     @PostMapping("/requestDubbo")
     public String callDubboService(CallDubboServiceRequest dubboCfg, @RequestBody List<CallDubboServiceRequestInterfaceParam> methodparams){
         String[] paramTypes = null;
@@ -171,7 +174,11 @@ public class ApiDocsController {
         return paramValue;
     }
 
-    @ApiOperation(value = "Get basic information of all modules, excluding API parameter information", notes = "Get basic information of all modules, excluding API parameter information", httpMethod = "GET", produces = "application/json")
+    @Operation(
+            summary = "Get basic information of all modules, excluding API parameter information",
+            description = "Get basic information of all modules, excluding API parameter information"
+    )
+
     @GetMapping("/apiModuleList")
     public String apiModuleList(ApiInfoRequest apiInfoRequest){
         CallDubboServiceRequest req = createCallApiDocsServiceRequest("apiModuleList", apiInfoRequest);
@@ -179,7 +186,11 @@ public class ApiDocsController {
         return callDubboService(req, null);
     }
 
-    @ApiOperation(value = "Get the parameter information of the specified API", notes = "Get the parameter information of the specified API", httpMethod = "GET", produces = "application/json")
+    @Operation(
+            summary = "Get the parameter information of the specified API",
+            description = "Get the parameter information of the specified API"
+    )
+
     @GetMapping("/apiParamsResp")
     public String apiParamsResp(ApiInfoRequest apiInfoRequest){
         CallDubboServiceRequest req = createCallApiDocsServiceRequest("apiParamsResponseInfo", apiInfoRequest);
