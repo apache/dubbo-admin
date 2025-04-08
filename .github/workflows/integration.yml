@@ -33,7 +33,9 @@ jobs:
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
+          distribution: 'temurin'
           java-version: 8
+          cache: 'maven'
       - name: Compile server project
         run: ./mvnw clean package -DskipTests=true -pl dubbo-admin-server
       - name: Generate report
