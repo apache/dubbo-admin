@@ -244,7 +244,7 @@
                                             <dubbo.config-center.address>zookeeper://${local.ip}:${zookeeper.port}</dubbo.config-center.address>
                                         </env>
                                         <wait>
-                                            <log>dubbo service started</log>
+                                            <time>10000</time>
                                         </wait>
                                     </run>
                                 </image>
