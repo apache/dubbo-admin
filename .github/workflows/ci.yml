@@ -7,8 +7,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        java: [ 8, 11]
+        java: [8, 11]
     timeout-minutes: 30
+
     steps:
       - uses: actions/checkout@v4
 
@@ -19,14 +20,12 @@ jobs:
           java-version: ${{ matrix.java }}
           cache: 'maven'
 
-      - name: Setup Chrome
-        uses: browser-actions/setup-chrome@v1
-
-      - name: Verify Chrome Installation
+      - name: Check Chrome Version
         run: google-chrome --version
 
       - name: Build with Maven
         run: ./mvnw clean install --batch-mode -DskipTests=false -Dcheckstyle.skip=false -Drat.skip=false -Dmaven.javadoc.skip=true
+
       - name: Upload coverage to codecov
         uses: codecov/codecov-action@v4
         with:
