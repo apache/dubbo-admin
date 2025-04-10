@@ -258,7 +258,7 @@
                                             <rest.api.port>${rest.api.port}</rest.api.port>
                                         </env>
                                         <wait>
-                                            <log>dubbo service init finish</log>
+                                            <time>10000</time>
                                         </wait>
                                     </run>
                                 </image>
