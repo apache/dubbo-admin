@@ -25,6 +25,8 @@ import org.fluentlenium.adapter.junit.FluentTest;
 import org.fluentlenium.core.annotation.Page;
 import org.junit.BeforeClass;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +49,20 @@ public class BaseIT extends FluentTest {
     public static void beforeClass() {
         WebDriverManager.chromedriver().setup();
 
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless"); // Run in headless mode
+        options.addArguments("--disable-gpu");
+        options.addArguments("--no-sandbox");
+        options.addArguments("--disable-dev-shm-usage");
+
+        driver = new ChromeDriver(options);
+
         BASE_URL = StringUtils.defaultString(System.getenv("BASEURL"), "http://localhost:8082");
+    }
+
+    @Override
+    public WebDriver newWebDriver() {
+        return driver;
     }
 
     @Override
