@@ -15,11 +15,15 @@
  * limitations under the License.
  */
 package org.apache.dubbo.admin.model.dto.docs;
-import io.swagger.v3.oas.annotations.*;
+import io.swagger.v3.oas.annotations.Parameter;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Parameters passed to duboo service api.
  */
+@Setter
+@Getter
 public class CallDubboServiceRequestInterfaceParam {
 
     @Parameter(
@@ -35,19 +39,4 @@ public class CallDubboServiceRequestInterfaceParam {
 
     private Object paramValue;
 
-    public String getParamType() {
-        return paramType;
-    }
-
-    public void setParamType(String paramType) {
-        this.paramType = paramType;
-    }
-
-    public Object getParamValue() {
-        return paramValue;
-    }
-
-    public void setParamValue(Object paramValue) {
-        this.paramValue = paramValue;
-    }
 }
