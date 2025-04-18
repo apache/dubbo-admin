@@ -43,6 +43,12 @@ public class NacosOpenapiUtil {
         if (StringUtils.isNotEmpty(url.getParameter("group"))) {
             nacosUrl = nacosUrl + "&groupName=" + url.getParameter("group");
         }
+        if (StringUtils.isNotEmpty(url.getParameter("username"))) {
+            nacosUrl = nacosUrl + "&username=" + url.getParameter("username");
+        }
+        if (StringUtils.isNotEmpty(url.getParameter("password"))) {
+            nacosUrl = nacosUrl + "&password=" + url.getParameter("password");
+        }
 
         // 创建URL对象
         java.net.URL netUrl = null;
