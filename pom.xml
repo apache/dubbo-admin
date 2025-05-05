@@ -47,7 +47,7 @@
         <dubbo-version>3.2.5</dubbo-version>
         <fastjson-version>1.2.83</fastjson-version>
         <springfox-swagger-version>2.9.2</springfox-swagger-version>
-        <jacoco-version>0.8.2</jacoco-version>
+        <jacoco-version>0.8.5</jacoco-version>
         <apollo-version>1.2.0</apollo-version>
         <guava-version>20.0</guava-version>
         <dubbo-mock-version>3.0.0</dubbo-mock-version>
@@ -211,7 +211,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>2.21.0</version>
+                <version>2.22.2</version>
             </plugin>
             <plugin>
                 <groupId>io.github.tonycody.maven.plugins</groupId>
