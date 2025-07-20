@@ -32,7 +32,7 @@ import (
 
 const ZoneInsightKind = "ZoneInsight"
 
-type ZoneInsight struct {
+type ZoneInsightResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -45,50 +45,50 @@ type ZoneInsight struct {
 	// +kubebuilder:validation:Optional
 	Spec *systemproto.ZoneInsight `json:"spec,omitempty"`
 	// Status is the status of the Dubbo ZoneInsight resource.
-	Status ZoneInsightStatus `json:"status,omitempty"`
+	Status ZoneInsightResourceStatus `json:"status,omitempty"`
 }
 
-type ZoneInsightStatus struct {
+type ZoneInsightResourceStatus struct {
 	// define resource-specific status here
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Namespaced
-type ZoneInsightList struct {
+type ZoneInsightResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ZoneInsight `json:"items"`
+	Items           []ZoneInsightResource `json:"items"`
 }
 
-func (r *ZoneInsight) GetKind() string {
+func (r *ZoneInsightResource) GetKind() string {
 	return r.Kind
 }
 
-func (r *ZoneInsight) GetMesh() string {
+func (r *ZoneInsightResource) GetMesh() string {
 	return r.Mesh
 }
 
-func (r *ZoneInsight) SetMesh(mesh string) {
+func (r *ZoneInsightResource) SetMesh(mesh string) {
 	r.Mesh = mesh
 }
 
-func (r *ZoneInsight) GetResourceKey() string {
+func (r *ZoneInsightResource) GetResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Kind, r.Name)
 }
 
-func (r *ZoneInsight) GetMeta() metav1.ObjectMeta {
+func (r *ZoneInsightResource) GetMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *ZoneInsight) SetMeta(m metav1.ObjectMeta) {
+func (r *ZoneInsightResource) SetMeta(m metav1.ObjectMeta) {
 	r.ObjectMeta = m
 }
 
-func (r *ZoneInsight) GetSpec() coremodel.ResourceSpec {
+func (r *ZoneInsightResource) GetSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func (r *ZoneInsight) SetSpec(rs coremodel.ResourceSpec) error {
+func (r *ZoneInsightResource) SetSpec(rs coremodel.ResourceSpec) error {
 	if spec, ok := rs.(*systemproto.ZoneInsight); ok {
 		r.Spec = spec
 		return nil

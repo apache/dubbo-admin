@@ -32,7 +32,7 @@ import (
 
 const ConfigKind = "Config"
 
-type Config struct {
+type ConfigResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -45,50 +45,50 @@ type Config struct {
 	// +kubebuilder:validation:Optional
 	Spec *systemproto.Config `json:"spec,omitempty"`
 	// Status is the status of the Dubbo Config resource.
-	Status ConfigStatus `json:"status,omitempty"`
+	Status ConfigResourceStatus `json:"status,omitempty"`
 }
 
-type ConfigStatus struct {
+type ConfigResourceStatus struct {
 	// define resource-specific status here
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Namespaced
-type ConfigList struct {
+type ConfigResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Config `json:"items"`
+	Items           []ConfigResource `json:"items"`
 }
 
-func (r *Config) GetKind() string {
+func (r *ConfigResource) GetKind() string {
 	return r.Kind
 }
 
-func (r *Config) GetMesh() string {
+func (r *ConfigResource) GetMesh() string {
 	return r.Mesh
 }
 
-func (r *Config) SetMesh(mesh string) {
+func (r *ConfigResource) SetMesh(mesh string) {
 	r.Mesh = mesh
 }
 
-func (r *Config) GetResourceKey() string {
+func (r *ConfigResource) GetResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Kind, r.Name)
 }
 
-func (r *Config) GetMeta() metav1.ObjectMeta {
+func (r *ConfigResource) GetMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *Config) SetMeta(m metav1.ObjectMeta) {
+func (r *ConfigResource) SetMeta(m metav1.ObjectMeta) {
 	r.ObjectMeta = m
 }
 
-func (r *Config) GetSpec() coremodel.ResourceSpec {
+func (r *ConfigResource) GetSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func (r *Config) SetSpec(rs coremodel.ResourceSpec) error {
+func (r *ConfigResource) SetSpec(rs coremodel.ResourceSpec) error {
 	if spec, ok := rs.(*systemproto.Config); ok {
 		r.Spec = spec
 		return nil

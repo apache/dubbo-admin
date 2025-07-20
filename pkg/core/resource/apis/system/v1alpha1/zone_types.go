@@ -32,7 +32,7 @@ import (
 
 const ZoneKind = "Zone"
 
-type Zone struct {
+type ZoneResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -45,50 +45,50 @@ type Zone struct {
 	// +kubebuilder:validation:Optional
 	Spec *systemproto.Zone `json:"spec,omitempty"`
 	// Status is the status of the Dubbo Zone resource.
-	Status ZoneStatus `json:"status,omitempty"`
+	Status ZoneResourceStatus `json:"status,omitempty"`
 }
 
-type ZoneStatus struct {
+type ZoneResourceStatus struct {
 	// define resource-specific status here
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Namespaced
-type ZoneList struct {
+type ZoneResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Zone `json:"items"`
+	Items           []ZoneResource `json:"items"`
 }
 
-func (r *Zone) GetKind() string {
+func (r *ZoneResource) GetKind() string {
 	return r.Kind
 }
 
-func (r *Zone) GetMesh() string {
+func (r *ZoneResource) GetMesh() string {
 	return r.Mesh
 }
 
-func (r *Zone) SetMesh(mesh string) {
+func (r *ZoneResource) SetMesh(mesh string) {
 	r.Mesh = mesh
 }
 
-func (r *Zone) GetResourceKey() string {
+func (r *ZoneResource) GetResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Kind, r.Name)
 }
 
-func (r *Zone) GetMeta() metav1.ObjectMeta {
+func (r *ZoneResource) GetMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *Zone) SetMeta(m metav1.ObjectMeta) {
+func (r *ZoneResource) SetMeta(m metav1.ObjectMeta) {
 	r.ObjectMeta = m
 }
 
-func (r *Zone) GetSpec() coremodel.ResourceSpec {
+func (r *ZoneResource) GetSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func (r *Zone) SetSpec(rs coremodel.ResourceSpec) error {
+func (r *ZoneResource) SetSpec(rs coremodel.ResourceSpec) error {
 	if spec, ok := rs.(*systemproto.Zone); ok {
 		r.Spec = spec
 		return nil

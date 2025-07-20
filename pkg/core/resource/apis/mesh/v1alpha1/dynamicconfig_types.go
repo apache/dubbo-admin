@@ -32,7 +32,7 @@ import (
 
 const DynamicConfigKind = "DynamicConfig"
 
-type DynamicConfig struct {
+type DynamicConfigResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -45,50 +45,50 @@ type DynamicConfig struct {
 	// +kubebuilder:validation:Optional
 	Spec *meshproto.DynamicConfig `json:"spec,omitempty"`
 	// Status is the status of the Dubbo DynamicConfig resource.
-	Status DynamicConfigStatus `json:"status,omitempty"`
+	Status DynamicConfigResourceStatus `json:"status,omitempty"`
 }
 
-type DynamicConfigStatus struct {
+type DynamicConfigResourceStatus struct {
 	// define resource-specific status here
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Namespaced
-type DynamicConfigList struct {
+type DynamicConfigResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []DynamicConfig `json:"items"`
+	Items           []DynamicConfigResource `json:"items"`
 }
 
-func (r *DynamicConfig) GetKind() string {
+func (r *DynamicConfigResource) GetKind() string {
 	return r.Kind
 }
 
-func (r *DynamicConfig) GetMesh() string {
+func (r *DynamicConfigResource) GetMesh() string {
 	return r.Mesh
 }
 
-func (r *DynamicConfig) SetMesh(mesh string) {
+func (r *DynamicConfigResource) SetMesh(mesh string) {
 	r.Mesh = mesh
 }
 
-func (r *DynamicConfig) GetResourceKey() string {
+func (r *DynamicConfigResource) GetResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Kind, r.Name)
 }
 
-func (r *DynamicConfig) GetMeta() metav1.ObjectMeta {
+func (r *DynamicConfigResource) GetMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *DynamicConfig) SetMeta(m metav1.ObjectMeta) {
+func (r *DynamicConfigResource) SetMeta(m metav1.ObjectMeta) {
 	r.ObjectMeta = m
 }
 
-func (r *DynamicConfig) GetSpec() coremodel.ResourceSpec {
+func (r *DynamicConfigResource) GetSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func (r *DynamicConfig) SetSpec(rs coremodel.ResourceSpec) error {
+func (r *DynamicConfigResource) SetSpec(rs coremodel.ResourceSpec) error {
 	if spec, ok := rs.(*meshproto.DynamicConfig); ok {
 		r.Spec = spec
 		return nil

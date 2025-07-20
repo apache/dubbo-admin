@@ -32,7 +32,7 @@ import (
 
 const MappingKind = "Mapping"
 
-type Mapping struct {
+type MappingResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -45,50 +45,50 @@ type Mapping struct {
 	// +kubebuilder:validation:Optional
 	Spec *meshproto.Mapping `json:"spec,omitempty"`
 	// Status is the status of the Dubbo Mapping resource.
-	Status MappingStatus `json:"status,omitempty"`
+	Status MappingResourceStatus `json:"status,omitempty"`
 }
 
-type MappingStatus struct {
+type MappingResourceStatus struct {
 	// define resource-specific status here
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster
-type MappingList struct {
+type MappingResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Mapping `json:"items"`
+	Items           []MappingResource `json:"items"`
 }
 
-func (r *Mapping) GetKind() string {
+func (r *MappingResource) GetKind() string {
 	return r.Kind
 }
 
-func (r *Mapping) GetMesh() string {
+func (r *MappingResource) GetMesh() string {
 	return r.Mesh
 }
 
-func (r *Mapping) SetMesh(mesh string) {
+func (r *MappingResource) SetMesh(mesh string) {
 	r.Mesh = mesh
 }
 
-func (r *Mapping) GetResourceKey() string {
+func (r *MappingResource) GetResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Kind, r.Name)
 }
 
-func (r *Mapping) GetMeta() metav1.ObjectMeta {
+func (r *MappingResource) GetMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *Mapping) SetMeta(m metav1.ObjectMeta) {
+func (r *MappingResource) SetMeta(m metav1.ObjectMeta) {
 	r.ObjectMeta = m
 }
 
-func (r *Mapping) GetSpec() coremodel.ResourceSpec {
+func (r *MappingResource) GetSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func (r *Mapping) SetSpec(rs coremodel.ResourceSpec) error {
+func (r *MappingResource) SetSpec(rs coremodel.ResourceSpec) error {
 	if spec, ok := rs.(*meshproto.Mapping); ok {
 		r.Spec = spec
 		return nil

@@ -32,7 +32,7 @@ import (
 
 const ApplicationKind = "Application"
 
-type Application struct {
+type ApplicationResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -45,50 +45,50 @@ type Application struct {
 	// +kubebuilder:validation:Optional
 	Spec *meshproto.Application `json:"spec,omitempty"`
 	// Status is the status of the Dubbo Application resource.
-	Status ApplicationStatus `json:"status,omitempty"`
+	Status ApplicationResourceStatus `json:"status,omitempty"`
 }
 
-type ApplicationStatus struct {
+type ApplicationResourceStatus struct {
 	// define resource-specific status here
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster
-type ApplicationList struct {
+type ApplicationResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Application `json:"items"`
+	Items           []ApplicationResource `json:"items"`
 }
 
-func (r *Application) GetKind() string {
+func (r *ApplicationResource) GetKind() string {
 	return r.Kind
 }
 
-func (r *Application) GetMesh() string {
+func (r *ApplicationResource) GetMesh() string {
 	return r.Mesh
 }
 
-func (r *Application) SetMesh(mesh string) {
+func (r *ApplicationResource) SetMesh(mesh string) {
 	r.Mesh = mesh
 }
 
-func (r *Application) GetResourceKey() string {
+func (r *ApplicationResource) GetResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Kind, r.Name)
 }
 
-func (r *Application) GetMeta() metav1.ObjectMeta {
+func (r *ApplicationResource) GetMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *Application) SetMeta(m metav1.ObjectMeta) {
+func (r *ApplicationResource) SetMeta(m metav1.ObjectMeta) {
 	r.ObjectMeta = m
 }
 
-func (r *Application) GetSpec() coremodel.ResourceSpec {
+func (r *ApplicationResource) GetSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func (r *Application) SetSpec(rs coremodel.ResourceSpec) error {
+func (r *ApplicationResource) SetSpec(rs coremodel.ResourceSpec) error {
 	if spec, ok := rs.(*meshproto.Application); ok {
 		r.Spec = spec
 		return nil

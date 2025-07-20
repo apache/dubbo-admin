@@ -32,7 +32,7 @@ import (
 
 const DataSourceKind = "DataSource"
 
-type DataSource struct {
+type DataSourceResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -45,50 +45,50 @@ type DataSource struct {
 	// +kubebuilder:validation:Optional
 	Spec *systemproto.DataSource `json:"spec,omitempty"`
 	// Status is the status of the Dubbo DataSource resource.
-	Status DataSourceStatus `json:"status,omitempty"`
+	Status DataSourceResourceStatus `json:"status,omitempty"`
 }
 
-type DataSourceStatus struct {
+type DataSourceResourceStatus struct {
 	// define resource-specific status here
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Namespaced
-type DataSourceList struct {
+type DataSourceResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []DataSource `json:"items"`
+	Items           []DataSourceResource `json:"items"`
 }
 
-func (r *DataSource) GetKind() string {
+func (r *DataSourceResource) GetKind() string {
 	return r.Kind
 }
 
-func (r *DataSource) GetMesh() string {
+func (r *DataSourceResource) GetMesh() string {
 	return r.Mesh
 }
 
-func (r *DataSource) SetMesh(mesh string) {
+func (r *DataSourceResource) SetMesh(mesh string) {
 	r.Mesh = mesh
 }
 
-func (r *DataSource) GetResourceKey() string {
+func (r *DataSourceResource) GetResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Kind, r.Name)
 }
 
-func (r *DataSource) GetMeta() metav1.ObjectMeta {
+func (r *DataSourceResource) GetMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *DataSource) SetMeta(m metav1.ObjectMeta) {
+func (r *DataSourceResource) SetMeta(m metav1.ObjectMeta) {
 	r.ObjectMeta = m
 }
 
-func (r *DataSource) GetSpec() coremodel.ResourceSpec {
+func (r *DataSourceResource) GetSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func (r *DataSource) SetSpec(rs coremodel.ResourceSpec) error {
+func (r *DataSourceResource) SetSpec(rs coremodel.ResourceSpec) error {
 	if spec, ok := rs.(*systemproto.DataSource); ok {
 		r.Spec = spec
 		return nil

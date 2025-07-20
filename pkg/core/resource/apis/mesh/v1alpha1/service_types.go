@@ -32,7 +32,7 @@ import (
 
 const ServiceKind = "Service"
 
-type Service struct {
+type ServiceResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -45,50 +45,50 @@ type Service struct {
 	// +kubebuilder:validation:Optional
 	Spec *meshproto.Service `json:"spec,omitempty"`
 	// Status is the status of the Dubbo Service resource.
-	Status ServiceStatus `json:"status,omitempty"`
+	Status ServiceResourceStatus `json:"status,omitempty"`
 }
 
-type ServiceStatus struct {
+type ServiceResourceStatus struct {
 	// define resource-specific status here
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster
-type ServiceList struct {
+type ServiceResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Service `json:"items"`
+	Items           []ServiceResource `json:"items"`
 }
 
-func (r *Service) GetKind() string {
+func (r *ServiceResource) GetKind() string {
 	return r.Kind
 }
 
-func (r *Service) GetMesh() string {
+func (r *ServiceResource) GetMesh() string {
 	return r.Mesh
 }
 
-func (r *Service) SetMesh(mesh string) {
+func (r *ServiceResource) SetMesh(mesh string) {
 	r.Mesh = mesh
 }
 
-func (r *Service) GetResourceKey() string {
+func (r *ServiceResource) GetResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Kind, r.Name)
 }
 
-func (r *Service) GetMeta() metav1.ObjectMeta {
+func (r *ServiceResource) GetMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *Service) SetMeta(m metav1.ObjectMeta) {
+func (r *ServiceResource) SetMeta(m metav1.ObjectMeta) {
 	r.ObjectMeta = m
 }
 
-func (r *Service) GetSpec() coremodel.ResourceSpec {
+func (r *ServiceResource) GetSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func (r *Service) SetSpec(rs coremodel.ResourceSpec) error {
+func (r *ServiceResource) SetSpec(rs coremodel.ResourceSpec) error {
 	if spec, ok := rs.(*meshproto.Service); ok {
 		r.Spec = spec
 		return nil

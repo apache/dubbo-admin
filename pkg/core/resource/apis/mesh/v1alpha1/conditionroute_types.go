@@ -32,7 +32,7 @@ import (
 
 const ConditionRouteKind = "ConditionRoute"
 
-type ConditionRoute struct {
+type ConditionRouteResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -45,50 +45,50 @@ type ConditionRoute struct {
 	// +kubebuilder:validation:Optional
 	Spec *meshproto.ConditionRoute `json:"spec,omitempty"`
 	// Status is the status of the Dubbo ConditionRoute resource.
-	Status ConditionRouteStatus `json:"status,omitempty"`
+	Status ConditionRouteResourceStatus `json:"status,omitempty"`
 }
 
-type ConditionRouteStatus struct {
+type ConditionRouteResourceStatus struct {
 	// define resource-specific status here
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Namespaced
-type ConditionRouteList struct {
+type ConditionRouteResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ConditionRoute `json:"items"`
+	Items           []ConditionRouteResource `json:"items"`
 }
 
-func (r *ConditionRoute) GetKind() string {
+func (r *ConditionRouteResource) GetKind() string {
 	return r.Kind
 }
 
-func (r *ConditionRoute) GetMesh() string {
+func (r *ConditionRouteResource) GetMesh() string {
 	return r.Mesh
 }
 
-func (r *ConditionRoute) SetMesh(mesh string) {
+func (r *ConditionRouteResource) SetMesh(mesh string) {
 	r.Mesh = mesh
 }
 
-func (r *ConditionRoute) GetResourceKey() string {
+func (r *ConditionRouteResource) GetResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Kind, r.Name)
 }
 
-func (r *ConditionRoute) GetMeta() metav1.ObjectMeta {
+func (r *ConditionRouteResource) GetMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *ConditionRoute) SetMeta(m metav1.ObjectMeta) {
+func (r *ConditionRouteResource) SetMeta(m metav1.ObjectMeta) {
 	r.ObjectMeta = m
 }
 
-func (r *ConditionRoute) GetSpec() coremodel.ResourceSpec {
+func (r *ConditionRouteResource) GetSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func (r *ConditionRoute) SetSpec(rs coremodel.ResourceSpec) error {
+func (r *ConditionRouteResource) SetSpec(rs coremodel.ResourceSpec) error {
 	if spec, ok := rs.(*meshproto.ConditionRoute); ok {
 		r.Spec = spec
 		return nil
