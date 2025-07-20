@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: admin
+    dubbo.io/rev: {{ default "default" | quote }}
+    install.operator.dubbo.io/owning-resource: {{ default "unknown" }}
+    operator.dubbo.io/component: "Admin"
+    dubbo: admin
+    release: {{ .Release.Name }}
+    app.kubernetes.io/name: "dashboard"
+spec:
+  ports:
+  - name: http
+    port: 8888
+    targetPort: http
+  selector:
+    app: admin

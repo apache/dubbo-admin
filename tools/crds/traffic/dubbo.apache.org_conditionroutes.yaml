@@ -1,0 +1,105 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.11.3
+  creationTimestamp: null
+  name: conditionroutes.dubbo.apache.org
+spec:
+  group: dubbo.apache.org
+  names:
+    kind: ConditionRoute
+    listKind: ConditionRouteList
+    plural: conditionroutes
+    shortNames:
+    - cd
+    singular: conditionroute
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ConditionRoute is the Schema for the conditionroutes API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the clientgen
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ConditionRouteSpec defines the desired state of ConditionRoute
+            properties:
+              conditions:
+                description: The condition routing rule definition of this configuration.
+                  Check Condition for details
+                items:
+                  type: string
+                type: array
+              configVersion:
+                description: The version of the condition rule definition, currently
+                  available version is v3.0
+                enum:
+                - v3.0
+                type: string
+              enabled:
+                default: true
+                description: Whether enable this rule or not, set enabled:false to
+                  disable this rule.
+                type: boolean
+              force:
+                description: The behaviour when the instance subset is empty after
+                  after routing. true means return no provider exception while false
+                  means ignore this rule.
+                type: boolean
+              key:
+                description: The identifier of the target service or application that
+                  this rule is about to apply to. If scope:serviceis set, then keyshould
+                  be specified as the Dubbo service key that this rule targets to
+                  control. If scope:application is set, then keyshould be specified
+                  as the name of the application that this rule targets to control,
+                  application should always be a Dubbo Consumer.
+                type: string
+              priority:
+                type: integer
+              runtime:
+                description: Whether run routing rule for every rpc invocation or
+                  use routing cache if available.
+                type: boolean
+              scope:
+                description: Supports service and application scope rules.
+                enum:
+                - service
+                - application
+                type: string
+            required:
+            - conditions
+            - configVersion
+            - enabled
+            - key
+            - scope
+            type: object
+        type: object
+    served: true
+    storage: true

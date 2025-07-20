@@ -1,0 +1,20 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-clusterrolebinding
+  labels:
+    app: admin
+    dubbo.io/rev: {{ default "default" | quote }}
+    install.operator.dubbo.io/owning-resource: {{ default "unknown" }}
+    operator.dubbo.io/component: "Admin"
+    dubbo: admin
+    release: {{ .Release.Name }}
+    app.kubernetes.io/name: "dashboard"
+subjects:
+- kind: ServiceAccount
+  name: admin-sa
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: admin-clusterrole
+  apiGroup: rbac.authorization.k8s.io

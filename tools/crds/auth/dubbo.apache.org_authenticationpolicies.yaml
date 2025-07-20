@@ -1,0 +1,146 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.10.0
+  creationTimestamp: null
+  name: authenticationpolicies.dubbo.apache.org
+spec:
+  group: dubbo.apache.org
+  names:
+    kind: AuthenticationPolicy
+    listKind: AuthenticationPolicyList
+    plural: authenticationpolicies
+    shortNames:
+    - ac
+    singular: authenticationpolicy
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the clientgen
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              PortLevel:
+                items:
+                  properties:
+                    action:
+                      enum:
+                      - NONE
+                      - DISABLED
+                      - PERMISSIVE
+                      - STRICT
+                      type: string
+                    port:
+                      default: 0
+                      description: The key of the extended identity.
+                      maximum: 65535
+                      minimum: 0
+                      type: number
+                  type: object
+                type: array
+              action:
+                description: The action to take when a rule is matched.
+                enum:
+                - NONE
+                - DISABLED
+                - PERMISSIVE
+                - STRICT
+                type: string
+              selector:
+                items:
+                  properties:
+                    extends:
+                      description: The extended identities(from Dubbo Auth) to match
+                        of the source workload.
+                      items:
+                        properties:
+                          key:
+                            description: The key of the extended identity.
+                            type: string
+                          value:
+                            description: The value of the extended identity.
+                            type: string
+                        type: object
+                      type: array
+                    ipBlocks:
+                      description: The IP addresses to match of the source workload.
+                      items:
+                        type: string
+                      type: array
+                    namespaces:
+                      description: The namespaces to match of the source workload.
+                      items:
+                        type: string
+                      type: array
+                    notExtends:
+                      description: The extended identities(from Dubbo Auth) not to
+                        match of the source workload.
+                      items:
+                        properties:
+                          key:
+                            description: The key of the extended identity.
+                            type: string
+                          value:
+                            description: The value of the extended identity.
+                            type: string
+                        type: object
+                      type: array
+                    notIpBlocks:
+                      description: The IP addresses not to match of the source workload.
+                      items:
+                        type: string
+                      type: array
+                    notNamespaces:
+                      description: The namespaces not to match of the source workload.
+                      items:
+                        type: string
+                      type: array
+                    notPrincipals:
+                      description: The identities(from spiffe) not to match of the
+                        source workload.
+                      items:
+                        type: string
+                      type: array
+                    principals:
+                      description: The identities(from spiffe) to match of the source
+                        workload.
+                      items:
+                        type: string
+                      type: array
+                  type: object
+                type: array
+            required:
+            - action
+            type: object
+        type: object
+    served: true
+    storage: true

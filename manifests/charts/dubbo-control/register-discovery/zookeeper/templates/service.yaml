@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: zookeeper
+    dubbo.io/rev: {{ default "default" | quote }}
+    install.operator.dubbo.io/owning-resource: {{ default "unknown" }}
+    operator.dubbo.io/component: "Zookeeper"
+    dubbo: zookeeper
+    release: {{ .Release.Name }}
+    app.kubernetes.io/name: "register"
+spec:
+  ports:
+  - name: tcp-client
+    port: 2181
+    targetPort: client
+  - name: tcp-follower
+    port: 2888
+    targetPort: follower
+  - name: tcp-election
+    port: 3888
+    targetPort: election
+  selector:
+    app: zookeeper
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper-headless
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: zookeeper
+    dubbo.io/rev: {{ default "default" | quote }}
+    install.operator.dubbo.io/owning-resource: {{ default "unknown" }}
+    operator.dubbo.io/component: "Zookeeper"
+    dubbo: zookeeper
+    release: {{ .Release.Name }}
+    app.kubernetes.io/name: "register"
+spec:
+  ports:
+    - name: tcp-client
+      port: 2181
+      targetPort: client
+    - name: tcp-follower
+      port: 2888
+      targetPort: follower
+    - name: tcp-election
+      port: 3888
+      targetPort: election
+  selector:
+    app: zookeeper

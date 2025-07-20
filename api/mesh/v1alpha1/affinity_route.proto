@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+
+message AffinityRoute {
+  option (dubbo.mesh.resource).name = "AffinityRouteResource";
+  option (dubbo.mesh.resource).type = "AffinityRoute";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).dds.send_to_zone = true;
+  option (dubbo.mesh.resource).ws.name = "affinityroute";
+  option (dubbo.mesh.resource).ws.plural = "affinityroutes";
+  option (dubbo.mesh.resource).allow_to_inspect = true;
+
+  string configVersion = 1;
+  string scope = 2; // must be chosen from `service` and `application`
+  string key = 3;   // specifies which service or application the rule body acts on
+  bool runtime = 4;
+  bool enabled = 5;
+  AffinityAware affinity = 6;
+}
+
+message AffinityAware {
+  string key = 1;
+  int32  ratio = 2;
+}

@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+import "api/mesh/v1alpha1/tag_route.proto";
+
+message DynamicConfig {
+  option (dubbo.mesh.resource).name = "DynamicConfigResource";
+  option (dubbo.mesh.resource).type = "DynamicConfig";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).dds.send_to_zone = true;
+  option (dubbo.mesh.resource).ws.name = "dynamicconfig";
+  option (dubbo.mesh.resource).ws.plural = "dynamicconfigs";
+  option (dubbo.mesh.resource).allow_to_inspect = true;
+
+  string key = 1;
+  string scope = 2;
+  string configVersion = 3;
+  bool enabled = 4;
+  repeated OverrideConfig configs = 5;
+}
+
+message OverrideConfig {
+  string side = 1;
+  repeated string addresses = 2;
+  repeated string providerAddresses = 3;
+  map<string, string> parameters = 4;
+  repeated string applications = 5;
+  repeated string services = 6;
+  string type = 7;
+  bool enabled = 8;
+  ConditionMatch match = 9;
+
+  // to mark which config generate by control plane
+  bool __generate_by_cp = 10;
+}
+
+message ConditionMatch {
+  AddressMatch address = 1;
+  AddressMatch providerAddress = 5;
+  ListStringMatch service = 2;
+  ListStringMatch application = 3;
+  repeated ParamMatch param = 4;
+}
+
+message AddressMatch {
+  string wildcard = 1;
+  string cird = 2;
+  string exact = 3;
+}
+
+message ListStringMatch {repeated StringMatch oneof = 1;}

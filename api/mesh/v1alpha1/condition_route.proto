@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+
+message ConditionRoute {
+  option (dubbo.mesh.resource).name = "ConditionRouteResource";
+  option (dubbo.mesh.resource).type = "ConditionRoute";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).dds.send_to_zone = true;
+  option (dubbo.mesh.resource).ws.name = "conditionroute";
+  option (dubbo.mesh.resource).ws.plural = "conditionroutes";
+  option (dubbo.mesh.resource).allow_to_inspect = true;
+
+  message v3 {
+    string configVersion = 1;
+    int32 priority = 2;
+    bool enabled = 3;
+    bool force = 4;
+    bool runtime = 5;
+    string key = 6;
+    string scope = 7;
+    repeated string conditions = 8;
+  }
+
+  message v3x1 {
+    string configVersion = 1;
+    string scope = 2; // must be chosen from `service` and `application`
+    string key = 3;   // specifies which service or application the rule body acts on
+    bool force = 4;
+    bool runtime = 5;
+    bool enabled = 6;
+    repeated ConditionRule conditions = 8;
+  }
+
+  oneof conditions {
+    v3 conditionsV3 = 1;
+    v3x1 conditionsV3x1 = 2;
+  }
+}
+
+message ConditionRule {
+  ConditionRuleFrom from = 1;
+  repeated ConditionRuleTo to = 2;
+}
+
+message ConditionRuleFrom {
+  string match = 1;
+}
+
+message ConditionRuleTo {
+  string match = 1;
+  int32 weight = 2; // default value will be handled by application logic
+}

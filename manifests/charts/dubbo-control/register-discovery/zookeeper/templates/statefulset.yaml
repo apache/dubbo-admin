@@ -1,0 +1,79 @@
+{{- $zookeeper := .Values -}}
+{{- $zoo := .Values.zookeeper }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zookeeper
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: zookeeper
+    dubbo.io/rev: {{ default "default" | quote }}
+    install.operator.dubbo.io/owning-resource: {{ default "unknown" }}
+    operator.dubbo.io/component: "Zookeeper"
+    dubbo: zookeeper
+    release: {{ .Release.Name }}
+    app.kubernetes.io/name: "register"
+spec:
+  selector:
+    matchLabels:
+      app: zookeeper
+      dubbo.io/rev: {{ default "default" | quote }}
+      dubbo: zookeeper
+  replicas: {{ $zookeeper.replicas }}
+  serviceName: zookeeper
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: {{ $zookeeper.rollingPartition }}
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+        dubbo.io/rev: {{ default "default" | quote }}
+        install.operator.dubbo.io/owning-resource: {{ default "unknown" }}
+        operator.dubbo.io/component: "Zookeeper"
+        dubbo: zookeeper
+        release: {{ .Release.Name }}
+        app.kubernetes.io/name: "register"
+    spec:
+      containers:
+      - name: zookeeper
+        {{- if contains "/" $zookeeper.image }}
+        image: {{ $zookeeper.image }}
+        {{- end }}
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: TICK_TIME
+            value: {{ $zookeeper.tickTime | quote }}
+          - name: INIT_LIMIT
+            value: {{ $zookeeper.initLimit | quote }}
+          - name: SYNC_LIMIT
+            value: {{ $zookeeper.syncLimit | quote }}
+          - name: DATA_LOG_DIR
+            value: {{ $zoo.dataLogDir | quote }}
+          - name: PORT_NUMBER
+            value: {{ $zookeeper.portNumber | quote }}
+        resources:
+{{ toYaml $zookeeper.resources | trim | indent 10 }}
+        ports:
+        - name: client
+          containerPort: 2181
+        - name: follower
+          containerPort: 2888
+        - name: election
+          containerPort: 3888
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: false
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/zookeeper
+      volumes:
+      - name: scripts
+        configMap:
+          name: zookeeper-scripts
+          defaultMode: 0755
+      - name: data
+        emptyDir:
+          medium: Memory

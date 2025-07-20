@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+
+
+message Instance {
+  option (dubbo.mesh.resource).name = "InstanceResource";
+  option (dubbo.mesh.resource).type = "Instance";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).ws.name = "instance";
+  option (dubbo.mesh.resource).ws.plural = "instances";
+  option (dubbo.mesh.resource).ws.read_only = true;
+  option (dubbo.mesh.resource).scope_namespace = true;
+  option (dubbo.mesh.resource).allow_to_inspect = true;
+
+  string name = 1;
+
+  string ip = 2;
+
+  string port = 3;
+
+  string image = 4;
+
+  string appName = 5;
+
+  string createTime = 6;
+
+  string startTime = 7;
+
+  string readyTime = 8;
+
+  string registerTime = 9;
+
+  map<string, string> features = 99;
+}

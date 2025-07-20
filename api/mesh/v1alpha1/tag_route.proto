@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+
+message TagRoute {
+  option (dubbo.mesh.resource).name = "TagRouteResource";
+  option (dubbo.mesh.resource).type = "TagRoute";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).dds.send_to_zone = true;
+  option (dubbo.mesh.resource).ws.name = "tagroute";
+  option (dubbo.mesh.resource).ws.plural = "tagroutes";
+  option (dubbo.mesh.resource).allow_to_inspect = true;
+
+  int32 priority = 1;
+  bool enabled = 2;
+  bool runtime = 3;
+  string key = 4;
+  string configVersion = 5;
+  bool force = 6;
+  repeated Tag tags = 7;
+}
+
+message Tag {
+  string name = 1;
+  repeated string addresses = 2;
+  repeated ParamMatch match = 3;
+
+  // to mark which config generate by control plane
+  bool __generate_by_cp = 8;
+}
+
+message StringMatch {
+  string exact = 1;
+  string prefix = 2;
+  string regex = 3;
+  string noempty = 4;
+  string empty = 5;
+  string wildcard = 6;
+}
+
+message ParamMatch {
+  string key = 1;
+  StringMatch value = 2;
+}

@@ -19,6 +19,9 @@ target/
 *.iml
 *.iws
 
+# vscode ignore
+.vscode/
+
 # temp ignore
 *.log*
 *.cache
@@ -30,8 +33,17 @@ target/
 .DS_Store
 Thumbs.db
 
-dubbo-admin-server/src/main/resources/public
-dubbo-admin-server/target
-dubbo-admin-ui/dist
-dubbo-admin-ui/node
-dubbo-admin-ui/node-modules
+
+ui/dist
+ui/node
+ui/node-modules
+ui-vue3/node_modules
+ui-vue3/pnpm-lock.yaml
+coverage.txt
+
+bin/
+build/
+vendor/
+
+# dubbo cp cache
+app/dubbo-cp/cache
