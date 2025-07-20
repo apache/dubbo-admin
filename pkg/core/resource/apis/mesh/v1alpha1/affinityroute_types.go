@@ -32,7 +32,7 @@ import (
 
 const AffinityRouteKind = "AffinityRoute"
 
-type AffinityRoute struct {
+type AffinityRouteResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -45,50 +45,50 @@ type AffinityRoute struct {
 	// +kubebuilder:validation:Optional
 	Spec *meshproto.AffinityRoute `json:"spec,omitempty"`
 	// Status is the status of the Dubbo AffinityRoute resource.
-	Status AffinityRouteStatus `json:"status,omitempty"`
+	Status AffinityRouteResourceStatus `json:"status,omitempty"`
 }
 
-type AffinityRouteStatus struct {
+type AffinityRouteResourceStatus struct {
 	// define resource-specific status here
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Namespaced
-type AffinityRouteList struct {
+type AffinityRouteResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []AffinityRoute `json:"items"`
+	Items           []AffinityRouteResource `json:"items"`
 }
 
-func (r *AffinityRoute) GetKind() string {
+func (r *AffinityRouteResource) GetKind() string {
 	return r.Kind
 }
 
-func (r *AffinityRoute) GetMesh() string {
+func (r *AffinityRouteResource) GetMesh() string {
 	return r.Mesh
 }
 
-func (r *AffinityRoute) SetMesh(mesh string) {
+func (r *AffinityRouteResource) SetMesh(mesh string) {
 	r.Mesh = mesh
 }
 
-func (r *AffinityRoute) GetResourceKey() string {
+func (r *AffinityRouteResource) GetResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Kind, r.Name)
 }
 
-func (r *AffinityRoute) GetMeta() metav1.ObjectMeta {
+func (r *AffinityRouteResource) GetMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *AffinityRoute) SetMeta(m metav1.ObjectMeta) {
+func (r *AffinityRouteResource) SetMeta(m metav1.ObjectMeta) {
 	r.ObjectMeta = m
 }
 
-func (r *AffinityRoute) GetSpec() coremodel.ResourceSpec {
+func (r *AffinityRouteResource) GetSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func (r *AffinityRoute) SetSpec(rs coremodel.ResourceSpec) error {
+func (r *AffinityRouteResource) SetSpec(rs coremodel.ResourceSpec) error {
 	if spec, ok := rs.(*meshproto.AffinityRoute); ok {
 		r.Spec = spec
 		return nil

@@ -32,7 +32,7 @@ import (
 
 const InstanceKind = "Instance"
 
-type Instance struct {
+type InstanceResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -45,50 +45,50 @@ type Instance struct {
 	// +kubebuilder:validation:Optional
 	Spec *meshproto.Instance `json:"spec,omitempty"`
 	// Status is the status of the Dubbo Instance resource.
-	Status InstanceStatus `json:"status,omitempty"`
+	Status InstanceResourceStatus `json:"status,omitempty"`
 }
 
-type InstanceStatus struct {
+type InstanceResourceStatus struct {
 	// define resource-specific status here
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster
-type InstanceList struct {
+type InstanceResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Instance `json:"items"`
+	Items           []InstanceResource `json:"items"`
 }
 
-func (r *Instance) GetKind() string {
+func (r *InstanceResource) GetKind() string {
 	return r.Kind
 }
 
-func (r *Instance) GetMesh() string {
+func (r *InstanceResource) GetMesh() string {
 	return r.Mesh
 }
 
-func (r *Instance) SetMesh(mesh string) {
+func (r *InstanceResource) SetMesh(mesh string) {
 	r.Mesh = mesh
 }
 
-func (r *Instance) GetResourceKey() string {
+func (r *InstanceResource) GetResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Kind, r.Name)
 }
 
-func (r *Instance) GetMeta() metav1.ObjectMeta {
+func (r *InstanceResource) GetMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *Instance) SetMeta(m metav1.ObjectMeta) {
+func (r *InstanceResource) SetMeta(m metav1.ObjectMeta) {
 	r.ObjectMeta = m
 }
 
-func (r *Instance) GetSpec() coremodel.ResourceSpec {
+func (r *InstanceResource) GetSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func (r *Instance) SetSpec(rs coremodel.ResourceSpec) error {
+func (r *InstanceResource) SetSpec(rs coremodel.ResourceSpec) error {
 	if spec, ok := rs.(*meshproto.Instance); ok {
 		r.Spec = spec
 		return nil

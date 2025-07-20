@@ -32,7 +32,7 @@ import (
 
 const SecretKind = "Secret"
 
-type Secret struct {
+type SecretResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
@@ -45,50 +45,50 @@ type Secret struct {
 	// +kubebuilder:validation:Optional
 	Spec *systemproto.Secret `json:"spec,omitempty"`
 	// Status is the status of the Dubbo Secret resource.
-	Status SecretStatus `json:"status,omitempty"`
+	Status SecretResourceStatus `json:"status,omitempty"`
 }
 
-type SecretStatus struct {
+type SecretResourceStatus struct {
 	// define resource-specific status here
 }
 
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Namespaced
-type SecretList struct {
+type SecretResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Secret `json:"items"`
+	Items           []SecretResource `json:"items"`
 }
 
-func (r *Secret) GetKind() string {
+func (r *SecretResource) GetKind() string {
 	return r.Kind
 }
 
-func (r *Secret) GetMesh() string {
+func (r *SecretResource) GetMesh() string {
 	return r.Mesh
 }
 
-func (r *Secret) SetMesh(mesh string) {
+func (r *SecretResource) SetMesh(mesh string) {
 	r.Mesh = mesh
 }
 
-func (r *Secret) GetResourceKey() string {
+func (r *SecretResource) GetResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Kind, r.Name)
 }
 
-func (r *Secret) GetMeta() metav1.ObjectMeta {
+func (r *SecretResource) GetMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *Secret) SetMeta(m metav1.ObjectMeta) {
+func (r *SecretResource) SetMeta(m metav1.ObjectMeta) {
 	r.ObjectMeta = m
 }
 
-func (r *Secret) GetSpec() coremodel.ResourceSpec {
+func (r *SecretResource) GetSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func (r *Secret) SetSpec(rs coremodel.ResourceSpec) error {
+func (r *SecretResource) SetSpec(rs coremodel.ResourceSpec) error {
 	if spec, ok := rs.(*systemproto.Secret); ok {
 		r.Spec = spec
 		return nil

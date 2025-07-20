@@ -88,7 +88,7 @@ type {{.ResourceType}}Resource struct {
 	Spec   *{{$pkg}}.{{.ResourceType}} {{ $tk }}json:"spec,omitempty"{{ $tk }}
 {{- end}}
 	// Status is the status of the Dubbo {{.ResourceType}} resource.
-	Status {{.ResourceType}}Status {{ $tk }}json:"status,omitempty"{{ $tk }}
+	Status {{.ResourceType}}ResourceStatus {{ $tk }}json:"status,omitempty"{{ $tk }}
 }
 
 type {{.ResourceType}}ResourceStatus struct {
@@ -101,10 +101,10 @@ type {{.ResourceType}}ResourceStatus struct {
 {{- else }}
 // +kubebuilder:resource:scope=Namespaced
 {{- end}}
-type {{.ResourceType}}List struct {
+type {{.ResourceType}}ResourceList struct {
 	metav1.TypeMeta {{ $tk }}json:",inline"{{ $tk }}
 	metav1.ListMeta {{ $tk }}json:"metadata,omitempty"{{ $tk }}
-	Items           []{{.ResourceType}} {{ $tk }}json:"items"{{ $tk }}
+	Items           []{{.ResourceType}}Resource {{ $tk }}json:"items"{{ $tk }}
 }
 
 func (r *{{.ResourceType}}Resource) GetKind() string  {
