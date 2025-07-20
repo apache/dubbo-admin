@@ -1,0 +1,135 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger
+  namespace: dubbo-system
+  labels:
+    app: jaeger
+spec:
+  selector:
+    matchLabels:
+      app: jaeger
+  template:
+    metadata:
+      labels:
+        app: jaeger
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "14269"
+    spec:
+      containers:
+        - name: jaeger
+          image: "sca-registry.cn-hangzhou.cr.aliyuncs.com/dubbo/jager-all-in-one:1.67.0"
+          env:
+            - name: BADGER_EPHEMERAL
+              value: "false"
+            - name: SPAN_STORAGE_TYPE
+              value: "badger"
+            - name: BADGER_DIRECTORY_VALUE
+              value: "/badger/data"
+            - name: BADGER_DIRECTORY_KEY
+              value: "/badger/key"
+            - name: COLLECTOR_ZIPKIN_HOST_PORT
+              value: ":9411"
+            - name: MEMORY_MAX_TRACES
+              value: "50000"
+            - name: QUERY_BASE_PATH
+              value: /jaeger
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 14269
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 14269
+          volumeMounts:
+            - name: data
+              mountPath: /badger
+          resources:
+            requests:
+              cpu: 10m
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tracing
+  namespace: dubbo-system
+  labels:
+    app: jaeger
+spec:
+  type: ClusterIP
+  ports:
+    - name: http-query
+      port: 80
+      protocol: TCP
+      targetPort: 16686
+    # Note: Change port name if you add '--query.grpc.tls.enabled=true'
+    - name: grpc-query
+      port: 16685
+      protocol: TCP
+      targetPort: 16685
+  selector:
+    app: jaeger
+---
+# Jaeger implements the Zipkin API. To support swapping out the tracing backend, we use a Service named Zipkin.
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: zipkin
+  name: zipkin
+  namespace: dubbo-system
+spec:
+  ports:
+    - port: 9411
+      targetPort: 9411
+      name: http-query
+  selector:
+    app: jaeger
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-collector
+  namespace: dubbo-system
+  labels:
+    app: jaeger
+spec:
+  type: ClusterIP
+  ports:
+  - name: jaeger-collector-http
+    port: 14268
+    targetPort: 14268
+    protocol: TCP
+  - name: jaeger-collector-grpc
+    port: 14250
+    targetPort: 14250
+    protocol: TCP
+  - port: 9411
+    targetPort: 9411
+    name: http-zipkin
+  - port: 4317
+    name: grpc-otel
+  - port: 4318
+    name: http-otel
+  selector:
+    app: jaeger

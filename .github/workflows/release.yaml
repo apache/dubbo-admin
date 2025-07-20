@@ -1,0 +1,159 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: dubboctl Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  create_release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+
+    steps:
+      - name: Check if Release Exists
+        id: check
+        uses: actions/github-script@v7
+        with:
+          result-encoding: string
+          script: |
+            const tag = context.ref.replace('refs/tags/', '');
+            try {
+              await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag: tag,
+              });
+              return "exists";
+            } catch (e) {
+              if (e.status === 404) return "not_found";
+              throw e;
+            }
+
+      - name: Create GitHub Release
+        id: create_release
+        if: steps.check.outputs.result == 'not_found'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: "${{ github.ref_name }}"
+          body: |
+            ⚠️ This is a pre release version.
+            
+            Repair compressed files in Windows compatible format.
+          draft: false
+          prerelease: true
+
+  build_and_upload:
+    name: Build and Upload Binaries
+    needs: create_release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, darwin, windows]
+        goarch: [386, amd64, arm64]
+        exclude:
+          - goos: darwin
+            goarch: 386
+          - goos: windows
+            goarch: arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GIT_VERSION: ${{ github.ref_name }}
+        run: |
+          mkdir -p build/
+          make build-dubboctl GOOS=${GOOS} GOARCH=${GOARCH} GIT_VERSION=${GIT_VERSION}
+          make build-dubbo-cp GOOS=${GOOS} GOARCH=${GOARCH} GIT_VERSION=${GIT_VERSION}
+          cp README.md LICENSE build/
+          mv bin/dubboctl* build/
+          mv bin/dubbo-cp* build/
+          ls -ln build/
+
+      - name: Rename windows
+        if: matrix.goos == 'windows'
+        run: |
+          mv build/dubboctl build/dubboctl.exe
+          mv build/dubbo-cp build/dubbo-cp.exe
+
+      - name: dubboctl Package files
+        id: package_ctl
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          FILENAME=dubboctl-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            zip -j ${FILENAME}.zip build/*
+            echo "name=${FILENAME}.zip" >> $GITHUB_OUTPUT
+          else
+            tar -czvf ${FILENAME}.tar.gz -C build .
+            echo "name=${FILENAME}.tar.gz" >> $GITHUB_OUTPUT
+          fi
+
+      - name: dubbo-cp Package files
+        id: package_cp
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          FILENAME=dubbo-cp-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            zip -j ${FILENAME}.zip build/*
+            echo "name=${FILENAME}.zip" >> $GITHUB_OUTPUT
+          else
+            tar -czvf ${FILENAME}.tar.gz -C build .
+            echo "name=${FILENAME}.tar.gz" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload Dubboctl Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.package_ctl.outputs.name }}
+          asset_name: ${{ steps.package_ctl.outputs.name }}
+          asset_content_type: application/octet-stream
+
+      - name: Upload Dubbo-CP Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_release.outputs.upload_url }}
+          asset_path: ${{ steps.package_cp.outputs.name }}
+          asset_name: ${{ steps.package_cp.outputs.name }}
+          asset_content_type: application/octet-stream

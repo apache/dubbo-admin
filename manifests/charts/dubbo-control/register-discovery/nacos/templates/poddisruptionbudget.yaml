@@ -1,0 +1,20 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: nacos
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: nacos
+    dubbo.io/rev: {{ default "default" | quote }}
+    install.operator.dubbo.io/owning-resource: {{ default "unknown" }}
+    operator.dubbo.io/component: "Nacos"
+    dubbo: nacos
+    release: {{ .Release.Name }}
+    app.kubernetes.io/name: "register"
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: nacos
+      dubbo.io/rev: {{ default "default" | quote }}
+      dubbo: nacos

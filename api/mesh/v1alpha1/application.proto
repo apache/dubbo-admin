@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+
+
+message Application {
+  option (dubbo.mesh.resource).name = "ApplicationResource";
+  option (dubbo.mesh.resource).type = "Application";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).ws.name = "application";
+  option (dubbo.mesh.resource).ws.plural = "applications";
+  option (dubbo.mesh.resource).ws.read_only = true;
+  option (dubbo.mesh.resource).scope_namespace = true;
+  option (dubbo.mesh.resource).allow_to_inspect = true;
+
+  string name = 1;
+
+  map<string, string> features = 99;
+
+}

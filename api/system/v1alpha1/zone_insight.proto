@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package dubbo.system.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/system/v1alpha1";
+
+import "api/mesh/options.proto";
+import "google/protobuf/timestamp.proto";
+
+message ZoneInsight {
+
+  option (dubbo.mesh.resource).name = "ZoneInsightResource";
+  option (dubbo.mesh.resource).type = "ZoneInsight";
+  option (dubbo.mesh.resource).package = "system";
+  option (dubbo.mesh.resource).global = true;
+  option (dubbo.mesh.resource).ws.name = "zone-insight";
+  option (dubbo.mesh.resource).ws.read_only = true;
+
+  // List of DDS subscriptions created by a given Zone Dubbo CP.
+  repeated DDSSubscription subscriptions = 1;
+
+  // Statistics about Envoy Admin Streams
+  EnvoyAdminStreams envoy_admin_streams = 2;
+
+  HealthCheck health_check = 3;
+}
+
+message EnvoyAdminStreams {
+  // Global instance ID that handles XDS Config Dump streams.
+  string config_dump_global_instance_id = 1;
+  // Global instance ID that handles Stats streams.
+  string stats_global_instance_id = 2;
+  // Global instance ID that handles Clusters streams.
+  string clusters_global_instance_id = 3;
+}
+
+// DDSSubscription describes a single DDS subscription
+// created by a Zone to the Global.
+// Ideally, there should be only one such subscription per Zone lifecycle.
+// Presence of multiple subscriptions might indicate one of the following
+// events:
+// - transient loss of network connection between Zone and Global Control
+// Planes
+// - Zone Dubbo CP restarts (i.e. hot restart or crash)
+// - Global Dubbo CP restarts (i.e. rolling update or crash)
+// - etc
+message DDSSubscription {
+
+  // Unique id per DDS subscription.
+  string id = 1;
+
+  // Global CP instance that handled given subscription.
+  string global_instance_id = 2;
+
+  // Time when a given Zone connected to the Global.
+  google.protobuf.Timestamp connect_time = 3;
+
+  // Time when a given Zone disconnected from the Global.
+  google.protobuf.Timestamp disconnect_time = 4;
+
+  // Status of the DDS subscription.
+  DDSSubscriptionStatus status = 5;
+
+  // Generation is an integer number which is periodically increased by the
+  // status sink
+  uint32 generation = 7;
+
+  // Config of Zone Dubbo CP
+  string config = 8;
+
+  // Indicates if subscription provided auth token
+  bool auth_token_provided = 9;
+
+  // Zone CP instance that handled the given subscription (This is the leader at
+  // time of connection).
+  string zone_instance_id = 10;
+}
+
+// DDSSubscriptionStatus defines status of an DDS subscription.
+message DDSSubscriptionStatus {
+
+  // Time when status of a given DDS subscription was most recently updated.
+  google.protobuf.Timestamp last_update_time = 1;
+
+  // Total defines an aggregate over individual DDS stats.
+  DDSServiceStats total = 2;
+
+  map<string, DDSServiceStats> stat = 3;
+}
+
+// DiscoveryServiceStats defines all stats over a single xDS service.
+message DDSServiceStats {
+
+  // Number of xDS responses sent to the Dataplane.
+  uint64 responses_sent = 1;
+
+  // Number of xDS responses ACKed by the Dataplane.
+  uint64 responses_acknowledged = 2;
+
+  // Number of xDS responses NACKed by the Dataplane.
+  uint64 responses_rejected = 3;
+}
+
+// HealthCheck holds information about the received zone health check
+message HealthCheck {
+  // Time last health check received
+  google.protobuf.Timestamp time = 1;
+}

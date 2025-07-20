@@ -1,23 +1,82 @@
-name: CI
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-on: [push, pull_request]
+name: Continues Integration
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 
 jobs:
-  build:
+  unit-test:
+    name: Go Test
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        java: [ 8, 11 ]
-    timeout-minutes: 30
+    if: github.repository == 'apache/dubbo-admin'
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v1
+      - uses: actions/checkout@v4
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v5
         with:
-          java-version: ${{ matrix.java }}
-      - name: Build with Maven
-        run: ./mvnw clean install --batch-mode -DskipTests=false -Dcheckstyle.skip=false -Drat.skip=false -Dmaven.javadoc.skip=true
-      - name: Upload coverage to codecov
-        uses: codecov/codecov-action@v1
+          go-version-file: go.mod
+      - name: Download dependencies
+        run: |
+          go mod download
+      - name: Go Test
+        run: |
+          go test ./... -gcflags=-l -coverprofile=coverage.txt -covermode=atomic
+      - name: "Upload test result"
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          flags: unit
+          name: test-coverage
+          path: "**/coverage.txt"
+      - name: Coverage
+        run: bash <(curl -s https://codecov.io/bash)
+
+  license-check:
+    name: License Check - Go
+    runs-on: ubuntu-latest
+    if: github.repository == 'apache/dubbo-admin'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Check License Header
+        uses: apache/skywalking-eyes/header@main
+
+  go-fmt:
+    name: Go fmt
+    runs-on: ubuntu-latest
+    if: github.repository == 'apache/dubbo-admin'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go 1.x
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Download dependencies
+        run: |
+          go mod download
+      - name: Go Fmt
+        run: |
+          go fmt ./... && git status && [[ -z `git status -s` ]]
+          # diff -u <(echo -n) <(gofmt -d -s .)

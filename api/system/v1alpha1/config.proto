@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package dubbo.system.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/system/v1alpha1";
+
+import "api/mesh/options.proto";
+
+// Config is a entity that represents dynamic configuration that is stored in
+// underlying storage. For now it's used only for internal mechanisms.
+message Config {
+
+  option (dubbo.mesh.resource).name = "ConfigResource";
+  option (dubbo.mesh.resource).type = "Config";
+  option (dubbo.mesh.resource).package = "system";
+  option (dubbo.mesh.resource).global = true;
+  option (dubbo.mesh.resource).skip_kubernetes_wrappers = true;
+  option (dubbo.mesh.resource).dds.send_to_zone = true;
+
+  // configuration that is stored (ex. in JSON)
+  string config = 1;
+}

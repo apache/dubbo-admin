@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package dubbo.system.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/system/v1alpha1";
+
+message PingRequest {
+  string instance_id = 1;
+  string address = 2;
+  uint32 inter_cp_port = 3;
+  bool ready = 4;
+}
+
+message PingResponse { bool leader = 1; }
+
+service InterCpPingService { rpc Ping(PingRequest) returns (PingResponse); }

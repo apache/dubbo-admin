@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+
+message Mapping {
+  option (dubbo.mesh.resource).name = "MappingResource";
+  option (dubbo.mesh.resource).type = "Mapping";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).dds.send_to_global = true;
+  option (dubbo.mesh.resource).dds.send_to_zone = true;
+  option (dubbo.mesh.resource).ws.name = "mapping";
+  option (dubbo.mesh.resource).ws.plural = "mappings";
+  option (dubbo.mesh.resource).scope_namespace = true;
+  option (dubbo.mesh.resource).allow_to_inspect = true;
+
+  string zone = 1;
+  string interfaceName = 2;
+  repeated string applicationNames = 3;
+}
