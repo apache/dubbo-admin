@@ -20,9 +20,3 @@ build-dubbo-cp:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
 	-ldflags "-X github.com/apache/dubbo-admin/pkg/version.gitTag=$(GIT_VERSION)" \
 	-o bin/dubbo-cp app/dubbo-main/main.go && cp app/dubbo-admin/dubbo-admin.yaml bin/
-
-.PHONY: build-dubboctl
-build-dubboctl:
-	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
-	-ldflags "-X github.com/apache/dubbo-admin/pkg/version.gitTag=$(GIT_VERSION)" \
-    -o bin/dubboctl dubboctl/main.go
