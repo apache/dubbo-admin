@@ -19,10 +19,6 @@ func (b *BaseResourceDiscoveryComponent) Type() runtime.ComponentType {
 	return runtime.ResourceDiscovery
 }
 
-func (b *BaseResourceDiscoveryComponent) SubType() runtime.ComponentSubType {
-	panic("SubType() must be implemented by concrete BaseResourceDiscoveryComponent")
-}
-
 func (b *BaseResourceDiscoveryComponent) Order() int {
 	return math.MaxInt
 }

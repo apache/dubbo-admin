@@ -28,10 +28,6 @@ func (r *resourceManagerComponent) Type() runtime.ComponentType {
 	return runtime.ResourceManager
 }
 
-func (r *resourceManagerComponent) SubType() runtime.ComponentSubType {
-	return runtime.ResourceManager
-}
-
 func (r *resourceManagerComponent) Order() int {
 	return math.MaxInt
 }
@@ -41,9 +37,7 @@ func (r *resourceManagerComponent) Init(ctx runtime.BuilderContext) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to init resource manager")
 	}
-	r.rm = &resourcesManager{
-		Store: rsc.(store.Component).ResourceStore(),
-	}
+	r.rm = NewResourceManager(rsc.(store.Router))
 	return nil
 }
 

@@ -22,17 +22,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/duke-git/lancet/v2/slice"
-
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store"
+	"github.com/duke-git/lancet/v2/slice"
 )
 
 type ReadOnlyResourceManager interface {
 	// GetByKey returns the resource with the given resource key
-	GetByKey(rk string) (r model.Resource, exist bool, err error)
-	// ListPageByKey page list the resources with the given resource key
-	ListPageByKey(rk string, pq model.PageQuery) ([]model.Resource, model.Pagination)
+	GetByKey(rk model.ResourceKind, key string) (r model.Resource, exist bool, err error)
+	// ListByIndex returns the resource with the given index name
+	ListByIndex(rk model.ResourceKind, indexName string, indexKey interface{}) ([]model.Resource, error)
+	// ListPageByIndex page list the resources with the given index
+	ListPageByIndex(rk model.ResourceKind, indexName string,
+		indexValue interface{}, pq model.PageQuery) ([]model.Resource, model.Pagination, error)
 }
 
 type WriteOnlyResourceManager interface {
@@ -43,7 +45,7 @@ type WriteOnlyResourceManager interface {
 	// Upsert upserts the resource
 	Upsert(r model.Resource) error
 	// DeleteByKey deletes the resource with the given resource key
-	DeleteByKey(key string) error
+	DeleteByKey(rk model.ResourceKind, key string) error
 }
 
 type ResourceManager interface {
@@ -52,56 +54,98 @@ type ResourceManager interface {
 	WriteOnlyResourceManager
 }
 
-func NewResourceManager(store store.ResourceStore) ResourceManager {
+func NewResourceManager(router store.Router) ResourceManager {
 	return &resourcesManager{
-		Store: store,
+		StoreRouter: router,
 	}
 }
 
 var _ ResourceManager = &resourcesManager{}
 
 type resourcesManager struct {
-	Store store.ResourceStore
+	StoreRouter store.Router
 }
 
-func (rm *resourcesManager) GetByKey(key string) (r model.Resource, exist bool, err error) {
-	item, exist, err := rm.Store.GetByKey(key)
+func (rm *resourcesManager) GetByKey(rk model.ResourceKind, key string) (r model.Resource, exist bool, err error) {
+	rs, err := rm.StoreRouter.ResourceKindRoute(rk)
+	if err != nil {
+		return nil, false, err
+	}
+	item, exist, err := rs.GetByKey(key)
 	return item.(model.Resource), exist, err
 }
 
-func (rm *resourcesManager) ListPageByKey(key string, pageQuery model.PageQuery) ([]model.Resource, model.Pagination) {
-	items, p := rm.Store.ListPageByKey(key, pageQuery)
-	rs := slice.Map(items, func(_ int, item interface{}) model.Resource {
+func (rm *resourcesManager) ListByIndex(rk model.ResourceKind, indexName string, indexKey interface{}) ([]model.Resource, error) {
+	rs, err := rm.StoreRouter.ResourceKindRoute(rk)
+	if err != nil {
+		return nil, err
+	}
+	objList, err := rs.Index(indexName, indexKey)
+	if err != nil {
+		return nil, err
+	}
+	resources := slice.Map(objList, func(_ int, item interface{}) model.Resource {
 		return item.(model.Resource)
 	})
-	return rs, p
+	return resources, nil
+}
+
+func (rm *resourcesManager) ListPageByIndex(
+	rk model.ResourceKind,
+	indexName string,
+	indexValue interface{},
+	pageQuery model.PageQuery) ([]model.Resource, model.Pagination, error) {
+	rs, err := rm.StoreRouter.ResourceKindRoute(rk)
+	if err != nil {
+		return nil, model.Pagination{}, err
+	}
+	items, p, err := rs.ListPageByIndex(indexName, indexValue, pageQuery)
+	if err != nil {
+		return nil, p, err
+	}
+	rsList := slice.Map(items, func(_ int, item interface{}) model.Resource {
+		return item.(model.Resource)
+	})
+	return rsList, p, nil
 }
 
 func (rm *resourcesManager) Add(r model.Resource) error {
-	return rm.Store.Add(r)
+	rs, err := rm.StoreRouter.ResourceRoute(r)
+	if err != nil {
+		return err
+	}
+	return rs.Add(r)
 }
 
 func (rm *resourcesManager) Update(r model.Resource) error {
-	return rm.Store.Update(r)
+	rs, err := rm.StoreRouter.ResourceRoute(r)
+	if err != nil {
+		return err
+	}
+	return rs.Update(r)
 }
 
 func (rm *resourcesManager) Upsert(r model.Resource) error {
-	if _, exists, _ := rm.Store.GetByKey(r.GetResourceKey()); exists {
+	if _, exists, _ := rm.GetByKey(r.ResourceKind(), r.ResourceKey()); exists {
 		return rm.Update(r)
 	} else {
 		return rm.Add(r)
 	}
 }
 
-func (rm *resourcesManager) DeleteByKey(key string) error {
-	r, exists, err := rm.Store.GetByKey(key)
-	if exists && err == nil {
-		return rm.Store.Delete(r)
+func (rm *resourcesManager) DeleteByKey(rk model.ResourceKind, key string) error {
+	rs, err := rm.StoreRouter.ResourceKindRoute(rk)
+	if err != nil {
+		return err
 	}
+	r, exists, err := rm.GetByKey(rk, key)
 	if err != nil {
 		return fmt.Errorf("failed to get resource %s: %s", key, err)
 	}
-	return fmt.Errorf("resource %s does not exist", key)
+	if !exists {
+		return fmt.Errorf("%s %s does not exist", rk, key)
+	}
+	return rs.Delete(r)
 }
 
 type ConflictRetry struct {

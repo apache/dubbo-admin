@@ -23,14 +23,24 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	. "k8s.io/client-go/tools/cache"
 
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
+// ResourceStore defines the interface for the persistance of a resource
+// ResourceStore expanded the interface of cache.Indexer and cache.Store
 type ResourceStore interface {
-	Store
-	ListPageByKey(key string, pq model.PageQuery) (items []interface{}, p model.Pagination)
+	Indexer
+	ListPageByIndex(indexName string, indexValue interface{}, pq model.PageQuery) ([]interface{}, model.Pagination, error)
+}
+
+// ManagedResourceStore includes both functional interfaces and lifecycle interfaces
+// If there is a new type of ResourceStore, it should implement this interface
+type ManagedResourceStore interface {
+	runtime.Lifecycle
+	ResourceStore
 }
 
 type ResourceConflictError struct {
