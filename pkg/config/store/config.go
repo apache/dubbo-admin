@@ -29,10 +29,10 @@ const (
 	Memory Type = "memory"
 )
 
-// Config defines Resource Store configuration
+// Config defines the ResourceStore configuration
 type Config struct {
 	config.BaseConfig
-	// Type of Store used in the Control Plane. Can be either "kubernetes", "postgres" or "memory"
+	// Type of Store used in Admin
 	Type    Type   `json:"type"`
 	Address string `json:"address"`
 }

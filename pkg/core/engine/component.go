@@ -19,11 +19,6 @@ func (b BaseResourceEngineComponent) Type() runtime.ComponentType {
 	return runtime.ResourceEngine
 }
 
-func (b BaseResourceEngineComponent) SubType() runtime.ComponentSubType {
-	panic("SubType() must be implemented by concrete BaseResourceEngineComponent")
-
-}
-
 func (b BaseResourceEngineComponent) Order() int {
 	return math.MaxInt
 }

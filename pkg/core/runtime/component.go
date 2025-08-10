@@ -22,31 +22,33 @@ type ComponentType = string
 const (
 	Console           ComponentType = "console"
 	ResourceManager   ComponentType = "resource manager"
-	ResourceStore   ComponentType = "resource store"
+	ResourceStore     ComponentType = "resource store"
 	ResourceEngine    ComponentType = "resource engine"
 	ResourceDiscovery ComponentType = "resource discovery"
 )
 
 var CoreComponentTypes = []ComponentType{Console, ResourceManager, ResourceStore, ResourceEngine, ResourceDiscovery}
 
-type ComponentSubType = string
-
-const DefaultComponentSubType = "default"
-
-// Component defines a process that will be run in the application
-// Component should be designed in such a way that it can be stopped by stop channel and started again (for example when instance is reelected for a leader).
-type Component interface {
-	// Type returns the type of the component
-	Type() ComponentType
-	// SubType returns the subtype of the component
-	SubType()  ComponentSubType
-	// Order indicates the order of the component during bootstrap, the bigger will be started first
-	Order() int
+type Lifecycle interface {
 	// Init initializes the component
 	Init(ctx BuilderContext) error
 	// Start blocks until the channel is closed or an error occurs.
 	// The component will stop running when the channel is closed.
-	Start(Runtime ,<-chan struct{}) error
+	Start(Runtime, <-chan struct{}) error
+}
+
+type Attribute interface {
+	// Type returns the type of the component
+	Type() ComponentType
+	// Order indicates the order of the component during bootstrap, the bigger will be started first
+	Order() int
+}
+
+// Component defines a process that will be run in the application
+// Component should be designed in such a way that it can be stopped by stop channel
+type Component interface {
+	Attribute
+	Lifecycle
 }
 
 // GracefulComponent is a component that supports waiting until it's finished.
@@ -62,11 +64,8 @@ type GracefulComponent interface {
 
 type ComponentManager interface {
 	// Add adds a component to the manager.
-	Add(... Component)
+	Add(...Component)
 
 	// Start starts all components.
-	Start( <-chan struct{}) error
+	Start(<-chan struct{}) error
 }
-
-
-

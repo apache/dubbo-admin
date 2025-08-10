@@ -43,41 +43,33 @@ const (
 	ExtensionsNodeNameKey              = "nodeName"
 )
 
-
-
 type ResourceSpec interface{}
 
+// ResourceKind defines the resource type
+type ResourceKind string
+
+func (rk ResourceKind) ToString() string {
+	return string(rk)
+}
+
 type Resource interface {
-	// GetKind returns the resource type, e.g. Application, Service etc.
-	GetKind() string
-	GetMesh()  string
-	GetResourceKey() string
-	GetMeta() metav1.ObjectMeta
-	SetMeta(metav1.ObjectMeta)
-	GetSpec() ResourceSpec
-	SetSpec(ResourceSpec) error
+	// ResourceKind returns the resource type, e.g. Application, Service etc.
+	ResourceKind() ResourceKind
+	// ResourceKey returns the unique resource key
+	ResourceKey() string
+	// MeshName returns the mesh which the resource belongs to
+	MeshName() string
+	// ResourceMeta returns the resource metadata
+	ResourceMeta() metav1.ObjectMeta
+	// ResourceSpec returns the resource spec
+	ResourceSpec() ResourceSpec
 }
 
 // BuildResourceKey build a unique identifier for a resource, usually is `mesh/kind/name`
-func BuildResourceKey(mesh string, kind string, name string) string {
-	return mesh + separator +  kind + separator + name;
-}
-
-type PageQuery struct {
-	PageSize    uint32
-	CurrentPage uint32
-	Page        bool
-}
-
-type Pagination struct {
-	PageSize    uint32
-	CurrentPage uint32
-	Total       uint32
-	Page        bool
-	NextOffset  string
+func BuildResourceKey(mesh string, name string) string {
+	return mesh + separator + name
 }
 
 func ErrorInvalidItemType(expected, actual interface{}) error {
 	return fmt.Errorf("invalid argument type: expected=%q got=%q", reflect.TypeOf(expected), reflect.TypeOf(actual))
 }
-

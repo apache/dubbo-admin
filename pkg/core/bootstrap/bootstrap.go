@@ -65,15 +65,14 @@ func Bootstrap(appCtx context.Context, cfg app.AdminConfig) (runtime.Runtime, er
 }
 
 func initResourceStore(cfg app.AdminConfig, builder *runtime.Builder) error {
-	storeCfg := cfg.Store
-	comp, err := runtime.ComponentRegistry().ResourceStore(storeCfg.Type)
+	comp, err := runtime.ComponentRegistry().ResourceStore()
 	if err != nil {
 		return errors.Wrapf(err, "could not retrieve resource store %s component", cfg.Store.Type)
 	}
 	return initAndActivateComponent(builder, comp)
 }
 func initResourceManager(builder *runtime.Builder) error {
-	comp, err := runtime.ComponentRegistry().ResourceManager(runtime.ResourceManager)
+	comp, err := runtime.ComponentRegistry().ResourceManager()
 	if err != nil {
 		return err
 	}
@@ -81,7 +80,7 @@ func initResourceManager(builder *runtime.Builder) error {
 }
 
 func initializeConsole(builder *runtime.Builder) error {
-	comp, err := runtime.ComponentRegistry().Console(runtime.Console)
+	comp, err := runtime.ComponentRegistry().Console()
 	if err != nil {
 		return err
 	}
@@ -89,7 +88,7 @@ func initializeConsole(builder *runtime.Builder) error {
 }
 
 func initializeResourceDiscovery(builder *runtime.Builder) error {
-	comp, err := runtime.ComponentRegistry().ResourceDiscovery(runtime.ResourceDiscovery)
+	comp, err := runtime.ComponentRegistry().ResourceDiscovery()
 	if err != nil {
 		return err
 	}
@@ -97,7 +96,7 @@ func initializeResourceDiscovery(builder *runtime.Builder) error {
 }
 
 func initializeResourceEngine(builder *runtime.Builder) error {
-	comp, err := runtime.ComponentRegistry().ResourceEngine(runtime.ResourceEngine)
+	comp, err := runtime.ComponentRegistry().ResourceEngine()
 	if err != nil {
 		return err
 	}
@@ -105,7 +104,7 @@ func initializeResourceEngine(builder *runtime.Builder) error {
 }
 
 func initializeDiagnoticsServer(builder *runtime.Builder) error {
-	comp, err := runtime.ComponentRegistry().Get(diagnostics.DiagnosticsServer, runtime.DefaultComponentSubType)
+	comp, err := runtime.ComponentRegistry().Get(diagnostics.DiagnosticsServer)
 	if err != nil {
 		return err
 	}
@@ -113,7 +112,7 @@ func initializeDiagnoticsServer(builder *runtime.Builder) error {
 }
 
 func initAndActivateComponent(builder *runtime.Builder, comp runtime.Component) error {
-	logger.Infof("initializing %s of %s ...", comp.SubType(), comp.Type())
+	logger.Infof("initializing %s ...", comp.Type())
 	if err := comp.Init(builder); err != nil {
 		return err
 	}

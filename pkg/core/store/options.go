@@ -359,17 +359,17 @@ func GetConsistent() GetOptionsFunc {
 }
 
 func (l *GetOptions) Predicate(r coremodel.Resource) bool {
-	if l.Mesh != "" && r.GetMesh() != l.Mesh {
+	if l.Mesh != "" && r.Mesh() != l.Mesh {
 		return false
 	}
 
-	if l.Version != "" && r.GetMeta().ResourceVersion != l.Version {
+	if l.Version != "" && r.Meta().ResourceVersion != l.Version {
 		return false
 	}
 
 	if len(l.Labels) > 0 {
 		for k, v := range l.Labels {
-			if r.GetMeta().Labels[k] != v {
+			if r.Meta().Labels[k] != v {
 				return false
 			}
 		}
@@ -481,24 +481,24 @@ func (l *ListOptions) HashCode() string {
 }
 
 func (l *ListOptions) Predicate(r coremodel.Resource) bool {
-	if l.Mesh != "" && r.GetMesh() != l.Mesh {
+	if l.Mesh != "" && r.Mesh() != l.Mesh {
 		return false
 	}
-	if l.NameEquals != "" && r.GetMeta().Name != l.NameEquals {
-		return false
-	}
-
-	if l.NameContains != "" && !strings.Contains(r.GetMeta().Name, l.NameContains) {
+	if l.NameEquals != "" && r.Meta().Name != l.NameEquals {
 		return false
 	}
 
-	if l.ApplicationContains != "" && !strings.Contains(r.GetMeta().Labels[meshproto.ApplicationLabel], l.ApplicationContains) {
+	if l.NameContains != "" && !strings.Contains(r.Meta().Name, l.NameContains) {
+		return false
+	}
+
+	if l.ApplicationContains != "" && !strings.Contains(r.Meta().Labels[meshproto.ApplicationLabel], l.ApplicationContains) {
 		return false
 	}
 
 	if len(l.Labels) > 0 {
 		for k, v := range l.Labels {
-			if r.GetMeta().Labels[k] != v {
+			if r.Meta().Labels[k] != v {
 				return false
 			}
 		}

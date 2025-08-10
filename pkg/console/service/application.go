@@ -28,19 +28,22 @@ import (
 	"github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/core/store"
+
+	"github.com/apache/dubbo-kubernetes/pkg/core/resources/apis/mesh"
 )
 
 func GetApplicationDetail(ctx context.Context, req *model.ApplicationDetailReq) (*model.ApplicationDetailResp, error) {
 	manager := ctx.ResourceManager()
-	dataplaneList := &mesh.DataplaneResourceList{}
+	instanceList := &mesh.DataplaneResourceList{}
 
-	if err := manager.List(ctx.AppContext(), dataplaneList, store.ListByApplication(req.AppName)); err != nil {
+	manager.ListPageByKey()
+	if err := manager.List(ctx.AppContext(), instanceList, store.ListByApplication(req.AppName)); err != nil {
 		return nil, err
 	}
 
 	revisions := make(map[string]*mesh.MetaDataResource, 0)
 	applicationDetail := model.NewApplicationDetail()
-	for _, dataplane := range dataplaneList.Items {
+	for _, dataplane := range instanceList.Items {
 		if strings.Split(dataplane.GetMeta().GetName(), constant.KeySeparator)[1] == "0" {
 			continue
 		}
