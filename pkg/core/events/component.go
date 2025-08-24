@@ -32,9 +32,9 @@ func init() {
 }
 
 type subscriber struct {
-	name        string
-	subRK       model.ResourceKind
-	processFunc ProcessEventFunc
+	name         string
+	resourceKind model.ResourceKind
+	processFunc  ProcessEventFunc
 }
 type subscribers []subscriber
 
@@ -46,7 +46,7 @@ type EventBusComponent interface {
 var _ EventBusComponent = &eventBus{}
 
 type eventBus struct {
-	mtx           sync.RWMutex
+	rwMutex       sync.RWMutex
 	subscriberDir map[model.ResourceKind]subscribers
 }
 
@@ -58,19 +58,19 @@ func (b *eventBus) Order() int {
 	return math.MaxInt
 }
 
-func (b *eventBus) Init(ctx runtime.BuilderContext) error {
+func (b *eventBus) Init(_ runtime.BuilderContext) error {
 	b.subscriberDir = make(map[model.ResourceKind]subscribers)
 	return nil
 }
 
-func (b *eventBus) Start(r runtime.Runtime, i <-chan struct{}) error {
+func (b *eventBus) Start(_ runtime.Runtime, _ <-chan struct{}) error {
 	return nil
 }
 
 // Subscribe subscribes to a resource kind, ProcessEventFunc is synchronous which is used to avoid event loss
 func (b *eventBus) Subscribe(rk model.ResourceKind, name string, process ProcessEventFunc) error {
-	b.mtx.Lock()
-	defer b.mtx.Unlock()
+	b.rwMutex.Lock()
+	defer b.rwMutex.Unlock()
 	subs, exists := b.subscriberDir[rk]
 	if !exists {
 		subs = make(subscribers, 0)
@@ -82,16 +82,16 @@ func (b *eventBus) Subscribe(rk model.ResourceKind, name string, process Process
 		}
 	}
 	b.subscriberDir[rk] = append(subs, subscriber{
-		name:        name,
-		subRK:       rk,
-		processFunc: process,
+		name:         name,
+		resourceKind: rk,
+		processFunc:  process,
 	})
 	return nil
 }
 
 func (b *eventBus) Unsubscribe(rk model.ResourceKind, name string) error {
-	b.mtx.Lock()
-	defer b.mtx.Unlock()
+	b.rwMutex.Lock()
+	defer b.rwMutex.Unlock()
 	subs, exists := b.subscriberDir[rk]
 	if !exists {
 		return fmt.Errorf("no subscriber for resource %s, skipped unsubscribing", rk)
@@ -106,8 +106,8 @@ func (b *eventBus) Unsubscribe(rk model.ResourceKind, name string) error {
 }
 
 func (b *eventBus) Send(event Event) {
-	b.mtx.RLock()
-	defer b.mtx.RUnlock()
+	b.rwMutex.RLock()
+	defer b.rwMutex.RUnlock()
 	rk := event.OldObj().ResourceKind()
 	subs, exists := b.subscriberDir[rk]
 	if !exists {
