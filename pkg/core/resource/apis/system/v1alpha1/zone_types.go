@@ -21,10 +21,11 @@
 package v1alpha1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	systemproto "github.com/apache/dubbo-admin/api/system/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"google.golang.org/protobuf/proto"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
 
 // +kubebuilder:object:root=true
@@ -33,7 +34,7 @@ import (
 const ZoneKind coremodel.ResourceKind = "Zone"
 
 func init() {
-	coremodel.RegisterResourceKind(ZoneKind)
+	coremodel.RegisterResourceSchema(ZoneKind, NewZoneResource)
 }
 
 type ZoneResource struct {
@@ -83,17 +84,45 @@ func (r *ZoneResource) ResourceMeta() metav1.ObjectMeta {
 func (r *ZoneResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
+func (r *ZoneResource) DeepCopyObject() k8sruntime.Object {
+	if r == nil {
+		return nil
+	}
 
-func NewZoneResource(name string, mesh string, apiVersion string) *ZoneResource {
+	out := &ZoneResource{
+		TypeMeta: r.TypeMeta,
+		Mesh:     r.Mesh,
+		Status:   r.Status,
+	}
+
+	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+
+	if r.Spec != nil {
+		out.Spec = proto.Clone(r.Spec).(*systemproto.Zone)
+	}
+
+	return out
+}
+
+func NewZoneResourceWithAttributes(name string, mesh string) *ZoneResource {
 	return &ZoneResource{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(ZoneKind),
-			APIVersion: apiVersion,
+			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+	}
+}
+
+func NewZoneResource() coremodel.Resource {
+	return &ZoneResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ZoneKind),
+			APIVersion: "v1alpha1",
+		},
 	}
 }

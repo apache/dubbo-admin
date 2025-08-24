@@ -48,5 +48,9 @@ discovery:
       metadataReport: nacos://47.76.94.134:8848?username=nacos&password=nacos
   - type: istio
 engine:
-  type: k8s
+  name: k8s1.28.6
+  type: kubernetes
+  properties:
+    apiServerAddress: https://192.168.1.1:6443
+    kubeConfig: /etc/kubernetes/admin.conf
 controlPlane:

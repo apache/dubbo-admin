@@ -33,6 +33,10 @@ func Bootstrap(appCtx context.Context, cfg app.AdminConfig) (runtime.Runtime, er
 	if err != nil {
 		return nil, err
 	}
+	// 0. initialize event bus
+	if err := initEventBus(builder); err != nil {
+		return nil, err
+	}
 	// 1. initialize resource store
 	if err := initResourceStore(cfg, builder); err != nil {
 		return nil, err
@@ -62,6 +66,14 @@ func Bootstrap(appCtx context.Context, cfg app.AdminConfig) (runtime.Runtime, er
 		return nil, err
 	}
 	return rt, nil
+}
+
+func initEventBus(builder *runtime.Builder) error {
+	comp, err := runtime.ComponentRegistry().EventBus()
+	if err != nil {
+		return err
+	}
+	return initAndActivateComponent(builder, comp)
 }
 
 func initResourceStore(cfg app.AdminConfig, builder *runtime.Builder) error {

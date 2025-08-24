@@ -41,7 +41,7 @@ type AdminConfig struct {
 	// Store configuration
 	Store *store.Config `json:"store"`
 	// Discovery configuration
-	Discovery *discovery.Config `json:"discovery"`
+	Discovery []*discovery.Config `json:"discovery"`
 	// Engine configuration
 	Engine *engine.Config `json:"engine"`
 }
@@ -50,16 +50,26 @@ var _ = &AdminConfig{}
 
 func (c *AdminConfig) Sanitize() {
 	c.Engine.Sanitize()
-	c.Discovery.Sanitize()
+	for _, d := range c.Discovery {
+		d.Sanitize()
+	}
 	c.Store.Sanitize()
 	c.Console.Sanitize()
 	c.Diagnostics.Sanitize()
 }
 
 func (c *AdminConfig) PostProcess() error {
+	discoveryPostProcess := func() error {
+		for _, d := range c.Discovery {
+			if err := d.PostProcess(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	return multierr.Combine(
 		c.Engine.PostProcess(),
-		c.Discovery.PostProcess(),
+		discoveryPostProcess(),
 		c.Store.PostProcess(),
 		c.Console.PostProcess(),
 		c.Diagnostics.PostProcess(),

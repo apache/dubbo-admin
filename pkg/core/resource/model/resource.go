@@ -22,6 +22,7 @@ import (
 	"reflect"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
 
 const (
@@ -53,6 +54,7 @@ func (rk ResourceKind) ToString() string {
 }
 
 type Resource interface {
+	k8sruntime.Object
 	// ResourceKind returns the resource type, e.g. Application, Service etc.
 	ResourceKind() ResourceKind
 	// ResourceKey returns the unique resource key

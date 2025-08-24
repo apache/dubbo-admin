@@ -52,10 +52,6 @@ func (c *consoleWebServer) Type() runtime.ComponentType {
 	return runtime.Console
 }
 
-func (c *consoleWebServer) SubType() runtime.ComponentSubType {
-	return runtime.DefaultComponentSubType
-}
-
 func (c *consoleWebServer) Order() int {
 	return math.MaxInt
 }

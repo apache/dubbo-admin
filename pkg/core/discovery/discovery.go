@@ -15,64 +15,23 @@
  * limitations under the License.
  */
 
-package events
+package discovery
 
 import (
-	"github.com/pkg/errors"
+	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-type Event interface{}
-
-type Op int
-
-const (
-	Create Op = iota
-	Update
-	Delete
-)
-
-type ResourceChangedEvent struct {
-	Operation Op
-	Kind      string
-	Key       string
-	TenantID  string
+// Operations are the operations which can be called by other components`
+type Operations interface {
+	// Add adds a resource to the registry
+	Add(model.Resource) error
+	// Update updates a resource in the registry
+	Update(model.Resource) error
+	// Delete deletes a resource from the registry
+	Delete(model.Resource) error
 }
 
-type TriggerInsightsComputationEvent struct {
-	TenantID string
-}
-
-var ListenerStoppedErr = errors.New("listener closed")
-
-type Listener interface {
-	Recv() <-chan Event
-	Close()
-}
-
-func NewNeverListener() Listener {
-	return &neverRecvListener{}
-}
-
-type neverRecvListener struct{}
-
-func (*neverRecvListener) Recv() <-chan Event {
-	return nil
-}
-
-func (*neverRecvListener) Close() {
-}
-
-type Predicate = func(event Event) bool
-
-type Emitter interface {
-	Send(Event)
-}
-
-type ListenerFactory interface {
-	Subscribe(...Predicate) Listener
-}
-
-type EventBus interface {
-	Emitter
-	ListenerFactory
+// ResourceDiscovery is the component which discovers the rpc services and save them into store.ResourceStore
+type ResourceDiscovery interface {
+	Operations
 }

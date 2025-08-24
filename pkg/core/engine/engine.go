@@ -17,26 +17,5 @@
 
 package engine
 
-import "github.com/apache/dubbo-admin/pkg/config"
-
-type Type string
-
-const (
-	VM         Type = "vm"
-	Kubernetes Type = "kubernetes"
-)
-
-type Config struct {
-	config.BaseConfig
-	Name       string            `json:"name"`
-	Type       Type              `json:"type"`
-	Properties map[string]string `json:"properties"`
-}
-
-func DefaultResourceEngineConfig() *Config {
-	return &Config{
-		Name:       "default",
-		Type:       VM,
-		Properties: map[string]string{},
-	}
-}
+// ResourceEngine is the component which list and watch the runtime infrastructure of resources, like kubernetes, docker etc.
+type ResourceEngine interface{}

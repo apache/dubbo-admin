@@ -15,28 +15,14 @@
  * limitations under the License.
  */
 
-package engine
+package controller
 
-import "github.com/apache/dubbo-admin/pkg/config"
-
-type Type string
-
-const (
-	VM         Type = "vm"
-	Kubernetes Type = "kubernetes"
+import (
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"k8s.io/client-go/tools/cache"
 )
 
-type Config struct {
-	config.BaseConfig
-	Name       string            `json:"name"`
-	Type       Type              `json:"type"`
-	Properties map[string]string `json:"properties"`
-}
-
-func DefaultResourceEngineConfig() *Config {
-	return &Config{
-		Name:       "default",
-		Type:       VM,
-		Properties: map[string]string{},
-	}
+type ResourceListerWatcher interface {
+	ResourceKind() coremodel.ResourceKind
+	cache.ListerWatcher
 }

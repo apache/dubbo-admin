@@ -35,6 +35,7 @@ func RegisterComponent(component Component) {
 
 type Registry interface {
 	Get(typ ComponentType) (Component, error)
+	EventBus() (Component, error)
 	Console() (Component, error)
 	ResourceStore() (Component, error)
 	ResourceManager() (Component, error)
@@ -61,6 +62,10 @@ var _ MutableRegistry = &componentRegistry{}
 
 type componentRegistry struct {
 	directory map[ComponentType]Component
+}
+
+func (r *componentRegistry) EventBus() (Component, error) {
+	return r.Get(EventBus)
 }
 
 func (r *componentRegistry) Console() (Component, error) {

@@ -21,10 +21,11 @@
 package v1alpha1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	systemproto "github.com/apache/dubbo-admin/api/system/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"google.golang.org/protobuf/proto"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
 
 // +kubebuilder:object:root=true
@@ -33,7 +34,7 @@ import (
 const DataSourceKind coremodel.ResourceKind = "DataSource"
 
 func init() {
-	coremodel.RegisterResourceKind(DataSourceKind)
+	coremodel.RegisterResourceSchema(DataSourceKind, NewDataSourceResource)
 }
 
 type DataSourceResource struct {
@@ -83,17 +84,45 @@ func (r *DataSourceResource) ResourceMeta() metav1.ObjectMeta {
 func (r *DataSourceResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
+func (r *DataSourceResource) DeepCopyObject() k8sruntime.Object {
+	if r == nil {
+		return nil
+	}
 
-func NewDataSourceResource(name string, mesh string, apiVersion string) *DataSourceResource {
+	out := &DataSourceResource{
+		TypeMeta: r.TypeMeta,
+		Mesh:     r.Mesh,
+		Status:   r.Status,
+	}
+
+	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+
+	if r.Spec != nil {
+		out.Spec = proto.Clone(r.Spec).(*systemproto.DataSource)
+	}
+
+	return out
+}
+
+func NewDataSourceResourceWithAttributes(name string, mesh string) *DataSourceResource {
 	return &DataSourceResource{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(DataSourceKind),
-			APIVersion: apiVersion,
+			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+	}
+}
+
+func NewDataSourceResource() coremodel.Resource {
+	return &DataSourceResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(DataSourceKind),
+			APIVersion: "v1alpha1",
+		},
 	}
 }

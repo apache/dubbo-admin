@@ -25,6 +25,7 @@ const (
 	ResourceStore     ComponentType = "resource store"
 	ResourceEngine    ComponentType = "resource engine"
 	ResourceDiscovery ComponentType = "resource discovery"
+	EventBus          ComponentType = "event bus"
 )
 
 var CoreComponentTypes = []ComponentType{Console, ResourceManager, ResourceStore, ResourceEngine, ResourceDiscovery}

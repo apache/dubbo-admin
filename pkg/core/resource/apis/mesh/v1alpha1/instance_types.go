@@ -21,10 +21,11 @@
 package v1alpha1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"google.golang.org/protobuf/proto"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
 
 // +kubebuilder:object:root=true
@@ -33,7 +34,7 @@ import (
 const InstanceKind coremodel.ResourceKind = "Instance"
 
 func init() {
-	coremodel.RegisterResourceKind(InstanceKind)
+	coremodel.RegisterResourceSchema(InstanceKind, NewInstanceResource)
 }
 
 type InstanceResource struct {
@@ -83,17 +84,45 @@ func (r *InstanceResource) ResourceMeta() metav1.ObjectMeta {
 func (r *InstanceResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
+func (r *InstanceResource) DeepCopyObject() k8sruntime.Object {
+	if r == nil {
+		return nil
+	}
 
-func NewInstanceResource(name string, mesh string, apiVersion string) *InstanceResource {
+	out := &InstanceResource{
+		TypeMeta: r.TypeMeta,
+		Mesh:     r.Mesh,
+		Status:   r.Status,
+	}
+
+	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+
+	if r.Spec != nil {
+		out.Spec = proto.Clone(r.Spec).(*meshproto.Instance)
+	}
+
+	return out
+}
+
+func NewInstanceResourceWithAttributes(name string, mesh string, apiVersion string) *InstanceResource {
 	return &InstanceResource{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(InstanceKind),
-			APIVersion: apiVersion,
+			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+	}
+}
+
+func NewInstanceResource() coremodel.Resource {
+	return &InstanceResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(InstanceKind),
+			APIVersion: "v1alpha1",
+		},
 	}
 }

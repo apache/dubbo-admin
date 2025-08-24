@@ -15,16 +15,16 @@
  * limitations under the License.
  */
 
-package store
+package engine
 
 import (
 	"fmt"
 
-	"github.com/apache/dubbo-admin/pkg/config/store"
-	"github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"github.com/apache/dubbo-admin/pkg/config/engine"
+	"github.com/apache/dubbo-admin/pkg/core/controller"
 )
 
-var factoryRegistry = newStoreFactoryRegistry()
+var factoryRegistry = newListWatchFactoryRegistry()
 
 func RegisterFactory(f Factory) {
 	factoryRegistry.Register(f)
@@ -34,47 +34,47 @@ func FactoryRegistry() Registry {
 	return factoryRegistry
 }
 
-// Factory is the interface for create a specific type of ManagedResourceStore
+// Factory defines if a specific engine type is supported and how to create ListWatchers
 type Factory interface {
-	// Support returns true if the factory supports the given type in config
-	Support(store.Type) bool
-	// New returns a new ManagedResourceStore for the model.ResourceKind using the given config
-	New(model.ResourceKind, *store.Config) (ManagedResourceStore, error)
+	Support(engine.Type) bool
+	NewListWatchers(*engine.Config) ([]controller.ResourceListerWatcher, error)
 }
 
 type Registry interface {
-	GetStoreFactory(store.Type) (Factory, error)
+	GetListWatcherFactory(engine.Type) (Factory, error)
 }
 
 type RegistryMutator interface {
-	// Register registers a new factory
+	// Register a new engine factory
 	Register(Factory)
 }
+
 type MutableRegistry interface {
 	Registry
 	RegistryMutator
 }
 
-var _ MutableRegistry = &storeFactoryRegistry{}
+var _ MutableRegistry = &listWatchFactoryRegistry{}
 
-type storeFactoryRegistry struct {
+type listWatchFactoryRegistry struct {
 	factories []Factory
 }
 
-func newStoreFactoryRegistry() MutableRegistry {
-	return &storeFactoryRegistry{
+func newListWatchFactoryRegistry() MutableRegistry {
+	return &listWatchFactoryRegistry{
 		factories: make([]Factory, 0),
 	}
 }
-func (s *storeFactoryRegistry) GetStoreFactory(t store.Type) (Factory, error) {
-	for _, factory := range s.factories {
+
+func (e *listWatchFactoryRegistry) Register(factory Factory) {
+	e.factories = append(e.factories, factory)
+}
+
+func (e *listWatchFactoryRegistry) GetListWatcherFactory(t engine.Type) (Factory, error) {
+	for _, factory := range e.factories {
 		if factory.Support(t) {
 			return factory, nil
 		}
 	}
-	return nil, fmt.Errorf("store type %s not supported", t)
-}
-
-func (s *storeFactoryRegistry) Register(factory Factory) {
-	s.factories = append(s.factories, factory)
+	return nil, fmt.Errorf("engine type %s not supported", t)
 }

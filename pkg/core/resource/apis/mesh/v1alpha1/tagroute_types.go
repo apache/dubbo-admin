@@ -21,10 +21,11 @@
 package v1alpha1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"google.golang.org/protobuf/proto"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
 
 // +kubebuilder:object:root=true
@@ -33,7 +34,7 @@ import (
 const TagRouteKind coremodel.ResourceKind = "TagRoute"
 
 func init() {
-	coremodel.RegisterResourceKind(TagRouteKind)
+	coremodel.RegisterResourceSchema(TagRouteKind, NewTagRouteResource)
 }
 
 type TagRouteResource struct {
@@ -83,17 +84,45 @@ func (r *TagRouteResource) ResourceMeta() metav1.ObjectMeta {
 func (r *TagRouteResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
+func (r *TagRouteResource) DeepCopyObject() k8sruntime.Object {
+	if r == nil {
+		return nil
+	}
 
-func NewTagRouteResource(name string, mesh string, apiVersion string) *TagRouteResource {
+	out := &TagRouteResource{
+		TypeMeta: r.TypeMeta,
+		Mesh:     r.Mesh,
+		Status:   r.Status,
+	}
+
+	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+
+	if r.Spec != nil {
+		out.Spec = proto.Clone(r.Spec).(*meshproto.TagRoute)
+	}
+
+	return out
+}
+
+func NewTagRouteResourceWithAttributes(name string, mesh string, apiVersion string) *TagRouteResource {
 	return &TagRouteResource{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(TagRouteKind),
-			APIVersion: apiVersion,
+			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+	}
+}
+
+func NewTagRouteResource() coremodel.Resource {
+	return &TagRouteResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(TagRouteKind),
+			APIVersion: "v1alpha1",
+		},
 	}
 }

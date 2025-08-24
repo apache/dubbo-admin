@@ -1,3 +1,20 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package main
 
 import (
@@ -49,10 +66,11 @@ var resourceTemplate = template.Must(template.New("dubbo-resource").Parse(`
 package v1alpha1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	{{ $pkg }} "github.com/apache/dubbo-admin/api/{{ .Package }}/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"google.golang.org/protobuf/proto"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
 
 {{range .Resources}}
@@ -70,7 +88,7 @@ import (
 const {{.ResourceType}}Kind coremodel.ResourceKind = "{{.ResourceType}}"
 
 func init() {
-	coremodel.RegisterResourceKind({{.ResourceType}}Kind)
+	coremodel.RegisterResourceSchema({{.ResourceType}}Kind, New{{.ResourceType}}Resource)
 }
 
 type {{.ResourceType}}Resource struct {
@@ -131,12 +149,31 @@ func (r *{{.ResourceType}}Resource) ResourceMeta() metav1.ObjectMeta {
 func (r *{{.ResourceType}}Resource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
+func (r *{{.ResourceType}}Resource) DeepCopyObject() k8sruntime.Object {
+	if r == nil {
+		return nil
+	}
 
-func New{{.ResourceType}}Resource(name string, mesh string, apiVersion string) *{{.ResourceType}}Resource{
+	out := &{{.ResourceType}}Resource{
+		TypeMeta: r.TypeMeta,
+		Mesh:     r.Mesh,
+		Status:   r.Status,
+	}
+
+	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+
+	if r.Spec != nil {
+		out.Spec = proto.Clone(r.Spec).(*{{ $pkg }}.{{.ResourceType}})
+	}
+
+	return out
+}
+
+func New{{.ResourceType}}ResourceWithAttributes(name string, mesh string) *{{.ResourceType}}Resource{
 	return &{{.ResourceType}}Resource{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string({{.ResourceType}}Kind),
-			APIVersion: apiVersion,
+			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
@@ -145,6 +182,16 @@ func New{{.ResourceType}}Resource(name string, mesh string, apiVersion string) *
 		Mesh: mesh,
 	}
 }
+
+func New{{.ResourceType}}Resource() coremodel.Resource {
+	return &{{.ResourceType}}Resource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string({{.ResourceType}}Kind),
+			APIVersion: "v1alpha1",
+		},
+	}
+}
+
 
 {{- end }} {{/* Resources */}}
 `))
