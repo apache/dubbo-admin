@@ -29,6 +29,10 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/store"
 )
 
+func init() {
+	runtime.RegisterComponent(newDiscoveryComponent())
+}
+
 type Component interface {
 	runtime.Component
 	ResourceDiscovery
@@ -40,6 +44,12 @@ type Informers []controller.Informer
 
 type discoveryComponent struct {
 	discoveryInformers map[string]Informers
+}
+
+func newDiscoveryComponent() Component {
+	return &discoveryComponent{
+		discoveryInformers: make(map[string]Informers),
+	}
 }
 
 func (d *discoveryComponent) Type() runtime.ComponentType {

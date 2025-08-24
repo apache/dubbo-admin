@@ -29,7 +29,7 @@ import (
 )
 
 func init() {
-	runtime.RegisterComponent(&engineComponent{})
+	runtime.RegisterComponent(newEngineComponent())
 }
 
 type Component interface {
@@ -44,6 +44,11 @@ type engineComponent struct {
 	informers []controller.Informer
 }
 
+func newEngineComponent() Component {
+	return &engineComponent{
+		informers: make([]controller.Informer, 0),
+	}
+}
 func (b *engineComponent) Type() runtime.ComponentType {
 	return runtime.ResourceEngine
 }
