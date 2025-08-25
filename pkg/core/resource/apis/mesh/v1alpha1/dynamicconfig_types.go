@@ -22,6 +22,7 @@ package v1alpha1
 
 import (
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -98,13 +99,18 @@ func (r *DynamicConfigResource) DeepCopyObject() k8sruntime.Object {
 	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 
 	if r.Spec != nil {
-		out.Spec = proto.Clone(r.Spec).(*meshproto.DynamicConfig)
+		spec, ok := proto.Clone(r.Spec).(*meshproto.DynamicConfig)
+		if !ok {
+			logger.Warnf("failed to clone spec %v, spec is not conformed to %s", r.Spec, r.ResourceKind())
+			return out
+		}
+		out.Spec = spec
 	}
 
 	return out
 }
 
-func NewDynamicConfigResourceWithAttributes(name string, mesh string, apiVersion string) *DynamicConfigResource {
+func NewDynamicConfigResourceWithAttributes(name string, mesh string) *DynamicConfigResource {
 	return &DynamicConfigResource{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(DynamicConfigKind),

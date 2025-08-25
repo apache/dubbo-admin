@@ -18,6 +18,7 @@
 package engine
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/apache/dubbo-admin/pkg/core/controller"
@@ -72,12 +73,18 @@ func (b *engineComponent) Init(ctx runtime.BuilderContext) error {
 		if err != nil {
 			return err
 		}
-		emitter := eventBusComponent.(events.Emitter)
+		emitter, ok := eventBusComponent.(events.Emitter)
+		if !ok {
+			return fmt.Errorf("type assertion failed, event bus component in runtime is not an Emitter")
+		}
 		storeComponent, err := ctx.GetActivatedComponent(runtime.ResourceStore)
 		if err != nil {
 			return err
 		}
-		resourceStore := storeComponent.(store.ResourceStore)
+		resourceStore, ok := storeComponent.(store.ResourceStore)
+		if !ok {
+			return fmt.Errorf("type assertion failed, resource store component in runtime is not a ResourceStore")
+		}
 		rk := lw.ResourceKind()
 		newFunc, err := coremodel.ResourceSchemaRegistry().NewResourceFunc(rk)
 		if err != nil {

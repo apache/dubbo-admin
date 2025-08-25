@@ -67,6 +67,7 @@ package v1alpha1
 
 import (
 	{{ $pkg }} "github.com/apache/dubbo-admin/api/{{ .Package }}/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -163,7 +164,12 @@ func (r *{{.ResourceType}}Resource) DeepCopyObject() k8sruntime.Object {
 	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 
 	if r.Spec != nil {
-		out.Spec = proto.Clone(r.Spec).(*{{ $pkg }}.{{.ResourceType}})
+		spec, ok := proto.Clone(r.Spec).(*{{ $pkg }}.{{.ResourceType}})
+		if !ok {
+			logger.Warnf("failed to clone spec %v, spec is not conformed to %s", r.Spec, r.ResourceKind())
+			return out
+		}
+		out.Spec = spec
 	}
 
 	return out

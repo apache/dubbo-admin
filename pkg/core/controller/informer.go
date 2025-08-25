@@ -127,6 +127,11 @@ func (s *informer) SetTransform(handler cache.TransformFunc) error {
 
 func (s *informer) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
+	defer func() {
+		s.startedLock.Lock()
+		defer s.startedLock.Unlock()
+		s.stopped = true // Don't want any new listeners
+	}()
 
 	if s.HasStarted() {
 		klog.Warningf("The informer has started, run more than once is not allowed")
@@ -158,11 +163,6 @@ func (s *informer) Run(stopCh <-chan struct{}) {
 		s.started = true
 	}()
 
-	defer func() {
-		s.startedLock.Lock()
-		defer s.startedLock.Unlock()
-		s.stopped = true // Don't want any new listeners
-	}()
 	s.controller.Run(stopCh)
 }
 
@@ -192,6 +192,7 @@ func (s *informer) HandleDeltas(obj interface{}, _ bool) error {
 		resource, ok := obj.(model.Resource)
 		if !ok {
 			logger.Errorf("object from ListWatcher is not conformed to Resource, obj: %v", obj)
+			return errors.New("object from ListWatcher is not conformed to Resource")
 		}
 		switch d.Type {
 		case cache.Sync, cache.Replaced, cache.Added, cache.Updated:
