@@ -2,7 +2,8 @@ package manager
 
 import (
 	"context"
-	"dubbo-admin-ai/config"
+
+	"dubbo-admin-ai/internal/config"
 	"dubbo-admin-ai/plugins/siliconflow"
 	"dubbo-admin-ai/utils"
 	"fmt"

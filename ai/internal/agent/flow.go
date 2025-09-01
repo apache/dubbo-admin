@@ -2,7 +2,8 @@ package agent
 
 import (
 	"context"
-	"dubbo-admin-ai/config"
+
+	"dubbo-admin-ai/internal/config"
 	"dubbo-admin-ai/internal/manager"
 	"dubbo-admin-ai/internal/schema"
 	"dubbo-admin-ai/internal/tools"
