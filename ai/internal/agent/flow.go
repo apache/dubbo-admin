@@ -31,12 +31,15 @@ var (
 var g *genkit.Genkit
 
 // The order of initialization cannot change
-func InitAgent() (err error) {
+func InitAgent(defaultModel string) (err error) {
 	if err = manager.LoadEnvVars(); err != nil {
 		return err
 	}
 
 	manager.InitLogger()
+	if err := manager.InitGlobalGenkit(defaultModel); err != nil {
+		return err
+	}
 
 	if g, err = manager.GetGlobalGenkit(); err != nil {
 		return err

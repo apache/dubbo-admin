@@ -4,10 +4,11 @@ import (
 	"context"
 
 	"dubbo-admin-ai/internal/config"
+
+	"dubbo-admin-ai/plugins/dashscope"
 	"dubbo-admin-ai/plugins/siliconflow"
 	"dubbo-admin-ai/utils"
 	"fmt"
-	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -39,6 +40,9 @@ func InitGlobalGenkit(defaultModel string) (err error) {
 			},
 			&googlegenai.GoogleAI{
 				APIKey: config.GEMINI_API_KEY,
+			},
+			&dashscope.DashScope{
+				APIKey: config.DASHSCOPE_API_KEY,
 			},
 		),
 		genkit.WithDefaultModel(defaultModel),
@@ -84,10 +88,7 @@ func InitLogger() {
 func GetGlobalGenkit() (*genkit.Genkit, error) {
 	var err error
 	if globalGenkit == nil {
-		err = InitGlobalGenkit(config.DEFAULT_MODEL)
-		if err != nil {
-			log.Fatalf("Failed to initialize global genkit: %v", err)
-		}
+		return nil, fmt.Errorf("global genkit is nil, initialize genkit first")
 	}
 	return globalGenkit, err
 }

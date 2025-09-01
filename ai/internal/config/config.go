@@ -11,6 +11,7 @@ var (
 	// API keys
 	GEMINI_API_KEY      string = os.Getenv("GEMINI_API_KEY")
 	SILICONFLOW_API_KEY string = os.Getenv("SILICONFLOW_API_KEY")
+	DASHSCOPE_API_KEY   string = os.Getenv("DASHSCOPE_API_KEY")
 
 	// Configuration
 	// 自动获取项目根目录
