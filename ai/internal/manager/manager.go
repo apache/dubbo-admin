@@ -111,7 +111,7 @@ func LoadEnvVars() (err error) {
 	dotEnvFilePath := filepath.Join(config.PROJECT_ROOT, ".env")
 	dotEnvExampleFilePath := filepath.Join(config.PROJECT_ROOT, ".env.example")
 
-	// Check if the .env file exists，if not, copy .env.example to .env
+	// Check if the .env file exists, if not, copy .env.example to .env
 	if _, err = os.Stat(dotEnvFilePath); os.IsNotExist(err) {
 		if err = utils.CopyFile(dotEnvExampleFilePath, dotEnvFilePath); err != nil {
 			return err

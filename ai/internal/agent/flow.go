@@ -94,7 +94,7 @@ func reAct(ctx context.Context, reActInput schema.ReActIn) (reActOut schema.ReAc
 
 	thinkingInput := reActInput
 	// 主协调循环 (Reconciliation Loop)
-	for range config.MAX_REACT_ITERATIONS {
+	for i := 0; i < config.MAX_REACT_ITERATIONS; i++ {
 
 		// a. 调用 thinkingFlow
 		thinkingResp, err := ThinkingFlow.Run(ctx, thinkingInput)
