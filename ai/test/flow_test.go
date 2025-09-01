@@ -3,19 +3,12 @@ package test
 import (
 	"context"
 	"dubbo-admin-ai/internal/agent"
-	"dubbo-admin-ai/internal/manager"
 	"dubbo-admin-ai/internal/schema"
 	"encoding/json"
 	"fmt"
 	"testing"
 )
 
-func init() {
-	err := manager.InitAgent()
-	if err != nil {
-		panic(err)
-	}
-}
 func TestThinking(t *testing.T) {
 	ctx := context.Background()
 	agentInput := schema.ReActInput{

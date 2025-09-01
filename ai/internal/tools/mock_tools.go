@@ -45,7 +45,7 @@ func prometheusQueryServiceLatency(ctx *ai.ToolContext, input PrometheusServiceL
 		ToolName:    "prometheus_query_service_latency",
 		Quantile:    input.Quantile,
 		ValueMillis: valueMillis,
-		// Summary:     fmt.Sprintf("服务 %s 在过去%d分钟内的 P%.0f 延迟为 %dms", input.ServiceName, input.TimeRangeMinutes, input.Quantile*100, valueMillis),
+		Summary:     fmt.Sprintf("服务 %s 在过去%d分钟内的 P%.0f 延迟为 %dms", input.ServiceName, input.TimeRangeMinutes, input.Quantile*100, valueMillis),
 	}, nil
 }
 
@@ -76,7 +76,7 @@ func prometheusQueryServiceTraffic(ctx *ai.ToolContext, input PrometheusServiceT
 		ToolName:            "prometheus_query_service_traffic",
 		RequestRateQPS:      250.0,
 		ErrorRatePercentage: 5.2,
-		// Summary:             fmt.Sprintf("服务 %s 的 QPS 为 250, 错误率为 5.2%%", input.ServiceName),
+		Summary:             fmt.Sprintf("服务 %s 的 QPS 为 250, 错误率为 5.2%%", input.ServiceName),
 	}, nil
 }
 
@@ -129,7 +129,7 @@ func queryTimeseriesDatabase(ctx *ai.ToolContext, input QueryTimeseriesDatabaseI
 				Value:  TimeseriesValue{Timestamp: 1692192000, Value: "3.2"},
 			},
 		},
-		// Summary: "查询返回了 2 个时间序列",
+		Summary: "查询返回了 2 个时间序列",
 	}, nil
 }
 
@@ -177,7 +177,7 @@ func applicationPerformanceProfiling(ctx *ai.ToolContext, input ApplicationPerfo
 				},
 			},
 		},
-		// Summary: "性能分析显示，45.5%的CPU时间消耗在数据库查询调用链上",
+		Summary: "性能分析显示，45.5%的CPU时间消耗在数据库查询调用链上",
 	}, nil
 }
 
@@ -210,7 +210,7 @@ func jvmPerformanceAnalysis(ctx *ai.ToolContext, input JVMPerformanceAnalysisInp
 		FullGcCountLastHour: 15,
 		FullGcTimeAvgMillis: 1200,
 		HeapUsagePercentage: 85.5,
-		// Summary:             "GC activity is high, average Full GC time is 1200ms",
+		Summary:             "GC activity is high, average Full GC time is 1200ms",
 	}, nil
 }
 
@@ -286,7 +286,7 @@ func traceLatencyAnalysis(ctx *ai.ToolContext, input TraceLatencyAnalysisInput) 
 				ContributionPercentage: 4.7,
 			},
 		},
-		// Summary: "平均总延迟为 3200ms。瓶颈已定位，95.3% 的延迟来自对下游 'mysql-orders-db' 的调用",
+		Summary: "平均总延迟为 3200ms。瓶颈已定位，95.3% 的延迟来自对下游 'mysql-orders-db' 的调用",
 	}, nil
 }
 
@@ -320,7 +320,7 @@ func databaseConnectionPoolAnalysis(ctx *ai.ToolContext, input DatabaseConnectio
 		ActiveConnections: 100,
 		IdleConnections:   0,
 		PendingRequests:   58,
-		// Summary:           "数据库连接池已完全耗尽 (100/100)，当前有 58 个请求正在排队等待连接",
+		Summary:           "数据库连接池已完全耗尽 (100/100)，当前有 58 个请求正在排队等待连接",
 	}, nil
 }
 
@@ -378,7 +378,7 @@ func kubernetesGetPodResources(ctx *ai.ToolContext, input KubernetesGetPodResour
 				MemoryLimitMi:   2048,
 			},
 		},
-		// Summary: "2 out of 2 pods are near their memory limits",
+		Summary: "2 out of 2 pods are near their memory limits",
 	}, nil
 }
 
@@ -473,7 +473,7 @@ func queryLogDatabase(ctx *ai.ToolContext, input QueryLogDatabaseInput) (QueryLo
 				Message:   "Timeout waiting for idle object in database connection pool.",
 			},
 		},
-		// Summary: fmt.Sprintf("在过去%d分钟内，发现 152 条关于 '%s' 的日志条目", input.TimeRangeMinutes, input.Keyword),
+		Summary: fmt.Sprintf("在过去%d分钟内，发现 152 条关于 '%s' 的日志条目", input.TimeRangeMinutes, input.Keyword),
 	}, nil
 }
 
@@ -521,7 +521,7 @@ func searchArchivedLogs(ctx *ai.ToolContext, input SearchArchivedLogsInput) (Sea
 				LineContent: "Query_time: 28.1s | SELECT COUNT(id), SUM(price) FROM orders WHERE user_id = 'VIP_USER_456';",
 			},
 		},
-		// Summary: "在归档的日志文件中，发现了多条查询，搜索了 5 个文件，找到了 2 条匹配行",
+		Summary: "在归档的日志文件中，发现了多条查询，搜索了 5 个文件，找到了 2 条匹配行",
 	}, nil
 }
 
