@@ -15,7 +15,7 @@ var (
 	// Configuration
 	// 自动获取项目根目录
 	_, b, _, _   = runtime.Caller(0)
-	PROJECT_ROOT = filepath.Join(filepath.Dir(b), "..")
+	PROJECT_ROOT = filepath.Join(filepath.Dir(b), "..", "..")
 
 	PROMPT_DIR_PATH      string = filepath.Join(PROJECT_ROOT, "prompts")
 	LOG_LEVEL            string = os.Getenv("LOG_LEVEL")
