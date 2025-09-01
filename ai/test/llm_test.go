@@ -16,10 +16,6 @@ type WeatherInput struct {
 	Location string `json:"location" jsonschema_description:"Location to get weather for"`
 }
 
-func init() {
-	manager.InitAgent()
-}
-
 func defineWeatherFlow(g *genkit.Genkit) *core.Flow[WeatherInput, string, struct{}] {
 	getWeatherTool := genkit.DefineTool(g, "getWeather", "Gets the current weather in a given location",
 		func(ctx *ai.ToolContext, input WeatherInput) (string, error) {

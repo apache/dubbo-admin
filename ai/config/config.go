@@ -17,7 +17,8 @@ var (
 	_, b, _, _   = runtime.Caller(0)
 	PROJECT_ROOT = filepath.Join(filepath.Dir(b), "..")
 
-	PROMPT_DIR_PATH string = filepath.Join(PROJECT_ROOT, "prompts")
-	LOG_LEVEL       string = os.Getenv("LOG_LEVEL")
-	DEFAULT_MODEL   string = siliconflow.Qwen3Coder
+	PROMPT_DIR_PATH      string = filepath.Join(PROJECT_ROOT, "prompts")
+	LOG_LEVEL            string = os.Getenv("LOG_LEVEL")
+	DEFAULT_MODEL        string = siliconflow.DeepSeekV3
+	MAX_REACT_ITERATIONS int    = 5
 )

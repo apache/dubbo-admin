@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"dubbo-admin-ai/config"
+	"dubbo-admin-ai/internal/manager"
 	"dubbo-admin-ai/internal/schema"
 	"dubbo-admin-ai/internal/tools"
 	"errors"
@@ -28,6 +29,27 @@ var (
 
 var g *genkit.Genkit
 
+// The order of initialization cannot change
+func InitAgent() (err error) {
+	if err = manager.LoadEnvVars(); err != nil {
+		return err
+	}
+
+	manager.InitLogger()
+
+	if g, err = manager.GetGlobalGenkit(); err != nil {
+		return err
+	}
+
+	tools.RegisterAllMockTools(g)
+
+	if err = InitFlows(g); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func InitFlows(registry *genkit.Genkit) error {
 	if registry == nil {
 		return fmt.Errorf("registry is nil")
@@ -50,7 +72,6 @@ func InitFlows(registry *genkit.Genkit) error {
 		ai.WithOutputType(schema.ThinkOut{}),
 		ai.WithPrompt("{{userInput}}"),
 		ai.WithTools(mockTools...),
-		ai.WithToolChoice(ai.ToolChoiceNone),
 	)
 
 	if err != nil {
@@ -73,21 +94,21 @@ func reAct(ctx context.Context, reActInput schema.ReActIn) (reActOut schema.ReAc
 
 	thinkingInput := reActInput
 	// 主协调循环 (Reconciliation Loop)
-	for range 5 { // 设置最大循环次数
+	for range config.MAX_REACT_ITERATIONS {
 
 		// a. 调用 thinkingFlow
 		thinkingResp, err := ThinkingFlow.Run(ctx, thinkingInput)
 		if err != nil {
-			logger.FromContext(ctx).Error("failed to run thinking flow", "error", err)
+			manager.GetLogger().Error("failed to run thinking flow", "error", err)
 			return "", err
 		}
 		if thinkingResp == nil {
-			logger.FromContext(ctx).Error("expected non-nil response")
+			manager.GetLogger().Error("expected non-nil response")
 			return "", errors.New("expected non-nil response")
 		}
 
 		for _, r := range thinkingResp.ToolRequests {
-			logger.FromContext(ctx).Info(r.String())
+			manager.GetLogger().Info(r.String())
 		}
 
 		reActOut = thinkingResp.String()

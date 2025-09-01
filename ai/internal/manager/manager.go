@@ -3,8 +3,6 @@ package manager
 import (
 	"context"
 	"dubbo-admin-ai/config"
-	"dubbo-admin-ai/internal/agent"
-	"dubbo-admin-ai/internal/tools"
 	"dubbo-admin-ai/plugins/siliconflow"
 	"dubbo-admin-ai/utils"
 	"fmt"
@@ -28,7 +26,7 @@ var (
 	globalLogger *slog.Logger
 )
 
-func initGlobalGenkit(defaultModel string) (err error) {
+func InitGlobalGenkit(defaultModel string) (err error) {
 	ctx := context.Background()
 	if rootContext == nil {
 		rootContext = &ctx
@@ -54,7 +52,7 @@ func initGlobalGenkit(defaultModel string) (err error) {
 	return err
 }
 
-func initLogger() {
+func InitLogger() {
 	logLevel := slog.LevelInfo
 	if envLevel := config.LOG_LEVEL; envLevel != "" {
 		switch strings.ToUpper(envLevel) {
@@ -85,7 +83,7 @@ func initLogger() {
 func GetGlobalGenkit() (*genkit.Genkit, error) {
 	var err error
 	if globalGenkit == nil {
-		err = initGlobalGenkit(config.DEFAULT_MODEL)
+		err = InitGlobalGenkit(config.DEFAULT_MODEL)
 		if err != nil {
 			log.Fatalf("Failed to initialize global genkit: %v", err)
 		}
@@ -95,7 +93,7 @@ func GetGlobalGenkit() (*genkit.Genkit, error) {
 
 func GetLogger() *slog.Logger {
 	if globalLogger == nil {
-		initLogger()
+		InitLogger()
 	}
 	return globalLogger
 }
@@ -123,25 +121,4 @@ func LoadEnvVars() (err error) {
 	// Load environment variables
 	err = godotenv.Load(dotEnvFilePath)
 	return err
-}
-
-// The order of initialization cannot change
-func InitAgent() (err error) {
-	if err = LoadEnvVars(); err != nil {
-		return err
-	}
-
-	initLogger()
-
-	if err := initGlobalGenkit(config.DEFAULT_MODEL); err != nil {
-		return err
-	}
-
-	tools.RegisterAllMockTools(globalGenkit)
-
-	if err = agent.InitFlows(globalGenkit); err != nil {
-		return err
-	}
-
-	return nil
 }

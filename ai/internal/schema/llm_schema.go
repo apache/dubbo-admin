@@ -83,7 +83,7 @@ func (tr ToolRequest) ValidateToolDesc() error {
 func (tr ToolRequest) String() string {
 	data, err := json.MarshalIndent(tr, "", "  ")
 	if err != nil {
-		return fmt.Sprintf("ThinkAggregation{error: %v}", err)
+		return fmt.Sprintf("ToolRequest{error: %v}", err)
 	}
 	return string(data)
 }
