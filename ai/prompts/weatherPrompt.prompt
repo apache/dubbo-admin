@@ -1,0 +1,12 @@
+---
+system: "Answer questions using the tools you have."
+tools: [getWeather]
+input:
+  schema:
+    location: string
+output:
+  schema:
+    type: string
+---
+
+What is the weather in {{location}}?
