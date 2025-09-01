@@ -146,7 +146,7 @@ func thinking(ctx context.Context, input schema.ThinkIn) (*schema.ThinkOut, erro
 	}
 
 	// 解析输出
-	var response *schema.ThinkOut = nil
+	var response *schema.ThinkOut
 	err = resp.Output(&response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse agentThink prompt response: %w", err)
