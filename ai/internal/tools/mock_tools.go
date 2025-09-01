@@ -567,7 +567,7 @@ func queryKnowledgeBase(ctx *ai.ToolContext, input QueryKnowledgeBaseInput) (Que
 // Tool Registration Function
 // ================================================
 
-var registeredTools []ai.Tool = nil
+var registeredTools []ai.Tool
 
 // RegisterAllMockTools registers all mock diagnostic tools with the genkit instance
 func RegisterAllMockTools(g *genkit.Genkit) {
