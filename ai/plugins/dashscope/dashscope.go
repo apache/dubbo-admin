@@ -2,6 +2,7 @@ package dashscope
 
 import (
 	"context"
+	"dubbo-admin-ai/plugins/models"
 	"fmt"
 	"os"
 
@@ -21,41 +22,21 @@ const (
 	qwen_plus       = "qwen-plus"
 	qwen_flash      = "qwen-flash"
 	qwen3_coder     = "qwen3-coder-plus"
-
-	Qwen3       = provider + "/" + qwen3_235b_a22b
-	Qwen_plus   = provider + "/" + qwen_plus
-	Qwen_max    = provider + "/" + qwen_max
-	Qwen3_coder = provider + "/" + qwen3_coder
-	Qwen_flash  = provider + "/" + qwen_flash
 )
 
 var (
-	supportedModels = map[string]ai.ModelInfo{
-		qwen3_235b_a22b: {
-			Label:    "qwen3-235b-a22b-instruct-2507",
-			Supports: &compat_oai.BasicText,
-			Versions: []string{"qwen3-235b-a22b-instruct-2507"},
-		},
-		qwen_plus: {
-			Label:    "qwen-plus",
-			Supports: &compat_oai.BasicText,
-			Versions: []string{"qwen-plus"},
-		},
-		qwen_max: {
-			Label:    "qwen-max",
-			Supports: &compat_oai.BasicText,
-			Versions: []string{"qwen-max"},
-		},
-		qwen3_coder: {
-			Label:    "qwen3-coder",
-			Supports: &compat_oai.BasicText,
-			Versions: []string{"qwen3-coder"},
-		},
-		qwen_flash: {
-			Label:    "qwen-flash",
-			Supports: &compat_oai.BasicText,
-			Versions: []string{"qwen-flash"},
-		},
+	Qwen3       = models.New(provider, qwen3_235b_a22b, compat_oai.BasicText)
+	Qwen_plus   = models.New(provider, qwen_plus, compat_oai.BasicText)
+	Qwen_max    = models.New(provider, qwen_max, compat_oai.BasicText)
+	Qwen3_coder = models.New(provider, qwen3_coder, compat_oai.BasicText)
+	Qwen_flash  = models.New(provider, qwen_flash, compat_oai.BasicText)
+
+	supportedModels = []models.Model{
+		Qwen3,
+		Qwen_plus,
+		Qwen_max,
+		Qwen3_coder,
+		Qwen_flash,
 	}
 
 	knownEmbedders = []string{}
@@ -107,8 +88,8 @@ func (o *DashScope) Init(ctx context.Context, g *genkit.Genkit) error {
 	}
 
 	// define default models
-	for model, info := range supportedModels {
-		if _, err := o.DefineModel(g, model, info); err != nil {
+	for _, model := range supportedModels {
+		if _, err := o.DefineModel(g, model.Key(), model.Info()); err != nil {
 			return err
 		}
 	}

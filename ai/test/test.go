@@ -6,7 +6,7 @@ import (
 )
 
 func init() {
-	if err := agent.InitAgent(dashscope.Qwen3); err != nil {
+	if err := agent.InitAgent(dashscope.Qwen3.Key()); err != nil {
 		panic(err)
 	}
 }

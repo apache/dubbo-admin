@@ -2,6 +2,7 @@ package siliconflow
 
 import (
 	"context"
+	"dubbo-admin-ai/plugins/models"
 	"fmt"
 	"os"
 
@@ -20,35 +21,19 @@ const (
 	deepseekR1 = "deepseek-ai/DeepSeek-R1"
 	qwenQwQ32B = "Qwen/QwQ-32B"
 	qwen3Coder = "Qwen/Qwen3-Coder-480B-A35B-Instruct"
-
-	DeepSeekV3 = provider + "/" + deepseekV3
-	QwenQwQ32B = provider + "/" + qwenQwQ32B
-	Qwen3Coder = provider + "/" + qwen3Coder
-	DeepSeekR1 = provider + "/" + deepseekR1
 )
 
 var (
-	supportedModels = map[string]ai.ModelInfo{
-		deepseekV3: {
-			Label:    "deepseek-ai/DeepSeek-V3",
-			Supports: &compat_oai.BasicText,
-			Versions: []string{"DeepSeek-V3-0324"},
-		},
-		qwen3Coder: {
-			Label:    "Qwen/Qwen3-Coder-480B-A35B-Instruct",
-			Supports: &compat_oai.Multimodal,
-			Versions: []string{"Qwen3-Coder-480B-A35B"},
-		},
-		qwenQwQ32B: {
-			Label:    "Qwen/QwQ-32B",
-			Supports: &compat_oai.BasicText,
-			Versions: []string{"QwQ-32B"},
-		},
-		deepseekR1: {
-			Label:    "deepseek-ai/DeepSeek-R1",
-			Supports: &compat_oai.BasicText,
-			Versions: []string{"DeepSeek-R1-0528"},
-		},
+	DeepSeekV3 = models.New(provider, deepseekV3, compat_oai.BasicText)
+	QwenQwQ32B = models.New(provider, qwenQwQ32B, compat_oai.BasicText)
+	Qwen3Coder = models.New(provider, qwen3Coder, compat_oai.Multimodal)
+	DeepSeekR1 = models.New(provider, deepseekR1, compat_oai.BasicText)
+
+	supportedModels = []models.Model{
+		DeepSeekV3,
+		QwenQwQ32B,
+		Qwen3Coder,
+		DeepSeekR1,
 	}
 
 	knownEmbedders = []string{}
@@ -100,8 +85,8 @@ func (o *SiliconFlow) Init(ctx context.Context, g *genkit.Genkit) error {
 	}
 
 	// define default models
-	for model, info := range supportedModels {
-		if _, err := o.DefineModel(g, model, info); err != nil {
+	for _, m := range supportedModels {
+		if _, err := o.DefineModel(g, m.Key(), m.Info()); err != nil {
 			return err
 		}
 	}
