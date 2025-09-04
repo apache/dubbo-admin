@@ -2,11 +2,11 @@ package main
 
 import (
 	"dubbo-admin-ai/internal/agent"
-	"dubbo-admin-ai/plugins/dashscope"
+	"dubbo-admin-ai/internal/config"
 )
 
 func main() {
-	if err := agent.InitAgent(dashscope.Qwen3); err != nil {
+	if err := agent.InitAgent(config.DEFAULT_MODEL.Key()); err != nil {
 		panic(err)
 	}
 	select {}
