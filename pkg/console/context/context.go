@@ -6,13 +6,10 @@ import (
 	"github.com/apache/dubbo-admin/pkg/config/app"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
-	"github.com/apache/dubbo-admin/pkg/core/store"
 )
 
 type Context interface {
 	ResourceManager() manager.ResourceManager
-
-	ResourceStore() store.ResourceStore
 
 	Config() app.AdminConfig
 
@@ -42,9 +39,4 @@ func (c *context) Config() app.AdminConfig {
 func (c *context) ResourceManager() manager.ResourceManager {
 	rmc, _ := c.coreRt.GetComponent(runtime.ResourceManager)
 	return rmc.(manager.ResourceManagerComponent).ResourceManager()
-}
-
-func (c *context) ResourceStore() store.ResourceStore {
-	rsc, _ := c.coreRt.GetComponent(runtime.ResourceStore)
-	return rsc.(store.BaseResourceStoreComponent).ResourceStore()
 }

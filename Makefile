@@ -16,7 +16,7 @@
 SHELL := /usr/bin/env bash
 
 .PHONY: build-dubbo-admin
-build-dubbo-cp:
+build-dubbo-admin:
 	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
 	-ldflags "-X github.com/apache/dubbo-admin/pkg/version.gitTag=$(GIT_VERSION)" \
-	-o bin/dubbo-cp app/dubbo-main/main.go && cp app/dubbo-admin/dubbo-admin.yaml bin/
+	-o bin/dubbo-admin app/dubbo-main/main.go && cp app/dubbo-admin/dubbo-admin.yaml bin/

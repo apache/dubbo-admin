@@ -28,15 +28,12 @@ import (
 	"github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/core/store"
-
-	"github.com/apache/dubbo-kubernetes/pkg/core/resources/apis/mesh"
 )
 
 func GetApplicationDetail(ctx context.Context, req *model.ApplicationDetailReq) (*model.ApplicationDetailResp, error) {
 	manager := ctx.ResourceManager()
 	instanceList := &mesh.DataplaneResourceList{}
 
-	manager.ListPageByKey()
 	if err := manager.List(ctx.AppContext(), instanceList, store.ListByApplication(req.AppName)); err != nil {
 		return nil, err
 	}

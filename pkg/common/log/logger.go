@@ -28,7 +28,6 @@ import (
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
 	kubelogzap "sigs.k8s.io/controller-runtime/pkg/log/zap"
-
 )
 
 type LogLevel int

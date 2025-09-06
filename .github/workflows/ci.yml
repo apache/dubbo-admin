@@ -18,10 +18,10 @@ name: Continues Integration
 on:
   push:
     branches:
-      - master
+      - develop
   pull_request:
     branches:
-      - master
+      - develop
 
 jobs:
   unit-test:

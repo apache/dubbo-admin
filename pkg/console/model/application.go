@@ -23,7 +23,7 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	mesh "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/console/constants"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"

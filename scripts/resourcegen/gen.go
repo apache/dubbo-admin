@@ -34,8 +34,6 @@ import (
 
 	_ "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	_ "github.com/apache/dubbo-admin/api/system/v1alpha1"
-
-	util "github.com/apache/dubbo-admin/tools/resourcegen/util"
 )
 
 // resourceTemplate for creating a Dubbo Resource.
@@ -208,7 +206,7 @@ type ProtoMessageFunc func(protoreflect.MessageType) bool
 // OnDubboResourceMessage ...
 func OnDubboResourceMessage(pkg string, f ProtoMessageFunc) ProtoMessageFunc {
 	return func(m protoreflect.MessageType) bool {
-		r := util.DubboResourceForMessage(m.Descriptor())
+		r := DubboResourceForMessage(m.Descriptor())
 		if r == nil {
 			return true
 		}
@@ -256,9 +254,9 @@ func main() {
 		return types[i].Descriptor().FullName() < types[j].Descriptor().FullName()
 	})
 
-	var resources []util.ResourceInfo
+	var resources []ResourceInfo
 	for _, t := range types {
-		resourceInfo := util.ToResourceInfo(t.Descriptor())
+		resourceInfo := ToResourceInfo(t.Descriptor())
 		resources = append(resources, resourceInfo)
 	}
 
@@ -267,10 +265,10 @@ func main() {
 		var buf bytes.Buffer
 		if err := resourceTemplate.Execute(&buf, struct {
 			Package   string
-			Resources []util.ResourceInfo
+			Resources []ResourceInfo
 		}{
 			Package:   pkg,
-			Resources: []util.ResourceInfo{resource}, // 只放一个资源
+			Resources: []ResourceInfo{resource}, // 只放一个资源
 		}); err != nil {
 			log.Fatalf("template error for %s: %s", resource.ResourceType, err)
 		}

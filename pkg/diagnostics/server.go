@@ -52,10 +52,6 @@ func (s *diagnosticsServer) Type() runtime.ComponentType {
 	return DiagnosticsServer
 }
 
-func (s *diagnosticsServer) SubType() runtime.ComponentType {
-	return runtime.DefaultComponentSubType
-}
-
 func (s *diagnosticsServer) Order() int {
 	return math.MaxInt
 }
