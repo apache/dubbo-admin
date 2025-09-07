@@ -13,10 +13,38 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-SHELL := /usr/bin/env bash
+SHELL := bash
+.DELETE_ON_ERROR:
+.DEFAULT_GOAL := help
+.SHELLFLAGS := -eu -o pipefail -c
+MAKEFLAGS += --warn-undefined-variables
+MAKEFLAGS += --no-builtin-rules
+MAKEFLAGS += --no-print-directory
 
-.PHONY: build-dubbo-admin
-build-dubbo-admin:
-	CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build \
-	-ldflags "-X github.com/apache/dubbo-admin/pkg/version.gitTag=$(GIT_VERSION)" \
-	-o bin/dubbo-admin app/dubbo-main/main.go && cp app/dubbo-admin/dubbo-admin.yaml bin/
+.PHONY: help test fmt clean lint
+
+help:
+	@echo "Available commands:"
+	@echo "  test       - Run unit tests"
+	@echo "  clean      - Clean test generate files"
+	@echo "  fmt        - Format code"
+	@echo "  lint       - Run golangci-lint"
+
+# Run unit tests
+test: clean
+	go test ./... -gcflags=-l -coverprofile=coverage.txt -covermode=atomic
+
+fmt:
+	go fmt ./...
+
+# Clean test generate files
+clean:
+	rm -rf coverage.txt
+
+# Run golangci-lint
+lint: install-golangci-lint
+	go vet ./...
+	golangci-lint run ./... --timeout=10m
+
+install-golangci-lint:
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.4.0
