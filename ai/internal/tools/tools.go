@@ -2,38 +2,62 @@ package tools
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"reflect"
 
+	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
+	"github.com/mitchellh/mapstructure"
 )
 
-// type ToolOut interface {
-// 	FromRaw(any) ToolOutput
-// 	Output() string
-// }
-
-// func (s StringOutput) Output() string {
-// 	return s.value
-// }
-
-// ToolDesc 表示要执行的工具调用信息
-type ToolDesc struct {
-	ToolName  string         `json:"tool_name"`
-	ToolInput map[string]any `json:"tool_input"`
+type ToolInput struct {
+	ToolName  string `json:"tool_name"`
+	Parameter any    `json:"parameter"`
 }
 
-func (toolDesc ToolDesc) Call(g *genkit.Genkit, ctx context.Context) (string, error) {
-	tool := genkit.LookupTool(g, toolDesc.ToolName)
+func (ti ToolInput) String() string {
+	return fmt.Sprintf("ToolInput{Input: %v}", ti.Parameter)
+}
+
+type ToolOutput struct {
+	ToolName string `json:"tool_name"`
+	Summary  string `json:"summary"`
+	Result   any    `json:"result"`
+}
+
+func (to ToolOutput) String() string {
+	return fmt.Sprintf("ToolOutput{ToolName: %s, Summary: %s, Result: %v}", to.ToolName, to.Summary, to.Result)
+}
+
+type ToolManager interface {
+	AllToolRefs()
+	AllToolNames()
+	Register(...ai.Tool)
+}
+
+type ToolMetadata struct {
+	ID          string       `json:"id"`
+	Description string       `json:"description"`
+	InputType   reflect.Type `json:"inputType"`
+	OutputType  reflect.Type `json:"outputType"`
+}
+
+func (toolInput ToolInput) Call(g *genkit.Genkit, ctx context.Context) (toolOutput ToolOutput, err error) {
+	tool := genkit.LookupTool(g, toolInput.ToolName)
 	if tool == nil {
-		return "", fmt.Errorf("tool not found: %s", toolDesc.ToolName)
+		return toolOutput, fmt.Errorf("tool not found: %s", toolInput.ToolName)
 	}
 
-	rawToolOutput, err := tool.RunRaw(ctx, toolDesc.ToolInput)
+	rawToolOutput, err := tool.RunRaw(ctx, toolInput)
+
+	if rawToolOutput == nil {
+		return toolOutput, err
+	}
+
+	mapstructure.Decode(rawToolOutput, &toolOutput)
 	if err != nil {
-		return "", fmt.Errorf("failed to call tool %s: %w", toolDesc.ToolName, err)
+		return toolOutput, fmt.Errorf("failed to call tool %s: %w", toolInput.ToolName, err)
 	}
 
-	jsonOutput, err := json.Marshal(rawToolOutput)
-	return string(jsonOutput), err
+	return toolOutput, nil
 }
