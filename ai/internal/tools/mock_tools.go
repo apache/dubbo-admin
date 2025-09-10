@@ -1,51 +1,60 @@
 package tools
 
 import (
+	"dubbo-admin-ai/internal/manager"
 	"fmt"
-	"log"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
+	"github.com/mitchellh/mapstructure"
 )
 
 // ================================================
 // Prometheus Query Service Latency Tool
 // ================================================
-type ToolOutput interface {
-	Tool() string
-}
-
 type PrometheusServiceLatencyInput struct {
-	ServiceName      string  `json:"serviceName" jsonschema:"required,description=The name of the service to query"`
-	TimeRangeMinutes int     `json:"timeRangeMinutes" jsonschema:"required,description=Time range in minutes"`
+	ServiceName      string  `json:"service_name" jsonschema:"required,description=The name of the service to query"`
+	TimeRangeMinutes int     `json:"time_range_minutes" jsonschema:"required,description=Time range in minutes"`
 	Quantile         float64 `json:"quantile" jsonschema:"required,description=Quantile to query (e.g., 0.99 or 0.95)"`
 }
 
+func (i PrometheusServiceLatencyInput) String() string {
+	return fmt.Sprintf("PrometheusServiceLatencyInput{ServiceName: %s, TimeRangeMinutes: %d, Quantile: %.2f}", i.ServiceName, i.TimeRangeMinutes, i.Quantile)
+}
+
 type PrometheusServiceLatencyOutput struct {
-	ToolName    string  `json:"toolName"`
 	Quantile    float64 `json:"quantile"`
-	ValueMillis int     `json:"valueMillis"`
-	Summary     string  `json:"summary"`
+	ValueMillis int     `json:"value_millis"`
 }
 
-func (o PrometheusServiceLatencyOutput) Tool() string {
-	return o.ToolName
+func (o PrometheusServiceLatencyOutput) String() string {
+	return fmt.Sprintf("PrometheusServiceLatencyOutput{Quantile: %.2f, ValueMillis: %d}", o.Quantile, o.ValueMillis)
 }
 
-func prometheusQueryServiceLatency(ctx *ai.ToolContext, input PrometheusServiceLatencyInput) (PrometheusServiceLatencyOutput, error) {
-	log.Printf("Tool 'prometheus_query_service_latency' called for service: %s", input.ServiceName)
+func prometheusQueryServiceLatency(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
+	// 解析输入
+	var latencyInput PrometheusServiceLatencyInput
+	if err := mapstructure.Decode(input.Parameter, &latencyInput); err != nil {
+		return ToolOutput{}, fmt.Errorf("failed to decode input for prometheus_query_service_latency: %w", err)
+	}
+
+	manager.GetLogger().Info("Tool 'prometheus_query_service_latency' called", "service", latencyInput.ServiceName)
 
 	// Mock data based on the example in prompt
 	valueMillis := 3500
-	if input.ServiceName != "order-service" {
+	if latencyInput.ServiceName != "order-service" {
 		valueMillis = 850
 	}
 
-	return PrometheusServiceLatencyOutput{
-		ToolName:    "prometheus_query_service_latency",
-		Quantile:    input.Quantile,
+	output := PrometheusServiceLatencyOutput{
+		Quantile:    latencyInput.Quantile,
 		ValueMillis: valueMillis,
-		Summary:     fmt.Sprintf("服务 %s 在过去%d分钟内的 P%.0f 延迟为 %dms", input.ServiceName, input.TimeRangeMinutes, input.Quantile*100, valueMillis),
+	}
+
+	return ToolOutput{
+		ToolName: "prometheus_query_service_latency",
+		Summary:  fmt.Sprintf("服务 %s 在过去%d分钟内的 P%.0f 延迟为 %dms", latencyInput.ServiceName, latencyInput.TimeRangeMinutes, latencyInput.Quantile*100, valueMillis),
+		Result:   output,
 	}, nil
 }
 
@@ -54,29 +63,41 @@ func prometheusQueryServiceLatency(ctx *ai.ToolContext, input PrometheusServiceL
 // ================================================
 
 type PrometheusServiceTrafficInput struct {
-	ServiceName      string `json:"serviceName" jsonschema:"required,description=The name of the service to query"`
-	TimeRangeMinutes int    `json:"timeRangeMinutes" jsonschema:"required,description=Time range in minutes"`
+	ServiceName      string `json:"service_name" jsonschema:"required,description=The name of the service to query"`
+	TimeRangeMinutes int    `json:"time_range_minutes" jsonschema:"required,description=Time range in minutes"`
+}
+
+func (i PrometheusServiceTrafficInput) String() string {
+	return fmt.Sprintf("PrometheusServiceTrafficInput{ServiceName: %s, TimeRangeMinutes: %d}", i.ServiceName, i.TimeRangeMinutes)
 }
 
 type PrometheusServiceTrafficOutput struct {
-	ToolName            string  `json:"toolName"`
-	RequestRateQPS      float64 `json:"requestRateQPS"`
-	ErrorRatePercentage float64 `json:"errorRatePercentage"`
-	Summary             string  `json:"summary"`
+	RequestRateQPS      float64 `json:"request_rate_qps"`
+	ErrorRatePercentage float64 `json:"error_rate_percentage"`
 }
 
-func (o PrometheusServiceTrafficOutput) Tool() string {
-	return o.ToolName
+func (o PrometheusServiceTrafficOutput) String() string {
+	return fmt.Sprintf("PrometheusServiceTrafficOutput{RequestRateQPS: %.1f, ErrorRatePercentage: %.1f}", o.RequestRateQPS, o.ErrorRatePercentage)
 }
 
-func prometheusQueryServiceTraffic(ctx *ai.ToolContext, input PrometheusServiceTrafficInput) (PrometheusServiceTrafficOutput, error) {
-	log.Printf("Tool 'prometheus_query_service_traffic' called for service: %s", input.ServiceName)
+func prometheusQueryServiceTraffic(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
+	// 解析输入
+	var trafficInput PrometheusServiceTrafficInput
+	if err := mapstructure.Decode(input.Parameter, &trafficInput); err != nil {
+		return ToolOutput{}, fmt.Errorf("failed to decode input for prometheus_query_service_traffic: %w", err)
+	}
 
-	return PrometheusServiceTrafficOutput{
-		ToolName:            "prometheus_query_service_traffic",
+	manager.GetLogger().Info("Tool 'prometheus_query_service_traffic' called", "service", trafficInput.ServiceName)
+
+	output := PrometheusServiceTrafficOutput{
 		RequestRateQPS:      250.0,
 		ErrorRatePercentage: 5.2,
-		Summary:             fmt.Sprintf("服务 %s 的 QPS 为 250, 错误率为 5.2%%", input.ServiceName),
+	}
+
+	return ToolOutput{
+		ToolName: "prometheus_query_service_traffic",
+		Summary:  fmt.Sprintf("服务 %s 的 QPS 为 250, 错误率为 5.2%%", trafficInput.ServiceName),
+		Result:   output,
 	}, nil
 }
 
@@ -85,7 +106,11 @@ func prometheusQueryServiceTraffic(ctx *ai.ToolContext, input PrometheusServiceT
 // ================================================
 
 type QueryTimeseriesDatabaseInput struct {
-	PromqlQuery string `json:"promqlQuery" jsonschema:"required,description=PromQL query to execute"`
+	PromqlQuery string `json:"promql_query" jsonschema:"required,description=PromQL query to execute"`
+}
+
+func (i QueryTimeseriesDatabaseInput) String() string {
+	return fmt.Sprintf("QueryTimeseriesDatabaseInput{PromqlQuery: %s}", i.PromqlQuery)
 }
 
 type TimeseriesMetric struct {
@@ -103,22 +128,25 @@ type TimeseriesResult struct {
 }
 
 type QueryTimeseriesDatabaseOutput struct {
-	ToolName string             `json:"toolName"`
-	Query    string             `json:"query"`
-	Results  []TimeseriesResult `json:"results"`
-	Summary  string             `json:"summary"`
+	Query   string             `json:"query"`
+	Results []TimeseriesResult `json:"results"`
 }
 
-func (o QueryTimeseriesDatabaseOutput) Tool() string {
-	return o.ToolName
+func (o QueryTimeseriesDatabaseOutput) String() string {
+	return fmt.Sprintf("QueryTimeseriesDatabaseOutput{Query: %s, Results: %d items}", o.Query, len(o.Results))
 }
 
-func queryTimeseriesDatabase(ctx *ai.ToolContext, input QueryTimeseriesDatabaseInput) (QueryTimeseriesDatabaseOutput, error) {
-	log.Printf("Tool 'query_timeseries_database' called with query: %s", input.PromqlQuery)
+func queryTimeseriesDatabase(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
+	// 解析输入
+	var queryInput QueryTimeseriesDatabaseInput
+	if err := mapstructure.Decode(input.Parameter, &queryInput); err != nil {
+		return ToolOutput{}, fmt.Errorf("failed to decode input for query_timeseries_database: %w", err)
+	}
 
-	return QueryTimeseriesDatabaseOutput{
-		ToolName: "query_timeseries_database",
-		Query:    input.PromqlQuery,
+	manager.GetLogger().Info("Tool 'query_timeseries_database' called", "query", queryInput.PromqlQuery)
+
+	output := QueryTimeseriesDatabaseOutput{
+		Query: queryInput.PromqlQuery,
 		Results: []TimeseriesResult{
 			{
 				Metric: TimeseriesMetric{Pod: "order-service-pod-1"},
@@ -129,7 +157,12 @@ func queryTimeseriesDatabase(ctx *ai.ToolContext, input QueryTimeseriesDatabaseI
 				Value:  TimeseriesValue{Timestamp: 1692192000, Value: "3.2"},
 			},
 		},
-		Summary: "查询返回了 2 个时间序列",
+	}
+
+	return ToolOutput{
+		ToolName: "query_timeseries_database",
+		Summary:  "查询返回了 2 个时间序列",
+		Result:   output,
 	}, nil
 }
 
@@ -138,33 +171,40 @@ func queryTimeseriesDatabase(ctx *ai.ToolContext, input QueryTimeseriesDatabaseI
 // ================================================
 
 type ApplicationPerformanceProfilingInput struct {
-	ServiceName     string `json:"serviceName" jsonschema:"required,description=The name of the service to profile"`
-	PodName         string `json:"podName" jsonschema:"required,description=The specific pod name to profile"`
-	DurationSeconds int    `json:"durationSeconds" jsonschema:"required,description=Duration of profiling in seconds"`
+	ServiceName     string `json:"service_name" jsonschema:"required,description=The name of the service to profile"`
+	PodName         string `json:"pod_name" jsonschema:"required,description=The specific pod name to profile"`
+	DurationSeconds int    `json:"duration_seconds" jsonschema:"required,description=Duration of profiling in seconds"`
+}
+
+func (i ApplicationPerformanceProfilingInput) String() string {
+	return fmt.Sprintf("ApplicationPerformanceProfilingInput{ServiceName: %s, PodName: %s, DurationSeconds: %d}", i.ServiceName, i.PodName, i.DurationSeconds)
 }
 
 type PerformanceHotspot struct {
-	CPUTimePercentage float64  `json:"cpuTimePercentage"`
-	StackTrace        []string `json:"stackTrace"`
+	CPUTimePercentage float64  `json:"cpu_time_percentage"`
+	StackTrace        []string `json:"stack_trace"`
 }
 
 type ApplicationPerformanceProfilingOutput struct {
-	ToolName     string               `json:"toolName"`
 	Status       string               `json:"status"`
-	TotalSamples int                  `json:"totalSamples"`
+	TotalSamples int                  `json:"total_samples"`
 	Hotspots     []PerformanceHotspot `json:"hotspots"`
-	Summary      string               `json:"summary"`
 }
 
-func (o ApplicationPerformanceProfilingOutput) Tool() string {
-	return o.ToolName
+func (o ApplicationPerformanceProfilingOutput) String() string {
+	return fmt.Sprintf("ApplicationPerformanceProfilingOutput{Status: %s, TotalSamples: %d, Hotspots: %d items}", o.Status, o.TotalSamples, len(o.Hotspots))
 }
 
-func applicationPerformanceProfiling(ctx *ai.ToolContext, input ApplicationPerformanceProfilingInput) (ApplicationPerformanceProfilingOutput, error) {
-	log.Printf("Tool 'application_performance_profiling' called for service: %s, pod: %s", input.ServiceName, input.PodName)
+func applicationPerformanceProfiling(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
+	// 解析输入
+	var profilingInput ApplicationPerformanceProfilingInput
+	if err := mapstructure.Decode(input.Parameter, &profilingInput); err != nil {
+		return ToolOutput{}, fmt.Errorf("failed to decode input for application_performance_profiling: %w", err)
+	}
 
-	return ApplicationPerformanceProfilingOutput{
-		ToolName:     "application_performance_profiling",
+	manager.GetLogger().Info("Tool 'application_performance_profiling' called", "service", profilingInput.ServiceName, "pod", profilingInput.PodName)
+
+	output := ApplicationPerformanceProfilingOutput{
 		Status:       "completed",
 		TotalSamples: 10000,
 		Hotspots: []PerformanceHotspot{
@@ -177,7 +217,12 @@ func applicationPerformanceProfiling(ctx *ai.ToolContext, input ApplicationPerfo
 				},
 			},
 		},
-		Summary: "性能分析显示，45.5%的CPU时间消耗在数据库查询调用链上",
+	}
+
+	return ToolOutput{
+		ToolName: "application_performance_profiling",
+		Summary:  "性能分析显示，45.5%的CPU时间消耗在数据库查询调用链上",
+		Result:   output,
 	}, nil
 }
 
@@ -186,31 +231,43 @@ func applicationPerformanceProfiling(ctx *ai.ToolContext, input ApplicationPerfo
 // ================================================
 
 type JVMPerformanceAnalysisInput struct {
-	ServiceName string `json:"serviceName" jsonschema:"required,description=The name of the Java service to analyze"`
-	PodName     string `json:"podName" jsonschema:"required,description=The specific pod name to analyze"`
+	ServiceName string `json:"service_name" jsonschema:"required,description=The name of the Java service to analyze"`
+	PodName     string `json:"pod_name" jsonschema:"required,description=The specific pod name to analyze"`
+}
+
+func (i JVMPerformanceAnalysisInput) String() string {
+	return fmt.Sprintf("JVMPerformanceAnalysisInput{ServiceName: %s, PodName: %s}", i.ServiceName, i.PodName)
 }
 
 type JVMPerformanceAnalysisOutput struct {
-	ToolName            string  `json:"toolName"`
-	FullGcCountLastHour int     `json:"fullGcCountLastHour"`
-	FullGcTimeAvgMillis int     `json:"fullGcTimeAvgMillis"`
-	HeapUsagePercentage float64 `json:"heapUsagePercentage"`
-	Summary             string  `json:"summary"`
+	FullGcCountLastHour int     `json:"full_gc_count_last_hour"`
+	FullGcTimeAvgMillis int     `json:"full_gc_time_avg_millis"`
+	HeapUsagePercentage float64 `json:"heap_usage_percentage"`
 }
 
-func (o JVMPerformanceAnalysisOutput) Tool() string {
-	return o.ToolName
+func (o JVMPerformanceAnalysisOutput) String() string {
+	return fmt.Sprintf("JVMPerformanceAnalysisOutput{FullGcCountLastHour: %d, FullGcTimeAvgMillis: %d, HeapUsagePercentage: %.1f}", o.FullGcCountLastHour, o.FullGcTimeAvgMillis, o.HeapUsagePercentage)
 }
 
-func jvmPerformanceAnalysis(ctx *ai.ToolContext, input JVMPerformanceAnalysisInput) (JVMPerformanceAnalysisOutput, error) {
-	log.Printf("Tool 'jvm_performance_analysis' called for service: %s, pod: %s", input.ServiceName, input.PodName)
+func jvmPerformanceAnalysis(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
+	// 解析输入
+	var jvmInput JVMPerformanceAnalysisInput
+	if err := mapstructure.Decode(input.Parameter, &jvmInput); err != nil {
+		return ToolOutput{}, fmt.Errorf("failed to decode input for jvm_performance_analysis: %w", err)
+	}
 
-	return JVMPerformanceAnalysisOutput{
-		ToolName:            "jvm_performance_analysis",
+	manager.GetLogger().Info("Tool 'jvm_performance_analysis' called", "service", jvmInput.ServiceName, "pod", jvmInput.PodName)
+
+	output := JVMPerformanceAnalysisOutput{
 		FullGcCountLastHour: 15,
 		FullGcTimeAvgMillis: 1200,
 		HeapUsagePercentage: 85.5,
-		Summary:             "GC activity is high, average Full GC time is 1200ms",
+	}
+
+	return ToolOutput{
+		ToolName: "jvm_performance_analysis",
+		Summary:  "GC activity is high, average Full GC time is 1200ms",
+		Result:   output,
 	}, nil
 }
 
@@ -219,26 +276,40 @@ func jvmPerformanceAnalysis(ctx *ai.ToolContext, input JVMPerformanceAnalysisInp
 // ================================================
 
 type TraceDependencyViewInput struct {
-	ServiceName string `json:"serviceName" jsonschema:"required,description=The name of the service to analyze dependencies"`
+	ServiceName string `json:"service_name" jsonschema:"required,description=The name of the service to analyze dependencies"`
+}
+
+func (i TraceDependencyViewInput) String() string {
+	return fmt.Sprintf("TraceDependencyViewInput{ServiceName: %s}", i.ServiceName)
 }
 
 type TraceDependencyViewOutput struct {
-	ToolName           string   `json:"toolName"`
-	UpstreamServices   []string `json:"upstreamServices"`
-	DownstreamServices []string `json:"downstreamServices"`
+	UpstreamServices   []string `json:"upstream_services"`
+	DownstreamServices []string `json:"downstream_services"`
 }
 
-func (o TraceDependencyViewOutput) Tool() string {
-	return o.ToolName
+func (o TraceDependencyViewOutput) String() string {
+	return fmt.Sprintf("TraceDependencyViewOutput{UpstreamServices: %v, DownstreamServices: %v}", o.UpstreamServices, o.DownstreamServices)
 }
 
-func traceDependencyView(ctx *ai.ToolContext, input TraceDependencyViewInput) (TraceDependencyViewOutput, error) {
-	log.Printf("Tool 'trace_dependency_view' called for service: %s", input.ServiceName)
+func traceDependencyView(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
+	// 解析输入
+	var depInput TraceDependencyViewInput
+	if err := mapstructure.Decode(input.Parameter, &depInput); err != nil {
+		return ToolOutput{}, fmt.Errorf("failed to decode input for trace_dependency_view: %w", err)
+	}
 
-	return TraceDependencyViewOutput{
-		ToolName:           "trace_dependency_view",
+	manager.GetLogger().Info("Tool 'trace_dependency_view' called", "service", depInput.ServiceName)
+
+	output := TraceDependencyViewOutput{
 		UpstreamServices:   []string{"api-gateway", "user-service"},
 		DownstreamServices: []string{"mysql-orders-db", "redis-cache", "payment-service"},
+	}
+
+	return ToolOutput{
+		ToolName: "trace_dependency_view",
+		Summary:  fmt.Sprintf("服务 %s 的上下游依赖关系查询完成", depInput.ServiceName),
+		Result:   output,
 	}, nil
 }
 
@@ -247,32 +318,39 @@ func traceDependencyView(ctx *ai.ToolContext, input TraceDependencyViewInput) (T
 // ================================================
 
 type TraceLatencyAnalysisInput struct {
-	ServiceName      string `json:"serviceName" jsonschema:"required,description=The name of the service to analyze"`
-	TimeRangeMinutes int    `json:"timeRangeMinutes" jsonschema:"required,description=Time range in minutes"`
+	ServiceName      string `json:"service_name" jsonschema:"required,description=The name of the service to analyze"`
+	TimeRangeMinutes int    `json:"time_range_minutes" jsonschema:"required,description=Time range in minutes"`
+}
+
+func (i TraceLatencyAnalysisInput) String() string {
+	return fmt.Sprintf("TraceLatencyAnalysisInput{ServiceName: %s, TimeRangeMinutes: %d}", i.ServiceName, i.TimeRangeMinutes)
 }
 
 type LatencyBottleneck struct {
-	DownstreamService      string  `json:"downstreamService"`
-	LatencyAvgMillis       int     `json:"latencyAvgMillis"`
-	ContributionPercentage float64 `json:"contributionPercentage"`
+	DownstreamService      string  `json:"downstream_service"`
+	LatencyAvgMillis       int     `json:"latency_avg_millis"`
+	ContributionPercentage float64 `json:"contribution_percentage"`
 }
 
 type TraceLatencyAnalysisOutput struct {
-	ToolName              string              `json:"toolName"`
-	TotalLatencyAvgMillis int                 `json:"totalLatencyAvgMillis"`
+	TotalLatencyAvgMillis int                 `json:"total_latency_avg_millis"`
 	Bottlenecks           []LatencyBottleneck `json:"bottlenecks"`
-	Summary               string              `json:"summary"`
 }
 
-func (o TraceLatencyAnalysisOutput) Tool() string {
-	return o.ToolName
+func (o TraceLatencyAnalysisOutput) String() string {
+	return fmt.Sprintf("TraceLatencyAnalysisOutput{TotalLatencyAvgMillis: %d, Bottlenecks: %d items}", o.TotalLatencyAvgMillis, len(o.Bottlenecks))
 }
 
-func traceLatencyAnalysis(ctx *ai.ToolContext, input TraceLatencyAnalysisInput) (TraceLatencyAnalysisOutput, error) {
-	log.Printf("Tool 'trace_latency_analysis' called for service: %s", input.ServiceName)
+func traceLatencyAnalysis(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
+	// 解析输入
+	var latencyInput TraceLatencyAnalysisInput
+	if err := mapstructure.Decode(input.Parameter, &latencyInput); err != nil {
+		return ToolOutput{}, fmt.Errorf("failed to decode input for trace_latency_analysis: %w", err)
+	}
 
-	return TraceLatencyAnalysisOutput{
-		ToolName:              "trace_latency_analysis",
+	manager.GetLogger().Info("Tool 'trace_latency_analysis' called", "service", latencyInput.ServiceName)
+
+	output := TraceLatencyAnalysisOutput{
 		TotalLatencyAvgMillis: 3200,
 		Bottlenecks: []LatencyBottleneck{
 			{
@@ -286,7 +364,12 @@ func traceLatencyAnalysis(ctx *ai.ToolContext, input TraceLatencyAnalysisInput) 
 				ContributionPercentage: 4.7,
 			},
 		},
-		Summary: "平均总延迟为 3200ms。瓶颈已定位，95.3% 的延迟来自对下游 'mysql-orders-db' 的调用",
+	}
+
+	return ToolOutput{
+		ToolName: "trace_latency_analysis",
+		Summary:  "平均总延迟为 3200ms。瓶颈已定位，95.3% 的延迟来自对下游 'mysql-orders-db' 的调用",
+		Result:   output,
 	}, nil
 }
 
@@ -295,32 +378,44 @@ func traceLatencyAnalysis(ctx *ai.ToolContext, input TraceLatencyAnalysisInput) 
 // ================================================
 
 type DatabaseConnectionPoolAnalysisInput struct {
-	ServiceName string `json:"serviceName" jsonschema:"required,description=The name of the service to analyze"`
+	ServiceName string `json:"service_name" jsonschema:"required,description=The name of the service to analyze"`
+}
+
+func (i DatabaseConnectionPoolAnalysisInput) String() string {
+	return fmt.Sprintf("DatabaseConnectionPoolAnalysisInput{ServiceName: %s}", i.ServiceName)
 }
 
 type DatabaseConnectionPoolAnalysisOutput struct {
-	ToolName          string `json:"toolName"`
-	MaxConnections    int    `json:"maxConnections"`
-	ActiveConnections int    `json:"activeConnections"`
-	IdleConnections   int    `json:"idleConnections"`
-	PendingRequests   int    `json:"pendingRequests"`
-	Summary           string `json:"summary"`
+	MaxConnections    int `json:"max_connections"`
+	ActiveConnections int `json:"active_connections"`
+	IdleConnections   int `json:"idle_connections"`
+	PendingRequests   int `json:"pending_requests"`
 }
 
-func (o DatabaseConnectionPoolAnalysisOutput) Tool() string {
-	return o.ToolName
+func (o DatabaseConnectionPoolAnalysisOutput) String() string {
+	return fmt.Sprintf("DatabaseConnectionPoolAnalysisOutput{MaxConnections: %d, ActiveConnections: %d, IdleConnections: %d, PendingRequests: %d}", o.MaxConnections, o.ActiveConnections, o.IdleConnections, o.PendingRequests)
 }
 
-func databaseConnectionPoolAnalysis(ctx *ai.ToolContext, input DatabaseConnectionPoolAnalysisInput) (DatabaseConnectionPoolAnalysisOutput, error) {
-	log.Printf("Tool 'database_connection_pool_analysis' called for service: %s", input.ServiceName)
+func databaseConnectionPoolAnalysis(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
+	// 解析输入
+	var poolInput DatabaseConnectionPoolAnalysisInput
+	if err := mapstructure.Decode(input.Parameter, &poolInput); err != nil {
+		return ToolOutput{}, fmt.Errorf("failed to decode input for database_connection_pool_analysis: %w", err)
+	}
 
-	return DatabaseConnectionPoolAnalysisOutput{
-		ToolName:          "database_connection_pool_analysis",
+	manager.GetLogger().Info("Tool 'database_connection_pool_analysis' called", "service", poolInput.ServiceName)
+
+	output := DatabaseConnectionPoolAnalysisOutput{
 		MaxConnections:    100,
 		ActiveConnections: 100,
 		IdleConnections:   0,
 		PendingRequests:   58,
-		Summary:           "数据库连接池已完全耗尽 (100/100)，当前有 58 个请求正在排队等待连接",
+	}
+
+	return ToolOutput{
+		ToolName: "database_connection_pool_analysis",
+		Summary:  "数据库连接池已完全耗尽 (100/100)，当前有 58 个请求正在排队等待连接",
+		Result:   output,
 	}, nil
 }
 
@@ -329,35 +424,42 @@ func databaseConnectionPoolAnalysis(ctx *ai.ToolContext, input DatabaseConnectio
 // ================================================
 
 type KubernetesGetPodResourcesInput struct {
-	ServiceName string `json:"serviceName" jsonschema:"required,description=The name of the service"`
+	ServiceName string `json:"service_name" jsonschema:"required,description=The name of the service"`
 	Namespace   string `json:"namespace" jsonschema:"required,description=The namespace of the service"`
 }
 
+func (i KubernetesGetPodResourcesInput) String() string {
+	return fmt.Sprintf("KubernetesGetPodResourcesInput{ServiceName: %s, Namespace: %s}", i.ServiceName, i.Namespace)
+}
+
 type PodResource struct {
-	PodName         string  `json:"podName"`
-	CPUUsageCores   float64 `json:"cpuUsageCores"`
-	CPURequestCores float64 `json:"cpuRequestCores"`
-	CPULimitCores   float64 `json:"cpuLimitCores"`
-	MemoryUsageMi   int     `json:"memoryUsageMi"`
-	MemoryRequestMi int     `json:"memoryRequestMi"`
-	MemoryLimitMi   int     `json:"memoryLimitMi"`
+	PodName         string  `json:"pod_name"`
+	CPUUsageCores   float64 `json:"cpu_usage_cores"`
+	CPURequestCores float64 `json:"cpu_request_cores"`
+	CPULimitCores   float64 `json:"cpu_limit_cores"`
+	MemoryUsageMi   int     `json:"memory_usage_mi"`
+	MemoryRequestMi int     `json:"memory_request_mi"`
+	MemoryLimitMi   int     `json:"memory_limit_mi"`
 }
 
 type KubernetesGetPodResourcesOutput struct {
-	ToolName string        `json:"toolName"`
-	Pods     []PodResource `json:"pods"`
-	Summary  string        `json:"summary"`
+	Pods []PodResource `json:"pods"`
 }
 
-func (o KubernetesGetPodResourcesOutput) Tool() string {
-	return o.ToolName
+func (o KubernetesGetPodResourcesOutput) String() string {
+	return fmt.Sprintf("KubernetesGetPodResourcesOutput{Pods: %d items}", len(o.Pods))
 }
 
-func kubernetesGetPodResources(ctx *ai.ToolContext, input KubernetesGetPodResourcesInput) (KubernetesGetPodResourcesOutput, error) {
-	log.Printf("Tool 'kubernetes_get_pod_resources' called for service: %s in namespace: %s", input.ServiceName, input.Namespace)
+func kubernetesGetPodResources(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
+	// 解析输入
+	var k8sInput KubernetesGetPodResourcesInput
+	if err := mapstructure.Decode(input.Parameter, &k8sInput); err != nil {
+		return ToolOutput{}, fmt.Errorf("failed to decode input for kubernetes_get_pod_resources: %w", err)
+	}
 
-	return KubernetesGetPodResourcesOutput{
-		ToolName: "kubernetes_get_pod_resources",
+	manager.GetLogger().Info("Tool 'kubernetes_get_pod_resources' called", "service", k8sInput.ServiceName, "namespace", k8sInput.Namespace)
+
+	output := KubernetesGetPodResourcesOutput{
 		Pods: []PodResource{
 			{
 				PodName:         "order-service-pod-1",
@@ -378,7 +480,12 @@ func kubernetesGetPodResources(ctx *ai.ToolContext, input KubernetesGetPodResour
 				MemoryLimitMi:   2048,
 			},
 		},
-		Summary: "2 out of 2 pods are near their memory limits",
+	}
+
+	return ToolOutput{
+		ToolName: "kubernetes_get_pod_resources",
+		Summary:  "2 out of 2 pods are near their memory limits",
+		Result:   output,
 	}, nil
 }
 
@@ -387,7 +494,11 @@ func kubernetesGetPodResources(ctx *ai.ToolContext, input KubernetesGetPodResour
 // ================================================
 
 type DubboServiceStatusInput struct {
-	ServiceName string `json:"serviceName" jsonschema:"required,description=The name of the Dubbo service"`
+	ServiceName string `json:"service_name" jsonschema:"required,description=The name of the Dubbo service"`
+}
+
+func (i DubboServiceStatusInput) String() string {
+	return fmt.Sprintf("DubboServiceStatusInput{ServiceName: %s}", i.ServiceName)
 }
 
 type DubboProvider struct {
@@ -403,20 +514,24 @@ type DubboConsumer struct {
 }
 
 type DubboServiceStatusOutput struct {
-	ToolName  string          `json:"toolName"`
 	Providers []DubboProvider `json:"providers"`
 	Consumers []DubboConsumer `json:"consumers"`
 }
 
-func (o DubboServiceStatusOutput) Tool() string {
-	return o.ToolName
+func (o DubboServiceStatusOutput) String() string {
+	return fmt.Sprintf("DubboServiceStatusOutput{Providers: %d items, Consumers: %d items}", len(o.Providers), len(o.Consumers))
 }
 
-func dubboServiceStatus(ctx *ai.ToolContext, input DubboServiceStatusInput) (DubboServiceStatusOutput, error) {
-	log.Printf("Tool 'dubbo_service_status' called for service: %s", input.ServiceName)
+func dubboServiceStatus(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
+	// 解析输入
+	var dubboInput DubboServiceStatusInput
+	if err := mapstructure.Decode(input.Parameter, &dubboInput); err != nil {
+		return ToolOutput{}, fmt.Errorf("failed to decode input for dubbo_service_status: %w", err)
+	}
 
-	return DubboServiceStatusOutput{
-		ToolName: "dubbo_service_status",
+	manager.GetLogger().Info("Tool 'dubbo_service_status' called", "service", dubboInput.ServiceName)
+
+	output := DubboServiceStatusOutput{
 		Providers: []DubboProvider{
 			{IP: "192.168.1.10", Port: 20880, Status: "healthy"},
 			{IP: "192.168.1.11", Port: 20880, Status: "healthy"},
@@ -425,6 +540,12 @@ func dubboServiceStatus(ctx *ai.ToolContext, input DubboServiceStatusInput) (Dub
 			{IP: "192.168.1.20", Application: "web-frontend", Status: "connected"},
 			{IP: "192.168.1.21", Application: "api-gateway", Status: "connected"},
 		},
+	}
+
+	return ToolOutput{
+		ToolName: "dubbo_service_status",
+		Summary:  fmt.Sprintf("服务 %s 的提供者和消费者状态查询完成", dubboInput.ServiceName),
+		Result:   output,
 	}, nil
 }
 
@@ -433,9 +554,13 @@ func dubboServiceStatus(ctx *ai.ToolContext, input DubboServiceStatusInput) (Dub
 // ================================================
 
 type QueryLogDatabaseInput struct {
-	ServiceName      string `json:"serviceName" jsonschema:"required,description=The name of the service"`
+	ServiceName      string `json:"service_name" jsonschema:"required,description=The name of the service"`
 	Keyword          string `json:"keyword" jsonschema:"required,description=Keyword to search for"`
-	TimeRangeMinutes int    `json:"timeRangeMinutes" jsonschema:"required,description=Time range in minutes"`
+	TimeRangeMinutes int    `json:"time_range_minutes" jsonschema:"required,description=Time range in minutes"`
+}
+
+func (i QueryLogDatabaseInput) String() string {
+	return fmt.Sprintf("QueryLogDatabaseInput{ServiceName: %s, Keyword: %s, TimeRangeMinutes: %d}", i.ServiceName, i.Keyword, i.TimeRangeMinutes)
 }
 
 type LogEntry struct {
@@ -445,21 +570,24 @@ type LogEntry struct {
 }
 
 type QueryLogDatabaseOutput struct {
-	ToolName  string     `json:"toolName"`
-	TotalHits int        `json:"totalHits"`
+	TotalHits int        `json:"total_hits"`
 	Logs      []LogEntry `json:"logs"`
-	Summary   string     `json:"summary"`
 }
 
-func (o QueryLogDatabaseOutput) Tool() string {
-	return o.ToolName
+func (o QueryLogDatabaseOutput) String() string {
+	return fmt.Sprintf("QueryLogDatabaseOutput{TotalHits: %d, Logs: %d items}", o.TotalHits, len(o.Logs))
 }
 
-func queryLogDatabase(ctx *ai.ToolContext, input QueryLogDatabaseInput) (QueryLogDatabaseOutput, error) {
-	log.Printf("Tool 'query_log_database' called for service: %s, keyword: %s", input.ServiceName, input.Keyword)
+func queryLogDatabase(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
+	// 解析输入
+	var logInput QueryLogDatabaseInput
+	if err := mapstructure.Decode(input.Parameter, &logInput); err != nil {
+		return ToolOutput{}, fmt.Errorf("failed to decode input for query_log_database: %w", err)
+	}
 
-	return QueryLogDatabaseOutput{
-		ToolName:  "query_log_database",
+	manager.GetLogger().Info("Tool 'query_log_database' called", "service", logInput.ServiceName, "keyword", logInput.Keyword)
+
+	output := QueryLogDatabaseOutput{
 		TotalHits: 152,
 		Logs: []LogEntry{
 			{
@@ -473,7 +601,12 @@ func queryLogDatabase(ctx *ai.ToolContext, input QueryLogDatabaseInput) (QueryLo
 				Message:   "Timeout waiting for idle object in database connection pool.",
 			},
 		},
-		Summary: fmt.Sprintf("在过去%d分钟内，发现 152 条关于 '%s' 的日志条目", input.TimeRangeMinutes, input.Keyword),
+	}
+
+	return ToolOutput{
+		ToolName: "query_log_database",
+		Summary:  fmt.Sprintf("在过去%d分钟内，发现 152 条关于 '%s' 的日志条目", logInput.TimeRangeMinutes, logInput.Keyword),
+		Result:   output,
 	}, nil
 }
 
@@ -482,32 +615,39 @@ func queryLogDatabase(ctx *ai.ToolContext, input QueryLogDatabaseInput) (QueryLo
 // ================================================
 
 type SearchArchivedLogsInput struct {
-	FilePathPattern string `json:"filePathPattern" jsonschema:"required,description=File path pattern to search"`
-	GrepKeyword     string `json:"grepKeyword" jsonschema:"required,description=Keyword to grep for"`
+	FilePathPattern string `json:"file_path_pattern" jsonschema:"required,description=File path pattern to search"`
+	GrepKeyword     string `json:"grep_keyword" jsonschema:"required,description=Keyword to grep for"`
+}
+
+func (i SearchArchivedLogsInput) String() string {
+	return fmt.Sprintf("SearchArchivedLogsInput{FilePathPattern: %s, GrepKeyword: %s}", i.FilePathPattern, i.GrepKeyword)
 }
 
 type MatchingLine struct {
-	FilePath    string `json:"filePath"`
-	LineNumber  int    `json:"lineNumber"`
-	LineContent string `json:"lineContent"`
+	FilePath    string `json:"file_path"`
+	LineNumber  int    `json:"line_number"`
+	LineContent string `json:"line_content"`
 }
 
 type SearchArchivedLogsOutput struct {
-	ToolName      string         `json:"toolName"`
-	FilesSearched int            `json:"filesSearched"`
-	MatchingLines []MatchingLine `json:"matchingLines"`
-	Summary       string         `json:"summary"`
+	FilesSearched int            `json:"files_searched"`
+	MatchingLines []MatchingLine `json:"matching_lines"`
 }
 
-func (o SearchArchivedLogsOutput) Tool() string {
-	return o.ToolName
+func (o SearchArchivedLogsOutput) String() string {
+	return fmt.Sprintf("SearchArchivedLogsOutput{FilesSearched: %d, MatchingLines: %d items}", o.FilesSearched, len(o.MatchingLines))
 }
 
-func searchArchivedLogs(ctx *ai.ToolContext, input SearchArchivedLogsInput) (SearchArchivedLogsOutput, error) {
-	log.Printf("Tool 'search_archived_logs' called with pattern: %s, keyword: %s", input.FilePathPattern, input.GrepKeyword)
+func searchArchivedLogs(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
+	// 解析输入
+	var searchInput SearchArchivedLogsInput
+	if err := mapstructure.Decode(input.Parameter, &searchInput); err != nil {
+		return ToolOutput{}, fmt.Errorf("failed to decode input for search_archived_logs: %w", err)
+	}
 
-	return SearchArchivedLogsOutput{
-		ToolName:      "search_archived_logs",
+	manager.GetLogger().Info("Tool 'search_archived_logs' called", "pattern", searchInput.FilePathPattern, "keyword", searchInput.GrepKeyword)
+
+	output := SearchArchivedLogsOutput{
 		FilesSearched: 5,
 		MatchingLines: []MatchingLine{
 			{
@@ -521,7 +661,12 @@ func searchArchivedLogs(ctx *ai.ToolContext, input SearchArchivedLogsInput) (Sea
 				LineContent: "Query_time: 28.1s | SELECT COUNT(id), SUM(price) FROM orders WHERE user_id = 'VIP_USER_456';",
 			},
 		},
-		Summary: "在归档的日志文件中，发现了多条查询，搜索了 5 个文件，找到了 2 条匹配行",
+	}
+
+	return ToolOutput{
+		ToolName: "search_archived_logs",
+		Summary:  "在归档的日志文件中，发现了多条查询，搜索了 5 个文件，找到了 2 条匹配行",
+		Result:   output,
 	}, nil
 }
 
@@ -530,29 +675,37 @@ func searchArchivedLogs(ctx *ai.ToolContext, input SearchArchivedLogsInput) (Sea
 // ================================================
 
 type QueryKnowledgeBaseInput struct {
-	QueryText string `json:"queryText" jsonschema:"required,description=Query text to search for"`
+	QueryText string `json:"query_text" jsonschema:"required,description=Query text to search for"`
+}
+
+func (i QueryKnowledgeBaseInput) String() string {
+	return fmt.Sprintf("QueryKnowledgeBaseInput{QueryText: %s}", i.QueryText)
 }
 
 type KnowledgeDocument struct {
 	Source          string  `json:"source"`
-	ContentSnippet  string  `json:"contentSnippet"`
-	SimilarityScore float64 `json:"similarityScore"`
+	ContentSnippet  string  `json:"content_snippet"`
+	SimilarityScore float64 `json:"similarity_score"`
 }
 
 type QueryKnowledgeBaseOutput struct {
-	ToolName  string              `json:"toolName"`
 	Documents []KnowledgeDocument `json:"documents"`
 }
 
-func (o QueryKnowledgeBaseOutput) Tool() string {
-	return o.ToolName
+func (o QueryKnowledgeBaseOutput) String() string {
+	return fmt.Sprintf("QueryKnowledgeBaseOutput{Documents: %d items}", len(o.Documents))
 }
 
-func queryKnowledgeBase(ctx *ai.ToolContext, input QueryKnowledgeBaseInput) (QueryKnowledgeBaseOutput, error) {
-	log.Printf("Tool 'query_knowledge_base' called with query: %s", input.QueryText)
+func queryKnowledgeBase(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
+	// 解析输入
+	var knowledgeInput QueryKnowledgeBaseInput
+	if err := mapstructure.Decode(input.Parameter, &knowledgeInput); err != nil {
+		return ToolOutput{}, fmt.Errorf("failed to decode input for query_knowledge_base: %w", err)
+	}
 
-	return QueryKnowledgeBaseOutput{
-		ToolName: "query_knowledge_base",
+	manager.GetLogger().Info("Tool 'query_knowledge_base' called", "query", knowledgeInput.QueryText)
+
+	output := QueryKnowledgeBaseOutput{
 		Documents: []KnowledgeDocument{
 			{
 				Source:          "Project-VIP-Feature-Design-Doc.md",
@@ -560,6 +713,12 @@ func queryKnowledgeBase(ctx *ai.ToolContext, input QueryKnowledgeBaseInput) (Que
 				SimilarityScore: 0.92,
 			},
 		},
+	}
+
+	return ToolOutput{
+		ToolName: "query_knowledge_base",
+		Summary:  fmt.Sprintf("知识库查询 '%s' 完成", knowledgeInput.QueryText),
+		Result:   output,
 	}, nil
 }
 
@@ -567,11 +726,13 @@ func queryKnowledgeBase(ctx *ai.ToolContext, input QueryKnowledgeBaseInput) (Que
 // Tool Registration Function
 // ================================================
 
-var registeredTools []ai.Tool
+type MockToolManager struct {
+	registry *genkit.Genkit
+	tools    []ai.Tool
+}
 
-// RegisterAllMockTools registers all mock diagnostic tools with the genkit instance
-func RegisterAllMockTools(g *genkit.Genkit) {
-	registeredTools = []ai.Tool{
+func NewMockToolManager(g *genkit.Genkit) *MockToolManager {
+	tools := []ai.Tool{
 		genkit.DefineTool(g, "prometheus_query_service_latency", "查询指定服务在特定时间范围内的 P95/P99 延迟指标", prometheusQueryServiceLatency),
 		genkit.DefineTool(g, "prometheus_query_service_traffic", "查询指定服务在特定时间范围内的请求率 (QPS) 和错误率 (Error Rate)", prometheusQueryServiceTraffic),
 		genkit.DefineTool(g, "query_timeseries_database", "执行一条完整的 PromQL 查询语句，用于进行普罗米修斯历史数据的深度或自定义分析", queryTimeseriesDatabase),
@@ -587,37 +748,35 @@ func RegisterAllMockTools(g *genkit.Genkit) {
 		genkit.DefineTool(g, "query_knowledge_base", "在向量数据库中查询与问题相关的历史故障报告或解决方案文档", queryKnowledgeBase),
 	}
 
-	log.Printf("Registered %d mock diagnostic tools", len(registeredTools))
+	manager.GetLogger().Info("Registered mock diagnostic tools", "count", len(tools))
+
+	return &MockToolManager{
+		registry: g,
+		tools:    tools,
+	}
 }
 
-func AllMockToolRef() (toolRef []ai.ToolRef, err error) {
-	if registeredTools == nil {
+func (mtm *MockToolManager) Register(tools ...ai.Tool) {
+	mtm.tools = append(mtm.tools, tools...)
+}
+
+func (mtm *MockToolManager) AllToolRefs() (toolRef []ai.ToolRef, err error) {
+	if mtm.tools == nil {
 		return nil, fmt.Errorf("no mock tools registered")
 	}
-	for _, tool := range registeredTools {
+	for _, tool := range mtm.tools {
 		toolRef = append(toolRef, tool)
 	}
 	return toolRef, nil
 }
 
-func AllMockToolNames() (toolNames map[string]struct{}, err error) {
-	if registeredTools == nil {
+func (mtm *MockToolManager) AllToolNames() (toolNames map[string]struct{}, err error) {
+	if mtm.tools == nil {
 		return nil, fmt.Errorf("no mock tools registered")
 	}
 	toolNames = make(map[string]struct{})
-	for _, tool := range registeredTools {
+	for _, tool := range mtm.tools {
 		toolNames[tool.Name()] = struct{}{}
 	}
 	return toolNames, nil
-}
-
-func MockToolRefByNames(names []string) (toolRefs []ai.ToolRef) {
-	for _, name := range names {
-		for _, tool := range registeredTools {
-			if tool.Name() == name {
-				toolRefs = append(toolRefs, tool)
-			}
-		}
-	}
-	return toolRefs
 }

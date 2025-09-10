@@ -2,13 +2,12 @@ package manager
 
 import (
 	"context"
-
-	"dubbo-admin-ai/internal/config"
+	"dubbo-admin-ai/config"
+	"sync"
 
 	"dubbo-admin-ai/plugins/dashscope"
 	"dubbo-admin-ai/plugins/siliconflow"
 	"dubbo-admin-ai/utils"
-	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -23,17 +22,47 @@ import (
 )
 
 var (
-	globalGenkit *genkit.Genkit
-	rootContext  *context.Context
-	globalLogger *slog.Logger
+	registry  *genkit.Genkit
+	gloLogger *slog.Logger
+	once      sync.Once
 )
 
-func InitGlobalGenkit(defaultModel string) (err error) {
-	ctx := context.Background()
-	if rootContext == nil {
-		rootContext = &ctx
+func Init(modelName string, logger *slog.Logger) {
+	once.Do(func() {
+		loadEnvVars()
+
+		defaultReg, err := defaultRegistry(modelName)
+		if err != nil {
+			panic(err)
+		}
+		registry = defaultReg
+
+		if logger == nil {
+			gloLogger = defaultLogger()
+		}
+	})
+}
+
+// Load environment variables from PROJECT_ROOT/.env file
+func loadEnvVars() (err error) {
+	dotEnvFilePath := filepath.Join(config.PROJECT_ROOT, ".env")
+	dotEnvExampleFilePath := filepath.Join(config.PROJECT_ROOT, ".env.example")
+
+	// Check if the .env file exists, if not, copy .env.example to .env
+	if _, err = os.Stat(dotEnvFilePath); os.IsNotExist(err) {
+		if err = utils.CopyFile(dotEnvExampleFilePath, dotEnvFilePath); err != nil {
+			return err
+		}
 	}
-	g, err := genkit.Init(*rootContext,
+
+	// Load environment variables
+	err = godotenv.Load(dotEnvFilePath)
+	return err
+}
+
+func defaultRegistry(modelName string) (*genkit.Genkit, error) {
+	ctx := context.Background()
+	return genkit.Init(ctx,
 		genkit.WithPlugins(
 			&siliconflow.SiliconFlow{
 				APIKey: config.SILICONFLOW_API_KEY,
@@ -45,19 +74,12 @@ func InitGlobalGenkit(defaultModel string) (err error) {
 				APIKey: config.DASHSCOPE_API_KEY,
 			},
 		),
-		genkit.WithDefaultModel(defaultModel),
+		genkit.WithDefaultModel(modelName),
 		genkit.WithPromptDir(config.PROMPT_DIR_PATH),
 	)
-
-	if g == nil {
-		return fmt.Errorf("fail to initialize global genkit")
-	}
-
-	globalGenkit = g
-	return err
 }
 
-func InitLogger() {
+func defaultLogger() *slog.Logger {
 	logLevel := slog.LevelInfo
 	if envLevel := config.LOG_LEVEL; envLevel != "" {
 		switch strings.ToUpper(envLevel) {
@@ -82,45 +104,23 @@ func InitLogger() {
 			}),
 		),
 	)
-	globalLogger = slog.Default()
+	return slog.Default()
 }
 
-func GetGlobalGenkit() (*genkit.Genkit, error) {
-	var err error
-	if globalGenkit == nil {
-		return nil, fmt.Errorf("global genkit is nil, initialize genkit first")
+func GetRegister() *genkit.Genkit {
+	if registry == nil {
+		defaultReg, err := defaultRegistry(config.DEFAULT_MODEL.Key())
+		if err != nil {
+			panic(err)
+		}
+		registry = defaultReg
 	}
-	return globalGenkit, err
+	return registry
 }
 
 func GetLogger() *slog.Logger {
-	if globalLogger == nil {
-		InitLogger()
+	if gloLogger == nil {
+		gloLogger = defaultLogger()
 	}
-	return globalLogger
-}
-
-func GetRootContext() context.Context {
-	ctx := context.Background()
-	if rootContext == nil {
-		rootContext = &ctx
-	}
-	return *rootContext
-}
-
-// Load environment variables from PROJECT_ROOT/.env file
-func LoadEnvVars() (err error) {
-	dotEnvFilePath := filepath.Join(config.PROJECT_ROOT, ".env")
-	dotEnvExampleFilePath := filepath.Join(config.PROJECT_ROOT, ".env.example")
-
-	// Check if the .env file exists, if not, copy .env.example to .env
-	if _, err = os.Stat(dotEnvFilePath); os.IsNotExist(err) {
-		if err = utils.CopyFile(dotEnvExampleFilePath, dotEnvFilePath); err != nil {
-			return err
-		}
-	}
-
-	// Load environment variables
-	err = godotenv.Load(dotEnvFilePath)
-	return err
+	return gloLogger
 }

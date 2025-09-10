@@ -40,10 +40,7 @@ func defineWeatherFlow(g *genkit.Genkit) *core.Flow[WeatherInput, string, struct
 
 func TestTextGeneration(t *testing.T) {
 	ctx := context.Background()
-	g, err := manager.GetGlobalGenkit()
-	if err != nil {
-		t.Fatalf("failed to initialize genkit: %v", err)
-	}
+	g := manager.GetRegister()
 
 	resp, err := genkit.GenerateText(ctx, g, ai.WithPrompt("Hello, Who are you?"))
 	if err != nil {
@@ -56,10 +53,7 @@ func TestTextGeneration(t *testing.T) {
 
 func TestWeatherFlowRun(t *testing.T) {
 	ctx := context.Background()
-	g, err := manager.GetGlobalGenkit()
-	if err != nil {
-		t.Fatalf("failed to initialize genkit: %v", err)
-	}
+	g := manager.GetRegister()
 
 	flow := defineWeatherFlow(g)
 	flow.Run(ctx, WeatherInput{Location: "San Francisco"})

@@ -8,6 +8,7 @@ require (
 	github.com/firebase/genkit/go v0.6.2
 	github.com/joho/godotenv v1.5.1
 	github.com/lmittmann/tint v1.1.2
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openai/openai-go v0.1.0-alpha.65
 )
 
