@@ -1,7 +1,10 @@
 package react
 
 import (
+	"dubbo-admin-ai/agent"
 	"dubbo-admin-ai/internal/manager"
+	"dubbo-admin-ai/internal/memory"
+	"dubbo-admin-ai/internal/tools"
 	"dubbo-admin-ai/plugins/dashscope"
 	"encoding/json"
 	"fmt"
@@ -9,24 +12,51 @@ import (
 )
 
 var (
-	reActAgent *ReActAgent
+	reActAgent     *ReActAgent
+	chatHistoryCtx = memory.NewMemoryContext(memory.ChatHistoryKey)
 )
 
 func init() {
-	manager.Init(dashscope.Qwen3.Key(), nil)
-	reAct, err := Create(manager.GetRegister())
-	if err != nil {
-		panic(err)
-	}
-	reActAgent = reAct
+	manager.Init(dashscope.Qwen3.Key(), manager.PrettyLogger())
+	reActAgent = Create(manager.GetRegistry())
 }
 
 func TestThinking(t *testing.T) {
 	agentInput := ThinkIn{
-		UserInput: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
+		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
 	}
 
-	resp, err := reActAgent.orchestrator.RunStage(thinkFlowName, agentInput)
+	resp, err := reActAgent.orchestrator.RunStage(chatHistoryCtx, agent.ThinkFlowName, agentInput)
+	if err != nil {
+		t.Fatalf("failed to run thinking flow: %v", err)
+	}
+
+	fmt.Println(resp)
+}
+
+func TestThink2(t *testing.T) {
+	input := ActOut{
+		Outputs: []tools.ToolOutput{
+			{
+				ToolName: "prometheus_query_service_latency",
+				Summary:  "服务 order-service 在过去10分钟内的 P95 延迟为 3500ms",
+				Result: map[string]any{
+					"quantile":     0.95,
+					"value_millis": 3500,
+				},
+			},
+			{
+				ToolName: "prometheus_query_service_traffic",
+				Summary:  "服务 order-service 的 QPS 为 250.0, 错误率为 5.2%",
+				Result: map[string]any{
+					"error_rate_percentage": 5.2,
+					"request_rate_qps":      250,
+				},
+			},
+		},
+	}
+
+	resp, err := reActAgent.orchestrator.RunStage(chatHistoryCtx, agent.ThinkFlowName, input)
 	if err != nil {
 		t.Fatalf("failed to run thinking flow: %v", err)
 	}
@@ -40,28 +70,28 @@ func TestAct(t *testing.T) {
         {
             "tool_name": "prometheus_query_service_latency",
             "parameter": {
-                "latency_type": "P95",
-                "service": "order-service",
-                "time_range": "last_15m"
+                "service_name": "order-service",
+                "time_range_minutes": 15,
+                "quantile": 0.95
             }
         },
         {
             "tool_name": "prometheus_query_service_traffic",
             "parameter": {
-                "service": "order-service",
-                "time_range": "last_15m"
+                "service_name": "order-service",
+                "time_range_minutes": 15
             }
         },
         {
             "tool_name": "trace_dependency_view",
             "parameter": {
-                "service": "order-service"
+                "service_name": "order-service"
             }
         },
         {
             "tool_name": "dubbo_service_status",
             "parameter": {
-                "service": "order-service"
+                "service_name": "order-service"
             }
         }
     ],
@@ -73,7 +103,7 @@ func TestAct(t *testing.T) {
 		t.Fatalf("failed to unmarshal actInJson: %v", err)
 	}
 
-	actOuts, err := reActAgent.orchestrator.RunStage(actFlowName, actIn)
+	actOuts, err := reActAgent.orchestrator.RunStage(chatHistoryCtx, agent.ActFlowName, actIn)
 	resp := actOuts
 	if err != nil {
 		t.Fatalf("failed to run act flow: %v", err)
@@ -82,6 +112,25 @@ func TestAct(t *testing.T) {
 		t.Fatal("expected non-nil response")
 	}
 
-	fmt.Println(resp)
+}
 
+func TestAgent(t *testing.T) {
+	agentInput := ThinkIn{
+		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
+	}
+
+	_, err := reActAgent.Interact(chatHistoryCtx, agentInput)
+	if err != nil {
+		t.Fatalf("failed to run thinking flow: %v", err)
+	}
+}
+
+func TestAgentFlow(t *testing.T) {
+	agentInput := ThinkIn{
+		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
+	}
+	_, err := reActAgent.AgentFlow(manager.GetRegistry()).Run(chatHistoryCtx, agentInput)
+	if err != nil {
+		t.Fatalf("failed to run agent flow: %v", err)
+	}
 }

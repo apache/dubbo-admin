@@ -2,7 +2,7 @@ package config
 
 import (
 	"dubbo-admin-ai/plugins/dashscope"
-	"dubbo-admin-ai/plugins/models"
+	"dubbo-admin-ai/plugins/model"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -19,8 +19,9 @@ var (
 	_, b, _, _   = runtime.Caller(0)
 	PROJECT_ROOT = filepath.Join(filepath.Dir(b), "..")
 
-	PROMPT_DIR_PATH      string       = filepath.Join(PROJECT_ROOT, "prompts")
-	LOG_LEVEL            string       = os.Getenv("LOG_LEVEL")
-	DEFAULT_MODEL        models.Model = dashscope.Qwen3
-	MAX_REACT_ITERATIONS int          = 5
+	PROMPT_DIR_PATH      string      = filepath.Join(PROJECT_ROOT, "prompts")
+	LOG_LEVEL            string      = os.Getenv("LOG_LEVEL")
+	DEFAULT_MODEL        model.Model = dashscope.Qwen3
+	MAX_REACT_ITERATIONS int         = 5
 )
+
