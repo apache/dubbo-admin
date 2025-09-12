@@ -6,7 +6,6 @@ import (
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
-	"github.com/mitchellh/mapstructure"
 )
 
 // ================================================
@@ -31,29 +30,23 @@ func (o PrometheusServiceLatencyOutput) String() string {
 	return fmt.Sprintf("PrometheusServiceLatencyOutput{Quantile: %.2f, ValueMillis: %d}", o.Quantile, o.ValueMillis)
 }
 
-func prometheusQueryServiceLatency(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
-	// 解析输入
-	var latencyInput PrometheusServiceLatencyInput
-	if err := mapstructure.Decode(input.Parameter, &latencyInput); err != nil {
-		return ToolOutput{}, fmt.Errorf("failed to decode input for prometheus_query_service_latency: %w", err)
-	}
-
-	manager.GetLogger().Info("Tool 'prometheus_query_service_latency' called", "service", latencyInput.ServiceName)
+func prometheusQueryServiceLatency(ctx *ai.ToolContext, input PrometheusServiceLatencyInput) (ToolOutput, error) {
+	manager.GetLogger().Info("Tool 'prometheus_query_service_latency' called", "service", input.ServiceName)
 
 	// Mock data based on the example in prompt
 	valueMillis := 3500
-	if latencyInput.ServiceName != "order-service" {
+	if input.ServiceName != "order-service" {
 		valueMillis = 850
 	}
 
 	output := PrometheusServiceLatencyOutput{
-		Quantile:    latencyInput.Quantile,
+		Quantile:    input.Quantile,
 		ValueMillis: valueMillis,
 	}
 
 	return ToolOutput{
 		ToolName: "prometheus_query_service_latency",
-		Summary:  fmt.Sprintf("服务 %s 在过去%d分钟内的 P%.0f 延迟为 %dms", latencyInput.ServiceName, latencyInput.TimeRangeMinutes, latencyInput.Quantile*100, valueMillis),
+		Summary:  fmt.Sprintf("服务 %s 在过去%d分钟内的 P%.0f 延迟为 %dms", input.ServiceName, input.TimeRangeMinutes, input.Quantile*100, output.ValueMillis),
 		Result:   output,
 	}, nil
 }
@@ -80,14 +73,8 @@ func (o PrometheusServiceTrafficOutput) String() string {
 	return fmt.Sprintf("PrometheusServiceTrafficOutput{RequestRateQPS: %.1f, ErrorRatePercentage: %.1f}", o.RequestRateQPS, o.ErrorRatePercentage)
 }
 
-func prometheusQueryServiceTraffic(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
-	// 解析输入
-	var trafficInput PrometheusServiceTrafficInput
-	if err := mapstructure.Decode(input.Parameter, &trafficInput); err != nil {
-		return ToolOutput{}, fmt.Errorf("failed to decode input for prometheus_query_service_traffic: %w", err)
-	}
-
-	manager.GetLogger().Info("Tool 'prometheus_query_service_traffic' called", "service", trafficInput.ServiceName)
+func prometheusQueryServiceTraffic(ctx *ai.ToolContext, input PrometheusServiceTrafficInput) (ToolOutput, error) {
+	manager.GetLogger().Info("Tool 'prometheus_query_service_traffic' called", "service", input.ServiceName)
 
 	output := PrometheusServiceTrafficOutput{
 		RequestRateQPS:      250.0,
@@ -96,7 +83,7 @@ func prometheusQueryServiceTraffic(ctx *ai.ToolContext, input ToolInput) (ToolOu
 
 	return ToolOutput{
 		ToolName: "prometheus_query_service_traffic",
-		Summary:  fmt.Sprintf("服务 %s 的 QPS 为 250, 错误率为 5.2%%", trafficInput.ServiceName),
+		Summary:  fmt.Sprintf("服务 %s 的 QPS 为 %.1f, 错误率为 %.1f%%", input.ServiceName, output.RequestRateQPS, output.ErrorRatePercentage),
 		Result:   output,
 	}, nil
 }
@@ -136,17 +123,11 @@ func (o QueryTimeseriesDatabaseOutput) String() string {
 	return fmt.Sprintf("QueryTimeseriesDatabaseOutput{Query: %s, Results: %d items}", o.Query, len(o.Results))
 }
 
-func queryTimeseriesDatabase(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
-	// 解析输入
-	var queryInput QueryTimeseriesDatabaseInput
-	if err := mapstructure.Decode(input.Parameter, &queryInput); err != nil {
-		return ToolOutput{}, fmt.Errorf("failed to decode input for query_timeseries_database: %w", err)
-	}
-
-	manager.GetLogger().Info("Tool 'query_timeseries_database' called", "query", queryInput.PromqlQuery)
+func queryTimeseriesDatabase(ctx *ai.ToolContext, input QueryTimeseriesDatabaseInput) (ToolOutput, error) {
+	manager.GetLogger().Info("Tool 'query_timeseries_database' called", "query", input.PromqlQuery)
 
 	output := QueryTimeseriesDatabaseOutput{
-		Query: queryInput.PromqlQuery,
+		Query: input.PromqlQuery,
 		Results: []TimeseriesResult{
 			{
 				Metric: TimeseriesMetric{Pod: "order-service-pod-1"},
@@ -195,14 +176,8 @@ func (o ApplicationPerformanceProfilingOutput) String() string {
 	return fmt.Sprintf("ApplicationPerformanceProfilingOutput{Status: %s, TotalSamples: %d, Hotspots: %d items}", o.Status, o.TotalSamples, len(o.Hotspots))
 }
 
-func applicationPerformanceProfiling(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
-	// 解析输入
-	var profilingInput ApplicationPerformanceProfilingInput
-	if err := mapstructure.Decode(input.Parameter, &profilingInput); err != nil {
-		return ToolOutput{}, fmt.Errorf("failed to decode input for application_performance_profiling: %w", err)
-	}
-
-	manager.GetLogger().Info("Tool 'application_performance_profiling' called", "service", profilingInput.ServiceName, "pod", profilingInput.PodName)
+func applicationPerformanceProfiling(ctx *ai.ToolContext, input ApplicationPerformanceProfilingInput) (ToolOutput, error) {
+	manager.GetLogger().Info("Tool 'application_performance_profiling' called", "service", input.ServiceName, "pod", input.PodName)
 
 	output := ApplicationPerformanceProfilingOutput{
 		Status:       "completed",
@@ -249,14 +224,8 @@ func (o JVMPerformanceAnalysisOutput) String() string {
 	return fmt.Sprintf("JVMPerformanceAnalysisOutput{FullGcCountLastHour: %d, FullGcTimeAvgMillis: %d, HeapUsagePercentage: %.1f}", o.FullGcCountLastHour, o.FullGcTimeAvgMillis, o.HeapUsagePercentage)
 }
 
-func jvmPerformanceAnalysis(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
-	// 解析输入
-	var jvmInput JVMPerformanceAnalysisInput
-	if err := mapstructure.Decode(input.Parameter, &jvmInput); err != nil {
-		return ToolOutput{}, fmt.Errorf("failed to decode input for jvm_performance_analysis: %w", err)
-	}
-
-	manager.GetLogger().Info("Tool 'jvm_performance_analysis' called", "service", jvmInput.ServiceName, "pod", jvmInput.PodName)
+func jvmPerformanceAnalysis(ctx *ai.ToolContext, input JVMPerformanceAnalysisInput) (ToolOutput, error) {
+	manager.GetLogger().Info("Tool 'jvm_performance_analysis' called", "service", input.ServiceName, "pod", input.PodName)
 
 	output := JVMPerformanceAnalysisOutput{
 		FullGcCountLastHour: 15,
@@ -292,14 +261,8 @@ func (o TraceDependencyViewOutput) String() string {
 	return fmt.Sprintf("TraceDependencyViewOutput{UpstreamServices: %v, DownstreamServices: %v}", o.UpstreamServices, o.DownstreamServices)
 }
 
-func traceDependencyView(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
-	// 解析输入
-	var depInput TraceDependencyViewInput
-	if err := mapstructure.Decode(input.Parameter, &depInput); err != nil {
-		return ToolOutput{}, fmt.Errorf("failed to decode input for trace_dependency_view: %w", err)
-	}
-
-	manager.GetLogger().Info("Tool 'trace_dependency_view' called", "service", depInput.ServiceName)
+func traceDependencyView(ctx *ai.ToolContext, input TraceDependencyViewInput) (ToolOutput, error) {
+	manager.GetLogger().Info("Tool 'trace_dependency_view' called", "service", input.ServiceName)
 
 	output := TraceDependencyViewOutput{
 		UpstreamServices:   []string{"api-gateway", "user-service"},
@@ -308,7 +271,7 @@ func traceDependencyView(ctx *ai.ToolContext, input ToolInput) (ToolOutput, erro
 
 	return ToolOutput{
 		ToolName: "trace_dependency_view",
-		Summary:  fmt.Sprintf("服务 %s 的上下游依赖关系查询完成", depInput.ServiceName),
+		Summary:  fmt.Sprintf("服务 %s 的上下游依赖关系查询完成", input.ServiceName),
 		Result:   output,
 	}, nil
 }
@@ -341,14 +304,8 @@ func (o TraceLatencyAnalysisOutput) String() string {
 	return fmt.Sprintf("TraceLatencyAnalysisOutput{TotalLatencyAvgMillis: %d, Bottlenecks: %d items}", o.TotalLatencyAvgMillis, len(o.Bottlenecks))
 }
 
-func traceLatencyAnalysis(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
-	// 解析输入
-	var latencyInput TraceLatencyAnalysisInput
-	if err := mapstructure.Decode(input.Parameter, &latencyInput); err != nil {
-		return ToolOutput{}, fmt.Errorf("failed to decode input for trace_latency_analysis: %w", err)
-	}
-
-	manager.GetLogger().Info("Tool 'trace_latency_analysis' called", "service", latencyInput.ServiceName)
+func traceLatencyAnalysis(ctx *ai.ToolContext, input TraceLatencyAnalysisInput) (ToolOutput, error) {
+	manager.GetLogger().Info("Tool 'trace_latency_analysis' called", "service", input.ServiceName)
 
 	output := TraceLatencyAnalysisOutput{
 		TotalLatencyAvgMillis: 3200,
@@ -396,14 +353,8 @@ func (o DatabaseConnectionPoolAnalysisOutput) String() string {
 	return fmt.Sprintf("DatabaseConnectionPoolAnalysisOutput{MaxConnections: %d, ActiveConnections: %d, IdleConnections: %d, PendingRequests: %d}", o.MaxConnections, o.ActiveConnections, o.IdleConnections, o.PendingRequests)
 }
 
-func databaseConnectionPoolAnalysis(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
-	// 解析输入
-	var poolInput DatabaseConnectionPoolAnalysisInput
-	if err := mapstructure.Decode(input.Parameter, &poolInput); err != nil {
-		return ToolOutput{}, fmt.Errorf("failed to decode input for database_connection_pool_analysis: %w", err)
-	}
-
-	manager.GetLogger().Info("Tool 'database_connection_pool_analysis' called", "service", poolInput.ServiceName)
+func databaseConnectionPoolAnalysis(ctx *ai.ToolContext, input DatabaseConnectionPoolAnalysisInput) (ToolOutput, error) {
+	manager.GetLogger().Info("Tool 'database_connection_pool_analysis' called", "service", input.ServiceName)
 
 	output := DatabaseConnectionPoolAnalysisOutput{
 		MaxConnections:    100,
@@ -450,14 +401,8 @@ func (o KubernetesGetPodResourcesOutput) String() string {
 	return fmt.Sprintf("KubernetesGetPodResourcesOutput{Pods: %d items}", len(o.Pods))
 }
 
-func kubernetesGetPodResources(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
-	// 解析输入
-	var k8sInput KubernetesGetPodResourcesInput
-	if err := mapstructure.Decode(input.Parameter, &k8sInput); err != nil {
-		return ToolOutput{}, fmt.Errorf("failed to decode input for kubernetes_get_pod_resources: %w", err)
-	}
-
-	manager.GetLogger().Info("Tool 'kubernetes_get_pod_resources' called", "service", k8sInput.ServiceName, "namespace", k8sInput.Namespace)
+func kubernetesGetPodResources(ctx *ai.ToolContext, input KubernetesGetPodResourcesInput) (ToolOutput, error) {
+	manager.GetLogger().Info("Tool 'kubernetes_get_pod_resources' called", "service", input.ServiceName, "namespace", input.Namespace)
 
 	output := KubernetesGetPodResourcesOutput{
 		Pods: []PodResource{
@@ -522,14 +467,8 @@ func (o DubboServiceStatusOutput) String() string {
 	return fmt.Sprintf("DubboServiceStatusOutput{Providers: %d items, Consumers: %d items}", len(o.Providers), len(o.Consumers))
 }
 
-func dubboServiceStatus(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
-	// 解析输入
-	var dubboInput DubboServiceStatusInput
-	if err := mapstructure.Decode(input.Parameter, &dubboInput); err != nil {
-		return ToolOutput{}, fmt.Errorf("failed to decode input for dubbo_service_status: %w", err)
-	}
-
-	manager.GetLogger().Info("Tool 'dubbo_service_status' called", "service", dubboInput.ServiceName)
+func dubboServiceStatus(ctx *ai.ToolContext, input DubboServiceStatusInput) (ToolOutput, error) {
+	manager.GetLogger().Info("Tool 'dubbo_service_status' called", "service", input.ServiceName)
 
 	output := DubboServiceStatusOutput{
 		Providers: []DubboProvider{
@@ -544,7 +483,7 @@ func dubboServiceStatus(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error
 
 	return ToolOutput{
 		ToolName: "dubbo_service_status",
-		Summary:  fmt.Sprintf("服务 %s 的提供者和消费者状态查询完成", dubboInput.ServiceName),
+		Summary:  fmt.Sprintf("服务 %s 的提供者和消费者状态查询完成", input.ServiceName),
 		Result:   output,
 	}, nil
 }
@@ -578,14 +517,8 @@ func (o QueryLogDatabaseOutput) String() string {
 	return fmt.Sprintf("QueryLogDatabaseOutput{TotalHits: %d, Logs: %d items}", o.TotalHits, len(o.Logs))
 }
 
-func queryLogDatabase(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
-	// 解析输入
-	var logInput QueryLogDatabaseInput
-	if err := mapstructure.Decode(input.Parameter, &logInput); err != nil {
-		return ToolOutput{}, fmt.Errorf("failed to decode input for query_log_database: %w", err)
-	}
-
-	manager.GetLogger().Info("Tool 'query_log_database' called", "service", logInput.ServiceName, "keyword", logInput.Keyword)
+func queryLogDatabase(ctx *ai.ToolContext, input QueryLogDatabaseInput) (ToolOutput, error) {
+	manager.GetLogger().Info("Tool 'query_log_database' called", "service", input.ServiceName, "keyword", input.Keyword)
 
 	output := QueryLogDatabaseOutput{
 		TotalHits: 152,
@@ -605,7 +538,7 @@ func queryLogDatabase(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) 
 
 	return ToolOutput{
 		ToolName: "query_log_database",
-		Summary:  fmt.Sprintf("在过去%d分钟内，发现 152 条关于 '%s' 的日志条目", logInput.TimeRangeMinutes, logInput.Keyword),
+		Summary:  fmt.Sprintf("在过去%d分钟内，发现 152 条关于 '%s' 的日志条目", input.TimeRangeMinutes, input.Keyword),
 		Result:   output,
 	}, nil
 }
@@ -638,14 +571,8 @@ func (o SearchArchivedLogsOutput) String() string {
 	return fmt.Sprintf("SearchArchivedLogsOutput{FilesSearched: %d, MatchingLines: %d items}", o.FilesSearched, len(o.MatchingLines))
 }
 
-func searchArchivedLogs(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
-	// 解析输入
-	var searchInput SearchArchivedLogsInput
-	if err := mapstructure.Decode(input.Parameter, &searchInput); err != nil {
-		return ToolOutput{}, fmt.Errorf("failed to decode input for search_archived_logs: %w", err)
-	}
-
-	manager.GetLogger().Info("Tool 'search_archived_logs' called", "pattern", searchInput.FilePathPattern, "keyword", searchInput.GrepKeyword)
+func searchArchivedLogs(ctx *ai.ToolContext, input SearchArchivedLogsInput) (ToolOutput, error) {
+	manager.GetLogger().Info("Tool 'search_archived_logs' called", "pattern", input.FilePathPattern, "keyword", input.GrepKeyword)
 
 	output := SearchArchivedLogsOutput{
 		FilesSearched: 5,
@@ -696,14 +623,8 @@ func (o QueryKnowledgeBaseOutput) String() string {
 	return fmt.Sprintf("QueryKnowledgeBaseOutput{Documents: %d items}", len(o.Documents))
 }
 
-func queryKnowledgeBase(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error) {
-	// 解析输入
-	var knowledgeInput QueryKnowledgeBaseInput
-	if err := mapstructure.Decode(input.Parameter, &knowledgeInput); err != nil {
-		return ToolOutput{}, fmt.Errorf("failed to decode input for query_knowledge_base: %w", err)
-	}
-
-	manager.GetLogger().Info("Tool 'query_knowledge_base' called", "query", knowledgeInput.QueryText)
+func queryKnowledgeBase(ctx *ai.ToolContext, input QueryKnowledgeBaseInput) (ToolOutput, error) {
+	manager.GetLogger().Info("Tool 'query_knowledge_base' called", "query", input.QueryText)
 
 	output := QueryKnowledgeBaseOutput{
 		Documents: []KnowledgeDocument{
@@ -717,7 +638,7 @@ func queryKnowledgeBase(ctx *ai.ToolContext, input ToolInput) (ToolOutput, error
 
 	return ToolOutput{
 		ToolName: "query_knowledge_base",
-		Summary:  fmt.Sprintf("知识库查询 '%s' 完成", knowledgeInput.QueryText),
+		Summary:  fmt.Sprintf("知识库查询 '%s' 完成", input.QueryText),
 		Result:   output,
 	}, nil
 }

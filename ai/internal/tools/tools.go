@@ -2,6 +2,7 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -25,8 +26,32 @@ type ToolOutput struct {
 	Result   any    `json:"result"`
 }
 
+func (to ToolOutput) Map() map[string]any {
+	result := make(map[string]any)
+	result["tool_name"] = to.ToolName
+	result["summary"] = to.Summary
+	result["result"] = to.Result
+	return result
+}
+
 func (to ToolOutput) String() string {
-	return fmt.Sprintf("ToolOutput{ToolName: %s, Summary: %s, Result: %v}", to.ToolName, to.Summary, to.Result)
+	result := "ToolOutput{\n"
+	result += fmt.Sprintf("  ToolName: %s\n", to.ToolName)
+	result += fmt.Sprintf("  Summary: %s\n", to.Summary)
+
+	// Format Result based on its type
+	if to.Result != nil {
+		if resultJSON, err := json.MarshalIndent(to.Result, "  ", "  "); err == nil {
+			result += fmt.Sprintf("  Result: %s\n", string(resultJSON))
+		} else {
+			result += fmt.Sprintf("  Result: %v\n", to.Result)
+		}
+	} else {
+		result += "  Result: <nil>\n"
+	}
+
+	result += "}"
+	return result
 }
 
 type ToolManager interface {
@@ -48,15 +73,24 @@ func (toolInput ToolInput) Call(g *genkit.Genkit, ctx context.Context) (toolOutp
 		return toolOutput, fmt.Errorf("tool not found: %s", toolInput.ToolName)
 	}
 
-	rawToolOutput, err := tool.RunRaw(ctx, toolInput)
-
-	if rawToolOutput == nil {
-		return toolOutput, err
-	}
-
-	mapstructure.Decode(rawToolOutput, &toolOutput)
+	// 直接传递 Parameter 给工具，而不是整个 ToolInput
+	rawToolOutput, err := tool.RunRaw(ctx, toolInput.Parameter)
 	if err != nil {
 		return toolOutput, fmt.Errorf("failed to call tool %s: %w", toolInput.ToolName, err)
+	}
+
+	if rawToolOutput == nil {
+		return toolOutput, fmt.Errorf("tool %s returned nil output", toolInput.ToolName)
+	}
+
+	err = mapstructure.Decode(rawToolOutput, &toolOutput)
+	if err != nil {
+		return toolOutput, fmt.Errorf("failed to decode tool output for %s: %w", toolInput.ToolName, err)
+	}
+
+	// 确保 ToolName 被设置
+	if toolOutput.ToolName == "" {
+		toolOutput.ToolName = toolInput.ToolName
 	}
 
 	return toolOutput, nil

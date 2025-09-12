@@ -4,8 +4,10 @@ import (
 	"context"
 	"dubbo-admin-ai/agent"
 	"dubbo-admin-ai/config"
-	"dubbo-admin-ai/internal/schema"
+	"dubbo-admin-ai/internal/manager"
+	"dubbo-admin-ai/internal/memory"
 	"dubbo-admin-ai/internal/tools"
+	"dubbo-admin-ai/schema"
 	"fmt"
 	"os"
 
@@ -13,47 +15,51 @@ import (
 	"github.com/firebase/genkit/go/genkit"
 )
 
-const (
-	thinkFlowName string = "think"
-	actFlowName   string = "act"
-)
-
-type ThinkIn = schema.ReActInput
-type ThinkOut = schema.ThinkAggregation
+type ThinkIn = schema.ThinkInput
+type ThinkOut = schema.ThinkOutput
 type ActIn = ThinkOut
 type ActOut = schema.ToolOutputs
 
 // ReActAgent 实现Agent接口
 type ReActAgent struct {
 	registry     *genkit.Genkit
-	orchestrator *agent.Orchestrator
+	orchestrator agent.Orchestrator
 }
 
-func Create(registry *genkit.Genkit) (*ReActAgent, error) {
+func Create(registry *genkit.Genkit) (react *ReActAgent) {
 	if registry == nil {
-		return nil, fmt.Errorf("cannot create reAct agent: registry is nil")
+		panic(fmt.Errorf("cannot create reAct agent: registry is nil"))
 	}
 
-	thinkPrompt, err := buildThinkPrompt(registry)
-	if err != nil {
-		return nil, fmt.Errorf("failed to build think prompt: %w", err)
-	}
+	thinkPrompt := buildThinkPrompt(registry)
 
 	// Create orchestrator with executable stages
 	thinkStage := agent.NewStage(think(registry, thinkPrompt), ThinkIn{}, ThinkOut{})
 	actStage := agent.NewStage(act(registry), ActIn{}, ActOut{})
+	orchestrator := agent.NewOrderOrchestrator(thinkStage, actStage)
 
-	return &ReActAgent{
+	react = &ReActAgent{
 		registry:     registry,
-		orchestrator: agent.NewOrchestrator(thinkStage, actStage),
-	}, nil
+		orchestrator: orchestrator,
+	}
+	react.AgentFlow(registry)
+
+	return react
 }
 
-func buildThinkPrompt(registry *genkit.Genkit) (*ai.Prompt, error) {
+func (ra *ReActAgent) Interact(ctx context.Context, input schema.Schema) (output schema.Schema, err error) {
+	return ra.orchestrator.Run(ctx, input)
+}
+
+func (ra *ReActAgent) AgentFlow(registry *genkit.Genkit) agent.Flow {
+	return ra.orchestrator.ToFlow(registry)
+}
+
+func buildThinkPrompt(registry *genkit.Genkit) ai.Prompt {
 	// Load system prompt from filesystem
 	data, err := os.ReadFile(config.PROMPT_DIR_PATH + "/agentSystem.prompt")
 	if err != nil {
-		return nil, fmt.Errorf("failed to read agentSystem prompt: %w", err)
+		panic(fmt.Errorf("failed to read agentSystem prompt: %w", err))
 	}
 	systemPromptText := string(data)
 
@@ -61,52 +67,69 @@ func buildThinkPrompt(registry *genkit.Genkit) (*ai.Prompt, error) {
 	mockToolManager := tools.NewMockToolManager(registry)
 	toolRefs, err := mockToolManager.AllToolRefs()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get mock mock_tools: %v", err)
+		panic(fmt.Errorf("failed to get mock mock_tools: %v", err))
 	}
 	return genkit.DefinePrompt(registry, "agentThinking",
 		ai.WithSystem(systemPromptText),
 		ai.WithInputType(ThinkIn{}),
 		ai.WithOutputType(ThinkOut{}),
-		ai.WithPrompt("{{userInput}}"),
+		ai.WithPrompt(schema.UserThinkPromptTemplate),
 		ai.WithTools(toolRefs...),
+		ai.WithReturnToolRequests(true),
 	)
 }
 
-func think(g *genkit.Genkit, prompt *ai.Prompt) agent.Flow {
-	return genkit.DefineFlow(g, thinkFlowName,
+func think(g *genkit.Genkit, prompt ai.Prompt) agent.Flow {
+	return genkit.DefineFlow(g, agent.ThinkFlowName,
 		func(ctx context.Context, in schema.Schema) (out schema.Schema, err error) {
-			input, ok := in.(ThinkIn)
+			manager.GetLogger().Info("Thinking...", "input", in)
+			defer func() {
+				manager.GetLogger().Info("Think Done.", "output", out)
+			}()
+
+			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.History)
 			if !ok {
-				return nil, fmt.Errorf("input is not of type ThinkIn, got %T", in)
+				panic(fmt.Errorf("failed to get history from context"))
 			}
 
-			resp, err := prompt.Execute(ctx,
-				ai.WithInput(input),
-			)
+			var resp *ai.ModelResponse
+			if !history.IsEmpty() {
+				resp, err = prompt.Execute(ctx,
+					ai.WithInput(in),
+					ai.WithMessages(history.AllHistory()...),
+				)
+			} else {
+				resp, err = prompt.Execute(ctx,
+					ai.WithInput(in),
+				)
+			}
 
 			if err != nil {
 				return nil, fmt.Errorf("failed to execute agentThink prompt: %w", err)
 			}
-
 			// 解析输出
 			var response ThinkOut
 			err = resp.Output(&response)
+
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse agentThink prompt response: %w", err)
+				return out, fmt.Errorf("failed to parse agentThink prompt response: %w", err)
 			}
 
+			history.AddHistory(resp.History()...)
 			return response, nil
 		})
 }
 
 // ----------------------------------------------------------------------------
 // act: 执行者的核心逻辑
-// TODO: Genkit 的 Tool 设计不能保证任意 LLM 一定能执行工具调用，是否考虑设计成所有模型都能执行？
-// 一种思路是让 LLM 直接生成工具调用的结构化描述，然后由适配器执行。
-// 管线、流水线的思想能否用在这里？
 func act(g *genkit.Genkit) agent.Flow {
-	return genkit.DefineFlow(g, actFlowName,
+	return genkit.DefineFlow(g, agent.ActFlowName,
 		func(ctx context.Context, in schema.Schema) (out schema.Schema, err error) {
+			manager.GetLogger().Info("Acting...", "input", in)
+			defer func() {
+				manager.GetLogger().Info("Act Done.", "output", out)
+			}()
+
 			input, ok := in.(ActIn)
 			if !ok {
 				return nil, fmt.Errorf("input is not of type ActIn, got %T", in)
@@ -115,13 +138,29 @@ func act(g *genkit.Genkit) agent.Flow {
 			var actOuts ActOut
 
 			// 执行工具调用
-			for _, resp := range input.ToolInput {
-				output, err := resp.Call(g, ctx)
+			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.History)
+			if !ok {
+				panic(fmt.Errorf("failed to get history from context"))
+			}
+
+			var parts []*ai.Part
+			for _, req := range input.ToolRequests {
+				output, err := req.Call(g, ctx)
 				if err != nil {
-					return nil, fmt.Errorf("failed to call tool %s: %w", resp.ToolName, err)
+					return nil, fmt.Errorf("failed to call tool %s: %w", req.ToolName, err)
 				}
+
+				parts = append(parts,
+					ai.NewToolResponsePart(&ai.ToolResponse{
+						Name:   req.ToolName,
+						Ref:    req.ToolName,
+						Output: output.Map(),
+					}))
+
 				actOuts.Add(&output)
 			}
+
+			history.AddHistory(ai.NewMessage(ai.RoleTool, nil, parts...))
 
 			return actOuts, nil
 		})

@@ -2,12 +2,11 @@ package dashscope
 
 import (
 	"context"
-	"dubbo-admin-ai/plugins/models"
-	"fmt"
+	"dubbo-admin-ai/plugins/model"
 	"os"
 
 	"github.com/firebase/genkit/go/ai"
-	"github.com/firebase/genkit/go/core"
+	"github.com/firebase/genkit/go/core/api"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/firebase/genkit/go/plugins/compat_oai"
 	"github.com/openai/openai-go/option"
@@ -25,13 +24,13 @@ const (
 )
 
 var (
-	Qwen3       = models.New(provider, qwen3_235b_a22b, compat_oai.BasicText)
-	Qwen_plus   = models.New(provider, qwen_plus, compat_oai.BasicText)
-	Qwen_max    = models.New(provider, qwen_max, compat_oai.BasicText)
-	Qwen3_coder = models.New(provider, qwen3_coder, compat_oai.BasicText)
-	Qwen_flash  = models.New(provider, qwen_flash, compat_oai.BasicText)
+	Qwen3       = model.New(provider, qwen3_235b_a22b, compat_oai.BasicText)
+	Qwen_plus   = model.New(provider, qwen_plus, compat_oai.BasicText)
+	Qwen_max    = model.New(provider, qwen_max, compat_oai.BasicText)
+	Qwen3_coder = model.New(provider, qwen3_coder, compat_oai.BasicText)
+	Qwen_flash  = model.New(provider, qwen_flash, compat_oai.BasicText)
 
-	supportedModels = []models.Model{
+	supportedModels = []model.Model{
 		Qwen3,
 		Qwen_plus,
 		Qwen_max,
@@ -39,7 +38,7 @@ var (
 		Qwen_flash,
 	}
 
-	knownEmbedders = []string{}
+	// supportedEmbeddingModels = []string{}
 )
 
 type DashScope struct {
@@ -56,7 +55,7 @@ func (o *DashScope) Name() string {
 }
 
 // Init implements genkit.Plugin.
-func (o *DashScope) Init(ctx context.Context, g *genkit.Genkit) error {
+func (o *DashScope) Init(ctx context.Context) []api.Action {
 	apiKey := o.APIKey
 
 	// if api key is not set, get it from environment variable
@@ -65,7 +64,7 @@ func (o *DashScope) Init(ctx context.Context, g *genkit.Genkit) error {
 	}
 
 	if apiKey == "" {
-		return fmt.Errorf("DashScope plugin initialization failed: apiKey is required")
+		panic("DashScope plugin initialization failed: apiKey is required")
 	}
 
 	if o.openAICompatible == nil {
@@ -83,47 +82,40 @@ func (o *DashScope) Init(ctx context.Context, g *genkit.Genkit) error {
 	}
 
 	o.openAICompatible.Provider = provider
-	if err := o.openAICompatible.Init(ctx, g); err != nil {
-		return err
-	}
+	compatActions := o.openAICompatible.Init(ctx)
+
+	var actions []api.Action
+	actions = append(actions, compatActions...)
 
 	// define default models
 	for _, model := range supportedModels {
-		if _, err := o.DefineModel(g, model.Key(), model.Info()); err != nil {
-			return err
-		}
+		actions = append(actions, o.DefineModel(model.Key(), model.Info()).(api.Action))
 	}
+	//TODO: define default embedders
 
-	// define default embedders
-	for _, embedder := range knownEmbedders {
-		if _, err := o.DefineEmbedder(g, embedder); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return actions
 }
 
 func (o *DashScope) Model(g *genkit.Genkit, name string) ai.Model {
-	return o.openAICompatible.Model(g, name, provider)
+	return o.openAICompatible.Model(g, api.NewName(provider, name))
 }
 
-func (o *DashScope) DefineModel(g *genkit.Genkit, name string, info ai.ModelInfo) (ai.Model, error) {
-	return o.openAICompatible.DefineModel(g, provider, name, info)
+func (o *DashScope) DefineModel(id string, opts ai.ModelOptions) ai.Model {
+	return o.openAICompatible.DefineModel(provider, id, opts)
 }
 
-func (o *DashScope) DefineEmbedder(g *genkit.Genkit, name string) (ai.Embedder, error) {
-	return o.openAICompatible.DefineEmbedder(g, provider, name)
+func (o *DashScope) DefineEmbedder(id string, opts *ai.EmbedderOptions) ai.Embedder {
+	return o.openAICompatible.DefineEmbedder(provider, id, opts)
 }
 
 func (o *DashScope) Embedder(g *genkit.Genkit, name string) ai.Embedder {
-	return o.openAICompatible.Embedder(g, name, provider)
+	return o.openAICompatible.Embedder(g, api.NewName(provider, name))
 }
 
-func (o *DashScope) ListActions(ctx context.Context) []core.ActionDesc {
+func (o *DashScope) ListActions(ctx context.Context) []api.ActionDesc {
 	return o.openAICompatible.ListActions(ctx)
 }
 
-func (o *DashScope) ResolveAction(g *genkit.Genkit, atype core.ActionType, name string) error {
-	return o.openAICompatible.ResolveAction(g, atype, name)
+func (o *DashScope) ResolveAction(atype api.ActionType, name string) api.Action {
+	return o.openAICompatible.ResolveAction(atype, name)
 }

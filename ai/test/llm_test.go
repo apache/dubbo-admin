@@ -2,7 +2,9 @@ package test
 
 import (
 	"context"
+	"dubbo-admin-ai/agent/react"
 	"dubbo-admin-ai/internal/manager"
+	"dubbo-admin-ai/plugins/dashscope"
 	"fmt"
 	"log"
 	"testing"
@@ -11,6 +13,11 @@ import (
 	"github.com/firebase/genkit/go/core"
 	"github.com/firebase/genkit/go/genkit"
 )
+
+func init() {
+	manager.Init(dashscope.Qwen3.Key(), nil)
+	_ = react.Create(manager.GetRegistry())
+}
 
 type WeatherInput struct {
 	Location string `json:"location" jsonschema_description:"Location to get weather for"`
@@ -40,7 +47,7 @@ func defineWeatherFlow(g *genkit.Genkit) *core.Flow[WeatherInput, string, struct
 
 func TestTextGeneration(t *testing.T) {
 	ctx := context.Background()
-	g := manager.GetRegister()
+	g := manager.GetRegistry()
 
 	resp, err := genkit.GenerateText(ctx, g, ai.WithPrompt("Hello, Who are you?"))
 	if err != nil {
@@ -53,7 +60,7 @@ func TestTextGeneration(t *testing.T) {
 
 func TestWeatherFlowRun(t *testing.T) {
 	ctx := context.Background()
-	g := manager.GetRegister()
+	g := manager.GetRegistry()
 
 	flow := defineWeatherFlow(g)
 	flow.Run(ctx, WeatherInput{Location: "San Francisco"})
