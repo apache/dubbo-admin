@@ -6,21 +6,32 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/firebase/genkit/go/ai"
+	"github.com/invopop/jsonschema"
 )
 
-type Status string
+// StreamChunk 表示 ReAct Agent 的流式状态信息
+type StreamChunk struct {
+	Stage string                 `json:"stage"` // "think" | "act"
+	Chunk *ai.ModelResponseChunk `json:"chunk"`
+}
 
-const (
-	Continued Status = "CONTINUED"
-	Finished  Status = "FINISHED"
-	// Pending   Status = "PENDING"
-)
-
-const UserThinkPromptTemplate = `input: 
+var (
+	UserThinkPromptTemplateWithSchema = `input: 
 {{#if content}} content: {{content}} {{/if}} 
 {{#if tool_responses}} tool_responses: {{tool_responses}} {{/if}}
 {{#if thought}} thought: {{thought}} {{/if}}
+The output must be a JSON object that conforms to the following schema:
+` + ThinkOutput{}.JsonSchema()
+
+	UserThinkPromptTemplate = `input: 
+{{#if content}} content: {{content}} {{/if}} 
+{{#if tool_responses}} tool_responses: {{tool_responses}} {{/if}}
+{{#if thought}} thought: {{thought}} {{/if}}
+The output must be a JSON object that conforms to the following schema:
 `
+)
 
 type ThinkInput struct {
 	Content       string             `json:"content,omitempty"`
@@ -42,31 +53,27 @@ func (i ThinkInput) String() string {
 	return string(data)
 }
 
-type UserInput struct {
-	Content string `json:"content"`
-}
-
-func (i UserInput) Validate(T reflect.Type) error {
-	if reflect.TypeOf(i) != T {
-		return fmt.Errorf("UserInput: %v is not of type %v", i, T)
-	}
-	return nil
-}
-
-// UserInput
-func (i UserInput) String() string {
-	data, err := json.MarshalIndent(i, "", "  ")
-	if err != nil {
-		return fmt.Sprintf("UserInput{error: %v}", err)
-	}
-	return string(data)
-}
-
 type ThinkOutput struct {
 	ToolRequests []tools.ToolInput `json:"tool_requests,omitempty"`
 	Thought      string            `json:"thought"`
 	Status       Status            `json:"status,omitempty" jsonschema:"enum=CONTINUED,enum=FINISHED"`
 	FinalAnswer  string            `json:"final_answer,omitempty" jsonschema:"required=false"`
+}
+
+func (ta ThinkOutput) JsonSchema() string {
+	// 创建 Reflector
+	reflector := &jsonschema.Reflector{
+		AllowAdditionalProperties:  false,
+		RequiredFromJSONSchemaTags: true,
+		DoNotReference:             true,
+	}
+
+	// 生成 schema
+	schema := reflector.Reflect(ta)
+
+	// 转为 JSON
+	data, _ := json.MarshalIndent(schema, "", "  ")
+	return string(data)
 }
 
 func (ta ThinkOutput) Validate(T reflect.Type) error {

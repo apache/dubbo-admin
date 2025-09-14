@@ -14,11 +14,6 @@ import (
 	"github.com/firebase/genkit/go/genkit"
 )
 
-func init() {
-	manager.Init(dashscope.Qwen3.Key(), nil)
-	_ = react.Create(manager.GetRegistry())
-}
-
 type WeatherInput struct {
 	Location string `json:"location" jsonschema_description:"Location to get weather for"`
 }
@@ -46,6 +41,8 @@ func defineWeatherFlow(g *genkit.Genkit) *core.Flow[WeatherInput, string, struct
 }
 
 func TestTextGeneration(t *testing.T) {
+	manager.Init(dashscope.Qwen3.Key(), nil)
+	_ = react.Create(manager.GetRegistry())
 	ctx := context.Background()
 	g := manager.GetRegistry()
 
@@ -59,6 +56,8 @@ func TestTextGeneration(t *testing.T) {
 }
 
 func TestWeatherFlowRun(t *testing.T) {
+	manager.Init(dashscope.Qwen3.Key(), nil)
+	_ = react.Create(manager.GetRegistry())
 	ctx := context.Background()
 	g := manager.GetRegistry()
 

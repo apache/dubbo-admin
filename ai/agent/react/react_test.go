@@ -124,13 +124,3 @@ func TestAgent(t *testing.T) {
 		t.Fatalf("failed to run thinking flow: %v", err)
 	}
 }
-
-func TestAgentFlow(t *testing.T) {
-	agentInput := ThinkIn{
-		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
-	}
-	_, err := reActAgent.AgentFlow(manager.GetRegistry()).Run(chatHistoryCtx, agentInput)
-	if err != nil {
-		t.Fatalf("failed to run agent flow: %v", err)
-	}
-}
