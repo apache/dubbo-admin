@@ -21,7 +21,7 @@ type ThinkOut = schema.ThinkOutput
 type ActIn = ThinkOut
 type ActOut = schema.ToolOutputs
 
-// ReActAgent 实现Agent接口
+// ReActAgent implements Agent interface
 type ReActAgent struct {
 	registry     *genkit.Genkit
 	orchestrator agent.Orchestrator
@@ -99,10 +99,10 @@ func StreamThink(g *genkit.Genkit, prompt ai.Prompt) agent.StreamFlow {
 			}
 
 			var resp *ai.ModelResponse
-			// ai.WithStreaming() 接收的是 ai.ModelStreamCallback 类型的回调函数
-			// 该回调函数会在模型生成每个原始的流式 Chunk 时被调用，可以用来做 Raw Chunk 的处理
+			// ai.WithStreaming() receives ai.ModelStreamCallback type callback function
+			// This callback function is called when the model generates each raw streaming chunk, used for raw chunk processing
 
-			// 而传入的 cb 是用户自定义如何处理流式数据逻辑的回调函数，例如对做打印
+			// The passed cb is user-defined callback function for handling streaming data logic, such as printing
 			if !history.IsEmpty() {
 				resp, err = prompt.Execute(ctx,
 					ai.WithInput(in),
@@ -116,7 +116,7 @@ func StreamThink(g *genkit.Genkit, prompt ai.Prompt) agent.StreamFlow {
 				)
 			}
 
-			// 解析输出
+			// Parse output
 			var response ThinkOut
 			err = resp.Output(&response)
 
@@ -157,7 +157,7 @@ func think(g *genkit.Genkit, prompt ai.Prompt) agent.NormalFlow {
 				return nil, fmt.Errorf("failed to execute agentThink prompt: %w", err)
 			}
 
-			// 解析输出
+			// Parse output
 			var response ThinkOut
 			err = resp.Output(&response)
 
@@ -170,7 +170,7 @@ func think(g *genkit.Genkit, prompt ai.Prompt) agent.NormalFlow {
 		})
 }
 
-// act: 执行者的核心逻辑
+// act: Core logic of the executor
 func act(g *genkit.Genkit) agent.NormalFlow {
 	return genkit.DefineFlow(g, agent.ActFlowName,
 		func(ctx context.Context, in schema.Schema) (out schema.Schema, err error) {
@@ -186,7 +186,7 @@ func act(g *genkit.Genkit) agent.NormalFlow {
 
 			var actOuts ActOut
 
-			// 执行工具调用
+			// Execute tool calls
 			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.History)
 			if !ok {
 				panic(fmt.Errorf("failed to get history from context"))

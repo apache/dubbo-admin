@@ -13,9 +13,9 @@ const (
 	ChatWindowLimit   = 50
 
 	// Block size limits
-	MaxBlockSize      = 2048 // 最大Block字符数
-	DefaultImportance = 5    // 默认重要性等级
-	MaxImportance     = 10   // 最高重要性等级
+	MaxBlockSize      = 2048 // Maximum Block character count
+	DefaultImportance = 5    // Default importance level
+	MaxImportance     = 10   // Maximum importance level
 )
 
 type Memory struct {
@@ -52,7 +52,7 @@ type FIFO struct {
 type LRU struct {
 }
 
-// SystemMemoryBlock 系统内存块
+// SystemMemoryBlock system memory block
 type SystemMemoryBlock struct {
 	content   string
 	timestamp int64
@@ -78,7 +78,7 @@ func (s *SystemMemoryBlock) Priority() int {
 
 func (s *SystemMemoryBlock) UpdatePriority() error {
 	s.timestamp = time.Now().UnixNano()
-	s.priority = -int(s.timestamp / 1e6) // 转换为毫秒并取负值
+	s.priority = -int(s.timestamp / 1e6) // Convert to milliseconds and negate
 	return nil
 }
 
@@ -106,7 +106,7 @@ func (s *SystemMemoryBlock) Split(maxSize int) ([]MemoryBlock, error) {
 	return blocks, nil
 }
 
-// CoreMemoryBlock 核心内存块
+// CoreMemoryBlock core memory block
 type CoreMemoryBlock struct {
 	content    string
 	timestamp  int64
@@ -116,7 +116,7 @@ type CoreMemoryBlock struct {
 }
 
 func (c *CoreMemoryBlock) CompileToPrompt() *ai.Prompt {
-	// TODO: 需要genkit registry来创建prompt，暂时返回nil
+	// TODO: Need genkit registry to create prompt, return nil for now
 	return nil
 }
 
@@ -163,7 +163,7 @@ func (c *CoreMemoryBlock) Split(maxSize int) ([]MemoryBlock, error) {
 	return blocks, nil
 }
 
-// ChatHistoryMemoryBlock 聊天历史内存块
+// ChatHistoryMemoryBlock chat history memory block
 type ChatHistoryMemoryBlock struct {
 	content   string
 	timestamp int64
@@ -172,7 +172,7 @@ type ChatHistoryMemoryBlock struct {
 }
 
 func (ch *ChatHistoryMemoryBlock) CompileToPrompt() *ai.Prompt {
-	// TODO: 需要genkit registry来创建prompt，暂时返回nil
+	// TODO: Need genkit registry to create prompt, return nil for now
 	return nil
 }
 
@@ -190,7 +190,7 @@ func (ch *ChatHistoryMemoryBlock) Priority() int {
 
 func (ch *ChatHistoryMemoryBlock) UpdatePriority() error {
 	ch.timestamp = time.Now().UnixNano()
-	ch.priority = -int(ch.timestamp / 1e6) // 转换为毫秒并取负值
+	ch.priority = -int(ch.timestamp / 1e6) // Convert to milliseconds and negate
 	return nil
 }
 
@@ -218,9 +218,9 @@ func (ch *ChatHistoryMemoryBlock) Split(maxSize int) ([]MemoryBlock, error) {
 	return blocks, nil
 }
 
-// FIFO策略实现
+// FIFO strategy implementation
 func (f *FIFO) OnAccess(window *MemoryWindow) error {
-	// FIFO不需要在访问时更新优先级
+	// FIFO does not need to update priority on access
 	return nil
 }
 
@@ -251,16 +251,16 @@ func (f *FIFO) Evict(window *MemoryWindow) error {
 	}
 
 	if evictIndex >= 0 {
-		// 移除找到的block
+		// Remove found block
 		window.Blocks = append(window.Blocks[:evictIndex], window.Blocks[evictIndex+1:]...)
 	}
 
 	return nil
 }
 
-// LRU策略实现
+// LRU strategy implementation
 func (l *LRU) OnAccess(window *MemoryWindow) error {
-	// 更新最近访问的block的优先级
+	// Update priority of recently accessed block
 	if len(window.Blocks) > 0 {
 		lastBlock := window.Blocks[len(window.Blocks)-1]
 		err := lastBlock.UpdatePriority()
@@ -298,16 +298,16 @@ func (l *LRU) Evict(window *MemoryWindow) error {
 	}
 
 	if evictIndex >= 0 {
-		// 移除找到的block
+		// Remove found block
 		window.Blocks = append(window.Blocks[:evictIndex], window.Blocks[evictIndex+1:]...)
 	}
 
 	return nil
 }
 
-// MemoryWindow 方法实现
+// MemoryWindow method implementation
 func (mw *MemoryWindow) Insert(block MemoryBlock) error {
-	// 检查是否需要驱逐
+	// Check if eviction is needed
 	for mw.NeedsEviction() {
 		err := mw.EvictionStrategy.Evict(mw)
 		if err != nil {
@@ -315,10 +315,10 @@ func (mw *MemoryWindow) Insert(block MemoryBlock) error {
 		}
 	}
 
-	// 插入新block
+	// Insert new block
 	mw.Blocks = append(mw.Blocks, block)
 
-	// 触发插入事件
+	// Trigger insert event
 	return mw.EvictionStrategy.OnInsert(mw)
 }
 
@@ -329,7 +329,7 @@ func (mw *MemoryWindow) NeedsEviction() bool {
 func (mw *MemoryWindow) FindBlock(predicate func(MemoryBlock) bool) *MemoryBlock {
 	for i := range mw.Blocks {
 		if predicate(mw.Blocks[i]) {
-			// 触发访问事件
+			// Trigger access event
 			mw.EvictionStrategy.OnAccess(mw)
 			return &mw.Blocks[i]
 		}
@@ -337,7 +337,7 @@ func (mw *MemoryWindow) FindBlock(predicate func(MemoryBlock) bool) *MemoryBlock
 	return nil
 }
 
-// Memory 方法实现
+// Memory method implementation
 func NewMemory() *Memory {
 	return &Memory{
 		SystemWindow: &MemoryWindow{
@@ -367,7 +367,7 @@ func (m *Memory) AddSystemMemory(content string, reserved bool) error {
 	}
 	block.UpdatePriority()
 
-	// 检查是否需要切分
+	// Check if splitting is needed
 	if block.Size() > MaxBlockSize {
 		blocks, err := block.Split(MaxBlockSize)
 		if err != nil {
@@ -396,7 +396,7 @@ func (m *Memory) AddCoreMemory(content string, importance int, reserved bool) er
 	}
 	block.UpdatePriority()
 
-	// 检查是否需要切分
+	// Check if splitting is needed
 	if block.Size() > MaxBlockSize {
 		blocks, err := block.Split(MaxBlockSize)
 		if err != nil {
@@ -424,7 +424,7 @@ func (m *Memory) AddChatHistory(content string) error {
 	}
 	block.UpdatePriority()
 
-	// 检查是否需要切分
+	// Check if splitting is needed
 	if block.Size() > MaxBlockSize {
 		blocks, err := block.Split(MaxBlockSize)
 		if err != nil {
@@ -444,11 +444,11 @@ func (m *Memory) AddChatHistory(content string) error {
 }
 
 func (m *Memory) CompileAllToPrompt() *ai.Prompt {
-	// TODO: 需要genkit registry来创建统一的prompt，暂时返回nil
+	// TODO: Need genkit registry to create unified prompt, return nil for now
 	return nil
 }
 
-// 辅助函数实现
+// Helper function implementation
 func splitBySemanticBoundary(content string, maxSize int) []string {
 	if len(content) <= maxSize {
 		return []string{content}
@@ -476,7 +476,7 @@ func splitBySemanticBoundary(content string, maxSize int) []string {
 }
 
 func calculatePriority(timestamp int64, importance int) int {
-	timeScore := -int(timestamp / 1e6)      // 时间戳越大优先级越高
-	importanceBonus := importance * 1000000 // 重要性加成
+	timeScore := -int(timestamp / 1e6)      // Higher timestamp means higher priority
+	importanceBonus := importance * 1000000 // Importance bonus
 	return timeScore + importanceBonus
 }

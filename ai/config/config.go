@@ -15,7 +15,7 @@ var (
 	DASHSCOPE_API_KEY   string = os.Getenv("DASHSCOPE_API_KEY")
 
 	// Configuration
-	// 自动获取项目根目录
+	// Automatically get project root directory
 	_, b, _, _   = runtime.Caller(0)
 	PROJECT_ROOT = filepath.Join(filepath.Dir(b), "..")
 

@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	manager.Init(dashscope.Qwen3.Key(), manager.ReleaseLogger())
+	manager.Init(dashscope.Qwen3.Key(), manager.PrettyLogger())
 	reActAgent := react.Create(manager.GetRegistry())
 	chatHistoryCtx := memory.NewMemoryContext(memory.ChatHistoryKey)
 
@@ -17,13 +17,11 @@ func main() {
 		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
 	}
 
-	// 使用流式交互
 	resp, err := reActAgent.Interact(chatHistoryCtx, agentInput)
 	if err != nil {
 		fmt.Printf("failed to run interaction: %v\n", err)
 		return
 	}
 
-	fmt.Println("Final Response:")
-	fmt.Println(resp)
+	fmt.Printf("Final Response: %v\n", resp)
 }

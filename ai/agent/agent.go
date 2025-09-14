@@ -58,7 +58,6 @@ func (s *Stage) Execute(ctx context.Context) (err error) {
 				fmt.Print(val.Stream.Chunk.Text())
 			} else if val.Output != nil {
 				s.output = val.Output
-				// fmt.Printf("Stream final output: %+v\n", val.Output)
 			}
 
 			return true
@@ -102,39 +101,39 @@ func NewOrderOrchestrator(stages ...*Stage) *OrderOrchestrator {
 }
 
 func (o *OrderOrchestrator) Run(ctx context.Context, userInput schema.Schema) (result schema.Schema, err error) {
-	// 第一轮次时使用用户初始输入
+	// Use user initial input for the first round
 	var input schema.Schema = userInput
 
-	// 迭代执行，直到达到最大次数或者状态为 Finished
+	// Iterate until reaching maximum iterations or status is Finished
+Outer:
 	for range config.MAX_REACT_ITERATIONS {
 		for _, order := range o.order {
-			// 执行当前阶段
+			// Execute current stage
 			curStage := o.stages[order]
 			curStage.input = input
 			if err = curStage.Execute(ctx); err != nil {
 				return nil, err
 			}
 
-			// 将当前阶段的输出作为下一个阶段的输入
+			// Use current stage output as next stage input
 			input = curStage.output
 
-			//检查 LLM 是否返回了最终答案
+			// Check if LLM returned final answer
 			switch curStage.output.(type) {
 			case schema.ThinkOutput:
 				out := curStage.output.(schema.ThinkOutput)
 				if out.Status == schema.Finished && out.FinalAnswer != "" {
-					// TODO: 处理最终答案
+					// TODO: Process final answer
 					fmt.Printf("Final Answer: %s\n", out.FinalAnswer)
 					result = curStage.output
-					goto End
+					break Outer
+
 				}
 				result = curStage.output
 			}
-
 		}
 	}
 
-End:
 	return result, nil
 }
 

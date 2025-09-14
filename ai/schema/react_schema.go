@@ -11,7 +11,7 @@ import (
 	"github.com/invopop/jsonschema"
 )
 
-// StreamChunk 表示 ReAct Agent 的流式状态信息
+// StreamChunk represents streaming status information for ReAct Agent
 type StreamChunk struct {
 	Stage string                 `json:"stage"` // "think" | "act"
 	Chunk *ai.ModelResponseChunk `json:"chunk"`
@@ -61,17 +61,17 @@ type ThinkOutput struct {
 }
 
 func (ta ThinkOutput) JsonSchema() string {
-	// 创建 Reflector
+	// Create Reflector
 	reflector := &jsonschema.Reflector{
 		AllowAdditionalProperties:  false,
 		RequiredFromJSONSchemaTags: true,
 		DoNotReference:             true,
 	}
 
-	// 生成 schema
+	// Generate schema
 	schema := reflector.Reflect(ta)
 
-	// 转为 JSON
+	// Convert to JSON
 	data, _ := json.MarshalIndent(schema, "", "  ")
 	return string(data)
 }
