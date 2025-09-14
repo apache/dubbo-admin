@@ -73,7 +73,7 @@ func (toolInput ToolInput) Call(g *genkit.Genkit, ctx context.Context) (toolOutp
 		return toolOutput, fmt.Errorf("tool not found: %s", toolInput.ToolName)
 	}
 
-	// 直接传递 Parameter 给工具，而不是整个 ToolInput
+	// Pass Parameter directly to the tool, not the entire ToolInput
 	rawToolOutput, err := tool.RunRaw(ctx, toolInput.Parameter)
 	if err != nil {
 		return toolOutput, fmt.Errorf("failed to call tool %s: %w", toolInput.ToolName, err)
@@ -88,7 +88,7 @@ func (toolInput ToolInput) Call(g *genkit.Genkit, ctx context.Context) (toolOutp
 		return toolOutput, fmt.Errorf("failed to decode tool output for %s: %w", toolInput.ToolName, err)
 	}
 
-	// 确保 ToolName 被设置
+	// Ensure ToolName is set
 	if toolOutput.ToolName == "" {
 		toolOutput.ToolName = toolInput.ToolName
 	}
