@@ -5,7 +5,7 @@ go 1.24.1
 toolchain go1.24.5
 
 require (
-	github.com/firebase/genkit/go v1.0.1
+	github.com/firebase/genkit/go v1.0.2
 	github.com/joho/godotenv v1.5.1
 	github.com/lmittmann/tint v1.1.2
 	github.com/mitchellh/mapstructure v1.5.0
@@ -37,7 +37,7 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.2 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
-	github.com/invopop/jsonschema v0.13.0 // indirect
+	github.com/invopop/jsonschema v0.13.0
 	github.com/mailru/easyjson v0.9.0 // indirect
 	github.com/mbleigh/raymond v0.0.0-20250414171441-6b3a58ab9e0a // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
@@ -55,7 +55,7 @@ require (
 	golang.org/x/net v0.43.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
-	google.golang.org/genai v1.20.0 // indirect
+	google.golang.org/genai v1.24.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/grpc v1.73.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect

@@ -7,10 +7,18 @@ import (
 	"fmt"
 
 	"github.com/firebase/genkit/go/core"
-	"github.com/firebase/genkit/go/genkit"
 )
 
-type Flow = *core.Flow[schema.Schema, schema.Schema, struct{}]
+type NoStream = struct{}
+type StreamType interface {
+	NoStream | schema.StreamChunk
+}
+
+type Flow = *core.Flow[schema.Schema, schema.Schema, any]
+type NormalFlow = *core.Flow[schema.Schema, schema.Schema, NoStream]
+type StreamFlow = *core.Flow[schema.Schema, schema.Schema, schema.StreamChunk]
+
+type StreamFunc func(ctx context.Context, status schema.StreamChunk) error
 
 const (
 	ThinkFlowName string = "think"
@@ -19,17 +27,16 @@ const (
 )
 
 type Agent interface {
-	Interact(schema.Schema) (schema.Schema, error)
-	AgentFlow() Flow
+	Interact(context.Context, schema.Schema) (schema.Schema, error)
 }
 
 type Stage struct {
-	flow   Flow
+	flow   any
 	input  schema.Schema
 	output schema.Schema
 }
 
-func NewStage(flow Flow, inputSchema schema.Schema, outputSchema schema.Schema) *Stage {
+func NewStage(flow any, inputSchema schema.Schema, outputSchema schema.Schema) *Stage {
 	return &Stage{
 		flow:   flow,
 		input:  inputSchema,
@@ -38,31 +45,50 @@ func NewStage(flow Flow, inputSchema schema.Schema, outputSchema schema.Schema) 
 }
 
 func (s *Stage) Execute(ctx context.Context) (err error) {
-	// 执行flow
-	s.output, err = s.flow.Run(ctx, s.input)
-	if err != nil {
-		return err
+	if value, ok := s.flow.(NormalFlow); ok {
+		s.output, err = value.Run(ctx, s.input)
+	} else if value, ok := s.flow.(StreamFlow); ok {
+		streamOutFunc := value.Stream(ctx, s.input)
+		streamOutFunc(func(val *core.StreamingFlowValue[schema.Schema, schema.StreamChunk], err error) bool {
+			if err != nil {
+				fmt.Printf("Stream error: %v\n", err)
+				return false
+			}
+			if !val.Done {
+				fmt.Print(val.Stream.Chunk.Text())
+			} else if val.Output != nil {
+				s.output = val.Output
+				// fmt.Printf("Stream final output: %+v\n", val.Output)
+			}
+
+			return true
+		})
 	}
 
-	return nil
+	return err
 }
 
 type Orchestrator interface {
-	ToFlow(*genkit.Genkit) Flow
 	Run(context.Context, schema.Schema) (schema.Schema, error)
 	RunStage(context.Context, string, schema.Schema) (schema.Schema, error)
 }
 
 type OrderOrchestrator struct {
-	flow   Flow
 	stages map[string]*Stage
 	order  []string
 }
 
 func NewOrderOrchestrator(stages ...*Stage) *OrderOrchestrator {
 	stagesMap := make(map[string]*Stage, len(stages))
-	for s := range stages {
-		stagesMap[stages[s].flow.Name()] = stages[s]
+	for _, stage := range stages {
+		// Get the flow name through interface method
+		var flowName string
+		if nFlow, ok := stage.flow.(NormalFlow); ok {
+			flowName = nFlow.Name()
+		} else if sFlow, ok := stage.flow.(StreamFlow); ok {
+			flowName = sFlow.Name()
+		}
+		stagesMap[flowName] = stage
 	}
 
 	order := make([]string, 2)
@@ -73,13 +99,6 @@ func NewOrderOrchestrator(stages ...*Stage) *OrderOrchestrator {
 		stages: stagesMap,
 		order:  order,
 	}
-}
-
-func (o *OrderOrchestrator) ToFlow(g *genkit.Genkit) Flow {
-	if o.flow == nil {
-		o.flow = genkit.DefineFlow(g, ReActFlowName, o.Run)
-	}
-	return o.flow
 }
 
 func (o *OrderOrchestrator) Run(ctx context.Context, userInput schema.Schema) (result schema.Schema, err error) {

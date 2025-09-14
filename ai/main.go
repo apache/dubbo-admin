@@ -17,10 +17,13 @@ func main() {
 		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
 	}
 
-	resp, err := reActAgent.AgentFlow(manager.GetRegistry()).Run(chatHistoryCtx, agentInput)
+	// 使用流式交互
+	resp, err := reActAgent.Interact(chatHistoryCtx, agentInput)
 	if err != nil {
-		fmt.Printf("failed to run thinking flow: %v", err)
+		fmt.Printf("failed to run interaction: %v\n", err)
+		return
 	}
 
+	fmt.Println("Final Response:")
 	fmt.Println(resp)
 }

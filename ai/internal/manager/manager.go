@@ -140,7 +140,7 @@ func GetRegistry() *genkit.Genkit {
 
 func GetLogger() *slog.Logger {
 	if gloLogger == nil {
-		gloLogger = DevLogger()
+		gloLogger = PrettyLogger()
 	}
 	return gloLogger
 }

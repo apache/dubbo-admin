@@ -12,6 +12,7 @@ import (
 	"os"
 
 	"github.com/firebase/genkit/go/ai"
+	"github.com/firebase/genkit/go/core"
 	"github.com/firebase/genkit/go/genkit"
 )
 
@@ -26,36 +27,30 @@ type ReActAgent struct {
 	orchestrator agent.Orchestrator
 }
 
-func Create(registry *genkit.Genkit) (react *ReActAgent) {
-	if registry == nil {
-		panic(fmt.Errorf("cannot create reAct agent: registry is nil"))
-	}
+func Create(g *genkit.Genkit) *ReActAgent {
+	prompt := BuildThinkPrompt(g)
 
-	thinkPrompt := buildThinkPrompt(registry)
+	// thinkStage := agent.NewStage(think(g, prompt), schema.ThinkInput{}, schema.ThinkOutput{})
+	actStage := agent.NewStage(act(g), schema.ThinkOutput{}, schema.ToolOutputs{})
+	streamThinkStage := agent.NewStage(StreamThink(g, prompt), schema.ThinkInput{}, schema.ThinkOutput{})
 
-	// Create orchestrator with executable stages
-	thinkStage := agent.NewStage(think(registry, thinkPrompt), ThinkIn{}, ThinkOut{})
-	actStage := agent.NewStage(act(registry), ActIn{}, ActOut{})
-	orchestrator := agent.NewOrderOrchestrator(thinkStage, actStage)
+	orchestrator := agent.NewOrderOrchestrator(streamThinkStage, actStage)
 
-	react = &ReActAgent{
-		registry:     registry,
+	return &ReActAgent{
+		registry:     g,
 		orchestrator: orchestrator,
 	}
-	react.AgentFlow(registry)
-
-	return react
 }
 
 func (ra *ReActAgent) Interact(ctx context.Context, input schema.Schema) (output schema.Schema, err error) {
 	return ra.orchestrator.Run(ctx, input)
 }
 
-func (ra *ReActAgent) AgentFlow(registry *genkit.Genkit) agent.Flow {
-	return ra.orchestrator.ToFlow(registry)
+func (ra *ReActAgent) StreamingInteract(ctx context.Context, input schema.Schema, streamCallback core.StreamCallback[schema.StreamChunk]) (output schema.Schema, err error) {
+	return ra.orchestrator.Run(ctx, input)
 }
 
-func buildThinkPrompt(registry *genkit.Genkit) ai.Prompt {
+func BuildThinkPrompt(registry *genkit.Genkit) ai.Prompt {
 	// Load system prompt from filesystem
 	data, err := os.ReadFile(config.PROMPT_DIR_PATH + "/agentSystem.prompt")
 	if err != nil {
@@ -79,7 +74,62 @@ func buildThinkPrompt(registry *genkit.Genkit) ai.Prompt {
 	)
 }
 
-func think(g *genkit.Genkit, prompt ai.Prompt) agent.Flow {
+func streamFunc(cb core.StreamCallback[schema.StreamChunk]) ai.ModelStreamCallback {
+	return func(ctx context.Context, chunk *ai.ModelResponseChunk) error {
+		if cb != nil {
+			return cb(ctx, schema.StreamChunk{
+				Chunk: chunk,
+			})
+		}
+		return nil
+	}
+}
+
+func StreamThink(g *genkit.Genkit, prompt ai.Prompt) agent.StreamFlow {
+	return genkit.DefineStreamingFlow(g, agent.ThinkFlowName,
+		func(ctx context.Context, in schema.Schema, cb core.StreamCallback[schema.StreamChunk]) (out schema.Schema, err error) {
+			manager.GetLogger().Info("Thinking...", "input", in)
+			defer func() {
+				manager.GetLogger().Info("Think Done.", "output", out)
+			}()
+
+			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.History)
+			if !ok {
+				panic(fmt.Errorf("failed to get history from context"))
+			}
+
+			var resp *ai.ModelResponse
+			// ai.WithStreaming() 接收的是 ai.ModelStreamCallback 类型的回调函数
+			// 该回调函数会在模型生成每个原始的流式 Chunk 时被调用，可以用来做 Raw Chunk 的处理
+
+			// 而传入的 cb 是用户自定义如何处理流式数据逻辑的回调函数，例如对做打印
+			if !history.IsEmpty() {
+				resp, err = prompt.Execute(ctx,
+					ai.WithInput(in),
+					ai.WithMessages(history.AllHistory()...),
+					ai.WithStreaming(streamFunc(cb)),
+				)
+			} else {
+				resp, err = prompt.Execute(ctx,
+					ai.WithInput(in),
+					ai.WithStreaming(streamFunc(cb)),
+				)
+			}
+
+			// 解析输出
+			var response ThinkOut
+			err = resp.Output(&response)
+
+			if err != nil {
+				return out, fmt.Errorf("failed to parse agentThink prompt response: %w", err)
+			}
+
+			history.AddHistory(resp.History()...)
+			return response, nil
+		})
+}
+
+func think(g *genkit.Genkit, prompt ai.Prompt) agent.NormalFlow {
 	return genkit.DefineFlow(g, agent.ThinkFlowName,
 		func(ctx context.Context, in schema.Schema) (out schema.Schema, err error) {
 			manager.GetLogger().Info("Thinking...", "input", in)
@@ -103,10 +153,10 @@ func think(g *genkit.Genkit, prompt ai.Prompt) agent.Flow {
 					ai.WithInput(in),
 				)
 			}
-
 			if err != nil {
 				return nil, fmt.Errorf("failed to execute agentThink prompt: %w", err)
 			}
+
 			// 解析输出
 			var response ThinkOut
 			err = resp.Output(&response)
@@ -120,9 +170,8 @@ func think(g *genkit.Genkit, prompt ai.Prompt) agent.Flow {
 		})
 }
 
-// ----------------------------------------------------------------------------
 // act: 执行者的核心逻辑
-func act(g *genkit.Genkit) agent.Flow {
+func act(g *genkit.Genkit) agent.NormalFlow {
 	return genkit.DefineFlow(g, agent.ActFlowName,
 		func(ctx context.Context, in schema.Schema) (out schema.Schema, err error) {
 			manager.GetLogger().Info("Acting...", "input", in)
@@ -145,6 +194,7 @@ func act(g *genkit.Genkit) agent.Flow {
 
 			var parts []*ai.Part
 			for _, req := range input.ToolRequests {
+
 				output, err := req.Call(g, ctx)
 				if err != nil {
 					return nil, fmt.Errorf("failed to call tool %s: %w", req.ToolName, err)
