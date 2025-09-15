@@ -4,6 +4,8 @@ go 1.24.1
 
 toolchain go1.24.5
 
+replace github.com/firebase/genkit/go => github.com/stringl1l1l1l/genkit/go v0.0.0-20250915045204-bf3e8da21e69
+
 require (
 	github.com/firebase/genkit/go v1.0.2
 	github.com/joho/godotenv v1.5.1
