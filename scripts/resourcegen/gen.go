@@ -33,7 +33,6 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 
 	_ "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
-	_ "github.com/apache/dubbo-admin/api/system/v1alpha1"
 )
 
 // resourceTemplate for creating a Dubbo Resource.
@@ -71,89 +70,66 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
-
 {{range .Resources}}
 
-// +kubebuilder:object:root=true
-{{- if .ScopeNamespace }}
-// +kubebuilder:resource:categories=dubbo,scope=Namespaced
-{{- else }}
-// +kubebuilder:resource:categories=dubbo,scope=Cluster
-{{- end}}
-{{- range .AdditionalPrinterColumns }}
-// +kubebuilder:printcolumn:{{ . }}
-{{- end}}
-
-const {{.ResourceType}}Kind coremodel.ResourceKind = "{{.ResourceType}}"
+const {{.Name}}Kind coremodel.ResourceKind = "{{.Name}}"
 
 func init() {
-	coremodel.RegisterResourceSchema({{.ResourceType}}Kind, New{{.ResourceType}}Resource)
+	coremodel.RegisterResourceSchema({{.Name}}Kind, New{{.Name}}Resource)
 }
 
-type {{.ResourceType}}Resource struct {
+type {{.Name}}Resource struct {
+
 	metav1.TypeMeta   {{ $tk }}json:",inline"{{ $tk }}
+
 	metav1.ObjectMeta {{ $tk }}json:"metadata,omitempty"{{ $tk }}
 
     // Mesh is the name of the dubbo mesh this resource belongs to.
 	// It may be omitted for cluster-scoped resources.
-	//
-    // +kubebuilder:validation:Optional
 	Mesh string {{ $tk }}json:"mesh,omitempty"{{ $tk }}
 
-{{- if eq .ResourceType "DataplaneInsight" }}
-	// Status is the status the dubbo resource.
-    // +kubebuilder:validation:Optional
-	Status   *apiextensionsv1.JSON {{ $tk }}json:"status,omitempty"{{ $tk }}
-{{- else}}
 	// Spec is the specification of the Dubbo {{ .ProtoType }} resource.
-    // +kubebuilder:validation:Optional
-	Spec   *{{$pkg}}.{{.ResourceType}} {{ $tk }}json:"spec,omitempty"{{ $tk }}
-{{- end}}
-	// Status is the status of the Dubbo {{.ResourceType}} resource.
-	Status {{.ResourceType}}ResourceStatus {{ $tk }}json:"status,omitempty"{{ $tk }}
+	Spec   *{{$pkg}}.{{.Name}} {{ $tk }}json:"spec,omitempty"{{ $tk }}
+
+	// Status is the status of the Dubbo {{.Name}} resource.
+	Status {{.Name}}ResourceStatus {{ $tk }}json:"status,omitempty"{{ $tk }}
 }
 
-type {{.ResourceType}}ResourceStatus struct {
+type {{.Name}}ResourceStatus struct {
 	// define resource-specific status here
 }
 
-// +kubebuilder:object:root=true
-{{- if .ScopeNamespace }}
-// +kubebuilder:resource:scope=Cluster
-{{- else }}
-// +kubebuilder:resource:scope=Namespaced
-{{- end}}
-type {{.ResourceType}}ResourceList struct {
+type {{.Name}}ResourceList struct {
 	metav1.TypeMeta {{ $tk }}json:",inline"{{ $tk }}
 	metav1.ListMeta {{ $tk }}json:"metadata,omitempty"{{ $tk }}
-	Items           []{{.ResourceType}}Resource {{ $tk }}json:"items"{{ $tk }}
+	Items           []{{.Name}}Resource {{ $tk }}json:"items"{{ $tk }}
 }
 
-func (r *{{.ResourceType}}Resource) ResourceKind() coremodel.ResourceKind  {
-	return {{.ResourceType}}Kind
+func (r *{{.Name}}Resource) ResourceKind() coremodel.ResourceKind  {
+	return {{.Name}}Kind
 }
 
-func (r *{{.ResourceType}}Resource) MeshName() string {
+func (r *{{.Name}}Resource) MeshName() string {
 	return r.Mesh
 }
 
-func (r *{{.ResourceType}}Resource) ResourceKey() string {
+func (r *{{.Name}}Resource) ResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Name)
 }
 
-func (r *{{.ResourceType}}Resource) ResourceMeta() metav1.ObjectMeta {
+func (r *{{.Name}}Resource) ResourceMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *{{.ResourceType}}Resource) ResourceSpec() coremodel.ResourceSpec {
+func (r *{{.Name}}Resource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
-func (r *{{.ResourceType}}Resource) DeepCopyObject() k8sruntime.Object {
+func (r *{{.Name}}Resource) DeepCopyObject() k8sruntime.Object {
 	if r == nil {
 		return nil
 	}
 
-	out := &{{.ResourceType}}Resource{
+	out := &{{.Name}}Resource{
 		TypeMeta: r.TypeMeta,
 		Mesh:     r.Mesh,
 		Status:   r.Status,
@@ -162,7 +138,7 @@ func (r *{{.ResourceType}}Resource) DeepCopyObject() k8sruntime.Object {
 	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 
 	if r.Spec != nil {
-		spec, ok := proto.Clone(r.Spec).(*{{ $pkg }}.{{.ResourceType}})
+		spec, ok := proto.Clone(r.Spec).(*{{ $pkg }}.{{.Name}})
 		if !ok {
 			logger.Warnf("failed to clone spec %v, spec is not conformed to %s", r.Spec, r.ResourceKind())
 			return out
@@ -173,10 +149,10 @@ func (r *{{.ResourceType}}Resource) DeepCopyObject() k8sruntime.Object {
 	return out
 }
 
-func New{{.ResourceType}}ResourceWithAttributes(name string, mesh string) *{{.ResourceType}}Resource{
-	return &{{.ResourceType}}Resource{
+func New{{.Name}}ResourceWithAttributes(name string, mesh string) *{{.Name}}Resource{
+	return &{{.Name}}Resource{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       string({{.ResourceType}}Kind),
+			Kind:       string({{.Name}}Kind),
 			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -187,10 +163,10 @@ func New{{.ResourceType}}ResourceWithAttributes(name string, mesh string) *{{.Re
 	}
 }
 
-func New{{.ResourceType}}Resource() coremodel.Resource {
-	return &{{.ResourceType}}Resource{
+func New{{.Name}}Resource() coremodel.Resource {
+	return &{{.Name}}Resource{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       string({{.ResourceType}}Kind),
+			Kind:       string({{.Name}}Kind),
 			APIVersion: "v1alpha1",
 		},
 	}
@@ -261,24 +237,23 @@ func main() {
 	}
 
 	for _, resource := range resources {
-		// 每次只传一个资源到模板中
 		var buf bytes.Buffer
 		if err := resourceTemplate.Execute(&buf, struct {
 			Package   string
 			Resources []ResourceInfo
 		}{
 			Package:   pkg,
-			Resources: []ResourceInfo{resource}, // 只放一个资源
+			Resources: []ResourceInfo{resource},
 		}); err != nil {
-			log.Fatalf("template error for %s: %s", resource.ResourceType, err)
+			log.Fatalf("template error for %s: %s", resource.Name, err)
 		}
 
 		out, err := format.Source(buf.Bytes())
 		if err != nil {
-			log.Fatalf("format error for %s: %s", resource.ResourceType, err)
+			log.Fatalf("format error for %s: %s", resource.Name, err)
 		}
 
-		filename := filepath.Join(outputDir, fmt.Sprintf("%s_types.go", strings.ToLower(resource.ResourceType)))
+		filename := filepath.Join(outputDir, fmt.Sprintf("%s_types.go", strings.ToLower(resource.Name)))
 		if err := os.WriteFile(filename, out, 0644); err != nil {
 			log.Fatalf("write file error for %s: %s", filename, err)
 		}

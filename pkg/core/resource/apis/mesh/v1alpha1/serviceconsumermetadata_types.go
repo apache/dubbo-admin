@@ -29,68 +29,63 @@ import (
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
 
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:categories=dubbo,scope=Namespaced
-
-const MappingKind coremodel.ResourceKind = "Mapping"
+const ServiceConsumerMetadataKind coremodel.ResourceKind = "ServiceConsumerMetadata"
 
 func init() {
-	coremodel.RegisterResourceSchema(MappingKind, NewMappingResource)
+	coremodel.RegisterResourceSchema(ServiceConsumerMetadataKind, NewServiceConsumerMetadataResource)
 }
 
-type MappingResource struct {
-	metav1.TypeMeta   `json:",inline"`
+type ServiceConsumerMetadataResource struct {
+	metav1.TypeMeta `json:",inline"`
+
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Mesh is the name of the dubbo mesh this resource belongs to.
 	// It may be omitted for cluster-scoped resources.
-	//
-	// +kubebuilder:validation:Optional
 	Mesh string `json:"mesh,omitempty"`
-	// Spec is the specification of the Dubbo Mapping resource.
-	// +kubebuilder:validation:Optional
-	Spec *meshproto.Mapping `json:"spec,omitempty"`
-	// Status is the status of the Dubbo Mapping resource.
-	Status MappingResourceStatus `json:"status,omitempty"`
+
+	// Spec is the specification of the Dubbo ServiceConsumerMetadata resource.
+	Spec *meshproto.ServiceConsumerMetadata `json:"spec,omitempty"`
+
+	// Status is the status of the Dubbo ServiceConsumerMetadata resource.
+	Status ServiceConsumerMetadataResourceStatus `json:"status,omitempty"`
 }
 
-type MappingResourceStatus struct {
+type ServiceConsumerMetadataResourceStatus struct {
 	// define resource-specific status here
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:scope=Cluster
-type MappingResourceList struct {
+type ServiceConsumerMetadataResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []MappingResource `json:"items"`
+	Items           []ServiceConsumerMetadataResource `json:"items"`
 }
 
-func (r *MappingResource) ResourceKind() coremodel.ResourceKind {
-	return MappingKind
+func (r *ServiceConsumerMetadataResource) ResourceKind() coremodel.ResourceKind {
+	return ServiceConsumerMetadataKind
 }
 
-func (r *MappingResource) MeshName() string {
+func (r *ServiceConsumerMetadataResource) MeshName() string {
 	return r.Mesh
 }
 
-func (r *MappingResource) ResourceKey() string {
+func (r *ServiceConsumerMetadataResource) ResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Name)
 }
 
-func (r *MappingResource) ResourceMeta() metav1.ObjectMeta {
+func (r *ServiceConsumerMetadataResource) ResourceMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *MappingResource) ResourceSpec() coremodel.ResourceSpec {
+func (r *ServiceConsumerMetadataResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
-func (r *MappingResource) DeepCopyObject() k8sruntime.Object {
+func (r *ServiceConsumerMetadataResource) DeepCopyObject() k8sruntime.Object {
 	if r == nil {
 		return nil
 	}
 
-	out := &MappingResource{
+	out := &ServiceConsumerMetadataResource{
 		TypeMeta: r.TypeMeta,
 		Mesh:     r.Mesh,
 		Status:   r.Status,
@@ -99,7 +94,7 @@ func (r *MappingResource) DeepCopyObject() k8sruntime.Object {
 	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 
 	if r.Spec != nil {
-		spec, ok := proto.Clone(r.Spec).(*meshproto.Mapping)
+		spec, ok := proto.Clone(r.Spec).(*meshproto.ServiceConsumerMetadata)
 		if !ok {
 			logger.Warnf("failed to clone spec %v, spec is not conformed to %s", r.Spec, r.ResourceKind())
 			return out
@@ -110,10 +105,10 @@ func (r *MappingResource) DeepCopyObject() k8sruntime.Object {
 	return out
 }
 
-func NewMappingResourceWithAttributes(name string, mesh string) *MappingResource {
-	return &MappingResource{
+func NewServiceConsumerMetadataResourceWithAttributes(name string, mesh string) *ServiceConsumerMetadataResource {
+	return &ServiceConsumerMetadataResource{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       string(MappingKind),
+			Kind:       string(ServiceConsumerMetadataKind),
 			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -124,10 +119,10 @@ func NewMappingResourceWithAttributes(name string, mesh string) *MappingResource
 	}
 }
 
-func NewMappingResource() coremodel.Resource {
-	return &MappingResource{
+func NewServiceConsumerMetadataResource() coremodel.Resource {
+	return &ServiceConsumerMetadataResource{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       string(MappingKind),
+			Kind:       string(ServiceConsumerMetadataKind),
 			APIVersion: "v1alpha1",
 		},
 	}

@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/duke-git/lancet/v2/strutil"
 	"github.com/gin-gonic/gin"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
@@ -29,7 +30,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/console/service"
 	"github.com/apache/dubbo-admin/pkg/core/consts"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
-	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	corestore "github.com/apache/dubbo-admin/pkg/core/store"
 )
 
@@ -57,7 +58,7 @@ func GetApplicationTabInstanceInfo(ctx consolectx.Context) gin.HandlerFunc {
 			return
 		}
 
-		resp, err := service.GetApplicationTabInstanceInfo(ctx, req)
+		resp, err := service.GetAppInstanceInfo(ctx, req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 			return
@@ -74,7 +75,7 @@ func GetApplicationServiceForm(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-		resp, err := service.GetApplicationServiceFormInfo(ctx, req)
+		resp, err := service.GetAppServiceInfo(ctx, req)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
@@ -91,7 +92,7 @@ func ApplicationSearch(ctx consolectx.Context) gin.HandlerFunc {
 			return
 		}
 
-		resp, err := service.GetApplicationSearchInfo(ctx, req)
+		resp, err := service.SearchApplications(ctx, req)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
@@ -115,42 +116,39 @@ func isAppOperatorLogOpened(conf *meshproto.OverrideConfig, appName string) bool
 	return true
 }
 
-func generateDefaultConfigurator(name string, scope string, version string, enabled bool) *coremodel.DynamicConfigResource {
-	return &coremodel.DynamicConfigResource{
-		Meta: nil,
-		Spec: &meshproto.DynamicConfig{
-			Key:           name,
-			Scope:         scope,
-			ConfigVersion: version,
-			Enabled:       enabled,
-			Configs:       make([]*meshproto.OverrideConfig, 0),
-		},
-	}
-}
-
 func ApplicationConfigOperatorLogPut(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
-			ApplicationName string
-			OperatorLog     bool
+			appName         string
+			operatorLogOpen bool
 			isNotExist      = false
+			mesh            string
 		)
-		ApplicationName = c.Query("appName")
-		OperatorLog, err := strconv.ParseBool(c.Query("operatorLog"))
+		appName = c.Query("appName")
+		mesh = c.Query("mesh")
+		operatorLogOpen, err := strconv.ParseBool(c.Query("operatorLog"))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-		res, err := service.GetConfigurator(ctx, ApplicationName)
+		appConfiguratorName := appName + consts.ConfiguratorRuleSuffix
+		res, err := service.GetConfigurator(ctx, appConfiguratorName, mesh)
 		if err != nil {
 			if corestore.IsResourceNotFound(err) {
-				// for check app exist
-				data, err := service.GetApplicationDetail(ctx, &model.ApplicationDetailReq{AppName: ApplicationName})
+				// check app exists
+				data, err := service.GetApplicationDetail(ctx, &model.ApplicationDetailReq{AppName: appName})
 				if err != nil || data == nil {
 					c.JSON(http.StatusNotFound, model.NewErrorResp(err.Error()))
 					return
 				}
-				res = generateDefaultConfigurator(ApplicationName, consts.ScopeApplication, consts.ConfiguratorVersionV3, true)
+				res = meshresource.NewDynamicConfigResourceWithAttributes(appConfiguratorName, mesh)
+				res.Spec = &meshproto.DynamicConfig{
+					Key:           appName,
+					Scope:         consts.ScopeApplication,
+					ConfigVersion: consts.ConfiguratorVersionV3,
+					Enabled:       true,
+					Configs:       make([]*meshproto.OverrideConfig, 0),
+				}
 				isNotExist = true
 			} else {
 				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
@@ -158,11 +156,11 @@ func ApplicationConfigOperatorLogPut(ctx consolectx.Context) gin.HandlerFunc {
 			}
 		}
 		// append or remove
-		if OperatorLog {
+		if operatorLogOpen {
 			// check is already exist
 			alreadyExist := false
 			res.Spec.RangeConfig(func(conf *meshproto.OverrideConfig) (isStop bool) {
-				alreadyExist = isAppOperatorLogOpened(conf, ApplicationName)
+				alreadyExist = isAppOperatorLogOpened(conf, appName)
 				return alreadyExist
 			})
 			if alreadyExist {
@@ -173,10 +171,16 @@ func ApplicationConfigOperatorLogPut(ctx consolectx.Context) gin.HandlerFunc {
 				res.Spec.Configs = make([]*meshproto.OverrideConfig, 0)
 			}
 			res.Spec.Configs = append(res.Spec.Configs, &meshproto.OverrideConfig{
-				Side:          consts.SideProvider,
-				Parameters:    map[string]string{`accesslog`: `true`},
-				Enabled:       true,
-				Match:         &meshproto.ConditionMatch{Application: &meshproto.ListStringMatch{Oneof: []*meshproto.StringMatch{{Exact: ApplicationName}}}},
+				Side:       consts.SideProvider,
+				Parameters: map[string]string{`accesslog`: `true`},
+				Enabled:    true,
+				Match: &meshproto.ConditionMatch{
+					Application: &meshproto.ListStringMatch{
+						Oneof: []*meshproto.StringMatch{
+							{
+								Exact: appName,
+							},
+						}}},
 				XGenerateByCp: true,
 			})
 		} else {
@@ -184,18 +188,18 @@ func ApplicationConfigOperatorLogPut(ctx consolectx.Context) gin.HandlerFunc {
 				if conf == nil {
 					return true
 				}
-				return isAppOperatorLogOpened(conf, ApplicationName)
+				return isAppOperatorLogOpened(conf, appName)
 			})
 		}
 		// restore
 		if isNotExist {
-			err = service.CreateConfigurator(ctx, ApplicationName, res)
+			err = service.CreateConfigurator(ctx, appName, res)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 				return
 			}
 		} else {
-			err = service.UpdateConfigurator(ctx, ApplicationName, res)
+			err = service.UpdateConfigurator(ctx, appName, res)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 				return
@@ -207,12 +211,18 @@ func ApplicationConfigOperatorLogPut(ctx consolectx.Context) gin.HandlerFunc {
 
 func ApplicationConfigOperatorLogGet(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ApplicationName := c.Query("appName")
-		if ApplicationName == "" {
+		appName := c.Query("appName")
+		if appName == "" {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("appName is required"))
 			return
 		}
-		res, err := service.GetConfigurator(ctx, ApplicationName)
+		mesh := c.Query("mesh")
+		if strutil.IsBlank(mesh) {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp("mesh is required"))
+			return
+		}
+		appConfiguratorName := appName + consts.ConfiguratorRuleSuffix
+		res, err := service.GetConfigurator(ctx, appConfiguratorName, mesh)
 		if err != nil {
 			if corestore.IsResourceNotFound(err) {
 				c.JSON(http.StatusOK, model.NewSuccessResp(map[string]interface{}{"operatorLog": false}))
@@ -223,7 +233,7 @@ func ApplicationConfigOperatorLogGet(ctx consolectx.Context) gin.HandlerFunc {
 		}
 		isExist := false
 		res.Spec.RangeConfig(func(conf *meshproto.OverrideConfig) (isStop bool) {
-			if isExist = isAppOperatorLogOpened(conf, ApplicationName); isExist {
+			if isExist = isAppOperatorLogOpened(conf, appName); isExist {
 				return true
 			}
 			return false
@@ -235,20 +245,22 @@ func ApplicationConfigOperatorLogGet(ctx consolectx.Context) gin.HandlerFunc {
 func ApplicationConfigFlowWeightGET(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
-			ApplicationName string
-			resp            = struct {
+			appName string
+			mesh    string
+			resp    = struct {
 				FlowWeightSets []model.FlowWeightSet `json:"flowWeightSets"`
 			}{}
 		)
-		ApplicationName = c.Query("appName")
-		if ApplicationName == "" {
+		appName = c.Query("appName")
+		mesh = c.Query("mesh")
+		if appName == "" {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("appName is required"))
 			return
 		}
 
 		resp.FlowWeightSets = make([]model.FlowWeightSet, 0)
-
-		res, err := service.GetConfigurator(ctx, ApplicationName)
+		appConfiguratorName := appName + consts.ConfiguratorRuleSuffix
+		res, err := service.GetConfigurator(ctx, appConfiguratorName, mesh)
 		if err != nil {
 			if corestore.IsResourceNotFound(err) {
 				c.JSON(http.StatusOK, model.NewSuccessResp(resp))
@@ -304,14 +316,20 @@ func isFlowWeight(conf *meshproto.OverrideConfig) bool {
 func ApplicationConfigFlowWeightPUT(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
-			ApplicationName = ""
-			body            = struct {
+			appName string
+			mesh    string
+			body    = struct {
 				FlowWeightSets []model.FlowWeightSet `json:"flowWeightSets"`
 			}{}
 		)
-		ApplicationName = c.Query("appName")
-		if ApplicationName == "" {
+		appName = c.Query("appName")
+		mesh = c.Query("mesh")
+		if strutil.IsBlank(appName) {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("application name is required"))
+		}
+		if strutil.IsBlank(mesh) {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp("mesh is required"))
+			return
 		}
 		if err := c.Bind(&body); err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
@@ -319,11 +337,12 @@ func ApplicationConfigFlowWeightPUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 		// get from store, or generate default resource
 		isNotExist := false
-		res, err := service.GetConfigurator(ctx, ApplicationName)
+		appConfiguratorName := appName + consts.ConfiguratorRuleSuffix
+		res, err := service.GetConfigurator(ctx, appConfiguratorName, mesh)
 		if err != nil {
 			if corestore.IsResourceNotFound(err) {
 				// for check app exist
-				data, err := service.GetApplicationDetail(ctx, &model.ApplicationDetailReq{AppName: ApplicationName})
+				data, err := service.GetApplicationDetail(ctx, &model.ApplicationDetailReq{AppName: appName})
 				if err != nil {
 					c.JSON(http.StatusNotFound, model.NewErrorResp(err.Error()))
 					return
@@ -331,7 +350,14 @@ func ApplicationConfigFlowWeightPUT(ctx consolectx.Context) gin.HandlerFunc {
 					c.JSON(http.StatusNotFound, model.NewErrorResp("application not found"))
 					return
 				}
-				res = generateDefaultConfigurator(ApplicationName, consts.ScopeApplication, consts.ConfiguratorVersionV3, true)
+				res = meshresource.NewDynamicConfigResourceWithAttributes(appConfiguratorName, mesh)
+				res.Spec = &meshproto.DynamicConfig{
+					Key:           appName,
+					Scope:         consts.ScopeApplication,
+					ConfigVersion: consts.ConfiguratorVersionV3,
+					Enabled:       true,
+					Configs:       make([]*meshproto.OverrideConfig, 0),
+				}
 				isNotExist = true
 			} else {
 				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
@@ -363,13 +389,13 @@ func ApplicationConfigFlowWeightPUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 		// restore
 		if isNotExist {
-			err = service.CreateConfigurator(ctx, ApplicationName, res)
+			err = service.CreateConfigurator(ctx, appName, res)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 				return
 			}
 		} else {
-			err = service.UpdateConfigurator(ctx, ApplicationName, res)
+			err = service.UpdateConfigurator(ctx, appName, res)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 				return
@@ -382,18 +408,24 @@ func ApplicationConfigFlowWeightPUT(ctx consolectx.Context) gin.HandlerFunc {
 func ApplicationConfigGrayGET(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
-			ApplicationName = ""
-			resp            = struct {
+			appName string
+			mesh    string
+			resp    = struct {
 				GraySets []model.GraySet `json:"graySets"`
 			}{}
 		)
-		ApplicationName = c.Query("appName")
-		if ApplicationName == "" {
+		appName = c.Query("appName")
+		mesh = c.Query("mesh")
+		if strutil.IsBlank(appName) {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("appName is required"))
 			return
 		}
-
-		res, err := service.GetTagRule(ctx, ApplicationName)
+		if strutil.IsBlank(mesh) {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp("mesh is required"))
+			return
+		}
+		serviceTagRuleName := appName + consts.TagRuleSuffix
+		res, err := service.GetTagRule(ctx, serviceTagRuleName, mesh)
 		if err != nil {
 			if corestore.IsResourceNotFound(err) {
 				resp.GraySets = make([]model.GraySet, 0)
@@ -429,14 +461,20 @@ func ApplicationConfigGrayGET(ctx consolectx.Context) gin.HandlerFunc {
 func ApplicationConfigGrayPUT(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var (
-			ApplicationName = ""
-			body            = struct {
+			appName string
+			mesh    string
+			body    = struct {
 				GraySets []model.GraySet `json:"graySets"`
 			}{}
 		)
-		ApplicationName = c.Query("appName")
-		if ApplicationName == "" {
+		appName = c.Query("appName")
+		mesh = c.Query("mesh")
+		if strutil.IsBlank(appName) {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("application name is required"))
+			return
+		}
+		if strutil.IsBlank(mesh) {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp("mesh is required"))
 			return
 		}
 		if err := c.Bind(&body); err != nil {
@@ -444,9 +482,13 @@ func ApplicationConfigGrayPUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		isNotExist := false
-		res, err := service.GetTagRule(ctx, ApplicationName)
-		if corestore.IsResourceNotFound(err) {
-			data, err := service.GetApplicationDetail(ctx, &model.ApplicationDetailReq{AppName: ApplicationName})
+		serviceTagRuleName := appName + consts.TagRuleSuffix
+		res, err := service.GetTagRule(ctx, serviceTagRuleName, mesh)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
+		}
+		if res == nil {
+			data, err := service.GetApplicationDetail(ctx, &model.ApplicationDetailReq{AppName: appName, Mesh: mesh})
 			if err != nil {
 				c.JSON(http.StatusNotFound, model.NewErrorResp(err.Error()))
 				return
@@ -454,7 +496,15 @@ func ApplicationConfigGrayPUT(ctx consolectx.Context) gin.HandlerFunc {
 				c.JSON(http.StatusNotFound, model.NewErrorResp("application not found"))
 				return
 			}
-			res = generateDefaultTagRule(ApplicationName, consts.ConfiguratorVersionV3, true, false)
+
+			res = meshresource.NewTagRouteResourceWithAttributes(serviceTagRuleName, mesh)
+			res.Spec = &meshproto.TagRoute{
+				Enabled:       true,
+				Key:           appName,
+				ConfigVersion: consts.ConfiguratorVersionV3,
+				Force:         false,
+				Tags:          make([]*meshproto.Tag, 0),
+			}
 			isNotExist = true
 		}
 
@@ -481,13 +531,13 @@ func ApplicationConfigGrayPUT(ctx consolectx.Context) gin.HandlerFunc {
 
 		// restore
 		if isNotExist {
-			err = service.CreateTagRule(ctx, ApplicationName, res)
+			err = service.CreateTagRule(ctx, res)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 				return
 			}
 		} else {
-			err = service.UpdateTagRule(ctx, ApplicationName, res)
+			err = service.UpdateTagRule(ctx, res)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 				return
@@ -502,17 +552,4 @@ func isGrayTag(tag *meshproto.Tag) bool {
 		return false
 	}
 	return true
-}
-
-func generateDefaultTagRule(name string, version string, enable, force bool) *coremodel.TagRouteResource {
-	return &coremodel.TagRouteResource{
-		Meta: nil,
-		Spec: &meshproto.TagRoute{
-			Enabled:       enable,
-			Key:           name,
-			ConfigVersion: version,
-			Force:         force,
-			Tags:          make([]*meshproto.Tag, 0),
-		},
-	}
 }

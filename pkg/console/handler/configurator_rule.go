@@ -20,17 +20,19 @@ package handler
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
+	"github.com/apache/dubbo-admin/pkg/core/manager"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
+	"github.com/duke-git/lancet/v2/strutil"
 	"github.com/gin-gonic/gin"
 
-	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
 	"github.com/apache/dubbo-admin/pkg/core/consts"
-	"github.com/apache/dubbo-admin/pkg/core/store"
 )
 
 func ConfiguratorSearch(ctx consolectx.Context) gin.HandlerFunc {
@@ -40,45 +42,61 @@ func ConfiguratorSearch(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-		ruleList := &mesh.DynamicConfigResourceList{}
-		var respList []model.ConfiguratorSearchResp
-		if req.Keywords == "" {
-			if err := ctx.ResourceManager().List(ctx.AppContext(), ruleList, store.ListByPage(req.PageSize, strconv.Itoa(req.PageOffset))); err != nil {
-				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
-				return
-			}
+		var pageData *coremodel.PageData[*meshresource.DynamicConfigResource]
+		var err error
+		if strutil.IsBlank(req.Keywords) {
+			pageData, err = manager.PageListByIndexes[*meshresource.DynamicConfigResource](
+				ctx.ResourceManager(),
+				meshresource.DynamicConfigKind,
+				map[string]interface{}{
+					index.ByMeshIndex: req.Mesh,
+				},
+				req.PageReq,
+			)
+
 		} else {
-			if err := ctx.ResourceManager().List(ctx.AppContext(), ruleList, store.ListByNameContains(req.Keywords), store.ListByPage(req.PageSize, strconv.Itoa(req.PageOffset))); err != nil {
-				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
-				return
-			}
+			pageData, err = manager.PageSearchResourceByConditions[*meshresource.DynamicConfigResource](
+				ctx.ResourceManager(),
+				meshresource.DynamicConfigKind,
+				[]string{"name=" + req.Keywords},
+				req.PageReq,
+			)
+
 		}
-		for _, item := range ruleList.Items {
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
+		}
+		var respList []model.ConfiguratorSearchResp
+		for _, res := range pageData.Data {
+			configurator := res.Spec
 			respList = append(respList, model.ConfiguratorSearchResp{
-				RuleName:   item.Meta.GetName(),
-				Scope:      item.Spec.GetScope(),
-				CreateTime: item.Meta.GetCreationTime().String(),
-				Enabled:    item.Spec.GetEnabled(),
+				RuleName:   configurator.Key,
+				Scope:      configurator.Scope,
+				CreateTime: "",
+				Enabled:    configurator.Enabled,
 			})
 		}
-		result := model.NewSearchPaginationResult()
-		result.List = respList
-		result.PageInfo = &ruleList.Pagination
+		result := model.SearchPaginationResult{
+			List:     respList,
+			PageInfo: pageData.Pagination,
+		}
 		c.JSON(http.StatusOK, model.NewSuccessResp(result))
 	}
 }
 
 func GetConfiguratorWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var name string
 		ruleName := c.Param("ruleName")
-		if strings.HasSuffix(ruleName, consts.ConfiguratorRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(consts.ConfiguratorRuleSuffix)]
-		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", consts.ConfiguratorRuleSuffix)))
+		mesh := c.Param("mesh")
+		if strutil.IsBlank(ruleName) {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp("ruleName cannot be empty"))
 			return
 		}
-		res, err := service.GetConfigurator(ctx, name)
+		if strutil.IsBlank(mesh) {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp("mesh cannot be empty"))
+			return
+		}
+		res, err := service.GetConfigurator(ctx, ruleName, mesh)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
@@ -91,16 +109,14 @@ func PutConfiguratorWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var name string
 		ruleName := c.Param("ruleName")
+		mesh := c.Param("mesh")
 		if strings.HasSuffix(ruleName, consts.ConfiguratorRuleSuffix) {
 			name = ruleName[:len(ruleName)-len(consts.ConfiguratorRuleSuffix)]
 		} else {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", consts.ConfiguratorRuleSuffix)))
 			return
 		}
-		res := &mesh.DynamicConfigResource{
-			Meta: nil,
-			Spec: &meshproto.DynamicConfig{},
-		}
+		res := meshresource.NewDynamicConfigResourceWithAttributes(name, mesh)
 		err := c.Bind(res.Spec)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
@@ -119,16 +135,14 @@ func PostConfiguratorWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var name string
 		ruleName := c.Param("ruleName")
+		mesh := c.Param("mesh")
 		if strings.HasSuffix(ruleName, consts.ConfiguratorRuleSuffix) {
 			name = ruleName[:len(ruleName)-len(consts.ConfiguratorRuleSuffix)]
 		} else {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", consts.ConfiguratorRuleSuffix)))
 			return
 		}
-		res := &mesh.DynamicConfigResource{
-			Meta: nil,
-			Spec: &meshproto.DynamicConfig{},
-		}
+		res := meshresource.NewDynamicConfigResourceWithAttributes(name, mesh)
 		err := c.Bind(res.Spec)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
@@ -147,14 +161,14 @@ func DeleteConfiguratorWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var name string
 		ruleName := c.Param("ruleName")
-		res := &mesh.DynamicConfigResource{Spec: &meshproto.DynamicConfig{}}
+		mesh := c.Param("mesh")
 		if strings.HasSuffix(ruleName, consts.ConfiguratorRuleSuffix) {
 			name = ruleName[:len(ruleName)-len(consts.ConfiguratorRuleSuffix)]
 		} else {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", consts.ConfiguratorRuleSuffix)))
 			return
 		}
-		if err := service.DeleteConfigurator(ctx, name, res); err != nil {
+		if err := service.DeleteConfigurator(ctx, name, mesh); err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}

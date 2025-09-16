@@ -18,22 +18,25 @@
 package model
 
 import (
-	"strconv"
+	"fmt"
 	"strings"
 
 	"github.com/apache/dubbo-admin/api/mesh/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/console/constants"
+	"github.com/apache/dubbo-admin/pkg/core/consts"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"github.com/gin-gonic/gin"
 )
 
 type ServiceSearchReq struct {
 	ServiceName string `form:"serviceName" json:"serviceName"`
 	Keywords    string `form:"keywords" json:"keywords"`
-	PageReq
+	Mesh        string `form:"mesh" json:"mesh"`
+	coremodel.PageReq
 }
 
 func NewServiceSearchReq() *ServiceSearchReq {
 	return &ServiceSearchReq{
-		PageReq: PageReq{
+		PageReq: coremodel.PageReq{
 			PageOffset: 0,
 			PageSize:   15,
 		},
@@ -103,7 +106,8 @@ type ServiceTabDistributionReq struct {
 	Version     string `json:"version"  form:"version"`
 	Group       string `json:"group"  form:"group"`
 	Side        string `json:"side" form:"side"  binding:"required"`
-	PageReq
+	Mesh        string `json:"mesh" form:"mesh" binding:"required"`
+	coremodel.PageReq
 }
 
 type ServiceTabDistributionResp struct {
@@ -143,50 +147,28 @@ func NewServiceDistribution() *ServiceTabDistribution {
 	}
 }
 
-func (r *ServiceTabDistributionResp) FromServiceDataplaneResource(dataplane *coremesh.DataplaneResource, metadata *coremesh.MetaDataResource, name string, req *ServiceTabDistributionReq) *ServiceTabDistributionResp {
-	r.AppName = name
-	inbounds := dataplane.Spec.Networking.Inbound
-	ip := dataplane.GetIP()
-	for _, inbound := range inbounds {
-		r.mergeInbound(inbound, ip)
-	}
-	meta := dataplane.GetMeta()
-	r.InstanceName = meta.GetName()
-	r.mergeMetaData(metadata, req)
-
-	return r
-}
-
-func (r *ServiceTabDistributionResp) mergeInbound(inbound *legacy.Dataplane_Networking_Inbound, ip string) {
-	r.Endpoint = ip + ":" + strconv.Itoa(int(inbound.Port))
-}
-
-func (r *ServiceTabDistributionResp) FromServiceDistribution(distribution *ServiceTabDistribution) *ServiceTabDistributionResp {
-	r.AppName = distribution.AppName
-	r.InstanceName = distribution.InstanceName
-	r.Endpoint = distribution.Endpoint
-	r.TimeOut = distribution.TimeOut
-	r.Retries = distribution.Retries
-	return r
-}
-
-func (r *ServiceTabDistributionResp) mergeMetaData(metadata *coremesh.MetaDataResource, req *ServiceTabDistributionReq) {
-	// key format is '{group}/{interface name}:{version}:{protocol}'
-	serviceinfos := metadata.Spec.Services
-
-	for _, serviceinfo := range serviceinfos {
-		if serviceinfo.Name == req.ServiceName &&
-			serviceinfo.Group == req.Group &&
-			serviceinfo.Version == req.Version &&
-			req.Side == serviceinfo.GetParams()[constants.ServiceInfoSide] {
-			r.Retries = serviceinfo.Params[constants.RetriesKey]
-			r.TimeOut = serviceinfo.Params[constants.TimeoutKey]
-			r.Params = serviceinfo.Params
-		}
-	}
-}
-
 type VersionGroup struct {
 	Version string `json:"version"`
 	Group   string `json:"group"`
+}
+
+type BaseServiceReq struct {
+	ServiceName string `json:"serviceName"`
+	Group       string `json:"group"`
+	Version     string `json:"version"`
+	Mesh        string `json:"mesh"`
+}
+
+func (s *BaseServiceReq) Query(c *gin.Context) error {
+	s.ServiceName = c.Query("serviceName")
+	if s.ServiceName == "" {
+		return fmt.Errorf("service name is empty")
+	}
+	s.Group = c.Query("group")
+	s.Version = c.Query("version")
+	return nil
+}
+
+func (s *BaseServiceReq) ServiceKey() string {
+	return s.ServiceName + consts.Colon + s.Group + consts.Colon + s.Version
 }

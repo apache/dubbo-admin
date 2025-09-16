@@ -67,7 +67,7 @@ type Resource interface {
 	ResourceSpec() ResourceSpec
 }
 
-// BuildResourceKey build a unique identifier for a resource, usually is `mesh/kind/name`
+// BuildResourceKey build a unique identifier for a resource, usually is `mesh/name`
 func BuildResourceKey(mesh string, name string) string {
 	return mesh + separator + name
 }

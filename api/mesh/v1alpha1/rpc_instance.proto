@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+
+// RPCInstance is retrieved from Discovery, defines the attributes of instance during service discovery and rpc call
+message RPCInstance {
+  option (dubbo.mesh.resource).name = "RPCInstance";
+  option (dubbo.mesh.resource).plural_name = "RPCInstances";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).is_experimental = true;
+
+  string name = 1;
+
+  string ip = 2;
+
+  string port = 3;
+
+  string appName = 5;
+
+  string registerTime = 9;
+
+  string unregisterTime = 10;
+
+}

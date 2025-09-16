@@ -18,47 +18,35 @@
 package service
 
 import (
-	"strconv"
-	"strings"
+	"github.com/apache/dubbo-admin/pkg/core/consts"
+	"github.com/apache/dubbo-admin/pkg/core/manager"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
+	"github.com/duke-git/lancet/v2/maputil"
+	"github.com/duke-git/lancet/v2/slice"
+	"github.com/duke-git/lancet/v2/strutil"
 
-	"dubbo.apache.org/dubbo-go/v3/common/constant"
-
-	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/console/constants"
-	"github.com/apache/dubbo-admin/pkg/console/context"
+	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
-	"github.com/apache/dubbo-admin/pkg/core/store"
 )
 
-func GetApplicationDetail(ctx context.Context, req *model.ApplicationDetailReq) (*model.ApplicationDetailResp, error) {
-	manager := ctx.ResourceManager()
-	instanceList := &mesh.DataplaneResourceList{}
-
-	if err := manager.List(ctx.AppContext(), instanceList, store.ListByApplication(req.AppName)); err != nil {
+func GetApplicationDetail(ctx consolectx.Context, req *model.ApplicationDetailReq) (*model.ApplicationDetailResp, error) {
+	instanceResources, err := manager.ListByIndexes[*meshresource.InstanceResource](
+		ctx.ResourceManager(),
+		meshresource.InstanceKind,
+		map[string]interface{}{
+			index.ByMeshIndex:            req.Mesh,
+			index.ByInstanceAppNameIndex: req.AppName,
+		},
+	)
+	if err != nil {
 		return nil, err
 	}
 
-	revisions := make(map[string]*mesh.MetaDataResource, 0)
 	applicationDetail := model.NewApplicationDetail()
-	for _, dataplane := range instanceList.Items {
-		if strings.Split(dataplane.GetMeta().GetName(), constant.KeySeparator)[1] == "0" {
-			continue
-		}
-		rev, ok := dataplane.Spec.GetExtensions()[meshproto.RevisionLabel]
-		if ok {
-			if metadata, cached := revisions[rev]; !cached {
-				metadata = &mesh.MetaDataResource{
-					Spec: &meshproto.MetaData{},
-				}
-				if err := manager.Get(ctx.AppContext(), metadata, store.GetByRevision(rev), store.GetByType(dataplane.Spec.GetExtensions()["registry-type"])); err != nil {
-					return nil, err
-				}
-				revisions[rev] = metadata
-				applicationDetail.MergeMetaData(metadata)
-			}
-		}
-		applicationDetail.MergeDataplane(dataplane)
-		applicationDetail.GetRegistry(ctx)
+	for _, instanceRes := range instanceResources {
+		applicationDetail.MergeInstance(instanceRes)
 	}
 
 	respItem := &model.ApplicationDetailResp{
@@ -69,156 +57,213 @@ func GetApplicationDetail(ctx context.Context, req *model.ApplicationDetailReq) 
 	return respItem, nil
 }
 
-func GetApplicationTabInstanceInfo(ctx context.Context, req *model.ApplicationTabInstanceInfoReq) (*model.SearchPaginationResult, error) {
-	manager := ctx.ResourceManager()
-	dataplaneList := &mesh.DataplaneResourceList{}
-
-	if err := manager.List(ctx.AppContext(), dataplaneList, store.ListByApplication(req.AppName), store.ListByPage(req.PageSize, strconv.Itoa(req.PageOffset))); err != nil {
+func GetAppInstanceInfo(ctx consolectx.Context, req *model.ApplicationTabInstanceInfoReq) (*model.SearchPaginationResult, error) {
+	pageData, err := manager.PageListByIndexes[*meshresource.InstanceResource](
+		ctx.ResourceManager(),
+		meshresource.InstanceKind,
+		map[string]interface{}{
+			index.ByMeshIndex:            req.Mesh,
+			index.ByInstanceAppNameIndex: req.AppName,
+		},
+		req.PageReq,
+	)
+	if err != nil {
 		return nil, err
 	}
 
-	res := model.NewSearchPaginationResult()
-	list := make([]*model.ApplicationTabInstanceInfoResp, 0, len(dataplaneList.Items))
-	for _, dataplane := range dataplaneList.Items {
-		if strings.Split(dataplane.Meta.GetName(), constant.KeySeparator)[1] == "0" {
-			continue
-		}
-		resItem := &model.ApplicationTabInstanceInfoResp{}
-		resItem.FromDataplaneResource(dataplane)
-		resItem.GetRegistry(ctx)
-		list = append(list, resItem)
+	list := slice.Map[*meshresource.InstanceResource, *model.AppInstanceInfoResp](pageData.Data,
+		func(_ int, item *meshresource.InstanceResource) *model.AppInstanceInfoResp {
+			return buildAppInstanceInfoResp(item)
+		})
+	searchResult := &model.SearchPaginationResult{
+		List:     list,
+		PageInfo: pageData.Pagination,
 	}
-
-	res.List = list
-	res.PageInfo = &dataplaneList.Pagination
-
-	return res, nil
+	return searchResult, nil
 }
 
-func GetApplicationServiceFormInfo(ctx context.Context, req *model.ApplicationServiceFormReq) (*model.SearchPaginationResult, error) {
-	manager := ctx.ResourceManager()
-	dataplaneList := &mesh.DataplaneResourceList{}
+func buildAppInstanceInfoResp(instanceRes *meshresource.InstanceResource) *model.AppInstanceInfoResp {
+	instance := instanceRes.Spec
+	resp := &model.AppInstanceInfoResp{}
+	resp.Name = instance.Name
+	resp.AppName = instance.AppName
+	resp.CreateTime = instance.CreateTime
+	resp.DeployState = instance.DeployState
+	resp.DeployClusters = ""
+	resp.IP = instance.Ip
+	resp.Labels = instance.Tags
+	resp.RegisterCluster = instanceRes.Mesh
+	if instance.RegisterTime == "" {
+		resp.RegisterState = "Registered"
+	} else {
+		resp.RegisterState = "UnRegistered"
+	}
+	resp.RegisterTime = instance.RegisterTime
+	resp.WorkloadName = instance.WorkloadName
+	return resp
+}
 
-	if err := manager.List(ctx.AppContext(), dataplaneList, store.ListByApplication(req.AppName)); err != nil {
+func GetAppServiceInfo(ctx consolectx.Context, req *model.ApplicationServiceFormReq) (*model.SearchPaginationResult, error) {
+	if req.Side == consts.ConsumerSide {
+		return getAppProvideServiceInfo(ctx, req)
+	} else {
+		return getAppConsumeServiceInfo(ctx, req)
+	}
+
+}
+
+func getAppProvideServiceInfo(ctx consolectx.Context, req *model.ApplicationServiceFormReq) (*model.SearchPaginationResult, error) {
+
+	pageData, err := manager.PageListByIndexes[*meshresource.ServiceProviderMetadataResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceProviderMetadataKind,
+		map[string]interface{}{
+			index.ByMeshIndex:              req.Mesh,
+			index.ByServiceProviderAppName: req.AppName,
+		},
+		req.PageReq,
+	)
+	if err != nil {
 		return nil, err
 	}
 
-	res := make([]*model.ApplicationServiceFormResp, 0)
-	serviceMap := make(map[string]*model.ApplicationServiceForm)
-	revisions := make(map[string]*mesh.MetaDataResource, 0)
-	for _, dataplane := range dataplaneList.Items {
-		rev, ok := dataplane.Spec.GetExtensions()[meshproto.RevisionLabel]
-		if !ok {
-			continue
-		}
+	serviceMap := make(map[string]*model.ApplicationServiceFormResp)
+	for _, res := range pageData.Data {
+		providerMetaData := res.Spec
 
-		metadata, cached := revisions[rev]
-		if !cached {
-			metadata = &mesh.MetaDataResource{
-				Spec: &meshproto.MetaData{},
-			}
-			if err := manager.Get(ctx.AppContext(), metadata, store.GetByRevision(rev), store.GetByType(dataplane.Spec.GetExtensions()["registry-type"])); err != nil {
-				return nil, err
-			}
-			revisions[rev] = metadata
-		}
-
-		for _, serviceInfo := range metadata.Spec.Services {
-			if serviceInfo.Params[constants.ServiceInfoSide] != req.Side {
-				continue
-			}
-			applicationServiceForm := model.NewApplicationServiceForm(serviceInfo.Name)
-			if _, ok := serviceMap[serviceInfo.Name]; !ok {
-				serviceMap[serviceInfo.Name] = applicationServiceForm
-			}
-
-			if err := applicationServiceForm.FromServiceInfo(serviceInfo); err != nil {
-				return nil, err
+		if resp, exists := serviceMap[providerMetaData.ServiceName]; exists {
+			resp.VersionGroups = append(resp.VersionGroups, model.VersionGroup{
+				Version: providerMetaData.Version,
+				Group:   providerMetaData.Group,
+			})
+		} else {
+			serviceMap[providerMetaData.ServiceName] = &model.ApplicationServiceFormResp{
+				ServiceName: providerMetaData.ServiceName,
+				VersionGroups: []model.VersionGroup{
+					{
+						Version: providerMetaData.Version,
+						Group:   providerMetaData.Group,
+					},
+				},
 			}
 		}
 	}
 
-	for _, applicationServiceForm := range serviceMap {
-		applicationServiceFormResp := model.NewApplicationServiceFormResp()
-		if err := applicationServiceFormResp.FromApplicationServiceForm(applicationServiceForm); err != nil {
-			return nil, err
-		}
-		res = append(res, applicationServiceFormResp)
+	pageResult := &model.SearchPaginationResult{
+		List:     maputil.Values(serviceMap),
+		PageInfo: pageData.Pagination,
 	}
-
-	pagedRes := ToSearchPaginationResult(res, model.ByAppServiceFormName(res), req.PageReq)
-
-	return pagedRes, nil
+	return pageResult, nil
 }
 
-func GetApplicationSearchInfo(ctx context.Context, req *model.ApplicationSearchReq) (*model.SearchPaginationResult, error) {
-	manager := ctx.ResourceManager()
-	dataplaneList := &mesh.DataplaneResourceList{}
+func getAppConsumeServiceInfo(ctx consolectx.Context, req *model.ApplicationServiceFormReq) (*model.SearchPaginationResult, error) {
+	pageData, err := manager.PageListByIndexes[*meshresource.ServiceConsumerMetadataResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceConsumerMetadataKind,
+		map[string]interface{}{
+			index.ByMeshIndex:              req.Mesh,
+			index.ByServiceConsumerAppName: req.AppName,
+		},
+		req.PageReq,
+	)
+	if err != nil {
+		return nil, err
+	}
 
-	if req.Keywords != "" {
-		if err := manager.List(ctx.AppContext(), dataplaneList, store.ListByApplicationContains(req.Keywords)); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := manager.List(ctx.AppContext(), dataplaneList); err != nil {
-			return nil, err
+	serviceMap := make(map[string]*model.ApplicationServiceFormResp)
+	for _, res := range pageData.Data {
+		consumerMetadata := res.Spec
+
+		if resp, exists := serviceMap[consumerMetadata.ServiceName]; exists {
+			resp.VersionGroups = append(resp.VersionGroups, model.VersionGroup{
+				Version: consumerMetadata.Version,
+				Group:   consumerMetadata.Group,
+			})
+		} else {
+			serviceMap[consumerMetadata.ServiceName] = &model.ApplicationServiceFormResp{
+				ServiceName: consumerMetadata.ServiceName,
+				VersionGroups: []model.VersionGroup{
+					{
+						Version: consumerMetadata.Version,
+						Group:   consumerMetadata.Group,
+					},
+				},
+			}
 		}
 	}
 
-	res := make([]*model.ApplicationSearchResp, 0)
-	appMap := make(map[string]*model.ApplicationSearch)
-	for _, dataplane := range dataplaneList.Items {
-		if strings.Split(dataplane.GetMeta().GetName(), constant.KeySeparator)[1] == "0" {
-			continue
-		}
-		appName := dataplane.Spec.GetExtensions()[meshproto.Application]
-		if _, ok := appMap[appName]; !ok {
-			appMap[appName] = model.NewApplicationSearch(appName)
-		}
-		appMap[appName].MergeDataplane(dataplane)
-		appMap[appName].GetRegistry(ctx)
+	pageResult := &model.SearchPaginationResult{
+		List:     maputil.Values(serviceMap),
+		PageInfo: pageData.Pagination,
 	}
-
-	for appName, search := range appMap {
-		applicationSearchResp := &model.ApplicationSearchResp{
-			AppName: appName,
-		}
-		res = append(res, applicationSearchResp.FromApplicationSearch(search))
-	}
-
-	pagedRes := ToSearchPaginationResult(res, model.ByAppName(res), req.PageReq)
-	return pagedRes, nil
+	return pageResult, nil
 }
 
-func BannerSearchApplications(ctx context.Context, req *model.SearchReq) ([]*model.ApplicationSearchResp, error) {
-	manager := ctx.ResourceManager()
-	dataplaneList := &mesh.DataplaneResourceList{}
-	if req.Keywords != "" {
-		if err := manager.List(ctx.AppContext(), dataplaneList, store.ListByApplicationContains(req.Keywords)); err != nil {
-			return nil, err
-		}
+func SearchApplications(ctx consolectx.Context, req *model.ApplicationSearchReq) (*model.SearchPaginationResult, error) {
+	pageData, err := searchApplications(ctx, req.AppName, req.Mesh, req.PageReq)
+	if err != nil {
+		return nil, err
+	}
+	respList := slice.Map[*meshresource.ApplicationResource, *model.ApplicationSearchResp](pageData.Data,
+		func(_ int, item *meshresource.ApplicationResource) *model.ApplicationSearchResp {
+			return buildApplicationSearchResp(item, req.Mesh)
+		})
+	searchResult := &model.SearchPaginationResult{
+		List:     respList,
+		PageInfo: pageData.Pagination,
+	}
+	return searchResult, nil
+}
+
+func BannerSearchApplications(ctx consolectx.Context, req *model.SearchReq) ([]*model.ApplicationSearchResp, error) {
+	pageData, err := searchApplications(ctx, req.Keywords, req.Mesh, req.PageReq)
+	if err != nil {
+		return nil, err
+	}
+	respList := slice.Map[*meshresource.ApplicationResource, *model.ApplicationSearchResp](pageData.Data,
+		func(_ int, item *meshresource.ApplicationResource) *model.ApplicationSearchResp {
+			return buildApplicationSearchResp(item, req.Mesh)
+		})
+	return respList, nil
+}
+
+func searchApplications(
+	ctx consolectx.Context,
+	keywords string,
+	mesh string,
+	pageReq coremodel.PageReq) (*coremodel.PageData[*meshresource.ApplicationResource], error) {
+
+	var pageData *coremodel.PageData[*meshresource.ApplicationResource]
+	var err error
+	if strutil.IsBlank(keywords) {
+		pageData, err = manager.PageListByIndexes[*meshresource.ApplicationResource](
+			ctx.ResourceManager(),
+			meshresource.ApplicationKind,
+			map[string]interface{}{
+				index.ByMeshIndex: mesh,
+			},
+			pageReq,
+		)
 	} else {
-		if err := manager.List(ctx.AppContext(), dataplaneList); err != nil {
-			return nil, err
-		}
+		pageData, err = manager.PageSearchResourceByConditions[*meshresource.ApplicationResource](
+			ctx.ResourceManager(),
+			meshresource.ApplicationKind,
+			[]string{"name=" + keywords},
+			pageReq,
+		)
 	}
+	if err != nil {
+		return nil, err
+	}
+	return pageData, nil
+}
 
-	res := make([]*model.ApplicationSearchResp, 0)
-	appMap := make(map[string]*model.ApplicationSearch)
-	for _, dataplane := range dataplaneList.Items {
-		appName := dataplane.Spec.GetExtensions()[meshproto.Application]
-		if _, ok := appMap[appName]; !ok {
-			appMap[appName] = model.NewApplicationSearch(appName)
-		}
-		appMap[appName].MergeDataplane(dataplane)
-		appMap[appName].GetRegistry(ctx)
+func buildApplicationSearchResp(appResource *meshresource.ApplicationResource, mesh string) *model.ApplicationSearchResp {
+	application := appResource.Spec
+	return &model.ApplicationSearchResp{
+		AppName:          application.Name,
+		DeployClusters:   []string{""},
+		InstanceCount:    application.InstanceCount,
+		RegistryClusters: []string{mesh},
 	}
-
-	for appName, search := range appMap {
-		applicationSearchResp := &model.ApplicationSearchResp{
-			AppName: appName,
-		}
-		res = append(res, applicationSearchResp.FromApplicationSearch(search))
-	}
-	return res, nil
 }

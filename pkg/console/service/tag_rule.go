@@ -18,52 +18,45 @@
 package service
 
 import (
-	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/common/errors"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
+	coreresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
-	"github.com/apache/dubbo-admin/pkg/core/store"
 )
 
-func GetTagRule(ctx consolectx.Context, name string) (*mesh.TagRouteResource, error) {
-	res := &mesh.TagRouteResource{Spec: &meshproto.TagRoute{}}
-	err := ctx.ResourceManager().Get(ctx.AppContext(), res,
-		// here `name` may be service name or app name, set *ByApplication(`name`) is ok.
-		store.GetByApplication(name), store.GetByKey(name+consts.TagRuleSuffix, coremodel.DefaultMesh))
+func GetTagRule(ctx consolectx.Context, name string, mesh string) (*coreresource.TagRouteResource, error) {
+	r, _, err := ctx.ResourceManager().GetByKey(coreresource.TagRouteKind, coremodel.BuildResourceKey(mesh, name))
 	if err != nil {
 		logger.Warnf("get tag rule %s error: %v", name, err)
 		return nil, err
 	}
-	return res, nil
+	if r, ok := r.(*coreresource.TagRouteResource); ok {
+		return r, nil
+	}
+	return nil, errors.NewAssertionError(string(coreresource.TagRouteKind), string(r.ResourceKind()))
 }
 
-func UpdateTagRule(ctx consolectx.Context, name string, res *mesh.TagRouteResource) error {
-	err := ctx.ResourceManager().Update(ctx.AppContext(), res,
-		// here `name` may be service name or app name, set *ByApplication(`name`) is ok.
-		store.UpdateByApplication(name), store.UpdateByKey(name+consts.TagRuleSuffix, coremodel.DefaultMesh))
+func UpdateTagRule(ctx consolectx.Context, res *coreresource.TagRouteResource) error {
+	err := ctx.ResourceManager().Update(res)
 	if err != nil {
-		logger.Warnf("update tag rule %s error: %v", name, err)
+		logger.Warnf("update tag rule %s error: %v", res.Name, err)
 		return err
 	}
 	return nil
 }
 
-func CreateTagRule(ctx consolectx.Context, name string, res *mesh.TagRouteResource) error {
-	err := ctx.ResourceManager().Create(ctx.AppContext(), res,
-		// here `name` may be service name or app name, set *ByApplication(`name`) is ok.
-		store.CreateByApplication(name), store.CreateByKey(name+consts.TagRuleSuffix, coremodel.DefaultMesh))
+func CreateTagRule(ctx consolectx.Context, res *coreresource.TagRouteResource) error {
+	err := ctx.ResourceManager().Add(res)
 	if err != nil {
-		logger.Warnf("create tag rule %s error: %v", name, err)
+		logger.Warnf("create tag rule %s error: %v", res.Name, err)
 		return err
 	}
 	return nil
 }
 
-func DeleteTagRule(ctx consolectx.Context, name string, res *mesh.TagRouteResource) error {
-	err := ctx.ResourceManager().Delete(ctx.AppContext(), res,
-		// here `name` may be service name or app name, set *ByApplication(`name`) is ok.
-		store.DeleteByApplication(name), store.DeleteByKey(name+consts.TagRuleSuffix, coremodel.DefaultMesh))
+func DeleteTagRule(ctx consolectx.Context, name string, mesh string) error {
+	err := ctx.ResourceManager().DeleteByKey(coreresource.TagRouteKind, coremodel.BuildResourceKey(mesh, name))
 	if err != nil {
 		logger.Warnf("delete tag rule %s error: %v", name, err)
 		return err

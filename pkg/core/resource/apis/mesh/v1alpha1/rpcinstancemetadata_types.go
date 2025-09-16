@@ -21,75 +21,71 @@
 package v1alpha1
 
 import (
-	systemproto "github.com/apache/dubbo-admin/api/system/v1alpha1"
+	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
 
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:categories=dubbo,scope=Cluster
-
-const SecretKind coremodel.ResourceKind = "Secret"
+const RpcInstanceMetadataKind coremodel.ResourceKind = "RpcInstanceMetadata"
 
 func init() {
-	coremodel.RegisterResourceSchema(SecretKind, NewSecretResource)
+	coremodel.RegisterResourceSchema(RpcInstanceMetadataKind, NewRpcInstanceMetadataResource)
 }
 
-type SecretResource struct {
-	metav1.TypeMeta   `json:",inline"`
+type RpcInstanceMetadataResource struct {
+	metav1.TypeMeta `json:",inline"`
+
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Mesh is the name of the dubbo mesh this resource belongs to.
 	// It may be omitted for cluster-scoped resources.
-	//
-	// +kubebuilder:validation:Optional
 	Mesh string `json:"mesh,omitempty"`
-	// Spec is the specification of the Dubbo Secret resource.
-	// +kubebuilder:validation:Optional
-	Spec *systemproto.Secret `json:"spec,omitempty"`
-	// Status is the status of the Dubbo Secret resource.
-	Status SecretResourceStatus `json:"status,omitempty"`
+
+	// Spec is the specification of the Dubbo RPCInstanceMetaData resource.
+	Spec *meshproto.RPCInstanceMetaData `json:"spec,omitempty"`
+
+	// Status is the status of the Dubbo RpcInstanceMetadata resource.
+	Status RpcInstanceMetadataResourceStatus `json:"status,omitempty"`
 }
 
-type SecretResourceStatus struct {
+type RpcInstanceMetadataResourceStatus struct {
 	// define resource-specific status here
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:scope=Namespaced
-type SecretResourceList struct {
+type RpcInstanceMetadataResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []SecretResource `json:"items"`
+	Items           []RpcInstanceMetadataResource `json:"items"`
 }
 
-func (r *SecretResource) ResourceKind() coremodel.ResourceKind {
-	return SecretKind
+func (r *RpcInstanceMetadataResource) ResourceKind() coremodel.ResourceKind {
+	return RpcInstanceMetadataKind
 }
 
-func (r *SecretResource) MeshName() string {
+func (r *RpcInstanceMetadataResource) MeshName() string {
 	return r.Mesh
 }
 
-func (r *SecretResource) ResourceKey() string {
+func (r *RpcInstanceMetadataResource) ResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Name)
 }
 
-func (r *SecretResource) ResourceMeta() metav1.ObjectMeta {
+func (r *RpcInstanceMetadataResource) ResourceMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *SecretResource) ResourceSpec() coremodel.ResourceSpec {
+func (r *RpcInstanceMetadataResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
-func (r *SecretResource) DeepCopyObject() k8sruntime.Object {
+func (r *RpcInstanceMetadataResource) DeepCopyObject() k8sruntime.Object {
 	if r == nil {
 		return nil
 	}
 
-	out := &SecretResource{
+	out := &RpcInstanceMetadataResource{
 		TypeMeta: r.TypeMeta,
 		Mesh:     r.Mesh,
 		Status:   r.Status,
@@ -98,16 +94,21 @@ func (r *SecretResource) DeepCopyObject() k8sruntime.Object {
 	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 
 	if r.Spec != nil {
-		out.Spec = proto.Clone(r.Spec).(*systemproto.Secret)
+		spec, ok := proto.Clone(r.Spec).(*meshproto.RPCInstanceMetaData)
+		if !ok {
+			logger.Warnf("failed to clone spec %v, spec is not conformed to %s", r.Spec, r.ResourceKind())
+			return out
+		}
+		out.Spec = spec
 	}
 
 	return out
 }
 
-func NewSecretResourceWithAttributes(name string, mesh string) *SecretResource {
-	return &SecretResource{
+func NewRpcInstanceMetadataResourceWithAttributes(name string, mesh string) *RpcInstanceMetadataResource {
+	return &RpcInstanceMetadataResource{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       string(SecretKind),
+			Kind:       string(RpcInstanceMetadataKind),
 			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -118,10 +119,10 @@ func NewSecretResourceWithAttributes(name string, mesh string) *SecretResource {
 	}
 }
 
-func NewSecretResource() coremodel.Resource {
-	return &SecretResource{
+func NewRpcInstanceMetadataResource() coremodel.Resource {
+	return &RpcInstanceMetadataResource{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       string(SecretKind),
+			Kind:       string(RpcInstanceMetadataKind),
 			APIVersion: "v1alpha1",
 		},
 	}

@@ -22,6 +22,8 @@ import (
 	"strconv"
 	"strings"
 
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
+	"github.com/duke-git/lancet/v2/strutil"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
@@ -47,11 +49,11 @@ func GetInstanceDetail(ctx consolectx.Context) gin.HandlerFunc {
 			return
 		}
 
-		if len(resp) == 0 {
+		if resp == nil {
 			c.JSON(http.StatusNotFound, model.NewErrorResp("instance not exist"))
 			return
 		}
-		c.JSON(http.StatusOK, model.NewSuccessResp(resp[0]))
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
 	}
 }
 
@@ -79,6 +81,7 @@ func InstanceConfigTrafficDisableGET(ctx consolectx.Context) gin.HandlerFunc {
 			TrafficDisable bool `json:"trafficDisable"`
 		}{false}
 		applicationName := c.Query("appName")
+		mesh := c.Query("mesh")
 		if applicationName == "" {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("application name is empty"))
 			return
@@ -89,7 +92,7 @@ func InstanceConfigTrafficDisableGET(ctx consolectx.Context) gin.HandlerFunc {
 			return
 		}
 
-		res, err := service.GetConditionRule(ctx, applicationName)
+		res, err := service.GetConditionRule(ctx, applicationName, mesh)
 		if err != nil {
 			if corestore.IsResourceNotFound(err) {
 				c.JSON(http.StatusOK, model.NewSuccessResp(resp))
@@ -166,6 +169,7 @@ func isTrafficDisabledV3(condition string, targetIP string) (exist bool, disable
 func InstanceConfigTrafficDisablePUT(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		appName := strings.TrimSpace(c.Query("appName"))
+		mesh := c.Query("mesh")
 		if appName == "" {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("application name is empty"))
 			return
@@ -182,7 +186,7 @@ func InstanceConfigTrafficDisablePUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		existRule := true
-		rawRes, err := service.GetConditionRule(ctx, appName)
+		rawRes, err := service.GetConditionRule(ctx, appName, mesh)
 		var res *meshproto.ConditionRouteV3
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
@@ -194,7 +198,8 @@ func InstanceConfigTrafficDisablePUT(ctx consolectx.Context) gin.HandlerFunc {
 			}
 			existRule = false
 			res = generateDefaultConditionV3(true, true, true, appName, consts.ScopeApplication)
-			rawRes = &mesh.ConditionRouteResource{Spec: res.ToConditionRoute()}
+			rawRes = meshresource.NewConditionRouteResourceWithAttributes(appName, mesh)
+			rawRes.Spec = res.ToConditionRoute()
 		} else if res = rawRes.Spec.ToConditionRouteV3(); res == nil {
 			c.JSON(http.StatusServiceUnavailable, model.NewErrorResp("this config only serve condition-route.configVersion == v3.1, got v3.0 config "))
 			return
@@ -237,7 +242,7 @@ func InstanceConfigTrafficDisablePUT(ctx consolectx.Context) gin.HandlerFunc {
 func disableExpression(instanceIP string) string {
 	return "=>host!=" + instanceIP
 }
-func updateORCreateConditionRule(ctx consolectx.Context, existRule bool, appName string, rawRes *mesh.ConditionRouteResource) error {
+func updateORCreateConditionRule(ctx consolectx.Context, existRule bool, appName string, rawRes *meshresource.ConditionRouteResource) error {
 	if !existRule {
 		return service.CreateConditionRule(ctx, appName, rawRes)
 	} else {
@@ -287,17 +292,22 @@ func InstanceConfigOperatorLogGET(ctx consolectx.Context) gin.HandlerFunc {
 			OperatorLog bool `json:"operatorLog"`
 		}{false}
 		applicationName := c.Query(`appName`)
-		if applicationName == "" {
+		if strutil.IsBlank(applicationName) {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("application name is empty"))
 			return
 		}
 		instanceIP := c.Query(`instanceIP`)
-		if instanceIP == "" {
+		if strutil.IsBlank(instanceIP) {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("instanceIP is empty"))
 			return
 		}
-
-		res, err := service.GetConfigurator(ctx, applicationName)
+		mesh := c.Query(`mesh`)
+		if strutil.IsBlank(mesh) {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp("mesh is empty"))
+			return
+		}
+		appConfiguratorName := applicationName + consts.ConfiguratorRuleSuffix
+		res, err := service.GetConfigurator(ctx, appConfiguratorName, mesh)
 		if err != nil {
 			if corestore.IsResourceNotFound(err) {
 				c.JSON(http.StatusOK, model.NewSuccessResp(resp))
@@ -334,12 +344,12 @@ func isInstanceOperatorLogOpen(conf *meshproto.OverrideConfig, IP string) bool {
 func InstanceConfigOperatorLogPUT(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		applicationName := c.Query(`appName`)
-		if applicationName == "" {
+		if strutil.IsBlank(applicationName) {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("application name is empty"))
 			return
 		}
 		instanceIP := c.Query(`instanceIP`)
-		if instanceIP == "" {
+		if strutil.IsBlank(instanceIP) {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("instanceIP is empty"))
 			return
 		}
@@ -348,15 +358,27 @@ func InstanceConfigOperatorLogPUT(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-
-		res, err := service.GetConfigurator(ctx, applicationName)
+		mesh := c.Query("mesh")
+		if strutil.IsBlank(mesh) {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp("mesh is empty"))
+			return
+		}
+		appConfiguratorName := applicationName + consts.ConfiguratorRuleSuffix
+		res, err := service.GetConfigurator(ctx, appConfiguratorName, mesh)
 		notExist := false
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
 				c.JSON(http.StatusNotFound, model.NewErrorResp(err.Error()))
 				return
 			}
-			res = generateDefaultConfigurator(applicationName, consts.ScopeApplication, consts.ConfiguratorVersionV3, true)
+			res = meshresource.NewDynamicConfigResourceWithAttributes(appConfiguratorName, mesh)
+			res.Spec = &meshproto.DynamicConfig{
+				Key:           applicationName,
+				Scope:         consts.ScopeApplication,
+				ConfigVersion: consts.ConfiguratorVersionV3,
+				Enabled:       true,
+				Configs:       make([]*meshproto.OverrideConfig, 0),
+			}
 			notExist = true
 		}
 

@@ -29,9 +29,6 @@ import (
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
 
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:categories=dubbo,scope=Cluster
-
 const AffinityRouteKind coremodel.ResourceKind = "AffinityRoute"
 
 func init() {
@@ -39,17 +36,17 @@ func init() {
 }
 
 type AffinityRouteResource struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Mesh is the name of the dubbo mesh this resource belongs to.
 	// It may be omitted for cluster-scoped resources.
-	//
-	// +kubebuilder:validation:Optional
 	Mesh string `json:"mesh,omitempty"`
+
 	// Spec is the specification of the Dubbo AffinityRoute resource.
-	// +kubebuilder:validation:Optional
 	Spec *meshproto.AffinityRoute `json:"spec,omitempty"`
+
 	// Status is the status of the Dubbo AffinityRoute resource.
 	Status AffinityRouteResourceStatus `json:"status,omitempty"`
 }
@@ -58,8 +55,6 @@ type AffinityRouteResourceStatus struct {
 	// define resource-specific status here
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:scope=Namespaced
 type AffinityRouteResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

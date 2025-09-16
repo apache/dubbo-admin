@@ -20,6 +20,7 @@ package handler
 import (
 	"net/http"
 
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/gin-gonic/gin"
 
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
@@ -29,14 +30,11 @@ import (
 
 func BannerGlobalSearch(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 参考 API 定义 request 参数
 		req := model.NewSearchReq()
 		if err := c.ShouldBindQuery(req); err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-
-		// 根据 request 分流调用，如服务未实现继续实现
 
 		var res *model.SearchRes
 		switch req.SearchType {
@@ -61,8 +59,8 @@ func BannerGlobalSearch(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("invalid search type"))
 			return
 		}
-
-		c.JSON(http.StatusOK, model.NewSuccessResp(model.NewPageData().WithData(res).WithTotal(len(res.Candidates)).WithPageSize(req.PageSize).WithCurPage(req.PageOffset)))
+		pageResult := coremodel.NewPageData[string](len(res.Candidates), req.PageOffset, req.PageSize, res.Candidates)
+		c.JSON(http.StatusOK, model.NewSuccessResp(pageResult))
 	}
 }
 

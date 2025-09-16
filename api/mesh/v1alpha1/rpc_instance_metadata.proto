@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+
+message RPCInstanceMetaData {
+  option (dubbo.mesh.resource).name = "RpcInstanceMetadata";
+  option (dubbo.mesh.resource).plural_name = "RpcInstanceMetaDatas";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).is_experimental = false;
+
+  string app = 1;
+  string revision = 2;
+  // key format is '{group}/{interface name}:{version}:{protocol}'
+  map<string, ServiceInfo> services = 4;
+}
+
+message ServiceInfo {
+  string name = 1;
+  string group = 2;
+  string version = 3;
+  string protocol = 4;
+  int64 port = 5;
+  string path = 6;
+  map<string, string> params = 7;
+}

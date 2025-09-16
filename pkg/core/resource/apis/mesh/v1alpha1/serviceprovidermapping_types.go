@@ -21,75 +21,71 @@
 package v1alpha1
 
 import (
-	systemproto "github.com/apache/dubbo-admin/api/system/v1alpha1"
+	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
 
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:categories=dubbo,scope=Cluster
-
-const ZoneKind coremodel.ResourceKind = "Zone"
+const ServiceProviderMappingKind coremodel.ResourceKind = "ServiceProviderMapping"
 
 func init() {
-	coremodel.RegisterResourceSchema(ZoneKind, NewZoneResource)
+	coremodel.RegisterResourceSchema(ServiceProviderMappingKind, NewServiceProviderMappingResource)
 }
 
-type ZoneResource struct {
-	metav1.TypeMeta   `json:",inline"`
+type ServiceProviderMappingResource struct {
+	metav1.TypeMeta `json:",inline"`
+
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Mesh is the name of the dubbo mesh this resource belongs to.
 	// It may be omitted for cluster-scoped resources.
-	//
-	// +kubebuilder:validation:Optional
 	Mesh string `json:"mesh,omitempty"`
-	// Spec is the specification of the Dubbo Zone resource.
-	// +kubebuilder:validation:Optional
-	Spec *systemproto.Zone `json:"spec,omitempty"`
-	// Status is the status of the Dubbo Zone resource.
-	Status ZoneResourceStatus `json:"status,omitempty"`
+
+	// Spec is the specification of the Dubbo ServiceProviderMapping resource.
+	Spec *meshproto.ServiceProviderMapping `json:"spec,omitempty"`
+
+	// Status is the status of the Dubbo ServiceProviderMapping resource.
+	Status ServiceProviderMappingResourceStatus `json:"status,omitempty"`
 }
 
-type ZoneResourceStatus struct {
+type ServiceProviderMappingResourceStatus struct {
 	// define resource-specific status here
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:scope=Namespaced
-type ZoneResourceList struct {
+type ServiceProviderMappingResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ZoneResource `json:"items"`
+	Items           []ServiceProviderMappingResource `json:"items"`
 }
 
-func (r *ZoneResource) ResourceKind() coremodel.ResourceKind {
-	return ZoneKind
+func (r *ServiceProviderMappingResource) ResourceKind() coremodel.ResourceKind {
+	return ServiceProviderMappingKind
 }
 
-func (r *ZoneResource) MeshName() string {
+func (r *ServiceProviderMappingResource) MeshName() string {
 	return r.Mesh
 }
 
-func (r *ZoneResource) ResourceKey() string {
+func (r *ServiceProviderMappingResource) ResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Name)
 }
 
-func (r *ZoneResource) ResourceMeta() metav1.ObjectMeta {
+func (r *ServiceProviderMappingResource) ResourceMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *ZoneResource) ResourceSpec() coremodel.ResourceSpec {
+func (r *ServiceProviderMappingResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
-func (r *ZoneResource) DeepCopyObject() k8sruntime.Object {
+func (r *ServiceProviderMappingResource) DeepCopyObject() k8sruntime.Object {
 	if r == nil {
 		return nil
 	}
 
-	out := &ZoneResource{
+	out := &ServiceProviderMappingResource{
 		TypeMeta: r.TypeMeta,
 		Mesh:     r.Mesh,
 		Status:   r.Status,
@@ -98,16 +94,21 @@ func (r *ZoneResource) DeepCopyObject() k8sruntime.Object {
 	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 
 	if r.Spec != nil {
-		out.Spec = proto.Clone(r.Spec).(*systemproto.Zone)
+		spec, ok := proto.Clone(r.Spec).(*meshproto.ServiceProviderMapping)
+		if !ok {
+			logger.Warnf("failed to clone spec %v, spec is not conformed to %s", r.Spec, r.ResourceKind())
+			return out
+		}
+		out.Spec = spec
 	}
 
 	return out
 }
 
-func NewZoneResourceWithAttributes(name string, mesh string) *ZoneResource {
-	return &ZoneResource{
+func NewServiceProviderMappingResourceWithAttributes(name string, mesh string) *ServiceProviderMappingResource {
+	return &ServiceProviderMappingResource{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       string(ZoneKind),
+			Kind:       string(ServiceProviderMappingKind),
 			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -118,10 +119,10 @@ func NewZoneResourceWithAttributes(name string, mesh string) *ZoneResource {
 	}
 }
 
-func NewZoneResource() coremodel.Resource {
-	return &ZoneResource{
+func NewServiceProviderMappingResource() coremodel.Resource {
+	return &ServiceProviderMappingResource{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       string(ZoneKind),
+			Kind:       string(ServiceProviderMappingKind),
 			APIVersion: "v1alpha1",
 		},
 	}

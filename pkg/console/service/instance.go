@@ -21,164 +21,105 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"strings"
 
-	"dubbo.apache.org/dubbo-go/v3/common/constant"
+	"github.com/apache/dubbo-admin/pkg/core/manager"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
+	"github.com/duke-git/lancet/v2/strutil"
 
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
-	corers "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
-	"github.com/apache/dubbo-admin/pkg/core/store"
 )
 
+// BannerSearchIp
+// TODO: implement me
 func BannerSearchIp(ctx consolectx.Context, req *model.SearchReq) (*model.SearchPaginationResult, error) {
-	manager := ctx.ResourceManager()
-	dataplaneList := &corers.DataplaneResourceList{}
-
-	if err := manager.List(ctx.AppContext(), dataplaneList, store.ListByFilterFunc(searchByIp(req.Keywords)), store.ListByPage(req.PageSize, strconv.Itoa(req.PageOffset))); err != nil {
-		return nil, err
-	}
-
-	res := model.NewSearchPaginationResult()
-	list := make([]*model.SearchInstanceResp, len(dataplaneList.Items))
-	for i, item := range dataplaneList.Items {
-		list[i] = model.NewSearchInstanceResp()
-		list[i] = list[i].FromDataplaneResource(item)
-	}
-
-	res.List = list
-	res.PageInfo = &dataplaneList.Pagination
-
-	return res, nil
+	return nil, nil
 }
 
-func searchByIp(ip string) store.ListFilterFunc {
-	return func(rs coremodel.Resource) bool {
-		// make sure that the resource is of type mesh.DataplaneResource
-		if dp, ok := rs.(*mesh.DataplaneResource); ok {
-			return dp.GetIP() == ip
-		}
-		return false
-	}
-}
-
+// BannerSearchInstances
+// TODO: implement me
 func BannerSearchInstances(ctx consolectx.Context, req *model.SearchReq) (*model.SearchPaginationResult, error) {
-	manager := ctx.ResourceManager()
-	dataplaneList := &mesh.DataplaneResourceList{}
-
-	if err := manager.List(ctx.AppContext(), dataplaneList, store.ListByNameContains(req.Keywords), store.ListByPage(req.PageSize, strconv.Itoa(req.PageOffset))); err != nil {
-		return nil, err
-	}
-
-	res := model.NewSearchPaginationResult()
-	list := make([]*model.SearchInstanceResp, len(dataplaneList.Items))
-	for i, item := range dataplaneList.Items {
-		list[i] = model.NewSearchInstanceResp()
-		list[i] = list[i].FromDataplaneResource(item)
-	}
-
-	res.List = list
-	res.PageInfo = &dataplaneList.Pagination
-
-	return res, nil
+	// TODO: implement me
+	return nil, nil
 }
 
 func SearchInstances(ctx consolectx.Context, req *model.SearchInstanceReq) (*model.SearchPaginationResult, error) {
-	manager := ctx.ResourceManager()
-	dataplaneList := &mesh.DataplaneResourceList{}
-
-	if req.Keywords == "" {
-		if err := manager.List(ctx.AppContext(), dataplaneList, store.ListByPage(req.PageSize, strconv.Itoa(req.PageOffset))); err != nil {
+	var pageData *coremodel.PageData[*meshresource.InstanceResource]
+	var err error
+	if strutil.IsBlank(req.Keywords) {
+		pageData, err = manager.PageListByIndexes[*meshresource.InstanceResource](
+			ctx.ResourceManager(),
+			meshresource.InstanceKind,
+			map[string]interface{}{
+				index.ByMeshIndex: req.Mesh,
+			},
+			req.PageReq)
+		if err != nil {
 			return nil, err
 		}
 	} else {
-		if err := manager.List(ctx.AppContext(), dataplaneList, store.ListByNameContains(req.Keywords), store.ListByPage(req.PageSize, strconv.Itoa(req.PageOffset))); err != nil {
+		pageData, err = manager.PageSearchResourceByConditions[*meshresource.InstanceResource](
+			ctx.ResourceManager(),
+			meshresource.InstanceKind,
+			[]string{"ip=" + req.Keywords},
+			req.PageReq,
+		)
+		if err != nil {
 			return nil, err
 		}
 	}
 
-	res := model.NewSearchPaginationResult()
+	resp := model.NewSearchPaginationResult()
 	var list []*model.SearchInstanceResp
-	for _, item := range dataplaneList.Items {
-		if strings.Split(item.Meta.GetName(), constant.KeySeparator)[1] == "0" {
-			continue
-		}
-		list = append(list, model.NewSearchInstanceResp().FromDataplaneResource(item))
+	for _, item := range pageData.Data {
+		list = append(list, model.NewSearchInstanceResp().FromInstanceResource(item))
 	}
-
-	res.List = list
-	res.PageInfo = &dataplaneList.Pagination
-
-	return res, nil
+	resp.List = list
+	resp.PageInfo = pageData.Pagination
+	return resp, nil
 }
 
-func GetInstanceDetail(ctx consolectx.Context, req *model.InstanceDetailReq) ([]*model.InstanceDetailResp, error) {
-	manager := ctx.ResourceManager()
-	dataplaneList := &mesh.DataplaneResourceList{}
-
-	if err := manager.List(ctx.AppContext(), dataplaneList, store.ListByNameContains(req.InstanceName)); err != nil {
+func GetInstanceDetail(ctx consolectx.Context, req *model.InstanceDetailReq) (*model.InstanceDetailResp, error) {
+	res, _, err := manager.GetByKey[*meshresource.InstanceResource](
+		ctx.ResourceManager(),
+		meshresource.InstanceKind,
+		coremodel.BuildResourceKey(req.Mesh, req.InstanceName),
+	)
+	if err != nil {
 		return nil, err
 	}
 
-	instMap := make(map[string]*model.InstanceDetail)
-	for _, dataplane := range dataplaneList.Items {
-
-		// instName := dataplane.Meta.GetLabels()[mesh_proto.InstanceTag]//This tag is "" in universal mode
-		instName := dataplane.Meta.GetName()
-		var instanceDetail *model.InstanceDetail
-		if _, ok := instMap[instName]; ok {
-			// found previously recorded instance detail in instMap
-			// the detail should be merged with the new instance detail
-			instanceDetail = instMap[instName]
-		} else {
-			// the instance information appears for the 1st time
-			instanceDetail = model.NewInstanceDetail()
-		}
-		instanceDetail.Merge(dataplane) // convert dataplane info to instance detail
-		instMap[instName] = instanceDetail
-	}
-
-	resp := make([]*model.InstanceDetailResp, 0, len(instMap))
-	for _, instDetail := range instMap {
-		respItem := &model.InstanceDetailResp{}
-		resp = append(resp, respItem.FromInstanceDetail(instDetail))
-	}
+	resp := model.FromInstanceResource(res)
 	return resp, nil
 }
 
 func GetInstanceMetrics(ctx consolectx.Context, req *model.MetricsReq) ([]*model.MetricsResp, error) {
-	manager := ctx.ResourceManager()
-	dataplaneList := &mesh.DataplaneResourceList{}
-	if err := manager.List(ctx.AppContext(), dataplaneList, store.ListByNameContains(req.InstanceName)); err != nil {
+	res, _, err := manager.GetByKey[*meshresource.InstanceResource](
+		ctx.ResourceManager(),
+		meshresource.InstanceKind,
+		coremodel.BuildResourceKey(req.Mesh, req.InstanceName),
+	)
+	if err != nil {
 		return nil, err
 	}
-	instMap := make(map[string]*model.InstanceDetail)
-	resp := make([]*model.MetricsResp, 0)
-	for _, dataplane := range dataplaneList.Items {
-		instName := dataplane.Meta.GetName()
-		var instanceDetail *model.InstanceDetail
-		if detail, ok := instMap[instName]; ok {
-			instanceDetail = detail
-		} else {
-			instanceDetail = model.NewInstanceDetail()
-		}
-		instanceDetail.Merge(dataplane)
-		metrics, err := fetchMetricsData(dataplane.GetIP(), 22222)
-		if err != nil {
-			continue
-		}
-		metricsResp := &model.MetricsResp{
-			InstanceName: instName,
-			Metrics:      metrics,
-		}
-		resp = append(resp, metricsResp)
+	instance := res.Spec
+	metricsData, err := fetchMetricsData(instance.Ip, instance.QosPort)
+	if err != nil {
+		return nil, err
 	}
-	return resp, nil
+
+	metricsResp := &model.MetricsResp{
+		InstanceName: instance.Name,
+		Metrics:      metricsData,
+	}
+
+	return []*model.MetricsResp{metricsResp}, nil
 }
 
-func fetchMetricsData(ip string, port int) ([]model.Metric, error) {
+func fetchMetricsData(ip string, port int32) ([]model.Metric, error) {
 	url := fmt.Sprintf("http://%s:%d/metrics", ip, port)
 	response, err := http.Get(url)
 	if err != nil {

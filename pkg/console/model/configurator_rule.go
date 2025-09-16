@@ -21,16 +21,18 @@ import (
 	"net/http"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
 type SearchConfiguratorReq struct {
 	Keywords string `json:"keywords"`
-	PageReq
+	Mesh     string `json:"mesh"`
+	coremodel.PageReq
 }
 
 func NewSearchConfiguratorReq() *SearchConfiguratorReq {
 	return &SearchConfiguratorReq{
-		PageReq: PageReq{
+		PageReq: coremodel.PageReq{
 			PageSize:   15,
 			PageOffset: 0,
 		},

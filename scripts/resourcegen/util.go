@@ -26,7 +26,6 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/apache/dubbo-admin/api/mesh"
-	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
 // DubboResourceForMessage fetches the Dubbo resource option out of a message.
@@ -60,87 +59,22 @@ func SelectorsForMessage(m protoreflect.MessageDescriptor) []string {
 }
 
 type ResourceInfo struct {
-	ResourceName             string
-	ResourceType             string
-	ProtoType                string
-	Selectors                []string
-	SkipRegistration         bool
-	SkipKubernetesWrappers   bool
-	ScopeNamespace           bool
-	Global                   bool
-	DubboctlSingular         string
-	DubboctlPlural           string
-	WsReadOnly               bool
-	WsAdminOnly              bool
-	WsPath                   string
-	DdsDirection             string
-	AllowToInspect           bool
-	StorageVersion           bool
-	IsPolicy                 bool
-	SingularDisplayName      string
-	PluralDisplayName        string
-	IsExperimental           bool
-	AdditionalPrinterColumns []string
-	HasInsights              bool
+	Name           string
+	PluralName     string
+	ProtoType      string
+	Selectors      []string
+	IsExperimental bool
 }
 
 func ToResourceInfo(desc protoreflect.MessageDescriptor) ResourceInfo {
 	r := DubboResourceForMessage(desc)
 
 	out := ResourceInfo{
-		ResourceType:             r.Type,
-		ResourceName:             r.Name,
-		ProtoType:                string(desc.Name()),
-		Selectors:                SelectorsForMessage(desc),
-		SkipRegistration:         r.SkipRegistration,
-		SkipKubernetesWrappers:   r.SkipKubernetesWrappers,
-		Global:                   r.Global,
-		ScopeNamespace:           r.ScopeNamespace,
-		AllowToInspect:           r.AllowToInspect,
-		StorageVersion:           r.StorageVersion,
-		SingularDisplayName:      coremodel.DisplayName(r.Type),
-		PluralDisplayName:        r.PluralDisplayName,
-		IsExperimental:           r.IsExperimental,
-		AdditionalPrinterColumns: r.AdditionalPrinterColumns,
-		HasInsights:              r.HasInsights,
-	}
-	if r.Ws != nil {
-		pluralResourceName := r.Ws.Plural
-		if pluralResourceName == "" {
-			pluralResourceName = r.Ws.Name + "s"
-		}
-		out.WsReadOnly = r.Ws.ReadOnly
-		out.WsAdminOnly = r.Ws.AdminOnly
-		out.WsPath = pluralResourceName
-		if !r.Ws.ReadOnly {
-			out.DubboctlSingular = r.Ws.Name
-			out.DubboctlPlural = pluralResourceName
-			// Keep the typo to preserve backward compatibility
-			if out.DubboctlSingular == "health-check" {
-				out.DubboctlSingular = "healthcheck"
-				out.DubboctlPlural = "healthchecks"
-			}
-		}
-	}
-	if out.PluralDisplayName == "" {
-		out.PluralDisplayName = coremodel.PluralType(coremodel.DisplayName(r.Type))
-	}
-	// Working around the fact we don't really differentiate policies from the rest of resources:
-	// Anything global can't be a policy as it need to be on a mesh. Anything with locked Ws config is something internal and therefore not a policy
-	out.IsPolicy = !out.SkipRegistration && !out.Global && !out.WsAdminOnly && !out.WsReadOnly && out.ResourceType != "Dataplane" && out.ResourceType != "ExternalService"
-	switch {
-	case r.Dds == nil || (!r.Dds.SendToZone && !r.Dds.SendToGlobal):
-		out.DdsDirection = ""
-	case r.Dds.SendToGlobal && r.Dds.SendToZone:
-		out.DdsDirection = "model.ZoneToGlobalFlag | model.GlobalToAllButOriginalZoneFlag"
-	case r.Dds.SendToGlobal:
-		out.DdsDirection = "model.ZoneToGlobalFlag"
-	case r.Dds.SendToZone:
-		out.DdsDirection = "model.GlobalToAllZonesFlag"
-	}
-
-	if out.ResourceType == "MeshGateway" {
-		out.DdsDirection = "model.ZoneToGlobalFlag | model.GlobalToAllZonesFlag"
+		Name:           r.Name,
+		PluralName:     r.PluralName,
+		ProtoType:      string(desc.Name()),
+		Selectors:      SelectorsForMessage(desc),
+		IsExperimental: r.IsExperimental,
 	}
 
 	if p := desc.Parent(); p != nil {

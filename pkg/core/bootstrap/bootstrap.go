@@ -41,11 +41,11 @@ func Bootstrap(appCtx context.Context, cfg app.AdminConfig) (runtime.Runtime, er
 	if err := initResourceStore(cfg, builder); err != nil {
 		return nil, err
 	}
-	// 2. initialize discovery engine
+	// 2. initialize discovery
 	if err := initializeResourceDiscovery(builder); err != nil {
 		return nil, err
 	}
-	// 3. initialize runtime engine
+	// 3. initialize engine
 	if err := initializeResourceEngine(builder); err != nil {
 		return nil, err
 	}

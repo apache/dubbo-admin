@@ -33,7 +33,9 @@ import (
 // ResourceStore expanded the interface of cache.Indexer and cache.Store
 type ResourceStore interface {
 	Indexer
-	ListPageByIndex(indexName string, indexValue interface{}, pq model.PageQuery) ([]interface{}, model.Pagination, error)
+	ListByIndexes(indexes map[string]interface{}) ([]model.Resource, error)
+	// PageListByIndexes list resources by indexes pageable, indexes is map of index name and index value
+	PageListByIndexes(indexes map[string]interface{}, pq model.PageReq) (*model.PageData[model.Resource], error)
 }
 
 // ManagedResourceStore includes both functional interfaces and lifecycle interfaces
@@ -74,37 +76,6 @@ var ErrorInvalidOffset = errors.New("invalid offset")
 
 func IsResourceNotFound(err error) bool {
 	return err != nil && strings.HasPrefix(err.Error(), "Resource not found")
-}
-
-// AssertionError
-type AssertionError struct {
-	msg string
-	err error
-}
-
-func ErrorResourceAssertion(msg, rt, name, mesh string) error {
-	return &AssertionError{
-		msg: fmt.Sprintf("%s: type=%q name=%q mesh=%q", msg, rt, name, mesh),
-	}
-}
-
-func (e *AssertionError) Unwrap() error {
-	return e.err
-}
-
-func (e *AssertionError) Error() string {
-	msg := "store assertion failed"
-	if e.msg != "" {
-		msg += " " + e.msg
-	}
-	if e.err != nil {
-		msg += fmt.Sprintf("error: %s", e.err)
-	}
-	return msg
-}
-
-func (e *AssertionError) Is(err error) bool {
-	return reflect.TypeOf(e) == reflect.TypeOf(err)
 }
 
 type PreconditionError struct {

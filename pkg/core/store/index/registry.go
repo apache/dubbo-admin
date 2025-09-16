@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package store
+package index
 
 import (
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"

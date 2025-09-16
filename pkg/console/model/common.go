@@ -17,6 +17,8 @@
 
 package model
 
+import coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+
 const (
 	successCode      = 200
 	unauthorizedCode = 401
@@ -68,51 +70,16 @@ func NewErrorResp(msg string) *CommonResp {
 	}
 }
 
-type PageData struct {
-	Total    int `json:"total"`
-	CurPage  int `json:"curPage"`
-	PageSize int `json:"pageSize"`
-	Data     any `json:"data"`
-}
-
-func NewPageData() *PageData {
-	return &PageData{}
-}
-
-func (pd *PageData) WithTotal(total int) *PageData {
-	pd.Total = total
-	return pd
-}
-
-func (pd *PageData) WithCurPage(curPage int) *PageData {
-	pd.CurPage = curPage
-	return pd
-}
-
-func (pd *PageData) WithPageSize(pageSize int) *PageData {
-	pd.PageSize = pageSize
-	return pd
-}
-
-func (pd *PageData) WithData(data any) *PageData {
-	pd.Data = data
-	return pd
-}
-
-type PageReq struct {
-	PageOffset int `form:"pageOffset" json:"pageOffset"`
-	PageSize   int `form:"pageSize" json:"pageSize"`
-}
-
 type SearchReq struct {
 	SearchType string `form:"searchType"`
 	Keywords   string `form:"keywords"`
-	PageReq
+	Mesh       string `form:"mesh"`
+	coremodel.PageReq
 }
 
 func NewSearchReq() *SearchReq {
 	return &SearchReq{
-		PageReq: PageReq{PageSize: 15},
+		PageReq: coremodel.PageReq{PageSize: 15},
 	}
 }
 

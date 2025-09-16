@@ -24,7 +24,6 @@ import (
 	"github.com/dubbogo/gost/encoding/yaml"
 )
 
-// Application 流量管控相关的基础label
 const (
 	ApplicationLabel    = "dubbo.io/application"
 	ServiceLabel        = "dubbo.io/service"

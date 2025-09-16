@@ -25,9 +25,9 @@ import (
 )
 
 type TagRuleSearchResp struct {
-	CreateTime *string `json:"createTime,omitempty"`
-	Enabled    *bool   `json:"enabled,omitempty"`
-	RuleName   *string `json:"ruleName,omitempty"`
+	CreateTime string `json:"createTime,omitempty"`
+	Enabled    bool   `json:"enabled,omitempty"`
+	RuleName   string `json:"ruleName,omitempty"`
 }
 
 type TagRuleResp struct {

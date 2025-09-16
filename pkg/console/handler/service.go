@@ -18,10 +18,10 @@
 package handler
 
 import (
-	"errors"
 	"net/http"
 	"strconv"
 
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	"github.com/gin-gonic/gin"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
@@ -45,7 +45,7 @@ func SearchServices(ctx consolectx.Context) gin.HandlerFunc {
 			return
 		}
 
-		resp, err := service.GetSearchServices(ctx, req)
+		resp, err := service.SearchServices(ctx, req)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 			return
@@ -55,7 +55,6 @@ func SearchServices(ctx consolectx.Context) gin.HandlerFunc {
 	}
 }
 
-// service distribution
 func GetServiceTabDistribution(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req := &model.ServiceTabDistributionReq{}
@@ -98,41 +97,18 @@ func GetServiceInterfaces(ctx consolectx.Context) gin.HandlerFunc {
 	}
 }
 
-type baseService struct {
-	Service string `json:"serviceName"`
-	Group   string `json:"group"`
-	Version string `json:"version"`
-}
-
-func (s *baseService) serviceName() string {
-	return s.Service
-}
-
-func (s *baseService) query(c *gin.Context) error {
-	s.Service = c.Query("serviceName")
-	if s.Service == "" {
-		return errors.New("service name is empty")
-	}
-	s.Group = c.Query("group")
-	s.Version = c.Query("version")
-	return nil
-}
-
-func (s *baseService) toInterface() string {
-	return s.Service + consts.Colon + s.Group + consts.Colon + s.Version
-}
-
 func ServiceConfigTimeoutGET(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		param := baseService{}
+		param := model.BaseServiceReq{}
 		resp := struct {
 			Timeout int32 `json:"timeout"`
 		}{DefaultTimeout}
-		if err := param.query(c); err != nil {
+		if err := param.Query(c); err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-		res, err := service.GetConfigurator(ctx, param.toInterface())
+		serviceConfiguratorName := param.ServiceKey() + consts.PunctuationPoint + consts.ConfiguratorRuleSuffix
+		res, err := service.GetConfigurator(ctx, serviceConfiguratorName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
 				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
@@ -166,7 +142,7 @@ func getServiceTimeout(conf *meshproto.OverrideConfig) (int32, bool) {
 func ServiceConfigTimeoutPUT(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		param := struct {
-			baseService
+			model.BaseServiceReq
 			Timeout int32 `json:"timeout"`
 		}{}
 		if err := c.Bind(&param); err != nil {
@@ -175,7 +151,8 @@ func ServiceConfigTimeoutPUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		isExist := true
-		res, err := service.GetConfigurator(ctx, param.toInterface())
+		serviceConfiguratorName := param.ServiceKey() + consts.PunctuationPoint + consts.ConfiguratorRuleSuffix
+		res, err := service.GetConfigurator(ctx, serviceConfiguratorName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
 				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
@@ -183,7 +160,14 @@ func ServiceConfigTimeoutPUT(ctx consolectx.Context) gin.HandlerFunc {
 			} else if false {
 				// TODO(YarBor) : to check service exist or not
 			}
-			res = generateDefaultConfigurator(param.serviceName(), consts.ScopeService, consts.ConfiguratorVersionV3, true)
+			res = meshresource.NewDynamicConfigResourceWithAttributes(serviceConfiguratorName, param.Mesh)
+			res.Spec = &meshproto.DynamicConfig{
+				Key:           param.ServiceName,
+				Scope:         consts.ScopeService,
+				ConfigVersion: consts.ConfiguratorVersionV3,
+				Enabled:       true,
+				Configs:       make([]*meshproto.OverrideConfig, 0),
+			}
 			isExist = false
 		} else {
 			res.Spec.RangeConfig(func(conf *meshproto.OverrideConfig) (isStop bool) {
@@ -201,13 +185,13 @@ func ServiceConfigTimeoutPUT(ctx consolectx.Context) gin.HandlerFunc {
 				Parameters:    map[string]string{`timeout`: strconv.Itoa(int(param.Timeout))},
 				XGenerateByCp: true,
 			})
-			err = service.CreateConfigurator(ctx, param.toInterface(), res)
+			err = service.CreateConfigurator(ctx, param.ServiceKey(), res)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 				return
 			}
 		} else {
-			err = service.UpdateConfigurator(ctx, param.toInterface(), res)
+			err = service.UpdateConfigurator(ctx, param.ServiceKey(), res)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 				return
@@ -219,15 +203,16 @@ func ServiceConfigTimeoutPUT(ctx consolectx.Context) gin.HandlerFunc {
 
 func ServiceConfigRetryGET(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		param := baseService{}
+		param := model.BaseServiceReq{}
 		resp := struct {
 			RetryTimes int32 `json:"retryTimes"`
 		}{DefaultRetries}
-		if err := param.query(c); err != nil {
+		if err := param.Query(c); err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-		res, err := service.GetConfigurator(ctx, param.toInterface())
+		serviceConfiguratorName := param.ServiceKey() + consts.PunctuationPoint + consts.ConfiguratorRuleSuffix
+		res, err := service.GetConfigurator(ctx, serviceConfiguratorName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
 				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
@@ -261,7 +246,7 @@ func getServiceRetryTimes(conf *meshproto.OverrideConfig) (int32, bool) {
 func ServiceConfigRetryPUT(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		param := struct {
-			baseService
+			model.BaseServiceReq
 			RetryTimes int32 `json:"retryTimes"`
 		}{}
 		if err := c.Bind(&param); err != nil {
@@ -270,7 +255,8 @@ func ServiceConfigRetryPUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		isExist := true
-		res, err := service.GetConfigurator(ctx, param.toInterface())
+		serviceConfiguratorName := param.ServiceKey() + consts.PunctuationPoint + consts.ConfiguratorRuleSuffix
+		res, err := service.GetConfigurator(ctx, serviceConfiguratorName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
 				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
@@ -278,7 +264,14 @@ func ServiceConfigRetryPUT(ctx consolectx.Context) gin.HandlerFunc {
 			} else if false {
 				// TODO(YarBor) : to check service exist or not
 			}
-			res = generateDefaultConfigurator(param.serviceName(), consts.ScopeService, consts.ConfiguratorVersionV3, true)
+			res = meshresource.NewDynamicConfigResourceWithAttributes(serviceConfiguratorName, param.Mesh)
+			res.Spec = &meshproto.DynamicConfig{
+				Key:           param.ServiceName,
+				Scope:         consts.ScopeService,
+				ConfigVersion: consts.ConfiguratorVersionV3,
+				Enabled:       true,
+				Configs:       make([]*meshproto.OverrideConfig, 0),
+			}
 			isExist = false
 		}
 
@@ -294,13 +287,13 @@ func ServiceConfigRetryPUT(ctx consolectx.Context) gin.HandlerFunc {
 		})
 
 		if !isExist {
-			err = service.CreateConfigurator(ctx, param.toInterface(), res)
+			err = service.CreateConfigurator(ctx, param.ServiceKey(), res)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 				return
 			}
 		} else {
-			err = service.UpdateConfigurator(ctx, param.toInterface(), res)
+			err = service.UpdateConfigurator(ctx, param.ServiceKey(), res)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 				return
@@ -312,18 +305,18 @@ func ServiceConfigRetryPUT(ctx consolectx.Context) gin.HandlerFunc {
 
 func ServiceConfigRegionPriorityGET(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		param := baseService{}
+		param := model.BaseServiceReq{}
 		resp := struct {
 			Enabled bool   `json:"enabled"`
 			Key     string `json:"key"`
 			Ratio   int    `json:"ratio"`
 		}{false, "", 0}
-		if err := param.query(c); err != nil {
+		if err := param.Query(c); err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-
-		res, err := getAffinityRule(ctx, param.toInterface())
+		serviceAffinityRouteName := param.ServiceKey() + consts.PunctuationPoint + consts.AffinityRuleSuffix
+		res, err := service.GetAffinityRule(ctx, serviceAffinityRouteName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
 				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
@@ -346,7 +339,7 @@ func ServiceConfigRegionPriorityGET(ctx consolectx.Context) gin.HandlerFunc {
 func ServiceConfigRegionPriorityPUT(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		param := struct {
-			baseService
+			model.BaseServiceReq
 			Enabled bool   `json:"enabled"`
 			Key     string `json:"key"`
 			Ratio   int    `json:"ratio"`
@@ -357,7 +350,8 @@ func ServiceConfigRegionPriorityPUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		isExist := true
-		res, err := getAffinityRule(ctx, param.toInterface())
+		serviceAffinityRouteName := param.ServiceKey() + consts.PunctuationPoint + consts.AffinityRuleSuffix
+		res, err := service.GetAffinityRule(ctx, serviceAffinityRouteName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
 				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
@@ -365,10 +359,10 @@ func ServiceConfigRegionPriorityPUT(ctx consolectx.Context) gin.HandlerFunc {
 			} else if false {
 				// TODO(YarBor) : to check service exist or not
 			} else {
-				res = new(mesh.AffinityRouteResource)
+				res = meshresource.NewAffinityRouteResourceWithAttributes(serviceAffinityRouteName, param.Mesh)
 				res.Spec = generateDefaultAffinityRule(
 					"service",
-					param.serviceName(),
+					param.ServiceName,
 					param.Key,
 					false,
 					true,
@@ -383,13 +377,13 @@ func ServiceConfigRegionPriorityPUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		if !isExist {
-			err = createAffinityRule(ctx, param.toInterface(), res)
+			err = service.CreateAffinityRule(ctx, res)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 				return
 			}
 		} else {
-			err = updateAffinityRule(ctx, param.toInterface(), res)
+			err = service.UpdateAffinityRule(ctx, res)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 				return
@@ -417,15 +411,15 @@ func generateDefaultAffinityRule(scope, key, focusKey string, runtime, enabled b
 func ServiceConfigArgumentRouteGET(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		param := struct {
-			baseService
+			model.BaseServiceReq
 		}{}
 		resp := model.ServiceArgumentRoute{Routes: make([]model.ServiceArgument, 0)}
-		if err := param.query(c); err != nil {
+		if err := param.Query(c); err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-
-		rawRes, err := service.GetConditionRule(ctx, param.toInterface())
+		serviceConditionRuleName := param.ServiceKey() + consts.PunctuationPoint + consts.ConditionRuleSuffix
+		rawRes, err := service.GetConditionRule(ctx, serviceConditionRuleName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
 				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
@@ -442,7 +436,7 @@ func ServiceConfigArgumentRouteGET(ctx consolectx.Context) gin.HandlerFunc {
 
 		} else {
 			res := rawRes.Spec.ToConditionRouteV3x1()
-			res.RangeConditionsToRemove(func(r *meshproto.ConditionRule) (isRemove bool) { // 去除非方法匹配项
+			res.RangeConditionsToRemove(func(r *meshproto.ConditionRule) (isRemove bool) {
 				_, ok := r.IsMatchMethod()
 				return !ok
 			})
@@ -455,7 +449,7 @@ func ServiceConfigArgumentRouteGET(ctx consolectx.Context) gin.HandlerFunc {
 func ServiceConfigArgumentRoutePUT(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		param := struct {
-			baseService
+			model.BaseServiceReq
 			model.ServiceArgumentRoute
 		}{}
 		if err := c.Bind(&param); err != nil {
@@ -464,7 +458,8 @@ func ServiceConfigArgumentRoutePUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		isExist := true
-		rawRes, err := service.GetConditionRule(ctx, param.toInterface())
+		serviceConditionRuleName := param.ServiceKey() + consts.PunctuationPoint + consts.ConditionRuleSuffix
+		rawRes, err := service.GetConditionRule(ctx, serviceConditionRuleName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
 				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
@@ -472,8 +467,13 @@ func ServiceConfigArgumentRoutePUT(ctx consolectx.Context) gin.HandlerFunc {
 			} else if false {
 				// TODO(YarBor) : to check service exist or not
 			}
-			rawRes = new(mesh.ConditionRouteResource)
-			rawRes.Spec = generateDefaultConditionV3x1(true, false, true, param.serviceName(), consts.ScopeService).ToConditionRoute()
+			rawRes = meshresource.NewConditionRouteResourceWithAttributes(serviceConditionRuleName, param.Mesh)
+			rawRes.Spec = generateDefaultConditionV3x1(
+				true,
+				false,
+				true,
+				param.ServiceName,
+				consts.ScopeService).ToConditionRoute()
 			isExist = false
 		}
 
@@ -494,13 +494,13 @@ func ServiceConfigArgumentRoutePUT(ctx consolectx.Context) gin.HandlerFunc {
 		rawRes.Spec = res.ToConditionRoute()
 
 		if isExist {
-			err = service.UpdateConditionRule(ctx, param.toInterface(), rawRes)
+			err = service.UpdateConditionRule(ctx, serviceConditionRuleName, rawRes)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 				return
 			}
 		} else {
-			err = service.CreateConditionRule(ctx, param.toInterface(), rawRes)
+			err = service.CreateConditionRule(ctx, serviceConditionRuleName, rawRes)
 			if err != nil {
 				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 				return

@@ -18,23 +18,22 @@
 package manager
 
 import (
-	"errors"
 	"fmt"
-	"time"
 
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store"
-	"github.com/duke-git/lancet/v2/slice"
 )
 
 type ReadOnlyResourceManager interface {
 	// GetByKey returns the resource with the given resource key
 	GetByKey(rk model.ResourceKind, key string) (r model.Resource, exist bool, err error)
-	// ListByIndex returns the resource with the given index name
-	ListByIndex(rk model.ResourceKind, indexName string, indexKey interface{}) ([]model.Resource, error)
-	// ListPageByIndex page list the resources with the given index
-	ListPageByIndex(rk model.ResourceKind, indexName string,
-		indexValue interface{}, pq model.PageQuery) ([]model.Resource, model.Pagination, error)
+	// ListByIndexes returns the resources with the given indexes, indexes is a map of index name and index value
+	ListByIndexes(rk model.ResourceKind, indexes map[string]interface{}) ([]model.Resource, error)
+	// PageListByIndexes page list the resources with the given indexes, indexes is a map of index name and index value
+	PageListByIndexes(rk model.ResourceKind, indexes map[string]interface{}, pr model.PageReq) (*model.PageData[model.Resource], error)
+	// PageSearchResourceByConditions page fuzzy search resource by conditions, conditions cannot be empty
+	// TODO support multiple conditions
+	PageSearchResourceByConditions(rk model.ResourceKind, conditions []string, pr model.PageReq) (*model.PageData[model.Resource], error)
 }
 
 type WriteOnlyResourceManager interface {
@@ -75,38 +74,37 @@ func (rm *resourcesManager) GetByKey(rk model.ResourceKind, key string) (r model
 	return item.(model.Resource), exist, err
 }
 
-func (rm *resourcesManager) ListByIndex(rk model.ResourceKind, indexName string, indexKey interface{}) ([]model.Resource, error) {
+func (rm *resourcesManager) ListByIndexes(rk model.ResourceKind, indexes map[string]interface{}) ([]model.Resource, error) {
 	rs, err := rm.StoreRouter.ResourceKindRoute(rk)
 	if err != nil {
 		return nil, err
 	}
-	objList, err := rs.Index(indexName, indexKey)
+	resources, err := rs.ListByIndexes(indexes)
 	if err != nil {
 		return nil, err
 	}
-	resources := slice.Map(objList, func(_ int, item interface{}) model.Resource {
-		return item.(model.Resource)
-	})
 	return resources, nil
 }
 
-func (rm *resourcesManager) ListPageByIndex(
+func (rm *resourcesManager) PageListByIndexes(
 	rk model.ResourceKind,
-	indexName string,
-	indexValue interface{},
-	pageQuery model.PageQuery) ([]model.Resource, model.Pagination, error) {
+	indexes map[string]interface{},
+	pr model.PageReq) (*model.PageData[model.Resource], error) {
+
 	rs, err := rm.StoreRouter.ResourceKindRoute(rk)
 	if err != nil {
-		return nil, model.Pagination{}, err
+		return nil, err
 	}
-	items, p, err := rs.ListPageByIndex(indexName, indexValue, pageQuery)
+	pageData, err := rs.PageListByIndexes(indexes, pr)
 	if err != nil {
-		return nil, p, err
+		return nil, err
 	}
-	rsList := slice.Map(items, func(_ int, item interface{}) model.Resource {
-		return item.(model.Resource)
-	})
-	return rsList, p, nil
+	return pageData, nil
+}
+
+func (rm *resourcesManager) PageSearchResourceByConditions(rk model.ResourceKind, conditions []string, pr model.PageReq) (*model.PageData[model.Resource], error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func (rm *resourcesManager) Add(r model.Resource) error {
@@ -146,59 +144,4 @@ func (rm *resourcesManager) DeleteByKey(rk model.ResourceKind, key string) error
 		return fmt.Errorf("%s %s does not exist", rk, key)
 	}
 	return rs.Delete(r)
-}
-
-type ConflictRetry struct {
-	BaseBackoff   time.Duration
-	MaxTimes      uint
-	JitterPercent uint
-}
-
-type UpsertOpts struct {
-	ConflictRetry ConflictRetry
-	Transactions  store.Transactions
-}
-
-type UpsertFunc func(opts *UpsertOpts)
-
-func WithConflictRetry(baseBackoff time.Duration, maxTimes uint, jitterPercent uint) UpsertFunc {
-	return func(opts *UpsertOpts) {
-		opts.ConflictRetry.BaseBackoff = baseBackoff
-		opts.ConflictRetry.MaxTimes = maxTimes
-		opts.ConflictRetry.JitterPercent = jitterPercent
-	}
-}
-
-func WithTransactions(transactions store.Transactions) UpsertFunc {
-	return func(opts *UpsertOpts) {
-		opts.Transactions = transactions
-	}
-}
-
-func NewUpsertOpts(fs ...UpsertFunc) UpsertOpts {
-	opts := UpsertOpts{
-		Transactions: store.NoTransactions{},
-	}
-	for _, f := range fs {
-		f(&opts)
-	}
-	return opts
-}
-
-type MeshNotFoundError struct {
-	Mesh string
-}
-
-func (m *MeshNotFoundError) Error() string {
-	return fmt.Sprintf("mesh of name %s is not found", m.Mesh)
-}
-
-func MeshNotFound(meshName string) error {
-	return &MeshNotFoundError{meshName}
-}
-
-func IsMeshNotFound(err error) bool {
-	var meshNotFoundError *MeshNotFoundError
-	ok := errors.As(err, &meshNotFoundError)
-	return ok
 }

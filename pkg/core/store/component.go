@@ -23,6 +23,7 @@ import (
 
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
 type Router interface {
@@ -72,7 +73,7 @@ func (sc *storeComponent) Init(ctx runtime.BuilderContext) error {
 	}
 	// 3. add indexers for each kind of store
 	for kind, store := range sc.stores {
-		indexers := IndexersRegistry().Indexers(kind)
+		indexers := index.IndexersRegistry().Indexers(kind)
 		if indexers == nil {
 			continue
 		}

@@ -93,6 +93,11 @@ const (
 )
 
 const (
+	StatefulSet = "StatefulSet"
+	Deployment  = "Deployment"
+)
+
+const (
 	NotEqual = "!="
 	Equal    = "="
 )

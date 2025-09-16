@@ -18,43 +18,38 @@
 package service
 
 import (
-	"strconv"
-
-	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
+	"github.com/apache/dubbo-admin/pkg/core/manager"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
-	"github.com/apache/dubbo-admin/pkg/core/store"
 )
 
 func SearchConditionRules(ctx context.Context, req *model.SearchConditionRuleReq) (*model.SearchPaginationResult, error) {
-	ruleList := &mesh.ConditionRouteResourceList{}
-	if req.Keywords == "" {
-		if err := ctx.ResourceManager().List(ctx.AppContext(), ruleList, store.ListByPage(req.PageSize, strconv.Itoa(req.PageOffset))); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := ctx.ResourceManager().List(ctx.AppContext(), ruleList, store.ListByNameContains(req.Keywords), store.ListByPage(req.PageSize, strconv.Itoa(req.PageOffset))); err != nil {
-			return nil, err
-		}
+	pageData, err := manager.PageSearchResourceByConditions[*meshresource.ConditionRouteResource](
+		ctx.ResourceManager(),
+		meshresource.ConditionRouteKind,
+		[]string{"name=" + req.Keywords},
+		req.PageRequest())
+	if err != nil {
+		return nil, err
 	}
 
 	var respList []model.ConditionRuleSearchResp
-	for _, item := range ruleList.Items {
+	for _, item := range pageData.Data {
 		if v3 := item.Spec.ToConditionRouteV3(); v3 != nil {
 			respList = append(respList, model.ConditionRuleSearchResp{
-				RuleName:   item.Meta.GetName(),
+				RuleName:   item.Name,
 				Scope:      v3.GetScope(),
-				CreateTime: item.Meta.GetCreationTime().String(),
+				CreateTime: item.CreationTimestamp.String(),
 				Enabled:    v3.GetEnabled(),
 			})
 		} else if v3x1 := item.Spec.ToConditionRouteV3x1(); v3x1 != nil {
 			respList = append(respList, model.ConditionRuleSearchResp{
-				RuleName:   item.Meta.GetName(),
+				RuleName:   item.Name,
 				Scope:      v3x1.GetScope(),
-				CreateTime: item.Meta.GetCreationTime().String(),
+				CreateTime: item.CreationTimestamp.String(),
 				Enabled:    v3x1.GetEnabled(),
 			})
 		} else {
@@ -63,46 +58,38 @@ func SearchConditionRules(ctx context.Context, req *model.SearchConditionRuleReq
 	}
 	result := model.NewSearchPaginationResult()
 	result.List = respList
-	result.PageInfo = &ruleList.Pagination
+	result.PageInfo = pageData.Pagination
 	return result, nil
 }
 
-func GetConditionRule(cs context.Context, name string) (*mesh.ConditionRouteResource, error) {
-	res := &mesh.ConditionRouteResource{Spec: &meshproto.ConditionRoute{}}
-	if err := cs.ResourceManager().Get(cs.AppContext(), res,
-		// here `name` may be service-name or app-name, set *ByApplication(`name`) is ok.
-		store.GetByApplication(name), store.GetByKey(name+consts.ConditionRuleSuffix, coremodel.DefaultMesh)); err != nil {
-		logger.Warnf("get %s condition failed with error: %s", name, err.Error())
+func GetConditionRule(ctx context.Context, name string, mesh string) (*meshresource.ConditionRouteResource, error) {
+	res, _, err := manager.GetByKey[*meshresource.ConditionRouteResource](
+		ctx.ResourceManager(), meshresource.ConditionRouteKind, coremodel.BuildResourceKey(mesh, name))
+	if err != nil {
+		logger.Warnf("get condition route %s error: %v", name, err)
 		return nil, err
 	}
 	return res, nil
 }
 
-func UpdateConditionRule(cs context.Context, name string, res *mesh.ConditionRouteResource) error {
-	if err := cs.ResourceManager().Update(cs.AppContext(), res,
-		// here `name` may be service-name or app-name, set *ByApplication(`name`) is ok.
-		store.UpdateByApplication(name), store.UpdateByKey(name+consts.ConditionRuleSuffix, coremodel.DefaultMesh)); err != nil {
+func UpdateConditionRule(ctx context.Context, name string, res *meshresource.ConditionRouteResource) error {
+	if err := ctx.ResourceManager().Update(res); err != nil {
 		logger.Warnf("update %s condition failed with error: %s", name, err.Error())
 		return err
 	}
 	return nil
 }
 
-func CreateConditionRule(cs context.Context, name string, res *mesh.ConditionRouteResource) error {
-	if err := cs.ResourceManager().Create(cs.AppContext(), res,
-		// here `name` may be service-name or app-name, set *ByApplication(`name`) is ok.
-		store.CreateByApplication(name), store.CreateByKey(name+consts.ConditionRuleSuffix, coremodel.DefaultMesh)); err != nil {
+func CreateConditionRule(ctx context.Context, name string, res *meshresource.ConditionRouteResource) error {
+	if err := ctx.ResourceManager().Add(res); err != nil {
 		logger.Warnf("create %s condition failed with error: %s", name, err.Error())
 		return err
 	}
 	return nil
 }
 
-func DeleteConditionRule(cs context.Context, name string, res *mesh.ConditionRouteResource) error {
-	if err := cs.ResourceManager().Delete(cs.AppContext(), res,
-		// here `name` may be service-name or app-name, set *ByApplication(`name`) is ok.
-		store.DeleteByApplication(name), store.DeleteByKey(name+consts.ConditionRuleSuffix, coremodel.DefaultMesh)); err != nil {
-		logger.Warnf("delete %s condition failed with error: %s", name, err.Error())
+func DeleteConditionRule(ctx context.Context, name string, mesh string) error {
+	if err := ctx.ResourceManager().DeleteByKey(meshresource.ConditionRouteKind, coremodel.BuildResourceKey(mesh, name)); err != nil {
 		return err
 	}
 	return nil

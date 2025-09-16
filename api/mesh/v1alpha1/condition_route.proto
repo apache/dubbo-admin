@@ -7,13 +7,10 @@ option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
 import "api/mesh/options.proto";
 
 message ConditionRoute {
-  option (dubbo.mesh.resource).name = "ConditionRouteResource";
-  option (dubbo.mesh.resource).type = "ConditionRoute";
+  option (dubbo.mesh.resource).name = "ConditionRoute";
+  option (dubbo.mesh.resource).plural_name = "ConditionRoutes";
   option (dubbo.mesh.resource).package = "mesh";
-  option (dubbo.mesh.resource).dds.send_to_zone = true;
-  option (dubbo.mesh.resource).ws.name = "conditionroute";
-  option (dubbo.mesh.resource).ws.plural = "conditionroutes";
-  option (dubbo.mesh.resource).allow_to_inspect = true;
+  option (dubbo.mesh.resource).is_experimental = false;
 
   message v3 {
     string configVersion = 1;

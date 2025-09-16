@@ -59,6 +59,7 @@ type Metric struct {
 
 type MetricsReq struct {
 	InstanceName string `form:"instanceName"`
+	Mesh         string `form:"mesh"`
 }
 
 type MetricsResp struct {
