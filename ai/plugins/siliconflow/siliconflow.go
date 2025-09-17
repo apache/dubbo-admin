@@ -56,11 +56,11 @@ func (o *SiliconFlow) Init(ctx context.Context) []api.Action {
 
 	// if api key is not set, get it from environment variable
 	if apiKey == "" {
-		apiKey = os.Getenv("DASHSCOPE_API_KEY")
+		apiKey = os.Getenv("SILICONFLOW_API_KEY")
 	}
 
 	if apiKey == "" {
-		panic("DashScope plugin initialization failed: apiKey is required")
+		panic("SiliconFlow plugin initialization failed: apiKey is required")
 	}
 
 	if o.openAICompatible == nil {

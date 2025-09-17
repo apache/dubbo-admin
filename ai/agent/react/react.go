@@ -139,7 +139,7 @@ func think(g *genkit.Genkit, prompt ai.Prompt) agent.NormalFlow {
 
 			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.History)
 			if !ok {
-				panic(fmt.Errorf("failed to get history from context"))
+				return out, fmt.Errorf("failed to get history from context")
 			}
 
 			var resp *ai.ModelResponse

@@ -72,7 +72,10 @@ func (ta ThinkOutput) JsonSchema() string {
 	schema := reflector.Reflect(ta)
 
 	// Convert to JSON
-	data, _ := json.MarshalIndent(schema, "", "  ")
+	data, err := json.MarshalIndent(schema, "", "  ")
+	if err != nil {
+		return fmt.Sprintf("JsonSchema{error: %v}", err)
+	}
 	return string(data)
 }
 
@@ -86,7 +89,7 @@ func (ta ThinkOutput) Validate(T reflect.Type) error {
 func (ta ThinkOutput) String() string {
 	data, err := json.MarshalIndent(ta, "", "  ")
 	if err != nil {
-		panic(fmt.Sprintf("ThinkOutput{error: %v}", err))
+		return fmt.Sprintf("ThinkOutput{error: %v}", err)
 	}
 	return string(data)
 }
