@@ -17,7 +17,7 @@ func main() {
 		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
 	}
 
-	resp, err := reActAgent.Interact(chatHistoryCtx, agentInput)
+	_, resp, err := reActAgent.Interact(chatHistoryCtx, agentInput)
 	if err != nil {
 		fmt.Printf("failed to run interaction: %v\n", err)
 		return
