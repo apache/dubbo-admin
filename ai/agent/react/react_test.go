@@ -6,9 +6,12 @@ import (
 	"dubbo-admin-ai/internal/memory"
 	"dubbo-admin-ai/internal/tools"
 	"dubbo-admin-ai/plugins/dashscope"
+	"dubbo-admin-ai/schema"
 	"encoding/json"
 	"fmt"
 	"testing"
+
+	"github.com/firebase/genkit/go/core"
 )
 
 var (
@@ -119,8 +122,44 @@ func TestAgent(t *testing.T) {
 		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
 	}
 
-	_, err := reActAgent.Interact(chatHistoryCtx, agentInput)
+	streamChan, outputChan, err := reActAgent.Interact(chatHistoryCtx, agentInput)
 	if err != nil {
 		t.Fatalf("failed to run thinking flow: %v", err)
 	}
+
+	go func() {
+		for chunk := range streamChan {
+			fmt.Print(chunk.Chunk.Text())
+		}
+	}()
+
+	for finalOutput := range outputChan {
+		fmt.Printf("Final output: %+v\n", finalOutput)
+	}
+
+}
+
+func TestStreamThink(t *testing.T) {
+	manager.Init(dashscope.Qwen3.Key(), manager.PrettyLogger())
+	prompt := BuildThinkPrompt(manager.GetRegistry())
+	chatHistoryCtx := memory.NewMemoryContext(memory.ChatHistoryKey)
+
+	agentInput := ThinkIn{
+		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
+	}
+
+	stream := streamThink(manager.GetRegistry(), prompt).Stream(chatHistoryCtx, agentInput)
+	stream(func(val *core.StreamingFlowValue[schema.Schema, schema.StreamChunk], err error) bool {
+		if err != nil {
+			fmt.Printf("Stream error: %v\n", err)
+			return false
+		}
+		if !val.Done {
+			fmt.Print(val.Stream.Chunk.Text())
+		} else if val.Output != nil {
+			fmt.Printf("Stream final output: %+v\n", val.Output)
+		}
+
+		return true
+	})
 }

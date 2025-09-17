@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"dubbo-admin-ai/config"
+	"dubbo-admin-ai/internal/manager"
 	"dubbo-admin-ai/schema"
 	"fmt"
 
@@ -18,7 +19,7 @@ type Flow = *core.Flow[schema.Schema, schema.Schema, any]
 type NormalFlow = *core.Flow[schema.Schema, schema.Schema, NoStream]
 type StreamFlow = *core.Flow[schema.Schema, schema.Schema, schema.StreamChunk]
 
-type StreamFunc func(ctx context.Context, status schema.StreamChunk) error
+type StreamHandler = func(*core.StreamingFlowValue[schema.Schema, schema.StreamChunk], error) bool
 
 const (
 	ThinkFlowName string = "think"
@@ -30,54 +31,86 @@ type Agent interface {
 	Interact(context.Context, schema.Schema) (schema.Schema, error)
 }
 
+// TODO: Use input/Output channel to support async execution
 type Stage struct {
-	flow   any
-	input  schema.Schema
-	output schema.Schema
+	flow          any
+	streamHandler StreamHandler
+
+	Input  schema.Schema
+	Output schema.Schema
+	// InputChan  chan schema.Schema
+	// OutputChan chan schema.Schema
 }
 
 func NewStage(flow any, inputSchema schema.Schema, outputSchema schema.Schema) *Stage {
 	return &Stage{
-		flow:   flow,
-		input:  inputSchema,
-		output: outputSchema,
+		flow:          flow,
+		streamHandler: nil,
+		Input:         inputSchema,
+		Output:        outputSchema,
+		// InputChan:     make(chan schema.Schema, config.STAGE_CHANNEL_BUFFER_SIZE),
+		// OutputChan:    make(chan schema.Schema, config.STAGE_CHANNEL_BUFFER_SIZE),
 	}
+}
+
+func NewStreamStage(flow any, inputSchema schema.Schema, outputSchema schema.Schema, onStreaming func(*Stage, schema.StreamChunk) error, onDone func(*Stage, schema.Schema) error) (stage *Stage) {
+	if onStreaming == nil || onDone == nil {
+		panic("onStreaming, onDone and streamChan callbacks cannot be nil for streaming stage")
+	}
+
+	stage = NewStage(flow, inputSchema, outputSchema)
+	stage.streamHandler = func(val *core.StreamingFlowValue[schema.Schema, schema.StreamChunk], err error) bool {
+		if err != nil {
+			manager.GetLogger().Error("error", "err", err)
+			return false
+		}
+
+		if !val.Done {
+			if err := onStreaming(stage, val.Stream); err != nil {
+				manager.GetLogger().Error("Error when streaming", "err", err)
+				return false
+			}
+		} else if val.Output != nil {
+			if err := onDone(stage, val.Output); err != nil {
+				manager.GetLogger().Error("Error when finalizing", "err", err)
+				return false
+			}
+		}
+
+		return true
+	}
+
+	return stage
 }
 
 func (s *Stage) Execute(ctx context.Context) (err error) {
 	if value, ok := s.flow.(NormalFlow); ok {
-		s.output, err = value.Run(ctx, s.input)
+		s.Output, err = value.Run(ctx, s.Input)
 	} else if value, ok := s.flow.(StreamFlow); ok {
-		streamOutFunc := value.Stream(ctx, s.input)
-		streamOutFunc(func(val *core.StreamingFlowValue[schema.Schema, schema.StreamChunk], err error) bool {
-			if err != nil {
-				fmt.Printf("Stream error: %v\n", err)
-				return false
-			}
-			if !val.Done {
-				fmt.Print(val.Stream.Chunk.Text())
-			} else if val.Output != nil {
-				s.output = val.Output
-			}
-
-			return true
-		})
+		if s.streamHandler == nil {
+			return fmt.Errorf("StreamHandler cannot be nil for stream flow")
+		}
+		value.Stream(ctx, s.Input)(s.streamHandler)
 	}
 
 	return err
 }
 
 type Orchestrator interface {
-	Run(context.Context, schema.Schema) (schema.Schema, error)
+	Run(context.Context, schema.Schema)
 	RunStage(context.Context, string, schema.Schema) (schema.Schema, error)
+	StreamChan() chan *schema.StreamChunk
+	OutputChan() chan schema.Schema
 }
 
 type OrderOrchestrator struct {
-	stages map[string]*Stage
-	order  []string
+	stages     map[string]*Stage
+	order      []string
+	streamChan chan *schema.StreamChunk
+	outputChan chan schema.Schema
 }
 
-func NewOrderOrchestrator(stages ...*Stage) *OrderOrchestrator {
+func NewOrderOrchestrator(streamChan chan *schema.StreamChunk, outputChan chan schema.Schema, stages ...*Stage) *OrderOrchestrator {
 	stagesMap := make(map[string]*Stage, len(stages))
 	for _, stage := range stages {
 		// Get the flow name through interface method
@@ -95,46 +128,49 @@ func NewOrderOrchestrator(stages ...*Stage) *OrderOrchestrator {
 	order[1] = ActFlowName
 
 	return &OrderOrchestrator{
-		stages: stagesMap,
-		order:  order,
+		stages:     stagesMap,
+		order:      order,
+		streamChan: streamChan,
+		outputChan: outputChan,
 	}
 }
 
-func (o *OrderOrchestrator) Run(ctx context.Context, userInput schema.Schema) (result schema.Schema, err error) {
+func (o *OrderOrchestrator) Run(ctx context.Context, userInput schema.Schema) {
 	// Use user initial input for the first round
+	if userInput == nil {
+		panic("userInput cannot be nil")
+	}
 	var input schema.Schema = userInput
-
 	// Iterate until reaching maximum iterations or status is Finished
 Outer:
 	for range config.MAX_REACT_ITERATIONS {
 		for _, order := range o.order {
 			// Execute current stage
 			curStage := o.stages[order]
-			curStage.input = input
-			if err = curStage.Execute(ctx); err != nil {
-				return nil, err
+			curStage.Input = input
+			if curStage.Input == nil {
+				panic(fmt.Errorf("stage %s input is nil", order))
+			}
+			if err := curStage.Execute(ctx); err != nil {
+				panic(fmt.Errorf("failed to execute stage %s: %w", order, err))
 			}
 
-			// Use current stage output as next stage input
-			input = curStage.output
+			// Use current stage Output as next stage input
+			if curStage.Output == nil {
+				panic(fmt.Errorf("stage %s output is nil", order))
+			}
+			input = curStage.Output
 
 			// Check if LLM returned final answer
-			switch curStage.output.(type) {
+			switch curStage.Output.(type) {
 			case schema.ThinkOutput:
-				out := curStage.output.(schema.ThinkOutput)
+				out := curStage.Output.(schema.ThinkOutput)
 				if out.Status == schema.Finished && out.FinalAnswer != "" {
-					// TODO: Process final answer
-					fmt.Printf("Final Answer: %s\n", out.FinalAnswer)
-					result = curStage.output
 					break Outer
-
 				}
-				result = curStage.output
 			}
 		}
 	}
-
-	return result, nil
 }
 
 func (o *OrderOrchestrator) RunStage(ctx context.Context, key string, input schema.Schema) (output schema.Schema, err error) {
@@ -143,9 +179,23 @@ func (o *OrderOrchestrator) RunStage(ctx context.Context, key string, input sche
 		return nil, fmt.Errorf("stage %s not found", key)
 	}
 
-	stage.input = input
+	stage.Input = input
 	if err = stage.Execute(ctx); err != nil {
 		return nil, err
 	}
-	return stage.output, nil
+	return stage.Output, nil
+}
+
+func (o *OrderOrchestrator) StreamChan() chan *schema.StreamChunk {
+	if o.streamChan == nil {
+		panic("StreamChan is nil")
+	}
+	return o.streamChan
+}
+
+func (o *OrderOrchestrator) OutputChan() chan schema.Schema {
+	if o.outputChan == nil {
+		panic("OutputChan is nil")
+	}
+	return o.outputChan
 }

@@ -30,11 +30,25 @@ type ReActAgent struct {
 func Create(g *genkit.Genkit) *ReActAgent {
 	prompt := BuildThinkPrompt(g)
 
-	// thinkStage := agent.NewStage(think(g, prompt), schema.ThinkInput{}, schema.ThinkOutput{})
+	streamChan := make(chan *schema.StreamChunk, config.STAGE_CHANNEL_BUFFER_SIZE)
+	outputChan := make(chan schema.Schema)
+	thinkStage := agent.NewStreamStage(
+		streamThink(g, prompt),
+		schema.ThinkInput{},
+		schema.ThinkOutput{},
+		func(stage *agent.Stage, chunk schema.StreamChunk) error {
+			streamChan <- &chunk
+			return nil
+		},
+		func(stage *agent.Stage, output schema.Schema) error {
+			stage.Output = output
+			outputChan <- output
+			return nil
+		},
+	)
 	actStage := agent.NewStage(act(g), schema.ThinkOutput{}, schema.ToolOutputs{})
-	streamThinkStage := agent.NewStage(StreamThink(g, prompt), schema.ThinkInput{}, schema.ThinkOutput{})
 
-	orchestrator := agent.NewOrderOrchestrator(streamThinkStage, actStage)
+	orchestrator := agent.NewOrderOrchestrator(streamChan, outputChan, thinkStage, actStage)
 
 	return &ReActAgent{
 		registry:     g,
@@ -42,12 +56,14 @@ func Create(g *genkit.Genkit) *ReActAgent {
 	}
 }
 
-func (ra *ReActAgent) Interact(ctx context.Context, input schema.Schema) (output schema.Schema, err error) {
-	return ra.orchestrator.Run(ctx, input)
-}
+func (ra *ReActAgent) Interact(ctx context.Context, input schema.Schema) (chan *schema.StreamChunk, chan schema.Schema, error) {
+	go func() {
+		defer close(ra.orchestrator.OutputChan())
+		defer close(ra.orchestrator.StreamChan())
+		ra.orchestrator.Run(ctx, input)
+	}()
 
-func (ra *ReActAgent) StreamingInteract(ctx context.Context, input schema.Schema, streamCallback core.StreamCallback[schema.StreamChunk]) (output schema.Schema, err error) {
-	return ra.orchestrator.Run(ctx, input)
+	return ra.orchestrator.StreamChan(), ra.orchestrator.OutputChan(), nil
 }
 
 func BuildThinkPrompt(registry *genkit.Genkit) ai.Prompt {
@@ -74,10 +90,11 @@ func BuildThinkPrompt(registry *genkit.Genkit) ai.Prompt {
 	)
 }
 
-func streamFunc(cb core.StreamCallback[schema.StreamChunk]) ai.ModelStreamCallback {
+func rawChunkHandler(cb core.StreamCallback[schema.StreamChunk]) ai.ModelStreamCallback {
 	return func(ctx context.Context, chunk *ai.ModelResponseChunk) error {
 		if cb != nil {
 			return cb(ctx, schema.StreamChunk{
+				Stage: "think",
 				Chunk: chunk,
 			})
 		}
@@ -85,7 +102,7 @@ func streamFunc(cb core.StreamCallback[schema.StreamChunk]) ai.ModelStreamCallba
 	}
 }
 
-func StreamThink(g *genkit.Genkit, prompt ai.Prompt) agent.StreamFlow {
+func streamThink(g *genkit.Genkit, prompt ai.Prompt) agent.StreamFlow {
 	return genkit.DefineStreamingFlow(g, agent.ThinkFlowName,
 		func(ctx context.Context, in schema.Schema, cb core.StreamCallback[schema.StreamChunk]) (out schema.Schema, err error) {
 			manager.GetLogger().Info("Thinking...", "input", in)
@@ -107,54 +124,16 @@ func StreamThink(g *genkit.Genkit, prompt ai.Prompt) agent.StreamFlow {
 				resp, err = prompt.Execute(ctx,
 					ai.WithInput(in),
 					ai.WithMessages(history.AllHistory()...),
-					ai.WithStreaming(streamFunc(cb)),
+					ai.WithStreaming(rawChunkHandler(cb)),
 				)
 			} else {
 				resp, err = prompt.Execute(ctx,
 					ai.WithInput(in),
-					ai.WithStreaming(streamFunc(cb)),
-				)
-			}
-
-			// Parse output
-			var response ThinkOut
-			err = resp.Output(&response)
-
-			if err != nil {
-				return out, fmt.Errorf("failed to parse agentThink prompt response: %w", err)
-			}
-
-			history.AddHistory(resp.History()...)
-			return response, nil
-		})
-}
-
-func think(g *genkit.Genkit, prompt ai.Prompt) agent.NormalFlow {
-	return genkit.DefineFlow(g, agent.ThinkFlowName,
-		func(ctx context.Context, in schema.Schema) (out schema.Schema, err error) {
-			manager.GetLogger().Info("Thinking...", "input", in)
-			defer func() {
-				manager.GetLogger().Info("Think Done.", "output", out)
-			}()
-
-			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.History)
-			if !ok {
-				return out, fmt.Errorf("failed to get history from context")
-			}
-
-			var resp *ai.ModelResponse
-			if !history.IsEmpty() {
-				resp, err = prompt.Execute(ctx,
-					ai.WithInput(in),
-					ai.WithMessages(history.AllHistory()...),
-				)
-			} else {
-				resp, err = prompt.Execute(ctx,
-					ai.WithInput(in),
+					ai.WithStreaming(rawChunkHandler(cb)),
 				)
 			}
 			if err != nil {
-				return nil, fmt.Errorf("failed to execute agentThink prompt: %w", err)
+				return out, fmt.Errorf("failed to execute agentThink prompt: %w", err)
 			}
 
 			// Parse output
