@@ -24,6 +24,7 @@ type ActOut = schema.ToolOutputs
 // ReActAgent implements Agent interface
 type ReActAgent struct {
 	registry     *genkit.Genkit
+	memoryCtx    context.Context
 	orchestrator agent.Orchestrator
 }
 
@@ -32,6 +33,7 @@ func Create(g *genkit.Genkit) *ReActAgent {
 
 	streamChan := make(chan *schema.StreamChunk, config.STAGE_CHANNEL_BUFFER_SIZE)
 	outputChan := make(chan schema.Schema)
+
 	thinkStage := agent.NewStreamStage(
 		streamThink(g, prompt),
 		schema.ThinkInput{},
@@ -53,14 +55,15 @@ func Create(g *genkit.Genkit) *ReActAgent {
 	return &ReActAgent{
 		registry:     g,
 		orchestrator: orchestrator,
+		memoryCtx:    memory.NewMemoryContext(memory.ChatHistoryKey),
 	}
 }
 
-func (ra *ReActAgent) Interact(ctx context.Context, input schema.Schema) (chan *schema.StreamChunk, chan schema.Schema, error) {
+func (ra *ReActAgent) Interact(input schema.Schema) (chan *schema.StreamChunk, chan schema.Schema, error) {
 	go func() {
 		defer close(ra.orchestrator.OutputChan())
 		defer close(ra.orchestrator.StreamChan())
-		ra.orchestrator.Run(ctx, input)
+		ra.orchestrator.Run(ra.memoryCtx, input)
 	}()
 
 	return ra.orchestrator.StreamChan(), ra.orchestrator.OutputChan(), nil

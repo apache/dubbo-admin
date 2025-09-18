@@ -28,7 +28,7 @@ const (
 )
 
 type Agent interface {
-	Interact(context.Context, schema.Schema) (schema.Schema, error)
+	Interact(schema.Schema) (schema.Schema, error)
 }
 
 // TODO: Use input/Output channel to support async execution
