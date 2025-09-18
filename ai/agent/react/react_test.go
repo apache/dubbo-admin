@@ -37,7 +37,7 @@ func TestThinking(t *testing.T) {
 	fmt.Println(resp)
 }
 
-func TestThink2(t *testing.T) {
+func TestThinkWithToolReq(t *testing.T) {
 	input := ActOut{
 		Outputs: []tools.ToolOutput{
 			{
@@ -122,7 +122,7 @@ func TestAgent(t *testing.T) {
 		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
 	}
 
-	streamChan, outputChan, err := reActAgent.Interact(chatHistoryCtx, agentInput)
+	streamChan, outputChan, err := reActAgent.Interact(agentInput)
 	if err != nil {
 		t.Fatalf("failed to run thinking flow: %v", err)
 	}
