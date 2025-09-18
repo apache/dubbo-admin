@@ -2,6 +2,7 @@ package react
 
 import (
 	"context"
+
 	"dubbo-admin-ai/agent"
 	"dubbo-admin-ai/config"
 	"dubbo-admin-ai/internal/manager"
@@ -30,27 +31,29 @@ type ReActAgent struct {
 
 func Create(g *genkit.Genkit) *ReActAgent {
 	prompt := BuildThinkPrompt(g)
-
-	streamChan := make(chan *schema.StreamChunk, config.STAGE_CHANNEL_BUFFER_SIZE)
-	outputChan := make(chan schema.Schema)
-
 	thinkStage := agent.NewStreamStage(
 		streamThink(g, prompt),
 		schema.ThinkInput{},
 		schema.ThinkOutput{},
 		func(stage *agent.Stage, chunk schema.StreamChunk) error {
-			streamChan <- &chunk
+			if stage.StreamChan == nil {
+				return fmt.Errorf("streamChan is nil")
+			}
+			stage.StreamChan <- &chunk
 			return nil
 		},
 		func(stage *agent.Stage, output schema.Schema) error {
+			if stage.OutputChan == nil {
+				return fmt.Errorf("outputChan is nil")
+			}
 			stage.Output = output
-			outputChan <- output
+			stage.OutputChan <- output
 			return nil
 		},
 	)
 	actStage := agent.NewStage(act(g), schema.ThinkOutput{}, schema.ToolOutputs{})
 
-	orchestrator := agent.NewOrderOrchestrator(streamChan, outputChan, thinkStage, actStage)
+	orchestrator := agent.NewOrderOrchestrator(thinkStage, actStage)
 
 	return &ReActAgent{
 		registry:     g,
@@ -60,13 +63,12 @@ func Create(g *genkit.Genkit) *ReActAgent {
 }
 
 func (ra *ReActAgent) Interact(input schema.Schema) (chan *schema.StreamChunk, chan schema.Schema, error) {
+	streamChan := make(chan *schema.StreamChunk, config.STAGE_CHANNEL_BUFFER_SIZE)
+	outputChan := make(chan schema.Schema, config.STAGE_CHANNEL_BUFFER_SIZE)
 	go func() {
-		defer close(ra.orchestrator.OutputChan())
-		defer close(ra.orchestrator.StreamChan())
-		ra.orchestrator.Run(ra.memoryCtx, input)
+		ra.orchestrator.Run(ra.memoryCtx, input, streamChan, outputChan)
 	}()
-
-	return ra.orchestrator.StreamChan(), ra.orchestrator.OutputChan(), nil
+	return streamChan, outputChan, nil
 }
 
 func BuildThinkPrompt(registry *genkit.Genkit) ai.Prompt {
@@ -106,7 +108,7 @@ func rawChunkHandler(cb core.StreamCallback[schema.StreamChunk]) ai.ModelStreamC
 }
 
 func streamThink(g *genkit.Genkit, prompt ai.Prompt) agent.StreamFlow {
-	return genkit.DefineStreamingFlow(g, agent.ThinkFlowName,
+	return genkit.DefineStreamingFlow(g, agent.StreamThinkFlowName,
 		func(ctx context.Context, in schema.Schema, cb core.StreamCallback[schema.StreamChunk]) (out schema.Schema, err error) {
 			manager.GetLogger().Info("Thinking...", "input", in)
 			defer func() {
@@ -135,6 +137,48 @@ func streamThink(g *genkit.Genkit, prompt ai.Prompt) agent.StreamFlow {
 					ai.WithStreaming(rawChunkHandler(cb)),
 				)
 			}
+			if err != nil {
+				return out, fmt.Errorf("failed to execute agentThink prompt: %w", err)
+			}
+
+			// Parse output
+			var response ThinkOut
+			err = resp.Output(&response)
+
+			if err != nil {
+				return out, fmt.Errorf("failed to parse agentThink prompt response: %w", err)
+			}
+
+			history.AddHistory(resp.History()...)
+			return response, nil
+		})
+}
+
+func think(g *genkit.Genkit, prompt ai.Prompt) agent.NormalFlow {
+	return genkit.DefineFlow(g, agent.ThinkFlowName,
+		func(ctx context.Context, in schema.Schema) (out schema.Schema, err error) {
+			manager.GetLogger().Info("Thinking...", "input", in)
+			defer func() {
+				manager.GetLogger().Info("Think Done.", "output", out)
+			}()
+
+			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.History)
+			if !ok {
+				panic(fmt.Errorf("failed to get history from context"))
+			}
+
+			var resp *ai.ModelResponse
+			if !history.IsEmpty() {
+				resp, err = prompt.Execute(ctx,
+					ai.WithInput(in),
+					ai.WithMessages(history.AllHistory()...),
+				)
+			} else {
+				resp, err = prompt.Execute(ctx,
+					ai.WithInput(in),
+				)
+			}
+
 			if err != nil {
 				return out, fmt.Errorf("failed to execute agentThink prompt: %w", err)
 			}

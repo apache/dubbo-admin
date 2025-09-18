@@ -2,6 +2,7 @@ package react
 
 import (
 	"dubbo-admin-ai/agent"
+	"dubbo-admin-ai/config"
 	"dubbo-admin-ai/internal/manager"
 	"dubbo-admin-ai/internal/memory"
 	"dubbo-admin-ai/internal/tools"
@@ -29,7 +30,13 @@ func TestThinking(t *testing.T) {
 		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
 	}
 
-	resp, err := reActAgent.orchestrator.RunStage(chatHistoryCtx, agent.ThinkFlowName, agentInput)
+	streamChan := make(chan *schema.StreamChunk, config.STAGE_CHANNEL_BUFFER_SIZE)
+	outputChan := make(chan schema.Schema, config.STAGE_CHANNEL_BUFFER_SIZE)
+	defer func() {
+		close(streamChan)
+		close(outputChan)
+	}()
+	resp, err := reActAgent.orchestrator.RunStage(chatHistoryCtx, agent.StreamThinkFlowName, agentInput, streamChan, outputChan)
 	if err != nil {
 		t.Fatalf("failed to run thinking flow: %v", err)
 	}
@@ -59,7 +66,14 @@ func TestThinkWithToolReq(t *testing.T) {
 		},
 	}
 
-	resp, err := reActAgent.orchestrator.RunStage(chatHistoryCtx, agent.ThinkFlowName, input)
+	streamChan := make(chan *schema.StreamChunk, config.STAGE_CHANNEL_BUFFER_SIZE)
+	outputChan := make(chan schema.Schema, config.STAGE_CHANNEL_BUFFER_SIZE)
+	defer func() {
+		close(streamChan)
+		close(outputChan)
+	}()
+	resp, err := reActAgent.orchestrator.RunStage(chatHistoryCtx, agent.StreamThinkFlowName, input, streamChan, outputChan)
+
 	if err != nil {
 		t.Fatalf("failed to run thinking flow: %v", err)
 	}
@@ -106,7 +120,7 @@ func TestAct(t *testing.T) {
 		t.Fatalf("failed to unmarshal actInJson: %v", err)
 	}
 
-	actOuts, err := reActAgent.orchestrator.RunStage(chatHistoryCtx, agent.ActFlowName, actIn)
+	actOuts, err := reActAgent.orchestrator.RunStage(chatHistoryCtx, agent.ActFlowName, actIn, nil, nil)
 	resp := actOuts
 	if err != nil {
 		t.Fatalf("failed to run act flow: %v", err)
@@ -127,16 +141,27 @@ func TestAgent(t *testing.T) {
 		t.Fatalf("failed to run thinking flow: %v", err)
 	}
 
-	go func() {
-		for chunk := range streamChan {
+	for {
+		select {
+		case chunk, ok := <-streamChan:
+			if !ok {
+				streamChan = nil
+				continue
+			}
 			fmt.Print(chunk.Chunk.Text())
+
+		case finalOutput, ok := <-outputChan:
+			if !ok {
+				outputChan = nil
+				continue
+			}
+			fmt.Printf("Final output: %+v\n", finalOutput)
+		default:
+			if streamChan == nil && outputChan == nil {
+				return
+			}
 		}
-	}()
-
-	for finalOutput := range outputChan {
-		fmt.Printf("Final output: %+v\n", finalOutput)
 	}
-
 }
 
 func TestStreamThink(t *testing.T) {

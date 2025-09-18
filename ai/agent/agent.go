@@ -22,9 +22,10 @@ type StreamFlow = *core.Flow[schema.Schema, schema.Schema, schema.StreamChunk]
 type StreamHandler = func(*core.StreamingFlowValue[schema.Schema, schema.StreamChunk], error) bool
 
 const (
-	ThinkFlowName string = "think"
-	ActFlowName   string = "act"
-	ReActFlowName string = "reAct"
+	ThinkFlowName       string = "think"
+	StreamThinkFlowName string = "stream_think"
+	ActFlowName         string = "act"
+	ReActFlowName       string = "reAct"
 )
 
 type Agent interface {
@@ -36,10 +37,10 @@ type Stage struct {
 	flow          any
 	streamHandler StreamHandler
 
-	Input  schema.Schema
-	Output schema.Schema
-	// InputChan  chan schema.Schema
-	// OutputChan chan schema.Schema
+	Input      schema.Schema
+	Output     schema.Schema
+	StreamChan chan *schema.StreamChunk
+	OutputChan chan schema.Schema
 }
 
 func NewStage(flow any, inputSchema schema.Schema, outputSchema schema.Schema) *Stage {
@@ -83,13 +84,15 @@ func NewStreamStage(flow any, inputSchema schema.Schema, outputSchema schema.Sch
 	return stage
 }
 
-func (s *Stage) Execute(ctx context.Context) (err error) {
+func (s *Stage) Execute(ctx context.Context, streamChan chan *schema.StreamChunk, outputChan chan schema.Schema) (err error) {
 	if value, ok := s.flow.(NormalFlow); ok {
 		s.Output, err = value.Run(ctx, s.Input)
 	} else if value, ok := s.flow.(StreamFlow); ok {
-		if s.streamHandler == nil {
-			return fmt.Errorf("StreamHandler cannot be nil for stream flow")
+		if streamChan == nil || outputChan == nil || s.streamHandler == nil {
+			return fmt.Errorf("stream handler and channels cannot be nil for stream flow")
 		}
+		s.StreamChan = streamChan
+		s.OutputChan = outputChan
 		value.Stream(ctx, s.Input)(s.streamHandler)
 	}
 
@@ -97,20 +100,16 @@ func (s *Stage) Execute(ctx context.Context) (err error) {
 }
 
 type Orchestrator interface {
-	Run(context.Context, schema.Schema)
-	RunStage(context.Context, string, schema.Schema) (schema.Schema, error)
-	StreamChan() chan *schema.StreamChunk
-	OutputChan() chan schema.Schema
+	Run(context.Context, schema.Schema, chan *schema.StreamChunk, chan schema.Schema)
+	RunStage(context.Context, string, schema.Schema, chan *schema.StreamChunk, chan schema.Schema) (schema.Schema, error)
 }
 
 type OrderOrchestrator struct {
-	stages     map[string]*Stage
-	order      []string
-	streamChan chan *schema.StreamChunk
-	outputChan chan schema.Schema
+	stages map[string]*Stage
+	order  []string
 }
 
-func NewOrderOrchestrator(streamChan chan *schema.StreamChunk, outputChan chan schema.Schema, stages ...*Stage) *OrderOrchestrator {
+func NewOrderOrchestrator(stages ...*Stage) *OrderOrchestrator {
 	stagesMap := make(map[string]*Stage, len(stages))
 	for _, stage := range stages {
 		// Get the flow name through interface method
@@ -124,18 +123,21 @@ func NewOrderOrchestrator(streamChan chan *schema.StreamChunk, outputChan chan s
 	}
 
 	order := make([]string, 2)
-	order[0] = ThinkFlowName
+	order[0] = StreamThinkFlowName
 	order[1] = ActFlowName
 
 	return &OrderOrchestrator{
-		stages:     stagesMap,
-		order:      order,
-		streamChan: streamChan,
-		outputChan: outputChan,
+		stages: stagesMap,
+		order:  order,
 	}
 }
 
-func (o *OrderOrchestrator) Run(ctx context.Context, userInput schema.Schema) {
+func (o *OrderOrchestrator) Run(ctx context.Context, userInput schema.Schema, streamChan chan *schema.StreamChunk, outputChan chan schema.Schema) {
+	defer func() {
+		close(streamChan)
+		close(outputChan)
+	}()
+
 	// Use user initial input for the first round
 	if userInput == nil {
 		panic("userInput cannot be nil")
@@ -146,12 +148,17 @@ Outer:
 	for range config.MAX_REACT_ITERATIONS {
 		for _, order := range o.order {
 			// Execute current stage
-			curStage := o.stages[order]
+			curStage, ok := o.stages[order]
+			if !ok {
+				panic(fmt.Errorf("stage %s not found", order))
+			}
+
 			curStage.Input = input
 			if curStage.Input == nil {
 				panic(fmt.Errorf("stage %s input is nil", order))
 			}
-			if err := curStage.Execute(ctx); err != nil {
+
+			if err := curStage.Execute(ctx, streamChan, outputChan); err != nil {
 				panic(fmt.Errorf("failed to execute stage %s: %w", order, err))
 			}
 
@@ -173,29 +180,15 @@ Outer:
 	}
 }
 
-func (o *OrderOrchestrator) RunStage(ctx context.Context, key string, input schema.Schema) (output schema.Schema, err error) {
+func (o *OrderOrchestrator) RunStage(ctx context.Context, key string, input schema.Schema, streamChan chan *schema.StreamChunk, outputChan chan schema.Schema) (output schema.Schema, err error) {
 	stage, ok := o.stages[key]
 	if !ok {
 		return nil, fmt.Errorf("stage %s not found", key)
 	}
 
 	stage.Input = input
-	if err = stage.Execute(ctx); err != nil {
+	if err = stage.Execute(ctx, streamChan, outputChan); err != nil {
 		return nil, err
 	}
 	return stage.Output, nil
-}
-
-func (o *OrderOrchestrator) StreamChan() chan *schema.StreamChunk {
-	if o.streamChan == nil {
-		panic("StreamChan is nil")
-	}
-	return o.streamChan
-}
-
-func (o *OrderOrchestrator) OutputChan() chan schema.Schema {
-	if o.outputChan == nil {
-		panic("OutputChan is nil")
-	}
-	return o.outputChan
 }
