@@ -14,7 +14,16 @@ func main() {
 		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
 	}
 
+<<<<<<< HEAD
 	channels := reActAgent.Interact(agentInput)
+=======
+	channels, err := reActAgent.Interact(agentInput)
+	if err != nil {
+		fmt.Printf("failed to run interaction: %v\n", err)
+		return
+	}
+
+>>>>>>> origin/ai
 	for {
 		select {
 		case chunk, ok := <-channels.StreamChunkChan:
