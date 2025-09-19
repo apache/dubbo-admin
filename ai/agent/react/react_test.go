@@ -27,11 +27,14 @@ func TestThinking(t *testing.T) {
 	}
 
 	channels := agent.NewChannels(config.STAGE_CHANNEL_BUFFER_SIZE)
+
 	defer func() {
+		channels.Close()
 		channels.Close()
 	}()
 
 	resp, err := reActAgent.orchestrator.RunStage(chatHistoryCtx, agent.StreamThinkFlowName, agentInput, channels)
+
 	if err != nil {
 		t.Fatalf("failed to run thinking flow: %v", err)
 	}
@@ -61,7 +64,9 @@ func TestThinkWithToolReq(t *testing.T) {
 		},
 	}
 	channels := agent.NewChannels(config.STAGE_CHANNEL_BUFFER_SIZE)
+
 	defer func() {
+		channels.Close()
 		channels.Close()
 	}()
 	resp, err := reActAgent.orchestrator.RunStage(chatHistoryCtx, agent.StreamThinkFlowName, input, channels)
