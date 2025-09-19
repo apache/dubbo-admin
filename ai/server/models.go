@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"dubbo-admin-ai/schema"
+
+	"github.com/google/uuid"
 )
 
 // Response 统一API响应格式
@@ -39,12 +41,6 @@ type ChatRequest struct {
 	Message string `json:"message" binding:"required"` // 用户消息
 }
 
-// StreamEvent SSE流事件
-type StreamEvent struct {
-	Event string `json:"event"` // 事件类型: "message", "error", "done"
-	Data  any    `json:"data"`  // 事件数据
-}
-
 // 转换函数
 func ToThinkInput(req *ChatRequest) schema.ThinkInput {
 	return schema.ThinkInput{
@@ -54,15 +50,5 @@ func ToThinkInput(req *ChatRequest) schema.ThinkInput {
 
 // generateRequestID 生成请求ID
 func generateRequestID() string {
-	return "req_" + time.Now().Format("20060102150405") + "_" + randomString(6)
-}
-
-// randomString 生成随机字符串
-func randomString(length int) string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[time.Now().UnixNano()%int64(len(charset))]
-	}
-	return string(b)
+	return "req_" + uuid.New().String()
 }
