@@ -41,10 +41,9 @@ func defineWeatherFlow(g *genkit.Genkit) *core.Flow[WeatherInput, string, struct
 }
 
 func TestTextGeneration(t *testing.T) {
-	manager.Init(dashscope.Qwen3.Key(), nil)
-	_ = react.Create(manager.GetRegistry())
+	g := manager.Registry(dashscope.Qwen3.Key(), nil)
+	_ = react.Create(g)
 	ctx := context.Background()
-	g := manager.GetRegistry()
 
 	resp, err := genkit.GenerateText(ctx, g, ai.WithPrompt("Hello, Who are you?"))
 	if err != nil {
@@ -56,10 +55,9 @@ func TestTextGeneration(t *testing.T) {
 }
 
 func TestWeatherFlowRun(t *testing.T) {
-	manager.Init(dashscope.Qwen3.Key(), nil)
-	_ = react.Create(manager.GetRegistry())
+	g := manager.Registry(dashscope.Qwen3.Key(), nil)
+	_ = react.Create(g)
 	ctx := context.Background()
-	g := manager.GetRegistry()
 
 	flow := defineWeatherFlow(g)
 	flow.Run(ctx, WeatherInput{Location: "San Francisco"})

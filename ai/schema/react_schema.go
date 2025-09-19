@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/firebase/genkit/go/ai"
-	"github.com/invopop/jsonschema"
 )
 
 // StreamChunk represents streaming status information for ReAct Agent
@@ -18,13 +17,6 @@ type StreamChunk struct {
 }
 
 var (
-	UserThinkPromptTemplateWithSchema = `input: 
-{{#if content}} content: {{content}} {{/if}} 
-{{#if tool_responses}} tool_responses: {{tool_responses}} {{/if}}
-{{#if thought}} thought: {{thought}} {{/if}}
-The output must be a JSON object that conforms to the following schema:
-` + ThinkOutput{}.JsonSchema()
-
 	UserThinkPromptTemplate = `input: 
 {{#if content}} content: {{content}} {{/if}} 
 {{#if tool_responses}} tool_responses: {{tool_responses}} {{/if}}
@@ -54,29 +46,11 @@ func (i ThinkInput) String() string {
 }
 
 type ThinkOutput struct {
-	ToolRequests []tools.ToolInput `json:"tool_requests,omitempty"`
-	Thought      string            `json:"thought"`
-	Status       Status            `json:"status,omitempty" jsonschema:"enum=CONTINUED,enum=FINISHED"`
-	FinalAnswer  string            `json:"final_answer,omitempty" jsonschema:"required=false"`
-}
-
-func (ta ThinkOutput) JsonSchema() string {
-	// Create Reflector
-	reflector := &jsonschema.Reflector{
-		AllowAdditionalProperties:  false,
-		RequiredFromJSONSchemaTags: true,
-		DoNotReference:             true,
-	}
-
-	// Generate schema
-	schema := reflector.Reflect(ta)
-
-	// Convert to JSON
-	data, err := json.MarshalIndent(schema, "", "  ")
-	if err != nil {
-		return fmt.Sprintf("JsonSchema{error: %v}", err)
-	}
-	return string(data)
+	ToolRequests []tools.ToolInput   `json:"tool_requests,omitempty"`
+	Thought      string              `json:"thought"`
+	Status       Status              `json:"status,omitempty" jsonschema:"enum=CONTINUED,enum=FINISHED"`
+	FinalAnswer  string              `json:"final_answer,omitempty" jsonschema:"required=false"`
+	Usage        *ai.GenerationUsage `json:"usage,omitempty" jsonschema_description:"DO NOT SET THIS FIELD"`
 }
 
 func (ta ThinkOutput) Validate(T reflect.Type) error {
