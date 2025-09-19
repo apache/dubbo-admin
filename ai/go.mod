@@ -4,10 +4,8 @@ go 1.24.1
 
 toolchain go1.24.5
 
-replace github.com/firebase/genkit/go => github.com/stringl1l1l1l/genkit/go v0.0.0-20250915045204-bf3e8da21e69
-
 require (
-	github.com/firebase/genkit/go v1.0.2
+	github.com/firebase/genkit/go v1.0.4
 	github.com/gin-gonic/gin v1.10.1
 	github.com/joho/godotenv v1.5.1
 	github.com/lmittmann/tint v1.1.2
@@ -60,7 +58,7 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.2 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
-	github.com/invopop/jsonschema v0.13.0
+	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
 	github.com/mbleigh/raymond v0.0.0-20250414171441-6b3a58ab9e0a // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect

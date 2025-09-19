@@ -22,21 +22,20 @@ import (
 )
 
 var (
-	registry  *genkit.Genkit
 	gloLogger *slog.Logger
 	once      sync.Once
 )
 
-func Init(modelName string, logger *slog.Logger) {
+func Registry(modelName string, logger *slog.Logger) (registry *genkit.Genkit) {
 	once.Do(func() {
 		loadEnvVars()
-		registry = defaultRegistry(modelName)
 		gloLogger = logger
-
 		if logger == nil {
 			gloLogger = DevLogger()
 		}
+		registry = defaultRegistry(modelName)
 	})
+	return registry
 }
 
 // Load environment variables from PROJECT_ROOT/.env file
@@ -129,13 +128,6 @@ func PrettyLogger() *slog.Logger {
 		),
 	)
 	return slog.Default()
-}
-
-func GetRegistry() *genkit.Genkit {
-	if registry == nil {
-		registry = defaultRegistry(config.DEFAULT_MODEL.Key())
-	}
-	return registry
 }
 
 func GetLogger() *slog.Logger {

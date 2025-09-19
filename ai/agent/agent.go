@@ -29,7 +29,7 @@ const (
 )
 
 type Agent interface {
-	Interact(schema.Schema) (schema.Schema, error)
+	Interact(schema.Schema) (chan *schema.StreamChunk, chan schema.Schema, error)
 }
 
 // TODO: Use input/Output channel to support async execution

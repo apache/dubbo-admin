@@ -30,7 +30,7 @@ type ReActAgent struct {
 }
 
 func Create(g *genkit.Genkit) *ReActAgent {
-	prompt := BuildThinkPrompt(g)
+	prompt := buildThinkPrompt(g)
 	thinkStage := agent.NewStreamStage(
 		streamThink(g, prompt),
 		schema.ThinkInput{},
@@ -71,7 +71,7 @@ func (ra *ReActAgent) Interact(input schema.Schema) (chan *schema.StreamChunk, c
 	return streamChan, outputChan, nil
 }
 
-func BuildThinkPrompt(registry *genkit.Genkit) ai.Prompt {
+func buildThinkPrompt(registry *genkit.Genkit) ai.Prompt {
 	// Load system prompt from filesystem
 	data, err := os.ReadFile(config.PROMPT_DIR_PATH + "/agentSystem.prompt")
 	if err != nil {
@@ -138,18 +138,18 @@ func streamThink(g *genkit.Genkit, prompt ai.Prompt) agent.StreamFlow {
 				)
 			}
 			if err != nil {
-				return out, fmt.Errorf("failed to execute agentThink prompt: %w", err)
+				panic(fmt.Errorf("failed to execute agentThink prompt: %w", err))
 			}
 
 			// Parse output
 			var response ThinkOut
 			err = resp.Output(&response)
-
 			if err != nil {
-				return out, fmt.Errorf("failed to parse agentThink prompt response: %w", err)
+				panic(fmt.Errorf("failed to parse agentThink prompt response: %w", err))
 			}
-
+			response.Usage = resp.Usage
 			history.AddHistory(resp.History()...)
+
 			return response, nil
 		})
 }
@@ -207,7 +207,7 @@ func act(g *genkit.Genkit) agent.NormalFlow {
 
 			input, ok := in.(ActIn)
 			if !ok {
-				return nil, fmt.Errorf("input is not of type ActIn, got %T", in)
+				panic(fmt.Errorf("input is not of type ActIn, got %T", in))
 			}
 
 			var actOuts ActOut
@@ -223,7 +223,7 @@ func act(g *genkit.Genkit) agent.NormalFlow {
 
 				output, err := req.Call(g, ctx)
 				if err != nil {
-					return nil, fmt.Errorf("failed to call tool %s: %w", req.ToolName, err)
+					panic(fmt.Errorf("failed to call tool %s: %w", req.ToolName, err))
 				}
 
 				parts = append(parts,
