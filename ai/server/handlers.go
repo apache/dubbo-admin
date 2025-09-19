@@ -70,24 +70,28 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 		return
 	}
 
-	if channels, err = h.agent.Interact(schema.ThinkInput{Content: req.Message}); err != nil {
-		sseHandler.HandleError("agent_interaction_error", fmt.Sprintf("failed to interact with agent: %v", err))
-	}
-
-	// 处理流式响应
+	channels = h.agent.Interact(schema.ThinkInput{Content: req.Message})
 	for {
 		select {
-		case streamChunk, ok := <-channels.StreamChunkChan:
+		// case streamChunk, ok := <-channels.StreamChunkChan:
+		// 	if !ok {
+		// 		channels.StreamChunkChan = nil
+		// 		continue
+		// 	}
+
+		// 	if streamChunk != nil {
+		// 		if err := sseHandler.HandleStreamChunk(*streamChunk); err != nil {
+		// 			manager.GetLogger().Error("Failed to handle stream chunk", "error", err)
+		// 		}
+		// 	}
+
+		case resp, ok := <-channels.UserRespChan:
 			if !ok {
-				channels.StreamChunkChan = nil
+				channels.UserRespChan = nil
 				continue
 			}
-
-			if streamChunk != nil {
-				// 处理流式数据块
-				if err := sseHandler.HandleStreamChunk(*streamChunk); err != nil {
-					manager.GetLogger().Error("Failed to handle stream chunk", "error", err)
-				}
+			if err := sseHandler.HandleText(resp); err != nil {
+				manager.GetLogger().Error("Failed to handle final answer", "error", err)
 			}
 
 		case <-c.Request.Context().Done():
@@ -95,7 +99,7 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 			return
 
 		default:
-			if channels.Closed {
+			if channels.Closed() {
 				streamWriter.WriteMessageStop()
 				manager.GetLogger().Info("Stream processing completed", "session_id", sessionID)
 				c.Header("X-Session-ID", sessionID)

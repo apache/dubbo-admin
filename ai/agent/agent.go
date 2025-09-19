@@ -31,11 +31,12 @@ const (
 )
 
 type Agent interface {
-	Interact(schema.Schema) (*Channels, error)
+	Interact(schema.Schema) *Channels
 }
 
 type Channels struct {
-	Closed          bool
+	closed bool
+
 	ReasoningChan   chan string
 	UserRespChan    chan string
 	ToolRespChan    chan *tools.ToolOutput
@@ -45,20 +46,34 @@ type Channels struct {
 
 func NewChannels(bufferSize int) *Channels {
 	return &Channels{
+		closed:          false,
 		ReasoningChan:   make(chan string, bufferSize),
 		ToolRespChan:    make(chan *tools.ToolOutput, bufferSize),
 		UserRespChan:    make(chan string, bufferSize),
 		StreamChunkChan: make(chan *schema.StreamChunk, bufferSize),
-		FlowChan:        make(chan schema.Schema, 1),
+		FlowChan:        make(chan schema.Schema, bufferSize),
 	}
 }
+
+func (chans *Channels) Reset() {
+	chans.closed = false
+}
+
 func (chans *Channels) Close() {
+	chans.closed = true
+}
+
+func (chans *Channels) Closed() bool {
+	return chans.closed
+}
+
+func (chans *Channels) Destroy() {
 	close(chans.ReasoningChan)
 	close(chans.ToolRespChan)
 	close(chans.UserRespChan)
-	close(chans.FlowChan)
 	close(chans.StreamChunkChan)
-	chans.Closed = true
+	close(chans.FlowChan)
+	chans = nil
 }
 
 type Stage struct {
@@ -157,10 +172,6 @@ func NewOrderOrchestrator(stages ...*Stage) *OrderOrchestrator {
 }
 
 func (o *OrderOrchestrator) Run(ctx context.Context, input schema.Schema, chans *Channels) {
-	defer func() {
-		chans.Close()
-	}()
-
 	// Use user initial input for the first round
 	if input == nil {
 		panic("userInput cannot be nil")
