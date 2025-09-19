@@ -262,6 +262,50 @@ func NewStreamHandler(writer *StreamWriter, sessionID string) *SSEHandler {
 	}
 }
 
+// HandleText 处理纯文本消息（如最终答案）
+func (sh *SSEHandler) HandleText(text string) error {
+	// 如果还没有开始内容块，先发送消息开始和内容块开始事件
+	if !sh.ContentStarted {
+		// 发送消息开始事件
+		msg := &Message{
+			ID:      sh.messageID,
+			Type:    "message",
+			Role:    "assistant",
+			Content: []ContentItem{},
+		}
+		if err := sh.writer.WriteMessageStart(msg); err != nil {
+			manager.GetLogger().Error("Failed to write message start event", "error", err)
+			return err
+		}
+
+		// 发送内容块开始事件
+		contentBlock := &ContentBlock{
+			Type: "text",
+			Text: "",
+		}
+		if err := sh.writer.WriteContentBlockStart(0, contentBlock); err != nil {
+			manager.GetLogger().Error("Failed to write content block start event", "error", err)
+			return err
+		}
+
+		sh.ContentStarted = true
+	}
+
+	// 发送文本内容作为增量
+	if text != "" {
+		delta := &Delta{
+			Type: TextDelta,
+			Text: text,
+		}
+		if err := sh.writer.WriteContentBlockDelta(0, delta); err != nil {
+			manager.GetLogger().Error("Failed to write content block delta", "error", err)
+			return err
+		}
+	}
+
+	return nil
+}
+
 // HandleStreamChunk 处理流式数据块
 func (sh *SSEHandler) HandleStreamChunk(chunk schema.StreamChunk) error {
 	// 处理第一个chunk时发送消息开始和内容块开始事件

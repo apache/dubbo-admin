@@ -128,12 +128,8 @@ func TestAgent(t *testing.T) {
 		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
 	}
 
-	channels, err := reActAgent.Interact(agentInput)
-	if err != nil {
-		t.Fatalf("failed to run thinking flow: %v", err)
-	}
-
-	for !channels.Closed {
+	channels := reActAgent.Interact(agentInput)
+	for !channels.Closed() {
 		select {
 		case chunk, ok := <-channels.StreamChunkChan:
 			if !ok {
