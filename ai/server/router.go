@@ -2,7 +2,6 @@ package server
 
 import (
 	"dubbo-admin-ai/agent/react"
-	"dubbo-admin-ai/server/handlers"
 	"dubbo-admin-ai/server/session"
 
 	"github.com/gin-gonic/gin"
@@ -10,13 +9,13 @@ import (
 
 type Router struct {
 	engine     *gin.Engine
-	handler    *handlers.AgentHandler
+	handler    *AgentHandler
 	sessionMgr *session.Manager
 }
 
 func NewRouter(agent *react.ReActAgent) *Router {
 	sessionMgr := session.NewManager()
-	handler := handlers.NewAgentHandler(agent, sessionMgr)
+	handler := NewAgentHandler(agent, sessionMgr)
 
 	router := &Router{
 		engine:     gin.Default(),
@@ -43,12 +42,6 @@ func (r *Router) setupRoutes() {
 		v1.GET("/sessions", r.handler.ListSessions)                // 列出会话
 		v1.GET("/sessions/:sessionId", r.handler.GetSession)       // 获取会话信息
 		v1.DELETE("/sessions/:sessionId", r.handler.DeleteSession) // 删除会话
-
-		// 控制相关
-		v1.POST("/sessions/:sessionId/stop", r.handler.Stop) // 停止推理
-
-		// 健康检查
-		v1.GET("/health", r.handler.Health) // 健康检查
 	}
 }
 

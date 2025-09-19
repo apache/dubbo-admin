@@ -33,25 +33,22 @@ func Create(g *genkit.Genkit) *ReActAgent {
 	prompt := buildThinkPrompt(g)
 	thinkStage := agent.NewStreamStage(
 		streamThink(g, prompt),
-		schema.ThinkInput{},
-		schema.ThinkOutput{},
-		func(stage *agent.Stage, chunk schema.StreamChunk) error {
-			if stage.StreamChan == nil {
-				return fmt.Errorf("streamChan is nil")
+		func(channels *agent.Channels, chunk schema.StreamChunk) error {
+			if channels == nil {
+				panic(fmt.Errorf("channels is nil"))
 			}
-			stage.StreamChan <- &chunk
+			channels.StreamChunkChan <- &chunk
 			return nil
 		},
-		func(stage *agent.Stage, output schema.Schema) error {
-			if stage.OutputChan == nil {
-				return fmt.Errorf("outputChan is nil")
+		func(channels *agent.Channels, output schema.Schema) error {
+			if channels == nil {
+				panic(fmt.Errorf("channels is nil"))
 			}
-			stage.Output = output
-			stage.OutputChan <- output
+			channels.FlowChan <- output
 			return nil
 		},
 	)
-	actStage := agent.NewStage(act(g), schema.ThinkOutput{}, schema.ToolOutputs{})
+	actStage := agent.NewStage(act(g))
 
 	orchestrator := agent.NewOrderOrchestrator(thinkStage, actStage)
 
@@ -62,13 +59,12 @@ func Create(g *genkit.Genkit) *ReActAgent {
 	}
 }
 
-func (ra *ReActAgent) Interact(input schema.Schema) (chan *schema.StreamChunk, chan schema.Schema, error) {
-	streamChan := make(chan *schema.StreamChunk, config.STAGE_CHANNEL_BUFFER_SIZE)
-	outputChan := make(chan schema.Schema, config.STAGE_CHANNEL_BUFFER_SIZE)
+func (ra *ReActAgent) Interact(input schema.Schema) (*agent.Channels, error) {
+	channels := agent.NewChannels(config.STAGE_CHANNEL_BUFFER_SIZE)
 	go func() {
-		ra.orchestrator.Run(ra.memoryCtx, input, streamChan, outputChan)
+		ra.orchestrator.Run(ra.memoryCtx, input, channels)
 	}()
-	return streamChan, outputChan, nil
+	return channels, nil
 }
 
 func buildThinkPrompt(registry *genkit.Genkit) ai.Prompt {

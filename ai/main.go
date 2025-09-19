@@ -14,7 +14,7 @@ func main() {
 		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
 	}
 
-	streamChan, outputChan, err := reActAgent.Interact(agentInput)
+	channels, err := reActAgent.Interact(agentInput)
 	if err != nil {
 		fmt.Printf("failed to run interaction: %v\n", err)
 		return
@@ -22,21 +22,31 @@ func main() {
 
 	for {
 		select {
-		case chunk, ok := <-streamChan:
+		case chunk, ok := <-channels.StreamChunkChan:
 			if !ok {
-				streamChan = nil
+				channels.StreamChunkChan = nil
 				continue
 			}
-			fmt.Print(chunk.Chunk.Text())
+			if chunk != nil {
+				fmt.Print(chunk.Chunk.Text())
+			}
 
-		case finalOutput, ok := <-outputChan:
+		case userResp, ok := <-channels.UserRespChan:
 			if !ok {
-				outputChan = nil
+				channels.UserRespChan = nil
 				continue
 			}
-			fmt.Printf("Final output: %+v\n", finalOutput)
+			fmt.Printf("Final answer: %s\n", userResp)
+
+		case flowOutput, ok := <-channels.FlowChan:
+			if !ok {
+				channels.FlowChan = nil
+				continue
+			}
+			fmt.Printf("Flow output: %+v\n", flowOutput)
+
 		default:
-			if streamChan == nil && outputChan == nil {
+			if channels.StreamChunkChan == nil && channels.UserRespChan == nil && channels.FlowChan == nil {
 				return
 			}
 		}

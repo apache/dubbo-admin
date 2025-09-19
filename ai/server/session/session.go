@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"dubbo-admin-ai/internal/manager"
-	"dubbo-admin-ai/schema"
 
 	"github.com/google/uuid"
 )
@@ -141,25 +140,6 @@ func (m *Manager) ListSessions() []map[string]any {
 	}
 
 	return sessions
-}
-
-// BuildThinkInput 构建AI输入，不依赖会话历史
-func (m *Manager) BuildThinkInput(sessionID string, userMessage string) (schema.ThinkInput, error) {
-	// 只需要验证session存在并更新活动时间
-	if sessionID != "" {
-		session, err := m.GetSession(sessionID)
-		if err != nil {
-			return schema.ThinkInput{}, err
-		}
-		session.UpdateActivity()
-	}
-
-	// 直接构建ThinkInput，历史记录由agent的memory模块管理
-	input := schema.ThinkInput{
-		Content: userMessage,
-	}
-
-	return input, nil
 }
 
 // cleanupExpiredSessions 定期清理过期会话
