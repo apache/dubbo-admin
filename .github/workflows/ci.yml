@@ -74,12 +74,6 @@ jobs:
       - name: Run Unit Test
         run: make test
       # TODO(marsevilspirit): add lint
-      - name: Upload test result
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-coverage
-          path: "**/coverage.txt"
       - name: Coverage
         # TODO(marsevilspirit): fix coverage
         run: bash <(curl -s https://codecov.io/bash)
