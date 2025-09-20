@@ -70,27 +70,19 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 		return
 	}
 
-	channels = h.agent.Interact(schema.ThinkInput{Content: req.Message})
+	channels = h.agent.Interact(schema.UserInput{Content: req.Message})
+	var (
+		feedback *schema.StreamFeedback
+		ok       bool
+	)
 	for {
 		select {
-		// case streamChunk, ok := <-channels.StreamChunkChan:
-		// 	if !ok {
-		// 		channels.StreamChunkChan = nil
-		// 		continue
-		// 	}
-
-		// 	if streamChunk != nil {
-		// 		if err := sseHandler.HandleStreamChunk(*streamChunk); err != nil {
-		// 			manager.GetLogger().Error("Failed to handle stream chunk", "error", err)
-		// 		}
-		// 	}
-
-		case resp, ok := <-channels.UserRespChan:
+		case feedback, ok = <-channels.UserRespChan:
 			if !ok {
 				channels.UserRespChan = nil
 				continue
 			}
-			if err := sseHandler.HandleText(resp); err != nil {
+			if err := sseHandler.HandleText(feedback.Text, feedback.Index()); err != nil {
 				manager.GetLogger().Error("Failed to handle final answer", "error", err)
 			}
 
@@ -100,6 +92,7 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 
 		default:
 			if channels.Closed() {
+				h.finishStreamWithUsage(sseHandler, feedback, feedback.Index())
 				streamWriter.WriteMessageStop()
 				manager.GetLogger().Info("Stream processing completed", "session_id", sessionID)
 				c.Header("X-Session-ID", sessionID)
@@ -123,7 +116,7 @@ func (h *AgentHandler) getOrCreateSession(c *gin.Context) string {
 }
 
 // finishStreamWithUsage 完成流并处理使用情况
-func (h *AgentHandler) finishStreamWithUsage(sseHandler *sse.SSEHandler, output any) {
+func (h *AgentHandler) finishStreamWithUsage(sseHandler *sse.SSEHandler, output any, index int) {
 	stopReason := "end_turn"
 	var usage *ai.GenerationUsage
 
@@ -131,7 +124,7 @@ func (h *AgentHandler) finishStreamWithUsage(sseHandler *sse.SSEHandler, output 
 		usage = thinkOutput.Usage
 	}
 
-	if err := sseHandler.FinishStream(stopReason, usage); err != nil {
+	if err := sseHandler.FinishStream(stopReason, usage, index); err != nil {
 		sseHandler.HandleError("finish_stream_error", fmt.Sprintf("failed to finish stream: %v", err))
 	}
 }
