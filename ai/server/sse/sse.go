@@ -263,7 +263,7 @@ func NewStreamHandler(writer *StreamWriter, sessionID string) *SSEHandler {
 }
 
 // HandleText 处理纯文本消息（如最终答案）
-func (sh *SSEHandler) HandleText(text string) error {
+func (sh *SSEHandler) HandleText(text string, index int) error {
 	// 如果还没有开始内容块，先发送消息开始和内容块开始事件
 	if !sh.ContentStarted {
 		// 发送消息开始事件
@@ -283,7 +283,7 @@ func (sh *SSEHandler) HandleText(text string) error {
 			Type: "text",
 			Text: "",
 		}
-		if err := sh.writer.WriteContentBlockStart(0, contentBlock); err != nil {
+		if err := sh.writer.WriteContentBlockStart(index, contentBlock); err != nil {
 			manager.GetLogger().Error("Failed to write content block start event", "error", err)
 			return err
 		}
@@ -297,7 +297,7 @@ func (sh *SSEHandler) HandleText(text string) error {
 			Type: TextDelta,
 			Text: text,
 		}
-		if err := sh.writer.WriteContentBlockDelta(0, delta); err != nil {
+		if err := sh.writer.WriteContentBlockDelta(index, delta); err != nil {
 			manager.GetLogger().Error("Failed to write content block delta", "error", err)
 			return err
 		}
@@ -355,9 +355,9 @@ func (sh *SSEHandler) HandleStreamChunk(chunk schema.StreamChunk) error {
 }
 
 // FinishStream 完成流式响应，发送结束事件
-func (sh *SSEHandler) FinishStream(stopReason string, usage *ai.GenerationUsage) error {
+func (sh *SSEHandler) FinishStream(stopReason string, usage *ai.GenerationUsage, index int) error {
 	// 发送内容块结束事件
-	if err := sh.writer.WriteContentBlockStop(0); err != nil {
+	if err := sh.writer.WriteContentBlockStop(index); err != nil {
 		manager.GetLogger().Error("Failed to write content block stop event", "error", err)
 		return err
 	}
@@ -387,5 +387,5 @@ func (sh *SSEHandler) HandleError(errorType, errorMessage string) {
 		Message: errorMessage,
 	}
 	sh.writer.WriteError(errorInfo)
-	sh.FinishStream("error", nil)
+	sh.FinishStream("error", nil, 0)
 }

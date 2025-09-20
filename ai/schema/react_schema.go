@@ -13,20 +13,103 @@ import (
 // StreamChunk represents streaming status information for ReAct Agent
 type StreamChunk struct {
 	Stage string                 `json:"stage"` // "think" | "act"
+	Index int                    `json:"index"`
 	Chunk *ai.ModelResponseChunk `json:"chunk"`
 }
 
 var (
-	UserThinkPromptTemplate = `input: 
+	UserPromptTemplate = `input: 
 {{#if content}} content: {{content}} {{/if}} 
 {{#if tool_responses}} tool_responses: {{tool_responses}} {{/if}}
 {{#if thought}} thought: {{thought}} {{/if}}
-The output must be a JSON object that conforms to the following schema:
 `
 )
 
+type UserInput struct {
+	Content string `json:"content,omitempty"`
+}
+
+func (u UserInput) Validate(t reflect.Type) error {
+	if reflect.TypeOf(u) != t {
+		return fmt.Errorf("UserInput: %v is not of type %v", u, t)
+	}
+	return nil
+}
+
+type PrimaryIntent string
+
+const (
+	PerformanceInvestigation PrimaryIntent = "PERFORMANCE_INVESTIGATION"
+	ErrorDiagnosis           PrimaryIntent = "ERROR_DIAGNOSIS"
+	HealthCheck              PrimaryIntent = "HEALTH_CHECK"
+	ResourceMonitoring       PrimaryIntent = "RESOURCE_MONITORING"
+	TrafficAnalysis          PrimaryIntent = "TRAFFIC_ANALYSIS"
+	ServiceDependency        PrimaryIntent = "SERVICE_DEPENDENCY"
+	AlertingInvestigation    PrimaryIntent = "ALERTING_INVESTIGATION"
+	GeneralInquiry           PrimaryIntent = "GENERAL_INQUIRY"
+)
+
+type TimeContext string
+
+const (
+	Immediate         TimeContext = "IMMEDIATE"
+	Recent            TimeContext = "RECENT"
+	Continuous        TimeContext = "CONTINUOUS"
+	SpecificTimeframe TimeContext = "SPECIFIC_TIMEFRAME"
+	UnspecifiedTime   TimeContext = "UNSPECIFIED_TIME"
+)
+
+type SeverityLevel string
+
+const (
+	Critical      SeverityLevel = "CRITICAL"
+	High          SeverityLevel = "HIGH"
+	Medium        SeverityLevel = "MEDIUM"
+	Low           SeverityLevel = "LOW"
+	Informational SeverityLevel = "INFORMATIONAL"
+)
+
+type InvestigationPriority string
+
+const (
+	PriorityHigh   InvestigationPriority = "HIGH"
+	PriorityMedium InvestigationPriority = "MEDIUM"
+	PriorityLow    InvestigationPriority = "LOW"
+)
+
+type Intent struct {
+	PrimaryIntent         PrimaryIntent         `json:"primary_intent"`
+	TargetServices        []string              `json:"target_services"`
+	MetricsOfInterest     []string              `json:"metrics_of_interest"`
+	TimeContext           TimeContext           `json:"time_context"`
+	SeverityLevel         SeverityLevel         `json:"severity_level"`
+	Keywords              []string              `json:"keywords"`
+	ConfidenceScore       float64               `json:"confidence_score"`
+	InvestigationPriority InvestigationPriority `json:"investigation_priority"`
+	SuggestedTools        []string              `json:"suggested_tools"`
+	Reasoning             string                `json:"reasoning"`
+}
+
+func (i Intent) Validate(t reflect.Type) error {
+	if reflect.TypeOf(i) != t {
+		return fmt.Errorf("Intent: %v is not of type %v", i, t)
+	}
+	return nil
+}
+
+type Observation struct {
+	Content string `json:"content"`
+}
+
+func (u Observation) Validate(t reflect.Type) error {
+	if reflect.TypeOf(u) != t {
+		return fmt.Errorf("Observation: %v is not of type %v", u, t)
+	}
+	return nil
+}
+
 type ThinkInput struct {
-	Content       string             `json:"content,omitempty"`
+	Content       any     `json:"content,omitempty"`
 	ToolResponses []tools.ToolOutput `json:"tool_responses,omitempty"`
 }
 
@@ -107,4 +190,30 @@ func (to ToolOutputs) String() string {
 	}
 	result += "]"
 	return result
+}
+
+var index = 0
+
+func ResetIndex() {
+	index = 0
+}
+
+func IncreaseIndex() {
+	index++
+}
+
+type StreamFeedback struct {
+	index *int
+	Text  string
+}
+
+func NewStreamFeedback(text string) *StreamFeedback {
+	return &StreamFeedback{
+		index: &index,
+		Text:  text,
+	}
+}
+
+func (sf *StreamFeedback) Index() int {
+	return *sf.index
 }

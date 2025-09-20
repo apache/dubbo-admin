@@ -3,8 +3,6 @@ package server
 import (
 	"time"
 
-	"dubbo-admin-ai/schema"
-
 	"github.com/google/uuid"
 )
 
@@ -39,13 +37,6 @@ func NewErrorResponse(message string) *Response {
 // ChatRequest 流式聊天请求
 type ChatRequest struct {
 	Message string `json:"message" binding:"required"` // 用户消息
-}
-
-// 转换函数
-func ToThinkInput(req *ChatRequest) schema.ThinkInput {
-	return schema.ThinkInput{
-		Content: req.Message,
-	}
 }
 
 // generateRequestID 生成请求ID
