@@ -18,6 +18,8 @@
 package index
 
 import (
+	"reflect"
+
 	"github.com/apache/dubbo-admin/pkg/common/errors"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	"k8s.io/client-go/tools/cache"
@@ -36,9 +38,9 @@ func init() {
 }
 
 func byInstanceAppName(obj interface{}) ([]string, error) {
-	instance, ok := obj.(meshresource.InstanceResource)
+	instance, ok := obj.(*meshresource.InstanceResource)
 	if !ok {
-		return nil, errors.NewAssertionError(string(meshresource.InstanceKind), string(instance.ResourceKind()))
+		return nil, errors.NewAssertionError(meshresource.InstanceKind, reflect.TypeOf(obj).Name())
 	}
 	if instance.Spec == nil {
 		return []string{}, nil
@@ -47,9 +49,9 @@ func byInstanceAppName(obj interface{}) ([]string, error) {
 }
 
 func byIp(obj interface{}) ([]string, error) {
-	instance, ok := obj.(meshresource.InstanceResource)
+	instance, ok := obj.(*meshresource.InstanceResource)
 	if !ok {
-		return nil, errors.NewAssertionError(string(meshresource.InstanceKind), string(instance.ResourceKind()))
+		return nil, errors.NewAssertionError(meshresource.InstanceKind, reflect.TypeOf(obj).Name())
 	}
 	if instance.Spec == nil {
 		return []string{}, nil

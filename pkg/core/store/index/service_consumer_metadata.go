@@ -18,6 +18,9 @@
 package index
 
 import (
+	"reflect"
+
+	"github.com/apache/dubbo-admin/pkg/common/errors"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	"k8s.io/client-go/tools/cache"
 )
@@ -28,14 +31,17 @@ const (
 
 func init() {
 	RegisterIndexers(meshresource.ServiceConsumerMetadataKind, map[string]cache.IndexFunc{
-		ByServiceProviderAppName: byServiceConsumerAppName,
+		ByServiceConsumerAppName: byServiceConsumerAppName,
 	})
 }
 
 func byServiceConsumerAppName(obj interface{}) ([]string, error) {
-	serviceConsumerMetadata, ok := obj.(*meshresource.ServiceConsumerMetadataResource)
+	metadata, ok := obj.(*meshresource.ServiceConsumerMetadataResource)
 	if !ok {
+		return nil, errors.NewAssertionError(meshresource.ServiceConsumerMetadataKind, reflect.TypeOf(obj).Name())
+	}
+	if metadata == nil {
 		return []string{}, nil
 	}
-	return []string{serviceConsumerMetadata.Spec.ConsumerAppName}, nil
+	return []string{metadata.Spec.ConsumerAppName}, nil
 }

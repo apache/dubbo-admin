@@ -65,6 +65,7 @@ func ConfiguratorSearch(ctx consolectx.Context) gin.HandlerFunc {
 		}
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
+			return
 		}
 		var respList []model.ConfiguratorSearchResp
 		for _, res := range pageData.Data {

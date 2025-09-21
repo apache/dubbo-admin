@@ -62,7 +62,7 @@ func GetConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", consts.ConditionRuleSuffix)))
 			return
 		}
-		if res, err := service.GetConditionRule(cs, mesh, name); err != nil {
+		if res, err := service.GetConditionRule(cs, name, mesh); err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		} else {

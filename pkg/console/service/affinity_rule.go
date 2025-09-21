@@ -55,7 +55,7 @@ func CreateAffinityRule(ctx consolectx.Context, res *meshresource.AffinityRouteR
 
 func DeleteAffinityRule(ctx consolectx.Context, name string, mesh string) error {
 	if err := ctx.ResourceManager().DeleteByKey(
-		meshresource.ConditionRouteKind,
+		meshresource.AffinityRouteKind,
 		coremodel.BuildResourceKey(mesh, name)); err != nil {
 		return err
 	}

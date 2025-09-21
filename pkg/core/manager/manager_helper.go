@@ -18,6 +18,8 @@
 package manager
 
 import (
+	"reflect"
+
 	"github.com/apache/dubbo-admin/pkg/common/errors"
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
@@ -33,7 +35,7 @@ func GetByKey[T model.Resource](rm ReadOnlyResourceManager, rk model.ResourceKin
 	typedResource, ok := resource.(T)
 	if !ok {
 		var zero T
-		return zero, false, errors.NewAssertionError(rk, typedResource.ResourceKind())
+		return zero, false, errors.NewAssertionError(rk, reflect.TypeOf(typedResource).Name())
 	}
 	return typedResource, true, nil
 }
@@ -49,7 +51,7 @@ func ListByIndexes[T model.Resource](rm ReadOnlyResourceManager, rk model.Resour
 	for i, resource := range resources {
 		typedResource, ok := resource.(T)
 		if !ok {
-			return nil, errors.NewAssertionError(rk, typedResource.ResourceKind())
+			return nil, errors.NewAssertionError(rk, reflect.TypeOf(typedResource).Name())
 		}
 		typedResources[i] = typedResource
 	}
@@ -73,7 +75,7 @@ func PageListByIndexes[T model.Resource](
 	for i, resource := range pageData.Data {
 		typedResource, ok := resource.(T)
 		if !ok {
-			return nil, errors.NewAssertionError(rk, typedResource.ResourceKind())
+			return nil, errors.NewAssertionError(rk, reflect.TypeOf(typedResource).Name())
 		}
 		typedResources[i] = typedResource
 	}
@@ -103,7 +105,7 @@ func PageSearchResourceByConditions[T model.Resource](
 	for i, resource := range pageData.Data {
 		typedResource, ok := resource.(T)
 		if !ok {
-			return nil, errors.NewAssertionError(rk, typedResource.ResourceKind())
+			return nil, errors.NewAssertionError(rk, reflect.TypeOf(typedResource).Name())
 		}
 		typedResources[i] = typedResource
 	}

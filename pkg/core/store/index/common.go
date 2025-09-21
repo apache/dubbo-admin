@@ -18,6 +18,8 @@
 package index
 
 import (
+	"reflect"
+
 	"github.com/apache/dubbo-admin/pkg/common/errors"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/duke-git/lancet/v2/slice"
@@ -38,7 +40,7 @@ func init() {
 func ByMesh(obj interface{}) ([]string, error) {
 	r, ok := obj.(coremodel.Resource)
 	if !ok {
-		return nil, errors.NewAssertionError("Resource", obj)
+		return nil, errors.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
 	}
 	return []string{r.MeshName()}, nil
 }
