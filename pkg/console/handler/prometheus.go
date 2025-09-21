@@ -24,8 +24,9 @@ import (
 	"net/http/httputil"
 	"net/url"
 
-	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/gin-gonic/gin"
+
+	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 )
 
 func PromQL(ctx consolectx.Context) gin.HandlerFunc {

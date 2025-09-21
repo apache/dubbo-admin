@@ -25,9 +25,10 @@ import (
 )
 
 type SearchConfiguratorReq struct {
+	coremodel.PageReq
+
 	Keywords string `json:"keywords"`
 	Mesh     string `json:"mesh"`
-	coremodel.PageReq
 }
 
 func NewSearchConfiguratorReq() *SearchConfiguratorReq {

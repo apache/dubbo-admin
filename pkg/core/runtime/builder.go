@@ -69,6 +69,7 @@ func BuilderFor(appCtx context.Context, cfg app.AdminConfig) (*Builder, error) {
 			startTime:  time.Now(),
 			mode:       cfg.Mode,
 		},
+		components: make(map[ComponentType]Component),
 	}, nil
 }
 

@@ -21,14 +21,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-var global = NewRegistry()
+var registry = NewRegistry()
 
 func ComponentRegistry() Registry {
-	return global
+	return registry
 }
 
 func RegisterComponent(component Component) {
-	if err := global.Register(component); err != nil {
+	if err := registry.Register(component); err != nil {
 		panic(err)
 	}
 }

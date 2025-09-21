@@ -20,12 +20,12 @@ package handler
 import (
 	"net/http"
 
-	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/gin-gonic/gin"
 
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
 func BannerGlobalSearch(ctx consolectx.Context) gin.HandlerFunc {

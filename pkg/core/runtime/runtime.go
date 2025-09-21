@@ -78,7 +78,6 @@ func (i *runtimeInfo) GetMode() mode.Mode {
 
 var _ RuntimeContext = &runtimeContext{}
 
-// TODO add console
 type runtimeContext struct {
 	cfg        app.AdminConfig
 	components map[ComponentType]Component

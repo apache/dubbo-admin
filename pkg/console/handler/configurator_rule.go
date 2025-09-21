@@ -22,10 +22,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/apache/dubbo-admin/pkg/core/manager"
-	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
-	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
-	"github.com/apache/dubbo-admin/pkg/core/store/index"
 	"github.com/duke-git/lancet/v2/strutil"
 	"github.com/gin-gonic/gin"
 
@@ -33,6 +29,10 @@ import (
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
 	"github.com/apache/dubbo-admin/pkg/core/consts"
+	"github.com/apache/dubbo-admin/pkg/core/manager"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
 func ConfiguratorSearch(ctx consolectx.Context) gin.HandlerFunc {

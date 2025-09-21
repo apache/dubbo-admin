@@ -23,8 +23,14 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/apache/dubbo-admin/pkg/config/app"
+	_ "github.com/apache/dubbo-admin/pkg/console"
+	_ "github.com/apache/dubbo-admin/pkg/core/discovery"
+	_ "github.com/apache/dubbo-admin/pkg/core/engine"
+	_ "github.com/apache/dubbo-admin/pkg/core/events"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
+	_ "github.com/apache/dubbo-admin/pkg/core/manager"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
+	_ "github.com/apache/dubbo-admin/pkg/core/store"
 	"github.com/apache/dubbo-admin/pkg/diagnostics"
 )
 

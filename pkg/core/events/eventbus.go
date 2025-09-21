@@ -18,8 +18,9 @@
 package events
 
 import (
-	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"k8s.io/client-go/tools/cache"
+
+	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
 type Event interface {

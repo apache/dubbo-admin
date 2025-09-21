@@ -27,8 +27,9 @@ import (
 )
 
 type SearchConditionRuleReq struct {
-	Keywords string `json:"keywords"`
 	coremodel.PageReq
+
+	Keywords string `json:"keywords"`
 }
 
 func (s *SearchConditionRuleReq) PageRequest() coremodel.PageReq {

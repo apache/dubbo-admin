@@ -71,10 +71,11 @@ func NewErrorResp(msg string) *CommonResp {
 }
 
 type SearchReq struct {
+	coremodel.PageReq
+
 	SearchType string `form:"searchType"`
 	Keywords   string `form:"keywords"`
 	Mesh       string `form:"mesh"`
-	coremodel.PageReq
 }
 
 func NewSearchReq() *SearchReq {

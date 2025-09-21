@@ -20,9 +20,10 @@ package index
 import (
 	"reflect"
 
+	"k8s.io/client-go/tools/cache"
+
 	"github.com/apache/dubbo-admin/pkg/common/errors"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
-	"k8s.io/client-go/tools/cache"
 )
 
 const (

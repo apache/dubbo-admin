@@ -18,17 +18,19 @@
 package model
 
 import (
-	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
-	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	gxset "github.com/dubbogo/gost/container/set"
 	"github.com/duke-git/lancet/v2/strutil"
+
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
 type SearchInstanceReq struct {
+	coremodel.PageReq
+
 	AppName  string `form:"appName"`
 	Keywords string `form:"keywords"`
 	Mesh     string `form:"mesh"`
-	coremodel.PageReq
 }
 
 func NewSearchInstanceReq() *SearchInstanceReq {

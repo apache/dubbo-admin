@@ -37,7 +37,7 @@ type AdminConfig struct {
 	// Diagnostics configuration
 	Diagnostics *diagnostics.Config `json:"diagnostics,omitempty"`
 	// Console configuration
-	Console *console.Config `json:"admin"`
+	Console *console.Config `json:"console"`
 	// Store configuration
 	Store *store.Config `json:"store"`
 	// Discovery configuration

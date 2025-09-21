@@ -26,6 +26,10 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
+func init() {
+	runtime.RegisterComponent(newStoreComponent())
+}
+
 type Router interface {
 	ResourceRoute(coremodel.Resource) (ResourceStore, error)
 	ResourceKindRoute(k coremodel.ResourceKind) (ResourceStore, error)
@@ -43,6 +47,12 @@ var _ Component = &storeComponent{}
 type storeComponent struct {
 	// stores every resource corresponds to a ResourceStore
 	stores map[coremodel.ResourceKind]ManagedResourceStore
+}
+
+func newStoreComponent() *storeComponent {
+	return &storeComponent{
+		stores: make(map[coremodel.ResourceKind]ManagedResourceStore),
+	}
 }
 
 func (sc *storeComponent) Type() runtime.ComponentType {

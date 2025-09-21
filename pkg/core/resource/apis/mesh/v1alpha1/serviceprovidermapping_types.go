@@ -21,12 +21,13 @@
 package v1alpha1
 
 import (
-	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/core/logger"
-	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+
+	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
 const ServiceProviderMappingKind coremodel.ResourceKind = "ServiceProviderMapping"

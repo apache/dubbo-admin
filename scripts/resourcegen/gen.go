@@ -63,12 +63,13 @@ var resourceTemplate = template.Must(template.New("dubbo-resource").Parse(`
 package v1alpha1
 
 import (
-	{{ $pkg }} "github.com/apache/dubbo-admin/api/{{ .Package }}/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/core/logger"
-	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+
+	{{ $pkg }} "github.com/apache/dubbo-admin/api/{{ .Package }}/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 {{range .Resources}}
 

@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"strings"
 
-	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	"github.com/gin-gonic/gin"
 	"github.com/mitchellh/mapstructure"
 
@@ -33,6 +32,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
 	"github.com/apache/dubbo-admin/pkg/core/consts"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 )
 
 func ConditionRuleSearch(cs consolectx.Context) gin.HandlerFunc {

@@ -33,9 +33,9 @@ console:
         instance: xx
         service: xx
   auth:
-    type: oath2
-    oauth2:
-      clientId: xx
+    user: admin
+    password: dubbo@2025
+    expirationTime: 3600
 store:
   type: mysql
   address: xx

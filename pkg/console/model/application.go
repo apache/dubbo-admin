@@ -102,9 +102,10 @@ func (a *ApplicationDetail) MergeInstance(instanceRes *meshresource.InstanceReso
 }
 
 type ApplicationTabInstanceInfoReq struct {
+	coremodel.PageReq
+
 	AppName string `form:"appName"`
 	Mesh    string `form:"mesh"`
-	coremodel.PageReq
 }
 
 func NewApplicationTabInstanceInfoReq() *ApplicationTabInstanceInfoReq {
@@ -140,10 +141,11 @@ type ApplicationServiceResp struct {
 }
 
 type ApplicationServiceFormReq struct {
+	coremodel.PageReq
+
 	AppName string `form:"appName"`
 	Side    string `form:"side"`
 	Mesh    string `form:"mesh"`
-	coremodel.PageReq
 }
 
 func NewApplicationServiceFormReq() *ApplicationServiceFormReq {
@@ -161,10 +163,11 @@ type ApplicationServiceFormResp struct {
 }
 
 type ApplicationSearchReq struct {
+	coremodel.PageReq
+
 	AppName  string `form:"appName" json:"appName"`
 	Keywords string `form:"keywords" json:"keywords"`
 	Mesh     string `form:"mesh" json:"mesh"`
-	coremodel.PageReq
 }
 
 func NewApplicationSearchReq() *ApplicationSearchReq {

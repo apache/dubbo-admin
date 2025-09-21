@@ -21,17 +21,19 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gin-gonic/gin"
+
 	"github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/core/consts"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
-	"github.com/gin-gonic/gin"
 )
 
 type ServiceSearchReq struct {
+	coremodel.PageReq
+
 	ServiceName string `form:"serviceName" json:"serviceName"`
 	Keywords    string `form:"keywords" json:"keywords"`
 	Mesh        string `form:"mesh" json:"mesh"`
-	coremodel.PageReq
 }
 
 func NewServiceSearchReq() *ServiceSearchReq {

@@ -20,10 +20,11 @@ package index
 import (
 	"reflect"
 
-	"github.com/apache/dubbo-admin/pkg/common/errors"
-	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/duke-git/lancet/v2/slice"
 	"k8s.io/client-go/tools/cache"
+
+	"github.com/apache/dubbo-admin/pkg/common/errors"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
 const ByMeshIndex = "idx_mesh"
