@@ -100,6 +100,8 @@ func GetMetricsList(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req := &model.MetricsReq{}
 		if err := c.ShouldBindQuery(req); err != nil {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+			return
 		}
 		resp, err := service.GetInstanceMetrics(ctx, req)
 		if err != nil {
