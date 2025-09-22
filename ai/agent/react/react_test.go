@@ -1,6 +1,10 @@
 package react
 
 import (
+	"encoding/json"
+	"fmt"
+	"testing"
+
 	"dubbo-admin-ai/agent"
 	"dubbo-admin-ai/config"
 	"dubbo-admin-ai/manager"
@@ -8,9 +12,6 @@ import (
 	"dubbo-admin-ai/plugins/dashscope"
 	"dubbo-admin-ai/schema"
 	"dubbo-admin-ai/tools"
-	"encoding/json"
-	"fmt"
-	"testing"
 )
 
 var (

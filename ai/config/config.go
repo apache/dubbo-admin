@@ -1,10 +1,11 @@
 package config
 
 import (
-	"dubbo-admin-ai/plugins/dashscope"
-	"dubbo-admin-ai/plugins/model"
 	"path/filepath"
 	"runtime"
+
+	"dubbo-admin-ai/plugins/dashscope"
+	"dubbo-admin-ai/plugins/model"
 )
 
 var (

@@ -1,11 +1,12 @@
 package schema
 
 import (
-	"dubbo-admin-ai/tools"
 	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
+
+	"dubbo-admin-ai/tools"
 
 	"github.com/firebase/genkit/go/ai"
 )

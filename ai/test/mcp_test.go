@@ -2,13 +2,14 @@ package test
 
 import (
 	"context"
-	"dubbo-admin-ai/manager"
-	"dubbo-admin-ai/plugins/dashscope"
-	"dubbo-admin-ai/utils"
 	"log"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"dubbo-admin-ai/manager"
+	"dubbo-admin-ai/plugins/dashscope"
+	"dubbo-admin-ai/utils"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"

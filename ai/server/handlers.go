@@ -1,10 +1,11 @@
 package server
 
 import (
-	"dubbo-admin-ai/manager"
-	"dubbo-admin-ai/server/sse"
 	"fmt"
 	"net/http"
+
+	"dubbo-admin-ai/manager"
+	"dubbo-admin-ai/server/sse"
 
 	"dubbo-admin-ai/agent"
 	"dubbo-admin-ai/schema"

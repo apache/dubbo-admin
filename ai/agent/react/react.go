@@ -2,15 +2,15 @@ package react
 
 import (
 	"context"
-	"dubbo-admin-ai/manager"
-	"dubbo-admin-ai/memory"
-	"dubbo-admin-ai/tools"
+	"fmt"
+	"os"
 
 	"dubbo-admin-ai/agent"
 	"dubbo-admin-ai/config"
+	"dubbo-admin-ai/manager"
+	"dubbo-admin-ai/memory"
 	"dubbo-admin-ai/schema"
-	"fmt"
-	"os"
+	"dubbo-admin-ai/tools"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/core"
