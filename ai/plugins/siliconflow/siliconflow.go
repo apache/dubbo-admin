@@ -2,8 +2,9 @@ package siliconflow
 
 import (
 	"context"
-	"dubbo-admin-ai/plugins/model"
 	"os"
+
+	"dubbo-admin-ai/plugins/model"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/core/api"

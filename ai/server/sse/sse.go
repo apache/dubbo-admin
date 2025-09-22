@@ -2,10 +2,11 @@ package sse
 
 import (
 	"context"
-	"dubbo-admin-ai/manager"
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"dubbo-admin-ai/manager"
 
 	"dubbo-admin-ai/schema"
 
