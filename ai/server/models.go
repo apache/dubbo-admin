@@ -36,7 +36,8 @@ func NewErrorResponse(message string) *Response {
 
 // ChatRequest 流式聊天请求
 type ChatRequest struct {
-	Message string `json:"message" binding:"required"` // 用户消息
+	Message   string `json:"message" binding:"required"`   // 用户消息
+	SessionID string `json:"sessionID" binding:"required"` // 会话ID
 }
 
 // generateRequestID 生成请求ID

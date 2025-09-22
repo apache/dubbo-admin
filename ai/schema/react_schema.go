@@ -1,7 +1,7 @@
 package schema
 
 import (
-	"dubbo-admin-ai/internal/tools"
+	"dubbo-admin-ai/tools"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -109,7 +109,7 @@ func (u Observation) Validate(t reflect.Type) error {
 }
 
 type ThinkInput struct {
-	Content       any     `json:"content,omitempty"`
+	Content       any                `json:"content,omitempty"`
 	ToolResponses []tools.ToolOutput `json:"tool_responses,omitempty"`
 }
 
@@ -129,7 +129,7 @@ func (i ThinkInput) String() string {
 }
 
 type ThinkOutput struct {
-	ToolRequests []tools.ToolInput   `json:"tool_requests,omitempty"`
+	ToolRequests []tools.Tool        `json:"tool_requests,omitempty"`
 	Thought      string              `json:"thought"`
 	Status       Status              `json:"status,omitempty" jsonschema:"enum=CONTINUED,enum=FINISHED"`
 	FinalAnswer  string              `json:"final_answer,omitempty" jsonschema:"required=false"`

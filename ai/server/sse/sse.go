@@ -2,11 +2,11 @@ package sse
 
 import (
 	"context"
+	"dubbo-admin-ai/manager"
 	"encoding/json"
 	"fmt"
 	"net/http"
 
-	"dubbo-admin-ai/internal/manager"
 	"dubbo-admin-ai/schema"
 
 	"github.com/firebase/genkit/go/ai"

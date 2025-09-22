@@ -42,18 +42,10 @@ paths:
   /api/v1/ai/chat/stream:
     post:
       summary: 流式聊天
-      description: 使用Server-Sent Events实现的流式聊天，实时接收AI响应。第一次调用时创建新session，完成后通过X-Session-ID响应头返回session_id。后续对话通过X-Session-ID请求头传递session_id
+      description: 使用Server-Sent Events实现的流式聊天，实时接收AI响应。需要先创建会话并在请求体中提供sessionID
       operationId: streamChat
       tags:
         - 聊天
-      parameters:
-        - name: X-Session-ID
-          in: header
-          required: false
-          description: 会话ID，用于继续现有对话
-          schema:
-            type: string
-            example: "sess_20240118143022_abcd1234"
       requestBody:
         required: true
         content:
@@ -62,6 +54,7 @@ paths:
               $ref: "#/components/schemas/ChatRequest"
             example:
               message: "分析user-service的性能瓶颈"
+              sessionID: "sess_20240118143022_abcd1234"
       responses:
         "200":
           description: 流式响应
@@ -316,12 +309,17 @@ components:
       description: 流式聊天请求
       required:
         - message
+        - sessionID
       properties:
         message:
           type: string
           description: 用户消息
           maxLength: 1000
           example: "我的微服务order-service运行缓慢，请帮助我诊断原因"
+        sessionID:
+          type: string
+          description: 会话ID，必须先通过创建会话接口获得
+          example: "sess_20240118143022_abcd1234"
       additionalProperties: false
 
     ChatHistory:

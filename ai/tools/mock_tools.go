@@ -1,7 +1,7 @@
 package tools
 
 import (
-	"dubbo-admin-ai/internal/manager"
+	"dubbo-admin-ai/manager"
 	"fmt"
 
 	"github.com/firebase/genkit/go/ai"

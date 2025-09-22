@@ -1,11 +1,10 @@
 package session
 
 import (
+	"dubbo-admin-ai/manager"
 	"errors"
 	"sync"
 	"time"
-
-	"dubbo-admin-ai/internal/manager"
 
 	"github.com/google/uuid"
 )

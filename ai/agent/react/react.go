@@ -2,12 +2,12 @@ package react
 
 import (
 	"context"
+	"dubbo-admin-ai/manager"
+	"dubbo-admin-ai/memory"
+	"dubbo-admin-ai/tools"
 
 	"dubbo-admin-ai/agent"
 	"dubbo-admin-ai/config"
-	"dubbo-admin-ai/internal/manager"
-	"dubbo-admin-ai/internal/memory"
-	"dubbo-admin-ai/internal/tools"
 	"dubbo-admin-ai/schema"
 	"fmt"
 	"os"
@@ -32,7 +32,7 @@ type ReActAgent struct {
 
 func onStreaming2User(channels *agent.Channels, chunk schema.StreamChunk) error {
 	if channels == nil {
-		panic(fmt.Errorf("channels is nil"))
+		return fmt.Errorf("channels is nil")
 	}
 	channels.UserRespChan <- schema.NewStreamFeedback(chunk.Chunk.Text())
 	return nil
@@ -40,7 +40,7 @@ func onStreaming2User(channels *agent.Channels, chunk schema.StreamChunk) error 
 
 func onStreaming2StdOut(channels *agent.Channels, chunk schema.StreamChunk) error {
 	if channels == nil {
-		panic(fmt.Errorf("channels is nil"))
+		return fmt.Errorf("channels is nil")
 	}
 	fmt.Print(chunk.Chunk.Text())
 	return nil
@@ -48,7 +48,7 @@ func onStreaming2StdOut(channels *agent.Channels, chunk schema.StreamChunk) erro
 
 func onOutput2Flow(channels *agent.Channels, output schema.Schema) error {
 	if channels == nil {
-		panic(fmt.Errorf("channels is nil"))
+		return fmt.Errorf("channels is nil")
 	}
 	channels.FlowChan <- output
 	return nil
@@ -58,16 +58,16 @@ func Create(g *genkit.Genkit) *ReActAgent {
 	thinkPrompt := buildThinkPrompt(g)
 	feedBackPrompt := buildFeedBackPrompt(g)
 	observePrompt := buildObservePrompt(g)
-	intentParsePrompt := buildIntentParsePrompt(g)
+	// intentParsePrompt := buildIntentParsePrompt(g)
 
 	channels := agent.NewChannels(config.STAGE_CHANNEL_BUFFER_SIZE)
 
-	intentParseStage := agent.NewStreamStage(
-		intentParse(g, intentParsePrompt),
-		agent.BeforeLoop,
-		onStreaming2StdOut,
-		onOutput2Flow,
-	)
+	// intentParseStage := agent.NewStreamStage(
+	// 	intentParse(g, intentParsePrompt),
+	// 	agent.BeforeLoop,
+	// 	onStreaming2StdOut,
+	// 	onOutput2Flow,
+	// )
 	thinkStage := agent.NewStreamStage(
 		think(g, thinkPrompt, feedBackPrompt),
 		agent.InLoop,
@@ -85,7 +85,7 @@ func Create(g *genkit.Genkit) *ReActAgent {
 		onOutput2Flow,
 	)
 
-	orchestrator := agent.NewOrderOrchestrator(intentParseStage, thinkStage, actStage, observerStage)
+	orchestrator := agent.NewOrderOrchestrator(thinkStage, actStage, observerStage)
 
 	return &ReActAgent{
 		registry:     g,
@@ -184,12 +184,18 @@ func intentParse(g *genkit.Genkit,
 		func(ctx context.Context, in schema.Schema, cb core.StreamCallback[schema.StreamChunk]) (out schema.Schema, err error) {
 			manager.GetLogger().Info("Intent Parsing...", "input", in)
 			defer func() {
-				manager.GetLogger().Info("Intent Parsing Done.", "output", out)
+				if r := recover(); r != nil {
+					manager.GetLogger().Error("Intent Parsing panicked", "error", r, "input", in)
+					err = fmt.Errorf("intent parsing failed: %v", r)
+					out = nil
+					return
+				}
+				manager.GetLogger().Info("Intent Parsing Done.", "output", out, "error", err)
 			}()
 
 			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.History)
 			if !ok {
-				panic(fmt.Errorf("failed to get history from context"))
+				return nil, fmt.Errorf("failed to get history from context")
 			}
 
 			var resp *ai.ModelResponse
@@ -197,10 +203,15 @@ func intentParse(g *genkit.Genkit,
 				ai.WithInput(in),
 				ai.WithStreaming(rawChunkHandler(cb)),
 			)
+			if err != nil {
+				manager.GetLogger().Error("Intent parse prompt execution failed", "error", err)
+				return nil, err
+			}
 
 			var intent schema.ThinkInput
 			if err := resp.Output(&intent); err != nil {
-				panic(fmt.Errorf("failed to parse intent response: %w", err))
+				manager.GetLogger().Error("Failed to parse intent response", "error", err, "response", resp)
+				return nil, fmt.Errorf("failed to parse intent response: %w", err)
 			}
 
 			history.AddHistory(resp.History()...)
@@ -221,7 +232,7 @@ func think(
 		func(ctx context.Context, in schema.Schema, cb core.StreamCallback[schema.StreamChunk]) (out schema.Schema, err error) {
 			manager.GetLogger().Info("Thinking...", "input", in)
 			defer func() {
-				manager.GetLogger().Info("Think Done.", "output", out)
+				manager.GetLogger().Info("Think Done.", "output", out, "error", err)
 			}()
 
 			// Feedback
@@ -230,11 +241,15 @@ func think(
 				ai.WithInput(in),
 				ai.WithStreaming(rawChunkHandler(cb)),
 			)
+			if err != nil {
+				manager.GetLogger().Error("Failed to execute agentFeedback prompt", "error", err)
+				return nil, fmt.Errorf("failed to execute agentFeedback prompt: %w", err)
+			}
 
 			schema.IncreaseIndex()
 			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.History)
 			if !ok {
-				panic(fmt.Errorf("failed to get history from context"))
+				return nil, fmt.Errorf("failed to get history from context")
 			}
 
 			var resp *ai.ModelResponse
@@ -249,18 +264,16 @@ func think(
 				)
 			}
 			if err != nil {
-				panic(fmt.Errorf("failed to execute agentThink prompt: %w", err))
+				manager.GetLogger().Error("Failed to execute agentThink prompt", "error", err)
+				return nil, fmt.Errorf("failed to execute agentThink prompt: %w", err)
 			}
 
 			// Parse output
 			var thinkOut ThinkOut
 			err = resp.Output(&thinkOut)
 			if err != nil {
-				panic(fmt.Errorf("failed to parse agentThink prompt response: %w", err))
-			}
-
-			if err != nil {
-				panic(fmt.Errorf("failed to execute agentFeedback prompt: %w", err))
+				manager.GetLogger().Error("Failed to parse agentThink prompt response", "error", err)
+				return nil, fmt.Errorf("failed to parse agentThink prompt response: %w", err)
 			}
 
 			thinkOut.Usage = resp.Usage
@@ -275,12 +288,12 @@ func act(g *genkit.Genkit) agent.NormalFlow {
 		func(ctx context.Context, in schema.Schema) (out schema.Schema, err error) {
 			manager.GetLogger().Info("Acting...", "input", in)
 			defer func() {
-				manager.GetLogger().Info("Act Done.", "output", out)
+				manager.GetLogger().Info("Act Done.", "output", out, "error", err)
 			}()
 
 			input, ok := in.(ActIn)
 			if !ok {
-				panic(fmt.Errorf("input is not of type ActIn, got %T", in))
+				return nil, fmt.Errorf("input is not of type ActIn, got %T", in)
 			}
 
 			var actOuts ActOut
@@ -288,7 +301,7 @@ func act(g *genkit.Genkit) agent.NormalFlow {
 			// Execute tool calls
 			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.History)
 			if !ok {
-				panic(fmt.Errorf("failed to get history from context"))
+				return nil, fmt.Errorf("failed to get history from context")
 			}
 
 			var parts []*ai.Part
@@ -296,7 +309,8 @@ func act(g *genkit.Genkit) agent.NormalFlow {
 
 				output, err := req.Call(g, ctx)
 				if err != nil {
-					panic(fmt.Errorf("failed to call tool %s: %w", req.ToolName, err))
+					manager.GetLogger().Error("Failed to call tool", "tool", req.ToolName, "error", err)
+					return nil, fmt.Errorf("failed to call tool %s: %w", req.ToolName, err)
 				}
 
 				parts = append(parts,
@@ -320,12 +334,12 @@ func observe(g *genkit.Genkit, observePrompt ai.Prompt) agent.StreamFlow {
 		func(ctx context.Context, in schema.Schema, cb core.StreamCallback[schema.StreamChunk]) (out schema.Schema, err error) {
 			manager.GetLogger().Info("Observing...", "input", in)
 			defer func() {
-				manager.GetLogger().Info("Observe Done.", "output", out)
+				manager.GetLogger().Info("Observe Done.", "output", out, "error", err)
 			}()
 
 			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.History)
 			if !ok || history.IsEmpty() {
-				panic(fmt.Errorf("failed to get history from context"))
+				return nil, fmt.Errorf("failed to get history from context or history is empty")
 			}
 
 			resp, err := observePrompt.Execute(ctx,
@@ -334,14 +348,16 @@ func observe(g *genkit.Genkit, observePrompt ai.Prompt) agent.StreamFlow {
 				ai.WithStreaming(rawChunkHandler(cb)),
 			)
 			if err != nil {
-				panic(fmt.Errorf("failed to execute observe prompt: %w", err))
+				manager.GetLogger().Error("Failed to execute observe prompt", "error", err)
+				return nil, fmt.Errorf("failed to execute observe prompt: %w", err)
 			}
 
 			// Parse output
 			var response schema.ThinkInput
 			err = resp.Output(&response)
 			if err != nil {
-				panic(fmt.Errorf("failed to parse observe prompt response: %w", err))
+				manager.GetLogger().Error("Failed to parse observe prompt response", "error", err)
+				return nil, fmt.Errorf("failed to parse observe prompt response: %w", err)
 			}
 			history.AddHistory(resp.History()...)
 

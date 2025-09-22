@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/firebase/genkit/go/ai"
 )
 
 // CopyFile copies source file content to target file, creates the file if target doesn't exist
@@ -49,4 +51,11 @@ func CopyFile(srcPath, dstPath string) error {
 	}
 
 	return nil
+}
+
+func Tools2ToolRef(tools []ai.Tool) (toolRef []ai.ToolRef) {
+	for _, tool := range tools {
+		toolRef = append(toolRef, tool)
+	}
+	return toolRef
 }

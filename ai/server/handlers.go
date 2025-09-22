@@ -1,12 +1,12 @@
 package server
 
 import (
+	"dubbo-admin-ai/manager"
 	"dubbo-admin-ai/server/sse"
 	"fmt"
 	"net/http"
 
 	"dubbo-admin-ai/agent"
-	"dubbo-admin-ai/internal/manager"
 	"dubbo-admin-ai/schema"
 	"dubbo-admin-ai/server/session"
 
@@ -40,15 +40,20 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 		err          error
 	)
 
-	// 验证session存在并更新活动时间
-	if sessionID = h.getOrCreateSession(c); sessionID != "" {
-		session, err = h.sessionMgr.GetSession(sessionID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, NewErrorResponse("invalid_session "+err.Error()))
-			return
-		}
-		session.UpdateActivity()
+	// 解析请求
+	if err = c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, NewErrorResponse("Invalid request: "+err.Error()))
+		return
 	}
+
+	sessionID = req.SessionID
+	// 验证session存在并更新活动时间
+	session, err = h.sessionMgr.GetSession(sessionID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, NewErrorResponse("Invalid session ID: "+err.Error()))
+		return
+	}
+	session.UpdateActivity()
 
 	if streamWriter, err = sse.NewStreamWriter(c); err != nil {
 		c.JSON(http.StatusInternalServerError, NewErrorResponse("Failed to create stream writer: "+err.Error()))
@@ -63,12 +68,6 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 		}
 		c.Header("X-Session-ID", sessionID)
 	}()
-
-	// 与 Agent 交互
-	if err = c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, NewErrorResponse("Invalid request: "+err.Error()))
-		return
-	}
 
 	channels = h.agent.Interact(schema.UserInput{Content: req.Message})
 	var (
@@ -93,26 +92,11 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 		default:
 			if channels.Closed() {
 				h.finishStreamWithUsage(sseHandler, feedback, feedback.Index())
-				streamWriter.WriteMessageStop()
 				manager.GetLogger().Info("Stream processing completed", "session_id", sessionID)
-				c.Header("X-Session-ID", sessionID)
 				return
 			}
 		}
 	}
-}
-
-// getOrCreateSession 获取或创建会话
-func (h *AgentHandler) getOrCreateSession(c *gin.Context) string {
-	sessionID := c.GetHeader("X-Session-ID")
-	if sessionID != "" {
-		if sessionObj, err := h.sessionMgr.GetSession(sessionID); err == nil {
-			return sessionObj.ID
-		}
-	}
-
-	sessionObj := h.sessionMgr.CreateSession()
-	return sessionObj.ID
 }
 
 // finishStreamWithUsage 完成流并处理使用情况
