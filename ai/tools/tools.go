@@ -11,13 +11,14 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-type ToolInput struct {
-	ToolName  string `json:"tool_name"`
-	Parameter any    `json:"parameter"`
+type Tool struct {
+	ToolName  string  `json:"tool_name"`
+	Parameter any     `json:"parameter"`
+	Entity    ai.Tool `json:"-"`
 }
 
-func (ti ToolInput) String() string {
-	return fmt.Sprintf("ToolInput{Input: %v}", ti.Parameter)
+func (t Tool) String() string {
+	return fmt.Sprintf("ToolInput{Input: %v}", t.Parameter)
 }
 
 type ToolOutput struct {
@@ -67,30 +68,30 @@ type ToolMetadata struct {
 	OutputType  reflect.Type `json:"outputType"`
 }
 
-func (toolInput ToolInput) Call(g *genkit.Genkit, ctx context.Context) (toolOutput ToolOutput, err error) {
-	tool := genkit.LookupTool(g, toolInput.ToolName)
+func (t Tool) Call(g *genkit.Genkit, ctx context.Context) (toolOutput ToolOutput, err error) {
+	tool := genkit.LookupTool(g, t.ToolName)
 	if tool == nil {
-		return toolOutput, fmt.Errorf("tool not found: %s", toolInput.ToolName)
+		return toolOutput, fmt.Errorf("tool not found: %s", t.ToolName)
 	}
 
 	// Pass Parameter directly to the tool, not the entire ToolInput
-	rawToolOutput, err := tool.RunRaw(ctx, toolInput.Parameter)
+	rawToolOutput, err := tool.RunRaw(ctx, t.Parameter)
 	if err != nil {
-		return toolOutput, fmt.Errorf("failed to call tool %s: %w", toolInput.ToolName, err)
+		return toolOutput, fmt.Errorf("failed to call tool %s: %w", t.ToolName, err)
 	}
 
 	if rawToolOutput == nil {
-		return toolOutput, fmt.Errorf("tool %s returned nil output", toolInput.ToolName)
+		return toolOutput, fmt.Errorf("tool %s returned nil output", t.ToolName)
 	}
 
 	err = mapstructure.Decode(rawToolOutput, &toolOutput)
 	if err != nil {
-		return toolOutput, fmt.Errorf("failed to decode tool output for %s: %w", toolInput.ToolName, err)
+		return toolOutput, fmt.Errorf("failed to decode tool output for %s: %w", t.ToolName, err)
 	}
 
 	// Ensure ToolName is set
 	if toolOutput.ToolName == "" {
-		toolOutput.ToolName = toolInput.ToolName
+		toolOutput.ToolName = t.ToolName
 	}
 
 	return toolOutput, nil

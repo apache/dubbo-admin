@@ -3,11 +3,11 @@ package react
 import (
 	"dubbo-admin-ai/agent"
 	"dubbo-admin-ai/config"
-	"dubbo-admin-ai/internal/manager"
-	"dubbo-admin-ai/internal/memory"
-	"dubbo-admin-ai/internal/tools"
+	"dubbo-admin-ai/manager"
+	"dubbo-admin-ai/memory"
 	"dubbo-admin-ai/plugins/dashscope"
 	"dubbo-admin-ai/schema"
+	"dubbo-admin-ai/tools"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -19,7 +19,7 @@ var (
 )
 
 func init() {
-	reActAgent = Create(manager.Registry(dashscope.Qwen3.Key(), manager.PrettyLogger()))
+	reActAgent = Create(manager.Registry(dashscope.Qwen3.Key(), manager.DevLogger()))
 }
 
 func TestThinking(t *testing.T) {

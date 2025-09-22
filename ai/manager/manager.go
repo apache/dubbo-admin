@@ -2,23 +2,21 @@ package manager
 
 import (
 	"context"
-	"dubbo-admin-ai/config"
-	"sync"
-
-	"dubbo-admin-ai/plugins/dashscope"
-	"dubbo-admin-ai/plugins/siliconflow"
-	"dubbo-admin-ai/utils"
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
-	"time"
+	"sync"
+
+	"dubbo-admin-ai/config"
+	"dubbo-admin-ai/plugins/dashscope"
+	"dubbo-admin-ai/plugins/siliconflow"
+	"dubbo-admin-ai/utils"
 
 	"github.com/dusted-go/logging/prettylog"
+	"github.com/firebase/genkit/go/core/api"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/firebase/genkit/go/plugins/googlegenai"
 	"github.com/joho/godotenv"
-	"github.com/lmittmann/tint"
 )
 
 var (
@@ -28,10 +26,9 @@ var (
 
 func Registry(modelName string, logger *slog.Logger) (registry *genkit.Genkit) {
 	once.Do(func() {
-		loadEnvVars()
 		gloLogger = logger
 		if logger == nil {
-			gloLogger = DevLogger()
+			gloLogger = ProductionLogger()
 		}
 		registry = defaultRegistry(modelName)
 	})
@@ -39,7 +36,7 @@ func Registry(modelName string, logger *slog.Logger) (registry *genkit.Genkit) {
 }
 
 // Load environment variables from PROJECT_ROOT/.env file
-func loadEnvVars() {
+func loadEnvVars2Config() {
 	dotEnvFilePath := filepath.Join(config.PROJECT_ROOT, ".env")
 	dotEnvExampleFilePath := filepath.Join(config.PROJECT_ROOT, ".env.example")
 
@@ -55,69 +52,51 @@ func loadEnvVars() {
 		panic(err)
 	}
 
+	config.GEMINI_API_KEY = os.Getenv("GEMINI_API_KEY")
+	config.SILICONFLOW_API_KEY = os.Getenv("SILICONFLOW_API_KEY")
+	config.DASHSCOPE_API_KEY = os.Getenv("DASHSCOPE_API_KEY")
 }
 
 func defaultRegistry(modelName string) *genkit.Genkit {
+	loadEnvVars2Config()
 	ctx := context.Background()
+	plugins := []api.Plugin{}
+	if config.SILICONFLOW_API_KEY != "" {
+		plugins = append(plugins, &siliconflow.SiliconFlow{
+			APIKey: config.SILICONFLOW_API_KEY,
+		})
+	}
+	if config.GEMINI_API_KEY != "" {
+		plugins = append(plugins, &googlegenai.GoogleAI{
+			APIKey: config.GEMINI_API_KEY,
+		})
+	}
+	if config.DASHSCOPE_API_KEY != "" {
+		plugins = append(plugins, &dashscope.DashScope{
+			APIKey: config.DASHSCOPE_API_KEY,
+		})
+	}
 	return genkit.Init(ctx,
-		genkit.WithPlugins(
-			&siliconflow.SiliconFlow{
-				APIKey: config.SILICONFLOW_API_KEY,
-			},
-
-			&googlegenai.GoogleAI{
-				APIKey: config.GEMINI_API_KEY,
-			},
-			&dashscope.DashScope{
-				APIKey: config.DASHSCOPE_API_KEY,
-			},
-		),
+		genkit.WithPlugins(plugins...),
 		genkit.WithDefaultModel(modelName),
 		genkit.WithPromptDir(config.PROMPT_DIR_PATH),
 	)
 }
 
 func DevLogger() *slog.Logger {
-	logLevel := slog.LevelInfo
-	if envLevel := config.LOG_LEVEL; envLevel != "" {
-		switch strings.ToUpper(envLevel) {
-		case "DEBUG":
-			logLevel = slog.LevelDebug
-		case "INFO":
-			logLevel = slog.LevelInfo
-		case "WARN", "WARNING":
-			logLevel = slog.LevelWarn
-		case "ERROR":
-			logLevel = slog.LevelError
-		}
-	}
-
 	slog.SetDefault(
 		slog.New(
-			tint.NewHandler(os.Stderr, &tint.Options{
-				Level:      logLevel,
-				AddSource:  true,
-				TimeFormat: time.Kitchen,
+			prettylog.NewHandler(&slog.HandlerOptions{
+				Level:       slog.LevelDebug,
+				AddSource:   true,
+				ReplaceAttr: nil,
 			}),
 		),
 	)
 	return slog.Default()
 }
 
-func ReleaseLogger() *slog.Logger {
-	slog.SetDefault(
-		slog.New(
-			tint.NewHandler(os.Stderr, &tint.Options{
-				Level:      slog.LevelInfo,
-				AddSource:  true,
-				TimeFormat: time.Kitchen,
-			}),
-		),
-	)
-	return slog.Default()
-}
-
-func PrettyLogger() *slog.Logger {
+func ProductionLogger() *slog.Logger {
 	slog.SetDefault(
 		slog.New(
 			prettylog.NewHandler(&slog.HandlerOptions{
@@ -132,7 +111,7 @@ func PrettyLogger() *slog.Logger {
 
 func GetLogger() *slog.Logger {
 	if gloLogger == nil {
-		gloLogger = PrettyLogger()
+		gloLogger = ProductionLogger()
 	}
 	return gloLogger
 }
