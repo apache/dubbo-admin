@@ -2,10 +2,10 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"dubbo-admin-ai/config"
-	"dubbo-admin-ai/manager"
 	"dubbo-admin-ai/schema"
 	"dubbo-admin-ai/tools"
 
@@ -43,6 +43,7 @@ type Channels struct {
 	UserRespChan  chan *schema.StreamFeedback
 	ToolRespChan  chan *tools.ToolOutput
 	FlowChan      chan schema.Schema
+	ErrorChan     chan error
 }
 
 func NewChannels(bufferSize int) *Channels {
@@ -52,6 +53,7 @@ func NewChannels(bufferSize int) *Channels {
 		ToolRespChan:  make(chan *tools.ToolOutput, bufferSize),
 		UserRespChan:  make(chan *schema.StreamFeedback, bufferSize),
 		FlowChan:      make(chan schema.Schema, bufferSize),
+		ErrorChan:     make(chan error, bufferSize),
 	}
 }
 
@@ -72,6 +74,7 @@ func (chans *Channels) Destroy() {
 	close(chans.ToolRespChan)
 	close(chans.UserRespChan)
 	close(chans.FlowChan)
+	close(chans.ErrorChan)
 	chans = nil
 }
 
@@ -106,26 +109,23 @@ func NewStreamStage(flow any, t StageType, onStreaming func(*Channels, schema.St
 	stage.streamFunc = func(channels *Channels) StreamHandler {
 		return func(val *core.StreamingFlowValue[schema.Schema, schema.StreamChunk], err error) bool {
 			if err != nil {
-				manager.GetLogger().Error("error", "err", err)
+				channels.ErrorChan <- err
 				return false
 			}
-
 			if !val.Done {
 				if err := onStreaming(channels, val.Stream); err != nil {
-					manager.GetLogger().Error("Error when streaming", "err", err)
+					channels.ErrorChan <- err
 					return false
 				}
 			} else if val.Output != nil {
 				if err := onDone(channels, val.Output); err != nil {
-					manager.GetLogger().Error("Error when finalizing", "err", err)
+					channels.ErrorChan <- err
 					return false
 				}
 			}
-
 			return true
 		}
 	}
-
 	return stage
 }
 
@@ -149,8 +149,8 @@ func (s *Stage) Execute(ctx context.Context, chans *Channels, input schema.Schem
 }
 
 type Orchestrator interface {
-	Run(context.Context, schema.Schema, *Channels)
-	RunStage(context.Context, string, schema.Schema, *Channels)
+	Run(context.Context, schema.Schema, *Channels) error
+	RunStage(context.Context, string, schema.Schema, *Channels) error
 }
 
 type OrderOrchestrator struct {
@@ -194,20 +194,20 @@ func NewOrderOrchestrator(stages ...*Stage) *OrderOrchestrator {
 	}
 }
 
-func (orchestrator *OrderOrchestrator) Run(ctx context.Context, input schema.Schema, chans *Channels) {
+func (orchestrator *OrderOrchestrator) Run(ctx context.Context, input schema.Schema, chans *Channels) error {
 	// Use user initial input for the first round
 	if input == nil {
-		panic("userInput cannot be nil")
+		return errors.New("userInput cannot be nil")
 	}
 
 	for _, key := range orchestrator.beforeLoop {
 		curStage, ok := orchestrator.stages[key]
 		if !ok {
-			panic(fmt.Errorf("stage %s not found", key))
+			return fmt.Errorf("stage %s not found", key)
 		}
 
 		if err := curStage.Execute(ctx, chans, input); err != nil {
-			panic(fmt.Errorf("failed to execute stage %s: %w", key, err))
+			return fmt.Errorf("failed to execute stage %s: %w", key, err)
 		}
 		output := <-chans.FlowChan
 
@@ -221,11 +221,11 @@ Outer:
 			// Execute current stage
 			curStage, ok := orchestrator.stages[order]
 			if !ok {
-				panic(fmt.Errorf("stage %s not found", order))
+				return fmt.Errorf("stage %s not found", order)
 			}
 
 			if err := curStage.Execute(ctx, chans, input); err != nil {
-				panic(fmt.Errorf("failed to execute stage %s: %w", order, err))
+				return fmt.Errorf("failed to execute stage %s: %w", order, err)
 			}
 			output := <-chans.FlowChan
 
@@ -244,27 +244,29 @@ Outer:
 	for _, key := range orchestrator.afterLoop {
 		curStage, ok := orchestrator.stages[key]
 		if !ok {
-			panic(fmt.Errorf("stage %s not found", key))
+			return (fmt.Errorf("stage %s not found", key))
 		}
 
 		if err := curStage.Execute(ctx, chans, input); err != nil {
-			panic(fmt.Errorf("failed to execute stage %s: %w", key, err))
+			return fmt.Errorf("failed to execute stage %s: %w", key, err)
 		}
 		output := <-chans.FlowChan
 
 		input = output
 	}
+	return nil
 }
 
-func (orchestrator *OrderOrchestrator) RunStage(ctx context.Context, key string, input schema.Schema, chans *Channels) {
+func (orchestrator *OrderOrchestrator) RunStage(ctx context.Context, key string, input schema.Schema, chans *Channels) error {
 	defer func() {
 		chans.Close()
 	}()
 	stage, ok := orchestrator.stages[key]
 	if !ok {
-		panic(fmt.Errorf("stage %s not found", key))
+		return fmt.Errorf("stage %s not found", key)
 	}
 	if err := stage.Execute(ctx, chans, input); err != nil {
-		panic(fmt.Errorf("failed to execute stage %s: %w", key, err))
+		return fmt.Errorf("failed to execute stage %s: %w", key, err)
 	}
+	return nil
 }

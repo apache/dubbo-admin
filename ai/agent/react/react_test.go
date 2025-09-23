@@ -20,7 +20,7 @@ var (
 )
 
 func init() {
-	reActAgent = Create(manager.Registry(dashscope.Qwen3.Key(), manager.DevLogger()))
+	reActAgent, _ = Create(manager.Registry(dashscope.Qwen3.Key(), manager.DevLogger()))
 }
 
 func TestThinking(t *testing.T) {
@@ -148,6 +148,16 @@ func TestAgent(t *testing.T) {
 	channels := reActAgent.Interact(agentInput)
 	for !channels.Closed() {
 		select {
+		case err, ok := <-channels.ErrorChan:
+			if !ok {
+				channels.ErrorChan = nil
+				continue
+			}
+			if err != nil {
+				t.Fatalf("agent interaction error: %v", err)
+				channels.Close()
+				return
+			}
 		case chunk, ok := <-channels.UserRespChan:
 			if !ok {
 				channels.UserRespChan = nil

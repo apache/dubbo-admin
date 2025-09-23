@@ -38,6 +38,13 @@ func onStreaming2User(channels *agent.Channels, chunk schema.StreamChunk) error 
 	return nil
 }
 
+func onStreaming2Nil(channels *agent.Channels, chunk schema.StreamChunk) error {
+	if channels == nil {
+		return fmt.Errorf("channels is nil")
+	}
+	return nil
+}
+
 func onStreaming2StdOut(channels *agent.Channels, chunk schema.StreamChunk) error {
 	if channels == nil {
 		return fmt.Errorf("channels is nil")
@@ -54,10 +61,23 @@ func onOutput2Flow(channels *agent.Channels, output schema.Schema) error {
 	return nil
 }
 
-func Create(g *genkit.Genkit) *ReActAgent {
-	thinkPrompt := buildThinkPrompt(g)
-	feedBackPrompt := buildFeedBackPrompt(g)
-	observePrompt := buildObservePrompt(g)
+func Create(g *genkit.Genkit) (*ReActAgent, error) {
+	var (
+		thinkPrompt,
+		feedBackPrompt,
+		observePrompt ai.Prompt
+		err error
+	)
+
+	if thinkPrompt, err = buildThinkPrompt(g); err != nil {
+		return nil, err
+	}
+	if feedBackPrompt, err = buildFeedBackPrompt(g); err != nil {
+		return nil, err
+	}
+	if observePrompt, err = buildObservePrompt(g); err != nil {
+		return nil, err
+	}
 	// intentParsePrompt := buildIntentParsePrompt(g)
 
 	channels := agent.NewChannels(config.STAGE_CHANNEL_BUFFER_SIZE)
@@ -81,7 +101,7 @@ func Create(g *genkit.Genkit) *ReActAgent {
 	observerStage := agent.NewStreamStage(
 		observe(g, observePrompt),
 		agent.InLoop,
-		onStreaming2StdOut,
+		onStreaming2Nil,
 		onOutput2Flow,
 	)
 
@@ -92,23 +112,26 @@ func Create(g *genkit.Genkit) *ReActAgent {
 		orchestrator: orchestrator,
 		memoryCtx:    memory.NewMemoryContext(memory.ChatHistoryKey),
 		channels:     channels,
-	}
+	}, nil
 }
 
 func (ra *ReActAgent) Interact(input schema.Schema) *agent.Channels {
 	ra.channels.Reset()
 	go func() {
-		ra.orchestrator.Run(ra.memoryCtx, input, ra.channels)
+		err := ra.orchestrator.Run(ra.memoryCtx, input, ra.channels)
+		if err != nil {
+			ra.channels.ErrorChan <- err
+		}
 		ra.channels.Close()
 	}()
 	return ra.channels
 }
 
-func buildThinkPrompt(registry *genkit.Genkit) ai.Prompt {
+func buildThinkPrompt(registry *genkit.Genkit) (ai.Prompt, error) {
 	// Load system prompt from filesystem
 	data, err := os.ReadFile(config.PROMPT_DIR_PATH + "/agentSystem.txt")
 	if err != nil {
-		panic(fmt.Errorf("failed to read agentSystem prompt: %w", err))
+		return nil, fmt.Errorf("failed to read agentSystem prompt: %w", err)
 	}
 	systemPromptText := string(data)
 
@@ -124,45 +147,45 @@ func buildThinkPrompt(registry *genkit.Genkit) ai.Prompt {
 		ai.WithPrompt(schema.UserPromptTemplate),
 		ai.WithTools(toolRefs...),
 		ai.WithReturnToolRequests(true),
-	)
+	), nil
 }
 
-func buildFeedBackPrompt(registry *genkit.Genkit) ai.Prompt {
+func buildFeedBackPrompt(registry *genkit.Genkit) (ai.Prompt, error) {
 	data, err := os.ReadFile(config.PROMPT_DIR_PATH + "/agentFeedback.txt")
 	if err != nil {
-		panic(fmt.Errorf("failed to read agentFeedback prompt: %w", err))
+		return nil, fmt.Errorf("failed to read agentFeedback prompt: %w", err)
 	}
 	return genkit.DefinePrompt(registry, "agentFeedback",
 		ai.WithSystem(string(data)),
 		ai.WithInputType(schema.ThinkInput{}),
 		ai.WithPrompt(schema.UserPromptTemplate),
-	)
+	), nil
 }
 
-func buildObservePrompt(registry *genkit.Genkit) ai.Prompt {
+func buildObservePrompt(registry *genkit.Genkit) (ai.Prompt, error) {
 	data, err := os.ReadFile(config.PROMPT_DIR_PATH + "/agentObserve.txt")
 	if err != nil {
-		panic(fmt.Errorf("failed to read agentObserve prompt: %w", err))
+		return nil, fmt.Errorf("failed to read agentObserve prompt: %w", err)
 	}
 	return genkit.DefinePrompt(registry, "observe",
 		ai.WithSystem(string(data)),
 		ai.WithInputType(ActOut{}),
 		ai.WithOutputType(schema.ThinkInput{}),
 		ai.WithPrompt(schema.UserPromptTemplate),
-	)
+	), nil
 }
 
-func buildIntentParsePrompt(registry *genkit.Genkit) ai.Prompt {
+func buildIntentParsePrompt(registry *genkit.Genkit) (ai.Prompt, error) {
 	data, err := os.ReadFile(config.PROMPT_DIR_PATH + "/agentIntentParse.txt")
 	if err != nil {
-		panic(fmt.Errorf("failed to read agentIntentParse prompt: %w", err))
+		return nil, fmt.Errorf("failed to read agentIntentParse prompt: %w", err)
 	}
 	return genkit.DefinePrompt(registry, "intentParse",
 		ai.WithSystem(string(data)),
 		ai.WithInputType(schema.UserInput{}),
 		ai.WithOutputType(schema.ThinkInput{}),
 		ai.WithPrompt(schema.UserPromptTemplate),
-	)
+	), nil
 }
 
 func rawChunkHandler(cb core.StreamCallback[schema.StreamChunk]) ai.ModelStreamCallback {
@@ -204,13 +227,11 @@ func intentParse(g *genkit.Genkit,
 				ai.WithStreaming(rawChunkHandler(cb)),
 			)
 			if err != nil {
-				manager.GetLogger().Error("Intent parse prompt execution failed", "error", err)
 				return nil, err
 			}
 
 			var intent schema.ThinkInput
 			if err := resp.Output(&intent); err != nil {
-				manager.GetLogger().Error("Failed to parse intent response", "error", err, "response", resp)
 				return nil, fmt.Errorf("failed to parse intent response: %w", err)
 			}
 
@@ -242,7 +263,6 @@ func think(
 				ai.WithStreaming(rawChunkHandler(cb)),
 			)
 			if err != nil {
-				manager.GetLogger().Error("Failed to execute agentFeedback prompt", "error", err)
 				return nil, fmt.Errorf("failed to execute agentFeedback prompt: %w", err)
 			}
 
@@ -264,7 +284,6 @@ func think(
 				)
 			}
 			if err != nil {
-				manager.GetLogger().Error("Failed to execute agentThink prompt", "error", err)
 				return nil, fmt.Errorf("failed to execute agentThink prompt: %w", err)
 			}
 
@@ -272,7 +291,6 @@ func think(
 			var thinkOut ThinkOut
 			err = resp.Output(&thinkOut)
 			if err != nil {
-				manager.GetLogger().Error("Failed to parse agentThink prompt response", "error", err)
 				return nil, fmt.Errorf("failed to parse agentThink prompt response: %w", err)
 			}
 
@@ -309,7 +327,6 @@ func act(g *genkit.Genkit) agent.NormalFlow {
 
 				output, err := req.Call(g, ctx)
 				if err != nil {
-					manager.GetLogger().Error("Failed to call tool", "tool", req.ToolName, "error", err)
 					return nil, fmt.Errorf("failed to call tool %s: %w", req.ToolName, err)
 				}
 
@@ -348,7 +365,6 @@ func observe(g *genkit.Genkit, observePrompt ai.Prompt) agent.StreamFlow {
 				ai.WithStreaming(rawChunkHandler(cb)),
 			)
 			if err != nil {
-				manager.GetLogger().Error("Failed to execute observe prompt", "error", err)
 				return nil, fmt.Errorf("failed to execute observe prompt: %w", err)
 			}
 
@@ -356,7 +372,6 @@ func observe(g *genkit.Genkit, observePrompt ai.Prompt) agent.StreamFlow {
 			var response schema.ThinkInput
 			err = resp.Output(&response)
 			if err != nil {
-				manager.GetLogger().Error("Failed to parse observe prompt response", "error", err)
 				return nil, fmt.Errorf("failed to parse observe prompt response: %w", err)
 			}
 			history.AddHistory(resp.History()...)

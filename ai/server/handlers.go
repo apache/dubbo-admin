@@ -77,6 +77,17 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 	)
 	for {
 		select {
+		case err, ok = <-channels.ErrorChan:
+			if !ok {
+				channels.ErrorChan = nil
+				continue
+			}
+			if err != nil {
+				sseHandler.HandleError("agent_error", fmt.Sprintf("agent error: %v", err))
+				manager.GetLogger().Error("Agent interaction error", "session_id", sessionID, "error", err)
+				channels.Close()
+				return
+			}
 		case feedback, ok = <-channels.UserRespChan:
 			if !ok {
 				channels.UserRespChan = nil
