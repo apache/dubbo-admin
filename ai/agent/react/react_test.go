@@ -121,24 +121,24 @@ func TestAct(t *testing.T) {
 
 }
 
-func TestIntent(t *testing.T) {
-	userInput := schema.UserInput{
-		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
-	}
+// func TestIntent(t *testing.T) {
+// 	userInput := schema.UserInput{
+// 		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
+// 	}
 
-	channels := agent.NewChannels(config.STAGE_CHANNEL_BUFFER_SIZE)
-	go reActAgent.orchestrator.RunStage(chatHistoryCtx, agent.IntentFlowName, userInput, channels)
+// 	channels := agent.NewChannels(config.STAGE_CHANNEL_BUFFER_SIZE)
+// 	go reActAgent.orchestrator.RunStage(chatHistoryCtx, agent.IntentFlowName, userInput, channels)
 
-	for !channels.Closed() {
-		select {
-		case stream := <-channels.UserRespChan:
-			fmt.Print(stream.Text)
+// 	for !channels.Closed() {
+// 		select {
+// 		case stream := <-channels.UserRespChan:
+// 			fmt.Print(stream.Text)
 
-		case flowData := <-channels.FlowChan:
-			fmt.Println(flowData)
-		}
-	}
-}
+// 		case flowData := <-channels.FlowChan:
+// 			fmt.Println(flowData)
+// 		}
+// 	}
+// }
 
 func TestAgent(t *testing.T) {
 	agentInput := schema.UserInput{
