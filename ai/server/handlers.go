@@ -23,6 +23,7 @@ type AgentHandler struct {
 
 // NewAgentHandler 创建AI Agent处理器
 func NewAgentHandler(agent agent.Agent, sessionMgr *session.Manager) *AgentHandler {
+	sessionMgr.CreateMockSession()
 	return &AgentHandler{
 		agent:      agent,
 		sessionMgr: sessionMgr,
@@ -67,7 +68,6 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 		if r := recover(); r != nil {
 			sseHandler.HandleError("internal_error", fmt.Sprintf("internal error: %v", r))
 		}
-		c.Header("X-Session-ID", sessionID)
 	}()
 
 	channels = h.agent.Interact(schema.UserInput{Content: req.Message})
