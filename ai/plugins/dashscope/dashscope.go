@@ -10,6 +10,7 @@ import (
 	"github.com/firebase/genkit/go/core/api"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/firebase/genkit/go/plugins/compat_oai"
+	openaiGo "github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 )
 
@@ -22,16 +23,33 @@ const (
 	qwen_plus       = "qwen-plus"
 	qwen_flash      = "qwen-flash"
 	qwen3_coder     = "qwen3-coder-plus"
+
+	text_embedding_v4 = "text-embedding-v4"
 )
 
-var (
-	Qwen3       = model.New(provider, qwen3_235b_a22b, compat_oai.BasicText)
-	Qwen_plus   = model.New(provider, qwen_plus, compat_oai.BasicText)
-	Qwen_max    = model.New(provider, qwen_max, compat_oai.BasicText)
-	Qwen3_coder = model.New(provider, qwen3_coder, compat_oai.BasicText)
-	Qwen_flash  = model.New(provider, qwen_flash, compat_oai.BasicText)
+type TextEmbeddingConfig struct {
+	Dimensions     int                                       `json:"dimensions,omitempty"`
+	EncodingFormat openaiGo.EmbeddingNewParamsEncodingFormat `json:"encodingFormat,omitempty"`
+}
 
-	supportedModels = []model.Model{
+var (
+	Qwen3       = model.NewModel(provider, qwen3_235b_a22b, &compat_oai.BasicText)
+	Qwen_plus   = model.NewModel(provider, qwen_plus, &compat_oai.BasicText)
+	Qwen_max    = model.NewModel(provider, qwen_max, &compat_oai.BasicText)
+	Qwen3_coder = model.NewModel(provider, qwen3_coder, &compat_oai.BasicText)
+	Qwen_flash  = model.NewModel(provider, qwen_flash, &compat_oai.BasicText)
+
+	Qwen3_embedding = model.NewEmbedder(
+		provider,
+		text_embedding_v4,
+		1024,
+		&ai.EmbedderSupports{
+			Input: []string{"text"},
+		},
+		TextEmbeddingConfig{},
+	)
+
+	supportedModels = []*model.Model{
 		Qwen3,
 		Qwen_plus,
 		Qwen_max,
@@ -39,7 +57,9 @@ var (
 		Qwen_flash,
 	}
 
-	// supportedEmbeddingModels = []string{}
+	supportedEmbeddingModels = []*model.Embedder{
+		Qwen3_embedding,
+	}
 )
 
 type DashScope struct {
@@ -90,10 +110,13 @@ func (o *DashScope) Init(ctx context.Context) []api.Action {
 
 	// define default models
 	for _, model := range supportedModels {
-		actions = append(actions, o.DefineModel(model.Key(), model.Info()).(api.Action))
+		actions = append(actions, o.DefineModel(model.InternalKey(), model.Options()).(api.Action))
 	}
-	//TODO: define default embedders
 
+	// define default embedders
+	for _, embedder := range supportedEmbeddingModels {
+		actions = append(actions, o.DefineEmbedder(embedder.InternalKey(), embedder.Options()).(api.Action))
+	}
 	return actions
 }
 

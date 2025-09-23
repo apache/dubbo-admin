@@ -16,12 +16,14 @@ import (
 	"github.com/firebase/genkit/go/core/api"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/firebase/genkit/go/plugins/googlegenai"
+	"github.com/firebase/genkit/go/plugins/pinecone"
 	"github.com/joho/godotenv"
 )
 
 var (
-	gloLogger *slog.Logger
-	once      sync.Once
+	gloRegistry *genkit.Genkit
+	gloLogger   *slog.Logger
+	once        sync.Once
 )
 
 func Registry(modelName string, logger *slog.Logger) (registry *genkit.Genkit) {
@@ -30,13 +32,16 @@ func Registry(modelName string, logger *slog.Logger) (registry *genkit.Genkit) {
 		if logger == nil {
 			gloLogger = ProductionLogger()
 		}
-		registry = defaultRegistry(modelName)
+		gloRegistry = defaultRegistry(modelName)
 	})
-	return registry
+	if gloRegistry == nil {
+		panic("Failed to get global registry")
+	}
+	return gloRegistry
 }
 
 // Load environment variables from PROJECT_ROOT/.env file
-func loadEnvVars2Config() {
+func LoadEnvVars2Config() {
 	dotEnvFilePath := filepath.Join(config.PROJECT_ROOT, ".env")
 	dotEnvExampleFilePath := filepath.Join(config.PROJECT_ROOT, ".env.example")
 
@@ -55,10 +60,12 @@ func loadEnvVars2Config() {
 	config.GEMINI_API_KEY = os.Getenv("GEMINI_API_KEY")
 	config.SILICONFLOW_API_KEY = os.Getenv("SILICONFLOW_API_KEY")
 	config.DASHSCOPE_API_KEY = os.Getenv("DASHSCOPE_API_KEY")
+	config.PINECONE_API_KEY = os.Getenv("PINECONE_API_KEY")
+	config.COHERE_API_KEY = os.Getenv("COHERE_API_KEY")
 }
 
 func defaultRegistry(modelName string) *genkit.Genkit {
-	loadEnvVars2Config()
+	LoadEnvVars2Config()
 	ctx := context.Background()
 	plugins := []api.Plugin{}
 	if config.SILICONFLOW_API_KEY != "" {
@@ -76,11 +83,18 @@ func defaultRegistry(modelName string) *genkit.Genkit {
 			APIKey: config.DASHSCOPE_API_KEY,
 		})
 	}
-	return genkit.Init(ctx,
+	if config.PINECONE_API_KEY != "" {
+		plugins = append(plugins, &pinecone.Pinecone{
+			APIKey: config.PINECONE_API_KEY,
+		})
+	}
+
+	registry := genkit.Init(ctx,
 		genkit.WithPlugins(plugins...),
 		genkit.WithDefaultModel(modelName),
 		genkit.WithPromptDir(config.PROMPT_DIR_PATH),
 	)
+	return registry
 }
 
 func DevLogger() *slog.Logger {

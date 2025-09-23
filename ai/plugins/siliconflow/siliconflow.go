@@ -24,12 +24,12 @@ const (
 )
 
 var (
-	DeepSeekV3 = model.New(provider, deepseekV3, compat_oai.BasicText)
-	QwenQwQ32B = model.New(provider, qwenQwQ32B, compat_oai.BasicText)
-	Qwen3Coder = model.New(provider, qwen3Coder, compat_oai.Multimodal)
-	DeepSeekR1 = model.New(provider, deepseekR1, compat_oai.BasicText)
+	DeepSeekV3 = model.NewModel(provider, deepseekV3, &compat_oai.BasicText)
+	QwenQwQ32B = model.NewModel(provider, qwenQwQ32B, &compat_oai.BasicText)
+	Qwen3Coder = model.NewModel(provider, qwen3Coder, &compat_oai.Multimodal)
+	DeepSeekR1 = model.NewModel(provider, deepseekR1, &compat_oai.BasicText)
 
-	supportedModels = []model.Model{
+	supportedModels = []*model.Model{
 		DeepSeekV3,
 		QwenQwQ32B,
 		Qwen3Coder,
@@ -86,7 +86,7 @@ func (o *SiliconFlow) Init(ctx context.Context) []api.Action {
 
 	// define default models
 	for _, model := range supportedModels {
-		actions = append(actions, o.DefineModel(model.Key(), model.Info()).(api.Action))
+		actions = append(actions, o.DefineModel(model.InternalKey(), model.Options()).(api.Action))
 	}
 	//TODO: define default embedders
 
