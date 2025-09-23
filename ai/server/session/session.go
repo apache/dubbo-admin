@@ -74,6 +74,18 @@ func NewManager() *Manager {
 	return m
 }
 
+func (m *Manager) CreateMockSession() *Session {
+	session := &Session{
+		ID:        "session_test",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Status:    "active",
+	}
+	m.sessions[session.ID] = session
+	manager.GetLogger().Info("Session created", "session_id", session.ID)
+	return session
+}
+
 // CreateSession 创建新会话
 func (m *Manager) CreateSession() *Session {
 	m.mu.Lock()

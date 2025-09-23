@@ -17,7 +17,7 @@ You will receive the following information to perform your task:
 - **Tool Observation**: The raw data (e.g., JSON, text) returned by the tool.
 
 # 4. Output Structure & Requirements
-Your output MUST be **a JSON Object Follow the Format Below**:
+Your output MUST be **a valid JSON Object Follow the Format Below**:
 
 {"content": "The Markdown message you observed"}
 
