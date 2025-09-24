@@ -15,6 +15,7 @@ var (
 	DASHSCOPE_API_KEY   string
 	PINECONE_API_KEY    string
 	COHERE_API_KEY      string
+	PROMETHEUS_URL      string
 
 	// Configuration
 	// Automatically get project root directory
@@ -26,7 +27,8 @@ var (
 )
 
 const (
-	MAX_REACT_ITERATIONS      int    = 5
+	MAX_REACT_ITERATIONS      int    = 10
 	STAGE_CHANNEL_BUFFER_SIZE int    = 5
 	PINECONE_INDEX_NAME       string = "dubbot"
+	MCP_HOST_NAME             string = "mcp_host"
 )
