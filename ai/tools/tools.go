@@ -47,7 +47,7 @@ func Call(g *genkit.Genkit, mcp *MCPToolManager, toolName string, input any) (to
 		return toolOutput, fmt.Errorf("tool %s returned nil output", toolName)
 	}
 	manager.GetLogger().Info("Tool output:", "output", rawToolOutput)
-	
+
 	if isMCPTool {
 		toolOutput = ToolOutput{
 			ToolName: toolName,
@@ -60,6 +60,11 @@ func Call(g *genkit.Genkit, mcp *MCPToolManager, toolName string, input any) (to
 	err = mapstructure.Decode(rawToolOutput, &toolOutput)
 	if err != nil {
 		return toolOutput, fmt.Errorf("failed to decode tool output for %s: %w", toolName, err)
+	}
+
+	// Ensure tool_name is set correctly if not already provided
+	if toolOutput.ToolName == "" {
+		toolOutput.ToolName = toolName
 	}
 
 	return toolOutput, nil

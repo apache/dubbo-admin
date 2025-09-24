@@ -110,7 +110,8 @@ func (ta ThinkOutput) String() string {
 }
 
 type ToolOutputs struct {
-	Outputs []tools.ToolOutput `json:"tool_responses"`
+	Outputs []tools.ToolOutput  `json:"tool_responses"`
+	Usage   *ai.GenerationUsage `json:"usage,omitempty" jsonschema_description:"DO NOT SET THIS FIELD"`
 }
 
 func (to ToolOutputs) Validate(T reflect.Type) error {
