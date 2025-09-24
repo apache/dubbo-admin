@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"dubbo-admin-ai/manager"
 
 	"github.com/firebase/genkit/go/ai"
 )
@@ -41,7 +40,6 @@ func (h *History) IsEmpty() bool {
 }
 
 func (h *History) AllHistory() []*ai.Message {
-	manager.GetLogger().Info("History:", "histroy", len(h.history))
 	return h.history
 }
 

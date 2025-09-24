@@ -238,10 +238,10 @@ func think(
 				return nil, fmt.Errorf("failed to get history from context")
 			}
 
-			// build prompt options
-			opts := []ai.PromptExecuteOption{}
-			opts = append(opts,
-				ai.WithReturnToolRequests(true))
+			var (
+				opts     []ai.PromptExecuteOption
+				inputMsg *ai.Message
+			)
 			if !history.IsEmpty() {
 				opts = append(opts, ai.WithMessages(history.AllHistory()...))
 			} else {
@@ -249,7 +249,8 @@ func think(
 				if err != nil {
 					return nil, fmt.Errorf("failed to marshal input: %w", err)
 				}
-				opts = append(opts, ai.WithMessages(ai.NewUserMessage(ai.NewJSONPart(string(inputJson)))))
+				inputMsg = ai.NewUserMessage(ai.NewJSONPart(string(inputJson)))
+				opts = append(opts, ai.WithMessages(inputMsg))
 			}
 
 			// execute prompt
@@ -266,8 +267,11 @@ func think(
 				return nil, fmt.Errorf("failed to parse agentThink prompt response: %w", err)
 			}
 
-			feedback(feedBackPrompt, ctx, cb, resp.Message)
-			history.AddHistory(resp.History()...)
+			// Don't add the original user input
+			// if inputMsg != nil {
+			// 	history.AddHistory(inputMsg)
+			// }
+			history.AddHistory(resp.Message)
 			thinkOut.Usage = resp.Usage
 
 			return thinkOut, nil
@@ -291,11 +295,11 @@ func act(g *genkit.Genkit, mcpToolManager *tools.MCPToolManager, toolPrompt ai.P
 			if !ok {
 				return nil, fmt.Errorf("failed to get history from context")
 			}
+
+			// Get tool requests form LLM
 			if history.IsEmpty() {
 				return nil, fmt.Errorf("history is empty")
 			}
-
-			// Get tool requests form LLM
 			toolReqs, err := toolPrompt.Execute(ctx,
 				ai.WithMessages(history.AllHistory()...),
 			)
@@ -324,8 +328,10 @@ func act(g *genkit.Genkit, mcpToolManager *tools.MCPToolManager, toolPrompt ai.P
 				actOuts.Add(&output)
 			}
 
-			toolRespMsg := ai.NewMessage(ai.RoleTool, nil, parts...)
-			history.AddHistory(toolRespMsg)
+			// ai.RoleTool's messages will be ingored by ai.WithMessages
+			history.AddHistory(ai.NewMessage(ai.RoleModel, nil, parts...))
+			actOuts.Usage = toolReqs.Usage
+
 			return actOuts, nil
 		})
 }
@@ -358,9 +364,10 @@ func observe(g *genkit.Genkit, observePrompt ai.Prompt, feedbackPrompt ai.Prompt
 				return nil, fmt.Errorf("failed to parse observe prompt response: %w", err)
 			}
 
-			feedback(feedbackPrompt, ctx, cb, resp.Message)
-			history.AddHistory(resp.History()...)
+			history.AddHistory(resp.Message)
+			feedback(feedbackPrompt, ctx, cb, history.AllHistory()...)
 			response.Usage = resp.Usage
+
 			return response, err
 		})
 }
