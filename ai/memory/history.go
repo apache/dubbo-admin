@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"dubbo-admin-ai/manager"
 
 	"github.com/firebase/genkit/go/ai"
 )
@@ -22,13 +23,17 @@ func NewMemoryContext(key HistoryKey) context.Context {
 	return context.WithValue(
 		context.Background(),
 		key,
-		&History{
-			history: make([]*ai.Message, 0),
-		})
+		&History{history: make([]*ai.Message, 0)},
+	)
 }
 
 func (h *History) AddHistory(message ...*ai.Message) {
-	h.history = append(h.history, message...)
+	for _, msg := range message {
+		if msg == nil {
+			continue
+		}
+		h.history = append(h.history, msg)
+	}
 }
 
 func (h *History) IsEmpty() bool {
@@ -36,6 +41,7 @@ func (h *History) IsEmpty() bool {
 }
 
 func (h *History) AllHistory() []*ai.Message {
+	manager.GetLogger().Info("History:", "histroy", len(h.history))
 	return h.history
 }
 

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"dubbo-admin-ai/tools"
 
@@ -17,14 +16,6 @@ type StreamChunk struct {
 	Index int                    `json:"index"`
 	Chunk *ai.ModelResponseChunk `json:"chunk"`
 }
-
-var (
-	UserPromptTemplate = `input: 
-{{#if content}} content: {{content}} {{/if}} 
-{{#if tool_responses}} tool_responses: {{tool_responses}} {{/if}}
-{{#if thought}} thought: {{thought}} {{/if}}
-`
-)
 
 type UserInput struct {
 	Content string `json:"content,omitempty"`
@@ -50,68 +41,34 @@ const (
 	GeneralInquiry           PrimaryIntent = "GENERAL_INQUIRY"
 )
 
-type TimeContext string
-
-const (
-	Immediate         TimeContext = "IMMEDIATE"
-	Recent            TimeContext = "RECENT"
-	Continuous        TimeContext = "CONTINUOUS"
-	SpecificTimeframe TimeContext = "SPECIFIC_TIMEFRAME"
-	UnspecifiedTime   TimeContext = "UNSPECIFIED_TIME"
-)
-
-type SeverityLevel string
-
-const (
-	Critical      SeverityLevel = "CRITICAL"
-	High          SeverityLevel = "HIGH"
-	Medium        SeverityLevel = "MEDIUM"
-	Low           SeverityLevel = "LOW"
-	Informational SeverityLevel = "INFORMATIONAL"
-)
-
-type InvestigationPriority string
-
-const (
-	PriorityHigh   InvestigationPriority = "HIGH"
-	PriorityMedium InvestigationPriority = "MEDIUM"
-	PriorityLow    InvestigationPriority = "LOW"
-)
-
-type Intent struct {
-	PrimaryIntent         PrimaryIntent         `json:"primary_intent"`
-	TargetServices        []string              `json:"target_services"`
-	MetricsOfInterest     []string              `json:"metrics_of_interest"`
-	TimeContext           TimeContext           `json:"time_context"`
-	SeverityLevel         SeverityLevel         `json:"severity_level"`
-	Keywords              []string              `json:"keywords"`
-	ConfidenceScore       float64               `json:"confidence_score"`
-	InvestigationPriority InvestigationPriority `json:"investigation_priority"`
-	SuggestedTools        []string              `json:"suggested_tools"`
-	Reasoning             string                `json:"reasoning"`
-}
-
-func (i Intent) Validate(t reflect.Type) error {
-	if reflect.TypeOf(i) != t {
-		return fmt.Errorf("Intent: %v is not of type %v", i, t)
-	}
-	return nil
-}
-
 type Observation struct {
-	Content string `json:"content"`
+	Summary     string              `json:"summary"`
+	Heartbeat   bool                `json:"heartbeat"`
+	FinalAnswer string              `json:"final_answer,omitempty" jsonschema:"required=false"`
+	Focus       string              `json:"focus,omitempty"`
+	Evidence    string              `json:"evidence,omitempty"`
+	Usage       *ai.GenerationUsage `json:"usage,omitempty" jsonschema_description:"DO NOT SET THIS FIELD"`
 }
 
-func (u Observation) Validate(t reflect.Type) error {
-	if reflect.TypeOf(u) != t {
-		return fmt.Errorf("Observation: %v is not of type %v", u, t)
+func (o Observation) Validate(t reflect.Type) error {
+	if reflect.TypeOf(o) != t {
+		return fmt.Errorf("Observation: %v is not of type %v", o, t)
 	}
 	return nil
+}
+
+func (o Observation) String() string {
+	data, err := json.MarshalIndent(o, "", "  ")
+	if err != nil {
+		return fmt.Sprintf("Observation{error: %v}", err)
+	}
+	return string(data)
 }
 
 type ThinkInput struct {
-	Content       any                `json:"content,omitempty"`
+	UserInput     *UserInput         `json:"user_input,omitempty"`
 	ToolResponses []tools.ToolOutput `json:"tool_responses,omitempty"`
+	Observation   *Observation       `json:"observation,omitempty"`
 }
 
 func (i ThinkInput) Validate(T reflect.Type) error {
@@ -130,11 +87,11 @@ func (i ThinkInput) String() string {
 }
 
 type ThinkOutput struct {
-	ToolRequests []tools.Tool        `json:"tool_requests,omitempty"`
-	Thought      string              `json:"thought"`
-	Status       Status              `json:"status,omitempty" jsonschema:"enum=CONTINUED,enum=FINISHED"`
-	FinalAnswer  string              `json:"final_answer,omitempty" jsonschema:"required=false"`
-	Usage        *ai.GenerationUsage `json:"usage,omitempty" jsonschema_description:"DO NOT SET THIS FIELD"`
+	Thought        string              `json:"thought"`
+	Intent         PrimaryIntent       `json:"intent,omitempty"`
+	TargetServices []string            `json:"target_services,omitempty"`
+	SuggestedTools []string            `json:"suggested_tools,omitempty"`
+	Usage          *ai.GenerationUsage `json:"usage,omitempty" jsonschema_description:"DO NOT SET THIS FIELD"`
 }
 
 func (ta ThinkOutput) Validate(T reflect.Type) error {
@@ -165,32 +122,6 @@ func (to ToolOutputs) Validate(T reflect.Type) error {
 
 func (to *ToolOutputs) Add(output *tools.ToolOutput) {
 	to.Outputs = append(to.Outputs, *output)
-}
-
-func (to ToolOutputs) String() string {
-	if len(to.Outputs) == 0 {
-		return "ToolOutputs[\n  <no outputs>\n]"
-	}
-
-	result := "ToolOutputs[\n"
-	for i, output := range to.Outputs {
-		// Indent each ToolOutput
-		outputStr := output.String()
-		lines := strings.Split(outputStr, "\n")
-		for j, line := range lines {
-			if j == len(lines)-1 && line == "" {
-				continue // Skip empty last line
-			}
-			result += "  " + line + "\n"
-		}
-
-		// Add separator between outputs except for the last one
-		if i < len(to.Outputs)-1 {
-			result += "\n"
-		}
-	}
-	result += "]"
-	return result
 }
 
 var index = 0

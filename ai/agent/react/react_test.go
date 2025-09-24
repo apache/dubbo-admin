@@ -20,7 +20,7 @@ var (
 )
 
 func init() {
-	reActAgent, _ = Create(manager.Registry(dashscope.Qwen3.Key(), manager.DevLogger()))
+	reActAgent, _ = Create(manager.Registry(dashscope.Qwen3_coder.Key(), manager.ProductionLogger()))
 }
 
 func TestThinking(t *testing.T) {
@@ -31,7 +31,6 @@ func TestThinking(t *testing.T) {
 	channels := agent.NewChannels(config.STAGE_CHANNEL_BUFFER_SIZE)
 
 	defer func() {
-		channels.Close()
 		channels.Close()
 	}()
 
@@ -145,7 +144,7 @@ func TestAgent(t *testing.T) {
 		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
 	}
 
-	channels := reActAgent.Interact(agentInput)
+	channels := reActAgent.Interact(&agentInput)
 	for !channels.Closed() {
 		select {
 		case err, ok := <-channels.ErrorChan:

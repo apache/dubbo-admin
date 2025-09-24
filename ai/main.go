@@ -31,7 +31,7 @@ func main() {
 		logger = manager.DevLogger()
 	}
 
-	reActAgent, err := react.Create(manager.Registry(dashscope.Qwen_max.Key(), logger))
+	reActAgent, err := react.Create(manager.Registry(dashscope.Qwen3.Key(), logger))
 	if err != nil {
 		logger.Error("Failed to create ReAct agent", "error", err)
 		return

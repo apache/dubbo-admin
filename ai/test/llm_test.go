@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"dubbo-admin-ai/agent/react"
@@ -15,7 +13,6 @@ import (
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/core"
 	"github.com/firebase/genkit/go/genkit"
-	"github.com/firebase/genkit/go/plugins/mcp"
 )
 
 type WeatherInput struct {
@@ -65,52 +62,4 @@ func TestWeatherFlowRun(t *testing.T) {
 
 	flow := defineWeatherFlow(g)
 	flow.Run(ctx, WeatherInput{Location: "San Francisco"})
-}
-
-func TestMCP(t *testing.T) {
-	ctx := context.Background()
-	g := manager.Registry(dashscope.Qwen3.Key(), nil)
-
-	homeDir, _ := os.UserHomeDir()
-	chromaDataDir := filepath.Join(homeDir, "chroma-data") // Adjust this path
-
-	// Create MCP client for Chroma
-	client, err := mcp.NewGenkitMCPClient(mcp.MCPClientOptions{
-		Name: "chroma-server",
-		Stdio: &mcp.StdioConfig{
-			Command: "uvx",
-			Args: []string{
-				"chroma-mcp",
-				"--client-type", "persistent",
-				"--data-dir", chromaDataDir,
-			},
-		},
-	})
-	if err != nil {
-		log.Fatal("Failed to connect to Chroma:", err)
-	}
-
-	// Get available tools from Chroma
-	tools, err := client.GetActiveTools(ctx, g)
-	if err != nil {
-		log.Fatal("Failed to get Chroma tools:", err)
-	}
-
-	log.Printf("Available Chroma tools: %d", len(tools))
-	for _, tool := range tools {
-		log.Printf("- %s: %s", tool.Name(), tool.Definition().Description)
-	}
-
-	for _, tool := range tools {
-		if tool.Name() == "chroma-server_chroma_list_collections" {
-			input := map[string]any{
-				"limit":  5,
-				"offset": 0,
-			}
-			output, err := tool.RunRaw(ctx, input)
-			fmt.Printf("Output: %v, err: %v", output, err)
-			break
-		}
-	}
-
 }

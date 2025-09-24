@@ -33,7 +33,7 @@ const (
 )
 
 type Agent interface {
-	Interact(schema.Schema) *Channels
+	Interact(*schema.UserInput) *Channels
 }
 
 type Channels struct {
@@ -230,8 +230,8 @@ Outer:
 			output := <-chans.FlowChan
 
 			// Check if LLM returned final answer
-			if out, ok := output.(schema.ThinkOutput); ok {
-				if out.Status == schema.Finished && out.FinalAnswer != "" {
+			if out, ok := output.(schema.Observation); ok {
+				if !out.Heartbeat && out.FinalAnswer != "" {
 					chans.UserRespChan <- schema.NewStreamFeedback(out.FinalAnswer)
 					break Outer
 				}

@@ -3,8 +3,6 @@ package tools
 import (
 	"fmt"
 
-	"dubbo-admin-ai/manager"
-
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/genkit"
 )
@@ -32,7 +30,6 @@ func (o PrometheusServiceLatencyOutput) String() string {
 }
 
 func prometheusQueryServiceLatency(ctx *ai.ToolContext, input PrometheusServiceLatencyInput) (ToolOutput, error) {
-	manager.GetLogger().Info("Tool 'prometheus_query_service_latency' called", "service", input.ServiceName)
 
 	// Mock data based on the example in prompt
 	valueMillis := 3500
@@ -75,7 +72,6 @@ func (o PrometheusServiceTrafficOutput) String() string {
 }
 
 func prometheusQueryServiceTraffic(ctx *ai.ToolContext, input PrometheusServiceTrafficInput) (ToolOutput, error) {
-	manager.GetLogger().Info("Tool 'prometheus_query_service_traffic' called", "service", input.ServiceName)
 
 	output := PrometheusServiceTrafficOutput{
 		RequestRateQPS:      250.0,
@@ -125,7 +121,6 @@ func (o QueryTimeseriesDatabaseOutput) String() string {
 }
 
 func queryTimeseriesDatabase(ctx *ai.ToolContext, input QueryTimeseriesDatabaseInput) (ToolOutput, error) {
-	manager.GetLogger().Info("Tool 'query_timeseries_database' called", "query", input.PromqlQuery)
 
 	output := QueryTimeseriesDatabaseOutput{
 		Query: input.PromqlQuery,
@@ -178,7 +173,6 @@ func (o ApplicationPerformanceProfilingOutput) String() string {
 }
 
 func applicationPerformanceProfiling(ctx *ai.ToolContext, input ApplicationPerformanceProfilingInput) (ToolOutput, error) {
-	manager.GetLogger().Info("Tool 'application_performance_profiling' called", "service", input.ServiceName, "pod", input.PodName)
 
 	output := ApplicationPerformanceProfilingOutput{
 		Status:       "completed",
@@ -226,7 +220,6 @@ func (o JVMPerformanceAnalysisOutput) String() string {
 }
 
 func jvmPerformanceAnalysis(ctx *ai.ToolContext, input JVMPerformanceAnalysisInput) (ToolOutput, error) {
-	manager.GetLogger().Info("Tool 'jvm_performance_analysis' called", "service", input.ServiceName, "pod", input.PodName)
 
 	output := JVMPerformanceAnalysisOutput{
 		FullGcCountLastHour: 15,
@@ -263,7 +256,6 @@ func (o TraceDependencyViewOutput) String() string {
 }
 
 func traceDependencyView(ctx *ai.ToolContext, input TraceDependencyViewInput) (ToolOutput, error) {
-	manager.GetLogger().Info("Tool 'trace_dependency_view' called", "service", input.ServiceName)
 
 	output := TraceDependencyViewOutput{
 		UpstreamServices:   []string{"api-gateway", "user-service"},
@@ -306,7 +298,6 @@ func (o TraceLatencyAnalysisOutput) String() string {
 }
 
 func traceLatencyAnalysis(ctx *ai.ToolContext, input TraceLatencyAnalysisInput) (ToolOutput, error) {
-	manager.GetLogger().Info("Tool 'trace_latency_analysis' called", "service", input.ServiceName)
 
 	output := TraceLatencyAnalysisOutput{
 		TotalLatencyAvgMillis: 3200,
@@ -355,7 +346,6 @@ func (o DatabaseConnectionPoolAnalysisOutput) String() string {
 }
 
 func databaseConnectionPoolAnalysis(ctx *ai.ToolContext, input DatabaseConnectionPoolAnalysisInput) (ToolOutput, error) {
-	manager.GetLogger().Info("Tool 'database_connection_pool_analysis' called", "service", input.ServiceName)
 
 	output := DatabaseConnectionPoolAnalysisOutput{
 		MaxConnections:    100,
@@ -403,7 +393,6 @@ func (o KubernetesGetPodResourcesOutput) String() string {
 }
 
 func kubernetesGetPodResources(ctx *ai.ToolContext, input KubernetesGetPodResourcesInput) (ToolOutput, error) {
-	manager.GetLogger().Info("Tool 'kubernetes_get_pod_resources' called", "service", input.ServiceName, "namespace", input.Namespace)
 
 	output := KubernetesGetPodResourcesOutput{
 		Pods: []PodResource{
@@ -469,7 +458,6 @@ func (o DubboServiceStatusOutput) String() string {
 }
 
 func dubboServiceStatus(ctx *ai.ToolContext, input DubboServiceStatusInput) (ToolOutput, error) {
-	manager.GetLogger().Info("Tool 'dubbo_service_status' called", "service", input.ServiceName)
 
 	output := DubboServiceStatusOutput{
 		Providers: []DubboProvider{
@@ -519,7 +507,6 @@ func (o QueryLogDatabaseOutput) String() string {
 }
 
 func queryLogDatabase(ctx *ai.ToolContext, input QueryLogDatabaseInput) (ToolOutput, error) {
-	manager.GetLogger().Info("Tool 'query_log_database' called", "service", input.ServiceName, "keyword", input.Keyword)
 
 	output := QueryLogDatabaseOutput{
 		TotalHits: 152,
@@ -573,7 +560,6 @@ func (o SearchArchivedLogsOutput) String() string {
 }
 
 func searchArchivedLogs(ctx *ai.ToolContext, input SearchArchivedLogsInput) (ToolOutput, error) {
-	manager.GetLogger().Info("Tool 'search_archived_logs' called", "pattern", input.FilePathPattern, "keyword", input.GrepKeyword)
 
 	output := SearchArchivedLogsOutput{
 		FilesSearched: 5,
@@ -625,7 +611,6 @@ func (o QueryKnowledgeBaseOutput) String() string {
 }
 
 func queryKnowledgeBase(ctx *ai.ToolContext, input QueryKnowledgeBaseInput) (ToolOutput, error) {
-	manager.GetLogger().Info("Tool 'query_knowledge_base' called", "query", input.QueryText)
 
 	output := QueryKnowledgeBaseOutput{
 		Documents: []KnowledgeDocument{
@@ -669,8 +654,6 @@ func NewMockToolManager(g *genkit.Genkit) *MockToolManager {
 		genkit.DefineTool(g, "search_archived_logs", "在归档的日志文件（如存储在S3或服务器文件系统的.log.gz文件）中进行文本搜索（类似grep）", searchArchivedLogs),
 		genkit.DefineTool(g, "query_knowledge_base", "在向量数据库中查询与问题相关的历史故障报告或解决方案文档", queryKnowledgeBase),
 	}
-
-	manager.GetLogger().Info("Registered mock diagnostic tools", "count", len(tools))
 
 	return &MockToolManager{
 		registry: g,

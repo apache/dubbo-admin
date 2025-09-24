@@ -28,11 +28,15 @@ var (
 
 func Registry(modelName string, logger *slog.Logger) (registry *genkit.Genkit) {
 	once.Do(func() {
+		var err error
 		gloLogger = logger
 		if logger == nil {
 			gloLogger = ProductionLogger()
 		}
 		gloRegistry = defaultRegistry(modelName)
+		if err != nil {
+			panic(err)
+		}
 	})
 	if gloRegistry == nil {
 		panic("Failed to get global registry")

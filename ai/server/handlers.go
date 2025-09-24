@@ -70,7 +70,7 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 		}
 	}()
 
-	channels = h.agent.Interact(schema.UserInput{Content: req.Message})
+	channels = h.agent.Interact(&schema.UserInput{Content: req.Message})
 	var (
 		feedback *schema.StreamFeedback
 		ok       bool
