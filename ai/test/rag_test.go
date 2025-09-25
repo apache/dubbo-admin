@@ -87,7 +87,7 @@ func TestCreateIndex(t *testing.T) {
 		t.Fatal("Failed to convert PDF to documents:", err)
 	}
 
-	g := manager.Registry(config.DEFAULT_MODEL.Key(), manager.ProductionLogger())
+	g := manager.Registry(config.DEFAULT_MODEL.Key(), config.PROJECT_ROOT+"/.env", manager.ProductionLogger())
 	err = docs2Index(g, docs, config.PINECONE_INDEX_NAME, namespace)
 	if err != nil {
 		t.Fatal("Failed to create index:", err)
@@ -108,7 +108,7 @@ func TestCreateIndex(t *testing.T) {
 // TestSearch - 搜索测试（可以运行多次）
 func TestSearch(t *testing.T) {
 	ctx := context.Background()
-	g := manager.Registry(config.DEFAULT_MODEL.Key(), manager.ProductionLogger())
+	g := manager.Registry(config.DEFAULT_MODEL.Key(), config.PROJECT_ROOT+"/.env", manager.ProductionLogger())
 	indexName := config.PINECONE_INDEX_NAME
 	_, _, err := pinecone.DefineRetriever(ctx, g,
 		pinecone.Config{
@@ -143,7 +143,7 @@ func TestSearch(t *testing.T) {
 
 func TestRerank(t *testing.T) {
 	ctx := context.Background()
-	g := manager.Registry(config.DEFAULT_MODEL.Key(), manager.ProductionLogger())
+	g := manager.Registry(config.DEFAULT_MODEL.Key(), config.PROJECT_ROOT+"/.env", manager.ProductionLogger())
 	indexName := config.PINECONE_INDEX_NAME
 	_, _, err := pinecone.DefineRetriever(ctx, g,
 		pinecone.Config{

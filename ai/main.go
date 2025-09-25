@@ -16,22 +16,27 @@ import (
 	"dubbo-admin-ai/manager"
 	"dubbo-admin-ai/plugins/dashscope"
 	"dubbo-admin-ai/server"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	port := flag.Int("port", 8888, "Port for the AI agent server")
-	mode := flag.String("mode", "prod", "Server mode: dev or prod")
+	mode := flag.String("mode", "release", "Server mode: dev or prod")
+	envPath := flag.String("env", "./.env", "Path to the .env file")
 	flag.Parse()
 
 	var logger *slog.Logger
 	switch *mode {
-	case "prod":
+	case "release":
 		logger = manager.ProductionLogger()
+		gin.SetMode(gin.ReleaseMode)
 	case "dev":
 		logger = manager.DevLogger()
+		gin.SetMode(gin.DebugMode)
 	}
 
-	reActAgent, err := react.Create(manager.Registry(dashscope.Qwen3_coder.Key(), logger))
+	reActAgent, err := react.Create(manager.Registry(dashscope.Qwen3_coder.Key(), *envPath, logger))
 	if err != nil {
 		logger.Error("Failed to create ReAct agent", "error", err)
 		return

@@ -4,13 +4,11 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"sync"
 
 	"dubbo-admin-ai/config"
 	"dubbo-admin-ai/plugins/dashscope"
 	"dubbo-admin-ai/plugins/siliconflow"
-	"dubbo-admin-ai/utils"
 
 	"github.com/dusted-go/logging/prettylog"
 	"github.com/firebase/genkit/go/core/api"
@@ -26,12 +24,13 @@ var (
 	once        sync.Once
 )
 
-func Registry(modelName string, logger *slog.Logger) (registry *genkit.Genkit) {
+func Registry(modelName string, envPath string, logger *slog.Logger) (registry *genkit.Genkit) {
 	once.Do(func() {
 		gloLogger = logger
 		if logger == nil {
 			gloLogger = ProductionLogger()
 		}
+		LoadEnvVars2Config(envPath)
 		gloRegistry = defaultRegistry(modelName)
 	})
 	if gloRegistry == nil {
@@ -40,21 +39,18 @@ func Registry(modelName string, logger *slog.Logger) (registry *genkit.Genkit) {
 	return gloRegistry
 }
 
-// Load environment variables from PROJECT_ROOT/.env file
-func LoadEnvVars2Config() {
-	dotEnvFilePath := filepath.Join(config.PROJECT_ROOT, ".env")
-	dotEnvExampleFilePath := filepath.Join(config.PROJECT_ROOT, ".env.example")
-
-	// Check if the .env file exists, if not, copy .env.example to .env
-	if _, err := os.Stat(dotEnvFilePath); os.IsNotExist(err) {
-		if err = utils.CopyFile(dotEnvExampleFilePath, dotEnvFilePath); err != nil {
-			panic(err)
+// Load environment variables from .env file
+func LoadEnvVars2Config(envPath string) {
+	// Check if the .env file exists, if not, try to find in the current directory
+	if _, err := os.Stat(envPath); os.IsNotExist(err) {
+		if _, err := os.Stat("./.env"); err == nil {
+			envPath = "./.env"
 		}
 	}
 
 	// Load environment variables
-	if err := godotenv.Load(dotEnvFilePath); err != nil {
-		panic(err)
+	if err := godotenv.Load(envPath); err != nil {
+		GetLogger().Warn("No .env file found at " + envPath + ", proceeding with existing environment variables")
 	}
 
 	config.GEMINI_API_KEY = os.Getenv("GEMINI_API_KEY")
@@ -62,10 +58,13 @@ func LoadEnvVars2Config() {
 	config.DASHSCOPE_API_KEY = os.Getenv("DASHSCOPE_API_KEY")
 	config.PINECONE_API_KEY = os.Getenv("PINECONE_API_KEY")
 	config.COHERE_API_KEY = os.Getenv("COHERE_API_KEY")
+
+	if config.COHERE_API_KEY == "" || config.PINECONE_API_KEY == "" || config.DASHSCOPE_API_KEY == "" || config.SILICONFLOW_API_KEY == "" || config.GEMINI_API_KEY == "" {
+		GetLogger().Warn("One or more API keys are missing in the environment variables. Please check out.")
+	}
 }
 
 func defaultRegistry(modelName string) *genkit.Genkit {
-	LoadEnvVars2Config()
 	ctx := context.Background()
 	plugins := []api.Plugin{}
 	if config.SILICONFLOW_API_KEY != "" {

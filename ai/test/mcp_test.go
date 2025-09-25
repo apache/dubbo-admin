@@ -17,7 +17,7 @@ import (
 
 func TestMCP(t *testing.T) {
 	ctx := context.Background()
-	g := manager.Registry(dashscope.Qwen_max.Key(), manager.DevLogger())
+	g := manager.Registry(dashscope.Qwen_max.Key(), config.PROJECT_ROOT+"/.env", manager.DevLogger())
 
 	mcpToolManager, err := tools.NewMCPToolManager(g, "mcpHost")
 	if err != nil {
@@ -45,7 +45,7 @@ func TestMCP(t *testing.T) {
 }
 
 func TestMCPFlow(t *testing.T) {
-	g := manager.Registry(dashscope.Qwen3.Key(), manager.DevLogger())
+	g := manager.Registry(dashscope.Qwen3.Key(), config.PROJECT_ROOT+"/.env", manager.DevLogger())
 	flow := genkit.DefineFlow(g, "mcpTest",
 		func(ctx context.Context, userPrompt string) (string, error) {
 			mcpToolManager, err := tools.NewMCPToolManager(g, "mcpHost")
