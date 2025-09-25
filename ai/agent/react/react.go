@@ -315,7 +315,7 @@ func act(g *genkit.Genkit, mcpToolManager *tools.MCPToolManager, toolPrompt ai.P
 				return nil, fmt.Errorf("failed to execute tool selection prompt: %w", err)
 			}
 			if len(toolReqs.ToolRequests()) == 0 {
-				return ActOut{Thought: toolReqs.Text()}, nil
+				return ActOut{Thought: toolReqs.Text()}, fmt.Errorf("agent don't have available tools")
 			}
 			manager.GetLogger().Info("tool requests:", "req", toolReqs.ToolRequests())
 
