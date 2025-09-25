@@ -111,6 +111,7 @@ func (ta ThinkOutput) String() string {
 
 type ToolOutputs struct {
 	Outputs []tools.ToolOutput  `json:"tool_responses"`
+	Thought string              `json:"thought,omitempty"`
 	Usage   *ai.GenerationUsage `json:"usage,omitempty" jsonschema_description:"DO NOT SET THIS FIELD"`
 }
 
@@ -127,26 +128,29 @@ func (to *ToolOutputs) Add(output *tools.ToolOutput) {
 
 var index = 0
 
-func ResetIndex() {
-	index = 0
-}
-
-func IncreaseIndex() {
-	index++
-}
-
 type StreamFeedback struct {
-	index *int
+	index int
+	done  bool
 	Text  string
+}
+
+func StreamEnd() *StreamFeedback {
+	defer func() { index++ }()
+	return &StreamFeedback{index: index, done: true, Text: ""}
 }
 
 func NewStreamFeedback(text string) *StreamFeedback {
 	return &StreamFeedback{
-		index: &index,
+		index: index,
+		done:  false,
 		Text:  text,
 	}
 }
 
 func (sf *StreamFeedback) Index() int {
-	return *sf.index
+	return sf.index
+}
+
+func (sf *StreamFeedback) IsDone() bool {
+	return sf.done
 }
