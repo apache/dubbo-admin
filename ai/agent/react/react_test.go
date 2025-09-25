@@ -143,8 +143,7 @@ func TestAgent(t *testing.T) {
 	agentInput := schema.UserInput{
 		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
 	}
-
-	channels := reActAgent.Interact(&agentInput)
+	channels := reActAgent.Interact(&agentInput, "session-test")
 	for !channels.Closed() {
 		select {
 		case err, ok := <-channels.ErrorChan:
