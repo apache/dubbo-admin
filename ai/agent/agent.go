@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"dubbo-admin-ai/config"
+	"dubbo-admin-ai/memory"
 	"dubbo-admin-ai/schema"
 	"dubbo-admin-ai/tools"
 
@@ -33,7 +34,8 @@ const (
 )
 
 type Agent interface {
-	Interact(*schema.UserInput) *Channels
+	Interact(*schema.UserInput, string) *Channels
+	GetMemory() *memory.History
 }
 
 type Channels struct {
@@ -232,7 +234,8 @@ Outer:
 			// Check if LLM returned final answer
 			if out, ok := output.(schema.Observation); ok {
 				if !out.Heartbeat && out.FinalAnswer != "" {
-					chans.UserRespChan <- schema.NewStreamFeedback(out.FinalAnswer)
+					// TODO: Handle final answer without repeat
+					// chans.UserRespChan <- schema.NewStreamFeedback(out.FinalAnswer)
 					break Outer
 				}
 			}

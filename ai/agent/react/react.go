@@ -110,9 +110,10 @@ func Create(g *genkit.Genkit) (*ReActAgent, error) {
 	}, nil
 }
 
-func (ra *ReActAgent) Interact(input *schema.UserInput) *agent.Channels {
+func (ra *ReActAgent) Interact(input *schema.UserInput, sessionID string) *agent.Channels {
 	ra.channels.Reset()
 	go func() {
+		ra.memoryCtx = context.WithValue(ra.memoryCtx, memory.SessionIDKey, sessionID)
 		err := ra.orchestrator.Run(ra.memoryCtx, schema.ThinkInput{UserInput: input}, ra.channels)
 		if err != nil {
 			ra.channels.ErrorChan <- err
@@ -120,6 +121,14 @@ func (ra *ReActAgent) Interact(input *schema.UserInput) *agent.Channels {
 		ra.channels.Close()
 	}()
 	return ra.channels
+}
+
+func (ra *ReActAgent) GetMemory() *memory.History {
+	h, err := memory.GetHistory(ra.memoryCtx, memory.ChatHistoryKey)
+	if err != nil {
+		return nil
+	}
+	return h
 }
 
 func buildThinkPrompt(registry *genkit.Genkit, tools ...ai.ToolRef) (ai.Prompt, error) {
@@ -221,12 +230,18 @@ func think(
 				return nil, fmt.Errorf("failed to get history from context")
 			}
 
+			// 从上下文中获取 sessionID
+			sessionID, ok := ctx.Value(memory.SessionIDKey).(string)
+			if !ok || sessionID == "" {
+				return nil, fmt.Errorf("session id not found in context")
+			}
+
 			var (
 				opts     []ai.PromptExecuteOption
 				inputMsg *ai.Message
 			)
-			if !history.IsEmpty() {
-				opts = append(opts, ai.WithMessages(history.AllHistory()...))
+			if !history.IsEmpty(sessionID) {
+				opts = append(opts, ai.WithMessages(history.AllHistory(sessionID)...))
 			} else {
 				inputJson, err := json.Marshal(in)
 				if err != nil {
@@ -252,9 +267,9 @@ func think(
 
 			// Don't add the original user input
 			// if inputMsg != nil {
-			// 	history.AddHistory(inputMsg)
+			// 	history.AddHistory(sessionID, inputMsg)
 			// }
-			history.AddHistory(resp.Message)
+			history.AddHistory(sessionID, resp.Message)
 			thinkOut.Usage = resp.Usage
 
 			return thinkOut, nil
@@ -283,12 +298,18 @@ func act(g *genkit.Genkit, mcpToolManager *tools.MCPToolManager, toolPrompt ai.P
 				return nil, fmt.Errorf("failed to get history from context")
 			}
 
+			// 从上下文中获取 sessionID
+			sessionID, ok := ctx.Value(memory.SessionIDKey).(string)
+			if !ok || sessionID == "" {
+				return nil, fmt.Errorf("session id not found in context")
+			}
+
 			// Get tool requests form LLM
-			if history.IsEmpty() {
+			if history.IsEmpty(sessionID) {
 				return nil, fmt.Errorf("history is empty")
 			}
 			toolReqs, err := toolPrompt.Execute(ctx,
-				ai.WithMessages(history.AllHistory()...),
+				ai.WithMessages(history.AllHistory(sessionID)...),
 			)
 			if err != nil {
 				return nil, fmt.Errorf("failed to execute tool selection prompt: %w", err)
@@ -316,7 +337,7 @@ func act(g *genkit.Genkit, mcpToolManager *tools.MCPToolManager, toolPrompt ai.P
 			}
 
 			// ai.RoleTool's messages will be ingored by ai.WithMessages
-			history.AddHistory(ai.NewMessage(ai.RoleModel, nil, parts...))
+			history.AddHistory(sessionID, ai.NewMessage(ai.RoleModel, nil, parts...))
 			actOuts.Usage = toolReqs.Usage
 
 			return actOuts, nil
@@ -332,12 +353,22 @@ func observe(g *genkit.Genkit, observePrompt ai.Prompt, feedbackPrompt ai.Prompt
 			}()
 
 			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.History)
-			if !ok || history.IsEmpty() {
-				return nil, fmt.Errorf("failed to get history from context or history is empty")
+			if !ok {
+				return nil, fmt.Errorf("failed to get history from context")
+			}
+
+			// 从上下文中获取 sessionID
+			sessionID, ok := ctx.Value(memory.SessionIDKey).(string)
+			if !ok || sessionID == "" {
+				return nil, fmt.Errorf("session id not found in context")
+			}
+
+			if history.IsEmpty(sessionID) {
+				return nil, fmt.Errorf("history is empty")
 			}
 
 			resp, err := observePrompt.Execute(ctx,
-				ai.WithMessages(history.AllHistory()...),
+				ai.WithMessages(history.AllHistory(sessionID)...),
 			)
 
 			if err != nil {
@@ -351,8 +382,8 @@ func observe(g *genkit.Genkit, observePrompt ai.Prompt, feedbackPrompt ai.Prompt
 				return nil, fmt.Errorf("failed to parse observe prompt response: %w", err)
 			}
 
-			history.AddHistory(resp.Message)
-			feedback(feedbackPrompt, ctx, cb, history.AllHistory()...)
+			history.AddHistory(sessionID, resp.Message)
+			feedback(feedbackPrompt, ctx, cb, history.AllHistory(sessionID)...)
 			response.Usage = resp.Usage
 
 			return response, err

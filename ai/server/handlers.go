@@ -70,7 +70,7 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 		}
 	}()
 
-	channels = h.agent.Interact(&schema.UserInput{Content: req.Message})
+	channels = h.agent.Interact(&schema.UserInput{Content: req.Message}, sessionID)
 	var (
 		feedback *schema.StreamFeedback
 		ok       bool
@@ -177,6 +177,12 @@ func (h *AgentHandler) DeleteSession(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusNotFound, NewErrorResponse("Session not found: "+err.Error()))
 		return
+	}
+
+	// 删除对应的 history
+	if agentMemory := h.agent.GetMemory(); agentMemory != nil {
+		agentMemory.RemoveSessionHistory(sessionID)
+		manager.GetLogger().Info("Session history cleared", "session_id", sessionID)
 	}
 
 	c.JSON(http.StatusOK, NewSuccessResponse(map[string]string{
