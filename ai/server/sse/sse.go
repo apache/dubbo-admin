@@ -355,6 +355,15 @@ func (sh *SSEHandler) HandleStreamChunk(chunk schema.StreamChunk) error {
 	return nil
 }
 
+// HandleContentBlockStop 处理内容块结束事件
+func (sh *SSEHandler) HandleContentBlockStop(index int) error {
+	// 只有在已经开始内容块的情况下才发送 content_block_stop
+	if !sh.ContentStarted {
+		return nil
+	}
+	return sh.writer.WriteContentBlockStop(index)
+}
+
 // FinishStream 完成流式响应，发送结束事件
 func (sh *SSEHandler) FinishStream(stopReason string, usage *ai.GenerationUsage, index int) error {
 	// 发送内容块结束事件

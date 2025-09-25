@@ -93,8 +93,14 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 				channels.UserRespChan = nil
 				continue
 			}
-			if err := sseHandler.HandleText(feedback.Text, feedback.Index()); err != nil {
-				manager.GetLogger().Error("Failed to handle final answer", "error", err)
+			if feedback.IsDone() {
+				if err := sseHandler.HandleContentBlockStop(feedback.Index()); err != nil {
+					manager.GetLogger().Error("Failed to handle content block stop", "error", err)
+				}
+			} else {
+				if err := sseHandler.HandleText(feedback.Text, feedback.Index()); err != nil {
+					manager.GetLogger().Error("Failed to handle text", "error", err)
+				}
 			}
 
 		case <-c.Request.Context().Done():

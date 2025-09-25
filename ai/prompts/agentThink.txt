@@ -45,6 +45,11 @@ Determine investigation strategy:
 - **Target Identification**: Identify specific services, metrics, or components to investigate
 - **Tool Guidance**: Suggest appropriate tools for the investigation
 
+**Tool Selection Rules:**
+- Only suggest tools that can actually address the user's request
+- If no available tools can satisfy the requirements, return empty array `[]` for `suggested_tools`
+- When tools cannot help, explain the limitation in your `thought` field
+
 **Field Type Requirements**
 All string fields must be valid strings, never use null values.
 
@@ -53,11 +58,31 @@ All string fields must be valid strings, never use null values.
 
 # Examples
 <example>
-input: {"content": "Analyze the latency of the user-service"}
+input: {"user_input": "Analyze the latency of the user-service"}
 output: {
     "thought": "The user is requesting latency analysis for 'user-service'. This indicates a performance investigation intent. I need to identify the target service and suggest appropriate tools for latency analysis including metrics and dependency investigation.",
     "intent": "PERFORMANCE_INVESTIGATION",
     "target_services": ["user-service"],
     "suggested_tools": ["prometheus_query_service_latency", "prometheus_query_service_traffic", "trace_dependency_view"]
+}
+<example>
+
+<example>
+input: {"user_input": "What's you name?"}
+output: {
+    "thought": "The user is asking for my name, which is a general inquiry and not related to system performance or specific services. No available tools can address this question.",
+    "intent": "GENERAL_INQUIRY",
+    "target_services": [],
+    "suggested_tools": []
+}
+<example>
+
+<example>
+input: {"user_input": "Deploy a new version of user-service"}
+output: {
+    "thought": "The user is requesting deployment of user-service, which is an operational action. However, the available tools are focused on monitoring and observability, not deployment operations. No suitable tools can fulfill this deployment request.",
+    "intent": "DEPLOYMENT_REQUEST",
+    "target_services": ["user-service"],
+    "suggested_tools": []
 }
 <example>

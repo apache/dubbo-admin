@@ -39,26 +39,12 @@ func onStreaming2User(channels *agent.Channels, chunk schema.StreamChunk) error 
 	return nil
 }
 
-func onStreaming2Nil(channels *agent.Channels, chunk schema.StreamChunk) error {
-	if channels == nil {
-		return fmt.Errorf("channels is nil")
-	}
-	return nil
-}
-
-func onStreaming2StdOut(channels *agent.Channels, chunk schema.StreamChunk) error {
-	if channels == nil {
-		return fmt.Errorf("channels is nil")
-	}
-	fmt.Print(chunk.Chunk.Text())
-	return nil
-}
-
 func onOutput2Flow(channels *agent.Channels, output schema.Schema) error {
 	if channels == nil {
 		return fmt.Errorf("channels is nil")
 	}
 	channels.FlowChan <- output
+	channels.UserRespChan <- schema.StreamEnd()
 	return nil
 }
 
@@ -98,12 +84,11 @@ func Create(g *genkit.Genkit) (*ReActAgent, error) {
 
 	channels := agent.NewChannels(config.STAGE_CHANNEL_BUFFER_SIZE)
 
-	thinkStage := agent.NewStreamStage(
-		think(g, thinkPrompt, feedbackPrompt),
+	thinkStage := agent.NewStage(
+		think(g, thinkPrompt),
 		agent.InLoop,
-		onStreaming2User,
-		onOutput2Flow,
 	)
+
 	actStage := agent.NewStage(
 		act(g, nil, toolPrompt),
 		agent.InLoop,
@@ -214,7 +199,6 @@ func feedback(feedbackPrompt ai.Prompt, ctx context.Context, cb core.StreamCallb
 	if err != nil {
 		return fmt.Errorf("failed to execute agentFeedback prompt: %w", err)
 	}
-	schema.IncreaseIndex()
 	return nil
 }
 
@@ -224,10 +208,9 @@ func feedback(feedbackPrompt ai.Prompt, ctx context.Context, cb core.StreamCallb
 func think(
 	g *genkit.Genkit,
 	thinkPrompt ai.Prompt,
-	feedBackPrompt ai.Prompt,
-) agent.StreamFlow {
-	return genkit.DefineStreamingFlow(g, agent.ThinkFlowName,
-		func(ctx context.Context, in schema.Schema, cb core.StreamCallback[schema.StreamChunk]) (out schema.Schema, err error) {
+) agent.NormalFlow {
+	return genkit.DefineFlow(g, agent.ThinkFlowName,
+		func(ctx context.Context, in schema.Schema) (out schema.Schema, err error) {
 			manager.GetLogger().Info("Thinking...", "input", in)
 			defer func() {
 				manager.GetLogger().Info("Think Done.", "output", out, "error", err)
@@ -287,8 +270,12 @@ func act(g *genkit.Genkit, mcpToolManager *tools.MCPToolManager, toolPrompt ai.P
 			}()
 
 			// Beacause the input is in the history, so don't need to use, just check the type
-			if _, ok := in.(ActIn); !ok {
+			input, ok := in.(ActIn)
+			if !ok {
 				return nil, fmt.Errorf("input is not of type ActIn, got %T", in)
+			}
+			if input.Intent == schema.GeneralInquiry || input.SuggestedTools == nil {
+				return ActOut{}, nil
 			}
 
 			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.History)
@@ -307,7 +294,7 @@ func act(g *genkit.Genkit, mcpToolManager *tools.MCPToolManager, toolPrompt ai.P
 				return nil, fmt.Errorf("failed to execute tool selection prompt: %w", err)
 			}
 			if len(toolReqs.ToolRequests()) == 0 {
-				return nil, fmt.Errorf("no tool requests returned")
+				return ActOut{Thought: toolReqs.Text()}, nil
 			}
 			manager.GetLogger().Info("tool requests:", "req", toolReqs.ToolRequests())
 

@@ -44,7 +44,7 @@ func Call(g *genkit.Genkit, mcp *MCPToolManager, toolName string, input any) (to
 	}
 
 	if rawToolOutput == nil {
-		return toolOutput, fmt.Errorf("tool %s returned nil output", toolName)
+		return toolOutput, fmt.Errorf("tool %s is unavailable", toolName)
 	}
 	manager.GetLogger().Info("Tool output:", "output", rawToolOutput)
 

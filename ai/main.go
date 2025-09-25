@@ -21,7 +21,7 @@ import (
 )
 
 func main() {
-	port := flag.Int("port", 8888, "Port for the AI agent server")
+	port := flag.Int("port", 8880, "Port for the AI agent server")
 	mode := flag.String("mode", "release", "Server mode: dev or prod")
 	envPath := flag.String("env", "./.env", "Path to the .env file")
 	flag.Parse()
@@ -68,7 +68,7 @@ func main() {
 	fmt.Println("🛑 Shutting down server...")
 
 	// 5秒超时的优雅关闭
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
