@@ -2,6 +2,8 @@ package memory
 
 import (
 	"context"
+	"dubbo-admin-ai/utils"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -12,22 +14,40 @@ type HistoryKey string
 type SessionKey string
 
 const (
+	TurnLimit int = 10
+
 	ChatHistoryKey  HistoryKey = "chat_history"
 	SystemMemoryKey HistoryKey = "system_memory"
 	CoreMemoryKey   HistoryKey = "core_memory"
 	SessionIDKey    SessionKey = "session"
 )
 
+type Turn struct {
+	UserMessages   []*ai.Message
+	ModelMessages  []*ai.Message
+	SystemMessages []*ai.Message
+}
+
+func NewTurn() *Turn {
+	return &Turn{
+		UserMessages:   make([]*ai.Message, 0),
+		ModelMessages:  make([]*ai.Message, 0),
+		SystemMessages: make([]*ai.Message, 0),
+	}
+}
+
 type History struct {
-	mu      sync.RWMutex
-	history map[string][]*ai.Message
+	mu     sync.RWMutex
+	memory map[string]*utils.Window[*Turn]
 }
 
 func NewMemoryContext(key HistoryKey) context.Context {
 	return context.WithValue(
 		context.Background(),
 		key,
-		&History{history: make(map[string][]*ai.Message)},
+		&History{
+			memory: make(map[string]*utils.Window[*Turn]),
+		},
 	)
 }
 
@@ -44,44 +64,63 @@ func (h *History) AddHistory(sessionID string, message ...*ai.Message) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if h.history == nil {
-		h.history = make(map[string][]*ai.Message)
+	if h.memory == nil {
+		h.memory = make(map[string]*utils.Window[*Turn])
 	}
 
-	if h.history[sessionID] == nil {
-		h.history[sessionID] = make([]*ai.Message, 0)
-	}
-
+	var systemMsgs, userMsgs, modelMsgs []*ai.Message
 	for _, msg := range message {
 		if msg == nil {
 			continue
 		}
-		h.history[sessionID] = append(h.history[sessionID], msg)
+		switch msg.Role {
+		case ai.RoleSystem:
+			systemMsgs = append(systemMsgs, msg)
+		case ai.RoleUser:
+			userMsgs = append(userMsgs, msg)
+		case ai.RoleModel:
+			modelMsgs = append(modelMsgs, msg)
+		}
 	}
+
+	if h.memory[sessionID] == nil {
+		h.memory[sessionID] = utils.NewWindow[*Turn](TurnLimit)
+	}
+	if h.memory[sessionID].IsEmpty() {
+		h.memory[sessionID].Push(NewTurn())
+	}
+
+	turn := h.memory[sessionID].GetCurData()
+	turn.SystemMessages = append(turn.SystemMessages, systemMsgs...)
+	turn.UserMessages = append(turn.UserMessages, userMsgs...)
+	turn.ModelMessages = append(turn.ModelMessages, modelMsgs...)
 }
 
 func (h *History) IsEmpty(sessionID string) bool {
-	if h.history == nil {
-		return true
-	}
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 
-	messages, exists := h.history[sessionID]
-	return !exists || len(messages) == 0
+	// 检查该 session 的窗口是否为空
+	return h.memory == nil || h.memory[sessionID] == nil || h.memory[sessionID].IsEmpty()
 }
 
 func (h *History) AllHistory(sessionID string) []*ai.Message {
-	if h.history == nil {
-		return make([]*ai.Message, 0)
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	if h.memory == nil || h.memory[sessionID] == nil {
+		return nil
 	}
 
-	messages, exists := h.history[sessionID]
-	if !exists {
-		return make([]*ai.Message, 0)
+	var result []*ai.Message
+	for _, turn := range h.memory[sessionID].GetWindow() {
+		if turn != nil {
+			result = append(result, turn.SystemMessages...)
+			result = append(result, turn.UserMessages...)
+			result = append(result, turn.ModelMessages...)
+		}
 	}
 
-	// 返回副本以避免并发修改
-	result := make([]*ai.Message, len(messages))
-	copy(result, messages)
 	return result
 }
 
@@ -89,41 +128,104 @@ func (h *History) Clear(sessionID string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if h.history == nil {
-		return
+	if h.memory != nil {
+		delete(h.memory, sessionID)
 	}
-
-	h.history[sessionID] = make([]*ai.Message, 0)
 }
 
 func (h *History) ClearAll() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	h.history = make(map[string][]*ai.Message)
+	h.memory = make(map[string]*utils.Window[*Turn])
 }
 
-// GetAllSessions 返回所有活跃的 session ID
 func (h *History) GetAllSessions() []string {
-	if h.history == nil {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	if h.memory == nil {
 		return make([]string, 0)
 	}
 
-	sessions := make([]string, 0, len(h.history))
-	for sessionID := range h.history {
+	sessions := make([]string, 0, len(h.memory))
+	for sessionID := range h.memory {
 		sessions = append(sessions, sessionID)
 	}
 	return sessions
 }
 
-// RemoveSessionHistory 删除指定 session 的所有历史记录
-func (h *History) RemoveSessionHistory(sessionID string) {
+func (h *History) SystemMemory(sessionID string) []*ai.Message {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	if h.memory == nil || h.memory[sessionID] == nil {
+		return make([]*ai.Message, 0)
+	}
+
+	var result []*ai.Message
+	window := h.memory[sessionID]
+	allTurns := window.GetWindow()
+	for _, turn := range allTurns {
+		result = append(result, turn.SystemMessages...)
+	}
+	return result
+}
+
+func (h *History) UserMemory(sessionID string) []*ai.Message {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	if h.memory == nil || h.memory[sessionID] == nil {
+		return make([]*ai.Message, 0)
+	}
+
+	var result []*ai.Message
+	window := h.memory[sessionID]
+	allTurns := window.GetWindow()
+	for _, turn := range allTurns {
+		result = append(result, turn.UserMessages...)
+	}
+	return result
+}
+
+// ModelMemory 获取指定 session 的模型消息历史
+func (h *History) ModelMemory(sessionID string) []*ai.Message {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	if h.memory == nil || h.memory[sessionID] == nil {
+		return make([]*ai.Message, 0)
+	}
+
+	var result []*ai.Message
+	window := h.memory[sessionID]
+	allTurns := window.GetWindow()
+	for _, turn := range allTurns {
+		result = append(result, turn.ModelMessages...)
+	}
+	return result
+}
+
+func (h *History) NextTurn(sessionID string) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if h.history == nil {
-		return
+	if h.memory == nil {
+		return errors.New("memory is nil")
 	}
 
-	delete(h.history, sessionID)
+	if h.memory[sessionID] == nil {
+		return errors.New("session not found")
+	}
+
+	if h.memory[sessionID].IsFull() {
+		return errors.New("current session's context is full, please create a new session")
+	}
+
+	if !h.memory[sessionID].Pop() {
+		return errors.New("failed to pop the context window")
+	}
+
+	return nil
 }
