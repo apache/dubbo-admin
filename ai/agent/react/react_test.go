@@ -20,7 +20,7 @@ var (
 )
 
 func init() {
-	reActAgent, _ = Create(manager.Registry(dashscope.Qwen3_coder.Key(), manager.ProductionLogger()))
+	reActAgent, _ = Create(manager.Registry(dashscope.Qwen3_coder.Key(), config.PROJECT_ROOT+"/.env", manager.ProductionLogger()))
 }
 
 func TestThinking(t *testing.T) {

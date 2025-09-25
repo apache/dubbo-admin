@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"dubbo-admin-ai/agent/react"
+	"dubbo-admin-ai/config"
 	"dubbo-admin-ai/manager"
 	"dubbo-admin-ai/plugins/dashscope"
 
@@ -42,7 +43,7 @@ func defineWeatherFlow(g *genkit.Genkit) *core.Flow[WeatherInput, string, struct
 }
 
 func TestTextGeneration(t *testing.T) {
-	g := manager.Registry(dashscope.Qwen3.Key(), nil)
+	g := manager.Registry(dashscope.Qwen3.Key(), config.PROJECT_ROOT+"/.env", nil)
 	_, _ = react.Create(g)
 	ctx := context.Background()
 
@@ -56,7 +57,7 @@ func TestTextGeneration(t *testing.T) {
 }
 
 func TestWeatherFlowRun(t *testing.T) {
-	g := manager.Registry(dashscope.Qwen3.Key(), nil)
+	g := manager.Registry(dashscope.Qwen3.Key(), config.PROJECT_ROOT+"/.env", nil)
 	_, _ = react.Create(g)
 	ctx := context.Background()
 
