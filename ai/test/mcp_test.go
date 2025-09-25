@@ -24,7 +24,7 @@ func TestMCP(t *testing.T) {
 		t.Fatalf("failed to create MCP tool manager: %v", err)
 	}
 
-	toolRefs := mcpToolManager.AllToolRefs()
+	toolRefs := mcpToolManager.ToolRefs()
 	prompt, err := os.ReadFile(config.PROMPT_DIR_PATH + "/agentTool.txt")
 	if err != nil {
 		t.Fatalf("failed to read prompt file: %v", err)
@@ -53,7 +53,7 @@ func TestMCPFlow(t *testing.T) {
 				return "", fmt.Errorf("failed to create MCP tool manager: %v", err)
 			}
 
-			toolRefs := mcpToolManager.AllToolRefs()
+			toolRefs := mcpToolManager.ToolRefs()
 			prompt, err := os.ReadFile(config.PROMPT_DIR_PATH + "/agentSystem.txt")
 			if err != nil {
 				return "", fmt.Errorf("failed to read prompt file: %v", err)

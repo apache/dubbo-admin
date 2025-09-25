@@ -57,16 +57,23 @@ func Create(g *genkit.Genkit) (*ReActAgent, error) {
 		err            error
 	)
 
-	toolRefs, err := tools.NewMockToolManager(g).AllToolRefs()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get mock mock_tools: %v", err)
+	memoryCtx := memory.NewMemoryContext(memory.ChatHistoryKey)
+	history, ok := memoryCtx.Value(memory.ChatHistoryKey).(*memory.History)
+	if !ok {
+		return nil, fmt.Errorf("failed to get history from context")
 	}
+	// Get Available Tools
+	var toolManagers []tools.ToolManager
 	// mcpToolManager, err := tools.NewMCPToolManager(g, config.MCP_HOST_NAME)
 	// if err != nil {
 	// 	return nil, fmt.Errorf("failed to create MCP tool manager: %v", err)
 	// }
-	// mcpToolRefs := mcpToolManager.AllToolRefs()
-	// toolRefs = append(toolRefs, mcpToolRefs...)
+	toolManagers = append(toolManagers,
+		tools.NewMockToolManager(g),
+		tools.NewInternalToolManager(g, history),
+		// mcpToolManager,
+	)
+	toolRefs := tools.NewToolRegistry(toolManagers...).AllToolRefs()
 
 	// Build and Register ReAct think prompt
 	if thinkPrompt, err = buildThinkPrompt(g, toolRefs...); err != nil {
@@ -105,7 +112,7 @@ func Create(g *genkit.Genkit) (*ReActAgent, error) {
 	return &ReActAgent{
 		registry:     g,
 		orchestrator: orchestrator,
-		memoryCtx:    memory.NewMemoryContext(memory.ChatHistoryKey),
+		memoryCtx:    memoryCtx,
 		channels:     channels,
 	}, nil
 }
@@ -119,6 +126,7 @@ func (ra *ReActAgent) Interact(input *schema.UserInput, sessionID string) *agent
 			in        schema.ThinkInput
 		)
 		in.UserInput = input
+		in.SessionID = sessionID
 
 		// Add user input to history
 		ra.memoryCtx = context.WithValue(ra.memoryCtx, memory.SessionIDKey, sessionID)
@@ -260,8 +268,8 @@ func think(
 			}
 
 			// execute prompt
-			manager.GetLogger().Info("Thinking...", "input", history.AllHistory(sessionID))
-			resp, err := thinkPrompt.Execute(ctx, ai.WithMessages(history.AllHistory(sessionID)...))
+			manager.GetLogger().Info("Thinking...", "input", history.WindowMemory(sessionID))
+			resp, err := thinkPrompt.Execute(ctx, ai.WithMessages(history.WindowMemory(sessionID)...))
 			manager.GetLogger().Info("Think response:", "response", resp.Text())
 			if err != nil {
 				return nil, fmt.Errorf("failed to execute agentThink prompt: %w", err)
@@ -312,7 +320,7 @@ func act(g *genkit.Genkit, mcpToolManager *tools.MCPToolManager, toolPrompt ai.P
 				return nil, fmt.Errorf("history is empty")
 			}
 			toolReqs, err := toolPrompt.Execute(ctx,
-				ai.WithMessages(history.AllHistory(sessionID)...),
+				ai.WithMessages(history.WindowMemory(sessionID)...),
 			)
 			if err != nil {
 				return nil, fmt.Errorf("failed to execute tool selection prompt: %w", err)
@@ -369,7 +377,7 @@ func observe(g *genkit.Genkit, observePrompt ai.Prompt, feedbackPrompt ai.Prompt
 			}
 
 			resp, err := observePrompt.Execute(ctx,
-				ai.WithMessages(history.AllHistory(sessionID)...),
+				ai.WithMessages(history.WindowMemory(sessionID)...),
 			)
 
 			if err != nil {
@@ -384,7 +392,7 @@ func observe(g *genkit.Genkit, observePrompt ai.Prompt, feedbackPrompt ai.Prompt
 			}
 
 			history.AddHistory(sessionID, resp.Message)
-			feedback(feedbackPrompt, ctx, cb, history.AllHistory(sessionID)...)
+			feedback(feedbackPrompt, ctx, cb, history.WindowMemory(sessionID)...)
 			response.Usage = resp.Usage
 
 			return response, err

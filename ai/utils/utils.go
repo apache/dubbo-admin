@@ -87,12 +87,13 @@ func (w *Window[T]) IsFull() bool {
 	return w.end == w.limit
 }
 
-func (w *Window[T]) Pop() bool {
+func (w *Window[T]) Pop() T {
 	if w.IsEmpty() {
-		return false
+		panic("window is empty")
 	}
+	val := w.data[w.begin]
 	w.begin++
-	return true
+	return val
 }
 
 func (w *Window[T]) Size() int {

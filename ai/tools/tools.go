@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"dubbo-admin-ai/manager"
+	"dubbo-admin-ai/memory"
 	"fmt"
 
 	"github.com/firebase/genkit/go/ai"
@@ -15,12 +16,6 @@ type ToolOutput struct {
 	Result   any    `json:"result,omitempty"`
 	Summary  string `json:"summary"`
 	// Success  bool   `json:"success" jsonschema_description:"Indicates whether the tool execution was successful"`
-}
-
-type ToolManager interface {
-	AllToolRefs() []ai.ToolRef
-	AllTools() []ai.Tool
-	// AllToolNames()
 }
 
 func Call(g *genkit.Genkit, mcp *MCPToolManager, toolName string, input any) (toolOutput ToolOutput, err error) {
@@ -68,4 +63,44 @@ func Call(g *genkit.Genkit, mcp *MCPToolManager, toolName string, input any) (to
 	}
 
 	return toolOutput, nil
+}
+
+type ToolRegistry struct {
+	managers []ToolManager
+}
+
+func NewToolRegistry(managers ...ToolManager) *ToolRegistry {
+	return &ToolRegistry{managers: managers}
+}
+
+func (tr *ToolRegistry) AllToolRefs() (toolRefs []ai.ToolRef) {
+	for _, manager := range tr.managers {
+		toolRefs = append(toolRefs, manager.ToolRefs()...)
+	}
+	return toolRefs
+}
+
+type ToolManager interface {
+	ToolRefs() []ai.ToolRef
+}
+
+type InternalToolManager struct {
+	registry *genkit.Genkit
+	tools    []ai.Tool
+}
+
+func NewInternalToolManager(g *genkit.Genkit, history *memory.History) *InternalToolManager {
+	var tools []ai.Tool
+	tools = append(tools, defineMemoryTools(g, history)...)
+	return &InternalToolManager{
+		registry: g,
+		tools:    tools,
+	}
+}
+
+func (itm *InternalToolManager) ToolRefs() (toolRef []ai.ToolRef) {
+	for _, tool := range itm.tools {
+		toolRef = append(toolRef, tool)
+	}
+	return toolRef
 }
