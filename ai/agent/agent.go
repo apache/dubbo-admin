@@ -196,7 +196,12 @@ func NewOrderOrchestrator(stages ...*Stage) *OrderOrchestrator {
 	}
 }
 
-func (orchestrator *OrderOrchestrator) Run(ctx context.Context, input schema.Schema, chans *Channels) error {
+func (orchestrator *OrderOrchestrator) Run(ctx context.Context, input schema.Schema, chans *Channels) (err error) {
+	defer func() {
+		if err != nil {
+			chans.ErrorChan <- err
+		}
+	}()
 	// Use user initial input for the first round
 	if input == nil {
 		return errors.New("userInput cannot be nil")
@@ -247,7 +252,7 @@ Outer:
 	for _, key := range orchestrator.afterLoop {
 		curStage, ok := orchestrator.stages[key]
 		if !ok {
-			return (fmt.Errorf("stage %s not found", key))
+			return fmt.Errorf("stage %s not found", key)
 		}
 
 		if err := curStage.Execute(ctx, chans, input); err != nil {
@@ -260,9 +265,12 @@ Outer:
 	return nil
 }
 
-func (orchestrator *OrderOrchestrator) RunStage(ctx context.Context, key string, input schema.Schema, chans *Channels) error {
+func (orchestrator *OrderOrchestrator) RunStage(ctx context.Context, key string, input schema.Schema, chans *Channels) (err error) {
 	defer func() {
 		chans.Close()
+		if err != nil {
+			chans.ErrorChan <- err
+		}
 	}()
 	stage, ok := orchestrator.stages[key]
 	if !ok {
