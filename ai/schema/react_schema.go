@@ -67,6 +67,7 @@ func (o Observation) String() string {
 
 type ThinkInput struct {
 	UserInput     *UserInput         `json:"user_input,omitempty"`
+	SessionID     string             `json:"session_id"`
 	ToolResponses []tools.ToolOutput `json:"tool_responses,omitempty"`
 	Observation   *Observation       `json:"observation,omitempty"`
 }

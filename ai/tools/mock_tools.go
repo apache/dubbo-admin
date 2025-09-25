@@ -665,23 +665,13 @@ func (mtm *MockToolManager) Register(tools ...ai.Tool) {
 	mtm.tools = append(mtm.tools, tools...)
 }
 
-func (mtm *MockToolManager) AllToolRefs() (toolRef []ai.ToolRef, err error) {
+func (mtm *MockToolManager) ToolRefs() []ai.ToolRef {
 	if mtm.tools == nil {
-		return nil, fmt.Errorf("no mock tools registered")
+		return nil
 	}
+	var toolRef []ai.ToolRef
 	for _, tool := range mtm.tools {
 		toolRef = append(toolRef, tool)
 	}
-	return toolRef, nil
-}
-
-func (mtm *MockToolManager) AllToolNames() (toolNames map[string]struct{}, err error) {
-	if mtm.tools == nil {
-		return nil, fmt.Errorf("no mock tools registered")
-	}
-	toolNames = make(map[string]struct{})
-	for _, tool := range mtm.tools {
-		toolNames[tool.Name()] = struct{}{}
-	}
-	return toolNames, nil
+	return toolRef
 }

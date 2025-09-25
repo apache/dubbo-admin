@@ -36,6 +36,7 @@ Determine investigation strategy:
 - **Investigation Scope**: How broad should the inquiry be?
 - **Approach Selection**: What methodology will be most effective?
 - **Loop Prevention**: If tools returned data, build analysis on that data rather than re-requesting it
+- **Historical Context Support**: When historical context or memory support is needed for comprehensive analysis, consider using memory tools to retrieve relevant past interactions, decisions, or system states
 
 # Output Requirements
 **MOST IMPORTANT: ALWAYS OUTPUT VALID JSON OBJECT FOLLOWING THE GIVEN SCHEMA!!!**
@@ -50,6 +51,11 @@ Determine investigation strategy:
 - Only suggest tools that can actually address the user's request
 - If no available tools can satisfy the requirements, return empty array `[]` for `suggested_tools`
 - When tools cannot help, explain the limitation in your `thought` field
+- When you need historical context, previous analysis results, or memory support to provide comprehensive guidance, include memory tools in your suggestions. This is especially important for:
+  - Complex multi-step investigations that require context from previous sessions
+  - Recurring issues that may have been analyzed before
+  - Situations where understanding past decisions or states would improve current analysis
+  - Cases where user context or preferences from previous interactions would be valuable
 
 **Field Type Requirements**
 All string fields must be valid strings, never use null values.

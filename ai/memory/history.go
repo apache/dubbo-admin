@@ -2,10 +2,11 @@ package memory
 
 import (
 	"context"
-	"dubbo-admin-ai/utils"
 	"errors"
 	"fmt"
 	"sync"
+
+	"dubbo-admin-ai/utils"
 
 	"github.com/firebase/genkit/go/ai"
 )
@@ -36,9 +37,18 @@ func NewTurn() *Turn {
 	}
 }
 
+func (t *Turn) Messages() []*ai.Message {
+	var msgs []*ai.Message
+	msgs = append(msgs, t.SystemMessages...)
+	msgs = append(msgs, t.UserMessages...)
+	msgs = append(msgs, t.ModelMessages...)
+	return msgs
+}
+
 type History struct {
-	mu     sync.RWMutex
-	memory map[string]*utils.Window[*Turn]
+	mu            sync.RWMutex
+	windowMemory  map[string]*utils.Window[*Turn]
+	historyMemory map[string][]*Turn
 }
 
 func NewMemoryContext(key HistoryKey) context.Context {
@@ -46,7 +56,8 @@ func NewMemoryContext(key HistoryKey) context.Context {
 		context.Background(),
 		key,
 		&History{
-			memory: make(map[string]*utils.Window[*Turn]),
+			windowMemory:  make(map[string]*utils.Window[*Turn]),
+			historyMemory: make(map[string][]*Turn),
 		},
 	)
 }
@@ -64,8 +75,8 @@ func (h *History) AddHistory(sessionID string, message ...*ai.Message) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if h.memory == nil {
-		h.memory = make(map[string]*utils.Window[*Turn])
+	if h.windowMemory == nil {
+		h.windowMemory = make(map[string]*utils.Window[*Turn])
 	}
 
 	var systemMsgs, userMsgs, modelMsgs []*ai.Message
@@ -83,14 +94,14 @@ func (h *History) AddHistory(sessionID string, message ...*ai.Message) {
 		}
 	}
 
-	if h.memory[sessionID] == nil {
-		h.memory[sessionID] = utils.NewWindow[*Turn](TurnLimit)
+	if h.windowMemory[sessionID] == nil {
+		h.windowMemory[sessionID] = utils.NewWindow[*Turn](TurnLimit)
 	}
-	if h.memory[sessionID].IsEmpty() {
-		h.memory[sessionID].Push(NewTurn())
+	if h.windowMemory[sessionID].IsEmpty() {
+		h.windowMemory[sessionID].Push(NewTurn())
 	}
 
-	turn := h.memory[sessionID].GetCurData()
+	turn := h.windowMemory[sessionID].GetCurData()
 	turn.SystemMessages = append(turn.SystemMessages, systemMsgs...)
 	turn.UserMessages = append(turn.UserMessages, userMsgs...)
 	turn.ModelMessages = append(turn.ModelMessages, modelMsgs...)
@@ -101,23 +112,43 @@ func (h *History) IsEmpty(sessionID string) bool {
 	defer h.mu.RUnlock()
 
 	// 检查该 session 的窗口是否为空
-	return h.memory == nil || h.memory[sessionID] == nil || h.memory[sessionID].IsEmpty()
+	return h.windowMemory == nil || h.windowMemory[sessionID] == nil || h.windowMemory[sessionID].IsEmpty()
 }
 
-func (h *History) AllHistory(sessionID string) []*ai.Message {
+func (h *History) AllMemory(sessionID string) []*ai.Message {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	if h.memory == nil || h.memory[sessionID] == nil {
+	if h.windowMemory == nil || h.windowMemory[sessionID] == nil {
 		return nil
 	}
 
 	var result []*ai.Message
-	for _, turn := range h.memory[sessionID].GetWindow() {
+	for _, turn := range h.windowMemory[sessionID].GetWindow() {
 		if turn != nil {
-			result = append(result, turn.SystemMessages...)
-			result = append(result, turn.UserMessages...)
-			result = append(result, turn.ModelMessages...)
+			result = append(result, turn.Messages()...)
+		}
+	}
+	for _, turn := range h.historyMemory[sessionID] {
+		if turn != nil {
+			result = append(result, turn.Messages()...)
+		}
+	}
+	return result
+}
+
+func (h *History) WindowMemory(sessionID string) []*ai.Message {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
+	if h.windowMemory == nil || h.windowMemory[sessionID] == nil {
+		return nil
+	}
+
+	var result []*ai.Message
+	for _, turn := range h.windowMemory[sessionID].GetWindow() {
+		if turn != nil {
+			result = append(result, turn.Messages()...)
 		}
 	}
 
@@ -128,8 +159,8 @@ func (h *History) Clear(sessionID string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if h.memory != nil {
-		delete(h.memory, sessionID)
+	if h.windowMemory != nil {
+		delete(h.windowMemory, sessionID)
 	}
 }
 
@@ -137,19 +168,19 @@ func (h *History) ClearAll() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	h.memory = make(map[string]*utils.Window[*Turn])
+	h.windowMemory = make(map[string]*utils.Window[*Turn])
 }
 
 func (h *History) GetAllSessions() []string {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	if h.memory == nil {
+	if h.windowMemory == nil {
 		return make([]string, 0)
 	}
 
-	sessions := make([]string, 0, len(h.memory))
-	for sessionID := range h.memory {
+	sessions := make([]string, 0, len(h.windowMemory))
+	for sessionID := range h.windowMemory {
 		sessions = append(sessions, sessionID)
 	}
 	return sessions
@@ -159,12 +190,12 @@ func (h *History) SystemMemory(sessionID string) []*ai.Message {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	if h.memory == nil || h.memory[sessionID] == nil {
+	if h.windowMemory == nil || h.windowMemory[sessionID] == nil {
 		return make([]*ai.Message, 0)
 	}
 
 	var result []*ai.Message
-	window := h.memory[sessionID]
+	window := h.windowMemory[sessionID]
 	allTurns := window.GetWindow()
 	for _, turn := range allTurns {
 		result = append(result, turn.SystemMessages...)
@@ -176,12 +207,12 @@ func (h *History) UserMemory(sessionID string) []*ai.Message {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	if h.memory == nil || h.memory[sessionID] == nil {
+	if h.windowMemory == nil || h.windowMemory[sessionID] == nil {
 		return make([]*ai.Message, 0)
 	}
 
 	var result []*ai.Message
-	window := h.memory[sessionID]
+	window := h.windowMemory[sessionID]
 	allTurns := window.GetWindow()
 	for _, turn := range allTurns {
 		result = append(result, turn.UserMessages...)
@@ -194,12 +225,12 @@ func (h *History) ModelMemory(sessionID string) []*ai.Message {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
-	if h.memory == nil || h.memory[sessionID] == nil {
+	if h.windowMemory == nil || h.windowMemory[sessionID] == nil {
 		return make([]*ai.Message, 0)
 	}
 
 	var result []*ai.Message
-	window := h.memory[sessionID]
+	window := h.windowMemory[sessionID]
 	allTurns := window.GetWindow()
 	for _, turn := range allTurns {
 		result = append(result, turn.ModelMessages...)
@@ -211,21 +242,20 @@ func (h *History) NextTurn(sessionID string) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if h.memory == nil {
+	if h.windowMemory == nil {
 		return errors.New("memory is nil")
 	}
 
-	if h.memory[sessionID] == nil {
+	if h.windowMemory[sessionID] == nil {
 		return errors.New("session not found")
 	}
 
-	if h.memory[sessionID].IsFull() {
+	if h.windowMemory[sessionID].IsFull() {
 		return errors.New("current session's context is full, please create a new session")
 	}
 
-	if !h.memory[sessionID].Pop() {
-		return errors.New("failed to pop the context window")
-	}
+	poppedMemory := h.windowMemory[sessionID].Pop()
+	h.historyMemory[sessionID] = append(h.historyMemory[sessionID], poppedMemory)
 
 	return nil
 }

@@ -84,7 +84,7 @@ func (mtm *MCPToolManager) AllTools() []ai.Tool {
 	return tools
 }
 
-func (mtm *MCPToolManager) AllToolRefs() (toolRef []ai.ToolRef) {
+func (mtm *MCPToolManager) ToolRefs() (toolRef []ai.ToolRef) {
 	for _, tool := range mtm.availableTools {
 		toolRef = append(toolRef, tool)
 	}
