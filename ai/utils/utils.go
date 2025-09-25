@@ -5,8 +5,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-
-	"github.com/firebase/genkit/go/ai"
 )
 
 // CopyFile copies source file content to target file, creates the file if target doesn't exist
@@ -53,9 +51,73 @@ func CopyFile(srcPath, dstPath string) error {
 	return nil
 }
 
-func Tools2ToolRef(tools []ai.Tool) (toolRef []ai.ToolRef) {
-	for _, tool := range tools {
-		toolRef = append(toolRef, tool)
+type Window[T any] struct {
+	limit int
+	begin int
+	end   int
+	data  []T
+}
+
+func NewWindow[T any](limit int) *Window[T] {
+	if limit <= 0 {
+		panic("limit must be positive")
 	}
-	return toolRef
+	return &Window[T]{
+		limit: limit,
+		data:  make([]T, limit+1),
+		begin: 0,
+		end:   0,
+	}
+}
+
+func (w *Window[T]) Push(elm T) bool {
+	if w.IsFull() {
+		return false
+	}
+	w.data[w.end] = elm
+	w.end++
+	return true
+}
+
+func (w *Window[T]) IsEmpty() bool {
+	return w.begin == w.end
+}
+
+func (w *Window[T]) IsFull() bool {
+	return w.end == w.limit
+}
+
+func (w *Window[T]) Pop() bool {
+	if w.IsEmpty() {
+		return false
+	}
+	w.begin++
+	return true
+}
+
+func (w *Window[T]) Size() int {
+	return w.end - w.begin
+}
+
+func (w *Window[T]) Capacity() int {
+	return w.limit
+}
+
+func (w *Window[T]) GetAll() []T {
+	return w.data
+}
+
+func (w *Window[T]) GetCurData() T {
+	if w.IsEmpty() {
+		panic("window is empty")
+	}
+	return w.data[w.end-1]
+}
+
+func (w *Window[T]) GetWindow() []T {
+	return w.data[w.begin:w.end]
+}
+
+func (w *Window[T]) GetWindowBounds() (begin, end int) {
+	return w.begin, w.end
 }

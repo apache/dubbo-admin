@@ -366,12 +366,6 @@ func (sh *SSEHandler) HandleContentBlockStop(index int) error {
 
 // FinishStream 完成流式响应，发送结束事件
 func (sh *SSEHandler) FinishStream(stopReason string, usage *ai.GenerationUsage, index int) error {
-	// 发送内容块结束事件
-	if err := sh.writer.WriteContentBlockStop(index); err != nil {
-		manager.GetLogger().Error("Failed to write content block stop event", "error", err)
-		return err
-	}
-
 	// 发送消息增量事件（包含停止原因和使用情况）
 	delta := &Delta{
 		StopReason: &stopReason,

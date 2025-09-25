@@ -181,7 +181,7 @@ func (h *AgentHandler) DeleteSession(c *gin.Context) {
 
 	// 删除对应的 history
 	if agentMemory := h.agent.GetMemory(); agentMemory != nil {
-		agentMemory.RemoveSessionHistory(sessionID)
+		agentMemory.Clear(sessionID)
 		manager.GetLogger().Info("Session history cleared", "session_id", sessionID)
 	}
 

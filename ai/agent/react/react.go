@@ -113,12 +113,34 @@ func Create(g *genkit.Genkit) (*ReActAgent, error) {
 func (ra *ReActAgent) Interact(input *schema.UserInput, sessionID string) *agent.Channels {
 	ra.channels.Reset()
 	go func() {
+		var (
+			err       error
+			inputJson []byte
+			in        schema.ThinkInput
+		)
+		in.UserInput = input
+
+		// Add user input to history
 		ra.memoryCtx = context.WithValue(ra.memoryCtx, memory.SessionIDKey, sessionID)
-		err := ra.orchestrator.Run(ra.memoryCtx, schema.ThinkInput{UserInput: input}, ra.channels)
+		history, ok := ra.memoryCtx.Value(memory.ChatHistoryKey).(*memory.History)
+		if !ok {
+			err = fmt.Errorf("failed to get history from context")
+			ra.channels.ErrorChan <- err
+		}
+
+		inputJson, err = json.Marshal(in)
+		if err != nil {
+			ra.channels.ErrorChan <- err
+		}
+		inputMsg := ai.NewUserMessage(ai.NewJSONPart(string(inputJson)))
+		history.AddHistory(sessionID, inputMsg)
+
+		err = ra.orchestrator.Run(ra.memoryCtx, in, ra.channels)
 		if err != nil {
 			ra.channels.ErrorChan <- err
 		}
 		ra.channels.Close()
+		history.NextTurn(sessionID)
 	}()
 	return ra.channels
 }
@@ -229,30 +251,17 @@ func think(
 			if !ok {
 				return nil, fmt.Errorf("failed to get history from context")
 			}
-
-			// 从上下文中获取 sessionID
 			sessionID, ok := ctx.Value(memory.SessionIDKey).(string)
 			if !ok || sessionID == "" {
 				return nil, fmt.Errorf("session id not found in context")
 			}
-
-			var (
-				opts     []ai.PromptExecuteOption
-				inputMsg *ai.Message
-			)
-			if !history.IsEmpty(sessionID) {
-				opts = append(opts, ai.WithMessages(history.AllHistory(sessionID)...))
-			} else {
-				inputJson, err := json.Marshal(in)
-				if err != nil {
-					return nil, fmt.Errorf("failed to marshal input: %w", err)
-				}
-				inputMsg = ai.NewUserMessage(ai.NewJSONPart(string(inputJson)))
-				opts = append(opts, ai.WithMessages(inputMsg))
+			if history.IsEmpty(sessionID) {
+				return nil, fmt.Errorf("history is empty")
 			}
 
 			// execute prompt
-			resp, err := thinkPrompt.Execute(ctx, opts...)
+			manager.GetLogger().Info("Thinking...", "input", history.AllHistory(sessionID))
+			resp, err := thinkPrompt.Execute(ctx, ai.WithMessages(history.AllHistory(sessionID)...))
 			manager.GetLogger().Info("Think response:", "response", resp.Text())
 			if err != nil {
 				return nil, fmt.Errorf("failed to execute agentThink prompt: %w", err)
@@ -265,10 +274,6 @@ func think(
 				return nil, fmt.Errorf("failed to parse agentThink prompt response: %w", err)
 			}
 
-			// Don't add the original user input
-			// if inputMsg != nil {
-			// 	history.AddHistory(sessionID, inputMsg)
-			// }
 			history.AddHistory(sessionID, resp.Message)
 			thinkOut.Usage = resp.Usage
 
@@ -297,8 +302,6 @@ func act(g *genkit.Genkit, mcpToolManager *tools.MCPToolManager, toolPrompt ai.P
 			if !ok {
 				return nil, fmt.Errorf("failed to get history from context")
 			}
-
-			// 从上下文中获取 sessionID
 			sessionID, ok := ctx.Value(memory.SessionIDKey).(string)
 			if !ok || sessionID == "" {
 				return nil, fmt.Errorf("session id not found in context")
@@ -356,8 +359,6 @@ func observe(g *genkit.Genkit, observePrompt ai.Prompt, feedbackPrompt ai.Prompt
 			if !ok {
 				return nil, fmt.Errorf("failed to get history from context")
 			}
-
-			// 从上下文中获取 sessionID
 			sessionID, ok := ctx.Value(memory.SessionIDKey).(string)
 			if !ok || sessionID == "" {
 				return nil, fmt.Errorf("session id not found in context")
