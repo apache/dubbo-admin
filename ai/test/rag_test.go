@@ -107,22 +107,8 @@ func TestCreateIndex(t *testing.T) {
 
 // TestSearch - 搜索测试（可以运行多次）
 func TestSearch(t *testing.T) {
-	ctx := context.Background()
 	g := manager.Registry(config.DEFAULT_MODEL.Key(), config.PROJECT_ROOT+"/.env", manager.ProductionLogger())
 	indexName := config.PINECONE_INDEX_NAME
-	_, _, err := pinecone.DefineRetriever(ctx, g,
-		pinecone.Config{
-			IndexID:  indexName,
-			Embedder: genkit.LookupEmbedder(g, dashscope.Qwen3_embedding.Key()),
-		},
-		&ai.RetrieverOptions{
-			Label:        "cocktail_retriever",
-			ConfigSchema: core.InferSchemaMap(pinecone.PineconeRetrieverOptions{}),
-		})
-
-	if err != nil {
-		t.Fatalf("Failed to setup retriever with index '%s': %v", indexName, err)
-	}
 	queries := []string{
 		"请给我玛格丽特鸡尾酒的配方",
 		"Please give me the recipe of Margarita cocktail",
@@ -130,7 +116,7 @@ func TestSearch(t *testing.T) {
 		"How to make a vodka martini?",
 		"What are tropical fruit cocktails?",
 	}
-	results, err := utils.SearchInPinecone(g, indexName, "cocktails", queries, 15)
+	results, err := utils.RetrieveFromPinecone(g, dashscope.Qwen3_embedding.Key(), indexName, "cocktails", queries, 10, true, 5)
 	if err != nil {
 		t.Fatalf("search in pinecone failed: %v", err)
 	}
@@ -142,40 +128,14 @@ func TestSearch(t *testing.T) {
 }
 
 func TestRerank(t *testing.T) {
-	ctx := context.Background()
 	g := manager.Registry(config.DEFAULT_MODEL.Key(), config.PROJECT_ROOT+"/.env", manager.ProductionLogger())
 	indexName := config.PINECONE_INDEX_NAME
-	_, _, err := pinecone.DefineRetriever(ctx, g,
-		pinecone.Config{
-			IndexID:  indexName,
-			Embedder: genkit.LookupEmbedder(g, dashscope.Qwen3_embedding.Key()),
-		},
-		&ai.RetrieverOptions{
-			Label:        "cocktail_retriever",
-			ConfigSchema: core.InferSchemaMap(pinecone.PineconeRetrieverOptions{}),
-		})
-
-	if err != nil {
-		t.Fatalf("Failed to setup retriever with index '%s': %v", indexName, err)
-	}
 	queries := []string{
 		"What are the ingredients of whiskey sour?",
 	}
-	results, err := utils.SearchInPinecone(g, indexName, "cocktails", queries, 20)
+	results, err := utils.RetrieveFromPinecone(g, dashscope.Qwen3_embedding.Key(), indexName, "cocktails", queries, 10, true, 5)
 	if err != nil {
 		t.Fatalf("search in pinecone failed: %v", err)
 	}
-
-	// Rerank the results
-	resMap := make(map[string][]*string, len(results))
-	for query, docs := range results {
-		rerankRes, err := utils.Rerank(config.COHERE_API_KEY, "rerank-v3.5", query, docs, 5)
-		if err != nil {
-			t.Fatalf("rerank failed: %v", err)
-		}
-		for _, res := range rerankRes {
-			resMap[query] = append(resMap[query], docs[res.Index])
-		}
-	}
-	manager.GetLogger().Info("重排序结果", "result", resMap)
+	manager.GetLogger().Info("重排序结果", "result", results)
 }
