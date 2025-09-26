@@ -35,4 +35,5 @@ const (
 	K8S_RAG_INDEX             string = "kube-docs"
 	RAG_TOP_K                 int    = 10
 	RERANK_TOP_N              int    = 2
+	RERANK_MODEL              string = "rerank-v3.5"
 )

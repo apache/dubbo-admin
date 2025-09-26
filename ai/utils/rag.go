@@ -132,7 +132,7 @@ func RetrieveFromPinecone(g *genkit.Genkit, embedderName, indexName, namespace s
 				docTexts[i] = &doc.Content
 			}
 
-			rerankRes, err := Rerank(config.COHERE_API_KEY, "rerank-v3.5", query, docTexts, topN)
+			rerankRes, err := Rerank(config.COHERE_API_KEY, config.RERANK_MODEL, query, docTexts, topN)
 			if err != nil {
 				return nil, err
 			}
@@ -324,7 +324,9 @@ func (c *MarkdownCleaner) Clean(markdown string) string {
 
 	// 预处理：删除 frontmatter 和 Hugo shortcodes
 	markdown = c.removeFrontmatter(markdown)
-	// markdown = c.removeHugoShortcodes(markdown)
+	// 移除 HugoShortcodes
+	hugoRe := regexp.MustCompile(`{{<[^>]+>}}|{{%[^%]+%}}`)
+	markdown = hugoRe.ReplaceAllString(markdown, "")
 
 	// 创建解析器，包含 Frontmatter 扩展
 	extensions := parser.CommonExtensions | parser.Mmark | parser.Footnotes
@@ -362,14 +364,14 @@ func (c *MarkdownCleaner) walkAST(node ast.Node) {
 
 	case *ast.List:
 		c.processList(n)
-		c.result.WriteString("\r\n")
+		c.result.WriteString("\n")
 
 	case *ast.ListItem:
 		c.processListItem(n)
 
 	case *ast.CodeBlock:
 		c.processCodeBlock(n)
-		c.result.WriteString("\r\n")
+		c.result.WriteString("\n")
 
 	case *ast.Table:
 		c.result.WriteString("\r\n")
@@ -378,6 +380,7 @@ func (c *MarkdownCleaner) walkAST(node ast.Node) {
 
 	case *ast.TableRow:
 		c.processTableRow(n)
+		c.result.WriteString("\n")
 
 	case *ast.TableCell:
 		c.processTableCell(n)

@@ -8,7 +8,6 @@ import (
 	"dubbo-admin-ai/config"
 	"dubbo-admin-ai/memory"
 	"dubbo-admin-ai/schema"
-	"dubbo-admin-ai/tools"
 
 	"github.com/firebase/genkit/go/core"
 )
@@ -41,21 +40,19 @@ type Agent interface {
 type Channels struct {
 	closed bool
 
-	ReasoningChan chan string
-	UserRespChan  chan *schema.StreamFeedback
-	ToolRespChan  chan *tools.ToolOutput
-	FlowChan      chan schema.Schema
-	ErrorChan     chan error
+	UserRespChan    chan *schema.StreamFeedback
+	FlowChan        chan schema.Schema
+	FinalOutputChan chan schema.Schema
+	ErrorChan       chan error
 }
 
 func NewChannels(bufferSize int) *Channels {
 	return &Channels{
-		closed:        false,
-		ReasoningChan: make(chan string, bufferSize),
-		ToolRespChan:  make(chan *tools.ToolOutput, bufferSize),
-		UserRespChan:  make(chan *schema.StreamFeedback, bufferSize),
-		FlowChan:      make(chan schema.Schema, bufferSize),
-		ErrorChan:     make(chan error, bufferSize),
+		closed:          false,
+		FinalOutputChan: make(chan schema.Schema, bufferSize),
+		UserRespChan:    make(chan *schema.StreamFeedback, bufferSize),
+		FlowChan:        make(chan schema.Schema, bufferSize),
+		ErrorChan:       make(chan error, bufferSize),
 	}
 }
 
@@ -72,8 +69,7 @@ func (chans *Channels) Closed() bool {
 }
 
 func (chans *Channels) Destroy() {
-	close(chans.ReasoningChan)
-	close(chans.ToolRespChan)
+	close(chans.FinalOutputChan)
 	close(chans.UserRespChan)
 	close(chans.FlowChan)
 	close(chans.ErrorChan)
@@ -222,6 +218,7 @@ func (orchestrator *OrderOrchestrator) Run(ctx context.Context, input schema.Sch
 	}
 
 	// Iterate until reaching maximum iterations or status is Finished
+	var finalOutput schema.Observation
 Outer:
 	for range config.MAX_REACT_ITERATIONS {
 		for _, order := range orchestrator.loop {
@@ -239,15 +236,18 @@ Outer:
 			// Check if LLM returned final answer
 			if out, ok := output.(schema.Observation); ok {
 				if !out.Heartbeat && out.FinalAnswer != "" {
-					// TODO: Handle final answer without repeat
-					// chans.UserRespChan <- schema.NewStreamFeedback(out.FinalAnswer)
+					finalOutput = out
 					break Outer
 				}
 			}
 			// The output of current stage will be the input of the next stage
+			if val, ok := output.(schema.Observation); ok {
+				finalOutput = val
+			}
 			input = output
 		}
 	}
+	chans.FinalOutputChan <- finalOutput
 
 	for _, key := range orchestrator.afterLoop {
 		curStage, ok := orchestrator.stages[key]
@@ -262,6 +262,7 @@ Outer:
 
 		input = output
 	}
+
 	return nil
 }
 

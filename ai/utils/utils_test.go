@@ -62,6 +62,7 @@ func TestMdRetrive(t *testing.T) {
 	query := []string{
 		"什么是 Pod？",
 		"什么是 Deployment？",
+		"Kubernetes网络模式",
 	}
 	results, err := utils.RetrieveFromPinecone(g, dashscope.Qwen3_embedding.Key(), "kubernetes", "concepts", query, 10, true, 3)
 

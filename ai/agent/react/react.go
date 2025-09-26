@@ -277,13 +277,14 @@ func think(
 
 			// Parse output
 			var thinkOut ThinkOut
+			thinkOut.UsageInfo = &ai.GenerationUsage{}
 			err = resp.Output(&thinkOut)
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse agentThink prompt response: %w", err)
 			}
 
 			history.AddHistory(sessionID, resp.Message)
-			thinkOut.Usage = resp.Usage
+			schema.AccumulateUsage(thinkOut.UsageInfo, resp.Usage, in.Usage())
 
 			return thinkOut, nil
 		})
@@ -333,6 +334,7 @@ func act(g *genkit.Genkit, mcpToolManager *tools.MCPToolManager, toolPrompt ai.P
 			// Call tool requests and collect outputs
 			var parts []*ai.Part
 			var actOuts ActOut
+			actOuts.UsageInfo = &ai.GenerationUsage{}
 			for _, req := range toolReqs.ToolRequests() {
 				output, err := tools.Call(g, mcpToolManager, req.Name, req.Input)
 				if err != nil {
@@ -346,10 +348,10 @@ func act(g *genkit.Genkit, mcpToolManager *tools.MCPToolManager, toolPrompt ai.P
 				parts = append(parts, ai.NewJSONPart(string(outputJson)))
 				actOuts.Add(&output)
 			}
-
+			manager.GetLogger().Info("act out:", "out", actOuts)
 			// ai.RoleTool's messages will be ingored by ai.WithMessages
 			history.AddHistory(sessionID, ai.NewMessage(ai.RoleModel, nil, parts...))
-			actOuts.Usage = toolReqs.Usage
+			schema.AccumulateUsage(actOuts.UsageInfo, toolReqs.Usage, in.Usage())
 
 			return actOuts, nil
 		})
@@ -385,16 +387,18 @@ func observe(g *genkit.Genkit, observePrompt ai.Prompt, feedbackPrompt ai.Prompt
 			}
 
 			// Parse output
-			var response schema.Observation
-			err = resp.Output(&response)
+			var observation schema.Observation
+			observation.UsageInfo = &ai.GenerationUsage{}
+			err = resp.Output(&observation)
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse observe prompt response: %w", err)
 			}
+			manager.GetLogger().Info("Observe out:", "out", observation)
 
 			history.AddHistory(sessionID, resp.Message)
 			feedback(feedbackPrompt, ctx, cb, history.WindowMemory(sessionID)...)
-			response.Usage = resp.Usage
+			schema.AccumulateUsage(observation.UsageInfo, resp.Usage, in.Usage())
 
-			return response, err
+			return observation, err
 		})
 }
