@@ -22,8 +22,9 @@ var (
 	_, b, _, _   = runtime.Caller(0)
 	PROJECT_ROOT = filepath.Join(filepath.Dir(b), "..")
 
-	PROMPT_DIR_PATH string       = filepath.Join(PROJECT_ROOT, "prompts")
-	DEFAULT_MODEL   *model.Model = dashscope.Qwen_max
+	PROMPT_DIR_PATH string          = filepath.Join(PROJECT_ROOT, "prompts")
+	DEFAULT_MODEL   *model.Model    = dashscope.Qwen_max
+	EMBEDDING_MODEL *model.Embedder = dashscope.Qwen3_embedding
 )
 
 const (
@@ -31,4 +32,7 @@ const (
 	STAGE_CHANNEL_BUFFER_SIZE int    = 5
 	PINECONE_INDEX_NAME       string = "dubbot"
 	MCP_HOST_NAME             string = "mcp_host"
+	K8S_RAG_INDEX             string = "kube-docs"
+	RAG_TOP_K                 int    = 10
+	RERANK_TOP_N              int    = 2
 )

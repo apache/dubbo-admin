@@ -8,6 +8,7 @@ require (
 	github.com/cohere-ai/cohere-go/v2 v2.15.3
 	github.com/firebase/genkit/go v1.0.4
 	github.com/gin-gonic/gin v1.10.1
+	github.com/gomarkdown/markdown v0.0.0-20250810172220-2e2c11897d1a
 	github.com/joho/godotenv v1.5.1
 	github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728
 	github.com/mitchellh/mapstructure v1.5.0
