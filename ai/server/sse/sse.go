@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"dubbo-admin-ai/manager"
-
 	"dubbo-admin-ai/schema"
 
 	"github.com/firebase/genkit/go/ai"
@@ -156,9 +154,10 @@ func (sw *StreamWriter) WriteEvent(eventType SSEType, data any) error {
 				if delta, exists := deltaData["delta"]; exists {
 					eventData["delta"] = delta
 				}
-				if usage, exists := deltaData["usage"]; exists {
-					eventData["usage"] = usage
+				if final, exists := deltaData["final"]; exists {
+					eventData["final"] = final
 				}
+
 			}
 		case ErrorEvent:
 			if errorInfo, ok := data.(*ErrorInfo); ok {
@@ -213,14 +212,12 @@ func (sw *StreamWriter) WriteContentBlockStop(index int) error {
 }
 
 // WriteMessageDelta 写入消息增量事件
-func (sw *StreamWriter) WriteMessageDelta(delta *Delta, usage *ai.GenerationUsage) error {
-	data := map[string]any{
+func (sw *StreamWriter) WriteMessageDelta(delta *Delta, data schema.Schema) error {
+	dataMap := map[string]any{
 		"delta": delta,
 	}
-	if usage != nil {
-		data["usage"] = usage
-	}
-	return sw.WriteEvent(MessageDelta, data)
+	dataMap["final"] = data
+	return sw.WriteEvent(MessageDelta, dataMap)
 }
 
 // WriteMessageStop 写入消息结束事件
@@ -275,7 +272,6 @@ func (sh *SSEHandler) HandleText(text string, index int) error {
 			Content: []ContentItem{},
 		}
 		if err := sh.writer.WriteMessageStart(msg); err != nil {
-			manager.GetLogger().Error("Failed to write message start event", "error", err)
 			return err
 		}
 
@@ -285,7 +281,6 @@ func (sh *SSEHandler) HandleText(text string, index int) error {
 			Text: "",
 		}
 		if err := sh.writer.WriteContentBlockStart(index, contentBlock); err != nil {
-			manager.GetLogger().Error("Failed to write content block start event", "error", err)
 			return err
 		}
 
@@ -299,7 +294,6 @@ func (sh *SSEHandler) HandleText(text string, index int) error {
 			Text: text,
 		}
 		if err := sh.writer.WriteContentBlockDelta(index, delta); err != nil {
-			manager.GetLogger().Error("Failed to write content block delta", "error", err)
 			return err
 		}
 	}
@@ -319,7 +313,6 @@ func (sh *SSEHandler) HandleStreamChunk(chunk schema.StreamChunk) error {
 			Content: []ContentItem{},
 		}
 		if err := sh.writer.WriteMessageStart(msg); err != nil {
-			manager.GetLogger().Error("Failed to write message start event", "error", err)
 			return err
 		}
 
@@ -329,7 +322,6 @@ func (sh *SSEHandler) HandleStreamChunk(chunk schema.StreamChunk) error {
 			Text: "",
 		}
 		if err := sh.writer.WriteContentBlockStart(0, contentBlock); err != nil {
-			manager.GetLogger().Error("Failed to write content block start event", "error", err)
 			return err
 		}
 
@@ -346,7 +338,6 @@ func (sh *SSEHandler) HandleStreamChunk(chunk schema.StreamChunk) error {
 				Text: deltaText,
 			}
 			if err := sh.writer.WriteContentBlockDelta(0, delta); err != nil {
-				manager.GetLogger().Error("Failed to write content block delta", "error", err)
 				return err
 			}
 		}
@@ -364,20 +355,19 @@ func (sh *SSEHandler) HandleContentBlockStop(index int) error {
 	return sh.writer.WriteContentBlockStop(index)
 }
 
-// FinishStream 完成流式响应，发送结束事件
-func (sh *SSEHandler) FinishStream(stopReason string, usage *ai.GenerationUsage, index int) error {
-	// 发送消息增量事件（包含停止原因和使用情况）
+func (sh *SSEHandler) MessageDeltaWithUsage(stopReason string, output schema.Schema) error {
 	delta := &Delta{
 		StopReason: &stopReason,
 	}
-	if err := sh.writer.WriteMessageDelta(delta, usage); err != nil {
-		manager.GetLogger().Error("Failed to write message delta event", "error", err)
+	if err := sh.writer.WriteMessageDelta(delta, output); err != nil {
 		return err
 	}
+	return nil
+}
 
-	// 发送消息结束事件
+// FinishStream 完成流式响应，发送结束事件
+func (sh *SSEHandler) FinishStream() error {
 	if err := sh.writer.WriteMessageStop(); err != nil {
-		manager.GetLogger().Error("Failed to write message stop event", "error", err)
 		return err
 	}
 
@@ -391,5 +381,5 @@ func (sh *SSEHandler) HandleError(errorType, errorMessage string) {
 		Message: errorMessage,
 	}
 	sh.writer.WriteError(errorInfo)
-	sh.FinishStream("error", nil, 0)
+	sh.FinishStream()
 }

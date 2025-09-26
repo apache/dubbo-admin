@@ -11,7 +11,6 @@ import (
 	"dubbo-admin-ai/schema"
 	"dubbo-admin-ai/server/session"
 
-	"github.com/firebase/genkit/go/ai"
 	"github.com/gin-gonic/gin"
 )
 
@@ -103,13 +102,23 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 				}
 			}
 
+		case finalOutput, ok := <-channels.FinalOutputChan:
+			if !ok {
+				channels.FinalOutputChan = nil
+				continue
+			}
+			if finalOutput != nil {
+				h.MessageDelta(sseHandler, finalOutput)
+			}
 		case <-c.Request.Context().Done():
 			manager.GetLogger().Info("Client disconnected from stream")
 			return
 
 		default:
 			if channels.Closed() {
-				h.finishStreamWithUsage(sseHandler, feedback, feedback.Index())
+				if err := sseHandler.FinishStream(); err != nil {
+					manager.GetLogger().Error("Failed to finish stream", "error", err)
+				}
 				manager.GetLogger().Info("Stream processing completed", "session_id", sessionID)
 				return
 			}
@@ -117,16 +126,10 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 	}
 }
 
-// finishStreamWithUsage 完成流并处理使用情况
-func (h *AgentHandler) finishStreamWithUsage(sseHandler *sse.SSEHandler, output any, index int) {
+// finishmessageUsage 完成流并处理使用情况
+func (h *AgentHandler) MessageDelta(sseHandler *sse.SSEHandler, output schema.Schema) {
 	stopReason := "end_turn"
-	var usage *ai.GenerationUsage
-
-	if thinkOutput, ok := output.(schema.ThinkOutput); ok && thinkOutput.Usage != nil {
-		usage = thinkOutput.Usage
-	}
-
-	if err := sseHandler.FinishStream(stopReason, usage, index); err != nil {
+	if err := sseHandler.MessageDeltaWithUsage(stopReason, output); err != nil {
 		sseHandler.HandleError("finish_stream_error", fmt.Sprintf("failed to finish stream: %v", err))
 	}
 }

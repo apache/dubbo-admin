@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	mdDir := "../reference/k8s_docs/concepts"
+	mdDir := "./reference/k8s_docs/concepts"
 	chunks, err := utils.ProcessMarkdownDirectory(mdDir)
 	if err != nil {
 		panic(err)

@@ -23,22 +23,6 @@ func init() {
 	reActAgent, _ = Create(manager.Registry(dashscope.Qwen3_coder.Key(), config.PROJECT_ROOT+"/.env", manager.ProductionLogger()))
 }
 
-func TestThinking(t *testing.T) {
-	agentInput := schema.UserInput{
-		Content: "我的微服务 order-service 运行缓慢，请帮助我诊断原因",
-	}
-
-	channels := agent.NewChannels(config.STAGE_CHANNEL_BUFFER_SIZE)
-
-	defer func() {
-		channels.Close()
-	}()
-
-	reActAgent.orchestrator.RunStage(chatHistoryCtx, agent.ThinkFlowName, agentInput, channels)
-
-	// fmt.Println(resp)
-}
-
 func TestThinkWithToolReq(t *testing.T) {
 	input := ActOut{
 		Outputs: []tools.ToolOutput{
