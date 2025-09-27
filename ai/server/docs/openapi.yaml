@@ -1,150 +1,184 @@
-openapi: 3.0.3
+openapi: 3.0.1
 info:
-  title: dubbo-admin-ai-api
-  description: |
-    智能故障排查系统API，为Dubbo Admin提供AI驱动的问题诊断和建议功能。
-
-    ## 功能特性
-    - 基于大语言模型的智能对话
-    - 流式响应支持（Server-Sent Events）
-    - 会话管理和历史记录
-    - 实时健康监控
-
-    ## 设计原则
-    - 利用Gin框架的HTTP状态码，响应体不重复状态码
-    - 统一的响应格式，简洁明了
-    - RESTful API设计
-
-    ## 身份验证
-    目前API未启用身份验证，后续版本将支持JWT令牌认证。
-
-    ## 速率限制
-    为保护系统资源，API实施以下限制：
-    - 每个会话最多5分钟无活动自动关闭
-    - 单次聊天消息长度限制为1000字符
-    - 每小时最多创建10个新会话
-
+  title: Agent
+  description: ""
   version: 1.0.0
-  contact:
-    name: Dubbo Admin Team
-    url: https://github.com/apache/dubbo-admin
-  license:
-    name: Apache 2.0
-    url: https://www.apache.org/licenses/LICENSE-2.0
-
-servers:
-  - url: http://localhost:8080
-    description: 开发环境
-  - url: https://dubbo-admin.example.com
-    description: 生产环境
-
+tags:
+  - name: 聊天
+  - name: 会话管理
 paths:
-  /api/v1/ai/chat/stream:
+  /ai/chat/stream:
     post:
       summary: 流式聊天
-      description: 使用Server-Sent Events实现的流式聊天，实时接收AI响应。需要先创建会话并在请求体中提供sessionID
+      deprecated: false
+      description: >-
+        使用Server-Sent
+        Events实现的流式聊天，实时接收AI响应。第一次调用时创建新session，完成后通过X-Session-ID响应头返回session_id。后续对话通过X-Session-ID请求头传递session_id
       operationId: streamChat
       tags:
         - 聊天
+      parameters: []
       requestBody:
-        required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ChatRequest"
+              type: object
+              properties: {}
             example:
-              message: "分析user-service的性能瓶颈"
-              sessionID: "sess_20240118143022_abcd1234"
+              message: 你是谁
+              sessionID: session_test
       responses:
         "200":
           description: 流式响应
-          headers:
-            X-Session-ID:
-              description: 会话ID，用于后续对话
-              schema:
-                type: string
-                example: "sess_20240118143022_abcd1234"
           content:
             text/event-stream:
               schema:
                 type: string
                 format: binary
-              example: |
+              example: >
                 event: start
-                data: {"session_id":"sess_20240118143022_abcd1234","status":"processing"}
+
+                data:
+                {"session_id":"sess_20240118143022_abcd1234","status":"processing"}
+
 
                 event: message_start
-                data: {"type":"message_start","message":{"id":"msg_sess_123_1642512185000","role":"assistant","type":"message","session_id":"sess_123"}}
+
+                data:
+                {"type":"message_start","message":{"id":"msg_sess_123_1642512185000","role":"assistant","type":"message","session_id":"sess_123"}}
+
 
                 event: content_block_start
-                data: {"type":"content_block_start","index":0,"content_block":{"type":"text"}}
+
+                data:
+                {"type":"content_block_start","index":0,"content_block":{"type":"text"}}
+
 
                 event: content_block_delta
-                data: {"type":"content_block_delta","index":0,"delta":{"text":"正在分析"}}
+
+                data:
+                {"type":"content_block_delta","index":0,"delta":{"text":"正在分析"}}
+
 
                 event: content_block_delta
-                data: {"type":"content_block_delta","index":0,"delta":{"text":"服务调用链路..."}}
+
+                data:
+                {"type":"content_block_delta","index":0,"delta":{"text":"服务调用链路..."}}
+
 
                 event: content_block_stop
+
                 data: {"type":"content_block_stop","index":0}
 
+
                 event: message_delta
-                data: {"type":"message_delta","delta":{"stop_reason":"end_turn"}}
+
+                data:
+                {"type":"message_delta","delta":{"stop_reason":"end_turn"}}
+
 
                 event: message_stop
+
                 data: {"type":"message_stop"}
 
-                event: done
-                data: {"status":"completed"}
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "500":
-          $ref: "#/components/responses/InternalServerError"
 
-  /api/v1/ai/sessions:
+                event: done
+
+                data: {"status":"completed"}
+          headers:
+            X-Session-ID:
+              description: 会话ID，用于后续对话
+              schema:
+                type: string
+                example: sess_20240118143022_abcd1234
+        "400":
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+              example:
+                message: "Invalid request: message is required"
+                request_id: req_20240118143022_abcd12
+                timestamp: 1642512185
+          headers: {}
+        "500":
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+              example:
+                message: "AI processing failed: model unavailable"
+                request_id: req_20240118143022_abcd12
+                timestamp: 1642512185
+          headers: {}
+      security: []
+  /ai/sessions:
     post:
       summary: 创建会话
+      deprecated: false
       description: 创建新的聊天会话
       operationId: createSession
       tags:
         - 会话管理
+      parameters: []
       responses:
         "200":
           description: 会话创建成功
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Response"
+                type: object
+                properties: {}
               example:
-                message: "success"
+                message: success
                 data:
-                  session_id: "sess_20240118143022_abcd1234"
+                  session_id: sess_20240118143022_abcd1234
                   created_at: "2024-01-18T14:30:22Z"
                   updated_at: "2024-01-18T14:30:22Z"
                   message_count: 0
-                  status: "active"
-                request_id: "req_20240118143022_efgh56"
+                  status: active
+                request_id: req_20240118143022_efgh56
                 timestamp: 1642512185
+          headers: {}
         "500":
-          $ref: "#/components/responses/InternalServerError"
-
+          description: 服务器内部错误
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+              example:
+                message: "AI processing failed: model unavailable"
+                request_id: req_20240118143022_abcd12
+                timestamp: 1642512185
+          headers: {}
+      security: []
     get:
       summary: 列出会话
+      deprecated: false
       description: 获取所有活跃会话列表
       operationId: listSessions
       tags:
         - 会话管理
+      parameters: []
       responses:
         "200":
           description: 会话列表
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Response"
-
-  /api/v1/ai/sessions/{sessionId}:
+                type: object
+                properties: {}
+          headers: {}
+      security: []
+  /ai/sessions/{sessionId}:
     get:
       summary: 获取会话信息
+      deprecated: false
       description: 获取特定会话的详细信息
       operationId: getSession
       tags:
@@ -152,23 +186,37 @@ paths:
       parameters:
         - name: sessionId
           in: path
-          required: true
           description: 会话ID
+          required: true
+          example: ""
           schema:
             type: string
-            example: "sess_20240118143022_abcd1234"
+            example: sess_20240118143022_abcd1234
       responses:
         "200":
           description: 会话信息
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Response"
+                type: object
+                properties: {}
+          headers: {}
         "404":
-          $ref: "#/components/responses/NotFound"
-
+          description: 资源未找到
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {}
+              example:
+                message: Session not found
+                request_id: req_20240118143022_abcd12
+                timestamp: 1642512185
+          headers: {}
+      security: []
     delete:
       summary: 删除会话
+      deprecated: false
       description: 删除指定的会话及其所有历史记录
       operationId: deleteSession
       tags:
@@ -176,215 +224,36 @@ paths:
       parameters:
         - name: sessionId
           in: path
-          required: true
           description: 会话ID
+          required: true
+          example: ""
           schema:
             type: string
-            example: "sess_20240118143022_abcd1234"
+            example: sess_20240118143022_abcd1234
       responses:
         "200":
           description: 删除成功
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Response"
+                type: object
+                properties: {}
+          headers: {}
         "404":
-          $ref: "#/components/responses/NotFound"
-
-  /api/v1/ai/sessions/{sessionId}/history:
-    get:
-      summary: 获取会话历史
-      description: 获取会话的完整聊天历史记录（注意：由于Agent有自己的memory模块，此接口返回空历史）
-      operationId: getSessionHistory
-      tags:
-        - 会话管理
-      parameters:
-        - name: sessionId
-          in: path
-          required: true
-          description: 会话ID
-          schema:
-            type: string
-            example: "sess_20240118143022_abcd1234"
-      responses:
-        "200":
-          description: 会话历史（空）
+          description: 资源未找到
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Response"
+                type: object
+                properties: {}
               example:
-                message: "success"
-                data: []
-                request_id: "req_20240118143028_mnop90"
-                timestamp: 1642512190
-        "404":
-          $ref: "#/components/responses/NotFound"
-
-  /api/v1/ai/sessions/{sessionId}/stop:
-    post:
-      summary: 停止推理
-      description: 中断正在进行的AI推理过程
-      operationId: stopInference
-      tags:
-        - 控制
-      parameters:
-        - name: sessionId
-          in: path
-          required: true
-          description: 会话ID
-          schema:
-            type: string
-            example: "sess_20240118143022_abcd1234"
-      responses:
-        "200":
-          description: 停止请求已接收
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Response"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-
-  /api/v1/ai/health:
-    get:
-      summary: 健康检查
-      description: 检查AI服务的健康状态
-      operationId: healthCheck
-      tags:
-        - 监控
-      responses:
-        "200":
-          description: 服务健康
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Response"
-              example:
-                message: "success"
-                data:
-                  status: "healthy"
-                  timestamp: 1642512185
-                  details:
-                    agent: "running"
-                    session_manager: "running"
-                    logger: "running"
-                request_id: "req_20240118143022_abcd12"
+                message: Session not found
+                request_id: req_20240118143022_abcd12
                 timestamp: 1642512185
-        "503":
-          description: 服务不健康
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Response"
-
+          headers: {}
+      security: []
 components:
-  schemas:
-    Response:
-      type: object
-      description: 统一API响应格式
-      required:
-        - message
-        - request_id
-        - timestamp
-      properties:
-        message:
-          type: string
-          description: 响应消息
-          example: "success"
-        data:
-          description: 响应数据，可选
-        request_id:
-          type: string
-          description: 请求ID，用于追踪和调试
-          example: "req_20240118143022_abcd12"
-        timestamp:
-          type: integer
-          format: int64
-          description: 响应时间戳（Unix时间）
-          example: 1642512185
-
-    ChatRequest:
-      type: object
-      description: 流式聊天请求
-      required:
-        - message
-        - sessionID
-      properties:
-        message:
-          type: string
-          description: 用户消息
-          maxLength: 1000
-          example: "我的微服务order-service运行缓慢，请帮助我诊断原因"
-        sessionID:
-          type: string
-          description: 会话ID，必须先通过创建会话接口获得
-          example: "sess_20240118143022_abcd1234"
-      additionalProperties: false
-
-    ChatHistory:
-      type: object
-      description: 聊天历史记录
-      required:
-        - role
-        - content
-        - timestamp
-      properties:
-        role:
-          type: string
-          enum: [user, assistant]
-          description: 消息角色
-          example: "user"
-        content:
-          type: string
-          description: 消息内容
-          example: "请分析一下这个错误日志"
-        timestamp:
-          type: string
-          format: date-time
-          description: 消息时间
-          example: "2024-01-18T14:30:22Z"
-
-  responses:
-    BadRequest:
-      description: 请求参数错误
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Response"
-          example:
-            message: "Invalid request: message is required"
-            request_id: "req_20240118143022_abcd12"
-            timestamp: 1642512185
-
-    NotFound:
-      description: 资源未找到
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Response"
-          example:
-            message: "Session not found"
-            request_id: "req_20240118143022_abcd12"
-            timestamp: 1642512185
-
-    InternalServerError:
-      description: 服务器内部错误
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/Response"
-          example:
-            message: "AI processing failed: model unavailable"
-            request_id: "req_20240118143022_abcd12"
-            timestamp: 1642512185
-
-tags:
-  - name: 聊天
-    description: AI聊天相关接口
-  - name: 会话管理
-    description: 会话生命周期管理
-  - name: 控制
-    description: AI推理过程控制
-  - name: 监控
-    description: 服务监控和健康检查
+  schemas: {}
+  securitySchemes: {}
+servers: []
+security: []
