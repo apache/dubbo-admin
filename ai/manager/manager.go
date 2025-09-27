@@ -53,14 +53,26 @@ func LoadEnvVars2Config(envPath string) {
 		GetLogger().Warn("No .env file found at " + envPath + ", proceeding with existing environment variables")
 	}
 
-	config.GEMINI_API_KEY = os.Getenv("GEMINI_API_KEY")
-	config.SILICONFLOW_API_KEY = os.Getenv("SILICONFLOW_API_KEY")
+	// config.GEMINI_API_KEY = os.Getenv("GEMINI_API_KEY")
+	// config.SILICONFLOW_API_KEY = os.Getenv("SILICONFLOW_API_KEY")
 	config.DASHSCOPE_API_KEY = os.Getenv("DASHSCOPE_API_KEY")
 	config.PINECONE_API_KEY = os.Getenv("PINECONE_API_KEY")
 	config.COHERE_API_KEY = os.Getenv("COHERE_API_KEY")
 
-	if config.COHERE_API_KEY == "" || config.PINECONE_API_KEY == "" || config.DASHSCOPE_API_KEY == "" || config.SILICONFLOW_API_KEY == "" || config.GEMINI_API_KEY == "" {
-		GetLogger().Warn("One or more API keys are missing in the environment variables. Please check out.")
+	if config.COHERE_API_KEY == "" {
+		GetLogger().Warn("COHERE_API_KEY missing in the environment variables. Please check out.")
+	}
+	// if config.GEMINI_API_KEY == "" {
+	// 	GetLogger().Warn("GEMINI_API_KEY missing in the environment variables. Please check out.")
+	// }
+	// if config.SILICONFLOW_API_KEY == "" {
+	// 	GetLogger().Warn("SILICONFLOW_API_KEY missing in the environment variables. Please check out.")
+	// }
+	if config.DASHSCOPE_API_KEY == "" {
+		GetLogger().Warn("DASHSCOPE_API_KEY missing in the environment variables. Please check out.")
+	}
+	if config.PINECONE_API_KEY == "" {
+		GetLogger().Warn("PINECONE_API_KEY missing in the environment variables. Please check out.")
 	}
 }
 

@@ -154,8 +154,8 @@ func (sw *StreamWriter) WriteEvent(eventType SSEType, data any) error {
 				if delta, exists := deltaData["delta"]; exists {
 					eventData["delta"] = delta
 				}
-				if final, exists := deltaData["final"]; exists {
-					eventData["final"] = final
+				if usage, exists := deltaData["usage"]; exists {
+					eventData["usage"] = usage
 				}
 
 			}
@@ -212,11 +212,11 @@ func (sw *StreamWriter) WriteContentBlockStop(index int) error {
 }
 
 // WriteMessageDelta 写入消息增量事件
-func (sw *StreamWriter) WriteMessageDelta(delta *Delta, data schema.Schema) error {
+func (sw *StreamWriter) WriteMessageDelta(delta *Delta, usage *ai.GenerationUsage) error {
 	dataMap := map[string]any{
 		"delta": delta,
 	}
-	dataMap["final"] = data
+	dataMap["usage"] = usage
 	return sw.WriteEvent(MessageDelta, dataMap)
 }
 
@@ -359,7 +359,7 @@ func (sh *SSEHandler) MessageDeltaWithUsage(stopReason string, output schema.Sch
 	delta := &Delta{
 		StopReason: &stopReason,
 	}
-	if err := sh.writer.WriteMessageDelta(delta, output); err != nil {
+	if err := sh.writer.WriteMessageDelta(delta, output.Usage()); err != nil {
 		return err
 	}
 	return nil

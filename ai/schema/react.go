@@ -106,6 +106,7 @@ const (
 	TrafficAnalysis          PrimaryIntent = "TRAFFIC_ANALYSIS"
 	ServiceDependency        PrimaryIntent = "SERVICE_DEPENDENCY"
 	AlertingInvestigation    PrimaryIntent = "ALERTING_INVESTIGATION"
+	MemorySearch             PrimaryIntent = "MEMORY_SEARCH"
 	GeneralInquiry           PrimaryIntent = "GENERAL_INQUIRY"
 )
 
@@ -172,19 +173,33 @@ var index = 0
 type StreamFeedback struct {
 	index int
 	done  bool
-	Text  string
+	final *Observation
+	text  string
 }
 
 func StreamEnd() *StreamFeedback {
 	defer func() { index++ }()
-	return &StreamFeedback{index: index, done: true, Text: ""}
+	return &StreamFeedback{index: index, done: true, text: "", final: nil}
+}
+
+func StreamFinal(final *Observation) *StreamFeedback {
+	defer func() { index++ }()
+	return &StreamFeedback{index: index, done: true, text: final.FinalAnswer, final: final}
+}
+
+func (sf *StreamFeedback) Text() string {
+	return sf.text
+}
+
+func (sf *StreamFeedback) Final() Schema {
+	return sf.final
 }
 
 func NewStreamFeedback(text string) *StreamFeedback {
 	return &StreamFeedback{
 		index: index,
 		done:  false,
-		Text:  text,
+		text:  text,
 	}
 }
 
@@ -193,5 +208,9 @@ func (sf *StreamFeedback) Index() int {
 }
 
 func (sf *StreamFeedback) IsDone() bool {
-	return sf.done
+	return sf.done && sf.text == ""
+}
+
+func (sf *StreamFeedback) IsFinal() bool {
+	return sf.done && sf.text == "" && sf.final != nil
 }

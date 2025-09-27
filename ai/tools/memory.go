@@ -67,7 +67,7 @@ func RetrieveBasicConceptFromK8SDoc(g *genkit.Genkit, embedder, indexName string
 				return ToolOutput{}, fmt.Errorf("query is required")
 			}
 
-			results, err := utils.RetrieveFromPinecone(g, embedder, indexName, K8S_CONCEPTS_NAMESPACE, input.Querys, topK, true, topN)
+			results, err := utils.RetrieveFromPinecone(g, embedder, indexName, K8S_CONCEPTS_NAMESPACE, input.Querys, topK, config.RERANK_ENABLE, topN)
 			if err != nil {
 				return ToolOutput{}, fmt.Errorf("failed to retrieve from RAG: %w", err)
 			}
