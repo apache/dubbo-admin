@@ -92,24 +92,24 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 				channels.UserRespChan = nil
 				continue
 			}
-			if feedback.IsDone() {
+			if feedback.IsFinal() {
+				if err := sseHandler.HandleText(feedback.Text(), feedback.Index()); err != nil {
+					manager.GetLogger().Error("Failed to handle text", "error", err)
+				}
+				if err := sseHandler.HandleContentBlockStop(feedback.Index()); err != nil {
+					manager.GetLogger().Error("Failed to handle content block stop", "error", err)
+				}
+				h.MessageDelta(sseHandler, feedback.Final())
+			} else if feedback.IsDone() {
 				if err := sseHandler.HandleContentBlockStop(feedback.Index()); err != nil {
 					manager.GetLogger().Error("Failed to handle content block stop", "error", err)
 				}
 			} else {
-				if err := sseHandler.HandleText(feedback.Text, feedback.Index()); err != nil {
+				if err := sseHandler.HandleText(feedback.Text(), feedback.Index()); err != nil {
 					manager.GetLogger().Error("Failed to handle text", "error", err)
 				}
 			}
 
-		case finalOutput, ok := <-channels.FinalOutputChan:
-			if !ok {
-				channels.FinalOutputChan = nil
-				continue
-			}
-			if finalOutput != nil {
-				h.MessageDelta(sseHandler, finalOutput)
-			}
 		case <-c.Request.Context().Done():
 			manager.GetLogger().Info("Client disconnected from stream")
 			return

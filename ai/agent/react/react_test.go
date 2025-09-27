@@ -146,7 +146,7 @@ func TestAgent(t *testing.T) {
 				continue
 			}
 			if chunk != nil {
-				fmt.Print(chunk.Text)
+				fmt.Print(chunk.Text())
 			}
 		default:
 		}

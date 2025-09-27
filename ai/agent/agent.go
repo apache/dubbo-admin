@@ -40,19 +40,17 @@ type Agent interface {
 type Channels struct {
 	closed bool
 
-	UserRespChan    chan *schema.StreamFeedback
-	FlowChan        chan schema.Schema
-	FinalOutputChan chan schema.Schema
-	ErrorChan       chan error
+	UserRespChan chan *schema.StreamFeedback
+	FlowChan     chan schema.Schema
+	ErrorChan    chan error
 }
 
 func NewChannels(bufferSize int) *Channels {
 	return &Channels{
-		closed:          false,
-		FinalOutputChan: make(chan schema.Schema, bufferSize),
-		UserRespChan:    make(chan *schema.StreamFeedback, bufferSize),
-		FlowChan:        make(chan schema.Schema, bufferSize),
-		ErrorChan:       make(chan error, bufferSize),
+		closed:       false,
+		UserRespChan: make(chan *schema.StreamFeedback, bufferSize),
+		FlowChan:     make(chan schema.Schema, bufferSize),
+		ErrorChan:    make(chan error, bufferSize),
 	}
 }
 
@@ -69,7 +67,6 @@ func (chans *Channels) Closed() bool {
 }
 
 func (chans *Channels) Destroy() {
-	close(chans.FinalOutputChan)
 	close(chans.UserRespChan)
 	close(chans.FlowChan)
 	close(chans.ErrorChan)
@@ -247,7 +244,7 @@ Outer:
 			input = output
 		}
 	}
-	chans.FinalOutputChan <- finalOutput
+	chans.UserRespChan <- schema.StreamFinal(&finalOutput)
 
 	for _, key := range orchestrator.afterLoop {
 		curStage, ok := orchestrator.stages[key]

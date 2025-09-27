@@ -36,4 +36,5 @@ const (
 	RAG_TOP_K                 int    = 10
 	RERANK_TOP_N              int    = 2
 	RERANK_MODEL              string = "rerank-v3.5"
+	RERANK_ENABLE             bool   = true
 )
