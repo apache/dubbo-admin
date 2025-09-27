@@ -16,6 +16,7 @@ import (
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/core"
 	"github.com/firebase/genkit/go/genkit"
+	"github.com/openai/openai-go"
 )
 
 type ThinkIn = schema.ThinkInput
@@ -179,6 +180,9 @@ func buildThinkPrompt(registry *genkit.Genkit, tools ...ai.ToolRef) (ai.Prompt, 
 		ai.WithInputType(ThinkIn{}),
 		ai.WithOutputType(ThinkOut{}),
 		ai.WithPrompt(fmt.Sprintf("available tools: %s", string(toolsJson))),
+		ai.WithConfig(&openai.ChatCompletionNewParams{
+			Temperature: openai.Float(0.2),
+		}),
 	), nil
 }
 
@@ -203,6 +207,9 @@ func buildFeedBackPrompt(registry *genkit.Genkit) (ai.Prompt, error) {
 	return genkit.DefinePrompt(registry, "agentFeedback",
 		ai.WithSystem(string(data)),
 		ai.WithInputType(ThinkIn{}),
+		ai.WithConfig(&openai.ChatCompletionNewParams{
+			Temperature: openai.Float(0.7),
+		}),
 	), nil
 }
 
@@ -214,6 +221,9 @@ func buildObservePrompt(registry *genkit.Genkit) (ai.Prompt, error) {
 	return genkit.DefinePrompt(registry, "observe",
 		ai.WithSystem(string(data)),
 		ai.WithOutputType(schema.Observation{}),
+		ai.WithConfig(&openai.ChatCompletionNewParams{
+			Temperature: openai.Float(0.5),
+		}),
 	), nil
 }
 
@@ -327,7 +337,7 @@ func act(g *genkit.Genkit, mcpToolManager *tools.MCPToolManager, toolPrompt ai.P
 				return nil, fmt.Errorf("failed to execute tool selection prompt: %w", err)
 			}
 			if len(toolReqs.ToolRequests()) == 0 {
-				return ActOut{Thought: toolReqs.Text()}, fmt.Errorf("agent don't have available tools")
+				return ActOut{Thought: fmt.Sprintf("have unavailable tools in %v, please check available tools list", input.SuggestedTools)}, nil
 			}
 			manager.GetLogger().Info("tool requests:", "req", toolReqs.ToolRequests())
 

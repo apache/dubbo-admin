@@ -184,7 +184,7 @@ func StreamEnd() *StreamFeedback {
 
 func StreamFinal(final *Observation) *StreamFeedback {
 	defer func() { index++ }()
-	return &StreamFeedback{index: index, done: true, text: final.FinalAnswer, final: final}
+	return &StreamFeedback{index: index, done: true, text: "", final: final}
 }
 
 func (sf *StreamFeedback) Text() string {
