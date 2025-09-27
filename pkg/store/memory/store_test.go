@@ -459,3 +459,321 @@ func TestResourceStore_PageListByIndexes(t *testing.T) {
 	// Last item
 	assert.Equal(t, mockRes3, pageData.Data[0])
 }
+
+func TestResourceStore_MultipleIndexes(t *testing.T) {
+	store := NewMemoryResourceStore()
+	err := store.Init(nil)
+	assert.NoError(t, err)
+
+	// Create mock resources
+	mockRes1 := &mockResource{
+		kind: "TestApplication",
+		key:  "mesh1/app1",
+		mesh: "mesh1",
+		meta: metav1.ObjectMeta{
+			Name:      "app1",
+			Namespace: "default",
+			Labels: map[string]string{
+				"version": "v1",
+				"env":     "prod",
+			},
+		},
+	}
+
+	mockRes2 := &mockResource{
+		kind: "TestApplication",
+		key:  "mesh1/app2",
+		mesh: "mesh1",
+		meta: metav1.ObjectMeta{
+			Name:      "app2",
+			Namespace: "default",
+			Labels: map[string]string{
+				"version": "v2",
+				"env":     "prod",
+			},
+		},
+	}
+
+	mockRes3 := &mockResource{
+		kind: "TestApplication",
+		key:  "mesh2/app3",
+		mesh: "mesh2",
+		meta: metav1.ObjectMeta{
+			Name:      "app3",
+			Namespace: "default",
+			Labels: map[string]string{
+				"version": "v1",
+				"env":     "dev",
+			},
+		},
+	}
+
+	// Add indexers for multiple fields
+	indexers := map[string]cache.IndexFunc{
+		"by-mesh": func(obj interface{}) ([]string, error) {
+			resource := obj.(model.Resource)
+			return []string{resource.MeshName()}, nil
+		},
+		"by-version": func(obj interface{}) ([]string, error) {
+			resource := obj.(model.Resource)
+			version := resource.ResourceMeta().Labels["version"]
+			return []string{version}, nil
+		},
+		"by-env": func(obj interface{}) ([]string, error) {
+			resource := obj.(model.Resource)
+			env := resource.ResourceMeta().Labels["env"]
+			return []string{env}, nil
+		},
+	}
+	err = store.AddIndexers(indexers)
+	assert.NoError(t, err)
+
+	// Add resources
+	resources := []model.Resource{mockRes1, mockRes2, mockRes3}
+	for _, res := range resources {
+		err = store.Add(res)
+		assert.NoError(t, err)
+	}
+
+	// Test multiple indexes - get all prod env resources in mesh1
+	indexes := map[string]string{
+		"by-mesh":    "mesh1",
+		"by-version": "v1",
+	}
+	result, err := store.ListByIndexes(indexes)
+	assert.NoError(t, err)
+	assert.Len(t, result, 1)
+	// Should contain app1
+	keys := make([]string, len(result))
+	for i, res := range result {
+		keys[i] = res.ResourceKey()
+	}
+	assert.Contains(t, keys, "mesh1/app1")
+}
+
+func TestResourceStore_IndexKeys(t *testing.T) {
+	store := NewMemoryResourceStore()
+	err := store.Init(nil)
+	assert.NoError(t, err)
+
+	// Create mock resources
+	mockRes1 := &mockResource{
+		kind: "TestService",
+		key:  "mesh1/service1",
+		mesh: "mesh1",
+		meta: metav1.ObjectMeta{
+			Name: "service1",
+			Labels: map[string]string{
+				"group": "frontend",
+			},
+		},
+	}
+
+	mockRes2 := &mockResource{
+		kind: "TestService",
+		key:  "mesh1/service2",
+		mesh: "mesh1",
+		meta: metav1.ObjectMeta{
+			Name: "service2",
+			Labels: map[string]string{
+				"group": "backend",
+			},
+		},
+	}
+
+	mockRes3 := &mockResource{
+		kind: "TestService",
+		key:  "mesh1/service3",
+		mesh: "mesh1",
+		meta: metav1.ObjectMeta{
+			Name: "service3",
+			Labels: map[string]string{
+				"group": "frontend",
+			},
+		},
+	}
+
+	// Add indexer
+	indexers := map[string]cache.IndexFunc{
+		"by-group": func(obj interface{}) ([]string, error) {
+			resource := obj.(model.Resource)
+			group := resource.ResourceMeta().Labels["group"]
+			return []string{group}, nil
+		},
+	}
+	err = store.AddIndexers(indexers)
+	assert.NoError(t, err)
+
+	// Add resources
+	resources := []model.Resource{mockRes1, mockRes2, mockRes3}
+	for _, res := range resources {
+		err = store.Add(res)
+		assert.NoError(t, err)
+	}
+
+	// Test IndexKeys method
+	keys, err := store.IndexKeys("by-group", "frontend")
+	assert.NoError(t, err)
+	assert.Len(t, keys, 2)
+	assert.Contains(t, keys, "mesh1/service1")
+	assert.Contains(t, keys, "mesh1/service3")
+
+	keys, err = store.IndexKeys("by-group", "backend")
+	assert.NoError(t, err)
+	assert.Len(t, keys, 1)
+	assert.Contains(t, keys, "mesh1/service2")
+}
+
+func TestResourceStore_ByIndex(t *testing.T) {
+	store := NewMemoryResourceStore()
+	err := store.Init(nil)
+	assert.NoError(t, err)
+
+	// Create mock resources
+	mockRes1 := &mockResource{
+		kind: "TestInstance",
+		key:  "mesh1/instance1",
+		mesh: "mesh1",
+		meta: metav1.ObjectMeta{
+			Name: "instance1",
+			Labels: map[string]string{
+				"type": "web",
+			},
+		},
+	}
+
+	mockRes2 := &mockResource{
+		kind: "TestInstance",
+		key:  "mesh1/instance2",
+		mesh: "mesh1",
+		meta: metav1.ObjectMeta{
+			Name: "instance2",
+			Labels: map[string]string{
+				"type": "database",
+			},
+		},
+	}
+
+	// Add indexer
+	indexers := map[string]cache.IndexFunc{
+		"by-type": func(obj interface{}) ([]string, error) {
+			resource := obj.(model.Resource)
+			instanceType := resource.ResourceMeta().Labels["type"]
+			return []string{instanceType}, nil
+		},
+	}
+	err = store.AddIndexers(indexers)
+	assert.NoError(t, err)
+
+	// Add resources
+	err = store.Add(mockRes1)
+	assert.NoError(t, err)
+	err = store.Add(mockRes2)
+	assert.NoError(t, err)
+
+	// Test ByIndex method
+	items, err := store.ByIndex("by-type", "web")
+	assert.NoError(t, err)
+	assert.Len(t, items, 1)
+	assert.Equal(t, mockRes1, items[0])
+
+	items, err = store.ByIndex("by-type", "database")
+	assert.NoError(t, err)
+	assert.Len(t, items, 1)
+	assert.Equal(t, mockRes2, items[0])
+}
+
+func TestResourceStore_GetIndexers(t *testing.T) {
+	store := NewMemoryResourceStore()
+	err := store.Init(nil)
+	assert.NoError(t, err)
+
+	// Initially no indexers
+	indexers := store.GetIndexers()
+	assert.Empty(t, indexers)
+
+	// Add indexers
+	newIndexers := map[string]cache.IndexFunc{
+		"by-name": func(obj interface{}) ([]string, error) {
+			return []string{obj.(model.Resource).ResourceMeta().Name}, nil
+		},
+		"by-kind": func(obj interface{}) ([]string, error) {
+			return []string{string(obj.(model.Resource).ResourceKind())}, nil
+		},
+	}
+	err = store.AddIndexers(newIndexers)
+	assert.NoError(t, err)
+
+	// Check if indexers were added
+	indexers = store.GetIndexers()
+	assert.Len(t, indexers, 2)
+	assert.Contains(t, indexers, "by-name")
+	assert.Contains(t, indexers, "by-kind")
+}
+
+func TestResourceStore_ListIndexFuncValues(t *testing.T) {
+	store := NewMemoryResourceStore()
+	err := store.Init(nil)
+	assert.NoError(t, err)
+
+	// Create mock resources
+	mockRes1 := &mockResource{
+		kind: "TestResource",
+		key:  "mesh1/resource1",
+		mesh: "mesh1",
+		meta: metav1.ObjectMeta{
+			Name: "resource1",
+			Labels: map[string]string{
+				"status": "active",
+			},
+		},
+	}
+
+	mockRes2 := &mockResource{
+		kind: "TestResource",
+		key:  "mesh1/resource2",
+		mesh: "mesh1",
+		meta: metav1.ObjectMeta{
+			Name: "resource2",
+			Labels: map[string]string{
+				"status": "inactive",
+			},
+		},
+	}
+
+	mockRes3 := &mockResource{
+		kind: "TestResource",
+		key:  "mesh1/resource3",
+		mesh: "mesh1",
+		meta: metav1.ObjectMeta{
+			Name: "resource3",
+			Labels: map[string]string{
+				"status": "active",
+			},
+		},
+	}
+
+	// Add indexer
+	indexers := map[string]cache.IndexFunc{
+		"by-status": func(obj interface{}) ([]string, error) {
+			resource := obj.(model.Resource)
+			status := resource.ResourceMeta().Labels["status"]
+			return []string{status}, nil
+		},
+	}
+	err = store.AddIndexers(indexers)
+	assert.NoError(t, err)
+
+	// Add resources
+	resources := []model.Resource{mockRes1, mockRes2, mockRes3}
+	for _, res := range resources {
+		err = store.Add(res)
+		assert.NoError(t, err)
+	}
+
+	// Test ListIndexFuncValues method
+	values := store.ListIndexFuncValues("by-status")
+	assert.Len(t, values, 2)
+	assert.Contains(t, values, "active")
+	assert.Contains(t, values, "inactive")
+}

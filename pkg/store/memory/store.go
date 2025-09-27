@@ -186,13 +186,23 @@ func (rs *resourceStore) PageListByIndexes(indexes map[string]string, pq coremod
 }
 
 func (rs *resourceStore) getKeysByIndexes(indexes map[string]string) ([]string, error) {
+	if indexes == nil || len(indexes) == 0 {
+		return []string{}, nil
+	}
 	keySet := set.New[string]()
+	first := true
 	for indexName, indexValue := range indexes {
 		keys, err := rs.storeProxy.IndexKeys(indexName, indexValue)
 		if err != nil {
 			return nil, err
 		}
-		keySet.Add(keys...)
+		if first {
+			keySet = set.FromSlice(keys)
+			first = false
+		} else {
+			nextSet := set.FromSlice(keys)
+			keySet = keySet.Intersection(nextSet)
+		}
 	}
 	return keySet.ToSlice(), nil
 }
