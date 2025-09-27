@@ -22,7 +22,7 @@ import (
 
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/apache/dubbo-admin/pkg/common/errors"
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 )
 
@@ -39,7 +39,7 @@ func init() {
 func byServiceConsumerAppName(obj interface{}) ([]string, error) {
 	metadata, ok := obj.(*meshresource.ServiceConsumerMetadataResource)
 	if !ok {
-		return nil, errors.NewAssertionError(meshresource.ServiceConsumerMetadataKind, reflect.TypeOf(obj).Name())
+		return nil, bizerror.NewAssertionError(meshresource.ServiceConsumerMetadataKind, reflect.TypeOf(obj).Name())
 	}
 	if metadata == nil {
 		return []string{}, nil

@@ -23,7 +23,7 @@ import (
 	"github.com/duke-git/lancet/v2/slice"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/apache/dubbo-admin/pkg/common/errors"
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
@@ -41,7 +41,7 @@ func init() {
 func ByMesh(obj interface{}) ([]string, error) {
 	r, ok := obj.(coremodel.Resource)
 	if !ok {
-		return nil, errors.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
+		return nil, bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
 	}
 	return []string{r.MeshName()}, nil
 }

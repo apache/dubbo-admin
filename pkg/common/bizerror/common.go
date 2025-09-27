@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package errors
+package bizerror
 
 import (
 	"errors"

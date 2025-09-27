@@ -20,7 +20,7 @@ package manager
 import (
 	"reflect"
 
-	"github.com/apache/dubbo-admin/pkg/common/errors"
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
@@ -35,13 +35,13 @@ func GetByKey[T model.Resource](rm ReadOnlyResourceManager, rk model.ResourceKin
 	typedResource, ok := resource.(T)
 	if !ok {
 		var zero T
-		return zero, false, errors.NewAssertionError(rk, reflect.TypeOf(typedResource).Name())
+		return zero, false, bizerror.NewAssertionError(rk, reflect.TypeOf(typedResource).Name())
 	}
 	return typedResource, true, nil
 }
 
 // ListByIndexes is a helper function of ResourceManager.ListByIndexes
-func ListByIndexes[T model.Resource](rm ReadOnlyResourceManager, rk model.ResourceKind, indexes map[string]interface{}) ([]T, error) {
+func ListByIndexes[T model.Resource](rm ReadOnlyResourceManager, rk model.ResourceKind, indexes map[string]string) ([]T, error) {
 	resources, err := rm.ListByIndexes(rk, indexes)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func ListByIndexes[T model.Resource](rm ReadOnlyResourceManager, rk model.Resour
 	for i, resource := range resources {
 		typedResource, ok := resource.(T)
 		if !ok {
-			return nil, errors.NewAssertionError(rk, reflect.TypeOf(typedResource).Name())
+			return nil, bizerror.NewAssertionError(rk, reflect.TypeOf(typedResource).Name())
 		}
 		typedResources[i] = typedResource
 	}
@@ -63,7 +63,7 @@ func ListByIndexes[T model.Resource](rm ReadOnlyResourceManager, rk model.Resour
 func PageListByIndexes[T model.Resource](
 	rm ReadOnlyResourceManager,
 	rk model.ResourceKind,
-	indexes map[string]interface{},
+	indexes map[string]string,
 	pr model.PageReq) (*model.PageData[T], error) {
 
 	pageData, err := rm.PageListByIndexes(rk, indexes, pr)
@@ -75,7 +75,7 @@ func PageListByIndexes[T model.Resource](
 	for i, resource := range pageData.Data {
 		typedResource, ok := resource.(T)
 		if !ok {
-			return nil, errors.NewAssertionError(rk, reflect.TypeOf(typedResource).Name())
+			return nil, bizerror.NewAssertionError(rk, reflect.TypeOf(typedResource).Name())
 		}
 		typedResources[i] = typedResource
 	}
@@ -105,7 +105,7 @@ func PageSearchResourceByConditions[T model.Resource](
 	for i, resource := range pageData.Data {
 		typedResource, ok := resource.(T)
 		if !ok {
-			return nil, errors.NewAssertionError(rk, reflect.TypeOf(typedResource).Name())
+			return nil, bizerror.NewAssertionError(rk, reflect.TypeOf(typedResource).Name())
 		}
 		typedResources[i] = typedResource
 	}

@@ -33,9 +33,13 @@ import (
 // ResourceStore expanded the interface of cache.Indexer and cache.Store
 type ResourceStore interface {
 	Indexer
-	ListByIndexes(indexes map[string]interface{}) ([]model.Resource, error)
+	// GetByKeys get resources by keys, return a map of resource key and value
+	// if a resource of specified key doesn't exist in the store, `nil` will be used
+	GetByKeys(keys []string) (map[string]model.Resource, error)
+	// ListByIndexes list resources by indexes, indexes is map of index name and index value
+	ListByIndexes(indexes map[string]string) ([]model.Resource, error)
 	// PageListByIndexes list resources by indexes pageable, indexes is map of index name and index value
-	PageListByIndexes(indexes map[string]interface{}, pq model.PageReq) (*model.PageData[model.Resource], error)
+	PageListByIndexes(indexes map[string]string, pq model.PageReq) (*model.PageData[model.Resource], error)
 }
 
 // ManagedResourceStore includes both functional interfaces and lifecycle interfaces

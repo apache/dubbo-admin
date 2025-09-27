@@ -47,7 +47,7 @@ func SearchServices(ctx consolectx.Context, req *model.ServiceSearchReq) (*model
 		pageData, err = manager.PageListByIndexes[*meshresource.ServiceResource](
 			ctx.ResourceManager(),
 			meshresource.ServiceKind,
-			map[string]interface{}{
+			map[string]string{
 				index.ByMeshIndex: req.Mesh,
 			},
 			req.PageReq,

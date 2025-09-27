@@ -37,8 +37,7 @@ console:
     password: dubbo@2025
     expirationTime: 3600
 store:
-  type: mysql
-  address: xx
+  type: memory
 discovery:
   - type: nacos
     id: nacos-44.33

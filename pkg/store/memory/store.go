@@ -1,0 +1,198 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package memory
+
+import (
+	"reflect"
+	"sort"
+
+	set "github.com/duke-git/lancet/v2/datastructure/set"
+	"github.com/duke-git/lancet/v2/maputil"
+	"k8s.io/client-go/tools/cache"
+
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	"github.com/apache/dubbo-admin/pkg/common/util/slices"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"github.com/apache/dubbo-admin/pkg/core/runtime"
+	"github.com/apache/dubbo-admin/pkg/core/store"
+)
+
+type resourceStore struct {
+	storeProxy cache.Indexer
+}
+
+var _ store.ManagedResourceStore = &resourceStore{}
+
+func NewMemoryResourceStore() store.ManagedResourceStore {
+	return &resourceStore{}
+}
+
+func (rs *resourceStore) Init(_ runtime.BuilderContext) error {
+	rs.storeProxy = cache.NewIndexer(
+		func(obj interface{}) (string, error) {
+			r, ok := obj.(coremodel.Resource)
+			if !ok {
+				return "", bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
+			}
+			return r.ResourceKey(), nil
+		},
+		cache.Indexers{},
+	)
+	return nil
+}
+
+func (rs *resourceStore) Start(_ runtime.Runtime, _ <-chan struct{}) error {
+	return nil
+}
+
+func (rs *resourceStore) Add(obj interface{}) error {
+	return rs.storeProxy.Add(obj)
+}
+
+func (rs *resourceStore) Update(obj interface{}) error {
+	return rs.storeProxy.Update(obj)
+}
+
+func (rs *resourceStore) Delete(obj interface{}) error {
+	return rs.storeProxy.Delete(obj)
+}
+
+func (rs *resourceStore) List() []interface{} {
+	return rs.storeProxy.List()
+}
+
+func (rs *resourceStore) ListKeys() []string {
+	return rs.storeProxy.ListKeys()
+}
+
+func (rs *resourceStore) Get(obj interface{}) (item interface{}, exists bool, err error) {
+	return rs.storeProxy.Get(obj)
+}
+
+func (rs *resourceStore) GetByKey(key string) (item interface{}, exists bool, err error) {
+	return rs.storeProxy.GetByKey(key)
+}
+
+func (rs *resourceStore) Replace(i []interface{}, s string) error {
+	return rs.storeProxy.Replace(i, s)
+}
+
+func (rs *resourceStore) Resync() error {
+	return rs.storeProxy.Resync()
+}
+
+func (rs *resourceStore) Index(indexName string, obj interface{}) ([]interface{}, error) {
+	return rs.storeProxy.Index(indexName, obj)
+}
+
+func (rs *resourceStore) IndexKeys(indexName, indexedValue string) ([]string, error) {
+	return rs.storeProxy.IndexKeys(indexName, indexedValue)
+}
+
+func (rs *resourceStore) ListIndexFuncValues(indexName string) []string {
+	return rs.storeProxy.ListIndexFuncValues(indexName)
+}
+
+func (rs *resourceStore) ByIndex(indexName, indexedValue string) ([]interface{}, error) {
+	return rs.storeProxy.ByIndex(indexName, indexedValue)
+}
+
+func (rs *resourceStore) GetIndexers() cache.Indexers {
+	return rs.storeProxy.GetIndexers()
+}
+
+func (rs *resourceStore) AddIndexers(newIndexers cache.Indexers) error {
+	return rs.storeProxy.AddIndexers(newIndexers)
+}
+
+func (rs *resourceStore) GetByKeys(keys []string) (map[string]coremodel.Resource, error) {
+	resources := make(map[string]coremodel.Resource)
+	for _, key := range keys {
+		r, exists, err := rs.storeProxy.GetByKey(key)
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			resources[key] = nil
+			continue
+		}
+		res, ok := r.(coremodel.Resource)
+		if !ok {
+			return nil, bizerror.NewAssertionError("Resource", reflect.TypeOf(r).Name())
+		}
+		resources[key] = res
+	}
+	return resources, nil
+}
+
+func (rs *resourceStore) ListByIndexes(indexes map[string]string) ([]coremodel.Resource, error) {
+	keys, err := rs.getKeysByIndexes(indexes)
+	if err != nil {
+		return nil, err
+	}
+	resourceMap, err := rs.GetByKeys(keys)
+	if err != nil {
+		return nil, err
+	}
+	resourceMap = maputil.Filter(resourceMap, func(key string, value coremodel.Resource) bool {
+		return value != nil
+	})
+	resources := slices.SortBy(maputil.Values(resourceMap), func(r coremodel.Resource) string {
+		return r.ResourceKey()
+	})
+	return resources, nil
+}
+
+func (rs *resourceStore) PageListByIndexes(indexes map[string]string, pq coremodel.PageReq) (*coremodel.PageData[coremodel.Resource], error) {
+	keys, err := rs.getKeysByIndexes(indexes)
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(keys)
+	total := len(keys)
+	resources := make([]coremodel.Resource, 0, pq.PageSize)
+	for i := pq.PageOffset; len(resources) < pq.PageSize && i < total; i++ {
+		r, exists, err := rs.storeProxy.GetByKey(keys[i])
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			total -= 1
+			continue
+		}
+		res, ok := r.(coremodel.Resource)
+		if !ok {
+			return nil, bizerror.NewAssertionError("Resource", reflect.TypeOf(r).Name())
+		}
+		resources = append(resources, res)
+	}
+	pageData := coremodel.NewPageData(total, pq.PageOffset, pq.PageSize, resources)
+	return pageData, nil
+}
+
+func (rs *resourceStore) getKeysByIndexes(indexes map[string]string) ([]string, error) {
+	keySet := set.New[string]()
+	for indexName, indexValue := range indexes {
+		keys, err := rs.storeProxy.IndexKeys(indexName, indexValue)
+		if err != nil {
+			return nil, err
+		}
+		keySet.Add(keys...)
+	}
+	return keySet.ToSlice(), nil
+}

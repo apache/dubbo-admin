@@ -49,7 +49,7 @@ func TagRuleSearch(ctx consolectx.Context) gin.HandlerFunc {
 			pageData, err = manager.PageListByIndexes[*meshresource.TagRouteResource](
 				ctx.ResourceManager(),
 				meshresource.TagRouteKind,
-				map[string]interface{}{
+				map[string]string{
 					index.ByMeshIndex: req.Mesh,
 				},
 				req.PageReq)

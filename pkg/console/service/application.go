@@ -35,7 +35,7 @@ func GetApplicationDetail(ctx consolectx.Context, req *model.ApplicationDetailRe
 	instanceResources, err := manager.ListByIndexes[*meshresource.InstanceResource](
 		ctx.ResourceManager(),
 		meshresource.InstanceKind,
-		map[string]interface{}{
+		map[string]string{
 			index.ByMeshIndex:            req.Mesh,
 			index.ByInstanceAppNameIndex: req.AppName,
 		},
@@ -61,7 +61,7 @@ func GetAppInstanceInfo(ctx consolectx.Context, req *model.ApplicationTabInstanc
 	pageData, err := manager.PageListByIndexes[*meshresource.InstanceResource](
 		ctx.ResourceManager(),
 		meshresource.InstanceKind,
-		map[string]interface{}{
+		map[string]string{
 			index.ByMeshIndex:            req.Mesh,
 			index.ByInstanceAppNameIndex: req.AppName,
 		},
@@ -117,7 +117,7 @@ func getAppProvideServiceInfo(ctx consolectx.Context, req *model.ApplicationServ
 	pageData, err := manager.PageListByIndexes[*meshresource.ServiceProviderMetadataResource](
 		ctx.ResourceManager(),
 		meshresource.ServiceProviderMetadataKind,
-		map[string]interface{}{
+		map[string]string{
 			index.ByMeshIndex:              req.Mesh,
 			index.ByServiceProviderAppName: req.AppName,
 		},
@@ -160,7 +160,7 @@ func getAppConsumeServiceInfo(ctx consolectx.Context, req *model.ApplicationServ
 	pageData, err := manager.PageListByIndexes[*meshresource.ServiceConsumerMetadataResource](
 		ctx.ResourceManager(),
 		meshresource.ServiceConsumerMetadataKind,
-		map[string]interface{}{
+		map[string]string{
 			index.ByMeshIndex:              req.Mesh,
 			index.ByServiceConsumerAppName: req.AppName,
 		},
@@ -239,7 +239,7 @@ func searchApplications(
 		pageData, err = manager.PageListByIndexes[*meshresource.ApplicationResource](
 			ctx.ResourceManager(),
 			meshresource.ApplicationKind,
-			map[string]interface{}{
+			map[string]string{
 				index.ByMeshIndex: mesh,
 			},
 			pageReq,

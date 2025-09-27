@@ -15,34 +15,26 @@
  * limitations under the License.
  */
 
-package index
+package memory
 
 import (
-	"reflect"
-
-	"k8s.io/client-go/tools/cache"
-
-	"github.com/apache/dubbo-admin/pkg/common/bizerror"
-	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
-)
-
-const (
-	ByServiceProviderAppName = "idx_service_provider_app_name"
+	storecfg "github.com/apache/dubbo-admin/pkg/config/store"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"github.com/apache/dubbo-admin/pkg/core/store"
 )
 
 func init() {
-	RegisterIndexers(meshresource.ServiceProviderMetadataKind, map[string]cache.IndexFunc{
-		ByServiceProviderAppName: byServiceProviderAppName,
-	})
+	store.RegisterFactory(&storeFactory{})
 }
 
-func byServiceProviderAppName(obj interface{}) ([]string, error) {
-	metadata, ok := obj.(*meshresource.ServiceProviderMetadataResource)
-	if !ok {
-		return nil, bizerror.NewAssertionError(meshresource.ServiceProviderMetadataKind, reflect.TypeOf(obj).Name())
-	}
-	if metadata.Spec == nil {
-		return []string{}, nil
-	}
-	return []string{metadata.Spec.ProviderAppName}, nil
+type storeFactory struct{}
+
+var _ store.Factory = &storeFactory{}
+
+func (sf *storeFactory) Support(s storecfg.Type) bool {
+	return s == storecfg.Memory
+}
+
+func (sf *storeFactory) New(_ coremodel.ResourceKind, _ *storecfg.Config) (store.ManagedResourceStore, error) {
+	return NewMemoryResourceStore(), nil
 }

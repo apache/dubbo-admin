@@ -15,8 +15,14 @@
  * limitations under the License.
  */
 
-package memory
+package bootstrap
 
-import _ "k8s.io/client-go/tools/cache"
-
-// TODO implement memory resource store, refer to client-go cache.Store
+import (
+	_ "github.com/apache/dubbo-admin/pkg/console"
+	_ "github.com/apache/dubbo-admin/pkg/core/discovery"
+	_ "github.com/apache/dubbo-admin/pkg/core/engine"
+	_ "github.com/apache/dubbo-admin/pkg/core/events"
+	_ "github.com/apache/dubbo-admin/pkg/core/manager"
+	_ "github.com/apache/dubbo-admin/pkg/core/store"
+	_ "github.com/apache/dubbo-admin/pkg/store/memory"
+)

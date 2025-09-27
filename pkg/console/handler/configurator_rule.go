@@ -48,7 +48,7 @@ func ConfiguratorSearch(ctx consolectx.Context) gin.HandlerFunc {
 			pageData, err = manager.PageListByIndexes[*meshresource.DynamicConfigResource](
 				ctx.ResourceManager(),
 				meshresource.DynamicConfigKind,
-				map[string]interface{}{
+				map[string]string{
 					index.ByMeshIndex: req.Mesh,
 				},
 				req.PageReq,

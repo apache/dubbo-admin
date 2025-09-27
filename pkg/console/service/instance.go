@@ -53,7 +53,7 @@ func SearchInstances(ctx consolectx.Context, req *model.SearchInstanceReq) (*mod
 		pageData, err = manager.PageListByIndexes[*meshresource.InstanceResource](
 			ctx.ResourceManager(),
 			meshresource.InstanceKind,
-			map[string]interface{}{
+			map[string]string{
 				index.ByMeshIndex: req.Mesh,
 			},
 			req.PageReq)

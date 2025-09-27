@@ -20,7 +20,7 @@ package store
 import (
 	"fmt"
 
-	"github.com/apache/dubbo-admin/pkg/config/store"
+	storecfg "github.com/apache/dubbo-admin/pkg/config/store"
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
@@ -37,13 +37,13 @@ func FactoryRegistry() Registry {
 // Factory is the interface for create a specific type of ManagedResourceStore
 type Factory interface {
 	// Support returns true if the factory supports the given type in config
-	Support(store.Type) bool
+	Support(storecfg.Type) bool
 	// New returns a new ManagedResourceStore for the model.ResourceKind using the given config
-	New(model.ResourceKind, *store.Config) (ManagedResourceStore, error)
+	New(model.ResourceKind, *storecfg.Config) (ManagedResourceStore, error)
 }
 
 type Registry interface {
-	GetStoreFactory(store.Type) (Factory, error)
+	GetStoreFactory(storecfg.Type) (Factory, error)
 }
 
 type RegistryMutator interface {
@@ -66,7 +66,7 @@ func newStoreFactoryRegistry() MutableRegistry {
 		factories: make([]Factory, 0),
 	}
 }
-func (s *storeFactoryRegistry) GetStoreFactory(t store.Type) (Factory, error) {
+func (s *storeFactoryRegistry) GetStoreFactory(t storecfg.Type) (Factory, error) {
 	for _, factory := range s.factories {
 		if factory.Support(t) {
 			return factory, nil

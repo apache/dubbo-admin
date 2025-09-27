@@ -28,9 +28,9 @@ type ReadOnlyResourceManager interface {
 	// GetByKey returns the resource with the given resource key
 	GetByKey(rk model.ResourceKind, key string) (r model.Resource, exist bool, err error)
 	// ListByIndexes returns the resources with the given indexes, indexes is a map of index name and index value
-	ListByIndexes(rk model.ResourceKind, indexes map[string]interface{}) ([]model.Resource, error)
+	ListByIndexes(rk model.ResourceKind, indexes map[string]string) ([]model.Resource, error)
 	// PageListByIndexes page list the resources with the given indexes, indexes is a map of index name and index value
-	PageListByIndexes(rk model.ResourceKind, indexes map[string]interface{}, pr model.PageReq) (*model.PageData[model.Resource], error)
+	PageListByIndexes(rk model.ResourceKind, indexes map[string]string, pr model.PageReq) (*model.PageData[model.Resource], error)
 	// PageSearchResourceByConditions page fuzzy search resource by conditions, conditions cannot be empty
 	// TODO support multiple conditions
 	PageSearchResourceByConditions(rk model.ResourceKind, conditions []string, pr model.PageReq) (*model.PageData[model.Resource], error)
@@ -74,7 +74,7 @@ func (rm *resourcesManager) GetByKey(rk model.ResourceKind, key string) (r model
 	return item.(model.Resource), exist, err
 }
 
-func (rm *resourcesManager) ListByIndexes(rk model.ResourceKind, indexes map[string]interface{}) ([]model.Resource, error) {
+func (rm *resourcesManager) ListByIndexes(rk model.ResourceKind, indexes map[string]string) ([]model.Resource, error) {
 	rs, err := rm.StoreRouter.ResourceKindRoute(rk)
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func (rm *resourcesManager) ListByIndexes(rk model.ResourceKind, indexes map[str
 
 func (rm *resourcesManager) PageListByIndexes(
 	rk model.ResourceKind,
-	indexes map[string]interface{},
+	indexes map[string]string,
 	pr model.PageReq) (*model.PageData[model.Resource], error) {
 
 	rs, err := rm.StoreRouter.ResourceKindRoute(rk)
