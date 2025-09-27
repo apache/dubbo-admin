@@ -93,12 +93,6 @@ func (h *AgentHandler) StreamChat(c *gin.Context) {
 				continue
 			}
 			if feedback.IsFinal() {
-				if err := sseHandler.HandleText(feedback.Text(), feedback.Index()); err != nil {
-					manager.GetLogger().Error("Failed to handle text", "error", err)
-				}
-				if err := sseHandler.HandleContentBlockStop(feedback.Index()); err != nil {
-					manager.GetLogger().Error("Failed to handle content block stop", "error", err)
-				}
 				h.MessageDelta(sseHandler, feedback.Final())
 			} else if feedback.IsDone() {
 				if err := sseHandler.HandleContentBlockStop(feedback.Index()); err != nil {
