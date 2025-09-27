@@ -186,7 +186,7 @@ func (rs *resourceStore) PageListByIndexes(indexes map[string]string, pq coremod
 }
 
 func (rs *resourceStore) getKeysByIndexes(indexes map[string]string) ([]string, error) {
-	if indexes == nil || len(indexes) == 0 {
+	if len(indexes) == 0 {
 		return []string{}, nil
 	}
 	keySet := set.New[string]()
