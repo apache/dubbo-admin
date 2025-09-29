@@ -22,36 +22,36 @@ import vueJsx from '@vitejs/plugin-vue-jsx'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-    base: '/admin',
-    build: {
-        outDir: './dist/admin',
+  base: '/admin',
+  build: {
+    outDir: './dist/admin'
+  },
+  server: {
+    port: 8881,
+    proxy: {
+      // 代理 AI 服务请求
+      '/api/v1/ai': {
+        target: 'http://localhost:8880',
+        changeOrigin: true
+      },
+      // 其他 API 请求
+      '/api': {
+        target: 'http://127.0.0.1:8888',
+        changeOrigin: true
+      },
+      '/grafana': {
+        target: 'http://127.0.0.1:8888',
+        changeOrigin: true
+      }
+    }
+  },
+  plugins: [vue(), vueJsx()],
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url))
+      // 'monaco-editor': 'monaco-editor/esm/vs/editor/editor.api.js'
     },
-    server: {
-        port:8881,
-        proxy: {
-            // with options: http://localhost:5173/api/bar-> http://jsonplaceholder.typicode.com/bar
-            '/api': {
-                target: 'http://127.0.0.1:8888',
-                changeOrigin: true,
-            },
-            '/grafana': {
-                target: 'http://127.0.0.1:8888',
-                changeOrigin: true,
-
-            },
-        },
-    },
-    plugins: [
-        vue(),
-        vueJsx(),
-    ],
-    resolve: {
-        alias: {
-            '@': fileURLToPath(new URL('./src', import.meta.url)),
-            // 'monaco-editor': 'monaco-editor/esm/vs/editor/editor.api.js'
-        },
-        // ignore suffix
-        extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.vue']
-    },
-
+    // ignore suffix
+    extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.vue']
+  }
 })
