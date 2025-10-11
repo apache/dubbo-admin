@@ -31,13 +31,6 @@ func init() {
 	runtime.RegisterComponent(&eventBus{})
 }
 
-type subscriber struct {
-	name         string
-	resourceKind model.ResourceKind
-	processFunc  ProcessEventFunc
-}
-type subscribers []subscriber
-
 type EventBusComponent interface {
 	EventBus
 	runtime.Component
@@ -47,7 +40,7 @@ var _ EventBusComponent = &eventBus{}
 
 type eventBus struct {
 	rwMutex       sync.RWMutex
-	subscriberDir map[model.ResourceKind]subscribers
+	subscriberDir map[model.ResourceKind]Subscribers
 }
 
 func (b *eventBus) Type() runtime.ComponentType {
@@ -59,7 +52,7 @@ func (b *eventBus) Order() int {
 }
 
 func (b *eventBus) Init(_ runtime.BuilderContext) error {
-	b.subscriberDir = make(map[model.ResourceKind]subscribers)
+	b.subscriberDir = make(map[model.ResourceKind]Subscribers)
 	return nil
 }
 
@@ -68,36 +61,34 @@ func (b *eventBus) Start(_ runtime.Runtime, _ <-chan struct{}) error {
 }
 
 // Subscribe subscribes to a resource kind, ProcessEventFunc is synchronous which is used to avoid event loss
-func (b *eventBus) Subscribe(rk model.ResourceKind, name string, process ProcessEventFunc) error {
+func (b *eventBus) Subscribe(subscriber Subscriber) error {
 	b.rwMutex.Lock()
 	defer b.rwMutex.Unlock()
-	subs, exists := b.subscriberDir[rk]
+	subs, exists := b.subscriberDir[subscriber.ResourceKind()]
 	if !exists {
-		subs = make(subscribers, 0)
+		subs = make(Subscribers, 0)
 	}
 	// check name if is unique
 	for _, sub := range subs {
-		if sub.name == name {
-			return fmt.Errorf("duplicated subscriber name %s, skipped subscribing", name)
+		if sub.Name() == subscriber.Name() {
+			return fmt.Errorf("duplicated subscriber name %s, skipped subscribing", subscriber.Name())
 		}
 	}
-	b.subscriberDir[rk] = append(subs, subscriber{
-		name:         name,
-		resourceKind: rk,
-		processFunc:  process,
-	})
+	b.subscriberDir[subscriber.ResourceKind()] = append(subs, subscriber)
 	return nil
 }
 
-func (b *eventBus) Unsubscribe(rk model.ResourceKind, name string) error {
+func (b *eventBus) Unsubscribe(subscriber Subscriber) error {
 	b.rwMutex.Lock()
 	defer b.rwMutex.Unlock()
+	rk := subscriber.ResourceKind()
+	name := subscriber.Name()
 	subs, exists := b.subscriberDir[rk]
 	if !exists {
 		return fmt.Errorf("no subscriber for resource %s, skipped unsubscribing", rk)
 	}
 	for i, sub := range subs {
-		if sub.name == name {
+		if sub.Name() == name {
 			b.subscriberDir[rk] = append(subs[:i], subs[i+1:]...)
 			return nil
 		}
@@ -116,8 +107,8 @@ func (b *eventBus) Send(event Event) {
 	}
 	for _, sub := range subs {
 		// TODO Do we need to support reprocess
-		if err := sub.processFunc(event); err != nil {
-			logger.Errorf("failed to process event in %s , skipped, event: %v", sub.name, event)
+		if err := sub.ProcessEvent(event); err != nil {
+			logger.Errorf("failed to process event in %s , skipped, event: %v", sub.Name(), event)
 		}
 	}
 }

@@ -20,10 +20,15 @@ package engine
 import (
 	"fmt"
 	"math"
+	"reflect"
 
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	enginecfg "github.com/apache/dubbo-admin/pkg/config/engine"
 	"github.com/apache/dubbo-admin/pkg/core/controller"
+	"github.com/apache/dubbo-admin/pkg/core/engine/subscriber"
 	"github.com/apache/dubbo-admin/pkg/core/events"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/core/store"
@@ -41,25 +46,59 @@ type Component interface {
 var _ Component = &engineComponent{}
 
 type engineComponent struct {
-	name      string
-	informers []controller.Informer
+	name                string
+	storeRouter         store.Router
+	informers           []controller.Informer
+	subscriptionManager events.SubscriptionManager
+	subscribers         []events.Subscriber
 }
 
 func newEngineComponent() Component {
 	return &engineComponent{
-		informers: make([]controller.Informer, 0),
+		informers:   make([]controller.Informer, 0),
+		subscribers: make([]events.Subscriber, 0),
 	}
 }
-func (b *engineComponent) Type() runtime.ComponentType {
+func (e *engineComponent) Type() runtime.ComponentType {
 	return runtime.ResourceEngine
 }
 
-func (b *engineComponent) Order() int {
+func (e *engineComponent) Order() int {
 	return math.MaxInt
 }
 
-func (b *engineComponent) Init(ctx runtime.BuilderContext) error {
+func (e *engineComponent) Init(ctx runtime.BuilderContext) error {
 	cfg := ctx.Config().Engine
+	e.name = cfg.Name
+	eventBusComponent, err := ctx.GetActivatedComponent(runtime.EventBus)
+	if err != nil {
+		return fmt.Errorf("can not retrieve event bus from runtime in engine %s, %w", cfg.Name, err)
+	}
+	eventBus, ok := eventBusComponent.(events.EventBus)
+	if !ok {
+		return bizerror.NewAssertionError("EventBus", reflect.TypeOf(eventBusComponent).Name())
+	}
+	e.subscriptionManager = eventBus
+	storeComponent, err := ctx.GetActivatedComponent(runtime.ResourceStore)
+	if err != nil {
+		return fmt.Errorf("can not retrieve store from runtime in engine %s, %w", e.name, err)
+	}
+	storeRouter, ok := storeComponent.(store.Router)
+	if !ok {
+		return bizerror.NewAssertionError("store.Router", reflect.TypeOf(storeComponent).Name())
+	}
+	e.storeRouter = storeRouter
+	if err = e.initInformers(cfg, eventBus); err != nil {
+		return fmt.Errorf("init informer failed, %w", err)
+	}
+	if err = e.initSubscribers(); err != nil {
+		return fmt.Errorf("init subscribers failed, %w", err)
+	}
+	logger.Infof("resource engine %s has been inited successfully", e.name)
+	return nil
+}
+
+func (e *engineComponent) initInformers(cfg *enginecfg.Config, emitter events.Emitter) error {
 	factory, err := FactoryRegistry().GetListWatcherFactory(cfg.Type)
 	if err != nil {
 		return err
@@ -69,40 +108,50 @@ func (b *engineComponent) Init(ctx runtime.BuilderContext) error {
 		return err
 	}
 	for _, lw := range lwList {
-		eventBusComponent, err := ctx.GetActivatedComponent(runtime.EventBus)
-		if err != nil {
-			return err
-		}
-		emitter, ok := eventBusComponent.(events.Emitter)
-		if !ok {
-			return fmt.Errorf("type assertion failed, event bus component in runtime is not an Emitter")
-		}
-		storeComponent, err := ctx.GetActivatedComponent(runtime.ResourceStore)
-		if err != nil {
-			return err
-		}
-		resourceStore, ok := storeComponent.(store.ResourceStore)
-		if !ok {
-			return fmt.Errorf("type assertion failed, resource store component in runtime is not a ResourceStore")
-		}
 		rk := lw.ResourceKind()
 		newFunc, err := coremodel.ResourceSchemaRegistry().NewResourceFunc(rk)
 		if err != nil {
-			return err
+			return fmt.Errorf("can not find resource schema for resource kind %s, %w", rk, err)
 		}
-		informer := controller.NewInformerWithOptions(lw, emitter, resourceStore,
+		rs, err := e.storeRouter.ResourceKindRoute(rk)
+		if err != nil {
+			return fmt.Errorf("can not find store for resource kind %s, %w", rk, err)
+		}
+		informer := controller.NewInformerWithOptions(lw, emitter, rs,
 			newFunc(), controller.Options{ResyncPeriod: 0})
-		b.informers = append(b.informers, informer)
+		if lw.TransformFunc() != nil {
+			err = informer.SetTransform(lw.TransformFunc())
+			if err != nil {
+				return fmt.Errorf("can not set transform for informer of resource kind %s, %w", rk, err)
+			}
+		}
+		e.informers = append(e.informers, informer)
+		logger.Infof("resource engine %s has added informer for resource kind %s", e.name, rk)
 	}
-	b.name = cfg.Name
-	logger.Infof("resource engine %s has been inited successfully", b.name)
 	return nil
 }
 
-func (b *engineComponent) Start(_ runtime.Runtime, ch <-chan struct{}) error {
-	for _, informer := range b.informers {
+func (e *engineComponent) initSubscribers() error {
+	rs, err := e.storeRouter.ResourceKindRoute(meshresource.InstanceKind)
+	if err != nil {
+		return fmt.Errorf("can not find store for resource kind %s, %w", meshresource.RuntimeInstanceKind, err)
+	}
+	runtimeInstanceSub := subscriber.NewRuntimeInstanceEventSubscriber(rs)
+	e.subscribers = append(e.subscribers, runtimeInstanceSub)
+	return nil
+}
+
+func (e *engineComponent) Start(_ runtime.Runtime, ch <-chan struct{}) error {
+	// 1. subscribe resource changed events
+	for _, sub := range e.subscribers {
+		if err := e.subscriptionManager.Subscribe(sub); err != nil {
+			return fmt.Errorf("could not subscribe %s to eventbus, %w", sub.Name(), err)
+		}
+	}
+	// 2. start informers
+	for _, informer := range e.informers {
 		go informer.Run(ch)
 	}
-	logger.Infof("resource engine %s has started successfully", b.name)
+	logger.Infof("resource engine %s has started successfully", e.name)
 	return nil
 }

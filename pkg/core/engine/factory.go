@@ -20,7 +20,7 @@ package engine
 import (
 	"fmt"
 
-	"github.com/apache/dubbo-admin/pkg/config/engine"
+	enginecfg "github.com/apache/dubbo-admin/pkg/config/engine"
 	"github.com/apache/dubbo-admin/pkg/core/controller"
 )
 
@@ -36,12 +36,12 @@ func FactoryRegistry() Registry {
 
 // Factory defines if a specific engine type is supported and how to create ListWatchers
 type Factory interface {
-	Support(engine.Type) bool
-	NewListWatchers(*engine.Config) ([]controller.ResourceListerWatcher, error)
+	Support(enginecfg.Type) bool
+	NewListWatchers(*enginecfg.Config) ([]controller.ResourceListerWatcher, error)
 }
 
 type Registry interface {
-	GetListWatcherFactory(engine.Type) (Factory, error)
+	GetListWatcherFactory(enginecfg.Type) (Factory, error)
 }
 
 type RegistryMutator interface {
@@ -70,7 +70,7 @@ func (e *listWatchFactoryRegistry) Register(factory Factory) {
 	e.factories = append(e.factories, factory)
 }
 
-func (e *listWatchFactoryRegistry) GetListWatcherFactory(t engine.Type) (Factory, error) {
+func (e *listWatchFactoryRegistry) GetListWatcherFactory(t enginecfg.Type) (Factory, error) {
 	for _, factory := range e.factories {
 		if factory.Support(t) {
 			return factory, nil

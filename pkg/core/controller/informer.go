@@ -43,6 +43,17 @@ type Informer interface {
 	// Adding event handlers to already stopped informers is not possible.
 	// An informer already stopped will never be started again.
 	IsStopped() bool
+
+	// SetTransform The TransformFunc is called for each object which is about to be stored.
+	//
+	// This function is intended for you to take the opportunity to
+	// remove, transform, or normalize fields. One use case is to strip unused
+	// metadata fields out of objects to save on RAM cost.
+	//
+	// Must be set before starting the informer.
+	//
+	// Please see the comment on TransformFunc for more details.
+	SetTransform(handler cache.TransformFunc) error
 }
 
 // Options configures an informer.

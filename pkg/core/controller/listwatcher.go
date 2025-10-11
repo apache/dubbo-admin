@@ -24,6 +24,10 @@ import (
 )
 
 type ResourceListerWatcher interface {
-	ResourceKind() coremodel.ResourceKind
 	cache.ListerWatcher
+	// ResourceKind returns the kind of resource this listerwatcher is for
+	ResourceKind() coremodel.ResourceKind
+	// TransformFunc transform the raw resource into your need before the raw resource pushing into the delta fifo,
+	// return nil if there is no need to transform, see cache.SharedInformer for detail
+	TransformFunc() cache.TransformFunc
 }

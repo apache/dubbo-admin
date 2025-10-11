@@ -50,6 +50,42 @@ engine:
   name: k8s1.28.6
   type: kubernetes
   properties:
-    apiServerAddress: https://192.168.1.1:6443
-    kubeConfig: /etc/kubernetes/admin.conf
+    # [Kubernetes] Path to kubernetes config file, if not set, will use in cluster config
+    kubeConfigPath: /etc/kubernetes/admin.conf
+    # [Kubernetes] Watch pods with specified labels, if not set, will watch all pods
+    podWatchSelector: org.apache.dubbo/dubbo-apps=true
+    # [Kubernetes] Identify which Dubbo app the pod belongs to, if not set, [type = ByIP] will be used
+    # 1. ByLabels: Use the label value corresponding to the labelKey as the dubbo app name
+    # e.g.
+    #    type: ByLabel
+    #    labelKey: org.apache.dubbo/dubbo-app-name
+    # 2. ByAnnotation: Use the annotation value corresponding to the annotationKey as the dubbo app name
+    # e.g.
+    #    type: ByAnnotation
+    #    annotationKey: org.apache.dubbo/dubbo-app-name
+    # 3. ByIP(default): Use pod's IP to find if there is a same ip of an instance and use the instance's app name as the identifier,
+    # if there is no such association, the pod will not be seen as a pod of dubbo application.
+    # e.g.
+    #    type: ByIP
+    dubboAppIdentifier:
+      type: ByLabels
+      labelKey: org.apache.dubbo/dubbo-app-name
+    # [Kubernetes] Strategy of choosing the main container, if not set, [type = ByIndex] and [index = 0] will be used
+    # 1. ByLast: choose the last container as the main container
+    # e.g.
+    #    type: ByLast
+    # 2. ByIndex(default): choose the container at the specified index location as the main container
+    # e.g.
+    #    type: ByIndex
+    #    index: 0
+    # 3. ByName: choose the container with the specified name
+    # e.g.
+    #    type: ByName
+    #    name: main
+    # 4. chooseByAnnotation: choose the container with the annotation key, specified annotation value will be used as the container name
+    # e.g.
+    #    type: ByAnnotation
+    #    annotationKey: org.apache.dubbo/main-container-name=${app-name}
+    mainContainerChooseStrategy:
+      type: ByFirst
 controlPlane:

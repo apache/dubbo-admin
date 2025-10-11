@@ -17,17 +17,44 @@ message RuntimeInstance {
 
   string ip = 2;
 
-  string port = 3;
+  string image = 3;
 
-  string image = 4;
+  string appName = 4;
 
-  string appName = 5;
+  string createTime = 5;
 
-  string createTime = 6;
+  string startTime = 6;
 
-  string startTime = 7;
+  string readyTime = 7;
 
-  string readyTime = 8;
+  string phase = 8;
 
+  string workloadName = 9;
 
+  string workloadType = 10;
+
+  string node = 11;
+
+  repeated Probe probes = 12;
+
+  repeated Condition conditions = 13;
+}
+
+message Probe {
+  string type = 1;
+  int32 port = 2;
+}
+
+// reference: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-conditions
+message Condition{
+
+  string type = 1;
+
+  string status = 2;
+
+  string lastTransitionTime = 3;
+
+  string reason = 4;
+
+  string message = 5;
 }

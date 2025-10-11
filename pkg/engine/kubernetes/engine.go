@@ -1,0 +1,210 @@
+package kubernetes
+
+import (
+	"fmt"
+	"reflect"
+
+	"github.com/duke-git/lancet/v2/slice"
+	"github.com/duke-git/lancet/v2/strutil"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+
+	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	enginecfg "github.com/apache/dubbo-admin/pkg/config/engine"
+	"github.com/apache/dubbo-admin/pkg/core/consts"
+	"github.com/apache/dubbo-admin/pkg/core/controller"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+)
+
+type PodListerWatcher struct {
+	cfg *enginecfg.Config
+	lw  cache.ListerWatcher
+}
+
+var _ controller.ResourceListerWatcher = &PodListerWatcher{}
+
+func NewPodListWatcher(clientset *kubernetes.Clientset, cfg *enginecfg.Config) (*PodListerWatcher, error) {
+	var selector fields.Selector
+	s := cfg.Properties.PodWatchSelector
+	if strutil.IsBlank(s) {
+		selector = fields.Everything()
+	}
+	selector, err := fields.ParseSelector(s)
+	if err != nil {
+		return nil, fmt.Errorf("parse selector %s failed: %v", s, err)
+	}
+	lw := cache.NewListWatchFromClient(
+		clientset.CoreV1().RESTClient(),
+		"pods",
+		metav1.NamespaceAll,
+		selector,
+	)
+	return &PodListerWatcher{
+		cfg: cfg,
+		lw:  lw,
+	}, nil
+}
+
+func (p *PodListerWatcher) List(options metav1.ListOptions) (k8sruntime.Object, error) {
+	return p.lw.List(options)
+}
+
+func (p *PodListerWatcher) Watch(options metav1.ListOptions) (watch.Interface, error) {
+	return p.lw.Watch(options)
+}
+
+func (p *PodListerWatcher) ResourceKind() coremodel.ResourceKind {
+	return meshresource.RuntimeInstanceKind
+}
+
+func (p *PodListerWatcher) TransformFunc() cache.TransformFunc {
+	return func(obj interface{}) (interface{}, error) {
+		pod, ok := obj.(*v1.Pod)
+		if !ok {
+			objType := reflect.TypeOf(obj).Name()
+			logger.Errorf("cannot transform %s to Pod", objType)
+			return nil, bizerror.NewAssertionError("Pod", objType)
+		}
+		mainContainer := p.getMainContainer(pod)
+		appName := p.getDubboAppName(pod)
+		startTime := pod.Status.StartTime.Format(consts.TimeFormatStr)
+		createTime := pod.CreationTimestamp.Format(consts.TimeFormatStr)
+		readyTime := ""
+		slice.ForEach(pod.Status.Conditions, func(_ int, c v1.PodCondition) {
+			if c.Type == v1.PodReady && c.Status == v1.ConditionTrue {
+				readyTime = c.LastTransitionTime.Format(consts.TimeFormatStr)
+			}
+		})
+		phase := string(pod.Status.Phase)
+		if pod.DeletionTimestamp != nil {
+			phase = meshproto.InstanceTerminating
+		}
+		var workloadName string
+		var workloadType string
+		if len(pod.GetOwnerReferences()) > 0 {
+			workloadName = pod.GetOwnerReferences()[0].Name
+			workloadType = pod.GetOwnerReferences()[0].Kind
+		}
+		conditions := slice.Map(pod.Status.Conditions, func(_ int, c v1.PodCondition) *meshproto.Condition {
+			return &meshproto.Condition{
+				Type:               string(c.Type),
+				Status:             string(c.Status),
+				LastTransitionTime: c.LastTransitionTime.Format(consts.TimeFormatStr),
+				Reason:             c.Reason,
+				Message:            c.Message,
+			}
+		})
+		var image string
+		probes := make([]*meshproto.Probe, 0)
+		if mainContainer != nil {
+			image = mainContainer.Image
+			if mainContainer.LivenessProbe != nil {
+				port := p.getProbePort(mainContainer.LivenessProbe)
+				probes = append(probes, &meshproto.Probe{
+					Type: meshproto.LivenessProbe,
+					Port: port,
+				})
+			}
+			if mainContainer.ReadinessProbe != nil {
+				port := p.getProbePort(mainContainer.ReadinessProbe)
+				probes = append(probes, &meshproto.Probe{
+					Type: meshproto.ReadinessProbe,
+					Port: port,
+				})
+			}
+			if mainContainer.StartupProbe != nil {
+				port := p.getProbePort(mainContainer.StartupProbe)
+				probes = append(probes, &meshproto.Probe{
+					Type: meshproto.StartupProbe,
+					Port: port,
+				})
+			}
+		}
+		res := meshresource.NewRuntimeInstanceResourceWithAttributes(pod.Name, "default")
+		res.Spec = &meshproto.RuntimeInstance{
+			Name:         pod.Name,
+			Ip:           pod.Status.PodIP,
+			Image:        image,
+			AppName:      appName,
+			CreateTime:   createTime,
+			StartTime:    startTime,
+			ReadyTime:    readyTime,
+			Phase:        phase,
+			WorkloadName: workloadName,
+			WorkloadType: workloadType,
+			Node:         pod.Spec.NodeName,
+			Probes:       probes,
+			Conditions:   conditions,
+		}
+		return res, nil
+	}
+}
+
+func (p *PodListerWatcher) getMainContainer(pod *v1.Pod) *v1.Container {
+	containers := pod.Spec.Containers
+	strategy := p.cfg.Properties.GetOrDefaultMainContainerChooseStrategy()
+	switch strategy.Type {
+	case enginecfg.ChooseByLast:
+		return &containers[len(containers)-1]
+	case enginecfg.ChooseByIndex:
+		return &containers[strategy.Index]
+	case enginecfg.ChooseByName:
+		c, ok := slice.FindBy[v1.Container](containers, func(_ int, c v1.Container) bool {
+			return c.Name == strategy.Name
+		})
+		if !ok {
+			logger.Warnf("pod %s has no container named %s, cannot retrieve the correct main container",
+				pod.Name, strategy.Name)
+			return nil
+		}
+		return &c
+	case enginecfg.ChooseByAnnotation:
+		value, exists := pod.Annotations[strategy.AnnotationKey]
+		if !exists {
+			logger.Warnf("pod %s has no annotaion %s, cannot retrieve the correct main container",
+				pod.Name, strategy.AnnotationKey)
+			return nil
+		}
+		c, ok := slice.FindBy[v1.Container](containers, func(_ int, c v1.Container) bool {
+			return c.Name == value
+		})
+		if !ok {
+			logger.Warnf("pod %s has no container named %s, cannot retrieve the correct main container",
+				pod.Name, value)
+			return nil
+		}
+		return &c
+	}
+	return nil
+}
+
+func (p *PodListerWatcher) getDubboAppName(pod *v1.Pod) string {
+	identifier := p.cfg.Properties.DubboAppIdentifier
+	switch identifier.Type {
+	case enginecfg.IdentifyByAnnotation:
+		return pod.Annotations[identifier.AnnotationKey]
+	case enginecfg.IdentifyByLabel:
+		return pod.Labels[identifier.LabelKey]
+	default:
+		return ""
+	}
+}
+
+func (p *PodListerWatcher) getProbePort(probe *v1.Probe) int32 {
+	if probe.TCPSocket != nil {
+		return probe.TCPSocket.Port.IntVal
+	} else if probe.HTTPGet != nil {
+		return probe.HTTPGet.Port.IntVal
+	} else if probe.GRPC != nil {
+		return probe.GRPC.Port
+	}
+	return 0
+}

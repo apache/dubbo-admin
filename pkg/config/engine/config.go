@@ -28,15 +28,62 @@ const (
 
 type Config struct {
 	config.BaseConfig
-	Name       string            `json:"name"`
-	Type       Type              `json:"type"`
-	Properties map[string]string `json:"properties"`
+	Name       string     `json:"name"`
+	Type       Type       `json:"type"`
+	Properties Properties `json:"properties"`
+}
+
+type Properties struct {
+	KubeConfigPath              string                       `json:"kubeConfigPath"`
+	PodWatchSelector            string                       `json:"podWatchSelector"`
+	DubboAppIdentifier          *DubboAppIdentifier          `json:"dubboAppIdentifier"`
+	MainContainerChooseStrategy *MainContainerChooseStrategy `json:"mainContainerChooseStrategy"`
+}
+
+func (p *Properties) GetOrDefaultMainContainerChooseStrategy() *MainContainerChooseStrategy {
+	if p.MainContainerChooseStrategy == nil {
+		return &MainContainerChooseStrategy{
+			Type:  ChooseByIndex,
+			Index: 0,
+		}
+	}
+	return p.MainContainerChooseStrategy
+}
+
+type MainContainerChooseStrategyType string
+
+const (
+	ChooseByLast       MainContainerChooseStrategyType = "ByLast"
+	ChooseByIndex      MainContainerChooseStrategyType = "ByIndex"
+	ChooseByName       MainContainerChooseStrategyType = "ByName"
+	ChooseByAnnotation MainContainerChooseStrategyType = "ByAnnotation"
+)
+
+type MainContainerChooseStrategy struct {
+	Type          MainContainerChooseStrategyType `json:"type"`
+	Index         int                             `json:"index"`
+	Name          string                          `json:"name"`
+	AnnotationKey string                          `json:"annotationKey"`
+}
+
+type DubboAppIdentifierType string
+
+const (
+	IdentifyByLabel      DubboAppIdentifierType = "ByLabel"
+	IdentifyByAnnotation DubboAppIdentifierType = "ByAnnotation"
+	IdentifyByIP         DubboAppIdentifierType = "ByIP"
+)
+
+type DubboAppIdentifier struct {
+	Type          DubboAppIdentifierType `json:"type"`
+	LabelKey      string                 `json:"labelKey"`
+	AnnotationKey string                 `json:"annotationKey"`
 }
 
 func DefaultResourceEngineConfig() *Config {
 	return &Config{
 		Name:       "default",
 		Type:       VM,
-		Properties: map[string]string{},
+		Properties: Properties{},
 	}
 }

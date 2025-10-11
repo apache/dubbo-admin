@@ -5,6 +5,7 @@ package dubbo.mesh.v1alpha1;
 option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
 
 import "api/mesh/options.proto";
+import "api/mesh/v1alpha1/runtime_instance.proto";
 
 // Instance is merged from RuntimeInstance and RPCInstance, indicates a runtime entity of a specific dubbo application
 message Instance {
@@ -13,18 +14,13 @@ message Instance {
   option (dubbo.mesh.resource).package = "mesh";
   option (dubbo.mesh.resource).is_experimental = true;
 
-  message Probe {
-    string type = 1;
-    int32 port = 2;
-  }
+  string name = 1;
+
+  string ip = 2;
 
   /*
   FROM RPCInstance
    */
-
-  string name = 1;
-
-  string ip = 2;
 
   int32 rpcPort = 3;
 
@@ -68,5 +64,7 @@ message Instance {
 
   repeated Probe probes = 59;
 
-  reserved 60 to 100;
+  repeated Condition conditions = 60;
+
+  reserved 61 to 100;
 }

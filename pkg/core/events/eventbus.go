@@ -29,7 +29,15 @@ type Event interface {
 	NewObj() model.Resource
 }
 
-type ProcessEventFunc func(event Event) error
+type Subscriber interface {
+	ResourceKind() model.ResourceKind
+
+	Name() string
+
+	ProcessEvent(event Event) error
+}
+
+type Subscribers []Subscriber
 
 type ResourceChangedEvent struct {
 	typ    cache.DeltaType
@@ -62,8 +70,8 @@ type Emitter interface {
 }
 
 type SubscriptionManager interface {
-	Subscribe(rk model.ResourceKind, name string, process ProcessEventFunc) error
-	Unsubscribe(rk model.ResourceKind, name string) error
+	Subscribe(subscriber Subscriber) error
+	Unsubscribe(subscriber Subscriber) error
 }
 
 type EventBus interface {
