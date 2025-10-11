@@ -317,11 +317,9 @@ func TestResourceStore_GetByKeys(t *testing.T) {
 	keys := []string{"test-key-1", "test-key-2", "test-key-3"}
 	resources, err := store.GetByKeys(keys)
 	assert.NoError(t, err)
-	assert.Len(t, resources, 3)
-	assert.Equal(t, mockRes1, resources["test-key-1"])
-	assert.Equal(t, mockRes2, resources["test-key-2"])
-	// test-key-3 doesn't exist
-	assert.Nil(t, resources["test-key-3"])
+	assert.Len(t, resources, 2)
+	assert.Equal(t, mockRes1, resources[0])
+	assert.Equal(t, mockRes2, resources[1])
 }
 
 func TestResourceStore_ListByIndexes(t *testing.T) {

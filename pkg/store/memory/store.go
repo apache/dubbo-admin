@@ -22,7 +22,6 @@ import (
 	"sort"
 
 	set "github.com/duke-git/lancet/v2/datastructure/set"
-	"github.com/duke-git/lancet/v2/maputil"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
@@ -120,22 +119,21 @@ func (rs *resourceStore) AddIndexers(newIndexers cache.Indexers) error {
 	return rs.storeProxy.AddIndexers(newIndexers)
 }
 
-func (rs *resourceStore) GetByKeys(keys []string) (map[string]coremodel.Resource, error) {
-	resources := make(map[string]coremodel.Resource)
+func (rs *resourceStore) GetByKeys(keys []string) ([]coremodel.Resource, error) {
+	resources := make([]coremodel.Resource, 0)
 	for _, key := range keys {
 		r, exists, err := rs.storeProxy.GetByKey(key)
 		if err != nil {
 			return nil, err
 		}
 		if !exists {
-			resources[key] = nil
 			continue
 		}
 		res, ok := r.(coremodel.Resource)
 		if !ok {
 			return nil, bizerror.NewAssertionError("Resource", reflect.TypeOf(r).Name())
 		}
-		resources[key] = res
+		resources = append(resources, res)
 	}
 	return resources, nil
 }
@@ -145,14 +143,11 @@ func (rs *resourceStore) ListByIndexes(indexes map[string]string) ([]coremodel.R
 	if err != nil {
 		return nil, err
 	}
-	resourceMap, err := rs.GetByKeys(keys)
+	resources, err := rs.GetByKeys(keys)
 	if err != nil {
 		return nil, err
 	}
-	resourceMap = maputil.Filter(resourceMap, func(key string, value coremodel.Resource) bool {
-		return value != nil
-	})
-	resources := slices.SortBy(maputil.Values(resourceMap), func(r coremodel.Resource) string {
+	resources = slices.SortBy(resources, func(r coremodel.Resource) string {
 		return r.ResourceKey()
 	})
 	return resources, nil
