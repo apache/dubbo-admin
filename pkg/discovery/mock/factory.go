@@ -15,17 +15,26 @@
  * limitations under the License.
  */
 
-package bootstrap
+package mock
 
-// import all components registered by init function
 import (
-	_ "github.com/apache/dubbo-admin/pkg/console"
-	_ "github.com/apache/dubbo-admin/pkg/core/discovery"
-	_ "github.com/apache/dubbo-admin/pkg/core/engine"
-	_ "github.com/apache/dubbo-admin/pkg/core/events"
-	_ "github.com/apache/dubbo-admin/pkg/core/manager"
-	_ "github.com/apache/dubbo-admin/pkg/core/store"
-	_ "github.com/apache/dubbo-admin/pkg/discovery/mock"
-	_ "github.com/apache/dubbo-admin/pkg/engine/kubernetes"
-	_ "github.com/apache/dubbo-admin/pkg/store/memory"
+	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
+	"github.com/apache/dubbo-admin/pkg/core/controller"
+	"github.com/apache/dubbo-admin/pkg/core/discovery"
 )
+
+func init() {
+	discovery.RegisterListWatcherFactory(&mockListerWaterFactory{})
+}
+
+type mockListerWaterFactory struct{}
+
+var _ discovery.Factory = &mockListerWaterFactory{}
+
+func (l *mockListerWaterFactory) Support(d discoverycfg.Type) bool {
+	return d == discoverycfg.Mock
+}
+
+func (l *mockListerWaterFactory) NewListWatchers(_ *discoverycfg.Config) ([]controller.ResourceListerWatcher, error) {
+	return make([]controller.ResourceListerWatcher, 0), nil
+}

@@ -21,6 +21,8 @@
 package v1alpha1
 
 import (
+	"encoding/json"
+
 	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
@@ -45,8 +47,8 @@ type RpcInstanceMetadataResource struct {
 	// It may be omitted for cluster-scoped resources.
 	Mesh string `json:"mesh,omitempty"`
 
-	// Spec is the specification of the Dubbo RPCInstanceMetaData resource.
-	Spec *meshproto.RPCInstanceMetaData `json:"spec,omitempty"`
+	// Spec is the specification of the Dubbo RpcInstanceMetaData resource.
+	Spec *meshproto.RpcInstanceMetaData `json:"spec,omitempty"`
 
 	// Status is the status of the Dubbo RpcInstanceMetadata resource.
 	Status RpcInstanceMetadataResourceStatus `json:"status,omitempty"`
@@ -95,7 +97,7 @@ func (r *RpcInstanceMetadataResource) DeepCopyObject() k8sruntime.Object {
 	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 
 	if r.Spec != nil {
-		spec, ok := proto.Clone(r.Spec).(*meshproto.RPCInstanceMetaData)
+		spec, ok := proto.Clone(r.Spec).(*meshproto.RpcInstanceMetadata)
 		if !ok {
 			logger.Warnf("failed to clone spec %v, spec is not conformed to %s", r.Spec, r.ResourceKind())
 			return out
@@ -104,6 +106,15 @@ func (r *RpcInstanceMetadataResource) DeepCopyObject() k8sruntime.Object {
 	}
 
 	return out
+}
+
+func (r *RpcInstanceMetadataResource) String() string {
+	jsonStr, err := json.Marshal(r)
+	if err != nil {
+		logger.Errorf("failed to marshal *RpcInstanceMetadataResource: %s, err: %s", r.ResourceKey(), err)
+		return ""
+	}
+	return string(jsonStr)
 }
 
 func NewRpcInstanceMetadataResourceWithAttributes(name string, mesh string) *RpcInstanceMetadataResource {

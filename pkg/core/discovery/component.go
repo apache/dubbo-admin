@@ -18,8 +18,11 @@
 package discovery
 
 import (
+	"fmt"
 	"math"
+	"reflect"
 
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/config/discovery"
 	"github.com/apache/dubbo-admin/pkg/core/controller"
 	"github.com/apache/dubbo-admin/pkg/core/events"
@@ -57,7 +60,7 @@ func (d *discoveryComponent) Type() runtime.ComponentType {
 }
 
 func (d *discoveryComponent) Order() int {
-	return math.MaxInt
+	return math.MaxInt - 2
 }
 
 func (d *discoveryComponent) Init(ctx runtime.BuilderContext) error {
@@ -110,21 +113,26 @@ func (d *discoveryComponent) newInformers(cfg *discovery.Config, ctx runtime.Bui
 	if err != nil {
 		return nil, err
 	}
-	emitter := eventBusComponent.(events.Emitter)
+	emitter, ok := eventBusComponent.(events.Emitter)
+	if !ok {
+		return nil, bizerror.NewAssertionError("Emitter", reflect.TypeOf(eventBusComponent).Name())
+	}
 	storeComponent, err := ctx.GetActivatedComponent(runtime.ResourceStore)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("can not retrieve store from runtime in engine %s, %w", cfg.Name, err)
 	}
-	resourceStore := storeComponent.(store.ResourceStore)
-	var informers Informers
-	for _, lw := range lwList {
-		rk := lw.ResourceKind()
-		newFunc, err := coremodel.ResourceSchemaRegistry().NewResourceFunc(rk)
+	storeRouter, ok := storeComponent.(store.Router)
+	if !ok {
+		return nil, bizerror.NewAssertionError("store.Router", reflect.TypeOf(storeComponent).Name())
+	}
+	var informers = make([]controller.Informer, len(lwList))
+	for i, lw := range lwList {
+		resourceStore, err := storeRouter.ResourceKindRoute(lw.ResourceKind())
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("cannot find store for resource kind %s", lw.ResourceKind())
 		}
-		informer := controller.NewInformerWithOptions(lw, emitter, resourceStore, newFunc(), controller.Options{ResyncPeriod: 0})
-		informers = append(informers, informer)
+		informer := controller.NewInformerWithOptions(lw, emitter, resourceStore, controller.Options{ResyncPeriod: 0})
+		informers[i] = informer
 	}
 	return informers, nil
 }

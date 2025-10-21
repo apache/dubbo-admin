@@ -53,7 +53,7 @@ func (c *consoleWebServer) Type() runtime.ComponentType {
 }
 
 func (c *consoleWebServer) Order() int {
-	return math.MaxInt
+	return math.MaxInt - 5
 }
 
 func (c *consoleWebServer) Init(ctx runtime.BuilderContext) error {

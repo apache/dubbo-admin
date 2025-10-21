@@ -18,15 +18,23 @@
 package events
 
 import (
+	"fmt"
+
+	"github.com/duke-git/lancet/v2/convertor"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
 type Event interface {
+	// Type returns the type of the event, see definitions in cache.DeltaType
 	Type() cache.DeltaType
+	// OldObj returns the old object, nil if old object doesn't exist in store
 	OldObj() model.Resource
+	// NewObj returns the new object, nil if event type is in [cache.Deleted]
 	NewObj() model.Resource
+	// String returns the string representation of the event
+	String() string
 }
 
 type Subscriber interface {
@@ -44,6 +52,8 @@ type ResourceChangedEvent struct {
 	oldObj model.Resource
 	newObj model.Resource
 }
+
+var _ Event = &ResourceChangedEvent{}
 
 func NewResourceChangedEvent(typ cache.DeltaType, oldObj model.Resource, newObj model.Resource) *ResourceChangedEvent {
 	return &ResourceChangedEvent{
@@ -63,6 +73,11 @@ func (e *ResourceChangedEvent) OldObj() model.Resource {
 
 func (e *ResourceChangedEvent) NewObj() model.Resource {
 	return e.newObj
+}
+
+func (e *ResourceChangedEvent) String() string {
+	return fmt.Sprintf("[type]: %s, [oldObj]: %s, [newObj]: %s",
+		e.typ, convertor.ToString(e.oldObj), convertor.ToString(e.newObj))
 }
 
 type Emitter interface {

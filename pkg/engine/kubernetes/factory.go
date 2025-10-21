@@ -48,7 +48,7 @@ func (e *EngineFactory) NewListWatchers(cfg *enginecfg.Config) ([]controller.Res
 		return nil, fmt.Errorf("failed to init clientset in kubernetes engine, %w", err)
 	}
 
-	lwList := make([]controller.ResourceListerWatcher, 2)
+	lwList := make([]controller.ResourceListerWatcher, 0)
 	podListerWatcher, err := NewPodListWatcher(clientset, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init PodListerWatcher in kubernetes engine, %w", err)

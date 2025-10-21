@@ -63,6 +63,8 @@ var resourceTemplate = template.Must(template.New("dubbo-resource").Parse(`
 package v1alpha1
 
 import (
+	"encoding/json"
+
 	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
@@ -148,6 +150,15 @@ func (r *{{.Name}}Resource) DeepCopyObject() k8sruntime.Object {
 	}
 
 	return out
+}
+
+func (r *{{.Name}}Resource) String() string {
+    jsonStr, err := json.Marshal(r)
+	if err != nil {
+		logger.Errorf("failed to marshal *{{.Name}}Resource: %s, err: %s", r.ResourceKey(), err)
+		return ""
+	}
+	return string(jsonStr)
 }
 
 func New{{.Name}}ResourceWithAttributes(name string, mesh string) *{{.Name}}Resource{

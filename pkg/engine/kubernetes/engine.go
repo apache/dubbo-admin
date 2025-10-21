@@ -75,7 +75,10 @@ func (p *PodListerWatcher) TransformFunc() cache.TransformFunc {
 		}
 		mainContainer := p.getMainContainer(pod)
 		appName := p.getDubboAppName(pod)
-		startTime := pod.Status.StartTime.Format(consts.TimeFormatStr)
+		var startTime string
+		if pod.Status.StartTime != nil {
+			startTime = pod.Status.StartTime.Format(consts.TimeFormatStr)
+		}
 		createTime := pod.CreationTimestamp.Format(consts.TimeFormatStr)
 		readyTime := ""
 		slice.ForEach(pod.Status.Conditions, func(_ int, c v1.PodCondition) {

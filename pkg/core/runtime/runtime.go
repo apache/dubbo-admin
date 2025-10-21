@@ -115,13 +115,18 @@ func (rt *runtime) Add(components ...Component) {
 func (rt *runtime) Start(stop <-chan struct{}) error {
 	components := maputil.Values(rt.components)
 	slice.SortBy(components, func(a, b Component) bool {
-		return a.Order() < b.Order()
+		return a.Order() > b.Order()
 	})
 	for _, com := range components {
-		err := com.Start(rt, stop)
-		if err != nil {
-			return err
-		}
+		go func() {
+			err := com.Start(rt, stop)
+			if err != nil {
+				panic("component " + com.Type() + " running failed with error: " + err.Error())
+			}
+		}()
 	}
-	return nil
+	select {
+	case <-stop:
+		return nil
+	}
 }

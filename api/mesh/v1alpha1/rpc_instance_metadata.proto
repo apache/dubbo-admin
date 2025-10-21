@@ -6,7 +6,7 @@ option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
 
 import "api/mesh/options.proto";
 
-message RPCInstanceMetaData {
+message RpcInstanceMetaData {
   option (dubbo.mesh.resource).name = "RpcInstanceMetadata";
   option (dubbo.mesh.resource).plural_name = "RpcInstanceMetaDatas";
   option (dubbo.mesh.resource).package = "mesh";

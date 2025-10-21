@@ -39,21 +39,22 @@ console:
 store:
   type: memory
 discovery:
-  - type: nacos
-    id: nacos-44.33
-    address:
-      registry: nacos://47.76.94.134:8848?username=nacos&password=nacos
-      configCenter: nacos://47.76.94.134:8848?username=nacos&password=nacos
-      metadataReport: nacos://47.76.94.134:8848?username=nacos&password=nacos
-  - type: istio
+#  - type: nacos
+#    id: nacos-44.33
+#    address:
+#      registry: nacos://47.76.94.134:8848?username=nacos&password=nacos
+#      configCenter: nacos://47.76.94.134:8848?username=nacos&password=nacos
+#      metadataReport: nacos://47.76.94.134:8848?username=nacos&password=nacos
+  # mock discovery is only for development
+  - type: mock
 engine:
   name: k8s1.28.6
   type: kubernetes
   properties:
     # [Kubernetes] Path to kubernetes config file, if not set, will use in cluster config
-    kubeConfigPath: /etc/kubernetes/admin.conf
+    kubeConfigPath: /root/.kube/config
     # [Kubernetes] Watch pods with specified labels, if not set, will watch all pods
-    podWatchSelector: org.apache.dubbo/dubbo-apps=true
+    # podWatchSelector: org.apache.dubbo/dubbo-apps=true
     # [Kubernetes] Identify which Dubbo app the pod belongs to, if not set, [type = ByIP] will be used
     # 1. ByLabels: Use the label value corresponding to the labelKey as the dubbo app name
     # e.g.
@@ -67,9 +68,9 @@ engine:
     # if there is no such association, the pod will not be seen as a pod of dubbo application.
     # e.g.
     #    type: ByIP
-    dubboAppIdentifier:
-      type: ByLabels
-      labelKey: org.apache.dubbo/dubbo-app-name
+#    dubboAppIdentifier:
+#      type: ByLabels
+#      labelKey: org.apache.dubbo/dubbo-app-name
     # [Kubernetes] Strategy of choosing the main container, if not set, [type = ByIndex] and [index = 0] will be used
     # 1. ByLast: choose the last container as the main container
     # e.g.
@@ -87,5 +88,6 @@ engine:
     #    type: ByAnnotation
     #    annotationKey: org.apache.dubbo/main-container-name=${app-name}
     mainContainerChooseStrategy:
-      type: ByFirst
+      type: ByIndex
+      index: 0
 controlPlane:

@@ -18,6 +18,7 @@
 package index
 
 import (
+	"github.com/duke-git/lancet/v2/maputil"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
@@ -46,33 +47,26 @@ type MutableIndexerRegistry interface {
 	IndexerRegistryMutator
 }
 
-// ResourceIndexers defines the rIndexers belong to a specific model.Resource
-type ResourceIndexers struct {
-	rk       model.ResourceKind
-	indexers cache.Indexers
-}
-
 var _ IndexerRegistry = &indexerRegistry{}
 
 type indexerRegistry struct {
-	rIndexers []ResourceIndexers
+	rIndexers map[model.ResourceKind]cache.Indexers
 }
 
 func newIndexRegistry() MutableIndexerRegistry {
 	return &indexerRegistry{
-		rIndexers: make([]ResourceIndexers, 0),
+		rIndexers: make(map[model.ResourceKind]cache.Indexers),
 	}
 }
 
 func (i *indexerRegistry) Indexers(k model.ResourceKind) cache.Indexers {
-	for _, rIndexer := range i.rIndexers {
-		if rIndexer.rk == k {
-			return rIndexer.indexers
-		}
-	}
-	return nil
+	return i.rIndexers[k]
 }
 
 func (i *indexerRegistry) Register(k model.ResourceKind, indexers cache.Indexers) {
-	i.rIndexers = append(i.rIndexers, ResourceIndexers{rk: k, indexers: indexers})
+	if existedIndexers, exists := i.rIndexers[k]; !exists {
+		i.rIndexers[k] = indexers
+	} else {
+		i.rIndexers[k] = maputil.Merge(existedIndexers, indexers)
+	}
 }

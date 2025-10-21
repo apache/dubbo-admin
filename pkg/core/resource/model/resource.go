@@ -65,6 +65,8 @@ type Resource interface {
 	ResourceMeta() metav1.ObjectMeta
 	// ResourceSpec returns the resource spec
 	ResourceSpec() ResourceSpec
+	// String returns the string representation of the resource
+	String() string
 }
 
 // BuildResourceKey build a unique identifier for a resource, usually is `mesh/name`

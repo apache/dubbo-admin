@@ -46,7 +46,7 @@ func (r *resourceManagerComponent) Type() runtime.ComponentType {
 }
 
 func (r *resourceManagerComponent) Order() int {
-	return math.MaxInt
+	return math.MaxInt - 4
 }
 
 func (r *resourceManagerComponent) Init(ctx runtime.BuilderContext) error {

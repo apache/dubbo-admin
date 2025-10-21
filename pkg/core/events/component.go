@@ -99,7 +99,12 @@ func (b *eventBus) Unsubscribe(subscriber Subscriber) error {
 func (b *eventBus) Send(event Event) {
 	b.rwMutex.RLock()
 	defer b.rwMutex.RUnlock()
-	rk := event.OldObj().ResourceKind()
+	var rk model.ResourceKind
+	if event.OldObj() != nil {
+		rk = event.OldObj().ResourceKind()
+	} else if event.NewObj() != nil {
+		rk = event.NewObj().ResourceKind()
+	}
 	subs, exists := b.subscriberDir[rk]
 	if !exists {
 		logger.Warnf("no subscriber for resource %s, skipped sending event%v", rk, event)

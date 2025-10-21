@@ -22,8 +22,10 @@ import "github.com/apache/dubbo-admin/pkg/config"
 type Type string
 
 const (
-	zookeeper Type = "zookeeper"
-	nacos     Type = "nacos"
+	Zookeeper Type = "zookeeper"
+	Nacos     Type = "nacos"
+	// Mock is only for develop and test
+	Mock Type = "mock"
 )
 
 // Config defines Discovery configuration
@@ -44,7 +46,7 @@ type AddressConfig struct {
 func DefaultDiscoveryEnginConfig() *Config {
 	return &Config{
 		Name: "localhost",
-		Type: nacos,
+		Type: Nacos,
 		Address: AddressConfig{
 			Registry:       "nacos://127.0.0.1:8848?username=nacos&password=nacos",
 			ConfigCenter:   "nacos://127.0.0.1:8848?username=nacos&password=nacos",

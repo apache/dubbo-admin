@@ -1,6 +1,7 @@
 package subscriber
 
 import (
+	"errors"
 	"reflect"
 
 	"github.com/duke-git/lancet/v2/strutil"
@@ -17,6 +18,7 @@ import (
 
 type RuntimeInstanceEventSubscriber struct {
 	instanceResourceStore store.ResourceStore
+	eventEmitter          events.Emitter
 }
 
 func (s *RuntimeInstanceEventSubscriber) ResourceKind() coremodel.ResourceKind {
@@ -29,20 +31,37 @@ func (s *RuntimeInstanceEventSubscriber) Name() string {
 
 func (s *RuntimeInstanceEventSubscriber) ProcessEvent(event events.Event) error {
 	newObj, ok := event.NewObj().(*meshresource.RuntimeInstanceResource)
-	if !ok {
+	if !ok && newObj != nil {
 		return bizerror.NewAssertionError(meshresource.RuntimeInstanceKind, reflect.TypeOf(event.NewObj()).Name())
 	}
 	oldObj, ok := event.OldObj().(*meshresource.RuntimeInstanceResource)
-	if !ok {
+	if !ok && oldObj != nil {
 		return bizerror.NewAssertionError(meshresource.RuntimeInstanceKind, reflect.TypeOf(event.OldObj()).Name())
 	}
+	var processErr error
 	switch event.Type() {
 	case cache.Added, cache.Updated, cache.Replaced, cache.Sync:
-		return s.processUpsert(newObj)
+		if newObj == nil {
+			errStr := "process runtime instance upsert event, but new obj is nil, skipped processing"
+			logger.Error(errStr)
+			return errors.New(errStr)
+		}
+		processErr = s.processUpsert(newObj)
 	case cache.Deleted:
-		return s.processDelete(oldObj)
+		if oldObj == nil {
+			errStr := "process runtime instance delete event, but old obj is nil, skipped processing"
+			logger.Error(errStr)
+			return errors.New(errStr)
+		}
+		processErr = s.processDelete(oldObj)
 	}
-	return nil
+	eventStr := event.String()
+	if processErr != nil {
+		logger.Infof("process runtime instance event successfully, event: %s", eventStr)
+	} else {
+		logger.Errorf("process runtime instance event failed, event: %s, err: %s", eventStr, processErr.Error())
+	}
+	return processErr
 }
 
 func (s *RuntimeInstanceEventSubscriber) getRelatedInstanceResource(
@@ -113,7 +132,14 @@ func (s *RuntimeInstanceEventSubscriber) processUpsert(rtInstanceRes *meshresour
 	}
 	// Otherwise we can create a new instance resource by runtime instance
 	instanceRes := s.fromRuntimeInstance(rtInstanceRes)
-	return s.instanceResourceStore.Add(instanceRes)
+	if err = s.instanceResourceStore.Add(instanceRes); err != nil {
+		logger.Errorf("add instance resource failed, instance: %s, err: %s", instanceRes.ResourceKey(), err.Error())
+		return err
+	}
+	instanceAddEvent := events.NewResourceChangedEvent(cache.Added, nil, instanceRes)
+	s.eventEmitter.Send(instanceAddEvent)
+	logger.Debugf("runtime instance upsert trigger instance add event, event: %s", instanceAddEvent.String())
+	return nil
 }
 
 // processDelete when runtime instance deleted, we should delete the corresponding instance resource
@@ -125,7 +151,14 @@ func (s *RuntimeInstanceEventSubscriber) processDelete(rtInstanceRes *meshresour
 	if instanceResource == nil {
 		return nil
 	}
-	return s.instanceResourceStore.Delete(instanceResource.ResourceKey())
+	if err = s.instanceResourceStore.Delete(instanceResource.ResourceKey()); err != nil {
+		logger.Errorf("delete instance resource failed, instance: %s, err: %s", instanceResource.ResourceKey(), err.Error())
+		return err
+	}
+	instanceDeleteEvent := events.NewResourceChangedEvent(cache.Deleted, instanceResource, nil)
+	s.eventEmitter.Send(instanceDeleteEvent)
+	logger.Debugf("runtime instance delete trigger instance delete event, event: %s", instanceDeleteEvent.String())
+	return nil
 }
 
 func NewRuntimeInstanceEventSubscriber(instanceResourceStore store.ResourceStore) events.Subscriber {

@@ -102,13 +102,11 @@ type informer struct {
 	transform cache.TransformFunc
 }
 
-func NewInformerWithOptions(lw cache.ListerWatcher, emitter events.Emitter, store store.ResourceStore,
-	exampleObject runtime.Object, options Options) Informer {
+func NewInformerWithOptions(lw cache.ListerWatcher, emitter events.Emitter, store store.ResourceStore, options Options) Informer {
 	return &informer{
 		indexer:           store,
 		listerWatcher:     lw,
 		emitter:           emitter,
-		objectType:        exampleObject,
 		resyncCheckPeriod: options.ResyncPeriod,
 	}
 }

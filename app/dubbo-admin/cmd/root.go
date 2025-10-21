@@ -30,8 +30,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/cmd/version"
 )
 
-var adminLog = core.Log.WithName("admin")
-
 // newRootCmd represents the base command when called without any subcommands.
 func newRootCmd() *cobra.Command {
 	args := struct {

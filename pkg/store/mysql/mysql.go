@@ -15,6 +15,6 @@
  * limitations under the License.
  */
 
-package db
+package mysql
 
 // TODO implement memory resource store, refer to GORM https://gorm.io/docs/

@@ -29,7 +29,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/events"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
-	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/core/store"
 )
@@ -64,7 +63,7 @@ func (e *engineComponent) Type() runtime.ComponentType {
 }
 
 func (e *engineComponent) Order() int {
-	return math.MaxInt
+	return math.MaxInt - 3
 }
 
 func (e *engineComponent) Init(ctx runtime.BuilderContext) error {
@@ -109,16 +108,11 @@ func (e *engineComponent) initInformers(cfg *enginecfg.Config, emitter events.Em
 	}
 	for _, lw := range lwList {
 		rk := lw.ResourceKind()
-		newFunc, err := coremodel.ResourceSchemaRegistry().NewResourceFunc(rk)
-		if err != nil {
-			return fmt.Errorf("can not find resource schema for resource kind %s, %w", rk, err)
-		}
 		rs, err := e.storeRouter.ResourceKindRoute(rk)
 		if err != nil {
 			return fmt.Errorf("can not find store for resource kind %s, %w", rk, err)
 		}
-		informer := controller.NewInformerWithOptions(lw, emitter, rs,
-			newFunc(), controller.Options{ResyncPeriod: 0})
+		informer := controller.NewInformerWithOptions(lw, emitter, rs, controller.Options{ResyncPeriod: 0})
 		if lw.TransformFunc() != nil {
 			err = informer.SetTransform(lw.TransformFunc())
 			if err != nil {

@@ -60,7 +60,7 @@ func (sc *storeComponent) Type() runtime.ComponentType {
 }
 
 func (sc *storeComponent) Order() int {
-	return math.MaxInt
+	return math.MaxInt - 1
 }
 
 func (sc *storeComponent) Init(ctx runtime.BuilderContext) error {

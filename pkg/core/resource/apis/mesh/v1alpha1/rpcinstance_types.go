@@ -21,6 +21,8 @@
 package v1alpha1
 
 import (
+	"encoding/json"
+
 	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
@@ -104,6 +106,15 @@ func (r *RPCInstanceResource) DeepCopyObject() k8sruntime.Object {
 	}
 
 	return out
+}
+
+func (r *RPCInstanceResource) String() string {
+	jsonStr, err := json.Marshal(r)
+	if err != nil {
+		logger.Errorf("failed to marshal *RPCInstanceResource: %s, err: %s", r.ResourceKey(), err)
+		return ""
+	}
+	return string(jsonStr)
 }
 
 func NewRPCInstanceResourceWithAttributes(name string, mesh string) *RPCInstanceResource {

@@ -21,7 +21,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type RPCInstanceMetaData struct {
+type RpcInstanceMetaData struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -32,20 +32,20 @@ type RPCInstanceMetaData struct {
 	Services map[string]*ServiceInfo `protobuf:"bytes,4,rep,name=services,proto3" json:"services,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
-func (x *RPCInstanceMetaData) Reset() {
-	*x = RPCInstanceMetaData{}
+func (x *RpcInstanceMetaData) Reset() {
+	*x = RpcInstanceMetaData{}
 	mi := &file_api_mesh_v1alpha1_rpc_instance_metadata_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RPCInstanceMetaData) String() string {
+func (x *RpcInstanceMetaData) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RPCInstanceMetaData) ProtoMessage() {}
+func (*RpcInstanceMetaData) ProtoMessage() {}
 
-func (x *RPCInstanceMetaData) ProtoReflect() protoreflect.Message {
+func (x *RpcInstanceMetaData) ProtoReflect() protoreflect.Message {
 	mi := &file_api_mesh_v1alpha1_rpc_instance_metadata_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -57,26 +57,26 @@ func (x *RPCInstanceMetaData) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RPCInstanceMetaData.ProtoReflect.Descriptor instead.
-func (*RPCInstanceMetaData) Descriptor() ([]byte, []int) {
+// Deprecated: Use RpcInstanceMetaData.ProtoReflect.Descriptor instead.
+func (*RpcInstanceMetaData) Descriptor() ([]byte, []int) {
 	return file_api_mesh_v1alpha1_rpc_instance_metadata_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *RPCInstanceMetaData) GetApp() string {
+func (x *RpcInstanceMetaData) GetApp() string {
 	if x != nil {
 		return x.App
 	}
 	return ""
 }
 
-func (x *RPCInstanceMetaData) GetRevision() string {
+func (x *RpcInstanceMetaData) GetRevision() string {
 	if x != nil {
 		return x.Revision
 	}
 	return ""
 }
 
-func (x *RPCInstanceMetaData) GetServices() map[string]*ServiceInfo {
+func (x *RpcInstanceMetaData) GetServices() map[string]*ServiceInfo {
 	if x != nil {
 		return x.Services
 	}
@@ -185,13 +185,13 @@ var file_api_mesh_v1alpha1_rpc_instance_metadata_proto_rawDesc = []byte{
 	0x13, 0x64, 0x75, 0x62, 0x62, 0x6f, 0x2e, 0x6d, 0x65, 0x73, 0x68, 0x2e, 0x76, 0x31, 0x61, 0x6c,
 	0x70, 0x68, 0x61, 0x31, 0x1a, 0x16, 0x61, 0x70, 0x69, 0x2f, 0x6d, 0x65, 0x73, 0x68, 0x2f, 0x6f,
 	0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x22, 0xaf, 0x02, 0x0a,
-	0x13, 0x52, 0x50, 0x43, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x63, 0x65, 0x4d, 0x65, 0x74, 0x61,
+	0x13, 0x52, 0x70, 0x63, 0x49, 0x6e, 0x73, 0x74, 0x61, 0x6e, 0x63, 0x65, 0x4d, 0x65, 0x74, 0x61,
 	0x44, 0x61, 0x74, 0x61, 0x12, 0x10, 0x0a, 0x03, 0x61, 0x70, 0x70, 0x18, 0x01, 0x20, 0x01, 0x28,
 	0x09, 0x52, 0x03, 0x61, 0x70, 0x70, 0x12, 0x1a, 0x0a, 0x08, 0x72, 0x65, 0x76, 0x69, 0x73, 0x69,
 	0x6f, 0x6e, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x72, 0x65, 0x76, 0x69, 0x73, 0x69,
 	0x6f, 0x6e, 0x12, 0x52, 0x0a, 0x08, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x18, 0x04,
 	0x20, 0x03, 0x28, 0x0b, 0x32, 0x36, 0x2e, 0x64, 0x75, 0x62, 0x62, 0x6f, 0x2e, 0x6d, 0x65, 0x73,
-	0x68, 0x2e, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2e, 0x52, 0x50, 0x43, 0x49, 0x6e,
+	0x68, 0x2e, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2e, 0x52, 0x70, 0x63, 0x49, 0x6e,
 	0x73, 0x74, 0x61, 0x6e, 0x63, 0x65, 0x4d, 0x65, 0x74, 0x61, 0x44, 0x61, 0x74, 0x61, 0x2e, 0x53,
 	0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x08, 0x73, 0x65,
 	0x72, 0x76, 0x69, 0x63, 0x65, 0x73, 0x1a, 0x5d, 0x0a, 0x0d, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63,
@@ -242,15 +242,15 @@ func file_api_mesh_v1alpha1_rpc_instance_metadata_proto_rawDescGZIP() []byte {
 
 var file_api_mesh_v1alpha1_rpc_instance_metadata_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_api_mesh_v1alpha1_rpc_instance_metadata_proto_goTypes = []any{
-	(*RPCInstanceMetaData)(nil), // 0: dubbo.mesh.v1alpha1.RPCInstanceMetaData
+	(*RpcInstanceMetaData)(nil), // 0: dubbo.mesh.v1alpha1.RpcInstanceMetaData
 	(*ServiceInfo)(nil),         // 1: dubbo.mesh.v1alpha1.ServiceInfo
-	nil,                         // 2: dubbo.mesh.v1alpha1.RPCInstanceMetaData.ServicesEntry
+	nil,                         // 2: dubbo.mesh.v1alpha1.RpcInstanceMetaData.ServicesEntry
 	nil,                         // 3: dubbo.mesh.v1alpha1.ServiceInfo.ParamsEntry
 }
 var file_api_mesh_v1alpha1_rpc_instance_metadata_proto_depIdxs = []int32{
-	2, // 0: dubbo.mesh.v1alpha1.RPCInstanceMetaData.services:type_name -> dubbo.mesh.v1alpha1.RPCInstanceMetaData.ServicesEntry
+	2, // 0: dubbo.mesh.v1alpha1.RpcInstanceMetaData.services:type_name -> dubbo.mesh.v1alpha1.RpcInstanceMetaData.ServicesEntry
 	3, // 1: dubbo.mesh.v1alpha1.ServiceInfo.params:type_name -> dubbo.mesh.v1alpha1.ServiceInfo.ParamsEntry
-	1, // 2: dubbo.mesh.v1alpha1.RPCInstanceMetaData.ServicesEntry.value:type_name -> dubbo.mesh.v1alpha1.ServiceInfo
+	1, // 2: dubbo.mesh.v1alpha1.RpcInstanceMetaData.ServicesEntry.value:type_name -> dubbo.mesh.v1alpha1.ServiceInfo
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name
