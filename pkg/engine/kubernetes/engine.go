@@ -189,7 +189,7 @@ func (p *PodListerWatcher) getMainContainer(pod *v1.Pod) *v1.Container {
 	case enginecfg.ChooseByAnnotation:
 		value, exists := pod.Annotations[strategy.AnnotationKey]
 		if !exists {
-			logger.Warnf("pod %s has no annotaion %s, cannot retrieve the correct main container",
+			logger.Warnf("pod %s has no annotation %s, cannot retrieve the correct main container",
 				pod.Name, strategy.AnnotationKey)
 			return nil
 		}

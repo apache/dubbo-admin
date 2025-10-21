@@ -78,7 +78,7 @@ func (s *diagnosticsServer) Start(_ runtime.Runtime, stop <-chan struct{}) error
 		ReadHeaderTimeout: time.Second,
 	}
 
-	logger.Infof("starting diagnostic server, endpoint: 0.0.0.0: %d", s.config.ServerPort)
+	logger.Infof("starting diagnostic server, endpoint is 0.0.0.0: %d", s.config.ServerPort)
 	errChan := make(chan error)
 	go func() {
 		defer close(errChan)
@@ -87,9 +87,9 @@ func (s *diagnosticsServer) Start(_ runtime.Runtime, stop <-chan struct{}) error
 		if err != nil {
 			switch {
 			case errors.Is(err, http.ErrServerClosed):
-				logger.Errorf("diagnotics http server closed, err: %s", err)
+				logger.Errorf("diagnostics http server closed, err: %s", err)
 			default:
-				logger.Error("could not start diagnotics http Server, unknown err: %s", err)
+				logger.Error("could not start diagnostics http Server, unknown err: %s", err)
 				errChan <- err
 			}
 			return
@@ -99,7 +99,7 @@ func (s *diagnosticsServer) Start(_ runtime.Runtime, stop <-chan struct{}) error
 
 	select {
 	case <-stop:
-		logger.Info("received stop signal, stopping diagnotics server ...")
+		logger.Info("received stop signal, stopping diagnostics server ...")
 		return httpServer.Shutdown(context.Background())
 	case err := <-errChan:
 		return err

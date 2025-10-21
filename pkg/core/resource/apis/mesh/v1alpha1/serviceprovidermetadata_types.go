@@ -47,7 +47,7 @@ type ServiceProviderMetadataResource struct {
 	// It may be omitted for cluster-scoped resources.
 	Mesh string `json:"mesh,omitempty"`
 
-	// Spec is the specification of the Dubbo ServiceProviderMetaData resource.
+	// Spec is the specification of the Dubbo ServiceProviderMetadata resource.
 	Spec *meshproto.ServiceProviderMetadata `json:"spec,omitempty"`
 
 	// Status is the status of the Dubbo ServiceProviderMetadata resource.

@@ -69,7 +69,7 @@ engine:
     # e.g.
     #    type: ByIP
 #    dubboAppIdentifier:
-#      type: ByLabels
+#      type: ByLabel
 #      labelKey: org.apache.dubbo/dubbo-app-name
     # [Kubernetes] Strategy of choosing the main container, if not set, [type = ByIndex] and [index = 0] will be used
     # 1. ByLast: choose the last container as the main container

@@ -6,7 +6,7 @@ option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
 
 import "api/mesh/options.proto";
 
-message ServiceProviderMetaData {
+message ServiceProviderMetadata {
   option (dubbo.mesh.resource).name = "ServiceProviderMetadata";
   option (dubbo.mesh.resource).plural_name = "ServiceProviderMetaDatas";
   option (dubbo.mesh.resource).package = "mesh";

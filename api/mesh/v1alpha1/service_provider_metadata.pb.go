@@ -21,7 +21,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type ServiceProviderMetaData struct {
+type ServiceProviderMetadata struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
@@ -32,20 +32,20 @@ type ServiceProviderMetaData struct {
 	Group           string `protobuf:"bytes,4,opt,name=group,proto3" json:"group,omitempty"` // TODO add more fields
 }
 
-func (x *ServiceProviderMetaData) Reset() {
-	*x = ServiceProviderMetaData{}
+func (x *ServiceProviderMetadata) Reset() {
+	*x = ServiceProviderMetadata{}
 	mi := &file_api_mesh_v1alpha1_service_provider_metadata_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *ServiceProviderMetaData) String() string {
+func (x *ServiceProviderMetadata) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*ServiceProviderMetaData) ProtoMessage() {}
+func (*ServiceProviderMetadata) ProtoMessage() {}
 
-func (x *ServiceProviderMetaData) ProtoReflect() protoreflect.Message {
+func (x *ServiceProviderMetadata) ProtoReflect() protoreflect.Message {
 	mi := &file_api_mesh_v1alpha1_service_provider_metadata_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -57,33 +57,33 @@ func (x *ServiceProviderMetaData) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use ServiceProviderMetaData.ProtoReflect.Descriptor instead.
-func (*ServiceProviderMetaData) Descriptor() ([]byte, []int) {
+// Deprecated: Use ServiceProviderMetadata.ProtoReflect.Descriptor instead.
+func (*ServiceProviderMetadata) Descriptor() ([]byte, []int) {
 	return file_api_mesh_v1alpha1_service_provider_metadata_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *ServiceProviderMetaData) GetServiceName() string {
+func (x *ServiceProviderMetadata) GetServiceName() string {
 	if x != nil {
 		return x.ServiceName
 	}
 	return ""
 }
 
-func (x *ServiceProviderMetaData) GetProviderAppName() string {
+func (x *ServiceProviderMetadata) GetProviderAppName() string {
 	if x != nil {
 		return x.ProviderAppName
 	}
 	return ""
 }
 
-func (x *ServiceProviderMetaData) GetVersion() string {
+func (x *ServiceProviderMetadata) GetVersion() string {
 	if x != nil {
 		return x.Version
 	}
 	return ""
 }
 
-func (x *ServiceProviderMetaData) GetGroup() string {
+func (x *ServiceProviderMetadata) GetGroup() string {
 	if x != nil {
 		return x.Group
 	}
@@ -100,7 +100,7 @@ var file_api_mesh_v1alpha1_service_provider_metadata_proto_rawDesc = []byte{
 	0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x1a, 0x16, 0x61, 0x70, 0x69, 0x2f, 0x6d, 0x65,
 	0x73, 0x68, 0x2f, 0x6f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
 	0x22, 0xd6, 0x01, 0x0a, 0x17, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x50, 0x72, 0x6f, 0x76,
-	0x69, 0x64, 0x65, 0x72, 0x4d, 0x65, 0x74, 0x61, 0x44, 0x61, 0x74, 0x61, 0x12, 0x20, 0x0a, 0x0b,
+	0x69, 0x64, 0x65, 0x72, 0x4d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x12, 0x20, 0x0a, 0x0b,
 	0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28,
 	0x09, 0x52, 0x0b, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x4e, 0x61, 0x6d, 0x65, 0x12, 0x28,
 	0x0a, 0x0f, 0x70, 0x72, 0x6f, 0x76, 0x69, 0x64, 0x65, 0x72, 0x41, 0x70, 0x70, 0x4e, 0x61, 0x6d,
@@ -133,7 +133,7 @@ func file_api_mesh_v1alpha1_service_provider_metadata_proto_rawDescGZIP() []byte
 
 var file_api_mesh_v1alpha1_service_provider_metadata_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_api_mesh_v1alpha1_service_provider_metadata_proto_goTypes = []any{
-	(*ServiceProviderMetaData)(nil), // 0: dubbo.mesh.v1alpha1.ServiceProviderMetaData
+	(*ServiceProviderMetadata)(nil), // 0: dubbo.mesh.v1alpha1.ServiceProviderMetadata
 }
 var file_api_mesh_v1alpha1_service_provider_metadata_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for method output_type

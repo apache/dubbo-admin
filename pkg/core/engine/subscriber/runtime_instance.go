@@ -73,7 +73,7 @@ func (s *RuntimeInstanceEventSubscriber) ProcessEvent(event events.Event) error 
 		processErr = s.processDelete(oldObj)
 	}
 	eventStr := event.String()
-	if processErr != nil {
+	if processErr == nil {
 		logger.Infof("process runtime instance event successfully, event: %s", eventStr)
 	} else {
 		logger.Errorf("process runtime instance event failed, event: %s, err: %s", eventStr, processErr.Error())
@@ -124,7 +124,7 @@ func (s *RuntimeInstanceEventSubscriber) mergeRuntimeInstance(
 
 func (s *RuntimeInstanceEventSubscriber) fromRuntimeInstance(
 	rtInstanceRes *meshresource.RuntimeInstanceResource) *meshresource.InstanceResource {
-	instanceRes := meshresource.NewInstanceResourceWithAttributes(rtInstanceRes.Mesh, rtInstanceRes.Name)
+	instanceRes := meshresource.NewInstanceResourceWithAttributes(rtInstanceRes.Name, rtInstanceRes.Mesh)
 	s.mergeRuntimeInstance(instanceRes, rtInstanceRes)
 	return instanceRes
 }
