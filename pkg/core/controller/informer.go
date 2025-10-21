@@ -135,6 +135,17 @@ func (s *informer) SetTransform(handler cache.TransformFunc) error {
 	return nil
 }
 
+func (s *informer) SetObjectType(objectType runtime.Object) error {
+	s.startedLock.Lock()
+	defer s.startedLock.Unlock()
+
+	if s.started {
+		return fmt.Errorf("informer has already started")
+	}
+	s.objectType = objectType
+	return nil
+}
+
 func (s *informer) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer func() {

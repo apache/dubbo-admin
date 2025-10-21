@@ -87,9 +87,9 @@ func (s *diagnosticsServer) Start(_ runtime.Runtime, stop <-chan struct{}) error
 		if err != nil {
 			switch {
 			case errors.Is(err, http.ErrServerClosed):
-				logger.Errorf("diagnostics http server closed, err: %s", err)
+				logger.Info("shutting down diagnostics server")
 			default:
-				logger.Error("could not start diagnostics http Server, unknown err: %s", err)
+				logger.Error("could not start diagnostics http server, unknown err: %s", err)
 				errChan <- err
 			}
 			return

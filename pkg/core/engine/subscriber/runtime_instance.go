@@ -178,8 +178,9 @@ func (s *RuntimeInstanceEventSubscriber) processDelete(rtInstanceRes *meshresour
 	return nil
 }
 
-func NewRuntimeInstanceEventSubscriber(instanceResourceStore store.ResourceStore) events.Subscriber {
+func NewRuntimeInstanceEventSubscriber(instanceResourceStore store.ResourceStore, emitter events.Emitter) events.Subscriber {
 	return &RuntimeInstanceEventSubscriber{
 		instanceResourceStore: instanceResourceStore,
+		eventEmitter:          emitter,
 	}
 }

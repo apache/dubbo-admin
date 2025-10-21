@@ -90,7 +90,7 @@ func (e *engineComponent) Init(ctx runtime.BuilderContext) error {
 	if err = e.initInformers(cfg, eventBus); err != nil {
 		return fmt.Errorf("init informer failed, %w", err)
 	}
-	if err = e.initSubscribers(); err != nil {
+	if err = e.initSubscribers(eventBus); err != nil {
 		return fmt.Errorf("init subscribers failed, %w", err)
 	}
 	logger.Infof("resource engine %s has been inited successfully", e.name)
@@ -125,12 +125,12 @@ func (e *engineComponent) initInformers(cfg *enginecfg.Config, emitter events.Em
 	return nil
 }
 
-func (e *engineComponent) initSubscribers() error {
+func (e *engineComponent) initSubscribers(eventbus events.EventBus) error {
 	rs, err := e.storeRouter.ResourceKindRoute(meshresource.InstanceKind)
 	if err != nil {
 		return fmt.Errorf("can not find store for resource kind %s, %w", meshresource.RuntimeInstanceKind, err)
 	}
-	runtimeInstanceSub := subscriber.NewRuntimeInstanceEventSubscriber(rs)
+	runtimeInstanceSub := subscriber.NewRuntimeInstanceEventSubscriber(rs, eventbus)
 	e.subscribers = append(e.subscribers, runtimeInstanceSub)
 	return nil
 }

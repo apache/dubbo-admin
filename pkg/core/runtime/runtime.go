@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/apache/dubbo-admin/pkg/config/app"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 
 	"github.com/apache/dubbo-admin/pkg/config/mode"
 )
@@ -121,10 +122,18 @@ func (rt *runtime) Start(stop <-chan struct{}) error {
 		go func() {
 			err := com.Start(rt, stop)
 			if err != nil {
-				panic("component " + com.Type() + " running failed with error: " + err.Error())
+				// if a core component failed to start, panic
+				if slice.Contain(CoreComponentTypes, com.Type()) {
+					panic("core component " + com.Type() + " running failed with error: " + err.Error())
+				} else {
+					logger.Errorf("component %s running failed with error: %s", com.Type(), err.Error())
+				}
+			} else {
+				logger.Infof("component %s started successfully", com.Type())
 			}
 		}()
 	}
+	logger.Info("Admin started successfully")
 	select {
 	case <-stop:
 		return nil

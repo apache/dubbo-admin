@@ -83,7 +83,7 @@ engine:
     # e.g.
     #    type: ByName
     #    name: main
-    # 4. chooseByAnnotation: choose the container with the annotation key, specified annotation value will be used as the container name
+    # 4. ByAnnotation: choose the container with the annotation key, specified annotation value will be used as the container name
     # e.g.
     #    type: ByAnnotation
     #    annotationKey: org.apache.dubbo/main-container-name=${app-name}
