@@ -18,6 +18,7 @@
 package memory
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -65,6 +66,13 @@ func (mr *mockResource) ResourceMeta() metav1.ObjectMeta {
 
 func (mr *mockResource) ResourceSpec() model.ResourceSpec {
 	return mr.spec
+}
+func (mr *mockResource) String() string {
+	b, err := json.Marshal(mr)
+	if err != nil {
+		return ""
+	}
+	return string(b)
 }
 
 func TestNewMemoryResourceStore(t *testing.T) {
