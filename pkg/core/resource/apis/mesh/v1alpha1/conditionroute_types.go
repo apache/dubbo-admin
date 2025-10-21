@@ -111,7 +111,7 @@ func (r *ConditionRouteResource) DeepCopyObject() k8sruntime.Object {
 func (r *ConditionRouteResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to marshal *ConditionRouteResource: %s, err: %s", r.ResourceKey(), err)
+		logger.Errorf("failed to encode ConditionRouteResource: %s to json, err: %s", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)

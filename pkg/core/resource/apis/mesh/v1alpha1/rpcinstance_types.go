@@ -111,7 +111,7 @@ func (r *RPCInstanceResource) DeepCopyObject() k8sruntime.Object {
 func (r *RPCInstanceResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to marshal *RPCInstanceResource: %s, err: %s", r.ResourceKey(), err)
+		logger.Errorf("failed to encode RPCInstanceResource: %s to json, err: %s", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)

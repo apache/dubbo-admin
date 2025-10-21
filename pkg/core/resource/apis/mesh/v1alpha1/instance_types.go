@@ -111,7 +111,7 @@ func (r *InstanceResource) DeepCopyObject() k8sruntime.Object {
 func (r *InstanceResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to marshal *InstanceResource: %s, err: %s", r.ResourceKey(), err)
+		logger.Errorf("failed to encode InstanceResource: %s to json, err: %s", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)

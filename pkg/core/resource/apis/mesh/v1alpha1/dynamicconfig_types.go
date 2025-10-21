@@ -111,7 +111,7 @@ func (r *DynamicConfigResource) DeepCopyObject() k8sruntime.Object {
 func (r *DynamicConfigResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to marshal *DynamicConfigResource: %s, err: %s", r.ResourceKey(), err)
+		logger.Errorf("failed to encode DynamicConfigResource: %s to json, err: %s", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)

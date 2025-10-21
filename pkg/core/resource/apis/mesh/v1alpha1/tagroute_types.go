@@ -111,7 +111,7 @@ func (r *TagRouteResource) DeepCopyObject() k8sruntime.Object {
 func (r *TagRouteResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to marshal *TagRouteResource: %s, err: %s", r.ResourceKey(), err)
+		logger.Errorf("failed to encode TagRouteResource: %s to json, err: %s", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)

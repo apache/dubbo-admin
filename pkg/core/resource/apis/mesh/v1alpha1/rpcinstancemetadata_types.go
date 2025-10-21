@@ -48,7 +48,7 @@ type RpcInstanceMetadataResource struct {
 	Mesh string `json:"mesh,omitempty"`
 
 	// Spec is the specification of the Dubbo RpcInstanceMetaData resource.
-	Spec *meshproto.RpcInstanceMetaData `json:"spec,omitempty"`
+	Spec *meshproto.RpcInstanceMetadata `json:"spec,omitempty"`
 
 	// Status is the status of the Dubbo RpcInstanceMetadata resource.
 	Status RpcInstanceMetadataResourceStatus `json:"status,omitempty"`
@@ -111,7 +111,7 @@ func (r *RpcInstanceMetadataResource) DeepCopyObject() k8sruntime.Object {
 func (r *RpcInstanceMetadataResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to marshal *RpcInstanceMetadataResource: %s, err: %s", r.ResourceKey(), err)
+		logger.Errorf("failed to encode RpcInstanceMetadataResource: %s to json, err: %s", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)

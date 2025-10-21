@@ -111,7 +111,7 @@ func (r *ServiceProviderMetadataResource) DeepCopyObject() k8sruntime.Object {
 func (r *ServiceProviderMetadataResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to marshal *ServiceProviderMetadataResource: %s, err: %s", r.ResourceKey(), err)
+		logger.Errorf("failed to encode ServiceProviderMetadataResource: %s to json, err: %s", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)
