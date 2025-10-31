@@ -24,5 +24,6 @@ import (
 	_ "github.com/apache/dubbo-admin/pkg/core/events"
 	_ "github.com/apache/dubbo-admin/pkg/core/manager"
 	_ "github.com/apache/dubbo-admin/pkg/core/store"
+	_ "github.com/apache/dubbo-admin/pkg/store/db"
 	_ "github.com/apache/dubbo-admin/pkg/store/memory"
 )

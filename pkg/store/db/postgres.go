@@ -26,7 +26,7 @@ import (
 
 	storecfg "github.com/apache/dubbo-admin/pkg/config/store"
 	"github.com/go-logr/logr"
-	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"k8s.io/client-go/tools/cache"
 
@@ -38,22 +38,22 @@ import (
 )
 
 func init() {
-	store.RegisterFactory(&mysqlStoreFactory{})
+	store.RegisterFactory(&postgresStoreFactory{})
 }
 
-type mysqlStoreFactory struct{}
+type postgresStoreFactory struct{}
 
-var _ store.Factory = &mysqlStoreFactory{}
+var _ store.Factory = &postgresStoreFactory{}
 
-func (f *mysqlStoreFactory) Support(s storecfg.Type) bool {
-	return s == storecfg.MySQL
+func (f *postgresStoreFactory) Support(s storecfg.Type) bool {
+	return s == storecfg.Postgres
 }
 
-func (f *mysqlStoreFactory) New(kind model.ResourceKind, cfg *storecfg.Config) (store.ManagedResourceStore, error) {
-	return NewMySQLStore(kind, cfg.Address)
+func (f *postgresStoreFactory) New(kind model.ResourceKind, cfg *storecfg.Config) (store.ManagedResourceStore, error) {
+	return NewPostgresStore(kind, cfg.Address)
 }
 
-type mysqlStore struct {
+type postgresStore struct {
 	db          *gorm.DB
 	kind        model.ResourceKind
 	indexers    cache.Indexers
@@ -61,46 +61,46 @@ type mysqlStore struct {
 	logger      logr.Logger
 }
 
-var _ store.ManagedResourceStore = &mysqlStore{}
+var _ store.ManagedResourceStore = &postgresStore{}
 
-func NewMySQLStore(kind model.ResourceKind, address string) (store.ManagedResourceStore, error) {
-	db, err := gorm.Open(mysql.Open(address), &gorm.Config{})
+func NewPostgresStore(kind model.ResourceKind, address string) (store.ManagedResourceStore, error) {
+	db, err := gorm.Open(postgres.Open(address), &gorm.Config{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to mysql: %w", err)
+		return nil, fmt.Errorf("failed to connect to postgres: %w", err)
 	}
 
 	if err := db.AutoMigrate(&ResourceModel{}); err != nil {
 		return nil, fmt.Errorf("failed to migrate schema: %w", err)
 	}
 
-	return &mysqlStore{
+	return &postgresStore{
 		db:       db,
 		kind:     kind,
 		indexers: cache.Indexers{},
-		logger:   log.NewLogger(log.InfoLevel).WithName("mysql-store"),
+		logger:   log.NewLogger(log.InfoLevel).WithName("postgres-store"),
 	}, nil
 }
 
-func (ms *mysqlStore) Init(_ runtime.BuilderContext) error {
+func (ps *postgresStore) Init(_ runtime.BuilderContext) error {
 	return nil
 }
 
-func (ms *mysqlStore) Start(_ runtime.Runtime, _ <-chan struct{}) error {
+func (ps *postgresStore) Start(_ runtime.Runtime, _ <-chan struct{}) error {
 	return nil
 }
 
-func (ms *mysqlStore) Add(obj interface{}) error {
+func (ps *postgresStore) Add(obj interface{}) error {
 	resource, ok := obj.(model.Resource)
 	if !ok {
 		return bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
 	}
 
-	if resource.ResourceKind() != ms.kind {
-		return fmt.Errorf("resource kind mismatch: expected %s, got %s", ms.kind, resource.ResourceKind())
+	if resource.ResourceKind() != ps.kind {
+		return fmt.Errorf("resource kind mismatch: expected %s, got %s", ps.kind, resource.ResourceKind())
 	}
 
 	var count int64
-	err := ms.db.Model(&ResourceModel{}).
+	err := ps.db.Model(&ResourceModel{}).
 		Where("resource_key = ?", resource.ResourceKey()).
 		Count(&count).Error
 	if err != nil {
@@ -119,17 +119,17 @@ func (ms *mysqlStore) Add(obj interface{}) error {
 		return err
 	}
 
-	return ms.db.Create(m).Error
+	return ps.db.Create(m).Error
 }
 
-func (ms *mysqlStore) Update(obj interface{}) error {
+func (ps *postgresStore) Update(obj interface{}) error {
 	resource, ok := obj.(model.Resource)
 	if !ok {
 		return bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
 	}
 
-	if resource.ResourceKind() != ms.kind {
-		return fmt.Errorf("resource kind mismatch: expected %s, got %s", ms.kind, resource.ResourceKind())
+	if resource.ResourceKind() != ps.kind {
+		return fmt.Errorf("resource kind mismatch: expected %s, got %s", ps.kind, resource.ResourceKind())
 	}
 
 	m, err := FromResource(resource)
@@ -137,7 +137,7 @@ func (ms *mysqlStore) Update(obj interface{}) error {
 		return err
 	}
 
-	result := ms.db.Model(&ResourceModel{}).
+	result := ps.db.Model(&ResourceModel{}).
 		Where("resource_key = ?", resource.ResourceKey()).
 		Updates(map[string]interface{}{
 			"data":       m.Data,
@@ -159,13 +159,13 @@ func (ms *mysqlStore) Update(obj interface{}) error {
 	return nil
 }
 
-func (ms *mysqlStore) Delete(obj interface{}) error {
+func (ps *postgresStore) Delete(obj interface{}) error {
 	resource, ok := obj.(model.Resource)
 	if !ok {
 		return bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
 	}
 
-	result := ms.db.Where("resource_key = ?", resource.ResourceKey()).
+	result := ps.db.Where("resource_key = ?", resource.ResourceKey()).
 		Delete(&ResourceModel{})
 
 	if result.Error != nil {
@@ -183,10 +183,10 @@ func (ms *mysqlStore) Delete(obj interface{}) error {
 	return nil
 }
 
-func (ms *mysqlStore) List() []interface{} {
+func (ps *postgresStore) List() []interface{} {
 	var models []ResourceModel
-	if err := ms.db.Where("resource_kind = ?", ms.kind.ToString()).Find(&models).Error; err != nil {
-		ms.logger.Error(err, "failed to list resources")
+	if err := ps.db.Where("resource_kind = ?", ps.kind.ToString()).Find(&models).Error; err != nil {
+		ps.logger.Error(err, "failed to list resources")
 		return []interface{}{}
 	}
 
@@ -194,7 +194,7 @@ func (ms *mysqlStore) List() []interface{} {
 	for _, m := range models {
 		resource, err := m.ToResource()
 		if err != nil {
-			ms.logger.Error(err, "failed to deserialize resource")
+			ps.logger.Error(err, "failed to deserialize resource")
 			continue
 		}
 		result = append(result, resource)
@@ -202,25 +202,25 @@ func (ms *mysqlStore) List() []interface{} {
 	return result
 }
 
-func (ms *mysqlStore) ListKeys() []string {
+func (ps *postgresStore) ListKeys() []string {
 	var keys []string
-	ms.db.Model(&ResourceModel{}).
-		Where("resource_kind = ?", ms.kind.ToString()).
+	ps.db.Model(&ResourceModel{}).
+		Where("resource_kind = ?", ps.kind.ToString()).
 		Pluck("resource_key", &keys)
 	return keys
 }
 
-func (ms *mysqlStore) Get(obj interface{}) (item interface{}, exists bool, err error) {
+func (ps *postgresStore) Get(obj interface{}) (item interface{}, exists bool, err error) {
 	resource, ok := obj.(model.Resource)
 	if !ok {
 		return nil, false, bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
 	}
-	return ms.GetByKey(resource.ResourceKey())
+	return ps.GetByKey(resource.ResourceKey())
 }
 
-func (ms *mysqlStore) GetByKey(key string) (item interface{}, exists bool, err error) {
+func (ps *postgresStore) GetByKey(key string) (item interface{}, exists bool, err error) {
 	var m ResourceModel
-	result := ms.db.Where("resource_key = ? AND resource_kind = ?", key, ms.kind.ToString()).
+	result := ps.db.Where("resource_key = ? AND resource_kind = ?", key, ps.kind.ToString()).
 		First(&m)
 
 	if result.Error != nil {
@@ -238,9 +238,9 @@ func (ms *mysqlStore) GetByKey(key string) (item interface{}, exists bool, err e
 	return resource, true, nil
 }
 
-func (ms *mysqlStore) Replace(list []interface{}, _ string) error {
-	return ms.db.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("resource_kind = ?", ms.kind.ToString()).Delete(&ResourceModel{}).Error; err != nil {
+func (ps *postgresStore) Replace(list []interface{}, _ string) error {
+	return ps.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("resource_kind = ?", ps.kind.ToString()).Delete(&ResourceModel{}).Error; err != nil {
 			return err
 		}
 
@@ -264,14 +264,14 @@ func (ms *mysqlStore) Replace(list []interface{}, _ string) error {
 	})
 }
 
-func (ms *mysqlStore) Resync() error {
+func (ps *postgresStore) Resync() error {
 	return nil
 }
 
-func (ms *mysqlStore) Index(indexName string, obj interface{}) ([]interface{}, error) {
-	ms.indexerLock.RLock()
-	indexFunc, exists := ms.indexers[indexName]
-	ms.indexerLock.RUnlock()
+func (ps *postgresStore) Index(indexName string, obj interface{}) ([]interface{}, error) {
+	ps.indexerLock.RLock()
+	indexFunc, exists := ps.indexers[indexName]
+	ps.indexerLock.RUnlock()
 
 	if !exists {
 		return nil, fmt.Errorf("index %s does not exist", indexName)
@@ -286,19 +286,19 @@ func (ms *mysqlStore) Index(indexName string, obj interface{}) ([]interface{}, e
 		return []interface{}{}, nil
 	}
 
-	return ms.findByIndex(indexName, indexValues[0])
+	return ps.findByIndex(indexName, indexValues[0])
 }
 
-func (ms *mysqlStore) IndexKeys(indexName, indexedValue string) ([]string, error) {
-	ms.indexerLock.RLock()
-	_, exists := ms.indexers[indexName]
-	ms.indexerLock.RUnlock()
+func (ps *postgresStore) IndexKeys(indexName, indexedValue string) ([]string, error) {
+	ps.indexerLock.RLock()
+	_, exists := ps.indexers[indexName]
+	ps.indexerLock.RUnlock()
 
 	if !exists {
 		return nil, fmt.Errorf("index %s does not exist", indexName)
 	}
 
-	resources, err := ms.findByIndex(indexName, indexedValue)
+	resources, err := ps.findByIndex(indexName, indexedValue)
 	if err != nil {
 		return nil, err
 	}
@@ -313,20 +313,20 @@ func (ms *mysqlStore) IndexKeys(indexName, indexedValue string) ([]string, error
 	return keys, nil
 }
 
-func (ms *mysqlStore) ListIndexFuncValues(indexName string) []string {
-	ms.indexerLock.RLock()
-	_, exists := ms.indexers[indexName]
-	ms.indexerLock.RUnlock()
+func (ps *postgresStore) ListIndexFuncValues(indexName string) []string {
+	ps.indexerLock.RLock()
+	_, exists := ps.indexers[indexName]
+	ps.indexerLock.RUnlock()
 
 	if !exists {
 		return []string{}
 	}
 
-	resources := ms.List()
+	resources := ps.List()
 	valueSet := make(map[string]struct{})
 
 	for _, obj := range resources {
-		if indexFunc, ok := ms.indexers[indexName]; ok {
+		if indexFunc, ok := ps.indexers[indexName]; ok {
 			values, err := indexFunc(obj)
 			if err == nil {
 				for _, value := range values {
@@ -344,50 +344,50 @@ func (ms *mysqlStore) ListIndexFuncValues(indexName string) []string {
 	return result
 }
 
-func (ms *mysqlStore) ByIndex(indexName, indexedValue string) ([]interface{}, error) {
-	ms.indexerLock.RLock()
-	_, exists := ms.indexers[indexName]
-	ms.indexerLock.RUnlock()
+func (ps *postgresStore) ByIndex(indexName, indexedValue string) ([]interface{}, error) {
+	ps.indexerLock.RLock()
+	_, exists := ps.indexers[indexName]
+	ps.indexerLock.RUnlock()
 
 	if !exists {
 		return nil, fmt.Errorf("index %s does not exist", indexName)
 	}
 
-	return ms.findByIndex(indexName, indexedValue)
+	return ps.findByIndex(indexName, indexedValue)
 }
 
-func (ms *mysqlStore) GetIndexers() cache.Indexers {
-	ms.indexerLock.RLock()
-	defer ms.indexerLock.RUnlock()
+func (ps *postgresStore) GetIndexers() cache.Indexers {
+	ps.indexerLock.RLock()
+	defer ps.indexerLock.RUnlock()
 
-	result := make(cache.Indexers, len(ms.indexers))
-	for k, v := range ms.indexers {
+	result := make(cache.Indexers, len(ps.indexers))
+	for k, v := range ps.indexers {
 		result[k] = v
 	}
 	return result
 }
 
-func (ms *mysqlStore) AddIndexers(newIndexers cache.Indexers) error {
-	ms.indexerLock.Lock()
-	defer ms.indexerLock.Unlock()
+func (ps *postgresStore) AddIndexers(newIndexers cache.Indexers) error {
+	ps.indexerLock.Lock()
+	defer ps.indexerLock.Unlock()
 
 	for name, indexFunc := range newIndexers {
-		if _, exists := ms.indexers[name]; exists {
+		if _, exists := ps.indexers[name]; exists {
 			return fmt.Errorf("indexer %s already exists", name)
 		}
-		ms.indexers[name] = indexFunc
+		ps.indexers[name] = indexFunc
 	}
 
 	return nil
 }
 
-func (ms *mysqlStore) GetByKeys(keys []string) ([]model.Resource, error) {
+func (ps *postgresStore) GetByKeys(keys []string) ([]model.Resource, error) {
 	if len(keys) == 0 {
 		return []model.Resource{}, nil
 	}
 
 	var models []ResourceModel
-	err := ms.db.Where("resource_key IN ? AND resource_kind = ?", keys, ms.kind.ToString()).
+	err := ps.db.Where("resource_key IN ? AND resource_kind = ?", keys, ps.kind.ToString()).
 		Find(&models).Error
 	if err != nil {
 		return nil, err
@@ -405,13 +405,13 @@ func (ms *mysqlStore) GetByKeys(keys []string) ([]model.Resource, error) {
 	return resources, nil
 }
 
-func (ms *mysqlStore) ListByIndexes(indexes map[string]string) ([]model.Resource, error) {
-	keys, err := ms.getKeysByIndexes(indexes)
+func (ps *postgresStore) ListByIndexes(indexes map[string]string) ([]model.Resource, error) {
+	keys, err := ps.getKeysByIndexes(indexes)
 	if err != nil {
 		return nil, err
 	}
 
-	resources, err := ms.GetByKeys(keys)
+	resources, err := ps.GetByKeys(keys)
 	if err != nil {
 		return nil, err
 	}
@@ -423,8 +423,8 @@ func (ms *mysqlStore) ListByIndexes(indexes map[string]string) ([]model.Resource
 	return resources, nil
 }
 
-func (ms *mysqlStore) PageListByIndexes(indexes map[string]string, pq model.PageReq) (*model.PageData[model.Resource], error) {
-	keys, err := ms.getKeysByIndexes(indexes)
+func (ps *postgresStore) PageListByIndexes(indexes map[string]string, pq model.PageReq) (*model.PageData[model.Resource], error) {
+	keys, err := ps.getKeysByIndexes(indexes)
 	if err != nil {
 		return nil, err
 	}
@@ -442,7 +442,7 @@ func (ms *mysqlStore) PageListByIndexes(indexes map[string]string, pq model.Page
 	}
 
 	pageKeys := keys[pq.PageOffset:end]
-	resources, err := ms.GetByKeys(pageKeys)
+	resources, err := ps.GetByKeys(pageKeys)
 	if err != nil {
 		return nil, err
 	}
@@ -450,12 +450,12 @@ func (ms *mysqlStore) PageListByIndexes(indexes map[string]string, pq model.Page
 	return model.NewPageData(total, pq.PageOffset, pq.PageSize, resources), nil
 }
 
-func (ms *mysqlStore) findByIndex(indexName, indexedValue string) ([]interface{}, error) {
-	ms.indexerLock.RLock()
-	indexFunc := ms.indexers[indexName]
-	ms.indexerLock.RUnlock()
+func (ps *postgresStore) findByIndex(indexName, indexedValue string) ([]interface{}, error) {
+	ps.indexerLock.RLock()
+	indexFunc := ps.indexers[indexName]
+	ps.indexerLock.RUnlock()
 
-	allResources := ms.List()
+	allResources := ps.List()
 	result := make([]interface{}, 0)
 
 	for _, obj := range allResources {
@@ -475,16 +475,16 @@ func (ms *mysqlStore) findByIndex(indexName, indexedValue string) ([]interface{}
 	return result, nil
 }
 
-func (ms *mysqlStore) getKeysByIndexes(indexes map[string]string) ([]string, error) {
+func (ps *postgresStore) getKeysByIndexes(indexes map[string]string) ([]string, error) {
 	if len(indexes) == 0 {
-		return ms.ListKeys(), nil
+		return ps.ListKeys(), nil
 	}
 
 	var keySet map[string]struct{}
 	first := true
 
 	for indexName, indexValue := range indexes {
-		keys, err := ms.IndexKeys(indexName, indexValue)
+		keys, err := ps.IndexKeys(indexName, indexValue)
 		if err != nil {
 			return nil, err
 		}
