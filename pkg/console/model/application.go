@@ -195,3 +195,15 @@ type GraySet struct {
 	EnvName string       `json:"name,omitempty"`
 	Scope   []ParamMatch `json:"scope,omitempty"`
 }
+
+type AppAccessLogConfigResp struct {
+	AccessLog bool `json:"operatorLog"`
+}
+
+type AppFlowWeightConfigResp struct {
+	FlowWeightSets []FlowWeightSet `json:"flowWeightSets"`
+}
+
+type AppGrayConfigResp struct {
+	GraySets []GraySet `json:"graySets"`
+}

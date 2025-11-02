@@ -23,6 +23,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 )
@@ -42,11 +43,12 @@ func Login(ctx consolectx.Context) gin.HandlerFunc {
 			})
 			err := session.Save()
 			if err != nil {
-				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
+				sessionErr := bizerror.NewBizError(bizerror.SessionError, err.Error())
+				c.JSON(http.StatusInternalServerError, model.NewBizErrorResp(sessionErr))
 			}
-			c.JSON(http.StatusOK, model.NewSuccessResp(nil))
+			c.JSON(http.StatusOK, model.NewSuccessResp(true))
 		} else {
-			c.JSON(http.StatusUnauthorized, model.NewUnauthorizedResp())
+			c.JSON(http.StatusUnauthorized, model.NewBizErrorResp(bizerror.NewUnauthorizedError()))
 		}
 	}
 }
@@ -59,6 +61,6 @@ func Logout(_ consolectx.Context) gin.HandlerFunc {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
 		}
-		c.JSON(http.StatusOK, model.NewSuccessResp(nil))
+		c.JSON(http.StatusOK, model.NewSuccessResp(true))
 	}
 }

@@ -18,7 +18,6 @@
 package model
 
 import (
-	"net/http"
 	"strings"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
@@ -209,11 +208,7 @@ func matchValueToDestinationCondition(val string) []DestinationCondition {
 
 func GenConditionRuleToResp(data *meshproto.ConditionRoute) *CommonResp {
 	if data == nil {
-		return &CommonResp{
-			Code: http.StatusNotFound,
-			Msg:  "not found",
-			Data: map[string]string{},
-		}
+		return NewSuccessResp(nil)
 	}
 	if pb := data.ToConditionRouteV3(); pb != nil {
 		return NewSuccessResp(ConditionRuleResp{
@@ -249,11 +244,7 @@ func GenConditionRuleToResp(data *meshproto.ConditionRoute) *CommonResp {
 		}
 		return NewSuccessResp(res)
 	} else {
-		return &CommonResp{
-			Code: http.StatusInternalServerError,
-			Msg:  "invalid condition rule",
-			Data: data,
-		}
+		return NewErrorResp("invalid condition rule")
 	}
 }
 
