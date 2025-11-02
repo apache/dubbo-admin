@@ -26,17 +26,22 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
+// ResourceModel is the database model for storing Dubbo resources
+// It uses dynamic table naming based on ResourceKind to improve query performance
 type ResourceModel struct {
-	ID           uint      `gorm:"primarykey"`
-	ResourceKey  string    `gorm:"uniqueIndex;not null"`
-	ResourceKind string    `gorm:"not null"` // Removed index since each table only contains one kind
-	Name         string    `gorm:"index;not null"`
-	Mesh         string    `gorm:"index;not null"`
-	Data         []byte    `gorm:"type:text;not null"`
-	CreatedAt    time.Time `gorm:"autoCreateTime"`
-	UpdatedAt    time.Time `gorm:"autoUpdateTime"`
+	ID           uint      `gorm:"primarykey"`           // Auto-incrementing primary key
+	ResourceKey  string    `gorm:"uniqueIndex;not null"` // Unique identifier for the resource
+	ResourceKind string    `gorm:"not null"`             // Type of resource (e.g., "Application", "ServiceProviderMapping")
+	Name         string    `gorm:"index;not null"`       // Resource name, indexed for fast lookups
+	Mesh         string    `gorm:"index;not null"`       // Mesh identifier, indexed for filtering by mesh
+	Data         []byte    `gorm:"type:text;not null"`   // JSON-encoded resource data
+	CreatedAt    time.Time `gorm:"autoCreateTime"`       // Automatically set on creation
+	UpdatedAt    time.Time `gorm:"autoUpdateTime"`       // Automatically updated on modification
 }
 
+// TableName returns the table name for this resource model
+// Uses dynamic table naming: each ResourceKind gets its own table
+// e.g., "Application" -> "resources_application", "ServiceProviderMapping" -> "resources_service_provider_mapping"
 func (rm *ResourceModel) TableName() string {
 	if rm.ResourceKind == "" {
 		return "resources"
@@ -76,6 +81,8 @@ func toSnakeCase(s string) string {
 	return result.String()
 }
 
+// ToResource converts the database model back to a Resource object
+// Unmarshals the JSON data and returns the typed resource
 func (rm *ResourceModel) ToResource() (model.Resource, error) {
 	newFunc, err := model.ResourceSchemaRegistry().NewResourceFunc(model.ResourceKind(rm.ResourceKind))
 	if err != nil {
@@ -88,6 +95,8 @@ func (rm *ResourceModel) ToResource() (model.Resource, error) {
 	return resource, nil
 }
 
+// FromResource converts a Resource object to a database model
+// Marshals the resource to JSON and populates the model fields
 func FromResource(resource model.Resource) (*ResourceModel, error) {
 	data, err := json.Marshal(resource)
 	if err != nil {

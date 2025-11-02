@@ -40,32 +40,38 @@ func init() {
 	store.RegisterFactory(&postgresStoreFactory{})
 }
 
+// postgresStoreFactory is the factory for creating PostgreSQL store instances
 type postgresStoreFactory struct{}
 
 var _ store.Factory = &postgresStoreFactory{}
 
+// Support checks if this factory supports the given store type
 func (f *postgresStoreFactory) Support(s storecfg.Type) bool {
 	return s == storecfg.Postgres
 }
 
+// New creates a new PostgreSQL store instance for the specified resource kind
 func (f *postgresStoreFactory) New(kind model.ResourceKind, cfg *storecfg.Config) (store.ManagedResourceStore, error) {
 	return NewPostgresStore(kind, cfg.Address)
 }
 
+// postgresStore is a PostgreSQL-backed store implementation for Dubbo resources
+// It uses GORM for database operations and maintains in-memory indices for fast lookups
 type postgresStore struct {
-	pool        *dbcommon.ConnectionPool
-	kind        model.ResourceKind
-	address     string
-	indexers    cache.Indexers
-	indexerLock sync.RWMutex
-	// In-memory index: map[indexName]map[indexedValue]set[resourceKey]
-	indices     map[string]map[string]map[string]struct{}
-	indicesLock sync.RWMutex
-	stopCh      chan struct{}
+	pool        *dbcommon.ConnectionPool                  // Shared connection pool with reference counting
+	kind        model.ResourceKind                        // The resource kind this store manages
+	address     string                                    // PostgreSQL connection address
+	indexers    cache.Indexers                            // Index functions for creating indices
+	indexerLock sync.RWMutex                              // Protects indexers map
+	indices     map[string]map[string]map[string]struct{} // In-memory index: map[indexName]map[indexedValue]set[resourceKey]
+	indicesLock sync.RWMutex                              // Protects indices map
+	stopCh      chan struct{}                             // Channel for signaling shutdown
 }
 
 var _ store.ManagedResourceStore = &postgresStore{}
 
+// NewPostgresStore creates a new PostgreSQL store for the specified resource kind
+// The store is not initialized until Init() is called
 func NewPostgresStore(kind model.ResourceKind, address string) (store.ManagedResourceStore, error) {
 	return &postgresStore{
 		kind:     kind,
@@ -76,6 +82,7 @@ func NewPostgresStore(kind model.ResourceKind, address string) (store.ManagedRes
 	}, nil
 }
 
+// Init initializes the PostgreSQL store by creating/reusing a connection pool and migrating the schema
 func (ps *postgresStore) Init(_ runtime.BuilderContext) error {
 	// Get or create PostgreSQL connection pool
 	pool, err := GetOrCreatePostgresPool(ps.address, dbcommon.DefaultConnectionPoolConfig())

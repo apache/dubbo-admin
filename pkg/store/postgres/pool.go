@@ -27,12 +27,18 @@ import (
 )
 
 var (
+	// postgresPool is the shared PostgreSQL connection pool instance
 	postgresPool *dbcommon.ConnectionPool
+	// postgresOnce ensures the pool is initialized only once
 	postgresOnce sync.Once
-	poolMutex    sync.RWMutex
+	// poolMutex protects access to the pool during creation and reuse
+	poolMutex sync.RWMutex
 )
 
 // GetOrCreatePostgresPool returns or creates a PostgreSQL connection pool
+// It implements a singleton pattern with reference counting to allow pool reuse across multiple stores
+// If a pool already exists for the same address, it increments the reference count and returns the existing pool
+// Otherwise, it creates a new pool with the PostgreSQL driver configured
 func GetOrCreatePostgresPool(address string, config *dbcommon.ConnectionPoolConfig) (*dbcommon.ConnectionPool, error) {
 	poolMutex.Lock()
 	defer poolMutex.Unlock()

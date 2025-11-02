@@ -27,12 +27,18 @@ import (
 )
 
 var (
+	// mysqlPool is the shared MySQL connection pool instance
 	mysqlPool *dbcommon.ConnectionPool
+	// mysqlOnce ensures the pool is initialized only once
 	mysqlOnce sync.Once
+	// poolMutex protects access to the pool during creation and reuse
 	poolMutex sync.RWMutex
 )
 
 // GetOrCreateMySQLPool returns or creates a MySQL connection pool
+// It implements a singleton pattern with reference counting to allow pool reuse across multiple stores
+// If a pool already exists for the same address, it increments the reference count and returns the existing pool
+// Otherwise, it creates a new pool with the MySQL driver configured
 func GetOrCreateMySQLPool(address string, config *dbcommon.ConnectionPoolConfig) (*dbcommon.ConnectionPool, error) {
 	poolMutex.Lock()
 	defer poolMutex.Unlock()

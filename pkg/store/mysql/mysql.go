@@ -40,32 +40,38 @@ func init() {
 	store.RegisterFactory(&mysqlStoreFactory{})
 }
 
+// mysqlStoreFactory is the factory for creating MySQL store instances
 type mysqlStoreFactory struct{}
 
 var _ store.Factory = &mysqlStoreFactory{}
 
+// Support checks if this factory supports the given store type
 func (f *mysqlStoreFactory) Support(s storecfg.Type) bool {
 	return s == storecfg.MySQL
 }
 
+// New creates a new MySQL store instance for the specified resource kind
 func (f *mysqlStoreFactory) New(kind model.ResourceKind, cfg *storecfg.Config) (store.ManagedResourceStore, error) {
 	return NewMySQLStore(kind, cfg.Address)
 }
 
+// mysqlStore is a MySQL-backed store implementation for Dubbo resources
+// It uses GORM for database operations and maintains in-memory indices for fast lookups
 type mysqlStore struct {
-	pool        *dbcommon.ConnectionPool
-	kind        model.ResourceKind
-	address     string
-	indexers    cache.Indexers
-	indexerLock sync.RWMutex
-	// In-memory index: map[indexName]map[indexedValue]set[resourceKey]
-	indices     map[string]map[string]map[string]struct{}
-	indicesLock sync.RWMutex
-	stopCh      chan struct{}
+	pool        *dbcommon.ConnectionPool                  // Shared connection pool with reference counting
+	kind        model.ResourceKind                        // The resource kind this store manages
+	address     string                                    // MySQL connection address
+	indexers    cache.Indexers                            // Index functions for creating indices
+	indexerLock sync.RWMutex                              // Protects indexers map
+	indices     map[string]map[string]map[string]struct{} // In-memory index: map[indexName]map[indexedValue]set[resourceKey]
+	indicesLock sync.RWMutex                              // Protects indices map
+	stopCh      chan struct{}                             // Channel for signaling shutdown
 }
 
 var _ store.ManagedResourceStore = &mysqlStore{}
 
+// NewMySQLStore creates a new MySQL store for the specified resource kind
+// The store is not initialized until Init() is called
 func NewMySQLStore(kind model.ResourceKind, address string) (store.ManagedResourceStore, error) {
 	return &mysqlStore{
 		kind:     kind,
@@ -76,6 +82,7 @@ func NewMySQLStore(kind model.ResourceKind, address string) (store.ManagedResour
 	}, nil
 }
 
+// Init initializes the MySQL store by creating/reusing a connection pool and migrating the schema
 func (ms *mysqlStore) Init(_ runtime.BuilderContext) error {
 	// Get or create MySQL connection pool
 	pool, err := GetOrCreateMySQLPool(ms.address, dbcommon.DefaultConnectionPoolConfig())
@@ -95,6 +102,7 @@ func (ms *mysqlStore) Init(_ runtime.BuilderContext) error {
 	return nil
 }
 
+// Start starts the MySQL store and monitors for shutdown signal
 func (ms *mysqlStore) Start(_ runtime.Runtime, stopCh <-chan struct{}) error {
 	logger.Infof("MySQL store started for resource kind: %s", ms.kind.ToString())
 
@@ -119,6 +127,8 @@ func (ms *mysqlStore) Start(_ runtime.Runtime, stopCh <-chan struct{}) error {
 	return nil
 }
 
+// Add inserts a new resource into the MySQL database
+// Returns an error if the resource already exists
 func (ms *mysqlStore) Add(obj interface{}) error {
 	resource, ok := obj.(model.Resource)
 	if !ok {
@@ -160,6 +170,8 @@ func (ms *mysqlStore) Add(obj interface{}) error {
 	return nil
 }
 
+// Update modifies an existing resource in the MySQL database
+// Returns an error if the resource does not exist
 func (ms *mysqlStore) Update(obj interface{}) error {
 	resource, ok := obj.(model.Resource)
 	if !ok {
@@ -214,6 +226,8 @@ func (ms *mysqlStore) Update(obj interface{}) error {
 	return nil
 }
 
+// Delete removes a resource from the MySQL database
+// Returns an error if the resource does not exist
 func (ms *mysqlStore) Delete(obj interface{}) error {
 	resource, ok := obj.(model.Resource)
 	if !ok {
@@ -242,6 +256,7 @@ func (ms *mysqlStore) Delete(obj interface{}) error {
 	return nil
 }
 
+// List returns all resources of the configured kind from the MySQL database
 func (ms *mysqlStore) List() []interface{} {
 	var models []dbcommon.ResourceModel
 	db := ms.pool.GetDB()
@@ -262,6 +277,7 @@ func (ms *mysqlStore) List() []interface{} {
 	return result
 }
 
+// ListKeys returns all resource keys of the configured kind from the MySQL database
 func (ms *mysqlStore) ListKeys() []string {
 	var keys []string
 	db := ms.pool.GetDB()
@@ -271,6 +287,7 @@ func (ms *mysqlStore) ListKeys() []string {
 	return keys
 }
 
+// Get retrieves a resource by its object reference
 func (ms *mysqlStore) Get(obj interface{}) (item interface{}, exists bool, err error) {
 	resource, ok := obj.(model.Resource)
 	if !ok {
@@ -279,6 +296,7 @@ func (ms *mysqlStore) Get(obj interface{}) (item interface{}, exists bool, err e
 	return ms.GetByKey(resource.ResourceKey())
 }
 
+// GetByKey retrieves a resource by its unique key
 func (ms *mysqlStore) GetByKey(key string) (item interface{}, exists bool, err error) {
 	var m dbcommon.ResourceModel
 	db := ms.pool.GetDB()
@@ -300,6 +318,8 @@ func (ms *mysqlStore) GetByKey(key string) (item interface{}, exists bool, err e
 	return resource, true, nil
 }
 
+// Replace atomically replaces all resources in the database with the provided list
+// This operation is performed within a transaction to ensure atomicity
 func (ms *mysqlStore) Replace(list []interface{}, _ string) error {
 	db := ms.pool.GetDB()
 	return db.Transaction(func(tx *gorm.DB) error {
