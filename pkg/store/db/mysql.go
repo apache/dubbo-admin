@@ -25,13 +25,11 @@ import (
 	"sync"
 
 	storecfg "github.com/apache/dubbo-admin/pkg/config/store"
-	"github.com/go-logr/logr"
-	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
-	"github.com/apache/dubbo-admin/pkg/common/log"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/core/store"
@@ -54,38 +52,69 @@ func (f *mysqlStoreFactory) New(kind model.ResourceKind, cfg *storecfg.Config) (
 }
 
 type mysqlStore struct {
-	db          *gorm.DB
+	pool        *ConnectionPool
 	kind        model.ResourceKind
+	address     string
 	indexers    cache.Indexers
 	indexerLock sync.RWMutex
-	logger      logr.Logger
+	// In-memory index: map[indexName]map[indexedValue]set[resourceKey]
+	indices     map[string]map[string]map[string]struct{}
+	indicesLock sync.RWMutex
+	stopCh      chan struct{}
 }
 
 var _ store.ManagedResourceStore = &mysqlStore{}
 
 func NewMySQLStore(kind model.ResourceKind, address string) (store.ManagedResourceStore, error) {
-	db, err := gorm.Open(mysql.Open(address), &gorm.Config{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to mysql: %w", err)
-	}
-
-	if err := db.AutoMigrate(&ResourceModel{}); err != nil {
-		return nil, fmt.Errorf("failed to migrate schema: %w", err)
-	}
-
 	return &mysqlStore{
-		db:       db,
 		kind:     kind,
+		address:  address,
 		indexers: cache.Indexers{},
-		logger:   log.NewLogger(log.InfoLevel).WithName("mysql-store"),
+		indices:  make(map[string]map[string]map[string]struct{}),
+		stopCh:   make(chan struct{}),
 	}, nil
 }
 
 func (ms *mysqlStore) Init(_ runtime.BuilderContext) error {
+	// Get or create MySQL connection pool
+	pool, err := GetOrCreateMySQLPool(ms.address, DefaultConnectionPoolConfig())
+	if err != nil {
+		return fmt.Errorf("failed to initialize mysql connection pool: %w", err)
+	}
+	ms.pool = pool
+
+	// Perform table migration
+	db := ms.pool.GetDB()
+	modelForMigration := &ResourceModel{ResourceKind: ms.kind.ToString()}
+	if err := db.AutoMigrate(modelForMigration); err != nil {
+		return fmt.Errorf("failed to migrate schema for %s: %w", ms.kind.ToString(), err)
+	}
+
+	logger.Infof("MySQL store initialized for resource kind: %s", ms.kind.ToString())
 	return nil
 }
 
-func (ms *mysqlStore) Start(_ runtime.Runtime, _ <-chan struct{}) error {
+func (ms *mysqlStore) Start(_ runtime.Runtime, stopCh <-chan struct{}) error {
+	logger.Infof("MySQL store started for resource kind: %s", ms.kind.ToString())
+
+	// Monitor stop channel for graceful shutdown in a goroutine
+	go func() {
+		<-stopCh
+		logger.Infof("MySQL store for %s received stop signal, initiating graceful shutdown", ms.kind.ToString())
+
+		// Close the internal stop channel to signal any ongoing operations
+		close(ms.stopCh)
+
+		// Decrement the reference count and potentially close the connection pool
+		if ms.pool != nil {
+			if err := ms.pool.Close(); err != nil {
+				logger.Errorf("Failed to close MySQL connection pool for %s: %v", ms.kind.ToString(), err)
+			} else {
+				logger.Infof("MySQL store for %s shutdown completed", ms.kind.ToString())
+			}
+		}
+	}()
+
 	return nil
 }
 
@@ -100,7 +129,8 @@ func (ms *mysqlStore) Add(obj interface{}) error {
 	}
 
 	var count int64
-	err := ms.db.Model(&ResourceModel{}).
+	db := ms.pool.GetDB()
+	err := db.Model(&ResourceModel{}).
 		Where("resource_key = ?", resource.ResourceKey()).
 		Count(&count).Error
 	if err != nil {
@@ -119,7 +149,14 @@ func (ms *mysqlStore) Add(obj interface{}) error {
 		return err
 	}
 
-	return ms.db.Create(m).Error
+	if err := db.Create(m).Error; err != nil {
+		return err
+	}
+
+	// Update indices after successful DB operation
+	ms.updateIndicesForResource(resource, nil)
+
+	return nil
 }
 
 func (ms *mysqlStore) Update(obj interface{}) error {
@@ -132,12 +169,26 @@ func (ms *mysqlStore) Update(obj interface{}) error {
 		return fmt.Errorf("resource kind mismatch: expected %s, got %s", ms.kind, resource.ResourceKind())
 	}
 
+	// Get old resource for index update
+	oldResource, exists, err := ms.GetByKey(resource.ResourceKey())
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return store.ErrorResourceNotFound(
+			resource.ResourceKind().ToString(),
+			resource.ResourceMeta().Name,
+			resource.MeshName(),
+		)
+	}
+
 	m, err := FromResource(resource)
 	if err != nil {
 		return err
 	}
 
-	result := ms.db.Model(&ResourceModel{}).
+	db := ms.pool.GetDB()
+	result := db.Model(&ResourceModel{}).
 		Where("resource_key = ?", resource.ResourceKey()).
 		Updates(map[string]interface{}{
 			"data":       m.Data,
@@ -156,6 +207,9 @@ func (ms *mysqlStore) Update(obj interface{}) error {
 		)
 	}
 
+	// Update indices: remove old and add new
+	ms.updateIndicesForResource(resource, oldResource.(model.Resource))
+
 	return nil
 }
 
@@ -165,7 +219,8 @@ func (ms *mysqlStore) Delete(obj interface{}) error {
 		return bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
 	}
 
-	result := ms.db.Where("resource_key = ?", resource.ResourceKey()).
+	db := ms.pool.GetDB()
+	result := db.Where("resource_key = ?", resource.ResourceKey()).
 		Delete(&ResourceModel{})
 
 	if result.Error != nil {
@@ -180,13 +235,17 @@ func (ms *mysqlStore) Delete(obj interface{}) error {
 		)
 	}
 
+	// Remove from indices
+	ms.removeFromIndices(resource)
+
 	return nil
 }
 
 func (ms *mysqlStore) List() []interface{} {
 	var models []ResourceModel
-	if err := ms.db.Where("resource_kind = ?", ms.kind.ToString()).Find(&models).Error; err != nil {
-		ms.logger.Error(err, "failed to list resources")
+	db := ms.pool.GetDB()
+	if err := db.Where("resource_kind = ?", ms.kind.ToString()).Find(&models).Error; err != nil {
+		logger.Errorf("failed to list resources: %v", err)
 		return []interface{}{}
 	}
 
@@ -194,7 +253,7 @@ func (ms *mysqlStore) List() []interface{} {
 	for _, m := range models {
 		resource, err := m.ToResource()
 		if err != nil {
-			ms.logger.Error(err, "failed to deserialize resource")
+			logger.Errorf("failed to deserialize resource: %v", err)
 			continue
 		}
 		result = append(result, resource)
@@ -204,7 +263,8 @@ func (ms *mysqlStore) List() []interface{} {
 
 func (ms *mysqlStore) ListKeys() []string {
 	var keys []string
-	ms.db.Model(&ResourceModel{}).
+	db := ms.pool.GetDB()
+	db.Model(&ResourceModel{}).
 		Where("resource_kind = ?", ms.kind.ToString()).
 		Pluck("resource_key", &keys)
 	return keys
@@ -220,7 +280,8 @@ func (ms *mysqlStore) Get(obj interface{}) (item interface{}, exists bool, err e
 
 func (ms *mysqlStore) GetByKey(key string) (item interface{}, exists bool, err error) {
 	var m ResourceModel
-	result := ms.db.Where("resource_key = ? AND resource_kind = ?", key, ms.kind.ToString()).
+	db := ms.pool.GetDB()
+	result := db.Where("resource_key = ? AND resource_kind = ?", key, ms.kind.ToString()).
 		First(&m)
 
 	if result.Error != nil {
@@ -239,11 +300,24 @@ func (ms *mysqlStore) GetByKey(key string) (item interface{}, exists bool, err e
 }
 
 func (ms *mysqlStore) Replace(list []interface{}, _ string) error {
-	return ms.db.Transaction(func(tx *gorm.DB) error {
+	db := ms.pool.GetDB()
+	return db.Transaction(func(tx *gorm.DB) error {
+		// Delete all existing records for this resource kind
 		if err := tx.Where("resource_kind = ?", ms.kind.ToString()).Delete(&ResourceModel{}).Error; err != nil {
 			return err
 		}
 
+		// Clear all indices
+		ms.clearIndices()
+
+		// Return early if list is empty
+		if len(list) == 0 {
+			return nil
+		}
+
+		// Convert all resources to ResourceModel
+		models := make([]*ResourceModel, 0, len(list))
+		resources := make([]model.Resource, 0, len(list))
 		for _, obj := range list {
 			resource, ok := obj.(model.Resource)
 			if !ok {
@@ -254,10 +328,19 @@ func (ms *mysqlStore) Replace(list []interface{}, _ string) error {
 			if err != nil {
 				return err
 			}
+			models = append(models, m)
+			resources = append(resources, resource)
+		}
 
-			if err := tx.Create(m).Error; err != nil {
-				return err
-			}
+		// Batch insert all models at once
+		// GORM will automatically split into multiple batches if needed
+		if err := tx.CreateInBatches(models, 100).Error; err != nil {
+			return err
+		}
+
+		// Rebuild indices for all resources
+		for _, resource := range resources {
+			ms.updateIndicesForResource(resource, nil)
 		}
 
 		return nil
@@ -387,7 +470,8 @@ func (ms *mysqlStore) GetByKeys(keys []string) ([]model.Resource, error) {
 	}
 
 	var models []ResourceModel
-	err := ms.db.Where("resource_key IN ? AND resource_kind = ?", keys, ms.kind.ToString()).
+	db := ms.pool.GetDB()
+	err := db.Where("resource_key IN ? AND resource_kind = ?", keys, ms.kind.ToString()).
 		Find(&models).Error
 	if err != nil {
 		return nil, err
@@ -452,24 +536,38 @@ func (ms *mysqlStore) PageListByIndexes(indexes map[string]string, pq model.Page
 
 func (ms *mysqlStore) findByIndex(indexName, indexedValue string) ([]interface{}, error) {
 	ms.indexerLock.RLock()
-	indexFunc := ms.indexers[indexName]
+	_, indexExists := ms.indexers[indexName]
 	ms.indexerLock.RUnlock()
 
-	allResources := ms.List()
-	result := make([]interface{}, 0)
+	if !indexExists {
+		return nil, fmt.Errorf("index %s does not exist", indexName)
+	}
 
-	for _, obj := range allResources {
-		values, err := indexFunc(obj)
-		if err != nil {
-			continue
+	// Get resource keys from in-memory index
+	ms.indicesLock.RLock()
+	var keys []string
+	if ms.indices[indexName] != nil && ms.indices[indexName][indexedValue] != nil {
+		keys = make([]string, 0, len(ms.indices[indexName][indexedValue]))
+		for key := range ms.indices[indexName][indexedValue] {
+			keys = append(keys, key)
 		}
+	}
+	ms.indicesLock.RUnlock()
 
-		for _, value := range values {
-			if value == indexedValue {
-				result = append(result, obj)
-				break
-			}
-		}
+	if len(keys) == 0 {
+		return []interface{}{}, nil
+	}
+
+	// Fetch resources from DB by keys
+	resources, err := ms.GetByKeys(keys)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to []interface{}
+	result := make([]interface{}, len(resources))
+	for i, resource := range resources {
+		result[i] = resource
 	}
 
 	return result, nil
@@ -512,4 +610,91 @@ func (ms *mysqlStore) getKeysByIndexes(indexes map[string]string) ([]string, err
 	}
 
 	return result, nil
+}
+
+// updateIndicesForResource updates in-memory indices when a resource is added or updated
+// If oldResource is nil, it means this is an add operation (only add to indices)
+// If oldResource is not nil, it means this is an update operation (remove old, add new)
+func (ms *mysqlStore) updateIndicesForResource(newResource model.Resource, oldResource model.Resource) {
+	ms.indexerLock.RLock()
+	indexers := ms.indexers
+	ms.indexerLock.RUnlock()
+
+	ms.indicesLock.Lock()
+	defer ms.indicesLock.Unlock()
+
+	// Remove old resource from indices if this is an update
+	if oldResource != nil {
+		for indexName, indexFunc := range indexers {
+			oldValues, err := indexFunc(oldResource)
+			if err != nil {
+				continue
+			}
+			for _, oldValue := range oldValues {
+				if ms.indices[indexName] != nil && ms.indices[indexName][oldValue] != nil {
+					delete(ms.indices[indexName][oldValue], oldResource.ResourceKey())
+					// Clean up empty maps
+					if len(ms.indices[indexName][oldValue]) == 0 {
+						delete(ms.indices[indexName], oldValue)
+					}
+				}
+			}
+		}
+	}
+
+	// Add new resource to indices
+	for indexName, indexFunc := range indexers {
+		newValues, err := indexFunc(newResource)
+		if err != nil {
+			continue
+		}
+
+		// Ensure index exists
+		if ms.indices[indexName] == nil {
+			ms.indices[indexName] = make(map[string]map[string]struct{})
+		}
+
+		for _, newValue := range newValues {
+			// Ensure value map exists
+			if ms.indices[indexName][newValue] == nil {
+				ms.indices[indexName][newValue] = make(map[string]struct{})
+			}
+			// Add resource key to the set
+			ms.indices[indexName][newValue][newResource.ResourceKey()] = struct{}{}
+		}
+	}
+}
+
+// removeFromIndices removes a resource from all in-memory indices
+func (ms *mysqlStore) removeFromIndices(resource model.Resource) {
+	ms.indexerLock.RLock()
+	indexers := ms.indexers
+	ms.indexerLock.RUnlock()
+
+	ms.indicesLock.Lock()
+	defer ms.indicesLock.Unlock()
+
+	for indexName, indexFunc := range indexers {
+		values, err := indexFunc(resource)
+		if err != nil {
+			continue
+		}
+
+		for _, value := range values {
+			if ms.indices[indexName] != nil && ms.indices[indexName][value] != nil {
+				delete(ms.indices[indexName][value], resource.ResourceKey())
+				// Clean up empty maps
+				if len(ms.indices[indexName][value]) == 0 {
+					delete(ms.indices[indexName], value)
+				}
+			}
+		}
+	}
+}
+
+// clearIndices clears all in-memory indices
+func (ms *mysqlStore) clearIndices() {
+	ms.indicesLock.Lock()
+	defer ms.indicesLock.Unlock()
+	ms.indices = make(map[string]map[string]map[string]struct{})
 }

@@ -25,13 +25,11 @@ import (
 	"sync"
 
 	storecfg "github.com/apache/dubbo-admin/pkg/config/store"
-	"github.com/go-logr/logr"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
-	"github.com/apache/dubbo-admin/pkg/common/log"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/core/store"
@@ -54,38 +52,69 @@ func (f *postgresStoreFactory) New(kind model.ResourceKind, cfg *storecfg.Config
 }
 
 type postgresStore struct {
-	db          *gorm.DB
+	pool        *ConnectionPool
 	kind        model.ResourceKind
+	address     string
 	indexers    cache.Indexers
 	indexerLock sync.RWMutex
-	logger      logr.Logger
+	// In-memory index: map[indexName]map[indexedValue]set[resourceKey]
+	indices     map[string]map[string]map[string]struct{}
+	indicesLock sync.RWMutex
+	stopCh      chan struct{}
 }
 
 var _ store.ManagedResourceStore = &postgresStore{}
 
 func NewPostgresStore(kind model.ResourceKind, address string) (store.ManagedResourceStore, error) {
-	db, err := gorm.Open(postgres.Open(address), &gorm.Config{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to postgres: %w", err)
-	}
-
-	if err := db.AutoMigrate(&ResourceModel{}); err != nil {
-		return nil, fmt.Errorf("failed to migrate schema: %w", err)
-	}
-
 	return &postgresStore{
-		db:       db,
 		kind:     kind,
+		address:  address,
 		indexers: cache.Indexers{},
-		logger:   log.NewLogger(log.InfoLevel).WithName("postgres-store"),
+		indices:  make(map[string]map[string]map[string]struct{}),
+		stopCh:   make(chan struct{}),
 	}, nil
 }
 
 func (ps *postgresStore) Init(_ runtime.BuilderContext) error {
+	// Get or create PostgreSQL connection pool
+	pool, err := GetOrCreatePostgresPool(ps.address, DefaultConnectionPoolConfig())
+	if err != nil {
+		return fmt.Errorf("failed to initialize postgres connection pool: %w", err)
+	}
+	ps.pool = pool
+
+	// Perform table migration
+	db := ps.pool.GetDB()
+	modelForMigration := &ResourceModel{ResourceKind: ps.kind.ToString()}
+	if err := db.AutoMigrate(modelForMigration); err != nil {
+		return fmt.Errorf("failed to migrate schema for %s: %w", ps.kind.ToString(), err)
+	}
+
+	logger.Infof("PostgreSQL store initialized for resource kind: %s", ps.kind.ToString())
 	return nil
 }
 
-func (ps *postgresStore) Start(_ runtime.Runtime, _ <-chan struct{}) error {
+func (ps *postgresStore) Start(_ runtime.Runtime, stopCh <-chan struct{}) error {
+	logger.Infof("PostgreSQL store started for resource kind: %s", ps.kind.ToString())
+
+	// Monitor stop channel for graceful shutdown in a goroutine
+	go func() {
+		<-stopCh
+		logger.Infof("PostgreSQL store for %s received stop signal, initiating graceful shutdown", ps.kind.ToString())
+
+		// Close the internal stop channel to signal any ongoing operations
+		close(ps.stopCh)
+
+		// Decrement the reference count and potentially close the connection pool
+		if ps.pool != nil {
+			if err := ps.pool.Close(); err != nil {
+				logger.Errorf("Failed to close PostgreSQL connection pool for %s: %v", ps.kind.ToString(), err)
+			} else {
+				logger.Infof("PostgreSQL store for %s shutdown completed", ps.kind.ToString())
+			}
+		}
+	}()
+
 	return nil
 }
 
@@ -100,7 +129,8 @@ func (ps *postgresStore) Add(obj interface{}) error {
 	}
 
 	var count int64
-	err := ps.db.Model(&ResourceModel{}).
+	db := ps.pool.GetDB()
+	err := db.Model(&ResourceModel{}).
 		Where("resource_key = ?", resource.ResourceKey()).
 		Count(&count).Error
 	if err != nil {
@@ -119,7 +149,14 @@ func (ps *postgresStore) Add(obj interface{}) error {
 		return err
 	}
 
-	return ps.db.Create(m).Error
+	if err := db.Create(m).Error; err != nil {
+		return err
+	}
+
+	// Update indices after successful DB operation
+	ps.updateIndicesForResource(resource, nil)
+
+	return nil
 }
 
 func (ps *postgresStore) Update(obj interface{}) error {
@@ -132,12 +169,26 @@ func (ps *postgresStore) Update(obj interface{}) error {
 		return fmt.Errorf("resource kind mismatch: expected %s, got %s", ps.kind, resource.ResourceKind())
 	}
 
+	// Get old resource for index update
+	oldResource, exists, err := ps.GetByKey(resource.ResourceKey())
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return store.ErrorResourceNotFound(
+			resource.ResourceKind().ToString(),
+			resource.ResourceMeta().Name,
+			resource.MeshName(),
+		)
+	}
+
 	m, err := FromResource(resource)
 	if err != nil {
 		return err
 	}
 
-	result := ps.db.Model(&ResourceModel{}).
+	db := ps.pool.GetDB()
+	result := db.Model(&ResourceModel{}).
 		Where("resource_key = ?", resource.ResourceKey()).
 		Updates(map[string]interface{}{
 			"data":       m.Data,
@@ -156,6 +207,9 @@ func (ps *postgresStore) Update(obj interface{}) error {
 		)
 	}
 
+	// Update indices: remove old and add new
+	ps.updateIndicesForResource(resource, oldResource.(model.Resource))
+
 	return nil
 }
 
@@ -165,7 +219,8 @@ func (ps *postgresStore) Delete(obj interface{}) error {
 		return bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
 	}
 
-	result := ps.db.Where("resource_key = ?", resource.ResourceKey()).
+	db := ps.pool.GetDB()
+	result := db.Where("resource_key = ?", resource.ResourceKey()).
 		Delete(&ResourceModel{})
 
 	if result.Error != nil {
@@ -180,13 +235,17 @@ func (ps *postgresStore) Delete(obj interface{}) error {
 		)
 	}
 
+	// Remove from indices
+	ps.removeFromIndices(resource)
+
 	return nil
 }
 
 func (ps *postgresStore) List() []interface{} {
 	var models []ResourceModel
-	if err := ps.db.Where("resource_kind = ?", ps.kind.ToString()).Find(&models).Error; err != nil {
-		ps.logger.Error(err, "failed to list resources")
+	db := ps.pool.GetDB()
+	if err := db.Where("resource_kind = ?", ps.kind.ToString()).Find(&models).Error; err != nil {
+		logger.Errorf("failed to list resources: %v", err)
 		return []interface{}{}
 	}
 
@@ -194,7 +253,7 @@ func (ps *postgresStore) List() []interface{} {
 	for _, m := range models {
 		resource, err := m.ToResource()
 		if err != nil {
-			ps.logger.Error(err, "failed to deserialize resource")
+			logger.Errorf("failed to deserialize resource: %v", err)
 			continue
 		}
 		result = append(result, resource)
@@ -204,7 +263,8 @@ func (ps *postgresStore) List() []interface{} {
 
 func (ps *postgresStore) ListKeys() []string {
 	var keys []string
-	ps.db.Model(&ResourceModel{}).
+	db := ps.pool.GetDB()
+	db.Model(&ResourceModel{}).
 		Where("resource_kind = ?", ps.kind.ToString()).
 		Pluck("resource_key", &keys)
 	return keys
@@ -220,7 +280,8 @@ func (ps *postgresStore) Get(obj interface{}) (item interface{}, exists bool, er
 
 func (ps *postgresStore) GetByKey(key string) (item interface{}, exists bool, err error) {
 	var m ResourceModel
-	result := ps.db.Where("resource_key = ? AND resource_kind = ?", key, ps.kind.ToString()).
+	db := ps.pool.GetDB()
+	result := db.Where("resource_key = ? AND resource_kind = ?", key, ps.kind.ToString()).
 		First(&m)
 
 	if result.Error != nil {
@@ -239,11 +300,24 @@ func (ps *postgresStore) GetByKey(key string) (item interface{}, exists bool, er
 }
 
 func (ps *postgresStore) Replace(list []interface{}, _ string) error {
-	return ps.db.Transaction(func(tx *gorm.DB) error {
+	db := ps.pool.GetDB()
+	return db.Transaction(func(tx *gorm.DB) error {
+		// Delete all existing records for this resource kind
 		if err := tx.Where("resource_kind = ?", ps.kind.ToString()).Delete(&ResourceModel{}).Error; err != nil {
 			return err
 		}
 
+		// Clear all indices
+		ps.clearIndices()
+
+		// Return early if list is empty
+		if len(list) == 0 {
+			return nil
+		}
+
+		// Convert all resources to ResourceModel
+		models := make([]*ResourceModel, 0, len(list))
+		resources := make([]model.Resource, 0, len(list))
 		for _, obj := range list {
 			resource, ok := obj.(model.Resource)
 			if !ok {
@@ -254,10 +328,19 @@ func (ps *postgresStore) Replace(list []interface{}, _ string) error {
 			if err != nil {
 				return err
 			}
+			models = append(models, m)
+			resources = append(resources, resource)
+		}
 
-			if err := tx.Create(m).Error; err != nil {
-				return err
-			}
+		// Batch insert all models at once
+		// GORM will automatically split into multiple batches if needed
+		if err := tx.CreateInBatches(models, 100).Error; err != nil {
+			return err
+		}
+
+		// Rebuild indices for all resources
+		for _, resource := range resources {
+			ps.updateIndicesForResource(resource, nil)
 		}
 
 		return nil
@@ -387,7 +470,8 @@ func (ps *postgresStore) GetByKeys(keys []string) ([]model.Resource, error) {
 	}
 
 	var models []ResourceModel
-	err := ps.db.Where("resource_key IN ? AND resource_kind = ?", keys, ps.kind.ToString()).
+	db := ps.pool.GetDB()
+	err := db.Where("resource_key IN ? AND resource_kind = ?", keys, ps.kind.ToString()).
 		Find(&models).Error
 	if err != nil {
 		return nil, err
@@ -452,24 +536,38 @@ func (ps *postgresStore) PageListByIndexes(indexes map[string]string, pq model.P
 
 func (ps *postgresStore) findByIndex(indexName, indexedValue string) ([]interface{}, error) {
 	ps.indexerLock.RLock()
-	indexFunc := ps.indexers[indexName]
+	_, indexExists := ps.indexers[indexName]
 	ps.indexerLock.RUnlock()
 
-	allResources := ps.List()
-	result := make([]interface{}, 0)
+	if !indexExists {
+		return nil, fmt.Errorf("index %s does not exist", indexName)
+	}
 
-	for _, obj := range allResources {
-		values, err := indexFunc(obj)
-		if err != nil {
-			continue
+	// Get resource keys from in-memory index
+	ps.indicesLock.RLock()
+	var keys []string
+	if ps.indices[indexName] != nil && ps.indices[indexName][indexedValue] != nil {
+		keys = make([]string, 0, len(ps.indices[indexName][indexedValue]))
+		for key := range ps.indices[indexName][indexedValue] {
+			keys = append(keys, key)
 		}
+	}
+	ps.indicesLock.RUnlock()
 
-		for _, value := range values {
-			if value == indexedValue {
-				result = append(result, obj)
-				break
-			}
-		}
+	if len(keys) == 0 {
+		return []interface{}{}, nil
+	}
+
+	// Fetch resources from DB by keys
+	resources, err := ps.GetByKeys(keys)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to []interface{}
+	result := make([]interface{}, len(resources))
+	for i, resource := range resources {
+		result[i] = resource
 	}
 
 	return result, nil
@@ -512,4 +610,91 @@ func (ps *postgresStore) getKeysByIndexes(indexes map[string]string) ([]string, 
 	}
 
 	return result, nil
+}
+
+// updateIndicesForResource updates in-memory indices when a resource is added or updated
+// If oldResource is nil, it means this is an add operation (only add to indices)
+// If oldResource is not nil, it means this is an update operation (remove old, add new)
+func (ps *postgresStore) updateIndicesForResource(newResource model.Resource, oldResource model.Resource) {
+	ps.indexerLock.RLock()
+	indexers := ps.indexers
+	ps.indexerLock.RUnlock()
+
+	ps.indicesLock.Lock()
+	defer ps.indicesLock.Unlock()
+
+	// Remove old resource from indices if this is an update
+	if oldResource != nil {
+		for indexName, indexFunc := range indexers {
+			oldValues, err := indexFunc(oldResource)
+			if err != nil {
+				continue
+			}
+			for _, oldValue := range oldValues {
+				if ps.indices[indexName] != nil && ps.indices[indexName][oldValue] != nil {
+					delete(ps.indices[indexName][oldValue], oldResource.ResourceKey())
+					// Clean up empty maps
+					if len(ps.indices[indexName][oldValue]) == 0 {
+						delete(ps.indices[indexName], oldValue)
+					}
+				}
+			}
+		}
+	}
+
+	// Add new resource to indices
+	for indexName, indexFunc := range indexers {
+		newValues, err := indexFunc(newResource)
+		if err != nil {
+			continue
+		}
+
+		// Ensure index exists
+		if ps.indices[indexName] == nil {
+			ps.indices[indexName] = make(map[string]map[string]struct{})
+		}
+
+		for _, newValue := range newValues {
+			// Ensure value map exists
+			if ps.indices[indexName][newValue] == nil {
+				ps.indices[indexName][newValue] = make(map[string]struct{})
+			}
+			// Add resource key to the set
+			ps.indices[indexName][newValue][newResource.ResourceKey()] = struct{}{}
+		}
+	}
+}
+
+// removeFromIndices removes a resource from all in-memory indices
+func (ps *postgresStore) removeFromIndices(resource model.Resource) {
+	ps.indexerLock.RLock()
+	indexers := ps.indexers
+	ps.indexerLock.RUnlock()
+
+	ps.indicesLock.Lock()
+	defer ps.indicesLock.Unlock()
+
+	for indexName, indexFunc := range indexers {
+		values, err := indexFunc(resource)
+		if err != nil {
+			continue
+		}
+
+		for _, value := range values {
+			if ps.indices[indexName] != nil && ps.indices[indexName][value] != nil {
+				delete(ps.indices[indexName][value], resource.ResourceKey())
+				// Clean up empty maps
+				if len(ps.indices[indexName][value]) == 0 {
+					delete(ps.indices[indexName], value)
+				}
+			}
+		}
+	}
+}
+
+// clearIndices clears all in-memory indices
+func (ps *postgresStore) clearIndices() {
+	ps.indicesLock.Lock()
+	defer ps.indicesLock.Unlock()
+	ps.indices = make(map[string]map[string]map[string]struct{})
 }

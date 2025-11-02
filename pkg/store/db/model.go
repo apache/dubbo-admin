@@ -19,7 +19,9 @@ package db
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
@@ -27,7 +29,7 @@ import (
 type ResourceModel struct {
 	ID           uint      `gorm:"primarykey"`
 	ResourceKey  string    `gorm:"uniqueIndex;not null"`
-	ResourceKind string    `gorm:"index;not null"`
+	ResourceKind string    `gorm:"not null"` // Removed index since each table only contains one kind
 	Name         string    `gorm:"index;not null"`
 	Mesh         string    `gorm:"index;not null"`
 	Data         []byte    `gorm:"type:text;not null"`
@@ -35,8 +37,43 @@ type ResourceModel struct {
 	UpdatedAt    time.Time `gorm:"autoUpdateTime"`
 }
 
-func (*ResourceModel) TableName() string {
-	return "resources"
+func (rm *ResourceModel) TableName() string {
+	if rm.ResourceKind == "" {
+		return "resources"
+	}
+	// Convert ResourceKind to snake_case table name with "resources_" prefix
+	// e.g., "Application" -> "resources_application", "ServiceProviderMapping" -> "resources_service_provider_mapping"
+	return "resources_" + toSnakeCase(rm.ResourceKind)
+}
+
+// toSnakeCase converts a string to snake_case
+// e.g., "ServiceProviderMapping" -> "service_provider_mapping", "RPCInstance" -> "rpc_instance"
+func toSnakeCase(s string) string {
+	var result strings.Builder
+	runes := []rune(s)
+
+	for i := 0; i < len(runes); i++ {
+		r := runes[i]
+
+		if unicode.IsUpper(r) {
+			// Add underscore before uppercase letter if:
+			// 1. Not at the beginning
+			// 2. Previous char is lowercase or
+			// 3. Next char exists and is lowercase (for handling acronyms like "RPCInstance")
+			if i > 0 {
+				prevIsLower := unicode.IsLower(runes[i-1])
+				nextIsLower := i+1 < len(runes) && unicode.IsLower(runes[i+1])
+
+				if prevIsLower || nextIsLower {
+					result.WriteRune('_')
+				}
+			}
+			result.WriteRune(unicode.ToLower(r))
+		} else {
+			result.WriteRune(r)
+		}
+	}
+	return result.String()
 }
 
 func (rm *ResourceModel) ToResource() (model.Resource, error) {
