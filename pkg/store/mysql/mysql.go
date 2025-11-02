@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package db
+package mysql
 
 import (
 	"errors"
@@ -33,6 +33,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/core/store"
+	"github.com/apache/dubbo-admin/pkg/store/dbcommon"
 )
 
 func init() {
@@ -52,7 +53,7 @@ func (f *mysqlStoreFactory) New(kind model.ResourceKind, cfg *storecfg.Config) (
 }
 
 type mysqlStore struct {
-	pool        *ConnectionPool
+	pool        *dbcommon.ConnectionPool
 	kind        model.ResourceKind
 	address     string
 	indexers    cache.Indexers
@@ -77,7 +78,7 @@ func NewMySQLStore(kind model.ResourceKind, address string) (store.ManagedResour
 
 func (ms *mysqlStore) Init(_ runtime.BuilderContext) error {
 	// Get or create MySQL connection pool
-	pool, err := GetOrCreateMySQLPool(ms.address, DefaultConnectionPoolConfig())
+	pool, err := GetOrCreateMySQLPool(ms.address, dbcommon.DefaultConnectionPoolConfig())
 	if err != nil {
 		return fmt.Errorf("failed to initialize mysql connection pool: %w", err)
 	}
@@ -85,7 +86,7 @@ func (ms *mysqlStore) Init(_ runtime.BuilderContext) error {
 
 	// Perform table migration
 	db := ms.pool.GetDB()
-	modelForMigration := &ResourceModel{ResourceKind: ms.kind.ToString()}
+	modelForMigration := &dbcommon.ResourceModel{ResourceKind: ms.kind.ToString()}
 	if err := db.AutoMigrate(modelForMigration); err != nil {
 		return fmt.Errorf("failed to migrate schema for %s: %w", ms.kind.ToString(), err)
 	}
@@ -130,7 +131,7 @@ func (ms *mysqlStore) Add(obj interface{}) error {
 
 	var count int64
 	db := ms.pool.GetDB()
-	err := db.Model(&ResourceModel{}).
+	err := db.Model(&dbcommon.ResourceModel{}).
 		Where("resource_key = ?", resource.ResourceKey()).
 		Count(&count).Error
 	if err != nil {
@@ -144,7 +145,7 @@ func (ms *mysqlStore) Add(obj interface{}) error {
 		)
 	}
 
-	m, err := FromResource(resource)
+	m, err := dbcommon.FromResource(resource)
 	if err != nil {
 		return err
 	}
@@ -182,13 +183,13 @@ func (ms *mysqlStore) Update(obj interface{}) error {
 		)
 	}
 
-	m, err := FromResource(resource)
+	m, err := dbcommon.FromResource(resource)
 	if err != nil {
 		return err
 	}
 
 	db := ms.pool.GetDB()
-	result := db.Model(&ResourceModel{}).
+	result := db.Model(&dbcommon.ResourceModel{}).
 		Where("resource_key = ?", resource.ResourceKey()).
 		Updates(map[string]interface{}{
 			"data":       m.Data,
@@ -221,7 +222,7 @@ func (ms *mysqlStore) Delete(obj interface{}) error {
 
 	db := ms.pool.GetDB()
 	result := db.Where("resource_key = ?", resource.ResourceKey()).
-		Delete(&ResourceModel{})
+		Delete(&dbcommon.ResourceModel{})
 
 	if result.Error != nil {
 		return result.Error
@@ -242,7 +243,7 @@ func (ms *mysqlStore) Delete(obj interface{}) error {
 }
 
 func (ms *mysqlStore) List() []interface{} {
-	var models []ResourceModel
+	var models []dbcommon.ResourceModel
 	db := ms.pool.GetDB()
 	if err := db.Where("resource_kind = ?", ms.kind.ToString()).Find(&models).Error; err != nil {
 		logger.Errorf("failed to list resources: %v", err)
@@ -264,7 +265,7 @@ func (ms *mysqlStore) List() []interface{} {
 func (ms *mysqlStore) ListKeys() []string {
 	var keys []string
 	db := ms.pool.GetDB()
-	db.Model(&ResourceModel{}).
+	db.Model(&dbcommon.ResourceModel{}).
 		Where("resource_kind = ?", ms.kind.ToString()).
 		Pluck("resource_key", &keys)
 	return keys
@@ -279,7 +280,7 @@ func (ms *mysqlStore) Get(obj interface{}) (item interface{}, exists bool, err e
 }
 
 func (ms *mysqlStore) GetByKey(key string) (item interface{}, exists bool, err error) {
-	var m ResourceModel
+	var m dbcommon.ResourceModel
 	db := ms.pool.GetDB()
 	result := db.Where("resource_key = ? AND resource_kind = ?", key, ms.kind.ToString()).
 		First(&m)
@@ -303,7 +304,7 @@ func (ms *mysqlStore) Replace(list []interface{}, _ string) error {
 	db := ms.pool.GetDB()
 	return db.Transaction(func(tx *gorm.DB) error {
 		// Delete all existing records for this resource kind
-		if err := tx.Where("resource_kind = ?", ms.kind.ToString()).Delete(&ResourceModel{}).Error; err != nil {
+		if err := tx.Where("resource_kind = ?", ms.kind.ToString()).Delete(&dbcommon.ResourceModel{}).Error; err != nil {
 			return err
 		}
 
@@ -315,8 +316,8 @@ func (ms *mysqlStore) Replace(list []interface{}, _ string) error {
 			return nil
 		}
 
-		// Convert all resources to ResourceModel
-		models := make([]*ResourceModel, 0, len(list))
+		// Convert all resources to dbcommon.ResourceModel
+		models := make([]*dbcommon.ResourceModel, 0, len(list))
 		resources := make([]model.Resource, 0, len(list))
 		for _, obj := range list {
 			resource, ok := obj.(model.Resource)
@@ -324,7 +325,7 @@ func (ms *mysqlStore) Replace(list []interface{}, _ string) error {
 				return bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
 			}
 
-			m, err := FromResource(resource)
+			m, err := dbcommon.FromResource(resource)
 			if err != nil {
 				return err
 			}
@@ -469,7 +470,7 @@ func (ms *mysqlStore) GetByKeys(keys []string) ([]model.Resource, error) {
 		return []model.Resource{}, nil
 	}
 
-	var models []ResourceModel
+	var models []dbcommon.ResourceModel
 	db := ms.pool.GetDB()
 	err := db.Where("resource_key IN ? AND resource_kind = ?", keys, ms.kind.ToString()).
 		Find(&models).Error

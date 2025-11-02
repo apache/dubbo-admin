@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package db
+package dbcommon
 
 import (
 	"database/sql"
@@ -23,19 +23,9 @@ import (
 	"sync"
 	"time"
 
-	"gorm.io/driver/mysql"
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 
 	"github.com/apache/dubbo-admin/pkg/core/logger"
-)
-
-var (
-	mysqlPool    *ConnectionPool
-	postgresPool *ConnectionPool
-	mysqlOnce    sync.Once
-	postgresOnce sync.Once
-	poolMutex    sync.RWMutex
 )
 
 // ConnectionPool manages database connections with connection pooling
@@ -68,120 +58,31 @@ func DefaultConnectionPoolConfig() *ConnectionPoolConfig {
 	}
 }
 
-// GetOrCreateMySQLPool returns or creates a MySQL connection pool
-func GetOrCreateMySQLPool(address string, config *ConnectionPoolConfig) (*ConnectionPool, error) {
-	poolMutex.Lock()
-	defer poolMutex.Unlock()
-
-	if mysqlPool != nil && mysqlPool.address == address {
-		// Increment reference count when reusing existing pool
-		mysqlPool.mu.Lock()
-		mysqlPool.refCount++
-		mysqlPool.mu.Unlock()
-		logger.Infof("Reusing MySQL connection pool: address=%s, refCount=%d", address, mysqlPool.refCount)
-		return mysqlPool, nil
+// NewConnectionPool creates a new connection pool
+func NewConnectionPool(dialector gorm.Dialector, dbType, address string, config *ConnectionPoolConfig) (*ConnectionPool, error) {
+	db, err := gorm.Open(dialector, &gorm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to %s: %w", dbType, err)
 	}
 
-	var initErr error
-	mysqlOnce.Do(func() {
-		if config == nil {
-			config = DefaultConnectionPoolConfig()
-		}
-
-		db, err := gorm.Open(mysql.Open(address), &gorm.Config{})
-		if err != nil {
-			initErr = fmt.Errorf("failed to connect to mysql: %w", err)
-			return
-		}
-
-		sqlDB, err := db.DB()
-		if err != nil {
-			initErr = fmt.Errorf("failed to get underlying sql.DB: %w", err)
-			return
-		}
-
-		// Configure connection pool
-		sqlDB.SetMaxIdleConns(config.MaxIdleConns)
-		sqlDB.SetMaxOpenConns(config.MaxOpenConns)
-		sqlDB.SetConnMaxLifetime(config.ConnMaxLifetime)
-		sqlDB.SetConnMaxIdleTime(config.ConnMaxIdleTime)
-
-		mysqlPool = &ConnectionPool{
-			db:       db,
-			sqlDB:    sqlDB,
-			address:  address,
-			dbType:   "mysql",
-			refCount: 1, // Initial reference count
-		}
-
-		logger.Infof("MySQL connection pool created successfully: address=%s, maxIdleConns=%d, maxOpenConns=%d",
-			address, config.MaxIdleConns, config.MaxOpenConns)
-	})
-
-	if initErr != nil {
-		mysqlOnce = sync.Once{} // Reset once to allow retry
-		return nil, initErr
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get underlying sql.DB: %w", err)
 	}
 
-	return mysqlPool, nil
-}
+	// Configure connection pool
+	sqlDB.SetMaxIdleConns(config.MaxIdleConns)
+	sqlDB.SetMaxOpenConns(config.MaxOpenConns)
+	sqlDB.SetConnMaxLifetime(config.ConnMaxLifetime)
+	sqlDB.SetConnMaxIdleTime(config.ConnMaxIdleTime)
 
-// GetOrCreatePostgresPool returns or creates a PostgreSQL connection pool
-func GetOrCreatePostgresPool(address string, config *ConnectionPoolConfig) (*ConnectionPool, error) {
-	poolMutex.Lock()
-	defer poolMutex.Unlock()
-
-	if postgresPool != nil && postgresPool.address == address {
-		// Increment reference count when reusing existing pool
-		postgresPool.mu.Lock()
-		postgresPool.refCount++
-		postgresPool.mu.Unlock()
-		logger.Infof("Reusing PostgreSQL connection pool: address=%s, refCount=%d", address, postgresPool.refCount)
-		return postgresPool, nil
-	}
-
-	var initErr error
-	postgresOnce.Do(func() {
-		if config == nil {
-			config = DefaultConnectionPoolConfig()
-		}
-
-		db, err := gorm.Open(postgres.Open(address), &gorm.Config{})
-		if err != nil {
-			initErr = fmt.Errorf("failed to connect to postgres: %w", err)
-			return
-		}
-
-		sqlDB, err := db.DB()
-		if err != nil {
-			initErr = fmt.Errorf("failed to get underlying sql.DB: %w", err)
-			return
-		}
-
-		// Configure connection pool
-		sqlDB.SetMaxIdleConns(config.MaxIdleConns)
-		sqlDB.SetMaxOpenConns(config.MaxOpenConns)
-		sqlDB.SetConnMaxLifetime(config.ConnMaxLifetime)
-		sqlDB.SetConnMaxIdleTime(config.ConnMaxIdleTime)
-
-		postgresPool = &ConnectionPool{
-			db:       db,
-			sqlDB:    sqlDB,
-			address:  address,
-			dbType:   "postgres",
-			refCount: 1, // Initial reference count
-		}
-
-		logger.Infof("PostgreSQL connection pool created successfully: address=%s, maxIdleConns=%d, maxOpenConns=%d",
-			address, config.MaxIdleConns, config.MaxOpenConns)
-	})
-
-	if initErr != nil {
-		postgresOnce = sync.Once{} // Reset once to allow retry
-		return nil, initErr
-	}
-
-	return postgresPool, nil
+	return &ConnectionPool{
+		db:       db,
+		sqlDB:    sqlDB,
+		address:  address,
+		dbType:   dbType,
+		refCount: 1, // Initial reference count
+	}, nil
 }
 
 // GetDB returns the gorm.DB instance
@@ -189,6 +90,27 @@ func (p *ConnectionPool) GetDB() *gorm.DB {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
 	return p.db
+}
+
+// Address returns the connection address
+func (p *ConnectionPool) Address() string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.address
+}
+
+// RefCount returns the current reference count
+func (p *ConnectionPool) RefCount() int {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.refCount
+}
+
+// IncrementRef increments the reference count
+func (p *ConnectionPool) IncrementRef() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.refCount++
 }
 
 // Close closes the connection pool gracefully with reference counting

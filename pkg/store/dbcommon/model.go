@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package db
+package dbcommon
 
 import (
 	"encoding/json"
