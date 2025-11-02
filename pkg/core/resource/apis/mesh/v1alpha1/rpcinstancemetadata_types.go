@@ -32,13 +32,13 @@ import (
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-const RpcInstanceMetadataKind coremodel.ResourceKind = "RpcInstanceMetadata"
+const RPCInstanceMetadataKind coremodel.ResourceKind = "RPCInstanceMetadata"
 
 func init() {
-	coremodel.RegisterResourceSchema(RpcInstanceMetadataKind, NewRpcInstanceMetadataResource)
+	coremodel.RegisterResourceSchema(RPCInstanceMetadataKind, NewRPCInstanceMetadataResource)
 }
 
-type RpcInstanceMetadataResource struct {
+type RPCInstanceMetadataResource struct {
 	metav1.TypeMeta `json:",inline"`
 
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -47,48 +47,48 @@ type RpcInstanceMetadataResource struct {
 	// It may be omitted for cluster-scoped resources.
 	Mesh string `json:"mesh,omitempty"`
 
-	// Spec is the specification of the Dubbo RpcInstanceMetadata resource.
-	Spec *meshproto.RpcInstanceMetadata `json:"spec,omitempty"`
+	// Spec is the specification of the Dubbo RPCInstanceMetadata resource.
+	Spec *meshproto.RPCInstanceMetadata `json:"spec,omitempty"`
 
-	// Status is the status of the Dubbo RpcInstanceMetadata resource.
-	Status RpcInstanceMetadataResourceStatus `json:"status,omitempty"`
+	// Status is the status of the Dubbo RPCInstanceMetadata resource.
+	Status RPCInstanceMetadataResourceStatus `json:"status,omitempty"`
 }
 
-type RpcInstanceMetadataResourceStatus struct {
+type RPCInstanceMetadataResourceStatus struct {
 	// define resource-specific status here
 }
 
-type RpcInstanceMetadataResourceList struct {
+type RPCInstanceMetadataResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []RpcInstanceMetadataResource `json:"items"`
+	Items           []RPCInstanceMetadataResource `json:"items"`
 }
 
-func (r *RpcInstanceMetadataResource) ResourceKind() coremodel.ResourceKind {
-	return RpcInstanceMetadataKind
+func (r *RPCInstanceMetadataResource) ResourceKind() coremodel.ResourceKind {
+	return RPCInstanceMetadataKind
 }
 
-func (r *RpcInstanceMetadataResource) MeshName() string {
+func (r *RPCInstanceMetadataResource) MeshName() string {
 	return r.Mesh
 }
 
-func (r *RpcInstanceMetadataResource) ResourceKey() string {
+func (r *RPCInstanceMetadataResource) ResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Name)
 }
 
-func (r *RpcInstanceMetadataResource) ResourceMeta() metav1.ObjectMeta {
+func (r *RPCInstanceMetadataResource) ResourceMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *RpcInstanceMetadataResource) ResourceSpec() coremodel.ResourceSpec {
+func (r *RPCInstanceMetadataResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
-func (r *RpcInstanceMetadataResource) DeepCopyObject() k8sruntime.Object {
+func (r *RPCInstanceMetadataResource) DeepCopyObject() k8sruntime.Object {
 	if r == nil {
 		return nil
 	}
 
-	out := &RpcInstanceMetadataResource{
+	out := &RPCInstanceMetadataResource{
 		TypeMeta: r.TypeMeta,
 		Mesh:     r.Mesh,
 		Status:   r.Status,
@@ -97,7 +97,7 @@ func (r *RpcInstanceMetadataResource) DeepCopyObject() k8sruntime.Object {
 	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 
 	if r.Spec != nil {
-		spec, ok := proto.Clone(r.Spec).(*meshproto.RpcInstanceMetadata)
+		spec, ok := proto.Clone(r.Spec).(*meshproto.RPCInstanceMetadata)
 		if !ok {
 			logger.Warnf("failed to clone spec %v, spec is not conformed to %s", r.Spec, r.ResourceKind())
 			return out
@@ -108,19 +108,19 @@ func (r *RpcInstanceMetadataResource) DeepCopyObject() k8sruntime.Object {
 	return out
 }
 
-func (r *RpcInstanceMetadataResource) String() string {
+func (r *RPCInstanceMetadataResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to encode RpcInstanceMetadataResource: %s to json, err: %s", r.ResourceKey(), err)
+		logger.Errorf("failed to encode RPCInstanceMetadataResource: %s to json, err: %w", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)
 }
 
-func NewRpcInstanceMetadataResourceWithAttributes(name string, mesh string) *RpcInstanceMetadataResource {
-	return &RpcInstanceMetadataResource{
+func NewRPCInstanceMetadataResourceWithAttributes(name string, mesh string) *RPCInstanceMetadataResource {
+	return &RPCInstanceMetadataResource{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       string(RpcInstanceMetadataKind),
+			Kind:       string(RPCInstanceMetadataKind),
 			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -131,10 +131,10 @@ func NewRpcInstanceMetadataResourceWithAttributes(name string, mesh string) *Rpc
 	}
 }
 
-func NewRpcInstanceMetadataResource() coremodel.Resource {
-	return &RpcInstanceMetadataResource{
+func NewRPCInstanceMetadataResource() coremodel.Resource {
+	return &RPCInstanceMetadataResource{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       string(RpcInstanceMetadataKind),
+			Kind:       string(RPCInstanceMetadataKind),
 			APIVersion: "v1alpha1",
 		},
 	}
