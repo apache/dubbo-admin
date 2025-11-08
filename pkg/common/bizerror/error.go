@@ -20,7 +20,7 @@ package bizerror
 type Error interface {
 	Code() ErrorCode
 	Message() string
-	Error() string
+	String() string
 }
 
 type ErrorCode string
@@ -56,6 +56,6 @@ func (b *bizError) Message() string {
 	return b.message
 }
 
-func (b *bizError) Error() string {
+func (b *bizError) String() string {
 	return string(b.code) + ": " + b.message
 }
