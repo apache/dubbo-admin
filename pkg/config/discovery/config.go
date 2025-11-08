@@ -31,9 +31,9 @@ const (
 // Config defines Discovery configuration
 type Config struct {
 	config.BaseConfig
-	Name    string `json:"name"`
-	Type    Type   `json:"type"`
-	Address AddressConfig
+	Name    string        `json:"name"`
+	Type    Type          `json:"type"`
+	Address AddressConfig `json:"address"`
 }
 
 // AddressConfig defines Discovery Engine address
