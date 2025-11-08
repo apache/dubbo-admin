@@ -143,6 +143,7 @@ func ApplicationConfigAccessLogGet(ctx consolectx.Context) gin.HandlerFunc {
 		resp, err := service.GetAppAccessLog(ctx, appName, mesh)
 		if err != nil {
 			util.HandleServiceError(c, err)
+			return
 		}
 		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
 	}
@@ -182,6 +183,7 @@ func ApplicationConfigFlowWeightPUT(ctx consolectx.Context) gin.HandlerFunc {
 		mesh = c.Query("mesh")
 		if strutil.IsBlank(appName) {
 			util.HandleArgumentError(c, errors.New("appName is required"))
+			return
 		}
 		if strutil.IsBlank(mesh) {
 			util.HandleArgumentError(c, errors.New("mesh is required"))

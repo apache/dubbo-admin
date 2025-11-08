@@ -44,7 +44,8 @@ func Login(ctx consolectx.Context) gin.HandlerFunc {
 			err := session.Save()
 			if err != nil {
 				sessionErr := bizerror.NewBizError(bizerror.SessionError, err.Error())
-				c.JSON(http.StatusInternalServerError, model.NewBizErrorResp(sessionErr))
+				c.JSON(http.StatusOK, model.NewBizErrorResp(sessionErr))
+				return
 			}
 			c.JSON(http.StatusOK, model.NewSuccessResp(true))
 		} else {
@@ -59,7 +60,9 @@ func Logout(_ consolectx.Context) gin.HandlerFunc {
 		session.Clear()
 		err := session.Save()
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
+			sessionErr := bizerror.NewBizError(bizerror.SessionError, err.Error())
+			c.JSON(http.StatusOK, model.NewBizErrorResp(sessionErr))
+			return
 		}
 		c.JSON(http.StatusOK, model.NewSuccessResp(true))
 	}

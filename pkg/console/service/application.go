@@ -296,7 +296,7 @@ func UpInsertAppAccessLog(ctx consolectx.Context, appName string, openAccessLog 
 		return err
 	}
 	if data == nil {
-		return bizerror.NewBizError(bizerror.AppNotFound, fmt.Sprintf("%s is not exists", appName))
+		return bizerror.NewBizError(bizerror.AppNotFound, fmt.Sprintf("%s does not exist", appName))
 	}
 	// check app configurator exists
 	appConfiguratorName := appName + consts.ConfiguratorRuleSuffix
@@ -348,7 +348,7 @@ func updateConfiguratorWithAccessLog(ctx consolectx.Context, res *meshresource.D
 	})
 	// access log config not found
 	if accessLogConfig == nil {
-		// access log is need to be closed and already closed
+		// access log needs to be closed and already closed
 		if !openAccessLog {
 			return nil
 		}
@@ -364,7 +364,7 @@ func updateConfiguratorWithAccessLog(ctx consolectx.Context, res *meshresource.D
 	}
 	err := UpdateConfigurator(ctx, appConfiguratorName, res)
 	if err != nil {
-		logger.Errorf("update configurator failed when open accesslog, resourceKey: %s, openAccessLog: %t, err: %s",
+		logger.Errorf("update configurator failed when opening accesslog, resourceKey: %s, openAccessLog: %t, err: %s",
 			coremodel.BuildResourceKey(mesh, appName), openAccessLog, err)
 		return err
 	}
@@ -476,7 +476,7 @@ func UpInsertAppFlowWeightConfig(ctx consolectx.Context, appName string, mesh st
 		return err
 	}
 	if data == nil {
-		return bizerror.NewBizError(bizerror.AppNotFound, fmt.Sprintf("%s is not exists", appName))
+		return bizerror.NewBizError(bizerror.AppNotFound, fmt.Sprintf("%s does not exist", appName))
 	}
 	appConfiguratorName := appName + consts.ConfiguratorRuleSuffix
 	res, err := GetConfigurator(ctx, appConfiguratorName, mesh)
@@ -583,7 +583,7 @@ func GetGrayConfig(ctx consolectx.Context, appName string, mesh string) (*model.
 }
 
 func isGrayTag(tag *meshproto.Tag) bool {
-	if tag.Name == "" || tag.Addresses != nil || len(tag.Addresses) != 0 {
+	if tag.Name == "" || len(tag.Addresses) != 0 {
 		return false
 	}
 	return true
