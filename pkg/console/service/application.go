@@ -283,7 +283,8 @@ func isAppAccessLogConfig(conf *meshproto.OverrideConfig, appName string) bool {
 		len(conf.Match.Application.Oneof) != 1 ||
 		conf.Match.Application.Oneof[0].Exact != appName {
 		return false
-	} else if _, ok := conf.Parameters[`accesslog`]; !ok {
+	}
+	if _, ok := conf.Parameters[`accesslog`]; !ok {
 		return false
 	}
 	return true
@@ -463,7 +464,8 @@ func isFlowWeightConfig(conf *meshproto.OverrideConfig) bool {
 		conf.Match == nil ||
 		conf.Match.Param == nil {
 		return false
-	} else if _, ok := conf.Parameters[`weight`]; !ok {
+	}
+	if _, ok := conf.Parameters[`weight`]; !ok {
 		return false
 	}
 	return true
