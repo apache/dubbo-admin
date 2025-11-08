@@ -63,27 +63,36 @@ const rejectState: { errorHandler: Function | null } = {
 response.use(
   (response) => {
     NProgress.done()
+    // Success case - code is 'Success'
     if (
       response.status === 200 &&
-      (response.data.code === 200 || response.data.status === 'success')
+      (response.data.code === 'Success')
     ) {
       return Promise.resolve(response.data)
     }
+    // Handle 401 unauthorized
     if (response.status === 401) {
       removeAuthState()
     }
-    console.error(response.data.code + ':' + response.data.msg)
+    // Show error toast message
+    const errorMsg = `${response.data.code}:${response.data.message}`
+    message.error(errorMsg)
+    console.error(errorMsg)
     return Promise.reject(response.data)
   },
   (error) => {
     NProgress.done()
-    if (error.response.data) {
-      console.error(error.response.data.code + ':' + error.response.data.msg)
+    // Handle error response with data
+    if (error.response?.data) {
+      const errorMsg = `${error.response.data.code}:${error.response.data.message}`
+      message.error(errorMsg)
+      console.error(errorMsg)
     } else {
-      console.error(error.response)
+      // Handle network or other errors
+      message.error('NetworkError:请求失败，请检查网络连接')
+      console.error(error)
     }
-
-    return Promise.reject(error.response.data)
+    return Promise.reject(error.response?.data)
   }
 )
 export default service
