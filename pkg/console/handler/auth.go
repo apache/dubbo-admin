@@ -34,23 +34,24 @@ func Login(ctx consolectx.Context) gin.HandlerFunc {
 		password := c.PostForm("password")
 		// verify username and password
 		authCfg := ctx.Config().Console.Auth
-		if user == authCfg.User && password == authCfg.Password {
-			session := sessions.Default(c)
-			session.Set("user", user)
-			session.Options(sessions.Options{
-				MaxAge: authCfg.ExpirationTime,
-				Path:   "/",
-			})
-			err := session.Save()
-			if err != nil {
-				sessionErr := bizerror.NewBizError(bizerror.SessionError, err.Error())
-				c.JSON(http.StatusOK, model.NewBizErrorResp(sessionErr))
-				return
-			}
-			c.JSON(http.StatusOK, model.NewSuccessResp(true))
-		} else {
-			c.JSON(http.StatusUnauthorized, model.NewBizErrorResp(bizerror.NewUnauthorizedError()))
+		if user != authCfg.User || password != authCfg.Password {
+			authErr := bizerror.NewBizError(bizerror.Unauthorized, "username or password is not correct!")
+			c.JSON(http.StatusUnauthorized, model.NewBizErrorResp(authErr))
+			return
 		}
+		session := sessions.Default(c)
+		session.Set("user", user)
+		session.Options(sessions.Options{
+			MaxAge: authCfg.ExpirationTime,
+			Path:   "/",
+		})
+		err := session.Save()
+		if err != nil {
+			sessionErr := bizerror.NewBizError(bizerror.SessionError, err.Error())
+			c.JSON(http.StatusOK, model.NewBizErrorResp(sessionErr))
+			return
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(true))
 	}
 }
 

@@ -17,7 +17,12 @@
 
 package discovery
 
-import "github.com/apache/dubbo-admin/pkg/config"
+import (
+	"github.com/duke-git/lancet/v2/strutil"
+
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	"github.com/apache/dubbo-admin/pkg/config"
+)
 
 type Type string
 
@@ -53,4 +58,14 @@ func DefaultDiscoveryEnginConfig() *Config {
 			MetadataReport: "nacos://127.0.0.1:8848?username=nacos&password=nacos",
 		},
 	}
+}
+
+func (c *Config) Validate() error {
+	if strutil.IsBlank(c.Name) {
+		return bizerror.NewBizError(bizerror.InvalidArgument, "discovery name is needed")
+	}
+	if strutil.IsBlank(string(c.Type)) {
+		return bizerror.NewBizError(bizerror.InvalidArgument, "discovery type is needed")
+	}
+	return nil
 }

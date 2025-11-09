@@ -55,6 +55,7 @@ discovery:
 
   # mock discovery is only for development
   - type: mock
+    name: mockRegistry
 engine:
   name: k8s1.28.6
   type: kubernetes

@@ -131,7 +131,8 @@ func (c *consoleWebServer) authMiddleware() gin.HandlerFunc {
 		session := sessions.Default(c)
 		user := session.Get("user")
 		if user == nil {
-			c.JSON(http.StatusUnauthorized, model.NewBizErrorResp(bizerror.NewUnauthorizedError()))
+			authErr := bizerror.NewBizError(bizerror.Unauthorized, "no access, please login")
+			c.JSON(http.StatusUnauthorized, model.NewBizErrorResp(authErr))
 			c.Abort()
 			return
 		}

@@ -139,4 +139,5 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 	router.GET("/search", handler.BannerGlobalSearch(ctx))
 	router.GET("/overview", handler.ClusterOverview(ctx))
 	router.GET("/metadata", handler.AdminMetadata(ctx))
+	router.GET("/meshes", handler.ListMeshes(ctx))
 }
