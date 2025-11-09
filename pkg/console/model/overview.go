@@ -18,12 +18,12 @@
 package model
 
 type OverviewResp struct {
-	AppCount     int            `json:"appCount"`
-	ServiceCount int            `json:"serviceCount"`
-	InsCount     int            `json:"insCount"`
-	Protocols    map[string]int `json:"protocols"`
-	Releases     map[string]int `json:"releases"`
-	Discoveries  map[string]int `json:"discoveries"`
+	AppCount     int64            `json:"appCount"`
+	ServiceCount int64            `json:"serviceCount"`
+	InsCount     int64            `json:"insCount"`
+	Protocols    map[string]int64 `json:"protocols"`
+	Releases     map[string]int64 `json:"releases"`
+	Discoveries  map[string]int64 `json:"discoveries"`
 }
 
 func NewOverviewResp() *OverviewResp {
