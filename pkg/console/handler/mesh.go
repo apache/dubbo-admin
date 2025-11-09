@@ -39,6 +39,5 @@ func ListMeshes(ctx consolectx.Context) gin.HandlerFunc {
 			}
 		})
 		c.JSON(http.StatusOK, model.NewSuccessResp(meshes))
-		return
 	}
 }

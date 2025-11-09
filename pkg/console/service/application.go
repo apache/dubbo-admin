@@ -563,6 +563,9 @@ func GetGrayConfig(ctx consolectx.Context, appName string, mesh string) (*model.
 			coremodel.BuildResourceKey(mesh, appName), err)
 		return nil, err
 	}
+	if res == nil {
+		return resp, err
+	}
 	resp.GraySets = make([]model.GraySet, 0, len(res.Spec.Tags))
 
 	res.Spec.RangeTags(func(tag *meshproto.Tag) (isStop bool) {

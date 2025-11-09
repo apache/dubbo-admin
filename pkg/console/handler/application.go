@@ -100,17 +100,12 @@ func ApplicationSearch(ctx consolectx.Context) gin.HandlerFunc {
 
 func ApplicationConfigAccessLogPut(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var (
-			appName         string
-			operatorLogOpen bool
-			mesh            string
-		)
-		appName = c.Query("appName")
+		appName := c.Query("appName")
 		if strutil.IsBlank(appName) {
 			util.HandleArgumentError(c, errors.New("appName is required"))
 			return
 		}
-		mesh = c.Query("mesh")
+		mesh := c.Query("mesh")
 		if strutil.IsBlank(mesh) {
 			util.HandleArgumentError(c, errors.New("mesh is required"))
 			return
@@ -172,15 +167,11 @@ func ApplicationConfigFlowWeightGET(ctx consolectx.Context) gin.HandlerFunc {
 
 func ApplicationConfigFlowWeightPUT(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var (
-			appName string
-			mesh    string
-			body    = struct {
-				FlowWeightSets []model.FlowWeightSet `json:"flowWeightSets"`
-			}{}
-		)
-		appName = c.Query("appName")
-		mesh = c.Query("mesh")
+		body := struct {
+			FlowWeightSets []model.FlowWeightSet `json:"flowWeightSets"`
+		}{}
+		appName := c.Query("appName")
+		mesh := c.Query("mesh")
 		if strutil.IsBlank(appName) {
 			util.HandleArgumentError(c, errors.New("appName is required"))
 			return
@@ -225,15 +216,11 @@ func ApplicationConfigGrayGET(ctx consolectx.Context) gin.HandlerFunc {
 
 func ApplicationConfigGrayPUT(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var (
-			appName string
-			mesh    string
-			body    = struct {
-				GraySets []model.GraySet `json:"graySets"`
-			}{}
-		)
-		appName = c.Query("appName")
-		mesh = c.Query("mesh")
+		body := struct {
+			GraySets []model.GraySet `json:"graySets"`
+		}{}
+		appName := c.Query("appName")
+		mesh := c.Query("mesh")
 		if strutil.IsBlank(appName) {
 			util.HandleArgumentError(c, errors.New("appName is required"))
 			return
