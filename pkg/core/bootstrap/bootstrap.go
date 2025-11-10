@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/apache/dubbo-admin/pkg/config/app"
+	"github.com/apache/dubbo-admin/pkg/console/counter"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/diagnostics"
@@ -57,7 +58,11 @@ func Bootstrap(appCtx context.Context, cfg app.AdminConfig) (runtime.Runtime, er
 	if err := initializeConsole(builder); err != nil {
 		return nil, err
 	}
-	// 6. initialize diagnotics
+	// 6. initialize counter manager
+	if err := initializeCounterManager(builder); err != nil {
+		return nil, err
+	}
+	// 7. initialize diagnostics
 	if err := initializeDiagnoticsServer(builder); err != nil {
 		logger.Errorf("got error when init diagnotics server %s", err)
 	}
@@ -117,6 +122,14 @@ func initializeResourceEngine(builder *runtime.Builder) error {
 
 func initializeDiagnoticsServer(builder *runtime.Builder) error {
 	comp, err := runtime.ComponentRegistry().Get(diagnostics.DiagnosticsServer)
+	if err != nil {
+		return err
+	}
+	return initAndActivateComponent(builder, comp)
+}
+
+func initializeCounterManager(builder *runtime.Builder) error {
+	comp, err := runtime.ComponentRegistry().Get(counter.ComponentType)
 	if err != nil {
 		return err
 	}

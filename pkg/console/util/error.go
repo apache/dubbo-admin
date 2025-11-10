@@ -15,30 +15,27 @@
  * limitations under the License.
  */
 
-package model
+package util
 
-type OverviewResp struct {
-	AppCount     int64            `json:"appCount"`
-	ServiceCount int64            `json:"serviceCount"`
-	InsCount     int64            `json:"insCount"`
-	Protocols    map[string]int64 `json:"protocols"`
-	Releases     map[string]int64 `json:"releases"`
-	Discoveries  map[string]int64 `json:"discoveries"`
+import (
+	"errors"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	"github.com/apache/dubbo-admin/pkg/console/model"
+)
+
+func HandleServiceError(ctx *gin.Context, err error) {
+	var e bizerror.Error
+	if !errors.As(err, &e) {
+		e = bizerror.NewBizError(bizerror.UnknownError, err.Error())
+	}
+	ctx.JSON(http.StatusOK, model.NewBizErrorResp(e))
 }
 
-func NewOverviewResp() *OverviewResp {
-	return &OverviewResp{}
-}
-
-type AdminMetadata struct {
-	Registry   string `json:"registry"`
-	Metadata   string `json:"metadata"`
-	Config     string `json:"config"`
-	Prometheus string `json:"prometheus"`
-	Grafana    string `json:"grafana"`
-	Tracing    string `json:"tracing"`
-}
-
-func NewAdminMetadata() *AdminMetadata {
-	return &AdminMetadata{}
+func HandleArgumentError(ctx *gin.Context, err error) {
+	e := bizerror.NewBizError(bizerror.InvalidArgument, err.Error())
+	ctx.JSON(http.StatusOK, model.NewBizErrorResp(e))
 }

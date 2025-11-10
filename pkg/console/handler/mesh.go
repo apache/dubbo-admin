@@ -15,30 +15,29 @@
  * limitations under the License.
  */
 
-package model
+package handler
 
-type OverviewResp struct {
-	AppCount     int64            `json:"appCount"`
-	ServiceCount int64            `json:"serviceCount"`
-	InsCount     int64            `json:"insCount"`
-	Protocols    map[string]int64 `json:"protocols"`
-	Releases     map[string]int64 `json:"releases"`
-	Discoveries  map[string]int64 `json:"discoveries"`
-}
+import (
+	"net/http"
 
-func NewOverviewResp() *OverviewResp {
-	return &OverviewResp{}
-}
+	"github.com/duke-git/lancet/v2/slice"
+	"github.com/gin-gonic/gin"
 
-type AdminMetadata struct {
-	Registry   string `json:"registry"`
-	Metadata   string `json:"metadata"`
-	Config     string `json:"config"`
-	Prometheus string `json:"prometheus"`
-	Grafana    string `json:"grafana"`
-	Tracing    string `json:"tracing"`
-}
+	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
+	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
+	"github.com/apache/dubbo-admin/pkg/console/model"
+)
 
-func NewAdminMetadata() *AdminMetadata {
-	return &AdminMetadata{}
+// ListMeshes list all meshes(discoveries) defined in config
+func ListMeshes(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		discoveries := ctx.Config().Discovery
+		meshes := slice.Map(discoveries, func(index int, item *discoverycfg.Config) model.MeshResp {
+			return model.MeshResp{
+				Name: item.Name,
+				Type: string(item.Type),
+			}
+		})
+		c.JSON(http.StatusOK, model.NewSuccessResp(meshes))
+	}
 }

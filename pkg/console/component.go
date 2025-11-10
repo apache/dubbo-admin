@@ -30,6 +30,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	ui "github.com/apache/dubbo-admin/app/dubbo-ui"
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/config/console"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
@@ -130,7 +131,8 @@ func (c *consoleWebServer) authMiddleware() gin.HandlerFunc {
 		session := sessions.Default(c)
 		user := session.Get("user")
 		if user == nil {
-			c.JSON(http.StatusUnauthorized, model.NewUnauthorizedResp())
+			authErr := bizerror.NewBizError(bizerror.Unauthorized, "no access, please login")
+			c.JSON(http.StatusUnauthorized, model.NewBizErrorResp(authErr))
 			c.Abort()
 			return
 		}

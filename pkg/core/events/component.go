@@ -100,10 +100,10 @@ func (b *eventBus) Send(event Event) {
 	b.rwMutex.RLock()
 	defer b.rwMutex.RUnlock()
 	var rk model.ResourceKind
-	if event.OldObj() != nil {
-		rk = event.OldObj().ResourceKind()
-	} else if event.NewObj() != nil {
+	if event.NewObj() != nil {
 		rk = event.NewObj().ResourceKind()
+	} else if event.OldObj() != nil {
+		rk = event.OldObj().ResourceKind()
 	}
 	subs, exists := b.subscriberDir[rk]
 	if !exists {

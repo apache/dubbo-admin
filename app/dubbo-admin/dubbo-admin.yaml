@@ -39,19 +39,23 @@ console:
 store:
   type: memory
 discovery:
-  - type: nacos
-    id: nacos-44.33
-    address:
-      registry: nacos://47.76.94.134:8848?username=nacos&password=nacos
-      configCenter: nacos://47.76.94.134:8848?username=nacos&password=nacos
-      metadataReport: nacos://47.76.94.134:8848?username=nacos&password=nacos
-
-  - type: etcd
-    id: etcd-44.33
-    address: http://127.0.0.1:2379
+#  - type: nacos
+#    name: nacos-44.33
+#    address:
+#      registry: nacos://47.76.94.134:8848?username=nacos&password=nacos
+#      configCenter: nacos://47.76.94.134:8848?username=nacos&password=nacos
+#      metadataReport: nacos://47.76.94.134:8848?username=nacos&password=nacos
+#
+#  - type: etcd
+#    name: etcd-44.33
+#    address:
+#      registry: http://127.0.0.1:2379
+#      configCenter: http://127.0.0.1:2379
+#      metadataReport: http://127.0.0.1:2379
 
   # mock discovery is only for development
   - type: mock
+    name: mockRegistry
 engine:
   name: k8s1.28.6
   type: kubernetes

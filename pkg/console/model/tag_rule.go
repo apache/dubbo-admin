@@ -18,8 +18,6 @@
 package model
 
 import (
-	"net/http"
-
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/core/consts"
 )
@@ -47,11 +45,7 @@ type RespTagElement struct {
 
 func GenTagRouteResp(pb *meshproto.TagRoute) *CommonResp {
 	if pb == nil {
-		return &CommonResp{
-			Code: http.StatusNotFound,
-			Msg:  "tag rule not found",
-			Data: "",
-		}
+		return NewSuccessResp(nil)
 	} else {
 		return NewSuccessResp(TagRuleResp{
 			ConfigVersion: pb.ConfigVersion,

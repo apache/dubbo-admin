@@ -67,8 +67,8 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 		application.GET("/search", handler.ApplicationSearch(ctx))
 		{
 			applicationConfig := application.Group("/config")
-			applicationConfig.PUT("/operatorLog", handler.ApplicationConfigOperatorLogPut(ctx))
-			applicationConfig.GET("/operatorLog", handler.ApplicationConfigOperatorLogGet(ctx))
+			applicationConfig.PUT("/operatorLog", handler.ApplicationConfigAccessLogPut(ctx))
+			applicationConfig.GET("/operatorLog", handler.ApplicationConfigAccessLogGet(ctx))
 
 			applicationConfig.GET("/flowWeight", handler.ApplicationConfigFlowWeightGET(ctx))
 			applicationConfig.PUT("/flowWeight", handler.ApplicationConfigFlowWeightPUT(ctx))
@@ -139,4 +139,5 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 	router.GET("/search", handler.BannerGlobalSearch(ctx))
 	router.GET("/overview", handler.ClusterOverview(ctx))
 	router.GET("/metadata", handler.AdminMetadata(ctx))
+	router.GET("/meshes", handler.ListMeshes(ctx))
 }

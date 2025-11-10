@@ -17,21 +17,18 @@
 
 package model
 
-import coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
-
-const (
-	successCode      = 200
-	unauthorizedCode = 401
-	errorCode        = 500
+import (
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
 type CommonResp struct {
-	Code int    `json:"code"`
+	Code string `json:"code"`
 	Msg  string `json:"msg"`
 	Data any    `json:"data"`
 }
 
-func (r *CommonResp) WithCode(code int) *CommonResp {
+func (r *CommonResp) WithCode(code string) *CommonResp {
 	r.Code = code
 	return r
 }
@@ -48,24 +45,25 @@ func (r *CommonResp) WithData(data any) *CommonResp {
 
 func NewSuccessResp(data any) *CommonResp {
 	return &CommonResp{
-		Code: successCode,
+		Code: "Success",
 		Msg:  "success",
 		Data: data,
 	}
 }
 
-func NewUnauthorizedResp() *CommonResp {
+// NewErrorResp TODO replace with NewBizErrorResp
+func NewErrorResp(msg string) *CommonResp {
 	return &CommonResp{
-		Code: unauthorizedCode,
-		Msg:  "UnAuthorized, please login",
+		Code: string(bizerror.UnknownError),
+		Msg:  msg,
 		Data: nil,
 	}
 }
 
-func NewErrorResp(msg string) *CommonResp {
+func NewBizErrorResp(err bizerror.Error) *CommonResp {
 	return &CommonResp{
-		Code: errorCode,
-		Msg:  msg,
+		Code: string(err.Code()),
+		Msg:  err.Message(),
 		Data: nil,
 	}
 }

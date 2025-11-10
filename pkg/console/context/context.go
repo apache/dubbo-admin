@@ -21,12 +21,14 @@ import (
 	ctx "context"
 
 	"github.com/apache/dubbo-admin/pkg/config/app"
+	"github.com/apache/dubbo-admin/pkg/console/counter"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 )
 
 type Context interface {
 	ResourceManager() manager.ResourceManager
+	CounterManager() counter.CounterManager
 
 	Config() app.AdminConfig
 
@@ -56,4 +58,16 @@ func (c *context) Config() app.AdminConfig {
 func (c *context) ResourceManager() manager.ResourceManager {
 	rmc, _ := c.coreRt.GetComponent(runtime.ResourceManager)
 	return rmc.(manager.ResourceManagerComponent).ResourceManager()
+}
+
+func (c *context) CounterManager() counter.CounterManager {
+	comp, err := c.coreRt.GetComponent(counter.ComponentType)
+	if err != nil {
+		return nil
+	}
+	managerComp, ok := comp.(counter.ManagerComponent)
+	if !ok {
+		return nil
+	}
+	return managerComp.CounterManager()
 }
