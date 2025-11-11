@@ -38,6 +38,7 @@
     "monaco-editor": "^0.52.2",
     "nprogress": "^0.2.0",
     "pinia": "^2.1.7",
+    "pinia-plugin-persistedstate": "^4.7.1",
     "pinyin-pro": "^3.19.3",
     "ts-node": "^10.9.2",
     "tslib": "^2.6.2",

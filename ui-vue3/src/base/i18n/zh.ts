@@ -395,6 +395,7 @@ const words: I18nType = {
   authFailed: '权限验证失败',
 
   ruleList: '规则列表',
+  registryCenter: '注册中心',
   mockRule: '规则配置',
   mockData: '模拟数据',
   globalDisable: '全局禁用',

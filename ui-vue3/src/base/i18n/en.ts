@@ -419,6 +419,7 @@ const words: I18nType = {
   },
   authFailed: 'Authorized failed,please login.',
 
+  registryCenter: 'Registry',
   ruleList: 'Rule List',
   mockRule: 'Mock Rule',
   mockData: 'Mock Data',

@@ -27,7 +27,7 @@
           <menu-fold-outlined v-else class="trigger" @click="() => (collapsed = !collapsed)" />
         </a-flex>
         <div></div>
-        <a-flex>
+        <a-flex :gap="20">
           <a-input-group @keyup.enter="globalSearch" class="search-group" compact>
             <a-select v-model:value="searchType" class="select-type">
               <a-select-option v-for="option in searchTypeOptions" :value="option.value"
@@ -48,6 +48,23 @@
               @click="globalSearch"
             ></a-button>
           </a-input-group>
+          <a-form layout="inline">
+            <a-form-item class="mesh-select-item" :label="$t('registryCenter')" inline>
+              <a-select
+                class="mesh-select"
+                :value="meshStore.mesh"
+                :options="
+                  meshes.map((x: any) => {
+                    return {
+                      value: x.name,
+                      label: x.name
+                    }
+                  })
+                "
+                @change="changeMesh"
+              ></a-select>
+            </a-form-item>
+          </a-form>
         </a-flex>
         <div></div>
 
@@ -102,12 +119,16 @@ import {
   SearchOutlined,
   UserOutlined
 } from '@ant-design/icons-vue'
-import type { ComponentInternalInstance } from 'vue'
+import { type ComponentInternalInstance, onMounted } from 'vue'
 import { computed, getCurrentInstance, h, inject, nextTick, reactive, ref, watch } from 'vue'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { changeLanguage, localeConfig } from '@/base/i18n'
-import { LOCAL_STORAGE_THEME, PRIMARY_COLOR, PRIMARY_COLOR_DEFAULT } from '@/base/constants'
-import devTool from '@/utils/DevToolUtil'
+import {
+  LOCAL_STORAGE_THEME,
+  PRIMARY_COLOR,
+  PRIMARY_COLOR_DEFAULT,
+  PRIMARY_COLOR_R
+} from '@/base/constants'
 import { Icon } from '@iconify/vue'
 import { debounce } from 'lodash'
 import type { SelectOption } from '@/types/common.ts'
@@ -117,6 +138,8 @@ import { searchService } from '@/api/service/service'
 import { useRoute, useRouter } from 'vue-router'
 import { getAuthState, removeAuthState } from '@/utils/AuthUtil'
 import { logout } from '@/api/service/login'
+import { useMeshStore } from '@/stores/mesh'
+import { meshesSearch } from '@/api/service/globalSearch'
 
 const {
   appContext: {
@@ -125,6 +148,7 @@ const {
 } = <ComponentInternalInstance>getCurrentInstance()
 
 let __null = PRIMARY_COLOR
+let __null_r = PRIMARY_COLOR_R
 const collapsed = inject(PROVIDE_INJECT_KEY.COLLAPSED)
 const i18nConfig = <typeof localeConfig>inject(PROVIDE_INJECT_KEY.LOCALE)
 let locale = ref(localeConfig.locale)
@@ -144,6 +168,20 @@ function logoutHandle() {
     router.replace(`/login?redirect=${route.path}`)
   })
 }
+
+const meshes = ref([])
+const meshStore = useMeshStore()
+const refreshCurrentRoute: any = inject(PROVIDE_INJECT_KEY.LAYOUT_ROUTE_KEY)
+const changeMesh = (value: any) => {
+  meshStore.mesh = value
+  refreshCurrentRoute()
+}
+
+onMounted(async () => {
+  const { data } = await meshesSearch()
+  meshes.value = data
+})
+
 const authState = getAuthState()
 watch(locale, (value) => {
   changeLanguage(value)
@@ -233,7 +271,14 @@ const onSelect = () => {}
   .header {
     background: v-bind('PRIMARY_COLOR');
     padding: 0;
-
+    .mesh-select {
+      min-width: 100px;
+    }
+    .mesh-select-item {
+      :deep(label) {
+        color: v-bind('PRIMARY_COLOR_R');
+      }
+    }
     .search-group {
       display: flex;
       align-items: center;

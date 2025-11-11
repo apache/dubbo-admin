@@ -21,33 +21,31 @@ import router from './router'
 import App from './App.vue'
 import 'ant-design-vue/dist/reset.css'
 import { i18n } from '@/base/i18n'
-import './api/mock/index'
-// import './api/mock/mockCluster'
-// import './api/mock/mockVersion'
+// import './api/mock/index'
 
 import Vue3ColorPicker from 'vue3-colorpicker'
+
 import 'vue3-colorpicker/style.css'
 import 'nprogress/nprogress.css'
-// import 'monaco-editor/esm/vs/editor/editor.main.css';
+import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
-import { PRIMARY_COLOR } from '@/base/constants'
-import { useRouter } from 'vue-router'
-import _ from 'lodash'
 import { getAuthState } from '@/utils/AuthUtil'
+import { createPinia } from 'pinia'
+import { useRoute } from 'vue-router'
 
 const app = createApp(App)
 
-app.use(Antd).use(Vue3ColorPicker).use(i18n).use(router).mount('#app')
-// router.beforeEach((to, from, next) => {
-//     console.log(to, from)
-//     next(to.fullPath)
-// })
+const pinia = createPinia()
+
+pinia.use(piniaPluginPersistedstate)
+
+app.use(Antd).use(Vue3ColorPicker).use(pinia).use(i18n).use(router).mount('#app')
+
 router.beforeEach((from, to, next) => {
   const authState = getAuthState()
   if (authState?.state || from.path.startsWith('/login')) {
     next()
   } else {
-    console.log(222)
     next({ path: `/login?redirect=${to.path}` })
   }
 })

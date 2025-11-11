@@ -28,8 +28,33 @@ export const LOCAL_STORAGE_THEME = 'LOCAL_STORAGE_THEME'
 
 let item = localStorage.getItem(LOCAL_STORAGE_THEME)
 
+/**
+ * 根据背景色自动计算适合的文字颜色（黑或白）
+ * @param {string} hex 背景色十六进制（如 '#17b392' 或 '17b392'）
+ * @returns {string} 文字色十六进制（'#000000' 或 '#ffffff'）
+ */
+function getTextColorByBackground(hex: string) {
+  // 处理十六进制格式（去掉#）
+  hex = hex.replace('#', '')
+  // 转换为RGB
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+
+  // 计算相对亮度（WCAG标准）
+  const [rNorm, gNorm, bNorm] = [r, g, b].map((c) => {
+    const val = c / 255
+    return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4)
+  })
+  const L = 0.2126 * rNorm + 0.7152 * gNorm + 0.0722 * bNorm
+
+  // 根据亮度返回文字色
+  return L > 0.5 ? '#131313' : '#e3e1e1'
+}
+
 export const PRIMARY_COLOR = ref(item || PRIMARY_COLOR_DEFAULT)
 export const PRIMARY_COLOR_T = (percent: string) => computed(() => PRIMARY_COLOR.value + percent)
+export const PRIMARY_COLOR_R = computed(() => getTextColorByBackground(PRIMARY_COLOR.value))
 
 export const INSTANCE_REGISTER_COLOR: { [key: string]: string } = {
   HEALTHY: 'green',

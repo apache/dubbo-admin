@@ -14,14 +14,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { ref } from 'vue'
+import { defineStore } from 'pinia'
 
-const KEY_PREFIX = '__PROVIDE_INJECT_KEY_'
-
-export const PROVIDE_INJECT_KEY = {
-  LAYOUT_ROUTE_KEY: KEY_PREFIX + 'LAYOUT_ROUTE_KEY',
-  LOCALE: KEY_PREFIX + 'LOCALE',
-  GRAFANA: KEY_PREFIX + 'GRAFANA',
-  SEARCH_DOMAIN: KEY_PREFIX + 'SEARCH_DOMAIN',
-  COLLAPSED: KEY_PREFIX + 'COLLAPSED',
-  TAB_LAYOUT_STATE: KEY_PREFIX + 'TAB_LAYOUT_STATE'
-}
+export const useMeshStore = defineStore('mesh', {
+  state: () => ({
+    mesh: ref('')
+  }),
+  persist: true
+})

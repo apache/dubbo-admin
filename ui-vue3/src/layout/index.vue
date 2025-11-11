@@ -25,7 +25,7 @@
         collapsible
       >
         <div class="logo">
-          <img :src="logo" />
+          <img alt="Dubbo Admin" :src="logo" />
           <template v-if="!collapsed">Dubbo Admin</template>
         </div>
         <layout-menu></layout-menu>
@@ -34,7 +34,7 @@
         <layout_header :collapsed="collapsed"></layout_header>
         <layout_bread></layout_bread>
         <a-layout-content class="layout-content">
-          <router-view v-slot="{ Component }">
+          <router-view :key="routeKey" v-slot="{ Component }">
             <transition name="slide-fade">
               <component :is="Component"> </component>
             </transition>
@@ -48,17 +48,26 @@
   </div>
 </template>
 <script lang="ts" setup>
-import { h, provide, ref } from 'vue'
+import { provide, ref } from 'vue'
 import layoutMenu from './menu/layout_menu.vue'
 import logo from '@/assets/logo.png'
 import Layout_header from '@/layout/header/layout_header.vue'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import Layout_bread from '@/layout/breadcrumb/layout_bread.vue'
-import { PRIMARY_COLOR, TAB_HEADER_TITLE } from '@/base/constants'
+import { PRIMARY_COLOR,  } from '@/base/constants'
+import { useRoute } from 'vue-router'
 
 let __null = PRIMARY_COLOR
 const collapsed = ref<boolean>(false)
 provide(PROVIDE_INJECT_KEY.COLLAPSED, collapsed)
+const route = useRoute()
+const routeKey = ref(route.fullPath)
+
+// 定义刷新方法，直接导出
+const refreshCurrentRoute = () => {
+  routeKey.value = `${route.fullPath}-${Date.now()}`
+}
+provide(PROVIDE_INJECT_KEY.LAYOUT_ROUTE_KEY, refreshCurrentRoute)
 </script>
 <style lang="less" scoped>
 .__container_layout_index {
