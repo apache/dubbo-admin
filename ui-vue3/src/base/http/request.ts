@@ -66,10 +66,7 @@ response.use(
   (response) => {
     NProgress.done()
     // Success case - code is 'Success'
-    if (
-      response.status === 200 &&
-      (response.data.code === 'Success')
-    ) {
+    if (response.status === 200 && response.data.code === 'Success') {
       return Promise.resolve(response.data)
     }
     // Handle 401 unauthorized
