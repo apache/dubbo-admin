@@ -16,12 +16,15 @@
 -->
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { inject, onMounted, reactive, ref } from 'vue'
 import { login } from '@/api/service/login'
 import { useRoute, useRouter } from 'vue-router'
 import { removeAuthState, updateAuthState } from '@/utils/AuthUtil'
 import { message } from 'ant-design-vue'
 import { i18n } from '@/base/i18n'
+import { useMeshStore } from '@/stores/mesh'
+import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
+import { meshesSearch } from '@/api/service/globalSearch'
 const userinfo = reactive({
   username: '',
   password: ''
@@ -30,13 +33,20 @@ const userinfo = reactive({
 const router = useRouter()
 const route = useRoute()
 const redirect: any = route.query.redirect || '/'
+const meshStore = useMeshStore()
+
 function loginHandle() {
   let formData = new FormData()
   formData.append('user', userinfo.username)
   formData.append('password', userinfo.password)
   login(formData)
-    .then(() => {
+    .then(async () => {
       updateAuthState(true, userinfo.username)
+      const { data } = await meshesSearch()
+      // if mesh is not set or old mesh is expired
+      if (!meshStore.mesh || !data.some((x: any) => x.name === meshStore.mesh)) {
+        meshStore.mesh = data[0]?.name
+      }
       router.replace(redirect)
     })
     .catch((e) => {

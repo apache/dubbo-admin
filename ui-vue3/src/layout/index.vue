@@ -54,7 +54,7 @@ import logo from '@/assets/logo.png'
 import Layout_header from '@/layout/header/layout_header.vue'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import Layout_bread from '@/layout/breadcrumb/layout_bread.vue'
-import { PRIMARY_COLOR,  } from '@/base/constants'
+import { PRIMARY_COLOR } from '@/base/constants'
 import { useRoute } from 'vue-router'
 
 let __null = PRIMARY_COLOR
