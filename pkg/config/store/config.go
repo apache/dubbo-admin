@@ -26,7 +26,9 @@ var _ config.Config = &Config{}
 type Type = string
 
 const (
-	Memory Type = "memory"
+	Memory   Type = "memory"
+	MySQL    Type = "mysql"
+	Postgres Type = "postgres"
 )
 
 // Config defines the ResourceStore configuration
