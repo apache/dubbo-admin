@@ -51,6 +51,10 @@ func (b *eventBus) Order() int {
 	return math.MaxInt
 }
 
+func (b *eventBus) Dependencies() []runtime.ComponentType {
+	return nil // EventBus has no dependencies
+}
+
 func (b *eventBus) Init(_ runtime.BuilderContext) error {
 	b.subscriberDir = make(map[model.ResourceKind]Subscribers)
 	return nil

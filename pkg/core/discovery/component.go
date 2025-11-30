@@ -63,6 +63,10 @@ func (d *discoveryComponent) Order() int {
 	return math.MaxInt - 2
 }
 
+func (d *discoveryComponent) Dependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{runtime.EventBus, runtime.ResourceStore}
+}
+
 func (d *discoveryComponent) Init(ctx runtime.BuilderContext) error {
 	configs := ctx.Config().Discovery
 	for _, cfg := range configs {

@@ -57,6 +57,10 @@ func (c *consoleWebServer) Order() int {
 	return math.MaxInt - 5
 }
 
+func (c *consoleWebServer) Dependencies() []runtime.ComponentType {
+	return nil // Console has no dependencies
+}
+
 func (c *consoleWebServer) Init(ctx runtime.BuilderContext) error {
 	r := gin.Default()
 	// Admin UI

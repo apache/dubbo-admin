@@ -50,6 +50,10 @@ func (c *managerComponent) Order() int {
 	return math.MaxInt - 1
 }
 
+func (c *managerComponent) Dependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{runtime.EventBus}
+}
+
 func (c *managerComponent) Init(runtime.BuilderContext) error {
 	mgr := NewCounterManager()
 	c.manager = mgr

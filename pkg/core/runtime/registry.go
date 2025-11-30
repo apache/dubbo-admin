@@ -41,6 +41,8 @@ type Registry interface {
 	ResourceManager() (Component, error)
 	ResourceDiscovery() (Component, error)
 	ResourceEngine() (Component, error)
+	// AllComponents returns all registered components
+	AllComponents() []Component
 }
 
 type RegistryMutator interface {
@@ -103,6 +105,14 @@ func (r *componentRegistry) Get(typ ComponentType) (Component, error) {
 		return nil, noSuchComponentError(typ)
 	}
 	return component, nil
+}
+
+func (r *componentRegistry) AllComponents() []Component {
+	components := make([]Component, 0, len(r.directory))
+	for _, comp := range r.directory {
+		components = append(components, comp)
+	}
+	return components
 }
 
 func noSuchComponentError(typ ComponentType) error {
