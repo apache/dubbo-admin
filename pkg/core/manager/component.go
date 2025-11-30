@@ -49,6 +49,10 @@ func (r *resourceManagerComponent) Order() int {
 	return math.MaxInt - 4
 }
 
+func (r *resourceManagerComponent) Dependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{runtime.ResourceStore}
+}
+
 func (r *resourceManagerComponent) Init(ctx runtime.BuilderContext) error {
 	rsc, err := ctx.GetActivatedComponent(runtime.ResourceStore)
 	if err != nil {

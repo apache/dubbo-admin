@@ -66,6 +66,10 @@ func (e *engineComponent) Order() int {
 	return math.MaxInt - 3
 }
 
+func (e *engineComponent) Dependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{runtime.EventBus, runtime.ResourceStore}
+}
+
 func (e *engineComponent) Init(ctx runtime.BuilderContext) error {
 	cfg := ctx.Config().Engine
 	e.name = cfg.Name

@@ -19,14 +19,14 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/heimdalr/dag"
 	"github.com/pkg/errors"
 
 	"github.com/apache/dubbo-admin/pkg/config/app"
-	"github.com/apache/dubbo-admin/pkg/console/counter"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
-	"github.com/apache/dubbo-admin/pkg/diagnostics"
 )
 
 func Bootstrap(appCtx context.Context, cfg app.AdminConfig) (runtime.Runtime, error) {
@@ -34,38 +34,29 @@ func Bootstrap(appCtx context.Context, cfg app.AdminConfig) (runtime.Runtime, er
 	if err != nil {
 		return nil, err
 	}
-	// 0. initialize event bus
-	if err := initEventBus(builder); err != nil {
-		return nil, err
+
+	// Get all registered components
+	allComponents := runtime.ComponentRegistry().AllComponents()
+
+	// Build dependency DAG
+	componentDAG, err := buildComponentDAG(allComponents)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build component dependency graph")
 	}
-	// 1. initialize resource store
-	if err := initResourceStore(cfg, builder); err != nil {
-		return nil, err
+
+	// Get initialization order using topological sort
+	initOrder, err := getInitializationOrder(componentDAG)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to resolve component dependencies")
 	}
-	// 2. initialize discovery
-	if err := initializeResourceDiscovery(builder); err != nil {
-		return nil, err
+
+	// Initialize components in dependency order
+	for _, comp := range initOrder {
+		if err := initAndActivateComponent(builder, comp); err != nil {
+			return nil, err
+		}
 	}
-	// 3. initialize engine
-	if err := initializeResourceEngine(builder); err != nil {
-		return nil, err
-	}
-	// 4. initialize resource manager
-	if err := initResourceManager(builder); err != nil {
-		return nil, err
-	}
-	// 5. initialize console
-	if err := initializeConsole(builder); err != nil {
-		return nil, err
-	}
-	// 6. initialize counter manager
-	if err := initializeCounterManager(builder); err != nil {
-		return nil, err
-	}
-	// 7. initialize diagnostics
-	if err := initializeDiagnoticsServer(builder); err != nil {
-		logger.Errorf("got error when init diagnotics server %s", err)
-	}
+
 	rt, err := builder.Build()
 	if err != nil {
 		return nil, err
@@ -73,67 +64,104 @@ func Bootstrap(appCtx context.Context, cfg app.AdminConfig) (runtime.Runtime, er
 	return rt, nil
 }
 
-func initEventBus(builder *runtime.Builder) error {
-	comp, err := runtime.ComponentRegistry().EventBus()
-	if err != nil {
-		return err
+// buildComponentDAG builds a directed acyclic graph of component dependencies
+func buildComponentDAG(components []runtime.Component) (*dag.DAG, error) {
+	d := dag.NewDAG()
+
+	// Add all components as vertices with ComponentType as ID
+	for _, comp := range components {
+		if err := d.AddVertexByID(comp.Type(), comp); err != nil {
+			return nil, errors.Wrapf(err, "failed to add component %s to DAG", comp.Type())
+		}
 	}
-	return initAndActivateComponent(builder, comp)
+
+	// Add edges based on dependencies
+	for _, comp := range components {
+		deps := comp.Dependencies()
+		if deps == nil {
+			continue
+		}
+		for _, dep := range deps {
+			// Add edge from dependency to dependent
+			// If A depends on B, we add edge B -> A (B must be initialized before A)
+			if err := d.AddEdge(dep, comp.Type()); err != nil {
+				return nil, errors.Wrapf(err, "failed to add dependency edge from %s to %s", dep, comp.Type())
+			}
+		}
+	}
+
+	return d, nil
 }
 
-func initResourceStore(cfg app.AdminConfig, builder *runtime.Builder) error {
-	comp, err := runtime.ComponentRegistry().ResourceStore()
-	if err != nil {
-		return errors.Wrapf(err, "could not retrieve resource store %s component", cfg.Store.Type)
-	}
-	return initAndActivateComponent(builder, comp)
-}
-func initResourceManager(builder *runtime.Builder) error {
-	comp, err := runtime.ComponentRegistry().ResourceManager()
-	if err != nil {
-		return err
-	}
-	return initAndActivateComponent(builder, comp)
-}
+// getInitializationOrder returns components in the order they should be initialized
+// using Kahn's algorithm for topological sort
+func getInitializationOrder(d *dag.DAG) ([]runtime.Component, error) {
+	allVertices := d.GetVertices()
 
-func initializeConsole(builder *runtime.Builder) error {
-	comp, err := runtime.ComponentRegistry().Console()
-	if err != nil {
-		return err
+	// Calculate in-degree for each vertex
+	inDegree := make(map[string]int)
+	for vertexID := range allVertices {
+		parents, err := d.GetParents(vertexID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get parents of %s", vertexID)
+		}
+		inDegree[vertexID] = len(parents)
 	}
-	return initAndActivateComponent(builder, comp)
-}
 
-func initializeResourceDiscovery(builder *runtime.Builder) error {
-	comp, err := runtime.ComponentRegistry().ResourceDiscovery()
-	if err != nil {
-		return err
+	// Queue for vertices with in-degree 0
+	queue := make([]string, 0)
+	for vertexID := range allVertices {
+		if inDegree[vertexID] == 0 {
+			queue = append(queue, vertexID)
+		}
 	}
-	return initAndActivateComponent(builder, comp)
-}
 
-func initializeResourceEngine(builder *runtime.Builder) error {
-	comp, err := runtime.ComponentRegistry().ResourceEngine()
-	if err != nil {
-		return err
+	if len(queue) == 0 {
+		return nil, fmt.Errorf("no root components found, possible circular dependency")
 	}
-	return initAndActivateComponent(builder, comp)
-}
 
-func initializeDiagnoticsServer(builder *runtime.Builder) error {
-	comp, err := runtime.ComponentRegistry().Get(diagnostics.DiagnosticsServer)
-	if err != nil {
-		return err
-	}
-	return initAndActivateComponent(builder, comp)
-}
+	// Process vertices in topological order
+	var initOrder []runtime.Component
 
-func initializeCounterManager(builder *runtime.Builder) error {
-	comp, err := runtime.ComponentRegistry().Get(counter.ComponentType)
-	if err != nil {
-		return err
+	for len(queue) > 0 {
+		// Dequeue
+		currentID := queue[0]
+		queue = queue[1:]
+
+		// Get the component
+		vertex, err := d.GetVertex(currentID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get vertex %s", currentID)
+		}
+
+		comp, ok := vertex.(runtime.Component)
+		if !ok {
+			return nil, fmt.Errorf("vertex %s is not a Component", currentID)
+		}
+
+		initOrder = append(initOrder, comp)
+
+		// Get children and reduce their in-degree
+		children, err := d.GetChildren(currentID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get children of %s", currentID)
+		}
+
+		for childID := range children {
+			inDegree[childID]--
+			if inDegree[childID] == 0 {
+				queue = append(queue, childID)
+			}
+		}
 	}
-	return initAndActivateComponent(builder, comp)
+
+	// Check if all vertices have been processed (detect cycles)
+	if len(initOrder) != len(allVertices) {
+		return nil, fmt.Errorf("circular dependency detected: processed %d components, expected %d",
+			len(initOrder), len(allVertices))
+	}
+
+	return initOrder, nil
 }
 
 func initAndActivateComponent(builder *runtime.Builder, comp runtime.Component) error {

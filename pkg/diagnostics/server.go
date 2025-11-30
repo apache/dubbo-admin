@@ -53,6 +53,10 @@ func (s *diagnosticsServer) Order() int {
 	return math.MaxInt
 }
 
+func (s *diagnosticsServer) Dependencies() []runtime.ComponentType {
+	return nil // DiagnosticsServer has no dependencies
+}
+
 func (s *diagnosticsServer) Init(ctx runtime.BuilderContext) error {
 	s.config = ctx.Config().Diagnostics
 	return nil

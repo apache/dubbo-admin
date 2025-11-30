@@ -42,7 +42,11 @@ type Attribute interface {
 	// Type returns the type of the component
 	Type() ComponentType
 	// Order indicates the order of the component during bootstrap, the bigger will be started first
+	// Deprecated: Use Dependencies() instead for automatic dependency resolution
 	Order() int
+	// Dependencies returns the list of component types that this component depends on
+	// These components will be initialized before this component
+	Dependencies() []ComponentType
 }
 
 // Component defines a process that will be run in the application

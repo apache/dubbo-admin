@@ -63,6 +63,10 @@ func (sc *storeComponent) Order() int {
 	return math.MaxInt - 1
 }
 
+func (sc *storeComponent) Dependencies() []runtime.ComponentType {
+	return nil // ResourceStore has no dependencies
+}
+
 func (sc *storeComponent) Init(ctx runtime.BuilderContext) error {
 	// 1. retrieve store config and choose the corresponding store factory
 	cfg := ctx.Config().Store
