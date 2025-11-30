@@ -57,13 +57,20 @@ func NewGormStore(kind model.ResourceKind, address string, pool *ConnectionPool)
 	}
 }
 
-// Init initializes the GORM store by migrating the schema
+// Init initializes the GORM store by migrating the schema and rebuilding indices
 func (gs *GormStore) Init(_ runtime.BuilderContext) error {
 	// Perform table migration
 	db := gs.pool.GetDB()
-	modelForMigration := &ResourceModel{ResourceKind: gs.kind.ToString()}
+	modelForMigration := &ResourceModel{
+		ResourceKind: gs.kind.ToString(),
+	}
 	if err := db.AutoMigrate(modelForMigration); err != nil {
 		return fmt.Errorf("failed to migrate schema for %s: %w", gs.kind.ToString(), err)
+	}
+
+	// Rebuild indices from existing data in the database
+	if err := gs.rebuildIndices(); err != nil {
+		return fmt.Errorf("failed to rebuild indices for %s: %w", gs.kind.ToString(), err)
 	}
 
 	logger.Infof("GORM store initialized for resource kind: %s", gs.kind.ToString())
@@ -108,7 +115,7 @@ func (gs *GormStore) Add(obj interface{}) error {
 
 	var count int64
 	db := gs.pool.GetDB()
-	err := db.Model(&ResourceModel{}).
+	err := db.Model(&ResourceModel{ResourceKind: gs.kind.ToString()}).
 		Where("resource_key = ?", resource.ResourceKey()).
 		Count(&count).Error
 	if err != nil {
@@ -167,9 +174,13 @@ func (gs *GormStore) Update(obj interface{}) error {
 	}
 
 	db := gs.pool.GetDB()
-	result := db.Model(&ResourceModel{}).
+	result := db.Model(&ResourceModel{
+		ResourceKind: gs.kind.ToString(),
+	}).
 		Where("resource_key = ?", resource.ResourceKey()).
 		Updates(map[string]interface{}{
+			"name":       m.Name,
+			"mesh":       m.Mesh,
 			"data":       m.Data,
 			"updated_at": m.UpdatedAt,
 		})
@@ -201,7 +212,9 @@ func (gs *GormStore) Delete(obj interface{}) error {
 
 	db := gs.pool.GetDB()
 	result := db.Where("resource_key = ?", resource.ResourceKey()).
-		Delete(&ResourceModel{})
+		Delete(&ResourceModel{
+			ResourceKind: gs.kind.ToString(),
+		})
 
 	if result.Error != nil {
 		return result.Error
@@ -225,7 +238,9 @@ func (gs *GormStore) Delete(obj interface{}) error {
 func (gs *GormStore) List() []interface{} {
 	var models []ResourceModel
 	db := gs.pool.GetDB()
-	if err := db.Find(&models).Error; err != nil {
+	if err := db.Model(ResourceModel{
+		ResourceKind: gs.kind.ToString(),
+	}).Find(&models).Error; err != nil {
 		logger.Errorf("failed to list resources: %v", err)
 		return []interface{}{}
 	}
@@ -246,8 +261,12 @@ func (gs *GormStore) List() []interface{} {
 func (gs *GormStore) ListKeys() []string {
 	var keys []string
 	db := gs.pool.GetDB()
-	db.Model(&ResourceModel{}).
-		Pluck("resource_key", &keys)
+	if err := db.Model(&ResourceModel{
+		ResourceKind: gs.kind.ToString(),
+	}).Pluck("resource_key", &keys).Error; err != nil {
+		logger.Errorf("failed to list keys: %v", err)
+		return []string{}
+	}
 	return keys
 }
 
@@ -287,7 +306,9 @@ func (gs *GormStore) Replace(list []interface{}, _ string) error {
 	db := gs.pool.GetDB()
 	return db.Transaction(func(tx *gorm.DB) error {
 		// Delete all existing records for this resource kind
-		if err := tx.Delete(&ResourceModel{}, "1=1").Error; err != nil {
+		if err := tx.Delete(&ResourceModel{
+			ResourceKind: gs.kind.ToString(),
+		}, "1=1").Error; err != nil {
 			return err
 		}
 
@@ -403,7 +424,9 @@ func (gs *GormStore) GetByKeys(keys []string) ([]model.Resource, error) {
 
 	var models []ResourceModel
 	db := gs.pool.GetDB()
-	err := db.Where("resource_key IN ?", keys).
+	err := db.Model(ResourceModel{
+		ResourceKind: gs.kind.ToString(),
+	}).Where("resource_key IN ?", keys).
 		Find(&models).Error
 	if err != nil {
 		return nil, err
@@ -535,4 +558,34 @@ func (gs *GormStore) getKeysByIndexes(indexes map[string]string) ([]string, erro
 // clearIndices clears all in-memory indices
 func (gs *GormStore) clearIndices() {
 	gs.indices.Clear()
+}
+
+// rebuildIndices rebuilds all in-memory indices from existing database records
+// This is called during initialization to ensure indices are populated with existing data
+func (gs *GormStore) rebuildIndices() error {
+	// Clear existing indices first
+	gs.clearIndices()
+
+	// Load all resources from the database
+	var models []ResourceModel
+	db := gs.pool.GetDB()
+	if err := db.Model(ResourceModel{
+		ResourceKind: gs.kind.ToString(),
+	}).Find(&models).Error; err != nil {
+		return fmt.Errorf("failed to load resources for index rebuild: %w", err)
+	}
+
+	// Rebuild indices for all resources
+	for _, m := range models {
+		resource, err := m.ToResource()
+		if err != nil {
+			logger.Errorf("failed to deserialize resource during index rebuild: %v", err)
+			continue
+		}
+		// Add resource to indices (nil for oldResource since this is initial load)
+		gs.indices.UpdateResource(resource, nil)
+	}
+
+	logger.Infof("Rebuilt indices for %s: loaded %d resources", gs.kind.ToString(), len(models))
+	return nil
 }

@@ -73,8 +73,8 @@ func GetOrCreatePool(dialector gorm.Dialector, storeType storecfg.Type, address 
 	// Check if pool already exists
 	if existingPool, exists := pools[poolKey]; exists {
 		// Increment reference count when reusing existing pool
-		existingPool.IncrementRef()
-		logger.Infof("Reusing %s connection pool: address=%s, refCount=%d", storeType, address, existingPool.RefCount())
+		existingPool.refCount++
+		logger.Infof("Reusing %s connection pool: address=%s, refCount=%d", storeType, address, existingPool.refCount)
 		return existingPool, nil
 	}
 
@@ -195,6 +195,7 @@ func (p *ConnectionPool) Close() error {
 				closeErr = p.sqlDB.Close()
 				p.closed = true
 			}
+			RemovePool(p.storeType, p.address)
 		})
 		return closeErr
 	}
