@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-package mysql
+package postgres
 
 import (
-	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 
 	storecfg "github.com/apache/dubbo-admin/pkg/config/store"
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
@@ -27,25 +27,25 @@ import (
 )
 
 func init() {
-	store.RegisterFactory(&mysqlStoreFactory{})
+	store.RegisterFactory(&postgresStoreFactory{})
 }
 
-// mysqlStoreFactory is the factory for creating MySQL store instances
-type mysqlStoreFactory struct{}
+// postgresStoreFactory is the factory for creating PostgreSQL store instances
+type postgresStoreFactory struct{}
 
-var _ store.Factory = &mysqlStoreFactory{}
+var _ store.Factory = &postgresStoreFactory{}
 
 // Support checks if this factory supports the given store type
-func (f *mysqlStoreFactory) Support(s storecfg.Type) bool {
-	return s == storecfg.MySQL
+func (f *postgresStoreFactory) Support(s storecfg.Type) bool {
+	return s == storecfg.Postgres
 }
 
-// New creates a new MySQL store instance for the specified resource kind
-func (f *mysqlStoreFactory) New(kind model.ResourceKind, cfg *storecfg.Config) (store.ManagedResourceStore, error) {
-	// Get or create connection pool with MySQL dialector
+// New creates a new PostgreSQL store instance for the specified resource kind
+func (f *postgresStoreFactory) New(kind model.ResourceKind, cfg *storecfg.Config) (store.ManagedResourceStore, error) {
+	// Get or create connection pool with PostgreSQL dialector
 	pool, err := dbcommon.GetOrCreatePool(
-		mysql.Open(cfg.Address),
-		storecfg.MySQL,
+		postgres.Open(cfg.Address),
+		storecfg.Postgres,
 		cfg.Address,
 		dbcommon.DefaultConnectionPoolConfig(),
 	)

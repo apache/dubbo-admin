@@ -28,4 +28,6 @@ import (
 	_ "github.com/apache/dubbo-admin/pkg/discovery/mock"
 	_ "github.com/apache/dubbo-admin/pkg/engine/kubernetes"
 	_ "github.com/apache/dubbo-admin/pkg/store/memory"
+	_ "github.com/apache/dubbo-admin/pkg/store/mysql"
+	_ "github.com/apache/dubbo-admin/pkg/store/postgres"
 )
