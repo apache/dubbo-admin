@@ -61,10 +61,8 @@ func NewGormStore(kind model.ResourceKind, address string, pool *ConnectionPool)
 func (gs *GormStore) Init(_ runtime.BuilderContext) error {
 	// Perform table migration
 	db := gs.pool.GetDB()
-	modelForMigration := &ResourceModel{
-		ResourceKind: gs.kind.ToString(),
-	}
-	if err := db.AutoMigrate(modelForMigration); err != nil {
+	// Use Scopes to set the table name dynamically for migration
+	if err := db.Scopes(TableScope(gs.kind.ToString())).AutoMigrate(&ResourceModel{}); err != nil {
 		return fmt.Errorf("failed to migrate schema for %s: %w", gs.kind.ToString(), err)
 	}
 
@@ -115,7 +113,7 @@ func (gs *GormStore) Add(obj interface{}) error {
 
 	var count int64
 	db := gs.pool.GetDB()
-	err := db.Model(&ResourceModel{ResourceKind: gs.kind.ToString()}).
+	err := db.Scopes(TableScope(gs.kind.ToString())).Model(&ResourceModel{}).
 		Where("resource_key = ?", resource.ResourceKey()).
 		Count(&count).Error
 	if err != nil {
@@ -134,7 +132,7 @@ func (gs *GormStore) Add(obj interface{}) error {
 		return err
 	}
 
-	if err := db.Create(m).Error; err != nil {
+	if err := db.Scopes(TableScope(gs.kind.ToString())).Create(m).Error; err != nil {
 		return err
 	}
 
@@ -174,9 +172,7 @@ func (gs *GormStore) Update(obj interface{}) error {
 	}
 
 	db := gs.pool.GetDB()
-	result := db.Model(&ResourceModel{
-		ResourceKind: gs.kind.ToString(),
-	}).
+	result := db.Scopes(TableScope(gs.kind.ToString())).Model(&ResourceModel{}).
 		Where("resource_key = ?", resource.ResourceKey()).
 		Updates(map[string]interface{}{
 			"name":       m.Name,
@@ -211,10 +207,9 @@ func (gs *GormStore) Delete(obj interface{}) error {
 	}
 
 	db := gs.pool.GetDB()
-	result := db.Where("resource_key = ?", resource.ResourceKey()).
-		Delete(&ResourceModel{
-			ResourceKind: gs.kind.ToString(),
-		})
+	result := db.Scopes(TableScope(gs.kind.ToString())).
+		Where("resource_key = ?", resource.ResourceKey()).
+		Delete(&ResourceModel{})
 
 	if result.Error != nil {
 		return result.Error
@@ -238,9 +233,7 @@ func (gs *GormStore) Delete(obj interface{}) error {
 func (gs *GormStore) List() []interface{} {
 	var models []ResourceModel
 	db := gs.pool.GetDB()
-	if err := db.Model(ResourceModel{
-		ResourceKind: gs.kind.ToString(),
-	}).Find(&models).Error; err != nil {
+	if err := db.Scopes(TableScope(gs.kind.ToString())).Model(&ResourceModel{}).Find(&models).Error; err != nil {
 		logger.Errorf("failed to list resources: %v", err)
 		return []interface{}{}
 	}
@@ -261,9 +254,7 @@ func (gs *GormStore) List() []interface{} {
 func (gs *GormStore) ListKeys() []string {
 	var keys []string
 	db := gs.pool.GetDB()
-	if err := db.Model(&ResourceModel{
-		ResourceKind: gs.kind.ToString(),
-	}).Pluck("resource_key", &keys).Error; err != nil {
+	if err := db.Scopes(TableScope(gs.kind.ToString())).Model(&ResourceModel{}).Pluck("resource_key", &keys).Error; err != nil {
 		logger.Errorf("failed to list keys: %v", err)
 		return []string{}
 	}
@@ -283,7 +274,8 @@ func (gs *GormStore) Get(obj interface{}) (item interface{}, exists bool, err er
 func (gs *GormStore) GetByKey(key string) (item interface{}, exists bool, err error) {
 	var m ResourceModel
 	db := gs.pool.GetDB()
-	result := db.Where("resource_key = ?", key).
+	result := db.Scopes(TableScope(gs.kind.ToString())).
+		Where("resource_key = ?", key).
 		First(&m)
 
 	if result.Error != nil {
@@ -306,9 +298,8 @@ func (gs *GormStore) Replace(list []interface{}, _ string) error {
 	db := gs.pool.GetDB()
 	return db.Transaction(func(tx *gorm.DB) error {
 		// Delete all existing records for this resource kind
-		if err := tx.Delete(&ResourceModel{
-			ResourceKind: gs.kind.ToString(),
-		}, "1=1").Error; err != nil {
+		if err := tx.Scopes(TableScope(gs.kind.ToString())).
+			Delete(&ResourceModel{}, "1=1").Error; err != nil {
 			return err
 		}
 
@@ -338,7 +329,7 @@ func (gs *GormStore) Replace(list []interface{}, _ string) error {
 		}
 
 		// Batch insert all models at once
-		if err := tx.CreateInBatches(models, 100).Error; err != nil {
+		if err := tx.Scopes(TableScope(gs.kind.ToString())).CreateInBatches(models, 100).Error; err != nil {
 			return err
 		}
 
@@ -424,9 +415,8 @@ func (gs *GormStore) GetByKeys(keys []string) ([]model.Resource, error) {
 
 	var models []ResourceModel
 	db := gs.pool.GetDB()
-	err := db.Model(ResourceModel{
-		ResourceKind: gs.kind.ToString(),
-	}).Where("resource_key IN ?", keys).
+	err := db.Scopes(TableScope(gs.kind.ToString())).Model(&ResourceModel{}).
+		Where("resource_key IN ?", keys).
 		Find(&models).Error
 	if err != nil {
 		return nil, err
@@ -569,9 +559,7 @@ func (gs *GormStore) rebuildIndices() error {
 	// Load all resources from the database
 	var models []ResourceModel
 	db := gs.pool.GetDB()
-	if err := db.Model(ResourceModel{
-		ResourceKind: gs.kind.ToString(),
-	}).Find(&models).Error; err != nil {
+	if err := db.Scopes(TableScope(gs.kind.ToString())).Model(&ResourceModel{}).Find(&models).Error; err != nil {
 		return fmt.Errorf("failed to load resources for index rebuild: %w", err)
 	}
 

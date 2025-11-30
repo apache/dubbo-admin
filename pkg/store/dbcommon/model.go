@@ -23,11 +23,15 @@ import (
 	"time"
 	"unicode"
 
+	"gorm.io/gorm"
+
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
 // ResourceModel is the database model for storing Dubbo resources
 // It uses dynamic table naming based on ResourceKind to improve query performance
+// Note: TableName() method is intentionally removed as GORM caches it.
+// Use TableScope() instead for dynamic table names.
 type ResourceModel struct {
 	ID           uint      `gorm:"primarykey"`           // Auto-incrementing primary key
 	ResourceKey  string    `gorm:"uniqueIndex;not null"` // Unique identifier for the resource
@@ -39,16 +43,24 @@ type ResourceModel struct {
 	UpdatedAt    time.Time `gorm:"autoUpdateTime"`       // Automatically updated on modification
 }
 
-// TableName returns the table name for this resource model
+// TableNameForKind returns the table name for a given ResourceKind
 // Uses dynamic table naming: each ResourceKind gets its own table
 // e.g., "Application" -> "resources_application", "ServiceProviderMapping" -> "resources_service_provider_mapping"
-func (rm *ResourceModel) TableName() string {
-	if rm.ResourceKind == "" {
+func TableNameForKind(kind string) string {
+	if kind == "" {
 		return "resources"
 	}
 	// Convert ResourceKind to snake_case table name with "resources_" prefix
-	// e.g., "Application" -> "resources_application", "ServiceProviderMapping" -> "resources_service_provider_mapping"
-	return "resources_" + toSnakeCase(rm.ResourceKind)
+	return "resources_" + toSnakeCase(kind)
+}
+
+// TableScope returns a GORM scope function that sets the table name dynamically
+// This is the recommended approach for dynamic table names as TableName() is cached by GORM
+// Usage: db.Scopes(TableScope(kind)).Find(&models)
+func TableScope(kind string) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		return db.Table(TableNameForKind(kind))
+	}
 }
 
 // toSnakeCase converts a string to snake_case
