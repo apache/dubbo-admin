@@ -28,6 +28,7 @@ import (
 	enginecfg "github.com/apache/dubbo-admin/pkg/config/engine"
 	"github.com/apache/dubbo-admin/pkg/core/controller"
 	"github.com/apache/dubbo-admin/pkg/core/engine"
+	"github.com/apache/dubbo-admin/pkg/engine/kubernetes/listerwatcher"
 )
 
 func init() {
@@ -66,7 +67,7 @@ func (e *EngineFactory) NewListWatchers(cfg *enginecfg.Config) ([]controller.Res
 	}
 
 	lwList := make([]controller.ResourceListerWatcher, 0)
-	podListerWatcher, err := NewPodListWatcher(clientset, cfg)
+	podListerWatcher, err := listerwatcher.NewPodListWatcher(clientset, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init PodListerWatcher in kubernetes engine, %w", err)
 	}

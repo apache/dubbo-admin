@@ -39,13 +39,19 @@ console:
 store:
   type: memory
 discovery:
-#  - type: nacos
-#    name: nacos-44.33
-#    address:
-#      registry: nacos://47.76.94.134:8848?username=nacos&password=nacos
-#      configCenter: nacos://47.76.94.134:8848?username=nacos&password=nacos
-#      metadataReport: nacos://47.76.94.134:8848?username=nacos&password=nacos
-#
+  - type: nacos2
+    name: localhost-nacos
+    address:
+      registry: nacos://127.0.0.1:28848?username=nacos&password=nacos
+      configCenter: nacos://127.0.0.1:28848?username=nacos&password=nacos
+      metadataReport: nacos://127.0.0.1:28848?username=nacos&password=nacos
+    properties:
+      # [Nacos2] Adjust the interval(time unit is `s`) to adjust the frequency of list-all configs in nacos.
+      # Default period is 30s
+      configWatchPeriod: 20
+      # [Nacos2] Adjust the interval(time unit is `s`) to adjust the frequency of list-all services in nacos.
+      # Default period is 30s
+      serviceWatchPeriod: 20
 #  - type: etcd
 #    name: etcd-44.33
 #    address:
@@ -64,7 +70,7 @@ engine:
     kubeConfigPath: /root/.kube/config
     # [Kubernetes] Watch pods with specified labels, if not set, will watch all pods
     # podWatchSelector: org.apache.dubbo/dubbo-apps=true
-    # [Kubernetes] Identify which Dubbo app the pod belongs to, if not set, [type = ByIP] will be used
+    # [Kubernetes] Identify which Dubbo app the pod belongs to, if not set, pod will not be seen as a dubbo instance at first
     # 1. ByLabels: Use the label value corresponding to the labelKey as the dubbo app name
     # e.g.
     #    type: ByLabel
@@ -73,13 +79,27 @@ engine:
     # e.g.
     #    type: ByAnnotation
     #    annotationKey: org.apache.dubbo/dubbo-app-name
-    # 3. ByIP(default): Use pod's IP to find if there is a same ip of an instance and use the instance's app name as the identifier,
-    # if there is no such association, the pod will not be seen as a pod of dubbo application.
-    # e.g.
-    #    type: ByIP
 #    dubboAppIdentifier:
 #      type: ByLabel
 #      labelKey: org.apache.dubbo/dubbo-app-name
+    # [Kubernetes] Identify the rpc port of a dubbo application, if not set, pod will not be seen as a dubbo instance at first
+    # 1. ByLabels: Use the label value corresponding to the labelKey as the dubbo rpc port
+    # e.g.
+    #    type: ByLabel
+    #    labelKey: org.apache.dubbo/dubbo-rpc-port
+    # 2. ByAnnotation: Use the annotation value corresponding to the annotationKey as the dubbo rpc port
+    # e.g.
+    #    type: ByAnnotation
+    #    annotationKey: org.apache.dubbo/dubbo-rpc-port
+    # [Kubernetes] Identify the registry(discovery) which the dubbo instance belongs to, if not set, pod will not be seen as a dubbo instance at first
+    # 1. ByLabels: Use the label value corresponding to the labelKey as the dubbo registry name
+    # e.g.
+    #    type: ByLabel
+    #    labelKey: org.apache.dubbo/registry
+    # 2. ByAnnotation: Use the annotation value corresponding to the annotationKey as the dubbo registry name
+    # e.g.
+    #    type: ByAnnotation
+    #    annotationKey: org.apache.dubbo/registry
     # [Kubernetes] Strategy of choosing the main container, if not set, [type = ByIndex] and [index = 0] will be used
     # 1. ByLast: choose the last container as the main container
     # e.g.

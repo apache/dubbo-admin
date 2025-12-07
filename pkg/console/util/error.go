@@ -30,12 +30,12 @@ import (
 func HandleServiceError(ctx *gin.Context, err error) {
 	var e bizerror.Error
 	if !errors.As(err, &e) {
-		e = bizerror.NewBizError(bizerror.UnknownError, err.Error())
+		e = bizerror.New(bizerror.UnknownError, err.Error())
 	}
 	ctx.JSON(http.StatusOK, model.NewBizErrorResp(e))
 }
 
 func HandleArgumentError(ctx *gin.Context, err error) {
-	e := bizerror.NewBizError(bizerror.InvalidArgument, err.Error())
+	e := bizerror.New(bizerror.InvalidArgument, err.Error())
 	ctx.JSON(http.StatusOK, model.NewBizErrorResp(e))
 }

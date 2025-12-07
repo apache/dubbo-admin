@@ -49,18 +49,18 @@ func newRunCmdWithOpts(opts dubbocmd.RunCmdOpts) *cobra.Command {
 			cfg := app.DefaultAdminConfig()
 			err := config.Load(args.configPath, &cfg)
 			if err != nil {
-				logger.Errorf("could not load the configuration, err: %s", err.Error())
+				logger.Errorf("could not load the configuration, cause: %s", err.Error())
 				return err
 
 			}
 			cfgForDisplay, err := config.ConfigForDisplay(&cfg)
 			if err != nil {
-				logger.Errorf("unable to prepare config for display, err: %s", err.Error())
+				logger.Errorf("unable to prepare config for display, cause: %s", err.Error())
 				return err
 			}
 			cfgBytes, err := config.ToJson(cfgForDisplay)
 			if err != nil {
-				logger.Errorf("unable to convert config to json, err: %s", err.Error())
+				logger.Errorf("unable to convert config to json, cause: %s", err.Error())
 				return err
 			}
 			logger.Infof("Current config %s", cfgBytes)
@@ -70,14 +70,14 @@ func newRunCmdWithOpts(opts dubbocmd.RunCmdOpts) *cobra.Command {
 			gracefulCtx, ctx := opts.SetupSignalHandler()
 			rt, err := bootstrap.Bootstrap(gracefulCtx, cfg)
 			if err != nil {
-				logger.Errorf("unable to bootstrap, err: %s", err.Error())
+				logger.Errorf("unable to bootstrap, cause: %s", err.Error())
 				return err
 			}
 
 			// 3. start components
 			logger.Infof("starting Admin......, version: %s", dubboversion.Build.Version)
 			if err := rt.Start(gracefulCtx.Done()); err != nil {
-				logger.Errorf("problem running Admin, err: %s", err.Error())
+				logger.Errorf("problem running Admin, cause: %s", err.Error())
 				return err
 			}
 			logger.Info("stop signal received. Waiting 3 seconds for components to stop gracefully...")

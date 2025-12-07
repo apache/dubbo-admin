@@ -58,12 +58,6 @@ type InstanceResourceStatus struct {
 	// define resource-specific status here
 }
 
-type InstanceResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []InstanceResource `json:"items"`
-}
-
 func (r *InstanceResource) ResourceKind() coremodel.ResourceKind {
 	return InstanceKind
 }
@@ -83,11 +77,8 @@ func (r *InstanceResource) ResourceMeta() metav1.ObjectMeta {
 func (r *InstanceResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
-func (r *InstanceResource) DeepCopyObject() k8sruntime.Object {
-	if r == nil {
-		return nil
-	}
 
+func (r *InstanceResource) DeepCopyObject() k8sruntime.Object {
 	out := &InstanceResource{
 		TypeMeta: r.TypeMeta,
 		Mesh:     r.Mesh,
@@ -111,7 +102,7 @@ func (r *InstanceResource) DeepCopyObject() k8sruntime.Object {
 func (r *InstanceResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to encode InstanceResource: %s to json, err: %s", r.ResourceKey(), err)
+		logger.Errorf("failed to encode InstanceResource: %s to json, err: %w", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)
@@ -128,11 +119,44 @@ func NewInstanceResourceWithAttributes(name string, mesh string) *InstanceResour
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+		Spec: &meshproto.Instance{},
 	}
 }
 
 func NewInstanceResource() coremodel.Resource {
 	return &InstanceResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(InstanceKind),
+			APIVersion: "v1alpha1",
+		},
+		Spec: &meshproto.Instance{},
+	}
+}
+
+type InstanceResourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []InstanceResource `json:"items"`
+}
+
+func (r *InstanceResourceList) DeepCopyObject() k8sruntime.Object {
+	out := &InstanceResourceList{
+		TypeMeta: r.TypeMeta,
+	}
+	r.ListMeta.DeepCopyInto(&out.ListMeta)
+
+	if len(r.Items) == 0 {
+		return out
+	}
+	out.Items = make([]InstanceResource, len(r.Items))
+	for i := range r.Items {
+		out.Items[i] = *r.Items[i].DeepCopyObject().(*InstanceResource)
+	}
+	return out
+}
+
+func NewInstanceResourceList() *InstanceResourceList {
+	return &InstanceResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(InstanceKind),
 			APIVersion: "v1alpha1",

@@ -58,12 +58,6 @@ type ConditionRouteResourceStatus struct {
 	// define resource-specific status here
 }
 
-type ConditionRouteResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ConditionRouteResource `json:"items"`
-}
-
 func (r *ConditionRouteResource) ResourceKind() coremodel.ResourceKind {
 	return ConditionRouteKind
 }
@@ -83,11 +77,8 @@ func (r *ConditionRouteResource) ResourceMeta() metav1.ObjectMeta {
 func (r *ConditionRouteResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
-func (r *ConditionRouteResource) DeepCopyObject() k8sruntime.Object {
-	if r == nil {
-		return nil
-	}
 
+func (r *ConditionRouteResource) DeepCopyObject() k8sruntime.Object {
 	out := &ConditionRouteResource{
 		TypeMeta: r.TypeMeta,
 		Mesh:     r.Mesh,
@@ -111,7 +102,7 @@ func (r *ConditionRouteResource) DeepCopyObject() k8sruntime.Object {
 func (r *ConditionRouteResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to encode ConditionRouteResource: %s to json, err: %s", r.ResourceKey(), err)
+		logger.Errorf("failed to encode ConditionRouteResource: %s to json, err: %w", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)
@@ -128,11 +119,44 @@ func NewConditionRouteResourceWithAttributes(name string, mesh string) *Conditio
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+		Spec: &meshproto.ConditionRoute{},
 	}
 }
 
 func NewConditionRouteResource() coremodel.Resource {
 	return &ConditionRouteResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ConditionRouteKind),
+			APIVersion: "v1alpha1",
+		},
+		Spec: &meshproto.ConditionRoute{},
+	}
+}
+
+type ConditionRouteResourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []ConditionRouteResource `json:"items"`
+}
+
+func (r *ConditionRouteResourceList) DeepCopyObject() k8sruntime.Object {
+	out := &ConditionRouteResourceList{
+		TypeMeta: r.TypeMeta,
+	}
+	r.ListMeta.DeepCopyInto(&out.ListMeta)
+
+	if len(r.Items) == 0 {
+		return out
+	}
+	out.Items = make([]ConditionRouteResource, len(r.Items))
+	for i := range r.Items {
+		out.Items[i] = *r.Items[i].DeepCopyObject().(*ConditionRouteResource)
+	}
+	return out
+}
+
+func NewConditionRouteResourceList() *ConditionRouteResourceList {
+	return &ConditionRouteResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(ConditionRouteKind),
 			APIVersion: "v1alpha1",

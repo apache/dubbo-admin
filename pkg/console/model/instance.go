@@ -106,7 +106,7 @@ type State struct {
 }
 
 type InstanceDetailResp struct {
-	RpcPort          int32             `json:"rpcPort"`
+	RpcPort          int64             `json:"rpcPort"`
 	Ip               string            `json:"ip"`
 	AppName          string            `json:"appName"`
 	WorkloadName     string            `json:"workloadName"`

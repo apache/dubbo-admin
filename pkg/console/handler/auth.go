@@ -35,7 +35,7 @@ func Login(ctx consolectx.Context) gin.HandlerFunc {
 		// verify username and password
 		authCfg := ctx.Config().Console.Auth
 		if user != authCfg.User || password != authCfg.Password {
-			authErr := bizerror.NewBizError(bizerror.Unauthorized, "username or password is not correct!")
+			authErr := bizerror.New(bizerror.Unauthorized, "username or password is not correct!")
 			c.JSON(http.StatusUnauthorized, model.NewBizErrorResp(authErr))
 			return
 		}
@@ -47,7 +47,7 @@ func Login(ctx consolectx.Context) gin.HandlerFunc {
 		})
 		err := session.Save()
 		if err != nil {
-			sessionErr := bizerror.NewBizError(bizerror.SessionError, err.Error())
+			sessionErr := bizerror.New(bizerror.SessionError, err.Error())
 			c.JSON(http.StatusOK, model.NewBizErrorResp(sessionErr))
 			return
 		}
@@ -61,7 +61,7 @@ func Logout(_ consolectx.Context) gin.HandlerFunc {
 		session.Clear()
 		err := session.Save()
 		if err != nil {
-			sessionErr := bizerror.NewBizError(bizerror.SessionError, err.Error())
+			sessionErr := bizerror.New(bizerror.SessionError, err.Error())
 			c.JSON(http.StatusOK, model.NewBizErrorResp(sessionErr))
 			return
 		}

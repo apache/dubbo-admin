@@ -36,8 +36,8 @@ var (
 			NameKey:        "logger",
 			FunctionKey:    "",
 			StacktraceKey:  "stacktrace",
-			EncodeLevel:    zapcore.CapitalLevelEncoder,
-			EncodeTime:     zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05"),
+			EncodeLevel:    zapcore.CapitalColorLevelEncoder,
+			EncodeTime:     zapcore.RFC3339TimeEncoder,
 			EncodeCaller:   zapcore.ShortCallerEncoder,
 			EncodeDuration: zapcore.SecondsDurationEncoder,
 		})
@@ -73,8 +73,11 @@ func Init() {
 	defer logger.Sync() // flushes buffer, if any
 	sugar = logger.Sugar()
 
+	// Create a separate logger for gRPC with higher log level to suppress INFO logs
+	grpcCore := zapcore.NewCore(encoder, os.Stdout, zap.WarnLevel)
+	grpcLogger := zap.New(grpcCore, zap.AddCaller(), zap.AddCallerSkip(2))
 	// Make sure that log statements internal to gRPC library are logged using the zapLogger as well.
-	grpcZap.ReplaceGrpcLoggerV2(logger)
+	grpcZap.ReplaceGrpcLoggerV2(grpcLogger)
 }
 
 // nolint

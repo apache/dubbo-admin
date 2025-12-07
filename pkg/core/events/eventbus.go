@@ -33,6 +33,8 @@ type Event interface {
 	OldObj() model.Resource
 	// NewObj returns the new object, nil if event type is in [cache.Deleted]
 	NewObj() model.Resource
+	// Context returns the context of the event, if event provider want to pass extra info to the consumer, just use context
+	Context() map[string]string
 	// String returns the string representation of the event
 	String() string
 }
@@ -48,18 +50,30 @@ type Subscriber interface {
 type Subscribers []Subscriber
 
 type ResourceChangedEvent struct {
-	typ    cache.DeltaType
-	oldObj model.Resource
-	newObj model.Resource
+	typ     cache.DeltaType
+	oldObj  model.Resource
+	newObj  model.Resource
+	context map[string]string
 }
 
 var _ Event = &ResourceChangedEvent{}
 
 func NewResourceChangedEvent(typ cache.DeltaType, oldObj model.Resource, newObj model.Resource) *ResourceChangedEvent {
 	return &ResourceChangedEvent{
-		typ:    typ,
-		oldObj: oldObj,
-		newObj: newObj,
+		typ:     typ,
+		oldObj:  oldObj,
+		newObj:  newObj,
+		context: map[string]string{},
+	}
+}
+
+func NewResourceChangedEventWithContext(typ cache.DeltaType, oldObj model.Resource,
+	newObj model.Resource, ctx map[string]string) *ResourceChangedEvent {
+	return &ResourceChangedEvent{
+		typ:     typ,
+		oldObj:  oldObj,
+		newObj:  newObj,
+		context: ctx,
 	}
 }
 
@@ -73,6 +87,10 @@ func (e *ResourceChangedEvent) OldObj() model.Resource {
 
 func (e *ResourceChangedEvent) NewObj() model.Resource {
 	return e.newObj
+}
+
+func (e *ResourceChangedEvent) Context() map[string]string {
+	return e.context
 }
 
 func (e *ResourceChangedEvent) String() string {

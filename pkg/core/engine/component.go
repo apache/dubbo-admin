@@ -128,7 +128,7 @@ func (e *engineComponent) initInformers(cfg *enginecfg.Config, emitter events.Em
 func (e *engineComponent) initSubscribers(eventbus events.EventBus) error {
 	rs, err := e.storeRouter.ResourceKindRoute(meshresource.InstanceKind)
 	if err != nil {
-		return fmt.Errorf("can not find store for resource kind %s, %w", meshresource.RuntimeInstanceKind, err)
+		return fmt.Errorf("can not find store for resource kind %s, %w", meshresource.InstanceKind, err)
 	}
 	runtimeInstanceSub := subscriber.NewRuntimeInstanceEventSubscriber(rs, eventbus)
 	e.subscribers = append(e.subscribers, runtimeInstanceSub)

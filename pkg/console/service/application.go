@@ -297,7 +297,7 @@ func UpInsertAppAccessLog(ctx consolectx.Context, appName string, openAccessLog 
 		return err
 	}
 	if data == nil {
-		return bizerror.NewBizError(bizerror.AppNotFound, fmt.Sprintf("%s does not exist", appName))
+		return bizerror.New(bizerror.AppNotFound, fmt.Sprintf("%s does not exist", appName))
 	}
 	// check app configurator exists
 	appConfiguratorName := appName + consts.ConfiguratorRuleSuffix
@@ -478,7 +478,7 @@ func UpInsertAppFlowWeightConfig(ctx consolectx.Context, appName string, mesh st
 		return err
 	}
 	if data == nil {
-		return bizerror.NewBizError(bizerror.AppNotFound, fmt.Sprintf("%s does not exist", appName))
+		return bizerror.New(bizerror.AppNotFound, fmt.Sprintf("%s does not exist", appName))
 	}
 	appConfiguratorName := appName + consts.ConfiguratorRuleSuffix
 	res, err := GetConfigurator(ctx, appConfiguratorName, mesh)

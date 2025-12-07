@@ -58,12 +58,6 @@ type ServiceProviderMappingResourceStatus struct {
 	// define resource-specific status here
 }
 
-type ServiceProviderMappingResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ServiceProviderMappingResource `json:"items"`
-}
-
 func (r *ServiceProviderMappingResource) ResourceKind() coremodel.ResourceKind {
 	return ServiceProviderMappingKind
 }
@@ -83,11 +77,8 @@ func (r *ServiceProviderMappingResource) ResourceMeta() metav1.ObjectMeta {
 func (r *ServiceProviderMappingResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
-func (r *ServiceProviderMappingResource) DeepCopyObject() k8sruntime.Object {
-	if r == nil {
-		return nil
-	}
 
+func (r *ServiceProviderMappingResource) DeepCopyObject() k8sruntime.Object {
 	out := &ServiceProviderMappingResource{
 		TypeMeta: r.TypeMeta,
 		Mesh:     r.Mesh,
@@ -111,7 +102,7 @@ func (r *ServiceProviderMappingResource) DeepCopyObject() k8sruntime.Object {
 func (r *ServiceProviderMappingResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to encode ServiceProviderMappingResource: %s to json, err: %s", r.ResourceKey(), err)
+		logger.Errorf("failed to encode ServiceProviderMappingResource: %s to json, err: %w", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)
@@ -128,11 +119,44 @@ func NewServiceProviderMappingResourceWithAttributes(name string, mesh string) *
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+		Spec: &meshproto.ServiceProviderMapping{},
 	}
 }
 
 func NewServiceProviderMappingResource() coremodel.Resource {
 	return &ServiceProviderMappingResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ServiceProviderMappingKind),
+			APIVersion: "v1alpha1",
+		},
+		Spec: &meshproto.ServiceProviderMapping{},
+	}
+}
+
+type ServiceProviderMappingResourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []ServiceProviderMappingResource `json:"items"`
+}
+
+func (r *ServiceProviderMappingResourceList) DeepCopyObject() k8sruntime.Object {
+	out := &ServiceProviderMappingResourceList{
+		TypeMeta: r.TypeMeta,
+	}
+	r.ListMeta.DeepCopyInto(&out.ListMeta)
+
+	if len(r.Items) == 0 {
+		return out
+	}
+	out.Items = make([]ServiceProviderMappingResource, len(r.Items))
+	for i := range r.Items {
+		out.Items[i] = *r.Items[i].DeepCopyObject().(*ServiceProviderMappingResource)
+	}
+	return out
+}
+
+func NewServiceProviderMappingResourceList() *ServiceProviderMappingResourceList {
+	return &ServiceProviderMappingResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(ServiceProviderMappingKind),
 			APIVersion: "v1alpha1",

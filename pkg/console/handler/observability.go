@@ -22,7 +22,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/apache/dubbo-admin/pkg/console/constants"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"

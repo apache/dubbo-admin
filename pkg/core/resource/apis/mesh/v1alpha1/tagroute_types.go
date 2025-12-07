@@ -58,12 +58,6 @@ type TagRouteResourceStatus struct {
 	// define resource-specific status here
 }
 
-type TagRouteResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []TagRouteResource `json:"items"`
-}
-
 func (r *TagRouteResource) ResourceKind() coremodel.ResourceKind {
 	return TagRouteKind
 }
@@ -83,11 +77,8 @@ func (r *TagRouteResource) ResourceMeta() metav1.ObjectMeta {
 func (r *TagRouteResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
-func (r *TagRouteResource) DeepCopyObject() k8sruntime.Object {
-	if r == nil {
-		return nil
-	}
 
+func (r *TagRouteResource) DeepCopyObject() k8sruntime.Object {
 	out := &TagRouteResource{
 		TypeMeta: r.TypeMeta,
 		Mesh:     r.Mesh,
@@ -111,7 +102,7 @@ func (r *TagRouteResource) DeepCopyObject() k8sruntime.Object {
 func (r *TagRouteResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to encode TagRouteResource: %s to json, err: %s", r.ResourceKey(), err)
+		logger.Errorf("failed to encode TagRouteResource: %s to json, err: %w", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)
@@ -128,11 +119,44 @@ func NewTagRouteResourceWithAttributes(name string, mesh string) *TagRouteResour
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+		Spec: &meshproto.TagRoute{},
 	}
 }
 
 func NewTagRouteResource() coremodel.Resource {
 	return &TagRouteResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(TagRouteKind),
+			APIVersion: "v1alpha1",
+		},
+		Spec: &meshproto.TagRoute{},
+	}
+}
+
+type TagRouteResourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []TagRouteResource `json:"items"`
+}
+
+func (r *TagRouteResourceList) DeepCopyObject() k8sruntime.Object {
+	out := &TagRouteResourceList{
+		TypeMeta: r.TypeMeta,
+	}
+	r.ListMeta.DeepCopyInto(&out.ListMeta)
+
+	if len(r.Items) == 0 {
+		return out
+	}
+	out.Items = make([]TagRouteResource, len(r.Items))
+	for i := range r.Items {
+		out.Items[i] = *r.Items[i].DeepCopyObject().(*TagRouteResource)
+	}
+	return out
+}
+
+func NewTagRouteResourceList() *TagRouteResourceList {
+	return &TagRouteResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(TagRouteKind),
 			APIVersion: "v1alpha1",

@@ -58,12 +58,6 @@ type ServiceConsumerMetadataResourceStatus struct {
 	// define resource-specific status here
 }
 
-type ServiceConsumerMetadataResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ServiceConsumerMetadataResource `json:"items"`
-}
-
 func (r *ServiceConsumerMetadataResource) ResourceKind() coremodel.ResourceKind {
 	return ServiceConsumerMetadataKind
 }
@@ -83,11 +77,8 @@ func (r *ServiceConsumerMetadataResource) ResourceMeta() metav1.ObjectMeta {
 func (r *ServiceConsumerMetadataResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
-func (r *ServiceConsumerMetadataResource) DeepCopyObject() k8sruntime.Object {
-	if r == nil {
-		return nil
-	}
 
+func (r *ServiceConsumerMetadataResource) DeepCopyObject() k8sruntime.Object {
 	out := &ServiceConsumerMetadataResource{
 		TypeMeta: r.TypeMeta,
 		Mesh:     r.Mesh,
@@ -111,7 +102,7 @@ func (r *ServiceConsumerMetadataResource) DeepCopyObject() k8sruntime.Object {
 func (r *ServiceConsumerMetadataResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to encode ServiceConsumerMetadataResource: %s to json, err: %s", r.ResourceKey(), err)
+		logger.Errorf("failed to encode ServiceConsumerMetadataResource: %s to json, err: %w", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)
@@ -128,11 +119,44 @@ func NewServiceConsumerMetadataResourceWithAttributes(name string, mesh string) 
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+		Spec: &meshproto.ServiceConsumerMetadata{},
 	}
 }
 
 func NewServiceConsumerMetadataResource() coremodel.Resource {
 	return &ServiceConsumerMetadataResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ServiceConsumerMetadataKind),
+			APIVersion: "v1alpha1",
+		},
+		Spec: &meshproto.ServiceConsumerMetadata{},
+	}
+}
+
+type ServiceConsumerMetadataResourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []ServiceConsumerMetadataResource `json:"items"`
+}
+
+func (r *ServiceConsumerMetadataResourceList) DeepCopyObject() k8sruntime.Object {
+	out := &ServiceConsumerMetadataResourceList{
+		TypeMeta: r.TypeMeta,
+	}
+	r.ListMeta.DeepCopyInto(&out.ListMeta)
+
+	if len(r.Items) == 0 {
+		return out
+	}
+	out.Items = make([]ServiceConsumerMetadataResource, len(r.Items))
+	for i := range r.Items {
+		out.Items[i] = *r.Items[i].DeepCopyObject().(*ServiceConsumerMetadataResource)
+	}
+	return out
+}
+
+func NewServiceConsumerMetadataResourceList() *ServiceConsumerMetadataResourceList {
+	return &ServiceConsumerMetadataResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(ServiceConsumerMetadataKind),
 			APIVersion: "v1alpha1",

@@ -58,12 +58,6 @@ type DynamicConfigResourceStatus struct {
 	// define resource-specific status here
 }
 
-type DynamicConfigResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []DynamicConfigResource `json:"items"`
-}
-
 func (r *DynamicConfigResource) ResourceKind() coremodel.ResourceKind {
 	return DynamicConfigKind
 }
@@ -83,11 +77,8 @@ func (r *DynamicConfigResource) ResourceMeta() metav1.ObjectMeta {
 func (r *DynamicConfigResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
-func (r *DynamicConfigResource) DeepCopyObject() k8sruntime.Object {
-	if r == nil {
-		return nil
-	}
 
+func (r *DynamicConfigResource) DeepCopyObject() k8sruntime.Object {
 	out := &DynamicConfigResource{
 		TypeMeta: r.TypeMeta,
 		Mesh:     r.Mesh,
@@ -111,7 +102,7 @@ func (r *DynamicConfigResource) DeepCopyObject() k8sruntime.Object {
 func (r *DynamicConfigResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to encode DynamicConfigResource: %s to json, err: %s", r.ResourceKey(), err)
+		logger.Errorf("failed to encode DynamicConfigResource: %s to json, err: %w", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)
@@ -128,11 +119,44 @@ func NewDynamicConfigResourceWithAttributes(name string, mesh string) *DynamicCo
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+		Spec: &meshproto.DynamicConfig{},
 	}
 }
 
 func NewDynamicConfigResource() coremodel.Resource {
 	return &DynamicConfigResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(DynamicConfigKind),
+			APIVersion: "v1alpha1",
+		},
+		Spec: &meshproto.DynamicConfig{},
+	}
+}
+
+type DynamicConfigResourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []DynamicConfigResource `json:"items"`
+}
+
+func (r *DynamicConfigResourceList) DeepCopyObject() k8sruntime.Object {
+	out := &DynamicConfigResourceList{
+		TypeMeta: r.TypeMeta,
+	}
+	r.ListMeta.DeepCopyInto(&out.ListMeta)
+
+	if len(r.Items) == 0 {
+		return out
+	}
+	out.Items = make([]DynamicConfigResource, len(r.Items))
+	for i := range r.Items {
+		out.Items[i] = *r.Items[i].DeepCopyObject().(*DynamicConfigResource)
+	}
+	return out
+}
+
+func NewDynamicConfigResourceList() *DynamicConfigResourceList {
+	return &DynamicConfigResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(DynamicConfigKind),
 			APIVersion: "v1alpha1",

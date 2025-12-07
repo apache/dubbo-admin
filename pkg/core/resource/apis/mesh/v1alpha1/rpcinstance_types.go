@@ -58,12 +58,6 @@ type RPCInstanceResourceStatus struct {
 	// define resource-specific status here
 }
 
-type RPCInstanceResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []RPCInstanceResource `json:"items"`
-}
-
 func (r *RPCInstanceResource) ResourceKind() coremodel.ResourceKind {
 	return RPCInstanceKind
 }
@@ -83,11 +77,8 @@ func (r *RPCInstanceResource) ResourceMeta() metav1.ObjectMeta {
 func (r *RPCInstanceResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
-func (r *RPCInstanceResource) DeepCopyObject() k8sruntime.Object {
-	if r == nil {
-		return nil
-	}
 
+func (r *RPCInstanceResource) DeepCopyObject() k8sruntime.Object {
 	out := &RPCInstanceResource{
 		TypeMeta: r.TypeMeta,
 		Mesh:     r.Mesh,
@@ -111,7 +102,7 @@ func (r *RPCInstanceResource) DeepCopyObject() k8sruntime.Object {
 func (r *RPCInstanceResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to encode RPCInstanceResource: %s to json, err: %s", r.ResourceKey(), err)
+		logger.Errorf("failed to encode RPCInstanceResource: %s to json, err: %w", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)
@@ -128,11 +119,44 @@ func NewRPCInstanceResourceWithAttributes(name string, mesh string) *RPCInstance
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+		Spec: &meshproto.RPCInstance{},
 	}
 }
 
 func NewRPCInstanceResource() coremodel.Resource {
 	return &RPCInstanceResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(RPCInstanceKind),
+			APIVersion: "v1alpha1",
+		},
+		Spec: &meshproto.RPCInstance{},
+	}
+}
+
+type RPCInstanceResourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []RPCInstanceResource `json:"items"`
+}
+
+func (r *RPCInstanceResourceList) DeepCopyObject() k8sruntime.Object {
+	out := &RPCInstanceResourceList{
+		TypeMeta: r.TypeMeta,
+	}
+	r.ListMeta.DeepCopyInto(&out.ListMeta)
+
+	if len(r.Items) == 0 {
+		return out
+	}
+	out.Items = make([]RPCInstanceResource, len(r.Items))
+	for i := range r.Items {
+		out.Items[i] = *r.Items[i].DeepCopyObject().(*RPCInstanceResource)
+	}
+	return out
+}
+
+func NewRPCInstanceResourceList() *RPCInstanceResourceList {
+	return &RPCInstanceResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(RPCInstanceKind),
 			APIVersion: "v1alpha1",

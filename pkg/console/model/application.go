@@ -18,7 +18,7 @@
 package model
 
 import (
-	"github.com/apache/dubbo-admin/pkg/console/constants"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	"github.com/apache/dubbo-admin/pkg/core/consts"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"

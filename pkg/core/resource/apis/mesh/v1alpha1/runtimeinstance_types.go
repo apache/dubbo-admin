@@ -58,12 +58,6 @@ type RuntimeInstanceResourceStatus struct {
 	// define resource-specific status here
 }
 
-type RuntimeInstanceResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []RuntimeInstanceResource `json:"items"`
-}
-
 func (r *RuntimeInstanceResource) ResourceKind() coremodel.ResourceKind {
 	return RuntimeInstanceKind
 }
@@ -83,11 +77,8 @@ func (r *RuntimeInstanceResource) ResourceMeta() metav1.ObjectMeta {
 func (r *RuntimeInstanceResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
-func (r *RuntimeInstanceResource) DeepCopyObject() k8sruntime.Object {
-	if r == nil {
-		return nil
-	}
 
+func (r *RuntimeInstanceResource) DeepCopyObject() k8sruntime.Object {
 	out := &RuntimeInstanceResource{
 		TypeMeta: r.TypeMeta,
 		Mesh:     r.Mesh,
@@ -111,7 +102,7 @@ func (r *RuntimeInstanceResource) DeepCopyObject() k8sruntime.Object {
 func (r *RuntimeInstanceResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to encode RuntimeInstanceResource: %s to json, err: %s", r.ResourceKey(), err)
+		logger.Errorf("failed to encode RuntimeInstanceResource: %s to json, err: %w", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)
@@ -128,11 +119,44 @@ func NewRuntimeInstanceResourceWithAttributes(name string, mesh string) *Runtime
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+		Spec: &meshproto.RuntimeInstance{},
 	}
 }
 
 func NewRuntimeInstanceResource() coremodel.Resource {
 	return &RuntimeInstanceResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(RuntimeInstanceKind),
+			APIVersion: "v1alpha1",
+		},
+		Spec: &meshproto.RuntimeInstance{},
+	}
+}
+
+type RuntimeInstanceResourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []RuntimeInstanceResource `json:"items"`
+}
+
+func (r *RuntimeInstanceResourceList) DeepCopyObject() k8sruntime.Object {
+	out := &RuntimeInstanceResourceList{
+		TypeMeta: r.TypeMeta,
+	}
+	r.ListMeta.DeepCopyInto(&out.ListMeta)
+
+	if len(r.Items) == 0 {
+		return out
+	}
+	out.Items = make([]RuntimeInstanceResource, len(r.Items))
+	for i := range r.Items {
+		out.Items[i] = *r.Items[i].DeepCopyObject().(*RuntimeInstanceResource)
+	}
+	return out
+}
+
+func NewRuntimeInstanceResourceList() *RuntimeInstanceResourceList {
+	return &RuntimeInstanceResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(RuntimeInstanceKind),
 			APIVersion: "v1alpha1",

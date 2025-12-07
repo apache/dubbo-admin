@@ -113,7 +113,7 @@ func (b *eventBus) Send(event Event) {
 	for _, sub := range subs {
 		// TODO Do we need to support reprocess
 		if err := sub.ProcessEvent(event); err != nil {
-			logger.Errorf("failed to process event in %s , skipped, event: %v", sub.Name(), event)
+			logger.Errorf("failed to process event in %s, cause: %s, event: %v", sub.Name(), err.Error(), event)
 		}
 	}
 }

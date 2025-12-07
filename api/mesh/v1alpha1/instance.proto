@@ -16,17 +16,16 @@ message Instance {
 
   string name = 1;
 
-  string ip = 2;
+  string appName = 2;
 
+  string ip = 3;
+
+  int64 rpcPort = 4;
   /*
   FROM RPCInstance
    */
 
-  int32 rpcPort = 3;
-
-  int32 qosPort = 4;
-
-  string appName = 5;
+  int64 qosPort = 5;
 
   string releaseVersion = 6;
 
@@ -38,9 +37,11 @@ message Instance {
 
   string serialization = 10;
 
+  string preferSerialization = 11;
+
   map<string, string> tags = 50;
 
-  reserved 11 to 49;
+  reserved 12 to 49;
 
   /*
   FROM RuntimeInstance

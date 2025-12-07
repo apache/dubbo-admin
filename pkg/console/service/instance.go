@@ -119,7 +119,7 @@ func GetInstanceMetrics(ctx consolectx.Context, req *model.MetricsReq) ([]*model
 	return []*model.MetricsResp{metricsResp}, nil
 }
 
-func fetchMetricsData(ip string, port int32) ([]model.Metric, error) {
+func fetchMetricsData(ip string, port int64) ([]model.Metric, error) {
 	url := fmt.Sprintf("http://%s:%d/metrics", ip, port)
 	response, err := http.Get(url)
 	if err != nil {

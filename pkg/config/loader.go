@@ -18,13 +18,14 @@
 package config
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/kelseyhightower/envconfig"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
-	"github.com/apache/dubbo-admin/pkg/core"
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 )
 
 func Load(file string, cfg Config) error {
@@ -33,24 +34,29 @@ func Load(file string, cfg Config) error {
 
 func LoadWithOption(file string, cfg Config, strict bool, includeEnv bool, validate bool) error {
 	if file == "" {
-		core.Log.WithName("config").Info("skipping reading config from file")
-	} else if err := loadFromFile(file, cfg, strict); err != nil {
-		return err
+		return bizerror.New(bizerror.ConfigError, "config file is needed")
+	}
+	if err := loadFromFile(file, cfg, strict); err != nil {
+		return fmt.Errorf("configuration loading failed, %w", err)
+	}
+
+	if err := cfg.PreProcess(); err != nil {
+		return fmt.Errorf("configuration pre processing failed, %w", err)
 	}
 
 	if includeEnv {
 		if err := envconfig.Process("", cfg); err != nil {
-			return err
+			return fmt.Errorf("configuration environment processing failed, %w", err)
 		}
 	}
 
 	if err := cfg.PostProcess(); err != nil {
-		return errors.Wrap(err, "configuration post processing failed")
+		return fmt.Errorf("configuration post processing failed, %w", err)
 	}
 
 	if validate {
 		if err := cfg.Validate(); err != nil {
-			return errors.Wrapf(err, "Invalid configuration")
+			return fmt.Errorf("configuration validation failed, %w", err)
 		}
 	}
 	return nil

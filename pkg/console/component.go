@@ -24,9 +24,11 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
+	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 
 	ui "github.com/apache/dubbo-admin/app/dubbo-ui"
@@ -76,6 +78,8 @@ func (c *consoleWebServer) Init(ctx runtime.BuilderContext) error {
 	store := cookie.NewStore([]byte("secret"))
 	r.Use(sessions.Sessions("session", store))
 	r.Use(c.authMiddleware())
+	r.Use(ginzap.Ginzap(logger.Logger(), time.RFC3339, true))
+	r.Use(ginzap.RecoveryWithZap(logger.Logger(), true))
 	c.Engine = r
 	c.cfg = ctx.Config().Console
 	return nil
@@ -131,7 +135,7 @@ func (c *consoleWebServer) authMiddleware() gin.HandlerFunc {
 		session := sessions.Default(c)
 		user := session.Get("user")
 		if user == nil {
-			authErr := bizerror.NewBizError(bizerror.Unauthorized, "no access, please login")
+			authErr := bizerror.New(bizerror.Unauthorized, "no access, please login")
 			c.JSON(http.StatusUnauthorized, model.NewBizErrorResp(authErr))
 			c.Abort()
 			return

@@ -17,6 +17,8 @@
 
 package bizerror
 
+import "fmt"
+
 type Error interface {
 	Code() ErrorCode
 	Message() string
@@ -33,17 +35,30 @@ const (
 	AppNotFound     ErrorCode = "AppNotFound"
 	Unauthorized    ErrorCode = "Unauthorized"
 	SessionError    ErrorCode = "SessionError"
+	DiscoveryError  ErrorCode = "DiscoveryError"
+	ConfigError     ErrorCode = "ConfigError"
+	NacosError      ErrorCode = "NacosError"
+	EventError      ErrorCode = "EventError"
 )
 
 type bizError struct {
 	code    ErrorCode
 	message string
+	cause   error
 }
 
 var _ Error = &bizError{}
 
-func NewBizError(code ErrorCode, message string) Error {
+func New(code ErrorCode, message string) Error {
 	return &bizError{
+		code:    code,
+		message: message,
+	}
+}
+
+func Wrap(cause error, code ErrorCode, message string) Error {
+	return &bizError{
+		cause:   cause,
 		code:    code,
 		message: message,
 	}
@@ -58,9 +73,12 @@ func (b *bizError) Message() string {
 }
 
 func (b *bizError) Error() string {
+	if b.cause != nil {
+		return fmt.Sprintf("%s, cause: %s", b.String(), b.cause.Error())
+	}
 	return b.String()
 }
 
 func (b *bizError) String() string {
-	return string(b.code) + ": " + b.message
+	return "[" + string(b.code) + "], " + b.message
 }

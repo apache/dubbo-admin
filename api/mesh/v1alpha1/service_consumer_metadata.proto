@@ -19,6 +19,7 @@ message ServiceConsumerMetadata {
   string version = 3;
 
   string group = 4;
-  // TODO add more fields
+
+  map<string, string> metadata = 5;
 }
 

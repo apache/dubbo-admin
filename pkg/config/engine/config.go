@@ -36,7 +36,9 @@ type Config struct {
 type Properties struct {
 	KubeConfigPath              string                       `json:"kubeConfigPath"`
 	PodWatchSelector            string                       `json:"podWatchSelector"`
-	DubboAppIdentifier          *DubboAppIdentifier          `json:"dubboAppIdentifier"`
+	DubboAppIdentifier          *KubernetesIdentifier        `json:"dubboAppIdentifier"`
+	DubboRPCPortIdentifier      *KubernetesIdentifier        `json:"dubboRPCPortIdentifier"`
+	DubboRegistryIdentifier     *KubernetesIdentifier        `json:"dubboRegistryIdentifier"`
 	MainContainerChooseStrategy *MainContainerChooseStrategy `json:"mainContainerChooseStrategy"`
 }
 
@@ -66,18 +68,17 @@ type MainContainerChooseStrategy struct {
 	AnnotationKey string                          `json:"annotationKey"`
 }
 
-type DubboAppIdentifierType string
+type IdentifierType string
 
 const (
-	IdentifyByLabel      DubboAppIdentifierType = "ByLabel"
-	IdentifyByAnnotation DubboAppIdentifierType = "ByAnnotation"
-	IdentifyByIP         DubboAppIdentifierType = "ByIP"
+	IdentifyByLabel      IdentifierType = "ByLabel"
+	IdentifyByAnnotation IdentifierType = "ByAnnotation"
 )
 
-type DubboAppIdentifier struct {
-	Type          DubboAppIdentifierType `json:"type"`
-	LabelKey      string                 `json:"labelKey"`
-	AnnotationKey string                 `json:"annotationKey"`
+type KubernetesIdentifier struct {
+	Type          IdentifierType `json:"type"`
+	LabelKey      string         `json:"labelKey"`
+	AnnotationKey string         `json:"annotationKey"`
 }
 
 func DefaultResourceEngineConfig() *Config {

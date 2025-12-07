@@ -26,6 +26,7 @@ import (
 	_ "github.com/apache/dubbo-admin/pkg/core/manager"
 	_ "github.com/apache/dubbo-admin/pkg/core/store"
 	_ "github.com/apache/dubbo-admin/pkg/discovery/mock"
+	_ "github.com/apache/dubbo-admin/pkg/discovery/nacos2"
 	_ "github.com/apache/dubbo-admin/pkg/engine/kubernetes"
 	_ "github.com/apache/dubbo-admin/pkg/store/memory"
 	_ "github.com/apache/dubbo-admin/pkg/store/mysql"

@@ -25,8 +25,10 @@ import (
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/config/discovery"
 	"github.com/apache/dubbo-admin/pkg/core/controller"
+	"github.com/apache/dubbo-admin/pkg/core/discovery/subscriber"
 	"github.com/apache/dubbo-admin/pkg/core/events"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/core/store"
@@ -46,12 +48,16 @@ var _ Component = &discoveryComponent{}
 type Informers []controller.Informer
 
 type discoveryComponent struct {
-	discoveryInformers map[string]Informers
+	configs         []*discovery.Config
+	informers       map[string]Informers
+	subscribers     []events.Subscriber
+	subscriptionMgr events.SubscriptionManager
 }
 
 func newDiscoveryComponent() Component {
 	return &discoveryComponent{
-		discoveryInformers: make(map[string]Informers),
+		informers:   make(map[string]Informers),
+		subscribers: make([]events.Subscriber, 0),
 	}
 }
 
@@ -64,19 +70,50 @@ func (d *discoveryComponent) Order() int {
 }
 
 func (d *discoveryComponent) Init(ctx runtime.BuilderContext) error {
-	configs := ctx.Config().Discovery
-	for _, cfg := range configs {
-		informers, err := d.newInformers(cfg, ctx)
+	eventBusComponent, err := ctx.GetActivatedComponent(runtime.EventBus)
+	if err != nil {
+		return bizerror.New(bizerror.UnknownError,
+			fmt.Sprintf("can not retrieve event bus from runtime in discovery, %s", err))
+	}
+	eventBus, ok := eventBusComponent.(events.EventBus)
+	if !ok {
+		return bizerror.NewAssertionError("EventBus", reflect.TypeOf(eventBusComponent).Name())
+	}
+	d.subscriptionMgr = eventBus
+	storeComponent, err := ctx.GetActivatedComponent(runtime.ResourceStore)
+	if err != nil {
+		return bizerror.New(bizerror.UnknownError,
+			fmt.Sprintf("can not retrieve store from runtime in discovery, %s", err))
+	}
+	storeRouter, ok := storeComponent.(store.Router)
+	if !ok {
+		return bizerror.NewAssertionError("store.Router", reflect.TypeOf(storeComponent).Name())
+	}
+	d.configs = ctx.Config().Discovery
+	for _, cfg := range d.configs {
+		informers, err := d.initInformers(cfg, storeRouter, eventBus)
 		if err != nil {
 			return err
 		}
-		d.discoveryInformers[cfg.Name] = informers
+		d.informers[cfg.Name] = informers
+	}
+	err = d.initSubscribes(storeRouter, eventBus)
+	if err != nil {
+		return err
 	}
 	return nil
 }
 
 func (d *discoveryComponent) Start(_ runtime.Runtime, ch <-chan struct{}) error {
-	for name, informers := range d.discoveryInformers {
+	// 1. subscribe resource changed events
+	for _, sub := range d.subscribers {
+		err := d.subscriptionMgr.Subscribe(sub)
+		if err != nil {
+			return bizerror.Wrap(err, bizerror.EventError,
+				fmt.Sprintf("subscriber %s in discovery %s can not subscribe resource changed events", sub.Name()))
+		}
+	}
+	for name, informers := range d.informers {
 		for _, informer := range informers {
 			go informer.Run(ch)
 		}
@@ -100,7 +137,7 @@ func (d *discoveryComponent) Delete(resource coremodel.Resource) error {
 	panic("implement me")
 }
 
-func (d *discoveryComponent) newInformers(cfg *discovery.Config, ctx runtime.BuilderContext) (Informers, error) {
+func (d *discoveryComponent) initInformers(cfg *discovery.Config, storeRouter store.Router, emitter events.Emitter) (Informers, error) {
 	factory, err := ListWatcherFactoryRegistry().GetListWatcherFactory(cfg.Type)
 	if err != nil {
 		return nil, err
@@ -108,22 +145,6 @@ func (d *discoveryComponent) newInformers(cfg *discovery.Config, ctx runtime.Bui
 	lwList, err := factory.NewListWatchers(cfg)
 	if err != nil {
 		return nil, err
-	}
-	eventBusComponent, err := ctx.GetActivatedComponent(runtime.EventBus)
-	if err != nil {
-		return nil, err
-	}
-	emitter, ok := eventBusComponent.(events.Emitter)
-	if !ok {
-		return nil, bizerror.NewAssertionError("Emitter", reflect.TypeOf(eventBusComponent).Name())
-	}
-	storeComponent, err := ctx.GetActivatedComponent(runtime.ResourceStore)
-	if err != nil {
-		return nil, fmt.Errorf("can not retrieve store from runtime in engine %s, %w", cfg.Name, err)
-	}
-	storeRouter, ok := storeComponent.(store.Router)
-	if !ok {
-		return nil, bizerror.NewAssertionError("store.Router", reflect.TypeOf(storeComponent).Name())
 	}
 	var informers = make([]controller.Informer, len(lwList))
 	for i, lw := range lwList {
@@ -135,4 +156,14 @@ func (d *discoveryComponent) newInformers(cfg *discovery.Config, ctx runtime.Bui
 		informers[i] = informer
 	}
 	return informers, nil
+}
+
+func (d *discoveryComponent) initSubscribes(storeRouter store.Router, emitter events.Emitter) error {
+	rs, err := storeRouter.ResourceKindRoute(meshresource.InstanceKind)
+	if err != nil {
+		return fmt.Errorf("can not find store for resource kind %s, %w", meshresource.InstanceKind, err)
+	}
+	rpcInstanceSub := subscriber.NewRPCInstanceEventSubscriber(rs, emitter)
+	d.subscribers = append(d.subscribers, rpcInstanceSub)
+	return nil
 }

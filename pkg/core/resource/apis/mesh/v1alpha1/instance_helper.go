@@ -15,18 +15,12 @@
  * limitations under the License.
  */
 
-package bizerror
+package v1alpha1
 
 import (
 	"fmt"
 )
 
-func NewAssertionError(expected, actual interface{}) Error {
-	return New(UnknownError, fmt.Sprintf("type assertion error, expected:%v, actual:%v", expected, actual))
-}
-func NewUnauthorizedError() Error {
-	return New(Unauthorized, "no access, please login")
-}
-func MeshNotFoundError(mesh string) Error {
-	return New(UnknownError, fmt.Sprintf("mesh of name %s is not found", mesh))
+func BuildInstanceResName(appName string, ip string, rpcProt int64) string {
+	return fmt.Sprintf("%s%s:%d", appName, ip, rpcProt)
 }

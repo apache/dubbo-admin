@@ -27,6 +27,14 @@ const (
 	DefaultRegisterModeInterface = "interface"
 	DefaultRegisterModeInstance  = "instance"
 	DefaultRegisterModeAll       = "all"
+	VersionKey                   = "version"
+	GroupKey                     = "group"
+	MetadataStorageTypeKey       = "dubbo.metadata.storage-type"
+	TimestampKey                 = "timestamp"
+	EndpointsKey                 = "dubbo.endpoints"
+	InterfaceKey                 = "interface"
+	URLParamsKey                 = "dubbo.metadata-service.url-params"
+	MetadataRevisionKey          = "dubbo.metadata.revision"
 )
 
 const (
@@ -59,4 +67,15 @@ const (
 const (
 	Stateful  = "有状态"
 	Stateless = "无状态"
+)
+
+const (
+	PathSeparator  = "/"
+	DotSeparator   = "."
+	ColonSeparator = ":"
+	CommaSeparator = ","
+)
+
+const (
+	DefaultMesh = "default"
 )

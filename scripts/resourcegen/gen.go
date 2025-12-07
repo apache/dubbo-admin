@@ -102,12 +102,6 @@ type {{.Name}}ResourceStatus struct {
 	// define resource-specific status here
 }
 
-type {{.Name}}ResourceList struct {
-	metav1.TypeMeta {{ $tk }}json:",inline"{{ $tk }}
-	metav1.ListMeta {{ $tk }}json:"metadata,omitempty"{{ $tk }}
-	Items           []{{.Name}}Resource {{ $tk }}json:"items"{{ $tk }}
-}
-
 func (r *{{.Name}}Resource) ResourceKind() coremodel.ResourceKind  {
 	return {{.Name}}Kind
 }
@@ -127,11 +121,8 @@ func (r *{{.Name}}Resource) ResourceMeta() metav1.ObjectMeta {
 func (r *{{.Name}}Resource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
-func (r *{{.Name}}Resource) DeepCopyObject() k8sruntime.Object {
-	if r == nil {
-		return nil
-	}
 
+func (r *{{.Name}}Resource) DeepCopyObject() k8sruntime.Object {
 	out := &{{.Name}}Resource{
 		TypeMeta: r.TypeMeta,
 		Mesh:     r.Mesh,
@@ -172,11 +163,44 @@ func New{{.Name}}ResourceWithAttributes(name string, mesh string) *{{.Name}}Reso
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+		Spec: &meshproto.{{.Name}}{},
 	}
 }
 
 func New{{.Name}}Resource() coremodel.Resource {
 	return &{{.Name}}Resource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string({{.Name}}Kind),
+			APIVersion: "v1alpha1",
+		},
+		Spec: &meshproto.{{.Name}}{},
+	}
+}
+
+type {{.Name}}ResourceList struct {
+	metav1.TypeMeta {{ $tk }}json:",inline"{{ $tk }}
+	metav1.ListMeta {{ $tk }}json:"metadata,omitempty"{{ $tk }}
+	Items           []{{.Name}}Resource {{ $tk }}json:"items"{{ $tk }}
+}
+
+func (r *{{.Name}}ResourceList) DeepCopyObject() k8sruntime.Object {
+	out := &{{.Name}}ResourceList{
+		TypeMeta: r.TypeMeta,
+	}
+	r.ListMeta.DeepCopyInto(&out.ListMeta)
+
+	if len(r.Items) == 0 {
+		return out
+	}
+	out.Items = make([]{{.Name}}Resource, len(r.Items))
+	for i := range r.Items {
+		out.Items[i] = *r.Items[i].DeepCopyObject().(*{{.Name}}Resource)
+	}
+	return out
+}
+
+func New{{.Name}}ResourceList() *{{.Name}}ResourceList {
+	return &{{.Name}}ResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string({{.Name}}Kind),
 			APIVersion: "v1alpha1",

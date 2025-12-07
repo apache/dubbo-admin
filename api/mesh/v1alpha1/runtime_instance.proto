@@ -17,27 +17,40 @@ message RuntimeInstance {
 
   string ip = 2;
 
-  string image = 3;
+  int64 rpcPort = 3;
 
-  string appName = 4;
+  string image = 4;
 
-  string createTime = 5;
+  string appName = 5;
 
-  string startTime = 6;
+  string createTime = 6;
 
-  string readyTime = 7;
+  string startTime = 7;
 
-  string phase = 8;
+  string readyTime = 8;
 
-  string workloadName = 9;
+  string phase = 9;
 
-  string workloadType = 10;
+  string workloadName = 10;
 
-  string node = 11;
+  string workloadType = 11;
 
-  repeated Probe probes = 12;
+  string node = 12;
 
-  repeated Condition conditions = 13;
+  repeated Probe probes = 13;
+
+  repeated Condition conditions = 14;
+
+  // reserved for future use
+  reserved 15 to 50;
+
+  // start from 50 for extra fields which is added by components in admin
+  // sourceEngine is the engine name of runtime instance running on
+  string sourceEngine = 51;
+
+  // sourceEngineType is the engine type of runtime instance running on
+  string sourceEngineType = 52;
+
 }
 
 message Probe {
