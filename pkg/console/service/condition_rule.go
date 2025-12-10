@@ -18,6 +18,9 @@
 package service
 
 import (
+	"fmt"
+	"time"
+
 	"github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
@@ -73,14 +76,46 @@ func GetConditionRule(ctx context.Context, name string, mesh string) (*meshresou
 }
 
 func UpdateConditionRule(ctx context.Context, name string, res *meshresource.ConditionRouteResource) error {
+	lock := ctx.LockManager()
+	if lock == nil {
+		// Lock not available, proceed without lock protection
+		return updateConditionRuleUnsafe(ctx, name, res)
+	}
+
+	// Use distributed lock to prevent concurrent modifications
+	lockKey := fmt.Sprintf("condition_route:%s:%s", res.Mesh, name)
+	lockTimeout := 30 * time.Second
+
+	return lock.WithLock(ctx.AppContext(), lockKey, lockTimeout, func() error {
+		return updateConditionRuleUnsafe(ctx, name, res)
+	})
+}
+
+func updateConditionRuleUnsafe(ctx context.Context, name string, res *meshresource.ConditionRouteResource) error {
 	if err := ctx.ResourceManager().Update(res); err != nil {
 		logger.Warnf("update %s condition failed with error: %s", name, err.Error())
 		return err
 	}
+	logger.Infof("Condition route %s updated successfully", name)
 	return nil
 }
 
 func CreateConditionRule(ctx context.Context, name string, res *meshresource.ConditionRouteResource) error {
+	lock := ctx.LockManager()
+	if lock == nil {
+		return createConditionRuleUnsafe(ctx, name, res)
+	}
+
+	lockKey := fmt.Sprintf("condition_route:%s:%s", res.Mesh, name)
+	lockTimeout := 30 * time.Second
+
+	return lock.WithLock(ctx.AppContext(), lockKey, lockTimeout, func() error {
+		return createConditionRuleUnsafe(ctx, name, res)
+	})
+}
+
+// createConditionRuleUnsafe performs the actual creation without lock protection
+func createConditionRuleUnsafe(ctx context.Context, name string, res *meshresource.ConditionRouteResource) error {
 	if err := ctx.ResourceManager().Add(res); err != nil {
 		logger.Warnf("create %s condition failed with error: %s", name, err.Error())
 		return err
@@ -89,8 +124,20 @@ func CreateConditionRule(ctx context.Context, name string, res *meshresource.Con
 }
 
 func DeleteConditionRule(ctx context.Context, name string, mesh string) error {
-	if err := ctx.ResourceManager().DeleteByKey(meshresource.ConditionRouteKind, coremodel.BuildResourceKey(mesh, name)); err != nil {
-		return err
+	lock := ctx.LockManager()
+	if lock == nil {
+		return ctx.ResourceManager().DeleteByKey(meshresource.ConditionRouteKind, coremodel.BuildResourceKey(mesh, name))
 	}
-	return nil
+
+	lockKey := fmt.Sprintf("condition_route:%s:%s", mesh, name)
+	lockTimeout := 30 * time.Second
+
+	return lock.WithLock(ctx.AppContext(), lockKey, lockTimeout, func() error {
+		err := ctx.ResourceManager().DeleteByKey(meshresource.ConditionRouteKind, coremodel.BuildResourceKey(mesh, name))
+		if err != nil {
+			logger.Warnf("delete %s condition failed with error: %s", name, err.Error())
+			return err
+		}
+		return nil
+	})
 }

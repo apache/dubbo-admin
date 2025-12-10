@@ -18,6 +18,9 @@
 package service
 
 import (
+	"fmt"
+	"time"
+
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
@@ -38,6 +41,20 @@ func GetConfigurator(ctx consolectx.Context, name string, mesh string) (*meshres
 }
 
 func UpdateConfigurator(ctx consolectx.Context, name string, res *meshresource.DynamicConfigResource) error {
+	lock := ctx.LockManager()
+	if lock == nil {
+		return updateConfiguratorUnsafe(ctx, name, res)
+	}
+
+	lockKey := fmt.Sprintf("dynamic_config:%s:%s", res.Mesh, name)
+	lockTimeout := 30 * time.Second
+
+	return lock.WithLock(ctx.AppContext(), lockKey, lockTimeout, func() error {
+		return updateConfiguratorUnsafe(ctx, name, res)
+	})
+}
+
+func updateConfiguratorUnsafe(ctx consolectx.Context, name string, res *meshresource.DynamicConfigResource) error {
 	if err := ctx.ResourceManager().Update(res); err != nil {
 		logger.Warnf("update %s configurator failed with error: %s", name, err.Error())
 		return err
@@ -46,6 +63,20 @@ func UpdateConfigurator(ctx consolectx.Context, name string, res *meshresource.D
 }
 
 func CreateConfigurator(ctx consolectx.Context, name string, res *meshresource.DynamicConfigResource) error {
+	lock := ctx.LockManager()
+	if lock == nil {
+		return createConfiguratorUnsafe(ctx, name, res)
+	}
+
+	lockKey := fmt.Sprintf("dynamic_config:%s:%s", res.Mesh, name)
+	lockTimeout := 30 * time.Second
+
+	return lock.WithLock(ctx.AppContext(), lockKey, lockTimeout, func() error {
+		return createConfiguratorUnsafe(ctx, name, res)
+	})
+}
+
+func createConfiguratorUnsafe(ctx consolectx.Context, name string, res *meshresource.DynamicConfigResource) error {
 	if err := ctx.ResourceManager().Add(res); err != nil {
 		logger.Warnf("create %s configurator failed with error: %s", name, err.Error())
 		return err
@@ -54,9 +85,19 @@ func CreateConfigurator(ctx consolectx.Context, name string, res *meshresource.D
 }
 
 func DeleteConfigurator(ctx consolectx.Context, name string, mesh string) error {
-	if err := ctx.ResourceManager().DeleteByKey(meshresource.DynamicConfigKind, coremodel.BuildResourceKey(mesh, name)); err != nil {
-		logger.Warnf("delete %s configurator failed with error: %s", name, err.Error())
-		return err
+	lock := ctx.LockManager()
+	if lock == nil {
+		return ctx.ResourceManager().DeleteByKey(meshresource.DynamicConfigKind, coremodel.BuildResourceKey(mesh, name))
 	}
-	return nil
+
+	lockKey := fmt.Sprintf("dynamic_config:%s:%s", mesh, name)
+	lockTimeout := 30 * time.Second
+
+	return lock.WithLock(ctx.AppContext(), lockKey, lockTimeout, func() error {
+		if err := ctx.ResourceManager().DeleteByKey(meshresource.DynamicConfigKind, coremodel.BuildResourceKey(mesh, name)); err != nil {
+			logger.Warnf("delete %s configurator failed with error:  %s", name, err.Error())
+			return err
+		}
+		return nil
+	})
 }

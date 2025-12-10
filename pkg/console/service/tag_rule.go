@@ -18,6 +18,9 @@
 package service
 
 import (
+	"fmt"
+	"time"
+
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
@@ -38,6 +41,20 @@ func GetTagRule(ctx consolectx.Context, name string, mesh string) (*meshresource
 }
 
 func UpdateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
+	lock := ctx.LockManager()
+	if lock == nil {
+		return updateTagRuleUnsafe(ctx, res)
+	}
+
+	lockKey := fmt.Sprintf("tag_route:%s:%s", res.Mesh, res.Name)
+	lockTimeout := 30 * time.Second
+
+	return lock.WithLock(ctx.AppContext(), lockKey, lockTimeout, func() error {
+		return updateTagRuleUnsafe(ctx, res)
+	})
+}
+
+func updateTagRuleUnsafe(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
 	err := ctx.ResourceManager().Update(res)
 	if err != nil {
 		logger.Warnf("update tag rule %s error: %v", res.Name, err)
@@ -47,6 +64,20 @@ func UpdateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) e
 }
 
 func CreateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
+	lock := ctx.LockManager()
+	if lock == nil {
+		return createTagRuleUnsafe(ctx, res)
+	}
+
+	lockKey := fmt.Sprintf("tag_route:%s:%s", res.Mesh, res.Name)
+	lockTimeout := 30 * time.Second
+
+	return lock.WithLock(ctx.AppContext(), lockKey, lockTimeout, func() error {
+		return createTagRuleUnsafe(ctx, res)
+	})
+}
+
+func createTagRuleUnsafe(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
 	err := ctx.ResourceManager().Add(res)
 	if err != nil {
 		logger.Warnf("create tag rule %s error: %v", res.Name, err)
@@ -56,10 +87,20 @@ func CreateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) e
 }
 
 func DeleteTagRule(ctx consolectx.Context, name string, mesh string) error {
-	err := ctx.ResourceManager().DeleteByKey(meshresource.TagRouteKind, coremodel.BuildResourceKey(mesh, name))
-	if err != nil {
-		logger.Warnf("delete tag rule %s error: %v", name, err)
-		return err
+	lock := ctx.LockManager()
+	if lock == nil {
+		return ctx.ResourceManager().DeleteByKey(meshresource.TagRouteKind, coremodel.BuildResourceKey(mesh, name))
 	}
-	return nil
+
+	lockKey := fmt.Sprintf("tag_route:%s:%s", mesh, name)
+	lockTimeout := 30 * time.Second
+
+	return lock.WithLock(ctx.AppContext(), lockKey, lockTimeout, func() error {
+		err := ctx.ResourceManager().DeleteByKey(meshresource.TagRouteKind, coremodel.BuildResourceKey(mesh, name))
+		if err != nil {
+			logger.Warnf("delete tag rule %s error: %v", name, err)
+			return err
+		}
+		return nil
+	})
 }

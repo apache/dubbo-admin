@@ -20,6 +20,7 @@ package bootstrap
 import (
 	"context"
 	"fmt"
+	"github.com/apache/dubbo-admin/pkg/core/lock"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/config/app"
@@ -176,4 +177,11 @@ func initAndActivateComponent(builder *runtime.Builder, comp runtime.Component) 
 		return bizerror.Wrap(err, bizerror.UnknownError, fmt.Sprintf("failed to activate %s", comp.Type()))
 	}
 	return nil
+}
+func initDistributedLock(builder *runtime.Builder) error {
+	comp, err := runtime.ComponentRegistry().Get(lock.DistributedLockComponent)
+	if err != nil {
+		return err
+	}
+	return initAndActivateComponent(builder, comp)
 }
