@@ -19,13 +19,14 @@ package lock
 
 import (
 	"context"
+	"gorm.io/gorm"
+	"math"
 	"time"
 
 	"github.com/pkg/errors"
 
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
-	"github.com/apache/dubbo-admin/pkg/store/dbcommon"
 )
 
 const (
@@ -49,48 +50,47 @@ func (c *Component) Type() runtime.ComponentType {
 }
 
 // Order indicates the initialization order
-// Lock should be initialized after Store (Order 100) but before other services
+// Lock should be initialized after Store (Order math.MaxInt - 1)
+// Higher order values are initialized first, so we use math.MaxInt - 2
 func (c *Component) Order() int {
-	return 90 // After Store, before Console
+	return math.MaxInt - 2 // After Store, before other services
 }
 
 // Init initializes the distributed lock component
 func (c *Component) Init(ctx runtime.BuilderContext) error {
-	// Get the store component to access connection pool
+	// Get the store component to access database connection
 	storeComp, err := ctx.GetActivatedComponent(runtime.ResourceStore)
 	if err != nil {
 		return err
 	}
 
-	// Try to extract connection pool from store component
-	// We need to use type assertion with the proper interface
-	type ConnectionPoolProvider interface {
-		GetConnectionPool() *dbcommon.ConnectionPool
+	// Try to extract database connection from store component
+	// We use GetDB() interface to avoid circular dependency with dbcommon package
+	type DBProvider interface {
+		GetDB() *gorm.DB
 	}
 
-	storeWithPool, ok := storeComp.(ConnectionPoolProvider)
+	storeWithDB, ok := storeComp.(DBProvider)
 	if !ok {
-		// For memory store or other stores without connection pool
-		logger.Warnf("Store component does not provide connection pool, distributed lock will not be available")
+		// For memory store or other stores without database
+		logger.Warnf("Store component does not provide database connection, distributed lock will not be available")
 		return nil
 	}
 
-	pool := storeWithPool.GetConnectionPool()
-	if pool == nil {
-		logger.Warnf("Connection pool is nil, distributed lock will not be available")
+	db := storeWithDB.GetDB()
+	if db == nil {
+		logger.Warnf("Database connection is nil, distributed lock will not be available")
 		return nil
 	}
 
-	// Create GORM-based lock implementation using NewGormLock
-	c.lock = NewGormLock(pool)
+	// Create GORM-based lock implementation using NewGormLockFromDB
+	c.lock = NewGormLockFromDB(db)
 
 	// Initialize the lock table
-	db := pool.GetDB()
 	if err := db.AutoMigrate(&LockRecord{}); err != nil {
 		return errors.Wrap(err, "failed to migrate lock table")
 	}
 
-	logger.Info("Distributed lock component initialized successfully")
 	return nil
 }
 
@@ -102,20 +102,17 @@ func (c *Component) Start(rt runtime.Runtime, stop <-chan struct{}) error {
 	}
 
 	// Start background cleanup task
-	ticker := time.NewTicker(5 * time.Minute) // Cleanup every 5 minutes
+	ticker := time.NewTicker(DefaultCleanupInterval) // Cleanup every 5 minutes
 	defer ticker.Stop()
-
-	logger.Info("Distributed lock cleanup task started")
 
 	for {
 		select {
 		case <-stop:
-			logger.Info("Distributed lock cleanup task stopped")
 			return nil
 		case <-ticker.C:
-			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), DefaultCleanupTimeout)
 			if err := c.lock.CleanupExpiredLocks(ctx); err != nil {
-				logger.Errorf("Failed to cleanup expired locks:  %v", err)
+				logger.Errorf("Failed to cleanup expired locks: %v", err)
 			}
 			cancel()
 		}
@@ -136,7 +133,6 @@ func GetLockFromRuntime(rt runtime.Runtime) (Lock, error) {
 
 	lockComp, ok := comp.(*Component)
 	if !ok {
-		// 修正：使用标准错误处理
 		return nil, errors.Errorf("component %s is not a valid lock component", DistributedLockComponent)
 	}
 

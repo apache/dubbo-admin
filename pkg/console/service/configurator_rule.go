@@ -95,7 +95,7 @@ func DeleteConfigurator(ctx consolectx.Context, name string, mesh string) error 
 
 	return lock.WithLock(ctx.AppContext(), lockKey, lockTimeout, func() error {
 		if err := ctx.ResourceManager().DeleteByKey(meshresource.DynamicConfigKind, coremodel.BuildResourceKey(mesh, name)); err != nil {
-			logger.Warnf("delete %s configurator failed with error:  %s", name, err.Error())
+			logger.Warnf("delete %s configurator failed with error: %s", name, err.Error())
 			return err
 		}
 		return nil

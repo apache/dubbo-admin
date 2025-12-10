@@ -96,7 +96,6 @@ func updateConditionRuleUnsafe(ctx context.Context, name string, res *meshresour
 		logger.Warnf("update %s condition failed with error: %s", name, err.Error())
 		return err
 	}
-	logger.Infof("Condition route %s updated successfully", name)
 	return nil
 }
 
@@ -114,7 +113,6 @@ func CreateConditionRule(ctx context.Context, name string, res *meshresource.Con
 	})
 }
 
-// createConditionRuleUnsafe performs the actual creation without lock protection
 func createConditionRuleUnsafe(ctx context.Context, name string, res *meshresource.ConditionRouteResource) error {
 	if err := ctx.ResourceManager().Add(res); err != nil {
 		logger.Warnf("create %s condition failed with error: %s", name, err.Error())
