@@ -180,7 +180,7 @@ func (s *RPCInstanceEventSubscriber) findRelatedRuntimeInstanceAndMerge(instance
 	case enginecfg.Kubernetes:
 		rtInstance := s.getRuntimeInstanceByIp(instanceRes.Spec.Ip)
 		if rtInstance == nil {
-			logger.Warnf("cannot find runtime instance for isntace %s, skipping merging", instanceRes.ResourceKey())
+			logger.Warnf("cannot find runtime instance for instace %s, skipping merging", instanceRes.ResourceKey())
 			return
 		}
 		meshresource.MergeRuntimeInstanceIntoInstance(rtInstance, instanceRes)

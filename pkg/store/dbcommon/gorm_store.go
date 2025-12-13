@@ -18,6 +18,7 @@
 package dbcommon
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -277,7 +278,7 @@ func (gs *GormStore) GetByKey(key string) (item interface{}, exists bool, err er
 		First(&m)
 
 	if result.Error != nil {
-		if result.Error.Error() == "record not found" {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, false, nil
 		}
 		return nil, false, result.Error

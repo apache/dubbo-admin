@@ -117,7 +117,7 @@ func (lw *NacosServiceListerWatcher) fetchAllServiceNames() ([]string, error) {
 			return nil, err
 		}
 		serviceNameList = append(serviceNameList, serviceNames...)
-		if len(serviceNames) <= int(pageNum*pageSize) {
+		if len(serviceNames) < int(pageSize) {
 			break
 		}
 		pageNum++
@@ -137,7 +137,7 @@ func (lw *NacosServiceListerWatcher) fetchAndProcessService() error {
 		slice.ForEach(serviceNames, func(index int, item string) {
 			lw.processNacosService(item)
 		})
-		if len(serviceNames) <= int(pageNum*pageSize) {
+		if len(serviceNames) < int(pageSize) {
 			break
 		}
 		pageNum++

@@ -21,8 +21,8 @@ import (
 	"fmt"
 )
 
-func BuildInstanceResName(appName string, ip string, rpcProt int64) string {
-	return fmt.Sprintf("%s%s:%d", appName, ip, rpcProt)
+func BuildInstanceResName(appName string, ip string, rpcPort int64) string {
+	return fmt.Sprintf("%s%s:%d", appName, ip, rpcPort)
 }
 
 // FromRPCInstance create an instance resource from a rpc instance resource
