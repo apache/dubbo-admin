@@ -25,10 +25,10 @@ import (
 	"github.com/duke-git/lancet/v2/strutil"
 	"github.com/gin-gonic/gin"
 
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
@@ -87,10 +87,10 @@ func GetTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, consts.TagRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(consts.TagRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.TagRuleSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.TagRuleSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", consts.TagRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.TagRuleSuffix)))
 			return
 		}
 		if res, err := service.GetTagRule(ctx, name, mesh); err != nil {
@@ -107,10 +107,10 @@ func PutTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, consts.TagRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(consts.TagRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.TagRuleSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.TagRuleSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", consts.TagRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.TagRuleSuffix)))
 			return
 		}
 		res := meshresource.NewTagRouteResourceWithAttributes(name, mesh)
@@ -133,10 +133,10 @@ func PostTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, consts.TagRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(consts.TagRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.TagRuleSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.TagRuleSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", consts.TagRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.TagRuleSuffix)))
 			return
 		}
 		res := meshresource.NewTagRouteResourceWithAttributes(name, mesh)
@@ -159,10 +159,10 @@ func DeleteTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, consts.TagRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(consts.TagRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.TagRuleSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.TagRuleSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", consts.TagRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.TagRuleSuffix)))
 			return
 		}
 		if err := service.DeleteTagRule(ctx, name, mesh); err != nil {

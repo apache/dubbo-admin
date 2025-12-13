@@ -20,42 +20,28 @@ package index
 import (
 	"reflect"
 
+	"github.com/duke-git/lancet/v2/strutil"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 )
 
-const (
-	ByServiceConsumerAppName     = "idx_service_consumer_app_name"
-	ByServiceConsumerServiceName = "idx_service_consumer_service_name"
-)
+const ByRuntimeInstanceIPIndex = "idx_rt_instance_ip"
 
 func init() {
-	RegisterIndexers(meshresource.ServiceConsumerMetadataKind, map[string]cache.IndexFunc{
-		ByServiceConsumerAppName:     byServiceConsumerAppName,
-		ByServiceConsumerServiceName: byServiceConsumerServiceName,
+	RegisterIndexers(meshresource.RuntimeInstanceKind, map[string]cache.IndexFunc{
+		ByRuntimeInstanceIPIndex: byRuntimeInstanceIp,
 	})
 }
 
-func byServiceConsumerAppName(obj interface{}) ([]string, error) {
-	metadata, ok := obj.(*meshresource.ServiceConsumerMetadataResource)
+func byRuntimeInstanceIp(obj interface{}) ([]string, error) {
+	rtInstance, ok := obj.(*meshresource.RuntimeInstanceResource)
 	if !ok {
-		return nil, bizerror.NewAssertionError(meshresource.ServiceConsumerMetadataKind, reflect.TypeOf(obj).Name())
+		return nil, bizerror.NewAssertionError(meshresource.RuntimeInstanceKind, reflect.TypeOf(obj).Name())
 	}
-	if metadata == nil {
+	if rtInstance.Spec == nil || strutil.IsBlank(rtInstance.Spec.Ip) {
 		return []string{}, nil
 	}
-	return []string{metadata.Spec.ConsumerAppName}, nil
-}
-
-func byServiceConsumerServiceName(obj interface{}) ([]string, error) {
-	metadata, ok := obj.(*meshresource.ServiceConsumerMetadataResource)
-	if !ok {
-		return nil, bizerror.NewAssertionError(meshresource.ServiceConsumerMetadataKind, reflect.TypeOf(obj).Name())
-	}
-	if metadata == nil {
-		return []string{}, nil
-	}
-	return []string{metadata.Spec.ServiceName}, nil
+	return []string{rtInstance.Spec.Ip}, nil
 }

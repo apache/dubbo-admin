@@ -35,7 +35,7 @@ import (
 const RPCInstanceMetadataKind coremodel.ResourceKind = "RPCInstanceMetadata"
 
 func init() {
-	coremodel.RegisterResourceSchema(RPCInstanceMetadataKind, NewRPCInstanceMetadataResource)
+	coremodel.RegisterResourceSchema(RPCInstanceMetadataKind, NewRPCInstanceMetadataResource, NewRPCInstanceMetadataResourceList)
 }
 
 type RPCInstanceMetadataResource struct {
@@ -136,7 +136,7 @@ func NewRPCInstanceMetadataResource() coremodel.Resource {
 type RPCInstanceMetadataResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []RPCInstanceMetadataResource `json:"items"`
+	Items           []*RPCInstanceMetadataResource `json:"items"`
 }
 
 func (r *RPCInstanceMetadataResourceList) DeepCopyObject() k8sruntime.Object {
@@ -148,18 +148,41 @@ func (r *RPCInstanceMetadataResourceList) DeepCopyObject() k8sruntime.Object {
 	if len(r.Items) == 0 {
 		return out
 	}
-	out.Items = make([]RPCInstanceMetadataResource, len(r.Items))
+	out.Items = make([]*RPCInstanceMetadataResource, len(r.Items))
 	for i := range r.Items {
-		out.Items[i] = *r.Items[i].DeepCopyObject().(*RPCInstanceMetadataResource)
+		out.Items[i] = r.Items[i].DeepCopyObject().(*RPCInstanceMetadataResource)
 	}
 	return out
 }
 
-func NewRPCInstanceMetadataResourceList() *RPCInstanceMetadataResourceList {
+func NewRPCInstanceMetadataResourceList() coremodel.ResourceList {
 	return &RPCInstanceMetadataResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(RPCInstanceMetadataKind),
 			APIVersion: "v1alpha1",
 		},
+		Items: make([]*RPCInstanceMetadataResource, 0),
+	}
+}
+
+func (r *RPCInstanceMetadataResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*RPCInstanceMetadataResource, len(items))
+	for i := range items {
+		res, ok := items[i].(*RPCInstanceMetadataResource)
+		if !ok {
+			logger.Errorf("unexpected resource type, expected: %s, get %s", RPCInstanceMetadataKind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func NewRPCInstanceMetadataResourceListWithItems(items ...*RPCInstanceMetadataResource) *RPCInstanceMetadataResourceList {
+	return &RPCInstanceMetadataResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(RPCInstanceMetadataKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
 	}
 }

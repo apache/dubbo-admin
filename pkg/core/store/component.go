@@ -77,17 +77,14 @@ func (sc *storeComponent) Init(ctx runtime.BuilderContext) error {
 			return err
 		}
 		sc.stores[kind] = store
-		if err = store.Init(ctx); err != nil {
-			return err
-		}
-	}
-	// 3. add indexers for each kind of store
-	for kind, store := range sc.stores {
 		indexers := index.IndexersRegistry().Indexers(kind)
 		if indexers == nil {
 			continue
 		}
 		if err := store.AddIndexers(indexers); err != nil {
+			return err
+		}
+		if err = store.Init(ctx); err != nil {
 			return err
 		}
 	}

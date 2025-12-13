@@ -35,7 +35,7 @@ import (
 const ServiceProviderMappingKind coremodel.ResourceKind = "ServiceProviderMapping"
 
 func init() {
-	coremodel.RegisterResourceSchema(ServiceProviderMappingKind, NewServiceProviderMappingResource)
+	coremodel.RegisterResourceSchema(ServiceProviderMappingKind, NewServiceProviderMappingResource, NewServiceProviderMappingResourceList)
 }
 
 type ServiceProviderMappingResource struct {
@@ -136,7 +136,7 @@ func NewServiceProviderMappingResource() coremodel.Resource {
 type ServiceProviderMappingResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ServiceProviderMappingResource `json:"items"`
+	Items           []*ServiceProviderMappingResource `json:"items"`
 }
 
 func (r *ServiceProviderMappingResourceList) DeepCopyObject() k8sruntime.Object {
@@ -148,18 +148,41 @@ func (r *ServiceProviderMappingResourceList) DeepCopyObject() k8sruntime.Object 
 	if len(r.Items) == 0 {
 		return out
 	}
-	out.Items = make([]ServiceProviderMappingResource, len(r.Items))
+	out.Items = make([]*ServiceProviderMappingResource, len(r.Items))
 	for i := range r.Items {
-		out.Items[i] = *r.Items[i].DeepCopyObject().(*ServiceProviderMappingResource)
+		out.Items[i] = r.Items[i].DeepCopyObject().(*ServiceProviderMappingResource)
 	}
 	return out
 }
 
-func NewServiceProviderMappingResourceList() *ServiceProviderMappingResourceList {
+func NewServiceProviderMappingResourceList() coremodel.ResourceList {
 	return &ServiceProviderMappingResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(ServiceProviderMappingKind),
 			APIVersion: "v1alpha1",
 		},
+		Items: make([]*ServiceProviderMappingResource, 0),
+	}
+}
+
+func (r *ServiceProviderMappingResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*ServiceProviderMappingResource, len(items))
+	for i := range items {
+		res, ok := items[i].(*ServiceProviderMappingResource)
+		if !ok {
+			logger.Errorf("unexpected resource type, expected: %s, get %s", ServiceProviderMappingKind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func NewServiceProviderMappingResourceListWithItems(items ...*ServiceProviderMappingResource) *ServiceProviderMappingResourceList {
+	return &ServiceProviderMappingResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ServiceProviderMappingKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
 	}
 }

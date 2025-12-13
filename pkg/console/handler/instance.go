@@ -27,10 +27,10 @@ import (
 	"github.com/pkg/errors"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	corestore "github.com/apache/dubbo-admin/pkg/core/store"
 )
@@ -102,7 +102,7 @@ func InstanceConfigTrafficDisableGET(ctx consolectx.Context) gin.HandlerFunc {
 			return
 		}
 
-		if res.Spec.GetVersion() != consts.ConfiguratorVersionV3 {
+		if res.Spec.GetVersion() != constants.ConfiguratorVersionV3 {
 			c.JSON(http.StatusServiceUnavailable, model.NewErrorResp("this config only serve condition-route.configVersion == v3, got v3.1 config "))
 			return
 		}
@@ -197,7 +197,7 @@ func InstanceConfigTrafficDisablePUT(ctx consolectx.Context) gin.HandlerFunc {
 				return
 			}
 			existRule = false
-			res = generateDefaultConditionV3(true, true, true, appName, consts.ScopeApplication)
+			res = generateDefaultConditionV3(true, true, true, appName, constants.ScopeApplication)
 			rawRes = meshresource.NewConditionRouteResourceWithAttributes(appName, mesh)
 			rawRes.Spec = res.ToConditionRoute()
 		} else if res = rawRes.Spec.ToConditionRouteV3(); res == nil {
@@ -263,7 +263,7 @@ func newDisableConditionV3(ip string) string {
 
 func generateDefaultConditionV3x1(Enabled, Force, Runtime bool, Key, Scope string) *meshproto.ConditionRouteV3X1 {
 	return &meshproto.ConditionRouteV3X1{
-		ConfigVersion: consts.ConfiguratorVersionV3x1,
+		ConfigVersion: constants.ConfiguratorVersionV3x1,
 		Enabled:       Enabled,
 		Force:         Force,
 		Runtime:       Runtime,
@@ -275,7 +275,7 @@ func generateDefaultConditionV3x1(Enabled, Force, Runtime bool, Key, Scope strin
 
 func generateDefaultConditionV3(Enabled, Force, Runtime bool, Key, Scope string) *meshproto.ConditionRouteV3 {
 	return &meshproto.ConditionRouteV3{
-		ConfigVersion: consts.ConfiguratorVersionV3,
+		ConfigVersion: constants.ConfiguratorVersionV3,
 		Priority:      0,
 		Enabled:       true,
 		Force:         Force,
@@ -306,7 +306,7 @@ func InstanceConfigOperatorLogGET(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("mesh is empty"))
 			return
 		}
-		appConfiguratorName := applicationName + consts.ConfiguratorRuleSuffix
+		appConfiguratorName := applicationName + constants.ConfiguratorRuleSuffix
 		res, err := service.GetConfigurator(ctx, appConfiguratorName, mesh)
 		if err != nil {
 			if corestore.IsResourceNotFound(err) {
@@ -333,7 +333,7 @@ func isInstanceOperatorLogOpen(conf *meshproto.OverrideConfig, IP string) bool {
 		conf.Match != nil &&
 		conf.Match.Address != nil &&
 		conf.Match.Address.Wildcard == IP+`:*` &&
-		conf.Side == consts.SideProvider &&
+		conf.Side == constants.SideProvider &&
 		conf.Parameters != nil &&
 		conf.Parameters[`accesslog`] == `true` {
 		return true
@@ -363,7 +363,7 @@ func InstanceConfigOperatorLogPUT(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("mesh is empty"))
 			return
 		}
-		appConfiguratorName := applicationName + consts.ConfiguratorRuleSuffix
+		appConfiguratorName := applicationName + constants.ConfiguratorRuleSuffix
 		res, err := service.GetConfigurator(ctx, appConfiguratorName, mesh)
 		notExist := false
 		if err != nil {
@@ -374,8 +374,8 @@ func InstanceConfigOperatorLogPUT(ctx consolectx.Context) gin.HandlerFunc {
 			res = meshresource.NewDynamicConfigResourceWithAttributes(appConfiguratorName, mesh)
 			res.Spec = &meshproto.DynamicConfig{
 				Key:           applicationName,
-				Scope:         consts.ScopeApplication,
-				ConfigVersion: consts.ConfiguratorVersionV3,
+				Scope:         constants.ScopeApplication,
+				ConfigVersion: constants.ConfiguratorVersionV3,
 				Enabled:       true,
 				Configs:       make([]*meshproto.OverrideConfig, 0),
 			}
@@ -394,7 +394,7 @@ func InstanceConfigOperatorLogPUT(ctx consolectx.Context) gin.HandlerFunc {
 			})
 			if !isExist {
 				res.Spec.Configs = append(res.Spec.Configs, &meshproto.OverrideConfig{
-					Side:          consts.SideProvider,
+					Side:          constants.SideProvider,
 					Match:         &meshproto.ConditionMatch{Address: &meshproto.AddressMatch{Wildcard: instanceIP + `:*`}},
 					Parameters:    map[string]string{`accesslog`: `true`},
 					XGenerateByCp: true,

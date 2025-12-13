@@ -32,13 +32,13 @@ import (
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-const RPCInstanceKind coremodel.ResourceKind = "RPCInstance"
+const NacosConfigKind coremodel.ResourceKind = "NacosConfig"
 
 func init() {
-	coremodel.RegisterResourceSchema(RPCInstanceKind, NewRPCInstanceResource, NewRPCInstanceResourceList)
+	coremodel.RegisterResourceSchema(NacosConfigKind, NewNacosConfigResource, NewNacosConfigResourceList)
 }
 
-type RPCInstanceResource struct {
+type NacosConfigResource struct {
 	metav1.TypeMeta `json:",inline"`
 
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -47,39 +47,39 @@ type RPCInstanceResource struct {
 	// It may be omitted for cluster-scoped resources.
 	Mesh string `json:"mesh,omitempty"`
 
-	// Spec is the specification of the Dubbo RPCInstance resource.
-	Spec *meshproto.RPCInstance `json:"spec,omitempty"`
+	// Spec is the specification of the Dubbo NacosConfig resource.
+	Spec *meshproto.NacosConfig `json:"spec,omitempty"`
 
-	// Status is the status of the Dubbo RPCInstance resource.
-	Status RPCInstanceResourceStatus `json:"status,omitempty"`
+	// Status is the status of the Dubbo NacosConfig resource.
+	Status NacosConfigResourceStatus `json:"status,omitempty"`
 }
 
-type RPCInstanceResourceStatus struct {
+type NacosConfigResourceStatus struct {
 	// define resource-specific status here
 }
 
-func (r *RPCInstanceResource) ResourceKind() coremodel.ResourceKind {
-	return RPCInstanceKind
+func (r *NacosConfigResource) ResourceKind() coremodel.ResourceKind {
+	return NacosConfigKind
 }
 
-func (r *RPCInstanceResource) MeshName() string {
+func (r *NacosConfigResource) MeshName() string {
 	return r.Mesh
 }
 
-func (r *RPCInstanceResource) ResourceKey() string {
+func (r *NacosConfigResource) ResourceKey() string {
 	return coremodel.BuildResourceKey(r.Mesh, r.Name)
 }
 
-func (r *RPCInstanceResource) ResourceMeta() metav1.ObjectMeta {
+func (r *NacosConfigResource) ResourceMeta() metav1.ObjectMeta {
 	return r.ObjectMeta
 }
 
-func (r *RPCInstanceResource) ResourceSpec() coremodel.ResourceSpec {
+func (r *NacosConfigResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func (r *RPCInstanceResource) DeepCopyObject() k8sruntime.Object {
-	out := &RPCInstanceResource{
+func (r *NacosConfigResource) DeepCopyObject() k8sruntime.Object {
+	out := &NacosConfigResource{
 		TypeMeta: r.TypeMeta,
 		Mesh:     r.Mesh,
 		Status:   r.Status,
@@ -88,7 +88,7 @@ func (r *RPCInstanceResource) DeepCopyObject() k8sruntime.Object {
 	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 
 	if r.Spec != nil {
-		spec, ok := proto.Clone(r.Spec).(*meshproto.RPCInstance)
+		spec, ok := proto.Clone(r.Spec).(*meshproto.NacosConfig)
 		if !ok {
 			logger.Warnf("failed to clone spec %v, spec is not conformed to %s", r.Spec, r.ResourceKind())
 			return out
@@ -99,19 +99,19 @@ func (r *RPCInstanceResource) DeepCopyObject() k8sruntime.Object {
 	return out
 }
 
-func (r *RPCInstanceResource) String() string {
+func (r *NacosConfigResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to encode RPCInstanceResource: %s to json, err: %w", r.ResourceKey(), err)
+		logger.Errorf("failed to encode NacosConfigResource: %s to json, err: %w", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)
 }
 
-func NewRPCInstanceResourceWithAttributes(name string, mesh string) *RPCInstanceResource {
-	return &RPCInstanceResource{
+func NewNacosConfigResourceWithAttributes(name string, mesh string) *NacosConfigResource {
+	return &NacosConfigResource{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       string(RPCInstanceKind),
+			Kind:       string(NacosConfigKind),
 			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
@@ -119,28 +119,28 @@ func NewRPCInstanceResourceWithAttributes(name string, mesh string) *RPCInstance
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
-		Spec: &meshproto.RPCInstance{},
+		Spec: &meshproto.NacosConfig{},
 	}
 }
 
-func NewRPCInstanceResource() coremodel.Resource {
-	return &RPCInstanceResource{
+func NewNacosConfigResource() coremodel.Resource {
+	return &NacosConfigResource{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       string(RPCInstanceKind),
+			Kind:       string(NacosConfigKind),
 			APIVersion: "v1alpha1",
 		},
-		Spec: &meshproto.RPCInstance{},
+		Spec: &meshproto.NacosConfig{},
 	}
 }
 
-type RPCInstanceResourceList struct {
+type NacosConfigResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []*RPCInstanceResource `json:"items"`
+	Items           []*NacosConfigResource `json:"items"`
 }
 
-func (r *RPCInstanceResourceList) DeepCopyObject() k8sruntime.Object {
-	out := &RPCInstanceResourceList{
+func (r *NacosConfigResourceList) DeepCopyObject() k8sruntime.Object {
+	out := &NacosConfigResourceList{
 		TypeMeta: r.TypeMeta,
 	}
 	r.ListMeta.DeepCopyInto(&out.ListMeta)
@@ -148,39 +148,39 @@ func (r *RPCInstanceResourceList) DeepCopyObject() k8sruntime.Object {
 	if len(r.Items) == 0 {
 		return out
 	}
-	out.Items = make([]*RPCInstanceResource, len(r.Items))
+	out.Items = make([]*NacosConfigResource, len(r.Items))
 	for i := range r.Items {
-		out.Items[i] = r.Items[i].DeepCopyObject().(*RPCInstanceResource)
+		out.Items[i] = r.Items[i].DeepCopyObject().(*NacosConfigResource)
 	}
 	return out
 }
 
-func NewRPCInstanceResourceList() coremodel.ResourceList {
-	return &RPCInstanceResourceList{
+func NewNacosConfigResourceList() coremodel.ResourceList {
+	return &NacosConfigResourceList{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       string(RPCInstanceKind),
+			Kind:       string(NacosConfigKind),
 			APIVersion: "v1alpha1",
 		},
-		Items: make([]*RPCInstanceResource, 0),
+		Items: make([]*NacosConfigResource, 0),
 	}
 }
 
-func (r *RPCInstanceResourceList) SetItems(items []coremodel.Resource) {
-	r.Items = make([]*RPCInstanceResource, len(items))
+func (r *NacosConfigResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*NacosConfigResource, len(items))
 	for i := range items {
-		res, ok := items[i].(*RPCInstanceResource)
+		res, ok := items[i].(*NacosConfigResource)
 		if !ok {
-			logger.Errorf("unexpected resource type, expected: %s, get %s", RPCInstanceKind, res.ResourceKind())
+			logger.Errorf("unexpected resource type, expected: %s, get %s", NacosConfigKind, res.ResourceKind())
 			continue
 		}
 		r.Items[i] = res
 	}
 }
 
-func NewRPCInstanceResourceListWithItems(items ...*RPCInstanceResource) *RPCInstanceResourceList {
-	return &RPCInstanceResourceList{
+func NewNacosConfigResourceListWithItems(items ...*NacosConfigResource) *NacosConfigResourceList {
+	return &NacosConfigResourceList{
 		TypeMeta: metav1.TypeMeta{
-			Kind:       string(RPCInstanceKind),
+			Kind:       string(NacosConfigKind),
 			APIVersion: "v1alpha1",
 		},
 		Items: items,

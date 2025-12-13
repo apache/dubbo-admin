@@ -35,7 +35,7 @@ import (
 const AffinityRouteKind coremodel.ResourceKind = "AffinityRoute"
 
 func init() {
-	coremodel.RegisterResourceSchema(AffinityRouteKind, NewAffinityRouteResource)
+	coremodel.RegisterResourceSchema(AffinityRouteKind, NewAffinityRouteResource, NewAffinityRouteResourceList)
 }
 
 type AffinityRouteResource struct {
@@ -136,7 +136,7 @@ func NewAffinityRouteResource() coremodel.Resource {
 type AffinityRouteResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []AffinityRouteResource `json:"items"`
+	Items           []*AffinityRouteResource `json:"items"`
 }
 
 func (r *AffinityRouteResourceList) DeepCopyObject() k8sruntime.Object {
@@ -148,18 +148,41 @@ func (r *AffinityRouteResourceList) DeepCopyObject() k8sruntime.Object {
 	if len(r.Items) == 0 {
 		return out
 	}
-	out.Items = make([]AffinityRouteResource, len(r.Items))
+	out.Items = make([]*AffinityRouteResource, len(r.Items))
 	for i := range r.Items {
-		out.Items[i] = *r.Items[i].DeepCopyObject().(*AffinityRouteResource)
+		out.Items[i] = r.Items[i].DeepCopyObject().(*AffinityRouteResource)
 	}
 	return out
 }
 
-func NewAffinityRouteResourceList() *AffinityRouteResourceList {
+func NewAffinityRouteResourceList() coremodel.ResourceList {
 	return &AffinityRouteResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(AffinityRouteKind),
 			APIVersion: "v1alpha1",
 		},
+		Items: make([]*AffinityRouteResource, 0),
+	}
+}
+
+func (r *AffinityRouteResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*AffinityRouteResource, len(items))
+	for i := range items {
+		res, ok := items[i].(*AffinityRouteResource)
+		if !ok {
+			logger.Errorf("unexpected resource type, expected: %s, get %s", AffinityRouteKind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func NewAffinityRouteResourceListWithItems(items ...*AffinityRouteResource) *AffinityRouteResourceList {
+	return &AffinityRouteResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(AffinityRouteKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
 	}
 }

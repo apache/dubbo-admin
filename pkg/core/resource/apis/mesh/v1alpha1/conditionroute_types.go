@@ -35,7 +35,7 @@ import (
 const ConditionRouteKind coremodel.ResourceKind = "ConditionRoute"
 
 func init() {
-	coremodel.RegisterResourceSchema(ConditionRouteKind, NewConditionRouteResource)
+	coremodel.RegisterResourceSchema(ConditionRouteKind, NewConditionRouteResource, NewConditionRouteResourceList)
 }
 
 type ConditionRouteResource struct {
@@ -136,7 +136,7 @@ func NewConditionRouteResource() coremodel.Resource {
 type ConditionRouteResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ConditionRouteResource `json:"items"`
+	Items           []*ConditionRouteResource `json:"items"`
 }
 
 func (r *ConditionRouteResourceList) DeepCopyObject() k8sruntime.Object {
@@ -148,18 +148,41 @@ func (r *ConditionRouteResourceList) DeepCopyObject() k8sruntime.Object {
 	if len(r.Items) == 0 {
 		return out
 	}
-	out.Items = make([]ConditionRouteResource, len(r.Items))
+	out.Items = make([]*ConditionRouteResource, len(r.Items))
 	for i := range r.Items {
-		out.Items[i] = *r.Items[i].DeepCopyObject().(*ConditionRouteResource)
+		out.Items[i] = r.Items[i].DeepCopyObject().(*ConditionRouteResource)
 	}
 	return out
 }
 
-func NewConditionRouteResourceList() *ConditionRouteResourceList {
+func NewConditionRouteResourceList() coremodel.ResourceList {
 	return &ConditionRouteResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(ConditionRouteKind),
 			APIVersion: "v1alpha1",
 		},
+		Items: make([]*ConditionRouteResource, 0),
+	}
+}
+
+func (r *ConditionRouteResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*ConditionRouteResource, len(items))
+	for i := range items {
+		res, ok := items[i].(*ConditionRouteResource)
+		if !ok {
+			logger.Errorf("unexpected resource type, expected: %s, get %s", ConditionRouteKind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func NewConditionRouteResourceListWithItems(items ...*ConditionRouteResource) *ConditionRouteResourceList {
+	return &ConditionRouteResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ConditionRouteKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
 	}
 }

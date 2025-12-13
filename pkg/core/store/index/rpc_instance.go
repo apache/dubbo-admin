@@ -20,6 +20,7 @@ package index
 import (
 	"reflect"
 
+	"github.com/duke-git/lancet/v2/strutil"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
@@ -27,35 +28,22 @@ import (
 )
 
 const (
-	ByServiceConsumerAppName     = "idx_service_consumer_app_name"
-	ByServiceConsumerServiceName = "idx_service_consumer_service_name"
+	ByRPCInstanceAppName = "idx_rpc_instance_app_name"
 )
 
 func init() {
-	RegisterIndexers(meshresource.ServiceConsumerMetadataKind, map[string]cache.IndexFunc{
-		ByServiceConsumerAppName:     byServiceConsumerAppName,
-		ByServiceConsumerServiceName: byServiceConsumerServiceName,
+	RegisterIndexers(meshresource.RPCInstanceKind, map[string]cache.IndexFunc{
+		ByRPCInstanceAppName: byRPCInstanceAppName,
 	})
 }
 
-func byServiceConsumerAppName(obj interface{}) ([]string, error) {
-	metadata, ok := obj.(*meshresource.ServiceConsumerMetadataResource)
+func byRPCInstanceAppName(obj interface{}) ([]string, error) {
+	instance, ok := obj.(*meshresource.RPCInstanceResource)
 	if !ok {
-		return nil, bizerror.NewAssertionError(meshresource.ServiceConsumerMetadataKind, reflect.TypeOf(obj).Name())
+		return nil, bizerror.NewAssertionError(meshresource.RPCInstanceKind, reflect.TypeOf(obj).Name())
 	}
-	if metadata == nil {
+	if instance.Spec == nil || strutil.IsBlank(instance.Spec.AppName) {
 		return []string{}, nil
 	}
-	return []string{metadata.Spec.ConsumerAppName}, nil
-}
-
-func byServiceConsumerServiceName(obj interface{}) ([]string, error) {
-	metadata, ok := obj.(*meshresource.ServiceConsumerMetadataResource)
-	if !ok {
-		return nil, bizerror.NewAssertionError(meshresource.ServiceConsumerMetadataKind, reflect.TypeOf(obj).Name())
-	}
-	if metadata == nil {
-		return []string{}, nil
-	}
-	return []string{metadata.Spec.ServiceName}, nil
+	return []string{instance.Spec.AppName}, nil
 }

@@ -20,14 +20,17 @@ package controller
 import (
 	"errors"
 	"fmt"
+	"reflect"
 	"sync"
 	"time"
 
+	"github.com/go-logr/zapr"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
 
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/core/events"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
@@ -100,13 +103,21 @@ type informer struct {
 	watchErrorHandler cache.WatchErrorHandler
 	// transform is an optional function that is called on each object before it is pushed into the queue.
 	transform cache.TransformFunc
+	// keyFunc see cache.KeyFunc
+	keyFunc cache.KeyFunc
 }
 
-func NewInformerWithOptions(lw cache.ListerWatcher, emitter events.Emitter, store store.ResourceStore, options Options) Informer {
+func NewInformerWithOptions(
+	lw cache.ListerWatcher,
+	emitter events.Emitter,
+	store store.ResourceStore,
+	keyFunc cache.KeyFunc,
+	options Options) Informer {
 	return &informer{
 		indexer:           store,
 		listerWatcher:     lw,
 		emitter:           emitter,
+		keyFunc:           keyFunc,
 		resyncCheckPeriod: options.ResyncPeriod,
 	}
 }
@@ -162,11 +173,13 @@ func (s *informer) Run(stopCh <-chan struct{}) {
 	func() {
 		s.startedLock.Lock()
 		defer s.startedLock.Unlock()
-
+		zapLogr := zapr.NewLogger(logger.Logger())
 		fifo := cache.NewDeltaFIFOWithOptions(cache.DeltaFIFOOptions{
 			KnownObjects:          s.indexer,
 			EmitDeltaTypeReplaced: true,
 			Transformer:           s.transform,
+			Logger:                &zapLogr,
+			KeyFunction:           s.keyFunc,
 		})
 
 		// We turn off the resync mechanism because we don't want to re-list all objects.
@@ -209,27 +222,36 @@ func (s *informer) HandleDeltas(obj interface{}, _ bool) error {
 	}
 	// from oldest to newest
 	for _, d := range deltas {
-		obj := d.Object
-		resource, ok := obj.(model.Resource)
+		var resource model.Resource
+		var object interface{}
+		if o, ok := d.Object.(cache.DeletedFinalStateUnknown); ok {
+			object = o.Obj
+		} else {
+			object = d.Object
+		}
+		resource, ok := object.(model.Resource)
 		if !ok {
 			logger.Errorf("object from ListWatcher is not conformed to Resource, obj: %v", obj)
-			return errors.New("object from ListWatcher is not conformed to Resource")
+			return bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
 		}
 		switch d.Type {
 		case cache.Sync, cache.Replaced, cache.Added, cache.Updated:
 			if old, exists, err := s.indexer.Get(resource); err == nil && exists {
 				if err := s.indexer.Update(resource); err != nil {
+					logger.Errorf("failed to update resource in informer, cause: %v, resource: %s,", err, resource.String())
 					return err
 				}
 				s.EmitEvent(d.Type, old.(model.Resource), resource)
 			} else {
-				if err := s.indexer.Add(obj); err != nil {
+				if err := s.indexer.Add(resource); err != nil {
+					logger.Errorf("failed to add resource to informer, cause %v, resource: %s,", err, resource.String())
 					return err
 				}
 				s.EmitEvent(d.Type, nil, resource)
 			}
 		case cache.Deleted:
-			if err := s.indexer.Delete(obj); err != nil {
+			if err := s.indexer.Delete(resource); err != nil {
+				logger.Errorf("failed to delete resource from informer, cause %v, resource: %s,", err, resource.String())
 				return err
 			}
 			s.EmitEvent(d.Type, resource, nil)

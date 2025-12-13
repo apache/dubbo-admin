@@ -24,3 +24,57 @@ import (
 func BuildInstanceResName(appName string, ip string, rpcProt int64) string {
 	return fmt.Sprintf("%s%s:%d", appName, ip, rpcProt)
 }
+
+// FromRPCInstance create an instance resource from a rpc instance resource
+func FromRPCInstance(rpcInstanceRes *RPCInstanceResource) *InstanceResource {
+	resName := BuildInstanceResName(rpcInstanceRes.Spec.AppName, rpcInstanceRes.Spec.Ip, rpcInstanceRes.Spec.Port)
+	instanceRes := NewInstanceResourceWithAttributes(resName, rpcInstanceRes.Mesh)
+	instanceRes.Spec.Name = rpcInstanceRes.Spec.Name
+	instanceRes.Spec.AppName = rpcInstanceRes.Spec.AppName
+	instanceRes.Spec.Ip = rpcInstanceRes.Spec.Ip
+	instanceRes.Spec.RpcPort = rpcInstanceRes.Spec.Port
+	MergeRPCInstanceIntoInstance(rpcInstanceRes, instanceRes)
+	return instanceRes
+}
+
+// MergeRPCInstanceIntoInstance merge rpc instance resource into instance resource
+func MergeRPCInstanceIntoInstance(
+	rpcInstanceRes *RPCInstanceResource,
+	instanceRes *InstanceResource) {
+	instanceRes.Spec.ReleaseVersion = rpcInstanceRes.Spec.ReleaseVersion
+	instanceRes.Spec.RegisterTime = rpcInstanceRes.Spec.RegisterTime
+	instanceRes.Spec.UnregisterTime = rpcInstanceRes.Spec.UnregisterTime
+	instanceRes.Spec.Protocol = rpcInstanceRes.Spec.Protocol
+	instanceRes.Spec.Serialization = rpcInstanceRes.Spec.Serialization
+	instanceRes.Spec.PreferSerialization = rpcInstanceRes.Spec.PreferSerialization
+	instanceRes.Spec.Tags = rpcInstanceRes.Spec.Tags
+}
+
+// FromRuntimeInstance create an instance resource from a runtime instance resource
+func FromRuntimeInstance(rtInstanceRes *RuntimeInstanceResource) *InstanceResource {
+	resName := BuildInstanceResName(rtInstanceRes.Spec.AppName, rtInstanceRes.Spec.Ip, rtInstanceRes.Spec.RpcPort)
+	instanceRes := NewInstanceResourceWithAttributes(resName, rtInstanceRes.Mesh)
+	instanceRes.Spec.Name = resName
+	instanceRes.Spec.AppName = rtInstanceRes.Spec.AppName
+	instanceRes.Spec.Ip = rtInstanceRes.Spec.Ip
+	instanceRes.Spec.RpcPort = rtInstanceRes.Spec.RpcPort
+	MergeRuntimeInstanceIntoInstance(rtInstanceRes, instanceRes)
+	return instanceRes
+}
+
+// MergeRuntimeInstanceIntoInstance merge runtime instance resource into instance resource
+func MergeRuntimeInstanceIntoInstance(
+	rtInstanceRes *RuntimeInstanceResource,
+	instanceRes *InstanceResource) {
+	instanceRes.Labels = rtInstanceRes.Labels
+	instanceRes.Spec.Image = rtInstanceRes.Spec.Image
+	instanceRes.Spec.CreateTime = rtInstanceRes.Spec.CreateTime
+	instanceRes.Spec.StartTime = rtInstanceRes.Spec.StartTime
+	instanceRes.Spec.ReadyTime = rtInstanceRes.Spec.ReadyTime
+	instanceRes.Spec.DeployState = rtInstanceRes.Spec.Phase
+	instanceRes.Spec.WorkloadType = rtInstanceRes.Spec.WorkloadType
+	instanceRes.Spec.WorkloadName = rtInstanceRes.Spec.WorkloadName
+	instanceRes.Spec.Node = rtInstanceRes.Spec.Node
+	instanceRes.Spec.Probes = rtInstanceRes.Spec.Probes
+	instanceRes.Spec.Conditions = rtInstanceRes.Spec.Conditions
+}

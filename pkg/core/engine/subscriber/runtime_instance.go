@@ -106,7 +106,7 @@ func (s *RuntimeInstanceEventSubscriber) processUpsert(rtInstanceRes *meshresour
 	// if instance resource exists, that is to say the rpc instance exists in remote registry and has been watched by discovery.
 	// so we should merge the runtime info into it
 	if instanceResource != nil {
-		s.mergeRuntimeInstance(instanceResource, rtInstanceRes)
+		meshresource.MergeRuntimeInstanceIntoInstance(rtInstanceRes, instanceResource)
 		return s.instanceStore.Update(instanceResource)
 	}
 	// if instance resource does not exist, that is to say the rpc instance does not exist in remote registry.
@@ -116,7 +116,7 @@ func (s *RuntimeInstanceEventSubscriber) processUpsert(rtInstanceRes *meshresour
 		return nil
 	}
 	// if conditions met, we should create a new instance resource by runtime instance
-	instanceRes := s.fromRuntimeInstance(rtInstanceRes)
+	instanceRes := meshresource.FromRuntimeInstance(rtInstanceRes)
 	if err = s.instanceStore.Add(instanceRes); err != nil {
 		logger.Errorf("add instance resource failed, instance: %s, err: %s", instanceRes.ResourceKey(), err.Error())
 		return err
@@ -217,38 +217,10 @@ func (s *RuntimeInstanceEventSubscriber) getRelatedInstanceByIP(
 	return instanceResList[0], nil
 }
 
-func (s *RuntimeInstanceEventSubscriber) mergeRuntimeInstance(
-	instanceRes *meshresource.InstanceResource,
-	rtInstanceRes *meshresource.RuntimeInstanceResource) {
-	instanceRes.Labels = rtInstanceRes.Labels
-	instanceRes.Spec.Image = rtInstanceRes.Spec.Image
-	instanceRes.Spec.CreateTime = rtInstanceRes.Spec.CreateTime
-	instanceRes.Spec.StartTime = rtInstanceRes.Spec.StartTime
-	instanceRes.Spec.ReadyTime = rtInstanceRes.Spec.ReadyTime
-	instanceRes.Spec.DeployState = rtInstanceRes.Spec.Phase
-	instanceRes.Spec.WorkloadType = rtInstanceRes.Spec.WorkloadType
-	instanceRes.Spec.WorkloadName = rtInstanceRes.Spec.WorkloadName
-	instanceRes.Spec.Node = rtInstanceRes.Spec.Node
-	instanceRes.Spec.Probes = rtInstanceRes.Spec.Probes
-	instanceRes.Spec.Conditions = rtInstanceRes.Spec.Conditions
-}
-
-func (s *RuntimeInstanceEventSubscriber) fromRuntimeInstance(
-	rtInstanceRes *meshresource.RuntimeInstanceResource) *meshresource.InstanceResource {
-	resName := meshresource.BuildInstanceResName(rtInstanceRes.Spec.AppName, rtInstanceRes.Spec.Ip, rtInstanceRes.Spec.RpcPort)
-	instanceRes := meshresource.NewInstanceResourceWithAttributes(resName, rtInstanceRes.Mesh)
-	instanceRes.Spec.Name = resName
-	instanceRes.Spec.AppName = rtInstanceRes.Spec.AppName
-	instanceRes.Spec.Ip = rtInstanceRes.Spec.Ip
-	instanceRes.Spec.RpcPort = rtInstanceRes.Spec.RpcPort
-	s.mergeRuntimeInstance(instanceRes, rtInstanceRes)
-	return instanceRes
-}
-
 func checkAttributesEnough(rtInstanceRes *meshresource.RuntimeInstanceResource) bool {
 	if rtInstanceRes.Spec == nil || strutil.IsBlank(rtInstanceRes.Spec.AppName) ||
 		strutil.IsBlank(rtInstanceRes.Spec.Ip) || rtInstanceRes.Spec.RpcPort <= 0 ||
-		strutil.IsBlank(rtInstanceRes.Spec.Mesh) || constants.DefaultMesh == rtInstanceRes.Spec.Mesh {
+		strutil.IsBlank(rtInstanceRes.Mesh) || constants.DefaultMesh == rtInstanceRes.Mesh {
 		return false
 	}
 	return true

@@ -35,7 +35,7 @@ import (
 const DynamicConfigKind coremodel.ResourceKind = "DynamicConfig"
 
 func init() {
-	coremodel.RegisterResourceSchema(DynamicConfigKind, NewDynamicConfigResource)
+	coremodel.RegisterResourceSchema(DynamicConfigKind, NewDynamicConfigResource, NewDynamicConfigResourceList)
 }
 
 type DynamicConfigResource struct {
@@ -136,7 +136,7 @@ func NewDynamicConfigResource() coremodel.Resource {
 type DynamicConfigResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []DynamicConfigResource `json:"items"`
+	Items           []*DynamicConfigResource `json:"items"`
 }
 
 func (r *DynamicConfigResourceList) DeepCopyObject() k8sruntime.Object {
@@ -148,18 +148,41 @@ func (r *DynamicConfigResourceList) DeepCopyObject() k8sruntime.Object {
 	if len(r.Items) == 0 {
 		return out
 	}
-	out.Items = make([]DynamicConfigResource, len(r.Items))
+	out.Items = make([]*DynamicConfigResource, len(r.Items))
 	for i := range r.Items {
-		out.Items[i] = *r.Items[i].DeepCopyObject().(*DynamicConfigResource)
+		out.Items[i] = r.Items[i].DeepCopyObject().(*DynamicConfigResource)
 	}
 	return out
 }
 
-func NewDynamicConfigResourceList() *DynamicConfigResourceList {
+func NewDynamicConfigResourceList() coremodel.ResourceList {
 	return &DynamicConfigResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(DynamicConfigKind),
 			APIVersion: "v1alpha1",
 		},
+		Items: make([]*DynamicConfigResource, 0),
+	}
+}
+
+func (r *DynamicConfigResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*DynamicConfigResource, len(items))
+	for i := range items {
+		res, ok := items[i].(*DynamicConfigResource)
+		if !ok {
+			logger.Errorf("unexpected resource type, expected: %s, get %s", DynamicConfigKind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func NewDynamicConfigResourceListWithItems(items ...*DynamicConfigResource) *DynamicConfigResourceList {
+	return &DynamicConfigResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(DynamicConfigKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
 	}
 }

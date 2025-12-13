@@ -22,8 +22,11 @@ import (
 	"math"
 	"reflect"
 
+	"github.com/duke-git/lancet/v2/slice"
+
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/config/discovery"
+	"github.com/apache/dubbo-admin/pkg/config/engine"
 	"github.com/apache/dubbo-admin/pkg/core/controller"
 	"github.com/apache/dubbo-admin/pkg/core/discovery/subscriber"
 	"github.com/apache/dubbo-admin/pkg/core/events"
@@ -97,7 +100,7 @@ func (d *discoveryComponent) Init(ctx runtime.BuilderContext) error {
 		}
 		d.informers[cfg.Name] = informers
 	}
-	err = d.initSubscribes(storeRouter, eventBus)
+	err = d.initSubscribes(storeRouter, eventBus, ctx.Config().Engine)
 	if err != nil {
 		return err
 	}
@@ -137,7 +140,7 @@ func (d *discoveryComponent) Delete(resource coremodel.Resource) error {
 	panic("implement me")
 }
 
-func (d *discoveryComponent) initInformers(cfg *discovery.Config, storeRouter store.Router, emitter events.Emitter) (Informers, error) {
+func (d *discoveryComponent) initInformers(cfg *discovery.Config, storeRouter store.Router, eventBus events.EventBus) (Informers, error) {
 	factory, err := ListWatcherFactoryRegistry().GetListWatcherFactory(cfg.Type)
 	if err != nil {
 		return nil, err
@@ -152,18 +155,48 @@ func (d *discoveryComponent) initInformers(cfg *discovery.Config, storeRouter st
 		if err != nil {
 			return nil, fmt.Errorf("cannot find store for resource kind %s", lw.ResourceKind())
 		}
-		informer := controller.NewInformerWithOptions(lw, emitter, resourceStore, controller.Options{ResyncPeriod: 0})
+		informer := controller.NewInformerWithOptions(lw, eventBus, resourceStore, keyFunc, controller.Options{ResyncPeriod: 0})
 		informers[i] = informer
 	}
 	return informers, nil
 }
-
-func (d *discoveryComponent) initSubscribes(storeRouter store.Router, emitter events.Emitter) error {
-	rs, err := storeRouter.ResourceKindRoute(meshresource.InstanceKind)
-	if err != nil {
-		return fmt.Errorf("can not find store for resource kind %s, %w", meshresource.InstanceKind, err)
+func keyFunc(obj interface{}) (string, error) {
+	if r, ok := obj.(coremodel.Resource); ok {
+		return r.ResourceKey(), nil
 	}
-	rpcInstanceSub := subscriber.NewRPCInstanceEventSubscriber(rs, emitter)
-	d.subscribers = append(d.subscribers, rpcInstanceSub)
+	return "", bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
+}
+
+func (d *discoveryComponent) initSubscribes(storeRouter store.Router, emitter events.Emitter, engineConfig *engine.Config) error {
+	instanceStore, err := storeRouter.ResourceKindRoute(meshresource.InstanceKind)
+	if err != nil {
+		return bizerror.Wrap(err, bizerror.StoreError,
+			fmt.Sprintf("can not find store for resource kind %s", meshresource.InstanceKind))
+	}
+	rtInstanceStore, err := storeRouter.ResourceKindRoute(meshresource.RuntimeInstanceKind)
+	if err != nil {
+		return bizerror.Wrap(err, bizerror.StoreError,
+			fmt.Sprintf("can not find store for resource kind %s", meshresource.RuntimeInstanceKind))
+	}
+	rpcInstanceSub := subscriber.NewRPCInstanceEventSubscriber(instanceStore, rtInstanceStore, emitter, engineConfig)
+
+	appStore, err := storeRouter.ResourceKindRoute(meshresource.ApplicationKind)
+	if err != nil {
+		return bizerror.Wrap(err, bizerror.StoreError,
+			fmt.Sprintf("can not find store for resource kind %s", meshresource.ApplicationKind))
+	}
+	serviceConsumerMetadataSub := subscriber.NewServiceConsumerMetadataEventSubscriber(appStore, emitter)
+	serviceProviderMetadataSub := subscriber.NewServiceProviderMetadataEventSubscriber(appStore, emitter)
+
+	d.subscribers = append(d.subscribers, rpcInstanceSub, serviceConsumerMetadataSub, serviceProviderMetadataSub)
+
+	// if there is a nacos discovery, a NacosServiceEventSubscriber is needed
+	_, hasNacosDiscovery := slice.FindBy(d.configs, func(index int, item *discovery.Config) bool {
+		return item.Type == discovery.Nacos2
+	})
+	if hasNacosDiscovery {
+		nacosServiceSub := subscriber.NewNacosServiceEventSubscriber(emitter, storeRouter)
+		d.subscribers = append(d.subscribers, nacosServiceSub)
+	}
 	return nil
 }

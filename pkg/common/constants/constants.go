@@ -17,7 +17,12 @@
 
 package constants
 
-// Registry Constants
+const (
+	DubboPropertyKey         = "dubbo.properties"
+	RegistryAddressKey       = "dubbo.registry.address"
+	MetadataReportAddressKey = "dubbo.metadata-report.address"
+)
+
 const (
 	RegistryKey                  = "registry"
 	RegistryClusterKey           = "REGISTRY_CLUSTER"
@@ -27,18 +32,57 @@ const (
 	DefaultRegisterModeInterface = "interface"
 	DefaultRegisterModeInstance  = "instance"
 	DefaultRegisterModeAll       = "all"
-	VersionKey                   = "version"
-	GroupKey                     = "group"
 	MetadataStorageTypeKey       = "dubbo.metadata.storage-type"
 	TimestampKey                 = "timestamp"
 	EndpointsKey                 = "dubbo.endpoints"
-	InterfaceKey                 = "interface"
 	URLParamsKey                 = "dubbo.metadata-service.url-params"
 	MetadataRevisionKey          = "dubbo.metadata.revision"
+	AnyValue                     = "*"
+	AnyHostValue                 = "0.0.0.0"
+	InterfaceKey                 = "interface"
+	GroupKey                     = "group"
+	VersionKey                   = "version"
+	ClassifierKey                = "classifier"
+	CategoryKey                  = "category"
+	ProvidersCategory            = "providers"
+	ConsumersCategory            = "consumers"
+	RoutersCategory              = "routers"
+	ConfiguratorsCategory        = "configurators"
+	ConfiguratorRuleSuffix       = ".configurators"
+	EnabledKey                   = "enabled"
+	CheckKey                     = "check"
+	AdminProtocol                = "admin"
+	Side                         = "side"
+	ConsumerSide                 = "consumer"
+	ProviderSide                 = "provider"
+	ConsumerProtocol             = "consumer"
+	EmptyProtocol                = "empty"
+	OverrideProtocol             = "override"
+	DefaultGroup                 = "dubbo"
+	DynamicKey                   = "dynamic"
+	SerializationKey             = "serialization"
+	TimeoutKey                   = "timeout"
+	DefaultTimeout               = 1000
+	WeightKey                    = "weight"
+	BalancingKey                 = "balancing"
+	DefaultWeight                = 100
+	OwnerKey                     = "owner"
+
+	ConfigFileEnvKey  = "conf" // config file path
+	RegistryAll       = "ALL"
+	RegistryInterface = "INTERFACE"
+	RegistryInstance  = "INSTANCE"
+	RegistryType      = "TYPE"
+	NamespaceKey      = "namespace"
 )
 
 const (
-	SerializationKey = "prefer.serialization"
+	Application = "application"
+	Instance    = "instance"
+	Service     = "service"
+
+	StatefulSet = "StatefulSet"
+	Deployment  = "Deployment"
 )
 
 const (
@@ -48,34 +92,6 @@ const (
 )
 
 const (
-	ServiceInfoSide = "side"
-	ProviderSide    = "provider"
-	ConsumerSide    = "consumer"
-)
-
-const (
-	RetriesKey = "retries"
-	TimeoutKey = "timeout"
-)
-
-const (
-	Application = "application"
-	Instance    = "instance"
-	Service     = "service"
-)
-
-const (
 	Stateful  = "有状态"
 	Stateless = "无状态"
-)
-
-const (
-	PathSeparator  = "/"
-	DotSeparator   = "."
-	ColonSeparator = ":"
-	CommaSeparator = ","
-)
-
-const (
-	DefaultMesh = "default"
 )

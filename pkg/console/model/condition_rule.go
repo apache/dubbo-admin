@@ -21,7 +21,7 @@ import (
 	"strings"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
@@ -105,10 +105,10 @@ type RouteCondition struct {
 }
 
 func (r *RouteCondition) string() string {
-	if r.Relation == consts.Equal {
-		return "arguments[" + r.Index + "]" + consts.Equal + r.Value
+	if r.Relation == constants.Equal {
+		return "arguments[" + r.Index + "]" + constants.Equal + r.Value
 	} else {
-		return "arguments[" + r.Index + "]" + consts.NotEqual + r.Value
+		return "arguments[" + r.Index + "]" + constants.NotEqual + r.Value
 	}
 }
 
@@ -124,10 +124,10 @@ type DestinationCondition struct {
 }
 
 func (d *DestinationCondition) string() string {
-	if d.Relation == consts.Equal {
-		return d.Tag + consts.Equal + d.Value
+	if d.Relation == constants.Equal {
+		return d.Tag + constants.Equal + d.Value
 	} else {
-		return d.Tag + consts.NotEqual + d.Value
+		return d.Tag + constants.NotEqual + d.Value
 	}
 }
 
@@ -168,17 +168,17 @@ func matchValueToRouteCondition(val string) []RouteCondition {
 	subsets := strings.Split(val, "&")
 	res := make([]RouteCondition, 0, len(subsets))
 	for _, subset := range subsets {
-		if index := strings.Index(subset, consts.NotEqual); index != -1 {
+		if index := strings.Index(subset, constants.NotEqual); index != -1 {
 			res = append(res, RouteCondition{
 				Index:    strings.Trim(subset[:index], " "),
-				Relation: consts.NotEqual,
-				Value:    strings.Trim(subset[index+len(consts.NotEqual):], " "),
+				Relation: constants.NotEqual,
+				Value:    strings.Trim(subset[index+len(constants.NotEqual):], " "),
 			})
-		} else if index := strings.Index(subset, consts.Equal); index != -1 {
+		} else if index := strings.Index(subset, constants.Equal); index != -1 {
 			res = append(res, RouteCondition{
 				Index:    strings.Trim(subset[:index], " "),
-				Relation: consts.Equal,
-				Value:    strings.Trim(subset[index+len(consts.Equal):], " "),
+				Relation: constants.Equal,
+				Value:    strings.Trim(subset[index+len(constants.Equal):], " "),
 			})
 		}
 	}
@@ -189,17 +189,17 @@ func matchValueToDestinationCondition(val string) []DestinationCondition {
 	subsets := strings.Split(val, "&")
 	res := make([]DestinationCondition, 0, len(subsets))
 	for _, subset := range subsets {
-		if index := strings.Index(subset, consts.NotEqual); index != -1 {
+		if index := strings.Index(subset, constants.NotEqual); index != -1 {
 			res = append(res, DestinationCondition{
 				Tag:      strings.Trim(subset[:index], " "),
-				Relation: consts.NotEqual,
-				Value:    strings.Trim(subset[index+len(consts.NotEqual):], " "),
+				Relation: constants.NotEqual,
+				Value:    strings.Trim(subset[index+len(constants.NotEqual):], " "),
 			})
-		} else if index := strings.Index(subset, consts.Equal); index != -1 {
+		} else if index := strings.Index(subset, constants.Equal); index != -1 {
 			res = append(res, DestinationCondition{
 				Tag:      strings.Trim(subset[:index], " "),
-				Relation: consts.Equal,
-				Value:    strings.Trim(subset[index+len(consts.Equal):], " "),
+				Relation: constants.Equal,
+				Value:    strings.Trim(subset[index+len(constants.Equal):], " "),
 			})
 		}
 	}

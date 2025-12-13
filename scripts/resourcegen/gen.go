@@ -78,7 +78,7 @@ import (
 const {{.Name}}Kind coremodel.ResourceKind = "{{.Name}}"
 
 func init() {
-	coremodel.RegisterResourceSchema({{.Name}}Kind, New{{.Name}}Resource)
+	coremodel.RegisterResourceSchema({{.Name}}Kind, New{{.Name}}Resource, New{{.Name}}ResourceList)
 }
 
 type {{.Name}}Resource struct {
@@ -180,7 +180,7 @@ func New{{.Name}}Resource() coremodel.Resource {
 type {{.Name}}ResourceList struct {
 	metav1.TypeMeta {{ $tk }}json:",inline"{{ $tk }}
 	metav1.ListMeta {{ $tk }}json:"metadata,omitempty"{{ $tk }}
-	Items           []{{.Name}}Resource {{ $tk }}json:"items"{{ $tk }}
+	Items           []*{{.Name}}Resource {{ $tk }}json:"items"{{ $tk }}
 }
 
 func (r *{{.Name}}ResourceList) DeepCopyObject() k8sruntime.Object {
@@ -192,22 +192,44 @@ func (r *{{.Name}}ResourceList) DeepCopyObject() k8sruntime.Object {
 	if len(r.Items) == 0 {
 		return out
 	}
-	out.Items = make([]{{.Name}}Resource, len(r.Items))
+	out.Items = make([]*{{.Name}}Resource, len(r.Items))
 	for i := range r.Items {
-		out.Items[i] = *r.Items[i].DeepCopyObject().(*{{.Name}}Resource)
+		out.Items[i] = r.Items[i].DeepCopyObject().(*{{.Name}}Resource)
 	}
 	return out
 }
 
-func New{{.Name}}ResourceList() *{{.Name}}ResourceList {
+func New{{.Name}}ResourceList() coremodel.ResourceList {
 	return &{{.Name}}ResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string({{.Name}}Kind),
 			APIVersion: "v1alpha1",
 		},
+		Items: make([]*{{.Name}}Resource, 0),
 	}
 }
 
+func (r *{{.Name}}ResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*{{.Name}}Resource, len(items))
+	for i := range items {
+		res, ok := items[i].(*{{.Name}}Resource)
+		if !ok{
+			logger.Errorf("unexpected resource type, expected: %s, get %s", {{.Name}}Kind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func New{{.Name}}ResourceListWithItems(items ...*{{.Name}}Resource) *{{.Name}}ResourceList {
+	return &{{.Name}}ResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string({{.Name}}Kind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
+	}
+}
 
 {{- end }} {{/* Resources */}}
 `))

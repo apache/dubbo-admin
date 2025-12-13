@@ -35,7 +35,7 @@ import (
 const RuntimeInstanceKind coremodel.ResourceKind = "RuntimeInstance"
 
 func init() {
-	coremodel.RegisterResourceSchema(RuntimeInstanceKind, NewRuntimeInstanceResource)
+	coremodel.RegisterResourceSchema(RuntimeInstanceKind, NewRuntimeInstanceResource, NewRuntimeInstanceResourceList)
 }
 
 type RuntimeInstanceResource struct {
@@ -136,7 +136,7 @@ func NewRuntimeInstanceResource() coremodel.Resource {
 type RuntimeInstanceResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []RuntimeInstanceResource `json:"items"`
+	Items           []*RuntimeInstanceResource `json:"items"`
 }
 
 func (r *RuntimeInstanceResourceList) DeepCopyObject() k8sruntime.Object {
@@ -148,18 +148,41 @@ func (r *RuntimeInstanceResourceList) DeepCopyObject() k8sruntime.Object {
 	if len(r.Items) == 0 {
 		return out
 	}
-	out.Items = make([]RuntimeInstanceResource, len(r.Items))
+	out.Items = make([]*RuntimeInstanceResource, len(r.Items))
 	for i := range r.Items {
-		out.Items[i] = *r.Items[i].DeepCopyObject().(*RuntimeInstanceResource)
+		out.Items[i] = r.Items[i].DeepCopyObject().(*RuntimeInstanceResource)
 	}
 	return out
 }
 
-func NewRuntimeInstanceResourceList() *RuntimeInstanceResourceList {
+func NewRuntimeInstanceResourceList() coremodel.ResourceList {
 	return &RuntimeInstanceResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(RuntimeInstanceKind),
 			APIVersion: "v1alpha1",
 		},
+		Items: make([]*RuntimeInstanceResource, 0),
+	}
+}
+
+func (r *RuntimeInstanceResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*RuntimeInstanceResource, len(items))
+	for i := range items {
+		res, ok := items[i].(*RuntimeInstanceResource)
+		if !ok {
+			logger.Errorf("unexpected resource type, expected: %s, get %s", RuntimeInstanceKind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func NewRuntimeInstanceResourceListWithItems(items ...*RuntimeInstanceResource) *RuntimeInstanceResourceList {
+	return &RuntimeInstanceResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(RuntimeInstanceKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
 	}
 }

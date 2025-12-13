@@ -20,12 +20,12 @@ package v1alpha1
 import (
 	"strings"
 
-	"github.com/apache/dubbo-admin/pkg/core/consts"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 )
 
 func GetOverridePath(key string) string {
 	key = strings.Replace(key, "/", "*", -1)
-	return key + consts.ConfiguratorRuleSuffix
+	return key + constants.ConfiguratorRuleSuffix
 }
 
 func (d *DynamicConfig) ListUnGenConfigs() []*OverrideConfig {

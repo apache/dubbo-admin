@@ -24,7 +24,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/apache/dubbo-admin/api/mesh/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
@@ -172,5 +172,5 @@ func (s *BaseServiceReq) Query(c *gin.Context) error {
 }
 
 func (s *BaseServiceReq) ServiceKey() string {
-	return s.ServiceName + consts.Colon + s.Group + consts.Colon + s.Version
+	return s.ServiceName + constants.ColonSeparator + s.Group + constants.ColonSeparator + s.Version
 }

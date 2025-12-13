@@ -24,6 +24,7 @@ type Type string
 const (
 	VM         Type = "vm"
 	Kubernetes Type = "kubernetes"
+	Mock       Type = "mock"
 )
 
 type Config struct {

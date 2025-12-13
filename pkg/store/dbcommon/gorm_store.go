@@ -18,7 +18,6 @@
 package dbcommon
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"sort"
@@ -175,10 +174,9 @@ func (gs *GormStore) Update(obj interface{}) error {
 	result := db.Scopes(TableScope(gs.kind.ToString())).Model(&ResourceModel{}).
 		Where("resource_key = ?", resource.ResourceKey()).
 		Updates(map[string]interface{}{
-			"name":       m.Name,
-			"mesh":       m.Mesh,
-			"data":       m.Data,
-			"updated_at": m.UpdatedAt,
+			"name": m.Name,
+			"mesh": m.Mesh,
+			"data": m.Data,
 		})
 
 	if result.Error != nil {
@@ -279,7 +277,7 @@ func (gs *GormStore) GetByKey(key string) (item interface{}, exists bool, err er
 		First(&m)
 
 	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		if result.Error.Error() == "record not found" {
 			return nil, false, nil
 		}
 		return nil, false, result.Error

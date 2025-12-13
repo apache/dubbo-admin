@@ -35,7 +35,7 @@ import (
 const ServiceConsumerMetadataKind coremodel.ResourceKind = "ServiceConsumerMetadata"
 
 func init() {
-	coremodel.RegisterResourceSchema(ServiceConsumerMetadataKind, NewServiceConsumerMetadataResource)
+	coremodel.RegisterResourceSchema(ServiceConsumerMetadataKind, NewServiceConsumerMetadataResource, NewServiceConsumerMetadataResourceList)
 }
 
 type ServiceConsumerMetadataResource struct {
@@ -136,7 +136,7 @@ func NewServiceConsumerMetadataResource() coremodel.Resource {
 type ServiceConsumerMetadataResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ServiceConsumerMetadataResource `json:"items"`
+	Items           []*ServiceConsumerMetadataResource `json:"items"`
 }
 
 func (r *ServiceConsumerMetadataResourceList) DeepCopyObject() k8sruntime.Object {
@@ -148,18 +148,41 @@ func (r *ServiceConsumerMetadataResourceList) DeepCopyObject() k8sruntime.Object
 	if len(r.Items) == 0 {
 		return out
 	}
-	out.Items = make([]ServiceConsumerMetadataResource, len(r.Items))
+	out.Items = make([]*ServiceConsumerMetadataResource, len(r.Items))
 	for i := range r.Items {
-		out.Items[i] = *r.Items[i].DeepCopyObject().(*ServiceConsumerMetadataResource)
+		out.Items[i] = r.Items[i].DeepCopyObject().(*ServiceConsumerMetadataResource)
 	}
 	return out
 }
 
-func NewServiceConsumerMetadataResourceList() *ServiceConsumerMetadataResourceList {
+func NewServiceConsumerMetadataResourceList() coremodel.ResourceList {
 	return &ServiceConsumerMetadataResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(ServiceConsumerMetadataKind),
 			APIVersion: "v1alpha1",
 		},
+		Items: make([]*ServiceConsumerMetadataResource, 0),
+	}
+}
+
+func (r *ServiceConsumerMetadataResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*ServiceConsumerMetadataResource, len(items))
+	for i := range items {
+		res, ok := items[i].(*ServiceConsumerMetadataResource)
+		if !ok {
+			logger.Errorf("unexpected resource type, expected: %s, get %s", ServiceConsumerMetadataKind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func NewServiceConsumerMetadataResourceListWithItems(items ...*ServiceConsumerMetadataResource) *ServiceConsumerMetadataResourceList {
+	return &ServiceConsumerMetadataResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ServiceConsumerMetadataKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
 	}
 }

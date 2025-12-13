@@ -33,14 +33,14 @@ import (
 // Note: TableName() method is intentionally removed as GORM caches it.
 // Use TableScope() instead for dynamic table names.
 type ResourceModel struct {
-	ID           uint      `gorm:"primarykey"`           // Auto-incrementing primary key
-	ResourceKey  string    `gorm:"uniqueIndex;not null"` // Unique identifier for the resource
-	ResourceKind string    `gorm:"not null"`             // Type of resource (e.g., "Application", "ServiceProviderMapping")
-	Name         string    `gorm:"index;not null"`       // Resource name, indexed for fast lookups
-	Mesh         string    `gorm:"index;not null"`       // Mesh identifier, indexed for filtering by mesh
-	Data         []byte    `gorm:"type:text;not null"`   // JSON-encoded resource data
-	CreatedAt    time.Time `gorm:"autoCreateTime"`       // Automatically set on creation
-	UpdatedAt    time.Time `gorm:"autoUpdateTime"`       // Automatically updated on modification
+	ID           uint      `gorm:"primarykey"`                             // Auto-incrementing primary key
+	ResourceKey  string    `gorm:"type:varchar(255);uniqueIndex;not null"` // Unique identifier for the resource
+	ResourceKind string    `gorm:"not null"`                               // Type of resource (e.g., "Application", "ServiceProviderMapping")
+	Name         string    `gorm:"index;not null"`                         // Resource name, indexed for fast lookups
+	Mesh         string    `gorm:"index;not null"`                         // Mesh identifier, indexed for filtering by mesh
+	Data         []byte    `gorm:"type:text;not null"`                     // JSON-encoded resource data
+	CreatedAt    time.Time `gorm:"autoCreateTime"`                         // Automatically set on creation
+	UpdatedAt    time.Time `gorm:"autoUpdateTime"`                         // Automatically updated on modification
 }
 
 // TableNameForKind returns the table name for a given ResourceKind

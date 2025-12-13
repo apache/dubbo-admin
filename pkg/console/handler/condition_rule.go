@@ -28,10 +28,10 @@ import (
 	"github.com/mitchellh/mapstructure"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 )
 
@@ -56,10 +56,10 @@ func GetConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, consts.ConditionRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(consts.ConditionRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.ConditionRuleSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.ConditionRuleSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", consts.ConditionRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConditionRuleSuffix)))
 			return
 		}
 		if res, err := service.GetConditionRule(cs, name, mesh); err != nil {
@@ -98,10 +98,10 @@ func PutConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, consts.ConditionRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(consts.ConditionRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.ConditionRuleSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.ConditionRuleSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", consts.ConditionRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConditionRuleSuffix)))
 			return
 		}
 		_map, err := bodyToMap(c.Request.Body)
@@ -111,7 +111,7 @@ func PutConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 		}
 
 		res := meshresource.NewConditionRouteResourceWithAttributes(ruleName, mesh)
-		if version := _map[consts.ConfigVersionKey]; version == consts.ConfiguratorVersionV3 {
+		if version := _map[constants.ConfigVersionKey]; version == constants.ConfiguratorVersionV3 {
 			v3 := new(meshproto.ConditionRouteV3)
 			err = mapToStructure(_map, &v3)
 			if err != nil {
@@ -119,7 +119,7 @@ func PutConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 				return
 			}
 			res.Spec = v3.ToConditionRoute()
-		} else if version == consts.ConfiguratorVersionV3x1 {
+		} else if version == constants.ConfiguratorVersionV3x1 {
 			v3x1 := new(meshproto.ConditionRouteV3X1)
 			err = mapToStructure(_map, &v3x1)
 			if err != nil {
@@ -147,10 +147,10 @@ func PostConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, consts.ConditionRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(consts.ConditionRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.ConditionRuleSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.ConditionRuleSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", consts.ConditionRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConditionRuleSuffix)))
 			return
 		}
 		_map, err := bodyToMap(c.Request.Body)
@@ -161,7 +161,7 @@ func PostConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 
 		res := &meshresource.ConditionRouteResource{}
 		res = meshresource.NewConditionRouteResourceWithAttributes(ruleName, mesh)
-		if version := _map[consts.ConfigVersionKey]; version == consts.ConfiguratorVersionV3 {
+		if version := _map[constants.ConfigVersionKey]; version == constants.ConfiguratorVersionV3 {
 			v3 := new(meshproto.ConditionRouteV3)
 			err = mapToStructure(_map, &v3)
 			if err != nil {
@@ -169,7 +169,7 @@ func PostConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 				return
 			}
 			res.Spec = v3.ToConditionRoute()
-		} else if version == consts.ConfiguratorVersionV3x1 {
+		} else if version == constants.ConfiguratorVersionV3x1 {
 			v3x1 := new(meshproto.ConditionRouteV3X1)
 			err = mapToStructure(_map, &v3x1)
 			if err != nil {
@@ -196,10 +196,10 @@ func DeleteConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, consts.ConditionRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(consts.ConditionRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.ConditionRuleSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.ConditionRuleSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", consts.ConditionRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConditionRuleSuffix)))
 			return
 		}
 		if err := service.DeleteConditionRule(cs, name, mesh); err != nil {

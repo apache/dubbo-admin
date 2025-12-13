@@ -24,10 +24,10 @@ import (
 	"github.com/gin-gonic/gin"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	corestore "github.com/apache/dubbo-admin/pkg/core/store"
 )
@@ -107,7 +107,7 @@ func ServiceConfigTimeoutGET(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-		serviceConfiguratorName := param.ServiceKey() + consts.PunctuationPoint + consts.ConfiguratorRuleSuffix
+		serviceConfiguratorName := param.ServiceKey() + constants.PunctuationPoint + constants.ConfiguratorRuleSuffix
 		res, err := service.GetConfigurator(ctx, serviceConfiguratorName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
@@ -130,7 +130,7 @@ func ServiceConfigTimeoutGET(ctx consolectx.Context) gin.HandlerFunc {
 }
 
 func getServiceTimeout(conf *meshproto.OverrideConfig) (int32, bool) {
-	if conf.Side == consts.SideProvider && conf.Parameters != nil && conf.Parameters[`timeout`] != "" {
+	if conf.Side == constants.SideProvider && conf.Parameters != nil && conf.Parameters[`timeout`] != "" {
 		timeout, err := strconv.Atoi(conf.Parameters[`timeout`])
 		if err == nil {
 			return int32(timeout), true
@@ -151,7 +151,7 @@ func ServiceConfigTimeoutPUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		isExist := true
-		serviceConfiguratorName := param.ServiceKey() + consts.PunctuationPoint + consts.ConfiguratorRuleSuffix
+		serviceConfiguratorName := param.ServiceKey() + constants.PunctuationPoint + constants.ConfiguratorRuleSuffix
 		res, err := service.GetConfigurator(ctx, serviceConfiguratorName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
@@ -163,8 +163,8 @@ func ServiceConfigTimeoutPUT(ctx consolectx.Context) gin.HandlerFunc {
 			res = meshresource.NewDynamicConfigResourceWithAttributes(serviceConfiguratorName, param.Mesh)
 			res.Spec = &meshproto.DynamicConfig{
 				Key:           param.ServiceName,
-				Scope:         consts.ScopeService,
-				ConfigVersion: consts.ConfiguratorVersionV3,
+				Scope:         constants.ScopeService,
+				ConfigVersion: constants.ConfiguratorVersionV3,
 				Enabled:       true,
 				Configs:       make([]*meshproto.OverrideConfig, 0),
 			}
@@ -181,7 +181,7 @@ func ServiceConfigTimeoutPUT(ctx consolectx.Context) gin.HandlerFunc {
 
 		if !isExist {
 			res.Spec.Configs = append(res.Spec.Configs, &meshproto.OverrideConfig{
-				Side:          consts.SideProvider,
+				Side:          constants.SideProvider,
 				Parameters:    map[string]string{`timeout`: strconv.Itoa(int(param.Timeout))},
 				XGenerateByCp: true,
 			})
@@ -211,7 +211,7 @@ func ServiceConfigRetryGET(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-		serviceConfiguratorName := param.ServiceKey() + consts.PunctuationPoint + consts.ConfiguratorRuleSuffix
+		serviceConfiguratorName := param.ServiceKey() + constants.PunctuationPoint + constants.ConfiguratorRuleSuffix
 		res, err := service.GetConfigurator(ctx, serviceConfiguratorName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
@@ -234,7 +234,7 @@ func ServiceConfigRetryGET(ctx consolectx.Context) gin.HandlerFunc {
 }
 
 func getServiceRetryTimes(conf *meshproto.OverrideConfig) (int32, bool) {
-	if conf.Side == consts.SideConsumer && conf.Parameters != nil && conf.Parameters[`retries`] != "" {
+	if conf.Side == constants.SideConsumer && conf.Parameters != nil && conf.Parameters[`retries`] != "" {
 		retries, err := strconv.Atoi(conf.Parameters[`retries`])
 		if err == nil {
 			return int32(retries), true
@@ -255,7 +255,7 @@ func ServiceConfigRetryPUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		isExist := true
-		serviceConfiguratorName := param.ServiceKey() + consts.PunctuationPoint + consts.ConfiguratorRuleSuffix
+		serviceConfiguratorName := param.ServiceKey() + constants.PunctuationPoint + constants.ConfiguratorRuleSuffix
 		res, err := service.GetConfigurator(ctx, serviceConfiguratorName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
@@ -267,8 +267,8 @@ func ServiceConfigRetryPUT(ctx consolectx.Context) gin.HandlerFunc {
 			res = meshresource.NewDynamicConfigResourceWithAttributes(serviceConfiguratorName, param.Mesh)
 			res.Spec = &meshproto.DynamicConfig{
 				Key:           param.ServiceName,
-				Scope:         consts.ScopeService,
-				ConfigVersion: consts.ConfiguratorVersionV3,
+				Scope:         constants.ScopeService,
+				ConfigVersion: constants.ConfiguratorVersionV3,
 				Enabled:       true,
 				Configs:       make([]*meshproto.OverrideConfig, 0),
 			}
@@ -281,7 +281,7 @@ func ServiceConfigRetryPUT(ctx consolectx.Context) gin.HandlerFunc {
 		})
 
 		res.Spec.Configs = append(res.Spec.Configs, &meshproto.OverrideConfig{
-			Side:          consts.SideConsumer,
+			Side:          constants.SideConsumer,
 			Parameters:    map[string]string{`retries`: strconv.Itoa(int(param.RetryTimes))},
 			XGenerateByCp: true,
 		})
@@ -315,7 +315,7 @@ func ServiceConfigRegionPriorityGET(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-		serviceAffinityRouteName := param.ServiceKey() + consts.PunctuationPoint + consts.AffinityRuleSuffix
+		serviceAffinityRouteName := param.ServiceKey() + constants.PunctuationPoint + constants.AffinityRuleSuffix
 		res, err := service.GetAffinityRule(ctx, serviceAffinityRouteName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
@@ -350,7 +350,7 @@ func ServiceConfigRegionPriorityPUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		isExist := true
-		serviceAffinityRouteName := param.ServiceKey() + consts.PunctuationPoint + consts.AffinityRuleSuffix
+		serviceAffinityRouteName := param.ServiceKey() + constants.PunctuationPoint + constants.AffinityRuleSuffix
 		res, err := service.GetAffinityRule(ctx, serviceAffinityRouteName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
@@ -418,7 +418,7 @@ func ServiceConfigArgumentRouteGET(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-		serviceConditionRuleName := param.ServiceKey() + consts.PunctuationPoint + consts.ConditionRuleSuffix
+		serviceConditionRuleName := param.ServiceKey() + constants.PunctuationPoint + constants.ConditionRuleSuffix
 		rawRes, err := service.GetConditionRule(ctx, serviceConditionRuleName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
@@ -458,7 +458,7 @@ func ServiceConfigArgumentRoutePUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		isExist := true
-		serviceConditionRuleName := param.ServiceKey() + consts.PunctuationPoint + consts.ConditionRuleSuffix
+		serviceConditionRuleName := param.ServiceKey() + constants.PunctuationPoint + constants.ConditionRuleSuffix
 		rawRes, err := service.GetConditionRule(ctx, serviceConditionRuleName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
@@ -473,7 +473,7 @@ func ServiceConfigArgumentRoutePUT(ctx consolectx.Context) gin.HandlerFunc {
 				false,
 				true,
 				param.ServiceName,
-				consts.ScopeService).ToConditionRoute()
+				constants.ScopeService).ToConditionRoute()
 			isExist = false
 		}
 

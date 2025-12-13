@@ -19,7 +19,7 @@ package model
 
 import (
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 )
 
 type TagRuleSearchResp struct {
@@ -52,7 +52,7 @@ func GenTagRouteResp(pb *meshproto.TagRoute) *CommonResp {
 			Enabled:       pb.Enabled,
 			Key:           pb.Key,
 			Runtime:       pb.Runtime,
-			Scope:         consts.ScopeApplication,
+			Scope:         constants.ScopeApplication,
 			Tags:          tagToRespTagElement(pb.Tags),
 		})
 	}

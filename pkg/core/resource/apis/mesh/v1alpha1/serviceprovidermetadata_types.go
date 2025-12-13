@@ -35,7 +35,7 @@ import (
 const ServiceProviderMetadataKind coremodel.ResourceKind = "ServiceProviderMetadata"
 
 func init() {
-	coremodel.RegisterResourceSchema(ServiceProviderMetadataKind, NewServiceProviderMetadataResource)
+	coremodel.RegisterResourceSchema(ServiceProviderMetadataKind, NewServiceProviderMetadataResource, NewServiceProviderMetadataResourceList)
 }
 
 type ServiceProviderMetadataResource struct {
@@ -136,7 +136,7 @@ func NewServiceProviderMetadataResource() coremodel.Resource {
 type ServiceProviderMetadataResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ServiceProviderMetadataResource `json:"items"`
+	Items           []*ServiceProviderMetadataResource `json:"items"`
 }
 
 func (r *ServiceProviderMetadataResourceList) DeepCopyObject() k8sruntime.Object {
@@ -148,18 +148,41 @@ func (r *ServiceProviderMetadataResourceList) DeepCopyObject() k8sruntime.Object
 	if len(r.Items) == 0 {
 		return out
 	}
-	out.Items = make([]ServiceProviderMetadataResource, len(r.Items))
+	out.Items = make([]*ServiceProviderMetadataResource, len(r.Items))
 	for i := range r.Items {
-		out.Items[i] = *r.Items[i].DeepCopyObject().(*ServiceProviderMetadataResource)
+		out.Items[i] = r.Items[i].DeepCopyObject().(*ServiceProviderMetadataResource)
 	}
 	return out
 }
 
-func NewServiceProviderMetadataResourceList() *ServiceProviderMetadataResourceList {
+func NewServiceProviderMetadataResourceList() coremodel.ResourceList {
 	return &ServiceProviderMetadataResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(ServiceProviderMetadataKind),
 			APIVersion: "v1alpha1",
 		},
+		Items: make([]*ServiceProviderMetadataResource, 0),
+	}
+}
+
+func (r *ServiceProviderMetadataResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*ServiceProviderMetadataResource, len(items))
+	for i := range items {
+		res, ok := items[i].(*ServiceProviderMetadataResource)
+		if !ok {
+			logger.Errorf("unexpected resource type, expected: %s, get %s", ServiceProviderMetadataKind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func NewServiceProviderMetadataResourceListWithItems(items ...*ServiceProviderMetadataResource) *ServiceProviderMetadataResourceList {
+	return &ServiceProviderMetadataResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ServiceProviderMetadataKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
 	}
 }

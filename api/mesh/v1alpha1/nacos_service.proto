@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+
+// Nacos Service is the raw data of nacos service
+message NacosService {
+  option (dubbo.mesh.resource).name = "NacosService";
+  option (dubbo.mesh.resource).plural_name = "NacosService";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).is_experimental = true;
+
+  string serviceKey = 1;
+
+  repeated NacosInstance instances = 3;
+}
+
+message NacosInstance{
+
+  string ip = 1;
+
+  int64 port = 2;
+
+  map<string, string> metadata = 3;
+}

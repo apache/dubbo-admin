@@ -27,9 +27,9 @@ import (
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
@@ -110,7 +110,7 @@ func buildAppInstanceInfoResp(instanceRes *meshresource.InstanceResource) *model
 }
 
 func GetAppServiceInfo(ctx consolectx.Context, req *model.ApplicationServiceFormReq) (*model.SearchPaginationResult, error) {
-	if req.Side == consts.ConsumerSide {
+	if req.Side == constants.ConsumerSide {
 		return getAppProvideServiceInfo(ctx, req)
 	} else {
 		return getAppConsumeServiceInfo(ctx, req)
@@ -275,7 +275,7 @@ func buildApplicationSearchResp(appResource *meshresource.ApplicationResource, m
 }
 
 func isAppAccessLogConfig(conf *meshproto.OverrideConfig, appName string) bool {
-	if conf.Side != consts.SideProvider ||
+	if conf.Side != constants.SideProvider ||
 		conf.Parameters == nil ||
 		conf.Match == nil ||
 		conf.Match.Application == nil ||
@@ -300,7 +300,7 @@ func UpInsertAppAccessLog(ctx consolectx.Context, appName string, openAccessLog 
 		return bizerror.New(bizerror.AppNotFound, fmt.Sprintf("%s does not exist", appName))
 	}
 	// check app configurator exists
-	appConfiguratorName := appName + consts.ConfiguratorRuleSuffix
+	appConfiguratorName := appName + constants.ConfiguratorRuleSuffix
 	res, err := GetConfigurator(ctx, appConfiguratorName, mesh)
 	if err != nil {
 		return err
@@ -322,8 +322,8 @@ func insertConfiguratorWithAccessLog(ctx consolectx.Context, res *meshresource.D
 	res = meshresource.NewDynamicConfigResourceWithAttributes(appConfiguratorName, mesh)
 	res.Spec = &meshproto.DynamicConfig{
 		Key:           appName,
-		Scope:         consts.ScopeApplication,
-		ConfigVersion: consts.ConfiguratorVersionV3,
+		Scope:         constants.ScopeApplication,
+		ConfigVersion: constants.ConfiguratorVersionV3,
 		Enabled:       true,
 		Configs:       make([]*meshproto.OverrideConfig, 0),
 	}
@@ -374,7 +374,7 @@ func updateConfiguratorWithAccessLog(ctx consolectx.Context, res *meshresource.D
 
 func newAccessLogEnabledConfig(appName string) *meshproto.OverrideConfig {
 	return &meshproto.OverrideConfig{
-		Side:       consts.SideProvider,
+		Side:       constants.SideProvider,
 		Parameters: map[string]string{`accesslog`: `true`},
 		Enabled:    true,
 		Match: &meshproto.ConditionMatch{
@@ -389,7 +389,7 @@ func newAccessLogEnabledConfig(appName string) *meshproto.OverrideConfig {
 }
 
 func GetAppAccessLog(ctx consolectx.Context, appName string, mesh string) (*model.AppAccessLogConfigResp, error) {
-	appConfiguratorName := appName + consts.ConfiguratorRuleSuffix
+	appConfiguratorName := appName + constants.ConfiguratorRuleSuffix
 	res, err := GetConfigurator(ctx, appConfiguratorName, mesh)
 	resp := &model.AppAccessLogConfigResp{
 		AccessLog: false,
@@ -421,7 +421,7 @@ func GetAppFlowWeight(ctx consolectx.Context, appName string, mesh string) (*mod
 	resp := &model.AppFlowWeightConfigResp{
 		FlowWeightSets: []model.FlowWeightSet{},
 	}
-	appConfiguratorName := appName + consts.ConfiguratorRuleSuffix
+	appConfiguratorName := appName + constants.ConfiguratorRuleSuffix
 	res, err := GetConfigurator(ctx, appConfiguratorName, mesh)
 	if err != nil {
 		logger.Errorf("get configurator failed when get app flow weight, resourceKey: %s, err: %s",
@@ -459,7 +459,7 @@ func GetAppFlowWeight(ctx consolectx.Context, appName string, mesh string) (*mod
 }
 
 func isFlowWeightConfig(conf *meshproto.OverrideConfig) bool {
-	if conf.Side != consts.SideProvider ||
+	if conf.Side != constants.SideProvider ||
 		conf.Parameters == nil ||
 		conf.Match == nil ||
 		conf.Match.Param == nil {
@@ -480,7 +480,7 @@ func UpInsertAppFlowWeightConfig(ctx consolectx.Context, appName string, mesh st
 	if data == nil {
 		return bizerror.New(bizerror.AppNotFound, fmt.Sprintf("%s does not exist", appName))
 	}
-	appConfiguratorName := appName + consts.ConfiguratorRuleSuffix
+	appConfiguratorName := appName + constants.ConfiguratorRuleSuffix
 	res, err := GetConfigurator(ctx, appConfiguratorName, mesh)
 	if err != nil {
 		logger.Errorf("get configurator failed when update app flow weight, resourceKey: %s, err: %s",
@@ -520,8 +520,8 @@ func insertConfiguratorWithFlowWeight(
 	res := meshresource.NewDynamicConfigResourceWithAttributes(appConfiguratorName, mesh)
 	res.Spec = &meshproto.DynamicConfig{
 		Key:           appName,
-		Scope:         consts.ScopeApplication,
-		ConfigVersion: consts.ConfiguratorVersionV3,
+		Scope:         constants.ScopeApplication,
+		ConfigVersion: constants.ConfiguratorVersionV3,
 		Enabled:       true,
 	}
 	flowWeightConfigs := slice.Map(flowWeightSets, func(index int, set model.FlowWeightSet) *meshproto.OverrideConfig {
@@ -546,7 +546,7 @@ func fromFlowWeightSet(set model.FlowWeightSet) *meshproto.OverrideConfig {
 		})
 	}
 	return &meshproto.OverrideConfig{
-		Side:       consts.SideProvider,
+		Side:       constants.SideProvider,
 		Parameters: map[string]string{`weight`: strconv.Itoa(int(set.Weight))},
 		Match: &meshproto.ConditionMatch{
 			Param: paramMatch,
@@ -556,7 +556,7 @@ func fromFlowWeightSet(set model.FlowWeightSet) *meshproto.OverrideConfig {
 }
 func GetGrayConfig(ctx consolectx.Context, appName string, mesh string) (*model.AppGrayConfigResp, error) {
 	resp := &model.AppGrayConfigResp{}
-	serviceTagRuleName := appName + consts.TagRuleSuffix
+	serviceTagRuleName := appName + constants.TagRuleSuffix
 	res, err := GetTagRule(ctx, serviceTagRuleName, mesh)
 	if err != nil {
 		logger.Errorf("get tag rule failed when get gray config, resourceKey: %s, err: %s",
@@ -595,7 +595,7 @@ func isGrayTag(tag *meshproto.Tag) bool {
 }
 
 func UpInsertAppGrayConfig(ctx consolectx.Context, appName string, mesh string, graySets []model.GraySet) error {
-	serviceTagRuleName := appName + consts.TagRuleSuffix
+	serviceTagRuleName := appName + constants.TagRuleSuffix
 	res, err := GetTagRule(ctx, serviceTagRuleName, mesh)
 	if err != nil {
 		logger.Errorf("get tag rule failed when update app gray config, resourceKey: %s, err: %s",
@@ -622,7 +622,7 @@ func insertTagRuleWithGrayConfig(
 	res.Spec = &meshproto.TagRoute{
 		Enabled:       true,
 		Key:           appName,
-		ConfigVersion: consts.ConfiguratorVersionV3,
+		ConfigVersion: constants.ConfiguratorVersionV3,
 		Force:         false,
 	}
 	tags := slice.Map(graySets, func(index int, set model.GraySet) *meshproto.Tag {

@@ -35,7 +35,7 @@ import (
 const InstanceKind coremodel.ResourceKind = "Instance"
 
 func init() {
-	coremodel.RegisterResourceSchema(InstanceKind, NewInstanceResource)
+	coremodel.RegisterResourceSchema(InstanceKind, NewInstanceResource, NewInstanceResourceList)
 }
 
 type InstanceResource struct {
@@ -136,7 +136,7 @@ func NewInstanceResource() coremodel.Resource {
 type InstanceResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []InstanceResource `json:"items"`
+	Items           []*InstanceResource `json:"items"`
 }
 
 func (r *InstanceResourceList) DeepCopyObject() k8sruntime.Object {
@@ -148,18 +148,41 @@ func (r *InstanceResourceList) DeepCopyObject() k8sruntime.Object {
 	if len(r.Items) == 0 {
 		return out
 	}
-	out.Items = make([]InstanceResource, len(r.Items))
+	out.Items = make([]*InstanceResource, len(r.Items))
 	for i := range r.Items {
-		out.Items[i] = *r.Items[i].DeepCopyObject().(*InstanceResource)
+		out.Items[i] = r.Items[i].DeepCopyObject().(*InstanceResource)
 	}
 	return out
 }
 
-func NewInstanceResourceList() *InstanceResourceList {
+func NewInstanceResourceList() coremodel.ResourceList {
 	return &InstanceResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(InstanceKind),
 			APIVersion: "v1alpha1",
 		},
+		Items: make([]*InstanceResource, 0),
+	}
+}
+
+func (r *InstanceResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*InstanceResource, len(items))
+	for i := range items {
+		res, ok := items[i].(*InstanceResource)
+		if !ok {
+			logger.Errorf("unexpected resource type, expected: %s, get %s", InstanceKind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func NewInstanceResourceListWithItems(items ...*InstanceResource) *InstanceResourceList {
+	return &InstanceResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(InstanceKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
 	}
 }

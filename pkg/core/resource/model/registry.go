@@ -29,22 +29,26 @@ func ResourceSchemaRegistry() Registry {
 	return registry
 }
 
-func RegisterResourceSchema(kind ResourceKind, newFunc NewResourceFunc) {
-	registry.Register(kind, newFunc)
+func RegisterResourceSchema(kind ResourceKind, newFunc NewResourceFunc, newListFunc NewResourceListFunc) {
+	registry.Register(kind, newFunc, newListFunc)
 }
 
 type NewResourceFunc func() Resource
+
+type NewResourceListFunc func() ResourceList
 
 type Registry interface {
 	// AllResourceKinds returns all registered resource resourceDir
 	AllResourceKinds() []ResourceKind
 	// NewResourceFunc returns the new resource function for a resource kind
 	NewResourceFunc(kind ResourceKind) (NewResourceFunc, error)
+	// NewResourceListFunc returns the new resource list function for a resource kind
+	NewResourceListFunc(kind ResourceKind) (NewResourceListFunc, error)
 }
 
 type RegistryMutator interface {
 	// Register registers a resource kind, if a resource kind has been registered before, it will be ignored
-	Register(kind ResourceKind, newFunc NewResourceFunc)
+	Register(kind ResourceKind, newFunc NewResourceFunc, newListFunc NewResourceListFunc)
 }
 
 type MutableRegistry interface {
@@ -56,25 +60,42 @@ var _ MutableRegistry = &resourceSchemaRegistry{}
 
 func newRegistry() MutableRegistry {
 	return &resourceSchemaRegistry{
-		resourceDir: make(map[ResourceKind]NewResourceFunc),
+		resourceDir: make(map[ResourceKind]resourceSchema),
 	}
 }
 
+type resourceSchema struct {
+	rk          ResourceKind
+	newFunc     NewResourceFunc
+	newListFunc NewResourceListFunc
+}
+
 type resourceSchemaRegistry struct {
-	resourceDir map[ResourceKind]NewResourceFunc
+	resourceDir map[ResourceKind]resourceSchema
 }
 
 func (r *resourceSchemaRegistry) AllResourceKinds() []ResourceKind {
 	return maputil.Keys(r.resourceDir)
 }
 
-func (r *resourceSchemaRegistry) Register(kind ResourceKind, newFunc NewResourceFunc) {
-	r.resourceDir[kind] = newFunc
+func (r *resourceSchemaRegistry) Register(kind ResourceKind, newFunc NewResourceFunc, newListFunc NewResourceListFunc) {
+	r.resourceDir[kind] = resourceSchema{
+		rk:          kind,
+		newFunc:     newFunc,
+		newListFunc: newListFunc,
+	}
 }
 
 func (r *resourceSchemaRegistry) NewResourceFunc(kind ResourceKind) (NewResourceFunc, error) {
-	if newFunc, exists := r.resourceDir[kind]; exists {
-		return newFunc, nil
+	if rs, exists := r.resourceDir[kind]; exists {
+		return rs.newFunc, nil
 	}
 	return nil, fmt.Errorf("there is no new resource func for %s", kind)
+}
+
+func (r *resourceSchemaRegistry) NewResourceListFunc(kind ResourceKind) (NewResourceListFunc, error) {
+	if rs, exists := r.resourceDir[kind]; exists {
+		return rs.newListFunc, nil
+	}
+	return nil, fmt.Errorf("there is no new resource list func for %s", kind)
 }

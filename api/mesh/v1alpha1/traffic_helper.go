@@ -20,8 +20,9 @@ package v1alpha1
 import (
 	"strings"
 
-	"github.com/apache/dubbo-admin/pkg/core/consts"
 	"github.com/dubbogo/gost/encoding/yaml"
+
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 )
 
 const (
@@ -46,18 +47,18 @@ func BuildServiceKey(baseDto Base) string {
 		return baseDto.Application
 	}
 	// id format: "${class}:${version}:${group}"
-	return baseDto.Service + consts.Colon + baseDto.ServiceVersion + consts.Colon + baseDto.ServiceGroup
+	return baseDto.Service + constants.ColonSeparator + baseDto.ServiceVersion + constants.ColonSeparator + baseDto.ServiceGroup
 }
 
 func GetRoutePath(key string, routeType string) string {
 	key = strings.ReplaceAll(key, "/", "*")
 	switch routeType {
-	case consts.ConditionRoute:
-		return key + consts.ConditionRuleSuffix
-	case consts.TagRoute:
-		return key + consts.TagRuleSuffix
-	case consts.AffinityRoute:
-		return key + consts.AffinityRuleSuffix
+	case constants.ConditionRoute:
+		return key + constants.ConditionRuleSuffix
+	case constants.TagRoute:
+		return key + constants.TagRuleSuffix
+	case constants.AffinityRoute:
+		return key + constants.AffinityRuleSuffix
 	}
 	return key + "." + routeType + "-router"
 }

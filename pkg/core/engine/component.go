@@ -22,6 +22,8 @@ import (
 	"math"
 	"reflect"
 
+	"k8s.io/client-go/tools/cache"
+
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	enginecfg "github.com/apache/dubbo-admin/pkg/config/engine"
 	"github.com/apache/dubbo-admin/pkg/core/controller"
@@ -112,7 +114,7 @@ func (e *engineComponent) initInformers(cfg *enginecfg.Config, emitter events.Em
 		if err != nil {
 			return fmt.Errorf("can not find store for resource kind %s, %w", rk, err)
 		}
-		informer := controller.NewInformerWithOptions(lw, emitter, rs, controller.Options{ResyncPeriod: 0})
+		informer := controller.NewInformerWithOptions(lw, emitter, rs, cache.MetaNamespaceKeyFunc, controller.Options{ResyncPeriod: 0})
 		if lw.TransformFunc() != nil {
 			err = informer.SetTransform(lw.TransformFunc())
 			if err != nil {

@@ -18,8 +18,9 @@
 package model
 
 import (
+	"strconv"
+
 	"github.com/apache/dubbo-admin/pkg/common/constants"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
@@ -86,16 +87,16 @@ func NewApplicationDetail() *ApplicationDetail {
 }
 func (a *ApplicationDetail) MergeInstance(instanceRes *meshresource.InstanceResource) {
 	instance := instanceRes.Spec
-	if instance.WorkloadType == consts.StatefulSet {
+	if instance.WorkloadType == constants.StatefulSet {
 		a.AppTypes.Add(constants.Stateful)
 	} else {
 		a.AppTypes.Add(constants.Stateless)
 	}
-	a.DubboPorts.Add(string(instance.RpcPort))
+	a.DubboPorts.Add(strconv.FormatInt(instance.RpcPort, 10))
 	a.DubboVersions.Add(instance.ReleaseVersion)
 	a.Images.Add(instance.Image)
 	a.RegisterClusters.Add(instanceRes.Mesh)
-	a.RegisterModes.Add(consts.Application)
+	a.RegisterModes.Add(constants.Application)
 	a.RPCProtocols.Add(instance.Protocol)
 	a.SerialProtocols.Add(instance.Serialization)
 	a.Workloads.Add(instance.WorkloadName)

@@ -25,10 +25,10 @@ import (
 	"github.com/duke-git/lancet/v2/strutil"
 	"github.com/gin-gonic/gin"
 
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
@@ -111,10 +111,10 @@ func PutConfiguratorWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, consts.ConfiguratorRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(consts.ConfiguratorRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.ConfiguratorRuleSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.ConfiguratorRuleSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", consts.ConfiguratorRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConfiguratorRuleSuffix)))
 			return
 		}
 		res := meshresource.NewDynamicConfigResourceWithAttributes(name, mesh)
@@ -137,10 +137,10 @@ func PostConfiguratorWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, consts.ConfiguratorRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(consts.ConfiguratorRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.ConfiguratorRuleSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.ConfiguratorRuleSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", consts.ConfiguratorRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConfiguratorRuleSuffix)))
 			return
 		}
 		res := meshresource.NewDynamicConfigResourceWithAttributes(name, mesh)
@@ -163,10 +163,10 @@ func DeleteConfiguratorWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, consts.ConfiguratorRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(consts.ConfiguratorRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.ConfiguratorRuleSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.ConfiguratorRuleSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", consts.ConfiguratorRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConfiguratorRuleSuffix)))
 			return
 		}
 		if err := service.DeleteConfigurator(ctx, name, mesh); err != nil {

@@ -23,15 +23,15 @@ import (
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	"github.com/apache/dubbo-admin/pkg/common/util/proto"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
 )
 
 func (x *ConditionRoute) GetVersion() string {
 	if x.ToConditionRouteV3() != nil {
-		return consts.ConfiguratorVersionV3
+		return constants.ConfiguratorVersionV3
 	} else {
-		return consts.ConfiguratorVersionV3x1
+		return constants.ConfiguratorVersionV3x1
 	}
 }
 
@@ -51,17 +51,17 @@ func ConditionRouteDecodeFromYAML(content []byte) (*ConditionRoute, error) {
 		return nil, err
 	}
 
-	version, ok := _map[consts.ConfigVersionKey].(string)
+	version, ok := _map[constants.ConfigVersionKey].(string)
 	if !ok {
 		return nil, errors.New("invalid condition route format")
 	}
-	if version == consts.ConfiguratorVersionV3 {
+	if version == constants.ConfiguratorVersionV3 {
 		v3 := new(ConditionRouteV3)
 		if err = proto.FromYAML(content, v3); err != nil {
 			return nil, err
 		}
 		return v3.ToConditionRoute(), nil
-	} else if version == consts.ConfiguratorVersionV3x1 {
+	} else if version == constants.ConfiguratorVersionV3x1 {
 		v3x1 := new(ConditionRouteV3X1)
 		if err = proto.FromYAML(content, v3x1); err != nil {
 			return nil, err
@@ -133,7 +133,7 @@ func (x *ConditionRule) IsMatchMethod() (string, bool) {
 	conditions := strings.Split(x.From.Match, "&")
 	for _, condition := range conditions {
 		if idx := strings.Index(condition, "method"); idx != -1 {
-			args := strings.Split(condition, consts.Equal)
+			args := strings.Split(condition, constants.Equal)
 			if len(args) == 2 {
 				return strings.TrimSpace(args[1]), true
 			}

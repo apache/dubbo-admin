@@ -36,7 +36,7 @@ const (
 func init() {
 	RegisterIndexers(meshresource.InstanceKind, map[string]cache.IndexFunc{
 		ByInstanceAppNameIndex: byInstanceAppName,
-		ByInstanceIpIndex:      byIp,
+		ByInstanceIpIndex:      byInstanceIp,
 		ByInstanceNameIndex:    byInstanceName,
 	})
 }
@@ -52,7 +52,7 @@ func byInstanceAppName(obj interface{}) ([]string, error) {
 	return []string{instance.Spec.AppName}, nil
 }
 
-func byIp(obj interface{}) ([]string, error) {
+func byInstanceIp(obj interface{}) ([]string, error) {
 	instance, ok := obj.(*meshresource.InstanceResource)
 	if !ok {
 		return nil, bizerror.NewAssertionError(meshresource.InstanceKind, reflect.TypeOf(obj).Name())

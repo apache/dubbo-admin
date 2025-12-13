@@ -35,7 +35,7 @@ import (
 const TagRouteKind coremodel.ResourceKind = "TagRoute"
 
 func init() {
-	coremodel.RegisterResourceSchema(TagRouteKind, NewTagRouteResource)
+	coremodel.RegisterResourceSchema(TagRouteKind, NewTagRouteResource, NewTagRouteResourceList)
 }
 
 type TagRouteResource struct {
@@ -136,7 +136,7 @@ func NewTagRouteResource() coremodel.Resource {
 type TagRouteResourceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []TagRouteResource `json:"items"`
+	Items           []*TagRouteResource `json:"items"`
 }
 
 func (r *TagRouteResourceList) DeepCopyObject() k8sruntime.Object {
@@ -148,18 +148,41 @@ func (r *TagRouteResourceList) DeepCopyObject() k8sruntime.Object {
 	if len(r.Items) == 0 {
 		return out
 	}
-	out.Items = make([]TagRouteResource, len(r.Items))
+	out.Items = make([]*TagRouteResource, len(r.Items))
 	for i := range r.Items {
-		out.Items[i] = *r.Items[i].DeepCopyObject().(*TagRouteResource)
+		out.Items[i] = r.Items[i].DeepCopyObject().(*TagRouteResource)
 	}
 	return out
 }
 
-func NewTagRouteResourceList() *TagRouteResourceList {
+func NewTagRouteResourceList() coremodel.ResourceList {
 	return &TagRouteResourceList{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(TagRouteKind),
 			APIVersion: "v1alpha1",
 		},
+		Items: make([]*TagRouteResource, 0),
+	}
+}
+
+func (r *TagRouteResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*TagRouteResource, len(items))
+	for i := range items {
+		res, ok := items[i].(*TagRouteResource)
+		if !ok {
+			logger.Errorf("unexpected resource type, expected: %s, get %s", TagRouteKind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func NewTagRouteResourceListWithItems(items ...*TagRouteResource) *TagRouteResourceList {
+	return &TagRouteResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(TagRouteKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
 	}
 }

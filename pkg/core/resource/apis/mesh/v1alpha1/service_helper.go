@@ -1,7 +1,7 @@
 package v1alpha1
 
-import "github.com/apache/dubbo-admin/pkg/core/consts"
+import "github.com/apache/dubbo-admin/pkg/common/constants"
 
 func BuildServiceKey(serviceName, version, group string) string {
-	return serviceName + consts.Colon + version + consts.Colon + group
+	return serviceName + constants.ColonSeparator + version + constants.ColonSeparator + group
 }

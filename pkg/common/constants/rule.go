@@ -15,21 +15,26 @@
  * limitations under the License.
  */
 
-package bootstrap
+package constants
 
-// import all components registered by init function
-import (
-	_ "github.com/apache/dubbo-admin/pkg/console"
-	_ "github.com/apache/dubbo-admin/pkg/core/discovery"
-	_ "github.com/apache/dubbo-admin/pkg/core/engine"
-	_ "github.com/apache/dubbo-admin/pkg/core/events"
-	_ "github.com/apache/dubbo-admin/pkg/core/manager"
-	_ "github.com/apache/dubbo-admin/pkg/core/store"
-	_ "github.com/apache/dubbo-admin/pkg/discovery/mock"
-	_ "github.com/apache/dubbo-admin/pkg/discovery/nacos2"
-	_ "github.com/apache/dubbo-admin/pkg/engine/kubernetes"
-	_ "github.com/apache/dubbo-admin/pkg/engine/mock"
-	_ "github.com/apache/dubbo-admin/pkg/store/memory"
-	_ "github.com/apache/dubbo-admin/pkg/store/mysql"
-	_ "github.com/apache/dubbo-admin/pkg/store/postgres"
+const (
+	ConfiguratorVersionV3   = `v3.0`
+	ConfiguratorVersionV3x1 = `v3.1`
+	ConfigVersionKey        = `configVersion`
+	ScopeApplication        = `application`
+	ScopeService            = `service`
+	SideProvider            = `provider`
+	SideConsumer            = `consumer`
+
+	ConditionRoute      = "condition_route"
+	TagRoute            = "tag_route"
+	AffinityRoute       = "affinity_route"
+	ConditionRuleSuffix = ".condition-router"
+	TagRuleSuffix       = ".tag-router"
+	AffinityRuleSuffix  = ".affinity-router"
+)
+
+const (
+	NotEqual = "!="
+	Equal    = "="
 )

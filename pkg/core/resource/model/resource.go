@@ -18,9 +18,7 @@
 package model
 
 import (
-	"fmt"
-	"reflect"
-
+	k8smeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -69,11 +67,14 @@ type Resource interface {
 	String() string
 }
 
+type ResourceList interface {
+	k8sruntime.Object
+	k8smeta.List
+
+	SetItems(items []Resource)
+}
+
 // BuildResourceKey build a unique identifier for a resource, usually is `mesh/name`
 func BuildResourceKey(mesh string, name string) string {
 	return mesh + separator + name
-}
-
-func ErrorInvalidItemType(expected, actual interface{}) error {
-	return fmt.Errorf("invalid argument type: expected=%q got=%q", reflect.TypeOf(expected), reflect.TypeOf(actual))
 }

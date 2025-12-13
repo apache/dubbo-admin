@@ -36,7 +36,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
 	enginecfg "github.com/apache/dubbo-admin/pkg/config/engine"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
 	"github.com/apache/dubbo-admin/pkg/core/controller"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
@@ -97,13 +96,13 @@ func (p *PodListerWatcher) TransformFunc() cache.TransformFunc {
 		rpcPort := p.getDubboRPCPort(pod)
 		var startTime string
 		if pod.Status.StartTime != nil {
-			startTime = pod.Status.StartTime.Format(consts.TimeFormatStr)
+			startTime = pod.Status.StartTime.Format(constants.TimeFormatStr)
 		}
-		createTime := pod.CreationTimestamp.Format(consts.TimeFormatStr)
+		createTime := pod.CreationTimestamp.Format(constants.TimeFormatStr)
 		readyTime := ""
 		slice.ForEach(pod.Status.Conditions, func(_ int, c v1.PodCondition) {
 			if c.Type == v1.PodReady && c.Status == v1.ConditionTrue {
-				readyTime = c.LastTransitionTime.Format(consts.TimeFormatStr)
+				readyTime = c.LastTransitionTime.Format(constants.TimeFormatStr)
 			}
 		})
 		phase := string(pod.Status.Phase)
@@ -120,7 +119,7 @@ func (p *PodListerWatcher) TransformFunc() cache.TransformFunc {
 			return &meshproto.Condition{
 				Type:               string(c.Type),
 				Status:             string(c.Status),
-				LastTransitionTime: c.LastTransitionTime.Format(consts.TimeFormatStr),
+				LastTransitionTime: c.LastTransitionTime.Format(constants.TimeFormatStr),
 				Reason:             c.Reason,
 				Message:            c.Message,
 			}

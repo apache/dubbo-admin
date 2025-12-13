@@ -12,7 +12,6 @@ message DynamicConfig {
   option (dubbo.mesh.resource).plural_name = "DynamicConfigs";
   option (dubbo.mesh.resource).package = "mesh";
   option (dubbo.mesh.resource).is_experimental = false;
-
   string key = 1;
   string scope = 2;
   string configVersion = 3;

@@ -25,22 +25,32 @@ import (
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
+	enginecfg "github.com/apache/dubbo-admin/pkg/config/engine"
 	"github.com/apache/dubbo-admin/pkg/core/events"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
 type RPCInstanceEventSubscriber struct {
-	instanceStore store.ResourceStore
-	eventEmitter  events.Emitter
+	instanceStore   store.ResourceStore
+	rtInstanceStore store.ResourceStore
+	eventEmitter    events.Emitter
+	engineCfg       *enginecfg.Config
 }
 
-func NewRPCInstanceEventSubscriber(instanceStore store.ResourceStore, emitter events.Emitter) *RPCInstanceEventSubscriber {
+func NewRPCInstanceEventSubscriber(
+	instanceStore store.ResourceStore,
+	rtInstanceStore store.ResourceStore,
+	emitter events.Emitter,
+	engineCfg *enginecfg.Config) *RPCInstanceEventSubscriber {
 	return &RPCInstanceEventSubscriber{
-		instanceStore: instanceStore,
-		eventEmitter:  emitter,
+		instanceStore:   instanceStore,
+		rtInstanceStore: rtInstanceStore,
+		eventEmitter:    emitter,
+		engineCfg:       engineCfg,
 	}
 }
 
@@ -55,11 +65,11 @@ func (s *RPCInstanceEventSubscriber) ResourceKind() coremodel.ResourceKind {
 func (s *RPCInstanceEventSubscriber) ProcessEvent(event events.Event) error {
 	newObj, ok := event.NewObj().(*meshresource.RPCInstanceResource)
 	if !ok && event.NewObj() != nil {
-		return bizerror.NewAssertionError(reflect.TypeOf(newObj), event.NewObj())
+		return bizerror.NewAssertionError(meshresource.RPCInstanceKind, event.NewObj())
 	}
 	oldObj, ok := event.OldObj().(*meshresource.RPCInstanceResource)
 	if !ok && event.OldObj() != nil {
-		return bizerror.NewAssertionError(reflect.TypeOf(oldObj), event.OldObj())
+		return bizerror.NewAssertionError(meshresource.RPCInstanceKind, event.OldObj())
 	}
 	var processErr error
 	switch event.Type() {
@@ -79,7 +89,7 @@ func (s *RPCInstanceEventSubscriber) ProcessEvent(event events.Event) error {
 		processErr = s.processDelete(oldObj)
 	}
 	if processErr != nil {
-		logger.Errorf("process rpc instance event cause: %s, event: %s", processErr.Error(), event.String())
+		logger.Errorf("process rpc instance event failed, cause: %s, event: %s", processErr.Error(), event.String())
 		return processErr
 	}
 	logger.Infof("process rpc instance event successfully, event: %s", event.String())
@@ -99,15 +109,17 @@ func (s *RPCInstanceEventSubscriber) processUpsert(rpcInstanceRes *meshresource.
 	// if instance resource exists, that is to say the runtime instance exists and has been watched by engine
 	// We should merge the rpc info into it
 	if instanceRes != nil {
-		s.mergeRPCInstance(instanceRes, rpcInstanceRes)
+		meshresource.MergeRPCInstanceIntoInstance(rpcInstanceRes, instanceRes)
 		return s.instanceStore.Update(instanceRes)
 	}
 	// Otherwise we can create a new instance resource by rpc instance
-	instanceRes = s.fromRPCInstance(rpcInstanceRes)
+	instanceRes = meshresource.FromRPCInstance(rpcInstanceRes)
+	s.findRelatedRuntimeInstanceAndMerge(instanceRes)
 	if err := s.instanceStore.Add(instanceRes); err != nil {
 		logger.Errorf("add instance resource failed, instance: %s, err: %s", instanceRes.ResourceKey(), err.Error())
 		return err
 	}
+
 	instanceAddEvent := events.NewResourceChangedEvent(cache.Added, nil, instanceRes)
 	s.eventEmitter.Send(instanceAddEvent)
 	logger.Debugf("rpc instance upsert trigger instance add event, event: %s", instanceAddEvent.String())
@@ -146,29 +158,6 @@ func (s *RPCInstanceEventSubscriber) checkAttributeEnough(rpcInstanceRes *meshre
 	return true
 }
 
-func (s *RPCInstanceEventSubscriber) mergeRPCInstance(
-	instanceRes *meshresource.InstanceResource,
-	rpcInstanceRes *meshresource.RPCInstanceResource) {
-	instanceRes.Spec.ReleaseVersion = rpcInstanceRes.Spec.ReleaseVersion
-	instanceRes.Spec.RegisterTime = rpcInstanceRes.Spec.RegisterTime
-	instanceRes.Spec.UnregisterTime = rpcInstanceRes.Spec.UnregisterTime
-	instanceRes.Spec.Protocol = rpcInstanceRes.Spec.Protocol
-	instanceRes.Spec.Serialization = rpcInstanceRes.Spec.Serialization
-	instanceRes.Spec.PreferSerialization = rpcInstanceRes.Spec.PreferSerialization
-	instanceRes.Spec.Tags = rpcInstanceRes.Spec.Tags
-}
-
-func (s *RPCInstanceEventSubscriber) fromRPCInstance(rpcInstanceRes *meshresource.RPCInstanceResource) *meshresource.InstanceResource {
-	resName := meshresource.BuildInstanceResName(rpcInstanceRes.Spec.AppName, rpcInstanceRes.Spec.Ip, rpcInstanceRes.Spec.Port)
-	instanceRes := meshresource.NewInstanceResourceWithAttributes(resName, rpcInstanceRes.Mesh)
-	instanceRes.Spec.Name = rpcInstanceRes.Spec.Name
-	instanceRes.Spec.AppName = rpcInstanceRes.Spec.AppName
-	instanceRes.Spec.Ip = rpcInstanceRes.Spec.Ip
-	instanceRes.Spec.RpcPort = rpcInstanceRes.Spec.Port
-	s.mergeRPCInstance(instanceRes, rpcInstanceRes)
-	return instanceRes
-}
-
 func (s *RPCInstanceEventSubscriber) getRelatedInstanceRes(
 	rpcInstanceRes *meshresource.RPCInstanceResource) (*meshresource.InstanceResource, error) {
 	instanceResName := meshresource.BuildInstanceResName(rpcInstanceRes.Spec.AppName, rpcInstanceRes.Spec.Ip, rpcInstanceRes.Spec.Port)
@@ -184,4 +173,36 @@ func (s *RPCInstanceEventSubscriber) getRelatedInstanceRes(
 		return nil, bizerror.NewAssertionError(meshresource.InstanceKind, reflect.TypeOf(res).Name())
 	}
 	return instanceRes, nil
+}
+
+func (s *RPCInstanceEventSubscriber) findRelatedRuntimeInstanceAndMerge(instanceRes *meshresource.InstanceResource) {
+	switch s.engineCfg.Type {
+	case enginecfg.Kubernetes:
+		rtInstance := s.getRuntimeInstanceByIp(instanceRes.Spec.Ip)
+		if rtInstance == nil {
+			logger.Warnf("cannot find runtime instance for isntace %s, skipping merging", instanceRes.ResourceKey())
+			return
+		}
+		meshresource.MergeRuntimeInstanceIntoInstance(rtInstance, instanceRes)
+	default:
+		return
+	}
+}
+
+func (s *RPCInstanceEventSubscriber) getRuntimeInstanceByIp(ip string) *meshresource.RuntimeInstanceResource {
+	resources, err := s.rtInstanceStore.ListByIndexes(map[string]string{
+		index.ByRuntimeInstanceIPIndex: ip,
+	})
+	if err != nil {
+		logger.Errorf("list runtime instance by ip index failed, ip: %s, err: %s", ip, err.Error())
+		return nil
+	}
+	if len(resources) == 0 {
+		return nil
+	}
+	runtimeInstanceRes, ok := resources[0].(*meshresource.RuntimeInstanceResource)
+	if !ok {
+		return nil
+	}
+	return runtimeInstanceRes
 }
