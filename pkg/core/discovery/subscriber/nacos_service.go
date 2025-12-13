@@ -227,10 +227,8 @@ func (n *NacosServiceEventSubscriber) processRPCInstanceUpsert(serviceRes *meshr
 		res := meshresource.NewRPCInstanceResourceWithAttributes(resName, serviceRes.Mesh)
 		var registerTime string
 		timestamp, err := strconv.ParseInt(instance.Metadata[constants.TimestampKey], 10, 64)
-		if err != nil {
-			registerTime = ""
-		} else {
-			registerTime = time.UnixMilli(timestamp).Format("2006-01-02 15:04:05")
+		if err == nil {
+			registerTime = time.UnixMilli(timestamp).Format(constants.TimeFormatStr)
 		}
 		revision := instance.Metadata[constants.MetadataRevisionKey]
 		metadataStorageType := instance.Metadata[constants.MetadataStorageTypeKey]
