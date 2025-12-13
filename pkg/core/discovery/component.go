@@ -113,7 +113,7 @@ func (d *discoveryComponent) Start(_ runtime.Runtime, ch <-chan struct{}) error 
 		err := d.subscriptionMgr.Subscribe(sub)
 		if err != nil {
 			return bizerror.Wrap(err, bizerror.EventError,
-				fmt.Sprintf("subscriber %s in discovery %s can not subscribe resource changed events", sub.Name()))
+				fmt.Sprintf("subscriber %s can not subscribe resource changed events", sub.Name()))
 		}
 	}
 	for name, informers := range d.informers {

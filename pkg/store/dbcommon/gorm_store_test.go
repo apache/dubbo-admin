@@ -81,6 +81,35 @@ func (mr *mockResource) String() string {
 	return string(b)
 }
 
+type mockResourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []*mockResource `json:"items"`
+}
+
+func (m mockResourceList) DeepCopyObject() runtime.Object {
+	out := &mockResourceList{
+		TypeMeta: m.TypeMeta,
+	}
+	m.ListMeta.DeepCopyInto(&out.ListMeta)
+
+	if len(m.Items) == 0 {
+		return out
+	}
+	out.Items = make([]*mockResource, len(m.Items))
+	for i := range m.Items {
+		out.Items[i] = m.Items[i].DeepCopyObject().(*mockResource)
+	}
+	return out
+}
+
+func (m mockResourceList) SetItems(items []model.Resource) {
+	m.Items = make([]*mockResource, len(items))
+	for i := range items {
+		m.Items[i] = items[i].(*mockResource)
+	}
+}
+
 // setupTestStore creates a new GormStore with an in-memory SQLite database for testing
 func setupTestStore(t *testing.T) (*GormStore, func()) {
 	// Create temporary SQLite database file for better isolation and reliability
@@ -98,6 +127,13 @@ func setupTestStore(t *testing.T) (*GormStore, func()) {
 	if _, err := model.ResourceSchemaRegistry().NewResourceFunc(kind); err != nil {
 		model.RegisterResourceSchema(kind, func() model.Resource {
 			return &mockResource{Kind: kind}
+		}, func() model.ResourceList {
+			return &mockResourceList{
+				TypeMeta: metav1.TypeMeta{
+					Kind: kind.ToString(),
+				},
+				Items: []*mockResource{},
+			}
 		})
 	}
 
@@ -1323,6 +1359,13 @@ func TestGormStore_ConcurrentOperations(t *testing.T) {
 	kind := model.ResourceKind("TestResource")
 	model.RegisterResourceSchema(kind, func() model.Resource {
 		return &mockResource{Kind: kind}
+	}, func() model.ResourceList {
+		return &mockResourceList{
+			TypeMeta: metav1.TypeMeta{
+				Kind: kind.ToString(),
+			},
+			Items: []*mockResource{},
+		}
 	})
 
 	store := NewGormStore(kind, "test-address", pool)
