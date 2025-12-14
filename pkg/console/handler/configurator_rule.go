@@ -111,10 +111,10 @@ func PutConfiguratorWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, constants.ConfiguratorRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(constants.ConfiguratorRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.ConfiguratorRuleDotSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.ConfiguratorRuleDotSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConfiguratorRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConfiguratorRuleDotSuffix)))
 			return
 		}
 		res := meshresource.NewDynamicConfigResourceWithAttributes(name, mesh)
@@ -137,10 +137,10 @@ func PostConfiguratorWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, constants.ConfiguratorRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(constants.ConfiguratorRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.ConfiguratorRuleDotSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.ConfiguratorRuleDotSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConfiguratorRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConfiguratorRuleDotSuffix)))
 			return
 		}
 		res := meshresource.NewDynamicConfigResourceWithAttributes(name, mesh)
@@ -163,10 +163,10 @@ func DeleteConfiguratorWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, constants.ConfiguratorRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(constants.ConfiguratorRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.ConfiguratorRuleDotSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.ConfiguratorRuleDotSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConfiguratorRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConfiguratorRuleDotSuffix)))
 			return
 		}
 		if err := service.DeleteConfigurator(ctx, name, mesh); err != nil {

@@ -38,6 +38,7 @@ const (
 	DiscoveryError  ErrorCode = "DiscoveryError"
 	ConfigError     ErrorCode = "ConfigError"
 	NacosError      ErrorCode = "NacosError"
+	ZKError         ErrorCode = "ZKError"
 	EventError      ErrorCode = "EventError"
 )
 

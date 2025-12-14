@@ -98,7 +98,7 @@ func (d *discoveryComponent) Init(ctx runtime.BuilderContext) error {
 		if err != nil {
 			return err
 		}
-		d.informers[cfg.Name] = informers
+		d.informers[cfg.ID] = informers
 	}
 	err = d.initSubscribes(storeRouter, eventBus, ctx.Config().Engine)
 	if err != nil {

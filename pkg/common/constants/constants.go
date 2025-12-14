@@ -47,8 +47,6 @@ const (
 	ProvidersCategory            = "providers"
 	ConsumersCategory            = "consumers"
 	RoutersCategory              = "routers"
-	ConfiguratorsCategory        = "configurators"
-	ConfiguratorRuleSuffix       = ".configurators"
 	EnabledKey                   = "enabled"
 	CheckKey                     = "check"
 	AdminProtocol                = "admin"
@@ -61,6 +59,7 @@ const (
 	DefaultGroup                 = "dubbo"
 	DynamicKey                   = "dynamic"
 	SerializationKey             = "serialization"
+	PreferSerializationKey       = "prefer.serialization"
 	TimeoutKey                   = "timeout"
 	DefaultTimeout               = 1000
 	WeightKey                    = "weight"

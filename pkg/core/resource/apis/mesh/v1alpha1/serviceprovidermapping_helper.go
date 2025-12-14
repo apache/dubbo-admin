@@ -15,30 +15,22 @@
  * limitations under the License.
  */
 
-package handler
+package v1alpha1
 
 import (
-	"net/http"
+	"strings"
 
-	"github.com/duke-git/lancet/v2/slice"
-	"github.com/gin-gonic/gin"
-
-	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
-	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
-	"github.com/apache/dubbo-admin/pkg/console/model"
+	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-// ListMeshes list all meshes(discoveries) defined in config
-func ListMeshes(ctx consolectx.Context) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		discoveries := ctx.Config().Discovery
-		meshes := slice.Map(discoveries, func(index int, item *discoverycfg.Config) model.MeshResp {
-			return model.MeshResp{
-				ID:   item.ID,
-				Name: item.Name,
-				Type: string(item.Type),
-			}
-		})
-		c.JSON(http.StatusOK, model.NewSuccessResp(meshes))
+func ToServiceProviderMappingResource(mesh, name, data string) coremodel.Resource {
+	appNames := strings.Split(data, constants.CommaSeparator)
+	mappingRes := NewServiceProviderMappingResourceWithAttributes(name, mesh)
+	mappingRes.Spec = &meshproto.ServiceProviderMapping{
+		ServiceName: name,
+		AppNames:    appNames,
 	}
+	return mappingRes
 }

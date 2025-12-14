@@ -41,6 +41,7 @@ const (
 // Config defines Discovery configuration
 type Config struct {
 	config.BaseConfig
+	ID         string        `json:"id"`
 	Name       string        `json:"name"`
 	Type       Type          `json:"type"`
 	Address    AddressConfig `json:"address"`
@@ -56,18 +57,6 @@ type AddressConfig struct {
 type Properties struct {
 	ConfigWatchPeriod  int `json:"configWatchPeriod"`
 	ServiceWatchPeriod int `json:"serviceWatchPeriod"`
-}
-
-func DefaultDiscoveryEnginConfig() *Config {
-	return &Config{
-		Name: "localhost",
-		Type: Nacos2,
-		Address: AddressConfig{
-			Registry:       "nacos://127.0.0.1:8848?username=nacos&password=nacos",
-			ConfigCenter:   "nacos://127.0.0.1:8848?username=nacos&password=nacos",
-			MetadataReport: "nacos://127.0.0.1:8848?username=nacos&password=nacos",
-		},
-	}
 }
 
 func (c *Config) PreProcess() error {
@@ -89,11 +78,17 @@ func (c *Config) PreProcess() error {
 }
 
 func (c *Config) Validate() error {
+	if strutil.IsBlank(c.ID) {
+		return bizerror.New(bizerror.InvalidArgument, "discovery id is needed")
+	}
 	if strutil.IsBlank(c.Name) {
 		return bizerror.New(bizerror.InvalidArgument, "discovery name is needed")
 	}
 	if strutil.IsBlank(string(c.Type)) {
 		return bizerror.New(bizerror.InvalidArgument, "discovery type is needed")
+	}
+	if strutil.IsBlank(c.Address.Registry) && c.Type != Mock {
+		return bizerror.New(bizerror.InvalidArgument, "discovery address is needed")
 	}
 	return nil
 }

@@ -306,7 +306,7 @@ func InstanceConfigOperatorLogGET(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("mesh is empty"))
 			return
 		}
-		appConfiguratorName := applicationName + constants.ConfiguratorRuleSuffix
+		appConfiguratorName := applicationName + constants.ConfiguratorRuleDotSuffix
 		res, err := service.GetConfigurator(ctx, appConfiguratorName, mesh)
 		if err != nil {
 			if corestore.IsResourceNotFound(err) {
@@ -363,7 +363,7 @@ func InstanceConfigOperatorLogPUT(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("mesh is empty"))
 			return
 		}
-		appConfiguratorName := applicationName + constants.ConfiguratorRuleSuffix
+		appConfiguratorName := applicationName + constants.ConfiguratorRuleDotSuffix
 		res, err := service.GetConfigurator(ctx, appConfiguratorName, mesh)
 		notExist := false
 		if err != nil {

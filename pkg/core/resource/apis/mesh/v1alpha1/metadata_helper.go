@@ -15,30 +15,8 @@
  * limitations under the License.
  */
 
-package handler
+package v1alpha1
 
-import (
-	"net/http"
+import coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 
-	"github.com/duke-git/lancet/v2/slice"
-	"github.com/gin-gonic/gin"
-
-	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
-	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
-	"github.com/apache/dubbo-admin/pkg/console/model"
-)
-
-// ListMeshes list all meshes(discoveries) defined in config
-func ListMeshes(ctx consolectx.Context) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		discoveries := ctx.Config().Discovery
-		meshes := slice.Map(discoveries, func(index int, item *discoverycfg.Config) model.MeshResp {
-			return model.MeshResp{
-				ID:   item.ID,
-				Name: item.Name,
-				Type: string(item.Type),
-			}
-		})
-		c.JSON(http.StatusOK, model.NewSuccessResp(meshes))
-	}
-}
+type ToMetadataResFunc func(mesh string, data string) coremodel.Resource

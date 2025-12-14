@@ -15,30 +15,35 @@
  * limitations under the License.
  */
 
-package handler
+package zkwatcher
 
 import (
-	"net/http"
+	"fmt"
+	"testing"
+	"time"
 
-	"github.com/duke-git/lancet/v2/slice"
-	"github.com/gin-gonic/gin"
+	"github.com/dubbogo/go-zookeeper/zk"
 
-	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
-	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
-	"github.com/apache/dubbo-admin/pkg/console/model"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 )
 
-// ListMeshes list all meshes(discoveries) defined in config
-func ListMeshes(ctx consolectx.Context) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		discoveries := ctx.Config().Discovery
-		meshes := slice.Map(discoveries, func(index int, item *discoverycfg.Config) model.MeshResp {
-			return model.MeshResp{
-				ID:   item.ID,
-				Name: item.Name,
-				Type: string(item.Type),
-			}
-		})
-		c.JSON(http.StatusOK, model.NewSuccessResp(meshes))
+func TestLocalhost(t *testing.T) {
+	zkServers := []string{"localhost:2181"}
+	basePath := "/services"
+	conn, _, err := zk.Connect(zkServers, time.Second*10)
+	if err != nil {
+		logger.Fatalf("Failed to connect to zookeeper: %v", err)
+	}
+	watcher := NewRecursiveWatcher(conn, basePath)
+
+	// Start listening
+	if err := watcher.Start(); err != nil {
+		logger.Fatalf("Failed to start watching: %v", err)
+	}
+
+	// Keep program running
+	select {
+	case <-watcher.stopChan:
+		fmt.Println("Watcher stopped")
 	}
 }

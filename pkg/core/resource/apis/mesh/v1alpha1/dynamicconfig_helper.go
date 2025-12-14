@@ -15,30 +15,20 @@
  * limitations under the License.
  */
 
-package handler
+package v1alpha1
 
 import (
-	"net/http"
+	"sigs.k8s.io/yaml"
 
-	"github.com/duke-git/lancet/v2/slice"
-	"github.com/gin-gonic/gin"
-
-	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
-	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
-	"github.com/apache/dubbo-admin/pkg/console/model"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-// ListMeshes list all meshes(discoveries) defined in config
-func ListMeshes(ctx consolectx.Context) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		discoveries := ctx.Config().Discovery
-		meshes := slice.Map(discoveries, func(index int, item *discoverycfg.Config) model.MeshResp {
-			return model.MeshResp{
-				ID:   item.ID,
-				Name: item.Name,
-				Type: string(item.Type),
-			}
-		})
-		c.JSON(http.StatusOK, model.NewSuccessResp(meshes))
+func ToDynamicConfigResource(mesh, name, data string) coremodel.Resource {
+	res := NewDynamicConfigResourceWithAttributes(name, mesh)
+	err := yaml.Unmarshal([]byte(data), res.Spec)
+	if err != nil {
+		logger.Warnf("cannot unmarshal dynamic config %s in %s, cause %s, raw content:\n %s, ", name, mesh, err, data)
 	}
+	return res
 }
