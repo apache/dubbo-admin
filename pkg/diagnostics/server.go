@@ -45,6 +45,10 @@ var (
 	_ runtime.Component = &diagnosticsServer{}
 )
 
+func (s *diagnosticsServer) RequiredDependencies() []runtime.ComponentType {
+	return nil // Diagnostics is independent
+}
+
 func (s *diagnosticsServer) Type() runtime.ComponentType {
 	return DiagnosticsServer
 }

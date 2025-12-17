@@ -57,6 +57,13 @@ type discoveryComponent struct {
 	subscriptionMgr events.SubscriptionManager
 }
 
+func (d *discoveryComponent) RequiredDependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{
+		runtime.EventBus,      // Discovery needs EventBus for event emission
+		runtime.ResourceStore, // Discovery needs Store for resource storage
+	}
+}
+
 func newDiscoveryComponent() Component {
 	return &discoveryComponent{
 		informers:   make(map[string]Informers),

@@ -51,6 +51,13 @@ type consoleWebServer struct {
 	cs     consolectx.Context
 }
 
+func (c *consoleWebServer) RequiredDependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{
+		runtime.ResourceManager, // Console needs Manager for resource operations
+		// Note: No need to list ResourceStore explicitly as Manager already depends on it
+	}
+}
+
 func (c *consoleWebServer) Type() runtime.ComponentType {
 	return runtime.Console
 }

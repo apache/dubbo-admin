@@ -19,6 +19,8 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
+	"github.com/duke-git/lancet/v2/slice"
 
 	"github.com/pkg/errors"
 
@@ -34,44 +36,205 @@ func Bootstrap(appCtx context.Context, cfg app.AdminConfig) (runtime.Runtime, er
 	if err != nil {
 		return nil, err
 	}
-	// 0. initialize event bus
-	if err := initEventBus(builder); err != nil {
+
+	// Use smart bootstrapper for intelligent component initialization
+	bootstrapper := NewSmartBootstrapper(builder)
+
+	// Optional: Set bootstrap mode based on configuration
+	// bootstrapper.SetMode(StrictMode) // Uncomment for strict dependency checking
+
+	// Initialize all components in dependency order
+	if err := bootstrapper.bootstrapComponents(appCtx, cfg); err != nil {
 		return nil, err
 	}
-	// 1. initialize resource store
-	if err := initResourceStore(cfg, builder); err != nil {
-		return nil, err
-	}
-	// 2. initialize discovery
-	if err := initializeResourceDiscovery(builder); err != nil {
-		return nil, err
-	}
-	// 3. initialize engine
-	if err := initializeResourceEngine(builder); err != nil {
-		return nil, err
-	}
-	// 4. initialize resource manager
-	if err := initResourceManager(builder); err != nil {
-		return nil, err
-	}
-	// 5. initialize console
-	if err := initializeConsole(builder); err != nil {
-		return nil, err
-	}
-	// 6. initialize counter manager
-	if err := initializeCounterManager(builder); err != nil {
-		return nil, err
-	}
-	// 7. initialize diagnostics
-	if err := initializeDiagnoticsServer(builder); err != nil {
-		logger.Errorf("got error when init diagnotics server %s", err)
-	}
+
+	// Build and return runtime
 	rt, err := builder.Build()
 	if err != nil {
 		return nil, err
 	}
 	return rt, nil
 }
+
+// BootstrapMode defines how components are initialized
+type BootstrapMode int
+
+const (
+	// CompatibleMode uses dependency declarations when available, falls back to Order()
+	// This is the default mode for smooth migration
+	CompatibleMode BootstrapMode = iota
+
+	// StrictMode requires all components to declare dependencies, ignores Order()
+	// Use this mode for new development or after all components are migrated
+	StrictMode
+)
+
+// SmartBootstrapper handles intelligent component initialization
+type SmartBootstrapper struct {
+	builder *runtime.Builder
+	mode    BootstrapMode
+}
+
+// NewSmartBootstrapper creates a new smart bootstrapper
+func NewSmartBootstrapper(builder *runtime.Builder) *SmartBootstrapper {
+	return &SmartBootstrapper{
+		builder: builder,
+		mode:    CompatibleMode, // Default to compatible mode
+	}
+}
+
+// SetMode changes the bootstrap mode
+func (sb *SmartBootstrapper) SetMode(mode BootstrapMode) {
+	sb.mode = mode
+}
+
+// bootstrapComponents initializes all components in dependency order
+func (sb *SmartBootstrapper) bootstrapComponents(
+	ctx context.Context,
+	cfg app.AdminConfig,
+) error {
+	logger.Info("Starting smart component bootstrap...")
+
+	// Gather all components to initialize
+	components, err := sb.gatherComponents()
+	if err != nil {
+		return errors.Wrap(err, "failed to gather components")
+	}
+
+	// Sort components by dependencies
+	ordered, err := sb.sortComponents(components)
+	if err != nil {
+		return errors.Wrap(err, "failed to sort components by dependencies")
+	}
+
+	// Initialize components in order
+	for i, comp := range ordered {
+		logger.Infof("[%d/%d] Initializing %s...", i+1, len(ordered), comp.Type())
+		if err := initAndActivateComponent(sb.builder, comp); err != nil {
+			return errors.Wrapf(err, "failed to initialize component %s", comp.Type())
+		}
+		logger.Infof("[%d/%d] %s initialized successfully", i+1, len(ordered), comp.Type())
+	}
+
+	logger.Info("All components bootstrapped successfully")
+	return nil
+}
+
+// gatherComponents collects all components that need to be initialized
+func (sb *SmartBootstrapper) gatherComponents() ([]runtime.Component, error) {
+	components := []runtime.Component{}
+
+	// Core components
+	coreComps := []struct {
+		name   string
+		getter func() (runtime.Component, error)
+	}{
+		{"EventBus", runtime.ComponentRegistry().EventBus},
+		{"ResourceStore", runtime.ComponentRegistry().ResourceStore},
+		{"ResourceDiscovery", runtime.ComponentRegistry().ResourceDiscovery},
+		{"ResourceEngine", runtime.ComponentRegistry().ResourceEngine},
+		{"ResourceManager", runtime.ComponentRegistry().ResourceManager},
+		{"Console", runtime.ComponentRegistry().Console},
+	}
+
+	for _, comp := range coreComps {
+		c, err := comp.getter()
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get component %s", comp.name)
+		}
+		components = append(components, c)
+	}
+
+	// Optional components
+	optionalComps := []struct {
+		name string
+		typ  runtime.ComponentType
+	}{
+		{"CounterManager", counter.ComponentType},
+		{"DiagnosticsServer", diagnostics.DiagnosticsServer},
+	}
+
+	for _, comp := range optionalComps {
+		c, err := runtime.ComponentRegistry().Get(comp.typ)
+		if err != nil {
+			logger.Warnf("Optional component %s not available: %v", comp.name, err)
+			continue
+		}
+		components = append(components, c)
+	}
+
+	return components, nil
+}
+
+// sortComponents sorts components by dependency order
+func (sb *SmartBootstrapper) sortComponents(
+	components []runtime.Component,
+) ([]runtime.Component, error) {
+	// Categorize components
+	withDeps := []runtime.ComponentWithDependencies{}
+	withoutDeps := []runtime.Component{}
+
+	for _, comp := range components {
+		if dep, ok := comp.(runtime.ComponentWithDependencies); ok {
+			withDeps = append(withDeps, dep)
+			logger.Debugf("Component %s declares dependencies: %v",
+				comp.Type(), dep.RequiredDependencies())
+		} else {
+			withoutDeps = append(withoutDeps, comp)
+			logger.Debugf("Component %s uses Order() mode: %d",
+				comp.Type(), comp.Order())
+		}
+	}
+
+	// If no components declare dependencies, fall back to Order() sorting
+	if len(withDeps) == 0 {
+		logger.Info("No components declare dependencies, using Order() based initialization")
+		return sortByOrder(components), nil
+	}
+
+	// In strict mode, all components must declare dependencies
+	if sb.mode == StrictMode && len(withoutDeps) > 0 {
+		names := []string{}
+		for _, comp := range withoutDeps {
+			names = append(names, string(comp.Type()))
+		}
+		return nil, fmt.Errorf(
+			"strict mode enabled but the following components don't declare dependencies: %v\n"+
+				"Please implement RequiredDependencies() for these components",
+			names,
+		)
+	}
+
+	// Build dependency graph and perform topological sort
+	graph := runtime.NewDependencyGraph(components)
+	sorted, err := graph.TopologicalSort()
+	if err != nil {
+		return nil, err
+	}
+
+	// Log initialization order
+	logger.Info("Component initialization order:")
+	for i, comp := range sorted {
+		logger.Infof("  %d. %s", i+1, comp.Type())
+	}
+
+	return sorted, nil
+}
+
+// sortByOrder sorts components by Order() value (legacy mode)
+func sortByOrder(components []runtime.Component) []runtime.Component {
+	sorted := make([]runtime.Component, len(components))
+	copy(sorted, components)
+
+	slice.SortBy(sorted, func(a, b runtime.Component) bool {
+		return a.Order() > b.Order()
+	})
+
+	return sorted
+}
+
+// Legacy functions below are kept for reference but no longer used
+// They can be removed in a future version after all components are migrated
 
 func initEventBus(builder *runtime.Builder) error {
 	comp, err := runtime.ComponentRegistry().EventBus()
