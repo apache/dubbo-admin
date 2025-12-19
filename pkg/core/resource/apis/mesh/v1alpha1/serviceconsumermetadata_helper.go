@@ -26,7 +26,7 @@ import (
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-func ToServiceConsumerMetadataByRawData(data string, mesh string) coremodel.Resource {
+func ToServiceConsumerMetadataByRawData(mesh string, data string) coremodel.Resource {
 	metadataMap := make(map[string]string)
 	err := json.Unmarshal([]byte(data), &metadataMap)
 	if err != nil {

@@ -81,10 +81,10 @@ func (z *ZKMetadataEventSubscriber) ProcessEvent(event events.Event) error {
 		logger.Infof("ignored zk metadata delete event")
 	}
 	if processErr != nil {
-		logger.Errorf("process nacos service event failed, cause: %s, event: %s", processErr.Error(), event.String())
+		logger.Errorf("process zk metadata event failed, cause: %s, event: %s", processErr.Error(), event.String())
 		return processErr
 	}
-	logger.Infof("process nacos service event successfully, event: %s", event.String())
+	logger.Infof("process zk metadata event successfully, event: %s", event.String())
 	return nil
 }
 
@@ -93,9 +93,12 @@ func (z *ZKMetadataEventSubscriber) processUpsert(metadataRes *meshresource.ZKMe
 	if paths[len(paths)-2] == constants.ProviderSide {
 		return processMetadataUpsert[*meshresource.ServiceProviderMetadataResource](
 			metadataRes, meshresource.ToServiceProviderMetadataRes, z.storeRouter, z.emitter)
+	} else if paths[len(paths)-2] == constants.ConsumerSide {
+		return processMetadataUpsert[*meshresource.ServiceConsumerMetadataResource](
+			metadataRes, meshresource.ToServiceConsumerMetadataByRawData, z.storeRouter, z.emitter)
 	}
-	return processMetadataUpsert[*meshresource.ServiceConsumerMetadataResource](
-		metadataRes, meshresource.ToServiceConsumerMetadataByRawData, z.storeRouter, z.emitter)
+	logger.Warnf("unkonwn metadata, node path: %s, node data: %s", metadataRes.Spec.NodePath, metadataRes.Spec.NodeData)
+	return nil
 }
 
 // processMetadataUpsert handle service provider/consumer metadata upsert
@@ -104,7 +107,7 @@ func processMetadataUpsert[T coremodel.Resource](
 	toMetadataRes meshresource.ToMetadataResFunc,
 	router store.Router,
 	emitter events.Emitter) error {
-	newMetadataRes := toMetadataRes(zkMetadataRes.Spec.NodeData, zkMetadataRes.Mesh)
+	newMetadataRes := toMetadataRes(zkMetadataRes.Mesh, zkMetadataRes.Spec.NodeData)
 	if newMetadataRes == nil {
 		logger.Errorf("cannot unmarshal metadata in zk %s, raw content: %s", zkMetadataRes.Mesh, zkMetadataRes.Spec.NodeData)
 		return bizerror.New(bizerror.ZKError, "cannot unmarshal metadata")

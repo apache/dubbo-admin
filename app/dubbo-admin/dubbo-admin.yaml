@@ -43,6 +43,7 @@ store:
 discovery:
 #  - type: nacos2
 #    name: localhost-nacos
+#    id: localhost-nacos
 #    address:
 #      registry: nacos://127.0.0.1:28848?username=nacos&password=nacos
 #      configCenter: nacos://127.0.0.1:28848?username=nacos&password=nacos

@@ -63,17 +63,17 @@ func (f *Factory) NewListWatchers(config *discoverycfg.Config) ([]controller.Res
 		logger.Fatalf("connect to %s failed," + address)
 		return nil, bizerror.Wrap(err, bizerror.ZKError, "connect to zookeeper failed, addr: "+address)
 	}
-	//mappingLw, err := listerwatcher.NewListerWatcher(
-	//	meshresource.ServiceProviderMappingKind,
-	//	toUpsertMappingResource,
-	//	toDeleteMappingResource,
-	//	"/dubbo/mapping",
-	//	conn,
-	//	config,
-	//)
-	//if err != nil {
-	//	return nil, err
-	//}
+	mappingLw, err := listerwatcher.NewListerWatcher(
+		meshresource.ServiceProviderMappingKind,
+		toUpsertMappingResource,
+		toDeleteMappingResource,
+		"/dubbo/mapping",
+		conn,
+		config,
+	)
+	if err != nil {
+		return nil, err
+	}
 	//rpcInstanceLW, err := listerwatcher.NewListerWatcher(
 	//	meshresource.RPCInstanceKind,
 	//	toUpsertRPCInstanceResource,
@@ -105,7 +105,7 @@ func (f *Factory) NewListWatchers(config *discoverycfg.Config) ([]controller.Res
 
 	return []controller.ResourceListerWatcher{
 		//listerwatcher.NewRPCInstanceListerWatcher(conn, config),
-		//mappingLw,
+		mappingLw,
 		//rpcInstanceLW,
 		configLW,
 		metadataLW,
@@ -151,7 +151,11 @@ func toDeleteZKConfigResource(mesh, nodePath string) coremodel.Resource {
 		return nil
 	}
 	configName := paths[3]
-	return meshresource.NewZKConfigResourceWithAttributes(configName, mesh)
+	res := meshresource.NewZKConfigResourceWithAttributes(configName, mesh)
+	res.Spec = &meshproto.ZKConfig{
+		NodeName: configName,
+	}
+	return res
 }
 
 func toUpsertZKMetadataResource(mesh, nodePath, nodeData string) coremodel.Resource {

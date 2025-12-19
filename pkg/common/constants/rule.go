@@ -19,7 +19,7 @@ package constants
 
 import set "github.com/duke-git/lancet/v2/datastructure/set"
 
-var RuleSuffixSet = set.New(ConfiguratorRuleDotSuffix, ConditionRuleDotSuffix, TagRuleDotSuffix, AffinityRuleDotSuffix)
+var RuleSuffixSet = set.New(ConfiguratorsSuffix, ConditionRuleSuffix, TagRuleSuffix, AffinityRuleSuffix)
 
 const (
 	ConfiguratorVersionV3   = `v3.0`

@@ -88,13 +88,14 @@ func (z *ZKConfigEventSubscriber) ProcessEvent(event events.Event) error {
 }
 
 func (z *ZKConfigEventSubscriber) processUpsert(configRes *meshresource.ZKConfigResource) error {
-	if !constants.RuleSuffixSet.Contain(configRes.Spec.NodeName) {
-		return bizerror.New(bizerror.EventError,
-			fmt.Sprintf("node name is not end with %s, skipped processing", constants.RuleSuffixSet))
+	parts := strings.Split(configRes.Spec.NodeName, constants.DotSeparator)
+	suffix := parts[len(parts)-1]
+	if !constants.RuleSuffixSet.Contain(suffix) {
+		logger.Warnf("node name is not end with rule suffix, skipped processing, nodeName: %s", configRes.Spec.NodeName)
+		return nil
 	}
 	logger.Debugf("process zk config upsert event, config res: %s", configRes.String())
-	parts := strings.Split(configRes.Spec.NodeName, constants.DotSeparator)
-	switch parts[len(parts)-1] {
+	switch suffix {
 	case constants.TagRuleSuffix:
 		return processConfigUpsert[*meshresource.TagRouteResource](
 			configRes, meshresource.ToTagRouteResource, z.storeRouter, z.emitter)
@@ -112,13 +113,14 @@ func (z *ZKConfigEventSubscriber) processUpsert(configRes *meshresource.ZKConfig
 }
 
 func (z *ZKConfigEventSubscriber) processDelete(configRes *meshresource.ZKConfigResource) error {
-	if !constants.RuleSuffixSet.Contain(configRes.Spec.NodeName) {
-		return bizerror.New(bizerror.EventError,
-			fmt.Sprintf("node name is not end with %s, skipped processing", constants.RuleSuffixSet))
+	parts := strings.Split(configRes.Spec.NodeName, constants.DotSeparator)
+	suffix := parts[len(parts)-1]
+	if !constants.RuleSuffixSet.Contain(suffix) {
+		logger.Warnf("node name is not end with rule suffix, skipped processing, nodeName: %s", configRes.Spec.NodeName)
+		return nil
 	}
 	logger.Debugf("process zk config delete event, config res: %s", configRes.String())
-	parts := strings.Split(configRes.Spec.NodeName, constants.DotSeparator)
-	switch parts[len(parts)-1] {
+	switch suffix {
 	case constants.TagRuleSuffix:
 		return processConfigDelete[*meshresource.TagRouteResource](
 			configRes, meshresource.ToTagRouteResource, z.storeRouter, z.emitter)
@@ -140,7 +142,7 @@ func processConfigUpsert[T coremodel.Resource](
 	toRuleRes meshresource.ToRuleResourceFunc,
 	router store.Router,
 	emitter events.Emitter) error {
-	newRuleRes := toRuleRes(configRes.Name, configRes.Spec.NodeData, configRes.Mesh)
+	newRuleRes := toRuleRes(configRes.Mesh, configRes.Name, configRes.Spec.NodeData)
 	if newRuleRes == nil {
 		logger.Errorf("cannot unmarshal config in zk %s, raw content: %s", configRes.Mesh, configRes.Spec.NodeData)
 		return bizerror.New(bizerror.ZKError, "cannot unmarshal rule")
@@ -187,7 +189,7 @@ func processConfigDelete[T coremodel.Resource](
 	toRuleRes meshresource.ToRuleResourceFunc,
 	router store.Router,
 	emitter events.Emitter) error {
-	ruleRes := toRuleRes(configRes.Name, configRes.Spec.NodeData, configRes.Mesh)
+	ruleRes := toRuleRes(configRes.Mesh, configRes.Name, configRes.Spec.NodeData)
 	st, err := router.ResourceKindRoute(ruleRes.ResourceKind())
 	if err != nil {
 		logger.Errorf("get %s store failed, cause: %s", ruleRes.ResourceKind(), err.Error())

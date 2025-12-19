@@ -198,5 +198,14 @@ func (d *discoveryComponent) initSubscribes(storeRouter store.Router, emitter ev
 		nacosServiceSub := subscriber.NewNacosServiceEventSubscriber(emitter, storeRouter)
 		d.subscribers = append(d.subscribers, nacosServiceSub)
 	}
+	// if there is a zk discovery, a ZKMetadataEventSubscriber and ZKConfigEventSubscriber is needed
+	_, hasZkDiscovery := slice.FindBy(d.configs, func(index int, item *discovery.Config) bool {
+		return item.Type == discovery.Zookeeper
+	})
+	if hasZkDiscovery {
+		zkMetadataSub := subscriber.NewZKMetadataEventSubscriber(emitter, storeRouter)
+		zkConfigSub := subscriber.NewZKConfigEventSubscriber(emitter, storeRouter)
+		d.subscribers = append(d.subscribers, zkMetadataSub, zkConfigSub)
+	}
 	return nil
 }
