@@ -52,7 +52,6 @@ type RecursiveWatcher struct {
 	basePath  string
 	eventChan chan ZookeeperEvent
 	stopChan  chan struct{}
-	wg        sync.WaitGroup
 	mu        sync.Mutex
 }
 
@@ -76,7 +75,6 @@ func (rw *RecursiveWatcher) Start() error {
 // Stop watching
 func (rw *RecursiveWatcher) Stop() {
 	close(rw.stopChan)
-	rw.wg.Wait()
 	rw.conn.Close()
 	close(rw.eventChan)
 }
@@ -139,12 +137,6 @@ func (rw *RecursiveWatcher) watchDataChanges(path string) {
 		case event := <-watcher.EvtCh:
 			if event.Type == zk.EventNodeDataChanged {
 				logger.Debugf("node data changed: %s", path)
-				rw.eventChan <- ZookeeperEvent{
-					Type:     NodeChanged,
-					Path:     path,
-					Data:     string(data),
-					leafNode: stat.NumChildren == 0,
-				}
 
 				// Re-watch data changes
 				go rw.watchDataChanges(path)

@@ -18,6 +18,7 @@
 package subscriber
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -76,8 +77,8 @@ func (z *ZKMetadataEventSubscriber) ProcessEvent(event events.Event) error {
 			logger.Errorf(errStr)
 			return bizerror.New(bizerror.EventError, errStr)
 		}
-		// metadata is an ephemeral znode, dubbo client only adds/updates the metadata znode and never deletes.
-		// Plus, we can't identify the service only by the node path
+		// Metadata is an ephemeral znode, dubbo client only adds/updates the metadata znode and never deletes.
+		// And we can't identify the service only by the node path, so for delete event, we just ignored
 		logger.Infof("ignored zk metadata delete event")
 	}
 	if processErr != nil {
@@ -90,6 +91,9 @@ func (z *ZKMetadataEventSubscriber) ProcessEvent(event events.Event) error {
 
 func (z *ZKMetadataEventSubscriber) processUpsert(metadataRes *meshresource.ZKMetadataResource) error {
 	paths := strings.Split(metadataRes.Spec.NodePath, constants.PathSeparator)
+	if len(paths) < 2 {
+		return bizerror.New(bizerror.ZKError, fmt.Sprintf("invalid zk metadata node path: %s", metadataRes.Spec.NodePath))
+	}
 	if paths[len(paths)-2] == constants.ProviderSide {
 		return processMetadataUpsert[*meshresource.ServiceProviderMetadataResource](
 			metadataRes, meshresource.ToServiceProviderMetadataRes, z.storeRouter, z.emitter)
@@ -97,7 +101,7 @@ func (z *ZKMetadataEventSubscriber) processUpsert(metadataRes *meshresource.ZKMe
 		return processMetadataUpsert[*meshresource.ServiceConsumerMetadataResource](
 			metadataRes, meshresource.ToServiceConsumerMetadataByRawData, z.storeRouter, z.emitter)
 	}
-	logger.Warnf("unkonwn metadata, node path: %s, node data: %s", metadataRes.Spec.NodePath, metadataRes.Spec.NodeData)
+	logger.Warnf("unknown metadata, node path: %s, node data: %s", metadataRes.Spec.NodePath, metadataRes.Spec.NodeData)
 	return nil
 }
 

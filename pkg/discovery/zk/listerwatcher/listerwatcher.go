@@ -135,6 +135,7 @@ func (lw *ListerWatcher[T]) Watch(_ metav1.ListOptions) (watch.Interface, error)
 				lw.handleEvent(event)
 			case <-lw.stopChan:
 				logger.Warnf("stop watching %s in %s,", lw.basePath, lw.zkAddr())
+				return
 			}
 
 		}
