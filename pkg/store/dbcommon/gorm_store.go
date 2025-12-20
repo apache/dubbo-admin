@@ -31,6 +31,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/core/store"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
 // GormStore is a GORM-backed store implementation for Dubbo resources
@@ -64,6 +65,11 @@ func (gs *GormStore) Init(_ runtime.BuilderContext) error {
 	// Use Scopes to set the table name dynamically for migration
 	if err := db.Scopes(TableScope(gs.kind.ToString())).AutoMigrate(&ResourceModel{}); err != nil {
 		return fmt.Errorf("failed to migrate schema for %s: %w", gs.kind.ToString(), err)
+	}
+	// Register indexers for the resource kind
+	indexers := index.IndexersRegistry().Indexers(gs.kind)
+	if err := gs.AddIndexers(indexers); err != nil {
+		return err
 	}
 
 	// Rebuild indices from existing data in the database
