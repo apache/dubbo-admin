@@ -99,6 +99,9 @@ response.use(
         }
       }
     }
+    if (response?.status === 401) {
+      return Promise.reject(error.response?.data)
+    }
     if (response?.data) {
       const errorMsg = `${response.data?.code}:${response.data?.message}`
       message.error(errorMsg)
