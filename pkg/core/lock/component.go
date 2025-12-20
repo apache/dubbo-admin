@@ -24,6 +24,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 )
@@ -99,7 +100,7 @@ func (c *Component) Start(rt runtime.Runtime, stop <-chan struct{}) error {
 	}
 
 	// Start background cleanup task
-	ticker := time.NewTicker(DefaultCleanupInterval) // Cleanup every 5 minutes
+	ticker := time.NewTicker(constants.DefaultCleanupInterval) // Cleanup every 5 minutes
 	defer ticker.Stop()
 
 	for {
@@ -107,7 +108,7 @@ func (c *Component) Start(rt runtime.Runtime, stop <-chan struct{}) error {
 		case <-stop:
 			return nil
 		case <-ticker.C:
-			ctx, cancel := context.WithTimeout(context.Background(), DefaultCleanupTimeout)
+			ctx, cancel := context.WithTimeout(context.Background(), constants.DefaultCleanupTimeout)
 			if err := c.lock.CleanupExpiredLocks(ctx); err != nil {
 				logger.Errorf("Failed to cleanup expired locks: %v", err)
 			}

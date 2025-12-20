@@ -34,8 +34,21 @@ import (
 )
 
 func setupTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{
+		PrepareStmt: false,
+	})
 	require.NoError(t, err, "failed to create test database")
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+
+	sqlDB.SetMaxOpenConns(1)
+
+	err = db.Exec("PRAGMA journal_mode=WAL;").Error
+	require.NoError(t, err, "failed to set WAL mode")
+
+	err = db.Exec("PRAGMA busy_timeout=5000;").Error
+	require.NoError(t, err, "failed to set busy timeout")
 
 	err = db.AutoMigrate(&lock.LockRecord{})
 	require.NoError(t, err, "failed to migrate lock table")
@@ -167,7 +180,13 @@ func TestUnlockNotHeld(t *testing.T) {
 	require.NoError(t, err)
 
 	err = lock2.Unlock(ctx, "test-key")
-	assert.ErrorIs(t, err, bizerror.NewBizError(bizerror.LockNotHeld, "lock not held by this owner"), "should return ErrLockNotHeld")
+	assert.Error(t, err, "should return error")
+
+	// 检查错误类型和错误码
+	var bizErr bizerror.Error
+	if assert.ErrorAs(t, err, &bizErr) {
+		assert.Equal(t, bizerror.LockNotHeld, bizErr.Code(), "should return LockNotHeld error code")
+	}
 
 	_ = lock1.Unlock(ctx, "test-key")
 }
@@ -182,7 +201,12 @@ func TestRenewNotHeld(t *testing.T) {
 	require.NoError(t, err)
 
 	err = lock2.Renew(ctx, "test-key", 10*time.Second)
-	assert.ErrorIs(t, err, bizerror.NewBizError(bizerror.LockNotHeld, "lock not held by this owner"), "should return ErrLockNotHeld")
+	assert.Error(t, err, "should return error")
+
+	var bizErr bizerror.Error
+	if assert.ErrorAs(t, err, &bizErr) {
+		assert.Equal(t, bizerror.LockNotHeld, bizErr.Code(), "should return LockNotHeld error code")
+	}
 
 	_ = lock1.Unlock(ctx, "test-key")
 }
@@ -306,25 +330,35 @@ func TestLockBlockingBehavior(t *testing.T) {
 	lock2 := lock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
-	err := lock1.Lock(ctx, "blocking-key", 2*time.Second)
+	err := lock1.Lock(ctx, "blocking-key", 10*time.Second)
 	require.NoError(t, err)
 
+	isLocked, err := lock1.IsLocked(ctx, "blocking-key")
+	require.NoError(t, err)
+	require.True(t, isLocked)
+
 	acquiredTime := time.Now()
-	var lock2AcquiredTime time.Time
+	done := make(chan time.Time)
 
 	go func() {
-		_ = lock2.Lock(ctx, "blocking-key", 5*time.Second)
-		lock2AcquiredTime = time.Now()
+		_ = lock2.Lock(ctx, "blocking-key", 10*time.Second)
+		done <- time.Now()
 	}()
-
-	time.Sleep(1 * time.Second)
-	_ = lock1.Unlock(ctx, "blocking-key")
 
 	time.Sleep(500 * time.Millisecond)
 
+	unlockErr := lock1.Unlock(ctx, "blocking-key")
+	require.NoError(t, unlockErr, "unlock should succeed")
+
+	isLocked, err = lock1.IsLocked(ctx, "blocking-key")
+	require.NoError(t, err)
+
+	lock2AcquiredTime := <-done
+
 	duration := lock2AcquiredTime.Sub(acquiredTime)
-	assert.GreaterOrEqual(t, duration, 1*time.Second, "lock2 should acquire after lock1 releases")
-	assert.Less(t, duration, 2*time.Second, "lock2 should acquire shortly after lock1 releases")
+
+	assert.GreaterOrEqual(t, duration, 500*time.Millisecond, "lock2 should acquire after lock1 releases")
+	assert.Less(t, duration, 1500*time.Millisecond, "lock2 should acquire shortly after lock1 releases")
 
 	_ = lock2.Unlock(ctx, "blocking-key")
 }

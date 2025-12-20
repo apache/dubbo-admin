@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package lock
+package constants
 
 import "time"
 

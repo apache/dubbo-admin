@@ -17,7 +17,11 @@
 
 package lock
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/apache/dubbo-admin/pkg/common/constants"
+)
 
 // BuildLockKey constructs a lock key from a prefix and parts
 func BuildLockKey(prefix string, parts ...string) string {
@@ -30,15 +34,15 @@ func BuildLockKey(prefix string, parts ...string) string {
 
 // BuildTagRouteLockKey constructs a lock key for tag route operations
 func BuildTagRouteLockKey(mesh, name string) string {
-	return fmt.Sprintf("%s:%s:%s", TagRouteKeyPrefix, mesh, name)
+	return fmt.Sprintf("%s:%s:%s", constants.TagRouteKeyPrefix, mesh, name)
 }
 
 // BuildConfiguratorRuleLockKey constructs a lock key for configurator rule operations
 func BuildConfiguratorRuleLockKey(mesh, name string) string {
-	return fmt.Sprintf("%s:%s:%s", ConfiguratorRuleKeyPrefix, mesh, name)
+	return fmt.Sprintf("%s:%s:%s", constants.ConfiguratorRuleKeyPrefix, mesh, name)
 }
 
 // BuildConditionRuleLockKey constructs a lock key for condition rule operations
 func BuildConditionRuleLockKey(mesh, name string) string {
-	return fmt.Sprintf("%s:%s:%s", ConditionRuleKeyPrefix, mesh, name)
+	return fmt.Sprintf("%s:%s:%s", constants.ConditionRuleKeyPrefix, mesh, name)
 }

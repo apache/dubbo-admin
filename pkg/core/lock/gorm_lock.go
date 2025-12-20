@@ -27,6 +27,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/store/dbcommon"
 )
@@ -75,7 +76,7 @@ func (g *GormLock) getDB() *gorm.DB {
 // Lock acquires a lock with the specified key and TTL
 // It blocks until the lock is acquired or context is cancelled
 func (g *GormLock) Lock(ctx context.Context, key string, ttl time.Duration) error {
-	ticker := time.NewTicker(DefaultLockRetryInterval)
+	ticker := time.NewTicker(constants.DefaultLockRetryInterval)
 	defer ticker.Stop()
 
 	for {
@@ -157,7 +158,7 @@ func (g *GormLock) Unlock(ctx context.Context, key string) error {
 	}
 
 	if result.RowsAffected == 0 {
-		return bizerror.NewBizError(bizerror.LockNotHeld, "lock not held by this owner")
+		return bizerror.New(bizerror.LockNotHeld, "lock not held by this owner")
 	}
 
 	return nil
@@ -177,7 +178,7 @@ func (g *GormLock) Renew(ctx context.Context, key string, ttl time.Duration) err
 	}
 
 	if result.RowsAffected == 0 {
-		return bizerror.NewBizError(bizerror.LockNotHeld, "lock not held by this owner")
+		return bizerror.New(bizerror.LockNotHeld, "lock not held by this owner")
 	}
 
 	return nil
@@ -209,7 +210,7 @@ func (g *GormLock) WithLock(ctx context.Context, key string, ttl time.Duration, 
 	// Ensure lock is released
 	defer func() {
 		// Use background context for unlock to ensure it completes even if ctx is cancelled
-		unlockCtx, cancel := context.WithTimeout(context.Background(), DefaultUnlockTimeout)
+		unlockCtx, cancel := context.WithTimeout(context.Background(), constants.DefaultUnlockTimeout)
 		defer cancel()
 
 		if err := g.Unlock(unlockCtx, key); err != nil {
@@ -219,7 +220,7 @@ func (g *GormLock) WithLock(ctx context.Context, key string, ttl time.Duration, 
 
 	// Start auto-renewal if TTL is long enough
 	var renewDone chan struct{}
-	if ttl > DefaultAutoRenewThreshold {
+	if ttl > constants.DefaultAutoRenewThreshold {
 		renewDone = make(chan struct{})
 		go g.autoRenew(ctx, key, ttl, renewDone)
 		defer close(renewDone)
@@ -250,7 +251,7 @@ func (g *GormLock) autoRenew(ctx context.Context, key string, ttl time.Duration,
 			default:
 			}
 
-			renewCtx, cancel := context.WithTimeout(context.Background(), DefaultRenewTimeout)
+			renewCtx, cancel := context.WithTimeout(context.Background(), constants.DefaultRenewTimeout)
 			if err := g.Renew(renewCtx, key, ttl); err != nil {
 				logger.Warnf("Failed to renew lock %s: %v", key, err)
 				cancel()

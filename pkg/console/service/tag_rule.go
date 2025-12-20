@@ -18,6 +18,7 @@
 package service
 
 import (
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
@@ -46,7 +47,7 @@ func UpdateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) e
 
 	lockKey := lock.BuildTagRouteLockKey(res.Mesh, res.Name)
 
-	return lockMgr.WithLock(ctx.AppContext(), lockKey, lock.DefaultLockTimeout, func() error {
+	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
 		return updateTagRuleUnsafe(ctx, res)
 	})
 }
@@ -68,7 +69,7 @@ func CreateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) e
 
 	lockKey := lock.BuildTagRouteLockKey(res.Mesh, res.Name)
 
-	return lockMgr.WithLock(ctx.AppContext(), lockKey, lock.DefaultLockTimeout, func() error {
+	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
 		return createTagRuleUnsafe(ctx, res)
 	})
 }
@@ -90,7 +91,7 @@ func DeleteTagRule(ctx consolectx.Context, name string, mesh string) error {
 
 	lockKey := lock.BuildTagRouteLockKey(mesh, name)
 
-	return lockMgr.WithLock(ctx.AppContext(), lockKey, lock.DefaultLockTimeout, func() error {
+	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
 		err := ctx.ResourceManager().DeleteByKey(meshresource.TagRouteKind, coremodel.BuildResourceKey(mesh, name))
 		if err != nil {
 			logger.Warnf("delete tag rule %s error: %v", name, err)
