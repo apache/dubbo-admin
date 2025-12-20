@@ -94,6 +94,7 @@ response.use(
           router.push({ path: `/login?redirect=${encodeURIComponent(redirectPath)}` })
         }
       } catch (e) {
+        console.error('Router push failed during 401 redirect:', e)
         if (!window.location.pathname.startsWith('/login')) {
           window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`
         }
