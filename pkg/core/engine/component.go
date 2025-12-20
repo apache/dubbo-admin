@@ -60,6 +60,14 @@ func newEngineComponent() Component {
 		subscribers: make([]events.Subscriber, 0),
 	}
 }
+
+func (e *engineComponent) RequiredDependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{
+		runtime.EventBus,
+		runtime.ResourceStore,
+	}
+}
+
 func (e *engineComponent) Type() runtime.ComponentType {
 	return runtime.ResourceEngine
 }
