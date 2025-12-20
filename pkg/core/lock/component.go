@@ -19,7 +19,6 @@ package lock
 
 import (
 	"context"
-	"gorm.io/gorm"
 	"math"
 	"time"
 
@@ -64,31 +63,29 @@ func (c *Component) Init(ctx runtime.BuilderContext) error {
 		return err
 	}
 
-	// Try to extract database connection from store component
-	// We use GetDB() interface to avoid circular dependency with dbcommon package
-	type DBProvider interface {
-		GetDB() *gorm.DB
+	// Try to extract data store interface from store component
+	type DataStore interface {
+		GetDataStore() any
 	}
 
-	storeWithDB, ok := storeComp.(DBProvider)
+	store, ok := storeComp.(DataStore)
 	if !ok {
 		// For memory store or other stores without database
-		logger.Warnf("Store component does not provide database connection, distributed lock will not be available")
+		logger.Warnf("Store component does not provide data store interface, distributed lock will not be available")
 		return nil
 	}
 
-	db := storeWithDB.GetDB()
-	if db == nil {
-		logger.Warnf("Database connection is nil, distributed lock will not be available")
+	dataStore := store.GetDataStore()
+	if dataStore == nil {
+		logger.Warnf("Data store is nil, distributed lock will not be available")
 		return nil
 	}
 
-	// Create GORM-based lock implementation using NewGormLockFromDB
-	c.lock = NewGormLockFromDB(db)
-
-	// Initialize the lock table
-	if err := db.AutoMigrate(&LockRecord{}); err != nil {
-		return errors.Wrap(err, "failed to migrate lock table")
+	// Create lock implementation based on the data store
+	c.lock = NewLockFromDataStore(dataStore)
+	if c.lock == nil {
+		logger.Warnf("Cannot create distributed lock from data store, distributed lock will not be available")
+		return nil
 	}
 
 	return nil

@@ -26,6 +26,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/store/dbcommon"
 )
@@ -156,7 +157,7 @@ func (g *GormLock) Unlock(ctx context.Context, key string) error {
 	}
 
 	if result.RowsAffected == 0 {
-		return ErrLockNotHeld
+		return bizerror.NewBizError(bizerror.LockNotHeld, "lock not held by this owner")
 	}
 
 	return nil
@@ -176,7 +177,7 @@ func (g *GormLock) Renew(ctx context.Context, key string, ttl time.Duration) err
 	}
 
 	if result.RowsAffected == 0 {
-		return ErrLockNotHeld
+		return bizerror.NewBizError(bizerror.LockNotHeld, "lock not held by this owner")
 	}
 
 	return nil

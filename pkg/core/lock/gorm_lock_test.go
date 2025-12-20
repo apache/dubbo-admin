@@ -29,6 +29,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/core/lock"
 )
 
@@ -166,7 +167,7 @@ func TestUnlockNotHeld(t *testing.T) {
 	require.NoError(t, err)
 
 	err = lock2.Unlock(ctx, "test-key")
-	assert.ErrorIs(t, err, lock.ErrLockNotHeld, "should return ErrLockNotHeld")
+	assert.ErrorIs(t, err, bizerror.NewBizError(bizerror.LockNotHeld, "lock not held by this owner"), "should return ErrLockNotHeld")
 
 	_ = lock1.Unlock(ctx, "test-key")
 }
@@ -181,7 +182,7 @@ func TestRenewNotHeld(t *testing.T) {
 	require.NoError(t, err)
 
 	err = lock2.Renew(ctx, "test-key", 10*time.Second)
-	assert.ErrorIs(t, err, lock.ErrLockNotHeld, "should return ErrLockNotHeld")
+	assert.ErrorIs(t, err, bizerror.NewBizError(bizerror.LockNotHeld, "lock not held by this owner"), "should return ErrLockNotHeld")
 
 	_ = lock1.Unlock(ctx, "test-key")
 }
