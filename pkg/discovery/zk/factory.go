@@ -60,7 +60,7 @@ func (f *Factory) NewListWatchers(config *discoverycfg.Config) ([]controller.Res
 		c.SetLogger(&zkLogger{})
 	})
 	if err != nil {
-		logger.Fatalf("connect to %s failed," + address)
+		logger.Fatalf("connect to %s failed", address)
 		return nil, bizerror.Wrap(err, bizerror.ZKError, "connect to zookeeper failed, addr: "+address)
 	}
 	mappingLw, err := listerwatcher.NewListerWatcher(
@@ -74,17 +74,17 @@ func (f *Factory) NewListWatchers(config *discoverycfg.Config) ([]controller.Res
 	if err != nil {
 		return nil, err
 	}
-	//rpcInstanceLW, err := listerwatcher.NewListerWatcher(
-	//	meshresource.RPCInstanceKind,
-	//	toUpsertRPCInstanceResource,
-	//	toDeleteRPCInstanceResource,
-	//	"/services",
-	//	conn,
-	//	config,
-	//)
-	//if err != nil {
-	//	return nil, err
-	//}
+	rpcInstanceLW, err := listerwatcher.NewListerWatcher(
+		meshresource.RPCInstanceKind,
+		toUpsertRPCInstanceResource,
+		toDeleteRPCInstanceResource,
+		"/services",
+		conn,
+		config,
+	)
+	if err != nil {
+		return nil, err
+	}
 	configLW, err := listerwatcher.NewListerWatcher(
 		meshresource.ZKConfigKind,
 		toUpsertZKConfigResource,
@@ -93,7 +93,9 @@ func (f *Factory) NewListWatchers(config *discoverycfg.Config) ([]controller.Res
 		conn,
 		config,
 	)
-
+	if err != nil {
+		return nil, err
+	}
 	metadataLW, err := listerwatcher.NewListerWatcher(
 		meshresource.ZKMetadataKind,
 		toUpsertZKMetadataResource,
@@ -102,11 +104,13 @@ func (f *Factory) NewListWatchers(config *discoverycfg.Config) ([]controller.Res
 		conn,
 		config,
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	return []controller.ResourceListerWatcher{
-		//listerwatcher.NewRPCInstanceListerWatcher(conn, config),
 		mappingLw,
-		//rpcInstanceLW,
+		rpcInstanceLW,
 		configLW,
 		metadataLW,
 	}, nil

@@ -47,8 +47,9 @@ type ListerWatcher[T coremodel.Resource] struct {
 	toDeleteResourceFunc ToDeleteResourceFunc
 	newResourceFunc      coremodel.NewResourceFunc
 	newResListFunc       coremodel.NewResourceListFunc
+	watcher              *zkwatcher.RecursiveWatcher
 	resultChan           chan watch.Event
-	stopChan             chan bool
+	stopChan             chan struct{}
 }
 
 func NewListerWatcher(
@@ -76,7 +77,7 @@ func NewListerWatcher(
 		newResourceFunc:      newResourceFunc,
 		newResListFunc:       newResListFunc,
 		resultChan:           make(chan watch.Event, 1000),
-		stopChan:             make(chan bool),
+		stopChan:             make(chan struct{}),
 	}, nil
 }
 
@@ -140,8 +141,10 @@ func (lw *ListerWatcher[T]) Watch(_ metav1.ListOptions) (watch.Interface, error)
 
 		}
 	}()
-	err := watcher.Start()
+	err := watcher.StartAsync()
+	lw.watcher = watcher
 	if err != nil {
+		lw.Stop()
 		return nil, err
 	}
 	return lw, nil
@@ -207,7 +210,10 @@ func (lw *ListerWatcher[T]) TransformFunc() cache.TransformFunc {
 }
 
 func (lw *ListerWatcher[T]) Stop() {
-	lw.stopChan <- true
+	if lw.watcher != nil {
+		lw.watcher.Stop()
+	}
+	close(lw.stopChan)
 }
 
 func (lw *ListerWatcher[T]) ResultChan() <-chan watch.Event {

@@ -43,7 +43,7 @@ type ZookeeperEvent struct {
 	// node data
 	Data string
 	// whether it is a leaf node
-	leafNode bool
+	LeafNode bool
 }
 
 // RecursiveWatcher recursive watcher
@@ -65,8 +65,8 @@ func NewRecursiveWatcher(conn *zk.Conn, basePath string) *RecursiveWatcher {
 	}
 }
 
-// Start begin watching
-func (rw *RecursiveWatcher) Start() error {
+// StartAsync begin watching
+func (rw *RecursiveWatcher) StartAsync() error {
 	logger.Infof("Start watching path: %s", rw.basePath)
 	// Recursively watch the initial path
 	return rw.watchPathRecursively(rw.basePath)
@@ -74,8 +74,9 @@ func (rw *RecursiveWatcher) Start() error {
 
 // Stop watching
 func (rw *RecursiveWatcher) Stop() {
-	close(rw.stopChan)
+	logger.Infof("Stop watching path: %s", rw.basePath)
 	rw.conn.Close()
+	close(rw.stopChan)
 	close(rw.eventChan)
 }
 
@@ -130,7 +131,7 @@ func (rw *RecursiveWatcher) watchDataChanges(path string) {
 			Type:     NodeCreated,
 			Path:     path,
 			Data:     string(data),
-			leafNode: stat.NumChildren == 0,
+			LeafNode: stat.NumChildren == 0,
 		}
 
 		select {
@@ -147,7 +148,7 @@ func (rw *RecursiveWatcher) watchDataChanges(path string) {
 				rw.eventChan <- ZookeeperEvent{
 					Type:     NodeDeleted,
 					Path:     path,
-					leafNode: stat.NumChildren == 0,
+					LeafNode: stat.NumChildren == 0,
 				}
 				return
 			}
@@ -232,12 +233,5 @@ func (rw *RecursiveWatcher) watchChildrenChanges(path string) {
 		if stat != nil {
 			continue
 		}
-	}
-}
-
-// handleEvents handle events
-func (rw *RecursiveWatcher) handleEvents() {
-	for event := range rw.eventChan {
-		logger.Infof("Event type: %s, Path: %s, leafNode: %v, Data: %s", event.Type, event.Path, event.leafNode, event.Data)
 	}
 }

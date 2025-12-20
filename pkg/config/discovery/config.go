@@ -60,9 +60,6 @@ type Properties struct {
 }
 
 func (c *Config) PreProcess() error {
-	if strutil.IsBlank(c.Address.Registry) && c.Type != Mock {
-		return bizerror.New(bizerror.ConfigError, "registry address is needed")
-	}
 	// if config center or metadata report is not set, use registry address
 	if strutil.IsBlank(c.Address.ConfigCenter) {
 		c.Address.ConfigCenter = c.Address.Registry
