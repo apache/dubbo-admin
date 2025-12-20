@@ -94,8 +94,8 @@ response.use(
           router.push({ path: `/login?redirect=${encodeURIComponent(redirectPath)}` })
         }
       } catch (e) {
-        if (!window.location.pathname.startsWith('/login')) {
-          window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`
+       if (!window.location.pathname.startsWith('/login')) { {
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`
         }
       }
     }

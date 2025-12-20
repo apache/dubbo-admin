@@ -76,7 +76,7 @@ func (mr *mockResource) String() string {
 }
 
 func TestNewMemoryResourceStore(t *testing.T) {
-	store := NewMemoryResourceStore()
+	store := NewMemoryResourceStore("TestResource")
 	assert.NotNil(t, store)
 }
 
@@ -88,7 +88,7 @@ func TestResourceStore_Init(t *testing.T) {
 }
 
 func TestResourceStore_AddAndGet(t *testing.T) {
-	store := NewMemoryResourceStore()
+	store := NewMemoryResourceStore("TestResource")
 	err := store.Init(nil)
 	assert.NoError(t, err)
 
@@ -121,7 +121,7 @@ func TestResourceStore_AddAndGet(t *testing.T) {
 }
 
 func TestResourceStore_Update(t *testing.T) {
-	store := NewMemoryResourceStore()
+	store := NewMemoryResourceStore("TestResource")
 	err := store.Init(nil)
 	assert.NoError(t, err)
 
@@ -163,7 +163,7 @@ func TestResourceStore_Update(t *testing.T) {
 }
 
 func TestResourceStore_Delete(t *testing.T) {
-	store := NewMemoryResourceStore()
+	store := NewMemoryResourceStore("TestResource")
 	err := store.Init(nil)
 	assert.NoError(t, err)
 
@@ -193,7 +193,7 @@ func TestResourceStore_Delete(t *testing.T) {
 }
 
 func TestResourceStore_List(t *testing.T) {
-	store := NewMemoryResourceStore()
+	store := NewMemoryResourceStore("TestResource")
 	err := store.Init(nil)
 	assert.NoError(t, err)
 
@@ -226,7 +226,7 @@ func TestResourceStore_List(t *testing.T) {
 }
 
 func TestResourceStore_ListKeys(t *testing.T) {
-	store := NewMemoryResourceStore()
+	store := NewMemoryResourceStore("TestResource")
 	err := store.Init(nil)
 	assert.NoError(t, err)
 
@@ -259,7 +259,7 @@ func TestResourceStore_ListKeys(t *testing.T) {
 }
 
 func TestResourceStore_Replace(t *testing.T) {
-	store := NewMemoryResourceStore()
+	store := NewMemoryResourceStore("TestResource")
 	err := store.Init(nil)
 	assert.NoError(t, err)
 
@@ -295,7 +295,7 @@ func TestResourceStore_Replace(t *testing.T) {
 }
 
 func TestResourceStore_GetByKeys(t *testing.T) {
-	store := NewMemoryResourceStore()
+	store := NewMemoryResourceStore("TestResource")
 	err := store.Init(nil)
 	assert.NoError(t, err)
 
@@ -331,7 +331,7 @@ func TestResourceStore_GetByKeys(t *testing.T) {
 }
 
 func TestResourceStore_ListByIndexes(t *testing.T) {
-	store := NewMemoryResourceStore()
+	store := NewMemoryResourceStore("TestResource")
 	err := store.Init(nil)
 	assert.NoError(t, err)
 
@@ -386,7 +386,7 @@ func TestResourceStore_ListByIndexes(t *testing.T) {
 }
 
 func TestResourceStore_PageListByIndexes(t *testing.T) {
-	store := NewMemoryResourceStore()
+	store := NewMemoryResourceStore("TestResource")
 	err := store.Init(nil)
 	assert.NoError(t, err)
 
@@ -467,7 +467,7 @@ func TestResourceStore_PageListByIndexes(t *testing.T) {
 }
 
 func TestResourceStore_MultipleIndexes(t *testing.T) {
-	store := NewMemoryResourceStore()
+	store := NewMemoryResourceStore("TestResource")
 	err := store.Init(nil)
 	assert.NoError(t, err)
 
@@ -558,7 +558,7 @@ func TestResourceStore_MultipleIndexes(t *testing.T) {
 }
 
 func TestResourceStore_IndexKeys(t *testing.T) {
-	store := NewMemoryResourceStore()
+	store := NewMemoryResourceStore("TestResource")
 	err := store.Init(nil)
 	assert.NoError(t, err)
 
@@ -631,7 +631,7 @@ func TestResourceStore_IndexKeys(t *testing.T) {
 }
 
 func TestResourceStore_ByIndex(t *testing.T) {
-	store := NewMemoryResourceStore()
+	store := NewMemoryResourceStore("TestResource")
 	err := store.Init(nil)
 	assert.NoError(t, err)
 
@@ -690,7 +690,7 @@ func TestResourceStore_ByIndex(t *testing.T) {
 }
 
 func TestResourceStore_GetIndexers(t *testing.T) {
-	store := NewMemoryResourceStore()
+	store := NewMemoryResourceStore("TestResource")
 	err := store.Init(nil)
 	assert.NoError(t, err)
 
@@ -718,7 +718,7 @@ func TestResourceStore_GetIndexers(t *testing.T) {
 }
 
 func TestResourceStore_ListIndexFuncValues(t *testing.T) {
-	store := NewMemoryResourceStore()
+	store := NewMemoryResourceStore("TestResource")
 	err := store.Init(nil)
 	assert.NoError(t, err)
 
