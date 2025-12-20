@@ -29,19 +29,22 @@ import (
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/core/store"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
 type resourceStore struct {
+	rk         coremodel.ResourceKind
 	storeProxy cache.Indexer
 }
 
 var _ store.ManagedResourceStore = &resourceStore{}
 
-func NewMemoryResourceStore() store.ManagedResourceStore {
-	return &resourceStore{}
+func NewMemoryResourceStore(rk coremodel.ResourceKind) store.ManagedResourceStore {
+	return &resourceStore{rk: rk}
 }
 
 func (rs *resourceStore) Init(_ runtime.BuilderContext) error {
+	indexers := index.IndexersRegistry().Indexers(rs.rk)
 	rs.storeProxy = cache.NewIndexer(
 		func(obj interface{}) (string, error) {
 			r, ok := obj.(coremodel.Resource)
@@ -50,7 +53,7 @@ func (rs *resourceStore) Init(_ runtime.BuilderContext) error {
 			}
 			return r.ResourceKey(), nil
 		},
-		cache.Indexers{},
+		indexers,
 	)
 	return nil
 }

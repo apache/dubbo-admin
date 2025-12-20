@@ -35,6 +35,8 @@ func IndexersRegistry() IndexerRegistry {
 }
 
 type IndexerRegistry interface {
+	// Indexers returns the indexers for the given resource kind
+	// if no indexers are registered for the resource kind, an empty map is returned
 	Indexers(model.ResourceKind) cache.Indexers
 }
 
@@ -60,7 +62,10 @@ func newIndexRegistry() MutableIndexerRegistry {
 }
 
 func (i *indexerRegistry) Indexers(k model.ResourceKind) cache.Indexers {
-	return i.rIndexers[k]
+	if indexers, exists := i.rIndexers[k]; exists && indexers != nil {
+		return indexers
+	}
+	return make(cache.Indexers)
 }
 
 func (i *indexerRegistry) Register(k model.ResourceKind, indexers cache.Indexers) {
