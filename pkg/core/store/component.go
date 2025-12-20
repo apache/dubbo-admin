@@ -23,7 +23,6 @@ import (
 
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
-	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
 func init() {
@@ -77,13 +76,6 @@ func (sc *storeComponent) Init(ctx runtime.BuilderContext) error {
 			return err
 		}
 		sc.stores[kind] = store
-		indexers := index.IndexersRegistry().Indexers(kind)
-		if indexers == nil {
-			continue
-		}
-		if err := store.AddIndexers(indexers); err != nil {
-			return err
-		}
 		if err = store.Init(ctx); err != nil {
 			return err
 		}
