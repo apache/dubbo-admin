@@ -29,6 +29,10 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 )
 
+func init() {
+	runtime.RegisterComponent(NewComponent())
+}
+
 const (
 	// DistributedLockComponent is the component type for distributed lock
 	DistributedLockComponent runtime.ComponentType = "distributed lock"
@@ -58,37 +62,22 @@ func (c *Component) Order() int {
 
 // Init initializes the distributed lock component
 func (c *Component) Init(ctx runtime.BuilderContext) error {
-	// Get the store component to access database connection
-	storeComp, err := ctx.GetActivatedComponent(runtime.ResourceStore)
+	factory, err := LockFactoryRegistry().GetSupportedFactory(ctx)
 	if err != nil {
-		return err
-	}
-
-	// Try to extract data store interface from store component
-	type DataStore interface {
-		GetDataStore() any
-	}
-
-	store, ok := storeComp.(DataStore)
-	if !ok {
-		// For memory store or other stores without database
-		logger.Warnf("Store component does not provide data store interface, distributed lock will not be available")
+		// No supporting factory found
+		logger.Warnf("No supported lock factory found: %v", err)
+		logger.Warn("Distributed lock will not be available")
 		return nil
 	}
 
-	dataStore := store.GetDataStore()
-	if dataStore == nil {
-		logger.Warnf("Data store is nil, distributed lock will not be available")
-		return nil
+	// Lock created using a factory
+	lock, err := factory.NewLock(ctx)
+	if err != nil {
+		return errors.Wrap(err, "failed to create distributed lock")
 	}
 
-	// Create lock implementation based on the data store
-	c.lock = NewLockFromDataStore(dataStore)
-	if c.lock == nil {
-		logger.Warnf("Cannot create distributed lock from data store, distributed lock will not be available")
-		return nil
-	}
-
+	c.lock = lock
+	logger.Info("Distributed lock component initialized successfully")
 	return nil
 }
 

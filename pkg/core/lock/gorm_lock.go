@@ -62,7 +62,7 @@ func NewGormLockFromDB(db *gorm.DB) Lock {
 	}
 }
 
-// getDB returns the database instance, preferring direct DB over pool
+// getDB returns the database instance, to prefer direct DB to pool
 func (g *GormLock) getDB() *gorm.DB {
 	if g.db != nil {
 		return g.db
