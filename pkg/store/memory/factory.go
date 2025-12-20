@@ -35,6 +35,6 @@ func (sf *storeFactory) Support(s storecfg.Type) bool {
 	return s == storecfg.Memory
 }
 
-func (sf *storeFactory) New(_ coremodel.ResourceKind, _ *storecfg.Config) (store.ManagedResourceStore, error) {
-	return NewMemoryResourceStore(), nil
+func (sf *storeFactory) New(rk coremodel.ResourceKind, _ *storecfg.Config) (store.ManagedResourceStore, error) {
+	return NewMemoryResourceStore(rk), nil
 }

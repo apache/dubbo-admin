@@ -20,6 +20,7 @@ package bootstrap
 // import all components registered by init function
 import (
 	_ "github.com/apache/dubbo-admin/pkg/console"
+	_ "github.com/apache/dubbo-admin/pkg/console/counter"
 	_ "github.com/apache/dubbo-admin/pkg/core/discovery"
 	_ "github.com/apache/dubbo-admin/pkg/core/engine"
 	_ "github.com/apache/dubbo-admin/pkg/core/events"
