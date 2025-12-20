@@ -40,6 +40,8 @@ const (
 	NacosError      ErrorCode = "NacosError"
 	ZKError         ErrorCode = "ZKError"
 	EventError      ErrorCode = "EventError"
+	LockNotHeld     ErrorCode = "LockNotHeld"
+	LockExpired     ErrorCode = "LockExpired"
 )
 
 type bizError struct {
