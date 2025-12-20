@@ -51,7 +51,7 @@ func TestDependencyGraph_SimpleLinearDependency(t *testing.T) {
 	components := []Component{
 		&mockComponent{typ: "A", order: 100, deps: []ComponentType{"B"}},
 		&mockComponent{typ: "B", order: 200, deps: []ComponentType{"C"}},
-		&mockComponent{typ: "C", order: 300, deps: nil},
+		&mockComponent{typ: "C", order: 300, deps: []ComponentType{}},
 	}
 
 	graph := NewDependencyGraph(components)
@@ -76,7 +76,7 @@ func TestDependencyGraph_DiamondDependency(t *testing.T) {
 		&mockComponent{typ: "A", order: 100, deps: []ComponentType{"B", "C"}},
 		&mockComponent{typ: "B", order: 200, deps: []ComponentType{"D"}},
 		&mockComponent{typ: "C", order: 300, deps: []ComponentType{"D"}},
-		&mockComponent{typ: "D", order: 400, deps: nil},
+		&mockComponent{typ: "D", order: 400, deps: []ComponentType{}},
 	}
 
 	graph := NewDependencyGraph(components)
@@ -86,9 +86,9 @@ func TestDependencyGraph_DiamondDependency(t *testing.T) {
 	assert.Equal(t, 4, len(sorted))
 	// D must be first
 	assert.Equal(t, ComponentType("D"), sorted[0].Type())
-	// B and C can be in any order (but C should be before B due to higher Order())
-	assert.Equal(t, ComponentType("C"), sorted[1].Type())
-	assert.Equal(t, ComponentType("B"), sorted[2].Type())
+	// B and C can be in any order (alphabetically: B before C)
+	assert.Equal(t, ComponentType("B"), sorted[1].Type())
+	assert.Equal(t, ComponentType("C"), sorted[2].Type())
 	// A must be last
 	assert.Equal(t, ComponentType("A"), sorted[3].Type())
 }
@@ -104,10 +104,9 @@ func TestDependencyGraph_CircularDependency_TwoNodes(t *testing.T) {
 	_, err := graph.TopologicalSort()
 
 	assert.Error(t, err)
-	var cerr *CircularDependencyError
-	assert.ErrorAs(t, err, &cerr)
-	assert.Contains(t, cerr.CyclePath(), "A")
-	assert.Contains(t, cerr.CyclePath(), "B")
+	assert.Contains(t, err.Error(), "circular dependency detected")
+	assert.Contains(t, err.Error(), "A")
+	assert.Contains(t, err.Error(), "B")
 }
 
 func TestDependencyGraph_CircularDependency_ThreeNodes(t *testing.T) {
@@ -122,12 +121,11 @@ func TestDependencyGraph_CircularDependency_ThreeNodes(t *testing.T) {
 	_, err := graph.TopologicalSort()
 
 	assert.Error(t, err)
-	var cerr *CircularDependencyError
-	assert.ErrorAs(t, err, &cerr)
-	cyclePath := cerr.CyclePath()
-	assert.Contains(t, cyclePath, "A")
-	assert.Contains(t, cyclePath, "B")
-	assert.Contains(t, cyclePath, "C")
+	assert.Contains(t, err.Error(), "circular dependency detected")
+	errMsg := err.Error()
+	assert.Contains(t, errMsg, "A")
+	assert.Contains(t, errMsg, "B")
+	assert.Contains(t, errMsg, "C")
 }
 
 func TestDependencyGraph_MissingDependency(t *testing.T) {
@@ -145,11 +143,11 @@ func TestDependencyGraph_MissingDependency(t *testing.T) {
 }
 
 func TestDependencyGraph_NoDependencies(t *testing.T) {
-	// All components independent, should sort by Order()
+	// All components independent, should sort alphabetically (deterministic)
 	components := []Component{
-		&mockComponent{typ: "A", order: 100, deps: nil},
-		&mockComponent{typ: "B", order: 300, deps: nil},
-		&mockComponent{typ: "C", order: 200, deps: nil},
+		&mockComponent{typ: "A", order: 100, deps: []ComponentType{}},
+		&mockComponent{typ: "B", order: 300, deps: []ComponentType{}},
+		&mockComponent{typ: "C", order: 200, deps: []ComponentType{}},
 	}
 
 	graph := NewDependencyGraph(components)
@@ -157,10 +155,10 @@ func TestDependencyGraph_NoDependencies(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, 3, len(sorted))
-	// Should be sorted by Order() descending: B(300), C(200), A(100)
-	assert.Equal(t, ComponentType("B"), sorted[0].Type())
-	assert.Equal(t, ComponentType("C"), sorted[1].Type())
-	assert.Equal(t, ComponentType("A"), sorted[2].Type())
+	// With no dependencies, components are sorted alphabetically
+	assert.Equal(t, ComponentType("A"), sorted[0].Type())
+	assert.Equal(t, ComponentType("B"), sorted[1].Type())
+	assert.Equal(t, ComponentType("C"), sorted[2].Type())
 }
 
 func TestDependencyGraph_ComplexDependencies(t *testing.T) {
@@ -172,7 +170,7 @@ func TestDependencyGraph_ComplexDependencies(t *testing.T) {
 	// Manager -> Store
 	// Console -> Manager
 	components := []Component{
-		&mockComponent{typ: "EventBus", order: 1000, deps: nil},
+		&mockComponent{typ: "EventBus", order: 1000, deps: []ComponentType{}},
 		&mockComponent{typ: "Store", order: 900, deps: []ComponentType{"EventBus"}},
 		&mockComponent{typ: "Discovery", order: 800, deps: []ComponentType{"EventBus", "Store"}},
 		&mockComponent{typ: "Engine", order: 700, deps: []ComponentType{"EventBus", "Store"}},
@@ -212,15 +210,62 @@ func TestDependencyGraph_SelfDependency(t *testing.T) {
 	_, err := graph.TopologicalSort()
 
 	assert.Error(t, err)
-	var cerr *CircularDependencyError
-	assert.ErrorAs(t, err, &cerr)
+	assert.Contains(t, err.Error(), "circular dependency detected")
+	assert.Contains(t, err.Error(), "A -> A")
 }
 
-func TestCircularDependencyError_CyclePath(t *testing.T) {
-	err := &CircularDependencyError{
-		Cycle: []ComponentType{"A", "B", "C"},
+func TestDependencyGraph_MultipleDependenciesSameLevel(t *testing.T) {
+	// A depends on B, C, D (all at same level)
+	// B, C, D have no dependencies
+	components := []Component{
+		&mockComponent{typ: "A", order: 100, deps: []ComponentType{"B", "C", "D"}},
+		&mockComponent{typ: "B", order: 200, deps: []ComponentType{}},
+		&mockComponent{typ: "C", order: 300, deps: []ComponentType{}},
+		&mockComponent{typ: "D", order: 400, deps: []ComponentType{}},
 	}
 
-	cyclePath := err.CyclePath()
-	assert.Equal(t, "A -> B -> C -> A", cyclePath)
+	graph := NewDependencyGraph(components)
+	sorted, err := graph.TopologicalSort()
+
+	assert.NoError(t, err)
+	assert.Equal(t, 4, len(sorted))
+
+	// Create a map for easier verification
+	orderMap := make(map[ComponentType]int)
+	for i, comp := range sorted {
+		orderMap[comp.Type()] = i
+	}
+
+	// All dependencies must come before A
+	assert.Less(t, orderMap["B"], orderMap["A"])
+	assert.Less(t, orderMap["C"], orderMap["A"])
+	assert.Less(t, orderMap["D"], orderMap["A"])
+
+	// A must be last
+	assert.Equal(t, ComponentType("A"), sorted[3].Type())
+}
+
+func TestDependencyGraph_EmptyComponents(t *testing.T) {
+	// Empty component list
+	components := []Component{}
+
+	graph := NewDependencyGraph(components)
+	sorted, err := graph.TopologicalSort()
+
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(sorted))
+}
+
+func TestDependencyGraph_SingleComponent(t *testing.T) {
+	// Single component with no dependencies
+	components := []Component{
+		&mockComponent{typ: "A", order: 100, deps: []ComponentType{}},
+	}
+
+	graph := NewDependencyGraph(components)
+	sorted, err := graph.TopologicalSort()
+
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(sorted))
+	assert.Equal(t, ComponentType("A"), sorted[0].Type())
 }

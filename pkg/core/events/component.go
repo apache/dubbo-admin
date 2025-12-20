@@ -44,7 +44,7 @@ type eventBus struct {
 }
 
 func (b *eventBus) RequiredDependencies() []runtime.ComponentType {
-	return nil // EventBus has no dependencies
+	return []runtime.ComponentType{} // EventBus has no dependencies
 }
 
 func (b *eventBus) Type() runtime.ComponentType {

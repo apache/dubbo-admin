@@ -19,8 +19,10 @@ package runtime
 
 import (
 	"fmt"
-	"math"
+	"sort"
 	"strings"
+
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 )
 
 // DependencyGraph represents the dependency relationships between components
@@ -48,12 +50,10 @@ func NewDependencyGraph(components []Component) *DependencyGraph {
 	// If component A depends on B, we create edge B -> A
 	// This way, the adjacency list represents "who depends on me"
 	for _, comp := range components {
-		if dep, ok := comp.(ComponentWithDependencies); ok {
-			for _, dependency := range dep.RequiredDependencies() {
-				// dependency -> comp.Type()
-				// Meaning: dependency is required by comp.Type()
-				dg.adjList[dependency] = append(dg.adjList[dependency], comp.Type())
-			}
+		for _, dependency := range comp.RequiredDependencies() {
+			// dependency -> comp.Type()
+			// Meaning: dependency is required by comp.Type()
+			dg.adjList[dependency] = append(dg.adjList[dependency], comp.Type())
 		}
 	}
 
@@ -71,15 +71,8 @@ func (dg *DependencyGraph) TopologicalSort() ([]Component, error) {
 	// 2. Calculate in-degree for each node
 	// In-degree = number of dependencies
 	indegree := make(map[ComponentType]int)
-	for typ := range dg.components {
-		indegree[typ] = 0
-	}
-
-	// Count in-degrees based on original dependencies
 	for _, comp := range dg.components {
-		if dep, ok := comp.(ComponentWithDependencies); ok {
-			indegree[comp.Type()] = len(dep.RequiredDependencies())
-		}
+		indegree[comp.Type()] = len(comp.RequiredDependencies())
 	}
 
 	// 3. Find all nodes with in-degree 0 (no dependencies)
@@ -95,9 +88,12 @@ func (dg *DependencyGraph) TopologicalSort() ([]Component, error) {
 	visited := make(map[ComponentType]bool)
 
 	for len(queue) > 0 {
-		// Pop node with highest Order() value (for deterministic ordering)
-		current := dg.popWithHighestOrder(queue)
-		queue = dg.removeFromQueue(queue, current)
+		// Sort queue alphabetically for deterministic ordering
+		sort.Strings(queue)
+
+		// Pop the first element
+		current := queue[0]
+		queue = queue[1:]
 
 		result = append(result, dg.components[current])
 		visited[current] = true
@@ -114,7 +110,7 @@ func (dg *DependencyGraph) TopologicalSort() ([]Component, error) {
 	// 5. Check for circular dependencies
 	if len(result) != len(dg.components) {
 		cycle := dg.findCycle()
-		return nil, &CircularDependencyError{Cycle: cycle}
+		return nil, newCircularDependencyError(cycle)
 	}
 
 	return result, nil
@@ -123,54 +119,21 @@ func (dg *DependencyGraph) TopologicalSort() ([]Component, error) {
 // validate checks that all declared dependencies exist
 func (dg *DependencyGraph) validate() error {
 	for _, comp := range dg.components {
-		if dep, ok := comp.(ComponentWithDependencies); ok {
-			for _, dependency := range dep.RequiredDependencies() {
-				if _, exists := dg.components[dependency]; !exists {
-					return fmt.Errorf(
-						"component %q requires missing dependency %q\n"+
+		for _, dependency := range comp.RequiredDependencies() {
+			if _, exists := dg.components[dependency]; !exists {
+				return bizerror.Wrap(
+					fmt.Errorf("missing dependency %q", dependency),
+					bizerror.ConfigError,
+					fmt.Sprintf(
+						"component %q requires missing dependency %q. "+
 							"Hint: Make sure %q is registered in ComponentRegistry()",
 						comp.Type(), dependency, dependency,
-					)
-				}
+					),
+				)
 			}
 		}
 	}
 	return nil
-}
-
-// popWithHighestOrder returns the component with highest Order() value from queue
-// This ensures deterministic ordering when multiple components have the same dependency level
-func (dg *DependencyGraph) popWithHighestOrder(queue []ComponentType) ComponentType {
-	if len(queue) == 1 {
-		return queue[0]
-	}
-
-	maxOrder := math.MinInt
-	maxType := queue[0]
-
-	for _, typ := range queue {
-		order := dg.components[typ].Order()
-		if order > maxOrder {
-			maxOrder = order
-			maxType = typ
-		}
-	}
-
-	return maxType
-}
-
-// removeFromQueue removes the first occurrence of element from queue
-func (dg *DependencyGraph) removeFromQueue(queue []ComponentType, element ComponentType) []ComponentType {
-	result := make([]ComponentType, 0, len(queue)-1)
-	found := false
-	for _, v := range queue {
-		if v == element && !found {
-			found = true
-			continue
-		}
-		result = append(result, v)
-	}
-	return result
 }
 
 // findCycle uses DFS to find a circular dependency
@@ -186,19 +149,17 @@ func (dg *DependencyGraph) findCycle() []ComponentType {
 		cycle = append(cycle, node)
 
 		// Visit dependencies (not dependents)
-		if dep, ok := dg.components[node].(ComponentWithDependencies); ok {
-			for _, dependency := range dep.RequiredDependencies() {
-				if !visited[dependency] {
-					if dfs(dependency) {
+		for _, dependency := range dg.components[node].RequiredDependencies() {
+			if !visited[dependency] {
+				if dfs(dependency) {
+					return true
+				}
+			} else if recStack[dependency] {
+				// Found cycle, extract the cycle path
+				for i, typ := range cycle {
+					if typ == dependency {
+						cycle = cycle[i:]
 						return true
-					}
-				} else if recStack[dependency] {
-					// Found cycle, extract the cycle path
-					for i, typ := range cycle {
-						if typ == dependency {
-							cycle = cycle[i:]
-							return true
-						}
 					}
 				}
 			}
@@ -220,29 +181,26 @@ func (dg *DependencyGraph) findCycle() []ComponentType {
 	return nil
 }
 
-// CircularDependencyError represents a circular dependency error
-type CircularDependencyError struct {
-	Cycle []ComponentType
-}
-
-func (e *CircularDependencyError) Error() string {
-	return fmt.Sprintf(
-		"circular dependency detected: %s\n"+
-			"Please check the RequiredDependencies() methods of these components and break the cycle",
-		e.CyclePath(),
-	)
-}
-
-// CyclePath returns a human-readable representation of the cycle
-func (e *CircularDependencyError) CyclePath() string {
-	if len(e.Cycle) == 0 {
-		return ""
+// newCircularDependencyError creates a circular dependency error
+func newCircularDependencyError(cycle []ComponentType) error {
+	if len(cycle) == 0 {
+		return bizerror.New(bizerror.ConfigError, "circular dependency detected")
 	}
-	// Close the cycle
-	path := make([]string, len(e.Cycle)+1)
-	for i, typ := range e.Cycle {
+
+	// Format cycle path: A -> B -> C -> A
+	path := make([]string, len(cycle)+1)
+	for i, typ := range cycle {
 		path[i] = string(typ)
 	}
-	path[len(e.Cycle)] = string(e.Cycle[0])
-	return strings.Join(path, " -> ")
+	path[len(cycle)] = string(cycle[0])
+	cyclePath := strings.Join(path, " -> ")
+
+	return bizerror.New(
+		bizerror.ConfigError,
+		fmt.Sprintf(
+			"circular dependency detected: %s. "+
+				"Please check the RequiredDependencies() methods of these components and break the cycle",
+			cyclePath,
+		),
+	)
 }

@@ -44,6 +44,10 @@ type Attribute interface {
 	// Order indicates the order of the component during bootstrap, the bigger will be started first
 	// Deprecated: Use RequiredDependencies() instead for explicit dependency management
 	Order() int
+	// RequiredDependencies returns the component types that must be initialized before this component
+	// The system will ensure all required dependencies are initialized first, or fail with a clear error
+	// Return an empty slice if the component has no dependencies
+	RequiredDependencies() []ComponentType
 }
 
 // Component defines a process that will be run in the application
@@ -51,21 +55,6 @@ type Attribute interface {
 type Component interface {
 	Attribute
 	Lifecycle
-}
-
-// Dependency declares component dependencies
-// Components implementing this interface will be initialized in dependency order
-type Dependency interface {
-	// RequiredDependencies returns the component types that must be initialized before this component
-	// The system will ensure all required dependencies are initialized first, or fail with a clear error
-	RequiredDependencies() []ComponentType
-}
-
-// ComponentWithDependencies is a component that explicitly declares its dependencies
-// This is the recommended way to define component initialization order
-type ComponentWithDependencies interface {
-	Component
-	Dependency
 }
 
 // GracefulComponent is a component that supports waiting until it's finished.
@@ -85,14 +74,4 @@ type ComponentManager interface {
 
 	// Start starts all components.
 	Start(<-chan struct{}) error
-}
-
-// BaseComponent provides default implementations for optional interfaces
-// Components can embed this struct to get default implementations
-type BaseComponent struct{}
-
-// RequiredDependencies returns nil, indicating no dependencies
-// Components can override this method to declare their dependencies
-func (b *BaseComponent) RequiredDependencies() []ComponentType {
-	return nil
 }
