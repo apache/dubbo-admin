@@ -75,7 +75,6 @@ func (rw *RecursiveWatcher) StartAsync() error {
 // Stop watching
 func (rw *RecursiveWatcher) Stop() {
 	logger.Infof("Stop watching path: %s", rw.basePath)
-	rw.conn.Close()
 	close(rw.stopChan)
 	close(rw.eventChan)
 }

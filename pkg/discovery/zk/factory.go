@@ -19,16 +19,12 @@ package zk
 
 import (
 	"encoding/json"
-	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
-	"github.com/dubbogo/go-zookeeper/zk"
 	"github.com/duke-git/lancet/v2/strutil"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
 	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
 	"github.com/apache/dubbo-admin/pkg/core/controller"
@@ -51,24 +47,13 @@ func (f *Factory) Support(typ discoverycfg.Type) bool {
 }
 
 func (f *Factory) NewListWatchers(config *discoverycfg.Config) ([]controller.ResourceListerWatcher, error) {
-	address := config.Address.Registry
-	zkUrl, err := url.Parse(address)
-	if err != nil {
-		return nil, err
-	}
-	conn, _, err := zk.Connect([]string{zkUrl.Host}, time.Second*1, func(c *zk.Conn) {
-		c.SetLogger(&zkLogger{})
-	})
-	if err != nil {
-		logger.Fatalf("connect to %s failed", address)
-		return nil, bizerror.Wrap(err, bizerror.ZKError, "connect to zookeeper failed, addr: "+address)
-	}
+	zkLog := &zkLogger{}
 	mappingLw, err := listerwatcher.NewListerWatcher(
 		meshresource.ServiceProviderMappingKind,
 		toUpsertMappingResource,
 		toDeleteMappingResource,
 		"/dubbo/mapping",
-		conn,
+		zkLog,
 		config,
 	)
 	if err != nil {
@@ -79,7 +64,7 @@ func (f *Factory) NewListWatchers(config *discoverycfg.Config) ([]controller.Res
 		toUpsertRPCInstanceResource,
 		toDeleteRPCInstanceResource,
 		"/services",
-		conn,
+		zkLog,
 		config,
 	)
 	if err != nil {
@@ -90,7 +75,7 @@ func (f *Factory) NewListWatchers(config *discoverycfg.Config) ([]controller.Res
 		toUpsertZKConfigResource,
 		toDeleteZKConfigResource,
 		"/dubbo/config",
-		conn,
+		zkLog,
 		config,
 	)
 	if err != nil {
@@ -101,7 +86,7 @@ func (f *Factory) NewListWatchers(config *discoverycfg.Config) ([]controller.Res
 		toUpsertZKMetadataResource,
 		toDeleteZKMetadataResource,
 		"/dubbo/metadata",
-		conn,
+		zkLog,
 		config,
 	)
 	if err != nil {

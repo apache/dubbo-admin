@@ -102,7 +102,7 @@ func (r *AffinityRouteResource) DeepCopyObject() k8sruntime.Object {
 func (r *AffinityRouteResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to encode AffinityRouteResource: %s to json, err: %w", r.ResourceKey(), err)
+		logger.Errorf("failed to encode AffinityRouteResource: %s to json, err: %v", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)

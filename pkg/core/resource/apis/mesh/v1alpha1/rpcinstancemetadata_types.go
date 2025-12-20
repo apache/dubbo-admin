@@ -102,7 +102,7 @@ func (r *RPCInstanceMetadataResource) DeepCopyObject() k8sruntime.Object {
 func (r *RPCInstanceMetadataResource) String() string {
 	jsonStr, err := json.Marshal(r)
 	if err != nil {
-		logger.Errorf("failed to encode RPCInstanceMetadataResource: %s to json, err: %w", r.ResourceKey(), err)
+		logger.Errorf("failed to encode RPCInstanceMetadataResource: %s to json, err: %v", r.ResourceKey(), err)
 		return ""
 	}
 	return string(jsonStr)

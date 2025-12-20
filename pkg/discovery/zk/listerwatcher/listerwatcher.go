@@ -19,6 +19,8 @@ package listerwatcher
 
 import (
 	"fmt"
+	"net/url"
+	"time"
 
 	"github.com/dubbogo/go-zookeeper/zk"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -57,7 +59,7 @@ func NewListerWatcher(
 	toResourceFunc ToUpsertResourceFunc,
 	toDeleteResourceFunc ToDeleteResourceFunc,
 	basePath string,
-	conn *zk.Conn,
+	zkLogger zk.Logger,
 	cfg *discoverycfg.Config) (*ListerWatcher[coremodel.Resource], error) {
 	newResourceFunc, err := coremodel.ResourceSchemaRegistry().NewResourceFunc(rk)
 	if err != nil {
@@ -66,6 +68,18 @@ func NewListerWatcher(
 	newResListFunc, err := coremodel.ResourceSchemaRegistry().NewResourceListFunc(rk)
 	if err != nil {
 		return nil, err
+	}
+	address := cfg.Address.Registry
+	zkUrl, err := url.Parse(address)
+	if err != nil {
+		return nil, err
+	}
+	conn, _, err := zk.Connect([]string{zkUrl.Host}, time.Second*1, func(c *zk.Conn) {
+		c.SetLogger(zkLogger)
+	})
+	if err != nil {
+		logger.Errorf("connect to %s failed in %s lister watcher", rk, address)
+		return nil, bizerror.Wrap(err, bizerror.ZKError, "connect to zookeeper failed, addr: "+address)
 	}
 	return &ListerWatcher[coremodel.Resource]{
 		rk:                   rk,
@@ -214,6 +228,8 @@ func (lw *ListerWatcher[T]) Stop() {
 		lw.watcher.Stop()
 	}
 	close(lw.stopChan)
+	close(lw.resultChan)
+	lw.conn.Close()
 }
 
 func (lw *ListerWatcher[T]) ResultChan() <-chan watch.Event {
