@@ -65,6 +65,7 @@ discovery:
 
   # mock discovery is only for development
 #  - type: mock
+#    id:   mock
 #    name: mockRegistry
 engine:
   name: mock
