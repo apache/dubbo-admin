@@ -19,7 +19,6 @@ package store
 
 import (
 	"fmt"
-	"gorm.io/gorm"
 	"math"
 
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
@@ -109,20 +108,4 @@ func (sc *storeComponent) ResourceKindRoute(k coremodel.ResourceKind) (ResourceS
 	}
 	return nil, fmt.Errorf("%s is not supported by store yet", k)
 
-}
-
-func (sc *storeComponent) GetDB() *gorm.DB {
-	type dbGetter interface {
-		GetDB() *gorm.DB
-	}
-
-	for _, store := range sc.stores {
-		if dg, ok := store.(dbGetter); ok {
-			if db := dg.GetDB(); db != nil {
-				return db
-			}
-		}
-	}
-
-	return nil
 }

@@ -19,11 +19,10 @@ package lock
 
 import (
 	"fmt"
-
-	"gorm.io/gorm"
-
+	
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
+	"github.com/apache/dubbo-admin/pkg/store/dbcommon"
 )
 
 func init() {
@@ -32,57 +31,30 @@ func init() {
 
 type gormLockFactory struct{}
 
-// Support checks if a GORM Lock can be created from the context.
+// Support checks if GORM-based lock is supported based on store configuration
 func (f *gormLockFactory) Support(ctx runtime.BuilderContext) bool {
-	storeComp, err := ctx.GetActivatedComponent(runtime.ResourceStore)
-	if err != nil {
-		return false
-	}
-
-	type DataStoreProvider interface {
-		GetDataStore() any
-	}
-
-	provider, ok := storeComp.(DataStoreProvider)
-	if !ok {
-		return false
-	}
-
-	dataStore := provider.GetDataStore()
-	if dataStore == nil {
-		return false
-	}
-
-	_, ok = dataStore.(*gorm.DB)
-	return ok
+	cfg := ctx.Config().Store
+	// GORM lock is supported for database-backed stores (mysql, postgres)
+	return cfg.Type == "mysql" || cfg.Type == "postgres"
 }
 
-// NewLock creates a GORM Lock instance
+// NewLock creates a GORM Lock instance by obtaining DB from dbcommon package
 func (f *gormLockFactory) NewLock(ctx runtime.BuilderContext) (Lock, error) {
-	storeComp, err := ctx.GetActivatedComponent(runtime.ResourceStore)
-	if err != nil {
-		return nil, fmt.Errorf("store component not found: %w", err)
+	cfg := ctx.Config().Store
+
+	// Get the database connection from dbcommon's global connection pool
+	// This reuses the existing connection pool created by the store
+	// but accesses it through the dbcommon package instead of StoreComponent
+	db := dbcommon.GetGlobalDB(cfg.Type)
+	if db == nil {
+		return nil, fmt.Errorf("no database connection found for store type: %s", cfg.Type)
 	}
 
-	type DataStoreProvider interface {
-		GetDataStore() any
+	// Auto-migrate lock table
+	if err := db.AutoMigrate(&LockRecord{}); err != nil {
+		return nil, fmt.Errorf("failed to migrate lock table: %w", err)
 	}
 
-	provider, ok := storeComp.(DataStoreProvider)
-	if !ok {
-		return nil, fmt.Errorf("store does not provide data store interface")
-	}
-
-	dataStore := provider.GetDataStore()
-	if dataStore == nil {
-		return nil, fmt.Errorf("data store is nil")
-	}
-
-	db, ok := dataStore.(*gorm.DB)
-	if !ok {
-		return nil, fmt.Errorf("data store is not *gorm.DB (got %T)", dataStore)
-	}
-
-	logger.Info("Creating GORM-based distributed lock")
+	logger.Info("Creating GORM-based distributed lock using existing database connection")
 	return NewGormLockFromDB(db), nil
 }
