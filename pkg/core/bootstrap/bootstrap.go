@@ -19,9 +19,9 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/pkg/errors"
-
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/config/app"
 	"github.com/apache/dubbo-admin/pkg/console/counter"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
@@ -73,20 +73,20 @@ func (sb *SmartBootstrapper) bootstrapComponents(
 	// Gather all components to initialize
 	components, err := sb.gatherComponents()
 	if err != nil {
-		return errors.Wrap(err, "failed to gather components")
+		return bizerror.Wrap(err, bizerror.UnknownError, "failed to gather components")
 	}
 
 	// Sort components by dependencies
 	ordered, err := sb.sortComponents(components)
 	if err != nil {
-		return errors.Wrap(err, "failed to sort components by dependencies")
+		return bizerror.Wrap(err, bizerror.UnknownError, "failed to sort components by dependencies")
 	}
 
 	// Initialize components in order
 	for i, comp := range ordered {
 		logger.Infof("[%d/%d] Initializing %s...", i+1, len(ordered), comp.Type())
 		if err := initAndActivateComponent(sb.builder, comp); err != nil {
-			return errors.Wrapf(err, "failed to initialize component %s", comp.Type())
+			return bizerror.Wrap(err, bizerror.UnknownError, fmt.Sprintf("failed to initialize component %s", comp.Type()))
 		}
 		logger.Infof("[%d/%d] %s initialized successfully", i+1, len(ordered), comp.Type())
 	}
@@ -115,7 +115,7 @@ func (sb *SmartBootstrapper) gatherComponents() ([]runtime.Component, error) {
 	for _, comp := range coreComps {
 		c, err := comp.getter()
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get component %s", comp.name)
+			return nil, bizerror.Wrap(err, bizerror.UnknownError, fmt.Sprintf("failed to get component %s", comp.name))
 		}
 		components = append(components, c)
 	}
@@ -173,7 +173,7 @@ func initAndActivateComponent(builder *runtime.Builder, comp runtime.Component) 
 	}
 	logger.Infof("%s initialized successfully", comp.Type())
 	if err := builder.ActivateComponent(comp); err != nil {
-		return errors.Wrapf(err, "failed to activate %s", comp.Type())
+		return bizerror.Wrap(err, bizerror.UnknownError, fmt.Sprintf("failed to activate %s", comp.Type()))
 	}
 	return nil
 }
