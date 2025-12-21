@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { createApp, ref } from 'vue'
+import { createApp } from 'vue'
 import Antd from 'ant-design-vue'
 
 import router from './router'
@@ -31,7 +31,6 @@ import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
 import { getAuthState } from '@/utils/AuthUtil'
 import { createPinia } from 'pinia'
-import { useRoute } from 'vue-router'
 
 const app = createApp(App)
 
@@ -41,9 +40,9 @@ pinia.use(piniaPluginPersistedstate)
 
 app.use(Antd).use(Vue3ColorPicker).use(pinia).use(i18n).use(router).mount('#app')
 
-router.beforeEach((from, to, next) => {
+router.beforeEach((to, from, next) => {
   const authState = getAuthState()
-  if (authState?.state || from.path.startsWith('/login')) {
+  if (authState?.state || to.path.startsWith('/login')) {
     next()
   } else {
     next({ path: `/login?redirect=${to.path}` })

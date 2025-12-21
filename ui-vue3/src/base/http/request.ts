@@ -25,7 +25,9 @@ import type {
 import axios from 'axios'
 import NProgress from 'nprogress'
 import { removeAuthState } from '@/utils/AuthUtil'
+import router from '@/router'
 import { useMeshStore } from '@/stores/mesh'
+import { message } from 'ant-design-vue'
 
 const service: AxiosInstance = axios.create({
   //  change this to decide where to go
@@ -69,10 +71,7 @@ response.use(
     if (response.status === 200 && response.data.code === 'Success') {
       return Promise.resolve(response.data)
     }
-    // Handle 401 unauthorized
-    if (response.status === 401) {
-      removeAuthState()
-    }
+
     // Show error toast message
     const errorMsg = `${response.data.code}:${response.data.message}`
     message.error(errorMsg)
@@ -82,8 +81,30 @@ response.use(
   (error) => {
     NProgress.done()
     // Handle error response with data
-    if (error.response?.data) {
-      const errorMsg = `${error.response.data.code}:${error.response.data.message}`
+    const response = error.response
+
+    // Handle 401 unauthorized
+    if (response?.status === 401) {
+      removeAuthState()
+      try {
+        const current = router.currentRoute?.value
+        const redirectPath = current?.fullPath || current?.path || '/'
+
+        if (!redirectPath.startsWith('/login')) {
+          router.push({ path: `/login?redirect=${encodeURIComponent(redirectPath)}` })
+        }
+      } catch (e) {
+        console.error('Router push failed during 401 redirect:', e)
+        if (!window.location.pathname.startsWith('/login')) {
+          window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`
+        }
+      }
+    }
+    if (response?.status === 401) {
+      return Promise.reject(error.response?.data)
+    }
+    if (response?.data) {
+      const errorMsg = `${response.data?.code}:${response.data?.message}`
       message.error(errorMsg)
       console.error(errorMsg)
     } else {
