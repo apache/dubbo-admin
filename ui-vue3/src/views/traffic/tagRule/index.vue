@@ -24,10 +24,7 @@
       </template>
       <template #bodyCell="{ text, column, record }">
         <template v-if="column.dataIndex === 'ruleName'">
-          <span
-            class="rule-link"
-            @click="router.push(`/traffic/tagRule/formview/${record[column.key]}`)"
-          >
+          <span class="rule-link" @click="router.push(`/traffic/tagRule/formview/${record[column.key]}`)">
             <b>
               <Icon style="margin-bottom: -2px" icon="material-symbols:attach-file-rounded"></Icon>
               {{ text }}
@@ -44,18 +41,10 @@
           <a-button type="link" @click="router.push(`formview/${record.ruleName}`)">
             查看
           </a-button>
-          <a-button
-            @click="router.push(`/traffic/updateTagRule/updateByFormView/${record.ruleName}`)"
-            type="link"
-          >
+          <a-button @click="router.push(`/traffic/updateTagRule/updateByFormView/${record.ruleName}`)" type="link">
             修改
           </a-button>
-          <a-popconfirm
-            title="确认删除该标签路由规则？"
-            ok-text="Yes"
-            cancel-text="No"
-            @confirm="confirm(record.ruleName)"
-          >
+          <a-popconfirm title="确认删除该标签路由规则？" ok-text="Yes" cancel-text="No" @confirm="confirm(record.ruleName)">
             <a-button type="link"> 删除 </a-button>
           </a-popconfirm>
         </template>
@@ -86,7 +75,7 @@ let columns = [
     title: 'ruleName',
     key: 'ruleName',
     dataIndex: 'ruleName',
-    sorter: (a: any, b: any) => sortString(a.appName, b.appName),
+    // sorter: (a: any, b: any) => sortString(a.appName, b.appName),
     width: 140
   },
   {
@@ -94,7 +83,7 @@ let columns = [
     key: 'createTime',
     dataIndex: 'createTime',
     width: 120,
-    sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
+    // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
     title: 'enable',
@@ -102,7 +91,7 @@ let columns = [
     dataIndex: 'enabled',
     // render: (text, record) => (record.enable ? '是' : '否'),
     width: 120,
-    sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
+    // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
     title: 'operation',
@@ -153,6 +142,7 @@ provide(PROVIDE_INJECT_KEY.SEARCH_DOMAIN, searchDomain)
 <style lang="less" scoped>
 .tag-rule-container {
   height: 100%;
+
   .search-table-container {
     min-height: 60vh;
     //max-height: 70vh; //overflow: auto;

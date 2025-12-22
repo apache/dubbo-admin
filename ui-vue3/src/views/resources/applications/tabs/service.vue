@@ -38,11 +38,7 @@
         </template>
         <template v-else-if="column.dataIndex === 'versionGroupSelect'">
           <a-select :value="text?.versionGroupValue" :bordered="false" style="width: 80%">
-            <a-select-option
-              v-for="(item, index) in text?.versionGroupArr"
-              :value="item"
-              :key="index"
-            >
+            <a-select-option v-for="(item, index) in text?.versionGroupArr" :value="item" :key="index">
               {{ item }}
             </a-select-option>
           </a-select>
@@ -109,7 +105,7 @@ const columns = [
     title: 'provideServiceName',
     key: 'service',
     dataIndex: 'serviceName',
-    sorter: true,
+    // sorter: true,
     width: '30%'
   },
   {
@@ -122,21 +118,21 @@ const columns = [
     title: 'avgQPS',
     key: 'avgQPS',
     dataIndex: 'avgQPS',
-    sorter: true,
+    // sorter: true,
     width: '15%'
   },
   {
     title: 'avgRT',
     key: 'avgRT',
     dataIndex: 'avgRT',
-    sorter: true,
+    // sorter: true,
     width: '15%'
   },
   {
     title: 'requestTotal',
     key: 'requestTotal',
     dataIndex: 'requestTotal',
-    sorter: true,
+    // sorter: true,
     width: '15%'
   }
 ]
@@ -152,7 +148,7 @@ function serviceInfo(params: any) {
       service.versionGroupSelect.versionGroupArr = service.versionGroups.map((item: any) => {
         return (item.versionGroup =
           (item.version ? 'version: ' + item.version + ', ' : '') +
-            (item.group ? 'group: ' + item.group : '') || '无')
+          (item.group ? 'group: ' + item.group : '') || '无')
       })
       service.versionGroupSelect.versionGroupValue = service.versionGroupSelect.versionGroupArr[0]
       let qps = await queryMetrics(
@@ -213,6 +209,7 @@ provide(PROVIDE_INJECT_KEY.SEARCH_DOMAIN, searchDomain)
   .statistic {
     width: 8vw;
   }
+
   :deep(.ant-card-body) {
     padding: 12px;
   }
