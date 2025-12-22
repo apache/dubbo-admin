@@ -478,9 +478,10 @@ const words: I18nType = {
   globalSearchTip: '搜索ip，应用，实例，服务',
 
   placeholder: {
-    typeAppName: '请输入应用名，支持前缀搜索',
+    typeAppName: '请输入应用名',
     typeDefault: '请输入',
-    typeRoutingRules: '搜索路由规则，支持前缀过滤'
+    typeRoutingRules: '搜索路由规则',
+    searchAppNameOrIP: '搜索应用，ip'
   },
   none: '无',
   details: '详情',

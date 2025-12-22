@@ -368,6 +368,13 @@ const words: I18nType = {
   placeholders: {
     searchService: 'Search by service name'
   },
+  placeholder: {
+    searchService: 'Search by service name',
+    typeAppName: 'Enter application name',
+    typeDefault: 'Please enter',
+    typeRoutingRules: 'Search routing rules',
+    searchAppNameOrIP: 'Search application, IP'
+  },
   methods: 'Methods',
   testModule: {
     searchServiceHint:

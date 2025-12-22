@@ -22,29 +22,16 @@
           <a-radio-button value="provider">生产者</a-radio-button>
           <a-radio-button value="consumer">消费者</a-radio-button>
         </a-radio-group>
-        <a-input-search
-          v-model:value="searchValue"
-          placeholder="搜索应用，ip，支持前缀搜索"
-          class="service-filter-input"
-          @search="debounceSearch"
-          enter-button
-        />
+        <a-input-search v-model:value="searchValue" :placeholder="$t('placeholder.searchAppNameOrIP')"
+          class="service-filter-input" @search="debounceSearch" enter-button />
       </a-flex>
-      <a-table
-        :columns="tableColumns"
-        :data-source="tableData"
-        :scroll="{ y: '45vh' }"
-        :pagination="pagination"
-        @change="onTablePageChange"
-      >
+      <a-table :columns="tableColumns" :data-source="tableData" :scroll="{ y: '45vh' }" :pagination="pagination"
+        @change="onTablePageChange">
         <template #bodyCell="{ column, text }">
           <template v-if="column.dataIndex === 'appName'">
             <span class="link" @click="router.push('/resources/applications/detail/' + text)">
               <b>
-                <Icon
-                  style="margin-bottom: -2px"
-                  icon="material-symbols:attach-file-rounded"
-                ></Icon>
+                <Icon style="margin-bottom: -2px" icon="material-symbols:attach-file-rounded"></Icon>
                 {{ text }}
               </b>
             </span>
@@ -53,10 +40,7 @@
           <template v-if="column.dataIndex === 'instanceName'">
             <span class="link" @click="router.push('/resources/instances/detail/' + text)">
               <b>
-                <Icon
-                  style="margin-bottom: -2px"
-                  icon="material-symbols:attach-file-rounded"
-                ></Icon>
+                <Icon style="margin-bottom: -2px" icon="material-symbols:attach-file-rounded"></Icon>
                 {{ text }}
               </b>
             </span>
