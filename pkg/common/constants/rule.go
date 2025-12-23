@@ -17,6 +17,10 @@
 
 package constants
 
+import set "github.com/duke-git/lancet/v2/datastructure/set"
+
+var RuleSuffixSet = set.New(ConfiguratorsSuffix, ConditionRuleSuffix, TagRuleSuffix, AffinityRuleSuffix)
+
 const (
 	ConfiguratorVersionV3   = `v3.0`
 	ConfiguratorVersionV3x1 = `v3.1`
@@ -26,12 +30,14 @@ const (
 	SideProvider            = `provider`
 	SideConsumer            = `consumer`
 
-	ConditionRoute      = "condition_route"
-	TagRoute            = "tag_route"
-	AffinityRoute       = "affinity_route"
-	ConditionRuleSuffix = ".condition-router"
-	TagRuleSuffix       = ".tag-router"
-	AffinityRuleSuffix  = ".affinity-router"
+	ConfiguratorRuleDotSuffix = ".configurators"
+	ConfiguratorsSuffix       = "configurators"
+	ConditionRuleDotSuffix    = ".condition-router"
+	ConditionRuleSuffix       = "condition-router"
+	TagRuleDotSuffix          = ".tag-router"
+	TagRuleSuffix             = "tag-router"
+	AffinityRuleDotSuffix     = ".affinity-router"
+	AffinityRuleSuffix        = "affinity-router"
 )
 
 const (

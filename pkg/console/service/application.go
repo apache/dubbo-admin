@@ -300,7 +300,7 @@ func UpInsertAppAccessLog(ctx consolectx.Context, appName string, openAccessLog 
 		return bizerror.New(bizerror.AppNotFound, fmt.Sprintf("%s does not exist", appName))
 	}
 	// check app configurator exists
-	appConfiguratorName := appName + constants.ConfiguratorRuleSuffix
+	appConfiguratorName := appName + constants.ConfiguratorRuleDotSuffix
 	res, err := GetConfigurator(ctx, appConfiguratorName, mesh)
 	if err != nil {
 		return err
@@ -389,7 +389,7 @@ func newAccessLogEnabledConfig(appName string) *meshproto.OverrideConfig {
 }
 
 func GetAppAccessLog(ctx consolectx.Context, appName string, mesh string) (*model.AppAccessLogConfigResp, error) {
-	appConfiguratorName := appName + constants.ConfiguratorRuleSuffix
+	appConfiguratorName := appName + constants.ConfiguratorRuleDotSuffix
 	res, err := GetConfigurator(ctx, appConfiguratorName, mesh)
 	resp := &model.AppAccessLogConfigResp{
 		AccessLog: false,
@@ -421,7 +421,7 @@ func GetAppFlowWeight(ctx consolectx.Context, appName string, mesh string) (*mod
 	resp := &model.AppFlowWeightConfigResp{
 		FlowWeightSets: []model.FlowWeightSet{},
 	}
-	appConfiguratorName := appName + constants.ConfiguratorRuleSuffix
+	appConfiguratorName := appName + constants.ConfiguratorRuleDotSuffix
 	res, err := GetConfigurator(ctx, appConfiguratorName, mesh)
 	if err != nil {
 		logger.Errorf("get configurator failed when get app flow weight, resourceKey: %s, err: %s",
@@ -480,7 +480,7 @@ func UpInsertAppFlowWeightConfig(ctx consolectx.Context, appName string, mesh st
 	if data == nil {
 		return bizerror.New(bizerror.AppNotFound, fmt.Sprintf("%s does not exist", appName))
 	}
-	appConfiguratorName := appName + constants.ConfiguratorRuleSuffix
+	appConfiguratorName := appName + constants.ConfiguratorRuleDotSuffix
 	res, err := GetConfigurator(ctx, appConfiguratorName, mesh)
 	if err != nil {
 		logger.Errorf("get configurator failed when update app flow weight, resourceKey: %s, err: %s",
@@ -556,7 +556,7 @@ func fromFlowWeightSet(set model.FlowWeightSet) *meshproto.OverrideConfig {
 }
 func GetGrayConfig(ctx consolectx.Context, appName string, mesh string) (*model.AppGrayConfigResp, error) {
 	resp := &model.AppGrayConfigResp{}
-	serviceTagRuleName := appName + constants.TagRuleSuffix
+	serviceTagRuleName := appName + constants.TagRuleDotSuffix
 	res, err := GetTagRule(ctx, serviceTagRuleName, mesh)
 	if err != nil {
 		logger.Errorf("get tag rule failed when get gray config, resourceKey: %s, err: %s",
@@ -595,7 +595,7 @@ func isGrayTag(tag *meshproto.Tag) bool {
 }
 
 func UpInsertAppGrayConfig(ctx consolectx.Context, appName string, mesh string, graySets []model.GraySet) error {
-	serviceTagRuleName := appName + constants.TagRuleSuffix
+	serviceTagRuleName := appName + constants.TagRuleDotSuffix
 	res, err := GetTagRule(ctx, serviceTagRuleName, mesh)
 	if err != nil {
 		logger.Errorf("get tag rule failed when update app gray config, resourceKey: %s, err: %s",

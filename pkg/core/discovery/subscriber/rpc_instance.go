@@ -127,10 +127,6 @@ func (s *RPCInstanceEventSubscriber) processUpsert(rpcInstanceRes *meshresource.
 }
 
 func (s *RPCInstanceEventSubscriber) processDelete(rpcInstanceRes *meshresource.RPCInstanceResource) error {
-	if !s.checkAttributeEnough(rpcInstanceRes) {
-		logger.Warnf("cannot identify rpc instance %s as a dubbo instance, skipped deleting instance", rpcInstanceRes.Name)
-		return nil
-	}
 	instanceRes, err := s.getRelatedInstanceRes(rpcInstanceRes)
 	if err != nil {
 		return err
@@ -160,8 +156,7 @@ func (s *RPCInstanceEventSubscriber) checkAttributeEnough(rpcInstanceRes *meshre
 
 func (s *RPCInstanceEventSubscriber) getRelatedInstanceRes(
 	rpcInstanceRes *meshresource.RPCInstanceResource) (*meshresource.InstanceResource, error) {
-	instanceResName := meshresource.BuildInstanceResName(rpcInstanceRes.Spec.AppName, rpcInstanceRes.Spec.Ip, rpcInstanceRes.Spec.Port)
-	res, exists, err := s.instanceStore.GetByKey(coremodel.BuildResourceKey(rpcInstanceRes.Mesh, instanceResName))
+	res, exists, err := s.instanceStore.GetByKey(coremodel.BuildResourceKey(rpcInstanceRes.Mesh, rpcInstanceRes.Name))
 	if err != nil {
 		return nil, err
 	}

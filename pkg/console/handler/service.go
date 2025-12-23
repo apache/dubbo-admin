@@ -107,7 +107,7 @@ func ServiceConfigTimeoutGET(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-		serviceConfiguratorName := param.ServiceKey() + constants.PunctuationPoint + constants.ConfiguratorRuleSuffix
+		serviceConfiguratorName := param.ServiceKey() + constants.PunctuationPoint + constants.ConfiguratorRuleDotSuffix
 		res, err := service.GetConfigurator(ctx, serviceConfiguratorName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
@@ -151,7 +151,7 @@ func ServiceConfigTimeoutPUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		isExist := true
-		serviceConfiguratorName := param.ServiceKey() + constants.PunctuationPoint + constants.ConfiguratorRuleSuffix
+		serviceConfiguratorName := param.ServiceKey() + constants.PunctuationPoint + constants.ConfiguratorRuleDotSuffix
 		res, err := service.GetConfigurator(ctx, serviceConfiguratorName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
@@ -211,7 +211,7 @@ func ServiceConfigRetryGET(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-		serviceConfiguratorName := param.ServiceKey() + constants.PunctuationPoint + constants.ConfiguratorRuleSuffix
+		serviceConfiguratorName := param.ServiceKey() + constants.PunctuationPoint + constants.ConfiguratorRuleDotSuffix
 		res, err := service.GetConfigurator(ctx, serviceConfiguratorName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
@@ -255,7 +255,7 @@ func ServiceConfigRetryPUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		isExist := true
-		serviceConfiguratorName := param.ServiceKey() + constants.PunctuationPoint + constants.ConfiguratorRuleSuffix
+		serviceConfiguratorName := param.ServiceKey() + constants.PunctuationPoint + constants.ConfiguratorRuleDotSuffix
 		res, err := service.GetConfigurator(ctx, serviceConfiguratorName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
@@ -315,7 +315,7 @@ func ServiceConfigRegionPriorityGET(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-		serviceAffinityRouteName := param.ServiceKey() + constants.PunctuationPoint + constants.AffinityRuleSuffix
+		serviceAffinityRouteName := param.ServiceKey() + constants.PunctuationPoint + constants.AffinityRuleDotSuffix
 		res, err := service.GetAffinityRule(ctx, serviceAffinityRouteName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
@@ -350,7 +350,7 @@ func ServiceConfigRegionPriorityPUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		isExist := true
-		serviceAffinityRouteName := param.ServiceKey() + constants.PunctuationPoint + constants.AffinityRuleSuffix
+		serviceAffinityRouteName := param.ServiceKey() + constants.PunctuationPoint + constants.AffinityRuleDotSuffix
 		res, err := service.GetAffinityRule(ctx, serviceAffinityRouteName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
@@ -418,7 +418,7 @@ func ServiceConfigArgumentRouteGET(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-		serviceConditionRuleName := param.ServiceKey() + constants.PunctuationPoint + constants.ConditionRuleSuffix
+		serviceConditionRuleName := param.ServiceKey() + constants.PunctuationPoint + constants.ConditionRuleDotSuffix
 		rawRes, err := service.GetConditionRule(ctx, serviceConditionRuleName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {
@@ -458,7 +458,7 @@ func ServiceConfigArgumentRoutePUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		isExist := true
-		serviceConditionRuleName := param.ServiceKey() + constants.PunctuationPoint + constants.ConditionRuleSuffix
+		serviceConditionRuleName := param.ServiceKey() + constants.PunctuationPoint + constants.ConditionRuleDotSuffix
 		rawRes, err := service.GetConditionRule(ctx, serviceConditionRuleName, param.Mesh)
 		if err != nil {
 			if !corestore.IsResourceNotFound(err) {

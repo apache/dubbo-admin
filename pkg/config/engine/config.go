@@ -85,7 +85,7 @@ type KubernetesIdentifier struct {
 func DefaultResourceEngineConfig() *Config {
 	return &Config{
 		Name:       "default",
-		Type:       VM,
+		Type:       Mock,
 		Properties: Properties{},
 	}
 }

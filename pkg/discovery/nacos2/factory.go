@@ -18,27 +18,21 @@
 package nacos2
 
 import (
-	"encoding/json"
 	"fmt"
-	"strings"
 
 	dubbogocom "dubbo.apache.org/dubbo-go/v3/common"
 	dubbogoconstant "dubbo.apache.org/dubbo-go/v3/common/constant"
 	dubbogonacos "dubbo.apache.org/dubbo-go/v3/remoting/nacos"
 	nacosconfigclient "github.com/nacos-group/nacos-sdk-go/v2/clients/config_client"
 	nacosnamingclient "github.com/nacos-group/nacos-sdk-go/v2/clients/naming_client"
-	"sigs.k8s.io/yaml"
 
-	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
 	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
 	"github.com/apache/dubbo-admin/pkg/core/controller"
 	"github.com/apache/dubbo-admin/pkg/core/discovery"
 	"github.com/apache/dubbo-admin/pkg/core/events"
-	"github.com/apache/dubbo-admin/pkg/core/logger"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
-	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/discovery/nacos2/listerwatcher"
 )
 
@@ -73,21 +67,21 @@ func (f *Factory) initNacosClients(
 	if err != nil {
 		return nil, nil, err
 	}
-	cfgCenterUrl.AddParam(dubbogoconstant.ClientNameKey, cfg.Name)
+	cfgCenterUrl.AddParam(dubbogoconstant.ClientNameKey, cfg.ID)
 	nacosConfigClient, err := dubbogonacos.NewNacosConfigClientByUrl(cfgCenterUrl)
 	if err != nil {
 		return nil, nil, bizerror.Wrap(err, bizerror.NacosError,
-			fmt.Sprintf("cannot create nacos config client for %s %s", cfg.Name, cfg.Address))
+			fmt.Sprintf("cannot create nacos config client for %s %s", cfg.ID, cfg.Address))
 	}
 	registryUrl, err := dubbogocom.NewURL(cfg.Address.Registry)
 	if err != nil {
 		return nil, nil, err
 	}
-	registryUrl.AddParam(dubbogoconstant.ClientNameKey, cfg.Name)
+	registryUrl.AddParam(dubbogoconstant.ClientNameKey, cfg.ID)
 	namingClient, err := dubbogonacos.NewNacosClientByURL(registryUrl)
 	if err != nil {
 		return nil, nil, bizerror.Wrap(err, bizerror.NacosError,
-			fmt.Sprintf("cannot create nacos naming client for %s %s", cfg.Name, cfg.Address))
+			fmt.Sprintf("cannot create nacos naming client for %s %s", cfg.ID, cfg.Address))
 	}
 	return nacosConfigClient.Client(), namingClient.Client(), nil
 }
@@ -102,9 +96,9 @@ func (f *Factory) initListerWatchers(
 		meshresource.DynamicConfigKind,
 		cfg,
 		nacosConfigClient,
-		toDynamicResource,
+		meshresource.ToDynamicConfigResource,
 		true,
-		constants.WildcardCharacter+constants.ConfiguratorRuleSuffix,
+		constants.WildcardCharacter+constants.ConfiguratorRuleDotSuffix,
 		constants.NacosConfigGroup,
 	)
 	if err != nil {
@@ -114,9 +108,9 @@ func (f *Factory) initListerWatchers(
 		meshresource.ConditionRouteKind,
 		cfg,
 		nacosConfigClient,
-		toConditionRouteResource,
+		meshresource.ToConditionRouteResource,
 		true,
-		constants.WildcardCharacter+constants.ConditionRuleSuffix,
+		constants.WildcardCharacter+constants.ConditionRuleDotSuffix,
 		constants.NacosConfigGroup,
 	)
 	if err != nil {
@@ -126,9 +120,9 @@ func (f *Factory) initListerWatchers(
 		meshresource.TagRouteKind,
 		cfg,
 		nacosConfigClient,
-		toTagRouteResource,
+		meshresource.ToTagRouteResource,
 		true,
-		constants.WildcardCharacter+constants.TagRuleSuffix, // "*.tag-router"
+		constants.WildcardCharacter+constants.TagRuleDotSuffix, // "*.tag-router"
 		constants.NacosConfigGroup,
 	)
 	if err != nil {
@@ -138,7 +132,7 @@ func (f *Factory) initListerWatchers(
 		meshresource.ServiceProviderMetadataKind,
 		cfg,
 		nacosConfigClient,
-		toServiceProviderMetadataResource,
+		meshresource.ToServiceProviderMetadataResource,
 		true,
 		constants.ServiceProviderNacosKey,
 		constants.NacosConfigGroup,
@@ -150,7 +144,7 @@ func (f *Factory) initListerWatchers(
 		meshresource.ServiceProviderMappingKind,
 		cfg,
 		nacosConfigClient,
-		toServiceProviderMappingResource,
+		meshresource.ToServiceProviderMappingResource,
 		false,
 		"",
 		constants.NacosMappingGroup,
@@ -166,58 +160,4 @@ func (f *Factory) initListerWatchers(
 		serviceProviderMetadataLW,
 		serviceProviderMappingLW,
 	}, nil
-}
-
-func toDynamicResource(mesh, dataId, content string) coremodel.Resource {
-	res := meshresource.NewDynamicConfigResourceWithAttributes(dataId, mesh)
-	err := yaml.Unmarshal([]byte(content), res.Spec)
-	if err != nil {
-		logger.Warnf("cannot unmarshal dynamic config %s in %s, cause %s, raw content:\n %s, ", dataId, mesh, err, content)
-	}
-	return res
-}
-
-func toConditionRouteResource(mesh, dataId, content string) coremodel.Resource {
-	res := meshresource.NewConditionRouteResourceWithAttributes(dataId, mesh)
-	err := yaml.Unmarshal([]byte(content), res.Spec)
-	if err != nil {
-		logger.Warnf("cannot unmarshal condition route %s in %s, cause: %s, raw content:\n %s, ", dataId, mesh, err, content)
-	}
-	return res
-}
-
-func toTagRouteResource(mesh, dataId, content string) coremodel.Resource {
-	res := meshresource.NewTagRouteResourceWithAttributes(dataId, mesh)
-	err := yaml.Unmarshal([]byte(content), res.Spec)
-	if err != nil {
-		logger.Warnf("cannot unmarshal tag route %s in %s, cause: %s, raw content:\n %s, ", dataId, mesh, err, content)
-	}
-	return res
-}
-
-func toServiceProviderMetadataResource(mesh, dataId, content string) coremodel.Resource {
-	metadataSpec := &meshproto.ServiceProviderMetadata{}
-	err := json.Unmarshal([]byte(content), metadataSpec)
-	if err != nil {
-		logger.Errorf("cannot unmarshal service provider metadata %s in %s, cause: %s, raw content:\n %s,", dataId, mesh, err, content)
-		return nil
-	}
-	metadataSpec.ServiceName = metadataSpec.CanonicalName
-	metadataSpec.ProviderAppName = metadataSpec.Parameters[constants.Application]
-	metadataSpec.Version = metadataSpec.Parameters[constants.VersionKey]
-	metadataSpec.Group = metadataSpec.Parameters[constants.GroupKey]
-
-	metadataRes := meshresource.NewServiceProviderMetadataResourceWithAttributes(dataId, mesh)
-	metadataRes.Spec = metadataSpec
-	return metadataRes
-}
-
-func toServiceProviderMappingResource(mesh, dataId, content string) coremodel.Resource {
-	appNames := strings.Split(content, constants.CommaSeparator)
-	mappingRes := meshresource.NewServiceProviderMappingResourceWithAttributes(dataId, mesh)
-	mappingRes.Spec = &meshproto.ServiceProviderMapping{
-		ServiceName: dataId,
-		AppNames:    appNames,
-	}
-	return mappingRes
 }
