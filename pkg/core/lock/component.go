@@ -129,3 +129,9 @@ func GetLockFromRuntime(rt runtime.Runtime) (Lock, error) {
 
 	return lockComp.GetLock(), nil
 }
+
+func (c *Component) RequiredDependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{
+		runtime.ResourceStore,
+	}
+}
