@@ -158,11 +158,6 @@ func NewApplicationServiceFormReq() *ApplicationServiceFormReq {
 	}
 }
 
-type ApplicationServiceFormResp struct {
-	ServiceName   string         `json:"serviceName"`
-	VersionGroups []VersionGroup `json:"versionGroups"`
-}
-
 type ApplicationSearchReq struct {
 	coremodel.PageReq
 

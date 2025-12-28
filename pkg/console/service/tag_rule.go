@@ -56,7 +56,7 @@ func CreateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) e
 }
 
 func DeleteTagRule(ctx consolectx.Context, name string, mesh string) error {
-	err := ctx.ResourceManager().DeleteByKey(meshresource.TagRouteKind, coremodel.BuildResourceKey(mesh, name))
+	err := ctx.ResourceManager().DeleteByKey(meshresource.TagRouteKind, mesh, coremodel.BuildResourceKey(mesh, name))
 	if err != nil {
 		logger.Warnf("delete tag rule %s error: %v", name, err)
 		return err

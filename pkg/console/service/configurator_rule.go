@@ -54,7 +54,7 @@ func CreateConfigurator(ctx consolectx.Context, name string, res *meshresource.D
 }
 
 func DeleteConfigurator(ctx consolectx.Context, name string, mesh string) error {
-	if err := ctx.ResourceManager().DeleteByKey(meshresource.DynamicConfigKind, coremodel.BuildResourceKey(mesh, name)); err != nil {
+	if err := ctx.ResourceManager().DeleteByKey(meshresource.DynamicConfigKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
 		logger.Warnf("delete %s configurator failed with error: %s", name, err.Error())
 		return err
 	}

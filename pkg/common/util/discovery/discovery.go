@@ -15,33 +15,14 @@
  * limitations under the License.
  */
 
-package index
+package discovery
 
-import (
-	"reflect"
+import "github.com/apache/dubbo-admin/pkg/config/app"
 
-	"github.com/duke-git/lancet/v2/slice"
-	"k8s.io/client-go/tools/cache"
-
-	"github.com/apache/dubbo-admin/pkg/common/bizerror"
-	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
-)
-
-const ByMeshIndex = "idx_mesh"
-
-func init() {
-	rks := coremodel.ResourceSchemaRegistry().AllResourceKinds()
-	slice.ForEach(rks, func(_ int, rk coremodel.ResourceKind) {
-		RegisterIndexers(rk, map[string]cache.IndexFunc{
-			ByMeshIndex: ByMesh,
-		})
-	})
-}
-
-func ByMesh(obj interface{}) ([]string, error) {
-	r, ok := obj.(coremodel.Resource)
-	if !ok {
-		return nil, bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
+func GetOrDefaultRegistryName(cfg app.AdminConfig, mesh string) string {
+	if discovery := cfg.FindDiscovery(mesh); discovery != nil {
+		return discovery.Name
+	} else {
+		return "default"
 	}
-	return []string{r.ResourceMesh()}, nil
 }

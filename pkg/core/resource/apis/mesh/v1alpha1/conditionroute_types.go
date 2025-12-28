@@ -62,7 +62,7 @@ func (r *ConditionRouteResource) ResourceKind() coremodel.ResourceKind {
 	return ConditionRouteKind
 }
 
-func (r *ConditionRouteResource) MeshName() string {
+func (r *ConditionRouteResource) ResourceMesh() string {
 	return r.Mesh
 }
 

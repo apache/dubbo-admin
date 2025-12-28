@@ -73,30 +73,6 @@ func GetServiceTabDistribution(ctx consolectx.Context) gin.HandlerFunc {
 	}
 }
 
-func ListServices(ctx consolectx.Context) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// req := &model.SearchInstanceReq{}
-
-		c.JSON(http.StatusOK, model.NewSuccessResp(""))
-	}
-}
-
-func GetServiceDetail(ctx consolectx.Context) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// req := &model.SearchInstanceReq{}
-
-		c.JSON(http.StatusOK, model.NewSuccessResp(""))
-	}
-}
-
-func GetServiceInterfaces(ctx consolectx.Context) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// req := &model.SearchInstanceReq{}
-
-		c.JSON(http.StatusOK, model.NewSuccessResp(""))
-	}
-}
-
 func ServiceConfigTimeoutGET(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		param := model.BaseServiceReq{}

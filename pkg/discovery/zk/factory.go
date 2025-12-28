@@ -47,13 +47,11 @@ func (f *Factory) Support(typ discoverycfg.Type) bool {
 }
 
 func (f *Factory) NewListWatchers(config *discoverycfg.Config) ([]controller.ResourceListerWatcher, error) {
-	zkLog := &zkLogger{}
 	mappingLw, err := listerwatcher.NewListerWatcher(
 		meshresource.ServiceProviderMappingKind,
 		toUpsertMappingResource,
 		toDeleteMappingResource,
 		"/dubbo/mapping",
-		zkLog,
 		config,
 	)
 	if err != nil {
@@ -64,7 +62,6 @@ func (f *Factory) NewListWatchers(config *discoverycfg.Config) ([]controller.Res
 		toUpsertRPCInstanceResource,
 		toDeleteRPCInstanceResource,
 		"/services",
-		zkLog,
 		config,
 	)
 	if err != nil {
@@ -75,7 +72,6 @@ func (f *Factory) NewListWatchers(config *discoverycfg.Config) ([]controller.Res
 		toUpsertZKConfigResource,
 		toDeleteZKConfigResource,
 		"/dubbo/config",
-		zkLog,
 		config,
 	)
 	if err != nil {
@@ -86,7 +82,6 @@ func (f *Factory) NewListWatchers(config *discoverycfg.Config) ([]controller.Res
 		toUpsertZKMetadataResource,
 		toDeleteZKMetadataResource,
 		"/dubbo/metadata",
-		zkLog,
 		config,
 	)
 	if err != nil {
@@ -234,10 +229,4 @@ func toDeleteRPCInstanceResource(mesh, nodePath string) coremodel.Resource {
 	}
 	resName := meshresource.BuildInstanceResName(appName, ip, port)
 	return meshresource.NewRPCInstanceResourceWithAttributes(resName, mesh)
-}
-
-type zkLogger struct{}
-
-func (z *zkLogger) Printf(s string, i ...interface{}) {
-	logger.Debugf(s, i...)
 }

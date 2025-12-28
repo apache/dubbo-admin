@@ -40,6 +40,24 @@ func GetByKey[T model.Resource](rm ReadOnlyResourceManager, rk model.ResourceKin
 	return typedResource, true, nil
 }
 
+func GetByKeys[T model.Resource](rm ReadOnlyResourceManager, rk model.ResourceKind, keys []string) ([]T, error) {
+	resources, err := rm.GetByKeys(rk, keys)
+	if err != nil {
+		return nil, err
+	}
+
+	typedResources := make([]T, len(resources))
+	for i, resource := range resources {
+		typedResource, ok := resource.(T)
+		if !ok {
+			return nil, bizerror.NewAssertionError(rk, reflect.TypeOf(typedResource).Name())
+		}
+		typedResources[i] = typedResource
+	}
+
+	return typedResources, nil
+}
+
 // ListByIndexes is a helper function of ResourceManager.ListByIndexes
 func ListByIndexes[T model.Resource](rm ReadOnlyResourceManager, rk model.ResourceKind, indexes map[string]string) ([]T, error) {
 	resources, err := rm.ListByIndexes(rk, indexes)

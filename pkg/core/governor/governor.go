@@ -15,33 +15,23 @@
  * limitations under the License.
  */
 
-package index
+package governor
 
 import (
-	"reflect"
+	set "github.com/duke-git/lancet/v2/datastructure/set"
 
-	"github.com/duke-git/lancet/v2/slice"
-	"k8s.io/client-go/tools/cache"
-
-	"github.com/apache/dubbo-admin/pkg/common/bizerror"
-	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-const ByMeshIndex = "idx_mesh"
+var RuleResourceKinds = set.New(meshresource.DynamicConfigKind, meshresource.ConditionRouteKind, meshresource.TagRouteKind)
 
-func init() {
-	rks := coremodel.ResourceSchemaRegistry().AllResourceKinds()
-	slice.ForEach(rks, func(_ int, rk coremodel.ResourceKind) {
-		RegisterIndexers(rk, map[string]cache.IndexFunc{
-			ByMeshIndex: ByMesh,
-		})
-	})
-}
-
-func ByMesh(obj interface{}) ([]string, error) {
-	r, ok := obj.(coremodel.Resource)
-	if !ok {
-		return nil, bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
-	}
-	return []string{r.ResourceMesh()}, nil
+// RuleGovernor makes the rule operations effective
+type RuleGovernor interface {
+	// CreateRule creates a resource in the registry
+	CreateRule(model.Resource) error
+	// UpdateRule updates a resource in the registry
+	UpdateRule(model.Resource) error
+	// DeleteRule deletes a resource from the registry
+	DeleteRule(model.Resource) error
 }

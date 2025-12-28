@@ -39,13 +39,13 @@ func BannerGlobalSearch(ctx consolectx.Context) gin.HandlerFunc {
 		var res *model.SearchRes
 		switch req.SearchType {
 		case "ip":
-			instances, _ := service.BannerSearchIp(ctx, req)
+			instances, _ := service.SearchInstanceByIp(ctx, req)
 			res = convertInstancesToSearchRes(instances)
 		case "instanceName":
-			instances, _ := service.BannerSearchInstances(ctx, req)
+			instances, _ := service.SearchInstanceByName(ctx, req)
 			res = convertInstancesToSearchRes(instances)
 		case "appName":
-			applications, _ := service.BannerSearchApplications(ctx, req)
+			applications, _ := service.SearchApplicationsByKeywords(ctx, req)
 			res = convertApplicationsToSearchRes(applications)
 		case "serviceName":
 			sreq := &model.ServiceSearchReq{
@@ -53,7 +53,7 @@ func BannerGlobalSearch(ctx consolectx.Context) gin.HandlerFunc {
 				Keywords:    req.Keywords,
 				PageReq:     req.PageReq,
 			}
-			services, _ := service.BannerSearchServices(ctx, sreq)
+			services, _ := service.SearchServicesByKeywords(ctx, sreq)
 			res = convertServicesToSearchRes(services)
 		default:
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("invalid search type"))

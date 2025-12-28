@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/duke-git/lancet/v2/slice"
 	"github.com/duke-git/lancet/v2/strutil"
 
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
@@ -33,17 +34,66 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
-// BannerSearchIp
-// TODO: implement me
-func BannerSearchIp(ctx consolectx.Context, req *model.SearchReq) (*model.SearchPaginationResult, error) {
-	return nil, nil
+// SearchInstanceByIp search instance by ip
+func SearchInstanceByIp(ctx consolectx.Context, req *model.SearchReq) (*model.SearchPaginationResult, error) {
+	pageData, err := manager.PageListByIndexes[*meshresource.InstanceResource](
+		ctx.ResourceManager(),
+		meshresource.InstanceKind,
+		map[string]string{
+			index.ByMeshIndex:       req.Mesh,
+			index.ByInstanceIpIndex: req.Keywords,
+		},
+		req.PageReq)
+	if err != nil {
+		return nil, err
+	}
+	if pageData.Data == nil || len(pageData.Data) == 0 {
+		return &model.SearchPaginationResult{
+			List: []*meshresource.ServiceProviderMetadataResourceList{},
+			PageInfo: coremodel.Pagination{
+				Total:      0,
+				PageSize:   req.PageReq.PageSize,
+				PageOffset: req.PageReq.PageOffset,
+			},
+		}, nil
+	}
+	return &model.SearchPaginationResult{
+		List: slice.Map(pageData.Data, func(_ int, item *meshresource.InstanceResource) *model.AppInstanceInfoResp {
+			return buildAppInstanceInfoResp(item)
+		}),
+		PageInfo: pageData.Pagination,
+	}, nil
 }
 
-// BannerSearchInstances
-// TODO: implement me
-func BannerSearchInstances(ctx consolectx.Context, req *model.SearchReq) (*model.SearchPaginationResult, error) {
-	// TODO: implement me
-	return nil, nil
+// SearchInstanceByName search instance by name
+func SearchInstanceByName(ctx consolectx.Context, req *model.SearchReq) (*model.SearchPaginationResult, error) {
+	pageData, err := manager.PageListByIndexes[*meshresource.InstanceResource](
+		ctx.ResourceManager(),
+		meshresource.InstanceKind,
+		map[string]string{
+			index.ByMeshIndex:         req.Mesh,
+			index.ByInstanceNameIndex: req.Keywords,
+		},
+		req.PageReq)
+	if err != nil {
+		return nil, err
+	}
+	if pageData.Data == nil || len(pageData.Data) == 0 {
+		return &model.SearchPaginationResult{
+			List: []*meshresource.ServiceProviderMetadataResourceList{},
+			PageInfo: coremodel.Pagination{
+				Total:      0,
+				PageSize:   req.PageReq.PageSize,
+				PageOffset: req.PageReq.PageOffset,
+			},
+		}, nil
+	}
+	return &model.SearchPaginationResult{
+		List: slice.Map(pageData.Data, func(_ int, item *meshresource.InstanceResource) *model.AppInstanceInfoResp {
+			return buildAppInstanceInfoResp(item)
+		}),
+		PageInfo: pageData.Pagination,
+	}, nil
 }
 
 func SearchInstances(ctx consolectx.Context, req *model.SearchInstanceReq) (*model.SearchPaginationResult, error) {

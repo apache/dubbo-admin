@@ -15,33 +15,25 @@
  * limitations under the License.
  */
 
-package index
+package zk
 
 import (
-	"reflect"
-
-	"github.com/duke-git/lancet/v2/slice"
-	"k8s.io/client-go/tools/cache"
-
-	"github.com/apache/dubbo-admin/pkg/common/bizerror"
-	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
+	"github.com/apache/dubbo-admin/pkg/core/events"
+	"github.com/apache/dubbo-admin/pkg/core/governor"
+	"github.com/apache/dubbo-admin/pkg/core/store"
 )
 
-const ByMeshIndex = "idx_mesh"
-
 func init() {
-	rks := coremodel.ResourceSchemaRegistry().AllResourceKinds()
-	slice.ForEach(rks, func(_ int, rk coremodel.ResourceKind) {
-		RegisterIndexers(rk, map[string]cache.IndexFunc{
-			ByMeshIndex: ByMesh,
-		})
-	})
+	governor.RegisterFactory(&Factory{})
 }
 
-func ByMesh(obj interface{}) ([]string, error) {
-	r, ok := obj.(coremodel.Resource)
-	if !ok {
-		return nil, bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
-	}
-	return []string{r.ResourceMesh()}, nil
+type Factory struct{}
+
+func (f *Factory) Support(t discoverycfg.Type) bool {
+	return t == discoverycfg.Zookeeper
+}
+
+func (f *Factory) New(_ string, config *discoverycfg.Config, router store.Router, emitter events.Emitter) (governor.RuleGovernor, error) {
+	return NewZKRuleGovernor(config, router, emitter)
 }

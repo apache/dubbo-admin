@@ -132,21 +132,6 @@ func (d *discoveryComponent) Start(_ runtime.Runtime, ch <-chan struct{}) error 
 	return nil
 }
 
-func (d *discoveryComponent) Add(resource coremodel.Resource) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *discoveryComponent) Update(resource coremodel.Resource) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (d *discoveryComponent) Delete(resource coremodel.Resource) error {
-	//TODO implement me
-	panic("implement me")
-}
-
 func (d *discoveryComponent) initInformers(cfg *discovery.Config, storeRouter store.Router, eventBus events.EventBus) (Informers, error) {
 	factory, err := ListWatcherFactoryRegistry().GetListWatcherFactory(cfg.Type)
 	if err != nil {

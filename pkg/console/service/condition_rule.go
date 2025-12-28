@@ -89,7 +89,7 @@ func CreateConditionRule(ctx context.Context, name string, res *meshresource.Con
 }
 
 func DeleteConditionRule(ctx context.Context, name string, mesh string) error {
-	if err := ctx.ResourceManager().DeleteByKey(meshresource.ConditionRouteKind, coremodel.BuildResourceKey(mesh, name)); err != nil {
+	if err := ctx.ResourceManager().DeleteByKey(meshresource.ConditionRouteKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
 		return err
 	}
 	return nil

@@ -29,6 +29,7 @@ type Error interface {
 type ErrorCode string
 
 const (
+	InternalError   ErrorCode = "InternalError"
 	UnknownError    ErrorCode = "UnknownError"
 	InvalidArgument ErrorCode = "InvalidArgument"
 	StoreError      ErrorCode = "StoreError"
@@ -40,6 +41,9 @@ const (
 	NacosError      ErrorCode = "NacosError"
 	ZKError         ErrorCode = "ZKError"
 	EventError      ErrorCode = "EventError"
+	GovernorError   ErrorCode = "GovernorError"
+	JsonError       ErrorCode = "JsonError"
+	YamlError       ErrorCode = "YamlError"
 )
 
 type bizError struct {

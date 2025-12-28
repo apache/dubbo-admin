@@ -39,7 +39,7 @@ console:
 store:
 #  type: memory
   type: mysql
-  address: root:123456@tcp(127.0.0.1:3306)/dubbo-admin?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai
+  address: root:123456@tcp(127.0.0.1:23306)/dubbo-admin?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai
 discovery:
 #  - type: nacos2
 #    name: localhost-nacos
@@ -68,8 +68,10 @@ discovery:
 #    id:   mock
 #    name: mockRegistry
 engine:
+  id: mock
   name: mock
   type: mock
+#  id: k8s1.23.5
 #  name: k8s1.28.6
 #  type: kubernetes
   properties:

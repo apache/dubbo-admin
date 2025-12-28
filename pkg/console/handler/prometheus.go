@@ -17,8 +17,6 @@
 
 package handler
 
-// proxy for prometheus
-
 import (
 	"net/http"
 	"net/http/httputil"

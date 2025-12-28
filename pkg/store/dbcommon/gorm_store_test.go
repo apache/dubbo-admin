@@ -601,7 +601,7 @@ func TestGormStore_AddIndexers(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.Mesh()}, nil
 		},
 	}
 	err = store.AddIndexers(indexers)
@@ -624,7 +624,7 @@ func TestGormStore_IndexKeys(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.Mesh()}, nil
 		},
 	}
 	err = store.AddIndexers(indexers)
@@ -734,7 +734,7 @@ func TestGormStore_ListByIndexes(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.Mesh()}, nil
 		},
 	}
 	err = store.AddIndexers(indexers)
@@ -814,7 +814,7 @@ func TestGormStore_PageListByIndexes(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.Mesh()}, nil
 		},
 	}
 	err = store.AddIndexers(indexers)
@@ -897,7 +897,7 @@ func TestGormStore_PageListByIndexesOffsetBeyondTotal(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.Mesh()}, nil
 		},
 	}
 	err = store.AddIndexers(indexers)
@@ -936,7 +936,7 @@ func TestGormStore_MultipleIndexes(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.Mesh()}, nil
 		},
 		"by-namespace": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
@@ -1023,7 +1023,7 @@ func TestGormStore_ListIndexFuncValues(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.Mesh()}, nil
 		},
 	}
 	err = store.AddIndexers(indexers)
@@ -1104,7 +1104,7 @@ func TestGormStore_UpdateIndices(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.Mesh()}, nil
 		},
 	}
 	err = store.AddIndexers(indexers)
@@ -1156,7 +1156,7 @@ func TestGormStore_DeleteFromIndices(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.Mesh()}, nil
 		},
 	}
 	err = store.AddIndexers(indexers)
@@ -1198,7 +1198,7 @@ func TestGormStore_ReplaceIndices(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.Mesh()}, nil
 		},
 	}
 	err = store.AddIndexers(indexers)
@@ -1249,7 +1249,7 @@ func TestGormStore_InitRebuildIndices(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.Mesh()}, nil
 		},
 	}
 	err = store.AddIndexers(indexers)
@@ -1376,7 +1376,7 @@ func TestGormStore_ConcurrentOperations(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.Mesh()}, nil
 		},
 	}
 	err = store.AddIndexers(indexers)

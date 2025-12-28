@@ -78,10 +78,10 @@ func (e *engineComponent) Order() int {
 
 func (e *engineComponent) Init(ctx runtime.BuilderContext) error {
 	cfg := ctx.Config().Engine
-	e.name = cfg.Name
+	e.name = cfg.ID
 	eventBusComponent, err := ctx.GetActivatedComponent(runtime.EventBus)
 	if err != nil {
-		return fmt.Errorf("can not retrieve event bus from runtime in engine %s, %w", cfg.Name, err)
+		return fmt.Errorf("can not retrieve event bus from runtime in engine %s, %w", e.name, err)
 	}
 	eventBus, ok := eventBusComponent.(events.EventBus)
 	if !ok {

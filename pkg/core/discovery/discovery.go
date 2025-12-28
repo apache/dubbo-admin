@@ -17,21 +17,5 @@
 
 package discovery
 
-import (
-	"github.com/apache/dubbo-admin/pkg/core/resource/model"
-)
-
-// Operations are the operations which can be called by other components`
-type Operations interface {
-	// Add adds a resource to the registry
-	Add(model.Resource) error
-	// Update updates a resource in the registry
-	Update(model.Resource) error
-	// Delete deletes a resource from the registry
-	Delete(model.Resource) error
-}
-
 // ResourceDiscovery is the component which discovers the rpc services and save them into store.ResourceStore
-type ResourceDiscovery interface {
-	Operations
-}
+type ResourceDiscovery interface{}

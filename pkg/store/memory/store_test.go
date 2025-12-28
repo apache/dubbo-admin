@@ -361,7 +361,7 @@ func TestResourceStore_ListByIndexes(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.Mesh()}, nil
 		},
 	}
 	err = store.AddIndexers(indexers)
@@ -416,7 +416,7 @@ func TestResourceStore_PageListByIndexes(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.Mesh()}, nil
 		},
 	}
 	err = store.AddIndexers(indexers)
@@ -518,7 +518,7 @@ func TestResourceStore_MultipleIndexes(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.Mesh()}, nil
 		},
 		"by-version": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
