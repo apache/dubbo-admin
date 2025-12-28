@@ -56,10 +56,10 @@ func GetConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, constants.ConditionRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(constants.ConditionRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.ConditionRuleDotSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.ConditionRuleDotSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConditionRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConditionRuleDotSuffix)))
 			return
 		}
 		if res, err := service.GetConditionRule(cs, name, mesh); err != nil {
@@ -98,10 +98,10 @@ func PutConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, constants.ConditionRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(constants.ConditionRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.ConditionRuleDotSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.ConditionRuleDotSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConditionRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConditionRuleDotSuffix)))
 			return
 		}
 		_map, err := bodyToMap(c.Request.Body)
@@ -147,10 +147,10 @@ func PostConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, constants.ConditionRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(constants.ConditionRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.ConditionRuleDotSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.ConditionRuleDotSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConditionRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConditionRuleDotSuffix)))
 			return
 		}
 		_map, err := bodyToMap(c.Request.Body)
@@ -196,10 +196,10 @@ func DeleteConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, constants.ConditionRuleSuffix) {
-			name = ruleName[:len(ruleName)-len(constants.ConditionRuleSuffix)]
+		if strings.HasSuffix(ruleName, constants.ConditionRuleDotSuffix) {
+			name = ruleName[:len(ruleName)-len(constants.ConditionRuleDotSuffix)]
 		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConditionRuleSuffix)))
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConditionRuleDotSuffix)))
 			return
 		}
 		if err := service.DeleteConditionRule(cs, name, mesh); err != nil {

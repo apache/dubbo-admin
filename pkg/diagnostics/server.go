@@ -45,6 +45,10 @@ var (
 	_ runtime.Component = &diagnosticsServer{}
 )
 
+func (s *diagnosticsServer) RequiredDependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{} // Diagnostics server has no dependencies
+}
+
 func (s *diagnosticsServer) Type() runtime.ComponentType {
 	return DiagnosticsServer
 }

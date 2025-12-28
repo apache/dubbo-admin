@@ -41,6 +41,12 @@ type resourceManagerComponent struct {
 	rm ResourceManager
 }
 
+func (r *resourceManagerComponent) RequiredDependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{
+		runtime.ResourceStore, // Manager needs Store to be initialized first
+	}
+}
+
 func (r *resourceManagerComponent) Type() runtime.ComponentType {
 	return runtime.ResourceManager
 }

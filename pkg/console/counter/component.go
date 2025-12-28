@@ -38,6 +38,13 @@ type ManagerComponent interface {
 
 var _ ManagerComponent = &managerComponent{}
 
+func (c *managerComponent) RequiredDependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{
+		runtime.ResourceStore,
+		runtime.EventBus, // Counter depends on EventBus to subscribe to events
+	}
+}
+
 type managerComponent struct {
 	manager CounterManager
 }

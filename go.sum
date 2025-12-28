@@ -182,6 +182,8 @@ github.com/deckarep/golang-set v1.7.1/go.mod h1:93vsz/8Wt4joVM7c2AVqh+YRMiUSc14y
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
 github.com/dgryski/go-sip13 v0.0.0-20181026042036-e10d5fee7954/go.mod h1:vAd38F8PWV+bWy6jNmig1y/TA+kYO4g3RSRF0IAv0no=
 github.com/dubbogo/go-zookeeper v1.0.4-0.20211212162352-f9d2183d89d5/go.mod h1:fn6n2CAEer3novYgk9ULLwAjuV8/g4DdC2ENwRb6E+c=
+github.com/dubbogo/go-zookeeper v1.0.4 h1:iBGoImFaSxqj5iS9HOPkEnMlg8wuzoM/PywqvlzdFpU=
+github.com/dubbogo/go-zookeeper v1.0.4/go.mod h1:KAcRdSF5FxSsUCk4KXEIhe4irP6e1jPw7yhxm08hePg=
 github.com/dubbogo/gost v1.14.0 h1:yc5YfozvUBAChAox8H7CkmHb6/TvF6cKdqZNJNv2jdE=
 github.com/dubbogo/gost v1.14.0/go.mod h1:YP28JweR+hhJdikP3bZ3bVKUWWI313xX1rgLaEE0FvQ=
 github.com/duke-git/lancet/v2 v2.3.6 h1:NKxSSh+dlgp37funvxLCf3xLBeUYa7VW1thYQP6j3Y8=

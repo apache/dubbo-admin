@@ -34,6 +34,7 @@ func ListMeshes(ctx consolectx.Context) gin.HandlerFunc {
 		discoveries := ctx.Config().Discovery
 		meshes := slice.Map(discoveries, func(index int, item *discoverycfg.Config) model.MeshResp {
 			return model.MeshResp{
+				ID:   item.ID,
 				Name: item.Name,
 				Type: string(item.Type),
 			}

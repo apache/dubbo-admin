@@ -48,6 +48,12 @@ type storeComponent struct {
 	stores map[coremodel.ResourceKind]ManagedResourceStore
 }
 
+func (sc *storeComponent) RequiredDependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{
+		runtime.EventBus, // Store may need EventBus for event emission
+	}
+}
+
 func newStoreComponent() *storeComponent {
 	return &storeComponent{
 		stores: make(map[coremodel.ResourceKind]ManagedResourceStore),

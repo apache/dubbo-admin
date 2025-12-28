@@ -18,9 +18,11 @@
 package app
 
 import (
+	"github.com/duke-git/lancet/v2/slice"
 	"github.com/pkg/errors"
 	"go.uber.org/multierr"
 
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/config"
 	"github.com/apache/dubbo-admin/pkg/config/console"
 	"github.com/apache/dubbo-admin/pkg/config/diagnostics"
@@ -93,17 +95,36 @@ func (c *AdminConfig) Validate() error {
 	if c.Store == nil {
 		c.Store = store.DefaultStoreConfig()
 	} else if err := c.Store.Validate(); err != nil {
-		return errors.Wrap(err, "Store Config validation failed")
+		return bizerror.Wrap(err, bizerror.ConfigError, "Store Config validation failed")
 	}
 	if c.Diagnostics == nil {
 		c.Diagnostics = diagnostics.DefaultDiagnosticsConfig()
 	} else if err := c.Diagnostics.Validate(); err != nil {
-		return errors.Wrap(err, "Diagnostics Config validation failed")
+		return bizerror.Wrap(err, bizerror.ConfigError, "Diagnostics Config validation failed")
 	}
 	if c.Console == nil {
 		c.Console = console.DefaultConsoleConfig()
 	} else if err := c.Console.Validate(); err != nil {
-		return errors.Wrap(err, "Admin validation failed")
+		return bizerror.Wrap(err, bizerror.ConfigError, "Admin validation failed")
+	}
+	if c.Discovery == nil {
+		return bizerror.New(bizerror.ConfigError, "Discovery Config is needed")
+	}
+	for _, d := range c.Discovery {
+		if err := d.Validate(); err != nil {
+			return bizerror.Wrap(err, bizerror.ConfigError, "Discovery Config validation failed")
+		}
+	}
+	discoveryIDList := slice.Map(c.Discovery, func(index int, item *discovery.Config) string {
+		return item.ID
+	})
+	if len(discoveryIDList) != len(slice.Unique(discoveryIDList)) {
+		return bizerror.New(bizerror.ConfigError, "Discovery ID must be unique")
+	}
+	if c.Engine == nil {
+		c.Engine = engine.DefaultResourceEngineConfig()
+	} else if err := c.Engine.Validate(); err != nil {
+		return bizerror.Wrap(err, bizerror.ConfigError, "Engine Config validation failed")
 	}
 	return nil
 }

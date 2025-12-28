@@ -94,7 +94,7 @@ func (e *ResourceChangedEvent) Context() map[string]string {
 }
 
 func (e *ResourceChangedEvent) String() string {
-	return fmt.Sprintf("[type]: %s, [oldObj]: %s, [newObj]: %s",
+	return fmt.Sprintf("\n[type]: %s, \n[oldObj]: %s, \n[newObj]: %s",
 		e.typ, convertor.ToString(e.oldObj), convertor.ToString(e.newObj))
 }
 

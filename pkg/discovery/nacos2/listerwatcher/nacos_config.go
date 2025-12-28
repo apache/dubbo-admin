@@ -34,10 +34,9 @@ import (
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
-
-type ConfigToResourceFunc func(mesh string, dataId string, content string) coremodel.Resource
 
 type ConfigListerWatcher[T coremodel.Resource] struct {
 	rk           coremodel.ResourceKind
@@ -49,7 +48,7 @@ type ConfigListerWatcher[T coremodel.Resource] struct {
 	watchingCfg    map[string]bool
 	scheduler      *gocron.Scheduler
 	newResListFunc coremodel.NewResourceListFunc
-	toResourceFunc ConfigToResourceFunc
+	toResourceFunc meshresource.ToRuleResourceFunc
 	blurSearch     bool
 	searchExpr     string
 	nacosGroup     string
@@ -60,7 +59,7 @@ func NewConfigListerWatcher(
 	rk coremodel.ResourceKind,
 	cfg *discoverycfg.Config,
 	configClient nacosconfigclient.IConfigClient,
-	toResourceFunc ConfigToResourceFunc,
+	toResourceFunc meshresource.ToRuleResourceFunc,
 	blurSearch bool,
 	searchExpr string,
 	nacosGroup string,
@@ -246,7 +245,7 @@ func (lw *ConfigListerWatcher[T]) processConfig(item nacosmodel.ConfigItem) {
 	res := lw.toResourceFunc(lw.mesh(), item.DataId, item.Content)
 	// if resource is nil, skip the event emitting and other operations
 	if res == nil {
-		logger.Warnf("config %s to resource failed, raw content: %s, deleting %s in store", item.DataId, item.Content)
+		logger.Warnf("config %s to resource failed, raw content: %s", item.DataId, item.Content)
 		return
 	}
 	// emit event
@@ -288,5 +287,5 @@ func (lw *ConfigListerWatcher[T]) nacosAddress() string {
 }
 
 func (lw *ConfigListerWatcher[T]) mesh() string {
-	return lw.cfg.Name
+	return lw.cfg.ID
 }

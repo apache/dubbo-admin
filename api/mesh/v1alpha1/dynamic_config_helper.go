@@ -25,7 +25,7 @@ import (
 
 func GetOverridePath(key string) string {
 	key = strings.Replace(key, "/", "*", -1)
-	return key + constants.ConfiguratorRuleSuffix
+	return key + constants.ConfiguratorRuleDotSuffix
 }
 
 func (d *DynamicConfig) ListUnGenConfigs() []*OverrideConfig {

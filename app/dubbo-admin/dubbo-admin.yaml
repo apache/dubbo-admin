@@ -41,34 +41,37 @@ store:
   type: mysql
   address: root:123456@tcp(127.0.0.1:3306)/dubbo-admin?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai
 discovery:
-  - type: nacos2
-    name: localhost-nacos
-    address:
-      registry: nacos://127.0.0.1:28848?username=nacos&password=nacos
-      configCenter: nacos://127.0.0.1:28848?username=nacos&password=nacos
-      metadataReport: nacos://127.0.0.1:28848?username=nacos&password=nacos
-    properties:
-      # [Nacos2] Adjust the interval(time unit is `s`) to adjust the frequency of list-all configs in nacos.
-      # Default period is 30s
-      configWatchPeriod: 20
-      # [Nacos2] Adjust the interval(time unit is `s`) to adjust the frequency of list-all services in nacos.
-      # Default period is 30s
-      serviceWatchPeriod: 20
-#  - type: etcd
-#    name: etcd-44.33
+#  - type: nacos2
+#    name: localhost-nacos
+#    id: localhost-nacos
 #    address:
-#      registry: http://127.0.0.1:2379
-#      configCenter: http://127.0.0.1:2379
-#      metadataReport: http://127.0.0.1:2379
+#      registry: nacos://127.0.0.1:28848?username=nacos&password=nacos
+#      configCenter: nacos://127.0.0.1:28848?username=nacos&password=nacos
+#      metadataReport: nacos://127.0.0.1:28848?username=nacos&password=nacos
+#    properties:
+#      # [Nacos2] Adjust the interval(time unit is `s`) to adjust the frequency of list-all configs in nacos.
+#      # Default period is 30s
+#      configWatchPeriod: 20
+#      # [Nacos2] Adjust the interval(time unit is `s`) to adjust the frequency of list-all services in nacos.
+#      # Default period is 30s
+#      serviceWatchPeriod: 20
+  - type: zookeeper
+    name: zk3.6
+    id: zk3.6
+    address:
+      registry: zookeeper://127.0.0.1:2181
+      configCenter: zookeeper://127.0.0.1:2181
+      metadataReport: zookeeper://127.0.0.1:2181
 
   # mock discovery is only for development
-  - type: mock
-    name: mockRegistry
+#  - type: mock
+#    id:   mock
+#    name: mockRegistry
 engine:
-#  name: mock
-#  type: mock
-  name: k8s1.28.6
-  type: kubernetes
+  name: mock
+  type: mock
+#  name: k8s1.28.6
+#  type: kubernetes
   properties:
     # [Kubernetes] Path to kubernetes config file, if not set, will use in cluster config
     kubeConfigPath: /root/.kube/config

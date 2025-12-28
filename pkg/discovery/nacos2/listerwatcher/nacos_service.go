@@ -233,7 +233,7 @@ func (lw *NacosServiceListerWatcher) unsubscribeService(serviceName string) erro
 }
 
 func (lw *NacosServiceListerWatcher) toNacosServiceResource(serviceName string, instances []nacosmodel.Instance) *meshresource.NacosServiceResource {
-	resource := meshresource.NewNacosServiceResourceWithAttributes(serviceName, lw.cfg.Name)
+	resource := meshresource.NewNacosServiceResourceWithAttributes(serviceName, lw.mesh())
 	nacosInstances := slice.Map(instances, func(index int, item nacosmodel.Instance) *meshproto.NacosInstance {
 		return &meshproto.NacosInstance{
 			Ip:       item.Ip,
@@ -269,5 +269,5 @@ func (lw *NacosServiceListerWatcher) nacosAddress() string {
 }
 
 func (lw *NacosServiceListerWatcher) mesh() string {
-	return lw.cfg.Name
+	return lw.cfg.ID
 }

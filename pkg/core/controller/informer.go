@@ -241,20 +241,20 @@ func (s *informer) HandleDeltas(obj interface{}, _ bool) error {
 					logger.Errorf("failed to update resource in informer, cause: %v, resource: %s,", err, resource.String())
 					return err
 				}
-				s.EmitEvent(d.Type, old.(model.Resource), resource)
+				s.EmitEvent(cache.Updated, old.(model.Resource), resource)
 			} else {
 				if err := s.indexer.Add(resource); err != nil {
 					logger.Errorf("failed to add resource to informer, cause %v, resource: %s,", err, resource.String())
 					return err
 				}
-				s.EmitEvent(d.Type, nil, resource)
+				s.EmitEvent(cache.Added, nil, resource)
 			}
 		case cache.Deleted:
 			if err := s.indexer.Delete(resource); err != nil {
 				logger.Errorf("failed to delete resource from informer, cause %v, resource: %s,", err, resource.String())
 				return err
 			}
-			s.EmitEvent(d.Type, resource, nil)
+			s.EmitEvent(cache.Deleted, resource, nil)
 		}
 	}
 	return nil

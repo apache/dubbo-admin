@@ -43,6 +43,10 @@ type eventBus struct {
 	subscriberDir map[model.ResourceKind]Subscribers
 }
 
+func (b *eventBus) RequiredDependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{} // EventBus has no dependencies
+}
+
 func (b *eventBus) Type() runtime.ComponentType {
 	return runtime.EventBus
 }

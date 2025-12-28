@@ -18,23 +18,17 @@
 package subscriber
 
 import (
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
-	"time"
 
-	"github.com/duke-git/lancet/v2/convertor"
-	set "github.com/duke-git/lancet/v2/datastructure/set"
 	"github.com/duke-git/lancet/v2/maputil"
 	"github.com/duke-git/lancet/v2/slice"
 	"k8s.io/client-go/tools/cache"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
-	"github.com/apache/dubbo-admin/pkg/common/constants"
 	"github.com/apache/dubbo-admin/pkg/core/events"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
@@ -117,34 +111,10 @@ func (n *NacosServiceEventSubscriber) processConsumerMetadataUpsert(serviceRes *
 		return bizerror.Wrap(err, bizerror.UnknownError, "parse service name error, raw nacos service is"+serviceRes.String())
 	}
 	convertFunc := func(i int, instance *meshproto.NacosInstance) maputil.Entry[string, *meshresource.ServiceConsumerMetadataResource] {
-		metadataJsonStr, err := convertor.ToJson(instance.Metadata)
-		if err != nil {
-			logger.Errorf("skipping convert service consumer %s:%d of %s to ServiceConsumerMetadata "+
-				"because it cannot convert to valid json string", instance.Ip, instance.Port, serviceRes.Name)
+		res := meshresource.ToServiceConsumerMetadataByMap(instance.Metadata, serviceRes.Mesh)
+		if res == nil {
+			logger.Warnf("service consumer metadata is invalid, dataId: %s, raw metadata: %s", serviceRes.Name, instance.Metadata)
 			return maputil.Entry[string, *meshresource.ServiceConsumerMetadataResource]{}
-		}
-		consumerAppName, exists := instance.Metadata[constants.Application]
-		if !exists {
-			logger.Errorf("service consumer %s:%d of %s is invalid because no application name found, raw metadata: %s",
-				instance.Ip, instance.Port, serviceRes.Name, metadataJsonStr)
-			return maputil.Entry[string, *meshresource.ServiceConsumerMetadataResource]{}
-		}
-		serviceName, exists := instance.Metadata[constants.InterfaceKey]
-		if !exists {
-			logger.Errorf("service consumer %s:%d of %s is invalid because no service name found, raw metadata: %s",
-				instance.Ip, instance.Port, serviceRes.Name, metadataJsonStr)
-			return maputil.Entry[string, *meshresource.ServiceConsumerMetadataResource]{}
-		}
-		version := instance.Metadata[constants.VersionKey]
-		group := instance.Metadata[constants.GroupKey]
-		resKey := consumerAppName + ":" + serviceRes.Name
-		res := meshresource.NewServiceConsumerMetadataResourceWithAttributes(resKey, serviceRes.Mesh)
-		res.Spec = &meshproto.ServiceConsumerMetadata{
-			ServiceName:     serviceName,
-			ConsumerAppName: consumerAppName,
-			Version:         version,
-			Group:           group,
-			Metadata:        instance.Metadata,
 		}
 		return maputil.Entry[string, *meshresource.ServiceConsumerMetadataResource]{
 			Key:   res.ResourceKey(),
@@ -223,54 +193,8 @@ func parseServiceName(s string) (string, error) {
 
 func (n *NacosServiceEventSubscriber) processRPCInstanceUpsert(serviceRes *meshresource.NacosServiceResource) error {
 	convertFunc := func(i int, instance *meshproto.NacosInstance) maputil.Entry[string, *meshresource.RPCInstanceResource] {
-		resName := meshresource.BuildInstanceResName(serviceRes.Name, instance.Ip, instance.Port)
-		res := meshresource.NewRPCInstanceResourceWithAttributes(resName, serviceRes.Mesh)
-		var registerTime string
-		timestamp, err := strconv.ParseInt(instance.Metadata[constants.TimestampKey], 10, 64)
-		if err == nil {
-			registerTime = time.UnixMilli(timestamp).Format(constants.TimeFormatStr)
-		}
-		revision := instance.Metadata[constants.MetadataRevisionKey]
-		metadataStorageType := instance.Metadata[constants.MetadataStorageTypeKey]
-		urlParams, exists := instance.Metadata[constants.URLParamsKey]
-		releaseVersion := ""
-		protocol := ""
-		serialization := ""
-		preferSerialization := ""
-		if exists {
-			paramsMap := make(map[string]string)
-			err := json.Unmarshal([]byte(urlParams), &paramsMap)
-			if err != nil {
-				logger.Warnf("parse url params failed, raw url params string: %s, cause: %v", urlParams, err)
-			}
-			releaseVersion = paramsMap[constants.ReleaseKey]
-			protocol = paramsMap[constants.DubboVersionKey]
-			serialization = paramsMap[constants.SerializationKey]
-			preferSerialization = paramsMap[constants.SerializationKey]
 
-		}
-		var endpoints []*meshproto.Endpoint
-		err = json.Unmarshal([]byte(instance.Metadata[constants.EndpointsKey]), &endpoints)
-		if err != nil {
-			logger.Warnf("parse endpoints failed, raw endpoints string: %s, cause: %v", instance.Metadata[constants.EndpointsKey], err)
-		}
-		res.Spec = &meshproto.RPCInstance{
-			Name:                resName,
-			AppName:             serviceRes.Name,
-			Ip:                  instance.Ip,
-			Port:                instance.Port,
-			RegisterTime:        registerTime,
-			UnregisterTime:      "",
-			Revision:            revision,
-			MetadataStorageType: metadataStorageType,
-			ReleaseVersion:      releaseVersion,
-			Protocol:            protocol,
-			Serialization:       serialization,
-			PreferSerialization: preferSerialization,
-			Tags:                getRPCInstanceTags(instance.Metadata),
-			Endpoints:           endpoints,
-			Metadata:            instance.Metadata,
-		}
+		res := meshresource.ToRPCInstance(serviceRes.Mesh, serviceRes.Name, instance.Ip, instance.Port, instance.Metadata)
 		return maputil.Entry[string, *meshresource.RPCInstanceResource]{
 			Key:   res.ResourceKey(),
 			Value: res,
@@ -330,14 +254,6 @@ func (n *NacosServiceEventSubscriber) processRPCInstanceUpsert(serviceRes *meshr
 	logger.Debugf("process rpc instance upsert event, oldInstances: %s, newInstances: %s, offlineInstances: %s, addInstances: %s, updateInstances: %s",
 		maputil.Keys(oldInstances), maputil.Keys(newInstances), maputil.Keys(offlineInstances), maputil.Keys(addInstances), maputil.Keys(updateInstances))
 	return nil
-}
-
-func getRPCInstanceTags(metadata map[string]string) map[string]string {
-	knownKeys := set.New[string](constants.URLParamsKey, constants.EndpointsKey,
-		constants.MetadataRevisionKey, constants.MetadataStorageTypeKey, constants.TimestampKey)
-	return maputil.Filter(metadata, func(key string, value string) bool {
-		return !knownKeys.Contain(key)
-	})
 }
 
 func (n *NacosServiceEventSubscriber) processDelete(serviceRes *meshresource.NacosServiceResource) error {

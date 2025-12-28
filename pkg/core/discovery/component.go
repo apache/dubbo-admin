@@ -57,6 +57,13 @@ type discoveryComponent struct {
 	subscriptionMgr events.SubscriptionManager
 }
 
+func (d *discoveryComponent) RequiredDependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{
+		runtime.EventBus,      // Discovery needs EventBus for event emission
+		runtime.ResourceStore, // Discovery needs Store for resource storage
+	}
+}
+
 func newDiscoveryComponent() Component {
 	return &discoveryComponent{
 		informers:   make(map[string]Informers),
@@ -98,7 +105,7 @@ func (d *discoveryComponent) Init(ctx runtime.BuilderContext) error {
 		if err != nil {
 			return err
 		}
-		d.informers[cfg.Name] = informers
+		d.informers[cfg.ID] = informers
 	}
 	err = d.initSubscribes(storeRouter, eventBus, ctx.Config().Engine)
 	if err != nil {
@@ -197,6 +204,15 @@ func (d *discoveryComponent) initSubscribes(storeRouter store.Router, emitter ev
 	if hasNacosDiscovery {
 		nacosServiceSub := subscriber.NewNacosServiceEventSubscriber(emitter, storeRouter)
 		d.subscribers = append(d.subscribers, nacosServiceSub)
+	}
+	// if there is a zk discovery, a ZKMetadataEventSubscriber and ZKConfigEventSubscriber is needed
+	_, hasZkDiscovery := slice.FindBy(d.configs, func(index int, item *discovery.Config) bool {
+		return item.Type == discovery.Zookeeper
+	})
+	if hasZkDiscovery {
+		zkMetadataSub := subscriber.NewZKMetadataEventSubscriber(emitter, storeRouter)
+		zkConfigSub := subscriber.NewZKConfigEventSubscriber(emitter, storeRouter)
+		d.subscribers = append(d.subscribers, zkMetadataSub, zkConfigSub)
 	}
 	return nil
 }
