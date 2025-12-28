@@ -27,7 +27,7 @@ import (
 
 type SearchConditionRuleReq struct {
 	coremodel.PageReq
-
+	Mesh     string `json:"mesh"`
 	Keywords string `json:"keywords"`
 }
 

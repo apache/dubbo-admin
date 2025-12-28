@@ -74,9 +74,9 @@ engine:
 #  id: k8s1.23.5
 #  name: k8s1.28.6
 #  type: kubernetes
-  properties:
+#  properties:
     # [Kubernetes] Path to kubernetes config file, if not set, will use in cluster config
-    kubeConfigPath: /root/.kube/config
+#    kubeConfigPath: /root/.kube/config
     # [Kubernetes] Watch pods with specified labels, if not set, will watch all pods
     # podWatchSelector: org.apache.dubbo/dubbo-apps=true
     # [Kubernetes] Identify which Dubbo app the pod belongs to, if not set, pod will not be seen as a dubbo instance at first

@@ -29,59 +29,29 @@ import (
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
-	"github.com/apache/dubbo-admin/pkg/core/manager"
+	"github.com/apache/dubbo-admin/pkg/console/util"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
-	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
-	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
 func ConfiguratorSearch(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		req := model.NewSearchConfiguratorReq()
+		req := model.NewSearchReq()
 		if err := c.ShouldBindQuery(req); err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-		var pageData *coremodel.PageData[*meshresource.DynamicConfigResource]
+		var searchResult *model.SearchPaginationResult
 		var err error
 		if strutil.IsBlank(req.Keywords) {
-			pageData, err = manager.PageListByIndexes[*meshresource.DynamicConfigResource](
-				ctx.ResourceManager(),
-				meshresource.DynamicConfigKind,
-				map[string]string{
-					index.ByMeshIndex: req.Mesh,
-				},
-				req.PageReq,
-			)
-
+			searchResult, err = service.PageListConfiguratorRule(ctx, req)
 		} else {
-			pageData, err = manager.PageSearchResourceByConditions[*meshresource.DynamicConfigResource](
-				ctx.ResourceManager(),
-				meshresource.DynamicConfigKind,
-				[]string{"name=" + req.Keywords},
-				req.PageReq,
-			)
-
+			searchResult, err = service.SearchConfiguratorRuleByKeywords(ctx, req)
 		}
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
+			util.HandleServiceError(c, err)
 			return
 		}
-		var respList []model.ConfiguratorSearchResp
-		for _, res := range pageData.Data {
-			configurator := res.Spec
-			respList = append(respList, model.ConfiguratorSearchResp{
-				RuleName:   configurator.Key,
-				Scope:      configurator.Scope,
-				CreateTime: "",
-				Enabled:    configurator.Enabled,
-			})
-		}
-		result := model.SearchPaginationResult{
-			List:     respList,
-			PageInfo: pageData.Pagination,
-		}
-		c.JSON(http.StatusOK, model.NewSuccessResp(result))
+		c.JSON(http.StatusOK, model.NewSuccessResp(searchResult))
 	}
 }
 

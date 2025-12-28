@@ -32,6 +32,7 @@ import (
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
+	"github.com/apache/dubbo-admin/pkg/console/util"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 )
 
@@ -44,7 +45,7 @@ func ConditionRuleSearch(cs consolectx.Context) gin.HandlerFunc {
 		}
 		resp, err := service.SearchConditionRules(cs, req)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+			util.HandleServiceError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, model.NewSuccessResp(resp))

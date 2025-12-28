@@ -23,11 +23,13 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/duke-git/lancet/v2/convertor"
 	"github.com/duke-git/lancet/v2/slice"
 	"github.com/duke-git/lancet/v2/strutil"
 
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
@@ -97,31 +99,25 @@ func SearchInstanceByName(ctx consolectx.Context, req *model.SearchReq) (*model.
 }
 
 func SearchInstances(ctx consolectx.Context, req *model.SearchInstanceReq) (*model.SearchPaginationResult, error) {
-	var pageData *coremodel.PageData[*meshresource.InstanceResource]
-	var err error
-	if strutil.IsBlank(req.Keywords) {
-		pageData, err = manager.PageListByIndexes[*meshresource.InstanceResource](
-			ctx.ResourceManager(),
-			meshresource.InstanceKind,
-			map[string]string{
-				index.ByMeshIndex: req.Mesh,
-			},
-			req.PageReq)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		pageData, err = manager.PageSearchResourceByConditions[*meshresource.InstanceResource](
-			ctx.ResourceManager(),
-			meshresource.InstanceKind,
-			[]string{"ip=" + req.Keywords},
-			req.PageReq,
-		)
-		if err != nil {
-			return nil, err
-		}
+	if strutil.IsNotBlank(req.Keywords) {
+		return SearchInstanceByIp(ctx, &model.SearchReq{
+			PageReq:    req.PageReq,
+			SearchType: "ip",
+			Keywords:   req.Keywords,
+			Mesh:       req.Mesh,
+		})
 	}
-
+	pageData, err := manager.PageListByIndexes[*meshresource.InstanceResource](
+		ctx.ResourceManager(),
+		meshresource.InstanceKind,
+		map[string]string{
+			index.ByMeshIndex: req.Mesh,
+		},
+		req.PageReq)
+	if err != nil {
+		logger.Errorf("Failed to search instance,req: %s, cause: %v", convertor.ToString(req), err)
+		return nil, err
+	}
 	resp := model.NewSearchPaginationResult()
 	var list []*model.SearchInstanceResp
 	for _, item := range pageData.Data {
