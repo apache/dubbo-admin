@@ -32,7 +32,7 @@ import { message } from 'ant-design-vue'
 const service: AxiosInstance = axios.create({
   //  change this to decide where to go
   // baseURL: '/mock',
-  baseURL: '/api/v1',
+  baseURL: 'http://127.0.0.1:4523/m1/3732499-3363280-default/',
   timeout: 30 * 1000
 })
 const request: AxiosInterceptorManager<InternalAxiosRequestConfig> = service.interceptors.request

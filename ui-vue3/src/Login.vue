@@ -44,8 +44,8 @@ function loginHandle() {
       updateAuthState(true, userinfo.username)
       const { data } = await meshesSearch()
       // if mesh is not set or old mesh is expired
-      if (!meshStore.mesh || !data.some((x: any) => x.name === meshStore.mesh)) {
-        meshStore.mesh = data[0]?.name
+      if (!meshStore.mesh || !data.some((x: any) => x.id === meshStore.mesh)) {
+        meshStore.mesh = data[0]?.id
       }
       router.replace(redirect)
     })
@@ -63,25 +63,14 @@ function loginHandle() {
       </a-row>
       <a-row>
         <a-form layout="vertical" :model="userinfo" ref="login-form-ref">
-          <a-form-item
-            class="item"
-            :label="$t('loginDomain.username')"
-            name="username"
-            :rules="[{ required: true }]"
-          >
+          <a-form-item class="item" :label="$t('loginDomain.username')" name="username" :rules="[{ required: true }]">
             <a-input type="" v-model:value="userinfo.username"></a-input>
           </a-form-item>
-          <a-form-item
-            class="item"
-            :label="$t('loginDomain.password')"
-            name="password"
-            :rules="[{ required: true }]"
-          >
+          <a-form-item class="item" :label="$t('loginDomain.password')" name="password" :rules="[{ required: true }]">
             <a-input type="password" v-model:value="userinfo.password"></a-input>
           </a-form-item>
           <a-form-item class="item" label="">
-            <a-button @click="loginHandle" size="large" type="primary" class="login-btn"
-              >{{ $t('loginDomain.login') }}
+            <a-button @click="loginHandle" size="large" type="primary" class="login-btn">{{ $t('loginDomain.login') }}
             </a-button>
           </a-form-item>
         </a-form>

@@ -175,9 +175,17 @@ const words: I18nType = {
     opened: '开启',
     paramRoute: '参数路由'
   },
+  servicesDomain: {
+    appName: '应用名',
+    instanceCount: '实例数量',
+    deployClusters: '部署集群',
+    registryClusters: '注册集群'
+  },
   service: '服务',
   versionGroup: '版本&分组',
   avgQPS: 'QPS',
+  provider: '提供者',
+  subset: '分组',
   avgRT: 'RT',
   requestTotal: '近1min请求总量',
   serviceSearch: '服务查询',

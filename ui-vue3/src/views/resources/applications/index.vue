@@ -78,7 +78,6 @@ let columns = [
     width: 100,
     // sorter: (a: any, b: any) => sortString(a.instanceCount, b.instanceCount)
   },
-
   {
     title: 'applicationDomain.deployClusters',
     key: 'deployClusters',
