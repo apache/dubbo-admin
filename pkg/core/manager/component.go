@@ -43,7 +43,8 @@ type resourceManagerComponent struct {
 
 func (r *resourceManagerComponent) RequiredDependencies() []runtime.ComponentType {
 	return []runtime.ComponentType{
-		runtime.ResourceStore, // Manager needs Store to be initialized first
+		runtime.ResourceStore,
+		runtime.RuleGovernor,
 	}
 }
 
@@ -60,11 +61,11 @@ func (r *resourceManagerComponent) Init(ctx runtime.BuilderContext) error {
 	if err != nil {
 		return fmt.Errorf("failed to init resource manager, cause: %s", err)
 	}
-	rsc, err = ctx.GetActivatedComponent(runtime.RuleGovernor)
+	rgc, err := ctx.GetActivatedComponent(runtime.RuleGovernor)
 	if err != nil {
 		return fmt.Errorf("failed to init resource manager, cause: %w", err)
 	}
-	r.rm = NewResourceManager(rsc.(store.Router), rsc.(governor.Router))
+	r.rm = NewResourceManager(rsc.(store.Router), rgc.(governor.Router))
 	return nil
 }
 

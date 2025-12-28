@@ -85,6 +85,7 @@ const (
 )
 
 const (
+	ProtocolKey     = "protocol"
 	DubboVersionKey = "dubbo"
 	WorkLoadKey     = "workLoad"
 	ReleaseKey      = "release"

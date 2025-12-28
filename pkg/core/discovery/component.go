@@ -179,8 +179,8 @@ func (d *discoveryComponent) initSubscribes(storeRouter store.Router, emitter ev
 	}
 	serviceConsumerMetadataSub := subscriber.NewServiceConsumerMetadataEventSubscriber(appStore, emitter)
 	serviceProviderMetadataSub := subscriber.NewServiceProviderMetadataEventSubscriber(appStore, emitter)
-
-	d.subscribers = append(d.subscribers, rpcInstanceSub, serviceConsumerMetadataSub, serviceProviderMetadataSub)
+	instanceSub := subscriber.NewInstanceEventSubscriber(appStore, instanceStore, emitter)
+	d.subscribers = append(d.subscribers, rpcInstanceSub, serviceConsumerMetadataSub, serviceProviderMetadataSub, instanceSub)
 
 	// if there is a nacos discovery, a NacosServiceEventSubscriber is needed
 	_, hasNacosDiscovery := slice.FindBy(d.configs, func(index int, item *discovery.Config) bool {

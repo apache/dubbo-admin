@@ -31,7 +31,7 @@ import (
 )
 
 func init() {
-	runtime.RegisterComponent(newDiscoveryComponent())
+	runtime.RegisterComponent(newGovernorComponent())
 }
 
 type Router interface {
@@ -51,8 +51,10 @@ type ruleGovernorComponent struct {
 	governors map[string]RuleGovernor
 }
 
-func newDiscoveryComponent() Component {
-	return &ruleGovernorComponent{}
+func newGovernorComponent() Component {
+	return &ruleGovernorComponent{
+		governors: make(map[string]RuleGovernor),
+	}
 }
 
 func (g *ruleGovernorComponent) Type() runtime.ComponentType {
@@ -63,6 +65,12 @@ func (g *ruleGovernorComponent) Order() int {
 	return math.MaxInt - 2
 }
 
+func (g *ruleGovernorComponent) RequiredDependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{
+		runtime.EventBus,
+		runtime.ResourceStore,
+	}
+}
 func (g *ruleGovernorComponent) Init(ctx runtime.BuilderContext) error {
 	eventBusComponent, err := ctx.GetActivatedComponent(runtime.EventBus)
 	if err != nil {
@@ -85,7 +93,7 @@ func (g *ruleGovernorComponent) Init(ctx runtime.BuilderContext) error {
 	}
 	g.configs = ctx.Config().Discovery
 	for _, cfg := range g.configs {
-		factory, err := factoryRegistry.GetGovernorFactory(cfg.Type)
+		factory, err := FactoryRegistry().GetGovernorFactory(cfg.Type)
 		if err != nil {
 			return err
 		}

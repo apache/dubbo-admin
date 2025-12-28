@@ -24,6 +24,7 @@ import (
 	_ "github.com/apache/dubbo-admin/pkg/core/discovery"
 	_ "github.com/apache/dubbo-admin/pkg/core/engine"
 	_ "github.com/apache/dubbo-admin/pkg/core/events"
+	_ "github.com/apache/dubbo-admin/pkg/core/governor"
 	_ "github.com/apache/dubbo-admin/pkg/core/manager"
 	_ "github.com/apache/dubbo-admin/pkg/core/store"
 	_ "github.com/apache/dubbo-admin/pkg/discovery/mock"
