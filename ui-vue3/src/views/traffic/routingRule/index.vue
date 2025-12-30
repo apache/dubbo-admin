@@ -18,8 +18,7 @@
   <div class="routing-rule-container">
     <search-table :search-domain="searchDomain">
       <template #customOperation>
-        <a-button type="primary" @click="router.push(`/traffic/addRoutingRule/addByFormView`)"
-          >新增条件路由规则
+        <a-button type="primary" @click="router.push(`/traffic/addRoutingRule/addByFormView`)">新增条件路由规则
         </a-button>
       </template>
       <template #bodyCell="{ text, column, record }">
@@ -45,18 +44,10 @@
           <a-button type="link" @click="router.push(`formview/${record.ruleName}`)">
             查看
           </a-button>
-          <a-button
-            type="link"
-            @click="router.push(`/traffic/updateRoutingRule/updateByFormView/${record.ruleName}`)"
-          >
+          <a-button type="link" @click="router.push(`/traffic/updateRoutingRule/updateByFormView/${record.ruleName}`)">
             修改
           </a-button>
-          <a-popconfirm
-            title="确认删除该条件路由规则？"
-            ok-text="Yes"
-            cancel-text="No"
-            @confirm="confirm(record.ruleName)"
-          >
+          <a-popconfirm title="确认删除该条件路由规则？" ok-text="Yes" cancel-text="No" @confirm="confirm(record.ruleName)">
             <a-button type="link"> 删除</a-button>
           </a-popconfirm>
         </template>
@@ -81,7 +72,7 @@ let columns = [
     title: 'ruleName',
     key: 'ruleName',
     dataIndex: 'ruleName',
-    sorter: (a: any, b: any) => sortString(a.appName, b.appName),
+    // sorter: (a: any, b: any) => sortString(a.appName, b.appName),
     width: 140
   },
   {
@@ -90,21 +81,21 @@ let columns = [
     dataIndex: 'ruleGranularity',
     render: (text, record) => (record.isService ? '服务' : '应用'),
     width: 100,
-    sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
+    // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
     title: 'createTime',
     key: 'createTime',
     dataIndex: 'createTime',
     width: 120,
-    sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
+    // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
     title: 'enabled',
     key: 'enabled',
     dataIndex: 'enabled',
     width: 120,
-    sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
+    // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
     title: 'operation',
@@ -157,6 +148,7 @@ provide(PROVIDE_INJECT_KEY.SEARCH_DOMAIN, searchDomain)
 <style lang="less" scoped>
 .routing-rule-container {
   height: 100%;
+
   .search-table-container {
     height: 100%;
     //min-height: 60vh;

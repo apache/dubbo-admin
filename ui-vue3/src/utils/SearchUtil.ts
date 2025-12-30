@@ -98,9 +98,10 @@ export class SearchDomain {
 
     this.searchApi(queryParams)
       .then((res: any) => {
+
         const {
-          data: { list, pageInfo }
-        } = res
+          data: { list = [], pageInfo }
+        } = res || {}
         this.result = handleResult ? handleResult(list) : list
 
         if (!this.noPaged) {

@@ -56,7 +56,7 @@
                 :options="
                   meshes.map((x: any) => {
                     return {
-                      value: x.name,
+                      value: x.id,
                       label: x.name
                     }
                   })

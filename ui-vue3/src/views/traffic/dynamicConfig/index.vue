@@ -22,10 +22,7 @@
       </template>
       <template #bodyCell="{ text, column, record }">
         <template v-if="column.dataIndex === 'ruleName'">
-          <span
-            class="config-link"
-            @click="router.push(`/traffic/dynamicConfig/formview/${record.ruleName}/0`)"
-          >
+          <span class="config-link" @click="router.push(`/traffic/dynamicConfig/formview/${record.ruleName}/0`)">
             <b>
               <Icon style="margin-bottom: -2px" icon="material-symbols:attach-file-rounded"></Icon>
               {{ text }}
@@ -39,23 +36,12 @@
           {{ text ? '启用' : '禁用' }}
         </template>
         <template v-if="column.dataIndex === 'operation'">
-          <a-button
-            type="link"
-            @click="router.push(`/traffic/dynamicConfig/formview/${record.ruleName}/0`)"
-            >查看</a-button
-          >
-          <a-button
-            type="link"
-            @click="router.push(`/traffic/dynamicConfig/formview/${record.ruleName}/1`)"
-          >
+          <a-button type="link"
+            @click="router.push(`/traffic/dynamicConfig/formview/${record.ruleName}/0`)">查看</a-button>
+          <a-button type="link" @click="router.push(`/traffic/dynamicConfig/formview/${record.ruleName}/1`)">
             修改
           </a-button>
-          <a-popconfirm
-            title="确认删除该动态配置？"
-            ok-text="Yes"
-            cancel-text="No"
-            @confirm="delDynamicConfig(record)"
-          >
+          <a-popconfirm title="确认删除该动态配置？" ok-text="Yes" cancel-text="No" @confirm="delDynamicConfig(record)">
             <a-button type="link">删除</a-button>
           </a-popconfirm>
         </template>
@@ -84,7 +70,7 @@ let columns = [
     title: 'ruleName',
     key: 'ruleName',
     dataIndex: 'ruleName',
-    sorter: (a: any, b: any) => sortString(a.appName, b.appName),
+    // sorter: (a: any, b: any) => sortString(a.appName, b.appName),
     width: 200,
     ellipsis: true
   },
@@ -94,14 +80,14 @@ let columns = [
     dataIndex: 'ruleGranularity',
     render: (text, record) => (record.isService ? '服务' : '应用'),
     width: 100,
-    sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
+    // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
     title: 'createTime',
     key: 'createTime',
     dataIndex: 'createTime',
     width: 200,
-    sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
+    // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
     title: 'enabled',
@@ -109,7 +95,7 @@ let columns = [
     dataIndex: 'enabled',
     render: (text, record) => (record.enabled ? '是' : '否'),
     width: 120,
-    sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
+    // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
     title: 'operation',
@@ -152,10 +138,12 @@ provide(PROVIDE_INJECT_KEY.SEARCH_DOMAIN, searchDomain)
 <style lang="less" scoped>
 .__container_traffic_config_index {
   min-height: 60vh;
+
   .config-link {
     padding: 4px 10px 4px 4px;
     border-radius: 4px;
     color: v-bind('PRIMARY_COLOR');
+
     &:hover {
       cursor: pointer;
       background: rgba(133, 131, 131, 0.13);

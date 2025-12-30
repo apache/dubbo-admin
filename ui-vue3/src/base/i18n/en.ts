@@ -158,6 +158,12 @@ const words: I18nType = {
     opened: 'Opened',
     paramRoute: 'Param Route'
   },
+  servicesDomain: {
+    appName: 'Application Name',
+    instanceCount: 'Instance Count',
+    deployClusters: 'Deploy Clusters',
+    registryClusters: 'Registry Clusters'
+  },
   appServiceTimeout: 'Adjusting the timeout for application service provision',
   enableAppInstanceLogs: 'Enable access logs for all instances of this application',
   appServiceLoadBalance: 'Adjusting the load balancing strategy for application service provision',
@@ -198,6 +204,8 @@ const words: I18nType = {
   service: 'Service',
   versionGroup: 'Version & Group',
   avgQPS: 'last 1min QPS',
+  provider: 'Provider',
+  subset: 'Group',
   avgRT: 'last 1min RT',
   requestTotal: 'last 1min request total',
   serviceSearch: 'Search Service',
@@ -368,6 +376,13 @@ const words: I18nType = {
   placeholders: {
     searchService: 'Search by service name'
   },
+  placeholder: {
+    searchService: 'Search by service name',
+    typeAppName: 'Enter application name',
+    typeDefault: 'Please enter',
+    typeRoutingRules: 'Search routing rules',
+    searchAppNameOrIP: 'Search application, IP'
+  },
   methods: 'Methods',
   testModule: {
     searchServiceHint:
@@ -490,10 +505,6 @@ const words: I18nType = {
   backHome: 'Back Home',
   noPageTip: 'Sorry, the page you visited does not exist.',
   globalSearchTip: 'Search ip, application, instance, service',
-  placeholder: {
-    typeAppName: 'please type appName, support for prefix',
-    typeDefault: 'please type '
-  },
   none: 'No Select',
   debug: 'Debug',
   distribution: 'Distribution',

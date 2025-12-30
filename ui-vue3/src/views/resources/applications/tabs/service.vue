@@ -36,17 +36,6 @@
         <template v-if="column.dataIndex === 'serviceName'">
           <a-button type="link" @click="viewDetail(text)">{{ text }}</a-button>
         </template>
-        <template v-else-if="column.dataIndex === 'versionGroupSelect'">
-          <a-select :value="text?.versionGroupValue" :bordered="false" style="width: 80%">
-            <a-select-option
-              v-for="(item, index) in text?.versionGroupArr"
-              :value="item"
-              :key="index"
-            >
-              {{ item }}
-            </a-select-option>
-          </a-select>
-        </template>
       </template>
     </search-table>
   </div>
@@ -108,37 +97,40 @@ const columns = [
   {
     title: 'provideServiceName',
     key: 'service',
-    dataIndex: 'serviceName',
-    sorter: true,
-    width: '30%'
+    dataIndex: 'serviceName'
+    // sorter: true,
   },
   {
-    title: 'versionGroup',
-    key: 'versionGroup',
-    dataIndex: 'versionGroupSelect',
-    width: '25%'
+    title: 'version',
+    key: 'version',
+    dataIndex: 'version'
   },
   {
-    title: 'avgQPS',
-    key: 'avgQPS',
-    dataIndex: 'avgQPS',
-    sorter: true,
-    width: '15%'
-  },
-  {
-    title: 'avgRT',
-    key: 'avgRT',
-    dataIndex: 'avgRT',
-    sorter: true,
-    width: '15%'
-  },
-  {
-    title: 'requestTotal',
-    key: 'requestTotal',
-    dataIndex: 'requestTotal',
-    sorter: true,
-    width: '15%'
+    title: 'subset',
+    key: 'group',
+    dataIndex: 'group'
   }
+  // {
+  //   title: 'avgQPS',
+  //   key: 'avgQPS',
+  //   dataIndex: 'avgQPS',
+  //   // sorter: true,
+  //   width: '15%'
+  // },
+  // {
+  //   title: 'avgRT',
+  //   key: 'avgRT',
+  //   dataIndex: 'avgRT',
+  //   // sorter: true,
+  //   width: '15%'
+  // },
+  // {
+  //   title: 'requestTotal',
+  //   key: 'requestTotal',
+  //   dataIndex: 'requestTotal',
+  //   // sorter: true,
+  //   width: '15%'
+  // }
 ]
 
 const appName = computed(() => {
@@ -213,6 +205,7 @@ provide(PROVIDE_INJECT_KEY.SEARCH_DOMAIN, searchDomain)
   .statistic {
     width: 8vw;
   }
+
   :deep(.ant-card-body) {
     padding: 12px;
   }

@@ -19,10 +19,8 @@
     <search-table :search-domain="searchDomain">
       <template #bodyCell="{ text, record, index, column }">
         <template v-if="column.dataIndex === 'ip'">
-          <span
-            class="app-link"
-            @click="router.push(`/resources/instances/detail/${record.name}/${record[column.key]}`)"
-          >
+          <span class="app-link"
+            @click="router.push(`/resources/instances/detail/${record.name}/${record[column.key]}`)">
             <b>
               <Icon style="margin-bottom: -2px" icon="material-symbols:attach-file-rounded"></Icon>
               {{ text }}
@@ -87,14 +85,14 @@ let columns = [
     title: 'instanceDomain.instanceIP',
     key: 'ip',
     dataIndex: 'ip',
-    sorter: (a: any, b: any) => sortString(a.ip, b.ip),
+    // sorter: (a: any, b: any) => sortString(a.ip, b.ip),
     width: 200
   },
   {
     title: 'instanceDomain.instanceName',
     key: 'name',
     dataIndex: 'name',
-    sorter: (a: any, b: any) => sortString(a.name, b.name),
+    // sorter: (a: any, b: any) => sortString(a.name, b.name),
     width: 140
   },
   {
@@ -102,49 +100,49 @@ let columns = [
     key: 'deployState',
     dataIndex: 'deployState',
     width: 120,
-    sorter: (a: any, b: any) => sortString(a.deployState, b.deployState)
+    // sorter: (a: any, b: any) => sortString(a.deployState, b.deployState)
   },
 
   {
     title: 'instanceDomain.deployCluster',
     key: 'deployCluster',
     dataIndex: 'deployCluster',
-    sorter: (a: any, b: any) => sortString(a.deployCluster, b.deployCluster),
+    // sorter: (a: any, b: any) => sortString(a.deployCluster, b.deployCluster),
     width: 120
   },
   {
     title: 'instanceDomain.registerState',
     key: 'registerState',
     dataIndex: 'registerState',
-    sorter: (a: any, b: any) => sortString(a.registerState, b.registerState),
+    // sorter: (a: any, b: any) => sortString(a.registerState, b.registerState),
     width: 120
   },
   {
     title: 'instanceDomain.registerCluster',
     key: 'registerClusters',
     dataIndex: 'registerClusters',
-    sorter: (a: any, b: any) => sortString(a.registerClusters, b.registerClusters),
+    // sorter: (a: any, b: any) => sortString(a.registerClusters, b.registerClusters),
     width: 140
   },
   {
     title: 'instanceDomain.CPU',
     key: 'cpu',
     dataIndex: 'cpu',
-    sorter: (a: any, b: any) => sortString(a.cpu, b.cpu),
+    // sorter: (a: any, b: any) => sortString(a.cpu, b.cpu),
     width: 140
   },
   {
     title: 'instanceDomain.memory',
     key: 'memory',
     dataIndex: 'memory',
-    sorter: (a: any, b: any) => sortString(a.memory, b.memory),
+    // sorter: (a: any, b: any) => sortString(a.memory, b.memory),
     width: 100
   },
   {
     title: 'instanceDomain.startTime_k8s',
     key: 'startTime_k8s',
     dataIndex: 'startTime',
-    sorter: (a: any, b: any) => sortString(a.startTime, b.startTime),
+    // sorter: (a: any, b: any) => sortString(a.startTime, b.startTime),
     width: 200
   }
   // {

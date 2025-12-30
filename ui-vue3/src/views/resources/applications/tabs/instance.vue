@@ -113,7 +113,7 @@ const columns = [
     title: 'instanceDomain.ip',
     dataIndex: 'ip',
     key: 'ip',
-    sorter: true,
+    // sorter: true,
     width: 150,
     fixed: 'left'
   },
@@ -121,56 +121,56 @@ const columns = [
     title: 'instanceDomain.name',
     dataIndex: 'name',
     key: 'name',
-    sorter: true,
+    // sorter: true,
     width: 180
   },
   {
     title: 'instanceDomain.deployState',
     dataIndex: 'deployState',
     key: 'deployState',
-    sorter: true,
+    // sorter: true,
     width: 150
   },
   {
     title: 'instanceDomain.deployCluster',
     dataIndex: 'deployClusters',
     key: 'deployClusters',
-    sorter: true,
+    // sorter: true,
     width: 180
   },
   {
     title: 'instanceDomain.registerState',
     dataIndex: 'registerState',
     key: 'registerState',
-    sorter: true,
+    // sorter: true,
     width: 150
   },
   {
     title: 'instanceDomain.registerClusters',
     dataIndex: 'registerCluster',
     key: 'registerCluster',
-    sorter: true,
+    // sorter: true,
     width: 200
   },
   {
     title: 'instanceDomain.cpu',
     dataIndex: 'cpu',
     key: 'cpu',
-    sorter: true,
+    // sorter: true,
     width: 120
   },
   {
     title: 'instanceDomain.memory',
     dataIndex: 'memory',
     key: 'memory',
-    sorter: true,
+    // sorter: true,
     width: 120
   },
   {
     title: 'instanceDomain.startTime',
     dataIndex: 'startTime',
     key: 'startTime',
-    sorter: true,
+    // sorter: true,
     width: 150
   }
   // {

@@ -175,9 +175,17 @@ const words: I18nType = {
     opened: '开启',
     paramRoute: '参数路由'
   },
+  servicesDomain: {
+    appName: '应用名',
+    instanceCount: '实例数量',
+    deployClusters: '部署集群',
+    registryClusters: '注册集群'
+  },
   service: '服务',
   versionGroup: '版本&分组',
   avgQPS: 'QPS',
+  provider: '提供者',
+  subset: '分组',
   avgRT: 'RT',
   requestTotal: '近1min请求总量',
   serviceSearch: '服务查询',
@@ -478,9 +486,10 @@ const words: I18nType = {
   globalSearchTip: '搜索ip，应用，实例，服务',
 
   placeholder: {
-    typeAppName: '请输入应用名，支持前缀搜索',
+    typeAppName: '请输入应用名',
     typeDefault: '请输入',
-    typeRoutingRules: '搜索路由规则，支持前缀过滤'
+    typeRoutingRules: '搜索路由规则',
+    searchAppNameOrIP: '搜索应用，ip'
   },
   none: '无',
   details: '详情',
