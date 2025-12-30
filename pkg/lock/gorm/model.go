@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package lock
+package gorm
 
 import (
 	"time"

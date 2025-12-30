@@ -15,18 +15,19 @@
  * limitations under the License.
  */
 
-package lock
+package gorm
 
 import (
 	"fmt"
 
+	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/store/dbcommon"
 )
 
 func init() {
-	RegisterLockFactory(&gormLockFactory{})
+	lock.RegisterLockFactory(&gormLockFactory{})
 }
 
 type gormLockFactory struct{}
@@ -39,7 +40,7 @@ func (f *gormLockFactory) Support(ctx runtime.BuilderContext) bool {
 }
 
 // NewLock creates a GORM Lock instance by obtaining DB from dbcommon package
-func (f *gormLockFactory) NewLock(ctx runtime.BuilderContext) (Lock, error) {
+func (f *gormLockFactory) NewLock(ctx runtime.BuilderContext) (lock.Lock, error) {
 	cfg := ctx.Config().Store
 
 	// Get the database connection from dbcommon's global connection pool

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package lock
+package gorm
 
 import (
 	"context"
@@ -28,12 +28,13 @@ import (
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
+	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/store/dbcommon"
 )
 
 // Ensure GormLock implements Lock interface
-var _ Lock = (*GormLock)(nil)
+var _ lock.Lock = (*GormLock)(nil)
 
 // GormLock provides distributed locking using database as backend
 // It uses GORM for database operations and supports MySQL, PostgreSQL, etc.
@@ -45,7 +46,7 @@ type GormLock struct {
 
 // NewGormLock creates a new GORM-based distributed lock instance
 // Deprecated: Use NewGormLockFromDB to avoid circular dependencies
-func NewGormLock(pool *dbcommon.ConnectionPool) Lock {
+func NewGormLock(pool *dbcommon.ConnectionPool) lock.Lock {
 	return &GormLock{
 		pool:  pool,
 		db:    pool.GetDB(),
@@ -55,7 +56,7 @@ func NewGormLock(pool *dbcommon.ConnectionPool) Lock {
 
 // NewGormLockFromDB creates a new GORM-based distributed lock instance from a DB connection
 // This is the preferred constructor to avoid circular dependencies
-func NewGormLockFromDB(db *gorm.DB) Lock {
+func NewGormLockFromDB(db *gorm.DB) lock.Lock {
 	return &GormLock{
 		db:    db,
 		owner: uuid.New().String(),
@@ -128,14 +129,15 @@ func (g *GormLock) TryLock(ctx context.Context, key string, ttl time.Duration) (
 			return fmt.Errorf("failed to insert lock record: %w", result.Error)
 		}
 
-		// Check if we got the lock by verifying the owner
-		var existingLock LockRecord
-		if err := tx.Where("lock_key = ?", key).First(&existingLock).Error; err != nil {
-			return fmt.Errorf("failed to verify lock ownership: %w", err)
+		// Check if the insertion was successful
+		if result.RowsAffected == 0 {
+			// The lock already exists
+			acquired = false
+			return nil
 		}
 
-		// Determine if we acquired the lock
-		acquired = existingLock.Owner == g.owner
+		// New row inserted successfully, lock acquired successfully
+		acquired = true
 		return nil
 	})
 

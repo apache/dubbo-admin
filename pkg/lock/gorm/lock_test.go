@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package lock_test
+package gorm_test
 
 import (
 	"context"
@@ -30,7 +30,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
-	"github.com/apache/dubbo-admin/pkg/core/lock"
+	gormlock "github.com/apache/dubbo-admin/pkg/lock/gorm"
 )
 
 func setupTestDB(t *testing.T) *gorm.DB {
@@ -50,7 +50,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	err = db.Exec("PRAGMA busy_timeout=5000;").Error
 	require.NoError(t, err, "failed to set busy timeout")
 
-	err = db.AutoMigrate(&lock.LockRecord{})
+	err = db.AutoMigrate(&gormlock.LockRecord{})
 	require.NoError(t, err, "failed to migrate lock table")
 
 	return db
@@ -58,7 +58,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 
 func TestBasicLockUnlock(t *testing.T) {
 	db := setupTestDB(t)
-	lockInstance := lock.NewGormLockFromDB(db)
+	lockInstance := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
 	err := lockInstance.Lock(ctx, "test-key", 5*time.Second)
@@ -78,8 +78,8 @@ func TestBasicLockUnlock(t *testing.T) {
 
 func TestTryLock(t *testing.T) {
 	db := setupTestDB(t)
-	lock1 := lock.NewGormLockFromDB(db)
-	lock2 := lock.NewGormLockFromDB(db)
+	lock1 := gormlock.NewGormLockFromDB(db)
+	lock2 := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
 	acquired, err := lock1.TryLock(ctx, "test-key", 5*time.Second)
@@ -112,7 +112,7 @@ func TestConcurrentLockAttempts(t *testing.T) {
 	for i := 0; i < numGoroutines; i++ {
 		go func() {
 			defer wg.Done()
-			lockInstance := lock.NewGormLockFromDB(db)
+			lockInstance := gormlock.NewGormLockFromDB(db)
 			acquired, err := lockInstance.TryLock(ctx, "concurrent-key", 1*time.Second)
 			if err == nil && acquired {
 				successCount.Add(1)
@@ -129,8 +129,8 @@ func TestConcurrentLockAttempts(t *testing.T) {
 
 func TestLockExpiration(t *testing.T) {
 	db := setupTestDB(t)
-	lock1 := lock.NewGormLockFromDB(db)
-	lock2 := lock.NewGormLockFromDB(db)
+	lock1 := gormlock.NewGormLockFromDB(db)
+	lock2 := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
 	acquired, err := lock1.TryLock(ctx, "expire-key", 100*time.Millisecond)
@@ -152,7 +152,7 @@ func TestLockExpiration(t *testing.T) {
 
 func TestLockRenewal(t *testing.T) {
 	db := setupTestDB(t)
-	lockInstance := lock.NewGormLockFromDB(db)
+	lockInstance := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
 	err := lockInstance.Lock(ctx, "renew-key", 1*time.Second)
@@ -172,8 +172,8 @@ func TestLockRenewal(t *testing.T) {
 
 func TestUnlockNotHeld(t *testing.T) {
 	db := setupTestDB(t)
-	lock1 := lock.NewGormLockFromDB(db)
-	lock2 := lock.NewGormLockFromDB(db)
+	lock1 := gormlock.NewGormLockFromDB(db)
+	lock2 := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
 	err := lock1.Lock(ctx, "test-key", 5*time.Second)
@@ -193,8 +193,8 @@ func TestUnlockNotHeld(t *testing.T) {
 
 func TestRenewNotHeld(t *testing.T) {
 	db := setupTestDB(t)
-	lock1 := lock.NewGormLockFromDB(db)
-	lock2 := lock.NewGormLockFromDB(db)
+	lock1 := gormlock.NewGormLockFromDB(db)
+	lock2 := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
 	err := lock1.Lock(ctx, "test-key", 5*time.Second)
@@ -213,7 +213,7 @@ func TestRenewNotHeld(t *testing.T) {
 
 func TestWithLock(t *testing.T) {
 	db := setupTestDB(t)
-	lockInstance := lock.NewGormLockFromDB(db)
+	lockInstance := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
 	executed := false
@@ -236,7 +236,7 @@ func TestWithLock(t *testing.T) {
 
 func TestWithLockAutoRenewal(t *testing.T) {
 	db := setupTestDB(t)
-	lockInstance := lock.NewGormLockFromDB(db)
+	lockInstance := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
 	executed := false
@@ -257,7 +257,7 @@ func TestWithLockAutoRenewal(t *testing.T) {
 
 func TestWithLockContextCancellation(t *testing.T) {
 	db := setupTestDB(t)
-	lockInstance := lock.NewGormLockFromDB(db)
+	lockInstance := gormlock.NewGormLockFromDB(db)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -281,8 +281,8 @@ func TestWithLockContextCancellation(t *testing.T) {
 
 func TestCleanupExpiredLocks(t *testing.T) {
 	db := setupTestDB(t)
-	lock1 := lock.NewGormLockFromDB(db)
-	lock2 := lock.NewGormLockFromDB(db)
+	lock1 := gormlock.NewGormLockFromDB(db)
+	lock2 := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
 	_, _ = lock1.TryLock(ctx, "cleanup-key-1", 100*time.Millisecond)
@@ -294,13 +294,13 @@ func TestCleanupExpiredLocks(t *testing.T) {
 	assert.NoError(t, err)
 
 	var count int64
-	db.Model(&lock.LockRecord{}).Count(&count)
+	db.Model(&gormlock.LockRecord{}).Count(&count)
 	assert.Equal(t, int64(0), count, "all expired locks should be cleaned up")
 }
 
 func TestMultipleDifferentLocks(t *testing.T) {
 	db := setupTestDB(t)
-	lockInstance := lock.NewGormLockFromDB(db)
+	lockInstance := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
 	err1 := lockInstance.Lock(ctx, "key-1", 5*time.Second)
@@ -326,8 +326,8 @@ func TestMultipleDifferentLocks(t *testing.T) {
 
 func TestLockBlockingBehavior(t *testing.T) {
 	db := setupTestDB(t)
-	lock1 := lock.NewGormLockFromDB(db)
-	lock2 := lock.NewGormLockFromDB(db)
+	lock1 := gormlock.NewGormLockFromDB(db)
+	lock2 := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
 	err := lock1.Lock(ctx, "blocking-key", 10*time.Second)
