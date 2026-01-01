@@ -19,7 +19,10 @@
     <search-table :search-domain="searchDomain">
       <template #bodyCell="{ column, record, text }">
         <template v-if="column.dataIndex === 'serviceName'">
-          <span class="service-link" @click="viewDistribution(text, record.group, record.version)">
+          <span
+            class="service-link"
+            @click="viewDistribution(text, record.group, record.version, record.providerAppName)"
+          >
             <b>
               <Icon style="margin-bottom: -2px" icon="material-symbols:attach-file-rounded"></Icon>
               {{ text }}
@@ -69,6 +72,24 @@ const columns = [
     title: 'provider',
     key: 'provider',
     dataIndex: 'providerAppName'
+  },
+  {
+    title: 'avgQPS',
+    key: 'avgQPS',
+    dataIndex: 'avgQPS'
+    // sorter: true,
+  },
+  {
+    title: 'avgRT',
+    key: 'avgRT',
+    dataIndex: 'avgRT'
+    // sorter: true,
+  },
+  {
+    title: 'requestTotal',
+    key: 'requestTotal',
+    dataIndex: 'requestTotal'
+    // sorter: true,
   }
   // {
   //   title: 'avgQPS',
@@ -135,8 +156,17 @@ searchDomain.tableStyle = {
   scrollY: '367px'
 }
 
-const viewDistribution = (serviceName: string, group: string, version: string) => {
-  router.push({ name: 'distribution', params: { pathId: serviceName, group, version } })
+const viewDistribution = (
+  serviceName: string,
+  group: string,
+  version: string,
+  providerAppName?: string
+) => {
+  router.push({
+    name: 'distribution',
+    params: { pathId: serviceName, group, version },
+    query: providerAppName ? { providerAppName } : {}
+  })
 }
 
 provide(PROVIDE_INJECT_KEY.SEARCH_DOMAIN, searchDomain)

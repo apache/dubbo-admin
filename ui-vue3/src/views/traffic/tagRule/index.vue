@@ -24,7 +24,10 @@
       </template>
       <template #bodyCell="{ text, column, record }">
         <template v-if="column.dataIndex === 'ruleName'">
-          <span class="rule-link" @click="router.push(`/traffic/tagRule/formview/${record[column.key]}`)">
+          <span
+            class="rule-link"
+            @click="router.push(`/traffic/tagRule/formview/${record[column.key]}`)"
+          >
             <b>
               <Icon style="margin-bottom: -2px" icon="material-symbols:attach-file-rounded"></Icon>
               {{ text }}
@@ -41,10 +44,18 @@
           <a-button type="link" @click="router.push(`formview/${record.ruleName}`)">
             查看
           </a-button>
-          <a-button @click="router.push(`/traffic/updateTagRule/updateByFormView/${record.ruleName}`)" type="link">
+          <a-button
+            @click="router.push(`/traffic/updateTagRule/updateByFormView/${record.ruleName}`)"
+            type="link"
+          >
             修改
           </a-button>
-          <a-popconfirm title="确认删除该标签路由规则？" ok-text="Yes" cancel-text="No" @confirm="confirm(record.ruleName)">
+          <a-popconfirm
+            title="确认删除该标签路由规则？"
+            ok-text="Yes"
+            cancel-text="No"
+            @confirm="confirm(record.ruleName)"
+          >
             <a-button type="link"> 删除 </a-button>
           </a-popconfirm>
         </template>
@@ -82,7 +93,7 @@ let columns = [
     title: 'createTime',
     key: 'createTime',
     dataIndex: 'createTime',
-    width: 120,
+    width: 120
     // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
@@ -90,7 +101,7 @@ let columns = [
     key: 'enabled',
     dataIndex: 'enabled',
     // render: (text, record) => (record.enable ? '是' : '否'),
-    width: 120,
+    width: 120
     // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {

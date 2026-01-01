@@ -22,7 +22,10 @@
       </template>
       <template #bodyCell="{ text, column, record }">
         <template v-if="column.dataIndex === 'ruleName'">
-          <span class="config-link" @click="router.push(`/traffic/dynamicConfig/formview/${record.ruleName}/0`)">
+          <span
+            class="config-link"
+            @click="router.push(`/traffic/dynamicConfig/formview/${record.ruleName}/0`)"
+          >
             <b>
               <Icon style="margin-bottom: -2px" icon="material-symbols:attach-file-rounded"></Icon>
               {{ text }}
@@ -36,12 +39,23 @@
           {{ text ? '启用' : '禁用' }}
         </template>
         <template v-if="column.dataIndex === 'operation'">
-          <a-button type="link"
-            @click="router.push(`/traffic/dynamicConfig/formview/${record.ruleName}/0`)">查看</a-button>
-          <a-button type="link" @click="router.push(`/traffic/dynamicConfig/formview/${record.ruleName}/1`)">
+          <a-button
+            type="link"
+            @click="router.push(`/traffic/dynamicConfig/formview/${record.ruleName}/0`)"
+            >查看</a-button
+          >
+          <a-button
+            type="link"
+            @click="router.push(`/traffic/dynamicConfig/formview/${record.ruleName}/1`)"
+          >
             修改
           </a-button>
-          <a-popconfirm title="确认删除该动态配置？" ok-text="Yes" cancel-text="No" @confirm="delDynamicConfig(record)">
+          <a-popconfirm
+            title="确认删除该动态配置？"
+            ok-text="Yes"
+            cancel-text="No"
+            @confirm="delDynamicConfig(record)"
+          >
             <a-button type="link">删除</a-button>
           </a-popconfirm>
         </template>
@@ -79,14 +93,14 @@ let columns = [
     key: 'ruleGranularity',
     dataIndex: 'ruleGranularity',
     render: (text, record) => (record.isService ? '服务' : '应用'),
-    width: 100,
+    width: 100
     // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
     title: 'createTime',
     key: 'createTime',
     dataIndex: 'createTime',
-    width: 200,
+    width: 200
     // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
@@ -94,7 +108,7 @@ let columns = [
     key: 'enabled',
     dataIndex: 'enabled',
     render: (text, record) => (record.enabled ? '是' : '否'),
-    width: 120,
+    width: 120
     // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {

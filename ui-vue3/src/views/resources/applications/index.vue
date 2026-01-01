@@ -30,7 +30,10 @@
           </a-tag>
         </template>
         <template v-else-if="column.dataIndex === 'appName'">
-          <span class="app-link" @click="router.push(`/resources/applications/detail/${record[column.key]}`)">
+          <span
+            class="app-link"
+            @click="router.push(`/resources/applications/detail/${record[column.key]}`)"
+          >
             <b>
               <Icon style="margin-bottom: -2px" icon="material-symbols:attach-file-rounded"></Icon>
               {{ text }}
@@ -75,7 +78,7 @@ let columns = [
     title: 'applicationDomain.instanceCount',
     key: 'instanceCount',
     dataIndex: 'instanceCount',
-    width: 100,
+    width: 100
     // sorter: (a: any, b: any) => sortString(a.instanceCount, b.instanceCount)
   },
   {

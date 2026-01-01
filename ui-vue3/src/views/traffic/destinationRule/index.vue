@@ -29,7 +29,12 @@
         <template v-if="column.dataIndex === 'operation'">
           <a-button type="link">查看</a-button>
           <a-button type="link">修改</a-button>
-          <a-popconfirm title="确认删除该动态配置？" ok-text="Yes" cancel-text="No" @confirm="confirm">
+          <a-popconfirm
+            title="确认删除该动态配置？"
+            ok-text="Yes"
+            cancel-text="No"
+            @confirm="confirm"
+          >
             <a-button type="link">删除</a-button>
           </a-popconfirm>
         </template>
@@ -58,7 +63,7 @@ let columns = [
     title: 'createTime',
     key: 'createTime',
     dataIndex: 'createTime',
-    width: 120,
+    width: 120
     // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
@@ -89,7 +94,7 @@ onMounted(() => {
   searchDomain.onSearch()
 })
 
-const confirm = () => { }
+const confirm = () => {}
 
 provide(PROVIDE_INJECT_KEY.SEARCH_DOMAIN, searchDomain)
 </script>

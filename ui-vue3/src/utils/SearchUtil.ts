@@ -98,7 +98,6 @@ export class SearchDomain {
 
     this.searchApi(queryParams)
       .then((res: any) => {
-
         const {
           data: { list = [], pageInfo }
         } = res || {}

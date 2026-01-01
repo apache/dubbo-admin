@@ -48,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, provide } from 'vue'
+import { reactive, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getServiceDistribution } from '@/api/service/service'
 import { PRIMARY_COLOR } from '@/base/constants'
