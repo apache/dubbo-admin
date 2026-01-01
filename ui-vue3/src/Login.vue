@@ -16,14 +16,13 @@
 -->
 
 <script setup lang="ts">
-import { inject, onMounted, reactive, ref } from 'vue'
+import { reactive } from 'vue'
 import { login } from '@/api/service/login'
 import { useRoute, useRouter } from 'vue-router'
-import { removeAuthState, updateAuthState } from '@/utils/AuthUtil'
+import { updateAuthState } from '@/utils/AuthUtil'
 import { message } from 'ant-design-vue'
 import { i18n } from '@/base/i18n'
 import { useMeshStore } from '@/stores/mesh'
-import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { meshesSearch } from '@/api/service/globalSearch'
 const userinfo = reactive({
   username: '',

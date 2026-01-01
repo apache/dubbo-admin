@@ -28,6 +28,7 @@ import { removeAuthState } from '@/utils/AuthUtil'
 import router from '@/router'
 import { useMeshStore } from '@/stores/mesh'
 import { message } from 'ant-design-vue'
+import { HTTP_STATUS } from './constants'
 
 const service: AxiosInstance = axios.create({
   //  change this to decide where to go
@@ -67,8 +68,8 @@ const rejectState: { errorHandler: Function | null } = {
 response.use(
   (response) => {
     NProgress.done()
-    // Success case - code is 'Success'
-    if (response.status === 200 && response.data.code === 'Success') {
+    // Success case - code is HTTP_STATUS.SUCCESS
+    if (response.status === 200 && response.data.code === HTTP_STATUS.SUCCESS) {
       return Promise.resolve(response.data)
     }
 
@@ -99,6 +100,11 @@ response.use(
           window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`
         }
       }
+      return Promise.reject(error.response?.data)
+    }
+    // Handle success status in error response
+    if (response?.data?.code === HTTP_STATUS.SUCCESS) {
+      return Promise.resolve(response.data)
     }
     if (response?.status === 401) {
       return Promise.reject(error.response?.data)

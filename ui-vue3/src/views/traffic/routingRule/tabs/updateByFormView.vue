@@ -651,6 +651,7 @@ import { Icon } from '@iconify/vue'
 import { getConditionRuleDetailAPI, updateConditionRuleAPI } from '@/api/service/traffic'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { isNil } from 'lodash'
+import { HTTP_STATUS } from '@/base/http/constants'
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
 onMounted(async () => {
   if (!isNil(TAB_STATE.conditionRule)) {
@@ -1417,7 +1418,7 @@ function parseConditionToStringToArray(toStr: string, routeItemIndex: number) {
 async function getRoutingRuleDetail() {
   let res = await getConditionRuleDetailAPI(<string>route.params?.ruleName)
   // console.log(res)
-  if (res?.code === 200) {
+  if (res?.code === HTTP_STATUS.SUCCESS) {
     console.log('res', res.data)
     const { conditions, configVersion, enabled, force, key, runtime, scope } = res?.data
     baseInfo.ruleGranularity = scope
@@ -1533,7 +1534,7 @@ const updateRoutingRule = async () => {
     conditions: mergeConditions()
   }
   const res = await updateConditionRuleAPI(<string>ruleName, data)
-  if (res?.code === 200) {
+  if (res?.code === HTTP_STATUS.SUCCESS) {
     await getRoutingRuleDetail()
     message.success('修改成功')
   }

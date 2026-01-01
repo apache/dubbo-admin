@@ -177,6 +177,7 @@ const words: I18nType = {
   },
   servicesDomain: {
     appName: '应用名',
+    consumerAppName: '消费者应用名',
     instanceCount: '实例数量',
     deployClusters: '部署集群',
     registryClusters: '注册集群'
@@ -487,6 +488,8 @@ const words: I18nType = {
 
   placeholder: {
     typeAppName: '请输入应用名',
+    typeInstanceIP: '请输入实例IP',
+    consumerAppName: '请输入消费者应用名',
     typeDefault: '请输入',
     typeRoutingRules: '搜索路由规则',
     searchAppNameOrIP: '搜索应用，ip'

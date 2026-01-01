@@ -75,6 +75,7 @@ import { Icon } from '@iconify/vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { formattedDate } from '@/utils/DateUtil'
 import { useRoute } from 'vue-router'
+import { HTTP_STATUS } from '@/base/http/constants'
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
 
 onMounted(() => {
@@ -116,7 +117,7 @@ const searchDomain = reactive(
     [
       {
         label: 'serviceGovernance',
-        param: 'serviceGovernance',
+        param: 'keywords',
         placeholder: 'typeRoutingRules',
         style: {
           width: '200px'
@@ -131,7 +132,7 @@ const searchDomain = reactive(
 // Delete tag routing.
 const deleteTagRule = async (ruleName: string) => {
   const res = await deleteTagRuleAPI(ruleName)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     await searchDomain.onSearch()
   }
 }

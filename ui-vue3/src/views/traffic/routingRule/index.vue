@@ -75,6 +75,7 @@ import router from '@/router'
 import { Icon } from '@iconify/vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { formattedDate } from '@/utils/DateUtil'
+import { HTTP_STATUS } from '@/base/http/constants'
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
 let columns = [
   {
@@ -118,7 +119,7 @@ const searchDomain = reactive(
     [
       {
         label: 'serviceGovernance',
-        param: 'serviceGovernance',
+        param: 'keywords',
         placeholder: 'typeRoutingRules',
         style: {
           width: '200px'
@@ -133,7 +134,7 @@ const searchDomain = reactive(
 //Delete conditional routing
 const deleteRule = async (ruleName: string) => {
   const res = await deleteConditionRuleAPI(ruleName)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     await searchDomain.onSearch()
   }
 }

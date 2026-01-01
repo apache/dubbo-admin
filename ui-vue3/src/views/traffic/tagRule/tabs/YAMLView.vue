@@ -62,6 +62,7 @@ import { computed, onMounted, ref } from 'vue'
 import { getTagRuleDetailAPI } from '@/api/service/traffic'
 import yaml from 'js-yaml'
 import { useRoute } from 'vue-router'
+import { HTTP_STATUS } from '@/base/http/constants'
 
 const route = useRoute()
 
@@ -87,7 +88,7 @@ const YAMLValue = ref(
 // Get label routing details
 const getTagRuleDetail = async () => {
   const res = await getTagRuleDetailAPI(<string>route.params?.ruleName)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     YAMLValue.value = yaml.dump(res?.data)
   }
 }

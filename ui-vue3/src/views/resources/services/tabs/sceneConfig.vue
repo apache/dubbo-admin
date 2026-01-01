@@ -78,6 +78,7 @@ import {
   updateServiceTimeoutAPI
 } from '@/api/service/service'
 import { useRoute } from 'vue-router'
+import { HTTP_STATUS } from '@/base/http/constants'
 
 const route = useRoute()
 
@@ -213,7 +214,7 @@ const getParamRoute = async () => {
     version
   }
   const res = await getParamRouteAPI(params)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     options.list.forEach((item: any) => {
       if (item.key === 'paramRoute') {
         item.form.paramRoute = res.data?.routes

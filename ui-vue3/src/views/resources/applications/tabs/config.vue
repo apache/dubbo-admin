@@ -152,6 +152,7 @@ import {
 } from '@/api/service/app'
 import { useRoute } from 'vue-router'
 import { scrollIntoView } from '@/utils/UIUtil'
+import { HTTP_STATUS } from '@/base/http/constants'
 
 const route = useRoute()
 
@@ -253,7 +254,7 @@ let options: any = reactive({
 const getLogFlag = async () => {
   const res = await getAppLogSwitch(<string>route.params?.pathId)
   console.log(res)
-  if (res?.code == 200) {
+  if (res?.code == HTTP_STATUS.SUCCESS) {
     options.list.forEach((item: any) => {
       if (item.key === 'log') {
         item.form.logFlag = res.data.operatorLog
@@ -267,7 +268,7 @@ const getLogFlag = async () => {
 const updateLogFlag = async (operatorLog: boolean) => {
   const res = await updateAppLogSwitch(<string>route.params?.pathId, operatorLog)
   console.log(res)
-  if (res?.code == 200) {
+  if (res?.code == HTTP_STATUS.SUCCESS) {
     await getLogFlag()
   }
 }
@@ -275,7 +276,7 @@ const updateLogFlag = async (operatorLog: boolean) => {
 // Obtain flow weight
 const getFlowWeight = async () => {
   const res = await getAppTrafficWeight(<string>route.params?.pathId)
-  if (res?.code == 200) {
+  if (res?.code == HTTP_STATUS.SUCCESS) {
     options.list.forEach((item: any) => {
       if (item.key === 'flow') {
         item.form.rules = JSON.parse(JSON.stringify(res.data.flowWeightSets))
@@ -318,7 +319,7 @@ const updateFlowWeight = async () => {
     }
   })
   const res = await updateAppTrafficWeight(<string>route.params?.pathId, flowWeightSets)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     await getFlowWeight()
   }
 }
@@ -384,7 +385,7 @@ const grayTableColumns = [
 // Obtain GrayIsolation
 const getGrayIsolation = async () => {
   const res = await getAppGrayIsolation(<string>route.params?.pathId)
-  if (res?.code == 200) {
+  if (res?.code == HTTP_STATUS.SUCCESS) {
     options.list.forEach((item: any) => {
       if (item.key === 'gray') {
         const graySets = res.data.graySets
@@ -429,7 +430,7 @@ const updateGrayIsolation = async () => {
     }
   })
   const res = await updateAppGrayIsolation(<string>route.params?.pathId, graySets)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     await getGrayIsolation()
   }
 }

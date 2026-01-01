@@ -61,6 +61,7 @@ import { onMounted, ref } from 'vue'
 import { getConditionRuleDetailAPI } from '@/api/service/traffic'
 import { useRoute } from 'vue-router'
 import yaml from 'js-yaml'
+import { HTTP_STATUS } from '@/base/http/constants'
 
 const route = useRoute()
 const isReadonly = ref(true)
@@ -75,7 +76,7 @@ const YAMLValue = ref('')
 async function getRoutingRuleDetail() {
   let res = await getConditionRuleDetailAPI(<string>route.params?.ruleName)
   console.log(res)
-  if (res?.code === 200 && res.data) {
+  if (res?.code === HTTP_STATUS.SUCCESS && res.data) {
     const conditionName = route.params?.ruleName
     if (conditionName && res.data.scope === 'service') {
       // const arr = conditionName.split(':')

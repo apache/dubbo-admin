@@ -243,6 +243,7 @@ import { Icon } from '@iconify/vue'
 import { getTagRuleDetailAPI, updateTagRuleAPI } from '@/api/service/traffic'
 import { isNil } from 'lodash'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
+import { HTTP_STATUS } from '@/base/http/constants'
 
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
 const router = useRouter()
@@ -553,7 +554,7 @@ const deleteTagItem = (tagItemIndex: number) => {
 // Get label routing details
 const getTagRuleDetail = async () => {
   const res = await getTagRuleDetailAPI(<string>route.params?.ruleName)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     const { configVersion, enabled, key, runtime, scope, tags } = res?.data
     baseInfo.configVersion = configVersion
     baseInfo.enable = enabled
@@ -625,7 +626,7 @@ const updateTagRule = async () => {
     data.tags.push(tag)
   })
   const res = await updateTagRuleAPI(route.params?.ruleName, data)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     await getTagRuleDetail()
     message.success('修改成功')
   }

@@ -647,6 +647,7 @@ import { Icon } from '@iconify/vue'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { addConditionRuleAPI } from '@/api/service/traffic'
 import { isNil } from 'lodash'
+import { HTTP_STATUS } from '@/base/http/constants'
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
 onMounted(() => {
   if (!isNil(TAB_STATE.conditionRule)) {
@@ -1351,7 +1352,7 @@ const addRoutingRule = async () => {
     ruleName = `${objectOfAction}:${version || ''}:${group || ''}.condition-router`
   }
   const res = await addConditionRuleAPI(<string>ruleName, data)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     router.push('/traffic/routingRule')
   }
 }

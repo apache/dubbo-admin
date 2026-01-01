@@ -21,10 +21,7 @@
       <a-card class="_detail">
         <a-descriptions :column="2" layout="vertical" title="">
           <!-- ruleName -->
-          <a-descriptions-item
-            :label="$t('flowControlDomain.ruleName')"
-            :labelStyle="{ fontWeight: 'bold' }"
-          >
+          <a-descriptions-item :label="$t('flowControlDomain.ruleName')" :labelStyle="{ fontWeight: 'bold' }">
             <p @click="copyIt(tagRuleDetail.key)" class="description-item-content with-card">
               {{ tagRuleDetail.key }}
               <CopyOutlined />
@@ -32,20 +29,14 @@
           </a-descriptions-item>
 
           <!-- ruleGranularity -->
-          <a-descriptions-item
-            :label="$t('flowControlDomain.ruleGranularity')"
-            :labelStyle="{ fontWeight: 'bold' }"
-          >
+          <a-descriptions-item :label="$t('flowControlDomain.ruleGranularity')" :labelStyle="{ fontWeight: 'bold' }">
             <a-typography-paragraph>
               {{ tagRuleDetail.scope }}
             </a-typography-paragraph>
           </a-descriptions-item>
 
           <!-- actionObject -->
-          <a-descriptions-item
-            :label="$t('flowControlDomain.actionObject')"
-            :labelStyle="{ fontWeight: 'bold' }"
-          >
+          <a-descriptions-item :label="$t('flowControlDomain.actionObject')" :labelStyle="{ fontWeight: 'bold' }">
             <p @click="copyIt(actionObj)" class="description-item-content with-card">
               {{ actionObj }}
               <CopyOutlined />
@@ -71,10 +62,7 @@
           <!--          </a-descriptions-item>-->
 
           <!-- enabledState -->
-          <a-descriptions-item
-            :label="$t('flowControlDomain.enabledState')"
-            :labelStyle="{ fontWeight: 'bold' }"
-          >
+          <a-descriptions-item :label="$t('flowControlDomain.enabledState')" :labelStyle="{ fontWeight: 'bold' }">
             <a-typography-paragraph>
               {{
                 tagRuleDetail.enabled
@@ -85,10 +73,7 @@
           </a-descriptions-item>
 
           <!-- runTimeEffective -->
-          <a-descriptions-item
-            :label="$t('flowControlDomain.runTimeEffective')"
-            :labelStyle="{ fontWeight: 'bold' }"
-          >
+          <a-descriptions-item :label="$t('flowControlDomain.runTimeEffective')" :labelStyle="{ fontWeight: 'bold' }">
             <a-typography-paragraph>
               {{
                 tagRuleDetail.runtime
@@ -111,12 +96,8 @@
       </a-card>
     </a-flex>
 
-    <a-card
-      v-for="(item, index) in tagRuleDetail.tags"
-      :title="`标签【${index + 1}】`"
-      style="margin-top: 10px"
-      class="_detail"
-    >
+    <a-card v-for="(item, index) in tagRuleDetail.tags" :title="`标签【${index + 1}】`" style="margin-top: 10px"
+      class="_detail">
       <a-space align="center">
         <a-typography-title :level="5">
           {{ $t('flowControlDomain.labelName') }}:
@@ -126,8 +107,7 @@
         </a-typography-title>
       </a-space>
       <a-space align="start" style="width: 100%">
-        <a-typography-title :level="5"
-          >{{ $t('flowControlDomain.actuatingRange') }}:
+        <a-typography-title :level="5">{{ $t('flowControlDomain.actuatingRange') }}:
         </a-typography-title>
         <a-tag v-for="(scope, index) in item.match" :key="index" color="#2db7f5">
           {{ scope.key }}: {{ Object.keys(scope.value)[0] }}={{ Object.values(scope.value)[0] }}
@@ -151,6 +131,7 @@ import {
 import { PRIMARY_COLOR } from '@/base/constants'
 import { getTagRuleDetailAPI } from '@/api/service/traffic'
 import { useRoute } from 'vue-router'
+import { HTTP_STATUS } from '@/base/http/constants'
 
 const route = useRoute()
 const {
@@ -197,7 +178,7 @@ const tagRuleDetail = reactive({
 // Get label routing details
 const getTagRuleDetail = async () => {
   const res = await getTagRuleDetailAPI(<string>route.params?.ruleName)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     Object.assign(tagRuleDetail, res.data || {})
   }
 }

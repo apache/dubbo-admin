@@ -87,6 +87,7 @@ import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import yaml from 'js-yaml'
 import { isNil } from 'lodash'
 import { message } from 'ant-design-vue'
+import { HTTP_STATUS } from '@/base/http/constants'
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
 
 const route = useRoute()
@@ -142,7 +143,7 @@ const changeEditor = (val) => {
 // Get condition routing details
 async function getRoutingRuleDetail() {
   let res = await getConditionRuleDetailAPI(<string>route.params?.ruleName)
-  if (res?.code === 200) {
+  if (res?.code === HTTP_STATUS.SUCCESS) {
     const conditionName = route.params?.ruleName
     if (conditionName && res.data.scope === 'service') {
       const arr = conditionName?.split(':')
@@ -157,7 +158,7 @@ const updateRoutingRule = async () => {
   const data = yaml.load(YAMLValue.value)
   data.configVersion = 'v3.0'
   const res = await updateConditionRuleAPI(<string>route.params?.ruleName, data)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     await getRoutingRuleDetail()
     message.success('修改成功')
   }

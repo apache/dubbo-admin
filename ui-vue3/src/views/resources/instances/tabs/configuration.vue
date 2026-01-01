@@ -44,6 +44,7 @@ import {
   updateInstanceTrafficSwitch,
   updateInstanceTrafficSwitchAPI
 } from '@/api/service/instance'
+import { HTTP_STATUS } from '@/base/http/constants'
 const route = useRoute()
 
 let options: any = reactive({
@@ -88,7 +89,7 @@ const getInstanceLogSwitch = async () => {
     <string>route.params?.pathId,
     <string>route.params?.appName
   )
-  if (res?.code == 200) {
+  if (res?.code === HTTP_STATUS.SUCCESS) {
     options.list.forEach((item: any) => {
       if (item.key === 'log') {
         item.form.logFlag = res.data.operatorLog
@@ -105,7 +106,7 @@ const updateInstanceLogSwitch = async (operatorLog: boolean) => {
     <string>route.params?.appName,
     operatorLog
   )
-  if (res?.code == 200) {
+  if (res?.code === HTTP_STATUS.SUCCESS) {
     await getInstanceLogSwitch()
   }
 }
@@ -116,7 +117,7 @@ const getInstanceTrafficSwitch = async () => {
     <string>route.params?.pathId,
     <string>route.params?.appName
   )
-  if (res?.code == 200) {
+  if (res?.code === HTTP_STATUS.SUCCESS) {
     options.list.forEach((item: any) => {
       if (item.key === 'flowDisabled') {
         item.form.flowDisabledFlag = res.data.trafficDisable
@@ -132,9 +133,7 @@ const updateInstanceTrafficSwitch = async (trafficDisable: boolean) => {
     <string>route.params?.appName,
     trafficDisable
   )
-  console.log(res)
-  return
-  if (res?.code == 200) {
+  if (res?.code === HTTP_STATUS.SUCCESS) {
     await getInstanceTrafficSwitch()
   }
 }

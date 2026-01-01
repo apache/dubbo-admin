@@ -239,6 +239,7 @@ import { Icon } from '@iconify/vue'
 import { addTagRuleAPI, getTagRuleDetailAPI, updateTagRuleAPI } from '@/api/service/traffic'
 import { isNil } from 'lodash'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
+import { HTTP_STATUS } from '@/base/http/constants'
 
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
 
@@ -590,7 +591,7 @@ const addTagRule = async () => {
     ruleName = `${objectOfAction}:${configVersion}.tag-router`
   }
   const res = await addTagRuleAPI(ruleName, data)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     router.push('/traffic/tagRule')
   }
 }

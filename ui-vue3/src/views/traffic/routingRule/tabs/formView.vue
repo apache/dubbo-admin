@@ -211,6 +211,7 @@ import { message } from 'ant-design-vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { getConditionRuleDetailAPI } from '@/api/service/traffic'
 import { useRoute } from 'vue-router'
+import { HTTP_STATUS } from '@/base/http/constants'
 
 const {
   appContext: {
@@ -261,8 +262,7 @@ const addressSubsetMatch = ref<string[]>([])
 // Get condition routing details
 async function getRoutingRuleDetail() {
   let res = await getConditionRuleDetailAPI(<string>route.params?.ruleName)
-  console.log(res)
-  if (res?.code === 200) {
+  if (res?.code === HTTP_STATUS.SUCCESS) {
     Object.assign(conditionRuleDetail, res?.data || {})
 
     conditionRuleDetail.conditions.forEach((item: any, index: number) => {

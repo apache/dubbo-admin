@@ -160,6 +160,7 @@ const words: I18nType = {
   },
   servicesDomain: {
     appName: 'Application Name',
+    consumerAppName: 'Consumer Application Name',
     instanceCount: 'Instance Count',
     deployClusters: 'Deploy Clusters',
     registryClusters: 'Registry Clusters'
@@ -379,6 +380,8 @@ const words: I18nType = {
   placeholder: {
     searchService: 'Search by service name',
     typeAppName: 'Enter application name',
+    typeInstanceIP: 'Enter instance IP',
+    consumerAppName: 'Enter consumer application name',
     typeDefault: 'Please enter',
     typeRoutingRules: 'Search routing rules',
     searchAppNameOrIP: 'Search application, IP'

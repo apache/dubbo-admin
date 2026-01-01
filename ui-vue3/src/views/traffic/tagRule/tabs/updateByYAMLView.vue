@@ -87,6 +87,7 @@ import yaml from 'js-yaml'
 import { isNil } from 'lodash'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { message } from 'ant-design-vue'
+import { HTTP_STATUS } from '@/base/http/constants'
 
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
 
@@ -127,8 +128,7 @@ const YAMLValue = ref(
 
 async function getTagRuleDetail() {
   let res = await getTagRuleDetailAPI(<string>route.params?.ruleName)
-  // console.log(res)
-  if (res?.code === 200) {
+  if (res?.code === HTTP_STATUS.SUCCESS) {
     YAMLValue.value = yaml.dump(res?.data)
   }
 }
@@ -136,7 +136,7 @@ async function getTagRuleDetail() {
 const updateTagRule = async () => {
   const data = yaml.load(YAMLValue.value)
   const res = await updateTagRuleAPI(<string>route.params?.ruleName, data)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     await getTagRuleDetail()
     message.success('修改成功')
   }
