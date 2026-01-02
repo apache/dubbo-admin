@@ -71,8 +71,8 @@ Mock.mock('/mock/application/instance/statistics', 'get', () => {
 })
 
 Mock.mock(devTool.mockUrl('/mock/application/instance/info'), 'get', () => {
-  let total = Mock.mock('@integer(8, 100)')
-  let list = []
+  const total = Mock.mock('@integer(8, 100)')
+  const list = []
   for (let i = 0; i < total; i++) {
     list.push({
       ip: '121.90.211.162',
@@ -145,7 +145,7 @@ Mock.mock(devTool.mockUrl('/mock/application/detail'), 'get', () => {
 })
 
 Mock.mock('/mock/application/event', 'get', () => {
-  let list = Mock.mock({
+  const list = Mock.mock({
     'list|10': [
       {
         desc: `Scaled down replica set shop-detail-v1-5847b7cdfd to @integer(3,10) from @integer(3,10)`,

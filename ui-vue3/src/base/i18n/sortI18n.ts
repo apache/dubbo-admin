@@ -21,16 +21,16 @@
 import EN_MAP from './en'
 import ZH_MAP from './zh'
 
-let sortArr: { label: string; value: any }[] = []
-let checkArr: string[] = []
+const sortArr: { label: string; value: any }[] = []
+const checkArr: string[] = []
 
 function mapToArr() {
-  for (let enKey in EN_MAP) {
+  for (const enKey in EN_MAP) {
     sortArr.push({
       label: enKey,
       value: EN_MAP[enKey]
     })
-    let zh = ZH_MAP[enKey]
+    const zh = ZH_MAP[enKey]
     if (!zh) {
       checkArr.push(enKey)
     }

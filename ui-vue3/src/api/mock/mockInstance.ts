@@ -19,8 +19,8 @@ import Mock from 'mockjs'
 import devTool from '@/utils/DevToolUtil'
 
 Mock.mock(devTool.mockUrl('/mock/instance/search'), 'get', () => {
-  let total = Mock.mock('@integer(8, 1000)')
-  let list = []
+  const total = Mock.mock('@integer(8, 1000)')
+  const list = []
   for (let i = 0; i < total; i++) {
     list.push({
       ip: '121.90.211.162',

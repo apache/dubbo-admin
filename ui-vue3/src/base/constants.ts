@@ -26,7 +26,7 @@ export const PRIMARY_COLOR_DEFAULT = '#17b392'
 export const LOCAL_STORAGE_LOCALE = 'LOCAL_STORAGE_LOCALE'
 export const LOCAL_STORAGE_THEME = 'LOCAL_STORAGE_THEME'
 
-let item = localStorage.getItem(LOCAL_STORAGE_THEME)
+const item = localStorage.getItem(LOCAL_STORAGE_THEME)
 
 /**
  * 根据背景色自动计算适合的文字颜色（黑或白）
@@ -69,8 +69,8 @@ export const TAB_HEADER_TITLE: Component = {
     b: any,
     c: { [key: string]: RouteRecordType & RouteLocationNormalizedLoaded }
   ) => {
-    let route = c.route
-    let header: any = route.meta?.slots?.header
+    const route = c.route
+    const header: any = route.meta?.slots?.header
     return h(header) || h('div', route.params?.pathId)
     // console.log(h)
     // return h("div", "foo")
