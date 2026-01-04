@@ -25,6 +25,7 @@ import (
 	"github.com/duke-git/lancet/v2/strutil"
 	"github.com/gin-gonic/gin"
 
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
@@ -58,20 +59,19 @@ func TagRuleSearch(ctx consolectx.Context) gin.HandlerFunc {
 
 func GetTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var name string
 		ruleName := c.Param("ruleName")
-		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, constants.TagRuleDotSuffix) {
-			name = ruleName[:len(ruleName)-len(constants.TagRuleDotSuffix)]
-		} else {
+		mesh := c.Query("mesh")
+		if !strings.HasSuffix(ruleName, constants.TagRuleDotSuffix) {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.TagRuleDotSuffix)))
-			return
 		}
-		if res, err := service.GetTagRule(ctx, name, mesh); err != nil {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+		if res, err := service.GetTagRule(ctx, ruleName, mesh); err != nil {
+			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
 			return
-		} else {
+		} else if res != nil {
 			c.JSON(http.StatusOK, model.GenTagRouteResp(res.Spec))
+		} else {
+			c.JSON(http.StatusOK, model.NewBizErrorResp(
+				bizerror.New(bizerror.NotFoundError, fmt.Sprintf("tag rule %s not found", ruleName))))
 		}
 	}
 }

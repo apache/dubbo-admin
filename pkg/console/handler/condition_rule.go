@@ -54,16 +54,12 @@ func ConditionRuleSearch(cs consolectx.Context) gin.HandlerFunc {
 
 func GetConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, constants.ConditionRuleDotSuffix) {
-			name = ruleName[:len(ruleName)-len(constants.ConditionRuleDotSuffix)]
-		} else {
+		if !strings.HasSuffix(ruleName, constants.ConditionRuleDotSuffix) {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.ConditionRuleDotSuffix)))
-			return
 		}
-		if res, err := service.GetConditionRule(cs, name, mesh); err != nil {
+		if res, err := service.GetConditionRule(cs, ruleName, mesh); err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		} else {

@@ -44,6 +44,7 @@ const (
 	GovernorError   ErrorCode = "GovernorError"
 	JsonError       ErrorCode = "JsonError"
 	YamlError       ErrorCode = "YamlError"
+	NotFoundError   ErrorCode = "NotFoundError"
 )
 
 type bizError struct {

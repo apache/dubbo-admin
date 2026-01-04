@@ -144,9 +144,10 @@ type ApplicationServiceResp struct {
 type ApplicationServiceFormReq struct {
 	coremodel.PageReq
 
-	AppName string `form:"appName"`
-	Side    string `form:"side"`
-	Mesh    string `form:"mesh"`
+	AppName     string `form:"appName"`
+	ServiceName string `form:"serviceName"`
+	Side        string `form:"side"`
+	Mesh        string `form:"mesh"`
 }
 
 func NewApplicationServiceFormReq() *ApplicationServiceFormReq {

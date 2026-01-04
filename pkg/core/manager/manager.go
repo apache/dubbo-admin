@@ -19,6 +19,7 @@ package manager
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/core/governor"
@@ -77,7 +78,14 @@ func (rm *resourcesManager) GetByKey(rk model.ResourceKind, key string) (r model
 		return nil, false, err
 	}
 	item, exist, err := rs.GetByKey(key)
-	return item.(model.Resource), exist, err
+	if !exist {
+		return nil, false, nil
+	}
+	res, ok := item.(model.Resource)
+	if !ok {
+		return nil, false, bizerror.NewAssertionError("Resource", reflect.TypeOf(res).Name())
+	}
+	return res, exist, err
 }
 
 func (rm *resourcesManager) GetByKeys(rk model.ResourceKind, keys []string) ([]model.Resource, error) {

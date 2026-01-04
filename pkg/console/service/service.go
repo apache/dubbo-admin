@@ -56,16 +56,16 @@ func GetServiceTabDistribution(ctx consolectx.Context, req *model.ServiceTabDist
 			},
 		}, nil
 	}
-	appNames := slice.Map(pageData.Data, func(_ int, item *meshresource.ServiceConsumerMetadataResource) string {
-		return item.Spec.ConsumerAppName
+	appResKeys := slice.Map(pageData.Data, func(_ int, item *meshresource.ServiceConsumerMetadataResource) string {
+		return coremodel.BuildResourceKey(req.Mesh, item.Spec.ConsumerAppName)
 	})
 	appResList, err := manager.GetByKeys[*meshresource.ApplicationResource](
-		ctx.ResourceManager(), meshresource.ApplicationKind, appNames)
+		ctx.ResourceManager(), meshresource.ApplicationKind, appResKeys)
 	if err != nil {
-		logger.Errorf("get application list %v failed, cause: %s", appNames, err)
+		logger.Errorf("get application list %v failed, cause: %s", appResKeys, err)
 		return nil, err
 	}
-	searchResps := slice.Map(appResList, func(_ int, item *meshresource.ApplicationResource) model.ApplicationSearchResp {
+	respList := slice.Map(appResList, func(_ int, item *meshresource.ApplicationResource) model.ApplicationSearchResp {
 		return model.ApplicationSearchResp{
 			AppName:          item.Spec.Name,
 			InstanceCount:    item.Spec.InstanceCount,
@@ -74,7 +74,7 @@ func GetServiceTabDistribution(ctx consolectx.Context, req *model.ServiceTabDist
 		}
 	})
 	return &model.SearchPaginationResult{
-		List:     searchResps,
+		List:     respList,
 		PageInfo: pageData.Pagination,
 	}, nil
 }
@@ -115,6 +115,7 @@ func SearchServicesByKeywords(ctx consolectx.Context, req *model.ServiceSearchRe
 		ctx.ResourceManager(),
 		meshresource.ServiceProviderMetadataKind,
 		map[string]string{
+			index.ByMeshIndex:                  req.Mesh,
 			index.ByServiceProviderServiceName: req.Keywords,
 		},
 		req.PageReq,

@@ -115,13 +115,23 @@ func GetAppServiceInfo(ctx consolectx.Context, req *model.ApplicationServiceForm
 }
 
 func getAppProvideServiceInfo(ctx consolectx.Context, req *model.ApplicationServiceFormReq) (*model.SearchPaginationResult, error) {
+	var indexes map[string]string
+	if strutil.IsNotBlank(req.ServiceName) {
+		indexes = map[string]string{
+			index.ByMeshIndex:                  req.Mesh,
+			index.ByServiceProviderAppName:     req.AppName,
+			index.ByServiceProviderServiceName: req.ServiceName,
+		}
+	} else {
+		indexes = map[string]string{
+			index.ByMeshIndex:              req.Mesh,
+			index.ByServiceProviderAppName: req.AppName,
+		}
+	}
 	pageData, err := manager.PageListByIndexes[*meshresource.ServiceProviderMetadataResource](
 		ctx.ResourceManager(),
 		meshresource.ServiceProviderMetadataKind,
-		map[string]string{
-			index.ByMeshIndex:              req.Mesh,
-			index.ByServiceProviderAppName: req.AppName,
-		},
+		indexes,
 		req.PageReq,
 	)
 	if err != nil {

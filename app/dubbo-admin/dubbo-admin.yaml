@@ -37,9 +37,9 @@ console:
     password: dubbo@2025
     expirationTime: 3600
 store:
-  type: memory
-#  type: mysql
-#  address: root:123456@tcp(127.0.0.1:23306)/dubbo-admin?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai
+#  type: memory
+  type: mysql
+  address: root:123456@tcp(127.0.0.1:23306)/dubbo-admin?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai
 discovery:
 #  - type: nacos2
 #    name: localhost-nacos
@@ -56,7 +56,7 @@ discovery:
 #      # Default period is 30s
 #      serviceWatchPeriod: 20
   - type: zookeeper
-    name: zk3.6
+    name: 本地zookeeper
     id: zk3.6
     address:
       registry: zookeeper://127.0.0.1:2181
