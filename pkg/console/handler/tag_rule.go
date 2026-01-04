@@ -62,39 +62,49 @@ func GetTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 		ruleName := c.Param("ruleName")
 		mesh := c.Query("mesh")
 		if !strings.HasSuffix(ruleName, constants.TagRuleDotSuffix) {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.TagRuleDotSuffix)))
-		}
-		if res, err := service.GetTagRule(ctx, ruleName, mesh); err != nil {
-			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
+			err := bizerror.New(bizerror.InvalidArgument, fmt.Sprintf("ruleName must end with %s", constants.TagRuleDotSuffix))
+			c.JSON(http.StatusBadRequest, model.NewBizErrorResp(err))
 			return
-		} else if res != nil {
-			c.JSON(http.StatusOK, model.GenTagRouteResp(res.Spec))
-		} else {
-			c.JSON(http.StatusOK, model.NewBizErrorResp(
-				bizerror.New(bizerror.NotFoundError, fmt.Sprintf("tag rule %s not found", ruleName))))
 		}
+		res, err := service.GetTagRule(ctx, ruleName, mesh)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+		if res == nil {
+			util.HandleNotFoundError(c, ruleName)
+			return
+		}
+		c.JSON(http.StatusOK, model.GenTagRouteResp(res.Spec))
 	}
 }
 
 func PutTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var name string
 		ruleName := c.Param("ruleName")
-		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, constants.TagRuleDotSuffix) {
-			name = ruleName[:len(ruleName)-len(constants.TagRuleDotSuffix)]
-		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.TagRuleDotSuffix)))
+		mesh := c.Query("mesh")
+		if !strings.HasSuffix(ruleName, constants.TagRuleDotSuffix) {
+			err := bizerror.New(bizerror.InvalidArgument, fmt.Sprintf("ruleName must end with %s", constants.TagRuleDotSuffix))
+			c.JSON(http.StatusBadRequest, model.NewBizErrorResp(err))
 			return
 		}
-		res := meshresource.NewTagRouteResourceWithAttributes(name, mesh)
-		err := c.Bind(res.Spec)
+		tagRuleRes, err := service.GetTagRule(ctx, ruleName, mesh)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+			util.HandleServiceError(c, err)
+			return
+		}
+		if tagRuleRes == nil {
+			util.HandleNotFoundError(c, ruleName)
+			return
+		}
+		res := meshresource.NewTagRouteResourceWithAttributes(ruleName, mesh)
+		err = c.Bind(res.Spec)
+		if err != nil {
+			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
 			return
 		}
 		if err = service.UpdateTagRule(ctx, res); err != nil {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
 			return
 		} else {
 			c.JSON(http.StatusOK, model.GenTagRouteResp(res.Spec))
@@ -106,21 +116,20 @@ func PostTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var name string
 		ruleName := c.Param("ruleName")
-		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, constants.TagRuleDotSuffix) {
-			name = ruleName[:len(ruleName)-len(constants.TagRuleDotSuffix)]
-		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.TagRuleDotSuffix)))
+		mesh := c.Query("mesh")
+		if !strings.HasSuffix(ruleName, constants.TagRuleDotSuffix) {
+			err := bizerror.New(bizerror.InvalidArgument, fmt.Sprintf("ruleName must end with %s", constants.TagRuleDotSuffix))
+			c.JSON(http.StatusBadRequest, model.NewBizErrorResp(err))
 			return
 		}
 		res := meshresource.NewTagRouteResourceWithAttributes(name, mesh)
 		err := c.Bind(res.Spec)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
 			return
 		}
 		if err = service.CreateTagRule(ctx, res); err != nil {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
 			return
 		} else {
 			c.JSON(http.StatusOK, model.GenTagRouteResp(res.Spec))
@@ -130,17 +139,15 @@ func PostTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 
 func DeleteTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var name string
 		ruleName := c.Param("ruleName")
-		mesh := c.Param("mesh")
-		if strings.HasSuffix(ruleName, constants.TagRuleDotSuffix) {
-			name = ruleName[:len(ruleName)-len(constants.TagRuleDotSuffix)]
-		} else {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(fmt.Sprintf("ruleName must end with %s", constants.TagRuleDotSuffix)))
+		mesh := c.Query("mesh")
+		if !strings.HasSuffix(ruleName, constants.TagRuleDotSuffix) {
+			err := bizerror.New(bizerror.InvalidArgument, fmt.Sprintf("ruleName must end with %s", constants.TagRuleDotSuffix))
+			c.JSON(http.StatusBadRequest, model.NewBizErrorResp(err))
 			return
 		}
-		if err := service.DeleteTagRule(ctx, name, mesh); err != nil {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+		if err := service.DeleteTagRule(ctx, ruleName, mesh); err != nil {
+			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
 			return
 		}
 		c.JSON(http.StatusOK, model.NewSuccessResp(""))

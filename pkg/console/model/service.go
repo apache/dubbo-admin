@@ -68,6 +68,7 @@ type ServiceTabDistributionReq struct {
 	Side            string `json:"side" form:"side"  binding:"required"`
 	Mesh            string `json:"mesh" form:"mesh" binding:"required"`
 	ProviderAppName string `json:"providerAppName"  form:"providerAppName"`
+	Keywords        string `json:"keywords"  form:"keywords"`
 	coremodel.PageReq
 }
 
@@ -116,5 +117,5 @@ func (s *BaseServiceReq) Query(c *gin.Context) error {
 }
 
 func (s *BaseServiceReq) ServiceKey() string {
-	return s.ServiceName + constants.ColonSeparator + s.Group + constants.ColonSeparator + s.Version
+	return s.ServiceName + constants.ColonSeparator + s.Version + constants.ColonSeparator + s.Group
 }

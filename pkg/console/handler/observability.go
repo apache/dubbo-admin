@@ -26,6 +26,7 @@ import (
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
+	"github.com/apache/dubbo-admin/pkg/console/util"
 )
 
 type Dimension string
@@ -105,7 +106,7 @@ func GetMetricsList(ctx consolectx.Context) gin.HandlerFunc {
 		}
 		resp, err := service.GetInstanceMetrics(ctx, req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
+			util.HandleServiceError(c, err)
 			return
 		}
 		c.JSON(http.StatusOK, model.NewSuccessResp(resp))

@@ -113,17 +113,17 @@ func GetConfigurator(ctx consolectx.Context, name string, mesh string) (*meshres
 	return res, nil
 }
 
-func UpdateConfigurator(ctx consolectx.Context, name string, res *meshresource.DynamicConfigResource) error {
+func UpdateConfigurator(ctx consolectx.Context, res *meshresource.DynamicConfigResource) error {
 	if err := ctx.ResourceManager().Update(res); err != nil {
-		logger.Warnf("update %s configurator failed with error: %s", name, err.Error())
+		logger.Warnf("update %s configurator failed with error: %s", res.Name, err.Error())
 		return err
 	}
 	return nil
 }
 
-func CreateConfigurator(ctx consolectx.Context, name string, res *meshresource.DynamicConfigResource) error {
+func CreateConfigurator(ctx consolectx.Context, res *meshresource.DynamicConfigResource) error {
 	if err := ctx.ResourceManager().Add(res); err != nil {
-		logger.Warnf("create %s configurator failed with error: %s", name, err.Error())
+		logger.Warnf("create %s configurator failed with error: %s", res.Name, err.Error())
 		return err
 	}
 	return nil

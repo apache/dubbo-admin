@@ -315,7 +315,7 @@ func insertConfiguratorWithAccessLog(ctx consolectx.Context, res *meshresource.D
 		Configs:       make([]*meshproto.OverrideConfig, 0),
 	}
 	res.Spec.Configs = append(res.Spec.Configs, newAccessLogEnabledConfig(appName))
-	err := CreateConfigurator(ctx, appConfiguratorName, res)
+	err := CreateConfigurator(ctx, res)
 	if err != nil {
 		logger.Errorf("create configurator failed when open accesslog, resourceKey: %s, openAccessLog: %t, err: %s",
 			coremodel.BuildResourceKey(mesh, appName), openAccessLog, err)
@@ -350,7 +350,7 @@ func updateConfiguratorWithAccessLog(ctx consolectx.Context, res *meshresource.D
 		// update the access log enabled status as needed
 		accessLogConfig.Enabled = openAccessLog
 	}
-	err := UpdateConfigurator(ctx, appConfiguratorName, res)
+	err := UpdateConfigurator(ctx, res)
 	if err != nil {
 		logger.Errorf("update configurator failed when opening accesslog, resourceKey: %s, openAccessLog: %t, err: %s",
 			coremodel.BuildResourceKey(mesh, appName), openAccessLog, err)
@@ -491,7 +491,7 @@ func UpInsertAppFlowWeightConfig(ctx consolectx.Context, appName string, mesh st
 	})
 	res.Spec.Configs = slice.Union(res.Spec.Configs, flowWeightConfigs)
 
-	err = UpdateConfigurator(ctx, appConfiguratorName, res)
+	err = UpdateConfigurator(ctx, res)
 	if err != nil {
 		logger.Errorf("update configurator failed with app flow weight, resourceKey: %s, err: %s",
 			coremodel.BuildResourceKey(mesh, appName), err)
@@ -515,7 +515,7 @@ func insertConfiguratorWithFlowWeight(
 		return fromFlowWeightSet(set)
 	})
 	res.Spec.Configs = flowWeightConfigs
-	err := CreateConfigurator(ctx, appConfiguratorName, res)
+	err := CreateConfigurator(ctx, res)
 	if err != nil {
 		logger.Errorf("insert configurator failed with app flow weight, resourceKey: %s, err: %s",
 			coremodel.BuildResourceKey(mesh, appName), err)

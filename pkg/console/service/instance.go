@@ -27,6 +27,8 @@ import (
 	"github.com/duke-git/lancet/v2/slice"
 	"github.com/duke-git/lancet/v2/strutil"
 
+	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
@@ -165,6 +167,234 @@ func GetInstanceMetrics(ctx consolectx.Context, req *model.MetricsReq) ([]*model
 	return []*model.MetricsResp{metricsResp}, nil
 }
 
+func UpdateInstanceTrafficStatus(ctx consolectx.Context, mesh string, appName string, instanceIP string, newDisabled bool) error {
+	conditionRuleRes, err := GetConditionRule(ctx, appName, mesh)
+	if err != nil {
+		logger.Errorf("get condition rule for %s failed, cause: %s", appName, err)
+		return err
+	}
+	// if no condition rule for application exists
+	if conditionRuleRes == nil || conditionRuleRes.Spec == nil {
+		// if disable traffic is false, and rule doesn't exist, directly return
+		if !newDisabled {
+			return nil
+		}
+		conditionRoute := generateDefaultConditionV3(true, true, true, appName, constants.ScopeApplication)
+		resName := appName + constants.ConditionRuleDotSuffix
+		conditionRuleRes = meshresource.NewConditionRouteResourceWithAttributes(resName, mesh)
+		conditionRuleRes.Spec = conditionRoute
+		err := CreateConditionRule(ctx, conditionRuleRes)
+		if err != nil {
+			logger.Errorf("create condition rule for app %s failed, cause: %s", appName, err)
+			return err
+		}
+		return nil
+	}
+	// otherwise, checkout condition one by one
+	for i, condition := range conditionRuleRes.Spec.Conditions {
+		oldDisabled := isInstanceTrafficDisabled(condition, instanceIP)
+		// if user needs to disable traffic and instance's traffic is already disabled, skip updating, directly return
+		if newDisabled && oldDisabled {
+			logger.Warnf("The instance %s has been disabled, skip updating condition rule", instanceIP)
+			return nil
+		}
+		// if user needs to enable traffic while instance's traffic is disabled, update condition rule
+		if !newDisabled && oldDisabled {
+			conditionRuleRes.Spec.Conditions = append(conditionRuleRes.Spec.Conditions[:i], conditionRuleRes.Spec.Conditions[i+1:]...)
+			if err = UpdateConditionRule(ctx, conditionRuleRes); err != nil {
+				logger.Errorf("update condition rule for app %s failed, cause: %s", appName, err)
+				return err
+			}
+			return nil
+		}
+	}
+	// if user needs to enable traffic while instance's traffic is already enabled, directly return
+	if !newDisabled {
+		logger.Warnf("the instance %s has been enabled, skip updating condition rule", instanceIP)
+		return nil
+	}
+	// else user needs ato disable traffic, add a disable condition
+	conditionRuleRes.Spec.Conditions = append(conditionRuleRes.Spec.Conditions, disableExpression(instanceIP))
+	if err := UpdateConditionRule(ctx, conditionRuleRes); err != nil {
+		logger.Errorf("update condition rule for app %s failed, cause: %s", appName, err)
+		return err
+	}
+	return nil
+}
+
+func GetInstanceTrafficStatus(ctx consolectx.Context, mesh string, appName string, instanceIP string) (bool, error) {
+	resName := appName + constants.ConditionRuleDotSuffix
+	res, err := GetConditionRule(ctx, resName, mesh)
+	if err != nil {
+		logger.Errorf("get condition rule for %s failed, cause: %s", appName, err)
+		return true, err
+	}
+	if res == nil {
+		return false, nil
+	}
+	disabled := false
+	slice.ForEachWithBreak(res.Spec.Conditions, func(_ int, condition string) bool {
+		disabled = isInstanceTrafficDisabled(condition, instanceIP)
+		return disabled
+	})
+	return disabled, nil
+}
+
+func disableExpression(instanceIP string) string {
+	return "=>host!=" + instanceIP
+}
+
+func generateDefaultConditionV3(Enabled, Force, Runtime bool, Key, Scope string) *meshproto.ConditionRoute {
+	return &meshproto.ConditionRoute{
+		ConfigVersion: constants.ConfiguratorVersionV3,
+		Priority:      0,
+		Enabled:       true,
+		Force:         Force,
+		Runtime:       Runtime,
+		Key:           Key,
+		Scope:         Scope,
+		Conditions:    make([]string, 0),
+	}
+}
+
+// isInstanceTrafficDisabled judge if a condition is instance traffic disable expression or not.
+// A condition include fromCondition and toCondition which is seperated by `=>`.
+// return true if the instance traffic is disabled, otherwise return false.
+func isInstanceTrafficDisabled(condition string, targetIP string) bool {
+	if len(condition) == 0 {
+		return false
+	}
+	condition = strings.ReplaceAll(condition, " ", "")
+	// only accept string start with `=>`
+	if !strings.HasPrefix(condition, "=>") {
+		return false
+	}
+	toCondition := strings.TrimPrefix(condition, "=>")
+
+	if !strings.Contains(toCondition, targetIP) {
+		return false
+	}
+	targetExpression := "host!=" + targetIP
+	if targetExpression != toCondition {
+		return false
+	}
+	return true
+}
+
+func GetInstanceAccessLogOpenStatus(ctx consolectx.Context, mesh string, applicationName string, instanceIP string) (bool, error) {
+	appConfiguratorName := applicationName + constants.ConfiguratorRuleDotSuffix
+	res, err := GetConfigurator(ctx, appConfiguratorName, mesh)
+	if err != nil {
+		logger.Errorf("get configurator for %s failed, cause: %s", appConfiguratorName, err)
+		return false, err
+	}
+	if res == nil || res.Spec == nil {
+		return false, nil
+	}
+	openAccessLog := false
+	if res.Spec.Enabled {
+		slice.ForEachWithBreak(res.Spec.Configs, func(_ int, conf *meshproto.OverrideConfig) bool {
+			openAccessLog = isInstanceAccessLogOpen(conf, instanceIP)
+			return openAccessLog
+		})
+	}
+	return openAccessLog, nil
+}
+
+func UpdateInstanceAccessLogOpenStatus(
+	ctx consolectx.Context,
+	mesh string,
+	appName string,
+	instanceIP string,
+	openStatus bool) error {
+	appConfiguratorName := appName + constants.ConfiguratorRuleDotSuffix
+	res, err := GetConfigurator(ctx, appConfiguratorName, mesh)
+	if err != nil {
+		logger.Errorf("get configurator for %s failed, cause: %s", appConfiguratorName, err)
+		return err
+	}
+	// if configurator doesn't exist
+	if res == nil || res.Spec == nil {
+		// if user needs to disable accesslog, directly return
+		if !openStatus {
+			logger.Warnf("the instance %s accesslog is disabled, skip updating configurator", instanceIP)
+			return nil
+		}
+		// otherwise create a new configurator with accesslog opened
+		res = meshresource.NewDynamicConfigResourceWithAttributes(appConfiguratorName, mesh)
+		res.Spec = &meshproto.DynamicConfig{
+			Key:           appName,
+			Scope:         constants.ScopeApplication,
+			ConfigVersion: constants.ConfiguratorVersionV3,
+			Enabled:       true,
+			Configs: []*meshproto.OverrideConfig{
+				{
+					Side:          constants.SideProvider,
+					Match:         &meshproto.ConditionMatch{Address: &meshproto.AddressMatch{Wildcard: instanceIP + `:*`}},
+					Parameters:    map[string]string{`accesslog`: `true`},
+					XGenerateByCp: true,
+				},
+			},
+		}
+		err := CreateConfigurator(ctx, res)
+		if err != nil {
+			logger.Errorf("create configurator for instance %s%s failed, cause: %s", appName, instanceIP, err)
+			return err
+		}
+		return nil
+	}
+
+	// otherwise we need to match config one by one
+	for i, config := range res.Spec.Configs {
+		accessLogOpened := isInstanceAccessLogOpen(config, instanceIP)
+		// if user needs to open accesslog and accesslog is already opened, directly return
+		if openStatus && accessLogOpened {
+			logger.Warnf("the instance %s accesslog is already opened, skip updating configurator", instanceIP)
+			return nil
+		}
+		// if user needs to close accesslog and accesslog is opened, remove the config and return
+		if !openStatus && accessLogOpened {
+			res.Spec.Configs = slice.Concat(res.Spec.Configs[:i], res.Spec.Configs[i+1:])
+			err := UpdateConfigurator(ctx, res)
+			if err != nil {
+				logger.Errorf("update configurator for instance %s%s failed, cause: %s", appName, instanceIP, err)
+				return err
+			}
+			return nil
+		}
+	}
+	// if user needs to close accesslog and accesslog is not opened, directly return
+	if !openStatus {
+		logger.Warnf("the instance %s accesslog is already disabled, skip updating configurator", instanceIP)
+		return nil
+	}
+	// otherwise we need to add a new config to open accesslog
+	res.Spec.Configs = append(res.Spec.Configs, &meshproto.OverrideConfig{
+		Side:          constants.SideProvider,
+		Match:         &meshproto.ConditionMatch{Address: &meshproto.AddressMatch{Wildcard: instanceIP + `:*`}},
+		Parameters:    map[string]string{`accesslog`: `true`},
+		XGenerateByCp: true,
+	})
+	err = UpdateConfigurator(ctx, res)
+	if err != nil {
+		logger.Errorf("update configurator for instance %s%s failed, cause: %s", appName, instanceIP, err)
+		return err
+	}
+	return nil
+}
+
+func isInstanceAccessLogOpen(conf *meshproto.OverrideConfig, IP string) bool {
+	if conf != nil &&
+		conf.Match != nil &&
+		conf.Match.Address != nil &&
+		conf.Match.Address.Wildcard == IP+`:*` &&
+		conf.Side == constants.SideProvider &&
+		conf.Parameters != nil &&
+		conf.Parameters[`accesslog`] == `true` {
+		return true
+	}
+	return false
+}
 func fetchMetricsData(ip string, port int64) ([]model.Metric, error) {
 	url := fmt.Sprintf("http://%s:%d/metrics", ip, port)
 	response, err := http.Get(url)

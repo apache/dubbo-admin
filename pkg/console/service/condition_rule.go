@@ -87,23 +87,12 @@ func SearchConditionRuleByKeywords(ctx context.Context, req *model.SearchConditi
 }
 
 func ToSearchConditionRuleResp(res *meshresource.ConditionRouteResource) *model.ConditionRuleSearchResp {
-	if v3 := res.Spec.ToConditionRouteV3(); v3 != nil {
-		return &model.ConditionRuleSearchResp{
-			RuleName:   res.Name,
-			Scope:      v3.GetScope(),
-			CreateTime: res.CreationTimestamp.String(),
-			Enabled:    v3.GetEnabled(),
-		}
-	} else if v3x1 := res.Spec.ToConditionRouteV3x1(); v3x1 != nil {
-		return &model.ConditionRuleSearchResp{
-			RuleName:   res.Name,
-			Scope:      v3x1.GetScope(),
-			CreateTime: res.CreationTimestamp.String(),
-			Enabled:    v3x1.GetEnabled(),
-		}
+	return &model.ConditionRuleSearchResp{
+		RuleName:   res.Name,
+		Scope:      res.Spec.Scope,
+		CreateTime: res.CreationTimestamp.String(),
+		Enabled:    res.Spec.Enabled,
 	}
-	logger.Errorf("Invalid condition route, resource: %s", res.String())
-	return nil
 }
 
 func GetConditionRule(ctx context.Context, name string, mesh string) (*meshresource.ConditionRouteResource, error) {
@@ -116,17 +105,17 @@ func GetConditionRule(ctx context.Context, name string, mesh string) (*meshresou
 	return res, nil
 }
 
-func UpdateConditionRule(ctx context.Context, name string, res *meshresource.ConditionRouteResource) error {
+func UpdateConditionRule(ctx context.Context, res *meshresource.ConditionRouteResource) error {
 	if err := ctx.ResourceManager().Update(res); err != nil {
-		logger.Warnf("update %s condition failed with error: %s", name, err.Error())
+		logger.Warnf("update %s condition failed with error: %s", res.Name, err.Error())
 		return err
 	}
 	return nil
 }
 
-func CreateConditionRule(ctx context.Context, name string, res *meshresource.ConditionRouteResource) error {
+func CreateConditionRule(ctx context.Context, res *meshresource.ConditionRouteResource) error {
 	if err := ctx.ResourceManager().Add(res); err != nil {
-		logger.Warnf("create %s condition failed with error: %s", name, err.Error())
+		logger.Warnf("create %s condition failed with error: %s", res.Name, err.Error())
 		return err
 	}
 	return nil

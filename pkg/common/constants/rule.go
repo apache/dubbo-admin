@@ -44,3 +44,9 @@ const (
 	NotEqual = "!="
 	Equal    = "="
 )
+
+const (
+	ServiceDefaultTimeout int32 = 1000
+	DefaultWeight         int32 = 100
+	ServiceDefaultRetries int32 = 2
+)

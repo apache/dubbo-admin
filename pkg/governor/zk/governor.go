@@ -54,7 +54,7 @@ func NewZKRuleGovernor(cfg *discoverycfg.Config, router store.Router, emitter ev
 }
 
 func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
-	path := "/dubbo/config" + r.ResourceMeta().Name
+	path := "/dubbo/config/" + r.ResourceMeta().Name
 	content, err := yaml.Marshal(r.ResourceSpec())
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.YamlError,
@@ -81,7 +81,7 @@ func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
 }
 
 func (g *RuleGovernor) UpdateRule(r coremodel.Resource) error {
-	path := "/dubbo/config" + r.ResourceMeta().Name
+	path := "/dubbo/config/" + r.ResourceMeta().Name
 	content, err := yaml.Marshal(r.ResourceSpec())
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.YamlError,
@@ -105,7 +105,7 @@ func (g *RuleGovernor) UpdateRule(r coremodel.Resource) error {
 }
 
 func (g *RuleGovernor) DeleteRule(r coremodel.Resource) error {
-	path := "/dubbo/config" + r.ResourceMeta().Name
+	path := "/dubbo/config/" + r.ResourceMeta().Name
 	err := g.conn.Delete(path, -1)
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.ZKError,
