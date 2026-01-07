@@ -70,7 +70,7 @@ func newCounterManager() *counterManager {
 	}
 
 	cm.RegisterSimpleCounter(meshresource.ApplicationKind)
-	cm.RegisterSimpleCounter(meshresource.ServiceKind)
+	cm.RegisterSimpleCounter(meshresource.ServiceProviderMetadataKind)
 	cm.RegisterSimpleCounter(meshresource.InstanceKind)
 
 	cm.RegisterDistributionCounter(meshresource.InstanceKind, ProtocolCounter, instanceProtocolKey)

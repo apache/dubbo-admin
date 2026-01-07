@@ -140,7 +140,7 @@ func GetInstanceDetail(ctx consolectx.Context, req *model.InstanceDetailReq) (*m
 		return nil, err
 	}
 
-	resp := model.FromInstanceResource(res)
+	resp := model.FromInstanceResource(res, ctx.Config())
 	return resp, nil
 }
 

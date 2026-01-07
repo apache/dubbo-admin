@@ -147,3 +147,9 @@ func (c AdminConfig) FindDiscovery(id string) *discovery.Config {
 	}
 	return nil
 }
+
+func (c AdminConfig) Meshes() []string {
+	return slice.Map(c.Discovery, func(index int, item *discovery.Config) string {
+		return item.ID
+	})
+}

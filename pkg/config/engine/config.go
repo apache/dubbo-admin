@@ -18,6 +18,7 @@
 package engine
 
 import (
+	set "github.com/duke-git/lancet/v2/datastructure/set"
 	"github.com/duke-git/lancet/v2/strutil"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
@@ -57,7 +58,8 @@ type Properties struct {
 }
 
 func (p *Properties) GetOrDefaultMainContainerChooseStrategy() *MainContainerChooseStrategy {
-	if p.MainContainerChooseStrategy == nil {
+	if p.MainContainerChooseStrategy == nil ||
+		!mainContainerChooseStrategyTypes.Contain(p.MainContainerChooseStrategy.Type) {
 		return &MainContainerChooseStrategy{
 			Type:  ChooseByIndex,
 			Index: 0,
@@ -74,6 +76,8 @@ const (
 	ChooseByName       MainContainerChooseStrategyType = "ByName"
 	ChooseByAnnotation MainContainerChooseStrategyType = "ByAnnotation"
 )
+
+var mainContainerChooseStrategyTypes = set.New(ChooseByLast, ChooseByIndex, ChooseByName, ChooseByAnnotation)
 
 type MainContainerChooseStrategy struct {
 	Type          MainContainerChooseStrategyType `json:"type"`

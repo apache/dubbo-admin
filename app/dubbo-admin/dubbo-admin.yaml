@@ -15,46 +15,45 @@
 
 mode: zone
 console:
-  observability:
-    grafana: xx
-    prometheus: xx
-    jaeger: xx
-    dashboards:
-      metric:
-        application: xx
-        instance: xx
-        service: xx
-      trace:
-        application: xx
-        instance: xx
-        service: xx
-      log:
-        application: xx
-        instance: xx
-        service: xx
+  grafana: xx
+  prometheus: xx
+  jaeger: xx
+  dashboards:
+    metric:
+      application: xx
+      instance: xx
+      service: xx
+    trace:
+      application: xx
+      instance: xx
+      service: xx
+    log:
+      application: xx
+      instance: xx
+      service: xx
   auth:
     user: admin
     password: dubbo@2025
     expirationTime: 3600
 store:
-#  type: memory
-  type: mysql
-  address: root:123456@tcp(127.0.0.1:23306)/dubbo-admin?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai
+  type: memory
+#  type: mysql
+#  address: root:123456@tcp(127.0.0.1:23306)/dubbo-admin?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai
 discovery:
-#  - type: nacos2
-#    name: localhost-nacos
-#    id: localhost-nacos
-#    address:
-#      registry: nacos://127.0.0.1:28848?username=nacos&password=nacos
-#      configCenter: nacos://127.0.0.1:28848?username=nacos&password=nacos
-#      metadataReport: nacos://127.0.0.1:28848?username=nacos&password=nacos
-#    properties:
-#      # [Nacos2] Adjust the interval(time unit is `s`) to adjust the frequency of list-all configs in nacos.
-#      # Default period is 30s
-#      configWatchPeriod: 20
-#      # [Nacos2] Adjust the interval(time unit is `s`) to adjust the frequency of list-all services in nacos.
-#      # Default period is 30s
-#      serviceWatchPeriod: 20
+  - type: nacos2
+    name: localhost-nacos
+    id: localhost-nacos
+    address:
+      registry: nacos://127.0.0.1:28848?username=nacos&password=nacos
+      configCenter: nacos://127.0.0.1:28848?username=nacos&password=nacos
+      metadataReport: nacos://127.0.0.1:28848?username=nacos&password=nacos
+    properties:
+      # [Nacos2] Adjust the interval(time unit is `s`) to adjust the frequency of list-all configs in nacos.
+      # Default period is 30s
+      configWatchPeriod: 20
+      # [Nacos2] Adjust the interval(time unit is `s`) to adjust the frequency of list-all services in nacos.
+      # Default period is 30s
+      serviceWatchPeriod: 20
   - type: zookeeper
     name: 本地zookeeper
     id: zk3.6

@@ -21,6 +21,7 @@ import (
 	gxset "github.com/dubbogo/gost/container/set"
 	"github.com/duke-git/lancet/v2/strutil"
 
+	"github.com/apache/dubbo-admin/pkg/config/app"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
@@ -142,7 +143,7 @@ type Probe struct {
 	Open bool   `json:"open"`
 }
 
-func FromInstanceResource(res *meshresource.InstanceResource) *InstanceDetailResp {
+func FromInstanceResource(res *meshresource.InstanceResource, cfg app.AdminConfig) *InstanceDetailResp {
 	r := &InstanceDetailResp{}
 	instance := res.Spec
 	r.RpcPort = instance.RpcPort
@@ -153,7 +154,12 @@ func FromInstanceResource(res *meshresource.InstanceResource) *InstanceDetailRes
 	r.CreateTime = instance.CreateTime
 	r.ReadyTime = instance.ReadyTime
 	r.RegisterTime = instance.RegisterTime
-	r.RegisterClusters = []string{res.Mesh}
+	if d := cfg.FindDiscovery(res.Mesh); d != nil {
+		r.RegisterClusters = []string{d.Name}
+	}
+	if cfg.Engine.ID == res.Spec.SourceEngine {
+		r.DeployCluster = cfg.Engine.Name
+	}
 	r.DeployState = instance.DeployState
 	if strutil.IsBlank(r.RegisterTime) {
 		r.RegisterState = "UnRegistered"

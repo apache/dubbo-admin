@@ -63,7 +63,7 @@ func ClusterOverview(ctx consolectx.Context) gin.HandlerFunc {
 		resp := model.NewOverviewResp()
 		if counterMgr := ctx.CounterManager(); counterMgr != nil {
 			resp.AppCount = counterMgr.Count(meshresource.ApplicationKind)
-			resp.ServiceCount = counterMgr.Count(meshresource.ServiceKind)
+			resp.ServiceCount = counterMgr.Count(meshresource.ServiceProviderMetadataKind)
 			resp.InsCount = counterMgr.Count(meshresource.InstanceKind)
 			resp.Protocols = counterMgr.Distribution(counter.ProtocolCounter)
 			resp.Releases = counterMgr.Distribution(counter.ReleaseCounter)
