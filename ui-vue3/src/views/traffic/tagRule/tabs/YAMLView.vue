@@ -20,11 +20,11 @@
     <a-flex style="width: 100%">
       <a-col :span="isDrawerOpened ? 24 - sliderSpan : 24" class="left">
         <a-flex vertical align="end">
-          <a-button type="text" style="color: #0a90d5" @click="isDrawerOpened = !isDrawerOpened">
-            {{ $t('flowControlDomain.versionRecords') }}
-            <DoubleLeftOutlined v-if="!isDrawerOpened" />
-            <DoubleRightOutlined v-else />
-          </a-button>
+          <!--          <a-button type="text" style="color: #0a90d5" @click="isDrawerOpened = !isDrawerOpened">-->
+          <!--            {{ $t('flowControlDomain.versionRecords') }}-->
+          <!--            <DoubleLeftOutlined v-if="!isDrawerOpened" />-->
+          <!--            <DoubleRightOutlined v-else />-->
+          <!--          </a-button>-->
 
           <div class="editorBox">
             <MonacoEditor
@@ -57,8 +57,7 @@
 
 <script setup lang="ts">
 import MonacoEditor from '@/components/editor/MonacoEditor.vue'
-import { DoubleLeftOutlined, DoubleRightOutlined } from '@ant-design/icons-vue'
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { getTagRuleDetailAPI } from '@/api/service/traffic'
 import yaml from 'js-yaml'
 import { useRoute } from 'vue-router'

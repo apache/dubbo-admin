@@ -30,9 +30,18 @@ import { useMeshStore } from '@/stores/mesh'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from './constants'
 
+// 白名单：对于这些 URL 不进行 message 错误提示
+const SILENT_ERROR_URLS = ['/promQL/query']
+
+// 检查 URL 是否在静默错误白名单中
+const isSilentErrorUrl = (url?: string): boolean => {
+  if (!url) return false
+  return SILENT_ERROR_URLS.some((silentUrl) => url.includes(silentUrl))
+}
+
 const service: AxiosInstance = axios.create({
   //  change this to decide where to go
-  // baseURL: '/mock',
+  // baseURL: 'http://127.0.0.1:4523/m1/3732499-3363280-default/',
   baseURL: '/api/v1',
   timeout: 30 * 1000
 })
@@ -75,7 +84,9 @@ response.use(
 
     // Show error toast message
     const errorMsg = `${response.data.code}:${response.data.message}`
-    message.error(errorMsg)
+    if (!isSilentErrorUrl(response.config.url)) {
+      message.error(errorMsg)
+    }
     console.error(errorMsg)
     return Promise.reject(response.data)
   },
@@ -111,7 +122,9 @@ response.use(
     }
     if (response?.data) {
       const errorMsg = `${response.data?.code}:${response.data?.message}`
-      message.error(errorMsg)
+      if (!isSilentErrorUrl(error.config?.url)) {
+        message.error(errorMsg)
+      }
       console.error(errorMsg)
     } else {
       // Handle network or other errors

@@ -64,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import ParamRoute from './paramRoute.vue'
 import ConfigPage from '@/components/ConfigPage.vue'
 import {
@@ -308,11 +308,42 @@ const updateServiceIntraRegionPriority = async (enabled: boolean) => {
   await getServiceIntraRegionPriority()
 }
 
-onMounted(async () => {
-  await getServiceTimeout()
-  await getServiceRetry()
-  await getServiceIntraRegionPriority()
-  await getParamRoute()
+// Load data for a specific config item by key
+const loadConfigData = async (key: string) => {
+  try {
+    switch (key) {
+      case 'timeout':
+        await getServiceTimeout()
+        break
+      case 'retryNum':
+        await getServiceRetry()
+        break
+      case 'sameAreaFirst':
+        await getServiceIntraRegionPriority()
+        break
+      case 'paramRoute':
+        await getParamRoute()
+        break
+    }
+  } catch (error) {
+    console.error(`Failed to load ${key}:`, error)
+  }
+}
+
+// Watch for tab changes and load data (always reload on tab switch)
+watch(
+  () => options.current[0],
+  (newIndex: number) => {
+    const currentKey = options.list[newIndex]?.key
+    if (currentKey) {
+      loadConfigData(currentKey)
+    }
+  },
+  { immediate: true }
+)
+
+onMounted(() => {
+  // Data loading is handled by the watch when tabs are switched
 })
 </script>
 
