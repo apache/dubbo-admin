@@ -27,8 +27,13 @@
           <!--          </a-button>-->
 
           <div class="editorBox">
-            <MonacoEditor v-model:modelValue="YAMLValue" theme="vs-dark" :height="500" language="yaml"
-              :readonly="isReadonly" />
+            <MonacoEditor
+              v-model:modelValue="YAMLValue"
+              theme="vs-dark"
+              :height="500"
+              language="yaml"
+              :readonly="isReadonly"
+            />
           </div>
         </a-flex>
       </a-col>
