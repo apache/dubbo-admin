@@ -22,27 +22,48 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/counter"
 	"github.com/apache/dubbo-admin/pkg/console/model"
+	"github.com/apache/dubbo-admin/pkg/console/util"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 )
 
 func AdminMetadata(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		res := model.NewAdminMetadata()
-		// TODO
-		c.JSON(http.StatusOK, model.NewSuccessResp(res))
+		mesh, exists := c.GetQuery("mesh")
+		if !exists {
+			util.HandleServiceError(c, bizerror.New(bizerror.InvalidArgument, "mesh is required"))
+			return
+		}
+		var registryAddr string
+		var metadataAddr string
+		var configAddr string
+		if d := ctx.Config().FindDiscovery(mesh); d != nil {
+			registryAddr = d.Address.Registry
+			metadataAddr = d.Address.MetadataReport
+			configAddr = d.Address.ConfigCenter
+		}
+		metadata := model.AdminMetadata{
+			Registry:   registryAddr,
+			Metadata:   metadataAddr,
+			Config:     configAddr,
+			Prometheus: ctx.Config().Console.Prometheus,
+			Grafana:    ctx.Config().Console.Grafana,
+			Tracing:    "",
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(metadata))
 	}
 }
 
-// ClusterOverview TODO implement
+// ClusterOverview get cluster overview
 func ClusterOverview(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		resp := model.NewOverviewResp()
 		if counterMgr := ctx.CounterManager(); counterMgr != nil {
 			resp.AppCount = counterMgr.Count(meshresource.ApplicationKind)
-			resp.ServiceCount = counterMgr.Count(meshresource.ServiceKind)
+			resp.ServiceCount = counterMgr.Count(meshresource.ServiceProviderMetadataKind)
 			resp.InsCount = counterMgr.Count(meshresource.InstanceKind)
 			resp.Protocols = counterMgr.Distribution(counter.ProtocolCounter)
 			resp.Releases = counterMgr.Distribution(counter.ReleaseCounter)

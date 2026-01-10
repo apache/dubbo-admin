@@ -152,20 +152,22 @@ func (p *PodListerWatcher) TransformFunc() cache.TransformFunc {
 		}
 		res := meshresource.NewRuntimeInstanceResourceWithAttributes(pod.Name, p.getDubboMesh(pod))
 		res.Spec = &meshproto.RuntimeInstance{
-			Name:         pod.Name,
-			Ip:           pod.Status.PodIP,
-			RpcPort:      rpcPort,
-			Image:        image,
-			AppName:      appName,
-			CreateTime:   createTime,
-			StartTime:    startTime,
-			ReadyTime:    readyTime,
-			Phase:        phase,
-			WorkloadName: workloadName,
-			WorkloadType: workloadType,
-			Node:         pod.Spec.NodeName,
-			Probes:       probes,
-			Conditions:   conditions,
+			Name:             pod.Name,
+			Ip:               pod.Status.PodIP,
+			RpcPort:          rpcPort,
+			Image:            image,
+			AppName:          appName,
+			CreateTime:       createTime,
+			StartTime:        startTime,
+			ReadyTime:        readyTime,
+			Phase:            phase,
+			WorkloadName:     workloadName,
+			WorkloadType:     workloadType,
+			Node:             pod.Spec.NodeName,
+			Probes:           probes,
+			Conditions:       conditions,
+			SourceEngine:     p.cfg.ID,
+			SourceEngineType: string(p.cfg.Type),
 		}
 		return res, nil
 	}

@@ -53,7 +53,7 @@ func ToRPCInstance(
 			logger.Warnf("parse url params failed, raw url params string: %s, cause: %v", urlParams, err)
 		}
 		releaseVersion = paramsMap[constants.ReleaseKey]
-		protocol = paramsMap[constants.DubboVersionKey]
+		protocol = paramsMap[constants.ProtocolKey]
 		serialization = paramsMap[constants.SerializationKey]
 		preferSerialization = paramsMap[constants.PreferSerializationKey]
 	}

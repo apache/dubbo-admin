@@ -17,16 +17,17 @@
 
 package handler
 
-// proxy for prometheus
-
 import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 
+	"github.com/duke-git/lancet/v2/strutil"
 	"github.com/gin-gonic/gin"
 
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
+	"github.com/apache/dubbo-admin/pkg/console/model"
 )
 
 func PromQL(ctx consolectx.Context) gin.HandlerFunc {
@@ -34,7 +35,13 @@ func PromQL(ctx consolectx.Context) gin.HandlerFunc {
 		query := c.Request.URL.Query().Get("query")
 		values := url.Values{}
 		values.Add("query", query)
-		promUrl := ctx.Config().Console.Prometheus + "/api/v1/query?" + values.Encode()
+		promBaseUrl := ctx.Config().Console.Prometheus
+		if strutil.IsBlank(promBaseUrl) {
+			c.JSON(http.StatusOK, model.NewBizErrorResp(
+				bizerror.New(bizerror.ConfigError, "Please configure prometheus url to retrieve metrics")))
+			return
+		}
+		promUrl := promBaseUrl + "/api/v1/query?" + values.Encode()
 		proxyUrl, _ := url.Parse(promUrl)
 		director := func(req *http.Request) {
 			req.URL.Scheme = proxyUrl.Scheme

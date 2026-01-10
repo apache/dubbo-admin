@@ -23,9 +23,9 @@ import (
 )
 
 type CommonResp struct {
-	Code string `json:"code"`
-	Msg  string `json:"msg"`
-	Data any    `json:"data"`
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data"`
 }
 
 func (r *CommonResp) WithCode(code string) *CommonResp {
@@ -34,7 +34,7 @@ func (r *CommonResp) WithCode(code string) *CommonResp {
 }
 
 func (r *CommonResp) WithMsg(msg string) *CommonResp {
-	r.Msg = msg
+	r.Message = msg
 	return r
 }
 
@@ -45,26 +45,26 @@ func (r *CommonResp) WithData(data any) *CommonResp {
 
 func NewSuccessResp(data any) *CommonResp {
 	return &CommonResp{
-		Code: "Success",
-		Msg:  "success",
-		Data: data,
+		Code:    "Success",
+		Message: "success",
+		Data:    data,
 	}
 }
 
 // NewErrorResp TODO replace with NewBizErrorResp
 func NewErrorResp(msg string) *CommonResp {
 	return &CommonResp{
-		Code: string(bizerror.UnknownError),
-		Msg:  msg,
-		Data: nil,
+		Code:    string(bizerror.UnknownError),
+		Message: msg,
+		Data:    nil,
 	}
 }
 
 func NewBizErrorResp(err bizerror.Error) *CommonResp {
 	return &CommonResp{
-		Code: string(err.Code()),
-		Msg:  err.Message(),
-		Data: nil,
+		Code:    string(err.Code()),
+		Message: err.Message(),
+		Data:    nil,
 	}
 }
 

@@ -17,7 +17,13 @@
 
 package engine
 
-import "github.com/apache/dubbo-admin/pkg/config"
+import (
+	set "github.com/duke-git/lancet/v2/datastructure/set"
+	"github.com/duke-git/lancet/v2/strutil"
+
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	"github.com/apache/dubbo-admin/pkg/config"
+)
 
 type Type string
 
@@ -29,9 +35,17 @@ const (
 
 type Config struct {
 	config.BaseConfig
+	ID         string     `json:"id"`
 	Name       string     `json:"name"`
 	Type       Type       `json:"type"`
 	Properties Properties `json:"properties"`
+}
+
+func (c *Config) Validate() error {
+	if strutil.IsBlank(c.ID) {
+		return bizerror.New(bizerror.ConfigError, "engine id can not be empty")
+	}
+	return nil
 }
 
 type Properties struct {
@@ -44,7 +58,8 @@ type Properties struct {
 }
 
 func (p *Properties) GetOrDefaultMainContainerChooseStrategy() *MainContainerChooseStrategy {
-	if p.MainContainerChooseStrategy == nil {
+	if p.MainContainerChooseStrategy == nil ||
+		!mainContainerChooseStrategyTypes.Contain(p.MainContainerChooseStrategy.Type) {
 		return &MainContainerChooseStrategy{
 			Type:  ChooseByIndex,
 			Index: 0,
@@ -61,6 +76,8 @@ const (
 	ChooseByName       MainContainerChooseStrategyType = "ByName"
 	ChooseByAnnotation MainContainerChooseStrategyType = "ByAnnotation"
 )
+
+var mainContainerChooseStrategyTypes = set.New(ChooseByLast, ChooseByIndex, ChooseByName, ChooseByAnnotation)
 
 type MainContainerChooseStrategy struct {
 	Type          MainContainerChooseStrategyType `json:"type"`

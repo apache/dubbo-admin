@@ -62,7 +62,7 @@ func (r *RPCInstanceResource) ResourceKind() coremodel.ResourceKind {
 	return RPCInstanceKind
 }
 
-func (r *RPCInstanceResource) MeshName() string {
+func (r *RPCInstanceResource) ResourceMesh() string {
 	return r.Mesh
 }
 

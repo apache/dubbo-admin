@@ -12,7 +12,6 @@ message ConditionRoute {
   option (dubbo.mesh.resource).package = "mesh";
   option (dubbo.mesh.resource).is_experimental = false;
 
-  message v3 {
     string configVersion = 1;
     int32 priority = 2;
     bool enabled = 3;
@@ -21,22 +20,6 @@ message ConditionRoute {
     string key = 6;
     string scope = 7;
     repeated string conditions = 8;
-  }
-
-  message v3x1 {
-    string configVersion = 1;
-    string scope = 2; // must be chosen from `service` and `application`
-    string key = 3;   // specifies which service or application the rule body acts on
-    bool force = 4;
-    bool runtime = 5;
-    bool enabled = 6;
-    repeated ConditionRule conditions = 8;
-  }
-
-  oneof conditions {
-    v3 conditionsV3 = 1;
-    v3x1 conditionsV3x1 = 2;
-  }
 }
 
 message ConditionRule {

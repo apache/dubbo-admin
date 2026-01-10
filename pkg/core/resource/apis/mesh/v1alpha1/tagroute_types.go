@@ -62,7 +62,7 @@ func (r *TagRouteResource) ResourceKind() coremodel.ResourceKind {
 	return TagRouteKind
 }
 
-func (r *TagRouteResource) MeshName() string {
+func (r *TagRouteResource) ResourceMesh() string {
 	return r.Mesh
 }
 

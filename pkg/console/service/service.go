@@ -18,87 +18,123 @@
 package service
 
 import (
-	"sort"
+	"strconv"
+	"strings"
 
-	"github.com/duke-git/lancet/v2/maputil"
 	"github.com/duke-git/lancet/v2/slice"
 	"github.com/duke-git/lancet/v2/strutil"
 
+	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
+	discoveryutil "github.com/apache/dubbo-admin/pkg/common/util/discovery"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
-// GetServiceTabDistribution TODO implement
+// GetServiceTabDistribution get service distribution
 func GetServiceTabDistribution(ctx consolectx.Context, req *model.ServiceTabDistributionReq) (*model.SearchPaginationResult, error) {
-	return nil, nil
-}
-
-func SearchServices(ctx consolectx.Context, req *model.ServiceSearchReq) (*model.SearchPaginationResult, error) {
-	if req.Keywords != "" {
-		return BannerSearchServices(ctx, req)
+	indexes := map[string]string{
+		index.ByServiceConsumerServiceName: req.ServiceName,
 	}
-	var pageData *coremodel.PageData[*meshresource.ServiceResource]
-	var err error
-	if strutil.IsBlank(req.Keywords) {
-		pageData, err = manager.PageListByIndexes[*meshresource.ServiceResource](
-			ctx.ResourceManager(),
-			meshresource.ServiceKind,
-			map[string]string{
-				index.ByMeshIndex: req.Mesh,
+	// for now, only support accurate name match
+	if strutil.IsNotBlank(req.Keywords) {
+		indexes[index.ByServiceConsumerAppName] = req.Keywords
+	}
+	pageData, err := manager.PageListByIndexes[*meshresource.ServiceConsumerMetadataResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceConsumerMetadataKind,
+		indexes,
+		req.PageReq)
+	if err != nil {
+		logger.Errorf("get service consumer %s failed, cause: %v", req.ServiceName, err)
+		return nil, bizerror.New(bizerror.InternalError, "get service consumer failed, please try again")
+	}
+	if pageData.Data == nil || len(pageData.Data) == 0 {
+		return &model.SearchPaginationResult{
+			List: []*meshresource.ServiceConsumerMetadataResourceList{},
+			PageInfo: coremodel.Pagination{
+				Total:      0,
+				PageSize:   req.PageReq.PageSize,
+				PageOffset: req.PageReq.PageOffset,
 			},
-			req.PageReq,
-		)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		pageData, err = manager.PageSearchResourceByConditions[*meshresource.ServiceResource](
-			ctx.ResourceManager(),
-			meshresource.ServiceKind,
-			[]string{"serviceName=" + req.Keywords},
-			req.PageReq,
-		)
-		if err != nil {
-			return nil, err
-		}
+		}, nil
 	}
-
-	serviceMap := make(map[string]*model.ServiceSearchResp)
-	for _, serviceRes := range pageData.Data {
-		service := serviceRes.Spec
-		if _, exists := serviceMap[service.Name]; !exists {
-			serviceMap[service.Name] = toServiceSearchResp(serviceRes)
-		} else {
-			vgs := serviceMap[service.Name].VersionGroups
-			serviceMap[service.Name].VersionGroups = append(vgs, model.VersionGroup{
-				Version: service.Version,
-				Group:   service.Group,
-			})
-		}
+	appResKeys := slice.Map(pageData.Data, func(_ int, item *meshresource.ServiceConsumerMetadataResource) string {
+		return coremodel.BuildResourceKey(req.Mesh, item.Spec.ConsumerAppName)
+	})
+	appResList, err := manager.GetByKeys[*meshresource.ApplicationResource](
+		ctx.ResourceManager(), meshresource.ApplicationKind, appResKeys)
+	if err != nil {
+		logger.Errorf("get application list %v failed, cause: %s", appResKeys, err)
+		return nil, err
 	}
+	respList := slice.Map(appResList, func(_ int, item *meshresource.ApplicationResource) model.ApplicationSearchResp {
+		return model.ApplicationSearchResp{
+			AppName:          item.Spec.Name,
+			InstanceCount:    item.Spec.InstanceCount,
+			DeployClusters:   []string{ctx.Config().Engine.Name},
+			RegistryClusters: []string{discoveryutil.GetOrDefaultRegistryName(ctx.Config(), item.Mesh)},
+		}
+	})
 	return &model.SearchPaginationResult{
-		List:     maputil.Values(serviceMap),
+		List:     respList,
 		PageInfo: pageData.Pagination,
 	}, nil
 }
 
-func BannerSearchServices(ctx consolectx.Context, req *model.ServiceSearchReq) (*model.SearchPaginationResult, error) {
-	pageData, err := manager.PageSearchResourceByConditions[*meshresource.ServiceResource](
+// SearchServices search services pageably
+func SearchServices(ctx consolectx.Context, req *model.ServiceSearchReq) (*model.SearchPaginationResult, error) {
+	if strutil.IsNotBlank(req.Keywords) {
+		return SearchServicesByKeywords(ctx, req)
+	}
+	pageData, err := manager.PageListByIndexes[*meshresource.ServiceProviderMetadataResource](
 		ctx.ResourceManager(),
-		meshresource.ServiceKind,
-		[]string{"serviceName=" + req.Keywords},
+		meshresource.ServiceProviderMetadataKind,
+		map[string]string{
+			index.ByMeshIndex: req.Mesh,
+		},
+		req.PageReq,
+	)
+	if err != nil {
+		logger.Errorf("get service provider failed, cause: %v", err)
+		return nil, err
+	}
+	if pageData.Data == nil || len(pageData.Data) == 0 {
+		return nil, nil
+	}
+	serviceSearchResps := slice.Map(pageData.Data,
+		func(_ int, item *meshresource.ServiceProviderMetadataResource) *model.ServiceSearchResp {
+			return ToServiceSearchRespByProvider(item)
+		})
+	return &model.SearchPaginationResult{
+		List:     serviceSearchResps,
+		PageInfo: pageData.Pagination,
+	}, nil
+}
+
+// SearchServicesByKeywords search services by keywords, for now only support accurate search
+func SearchServicesByKeywords(ctx consolectx.Context, req *model.ServiceSearchReq) (*model.SearchPaginationResult, error) {
+	pageData, err := manager.PageListByIndexes[*meshresource.ServiceProviderMetadataResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceProviderMetadataKind,
+		map[string]string{
+			index.ByMeshIndex:                  req.Mesh,
+			index.ByServiceProviderServiceName: req.Keywords,
+		},
 		req.PageReq,
 	)
 	if err != nil {
 		return nil, err
 	}
-	searchRespList := slice.Map[*meshresource.ServiceResource, *model.ServiceSearchResp](pageData.Data,
-		func(_ int, item *meshresource.ServiceResource) *model.ServiceSearchResp {
-			return toServiceSearchResp(item)
+	searchRespList := slice.Map(pageData.Data,
+		func(_ int, item *meshresource.ServiceProviderMetadataResource) *model.ServiceSearchResp {
+			return ToServiceSearchRespByProvider(item)
 		})
 	return &model.SearchPaginationResult{
 		List:     searchRespList,
@@ -106,51 +142,383 @@ func BannerSearchServices(ctx consolectx.Context, req *model.ServiceSearchReq) (
 	}, nil
 }
 
-func toServiceSearchResp(res *meshresource.ServiceResource) *model.ServiceSearchResp {
-	service := res.Spec
+func ToServiceSearchRespByProvider(res *meshresource.ServiceProviderMetadataResource) *model.ServiceSearchResp {
 	return &model.ServiceSearchResp{
-		ServiceName: service.Name,
-		VersionGroups: []model.VersionGroup{
-			{
-				Version: service.Version,
-				Group:   service.Group,
-			},
-		},
+		ServiceName:     res.Spec.ServiceName,
+		Group:           res.Spec.Group,
+		Version:         res.Spec.Version,
+		ProviderAppName: res.Spec.ProviderAppName,
 	}
-
 }
-func ToSearchPaginationResult[T any](services []T, data sort.Interface, req coremodel.PageReq) *model.SearchPaginationResult {
-	res := model.NewSearchPaginationResult()
 
-	list := make([]T, 0)
-
-	sort.Sort(data)
-	lenFilteredItems := len(services)
-	pageSize := lenFilteredItems
-	offset := 0
-	paginationEnabled := req.PageSize != 0
-	if paginationEnabled {
-		pageSize = req.PageSize
-		offset = req.PageOffset
+func ToServiceSearchRespByConsumer(res *meshresource.ServiceConsumerMetadataResource) *model.ServiceSearchResp {
+	return &model.ServiceSearchResp{
+		ServiceName:     res.Spec.ServiceName,
+		Group:           res.Spec.Group,
+		Version:         res.Spec.Version,
+		ConsumerAppName: res.Spec.ConsumerAppName,
 	}
+}
 
-	for i := offset; i < offset+pageSize && i < lenFilteredItems; i++ {
-		list = append(list, services[i])
+func GetServiceTimeoutConfig(ctx consolectx.Context, req model.BaseServiceReq) (int32, error) {
+	serviceConfiguratorName := req.ServiceKey() + constants.ConfiguratorRuleDotSuffix
+	res, err := GetConfigurator(ctx, serviceConfiguratorName, req.Mesh)
+	if err != nil {
+		logger.Errorf("get service configurator %s failed, cause: %v", serviceConfiguratorName, err)
+		return 0, err
 	}
+	if res == nil || res.Spec == nil {
+		logger.Infof("service configurator %s not found, return default timeout", serviceConfiguratorName)
+		return constants.ServiceDefaultTimeout, nil
+	}
+	timeout := constants.ServiceDefaultTimeout
+	slice.ForEachWithBreak(res.Spec.Configs, func(_ int, conf *meshproto.OverrideConfig) bool {
+		t, found := getServiceTimeout(conf)
+		if found {
+			timeout = t
+			return true
+		}
+		return found
+	})
+	return timeout, nil
+}
 
-	nextOffset := 0
-	if paginationEnabled {
-		if offset+pageSize < lenFilteredItems { // set new offset only if we did not reach the end of the collection
-			nextOffset = offset + req.PageSize
+func UpInsertServiceConfigTimeoutConfig(ctx consolectx.Context, req model.BaseServiceReq, timeout int32) error {
+	serviceConfiguratorName := req.ServiceKey() + constants.ConfiguratorRuleDotSuffix
+	res, err := GetConfigurator(ctx, serviceConfiguratorName, req.Mesh)
+	if err != nil {
+		logger.Errorf("get service configurator %s failed, cause: %v", serviceConfiguratorName, err)
+		return err
+	}
+	// if configurator doesn't exist
+	if res == nil || res.Spec == nil {
+		// if timeout config is default value, skip updating
+		if timeout == constants.ServiceDefaultTimeout {
+			logger.Infof("service configurator %s not found, timeout config is default value, "+
+				"skip updating configurator", serviceConfiguratorName)
+			return nil
+		}
+		// otherwise create a new configurator with timeout config
+		res = meshresource.NewDynamicConfigResourceWithAttributes(serviceConfiguratorName, req.Mesh)
+		res.Spec = &meshproto.DynamicConfig{
+			Key:           req.ServiceName,
+			Scope:         constants.ScopeService,
+			ConfigVersion: constants.ConfiguratorVersionV3,
+			Enabled:       true,
+			Configs: []*meshproto.OverrideConfig{
+				{
+					Side:          constants.SideProvider,
+					Parameters:    map[string]string{`timeout`: strconv.Itoa(int(timeout))},
+					XGenerateByCp: true,
+				},
+			},
+		}
+		err = CreateConfigurator(ctx, res)
+		if err != nil {
+			logger.Errorf("create service configurator %s failed, cause: %v", serviceConfiguratorName, err)
+			return err
+		}
+		return nil
+	}
+	// if configurator exists, match config one by one
+	for _, conf := range res.Spec.Configs {
+		oldTimeout, found := getServiceTimeout(conf)
+		if !found {
+			continue
+		}
+		// if timeout config is same as input, skip updating
+		if oldTimeout == timeout {
+			logger.Infof("service configurator %s already exists, timeout config is same as input, "+
+				"skip updating configurator", serviceConfiguratorName)
+			return nil
+		}
+		// if timeout config is different from input, update
+		conf.Parameters[`timeout`] = strconv.Itoa(int(timeout))
+		err := UpdateConfigurator(ctx, res)
+		if err != nil {
+			logger.Errorf("update service configurator %s failed, cause: %v", serviceConfiguratorName, err)
+			return err
+		}
+		return nil
+	}
+	// if timeout config is not found, create a new one
+	res.Spec.Configs = append(res.Spec.Configs, &meshproto.OverrideConfig{
+		Side:          constants.SideProvider,
+		Parameters:    map[string]string{`timeout`: strconv.Itoa(int(timeout))},
+		XGenerateByCp: true,
+	})
+	err = UpdateConfigurator(ctx, res)
+	if err != nil {
+		logger.Errorf("update service configurator %s failed, cause: %v", serviceConfiguratorName, err)
+		return err
+	}
+	return nil
+}
+
+func getServiceTimeout(conf *meshproto.OverrideConfig) (int32, bool) {
+	if conf.Side == constants.SideProvider && conf.Parameters != nil && conf.Parameters[`timeout`] != "" {
+		timeout, err := strconv.Atoi(conf.Parameters[`timeout`])
+		if err == nil {
+			return int32(timeout), true
 		}
 	}
+	return 0, false
+}
 
-	res.List = list
-	res.PageInfo = coremodel.Pagination{
-		Total:      lenFilteredItems,
-		PageSize:   req.PageSize,
-		PageOffset: nextOffset,
+func GetServiceRetryConfig(ctx consolectx.Context, req model.BaseServiceReq) (int32, error) {
+	serviceConfiguratorName := req.ServiceKey() + constants.ConfiguratorRuleDotSuffix
+	res, err := GetConfigurator(ctx, serviceConfiguratorName, req.Mesh)
+	if err != nil {
+		logger.Errorf("get service configurator %s failed, cause: %v", serviceConfiguratorName, err)
+		return 0, err
 	}
+	if res == nil || res.Spec == nil {
+		logger.Infof("service configurator %s not found, return default retries", serviceConfiguratorName)
+		return constants.ServiceDefaultRetries, nil
+	}
+	retries := constants.ServiceDefaultRetries
+	slice.ForEachWithBreak(res.Spec.Configs, func(_ int, conf *meshproto.OverrideConfig) bool {
+		t, found := getServiceRetryTimes(conf)
+		if found {
+			retries = t
+			return true
+		}
+		return found
+	})
+	return retries, nil
+}
 
-	return res
+func UpInsertServiceRetryConfig(ctx consolectx.Context, req model.BaseServiceReq, retries int32) error {
+	serviceConfiguratorName := req.ServiceKey() + constants.ConfiguratorRuleDotSuffix
+	res, err := GetConfigurator(ctx, serviceConfiguratorName, req.Mesh)
+	if err != nil {
+		logger.Errorf("get service configurator %s failed, cause: %v", serviceConfiguratorName, err)
+		return err
+	}
+	// if configurator doesn't exist
+	if res == nil || res.Spec == nil {
+		// if retries config is default value, skip updating
+		if retries == constants.ServiceDefaultRetries {
+			logger.Infof("service configurator %s not found, retries config is default value, "+
+				"skip updating configurator", serviceConfiguratorName)
+			return nil
+		}
+		// otherwise create a new configurator with retries config
+		res = meshresource.NewDynamicConfigResourceWithAttributes(serviceConfiguratorName, req.Mesh)
+		res.Spec = &meshproto.DynamicConfig{
+			Key:           req.ServiceName,
+			Scope:         constants.ScopeService,
+			ConfigVersion: constants.ConfiguratorVersionV3,
+			Enabled:       true,
+			Configs: []*meshproto.OverrideConfig{
+				{
+					Side:          constants.SideConsumer,
+					Parameters:    map[string]string{`retries`: strconv.Itoa(int(retries))},
+					XGenerateByCp: true,
+				},
+			},
+		}
+		if err := CreateConfigurator(ctx, res); err != nil {
+			logger.Errorf("create service configurator %s failed, cause: %v", serviceConfiguratorName, err)
+			return err
+		}
+		return nil
+	}
+	// if configurator exists, match config one by one
+	for _, conf := range res.Spec.Configs {
+		retryTimes, found := getServiceRetryTimes(conf)
+		if !found {
+			continue
+		}
+		// if retries config is same as input, skip updating
+		if retryTimes == retries {
+			logger.Infof("service configurator %s already exists, retries config is same as input, "+
+				"skip updating configurator", serviceConfiguratorName)
+			return nil
+		}
+		// if retries config is different from input, update
+		conf.Parameters[`retries`] = strconv.Itoa(int(retries))
+		if err := UpdateConfigurator(ctx, res); err != nil {
+			logger.Errorf("update service configurator %s failed, cause: %v", serviceConfiguratorName, err)
+			return err
+		}
+	}
+	// no retry config found and retries is default value, skip updating
+	if retries == constants.ServiceDefaultRetries {
+		logger.Infof("service configurator %s already exists, retries config is default value, "+
+			"skip updating configurator", serviceConfiguratorName)
+		return nil
+	}
+	// otherwise create a new one
+	res.Spec.Configs = append(res.Spec.Configs, &meshproto.OverrideConfig{
+		Side:          constants.SideConsumer,
+		Parameters:    map[string]string{`retries`: strconv.Itoa(int(retries))},
+		XGenerateByCp: true,
+	})
+	if err = UpdateConfigurator(ctx, res); err != nil {
+		logger.Errorf("update service configurator %s failed, cause: %v", serviceConfiguratorName, err)
+		return err
+	}
+	return nil
+}
+
+func getServiceRetryTimes(conf *meshproto.OverrideConfig) (int32, bool) {
+	if conf.Side == constants.SideConsumer && conf.Parameters != nil && conf.Parameters[`retries`] != "" {
+		retries, err := strconv.Atoi(conf.Parameters[`retries`])
+		if err == nil {
+			return int32(retries), true
+		}
+	}
+	return 0, false
+}
+
+func GetServiceRegionPriorityConfig(ctx consolectx.Context, req model.BaseServiceReq) (bool, error) {
+	serviceConditionRuleName := req.ServiceKey() + constants.ConditionRuleDotSuffix
+	res, err := GetConditionRule(ctx, serviceConditionRuleName, req.Mesh)
+	if err != nil {
+		logger.Errorf("get service condition rule %s failed, cause: %v", serviceConditionRuleName, err)
+		return true, err
+	}
+	if res == nil {
+		return false, nil
+	}
+	openSameRegionPrior := false
+	slice.ForEachWithBreak(res.Spec.Conditions, func(_ int, condition string) bool {
+		openSameRegionPrior = isServiceSameRegion(condition)
+		return openSameRegionPrior
+	})
+	return openSameRegionPrior, nil
+}
+
+func UpInsertServiceRegionPriorityConfig(ctx consolectx.Context, req model.BaseServiceReq, enabled bool) error {
+	serviceConditionRuleName := req.ServiceKey() + constants.ConditionRuleSuffix
+	res, err := GetConditionRule(ctx, serviceConditionRuleName, req.Mesh)
+	if err != nil {
+		logger.Errorf("get service condition rule %s failed, cause: %v", serviceConditionRuleName, err)
+		return err
+	}
+	// if condition rule doesn't exist
+	if res == nil || res.Spec == nil {
+		// if same region priority is needed to disable, skip updating
+		if !enabled {
+			logger.Infof("service condition rule %s not found, and same region priority is needed to disable, "+
+				"skip updating condition rule", serviceConditionRuleName)
+			return nil
+		}
+		// otherwise create a new condition rule
+		res := meshresource.NewConditionRouteResourceWithAttributes(serviceConditionRuleName, req.Mesh)
+		res.Spec = &meshproto.ConditionRoute{
+			ConfigVersion: "v3.0",
+			Priority:      0,
+			Enabled:       true,
+			Force:         false,
+			Runtime:       true,
+			Key:           req.ServiceName,
+			Scope:         constants.ScopeService,
+			Conditions:    []string{"=>region=$region"},
+		}
+		if err := CreateConditionRule(ctx, res); err != nil {
+			logger.Errorf("create service condition rule %s failed, cause: %v", serviceConditionRuleName, err)
+			return err
+		}
+		return nil
+	}
+	// if condition rule exists, match condition one by one
+	for i, condition := range res.Spec.Conditions {
+		isSameRegion := isServiceSameRegion(condition)
+		if !isSameRegion {
+			continue
+		}
+		// if same region priority is needed to enable, and condition is already enabled, skip updating
+		if enabled {
+			logger.Infof("same region prior is already opened, skip updating service condition rule %s", serviceConditionRuleName)
+			return nil
+		}
+		// otherwise we need to remove the condition and update condition rule
+		res.Spec.Conditions = slice.Concat(res.Spec.Conditions[:i], res.Spec.Conditions[i+1:])
+		if err := UpdateConditionRule(ctx, res); err != nil {
+			logger.Errorf("update service condition rule %s failed, cause: %v", serviceConditionRuleName, err)
+			return err
+		}
+		return nil
+	}
+	// no same region priority found and region priority is needed to disable, skip updating
+	if !enabled {
+		logger.Infof("enabled is false and same region prior config is not exists, "+
+			"skip updating service condition rule %s", serviceConditionRuleName)
+		return nil
+	}
+	// otherwise create a new condition
+	res.Spec.Conditions = append(res.Spec.Conditions, "=>region=$region")
+	if err := UpdateConditionRule(ctx, res); err != nil {
+		logger.Errorf("update service condition rule %s failed, cause: %v", serviceConditionRuleName, err)
+		return err
+	}
+	return nil
+}
+
+func isServiceSameRegion(condition string) bool {
+	c := strings.TrimSpace(condition)
+	return strings.Contains(c, "=>region=$region")
+}
+
+func GetServiceArgumentRouteConfig(ctx consolectx.Context, req model.BaseServiceReq) (*model.ServiceArgumentRoute, error) {
+	serviceConditionRuleName := req.ServiceKey() + constants.ConditionRuleDotSuffix
+	rawRes, err := GetConditionRule(ctx, serviceConditionRuleName, req.Mesh)
+	if err != nil {
+		logger.Errorf("get service condition rule %s failed, cause: %v", serviceConditionRuleName, err)
+		return nil, err
+	}
+	if rawRes == nil || rawRes.Spec == nil {
+		return nil, nil
+	}
+	argumentRoutes := slice.Map(rawRes.Spec.Conditions, func(index int, condition string) model.ServiceArgument {
+		return model.ParseConditionExpression(condition)
+	})
+	return &model.ServiceArgumentRoute{
+		Routes: argumentRoutes,
+	}, nil
+}
+
+func UpInsertServiceArgumentRouteConfig(ctx consolectx.Context, req model.BaseServiceReq, route model.ServiceArgumentRoute) error {
+	serviceConditionRuleName := req.ServiceKey() + constants.ConditionRuleDotSuffix
+	conditionRouteRes, err := GetConditionRule(ctx, serviceConditionRuleName, req.Mesh)
+	if err != nil {
+		logger.Errorf("get service condition rule %s failed, cause: %v", serviceConditionRuleName, err)
+		return err
+	}
+	if conditionRouteRes == nil {
+		conditionRouteRes = meshresource.NewConditionRouteResourceWithAttributes(serviceConditionRuleName, req.Mesh)
+		conditionRouteRes.Spec.Conditions = make([]string, 0)
+	}
+	conditions := slice.Filter(conditionRouteRes.Spec.Conditions, func(index int, condition string) bool {
+		return !isArgumentRoute(condition)
+	})
+	conditions = slice.Concat(conditions,
+		slice.Map(route.Routes, func(index int, item model.ServiceArgument) string {
+			return item.ToExpression()
+		}))
+	conditionRouteRes.Spec = &meshproto.ConditionRoute{
+		ConfigVersion: "v3.0",
+		Priority:      0,
+		Enabled:       true,
+		Force:         false,
+		Runtime:       true,
+		Key:           req.ServiceName,
+		Scope:         constants.ScopeService,
+		Conditions:    conditions,
+	}
+	if err = UpdateConditionRule(ctx, conditionRouteRes); err != nil {
+		logger.Errorf("create service condition rule %s failed, cause: %v", serviceConditionRuleName, err)
+		return err
+	}
+	return nil
+}
+
+// isArgumentRoute judge whether the condition is argument route
+func isArgumentRoute(condition string) bool {
+	if strings.Contains(condition, "method") {
+		return true
+	}
+	return false
 }

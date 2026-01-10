@@ -50,7 +50,17 @@ type AdminConfig struct {
 
 var _ = &AdminConfig{}
 
-func (c *AdminConfig) Sanitize() {
+var DefaultAdminConfig = func() AdminConfig {
+	return AdminConfig{
+		Mode:        mode.Zone,
+		Store:       store.DefaultStoreConfig(),
+		Engine:      engine.DefaultResourceEngineConfig(),
+		Diagnostics: diagnostics.DefaultDiagnosticsConfig(),
+		Console:     console.DefaultConsoleConfig(),
+	}
+}
+
+func (c AdminConfig) Sanitize() {
 	c.Engine.Sanitize()
 	for _, d := range c.Discovery {
 		d.Sanitize()
@@ -60,7 +70,16 @@ func (c *AdminConfig) Sanitize() {
 	c.Diagnostics.Sanitize()
 }
 
-func (c *AdminConfig) PostProcess() error {
+func (c AdminConfig) PreProcess() error {
+	return multierr.Combine(
+		c.Engine.PreProcess(),
+		c.Store.PreProcess(),
+		c.Console.PreProcess(),
+		c.Diagnostics.PreProcess(),
+	)
+}
+
+func (c AdminConfig) PostProcess() error {
 	discoveryPostProcess := func() error {
 		for _, d := range c.Discovery {
 			if err := d.PostProcess(); err != nil {
@@ -78,17 +97,7 @@ func (c *AdminConfig) PostProcess() error {
 	)
 }
 
-var DefaultAdminConfig = func() AdminConfig {
-	return AdminConfig{
-		Mode:        mode.Zone,
-		Store:       store.DefaultStoreConfig(),
-		Engine:      engine.DefaultResourceEngineConfig(),
-		Diagnostics: diagnostics.DefaultDiagnosticsConfig(),
-		Console:     console.DefaultConsoleConfig(),
-	}
-}
-
-func (c *AdminConfig) Validate() error {
+func (c AdminConfig) Validate() error {
 	if err := mode.ValidateMode(c.Mode); err != nil {
 		return errors.Wrap(err, "Mode Config validation failed")
 	}
@@ -127,4 +136,20 @@ func (c *AdminConfig) Validate() error {
 		return bizerror.Wrap(err, bizerror.ConfigError, "Engine Config validation failed")
 	}
 	return nil
+}
+
+// FindDiscovery finds the DiscoveryConfig by id, returns nil if not found
+func (c AdminConfig) FindDiscovery(id string) *discovery.Config {
+	for _, d := range c.Discovery {
+		if d.ID == id {
+			return d
+		}
+	}
+	return nil
+}
+
+func (c AdminConfig) Meshes() []string {
+	return slice.Map(c.Discovery, func(index int, item *discovery.Config) string {
+		return item.ID
+	})
 }

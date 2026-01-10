@@ -77,4 +77,5 @@ func MergeRuntimeInstanceIntoInstance(
 	instanceRes.Spec.Node = rtInstanceRes.Spec.Node
 	instanceRes.Spec.Probes = rtInstanceRes.Spec.Probes
 	instanceRes.Spec.Conditions = rtInstanceRes.Spec.Conditions
+	instanceRes.Spec.SourceEngine = rtInstanceRes.Spec.SourceEngine
 }

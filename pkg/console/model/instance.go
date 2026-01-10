@@ -18,9 +18,9 @@
 package model
 
 import (
-	gxset "github.com/dubbogo/gost/container/set"
 	"github.com/duke-git/lancet/v2/strutil"
 
+	"github.com/apache/dubbo-admin/pkg/config/app"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
@@ -54,42 +54,41 @@ func NewSearchPaginationResult() *SearchPaginationResult {
 }
 
 type SearchInstanceResp struct {
-	Ip                  string            `json:"ip"`
-	Name                string            `json:"name"`
-	WorkloadName        string            `json:"workloadName"`
-	AppName             string            `json:"appName"`
-	DeployState         string            `json:"deployState"`
-	DeployCluster       string            `json:"deployCluster"`
-	RegisterState       string            `json:"registerState"`
-	RegisterClustersSet *gxset.HashSet    `json:"-"`
-	RegisterClusters    []string          `json:"registerClusters"`
-	CreateTime          string            `json:"createTime"`
-	RegisterTime        string            `json:"registerTime"` // TODO: not converted
-	Labels              map[string]string `json:"labels"`
+	Ip               string            `json:"ip"`
+	Name             string            `json:"name"`
+	WorkloadName     string            `json:"workloadName"`
+	AppName          string            `json:"appName"`
+	DeployState      string            `json:"deployState"`
+	DeployCluster    string            `json:"deployCluster"`
+	RegisterState    string            `json:"registerState"`
+	RegisterClusters []string          `json:"registerClusters"`
+	CreateTime       string            `json:"createTime"`
+	RegisterTime     string            `json:"registerTime"`
+	Labels           map[string]string `json:"labels"`
 }
 
 func NewSearchInstanceResp() *SearchInstanceResp {
 	return &SearchInstanceResp{
-		RegisterClustersSet: gxset.NewSet(),
-		RegisterClusters:    make([]string, 0),
+		RegisterClusters: make([]string, 0),
 	}
 }
 
-func (r *SearchInstanceResp) FromInstanceResource(instanceResource *meshresource.InstanceResource) *SearchInstanceResp {
+func (r *SearchInstanceResp) FromInstanceResource(instanceResource *meshresource.InstanceResource, cfg app.AdminConfig) *SearchInstanceResp {
 	instance := instanceResource.Spec
 	r.Ip = instance.Ip
 	r.Name = instance.Name
 	r.CreateTime = instance.CreateTime
 	r.RegisterTime = instance.RegisterTime
-	cluster := instanceResource.Mesh
-	r.RegisterClustersSet.Add(cluster)
-	for _, c := range r.RegisterClustersSet.Values() {
-		r.RegisterClusters = append(r.RegisterClusters, c.(string))
+	if d := cfg.FindDiscovery(instanceResource.Mesh); d != nil {
+		r.RegisterClusters = []string{d.Name}
+	}
+	if cfg.Engine != nil && cfg.Engine.ID == instance.SourceEngine {
+		r.DeployCluster = cfg.Engine.Name
 	}
 	if r.RegisterTime != "" {
-		r.RegisterState = "Registed"
+		r.RegisterState = "Registered"
 	} else {
-		r.RegisterState = "UnRegisted"
+		r.RegisterState = "UnRegistered"
 	}
 	r.Labels = instance.Tags
 	r.DeployState = instance.DeployState
@@ -142,7 +141,7 @@ type Probe struct {
 	Open bool   `json:"open"`
 }
 
-func FromInstanceResource(res *meshresource.InstanceResource) *InstanceDetailResp {
+func FromInstanceResource(res *meshresource.InstanceResource, cfg app.AdminConfig) *InstanceDetailResp {
 	r := &InstanceDetailResp{}
 	instance := res.Spec
 	r.RpcPort = instance.RpcPort
@@ -153,8 +152,17 @@ func FromInstanceResource(res *meshresource.InstanceResource) *InstanceDetailRes
 	r.CreateTime = instance.CreateTime
 	r.ReadyTime = instance.ReadyTime
 	r.RegisterTime = instance.RegisterTime
-	r.RegisterClusters = []string{res.Mesh}
-	r.DeployState = instance.DeployState
+	if d := cfg.FindDiscovery(res.Mesh); d != nil {
+		r.RegisterClusters = []string{d.Name}
+	}
+	if cfg.Engine.ID == res.Spec.SourceEngine {
+		r.DeployCluster = cfg.Engine.Name
+	}
+	if strutil.IsNotBlank(instance.DeployState) {
+		r.DeployState = instance.DeployState
+	} else {
+		r.DeployState = "Unknown"
+	}
 	if strutil.IsBlank(r.RegisterTime) {
 		r.RegisterState = "UnRegistered"
 	} else {

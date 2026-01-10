@@ -62,7 +62,7 @@ func (r *ZKConfigResource) ResourceKind() coremodel.ResourceKind {
 	return ZKConfigKind
 }
 
-func (r *ZKConfigResource) MeshName() string {
+func (r *ZKConfigResource) ResourceMesh() string {
 	return r.Mesh
 }
 

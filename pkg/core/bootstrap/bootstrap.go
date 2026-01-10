@@ -110,6 +110,7 @@ func (sb *SmartBootstrapper) gatherComponents() ([]runtime.Component, error) {
 		{"ResourceEngine", runtime.ComponentRegistry().ResourceEngine},
 		{"ResourceManager", runtime.ComponentRegistry().ResourceManager},
 		{"Console", runtime.ComponentRegistry().Console},
+		{"RuleGovernor", runtime.ComponentRegistry().RuleGovernor},
 	}
 
 	for _, comp := range coreComps {

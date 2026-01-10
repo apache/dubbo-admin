@@ -104,8 +104,8 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 		service := router.Group("/service")
 		service.GET("/distribution", handler.GetServiceTabDistribution(ctx))
 		service.GET("/search", handler.SearchServices(ctx))
-		service.GET("/detail", handler.GetServiceDetail(ctx))
-		service.GET("/interfaces", handler.GetServiceInterfaces(ctx))
+		//service.GET("/detail", handler.GetServiceDetail(ctx))
+		//service.GET("/interfaces", handler.GetServiceInterfaces(ctx))
 	}
 
 	{

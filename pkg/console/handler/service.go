@@ -19,17 +19,13 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 
-	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/common/constants"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
-	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
-	corestore "github.com/apache/dubbo-admin/pkg/core/store"
+	"github.com/apache/dubbo-admin/pkg/console/util"
 )
 
 const (
@@ -47,7 +43,7 @@ func SearchServices(ctx consolectx.Context) gin.HandlerFunc {
 
 		resp, err := service.SearchServices(ctx, req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
+			util.HandleServiceError(c, err)
 			return
 		}
 
@@ -65,78 +61,32 @@ func GetServiceTabDistribution(ctx consolectx.Context) gin.HandlerFunc {
 
 		resp, err := service.GetServiceTabDistribution(ctx, req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
+			util.HandleServiceError(c, err)
 			return
 		}
 
 		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
-	}
-}
-
-func ListServices(ctx consolectx.Context) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// req := &model.SearchInstanceReq{}
-
-		c.JSON(http.StatusOK, model.NewSuccessResp(""))
-	}
-}
-
-func GetServiceDetail(ctx consolectx.Context) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// req := &model.SearchInstanceReq{}
-
-		c.JSON(http.StatusOK, model.NewSuccessResp(""))
-	}
-}
-
-func GetServiceInterfaces(ctx consolectx.Context) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		// req := &model.SearchInstanceReq{}
-
-		c.JSON(http.StatusOK, model.NewSuccessResp(""))
 	}
 }
 
 func ServiceConfigTimeoutGET(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		param := model.BaseServiceReq{}
+		req := model.BaseServiceReq{}
 		resp := struct {
 			Timeout int32 `json:"timeout"`
 		}{DefaultTimeout}
-		if err := param.Query(c); err != nil {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+		if err := req.Query(c); err != nil {
+			util.HandleArgumentError(c, err)
 			return
 		}
-		serviceConfiguratorName := param.ServiceKey() + constants.PunctuationPoint + constants.ConfiguratorRuleDotSuffix
-		res, err := service.GetConfigurator(ctx, serviceConfiguratorName, param.Mesh)
+		timeout, err := service.GetServiceTimeoutConfig(ctx, req)
 		if err != nil {
-			if !corestore.IsResourceNotFound(err) {
-				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
-				return
-			} else if false {
-				// TODO(YarBor) : to check service exist or not
-			}
-			c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+			util.HandleServiceError(c, err)
 			return
 		}
-
-		res.Spec.RangeConfig(func(conf *meshproto.OverrideConfig) (isStop bool) {
-			resp.Timeout, isStop = getServiceTimeout(conf)
-			return isStop
-		})
-
+		resp.Timeout = timeout
 		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
 	}
-}
-
-func getServiceTimeout(conf *meshproto.OverrideConfig) (int32, bool) {
-	if conf.Side == constants.SideProvider && conf.Parameters != nil && conf.Parameters[`timeout`] != "" {
-		timeout, err := strconv.Atoi(conf.Parameters[`timeout`])
-		if err == nil {
-			return int32(timeout), true
-		}
-	}
-	return DefaultTimeout, false
 }
 
 func ServiceConfigTimeoutPUT(ctx consolectx.Context) gin.HandlerFunc {
@@ -149,53 +99,10 @@ func ServiceConfigTimeoutPUT(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-
-		isExist := true
-		serviceConfiguratorName := param.ServiceKey() + constants.PunctuationPoint + constants.ConfiguratorRuleDotSuffix
-		res, err := service.GetConfigurator(ctx, serviceConfiguratorName, param.Mesh)
+		err := service.UpInsertServiceConfigTimeoutConfig(ctx, param.BaseServiceReq, param.Timeout)
 		if err != nil {
-			if !corestore.IsResourceNotFound(err) {
-				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
-				return
-			} else if false {
-				// TODO(YarBor) : to check service exist or not
-			}
-			res = meshresource.NewDynamicConfigResourceWithAttributes(serviceConfiguratorName, param.Mesh)
-			res.Spec = &meshproto.DynamicConfig{
-				Key:           param.ServiceName,
-				Scope:         constants.ScopeService,
-				ConfigVersion: constants.ConfiguratorVersionV3,
-				Enabled:       true,
-				Configs:       make([]*meshproto.OverrideConfig, 0),
-			}
-			isExist = false
-		} else {
-			res.Spec.RangeConfig(func(conf *meshproto.OverrideConfig) (isStop bool) {
-				_, ok := getServiceTimeout(conf)
-				if ok {
-					conf.Parameters[`timeout`] = strconv.Itoa(int(param.Timeout))
-				}
-				return ok
-			})
-		}
-
-		if !isExist {
-			res.Spec.Configs = append(res.Spec.Configs, &meshproto.OverrideConfig{
-				Side:          constants.SideProvider,
-				Parameters:    map[string]string{`timeout`: strconv.Itoa(int(param.Timeout))},
-				XGenerateByCp: true,
-			})
-			err = service.CreateConfigurator(ctx, param.ServiceKey(), res)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
-				return
-			}
-		} else {
-			err = service.UpdateConfigurator(ctx, param.ServiceKey(), res)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
-				return
-			}
+			util.HandleServiceError(c, err)
+			return
 		}
 		c.JSON(http.StatusOK, model.NewSuccessResp(nil))
 	}
@@ -208,39 +115,17 @@ func ServiceConfigRetryGET(ctx consolectx.Context) gin.HandlerFunc {
 			RetryTimes int32 `json:"retryTimes"`
 		}{DefaultRetries}
 		if err := param.Query(c); err != nil {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+			util.HandleArgumentError(c, err)
 			return
 		}
-		serviceConfiguratorName := param.ServiceKey() + constants.PunctuationPoint + constants.ConfiguratorRuleDotSuffix
-		res, err := service.GetConfigurator(ctx, serviceConfiguratorName, param.Mesh)
+		retries, err := service.GetServiceRetryConfig(ctx, param)
 		if err != nil {
-			if !corestore.IsResourceNotFound(err) {
-				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
-				return
-			} else if false {
-				// TODO(YarBor) : to check service exist or not
-			}
-			c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+			util.HandleServiceError(c, err)
 			return
 		}
-
-		res.Spec.RangeConfig(func(conf *meshproto.OverrideConfig) (isStop bool) {
-			resp.RetryTimes, isStop = getServiceRetryTimes(conf)
-			return isStop
-		})
-
+		resp.RetryTimes = retries
 		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
 	}
-}
-
-func getServiceRetryTimes(conf *meshproto.OverrideConfig) (int32, bool) {
-	if conf.Side == constants.SideConsumer && conf.Parameters != nil && conf.Parameters[`retries`] != "" {
-		retries, err := strconv.Atoi(conf.Parameters[`retries`])
-		if err == nil {
-			return int32(retries), true
-		}
-	}
-	return DefaultRetries, false
 }
 
 func ServiceConfigRetryPUT(ctx consolectx.Context) gin.HandlerFunc {
@@ -250,54 +135,12 @@ func ServiceConfigRetryPUT(ctx consolectx.Context) gin.HandlerFunc {
 			RetryTimes int32 `json:"retryTimes"`
 		}{}
 		if err := c.Bind(&param); err != nil {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+			util.HandleArgumentError(c, err)
 			return
 		}
-
-		isExist := true
-		serviceConfiguratorName := param.ServiceKey() + constants.PunctuationPoint + constants.ConfiguratorRuleDotSuffix
-		res, err := service.GetConfigurator(ctx, serviceConfiguratorName, param.Mesh)
-		if err != nil {
-			if !corestore.IsResourceNotFound(err) {
-				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
-				return
-			} else if false {
-				// TODO(YarBor) : to check service exist or not
-			}
-			res = meshresource.NewDynamicConfigResourceWithAttributes(serviceConfiguratorName, param.Mesh)
-			res.Spec = &meshproto.DynamicConfig{
-				Key:           param.ServiceName,
-				Scope:         constants.ScopeService,
-				ConfigVersion: constants.ConfiguratorVersionV3,
-				Enabled:       true,
-				Configs:       make([]*meshproto.OverrideConfig, 0),
-			}
-			isExist = false
-		}
-
-		res.Spec.RangeConfigsToRemove(func(conf *meshproto.OverrideConfig) (isRemove bool) {
-			_, ok := getServiceRetryTimes(conf)
-			return ok
-		})
-
-		res.Spec.Configs = append(res.Spec.Configs, &meshproto.OverrideConfig{
-			Side:          constants.SideConsumer,
-			Parameters:    map[string]string{`retries`: strconv.Itoa(int(param.RetryTimes))},
-			XGenerateByCp: true,
-		})
-
-		if !isExist {
-			err = service.CreateConfigurator(ctx, param.ServiceKey(), res)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
-				return
-			}
-		} else {
-			err = service.UpdateConfigurator(ctx, param.ServiceKey(), res)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
-				return
-			}
+		if err := service.UpInsertServiceRetryConfig(ctx, param.BaseServiceReq, param.RetryTimes); err != nil {
+			util.HandleServiceError(c, err)
+			return
 		}
 		c.JSON(http.StatusOK, model.NewSuccessResp(nil))
 	}
@@ -305,34 +148,21 @@ func ServiceConfigRetryPUT(ctx consolectx.Context) gin.HandlerFunc {
 
 func ServiceConfigRegionPriorityGET(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		param := model.BaseServiceReq{}
+		req := model.BaseServiceReq{}
 		resp := struct {
-			Enabled bool   `json:"enabled"`
-			Key     string `json:"key"`
-			Ratio   int    `json:"ratio"`
-		}{false, "", 0}
-		if err := param.Query(c); err != nil {
+			Enabled bool `json:"enabled"`
+		}{false}
+		if err := req.Query(c); err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-		serviceAffinityRouteName := param.ServiceKey() + constants.PunctuationPoint + constants.AffinityRuleDotSuffix
-		res, err := service.GetAffinityRule(ctx, serviceAffinityRouteName, param.Mesh)
+		openSameRegionPrior, err := service.GetServiceRegionPriorityConfig(ctx, req)
 		if err != nil {
-			if !corestore.IsResourceNotFound(err) {
-				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
-				return
-			} else if false {
-				// TODO(YarBor) : to check service exist or not
-			}
-			c.JSON(http.StatusOK, model.NewSuccessResp(resp))
-			return
-		} else {
-			resp.Enabled = res.Spec.GetEnabled()
-			resp.Key = res.Spec.GetAffinity().GetKey()
-			resp.Ratio = int(res.Spec.GetAffinity().GetRatio())
-			c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+			util.HandleServiceError(c, err)
 			return
 		}
+		resp.Enabled = openSameRegionPrior
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
 	}
 }
 
@@ -340,109 +170,35 @@ func ServiceConfigRegionPriorityPUT(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		param := struct {
 			model.BaseServiceReq
-			Enabled bool   `json:"enabled"`
-			Key     string `json:"key"`
-			Ratio   int    `json:"ratio"`
+			Enabled bool `json:"enabled"`
 		}{}
 		if err := c.Bind(&param); err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-
-		isExist := true
-		serviceAffinityRouteName := param.ServiceKey() + constants.PunctuationPoint + constants.AffinityRuleDotSuffix
-		res, err := service.GetAffinityRule(ctx, serviceAffinityRouteName, param.Mesh)
-		if err != nil {
-			if !corestore.IsResourceNotFound(err) {
-				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
-				return
-			} else if false {
-				// TODO(YarBor) : to check service exist or not
-			} else {
-				res = meshresource.NewAffinityRouteResourceWithAttributes(serviceAffinityRouteName, param.Mesh)
-				res.Spec = generateDefaultAffinityRule(
-					"service",
-					param.ServiceName,
-					param.Key,
-					false,
-					true,
-					param.Ratio,
-				)
-				isExist = false
-			}
-		} else {
-			res.Spec.Enabled = param.Enabled
-			res.Spec.Affinity.Key = param.Key
-			res.Spec.Affinity.Ratio = int32(param.Ratio)
-		}
-
-		if !isExist {
-			err = service.CreateAffinityRule(ctx, res)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
-				return
-			}
-		} else {
-			err = service.UpdateAffinityRule(ctx, res)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
-				return
-			}
+		if err := service.UpInsertServiceRegionPriorityConfig(ctx, param.BaseServiceReq, param.Enabled); err != nil {
+			util.HandleServiceError(c, err)
+			return
 		}
 		c.JSON(http.StatusOK, model.NewSuccessResp(nil))
-		return
-	}
-}
-
-func generateDefaultAffinityRule(scope, key, focusKey string, runtime, enabled bool, ratio int) *meshproto.AffinityRoute {
-	return &meshproto.AffinityRoute{
-		ConfigVersion: "v3.1",
-		Scope:         scope,
-		Key:           key,
-		Runtime:       runtime,
-		Enabled:       enabled,
-		Affinity: &meshproto.AffinityAware{
-			Key:   focusKey,
-			Ratio: int32(ratio),
-		},
 	}
 }
 
 func ServiceConfigArgumentRouteGET(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		param := struct {
+		req := struct {
 			model.BaseServiceReq
 		}{}
-		resp := model.ServiceArgumentRoute{Routes: make([]model.ServiceArgument, 0)}
-		if err := param.Query(c); err != nil {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+		if err := req.Query(c); err != nil {
+			util.HandleArgumentError(c, err)
 			return
 		}
-		serviceConditionRuleName := param.ServiceKey() + constants.PunctuationPoint + constants.ConditionRuleDotSuffix
-		rawRes, err := service.GetConditionRule(ctx, serviceConditionRuleName, param.Mesh)
+		resp, err := service.GetServiceArgumentRouteConfig(ctx, req.BaseServiceReq)
 		if err != nil {
-			if !corestore.IsResourceNotFound(err) {
-				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
-				return
-			} else if false {
-				// TODO(YarBor) : to check service exist or not
-			}
-			c.JSON(http.StatusOK, model.NewSuccessResp(resp))
-			return
-
-		} else if rawRes.Spec.ToConditionRouteV3() != nil {
-			c.JSON(http.StatusServiceUnavailable, model.NewErrorResp("this config only serve condition-route.configVersion == v3.1, got v3.0 config "))
-			return
-
-		} else {
-			res := rawRes.Spec.ToConditionRouteV3x1()
-			res.RangeConditionsToRemove(func(r *meshproto.ConditionRule) (isRemove bool) {
-				_, ok := r.IsMatchMethod()
-				return !ok
-			})
-			c.JSON(http.StatusOK, model.NewSuccessResp(model.ConditionV3x1ToServiceArgumentRoute(res.Conditions)))
+			util.HandleServiceError(c, err)
 			return
 		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
 	}
 }
 
@@ -453,58 +209,14 @@ func ServiceConfigArgumentRoutePUT(ctx consolectx.Context) gin.HandlerFunc {
 			model.ServiceArgumentRoute
 		}{}
 		if err := c.Bind(&param); err != nil {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+			util.HandleArgumentError(c, err)
 			return
 		}
 
-		isExist := true
-		serviceConditionRuleName := param.ServiceKey() + constants.PunctuationPoint + constants.ConditionRuleDotSuffix
-		rawRes, err := service.GetConditionRule(ctx, serviceConditionRuleName, param.Mesh)
+		err := service.UpInsertServiceArgumentRouteConfig(ctx, param.BaseServiceReq, param.ServiceArgumentRoute)
 		if err != nil {
-			if !corestore.IsResourceNotFound(err) {
-				c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
-				return
-			} else if false {
-				// TODO(YarBor) : to check service exist or not
-			}
-			rawRes = meshresource.NewConditionRouteResourceWithAttributes(serviceConditionRuleName, param.Mesh)
-			rawRes.Spec = generateDefaultConditionV3x1(
-				true,
-				false,
-				true,
-				param.ServiceName,
-				constants.ScopeService).ToConditionRoute()
-			isExist = false
-		}
-
-		res := rawRes.Spec.ToConditionRouteV3x1()
-		if res == nil {
-			c.JSON(http.StatusServiceUnavailable, model.NewErrorResp("this config only serve condition-route.configVersion == v3.1, got v3.0 config "))
+			util.HandleServiceError(c, err)
 			return
-		}
-
-		if res.Conditions == nil {
-			res.Conditions = make([]*meshproto.ConditionRule, 0)
-		}
-		res.RangeConditionsToRemove(func(r *meshproto.ConditionRule) (isRemove bool) {
-			_, ok := r.IsMatchMethod()
-			return ok
-		})
-		res.Conditions = append(res.Conditions, param.ToConditionV3x1Condition()...)
-		rawRes.Spec = res.ToConditionRoute()
-
-		if isExist {
-			err = service.UpdateConditionRule(ctx, serviceConditionRuleName, rawRes)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
-				return
-			}
-		} else {
-			err = service.CreateConditionRule(ctx, serviceConditionRuleName, rawRes)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
-				return
-			}
 		}
 		c.JSON(http.StatusOK, model.NewSuccessResp(nil))
 	}

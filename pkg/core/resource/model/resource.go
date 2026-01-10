@@ -21,25 +21,8 @@ import (
 	k8smeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
-)
 
-const (
-	DefaultMesh = "default"
-	// NoMesh defines a marker that resource is not bound to a Mesh.
-	// Resources not bound to a mesh (ScopeGlobal) should have an empty string in Mesh field.
-	NoMesh = ""
-)
-
-const separator = "/"
-
-const (
-	ExtensionsImageKey                 = "image"
-	ExtensionsPodPhaseKey              = "podPhase"
-	ExtensionsPodStatusKey             = "podStatus"
-	ExtensionsContainerStatusReasonKey = "containerStatus"
-	ExtensionApplicationNameKey        = "applicationName" // For universial mode
-	ExtensionsWorkLoadKey              = "workLoad"
-	ExtensionsNodeNameKey              = "nodeName"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 )
 
 type ResourceSpec interface{}
@@ -57,8 +40,8 @@ type Resource interface {
 	ResourceKind() ResourceKind
 	// ResourceKey returns the unique resource key
 	ResourceKey() string
-	// MeshName returns the mesh which the resource belongs to
-	MeshName() string
+	// ResourceMesh returns the mesh which the resource belongs to
+	ResourceMesh() string
 	// ResourceMeta returns the resource metadata
 	ResourceMeta() metav1.ObjectMeta
 	// ResourceSpec returns the resource spec
@@ -76,5 +59,5 @@ type ResourceList interface {
 
 // BuildResourceKey build a unique identifier for a resource, usually is `mesh/name`
 func BuildResourceKey(mesh string, name string) string {
-	return mesh + separator + name
+	return mesh + constants.PathSeparator + name
 }

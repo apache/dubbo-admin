@@ -40,6 +40,10 @@ type mockResource struct {
 	objectRef runtime.Object
 }
 
+func (mr *mockResource) ResourceMesh() string {
+	return mr.mesh
+}
+
 func (mr *mockResource) GetObjectKind() schema.ObjectKind {
 	return schema.EmptyObjectKind
 }
@@ -56,10 +60,6 @@ func (mr *mockResource) ResourceKey() string {
 	return mr.key
 }
 
-func (mr *mockResource) MeshName() string {
-	return mr.mesh
-}
-
 func (mr *mockResource) ResourceMeta() metav1.ObjectMeta {
 	return mr.meta
 }
@@ -67,6 +67,7 @@ func (mr *mockResource) ResourceMeta() metav1.ObjectMeta {
 func (mr *mockResource) ResourceSpec() model.ResourceSpec {
 	return mr.spec
 }
+
 func (mr *mockResource) String() string {
 	b, err := json.Marshal(mr)
 	if err != nil {
@@ -361,7 +362,7 @@ func TestResourceStore_ListByIndexes(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.ResourceMesh()}, nil
 		},
 	}
 	err = store.AddIndexers(indexers)
@@ -416,7 +417,7 @@ func TestResourceStore_PageListByIndexes(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.ResourceMesh()}, nil
 		},
 	}
 	err = store.AddIndexers(indexers)
@@ -518,7 +519,7 @@ func TestResourceStore_MultipleIndexes(t *testing.T) {
 	indexers := map[string]cache.IndexFunc{
 		"by-mesh": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)
-			return []string{resource.MeshName()}, nil
+			return []string{resource.ResourceMesh()}, nil
 		},
 		"by-version": func(obj interface{}) ([]string, error) {
 			resource := obj.(model.Resource)

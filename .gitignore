@@ -45,5 +45,4 @@ bin/
 build/
 vendor/
 
-# dubbo cp cache
-app/dubbo-cp/cache
+

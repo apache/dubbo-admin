@@ -19,6 +19,7 @@ package util
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -37,5 +38,10 @@ func HandleServiceError(ctx *gin.Context, err error) {
 
 func HandleArgumentError(ctx *gin.Context, err error) {
 	e := bizerror.New(bizerror.InvalidArgument, err.Error())
+	ctx.JSON(http.StatusOK, model.NewBizErrorResp(e))
+}
+
+func HandleNotFoundError(ctx *gin.Context, resName string) {
+	e := bizerror.New(bizerror.NotFoundError, fmt.Sprintf("%s not found", resName))
 	ctx.JSON(http.StatusOK, model.NewBizErrorResp(e))
 }

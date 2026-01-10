@@ -163,8 +163,13 @@ func (n *NacosServiceEventSubscriber) processConsumerMetadataUpsert(serviceRes *
 		n.emitter.Send(events.NewResourceChangedEvent(cache.Added, nil, item))
 	})
 	// Find consumers need to update and update them
-	updateConsumers := maputil.Intersect(newConsumers, oldConsumers)
-	slice.ForEach(maputil.Values(updateConsumers), func(_ int, item *meshresource.ServiceConsumerMetadataResource) {
+	updateConsumers := make([]*meshresource.ServiceConsumerMetadataResource, 0)
+	for k, consumer := range newConsumers {
+		if _, exists := oldConsumers[k]; exists {
+			updateConsumers = append(updateConsumers, consumer)
+		}
+	}
+	slice.ForEach(updateConsumers, func(_ int, item *meshresource.ServiceConsumerMetadataResource) {
 		err := st.Update(item)
 		if err != nil {
 			logger.Errorf("update service consumer metadata %s failed, cause: %v", item.ResourceKey(), err)
@@ -242,8 +247,13 @@ func (n *NacosServiceEventSubscriber) processRPCInstanceUpsert(serviceRes *meshr
 		n.emitter.Send(events.NewResourceChangedEvent(cache.Added, nil, item))
 	})
 	// find instances need to update and update them
-	updateInstances := maputil.Intersect(newInstances, oldInstances)
-	slice.ForEach(maputil.Values(updateInstances), func(_ int, item *meshresource.RPCInstanceResource) {
+	updateInstances := make([]*meshresource.RPCInstanceResource, 0)
+	for key, instance := range newInstances {
+		if _, exists := oldInstances[key]; exists {
+			updateInstances = append(updateInstances, instance)
+		}
+	}
+	slice.ForEach(updateInstances, func(_ int, item *meshresource.RPCInstanceResource) {
 		err := st.Update(item)
 		if err != nil {
 			logger.Errorf("update rpc instance %s failed, cause: %v", item.ResourceKey(), err)
@@ -252,7 +262,7 @@ func (n *NacosServiceEventSubscriber) processRPCInstanceUpsert(serviceRes *meshr
 		n.emitter.Send(events.NewResourceChangedEvent(cache.Updated, item, item))
 	})
 	logger.Debugf("process rpc instance upsert event, oldInstances: %s, newInstances: %s, offlineInstances: %s, addInstances: %s, updateInstances: %s",
-		maputil.Keys(oldInstances), maputil.Keys(newInstances), maputil.Keys(offlineInstances), maputil.Keys(addInstances), maputil.Keys(updateInstances))
+		maputil.Keys(oldInstances), maputil.Keys(newInstances), maputil.Keys(offlineInstances), maputil.Keys(addInstances), updateInstances)
 	return nil
 }
 

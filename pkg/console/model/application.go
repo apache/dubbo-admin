@@ -20,7 +20,10 @@ package model
 import (
 	"strconv"
 
+	"github.com/duke-git/lancet/v2/strutil"
+
 	"github.com/apache/dubbo-admin/pkg/common/constants"
+	"github.com/apache/dubbo-admin/pkg/config/app"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
@@ -85,7 +88,7 @@ func NewApplicationDetail() *ApplicationDetail {
 		Workloads:        NewSet(),
 	}
 }
-func (a *ApplicationDetail) MergeInstance(instanceRes *meshresource.InstanceResource) {
+func (a *ApplicationDetail) MergeInstance(instanceRes *meshresource.InstanceResource, cfg app.AdminConfig) {
 	instance := instanceRes.Spec
 	if instance.WorkloadType == constants.StatefulSet {
 		a.AppTypes.Add(constants.Stateful)
@@ -95,10 +98,19 @@ func (a *ApplicationDetail) MergeInstance(instanceRes *meshresource.InstanceReso
 	a.DubboPorts.Add(strconv.FormatInt(instance.RpcPort, 10))
 	a.DubboVersions.Add(instance.ReleaseVersion)
 	a.Images.Add(instance.Image)
-	a.RegisterClusters.Add(instanceRes.Mesh)
+	if d := cfg.FindDiscovery(instanceRes.Mesh); d != nil {
+		a.RegisterClusters.Add(instanceRes.Mesh)
+	}
+	if cfg.Engine != nil && cfg.Engine.ID == instance.SourceEngine {
+		a.DeployClusters.Add(cfg.Engine.Name)
+	}
 	a.RegisterModes.Add(constants.Application)
 	a.RPCProtocols.Add(instance.Protocol)
-	a.SerialProtocols.Add(instance.Serialization)
+	if strutil.IsNotBlank(instance.Serialization) {
+		a.SerialProtocols.Add(instance.Serialization)
+	} else if strutil.IsNotBlank(instance.PreferSerialization) {
+		a.SerialProtocols.Add(instance.PreferSerialization)
+	}
 	a.Workloads.Add(instance.WorkloadName)
 }
 
@@ -144,9 +156,10 @@ type ApplicationServiceResp struct {
 type ApplicationServiceFormReq struct {
 	coremodel.PageReq
 
-	AppName string `form:"appName"`
-	Side    string `form:"side"`
-	Mesh    string `form:"mesh"`
+	AppName     string `form:"appName"`
+	ServiceName string `form:"serviceName"`
+	Side        string `form:"side"`
+	Mesh        string `form:"mesh"`
 }
 
 func NewApplicationServiceFormReq() *ApplicationServiceFormReq {
@@ -156,11 +169,6 @@ func NewApplicationServiceFormReq() *ApplicationServiceFormReq {
 			PageSize:   15,
 		},
 	}
-}
-
-type ApplicationServiceFormResp struct {
-	ServiceName   string         `json:"serviceName"`
-	VersionGroups []VersionGroup `json:"versionGroups"`
 }
 
 type ApplicationSearchReq struct {

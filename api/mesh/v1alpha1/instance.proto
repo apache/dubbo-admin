@@ -63,9 +63,11 @@ message Instance {
 
   string node = 58;
 
-  repeated Probe probes = 59;
+  string sourceEngine = 59;
 
-  repeated Condition conditions = 60;
+  repeated Probe probes = 99;
 
-  reserved 61 to 100;
+  repeated Condition conditions = 100;
+
+  reserved 60 to 98;
 }

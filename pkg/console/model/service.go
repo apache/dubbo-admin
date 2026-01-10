@@ -19,11 +19,9 @@ package model
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
@@ -46,8 +44,11 @@ func NewServiceSearchReq() *ServiceSearchReq {
 }
 
 type ServiceSearchResp struct {
-	ServiceName   string         `json:"serviceName"`
-	VersionGroups []VersionGroup `json:"versionGroups"`
+	ServiceName     string `json:"serviceName"`
+	Version         string `json:"version"`
+	Group           string `json:"group"`
+	ProviderAppName string `json:"providerAppName,omitempty"`
+	ConsumerAppName string `json:"consumerAppName,omitempty"`
 }
 
 type ByServiceName []*ServiceSearchResp
@@ -60,55 +61,14 @@ func (a ByServiceName) Less(i, j int) bool {
 
 func (a ByServiceName) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 
-type ServiceSearch struct {
-	ServiceName   string
-	VersionGroups Set
-}
-
-func (s *ServiceSearch) FromServiceInfo(info *v1alpha1.ServiceInfo) {
-	s.VersionGroups.Add(info.Version + " " + info.Group)
-}
-
-func NewServiceSearch(serviceName string) *ServiceSearch {
-	return &ServiceSearch{
-		ServiceName:   serviceName,
-		VersionGroups: NewSet(),
-	}
-}
-
-func NewServiceSearchResp() *ServiceSearchResp {
-	return &ServiceSearchResp{
-		ServiceName:   "",
-		VersionGroups: nil,
-	}
-}
-
-func NewServiceDistributionResp() *ServiceTabDistributionResp {
-	return &ServiceTabDistributionResp{
-		AppName:      "",
-		InstanceName: "",
-		Endpoint:     "",
-		TimeOut:      "",
-		Retries:      "",
-	}
-}
-
-func (s *ServiceSearchResp) FromServiceSearch(search *ServiceSearch) {
-	s.ServiceName = search.ServiceName
-	versionGroupList := make([]VersionGroup, 0)
-	for _, gv := range search.VersionGroups.Values() {
-		groupAndVersion := strings.Split(gv, " ")
-		versionGroupList = append(versionGroupList, VersionGroup{Version: groupAndVersion[0], Group: groupAndVersion[1]})
-	}
-	s.VersionGroups = versionGroupList
-}
-
 type ServiceTabDistributionReq struct {
-	ServiceName string `json:"serviceName"  form:"serviceName" binding:"required"`
-	Version     string `json:"version"  form:"version"`
-	Group       string `json:"group"  form:"group"`
-	Side        string `json:"side" form:"side"  binding:"required"`
-	Mesh        string `json:"mesh" form:"mesh" binding:"required"`
+	ServiceName     string `json:"serviceName"  form:"serviceName" binding:"required"`
+	Version         string `json:"version"  form:"version"`
+	Group           string `json:"group"  form:"group"`
+	Side            string `json:"side" form:"side"  binding:"required"`
+	Mesh            string `json:"mesh" form:"mesh" binding:"required"`
+	ProviderAppName string `json:"providerAppName"  form:"providerAppName"`
+	Keywords        string `json:"keywords"  form:"keywords"`
 	coremodel.PageReq
 }
 
@@ -139,21 +99,6 @@ type ServiceTabDistribution struct {
 	Retries      string
 }
 
-func NewServiceDistribution() *ServiceTabDistribution {
-	return &ServiceTabDistribution{
-		AppName:      "",
-		InstanceName: "",
-		Endpoint:     "",
-		TimeOut:      "",
-		Retries:      "",
-	}
-}
-
-type VersionGroup struct {
-	Version string `json:"version"`
-	Group   string `json:"group"`
-}
-
 type BaseServiceReq struct {
 	ServiceName string `json:"serviceName"`
 	Group       string `json:"group"`
@@ -172,5 +117,5 @@ func (s *BaseServiceReq) Query(c *gin.Context) error {
 }
 
 func (s *BaseServiceReq) ServiceKey() string {
-	return s.ServiceName + constants.ColonSeparator + s.Group + constants.ColonSeparator + s.Version
+	return s.ServiceName + constants.ColonSeparator + s.Version + constants.ColonSeparator + s.Group
 }

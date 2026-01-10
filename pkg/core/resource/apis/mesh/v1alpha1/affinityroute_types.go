@@ -62,7 +62,7 @@ func (r *AffinityRouteResource) ResourceKind() coremodel.ResourceKind {
 	return AffinityRouteKind
 }
 
-func (r *AffinityRouteResource) MeshName() string {
+func (r *AffinityRouteResource) ResourceMesh() string {
 	return r.Mesh
 }
 
