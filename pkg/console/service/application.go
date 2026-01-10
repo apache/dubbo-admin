@@ -28,6 +28,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
 	discoveryutil "github.com/apache/dubbo-admin/pkg/common/util/discovery"
+	"github.com/apache/dubbo-admin/pkg/config/app"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
@@ -52,7 +53,7 @@ func GetApplicationDetail(ctx consolectx.Context, req *model.ApplicationDetailRe
 
 	applicationDetail := model.NewApplicationDetail()
 	for _, instanceRes := range instanceResources {
-		applicationDetail.MergeInstance(instanceRes)
+		applicationDetail.MergeInstance(instanceRes, ctx.Config())
 	}
 
 	respItem := &model.ApplicationDetailResp{
@@ -79,7 +80,7 @@ func GetAppInstanceInfo(ctx consolectx.Context, req *model.ApplicationTabInstanc
 
 	list := slice.Map[*meshresource.InstanceResource, *model.AppInstanceInfoResp](pageData.Data,
 		func(_ int, item *meshresource.InstanceResource) *model.AppInstanceInfoResp {
-			return buildAppInstanceInfoResp(item)
+			return buildAppInstanceInfoResp(item, ctx.Config())
 		})
 	searchResult := &model.SearchPaginationResult{
 		List:     list,
@@ -88,17 +89,21 @@ func GetAppInstanceInfo(ctx consolectx.Context, req *model.ApplicationTabInstanc
 	return searchResult, nil
 }
 
-func buildAppInstanceInfoResp(instanceRes *meshresource.InstanceResource) *model.AppInstanceInfoResp {
+func buildAppInstanceInfoResp(instanceRes *meshresource.InstanceResource, cfg app.AdminConfig) *model.AppInstanceInfoResp {
 	instance := instanceRes.Spec
 	resp := &model.AppInstanceInfoResp{}
 	resp.Name = instance.Name
 	resp.AppName = instance.AppName
 	resp.CreateTime = instance.CreateTime
 	resp.DeployState = instance.DeployState
-	resp.DeployClusters = ""
+	if cfg.Engine.ID == instance.SourceEngine {
+		resp.DeployClusters = cfg.Engine.Name
+	}
 	resp.IP = instance.Ip
 	resp.Labels = instance.Tags
-	resp.RegisterCluster = instanceRes.Mesh
+	if d := cfg.FindDiscovery(instanceRes.Mesh); d != nil {
+		resp.RegisterCluster = d.Name
+	}
 	resp.RegisterState = "Registered"
 	resp.RegisterTime = instance.RegisterTime
 	resp.WorkloadName = instance.WorkloadName

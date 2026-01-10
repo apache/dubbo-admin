@@ -79,7 +79,7 @@ func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
 		return bizerror.Wrap(err, bizerror.NacosError,
 			fmt.Sprintf("failed to publish config, res: %s", r.String()))
 	}
-	g.GetConfigAndUpdateStore(r)
+	//g.GetConfigAndUpdateStore(r)
 	return nil
 }
 
@@ -141,20 +141,21 @@ func (g *RuleGovernor) GetConfigAndUpdateStore(r coremodel.Resource) {
 		logger.Errorf("failed to get resource in %s, res: %s, cause: %s", r.String(), r.ResourceMesh(), err)
 		return
 	}
-	oldRes, ok := obj.(coremodel.Resource)
-	if !ok {
-		logger.Errorf("type assertion failed in nacos2 discovery %s, expected Resource, got %s",
-			g.mesh(), reflect.TypeOf(obj).Name())
-	}
 	// if exists in store, update it
 	if exists {
 		if err := st.Update(res); err != nil {
 			logger.Errorf("failed to update resource in %s, res: %s, cause: %s", r.String(), r.ResourceMesh(), err)
 			return
 		}
+		oldRes, ok := obj.(coremodel.Resource)
+		if !ok {
+			logger.Errorf("type assertion failed in nacos2 discovery %s, expected Resource, got %s",
+				g.mesh(), reflect.TypeOf(obj).Name())
+		}
 		g.emitter.Send(events.NewResourceChangedEvent(cache.Updated, oldRes, res))
 		return
 	}
+
 	// otherwise add it
 	err = st.Add(res)
 	if err != nil {

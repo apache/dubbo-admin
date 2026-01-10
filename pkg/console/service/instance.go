@@ -28,6 +28,7 @@ import (
 	"github.com/duke-git/lancet/v2/strutil"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
@@ -63,7 +64,7 @@ func SearchInstanceByIp(ctx consolectx.Context, req *model.SearchReq) (*model.Se
 	}
 	return &model.SearchPaginationResult{
 		List: slice.Map(pageData.Data, func(_ int, item *meshresource.InstanceResource) *model.AppInstanceInfoResp {
-			return buildAppInstanceInfoResp(item)
+			return buildAppInstanceInfoResp(item, ctx.Config())
 		}),
 		PageInfo: pageData.Pagination,
 	}, nil
@@ -94,7 +95,7 @@ func SearchInstanceByName(ctx consolectx.Context, req *model.SearchReq) (*model.
 	}
 	return &model.SearchPaginationResult{
 		List: slice.Map(pageData.Data, func(_ int, item *meshresource.InstanceResource) *model.AppInstanceInfoResp {
-			return buildAppInstanceInfoResp(item)
+			return buildAppInstanceInfoResp(item, ctx.Config())
 		}),
 		PageInfo: pageData.Pagination,
 	}, nil
@@ -123,7 +124,7 @@ func SearchInstances(ctx consolectx.Context, req *model.SearchInstanceReq) (*mod
 	resp := model.NewSearchPaginationResult()
 	var list []*model.SearchInstanceResp
 	for _, item := range pageData.Data {
-		list = append(list, model.NewSearchInstanceResp().FromInstanceResource(item))
+		list = append(list, model.NewSearchInstanceResp().FromInstanceResource(item, ctx.Config()))
 	}
 	resp.List = list
 	resp.PageInfo = pageData.Pagination
@@ -138,6 +139,9 @@ func GetInstanceDetail(ctx consolectx.Context, req *model.InstanceDetailReq) (*m
 	)
 	if err != nil {
 		return nil, err
+	}
+	if res == nil {
+		return nil, bizerror.New(bizerror.NotFoundError, fmt.Sprintf("instance %s not found", req.InstanceName))
 	}
 
 	resp := model.FromInstanceResource(res, ctx.Config())

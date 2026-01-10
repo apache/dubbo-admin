@@ -144,7 +144,7 @@ func (s *RuntimeInstanceEventSubscriber) processDelete(rtInstanceRes *meshresour
 		logger.Warnf("cannot find instance resource by runtime instance %s, skipped deleting instance", rtInstanceRes.ResourceKey())
 		return nil
 	}
-	if err = s.instanceStore.Delete(instanceResource.ResourceKey()); err != nil {
+	if err = s.instanceStore.Delete(instanceResource); err != nil {
 		logger.Errorf("delete instance resource failed, instance: %s, err: %s", instanceResource.ResourceKey(), err.Error())
 		return err
 	}
