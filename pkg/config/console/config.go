@@ -19,9 +19,12 @@ package console
 
 import (
 	"errors"
+	"net/url"
 
+	"github.com/duke-git/lancet/v2/strutil"
 	"go.uber.org/multierr"
 
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/config"
 	"github.com/apache/dubbo-admin/pkg/config/console/auth"
 	. "github.com/apache/dubbo-admin/pkg/config/console/observability"
@@ -29,15 +32,23 @@ import (
 
 type Config struct {
 	config.BaseConfig
-	Port             int                    `json:"port" envconfig:"DUBBO_ADMIN_PORT"`
-	MetricDashboards *MetricDashboardConfig `json:"metricDashboards"`
-	TraceDashboards  *TraceDashboardConfig  `json:"traceDashboards"`
-	Prometheus       string                 `json:"prometheus"`
-	Grafana          string                 `json:"grafana"`
-	Auth             *auth.Config           `json:"auth"`
+	Port              int                    `json:"port" envconfig:"DUBBO_ADMIN_PORT"`
+	MetricDashboards  *MetricDashboardConfig `json:"metricDashboards"`
+	TraceDashboards   *TraceDashboardConfig  `json:"traceDashboards"`
+	Prometheus        string                 `json:"prometheus"`
+	Grafana           string                 `json:"grafana"`
+	Auth              *auth.Config           `json:"auth"`
+	PrometheusBaseURL *url.URL
 }
 
 func (s *Config) PostProcess() error {
+	if strutil.IsNotBlank(s.Prometheus) {
+		prometheusBaseURL, err := url.Parse(s.Prometheus)
+		if err != nil {
+			return bizerror.Wrap(err, bizerror.ConfigError, "invalid prometheus url")
+		}
+		s.PrometheusBaseURL = prometheusBaseURL
+	}
 	return multierr.Combine(
 		s.MetricDashboards.PostProcess(),
 		s.TraceDashboards.PostProcess(),

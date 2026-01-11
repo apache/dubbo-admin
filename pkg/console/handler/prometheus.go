@@ -18,11 +18,9 @@
 package handler
 
 import (
+	"io"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 
-	"github.com/duke-git/lancet/v2/strutil"
 	"github.com/gin-gonic/gin"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
@@ -32,24 +30,31 @@ import (
 
 func PromQL(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		query := c.Request.URL.Query().Get("query")
-		values := url.Values{}
-		values.Add("query", query)
-		promBaseUrl := ctx.Config().Console.Prometheus
-		if strutil.IsBlank(promBaseUrl) {
+		promBaseUrl := ctx.Config().Console.PrometheusBaseURL
+		if promBaseUrl == nil {
 			c.JSON(http.StatusOK, model.NewBizErrorResp(
 				bizerror.New(bizerror.ConfigError, "Please configure prometheus url to retrieve metrics")))
 			return
 		}
-		promUrl := promBaseUrl + "/api/v1/query?" + values.Encode()
-		proxyUrl, _ := url.Parse(promUrl)
-		director := func(req *http.Request) {
-			req.URL.Scheme = proxyUrl.Scheme
-			req.URL.Host = proxyUrl.Host
-			req.Host = proxyUrl.Host
-			req.URL.Path = proxyUrl.Path
+
+		u := *promBaseUrl
+		u.RawQuery = c.Request.URL.RawQuery
+		u.Path = "/api/v1/query"
+		s := u.String()
+		resp, err := http.Get(s)
+		if err != nil {
+			c.JSON(http.StatusOK, model.NewBizErrorResp(
+				bizerror.New(bizerror.NetWorkError, err.Error())))
+			return
 		}
-		proxy := &httputil.ReverseProxy{Director: director}
-		proxy.ServeHTTP(c.Writer, c.Request)
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			c.JSON(http.StatusOK, model.NewBizErrorResp(
+				bizerror.New(bizerror.NetWorkError, err.Error())))
+			return
+		}
+		c.Data(http.StatusOK, resp.Header.Get("Content-Type"), body)
 	}
 }
