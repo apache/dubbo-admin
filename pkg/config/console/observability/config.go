@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"go.uber.org/multierr"
 
 	"github.com/apache/dubbo-admin/pkg/config"
 )
@@ -31,54 +30,22 @@ import (
 type MetricDashboardConfig struct {
 	config.BaseConfig
 	// application level metrics panel
-	Application DashboardConfig `json:"application"`
+	Application string `json:"application"`
 	// instance level metrics panel
-	Instance DashboardConfig `json:"instance"`
+	Instance string `json:"instance"`
 	// service level metrics panel
-	Service DashboardConfig `json:"service"`
-}
-
-func (c *MetricDashboardConfig) PostProcess() error {
-	return multierr.Combine(
-		c.Application.PostProcess(),
-		c.Instance.PostProcess(),
-		c.Service.PostProcess(),
-	)
-}
-
-func (c *MetricDashboardConfig) Validate() error {
-	return multierr.Combine(
-		c.Application.Validate(),
-		c.Instance.Validate(),
-		c.Service.Validate(),
-	)
+	Service string `json:"service"`
 }
 
 // TraceDashboardConfig are grafana dashboards for traces display
 type TraceDashboardConfig struct {
 	config.BaseConfig
 	// application level traces panel
-	Application DashboardConfig `json:"application"`
+	Application string `json:"application"`
 	// instance level traces panel
-	Instance DashboardConfig `json:"instance"`
+	Instance string `json:"instance"`
 	// service level traces panel
-	Service DashboardConfig `json:"service"`
-}
-
-func (c *TraceDashboardConfig) PostProcess() error {
-	return multierr.Combine(
-		c.Application.PostProcess(),
-		c.Instance.PostProcess(),
-		c.Service.PostProcess(),
-	)
-}
-
-func (c *TraceDashboardConfig) Validate() error {
-	return multierr.Combine(
-		c.Application.Validate(),
-		c.Instance.Validate(),
-		c.Service.Validate(),
-	)
+	Service string `json:"service"`
 }
 
 // DashboardConfig grafana dashboard config TODO add dynamic variables

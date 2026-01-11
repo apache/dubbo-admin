@@ -45,6 +45,7 @@ const (
 	JsonError       ErrorCode = "JsonError"
 	YamlError       ErrorCode = "YamlError"
 	NotFoundError   ErrorCode = "NotFoundError"
+	NetWorkError    ErrorCode = "NetWorkError"
 )
 
 type bizError struct {

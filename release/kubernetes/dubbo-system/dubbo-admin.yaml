@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dubbo-admin
+  labels:
+    app: dubbo-admin
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: dubbo-admin
+  template:
+    metadata:
+      name: dubbo-admin
+      labels:
+        app: dubbo-admin
+    spec:
+      containers:
+        - name: dubbo-admin
+          image:
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8888
+              protocol: TCP
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dubbo-admin
+  namespace: dubbo-system
+spec:
+  type: NodePort
+  selector:
+    app: dubbo-admin
+  ports:
+    - protocol: TCP
+      port: 8888
+      targetPort: 8888
