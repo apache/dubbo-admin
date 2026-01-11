@@ -114,7 +114,6 @@ func PutTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 
 func PostTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var name string
 		ruleName := c.Param("ruleName")
 		mesh := c.Query("mesh")
 		if !strings.HasSuffix(ruleName, constants.TagRuleDotSuffix) {
@@ -122,7 +121,7 @@ func PostTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewBizErrorResp(err))
 			return
 		}
-		res := meshresource.NewTagRouteResourceWithAttributes(name, mesh)
+		res := meshresource.NewTagRouteResourceWithAttributes(ruleName, mesh)
 		err := c.Bind(res.Spec)
 		if err != nil {
 			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
