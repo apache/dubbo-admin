@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dubbo-admin
+  namespace: dubbo-system
+data:
+  # Set the properties you want to override, properties not set here will be using the default values
+  # check application.properties inside dubbo-admin project for the keys supported
+  application.properties: |
+    admin.registry.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+    admin.config-center=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+    admin.metadata-report.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dubbo-admin
+  namespace: dubbo-system
+  labels:
+    app: dubbo-admin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dubbo-admin
+  template:
+    metadata:
+      labels:
+        app: dubbo-admin
+    spec:
+      containers:
+        - image: registry.cn-hangzhou.aliyuncs.com/robocanic-public/dubbo-admin:0.6.0
+          name: dubbo-admin
+          ports:
+            - containerPort: 38080
+          volumeMounts:
+            - mountPath: /config
+              name: application-properties
+      volumes:
+        - name: application-properties
+          configMap:
+            name: dubbo-admin
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dubbo-admin
+  namespace: dubbo-system
+spec:
+  type: NodePort
+  selector:
+    app: dubbo-admin
+  ports:
+    - protocol: TCP
+      port: 38080
+      targetPort: 38080

@@ -1,0 +1,587 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dubbo-samples-shop
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: dubbo-qos
+  namespace: dubbo-samples-shop
+  labels:
+    org.apache.dubbo/service: dubbo-qos
+spec:
+  type: NodePort
+  sessionAffinity: None
+  selector:
+    app-type: dubbo
+  ports:
+    - port: 22222
+      name: dubbo-qos
+      targetPort: 22222
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shop-frontend
+  namespace: dubbo-samples-shop
+spec:
+  type: NodePort
+  sessionAffinity: None
+  selector:
+    app: shop-frontend
+  ports:
+    - port: 8080
+      name: web
+      targetPort: 8080
+---
+# App FrontEnd
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-frontend
+  namespace: dubbo-samples-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-frontend
+  template:
+    metadata:
+      labels:
+        app: shop-frontend
+        app-type: dubbo
+    spec:
+      containers:
+        - name: shop-frontend
+          image: registry.cn-hangzhou.aliyuncs.com/robocanic-public/shop-frontend:0.1
+          imagePullPolicy: Always
+          ports:
+            - name: dubbo
+              containerPort: 20881
+              protocol: TCP
+            - name: dubbo-qos
+              containerPort: 22222
+              protocol: TCP
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "
+              -Ddubbo.registry.parameters.register-consumer-url=true
+              -Ddubbo.application.qos-port=22222 -Ddubbo.application.qos-accept-foreign-ip=true
+              -Ddubbo.registry.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.config-center.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.metadata-report.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.application.qos-anonymous-allow-commands=metrics
+              -Ddubbo.tracing.enabled=true
+              -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
+---
+
+# App Order V1-1
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-order-v1
+  namespace: dubbo-samples-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-order
+      orderVersion: v1
+  template:
+    metadata:
+      labels:
+        app: shop-order
+        orderVersion: v1
+        app-type: dubbo
+    spec:
+      containers:
+        - name: shop-order
+          image: registry.cn-hangzhou.aliyuncs.com/robocanic-public/shop-order:v1_0.0.1
+          imagePullPolicy: Always
+          ports:
+            - name: dubbo
+              containerPort: 20882
+              protocol: TCP
+            - name: dubbo-qos
+              containerPort: 22222
+              protocol: TCP
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "
+              -Ddubbo.registry.parameters.register-consumer-url=true
+              -Ddubbo.registry.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.config-center.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.metadata-report.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.application.qos-port=22222 
+              -Ddubbo.application.qos-accept-foreign-ip=true
+              -Ddubbo.application.qos-anonymous-allow-commands=metrics
+              -Ddubbo.tracing.enabled=true
+              -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
+            - name: DUBBO_LABELS
+              value: "orderVersion=v1"
+---
+
+# App Order V2
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-order-v2
+  namespace: dubbo-samples-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-order
+      orderVersion: v2
+  template:
+    metadata:
+      labels:
+        app: shop-order
+        orderVersion: v2
+        app-type: dubbo
+    spec:
+      containers:
+        - name: shop-order
+          image: registry.cn-hangzhou.aliyuncs.com/robocanic-public/shop-order:v2_0.0.1
+          imagePullPolicy: Always
+          ports:
+            - name: dubbo
+              containerPort: 20883
+              protocol: TCP
+            - name: dubbo-qos
+              containerPort: 22222
+              protocol: TCP
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "
+              -Ddubbo.registry.parameters.register-consumer-url=true
+              -Ddubbo.registry.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.config-center.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.metadata-report.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.application.qos-port=22222 -Ddubbo.application.qos-accept-foreign-ip=true
+              -Ddubbo.application.qos-anonymous-allow-commands=metrics
+              -Ddubbo.tracing.enabled=true
+              -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
+            - name: DUBBO_LABELS
+              value: "orderVersion=v2;"
+---
+
+# App User
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-user
+  namespace: dubbo-samples-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-user
+  template:
+    metadata:
+      labels:
+        app: shop-user
+        app-type: dubbo
+    spec:
+      containers:
+        - name: shop-user
+          image: registry.cn-hangzhou.aliyuncs.com/robocanic-public/shop-user:0.0.1
+          imagePullPolicy: Always
+          ports:
+            - name: dubbo
+              containerPort: 20884
+              protocol: TCP
+            - name: dubbo-qos
+              containerPort: 22222
+              protocol: TCP
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "
+              -Ddubbo.registry.parameters.register-consumer-url=true
+              -Ddubbo.registry.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.config-center.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.metadata-report.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.application.qos-port=22222 -Ddubbo.application.qos-accept-foreign-ip=true
+              -Ddubbo.application.qos-anonymous-allow-commands=metrics
+              -Ddubbo.tracing.enabled=true
+              -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
+
+---
+
+# App Detail-1
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-detail-v1
+  namespace: dubbo-samples-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-detail
+      detailVersion: v1
+  template:
+    metadata:
+      labels:
+        app: shop-detail
+        detailVersion: v1
+        app-type: dubbo
+    spec:
+      containers:
+        - name: shop-detail
+          image: registry.cn-hangzhou.aliyuncs.com/robocanic-public/shop-detail:v1_0.0.1
+          imagePullPolicy: Always
+          ports:
+            - name: dubbo
+              containerPort: 20885
+              protocol: TCP
+            - name: dubbo-qos
+              containerPort: 22222
+              protocol: TCP
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "
+              -Ddubbo.registry.parameters.register-consumer-url=true
+              -Ddubbo.registry.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.config-center.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.metadata-report.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.application.qos-port=22222 
+              -Ddubbo.application.qos-accept-foreign-ip=true 
+              -Ddubbo.application.qos-anonymous-allow-commands=metrics
+              -Ddubbo.tracing.enabled=true
+              -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
+            - name: DUBBO_LABELS
+              value: "detailVersion=v1; region=beijing"
+---
+
+# App Detail-2
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-detail-v2
+  namespace: dubbo-samples-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-detail
+      detailVersion: v2
+  template:
+    metadata:
+      labels:
+        app: shop-detail
+        detailVersion: v2
+        app-type: dubbo
+    spec:
+      containers:
+        - name: shop-detail
+          image: registry.cn-hangzhou.aliyuncs.com/robocanic-public/shop-detail:v2_0.0.1
+          imagePullPolicy: Always
+          ports:
+            - name: dubbo
+              containerPort: 20886
+              protocol: TCP
+            - name: dubbo-qos
+              containerPort: 22222
+              protocol: TCP
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "
+              -Ddubbo.registry.parameters.register-consumer-url=true
+              -Ddubbo.registry.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.config-center.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.metadata-report.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos 
+              -Ddubbo.application.qos-port=22222 
+              -Ddubbo.application.qos-accept-foreign-ip=true 
+              -Ddubbo.application.qos-anonymous-allow-commands=metrics
+              -Ddubbo.tracing.enabled=true
+              -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
+            - name: DUBBO_LABELS
+              value: "detailVersion=v2; region=hangzhou;"
+---
+
+#App Comment v1
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-comment-v1
+  namespace: dubbo-samples-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-comment
+      commentVersion: v1
+  template:
+    metadata:
+      labels:
+        app: shop-comment
+        commentVersion: v1
+        app-type: dubbo
+    spec:
+      containers:
+        - name: shop-comment
+          image: registry.cn-hangzhou.aliyuncs.com/robocanic-public/shop-comment:v1_0.0.1
+          imagePullPolicy: Always
+          ports:
+            - name: dubbo
+              containerPort: 20887
+              protocol: TCP
+            - name: dubbo-qos
+              containerPort: 22222
+              protocol: TCP
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "
+              -Ddubbo.registry.parameters.register-consumer-url=true
+              -Ddubbo.registry.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.config-center.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.metadata-report.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.application.qos-port=22222 
+              -Ddubbo.application.qos-accept-foreign-ip=true 
+              -Ddubbo.application.qos-anonymous-allow-commands=metrics
+              -Ddubbo.tracing.enabled=true
+              -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
+            - name: DUBBO_LABELS
+              value: "commentVersion=v1; region=beijing"
+---
+
+#App Comment v2
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-comment-v2
+  namespace: dubbo-samples-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-comment
+      commentVersion: v2
+  template:
+    metadata:
+      labels:
+        app: shop-comment
+        commentVersion: v2
+        app-type: dubbo
+    spec:
+      containers:
+        - name: shop-comment
+          image: registry.cn-hangzhou.aliyuncs.com/robocanic-public/shop-comment:v2_0.0.1
+          imagePullPolicy: Always
+          ports:
+            - name: dubbo
+              containerPort: 20888
+              protocol: TCP
+            - name: dubbo-qos
+              containerPort: 22222
+              protocol: TCP
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "
+              -Ddubbo.registry.parameters.register-consumer-url=true
+              -Ddubbo.registry.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.config-center.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.metadata-report.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.application.qos-port=22222 
+              -Ddubbo.application.qos-accept-foreign-ip=true 
+              -Ddubbo.application.qos-anonymous-allow-commands=metrics
+              -Ddubbo.tracing.enabled=true
+              -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
+            - name: DUBBO_LABELS
+              value: "commentVersion=v2; region=hangzhou;"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-user-gray
+  namespace: dubbo-samples-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-user
+  template:
+    metadata:
+      labels:
+        app: shop-user
+        app-type: dubbo
+    spec:
+      containers:
+        - name: shop-user-gray
+          image: registry.cn-hangzhou.aliyuncs.com/robocanic-public/shop-user:gray_0.0.1
+          imagePullPolicy: Always
+          ports:
+            - name: dubbo
+              containerPort: 20892
+              protocol: TCP
+            - name: dubbo-qos
+              containerPort: 22222
+              protocol: TCP
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "
+              -Ddubbo.registry.parameters.register-consumer-url=true
+              -Ddubbo.registry.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.config-center.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.metadata-report.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.application.qos-port=22222 
+              -Ddubbo.application.qos-accept-foreign-ip=true 
+              -Ddubbo.application.qos-anonymous-allow-commands=metrics
+              -Ddubbo.tracing.enabled=true
+              -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
+            - name: DUBBO_LABELS
+              value: "env=gray"
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-order-v1-gray
+  namespace: dubbo-samples-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-order
+      orderVersion: v1
+  template:
+    metadata:
+      labels:
+        app: shop-order
+        orderVersion: v1
+        app-type: dubbo
+    spec:
+      containers:
+        - name: shop-order
+          image: registry.cn-hangzhou.aliyuncs.com/robocanic-public/shop-order:gray_0.0.1
+          imagePullPolicy: Always
+          ports:
+            - name: dubbo
+              containerPort: 20891
+              protocol: TCP
+            - name: dubbo-qos
+              containerPort: 22222
+              protocol: TCP
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "
+              -Ddubbo.registry.parameters.register-consumer-url=true
+              -Ddubbo.registry.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.config-center.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.metadata-report.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.application.qos-port=22222 
+              -Ddubbo.application.qos-accept-foreign-ip=true 
+              -Ddubbo.application.qos-anonymous-allow-commands=metrics
+              -Ddubbo.tracing.enabled=true
+              -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
+            - name: DUBBO_LABELS
+              value: "env=gray"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-detail-v1-gray
+  namespace: dubbo-samples-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-detail
+      detailVersion: v1
+  template:
+    metadata:
+      labels:
+        app: shop-detail
+        detailVersion: v1
+        app-type: dubbo
+    spec:
+      containers:
+        - name: shop-detail
+          image: registry.cn-hangzhou.aliyuncs.com/robocanic-public/shop-detail:gray_0.0.1
+          imagePullPolicy: Always
+          ports:
+            - name: dubbo
+              containerPort: 20890
+              protocol: TCP
+            - name: dubbo-qos
+              containerPort: 22222
+              protocol: TCP
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "
+              -Ddubbo.registry.parameters.register-consumer-url=true
+              -Ddubbo.registry.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.config-center.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.metadata-report.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.application.qos-port=22222 
+              -Ddubbo.application.qos-accept-foreign-ip=true 
+              -Ddubbo.application.qos-anonymous-allow-commands=metrics
+              -Ddubbo.tracing.enabled=true
+              -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
+            - name: DUBBO_LABELS
+              value: "env=gray"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shop-comment-v1-gray
+  namespace: dubbo-samples-shop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shop-comment
+      commentVersion: v1
+  template:
+    metadata:
+      labels:
+        app: shop-comment
+        commentVersion: v1
+        app-type: dubbo
+    spec:
+      containers:
+        - name: shop-comment
+          image: registry.cn-hangzhou.aliyuncs.com/robocanic-public/shop-comment:gray_0.0.1
+          imagePullPolicy: Always
+          ports:
+            - name: dubbo
+              containerPort: 20889
+              protocol: TCP
+            - name: dubbo-qos
+              containerPort: 22222
+              protocol: TCP
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: "
+              -Ddubbo.registry.parameters.register-consumer-url=true
+              -Ddubbo.registry.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.config-center.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.metadata-report.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+              -Ddubbo.application.qos-port=22222 
+              -Ddubbo.application.qos-accept-foreign-ip=true
+              -Ddubbo.application.qos-anonymous-allow-commands=metrics
+              -Ddubbo.tracing.enabled=true
+              -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
+            - name: DUBBO_LABELS
+              value: "env=gray"

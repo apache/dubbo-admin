@@ -15,22 +15,16 @@
 
 mode: zone
 console:
-  grafana:
-  prometheus:
-  jaeger:
-  dashboards:
-    metric:
-      application:
-      instance:
-      service:
-    trace:
-      application:
-      instance:
-      service:
-    log:
-      application:
-      instance:
-      service:
+  grafana: http://101.34.253.152:30300/
+  prometheus: http://101.34.253.152:30900/
+  metricDashboards:
+    application: http://101.34.253.152:30300/grafana/d/a0b114ca-edf7-4dfe-ac2c-34a4fc545fed
+    instance: http://101.34.253.152:30300/grafana/d/dcf5defe-d198-4704-9edf-6520838880e9
+    service: http://101.34.253.152:30300/grafana/d/ec689613-b4a1-45b1-b8bd-9d557059f970
+  traceDashboards:
+    application: http://101.34.253.152:30300/grafana/d/e968a89b-f03d-42e3-8ad3-930ae815cb0f
+    instance: http://101.34.253.152:30300/grafana/d/f5f48f75-13ec-489b-88ae-635ae38d8618
+    service: http://101.34.253.152:30300/grafana/d/b2e178fb-ada3-4d5e-9f54-de99e7f07662
   auth:
     user: admin
     password: dubbo@2025
@@ -38,27 +32,21 @@ console:
 store:
   type: memory
 #  type: mysql
-#  address: root:12345678@tcp(127.0.0.1:3306)/dubbo-admin?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai
+#  address: root:123456@tcp(127.0.0.1:23306)/dubbo-admin?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai
 discovery:
   - type: nacos2
-    name: localhost-nacos-1
-    id: localhost-nacos-1
+    name: localhost-nacos
+    id: localhost-nacos
     address:
-      registry: nacos://127.0.0.1:8848?username=nacos&password=nacos
-      configCenter: nacos://127.0.0.1:8848?username=nacos&password=nacos
-      metadataReport: nacos://127.0.0.1:8848?username=nacos&password=nacos
+      registry: nacos://101.34.253.152:30848?username=nacos&password=nacos
+      configCenter: nacos://101.34.253.152:30848?username=nacos&password=nacos
+      metadataReport: nacos://101.34.253.152:30848?username=nacos&password=nacos
     properties:
+      # [Nacos2] Adjust the interval(time unit is `s`) to adjust the frequency of list-all configs in nacos.
+      # Default period is 30s
       configWatchPeriod: 20
-      serviceWatchPeriod: 20
-  - type: nacos2
-    name: localhost-nacos-2
-    id: localhost-nacos-2
-    address:
-      registry: nacos://127.0.0.1:8849?username=nacos&password=nacos
-      configCenter: nacos://127.0.0.1:8849?username=nacos&password=nacos
-      metadataReport: nacos://127.0.0.1:8849?username=nacos&password=nacos
-    properties:
-      configWatchPeriod: 20
+      # [Nacos2] Adjust the interval(time unit is `s`) to adjust the frequency of list-all services in nacos.
+      # Default period is 30s
       serviceWatchPeriod: 20
 #  - type: zookeeper
 #    name: 本地zookeeper
@@ -73,12 +61,12 @@ discovery:
 #    id:   mock
 #    name: mockRegistry
 engine:
-  id: mock
-  name: mock
-  type: mock
-#  id: default
-#  name: k8s1.28.6
-#  type: kubernetes
+#  id: mock
+#  name: mock
+#  type: mock
+  id: default
+  name: k8s1.28.6
+  type: kubernetes
   properties:
 #     [Kubernetes] Path to kubernetes config file, if not set, will use in cluster config
     kubeConfigPath: /root/.kube/config

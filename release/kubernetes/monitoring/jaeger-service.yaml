@@ -1,0 +1,30 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: jaeger
+  namespace: monitoring
+spec:
+  selector:
+    app: jaeger
+  type: ClusterIP
+  ports:
+    - name: query
+      port: 16686
+      targetPort: 16686
+      protocol: TCP
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+    - name: thrift
+      port: 14268
+      targetPort: 14268
+      protocol: TCP
+    - name: zipkin
+      port: 9411
+      targetPort: 9411
+      protocol: TCP

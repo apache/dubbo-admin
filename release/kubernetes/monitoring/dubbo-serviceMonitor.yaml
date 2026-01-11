@@ -1,0 +1,25 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    org.apache.dubbo/service-monitor: dubbo-metrics
+  name: dubbo-metrics
+  namespace: monitoring
+spec:
+  endpoints:
+    - metricRelabelings:
+        - action: keep
+          regex: '(.*):.*'
+          replacement: $1
+          sourceLabels:
+            - instance
+          targetLabel: instance
+      port: dubbo-qos
+      path: /metrics
+      interval: 1s
+  namespaceSelector:
+    any: true
+  selector:
+    matchLabels:
+      org.apache.dubbo/service: dubbo-qos
+

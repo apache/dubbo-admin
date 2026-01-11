@@ -44,13 +44,13 @@ func GetMetricDashBoard(ctx consolectx.Context, dim Dimension) gin.HandlerFunc {
 		switch dim {
 		case AppDimension:
 			req = &model.AppDashboardReq{}
-			url = ctx.Config().Console.MetricDashboards.Application.BaseURL
+			url = ctx.Config().Console.MetricDashboards.Application
 		case InstanceDimension:
 			req = &model.InstanceDashboardReq{}
-			url = ctx.Config().Console.MetricDashboards.Instance.BaseURL
+			url = ctx.Config().Console.MetricDashboards.Instance
 		case ServiceDimension:
 			req = &model.ServiceDashboardReq{}
-			url = ctx.Config().Console.MetricDashboards.Service.BaseURL
+			url = ctx.Config().Console.MetricDashboards.Service
 		}
 		if err := c.ShouldBindQuery(req); err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
@@ -71,13 +71,13 @@ func GetTraceDashBoard(ctx consolectx.Context, dim Dimension) gin.HandlerFunc {
 		switch dim {
 		case AppDimension:
 			req = &model.AppDashboardReq{}
-			url = ctx.Config().Console.TraceDashboards.Application.BaseURL + "?var-application="
+			url = ctx.Config().Console.TraceDashboards.Application
 		case InstanceDimension:
 			req = &model.InstanceDashboardReq{}
-			url = ctx.Config().Console.TraceDashboards.Instance.BaseURL + "?var-instance="
+			url = ctx.Config().Console.TraceDashboards.Instance
 		case ServiceDimension:
 			req = &model.ServiceDashboardReq{}
-			url = ctx.Config().Console.TraceDashboards.Service.BaseURL + "?var-service="
+			url = ctx.Config().Console.TraceDashboards.Service
 		}
 		if err := c.ShouldBindQuery(req); err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
