@@ -205,30 +205,18 @@ function copyIt(v: string) {
 const conditionRuleDetail = reactive({})
 
 const actionObj = computed(() => {
-  const arr = conditionRuleDetail.key.split(':')
+  const key = conditionRuleDetail.key || ''
+  const arr = typeof key === 'string' ? key.split(':') : []
   conditionRuleDetail.version = arr[1] || ''
   conditionRuleDetail.group = arr[2] || ''
-  return arr[0] ? arr[0] : ''
+  return arr[0] || ''
 })
 
 // Request parameter matching
-const requestParameterMatch = ref<string[]>([
-  'method=getUser',
-  'arguments[0]=123',
-  'method=updateUser',
-  'arguments[0].role=admin',
-  'method=deleteUser',
-  'attachments.region=north'
-])
+const requestParameterMatch = ref<string[]>([])
 
 // Address subset matching
-const addressSubsetMatch = ref<string[]>([
-  'host=192.168.1.100',
-  'host=192.168.1.101',
-  'host=192.168.1.200',
-  'host!=192.168.0.68',
-  'host=192.168.2.*'
-])
+const addressSubsetMatch = ref<string[]>([])
 
 // Get condition routing details
 async function getRoutingRuleDetail() {

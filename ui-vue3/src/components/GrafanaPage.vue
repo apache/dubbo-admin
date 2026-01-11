@@ -22,14 +22,8 @@
     <!--    </div>-->
     <a-spin class="spin" :spinning="!grafana.showIframe">
       <div class="__container_iframe_container">
-        <iframe
-          v-if="grafana.showIframe"
-          :onload="onIframeLoad"
-          id="grafanaIframe"
-          style="padding-top: 60px"
-          :src="grafana.url"
-          frameborder="0"
-        ></iframe>
+        <iframe v-if="grafana.showIframe" :onload="onIframeLoad" id="grafanaIframe" style="padding-top: 60px"
+          :src="grafana.url" frameborder="0"></iframe>
       </div>
     </a-spin>
   </div>
@@ -46,9 +40,7 @@ const grafanaUrl = ref('')
 const route = useRoute()
 onMounted(async () => {
   let res = await grafana.api({})
-  grafana.url = `${window.location.origin}/grafana/d/${
-    res.data?.baseURL.split('/d/')[1].split('?')[0]
-  }?var-${grafana.type}=${grafana.name}&kiosk=tv`
+  grafana.url = `${res.data?.baseURL}?var-${grafana.type}=${grafana.name}&kiosk=1?&theme=light`
   grafana.showIframe = true
 })
 
@@ -83,7 +75,7 @@ function onIframeLoad() {
           }
         })
       }, 2000)
-    } catch (e) {}
+    } catch (e) { }
     grafana.showIframe = true
   }, 1000)
 }

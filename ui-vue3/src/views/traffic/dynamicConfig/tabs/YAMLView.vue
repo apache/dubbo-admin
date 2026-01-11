@@ -38,14 +38,8 @@
             </a-row>
 
             <div class="editorBox">
-              <MonacoEditor
-                v-model:modelValue="YAMLValue"
-                @change="changeEditor"
-                theme="vs-dark"
-                height="calc(100vh - 450px)"
-                language="yaml"
-                :readonly="!isEdit"
-              />
+              <MonacoEditor v-model:modelValue="YAMLValue" @change="changeEditor" theme="vs-dark"
+                height="calc(100vh - 450px)" language="yaml" :readonly="!isEdit" />
             </div>
           </a-flex>
         </a-col>
@@ -116,6 +110,8 @@ async function initConfig() {
       isEdit.value = true
       viewData.isAdd = true
     } else {
+      console.log("666");
+
       viewData.isAdd = false
       const res = await getConfiguratorDetail({ name: route.params?.pathId })
       viewData.fromApiOutput(res.data)
