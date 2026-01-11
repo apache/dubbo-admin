@@ -193,7 +193,8 @@ export const routes: Readonly<RouteRecordType[]> = [
                 meta: {
                   tab: true,
                   icon: 'tabler:list-details',
-                  back: '/resources/instances/list'
+                  back: '/resources/instances/list',
+                  headerParamKey: 'appName'
                 }
               },
               {

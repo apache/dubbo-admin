@@ -163,7 +163,8 @@ const words: I18nType = {
     instanceCount: '实例数量',
     instanceName: '实例名称',
     creationTime_k8s: '创建时间(k8s)',
-    startTime_k8s: '启动时间(k8s)'
+    startTime_k8s: '启动时间(k8s)',
+    readyTime_k8s: '就绪时间(k8s)'
   },
   serviceDomain: {
     name: '服务名',

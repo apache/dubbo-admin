@@ -27,20 +27,14 @@
           </a-button>
 
           <div class="editorBox">
-            <MonacoEditor
-              @change="changeEditor"
-              v-model:modelValue="YAMLValue"
-              theme="vs-dark"
-              :height="500"
-              language="yaml"
-              :readonly="isReadonly"
-            />
+            <MonacoEditor @change="changeEditor" v-model:modelValue="YAMLValue" theme="vs-dark" :height="500"
+              language="yaml" :readonly="isReadonly" />
           </div>
         </a-flex>
         <a-affix :offset-bottom="10">
           <div class="bottom-action-footer">
             <a-space align="center" size="large">
-              <a-button type="primary" @click="updateTagRule"> 确认 </a-button>
+              <a-button type="primary" :loading="loading" @click="updateTagRule"> 确认 </a-button>
               <a-button> 取消 </a-button>
             </a-space>
           </div>
@@ -96,6 +90,7 @@ const router = useRouter()
 const isReadonly = ref(false)
 
 const isDrawerOpened = ref(false)
+const loading = ref(false)
 
 const sliderSpan = ref(8)
 
@@ -115,15 +110,15 @@ const changeEditor = (val) => {
 
 const YAMLValue = ref(
   'configVersion: v3.0\n' +
-    'force: true\n' +
-    'enabled: true\n' +
-    'key: shop-detail\n' +
-    'tags:\n' +
-    '  - name: gray\n' +
-    '    match:\n' +
-    '      - key: env\n' +
-    '        value:\n' +
-    '          exact: gray'
+  'force: true\n' +
+  'enabled: true\n' +
+  'key: shop-detail\n' +
+  'tags:\n' +
+  '  - name: gray\n' +
+  '    match:\n' +
+  '      - key: env\n' +
+  '        value:\n' +
+  '          exact: gray'
 )
 
 async function getTagRuleDetail() {
@@ -134,11 +129,19 @@ async function getTagRuleDetail() {
 }
 
 const updateTagRule = async () => {
-  const data = yaml.load(YAMLValue.value)
-  const res = await updateTagRuleAPI(<string>route.params?.ruleName, data)
-  if (res.code === HTTP_STATUS.SUCCESS) {
-    await getTagRuleDetail()
-    message.success('修改成功')
+  loading.value = true
+  try {
+    const data = yaml.load(YAMLValue.value)
+    const res = await updateTagRuleAPI(<string>route.params?.ruleName, data)
+    if (res.code === HTTP_STATUS.SUCCESS) {
+      message.success('update success')
+      // 延迟 2 秒后再获取数据，确保数据库已更新
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      TAB_STATE.tagRule = null
+      await getTagRuleDetail()
+    }
+  } finally {
+    loading.value = false
   }
 }
 </script>
@@ -157,7 +160,8 @@ const updateTagRule = async () => {
   display: flex;
   align-items: center;
   padding-left: 20px;
-  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1); /* 添加顶部阴影 */
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+  /* 添加顶部阴影 */
 }
 
 .sliderBox {

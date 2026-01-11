@@ -160,9 +160,12 @@ async function saveConfig() {
         })
       return
     }
-    let res = await saveConfiguratorDetail({ name: route.params?.pathId }, data)
-    viewData.fromApiOutput(res.data)
+    await saveConfiguratorDetail({ name: route.params?.pathId }, data)
     message.success('config save success')
+    // 延迟 2 秒后再获取数据，确保数据库已更新
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    TAB_STATE.dynamicConfigForm.data = null
+    await initConfig()
   } finally {
     loading.value = false
   }

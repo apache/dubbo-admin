@@ -23,11 +23,7 @@
           <a-space style="width: 100%" direction="vertical" size="middle">
             <a-row>
               <a-flex justify="end" style="width: 100%">
-                <a-button
-                  type="text"
-                  style="color: #0a90d5"
-                  @click="isDrawerOpened = !isDrawerOpened"
-                >
+                <a-button type="text" style="color: #0a90d5" @click="isDrawerOpened = !isDrawerOpened">
                   字段说明
                   <DoubleLeftOutlined v-if="!isDrawerOpened" />
                   <DoubleRightOutlined v-else />
@@ -39,34 +35,19 @@
                     <a-col :span="12">
                       <a-form-item label="规则粒度" required> 应用</a-form-item>
                       <a-form-item label="容错保护">
-                        <a-switch
-                          v-model:checked="baseInfo.faultTolerantProtection"
-                          checked-children="开"
-                          un-checked-children="关"
-                        />
+                        <a-switch v-model:checked="baseInfo.faultTolerantProtection" checked-children="开"
+                          un-checked-children="关" />
                       </a-form-item>
                       <a-form-item label="运行时生效">
-                        <a-switch
-                          v-model:checked="baseInfo.runtime"
-                          checked-children="开"
-                          un-checked-children="关"
-                        />
+                        <a-switch v-model:checked="baseInfo.runtime" checked-children="开" un-checked-children="关" />
                       </a-form-item>
                     </a-col>
                     <a-col :span="12">
                       <a-form-item label="作用对象" required>
-                        <a-input
-                          disabled
-                          v-model:value="baseInfo.objectOfAction"
-                          style="width: 200px"
-                        />
+                        <a-input disabled v-model:value="baseInfo.objectOfAction" style="width: 200px" />
                       </a-form-item>
                       <a-form-item label="立即启用">
-                        <a-switch
-                          v-model:checked="baseInfo.enable"
-                          checked-children="开"
-                          un-checked-children="关"
-                        />
+                        <a-switch v-model:checked="baseInfo.enable" checked-children="开" un-checked-children="关" />
                       </a-form-item>
                       <a-form-item label="优先级">
                         <a-input-number min="1" v-model:value="baseInfo.priority" />
@@ -83,17 +64,14 @@
                   <a-space align="center">
                     <div>路由【{{ tagItemIndex + 1 }}】</div>
                     <a-tooltip>
-                      <template #title
-                        >{{ generateDescription(tagItem, baseInfo.objectOfAction) }}
+                      <template #title>{{ generateDescription(tagItem, baseInfo.objectOfAction) }}
                       </template>
-                      <div
-                        style="
+                      <div style="
                           max-width: 400px;
                           overflow: hidden;
                           text-overflow: ellipsis;
                           white-space: nowrap;
-                        "
-                      >
+                        ">
                         {{ generateDescription(tagItem, baseInfo.objectOfAction) }}
                       </div>
                     </a-tooltip>
@@ -103,11 +81,7 @@
                 <a-form layout="horizontal">
                   <a-space style="width: 100%" direction="vertical" size="large">
                     <a-flex justify="end">
-                      <Icon
-                        @click="deleteTagItem(tagItemIndex)"
-                        class="action-icon"
-                        icon="tdesign:delete"
-                      />
+                      <Icon @click="deleteTagItem(tagItemIndex)" class="action-icon" icon="tdesign:delete" />
                     </a-flex>
                     <a-form-item label="标签名" required>
                       <a-input placeholder="隔离环境名" v-model:value="tagItem.tagName" />
@@ -116,62 +90,39 @@
                       <a-card>
                         <a-space style="width: 100%" direction="vertical">
                           <a-form-item label="匹配条件类型">
-                            <a-radio-group
-                              v-model:value="tagItem.scope.type"
-                              :options="matchConditionTypeOptions"
-                            />
+                            <a-radio-group v-model:value="tagItem.scope.type" :options="matchConditionTypeOptions" />
                           </a-form-item>
                           <a-space align="start" style="width: 100%" direction="horizontal">
                             <a-tag :bordered="false" color="processing">
                               {{ tagItem.scope.type }}
                             </a-tag>
-                            <a-table
-                              v-if="tagItem.scope.type === 'labels'"
-                              :pagination="false"
-                              :columns="labelsColumns"
-                              :data-source="tagItem.scope?.labels"
-                            >
+                            <a-table v-if="tagItem.scope.type === 'labels'" :pagination="false" :columns="labelsColumns"
+                              :data-source="tagItem.scope?.labels">
                               <template #bodyCell="{ column, record, text, index: labelItemIndex }">
                                 <template v-if="column.key === 'myKey'">
                                   <a-input placeholder="label key" v-model:value="record.myKey" />
                                 </template>
                                 <template v-if="column.key === 'condition'">
-                                  <a-select
-                                    v-model:value="record.condition"
-                                    style="width: 120px"
-                                    :options="labelConditionOptions"
-                                  ></a-select>
+                                  <a-select v-model:value="record.condition" style="width: 120px"
+                                    :options="labelConditionOptions"></a-select>
                                 </template>
                                 <template v-if="column.key === 'value'">
                                   <a-input placeholder="label value" v-model:value="record.value" />
                                 </template>
                                 <template v-else-if="column.key === 'operation'">
                                   <a-space align="center">
-                                    <Icon
-                                      icon="tdesign:remove"
-                                      class="action-icon"
-                                      @click="deleteLabelItem(tagItemIndex, labelItemIndex)"
-                                    />
-                                    <Icon
-                                      class="action-icon"
-                                      icon="tdesign:add"
-                                      @click="addLabelItem(tagItemIndex)"
-                                    />
+                                    <Icon icon="tdesign:remove" class="action-icon"
+                                      @click="deleteLabelItem(tagItemIndex, labelItemIndex)" />
+                                    <Icon class="action-icon" icon="tdesign:add" @click="addLabelItem(tagItemIndex)" />
                                   </a-space>
                                 </template>
                               </template>
                             </a-table>
                             <a-space v-else align="start">
-                              <a-select
-                                style="width: 120px"
-                                v-model:value="tagItem.scope.addresses.condition"
-                                :options="conditionOptions"
-                              />
-                              <a-textarea
-                                style="width: 500px"
-                                v-model:value="tagItem.scope.addresses.addressesStr"
-                                placeholder='地址列表，如有多个用"，"隔开'
-                              />
+                              <a-select style="width: 120px" v-model:value="tagItem.scope.addresses.condition"
+                                :options="conditionOptions" />
+                              <a-textarea style="width: 500px" v-model:value="tagItem.scope.addresses.addressesStr"
+                                placeholder='地址列表，如有多个用"，"隔开' />
                             </a-space>
                           </a-space>
                         </a-space>
@@ -216,7 +167,7 @@
     <a-affix :offset-bottom="10">
       <div class="bottom-action-footer">
         <a-space align="center" size="large">
-          <a-button type="primary" @click="updateTagRule"> 确认</a-button>
+          <a-button type="primary" :loading="loading" @click="updateTagRule"> 确认</a-button>
           <a-button> 取消</a-button>
         </a-space>
       </div>
@@ -296,6 +247,7 @@ const {
 const route = useRoute()
 
 const isDrawerOpened = ref(false)
+const loading = ref(false)
 
 const sliderSpan = ref(8)
 
@@ -593,42 +545,50 @@ const getTagRuleDetail = async () => {
 }
 
 const updateTagRule = async () => {
-  const {
-    ruleGranularity,
-    objectOfAction,
-    enable,
-    faultTolerantProtection,
-    runtime,
-    priority,
-    configVersion
-  } = baseInfo
-  const data = {
-    configVersion,
-    scope: ruleGranularity,
-    key: objectOfAction,
-    enabled: enable,
-    runtime,
-    tags: []
-  }
-  tagList.value.forEach((tagItem, tagIndex) => {
-    const tag = {
-      name: tagItem.tagName,
-      match: []
+  loading.value = true
+  try {
+    const {
+      ruleGranularity,
+      objectOfAction,
+      enable,
+      faultTolerantProtection,
+      runtime,
+      priority,
+      configVersion
+    } = baseInfo
+    const data = {
+      configVersion,
+      scope: ruleGranularity,
+      key: objectOfAction,
+      enabled: enable,
+      runtime,
+      tags: []
     }
-    tagItem.scope.labels.forEach((labelItem, labelIndex) => {
-      const matchItem = {
-        key: labelItem.myKey,
-        value: {}
+    tagList.value.forEach((tagItem, tagIndex) => {
+      const tag = {
+        name: tagItem.tagName,
+        match: []
       }
-      matchItem.value[labelItem.condition] = labelItem.value
-      tag.match.push(matchItem)
+      tagItem.scope.labels.forEach((labelItem, labelIndex) => {
+        const matchItem = {
+          key: labelItem.myKey,
+          value: {}
+        }
+        matchItem.value[labelItem.condition] = labelItem.value
+        tag.match.push(matchItem)
+      })
+      data.tags.push(tag)
     })
-    data.tags.push(tag)
-  })
-  const res = await updateTagRuleAPI(route.params?.ruleName, data)
-  if (res.code === HTTP_STATUS.SUCCESS) {
-    await getTagRuleDetail()
-    message.success('修改成功')
+    const res = await updateTagRuleAPI(route.params?.ruleName, data)
+    if (res.code === HTTP_STATUS.SUCCESS) {
+      message.success('update success')
+      // 延迟 2 秒后再获取数据，确保数据库已更新
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      TAB_STATE.tagRule = null
+      await getTagRuleDetail()
+    }
+  } finally {
+    loading.value = false
   }
 }
 </script>
@@ -653,7 +613,8 @@ const updateTagRule = async () => {
     display: flex;
     align-items: center;
     padding-left: 20px;
-    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1); /* 添加顶部阴影 */
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+    /* 添加顶部阴影 */
   }
 
   .sliderBox {
