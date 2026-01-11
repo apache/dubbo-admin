@@ -1,0 +1,60 @@
+# Nacos
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nacos
+  namespace: dubbo-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nacos
+  template:
+    metadata:
+      labels:
+        app: nacos
+    spec:
+      containers:
+        - name: consumer
+          image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nacos/nacos-server:v2.5.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8848
+              name: client
+            - containerPort: 9848
+              name: client-rpc
+          env:
+            - name: NACOS_AUTH_TOKEN
+              value: "aHR0cHM6Ly9jbG91ZC50ZW5jZW50LmNvbS9sb2dpbi9zdWJBY2NvdW50LzEwMDA0NDgzNzM2Nj90eXBlPXN1YkFjY291bnQmdXNlcm5hbWU9Y2M="
+            - name: NACOS_AUTH_IDENTITY_KEY
+              value: "serverIdentity"
+            - name: NACOS_AUTH_IDENTITY_VALUE
+              value: "security"
+            - name: NACOS_SERVER_PORT
+              value: "8848"
+            - name: NACOS_APPLICATION_PORT
+              value: "8848"
+            - name: PREFER_HOST_MODE
+              value: "hostname"
+            - name: MODE
+              value: "standalone"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nacos
+  namespace: dubbo-system
+spec:
+  type: NodePort
+  sessionAffinity: None
+  selector:
+    app: nacos
+  ports:
+    - port: 8848
+      name: server
+      targetPort: 8848
+      nodePort: 30848
+    - port: 9848
+      name: client-rpc
+      targetPort: 9848
+      nodePort: 31848
