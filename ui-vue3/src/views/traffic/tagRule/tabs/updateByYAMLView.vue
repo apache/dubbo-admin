@@ -27,8 +27,14 @@
           </a-button>
 
           <div class="editorBox">
-            <MonacoEditor @change="changeEditor" v-model:modelValue="YAMLValue" theme="vs-dark" :height="500"
-              language="yaml" :readonly="isReadonly" />
+            <MonacoEditor
+              @change="changeEditor"
+              v-model:modelValue="YAMLValue"
+              theme="vs-dark"
+              :height="500"
+              language="yaml"
+              :readonly="isReadonly"
+            />
           </div>
         </a-flex>
         <a-affix :offset-bottom="10">
@@ -110,15 +116,15 @@ const changeEditor = (val) => {
 
 const YAMLValue = ref(
   'configVersion: v3.0\n' +
-  'force: true\n' +
-  'enabled: true\n' +
-  'key: shop-detail\n' +
-  'tags:\n' +
-  '  - name: gray\n' +
-  '    match:\n' +
-  '      - key: env\n' +
-  '        value:\n' +
-  '          exact: gray'
+    'force: true\n' +
+    'enabled: true\n' +
+    'key: shop-detail\n' +
+    'tags:\n' +
+    '  - name: gray\n' +
+    '    match:\n' +
+    '      - key: env\n' +
+    '        value:\n' +
+    '          exact: gray'
 )
 
 async function getTagRuleDetail() {
@@ -136,7 +142,7 @@ const updateTagRule = async () => {
     if (res.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
       // 延迟 2 秒后再获取数据，确保数据库已更新
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      await new Promise((resolve) => setTimeout(resolve, 2000))
       TAB_STATE.tagRule = null
       await getTagRuleDetail()
     }

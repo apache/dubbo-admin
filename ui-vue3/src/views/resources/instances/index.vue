@@ -25,7 +25,10 @@
               @click="router.push(`/resources/instances/detail/${record.name}/${record.ip}`)"
             >
               <b>
-                <Icon style="margin-bottom: -2px" icon="material-symbols:attach-file-rounded"></Icon>
+                <Icon
+                  style="margin-bottom: -2px"
+                  icon="material-symbols:attach-file-rounded"
+                ></Icon>
                 {{ text }}
               </b>
             </span>

@@ -124,7 +124,7 @@ const columns = [
     dataIndex: 'ip',
     key: 'ip',
     // sorter: true,
-    width: 150,
+    width: 150
   },
   {
     title: 'instanceDomain.deployState',

@@ -31,38 +31,61 @@
           <a-card class="_detail">
             <a-descriptions :column="2" layout="vertical" title="">
               <!-- ruleName -->
-              <a-descriptions-item :label="$t('flowControlDomain.ruleName')" :labelStyle="{ fontWeight: 'bold' }">
-                <p class="description-item-content with-card" @click="copyIt(conditionRuleDetail.key)">
+              <a-descriptions-item
+                :label="$t('flowControlDomain.ruleName')"
+                :labelStyle="{ fontWeight: 'bold' }"
+              >
+                <p
+                  class="description-item-content with-card"
+                  @click="copyIt(conditionRuleDetail.key)"
+                >
                   {{ conditionRuleDetail.key }}
                   <CopyOutlined />
                 </p>
               </a-descriptions-item>
 
               <!-- ruleGranularity -->
-              <a-descriptions-item :label="$t('flowControlDomain.ruleGranularity')"
-                :labelStyle="{ fontWeight: 'bold' }">
+              <a-descriptions-item
+                :label="$t('flowControlDomain.ruleGranularity')"
+                :labelStyle="{ fontWeight: 'bold' }"
+              >
                 <a-typography-paragraph>
                   {{ conditionRuleDetail.scope }}
                 </a-typography-paragraph>
               </a-descriptions-item>
-              <a-descriptions-item label="版本" :labelStyle="{ fontWeight: 'bold' }"
-                v-if="conditionRuleDetail.scope == 'service'">
-                <p class="description-item-content with-card" @click="copyIt(conditionRuleDetail.version)">
+              <a-descriptions-item
+                label="版本"
+                :labelStyle="{ fontWeight: 'bold' }"
+                v-if="conditionRuleDetail.scope == 'service'"
+              >
+                <p
+                  class="description-item-content with-card"
+                  @click="copyIt(conditionRuleDetail.version)"
+                >
                   {{ conditionRuleDetail.version }}
                   <CopyOutlined v-if="conditionRuleDetail.version.length" />
                 </p>
               </a-descriptions-item>
 
-              <a-descriptions-item label="分组" :labelStyle="{ fontWeight: 'bold' }"
-                v-if="conditionRuleDetail.scope == 'service'">
-                <p class="description-item-content with-card" @click="copyIt(conditionRuleDetail.group)">
+              <a-descriptions-item
+                label="分组"
+                :labelStyle="{ fontWeight: 'bold' }"
+                v-if="conditionRuleDetail.scope == 'service'"
+              >
+                <p
+                  class="description-item-content with-card"
+                  @click="copyIt(conditionRuleDetail.group)"
+                >
                   {{ conditionRuleDetail.group }}
                   <CopyOutlined v-if="conditionRuleDetail.group.length" />
                 </p>
               </a-descriptions-item>
 
               <!-- actionObject -->
-              <a-descriptions-item :label="$t('flowControlDomain.actionObject')" :labelStyle="{ fontWeight: 'bold' }">
+              <a-descriptions-item
+                :label="$t('flowControlDomain.actionObject')"
+                :labelStyle="{ fontWeight: 'bold' }"
+              >
                 <p class="description-item-content with-card" @click="copyIt(actionObj)">
                   {{ actionObj }}
                   <CopyOutlined />
@@ -78,8 +101,10 @@
               <!--          </a-descriptions-item>-->
 
               <!-- faultTolerantProtection -->
-              <a-descriptions-item :label="$t('flowControlDomain.faultTolerantProtection')"
-                :labelStyle="{ fontWeight: 'bold' }">
+              <a-descriptions-item
+                :label="$t('flowControlDomain.faultTolerantProtection')"
+                :labelStyle="{ fontWeight: 'bold' }"
+              >
                 <a-typography-paragraph>
                   {{
                     conditionRuleDetail.force
@@ -90,7 +115,10 @@
               </a-descriptions-item>
 
               <!-- enabledState -->
-              <a-descriptions-item :label="$t('flowControlDomain.enabledState')" :labelStyle="{ fontWeight: 'bold' }">
+              <a-descriptions-item
+                :label="$t('flowControlDomain.enabledState')"
+                :labelStyle="{ fontWeight: 'bold' }"
+              >
                 <a-typography-paragraph>
                   {{
                     conditionRuleDetail.enabled
@@ -101,8 +129,10 @@
               </a-descriptions-item>
 
               <!-- runTimeEffective -->
-              <a-descriptions-item :label="$t('flowControlDomain.runTimeEffective')"
-                :labelStyle="{ fontWeight: 'bold' }">
+              <a-descriptions-item
+                :label="$t('flowControlDomain.runTimeEffective')"
+                :labelStyle="{ fontWeight: 'bold' }"
+              >
                 <a-typography-paragraph>
                   {{
                     conditionRuleDetail.runtime
@@ -127,7 +157,8 @@
 
         <a-card style="margin-top: 10px" class="_detail">
           <a-space align="start" style="width: 100%">
-            <a-typography-title :level="5">{{ $t('flowControlDomain.requestParameterMatching') }}:
+            <a-typography-title :level="5"
+              >{{ $t('flowControlDomain.requestParameterMatching') }}:
             </a-typography-title>
 
             <a-space align="center" direction="horizontal" size="middle" wrap>
@@ -138,7 +169,8 @@
           </a-space>
 
           <a-space align="start" style="width: 100%" wrap>
-            <a-typography-title :level="5">{{ $t('flowControlDomain.addressSubsetMatching') }}:
+            <a-typography-title :level="5"
+              >{{ $t('flowControlDomain.addressSubsetMatching') }}:
             </a-typography-title>
             <a-tag v-for="(item, index) in addressSubsetMatch" :key="index" color="#87d068">
               {{ item }}

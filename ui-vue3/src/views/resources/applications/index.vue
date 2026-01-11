@@ -36,7 +36,10 @@
               @click="router.push(`/resources/applications/detail/${record[column.key]}`)"
             >
               <b>
-                <Icon style="margin-bottom: -2px" icon="material-symbols:attach-file-rounded"></Icon>
+                <Icon
+                  style="margin-bottom: -2px"
+                  icon="material-symbols:attach-file-rounded"
+                ></Icon>
                 {{ text }}
               </b>
             </span>

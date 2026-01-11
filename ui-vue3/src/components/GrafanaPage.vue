@@ -22,8 +22,14 @@
     <!--    </div>-->
     <a-spin class="spin" :spinning="!grafana.showIframe">
       <div class="__container_iframe_container">
-        <iframe v-if="grafana.showIframe" :onload="onIframeLoad" id="grafanaIframe" style="padding-top: 60px"
-          :src="grafana.url" frameborder="0"></iframe>
+        <iframe
+          v-if="grafana.showIframe"
+          :onload="onIframeLoad"
+          id="grafanaIframe"
+          style="padding-top: 60px"
+          :src="grafana.url"
+          frameborder="0"
+        ></iframe>
       </div>
     </a-spin>
   </div>
@@ -75,7 +81,7 @@ function onIframeLoad() {
           }
         })
       }, 2000)
-    } catch (e) { }
+    } catch (e) {}
     grafana.showIframe = true
   }, 1000)
 }

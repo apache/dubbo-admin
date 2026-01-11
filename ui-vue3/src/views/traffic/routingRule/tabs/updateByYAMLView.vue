@@ -27,14 +27,22 @@
           </a-button>
 
           <div class="editorBox">
-            <MonacoEditor v-model:modelValue="YAMLValue" theme="vs-dark" :height="500" language="yaml"
-              :readonly="isReadonly" @change="changeEditor" />
+            <MonacoEditor
+              v-model:modelValue="YAMLValue"
+              theme="vs-dark"
+              :height="500"
+              language="yaml"
+              :readonly="isReadonly"
+              @change="changeEditor"
+            />
           </div>
         </a-flex>
         <a-affix :offset-bottom="10">
           <div class="bottom-action-footer">
             <a-space align="center" size="large">
-              <a-button type="primary" :loading="loading" @click="updateRoutingRule"> 确认</a-button>
+              <a-button type="primary" :loading="loading" @click="updateRoutingRule">
+                确认</a-button
+              >
               <a-button> 取消</a-button>
             </a-space>
           </div>
@@ -92,7 +100,7 @@ const isDrawerOpened = ref(false)
 
 const sliderSpan = ref(8)
 
-const YAMLValue = ref("")
+const YAMLValue = ref('')
 
 onMounted(() => {
   if (!isNil(TAB_STATE.conditionRule)) {
@@ -130,7 +138,7 @@ const updateRoutingRule = async () => {
     if (res.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
       // 延迟 2 秒后再获取数据，确保数据库已更新
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      await new Promise((resolve) => setTimeout(resolve, 2000))
       TAB_STATE.conditionRule = null
       await getRoutingRuleDetail()
     }

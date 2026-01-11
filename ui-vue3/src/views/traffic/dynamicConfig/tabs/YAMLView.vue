@@ -38,8 +38,14 @@
             </a-row>
 
             <div class="editorBox">
-              <MonacoEditor v-model:modelValue="YAMLValue" @change="changeEditor" theme="vs-dark"
-                height="calc(100vh - 450px)" language="yaml" :readonly="!isEdit" />
+              <MonacoEditor
+                v-model:modelValue="YAMLValue"
+                @change="changeEditor"
+                theme="vs-dark"
+                height="calc(100vh - 450px)"
+                language="yaml"
+                :readonly="!isEdit"
+              />
             </div>
           </a-flex>
         </a-col>
@@ -110,7 +116,7 @@ async function initConfig() {
       isEdit.value = true
       viewData.isAdd = true
     } else {
-      console.log("666");
+      console.log('666')
 
       viewData.isAdd = false
       const res = await getConfiguratorDetail({ name: route.params?.pathId })
@@ -159,7 +165,7 @@ async function saveConfig() {
     await saveConfiguratorDetail({ name: route.params?.pathId }, data)
     message.success('config save success')
     // 延迟 2 秒后再获取数据，确保数据库已更新
-    await new Promise(resolve => setTimeout(resolve, 2000))
+    await new Promise((resolve) => setTimeout(resolve, 2000))
     TAB_STATE.dynamicConfigForm.data = null
     await initConfig()
   } finally {

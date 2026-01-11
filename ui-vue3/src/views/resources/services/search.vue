@@ -20,10 +20,15 @@
       <template #bodyCell="{ column, record, text }">
         <template v-if="column.dataIndex === 'serviceName'">
           <a-tooltip :title="text">
-            <span class="app-link"
-              @click="viewDistribution(text, record.group, record.version, record.providerAppName)">
+            <span
+              class="app-link"
+              @click="viewDistribution(text, record.group, record.version, record.providerAppName)"
+            >
               <b>
-                <Icon style="margin-bottom: -2px" icon="material-symbols:attach-file-rounded"></Icon>
+                <Icon
+                  style="margin-bottom: -2px"
+                  icon="material-symbols:attach-file-rounded"
+                ></Icon>
                 {{ text }}
               </b>
             </span>
@@ -54,7 +59,7 @@ const columns = [
   {
     title: 'service',
     key: 'service',
-    dataIndex: 'serviceName',
+    dataIndex: 'serviceName'
     // sorter: true,
   },
   {

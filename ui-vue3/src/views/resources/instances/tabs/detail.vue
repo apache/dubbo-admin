@@ -24,14 +24,22 @@
             <a-card class="_detail" style="height: 100%">
               <a-descriptions class="description-column" :column="1">
                 <!-- registerState -->
-                <a-descriptions-item :label="$t('instanceDomain.registerState')" :labelStyle="{ fontWeight: 'bold' }">
-                  <a-typography-paragraph :type="instanceDetail?.registerState === 'Registered' ? 'success' : 'danger'">
+                <a-descriptions-item
+                  :label="$t('instanceDomain.registerState')"
+                  :labelStyle="{ fontWeight: 'bold' }"
+                >
+                  <a-typography-paragraph
+                    :type="instanceDetail?.registerState === 'Registered' ? 'success' : 'danger'"
+                  >
                     {{ instanceDetail?.registerState }}
                   </a-typography-paragraph>
                 </a-descriptions-item>
 
                 <!-- Register Time -->
-                <a-descriptions-item :label="$t('instanceDomain.registerTime')" :labelStyle="{ fontWeight: 'bold' }">
+                <a-descriptions-item
+                  :label="$t('instanceDomain.registerTime')"
+                  :labelStyle="{ fontWeight: 'bold' }"
+                >
                   <a-typography-paragraph>
                     {{ formattedDate(instanceDetail?.registerTime) }}
                   </a-typography-paragraph>
@@ -44,8 +52,15 @@
             <a-card class="_detail" style="height: 100%">
               <a-descriptions class="description-column" :column="1">
                 <!-- deployState -->
-                <a-descriptions-item :label="$t('instanceDomain.deployState')" :labelStyle="{ fontWeight: 'bold' }">
-                  <a-typography-paragraph type="success" style="" v-if="instanceDetail?.deployState === 'Running'">
+                <a-descriptions-item
+                  :label="$t('instanceDomain.deployState')"
+                  :labelStyle="{ fontWeight: 'bold' }"
+                >
+                  <a-typography-paragraph
+                    type="success"
+                    style=""
+                    v-if="instanceDetail?.deployState === 'Running'"
+                  >
                     Running
                   </a-typography-paragraph>
                   <a-typography-paragraph type="danger" v-else>
@@ -54,7 +69,10 @@
                 </a-descriptions-item>
 
                 <!-- Start time -->
-                <a-descriptions-item :label="$t('instanceDomain.startTime_k8s')" :labelStyle="{ fontWeight: 'bold' }">
+                <a-descriptions-item
+                  :label="$t('instanceDomain.startTime_k8s')"
+                  :labelStyle="{ fontWeight: 'bold' }"
+                >
                   <a-typography-paragraph>
                     {{ formattedDate(instanceDetail?.startTime) }}
                   </a-typography-paragraph>
@@ -74,7 +92,10 @@
         <a-card style="margin-top: 10px" class="_detail">
           <a-descriptions class="description-column" :column="1">
             <!-- instanceIP -->
-            <a-descriptions-item :label="$t('instanceDomain.instanceIP')" :labelStyle="{ fontWeight: 'bold' }">
+            <a-descriptions-item
+              :label="$t('instanceDomain.instanceIP')"
+              :labelStyle="{ fontWeight: 'bold' }"
+            >
               <p @click="copyIt(instanceDetail?.ip)" class="description-item-content with-card">
                 {{ instanceDetail?.ip }}
                 <CopyOutlined />
@@ -82,23 +103,35 @@
             </a-descriptions-item>
 
             <!-- deploy cluster -->
-            <a-descriptions-item :label="$t('instanceDomain.deployCluster')" :labelStyle="{ fontWeight: 'bold' }">
+            <a-descriptions-item
+              :label="$t('instanceDomain.deployCluster')"
+              :labelStyle="{ fontWeight: 'bold' }"
+            >
               <a-typography-paragraph>
                 {{ instanceDetail?.deployCluster }}
               </a-typography-paragraph>
             </a-descriptions-item>
 
             <!-- Dubbo Port -->
-            <a-descriptions-item :label="$t('instanceDomain.dubboPort')" :labelStyle="{ fontWeight: 'bold' }">
-              <p v-if="instanceDetail?.rpcPort" @click="copyIt(instanceDetail?.rpcPort)"
-                class="description-item-content with-card">
+            <a-descriptions-item
+              :label="$t('instanceDomain.dubboPort')"
+              :labelStyle="{ fontWeight: 'bold' }"
+            >
+              <p
+                v-if="instanceDetail?.rpcPort"
+                @click="copyIt(instanceDetail?.rpcPort)"
+                class="description-item-content with-card"
+              >
                 {{ instanceDetail?.rpcPort }}
                 <CopyOutlined />
               </p>
             </a-descriptions-item>
 
             <!-- Register cluster -->
-            <a-descriptions-item :label="$t('instanceDomain.registerCluster')" :labelStyle="{ fontWeight: 'bold' }">
+            <a-descriptions-item
+              :label="$t('instanceDomain.registerCluster')"
+              :labelStyle="{ fontWeight: 'bold' }"
+            >
               <a-space>
                 <a-typography-link v-for="cluster in instanceDetail?.registerClusters">
                   {{ cluster }}
@@ -107,33 +140,51 @@
             </a-descriptions-item>
 
             <!-- whichApplication -->
-            <a-descriptions-item :label="$t('instanceDomain.whichApplication')" :labelStyle="{ fontWeight: 'bold' }">
+            <a-descriptions-item
+              :label="$t('instanceDomain.whichApplication')"
+              :labelStyle="{ fontWeight: 'bold' }"
+            >
               <a-typography-link @click="checkApplication(instanceDetail?.appName)">
                 {{ instanceDetail?.appName }}
               </a-typography-link>
             </a-descriptions-item>
 
             <!-- Node IP -->
-            <a-descriptions-item :label="$t('instanceDomain.node')" :labelStyle="{ fontWeight: 'bold' }">
-              <p v-if="instanceDetail?.node" @click="copyIt(instanceDetail?.node)"
-                class="description-item-content with-card">
+            <a-descriptions-item
+              :label="$t('instanceDomain.node')"
+              :labelStyle="{ fontWeight: 'bold' }"
+            >
+              <p
+                v-if="instanceDetail?.node"
+                @click="copyIt(instanceDetail?.node)"
+                class="description-item-content with-card"
+              >
                 {{ instanceDetail?.node }}
                 <CopyOutlined />
               </p>
             </a-descriptions-item>
 
             <!-- Owning workload(k8s) -->
-            <a-descriptions-item :label="$t('instanceDomain.owningWorkload_k8s')" :labelStyle="{ fontWeight: 'bold' }">
+            <a-descriptions-item
+              :label="$t('instanceDomain.owningWorkload_k8s')"
+              :labelStyle="{ fontWeight: 'bold' }"
+            >
               <a-typography-paragraph>
                 {{ instanceDetail?.workloadName }}
               </a-typography-paragraph>
             </a-descriptions-item>
 
             <!-- image -->
-            <a-descriptions-item v-if="instanceDetail?.image" :label="$t('instanceDomain.instanceImage_k8s')"
-              :labelStyle="{ fontWeight: 'bold' }">
+            <a-descriptions-item
+              v-if="instanceDetail?.image"
+              :label="$t('instanceDomain.instanceImage_k8s')"
+              :labelStyle="{ fontWeight: 'bold' }"
+            >
               <a-card class="description-item-card">
-                <p @click="copyIt(instanceDetail?.image)" class="description-item-content with-card">
+                <p
+                  @click="copyIt(instanceDetail?.image)"
+                  class="description-item-content with-card"
+                >
                   {{ instanceDetail?.image }}
                   <CopyOutlined />
                 </p>
@@ -141,8 +192,11 @@
             </a-descriptions-item>
 
             <!-- instanceLabel -->
-            <a-descriptions-item v-if="instanceDetail?.labels && Object.keys(instanceDetail?.labels).length > 0"
-              :label="$t('instanceDomain.instanceLabel')" :labelStyle="{ fontWeight: 'bold' }">
+            <a-descriptions-item
+              v-if="instanceDetail?.labels && Object.keys(instanceDetail?.labels).length > 0"
+              :label="$t('instanceDomain.instanceLabel')"
+              :labelStyle="{ fontWeight: 'bold' }"
+            >
               <a-card class="description-item-card">
                 <a-tag v-for="(value, key) in instanceDetail?.labels">
                   {{ key }} : {{ value }}
@@ -151,8 +205,11 @@
             </a-descriptions-item>
 
             <!-- health examination -->
-            <a-descriptions-item v-if="instanceDetail?.probes" :label="$t('instanceDomain.healthExamination_k8s')"
-              :labelStyle="{ fontWeight: 'bold' }">
+            <a-descriptions-item
+              v-if="instanceDetail?.probes"
+              :label="$t('instanceDomain.healthExamination_k8s')"
+              :labelStyle="{ fontWeight: 'bold' }"
+            >
               <a-card class="description-item-card">
                 <p class="white_space">
                   启动探针(StartupProbe):{{
@@ -244,5 +301,6 @@ const isProbeOpen = (status: boolean) => {
 </script>
 
 <style lang="less" scoped>
-.__container_instance_detail {}
+.__container_instance_detail {
+}
 </style>

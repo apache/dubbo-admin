@@ -1,0 +1,1 @@
+import{r as t}from"./request-dCC5BMJA.js";const r=e=>t({url:"/auth/login",method:"post",data:e,headers:{"Content-Type":"multipart/form-data"}}),s=()=>t({url:"/auth/logout",method:"post"}),a=()=>t({url:"/meshes",method:"get"});export{s as a,r as l,a as m};
