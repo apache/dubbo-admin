@@ -71,6 +71,7 @@ func (s *InstanceEventSubscriber) ProcessEvent(event events.Event) error {
 		instanceRes = oldObj
 	}
 	instanceResList, err := s.instanceStore.ListByIndexes(map[string]string{
+		index.ByMeshIndex:            instanceRes.Mesh,
 		index.ByInstanceAppNameIndex: instanceRes.Spec.AppName,
 	})
 
