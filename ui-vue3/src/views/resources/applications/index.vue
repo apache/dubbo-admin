@@ -30,15 +30,20 @@
           </a-tag>
         </template>
         <template v-else-if="column.dataIndex === 'appName'">
-          <span
-            class="app-link"
-            @click="router.push(`/resources/applications/detail/${record[column.key]}`)"
-          >
-            <b>
-              <Icon style="margin-bottom: -2px" icon="material-symbols:attach-file-rounded"></Icon>
-              {{ text }}
-            </b>
-          </span>
+          <a-tooltip :title="text">
+            <span
+              class="app-link"
+              @click="router.push(`/resources/applications/detail/${record[column.key]}`)"
+            >
+              <b>
+                <Icon
+                  style="margin-bottom: -2px"
+                  icon="material-symbols:attach-file-rounded"
+                ></Icon>
+                {{ text }}
+              </b>
+            </span>
+          </a-tooltip>
         </template>
       </template>
     </search-table>
@@ -132,15 +137,5 @@ watch(route, (a, b) => {
   min-height: 60vh;
 
   //max-height: 70vh; //overflow: auto;
-  .app-link {
-    padding: 4px 10px 4px 4px;
-    border-radius: 4px;
-    color: v-bind('PRIMARY_COLOR');
-
-    &:hover {
-      cursor: pointer;
-      background: rgba(133, 131, 131, 0.13);
-    }
-  }
 }
 </style>

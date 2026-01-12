@@ -184,6 +184,7 @@ const words: I18nType = {
   whichApplication: 'application',
   registerTime: 'Register Time',
   startTime_k8s: 'Start Time(k8s)',
+  readyTime_k8s: 'Ready Time(k8s)',
   registerStates: 'Register States',
   deployState: 'Deployment Status',
   owningWorkload_k8s: 'Owning Workload(k8s)',

@@ -23,7 +23,12 @@
         </a-form-item>
       </template>
       <template v-slot:form_flow="{ current }">
-        <a-space direction="vertical" size="middle" class="flowWeight-box">
+        <a-space direction="vertical" size="middle" class="flowWeight-box" style="width: 100%">
+          <a-empty
+            v-if="current.form.rules.length === 0"
+            description="暂无流量权重配置"
+            style="width: 100%"
+          />
           <a-card :id="'flowWeight' + i" v-for="(item, i) in current.form.rules">
             <template #title>
               {{ $t('applicationDomain.flowWeight') }} {{ i + 1 }}
@@ -47,26 +52,36 @@
                 :pagination="false"
                 :columns="scopeColumns"
                 :data-source="item.scope"
+                :row-key="(_record: any, index: number) => index"
               >
                 <template #bodyCell="{ column, record, index: scopeItemIndex }">
                   <template v-if="column.key === 'key'">
-                    <a-form-item :name="'rules[' + i + '].scope.key'">
+                    <a-form-item
+                      :name="['rules', i, 'scope', scopeItemIndex, 'key']"
+                      :key="`key-${i}-${scopeItemIndex}`"
+                    >
                       <a-input v-model:value="record.key"></a-input>
                     </a-form-item>
                   </template>
                   <template v-if="column.key === 'condition'">
-                    <a-form-item :name="'rules[' + i + '].scope.condition'">
+                    <a-form-item
+                      :name="['rules', i, 'scope', scopeItemIndex, 'condition']"
+                      :key="`condition-${i}-${scopeItemIndex}`"
+                    >
                       <a-input v-model:value="record.condition"></a-input>
                     </a-form-item>
                   </template>
                   <template v-if="column.key === 'value'">
-                    <a-form-item :name="'rules[' + i + '].scope.value'">
+                    <a-form-item
+                      :name="['rules', i, 'scope', scopeItemIndex, 'value']"
+                      :key="`value-${i}-${scopeItemIndex}`"
+                    >
                       <a-input v-model:value="record.value"></a-input>
                     </a-form-item>
                   </template>
 
                   <template v-if="column.key === 'operation'">
-                    <a-form-item :name="'rules[' + i + '].scope.operation'">
+                    <a-form-item :key="`operation-${i}-${scopeItemIndex}`">
                       <a-button type="link" @click="deleteScopeItem(i, scopeItemIndex)">
                         删除</a-button
                       >
@@ -79,7 +94,12 @@
         </a-space>
       </template>
       <template v-slot:form_gray="{ current }">
-        <a-space direction="vertical" size="middle">
+        <a-space direction="vertical" size="middle" style="width: 100%">
+          <a-empty
+            v-if="current.form.rules.length === 0"
+            description="暂无灰度环境配置"
+            style="width: 100%"
+          />
           <a-card v-for="(item, i) in current.form.rules">
             <template #title>
               {{ $t('applicationDomain.gray') }} {{ i + 1 }}
@@ -103,25 +123,35 @@
                   :pagination="false"
                   :columns="grayTableColumns"
                   :data-source="item.scope"
+                  :row-key="(_record: any, index: number) => index"
                 >
                   <template #bodyCell="{ column, record, index }">
                     <template v-if="column.key === 'label'">
-                      <a-form-item :name="'rules[' + i + '].scope.key'">
+                      <a-form-item
+                        :name="['rules', i, 'scope', index, 'label']"
+                        :key="`label-${i}-${index}`"
+                      >
                         <a-input v-model:value="record.label"></a-input>
                       </a-form-item>
                     </template>
                     <template v-if="column.key === 'condition'">
-                      <a-form-item :name="'rules[' + i + '].scope.condition'">
+                      <a-form-item
+                        :name="['rules', i, 'scope', index, 'condition']"
+                        :key="`gray-condition-${i}-${index}`"
+                      >
                         <a-input v-model:value="record.condition"></a-input>
                       </a-form-item>
                     </template>
                     <template v-if="column.key === 'value'">
-                      <a-form-item :name="'rules[' + i + '].scope.value'">
+                      <a-form-item
+                        :name="['rules', i, 'scope', index, 'value']"
+                        :key="`gray-value-${i}-${index}`"
+                      >
                         <a-input v-model:value="record.value"></a-input>
                       </a-form-item>
                     </template>
                     <template v-if="column.key === 'operation'">
-                      <a-form-item :name="'rules[' + i + '].scope.operation'">
+                      <a-form-item :key="`gray-operation-${i}-${index}`">
                         <a-button type="link" @click="deleteGrayScopeItem(i, index)">
                           删除</a-button
                         >
@@ -139,7 +169,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, onMounted, reactive, ref } from 'vue'
+import { nextTick, onMounted, reactive } from 'vue'
 import ConfigPage from '@/components/ConfigPage.vue'
 import { Icon } from '@iconify/vue'
 import {
@@ -198,12 +228,7 @@ let options: any = reactive({
         }
       },
       form: {
-        rules: [
-          {
-            weight: 10,
-            scope: []
-          }
-        ]
+        rules: []
       },
       submit(form: {}) {
         return new Promise((resolve) => {
@@ -225,17 +250,7 @@ let options: any = reactive({
         }
       },
       form: {
-        rules: [
-          {
-            name: 'env-nam',
-            scope: {
-              key: 'env',
-              value: {
-                exact: 'gray'
-              }
-            }
-          }
-        ]
+        rules: []
       },
       submit(form: {}) {
         return new Promise((resolve) => {
@@ -253,7 +268,6 @@ let options: any = reactive({
 // Is execution log acquisition enabled?
 const getLogFlag = async () => {
   const res = await getAppLogSwitch(<string>route.params?.pathId)
-  console.log(res)
   if (res?.code == HTTP_STATUS.SUCCESS) {
     options.list.forEach((item: any) => {
       if (item.key === 'log') {
@@ -267,7 +281,6 @@ const getLogFlag = async () => {
 // Modify the execution log switch
 const updateLogFlag = async (operatorLog: boolean) => {
   const res = await updateAppLogSwitch(<string>route.params?.pathId, operatorLog)
-  console.log(res)
   if (res?.code == HTTP_STATUS.SUCCESS) {
     await getLogFlag()
   }

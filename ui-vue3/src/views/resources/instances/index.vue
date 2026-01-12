@@ -18,16 +18,25 @@
   <div class="instances-container">
     <search-table :search-domain="searchDomain">
       <template #bodyCell="{ text, record, index, column }">
+        <template v-if="column.dataIndex === 'name'">
+          <a-tooltip :title="text">
+            <span
+              class="app-link"
+              @click="router.push(`/resources/instances/detail/${record.name}/${record.ip}`)"
+            >
+              <b>
+                <Icon
+                  style="margin-bottom: -2px"
+                  icon="material-symbols:attach-file-rounded"
+                ></Icon>
+                {{ text }}
+              </b>
+            </span>
+          </a-tooltip>
+        </template>
+
         <template v-if="column.dataIndex === 'ip'">
-          <span
-            class="app-link"
-            @click="router.push(`/resources/instances/detail/${record.name}/${record[column.key]}`)"
-          >
-            <b>
-              <Icon style="margin-bottom: -2px" icon="material-symbols:attach-file-rounded"></Icon>
-              {{ text }}
-            </b>
-          </span>
+          <span>{{ text }}</span>
         </template>
 
         <template v-if="column.dataIndex === 'deployState'">
@@ -83,18 +92,18 @@ let query = route.query['query']
 let __null = PRIMARY_COLOR
 let columns = [
   {
-    title: 'instanceDomain.instanceIP',
-    key: 'ip',
-    dataIndex: 'ip',
-    // sorter: (a: any, b: any) => sortString(a.ip, b.ip),
-    width: 200
-  },
-  {
     title: 'instanceDomain.instanceName',
     key: 'name',
     dataIndex: 'name',
     // sorter: (a: any, b: any) => sortString(a.name, b.name),
     width: 140
+  },
+  {
+    title: 'instanceDomain.instanceIP',
+    key: 'ip',
+    dataIndex: 'ip',
+    // sorter: (a: any, b: any) => sortString(a.ip, b.ip),
+    width: 200
   },
   {
     title: 'instanceDomain.deployState',
@@ -219,17 +228,6 @@ watch(route, (a, b) => {
 
   .search-table-container {
     min-height: 60vh;
-
-    .app-link {
-      padding: 4px 10px 4px 4px;
-      border-radius: 4px;
-      color: v-bind('PRIMARY_COLOR');
-
-      &:hover {
-        cursor: pointer;
-        background: rgba(133, 131, 131, 0.13);
-      }
-    }
   }
 }
 </style>

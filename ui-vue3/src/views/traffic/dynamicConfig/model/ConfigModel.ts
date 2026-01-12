@@ -358,6 +358,7 @@ export class ViewDataModel {
         }
         for (const key of x.matchesKeys) {
           const tmp = x.matchesValue[key]
+          if (!tmp) continue // Skip if key doesn't exist in matchesValue
           if (tmp.type === 'obj') {
             match[key] = { [tmp.relation]: tmp.value }
           } else if (tmp.type === 'arr') {
@@ -380,6 +381,7 @@ export class ViewDataModel {
         }
         for (const key of x.parametersKeys) {
           const tmp = x.parametersValue[key]
+          if (!tmp) continue // Skip if key doesn't exist in parametersValue
           if (tmp.type === 'obj') {
             parameters[key] = tmp.value
           } else {

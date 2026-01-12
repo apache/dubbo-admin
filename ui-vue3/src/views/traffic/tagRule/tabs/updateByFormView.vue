@@ -216,7 +216,7 @@
     <a-affix :offset-bottom="10">
       <div class="bottom-action-footer">
         <a-space align="center" size="large">
-          <a-button type="primary" @click="updateTagRule"> 确认</a-button>
+          <a-button type="primary" :loading="loading" @click="updateTagRule"> 确认</a-button>
           <a-button> 取消</a-button>
         </a-space>
       </div>
@@ -296,6 +296,7 @@ const {
 const route = useRoute()
 
 const isDrawerOpened = ref(false)
+const loading = ref(false)
 
 const sliderSpan = ref(8)
 
@@ -593,42 +594,50 @@ const getTagRuleDetail = async () => {
 }
 
 const updateTagRule = async () => {
-  const {
-    ruleGranularity,
-    objectOfAction,
-    enable,
-    faultTolerantProtection,
-    runtime,
-    priority,
-    configVersion
-  } = baseInfo
-  const data = {
-    configVersion,
-    scope: ruleGranularity,
-    key: objectOfAction,
-    enabled: enable,
-    runtime,
-    tags: []
-  }
-  tagList.value.forEach((tagItem, tagIndex) => {
-    const tag = {
-      name: tagItem.tagName,
-      match: []
+  loading.value = true
+  try {
+    const {
+      ruleGranularity,
+      objectOfAction,
+      enable,
+      faultTolerantProtection,
+      runtime,
+      priority,
+      configVersion
+    } = baseInfo
+    const data = {
+      configVersion,
+      scope: ruleGranularity,
+      key: objectOfAction,
+      enabled: enable,
+      runtime,
+      tags: []
     }
-    tagItem.scope.labels.forEach((labelItem, labelIndex) => {
-      const matchItem = {
-        key: labelItem.myKey,
-        value: {}
+    tagList.value.forEach((tagItem, tagIndex) => {
+      const tag = {
+        name: tagItem.tagName,
+        match: []
       }
-      matchItem.value[labelItem.condition] = labelItem.value
-      tag.match.push(matchItem)
+      tagItem.scope.labels.forEach((labelItem, labelIndex) => {
+        const matchItem = {
+          key: labelItem.myKey,
+          value: {}
+        }
+        matchItem.value[labelItem.condition] = labelItem.value
+        tag.match.push(matchItem)
+      })
+      data.tags.push(tag)
     })
-    data.tags.push(tag)
-  })
-  const res = await updateTagRuleAPI(route.params?.ruleName, data)
-  if (res.code === HTTP_STATUS.SUCCESS) {
-    await getTagRuleDetail()
-    message.success('修改成功')
+    const res = await updateTagRuleAPI(route.params?.ruleName, data)
+    if (res.code === HTTP_STATUS.SUCCESS) {
+      message.success('update success')
+      // 延迟 2 秒后再获取数据，确保数据库已更新
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+      TAB_STATE.tagRule = null
+      await getTagRuleDetail()
+    }
+  } finally {
+    loading.value = false
   }
 }
 </script>
@@ -653,7 +662,8 @@ const updateTagRule = async () => {
     display: flex;
     align-items: center;
     padding-left: 20px;
-    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1); /* 添加顶部阴影 */
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+    /* 添加顶部阴影 */
   }
 
   .sliderBox {

@@ -234,82 +234,36 @@ function copyIt(v: string) {
 }
 
 // Condition routing details
-const conditionRuleDetail = reactive({
-  configVersion: 'v3.0',
-  scope: 'service',
-  key: 'org.apache.dubbo.samples.UserService:1.0.0:groupA',
-  enabled: true,
-  runtime: true,
-  force: true,
-  conditions: [
-    'method=getUser & arguments[0]=123 => host=192.168.1.100 & host=192.168.1.101',
-    'method=updateUser & arguments[0].role=admin => host=192.168.1.200',
-    'method=deleteUser => host!=192.168.0.68',
-    'attachments.region=north => host=192.168.2.*'
-  ],
-  group: 'groupA',
-  version: '1.0.0'
-})
+const conditionRuleDetail = reactive({})
 
 const actionObj = computed(() => {
-  const arr = conditionRuleDetail.key.split(':')
+  const key = conditionRuleDetail.key || ''
+  const arr = typeof key === 'string' ? key.split(':') : []
   conditionRuleDetail.version = arr[1] || ''
   conditionRuleDetail.group = arr[2] || ''
-  return arr[0] ? arr[0] : ''
+  return arr[0] || ''
 })
 
 // Request parameter matching
-const requestParameterMatch = ref<string[]>([
-  'method=getUser',
-  'arguments[0]=123',
-  'method=updateUser',
-  'arguments[0].role=admin',
-  'method=deleteUser',
-  'attachments.region=north'
-])
+const requestParameterMatch = ref<string[]>([])
 
 // Address subset matching
-const addressSubsetMatch = ref<string[]>([
-  'host=192.168.1.100',
-  'host=192.168.1.101',
-  'host=192.168.1.200',
-  'host!=192.168.0.68',
-  'host=192.168.2.*'
-])
+const addressSubsetMatch = ref<string[]>([])
 
 // Get condition routing details
 async function getRoutingRuleDetail() {
-  // 使用 Mock 数据，不调用真实 API
-  // let res = await getConditionRuleDetailAPI(<string>route.params?.ruleName)
-  // if (res?.code === HTTP_STATUS.SUCCESS) {
-  //   Object.assign(conditionRuleDetail, res?.data || {})
-  //
-  //   conditionRuleDetail.conditions.forEach((item: any, index: number) => {
-  //     const arr = item.split(' => ')
-  //     const addressArr = arr[1]?.split(' & ')
-  //     const requestMatchArr = arr[0]?.split(' & ')
-  //     requestParameterMatch.value = requestParameterMatch.value.concat(requestMatchArr)
-  //     addressSubsetMatch.value = addressSubsetMatch.value.concat(addressArr)
-  //   })
-  // }
+  let res = await getConditionRuleDetailAPI(<string>route.params?.ruleName)
+  if (res?.code === HTTP_STATUS.SUCCESS) {
+    Object.assign(conditionRuleDetail, res?.data || {})
 
-  // Mock 数据处理
-  const mockConditions = conditionRuleDetail.conditions
-  const mockRequestParams: string[] = []
-  const mockAddressSubset: string[] = []
-
-  mockConditions.forEach((item: string) => {
-    const arr = item.split(' => ')
-    if (arr.length === 2) {
-      const requestMatchArr = arr[0]?.split(' & ').filter(Boolean)
-      const addressArr = arr[1]?.split(' & ').filter(Boolean)
-      mockRequestParams.push(...requestMatchArr)
-      mockAddressSubset.push(...addressArr)
-    }
-  })
-
-  requestParameterMatch.value = [...new Set(mockRequestParams)]
-  addressSubsetMatch.value = [...new Set(mockAddressSubset)]
+    conditionRuleDetail.conditions.forEach((item: any, index: number) => {
+      const arr = item.split(' => ')
+      const addressArr = arr[1]?.split(' & ')
+      const requestMatchArr = arr[0]?.split(' & ')
+      requestParameterMatch.value = requestParameterMatch.value.concat(requestMatchArr)
+      addressSubsetMatch.value = addressSubsetMatch.value.concat(addressArr)
+    })
+  }
 }
 
 const getVersionAndGroup = () => {

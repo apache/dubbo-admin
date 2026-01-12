@@ -40,7 +40,9 @@
         <a-affix :offset-bottom="10">
           <div class="bottom-action-footer">
             <a-space align="center" size="large">
-              <a-button type="primary" @click="updateRoutingRule"> 确认</a-button>
+              <a-button type="primary" :loading="loading" @click="updateRoutingRule">
+                确认</a-button
+              >
               <a-button> 取消</a-button>
             </a-space>
           </div>
@@ -92,42 +94,17 @@ const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
 
 const route = useRoute()
 const isReadonly = ref(false)
+const loading = ref(false)
 
 const isDrawerOpened = ref(false)
 
 const sliderSpan = ref(8)
 
-const YAMLValue = ref(`conditions:
-  - from:
-      match: >-
-        method=string & arguments[method]=string &
-        arguments[arguments[method]]=string &
-        arguments[arguments[arguments[method]]]=string &
-        arguments[arguments[arguments[arguments[string]]]]!=string
-    to:
-      - match: string!=string
-        weight: 0
-  - from:
-      match: >-
-        method=string & arguments[method]=string &
-        arguments[arguments[method]]=string &
-        arguments[arguments[arguments[string]]]!=string
-    to:
-      - match: string!=lggbond
-        weight: 0
-      - match: ss!=ss
-        weight: 0
-configVersion: v3.1
-enabled: true
-force: false
-key: org.apache.dubbo.samples.CommentService
-runtime: true
-scope: service`)
+const YAMLValue = ref('')
 
 onMounted(() => {
   if (!isNil(TAB_STATE.conditionRule)) {
     const data = TAB_STATE.conditionRule
-    // console.log('%c [ data ]-117', 'font-size:13px; background:pink; color:#bf2c9f;', data)
     YAMLValue.value = yaml.dump(data)
   } else {
     YAMLValue.value = ``
@@ -137,7 +114,6 @@ onMounted(() => {
 
 const changeEditor = (val) => {
   TAB_STATE.conditionRule = yaml.load(YAMLValue.value)
-  // console.log('[ TAB_STATE.conditionRule ] >', TAB_STATE.conditionRule)
 }
 
 // Get condition routing details
@@ -154,13 +130,20 @@ async function getRoutingRuleDetail() {
 }
 
 const updateRoutingRule = async () => {
-  // console.log('ymal',YAMLValue.value)
-  const data = yaml.load(YAMLValue.value)
-  data.configVersion = 'v3.0'
-  const res = await updateConditionRuleAPI(<string>route.params?.ruleName, data)
-  if (res.code === HTTP_STATUS.SUCCESS) {
-    await getRoutingRuleDetail()
-    message.success('修改成功')
+  loading.value = true
+  try {
+    const data = yaml.load(YAMLValue.value)
+    data.configVersion = 'v3.0'
+    const res = await updateConditionRuleAPI(<string>route.params?.ruleName, data)
+    if (res.code === HTTP_STATUS.SUCCESS) {
+      message.success('update success')
+      // 延迟 2 秒后再获取数据，确保数据库已更新
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+      TAB_STATE.conditionRule = null
+      await getRoutingRuleDetail()
+    }
+  } finally {
+    loading.value = false
   }
 }
 </script>
@@ -179,7 +162,8 @@ const updateRoutingRule = async () => {
   display: flex;
   align-items: center;
   padding-left: 20px;
-  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1); /* 添加顶部阴影 */
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+  /* 添加顶部阴影 */
 }
 
 .sliderBox {
