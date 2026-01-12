@@ -40,6 +40,11 @@ type ResourceStore interface {
 	ListByIndexes(indexes map[string]string) ([]model.Resource, error)
 	// PageListByIndexes list resources by indexes pageable, indexes is map of index name and index value
 	PageListByIndexes(indexes map[string]string, pq model.PageReq) (*model.PageData[model.Resource], error)
+	// ListByIndexesWithPrefix list resources by indexes with prefix matching support
+	// prefixIndexes is map of index name and prefix value
+	ListByIndexesWithPrefix(indexes map[string]string, prefixIndexes map[string]string) ([]model.Resource, error)
+	// PageListByIndexesWithPrefix list resources by indexes with prefix matching support, pageable
+	PageListByIndexesWithPrefix(indexes map[string]string, prefixIndexes map[string]string, pq model.PageReq) (*model.PageData[model.Resource], error)
 }
 
 // ManagedResourceStore includes both functional interfaces and lifecycle interfaces

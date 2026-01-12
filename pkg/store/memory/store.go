@@ -30,11 +30,13 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/core/store"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
+	"github.com/apache/dubbo-admin/pkg/store/indexer"
 )
 
 type resourceStore struct {
 	rk         coremodel.ResourceKind
 	storeProxy cache.Indexer
+	indices    *indexer.IndexImpl
 }
 
 var _ store.ManagedResourceStore = &resourceStore{}
@@ -55,6 +57,14 @@ func (rs *resourceStore) Init(_ runtime.BuilderContext) error {
 		},
 		indexers,
 	)
+
+	// Create IndexWrapper with MemoryIndex for prefix query support
+	memIndex := indexer.NewMemoryIndex()
+	rs.indices = indexer.NewIndexImpl(memIndex)
+	if err := rs.indices.AddIndexers(indexers); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -63,15 +73,56 @@ func (rs *resourceStore) Start(_ runtime.Runtime, _ <-chan struct{}) error {
 }
 
 func (rs *resourceStore) Add(obj interface{}) error {
-	return rs.storeProxy.Add(obj)
+	if err := rs.storeProxy.Add(obj); err != nil {
+		return err
+	}
+
+	// Update indices
+	if resource, ok := obj.(coremodel.Resource); ok {
+		rs.indices.UpdateResource(resource, nil)
+	}
+
+	return nil
 }
 
 func (rs *resourceStore) Update(obj interface{}) error {
-	return rs.storeProxy.Update(obj)
+	resource, ok := obj.(coremodel.Resource)
+	if !ok {
+		return bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
+	}
+
+	// Get old resource for index update
+	oldObj, exists, err := rs.storeProxy.GetByKey(resource.ResourceKey())
+	if err != nil {
+		return err
+	}
+
+	var oldResource coremodel.Resource
+	if exists {
+		oldResource, _ = oldObj.(coremodel.Resource)
+	}
+
+	if err := rs.storeProxy.Update(obj); err != nil {
+		return err
+	}
+
+	// Update indices
+	rs.indices.UpdateResource(resource, oldResource)
+
+	return nil
 }
 
 func (rs *resourceStore) Delete(obj interface{}) error {
-	return rs.storeProxy.Delete(obj)
+	if err := rs.storeProxy.Delete(obj); err != nil {
+		return err
+	}
+
+	// Remove from indices
+	if resource, ok := obj.(coremodel.Resource); ok {
+		rs.indices.RemoveResource(resource)
+	}
+
+	return nil
 }
 
 func (rs *resourceStore) List() []interface{} {
@@ -203,4 +254,101 @@ func (rs *resourceStore) getKeysByIndexes(indexes map[string]string) ([]string, 
 		}
 	}
 	return keySet.ToSlice(), nil
+}
+
+// getKeysByIndexesWithPrefix gets resource keys by combining exact and prefix indexes
+func (rs *resourceStore) getKeysByIndexesWithPrefix(indexes map[string]string, prefixIndexes map[string]string) ([]string, error) {
+	if len(indexes) == 0 && len(prefixIndexes) == 0 {
+		return []string{}, nil
+	}
+
+	keySet := set.New[string]()
+	first := true
+
+	// Process exact match indexes using IndexWrapper
+	for indexName, indexValue := range indexes {
+		query := indexer.NewQuery(indexName, indexer.OperatorEquals, indexValue)
+		keys, err := rs.indices.Query(query)
+		if err != nil {
+			return nil, err
+		}
+
+		if first {
+			keySet = set.FromSlice(keys)
+			first = false
+		} else {
+			nextSet := set.FromSlice(keys)
+			keySet = keySet.Intersection(nextSet)
+		}
+	}
+
+	// Process prefix match indexes using IndexWrapper
+	for indexName, prefix := range prefixIndexes {
+		query := indexer.NewQuery(indexName, indexer.OperatorPrefix, prefix)
+		keys, err := rs.indices.Query(query)
+		if err != nil {
+			return nil, err
+		}
+
+		if first {
+			keySet = set.FromSlice(keys)
+			first = false
+		} else {
+			nextSet := set.FromSlice(keys)
+			keySet = keySet.Intersection(nextSet)
+		}
+	}
+
+	return keySet.ToSlice(), nil
+}
+
+// ListByIndexesWithPrefix lists resources by indexes with prefix matching support
+func (rs *resourceStore) ListByIndexesWithPrefix(indexes map[string]string, prefixIndexes map[string]string) ([]coremodel.Resource, error) {
+	keys, err := rs.getKeysByIndexesWithPrefix(indexes, prefixIndexes)
+	if err != nil {
+		return nil, err
+	}
+
+	resources, err := rs.GetByKeys(keys)
+	if err != nil {
+		return nil, err
+	}
+
+	resources = slices.SortBy(resources, func(r coremodel.Resource) string {
+		return r.ResourceKey()
+	})
+
+	return resources, nil
+}
+
+// PageListByIndexesWithPrefix lists resources by indexes with prefix matching support, pageable
+func (rs *resourceStore) PageListByIndexesWithPrefix(indexes map[string]string, prefixIndexes map[string]string, pq coremodel.PageReq) (*coremodel.PageData[coremodel.Resource], error) {
+	keys, err := rs.getKeysByIndexesWithPrefix(indexes, prefixIndexes)
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Strings(keys)
+	total := len(keys)
+
+	if pq.PageOffset < 0 || pq.PageOffset > total {
+		return nil, store.ErrorInvalidOffset
+	}
+
+	// Calculate page range
+	end := pq.PageOffset + pq.PageSize
+	if end > total {
+		end = total
+	}
+
+	// Get only the keys for current page
+	pageKeys := keys[pq.PageOffset:end]
+
+	// Batch fetch resources for current page
+	resources, err := rs.GetByKeys(pageKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	return coremodel.NewPageData(total, pq.PageOffset, pq.PageSize, resources), nil
 }

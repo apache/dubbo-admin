@@ -41,11 +41,13 @@ import (
 
 // SearchInstanceByIp search instance by ip
 func SearchInstanceByIp(ctx consolectx.Context, req *model.SearchReq) (*model.SearchPaginationResult, error) {
-	pageData, err := manager.PageListByIndexes[*meshresource.InstanceResource](
+	pageData, err := manager.PageListByIndexesWithPrefix[*meshresource.InstanceResource](
 		ctx.ResourceManager(),
 		meshresource.InstanceKind,
 		map[string]string{
-			index.ByMeshIndex:       req.Mesh,
+			index.ByMeshIndex: req.Mesh,
+		},
+		map[string]string{
 			index.ByInstanceIpIndex: req.Keywords,
 		},
 		req.PageReq)
@@ -72,11 +74,13 @@ func SearchInstanceByIp(ctx consolectx.Context, req *model.SearchReq) (*model.Se
 
 // SearchInstanceByName search instance by name
 func SearchInstanceByName(ctx consolectx.Context, req *model.SearchReq) (*model.SearchPaginationResult, error) {
-	pageData, err := manager.PageListByIndexes[*meshresource.InstanceResource](
+	pageData, err := manager.PageListByIndexesWithPrefix[*meshresource.InstanceResource](
 		ctx.ResourceManager(),
 		meshresource.InstanceKind,
 		map[string]string{
-			index.ByMeshIndex:         req.Mesh,
+			index.ByMeshIndex: req.Mesh,
+		},
+		map[string]string{
 			index.ByInstanceNameIndex: req.Keywords,
 		},
 		req.PageReq)

@@ -36,6 +36,10 @@ type ReadOnlyResourceManager interface {
 	ListByIndexes(rk model.ResourceKind, indexes map[string]string) ([]model.Resource, error)
 	// PageListByIndexes page list the resources with the given indexes, indexes is a map of index name and index value
 	PageListByIndexes(rk model.ResourceKind, indexes map[string]string, pr model.PageReq) (*model.PageData[model.Resource], error)
+	// ListByIndexesWithPrefix returns the resources with the given indexes and prefix indexes
+	ListByIndexesWithPrefix(rk model.ResourceKind, indexes map[string]string, prefixIndexes map[string]string) ([]model.Resource, error)
+	// PageListByIndexesWithPrefix page list the resources with the given indexes and prefix indexes
+	PageListByIndexesWithPrefix(rk model.ResourceKind, indexes map[string]string, prefixIndexes map[string]string, pr model.PageReq) (*model.PageData[model.Resource], error)
 	// PageSearchResourceByConditions page fuzzy search resource by conditions, conditions cannot be empty
 	// TODO support multiple conditions
 	PageSearchResourceByConditions(rk model.ResourceKind, conditions []string, pr model.PageReq) (*model.PageData[model.Resource], error)
@@ -122,6 +126,39 @@ func (rm *resourcesManager) PageListByIndexes(
 		return nil, err
 	}
 	pageData, err := rs.PageListByIndexes(indexes, pr)
+	if err != nil {
+		return nil, err
+	}
+	return pageData, nil
+}
+
+func (rm *resourcesManager) ListByIndexesWithPrefix(
+	rk model.ResourceKind,
+	indexes map[string]string,
+	prefixIndexes map[string]string) ([]model.Resource, error) {
+
+	rs, err := rm.storeRouter.ResourceKindRoute(rk)
+	if err != nil {
+		return nil, err
+	}
+	resources, err := rs.ListByIndexesWithPrefix(indexes, prefixIndexes)
+	if err != nil {
+		return nil, err
+	}
+	return resources, nil
+}
+
+func (rm *resourcesManager) PageListByIndexesWithPrefix(
+	rk model.ResourceKind,
+	indexes map[string]string,
+	prefixIndexes map[string]string,
+	pr model.PageReq) (*model.PageData[model.Resource], error) {
+
+	rs, err := rm.storeRouter.ResourceKindRoute(rk)
+	if err != nil {
+		return nil, err
+	}
+	pageData, err := rs.PageListByIndexesWithPrefix(indexes, prefixIndexes, pr)
 	if err != nil {
 		return nil, err
 	}
