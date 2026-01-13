@@ -46,8 +46,11 @@ const grafanaUrl = ref('')
 const route = useRoute()
 onMounted(async () => {
   let res = await grafana.api({})
-  grafana.url = `${res.data?.baseURL}?var-${grafana.type}=${grafana.name}&kiosk=1?&theme=light`
-  grafana.showIframe = true
+  if (res.data?.baseURL) {
+    grafana.url = `${res.data?.baseURL}?var-${grafana.type}=${grafana.name}&kiosk=1&theme=light`
+    grafana.showIframe = true
+    console.log('grafana.url', grafana.url)
+  }
 })
 
 function tryDo(handle: any) {
@@ -62,22 +65,24 @@ function onIframeLoad() {
   console.log('The iframe has been loaded.')
   setTimeout(() => {
     try {
-      let iframeDocument = document.querySelector('#grafanaIframe').contentDocument
+      const iframe = document.querySelector('#grafanaIframe') as HTMLIFrameElement
+      const iframeDocument = iframe?.contentDocument
+      if (!iframeDocument) return
       tryDo(() => {
-        iframeDocument.querySelector('header').remove()
+        iframeDocument.querySelector('header')?.remove()
       })
       tryDo(() => {
-        iframeDocument.querySelector(`[data-testid*='controls']`).remove()
+        iframeDocument.querySelector(`[data-testid*='controls']`)?.remove()
       })
       setTimeout(() => {
         tryDo(() => {
-          iframeDocument.querySelector(`[data-testid*='navigation mega-menu']`).remove()
+          iframeDocument.querySelector(`[data-testid*='navigation mega-menu']`)?.remove()
         })
         tryDo(() => {
           for (let querySelectorAllElement of iframeDocument.querySelectorAll(
             `[data-testid*='Panel menu']`
           )) {
-            querySelectorAllElement.remove()
+            querySelectorAllElement?.remove()
           }
         })
       }, 2000)

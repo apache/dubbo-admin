@@ -141,7 +141,7 @@ function serviceInfo(params: any) {
   return getApplicationServiceForm(params).then(async (res) => {
     return promQueryList(res, ['qps', 'rt', 'request'], async (service: any) => {
       service.versionGroupSelect = {}
-      service.versionGroupSelect.versionGroupArr = service.versionGroups.map((item: any) => {
+      service.versionGroupSelect.versionGroupArr = (service.versionGroups || []).map((item: any) => {
         return (item.versionGroup =
           (item.version ? 'version: ' + item.version + ', ' : '') +
             (item.group ? 'group: ' + item.group : '') || '无')
