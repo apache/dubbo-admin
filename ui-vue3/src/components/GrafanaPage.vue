@@ -22,34 +22,37 @@
     <!--    </div>-->
     <a-spin class="spin" :spinning="!grafana.showIframe">
       <div class="__container_iframe_container">
-        <iframe
-          v-if="grafana.showIframe"
-          :onload="onIframeLoad"
-          id="grafanaIframe"
-          style="padding-top: 60px"
-          :src="grafana.url"
-          frameborder="0"
-        ></iframe>
+        <iframe v-if="grafana.showIframe" :onload="onIframeLoad" id="grafanaIframe" style="padding-top: 60px"
+          :src="grafana.url" frameborder="0"></iframe>
       </div>
     </a-spin>
   </div>
 </template>
 
 <script setup lang="ts">
-import { inject, onMounted, ref } from 'vue'
+import { inject, onMounted } from 'vue'
+import { message } from 'ant-design-vue'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
-import { useRoute } from 'vue-router'
+import type { GrafanaState } from '@/types/grafana'
 
-const grafana: any = inject(PROVIDE_INJECT_KEY.GRAFANA)
+const grafana = inject<GrafanaState>(PROVIDE_INJECT_KEY.GRAFANA)
 
-const grafanaUrl = ref('')
-const route = useRoute()
+if (!grafana) {
+  throw new Error('Grafana state not provided')
+}
+
 onMounted(async () => {
-  let res = await grafana.api({})
-  if (res.data?.baseURL) {
-    grafana.url = `${res.data?.baseURL}?var-${grafana.type}=${grafana.name}&kiosk=1&theme=light`
-    grafana.showIframe = true
-    console.log('grafana.url', grafana.url)
+  try {
+    let res = await grafana.api(grafana.params || {})
+    if (res?.data?.fullURL) {
+      grafana.url = res.data.fullURL
+      grafana.showIframe = true
+    } else {
+      message.error('获取Grafana仪表板URL失败')
+    }
+  } catch (error) {
+    console.error('获取Grafana仪表板失败:', error)
+    message.error('获取Grafana仪表板失败，请稍后重试')
   }
 })
 
@@ -86,13 +89,11 @@ function onIframeLoad() {
           }
         })
       }, 2000)
-    } catch (e) {}
+    } catch (e) {
+      // Ignore errors when manipulating iframe content
+    }
     grafana.showIframe = true
   }, 1000)
-}
-
-function newPageForGrafana() {
-  window.open(grafana.url, '_blank')
 }
 </script>
 <style lang="less" scoped>

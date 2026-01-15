@@ -28,7 +28,7 @@
             <TAB_HEADER_TITLE :route="tabRoute" />
           </a-col>
         </a-row>
-        <a-tabs @change="router.push({ name: activeKey || '' })" v-model:activeKey="activeKey">
+        <a-tabs @change="handleTabChange(activeKey)" v-model:activeKey="activeKey">
           <a-tab-pane :key="v.name" v-for="v in tabRouters.filter((x: any) => !x.meta.hidden)">
             <template #tab>
               <span>
@@ -41,15 +41,12 @@
       </div>
 
       <a-spin class="tab-spin" :spinning="transitionFlag">
-        <div
-          id="layout-tab-body"
-          style="
+        <div id="layout-tab-body" style="
             transition: scroll-top 0.5s ease;
             overflow: auto;
             height: calc(100vh - 300px);
             padding-bottom: 20px;
-          "
-        >
+          ">
           <router-view :key="routerKey" v-if="!transitionFlag" />
         </div>
       </a-spin>
@@ -66,7 +63,7 @@ import _ from 'lodash'
 import { PRIMARY_COLOR, TAB_HEADER_TITLE } from '@/base/constants'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 const TAB_STATE = reactive({})
-provide(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY, TAB_STATE)
+provide(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE, TAB_STATE)
 const router = useRouter()
 const tabRoute = useRoute()
 let __ = PRIMARY_COLOR
@@ -77,11 +74,20 @@ const tabRouters = computed(() => {
   return meta?.parent?.children?.filter((x: any): any => x.meta.tab)
 })
 const routerKey = computed(() => {
-  return tabRoute.name + '_' + _.uniqueId()
+  return String(tabRoute.name || '') + '_' + _.uniqueId()
 })
-let activeKey = ref(tabRoute.name)
+let activeKey = ref(String(tabRoute.name || ''))
 let transitionFlag = ref(false)
 let key = _.uniqueId('__tab_page')
+
+function handleTabChange(tabKey: string) {
+  router.push({
+    name: tabKey,
+    params: tabRoute.params,
+    query: tabRoute.query
+  })
+}
+
 router.beforeEach((to, from, next) => {
   key = _.uniqueId('__tab_page')
   transitionFlag.value = true
