@@ -41,12 +41,15 @@
       </div>
 
       <a-spin class="tab-spin" :spinning="transitionFlag">
-        <div id="layout-tab-body" style="
+        <div
+          id="layout-tab-body"
+          style="
             transition: scroll-top 0.5s ease;
             overflow: auto;
             height: calc(100vh - 300px);
             padding-bottom: 20px;
-          ">
+          "
+        >
           <router-view :key="routerKey" v-if="!transitionFlag" />
         </div>
       </a-spin>
