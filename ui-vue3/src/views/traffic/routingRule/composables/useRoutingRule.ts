@@ -458,10 +458,10 @@ export default function useRoutingRule() {
     const { ruleGranularity, objectOfAction } = baseInfo
 
     const typeText = ruleGranularity === 'service' ? '服务' : '应用'
-    let baseDescription = `对于${typeText}【${objectOfAction || '未指定'}】`
+    const baseDescription = `对于${typeText}【${objectOfAction || '未指定'}】`
 
     // 构建匹配条件描述 (when)
-    let whenConditions: string[] = []
+    const whenConditions: string[] = []
     routeItem.selectedMatchConditionTypes?.forEach((type) => {
       const matchItem = routeItem.requestMatch?.find((item) => item.type === type)
       if (!matchItem) return
@@ -550,7 +550,7 @@ export default function useRoutingRule() {
     const whenConditionStr = whenConditions.length > 0 ? whenConditions.join(' 且 ') : '任意请求'
 
     // 构建转发条件描述 (then)
-    let thenConditions: string[] = []
+    const thenConditions: string[] = []
     routeItem.selectedRouteDistributeMatchTypes?.forEach((type) => {
       const distributeItem = routeItem.routeDistribute?.find((item) => item.type === type)
       if (!distributeItem) return

@@ -27,8 +27,14 @@
           </a-button>
 
           <div class="editorBox">
-            <MonacoEditor @change="changeEditor" v-model:modelValue="YAMLValue" theme="vs-dark" :height="500"
-              language="yaml" :readonly="isReadonly" />
+            <MonacoEditor
+              @change="changeEditor"
+              v-model:modelValue="YAMLValue"
+              theme="vs-dark"
+              :height="500"
+              language="yaml"
+              :readonly="isReadonly"
+            />
           </div>
         </a-flex>
         <a-affix :offset-bottom="10">
