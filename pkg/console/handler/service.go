@@ -95,6 +95,8 @@ func ServiceConfigTimeoutPUT(ctx consolectx.Context) gin.HandlerFunc {
 			model.BaseServiceReq
 			Timeout int32 `json:"timeout"`
 		}{}
+		Mesh := c.Query("mesh")
+		param.Mesh = Mesh
 		if err := c.Bind(&param); err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
@@ -134,6 +136,8 @@ func ServiceConfigRetryPUT(ctx consolectx.Context) gin.HandlerFunc {
 			model.BaseServiceReq
 			RetryTimes int32 `json:"retryTimes"`
 		}{}
+		Mesh := c.Query("mesh")
+		param.Mesh = Mesh
 		if err := c.Bind(&param); err != nil {
 			util.HandleArgumentError(c, err)
 			return
@@ -172,6 +176,8 @@ func ServiceConfigRegionPriorityPUT(ctx consolectx.Context) gin.HandlerFunc {
 			model.BaseServiceReq
 			Enabled bool `json:"enabled"`
 		}{}
+		Mesh := c.Query("mesh")
+		param.Mesh = Mesh
 		if err := c.Bind(&param); err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
@@ -208,6 +214,8 @@ func ServiceConfigArgumentRoutePUT(ctx consolectx.Context) gin.HandlerFunc {
 			model.BaseServiceReq
 			model.ServiceArgumentRoute
 		}{}
+		Mesh := c.Query("mesh")
+		param.Mesh = Mesh
 		if err := c.Bind(&param); err != nil {
 			util.HandleArgumentError(c, err)
 			return

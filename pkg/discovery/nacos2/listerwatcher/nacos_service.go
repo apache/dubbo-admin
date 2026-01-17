@@ -257,6 +257,7 @@ func (lw *NacosServiceListerWatcher) TransformFunc() cache.TransformFunc {
 }
 
 func (lw *NacosServiceListerWatcher) Stop() {
+	lw.namingClient.CloseClient()
 	lw.stopWatch = true
 }
 

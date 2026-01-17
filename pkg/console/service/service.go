@@ -391,7 +391,7 @@ func GetServiceRegionPriorityConfig(ctx consolectx.Context, req model.BaseServic
 }
 
 func UpInsertServiceRegionPriorityConfig(ctx consolectx.Context, req model.BaseServiceReq, enabled bool) error {
-	serviceConditionRuleName := req.ServiceKey() + constants.ConditionRuleSuffix
+	serviceConditionRuleName := req.ServiceKey() + constants.ConditionRuleDotSuffix
 	res, err := GetConditionRule(ctx, serviceConditionRuleName, req.Mesh)
 	if err != nil {
 		logger.Errorf("get service condition rule %s failed, cause: %v", serviceConditionRuleName, err)

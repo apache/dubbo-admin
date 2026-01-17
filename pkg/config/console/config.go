@@ -18,65 +18,113 @@
 package console
 
 import (
-	"errors"
+	"fmt"
 	"net/url"
 
+	set "github.com/duke-git/lancet/v2/datastructure/set"
 	"github.com/duke-git/lancet/v2/strutil"
-	"go.uber.org/multierr"
+	"github.com/gin-gonic/gin"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/config"
 	"github.com/apache/dubbo-admin/pkg/config/console/auth"
-	. "github.com/apache/dubbo-admin/pkg/config/console/observability"
+)
+
+type GinRunningMode string
+
+var supportedGinRunningMode = set.New(DebugMode, ReleaseMode, TestMode)
+
+const (
+	DebugMode   GinRunningMode = gin.DebugMode
+	ReleaseMode GinRunningMode = gin.ReleaseMode
+	TestMode    GinRunningMode = gin.TestMode
 )
 
 type Config struct {
 	config.BaseConfig
-	Port              int                    `json:"port" envconfig:"DUBBO_ADMIN_PORT"`
-	MetricDashboards  *MetricDashboardConfig `json:"metricDashboards"`
-	TraceDashboards   *TraceDashboardConfig  `json:"traceDashboards"`
-	Prometheus        string                 `json:"prometheus"`
-	Grafana           string                 `json:"grafana"`
-	Auth              *auth.Config           `json:"auth"`
-	PrometheusBaseURL *url.URL
+	GinMode          GinRunningMode          `json:"ginMode" yaml:"ginMode"`
+	Port             int                     `json:"port" yaml:"port"`
+	MetricDashboards *GrafanaDashboardConfig `json:"metricDashboards" yaml:"metricDashboards"`
+	TraceDashboards  *GrafanaDashboardConfig `json:"traceDashboards" yaml:"traceDashboards"`
+	Auth             *auth.Config            `json:"auth" yaml:"auth"`
 }
 
-func (s *Config) PostProcess() error {
-	if strutil.IsNotBlank(s.Prometheus) {
-		prometheusBaseURL, err := url.Parse(s.Prometheus)
-		if err != nil {
-			return bizerror.Wrap(err, bizerror.ConfigError, "invalid prometheus url")
-		}
-		s.PrometheusBaseURL = prometheusBaseURL
+func (c *Config) Validate() error {
+	if !supportedGinRunningMode.Contain(c.GinMode) {
+		return bizerror.New(bizerror.ConfigError, fmt.Sprintf("invalid gin mode: %s", c.GinMode))
 	}
-	return multierr.Combine(
-		s.MetricDashboards.PostProcess(),
-		s.TraceDashboards.PostProcess(),
-	)
-}
-
-func (s *Config) Validate() error {
-	if s.MetricDashboards != nil {
-		if err := s.MetricDashboards.Validate(); err != nil {
+	if c.Port < 1 || c.Port > 65535 {
+		return bizerror.New(bizerror.ConfigError, "port of console must between 1 to 65535")
+	}
+	if c.Auth == nil {
+		return bizerror.New(bizerror.ConfigError, "auth config is needed, but found empty")
+	}
+	if c.MetricDashboards != nil {
+		if err := c.MetricDashboards.Validate(); err != nil {
 			return err
 		}
 	}
-	if s.TraceDashboards != nil {
-		if err := s.TraceDashboards.Validate(); err != nil {
+	if c.TraceDashboards != nil {
+		if err := c.TraceDashboards.Validate(); err != nil {
 			return err
 		}
 	}
-	if s.Auth == nil {
-		return errors.New("auth config is needed, but found empty")
-	}
-	if err := s.Auth.Validate(); err != nil {
+	if err := c.Auth.Validate(); err != nil {
 		return err
+	}
+	return nil
+}
+
+type GrafanaDashboardConfig struct {
+	config.BaseConfig
+	// application level metrics panel
+	Application string `json:"application" yaml:"application"`
+	// instance level metrics panel
+	Instance string `json:"instance" yaml:"instance"`
+	// service level metrics panel
+	Service string `json:"service" yaml:"service"`
+
+	AppDashboardURL      *url.URL `json:"-" yaml:"-"`
+	InstanceDashboardURL *url.URL `json:"-" yaml:"-"`
+	ServiceDashboardURL  *url.URL `json:"-" yaml:"-"`
+}
+
+func (g *GrafanaDashboardConfig) Validate() error {
+	if strutil.IsNotBlank(g.Application) {
+		dashboardURL, err := url.Parse(g.Application)
+		if err != nil {
+			return bizerror.Wrap(err, bizerror.ConfigError,
+				fmt.Sprintf("invalid application dashboard url: %s", g.Application))
+		}
+		g.AppDashboardURL = dashboardURL
+	}
+	if strutil.IsNotBlank(g.Instance) {
+		dashboardURL, err := url.Parse(g.Instance)
+		if err != nil {
+			return bizerror.Wrap(err, bizerror.ConfigError,
+				fmt.Sprintf("invalid instance dashboard url: %s", g.Instance))
+		}
+		g.InstanceDashboardURL = dashboardURL
+	}
+	if strutil.IsNotBlank(g.Service) {
+		dashboardURL, err := url.Parse(g.Service)
+		if err != nil {
+			return bizerror.Wrap(err, bizerror.ConfigError,
+				fmt.Sprintf("invalid service dashboard url: %s", g.Service))
+		}
+		g.ServiceDashboardURL = dashboardURL
 	}
 	return nil
 }
 
 func DefaultConsoleConfig() *Config {
 	return &Config{
-		Port: 8888,
+		GinMode: ReleaseMode,
+		Port:    8888,
+		Auth: &auth.Config{
+			User:           "admin",
+			Password:       "admin",
+			ExpirationTime: 3600,
+		},
 	}
 }

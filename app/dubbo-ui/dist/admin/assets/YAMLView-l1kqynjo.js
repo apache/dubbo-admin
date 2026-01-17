@@ -1,4 +1,8 @@
+<<<<<<<< HEAD:app/dubbo-ui/dist/admin/assets/YAMLView-l1kqynjo.js
 import{y as k,_ as w}from"./js-yaml-A63HP8_m.js";import{e as T}from"./traffic-nmA_BhEL.js";import{d as B,a as b,B as s,D as C,J as y,w as e,e as n,o as u,b as a,j as _,c as A,M as I,f as v,L,T as M,p as N,h as D,_ as R}from"./index-rt1yTeew.js";import{H as Y}from"./request-vlI2kaaR.js";const x=o=>(N("data-v-cdabac6c"),o=o(),D(),o),j={class:"editorBox"},E=x(()=>_("p",null,"修改时间: 2024/3/20 15:20:31",-1)),H=x(()=>_("p",null,"版本号: xo842xqpx834",-1)),P=B({__name:"YAMLView",setup(o){const h=b(),g=s(!0),l=s(!1),p=s(8),i=s(`configVersion: v3.0
+========
+import{y as k,_ as w}from"./js-yaml-F_PXjql-.js";import{e as T}from"./traffic-BsDR0F4K.js";import{d as B,a as b,B as s,D as C,J as y,w as e,e as n,o as u,b as a,j as _,c as A,M as I,f as v,L,T as M,p as N,h as D,_ as R}from"./index-JtaswhjV.js";import{H as Y}from"./request--dYXBGM5.js";const x=o=>(N("data-v-cdabac6c"),o=o(),D(),o),j={class:"editorBox"},E=x(()=>_("p",null,"修改时间: 2024/3/20 15:20:31",-1)),H=x(()=>_("p",null,"版本号: xo842xqpx834",-1)),P=B({__name:"YAMLView",setup(o){const h=b(),g=s(!0),l=s(!1),p=s(8),i=s(`configVersion: v3.0
+>>>>>>>> 6e7aa5e (refactor: config refactor; fix: fix console bugs):app/dubbo-ui/dist/admin/assets/YAMLView-ket2Aor6.js
 force: true
 enabled: true
 key: shop-detail

@@ -30,7 +30,7 @@ import (
 
 func PromQL(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		promBaseUrl := ctx.Config().Console.PrometheusBaseURL
+		promBaseUrl := ctx.Config().Observability.PrometheusBaseURL
 		if promBaseUrl == nil {
 			c.JSON(http.StatusOK, model.NewBizErrorResp(
 				bizerror.New(bizerror.ConfigError, "Please configure prometheus url to retrieve metrics")))
