@@ -137,3 +137,59 @@ func PageSearchResourceByConditions[T model.Resource](
 	}
 	return newPageData, nil
 }
+
+// ListByIndexesWithPrefix is a helper function of ResourceManager.ListByIndexesWithPrefix
+func ListByIndexesWithPrefix[T model.Resource](
+	rm ReadOnlyResourceManager,
+	rk model.ResourceKind,
+	indexes map[string]string,
+	prefixIndexes map[string]string) ([]T, error) {
+
+	resources, err := rm.ListByIndexesWithPrefix(rk, indexes, prefixIndexes)
+	if err != nil {
+		return nil, err
+	}
+
+	typedResources := make([]T, len(resources))
+	for i, resource := range resources {
+		typedResource, ok := resource.(T)
+		if !ok {
+			return nil, bizerror.NewAssertionError(rk, reflect.TypeOf(typedResource).Name())
+		}
+		typedResources[i] = typedResource
+	}
+
+	return typedResources, nil
+}
+
+// PageListByIndexesWithPrefix is a helper function of ResourceManager.PageListByIndexesWithPrefix
+func PageListByIndexesWithPrefix[T model.Resource](
+	rm ReadOnlyResourceManager,
+	rk model.ResourceKind,
+	indexes map[string]string,
+	prefixIndexes map[string]string,
+	pr model.PageReq) (*model.PageData[T], error) {
+
+	pageData, err := rm.PageListByIndexesWithPrefix(rk, indexes, prefixIndexes, pr)
+	if err != nil {
+		return nil, err
+	}
+
+	typedResources := make([]T, len(pageData.Data))
+	for i, resource := range pageData.Data {
+		typedResource, ok := resource.(T)
+		if !ok {
+			return nil, bizerror.NewAssertionError(rk, reflect.TypeOf(typedResource).Name())
+		}
+		typedResources[i] = typedResource
+	}
+	newPageData := &model.PageData[T]{
+		Pagination: model.Pagination{
+			Total:      pageData.Total,
+			PageOffset: pageData.PageOffset,
+			PageSize:   pageData.PageSize,
+		},
+		Data: typedResources,
+	}
+	return newPageData, nil
+}

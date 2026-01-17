@@ -27,11 +27,13 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	storeconfig "github.com/apache/dubbo-admin/pkg/config/store"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/core/store"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
+	"github.com/apache/dubbo-admin/pkg/store/indexer"
 )
 
 // GormStore is a GORM-backed store implementation for Dubbo resources
@@ -41,7 +43,8 @@ type GormStore struct {
 	pool    *ConnectionPool // Shared connection pool with reference counting
 	kind    model.ResourceKind
 	address string
-	indices *Index // In-memory index with thread-safe operations
+	indices *indexer.IndexImpl
+	config  *storeconfig.Config // Store configuration
 	stopCh  chan struct{}
 }
 
@@ -49,11 +52,25 @@ var _ store.ManagedResourceStore = &GormStore{}
 
 // NewGormStore creates a new GORM store for the specified resource kind
 func NewGormStore(kind model.ResourceKind, address string, pool *ConnectionPool) *GormStore {
+	return NewGormStoreWithConfig(kind, address, pool, storeconfig.DefaultStoreConfig())
+}
+
+// NewGormStoreWithConfig creates a new GORM store with custom configuration
+func NewGormStoreWithConfig(kind model.ResourceKind, address string, pool *ConnectionPool, config *storeconfig.Config) *GormStore {
+	// Create appropriate index based on configuration
+	var idx indexer.Index
+	if config.ShouldUseDBIndex() {
+		idx = indexer.NewDBIndex(pool.GetDB(), kind.ToString())
+	} else {
+		idx = indexer.NewMemoryIndex()
+	}
+
 	return &GormStore{
 		kind:    kind,
 		address: address,
 		pool:    pool,
-		indices: NewIndex(),
+		indices: indexer.NewIndexImpl(idx),
+		config:  config,
 		stopCh:  make(chan struct{}),
 	}
 }
@@ -352,11 +369,12 @@ func (gs *GormStore) Resync() error {
 }
 
 func (gs *GormStore) Index(indexName string, obj interface{}) ([]interface{}, error) {
-	if !gs.indices.IndexExists(indexName) {
+	indexers := gs.indices.GetIndexers()
+	indexFunc, exists := indexers[indexName]
+	if !exists {
 		return nil, fmt.Errorf("index %s does not exist", indexName)
 	}
 
-	indexFunc := gs.indices.GetIndexers()[indexName]
 	indexValues, err := indexFunc(obj)
 	if err != nil {
 		return nil, err
@@ -370,7 +388,8 @@ func (gs *GormStore) Index(indexName string, obj interface{}) ([]interface{}, er
 }
 
 func (gs *GormStore) IndexKeys(indexName, indexedValue string) ([]string, error) {
-	if !gs.indices.IndexExists(indexName) {
+	indexers := gs.indices.GetIndexers()
+	if _, exists := indexers[indexName]; !exists {
 		return nil, fmt.Errorf("index %s does not exist", indexName)
 	}
 
@@ -390,7 +409,8 @@ func (gs *GormStore) IndexKeys(indexName, indexedValue string) ([]string, error)
 }
 
 func (gs *GormStore) ListIndexFuncValues(indexName string) []string {
-	if !gs.indices.IndexExists(indexName) {
+	indexers := gs.indices.GetIndexers()
+	if _, exists := indexers[indexName]; !exists {
 		return []string{}
 	}
 
@@ -398,7 +418,8 @@ func (gs *GormStore) ListIndexFuncValues(indexName string) []string {
 }
 
 func (gs *GormStore) ByIndex(indexName, indexedValue string) ([]interface{}, error) {
-	if !gs.indices.IndexExists(indexName) {
+	indexers := gs.indices.GetIndexers()
+	if _, exists := indexers[indexName]; !exists {
 		return nil, fmt.Errorf("index %s does not exist", indexName)
 	}
 
@@ -485,12 +506,17 @@ func (gs *GormStore) PageListByIndexes(indexes map[string]string, pq model.PageR
 }
 
 func (gs *GormStore) findByIndex(indexName, indexedValue string) ([]interface{}, error) {
-	if !gs.indices.IndexExists(indexName) {
+	indexers := gs.indices.GetIndexers()
+	if _, exists := indexers[indexName]; !exists {
 		return nil, fmt.Errorf("index %s does not exist", indexName)
 	}
 
-	// Get resource keys from in-memory index
-	keys := gs.indices.GetKeys(indexName, indexedValue)
+	// Get resource keys from in-memory index using Query
+	query := indexer.NewQuery(indexName, indexer.OperatorEquals, indexedValue)
+	keys, err := gs.indices.Query(query)
+	if err != nil {
+		return nil, err
+	}
 
 	if len(keys) == 0 {
 		return []interface{}{}, nil
@@ -581,4 +607,146 @@ func (gs *GormStore) rebuildIndices() error {
 
 	logger.Infof("Rebuilt indices for %s: loaded %d resources", gs.kind.ToString(), len(models))
 	return nil
+}
+
+// IndexKeysByPrefix returns all resource keys matching the prefix for a given index
+func (gs *GormStore) IndexKeysByPrefix(indexName, prefix string) ([]string, error) {
+	indexers := gs.indices.GetIndexers()
+	if _, exists := indexers[indexName]; !exists {
+		return nil, fmt.Errorf("index %s does not exist", indexName)
+	}
+
+	query := indexer.NewQuery(indexName, indexer.OperatorPrefix, prefix)
+	return gs.indices.Query(query)
+}
+
+// ByIndexPrefix returns all resources matching the prefix for a given index
+func (gs *GormStore) ByIndexPrefix(indexName, prefix string) ([]interface{}, error) {
+	keys, err := gs.IndexKeysByPrefix(indexName, prefix)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(keys) == 0 {
+		return []interface{}{}, nil
+	}
+
+	resources, err := gs.GetByKeys(keys)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]interface{}, len(resources))
+	for i, resource := range resources {
+		result[i] = resource
+	}
+
+	return result, nil
+}
+
+// ListByIndexesWithPrefix lists resources by indexes with prefix matching support
+func (gs *GormStore) ListByIndexesWithPrefix(indexes map[string]string, prefixIndexes map[string]string) ([]model.Resource, error) {
+	keys, err := gs.getKeysByIndexesWithPrefix(indexes, prefixIndexes)
+	if err != nil {
+		return nil, err
+	}
+
+	return gs.GetByKeys(keys)
+}
+
+// PageListByIndexesWithPrefix lists resources by indexes with prefix matching support, pageable
+func (gs *GormStore) PageListByIndexesWithPrefix(indexes map[string]string, prefixIndexes map[string]string, pq model.PageReq) (*model.PageData[model.Resource], error) {
+	keys, err := gs.getKeysByIndexesWithPrefix(indexes, prefixIndexes)
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Strings(keys)
+	total := len(keys)
+
+	if pq.PageOffset < 0 || pq.PageOffset > total {
+		return nil, store.ErrorInvalidOffset
+	}
+
+	// Calculate page range
+	end := pq.PageOffset + pq.PageSize
+	if end > total {
+		end = total
+	}
+
+	// Get only the keys for current page
+	pageKeys := keys[pq.PageOffset:end]
+
+	// Batch fetch resources for current page (single DB query)
+	resources, err := gs.GetByKeys(pageKeys)
+	if err != nil {
+		return nil, err
+	}
+
+	return model.NewPageData(total, pq.PageOffset, pq.PageSize, resources), nil
+}
+
+// getKeysByIndexesWithPrefix gets resource keys by combining exact and prefix indexes
+func (gs *GormStore) getKeysByIndexesWithPrefix(indexes map[string]string, prefixIndexes map[string]string) ([]string, error) {
+	if len(indexes) == 0 && len(prefixIndexes) == 0 {
+		return gs.ListKeys(), nil
+	}
+
+	var keySet map[string]struct{}
+	first := true
+
+	// Process exact match indexes
+	for indexName, indexValue := range indexes {
+		keys, err := gs.IndexKeys(indexName, indexValue)
+		if err != nil {
+			return nil, err
+		}
+
+		if first {
+			keySet = make(map[string]struct{}, len(keys))
+			for _, key := range keys {
+				keySet[key] = struct{}{}
+			}
+			first = false
+		} else {
+			nextSet := make(map[string]struct{}, len(keys))
+			for _, key := range keys {
+				if _, exists := keySet[key]; exists {
+					nextSet[key] = struct{}{}
+				}
+			}
+			keySet = nextSet
+		}
+	}
+
+	// Process prefix match indexes
+	for indexName, prefix := range prefixIndexes {
+		keys, err := gs.IndexKeysByPrefix(indexName, prefix)
+		if err != nil {
+			return nil, err
+		}
+
+		if first {
+			keySet = make(map[string]struct{}, len(keys))
+			for _, key := range keys {
+				keySet[key] = struct{}{}
+			}
+			first = false
+		} else {
+			nextSet := make(map[string]struct{}, len(keys))
+			for _, key := range keys {
+				if _, exists := keySet[key]; exists {
+					nextSet[key] = struct{}{}
+				}
+			}
+			keySet = nextSet
+		}
+	}
+
+	result := make([]string, 0, len(keySet))
+	for key := range keySet {
+		result = append(result, key)
+	}
+
+	return result, nil
 }
