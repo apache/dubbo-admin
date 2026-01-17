@@ -241,7 +241,7 @@ import { isNil } from 'lodash'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { HTTP_STATUS } from '@/base/http/constants'
 
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
 onMounted(() => {
   if (!isNil(TAB_STATE.tagRule)) {

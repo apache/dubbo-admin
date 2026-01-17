@@ -76,7 +76,7 @@ import { Icon } from '@iconify/vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { formattedDate } from '@/utils/DateUtil'
 import { HTTP_STATUS } from '@/base/http/constants'
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 let columns = [
   {
     title: 'ruleName',

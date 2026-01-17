@@ -90,7 +90,7 @@ import yaml from 'js-yaml'
 import { isNil } from 'lodash'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from '@/base/http/constants'
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
 const route = useRoute()
 const isReadonly = ref(false)

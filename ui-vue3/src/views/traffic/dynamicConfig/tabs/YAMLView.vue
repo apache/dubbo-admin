@@ -95,7 +95,7 @@ const isEdit = ref(route.params.isEdit === '1')
 const isDrawerOpened = ref(false)
 const loading = ref(false)
 const sliderSpan = ref(8)
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
 const YAMLValue = ref()
 const initValue = ref()

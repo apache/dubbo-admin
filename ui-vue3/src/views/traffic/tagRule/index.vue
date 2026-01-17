@@ -76,7 +76,7 @@ import { PRIMARY_COLOR } from '@/base/constants'
 import { formattedDate } from '@/utils/DateUtil'
 import { useRoute } from 'vue-router'
 import { HTTP_STATUS } from '@/base/http/constants'
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
 onMounted(() => {
   TAB_STATE.tagRule = null

@@ -31,8 +31,8 @@ import type { GrafanaState } from '@/types/grafana'
 const route = useRoute()
 
 // 参数验证
-if (!route.params?.appName) {
-  throw new Error('Missing required parameter: appName')
+if (!route.params?.name) {
+  throw new Error('Missing required parameter: name')
 }
 
 provide<GrafanaState>(
@@ -41,7 +41,7 @@ provide<GrafanaState>(
     api: getInstanceMetricsDashboard,
     showIframe: false,
     params: {
-      instanceName: route.params.appName as string
+      instanceName: route.params.name as string
     }
   })
 )

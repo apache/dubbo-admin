@@ -19,9 +19,7 @@
   <div class="__container_AppTabHeaderSlot">
     <a-row>
       <a-col :span="12">
-        <span class="header-desc"
-          >{{ $t('instanceDomain.name') }}: {{ route.params?.appName }}</span
-        >
+        <span class="header-desc">{{ $t('instanceDomain.name') }}: {{ route.params?.name }}</span>
       </a-col>
     </a-row>
   </div>

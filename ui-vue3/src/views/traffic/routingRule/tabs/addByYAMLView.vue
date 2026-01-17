@@ -27,14 +27,8 @@
           </a-button>
 
           <div class="editorBox">
-            <MonacoEditor
-              @change="changeEditor"
-              v-model:modelValue="YAMLValue"
-              theme="vs-dark"
-              :height="500"
-              language="yaml"
-              :readonly="isReadonly"
-            />
+            <MonacoEditor @change="changeEditor" v-model:modelValue="YAMLValue" theme="vs-dark" :height="500"
+              language="yaml" :readonly="isReadonly" />
           </div>
         </a-flex>
         <a-affix :offset-bottom="10">
@@ -89,7 +83,7 @@ import { isNil } from 'lodash'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from '@/base/http/constants'
 
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
 const router = useRouter()
 const isReadonly = ref(false)
@@ -137,7 +131,6 @@ onMounted(() => {
 
 const changeEditor = (val) => {
   TAB_STATE.conditionRule = yaml.load(YAMLValue.value)
-  // console.log('[ TAB_STATE.conditionRule ] >', TAB_STATE.conditionRule)
 }
 
 const addRoutingRule = async () => {

@@ -270,9 +270,9 @@ let PRIMARY_COLOR_20 = PRIMARY_COLOR_T('20')
 const instanceDetail = <any>reactive({})
 
 onMounted(async () => {
-  const { appName, pathId } = route.params
+  const { name, pathId } = route.params
   let params = {
-    instanceName: appName,
+    instanceName: name,
     instanceIP: pathId
   }
   apiData.detail = await getInstanceDetail(params)
@@ -281,8 +281,6 @@ onMounted(async () => {
 
 // Click on the application name to view the application
 const checkApplication = (appName: string) => {
-  console.log('appName', appName)
-
   router.push({
     path: '/resources/applications/detail/' + appName
   })

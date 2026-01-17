@@ -22,7 +22,11 @@
           <a-tooltip :title="text">
             <span
               class="app-link"
-              @click="router.push(`/resources/instances/detail/${record.name}/${record.ip}`)"
+              @click="
+                router.push(
+                  `/resources/instances/detail/${record.name}/${record.ip}/${record.appName}`
+                )
+              "
             >
               <b>
                 <Icon

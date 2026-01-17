@@ -397,7 +397,7 @@ import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { ConfigModel, ViewDataModel } from '@/views/traffic/dynamicConfig/model/ConfigModel'
 
 let __ = PRIMARY_COLOR
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 const {
   appContext: {
     config: { globalProperties }

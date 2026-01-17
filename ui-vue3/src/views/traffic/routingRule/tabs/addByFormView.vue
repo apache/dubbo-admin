@@ -648,11 +648,10 @@ import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { addConditionRuleAPI } from '@/api/service/traffic'
 import { isNil } from 'lodash'
 import { HTTP_STATUS } from '@/base/http/constants'
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 onMounted(() => {
   if (!isNil(TAB_STATE.conditionRule)) {
     const { enabled = true, key, scope, runtime = true, conditions } = TAB_STATE.conditionRule
-    // console.log('[ TAB_STATE.conditionRule ] >', TAB_STATE.conditionRule)
     baseInfo.enable = enabled
     baseInfo.objectOfAction = key
     baseInfo.ruleGranularity = scope
@@ -661,7 +660,7 @@ onMounted(() => {
     conditions &&
       conditions.length &&
       conditions.forEach((item, index) => {
-        const conditionArr = item.split('=>')
+        const conditionArr = item.split(' => ')
         const match = conditionArr[0]?.trim()
         const to = conditionArr[1]?.trim()
         routeList.value[index].requestMatch = parseConditionMatchStringToArray(match, index)
@@ -1256,7 +1255,6 @@ function mergeConditions() {
     routeItem.selectedMatchConditionTypes.forEach((type, typeIndex) => {
       routeItem.requestMatch.forEach((matchItem, matchItemIndex) => {
         if (type == matchItem?.type) {
-          // matchStr.length > 0 && (matchStr += ' & ')
           switch (matchItem?.type) {
             case 'arguments':
               {
@@ -1320,8 +1318,6 @@ function mergeConditions() {
     // merge match and tostr
     conditions.push(condition)
   })
-  // console.log('matchStr', matchStr)
-  // console.log('toStr', toStr)
   return conditions
 }
 
