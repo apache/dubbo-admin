@@ -44,7 +44,52 @@ const words: I18nType = {
 
   routingRuleDomain: {
     YAMLView: 'YAML view',
-    formView: 'Form view'
+    formView: 'Form view',
+    ruleGranularity: 'Rule Granularity',
+    objectOfAction: 'Action Object',
+    version: 'Version',
+    group: 'Group',
+    force: 'Fault Tolerant',
+    runtime: 'Runtime Effective',
+    enabled: 'Enable Now',
+    priority: 'Priority',
+    routeList: 'Route List',
+    route: 'Route',
+    matchRequest: 'Request Match',
+    matchConditionType: 'Match Condition Type',
+    addMatchRequest: 'Add Request Match',
+    routeDistribution: 'Route Distribution',
+    addRoute: 'Add Route',
+    addArgument: 'Add Argument',
+    addAttachment: 'Add Attachment',
+    addOther: 'Add Other',
+    paramIndex: 'Parameter Index',
+    relation: 'Relation',
+    value: 'Value',
+    operation: 'Operation',
+    key: 'Key',
+    fieldDesc: 'Field Description',
+    desc: {
+      objectOfAction: 'Action Object<br />Possible values: Dubbo application name or service name',
+      ruleGranularity: 'Rule Granularity<br />Possible values: application, service',
+      force:
+        'Fault Tolerant<br />Possible values: true, false<br />Description: If true, an exception will be reported directly if no available address is found after routing filtering; if false, it will choose from available addresses to complete the RPC call',
+      runtime:
+        'Runtime Effective<br />Possible values: true, false<br />Description: If true, all routes under this rule will take effect in real time; if false, they will only take effect at startup'
+    },
+    service: 'Service',
+    application: 'Application',
+    anyRequest: 'Any Request',
+    baseDesc: 'For {type} [{value}]',
+    matchDesc: 'Match request [{condition}]',
+    distributeDesc: 'Forward to [{condition}]',
+    host: 'IP',
+    method: 'Method',
+    arguments: 'Arguments',
+    attachments: 'Attachments',
+    other: 'Other',
+    createNewRoutingRule: 'Create New Conditional Routing Rule',
+    warnDeleteRouteRule: 'Are you sure to delete this conditional routing rule?'
   },
   addRoutingRuleDomain: {
     YAMLView: 'YAML view',
@@ -266,7 +311,7 @@ const words: I18nType = {
   close: 'CLOSE',
   confirm: 'CONFIRM',
   ruleContent: 'RULE CONTENT',
-  createNewRoutingRule: 'Create New Routing Rule',
+
   createNewTagRule: 'Create New Tag Rule',
   createNewMeshRule: 'Create New Mesh Rule',
   createNewDynamicConfigRule: 'Create New Dynamic Config Rule',
@@ -353,7 +398,7 @@ const words: I18nType = {
   scope: 'Scope',
   name: 'Name',
   warnDeleteConfig: ' Are you sure to Delete Dubbo Config: ',
-  warnDeleteRouteRule: 'Are you sure to Delete routing rule',
+
   warnDeleteDynamicConfig: 'Are you sure to Delete dynamic config',
   warnDeleteBalancing: 'Are you sure to Delete load balancing',
   warnDeleteAccessControl: 'Are you sure to Delete access control',

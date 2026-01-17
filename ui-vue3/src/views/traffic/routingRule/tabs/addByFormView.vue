@@ -28,16 +28,16 @@
                   style="color: #0a90d5"
                   @click="isDrawerOpened = !isDrawerOpened"
                 >
-                  字段说明
+                  {{ t('routingRuleDomain.fieldDesc') }}
                   <DoubleLeftOutlined v-if="!isDrawerOpened" />
                   <DoubleRightOutlined v-else />
                 </a-button>
               </a-flex>
-              <a-card title="基础信息" style="width: 100%" class="_detail">
+              <a-card :title="t('basicInfo')" style="width: 100%" class="_detail">
                 <a-form layout="horizontal">
                   <a-row style="width: 100%">
                     <a-col :span="12">
-                      <a-form-item label="规则粒度" required>
+                      <a-form-item :label="t('routingRuleDomain.ruleGranularity')" required>
                         <a-select
                           v-model:value="baseInfo.ruleGranularity"
                           style="width: 120px"
@@ -46,45 +46,45 @@
                       </a-form-item>
                       <a-form-item
                         v-if="baseInfo.ruleGranularity === 'service'"
-                        label="版本"
+                        :label="t('routingRuleDomain.version')"
                         required
                       >
                         <a-input v-model:value="baseInfo.version" style="width: 300px" />
                       </a-form-item>
-                      <a-form-item label="容错保护">
+                      <a-form-item :label="t('routingRuleDomain.force')">
                         <a-switch
                           v-model:checked="baseInfo.faultTolerantProtection"
-                          checked-children="开"
-                          un-checked-children="关"
+                          :checked-children="t('flowControlDomain.on')"
+                          :un-checked-children="t('flowControlDomain.off')"
                         />
                       </a-form-item>
-                      <a-form-item label="运行时生效">
+                      <a-form-item :label="t('routingRuleDomain.runtime')">
                         <a-switch
                           v-model:checked="baseInfo.runtime"
-                          checked-children="开"
-                          un-checked-children="关"
+                          :checked-children="t('flowControlDomain.on')"
+                          :un-checked-children="t('flowControlDomain.off')"
                         />
                       </a-form-item>
                     </a-col>
                     <a-col :span="12">
-                      <a-form-item label="作用对象" required>
+                      <a-form-item :label="t('routingRuleDomain.objectOfAction')" required>
                         <a-input v-model:value="baseInfo.objectOfAction" style="width: 300px" />
                       </a-form-item>
                       <a-form-item
                         v-if="baseInfo.ruleGranularity === 'service'"
-                        label="分组"
+                        :label="t('routingRuleDomain.group')"
                         required
                       >
                         <a-input v-model:value="baseInfo.group" style="width: 300px" />
                       </a-form-item>
-                      <a-form-item label="立即启用">
+                      <a-form-item :label="t('routingRuleDomain.enabled')">
                         <a-switch
                           v-model:checked="baseInfo.enable"
-                          checked-children="开"
-                          un-checked-children="关"
+                          :checked-children="t('flowControlDomain.on')"
+                          :un-checked-children="t('flowControlDomain.off')"
                         />
                       </a-form-item>
-                      <a-form-item label="优先级">
+                      <a-form-item :label="t('routingRuleDomain.priority')">
                         <a-input-number v-model:value="baseInfo.priority" min="1" />
                       </a-form-item>
                     </a-col>
@@ -93,7 +93,7 @@
               </a-card>
             </a-row>
 
-            <a-card title="路由列表" style="width: 100%" class="_detail">
+            <a-card :title="t('routingRuleDomain.routeList')" style="width: 100%" class="_detail">
               <RoutingRuleList
                 :routeList="routeList"
                 :baseInfo="baseInfo"
@@ -107,24 +107,18 @@
       <a-col :span="isDrawerOpened ? sliderSpan : 0" class="right">
         <a-card v-if="isDrawerOpened" class="sliderBox">
           <div>
-            <a-descriptions title="字段说明" :column="1">
+            <a-descriptions :title="t('routingRuleDomain.fieldDesc')" :column="1">
               <a-descriptions-item label="key">
-                作用对象<br />
-                可能的值：Dubbo应用名或者服务名
+                <span v-html="t('routingRuleDomain.desc.objectOfAction')"></span>
               </a-descriptions-item>
               <a-descriptions-item label="scope">
-                规则粒度<br />
-                可能的值：application, service
+                <span v-html="t('routingRuleDomain.desc.ruleGranularity')"></span>
               </a-descriptions-item>
               <a-descriptions-item label="force">
-                容错保护<br />
-                可能的值：true, false<br />
-                描述：如果为true，则路由筛选后若没有可用的地址则会直接报异常；如果为false，则会从可用地址中选择完成RPC调用
+                <span v-html="t('routingRuleDomain.desc.force')"></span>
               </a-descriptions-item>
               <a-descriptions-item label="runtime">
-                运行时生效<br />
-                可能的值：true, false<br />
-                描述：如果为true，则该rule下的所有路由将会实时生效；若为false，则只有在启动时才会生效
+                <span v-html="t('routingRuleDomain.desc.runtime')"></span>
               </a-descriptions-item>
             </a-descriptions>
           </div>
@@ -133,7 +127,7 @@
     </a-flex>
     <a-card class="footer">
       <a-flex>
-        <a-button type="primary" @click="addRoutingRule">确认</a-button>
+        <a-button type="primary" @click="addRoutingRule">{{ t('confirm') }}</a-button>
       </a-flex>
     </a-card>
   </div>
@@ -160,7 +154,9 @@ import { isNil } from 'lodash'
 import { HTTP_STATUS } from '@/base/http/constants'
 import useRoutingRule from '../composables/useRoutingRule'
 import RoutingRuleList from '../components/RoutingRuleList.vue'
+import { useI18n } from 'vue-i18n'
 
+const { t } = useI18n()
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
 const routingRuleLogic = useRoutingRule()
@@ -250,13 +246,15 @@ watch(
 )
 
 // rule granularity options
-const ruleGranularityOptions = ref([
+// rule granularity options
+import { computed } from 'vue'
+const ruleGranularityOptions = computed(() => [
   {
-    label: '应用',
+    label: t('routingRuleDomain.application'),
     value: 'application'
   },
   {
-    label: '服务',
+    label: t('routingRuleDomain.service'),
     value: 'service'
   }
 ])

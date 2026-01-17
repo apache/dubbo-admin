@@ -19,7 +19,7 @@
   <div class="__container_AppTabHeaderSlot">
     <a-row>
       <a-col :span="12">
-        <span class="header-desc"> 修改 {{ route.params?.ruleName }} </span>
+        <span class="header-desc"> {{ t('edit') }} {{ route.params?.ruleName }} </span>
       </a-col>
     </a-row>
   </div>
@@ -27,6 +27,9 @@
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 const route = useRoute()
 </script>
 <style lang="less" scoped>

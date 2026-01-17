@@ -20,7 +20,7 @@
     <template #title>
       <a-flex justify="space-between">
         <a-space align="center">
-          <div>路由【{{ routeItemIndex + 1 }}】</div>
+          <div>{{ t('routingRuleDomain.route') }}【{{ routeItemIndex + 1 }}】</div>
           <a-tooltip>
             <template #title>{{
               routingRuleLogic.routeItemDes(routeItemIndex, baseInfo)
@@ -47,14 +47,14 @@
 
     <a-form layout="horizontal">
       <a-space style="width: 100%" direction="vertical" size="large">
-        <a-form-item label="请求匹配">
+        <a-form-item :label="t('routingRuleDomain.matchRequest')">
           <a-card v-if="routeItem.requestMatch.length > 0">
             <a-space style="width: 100%" direction="vertical" size="small">
               <a-flex align="center" justify="space-between">
-                <a-form-item label="匹配条件类型">
+                <a-form-item :label="t('routingRuleDomain.matchConditionType')">
                   <a-select
                     v-model:value="routeItem.selectedMatchConditionTypes"
-                    :options="matchConditionTypeOptions"
+                    :options="routingRuleLogic.matchConditionTypeOptions"
                     mode="multiple"
                     style="min-width: 200px"
                   />
@@ -68,6 +68,7 @@
               <template v-for="(conditionItem, conditionItemIndex) in routeItem.requestMatch">
                 <!-- host -->
                 <a-space
+                  :key="'host-' + conditionItemIndex"
                   size="large"
                   align="center"
                   v-if="
@@ -81,9 +82,12 @@
                   <a-select
                     v-model:value="conditionItem.condition"
                     style="min-width: 120px"
-                    :options="conditionOptions"
+                    :options="routingRuleLogic.conditionOptions"
                   />
-                  <a-input v-model:value="conditionItem.value" placeholder="请求来源ip" />
+                  <a-input
+                    v-model:value="conditionItem.value"
+                    :placeholder="t('routingRuleDomain.host')"
+                  />
 
                   <Icon
                     @click="
@@ -98,6 +102,7 @@
                 </a-space>
                 <!-- application -->
                 <a-space
+                  :key="'application-' + conditionItemIndex"
                   size="large"
                   align="center"
                   v-if="
@@ -111,9 +116,12 @@
                   <a-select
                     v-model:value="conditionItem.condition"
                     style="min-width: 120px"
-                    :options="conditionOptions"
+                    :options="routingRuleLogic.conditionOptions"
                   />
-                  <a-input v-model:value="conditionItem.value" placeholder="请求来源应用名" />
+                  <a-input
+                    v-model:value="conditionItem.value"
+                    :placeholder="t('routingRuleDomain.application')"
+                  />
 
                   <Icon
                     @click="
@@ -128,6 +136,7 @@
                 </a-space>
                 <!-- method -->
                 <a-space
+                  :key="'method-' + conditionItemIndex"
                   size="large"
                   align="center"
                   v-if="
@@ -141,9 +150,12 @@
                   <a-select
                     v-model:value="conditionItem.condition"
                     style="min-width: 120px"
-                    :options="conditionOptions"
+                    :options="routingRuleLogic.conditionOptions"
                   />
-                  <a-input v-model:value="conditionItem.value" placeholder="方法值" />
+                  <a-input
+                    v-model:value="conditionItem.value"
+                    :placeholder="t('routingRuleDomain.method')"
+                  />
 
                   <Icon
                     @click="
@@ -158,6 +170,7 @@
                 </a-space>
                 <!-- arguments -->
                 <a-space
+                  :key="'arguments-' + conditionItemIndex"
                   style="width: 100%"
                   size="large"
                   align="start"
@@ -174,22 +187,31 @@
                       type="primary"
                       @click="routingRuleLogic.addArgumentsItem(routeItemIndex, conditionItemIndex)"
                     >
-                      添加argument
+                      {{ t('routingRuleDomain.addArgument') }}
                     </a-button>
                     <a-table
                       :pagination="false"
                       :columns="argumentsColumns"
                       :data-source="routeItem.requestMatch[conditionItemIndex].list"
                     >
-                      <template #bodyCell="{ column, record, text, index: argumentIndex }">
+                      <template #bodyCell="{ column, record, index: argumentIndex }">
                         <template v-if="column.key === 'index'">
-                          <a-input v-model:value="record.index" placeholder="index" />
+                          <a-input
+                            v-model:value="record.index"
+                            :placeholder="t('routingRuleDomain.paramIndex')"
+                          />
                         </template>
                         <template v-else-if="column.key === 'condition'">
-                          <a-select v-model:value="record.condition" :options="conditionOptions" />
+                          <a-select
+                            v-model:value="record.condition"
+                            :options="routingRuleLogic.conditionOptions"
+                          />
                         </template>
                         <template v-else-if="column.key === 'value'">
-                          <a-input v-model:value="record.value" placeholder="value" />
+                          <a-input
+                            v-model:value="record.value"
+                            :placeholder="t('routingRuleDomain.value')"
+                          />
                         </template>
                         <template v-else-if="column.key === 'operation'">
                           <a-space align="center">
@@ -212,6 +234,7 @@
                 </a-space>
                 <!-- attachments -->
                 <a-space
+                  :key="'attachments-' + conditionItemIndex"
                   style="width: 100%"
                   size="large"
                   align="start"
@@ -230,22 +253,31 @@
                         routingRuleLogic.addAttachmentsItem(routeItemIndex, conditionItemIndex)
                       "
                     >
-                      添加attachment
+                      {{ t('routingRuleDomain.addAttachment') }}
                     </a-button>
                     <a-table
                       :pagination="false"
                       :columns="attachmentsColumns"
                       :data-source="routeItem.requestMatch[conditionItemIndex].list"
                     >
-                      <template #bodyCell="{ column, record, text, index: attachmentsIndex }">
+                      <template #bodyCell="{ column, record, index: attachmentsIndex }">
                         <template v-if="column.key === 'myKey'">
-                          <a-input v-model:value="record.myKey" placeholder="key" />
+                          <a-input
+                            v-model:value="record.myKey"
+                            :placeholder="t('routingRuleDomain.key')"
+                          />
                         </template>
                         <template v-else-if="column.key === 'condition'">
-                          <a-select v-model:value="record.condition" :options="conditionOptions" />
+                          <a-select
+                            v-model:value="record.condition"
+                            :options="routingRuleLogic.conditionOptions"
+                          />
                         </template>
                         <template v-else-if="column.key === 'value'">
-                          <a-input v-model:value="record.value" placeholder="value" />
+                          <a-input
+                            v-model:value="record.value"
+                            :placeholder="t('routingRuleDomain.value')"
+                          />
                         </template>
                         <template v-else-if="column.key === 'operation'">
                           <a-space align="center">
@@ -268,6 +300,7 @@
                 </a-space>
                 <!-- other -->
                 <a-space
+                  :key="'other-' + conditionItemIndex"
                   style="width: 100%"
                   size="large"
                   align="start"
@@ -277,29 +310,42 @@
                   "
                 >
                   <a-tag class="match-condition-type-label" :bordered="false" color="processing">
-                    {{ conditionItem?.type == 'other' ? '其他' : conditionItem?.type }}
+                    {{
+                      conditionItem?.type == 'other'
+                        ? t('routingRuleDomain.other')
+                        : conditionItem?.type
+                    }}
                   </a-tag>
                   <a-space direction="vertical">
                     <a-button
                       type="primary"
                       @click="routingRuleLogic.addOtherItem(routeItemIndex, conditionItemIndex)"
                     >
-                      添加other
+                      {{ t('routingRuleDomain.addOther') }}
                     </a-button>
                     <a-table
                       :pagination="false"
                       :columns="otherColumns"
                       :data-source="routeItem.requestMatch[conditionItemIndex].list"
                     >
-                      <template #bodyCell="{ column, record, text, index: otherIndex }">
+                      <template #bodyCell="{ column, record, index: otherIndex }">
                         <template v-if="column.key === 'myKey'">
-                          <a-input v-model:value="record.myKey" placeholder="key" />
+                          <a-input
+                            v-model:value="record.myKey"
+                            :placeholder="t('routingRuleDomain.key')"
+                          />
                         </template>
                         <template v-else-if="column.key === 'condition'">
-                          <a-select v-model:value="record.condition" :options="conditionOptions" />
+                          <a-select
+                            v-model:value="record.condition"
+                            :options="routingRuleLogic.conditionOptions"
+                          />
                         </template>
                         <template v-else-if="column.key === 'value'">
-                          <a-input v-model:value="record.value" placeholder="value" />
+                          <a-input
+                            v-model:value="record.value"
+                            :placeholder="t('routingRuleDomain.value')"
+                          />
                         </template>
                         <template v-else-if="column.key === 'operation'">
                           <a-space align="center">
@@ -332,17 +378,17 @@
             <template #icon>
               <Icon icon="tdesign:add" />
             </template>
-            增加匹配条件
+            {{ t('routingRuleDomain.addMatchRequest') }}
           </a-button>
         </a-form-item>
-        <a-form-item label="路由分发" required>
+        <a-form-item :label="t('routingRuleDomain.routeDistribution')" required>
           <a-card>
             <a-space style="width: 100%" direction="vertical" size="small">
               <a-flex>
-                <a-form-item label="匹配条件类型">
+                <a-form-item :label="t('routingRuleDomain.matchConditionType')">
                   <a-select
                     v-model:value="routeItem.selectedRouteDistributeMatchTypes"
-                    :options="routeDistributionTypeOptions"
+                    :options="routingRuleLogic.routeDistributionTypeOptions"
                     mode="multiple"
                     style="min-width: 200px"
                   />
@@ -354,6 +400,7 @@
               >
                 <!-- host -->
                 <a-space
+                  :key="'dist-host-' + conditionItemIndex"
                   size="large"
                   align="center"
                   v-if="
@@ -367,9 +414,12 @@
                   <a-select
                     v-model:value="conditionItem.condition"
                     style="min-width: 120px"
-                    :options="conditionOptions"
+                    :options="routingRuleLogic.conditionOptions"
                   />
-                  <a-input v-model:value="conditionItem.value" placeholder="请求来源ip" />
+                  <a-input
+                    v-model:value="conditionItem.value"
+                    :placeholder="t('routingRuleDomain.host')"
+                  />
 
                   <Icon
                     @click="
@@ -385,6 +435,7 @@
 
                 <!-- other -->
                 <a-space
+                  :key="'dist-other-' + conditionItemIndex"
                   style="width: 100%"
                   size="large"
                   align="start"
@@ -394,7 +445,11 @@
                   "
                 >
                   <a-tag class="match-condition-type-label" :bordered="false" color="processing">
-                    {{ conditionItem?.type == 'other' ? '其他' : conditionItem?.type }}
+                    {{
+                      conditionItem?.type == 'other'
+                        ? t('routingRuleDomain.other')
+                        : conditionItem?.type
+                    }}
                   </a-tag>
                   <a-space direction="vertical">
                     <a-button
@@ -406,22 +461,31 @@
                         )
                       "
                     >
-                      添加其他
+                      {{ t('routingRuleDomain.addOther') }}
                     </a-button>
                     <a-table
                       :pagination="false"
                       :columns="otherColumns"
                       :data-source="routeItem.routeDistribute[conditionItemIndex].list"
                     >
-                      <template #bodyCell="{ column, record, text, index: otherIndex }">
+                      <template #bodyCell="{ column, record, index: otherIndex }">
                         <template v-if="column.key === 'myKey'">
-                          <a-input v-model:value="record.myKey" placeholder="key" />
+                          <a-input
+                            v-model:value="record.myKey"
+                            :placeholder="t('routingRuleDomain.key')"
+                          />
                         </template>
                         <template v-else-if="column.key === 'condition'">
-                          <a-select v-model:value="record.condition" :options="conditionOptions" />
+                          <a-select
+                            v-model:value="record.condition"
+                            :options="routingRuleLogic.conditionOptions"
+                          />
                         </template>
                         <template v-else-if="column.key === 'value'">
-                          <a-input v-model:value="record.value" placeholder="value" />
+                          <a-input
+                            v-model:value="record.value"
+                            :placeholder="t('routingRuleDomain.value')"
+                          />
                         </template>
                         <template v-else-if="column.key === 'operation'">
                           <a-space align="center">
@@ -449,43 +513,44 @@
       </a-space>
     </a-form>
   </a-card>
-  <a-button @click="routingRuleLogic.addRoute" type="primary"> 增加路由</a-button>
+  <a-button @click="routingRuleLogic.addRoute" type="primary">
+    {{ t('routingRuleDomain.addRoute') }}</a-button
+  >
 </template>
 
 <script lang="ts" setup>
 import { Icon } from '@iconify/vue'
-import {
-  matchConditionTypeOptions,
-  conditionOptions,
-  routeDistributionTypeOptions
-} from '../composables/useRoutingRule'
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
-const props = defineProps<{
+const { t } = useI18n()
+
+defineProps<{
   routeList: any[]
   baseInfo: any
   routingRuleLogic: any
 }>()
 
-const argumentsColumns = [
-  { dataIndex: 'index', key: 'index', title: '参数索引' },
-  { dataIndex: 'condition', key: 'condition', title: '关系' },
-  { dataIndex: 'value', key: 'value', title: '值' },
-  { dataIndex: 'operation', key: 'operation', title: '操作' }
-]
+const argumentsColumns = computed(() => [
+  { dataIndex: 'index', key: 'index', title: t('routingRuleDomain.paramIndex') },
+  { dataIndex: 'condition', key: 'condition', title: t('routingRuleDomain.relation') },
+  { dataIndex: 'value', key: 'value', title: t('routingRuleDomain.value') },
+  { dataIndex: 'operation', key: 'operation', title: t('routingRuleDomain.operation') }
+])
 
-const attachmentsColumns = [
-  { dataIndex: 'myKey', key: 'myKey', title: '键' },
-  { dataIndex: 'condition', key: 'condition', title: '关系' },
-  { dataIndex: 'value', key: 'value', title: '值' },
-  { dataIndex: 'operation', key: 'operation', title: '操作' }
-]
+const attachmentsColumns = computed(() => [
+  { dataIndex: 'myKey', key: 'myKey', title: t('routingRuleDomain.key') },
+  { dataIndex: 'condition', key: 'condition', title: t('routingRuleDomain.relation') },
+  { dataIndex: 'value', key: 'value', title: t('routingRuleDomain.value') },
+  { dataIndex: 'operation', key: 'operation', title: t('routingRuleDomain.operation') }
+])
 
-const otherColumns = [
-  { dataIndex: 'myKey', key: 'myKey', title: '键' },
-  { dataIndex: 'condition', key: 'condition', title: '关系' },
-  { dataIndex: 'value', key: 'value', title: '值' },
-  { dataIndex: 'operation', key: 'operation', title: '操作' }
-]
+const otherColumns = computed(() => [
+  { dataIndex: 'myKey', key: 'myKey', title: t('routingRuleDomain.key') },
+  { dataIndex: 'condition', key: 'condition', title: t('routingRuleDomain.relation') },
+  { dataIndex: 'value', key: 'value', title: t('routingRuleDomain.value') },
+  { dataIndex: 'operation', key: 'operation', title: t('routingRuleDomain.operation') }
+])
 </script>
 
 <style lang="less" scoped>

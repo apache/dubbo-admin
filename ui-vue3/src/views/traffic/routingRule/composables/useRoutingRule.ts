@@ -15,7 +15,8 @@
  * limitations under the License.
  */
 
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 // Type definitions
 export interface ConditionItem {
@@ -47,26 +48,28 @@ export const CONDITION_TYPE_CONFIG = {
   custom: ['other']
 } as const
 
-export const matchConditionTypeOptions = [
-  { label: 'host', value: 'host' },
-  { label: 'application', value: 'application' },
-  { label: 'method', value: 'method' },
-  { label: 'arguments', value: 'arguments' },
-  { label: 'attachments', value: 'attachments' },
-  { label: '其他', value: 'other' }
-]
-
-export const routeDistributionTypeOptions = [
-  { label: 'host', value: 'host' },
-  { label: '其他', value: 'other' }
-]
-
-export const conditionOptions = [
-  { label: '=', value: '=' },
-  { label: '!=', value: '!=' }
-]
-
 export default function useRoutingRule() {
+  const { t } = useI18n()
+
+  const matchConditionTypeOptions = computed(() => [
+    { label: 'host', value: 'host' },
+    { label: 'application', value: 'application' },
+    { label: 'method', value: 'method' },
+    { label: 'arguments', value: 'arguments' },
+    { label: 'attachments', value: 'attachments' },
+    { label: t('routingRuleDomain.other'), value: 'other' }
+  ])
+
+  const routeDistributionTypeOptions = computed(() => [
+    { label: 'host', value: 'host' },
+    { label: t('routingRuleDomain.other'), value: 'other' }
+  ])
+
+  const conditionOptions = computed(() => [
+    { label: '=', value: '=' },
+    { label: '!=', value: '!=' }
+  ])
+
   const routeList = ref<CommonRouteItem[]>([
     {
       selectedMatchConditionTypes: [],
@@ -457,8 +460,14 @@ export default function useRoutingRule() {
     const routeItem = routeList.value[routeIndex]
     const { ruleGranularity, objectOfAction } = baseInfo
 
-    const typeText = ruleGranularity === 'service' ? '服务' : '应用'
-    const baseDescription = `对于${typeText}【${objectOfAction || '未指定'}】`
+    const typeText =
+      ruleGranularity === 'service'
+        ? t('routingRuleDomain.service')
+        : t('routingRuleDomain.application')
+    const baseDescription = t('routingRuleDomain.baseDesc', {
+      type: typeText,
+      value: objectOfAction
+    })
 
     // 构建匹配条件描述 (when)
     const whenConditions: string[] = []
@@ -467,87 +476,79 @@ export default function useRoutingRule() {
       if (!matchItem) return
 
       let conditionStr = ''
-      const conditionSymbol =
-        matchItem.condition === '='
-          ? '等于'
-          : matchItem.condition === '!='
-            ? '不等于'
-            : matchItem.condition || ''
-      const valueStr = matchItem.value || '未指定'
+
+      const relation = matchItem.condition
+      const val = matchItem.value || t('serviceDomain.notSpecified')
 
       switch (type) {
         case 'host':
-          conditionStr = `请求来源主机 ${conditionSymbol} ${valueStr}`
+          conditionStr = t('routingRuleDomain.matchDesc', {
+            condition: `IP ${relation} ${val}`
+          })
           break
         case 'application':
-          conditionStr = `请求来源应用 ${conditionSymbol} ${valueStr}`
+          conditionStr = t('routingRuleDomain.matchDesc', {
+            condition: `${t('routingRuleDomain.application')} ${relation} ${val}`
+          })
           break
         case 'method':
-          conditionStr = `请求方法 ${conditionSymbol} ${valueStr}`
+          conditionStr = t('routingRuleDomain.matchDesc', {
+            condition: `${t('routingRuleDomain.method')} ${relation} ${val}`
+          })
           break
-        case 'arguments':
+        case 'arguments': {
           const argConditions = matchItem.list
             ?.map((arg: any) => {
-              const argConditionSymbol =
-                arg.condition === '='
-                  ? '等于'
-                  : arg.condition === '!='
-                    ? '不等于'
-                    : arg.condition || ''
-              const argValueStr = arg.value !== undefined && arg.value !== '' ? arg.value : '未指定'
-              return `参数[${arg.index}] ${argConditionSymbol} ${argValueStr}`
+              const argVal =
+                arg.value !== undefined && arg.value !== ''
+                  ? arg.value
+                  : t('serviceDomain.notSpecified')
+              return `${t('routingRuleDomain.arguments')}[${arg.index}] ${arg.condition} ${argVal}`
             })
             .filter(Boolean)
-          if (argConditions && argConditions.length > 0) conditionStr = argConditions.join(' 且 ')
+          if (argConditions && argConditions.length > 0) conditionStr = argConditions.join(' & ')
           break
-        case 'attachments':
+        }
+        case 'attachments': {
           const attachConditions = matchItem.list
             ?.map((attach: any) => {
-              const attachConditionSymbol =
-                attach.condition === '='
-                  ? '等于'
-                  : attach.condition === '!='
-                    ? '不等于'
-                    : attach.condition || ''
-              const attachValueStr =
-                attach.value !== undefined && attach.value !== '' ? attach.value : '未指定'
-              return `附件[${attach.myKey || '未指定'}] ${attachConditionSymbol} ${attachValueStr}`
+              const attachVal =
+                attach.value !== undefined && attach.value !== ''
+                  ? attach.value
+                  : t('serviceDomain.notSpecified')
+              return `${t('routingRuleDomain.attachments')}[${attach.myKey || t('serviceDomain.notSpecified')}] ${attach.condition} ${attachVal}`
             })
             .filter(Boolean)
           if (attachConditions && attachConditions.length > 0)
-            conditionStr = attachConditions.join(' 且 ')
+            conditionStr = attachConditions.join(' & ')
           break
-        case 'other':
+        }
+        case 'other': {
           const otherConditions = matchItem.list
             ?.map((other: any) => {
-              const otherConditionSymbol =
-                other.condition === '='
-                  ? '等于'
-                  : other.condition === '!='
-                    ? '不等于'
-                    : other.condition || ''
-              const otherValueStr =
-                other.value !== undefined && other.value !== '' ? other.value : '未指定'
-              return `自定义匹配[${other.myKey || '未指定'}] ${otherConditionSymbol} ${otherValueStr}`
+              const otherVal =
+                other.value !== undefined && other.value !== ''
+                  ? other.value
+                  : t('serviceDomain.notSpecified')
+              return `${t('routingRuleDomain.other')}[${other.myKey || t('serviceDomain.notSpecified')}] ${other.condition} ${otherVal}`
             })
             .filter(Boolean)
           if (otherConditions && otherConditions.length > 0)
-            conditionStr = otherConditions.join(' 且 ')
+            conditionStr = otherConditions.join(' & ')
           break
+        }
       }
       if (conditionStr) {
-        // Check for empty mandatory fields
         if ((type === 'host' || type === 'application' || type === 'method') && !matchItem.value) {
-          whenConditions.push(
-            `${type === 'host' ? '请求来源主机' : type === 'application' ? '请求来源应用' : '请求方法'} 未填写`
-          )
+          whenConditions.push(`${type} ${t('serviceDomain.notSpecified')}`)
         } else {
           whenConditions.push(conditionStr)
         }
       }
     })
 
-    const whenConditionStr = whenConditions.length > 0 ? whenConditions.join(' 且 ') : '任意请求'
+    const whenConditionStr =
+      whenConditions.length > 0 ? whenConditions.join(' & ') : t('routingRuleDomain.anyRequest')
 
     // 构建转发条件描述 (then)
     const thenConditions: string[] = []
@@ -556,39 +557,33 @@ export default function useRoutingRule() {
       if (!distributeItem) return
 
       let conditionStr = ''
-      const conditionSymbol =
-        distributeItem.condition === '='
-          ? '等于'
-          : distributeItem.condition === '!='
-            ? '不等于'
-            : distributeItem.condition || ''
-      const valueStr = distributeItem.value || '未指定'
+      const relation = distributeItem.condition
+      const val = distributeItem.value || t('serviceDomain.notSpecified')
 
       switch (type) {
         case 'host':
-          conditionStr = `目标主机 ${conditionSymbol} ${valueStr}`
+          conditionStr = t('routingRuleDomain.distributeDesc', {
+            condition: `IP ${relation} ${val}`
+          })
           break
-        case 'other':
+        case 'other': {
           const otherConditions = distributeItem.list
             ?.map((other: any) => {
-              const otherConditionSymbol =
-                other.condition === '='
-                  ? '等于'
-                  : other.condition === '!='
-                    ? '不等于'
-                    : other.condition || ''
-              const otherValueStr =
-                other.value !== undefined && other.value !== '' ? other.value : '未指定'
-              return `目标标签[${other.myKey || '未指定'}] ${otherConditionSymbol} ${otherValueStr}`
+              const otherVal =
+                other.value !== undefined && other.value !== ''
+                  ? other.value
+                  : t('serviceDomain.notSpecified')
+              return `${t('routingRuleDomain.other')}[${other.myKey || t('serviceDomain.notSpecified')}] ${other.condition} ${otherVal}`
             })
             .filter(Boolean)
           if (otherConditions && otherConditions.length > 0)
-            conditionStr = otherConditions.join(' 且 ')
+            conditionStr = otherConditions.join(' & ')
           break
+        }
       }
       if (conditionStr) {
         if (type === 'host' && !distributeItem.value) {
-          thenConditions.push(`目标主机 未填写`)
+          thenConditions.push(`IP ${t('serviceDomain.notSpecified')}`)
         } else {
           thenConditions.push(conditionStr)
         }
@@ -596,12 +591,15 @@ export default function useRoutingRule() {
     })
 
     const thenConditionStr =
-      thenConditions.length > 0 ? `满足 【${thenConditions.join(' 且 ')}】` : '默认路由规则'
+      thenConditions.length > 0 ? thenConditions.join(' & ') : t('routingRuleDomain.route')
 
-    return `${baseDescription}，将满足 【${whenConditionStr}】 条件的请求，转发到 ${thenConditionStr} 的实例。`
+    return `${baseDescription}, ${t('routingRuleDomain.matchDesc', { condition: whenConditionStr })} -> ${t('routingRuleDomain.distributeDesc', { condition: thenConditionStr })}`
   }
 
   return {
+    matchConditionTypeOptions,
+    routeDistributionTypeOptions,
+    conditionOptions,
     routeList,
     mergeConditions,
     parseConditionMatchStringToArray,
