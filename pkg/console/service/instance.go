@@ -172,7 +172,8 @@ func GetInstanceMetrics(ctx consolectx.Context, req *model.MetricsReq) ([]*model
 }
 
 func UpdateInstanceTrafficStatus(ctx consolectx.Context, mesh string, appName string, instanceIP string, newDisabled bool) error {
-	conditionRuleRes, err := GetConditionRule(ctx, appName, mesh)
+	conditionRuleName := appName + constants.ConditionRuleDotSuffix
+	conditionRuleRes, err := GetConditionRule(ctx, conditionRuleName, mesh)
 	if err != nil {
 		logger.Errorf("get condition rule for %s failed, cause: %s", appName, err)
 		return err
@@ -184,6 +185,7 @@ func UpdateInstanceTrafficStatus(ctx consolectx.Context, mesh string, appName st
 			return nil
 		}
 		conditionRoute := generateDefaultConditionV3(true, true, true, appName, constants.ScopeApplication)
+		conditionRoute.Conditions = append(conditionRoute.Conditions, disableExpression(instanceIP))
 		resName := appName + constants.ConditionRuleDotSuffix
 		conditionRuleRes = meshresource.NewConditionRouteResourceWithAttributes(resName, mesh)
 		conditionRuleRes.Spec = conditionRoute

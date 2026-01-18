@@ -42,13 +42,13 @@ console:
   # [Optional] dashboard for metrics.
   metricDashboards:
     application: http://101.34.253.152:30300/d/a0b114ca-edf7-4dfe-ac2c-34a4fc545fed?kiosk=1&theme=light
-    instance: http://101.34.253.152:30300/d/dcf5defe-d198-4704-9edf-6520838880e9
-    service: http://101.34.253.152:30300/d/ec689613-b4a1-45b1-b8bd-9d557059f970
+    instance: http://101.34.253.152:30300/d/dcf5defe-d198-4704-9edf-6520838880e9?kiosk=1&theme=light
+    service: http://101.34.253.152:30300/d/ec689613-b4a1-45b1-b8bd-9d557059f970?kiosk=1&theme=light
   # [Optional] dashboard for traces.
   traceDashboards:
-    application: http://101.34.253.152:30300/d/e968a89b-f03d-42e3-8ad3-930ae815cb0f
-    instance: http://101.34.253.152:30300/d/f5f48f75-13ec-489b-88ae-635ae38d8618
-    service: http://101.34.253.152:30300/d/b2e178fb-ada3-4d5e-9f54-de99e7f07662
+    application: http://101.34.253.152:30300/d/e968a89b-f03d-42e3-8ad3-930ae815cb0f?kiosk=1&theme=light
+    instance: http://101.34.253.152:30300/d/f5f48f75-13ec-489b-88ae-635ae38d8618?kiosk=1&theme=light
+    service: http://101.34.253.152:30300/d/b2e178fb-ada3-4d5e-9f54-de99e7f07662?kiosk=1&theme=light
   # [Optional] typical user-pwd authentication, default user-pwd is admin-admin.
   auth:
     user: admin
