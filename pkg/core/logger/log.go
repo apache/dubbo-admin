@@ -102,9 +102,15 @@ func Init(cfg *logcfg.Config) {
 }
 
 func Sugar() *zap.SugaredLogger {
+	if sugar == nil {
+		Init(logcfg.DefaultLogConfig())
+	}
 	return sugar
 }
 
 func Logger() *zap.Logger {
+	if logger == nil {
+		Init(logcfg.DefaultLogConfig())
+	}
 	return logger
 }
