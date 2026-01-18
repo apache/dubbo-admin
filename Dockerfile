@@ -13,12 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Build the manager binary
-FROM docker.io/golang:1.24 AS builder
+# Build frontend
+FROM node:18-alpine AS frontend-builder
+
+WORKDIR /ui-vue3
+
+RUN yarn install --frozen-lockfile
+
+COPY ui-vue3/ ./
+RUN yarn build
+
+
+
+# Build backend
+FROM golang:1.24 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
-WORKDIR /app
+WORKDIR .
 
 COPY go.mod go.mod
 COPY go.sum go.sum
@@ -29,11 +41,14 @@ ENV GOPROXY=https://goproxy.cn,direct
 # and so that source changes don't invalidate our downloaded layer
 RUN go env && go mod download
 
+RUN rm -rf app/dubbo-ui/dist \
+ && cp -r ui-vue3/dist/ app/dubbo-ui/
+
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o dubbo-admin ./app/dubbo-admin/main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+FROM alpine:3.20
 WORKDIR /
 COPY --from=builder /app/dubbo-admin .
 USER 65532:65532
