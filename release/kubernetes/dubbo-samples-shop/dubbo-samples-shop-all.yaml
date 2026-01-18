@@ -92,7 +92,7 @@ spec:
               -Ddubbo.metadata-report.address=nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
               -Ddubbo.application.qos-anonymous-allow-commands=metrics
               -Ddubbo.tracing.enabled=true
-              -Ddubbo.traing.sampling.probability=1.0
+              -Ddubbo.tracing.sampling.probability=1.0
               -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
 ---
 
@@ -137,7 +137,7 @@ spec:
               -Ddubbo.application.qos-accept-foreign-ip=true
               -Ddubbo.application.qos-anonymous-allow-commands=metrics
               -Ddubbo.tracing.enabled=true
-              -Ddubbo.traing.sampling.probability=1.0
+              -Ddubbo.tracing.sampling.probability=1.0
               -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
             - name: DUBBO_LABELS
               value: "orderVersion=v1"
@@ -183,7 +183,7 @@ spec:
               -Ddubbo.application.qos-port=22222 -Ddubbo.application.qos-accept-foreign-ip=true
               -Ddubbo.application.qos-anonymous-allow-commands=metrics
               -Ddubbo.tracing.enabled=true
-              -Ddubbo.traing.sampling.probability=1.0
+              -Ddubbo.tracing.sampling.probability=1.0
               -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
             - name: DUBBO_LABELS
               value: "orderVersion=v2;"
@@ -227,7 +227,7 @@ spec:
               -Ddubbo.application.qos-port=22222 -Ddubbo.application.qos-accept-foreign-ip=true
               -Ddubbo.application.qos-anonymous-allow-commands=metrics
               -Ddubbo.tracing.enabled=true
-              -Ddubbo.traing.sampling.probability=1.0
+              -Ddubbo.tracing.sampling.probability=1.0
               -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
 
 ---
@@ -273,7 +273,7 @@ spec:
               -Ddubbo.application.qos-accept-foreign-ip=true 
               -Ddubbo.application.qos-anonymous-allow-commands=metrics
               -Ddubbo.tracing.enabled=true
-              -Ddubbo.traing.sampling.probability=1.0
+              -Ddubbo.tracing.sampling.probability=1.0
               -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
             - name: DUBBO_LABELS
               value: "detailVersion=v1; region=beijing"
@@ -320,7 +320,7 @@ spec:
               -Ddubbo.application.qos-accept-foreign-ip=true 
               -Ddubbo.application.qos-anonymous-allow-commands=metrics
               -Ddubbo.tracing.enabled=true
-              -Ddubbo.traing.sampling.probability=1.0
+              -Ddubbo.tracing.sampling.probability=1.0
               -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
             - name: DUBBO_LABELS
               value: "detailVersion=v2; region=hangzhou;"
@@ -367,7 +367,7 @@ spec:
               -Ddubbo.application.qos-accept-foreign-ip=true 
               -Ddubbo.application.qos-anonymous-allow-commands=metrics
               -Ddubbo.tracing.enabled=true
-              -Ddubbo.traing.sampling.probability=1.0
+              -Ddubbo.tracing.sampling.probability=1.0
               -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
             - name: DUBBO_LABELS
               value: "commentVersion=v1; region=beijing"
@@ -414,7 +414,7 @@ spec:
               -Ddubbo.application.qos-accept-foreign-ip=true 
               -Ddubbo.application.qos-anonymous-allow-commands=metrics
               -Ddubbo.tracing.enabled=true
-              -Ddubbo.traing.sampling.probability=1.0
+              -Ddubbo.tracing.sampling.probability=1.0
               -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
             - name: DUBBO_LABELS
               value: "commentVersion=v2; region=hangzhou;"
@@ -457,7 +457,7 @@ spec:
               -Ddubbo.application.qos-accept-foreign-ip=true 
               -Ddubbo.application.qos-anonymous-allow-commands=metrics
               -Ddubbo.tracing.enabled=true
-              -Ddubbo.traing.sampling.probability=1.0
+              -Ddubbo.tracing.sampling.probability=1.0
               -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
             - name: DUBBO_LABELS
               value: "env=gray"
@@ -503,7 +503,7 @@ spec:
               -Ddubbo.application.qos-accept-foreign-ip=true 
               -Ddubbo.application.qos-anonymous-allow-commands=metrics
               -Ddubbo.tracing.enabled=true
-              -Ddubbo.traing.sampling.probability=1.0
+              -Ddubbo.tracing.sampling.probability=1.0
               -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
             - name: DUBBO_LABELS
               value: "env=gray"
@@ -548,7 +548,7 @@ spec:
               -Ddubbo.application.qos-accept-foreign-ip=true 
               -Ddubbo.application.qos-anonymous-allow-commands=metrics
               -Ddubbo.tracing.enabled=true
-              -Ddubbo.traing.sampling.probability=1.0
+              -Ddubbo.tracing.sampling.probability=1.0
               -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
             - name: DUBBO_LABELS
               value: "env=gray"
@@ -593,7 +593,7 @@ spec:
               -Ddubbo.application.qos-accept-foreign-ip=true
               -Ddubbo.application.qos-anonymous-allow-commands=metrics
               -Ddubbo.tracing.enabled=true
-              -Ddubbo.traing.sampling.probability=1.0
+              -Ddubbo.tracing.sampling.probability=1.0
               -Ddubbo.tracing.tracing-exporter.otlp-config.endpoint=http://jaeger.monitoring.svc:4317"
             - name: DUBBO_LABELS
               value: "env=gray"
