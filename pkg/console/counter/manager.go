@@ -285,11 +285,11 @@ func (cfg *distributionCounterConfig) extractFrom(res resmodel.Resource) string 
 func (cfg *distributionCounterConfig) update(oldObj, newObj resmodel.Resource) {
 	oldKey := normalizeDistributionKey(cfg.extractFrom(oldObj))
 	newKey := normalizeDistributionKey(cfg.extractFrom(newObj))
-	if oldKey == newKey {
-		return
-	}
 	oldMesh := extractMeshName(oldObj)
 	newMesh := extractMeshName(newObj)
+	if oldKey == newKey && oldMesh == newMesh {
+		return
+	}
 	if oldObj != nil {
 		cfg.counter.Decrement(oldMesh, oldKey)
 	}
