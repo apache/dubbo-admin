@@ -45,12 +45,20 @@ func AdminMetadata(ctx consolectx.Context) gin.HandlerFunc {
 			metadataAddr = d.Address.MetadataReport
 			configAddr = d.Address.ConfigCenter
 		}
+		var prometheusURL string
+		var grafanaURL string
+		if ctx.Config().Observability.PrometheusBaseURL != nil {
+			prometheusURL = ctx.Config().Observability.PrometheusBaseURL.String()
+		}
+		if ctx.Config().Observability.GrafanaBaseURL != nil {
+			grafanaURL = ctx.Config().Observability.GrafanaBaseURL.String()
+		}
 		metadata := model.AdminMetadata{
 			Registry:   registryAddr,
 			Metadata:   metadataAddr,
 			Config:     configAddr,
-			Prometheus: ctx.Config().Console.Prometheus,
-			Grafana:    ctx.Config().Console.Grafana,
+			Prometheus: prometheusURL,
+			Grafana:    grafanaURL,
 			Tracing:    "",
 		}
 		c.JSON(http.StatusOK, model.NewSuccessResp(metadata))

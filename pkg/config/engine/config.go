@@ -18,8 +18,11 @@
 package engine
 
 import (
+	"fmt"
+
 	set "github.com/duke-git/lancet/v2/datastructure/set"
 	"github.com/duke-git/lancet/v2/strutil"
+	"github.com/google/uuid"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/config"
@@ -27,48 +30,68 @@ import (
 
 type Type string
 
+var supportedEngineTypes = set.New(Kubernetes, Mock)
+
 const (
-	VM         Type = "vm"
 	Kubernetes Type = "kubernetes"
 	Mock       Type = "mock"
 )
 
 type Config struct {
 	config.BaseConfig
-	ID         string     `json:"id"`
-	Name       string     `json:"name"`
-	Type       Type       `json:"type"`
-	Properties Properties `json:"properties"`
+	ID         string     `json:"id" yaml:"id"`
+	Name       string     `json:"name" yaml:"name"`
+	Type       Type       `json:"type" yaml:"type"`
+	Properties Properties `json:"properties" yaml:"properties"`
 }
 
 func (c *Config) Validate() error {
 	if strutil.IsBlank(c.ID) {
 		return bizerror.New(bizerror.ConfigError, "engine id can not be empty")
 	}
-	return nil
+	if !supportedEngineTypes.Contain(c.Type) {
+		return bizerror.New(bizerror.ConfigError, fmt.Sprintf("engine type %s is not supported", c.Type))
+	}
+	return c.Properties.Validate()
 }
 
 type Properties struct {
-	KubeConfigPath              string                       `json:"kubeConfigPath"`
-	PodWatchSelector            string                       `json:"podWatchSelector"`
-	DubboAppIdentifier          *KubernetesIdentifier        `json:"dubboAppIdentifier"`
-	DubboRPCPortIdentifier      *KubernetesIdentifier        `json:"dubboRPCPortIdentifier"`
-	DubboRegistryIdentifier     *KubernetesIdentifier        `json:"dubboRegistryIdentifier"`
-	MainContainerChooseStrategy *MainContainerChooseStrategy `json:"mainContainerChooseStrategy"`
+	config.BaseConfig
+	KubeConfigPath              string                       `json:"kubeConfigPath" yaml:"kubeConfigPath"`
+	PodWatchSelector            string                       `json:"podWatchSelector" yaml:"podWatchSelector"`
+	DubboAppIdentifier          *KubernetesIdentifier        `json:"dubboAppIdentifier" yaml:"dubboAppIdentifier"`
+	DubboRPCPortIdentifier      *KubernetesIdentifier        `json:"dubboRPCPortIdentifier" yaml:"dubboRPCPortIdentifier"`
+	DubboDiscoveryIdentifier    *KubernetesIdentifier        `json:"dubboDiscoveryIdentifier" yaml:"dubboDiscoveryIdentifier"`
+	MainContainerChooseStrategy *MainContainerChooseStrategy `json:"mainContainerChooseStrategy" yaml:"mainContainerChooseStrategy"`
 }
 
-func (p *Properties) GetOrDefaultMainContainerChooseStrategy() *MainContainerChooseStrategy {
-	if p.MainContainerChooseStrategy == nil ||
-		!mainContainerChooseStrategyTypes.Contain(p.MainContainerChooseStrategy.Type) {
-		return &MainContainerChooseStrategy{
-			Type:  ChooseByIndex,
-			Index: 0,
+func (p *Properties) Validate() error {
+	if p.DubboAppIdentifier != nil {
+		if err := p.DubboAppIdentifier.Validate(); err != nil {
+			return err
 		}
 	}
-	return p.MainContainerChooseStrategy
+	if p.DubboRPCPortIdentifier != nil {
+		if err := p.DubboRPCPortIdentifier.Validate(); err != nil {
+			return err
+		}
+	}
+	if p.DubboDiscoveryIdentifier != nil {
+		if err := p.DubboDiscoveryIdentifier.Validate(); err != nil {
+			return err
+		}
+	}
+	if p.MainContainerChooseStrategy != nil {
+		if err := p.MainContainerChooseStrategy.Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type MainContainerChooseStrategyType string
+
+var mainContainerChooseStrategyTypes = set.New(ChooseByLast, ChooseByIndex, ChooseByName, ChooseByAnnotation)
 
 const (
 	ChooseByLast       MainContainerChooseStrategyType = "ByLast"
@@ -77,16 +100,24 @@ const (
 	ChooseByAnnotation MainContainerChooseStrategyType = "ByAnnotation"
 )
 
-var mainContainerChooseStrategyTypes = set.New(ChooseByLast, ChooseByIndex, ChooseByName, ChooseByAnnotation)
-
 type MainContainerChooseStrategy struct {
+	config.BaseConfig
 	Type          MainContainerChooseStrategyType `json:"type"`
 	Index         int                             `json:"index"`
 	Name          string                          `json:"name"`
 	AnnotationKey string                          `json:"annotationKey"`
 }
 
+func (m *MainContainerChooseStrategy) Validate() error {
+	if !mainContainerChooseStrategyTypes.Contain(m.Type) {
+		return bizerror.New(bizerror.ConfigError, fmt.Sprintf("unsupported main container choose strategy type: %s", m.Type))
+	}
+	return nil
+}
+
 type IdentifierType string
+
+var identifierTypes = set.New(IdentifyByLabel, IdentifyByAnnotation)
 
 const (
 	IdentifyByLabel      IdentifierType = "ByLabel"
@@ -94,15 +125,29 @@ const (
 )
 
 type KubernetesIdentifier struct {
+	config.BaseConfig
 	Type          IdentifierType `json:"type"`
 	LabelKey      string         `json:"labelKey"`
 	AnnotationKey string         `json:"annotationKey"`
 }
 
+func (k *KubernetesIdentifier) Validate() error {
+	if !identifierTypes.Contain(k.Type) {
+		return bizerror.New(bizerror.ConfigError, fmt.Sprintf("unsupported identifier type: %s", k.Type))
+	}
+	return nil
+}
+
 func DefaultResourceEngineConfig() *Config {
 	return &Config{
-		Name:       "default",
-		Type:       Mock,
-		Properties: Properties{},
+		ID:   uuid.New().String(),
+		Name: "default",
+		Type: Mock,
+		Properties: Properties{
+			MainContainerChooseStrategy: &MainContainerChooseStrategy{
+				Type:  ChooseByIndex,
+				Index: 0,
+			},
+		},
 	}
 }

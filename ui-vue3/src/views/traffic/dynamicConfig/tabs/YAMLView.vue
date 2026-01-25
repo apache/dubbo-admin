@@ -95,7 +95,7 @@ const isEdit = ref(route.params.isEdit === '1')
 const isDrawerOpened = ref(false)
 const loading = ref(false)
 const sliderSpan = ref(8)
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
 const YAMLValue = ref()
 const initValue = ref()
@@ -116,6 +116,8 @@ async function initConfig() {
       isEdit.value = true
       viewData.isAdd = true
     } else {
+      console.log('666')
+
       viewData.isAdd = false
       const res = await getConfiguratorDetail({ name: route.params?.pathId })
       viewData.fromApiOutput(res.data)
@@ -160,9 +162,12 @@ async function saveConfig() {
         })
       return
     }
-    let res = await saveConfiguratorDetail({ name: route.params?.pathId }, data)
-    viewData.fromApiOutput(res.data)
+    await saveConfiguratorDetail({ name: route.params?.pathId }, data)
     message.success('config save success')
+    // 延迟 2 秒后再获取数据，确保数据库已更新
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    TAB_STATE.dynamicConfigForm.data = null
+    await initConfig()
   } finally {
     loading.value = false
   }

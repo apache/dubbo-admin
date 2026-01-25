@@ -45,4 +45,4 @@ bin/
 build/
 vendor/
 
-
+app/dubbo-ui/dist/

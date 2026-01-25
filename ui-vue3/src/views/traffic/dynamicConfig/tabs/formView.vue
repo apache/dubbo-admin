@@ -397,7 +397,7 @@ import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { ConfigModel, ViewDataModel } from '@/views/traffic/dynamicConfig/model/ConfigModel'
 
 let __ = PRIMARY_COLOR
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 const {
   appContext: {
     config: { globalProperties }
@@ -589,9 +589,12 @@ async function saveConfig() {
         })
       return
     }
-    let res = await saveConfiguratorDetail({ name: route.params?.pathId }, data)
-    transApiData(res.data)
+    await saveConfiguratorDetail({ name: route.params?.pathId }, data)
     message.success('config save success')
+    // 延迟 2 秒后再获取数据，确保数据库已更新
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+    TAB_STATE.dynamicConfigForm.data = null
+    await initConfig()
   } catch (e) {
     message.error(formViewEdit.errorMsg.join(';'))
     console.error(e)

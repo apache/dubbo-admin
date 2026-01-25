@@ -77,7 +77,7 @@ import { Icon } from '@iconify/vue'
 const router = useRouter()
 
 let __null = PRIMARY_COLOR
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 TAB_STATE.dynamicConfigForm = reactive({})
 let columns = [
   {

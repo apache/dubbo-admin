@@ -20,6 +20,7 @@ package nacos2
 import (
 	"fmt"
 	"reflect"
+	"time"
 
 	nacosconfigclient "github.com/nacos-group/nacos-sdk-go/v2/clients/config_client"
 	nacosnamingclient "github.com/nacos-group/nacos-sdk-go/v2/clients/naming_client"
@@ -79,7 +80,9 @@ func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
 		return bizerror.Wrap(err, bizerror.NacosError,
 			fmt.Sprintf("failed to publish config, res: %s", r.String()))
 	}
-	//g.GetConfigAndUpdateStore(r)
+	// wait for the config to be published indeed
+	<-time.After(2 * time.Second)
+	g.GetConfigAndUpdateStore(r)
 	return nil
 }
 
@@ -104,6 +107,8 @@ func (g *RuleGovernor) DeleteRule(r coremodel.Resource) error {
 		logger.Errorf("failed to get store in %s, res: %s, cause: %s", r.String(), r.ResourceMesh(), err)
 		return nil
 	}
+	// wait for the config to be deleted indeed
+	<-time.After(2 * time.Second)
 	if err := st.Delete(r); err != nil {
 		logger.Errorf("failed to delete resource in %s, res: %s, cause: %s", r.String(), r.ResourceMesh(), err)
 		return nil

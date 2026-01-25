@@ -18,6 +18,7 @@
 package diagnostics
 
 import (
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/config"
 )
 
@@ -25,12 +26,15 @@ type Config struct {
 	config.BaseConfig
 
 	// Port of Diagnostic Server for checking health and readiness of the Control Plane
-	ServerPort uint32 `json:"serverPort" envconfig:"DUBBO_DIAGNOSTICS_SERVER_PORT"`
+	ServerPort uint32 `json:"serverPort"`
 }
 
 var _ = &Config{}
 
-func (d *Config) Validate() error {
+func (c *Config) Validate() error {
+	if c.ServerPort < 1 || c.ServerPort > 65535 {
+		return bizerror.New(bizerror.ConfigError, "server port for diagnotics must between 1 to 65535")
+	}
 	return nil
 }
 

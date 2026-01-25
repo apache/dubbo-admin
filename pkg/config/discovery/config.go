@@ -41,22 +41,23 @@ const (
 // Config defines Discovery configuration
 type Config struct {
 	config.BaseConfig
-	ID         string        `json:"id"`
-	Name       string        `json:"name"`
-	Type       Type          `json:"type"`
-	Address    AddressConfig `json:"address"`
-	Properties Properties    `json:"properties"`
+	ID         string        `json:"id" yaml:"id"`
+	Name       string        `json:"name" yaml:"name"`
+	Type       Type          `json:"type" yaml:"type"`
+	Address    AddressConfig `json:"address" yaml:"address"`
+	Properties Properties    `json:"properties" yaml:"properties"`
 }
 
 // AddressConfig defines Discovery Engine address
 type AddressConfig struct {
-	Registry       string `json:"registry"`
-	ConfigCenter   string `json:"configCenter"`
-	MetadataReport string `json:"metadataReport"`
+	Registry       string `json:"registry" yaml:"registry"`
+	ConfigCenter   string `json:"configCenter" yaml:"configCenter"`
+	MetadataReport string `json:"metadataReport" yaml:"metadataReport"`
 }
+
 type Properties struct {
-	ConfigWatchPeriod  int `json:"configWatchPeriod"`
-	ServiceWatchPeriod int `json:"serviceWatchPeriod"`
+	ConfigWatchPeriod  int `json:"configWatchPeriod" yaml:"configWatchPeriod"`
+	ServiceWatchPeriod int `json:"serviceWatchPeriod" yaml:"serviceWatchPeriod"`
 }
 
 func (c *Config) PreProcess() error {

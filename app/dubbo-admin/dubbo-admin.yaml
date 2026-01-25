@@ -13,53 +13,93 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-mode: zone
-console:
-  grafana: http://101.34.253.152:30300/
+# [Optional] Config for log.
+log:
+  # [Optional] log level, options are debug, info, warn, error. Optional, default is info.
+  level: info
+  # [Optional] log file output path, default is ./logs/dubbo-admin.log.
+  outputPath: logs/dubbo-admin.log
+  # [Optional] max size for a single log file, default is 100, unit is `M`. [Optional]
+  maxSize: 100
+  # [Optional] max number of old log files to retain, default is 5. [Optional]
+  maxBackups: 5
+  # [Optional] max age for a log file, default is 3, unit is `day`. [Optional]
+  maxAge: 3
+
+# [Optional] config for observability.
+observability:
+  # [Optional] config for grafana and prometheus.
+  grafana: http://101.34.253.152:30300
+  # [Optional] config for prometheus.
   prometheus: http://101.34.253.152:30900/
+
+# [Optional] config for console.
+console:
+  # [Optional] port of http server, default is 8888.
+  port: 8888
+  # [Optional] running mode of Gin, options are debug, release, test, default is release.
+  ginMode: release
+  # [Optional] dashboard for metrics.
   metricDashboards:
-    application: http://101.34.253.152:30300/grafana/d/a0b114ca-edf7-4dfe-ac2c-34a4fc545fed
-    instance: http://101.34.253.152:30300/grafana/d/dcf5defe-d198-4704-9edf-6520838880e9
-    service: http://101.34.253.152:30300/grafana/d/ec689613-b4a1-45b1-b8bd-9d557059f970
+    application: http://101.34.253.152:30300/d/a0b114ca-edf7-4dfe-ac2c-34a4fc545fed?kiosk=1&theme=light
+    instance: http://101.34.253.152:30300/d/dcf5defe-d198-4704-9edf-6520838880e9?kiosk=1&theme=light
+    service: http://101.34.253.152:30300/d/ec689613-b4a1-45b1-b8bd-9d557059f970?kiosk=1&theme=light
+  # [Optional] dashboard for traces.
   traceDashboards:
-    application: http://101.34.253.152:30300/grafana/d/e968a89b-f03d-42e3-8ad3-930ae815cb0f
-    instance: http://101.34.253.152:30300/grafana/d/f5f48f75-13ec-489b-88ae-635ae38d8618
-    service: http://101.34.253.152:30300/grafana/d/b2e178fb-ada3-4d5e-9f54-de99e7f07662
+    application: http://101.34.253.152:30300/d/e968a89b-f03d-42e3-8ad3-930ae815cb0f?kiosk=1&theme=light
+    instance: http://101.34.253.152:30300/d/f5f48f75-13ec-489b-88ae-635ae38d8618?kiosk=1&theme=light
+    service: http://101.34.253.152:30300/d/b2e178fb-ada3-4d5e-9f54-de99e7f07662?kiosk=1&theme=light
+  # [Optional] typical user-pwd authentication, default user-pwd is admin-admin.
   auth:
     user: admin
     password: dubbo@2025
     expirationTime: 3600
+
+# [Optional] config for data storage, default is memory
 store:
+  # [Optional] store data in memory
   type: memory
+  # [Optional, Beta] store data in mysql
 #  type: mysql
 #  address: root:123456@tcp(127.0.0.1:23306)/dubbo-admin?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai
+
+# [Necessary] configs for service discovery
 discovery:
+  # [Necessary] discovery type, options are nacos2, zookeeper, mock(only for dev)
   - type: nacos2
-    name: localhost-nacos
-    id: localhost-nacos
+  # [Necessary] discovery name, will be displayed in the web ui
+    name: nacos2.5-standalone
+  # [Necessary] a unique id for this discovery
+    id: nacos2.5
+  # [Necessary] address config
     address:
+      # [Necessary] registry address
       registry: nacos://101.34.253.152:30848?username=nacos&password=nacos
+      # [Optional] config center address, if not set, will use registry address
       configCenter: nacos://101.34.253.152:30848?username=nacos&password=nacos
+      # [Optional] metadata report address, if not set, will use registry address
       metadataReport: nacos://101.34.253.152:30848?username=nacos&password=nacos
+    # [Optional] extra properties
     properties:
-      # [Nacos2] Adjust the interval(time unit is `s`) to adjust the frequency of list-all configs in nacos.
+      # [Nacos2, Optional] Adjust the interval(time unit is `s`) to adjust the frequency of list-all configs in nacos.
       # Default period is 30s
-      configWatchPeriod: 20
-      # [Nacos2] Adjust the interval(time unit is `s`) to adjust the frequency of list-all services in nacos.
+      configWatchPeriod: 30
+      # [Nacos2, Optional] Adjust the interval(time unit is `s`) to adjust the frequency of list-all services in nacos.
       # Default period is 30s
-      serviceWatchPeriod: 20
+      serviceWatchPeriod: 30
 #  - type: zookeeper
-#    name: 本地zookeeper
+#    name: localhost-zookeeper
 #    id: zk3.6
 #    address:
 #      registry: zookeeper://127.0.0.1:2181
 #      configCenter: zookeeper://127.0.0.1:2181
 #      metadataReport: zookeeper://127.0.0.1:2181
-
-  # mock discovery is only for development
+# mock discovery is only for development
 #  - type: mock
 #    id:   mock
 #    name: mockRegistry
+
+# [Optional] config for runtime engine, default is mock, as well as no engine.
 engine:
 #  id: mock
 #  name: mock
@@ -68,43 +108,54 @@ engine:
   name: k8s1.28.6
   type: kubernetes
   properties:
-#     [Kubernetes] Path to kubernetes config file, if not set, will use in cluster config
+    # [Kubernetes, Optional] kubeConfigPath: Path to kubernetes config file, if not set, will use in cluster config
+    # e.g.
     kubeConfigPath: /root/.kube/config
-    # [Kubernetes] Watch pods with specified labels, if not set, will watch all pods
+
+    # [Kubernetes, Optional] podWatchSelector: Watch pods with specified labels, if not set, will watch all pods
+    # e.g.
     # podWatchSelector: org.apache.dubbo/dubbo-apps=true
-    # [Kubernetes] Identify which Dubbo app the pod belongs to, if not set, pod will not be seen as a dubbo instance at first
+
+    # [Kubernetes, Optional] dubboAppIdentifier: Identify which Dubbo app the pod belongs to, if not set, pod will not be seen as a dubbo instance at first
     # 1. ByLabels: Use the label value corresponding to the labelKey as the dubbo app name
     # e.g.
+    #  dubboAppIdentifier:
     #    type: ByLabel
     #    labelKey: org.apache.dubbo/dubbo-app-name
     # 2. ByAnnotation: Use the annotation value corresponding to the annotationKey as the dubbo app name
     # e.g.
+    #  dubboAppIdentifier:
     #    type: ByAnnotation
     #    annotationKey: org.apache.dubbo/dubbo-app-name
-#    dubboAppIdentifier:
-#      type: ByLabel
-#      labelKey: org.apache.dubbo/dubbo-app-name
-    # [Kubernetes] Identify the rpc port of a dubbo application, if not set, pod will not be seen as a dubbo instance at first
+
+    # [Kubernetes, Optional] dubboRPCPortIdentifier: Identify the rpc port of a dubbo application, if not set, pod will not be seen as a dubbo instance at first
     # 1. ByLabels: Use the label value corresponding to the labelKey as the dubbo rpc port
     # e.g.
+    #  dubboRPCPortIdentifier:
     #    type: ByLabel
     #    labelKey: org.apache.dubbo/dubbo-rpc-port
     # 2. ByAnnotation: Use the annotation value corresponding to the annotationKey as the dubbo rpc port
     # e.g.
+    #  dubboRPCPortIdentifier:
     #    type: ByAnnotation
     #    annotationKey: org.apache.dubbo/dubbo-rpc-port
-    # [Kubernetes] Identify the registry(discovery) which the dubbo instance belongs to, if not set, pod will not be seen as a dubbo instance at first
+
+    # [Kubernetes, Optional] dubboDiscoveryIdentifier: Identify the registry(discovery) which the dubbo instance belongs to, if not set, pod will not be seen as a dubbo instance at first
     # 1. ByLabels: Use the label value corresponding to the labelKey as the dubbo registry name
     # e.g.
+    #  dubboDiscoveryIdentifier:
     #    type: ByLabel
     #    labelKey: org.apache.dubbo/registry
     # 2. ByAnnotation: Use the annotation value corresponding to the annotationKey as the dubbo registry name
     # e.g.
+    #  dubboDiscoveryIdentifier:
     #    type: ByAnnotation
     #    annotationKey: org.apache.dubbo/registry
-    # [Kubernetes] Strategy of choosing the main container, if not set, [type = ByIndex] and [index = 0] will be used
+
+    # [Kubernetes, Optional] mainContainerChooseStrategy: Strategy of choosing the main container, if not set, [type = ByIndex] and [index = 0] will be used
     # 1. ByLast: choose the last container as the main container
     # e.g.
+    #  mainContainerChooseStrategy:
     #    type: ByLast
     # 2. ByIndex(default): choose the container at the specified index location as the main container
     # e.g.
@@ -112,12 +163,11 @@ engine:
     #    index: 0
     # 3. ByName: choose the container with the specified name
     # e.g.
+    #  mainContainerChooseStrategy:
     #    type: ByName
     #    name: main
     # 4. ByAnnotation: choose the container with the annotation key, specified annotation value will be used as the container name
     # e.g.
+    #  mainContainerChooseStrategy:
     #    type: ByAnnotation
     #    annotationKey: org.apache.dubbo/main-container-name=${app-name}
-#    mainContainerChooseStrategy:
-#      type: ByIndex
-#      index: 0

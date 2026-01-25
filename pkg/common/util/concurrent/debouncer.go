@@ -21,10 +21,7 @@ import (
 	"time"
 
 	"github.com/apache/dubbo-admin/pkg/common/util/sets"
-	"github.com/apache/dubbo-admin/pkg/core"
 )
-
-var log = core.Log.WithName("debouncer")
 
 type Debouncer[T comparable] struct{}
 
