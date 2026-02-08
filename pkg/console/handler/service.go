@@ -229,3 +229,22 @@ func ServiceConfigArgumentRoutePUT(ctx consolectx.Context) gin.HandlerFunc {
 		c.JSON(http.StatusOK, model.NewSuccessResp(nil))
 	}
 }
+
+// GetServiceGraph returns the service graph in a cross-linked list structure for visualization
+func GetServiceGraph(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := &model.ServiceGraphReq{}
+		if err := c.ShouldBindQuery(req); err != nil {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+			return
+		}
+
+		resp, err := service.SearchServiceAsCrossLinkedList(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}

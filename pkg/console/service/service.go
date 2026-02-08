@@ -522,3 +522,161 @@ func isArgumentRoute(condition string) bool {
 	}
 	return false
 }
+
+// SearchServiceAsCrossLinkedList builds a service dependency graph.
+// If serviceName is provided, it finds applications that consume or provide that specific service.
+// If serviceName is empty, it returns all service dependencies in the mesh.
+// It constructs nodes (applications) and edges (dependencies) for graph visualization.
+func SearchServiceAsCrossLinkedList(ctx consolectx.Context, req *model.ServiceGraphReq) (*model.GraphData, error) {
+	// Build indexes conditionally based on whether serviceName is provided
+	consumerIndexes := map[string]string{
+		index.ByMeshIndex: req.Mesh,
+	}
+	providerIndexes := map[string]string{
+		index.ByMeshIndex: req.Mesh,
+	}
+
+	// Only filter by serviceName if it's provided
+	if req.ServiceName != "" {
+		consumerIndexes[index.ByServiceConsumerServiceName] = req.ServiceName
+		providerIndexes[index.ByServiceProviderServiceName] = req.ServiceName
+	}
+
+	// Use ListByIndexes instead of PageListByIndexes to get all related resources
+	// since we need complete dependency graph, not paginated results
+	consumers, err := manager.ListByIndexes[*meshresource.ServiceConsumerMetadataResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceConsumerMetadataKind,
+		consumerIndexes)
+	if err != nil {
+		logger.Errorf("get service consumer for mesh %s failed, cause: %v", req.Mesh, err)
+		return nil, bizerror.New(bizerror.InternalError, "get service consumer failed, please try again")
+	}
+
+	providers, err := manager.ListByIndexes[*meshresource.ServiceProviderMetadataResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceProviderMetadataKind,
+		providerIndexes)
+	if err != nil {
+		logger.Errorf("get service provider for mesh %s failed, cause: %v", req.Mesh, err)
+		return nil, bizerror.New(bizerror.InternalError, "get service provider failed, please try again")
+	}
+
+	// Collect all unique applications (both consumers and providers)
+	consumerApps := make(map[string]bool)
+	for _, consumer := range consumers {
+		if consumer.Spec != nil {
+			consumerApps[consumer.Spec.ConsumerAppName] = true
+		}
+	}
+
+	providerApps := make(map[string]bool)
+	for _, provider := range providers {
+		if provider.Spec != nil {
+			providerApps[provider.Spec.ProviderAppName] = true
+		}
+	}
+
+	allApps := make(map[string]bool)
+	for app := range consumerApps {
+		allApps[app] = true
+	}
+	for app := range providerApps {
+		allApps[app] = true
+	}
+
+	nodes := make([]model.GraphNode, 0, len(allApps))
+	edges := make([]model.GraphEdge, 0)
+
+	// Build app to service instances mapping
+	// For providers: map providerAppName -> list of instances providing this service
+	// For consumers: map consumerAppName -> empty list (consumers don't provide instances)
+	appInstances := make(map[string][]*meshresource.InstanceResource)
+
+	// Get all instances for the mesh first
+	allInstances, err := manager.ListByIndexes[*meshresource.InstanceResource](
+		ctx.ResourceManager(),
+		meshresource.InstanceKind,
+		map[string]string{
+			index.ByMeshIndex: req.Mesh,
+		})
+	if err != nil {
+		logger.Errorf("get instances for mesh %s failed, cause: %v", req.Mesh, err)
+	}
+
+	// Build app -> instances mapping
+	for _, instance := range allInstances {
+		if instance.Spec != nil && instance.Spec.AppName != "" {
+			appInstances[instance.Spec.AppName] = append(appInstances[instance.Spec.AppName], instance)
+		}
+	}
+
+	// Build nodes for each app
+	// Provider nodes: data contains instances providing this service
+	// Consumer nodes: data is nil (consumers don't provide instances)
+	for appName := range allApps {
+		var instanceData interface{}
+
+		instances := make([]interface{}, 0)
+		if appInsts, ok := appInstances[appName]; ok {
+			for _, instance := range appInsts {
+				instances = append(instances, toInstanceData(instance))
+			}
+		}
+		instanceData = instances
+
+		nodes = append(nodes, model.GraphNode{
+			ID:    appName,
+			Label: appName,
+			Data:  instanceData,
+		})
+	}
+
+	// Build edges between consumers and providers
+	// Only create edges between apps that actually have the service relationship
+	for _, consumer := range consumers {
+		if consumer.Spec != nil {
+			for _, provider := range providers {
+				if provider.Spec != nil {
+					// This is where you should check if the provider's service name and the consumer's service name match.
+					if consumer.Spec.ServiceName != provider.Spec.ServiceName {
+						continue
+					}
+					edges = append(edges, model.GraphEdge{
+						Source: consumer.Spec.ConsumerAppName,
+						Target: provider.Spec.ProviderAppName,
+						Data: map[string]interface{}{
+							"type":        "dependency",
+							"serviceName": req.ServiceName,
+							"consumerApp": consumer.Spec.ConsumerAppName,
+							"providerApp": provider.Spec.ProviderAppName,
+						},
+					})
+				}
+			}
+		}
+	}
+
+	return &model.GraphData{
+		Nodes: nodes,
+		Edges: edges,
+	}, nil
+}
+
+func toInstanceData(instance *meshresource.InstanceResource) map[string]interface{} {
+	if instance == nil || instance.Spec == nil {
+		return nil
+	}
+
+	data := map[string]interface{}{
+		"appName":  instance.Spec.AppName,
+		"ip":       instance.Spec.Ip,
+		"name":     instance.Spec.Name,
+		"protocol": instance.Spec.Protocol,
+		"qosPort":  instance.Spec.QosPort,
+		"rpcPort":  instance.Spec.RpcPort,
+		"tags":     instance.Spec.Tags,
+	}
+
+	return data
+}
