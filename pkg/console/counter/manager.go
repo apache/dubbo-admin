@@ -23,6 +23,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/dubbo-admin/pkg/core/events"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	resmodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
@@ -42,6 +43,8 @@ type CounterManager interface {
 	RegisterDistributionCounter(kind resmodel.ResourceKind, metric CounterType, extractor FieldExtractor)
 	Count(kind resmodel.ResourceKind) int64
 	Distribution(metric CounterType) map[string]int64
+	CountByMesh(kind resmodel.ResourceKind, mesh string) int64
+	DistributionByMesh(metric CounterType, mesh string) map[string]int64
 	Reset()
 	Bind(bus events.EventBus) error
 }
@@ -137,12 +140,28 @@ func (cm *counterManager) Distribution(metric CounterType) map[string]int64 {
 	if !exists {
 		return map[string]int64{}
 	}
-	raw := counter.GetAll()
-	result := make(map[string]int64, len(raw))
-	for k, v := range raw {
-		result[k] = v
+	return counter.GetAll()
+}
+
+func (cm *counterManager) CountByMesh(kind resmodel.ResourceKind, mesh string) int64 {
+	if mesh == "" {
+		mesh = "default"
 	}
-	return result
+	if counter, exists := cm.simpleCounters[kind]; exists {
+		return counter.GetByGroup(mesh)
+	}
+	return 0
+}
+
+func (cm *counterManager) DistributionByMesh(metric CounterType, mesh string) map[string]int64 {
+	if mesh == "" {
+		mesh = "default"
+	}
+	counter, exists := cm.distributionByType[metric]
+	if !exists {
+		return map[string]int64{}
+	}
+	return counter.GetByGroup(mesh)
 }
 
 func (cm *counterManager) Bind(bus events.EventBus) error {
@@ -167,11 +186,14 @@ func (cm *counterManager) Bind(bus events.EventBus) error {
 		if err := bus.Subscribe(subscriber); err != nil {
 			return err
 		}
+		logger.Infof("CounterManager subscribed to %s events", resourceKind)
 	}
+	logger.Infof("CounterManager bound to EventBus successfully")
 	return nil
 }
 
 func (cm *counterManager) handleEvent(kind resmodel.ResourceKind, event events.Event) error {
+	logger.Debugf("CounterManager handling %s event, type: %s", kind, event.Type())
 	if counter := cm.simpleCounters[kind]; counter != nil {
 		processSimpleCounter(counter, event)
 	}
@@ -183,36 +205,72 @@ func (cm *counterManager) handleEvent(kind resmodel.ResourceKind, event events.E
 	return nil
 }
 
+func (cm *counterManager) getDistributionConfig(kind resmodel.ResourceKind, metric CounterType) *distributionCounterConfig {
+	configs := cm.distributionConfigs[kind]
+	for _, cfg := range configs {
+		if cfg.counterType == metric {
+			return cfg
+		}
+	}
+	return nil
+}
+
+func extractMeshName(res resmodel.Resource) string {
+	if res == nil {
+		return "default"
+	}
+	mesh := res.ResourceMesh()
+	if mesh == "" {
+		return "default"
+	}
+	return mesh
+}
+
 func processSimpleCounter(counter *Counter, event events.Event) {
+	mesh := extractMeshName(event.NewObj())
+	if event.NewObj() == nil {
+		mesh = extractMeshName(event.OldObj())
+	}
+
 	switch event.Type() {
 	case cache.Added:
-		counter.Increment()
+		counter.Increment(mesh)
+		logger.Debugf("CounterManager: Increment %s for mesh=%s, current count=%d", counter.name, mesh, counter.GetByGroup(mesh))
 	case cache.Sync, cache.Replaced:
 		if isNewResourceEvent(event) {
-			counter.Increment()
+			counter.Increment(mesh)
+			logger.Debugf("CounterManager: Increment %s for mesh=%s (Sync/Replaced), current count=%d", counter.name, mesh, counter.GetByGroup(mesh))
 		}
 	case cache.Deleted:
-		counter.Decrement()
+		counter.Decrement(mesh)
+		logger.Debugf("CounterManager: Decrement %s for mesh=%s, current count=%d", counter.name, mesh, counter.GetByGroup(mesh))
 	case cache.Updated:
-		// no-op for simple counters
 	default:
 	}
 }
 
 func processDistributionCounter(cfg *distributionCounterConfig, event events.Event) {
+	mesh := extractMeshName(event.NewObj())
+	if event.NewObj() == nil {
+		mesh = extractMeshName(event.OldObj())
+	}
+
 	switch event.Type() {
 	case cache.Added:
-		cfg.increment(cfg.extractFrom(event.NewObj()))
+		key := cfg.extractFrom(event.NewObj())
+		cfg.counter.Increment(mesh, normalizeDistributionKey(key))
 	case cache.Sync, cache.Replaced:
 		if isNewResourceEvent(event) {
-			cfg.increment(cfg.extractFrom(event.NewObj()))
+			key := cfg.extractFrom(event.NewObj())
+			cfg.counter.Increment(mesh, normalizeDistributionKey(key))
 		} else {
 			cfg.update(event.OldObj(), event.NewObj())
 		}
 	case cache.Updated:
 		cfg.update(event.OldObj(), event.NewObj())
 	case cache.Deleted:
-		cfg.decrement(cfg.extractFrom(event.OldObj()))
+		key := cfg.extractFrom(event.OldObj())
+		cfg.counter.Decrement(mesh, normalizeDistributionKey(key))
 	default:
 	}
 }
@@ -224,25 +282,19 @@ func (cfg *distributionCounterConfig) extractFrom(res resmodel.Resource) string 
 	return cfg.extractor(res)
 }
 
-func (cfg *distributionCounterConfig) increment(key string) {
-	cfg.counter.Increment(normalizeDistributionKey(key))
-}
-
-func (cfg *distributionCounterConfig) decrement(key string) {
-	cfg.counter.Decrement(normalizeDistributionKey(key))
-}
-
 func (cfg *distributionCounterConfig) update(oldObj, newObj resmodel.Resource) {
 	oldKey := normalizeDistributionKey(cfg.extractFrom(oldObj))
 	newKey := normalizeDistributionKey(cfg.extractFrom(newObj))
-	if oldKey == newKey {
+	oldMesh := extractMeshName(oldObj)
+	newMesh := extractMeshName(newObj)
+	if oldKey == newKey && oldMesh == newMesh {
 		return
 	}
 	if oldObj != nil {
-		cfg.counter.Decrement(oldKey)
+		cfg.counter.Decrement(oldMesh, oldKey)
 	}
 	if newObj != nil {
-		cfg.counter.Increment(newKey)
+		cfg.counter.Increment(newMesh, newKey)
 	}
 }
 

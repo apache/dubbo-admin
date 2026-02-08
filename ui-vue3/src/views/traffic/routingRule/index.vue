@@ -19,7 +19,7 @@
     <search-table :search-domain="searchDomain">
       <template #customOperation>
         <a-button type="primary" @click="router.push(`/traffic/addRoutingRule/addByFormView`)"
-          >新增条件路由规则
+          >{{ t('routingRuleDomain.createNewRoutingRule') }}
         </a-button>
       </template>
       <template #bodyCell="{ text, column, record }">
@@ -32,10 +32,14 @@
           </span>
         </template>
         <template v-if="column.dataIndex === 'ruleGranularity'">
-          {{ record.scope === 'service' ? '服务' : '应用' }}
+          {{
+            record.scope === 'service'
+              ? t('routingRuleDomain.service')
+              : t('routingRuleDomain.application')
+          }}
         </template>
         <template v-if="column.dataIndex === 'enabled'">
-          {{ text ? '启用' : '禁用' }}
+          {{ text ? t('flowControlDomain.enabled') : t('flowControlDomain.disabled') }}
         </template>
         <!-- 时间 -->
         <template v-if="column.dataIndex === 'createTime'">
@@ -43,21 +47,21 @@
         </template>
         <template v-if="column.dataIndex === 'operation'">
           <a-button type="link" @click="router.push(`formview/${record.ruleName}`)">
-            查看
+            {{ t('view') }}
           </a-button>
           <a-button
             type="link"
             @click="router.push(`/traffic/updateRoutingRule/updateByFormView/${record.ruleName}`)"
           >
-            修改
+            {{ t('edit') }}
           </a-button>
           <a-popconfirm
-            title="确认删除该条件路由规则？"
+            :title="t('routingRuleDomain.warnDeleteRouteRule')"
             ok-text="Yes"
             cancel-text="No"
             @confirm="confirm(record.ruleName)"
           >
-            <a-button type="link"> 删除</a-button>
+            <a-button type="link"> {{ t('delete') }}</a-button>
           </a-popconfirm>
         </template>
       </template>
@@ -67,6 +71,8 @@
 
 <script setup lang="ts">
 import { onMounted, provide, reactive, inject } from 'vue'
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 import { deleteConditionRuleAPI, searchRoutingRule } from '@/api/service/traffic'
 import SearchTable from '@/components/SearchTable.vue'
 import { SearchDomain, sortString } from '@/utils/SearchUtil'
@@ -76,7 +82,7 @@ import { Icon } from '@iconify/vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { formattedDate } from '@/utils/DateUtil'
 import { HTTP_STATUS } from '@/base/http/constants'
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 let columns = [
   {
     title: 'ruleName',
@@ -89,7 +95,8 @@ let columns = [
     title: 'ruleGranularity',
     key: 'ruleGranularity',
     dataIndex: 'ruleGranularity',
-    render: (text, record) => (record.isService ? '服务' : '应用'),
+    render: (text, record) =>
+      record.isService ? t('routingRuleDomain.service') : t('routingRuleDomain.application'),
     width: 100
     // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },

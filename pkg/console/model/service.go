@@ -113,6 +113,7 @@ func (s *BaseServiceReq) Query(c *gin.Context) error {
 	}
 	s.Group = c.Query("group")
 	s.Version = c.Query("version")
+	s.Mesh = c.Query("mesh")
 	return nil
 }
 

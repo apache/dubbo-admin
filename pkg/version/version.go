@@ -19,40 +19,33 @@ package version
 
 import (
 	"fmt"
-	"runtime"
 	"strings"
 )
 
 var (
-	buildVersion = "unknown"
+	buildVersion = "0.7.0"
 )
 
-// type BuildInfo struct {
-//	Version string `json:"version"`
-// }
-
-func (b BuildInfo) String() string {
-	return fmt.Sprintf("%v", b.Version)
-}
-
-func (b BuildInfo) LongForm() string {
-	return fmt.Sprintf("%#v", b)
-}
+var Build BuildInfo
 
 func init() {
-	Info = BuildInfo{
-		Version: buildVersion,
+	Build = BuildInfo{
+		Product:      Product,
+		Version:      version,
+		GitTag:       gitTag,
+		GitCommit:    gitCommit,
+		BuildDate:    buildDate,
+		BasedOnDubbo: basedOnDubbo,
 	}
 }
 
 var (
-	Product      = "Dubbo"
-	basedOndubbo = ""
-	version      = "unknown"
-	gitTag       = "unknown"
-	gitCommit    = "unknown"
-	buildDate    = "unknown"
-	Envoy        = "unknown"
+	Product      = "Dubbo Admin"
+	basedOnDubbo = "Dubbo3.x"
+	version      = "0.7.0"
+	gitTag       = "0.7.0"
+	gitCommit    = "-"
+	buildDate    = "2026-01"
 )
 
 type BuildInfo struct {
@@ -62,6 +55,14 @@ type BuildInfo struct {
 	GitCommit    string
 	BuildDate    string
 	BasedOnDubbo string
+}
+
+func (b BuildInfo) String() string {
+	return fmt.Sprintf("%v", b.Version)
+}
+
+func (b BuildInfo) LongForm() string {
+	return fmt.Sprintf("%#v", b)
 }
 
 func (b BuildInfo) FormatDetailedProductInfo() string {
@@ -100,31 +101,4 @@ func (b BuildInfo) AsMap() map[string]string {
 		res["based_on_dubbo"] = b.BasedOnDubbo
 	}
 	return res
-}
-
-func (b BuildInfo) UserAgent(component string) string {
-	commit := shortCommit(b.GitCommit)
-	if b.BasedOnDubbo != "" {
-		commit = fmt.Sprintf("%s/dubbo-%s", commit, b.BasedOnDubbo)
-	}
-	return fmt.Sprintf("%s/%s (%s; %s; %s/%s)",
-		component,
-		b.Version,
-		runtime.GOOS,
-		runtime.GOARCH,
-		b.Product,
-		commit)
-}
-
-var Build BuildInfo
-
-func init() {
-	Build = BuildInfo{
-		Product:      Product,
-		Version:      version,
-		GitTag:       gitTag,
-		GitCommit:    gitCommit,
-		BuildDate:    buildDate,
-		BasedOnDubbo: basedOndubbo,
-	}
 }

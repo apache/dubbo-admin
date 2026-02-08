@@ -71,7 +71,8 @@ export const TAB_HEADER_TITLE: Component = {
   ) => {
     const route = c.route
     const header: any = route.meta?.slots?.header
-    return h(header) || h('div', route.params?.pathId)
+    const headerParamKey = route.meta?.headerParamKey || 'pathId'
+    return h(header) || h('div', route.params?.[headerParamKey])
     // console.log(h)
     // return h("div", "foo")
   }

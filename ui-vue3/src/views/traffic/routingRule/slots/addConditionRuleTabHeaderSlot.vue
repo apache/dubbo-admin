@@ -19,13 +19,16 @@
   <div class="__container_AppTabHeaderSlot">
     <a-row>
       <a-col :span="12">
-        <span class="header-desc"> 新增条件路由 </span>
+        <span class="header-desc"> {{ t('routingRuleDomain.createNewRoutingRule') }} </span>
       </a-col>
     </a-row>
   </div>
 </template>
 
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
+</script>
 <style lang="less" scoped>
 .__container_AppTabHeaderSlot {
   .header-desc {

@@ -271,6 +271,7 @@ func (lw *ConfigListerWatcher[T]) ResourceKind() coremodel.ResourceKind {
 }
 
 func (lw *ConfigListerWatcher[T]) Stop() {
+	lw.configClient.CloseClient()
 	lw.stopWatch = true
 }
 

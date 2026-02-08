@@ -32,9 +32,11 @@
       </a-card>
     </a-flex>
     <search-table :search-domain="searchDomain">
-      <template #bodyCell="{ column, text }">
+      <template #bodyCell="{ column, text, record }">
         <template v-if="column.dataIndex === 'name'">
-          <a-button type="link" @click="viewDetail(text)">{{ text }}</a-button>
+          <a-tooltip :title="text">
+            <span class="app-link" @click="viewDetail(record)">{{ text }}</span>
+          </a-tooltip>
         </template>
         <template v-if="column.dataIndex === 'deployState'">
           <a-tag :color="INSTANCE_DEPLOY_COLOR[text.toUpperCase()]">{{ text }}</a-tag>
@@ -110,19 +112,19 @@ onMounted(async () => {
 
 const columns = [
   {
-    title: 'instanceDomain.ip',
-    dataIndex: 'ip',
-    key: 'ip',
-    // sorter: true,
-    width: 150,
-    fixed: 'left'
-  },
-  {
     title: 'instanceDomain.name',
     dataIndex: 'name',
     key: 'name',
     // sorter: true,
-    width: 180
+    width: 180,
+    fixed: 'left'
+  },
+  {
+    title: 'instanceDomain.ip',
+    dataIndex: 'ip',
+    key: 'ip',
+    // sorter: true,
+    width: 150
   },
   {
     title: 'instanceDomain.deployState',
@@ -252,8 +254,8 @@ onMounted(() => {
   searchDomain.onSearch()
 })
 
-const viewDetail = (serviceName: string) => {
-  router.replace(`/resources/instances/detail/${serviceName.split(':')[0]}/${serviceName}`)
+const viewDetail = (record: any) => {
+  router.push(`/resources/instances/detail/${record.name}/${record.ip}`)
 }
 
 provide(PROVIDE_INJECT_KEY.SEARCH_DOMAIN, searchDomain)

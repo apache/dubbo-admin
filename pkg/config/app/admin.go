@@ -19,7 +19,6 @@ package app
 
 import (
 	"github.com/duke-git/lancet/v2/slice"
-	"github.com/pkg/errors"
 	"go.uber.org/multierr"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
@@ -28,35 +27,39 @@ import (
 	"github.com/apache/dubbo-admin/pkg/config/diagnostics"
 	"github.com/apache/dubbo-admin/pkg/config/discovery"
 	"github.com/apache/dubbo-admin/pkg/config/engine"
-	"github.com/apache/dubbo-admin/pkg/config/mode"
+	"github.com/apache/dubbo-admin/pkg/config/log"
+	"github.com/apache/dubbo-admin/pkg/config/observability"
 	"github.com/apache/dubbo-admin/pkg/config/store"
 )
 
 type AdminConfig struct {
 	config.BaseConfig
-	// Mode in which dubbo admin is running. Available values are: "test", "global", "zone"
-	Mode mode.Mode `json:"mode" envconfig:"DUBBO_MODE"`
+	// Log configuration
+	Log *log.Config `json:"log" yaml:"log"`
 	// Diagnostics configuration
-	Diagnostics *diagnostics.Config `json:"diagnostics,omitempty"`
+	Diagnostics *diagnostics.Config `json:"diagnostics,omitempty" yaml:"diagnostics"`
+	// Observability configuration
+	Observability *observability.Config `json:"observability" yaml:"observability"`
 	// Console configuration
-	Console *console.Config `json:"console"`
+	Console *console.Config `json:"console" yaml:"console"`
 	// Store configuration
-	Store *store.Config `json:"store"`
+	Store *store.Config `json:"store" yaml:"store"`
 	// Discovery configuration
-	Discovery []*discovery.Config `json:"discovery"`
+	Discovery []*discovery.Config `json:"discovery" yaml:"discovery"`
 	// Engine configuration
-	Engine *engine.Config `json:"engine"`
+	Engine *engine.Config `json:"engine" yaml:"engine"`
 }
 
 var _ = &AdminConfig{}
 
 var DefaultAdminConfig = func() AdminConfig {
 	return AdminConfig{
-		Mode:        mode.Zone,
-		Store:       store.DefaultStoreConfig(),
-		Engine:      engine.DefaultResourceEngineConfig(),
-		Diagnostics: diagnostics.DefaultDiagnosticsConfig(),
-		Console:     console.DefaultConsoleConfig(),
+		Log:           log.DefaultLogConfig(),
+		Store:         store.DefaultStoreConfig(),
+		Engine:        engine.DefaultResourceEngineConfig(),
+		Observability: observability.DefaultObservabilityConfig(),
+		Diagnostics:   diagnostics.DefaultDiagnosticsConfig(),
+		Console:       console.DefaultConsoleConfig(),
 	}
 }
 
@@ -67,15 +70,28 @@ func (c AdminConfig) Sanitize() {
 	}
 	c.Store.Sanitize()
 	c.Console.Sanitize()
+	c.Observability.Sanitize()
 	c.Diagnostics.Sanitize()
+	c.Log.Sanitize()
 }
 
 func (c AdminConfig) PreProcess() error {
+	discoveryPreProcess := func() error {
+		for _, d := range c.Discovery {
+			if err := d.PreProcess(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	return multierr.Combine(
 		c.Engine.PreProcess(),
+		discoveryPreProcess(),
 		c.Store.PreProcess(),
 		c.Console.PreProcess(),
+		c.Observability.PreProcess(),
 		c.Diagnostics.PreProcess(),
+		c.Log.PreProcess(),
 	)
 }
 
@@ -93,47 +109,56 @@ func (c AdminConfig) PostProcess() error {
 		discoveryPostProcess(),
 		c.Store.PostProcess(),
 		c.Console.PostProcess(),
+		c.Observability.PostProcess(),
 		c.Diagnostics.PostProcess(),
+		c.Log.PostProcess(),
 	)
 }
 
 func (c AdminConfig) Validate() error {
-	if err := mode.ValidateMode(c.Mode); err != nil {
-		return errors.Wrap(err, "Mode Config validation failed")
+	if c.Log == nil {
+		c.Log = log.DefaultLogConfig()
+	} else if err := c.Log.Validate(); err != nil {
+		return bizerror.Wrap(err, bizerror.ConfigError, "log config validation failed")
 	}
 	if c.Store == nil {
 		c.Store = store.DefaultStoreConfig()
 	} else if err := c.Store.Validate(); err != nil {
-		return bizerror.Wrap(err, bizerror.ConfigError, "Store Config validation failed")
+		return bizerror.Wrap(err, bizerror.ConfigError, "store config validation failed")
 	}
 	if c.Diagnostics == nil {
 		c.Diagnostics = diagnostics.DefaultDiagnosticsConfig()
 	} else if err := c.Diagnostics.Validate(); err != nil {
-		return bizerror.Wrap(err, bizerror.ConfigError, "Diagnostics Config validation failed")
+		return bizerror.Wrap(err, bizerror.ConfigError, "diagnostics config validation failed")
 	}
 	if c.Console == nil {
 		c.Console = console.DefaultConsoleConfig()
 	} else if err := c.Console.Validate(); err != nil {
-		return bizerror.Wrap(err, bizerror.ConfigError, "Admin validation failed")
+		return bizerror.Wrap(err, bizerror.ConfigError, "console config validation failed")
 	}
-	if c.Discovery == nil {
-		return bizerror.New(bizerror.ConfigError, "Discovery Config is needed")
+	if c.Observability == nil {
+		c.Observability = observability.DefaultObservabilityConfig()
+	} else if err := c.Observability.Validate(); err != nil {
+		return bizerror.Wrap(err, bizerror.ConfigError, "observability config validation failed")
+	}
+	if c.Discovery == nil || len(c.Discovery) == 0 {
+		return bizerror.New(bizerror.ConfigError, "discover config is needed")
 	}
 	for _, d := range c.Discovery {
 		if err := d.Validate(); err != nil {
-			return bizerror.Wrap(err, bizerror.ConfigError, "Discovery Config validation failed")
+			return bizerror.Wrap(err, bizerror.ConfigError, "discovery config validation failed")
 		}
 	}
 	discoveryIDList := slice.Map(c.Discovery, func(index int, item *discovery.Config) string {
 		return item.ID
 	})
 	if len(discoveryIDList) != len(slice.Unique(discoveryIDList)) {
-		return bizerror.New(bizerror.ConfigError, "Discovery ID must be unique")
+		return bizerror.New(bizerror.ConfigError, "discovery id must be unique")
 	}
 	if c.Engine == nil {
 		c.Engine = engine.DefaultResourceEngineConfig()
 	} else if err := c.Engine.Validate(); err != nil {
-		return bizerror.Wrap(err, bizerror.ConfigError, "Engine Config validation failed")
+		return bizerror.Wrap(err, bizerror.ConfigError, "engine config validation failed")
 	}
 	return nil
 }
@@ -148,6 +173,7 @@ func (c AdminConfig) FindDiscovery(id string) *discovery.Config {
 	return nil
 }
 
+// Meshes return the mesh id list of discoveries
 func (c AdminConfig) Meshes() []string {
 	return slice.Map(c.Discovery, func(index int, item *discovery.Config) string {
 		return item.ID

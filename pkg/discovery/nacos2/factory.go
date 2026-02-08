@@ -90,7 +90,6 @@ func (f *Factory) initListerWatchers(
 	cfg *discoverycfg.Config,
 	nacosConfigClient nacosconfigclient.IConfigClient,
 	namingClient nacosnamingclient.INamingClient) ([]controller.ResourceListerWatcher, error) {
-
 	nacosServiceLW := listerwatcher.NewNacosServiceListerWatcher(cfg, namingClient)
 	dynamicConfigLW, err := listerwatcher.NewConfigListerWatcher(
 		meshresource.DynamicConfigKind,

@@ -36,20 +36,30 @@
 </template>
 
 <script setup lang="ts">
-import { inject, onMounted, ref } from 'vue'
+import { inject, onMounted } from 'vue'
+import { message } from 'ant-design-vue'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
-import { useRoute } from 'vue-router'
+import type { GrafanaState } from '@/types/grafana'
 
-const grafana: any = inject(PROVIDE_INJECT_KEY.GRAFANA)
+const grafana = inject<GrafanaState>(PROVIDE_INJECT_KEY.GRAFANA)
 
-const grafanaUrl = ref('')
-const route = useRoute()
+if (!grafana) {
+  throw new Error('Grafana state not provided')
+}
+
 onMounted(async () => {
-  let res = await grafana.api({})
-  grafana.url = `${window.location.origin}/grafana/d/${
-    res.data?.baseURL.split('/d/')[1].split('?')[0]
-  }?var-${grafana.type}=${grafana.name}&kiosk=tv`
-  grafana.showIframe = true
+  try {
+    let res = await grafana.api(grafana.params || {})
+    if (res?.data?.fullURL) {
+      grafana.url = res.data.fullURL
+      grafana.showIframe = true
+    } else {
+      message.error('获取Grafana仪表板URL失败')
+    }
+  } catch (error) {
+    console.error('获取Grafana仪表板失败:', error)
+    message.error('获取Grafana仪表板失败，请稍后重试')
+  }
 })
 
 function tryDo(handle: any) {
@@ -64,32 +74,32 @@ function onIframeLoad() {
   console.log('The iframe has been loaded.')
   setTimeout(() => {
     try {
-      let iframeDocument = document.querySelector('#grafanaIframe').contentDocument
+      const iframe = document.querySelector('#grafanaIframe') as HTMLIFrameElement
+      const iframeDocument = iframe?.contentDocument
+      if (!iframeDocument) return
       tryDo(() => {
-        iframeDocument.querySelector('header').remove()
+        iframeDocument.querySelector('header')?.remove()
       })
       tryDo(() => {
-        iframeDocument.querySelector(`[data-testid*='controls']`).remove()
+        iframeDocument.querySelector(`[data-testid*='controls']`)?.remove()
       })
       setTimeout(() => {
         tryDo(() => {
-          iframeDocument.querySelector(`[data-testid*='navigation mega-menu']`).remove()
+          iframeDocument.querySelector(`[data-testid*='navigation mega-menu']`)?.remove()
         })
         tryDo(() => {
           for (let querySelectorAllElement of iframeDocument.querySelectorAll(
             `[data-testid*='Panel menu']`
           )) {
-            querySelectorAllElement.remove()
+            querySelectorAllElement?.remove()
           }
         })
       }, 2000)
-    } catch (e) {}
+    } catch (e) {
+      // Ignore errors when manipulating iframe content
+    }
     grafana.showIframe = true
   }, 1000)
-}
-
-function newPageForGrafana() {
-  window.open(grafana.url, '_blank')
 }
 </script>
 <style lang="less" scoped>

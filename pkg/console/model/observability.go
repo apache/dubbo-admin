@@ -17,37 +17,26 @@
 
 package model
 
-type DashboardReq interface {
-	GetKeyVariable() string
-}
-
 type AppDashboardReq struct {
-	Application string `form:"application"`
-}
-
-func (req *AppDashboardReq) GetKeyVariable() string {
-	return req.Application
+	AppName string `form:"appName"`
+	Mesh    string `form:"appName"`
 }
 
 type InstanceDashboardReq struct {
-	Instance string `form:"instance"`
-}
-
-func (req *InstanceDashboardReq) GetKeyVariable() string {
-	return req.Instance
+	InstanceName string `form:"instanceName"`
+	Mesh         string `form:"mesh"`
 }
 
 type ServiceDashboardReq struct {
-	Service string `form:"service"`
+	ServiceName     string `form:"serviceName"`
+	Version         string `form:"version"`
+	Group           string `form:"group"`
+	ProviderAppName string `form:"providerAppName"`
+	Mesh            string `form:"mesh"`
 }
 
-func (req *ServiceDashboardReq) GetKeyVariable() string {
-	return req.Service
-}
-
-// DashboardResp TODO add dynamic variables
 type DashboardResp struct {
-	BaseURL string `json:"baseURL"`
+	FullURL string `json:"fullURL"`
 }
 
 // Metric represents a single metric with its name, labels, and value.

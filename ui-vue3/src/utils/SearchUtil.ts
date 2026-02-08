@@ -104,7 +104,7 @@ export class SearchDomain {
         this.result = handleResult ? handleResult(list) : list
 
         if (!this.noPaged) {
-          this.paged.total = pageInfo?.Total || 0
+          this.paged.total = pageInfo?.total || 0
         }
       })
       .catch((error: any) => {

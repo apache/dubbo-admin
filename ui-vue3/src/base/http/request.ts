@@ -30,8 +30,8 @@ import { useMeshStore } from '@/stores/mesh'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from './constants'
 
-// 白名单：对于这些 URL 不进行 message 错误提示
-const SILENT_ERROR_URLS = ['/promQL/query']
+// 白名单：对于这些 URL 不进行 message 错误提示 不要 URL 前面的 /
+const SILENT_ERROR_URLS = ['promQL/query']
 
 // 检查 URL 是否在静默错误白名单中
 const isSilentErrorUrl = (url?: string): boolean => {
@@ -128,7 +128,9 @@ response.use(
       console.error(errorMsg)
     } else {
       // Handle network or other errors
-      message.error('NetworkError:请求失败，请检查网络连接')
+      if (!isSilentErrorUrl(error.config?.url)) {
+        message.error('NetworkError:请求失败，请检查网络连接')
+      }
       console.error(error)
     }
     return Promise.reject(error.response?.data)

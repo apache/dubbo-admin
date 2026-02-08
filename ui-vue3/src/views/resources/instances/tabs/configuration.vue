@@ -139,7 +139,6 @@ const updateInstanceTrafficSwitch = async (trafficDisable: boolean) => {
 }
 
 onMounted(() => {
-  console.log(333)
   getInstanceLogSwitch()
   getInstanceTrafficSwitch()
 })

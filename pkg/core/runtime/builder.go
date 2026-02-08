@@ -23,10 +23,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
 	"github.com/apache/dubbo-admin/pkg/config/app"
-	"github.com/apache/dubbo-admin/pkg/core"
 )
 
 // BuilderContext provides access to Builder's interim state.
@@ -59,7 +59,7 @@ func BuilderFor(appCtx context.Context, cfg app.AdminConfig) (*Builder, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not get hostname")
 	}
-	suffix := core.NewUUID()[0:4]
+	suffix := uuid.NewString()[0:4]
 	return &Builder{
 		cfg:    cfg,
 		appCtx: appCtx,
@@ -67,7 +67,6 @@ func BuilderFor(appCtx context.Context, cfg app.AdminConfig) (*Builder, error) {
 			instanceId: fmt.Sprintf("%s-%s", hostname, suffix),
 			clusterId:  fmt.Sprintf("%s-%s", hostname, suffix),
 			startTime:  time.Now(),
-			mode:       cfg.Mode,
 		},
 		components: make(map[ComponentType]Component),
 	}, nil
