@@ -631,6 +631,7 @@ func SearchServiceAsCrossLinkedList(ctx consolectx.Context, req *model.ServiceGr
 			Data:  instanceData,
 		})
 	}
+	edgeKeyMap := make(map[string]struct{})
 
 	// Build edges between consumers and providers
 	// Only create edges between apps that actually have the service relationship
@@ -642,6 +643,14 @@ func SearchServiceAsCrossLinkedList(ctx consolectx.Context, req *model.ServiceGr
 					if consumer.Spec.ServiceName != provider.Spec.ServiceName {
 						continue
 					}
+					// If there are two instances, such as p1->c1 and p2->c1, two edges will be generated, which need to be merged.
+					// Merging logic: Only one edge is kept for identical source and target.
+					// However, using a loop would result in three levels of nesting. Therefore, an auxiliary map is created for efficient filtering.
+					edgeKey := consumer.Spec.ConsumerAppName + "->" + provider.Spec.ProviderAppName
+					if _, exists := edgeKeyMap[edgeKey]; exists {
+						continue
+					}
+					edgeKeyMap[edgeKey] = struct{}{}
 					edges = append(edges, model.GraphEdge{
 						Source: consumer.Spec.ConsumerAppName,
 						Target: provider.Spec.ProviderAppName,
@@ -652,8 +661,12 @@ func SearchServiceAsCrossLinkedList(ctx consolectx.Context, req *model.ServiceGr
 							"providerApp": provider.Spec.ProviderAppName,
 						},
 					})
+				} else {
+					logger.Warnf("provider spec is nil for provider resource: %s", provider.Name)
 				}
 			}
+		} else {
+			logger.Warnf("consumer spec is nil for consumer resource: %s", consumer.Name)
 		}
 	}
 
