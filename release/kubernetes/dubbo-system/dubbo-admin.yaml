@@ -17,10 +17,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: dubbo-admin
+  namespace: dubbo-system
   labels:
     app: dubbo-admin
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: dubbo-admin
@@ -30,15 +31,88 @@ spec:
       labels:
         app: dubbo-admin
     spec:
+      securityContext:
+        runAsUser: 65532
+        runAsGroup: 65532
+        fsGroup: 65532
+        runAsNonRoot: true
+      serviceAccountName: dubbo-admin
       containers:
         - name: dubbo-admin
-          image:
+          image: apache/dubbo-admin:0.7.0
           imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - mountPath: /etc/dubbo-admin
+              name: dubbo-admin-config
+              readOnly: true
+            - name: dubbo-admin-logs
+              mountPath: /app/logs
+          command:
+            - /app/dubbo-admin
+          args:
+            - run
+            - -c
+            - /etc/dubbo-admin/dubbo-admin.yaml
+          livenessProbe:
+            httpGet:
+              port: 5680
+              path: /healthy
+              scheme: HTTP
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              port: 5680
+              path: /ready
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
           ports:
             - containerPort: 8888
               protocol: TCP
       restartPolicy: Always
+      volumes:
+        - name: dubbo-admin-config
+          configMap:
+            name: dubbo-admin-config
+        - name: dubbo-admin-logs
+          # You can replace it with hostPath or pvc to store logs.
+          emptyDir: { }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dubbo-admin-config
+  namespace: dubbo-system
 
+data:
+  dubbo-admin.yaml: |
+    observability:
+      grafana: http://grafana.monitoringg.svc:3000
+      prometheus: http://prometheus-k8s.monitoring.svc:9090/
+    console:
+      auth:
+        user: admin
+        password: dubbo@2025
+        expirationTime: 3600
+    discovery:
+      - type: nacos2
+        name: nacos2.5-standalone
+        id: nacos2.5
+        address:
+          registry: nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+          configCenter: nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+          metadataReport: nacos://nacos.dubbo-system.svc:8848?username=nacos&password=nacos
+    engine:
+      id: default
+      name: default
+      type: kubernetes
 ---
 apiVersion: v1
 kind: Service
@@ -46,10 +120,43 @@ metadata:
   name: dubbo-admin
   namespace: dubbo-system
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: dubbo-admin
   ports:
     - protocol: TCP
       port: 8888
       targetPort: 8888
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dubbo-admin-cluster-role
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "replicasets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dubbo-admin
+  namespace: dubbo-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dubbo-admin-cluster-binding
+subjects:
+  - kind: ServiceAccount
+    name: dubbo-admin
+    namespace: dubbo-system
+roleRef:
+  kind: ClusterRole
+  name: dubbo-admin-cluster-role
+  apiGroup: rbac.authorization.k8s.io
