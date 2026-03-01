@@ -87,7 +87,7 @@ function globalQuestion() {
 
    > Agreement: if your api's path starts with mock, you will get a mock result
 
-   1. Declear api
+   1. Declare api
 
       ```ts
       
@@ -105,7 +105,7 @@ function globalQuestion() {
 
       
 
-   2. Declear mock api
+   2. Declare mock api
 
       ```ts
       // define a mock api

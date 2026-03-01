@@ -1,6 +1,6 @@
 # admin console
 
-The architecture of microservcice based on Dubbo consists of two main components:
+The architecture of microservice based on Dubbo consists of two main components:
 
 - The **`Dubbo Admin`** can configures and monitor the data plane from a global perspective. The Dubbo Admin can be divided into two parts internally: console and control-plane
     - Console: Users can view and manage microservices using Console UI.
