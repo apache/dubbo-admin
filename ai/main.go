@@ -30,11 +30,11 @@ func registerFactorys(rt *runtime.Runtime) {
 	// Model components (depend on logger)
 	rt.RegisterFactory("models", models.ModelsFactory)
 
-	// Tools components (depend on models, memory)
-	rt.RegisterFactory("tools", tools.ToolsFactory)
-
 	// RAG components (depend on models)
 	rt.RegisterFactory("rag", compRag.RAGFactory)
+
+	// Tools components (depend on models, memory, rag)
+	rt.RegisterFactory("tools", tools.ToolsFactory)
 
 	// Server components (depend on all other components)
 	rt.RegisterFactory("server", server.ServerFactory)

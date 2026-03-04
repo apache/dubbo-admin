@@ -3,7 +3,8 @@ package engine
 import (
 	"context"
 	"dubbo-admin-ai/component/memory"
-	rt "dubbo-admin-ai/runtime"
+	compRag "dubbo-admin-ai/component/rag"
+	"dubbo-admin-ai/runtime"
 	"fmt"
 
 	"github.com/firebase/genkit/go/ai"
@@ -18,16 +19,8 @@ type ToolOutput struct {
 	// Success  bool   `json:"success" jsonschema_description:"Indicates whether the tool execution was successful"`
 }
 
-func Call(g *genkit.Genkit, mcp *MCPToolManager, toolName string, input any) (toolOutput ToolOutput, err error) {
-	var (
-		tool      ai.Tool
-		isMCPTool bool
-	)
-	tool = genkit.LookupTool(g, toolName)
-	if mcp != nil && tool == nil {
-		tool = mcp.GetToolByName(toolName)
-		isMCPTool = tool != nil
-	}
+func Call(g *genkit.Genkit, toolName string, input any) (toolOutput ToolOutput, err error) {
+	tool := genkit.LookupTool(g, toolName)
 	if tool == nil {
 		return toolOutput, fmt.Errorf("tool not found: %s", toolName)
 	}
@@ -41,18 +34,32 @@ func Call(g *genkit.Genkit, mcp *MCPToolManager, toolName string, input any) (to
 	if rawToolOutput == nil {
 		return toolOutput, fmt.Errorf("tool %s is unavailable", toolName)
 	}
-	rt.GetLogger().Info("Tool output:", "output", rawToolOutput)
+	runtime.GetLogger().Info("Tool output:", "output", rawToolOutput)
 
-	if isMCPTool {
+	rawMap, ok := rawToolOutput.(map[string]any)
+	if !ok {
 		toolOutput = ToolOutput{
 			ToolName: toolName,
-			Summary:  "MCP tool executed",
+			Summary:  "Tool executed",
 			Result:   rawToolOutput,
 		}
 		return toolOutput, nil
 	}
 
-	err = mapstructure.Decode(rawToolOutput, &toolOutput)
+	if _, hasToolName := rawMap["tool_name"]; !hasToolName {
+		if _, hasSummary := rawMap["summary"]; !hasSummary {
+			if _, hasResult := rawMap["result"]; !hasResult {
+				toolOutput = ToolOutput{
+					ToolName: toolName,
+					Summary:  "Tool executed",
+					Result:   rawToolOutput,
+				}
+				return toolOutput, nil
+			}
+		}
+	}
+
+	err = mapstructure.Decode(rawMap, &toolOutput)
 	if err != nil {
 		return toolOutput, fmt.Errorf("failed to decode tool output for %s: %w", toolName, err)
 	}
@@ -84,18 +91,60 @@ type ToolManager interface {
 	ToolRefs() []ai.ToolRef
 }
 
+type ToolDefineFunc func(*runtime.Runtime) []ai.Tool
+
 type InternalToolManager struct {
 	registry *genkit.Genkit
 	tools    []ai.Tool
 }
 
-func NewInternalToolManager(g *genkit.Genkit, historyMem *memory.HistoryMemory) *InternalToolManager {
+func NewInternalToolManager(rt *runtime.Runtime) (*InternalToolManager, error) {
+	if rt == nil {
+		return nil, fmt.Errorf("runtime is nil")
+	}
+
+	g := rt.GetGenkitRegistry()
+	if g == nil {
+		return nil, fmt.Errorf("genkit registry is nil")
+	}
+
+	memoryComp, err := rt.GetComponent("memory")
+	if err != nil {
+		return nil, fmt.Errorf("memory component not found: %w", err)
+	}
+
+	memComp, ok := memoryComp.(*memory.MemoryComponent)
+	if !ok {
+		return nil, fmt.Errorf("invalid memory component type")
+	}
+	if _, err := memComp.GetMemory(); err != nil {
+		return nil, fmt.Errorf("failed to get history from memory component: %w", err)
+	}
+
+	ragCompRaw, err := rt.GetComponent("rag")
+	if err != nil {
+		return nil, fmt.Errorf("rag component not found: %w", err)
+	}
+	ragComp, ok := ragCompRaw.(*compRag.RAGComponent)
+	if !ok {
+		return nil, fmt.Errorf("invalid rag component type")
+	}
+	ragSys := ragComp.Rag
+	if ragSys == nil {
+		return nil, fmt.Errorf("rag system is not initialized")
+	}
+
+	toolDefiners := []ToolDefineFunc{
+		defineMemoryTools,
+	}
 	var tools []ai.Tool
-	tools = append(tools, defineMemoryTools(g, historyMem)...)
+	for _, defineTools := range toolDefiners {
+		tools = append(tools, defineTools(rt)...)
+	}
 	return &InternalToolManager{
 		registry: g,
 		tools:    tools,
-	}
+	}, nil
 }
 
 func (itm *InternalToolManager) ToolRefs() (toolRef []ai.ToolRef) {

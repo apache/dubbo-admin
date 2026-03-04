@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"dubbo-admin-ai/runtime"
 	"fmt"
 
 	"github.com/firebase/genkit/go/ai"
@@ -638,8 +639,9 @@ type MockToolManager struct {
 	tools    []ai.Tool
 }
 
-func NewMockToolManager(g *genkit.Genkit) *MockToolManager {
-	tools := []ai.Tool{
+func defineMockTools(rt *runtime.Runtime) []ai.Tool {
+	g := rt.GetGenkitRegistry()
+	return []ai.Tool{
 		genkit.DefineTool(g, "prometheus_query_service_latency", "Query P95/P99 latency metrics for a specific service within a time range", prometheusQueryServiceLatency),
 		genkit.DefineTool(g, "prometheus_query_service_traffic", "Query request rate (QPS) and error rate for a specific service within a time range", prometheusQueryServiceTraffic),
 		genkit.DefineTool(g, "query_timeseries_database", "Execute a complete PromQL query for deep or custom analysis of Prometheus historical data", queryTimeseriesDatabase),
@@ -654,10 +656,13 @@ func NewMockToolManager(g *genkit.Genkit) *MockToolManager {
 		genkit.DefineTool(g, "search_archived_logs", "Perform text search (similar to grep) in archived log files (such as .log.gz files stored in S3 or server file system)", searchArchivedLogs),
 		genkit.DefineTool(g, "query_knowledge_base", "Query vector databases for historical failure reports or solution documents related to the question", queryKnowledgeBase),
 	}
+}
 
+func NewMockToolManager(rt *runtime.Runtime) *MockToolManager {
+	g := rt.GetGenkitRegistry()
 	return &MockToolManager{
 		registry: g,
-		tools:    tools,
+		tools:    defineMockTools(rt),
 	}
 }
 
