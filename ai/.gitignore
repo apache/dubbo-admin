@@ -7,7 +7,9 @@
 
 reference
 .qoder
-
 AGENTS.md
-.spec-workflow
-.claude
+# Temporary ignore for vibe-coding docs
+.claude/
+.spec-workflow/
+.commenting-guidelines.md
+CLAUDE.md
