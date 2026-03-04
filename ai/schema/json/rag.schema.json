@@ -1,0 +1,259 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dubbo-admin.ai/schema/rag.schema.json",
+  "title": "RAG Component Config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "spec"],
+  "properties": {
+    "type": {
+      "const": "rag"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["embedder", "loader", "splitter", "indexer", "retriever"],
+      "properties": {
+        "embedder": {
+          "$ref": "#/$defs/embedder"
+        },
+        "loader": {
+          "$ref": "#/$defs/loader"
+        },
+        "splitter": {
+          "$ref": "#/$defs/splitter"
+        },
+        "indexer": {
+          "$ref": "#/$defs/indexer"
+        },
+        "retriever": {
+          "$ref": "#/$defs/retriever"
+        },
+        "reranker": {
+          "$ref": "#/$defs/reranker"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "embedder": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "default": "genkit"
+        },
+        "spec": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["model"],
+          "properties": {
+            "model": {
+              "type": "string",
+              "minLength": 1,
+              "default": "dashscope/qwen3-embedding"
+            }
+          }
+        }
+      }
+    },
+    "loader": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "default": "local",
+          "enum": ["local"]
+        },
+        "spec": {
+          "type": "object",
+          "additionalProperties": false
+        }
+      }
+    },
+    "splitter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "default": "recursive",
+          "enum": ["recursive", "markdown_header"]
+        },
+        "spec": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/splitter_recursive_spec"
+            },
+            {
+              "$ref": "#/$defs/splitter_markdown_spec"
+            }
+          ]
+        }
+      }
+    },
+    "splitter_recursive_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "chunk_size": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1000
+        },
+        "overlap_size": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 100
+        }
+      }
+    },
+    "splitter_markdown_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {
+            "#": "h1",
+            "##": "h2",
+            "###": "h3",
+            "####": "h4"
+          }
+        },
+        "trim_headers": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "indexer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "default": "dev",
+          "enum": ["dev", "pinecone"]
+        },
+        "spec": {
+          "$ref": "#/$defs/index_storage_spec"
+        }
+      }
+    },
+    "retriever": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "default": "dev",
+          "enum": ["dev", "pinecone"]
+        },
+        "spec": {
+          "$ref": "#/$defs/index_storage_spec"
+        }
+      }
+    },
+    "index_storage_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "storage_path": {
+          "type": "string",
+          "default": "../../data/ai/index"
+        },
+        "index_format": {
+          "type": "string",
+          "default": "sqlite"
+        },
+        "dimension": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1536
+        }
+      }
+    },
+    "reranker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "default": "cohere",
+          "enum": ["cohere"]
+        },
+        "spec": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "model": {
+              "type": "string",
+              "default": "rerank-english-v3.0"
+            },
+            "api_key": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "spec": {
+            "properties": {
+              "reranker": {
+                "type": "object",
+                "required": ["spec"],
+                "properties": {
+                  "spec": {
+                    "type": "object",
+                    "required": ["enabled"],
+                    "properties": {
+                      "enabled": {
+                        "const": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "spec": {
+            "properties": {
+              "reranker": {
+                "properties": {
+                  "spec": {
+                    "required": ["api_key"]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -18,6 +18,7 @@
 package config
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -37,13 +38,16 @@ type mainConfig struct {
 type LoadedConfig struct {
 	Project    string
 	Version    string
+	SchemaDir  string             // Schema directory path (from environment)
 	Components map[string]*Config // Component configurations (key: component name)
 }
 
 // Loader handles configuration file loading
 type Loader struct {
-	configFile string
-	configDir  string // Directory containing configuration files
+	configFile   string
+	configDir    string // Directory containing configuration files
+	schemaDir    string
+	schemaEngine *schemaEngine // Schema validation engine
 }
 
 // NewLoader creates a new configuration loader
@@ -57,16 +61,16 @@ func NewLoader(configFile string) *Loader {
 // Load loads and parses all configurations (main entry point)
 // Features:
 // 1. Load .env file if exists
-// 2. Read main configuration file
-// 3. Parse environment variables
+// 2. Initialize schema engine from SCHEMA_DIR (or default schema/json)
+// 3. Read and validate main configuration file
 // 4. Load all component configurations (ordering handled by caller)
 func (l *Loader) Load() (*LoadedConfig, error) {
-	// 1. Load .env file
-	if err := l.loadEnvFile(); err != nil {
-		return nil, fmt.Errorf("failed to load .env file: %w", err)
+	// 1. Initialize schema engine
+	if err := l.ensureSchemaEngine(); err != nil {
+		return nil, err
 	}
 
-	// 2. Read main configuration file
+	// 2. Read and validate main configuration file
 	mainCfg, err := l.loadMainConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load main config: %w", err)
@@ -81,8 +85,19 @@ func (l *Loader) Load() (*LoadedConfig, error) {
 	return &LoadedConfig{
 		Project:    mainCfg.Project,
 		Version:    mainCfg.Version,
+		SchemaDir:  l.schemaDir,
 		Components: components,
 	}, nil
+}
+
+// LoadComponent loads and validates a single component config file.
+// It reuses the same structural pipeline as Load():
+// yaml.Unmarshal -> schema defaults+validation -> decodeYAMLStrict(KnownFields=true).
+func (l *Loader) LoadComponent(configPath string) (*Config, error) {
+	if err := l.ensureSchemaEngine(); err != nil {
+		return nil, err
+	}
+	return l.loadComponent(configPath)
 }
 
 // loadEnvFile loads .env file if exists
@@ -93,7 +108,7 @@ func (l *Loader) loadEnvFile() error {
 		// os.IsNotExist(err) always returns false for godotenv
 		// So we check the error message instead
 		if err.Error() != "open .env: no such file or directory" &&
-		   err.Error() != "open .env: file does not exist" {
+			err.Error() != "open .env: file does not exist" {
 			return err
 		}
 		// .env file not found is normal, continue execution
@@ -101,16 +116,76 @@ func (l *Loader) loadEnvFile() error {
 	return nil
 }
 
-// loadMainConfig loads the main configuration file
+func (l *Loader) ensureSchemaEngine() error {
+	if l.schemaEngine != nil {
+		return nil
+	}
+
+	if err := l.loadEnvFile(); err != nil {
+		return fmt.Errorf("failed to load .env file: %w", err)
+	}
+
+	schemaDir, err := l.resolveSchemaDir()
+	if err != nil {
+		return err
+	}
+
+	l.schemaDir = schemaDir
+	l.schemaEngine = NewSchemaEngine(schemaDir)
+	return nil
+}
+
+func (l *Loader) resolveSchemaDir() (string, error) {
+	schemaDir := os.Getenv("SCHEMA_DIR")
+	if schemaDir == "" {
+		schemaDir = filepath.Join(l.configDir, "schema", "json")
+	}
+
+	if !filepath.IsAbs(schemaDir) {
+		schemaDir = filepath.Join(l.configDir, schemaDir)
+	}
+
+	absDir, err := filepath.Abs(schemaDir)
+	if err != nil {
+		return "", fmt.Errorf("structural error: failed to resolve schema directory: %w", err)
+	}
+
+	info, err := os.Stat(absDir)
+	if err != nil {
+		return "", fmt.Errorf("structural error: schema directory not found: %s", absDir)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("structural error: schema directory is not a directory: %s", absDir)
+	}
+
+	return absDir, nil
+}
+
+// loadMainConfig loads and validates the main configuration file.
 func (l *Loader) loadMainConfig() (*mainConfig, error) {
 	data, err := os.ReadFile(l.configFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
+	var raw map[string]any
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return nil, fmt.Errorf("parse error: %w", err)
+	}
+
+	normalized, err := l.schemaEngine.ApplyDefaultsAndValidate(raw, "main.schema.json")
+	if err != nil {
+		return nil, err
+	}
+
+	normalizedData, err := yaml.Marshal(normalized)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal normalized main config: %w", err)
+	}
+
 	var cfg mainConfig
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", err)
+	if err := decodeYAMLStrict(normalizedData, &cfg); err != nil {
+		return nil, err
 	}
 
 	return &cfg, nil
@@ -136,7 +211,7 @@ func (l *Loader) loadAllComponents(mainCfg *mainConfig) (map[string]*Config, err
 			for i, item := range v {
 				pathStr, ok := item.(string)
 				if !ok {
-					continue
+					return nil, fmt.Errorf("structural error: components.%s[%d] must be string, got %T", name, i, item)
 				}
 				// Use index as name suffix for multiple configs
 				componentName := fmt.Sprintf("%s-%d", name, i)
@@ -146,6 +221,8 @@ func (l *Loader) loadAllComponents(mainCfg *mainConfig) (map[string]*Config, err
 				}
 				components[componentName] = cfg
 			}
+		default:
+			return nil, fmt.Errorf("structural error: components.%s must be string or []string, got %T", name, path)
 		}
 	}
 
@@ -169,11 +246,68 @@ func (l *Loader) loadComponent(configPath string) (*Config, error) {
 	// Expand environment variables
 	expandedData := os.ExpandEnv(string(data))
 
+	var raw map[string]any
+	if err := yaml.Unmarshal([]byte(expandedData), &raw); err != nil {
+		return nil, fmt.Errorf("parse error: %w", err)
+	}
+	componentType, _ := raw["type"].(string)
+	if componentType == "" {
+		return nil, fmt.Errorf("structural error: type is required")
+	}
+	componentSchema, err := schemaFileForComponent(componentType)
+	if err != nil {
+		return nil, err
+	}
+	normalized, err := l.schemaEngine.ApplyDefaultsAndValidate(raw, componentSchema)
+	if err != nil {
+		return nil, err
+	}
+	normalizedData, err := yaml.Marshal(normalized)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal normalized component config: %w", err)
+	}
+
 	// Parse YAML
 	var cfg Config
-	if err := yaml.Unmarshal([]byte(expandedData), &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", err)
+	if err := decodeYAMLStrict(normalizedData, &cfg); err != nil {
+		return nil, err
 	}
 
 	return &cfg, nil
+}
+
+func schemaFileForComponent(componentType string) (string, error) {
+	switch componentType {
+	case "logger":
+		return "logger.schema.json", nil
+	case "memory":
+		return "memory.schema.json", nil
+	case "models":
+		return "models.schema.json", nil
+	case "tools":
+		return "tools.schema.json", nil
+	case "server":
+		return "server.schema.json", nil
+	case "rag":
+		return "rag.schema.json", nil
+	case "agent":
+		return "agent.schema.json", nil
+	default:
+		return "", fmt.Errorf("structural error: unsupported component type: %s", componentType)
+	}
+}
+
+func decodeYAMLStrict(data []byte, target any) error {
+	var parserCheck yaml.Node
+	if err := yaml.Unmarshal(data, &parserCheck); err != nil {
+		return fmt.Errorf("parse error: %w", err)
+	}
+
+	dec := yaml.NewDecoder(bytes.NewReader(data))
+	dec.KnownFields(true)
+	if err := dec.Decode(target); err != nil {
+		return fmt.Errorf("structural error: %w", err)
+	}
+
+	return nil
 }

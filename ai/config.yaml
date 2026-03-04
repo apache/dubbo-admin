@@ -1,17 +1,10 @@
 project: dubbo-admin-ai
 version: 1.0.0
 components:
-  logger:
-    component/logger/logger.yaml
-  models:
-    component/models/models.yaml
-  server:
-    component/server/server.yaml
-  memory:
-    component/memory/memory.yaml
-  tools:
-    component/tools/tools.yaml
-  rag:
-    component/rag/rag.yaml
-  agent:
-    component/agent/agent.yaml
+  logger: component/logger/logger.yaml
+  models: component/models/models.yaml
+  server: component/server/server.yaml
+  memory: component/memory/memory.yaml
+  tools: component/tools/tools.yaml
+  rag: component/rag/rag.yaml
+  agent: component/agent/agent.yaml

@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dubbo-admin.ai/schema/server.schema.json",
+  "title": "Server Component Config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "spec"],
+  "properties": {
+    "type": {
+      "const": "server"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 8888
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1,
+          "default": "0.0.0.0"
+        },
+        "debug": {
+          "type": "boolean",
+          "default": false
+        },
+        "cors_origins": {
+          "type": "array",
+          "default": ["*"],
+          "items": {
+            "type": "string"
+          }
+        },
+        "read_timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30
+        },
+        "write_timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30
+        }
+      }
+    }
+  }
+}

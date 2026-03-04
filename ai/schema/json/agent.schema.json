@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dubbo-admin.ai/schema/agent.schema.json",
+  "title": "Agent Component Config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "spec"],
+  "properties": {
+    "type": {
+      "const": "agent"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default_model", "prompt_base_path", "stages"],
+      "properties": {
+        "agent_type": {
+          "type": "string",
+          "default": "react",
+          "enum": ["react"]
+        },
+        "default_model": {
+          "type": "string",
+          "minLength": 1,
+          "default": "qwen-max"
+        },
+        "prompt_base_path": {
+          "type": "string",
+          "minLength": 1,
+          "default": "./prompts"
+        },
+        "max_iterations": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10
+        },
+        "stage_channel_buffer_size": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 5
+        },
+        "mcp_host_name": {
+          "type": "string",
+          "minLength": 1,
+          "default": "mcp_host"
+        },
+        "stages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/stage"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "flow_type", "prompt_file"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "flow_type": {
+          "type": "string",
+          "enum": ["think", "act", "observe", "feedback"],
+          "default": "think"
+        },
+        "model": {
+          "type": "string"
+        },
+        "prompt_file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "temperature": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 2,
+          "default": 0.7
+        },
+        "top_p": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "default": 0.9
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 4096
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30
+        },
+        "enable_tools": {
+          "type": "boolean",
+          "default": false
+        },
+        "extra_prompt": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

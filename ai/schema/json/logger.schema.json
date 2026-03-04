@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dubbo-admin.ai/schema/logger.schema.json",
+  "title": "Logger Component Config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "spec"],
+  "properties": {
+    "type": {
+      "const": "logger"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["debug", "info", "warn", "error"],
+          "default": "info"
+        }
+      }
+    }
+  }
+}

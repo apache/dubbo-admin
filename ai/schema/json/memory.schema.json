@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dubbo-admin.ai/schema/memory.schema.json",
+  "title": "Memory Component Config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "spec"],
+  "properties": {
+    "type": {
+      "const": "memory"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "history_key": {
+          "type": "string",
+          "enum": ["chat_history", "system_memory", "core_memory"],
+          "default": "chat_history"
+        },
+        "max_turns": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100
+        }
+      }
+    }
+  }
+}

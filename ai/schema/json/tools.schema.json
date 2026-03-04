@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dubbo-admin.ai/schema/tools.schema.json",
+  "title": "Tools Component Config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "spec"],
+  "properties": {
+    "type": {
+      "const": "tools"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enable_mock_tools": {
+          "type": "boolean",
+          "default": true
+        },
+        "enable_internal_tools": {
+          "type": "boolean",
+          "default": true
+        },
+        "enable_mcp_tools": {
+          "type": "boolean",
+          "default": true
+        },
+        "mcp_host_name": {
+          "type": "string",
+          "minLength": 1,
+          "default": "mcp_host"
+        },
+        "mcp_timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30
+        },
+        "mcp_max_retries": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 3
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "spec": {
+            "type": "object",
+            "required": ["enable_mcp_tools"],
+            "properties": {
+              "enable_mcp_tools": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "spec": {
+            "required": ["mcp_host_name"]
+          }
+        }
+      }
+    }
+  ]
+}

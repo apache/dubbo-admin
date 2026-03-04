@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dubbo-admin.ai/schema/models.schema.json",
+  "title": "Models Component Config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "spec"],
+  "properties": {
+    "type": {
+      "const": "models"
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default_model", "default_embedding", "providers"],
+      "properties": {
+        "default_model": {
+          "type": "string",
+          "minLength": 1,
+          "default": "dashscope/qwen-max"
+        },
+        "default_embedding": {
+          "type": "string",
+          "minLength": 1,
+          "default": "dashscope/qwen3-embedding"
+        },
+        "providers": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "$ref": "#/$defs/provider"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base_url"],
+      "properties": {
+        "api_key": {
+          "type": "string",
+          "default": ""
+        },
+        "base_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "models": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/model_info"
+          }
+        },
+        "embedders": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/embedder_info"
+          }
+        },
+        "config": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": true
+        }
+      }
+    },
+    "model_info": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "key"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": ["chat", "multimodal", "code"],
+          "default": "chat"
+        },
+        "config": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": true
+        }
+      }
+    },
+    "embedder_info": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "key", "dimensions"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": ["text", "image", "audio", "multimodal"],
+          "default": "text"
+        },
+        "dimensions": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "config": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": true
+        }
+      }
+    }
+  }
+}
