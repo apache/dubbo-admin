@@ -53,7 +53,7 @@ type EmbedderInfo struct {
 func DefaultModelsSpec() *ModelsSpec {
 	return &ModelsSpec{
 		DefaultModel:     "dashscope/qwen-max",
-		DefaultEmbedding: "dashscope/qwen3-embedding",
+		DefaultEmbedding: "dashscope/text-embedding-v4",
 		Providers:        make(map[string]ProviderConfig),
 	}
 }

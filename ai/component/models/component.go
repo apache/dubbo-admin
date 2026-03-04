@@ -20,11 +20,13 @@ package models
 import (
 	"dubbo-admin-ai/runtime"
 	"fmt"
+	"os"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/core/api"
 	"github.com/firebase/genkit/go/genkit"
 	"github.com/firebase/genkit/go/plugins/compat_oai"
+	"github.com/firebase/genkit/go/plugins/pinecone"
 	"github.com/openai/openai-go/option"
 )
 
@@ -84,11 +86,16 @@ func (m *ModelsComponent) Init(rt *runtime.Runtime) error {
 		if cfg.APIKey == "" {
 			continue
 		}
-		plugin := createProviderPlugin(providerName, cfg)
+		plugin := createModelPlugin(providerName, cfg)
 
 		if plugin != nil {
 			plugins = append(plugins, plugin)
 		}
+	}
+
+	// TODO: Because genkit.Init can only be called once, if the user has configured the other plugins, it must be added here. Consider refactoring to be more flexible in the future.
+	if key := os.Getenv("PINECONE_API_KEY"); key != "" {
+		plugins = append(plugins, &pinecone.Pinecone{APIKey: key})
 	}
 
 	ctx := rt.GetContext()
@@ -97,14 +104,18 @@ func (m *ModelsComponent) Init(rt *runtime.Runtime) error {
 		genkit.WithDefaultModel(m.defaultModel),
 	)
 
-	if rt.GetGenkitRegistry() == nil {
+	registry := rt.GetGenkitRegistry()
+	if registry == nil {
 		rt.SetGenkitRegistry(genkitRegistry)
+		registry = genkitRegistry
 	} else {
 		rt.GetLogger().Warn("Genkit registry already set, skipping initialization")
 	}
 
 	totalModels := 0
 	totalEmbedders := 0
+	registeredModels := make([]map[string]any, 0)
+	registeredEmbedders := make([]map[string]any, 0)
 
 	for _, plugin := range plugins {
 		if oaiCompat, ok := plugin.(*compat_oai.OpenAICompatible); ok {
@@ -115,13 +126,26 @@ func (m *ModelsComponent) Init(rt *runtime.Runtime) error {
 			}
 			// Register all models
 			for _, modelCfg := range providerCfg.Models {
-				registerModel(oaiCompat, providerName, modelCfg)
+				registerModel(registry, oaiCompat, providerName, modelCfg)
 				totalModels++
+				registeredModels = append(registeredModels, map[string]any{
+					"provider": providerName,
+					"name":     modelCfg.Name,
+					"key":      modelCfg.Key,
+					"type":     modelCfg.Type,
+				})
 			}
 			// Register all embedding models
 			for _, embedderCfg := range providerCfg.Embedders {
-				registerEmbedder(oaiCompat, providerName, embedderCfg)
+				registerEmbedder(registry, oaiCompat, providerName, embedderCfg)
 				totalEmbedders++
+				registeredEmbedders = append(registeredEmbedders, map[string]any{
+					"provider":   providerName,
+					"name":       embedderCfg.Name,
+					"key":        embedderCfg.Key,
+					"type":       embedderCfg.Type,
+					"dimensions": embedderCfg.Dimensions,
+				})
 			}
 		}
 	}
@@ -133,7 +157,33 @@ func (m *ModelsComponent) Init(rt *runtime.Runtime) error {
 		"total_models", totalModels,
 		"total_embedders", totalEmbedders)
 
+	rt.GetLogger().Debug("Models registration detail",
+		"default_model", m.defaultModel,
+		"default_embedding", m.defaultEmbedding,
+		"models", registeredModels,
+		"embedders", registeredEmbedders)
+
 	return nil
+}
+
+func hasPineconePlugin(plugins []api.Plugin) bool {
+	for _, plugin := range plugins {
+		if _, ok := plugin.(*pinecone.Pinecone); ok {
+			return true
+		}
+	}
+	return false
+}
+
+func filterNilPlugins(plugins []api.Plugin) []api.Plugin {
+	out := make([]api.Plugin, 0, len(plugins))
+	for _, plugin := range plugins {
+		if plugin == nil {
+			continue
+		}
+		out = append(out, plugin)
+	}
+	return out
 }
 
 func (m *ModelsComponent) Start() error {
@@ -144,7 +194,7 @@ func (m *ModelsComponent) Stop() error {
 	return nil
 }
 
-func registerModel(oaiCompat *compat_oai.OpenAICompatible, providerName string, cfg ModelInfo) {
+func registerModel(g *genkit.Genkit, oaiCompat *compat_oai.OpenAICompatible, providerName string, cfg ModelInfo) {
 	var supports *ai.ModelSupports
 	switch cfg.Type {
 	case "chat":
@@ -157,14 +207,15 @@ func registerModel(oaiCompat *compat_oai.OpenAICompatible, providerName string, 
 		supports = &compat_oai.BasicText
 	}
 
-	oaiCompat.DefineModel(providerName, cfg.Key, ai.ModelOptions{
+	model := oaiCompat.DefineModel(providerName, cfg.Key, ai.ModelOptions{
 		Label:    cfg.Name,
 		Supports: supports,
 		Versions: []string{cfg.Key},
 	})
+	genkit.RegisterAction(g, model)
 }
 
-func registerEmbedder(oaiCompat *compat_oai.OpenAICompatible, providerName string, cfg EmbedderInfo) {
+func registerEmbedder(g *genkit.Genkit, oaiCompat *compat_oai.OpenAICompatible, providerName string, cfg EmbedderInfo) {
 	var inputTypes []string
 	embedderType := cfg.Type
 	if embedderType == "" {
@@ -184,15 +235,16 @@ func registerEmbedder(oaiCompat *compat_oai.OpenAICompatible, providerName strin
 		inputTypes = []string{"text"}
 	}
 
-	oaiCompat.DefineEmbedder(providerName, cfg.Key, &ai.EmbedderOptions{
+	embedder := oaiCompat.DefineEmbedder(providerName, cfg.Key, &ai.EmbedderOptions{
 		Label:      cfg.Name,
 		Supports:   &ai.EmbedderSupports{Input: inputTypes},
 		Dimensions: cfg.Dimensions,
 	})
+	genkit.RegisterAction(g, embedder)
 }
 
-// createProviderPlugin creates a single provider plugin
-func createProviderPlugin(providerName string, cfg ProviderConfig) api.Plugin {
+// createModelPlugin creates a single provider plugin
+func createModelPlugin(providerName string, cfg ProviderConfig) api.Plugin {
 	// Gemini requires special handling (not currently supported)
 	if providerName == "gemini" {
 		return nil

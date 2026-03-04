@@ -7,7 +7,7 @@ import (
 )
 
 func TestModelsComponent_Validate(t *testing.T) {
-	comp, err := models.NewModelsComponent("dashscope/qwen-max", "dashscope/qwen3-embedding", map[string]models.ProviderConfig{})
+	comp, err := models.NewModelsComponent("dashscope/qwen-max", "dashscope/text-embedding-v4", map[string]models.ProviderConfig{})
 	if err != nil {
 		t.Fatalf("NewModelsComponent() error: %v", err)
 	}
@@ -15,7 +15,7 @@ func TestModelsComponent_Validate(t *testing.T) {
 		t.Fatalf("expected providers validation error, got %v", err)
 	}
 
-	comp2, err := models.NewModelsComponent("dashscope/qwen-max", "dashscope/qwen3-embedding", map[string]models.ProviderConfig{
+	comp2, err := models.NewModelsComponent("dashscope/qwen-max", "dashscope/text-embedding-v4", map[string]models.ProviderConfig{
 		"dashscope": {APIKey: "x", BaseURL: ""},
 	})
 	if err != nil {
