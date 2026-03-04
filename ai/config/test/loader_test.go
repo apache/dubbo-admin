@@ -246,7 +246,7 @@ spec:
 			fileName: "agent.yaml",
 			componentYML: `type: agent
 spec:
-  default_model: qwen-max
+  model: qwen-max
   prompt_base_path: ./prompts
   stages:
     - name: think-stage

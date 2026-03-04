@@ -10,7 +10,7 @@ import (
 func validAgentSpec() *compReact.AgentSpec {
 	return &compReact.AgentSpec{
 		AgentType:              compReact.AgentTypeReAct,
-		DefaultModel:           "qwen-max",
+		Model:                  "qwen-max",
 		PromptBasePath:         "./prompts",
 		MaxIterations:          5,
 		StageChannelBufferSize: 2,

@@ -12,14 +12,14 @@
     "spec": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["default_model", "prompt_base_path", "stages"],
+      "required": ["model", "prompt_base_path", "stages"],
       "properties": {
         "agent_type": {
           "type": "string",
           "default": "react",
           "enum": ["react"]
         },
-        "default_model": {
+        "model": {
           "type": "string",
           "minLength": 1,
           "default": "qwen-max"

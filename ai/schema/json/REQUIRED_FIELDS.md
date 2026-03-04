@@ -102,7 +102,7 @@ This document defines required-field policy for configuration schemas.
 |---|---|---|
 | `type` | yes | Must be `agent`. |
 | `spec` | yes | Object. |
-| `spec.default_model` | yes | Non-empty string. |
+| `spec.model` | yes | Non-empty string. |
 | `spec.prompt_base_path` | yes | Non-empty string. |
 | `spec.stages` | yes | Array with at least one stage. |
 | `spec.agent_type` | no | Default: `react` (current supported value). |

@@ -47,6 +47,14 @@ func onOutput2Flow(channels *agent.Channels, output schema.Schema) error {
 	if channels == nil {
 		return fmt.Errorf("channels is nil")
 	}
+	if observation, ok := output.(schema.Observation); ok {
+		if observation.Summary != "" {
+			channels.UserRespChan <- schema.NewStreamFeedback(observation.Summary + "\n")
+		}
+		if observation.FinalAnswer != "" {
+			channels.UserRespChan <- schema.NewStreamFeedback(observation.FinalAnswer + "\n")
+		}
+	}
 	channels.FlowChan <- output
 	channels.UserRespChan <- schema.StreamEnd()
 	return nil
@@ -61,10 +69,9 @@ type stageTypeInfo struct {
 }
 
 var stageTypeRegistry = map[string]stageTypeInfo{
-	"think":    {inType: ThinkIn{}, outType: ThinkOut{}, needsTools: true, isStreaming: false},
-	"act":      {inType: ThinkOut{}, outType: nil, needsTools: true, isStreaming: false},
-	"observe":  {inType: nil, outType: schema.Observation{}, needsTools: false, isStreaming: true},
-	"feedback": {inType: ThinkIn{}, outType: nil, needsTools: false, isStreaming: false},
+	"think":   {inType: ThinkIn{}, outType: ThinkOut{}, needsTools: true, isStreaming: false},
+	"act":     {inType: ThinkOut{}, outType: nil, needsTools: true, isStreaming: false},
+	"observe": {inType: nil, outType: schema.Observation{}, needsTools: false, isStreaming: true},
 }
 
 func NewReactAgent(g *genkit.Genkit, promptBasePath string, defaultModel string, maxIterations int, stagesCfg []StageInfo, toolRefs []ai.ToolRef) (*ReActAgent, error) {
@@ -88,7 +95,6 @@ func NewReactAgent(g *genkit.Genkit, promptBasePath string, defaultModel string,
 
 func buildStagesFromConfig(g *genkit.Genkit, stagesCfg []StageInfo, promptBasePath string, defaultModel string, toolRefs []ai.ToolRef) ([]*agent.Stage, error) {
 	var stages []*agent.Stage
-	var observePrompt, feedbackPrompt ai.Prompt
 
 	for _, stageCfg := range stagesCfg {
 		// 1. Get type information
@@ -110,14 +116,19 @@ func buildStagesFromConfig(g *genkit.Genkit, stagesCfg []StageInfo, promptBasePa
 			tools = toolRefs
 		}
 
-		// Prepare additional prompt
+		// Prepare available tools names for think stage.
 		extraPrompt := stageCfg.ExtraPrompt
 		if stageCfg.FlowType == "think" && extraPrompt == "" {
-			toolsJson, err := json.Marshal(tools)
+			toolNames := make([]string, 0, len(toolRefs))
+			for _, toolRef := range toolRefs {
+				toolNames = append(toolNames, toolRef.Name())
+			}
+			toolsJson, err := json.Marshal(toolNames)
 			if err != nil {
-				return nil, fmt.Errorf("failed to marshal tools: %w", err)
+				return nil, fmt.Errorf("failed to marshal tool names: %w", err)
 			}
 			extraPrompt = fmt.Sprintf("available tools: %s", string(toolsJson))
+			runtime.GetLogger().Debug("Tool details", "extraPrompt", extraPrompt)
 		}
 
 		// When building prompt, use default model if not specified in configuration
@@ -138,17 +149,10 @@ func buildStagesFromConfig(g *genkit.Genkit, stagesCfg []StageInfo, promptBasePa
 		case "think":
 			stage = agent.NewStage(ThinkFlow(g, prompt), agent.InLoop)
 		case "act":
-			stage = agent.NewStage(ActFlow(g, nil, prompt), agent.InLoop)
+			stage = agent.NewStage(ActFlow(g, prompt), agent.InLoop)
 		case "observe":
-			observePrompt = prompt
-			continue
-		case "feedback":
-			feedbackPrompt = prompt
-			if observePrompt != nil {
-				stage = agent.NewStreamStage(observe(g, observePrompt, feedbackPrompt),
-					agent.InLoop, onStreaming2User, onOutput2Flow)
-				observePrompt, feedbackPrompt = nil, nil
-			}
+			stage = agent.NewStreamStage(observe(g, prompt),
+				agent.InLoop, onStreaming2User, onOutput2Flow)
 		}
 
 		if stage != nil {
@@ -227,30 +231,6 @@ func buildPrompt(registry *genkit.Genkit, inType, outType any, tag, prompt strin
 	return genkit.DefinePrompt(registry, tag, opts...), nil
 }
 
-func rawChunkHandler(cb core.StreamCallback[schema.StreamChunk]) ai.ModelStreamCallback {
-	return func(ctx context.Context, chunk *ai.ModelResponseChunk) error {
-		if cb != nil {
-			return cb(ctx, schema.StreamChunk{
-				Stage: "think",
-				Chunk: chunk,
-			})
-		}
-		return nil
-	}
-}
-
-func feedback(feedbackPrompt ai.Prompt, ctx context.Context, cb core.StreamCallback[schema.StreamChunk], messages ...*ai.Message) error {
-	_, err := feedbackPrompt.Execute(
-		ctx,
-		ai.WithMessages(messages...),
-		ai.WithStreaming(rawChunkHandler(cb)),
-	)
-	if err != nil {
-		return fmt.Errorf("failed to execute agentFeedback prompt: %w", err)
-	}
-	return nil
-}
-
 // ai.WithStreaming() receives ai.ModelStreamCallback type callback function
 // This callback function is called when the model generates each raw streaming chunk, used for raw chunk processing
 // The passed cb is user-defined callback function for handling streaming data logic, such as printing
@@ -302,7 +282,7 @@ func ThinkFlow(
 		})
 }
 
-func ActFlow(g *genkit.Genkit, mcpToolManager *toolEngine.MCPToolManager, toolPrompt ai.Prompt) agent.NormalFlow {
+func ActFlow(g *genkit.Genkit, actPrompt ai.Prompt) agent.NormalFlow {
 	return genkit.DefineFlow(g, agent.ActFlowName,
 		func(ctx context.Context, in schema.Schema) (out schema.Schema, err error) {
 			runtime.GetLogger().Info("Acting...", "input", in)
@@ -315,8 +295,21 @@ func ActFlow(g *genkit.Genkit, mcpToolManager *toolEngine.MCPToolManager, toolPr
 			if !ok {
 				return nil, fmt.Errorf("input is not of type ActIn, got %T", in)
 			}
-			if input.Intent == schema.GeneralInquiry || input.SuggestedTools == nil {
-				return ActOut{}, nil
+			if input.Intent == schema.GeneralInquiry || len(input.SuggestedTools) == 0 {
+				actOuts := ActOut{
+					Outputs: []toolEngine.ToolOutput{
+						{
+							ToolName: "no_need_tool_call",
+							Summary:  "no need tool call",
+							Result: map[string]any{
+								"reason": "general inquiry or no suggested tools",
+							},
+						},
+					},
+					UsageInfo: &ai.GenerationUsage{},
+				}
+				schema.AccumulateUsage(actOuts.UsageInfo, in.Usage())
+				return actOuts, nil
 			}
 
 			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.HistoryMemory)
@@ -332,14 +325,16 @@ func ActFlow(g *genkit.Genkit, mcpToolManager *toolEngine.MCPToolManager, toolPr
 			if history.IsEmpty(sessionID) {
 				return nil, fmt.Errorf("history is empty")
 			}
-			toolReqs, err := toolPrompt.Execute(ctx,
+			toolReqs, err := actPrompt.Execute(ctx,
 				ai.WithMessages(history.WindowMemory(sessionID)...),
 			)
 			if err != nil {
 				return nil, fmt.Errorf("failed to execute tool selection prompt: %w", err)
 			}
-			if len(toolReqs.ToolRequests()) == 0 {
-				return ActOut{Thought: fmt.Sprintf("have unavailable tools in %v, please check available tools list", input.SuggestedTools)}, nil
+
+			// If the model returns no tool requests while suggested_tools is non-empty, surface the real cause.
+			if len(toolReqs.ToolRequests()) == 0 && input.SuggestedTools != nil && len(input.SuggestedTools) > 0 {
+				return nil, fmt.Errorf("model returned no tool calls for suggested_tools=%v", input.SuggestedTools)
 			}
 			runtime.GetLogger().Info("tool requests:", "req", toolReqs.ToolRequests())
 
@@ -348,7 +343,7 @@ func ActFlow(g *genkit.Genkit, mcpToolManager *toolEngine.MCPToolManager, toolPr
 			var actOuts ActOut
 			actOuts.UsageInfo = &ai.GenerationUsage{}
 			for _, req := range toolReqs.ToolRequests() {
-				output, err := toolEngine.Call(g, mcpToolManager, req.Name, req.Input)
+				output, err := toolEngine.Call(g, req.Name, req.Input)
 				if err != nil {
 					return nil, fmt.Errorf("failed to call tool %s: %w", req.Name, err)
 				}
@@ -369,9 +364,9 @@ func ActFlow(g *genkit.Genkit, mcpToolManager *toolEngine.MCPToolManager, toolPr
 		})
 }
 
-func observe(g *genkit.Genkit, observePrompt ai.Prompt, feedbackPrompt ai.Prompt) agent.StreamFlow {
+func observe(g *genkit.Genkit, observePrompt ai.Prompt) agent.StreamFlow {
 	return genkit.DefineStreamingFlow(g, agent.ObserveFlowName,
-		func(ctx context.Context, in schema.Schema, cb core.StreamCallback[schema.StreamChunk]) (out schema.Schema, err error) {
+		func(ctx context.Context, in schema.Schema, _ core.StreamCallback[schema.StreamChunk]) (out schema.Schema, err error) {
 			runtime.GetLogger().Info("Observing...", "input", in)
 			defer func() {
 				runtime.GetLogger().Info("Observe Done.", "output", out, "error", err)
@@ -408,7 +403,6 @@ func observe(g *genkit.Genkit, observePrompt ai.Prompt, feedbackPrompt ai.Prompt
 			runtime.GetLogger().Info("Observe out:", "out", observation)
 
 			history.AddHistory(sessionID, resp.Message)
-			feedback(feedbackPrompt, ctx, cb, history.WindowMemory(sessionID)...)
 			schema.AccumulateUsage(observation.UsageInfo, resp.Usage, in.Usage())
 
 			return observation, err

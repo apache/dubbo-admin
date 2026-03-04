@@ -28,7 +28,7 @@ type AgentComponent struct {
 	instanceName           string
 	Agent                  *ReActAgent
 	agentType              string
-	defaultModel           string
+	model                  string
 	promptBasePath         string
 	maxIterations          int
 	stageChannelBufferSize int
@@ -38,7 +38,7 @@ type AgentComponent struct {
 
 func NewAgentComponent(
 	agentType string,
-	defaultModel string,
+	model string,
 	promptBasePath string,
 	maxIterations int,
 	stageChannelBufferSize int,
@@ -47,7 +47,7 @@ func NewAgentComponent(
 ) (runtime.Component, error) {
 	return &AgentComponent{
 		agentType:              agentType,
-		defaultModel:           defaultModel,
+		model:                  model,
 		promptBasePath:         promptBasePath,
 		maxIterations:          maxIterations,
 		stageChannelBufferSize: stageChannelBufferSize,
@@ -70,7 +70,7 @@ func (a *AgentComponent) SetName(name string) {
 func (a *AgentComponent) Validate() error {
 	cfg := AgentSpec{
 		AgentType:              a.agentType,
-		DefaultModel:           a.defaultModel,
+		Model:                  a.model,
 		PromptBasePath:         a.promptBasePath,
 		MaxIterations:          a.maxIterations,
 		StageChannelBufferSize: a.stageChannelBufferSize,
@@ -90,8 +90,7 @@ func (a *AgentComponent) Init(rt *runtime.Runtime) error {
 		return fmt.Errorf("invalid tools component type")
 	}
 	toolRefs := tools.GetToolRefs()
-
-	reactAgent, err := NewReactAgent(rt.GetGenkitRegistry(), a.promptBasePath, a.defaultModel, a.maxIterations, a.stages, toolRefs)
+	reactAgent, err := NewReactAgent(rt.GetGenkitRegistry(), a.promptBasePath, a.model, a.maxIterations, a.stages, toolRefs)
 	if err != nil {
 		return fmt.Errorf("failed to create ReAct agent: %w", err)
 	}
@@ -100,7 +99,7 @@ func (a *AgentComponent) Init(rt *runtime.Runtime) error {
 
 	rt.GetLogger().Info("Agent component initialized",
 		"agent_type", a.agentType,
-		"default_model", a.defaultModel,
+		"model", a.model,
 		"max_iterations", a.maxIterations,
 		"stages", len(a.stages))
 

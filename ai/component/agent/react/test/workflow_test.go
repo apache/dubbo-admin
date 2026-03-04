@@ -52,8 +52,11 @@ func TestActFlow(t *testing.T) {
 				if !ok {
 					t.Fatalf("output type = %T, want schema.ToolOutputs", out)
 				}
-				if len(actOut.Outputs) != 0 {
-					t.Fatalf("expected no tool outputs, got %d", len(actOut.Outputs))
+				if len(actOut.Outputs) != 1 {
+					t.Fatalf("expected one synthetic output, got %d", len(actOut.Outputs))
+				}
+				if actOut.Outputs[0].ToolName != "no_need_tool_call" {
+					t.Fatalf("unexpected tool name: %s", actOut.Outputs[0].ToolName)
 				}
 			},
 		},
@@ -96,7 +99,7 @@ func TestActFlow(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			g := genkit.Init(context.Background())
-			flow := compReact.ActFlow(g, nil, tt.setup(g))
+			flow := compReact.ActFlow(g, tt.setup(g))
 			out, err := flow.Run(contextWithHistory("session"), tt.input)
 			if tt.errContain != "" {
 				if err == nil || !strings.Contains(err.Error(), tt.errContain) {

@@ -33,7 +33,7 @@ func AgentFactory(spec *yaml.Node) (runtime.Component, error) {
 
 	return NewAgentComponent(
 		cfg.AgentType,
-		cfg.DefaultModel,
+		cfg.Model,
 		cfg.PromptBasePath,
 		cfg.MaxIterations,
 		cfg.StageChannelBufferSize,

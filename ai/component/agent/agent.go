@@ -209,11 +209,13 @@ func (orchestrator *OrderOrchestrator) Run(ctx context.Context, input schema.Sch
 			return fmt.Errorf("stage %s not found", key)
 		}
 
+		emitStageProgress(chans, key, true)
 		if err := curStage.Execute(ctx, chans, input); err != nil {
 			return fmt.Errorf("failed to execute stage %s: %w", key, err)
 		}
 		output := <-chans.FlowChan
 
+		emitStageProgress(chans, key, false)
 		input = output
 	}
 
@@ -228,6 +230,7 @@ Outer:
 				return fmt.Errorf("stage %s not found", order)
 			}
 
+			emitStageProgress(chans, order, true)
 			if err := curStage.Execute(ctx, chans, input); err != nil {
 				return fmt.Errorf("failed to execute stage %s: %w", order, err)
 			}
@@ -237,6 +240,7 @@ Outer:
 			if output == nil {
 				return fmt.Errorf("stage %s returned nil output", order)
 			}
+			emitStageProgress(chans, order, false)
 
 			// Check if LLM returned final answer
 			if out, ok := output.(schema.Observation); ok {
@@ -260,6 +264,7 @@ Outer:
 			return fmt.Errorf("stage %s not found", key)
 		}
 
+		emitStageProgress(chans, key, true)
 		if err := curStage.Execute(ctx, chans, input); err != nil {
 			return fmt.Errorf("failed to execute stage %s: %w", key, err)
 		}
@@ -269,6 +274,7 @@ Outer:
 		if output == nil {
 			return fmt.Errorf("after-loop stage %s returned nil output", key)
 		}
+		emitStageProgress(chans, key, false)
 
 		input = output
 	}
@@ -287,8 +293,43 @@ func (orchestrator *OrderOrchestrator) RunStage(ctx context.Context, key string,
 	if !ok {
 		return fmt.Errorf("stage %s not found", key)
 	}
+	emitStageProgress(chans, key, true)
 	if err := stage.Execute(ctx, chans, input); err != nil {
 		return fmt.Errorf("failed to execute stage %s: %w", key, err)
 	}
+	emitStageProgress(chans, key, false)
 	return nil
+}
+
+func emitStageProgress(chans *Channels, stageName string, started bool) {
+	if chans == nil {
+		return
+	}
+	chans.UserRespChan <- schema.NewStreamFeedback(stageProgressText(stageName, started))
+}
+
+func stageProgressText(stageName string, started bool) string {
+	if started {
+		switch stageName {
+		case ThinkFlowName:
+			return "🔍 分析问题中...\n"
+		case ActFlowName:
+			return "🛠️ 正在调用工具...\n"
+		case ObserveFlowName:
+			return "🧠 整理结论中...\n"
+		default:
+			return fmt.Sprintf("⏳ %s 阶段处理中...\n", stageName)
+		}
+	}
+
+	switch stageName {
+	case ThinkFlowName:
+		return "✅ 问题分析完成。\n"
+	case ActFlowName:
+		return "✅ 工具调用完成。\n"
+	case ObserveFlowName:
+		return "✅ 结论整理完成。\n"
+	default:
+		return fmt.Sprintf("✅ %s 阶段完成。\n", stageName)
+	}
 }

@@ -168,6 +168,11 @@ func AccumulateUsage(dist *ai.GenerationUsage, src ...*ai.GenerationUsage) {
 	}
 }
 
+// TODO: `index` is currently a package-level global counter.
+// It is shared across sessions and not concurrency-safe, which can cause
+// cross-session interference and data races under concurrent requests.
+// Move this counter to per-session/per-stream state (e.g. Channels/SSEHandler)
+// and guard mutation with synchronization if shared.
 var index = 0
 
 type StreamFeedback struct {

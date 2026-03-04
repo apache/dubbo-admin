@@ -23,7 +23,7 @@ const AgentTypeReAct = "react"
 
 type AgentSpec struct {
 	AgentType              string      `yaml:"agent_type"`
-	DefaultModel           string      `yaml:"default_model"`
+	Model                  string      `yaml:"model"`
 	PromptBasePath         string      `yaml:"prompt_base_path"`
 	MaxIterations          int         `yaml:"max_iterations"`
 	StageChannelBufferSize int         `yaml:"stage_channel_buffer_size"`
@@ -48,7 +48,7 @@ type StageInfo struct {
 func ReActDefaultSpec() *AgentSpec {
 	return &AgentSpec{
 		AgentType:              "react",
-		DefaultModel:           "qwen-max",
+		Model:                  "qwen-max",
 		PromptBasePath:         "./prompts",
 		MaxIterations:          10,
 		StageChannelBufferSize: 5,
@@ -75,16 +75,6 @@ func ReActDefaultSpec() *AgentSpec {
 				EnableTools: true,
 			},
 			{
-				Name:        "agentFeedback",
-				FlowType:    "feedback",
-				PromptFile:  "agentFeedback.txt",
-				Temperature: 0.7,
-				TopP:        0.9,
-				MaxTokens:   1000,
-				Timeout:     30,
-				EnableTools: false,
-			},
-			{
 				Name:        "observe",
 				FlowType:    "observe",
 				PromptFile:  "agentObserve.txt",
@@ -103,8 +93,8 @@ func (c *AgentSpec) Validate() error {
 	if c.AgentType == "" {
 		return fmt.Errorf("agent_type is required")
 	}
-	if c.DefaultModel == "" {
-		return fmt.Errorf("default_model is required")
+	if c.Model == "" {
+		return fmt.Errorf("model is required")
 	}
 	if c.PromptBasePath == "" {
 		return fmt.Errorf("prompt_base_path is required")
@@ -140,10 +130,9 @@ func (s *StageInfo) Validate(index int) error {
 		"think":    true,
 		"act":      true,
 		"observe":  true,
-		"feedback": true,
 	}
 	if !validFlowTypes[s.FlowType] {
-		return fmt.Errorf("stage[%d]: invalid flow_type '%s', must be one of: think, act, observe, feedback", index, s.FlowType)
+		return fmt.Errorf("stage[%d]: invalid flow_type '%s', must be one of: think, act, observe", index, s.FlowType)
 	}
 
 	if s.PromptFile == "" {

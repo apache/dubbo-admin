@@ -63,7 +63,7 @@ func (f *ConfigFixture) InvalidMemoryConfig() *yaml.Node {
 func (f *ConfigFixture) ValidModelsConfig() *yaml.Node {
 	var node yaml.Node
 	node.Encode(map[string]any{
-		"default_provider": "dashscope",
+		"default_provider":  "dashscope",
 		"default_model":     "dashscope/qwen-max",
 		"default_embedding": "dashscope/qwen3-embedding",
 		"providers": map[string]any{
@@ -173,8 +173,8 @@ func (f *ConfigFixture) ValidRAGConfig() *yaml.Node {
 			"type": "pdf",
 		},
 		"splitter": map[string]any{
-			"type":        "recursive",
-			"chunk_size":  1000,
+			"type":          "recursive",
+			"chunk_size":    1000,
 			"chunk_overlap": 200,
 		},
 		"indexer": map[string]any{
@@ -183,8 +183,8 @@ func (f *ConfigFixture) ValidRAGConfig() *yaml.Node {
 			"dimension":  1024,
 		},
 		"retriever": map[string]any{
-			"type":   "vector",
-			"top_k":  10,
+			"type":  "vector",
+			"top_k": 10,
 		},
 	})
 	return &node
@@ -194,10 +194,10 @@ func (f *ConfigFixture) ValidRAGConfig() *yaml.Node {
 func (f *ConfigFixture) ValidAgentConfig() *yaml.Node {
 	var node yaml.Node
 	node.Encode(map[string]any{
-		"agent_type":      "react",
-		"default_model":   "qwen-max",
+		"agent_type":       "react",
+		"model":            "qwen-max",
 		"prompt_base_path": "./prompts",
-		"max_iterations":  10,
+		"max_iterations":   10,
 		"stages": []map[string]any{
 			{
 				"name":         "agentThinking",

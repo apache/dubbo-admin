@@ -1,14 +1,14 @@
 type: agent
 spec:
   agent_type: "react"
-  default_model: "dashscope/qwen-max"
+  model: "dashscope/qwen3.5-plus"
   prompt_base_path: "./prompts"
   max_iterations: 10
   stage_channel_buffer_size: 5
   mcp_host_name: "mcp_host"
 
   stages:
-    - name: "agentThinking"
+    - name: "think"
       flow_type: "think"
       prompt_file: "agentThink.txt"
       temperature: 0.7
@@ -16,9 +16,8 @@ spec:
       max_tokens: 2000
       timeout: 60
       enable_tools: true
-      # extra_prompt: "available tools: [...]"
 
-    - name: "agentTool"
+    - name: "act"
       flow_type: "act"
       prompt_file: "agentAct.txt"
       temperature: 0.7
@@ -34,13 +33,4 @@ spec:
       top_p: 0.9
       max_tokens: 2000
       timeout: 60
-      enable_tools: false
-
-    - name: "agentFeedback"
-      flow_type: "feedback"
-      prompt_file: "agentFeedback.txt"
-      temperature: 0.7
-      top_p: 0.9
-      max_tokens: 1000
-      timeout: 30
       enable_tools: false
