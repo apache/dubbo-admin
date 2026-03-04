@@ -2,7 +2,7 @@ package rag
 
 import (
 	"context"
-	
+	"dubbo-admin-ai/runtime"
 	"dubbo-admin-ai/utils"
 	"fmt"
 	"sync"
@@ -15,6 +15,57 @@ import (
 	"github.com/firebase/genkit/go/plugins/localvec"
 	"github.com/firebase/genkit/go/plugins/pinecone"
 )
+
+// retrieverComponent Retriever 组件包装器
+type retrieverComponent struct {
+	retrieverType string
+	embedderModel string
+	targetIndex   string
+	defaultTopK   int
+	retriever     retriever.Retriever
+}
+
+func NewRetrieverComponent(retrieverType, embedderModel string, targetIndex string, defaultTopK int) (runtime.Component, error) {
+	return &retrieverComponent{
+		retrieverType: retrieverType,
+		embedderModel: embedderModel,
+		targetIndex:   targetIndex,
+		defaultTopK:   defaultTopK,
+	}, nil
+}
+
+func (c *retrieverComponent) Name() string { return "retriever" }
+
+func (c *retrieverComponent) Validate() error { return nil }
+
+func (c *retrieverComponent) Init(rt *runtime.Runtime) error {
+	registry := rt.GetGenkitRegistry()
+	if registry == nil {
+		return fmt.Errorf("genkit registry not initialized")
+	}
+
+	rtv, err := newRetrieverByType(registry, c.retrieverType, c.embedderModel, c.targetIndex, c.defaultTopK)
+	if err != nil {
+		return fmt.Errorf("failed to create retriever: %w", err)
+	}
+	c.retriever = rtv
+
+	rt.GetLogger().Info("Retriever component initialized",
+		"type", c.retrieverType,
+		"embedder", c.embedderModel,
+		"target_index", c.targetIndex,
+		"default_top_k", c.defaultTopK,
+	)
+	return nil
+}
+
+func (c *retrieverComponent) Start() error { return nil }
+
+func (c *retrieverComponent) Stop() error { return nil }
+
+func (c *retrieverComponent) get() retriever.Retriever {
+	return c.retriever
+}
 
 // --- Retriever ---
 type PineconeRetriever struct {
@@ -83,7 +134,7 @@ func (r *PineconeRetriever) getRetriever(ctx context.Context, targetIndex string
 }
 
 func (r *PineconeRetriever) Retrieve(ctx context.Context, query string, opts ...retriever.Option) ([]*schema.Document, error) {
-	impl := retriever.GetImplSpecificOptions(&CommonRetrieverOptions{}, opts...)
+	impl := retriever.GetImplSpecificOptions(&RAGOptions{}, opts...)
 	effectiveTarget := r.target
 	if impl.TargetIndex != nil && *impl.TargetIndex != "" {
 		effectiveTarget = *impl.TargetIndex
@@ -197,7 +248,7 @@ func (r *DevRetriever) getRetriever(ctx context.Context, targetIndex string) (ai
 }
 
 func (r *DevRetriever) Retrieve(ctx context.Context, query string, opts ...retriever.Option) ([]*schema.Document, error) {
-	impl := retriever.GetImplSpecificOptions(&CommonRetrieverOptions{}, opts...)
+	impl := retriever.GetImplSpecificOptions(&RAGOptions{}, opts...)
 	effectiveTarget := r.target
 	if impl.TargetIndex != nil && *impl.TargetIndex != "" {
 		effectiveTarget = *impl.TargetIndex
@@ -234,4 +285,21 @@ func (r *DevRetriever) Retrieve(ctx context.Context, query string, opts ...retri
 	docs := utils.ToEinoDocuments(resp.Documents)
 
 	return docs, nil
+}
+
+func newRetrieverByType(g *genkit.Genkit, retrieverType, embedderModel string, targetIndex string, defaultTopK int) (retriever.Retriever, error) {
+	if targetIndex == "" {
+		targetIndex = DefaultRetrieverTargetIndex
+	}
+	if defaultTopK <= 0 {
+		defaultTopK = DefaultRetrieverTopK
+	}
+	switch retrieverType {
+	case "dev":
+		return newDevRetriever(g, embedderModel, targetIndex, defaultTopK), nil
+	case "pinecone":
+		return newPineconeRetriever(g, embedderModel, targetIndex, defaultTopK), nil
+	default:
+		return nil, fmt.Errorf("unsupported retriever type: %s", retrieverType)
+	}
 }

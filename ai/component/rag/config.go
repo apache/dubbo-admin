@@ -22,6 +22,14 @@ import (
 	"fmt"
 )
 
+const (
+	DefaultIndexerTargetIndex   = "default"
+	DefaultIndexerBatchSize     = 100
+	DefaultRetrieverTargetIndex = "default"
+	DefaultRetrieverTopK        = 3
+	DefaultRerankerModel        = "rerank-english-v3.0"
+)
+
 // RAGSpec defines RAG component configuration with recursive structure
 // Each subcomponent uses the standard Config pattern (type + spec)
 type RAGSpec struct {
@@ -50,6 +58,12 @@ type SplitterSpec struct {
 	OverlapSize int `yaml:"overlap_size"`
 }
 
+// MarkdownHeaderSplitterSpec defines markdown header splitter specific parameters.
+type MarkdownHeaderSplitterSpec struct {
+	Headers     map[string]string `yaml:"headers"`
+	TrimHeaders bool              `yaml:"trim_headers"`
+}
+
 // IndexerSpec defines indexer specific parameters
 type IndexerSpec struct {
 	StoragePath string `yaml:"storage_path"`
@@ -73,7 +87,7 @@ type RerankerSpec struct {
 
 // DefaultEmbedderSpec returns default embedder configuration
 func DefaultEmbedderSpec() *EmbedderSpec {
-	return &EmbedderSpec{Model: "dashscope/qwen3-embedding"}
+	return &EmbedderSpec{Model: "dashscope/text-embedding-v4"}
 }
 
 // DefaultSplitterSpec returns default splitter configuration
@@ -112,9 +126,37 @@ func (c *RAGSpec) Validate() error {
 	if c == nil {
 		return fmt.Errorf("rag config is nil")
 	}
-	if c.Splitter != nil && c.Splitter.Type == "recursive" {
-		var splitter SplitterSpec
-		if err := c.Splitter.Spec.Decode(&splitter); err != nil {
+	if c.Embedder == nil {
+		return fmt.Errorf("embedder config is required")
+	}
+	if c.Loader == nil {
+		return fmt.Errorf("loader config is required")
+	}
+	if c.Splitter == nil {
+		return fmt.Errorf("splitter config is required")
+	}
+	if c.Indexer == nil {
+		return fmt.Errorf("indexer config is required")
+	}
+	if c.Retriever == nil {
+		return fmt.Errorf("retriever config is required")
+	}
+
+	switch c.Loader.Type {
+	case "", "local":
+	default:
+		return fmt.Errorf("unsupported loader type: %s", c.Loader.Type)
+	}
+
+	switch c.Splitter.Type {
+	case "", "recursive", "markdown_header":
+	default:
+		return fmt.Errorf("unsupported splitter type: %s", c.Splitter.Type)
+	}
+
+	if c.Splitter.Type == "" || c.Splitter.Type == "recursive" {
+		splitter := DefaultSplitterSpec()
+		if err := c.Splitter.Spec.Decode(splitter); err != nil {
 			return fmt.Errorf("failed to decode splitter spec: %w", err)
 		}
 		if splitter.ChunkSize <= 0 {
@@ -127,38 +169,31 @@ func (c *RAGSpec) Validate() error {
 			return fmt.Errorf("splitter.overlap_size must be less than chunk_size")
 		}
 	}
-	if c.Indexer != nil {
-		switch c.Indexer.Type {
-		case "dev", "pinecone":
-		default:
-			return fmt.Errorf("unsupported indexer type: %s", c.Indexer.Type)
+	switch c.Indexer.Type {
+	case "dev", "pinecone":
+	default:
+		return fmt.Errorf("unsupported indexer type: %s", c.Indexer.Type)
+	}
+
+	switch c.Retriever.Type {
+	case "dev", "pinecone":
+	default:
+		return fmt.Errorf("unsupported retriever type: %s", c.Retriever.Type)
+	}
+
+	if c.Reranker != nil {
+		var rerankerSpec RerankerSpec
+		if err := c.Reranker.Spec.Decode(&rerankerSpec); err != nil {
+			return fmt.Errorf("failed to decode reranker spec: %w", err)
+		}
+		if rerankerSpec.Enabled {
+			switch c.Reranker.Type {
+			case "cohere":
+			default:
+				return fmt.Errorf("unsupported reranker type: %s", c.Reranker.Type)
+			}
 		}
 	}
-	if c.Retriever != nil {
-		switch c.Retriever.Type {
-		case "dev", "pinecone":
-		default:
-			return fmt.Errorf("unsupported retriever type: %s", c.Retriever.Type)
-		}
-	}
+
 	return nil
-}
-
-// --- Exported types for rag package to avoid circular dependency ---
-
-// CallOptions defines per-call options structure
-type CallOptions struct {
-	TopK        *int
-	TopN        *int
-	Namespace   *string
-	TargetIndex *string
-}
-
-// RerankOption defines reranker option function type
-type RerankOption func(*CallOptions)
-
-// RetrieveResult defines the unified result structure for RAG queries.
-type RetrieveResult struct {
-	Content        string  `json:"content"`
-	RelevanceScore float64 `json:"relevance_score"`
 }

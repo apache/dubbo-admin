@@ -2,7 +2,7 @@ package rag
 
 import (
 	"context"
-	
+	"dubbo-admin-ai/runtime"
 	"fmt"
 	"os"
 
@@ -10,6 +10,57 @@ import (
 	cohere "github.com/cohere-ai/cohere-go/v2"
 	cohereClient "github.com/cohere-ai/cohere-go/v2/client"
 )
+
+// Reranker 重排序器接口
+type Reranker interface {
+	Rerank(ctx context.Context, query string, docs any, opts ...Option) ([]*RetrieveResult, error)
+}
+
+// rerankerComponent Reranker 组件包装器
+type rerankerComponent struct {
+	rerankerType string
+	enabled      bool
+	model        string
+	apiKey       string
+	reranker     Reranker
+}
+
+func NewRerankerComponent(rerankerType string, enabled bool, model, apiKey string) (runtime.Component, error) {
+	return &rerankerComponent{
+		rerankerType: rerankerType,
+		enabled:      enabled,
+		model:        model,
+		apiKey:       apiKey,
+	}, nil
+}
+
+func (c *rerankerComponent) Name() string { return "reranker" }
+
+func (c *rerankerComponent) Validate() error { return nil }
+
+func (c *rerankerComponent) Init(rt *runtime.Runtime) error {
+	if !c.enabled {
+		rt.GetLogger().Info("Reranker component disabled")
+		return nil
+	}
+
+	reranker, err := newRerankerByType(c.rerankerType, c.enabled, c.model, c.apiKey)
+	if err != nil {
+		return fmt.Errorf("failed to create reranker: %w", err)
+	}
+	c.reranker = reranker
+
+	rt.GetLogger().Info("Reranker component initialized", "type", c.rerankerType, "model", c.model)
+	return nil
+}
+
+func (c *rerankerComponent) Start() error { return nil }
+
+func (c *rerankerComponent) Stop() error { return nil }
+
+func (c *rerankerComponent) get() Reranker {
+	return c.reranker
+}
 
 type cohereReranker struct {
 	cfg *cohereRerankerConfig
@@ -21,7 +72,7 @@ type cohereRerankerConfig struct {
 	TopN   int
 }
 
-func (r *cohereReranker) Rerank(ctx context.Context, query string, docs any, opts ...RerankOption) ([]*RetrieveResult, error) {
+func (r *cohereReranker) Rerank(ctx context.Context, query string, docs any, opts ...Option) ([]*RetrieveResult, error) {
 	if r == nil || r.cfg == nil {
 		return nil, fmt.Errorf("rerank config is nil")
 	}
@@ -49,6 +100,7 @@ func (r *cohereReranker) Rerank(ctx context.Context, query string, docs any, opt
 		return []*RetrieveResult{}, nil
 	}
 
+	// TODO: Transfer the API key management to component initialization phase, and support multiple reranker types with different API keys
 	apiKey := r.cfg.APIKey
 	if apiKey == "" {
 		apiKey = os.Getenv("COHERE_API_KEY")
@@ -57,7 +109,7 @@ func (r *cohereReranker) Rerank(ctx context.Context, query string, docs any, opt
 		return nil, fmt.Errorf("COHERE_API_KEY is not set")
 	}
 
-	var co CallOptions
+	var co RAGOptions
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&co)
@@ -65,8 +117,8 @@ func (r *cohereReranker) Rerank(ctx context.Context, query string, docs any, opt
 	}
 
 	topN := r.cfg.TopN
-	if co.TopN != nil {
-		topN = *co.TopN
+	if co.RerankTopN != nil {
+		topN = *co.RerankTopN
 	}
 	if topN <= 0 {
 		topN = 3
@@ -118,4 +170,19 @@ func rerank(apiKey, model, query string, documents []*string, topN int) ([]*cohe
 	}
 
 	return rerankResponse.Results, nil
+}
+
+func newRerankerByType(rerankerType string, enabled bool, model, apiKey string) (Reranker, error) {
+	if !enabled {
+		return nil, nil
+	}
+	if model == "" {
+		model = DefaultRerankerModel
+	}
+	switch rerankerType {
+	case "cohere":
+		return &cohereReranker{cfg: &cohereRerankerConfig{APIKey: apiKey, Model: model, TopN: 3}}, nil
+	default:
+		return nil, fmt.Errorf("unsupported reranker type: %s", rerankerType)
+	}
 }

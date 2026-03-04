@@ -18,218 +18,71 @@
 package rag
 
 import (
-	"context"
-	"dubbo-admin-ai/config"
 	"dubbo-admin-ai/runtime"
 	"fmt"
-
-	"github.com/cloudwego/eino/components/document"
-	"github.com/cloudwego/eino/components/indexer"
-	"github.com/cloudwego/eino/components/retriever"
 )
-
-// Reranker 重排序器接口
-type Reranker interface {
-	Rerank(ctx context.Context, query string, docs any, opts ...RerankOption) ([]*RetrieveResult, error)
-}
-
-// ============= 子组件包装器 =============
-
-// loaderComponent Loader 组件包装器
-type loaderComponent struct {
-	cfg    *config.Config
-	loader document.Loader
-}
-
-func newLoaderComponent(cfg *config.Config) *loaderComponent {
-	return &loaderComponent{cfg: cfg}
-}
-
-func (c *loaderComponent) Name() string { return "loader" }
-func (c *loaderComponent) Validate() error {
-	return nil
-}
-
-func (c *loaderComponent) Init(rt *runtime.Runtime) error {
-	loader, err := newLoader(c.cfg)
-	if err != nil {
-		return fmt.Errorf("failed to create loader: %w", err)
-	}
-	c.loader = loader
-	rt.GetLogger().Info("Loader component initialized", "type", c.cfg.Type)
-	return nil
-}
-
-func (c *loaderComponent) Start() error { return nil }
-func (c *loaderComponent) Stop() error  { return nil }
-func (c *loaderComponent) get() document.Loader {
-	return c.loader
-}
-
-// splitterComponent Splitter 组件包装器
-type splitterComponent struct {
-	cfg      *config.Config
-	splitter document.Transformer
-}
-
-func newSplitterComponent(cfg *config.Config) *splitterComponent {
-	return &splitterComponent{cfg: cfg}
-}
-
-func (c *splitterComponent) Name() string { return "splitter" }
-func (c *splitterComponent) Validate() error {
-	return nil
-}
-
-func (c *splitterComponent) Init(rt *runtime.Runtime) error {
-	splitter, err := newSplitter(c.cfg)
-	if err != nil {
-		return fmt.Errorf("failed to create splitter: %w", err)
-	}
-	c.splitter = splitter
-
-	var spec SplitterSpec
-	if c.cfg.Spec.Decode(&spec) == nil {
-		rt.GetLogger().Info("Splitter component initialized", "type", c.cfg.Type, "chunk_size", spec.ChunkSize, "overlap_size", spec.OverlapSize)
-	} else {
-		rt.GetLogger().Info("Splitter component initialized", "type", c.cfg.Type)
-	}
-	return nil
-}
-
-func (c *splitterComponent) Start() error { return nil }
-func (c *splitterComponent) Stop() error  { return nil }
-func (c *splitterComponent) get() document.Transformer {
-	return c.splitter
-}
-
-// indexerComponent Indexer 组件包装器
-type indexerComponent struct {
-	cfg          *config.Config
-	embedderName string
-	indexer      indexer.Indexer
-}
-
-func newIndexerComponent(cfg *config.Config, embedderName string) *indexerComponent {
-	return &indexerComponent{cfg: cfg, embedderName: embedderName}
-}
-
-func (c *indexerComponent) Name() string { return "indexer" }
-func (c *indexerComponent) Validate() error {
-	return nil
-}
-
-func (c *indexerComponent) Init(rt *runtime.Runtime) error {
-	registry := rt.GetGenkitRegistry()
-	if registry == nil {
-		return fmt.Errorf("genkit registry not initialized")
-	}
-
-	idx, err := newIndexer(registry, c.cfg.Type, c.embedderName)
-	if err != nil {
-		return fmt.Errorf("failed to create indexer: %w", err)
-	}
-	c.indexer = idx
-
-	rt.GetLogger().Info("Indexer component initialized", "type", c.cfg.Type, "embedder", c.embedderName)
-	return nil
-}
-
-func (c *indexerComponent) Start() error { return nil }
-func (c *indexerComponent) Stop() error  { return nil }
-func (c *indexerComponent) get() indexer.Indexer {
-	return c.indexer
-}
-
-// retrieverComponent Retriever 组件包装器
-type retrieverComponent struct {
-	cfg          *config.Config
-	embedderName string
-	retriever    retriever.Retriever
-}
-
-func newRetrieverComponent(cfg *config.Config, embedderName string) *retrieverComponent {
-	return &retrieverComponent{cfg: cfg, embedderName: embedderName}
-}
-
-func (c *retrieverComponent) Name() string { return "retriever" }
-func (c *retrieverComponent) Validate() error {
-	return nil
-}
-
-func (c *retrieverComponent) Init(rt *runtime.Runtime) error {
-	registry := rt.GetGenkitRegistry()
-	if registry == nil {
-		return fmt.Errorf("genkit registry not initialized")
-	}
-
-	rtv, err := newRetriever(registry, c.cfg.Type, c.embedderName)
-	if err != nil {
-		return fmt.Errorf("failed to create retriever: %w", err)
-	}
-	c.retriever = rtv
-
-	rt.GetLogger().Info("Retriever component initialized", "type", c.cfg.Type, "embedder", c.embedderName)
-	return nil
-}
-
-func (c *retrieverComponent) Start() error { return nil }
-func (c *retrieverComponent) Stop() error  { return nil }
-func (c *retrieverComponent) get() retriever.Retriever {
-	return c.retriever
-}
-
-// rerankerComponent Reranker 组件包装器
-type rerankerComponent struct {
-	enabled  bool
-	model    string
-	apiKey   string
-	reranker Reranker
-}
-
-func newRerankerComponent(enabled bool, model, apiKey string) *rerankerComponent {
-	return &rerankerComponent{enabled: enabled, model: model, apiKey: apiKey}
-}
-
-func (c *rerankerComponent) Name() string { return "reranker" }
-func (c *rerankerComponent) Validate() error {
-	return nil
-}
-
-func (c *rerankerComponent) Init(rt *runtime.Runtime) error {
-	if !c.enabled {
-		rt.GetLogger().Info("Reranker component disabled")
-		return nil
-	}
-
-	reranker, err := newReranker(c.enabled, c.model, c.apiKey)
-	if err != nil {
-		return fmt.Errorf("failed to create reranker: %w", err)
-	}
-	c.reranker = reranker
-
-	rt.GetLogger().Info("Reranker component initialized", "model", c.model)
-	return nil
-}
-
-func (c *rerankerComponent) Start() error { return nil }
-func (c *rerankerComponent) Stop() error  { return nil }
-func (c *rerankerComponent) get() Reranker {
-	return c.reranker
-}
-
-// ============= RAGComponent 主组件 =============
 
 // RAGComponent RAG 系统组件
 type RAGComponent struct {
 	instanceName string
-	cfg          *RAGSpec
-	embedderName string
-	loader       *loaderComponent
-	splitter     *splitterComponent
-	indexer      *indexerComponent
-	retriever    *retrieverComponent
-	reranker     *rerankerComponent
+	Rag *RAG
+
+	embedderModel   string
+	loaderType      string
+	splitterType    string
+	indexerType     string
+	retrieverType   string
+	rerankerEnabled bool
+
+	loaderComp    *loaderComponent
+	splitterComp  *splitterComponent
+	indexerComp   *indexerComponent
+	retrieverComp *retrieverComponent
+	rerankerComp  *rerankerComponent
+}
+
+func NewRAGComponent(
+	embedderModel string,
+	loader runtime.Component,
+	splitter runtime.Component,
+	indexer runtime.Component,
+	retriever runtime.Component,
+	reranker runtime.Component,
+) (runtime.Component, error) {
+	loaderComp, ok := loader.(*loaderComponent)
+	if !ok {
+		return nil, fmt.Errorf("invalid loader component type")
+	}
+	splitterComp, ok := splitter.(*splitterComponent)
+	if !ok {
+		return nil, fmt.Errorf("invalid splitter component type")
+	}
+	indexerComp, ok := indexer.(*indexerComponent)
+	if !ok {
+		return nil, fmt.Errorf("invalid indexer component type")
+	}
+	retrieverComp, ok := retriever.(*retrieverComponent)
+	if !ok {
+		return nil, fmt.Errorf("invalid retriever component type")
+	}
+	rerankerComp, ok := reranker.(*rerankerComponent)
+	if !ok {
+		return nil, fmt.Errorf("invalid reranker component type")
+	}
+
+	return &RAGComponent{
+		embedderModel:   embedderModel,
+		loaderType:      loaderComp.loaderType,
+		splitterType:    splitterComp.splitterType,
+		indexerType:     indexerComp.indexerType,
+		retrieverType:   retrieverComp.retrieverType,
+		rerankerEnabled: rerankerComp.enabled,
+		loaderComp:      loaderComp,
+		splitterComp:    splitterComp,
+		indexerComp:     indexerComp,
+		retrieverComp:   retrieverComp,
+		rerankerComp:    rerankerComp,
+	}, nil
 }
 
 func (r *RAGComponent) Name() string {
@@ -244,137 +97,57 @@ func (r *RAGComponent) SetName(name string) {
 }
 
 func (r *RAGComponent) Validate() error {
-	return r.cfg.Validate()
+	if r.loaderComp == nil {
+		return fmt.Errorf("loader component is required")
+	}
+	if r.splitterComp == nil {
+		return fmt.Errorf("splitter component is required")
+	}
+	if r.indexerComp == nil {
+		return fmt.Errorf("indexer component is required")
+	}
+	if r.retrieverComp == nil {
+		return fmt.Errorf("retriever component is required")
+	}
+	if r.rerankerComp == nil {
+		return fmt.Errorf("reranker component is required")
+	}
+	if r.embedderModel == "" {
+		return fmt.Errorf("embedder model is required")
+	}
+	return nil
 }
 
 func (r *RAGComponent) Init(rt *runtime.Runtime) error {
-	// 获取 embedder 模型名称
-	var embedderSpec EmbedderSpec
-	if err := r.cfg.Embedder.Spec.Decode(&embedderSpec); err != nil {
-		return fmt.Errorf("failed to parse embedder spec: %w", err)
-	}
-	r.embedderName = embedderSpec.Model
-
-	// 创建子组件
-	r.loader = newLoaderComponent(r.cfg.Loader)
-	r.splitter = newSplitterComponent(r.cfg.Splitter)
-	r.indexer = newIndexerComponent(r.cfg.Indexer, r.embedderName)
-	r.retriever = newRetrieverComponent(r.cfg.Retriever, r.embedderName)
-	r.reranker = newRerankerComponent(
-		getRerankerEnabled(r.cfg.Reranker),
-		getRerankerModel(r.cfg.Reranker),
-		getRerankerAPIKey(r.cfg.Reranker),
-	)
-
-	// 初始化所有子组件
-	components := []runtime.Component{r.loader, r.splitter, r.indexer, r.retriever, r.reranker}
+	components := []runtime.Component{r.loaderComp, r.splitterComp, r.indexerComp, r.retrieverComp, r.rerankerComp}
 	for _, comp := range components {
 		if err := comp.Init(rt); err != nil {
 			return fmt.Errorf("failed to init %s: %w", comp.Name(), err)
 		}
 	}
 
+	r.Rag = &RAG{
+		Loader:    r.loaderComp.get(),
+		Splitter:  r.splitterComp.get(),
+		Indexer:   r.indexerComp.get(),
+		Retriever: r.retrieverComp.get(),
+		Reranker:  r.rerankerComp.get(),
+	}
+
 	rt.GetLogger().Info("RAG component initialized",
-		"embedder", r.embedderName,
-		"indexer", r.cfg.Indexer.Type,
-		"retriever", r.cfg.Retriever.Type,
-		"splitter", r.cfg.Splitter.Type,
-		"reranker_enabled", r.cfg.Reranker != nil)
+		"embedder", r.embedderModel,
+		"indexer", r.indexerType,
+		"retriever", r.retrieverType,
+		"splitter", r.splitterType,
+		"reranker_enabled", r.rerankerEnabled)
 
 	return nil
 }
 
 func (r *RAGComponent) Start() error {
-	components := []runtime.Component{r.loader, r.splitter, r.indexer, r.retriever, r.reranker}
-	for _, comp := range components {
-		if err := comp.Start(); err != nil {
-			return fmt.Errorf("failed to start %s: %w", comp.Name(), err)
-		}
-	}
 	return nil
 }
 
 func (r *RAGComponent) Stop() error {
-	components := []runtime.Component{r.reranker, r.retriever, r.indexer, r.splitter, r.loader}
-	for _, comp := range components {
-		if err := comp.Stop(); err != nil {
-			return fmt.Errorf("failed to stop %s: %w", comp.Name(), err)
-		}
-	}
 	return nil
-}
-
-// Getter 方法
-func (r *RAGComponent) GetLoader() document.Loader {
-	if r.loader != nil {
-		return r.loader.get()
-	}
-	return nil
-}
-
-func (r *RAGComponent) GetSplitter() document.Transformer {
-	if r.splitter != nil {
-		return r.splitter.get()
-	}
-	return nil
-}
-
-func (r *RAGComponent) GetIndexer() indexer.Indexer {
-	if r.indexer != nil {
-		return r.indexer.get()
-	}
-	return nil
-}
-
-func (r *RAGComponent) GetRetriever() retriever.Retriever {
-	if r.retriever != nil {
-		return r.retriever.get()
-	}
-	return nil
-}
-
-func (r *RAGComponent) GetReranker() Reranker {
-	if r.reranker != nil {
-		return r.reranker.get()
-	}
-	return nil
-}
-
-func (r *RAGComponent) GetEmbedderName() string {
-	return r.embedderName
-}
-
-// ============= 辅助函数 =============
-
-func getRerankerEnabled(cfg *config.Config) bool {
-	if cfg == nil {
-		return false
-	}
-	var spec RerankerSpec
-	if err := cfg.Spec.Decode(&spec); err != nil {
-		return false
-	}
-	return spec.Enabled
-}
-
-func getRerankerModel(cfg *config.Config) string {
-	if cfg == nil {
-		return ""
-	}
-	var spec RerankerSpec
-	if err := cfg.Spec.Decode(&spec); err != nil {
-		return ""
-	}
-	return spec.Model
-}
-
-func getRerankerAPIKey(cfg *config.Config) string {
-	if cfg == nil {
-		return ""
-	}
-	var spec RerankerSpec
-	if err := cfg.Spec.Decode(&spec); err != nil {
-		return ""
-	}
-	return spec.APIKey
 }

@@ -2,7 +2,7 @@ package rag
 
 import (
 	"context"
-	
+	"dubbo-admin-ai/runtime"
 	"dubbo-admin-ai/utils"
 	"fmt"
 	"sync"
@@ -15,6 +15,57 @@ import (
 	"github.com/firebase/genkit/go/plugins/localvec"
 	"github.com/firebase/genkit/go/plugins/pinecone"
 )
+
+// indexerComponent Indexer 组件包装器
+type indexerComponent struct {
+	indexerType   string
+	embedderModel string
+	targetIndex   string
+	batchSize     int
+	indexer       indexer.Indexer
+}
+
+func NewIndexerComponent(indexerType, embedderModel string, targetIndex string, batchSize int) (runtime.Component, error) {
+	return &indexerComponent{
+		indexerType:   indexerType,
+		embedderModel: embedderModel,
+		targetIndex:   targetIndex,
+		batchSize:     batchSize,
+	}, nil
+}
+
+func (c *indexerComponent) Name() string { return "indexer" }
+
+func (c *indexerComponent) Validate() error { return nil }
+
+func (c *indexerComponent) Init(rt *runtime.Runtime) error {
+	registry := rt.GetGenkitRegistry()
+	if registry == nil {
+		return fmt.Errorf("genkit registry not initialized")
+	}
+
+	idx, err := newIndexerByType(registry, c.indexerType, c.embedderModel, c.targetIndex, c.batchSize)
+	if err != nil {
+		return fmt.Errorf("failed to create indexer: %w", err)
+	}
+	c.indexer = idx
+
+	rt.GetLogger().Info("Indexer component initialized",
+		"type", c.indexerType,
+		"embedder", c.embedderModel,
+		"target_index", c.targetIndex,
+		"batch_size", c.batchSize,
+	)
+	return nil
+}
+
+func (c *indexerComponent) Start() error { return nil }
+
+func (c *indexerComponent) Stop() error { return nil }
+
+func (c *indexerComponent) get() indexer.Indexer {
+	return c.indexer
+}
 
 // --- Indexer ---
 type PineconeIndexer struct {
@@ -37,7 +88,7 @@ func newPineconeIndexer(g *genkit.Genkit, embedderModel string, targetIndex stri
 
 func (idx *PineconeIndexer) Store(ctx context.Context, docs []*schema.Document, opts ...indexer.Option) ([]string, error) {
 	// Handle options
-	implOpts := indexer.GetImplSpecificOptions(&CommonIndexerOptions{}, opts...)
+	implOpts := indexer.GetImplSpecificOptions(&RAGOptions{}, opts...)
 	namespace := implOpts.Namespace
 	effectiveTarget := idx.target
 	if implOpts.TargetIndex != nil && *implOpts.TargetIndex != "" {
@@ -127,7 +178,7 @@ func newDevIndexer(g *genkit.Genkit, embedderModel string, targetIndex string, b
 }
 
 func (idx *DevIndexer) Store(ctx context.Context, docs []*schema.Document, opts ...indexer.Option) ([]string, error) {
-	implOpts := indexer.GetImplSpecificOptions(&CommonIndexerOptions{}, opts...)
+	implOpts := indexer.GetImplSpecificOptions(&RAGOptions{}, opts...)
 	_ = implOpts.Namespace
 	effectiveTarget := idx.target
 	if implOpts.TargetIndex != nil && *implOpts.TargetIndex != "" {
@@ -200,4 +251,21 @@ func (idx *DevIndexer) Store(ctx context.Context, docs []*schema.Document, opts 
 		ids[i] = doc.ID
 	}
 	return ids, nil
+}
+
+func newIndexerByType(g *genkit.Genkit, indexerType, embedderModel string, targetIndex string, batchSize int) (indexer.Indexer, error) {
+	if targetIndex == "" {
+		targetIndex = DefaultIndexerTargetIndex
+	}
+	if batchSize <= 0 {
+		batchSize = DefaultIndexerBatchSize
+	}
+	switch indexerType {
+	case "dev":
+		return newDevIndexer(g, embedderModel, targetIndex, batchSize), nil
+	case "pinecone":
+		return newPineconeIndexer(g, embedderModel, targetIndex, batchSize), nil
+	default:
+		return nil, fmt.Errorf("unsupported indexer type: %s", indexerType)
+	}
 }

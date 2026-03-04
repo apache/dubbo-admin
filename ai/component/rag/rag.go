@@ -19,6 +19,12 @@ type RAG struct {
 	Reranker  Reranker
 }
 
+// RetrieveResult defines the unified result structure for RAG queries.
+type RetrieveResult struct {
+	Content        string  `json:"content"`
+	RelevanceScore float64 `json:"relevance_score"`
+}
+
 func (s *RAG) Split(ctx context.Context, docs []*schema.Document) ([]*schema.Document, error) {
 	if s.Splitter == nil {
 		return docs, nil
@@ -37,7 +43,7 @@ func (s *RAG) Index(ctx context.Context, namespace string, docs []*schema.Docume
 	return s.Indexer.Store(ctx, docs, all...)
 }
 
-func (s *RAG) Retrieve(ctx context.Context, namespace string, queries []string, opts ...RetrieveOption) (map[string][]*RetrieveResult, error) {
+func (s *RAG) Retrieve(ctx context.Context, namespace string, queries []string, opts ...Option) (map[string][]*RetrieveResult, error) {
 	if s.Retriever == nil {
 		return nil, fmt.Errorf("retriever is nil")
 	}
@@ -45,7 +51,7 @@ func (s *RAG) Retrieve(ctx context.Context, namespace string, queries []string, 
 		return map[string][]*RetrieveResult{}, nil
 	}
 
-	var co CallOptions
+	var co RAGOptions
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&co)
@@ -53,15 +59,15 @@ func (s *RAG) Retrieve(ctx context.Context, namespace string, queries []string, 
 	}
 
 	retrieveOpts := make([]retriever.Option, 0, 2)
-	if co.TopK != nil {
-		retrieveOpts = append(retrieveOpts, retriever.WithTopK(*co.TopK))
+	if co.RetrieveTopK != nil {
+		retrieveOpts = append(retrieveOpts, retriever.WithTopK(*co.RetrieveTopK))
 	}
 	if co.TargetIndex != nil && *co.TargetIndex != "" {
 		retrieveOpts = append(retrieveOpts, WithRetrieverImplTargetIndex(*co.TargetIndex))
 	}
 	effectiveNamespace := namespace
-	if co.Namespace != nil {
-		effectiveNamespace = *co.Namespace
+	if co.Namespace != "" {
+		effectiveNamespace = co.Namespace
 	}
 	if effectiveNamespace != "" {
 		retrieveOpts = append(retrieveOpts, WithRetrieverImplNamespace(effectiveNamespace))

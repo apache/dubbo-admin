@@ -3,7 +3,7 @@ spec:
   embedder:
     type: genkit
     spec:
-      model: dashscope/qwen3-embedding
+      model: dashscope/text-embedding-v4
 
   loader:
     type: local
@@ -16,14 +16,14 @@ spec:
       overlap_size: 100
 
   indexer:
-    type: dev
+    type: pinecone
     spec:
       storage_path: "../../data/ai/index"
       index_format: sqlite
       dimension: 1536
 
   retriever:
-    type: dev
+    type: pinecone
     spec:
       storage_path: "../../data/ai/index"
       index_format: sqlite
@@ -32,6 +32,6 @@ spec:
   reranker:
     type: cohere
     spec:
-      enabled: true
+      enabled: false
       model: rerank-english-v3.0
       api_key: "${COHERE_API_KEY}"

@@ -19,6 +19,7 @@ package rag
 
 import (
 	"context"
+	"dubbo-admin-ai/runtime"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -162,5 +163,53 @@ func WithLoaderTargetExtensions(exts ...string) LoaderOption {
 			norm = append(norm, e)
 		}
 		o.TargetExtensions = norm
+	}
+}
+
+// loaderComponent Loader 组件包装器
+type loaderComponent struct {
+	loaderType string
+	loader     document.Loader
+}
+
+func NewLoaderComponent(loaderType string) (runtime.Component, error) {
+	if loaderType == "" {
+		loaderType = "local"
+	}
+	return &loaderComponent{loaderType: loaderType}, nil
+}
+
+func (c *loaderComponent) Name() string { return "loader" }
+
+func (c *loaderComponent) Validate() error { return nil }
+
+func (c *loaderComponent) Init(rt *runtime.Runtime) error {
+	loader, err := newLoaderByType(context.Background(), c.loaderType)
+	if err != nil {
+		return fmt.Errorf("failed to create loader: %w", err)
+	}
+	c.loader = loader
+	rt.GetLogger().Info("Loader component initialized", "type", c.loaderType)
+	return nil
+}
+
+func (c *loaderComponent) Start() error { return nil }
+
+func (c *loaderComponent) Stop() error { return nil }
+
+func (c *loaderComponent) get() document.Loader {
+	return c.loader
+}
+
+func newLocalLoader(ctx context.Context) (document.Loader, error) {
+	return newLocalFileLoader(ctx)
+}
+
+func newLoaderByType(ctx context.Context, loaderType string) (document.Loader, error) {
+	switch loaderType {
+	case "", "local":
+		return newLocalLoader(ctx)
+	default:
+		return nil, fmt.Errorf("unsupported loader type: %s", loaderType)
 	}
 }
