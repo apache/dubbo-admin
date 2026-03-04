@@ -120,3 +120,26 @@ func (s *BaseServiceReq) Query(c *gin.Context) error {
 func (s *BaseServiceReq) ServiceKey() string {
 	return s.ServiceName + constants.ColonSeparator + s.Version + constants.ColonSeparator + s.Group
 }
+
+type ServiceMethodsReq struct {
+	ServiceName     string `form:"serviceName" json:"serviceName"`
+	Group           string `form:"group" json:"group"`
+	Version         string `form:"version" json:"version"`
+	Mesh            string `form:"mesh" json:"mesh"`
+	ProviderAppName string `form:"providerAppName" json:"providerAppName"`
+}
+
+func (s *ServiceMethodsReq) Query(c *gin.Context) error {
+	s.ServiceName = c.Query("serviceName")
+	if s.ServiceName == "" {
+		return fmt.Errorf("service name is empty")
+	}
+	s.Mesh = c.Query("mesh")
+	if s.Mesh == "" {
+		return fmt.Errorf("mesh is empty")
+	}
+	s.Group = c.Query("group")
+	s.Version = c.Query("version")
+	s.ProviderAppName = c.Query("providerAppName")
+	return nil
+}

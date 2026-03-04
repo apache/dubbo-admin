@@ -18,6 +18,7 @@
 package service
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 
@@ -158,6 +159,68 @@ func ToServiceSearchRespByConsumer(res *meshresource.ServiceConsumerMetadataReso
 		Version:         res.Spec.Version,
 		ConsumerAppName: res.Spec.ConsumerAppName,
 	}
+}
+
+func GetServiceMethodNames(ctx consolectx.Context, req model.ServiceMethodsReq) ([]string, error) {
+	indexes := map[string]string{
+		index.ByMeshIndex:                  req.Mesh,
+		index.ByServiceProviderServiceName: req.ServiceName,
+	}
+	if req.ProviderAppName != "" {
+		indexes[index.ByServiceProviderAppName] = req.ProviderAppName
+	}
+
+	metadataList, err := manager.ListByIndexes[*meshresource.ServiceProviderMetadataResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceProviderMetadataKind,
+		indexes,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	methodSet := make(map[string]struct{})
+	for _, metadata := range metadataList {
+		if metadata == nil || metadata.Spec == nil {
+			continue
+		}
+		if req.Group != "" && metadata.Spec.Group != req.Group {
+			continue
+		}
+		if req.Version != "" && metadata.Spec.Version != req.Version {
+			continue
+		}
+		if req.ProviderAppName != "" && metadata.Spec.ProviderAppName != req.ProviderAppName {
+			continue
+		}
+
+		for _, method := range metadata.Spec.Methods {
+			methodName := strings.TrimSpace(method.Name)
+			if methodName == "" {
+				continue
+			}
+			methodSet[methodName] = struct{}{}
+		}
+		// Fallback for metadata that only carries comma separated methods in parameters.
+		if len(metadata.Spec.Methods) == 0 && metadata.Spec.Parameters != nil {
+			if methodsRaw := strings.TrimSpace(metadata.Spec.Parameters["methods"]); methodsRaw != "" {
+				for _, methodName := range strings.Split(methodsRaw, ",") {
+					methodName = strings.TrimSpace(methodName)
+					if methodName == "" {
+						continue
+					}
+					methodSet[methodName] = struct{}{}
+				}
+			}
+		}
+	}
+
+	methods := make([]string, 0, len(methodSet))
+	for methodName := range methodSet {
+		methods = append(methods, methodName)
+	}
+	sort.Strings(methods)
+	return methods, nil
 }
 
 func GetServiceTimeoutConfig(ctx consolectx.Context, req model.BaseServiceReq) (int32, error) {

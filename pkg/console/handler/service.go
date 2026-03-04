@@ -69,6 +69,24 @@ func GetServiceTabDistribution(ctx consolectx.Context) gin.HandlerFunc {
 	}
 }
 
+func GetServiceMethodNames(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := model.ServiceMethodsReq{}
+		if err := req.Query(c); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		methodNames, err := service.GetServiceMethodNames(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(methodNames))
+	}
+}
+
 func ServiceConfigTimeoutGET(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req := model.BaseServiceReq{}
