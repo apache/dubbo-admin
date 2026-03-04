@@ -1,0 +1,37 @@
+type: rag
+spec:
+  embedder:
+    type: genkit
+    spec:
+      model: dashscope/qwen3-embedding
+
+  loader:
+    type: local
+    spec: {}
+
+  splitter:
+    type: recursive
+    spec:
+      chunk_size: 1000
+      overlap_size: 100
+
+  indexer:
+    type: dev
+    spec:
+      storage_path: "../../data/ai/index"
+      index_format: sqlite
+      dimension: 1536
+
+  retriever:
+    type: dev
+    spec:
+      storage_path: "../../data/ai/index"
+      index_format: sqlite
+      dimension: 1536
+
+  reranker:
+    type: cohere
+    spec:
+      enabled: true
+      model: rerank-english-v3.0
+      api_key: "${COHERE_API_KEY}"

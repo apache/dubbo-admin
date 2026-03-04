@@ -1,0 +1,58 @@
+type: models
+spec:
+  default_model: "dashscope/qwen-max"
+  default_embedding: "dashscope/qwen3-embedding"
+  providers:
+    dashscope:
+      api_key: "${DASHSCOPE_API_KEY}"
+      base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+      models:
+        - name: "qwen-max"
+          key: "qwen-max"
+          type: "chat"
+        - name: "qwen-plus"
+          key: "qwen-plus"
+          type: "chat"
+        - name: "qwen-flash"
+          key: "qwen-flash"
+          type: "chat"
+        - name: "qwen3-coder"
+          key: "qwen3-coder-plus"
+          type: "code"
+      embedders:
+        - name: "qwen3-embedding"
+          key: "text-embedding-v4"
+          type: "text"
+          dimensions: 1024
+
+    gemini:
+      api_key: "${GEMINI_API_KEY}"
+      base_url: "https://generativelanguage.googleapis.com/v1beta"
+      models:
+        - name: "gemini-pro"
+          key: "gemini-pro"
+          type: "chat"
+        - name: "gemini-pro-vision"
+          key: "gemini-pro-vision"
+          type: "multimodal"
+      embedders:
+        - name: "gemini-embedding"
+          key: "text-embedding-004"
+          type: "text"
+          dimensions: 768
+
+    siliconflow:
+      api_key: "${SILICONFLOW_API_KEY}"
+      base_url: "https://api.siliconflow.cn/v1"
+      models:
+        - name: "gpt-3.5-turbo"
+          key: "gpt-3.5-turbo"
+          type: "chat"
+        - name: "gpt-4"
+          key: "gpt-4"
+          type: "chat"
+      embedders:
+        - name: "text-embedding-ada-002"
+          key: "text-embedding-ada-002"
+          type: "text"
+          dimensions: 1536

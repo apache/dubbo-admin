@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"dubbo-admin-ai/tools"
+	toolEngine "dubbo-admin-ai/component/tools/engine"
 
 	"github.com/firebase/genkit/go/ai"
 )
@@ -22,11 +22,11 @@ type UserInput struct {
 }
 
 type ThinkInput struct {
-	UserInput     *UserInput          `json:"user_input,omitempty"`
-	SessionID     string              `json:"session_id"`
-	ToolResponses []tools.ToolOutput  `json:"tool_responses,omitempty"`
-	Observation   *Observation        `json:"observation,omitempty"`
-	UsageInfo     *ai.GenerationUsage `json:"usage,omitempty" jsonschema_description:"DO NOT USE THIS FIELD, IT IS FOR INTERNAL USAGE ONLY"`
+	UserInput     *UserInput              `json:"user_input,omitempty"`
+	SessionID     string                  `json:"session_id"`
+	ToolResponses []toolEngine.ToolOutput `json:"tool_responses,omitempty"`
+	Observation   *Observation            `json:"observation,omitempty"`
+	UsageInfo     *ai.GenerationUsage     `json:"usage,omitempty" jsonschema_description:"DO NOT USE THIS FIELD, IT IS FOR INTERNAL USAGE ONLY"`
 }
 
 func (i ThinkInput) Validate(T reflect.Type) error {
@@ -76,9 +76,9 @@ func (ta ThinkOutput) String() string {
 }
 
 type ToolOutputs struct {
-	Outputs   []tools.ToolOutput  `json:"tool_responses"`
-	Thought   string              `json:"thought,omitempty"`
-	UsageInfo *ai.GenerationUsage `json:"usage,omitempty" jsonschema_description:"DO NOT USE THIS FIELD, IT IS FOR INTERNAL USAGE ONLY"`
+	Outputs   []toolEngine.ToolOutput `json:"tool_responses"`
+	Thought   string                  `json:"thought,omitempty"`
+	UsageInfo *ai.GenerationUsage     `json:"usage,omitempty" jsonschema_description:"DO NOT USE THIS FIELD, IT IS FOR INTERNAL USAGE ONLY"`
 }
 
 func (to ToolOutputs) Validate(T reflect.Type) error {
@@ -92,7 +92,7 @@ func (to ToolOutputs) Usage() *ai.GenerationUsage {
 	return to.UsageInfo
 }
 
-func (to *ToolOutputs) Add(output *tools.ToolOutput) {
+func (to *ToolOutputs) Add(output *toolEngine.ToolOutput) {
 	to.Outputs = append(to.Outputs, *output)
 }
 

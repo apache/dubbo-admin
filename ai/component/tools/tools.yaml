@@ -1,0 +1,8 @@
+type: tools
+spec:
+  enable_mock_tools: true
+  enable_internal_tools: true
+  enable_mcp_tools: false  # 测试环境禁用MCP工具，避免依赖外部服务
+  mcp_host_name: "mcp_host"
+  mcp_timeout: 30
+  mcp_max_retries: 3

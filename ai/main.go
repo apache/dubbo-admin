@@ -5,75 +5,94 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"dubbo-admin-ai/agent/react"
-	"dubbo-admin-ai/manager"
-	"dubbo-admin-ai/plugins/dashscope"
-	"dubbo-admin-ai/server"
-
-	"github.com/gin-gonic/gin"
+	"dubbo-admin-ai/component/agent/react"
+	"dubbo-admin-ai/component/logger"
+	"dubbo-admin-ai/component/memory"
+	"dubbo-admin-ai/component/models"
+	compRag "dubbo-admin-ai/component/rag"
+	"dubbo-admin-ai/component/server"
+	"dubbo-admin-ai/component/tools"
+	"dubbo-admin-ai/runtime"
 )
 
+// registerFactorys explicitly registers all component factories
+// Registration order determines component initialization order
+func registerFactorys(rt *runtime.Runtime) {
+	// Core components (no dependencies)
+	rt.RegisterFactory("logger", logger.LoggerFactory)
+	rt.RegisterFactory("memory", memory.MemoryFactory)
+
+	// Model components (depend on logger)
+	rt.RegisterFactory("models", models.ModelsFactory)
+
+	// Tools components (depend on models, memory)
+	rt.RegisterFactory("tools", tools.ToolsFactory)
+
+	// RAG components (depend on models)
+	rt.RegisterFactory("rag", compRag.RAGFactory)
+
+	// Server components (depend on all other components)
+	rt.RegisterFactory("server", server.ServerFactory)
+
+	// Agent components (depend on tools, rag)
+	rt.RegisterFactory("agent", react.AgentFactory)
+}
+
 func main() {
-	port := flag.Int("port", 8880, "Port for the AI agent server")
-	mode := flag.String("mode", "release", "Server mode: dev or prod")
-	envPath := flag.String("env", "./.env", "Path to the .env file")
+	configPath := flag.String("config", "config.yaml", "Path to the AI configuration file")
 	flag.Parse()
 
-	var logger *slog.Logger
-	switch *mode {
-	case "release":
-		logger = manager.ProductionLogger()
-		gin.SetMode(gin.ReleaseMode)
-	case "dev":
-		logger = manager.DevLogger()
-		gin.SetMode(gin.DebugMode)
-	}
-
-	reActAgent, err := react.Create(manager.Registry(dashscope.Qwen3_coder.Key(), *envPath, logger))
+	rt, err := runtime.Bootstrap(*configPath, registerFactorys)
 	if err != nil {
-		logger.Error("Failed to create ReAct agent", "error", err)
-		return
+		log.Fatalf("Failed to initialize runtime: %v", err)
 	}
+	rt.GetLogger().Info("🤖 Dubbo Admin AI Agent Server initialized successfully")
 
-	apiRouter := server.NewRouter(reActAgent)
-
-	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", *port),
-		Handler: apiRouter.GetEngine(),
-	}
-
-	// 启动服务器
-	go func() {
-		fmt.Printf("🤖 Dubbo Admin AI Agent Server starting on port %d...\n", *port)
-		fmt.Printf("📖 API Documentation: http://localhost:%d/docs\n", *port)
-		fmt.Printf("🔍 Health Check: http://localhost:%d/api/v1/ai/health\n", *port)
-
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Failed to start server: %v", err)
-		}
-	}()
-
-	// 等待中断信号以优雅关闭服务器
+	// Wait for interrupt signal to gracefully shutdown server
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	fmt.Println("🛑 Shutting down server...")
 
-	// 5秒超时的优雅关闭
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
-	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+	// Stop all components
+	if err := stopComponents(rt); err != nil {
+		log.Printf("Warning: Error stopping components: %v", err)
 	}
 
 	fmt.Println("✅ Server exited")
+}
+
+func stopComponents(rt *runtime.Runtime) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	done := make(chan error)
+
+	go func() {
+		rt.Components.Range(func(key, value interface{}) bool {
+			comp := value.(runtime.Component)
+
+			if err := comp.Stop(); err != nil {
+				rt.GetLogger().Error("Failed to stop component",
+					"name", comp.Name(),
+					"error", err)
+			}
+
+			return true
+		})
+		done <- nil
+	}()
+
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("shutdown timeout")
+	case <-done:
+		return nil
+	}
 }

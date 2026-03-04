@@ -6,10 +6,7 @@ import (
 	"log"
 	"testing"
 
-	"dubbo-admin-ai/agent/react"
-	"dubbo-admin-ai/config"
-	"dubbo-admin-ai/manager"
-	"dubbo-admin-ai/plugins/dashscope"
+	"dubbo-admin-ai/component/agent/react"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/core"
@@ -42,9 +39,19 @@ func defineWeatherFlow(g *genkit.Genkit) *core.Flow[WeatherInput, string, struct
 		})
 }
 
+// initTestRegistry 创建测试用的 registry
+func initTestRegistry() *genkit.Genkit {
+	ctx := context.Background()
+	g := genkit.Init(ctx)
+	return g
+}
+
 func TestTextGeneration(t *testing.T) {
-	g := manager.Registry(dashscope.Qwen3.Key(), config.PROJECT_ROOT+"/.env", nil)
-	_, _ = react.Create(g)
+	g := initTestRegistry()
+
+	// 创建 ReAct Agent（使用默认配置）
+	stagesCfg := react.ReActDefaultSpec().Stages
+	_, _ = react.Create(g, "./prompts", stagesCfg, nil)
 	ctx := context.Background()
 
 	resp, err := genkit.GenerateText(ctx, g, ai.WithPrompt("Hello, Who are you?"))
@@ -57,8 +64,11 @@ func TestTextGeneration(t *testing.T) {
 }
 
 func TestWeatherFlowRun(t *testing.T) {
-	g := manager.Registry(dashscope.Qwen3.Key(), config.PROJECT_ROOT+"/.env", nil)
-	_, _ = react.Create(g)
+	g := initTestRegistry()
+
+	// 创建 ReAct Agent（使用默认配置）
+	stagesCfg := react.ReActDefaultSpec().Stages
+	_, _ = react.Create(g, "./prompts", stagesCfg, nil)
 	ctx := context.Background()
 
 	flow := defineWeatherFlow(g)
