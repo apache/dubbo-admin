@@ -26,9 +26,8 @@ import (
 
 // LoggerFactory creates a logger component (explicit registration, no init)
 func LoggerFactory(spec *yaml.Node) (runtime.Component, error) {
-	// Parse configuration
-	cfg := DefaultLoggerSpec()
-	if err := spec.Decode(cfg); err != nil {
+	var cfg LoggerSpec
+	if err := spec.Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to decode logger spec: %w", err)
 	}
 

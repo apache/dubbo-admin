@@ -59,6 +59,19 @@ func (a *AgentComponent) Name() string {
 	return "agent"
 }
 
+func (a *AgentComponent) Validate() error {
+	cfg := AgentSpec{
+		AgentType:              a.agentType,
+		DefaultModel:           a.defaultModel,
+		PromptBasePath:         a.promptBasePath,
+		MaxIterations:          a.maxIterations,
+		StageChannelBufferSize: a.stageChannelBufferSize,
+		MCPHostName:            a.mcpHostName,
+		Stages:                 a.stages,
+	}
+	return cfg.Validate()
+}
+
 func (a *AgentComponent) Init(rt *runtime.Runtime) error {
 	toolsComp, err := rt.GetComponent("tools")
 	if err != nil {

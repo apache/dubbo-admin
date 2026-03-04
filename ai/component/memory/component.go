@@ -28,18 +28,31 @@ import (
 // Current implementation uses HistoryMemory directly
 type MemoryComponent struct {
 	historyKey HistoryKey
+	maxTurns   int
 	memoryCtx  context.Context
 	memory     *HistoryMemory
 }
 
-func NewMemoryComponent(historyKey HistoryKey) (runtime.Component, error) {
+func NewMemoryComponent(historyKey HistoryKey, maxTurns ...int) (runtime.Component, error) {
+	limit := 100
+	if len(maxTurns) > 0 {
+		limit = maxTurns[0]
+	}
 	return &MemoryComponent{
 		historyKey: historyKey,
+		maxTurns:   limit,
 	}, nil
 }
 
 func (m *MemoryComponent) Name() string {
 	return "memory"
+}
+
+func (m *MemoryComponent) Validate() error {
+	if m.maxTurns <= 0 {
+		return fmt.Errorf("max_turns must be greater than 0")
+	}
+	return nil
 }
 
 func (m *MemoryComponent) Init(rt *runtime.Runtime) error {

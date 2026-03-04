@@ -23,11 +23,11 @@ import (
 	"dubbo-admin-ai/runtime"
 	"fmt"
 
+	"github.com/cloudwego/eino-ext/components/document/transformer/splitter/markdown"
+	"github.com/cloudwego/eino-ext/components/document/transformer/splitter/recursive"
 	"github.com/cloudwego/eino/components/document"
 	"github.com/cloudwego/eino/components/indexer"
 	"github.com/cloudwego/eino/components/retriever"
-	"github.com/cloudwego/eino-ext/components/document/transformer/splitter/markdown"
-	"github.com/cloudwego/eino-ext/components/document/transformer/splitter/recursive"
 	"github.com/firebase/genkit/go/genkit"
 	"gopkg.in/yaml.v3"
 )
@@ -37,9 +37,6 @@ func RAGFactory(spec *yaml.Node) (runtime.Component, error) {
 	var cfg RAGSpec
 	if err := spec.Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to decode rag spec: %w", err)
-	}
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid rag config: %w", err)
 	}
 	return &RAGComponent{cfg: &cfg}, nil
 }
@@ -140,6 +137,7 @@ func BuildRAGFromSpec(ctx context.Context, g *genkit.Genkit, cfg *RAGSpec) (*RAG
 	if cfg == nil {
 		return nil, fmt.Errorf("rag config is nil")
 	}
+
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}

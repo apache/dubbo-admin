@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	compRag "dubbo-admin-ai/component/rag"
+	appconfig "dubbo-admin-ai/config"
 	"flag"
 	"fmt"
 	"log"
@@ -16,7 +17,6 @@ import (
 	"github.com/firebase/genkit/go/plugins/googlegenai"
 	"github.com/firebase/genkit/go/plugins/pinecone"
 	"github.com/openai/openai-go/option"
-	"gopkg.in/yaml.v3"
 )
 
 type IndexCommand struct {
@@ -159,14 +159,18 @@ func getNamespace(namespace, directory string) string {
 
 // loadRAGConfig loads RAG configuration from a YAML file
 func loadRAGConfig(configPath string) (*compRag.RAGSpec, error) {
-	data, err := os.ReadFile(configPath)
+	loader := appconfig.NewLoader("config.yaml")
+	componentCfg, err := loader.LoadComponent(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		return nil, err
+	}
+	if componentCfg.Type != "rag" {
+		return nil, fmt.Errorf("structural error: component type must be rag, got %s", componentCfg.Type)
 	}
 
 	var cfg compRag.RAGSpec
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", err)
+	if err := componentCfg.Spec.Decode(&cfg); err != nil {
+		return nil, fmt.Errorf("failed to decode rag config: %w", err)
 	}
 
 	return &cfg, nil

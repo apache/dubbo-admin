@@ -100,32 +100,25 @@ func ReActDefaultSpec() *AgentSpec {
 
 // Validate validates the configuration
 func (c *AgentSpec) Validate() error {
-	// Validate agent type
 	if c.AgentType == "" {
-		c.AgentType = "react"
+		return fmt.Errorf("agent_type is required")
 	}
-
-	// Validate default model
 	if c.DefaultModel == "" {
-		c.DefaultModel = "qwen-max"
+		return fmt.Errorf("default_model is required")
 	}
-
-	// Validate prompt base path
 	if c.PromptBasePath == "" {
-		c.PromptBasePath = "./prompts"
+		return fmt.Errorf("prompt_base_path is required")
 	}
-
-	// Validate maximum iterations
 	if c.MaxIterations <= 0 {
-		c.MaxIterations = 10
+		return fmt.Errorf("max_iterations must be greater than 0")
 	}
-
-	// Validate channel buffer size
 	if c.StageChannelBufferSize <= 0 {
-		c.StageChannelBufferSize = 5
+		return fmt.Errorf("stage_channel_buffer_size must be greater than 0")
+	}
+	if len(c.Stages) == 0 {
+		return fmt.Errorf("stages is required")
 	}
 
-	// Validate stage configuration
 	for i, stage := range c.Stages {
 		if err := stage.Validate(i); err != nil {
 			return err
@@ -143,9 +136,6 @@ func (s *StageInfo) Validate(index int) error {
 	}
 
 	// Validate flow type
-	if s.FlowType == "" {
-		s.FlowType = "think" // Default to think
-	}
 	validFlowTypes := map[string]bool{
 		"think":    true,
 		"act":      true,
@@ -161,19 +151,19 @@ func (s *StageInfo) Validate(index int) error {
 	}
 
 	if s.Temperature <= 0 || s.Temperature > 2.0 {
-		s.Temperature = 0.7
+		return fmt.Errorf("stage[%d]: temperature must be in (0, 2.0]", index)
 	}
 
-	if s.TopP > 0 && (s.TopP <= 0 || s.TopP > 1.0) {
-		s.TopP = 0.9
+	if s.TopP <= 0 || s.TopP > 1.0 {
+		return fmt.Errorf("stage[%d]: top_p must be in (0, 1.0]", index)
 	}
 
 	if s.MaxTokens <= 0 {
-		s.MaxTokens = 4096
+		return fmt.Errorf("stage[%d]: max_tokens must be greater than 0", index)
 	}
 
 	if s.Timeout <= 0 {
-		s.Timeout = 30
+		return fmt.Errorf("stage[%d]: timeout must be greater than 0", index)
 	}
 
 	return nil

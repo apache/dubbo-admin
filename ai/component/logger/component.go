@@ -19,6 +19,7 @@ package logger
 
 import (
 	"dubbo-admin-ai/runtime"
+	"fmt"
 	"log/slog"
 
 	"github.com/dusted-go/logging/prettylog"
@@ -40,6 +41,15 @@ func NewLoggerComponent(level string) (runtime.Component, error) {
 // Name returns the component name
 func (l *LoggerComponent) Name() string {
 	return "logger"
+}
+
+func (l *LoggerComponent) Validate() error {
+	switch l.level {
+	case "debug", "info", "warn", "error":
+		return nil
+	default:
+		return fmt.Errorf("invalid logger level: %s", l.level)
+	}
 }
 
 func (l *LoggerComponent) Init(rt *runtime.Runtime) error {

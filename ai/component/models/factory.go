@@ -26,8 +26,8 @@ import (
 
 // ModelsFactory component factory function (explicit registration, does not use init)
 func ModelsFactory(spec *yaml.Node) (runtime.Component, error) {
-	cfg := DefaultModelsSpec()
-	if err := spec.Decode(cfg); err != nil {
+	var cfg ModelsSpec
+	if err := spec.Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to decode models spec: %w", err)
 	}
 

@@ -136,9 +136,9 @@ func buildStagesFromConfig(g *genkit.Genkit, stagesCfg []StageInfo, promptBasePa
 		var stage *agent.Stage
 		switch stageCfg.FlowType {
 		case "think":
-			stage = agent.NewStage(think(g, prompt), agent.InLoop)
+			stage = agent.NewStage(ThinkFlow(g, prompt), agent.InLoop)
 		case "act":
-			stage = agent.NewStage(act(g, nil, prompt), agent.InLoop)
+			stage = agent.NewStage(ActFlow(g, nil, prompt), agent.InLoop)
 		case "observe":
 			observePrompt = prompt
 			continue
@@ -254,7 +254,7 @@ func feedback(feedbackPrompt ai.Prompt, ctx context.Context, cb core.StreamCallb
 // ai.WithStreaming() receives ai.ModelStreamCallback type callback function
 // This callback function is called when the model generates each raw streaming chunk, used for raw chunk processing
 // The passed cb is user-defined callback function for handling streaming data logic, such as printing
-func think(
+func ThinkFlow(
 	g *genkit.Genkit,
 	thinkPrompt ai.Prompt,
 ) agent.NormalFlow {
@@ -279,10 +279,13 @@ func think(
 
 			// Execute the thinking prompt with window memory context
 			resp, err := thinkPrompt.Execute(ctx, ai.WithMessages(history.WindowMemory(sessionID)...))
-			runtime.GetLogger().Info("Think response:", "response", resp.Text())
 			if err != nil {
 				return nil, fmt.Errorf("failed to execute agentThink prompt: %w", err)
 			}
+			if resp == nil {
+				return nil, fmt.Errorf("failed to execute agentThink prompt: empty response")
+			}
+			runtime.GetLogger().Info("Think response:", "response", resp.Text())
 
 			// Parse output
 			var thinkOut ThinkOut
@@ -299,7 +302,7 @@ func think(
 		})
 }
 
-func act(g *genkit.Genkit, mcpToolManager *toolEngine.MCPToolManager, toolPrompt ai.Prompt) agent.NormalFlow {
+func ActFlow(g *genkit.Genkit, mcpToolManager *toolEngine.MCPToolManager, toolPrompt ai.Prompt) agent.NormalFlow {
 	return genkit.DefineFlow(g, agent.ActFlowName,
 		func(ctx context.Context, in schema.Schema) (out schema.Schema, err error) {
 			runtime.GetLogger().Info("Acting...", "input", in)

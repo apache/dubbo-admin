@@ -26,10 +26,10 @@ import (
 
 // ToolsFactory creates a tools component (explicit registration, no init)
 func ToolsFactory(spec *yaml.Node) (runtime.Component, error) {
-	cfg := DefaultToolConfig()
-	if err := spec.Decode(cfg); err != nil {
+	var cfg ToolConfig
+	if err := spec.Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to decode tools spec: %w", err)
 	}
 
-	return NewToolsComponent(*cfg)
+	return NewToolsComponent(cfg)
 }

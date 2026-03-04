@@ -34,10 +34,12 @@ type ServerComponent struct {
 	rt  *runtime.Runtime
 	srv *http.Server
 
-	port        int
-	host        string
-	debug       bool
-	corsOrigins []string
+	port         int
+	host         string
+	debug        bool
+	corsOrigins  []string
+	readTimeout  int
+	writeTimeout int
 }
 
 func NewServerComponent(
@@ -45,18 +47,45 @@ func NewServerComponent(
 	host string,
 	debug bool,
 	corsOrigins []string,
+	timeouts ...int,
 ) (runtime.Component, error) {
+	readTimeout := 30
+	writeTimeout := 30
+	if len(timeouts) > 0 {
+		readTimeout = timeouts[0]
+	}
+	if len(timeouts) > 1 {
+		writeTimeout = timeouts[1]
+	}
 	return &ServerComponent{
-		port:        port,
-		host:        host,
-		debug:       debug,
-		corsOrigins: corsOrigins,
+		port:         port,
+		host:         host,
+		debug:        debug,
+		corsOrigins:  corsOrigins,
+		readTimeout:  readTimeout,
+		writeTimeout: writeTimeout,
 	}, nil
 }
 
 // Name returns the component name
 func (s *ServerComponent) Name() string {
 	return "server"
+}
+
+func (s *ServerComponent) Validate() error {
+	if s.host == "" {
+		return fmt.Errorf("host is required")
+	}
+	if s.port <= 0 || s.port > 65535 {
+		return fmt.Errorf("port must be between 1 and 65535")
+	}
+	if s.readTimeout <= 0 {
+		return fmt.Errorf("read_timeout must be greater than 0")
+	}
+	if s.writeTimeout <= 0 {
+		return fmt.Errorf("write_timeout must be greater than 0")
+	}
+	return nil
 }
 
 func (s *ServerComponent) Init(rt *runtime.Runtime) error {

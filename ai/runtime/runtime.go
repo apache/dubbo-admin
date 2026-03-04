@@ -2,11 +2,10 @@ package runtime
 
 import (
 	"context"
+	"dubbo-admin-ai/config"
 	"fmt"
 	"log/slog"
 	"sync"
-
-	"dubbo-admin-ai/config"
 
 	"github.com/firebase/genkit/go/genkit"
 	"gopkg.in/yaml.v3"
@@ -15,6 +14,7 @@ import (
 // Component defines the interface for all components
 type Component interface {
 	Name() string
+	Validate() error
 	Init(*Runtime) error
 	Start() error
 	Stop() error
@@ -58,6 +58,10 @@ func Bootstrap(configFile string, registerFn func(rt *Runtime)) (*Runtime, error
 
 	// Initialize components in dependency order, which is the order of factory registration.
 	for _, comp := range instances {
+		if err := comp.Validate(); err != nil {
+			return nil, fmt.Errorf("failed to validate %s: %w", comp.Name(), err)
+		}
+
 		if err := comp.Init(gloRuntime); err != nil {
 			return nil, fmt.Errorf("failed to init %s: %w", comp.Name(), err)
 		}
@@ -151,8 +155,17 @@ func (r *Runtime) createComponents(loadedCfg *config.LoadedConfig) ([]Component,
 
 				instances = append(instances, comp)
 				processed[name] = true
-				break
 			}
+		}
+	}
+
+	// Fail fast when configuration contains component types without registered factories.
+	for name, cfg := range loadedCfg.Components {
+		if processed[name] {
+			continue
+		}
+		if _, exists := r.factories[cfg.Type]; !exists {
+			return nil, fmt.Errorf("no factory for %s", cfg.Type)
 		}
 	}
 
@@ -175,7 +188,10 @@ func (r *Runtime) createComponent(cfg *config.Config) (Component, error) {
 }
 
 func GetLogger() *slog.Logger {
-	return GetRuntime().GetLogger()
+	if gloRuntime == nil {
+		return slog.Default()
+	}
+	return gloRuntime.GetLogger()
 }
 
 func (rt *Runtime) GetLogger() *slog.Logger {

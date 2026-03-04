@@ -109,20 +109,37 @@ func DefaultRerankerSpec() *RerankerSpec {
 
 // Validate validates RAG configuration
 func (c *RAGSpec) Validate() error {
-	if c.Embedder == nil {
-		return fmt.Errorf("embedder config is required")
+	if c == nil {
+		return fmt.Errorf("rag config is nil")
 	}
-	if c.Loader == nil {
-		return fmt.Errorf("loader config is required")
+	if c.Splitter != nil && c.Splitter.Type == "recursive" {
+		var splitter SplitterSpec
+		if err := c.Splitter.Spec.Decode(&splitter); err != nil {
+			return fmt.Errorf("failed to decode splitter spec: %w", err)
+		}
+		if splitter.ChunkSize <= 0 {
+			return fmt.Errorf("splitter.chunk_size must be greater than 0")
+		}
+		if splitter.OverlapSize < 0 {
+			return fmt.Errorf("splitter.overlap_size must be >= 0")
+		}
+		if splitter.OverlapSize >= splitter.ChunkSize {
+			return fmt.Errorf("splitter.overlap_size must be less than chunk_size")
+		}
 	}
-	if c.Splitter == nil {
-		return fmt.Errorf("splitter config is required")
+	if c.Indexer != nil {
+		switch c.Indexer.Type {
+		case "dev", "pinecone":
+		default:
+			return fmt.Errorf("unsupported indexer type: %s", c.Indexer.Type)
+		}
 	}
-	if c.Indexer == nil {
-		return fmt.Errorf("indexer config is required")
-	}
-	if c.Retriever == nil {
-		return fmt.Errorf("retriever config is required")
+	if c.Retriever != nil {
+		switch c.Retriever.Type {
+		case "dev", "pinecone":
+		default:
+			return fmt.Errorf("unsupported retriever type: %s", c.Retriever.Type)
+		}
 	}
 	return nil
 }

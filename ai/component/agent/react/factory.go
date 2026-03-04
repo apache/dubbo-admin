@@ -26,13 +26,9 @@ import (
 
 // AgentFactory creates an agent component (explicit registration, no init)
 func AgentFactory(spec *yaml.Node) (runtime.Component, error) {
-	cfg := ReActDefaultSpec()
-	if err := spec.Decode(cfg); err != nil {
+	var cfg AgentSpec
+	if err := spec.Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to decode agent spec: %w", err)
-	}
-
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid agent spec: %w", err)
 	}
 
 	return NewAgentComponent(

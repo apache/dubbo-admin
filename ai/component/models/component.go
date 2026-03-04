@@ -19,6 +19,7 @@ package models
 
 import (
 	"dubbo-admin-ai/runtime"
+	"fmt"
 
 	"github.com/firebase/genkit/go/ai"
 	"github.com/firebase/genkit/go/core/api"
@@ -48,6 +49,24 @@ func NewModelsComponent(
 
 func (m *ModelsComponent) Name() string {
 	return "models"
+}
+
+func (m *ModelsComponent) Validate() error {
+	if m.defaultModel == "" {
+		return fmt.Errorf("default_model is required")
+	}
+	if m.defaultEmbedding == "" {
+		return fmt.Errorf("default_embedding is required")
+	}
+	if len(m.providers) == 0 {
+		return fmt.Errorf("at least one provider must be configured")
+	}
+	for name, provider := range m.providers {
+		if provider.BaseURL == "" {
+			return fmt.Errorf("provider %s base_url is required", name)
+		}
+	}
+	return nil
 }
 
 func (m *ModelsComponent) Init(rt *runtime.Runtime) error {

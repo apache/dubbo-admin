@@ -19,7 +19,7 @@ package tools
 
 import (
 	"dubbo-admin-ai/component/memory"
-	engine "dubbo-admin-ai/component/tools/engine"
+	"dubbo-admin-ai/component/tools/engine"
 	"dubbo-admin-ai/runtime"
 	"fmt"
 
@@ -43,6 +43,19 @@ func NewToolsComponent(config ToolConfig) (runtime.Component, error) {
 
 func (t *ToolsComponent) Name() string {
 	return "tools"
+}
+
+func (t *ToolsComponent) Validate() error {
+	if t.config.EnableMCPTools && t.config.MCPHostName == "" {
+		return fmt.Errorf("mcp_host_name is required when mcp tools are enabled")
+	}
+	if t.config.MCPTimeout <= 0 {
+		return fmt.Errorf("mcp_timeout must be greater than 0")
+	}
+	if t.config.MCPMaxRetries < 0 {
+		return fmt.Errorf("mcp_max_retries must be >= 0")
+	}
+	return nil
 }
 
 func (t *ToolsComponent) Init(rt *runtime.Runtime) error {

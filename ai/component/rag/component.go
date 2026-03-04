@@ -46,6 +46,9 @@ func newLoaderComponent(cfg *config.Config) *loaderComponent {
 }
 
 func (c *loaderComponent) Name() string { return "loader" }
+func (c *loaderComponent) Validate() error {
+	return nil
+}
 
 func (c *loaderComponent) Init(rt *runtime.Runtime) error {
 	loader, err := newLoader(c.cfg)
@@ -74,6 +77,9 @@ func newSplitterComponent(cfg *config.Config) *splitterComponent {
 }
 
 func (c *splitterComponent) Name() string { return "splitter" }
+func (c *splitterComponent) Validate() error {
+	return nil
+}
 
 func (c *splitterComponent) Init(rt *runtime.Runtime) error {
 	splitter, err := newSplitter(c.cfg)
@@ -109,6 +115,9 @@ func newIndexerComponent(cfg *config.Config, embedderName string) *indexerCompon
 }
 
 func (c *indexerComponent) Name() string { return "indexer" }
+func (c *indexerComponent) Validate() error {
+	return nil
+}
 
 func (c *indexerComponent) Init(rt *runtime.Runtime) error {
 	registry := rt.GetGenkitRegistry()
@@ -144,6 +153,9 @@ func newRetrieverComponent(cfg *config.Config, embedderName string) *retrieverCo
 }
 
 func (c *retrieverComponent) Name() string { return "retriever" }
+func (c *retrieverComponent) Validate() error {
+	return nil
+}
 
 func (c *retrieverComponent) Init(rt *runtime.Runtime) error {
 	registry := rt.GetGenkitRegistry()
@@ -169,9 +181,9 @@ func (c *retrieverComponent) get() retriever.Retriever {
 
 // rerankerComponent Reranker 组件包装器
 type rerankerComponent struct {
-	enabled bool
-	model   string
-	apiKey  string
+	enabled  bool
+	model    string
+	apiKey   string
 	reranker Reranker
 }
 
@@ -180,6 +192,9 @@ func newRerankerComponent(enabled bool, model, apiKey string) *rerankerComponent
 }
 
 func (c *rerankerComponent) Name() string { return "reranker" }
+func (c *rerankerComponent) Validate() error {
+	return nil
+}
 
 func (c *rerankerComponent) Init(rt *runtime.Runtime) error {
 	if !c.enabled {
@@ -218,6 +233,10 @@ type RAGComponent struct {
 
 func (r *RAGComponent) Name() string {
 	return "rag"
+}
+
+func (r *RAGComponent) Validate() error {
+	return r.cfg.Validate()
 }
 
 func (r *RAGComponent) Init(rt *runtime.Runtime) error {

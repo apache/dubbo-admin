@@ -30,23 +30,9 @@ func ServerFactory(spec *yaml.Node) (runtime.Component, error) {
 		return nil, fmt.Errorf("spec is nil")
 	}
 
-	cfg := &ServerSpec{}
-	if err := spec.Decode(cfg); err != nil {
+	var cfg ServerSpec
+	if err := spec.Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to decode server spec: %w", err)
-	}
-
-	// Apply default values (only when the field is zero value)
-	if cfg.Port == 0 {
-		cfg.Port = 8888
-	}
-	if cfg.Host == "" {
-		cfg.Host = "0.0.0.0"
-	}
-	if cfg.ReadTimeout == 0 {
-		cfg.ReadTimeout = 30
-	}
-	if cfg.WriteTimeout == 0 {
-		cfg.WriteTimeout = 30
 	}
 
 	return NewServerComponent(
@@ -54,5 +40,7 @@ func ServerFactory(spec *yaml.Node) (runtime.Component, error) {
 		cfg.Host,
 		cfg.Debug,
 		cfg.CORSOrigins,
+		cfg.ReadTimeout,
+		cfg.WriteTimeout,
 	)
 }
