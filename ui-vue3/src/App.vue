@@ -120,4 +120,20 @@ const router = useRouter()
     margin-top: 30px;
   }
 }
+
+//Global style for clickable links in tables
+.app-link {
+  display: inline-block;
+  max-width: 100%;
+  padding: 4px 10px 4px 4px;
+  border-radius: 4px;
+  color: v-bind('PRIMARY_COLOR');
+  cursor: pointer;
+  word-wrap: break-word;
+  word-break: break-all;
+
+  &:hover {
+    background: rgba(133, 131, 131, 0.13);
+  }
+}
 </style>

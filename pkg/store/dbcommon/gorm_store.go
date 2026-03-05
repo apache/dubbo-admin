@@ -129,7 +129,7 @@ func (gs *GormStore) Add(obj interface{}) error {
 		return store.ErrorResourceAlreadyExists(
 			resource.ResourceKind().ToString(),
 			resource.ResourceMeta().Name,
-			resource.MeshName(),
+			resource.ResourceMesh(),
 		)
 	}
 
@@ -168,7 +168,7 @@ func (gs *GormStore) Update(obj interface{}) error {
 		return store.ErrorResourceNotFound(
 			resource.ResourceKind().ToString(),
 			resource.ResourceMeta().Name,
-			resource.MeshName(),
+			resource.ResourceMesh(),
 		)
 	}
 
@@ -194,7 +194,7 @@ func (gs *GormStore) Update(obj interface{}) error {
 		return store.ErrorResourceNotFound(
 			resource.ResourceKind().ToString(),
 			resource.ResourceMeta().Name,
-			resource.MeshName(),
+			resource.ResourceMesh(),
 		)
 	}
 
@@ -224,7 +224,7 @@ func (gs *GormStore) Delete(obj interface{}) error {
 		return store.ErrorResourceNotFound(
 			resource.ResourceKind().ToString(),
 			resource.ResourceMeta().Name,
-			resource.MeshName(),
+			resource.ResourceMesh(),
 		)
 	}
 

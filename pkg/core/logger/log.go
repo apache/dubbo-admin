@@ -22,45 +22,52 @@ import (
 	grpcZap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
+
+	logcfg "github.com/apache/dubbo-admin/pkg/config/log"
 )
 
 var (
-	mutex   = &sync.Mutex{}
-	hasInit = false
-	encoder = zapcore.NewConsoleEncoder(
+	mutex          = &sync.Mutex{}
+	hasInit        = false
+	consoleEncoder = zapcore.NewConsoleEncoder(
 		zapcore.EncoderConfig{
 			MessageKey:     "msg",
 			LevelKey:       "level",
 			TimeKey:        "time",
 			CallerKey:      "line",
 			NameKey:        "logger",
-			FunctionKey:    "",
 			StacktraceKey:  "stacktrace",
 			EncodeLevel:    zapcore.CapitalColorLevelEncoder,
 			EncodeTime:     zapcore.RFC3339TimeEncoder,
 			EncodeCaller:   zapcore.ShortCallerEncoder,
 			EncodeDuration: zapcore.SecondsDurationEncoder,
 		})
-	logger    *zap.Logger
-	sugar     *zap.SugaredLogger
-	cmdLogger *zap.Logger
-	cmdSugar  *CmdSugarLogger
+	jsonEncoder = zapcore.NewJSONEncoder(
+		zapcore.EncoderConfig{
+			MessageKey:     "msg",
+			LevelKey:       "level",
+			TimeKey:        "time",
+			CallerKey:      "caller",
+			NameKey:        "logger",
+			StacktraceKey:  "stacktrace",
+			EncodeLevel:    zapcore.LowercaseLevelEncoder,
+			EncodeTime:     zapcore.ISO8601TimeEncoder,
+			EncodeDuration: zapcore.SecondsDurationEncoder,
+			EncodeCaller:   zapcore.FullCallerEncoder,
+		})
+	logger *zap.Logger
+	sugar  *zap.SugaredLogger
 )
 
-// CmdSugarLogger wraps zap.SugaredLogger and zapcore.WriteSyncer in order to use Sugar
-// while being able to use low-level writers.
-type CmdSugarLogger struct {
-	*zap.SugaredLogger
-	// wrap ws to print directly
-	ws zapcore.WriteSyncer
+var logLevelMap = map[logcfg.Level]zapcore.Level{
+	logcfg.LevelDebug: zap.DebugLevel,
+	logcfg.LevelInfo:  zap.InfoLevel,
+	logcfg.LevelWarn:  zap.WarnLevel,
+	logcfg.LevelError: zap.ErrorLevel,
 }
 
-func (log *CmdSugarLogger) Print(s string) {
-	_, _ = log.ws.Write([]byte(s))
-}
-
-// nolint
-func Init() {
+func Init(cfg *logcfg.Config) {
 	mutex.Lock()
 	defer mutex.Unlock()
 	if hasInit {
@@ -68,49 +75,42 @@ func Init() {
 	}
 	hasInit = true
 
-	core := zapcore.NewCore(encoder, os.Stdout, zap.DebugLevel)
-	logger = zap.New(core, zap.AddCaller(), zap.AddCallerSkip(2))
+	var cores []zapcore.Core
+
+	// output in terminal
+	cores = append(cores, zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), logLevelMap[cfg.Level]))
+	// output in file
+	fileWriter := &lumberjack.Logger{
+		Filename:   cfg.OutputPath,
+		MaxSize:    cfg.MaxSize,
+		MaxBackups: cfg.MaxBackups,
+		MaxAge:     cfg.MaxAge,
+		Compress:   true,
+	}
+	cores = append(cores, zapcore.NewCore(jsonEncoder, zapcore.AddSync(fileWriter), logLevelMap[cfg.Level]))
+	combinedCore := zapcore.NewTee(cores...)
+
+	logger = zap.New(combinedCore, zap.AddCaller(), zap.AddCallerSkip(2))
 	defer logger.Sync() // flushes buffer, if any
 	sugar = logger.Sugar()
 
 	// Create a separate logger for gRPC with higher log level to suppress INFO logs
-	grpcCore := zapcore.NewCore(encoder, os.Stdout, zap.WarnLevel)
+	grpcCore := zapcore.NewCore(consoleEncoder, os.Stdout, zap.WarnLevel)
 	grpcLogger := zap.New(grpcCore, zap.AddCaller(), zap.AddCallerSkip(2))
 	// Make sure that log statements internal to gRPC library are logged using the zapLogger as well.
 	grpcZap.ReplaceGrpcLoggerV2(grpcLogger)
 }
 
-// nolint
-func InitCmdSugar(ws zapcore.WriteSyncer) {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	core := zapcore.NewCore(encoder, ws, zap.DebugLevel)
-	cmdLogger = zap.New(core)
-	defer cmdLogger.Sync() // flushes buffer, if any
-	cmdSugar = &CmdSugarLogger{
-		SugaredLogger: cmdLogger.Sugar(),
-		ws:            ws,
-	}
-}
-
 func Sugar() *zap.SugaredLogger {
 	if sugar == nil {
-		Init()
+		Init(logcfg.DefaultLogConfig())
 	}
 	return sugar
 }
 
 func Logger() *zap.Logger {
 	if logger == nil {
-		Init()
+		Init(logcfg.DefaultLogConfig())
 	}
 	return logger
-}
-
-func CmdSugar() *CmdSugarLogger {
-	if cmdSugar == nil {
-		InitCmdSugar(os.Stdout)
-	}
-	return cmdSugar
 }

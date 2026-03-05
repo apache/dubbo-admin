@@ -61,10 +61,8 @@ const (
 	SerializationKey             = "serialization"
 	PreferSerializationKey       = "prefer.serialization"
 	TimeoutKey                   = "timeout"
-	DefaultTimeout               = 1000
 	WeightKey                    = "weight"
 	BalancingKey                 = "balancing"
-	DefaultWeight                = 100
 	OwnerKey                     = "owner"
 
 	ConfigFileEnvKey  = "conf" // config file path
@@ -85,6 +83,7 @@ const (
 )
 
 const (
+	ProtocolKey     = "protocol"
 	DubboVersionKey = "dubbo"
 	WorkLoadKey     = "workLoad"
 	ReleaseKey      = "release"

@@ -67,7 +67,8 @@ func (c *consoleWebServer) Order() int {
 }
 
 func (c *consoleWebServer) Init(ctx runtime.BuilderContext) error {
-	r := gin.Default()
+	c.cfg = ctx.Config().Console
+	r := gin.New()
 	// Admin UI
 	r.StaticFS("/admin", http.FS(ui.FS()))
 	r.NoRoute(func(c *gin.Context) {
@@ -88,7 +89,7 @@ func (c *consoleWebServer) Init(ctx runtime.BuilderContext) error {
 	r.Use(ginzap.Ginzap(logger.Logger(), time.RFC3339, true))
 	r.Use(ginzap.RecoveryWithZap(logger.Logger(), true))
 	c.Engine = r
-	c.cfg = ctx.Config().Console
+	gin.SetMode(string(c.cfg.GinMode))
 	return nil
 }
 

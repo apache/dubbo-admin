@@ -62,7 +62,7 @@ func (r *RPCInstanceMetadataResource) ResourceKind() coremodel.ResourceKind {
 	return RPCInstanceMetadataKind
 }
 
-func (r *RPCInstanceMetadataResource) MeshName() string {
+func (r *RPCInstanceMetadataResource) ResourceMesh() string {
 	return r.Mesh
 }
 

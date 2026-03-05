@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kelseyhightower/envconfig"
 	"github.com/pkg/errors"
 	"sigs.k8s.io/yaml"
 
@@ -29,10 +28,10 @@ import (
 )
 
 func Load(file string, cfg Config) error {
-	return LoadWithOption(file, cfg, false, true, true)
+	return LoadWithOption(file, cfg, false, true)
 }
 
-func LoadWithOption(file string, cfg Config, strict bool, includeEnv bool, validate bool) error {
+func LoadWithOption(file string, cfg Config, strict bool, validate bool) error {
 	if file == "" {
 		return bizerror.New(bizerror.ConfigError, "config file is needed")
 	}
@@ -42,12 +41,6 @@ func LoadWithOption(file string, cfg Config, strict bool, includeEnv bool, valid
 
 	if err := cfg.PreProcess(); err != nil {
 		return fmt.Errorf("configuration pre processing failed, %w", err)
-	}
-
-	if includeEnv {
-		if err := envconfig.Process("", cfg); err != nil {
-			return fmt.Errorf("configuration environment processing failed, %w", err)
-		}
 	}
 
 	if err := cfg.PostProcess(); err != nil {

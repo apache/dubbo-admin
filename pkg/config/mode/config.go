@@ -21,18 +21,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// DeployMode 部署模型
-// 1. 纯Kubernetes
-// 2. 半托管, 使用Kubernetes做平台, 服务注册的模型仍然使用zookeeper
-// 3. vm, 使用vm机器传统服务注册模型
-type DeployMode = string
-
-const (
-	KubernetesMode DeployMode = "k8s"       // 全托管
-	HalfHostMode   DeployMode = "half"      // 半托管
-	UniversalMode  DeployMode = "universal" // vm传统
-)
-
 // Mode Control Plane mode
 type Mode = string
 

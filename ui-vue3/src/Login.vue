@@ -16,14 +16,13 @@
 -->
 
 <script setup lang="ts">
-import { inject, onMounted, reactive, ref } from 'vue'
+import { reactive } from 'vue'
 import { login } from '@/api/service/login'
 import { useRoute, useRouter } from 'vue-router'
-import { removeAuthState, updateAuthState } from '@/utils/AuthUtil'
+import { updateAuthState } from '@/utils/AuthUtil'
 import { message } from 'ant-design-vue'
 import { i18n } from '@/base/i18n'
 import { useMeshStore } from '@/stores/mesh'
-import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { meshesSearch } from '@/api/service/globalSearch'
 const userinfo = reactive({
   username: '',
@@ -63,14 +62,25 @@ function loginHandle() {
       </a-row>
       <a-row>
         <a-form layout="vertical" :model="userinfo" ref="login-form-ref">
-          <a-form-item class="item" :label="$t('loginDomain.username')" name="username" :rules="[{ required: true }]">
+          <a-form-item
+            class="item"
+            :label="$t('loginDomain.username')"
+            name="username"
+            :rules="[{ required: true }]"
+          >
             <a-input type="" v-model:value="userinfo.username"></a-input>
           </a-form-item>
-          <a-form-item class="item" :label="$t('loginDomain.password')" name="password" :rules="[{ required: true }]">
+          <a-form-item
+            class="item"
+            :label="$t('loginDomain.password')"
+            name="password"
+            :rules="[{ required: true }]"
+          >
             <a-input type="password" v-model:value="userinfo.password"></a-input>
           </a-form-item>
           <a-form-item class="item" label="">
-            <a-button @click="loginHandle" size="large" type="primary" class="login-btn">{{ $t('loginDomain.login') }}
+            <a-button @click="loginHandle" size="large" type="primary" class="login-btn"
+              >{{ $t('loginDomain.login') }}
             </a-button>
           </a-form-item>
         </a-form>

@@ -19,70 +19,121 @@ package counter
 
 import (
 	"sync"
-	"sync/atomic"
 )
 
 type Counter struct {
-	name  string
-	value atomic.Int64
+	name string
+	data map[string]int64
+	mu   sync.RWMutex
 }
 
 func NewCounter(name string) *Counter {
-	return &Counter{name: name}
+	return &Counter{
+		name: name,
+		data: make(map[string]int64),
+	}
 }
 
 func (c *Counter) Get() int64 {
-	return c.value.Load()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	var sum int64
+	for _, v := range c.data {
+		sum += v
+	}
+	return sum
 }
 
-func (c *Counter) Increment() {
-	c.value.Add(1)
+func (c *Counter) GetByGroup(group string) int64 {
+	if group == "" {
+		group = "default"
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.data[group]
 }
 
-func (c *Counter) Decrement() {
-	for {
-		current := c.value.Load()
-		if current == 0 {
-			return
-		}
-		if c.value.CompareAndSwap(current, current-1) {
-			return
+func (c *Counter) Increment(group string) {
+	if group == "" {
+		group = "default"
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.data[group]++
+}
+
+func (c *Counter) Decrement(group string) {
+	if group == "" {
+		group = "default"
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if value, ok := c.data[group]; ok {
+		value--
+		if value <= 0 {
+			delete(c.data, group)
+		} else {
+			c.data[group] = value
 		}
 	}
 }
 
 func (c *Counter) Reset() {
-	c.value.Store(0)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.data = make(map[string]int64)
 }
 
 type DistributionCounter struct {
 	name string
-	data map[string]int64
+	data map[string]map[string]int64
 	mu   sync.RWMutex
 }
 
 func NewDistributionCounter(name string) *DistributionCounter {
 	return &DistributionCounter{
 		name: name,
-		data: make(map[string]int64),
+		data: make(map[string]map[string]int64),
 	}
 }
 
-func (c *DistributionCounter) Increment(key string) {
+func (c *DistributionCounter) Increment(group, key string) {
+	if group == "" {
+		group = "default"
+	}
+	if key == "" {
+		key = "unknown"
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.data[key]++
+	if c.data[group] == nil {
+		c.data[group] = make(map[string]int64)
+	}
+	c.data[group][key]++
 }
 
-func (c *DistributionCounter) Decrement(key string) {
+func (c *DistributionCounter) Decrement(group, key string) {
+	if group == "" {
+		group = "default"
+	}
+	if key == "" {
+		key = "unknown"
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if value, ok := c.data[key]; ok {
+	groupData, exists := c.data[group]
+	if !exists {
+		return
+	}
+	if value, ok := groupData[key]; ok {
 		value--
 		if value <= 0 {
-			delete(c.data, key)
+			delete(groupData, key)
+			if len(groupData) == 0 {
+				delete(c.data, group)
+			}
 		} else {
-			c.data[key] = value
+			groupData[key] = value
 		}
 	}
 }
@@ -90,8 +141,27 @@ func (c *DistributionCounter) Decrement(key string) {
 func (c *DistributionCounter) GetAll() map[string]int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	result := make(map[string]int64, len(c.data))
-	for k, v := range c.data {
+	result := make(map[string]int64)
+	for _, groupData := range c.data {
+		for k, v := range groupData {
+			result[k] += v
+		}
+	}
+	return result
+}
+
+func (c *DistributionCounter) GetByGroup(group string) map[string]int64 {
+	if group == "" {
+		group = "default"
+	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	groupData, exists := c.data[group]
+	if !exists {
+		return map[string]int64{}
+	}
+	result := make(map[string]int64, len(groupData))
+	for k, v := range groupData {
 		result[k] = v
 	}
 	return result
@@ -100,5 +170,5 @@ func (c *DistributionCounter) GetAll() map[string]int64 {
 func (c *DistributionCounter) Reset() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.data = make(map[string]int64)
+	c.data = make(map[string]map[string]int64)
 }

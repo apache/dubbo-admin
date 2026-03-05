@@ -62,7 +62,7 @@ func (r *NacosServiceResource) ResourceKind() coremodel.ResourceKind {
 	return NacosServiceKind
 }
 
-func (r *NacosServiceResource) MeshName() string {
+func (r *NacosServiceResource) ResourceMesh() string {
 	return r.Mesh
 }
 

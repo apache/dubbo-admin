@@ -20,9 +20,14 @@ package v1alpha1
 import (
 	"sigs.k8s.io/yaml"
 
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
+
+func BuildConditionRouteResName(scopeEntity string) string {
+	return scopeEntity + constants.ConditionRuleDotSuffix
+}
 
 func ToConditionRouteResource(mesh, name, data string) coremodel.Resource {
 	res := NewConditionRouteResourceWithAttributes(name, mesh)

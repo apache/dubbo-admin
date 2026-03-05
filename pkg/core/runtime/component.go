@@ -26,9 +26,10 @@ const (
 	ResourceEngine    ComponentType = "resource engine"
 	ResourceDiscovery ComponentType = "resource discovery"
 	EventBus          ComponentType = "event bus"
+	RuleGovernor      ComponentType = "rule governor"
 )
 
-var CoreComponentTypes = []ComponentType{Console, ResourceManager, ResourceStore, ResourceEngine, ResourceDiscovery}
+var CoreComponentTypes = []ComponentType{Console, ResourceManager, ResourceStore, ResourceEngine, ResourceDiscovery, RuleGovernor}
 
 type Lifecycle interface {
 	// Init initializes the component

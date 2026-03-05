@@ -41,7 +41,7 @@
           </router-view>
         </a-layout-content>
         <a-layout-footer class="layout-footer"
-          >© 2024 The Apache Software Foundation.
+          >© 2026 The Apache Software Foundation.
         </a-layout-footer>
       </a-layout>
     </a-layout>

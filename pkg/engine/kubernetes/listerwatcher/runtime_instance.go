@@ -152,20 +152,22 @@ func (p *PodListerWatcher) TransformFunc() cache.TransformFunc {
 		}
 		res := meshresource.NewRuntimeInstanceResourceWithAttributes(pod.Name, p.getDubboMesh(pod))
 		res.Spec = &meshproto.RuntimeInstance{
-			Name:         pod.Name,
-			Ip:           pod.Status.PodIP,
-			RpcPort:      rpcPort,
-			Image:        image,
-			AppName:      appName,
-			CreateTime:   createTime,
-			StartTime:    startTime,
-			ReadyTime:    readyTime,
-			Phase:        phase,
-			WorkloadName: workloadName,
-			WorkloadType: workloadType,
-			Node:         pod.Spec.NodeName,
-			Probes:       probes,
-			Conditions:   conditions,
+			Name:             pod.Name,
+			Ip:               pod.Status.PodIP,
+			RpcPort:          rpcPort,
+			Image:            image,
+			AppName:          appName,
+			CreateTime:       createTime,
+			StartTime:        startTime,
+			ReadyTime:        readyTime,
+			Phase:            phase,
+			WorkloadName:     workloadName,
+			WorkloadType:     workloadType,
+			Node:             pod.Spec.NodeName,
+			Probes:           probes,
+			Conditions:       conditions,
+			SourceEngine:     p.cfg.ID,
+			SourceEngineType: string(p.cfg.Type),
 		}
 		return res, nil
 	}
@@ -173,7 +175,7 @@ func (p *PodListerWatcher) TransformFunc() cache.TransformFunc {
 
 func (p *PodListerWatcher) getMainContainer(pod *v1.Pod) *v1.Container {
 	containers := pod.Spec.Containers
-	strategy := p.cfg.Properties.GetOrDefaultMainContainerChooseStrategy()
+	strategy := p.cfg.Properties.MainContainerChooseStrategy
 	switch strategy.Type {
 	case enginecfg.ChooseByLast:
 		return &containers[len(containers)-1]
@@ -211,6 +213,9 @@ func (p *PodListerWatcher) getMainContainer(pod *v1.Pod) *v1.Container {
 
 func (p *PodListerWatcher) getDubboAppName(pod *v1.Pod) string {
 	identifier := p.cfg.Properties.DubboAppIdentifier
+	if identifier == nil {
+		return ""
+	}
 	switch identifier.Type {
 	case enginecfg.IdentifyByAnnotation:
 		return pod.Annotations[identifier.AnnotationKey]
@@ -223,6 +228,9 @@ func (p *PodListerWatcher) getDubboAppName(pod *v1.Pod) string {
 
 func (p *PodListerWatcher) getDubboRPCPort(pod *v1.Pod) int64 {
 	identifier := p.cfg.Properties.DubboRPCPortIdentifier
+	if identifier == nil {
+		return 0
+	}
 	var rpcPort int64
 	var err error
 	switch identifier.Type {
@@ -241,7 +249,10 @@ func (p *PodListerWatcher) getDubboRPCPort(pod *v1.Pod) int64 {
 }
 
 func (p *PodListerWatcher) getDubboMesh(pod *v1.Pod) string {
-	identifier := p.cfg.Properties.DubboRegistryIdentifier
+	identifier := p.cfg.Properties.DubboDiscoveryIdentifier
+	if identifier == nil {
+		return constants.DefaultMesh
+	}
 	var mesh string
 	switch identifier.Type {
 	case enginecfg.IdentifyByAnnotation:

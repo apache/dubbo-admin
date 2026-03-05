@@ -43,5 +43,5 @@ func ByMesh(obj interface{}) ([]string, error) {
 	if !ok {
 		return nil, bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
 	}
-	return []string{r.MeshName()}, nil
+	return []string{r.ResourceMesh()}, nil
 }

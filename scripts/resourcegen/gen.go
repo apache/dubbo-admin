@@ -106,7 +106,7 @@ func (r *{{.Name}}Resource) ResourceKind() coremodel.ResourceKind  {
 	return {{.Name}}Kind
 }
 
-func (r *{{.Name}}Resource) MeshName() string {
+func (r *{{.Name}}Resource) ResourceMesh() string {
 	return r.Mesh
 }
 

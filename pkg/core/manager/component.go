@@ -18,10 +18,10 @@
 package manager
 
 import (
+	"fmt"
 	"math"
 
-	"github.com/pkg/errors"
-
+	"github.com/apache/dubbo-admin/pkg/core/governor"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/core/store"
 )
@@ -43,7 +43,8 @@ type resourceManagerComponent struct {
 
 func (r *resourceManagerComponent) RequiredDependencies() []runtime.ComponentType {
 	return []runtime.ComponentType{
-		runtime.ResourceStore, // Manager needs Store to be initialized first
+		runtime.ResourceStore,
+		runtime.RuleGovernor,
 	}
 }
 
@@ -58,9 +59,13 @@ func (r *resourceManagerComponent) Order() int {
 func (r *resourceManagerComponent) Init(ctx runtime.BuilderContext) error {
 	rsc, err := ctx.GetActivatedComponent(runtime.ResourceStore)
 	if err != nil {
-		return errors.Wrap(err, "failed to init resource manager")
+		return fmt.Errorf("failed to init resource manager, cause: %s", err)
 	}
-	r.rm = NewResourceManager(rsc.(store.Router))
+	rgc, err := ctx.GetActivatedComponent(runtime.RuleGovernor)
+	if err != nil {
+		return fmt.Errorf("failed to init resource manager, cause: %w", err)
+	}
+	r.rm = NewResourceManager(rsc.(store.Router), rgc.(governor.Router))
 	return nil
 }
 

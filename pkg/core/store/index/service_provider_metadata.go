@@ -27,12 +27,14 @@ import (
 )
 
 const (
-	ByServiceProviderAppName = "idx_service_provider_app_name"
+	ByServiceProviderAppName     = "idx_service_provider_app_name"
+	ByServiceProviderServiceName = "idx_service_provider_service_name"
 )
 
 func init() {
 	RegisterIndexers(meshresource.ServiceProviderMetadataKind, map[string]cache.IndexFunc{
-		ByServiceProviderAppName: byServiceProviderAppName,
+		ByServiceProviderAppName:     byServiceProviderAppName,
+		ByServiceProviderServiceName: byServiceProviderServiceName,
 	})
 }
 
@@ -45,4 +47,15 @@ func byServiceProviderAppName(obj interface{}) ([]string, error) {
 		return []string{}, nil
 	}
 	return []string{metadata.Spec.ProviderAppName}, nil
+}
+
+func byServiceProviderServiceName(obj interface{}) ([]string, error) {
+	metadata, ok := obj.(*meshresource.ServiceProviderMetadataResource)
+	if !ok {
+		return nil, bizerror.NewAssertionError(meshresource.ServiceProviderMetadataKind, reflect.TypeOf(obj).Name())
+	}
+	if metadata.Spec == nil {
+		return []string{}, nil
+	}
+	return []string{metadata.Spec.ServiceName}, nil
 }

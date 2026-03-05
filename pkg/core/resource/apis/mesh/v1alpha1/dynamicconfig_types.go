@@ -62,7 +62,7 @@ func (r *DynamicConfigResource) ResourceKind() coremodel.ResourceKind {
 	return DynamicConfigKind
 }
 
-func (r *DynamicConfigResource) MeshName() string {
+func (r *DynamicConfigResource) ResourceMesh() string {
 	return r.Mesh
 }
 

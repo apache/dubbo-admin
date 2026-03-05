@@ -41,6 +41,7 @@ type Registry interface {
 	ResourceManager() (Component, error)
 	ResourceDiscovery() (Component, error)
 	ResourceEngine() (Component, error)
+	RuleGovernor() (Component, error)
 }
 
 type RegistryMutator interface {
@@ -88,6 +89,9 @@ func (r *componentRegistry) ResourceEngine() (Component, error) {
 	return r.Get(ResourceEngine)
 }
 
+func (r *componentRegistry) RuleGovernor() (Component, error) {
+	return r.Get(RuleGovernor)
+}
 func (r *componentRegistry) Register(component Component) error {
 	_, ok := r.directory[component.Type()]
 	if ok {

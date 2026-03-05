@@ -36,11 +36,16 @@
           </span>
         </template>
 
-        <template v-if="column.dataIndex === 'timeOut'">
-          {{ formattedDate(text) }}
+        <template v-if="column.dataIndex === 'deployClusters'">
+          <a-tag v-for="t in text" :key="t" :color="PRIMARY_COLOR">
+            {{ t }}
+          </a-tag>
         </template>
-        <template v-if="column.dataIndex === 'label'">
-          <a-tag :color="PRIMARY_COLOR">{{ text }}</a-tag>
+
+        <template v-if="column.dataIndex === 'registryClusters'">
+          <a-tag v-for="t in text" :key="t" :color="PRIMARY_COLOR">
+            {{ t }}
+          </a-tag>
         </template>
       </template>
     </search-table>
@@ -48,12 +53,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, provide } from 'vue'
+import { reactive, provide } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getServiceDistribution } from '@/api/service/service'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { Icon } from '@iconify/vue'
-import { formattedDate } from '@/utils/DateUtil'
 import SearchTable from '@/components/SearchTable.vue'
 import { SearchDomain } from '@/utils/SearchUtil'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
@@ -96,6 +100,7 @@ function getDistribution(params: any) {
     side: 'consumer',
     version: route.params?.version || '',
     group: route.params?.group || '',
+    providerAppName: route.query?.providerAppName || '',
     ...params
   })
 }
@@ -104,8 +109,9 @@ const searchDomain = reactive(
   new SearchDomain(
     [
       {
-        label: 'placeholder.searchAppNameOrIP',
+        label: 'servicesDomain.consumerAppName',
         param: 'keywords',
+        placeholder: 'consumerAppName',
         style: {
           width: '300px'
         }

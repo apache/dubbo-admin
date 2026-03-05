@@ -18,7 +18,8 @@
   <div class="routing-rule-container">
     <search-table :search-domain="searchDomain">
       <template #customOperation>
-        <a-button type="primary" @click="router.push(`/traffic/addRoutingRule/addByFormView`)">新增条件路由规则
+        <a-button type="primary" @click="router.push(`/traffic/addRoutingRule/addByFormView`)"
+          >{{ t('routingRuleDomain.createNewRoutingRule') }}
         </a-button>
       </template>
       <template #bodyCell="{ text, column, record }">
@@ -31,10 +32,14 @@
           </span>
         </template>
         <template v-if="column.dataIndex === 'ruleGranularity'">
-          {{ record.scope === 'service' ? '服务' : '应用' }}
+          {{
+            record.scope === 'service'
+              ? t('routingRuleDomain.service')
+              : t('routingRuleDomain.application')
+          }}
         </template>
         <template v-if="column.dataIndex === 'enabled'">
-          {{ text ? '启用' : '禁用' }}
+          {{ text ? t('flowControlDomain.enabled') : t('flowControlDomain.disabled') }}
         </template>
         <!-- 时间 -->
         <template v-if="column.dataIndex === 'createTime'">
@@ -42,13 +47,21 @@
         </template>
         <template v-if="column.dataIndex === 'operation'">
           <a-button type="link" @click="router.push(`formview/${record.ruleName}`)">
-            查看
+            {{ t('view') }}
           </a-button>
-          <a-button type="link" @click="router.push(`/traffic/updateRoutingRule/updateByFormView/${record.ruleName}`)">
-            修改
+          <a-button
+            type="link"
+            @click="router.push(`/traffic/updateRoutingRule/updateByFormView/${record.ruleName}`)"
+          >
+            {{ t('edit') }}
           </a-button>
-          <a-popconfirm title="确认删除该条件路由规则？" ok-text="Yes" cancel-text="No" @confirm="confirm(record.ruleName)">
-            <a-button type="link"> 删除</a-button>
+          <a-popconfirm
+            :title="t('routingRuleDomain.warnDeleteRouteRule')"
+            ok-text="Yes"
+            cancel-text="No"
+            @confirm="confirm(record.ruleName)"
+          >
+            <a-button type="link"> {{ t('delete') }}</a-button>
           </a-popconfirm>
         </template>
       </template>
@@ -58,6 +71,8 @@
 
 <script setup lang="ts">
 import { onMounted, provide, reactive, inject } from 'vue'
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
 import { deleteConditionRuleAPI, searchRoutingRule } from '@/api/service/traffic'
 import SearchTable from '@/components/SearchTable.vue'
 import { SearchDomain, sortString } from '@/utils/SearchUtil'
@@ -66,7 +81,8 @@ import router from '@/router'
 import { Icon } from '@iconify/vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { formattedDate } from '@/utils/DateUtil'
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
+import { HTTP_STATUS } from '@/base/http/constants'
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 let columns = [
   {
     title: 'ruleName',
@@ -79,22 +95,23 @@ let columns = [
     title: 'ruleGranularity',
     key: 'ruleGranularity',
     dataIndex: 'ruleGranularity',
-    render: (text, record) => (record.isService ? '服务' : '应用'),
-    width: 100,
+    render: (text, record) =>
+      record.isService ? t('routingRuleDomain.service') : t('routingRuleDomain.application'),
+    width: 100
     // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
     title: 'createTime',
     key: 'createTime',
     dataIndex: 'createTime',
-    width: 120,
+    width: 120
     // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
     title: 'enabled',
     key: 'enabled',
     dataIndex: 'enabled',
-    width: 120,
+    width: 120
     // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
@@ -109,7 +126,7 @@ const searchDomain = reactive(
     [
       {
         label: 'serviceGovernance',
-        param: 'serviceGovernance',
+        param: 'keywords',
         placeholder: 'typeRoutingRules',
         style: {
           width: '200px'
@@ -124,7 +141,7 @@ const searchDomain = reactive(
 //Delete conditional routing
 const deleteRule = async (ruleName: string) => {
   const res = await deleteConditionRuleAPI(ruleName)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     await searchDomain.onSearch()
   }
 }

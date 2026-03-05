@@ -119,7 +119,7 @@ func FromResource(resource model.Resource) (*ResourceModel, error) {
 		ResourceKey:  resource.ResourceKey(),
 		ResourceKind: resource.ResourceKind().ToString(),
 		Name:         resource.ResourceMeta().Name,
-		Mesh:         resource.MeshName(),
+		Mesh:         resource.ResourceMesh(),
 		Data:         data,
 	}, nil
 }

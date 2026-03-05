@@ -52,6 +52,19 @@ jobs:
     if: github.repository == 'apache/dubbo-admin'
     steps:
       - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'yarn'
+          cache-dependency-path: ui-vue3/yarn.lock
+      - name: Build Frontend (Vue3)
+        working-directory: ui-vue3
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
+      - name: Copy Dist Directory
+        run: cp -r ui-vue3/dist/ app/dubbo-ui/
       - name: Setup Go ${{ matrix.go_version }}
         uses: actions/setup-go@v5
         with:

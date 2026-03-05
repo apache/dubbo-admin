@@ -19,8 +19,6 @@ package listerwatcher
 
 import (
 	"fmt"
-	"net/url"
-	"time"
 
 	"github.com/dubbogo/go-zookeeper/zk"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,6 +29,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
 	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
+	"github.com/apache/dubbo-admin/pkg/core/clients"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/discovery/zk/zkwatcher"
@@ -59,7 +58,6 @@ func NewListerWatcher(
 	toResourceFunc ToUpsertResourceFunc,
 	toDeleteResourceFunc ToDeleteResourceFunc,
 	basePath string,
-	zkLogger zk.Logger,
 	cfg *discoverycfg.Config) (*ListerWatcher[coremodel.Resource], error) {
 	newResourceFunc, err := coremodel.ResourceSchemaRegistry().NewResourceFunc(rk)
 	if err != nil {
@@ -69,17 +67,9 @@ func NewListerWatcher(
 	if err != nil {
 		return nil, err
 	}
-	address := cfg.Address.Registry
-	zkUrl, err := url.Parse(address)
+	conn, err := clients.NewZKConnection(cfg.Address.Registry)
 	if err != nil {
 		return nil, err
-	}
-	conn, _, err := zk.Connect([]string{zkUrl.Host}, time.Second*1, func(c *zk.Conn) {
-		c.SetLogger(zkLogger)
-	})
-	if err != nil {
-		logger.Errorf("connect to %s failed in %s lister watcher", rk, address)
-		return nil, bizerror.Wrap(err, bizerror.ZKError, "connect to zookeeper failed, addr: "+address)
 	}
 	return &ListerWatcher[coremodel.Resource]{
 		rk:                   rk,

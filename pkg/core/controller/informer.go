@@ -66,6 +66,13 @@ type Options struct {
 	ResyncPeriod time.Duration
 }
 
+func ResourceKeyFunc(obj interface{}) (string, error) {
+	if r, ok := obj.(model.Resource); ok {
+		return r.ResourceKey(), nil
+	}
+	return "", bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
+}
+
 // informer implements Informer and has three
 // main components.  One is the cache.Indexer which provides curd operations for objects.
 // The second main component is a cache.Controller that pulls

@@ -19,12 +19,20 @@
     <search-table :search-domain="searchDomain">
       <template #bodyCell="{ column, record, text }">
         <template v-if="column.dataIndex === 'serviceName'">
-          <span class="service-link" @click="viewDistribution(text, record.group, record.version)">
-            <b>
-              <Icon style="margin-bottom: -2px" icon="material-symbols:attach-file-rounded"></Icon>
-              {{ text }}
-            </b>
-          </span>
+          <a-tooltip :title="text">
+            <span
+              class="app-link"
+              @click="viewDistribution(text, record.group, record.version, record.providerAppName)"
+            >
+              <b>
+                <Icon
+                  style="margin-bottom: -2px"
+                  icon="material-symbols:attach-file-rounded"
+                ></Icon>
+                {{ text }}
+              </b>
+            </span>
+          </a-tooltip>
         </template>
       </template>
     </search-table>
@@ -33,7 +41,7 @@
 
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
-import { nextTick, provide, reactive, ref, watch } from 'vue'
+import { provide, reactive, watch } from 'vue'
 import { searchService } from '@/api/service/service'
 import { SearchDomain } from '@/utils/SearchUtil'
 import SearchTable from '@/components/SearchTable.vue'
@@ -51,9 +59,8 @@ const columns = [
   {
     title: 'service',
     key: 'service',
-    dataIndex: 'serviceName',
+    dataIndex: 'serviceName'
     // sorter: true,
-    ellipsis: true
   },
   {
     title: 'version',
@@ -69,6 +76,24 @@ const columns = [
     title: 'provider',
     key: 'provider',
     dataIndex: 'providerAppName'
+  },
+  {
+    title: 'avgQPS',
+    key: 'avgQPS',
+    dataIndex: 'avgQPS'
+    // sorter: true,
+  },
+  {
+    title: 'avgRT',
+    key: 'avgRT',
+    dataIndex: 'avgRT'
+    // sorter: true,
+  },
+  {
+    title: 'requestTotal',
+    key: 'requestTotal',
+    dataIndex: 'requestTotal'
+    // sorter: true,
   }
   // {
   //   title: 'avgQPS',
@@ -135,8 +160,17 @@ searchDomain.tableStyle = {
   scrollY: '367px'
 }
 
-const viewDistribution = (serviceName: string, group: string, version: string) => {
-  router.push({ name: 'distribution', params: { pathId: serviceName, group, version } })
+const viewDistribution = (
+  serviceName: string,
+  group: string,
+  version: string,
+  providerAppName?: string
+) => {
+  router.push({
+    name: 'distribution',
+    params: { pathId: serviceName, group, version },
+    query: providerAppName ? { providerAppName } : {}
+  })
 }
 
 provide(PROVIDE_INJECT_KEY.SEARCH_DOMAIN, searchDomain)
@@ -148,15 +182,6 @@ watch(route, (a, b) => {
 </script>
 <style lang="less" scoped>
 .__container_services_index {
-  .service-link {
-    padding: 4px 10px 4px 4px;
-    border-radius: 4px;
-    color: v-bind('PRIMARY_COLOR');
-
-    &:hover {
-      cursor: pointer;
-      background: rgba(133, 131, 131, 0.13);
-    }
-  }
+  // Styles moved to global app-link in App.vue
 }
 </style>

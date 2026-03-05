@@ -62,7 +62,7 @@ func (r *ServiceProviderMappingResource) ResourceKind() coremodel.ResourceKind {
 	return ServiceProviderMappingKind
 }
 
-func (r *ServiceProviderMappingResource) MeshName() string {
+func (r *ServiceProviderMappingResource) ResourceMesh() string {
 	return r.Mesh
 }
 
