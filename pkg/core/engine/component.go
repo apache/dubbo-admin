@@ -18,6 +18,7 @@
 package engine
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"reflect"
@@ -26,9 +27,11 @@ import (
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	enginecfg "github.com/apache/dubbo-admin/pkg/config/engine"
+	storecfg "github.com/apache/dubbo-admin/pkg/config/store"
 	"github.com/apache/dubbo-admin/pkg/core/controller"
 	"github.com/apache/dubbo-admin/pkg/core/engine/subscriber"
 	"github.com/apache/dubbo-admin/pkg/core/events"
+	"github.com/apache/dubbo-admin/pkg/core/leader"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
@@ -52,6 +55,8 @@ type engineComponent struct {
 	informers           []controller.Informer
 	subscriptionManager events.SubscriptionManager
 	subscribers         []events.Subscriber
+	leaderElection      *leader.LeaderElection
+	needsLeaderElection bool
 }
 
 func newEngineComponent() Component {
@@ -103,6 +108,28 @@ func (e *engineComponent) Init(ctx runtime.BuilderContext) error {
 	if err = e.initSubscribers(eventBus); err != nil {
 		return fmt.Errorf("init subscribers failed, %w", err)
 	}
+
+	// Initialize leader election if using DB store
+	if ctx.Config().Store.Type != storecfg.Memory {
+		if dbSrc, ok := storeComponent.(leader.DBSource); ok {
+			if db, hasDB := dbSrc.GetDB(); hasDB {
+				holderID, err := leader.GenerateHolderID()
+				if err != nil {
+					logger.Warnf("engine: failed to generate holder ID, skipping leader election: %v", err)
+				} else {
+					le := leader.NewLeaderElection(db, runtime.ResourceEngine, holderID)
+					if err := le.EnsureTable(); err != nil {
+						logger.Warnf("engine: failed to ensure leader lease table: %v", err)
+					} else {
+						e.leaderElection = le
+						e.needsLeaderElection = true
+						logger.Infof("engine: leader election initialized (holder: %s)", holderID)
+					}
+				}
+			}
+		}
+	}
+
 	logger.Infof("resource engine %s has been inited successfully", e.name)
 	return nil
 }
@@ -146,6 +173,39 @@ func (e *engineComponent) initSubscribers(eventbus events.EventBus) error {
 }
 
 func (e *engineComponent) Start(_ runtime.Runtime, ch <-chan struct{}) error {
+	// If no leader election is needed (Memory store or DB initialization failed), run business logic directly
+	if !e.needsLeaderElection {
+		return e.startBusinessLogic(ch)
+	}
+
+	// Create a context that can be cancelled when the stop channel is closed
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Monitor the stop channel and cancel the context when it's closed
+	go func() {
+		<-ch
+		cancel()
+	}()
+
+	// Run leader election with callbacks for starting/stopping leadership
+	e.leaderElection.RunLeaderElection(ctx, ch,
+		func() { // onStartLeading callback
+			logger.Infof("engine: became leader, starting business logic")
+			if err := e.startBusinessLogic(ch); err != nil {
+				logger.Errorf("engine: failed to start business logic: %v", err)
+			}
+		},
+		func() { // onStopLeading callback
+			logger.Warnf("engine: lost leadership, stopping business logic")
+		},
+	)
+
+	return nil
+}
+
+// startBusinessLogic contains the original business logic from the old Start method
+func (e *engineComponent) startBusinessLogic(ch <-chan struct{}) error {
 	// 1. subscribe resource changed events
 	for _, sub := range e.subscribers {
 		if err := e.subscriptionManager.Subscribe(sub); err != nil {

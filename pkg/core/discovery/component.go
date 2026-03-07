@@ -18,6 +18,7 @@
 package discovery
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"reflect"
@@ -27,9 +28,11 @@ import (
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/config/discovery"
 	"github.com/apache/dubbo-admin/pkg/config/engine"
+	storecfg "github.com/apache/dubbo-admin/pkg/config/store"
 	"github.com/apache/dubbo-admin/pkg/core/controller"
 	"github.com/apache/dubbo-admin/pkg/core/discovery/subscriber"
 	"github.com/apache/dubbo-admin/pkg/core/events"
+	"github.com/apache/dubbo-admin/pkg/core/leader"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
@@ -51,10 +54,12 @@ var _ Component = &discoveryComponent{}
 type Informers []controller.Informer
 
 type discoveryComponent struct {
-	configs         []*discovery.Config
-	informers       map[string]Informers
-	subscribers     []events.Subscriber
-	subscriptionMgr events.SubscriptionManager
+	configs             []*discovery.Config
+	informers           map[string]Informers
+	subscribers         []events.Subscriber
+	subscriptionMgr     events.SubscriptionManager
+	leaderElection      *leader.LeaderElection
+	needsLeaderElection bool
 }
 
 func (d *discoveryComponent) RequiredDependencies() []runtime.ComponentType {
@@ -111,10 +116,65 @@ func (d *discoveryComponent) Init(ctx runtime.BuilderContext) error {
 	if err != nil {
 		return err
 	}
+
+	// Initialize leader election if using DB store
+	if ctx.Config().Store.Type != storecfg.Memory {
+		if dbSrc, ok := storeComponent.(leader.DBSource); ok {
+			if db, hasDB := dbSrc.GetDB(); hasDB {
+				holderID, err := leader.GenerateHolderID()
+				if err != nil {
+					logger.Warnf("discovery: failed to generate holder ID, skipping leader election: %v", err)
+				} else {
+					le := leader.NewLeaderElection(db, runtime.ResourceDiscovery, holderID)
+					if err := le.EnsureTable(); err != nil {
+						logger.Warnf("discovery: failed to ensure leader lease table: %v", err)
+					} else {
+						d.leaderElection = le
+						d.needsLeaderElection = true
+						logger.Infof("discovery: leader election initialized (holder: %s)", holderID)
+					}
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
 func (d *discoveryComponent) Start(_ runtime.Runtime, ch <-chan struct{}) error {
+	// If no leader election is needed (Memory store or DB initialization failed), run business logic directly
+	if !d.needsLeaderElection {
+		return d.startBusinessLogic(ch)
+	}
+
+	// Create a context that can be cancelled when the stop channel is closed
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Monitor the stop channel and cancel the context when it's closed
+	go func() {
+		<-ch
+		cancel()
+	}()
+
+	// Run leader election with callbacks for starting/stopping leadership
+	d.leaderElection.RunLeaderElection(ctx, ch,
+		func() { // onStartLeading callback
+			logger.Infof("discovery: became leader, starting business logic")
+			if err := d.startBusinessLogic(ch); err != nil {
+				logger.Errorf("discovery: failed to start business logic: %v", err)
+			}
+		},
+		func() { // onStopLeading callback
+			logger.Warnf("discovery: lost leadership, stopping business logic")
+		},
+	)
+
+	return nil
+}
+
+// startBusinessLogic contains the original business logic from the old Start method
+func (d *discoveryComponent) startBusinessLogic(ch <-chan struct{}) error {
 	// 1. subscribe resource changed events
 	for _, sub := range d.subscribers {
 		err := d.subscriptionMgr.Subscribe(sub)
@@ -123,11 +183,12 @@ func (d *discoveryComponent) Start(_ runtime.Runtime, ch <-chan struct{}) error 
 				fmt.Sprintf("subscriber %s can not subscribe resource changed events", sub.Name()))
 		}
 	}
+	// 2. start informers
 	for name, informers := range d.informers {
 		for _, informer := range informers {
 			go informer.Run(ch)
 		}
-		logger.Infof("resource discvoery %s has started succesfully", name)
+		logger.Infof("resource discovery %s has started successfully", name)
 	}
 	return nil
 }
