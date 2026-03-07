@@ -44,9 +44,9 @@ func SearchInstanceByIp(ctx consolectx.Context, req *model.SearchReq) (*model.Se
 	pageData, err := manager.PageListByIndexes[*meshresource.InstanceResource](
 		ctx.ResourceManager(),
 		meshresource.InstanceKind,
-		map[string]string{
-			index.ByMeshIndex:       req.Mesh,
-			index.ByInstanceIpIndex: req.Keywords,
+		[]index.IndexCondition{
+			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+			{IndexName: index.ByInstanceIpIndex, Value: req.Keywords, Operator: index.Equals},
 		},
 		req.PageReq)
 	if err != nil {
@@ -75,9 +75,9 @@ func SearchInstanceByName(ctx consolectx.Context, req *model.SearchReq) (*model.
 	pageData, err := manager.PageListByIndexes[*meshresource.InstanceResource](
 		ctx.ResourceManager(),
 		meshresource.InstanceKind,
-		map[string]string{
-			index.ByMeshIndex:         req.Mesh,
-			index.ByInstanceNameIndex: req.Keywords,
+		[]index.IndexCondition{
+			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+			{IndexName: index.ByInstanceNameIndex, Value: req.Keywords, Operator: index.Equals},
 		},
 		req.PageReq)
 	if err != nil {
@@ -113,8 +113,8 @@ func SearchInstances(ctx consolectx.Context, req *model.SearchInstanceReq) (*mod
 	pageData, err := manager.PageListByIndexes[*meshresource.InstanceResource](
 		ctx.ResourceManager(),
 		meshresource.InstanceKind,
-		map[string]string{
-			index.ByMeshIndex: req.Mesh,
+		[]index.IndexCondition{
+			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
 		},
 		req.PageReq)
 	if err != nil {

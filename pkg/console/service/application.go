@@ -42,9 +42,9 @@ func GetApplicationDetail(ctx consolectx.Context, req *model.ApplicationDetailRe
 	instanceResources, err := manager.ListByIndexes[*meshresource.InstanceResource](
 		ctx.ResourceManager(),
 		meshresource.InstanceKind,
-		map[string]string{
-			index.ByMeshIndex:            req.Mesh,
-			index.ByInstanceAppNameIndex: req.AppName,
+		[]index.IndexCondition{
+			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+			{IndexName: index.ByInstanceAppNameIndex, Value: req.AppName, Operator: index.Equals},
 		},
 	)
 	if err != nil {
@@ -68,9 +68,9 @@ func GetAppInstanceInfo(ctx consolectx.Context, req *model.ApplicationTabInstanc
 	pageData, err := manager.PageListByIndexes[*meshresource.InstanceResource](
 		ctx.ResourceManager(),
 		meshresource.InstanceKind,
-		map[string]string{
-			index.ByMeshIndex:            req.Mesh,
-			index.ByInstanceAppNameIndex: req.AppName,
+		[]index.IndexCondition{
+			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+			{IndexName: index.ByInstanceAppNameIndex, Value: req.AppName, Operator: index.Equals},
 		},
 		req.PageReq,
 	)
@@ -120,23 +120,28 @@ func GetAppServiceInfo(ctx consolectx.Context, req *model.ApplicationServiceForm
 }
 
 func getAppProvideServiceInfo(ctx consolectx.Context, req *model.ApplicationServiceFormReq) (*model.SearchPaginationResult, error) {
-	var indexes map[string]string
+	var conditions []index.IndexCondition
+	conditions = append(conditions, index.IndexCondition{
+		IndexName: index.ByMeshIndex,
+		Value:     req.Mesh,
+		Operator:  index.Equals,
+	})
+	conditions = append(conditions, index.IndexCondition{
+		IndexName: index.ByServiceProviderAppName,
+		Value:     req.AppName,
+		Operator:  index.Equals,
+	})
 	if strutil.IsNotBlank(req.ServiceName) {
-		indexes = map[string]string{
-			index.ByMeshIndex:                  req.Mesh,
-			index.ByServiceProviderAppName:     req.AppName,
-			index.ByServiceProviderServiceName: req.ServiceName,
-		}
-	} else {
-		indexes = map[string]string{
-			index.ByMeshIndex:              req.Mesh,
-			index.ByServiceProviderAppName: req.AppName,
-		}
+		conditions = append(conditions, index.IndexCondition{
+			IndexName: index.ByServiceProviderServiceName,
+			Value:     req.ServiceName,
+			Operator:  index.Equals,
+		})
 	}
 	pageData, err := manager.PageListByIndexes[*meshresource.ServiceProviderMetadataResource](
 		ctx.ResourceManager(),
 		meshresource.ServiceProviderMetadataKind,
-		indexes,
+		conditions,
 		req.PageReq,
 	)
 	if err != nil {
@@ -167,9 +172,9 @@ func getAppConsumeServiceInfo(ctx consolectx.Context, req *model.ApplicationServ
 	pageData, err := manager.PageListByIndexes[*meshresource.ServiceConsumerMetadataResource](
 		ctx.ResourceManager(),
 		meshresource.ServiceConsumerMetadataKind,
-		map[string]string{
-			index.ByMeshIndex:              req.Mesh,
-			index.ByServiceConsumerAppName: req.AppName,
+		[]index.IndexCondition{
+			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+			{IndexName: index.ByServiceConsumerAppName, Value: req.AppName, Operator: index.Equals},
 		},
 		req.PageReq,
 	)
@@ -220,8 +225,8 @@ func SearchApplications(ctx consolectx.Context, req *model.ApplicationSearchReq)
 	pageData, err := manager.PageListByIndexes[*meshresource.ApplicationResource](
 		ctx.ResourceManager(),
 		meshresource.ApplicationKind,
-		map[string]string{
-			index.ByMeshIndex: req.Mesh,
+		[]index.IndexCondition{
+			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
 		},
 		req.PageReq,
 	)

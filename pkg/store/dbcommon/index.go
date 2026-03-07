@@ -252,3 +252,17 @@ func (idx *Index) removeResourceUnsafe(resource model.Resource) {
 		}
 	}
 }
+
+// AddEntry adds an index entry directly to the index (used during rebuild from DB)
+// This is useful when rebuilding indices from persisted data
+func (idx *Index) AddEntry(indexName, indexValue, resourceKey string) {
+	idx.mu.Lock()
+	defer idx.mu.Unlock()
+
+	valueIndex := idx.indices[indexName]
+	if valueIndex == nil {
+		valueIndex = NewValueIndex()
+		idx.indices[indexName] = valueIndex
+	}
+	valueIndex.Add(indexValue, resourceKey)
+}

@@ -161,8 +161,8 @@ func (s *RuntimeInstanceEventSubscriber) getRelatedInstanceByName(
 		return nil, nil
 	}
 	instanceResName := meshresource.BuildInstanceResName(rtInstanceRes.Spec.AppName, rtInstanceRes.Spec.Ip, rtInstanceRes.Spec.RpcPort)
-	resources, err := s.instanceStore.ListByIndexes(map[string]string{
-		index.ByInstanceNameIndex: instanceResName,
+	resources, err := s.instanceStore.ListByIndexes([]index.IndexCondition{
+		{IndexName: index.ByInstanceNameIndex, Value: instanceResName, Operator: index.Equals},
 	})
 	if err != nil {
 		return nil, err
@@ -190,8 +190,8 @@ func (s *RuntimeInstanceEventSubscriber) getRelatedInstanceByName(
 
 func (s *RuntimeInstanceEventSubscriber) getRelatedInstanceByIP(
 	rtInstanceRes *meshresource.RuntimeInstanceResource) (*meshresource.InstanceResource, error) {
-	resources, err := s.instanceStore.ListByIndexes(map[string]string{
-		index.ByInstanceIpIndex: rtInstanceRes.Spec.Ip,
+	resources, err := s.instanceStore.ListByIndexes([]index.IndexCondition{
+		{IndexName: index.ByInstanceIpIndex, Value: rtInstanceRes.Spec.Ip, Operator: index.Equals},
 	})
 	if err != nil {
 		return nil, err
