@@ -193,22 +193,33 @@ func GetServiceMethodDetail(ctx consolectx.Context, req model.ServiceMethodDetai
 	return detail, nil
 }
 
+func shouldUseExactServiceProviderLookup(req model.ServiceMethodsReq) bool {
+	return req.ServiceName != "" && req.Version != "" && req.Group != ""
+}
+
+func buildServiceProviderLookupKey(req model.ServiceMethodsReq) string {
+	return req.ServiceName + constants.ColonSeparator + req.Version + constants.ColonSeparator + req.Group
+}
+
 func listServiceProviderMetadata(ctx consolectx.Context, req model.ServiceMethodsReq) ([]*meshresource.ServiceProviderMetadataResource, error) {
+	if shouldUseExactServiceProviderLookup(req) {
+		return listServiceProviderMetadataByIndexes(ctx, req, map[string]string{
+			index.ByMeshIndex:                 req.Mesh,
+			index.ByServiceProviderServiceKey: buildServiceProviderLookupKey(req),
+		})
+	}
+
 	indexes := map[string]string{
 		index.ByMeshIndex:                  req.Mesh,
 		index.ByServiceProviderServiceName: req.ServiceName,
 	}
-	if req.ProviderAppName != "" {
-		indexes[index.ByServiceProviderAppName] = req.ProviderAppName
-	}
 
-	metadataList, err := manager.ListByIndexes[*meshresource.ServiceProviderMetadataResource](
-		ctx.ResourceManager(),
-		meshresource.ServiceProviderMetadataKind,
-		indexes,
-	)
+	metadataList, err := listServiceProviderMetadataByIndexes(ctx, req, indexes)
 	if err != nil {
 		return nil, err
+	}
+	if req.Group == "" && req.Version == "" {
+		return metadataList, nil
 	}
 
 	filtered := make([]*meshresource.ServiceProviderMetadataResource, 0, len(metadataList))
@@ -222,6 +233,22 @@ func listServiceProviderMetadata(ctx consolectx.Context, req model.ServiceMethod
 	return filtered, nil
 }
 
+func listServiceProviderMetadataByIndexes(
+	ctx consolectx.Context,
+	req model.ServiceMethodsReq,
+	indexes map[string]string,
+) ([]*meshresource.ServiceProviderMetadataResource, error) {
+	if req.ProviderAppName != "" {
+		indexes[index.ByServiceProviderAppName] = req.ProviderAppName
+	}
+
+	return manager.ListByIndexes[*meshresource.ServiceProviderMetadataResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceProviderMetadataKind,
+		indexes,
+	)
+}
+
 func matchesServiceMethodsReq(metadata *meshresource.ServiceProviderMetadataResource, req model.ServiceMethodsReq) bool {
 	if metadata == nil || metadata.Spec == nil {
 		return false
@@ -230,9 +257,6 @@ func matchesServiceMethodsReq(metadata *meshresource.ServiceProviderMetadataReso
 		return false
 	}
 	if req.Version != "" && metadata.Spec.Version != req.Version {
-		return false
-	}
-	if req.ProviderAppName != "" && metadata.Spec.ProviderAppName != req.ProviderAppName {
 		return false
 	}
 	return true
@@ -274,6 +298,9 @@ func buildServiceMethodCandidates(metadataList []*meshresource.ServiceProviderMe
 		}
 	}
 
+	// Legacy metadata may only expose flat method-name parameters without structured method definitions.
+	// Keep those names as a fallback for method listing, but never let them shadow authoritative
+	// structured metadata for the same method name.
 	for methodName := range fallbackMethodNames {
 		if _, ok := structuredMethodNames[methodName]; ok {
 			continue
@@ -392,13 +419,13 @@ func methodNamesFromMetadataParameters(parameters map[string]string) []string {
 		return nil
 	}
 	methodsRaw := strings.TrimSpace(parameters["methods"])
-	if methodsRaw == "" {
+	if strutil.IsBlank(methodsRaw) {
 		return nil
 	}
 	methodNames := make([]string, 0)
 	for _, methodName := range strings.Split(methodsRaw, ",") {
 		methodName = strings.TrimSpace(methodName)
-		if methodName == "" {
+		if strutil.IsBlank(methodName) {
 			continue
 		}
 		methodNames = append(methodNames, methodName)
@@ -511,7 +538,7 @@ func buildServiceMethodTypesByName(metadataList []*meshresource.ServiceProviderM
 				continue
 			}
 			typeName := strings.TrimSpace(typeSpec.GetType())
-			if typeName == "" {
+			if strutil.IsBlank(typeName) {
 				continue
 			}
 			if _, exists := typesByName[typeName]; !exists {
@@ -524,7 +551,7 @@ func buildServiceMethodTypesByName(metadataList []*meshresource.ServiceProviderM
 
 func collectServiceMethodRelatedTypeNames(typesByName map[string]*meshproto.Type, typeName string, visited map[string]struct{}) {
 	typeName = normalizeServiceMethodRelatedTypeName(typeName)
-	if typeName == "" {
+	if strutil.IsBlank(typeName) {
 		return
 	}
 	typeSpec, ok := typesByName[typeName]

@@ -57,11 +57,13 @@ type tripleInvokeTarget struct {
 }
 
 var invokeGenericServiceRPC = func(callCtx context.Context, invocation genericInvocation) (any, error) {
+	// TODO: Cache generic invoke clients to avoid recreating the Dubbo instance/client on every call.
 	ins, err := dubbo.NewInstance(dubbo.WithName(genericInvokeInstanceName))
 	if err != nil {
 		return nil, err
 	}
 
+	// TODO: Derive client protocol and serialization from target service metadata when expanding beyond Triple/Hessian2.
 	cli, err := ins.NewClient(
 		client.WithClientProtocolTriple(),
 		client.WithClientSerialization(dubboconstant.Hessian2Serialization),

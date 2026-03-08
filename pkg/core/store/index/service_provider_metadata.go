@@ -23,17 +23,20 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 )
 
 const (
 	ByServiceProviderAppName     = "idx_service_provider_app_name"
+	ByServiceProviderServiceKey  = "idx_service_provider_service_key"
 	ByServiceProviderServiceName = "idx_service_provider_service_name"
 )
 
 func init() {
 	RegisterIndexers(meshresource.ServiceProviderMetadataKind, map[string]cache.IndexFunc{
 		ByServiceProviderAppName:     byServiceProviderAppName,
+		ByServiceProviderServiceKey:  byServiceProviderServiceKey,
 		ByServiceProviderServiceName: byServiceProviderServiceName,
 	})
 }
@@ -58,4 +61,19 @@ func byServiceProviderServiceName(obj interface{}) ([]string, error) {
 		return []string{}, nil
 	}
 	return []string{metadata.Spec.ServiceName}, nil
+}
+
+func byServiceProviderServiceKey(obj interface{}) ([]string, error) {
+	metadata, ok := obj.(*meshresource.ServiceProviderMetadataResource)
+	if !ok {
+		return nil, bizerror.NewAssertionError(meshresource.ServiceProviderMetadataKind, reflect.TypeOf(obj).Name())
+	}
+	if metadata.Spec == nil {
+		return []string{}, nil
+	}
+	return []string{buildServiceProviderServiceKey(metadata.Spec.ServiceName, metadata.Spec.Version, metadata.Spec.Group)}, nil
+}
+
+func buildServiceProviderServiceKey(serviceName, version, group string) string {
+	return serviceName + constants.ColonSeparator + version + constants.ColonSeparator + group
 }

@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/duke-git/lancet/v2/strutil"
 	"github.com/gin-gonic/gin"
 
 	"github.com/apache/dubbo-admin/pkg/common/constants"
@@ -109,13 +110,13 @@ type BaseServiceReq struct {
 }
 
 func (s *BaseServiceReq) Query(c *gin.Context) error {
-	s.ServiceName = c.Query("serviceName")
-	if s.ServiceName == "" {
+	s.ServiceName = strings.TrimSpace(c.Query("serviceName"))
+	if strutil.IsBlank(s.ServiceName) {
 		return fmt.Errorf("service name is empty")
 	}
-	s.Group = c.Query("group")
-	s.Version = c.Query("version")
-	s.Mesh = c.Query("mesh")
+	s.Group = strings.TrimSpace(c.Query("group"))
+	s.Version = strings.TrimSpace(c.Query("version"))
+	s.Mesh = strings.TrimSpace(c.Query("mesh"))
 	return nil
 }
 
@@ -133,11 +134,11 @@ type ServiceMethodsReq struct {
 
 func (s *ServiceMethodsReq) Query(c *gin.Context) error {
 	s.ServiceName = strings.TrimSpace(c.Query("serviceName"))
-	if s.ServiceName == "" {
+	if strutil.IsBlank(s.ServiceName) {
 		return fmt.Errorf("service name is empty")
 	}
 	s.Mesh = strings.TrimSpace(c.Query("mesh"))
-	if s.Mesh == "" {
+	if strutil.IsBlank(s.Mesh) {
 		return fmt.Errorf("mesh is empty")
 	}
 	s.Group = strings.TrimSpace(c.Query("group"))
@@ -158,7 +159,7 @@ func (s *ServiceMethodDetailReq) Query(c *gin.Context) error {
 		return err
 	}
 	s.MethodName = strings.TrimSpace(c.Query("methodName"))
-	if s.MethodName == "" {
+	if strutil.IsBlank(s.MethodName) {
 		return fmt.Errorf("method name is empty")
 	}
 	s.Signature = strings.TrimSpace(c.Query("signature"))
@@ -209,17 +210,17 @@ type ServiceGenericInvokeReq struct {
 
 func (s *ServiceGenericInvokeReq) Validate() error {
 	s.Mesh = strings.TrimSpace(s.Mesh)
-	if s.Mesh == "" {
+	if strutil.IsBlank(s.Mesh) {
 		return fmt.Errorf("mesh is empty")
 	}
 
 	s.ServiceName = strings.TrimSpace(s.ServiceName)
-	if s.ServiceName == "" {
+	if strutil.IsBlank(s.ServiceName) {
 		return fmt.Errorf("service name is empty")
 	}
 
 	s.MethodName = strings.TrimSpace(s.MethodName)
-	if s.MethodName == "" {
+	if strutil.IsBlank(s.MethodName) {
 		return fmt.Errorf("method name is empty")
 	}
 
