@@ -22,10 +22,10 @@ import (
 	"sort"
 
 	set "github.com/duke-git/lancet/v2/datastructure/set"
+	"github.com/duke-git/lancet/v2/slice"
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
-	"github.com/apache/dubbo-admin/pkg/common/util/slices"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"github.com/apache/dubbo-admin/pkg/core/store"
@@ -150,8 +150,8 @@ func (rs *resourceStore) ListByIndexes(indexes map[string]string) ([]coremodel.R
 	if err != nil {
 		return nil, err
 	}
-	resources = slices.SortBy(resources, func(r coremodel.Resource) string {
-		return r.ResourceKey()
+	slice.SortBy(resources, func(r1 coremodel.Resource, r2 coremodel.Resource) bool {
+		return r1.ResourceKey() < r2.ResourceKey()
 	})
 	return resources, nil
 }
