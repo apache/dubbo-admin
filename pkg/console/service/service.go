@@ -171,7 +171,7 @@ func GetServiceMethodNames(ctx consolectx.Context, req model.ServiceMethodsReq) 
 	methodSet := make(map[string]struct{})
 	for _, metadata := range metadataList {
 		for _, method := range metadata.Spec.Methods {
-			methodName := strings.TrimSpace(method.Name)
+			methodName := strings.TrimSpace(method.GetName())
 			if methodName == "" {
 				continue
 			}

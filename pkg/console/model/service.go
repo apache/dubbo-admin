@@ -131,17 +131,17 @@ type ServiceMethodsReq struct {
 }
 
 func (s *ServiceMethodsReq) Query(c *gin.Context) error {
-	s.ServiceName = c.Query("serviceName")
+	s.ServiceName = strings.TrimSpace(c.Query("serviceName"))
 	if s.ServiceName == "" {
 		return fmt.Errorf("service name is empty")
 	}
-	s.Mesh = c.Query("mesh")
+	s.Mesh = strings.TrimSpace(c.Query("mesh"))
 	if s.Mesh == "" {
 		return fmt.Errorf("mesh is empty")
 	}
-	s.Group = c.Query("group")
-	s.Version = c.Query("version")
-	s.ProviderAppName = c.Query("providerAppName")
+	s.Group = strings.TrimSpace(c.Query("group"))
+	s.Version = strings.TrimSpace(c.Query("version"))
+	s.ProviderAppName = strings.TrimSpace(c.Query("providerAppName"))
 	return nil
 }
 
