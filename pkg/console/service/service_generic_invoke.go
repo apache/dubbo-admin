@@ -51,6 +51,11 @@ type genericInvocation struct {
 	Args           []hessian.Object
 }
 
+type tripleInvokeTarget struct {
+	instance *meshresource.RPCInstanceResource
+	port     int64
+}
+
 var invokeGenericServiceRPC = func(callCtx context.Context, invocation genericInvocation) (any, error) {
 	ins, err := dubbo.NewInstance(dubbo.WithName(genericInvokeInstanceName))
 	if err != nil {
@@ -113,7 +118,7 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 		return nil, err
 	}
 
-	instance, err := selectTripleRPCInstance(ctx, req.Mesh, providerAppName)
+	target, err := selectTripleInvokeTarget(ctx, req.Mesh, providerAppName)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +136,7 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 
 	startedAt := time.Now()
 	result, err := invokeGenericServiceRPC(callCtx, genericInvocation{
-		URL:            fmt.Sprintf("tri://%s:%d", instance.Spec.Ip, instance.Spec.Port),
+		URL:            fmt.Sprintf("tri://%s:%d", target.instance.Spec.Ip, target.port),
 		ServiceName:    req.ServiceName,
 		Group:          req.Group,
 		Version:        req.Version,
@@ -142,7 +147,7 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 	elapsedMs := time.Since(startedAt).Milliseconds()
 	if err != nil {
 		logger.Errorf("generic invoke failed, service=%s, method=%s, providerApp=%s, target=%s:%d, cause: %v",
-			req.ServiceName, req.MethodName, providerAppName, instance.Spec.Ip, instance.Spec.Port, err)
+			req.ServiceName, req.MethodName, providerAppName, target.instance.Spec.Ip, target.port, err)
 		return nil, bizerror.New(bizerror.InternalError, err.Error())
 	}
 
@@ -209,7 +214,7 @@ func selectServiceProviderAppName(req model.ServiceGenericInvokeReq, metadataLis
 	return providerAppNames[0], nil
 }
 
-func selectTripleRPCInstance(ctx consolectx.Context, mesh string, providerAppName string) (*meshresource.RPCInstanceResource, error) {
+func selectTripleInvokeTarget(ctx consolectx.Context, mesh string, providerAppName string) (*tripleInvokeTarget, error) {
 	instanceList, err := manager.ListByIndexes[*meshresource.RPCInstanceResource](
 		ctx.ResourceManager(),
 		meshresource.RPCInstanceKind,
@@ -223,27 +228,51 @@ func selectTripleRPCInstance(ctx consolectx.Context, mesh string, providerAppNam
 		return nil, err
 	}
 
-	tripleInstances := make([]*meshresource.RPCInstanceResource, 0, len(instanceList))
+	targets := make([]*tripleInvokeTarget, 0, len(instanceList))
+	seen := make(map[string]struct{}, len(instanceList))
 	for _, instance := range instanceList {
 		if instance == nil || instance.Spec == nil {
 			continue
 		}
-		if instance.Spec.Protocol != dubboconstant.TriProtocol {
-			continue
+		if instance.Spec.GetProtocol() == dubboconstant.TriProtocol && instance.Spec.GetPort() > 0 {
+			appendTripleInvokeTarget(&targets, seen, instance, instance.Spec.GetPort())
 		}
-		tripleInstances = append(tripleInstances, instance)
+		for _, endpoint := range instance.Spec.GetEndpoints() {
+			if endpoint == nil || endpoint.GetProtocol() != dubboconstant.TriProtocol || endpoint.GetPort() <= 0 {
+				continue
+			}
+			appendTripleInvokeTarget(&targets, seen, instance, endpoint.GetPort())
+		}
 	}
-	if len(tripleInstances) == 0 {
+	if len(targets) == 0 {
 		return nil, bizerror.New(
 			bizerror.NotFoundError,
 			fmt.Sprintf("triple instance not found for provider %s", providerAppName),
 		)
 	}
 
-	sort.Slice(tripleInstances, func(i, j int) bool {
-		return tripleInstances[i].ResourceKey() < tripleInstances[j].ResourceKey()
+	sort.Slice(targets, func(i, j int) bool {
+		if targets[i].instance.ResourceKey() != targets[j].instance.ResourceKey() {
+			return targets[i].instance.ResourceKey() < targets[j].instance.ResourceKey()
+		}
+		return targets[i].port < targets[j].port
 	})
-	return tripleInstances[0], nil
+	return targets[0], nil
+}
+
+func appendTripleInvokeTarget(targets *[]*tripleInvokeTarget, seen map[string]struct{}, instance *meshresource.RPCInstanceResource, port int64) {
+	if instance == nil || instance.Spec == nil || port <= 0 {
+		return
+	}
+	key := fmt.Sprintf("%s:%d", instance.ResourceKey(), port)
+	if _, ok := seen[key]; ok {
+		return
+	}
+	seen[key] = struct{}{}
+	*targets = append(*targets, &tripleInvokeTarget{
+		instance: instance,
+		port:     port,
+	})
 }
 
 func toAttachmentValues(attachments map[string]string) map[string]any {
