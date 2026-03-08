@@ -33,6 +33,8 @@ const (
 	DefaultRetries = 2
 )
 
+var invokeServiceGeneric = service.InvokeServiceGeneric
+
 func SearchServices(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req := model.NewServiceSearchReq()
@@ -96,6 +98,29 @@ func GetServiceMethodDetail(ctx consolectx.Context) gin.HandlerFunc {
 		}
 
 		resp, err := service.GetServiceMethodDetail(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}
+
+func ServiceGenericInvoke(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := model.ServiceGenericInvokeReq{}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		if err := req.Validate(); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		resp, err := invokeServiceGeneric(ctx, req)
 		if err != nil {
 			util.HandleServiceError(c, err)
 			return

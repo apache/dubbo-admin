@@ -165,6 +165,7 @@ func ToServiceSearchRespByConsumer(res *meshresource.ServiceConsumerMetadataReso
 type serviceMethodCandidate struct {
 	detail    *model.ServiceMethodDetailResp
 	signature string
+	method    *meshproto.Method
 }
 
 func GetServiceMethodNames(ctx consolectx.Context, req model.ServiceMethodsReq) ([]model.ServiceMethodSummaryResp, error) {
@@ -182,20 +183,13 @@ func GetServiceMethodDetail(ctx consolectx.Context, req model.ServiceMethodDetai
 		return nil, err
 	}
 
-	detail, ambiguous := findServiceMethodDetail(buildServiceMethodCandidates(metadataList), req)
-	if ambiguous {
-		return nil, bizerror.New(
-			bizerror.InvalidArgument,
-			fmt.Sprintf("multiple overloaded definitions found for method %s, please specify signature", req.MethodName),
-		)
-	}
-	if detail == nil {
-		return nil, bizerror.New(
-			bizerror.NotFoundError,
-			fmt.Sprintf("method %s not found for service %s", req.MethodName, req.ServiceName),
-		)
+	candidate, err := resolveStructuredServiceMethodCandidate(buildServiceMethodCandidates(metadataList), req)
+	if err != nil {
+		return nil, err
 	}
 
+	detail := cloneServiceMethodDetailResp(candidate.detail)
+	detail.Types = buildServiceMethodRelatedTypes(metadataList, candidate.method)
 	return detail, nil
 }
 
@@ -300,31 +294,69 @@ func buildServiceMethodCandidates(metadataList []*meshresource.ServiceProviderMe
 	return candidates
 }
 
-func findServiceMethodDetail(candidates []*serviceMethodCandidate, req model.ServiceMethodDetailReq) (*model.ServiceMethodDetailResp, bool) {
+func findServiceMethodCandidate(candidates []*serviceMethodCandidate, req model.ServiceMethodDetailReq) (*serviceMethodCandidate, bool) {
 	if req.Signature != "" {
 		for _, candidate := range candidates {
 			if candidate.detail.MethodName == req.MethodName && candidate.signature == req.Signature {
-				return cloneServiceMethodDetailResp(candidate.detail), false
+				return candidate, false
 			}
 		}
 		return nil, false
 	}
 
-	var detail *model.ServiceMethodDetailResp
+	var candidateMatch *serviceMethodCandidate
 	matchCount := 0
 	for _, candidate := range candidates {
 		if candidate.detail.MethodName != req.MethodName {
 			continue
 		}
 		matchCount++
-		if detail == nil {
-			detail = cloneServiceMethodDetailResp(candidate.detail)
+		if candidateMatch == nil {
+			candidateMatch = candidate
 		}
 	}
 	if matchCount > 1 {
 		return nil, true
 	}
-	return detail, false
+	return candidateMatch, false
+}
+
+func resolveStructuredServiceMethodCandidate(candidates []*serviceMethodCandidate, req model.ServiceMethodDetailReq) (*serviceMethodCandidate, error) {
+	candidate, ambiguous := findServiceMethodCandidate(candidates, req)
+	if ambiguous {
+		return nil, bizerror.New(
+			bizerror.InvalidArgument,
+			fmt.Sprintf("multiple overloaded definitions found for method %s, please specify signature", req.MethodName),
+		)
+	}
+	if candidate == nil {
+		if hasFallbackOnlyMethodCandidate(candidates, req.MethodName) {
+			return nil, bizerror.New(
+				bizerror.InvalidArgument,
+				fmt.Sprintf("structured metadata not found for method %s of service %s", req.MethodName, req.ServiceName),
+			)
+		}
+		return nil, bizerror.New(
+			bizerror.NotFoundError,
+			fmt.Sprintf("method %s not found for service %s", req.MethodName, req.ServiceName),
+		)
+	}
+	if candidate.method == nil {
+		return nil, bizerror.New(
+			bizerror.InvalidArgument,
+			fmt.Sprintf("structured metadata not found for method %s of service %s", req.MethodName, req.ServiceName),
+		)
+	}
+	return candidate, nil
+}
+
+func hasFallbackOnlyMethodCandidate(candidates []*serviceMethodCandidate, methodName string) bool {
+	for _, candidate := range candidates {
+		if candidate.detail.MethodName == methodName && candidate.method == nil {
+			return true
+		}
+	}
+	return false
 }
 
 func newStructuredServiceMethodCandidate(method *meshproto.Method) (*serviceMethodCandidate, bool) {
@@ -338,6 +370,7 @@ func newStructuredServiceMethodCandidate(method *meshproto.Method) (*serviceMeth
 	return &serviceMethodCandidate{
 		detail:    detail,
 		signature: buildServiceMethodSignature(method),
+		method:    method,
 	}, true
 }
 
@@ -345,8 +378,10 @@ func newFallbackServiceMethodCandidate(methodName string) *serviceMethodCandidat
 	return &serviceMethodCandidate{
 		detail: &model.ServiceMethodDetailResp{
 			MethodName:     methodName,
+			Signature:      "",
 			ParameterTypes: []string{},
 			Parameters:     []model.ServiceMethodParameter{},
+			Types:          []model.ServiceMethodTypeResp{},
 		},
 		signature: "",
 	}
@@ -378,9 +413,11 @@ func serviceMethodKey(methodName, signature string) string {
 func toServiceMethodDetailResp(method *meshproto.Method) *model.ServiceMethodDetailResp {
 	resp := &model.ServiceMethodDetailResp{
 		MethodName:     strings.TrimSpace(method.GetName()),
+		Signature:      buildServiceMethodSignature(method),
 		ParameterTypes: normalizeServiceMethodParameterTypes(method.GetParameterTypes()),
 		Parameters:     make([]model.ServiceMethodParameter, 0, len(method.GetParameters())),
 		ReturnType:     strings.TrimSpace(method.GetReturnType()),
+		Types:          []model.ServiceMethodTypeResp{},
 	}
 	for _, parameter := range method.GetParameters() {
 		if parameter == nil {
@@ -400,12 +437,131 @@ func cloneServiceMethodDetailResp(detail *model.ServiceMethodDetailResp) *model.
 	}
 	cloned := &model.ServiceMethodDetailResp{
 		MethodName:     detail.MethodName,
+		Signature:      detail.Signature,
 		ParameterTypes: append([]string{}, detail.ParameterTypes...),
 		Parameters:     make([]model.ServiceMethodParameter, len(detail.Parameters)),
 		ReturnType:     detail.ReturnType,
+		Types:          cloneServiceMethodTypeResps(detail.Types),
 	}
 	copy(cloned.Parameters, detail.Parameters)
 	return cloned
+}
+
+func cloneServiceMethodTypeResps(types []model.ServiceMethodTypeResp) []model.ServiceMethodTypeResp {
+	cloned := make([]model.ServiceMethodTypeResp, 0, len(types))
+	for _, typeResp := range types {
+		cloned = append(cloned, model.ServiceMethodTypeResp{
+			Type:       typeResp.Type,
+			Properties: cloneStringMap(typeResp.Properties),
+			Items:      append([]string{}, typeResp.Items...),
+			Enums:      append([]string{}, typeResp.Enums...),
+		})
+	}
+	return cloned
+}
+
+func cloneStringMap(in map[string]string) map[string]string {
+	if len(in) == 0 {
+		return map[string]string{}
+	}
+	out := make(map[string]string, len(in))
+	for key, value := range in {
+		out[key] = value
+	}
+	return out
+}
+
+func buildServiceMethodRelatedTypes(metadataList []*meshresource.ServiceProviderMetadataResource, method *meshproto.Method) []model.ServiceMethodTypeResp {
+	if method == nil {
+		return []model.ServiceMethodTypeResp{}
+	}
+
+	typesByName := buildServiceMethodTypesByName(metadataList)
+	visited := make(map[string]struct{})
+	for _, parameterType := range method.GetParameterTypes() {
+		collectServiceMethodRelatedTypeNames(typesByName, normalizeServiceMethodRelatedTypeName(parameterType), visited)
+	}
+	collectServiceMethodRelatedTypeNames(typesByName, normalizeServiceMethodRelatedTypeName(method.GetReturnType()), visited)
+
+	typeNames := make([]string, 0, len(visited))
+	for typeName := range visited {
+		typeNames = append(typeNames, typeName)
+	}
+	sort.Strings(typeNames)
+
+	resp := make([]model.ServiceMethodTypeResp, 0, len(typeNames))
+	for _, typeName := range typeNames {
+		typeSpec, ok := typesByName[typeName]
+		if !ok {
+			continue
+		}
+		resp = append(resp, toServiceMethodTypeResp(typeSpec))
+	}
+	return resp
+}
+
+func buildServiceMethodTypesByName(metadataList []*meshresource.ServiceProviderMetadataResource) map[string]*meshproto.Type {
+	typesByName := make(map[string]*meshproto.Type)
+	for _, metadata := range metadataList {
+		if metadata == nil || metadata.Spec == nil {
+			continue
+		}
+		for _, typeSpec := range metadata.Spec.Types {
+			if typeSpec == nil {
+				continue
+			}
+			typeName := strings.TrimSpace(typeSpec.GetType())
+			if typeName == "" {
+				continue
+			}
+			if _, exists := typesByName[typeName]; !exists {
+				typesByName[typeName] = typeSpec
+			}
+		}
+	}
+	return typesByName
+}
+
+func collectServiceMethodRelatedTypeNames(typesByName map[string]*meshproto.Type, typeName string, visited map[string]struct{}) {
+	typeName = normalizeServiceMethodRelatedTypeName(typeName)
+	if typeName == "" {
+		return
+	}
+	typeSpec, ok := typesByName[typeName]
+	if !ok {
+		return
+	}
+	if _, exists := visited[typeName]; exists {
+		return
+	}
+	visited[typeName] = struct{}{}
+
+	for _, itemType := range typeSpec.GetItems() {
+		collectServiceMethodRelatedTypeNames(typesByName, itemType, visited)
+	}
+	for _, propertyType := range typeSpec.GetProperties() {
+		collectServiceMethodRelatedTypeNames(typesByName, propertyType, visited)
+	}
+}
+
+func normalizeServiceMethodRelatedTypeName(typeName string) string {
+	typeName = strings.TrimSpace(typeName)
+	for {
+		elementType, isArrayType := splitGenericArrayType(typeName)
+		if !isArrayType {
+			return typeName
+		}
+		typeName = strings.TrimSpace(elementType)
+	}
+}
+
+func toServiceMethodTypeResp(typeSpec *meshproto.Type) model.ServiceMethodTypeResp {
+	return model.ServiceMethodTypeResp{
+		Type:       strings.TrimSpace(typeSpec.GetType()),
+		Properties: cloneStringMap(typeSpec.GetProperties()),
+		Items:      append([]string{}, typeSpec.GetItems()...),
+		Enums:      append([]string{}, typeSpec.GetEnums()...),
+	}
 }
 
 func normalizeServiceMethodParameterTypes(parameterTypes []string) []string {

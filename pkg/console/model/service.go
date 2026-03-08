@@ -18,6 +18,7 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -177,7 +178,65 @@ type ServiceMethodParameter struct {
 
 type ServiceMethodDetailResp struct {
 	MethodName     string                   `json:"methodName"`
+	Signature      string                   `json:"signature,omitempty"`
 	ParameterTypes []string                 `json:"parameterTypes"`
 	Parameters     []ServiceMethodParameter `json:"parameters"`
 	ReturnType     string                   `json:"returnType"`
+	Types          []ServiceMethodTypeResp  `json:"types"`
+}
+
+type ServiceMethodTypeResp struct {
+	Type       string            `json:"type"`
+	Properties map[string]string `json:"properties"`
+	Items      []string          `json:"items"`
+	Enums      []string          `json:"enums"`
+}
+
+const DefaultServiceGenericInvokeTimeoutMs int64 = 3000
+
+type ServiceGenericInvokeReq struct {
+	Mesh            string            `json:"mesh"`
+	ServiceName     string            `json:"serviceName"`
+	MethodName      string            `json:"methodName"`
+	Signature       string            `json:"signature"`
+	Args            []json.RawMessage `json:"args"`
+	Group           string            `json:"group"`
+	Version         string            `json:"version"`
+	ProviderAppName string            `json:"providerAppName"`
+	TimeoutMs       int64             `json:"timeoutMs"`
+	Attachments     map[string]string `json:"attachments"`
+}
+
+func (s *ServiceGenericInvokeReq) Validate() error {
+	s.Mesh = strings.TrimSpace(s.Mesh)
+	if s.Mesh == "" {
+		return fmt.Errorf("mesh is empty")
+	}
+
+	s.ServiceName = strings.TrimSpace(s.ServiceName)
+	if s.ServiceName == "" {
+		return fmt.Errorf("service name is empty")
+	}
+
+	s.MethodName = strings.TrimSpace(s.MethodName)
+	if s.MethodName == "" {
+		return fmt.Errorf("method name is empty")
+	}
+
+	s.Signature = strings.TrimSpace(s.Signature)
+
+	s.Group = strings.TrimSpace(s.Group)
+	s.Version = strings.TrimSpace(s.Version)
+	s.ProviderAppName = strings.TrimSpace(s.ProviderAppName)
+
+	if s.TimeoutMs <= 0 {
+		s.TimeoutMs = DefaultServiceGenericInvokeTimeoutMs
+	}
+
+	return nil
+}
+
+type ServiceGenericInvokeResp struct {
+	ElapsedMs int64 `json:"elapsedMs"`
+	RawResult any   `json:"rawResult"`
 }
