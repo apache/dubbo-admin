@@ -33,8 +33,6 @@ const (
 	DefaultRetries = 2
 )
 
-var invokeServiceGeneric = service.InvokeServiceGeneric
-
 func SearchServices(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req := model.NewServiceSearchReq()
@@ -120,7 +118,7 @@ func ServiceGenericInvoke(ctx consolectx.Context) gin.HandlerFunc {
 			return
 		}
 
-		resp, err := invokeServiceGeneric(ctx, req)
+		resp, err := service.InvokeServiceGeneric(ctx, req)
 		if err != nil {
 			util.HandleServiceError(c, err)
 			return
