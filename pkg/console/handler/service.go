@@ -230,7 +230,7 @@ func ServiceConfigArgumentRoutePUT(ctx consolectx.Context) gin.HandlerFunc {
 	}
 }
 
-// GetServiceGraph returns the service graph in a cross-linked list structure for visualization
+// GetServiceGraph returns the service graph as graph data (nodes and edges) for visualization
 func GetServiceGraph(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req := &model.ServiceGraphReq{}

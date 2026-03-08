@@ -29,7 +29,7 @@ metadata:
   labels:
     org.apache.dubbo/service: dubbo-qos
 spec:
-  type: NodePort
+  type: ClusterIP
   sessionAffinity: None
   selector:
     app-type: dubbo
@@ -45,7 +45,7 @@ metadata:
   name: shop-frontend
   namespace: dubbo-samples-shop
 spec:
-  type: NodePort
+  type: ClusterIP
   sessionAffinity: None
   selector:
     app: shop-frontend

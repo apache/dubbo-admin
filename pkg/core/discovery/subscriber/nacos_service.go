@@ -128,6 +128,7 @@ func (n *NacosServiceEventSubscriber) processConsumerMetadataUpsert(serviceRes *
 		return err
 	}
 	resources, err := st.ListByIndexes(map[string]string{
+		index.ByMeshIndex:                  serviceRes.Mesh,
 		index.ByServiceConsumerServiceName: serviceName,
 	})
 	if err != nil {
@@ -212,6 +213,7 @@ func (n *NacosServiceEventSubscriber) processRPCInstanceUpsert(serviceRes *meshr
 		return err
 	}
 	resources, err := st.ListByIndexes(map[string]string{
+		index.ByMeshIndex:          serviceRes.Mesh,
 		index.ByRPCInstanceAppName: serviceRes.Name,
 	})
 	if err != nil {
@@ -286,6 +288,7 @@ func (n *NacosServiceEventSubscriber) processServiceConsumerDelete(serviceRes *m
 		return err
 	}
 	resources, err := st.ListByIndexes(map[string]string{
+		index.ByMeshIndex:                  serviceRes.Mesh,
 		index.ByServiceConsumerServiceName: serviceRes.Name,
 	})
 	if err != nil {
@@ -309,6 +312,7 @@ func (n *NacosServiceEventSubscriber) processRPCInstanceDelete(serviceRes *meshr
 		return err
 	}
 	resources, err := st.ListByIndexes(map[string]string{
+		index.ByMeshIndex:          serviceRes.Mesh,
 		index.ByRPCInstanceAppName: serviceRes.Name,
 	})
 	if err != nil {
