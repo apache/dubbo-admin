@@ -18,6 +18,65 @@
 import Mock from 'mockjs'
 import devTool from '@/utils/DevToolUtil'
 
+Mock.mock(devTool.mockUrl('/service/graph'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      nodes: [
+        {
+          id: 'provider-01',
+          label: 'provider-01',
+          type: 'application',
+          rule: 'provider'
+        },
+        {
+          id: 'provider-02',
+          label: 'provider-02',
+          type: 'application',
+          rule: 'provider'
+        },
+        {
+          id: 'serviceName:version:group',
+          label: 'serviceName:version:group',
+          type: 'service',
+          rule: ''
+        },
+        {
+          id: 'consumer-01',
+          label: 'consumer-01',
+          type: 'application',
+          rule: 'consumer'
+        },
+        {
+          id: 'consumer-02',
+          label: 'consumer-02',
+          type: 'application',
+          rule: 'consumer'
+        }
+      ],
+      edges: [
+        {
+          source: 'serviceName:version:group',
+          target: 'provider-01'
+        },
+        {
+          source: 'serviceName:version:group',
+          target: 'provider-02'
+        },
+        {
+          source: 'consumer-01',
+          target: 'serviceName:version:group'
+        },
+        {
+          source: 'consumer-02',
+          target: 'serviceName:version:group'
+        }
+      ]
+    }
+  }
+})
+
 Mock.mock(devTool.mockUrl('/mock/service/search'), 'get', {
   code: 200,
   msg: 'success',

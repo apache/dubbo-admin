@@ -16,12 +16,11 @@
  */
 import { createApp } from 'vue'
 import Antd from 'ant-design-vue'
-
+import '@/assets/iconfont/iconfont.css'
 import router from './router'
 import App from './App.vue'
 import 'ant-design-vue/dist/reset.css'
 import { i18n } from '@/base/i18n'
-// import './api/mock/index'
 
 import Vue3ColorPicker from 'vue3-colorpicker'
 
@@ -37,6 +36,10 @@ const app = createApp(App)
 const pinia = createPinia()
 
 pinia.use(piniaPluginPersistedstate)
+
+if (import.meta.env.DEV) {
+  import('./api/mock/index')
+}
 
 app.use(Antd).use(Vue3ColorPicker).use(pinia).use(i18n).use(router).mount('#app')
 

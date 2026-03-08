@@ -18,6 +18,53 @@
 import Mock from 'mockjs'
 import devTool from '@/utils/DevToolUtil'
 
+Mock.mock(devTool.mockUrl('/interface/graph'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      nodes: [
+        {
+          id: 'dubbo-springboot-demo-provider10.83.120.105:50051',
+          label: 'dubbo-springboot-demo-provider10.83.120.105:50051',
+          data: {
+            appName: 'dubbo-springboot-demo-provider',
+            ip: '10.83.120.105',
+            name: 'dubbo-springboot-demo-provider10.83.120.105:50051',
+            protocol: 'tri',
+            qosPort: 0,
+            rpcPort: 50051,
+            tags: {
+              'meta-v': '2.0.0'
+            }
+          }
+        },
+        {
+          id: 'dubbo-springboot-demo-consumer10.83.120.106:50052',
+          label: 'dubbo-springboot-demo-consumer10.83.120.106:50052',
+          data: {
+            appName: 'dubbo-springboot-demo-consumer',
+            ip: '10.83.120.106',
+            name: 'dubbo-springboot-demo-consumer10.83.120.106:50052',
+            protocol: 'tri',
+            qosPort: 0,
+            rpcPort: 50052,
+            tags: {
+              'meta-v': '2.0.0'
+            }
+          }
+        }
+      ],
+      edges: [
+        {
+          source: 'dubbo-springboot-demo-consumer10.83.120.106:50052',
+          target: 'dubbo-springboot-demo-provider10.83.120.105:50051'
+        }
+      ]
+    }
+  }
+})
+
 Mock.mock('/mock/application/metrics', 'get', () => {
   return {
     code: 200,
