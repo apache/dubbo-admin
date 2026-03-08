@@ -87,6 +87,24 @@ func GetServiceMethodNames(ctx consolectx.Context) gin.HandlerFunc {
 	}
 }
 
+func GetServiceMethodDetail(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := model.ServiceMethodDetailReq{}
+		if err := req.Query(c); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		resp, err := service.GetServiceMethodDetail(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}
+
 func ServiceConfigTimeoutGET(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req := model.BaseServiceReq{}

@@ -97,6 +97,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 
 	{
 		service := router.Group("/service")
+		service.GET("/method/detail", handler.GetServiceMethodDetail(ctx))
 		service.GET("/distribution", handler.GetServiceTabDistribution(ctx))
 		service.GET("/methods", handler.GetServiceMethodNames(ctx))
 		service.GET("/search", handler.SearchServices(ctx))

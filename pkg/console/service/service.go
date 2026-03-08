@@ -18,6 +18,7 @@
 package service
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -162,38 +163,13 @@ func ToServiceSearchRespByConsumer(res *meshresource.ServiceConsumerMetadataReso
 }
 
 func GetServiceMethodNames(ctx consolectx.Context, req model.ServiceMethodsReq) ([]string, error) {
-	indexes := map[string]string{
-		index.ByMeshIndex:                  req.Mesh,
-		index.ByServiceProviderServiceName: req.ServiceName,
-	}
-	if req.ProviderAppName != "" {
-		indexes[index.ByServiceProviderAppName] = req.ProviderAppName
-	}
-
-	metadataList, err := manager.ListByIndexes[*meshresource.ServiceProviderMetadataResource](
-		ctx.ResourceManager(),
-		meshresource.ServiceProviderMetadataKind,
-		indexes,
-	)
+	metadataList, err := listServiceProviderMetadata(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
 	methodSet := make(map[string]struct{})
 	for _, metadata := range metadataList {
-		if metadata == nil || metadata.Spec == nil {
-			continue
-		}
-		if req.Group != "" && metadata.Spec.Group != req.Group {
-			continue
-		}
-		if req.Version != "" && metadata.Spec.Version != req.Version {
-			continue
-		}
-		if req.ProviderAppName != "" && metadata.Spec.ProviderAppName != req.ProviderAppName {
-			continue
-		}
-
 		for _, method := range metadata.Spec.Methods {
 			methodName := strings.TrimSpace(method.Name)
 			if methodName == "" {
@@ -221,6 +197,114 @@ func GetServiceMethodNames(ctx consolectx.Context, req model.ServiceMethodsReq) 
 	}
 	sort.Strings(methods)
 	return methods, nil
+}
+
+func GetServiceMethodDetail(ctx consolectx.Context, req model.ServiceMethodDetailReq) (*model.ServiceMethodDetailResp, error) {
+	metadataList, err := listServiceProviderMetadata(ctx, req.ServiceMethodsReq)
+	if err != nil {
+		return nil, err
+	}
+
+	var detail *model.ServiceMethodDetailResp
+	signature := ""
+	for _, metadata := range metadataList {
+		for _, method := range metadata.Spec.Methods {
+			if strings.TrimSpace(method.GetName()) != req.MethodName {
+				continue
+			}
+
+			currentSignature := buildServiceMethodSignature(method)
+			if detail == nil {
+				detail = toServiceMethodDetailResp(method)
+				signature = currentSignature
+				continue
+			}
+
+			if signature != currentSignature {
+				return nil, bizerror.New(
+					bizerror.InvalidArgument,
+					fmt.Sprintf("multiple overloaded definitions found for method %s", req.MethodName),
+				)
+			}
+		}
+	}
+
+	if detail == nil {
+		return nil, bizerror.New(
+			bizerror.NotFoundError,
+			fmt.Sprintf("method %s not found for service %s", req.MethodName, req.ServiceName),
+		)
+	}
+
+	return detail, nil
+}
+
+func listServiceProviderMetadata(ctx consolectx.Context, req model.ServiceMethodsReq) ([]*meshresource.ServiceProviderMetadataResource, error) {
+	indexes := map[string]string{
+		index.ByMeshIndex:                  req.Mesh,
+		index.ByServiceProviderServiceName: req.ServiceName,
+	}
+	if req.ProviderAppName != "" {
+		indexes[index.ByServiceProviderAppName] = req.ProviderAppName
+	}
+
+	metadataList, err := manager.ListByIndexes[*meshresource.ServiceProviderMetadataResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceProviderMetadataKind,
+		indexes,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	filtered := make([]*meshresource.ServiceProviderMetadataResource, 0, len(metadataList))
+	for _, metadata := range metadataList {
+		if !matchesServiceMethodsReq(metadata, req) {
+			continue
+		}
+		filtered = append(filtered, metadata)
+	}
+
+	return filtered, nil
+}
+
+func matchesServiceMethodsReq(metadata *meshresource.ServiceProviderMetadataResource, req model.ServiceMethodsReq) bool {
+	if metadata == nil || metadata.Spec == nil {
+		return false
+	}
+	if req.Group != "" && metadata.Spec.Group != req.Group {
+		return false
+	}
+	if req.Version != "" && metadata.Spec.Version != req.Version {
+		return false
+	}
+	if req.ProviderAppName != "" && metadata.Spec.ProviderAppName != req.ProviderAppName {
+		return false
+	}
+	return true
+}
+
+func toServiceMethodDetailResp(method *meshproto.Method) *model.ServiceMethodDetailResp {
+	resp := &model.ServiceMethodDetailResp{
+		MethodName:     strings.TrimSpace(method.GetName()),
+		ParameterTypes: append([]string(nil), method.GetParameterTypes()...),
+		Parameters:     make([]model.ServiceMethodParameter, 0, len(method.GetParameters())),
+		ReturnType:     strings.TrimSpace(method.GetReturnType()),
+	}
+	for _, parameter := range method.GetParameters() {
+		if parameter == nil {
+			continue
+		}
+		resp.Parameters = append(resp.Parameters, model.ServiceMethodParameter{
+			Name: strings.TrimSpace(parameter.GetName()),
+			Type: strings.TrimSpace(parameter.GetType()),
+		})
+	}
+	return resp
+}
+
+func buildServiceMethodSignature(method *meshproto.Method) string {
+	return strings.Join(method.GetParameterTypes(), ",") + "->" + method.GetReturnType()
 }
 
 func GetServiceTimeoutConfig(ctx consolectx.Context, req model.BaseServiceReq) (int32, error) {

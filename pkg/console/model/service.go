@@ -19,6 +19,7 @@ package model
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -142,4 +143,33 @@ func (s *ServiceMethodsReq) Query(c *gin.Context) error {
 	s.Version = c.Query("version")
 	s.ProviderAppName = c.Query("providerAppName")
 	return nil
+}
+
+type ServiceMethodDetailReq struct {
+	ServiceMethodsReq
+
+	MethodName string `form:"methodName" json:"methodName"`
+}
+
+func (s *ServiceMethodDetailReq) Query(c *gin.Context) error {
+	if err := s.ServiceMethodsReq.Query(c); err != nil {
+		return err
+	}
+	s.MethodName = strings.TrimSpace(c.Query("methodName"))
+	if s.MethodName == "" {
+		return fmt.Errorf("method name is empty")
+	}
+	return nil
+}
+
+type ServiceMethodParameter struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+type ServiceMethodDetailResp struct {
+	MethodName     string                   `json:"methodName"`
+	ParameterTypes []string                 `json:"parameterTypes"`
+	Parameters     []ServiceMethodParameter `json:"parameters"`
+	ReturnType     string                   `json:"returnType"`
 }
