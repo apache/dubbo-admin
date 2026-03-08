@@ -120,3 +120,36 @@ func (s *BaseServiceReq) Query(c *gin.Context) error {
 func (s *BaseServiceReq) ServiceKey() string {
 	return s.ServiceName + constants.ColonSeparator + s.Version + constants.ColonSeparator + s.Group
 }
+
+type ServiceDetailReq struct {
+	ServiceName string `form:"serviceName" json:"serviceName" binding:"required"`
+	Version     string `form:"version" json:"version"`
+	Group       string `form:"group" json:"group"`
+	Mesh        string `form:"mesh" json:"mesh" binding:"required"`
+}
+
+type VersionGroup struct {
+	Version string `json:"version"`
+	Group   string `json:"group"`
+}
+
+type ServiceDetailResp struct {
+	VersionGroups []*VersionGroup `json:"versionGroups"`
+	AvgRT         string          `json:"avgRT"`
+	AvgQPS        string          `json:"avgQPS"`
+	RequestTotal  string          `json:"requestTotal"`
+}
+
+type ServiceInterfacesReq struct {
+	ServiceName string `form:"serviceName" json:"serviceName" binding:"required"`
+	Mesh        string `form:"mesh" json:"mesh" binding:"required"`
+}
+
+type ServiceInterface struct {
+	InterfaceName string `json:"interfaceName"`
+	MethodCount   int    `json:"methodCount"`
+}
+
+type ServiceInterfacesResp struct {
+	Interfaces []*ServiceInterface `json:"interfaces"`
+}

@@ -29,12 +29,14 @@ import (
 const (
 	ByServiceConsumerAppName     = "idx_service_consumer_app_name"
 	ByServiceConsumerServiceName = "idx_service_consumer_service_name"
+	ByServiceConsumerServiceKey  = "idx_service_consumer_service_key"
 )
 
 func init() {
 	RegisterIndexers(meshresource.ServiceConsumerMetadataKind, map[string]cache.IndexFunc{
 		ByServiceConsumerAppName:     byServiceConsumerAppName,
 		ByServiceConsumerServiceName: byServiceConsumerServiceName,
+		ByServiceConsumerServiceKey:  byServiceConsumerServiceKey,
 	})
 }
 
@@ -58,4 +60,16 @@ func byServiceConsumerServiceName(obj interface{}) ([]string, error) {
 		return []string{}, nil
 	}
 	return []string{metadata.Spec.ServiceName}, nil
+}
+
+func byServiceConsumerServiceKey(obj interface{}) ([]string, error) {
+	metadata, ok := obj.(*meshresource.ServiceConsumerMetadataResource)
+	if !ok {
+		return nil, bizerror.NewAssertionError(meshresource.ServiceConsumerMetadataKind, reflect.TypeOf(obj).Name())
+	}
+	if metadata.Spec == nil {
+		return []string{}, nil
+	}
+	serviceKey := metadata.Spec.ServiceName + ":" + metadata.Spec.Version + ":" + metadata.Spec.Group
+	return []string{serviceKey}, nil
 }
