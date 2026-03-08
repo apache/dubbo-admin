@@ -148,7 +148,7 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 	if err != nil {
 		logger.Errorf("generic invoke failed, service=%s, method=%s, providerApp=%s, target=%s:%d, cause: %v",
 			req.ServiceName, req.MethodName, providerAppName, target.instance.Spec.Ip, target.port, err)
-		return nil, bizerror.New(bizerror.InternalError, err.Error())
+		return nil, bizerror.New(bizerror.InternalError, "generic invoke failed, please check server logs")
 	}
 
 	return &model.ServiceGenericInvokeResp{

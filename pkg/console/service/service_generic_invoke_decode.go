@@ -26,6 +26,10 @@ import (
 )
 
 func decodeGenericInvokeArgs(parameterTypes []string, args []json.RawMessage) ([]any, error) {
+	if len(parameterTypes) != len(args) {
+		return nil, fmt.Errorf("parameter types count %d does not match args count %d", len(parameterTypes), len(args))
+	}
+
 	decodedArgs := make([]any, len(args))
 	for index, arg := range args {
 		decodedArg, err := decodeGenericInvokeArg(parameterTypes[index], arg)
