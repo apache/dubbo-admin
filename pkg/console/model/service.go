@@ -149,6 +149,7 @@ type ServiceMethodDetailReq struct {
 	ServiceMethodsReq
 
 	MethodName string `form:"methodName" json:"methodName"`
+	Signature  string `form:"signature" json:"signature"`
 }
 
 func (s *ServiceMethodDetailReq) Query(c *gin.Context) error {
@@ -159,7 +160,14 @@ func (s *ServiceMethodDetailReq) Query(c *gin.Context) error {
 	if s.MethodName == "" {
 		return fmt.Errorf("method name is empty")
 	}
+	s.Signature = strings.TrimSpace(c.Query("signature"))
 	return nil
+}
+
+type ServiceMethodSummaryResp struct {
+	MethodName     string   `json:"methodName"`
+	ParameterTypes []string `json:"parameterTypes"`
+	Signature      string   `json:"signature,omitempty"`
 }
 
 type ServiceMethodParameter struct {
