@@ -224,3 +224,21 @@ func (p *ConnectionPool) Stats() sql.DBStats {
 	}
 	return sql.DBStats{}
 }
+
+// GetGlobalDB returns the first available gorm.DB instance from the global pool registry
+// This is used by components that need database access without going through StoreComponent
+// Returns nil if no database connection is available
+func GetGlobalDB(storeType storecfg.Type) *gorm.DB {
+	poolsMutex.RLock()
+	defer poolsMutex.RUnlock()
+
+	// Find the first pool matching the store type
+	prefix := string(storeType) + ":"
+	for key, pool := range pools {
+		if len(key) >= len(prefix) && key[:len(prefix)] == prefix {
+			return pool.GetDB()
+		}
+	}
+
+	return nil
+}

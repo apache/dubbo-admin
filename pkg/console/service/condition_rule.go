@@ -18,6 +18,8 @@
 package service
 
 import (
+	"github.com/apache/dubbo-admin/pkg/common/constants"
+	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/duke-git/lancet/v2/slice"
 	"github.com/duke-git/lancet/v2/strutil"
 
@@ -106,6 +108,17 @@ func GetConditionRule(ctx context.Context, name string, mesh string) (*meshresou
 }
 
 func UpdateConditionRule(ctx context.Context, res *meshresource.ConditionRouteResource) error {
+	lockMgr := ctx.LockManager()
+	if lockMgr == nil {
+		return updateConditionRuleUnsafe(ctx, res)
+	}
+	lockKey := lock.BuildConditionRuleLockKey(res.Mesh, res.Name)
+	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
+		return updateConditionRuleUnsafe(ctx, res)
+	})
+}
+
+func updateConditionRuleUnsafe(ctx context.Context, res *meshresource.ConditionRouteResource) error {
 	if err := ctx.ResourceManager().Update(res); err != nil {
 		logger.Warnf("update %s condition failed with error: %s", res.Name, err.Error())
 		return err
@@ -114,6 +127,17 @@ func UpdateConditionRule(ctx context.Context, res *meshresource.ConditionRouteRe
 }
 
 func CreateConditionRule(ctx context.Context, res *meshresource.ConditionRouteResource) error {
+	lockMgr := ctx.LockManager()
+	if lockMgr == nil {
+		return createConditionRuleUnsafe(ctx, res)
+	}
+	lockKey := lock.BuildConditionRuleLockKey(res.Mesh, res.Name)
+	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
+		return createConditionRuleUnsafe(ctx, res)
+	})
+}
+
+func createConditionRuleUnsafe(ctx context.Context, res *meshresource.ConditionRouteResource) error {
 	if err := ctx.ResourceManager().Add(res); err != nil {
 		logger.Warnf("create %s condition failed with error: %s", res.Name, err.Error())
 		return err
@@ -122,6 +146,17 @@ func CreateConditionRule(ctx context.Context, res *meshresource.ConditionRouteRe
 }
 
 func DeleteConditionRule(ctx context.Context, name string, mesh string) error {
+	lockMgr := ctx.LockManager()
+	if lockMgr == nil {
+		return deleteConditionRuleUnsafe(ctx, name, mesh)
+	}
+	lockKey := lock.BuildConditionRuleLockKey(mesh, name)
+	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
+		return deleteConditionRuleUnsafe(ctx, name, mesh)
+	})
+}
+
+func deleteConditionRuleUnsafe(ctx context.Context, name string, mesh string) error {
 	if err := ctx.ResourceManager().DeleteByKey(meshresource.ConditionRouteKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
 		return err
 	}
