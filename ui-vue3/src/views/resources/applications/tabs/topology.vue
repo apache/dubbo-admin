@@ -243,7 +243,7 @@ const renderTopology = (graphData: any) => {
 
     detailLoading.value = true
     try {
-      const res = await getApplicationDetail({ appName })
+      const res = await getApplicationDetail(appName)
       if (res?.code !== HTTP_STATUS.SUCCESS) {
         detailError.value = String(res?.message ?? '请求失败')
         detailData.value = {}

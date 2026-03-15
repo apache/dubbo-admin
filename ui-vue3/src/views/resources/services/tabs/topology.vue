@@ -55,6 +55,7 @@
 import { PRIMARY_COLOR } from '@/base/constants'
 import { HTTP_STATUS } from '@/base/http/constants'
 import { getServiceDetail, getServiceGraph } from '@/api/service/service'
+import { getApplicationDetail } from '@/api/service/app'
 import { computed, defineComponent, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { PropType } from 'vue'
 import { VueNode } from 'g6-extension-vue'
@@ -224,7 +225,6 @@ const buildGraphData = (raw: any) => {
 
   return { nodes, edges }
 }
-
 const renderTopology = (graphData: any) => {
   const root = document.getElementById('topology')
   if (!root) return
@@ -270,12 +270,6 @@ const renderTopology = (graphData: any) => {
   const handleNodeClick = async (e: any) => {
     const serviceName = String(e?.target?.id ?? '')
     const nodeData: any = serviceName ? graphRef.value?.getNodeData(serviceName) : undefined
-    const params = {
-      serviceName: serviceName,
-      side: nodeData?.rule ?? 'provider',
-      version: route.params?.version || '',
-      group: route.params?.group || ''
-    }
 
     if (!serviceName) return
 
@@ -284,7 +278,7 @@ const renderTopology = (graphData: any) => {
     currentDetailKey.value = serviceName
     detailError.value = ''
 
-    const cacheKey = `${serviceName}|${params.side}|${params.version}|${params.group}`
+    const cacheKey = `${serviceName}`
     const cached = detailCache.get(cacheKey)
     if (cached) {
       detailData.value = cached
@@ -294,7 +288,13 @@ const renderTopology = (graphData: any) => {
 
     detailLoading.value = true
     try {
-      const res = await getServiceDetail(params)
+      let res
+      if (nodeData.type === 'application') {
+        res = await getApplicationDetail(nodeData.id)
+      } else if (nodeData.type === 'service') {
+        res = await getServiceDetail(nodeData.id)
+      }
+      console.log('res', res)
       if (res?.code !== HTTP_STATUS.SUCCESS) {
         detailError.value = String(res?.message ?? '请求失败')
         detailData.value = {}

@@ -25,11 +25,13 @@ export const searchApplications = (params: any): Promise<any> => {
   })
 }
 
-export const getApplicationDetail = (params: any): Promise<any> => {
+export const getApplicationDetail = (appName: string): Promise<any> => {
   return request({
     url: '/application/detail',
     method: 'get',
-    params
+    params: {
+      appName
+    }
   })
 }
 

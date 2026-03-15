@@ -151,9 +151,9 @@ Mock.mock(devTool.mockUrl('/mock/application/instance/info'), 'get', () => {
   }
 })
 
-Mock.mock(devTool.mockUrl('/mock/application/detail'), 'get', () => {
+Mock.mock(devTool.mockUrl('/application/detail'), 'get', () => {
   return {
-    code: 200,
+    code: 'Success',
     msg: 'success',
     data: {
       appName: Mock.mock('@word(10,20)'),
