@@ -175,9 +175,9 @@ export const updateAppGrayIsolation = (appName: string, graySets: Array<any>): P
   })
 }
 
-export const getInterfaceGraph = (serviceName: string): Promise<any> => {
+export const getApplicationGraph = (serviceName: string): Promise<any> => {
   return request({
-    url: '/interface/graph',
+    url: '/application/graph',
     method: 'get',
     params: { serviceName }
   })

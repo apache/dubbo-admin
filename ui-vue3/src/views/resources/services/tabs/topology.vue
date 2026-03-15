@@ -272,7 +272,7 @@ const renderTopology = (graphData: any) => {
     const nodeData: any = serviceName ? graphRef.value?.getNodeData(serviceName) : undefined
     const params = {
       serviceName: serviceName,
-      side: nodeData?.type ?? 'application',
+      side: nodeData?.rule ?? 'provider',
       version: route.params?.version || '',
       group: route.params?.group || ''
     }
@@ -321,7 +321,9 @@ const renderTopology = (graphData: any) => {
 let resizeHandler: (() => void) | null = null
 onMounted(async () => {
   try {
-    const res = await getServiceGraph()
+    const serviceName = String(route.params?.pathId ?? '')
+    console.log('topology', serviceName)
+    const res = await getServiceGraph(serviceName)
     if (res?.code !== HTTP_STATUS.SUCCESS) return
     const graphData = buildGraphData(res?.data)
     renderTopology(graphData)

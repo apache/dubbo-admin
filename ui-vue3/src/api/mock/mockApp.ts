@@ -18,7 +18,7 @@
 import Mock from 'mockjs'
 import devTool from '@/utils/DevToolUtil'
 
-Mock.mock(devTool.mockUrl('/interface/graph'), 'get', () => {
+Mock.mock(devTool.mockUrl('/application/graph'), 'get', () => {
   return {
     code: 'Success',
     message: 'success',

@@ -47,7 +47,7 @@
 
 <script setup lang="tsx">
 import { PRIMARY_COLOR } from '@/base/constants'
-import { getApplicationDetail, getInterfaceGraph } from '@/api/service/app'
+import { getApplicationDetail, getApplicationGraph } from '@/api/service/app'
 import { HTTP_STATUS } from '@/base/http/constants'
 import { computed, defineComponent, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { PropType } from 'vue'
@@ -268,7 +268,7 @@ let resizeHandler: (() => void) | null = null
 onMounted(async () => {
   try {
     const serviceName = String(route.params?.pathId ?? '')
-    const res = await getInterfaceGraph(serviceName)
+    const res = await getApplicationGraph(serviceName)
     if (res?.code !== HTTP_STATUS.SUCCESS) return
 
     const graphData = buildGraphData(res?.data)
