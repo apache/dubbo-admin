@@ -70,12 +70,23 @@ func ClusterOverview(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		resp := model.NewOverviewResp()
 		if counterMgr := ctx.CounterManager(); counterMgr != nil {
-			resp.AppCount = counterMgr.Count(meshresource.ApplicationKind)
-			resp.ServiceCount = counterMgr.Count(meshresource.ServiceProviderMetadataKind)
-			resp.InsCount = counterMgr.Count(meshresource.InstanceKind)
-			resp.Protocols = counterMgr.Distribution(counter.ProtocolCounter)
-			resp.Releases = counterMgr.Distribution(counter.ReleaseCounter)
-			resp.Discoveries = counterMgr.Distribution(counter.DiscoveryCounter)
+			mesh := c.Query("mesh")
+
+			if mesh != "" {
+				resp.AppCount = counterMgr.CountByMesh(meshresource.ApplicationKind, mesh)
+				resp.ServiceCount = counterMgr.CountByMesh(meshresource.ServiceProviderMetadataKind, mesh)
+				resp.InsCount = counterMgr.CountByMesh(meshresource.InstanceKind, mesh)
+				resp.Protocols = counterMgr.DistributionByMesh(counter.ProtocolCounter, mesh)
+				resp.Releases = counterMgr.DistributionByMesh(counter.ReleaseCounter, mesh)
+				resp.Discoveries = counterMgr.DistributionByMesh(counter.DiscoveryCounter, mesh)
+			} else {
+				resp.AppCount = counterMgr.Count(meshresource.ApplicationKind)
+				resp.ServiceCount = counterMgr.Count(meshresource.ServiceProviderMetadataKind)
+				resp.InsCount = counterMgr.Count(meshresource.InstanceKind)
+				resp.Protocols = counterMgr.Distribution(counter.ProtocolCounter)
+				resp.Releases = counterMgr.Distribution(counter.ReleaseCounter)
+				resp.Discoveries = counterMgr.Distribution(counter.DiscoveryCounter)
+			}
 		}
 		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
 	}

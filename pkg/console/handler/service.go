@@ -229,3 +229,60 @@ func ServiceConfigArgumentRoutePUT(ctx consolectx.Context) gin.HandlerFunc {
 		c.JSON(http.StatusOK, model.NewSuccessResp(nil))
 	}
 }
+
+// GetServiceGraph returns the service graph as graph data (nodes and edges) for visualization
+func GetServiceGraph(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := &model.ServiceGraphReq{}
+		if err := c.ShouldBindQuery(req); err != nil {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+			return
+		}
+
+		resp, err := service.SearchServiceAsCrossLinkedList(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}
+
+// GetServiceDetail returns service detail information
+func GetServiceDetail(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := &model.ServiceDetailReq{}
+		if err := c.ShouldBindQuery(req); err != nil {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+			return
+		}
+
+		resp, err := service.GetServiceDetail(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}
+
+// GetServiceInterfaces returns service interfaces information
+func GetServiceInterfaces(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := &model.ServiceInterfacesReq{}
+		if err := c.ShouldBindQuery(req); err != nil {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+			return
+		}
+
+		resp, err := service.GetServiceInterfaces(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}

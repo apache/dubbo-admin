@@ -33,6 +33,22 @@ spec:
         - name: consumer
           image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/nacos/nacos-server:v2.5.2
           imagePullPolicy: IfNotPresent
+          livenessProbe:
+            tcpSocket:
+              port: 8848
+            initialDelaySeconds: 20
+            timeoutSeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+            successThreshold: 1
+          readinessProbe:
+            tcpSocket:
+              port: 8848
+            initialDelaySeconds: 10
+            timeoutSeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+            successThreshold: 1
           ports:
             - containerPort: 8848
               name: client
@@ -60,7 +76,7 @@ metadata:
   name: nacos
   namespace: dubbo-system
 spec:
-  type: NodePort
+  type: ClusterIP
   sessionAffinity: None
   selector:
     app: nacos
