@@ -18,6 +18,8 @@
 package service
 
 import (
+	"github.com/apache/dubbo-admin/pkg/common/constants"
+	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/duke-git/lancet/v2/slice"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
@@ -112,6 +114,19 @@ func GetTagRule(ctx consolectx.Context, name string, mesh string) (*meshresource
 }
 
 func UpdateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
+	lockMgr := ctx.LockManager()
+	if lockMgr == nil {
+		return updateTagRuleUnsafe(ctx, res)
+	}
+
+	lockKey := lock.BuildTagRouteLockKey(res.Mesh, res.Name)
+
+	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
+		return updateTagRuleUnsafe(ctx, res)
+	})
+}
+
+func updateTagRuleUnsafe(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
 	err := ctx.ResourceManager().Update(res)
 	if err != nil {
 		logger.Warnf("update tag rule %s error: %v", res.Name, err)
@@ -121,6 +136,19 @@ func UpdateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) e
 }
 
 func CreateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
+	lockMgr := ctx.LockManager()
+	if lockMgr == nil {
+		return createTagRuleUnsafe(ctx, res)
+	}
+
+	lockKey := lock.BuildTagRouteLockKey(res.Mesh, res.Name)
+
+	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
+		return createTagRuleUnsafe(ctx, res)
+	})
+}
+
+func createTagRuleUnsafe(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
 	err := ctx.ResourceManager().Add(res)
 	if err != nil {
 		logger.Warnf("create tag rule %s error: %v", res.Name, err)
@@ -130,6 +158,17 @@ func CreateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) e
 }
 
 func DeleteTagRule(ctx consolectx.Context, name string, mesh string) error {
+	lockMgr := ctx.LockManager()
+	if lockMgr == nil {
+		return deleteTagRuleUnsafe(ctx, name, mesh)
+	}
+	lockKey := lock.BuildTagRouteLockKey(mesh, name)
+	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
+		return deleteTagRuleUnsafe(ctx, name, mesh)
+	})
+}
+
+func deleteTagRuleUnsafe(ctx consolectx.Context, name string, mesh string) error {
 	err := ctx.ResourceManager().DeleteByKey(meshresource.TagRouteKind, mesh, coremodel.BuildResourceKey(mesh, name))
 	if err != nil {
 		logger.Warnf("delete tag rule %s error: %v", name, err)

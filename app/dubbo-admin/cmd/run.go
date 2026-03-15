@@ -30,6 +30,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/config/app"
 	"github.com/apache/dubbo-admin/pkg/core/bootstrap"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
+	_ "github.com/apache/dubbo-admin/pkg/lock/gorm"
 	dubboversion "github.com/apache/dubbo-admin/pkg/version"
 )
 

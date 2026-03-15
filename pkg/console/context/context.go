@@ -19,6 +19,7 @@ package context
 
 import (
 	ctx "context"
+	"github.com/apache/dubbo-admin/pkg/core/lock"
 
 	"github.com/apache/dubbo-admin/pkg/config/app"
 	"github.com/apache/dubbo-admin/pkg/console/counter"
@@ -33,6 +34,7 @@ type Context interface {
 	Config() app.AdminConfig
 
 	AppContext() ctx.Context
+	LockManager() lock.Lock
 }
 
 var _ Context = &context{}
@@ -70,4 +72,12 @@ func (c *context) CounterManager() counter.CounterManager {
 		return nil
 	}
 	return managerComp.CounterManager()
+}
+
+func (c *context) LockManager() lock.Lock {
+	distributedLock, err := lock.GetLockFromRuntime(c.coreRt)
+	if err != nil {
+		return nil
+	}
+	return distributedLock
 }
