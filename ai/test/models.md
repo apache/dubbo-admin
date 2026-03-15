@@ -9,7 +9,7 @@
 AI模块已经有一个简单的文本生成测试，可以快速验证默认模型：
 
 ```bash
-cd /Users/liwener/programming/ospp/dubbo-admin/ai
+cd "$(git rev-parse --show-toplevel)/ai"
 
 # 设置API密钥
 export DASHSCOPE_API_KEY="your_qwen_api_key"
@@ -66,7 +66,7 @@ func main() {
 
 ```bash
 # 1. 启动服务器
-cd /Users/liwener/programming/ospp/dubbo-admin/ai
+cd "$(git rev-parse --show-toplevel)/ai"
 go run main.go --config config.yaml
 
 # 2. 在另一个终端测试
