@@ -87,10 +87,10 @@ func (r *SearchInstanceResp) FromInstanceResource(instanceResource *meshresource
 	if cfg.Engine != nil && cfg.Engine.ID == instance.SourceEngine {
 		r.DeployCluster = cfg.Engine.Name
 	}
-	r.RegisterState = deriveRegisterState(instance)
+	r.RegisterState = DeriveInstanceRegisterState(instance)
 	r.Labels = instance.Tags
-	r.DeployState = deriveDeployState(instance)
-	r.LifecycleState = deriveLifecycleState(instance, r.DeployState, r.RegisterState)
+	r.DeployState = DeriveInstanceDeployState(instance)
+	r.LifecycleState = DeriveInstanceLifecycleState(instance, r.DeployState, r.RegisterState)
 	r.WorkloadName = instance.WorkloadName
 	r.AppName = instance.AppName
 	return r
@@ -158,9 +158,9 @@ func FromInstanceResource(res *meshresource.InstanceResource, cfg app.AdminConfi
 	if cfg.Engine.ID == res.Spec.SourceEngine {
 		r.DeployCluster = cfg.Engine.Name
 	}
-	r.DeployState = deriveDeployState(instance)
-	r.RegisterState = deriveRegisterState(instance)
-	r.LifecycleState = deriveLifecycleState(instance, r.DeployState, r.RegisterState)
+	r.DeployState = DeriveInstanceDeployState(instance)
+	r.RegisterState = DeriveInstanceRegisterState(instance)
+	r.LifecycleState = DeriveInstanceLifecycleState(instance, r.DeployState, r.RegisterState)
 	r.Node = instance.Node
 	r.Image = instance.Image
 	r.Probes = ProbeStruct{}
@@ -190,7 +190,7 @@ func FromInstanceResource(res *meshresource.InstanceResource, cfg app.AdminConfi
 	return r
 }
 
-func deriveDeployState(instance *meshproto.Instance) string {
+func DeriveInstanceDeployState(instance *meshproto.Instance) string {
 	if instance == nil || strutil.IsBlank(instance.DeployState) {
 		return "Unknown"
 	}
@@ -205,16 +205,16 @@ func deriveDeployState(instance *meshproto.Instance) string {
 	}
 }
 
-func deriveRegisterState(instance *meshproto.Instance) string {
+func DeriveInstanceRegisterState(instance *meshproto.Instance) string {
 	if instance == nil || strutil.IsBlank(instance.RegisterTime) {
 		return "UnRegistered"
 	}
 	return "Registered"
 }
 
-func deriveLifecycleState(instance *meshproto.Instance, deployState string, registerState string) string {
+func DeriveInstanceLifecycleState(instance *meshproto.Instance, deployState string, registerState string) string {
 	switch deployState {
-	case "Failed", "Unknown":
+	case "Crashing", "Failed", "Unknown", "Succeeded":
 		return "Error"
 	case "Terminating":
 		return "Terminating"

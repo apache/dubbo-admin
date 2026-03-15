@@ -95,7 +95,8 @@ func buildAppInstanceInfoResp(instanceRes *meshresource.InstanceResource, cfg ap
 	resp.Name = instance.Name
 	resp.AppName = instance.AppName
 	resp.CreateTime = instance.CreateTime
-	resp.DeployState = instance.DeployState
+	resp.DeployState = model.DeriveInstanceDeployState(instance)
+	resp.LifecycleState = model.DeriveInstanceLifecycleState(instance, resp.DeployState, model.DeriveInstanceRegisterState(instance))
 	if cfg.Engine.ID == instance.SourceEngine {
 		resp.DeployClusters = cfg.Engine.Name
 	}
@@ -104,7 +105,7 @@ func buildAppInstanceInfoResp(instanceRes *meshresource.InstanceResource, cfg ap
 	if d := cfg.FindDiscovery(instanceRes.Mesh); d != nil {
 		resp.RegisterCluster = d.Name
 	}
-	resp.RegisterState = "Registered"
+	resp.RegisterState = model.DeriveInstanceRegisterState(instance)
 	resp.RegisterTime = instance.RegisterTime
 	resp.WorkloadName = instance.WorkloadName
 	return resp

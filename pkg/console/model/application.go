@@ -133,6 +133,7 @@ func NewApplicationTabInstanceInfoReq() *ApplicationTabInstanceInfoReq {
 type AppInstanceInfoResp struct {
 	AppName         string            `json:"appName"`
 	CreateTime      string            `json:"createTime"`
+	LifecycleState  string            `json:"lifecycleState"`
 	DeployState     string            `json:"deployState"`
 	DeployClusters  string            `json:"deployClusters"`
 	IP              string            `json:"ip"`

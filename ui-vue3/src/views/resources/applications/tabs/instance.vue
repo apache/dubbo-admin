@@ -39,13 +39,22 @@
           </a-tooltip>
         </template>
         <template v-if="column.dataIndex === 'deployState'">
-          <a-tag :color="INSTANCE_DEPLOY_COLOR[text.toUpperCase()]">{{ text }}</a-tag>
+          <a-tag :color="INSTANCE_DEPLOY_COLOR[(text || 'UNKNOWN').toUpperCase()] || 'default'">
+            {{ text }}
+          </a-tag>
+        </template>
+        <template v-if="column.dataIndex === 'lifecycleState'">
+          <a-tag :color="INSTANCE_LIFECYCLE_COLOR[(text || 'UNKNOWN').toUpperCase()] || 'default'">
+            {{ text }}
+          </a-tag>
         </template>
         <template v-if="column.dataIndex === 'deployClusters'">
           <a-tag>{{ text }}</a-tag>
         </template>
         <template v-if="column.dataIndex === 'registerState'">
-          <a-tag :color="INSTANCE_REGISTER_COLOR[text.toUpperCase()]">{{ text }}</a-tag>
+          <a-tag :color="INSTANCE_REGISTER_COLOR[(text || 'UNREGISTERED').toUpperCase()] || 'default'">
+            {{ text }}
+          </a-tag>
         </template>
         <template v-if="column.dataIndex === 'registerCluster'">
           <a-tag>{{ text }}</a-tag>
@@ -64,7 +73,12 @@
 
 <script setup lang="ts">
 import { onMounted, provide, reactive } from 'vue'
-import { INSTANCE_DEPLOY_COLOR, INSTANCE_REGISTER_COLOR, PRIMARY_COLOR } from '@/base/constants'
+import {
+  INSTANCE_DEPLOY_COLOR,
+  INSTANCE_LIFECYCLE_COLOR,
+  INSTANCE_REGISTER_COLOR,
+  PRIMARY_COLOR
+} from '@/base/constants'
 import { Icon } from '@iconify/vue'
 import SearchTable from '@/components/SearchTable.vue'
 import { SearchDomain } from '@/utils/SearchUtil'
@@ -124,6 +138,12 @@ const columns = [
     dataIndex: 'ip',
     key: 'ip',
     // sorter: true,
+    width: 150
+  },
+  {
+    title: 'instanceDomain.lifecycleState',
+    dataIndex: 'lifecycleState',
+    key: 'lifecycleState',
     width: 150
   },
   {
