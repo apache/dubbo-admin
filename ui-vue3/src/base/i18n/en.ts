@@ -172,6 +172,7 @@ const words: I18nType = {
     instanceName: 'InstanceName',
     ip: 'Ip',
     name: 'Name',
+    lifecycleState: 'Lifecycle State',
     deployState: 'Deploy State',
     deployCluster: 'Deploy Cluster',
     deployClusters: 'Deploy Clusters',

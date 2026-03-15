@@ -19,6 +19,9 @@ package v1alpha1
 
 import (
 	"fmt"
+	"time"
+
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 )
 
 func BuildInstanceResName(appName string, ip string, rpcPort int64) string {
@@ -78,4 +81,56 @@ func MergeRuntimeInstanceIntoInstance(
 	instanceRes.Spec.Probes = rtInstanceRes.Spec.Probes
 	instanceRes.Spec.Conditions = rtInstanceRes.Spec.Conditions
 	instanceRes.Spec.SourceEngine = rtInstanceRes.Spec.SourceEngine
+}
+
+func ClearRPCInstanceFromInstance(instanceRes *InstanceResource) {
+	if instanceRes == nil || instanceRes.Spec == nil {
+		return
+	}
+	instanceRes.Spec.ReleaseVersion = ""
+	instanceRes.Spec.RegisterTime = ""
+	instanceRes.Spec.UnregisterTime = time.Now().Format(constants.TimeFormatStr)
+	instanceRes.Spec.Protocol = ""
+	instanceRes.Spec.Serialization = ""
+	instanceRes.Spec.PreferSerialization = ""
+	instanceRes.Spec.Tags = nil
+}
+
+func ClearRuntimeInstanceFromInstance(instanceRes *InstanceResource) {
+	if instanceRes == nil || instanceRes.Spec == nil {
+		return
+	}
+	instanceRes.Labels = nil
+	instanceRes.Spec.Image = ""
+	instanceRes.Spec.CreateTime = ""
+	instanceRes.Spec.StartTime = ""
+	instanceRes.Spec.ReadyTime = ""
+	instanceRes.Spec.DeployState = ""
+	instanceRes.Spec.WorkloadType = ""
+	instanceRes.Spec.WorkloadName = ""
+	instanceRes.Spec.Node = ""
+	instanceRes.Spec.Probes = nil
+	instanceRes.Spec.Conditions = nil
+	instanceRes.Spec.SourceEngine = ""
+}
+
+func HasRuntimeInstanceSource(instanceRes *InstanceResource) bool {
+	if instanceRes == nil || instanceRes.Spec == nil {
+		return false
+	}
+	return instanceRes.Spec.SourceEngine != "" ||
+		instanceRes.Spec.DeployState != "" ||
+		instanceRes.Spec.WorkloadName != "" ||
+		instanceRes.Spec.Node != "" ||
+		instanceRes.Spec.Image != "" ||
+		instanceRes.Spec.StartTime != "" ||
+		instanceRes.Spec.ReadyTime != "" ||
+		len(instanceRes.Spec.Conditions) > 0
+}
+
+func HasRPCInstanceSource(instanceRes *InstanceResource) bool {
+	if instanceRes == nil || instanceRes.Spec == nil {
+		return false
+	}
+	return instanceRes.Spec.RegisterTime != ""
 }

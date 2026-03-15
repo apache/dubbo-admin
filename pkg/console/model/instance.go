@@ -20,6 +20,7 @@ package model
 import (
 	"github.com/duke-git/lancet/v2/strutil"
 
+	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/config/app"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
@@ -58,6 +59,7 @@ type SearchInstanceResp struct {
 	Name             string            `json:"name"`
 	WorkloadName     string            `json:"workloadName"`
 	AppName          string            `json:"appName"`
+	LifecycleState   string            `json:"lifecycleState"`
 	DeployState      string            `json:"deployState"`
 	DeployCluster    string            `json:"deployCluster"`
 	RegisterState    string            `json:"registerState"`
@@ -85,13 +87,10 @@ func (r *SearchInstanceResp) FromInstanceResource(instanceResource *meshresource
 	if cfg.Engine != nil && cfg.Engine.ID == instance.SourceEngine {
 		r.DeployCluster = cfg.Engine.Name
 	}
-	if r.RegisterTime != "" {
-		r.RegisterState = "Registered"
-	} else {
-		r.RegisterState = "UnRegistered"
-	}
+	r.RegisterState = deriveRegisterState(instance)
 	r.Labels = instance.Tags
-	r.DeployState = instance.DeployState
+	r.DeployState = deriveDeployState(instance)
+	r.LifecycleState = deriveLifecycleState(instance, r.DeployState, r.RegisterState)
 	r.WorkloadName = instance.WorkloadName
 	r.AppName = instance.AppName
 	return r
@@ -115,6 +114,7 @@ type InstanceDetailResp struct {
 	RegisterTime     string            `json:"registerTime"`
 	RegisterClusters []string          `json:"registerClusters"`
 	DeployCluster    string            `json:"deployCluster"`
+	LifecycleState   string            `json:"lifecycleState"`
 	DeployState      string            `json:"deployState"`
 	RegisterState    string            `json:"registerState"`
 	Node             string            `json:"node"`
@@ -158,16 +158,9 @@ func FromInstanceResource(res *meshresource.InstanceResource, cfg app.AdminConfi
 	if cfg.Engine.ID == res.Spec.SourceEngine {
 		r.DeployCluster = cfg.Engine.Name
 	}
-	if strutil.IsNotBlank(instance.DeployState) {
-		r.DeployState = instance.DeployState
-	} else {
-		r.DeployState = "Unknown"
-	}
-	if strutil.IsBlank(r.RegisterTime) {
-		r.RegisterState = "UnRegistered"
-	} else {
-		r.RegisterState = "Registered"
-	}
+	r.DeployState = deriveDeployState(instance)
+	r.RegisterState = deriveRegisterState(instance)
+	r.LifecycleState = deriveLifecycleState(instance, r.DeployState, r.RegisterState)
 	r.Node = instance.Node
 	r.Image = instance.Image
 	r.Probes = ProbeStruct{}
@@ -195,4 +188,65 @@ func FromInstanceResource(res *meshresource.InstanceResource, cfg app.AdminConfi
 
 	}
 	return r
+}
+
+func deriveDeployState(instance *meshproto.Instance) string {
+	if instance == nil || strutil.IsBlank(instance.DeployState) {
+		return "Unknown"
+	}
+	switch instance.DeployState {
+	case "Running":
+		if !isPodReady(instance) {
+			return "Starting"
+		}
+		return "Running"
+	default:
+		return instance.DeployState
+	}
+}
+
+func deriveRegisterState(instance *meshproto.Instance) string {
+	if instance == nil || strutil.IsBlank(instance.RegisterTime) {
+		return "UnRegistered"
+	}
+	return "Registered"
+}
+
+func deriveLifecycleState(instance *meshproto.Instance, deployState string, registerState string) string {
+	switch deployState {
+	case "Failed", "Unknown":
+		return "Error"
+	case "Terminating":
+		return "Terminating"
+	}
+
+	if registerState == "Registered" {
+		if deployState == "Running" {
+			return "Serving"
+		}
+		return "Error"
+	}
+
+	if deployState == "Running" && strutil.IsNotBlank(instance.UnregisterTime) {
+		return "Draining"
+	}
+
+	switch deployState {
+	case "Pending", "Starting", "Running":
+		return "Starting"
+	default:
+		return "Unknown"
+	}
+}
+
+func isPodReady(instance *meshproto.Instance) bool {
+	for _, condition := range instance.Conditions {
+		if condition == nil {
+			continue
+		}
+		if condition.Type == "Ready" {
+			return condition.Status == "True"
+		}
+	}
+	return false
 }

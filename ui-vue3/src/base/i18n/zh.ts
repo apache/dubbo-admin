@@ -194,6 +194,7 @@ const words: I18nType = {
     instanceIP: '实例IP',
     ip: 'IP',
     name: '实例名称',
+    lifecycleState: '生命周期状态',
     deployState: '部署状态',
     deployCluster: '部署集群',
     deployClusters: '部署集群',

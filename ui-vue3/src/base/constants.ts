@@ -57,8 +57,8 @@ export const PRIMARY_COLOR_T = (percent: string) => computed(() => PRIMARY_COLOR
 export const PRIMARY_COLOR_R = computed(() => getTextColorByBackground(PRIMARY_COLOR.value))
 
 export const INSTANCE_REGISTER_COLOR: { [key: string]: string } = {
-  HEALTHY: 'green',
-  REGISTED: 'green'
+  REGISTERED: 'green',
+  UNREGISTERED: 'default'
 }
 
 export const TAB_HEADER_TITLE: Component = {
@@ -83,7 +83,19 @@ export const TAB_HEADER_TITLE: Component = {
  */
 export const INSTANCE_DEPLOY_COLOR: { [key: string]: string } = {
   RUNNING: 'green',
+  STARTING: 'gold',
   PENDING: 'yellow',
   TERMINATING: 'red',
-  CRASHING: 'darkRed'
+  FAILED: 'red',
+  UNKNOWN: 'default',
+  CRASHING: 'red'
+}
+
+export const INSTANCE_LIFECYCLE_COLOR: { [key: string]: string } = {
+  STARTING: 'gold',
+  SERVING: 'green',
+  DRAINING: 'orange',
+  TERMINATING: 'red',
+  ERROR: 'red',
+  UNKNOWN: 'default'
 }

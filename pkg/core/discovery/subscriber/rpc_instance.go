@@ -135,6 +135,18 @@ func (s *RPCInstanceEventSubscriber) processDelete(rpcInstanceRes *meshresource.
 		logger.Warnf("cannot find instance resource for rpc instance %s, skipped deleting instance", rpcInstanceRes.Name)
 		return nil
 	}
+	meshresource.ClearRPCInstanceFromInstance(instanceRes)
+	if meshresource.HasRuntimeInstanceSource(instanceRes) {
+		if err := s.instanceStore.Update(instanceRes); err != nil {
+			logger.Errorf("update instance resource failed after rpc delete, instance: %s, err: %s",
+				instanceRes.ResourceKey(), err.Error())
+			return err
+		}
+		instanceUpdateEvent := events.NewResourceChangedEvent(cache.Updated, instanceRes, instanceRes)
+		s.eventEmitter.Send(instanceUpdateEvent)
+		logger.Debugf("rpc instance delete trigger instance update event, event: %s", instanceUpdateEvent.String())
+		return nil
+	}
 	if err := s.instanceStore.Delete(instanceRes); err != nil {
 		logger.Errorf("delete instance resource failed, instance: %s, err: %s", instanceRes.ResourceKey(), err.Error())
 		return err

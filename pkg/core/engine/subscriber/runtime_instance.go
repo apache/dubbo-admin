@@ -144,6 +144,18 @@ func (s *RuntimeInstanceEventSubscriber) processDelete(rtInstanceRes *meshresour
 		logger.Warnf("cannot find instance resource by runtime instance %s, skipped deleting instance", rtInstanceRes.ResourceKey())
 		return nil
 	}
+	meshresource.ClearRuntimeInstanceFromInstance(instanceResource)
+	if meshresource.HasRPCInstanceSource(instanceResource) {
+		if err = s.instanceStore.Update(instanceResource); err != nil {
+			logger.Errorf("update instance resource failed after runtime delete, instance: %s, err: %s",
+				instanceResource.ResourceKey(), err.Error())
+			return err
+		}
+		instanceUpdateEvent := events.NewResourceChangedEvent(cache.Updated, instanceResource, instanceResource)
+		s.eventEmitter.Send(instanceUpdateEvent)
+		logger.Debugf("runtime instance delete trigger instance update event, event: %s", instanceUpdateEvent.String())
+		return nil
+	}
 	if err = s.instanceStore.Delete(instanceResource); err != nil {
 		logger.Errorf("delete instance resource failed, instance: %s, err: %s", instanceResource.ResourceKey(), err.Error())
 		return err

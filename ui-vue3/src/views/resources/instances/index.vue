@@ -43,8 +43,16 @@
           <span>{{ text }}</span>
         </template>
 
+        <template v-if="column.dataIndex === 'lifecycleState'">
+          <a-tag :color="INSTANCE_LIFECYCLE_COLOR[(text || 'UNKNOWN').toUpperCase()] || 'default'">
+            {{ text }}
+          </a-tag>
+        </template>
+
         <template v-if="column.dataIndex === 'deployState'">
-          <a-tag :color="INSTANCE_DEPLOY_COLOR[text.toUpperCase()]">{{ text }}</a-tag>
+          <a-tag :color="INSTANCE_DEPLOY_COLOR[(text || 'UNKNOWN').toUpperCase()] || 'default'">
+            {{ text }}
+          </a-tag>
         </template>
 
         <template v-if="column.dataIndex === 'deployCluster'">
@@ -54,7 +62,7 @@
         </template>
 
         <template v-if="column.dataIndex === 'registerState'">
-          <a-tag :color="INSTANCE_REGISTER_COLOR[text.toUpperCase()]">
+          <a-tag :color="INSTANCE_REGISTER_COLOR[(text || 'UNREGISTERED').toUpperCase()] || 'default'">
             {{ text }}
           </a-tag>
         </template>
@@ -83,7 +91,12 @@ import { searchInstances } from '@/api/service/instance'
 import SearchTable from '@/components/SearchTable.vue'
 import { SearchDomain } from '@/utils/SearchUtil'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
-import { INSTANCE_DEPLOY_COLOR, INSTANCE_REGISTER_COLOR, PRIMARY_COLOR } from '@/base/constants'
+import {
+  INSTANCE_DEPLOY_COLOR,
+  INSTANCE_LIFECYCLE_COLOR,
+  INSTANCE_REGISTER_COLOR,
+  PRIMARY_COLOR
+} from '@/base/constants'
 import router from '@/router'
 import { Icon } from '@iconify/vue'
 import { queryMetrics } from '@/base/http/promQuery'
@@ -108,6 +121,12 @@ let columns = [
     dataIndex: 'ip',
     // sorter: (a: any, b: any) => sortString(a.ip, b.ip),
     width: 200
+  },
+  {
+    title: 'instanceDomain.lifecycleState',
+    key: 'lifecycleState',
+    dataIndex: 'lifecycleState',
+    width: 130
   },
   {
     title: 'instanceDomain.deployState',
