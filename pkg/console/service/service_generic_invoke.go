@@ -115,12 +115,7 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 		return nil, bizerror.New(bizerror.InvalidArgument, err.Error())
 	}
 
-	providerAppName, err := selectServiceProviderAppName(req, metadataList)
-	if err != nil {
-		return nil, err
-	}
-
-	target, err := selectTripleInvokeTarget(ctx, req.Mesh, providerAppName)
+	target, err := selectTripleInvokeTarget(ctx, req.Mesh, req.ProviderAppName)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +144,7 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 	elapsedMs := time.Since(startedAt).Milliseconds()
 	if err != nil {
 		logger.Errorf("generic invoke failed, service=%s, method=%s, providerApp=%s, target=%s:%d, cause: %v",
-			req.ServiceName, req.MethodName, providerAppName, target.instance.Spec.Ip, target.port, err)
+			req.ServiceName, req.MethodName, req.ProviderAppName, target.instance.Spec.Ip, target.port, err)
 		return nil, bizerror.New(bizerror.InternalError, "generic invoke failed, please check server logs")
 	}
 
@@ -175,45 +170,6 @@ func resolveServiceMethodParameterTypes(metadataList []*meshresource.ServiceProv
 		return nil, err
 	}
 	return append([]string{}, candidate.detail.ParameterTypes...), nil
-}
-
-func selectServiceProviderAppName(req model.ServiceGenericInvokeReq, metadataList []*meshresource.ServiceProviderMetadataResource) (string, error) {
-	if len(metadataList) == 0 {
-		return "", bizerror.New(
-			bizerror.NotFoundError,
-			fmt.Sprintf("provider metadata not found for service %s", req.ServiceName),
-		)
-	}
-
-	if req.ProviderAppName != "" {
-		return req.ProviderAppName, nil
-	}
-
-	providerAppNames := make([]string, 0, len(metadataList))
-	providerAppNameSet := make(map[string]struct{}, len(metadataList))
-	for _, metadata := range metadataList {
-		if metadata == nil || metadata.Spec == nil {
-			continue
-		}
-		providerAppName := metadata.Spec.ProviderAppName
-		if providerAppName == "" {
-			continue
-		}
-		if _, exists := providerAppNameSet[providerAppName]; exists {
-			continue
-		}
-		providerAppNameSet[providerAppName] = struct{}{}
-		providerAppNames = append(providerAppNames, providerAppName)
-	}
-	if len(providerAppNames) == 0 {
-		return "", bizerror.New(
-			bizerror.NotFoundError,
-			fmt.Sprintf("provider app not found for service %s", req.ServiceName),
-		)
-	}
-
-	sort.Strings(providerAppNames)
-	return providerAppNames[0], nil
 }
 
 func selectTripleInvokeTarget(ctx consolectx.Context, mesh string, providerAppName string) (*tripleInvokeTarget, error) {
@@ -287,8 +243,8 @@ func toAttachmentValues(attachments map[string]string) map[string]any {
 
 func toHessianObjects(args []any) []hessian.Object {
 	objects := make([]hessian.Object, len(args))
-	for index, arg := range args {
-		objects[index] = arg
+	for i, arg := range args {
+		objects[i] = arg
 	}
 	return objects
 }

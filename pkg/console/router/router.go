@@ -100,6 +100,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 		service.POST("/generic/invoke", handler.ServiceGenericInvoke(ctx))
 		service.GET("/method/detail", handler.GetServiceMethodDetail(ctx))
 		service.GET("/distribution", handler.GetServiceTabDistribution(ctx))
+		service.GET("/provider-instances", handler.GetServiceProviderInstances(ctx))
 		service.GET("/methods", handler.GetServiceMethodNames(ctx))
 		service.GET("/search", handler.SearchServices(ctx))
 		//service.GET("/detail", handler.GetServiceDetail(ctx))
