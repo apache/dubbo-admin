@@ -222,6 +222,7 @@ func (c *rerankerComponent) get() Reranker {
 
 // RAGComponent RAG 系统组件
 type RAGComponent struct {
+	instanceName string
 	cfg          *RAGSpec
 	embedderName string
 	loader       *loaderComponent
@@ -232,7 +233,14 @@ type RAGComponent struct {
 }
 
 func (r *RAGComponent) Name() string {
+	if r.instanceName != "" {
+		return r.instanceName
+	}
 	return "rag"
+}
+
+func (r *RAGComponent) SetName(name string) {
+	r.instanceName = name
 }
 
 func (r *RAGComponent) Validate() error {

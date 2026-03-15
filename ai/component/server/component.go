@@ -31,8 +31,9 @@ import (
 
 // ServerComponent Server component implementation
 type ServerComponent struct {
-	rt  *runtime.Runtime
-	srv *http.Server
+	rt           *runtime.Runtime
+	srv          *http.Server
+	instanceName string
 
 	port         int
 	host         string
@@ -69,7 +70,14 @@ func NewServerComponent(
 
 // Name returns the component name
 func (s *ServerComponent) Name() string {
+	if s.instanceName != "" {
+		return s.instanceName
+	}
 	return "server"
+}
+
+func (s *ServerComponent) SetName(name string) {
+	s.instanceName = name
 }
 
 func (s *ServerComponent) Validate() error {

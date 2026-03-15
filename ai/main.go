@@ -75,18 +75,7 @@ func stopComponents(rt *runtime.Runtime) error {
 	done := make(chan error)
 
 	go func() {
-		rt.Components.Range(func(key, value interface{}) bool {
-			comp := value.(runtime.Component)
-
-			if err := comp.Stop(); err != nil {
-				rt.GetLogger().Error("Failed to stop component",
-					"name", comp.Name(),
-					"error", err)
-			}
-
-			return true
-		})
-		done <- nil
+		done <- rt.StopAll()
 	}()
 
 	select {

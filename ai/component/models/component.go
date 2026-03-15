@@ -29,6 +29,7 @@ import (
 )
 
 type ModelsComponent struct {
+	instanceName     string
 	defaultModel     string
 	defaultEmbedding string
 	providers        map[string]ProviderConfig
@@ -48,7 +49,14 @@ func NewModelsComponent(
 }
 
 func (m *ModelsComponent) Name() string {
+	if m.instanceName != "" {
+		return m.instanceName
+	}
 	return "models"
+}
+
+func (m *ModelsComponent) SetName(name string) {
+	m.instanceName = name
 }
 
 func (m *ModelsComponent) Validate() error {

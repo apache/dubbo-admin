@@ -27,10 +27,11 @@ import (
 // TODO(memory, 2026-02-24): Inject unified memory interface to support different memory implementations
 // Current implementation uses HistoryMemory directly
 type MemoryComponent struct {
-	historyKey HistoryKey
-	maxTurns   int
-	memoryCtx  context.Context
-	memory     *HistoryMemory
+	instanceName string
+	historyKey   HistoryKey
+	maxTurns     int
+	memoryCtx    context.Context
+	memory       *HistoryMemory
 }
 
 func NewMemoryComponent(historyKey HistoryKey, maxTurns ...int) (runtime.Component, error) {
@@ -45,7 +46,14 @@ func NewMemoryComponent(historyKey HistoryKey, maxTurns ...int) (runtime.Compone
 }
 
 func (m *MemoryComponent) Name() string {
+	if m.instanceName != "" {
+		return m.instanceName
+	}
 	return "memory"
+}
+
+func (m *MemoryComponent) SetName(name string) {
+	m.instanceName = name
 }
 
 func (m *MemoryComponent) Validate() error {

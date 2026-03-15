@@ -25,6 +25,7 @@ import (
 
 // AgentComponent Agent component implementation
 type AgentComponent struct {
+	instanceName           string
 	Agent                  *ReActAgent
 	agentType              string
 	defaultModel           string
@@ -56,7 +57,14 @@ func NewAgentComponent(
 }
 
 func (a *AgentComponent) Name() string {
+	if a.instanceName != "" {
+		return a.instanceName
+	}
 	return "agent"
+}
+
+func (a *AgentComponent) SetName(name string) {
+	a.instanceName = name
 }
 
 func (a *AgentComponent) Validate() error {

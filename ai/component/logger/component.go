@@ -27,6 +27,7 @@ import (
 
 // LoggerComponent implements the logger component
 type LoggerComponent struct {
+	instanceName string
 	// Runtime configuration fields (converted from cfg, original cfg not retained)
 	level string
 }
@@ -40,7 +41,14 @@ func NewLoggerComponent(level string) (runtime.Component, error) {
 
 // Name returns the component name
 func (l *LoggerComponent) Name() string {
+	if l.instanceName != "" {
+		return l.instanceName
+	}
 	return "logger"
+}
+
+func (l *LoggerComponent) SetName(name string) {
+	l.instanceName = name
 }
 
 func (l *LoggerComponent) Validate() error {

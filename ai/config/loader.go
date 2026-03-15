@@ -27,19 +27,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// mainConfig defines the structure of the main configuration file (internal use only)
-type mainConfig struct {
-	Project    string         `yaml:"project"`    // Project name
-	Version    string         `yaml:"version"`    // Project version
-	Components map[string]any `yaml:"components"` // Component configuration path mapping
-}
-
 // LoadedConfig contains all loaded configurations
 type LoadedConfig struct {
 	Project    string
 	Version    string
-	SchemaDir  string             // Schema directory path (from environment)
-	Components map[string]*Config // Component configurations (key: component name)
+	SchemaDir  string               // Schema directory path (from environment)
+	Components map[string][]*Config // Component configurations grouped by component type
 }
 
 // Loader handles configuration file loading
@@ -70,24 +63,14 @@ func (l *Loader) Load() (*LoadedConfig, error) {
 		return nil, err
 	}
 
-	// 2. Read and validate main configuration file
-	mainCfg, err := l.loadMainConfig()
+	// 2. Read, validate, and expand main configuration into loaded component specs.
+	loadedCfg, err := l.loadMainConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load main config: %w", err)
 	}
 
-	// 3. Load all component configurations
-	components, err := l.loadAllComponents(mainCfg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to load components: %w", err)
-	}
-
-	return &LoadedConfig{
-		Project:    mainCfg.Project,
-		Version:    mainCfg.Version,
-		SchemaDir:  l.schemaDir,
-		Components: components,
-	}, nil
+	loadedCfg.SchemaDir = l.schemaDir
+	return loadedCfg, nil
 }
 
 // LoadComponent loads and validates a single component config file.
@@ -161,8 +144,8 @@ func (l *Loader) resolveSchemaDir() (string, error) {
 	return absDir, nil
 }
 
-// loadMainConfig loads and validates the main configuration file.
-func (l *Loader) loadMainConfig() (*mainConfig, error) {
+// loadMainConfig loads and validates the main configuration file, then expands component paths.
+func (l *Loader) loadMainConfig() (*LoadedConfig, error) {
 	data, err := os.ReadFile(l.configFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -183,50 +166,33 @@ func (l *Loader) loadMainConfig() (*mainConfig, error) {
 		return nil, fmt.Errorf("failed to marshal normalized main config: %w", err)
 	}
 
-	var cfg mainConfig
-	if err := decodeYAMLStrict(normalizedData, &cfg); err != nil {
+	var mainCfg struct {
+		Project    string            `yaml:"project"`
+		Version    string            `yaml:"version"`
+		Components map[string]string `yaml:"components"`
+	}
+
+	if err := decodeYAMLStrict(normalizedData, &mainCfg); err != nil {
 		return nil, err
 	}
 
-	return &cfg, nil
-}
-
-// loadAllComponents loads all component configurations
-func (l *Loader) loadAllComponents(mainCfg *mainConfig) (map[string]*Config, error) {
-	components := make(map[string]*Config)
-
-	// Iterate through component declarations in main config
-	for name, path := range mainCfg.Components {
-		switch v := path.(type) {
-		case string:
-			// Single configuration file
-			cfg, err := l.loadComponent(v)
-			if err != nil {
-				return nil, fmt.Errorf("failed to load component %s: %w", name, err)
-			}
-			components[name] = cfg
-
-		case []any:
-			// Multiple configuration files (e.g., agents)
-			for i, item := range v {
-				pathStr, ok := item.(string)
-				if !ok {
-					return nil, fmt.Errorf("structural error: components.%s[%d] must be string, got %T", name, i, item)
-				}
-				// Use index as name suffix for multiple configs
-				componentName := fmt.Sprintf("%s-%d", name, i)
-				cfg, err := l.loadComponent(pathStr)
-				if err != nil {
-					return nil, fmt.Errorf("failed to load component %s: %w", componentName, err)
-				}
-				components[componentName] = cfg
-			}
-		default:
-			return nil, fmt.Errorf("structural error: components.%s must be string or []string, got %T", name, path)
+	components := make(map[string][]*Config, len(mainCfg.Components))
+	for componentType, cfgPath := range mainCfg.Components {
+		cfg, err := l.loadComponent(cfgPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load component %s: %w", componentType, err)
 		}
+		if cfg.Type != componentType {
+			return nil, fmt.Errorf("structural error: components.%s points to type %s", componentType, cfg.Type)
+		}
+		components[componentType] = append(components[componentType], cfg)
 	}
 
-	return components, nil
+	return &LoadedConfig{
+		Project:    mainCfg.Project,
+		Version:    mainCfg.Version,
+		Components: components,
+	}, nil
 }
 
 // loadComponent loads a single component configuration

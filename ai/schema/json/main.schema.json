@@ -18,19 +18,8 @@
       "type": "object",
       "minProperties": 1,
       "additionalProperties": {
-        "oneOf": [
-          {
-            "type": "string",
-            "minLength": 1
-          },
-          {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
-        ]
+        "type": "string",
+        "minLength": 1
       }
     }
   }

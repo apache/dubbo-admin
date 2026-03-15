@@ -28,6 +28,7 @@ import (
 )
 
 type ToolsComponent struct {
+	instanceName string
 	registry     *genkit.Genkit
 	history      *memory.HistoryMemory
 	toolManagers []engine.ToolManager
@@ -42,7 +43,14 @@ func NewToolsComponent(config ToolConfig) (runtime.Component, error) {
 }
 
 func (t *ToolsComponent) Name() string {
+	if t.instanceName != "" {
+		return t.instanceName
+	}
 	return "tools"
+}
+
+func (t *ToolsComponent) SetName(name string) {
+	t.instanceName = name
 }
 
 func (t *ToolsComponent) Validate() error {

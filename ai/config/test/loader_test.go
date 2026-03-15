@@ -148,6 +148,13 @@ func TestLoader_MainConfig_SchemaDir(t *testing.T) {
 	if loaded.SchemaDir != want {
 		t.Fatalf("SchemaDir = %q, want %q", loaded.SchemaDir, want)
 	}
+	loggerConfigs := loaded.Components["logger"]
+	if len(loggerConfigs) != 1 {
+		t.Fatalf("logger configs len = %d, want 1", len(loggerConfigs))
+	}
+	if loggerConfigs[0].Type != "logger" {
+		t.Fatalf("logger config type = %q, want logger", loggerConfigs[0].Type)
+	}
 }
 
 func TestLoader_Component_Structural(t *testing.T) {
@@ -190,6 +197,47 @@ func TestLoader_Component_DefaultInjection(t *testing.T) {
 				}
 				if spec.Port != 8888 || spec.Host != "0.0.0.0" || spec.ReadTimeout != 30 || spec.WriteTimeout != 30 {
 					t.Fatalf("server defaults not injected: %+v", spec)
+				}
+			},
+		},
+		{
+			name:     "rag_splitter_oneof",
+			fileName: "rag.yaml",
+			componentYML: `type: rag
+spec:
+  embedder:
+    spec:
+      model: dashscope/qwen3-embedding
+  loader:
+    spec: {}
+  splitter:
+    spec: {}
+  indexer:
+    spec: {}
+  retriever:
+    spec: {}
+`,
+			assertFn: func(t *testing.T, cfg *config.Config) {
+				var spec map[string]any
+				if err := cfg.Spec.Decode(&spec); err != nil {
+					t.Fatalf("decode rag spec: %v", err)
+				}
+				splitter, ok := spec["splitter"].(map[string]any)
+				if !ok {
+					t.Fatalf("splitter = %T, want map[string]any", spec["splitter"])
+				}
+				if splitter["type"] != "recursive" {
+					t.Fatalf("splitter.type = %v, want recursive", splitter["type"])
+				}
+				splitterSpec, ok := splitter["spec"].(map[string]any)
+				if !ok {
+					t.Fatalf("splitter.spec = %T, want map[string]any", splitter["spec"])
+				}
+				if splitterSpec["chunk_size"] != 1000 || splitterSpec["overlap_size"] != 100 {
+					t.Fatalf("splitter defaults not injected: %+v", splitterSpec)
+				}
+				if _, exists := splitterSpec["headers"]; exists {
+					t.Fatalf("unexpected markdown defaults injected: %+v", splitterSpec)
 				}
 			},
 		},
