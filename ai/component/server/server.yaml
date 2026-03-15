@@ -1,7 +1,7 @@
 type: server
 spec:
   port: 8880 # Server port
-  host: "localhost" # Server host
+  host: "0.0.0.0" # Server host
   debug: false # Debug mode
   cors_origins: ["*"] # CORS origins
   read_timeout: 30 # Read timeout in seconds
