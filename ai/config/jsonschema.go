@@ -45,7 +45,7 @@ func (e *schemaEngine) ApplyDefaultsAndValidate(doc map[string]any, schemaFile s
 	}
 
 	// Apply defaults in-place (modifies doc)
-	applyDefaults(rootObj, rootObj, doc)
+	applyDefaults(rootObj, rootObj, doc, nil)
 
 	// Validate the result
 	if err := validateJSONSchema(compiled, doc); err != nil {
@@ -113,10 +113,13 @@ func validateJSONSchema(compiled *gojsonschema.Schema, doc any) error {
 	return fmt.Errorf("structural error: %s", strings.Join(errMsgs, "; "))
 }
 
-// applyDefaults recursively applies default values from schema to value
-// Modifies value in-place
-func applyDefaults(root map[string]any, schema map[string]any, value any) {
+// applyDefaults recursively applies default values from schema to value.
+// Modifies value in-place.
+func applyDefaults(root map[string]any, schema map[string]any, value any, parent map[string]any) {
 	resolved := resolveSchemaRef(root, schema)
+	for _, branch := range expandCompositeSchemas(root, resolved, value, parent) {
+		applyDefaults(root, branch, value, parent)
+	}
 
 	switch v := value.(type) {
 	case map[string]any:
@@ -131,13 +134,13 @@ func applyDefaults(root map[string]any, schema map[string]any, value any) {
 			// Apply default value if property is missing
 			if _, exists := v[key]; !exists {
 				if defVal, hasDefault := propSchema["default"]; hasDefault {
-					v[key] = defVal
+					v[key] = cloneJSONValue(defVal)
 				}
 			}
 
 			// Recursively apply defaults to nested properties
 			if child, exists := v[key]; exists {
-				applyDefaults(root, propSchema, child)
+				applyDefaults(root, propSchema, child, v)
 			}
 		}
 
@@ -145,9 +148,169 @@ func applyDefaults(root map[string]any, schema map[string]any, value any) {
 		if items, ok := resolved["items"].(map[string]any); ok {
 			items = resolveSchemaRef(root, items)
 			for i := range v {
-				applyDefaults(root, items, v[i])
+				applyDefaults(root, items, v[i], nil)
 			}
 		}
+	}
+}
+
+func expandCompositeSchemas(root map[string]any, schema map[string]any, value any, parent map[string]any) []map[string]any {
+	branches := make([]map[string]any, 0)
+
+	if allOf, ok := schema["allOf"].([]any); ok {
+		for _, branch := range allOf {
+			branchSchema, ok := branch.(map[string]any)
+			if !ok {
+				continue
+			}
+			branches = append(branches, resolveSchemaRef(root, branchSchema))
+		}
+	}
+
+	if branch := selectCompositeBranch(root, schema, value, parent, "oneOf"); branch != nil {
+		branches = append(branches, branch)
+	}
+	if branch := selectCompositeBranch(root, schema, value, parent, "anyOf"); branch != nil {
+		branches = append(branches, branch)
+	}
+
+	return branches
+}
+
+func selectCompositeBranch(root map[string]any, schema map[string]any, value any, parent map[string]any, keyword string) map[string]any {
+	rawBranches, ok := schema[keyword].([]any)
+	if !ok {
+		return nil
+	}
+
+	discriminator := ""
+	if parent != nil {
+		discriminator, _ = parent["type"].(string)
+	}
+
+	var firstCompatible map[string]any
+	for _, raw := range rawBranches {
+		branchSchema, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		if discriminator != "" {
+			if ref, ok := branchSchema["$ref"].(string); ok && strings.Contains(ref, discriminator) {
+				resolved := resolveSchemaRef(root, branchSchema)
+				if isSchemaCompatible(resolved, value) {
+					return resolved
+				}
+			}
+		}
+
+		resolved := resolveSchemaRef(root, branchSchema)
+		if isSchemaCompatible(resolved, value) && firstCompatible == nil {
+			firstCompatible = resolved
+		}
+	}
+
+	return firstCompatible
+}
+
+func isSchemaCompatible(schema map[string]any, value any) bool {
+	if schemaType, ok := schema["type"].(string); ok && !matchesSchemaType(schemaType, value) {
+		return false
+	}
+
+	if constVal, ok := schema["const"]; ok {
+		return value == constVal
+	}
+
+	if enumVals, ok := schema["enum"].([]any); ok && value != nil {
+		for _, enumVal := range enumVals {
+			if value == enumVal {
+				return true
+			}
+		}
+		return false
+	}
+
+	obj, ok := value.(map[string]any)
+	if !ok {
+		return true
+	}
+
+	props, _ := schema["properties"].(map[string]any)
+	additional, hasAdditional := schema["additionalProperties"]
+	for key := range obj {
+		if _, exists := props[key]; exists {
+			continue
+		}
+		if !hasAdditional {
+			continue
+		}
+		if allow, ok := additional.(bool); ok && !allow {
+			return false
+		}
+	}
+
+	return true
+}
+
+func matchesSchemaType(schemaType string, value any) bool {
+	switch schemaType {
+	case "object":
+		_, ok := value.(map[string]any)
+		return ok
+	case "array":
+		_, ok := value.([]any)
+		return ok
+	case "string":
+		_, ok := value.(string)
+		return ok
+	case "boolean":
+		_, ok := value.(bool)
+		return ok
+	case "integer":
+		switch value.(type) {
+		case int, int8, int16, int32, int64:
+			return true
+		case uint, uint8, uint16, uint32, uint64:
+			return true
+		case float64:
+			return value == float64(int64(value.(float64)))
+		default:
+			return false
+		}
+	case "number":
+		switch value.(type) {
+		case int, int8, int16, int32, int64:
+			return true
+		case uint, uint8, uint16, uint32, uint64:
+			return true
+		case float32, float64:
+			return true
+		default:
+			return false
+		}
+	case "null":
+		return value == nil
+	default:
+		return true
+	}
+}
+
+func cloneJSONValue(v any) any {
+	switch vv := v.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(vv))
+		for key, val := range vv {
+			out[key] = cloneJSONValue(val)
+		}
+		return out
+	case []any:
+		out := make([]any, len(vv))
+		for i := range vv {
+			out[i] = cloneJSONValue(vv[i])
+		}
+		return out
+	default:
+		return v
 	}
 }
 
