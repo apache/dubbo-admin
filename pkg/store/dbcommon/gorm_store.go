@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"sync"
 
 	"gorm.io/gorm"
 	"k8s.io/client-go/tools/cache"
@@ -35,14 +36,15 @@ import (
 )
 
 // GormStore is a GORM-backed store implementation for Dubbo resources
-// It uses GORM for database operations and maintains in-memory indices for fast lookups
+// It uses GORM for database operations and persists all indices to the resource_indices table
 // This implementation is database-agnostic and works with any GORM-supported database
 type GormStore struct {
-	pool    *ConnectionPool // Shared connection pool with reference counting
-	kind    model.ResourceKind
-	address string
-	indices *Index // In-memory index with thread-safe operations
-	stopCh  chan struct{}
+	pool     *ConnectionPool // Shared connection pool with reference counting
+	kind     model.ResourceKind
+	address  string
+	indexers cache.Indexers // Index functions for creating indices
+	mu       sync.RWMutex   // Protects indexers
+	stopCh   chan struct{}
 }
 
 var _ store.ManagedResourceStore = &GormStore{}
@@ -50,15 +52,15 @@ var _ store.ManagedResourceStore = &GormStore{}
 // NewGormStore creates a new GORM store for the specified resource kind
 func NewGormStore(kind model.ResourceKind, address string, pool *ConnectionPool) *GormStore {
 	return &GormStore{
-		kind:    kind,
-		address: address,
-		pool:    pool,
-		indices: NewIndex(),
-		stopCh:  make(chan struct{}),
+		kind:     kind,
+		address:  address,
+		pool:     pool,
+		indexers: make(cache.Indexers),
+		stopCh:   make(chan struct{}),
 	}
 }
 
-// Init initializes the GORM store by migrating the schema and rebuilding indices
+// Init initializes the GORM store by migrating the schema and registering indexers
 func (gs *GormStore) Init(_ runtime.BuilderContext) error {
 	// Perform table migration
 	db := gs.pool.GetDB()
@@ -76,11 +78,6 @@ func (gs *GormStore) Init(_ runtime.BuilderContext) error {
 	indexers := index.IndexersRegistry().Indexers(gs.kind)
 	if err := gs.AddIndexers(indexers); err != nil {
 		return err
-	}
-
-	// Rebuild indices from existing data in the database
-	if err := gs.rebuildIndices(); err != nil {
-		return fmt.Errorf("failed to rebuild indices for %s: %w", gs.kind.ToString(), err)
 	}
 
 	logger.Infof("GORM store initialized for resource kind: %s", gs.kind.ToString())
@@ -148,9 +145,6 @@ func (gs *GormStore) Add(obj interface{}) error {
 		return err
 	}
 
-	// Update indices after successful DB operation
-	gs.indices.UpdateResource(resource, nil)
-
 	// Persist index entries to DB
 	if err := gs.persistIndexEntries(resource, nil); err != nil {
 		logger.Warnf("failed to persist index entries for %s: %v", resource.ResourceKey(), err)
@@ -209,9 +203,6 @@ func (gs *GormStore) Update(obj interface{}) error {
 		)
 	}
 
-	// Update indices: remove old and add new
-	gs.indices.UpdateResource(resource, oldResource.(model.Resource))
-
 	// Persist index entries to DB
 	if err := gs.persistIndexEntries(resource, oldResource.(model.Resource)); err != nil {
 		logger.Warnf("failed to persist index entries for %s: %v", resource.ResourceKey(), err)
@@ -243,9 +234,6 @@ func (gs *GormStore) Delete(obj interface{}) error {
 			resource.ResourceMesh(),
 		)
 	}
-
-	// Remove from indices
-	gs.indices.RemoveResource(resource)
 
 	// Delete index entries from DB
 	if err := gs.deleteIndexEntries(resource.ResourceKey()); err != nil {
@@ -335,9 +323,6 @@ func (gs *GormStore) Replace(list []interface{}, _ string) error {
 			return err
 		}
 
-		// Clear all indices
-		gs.clearIndices()
-
 		// Return early if list is empty
 		if len(list) == 0 {
 			return nil
@@ -365,14 +350,9 @@ func (gs *GormStore) Replace(list []interface{}, _ string) error {
 			return err
 		}
 
-		// Rebuild indices for all resources
-		for _, resource := range resources {
-			gs.indices.UpdateResource(resource, nil)
-		}
-
 		// Persist all index entries in bulk
 		var indexEntries []ResourceIndexModel
-		indexers := gs.indices.GetIndexers()
+		indexers := gs.GetIndexers()
 		for _, resource := range resources {
 			for indexName, indexFunc := range indexers {
 				values, err := indexFunc(resource)
@@ -385,6 +365,7 @@ func (gs *GormStore) Replace(list []interface{}, _ string) error {
 						IndexName:    indexName,
 						IndexValue:   v,
 						ResourceKey:  resource.ResourceKey(),
+						Operator:     string(index.Equals),
 					})
 				}
 			}
@@ -405,11 +386,12 @@ func (gs *GormStore) Resync() error {
 }
 
 func (gs *GormStore) Index(indexName string, obj interface{}) ([]interface{}, error) {
-	if !gs.indices.IndexExists(indexName) {
+	if !gs.IndexExists(indexName) {
 		return nil, fmt.Errorf("index %s does not exist", indexName)
 	}
 
-	indexFunc := gs.indices.GetIndexers()[indexName]
+	indexers := gs.GetIndexers()
+	indexFunc := indexers[indexName]
 	indexValues, err := indexFunc(obj)
 	if err != nil {
 		return nil, err
@@ -423,7 +405,7 @@ func (gs *GormStore) Index(indexName string, obj interface{}) ([]interface{}, er
 }
 
 func (gs *GormStore) IndexKeys(indexName, indexedValue string) ([]string, error) {
-	if !gs.indices.IndexExists(indexName) {
+	if !gs.IndexExists(indexName) {
 		return nil, fmt.Errorf("index %s does not exist", indexName)
 	}
 
@@ -443,15 +425,24 @@ func (gs *GormStore) IndexKeys(indexName, indexedValue string) ([]string, error)
 }
 
 func (gs *GormStore) ListIndexFuncValues(indexName string) []string {
-	if !gs.indices.IndexExists(indexName) {
+	if !gs.IndexExists(indexName) {
 		return []string{}
 	}
 
-	return gs.indices.ListIndexFuncValues(indexName)
+	var values []string
+	db := gs.pool.GetDB()
+	if err := db.Model(&ResourceIndexModel{}).
+		Where("resource_kind = ? AND index_name = ?", gs.kind.ToString(), indexName).
+		Distinct("index_value").
+		Pluck("index_value", &values).Error; err != nil {
+		logger.Errorf("failed to list index func values for %s: %v", indexName, err)
+		return []string{}
+	}
+	return values
 }
 
 func (gs *GormStore) ByIndex(indexName, indexedValue string) ([]interface{}, error) {
-	if !gs.indices.IndexExists(indexName) {
+	if !gs.IndexExists(indexName) {
 		return nil, fmt.Errorf("index %s does not exist", indexName)
 	}
 
@@ -459,11 +450,28 @@ func (gs *GormStore) ByIndex(indexName, indexedValue string) ([]interface{}, err
 }
 
 func (gs *GormStore) GetIndexers() cache.Indexers {
-	return gs.indices.GetIndexers()
+	gs.mu.RLock()
+	defer gs.mu.RUnlock()
+
+	result := make(cache.Indexers, len(gs.indexers))
+	for k, v := range gs.indexers {
+		result[k] = v
+	}
+	return result
 }
 
 func (gs *GormStore) AddIndexers(newIndexers cache.Indexers) error {
-	return gs.indices.AddIndexers(newIndexers)
+	gs.mu.Lock()
+	defer gs.mu.Unlock()
+
+	for name, indexFunc := range newIndexers {
+		if _, exists := gs.indexers[name]; exists {
+			return fmt.Errorf("indexer %s already exists", name)
+		}
+		gs.indexers[name] = indexFunc
+	}
+
+	return nil
 }
 
 func (gs *GormStore) GetByKeys(keys []string) ([]model.Resource, error) {
@@ -538,15 +546,32 @@ func (gs *GormStore) PageListByIndexes(indexes []index.IndexCondition, pq model.
 }
 
 func (gs *GormStore) findByIndex(indexName, indexedValue string) ([]interface{}, error) {
-	if !gs.indices.IndexExists(indexName) {
+	if !gs.IndexExists(indexName) {
 		return nil, fmt.Errorf("index %s does not exist", indexName)
 	}
 
-	// Get resource keys from in-memory index
-	keys := gs.indices.GetKeys(indexName, indexedValue)
+	// Get resource keys from database index
+	db := gs.pool.GetDB()
+	var entries []ResourceIndexModel
+	err := db.Where("resource_kind = ? AND index_name = ? AND index_value = ?",
+		gs.kind.ToString(), indexName, indexedValue).
+		Find(&entries).Error
+	if err != nil {
+		return nil, err
+	}
 
-	if len(keys) == 0 {
+	if len(entries) == 0 {
 		return []interface{}{}, nil
+	}
+
+	// Collect unique resource keys
+	keys := make([]string, 0, len(entries))
+	seen := make(map[string]struct{})
+	for _, e := range entries {
+		if _, ok := seen[e.ResourceKey]; !ok {
+			keys = append(keys, e.ResourceKey)
+			seen[e.ResourceKey] = struct{}{}
+		}
 	}
 
 	// Fetch resources from DB by keys
@@ -612,11 +637,6 @@ func (gs *GormStore) getKeysByIndexes(indexes []index.IndexCondition) ([]string,
 	return result, nil
 }
 
-// clearIndices clears all in-memory indices
-func (gs *GormStore) clearIndices() {
-	gs.indices.Clear()
-}
-
 // persistIndexEntries writes index entries for a resource to the database
 // If oldResource is not nil, first deletes old entries, then inserts new ones
 func (gs *GormStore) persistIndexEntries(resource model.Resource, oldResource model.Resource) error {
@@ -630,7 +650,7 @@ func (gs *GormStore) persistIndexEntries(resource model.Resource, oldResource mo
 	}
 
 	// Get all index entries for this resource
-	indexers := gs.indices.GetIndexers()
+	indexers := gs.GetIndexers()
 	var entries []ResourceIndexModel
 	for indexName, indexFunc := range indexers {
 		values, err := indexFunc(resource)
@@ -643,6 +663,7 @@ func (gs *GormStore) persistIndexEntries(resource model.Resource, oldResource mo
 				IndexName:    indexName,
 				IndexValue:   v,
 				ResourceKey:  resource.ResourceKey(),
+				Operator:     string(index.Equals),
 			})
 		}
 	}
@@ -682,60 +703,10 @@ func (gs *GormStore) getKeysByPrefixFromDB(indexName, prefix string) ([]string, 
 	return keys, nil
 }
 
-// rebuildIndices rebuilds all in-memory indices from existing database records
-// First tries to rebuild from resource_indices table for efficiency
-// Falls back to rebuilding from resource table if resource_indices is empty
-func (gs *GormStore) rebuildIndices() error {
-	// Clear existing indices first
-	gs.clearIndices()
-
-	// Try to load from resource_indices table (persisted indices)
-	var entries []ResourceIndexModel
-	db := gs.pool.GetDB()
-	if err := db.Where("resource_kind = ?", gs.kind.ToString()).Find(&entries).Error; err != nil {
-		logger.Warnf("failed to load from resource_indices for %s: %v", gs.kind.ToString(), err)
-		return gs.rebuildIndicesFromResources()
-	}
-
-	// If resource_indices table has entries, rebuild from there
-	if len(entries) > 0 {
-		for _, entry := range entries {
-			gs.indices.AddEntry(entry.IndexName, entry.IndexValue, entry.ResourceKey)
-		}
-		logger.Infof("Rebuilt indices for %s from resource_indices table: %d entries", gs.kind.ToString(), len(entries))
-		return nil
-	}
-
-	// Fallback: rebuild from resources table
-	return gs.rebuildIndicesFromResources()
-}
-
-// rebuildIndicesFromResources is the original implementation, now used as fallback
-// It scans all resources and rebuilds both in-memory indices and persisted indices
-func (gs *GormStore) rebuildIndicesFromResources() error {
-	// Load all resources from the database
-	var models []ResourceModel
-	db := gs.pool.GetDB()
-	if err := db.Scopes(TableScope(gs.kind.ToString())).Model(&ResourceModel{}).Find(&models).Error; err != nil {
-		return fmt.Errorf("failed to load resources for index rebuild: %w", err)
-	}
-
-	// Rebuild indices for all resources
-	for _, m := range models {
-		resource, err := m.ToResource()
-		if err != nil {
-			logger.Errorf("failed to deserialize resource during index rebuild: %v", err)
-			continue
-		}
-		// Add resource to indices (nil for oldResource since this is initial load)
-		gs.indices.UpdateResource(resource, nil)
-
-		// Also persist to resource_indices
-		if err := gs.persistIndexEntries(resource, nil); err != nil {
-			logger.Warnf("failed to persist index entries during rebuild: %v", err)
-		}
-	}
-
-	logger.Infof("Rebuilt indices for %s from resources table: loaded %d resources", gs.kind.ToString(), len(models))
-	return nil
+// IndexExists checks if an indexer with the given name exists
+func (gs *GormStore) IndexExists(indexName string) bool {
+	gs.mu.RLock()
+	defer gs.mu.RUnlock()
+	_, exists := gs.indexers[indexName]
+	return exists
 }

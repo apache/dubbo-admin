@@ -171,7 +171,7 @@ func TestNewGormStore(t *testing.T) {
 	assert.Equal(t, kind, store.kind)
 	assert.Equal(t, "test-address", store.address)
 	assert.NotNil(t, store.pool)
-	assert.NotNil(t, store.indices)
+	assert.NotNil(t, store.indexers)
 	assert.NotNil(t, store.stopCh)
 }
 
@@ -1239,79 +1239,6 @@ func TestGormStore_ReplaceIndices(t *testing.T) {
 	assert.Contains(t, keys, "test-key-2")
 }
 
-func TestGormStore_InitRebuildIndices(t *testing.T) {
-	// This test verifies that indices are rebuilt from existing data during Init()
-	// Simulates the scenario where a GormStore starts with existing data in the database
-
-	// Create store and add data
-	store, cleanup := setupTestStore(t)
-	defer cleanup()
-
-	err := store.Init(nil)
-	require.NoError(t, err)
-
-	// Add indexer before adding data
-	indexers := map[string]cache.IndexFunc{
-		"by-mesh": func(obj interface{}) ([]string, error) {
-			resource := obj.(model.Resource)
-			return []string{resource.ResourceMesh()}, nil
-		},
-	}
-	err = store.AddIndexers(indexers)
-	require.NoError(t, err)
-
-	// Add some resources to the database
-	mockRes1 := &mockResource{
-		Kind: "TestResource",
-		Key:  "test-key-1",
-		Mesh: "mesh1",
-		Meta: metav1.ObjectMeta{Name: "test-resource-1"},
-	}
-	mockRes2 := &mockResource{
-		Kind: "TestResource",
-		Key:  "test-key-2",
-		Mesh: "mesh2",
-		Meta: metav1.ObjectMeta{Name: "test-resource-2"},
-	}
-	err = store.Add(mockRes1)
-	require.NoError(t, err)
-	err = store.Add(mockRes2)
-	require.NoError(t, err)
-
-	// Verify indices are populated
-	keys, err := store.IndexKeys("by-mesh", "mesh1")
-	assert.NoError(t, err)
-	assert.Contains(t, keys, "test-key-1")
-
-	// Now simulate a restart by creating a new store instance with the same pool
-	// This simulates the scenario where existing data exists in the database
-	pool := store.pool
-	pool.IncrementRef() // Increment ref count since we're creating another store using it
-
-	newStore := NewGormStore("TestResource", pool.Address(), pool)
-
-	// Add indexers BEFORE Init to ensure they're available during index rebuild
-	err = newStore.AddIndexers(indexers)
-	require.NoError(t, err)
-
-	// Init should rebuild indices from existing database data
-	err = newStore.Init(nil)
-	require.NoError(t, err)
-
-	// Verify indices were rebuilt with existing data
-	keys, err = newStore.IndexKeys("by-mesh", "mesh1")
-	assert.NoError(t, err)
-	assert.Contains(t, keys, "test-key-1", "Index should contain existing data after Init()")
-
-	keys, err = newStore.IndexKeys("by-mesh", "mesh2")
-	assert.NoError(t, err)
-	assert.Contains(t, keys, "test-key-2", "Index should contain existing data after Init()")
-
-	// Verify all keys are present
-	allKeys := newStore.ListKeys()
-	assert.Len(t, allKeys, 2)
-}
-
 func TestGormStore_Resync(t *testing.T) {
 	store, cleanup := setupTestStore(t)
 	defer cleanup()
@@ -1522,6 +1449,15 @@ func TestGormStore_IndexPersistence(t *testing.T) {
 		Count(&count).Error
 	assert.NoError(t, err)
 	assert.Equal(t, int64(2), count, "Both index entries should be persisted to resource_indices table")
+
+	// Verify operator field is set to "Equals"
+	var entries []ResourceIndexModel
+	err = db.Where("resource_kind = ? AND index_name = ?", "TestResource", "by-ip").
+		Find(&entries).Error
+	assert.NoError(t, err)
+	for _, entry := range entries {
+		assert.Equal(t, "Equals", entry.Operator, "Operator field should be set to Equals")
+	}
 }
 
 func TestGormStore_ListByIndexes_HasPrefix(t *testing.T) {
@@ -1753,62 +1689,4 @@ func TestGormStore_UpdateIndex_UpdatesInDB(t *testing.T) {
 		Count(&count).Error
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), count, "New index entry should exist")
-}
-
-func TestGormStore_RebuildFromIndexTable(t *testing.T) {
-	// This test verifies that indices can be rebuilt from the resource_indices table
-	store, cleanup := setupTestStore(t)
-	defer cleanup()
-
-	err := store.Init(nil)
-	require.NoError(t, err)
-
-	// Add indexer
-	indexers := map[string]cache.IndexFunc{
-		"by-mesh": func(obj interface{}) ([]string, error) {
-			resource := obj.(model.Resource)
-			return []string{resource.ResourceMesh()}, nil
-		},
-	}
-	err = store.AddIndexers(indexers)
-	require.NoError(t, err)
-
-	// Add some resources
-	mockRes1 := &mockResource{
-		Kind: "TestResource",
-		Key:  "test-key-1",
-		Mesh: "mesh1",
-		Meta: metav1.ObjectMeta{Name: "test-resource-1"},
-	}
-	mockRes2 := &mockResource{
-		Kind: "TestResource",
-		Key:  "test-key-2",
-		Mesh: "mesh2",
-		Meta: metav1.ObjectMeta{Name: "test-resource-2"},
-	}
-	err = store.Add(mockRes1)
-	require.NoError(t, err)
-	err = store.Add(mockRes2)
-	require.NoError(t, err)
-
-	// Create a new store instance with same pool
-	pool := store.pool
-	pool.IncrementRef()
-
-	newStore := NewGormStore("TestResource", pool.Address(), pool)
-	err = newStore.AddIndexers(indexers)
-	require.NoError(t, err)
-
-	// Init should rebuild indices from resource_indices table (which now has entries)
-	err = newStore.Init(nil)
-	require.NoError(t, err)
-
-	// Verify indices were rebuilt from the table
-	keys, err := newStore.IndexKeys("by-mesh", "mesh1")
-	assert.NoError(t, err)
-	assert.Contains(t, keys, "test-key-1")
-
-	keys, err = newStore.IndexKeys("by-mesh", "mesh2")
-	assert.NoError(t, err)
-	assert.Contains(t, keys, "test-key-2")
 }

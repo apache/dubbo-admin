@@ -134,6 +134,7 @@ type ResourceIndexModel struct {
 	IndexName    string `gorm:"type:varchar(128);not null;index:idx_kind_name_value"` // Index name (e.g., "idx_instance_ip")
 	IndexValue   string `gorm:"type:varchar(255);not null;index:idx_kind_name_value"` // Indexed value (e.g., "192.168.1.1")
 	ResourceKey  string `gorm:"type:varchar(255);not null;index:idx_resource_key"`    // Resource unique key
+	Operator     string `gorm:"type:varchar(32);not null;default:Equals"`             // Index operator type, e.g., Equals, HasPrefix
 }
 
 // TableName specifies the table name for ResourceIndexModel
