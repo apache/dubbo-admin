@@ -128,21 +128,24 @@ func (sc *storeComponent) ResourceKindRoute(k coremodel.ResourceKind) (ResourceS
 func (sc *storeComponent) GetDB() (*gorm.DB, bool) {
 	// Try to get DB from any store that has a Pool() method (all GormStores share the same ConnectionPool)
 	for _, store := range sc.stores {
-		if pp, ok := store.(poolProvider); ok {
-			pool := pp.Pool()
-			if pool == nil {
-				continue
-			}
-			// Use reflection to call GetDB() on the pool to avoid importing dbcommon
-			poolVal := reflect.ValueOf(pool)
-			getDBMethod := poolVal.MethodByName("GetDB")
-			if getDBMethod.IsValid() {
-				result := getDBMethod.Call(nil)
-				if len(result) > 0 {
-					if db, ok := result[0].Interface().(*gorm.DB); ok {
-						return db, true
-					}
-				}
+		pp, ok := store.(poolProvider)
+		if !ok {
+			continue
+		}
+		pool := pp.Pool()
+		if pool == nil {
+			continue
+		}
+		// Use reflection to call GetDB() on the pool to avoid importing dbcommon
+		poolVal := reflect.ValueOf(pool)
+		getDBMethod := poolVal.MethodByName("GetDB")
+		if !getDBMethod.IsValid() {
+			continue
+		}
+		result := getDBMethod.Call(nil)
+		if len(result) > 0 {
+			if db, ok := result[0].Interface().(*gorm.DB); ok {
+				return db, true
 			}
 		}
 	}

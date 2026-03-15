@@ -109,28 +109,34 @@ func (e *engineComponent) Init(ctx runtime.BuilderContext) error {
 		return fmt.Errorf("init subscribers failed, %w", err)
 	}
 
-	// Initialize leader election if using DB store
-	if ctx.Config().Store.Type != storecfg.Memory {
-		if dbSrc, ok := storeComponent.(leader.DBSource); ok {
-			if db, hasDB := dbSrc.GetDB(); hasDB {
-				holderID, err := leader.GenerateHolderID()
-				if err != nil {
-					logger.Warnf("engine: failed to generate holder ID, skipping leader election: %v", err)
-				} else {
-					le := leader.NewLeaderElection(db, runtime.ResourceEngine, holderID)
-					if err := le.EnsureTable(); err != nil {
-						logger.Warnf("engine: failed to ensure leader lease table: %v", err)
-					} else {
-						e.leaderElection = le
-						e.needsLeaderElection = true
-						logger.Infof("engine: leader election initialized (holder: %s)", holderID)
-					}
-				}
-			}
-		}
+	defer logger.Infof("resource engine %s has been inited successfully", e.name)
+
+	// Memory store runs single-replica; leader election is not needed.
+	if ctx.Config().Store.Type == storecfg.Memory {
+		return nil
 	}
 
-	logger.Infof("resource engine %s has been inited successfully", e.name)
+	dbSrc, ok := storeComponent.(leader.DBSource)
+	if !ok {
+		return nil
+	}
+	db, hasDB := dbSrc.GetDB()
+	if !hasDB {
+		return nil
+	}
+	holderID, err := leader.GenerateHolderID()
+	if err != nil {
+		logger.Warnf("engine: failed to generate holder ID, skipping leader election: %v", err)
+		return nil
+	}
+	le := leader.NewLeaderElection(db, runtime.ResourceEngine, holderID)
+	if err := le.EnsureTable(); err != nil {
+		logger.Warnf("engine: failed to ensure leader lease table: %v", err)
+		return nil
+	}
+	e.leaderElection = le
+	e.needsLeaderElection = true
+	logger.Infof("engine: leader election initialized (holder: %s)", holderID)
 	return nil
 }
 
@@ -173,39 +179,43 @@ func (e *engineComponent) initSubscribers(eventbus events.EventBus) error {
 }
 
 func (e *engineComponent) Start(_ runtime.Runtime, ch <-chan struct{}) error {
-	// If no leader election is needed (Memory store or DB initialization failed), run business logic directly
 	if !e.needsLeaderElection {
 		return e.startBusinessLogic(ch)
 	}
 
-	// Create a context that can be cancelled when the stop channel is closed
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Monitor the stop channel and cancel the context when it's closed
 	go func() {
 		<-ch
 		cancel()
 	}()
 
-	// Run leader election with callbacks for starting/stopping leadership
+	var leaderStopCh chan struct{}
+
 	e.leaderElection.RunLeaderElection(ctx, ch,
-		func() { // onStartLeading callback
+		func() { // onStartLeading: create a fresh stopCh for this leadership term
+			leaderStopCh = make(chan struct{})
 			logger.Infof("engine: became leader, starting business logic")
-			if err := e.startBusinessLogic(ch); err != nil {
+			if err := e.startBusinessLogic(leaderStopCh); err != nil {
 				logger.Errorf("engine: failed to start business logic: %v", err)
 			}
 		},
-		func() { // onStopLeading callback
+		func() { // onStopLeading: stop informers from the current term
 			logger.Warnf("engine: lost leadership, stopping business logic")
+			if leaderStopCh != nil {
+				close(leaderStopCh)
+				leaderStopCh = nil
+			}
 		},
 	)
 
 	return nil
 }
 
-// startBusinessLogic contains the original business logic from the old Start method
-func (e *engineComponent) startBusinessLogic(ch <-chan struct{}) error {
+// startBusinessLogic starts subscribers and informers using the provided stopCh.
+// When stopCh is closed all informer goroutines will exit.
+func (e *engineComponent) startBusinessLogic(stopCh <-chan struct{}) error {
 	// 1. subscribe resource changed events
 	for _, sub := range e.subscribers {
 		if err := e.subscriptionManager.Subscribe(sub); err != nil {
@@ -214,7 +224,7 @@ func (e *engineComponent) startBusinessLogic(ch <-chan struct{}) error {
 	}
 	// 2. start informers
 	for _, informer := range e.informers {
-		go informer.Run(ch)
+		go informer.Run(stopCh)
 	}
 	logger.Infof("resource engine %s has started successfully", e.name)
 	return nil

@@ -102,15 +102,17 @@ func (le *LeaderElection) EnsureTable() error {
 	return le.db.AutoMigrate(&LeaderLease{})
 }
 
-// TryAcquire attempts to acquire or renew the leader lease
-// Returns true if the current holder successfully acquired/renewed the lease
+// TryAcquire attempts to acquire the leader lease from an expired holder.
+// It only competes for leases that have already expired and does NOT renew an
+// existing self-held lease — use Renew for that.
+// Returns true if the current holder successfully acquired the lease.
 func (le *LeaderElection) TryAcquire(ctx context.Context) bool {
 	now := time.Now()
 	expiresAt := now.Add(le.leaseDuration)
 
-	// First, try to update an existing lease (either expired or held by us)
+	// Only take over an expired lease; never pre-empt an active holder.
 	result := le.db.WithContext(ctx).Model(&LeaderLease{}).
-		Where("component = ? AND (expires_at < ? OR holder_id = ?)", le.component, now, le.holderID).
+		Where("component = ? AND expires_at < ?", le.component, now).
 		Updates(map[string]interface{}{
 			"holder_id":   le.holderID,
 			"acquired_at": now,
