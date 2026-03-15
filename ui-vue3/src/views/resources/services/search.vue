@@ -72,11 +72,11 @@ const columns = [
     key: 'group',
     dataIndex: 'group'
   },
-  {
-    title: 'provider',
-    key: 'provider',
-    dataIndex: 'providerAppName'
-  },
+  // {
+  //   title: 'provider',
+  //   key: 'provider',
+  //   dataIndex: 'providerAppName'
+  // },
   {
     title: 'avgQPS',
     key: 'avgQPS',
