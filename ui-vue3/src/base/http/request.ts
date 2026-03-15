@@ -40,9 +40,7 @@ const isSilentErrorUrl = (url?: string): boolean => {
 }
 
 const service: AxiosInstance = axios.create({
-  //  change this to decide where to go
-  // baseURL: 'http://127.0.0.1:4523/m1/3732499-3363280-default/',
-  baseURL: '/api/v1',
+  baseURL: import.meta.env.VITE_MOCK_ENABLED === 'true' ? '/mock' : '/api/v1',
   timeout: 30 * 1000
 })
 const request: AxiosInterceptorManager<InternalAxiosRequestConfig> = service.interceptors.request
@@ -74,11 +72,16 @@ const rejectState: { errorHandler: Function | null } = {
   errorHandler: null
 }
 
+const isMockMode = import.meta.env.VITE_MOCK_ENABLED === 'true'
+
 response.use(
   (response) => {
     NProgress.done()
-    // Success case - code is HTTP_STATUS.SUCCESS
-    if (response.status === 200 && response.data.code === HTTP_STATUS.SUCCESS) {
+    // Success case: code is 'Success' (production) or 200 (mock mode compatibility)
+    if (
+      response.status === 200 &&
+      (response.data.code === HTTP_STATUS.SUCCESS || (isMockMode && response.data.code === 200))
+    ) {
       return Promise.resolve(response.data)
     }
 

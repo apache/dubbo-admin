@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:mock": "vite --mode mock",
     "check:i18n": "node --loader ts-node/esm src/base/i18n/sortI18n.ts",
     "preview": "vite preview",
     "test:unit": "vitest",
