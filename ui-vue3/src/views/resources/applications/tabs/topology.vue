@@ -232,7 +232,8 @@ const renderTopology = (graphData: any) => {
   })
 
   const handleNodeClick = async (e: any) => {
-    const appName = String(e?.target?.id)
+    const rawId = e?.target?.id
+    const appName = rawId == null ? '' : String(rawId)
     if (!appName) return
 
     selectedNodeId.value = appName
