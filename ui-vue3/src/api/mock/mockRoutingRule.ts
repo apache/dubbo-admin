@@ -30,7 +30,7 @@ Mock.mock(devTool.mockUrl('/mock/condition-rule/search'), 'get', () => {
     })
   }
   return {
-    code: 200,
+    code: 'Success',
     msg: 'success',
     data: {
       pageInfo: {
@@ -39,5 +39,54 @@ Mock.mock(devTool.mockUrl('/mock/condition-rule/search'), 'get', () => {
       },
       list
     }
+  }
+})
+
+// 条件路由详情
+Mock.mock(devTool.mockUrl('/mock/condition-rule/'), 'get', (options: any) => {
+  const url = options.url
+  const ruleName = url.split('/').pop()
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      name: ruleName,
+      serviceName: 'org.apache.dubbo.samples.UserService',
+      enable: true,
+      priority: 1,
+      conditions: [
+        'method != "find*" => address = 192.168.1.1:20880',
+        'method = "sayHello" => address = 192.168.1.2:20880'
+      ],
+      force: false,
+      enabled: true
+    }
+  }
+})
+
+// 删除条件路由
+Mock.mock(devTool.mockUrl('/mock/condition-rule/'), 'delete', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
+  }
+})
+
+// 更新条件路由
+Mock.mock(devTool.mockUrl('/mock/condition-rule/'), 'put', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
+  }
+})
+
+// 新增条件路由
+Mock.mock(devTool.mockUrl('/mock/condition-rule/'), 'post', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
   }
 })

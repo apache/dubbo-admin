@@ -18,7 +18,7 @@
 import Mock from 'mockjs'
 import devTool from '../../utils/DevToolUtil'
 Mock.mock(devTool.mockUrl('/mock/metadata'), 'get', {
-  code: 200,
+  code: 'Success',
   msg: 'success',
   data: {
     registry: 'nacos://47.101.215.139:8848?username=nacos&password=nacos',
@@ -31,14 +31,23 @@ Mock.mock(devTool.mockUrl('/mock/metadata'), 'get', {
 })
 
 Mock.mock(devTool.mockUrl('/mock/overview'), 'get', {
-  code: 200,
+  code: 'Success',
   msg: 'success',
   data: {
-    appCount: 0,
-    serviceCount: 0,
-    insCount: 0,
-    protocols: {},
-    releases: {},
-    discoveries: {}
+    appCount: 15,
+    serviceCount: 28,
+    insCount: 43,
+    protocols: {
+      triple: 20,
+      dubbo: 8
+    },
+    releases: {
+      '3.0.x': 10,
+      '3.1.x': 18
+    },
+    discoveries: {
+      nacos: 25,
+      zookeeper: 18
+    }
   }
 })

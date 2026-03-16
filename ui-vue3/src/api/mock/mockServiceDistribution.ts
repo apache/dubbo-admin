@@ -16,9 +16,10 @@
  */
 
 import Mock from 'mockjs'
+import devTool from '@/utils/DevToolUtil'
 
-Mock.mock('/mock/service/distribution', 'get', {
-  code: 200,
+Mock.mock(devTool.mockUrl('/mock/service/distribution'), 'get', {
+  code: 'Success',
   message: 'success',
   data: {
     total: 8,

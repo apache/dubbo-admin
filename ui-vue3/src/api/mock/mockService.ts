@@ -19,7 +19,7 @@ import Mock from 'mockjs'
 import devTool from '@/utils/DevToolUtil'
 
 Mock.mock(devTool.mockUrl('/mock/service/search'), 'get', {
-  code: 200,
+  code: 'Success',
   msg: 'success',
   data: {
     pageInfo: {
@@ -225,7 +225,7 @@ Mock.mock(devTool.mockUrl('/mock/service/search'), 'get', {
 
 Mock.mock(devTool.mockUrl('/mock/service/distribution'), 'get', () => {
   return {
-    code: 200,
+    code: 'Success',
     msg: 'success',
     data: {
       pageInfo: {
@@ -234,5 +234,106 @@ Mock.mock(devTool.mockUrl('/mock/service/distribution'), 'get', () => {
       },
       list: []
     }
+  }
+})
+
+// 服务监控和追踪
+Mock.mock(devTool.mockUrl('/mock/service/metric-dashboard'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: 'http://8.147.104.101:3000/d/a0b114ca-edf7-4dfe-ac2c-34a4fc545fed/service?orgId=1&refresh=1m'
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/service/trace-dashboard'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: 'http://8.147.104.101:3000/d/e968a89b-f03d-42e3-8ad3-930ae815cb0f/service?orgId=1&refresh=1m'
+  }
+})
+
+// 服务超时配置
+Mock.mock(devTool.mockUrl('/mock/service/config/timeout'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      timeout: 3000
+    }
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/service/config/timeout'), 'put', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
+  }
+})
+
+// 服务重试配置
+Mock.mock(devTool.mockUrl('/mock/service/config/retry'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      retry: 3
+    }
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/service/config/retry'), 'put', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
+  }
+})
+
+// 区域优先配置
+Mock.mock(devTool.mockUrl('/mock/service/config/regionPriority'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      enable: true
+    }
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/service/config/regionPriority'), 'put', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
+  }
+})
+
+// 参数路由
+Mock.mock(devTool.mockUrl('/mock/service/config/argumentRoute'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      args: [
+        {
+          type: 'header',
+          key: 'X-User-Id',
+          operator: '=',
+          value: '123',
+          serviceName: 'org.apache.dubbo.samples.UserService'
+        }
+      ]
+    }
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/service/config/argumentRoute'), 'put', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
   }
 })

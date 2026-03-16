@@ -18,24 +18,25 @@
 import Mock from 'mockjs'
 import devTool from '@/utils/DevToolUtil'
 
-Mock.mock(devTool.mockUrl('/mock/destinationRule/search'), 'get', () => {
-  const total = Mock.mock('@integer(8, 1000)')
-  const list = []
-  for (let i = 0; i < total; i++) {
-    list.push({
-      ruleName: 'app_' + Mock.mock('@string(2,10)'),
-      createTime: Mock.mock('@datetime')
-    })
-  }
+// Prometheus查询接口
+Mock.mock(devTool.mockUrl('/mock/promQL/query'), 'get', () => {
   return {
     code: 'Success',
     message: 'success',
     data: {
-      pageInfo: {
-        Total: total,
-        NextOffset: '0'
-      },
-      list: list
+      status: 'success',
+      data: {
+        resultType: 'vector',
+        result: [
+          {
+            metric: {
+              __name__: 'dubbo_requests_total',
+              service: 'org.apache.dubbo.samples.UserService'
+            },
+            value: [1710644821.532, '1234']
+          }
+        ]
+      }
     }
   }
 })

@@ -16,8 +16,9 @@
  */
 
 import Mock from 'mockjs'
+import devTool from '@/utils/DevToolUtil'
 
-Mock.mock('/mock/virtualService/search', 'get', () => {
+Mock.mock(devTool.mockUrl('/mock/virtualService/search'), 'get', () => {
   const total = Mock.mock('@integer(8, 1000)')
   const list = []
   for (let i = 0; i < total; i++) {
@@ -28,13 +29,14 @@ Mock.mock('/mock/virtualService/search', 'get', () => {
     })
   }
   return {
-    code: 200,
+    code: 'Success',
     message: 'success',
-    data: Mock.mock({
-      total: total,
-      curPage: 1,
-      pageSize: 10,
-      data: list
-    })
+    data: {
+      pageInfo: {
+        Total: total,
+        NextOffset: '0'
+      },
+      list: list
+    }
   }
 })

@@ -15,9 +15,10 @@
  * limitations under the License.
  */
 
+import devTool from '@/utils/DevToolUtil'
 import Mock from 'mockjs'
-Mock.mock('/mock/metrics/cluster', 'get', {
-  code: 200,
+Mock.mock(devTool.mockUrl('/mock/metrics/cluster'), 'get', {
+  code: 'Success',
   message: '成功',
   data: {
     all: Mock.mock('@integer(100, 500)'),

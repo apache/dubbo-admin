@@ -16,8 +16,9 @@
  */
 
 import Mock from 'mockjs'
-Mock.mock('/mock/version', 'get', {
-  code: 200,
+import devTool from '@/utils/DevToolUtil'
+Mock.mock(devTool.mockUrl('/mock/version'), 'get', {
+  code: 'Success',
   message: '成功',
   data: {
     gitVersion: 'dubbo-admin-',

@@ -29,7 +29,7 @@ Mock.mock(DevToolUtil.mockUrl('/mock/tag-rule/search'), 'get', () => {
     })
   }
   return {
-    code: 200,
+    code: 'Success',
     msg: 'success',
     data: {
       pageInfo: {
@@ -38,5 +38,57 @@ Mock.mock(DevToolUtil.mockUrl('/mock/tag-rule/search'), 'get', () => {
       },
       list
     }
+  }
+})
+
+// 标签路由详情
+Mock.mock(DevToolUtil.mockUrl('/mock/tag-rule/'), 'get', (options: any) => {
+  const url = options.url
+  const ruleName = url.split('/').pop()
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      name: ruleName,
+      serviceName: 'org.apache.dubbo.samples.UserService',
+      enable: true,
+      tags: [
+        {
+          name: 'v1',
+          addresses: ['192.168.1.1:20880', '192.168.1.2:20880']
+        },
+        {
+          name: 'v2',
+          addresses: ['192.168.1.3:20880']
+        }
+      ]
+    }
+  }
+})
+
+// 删除标签路由
+Mock.mock(DevToolUtil.mockUrl('/mock/tag-rule/'), 'delete', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
+  }
+})
+
+// 更新标签路由
+Mock.mock(DevToolUtil.mockUrl('/mock/tag-rule/'), 'put', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
+  }
+})
+
+// 新增标签路由
+Mock.mock(DevToolUtil.mockUrl('/mock/tag-rule/'), 'post', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
   }
 })
