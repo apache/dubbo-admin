@@ -337,3 +337,98 @@ Mock.mock(devTool.mockUrl('/mock/service/config/argumentRoute'), 'put', () => {
     data: null
   }
 })
+
+// 服务方法列表
+Mock.mock(devTool.mockUrl('/mock/service/methods'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: [
+      {
+        methodName: 'query',
+        parameterTypes: ['java.lang.String'],
+        signature: 'java.lang.String->org.apache.demo.UserDTO'
+      },
+      {
+        methodName: 'create',
+        parameterTypes: ['org.apache.demo.UserCreateReq'],
+        signature: 'org.apache.demo.UserCreateReq->java.lang.Boolean'
+      },
+      {
+        methodName: 'delete',
+        parameterTypes: ['java.lang.String'],
+        signature: 'java.lang.String->java.lang.Boolean'
+      }
+    ]
+  }
+})
+
+// 服务方法详情
+Mock.mock(devTool.mockUrl('/mock/service/method/detail'), 'get', (options: any) => {
+  const url = options.url || ''
+  const methodName = (url.match(/methodName=([^&]*)/) || [])[1] || 'query'
+  if (methodName === 'create') {
+    return {
+      code: 'Success',
+      message: 'success',
+      data: {
+        methodName: 'create',
+        signature: 'org.apache.demo.UserCreateReq->java.lang.Boolean',
+        parameterTypes: ['org.apache.demo.UserCreateReq'],
+        parameters: [{ name: 'req', type: 'org.apache.demo.UserCreateReq' }],
+        returnType: 'java.lang.Boolean',
+        types: [
+          {
+            type: 'org.apache.demo.UserCreateReq',
+            properties: {
+              name: 'java.lang.String',
+              age: 'java.lang.Integer',
+              email: 'java.lang.String'
+            },
+            items: [],
+            enums: []
+          }
+        ]
+      }
+    }
+  }
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      methodName: 'query',
+      signature: 'java.lang.String->org.apache.demo.UserDTO',
+      parameterTypes: ['java.lang.String'],
+      parameters: [{ name: 'id', type: 'java.lang.String' }],
+      returnType: 'org.apache.demo.UserDTO',
+      types: [
+        {
+          type: 'org.apache.demo.UserDTO',
+          properties: {
+            id: 'java.lang.String',
+            name: 'java.lang.String',
+            age: 'java.lang.Integer'
+          },
+          items: [],
+          enums: []
+        }
+      ]
+    }
+  }
+})
+
+// 泛化调用
+Mock.mock(devTool.mockUrl('/mock/service/generic/invoke'), 'post', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      elapsedMs: 12,
+      rawResult: {
+        id: '1001',
+        name: 'Alice',
+        age: 18
+      }
+    }
+  }
+})
