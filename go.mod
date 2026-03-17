@@ -21,13 +21,9 @@ toolchain go1.24.11
 
 require (
 	dubbo.apache.org/dubbo-go/v3 v3.0.0-20260210015753-35ea886421f9
-	github.com/Masterminds/semver/v3 v3.2.1
 	github.com/apache/dubbo-go-hessian2 v1.12.5
-	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2
-	github.com/dubbogo/gost v1.14.3
+	github.com/dubbogo/go-zookeeper v1.0.4-0.20211212162352-f9d2183d89d5
 	github.com/duke-git/lancet/v2 v2.3.6
-	github.com/emicklei/go-restful/v3 v3.12.2
-	github.com/envoyproxy/go-control-plane v0.13.4
 	github.com/envoyproxy/go-control-plane/envoy v1.32.4
 	github.com/fullstorydev/grpcurl v1.9.1
 	github.com/gin-contrib/sessions v1.0.4
@@ -36,27 +32,18 @@ require (
 	github.com/go-co-op/gocron v1.9.0
 	github.com/go-logr/logr v1.4.2
 	github.com/go-logr/zapr v1.3.0
-	github.com/goburrow/cache v0.1.4
 	github.com/golang/protobuf v1.5.4
-	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
-	github.com/hoisie/mustache v0.0.0-20160804235033-6375acf62c69
 	github.com/jhump/protoreflect v1.16.0
-	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/mitchellh/mapstructure v1.5.0
 	github.com/nacos-group/nacos-sdk-go/v2 v2.3.5
 	github.com/onsi/ginkgo/v2 v2.22.1
 	github.com/onsi/gomega v1.36.2
 	github.com/pkg/errors v0.9.1
-	github.com/prometheus/client_golang v1.20.5
-	github.com/slok/go-http-metrics v0.11.0
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67
-	golang.org/x/sys v0.38.0
 	golang.org/x/text v0.31.0
 	google.golang.org/grpc v1.73.0
 	google.golang.org/protobuf v1.36.6
@@ -69,7 +56,6 @@ require (
 	k8s.io/apimachinery v0.34.2
 	k8s.io/client-go v0.34.2
 	k8s.io/klog/v2 v2.130.1
-	moul.io/zapgorm2 v1.3.0
 	sigs.k8s.io/controller-runtime v0.19.4
 	sigs.k8s.io/yaml v1.6.0
 )
@@ -101,7 +87,6 @@ require (
 	github.com/clbanning/mxj/v2 v2.5.5 // indirect
 	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/golang/mock v1.6.0 // indirect
-	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/natefinch/lumberjack v2.0.0+incompatible // indirect
 	github.com/orcaman/concurrent-map v0.0.0-20210501183033-44dafcb38ecc // indirect
@@ -111,8 +96,8 @@ require (
 )
 
 require (
-	cel.dev/expr v0.23.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/BurntSushi/toml v1.3.2 // indirect
 	github.com/RoaringBitmap/roaring v1.2.3 // indirect
 	github.com/afex/hystrix-go v0.0.0-20180502004556-fa1af6a1f4f5 // indirect
 	github.com/alibaba/sentinel-golang v1.0.4 // indirect
@@ -133,11 +118,11 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dlclark/regexp2 v1.7.0 // indirect
 	github.com/dop251/goja v0.0.0-20240220182346-e401ed450204 // indirect
-	github.com/dubbogo/go-zookeeper v1.0.4-0.20211212162352-f9d2183d89d5 // indirect
+	github.com/dubbogo/gost v1.14.3 // indirect
 	github.com/dubbogo/grpc-go v1.42.10 // indirect
 	github.com/dubbogo/triple v1.2.2-rc4 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/envoyproxy/go-control-plane/ratelimit v0.1.0 // indirect
+	github.com/emicklei/go-restful/v3 v3.12.2 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.2.1 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
@@ -160,6 +145,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20241210010833-40e02aabc2ad // indirect
 	github.com/gorilla/context v1.1.2 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
@@ -194,6 +180,7 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.22 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
@@ -209,6 +196,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/polarismesh/polaris-go v1.3.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
+	github.com/prometheus/client_golang v1.20.5 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.57.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
@@ -255,10 +243,12 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.16.0 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67 // indirect
 	golang.org/x/mod v0.29.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/oauth2 v0.28.0 // indirect
 	golang.org/x/sync v0.18.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/term v0.37.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
 	golang.org/x/tools v0.38.0 // indirect

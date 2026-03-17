@@ -89,11 +89,10 @@ const DefaultServiceProviderInstancesPageSize = 15
 type ServiceProviderInstancesReq struct {
 	coremodel.PageReq
 
-	ServiceName     string `form:"serviceName" json:"serviceName"`
-	Group           string `form:"group" json:"group"`
-	Version         string `form:"version" json:"version"`
-	Mesh            string `form:"mesh" json:"mesh"`
-	ProviderAppName string `form:"providerAppName" json:"providerAppName"`
+	ServiceName string `form:"serviceName" json:"serviceName"`
+	Group       string `form:"group" json:"group"`
+	Version     string `form:"version" json:"version"`
+	Mesh        string `form:"mesh" json:"mesh"`
 }
 
 func NewServiceProviderInstancesReq() *ServiceProviderInstancesReq {
@@ -118,7 +117,6 @@ func (s *ServiceProviderInstancesReq) Validate() error {
 
 	s.Group = strings.TrimSpace(s.Group)
 	s.Version = strings.TrimSpace(s.Version)
-	s.ProviderAppName = strings.TrimSpace(s.ProviderAppName)
 
 	if s.PageSize <= 0 {
 		s.PageSize = DefaultServiceProviderInstancesPageSize
@@ -128,18 +126,6 @@ func (s *ServiceProviderInstancesReq) Validate() error {
 	}
 
 	return nil
-}
-
-type ServiceProviderInstanceResp struct {
-	AppName             string `json:"appName"`
-	InstanceName        string `json:"instanceName"`
-	IP                  string `json:"ip"`
-	Port                int64  `json:"port"`
-	Endpoint            string `json:"endpoint"`
-	Protocol            string `json:"protocol"`
-	Serialization       string `json:"serialization"`
-	PreferSerialization string `json:"preferSerialization"`
-	RegisterTime        string `json:"registerTime"`
 }
 
 type ByServiceInstanceName []*ServiceTabDistributionResp
@@ -254,16 +240,16 @@ type ServiceMethodTypeResp struct {
 const DefaultServiceGenericInvokeTimeoutMs int64 = 3000
 
 type ServiceGenericInvokeReq struct {
-	Mesh            string            `json:"mesh"`
-	ServiceName     string            `json:"serviceName"`
-	MethodName      string            `json:"methodName"`
-	Signature       string            `json:"signature"`
-	Args            []json.RawMessage `json:"args"`
-	Group           string            `json:"group"`
-	Version         string            `json:"version"`
-	ProviderAppName string            `json:"providerAppName"`
-	TimeoutMs       int64             `json:"timeoutMs"`
-	Attachments     map[string]string `json:"attachments"`
+	Mesh         string            `json:"mesh"`
+	InstanceName string            `json:"instanceName"`
+	ServiceName  string            `json:"serviceName"`
+	MethodName   string            `json:"methodName"`
+	Signature    string            `json:"signature"`
+	Args         []json.RawMessage `json:"args"`
+	Group        string            `json:"group"`
+	Version      string            `json:"version"`
+	TimeoutMs    int64             `json:"timeoutMs"`
+	Attachments  map[string]string `json:"attachments"`
 }
 
 func (s *ServiceGenericInvokeReq) Validate() error {
@@ -284,12 +270,13 @@ func (s *ServiceGenericInvokeReq) Validate() error {
 
 	s.Signature = strings.TrimSpace(s.Signature)
 
+	s.InstanceName = strings.TrimSpace(s.InstanceName)
+	if strutil.IsBlank(s.InstanceName) {
+		return fmt.Errorf("instance name is empty")
+	}
+
 	s.Group = strings.TrimSpace(s.Group)
 	s.Version = strings.TrimSpace(s.Version)
-	s.ProviderAppName = strings.TrimSpace(s.ProviderAppName)
-	if strutil.IsBlank(s.ProviderAppName) {
-		return fmt.Errorf("provider app name is empty")
-	}
 
 	if s.TimeoutMs <= 0 {
 		s.TimeoutMs = DefaultServiceGenericInvokeTimeoutMs

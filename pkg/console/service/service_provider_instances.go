@@ -18,7 +18,6 @@
 package service
 
 import (
-	"fmt"
 	"sort"
 
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
@@ -30,14 +29,13 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
-// GetServiceProviderInstances returns paginated provider instance records for the given service.
+// GetServiceProviderInstances returns provider instances with the same response shape as /instance/search.
 func GetServiceProviderInstances(ctx consolectx.Context, req *model.ServiceProviderInstancesReq) (*model.SearchPaginationResult, error) {
 	metadataList, err := listServiceProviderMetadata(ctx, model.ServiceMethodsReq{
-		ServiceName:     req.ServiceName,
-		Group:           req.Group,
-		Version:         req.Version,
-		Mesh:            req.Mesh,
-		ProviderAppName: req.ProviderAppName,
+		ServiceName: req.ServiceName,
+		Group:       req.Group,
+		Version:     req.Version,
+		Mesh:        req.Mesh,
 	})
 	if err != nil {
 		logger.Errorf("list service provider metadata failed, service=%s, mesh=%s, cause: %v", req.ServiceName, req.Mesh, err)
@@ -52,19 +50,19 @@ func GetServiceProviderInstances(ctx consolectx.Context, req *model.ServiceProvi
 		return emptyServiceProviderInstancesResult(req), nil
 	}
 
-	responses := make([]*model.ServiceProviderInstanceResp, 0)
+	responses := make([]*model.SearchInstanceResp, 0)
 	seen := make(map[string]struct{})
 	for _, providerAppName := range providerAppNames {
-		instanceList, err := manager.ListByIndexes[*meshresource.RPCInstanceResource](
+		instanceList, err := manager.ListByIndexes[*meshresource.InstanceResource](
 			ctx.ResourceManager(),
-			meshresource.RPCInstanceKind,
+			meshresource.InstanceKind,
 			map[string]string{
-				index.ByMeshIndex:          req.Mesh,
-				index.ByRPCInstanceAppName: providerAppName,
+				index.ByMeshIndex:            req.Mesh,
+				index.ByInstanceAppNameIndex: providerAppName,
 			},
 		)
 		if err != nil {
-			logger.Errorf("list rpc instances failed, service=%s, mesh=%s, providerApp=%s, cause: %v",
+			logger.Errorf("list instances failed, service=%s, mesh=%s, providerApp=%s, cause: %v",
 				req.ServiceName, req.Mesh, providerAppName, err)
 			return nil, err
 		}
@@ -77,7 +75,7 @@ func GetServiceProviderInstances(ctx consolectx.Context, req *model.ServiceProvi
 				continue
 			}
 			seen[key] = struct{}{}
-			responses = append(responses, toServiceProviderInstanceResp(instance))
+			responses = append(responses, model.NewSearchInstanceResp().FromInstanceResource(instance, ctx.Config()))
 		}
 	}
 	if len(responses) == 0 {
@@ -88,13 +86,10 @@ func GetServiceProviderInstances(ctx consolectx.Context, req *model.ServiceProvi
 		if responses[i].AppName != responses[j].AppName {
 			return responses[i].AppName < responses[j].AppName
 		}
-		if responses[i].InstanceName != responses[j].InstanceName {
-			return responses[i].InstanceName < responses[j].InstanceName
+		if responses[i].Name != responses[j].Name {
+			return responses[i].Name < responses[j].Name
 		}
-		if responses[i].IP != responses[j].IP {
-			return responses[i].IP < responses[j].IP
-		}
-		return responses[i].Port < responses[j].Port
+		return responses[i].Ip < responses[j].Ip
 	})
 
 	start := req.PageOffset
@@ -135,30 +130,10 @@ func collectProviderAppNames(metadataList []*meshresource.ServiceProviderMetadat
 	return providerAppNames
 }
 
-// toServiceProviderInstanceResp converts an RPC instance resource into an API response model.
-func toServiceProviderInstanceResp(instance *meshresource.RPCInstanceResource) *model.ServiceProviderInstanceResp {
-	endpoint := ""
-	if instance.Spec.GetIp() != "" && instance.Spec.GetPort() > 0 {
-		endpoint = fmt.Sprintf("%s:%d", instance.Spec.GetIp(), instance.Spec.GetPort())
-	}
-
-	return &model.ServiceProviderInstanceResp{
-		AppName:             instance.Spec.GetAppName(),
-		InstanceName:        instance.Spec.GetName(),
-		IP:                  instance.Spec.GetIp(),
-		Port:                instance.Spec.GetPort(),
-		Endpoint:            endpoint,
-		Protocol:            instance.Spec.GetProtocol(),
-		Serialization:       instance.Spec.GetSerialization(),
-		PreferSerialization: instance.Spec.GetPreferSerialization(),
-		RegisterTime:        instance.Spec.GetRegisterTime(),
-	}
-}
-
 // emptyServiceProviderInstancesResult builds an empty paginated result for provider instances.
 func emptyServiceProviderInstancesResult(req *model.ServiceProviderInstancesReq) *model.SearchPaginationResult {
 	return &model.SearchPaginationResult{
-		List: []*model.ServiceProviderInstanceResp{},
+		List: []*model.SearchInstanceResp{},
 		PageInfo: coremodel.Pagination{
 			Total:      0,
 			PageSize:   req.PageSize,
