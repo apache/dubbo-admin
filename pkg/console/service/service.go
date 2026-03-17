@@ -168,8 +168,64 @@ type serviceMethodCandidate struct {
 	method    *meshproto.Method
 }
 
+type serviceProviderMetadataLookupReq struct {
+	ServiceName     string
+	Group           string
+	Version         string
+	Mesh            string
+	ProviderAppName string
+}
+
+type serviceMethodLookupReq struct {
+	Metadata   serviceProviderMetadataLookupReq
+	MethodName string
+	Signature  string
+}
+
+type serviceMethodResolveReq struct {
+	ServiceName string
+	MethodName  string
+	Signature   string
+}
+
+type resolvedServiceMethod struct {
+	metadataList []*meshresource.ServiceProviderMetadataResource
+	candidate    *serviceMethodCandidate
+}
+
+func newServiceProviderMetadataLookupReqFromServiceMethodsReq(req model.ServiceMethodsReq) serviceProviderMetadataLookupReq {
+	return serviceProviderMetadataLookupReq{
+		ServiceName: req.ServiceName,
+		Group:       req.Group,
+		Version:     req.Version,
+		Mesh:        req.Mesh,
+	}
+}
+
+func newServiceMethodLookupReqFromServiceMethodDetailReq(req model.ServiceMethodDetailReq) serviceMethodLookupReq {
+	return serviceMethodLookupReq{
+		Metadata:   newServiceProviderMetadataLookupReqFromServiceMethodsReq(req.ServiceMethodsReq),
+		MethodName: req.MethodName,
+		Signature:  req.Signature,
+	}
+}
+
+func newServiceMethodLookupReqFromGenericInvokeReq(req model.ServiceGenericInvokeReq, providerAppName string) serviceMethodLookupReq {
+	return serviceMethodLookupReq{
+		Metadata: serviceProviderMetadataLookupReq{
+			ServiceName:     req.ServiceName,
+			Group:           req.Group,
+			Version:         req.Version,
+			Mesh:            req.Mesh,
+			ProviderAppName: providerAppName,
+		},
+		MethodName: req.MethodName,
+		Signature:  req.Signature,
+	}
+}
+
 func GetServiceMethodNames(ctx consolectx.Context, req model.ServiceMethodsReq) ([]model.ServiceMethodSummaryResp, error) {
-	metadataList, err := listServiceProviderMetadata(ctx, req)
+	metadataList, err := listServiceProviderMetadata(ctx, newServiceProviderMetadataLookupReqFromServiceMethodsReq(req))
 	if err != nil {
 		return nil, err
 	}
@@ -178,30 +234,46 @@ func GetServiceMethodNames(ctx consolectx.Context, req model.ServiceMethodsReq) 
 }
 
 func GetServiceMethodDetail(ctx consolectx.Context, req model.ServiceMethodDetailReq) (*model.ServiceMethodDetailResp, error) {
-	metadataList, err := listServiceProviderMetadata(ctx, req.ServiceMethodsReq)
+	resolvedMethod, err := resolveServiceMethod(ctx, newServiceMethodLookupReqFromServiceMethodDetailReq(req))
 	if err != nil {
 		return nil, err
 	}
 
-	candidate, err := resolveStructuredServiceMethodCandidate(buildServiceMethodCandidates(metadataList), req)
-	if err != nil {
-		return nil, err
-	}
-
-	detail := cloneServiceMethodDetailResp(candidate.detail)
-	detail.Types = buildServiceMethodRelatedTypes(metadataList, candidate.method)
+	detail := cloneServiceMethodDetailResp(resolvedMethod.candidate.detail)
+	detail.Types = buildServiceMethodRelatedTypes(resolvedMethod.metadataList, resolvedMethod.candidate.method)
 	return detail, nil
 }
 
-func shouldUseExactServiceProviderLookup(req model.ServiceMethodsReq) bool {
+func resolveServiceMethod(ctx consolectx.Context, req serviceMethodLookupReq) (*resolvedServiceMethod, error) {
+	metadataList, err := listServiceProviderMetadata(ctx, req.Metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	candidate, err := resolveStructuredServiceMethodCandidate(buildServiceMethodCandidates(metadataList), serviceMethodResolveReq{
+		ServiceName: req.Metadata.ServiceName,
+		MethodName:  req.MethodName,
+		Signature:   req.Signature,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &resolvedServiceMethod{
+		metadataList: metadataList,
+		candidate:    candidate,
+	}, nil
+}
+
+func shouldUseExactServiceProviderLookup(req serviceProviderMetadataLookupReq) bool {
 	return req.ServiceName != "" && req.Version != "" && req.Group != ""
 }
 
-func buildServiceProviderLookupKey(req model.ServiceMethodsReq) string {
+func buildServiceProviderLookupKey(req serviceProviderMetadataLookupReq) string {
 	return req.ServiceName + constants.ColonSeparator + req.Version + constants.ColonSeparator + req.Group
 }
 
-func listServiceProviderMetadata(ctx consolectx.Context, req model.ServiceMethodsReq) ([]*meshresource.ServiceProviderMetadataResource, error) {
+func listServiceProviderMetadata(ctx consolectx.Context, req serviceProviderMetadataLookupReq) ([]*meshresource.ServiceProviderMetadataResource, error) {
 	if shouldUseExactServiceProviderLookup(req) {
 		return listServiceProviderMetadataByIndexes(ctx, req, map[string]string{
 			index.ByMeshIndex:                 req.Mesh,
@@ -224,7 +296,7 @@ func listServiceProviderMetadata(ctx consolectx.Context, req model.ServiceMethod
 
 	filtered := make([]*meshresource.ServiceProviderMetadataResource, 0, len(metadataList))
 	for _, metadata := range metadataList {
-		if !matchesServiceMethodsReq(metadata, req) {
+		if !matchesServiceProviderMetadataLookup(metadata, req) {
 			continue
 		}
 		filtered = append(filtered, metadata)
@@ -235,7 +307,7 @@ func listServiceProviderMetadata(ctx consolectx.Context, req model.ServiceMethod
 
 func listServiceProviderMetadataByIndexes(
 	ctx consolectx.Context,
-	req model.ServiceMethodsReq,
+	req serviceProviderMetadataLookupReq,
 	indexes map[string]string,
 ) ([]*meshresource.ServiceProviderMetadataResource, error) {
 	if req.ProviderAppName != "" {
@@ -249,7 +321,7 @@ func listServiceProviderMetadataByIndexes(
 	)
 }
 
-func matchesServiceMethodsReq(metadata *meshresource.ServiceProviderMetadataResource, req model.ServiceMethodsReq) bool {
+func matchesServiceProviderMetadataLookup(metadata *meshresource.ServiceProviderMetadataResource, req serviceProviderMetadataLookupReq) bool {
 	if metadata == nil || metadata.Spec == nil {
 		return false
 	}
@@ -321,7 +393,7 @@ func buildServiceMethodCandidates(metadataList []*meshresource.ServiceProviderMe
 	return candidates
 }
 
-func findServiceMethodCandidate(candidates []*serviceMethodCandidate, req model.ServiceMethodDetailReq) (*serviceMethodCandidate, bool) {
+func findServiceMethodCandidate(candidates []*serviceMethodCandidate, req serviceMethodResolveReq) (*serviceMethodCandidate, bool) {
 	if req.Signature != "" {
 		for _, candidate := range candidates {
 			if candidate.detail.MethodName == req.MethodName && candidate.signature == req.Signature {
@@ -348,7 +420,7 @@ func findServiceMethodCandidate(candidates []*serviceMethodCandidate, req model.
 	return candidateMatch, false
 }
 
-func resolveStructuredServiceMethodCandidate(candidates []*serviceMethodCandidate, req model.ServiceMethodDetailReq) (*serviceMethodCandidate, error) {
+func resolveStructuredServiceMethodCandidate(candidates []*serviceMethodCandidate, req serviceMethodResolveReq) (*serviceMethodCandidate, error) {
 	candidate, ambiguous := findServiceMethodCandidate(candidates, req)
 	if ambiguous {
 		return nil, bizerror.New(

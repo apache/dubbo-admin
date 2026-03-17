@@ -113,23 +113,14 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 		return nil, err
 	}
 
-	metadataList, err := listServiceProviderMetadata(ctx, model.ServiceMethodsReq{
-		ServiceName:     req.ServiceName,
-		Group:           req.Group,
-		Version:         req.Version,
-		Mesh:            req.Mesh,
-		ProviderAppName: instanceRes.Spec.AppName,
-	})
+	resolvedMethod, err := resolveServiceMethod(ctx, newServiceMethodLookupReqFromGenericInvokeReq(req, instanceRes.Spec.AppName))
 	if err != nil {
-		logger.Errorf("list service provider metadata failed, service=%s, mesh=%s, instance=%s, cause: %v",
-			req.ServiceName, req.Mesh, req.InstanceName, err)
+		logger.Errorf("resolve service method failed, service=%s, mesh=%s, instance=%s, method=%s, cause: %v",
+			req.ServiceName, req.Mesh, req.InstanceName, req.MethodName, err)
 		return nil, err
 	}
 
-	parameterTypes, err := resolveServiceMethodParameterTypes(metadataList, req, instanceRes.Spec.AppName)
-	if err != nil {
-		return nil, err
-	}
+	parameterTypes := append([]string{}, resolvedMethod.candidate.detail.ParameterTypes...)
 	if len(parameterTypes) != len(req.Args) {
 		return nil, bizerror.New(bizerror.InvalidArgument, "resolved method parameter count does not match args length")
 	}
@@ -282,28 +273,6 @@ func getGenericInvokeInstance(
 		)
 	}
 	return instanceRes, nil
-}
-
-func resolveServiceMethodParameterTypes(
-	metadataList []*meshresource.ServiceProviderMetadataResource,
-	req model.ServiceGenericInvokeReq,
-	providerAppName string,
-) ([]string, error) {
-	candidate, err := resolveStructuredServiceMethodCandidate(buildServiceMethodCandidates(metadataList), model.ServiceMethodDetailReq{
-		ServiceMethodsReq: model.ServiceMethodsReq{
-			ServiceName:     req.ServiceName,
-			Group:           req.Group,
-			Version:         req.Version,
-			Mesh:            req.Mesh,
-			ProviderAppName: providerAppName,
-		},
-		MethodName: req.MethodName,
-		Signature:  req.Signature,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return append([]string{}, candidate.detail.ParameterTypes...), nil
 }
 
 func buildGenericInvokeTargets(rpcInstanceRes *meshresource.RPCInstanceResource) ([]*genericInvokeTarget, error) {

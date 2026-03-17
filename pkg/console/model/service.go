@@ -84,50 +84,6 @@ type ServiceTabDistributionResp struct {
 	Params       map[string]string `json:"params"`
 }
 
-const DefaultServiceProviderInstancesPageSize = 15
-
-type ServiceProviderInstancesReq struct {
-	coremodel.PageReq
-
-	ServiceName string `form:"serviceName" json:"serviceName"`
-	Group       string `form:"group" json:"group"`
-	Version     string `form:"version" json:"version"`
-	Mesh        string `form:"mesh" json:"mesh"`
-}
-
-func NewServiceProviderInstancesReq() *ServiceProviderInstancesReq {
-	return &ServiceProviderInstancesReq{
-		PageReq: coremodel.PageReq{
-			PageOffset: 0,
-			PageSize:   DefaultServiceProviderInstancesPageSize,
-		},
-	}
-}
-
-func (s *ServiceProviderInstancesReq) Validate() error {
-	s.ServiceName = strings.TrimSpace(s.ServiceName)
-	if strutil.IsBlank(s.ServiceName) {
-		return fmt.Errorf("service name is empty")
-	}
-
-	s.Mesh = strings.TrimSpace(s.Mesh)
-	if strutil.IsBlank(s.Mesh) {
-		return fmt.Errorf("mesh is empty")
-	}
-
-	s.Group = strings.TrimSpace(s.Group)
-	s.Version = strings.TrimSpace(s.Version)
-
-	if s.PageSize <= 0 {
-		s.PageSize = DefaultServiceProviderInstancesPageSize
-	}
-	if s.PageOffset < 0 {
-		s.PageOffset = 0
-	}
-
-	return nil
-}
-
 type ByServiceInstanceName []*ServiceTabDistributionResp
 
 func (a ByServiceInstanceName) Len() int { return len(a) }
@@ -169,11 +125,10 @@ func (s *BaseServiceReq) ServiceKey() string {
 }
 
 type ServiceMethodsReq struct {
-	ServiceName     string `form:"serviceName" json:"serviceName"`
-	Group           string `form:"group" json:"group"`
-	Version         string `form:"version" json:"version"`
-	Mesh            string `form:"mesh" json:"mesh"`
-	ProviderAppName string `form:"providerAppName" json:"providerAppName"`
+	ServiceName string `form:"serviceName" json:"serviceName"`
+	Group       string `form:"group" json:"group"`
+	Version     string `form:"version" json:"version"`
+	Mesh        string `form:"mesh" json:"mesh"`
 }
 
 func (s *ServiceMethodsReq) Query(c *gin.Context) error {
@@ -187,7 +142,6 @@ func (s *ServiceMethodsReq) Query(c *gin.Context) error {
 	}
 	s.Group = strings.TrimSpace(c.Query("group"))
 	s.Version = strings.TrimSpace(c.Query("version"))
-	s.ProviderAppName = strings.TrimSpace(c.Query("providerAppName"))
 	return nil
 }
 

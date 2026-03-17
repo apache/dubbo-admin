@@ -71,12 +71,8 @@ func GetServiceTabDistribution(ctx consolectx.Context) gin.HandlerFunc {
 
 func GetServiceProviderInstances(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		req := model.NewServiceProviderInstancesReq()
-		if err := c.ShouldBindQuery(req); err != nil {
-			util.HandleArgumentError(c, err)
-			return
-		}
-		if err := req.Validate(); err != nil {
+		req := model.ServiceMethodsReq{}
+		if err := req.Query(c); err != nil {
 			util.HandleArgumentError(c, err)
 			return
 		}

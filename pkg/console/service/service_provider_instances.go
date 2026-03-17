@@ -25,29 +25,23 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
-	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
-// GetServiceProviderInstances returns provider instances with the same response shape as /instance/search.
-func GetServiceProviderInstances(ctx consolectx.Context, req *model.ServiceProviderInstancesReq) (*model.SearchPaginationResult, error) {
-	metadataList, err := listServiceProviderMetadata(ctx, model.ServiceMethodsReq{
-		ServiceName: req.ServiceName,
-		Group:       req.Group,
-		Version:     req.Version,
-		Mesh:        req.Mesh,
-	})
+// GetServiceProviderInstances returns all provider instances for a service so the caller can build a full selector.
+func GetServiceProviderInstances(ctx consolectx.Context, req model.ServiceMethodsReq) ([]*model.SearchInstanceResp, error) {
+	metadataList, err := listServiceProviderMetadata(ctx, newServiceProviderMetadataLookupReqFromServiceMethodsReq(req))
 	if err != nil {
 		logger.Errorf("list service provider metadata failed, service=%s, mesh=%s, cause: %v", req.ServiceName, req.Mesh, err)
 		return nil, err
 	}
 	if len(metadataList) == 0 {
-		return emptyServiceProviderInstancesResult(req), nil
+		return emptyServiceProviderInstancesResult(), nil
 	}
 
 	providerAppNames := collectProviderAppNames(metadataList)
 	if len(providerAppNames) == 0 {
-		return emptyServiceProviderInstancesResult(req), nil
+		return emptyServiceProviderInstancesResult(), nil
 	}
 
 	responses := make([]*model.SearchInstanceResp, 0)
@@ -79,7 +73,7 @@ func GetServiceProviderInstances(ctx consolectx.Context, req *model.ServiceProvi
 		}
 	}
 	if len(responses) == 0 {
-		return emptyServiceProviderInstancesResult(req), nil
+		return emptyServiceProviderInstancesResult(), nil
 	}
 
 	sort.Slice(responses, func(i, j int) bool {
@@ -92,23 +86,7 @@ func GetServiceProviderInstances(ctx consolectx.Context, req *model.ServiceProvi
 		return responses[i].Ip < responses[j].Ip
 	})
 
-	start := req.PageOffset
-	if start > len(responses) {
-		start = len(responses)
-	}
-	end := start + req.PageSize
-	if end > len(responses) {
-		end = len(responses)
-	}
-
-	return &model.SearchPaginationResult{
-		List: responses[start:end],
-		PageInfo: coremodel.Pagination{
-			Total:      len(responses),
-			PageSize:   req.PageSize,
-			PageOffset: req.PageOffset,
-		},
-	}, nil
+	return responses, nil
 }
 
 // collectProviderAppNames extracts unique provider application names from service metadata.
@@ -130,14 +108,6 @@ func collectProviderAppNames(metadataList []*meshresource.ServiceProviderMetadat
 	return providerAppNames
 }
 
-// emptyServiceProviderInstancesResult builds an empty paginated result for provider instances.
-func emptyServiceProviderInstancesResult(req *model.ServiceProviderInstancesReq) *model.SearchPaginationResult {
-	return &model.SearchPaginationResult{
-		List: []*model.SearchInstanceResp{},
-		PageInfo: coremodel.Pagination{
-			Total:      0,
-			PageSize:   req.PageSize,
-			PageOffset: req.PageOffset,
-		},
-	}
+func emptyServiceProviderInstancesResult() []*model.SearchInstanceResp {
+	return []*model.SearchInstanceResp{}
 }
