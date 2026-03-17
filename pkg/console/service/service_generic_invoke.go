@@ -422,15 +422,11 @@ func isRetryableGenericInvokeError(err error) bool {
 	if message == "" {
 		return false
 	}
+	// Only retry failures that strongly suggest the request never reached a provider.
 	for _, keyword := range []string{
 		"connection refused",
-		"connection reset",
-		"broken pipe",
 		"no such host",
 		"network is unreachable",
-		"i/o timeout",
-		"unexpected eof",
-		"eof",
 		"transport",
 		"codec",
 		"serialization",
