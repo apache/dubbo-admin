@@ -19,8 +19,10 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -176,8 +178,84 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 
 	return &model.ServiceGenericInvokeResp{
 		ElapsedMs: elapsedMs,
-		RawResult: result,
+		RawResult: normalizeGenericInvokeJSONValue(result),
 	}, nil
+}
+
+func normalizeGenericInvokeJSONValue(value any) any {
+	return normalizeGenericInvokeJSONReflectValue(reflect.ValueOf(value))
+}
+
+func normalizeGenericInvokeJSONReflectValue(value reflect.Value) any {
+	if !value.IsValid() {
+		return nil
+	}
+
+	for value.Kind() == reflect.Interface || value.Kind() == reflect.Pointer {
+		if value.IsNil() {
+			return nil
+		}
+		value = value.Elem()
+	}
+
+	if value.CanInterface() {
+		if _, ok := value.Interface().(json.Marshaler); ok {
+			return value.Interface()
+		}
+	}
+
+	switch value.Kind() {
+	case reflect.Map:
+		normalized := make(map[string]any, value.Len())
+		iter := value.MapRange()
+		for iter.Next() {
+			normalized[normalizeGenericInvokeJSONMapKey(iter.Key())] = normalizeGenericInvokeJSONReflectValue(iter.Value())
+		}
+		return normalized
+	case reflect.Slice, reflect.Array:
+		normalized := make([]any, value.Len())
+		for index := 0; index < value.Len(); index++ {
+			normalized[index] = normalizeGenericInvokeJSONReflectValue(value.Index(index))
+		}
+		return normalized
+	case reflect.Struct:
+		return normalizeGenericInvokeJSONStructValue(value)
+	default:
+		if value.CanInterface() {
+			return value.Interface()
+		}
+		return fmt.Sprint(value)
+	}
+}
+
+func normalizeGenericInvokeJSONMapKey(key reflect.Value) string {
+	keyValue := normalizeGenericInvokeJSONReflectValue(key)
+	return fmt.Sprint(keyValue)
+}
+
+func normalizeGenericInvokeJSONStructValue(value reflect.Value) map[string]any {
+	structType := value.Type()
+	normalized := make(map[string]any, structType.NumField())
+	for index := 0; index < structType.NumField(); index++ {
+		field := structType.Field(index)
+		if field.PkgPath != "" {
+			continue
+		}
+
+		fieldName := field.Name
+		if jsonTag := field.Tag.Get("json"); jsonTag != "" {
+			tagName := strings.TrimSpace(strings.Split(jsonTag, ",")[0])
+			if tagName == "-" {
+				continue
+			}
+			if tagName != "" {
+				fieldName = tagName
+			}
+		}
+
+		normalized[fieldName] = normalizeGenericInvokeJSONReflectValue(value.Field(index))
+	}
+	return normalized
 }
 
 func getGenericInvokeInstance(
