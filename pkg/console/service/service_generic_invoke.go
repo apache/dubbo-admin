@@ -19,8 +19,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"sort"
+	"strings"
 	"time"
 
 	hessian "github.com/apache/dubbo-go-hessian2"
@@ -29,6 +30,7 @@ import (
 	"dubbo.apache.org/dubbo-go/v3/client"
 	dubboconstant "dubbo.apache.org/dubbo-go/v3/common/constant"
 	_ "dubbo.apache.org/dubbo-go/v3/imports"
+	protocolbase "dubbo.apache.org/dubbo-go/v3/protocol/base"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
@@ -37,13 +39,14 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/manager"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
-	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
 const genericInvokeInstanceName = "dubbo-admin-generic-invoke"
 
 type genericInvocation struct {
 	URL            string
+	Protocol       string
+	Serialization  string
 	ServiceName    string
 	Group          string
 	Version        string
@@ -52,9 +55,11 @@ type genericInvocation struct {
 	Args           []hessian.Object
 }
 
-type tripleInvokeTarget struct {
-	instance *meshresource.RPCInstanceResource
-	port     int64
+type genericInvokeTarget struct {
+	instance      *meshresource.RPCInstanceResource
+	protocol      string
+	port          int64
+	serialization string
 }
 
 var invokeGenericServiceRPC = func(callCtx context.Context, invocation genericInvocation) (any, error) {
@@ -64,11 +69,19 @@ var invokeGenericServiceRPC = func(callCtx context.Context, invocation genericIn
 		return nil, err
 	}
 
-	// TODO: Derive client protocol and serialization from target service metadata when expanding beyond Triple/Hessian2.
-	cli, err := ins.NewClient(
-		client.WithClientProtocolTriple(),
-		client.WithClientSerialization(dubboconstant.Hessian2Serialization),
-	)
+	clientOpts := []client.ClientOption{
+		client.WithClientSerialization(invocation.Serialization),
+	}
+	switch invocation.Protocol {
+	case dubboconstant.TriProtocol:
+		clientOpts = append(clientOpts, client.WithClientProtocolTriple())
+	case dubboconstant.DubboProtocol:
+		clientOpts = append(clientOpts, client.WithClientProtocolDubbo())
+	default:
+		return nil, fmt.Errorf("unsupported invoke protocol %s", invocation.Protocol)
+	}
+
+	cli, err := ins.NewClient(clientOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -78,6 +91,8 @@ var invokeGenericServiceRPC = func(callCtx context.Context, invocation genericIn
 		client.WithURL(invocation.URL),
 		client.WithVersion(invocation.Version),
 		client.WithGroup(invocation.Group),
+		client.WithProtocol(invocation.Protocol),
+		client.WithSerialization(invocation.Serialization),
 	)
 	if err != nil {
 		return nil, err
@@ -122,7 +137,12 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 		return nil, bizerror.New(bizerror.InvalidArgument, err.Error())
 	}
 
-	target, err := selectTripleInvokeTarget(ctx, instanceRes)
+	rpcInstanceRes, err := findRPCInstanceByInstance(ctx, instanceRes)
+	if err != nil {
+		return nil, err
+	}
+
+	targets, err := buildGenericInvokeTargets(rpcInstanceRes)
 	if err != nil {
 		return nil, err
 	}
@@ -139,8 +159,7 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 	}
 
 	startedAt := time.Now()
-	result, err := invokeGenericServiceRPC(callCtx, genericInvocation{
-		URL:            fmt.Sprintf("tri://%s:%d", target.instance.Spec.Ip, target.port),
+	result, err := invokeGenericServiceWithTargets(callCtx, req, targets, genericInvocation{
 		ServiceName:    req.ServiceName,
 		Group:          req.Group,
 		Version:        req.Version,
@@ -150,8 +169,8 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 	})
 	elapsedMs := time.Since(startedAt).Milliseconds()
 	if err != nil {
-		logger.Errorf("generic invoke failed, service=%s, method=%s, instance=%s, target=%s:%d, cause: %v",
-			req.ServiceName, req.MethodName, req.InstanceName, target.instance.Spec.Ip, target.port, err)
+		logger.Errorf("generic invoke failed, service=%s, method=%s, instance=%s, cause: %v",
+			req.ServiceName, req.MethodName, req.InstanceName, err)
 		return nil, bizerror.New(bizerror.InternalError, "generic invoke failed, please check server logs")
 	}
 
@@ -209,40 +228,180 @@ func resolveServiceMethodParameterTypes(
 	return append([]string{}, candidate.detail.ParameterTypes...), nil
 }
 
-func selectTripleInvokeTarget(
-	ctx consolectx.Context,
-	instanceRes *meshresource.InstanceResource,
-) (*tripleInvokeTarget, error) {
-	rpcInstanceRes, err := findRPCInstanceByInstance(ctx, instanceRes)
-	if err != nil {
-		return nil, err
+func buildGenericInvokeTargets(rpcInstanceRes *meshresource.RPCInstanceResource) ([]*genericInvokeTarget, error) {
+	if rpcInstanceRes == nil || rpcInstanceRes.Spec == nil {
+		return nil, bizerror.New(bizerror.InvalidArgument, "rpc instance is empty")
+	}
+	if len(rpcInstanceRes.Spec.GetEndpoints()) == 0 {
+		return nil, bizerror.New(
+			bizerror.NotFoundError,
+			fmt.Sprintf("rpc instance %s has no available rpc endpoints", rpcInstanceRes.Spec.GetName()),
+		)
 	}
 
-	targets := make([]*tripleInvokeTarget, 0, len(rpcInstanceRes.Spec.GetEndpoints())+1)
-	seen := make(map[string]struct{}, len(rpcInstanceRes.Spec.GetEndpoints())+1)
-	if rpcInstanceRes.Spec.GetProtocol() == dubboconstant.TriProtocol && rpcInstanceRes.Spec.GetPort() > 0 {
-		appendTripleInvokeTarget(&targets, seen, rpcInstanceRes, rpcInstanceRes.Spec.GetPort())
-	}
+	serializations := buildGenericInvokeSerializations(rpcInstanceRes)
+	targets := make([]*genericInvokeTarget, 0, len(rpcInstanceRes.Spec.GetEndpoints())*len(serializations))
 	for _, endpoint := range rpcInstanceRes.Spec.GetEndpoints() {
-		if endpoint == nil || endpoint.GetProtocol() != dubboconstant.TriProtocol || endpoint.GetPort() <= 0 {
+		if endpoint == nil || endpoint.GetPort() <= 0 {
 			continue
 		}
-		appendTripleInvokeTarget(&targets, seen, rpcInstanceRes, endpoint.GetPort())
+
+		protocol := normalizeGenericInvokeProtocol(endpoint.GetProtocol())
+		if protocol == "" {
+			continue
+		}
+
+		// Try every serialization on the current endpoint before moving to the next endpoint.
+		for _, serialization := range serializations {
+			targets = append(targets, &genericInvokeTarget{
+				instance:      rpcInstanceRes,
+				protocol:      protocol,
+				port:          endpoint.GetPort(),
+				serialization: serialization,
+			})
+		}
 	}
 	if len(targets) == 0 {
 		return nil, bizerror.New(
 			bizerror.NotFoundError,
-			fmt.Sprintf("triple instance not found for instance %s", instanceRes.Spec.Name),
+			fmt.Sprintf("rpc instance %s has no supported rpc endpoints", rpcInstanceRes.Spec.GetName()),
 		)
 	}
+	return targets, nil
+}
 
-	sort.Slice(targets, func(i, j int) bool {
-		if targets[i].instance.ResourceKey() != targets[j].instance.ResourceKey() {
-			return targets[i].instance.ResourceKey() < targets[j].instance.ResourceKey()
+func buildGenericInvokeSerializations(rpcInstanceRes *meshresource.RPCInstanceResource) []string {
+	candidates := make([]string, 0, 4)
+	seen := make(map[string]struct{}, 4)
+
+	appendCandidate := func(value string) {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return
 		}
-		return targets[i].port < targets[j].port
-	})
-	return targets[0], nil
+		if _, ok := seen[value]; ok {
+			return
+		}
+		seen[value] = struct{}{}
+		candidates = append(candidates, value)
+	}
+
+	appendCandidate(rpcInstanceRes.Spec.GetSerialization())
+	for _, item := range strings.Split(rpcInstanceRes.Spec.GetPreferSerialization(), ",") {
+		appendCandidate(item)
+	}
+	if len(candidates) == 0 {
+		appendCandidate(dubboconstant.Hessian2Serialization)
+	}
+	return candidates
+}
+
+func normalizeGenericInvokeProtocol(protocol string) string {
+	switch strings.TrimSpace(strings.ToLower(protocol)) {
+	case dubboconstant.TriProtocol:
+		return dubboconstant.TriProtocol
+	case dubboconstant.DubboProtocol:
+		return dubboconstant.DubboProtocol
+	default:
+		return ""
+	}
+}
+
+func invokeGenericServiceWithTargets(
+	callCtx context.Context,
+	req model.ServiceGenericInvokeReq,
+	targets []*genericInvokeTarget,
+	invocation genericInvocation,
+) (any, error) {
+	var lastErr error
+	for index, target := range targets {
+		if callCtx.Err() != nil {
+			return nil, callCtx.Err()
+		}
+
+		// Copy the base invocation so each attempt can override transport-specific fields safely.
+		attemptInvocation := invocation
+		attemptInvocation.Protocol = target.protocol
+		attemptInvocation.Serialization = target.serialization
+		attemptInvocation.URL = buildGenericInvokeURL(target.protocol, target.instance.Spec.GetIp(), target.port)
+
+		result, err := invokeGenericServiceRPC(callCtx, attemptInvocation)
+		if err == nil {
+			return result, nil
+		}
+
+		lastErr = err
+		logger.Warnf(
+			"generic invoke attempt failed, service=%s, method=%s, instance=%s, target=%s, protocol=%s, serialization=%s, attempt=%d/%d, cause: %v",
+			req.ServiceName,
+			req.MethodName,
+			req.InstanceName,
+			attemptInvocation.URL,
+			target.protocol,
+			target.serialization,
+			index+1,
+			len(targets),
+			err,
+		)
+		if !isRetryableGenericInvokeError(err) {
+			return nil, err
+		}
+	}
+
+	if lastErr == nil {
+		return nil, bizerror.New(bizerror.NotFoundError, "no generic invoke target available")
+	}
+	return nil, lastErr
+}
+
+func buildGenericInvokeURL(protocol string, ip string, port int64) string {
+	return fmt.Sprintf("%s://%s:%d", protocol, ip, port)
+}
+
+func isRetryableGenericInvokeError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	if errors.Is(err, protocolbase.ErrClientClosed) ||
+		errors.Is(err, protocolbase.ErrDestroyedInvoker) ||
+		errors.Is(err, protocolbase.ErrNoReply) {
+		return true
+	}
+
+	message := strings.ToLower(err.Error())
+	if message == "" {
+		return false
+	}
+	for _, keyword := range []string{
+		"connection refused",
+		"connection reset",
+		"broken pipe",
+		"no such host",
+		"network is unreachable",
+		"i/o timeout",
+		"unexpected eof",
+		"eof",
+		"transport",
+		"codec",
+		"serialization",
+		"unsupported serialization",
+		"no codec configured",
+		"unknown compression",
+		"header buffer too short",
+		"body buffer too short",
+		"illegal package",
+		"stream error",
+		"protocol error",
+	} {
+		if strings.Contains(message, keyword) {
+			return true
+		}
+	}
+	// Treat all other errors as provider-side or business failures to avoid duplicate invocation.
+	return false
 }
 
 func findRPCInstanceByInstance(
@@ -271,47 +430,10 @@ func findRPCInstanceByInstance(
 	if exists && rpcInstanceRes != nil && rpcInstanceRes.Spec != nil {
 		return rpcInstanceRes, nil
 	}
-
-	instanceList, err := manager.ListByIndexes[*meshresource.RPCInstanceResource](
-		ctx.ResourceManager(),
-		meshresource.RPCInstanceKind,
-		map[string]string{
-			index.ByMeshIndex:          instanceRes.Mesh,
-			index.ByRPCInstanceAppName: instanceRes.Spec.AppName,
-		},
-	)
-	if err != nil {
-		logger.Errorf("list rpc instances failed, mesh=%s, providerApp=%s, cause: %v",
-			instanceRes.Mesh, instanceRes.Spec.AppName, err)
-		return nil, err
-	}
-	for _, instance := range instanceList {
-		if instance == nil || instance.Spec == nil {
-			continue
-		}
-		if instance.Spec.GetIp() == instanceRes.Spec.Ip && instance.Spec.GetPort() == instanceRes.Spec.RpcPort {
-			return instance, nil
-		}
-	}
 	return nil, bizerror.New(
 		bizerror.NotFoundError,
 		fmt.Sprintf("rpc instance not found for instance %s", instanceRes.Spec.Name),
 	)
-}
-
-func appendTripleInvokeTarget(targets *[]*tripleInvokeTarget, seen map[string]struct{}, instance *meshresource.RPCInstanceResource, port int64) {
-	if instance == nil || instance.Spec == nil || port <= 0 {
-		return
-	}
-	key := fmt.Sprintf("%s:%d", instance.ResourceKey(), port)
-	if _, ok := seen[key]; ok {
-		return
-	}
-	seen[key] = struct{}{}
-	*targets = append(*targets, &tripleInvokeTarget{
-		instance: instance,
-		port:     port,
-	})
 }
 
 func toAttachmentValues(attachments map[string]string) map[string]any {
