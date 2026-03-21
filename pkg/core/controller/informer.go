@@ -250,6 +250,8 @@ func (s *informer) HandleDeltas(obj interface{}, _ bool) error {
 				s.EmitEvent(cache.Added, nil, resource)
 			}
 		case cache.Deleted:
+			logger.Infof("informer processing delete delta, resource kind: %s, key: %s",
+				resource.ResourceKind().ToString(), resource.ResourceKey())
 			if err := s.indexer.Delete(resource); err != nil {
 				logger.Errorf("failed to delete resource from informer, cause %v, resource: %s,", err, resource.String())
 				return err
@@ -263,6 +265,7 @@ func (s *informer) HandleDeltas(obj interface{}, _ bool) error {
 func (s *informer) toResource(obj interface{}) (model.Resource, error) {
 	object := obj
 	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+		logger.Debugf("informer resolved tombstone object during delete handling, key: %s", tombstone.Key)
 		object = tombstone.Obj
 	}
 	if resource, ok := object.(model.Resource); ok {

@@ -107,7 +107,13 @@ func (s *RuntimeInstanceEventSubscriber) processUpsert(rtInstanceRes *meshresour
 	// so we should merge the runtime info into it
 	if instanceResource != nil {
 		meshresource.MergeRuntimeInstanceIntoInstance(rtInstanceRes, instanceResource)
-		return s.instanceStore.Update(instanceResource)
+		if err = s.instanceStore.Update(instanceResource); err != nil {
+			return err
+		}
+		logger.Infof("instance lifecycle merged runtime source, instance: %s, runtime: %s, deployState: %s, hasRPCSource: %t",
+			instanceResource.ResourceKey(), rtInstanceRes.ResourceKey(), instanceResource.Spec.DeployState,
+			meshresource.HasRPCInstanceSource(instanceResource))
+		return nil
 	}
 	// if instance resource does not exist, that is to say the rpc instance does not exist in remote registry.
 	// we need to check whether the runtime instance resource is enough to create a new instance resource
@@ -121,6 +127,8 @@ func (s *RuntimeInstanceEventSubscriber) processUpsert(rtInstanceRes *meshresour
 		logger.Errorf("add instance resource failed, instance: %s, err: %s", instanceRes.ResourceKey(), err.Error())
 		return err
 	}
+	logger.Infof("instance lifecycle created runtime-only instance, instance: %s, runtime: %s, deployState: %s",
+		instanceRes.ResourceKey(), rtInstanceRes.ResourceKey(), instanceRes.Spec.DeployState)
 	instanceAddEvent := events.NewResourceChangedEvent(cache.Added, nil, instanceRes)
 	s.eventEmitter.Send(instanceAddEvent)
 	logger.Debugf("runtime instance upsert trigger instance add event, event: %s", instanceAddEvent.String())
@@ -151,6 +159,8 @@ func (s *RuntimeInstanceEventSubscriber) processDelete(rtInstanceRes *meshresour
 				instanceResource.ResourceKey(), err.Error())
 			return err
 		}
+		logger.Infof("instance lifecycle runtime source removed, keep instance by rpc source, instance: %s, runtime: %s, registerState: registered",
+			instanceResource.ResourceKey(), rtInstanceRes.ResourceKey())
 		instanceUpdateEvent := events.NewResourceChangedEvent(cache.Updated, instanceResource, instanceResource)
 		s.eventEmitter.Send(instanceUpdateEvent)
 		logger.Debugf("runtime instance delete trigger instance update event, event: %s", instanceUpdateEvent.String())
@@ -160,6 +170,8 @@ func (s *RuntimeInstanceEventSubscriber) processDelete(rtInstanceRes *meshresour
 		logger.Errorf("delete instance resource failed, instance: %s, err: %s", instanceResource.ResourceKey(), err.Error())
 		return err
 	}
+	logger.Infof("instance lifecycle runtime source removed and no rpc source remains, deleted instance: %s, runtime: %s",
+		instanceResource.ResourceKey(), rtInstanceRes.ResourceKey())
 	instanceDeleteEvent := events.NewResourceChangedEvent(cache.Deleted, instanceResource, nil)
 	s.eventEmitter.Send(instanceDeleteEvent)
 	logger.Debugf("runtime instance delete trigger instance delete event, event: %s", instanceDeleteEvent.String())
