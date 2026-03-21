@@ -48,6 +48,7 @@ type PodListerWatcher struct {
 }
 
 var _ controller.ResourceListerWatcher = &PodListerWatcher{}
+var _ controller.ResourceKeyProvider = &PodListerWatcher{}
 
 func NewPodListWatcher(clientset *kubernetes.Clientset, cfg *enginecfg.Config) (*PodListerWatcher, error) {
 	var selector fields.Selector
@@ -171,21 +172,32 @@ func (p *PodListerWatcher) TransformFunc() cache.TransformFunc {
 }
 
 func (p *PodListerWatcher) KeyFunc() cache.KeyFunc {
-	return func(obj interface{}) (string, error) {
-		switch o := obj.(type) {
-		case *v1.Pod:
-			return coremodel.BuildResourceKey(p.getDubboMesh(o), o.Name), nil
-		case *meshresource.RuntimeInstanceResource:
-			return o.ResourceKey(), nil
-		case cache.DeletedFinalStateUnknown:
-			return p.KeyFunc()(o.Obj)
-		default:
-			if obj == nil {
-				return "", bizerror.NewAssertionError("Pod", "nil")
-			}
-			return "", bizerror.NewAssertionError("Pod", reflect.TypeOf(obj).Name())
+	return p.resourceKeyFromObject
+}
+
+func (p *PodListerWatcher) resourceKeyFromObject(obj interface{}) (string, error) {
+	for {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			break
 		}
+		obj = tombstone.Obj
 	}
+	switch o := obj.(type) {
+	case *v1.Pod:
+		return p.resourceKeyFromPod(o), nil
+	case *meshresource.RuntimeInstanceResource:
+		return o.ResourceKey(), nil
+	default:
+		if obj == nil {
+			return "", bizerror.NewAssertionError("Pod", "nil")
+		}
+		return "", bizerror.NewAssertionError("Pod", reflect.TypeOf(obj).Name())
+	}
+}
+
+func (p *PodListerWatcher) resourceKeyFromPod(pod *v1.Pod) string {
+	return coremodel.BuildResourceKey(p.getDubboMesh(pod), pod.Name)
 }
 
 func derivePodPhase(pod *v1.Pod) string {

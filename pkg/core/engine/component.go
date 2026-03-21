@@ -121,11 +121,7 @@ func (e *engineComponent) initInformers(cfg *enginecfg.Config, emitter events.Em
 		if err != nil {
 			return fmt.Errorf("can not find store for resource kind %s, %w", rk, err)
 		}
-		keyFunc := cache.MetaNamespaceKeyFunc
-		if provider, ok := lw.(controller.ResourceKeyProvider); ok {
-			keyFunc = provider.KeyFunc()
-		}
-		informer := controller.NewInformerWithOptions(lw, emitter, rs, keyFunc, controller.Options{ResyncPeriod: 0})
+		informer := controller.NewInformerWithOptions(lw, emitter, rs, resolveInformerKeyFunc(lw), controller.Options{ResyncPeriod: 0})
 		if lw.TransformFunc() != nil {
 			err = informer.SetTransform(lw.TransformFunc())
 			if err != nil {
@@ -136,6 +132,13 @@ func (e *engineComponent) initInformers(cfg *enginecfg.Config, emitter events.Em
 		logger.Infof("resource engine %s has added informer for resource kind %s", e.name, rk)
 	}
 	return nil
+}
+
+func resolveInformerKeyFunc(lw controller.ResourceListerWatcher) cache.KeyFunc {
+	if provider, ok := lw.(controller.ResourceKeyProvider); ok {
+		return provider.KeyFunc()
+	}
+	return cache.MetaNamespaceKeyFunc
 }
 
 func (e *engineComponent) initSubscribers(eventbus events.EventBus) error {

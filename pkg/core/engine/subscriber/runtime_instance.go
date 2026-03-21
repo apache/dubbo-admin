@@ -92,14 +92,7 @@ func (s *RuntimeInstanceEventSubscriber) ProcessEvent(event events.Event) error 
 
 // processUpsert when runtime instance added or updated, we should add/update the corresponding instance resource
 func (s *RuntimeInstanceEventSubscriber) processUpsert(rtInstanceRes *meshresource.RuntimeInstanceResource) error {
-	var instanceResource *meshresource.InstanceResource
-	var err error
-	switch rtInstanceRes.Spec.SourceEngineType {
-	case string(enginecfg.Kubernetes):
-		instanceResource, err = s.getRelatedInstanceByIP(rtInstanceRes)
-	default:
-		instanceResource, err = s.getRelatedInstanceByName(rtInstanceRes)
-	}
+	instanceResource, err := s.getRelatedInstance(rtInstanceRes)
 	if err != nil {
 		return err
 	}
@@ -137,14 +130,7 @@ func (s *RuntimeInstanceEventSubscriber) processUpsert(rtInstanceRes *meshresour
 
 // processDelete when runtime instance deleted, we should delete the corresponding instance resource
 func (s *RuntimeInstanceEventSubscriber) processDelete(rtInstanceRes *meshresource.RuntimeInstanceResource) error {
-	var instanceResource *meshresource.InstanceResource
-	var err error
-	switch rtInstanceRes.Spec.SourceEngineType {
-	case string(enginecfg.Kubernetes):
-		instanceResource, err = s.getRelatedInstanceByIP(rtInstanceRes)
-	default:
-		instanceResource, err = s.getRelatedInstanceByName(rtInstanceRes)
-	}
+	instanceResource, err := s.getRelatedInstance(rtInstanceRes)
 	if err != nil {
 		return err
 	}
@@ -176,6 +162,19 @@ func (s *RuntimeInstanceEventSubscriber) processDelete(rtInstanceRes *meshresour
 	s.eventEmitter.Send(instanceDeleteEvent)
 	logger.Debugf("runtime instance delete trigger instance delete event, event: %s", instanceDeleteEvent.String())
 	return nil
+}
+
+func (s *RuntimeInstanceEventSubscriber) getRelatedInstance(
+	rtInstanceRes *meshresource.RuntimeInstanceResource) (*meshresource.InstanceResource, error) {
+	if rtInstanceRes == nil || rtInstanceRes.Spec == nil {
+		return nil, nil
+	}
+	switch rtInstanceRes.Spec.SourceEngineType {
+	case string(enginecfg.Kubernetes):
+		return s.getRelatedInstanceByIP(rtInstanceRes)
+	default:
+		return s.getRelatedInstanceByName(rtInstanceRes)
+	}
 }
 
 func (s *RuntimeInstanceEventSubscriber) getRelatedInstanceByName(
