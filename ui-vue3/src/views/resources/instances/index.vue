@@ -49,20 +49,8 @@
           </a-tag>
         </template>
 
-        <template v-if="column.dataIndex === 'deployState'">
-          <a-tag :color="INSTANCE_DEPLOY_COLOR[(text || 'UNKNOWN').toUpperCase()] || 'default'">
-            {{ text }}
-          </a-tag>
-        </template>
-
         <template v-if="column.dataIndex === 'deployCluster'">
           <a-tag color="grey">
-            {{ text }}
-          </a-tag>
-        </template>
-
-        <template v-if="column.dataIndex === 'registerState'">
-          <a-tag :color="INSTANCE_REGISTER_COLOR[(text || 'UNREGISTERED').toUpperCase()] || 'default'">
             {{ text }}
           </a-tag>
         </template>
@@ -92,9 +80,7 @@ import SearchTable from '@/components/SearchTable.vue'
 import { SearchDomain } from '@/utils/SearchUtil'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import {
-  INSTANCE_DEPLOY_COLOR,
   INSTANCE_LIFECYCLE_COLOR,
-  INSTANCE_REGISTER_COLOR,
   PRIMARY_COLOR
 } from '@/base/constants'
 import router from '@/router'
@@ -129,25 +115,10 @@ let columns = [
     width: 130
   },
   {
-    title: 'instanceDomain.deployState',
-    key: 'deployState',
-    dataIndex: 'deployState',
-    width: 120
-    // sorter: (a: any, b: any) => sortString(a.deployState, b.deployState)
-  },
-
-  {
     title: 'instanceDomain.deployCluster',
     key: 'deployCluster',
     dataIndex: 'deployCluster',
     // sorter: (a: any, b: any) => sortString(a.deployCluster, b.deployCluster),
-    width: 120
-  },
-  {
-    title: 'instanceDomain.registerState',
-    key: 'registerState',
-    dataIndex: 'registerState',
-    // sorter: (a: any, b: any) => sortString(a.registerState, b.registerState),
     width: 120
   },
   {
