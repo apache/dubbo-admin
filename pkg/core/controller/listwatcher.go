@@ -31,3 +31,9 @@ type ResourceListerWatcher interface {
 	// return nil if there is no need to transform, see cache.SharedInformer for detail
 	TransformFunc() cache.TransformFunc
 }
+
+// ResourceKeyProvider can be optionally implemented by a ResourceListerWatcher when
+// raw watch objects need a key that is consistent with the transformed resource key.
+type ResourceKeyProvider interface {
+	KeyFunc() cache.KeyFunc
+}

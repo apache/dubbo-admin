@@ -170,6 +170,24 @@ func (p *PodListerWatcher) TransformFunc() cache.TransformFunc {
 	}
 }
 
+func (p *PodListerWatcher) KeyFunc() cache.KeyFunc {
+	return func(obj interface{}) (string, error) {
+		switch o := obj.(type) {
+		case *v1.Pod:
+			return coremodel.BuildResourceKey(p.getDubboMesh(o), o.Name), nil
+		case *meshresource.RuntimeInstanceResource:
+			return o.ResourceKey(), nil
+		case cache.DeletedFinalStateUnknown:
+			return p.KeyFunc()(o.Obj)
+		default:
+			if obj == nil {
+				return "", bizerror.NewAssertionError("Pod", "nil")
+			}
+			return "", bizerror.NewAssertionError("Pod", reflect.TypeOf(obj).Name())
+		}
+	}
+}
+
 func derivePodPhase(pod *v1.Pod) string {
 	if pod == nil {
 		return "Unknown"
