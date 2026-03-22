@@ -20,6 +20,7 @@ package subscriber
 import (
 	"reflect"
 
+	"github.com/duke-git/lancet/v2/slice"
 	"github.com/duke-git/lancet/v2/strutil"
 	"k8s.io/client-go/tools/cache"
 
@@ -196,7 +197,7 @@ func (s *RPCInstanceEventSubscriber) getRelatedInstanceRes(
 func (s *RPCInstanceEventSubscriber) findRelatedRuntimeInstanceAndMerge(instanceRes *meshresource.InstanceResource) {
 	switch s.engineCfg.Type {
 	case enginecfg.Kubernetes:
-		rtInstance := s.getRuntimeInstanceByIp(instanceRes.Spec.Ip)
+		rtInstance := s.getRuntimeInstanceForInstance(instanceRes)
 		if rtInstance == nil {
 			logger.Warnf("cannot find runtime instance for instace %s, skipping merging", instanceRes.ResourceKey())
 			return
@@ -207,7 +208,8 @@ func (s *RPCInstanceEventSubscriber) findRelatedRuntimeInstanceAndMerge(instance
 	}
 }
 
-func (s *RPCInstanceEventSubscriber) getRuntimeInstanceByIp(ip string) *meshresource.RuntimeInstanceResource {
+func (s *RPCInstanceEventSubscriber) getRuntimeInstanceForInstance(instanceRes *meshresource.InstanceResource) *meshresource.RuntimeInstanceResource {
+	ip := instanceRes.Spec.Ip
 	resources, err := s.rtInstanceStore.ListByIndexes(map[string]string{
 		index.ByRuntimeInstanceIPIndex: ip,
 	})
@@ -218,9 +220,32 @@ func (s *RPCInstanceEventSubscriber) getRuntimeInstanceByIp(ip string) *meshreso
 	if len(resources) == 0 {
 		return nil
 	}
-	runtimeInstanceRes, ok := resources[0].(*meshresource.RuntimeInstanceResource)
-	if !ok {
-		return nil
+	candidates := make([]*meshresource.RuntimeInstanceResource, 0, len(resources))
+	for _, item := range resources {
+		res, ok := item.(*meshresource.RuntimeInstanceResource)
+		if !ok {
+			continue
+		}
+		candidates = append(candidates, res)
 	}
-	return runtimeInstanceRes
+	// Prefer exact runtime identity match by app + rpcPort + mesh.
+	for _, candidate := range candidates {
+		if candidate.Spec == nil {
+			continue
+		}
+		if candidate.Mesh == instanceRes.Mesh &&
+			candidate.Spec.AppName == instanceRes.Spec.AppName &&
+			candidate.Spec.RpcPort == instanceRes.Spec.RpcPort {
+			return candidate
+		}
+	}
+	// Fallback to the first candidate if no exact match can be found.
+	if len(candidates) > 1 {
+		keys := slice.Map(candidates, func(_ int, item *meshresource.RuntimeInstanceResource) string {
+			return item.ResourceKey()
+		})
+		logger.Warnf("multiple runtime instances share same ip %s, fallback to first candidate, runtime keys: %v, target instance: %s",
+			ip, keys, instanceRes.ResourceKey())
+	}
+	return candidates[0]
 }

@@ -171,10 +171,32 @@ func (s *RuntimeInstanceEventSubscriber) getRelatedInstance(
 	}
 	switch rtInstanceRes.Spec.SourceEngineType {
 	case string(enginecfg.Kubernetes):
-		return s.getRelatedInstanceByIP(rtInstanceRes)
+		return s.getRelatedKubernetesInstance(rtInstanceRes)
 	default:
 		return s.getRelatedInstanceByName(rtInstanceRes)
 	}
+}
+
+func (s *RuntimeInstanceEventSubscriber) getRelatedKubernetesInstance(
+	rtInstanceRes *meshresource.RuntimeInstanceResource) (*meshresource.InstanceResource, error) {
+	// Prefer exact matching by mesh + (app, ip, rpcPort) to avoid wrong merges
+	// when pod IPs are reused during frequent rollouts.
+	if hasRuntimeIdentity(rtInstanceRes) {
+		instanceResName := meshresource.BuildInstanceResName(rtInstanceRes.Spec.AppName, rtInstanceRes.Spec.Ip, rtInstanceRes.Spec.RpcPort)
+		res, exists, err := s.instanceStore.GetByKey(coremodel.BuildResourceKey(rtInstanceRes.Mesh, instanceResName))
+		if err != nil {
+			return nil, err
+		}
+		if exists {
+			instanceRes, ok := res.(*meshresource.InstanceResource)
+			if !ok {
+				return nil, bizerror.NewAssertionError("InstanceResource", reflect.TypeOf(res).Name())
+			}
+			return instanceRes, nil
+		}
+	}
+	// Fallback for incomplete runtime identity (legacy behavior).
+	return s.getRelatedInstanceByIP(rtInstanceRes)
 }
 
 func (s *RuntimeInstanceEventSubscriber) getRelatedInstanceByName(
@@ -247,4 +269,14 @@ func checkAttributesEnough(rtInstanceRes *meshresource.RuntimeInstanceResource) 
 		return false
 	}
 	return true
+}
+
+func hasRuntimeIdentity(rtInstanceRes *meshresource.RuntimeInstanceResource) bool {
+	if rtInstanceRes == nil || rtInstanceRes.Spec == nil {
+		return false
+	}
+	return strutil.IsNotBlank(rtInstanceRes.Spec.AppName) &&
+		strutil.IsNotBlank(rtInstanceRes.Spec.Ip) &&
+		rtInstanceRes.Spec.RpcPort > 0 &&
+		strutil.IsNotBlank(rtInstanceRes.Mesh)
 }
