@@ -19,6 +19,7 @@ package counter
 
 import (
 	"fmt"
+	"sync/atomic"
 
 	"k8s.io/client-go/tools/cache"
 
@@ -59,6 +60,7 @@ type counterManager struct {
 	simpleCounters      map[resmodel.ResourceKind]*Counter
 	distributionConfigs map[resmodel.ResourceKind][]*distributionCounterConfig
 	distributionByType  map[CounterType]*DistributionCounter
+	isLeader            *atomic.Bool
 }
 
 func NewCounterManager() CounterManager {
@@ -193,6 +195,9 @@ func (cm *counterManager) Bind(bus events.EventBus) error {
 }
 
 func (cm *counterManager) handleEvent(kind resmodel.ResourceKind, event events.Event) error {
+	if cm.isLeader != nil && !cm.isLeader.Load() {
+		return nil
+	}
 	logger.Debugf("CounterManager handling %s event, type: %s", kind, event.Type())
 	if counter := cm.simpleCounters[kind]; counter != nil {
 		processSimpleCounter(counter, event)
