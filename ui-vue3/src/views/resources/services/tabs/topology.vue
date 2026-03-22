@@ -72,6 +72,7 @@ const detailError = ref('')
 const detailData = shallowRef<Record<string, unknown>>({})
 const detailCache = new Map<string, Record<string, unknown>>()
 const currentDetailKey = ref('')
+const currentDetailType = ref('')
 const selectedNodeId = ref('')
 
 const clearSelectedNode = () => {
@@ -86,6 +87,7 @@ watch(detailDrawerOpen, (open) => {
   if (!open) {
     clearSelectedNode()
     currentDetailKey.value = ''
+    currentDetailType.value = ''
   }
 })
 
@@ -162,7 +164,9 @@ const StatefulNode = defineComponent({
 })
 
 const detailTitle = computed(() => {
-  return currentDetailKey.value ? `服务详情：${currentDetailKey.value}` : '服务详情'
+  const type = String(currentDetailType.value ?? '').toLowerCase()
+  const base = type === 'application' ? '应用详情' : '服务详情'
+  return currentDetailKey.value ? `${base}：${currentDetailKey.value}` : base
 })
 
 const detailEntries = computed(() => {
@@ -276,6 +280,11 @@ const renderTopology = (graphData: any) => {
     selectedNodeId.value = serviceName
     detailDrawerOpen.value = true
     currentDetailKey.value = serviceName
+    currentDetailType.value = String(nodeData?.type ?? '')
+      .toLowerCase()
+      .includes('application')
+      ? 'application'
+      : 'service'
     detailError.value = ''
 
     const cacheKey = `${serviceName}`
@@ -292,7 +301,12 @@ const renderTopology = (graphData: any) => {
       if (nodeData.type === 'application') {
         res = await getApplicationDetail(nodeData.id)
       } else if (nodeData.type === 'service') {
-        res = await getServiceDetail(nodeData.id)
+        const splitParams = nodeData.id.split(':')
+        res = await getServiceDetail({
+          serviceName: splitParams[0],
+          version: splitParams[1],
+          group: splitParams[2]
+        })
       }
       console.log('res', res)
       if (res?.code !== HTTP_STATUS.SUCCESS) {

@@ -26,11 +26,19 @@ export const searchService = (params: any): Promise<any> => {
   })
 }
 
-export const getServiceDetail = (serviceName: string): Promise<any> => {
+export const getServiceDetail = ({
+  serviceName,
+  version,
+  group
+}: {
+  serviceName: string
+  version?: string
+  group?: string
+}): Promise<any> => {
   return request({
     url: '/service/detail',
     method: 'get',
-    params: { serviceName }
+    params: { serviceName, version, group }
   })
 }
 
