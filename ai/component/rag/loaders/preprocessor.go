@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package rag
+package loaders
 
 import (
 	"regexp"
@@ -35,8 +35,8 @@ type Preprocessor struct {
 	funcs []PreprocessorFunc
 }
 
-// newPreprocessor creates a new Preprocessor with the given functions.
-func newPreprocessor(funcs ...PreprocessorFunc) *Preprocessor {
+// NewPreprocessor creates a new Preprocessor with the given functions.
+func NewPreprocessor(funcs ...PreprocessorFunc) *Preprocessor {
 	return &Preprocessor{
 		funcs: funcs,
 	}
@@ -114,8 +114,8 @@ type MarkdownCleaner struct {
 	inTable               bool
 }
 
-// newMarkdownCleaner creates a new MarkdownCleaner.
-func newMarkdownCleaner() *MarkdownCleaner {
+// NewMarkdownCleaner creates a new MarkdownCleaner.
+func NewMarkdownCleaner() *MarkdownCleaner {
 	return &MarkdownCleaner{
 		preserveCodeContent:   true,
 		preserveListStructure: true,

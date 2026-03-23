@@ -47,3 +47,8 @@ vendor/
 
 # dubbo cp cache
 app/dubbo-cp/cache
+
+# environment files
+.env
+.env.local
+.env.*.local

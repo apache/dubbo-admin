@@ -15,11 +15,10 @@
  * limitations under the License.
  */
 
-package rag
+package loaders
 
 import (
 	"context"
-	"dubbo-admin-ai/runtime"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -32,6 +31,11 @@ import (
 	"github.com/cloudwego/eino/schema"
 )
 
+// Loader types supported
+const (
+	LoaderTypeLocal = "local"
+)
+
 type ExtType = string
 
 const (
@@ -40,14 +44,14 @@ const (
 	DotTxt ExtType = ".txt"
 )
 
-// newLocalFileLoader creates a FileLoader with an ExtParser that supports PDF and Markdown.
-func newLocalFileLoader(ctx context.Context) (*file.FileLoader, error) {
+// NewLocalFileLoader creates a FileLoader with an ExtParser that supports PDF and Markdown.
+func NewLocalFileLoader(ctx context.Context) (*file.FileLoader, error) {
 	// 1. Create Parsers
-	pdfParser, err := newPDFParserWrapper(ctx)
+	pdfParser, err := NewPDFParserWrapper(ctx)
 	if err != nil {
 		return nil, err
 	}
-	mdParser := newMarkdownParser()
+	mdParser := NewMarkdownParser()
 	plainParser := parser.TextParser{}
 
 	// 2. Create ExtParser
@@ -120,6 +124,28 @@ func LoadDirectory(ctx context.Context, loader document.Loader, dirPath string, 
 			return fmt.Errorf("failed to load file %s: %w", path, err)
 		}
 
+		// Inject file metadata into loaded documents
+		fileMeta := ExtractFileMetadata(path, info)
+		for _, doc := range docs {
+			if doc.MetaData == nil {
+				doc.MetaData = make(map[string]any)
+			}
+			// Merge file metadata with existing metadata
+			for k, v := range fileMeta {
+				// Don't override existing metadata (like page number from PDF parser)
+				if _, exists := doc.MetaData[k]; !exists {
+					doc.MetaData[k] = v
+				}
+			}
+			// Extract title from content if not already set
+			if _, ok := doc.MetaData[MetaTitle.String()]; !ok {
+				fileType := strings.TrimPrefix(filepath.Ext(path), ".")
+				if title, ok := fileMeta[MetaTitle.String()].(string); ok {
+					doc.MetaData[MetaTitle.String()] = ExtractTitleFromContent(doc.Content, fileType, title)
+				}
+			}
+		}
+
 		allDocs = append(allDocs, docs...)
 		return nil
 	})
@@ -163,53 +189,5 @@ func WithLoaderTargetExtensions(exts ...string) LoaderOption {
 			norm = append(norm, e)
 		}
 		o.TargetExtensions = norm
-	}
-}
-
-// loaderComponent Loader 组件包装器
-type loaderComponent struct {
-	loaderType string
-	loader     document.Loader
-}
-
-func NewLoaderComponent(loaderType string) (runtime.Component, error) {
-	if loaderType == "" {
-		loaderType = "local"
-	}
-	return &loaderComponent{loaderType: loaderType}, nil
-}
-
-func (c *loaderComponent) Name() string { return "loader" }
-
-func (c *loaderComponent) Validate() error { return nil }
-
-func (c *loaderComponent) Init(rt *runtime.Runtime) error {
-	loader, err := newLoaderByType(context.Background(), c.loaderType)
-	if err != nil {
-		return fmt.Errorf("failed to create loader: %w", err)
-	}
-	c.loader = loader
-	rt.GetLogger().Info("Loader component initialized", "type", c.loaderType)
-	return nil
-}
-
-func (c *loaderComponent) Start() error { return nil }
-
-func (c *loaderComponent) Stop() error { return nil }
-
-func (c *loaderComponent) get() document.Loader {
-	return c.loader
-}
-
-func newLocalLoader(ctx context.Context) (document.Loader, error) {
-	return newLocalFileLoader(ctx)
-}
-
-func newLoaderByType(ctx context.Context, loaderType string) (document.Loader, error) {
-	switch loaderType {
-	case "", "local":
-		return newLocalLoader(ctx)
-	default:
-		return nil, fmt.Errorf("unsupported loader type: %s", loaderType)
 	}
 }

@@ -3,7 +3,7 @@ spec:
   embedder:
     type: genkit
     spec:
-      model: dashscope/text-embedding-v4
+      model: dashscope/qwen3-embedding
 
   loader:
     type: local
@@ -15,15 +15,17 @@ spec:
       chunk_size: 1000
       overlap_size: 100
 
+  # Available indexer types: dev, pinecone, milvus
   indexer:
-    type: pinecone
+    type: dev
     spec:
       storage_path: "../../data/ai/index"
       index_format: sqlite
       dimension: 1536
 
+  # Available retriever types: dev, pinecone, milvus
   retriever:
-    type: pinecone
+    type: dev
     spec:
       storage_path: "../../data/ai/index"
       index_format: sqlite
@@ -32,6 +34,36 @@ spec:
   reranker:
     type: cohere
     spec:
-      enabled: false
+      enabled: true
       model: rerank-english-v3.0
       api_key: "${COHERE_API_KEY}"
+
+  query_processor:
+    type: rewrite
+    spec:
+      enabled: false
+      model: dashscope/qwen-max
+      timeout: 5s
+      temperature: 0.3
+      fallback_on_error: true
+
+  # --- Milvus/Zilliz Cloud Configuration ---
+  # To use Milvus, set indexer.type and retriever.type to "milvus"
+  # Configure environment variables in .env:
+  #   MILVUS_HOST=https://your-endpoint.zillizcloud.com
+  #   MILVUS_TOKEN=your_api_token
+  #
+  # indexer:
+  #   type: milvus
+  #   spec:
+  #     collection: "dubbo_docs"
+  #     dimension: 1536
+  #     batch_size: 100
+  #
+  # retriever:
+  #   type: milvus
+  #   spec:
+  #     collection: "dubbo_docs"
+  #     search_type: "dense"            # "dense" | "sparse" | "hybrid"
+  #     dense_top_k: 10
+

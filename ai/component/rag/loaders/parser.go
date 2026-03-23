@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package rag
+package loaders
 
 import (
 	"context"
@@ -49,16 +49,17 @@ type MarkdownParser struct {
 	preprocessor *Preprocessor
 }
 
-func newMarkdownParser(opts ...ParserOption) *MarkdownParser {
+// NewMarkdownParser creates a new MarkdownParser.
+func NewMarkdownParser(opts ...ParserOption) *MarkdownParser {
 	config := &ParserConfig{
-		Preprocessors: []PreprocessorFunc{newMarkdownCleaner().Clean},
+		Preprocessors: []PreprocessorFunc{NewMarkdownCleaner().Clean},
 	}
 	for _, opt := range opts {
 		opt(config)
 	}
 
 	return &MarkdownParser{
-		preprocessor: newPreprocessor(config.Preprocessors...),
+		preprocessor: NewPreprocessor(config.Preprocessors...),
 	}
 }
 
@@ -90,7 +91,8 @@ type PDFParserWrapper struct {
 	preprocessor   *Preprocessor
 }
 
-func newPDFParserWrapper(ctx context.Context, opts ...ParserOption) (*PDFParserWrapper, error) {
+// NewPDFParserWrapper creates a new PDFParserWrapper.
+func NewPDFParserWrapper(ctx context.Context, opts ...ParserOption) (*PDFParserWrapper, error) {
 	p, err := pdf.NewPDFParser(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -105,7 +107,7 @@ func newPDFParserWrapper(ctx context.Context, opts ...ParserOption) (*PDFParserW
 
 	return &PDFParserWrapper{
 		internalParser: p,
-		preprocessor:   newPreprocessor(config.Preprocessors...),
+		preprocessor:   NewPreprocessor(config.Preprocessors...),
 	}, nil
 }
 

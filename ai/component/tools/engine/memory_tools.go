@@ -112,10 +112,8 @@ func RetrieveBasicConceptFromK8SDoc(rt *runtime.Runtime) ai.Tool {
 			}
 
 			defaults := (K8SRAGToolOptions{}).Default()
-			retrieveOpts := []rag.Option{
-				rag.WithRetrieveTopK(defaults.RetrieveTopK),
-				rag.WithTargetIndex(defaults.TargetIndex),
-				rag.WithRerankTopN(defaults.RerankTopN),
+			retrieveOpts := []rag.RetrieveOption{
+				rag.WithTopN(defaults.RerankTopN),
 			}
 
 			results, err := ragSys.Retrieve(ctx, defaults.Namespace, input.Queries, retrieveOpts...)

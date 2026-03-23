@@ -29,7 +29,7 @@ type workflowIndexer struct {
 }
 
 func (w *workflowIndexer) Store(ctx context.Context, docs []*schema.Document, opts ...indexer.Option) ([]string, error) {
-	impl := indexer.GetImplSpecificOptions(&compRag.RAGOptions{}, opts...)
+	impl := indexer.GetImplSpecificOptions(&compRag.CommonIndexerOptions{}, opts...)
 	ns := impl.Namespace
 	w.store.mu.Lock()
 	w.store.docs[ns] = append(w.store.docs[ns], docs...)
@@ -45,7 +45,7 @@ func (w *workflowIndexer) Store(ctx context.Context, docs []*schema.Document, op
 type workflowRetriever struct{ store *workflowStore }
 
 func (w *workflowRetriever) Retrieve(ctx context.Context, query string, opts ...einoRetriever.Option) ([]*schema.Document, error) {
-	impl := einoRetriever.GetImplSpecificOptions(&compRag.RAGOptions{}, opts...)
+	impl := einoRetriever.GetImplSpecificOptions(&compRag.CommonRetrieverOptions{}, opts...)
 	ns := impl.Namespace
 	w.store.mu.RLock()
 	defer w.store.mu.RUnlock()
