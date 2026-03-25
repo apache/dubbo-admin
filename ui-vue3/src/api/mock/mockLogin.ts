@@ -16,14 +16,15 @@
  */
 
 import Mock from 'mockjs'
+import devTool from '@/utils/DevToolUtil'
 
-Mock.mock('/mock/auth/login', 'post', {
+Mock.mock(devTool.mockUrl('/mock/auth/login'), 'post', {
   code: 'Success',
   message: 'success',
   data: null
 })
 
-Mock.mock('/mock/auth/logout', 'post', {
+Mock.mock(devTool.mockUrl('/mock/auth/logout'), 'post', {
   code: 'Success',
   message: 'success',
   data: null

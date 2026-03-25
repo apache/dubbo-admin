@@ -338,6 +338,25 @@ Mock.mock(devTool.mockUrl('/mock/service/config/argumentRoute'), 'put', () => {
   }
 })
 
+Mock.mock(devTool.mockUrl('/mock/service/provider-instances'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: [
+      {
+        name: 'dubbo-provider-0',
+        appName: 'dubbo-sample-provider',
+        ip: '10.20.30.11'
+      },
+      {
+        name: 'dubbo-provider-1',
+        appName: 'dubbo-sample-provider',
+        ip: '10.20.30.12'
+      }
+    ]
+  }
+})
+
 // 服务方法列表
 Mock.mock(devTool.mockUrl('/mock/service/methods'), 'get', () => {
   return {
@@ -366,7 +385,8 @@ Mock.mock(devTool.mockUrl('/mock/service/methods'), 'get', () => {
 // 服务方法详情
 Mock.mock(devTool.mockUrl('/mock/service/method/detail'), 'get', (options: any) => {
   const url = options.url || ''
-  const methodName = (url.match(/methodName=([^&]*)/) || [])[1] || 'query'
+  const query = url.includes('?') ? url.split('?')[1] : ''
+  const methodName = new URLSearchParams(query).get('methodName') || 'query'
   if (methodName === 'create') {
     return {
       code: 'Success',
@@ -389,6 +409,20 @@ Mock.mock(devTool.mockUrl('/mock/service/method/detail'), 'get', (options: any) 
             enums: []
           }
         ]
+      }
+    }
+  }
+  if (methodName === 'delete') {
+    return {
+      code: 'Success',
+      message: 'success',
+      data: {
+        methodName: 'delete',
+        signature: 'java.lang.String->java.lang.Boolean',
+        parameterTypes: ['java.lang.String'],
+        parameters: [{ name: 'id', type: 'java.lang.String' }],
+        returnType: 'java.lang.Boolean',
+        types: []
       }
     }
   }

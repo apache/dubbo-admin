@@ -140,9 +140,9 @@ Mock.mock(devTool.mockUrl('/mock/application/search'), 'get', () => {
   }
 })
 
-Mock.mock('/mock/application/instance/statistics', 'get', () => {
+Mock.mock(devTool.mockUrl('/mock/application/instance/statistics'), 'get', () => {
   return {
-    code: 1000,
+    code: 'Success',
     message: 'success',
     data: {
       instanceTotal: 43,
@@ -227,7 +227,7 @@ Mock.mock(devTool.mockUrl('/mock/application/detail'), 'get', () => {
   }
 })
 
-Mock.mock('/mock/application/event', 'get', () => {
+Mock.mock(devTool.mockUrl('/mock/application/event'), 'get', () => {
   const list = Mock.mock({
     'list|10': [
       {

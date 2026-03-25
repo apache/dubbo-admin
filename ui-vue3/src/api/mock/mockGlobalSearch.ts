@@ -32,6 +32,7 @@ Mock.mock(devTool.mockUrl('/mock/meshes'), 'get', {
   message: '成功',
   data: [
     {
+      id: 'dubbo-mesh',
       name: 'dubbo-mesh',
       type: 'kubernetes',
       version: '3.1.0',
