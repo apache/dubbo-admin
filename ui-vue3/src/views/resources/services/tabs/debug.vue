@@ -19,7 +19,10 @@
     <a-card :bordered="false" :body-style="{ padding: '24px' }">
       <div class="tabs-title">方法列表</div>
       <a-spin :spinning="loadingMethods">
-        <a-empty v-if="!loadingMethods && methodList.length === 0" :description="emptyDescription" />
+        <a-empty
+          v-if="!loadingMethods && methodList.length === 0"
+          :description="emptyDescription"
+        />
         <a-tabs
           v-else
           v-model:activeKey="activeKey"
