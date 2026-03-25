@@ -16,26 +16,15 @@
  */
 
 import Mock from 'mockjs'
-import devTool from '@/utils/DevToolUtil'
 
-Mock.mock(devTool.mockUrl('/mock/destinationRule/search'), 'get', () => {
-  const total = Mock.mock('@integer(8, 1000)')
-  const list = []
-  for (let i = 0; i < total; i++) {
-    list.push({
-      ruleName: 'app_' + Mock.mock('@string(2,10)'),
-      createTime: Mock.mock('@datetime')
-    })
-  }
-  return {
-    code: 'Success',
-    message: 'success',
-    data: {
-      pageInfo: {
-        Total: total,
-        NextOffset: '0'
-      },
-      list: list
-    }
-  }
+Mock.mock('/mock/auth/login', 'post', {
+  code: 'Success',
+  message: 'success',
+  data: null
+})
+
+Mock.mock('/mock/auth/logout', 'post', {
+  code: 'Success',
+  message: 'success',
+  data: null
 })

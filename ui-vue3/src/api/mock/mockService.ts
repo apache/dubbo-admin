@@ -19,7 +19,7 @@ import Mock from 'mockjs'
 import devTool from '@/utils/DevToolUtil'
 
 Mock.mock(devTool.mockUrl('/mock/service/search'), 'get', {
-  code: 200,
+  code: 'Success',
   msg: 'success',
   data: {
     pageInfo: {
@@ -225,7 +225,7 @@ Mock.mock(devTool.mockUrl('/mock/service/search'), 'get', {
 
 Mock.mock(devTool.mockUrl('/mock/service/distribution'), 'get', () => {
   return {
-    code: 200,
+    code: 'Success',
     msg: 'success',
     data: {
       pageInfo: {
@@ -233,6 +233,202 @@ Mock.mock(devTool.mockUrl('/mock/service/distribution'), 'get', () => {
         NextOffset: '0'
       },
       list: []
+    }
+  }
+})
+
+// 服务监控和追踪
+Mock.mock(devTool.mockUrl('/mock/service/metric-dashboard'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: 'http://8.147.104.101:3000/d/a0b114ca-edf7-4dfe-ac2c-34a4fc545fed/service?orgId=1&refresh=1m'
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/service/trace-dashboard'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: 'http://8.147.104.101:3000/d/e968a89b-f03d-42e3-8ad3-930ae815cb0f/service?orgId=1&refresh=1m'
+  }
+})
+
+// 服务超时配置
+Mock.mock(devTool.mockUrl('/mock/service/config/timeout'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      timeout: 3000
+    }
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/service/config/timeout'), 'put', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
+  }
+})
+
+// 服务重试配置
+Mock.mock(devTool.mockUrl('/mock/service/config/retry'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      retry: 3
+    }
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/service/config/retry'), 'put', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
+  }
+})
+
+// 区域优先配置
+Mock.mock(devTool.mockUrl('/mock/service/config/regionPriority'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      enable: true
+    }
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/service/config/regionPriority'), 'put', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
+  }
+})
+
+// 参数路由
+Mock.mock(devTool.mockUrl('/mock/service/config/argumentRoute'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      args: [
+        {
+          type: 'header',
+          key: 'X-User-Id',
+          operator: '=',
+          value: '123',
+          serviceName: 'org.apache.dubbo.samples.UserService'
+        }
+      ]
+    }
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/service/config/argumentRoute'), 'put', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
+  }
+})
+
+// 服务方法列表
+Mock.mock(devTool.mockUrl('/mock/service/methods'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: [
+      {
+        methodName: 'query',
+        parameterTypes: ['java.lang.String'],
+        signature: 'java.lang.String->org.apache.demo.UserDTO'
+      },
+      {
+        methodName: 'create',
+        parameterTypes: ['org.apache.demo.UserCreateReq'],
+        signature: 'org.apache.demo.UserCreateReq->java.lang.Boolean'
+      },
+      {
+        methodName: 'delete',
+        parameterTypes: ['java.lang.String'],
+        signature: 'java.lang.String->java.lang.Boolean'
+      }
+    ]
+  }
+})
+
+// 服务方法详情
+Mock.mock(devTool.mockUrl('/mock/service/method/detail'), 'get', (options: any) => {
+  const url = options.url || ''
+  const methodName = (url.match(/methodName=([^&]*)/) || [])[1] || 'query'
+  if (methodName === 'create') {
+    return {
+      code: 'Success',
+      message: 'success',
+      data: {
+        methodName: 'create',
+        signature: 'org.apache.demo.UserCreateReq->java.lang.Boolean',
+        parameterTypes: ['org.apache.demo.UserCreateReq'],
+        parameters: [{ name: 'req', type: 'org.apache.demo.UserCreateReq' }],
+        returnType: 'java.lang.Boolean',
+        types: [
+          {
+            type: 'org.apache.demo.UserCreateReq',
+            properties: {
+              name: 'java.lang.String',
+              age: 'java.lang.Integer',
+              email: 'java.lang.String'
+            },
+            items: [],
+            enums: []
+          }
+        ]
+      }
+    }
+  }
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      methodName: 'query',
+      signature: 'java.lang.String->org.apache.demo.UserDTO',
+      parameterTypes: ['java.lang.String'],
+      parameters: [{ name: 'id', type: 'java.lang.String' }],
+      returnType: 'org.apache.demo.UserDTO',
+      types: [
+        {
+          type: 'org.apache.demo.UserDTO',
+          properties: {
+            id: 'java.lang.String',
+            name: 'java.lang.String',
+            age: 'java.lang.Integer'
+          },
+          items: [],
+          enums: []
+        }
+      ]
+    }
+  }
+})
+
+// 泛化调用
+Mock.mock(devTool.mockUrl('/mock/service/generic/invoke'), 'post', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      elapsedMs: 12,
+      rawResult: {
+        id: '1001',
+        name: 'Alice',
+        age: 18
+      }
     }
   }
 })

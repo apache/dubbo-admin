@@ -16,12 +16,26 @@
  */
 
 import Mock from 'mockjs'
+import devTool from '@/utils/DevToolUtil'
 
-Mock.mock(/\/search\?searchType=\w+&keywords=\w*/, 'get', {
-  code: 200,
+Mock.mock(devTool.mockUrl('/mock/search'), 'get', {
+  code: 'Success',
   message: '成功',
   data: {
     find: true,
-    candidates: ['test1', 'test2', 'tset3']
+    candidates: ['test1', 'test2', 'test3']
   }
+})
+
+Mock.mock(devTool.mockUrl('/mock/meshes'), 'get', {
+  code: 'Success',
+  message: '成功',
+  data: [
+    {
+      name: 'dubbo-mesh',
+      type: 'kubernetes',
+      version: '3.1.0',
+      status: 'Healthy'
+    }
+  ]
 })

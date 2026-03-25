@@ -16,8 +16,9 @@
  */
 
 import Mock from 'mockjs'
+import devTool from '@/utils/DevToolUtil'
 
-Mock.mock('/mock/dynamicConfig/search', 'get', () => {
+Mock.mock(devTool.mockUrl('/mock/configurator/search'), 'get', () => {
   const total = Mock.mock('@integer(8, 1000)')
   const list = []
   for (let i = 0; i < total; i++) {
@@ -29,13 +30,62 @@ Mock.mock('/mock/dynamicConfig/search', 'get', () => {
     })
   }
   return {
-    code: 200,
+    code: 'Success',
     message: 'success',
-    data: Mock.mock({
-      total: total,
-      curPage: 1,
-      pageSize: 10,
-      data: list
-    })
+    data: {
+      pageInfo: {
+        Total: total,
+        NextOffset: '0'
+      },
+      list: list
+    }
+  }
+})
+
+// 动态配置详情
+Mock.mock(devTool.mockUrl('/mock/configurator/'), 'get', (options: any) => {
+  const url = options.url
+  const name = decodeURIComponent(url.split('/').pop() || '')
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      name: name,
+      configs: [
+        {
+          side: 'provider',
+          timeout: 3000,
+          retries: 2,
+          loadbalance: 'roundrobin'
+        }
+      ]
+    }
+  }
+})
+
+// 删除动态配置
+Mock.mock(devTool.mockUrl('/mock/configurator/'), 'delete', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
+  }
+})
+
+// 更新动态配置
+Mock.mock(devTool.mockUrl('/mock/configurator/'), 'put', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
+  }
+})
+
+// 新增动态配置
+Mock.mock(devTool.mockUrl('/mock/configurator/'), 'post', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
   }
 })

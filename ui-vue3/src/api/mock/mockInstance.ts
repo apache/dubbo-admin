@@ -40,7 +40,7 @@ Mock.mock(devTool.mockUrl('/mock/instance/search'), 'get', () => {
     })
   }
   return {
-    code: 200,
+    code: 'Success',
     msg: 'success',
     data: Mock.mock({
       pageInfo: {
@@ -54,7 +54,7 @@ Mock.mock(devTool.mockUrl('/mock/instance/search'), 'get', () => {
 
 Mock.mock(devTool.mockUrl('/mock/instance/detail'), 'get', () => {
   return {
-    code: 200,
+    code: 'Success',
     msg: 'success',
     data: {
       deployState: 'Running',
@@ -93,10 +93,56 @@ Mock.mock(devTool.mockUrl('/mock/instance/detail'), 'get', () => {
   }
 })
 
-Mock.mock('/mock/instance/metrics', 'get', () => {
+Mock.mock(devTool.mockUrl('/mock/instance/metric-dashboard'), 'get', () => {
   return {
-    code: 200,
+    code: 'Success',
     message: 'success',
     data: 'http://8.147.104.101:3000/d/dcf5defe-d198-4704-9edf-6520838880e9/instance?orgId=1&refresh=1m&from=1710644821536&to=1710731221536&theme=light'
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/instance/trace-dashboard'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: 'http://8.147.104.101:3000/d/e968a89b-f03d-42e3-8ad3-930ae815cb0f/instance?orgId=1&refresh=1m'
+  }
+})
+
+// 实例日志开关
+Mock.mock(devTool.mockUrl('/mock/instance/config/operatorLog'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      operatorLog: true
+    }
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/instance/config/operatorLog'), 'put', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
+  }
+})
+
+// 实例流量开关
+Mock.mock(devTool.mockUrl('/mock/instance/config/trafficDisable'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      trafficDisable: false
+    }
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/instance/config/trafficDisable'), 'put', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
   }
 })

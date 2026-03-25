@@ -18,11 +18,94 @@
 import Mock from 'mockjs'
 import devTool from '@/utils/DevToolUtil'
 
-Mock.mock('/mock/application/metrics', 'get', () => {
+Mock.mock(devTool.mockUrl('/mock/application/metric-dashboard'), 'get', () => {
   return {
-    code: 200,
+    code: 'Success',
     message: 'success',
     data: 'http://8.147.104.101:3000/d/a0b114ca-edf7-4dfe-ac2c-34a4fc545fed/application?orgId=1&refresh=1m&from=1711855893859&to=1711877493859&theme=light'
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/application/trace-dashboard'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: 'http://8.147.104.101:3000/d/e968a89b-f03d-42e3-8ad3-930ae815cb0f/application?orgId=1&refresh=1m'
+  }
+})
+
+// 应用日志开关
+Mock.mock(devTool.mockUrl('/mock/application/config/operatorLog'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      operatorLog: true
+    }
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/application/config/operatorLog'), 'put', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
+  }
+})
+
+// 应用流量权重
+Mock.mock(devTool.mockUrl('/mock/application/config/flowWeight'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      flowWeightSets: [
+        {
+          version: '1.0.0',
+          weight: 80
+        },
+        {
+          version: '2.0.0',
+          weight: 20
+        }
+      ]
+    }
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/application/config/flowWeight'), 'put', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
+  }
+})
+
+// 应用灰度配置
+Mock.mock(devTool.mockUrl('/mock/application/config/gray'), 'get', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: {
+      graySets: [
+        {
+          tag: 'v1',
+          weight: 100
+        },
+        {
+          tag: 'v2',
+          weight: 0
+        }
+      ]
+    }
+  }
+})
+
+Mock.mock(devTool.mockUrl('/mock/application/config/gray'), 'put', () => {
+  return {
+    code: 'Success',
+    message: 'success',
+    data: null
   }
 })
 
@@ -45,7 +128,7 @@ Mock.mock(devTool.mockUrl('/mock/application/search'), 'get', () => {
   }
 
   return {
-    code: 200,
+    code: 'Success',
     msg: 'success',
     data: {
       list: list,
@@ -92,7 +175,7 @@ Mock.mock(devTool.mockUrl('/mock/application/instance/info'), 'get', () => {
     })
   }
   return {
-    code: 200,
+    code: 'Success',
     msg: 'success',
     data: Mock.mock({
       pageInfo: {
@@ -106,7 +189,7 @@ Mock.mock(devTool.mockUrl('/mock/application/instance/info'), 'get', () => {
 
 Mock.mock(devTool.mockUrl('/mock/application/detail'), 'get', () => {
   return {
-    code: 200,
+    code: 'Success',
     msg: 'success',
     data: {
       appName: Mock.mock('@word(10,20)'),
@@ -155,7 +238,7 @@ Mock.mock('/mock/application/event', 'get', () => {
     ]
   })
   return {
-    code: 200,
+    code: 'Success',
     message: 'success',
     data: {
       ...list
@@ -165,7 +248,7 @@ Mock.mock('/mock/application/event', 'get', () => {
 
 Mock.mock(devTool.mockUrl('/mock/application/service/form'), 'get', () => {
   return {
-    code: 200,
+    code: 'Success',
     message: 'success',
     data: {
       list: [],
