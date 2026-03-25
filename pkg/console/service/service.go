@@ -349,35 +349,18 @@ func buildServiceMethodSummaries(metadataList []*meshresource.ServiceProviderMet
 
 func buildServiceMethodCandidates(metadataList []*meshresource.ServiceProviderMetadataResource) []*serviceMethodCandidate {
 	candidateByKey := make(map[string]*serviceMethodCandidate)
-	structuredMethodNames := make(map[string]struct{})
-	fallbackMethodNames := make(map[string]struct{})
 
 	for _, metadata := range metadataList {
+		if metadata == nil || metadata.Spec == nil {
+			continue
+		}
 		for _, method := range metadata.Spec.Methods {
 			candidate, ok := newStructuredServiceMethodCandidate(method)
 			if !ok {
 				continue
 			}
 			candidateByKey[serviceMethodKey(candidate.detail.MethodName, candidate.signature)] = candidate
-			structuredMethodNames[candidate.detail.MethodName] = struct{}{}
 		}
-
-		if len(metadata.Spec.Methods) > 0 {
-			continue
-		}
-		for _, methodName := range methodNamesFromMetadataParameters(metadata.Spec.Parameters) {
-			fallbackMethodNames[methodName] = struct{}{}
-		}
-	}
-
-	// Legacy metadata may only expose flat method-name parameters without structured method definitions.
-	// Keep those names as a fallback for method listing, but never let them shadow authoritative
-	// structured metadata for the same method name.
-	for methodName := range fallbackMethodNames {
-		if _, ok := structuredMethodNames[methodName]; ok {
-			continue
-		}
-		candidateByKey[serviceMethodKey(methodName, "")] = newFallbackServiceMethodCandidate(methodName)
 	}
 
 	candidates := make([]*serviceMethodCandidate, 0, len(candidateByKey))
@@ -429,12 +412,6 @@ func resolveStructuredServiceMethodCandidate(candidates []*serviceMethodCandidat
 		)
 	}
 	if candidate == nil {
-		if hasFallbackOnlyMethodCandidate(candidates, req.MethodName) {
-			return nil, bizerror.New(
-				bizerror.InvalidArgument,
-				fmt.Sprintf("structured metadata not found for method %s of service %s", req.MethodName, req.ServiceName),
-			)
-		}
 		return nil, bizerror.New(
 			bizerror.NotFoundError,
 			fmt.Sprintf("method %s not found for service %s", req.MethodName, req.ServiceName),
@@ -447,15 +424,6 @@ func resolveStructuredServiceMethodCandidate(candidates []*serviceMethodCandidat
 		)
 	}
 	return candidate, nil
-}
-
-func hasFallbackOnlyMethodCandidate(candidates []*serviceMethodCandidate, methodName string) bool {
-	for _, candidate := range candidates {
-		if candidate.detail.MethodName == methodName && candidate.method == nil {
-			return true
-		}
-	}
-	return false
 }
 
 func newStructuredServiceMethodCandidate(method *meshproto.Method) (*serviceMethodCandidate, bool) {
@@ -471,38 +439,6 @@ func newStructuredServiceMethodCandidate(method *meshproto.Method) (*serviceMeth
 		signature: buildServiceMethodSignature(method),
 		method:    method,
 	}, true
-}
-
-func newFallbackServiceMethodCandidate(methodName string) *serviceMethodCandidate {
-	return &serviceMethodCandidate{
-		detail: &model.ServiceMethodDetailResp{
-			MethodName:     methodName,
-			Signature:      "",
-			ParameterTypes: []string{},
-			Parameters:     []model.ServiceMethodParameter{},
-			Types:          []model.ServiceMethodTypeResp{},
-		},
-		signature: "",
-	}
-}
-
-func methodNamesFromMetadataParameters(parameters map[string]string) []string {
-	if parameters == nil {
-		return nil
-	}
-	methodsRaw := strings.TrimSpace(parameters["methods"])
-	if strutil.IsBlank(methodsRaw) {
-		return nil
-	}
-	methodNames := make([]string, 0)
-	for _, methodName := range strings.Split(methodsRaw, ",") {
-		methodName = strings.TrimSpace(methodName)
-		if strutil.IsBlank(methodName) {
-			continue
-		}
-		methodNames = append(methodNames, methodName)
-	}
-	return methodNames
 }
 
 func serviceMethodKey(methodName, signature string) string {

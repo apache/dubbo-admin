@@ -19,7 +19,7 @@
     <a-card :bordered="false" :body-style="{ padding: '24px' }">
       <div class="tabs-title">方法列表</div>
       <a-spin :spinning="loadingMethods">
-        <a-empty v-if="!loadingMethods && methodList.length === 0" description="暂无方法" />
+        <a-empty v-if="!loadingMethods && methodList.length === 0" :description="emptyDescription" />
         <a-tabs
           v-else
           v-model:activeKey="activeKey"
@@ -175,6 +175,10 @@ import {
 } from '@/api/service/service'
 import { useMeshStore } from '@/stores/mesh'
 
+defineOptions({
+  name: 'ServiceDebugTab'
+})
+
 interface MethodSummary {
   methodName: string
   parameterTypes: string[]
@@ -233,6 +237,16 @@ const timeout = ref(3000)
 const attachmentsModalOpen = ref(false)
 const attachmentsList = ref<{ key: string; value: string }[]>([])
 
+const isMeshSelected = computed(() => Boolean(meshStore.mesh))
+const emptyDescription = computed(() => {
+  if (!serviceName.value) {
+    return '暂无方法'
+  }
+  if (!isMeshSelected.value) {
+    return '请先选择 mesh'
+  }
+  return '暂无可调试方法'
+})
 const attachmentCount = computed(() => attachmentsList.value.filter((a) => a.key).length)
 const providerInstanceOptions = computed(() =>
   providerInstances.value.map((instance) => ({
@@ -392,7 +406,7 @@ function syncSelectedInstance() {
 }
 
 async function loadProviderInstances() {
-  if (!serviceName.value) {
+  if (!serviceName.value || !isMeshSelected.value) {
     providerInstances.value = []
     instanceName.value = ''
     return
@@ -412,7 +426,7 @@ async function loadProviderInstances() {
 }
 
 async function loadMethods() {
-  if (!serviceName.value) {
+  if (!serviceName.value || !isMeshSelected.value) {
     methodList.value = []
     currentMethodDetail.value = null
     requestValue.value = '[]'
@@ -547,7 +561,14 @@ function removeAttachment(idx: number) {
 
 async function loadPageData() {
   responseValue.value = ''
-  await Promise.all([loadProviderInstances(), loadMethods()])
+  if (!isMeshSelected.value) {
+    return
+  }
+  try {
+    await Promise.all([loadProviderInstances(), loadMethods()])
+  } catch (error) {
+    console.error('load debug page data failed', error)
+  }
 }
 
 watch(
@@ -557,6 +578,8 @@ watch(
     providerInstances.value = []
     currentMethodDetail.value = null
     instanceName.value = ''
+    requestValue.value = '[]'
+    responseValue.value = ''
     void loadPageData()
   },
   { immediate: true }
