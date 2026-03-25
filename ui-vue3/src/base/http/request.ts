@@ -43,7 +43,7 @@ const isMockMode = import.meta.env.VITE_MOCK_ENABLED === 'true'
 
 const service: AxiosInstance = axios.create({
   baseURL: isMockMode ? '/admin/mock' : '/api/v1',
-  timeout: 30 * 1000,
+  timeout: 30 * 1000
 })
 const request: AxiosInterceptorManager<InternalAxiosRequestConfig> = service.interceptors.request
 const response: AxiosInterceptorManager<AxiosResponse> = service.interceptors.response

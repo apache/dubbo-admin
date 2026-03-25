@@ -142,7 +142,6 @@ export const getServiceMethodsAPI = (params: {
   serviceName: string
   group?: string
   version?: string
-  providerAppName?: string
 }): Promise<any> => {
   return request({
     url: '/service/methods',
@@ -157,7 +156,6 @@ export const getServiceMethodDetailAPI = (params: {
   methodName: string
   group?: string
   version?: string
-  providerAppName?: string
   signature?: string
 }): Promise<any> => {
   return request({
@@ -167,15 +165,28 @@ export const getServiceMethodDetailAPI = (params: {
   })
 }
 
+export const getServiceProviderInstancesAPI = (params: {
+  serviceName: string
+  group?: string
+  version?: string
+}): Promise<any> => {
+  return request({
+    url: '/service/provider-instances',
+    method: 'get',
+    params
+  })
+}
+
 // generic invoke service method
 export const serviceGenericInvokeAPI = (data: {
+  mesh: string
+  instanceName: string
   serviceName: string
   methodName: string
   args: any[]
   group?: string
   version?: string
   signature?: string
-  providerAppName?: string
   timeoutMs?: number
   attachments?: Record<string, string>
 }): Promise<any> => {

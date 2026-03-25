@@ -63,7 +63,7 @@
                     <div class="editor-wrapper">
                       <monaco-editor
                         v-model="requestValue"
-                        editorId="requestEditor"
+                        :editor-id="`requestEditor-${index}`"
                         height="300px"
                       />
                       <div class="editor-tag">JSON</div>
@@ -74,7 +74,7 @@
                     <div class="editor-wrapper">
                       <monaco-editor
                         v-model="responseValue"
-                        editorId="responseEditor"
+                        :editor-id="`responseEditor-${index}`"
                         height="300px"
                         :readonly="true"
                       />
@@ -84,12 +84,23 @@
 
                   <!-- Row 3: Bottom Settings -->
                   <a-col :span="8">
-                    <div class="section-title">指定生产者:</div>
-                    <a-input
-                      v-model:value="providerAppName"
-                      placeholder="可选，指定 provider 应用名"
+                    <div class="section-title">调用实例:</div>
+                    <a-select
+                      v-model:value="instanceName"
+                      :options="providerInstanceOptions"
+                      :loading="loadingProviders"
+                      :disabled="providerInstanceOptions.length === 0"
+                      placeholder="请选择真实调用实例"
+                      show-search
+                      option-filter-prop="label"
                       allow-clear
                     />
+                    <div
+                      v-if="!loadingProviders && providerInstanceOptions.length === 0"
+                      class="empty-hint"
+                    >
+                      当前服务没有可调用实例
+                    </div>
                   </a-col>
                   <a-col :span="8">
                     <div class="section-title">自定义超时时间</div>
@@ -114,6 +125,7 @@
                       type="primary"
                       size="large"
                       class="invoke-btn"
+                      :disabled="!instanceName"
                       :loading="loadingInvoke"
                       @click="handleInvoke"
                     >
@@ -136,35 +148,32 @@
       @cancel="attachmentsModalOpen = false"
     >
       <div class="attachments-list">
-        <div
-          v-for="(item, idx) in attachmentsList"
-          :key="idx"
-          class="attachment-row"
-        >
+        <div v-for="(item, idx) in attachmentsList" :key="idx" class="attachment-row">
           <a-input v-model:value="item.key" placeholder="Key" style="width: 45%" />
           <span class="kv-sep">:</span>
           <a-input v-model:value="item.value" placeholder="Value" style="width: 45%" />
           <minus-circle-outlined class="remove-icon" @click="removeAttachment(idx)" />
         </div>
-        <a-button type="dashed" block @click="addAttachment">
-          <plus-outlined /> 添加
-        </a-button>
+        <a-button type="dashed" block @click="addAttachment"> <plus-outlined /> 添加 </a-button>
       </div>
     </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import MonacoEditor from '@/components/editor/MonacoEditor.vue'
 import { EditOutlined, MinusCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { message } from 'ant-design-vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import {
+  getServiceProviderInstancesAPI,
   getServiceMethodsAPI,
   getServiceMethodDetailAPI,
   serviceGenericInvokeAPI
 } from '@/api/service/service'
+import { useMeshStore } from '@/stores/mesh'
 
 interface MethodSummary {
   methodName: string
@@ -193,14 +202,24 @@ interface MethodDetail {
   types: TypeDef[]
 }
 
+interface ProviderInstance {
+  name: string
+  appName: string
+  ip: string
+}
+
 const route = useRoute()
+const meshStore = useMeshStore()
 const serviceName = computed(() => route.params.pathId as string)
 const group = computed(() => (route.params.group as string) || '')
 const version = computed(() => (route.params.version as string) || '')
 
 const methodList = ref<MethodSummary[]>([])
 const loadingMethods = ref(false)
+const providerInstances = ref<ProviderInstance[]>([])
+const loadingProviders = ref(false)
 const activeKey = ref('0')
+const instanceName = ref('')
 
 const currentMethodDetail = ref<MethodDetail | null>(null)
 const loadingDetail = ref(false)
@@ -210,12 +229,17 @@ const requestValue = ref('[]')
 const responseValue = ref('')
 
 const timeout = ref(3000)
-const providerAppName = ref('')
 
 const attachmentsModalOpen = ref(false)
 const attachmentsList = ref<{ key: string; value: string }[]>([])
 
 const attachmentCount = computed(() => attachmentsList.value.filter((a) => a.key).length)
+const providerInstanceOptions = computed(() =>
+  providerInstances.value.map((instance) => ({
+    label: `${instance.appName || 'UnknownApp'} | ${instance.ip || instance.name}`,
+    value: instance.name
+  }))
+)
 
 function shortType(type: string): string {
   const parts = type.split('.')
@@ -226,6 +250,24 @@ function buildTypeMap(types: TypeDef[]): Record<string, TypeDef> {
   const map: Record<string, TypeDef> = {}
   types?.forEach((t) => (map[t.type] = t))
   return map
+}
+
+function normalizeParameters(detail: MethodDetail): ParameterDef[] {
+  const explicitParameters = (detail.parameters || [])
+    .map((param, index) => ({
+      name: param.name || `arg${index}`,
+      type: param.type || detail.parameterTypes?.[index] || ''
+    }))
+    .filter((param) => Boolean(param.type))
+
+  if (explicitParameters.length > 0) {
+    return explicitParameters
+  }
+
+  return (detail.parameterTypes || []).map((type, index) => ({
+    name: `arg${index}`,
+    type
+  }))
 }
 
 function buildParamNodes(
@@ -288,7 +330,7 @@ function buildReturnTypeNodes(returnType: string, typeMap: Record<string, TypeDe
 const enterParamType = computed(() => {
   if (!currentMethodDetail.value) return []
   const typeMap = buildTypeMap(currentMethodDetail.value.types)
-  return buildParamNodes(currentMethodDetail.value.parameters, typeMap)
+  return buildParamNodes(normalizeParameters(currentMethodDetail.value), typeMap)
 })
 
 const outputParamType = computed(() => {
@@ -334,12 +376,48 @@ function generateDefaultValue(type: string, typeMap: Record<string, TypeDef>, de
 
 function generateRequestTemplate(detail: MethodDetail): string {
   const typeMap = buildTypeMap(detail.types)
-  const args = (detail.parameters || []).map((p) => generateDefaultValue(p.type, typeMap))
+  const args = normalizeParameters(detail).map((p) => generateDefaultValue(p.type, typeMap))
   return JSON.stringify(args, null, 2)
 }
 
+function syncSelectedInstance() {
+  if (providerInstances.value.length === 0) {
+    instanceName.value = ''
+    return
+  }
+  if (providerInstances.value.some((instance) => instance.name === instanceName.value)) {
+    return
+  }
+  instanceName.value = providerInstances.value[0].name
+}
+
+async function loadProviderInstances() {
+  if (!serviceName.value) {
+    providerInstances.value = []
+    instanceName.value = ''
+    return
+  }
+  loadingProviders.value = true
+  try {
+    const res = await getServiceProviderInstancesAPI({
+      serviceName: serviceName.value,
+      group: group.value || undefined,
+      version: version.value || undefined
+    })
+    providerInstances.value = Array.isArray(res.data) ? res.data : []
+    syncSelectedInstance()
+  } finally {
+    loadingProviders.value = false
+  }
+}
+
 async function loadMethods() {
-  if (!serviceName.value) return
+  if (!serviceName.value) {
+    methodList.value = []
+    currentMethodDetail.value = null
+    requestValue.value = '[]'
+    return
+  }
   loadingMethods.value = true
   try {
     const res = await getServiceMethodsAPI({
@@ -351,6 +429,9 @@ async function loadMethods() {
     if (methodList.value.length > 0) {
       activeKey.value = '0'
       await loadMethodDetail(methodList.value[0])
+    } else {
+      currentMethodDetail.value = null
+      requestValue.value = '[]'
     }
   } finally {
     loadingMethods.value = false
@@ -366,8 +447,7 @@ async function loadMethodDetail(method: MethodSummary) {
       methodName: method.methodName,
       group: group.value || undefined,
       version: version.value || undefined,
-      signature: method.signature || undefined,
-      providerAppName: providerAppName.value || undefined
+      signature: method.signature || undefined
     })
     currentMethodDetail.value = res.data
     requestValue.value = generateRequestTemplate(res.data)
@@ -386,14 +466,47 @@ async function onTabChange(key: string) {
 
 async function handleInvoke() {
   if (!currentMethodDetail.value) return
+  if (!meshStore.mesh) {
+    message.warning('请先选择 mesh')
+    responseValue.value = JSON.stringify(
+      {
+        error: 'missing_mesh',
+        message: '请先选择 mesh'
+      },
+      null,
+      2
+    )
+    return
+  }
+  if (!instanceName.value) {
+    message.warning('请选择调用实例')
+    responseValue.value = JSON.stringify(
+      {
+        error: 'missing_instance',
+        message: '请选择调用实例'
+      },
+      null,
+      2
+    )
+    return
+  }
   let args: any[]
   try {
     args = JSON.parse(requestValue.value)
     if (!Array.isArray(args)) {
       args = [args]
     }
-  } catch {
-    args = []
+  } catch (error: any) {
+    message.error('请求参数不是有效 JSON')
+    responseValue.value = JSON.stringify(
+      {
+        error: 'invalid_request_json',
+        message: error?.message || '请求参数不是有效 JSON'
+      },
+      null,
+      2
+    )
+    return
   }
 
   const attachments: Record<string, string> = {}
@@ -405,13 +518,14 @@ async function handleInvoke() {
   responseValue.value = ''
   try {
     const res = await serviceGenericInvokeAPI({
+      mesh: meshStore.mesh,
+      instanceName: instanceName.value,
       serviceName: serviceName.value,
       methodName: currentMethodDetail.value.methodName,
       signature: currentMethodDetail.value.signature,
       args,
       group: group.value || undefined,
       version: version.value || undefined,
-      providerAppName: providerAppName.value || undefined,
       timeoutMs: timeout.value > 0 ? timeout.value : undefined,
       attachments: Object.keys(attachments).length > 0 ? attachments : undefined
     })
@@ -431,17 +545,21 @@ function removeAttachment(idx: number) {
   attachmentsList.value.splice(idx, 1)
 }
 
-onMounted(() => {
-  loadMethods()
-})
+async function loadPageData() {
+  responseValue.value = ''
+  await Promise.all([loadProviderInstances(), loadMethods()])
+}
 
 watch(
-  () => route.params.pathId,
+  [serviceName, group, version, () => meshStore.mesh],
   () => {
     methodList.value = []
+    providerInstances.value = []
     currentMethodDetail.value = null
-    loadMethods()
-  }
+    instanceName.value = ''
+    void loadPageData()
+  },
+  { immediate: true }
 )
 </script>
 
