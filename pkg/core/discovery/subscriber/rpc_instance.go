@@ -239,13 +239,10 @@ func (s *RPCInstanceEventSubscriber) getRuntimeInstanceForInstance(instanceRes *
 			return candidate
 		}
 	}
-	// Fallback to the first candidate if no exact match can be found.
-	if len(candidates) > 1 {
-		keys := slice.Map(candidates, func(_ int, item *meshresource.RuntimeInstanceResource) string {
-			return item.ResourceKey()
-		})
-		logger.Warnf("multiple runtime instances share same ip %s, fallback to first candidate, runtime keys: %v, target instance: %s",
-			ip, keys, instanceRes.ResourceKey())
-	}
-	return candidates[0]
+	keys := slice.Map(candidates, func(_ int, item *meshresource.RuntimeInstanceResource) string {
+		return item.ResourceKey()
+	})
+	logger.Warnf("cannot find exact runtime instance match by identity, skip runtime merge for instance %s, ip: %s, runtime candidates: %v",
+		instanceRes.ResourceKey(), ip, keys)
+	return nil
 }

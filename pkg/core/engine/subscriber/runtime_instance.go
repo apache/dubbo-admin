@@ -111,7 +111,8 @@ func (s *RuntimeInstanceEventSubscriber) processUpsert(rtInstanceRes *meshresour
 	// if instance resource does not exist, that is to say the rpc instance does not exist in remote registry.
 	// we need to check whether the runtime instance resource is enough to create a new instance resource
 	if !checkAttributesEnough(rtInstanceRes) {
-		logger.Warnf("cannot identify runtime instance %s to a dubbo instance, skipped creating new instance", rtInstanceRes.ResourceKey())
+		logger.Warnf("cannot identify runtime instance %s to a dubbo instance, skipped creating new instance, reason: %s",
+			rtInstanceRes.ResourceKey(), runtimeIdentityMissingReason(rtInstanceRes))
 		return nil
 	}
 	// if conditions met, we should create a new instance resource by runtime instance
@@ -179,24 +180,59 @@ func (s *RuntimeInstanceEventSubscriber) getRelatedInstance(
 
 func (s *RuntimeInstanceEventSubscriber) getRelatedKubernetesInstance(
 	rtInstanceRes *meshresource.RuntimeInstanceResource) (*meshresource.InstanceResource, error) {
-	// Prefer exact matching by mesh + (app, ip, rpcPort) to avoid wrong merges
-	// when pod IPs are reused during frequent rollouts.
-	if hasRuntimeIdentity(rtInstanceRes) {
-		instanceResName := meshresource.BuildInstanceResName(rtInstanceRes.Spec.AppName, rtInstanceRes.Spec.Ip, rtInstanceRes.Spec.RpcPort)
+	if rtInstanceRes == nil || rtInstanceRes.Spec == nil {
+		return nil, nil
+	}
+	if strutil.IsBlank(rtInstanceRes.Spec.AppName) ||
+		strutil.IsBlank(rtInstanceRes.Spec.Ip) ||
+		rtInstanceRes.Spec.RpcPort <= 0 {
+		return nil, nil
+	}
+	instanceResName := meshresource.BuildInstanceResName(rtInstanceRes.Spec.AppName, rtInstanceRes.Spec.Ip, rtInstanceRes.Spec.RpcPort)
+
+	// 1) Mesh-aware exact match when mesh is explicit.
+	if strutil.IsNotBlank(rtInstanceRes.Mesh) && constants.DefaultMesh != rtInstanceRes.Mesh {
 		res, exists, err := s.instanceStore.GetByKey(coremodel.BuildResourceKey(rtInstanceRes.Mesh, instanceResName))
 		if err != nil {
 			return nil, err
 		}
-		if exists {
-			instanceRes, ok := res.(*meshresource.InstanceResource)
-			if !ok {
-				return nil, bizerror.NewAssertionError("InstanceResource", reflect.TypeOf(res).Name())
-			}
-			return instanceRes, nil
+		if !exists {
+			return nil, nil
 		}
+		instanceRes, ok := res.(*meshresource.InstanceResource)
+		if !ok {
+			return nil, bizerror.NewAssertionError("InstanceResource", reflect.TypeOf(res).Name())
+		}
+		return instanceRes, nil
 	}
-	// Fallback for incomplete runtime identity (legacy behavior).
-	return s.getRelatedInstanceByIP(rtInstanceRes)
+
+	// 2) Mesh is missing/default: allow unique lookup by identity name only.
+	// This keeps safety (no IP fallback) while tolerating missing registry labels.
+	resources, err := s.instanceStore.ListByIndexes(map[string]string{
+		index.ByInstanceNameIndex: instanceResName,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if len(resources) == 0 {
+		return nil, nil
+	}
+	if len(resources) > 1 {
+		resKeys := make([]string, 0, len(resources))
+		for _, item := range resources {
+			if res, ok := item.(*meshresource.InstanceResource); ok {
+				resKeys = append(resKeys, res.ResourceKey())
+			}
+		}
+		logger.Warnf("cannot merge runtime instance by name because matched resources are ambiguous, runtime: %s, name: %s, candidates: %v",
+			rtInstanceRes.ResourceKey(), instanceResName, resKeys)
+		return nil, nil
+	}
+	instanceRes, ok := resources[0].(*meshresource.InstanceResource)
+	if !ok {
+		return nil, bizerror.NewAssertionError("InstanceResource", reflect.TypeOf(resources[0]).Name())
+	}
+	return instanceRes, nil
 }
 
 func (s *RuntimeInstanceEventSubscriber) getRelatedInstanceByName(
@@ -216,21 +252,28 @@ func (s *RuntimeInstanceEventSubscriber) getRelatedInstanceByName(
 		return nil, nil
 	}
 	instanceResList := make([]*meshresource.InstanceResource, len(resources))
+	filtered := make([]*meshresource.InstanceResource, 0, len(resources))
 	for i, item := range resources {
 		res, ok := item.(*meshresource.InstanceResource)
 		if !ok {
 			return nil, bizerror.NewAssertionError("InstanceResource", reflect.TypeOf(item).Name())
 		}
 		instanceResList[i] = res
+		if strutil.IsBlank(rtInstanceRes.Mesh) || res.Mesh == rtInstanceRes.Mesh {
+			filtered = append(filtered, res)
+		}
 	}
-	if len(instanceResList) > 1 {
-		resKeys := slice.Map(instanceResList, func(index int, item *meshresource.InstanceResource) string {
+	if len(filtered) == 0 {
+		return nil, nil
+	}
+	if len(filtered) > 1 {
+		resKeys := slice.Map(filtered, func(index int, item *meshresource.InstanceResource) string {
 			return item.ResourceKey()
 		})
 		logger.Warnf("there are more than two instances which have the same name, instance keys: %s, name: %s", resKeys, instanceResName)
 		return nil, nil
 	}
-	return instanceResList[0], nil
+	return filtered[0], nil
 }
 
 func (s *RuntimeInstanceEventSubscriber) getRelatedInstanceByIP(
@@ -245,21 +288,28 @@ func (s *RuntimeInstanceEventSubscriber) getRelatedInstanceByIP(
 		return nil, nil
 	}
 	instanceResList := make([]*meshresource.InstanceResource, len(resources))
+	filtered := make([]*meshresource.InstanceResource, 0, len(resources))
 	for i, item := range resources {
 		res, ok := item.(*meshresource.InstanceResource)
 		if !ok {
 			return nil, bizerror.NewAssertionError("InstanceResource", reflect.TypeOf(item).Name())
 		}
 		instanceResList[i] = res
+		if strutil.IsBlank(rtInstanceRes.Mesh) || res.Mesh == rtInstanceRes.Mesh {
+			filtered = append(filtered, res)
+		}
 	}
-	if len(instanceResList) > 1 {
-		resKeys := slice.Map(instanceResList, func(index int, item *meshresource.InstanceResource) string {
+	if len(filtered) == 0 {
+		return nil, nil
+	}
+	if len(filtered) > 1 {
+		resKeys := slice.Map(filtered, func(index int, item *meshresource.InstanceResource) string {
 			return item.ResourceKey()
 		})
 		logger.Warnf("there are instances which have same ip, instance keys: %s, ip: %s", resKeys, rtInstanceRes.Spec.Ip)
 		return nil, nil
 	}
-	return instanceResList[0], nil
+	return filtered[0], nil
 }
 
 func checkAttributesEnough(rtInstanceRes *meshresource.RuntimeInstanceResource) bool {
@@ -271,12 +321,27 @@ func checkAttributesEnough(rtInstanceRes *meshresource.RuntimeInstanceResource) 
 	return true
 }
 
-func hasRuntimeIdentity(rtInstanceRes *meshresource.RuntimeInstanceResource) bool {
-	if rtInstanceRes == nil || rtInstanceRes.Spec == nil {
-		return false
+func runtimeIdentityMissingReason(rtInstanceRes *meshresource.RuntimeInstanceResource) string {
+	if rtInstanceRes == nil {
+		return "runtime instance is nil"
 	}
-	return strutil.IsNotBlank(rtInstanceRes.Spec.AppName) &&
-		strutil.IsNotBlank(rtInstanceRes.Spec.Ip) &&
-		rtInstanceRes.Spec.RpcPort > 0 &&
-		strutil.IsNotBlank(rtInstanceRes.Mesh)
+	if rtInstanceRes.Spec == nil {
+		return "runtime instance spec is nil"
+	}
+	if strutil.IsBlank(rtInstanceRes.Spec.AppName) {
+		return "appName is empty"
+	}
+	if strutil.IsBlank(rtInstanceRes.Spec.Ip) {
+		return "pod ip is empty"
+	}
+	if rtInstanceRes.Spec.RpcPort <= 0 {
+		return "rpcPort is not configured"
+	}
+	if strutil.IsBlank(rtInstanceRes.Mesh) {
+		return "mesh is empty"
+	}
+	if constants.DefaultMesh == rtInstanceRes.Mesh {
+		return "mesh is default, missing registry identifier"
+	}
+	return "unknown"
 }
