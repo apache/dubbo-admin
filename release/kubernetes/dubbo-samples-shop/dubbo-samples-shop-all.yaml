@@ -114,6 +114,8 @@ spec:
         app: shop-order
         orderVersion: v1
         app-type: dubbo
+        org.apache.dubbo/dubbo-rpc-port: "20882"
+        org.apache.dubbo/registry: nacos2.5
     spec:
       containers:
         - name: shop-order
@@ -161,6 +163,8 @@ spec:
         app: shop-order
         orderVersion: v2
         app-type: dubbo
+        org.apache.dubbo/dubbo-rpc-port: "20883"
+        org.apache.dubbo/registry: nacos2.5
     spec:
       containers:
         - name: shop-order
@@ -205,6 +209,8 @@ spec:
       labels:
         app: shop-user
         app-type: dubbo
+        org.apache.dubbo/dubbo-rpc-port: "20884"
+        org.apache.dubbo/registry: nacos2.5
     spec:
       containers:
         - name: shop-user
@@ -250,6 +256,8 @@ spec:
         app: shop-detail
         detailVersion: v1
         app-type: dubbo
+        org.apache.dubbo/dubbo-rpc-port: "20885"
+        org.apache.dubbo/registry: nacos2.5
     spec:
       containers:
         - name: shop-detail
@@ -297,6 +305,8 @@ spec:
         app: shop-detail
         detailVersion: v2
         app-type: dubbo
+        org.apache.dubbo/dubbo-rpc-port: "20886"
+        org.apache.dubbo/registry: nacos2.5
     spec:
       containers:
         - name: shop-detail
@@ -344,6 +354,8 @@ spec:
         app: shop-comment
         commentVersion: v1
         app-type: dubbo
+        org.apache.dubbo/dubbo-rpc-port: "20887"
+        org.apache.dubbo/registry: nacos2.5
     spec:
       containers:
         - name: shop-comment
@@ -391,6 +403,8 @@ spec:
         app: shop-comment
         commentVersion: v2
         app-type: dubbo
+        org.apache.dubbo/dubbo-rpc-port: "20888"
+        org.apache.dubbo/registry: nacos2.5
     spec:
       containers:
         - name: shop-comment
@@ -434,6 +448,8 @@ spec:
       labels:
         app: shop-user
         app-type: dubbo
+        org.apache.dubbo/dubbo-rpc-port: "20892"
+        org.apache.dubbo/registry: nacos2.5
     spec:
       containers:
         - name: shop-user-gray
@@ -480,6 +496,8 @@ spec:
         app: shop-order
         orderVersion: v1
         app-type: dubbo
+        org.apache.dubbo/dubbo-rpc-port: "20891"
+        org.apache.dubbo/registry: nacos2.5
     spec:
       containers:
         - name: shop-order
@@ -525,6 +543,8 @@ spec:
         app: shop-detail
         detailVersion: v1
         app-type: dubbo
+        org.apache.dubbo/dubbo-rpc-port: "20890"
+        org.apache.dubbo/registry: nacos2.5
     spec:
       containers:
         - name: shop-detail
@@ -570,6 +590,8 @@ spec:
         app: shop-comment
         commentVersion: v1
         app-type: dubbo
+        org.apache.dubbo/dubbo-rpc-port: "20889"
+        org.apache.dubbo/registry: nacos2.5
     spec:
       containers:
         - name: shop-comment
