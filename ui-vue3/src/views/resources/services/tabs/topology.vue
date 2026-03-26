@@ -31,19 +31,7 @@
         >
           <a-descriptions-item v-for="item in detailEntries" :key="item.key">
             <template #label>{{ item.key }}</template>
-            <template v-if="item.key === 'versionGroups' && Array.isArray(item.value)">
-              <a-space direction="vertical" size="small">
-                <a-space v-for="(vg, idx) in item.value" :key="idx" size="small">
-                  <a-tag>version: {{ vg?.version ?? '无' }}</a-tag>
-                  <a-tag>group: {{ vg?.group ?? '无' }}</a-tag>
-                </a-space>
-              </a-space>
-            </template>
-            <template v-else>
-              <a-typography-paragraph style="margin-bottom: 0">{{
-                formatValueForDisplay(item.value)
-              }}</a-typography-paragraph>
-            </template>
+            {{ formatValueForDisplay(item.value) }}
           </a-descriptions-item>
         </a-descriptions>
       </a-spin>
@@ -169,26 +157,15 @@ const detailTitle = computed(() => {
   return currentDetailKey.value ? `${base}：${currentDetailKey.value}` : base
 })
 
+const detailEntryBlacklist = new Set<string>(['versionGroups', 'appName'])
+
 const detailEntries = computed(() => {
   const data = detailData.value ?? {}
-  const preferredKeys = ['versionGroups', 'avgRT', 'avgQPS', 'requestTotal']
-  const pairs = Object.entries(data).filter(
-    ([, v]) => v !== undefined && v !== null && String(v) !== ''
-  )
-  const ordered: Array<[string, unknown]> = []
-  const used = new Set<string>()
-  for (const k of preferredKeys) {
-    const hit = pairs.find(([key]) => key === k)
-    if (hit) {
-      ordered.push(hit)
-      used.add(k)
-    }
-  }
-  const rest = pairs
-    .filter(([k]) => !used.has(k))
-    .sort((a, b) => (a[0] > b[0] ? 1 : a[0] < b[0] ? -1 : 0))
-  ordered.push(...rest)
-  return ordered.map(([key, value]) => ({ key, value }))
+  return Object.entries(data)
+    .filter(
+      ([k, v]) => !detailEntryBlacklist.has(k) && v !== undefined && v !== null && String(v) !== ''
+    )
+    .map(([key, value]) => ({ key, value }))
 })
 
 const formatValueForDisplay = (v: unknown) => {

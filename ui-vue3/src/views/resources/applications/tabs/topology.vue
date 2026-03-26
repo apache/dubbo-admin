@@ -29,15 +29,9 @@
           bordered
           :labelStyle="{ fontWeight: 'bold', width: '160px' }"
         >
-          <a-descriptions-item
-            v-for="(v, k) in detailData"
-            :key="k"
-            v-show="v !== undefined && v !== null"
-          >
-            <template #label>{{ k }}</template>
-            <a-typography-paragraph style="margin-bottom: 0">{{
-              formatValueForDisplay(v)
-            }}</a-typography-paragraph>
+          <a-descriptions-item v-for="item in detailEntries" :key="item.key">
+            <template #label>{{ item.key }}</template>
+            {{ formatValueForDisplay(item.value) }}
           </a-descriptions-item>
         </a-descriptions>
       </a-spin>
@@ -150,7 +144,14 @@ const detailTitle = computed(() => {
   return currentDetailKey.value ? `应用详情：${currentDetailKey.value}` : '应用详情'
 })
 
-const formatValueForDisplay = (v: unknown) => {
+const detailEntries = computed(() => {
+  const data = detailData.value ?? {}
+  return Object.entries(data)
+    .filter(([, v]) => v !== undefined && v !== null && String(v) !== '')
+    .map(([key, value]) => ({ key, value }))
+})
+
+const formatValueForDisplay = (v: unknown): string => {
   if (v === null || v === undefined) return ''
   if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v)
   if (Array.isArray(v))
@@ -211,7 +212,7 @@ const renderTopology = (graphData: any) => {
     node: {
       type: 'vue-node',
       style: {
-        component: (data) => <StatefulNode data={Object.assign({}, data)} />
+        component: (data: any) => <StatefulNode data={Object.assign({}, data)} />
       }
     },
     edge: {
