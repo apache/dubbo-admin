@@ -32,6 +32,7 @@ import (
 	_ "github.com/apache/dubbo-admin/pkg/discovery/zk"
 	_ "github.com/apache/dubbo-admin/pkg/engine/kubernetes"
 	_ "github.com/apache/dubbo-admin/pkg/engine/mock"
+	_ "github.com/apache/dubbo-admin/pkg/governor/mock"
 	_ "github.com/apache/dubbo-admin/pkg/governor/nacos2"
 	_ "github.com/apache/dubbo-admin/pkg/governor/zk"
 	_ "github.com/apache/dubbo-admin/pkg/store/memory"

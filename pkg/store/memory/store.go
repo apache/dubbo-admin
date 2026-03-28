@@ -86,31 +86,35 @@ func (rs *resourceStore) Add(obj interface{}) error {
 
 func (rs *resourceStore) Update(obj interface{}) error {
 	r, ok := obj.(coremodel.Resource)
+	var oldRes coremodel.Resource
 	if ok {
-		// Get the old resource from the store to properly remove it from trees
+		// Fetch old resource before mutating the store
 		oldObj, exists, err := rs.storeProxy.Get(r)
 		if exists && err == nil {
-			if oldRes, ok := oldObj.(coremodel.Resource); ok {
-				rs.removeFromTrees(oldRes)
-			}
+			oldRes, _ = oldObj.(coremodel.Resource)
 		}
 	}
 	if err := rs.storeProxy.Update(obj); err != nil {
 		return err
 	}
+	// Only mutate trees after a successful store update
 	if ok {
-		// Add new entry with updated values
+		if oldRes != nil {
+			rs.removeFromTrees(oldRes)
+		}
 		rs.addToTrees(r)
 	}
 	return nil
 }
 
 func (rs *resourceStore) Delete(obj interface{}) error {
-	r, ok := obj.(coremodel.Resource)
-	if ok {
+	if err := rs.storeProxy.Delete(obj); err != nil {
+		return err
+	}
+	if r, ok := obj.(coremodel.Resource); ok {
 		rs.removeFromTrees(r)
 	}
-	return rs.storeProxy.Delete(obj)
+	return nil
 }
 
 func (rs *resourceStore) List() []interface{} {
@@ -350,8 +354,9 @@ func (rs *resourceStore) getKeysByPrefix(indexName, prefix string) ([]string, er
 	var keys []string
 	tree.WalkPrefix(prefix, func(k string, v interface{}) bool {
 		// Key format: "indexValue/resourceKey"
-		// Extract the resourceKey part (after the last "/")
-		idx := strings.LastIndex(k, "/")
+		// Key format: "indexValue/resourceKey"
+		// Use Index (first "/") because resourceKey itself contains "/" (mesh/name)
+		idx := strings.Index(k, "/")
 		if idx >= 0 && idx < len(k)-1 {
 			keys = append(keys, k[idx+1:])
 		}

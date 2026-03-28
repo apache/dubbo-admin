@@ -80,6 +80,12 @@ func (gs *GormStore) Init(_ runtime.BuilderContext) error {
 		return err
 	}
 
+	// Backfill resource_indices from existing ResourceModel rows so that
+	// ListByIndexes/HasPrefix work correctly after restarts or upgrades.
+	if err := gs.backfillIndices(); err != nil {
+		return fmt.Errorf("failed to backfill indices for %s: %w", gs.kind.ToString(), err)
+	}
+
 	logger.Infof("GORM store initialized for resource kind: %s", gs.kind.ToString())
 	return nil
 }
@@ -141,16 +147,15 @@ func (gs *GormStore) Add(obj interface{}) error {
 		return err
 	}
 
-	if err := db.Scopes(TableScope(gs.kind.ToString())).Create(m).Error; err != nil {
-		return err
-	}
-
-	// Persist index entries to DB
-	if err := gs.persistIndexEntries(resource, nil); err != nil {
-		logger.Warnf("failed to persist index entries for %s: %v", resource.ResourceKey(), err)
-	}
-
-	return nil
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Scopes(TableScope(gs.kind.ToString())).Create(m).Error; err != nil {
+			return err
+		}
+		if err := gs.persistIndexEntriesTx(tx, resource, nil); err != nil {
+			return fmt.Errorf("failed to persist index entries for %s: %w", resource.ResourceKey(), err)
+		}
+		return nil
+	})
 }
 
 // Update modifies an existing resource in the database
@@ -183,32 +188,32 @@ func (gs *GormStore) Update(obj interface{}) error {
 	}
 
 	db := gs.pool.GetDB()
-	result := db.Scopes(TableScope(gs.kind.ToString())).Model(&ResourceModel{}).
-		Where("resource_key = ?", resource.ResourceKey()).
-		Updates(map[string]interface{}{
-			"name": m.Name,
-			"mesh": m.Mesh,
-			"data": m.Data,
-		})
+	return db.Transaction(func(tx *gorm.DB) error {
+		result := tx.Scopes(TableScope(gs.kind.ToString())).Model(&ResourceModel{}).
+			Where("resource_key = ?", resource.ResourceKey()).
+			Updates(map[string]interface{}{
+				"name": m.Name,
+				"mesh": m.Mesh,
+				"data": m.Data,
+			})
 
-	if result.Error != nil {
-		return result.Error
-	}
+		if result.Error != nil {
+			return result.Error
+		}
 
-	if result.RowsAffected == 0 {
-		return store.ErrorResourceNotFound(
-			resource.ResourceKind().ToString(),
-			resource.ResourceMeta().Name,
-			resource.ResourceMesh(),
-		)
-	}
+		if result.RowsAffected == 0 {
+			return store.ErrorResourceNotFound(
+				resource.ResourceKind().ToString(),
+				resource.ResourceMeta().Name,
+				resource.ResourceMesh(),
+			)
+		}
 
-	// Persist index entries to DB
-	if err := gs.persistIndexEntries(resource, oldResource.(model.Resource)); err != nil {
-		logger.Warnf("failed to persist index entries for %s: %v", resource.ResourceKey(), err)
-	}
-
-	return nil
+		if err := gs.persistIndexEntriesTx(tx, resource, oldResource.(model.Resource)); err != nil {
+			return fmt.Errorf("failed to persist index entries for %s: %w", resource.ResourceKey(), err)
+		}
+		return nil
+	})
 }
 
 // Delete removes a resource from the database
@@ -219,28 +224,26 @@ func (gs *GormStore) Delete(obj interface{}) error {
 	}
 
 	db := gs.pool.GetDB()
-	result := db.Scopes(TableScope(gs.kind.ToString())).
-		Where("resource_key = ?", resource.ResourceKey()).
-		Delete(&ResourceModel{})
+	return db.Transaction(func(tx *gorm.DB) error {
+		result := tx.Scopes(TableScope(gs.kind.ToString())).
+			Where("resource_key = ?", resource.ResourceKey()).
+			Delete(&ResourceModel{})
 
-	if result.Error != nil {
-		return result.Error
-	}
+		if result.Error != nil {
+			return result.Error
+		}
 
-	if result.RowsAffected == 0 {
-		return store.ErrorResourceNotFound(
-			resource.ResourceKind().ToString(),
-			resource.ResourceMeta().Name,
-			resource.ResourceMesh(),
-		)
-	}
+		if result.RowsAffected == 0 {
+			return store.ErrorResourceNotFound(
+				resource.ResourceKind().ToString(),
+				resource.ResourceMeta().Name,
+				resource.ResourceMesh(),
+			)
+		}
 
-	// Delete index entries from DB
-	if err := gs.deleteIndexEntries(resource.ResourceKey()); err != nil {
-		logger.Warnf("failed to delete index entries for %s: %v", resource.ResourceKey(), err)
-	}
-
-	return nil
+		return tx.Where("resource_kind = ? AND resource_key = ?", gs.kind.ToString(), resource.ResourceKey()).
+			Delete(&ResourceIndexModel{}).Error
+	})
 }
 
 // List returns all resources of the configured kind from the database
@@ -373,7 +376,7 @@ func (gs *GormStore) Replace(list []interface{}, _ string) error {
 
 		if len(indexEntries) > 0 {
 			if err := tx.CreateInBatches(&indexEntries, 100).Error; err != nil {
-				logger.Warnf("failed to persist index entries during replace: %v", err)
+				return fmt.Errorf("failed to persist index entries during replace: %w", err)
 			}
 		}
 
@@ -637,19 +640,16 @@ func (gs *GormStore) getKeysByIndexes(indexes []index.IndexCondition) ([]string,
 	return result, nil
 }
 
-// persistIndexEntries writes index entries for a resource to the database
-// If oldResource is not nil, first deletes old entries, then inserts new ones
-func (gs *GormStore) persistIndexEntries(resource model.Resource, oldResource model.Resource) error {
-	db := gs.pool.GetDB()
-
-	// Delete old entries if updating
+// persistIndexEntriesTx writes index entries for a resource within an existing transaction.
+// If oldResource is not nil, first deletes its old entries scoped by resource_kind.
+func (gs *GormStore) persistIndexEntriesTx(tx *gorm.DB, resource model.Resource, oldResource model.Resource) error {
 	if oldResource != nil {
-		if err := db.Where("resource_key = ?", oldResource.ResourceKey()).Delete(&ResourceIndexModel{}).Error; err != nil {
+		if err := tx.Where("resource_kind = ? AND resource_key = ?", gs.kind.ToString(), oldResource.ResourceKey()).
+			Delete(&ResourceIndexModel{}).Error; err != nil {
 			return err
 		}
 	}
 
-	// Get all index entries for this resource
 	indexers := gs.GetIndexers()
 	var entries []ResourceIndexModel
 	for indexName, indexFunc := range indexers {
@@ -672,13 +672,60 @@ func (gs *GormStore) persistIndexEntries(resource model.Resource, oldResource mo
 		return nil
 	}
 
-	return db.Create(&entries).Error
+	return tx.Create(&entries).Error
 }
 
-// deleteIndexEntries removes all index entries for a resource key
-func (gs *GormStore) deleteIndexEntries(resourceKey string) error {
+// backfillIndices rebuilds resource_indices from existing ResourceModel rows.
+// Called at Init time so that ListByIndexes works correctly after restarts or upgrades.
+func (gs *GormStore) backfillIndices() error {
 	db := gs.pool.GetDB()
-	return db.Where("resource_key = ?", resourceKey).Delete(&ResourceIndexModel{}).Error
+
+	// Load all existing resources for this kind
+	var models []ResourceModel
+	if err := db.Scopes(TableScope(gs.kind.ToString())).Find(&models).Error; err != nil {
+		return err
+	}
+	if len(models) == 0 {
+		return nil
+	}
+
+	return db.Transaction(func(tx *gorm.DB) error {
+		// Drop stale index rows for this kind and rebuild from scratch
+		if err := tx.Where("resource_kind = ?", gs.kind.ToString()).
+			Delete(&ResourceIndexModel{}).Error; err != nil {
+			return err
+		}
+
+		indexers := gs.GetIndexers()
+		var entries []ResourceIndexModel
+		for _, m := range models {
+			resource, err := m.ToResource()
+			if err != nil {
+				logger.Warnf("backfillIndices: failed to deserialize resource %s: %v", m.ResourceKey, err)
+				continue
+			}
+			for indexName, indexFunc := range indexers {
+				values, err := indexFunc(resource)
+				if err != nil {
+					continue
+				}
+				for _, v := range values {
+					entries = append(entries, ResourceIndexModel{
+						ResourceKind: gs.kind.ToString(),
+						IndexName:    indexName,
+						IndexValue:   v,
+						ResourceKey:  resource.ResourceKey(),
+						Operator:     string(index.Equals),
+					})
+				}
+			}
+		}
+
+		if len(entries) == 0 {
+			return nil
+		}
+		return tx.CreateInBatches(&entries, 100).Error
+	})
 }
 
 // getKeysByPrefixFromDB retrieves resource keys matching a prefix from the database
