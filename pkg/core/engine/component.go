@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"sync/atomic"
 
 	"k8s.io/client-go/tools/cache"
 
@@ -57,6 +58,7 @@ type engineComponent struct {
 	subscribers         []events.Subscriber
 	leaderElection      *leader.LeaderElection
 	needsLeaderElection bool
+	subscribed          atomic.Bool
 }
 
 func newEngineComponent() Component {
@@ -216,11 +218,14 @@ func (e *engineComponent) Start(_ runtime.Runtime, ch <-chan struct{}) error {
 // startBusinessLogic starts subscribers and informers using the provided stopCh.
 // When stopCh is closed all informer goroutines will exit.
 func (e *engineComponent) startBusinessLogic(stopCh <-chan struct{}) error {
-	// 1. subscribe resource changed events
-	for _, sub := range e.subscribers {
-		if err := e.subscriptionManager.Subscribe(sub); err != nil {
-			return fmt.Errorf("could not subscribe %s to eventbus, %w", sub.Name(), err)
+	// 1. subscribe resource changed events (only once for the process lifetime)
+	if !e.subscribed.Load() {
+		for _, sub := range e.subscribers {
+			if err := e.subscriptionManager.Subscribe(sub); err != nil {
+				return fmt.Errorf("could not subscribe %s to eventbus, %w", sub.Name(), err)
+			}
 		}
+		e.subscribed.Store(true)
 	}
 	// 2. start informers
 	for _, informer := range e.informers {

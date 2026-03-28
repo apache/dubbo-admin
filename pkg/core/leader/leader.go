@@ -133,9 +133,12 @@ func (le *LeaderElection) TryAcquire(ctx context.Context) bool {
 		err := le.db.WithContext(ctx).
 			Where("component = ?", le.component).
 			First(&lease).Error
-		if err == nil {
-			le.currentVersion = lease.Version
+		if err != nil {
+			logger.Warnf("leader election: failed to read back updated lease for component %s: %v", le.component, err)
+			le.isLeader.Store(false)
+			return false
 		}
+		le.currentVersion = lease.Version
 		le.isLeader.Store(true)
 		return true
 	}
@@ -228,6 +231,7 @@ func (le *LeaderElection) RunLeaderElection(ctx context.Context, stopCh <-chan s
 	defer ticker.Stop()
 
 	renewTicker := time.NewTicker(le.renewInterval)
+	defer renewTicker.Stop()
 	renewTicker.Stop() // Don't start renewal ticker yet
 
 	isLeader := false

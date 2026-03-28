@@ -82,6 +82,7 @@ func (c *managerComponent) Init(ctx runtime.BuilderContext) error {
 
 	storeComponent, err := ctx.GetActivatedComponent(runtime.ResourceStore)
 	if err != nil {
+		logger.Warnf("counter: failed to get ResourceStore component, skipping leader election: %v", err)
 		return nil
 	}
 	dbSrc, ok := storeComponent.(leader.DBSource)

@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"sync/atomic"
 
 	"github.com/duke-git/lancet/v2/slice"
 
@@ -60,6 +61,7 @@ type discoveryComponent struct {
 	subscriptionMgr     events.SubscriptionManager
 	leaderElection      *leader.LeaderElection
 	needsLeaderElection bool
+	subscribed          atomic.Bool
 }
 
 func (d *discoveryComponent) RequiredDependencies() []runtime.ComponentType {
@@ -184,13 +186,16 @@ func (d *discoveryComponent) Start(_ runtime.Runtime, ch <-chan struct{}) error 
 // startBusinessLogic starts subscribers and informers using the provided stopCh.
 // When stopCh is closed all informer goroutines will exit.
 func (d *discoveryComponent) startBusinessLogic(stopCh <-chan struct{}) error {
-	// 1. subscribe resource changed events
-	for _, sub := range d.subscribers {
-		err := d.subscriptionMgr.Subscribe(sub)
-		if err != nil {
-			return bizerror.Wrap(err, bizerror.EventError,
-				fmt.Sprintf("subscriber %s can not subscribe resource changed events", sub.Name()))
+	// 1. subscribe resource changed events (only once for the process lifetime)
+	if !d.subscribed.Load() {
+		for _, sub := range d.subscribers {
+			err := d.subscriptionMgr.Subscribe(sub)
+			if err != nil {
+				return bizerror.Wrap(err, bizerror.EventError,
+					fmt.Sprintf("subscriber %s can not subscribe resource changed events", sub.Name()))
+			}
 		}
+		d.subscribed.Store(true)
 	}
 	// 2. start informers
 	for name, informers := range d.informers {
