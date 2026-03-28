@@ -91,10 +91,7 @@ import { searchInstances } from '@/api/service/instance'
 import SearchTable from '@/components/SearchTable.vue'
 import { SearchDomain } from '@/utils/SearchUtil'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
-import {
-  INSTANCE_LIFECYCLE_COLOR,
-  PRIMARY_COLOR
-} from '@/base/constants'
+import { INSTANCE_LIFECYCLE_COLOR, PRIMARY_COLOR } from '@/base/constants'
 import router from '@/router'
 import { Icon } from '@iconify/vue'
 import { queryMetrics } from '@/base/http/promQuery'

@@ -52,7 +52,9 @@
           <a-tag>{{ text }}</a-tag>
         </template>
         <template v-if="column.dataIndex === 'registerState'">
-          <a-tag :color="INSTANCE_REGISTER_COLOR[(text || 'UNREGISTERED').toUpperCase()] || 'default'">
+          <a-tag
+            :color="INSTANCE_REGISTER_COLOR[(text || 'UNREGISTERED').toUpperCase()] || 'default'"
+          >
             {{ text }}
           </a-tag>
         </template>
