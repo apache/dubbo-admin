@@ -555,6 +555,7 @@ const words: I18nType = {
   idx: '序号',
   submit: '提交',
   reset: '重置',
+  refresh: '刷新',
   router: {
     resource: {
       app: {

@@ -17,6 +17,18 @@
 <template>
   <div class="instances-container">
     <search-table :search-domain="searchDomain">
+      <template #customOperation>
+        <a-button
+          class="refresh-button"
+          :loading="searchDomain.table.loading"
+          @click="searchDomain.onSearch()"
+        >
+          <template #icon>
+            <Icon icon="material-symbols:refresh-rounded"></Icon>
+          </template>
+          {{ $t('refresh') }}
+        </a-button>
+      </template>
       <template #bodyCell="{ text, record, index, column }">
         <template v-if="column.dataIndex === 'name'">
           <a-tooltip :title="text">

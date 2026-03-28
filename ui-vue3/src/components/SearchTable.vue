@@ -68,7 +68,7 @@
           </a-form>
         </a-col>
         <a-col :span="6">
-          <a-flex style="justify-content: flex-end">
+          <a-flex style="justify-content: flex-end; align-items: center; gap: 12px">
             <slot name="customOperation"></slot>
             <div class="common-tool" @click="commonTool.customColumns = !commonTool.customColumns">
               <div class="custom-column button">
@@ -221,22 +221,23 @@ function hideColumn(item: any) {
 
   .common-tool {
     margin-top: 5px;
-    width: 100px;
     cursor: pointer;
     position: relative;
+    flex: none;
 
     .button {
-      vertical-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       line-height: 24px;
       font-size: 24px;
-      float: right;
 
       &:hover {
         color: v-bind('PRIMARY_COLOR');
       }
 
       svg {
-        margin-left: 10px;
+        margin-left: 0;
       }
     }
 

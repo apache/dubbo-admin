@@ -565,6 +565,7 @@ const words: I18nType = {
   dependentService: 'Dependent Service',
   submit: 'Submit',
   reset: 'Reset',
+  refresh: 'Refresh',
   router: {
     resource: {
       app: {
