@@ -46,7 +46,7 @@ func SearchInstanceByIp(ctx consolectx.Context, req *model.SearchReq) (*model.Se
 		meshresource.InstanceKind,
 		[]index.IndexCondition{
 			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
-			{IndexName: index.ByInstanceIpIndex, Value: req.Keywords, Operator: index.Equals},
+			{IndexName: index.ByInstanceIpIndex, Value: req.Keywords, Operator: index.HasPrefix},
 		},
 		req.PageReq)
 	if err != nil {
@@ -77,7 +77,7 @@ func SearchInstanceByName(ctx consolectx.Context, req *model.SearchReq) (*model.
 		meshresource.InstanceKind,
 		[]index.IndexCondition{
 			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
-			{IndexName: index.ByInstanceNameIndex, Value: req.Keywords, Operator: index.Equals},
+			{IndexName: index.ByInstanceNameIndex, Value: req.Keywords, Operator: index.HasPrefix},
 		},
 		req.PageReq)
 	if err != nil {

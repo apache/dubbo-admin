@@ -122,14 +122,14 @@ func SearchServices(ctx consolectx.Context, req *model.ServiceSearchReq) (*model
 	}, nil
 }
 
-// SearchServicesByKeywords search services by keywords, for now only support accurate search
+// SearchServicesByKeywords search services by keywords with prefix matching
 func SearchServicesByKeywords(ctx consolectx.Context, req *model.ServiceSearchReq) (*model.SearchPaginationResult, error) {
 	pageData, err := manager.PageListByIndexes[*meshresource.ServiceProviderMetadataResource](
 		ctx.ResourceManager(),
 		meshresource.ServiceProviderMetadataKind,
 		[]index.IndexCondition{
 			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
-			{IndexName: index.ByServiceProviderServiceName, Value: req.Keywords, Operator: index.Equals},
+			{IndexName: index.ByServiceProviderServiceName, Value: req.Keywords, Operator: index.HasPrefix},
 		},
 		req.PageReq,
 	)
