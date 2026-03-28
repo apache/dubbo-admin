@@ -97,28 +97,8 @@ func decodeGenericInvokeArrayArg(elementType string, raw json.RawMessage) (any, 
 }
 
 func splitGenericArrayType(parameterType string) (string, bool) {
-	parameterType = strings.TrimSpace(parameterType)
 	if strings.HasSuffix(parameterType, "[]") {
-		return strings.TrimSpace(strings.TrimSuffix(parameterType, "[]")), true
-	}
-	if strings.HasPrefix(parameterType, "[L") && strings.HasSuffix(parameterType, ";") {
-		return strings.TrimSpace(parameterType[2 : len(parameterType)-1]), true
-	}
-	switch parameterType {
-	case "[B":
-		return "byte", true
-	case "[S":
-		return "short", true
-	case "[I":
-		return "int", true
-	case "[J":
-		return "long", true
-	case "[F":
-		return "float", true
-	case "[D":
-		return "double", true
-	case "[C":
-		return "char", true
+		return strings.TrimSuffix(parameterType, "[]"), true
 	}
 	return "", false
 }
