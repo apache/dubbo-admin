@@ -42,7 +42,6 @@ func decodeGenericInvokeArgs(parameterTypes []string, args []json.RawMessage) ([
 }
 
 func decodeGenericInvokeArg(parameterType string, raw json.RawMessage) (any, error) {
-	parameterType = strings.TrimSpace(parameterType)
 	if isNullRawMessage(raw) {
 		return nil, nil
 	}

@@ -176,14 +176,12 @@ type ServiceMethodTypeResp struct {
 const DefaultServiceGenericInvokeTimeoutMs int64 = 3000
 
 type ServiceGenericInvokeReq struct {
-	Mesh         string            `json:"mesh"`
+	BaseServiceReq
+
 	InstanceName string            `json:"instanceName"`
-	ServiceName  string            `json:"serviceName"`
 	MethodName   string            `json:"methodName"`
 	Signature    string            `json:"signature"`
 	Args         []json.RawMessage `json:"args"`
-	Group        string            `json:"group"`
-	Version      string            `json:"version"`
 	TimeoutMs    int64             `json:"timeoutMs"`
 	Attachments  map[string]string `json:"attachments"`
 }

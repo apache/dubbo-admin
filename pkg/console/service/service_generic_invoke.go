@@ -104,21 +104,12 @@ var invokeGenericServiceRPC = func(callCtx context.Context, invocation genericIn
 }
 
 func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvokeReq) (*model.ServiceGenericInvokeResp, error) {
-	if err := req.Validate(); err != nil {
-		return nil, bizerror.New(bizerror.InvalidArgument, err.Error())
-	}
-
 	instanceRes, err := getGenericInvokeInstance(ctx, req.Mesh, req.InstanceName)
 	if err != nil {
 		return nil, err
 	}
 
-	metadataList, err := listProviderMeta(ctx, model.BaseServiceReq{
-		ServiceName: req.ServiceName,
-		Group:       req.Group,
-		Version:     req.Version,
-		Mesh:        req.Mesh,
-	})
+	metadataList, err := listProviderMeta(ctx, req.BaseServiceReq)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +152,16 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 	defer cancel()
 
 	if len(req.Attachments) > 0 {
-		callCtx = context.WithValue(callCtx, dubboconstant.AttachmentKey, toAttachmentValues(req.Attachments))
+		attachmentValues := make(map[string]any, len(req.Attachments))
+		for key, value := range req.Attachments {
+			attachmentValues[key] = value
+		}
+		callCtx = context.WithValue(callCtx, dubboconstant.AttachmentKey, attachmentValues)
+	}
+
+	hessianArgs := make([]hessian.Object, len(decodedArgs))
+	for i, arg := range decodedArgs {
+		hessianArgs[i] = arg
 	}
 
 	startedAt := time.Now()
@@ -171,7 +171,7 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 		Version:        req.Version,
 		MethodName:     req.MethodName,
 		ParameterTypes: parameterTypes,
-		Args:           toHessianObjects(decodedArgs),
+		Args:           hessianArgs,
 	})
 	elapsedMs := time.Since(startedAt).Milliseconds()
 	if err != nil {
@@ -182,15 +182,11 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 
 	return &model.ServiceGenericInvokeResp{
 		ElapsedMs: elapsedMs,
-		RawResult: normalizeGenericInvokeJSONValue(result),
+		RawResult: normalizeJSONValue(reflect.ValueOf(result)),
 	}, nil
 }
 
-func normalizeGenericInvokeJSONValue(value any) any {
-	return normalizeGenericInvokeJSONReflectValue(reflect.ValueOf(value))
-}
-
-func normalizeGenericInvokeJSONReflectValue(value reflect.Value) any {
+func normalizeJSONValue(value reflect.Value) any {
 	if !value.IsValid() {
 		return nil
 	}
@@ -213,17 +209,17 @@ func normalizeGenericInvokeJSONReflectValue(value reflect.Value) any {
 		normalized := make(map[string]any, value.Len())
 		iter := value.MapRange()
 		for iter.Next() {
-			normalized[normalizeGenericInvokeJSONMapKey(iter.Key())] = normalizeGenericInvokeJSONReflectValue(iter.Value())
+			normalized[fmt.Sprint(normalizeJSONValue(iter.Key()))] = normalizeJSONValue(iter.Value())
 		}
 		return normalized
 	case reflect.Slice, reflect.Array:
 		normalized := make([]any, value.Len())
 		for index := 0; index < value.Len(); index++ {
-			normalized[index] = normalizeGenericInvokeJSONReflectValue(value.Index(index))
+			normalized[index] = normalizeJSONValue(value.Index(index))
 		}
 		return normalized
 	case reflect.Struct:
-		return normalizeGenericInvokeJSONStructValue(value)
+		return normalizeJSONStruct(value)
 	default:
 		if value.CanInterface() {
 			return value.Interface()
@@ -232,12 +228,7 @@ func normalizeGenericInvokeJSONReflectValue(value reflect.Value) any {
 	}
 }
 
-func normalizeGenericInvokeJSONMapKey(key reflect.Value) string {
-	keyValue := normalizeGenericInvokeJSONReflectValue(key)
-	return fmt.Sprint(keyValue)
-}
-
-func normalizeGenericInvokeJSONStructValue(value reflect.Value) map[string]any {
+func normalizeJSONStruct(value reflect.Value) map[string]any {
 	structType := value.Type()
 	normalized := make(map[string]any, structType.NumField())
 	for index := 0; index < structType.NumField(); index++ {
@@ -257,7 +248,7 @@ func normalizeGenericInvokeJSONStructValue(value reflect.Value) map[string]any {
 			}
 		}
 
-		normalized[fieldName] = normalizeGenericInvokeJSONReflectValue(value.Field(index))
+		normalized[fieldName] = normalizeJSONValue(value.Field(index))
 	}
 	return normalized
 }
@@ -300,22 +291,20 @@ func buildGenericInvokeTargets(rpcInstanceRes *meshresource.RPCInstanceResource)
 	}
 
 	serializations := buildGenericInvokeSerializations(rpcInstanceRes)
+	if len(serializations) == 0 {
+		return nil, bizerror.New(
+			bizerror.NotFoundError,
+			fmt.Sprintf("rpc instance %s has no available serialization metadata", rpcInstanceRes.Spec.GetName()),
+		)
+	}
 	targets := make([]*genericInvokeTarget, 0, len(rpcInstanceRes.Spec.GetEndpoints())*len(serializations))
 	for _, endpoint := range rpcInstanceRes.Spec.GetEndpoints() {
-		if endpoint == nil || endpoint.GetPort() <= 0 {
-			continue
-		}
-
-		protocol := normalizeGenericInvokeProtocol(endpoint.GetProtocol())
-		if protocol == "" {
-			continue
-		}
 
 		// Try every serialization on the current endpoint before moving to the next endpoint.
 		for _, serialization := range serializations {
 			targets = append(targets, &genericInvokeTarget{
 				instance:      rpcInstanceRes,
-				protocol:      protocol,
+				protocol:      endpoint.GetProtocol(),
 				port:          endpoint.GetPort(),
 				serialization: serialization,
 			})
@@ -356,17 +345,6 @@ func buildGenericInvokeSerializations(rpcInstanceRes *meshresource.RPCInstanceRe
 	return candidates
 }
 
-func normalizeGenericInvokeProtocol(protocol string) string {
-	switch strings.TrimSpace(strings.ToLower(protocol)) {
-	case dubboconstant.TriProtocol:
-		return dubboconstant.TriProtocol
-	case dubboconstant.DubboProtocol:
-		return dubboconstant.DubboProtocol
-	default:
-		return ""
-	}
-}
-
 func invokeGenericServiceWithTargets(
 	callCtx context.Context,
 	req model.ServiceGenericInvokeReq,
@@ -383,7 +361,7 @@ func invokeGenericServiceWithTargets(
 		attemptInvocation := invocation
 		attemptInvocation.Protocol = target.protocol
 		attemptInvocation.Serialization = target.serialization
-		attemptInvocation.URL = buildGenericInvokeURL(target.protocol, target.instance.Spec.GetIp(), target.port)
+		attemptInvocation.URL = fmt.Sprintf("%s://%s:%d", target.protocol, target.instance.Spec.GetIp(), target.port)
 
 		result, err := invokeGenericServiceRPC(callCtx, attemptInvocation)
 		if err == nil {
@@ -408,14 +386,7 @@ func invokeGenericServiceWithTargets(
 		}
 	}
 
-	if lastErr == nil {
-		return nil, bizerror.New(bizerror.NotFoundError, "no generic invoke target available")
-	}
 	return nil, lastErr
-}
-
-func buildGenericInvokeURL(protocol string, ip string, port int64) string {
-	return fmt.Sprintf("%s://%s:%d", protocol, ip, port)
 }
 
 func isRetryableGenericInvokeError(err error) bool {
@@ -430,33 +401,6 @@ func isRetryableGenericInvokeError(err error) bool {
 		errors.Is(err, protocolbase.ErrNoReply) {
 		return true
 	}
-
-	message := strings.ToLower(err.Error())
-	if message == "" {
-		return false
-	}
-	// Only retry failures that strongly suggest the request never reached a provider.
-	for _, keyword := range []string{
-		"connection refused",
-		"no such host",
-		"network is unreachable",
-		"transport",
-		"codec",
-		"serialization",
-		"unsupported serialization",
-		"no codec configured",
-		"unknown compression",
-		"header buffer too short",
-		"body buffer too short",
-		"illegal package",
-		"stream error",
-		"protocol error",
-	} {
-		if strings.Contains(message, keyword) {
-			return true
-		}
-	}
-	// Treat all other errors as provider-side or business failures to avoid duplicate invocation.
 	return false
 }
 
@@ -490,20 +434,4 @@ func findRPCInstanceByInstance(
 		bizerror.NotFoundError,
 		fmt.Sprintf("rpc instance not found for instance %s", instanceRes.Spec.Name),
 	)
-}
-
-func toAttachmentValues(attachments map[string]string) map[string]any {
-	values := make(map[string]any, len(attachments))
-	for key, value := range attachments {
-		values[key] = value
-	}
-	return values
-}
-
-func toHessianObjects(args []any) []hessian.Object {
-	objects := make([]hessian.Object, len(args))
-	for i, arg := range args {
-		objects[i] = arg
-	}
-	return objects
 }
