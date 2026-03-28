@@ -140,6 +140,9 @@ func (s *ServiceMethodDetailReq) Query(c *gin.Context) error {
 		return fmt.Errorf("method name is empty")
 	}
 	s.Signature = strings.TrimSpace(c.Query("signature"))
+	if strutil.IsBlank(s.Signature) {
+		return fmt.Errorf("signature is empty")
+	}
 	return nil
 }
 
@@ -202,6 +205,9 @@ func (s *ServiceGenericInvokeReq) Validate() error {
 	}
 
 	s.Signature = strings.TrimSpace(s.Signature)
+	if strutil.IsBlank(s.Signature) {
+		return fmt.Errorf("signature is empty")
+	}
 
 	s.InstanceName = strings.TrimSpace(s.InstanceName)
 	if strutil.IsBlank(s.InstanceName) {

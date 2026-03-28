@@ -113,14 +113,27 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 		return nil, err
 	}
 
-	resolvedMethod, err := resolveServiceMethod(ctx, newServiceMethodLookupReqFromGenericInvokeReq(req, instanceRes.Spec.AppName))
+	metadataList, err := listProviderMeta(ctx, model.BaseServiceReq{
+		ServiceName: req.ServiceName,
+		Group:       req.Group,
+		Version:     req.Version,
+		Mesh:        req.Mesh,
+	})
 	if err != nil {
+		return nil, err
+	}
+	resolvedMethod := findMethod(metadataList, req.MethodName, req.Signature)
+	if resolvedMethod == nil {
+		err := bizerror.New(
+			bizerror.NotFoundError,
+			fmt.Sprintf("method %s not found for service %s", req.MethodName, req.ServiceName),
+		)
 		logger.Errorf("resolve service method failed, service=%s, mesh=%s, instance=%s, method=%s, cause: %v",
 			req.ServiceName, req.Mesh, req.InstanceName, req.MethodName, err)
 		return nil, err
 	}
 
-	parameterTypes := append([]string{}, resolvedMethod.candidate.detail.ParameterTypes...)
+	parameterTypes := resolvedMethod.GetParameterTypes()
 	if len(parameterTypes) != len(req.Args) {
 		return nil, bizerror.New(bizerror.InvalidArgument, "resolved method parameter count does not match args length")
 	}
@@ -157,7 +170,7 @@ func InvokeServiceGeneric(ctx consolectx.Context, req model.ServiceGenericInvoke
 		Group:          req.Group,
 		Version:        req.Version,
 		MethodName:     req.MethodName,
-		ParameterTypes: append([]string{}, parameterTypes...),
+		ParameterTypes: parameterTypes,
 		Args:           toHessianObjects(decodedArgs),
 	})
 	elapsedMs := time.Since(startedAt).Milliseconds()

@@ -30,7 +30,7 @@ import (
 
 // GetServiceProviderInstances returns all provider instances for a service so the caller can build a full selector.
 func GetServiceProviderInstances(ctx consolectx.Context, req model.BaseServiceReq) ([]*model.SearchInstanceResp, error) {
-	metadataList, err := listServiceProviderMetadata(ctx, newServiceProviderMetadataLookupReqFromBaseServiceReq(req))
+	metadataList, err := listProviderMeta(ctx, req)
 	if err != nil {
 		logger.Errorf("list service provider metadata failed, service=%s, mesh=%s, cause: %v", req.ServiceName, req.Mesh, err)
 		return nil, err
