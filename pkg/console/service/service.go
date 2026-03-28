@@ -193,7 +193,7 @@ type resolvedServiceMethod struct {
 	candidate    *serviceMethodCandidate
 }
 
-func newServiceProviderMetadataLookupReqFromServiceMethodsReq(req model.ServiceMethodsReq) serviceProviderMetadataLookupReq {
+func newServiceProviderMetadataLookupReqFromBaseServiceReq(req model.BaseServiceReq) serviceProviderMetadataLookupReq {
 	return serviceProviderMetadataLookupReq{
 		ServiceName: req.ServiceName,
 		Group:       req.Group,
@@ -204,7 +204,7 @@ func newServiceProviderMetadataLookupReqFromServiceMethodsReq(req model.ServiceM
 
 func newServiceMethodLookupReqFromServiceMethodDetailReq(req model.ServiceMethodDetailReq) serviceMethodLookupReq {
 	return serviceMethodLookupReq{
-		Metadata:   newServiceProviderMetadataLookupReqFromServiceMethodsReq(req.ServiceMethodsReq),
+		Metadata:   newServiceProviderMetadataLookupReqFromBaseServiceReq(req.BaseServiceReq),
 		MethodName: req.MethodName,
 		Signature:  req.Signature,
 	}
@@ -224,8 +224,8 @@ func newServiceMethodLookupReqFromGenericInvokeReq(req model.ServiceGenericInvok
 	}
 }
 
-func GetServiceMethodNames(ctx consolectx.Context, req model.ServiceMethodsReq) ([]model.ServiceMethodSummaryResp, error) {
-	metadataList, err := listServiceProviderMetadata(ctx, newServiceProviderMetadataLookupReqFromServiceMethodsReq(req))
+func GetServiceMethodNames(ctx consolectx.Context, req model.BaseServiceReq) ([]model.ServiceMethodSummaryResp, error) {
+	metadataList, err := listServiceProviderMetadata(ctx, newServiceProviderMetadataLookupReqFromBaseServiceReq(req))
 	if err != nil {
 		return nil, err
 	}

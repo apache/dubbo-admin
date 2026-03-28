@@ -71,7 +71,7 @@ func GetServiceTabDistribution(ctx consolectx.Context) gin.HandlerFunc {
 
 func GetServiceProviderInstances(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		req := model.ServiceMethodsReq{}
+		req := model.BaseServiceReq{}
 		if err := req.Query(c); err != nil {
 			util.HandleArgumentError(c, err)
 			return
@@ -89,7 +89,7 @@ func GetServiceProviderInstances(ctx consolectx.Context) gin.HandlerFunc {
 
 func GetServiceMethodNames(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		req := model.ServiceMethodsReq{}
+		req := model.BaseServiceReq{}
 		if err := req.Query(c); err != nil {
 			util.HandleArgumentError(c, err)
 			return

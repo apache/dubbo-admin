@@ -124,36 +124,15 @@ func (s *BaseServiceReq) ServiceKey() string {
 	return s.ServiceName + constants.ColonSeparator + s.Version + constants.ColonSeparator + s.Group
 }
 
-type ServiceMethodsReq struct {
-	ServiceName string `form:"serviceName" json:"serviceName"`
-	Group       string `form:"group" json:"group"`
-	Version     string `form:"version" json:"version"`
-	Mesh        string `form:"mesh" json:"mesh"`
-}
-
-func (s *ServiceMethodsReq) Query(c *gin.Context) error {
-	s.ServiceName = strings.TrimSpace(c.Query("serviceName"))
-	if strutil.IsBlank(s.ServiceName) {
-		return fmt.Errorf("service name is empty")
-	}
-	s.Mesh = strings.TrimSpace(c.Query("mesh"))
-	if strutil.IsBlank(s.Mesh) {
-		return fmt.Errorf("mesh is empty")
-	}
-	s.Group = strings.TrimSpace(c.Query("group"))
-	s.Version = strings.TrimSpace(c.Query("version"))
-	return nil
-}
-
 type ServiceMethodDetailReq struct {
-	ServiceMethodsReq
+	BaseServiceReq
 
 	MethodName string `form:"methodName" json:"methodName"`
 	Signature  string `form:"signature" json:"signature"`
 }
 
 func (s *ServiceMethodDetailReq) Query(c *gin.Context) error {
-	if err := s.ServiceMethodsReq.Query(c); err != nil {
+	if err := s.BaseServiceReq.Query(c); err != nil {
 		return err
 	}
 	s.MethodName = strings.TrimSpace(c.Query("methodName"))
