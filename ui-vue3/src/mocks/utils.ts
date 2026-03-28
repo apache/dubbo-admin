@@ -15,17 +15,17 @@
  * limitations under the License.
  */
 
-import Mock from 'mockjs'
-import devTool from '@/utils/DevToolUtil'
+import { HttpResponse } from 'msw'
+import type { ApiResponse } from '@/types/api'
 
-Mock.mock(devTool.mockUrl('/mock/auth/login'), 'post', {
-  code: 'Success',
-  message: 'success',
-  data: null
-})
+export function success<T>(data: T) {
+  return HttpResponse.json<ApiResponse<T>>({
+    code: 'Success',
+    message: 'success',
+    data
+  })
+}
 
-Mock.mock(devTool.mockUrl('/mock/auth/logout'), 'post', {
-  code: 'Success',
-  message: 'success',
-  data: null
-})
+const MOCK_BASE = '/api/v1'
+
+export const base = MOCK_BASE

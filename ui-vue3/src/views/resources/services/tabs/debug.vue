@@ -73,7 +73,15 @@
                     </div>
                   </a-col>
                   <a-col :span="12">
-                    <div class="section-title">响应:</div>
+                    <div class="section-title">
+                      响应:
+                      <a-tag :color="PRIMARY_COLOR">
+                        <template #icon>
+                          <clock-circle-outlined />
+                        </template>
+                        耗时: {{ elapsedMs }}ms
+                      </a-tag>
+                    </div>
                     <div class="editor-wrapper">
                       <monaco-editor
                         v-model="responseValue"
@@ -167,7 +175,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import MonacoEditor from '@/components/editor/MonacoEditor.vue'
-import { EditOutlined, MinusCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import { ClockCircleOutlined, EditOutlined, MinusCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import {
@@ -234,6 +242,7 @@ const loadingInvoke = ref(false)
 
 const requestValue = ref('[]')
 const responseValue = ref('')
+const elapsedMs = ref(0)
 
 const timeout = ref(3000)
 
@@ -458,6 +467,7 @@ async function loadMethods() {
 async function loadMethodDetail(method: MethodSummary) {
   loadingDetail.value = true
   responseValue.value = ''
+  elapsedMs.value = 0
   try {
     const res = await getServiceMethodDetailAPI({
       serviceName: serviceName.value,
@@ -533,6 +543,7 @@ async function handleInvoke() {
 
   loadingInvoke.value = true
   responseValue.value = ''
+  elapsedMs.value = 0
   try {
     const res = await serviceGenericInvokeAPI({
       mesh: meshStore.mesh,
@@ -546,7 +557,14 @@ async function handleInvoke() {
       timeoutMs: timeout.value > 0 ? timeout.value : undefined,
       attachments: Object.keys(attachments).length > 0 ? attachments : undefined
     })
-    responseValue.value = JSON.stringify(res.data, null, 2)
+    // 提取 elapsedMs 和 rawResult
+    if (res.data && typeof res.data === 'object') {
+      elapsedMs.value = res.data.elapsedMs || 0
+      const rawResult = res.data.rawResult
+      responseValue.value = JSON.stringify(rawResult, null, 2)
+    } else {
+      responseValue.value = JSON.stringify(res.data, null, 2)
+    }
   } catch (e: any) {
     responseValue.value = JSON.stringify(e || { error: '请求失败' }, null, 2)
   } finally {
@@ -583,6 +601,7 @@ watch(
     instanceName.value = ''
     requestValue.value = '[]'
     responseValue.value = ''
+    elapsedMs.value = 0
     void loadPageData()
   },
   { immediate: true }
@@ -634,6 +653,9 @@ watch(
     margin-bottom: 12px;
     font-size: 14px;
     color: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .empty-hint {

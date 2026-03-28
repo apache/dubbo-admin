@@ -47,14 +47,9 @@ const todo = (todoDetail: string) => {
   })
 }
 
-const mockUrl = (raw: string) => {
-  return RegExp(raw + '.*')
-}
-
 const devTool = {
   getCurrentFunctionLocation,
-  todo,
-  mockUrl
+  todo
 }
 
 export default devTool

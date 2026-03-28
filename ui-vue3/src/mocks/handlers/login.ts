@@ -15,16 +15,10 @@
  * limitations under the License.
  */
 
-import devTool from '@/utils/DevToolUtil'
-import Mock from 'mockjs'
-Mock.mock(devTool.mockUrl('/mock/metrics/cluster'), 'get', {
-  code: 'Success',
-  message: '成功',
-  data: {
-    all: Mock.mock('@integer(100, 500)'),
-    application: Mock.mock('@integer(80, 200)'),
-    consumers: Mock.mock('@integer(80, 200)'),
-    providers: Mock.mock('@integer(80, 200)'),
-    services: Mock.mock('@integer(80, 200)')
-  }
-})
+import { http, type HttpHandler } from 'msw'
+import { success, base } from '../utils'
+
+export const loginHandlers: HttpHandler[] = [
+  http.post(`${base}/auth/login`, () => success(null)),
+  http.post(`${base}/auth/logout`, () => success(null))
+]
