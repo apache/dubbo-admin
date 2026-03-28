@@ -175,7 +175,12 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import MonacoEditor from '@/components/editor/MonacoEditor.vue'
-import { ClockCircleOutlined, EditOutlined, MinusCircleOutlined, PlusOutlined } from '@ant-design/icons-vue'
+import {
+  ClockCircleOutlined,
+  EditOutlined,
+  MinusCircleOutlined,
+  PlusOutlined
+} from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import {
