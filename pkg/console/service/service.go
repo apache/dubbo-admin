@@ -265,44 +265,19 @@ func resolveServiceMethod(ctx consolectx.Context, req serviceMethodLookupReq) (*
 	}, nil
 }
 
-func shouldUseExactServiceProviderLookup(req serviceProviderMetadataLookupReq) bool {
-	return req.ServiceName != "" && req.Version != "" && req.Group != ""
-}
-
 func buildServiceProviderLookupKey(req serviceProviderMetadataLookupReq) string {
 	return req.ServiceName + constants.ColonSeparator + req.Version + constants.ColonSeparator + req.Group
 }
 
+func buildServiceProviderLookupIndexes(req serviceProviderMetadataLookupReq) map[string]string {
+	return map[string]string{
+		index.ByMeshIndex:                 req.Mesh,
+		index.ByServiceProviderServiceKey: buildServiceProviderLookupKey(req),
+	}
+}
+
 func listServiceProviderMetadata(ctx consolectx.Context, req serviceProviderMetadataLookupReq) ([]*meshresource.ServiceProviderMetadataResource, error) {
-	if shouldUseExactServiceProviderLookup(req) {
-		return listServiceProviderMetadataByIndexes(ctx, req, map[string]string{
-			index.ByMeshIndex:                 req.Mesh,
-			index.ByServiceProviderServiceKey: buildServiceProviderLookupKey(req),
-		})
-	}
-
-	indexes := map[string]string{
-		index.ByMeshIndex:                  req.Mesh,
-		index.ByServiceProviderServiceName: req.ServiceName,
-	}
-
-	metadataList, err := listServiceProviderMetadataByIndexes(ctx, req, indexes)
-	if err != nil {
-		return nil, err
-	}
-	if req.Group == "" && req.Version == "" {
-		return metadataList, nil
-	}
-
-	filtered := make([]*meshresource.ServiceProviderMetadataResource, 0, len(metadataList))
-	for _, metadata := range metadataList {
-		if !matchesServiceProviderMetadataLookup(metadata, req) {
-			continue
-		}
-		filtered = append(filtered, metadata)
-	}
-
-	return filtered, nil
+	return listServiceProviderMetadataByIndexes(ctx, req, buildServiceProviderLookupIndexes(req))
 }
 
 func listServiceProviderMetadataByIndexes(
@@ -319,19 +294,6 @@ func listServiceProviderMetadataByIndexes(
 		meshresource.ServiceProviderMetadataKind,
 		indexes,
 	)
-}
-
-func matchesServiceProviderMetadataLookup(metadata *meshresource.ServiceProviderMetadataResource, req serviceProviderMetadataLookupReq) bool {
-	if metadata == nil || metadata.Spec == nil {
-		return false
-	}
-	if req.Group != "" && metadata.Spec.Group != req.Group {
-		return false
-	}
-	if req.Version != "" && metadata.Spec.Version != req.Version {
-		return false
-	}
-	return true
 }
 
 func buildServiceMethodSummaries(metadataList []*meshresource.ServiceProviderMetadataResource) []model.ServiceMethodSummaryResp {
