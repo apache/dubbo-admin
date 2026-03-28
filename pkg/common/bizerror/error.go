@@ -46,6 +46,8 @@ const (
 	YamlError       ErrorCode = "YamlError"
 	NotFoundError   ErrorCode = "NotFoundError"
 	NetWorkError    ErrorCode = "NetWorkError"
+	LockNotHeld     ErrorCode = "LockNotHeld"
+	LockExpired     ErrorCode = "LockExpired"
 )
 
 type bizError struct {
