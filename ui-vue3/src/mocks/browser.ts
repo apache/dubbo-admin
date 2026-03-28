@@ -15,9 +15,14 @@
  * limitations under the License.
  */
 
-const modulesFiles: any = import.meta.glob('./**.ts', { eager: true })
-const fileList = []
-for (const key of Object.keys(modulesFiles)) {
-  fileList.push(modulesFiles[key].default)
+import { setupWorker } from 'msw/browser'
+import { handlers } from './handlers'
+
+export const worker = setupWorker(...handlers)
+export const workerStartOptions = {
+  onUnhandledRequest: 'bypass' as const,
+  quiet: true,
+  serviceWorker: {
+    url: import.meta.env.BASE_URL + '/mockServiceWorker.js'
+  }
 }
-export default fileList

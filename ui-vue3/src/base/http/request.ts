@@ -39,10 +39,8 @@ const isSilentErrorUrl = (url?: string): boolean => {
   return SILENT_ERROR_URLS.some((silentUrl) => url.includes(silentUrl))
 }
 
-const isMockMode = import.meta.env.VITE_MOCK_ENABLED === 'true'
-
 const service: AxiosInstance = axios.create({
-  baseURL: isMockMode ? '/admin/mock' : '/api/v1',
+  baseURL: '/api/v1',
   timeout: 30 * 1000
 })
 const request: AxiosInterceptorManager<InternalAxiosRequestConfig> = service.interceptors.request

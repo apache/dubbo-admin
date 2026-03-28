@@ -15,15 +15,12 @@
  * limitations under the License.
  */
 
-import Mock from 'mockjs'
-import devTool from '@/utils/DevToolUtil'
+import { http, type HttpHandler } from 'msw'
+import { success, base } from '../utils'
 
-// Prometheus查询接口
-Mock.mock(devTool.mockUrl('/mock/promQL/query'), 'get', () => {
-  return {
-    code: 'Success',
-    message: 'success',
-    data: {
+export const promQLHandlers: HttpHandler[] = [
+  http.get(`${base}/promQL/query`, () =>
+    success({
       status: 'success',
       data: {
         resultType: 'vector',
@@ -37,6 +34,6 @@ Mock.mock(devTool.mockUrl('/mock/promQL/query'), 'get', () => {
           }
         ]
       }
-    }
-  }
-})
+    })
+  )
+]

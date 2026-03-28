@@ -15,27 +15,27 @@
  * limitations under the License.
  */
 
-import Mock from 'mockjs'
-import devTool from '@/utils/DevToolUtil'
+import { http, type HttpHandler } from 'msw'
+import { success, base } from '../utils'
+import type { MeshItem } from '@/types/api'
 
-Mock.mock(devTool.mockUrl('/mock/destinationRule/search'), 'get', () => {
-  const total = Mock.mock('@integer(8, 1000)')
-  const list = []
-  for (let i = 0; i < total; i++) {
-    list.push({
-      ruleName: 'app_' + Mock.mock('@string(2,10)'),
-      createTime: Mock.mock('@datetime')
+const meshes: MeshItem[] = [
+  {
+    id: 'dubbo-mesh',
+    name: 'dubbo-mesh',
+    type: 'kubernetes',
+    version: '3.1.0',
+    status: 'Healthy'
+  }
+]
+
+export const globalSearchHandlers: HttpHandler[] = [
+  http.get(`${base}/search`, () =>
+    success({
+      find: true,
+      candidates: ['test1', 'test2', 'test3']
     })
-  }
-  return {
-    code: 'Success',
-    message: 'success',
-    data: {
-      pageInfo: {
-        Total: total,
-        NextOffset: '0'
-      },
-      list: list
-    }
-  }
-})
+  ),
+
+  http.get(`${base}/meshes`, () => success(meshes))
+]

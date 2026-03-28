@@ -15,27 +15,22 @@
  * limitations under the License.
  */
 
-import Mock from 'mockjs'
-import devTool from '@/utils/DevToolUtil'
+import { http, type HttpHandler } from 'msw'
+import { success, base } from '../utils'
+import type { ClusterMetrics } from '@/types/api'
 
-Mock.mock(devTool.mockUrl('/mock/service/detail'), 'get', {
-  code: 'Success',
-  message: 'success',
-  data: {
-    total: 8,
-    curPage: 1,
-    pageSize: 1,
-    data: {
-      serviceName: 'org.apache.dubbo.samples.UserService',
-      versionGroup: ['version=v1', 'version=2.0,group=group1'],
-      protocol: 'triple',
-      delay: '3000ms',
-      timeOut: '3000ms',
-      retry: 3,
-      requestTotal: 1384,
-      avgRT: '96ms',
-      avgQPS: 12,
-      obsolete: false
-    }
-  }
-})
+function randomInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min
+}
+
+export const clusterHandlers: HttpHandler[] = [
+  http.get(`${base}/metrics/cluster`, () =>
+    success<ClusterMetrics>({
+      all: randomInt(100, 500),
+      application: randomInt(80, 200),
+      consumers: randomInt(80, 200),
+      providers: randomInt(80, 200),
+      services: randomInt(80, 200)
+    })
+  )
+]

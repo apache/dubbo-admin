@@ -15,18 +15,20 @@
  * limitations under the License.
  */
 
-import Mock from 'mockjs'
-import devTool from '@/utils/DevToolUtil'
-Mock.mock(devTool.mockUrl('/mock/version'), 'get', {
-  code: 'Success',
-  message: '成功',
-  data: {
-    gitVersion: 'dubbo-admin-',
-    gitCommit: '$Format:%H$',
-    gitTreeState: '',
-    buildDate: '1970-01-01T00:00:00Z',
-    goVersion: 'go1.20.4',
-    compiler: 'gc',
-    platform: 'darwin/arm64'
-  }
-})
+import { http, type HttpHandler } from 'msw'
+import { success, base } from '../utils'
+import type { VersionInfo } from '@/types/api'
+
+const versionInfo: VersionInfo = {
+  gitVersion: 'dubbo-admin-',
+  gitCommit: '$Format:%H$',
+  gitTreeState: '',
+  buildDate: '1970-01-01T00:00:00Z',
+  goVersion: 'go1.20.4',
+  compiler: 'gc',
+  platform: 'darwin/arm64'
+}
+
+export const versionHandlers: HttpHandler[] = [
+  http.get(`${base}/version`, () => success(versionInfo))
+]

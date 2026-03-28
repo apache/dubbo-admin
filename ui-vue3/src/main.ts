@@ -33,9 +33,10 @@ import { createPinia } from 'pinia'
 
 async function bootstrap() {
   if (import.meta.env.VITE_MOCK_ENABLED === 'true') {
-    await import('./api/mock/index')
+    const { worker, workerStartOptions } = await import('./mocks/browser')
+    await worker.start(workerStartOptions)
     updateAuthState(true, 'admin')
-    console.info('[Mock Mode] Mock APIs enabled, auto-logged in as admin')
+    console.info('[Mock Mode] MSW enabled, auto-logged in as admin')
   }
 
   const app = createApp(App)
