@@ -60,6 +60,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 		application.GET("/instance/info", handler.GetApplicationTabInstanceInfo(ctx))
 		application.GET("/service/form", handler.GetApplicationServiceForm(ctx))
 		application.GET("/search", handler.ApplicationSearch(ctx))
+		application.GET("/graph", handler.GetApplicationGraph(ctx))
 		{
 			applicationConfig := application.Group("/config")
 			applicationConfig.PUT("/operatorLog", handler.ApplicationConfigAccessLogPut(ctx))
