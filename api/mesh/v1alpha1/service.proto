@@ -21,9 +21,5 @@ message Service{
 
   string language = 4;
 
-  repeated string providers = 5;
-
-  repeated string consumers = 6;
-
-  map<string, string> features = 99;
+  repeated string methods = 5;
 }

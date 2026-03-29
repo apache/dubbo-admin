@@ -30,12 +30,14 @@ const (
 	ByServiceProviderAppName     = "idx_service_provider_app_name"
 	ByServiceProviderServiceName = "idx_service_provider_service_name"
 	ByServiceProviderServiceKey  = "idx_service_provider_service_key"
+	ByServiceProviderServiceKey  = "idx_service_provider_service_key"
 )
 
 func init() {
 	RegisterIndexers(meshresource.ServiceProviderMetadataKind, map[string]cache.IndexFunc{
 		ByServiceProviderAppName:     byServiceProviderAppName,
 		ByServiceProviderServiceName: byServiceProviderServiceName,
+		ByServiceProviderServiceKey:  byServiceProviderServiceKey,
 		ByServiceProviderServiceKey:  byServiceProviderServiceKey,
 	})
 }

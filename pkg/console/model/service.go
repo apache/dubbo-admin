@@ -47,7 +47,6 @@ type ServiceSearchResp struct {
 	ServiceName     string `json:"serviceName"`
 	Version         string `json:"version"`
 	Group           string `json:"group"`
-	ProviderAppName string `json:"providerAppName,omitempty"`
 	ConsumerAppName string `json:"consumerAppName,omitempty"`
 }
 
@@ -128,28 +127,7 @@ type ServiceDetailReq struct {
 	Mesh        string `form:"mesh" json:"mesh" binding:"required"`
 }
 
-type VersionGroup struct {
-	Version string `json:"version"`
-	Group   string `json:"group"`
-}
-
 type ServiceDetailResp struct {
-	VersionGroups []*VersionGroup `json:"versionGroups"`
-	AvgRT         string          `json:"avgRT"`
-	AvgQPS        string          `json:"avgQPS"`
-	RequestTotal  string          `json:"requestTotal"`
-}
-
-type ServiceInterfacesReq struct {
-	ServiceName string `form:"serviceName" json:"serviceName" binding:"required"`
-	Mesh        string `form:"mesh" json:"mesh" binding:"required"`
-}
-
-type ServiceInterface struct {
-	InterfaceName string `json:"interfaceName"`
-	MethodCount   int    `json:"methodCount"`
-}
-
-type ServiceInterfacesResp struct {
-	Interfaces []*ServiceInterface `json:"interfaces"`
+	Language string   `json:"language"`
+	Methods  []string `json:"methods"`
 }

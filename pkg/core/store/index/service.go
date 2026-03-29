@@ -15,28 +15,32 @@
  * limitations under the License.
  */
 
-package k8s
+package index
 
 import (
-	"fmt"
-	"strings"
+	"reflect"
 
-	"github.com/pkg/errors"
+	"k8s.io/client-go/tools/cache"
+
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 )
 
-func CoreNameToK8sName(coreName string) (string, string, error) {
-	idx := strings.LastIndex(coreName, ".")
-	if idx == -1 {
-		return "", "", errors.Errorf(`name %q must include namespace after the dot, ex. "name.namespace"`, coreName)
-	}
-	// namespace cannot contain "." therefore it's always the last part
-	namespace := coreName[idx+1:]
-	if namespace == "" {
-		return "", "", errors.New("namespace must be non-empty")
-	}
-	return coreName[:idx], namespace, nil
+const ByServiceName = "idx_service_name"
+
+func init() {
+	RegisterIndexers(meshresource.ServiceKind, map[string]cache.IndexFunc{
+		ByServiceName: byServiceName,
+	})
 }
 
-func K8sNamespacedNameToCoreName(name, namespace string) string {
-	return fmt.Sprintf("%s.%s", name, namespace)
+func byServiceName(obj interface{}) ([]string, error) {
+	service, ok := obj.(*meshresource.ServiceResource)
+	if !ok {
+		return nil, bizerror.NewAssertionError(meshresource.ServiceKind, reflect.TypeOf(obj).Name())
+	}
+	if service.Spec == nil {
+		return []string{}, nil
+	}
+	return []string{service.Spec.Name}, nil
 }
