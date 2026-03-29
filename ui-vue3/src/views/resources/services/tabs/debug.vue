@@ -127,7 +127,7 @@
                       type="secondary"
                       v-if="!loadingProviders && providerInstanceOptions.length === 0"
                       class="empty-hint"
-                      style="display: block; margin-top: 4px;"
+                      style="display: block; margin-top: 4px"
                     >
                       当前服务没有可调用实例
                     </a-typography-text>
@@ -146,7 +146,11 @@
                       <a-typography-text strong>传递attachments</a-typography-text>
                     </div>
                     <div class="setting-item">
-                      <a-button type="link" @click="attachmentsModalOpen = true" class="attachment-edit-btn">
+                      <a-button
+                        type="link"
+                        @click="attachmentsModalOpen = true"
+                        class="attachment-edit-btn"
+                      >
                         <template #icon><edit-outlined /></template>
                         编辑 ({{ attachmentCount }})
                       </a-button>
@@ -190,7 +194,7 @@
             <template #icon><minus-circle-outlined /></template>
           </a-button>
         </div>
-        <a-button type="dashed" block @click="addAttachment" style="margin-top: 8px;">
+        <a-button type="dashed" block @click="addAttachment" style="margin-top: 8px">
           <plus-outlined /> 添加
         </a-button>
       </div>
