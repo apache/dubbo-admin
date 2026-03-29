@@ -17,7 +17,9 @@
 <template>
   <div class="__container_services_tabs_debug">
     <a-card :bordered="false" :body-style="{ padding: '24px' }">
-      <div class="tabs-title">方法列表</div>
+      <div class="tabs-title">
+        <a-typography-text strong>方法列表</a-typography-text>
+      </div>
       <a-spin :spinning="loadingMethods">
         <a-empty
           v-if="!loadingMethods && methodList.length === 0"
@@ -40,42 +42,53 @@
                 <a-row :gutter="[24, 24]">
                   <!-- Row 1: Parameter Types -->
                   <a-col :span="12">
-                    <div class="section-title">入参类型:</div>
+                    <div class="section-title">
+                      <a-typography-text strong>入参类型:</a-typography-text>
+                    </div>
                     <a-tree
                       v-if="enterParamType.length > 0"
                       block-node
                       :tree-data="enterParamType"
                       default-expand-all
                     />
-                    <span v-else class="empty-hint">无入参</span>
+                    <a-typography-text type="secondary" v-else class="empty-hint">
+                      无入参
+                    </a-typography-text>
                   </a-col>
                   <a-col :span="12">
-                    <div class="section-title">出参类型:</div>
+                    <div class="section-title">
+                      <a-typography-text strong>出参类型:</a-typography-text>
+                    </div>
                     <a-tree
                       v-if="outputParamType.length > 0"
                       block-node
                       :tree-data="outputParamType"
                       default-expand-all
                     />
-                    <span v-else class="empty-hint">无出参</span>
+                    <a-typography-text type="secondary" v-else class="empty-hint">
+                      无出参
+                    </a-typography-text>
                   </a-col>
 
                   <!-- Row 2: Request & Response Editors -->
                   <a-col :span="12">
-                    <div class="section-title">请求:</div>
+                    <div class="section-title">
+                      <a-typography-text strong>请求:</a-typography-text>
+                    </div>
                     <div class="editor-wrapper">
                       <monaco-editor
                         v-model="requestValue"
                         :editor-id="`requestEditor-${index}`"
                         height="300px"
+                        class="monaco-container"
                       />
-                      <div class="editor-tag">JSON</div>
+                      <a-tag class="editor-tag" :bordered="false">JSON</a-tag>
                     </div>
                   </a-col>
                   <a-col :span="12">
                     <div class="section-title">
-                      响应:
-                      <a-tag :color="PRIMARY_COLOR">
+                      <a-typography-text strong>响应:</a-typography-text>
+                      <a-tag :color="PRIMARY_COLOR" :bordered="false" style="margin-left: 8px">
                         <template #icon>
                           <clock-circle-outlined />
                         </template>
@@ -88,14 +101,17 @@
                         :editor-id="`responseEditor-${index}`"
                         height="300px"
                         :readonly="true"
+                        class="monaco-container"
                       />
-                      <div class="editor-tag">JSON</div>
+                      <a-tag class="editor-tag" :bordered="false">JSON</a-tag>
                     </div>
                   </a-col>
 
                   <!-- Row 3: Bottom Settings -->
                   <a-col :span="8">
-                    <div class="section-title">调用实例:</div>
+                    <div class="section-title">
+                      <a-typography-text strong>调用实例:</a-typography-text>
+                    </div>
                     <a-select
                       v-model:value="instanceName"
                       :options="providerInstanceOptions"
@@ -105,25 +121,32 @@
                       show-search
                       option-filter-prop="label"
                       allow-clear
+                      style="width: 100%"
                     />
-                    <div
+                    <a-typography-text
+                      type="secondary"
                       v-if="!loadingProviders && providerInstanceOptions.length === 0"
                       class="empty-hint"
+                      style="display: block; margin-top: 4px;"
                     >
                       当前服务没有可调用实例
-                    </div>
+                    </a-typography-text>
                   </a-col>
                   <a-col :span="8">
-                    <div class="section-title">自定义超时时间</div>
+                    <div class="section-title">
+                      <a-typography-text strong>自定义超时时间</a-typography-text>
+                    </div>
                     <div class="setting-item">
                       <a-input-number v-model:value="timeout" :min="0" style="width: 120px" />
-                      <span class="unit">ms</span>
+                      <a-typography-text type="secondary" class="unit">ms</a-typography-text>
                     </div>
                   </a-col>
                   <a-col :span="8">
-                    <div class="section-title">传递attachments</div>
+                    <div class="section-title">
+                      <a-typography-text strong>传递attachments</a-typography-text>
+                    </div>
                     <div class="setting-item">
-                      <a-button type="link" @click="attachmentsModalOpen = true" style="padding: 0">
+                      <a-button type="link" @click="attachmentsModalOpen = true" class="attachment-edit-btn">
                         <template #icon><edit-outlined /></template>
                         编辑 ({{ attachmentCount }})
                       </a-button>
@@ -163,9 +186,13 @@
           <a-input v-model:value="item.key" placeholder="Key" style="width: 45%" />
           <span class="kv-sep">:</span>
           <a-input v-model:value="item.value" placeholder="Value" style="width: 45%" />
-          <minus-circle-outlined class="remove-icon" @click="removeAttachment(idx)" />
+          <a-button type="text" danger @click="removeAttachment(idx)">
+            <template #icon><minus-circle-outlined /></template>
+          </a-button>
         </div>
-        <a-button type="dashed" block @click="addAttachment"> <plus-outlined /> 添加 </a-button>
+        <a-button type="dashed" block @click="addAttachment" style="margin-top: 8px;">
+          <plus-outlined /> 添加
+        </a-button>
       </div>
     </a-modal>
   </div>
@@ -182,7 +209,7 @@ import {
   PlusOutlined
 } from '@ant-design/icons-vue'
 import { message } from 'ant-design-vue'
-import { PRIMARY_COLOR } from '@/base/constants'
+import { PRIMARY_COLOR, PRIMARY_COLOR_R } from '@/base/constants'
 import {
   getServiceProviderInstancesAPI,
   getServiceMethodsAPI,
@@ -267,7 +294,7 @@ const emptyDescription = computed(() => {
 const attachmentCount = computed(() => attachmentsList.value.filter((a) => a.key).length)
 const providerInstanceOptions = computed(() =>
   providerInstances.value.map((instance) => ({
-    label: `${instance.appName || 'UnknownApp'} | ${instance.ip || instance.name}`,
+    label: instance.name,
     value: instance.name
   }))
 )
@@ -620,11 +647,9 @@ watch(
 
   .tabs-title {
     width: 200px;
-    font-weight: bold;
     font-size: 16px;
     margin-bottom: 8px;
     text-align: center;
-    color: rgba(0, 0, 0, 0.85);
   }
 
   :deep(.debug-tabs) {
@@ -636,11 +661,26 @@ watch(
       .ant-tabs-tab {
         margin: 0;
         padding: 12px 16px;
+        font-weight: 400;
         transition: all 0.3s;
 
         &:hover {
           color: v-bind('PRIMARY_COLOR');
         }
+      }
+
+      .ant-tabs-tab-active {
+        background: v-bind('PRIMARY_COLOR');
+        border-radius: 4px;
+
+        .ant-tabs-tab-btn {
+          color: v-bind('PRIMARY_COLOR_R') !important;
+          font-weight: 600;
+        }
+      }
+
+      .ant-tabs-ink-bar {
+        display: none;
       }
     }
 
@@ -654,36 +694,31 @@ watch(
   }
 
   .section-title {
-    font-weight: 500;
     margin-bottom: 12px;
-    font-size: 14px;
-    color: rgba(0, 0, 0, 0.85);
     display: flex;
     align-items: center;
     gap: 8px;
   }
 
   .empty-hint {
-    color: rgba(0, 0, 0, 0.45);
     font-size: 13px;
   }
 
   .editor-wrapper {
     position: relative;
     border: 1px solid #d9d9d9;
-    border-radius: 2px;
+    border-radius: 6px;
     overflow: hidden;
+    background-color: #fafafa;
+
+    .monaco-container {
+      padding-top: 4px;
+    }
 
     .editor-tag {
       position: absolute;
-      top: 4px;
+      top: 8px;
       right: 8px;
-      background: #f5f5f5;
-      border: 1px solid #d9d9d9;
-      border-radius: 2px;
-      padding: 0 4px;
-      font-size: 12px;
-      color: #666;
       z-index: 10;
       pointer-events: none;
     }
@@ -711,6 +746,16 @@ watch(
     }
   }
 
+  .attachment-edit-btn {
+    padding: 0;
+    color: v-bind('PRIMARY_COLOR') !important;
+
+    &:hover {
+      color: v-bind('PRIMARY_COLOR') !important;
+      opacity: 0.85;
+    }
+  }
+
   :deep(.ant-tree) {
     background: transparent;
     .ant-tree-treenode {
@@ -728,12 +773,6 @@ watch(
 
     .kv-sep {
       color: rgba(0, 0, 0, 0.45);
-    }
-
-    .remove-icon {
-      color: #ff4d4f;
-      cursor: pointer;
-      flex-shrink: 0;
     }
   }
 }
