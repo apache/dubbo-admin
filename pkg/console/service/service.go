@@ -555,100 +555,118 @@ func GetServiceDetail(ctx consolectx.Context, req *model.ServiceDetailReq) (*mod
 	}, nil
 }
 
-func SearchServiceAsCrossLinkedList(ctx consolectx.Context, req *model.ServiceGraphReq) (*model.GraphData, error) {
-	if err := req.Normalize(); err != nil {
-		return nil, bizerror.New(bizerror.InvalidArgument, err.Error())
-	}
+// GraphServices builds a service dependency graph for the given service key.
+//
+// It gathers both provider and consumer metadata for serviceKey and creates
+// graph nodes/edges where:
+//   - application nodes are marked as provider/consumer
+//   - service node is the target/subject service
+//   - edges describe provide/consume relationships
+//
+// This API is used by topology view to visualize service-level dependencies.
+func GraphServices(ctx consolectx.Context, req *model.ServiceGraphReq) (*model.GraphData, error) {
+	serviceKey := req.ServiceKey()
 
-	serviceKey := req.ServiceIdentityKey()
+	providerIndexes := map[string]string{
+		index.ByMeshIndex:                 req.Mesh,
+		index.ByServiceProviderServiceKey: serviceKey,
+	}
 
 	providers, err := manager.ListByIndexes[*meshresource.ServiceProviderMetadataResource](
 		ctx.ResourceManager(),
 		meshresource.ServiceProviderMetadataKind,
-		map[string]string{
-			index.ByMeshIndex:                 req.Mesh,
-			index.ByServiceProviderServiceKey: serviceKey,
-		},
-	)
+		providerIndexes)
 	if err != nil {
 		logger.Errorf("get service providers for mesh %s, serviceKey %s failed, cause: %v", req.Mesh, serviceKey, err)
 		return nil, bizerror.New(bizerror.InternalError, "get service providers failed, please try again")
 	}
+
 	if len(providers) == 0 {
+		logger.Errorf("no providers found for service %s in mesh %s", serviceKey, req.Mesh)
 		return nil, bizerror.New(bizerror.NotFoundError, "no providers found for this service")
 	}
+
+	consumerIndexes := map[string]string{
+		index.ByMeshIndex:                 req.Mesh,
+		index.ByServiceConsumerServiceKey: serviceKey,
+	}
+
+	// Nodes for this graph: provider apps, service itself, consumer apps.
+	// Edges represent provider->service and consumer->service relationships.
 
 	consumers, err := manager.ListByIndexes[*meshresource.ServiceConsumerMetadataResource](
 		ctx.ResourceManager(),
 		meshresource.ServiceConsumerMetadataKind,
-		map[string]string{
-			index.ByMeshIndex:                 req.Mesh,
-			index.ByServiceConsumerServiceKey: serviceKey,
-		},
-	)
+		consumerIndexes)
 	if err != nil {
 		logger.Errorf("get service consumers for mesh %s, serviceKey %s failed, cause: %v", req.Mesh, serviceKey, err)
 		return nil, bizerror.New(bizerror.InternalError, "get service consumers failed, please try again")
 	}
 
+	nodes := make([]model.GraphNode, 0)
+	edges := make([]model.GraphEdge, 0)
+
+	// use struct{} as a zero-size value for a lightweight deduplication set
+	// this prevents duplicate application nodes when multiple providers are recorded.
 	providerAppSet := make(map[string]struct{})
 	for _, provider := range providers {
-		if provider.Spec == nil || provider.Spec.ProviderAppName == "" {
+		if provider.Spec == nil {
 			continue
 		}
-		providerAppSet[provider.Spec.ProviderAppName] = struct{}{}
-	}
-
-	consumerAppSet := make(map[string]struct{})
-	for _, consumer := range consumers {
-		if consumer.Spec == nil || consumer.Spec.ConsumerAppName == "" {
-			continue
+		if _, ok := providerAppSet[provider.Spec.ProviderAppName]; !ok {
+			providerAppSet[provider.Spec.ProviderAppName] = struct{}{}
+			nodes = append(nodes, model.GraphNode{
+				ID:    provider.Spec.ProviderAppName,
+				Label: provider.Spec.ProviderAppName,
+				Type:  "application",
+				Rule:  "provider",
+				Data:  nil,
+			})
 		}
-		consumerAppSet[consumer.Spec.ConsumerAppName] = struct{}{}
 	}
 
-	providerApps := sortedKeys(providerAppSet)
-	consumerApps := sortedKeys(consumerAppSet)
-
-	nodes := make([]model.GraphNode, 0, len(providerApps)+len(consumerApps)+1)
-	for _, providerApp := range providerApps {
-		nodes = append(nodes, model.GraphNode{
-			ID:    providerApp,
-			Label: providerApp,
-			Type:  "application",
-			Rule:  "provider",
-		})
-	}
 	nodes = append(nodes, model.GraphNode{
 		ID:    serviceKey,
 		Label: serviceKey,
 		Type:  "service",
 		Rule:  "",
+		Data:  nil,
 	})
-	for _, consumerApp := range consumerApps {
-		nodes = append(nodes, model.GraphNode{
-			ID:    consumerApp,
-			Label: consumerApp,
-			Type:  "application",
-			Rule:  "consumer",
-		})
+
+	consumerAppSet := make(map[string]struct{})
+	for _, consumer := range consumers {
+		if consumer.Spec == nil {
+			continue
+		}
+		if _, ok := consumerAppSet[consumer.Spec.ConsumerAppName]; !ok {
+			consumerAppSet[consumer.Spec.ConsumerAppName] = struct{}{}
+			nodes = append(nodes, model.GraphNode{
+				ID:    consumer.Spec.ConsumerAppName,
+				Label: consumer.Spec.ConsumerAppName,
+				Type:  "application",
+				Rule:  "consumer",
+				Data:  nil,
+			})
+		}
 	}
 
-	edges := make([]model.GraphEdge, 0, len(providerApps)+len(consumerApps))
-	for _, providerApp := range providerApps {
+	// Connect provider applications to service node.
+	for providerApp := range providerAppSet {
 		edges = append(edges, model.GraphEdge{
 			Source: serviceKey,
 			Target: providerApp,
-			Data: map[string]any{
+			Data: map[string]interface{}{
 				"type": "provides",
 			},
 		})
 	}
-	for _, consumerApp := range consumerApps {
+
+	// Connect consumer applications to service node.
+	for consumerApp := range consumerAppSet {
 		edges = append(edges, model.GraphEdge{
 			Source: consumerApp,
 			Target: serviceKey,
-			Data: map[string]any{
+			Data: map[string]interface{}{
 				"type": "consumes",
 			},
 		})

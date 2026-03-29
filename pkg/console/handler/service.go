@@ -69,40 +69,6 @@ func GetServiceTabDistribution(ctx consolectx.Context) gin.HandlerFunc {
 	}
 }
 
-func GetServiceDetail(ctx consolectx.Context) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		req := &model.ServiceDetailReq{}
-		if err := c.ShouldBindQuery(req); err != nil {
-			util.HandleArgumentError(c, err)
-			return
-		}
-
-		resp, err := service.GetServiceDetail(ctx, req)
-		if err != nil {
-			util.HandleServiceError(c, err)
-			return
-		}
-		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
-	}
-}
-
-func GetServiceGraph(ctx consolectx.Context) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		req := &model.ServiceGraphReq{}
-		if err := c.ShouldBindQuery(req); err != nil {
-			util.HandleArgumentError(c, err)
-			return
-		}
-
-		resp, err := service.SearchServiceAsCrossLinkedList(ctx, req)
-		if err != nil {
-			util.HandleServiceError(c, err)
-			return
-		}
-		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
-	}
-}
-
 func ServiceConfigTimeoutGET(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req := model.BaseServiceReq{}
@@ -273,7 +239,7 @@ func GetServiceGraph(ctx consolectx.Context) gin.HandlerFunc {
 			return
 		}
 
-		resp, err := service.SearchServiceAsCrossLinkedList(ctx, req)
+		resp, err := service.GraphServices(ctx, req)
 		if err != nil {
 			util.HandleServiceError(c, err)
 			return
@@ -304,19 +270,20 @@ func GetServiceDetail(ctx consolectx.Context) gin.HandlerFunc {
 
 // GetServiceInterfaces returns service interfaces information
 func GetServiceInterfaces(ctx consolectx.Context) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		req := &model.ServiceInterfacesReq{}
-		if err := c.ShouldBindQuery(req); err != nil {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
-			return
-		}
+	// return func(c *gin.Context) {
+	// 	req := &model.ServiceInterfacesReq{}
+	// 	if err := c.ShouldBindQuery(req); err != nil {
+	// 		c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+	// 		return
+	// 	}
 
-		resp, err := service.GetServiceInterfaces(ctx, req)
-		if err != nil {
-			util.HandleServiceError(c, err)
-			return
-		}
+	// 	resp, err := service.GetServiceInterfaces(ctx, req)
+	// 	if err != nil {
+	// 		util.HandleServiceError(c, err)
+	// 		return
+	// 	}
 
-		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
-	}
+	// 	c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	// }
+	return nil
 }
