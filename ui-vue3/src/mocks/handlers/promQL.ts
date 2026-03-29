@@ -15,13 +15,25 @@
  * limitations under the License.
  */
 
-import Mock from 'mockjs'
+import { http, type HttpHandler } from 'msw'
+import { success, base } from '../utils'
 
-Mock.mock(/\/search\?searchType=\w+&keywords=\w*/, 'get', {
-  code: 200,
-  message: '成功',
-  data: {
-    find: true,
-    candidates: ['test1', 'test2', 'tset3']
-  }
-})
+export const promQLHandlers: HttpHandler[] = [
+  http.get(`${base}/promQL/query`, () =>
+    success({
+      status: 'success',
+      data: {
+        resultType: 'vector',
+        result: [
+          {
+            metric: {
+              __name__: 'dubbo_requests_total',
+              service: 'org.apache.dubbo.samples.UserService'
+            },
+            value: [1710644821.532, '1234']
+          }
+        ]
+      }
+    })
+  )
+]

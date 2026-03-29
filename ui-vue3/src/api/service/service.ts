@@ -136,3 +136,63 @@ export const updateParamRouteAPI = (data: {
     data
   })
 }
+
+// get service methods list
+export const getServiceMethodsAPI = (params: {
+  serviceName: string
+  group?: string
+  version?: string
+}): Promise<any> => {
+  return request({
+    url: '/service/methods',
+    method: 'get',
+    params
+  })
+}
+
+// get service method detail
+export const getServiceMethodDetailAPI = (params: {
+  serviceName: string
+  methodName: string
+  group?: string
+  version?: string
+  signature?: string
+}): Promise<any> => {
+  return request({
+    url: '/service/method/detail',
+    method: 'get',
+    params
+  })
+}
+
+export const getServiceProviderInstancesAPI = (params: {
+  serviceName: string
+  group?: string
+  version?: string
+}): Promise<any> => {
+  return request({
+    url: '/service/provider-instances',
+    method: 'get',
+    params
+  })
+}
+
+// generic invoke service method
+export const serviceGenericInvokeAPI = (data: {
+  mesh: string
+  instanceName: string
+  serviceName: string
+  methodName: string
+  args: any[]
+  group?: string
+  version?: string
+  signature?: string
+  timeoutMs?: number
+  attachments?: Record<string, string>
+}): Promise<any> => {
+  return request({
+    url: '/service/generic/invoke',
+    method: 'post',
+    data
+  })
+}

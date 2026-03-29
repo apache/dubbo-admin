@@ -15,26 +15,22 @@
  * limitations under the License.
  */
 
-import Mock from 'mockjs'
+package leader
 
-Mock.mock('/mock/virtualService/search', 'get', () => {
-  const total = Mock.mock('@integer(8, 1000)')
-  const list = []
-  for (let i = 0; i < total; i++) {
-    list.push({
-      ruleName: 'app_' + Mock.mock('@string(2,10)'),
-      createTime: Mock.mock('@datetime'),
-      lastModifiedTime: Mock.mock('@datetime')
-    })
-  }
-  return {
-    code: 200,
-    message: 'success',
-    data: Mock.mock({
-      total: total,
-      curPage: 1,
-      pageSize: 10,
-      data: list
-    })
-  }
-})
+import "time"
+
+// LeaderLease is the GORM model for the leader_leases table
+// It uses optimistic locking via the Version field to ensure atomic leader elections
+type LeaderLease struct {
+	ID         uint      `gorm:"primaryKey;autoIncrement"`
+	Component  string    `gorm:"uniqueIndex;size:64;not null"`
+	HolderID   string    `gorm:"size:255;not null"`
+	AcquiredAt time.Time `gorm:"not null"`
+	ExpiresAt  time.Time `gorm:"not null"`
+	Version    int64     `gorm:"not null;default:0"`
+}
+
+// TableName returns the table name for LeaderLease
+func (LeaderLease) TableName() string {
+	return "leader_leases"
+}

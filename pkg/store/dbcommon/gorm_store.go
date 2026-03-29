@@ -757,3 +757,10 @@ func (gs *GormStore) IndexExists(indexName string) bool {
 	_, exists := gs.indexers[indexName]
 	return exists
 }
+
+// Pool returns the connection pool for this store
+// Used by other components (e.g., leader election) that need direct DB access
+// Returns interface{} to satisfy the poolProvider interface in pkg/core/store
+func (gs *GormStore) Pool() interface{} {
+	return gs.pool
+}

@@ -15,9 +15,17 @@
  * limitations under the License.
  */
 
-const modulesFiles: any = import.meta.glob('./**.ts', { eager: true })
-const fileList = []
-for (const key of Object.keys(modulesFiles)) {
-  fileList.push(modulesFiles[key].default)
+import { HttpResponse } from 'msw'
+import type { ApiResponse } from '@/types/api'
+
+export function success<T>(data: T) {
+  return HttpResponse.json<ApiResponse<T>>({
+    code: 'Success',
+    message: 'success',
+    data
+  })
 }
-export default fileList
+
+const MOCK_BASE = '/api/v1'
+
+export const base = MOCK_BASE

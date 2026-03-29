@@ -15,15 +15,22 @@
  * limitations under the License.
  */
 
-import Mock from 'mockjs'
-Mock.mock('/mock/metrics/cluster', 'get', {
-  code: 200,
-  message: '成功',
-  data: {
-    all: Mock.mock('@integer(100, 500)'),
-    application: Mock.mock('@integer(80, 200)'),
-    consumers: Mock.mock('@integer(80, 200)'),
-    providers: Mock.mock('@integer(80, 200)'),
-    services: Mock.mock('@integer(80, 200)')
-  }
-})
+import { http, type HttpHandler } from 'msw'
+import { success, base } from '../utils'
+import type { ClusterMetrics } from '@/types/api'
+
+function randomInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min
+}
+
+export const clusterHandlers: HttpHandler[] = [
+  http.get(`${base}/metrics/cluster`, () =>
+    success<ClusterMetrics>({
+      all: randomInt(100, 500),
+      application: randomInt(80, 200),
+      consumers: randomInt(80, 200),
+      providers: randomInt(80, 200),
+      services: randomInt(80, 200)
+    })
+  )
+]

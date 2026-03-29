@@ -60,7 +60,7 @@ func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
 		return bizerror.Wrap(err, bizerror.YamlError,
 			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
 	}
-	_, err = g.conn.Create(path, content, zk.FlagPersistent, zk.WorldACL(zk.PermAll))
+	_, err = g.conn.Create(path, content, 0, zk.WorldACL(zk.PermAll))
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.ZKError,
 			fmt.Sprintf("failed to create zk node, path: %s", path))

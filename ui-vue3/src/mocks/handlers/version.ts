@@ -15,27 +15,20 @@
  * limitations under the License.
  */
 
-import Mock from 'mockjs'
+import { http, type HttpHandler } from 'msw'
+import { success, base } from '../utils'
+import type { VersionInfo } from '@/types/api'
 
-Mock.mock('/mock/dynamicConfig/search', 'get', () => {
-  const total = Mock.mock('@integer(8, 1000)')
-  const list = []
-  for (let i = 0; i < total; i++) {
-    list.push({
-      ruleName: 'app_' + Mock.mock('@string(2,10)'),
-      ruleGranularity: Mock.mock('@boolean'),
-      enable: Mock.mock('@boolean'),
-      createTime: Mock.mock('@datetime')
-    })
-  }
-  return {
-    code: 200,
-    message: 'success',
-    data: Mock.mock({
-      total: total,
-      curPage: 1,
-      pageSize: 10,
-      data: list
-    })
-  }
-})
+const versionInfo: VersionInfo = {
+  gitVersion: 'dubbo-admin-',
+  gitCommit: '$Format:%H$',
+  gitTreeState: '',
+  buildDate: '1970-01-01T00:00:00Z',
+  goVersion: 'go1.20.4',
+  compiler: 'gc',
+  platform: 'darwin/arm64'
+}
+
+export const versionHandlers: HttpHandler[] = [
+  http.get(`${base}/version`, () => success(versionInfo))
+]

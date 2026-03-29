@@ -15,28 +15,10 @@
  * limitations under the License.
  */
 
-import Mock from 'mockjs'
-import DevToolUtil from '@/utils/DevToolUtil'
+import { http, type HttpHandler } from 'msw'
+import { success, base } from '../utils'
 
-Mock.mock(DevToolUtil.mockUrl('/mock/tag-rule/search'), 'get', () => {
-  const total = Mock.mock('@integer(8, 1000)')
-  const list = []
-  for (let i = 0; i < total; i++) {
-    list.push({
-      ruleName: 'app_' + Mock.mock('@string(2,10)'),
-      enable: Mock.mock('@boolean'),
-      createTime: Mock.mock('@datetime')
-    })
-  }
-  return {
-    code: 200,
-    msg: 'success',
-    data: {
-      pageInfo: {
-        Total: total,
-        NextOffset: '0'
-      },
-      list
-    }
-  }
-})
+export const loginHandlers: HttpHandler[] = [
+  http.post(`${base}/auth/login`, () => success(null)),
+  http.post(`${base}/auth/logout`, () => success(null))
+]
