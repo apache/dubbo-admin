@@ -47,7 +47,6 @@ type ServiceSearchResp struct {
 	ServiceName     string `json:"serviceName"`
 	Version         string `json:"version"`
 	Group           string `json:"group"`
-	ProviderAppName string `json:"providerAppName,omitempty"`
 	ConsumerAppName string `json:"consumerAppName,omitempty"`
 }
 
@@ -119,4 +118,16 @@ func (s *BaseServiceReq) Query(c *gin.Context) error {
 
 func (s *BaseServiceReq) ServiceKey() string {
 	return s.ServiceName + constants.ColonSeparator + s.Version + constants.ColonSeparator + s.Group
+}
+
+type ServiceDetailReq struct {
+	ServiceName string `form:"serviceName" json:"serviceName" binding:"required"`
+	Version     string `form:"version" json:"version"`
+	Group       string `form:"group" json:"group"`
+	Mesh        string `form:"mesh" json:"mesh" binding:"required"`
+}
+
+type ServiceDetailResp struct {
+	Language string   `json:"language"`
+	Methods  []string `json:"methods"`
 }

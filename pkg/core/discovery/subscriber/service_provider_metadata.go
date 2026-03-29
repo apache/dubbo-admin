@@ -19,29 +19,36 @@ package subscriber
 
 import (
 	"reflect"
+	"sort"
 
-	"github.com/duke-git/lancet/v2/strutil"
-	"k8s.io/client-go/tools/cache"
-
+	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/core/events"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
+	"k8s.io/client-go/tools/cache"
 )
 
 type ServiceProviderMetadataEventSubscriber struct {
-	appStore store.ResourceStore
-	emitter  events.Emitter
+	appStore      store.ResourceStore
+	serviceStore  store.ResourceStore
+	providerStore store.ResourceStore
+	emitter       events.Emitter
 }
 
 func NewServiceProviderMetadataEventSubscriber(
 	appStore store.ResourceStore,
+	serviceStore store.ResourceStore,
+	providerStore store.ResourceStore,
 	emitter events.Emitter) *ServiceProviderMetadataEventSubscriber {
 	return &ServiceProviderMetadataEventSubscriber{
-		appStore: appStore,
-		emitter:  emitter,
+		appStore:      appStore,
+		serviceStore:  serviceStore,
+		providerStore: providerStore,
+		emitter:       emitter,
 	}
 }
 
@@ -58,17 +65,34 @@ func (s *ServiceProviderMetadataEventSubscriber) ProcessEvent(event events.Event
 	if !ok && event.NewObj() != nil {
 		return bizerror.NewAssertionError(reflect.TypeOf(newObj), event.NewObj())
 	}
+	oldObj, ok := event.OldObj().(*meshresource.ServiceProviderMetadataResource)
+	if !ok && event.OldObj() != nil {
+		return bizerror.NewAssertionError(reflect.TypeOf(oldObj), event.OldObj())
+	}
+
 	var processErr error
 	switch event.Type() {
-	case cache.Added, cache.Updated, cache.Replaced, cache.Sync:
+	case cache.Added, cache.Replaced, cache.Sync:
 		if newObj == nil {
 			errStr := "process provider metadata resource upsert event, but new obj is nil, skipped processing"
 			logger.Errorf(errStr)
 			return bizerror.New(bizerror.EventError, errStr)
 		}
 		processErr = s.processUpsert(newObj)
+	case cache.Updated:
+		if newObj == nil {
+			errStr := "process provider metadata resource update event, but new obj is nil, skipped processing"
+			logger.Errorf(errStr)
+			return bizerror.New(bizerror.EventError, errStr)
+		}
+		processErr = s.processUpdate(oldObj, newObj)
 	case cache.Deleted:
-		logger.Warnf("ignored provider metadata resource deleted event in ServiceProviderMetadataEventSubscriber")
+		if oldObj == nil {
+			errStr := "process provider metadata resource delete event, but old obj is nil, skipped processing"
+			logger.Errorf(errStr)
+			return bizerror.New(bizerror.EventError, errStr)
+		}
+		processErr = s.processDelete(oldObj)
 	}
 	if processErr != nil {
 		logger.Errorf("process provider metadata resource event failed, cause: %s, event: %s", processErr.Error(), event.String())
@@ -82,8 +106,43 @@ func (s *ServiceProviderMetadataEventSubscriber) processUpsert(r *meshresource.S
 	if r.Spec == nil {
 		return bizerror.New(bizerror.UnknownError, "provider metadata resource spec is nil")
 	}
-	if strutil.IsBlank(r.Spec.ProviderAppName) {
-		logger.Warnf("skip processing service provider metadata event because spec.providerAppName is blank, res:%s", r.String())
+	if err := s.ensureApplication(r); err != nil {
+		return err
+	}
+	return s.syncService(r.Mesh, r.Spec.ServiceName, r.Spec.Version, r.Spec.Group)
+}
+
+func (s *ServiceProviderMetadataEventSubscriber) processDelete(r *meshresource.ServiceProviderMetadataResource) error {
+	if r.Spec == nil {
+		return bizerror.New(bizerror.UnknownError, "provider metadata resource spec is nil")
+	}
+	return s.syncService(r.Mesh, r.Spec.ServiceName, r.Spec.Version, r.Spec.Group)
+}
+
+func (s *ServiceProviderMetadataEventSubscriber) processUpdate(oldRes, newRes *meshresource.ServiceProviderMetadataResource) error {
+	if newRes.Spec == nil {
+		return bizerror.New(bizerror.UnknownError, "provider metadata resource spec is nil")
+	}
+	if err := s.ensureApplication(newRes); err != nil {
+		return err
+	}
+
+	if oldRes != nil && oldRes.Spec != nil {
+		oldKey := meshresource.BuildServiceIdentityKey(oldRes.Spec.ServiceName, oldRes.Spec.Version, oldRes.Spec.Group)
+		newKey := meshresource.BuildServiceIdentityKey(newRes.Spec.ServiceName, newRes.Spec.Version, newRes.Spec.Group)
+		if oldRes.Mesh != newRes.Mesh || oldKey != newKey {
+			if err := s.syncService(oldRes.Mesh, oldRes.Spec.ServiceName, oldRes.Spec.Version, oldRes.Spec.Group); err != nil {
+				return err
+			}
+		}
+	}
+
+	return s.syncService(newRes.Mesh, newRes.Spec.ServiceName, newRes.Spec.Version, newRes.Spec.Group)
+}
+
+func (s *ServiceProviderMetadataEventSubscriber) ensureApplication(r *meshresource.ServiceProviderMetadataResource) error {
+	if r.Spec.ProviderAppName == "" {
+		logger.Warnf("skip processing application sync because spec.providerAppName is blank, res:%s", r.String())
 		return nil
 	}
 	_, exists, err := s.appStore.GetByKey(coremodel.BuildResourceKey(r.Mesh, r.Spec.ProviderAppName))
@@ -93,9 +152,9 @@ func (s *ServiceProviderMetadataEventSubscriber) processUpsert(r *meshresource.S
 		return err
 	}
 	if exists {
-		logger.Infof("application resource already exists, appName: %s, mesh: %s", r.Spec.ProviderAppName, r.Mesh)
 		return nil
 	}
+
 	appRes := meshresource.NewApplicationResourceWithAttributes(r.Spec.ProviderAppName, r.Mesh)
 	appRes.Spec.Name = r.Spec.ProviderAppName
 	if err := s.appStore.Add(appRes); err != nil {
@@ -105,4 +164,104 @@ func (s *ServiceProviderMetadataEventSubscriber) processUpsert(r *meshresource.S
 	}
 	s.emitter.Send(events.NewResourceChangedEvent(cache.Added, nil, appRes))
 	return nil
+}
+
+func (s *ServiceProviderMetadataEventSubscriber) syncService(mesh, serviceName, version, group string) error {
+	serviceKey := meshresource.BuildServiceIdentityKey(serviceName, version, group)
+	resources, err := s.providerStore.ListByIndexes(map[string]string{
+		index.ByMeshIndex:                  mesh,
+		index.ByServiceProviderServiceName: serviceName,
+	})
+	if err != nil {
+		return err
+	}
+
+	providers := make([]*meshresource.ServiceProviderMetadataResource, 0, len(resources))
+	for _, item := range resources {
+		res, ok := item.(*meshresource.ServiceProviderMetadataResource)
+		if !ok {
+			return bizerror.NewAssertionError(meshresource.ServiceProviderMetadataKind, reflect.TypeOf(item).Name())
+		}
+		if res.Spec == nil {
+			continue
+		}
+		if res.Spec.Version == version && res.Spec.Group == group {
+			providers = append(providers, res)
+		}
+	}
+
+	rawOldRes, exists, err := s.serviceStore.GetByKey(coremodel.BuildResourceKey(mesh, serviceKey))
+	if err != nil {
+		return err
+	}
+
+	var oldRes *meshresource.ServiceResource
+	if exists {
+		var ok bool
+		oldRes, ok = rawOldRes.(*meshresource.ServiceResource)
+		if !ok {
+			return bizerror.NewAssertionError(meshresource.ServiceKind, reflect.TypeOf(rawOldRes).Name())
+		}
+	}
+
+	if len(providers) == 0 {
+		if !exists {
+			return nil
+		}
+		if err := s.serviceStore.Delete(oldRes); err != nil {
+			return err
+		}
+		s.emitter.Send(events.NewResourceChangedEvent(cache.Deleted, oldRes, nil))
+		return nil
+	}
+
+	newRes := meshresource.NewServiceResourceWithAttributes(serviceKey, mesh)
+	newRes.Spec = buildServiceSpec(serviceName, version, group, providers)
+	if !exists {
+		if err := s.serviceStore.Add(newRes); err != nil {
+			return err
+		}
+		s.emitter.Send(events.NewResourceChangedEvent(cache.Added, nil, newRes))
+		return nil
+	}
+
+	if err := s.serviceStore.Update(newRes); err != nil {
+		return err
+	}
+	s.emitter.Send(events.NewResourceChangedEvent(cache.Updated, oldRes, newRes))
+	return nil
+}
+
+func buildServiceSpec(serviceName, version, group string, providers []*meshresource.ServiceProviderMetadataResource) *meshproto.Service {
+	methodSet := make(map[string]struct{})
+	language := ""
+
+	for _, provider := range providers {
+		if provider.Spec == nil {
+			continue
+		}
+		if language == "" && provider.Spec.Parameters != nil {
+			language = provider.Spec.Parameters["language"]
+		}
+		for _, method := range provider.Spec.Methods {
+			if method == nil || method.Name == "" {
+				continue
+			}
+			methodSet[method.Name] = struct{}{}
+		}
+	}
+
+	methods := make([]string, 0, len(methodSet))
+	for methodName := range methodSet {
+		methods = append(methods, methodName)
+	}
+	sort.Strings(methods)
+
+	return &meshproto.Service{
+		Name:     serviceName,
+		Group:    group,
+		Version:  version,
+		Language: language,
+		Methods:  methods,
+	}
 }

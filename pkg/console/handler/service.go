@@ -69,6 +69,40 @@ func GetServiceTabDistribution(ctx consolectx.Context) gin.HandlerFunc {
 	}
 }
 
+func GetServiceDetail(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := &model.ServiceDetailReq{}
+		if err := c.ShouldBindQuery(req); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		resp, err := service.GetServiceDetail(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}
+
+func GetServiceGraph(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := &model.ServiceGraphReq{}
+		if err := c.ShouldBindQuery(req); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		resp, err := service.SearchServiceAsCrossLinkedList(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}
+
 func ServiceConfigTimeoutGET(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req := model.BaseServiceReq{}
