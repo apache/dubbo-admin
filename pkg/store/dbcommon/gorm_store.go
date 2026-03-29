@@ -582,3 +582,10 @@ func (gs *GormStore) rebuildIndices() error {
 	logger.Infof("Rebuilt indices for %s: loaded %d resources", gs.kind.ToString(), len(models))
 	return nil
 }
+
+// Pool returns the connection pool for this store
+// Used by other components (e.g., leader election) that need direct DB access
+// Returns interface{} to satisfy the poolProvider interface in pkg/core/store
+func (gs *GormStore) Pool() interface{} {
+	return gs.pool
+}
