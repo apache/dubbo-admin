@@ -234,26 +234,19 @@ func GraphApplications(ctx consolectx.Context, req *model.ApplicationGraphReq) (
 
 	nodes := make([]model.GraphNode, 0)
 	edges := make([]model.GraphEdge, 0)
-
+	// init self node
+	nodes = append(nodes, model.GraphNode{
+		ID:    req.AppName,
+		Label: req.AppName,
+		Type:  "application",
+		Rule:  "", // self node doesn't have a rule
+		Data:  nil,
+	})
 	// 3.a: iterate over provided services, collect service nodes and consumer app nodes.
 	for _, provider := range providerServiceList {
 		if provider.Spec == nil {
 			continue
 		}
-
-		nodes = append(nodes, model.GraphNode{
-			ID:    provider.Spec.ServiceName,
-			Label: provider.Spec.ServiceName,
-			Type:  "service",
-			Rule:  "",
-			Data:  nil,
-		})
-
-		edges = append(edges, model.GraphEdge{
-			Source: provider.Spec.ProviderAppName,
-			Target: provider.Spec.ServiceName,
-			Data:   nil,
-		})
 
 		// For each provided service, find consuming applications and add them as nodes.
 		consumerAppServiceList, err := manager.ListByIndexes[*meshresource.ServiceConsumerMetadataResource](
@@ -283,8 +276,8 @@ func GraphApplications(ctx consolectx.Context, req *model.ApplicationGraphReq) (
 					Data:  nil,
 				})
 				edges = append(edges, model.GraphEdge{
-					Source: provider.Spec.ServiceName,
-					Target: item.Spec.ConsumerAppName,
+					Source: item.Spec.ConsumerAppName,
+					Target: provider.Spec.ProviderAppName,
 					Data:   nil,
 				})
 			}
@@ -296,20 +289,6 @@ func GraphApplications(ctx consolectx.Context, req *model.ApplicationGraphReq) (
 		if consumer.Spec == nil {
 			continue
 		}
-
-		nodes = append(nodes, model.GraphNode{
-			ID:    consumer.Spec.ServiceName,
-			Label: consumer.Spec.ServiceName,
-			Type:  "service",
-			Rule:  "",
-			Data:  nil,
-		})
-
-		edges = append(edges, model.GraphEdge{
-			Source: consumer.Spec.ConsumerAppName,
-			Target: consumer.Spec.ServiceName,
-			Data:   nil,
-		})
 
 		// For each consumed service, find providing applications and add them as nodes.
 		providerAppList, err := manager.ListByIndexes[*meshresource.ServiceProviderMetadataResource](
@@ -339,7 +318,7 @@ func GraphApplications(ctx consolectx.Context, req *model.ApplicationGraphReq) (
 					Data:  nil,
 				})
 				edges = append(edges, model.GraphEdge{
-					Source: consumer.Spec.ServiceName,
+					Source: consumer.Spec.ConsumerAppName,
 					Target: item.Spec.ProviderAppName,
 					Data:   nil,
 				})
