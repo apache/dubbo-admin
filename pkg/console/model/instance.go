@@ -55,18 +55,18 @@ func NewSearchPaginationResult() *SearchPaginationResult {
 }
 
 type SearchInstanceResp struct {
-	Ip               string            `json:"ip"`
-	Name             string            `json:"name"`
-	WorkloadName     string            `json:"workloadName"`
-	AppName          string            `json:"appName"`
-	LifecycleState   string            `json:"lifecycleState"`
-	DeployState      string            `json:"deployState"`
-	DeployCluster    string            `json:"deployCluster"`
-	RegisterState    string            `json:"registerState"`
-	RegisterClusters []string          `json:"registerClusters"`
-	CreateTime       string            `json:"createTime"`
-	RegisterTime     string            `json:"registerTime"`
-	Labels           map[string]string `json:"labels"`
+	Ip               string                 `json:"ip"`
+	Name             string                 `json:"name"`
+	WorkloadName     string                 `json:"workloadName"`
+	AppName          string                 `json:"appName"`
+	LifecycleState   InstanceLifecycleState `json:"lifecycleState"`
+	DeployState      InstanceDeployState    `json:"deployState"`
+	DeployCluster    string                 `json:"deployCluster"`
+	RegisterState    InstanceRegisterState  `json:"registerState"`
+	RegisterClusters []string               `json:"registerClusters"`
+	CreateTime       string                 `json:"createTime"`
+	RegisterTime     string                 `json:"registerTime"`
+	Labels           map[string]string      `json:"labels"`
 }
 
 func NewSearchInstanceResp() *SearchInstanceResp {
@@ -103,24 +103,74 @@ type State struct {
 	Value string `json:"value"`
 }
 
+// InstanceDeployState describes the runtime deployment state reported by the platform.
+type InstanceDeployState string
+
+const (
+	// InstanceDeployStateUnknown indicates the deployment state cannot be derived from runtime metadata.
+	InstanceDeployStateUnknown InstanceDeployState = "Unknown"
+	// InstanceDeployStatePending indicates the workload has been accepted but is not running yet.
+	InstanceDeployStatePending InstanceDeployState = "Pending"
+	// InstanceDeployStateStarting indicates the workload is running but not ready to serve.
+	InstanceDeployStateStarting InstanceDeployState = "Starting"
+	// InstanceDeployStateRunning indicates the workload is running and ready.
+	InstanceDeployStateRunning InstanceDeployState = "Running"
+	// InstanceDeployStateTerminating indicates the workload is shutting down.
+	InstanceDeployStateTerminating InstanceDeployState = "Terminating"
+	// InstanceDeployStateFailed indicates the workload has failed.
+	InstanceDeployStateFailed InstanceDeployState = "Failed"
+	// InstanceDeployStateSucceeded indicates the workload has completed successfully and exited.
+	InstanceDeployStateSucceeded InstanceDeployState = "Succeeded"
+	// InstanceDeployStateCrashing indicates the workload is repeatedly crashing or restarting.
+	InstanceDeployStateCrashing InstanceDeployState = "Crashing"
+)
+
+// InstanceRegisterState describes whether the instance is visible to the registry.
+type InstanceRegisterState string
+
+const (
+	// InstanceRegisterStateRegistered indicates the instance has been registered to the registry.
+	InstanceRegisterStateRegistered InstanceRegisterState = "Registered"
+	// InstanceRegisterStateUnregistered indicates the instance has not registered yet or has been removed.
+	InstanceRegisterStateUnregistered InstanceRegisterState = "UnRegistered"
+)
+
+// InstanceLifecycleState describes the user-facing lifecycle synthesized from deploy/register signals.
+type InstanceLifecycleState string
+
+const (
+	// InstanceLifecycleStateStarting indicates the instance is still warming up.
+	InstanceLifecycleStateStarting InstanceLifecycleState = "Starting"
+	// InstanceLifecycleStateServing indicates the instance is both running and registered.
+	InstanceLifecycleStateServing InstanceLifecycleState = "Serving"
+	// InstanceLifecycleStateDraining indicates the instance is running but has started unregistering.
+	InstanceLifecycleStateDraining InstanceLifecycleState = "Draining"
+	// InstanceLifecycleStateTerminating indicates the instance is shutting down.
+	InstanceLifecycleStateTerminating InstanceLifecycleState = "Terminating"
+	// InstanceLifecycleStateError indicates the instance is in an unexpected or failed state.
+	InstanceLifecycleStateError InstanceLifecycleState = "Error"
+	// InstanceLifecycleStateUnknown indicates the lifecycle cannot be inferred from current signals.
+	InstanceLifecycleStateUnknown InstanceLifecycleState = "Unknown"
+)
+
 type InstanceDetailResp struct {
-	RpcPort          int64             `json:"rpcPort"`
-	Ip               string            `json:"ip"`
-	AppName          string            `json:"appName"`
-	WorkloadName     string            `json:"workloadName"`
-	Labels           map[string]string `json:"labels"`
-	CreateTime       string            `json:"createTime"`
-	ReadyTime        string            `json:"readyTime"`
-	RegisterTime     string            `json:"registerTime"`
-	RegisterClusters []string          `json:"registerClusters"`
-	DeployCluster    string            `json:"deployCluster"`
-	LifecycleState   string            `json:"lifecycleState"`
-	DeployState      string            `json:"deployState"`
-	RegisterState    string            `json:"registerState"`
-	Node             string            `json:"node"`
-	Image            string            `json:"image"`
-	Probes           ProbeStruct       `json:"probes"`
-	Tags             map[string]string `json:"tags"`
+	RpcPort          int64                  `json:"rpcPort"`
+	Ip               string                 `json:"ip"`
+	AppName          string                 `json:"appName"`
+	WorkloadName     string                 `json:"workloadName"`
+	Labels           map[string]string      `json:"labels"`
+	CreateTime       string                 `json:"createTime"`
+	ReadyTime        string                 `json:"readyTime"`
+	RegisterTime     string                 `json:"registerTime"`
+	RegisterClusters []string               `json:"registerClusters"`
+	DeployCluster    string                 `json:"deployCluster"`
+	LifecycleState   InstanceLifecycleState `json:"lifecycleState"`
+	DeployState      InstanceDeployState    `json:"deployState"`
+	RegisterState    InstanceRegisterState  `json:"registerState"`
+	Node             string                 `json:"node"`
+	Image            string                 `json:"image"`
+	Probes           ProbeStruct            `json:"probes"`
+	Tags             map[string]string      `json:"tags"`
 }
 
 const (
@@ -190,52 +240,57 @@ func FromInstanceResource(res *meshresource.InstanceResource, cfg app.AdminConfi
 	return r
 }
 
-func DeriveInstanceDeployState(instance *meshproto.Instance) string {
+func DeriveInstanceDeployState(instance *meshproto.Instance) InstanceDeployState {
 	if instance == nil || strutil.IsBlank(instance.DeployState) {
-		return "Unknown"
+		return InstanceDeployStateUnknown
 	}
-	switch instance.DeployState {
-	case "Running":
+	deployState := InstanceDeployState(instance.DeployState)
+	switch deployState {
+	case InstanceDeployStateRunning:
 		if !isPodReady(instance) {
-			return "Starting"
+			return InstanceDeployStateStarting
 		}
-		return "Running"
+		return InstanceDeployStateRunning
 	default:
-		return instance.DeployState
+		return deployState
 	}
 }
 
-func DeriveInstanceRegisterState(instance *meshproto.Instance) string {
+func DeriveInstanceRegisterState(instance *meshproto.Instance) InstanceRegisterState {
 	if instance == nil || strutil.IsBlank(instance.RegisterTime) {
-		return "UnRegistered"
+		return InstanceRegisterStateUnregistered
 	}
-	return "Registered"
+	return InstanceRegisterStateRegistered
 }
 
-func DeriveInstanceLifecycleState(instance *meshproto.Instance, deployState string, registerState string) string {
+func DeriveInstanceLifecycleState(
+	instance *meshproto.Instance,
+	deployState InstanceDeployState,
+	registerState InstanceRegisterState,
+) InstanceLifecycleState {
 	switch deployState {
-	case "Crashing", "Failed", "Unknown", "Succeeded":
-		return "Error"
-	case "Terminating":
-		return "Terminating"
+	case InstanceDeployStateCrashing, InstanceDeployStateFailed, InstanceDeployStateUnknown, InstanceDeployStateSucceeded:
+		return InstanceLifecycleStateError
+	case InstanceDeployStateTerminating:
+		return InstanceLifecycleStateTerminating
 	}
 
-	if registerState == "Registered" {
-		if deployState == "Running" {
-			return "Serving"
+	if registerState == InstanceRegisterStateRegistered {
+		if deployState == InstanceDeployStateRunning {
+			return InstanceLifecycleStateServing
 		}
-		return "Error"
+		return InstanceLifecycleStateError
 	}
 
-	if deployState == "Running" && strutil.IsNotBlank(instance.UnregisterTime) {
-		return "Draining"
+	if instance != nil && deployState == InstanceDeployStateRunning && strutil.IsNotBlank(instance.UnregisterTime) {
+		return InstanceLifecycleStateDraining
 	}
 
 	switch deployState {
-	case "Pending", "Starting", "Running":
-		return "Starting"
+	case InstanceDeployStatePending, InstanceDeployStateStarting, InstanceDeployStateRunning:
+		return InstanceLifecycleStateStarting
 	default:
-		return "Unknown"
+		return InstanceLifecycleStateUnknown
 	}
 }
 

@@ -225,7 +225,7 @@ function instanceInfo(params: any) {
 * on (pod) group_left(pod_ip)
 kube_pod_info{pod_ip="${ip}"}`)
       instance.cpu = isNumber(cpu) ? cpu.toFixed(3) + 'u' : cpu
-      instance.memory = bytesToHuman(mem)
+      instance.memory = isNumber(mem) ? bytesToHuman(mem) : mem
     })
   })
 }
@@ -277,7 +277,7 @@ onMounted(() => {
 })
 
 const viewDetail = (record: any) => {
-  router.push(`/resources/instances/detail/${record.name}/${record.ip}`)
+  router.push(`/resources/instances/detail/${record.name}/${record.ip}/${record.appName}`)
 }
 
 provide(PROVIDE_INJECT_KEY.SEARCH_DOMAIN, searchDomain)

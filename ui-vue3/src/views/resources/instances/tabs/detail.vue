@@ -51,16 +51,6 @@
           <a-col :span="12">
             <a-card class="_detail" style="height: 100%">
               <a-descriptions class="description-column" :column="1">
-                <!-- deployState -->
-                <a-descriptions-item
-                  :label="$t('instanceDomain.lifecycleState')"
-                  :labelStyle="{ fontWeight: 'bold' }"
-                >
-                  <a-tag :color="lifecycleColor(instanceDetail?.lifecycleState)">
-                    {{ instanceDetail?.lifecycleState }}
-                  </a-tag>
-                </a-descriptions-item>
-
                 <a-descriptions-item
                   :label="$t('instanceDomain.deployState')"
                   :labelStyle="{ fontWeight: 'bold' }"
@@ -251,12 +241,7 @@ import { type ComponentInternalInstance, getCurrentInstance, onMounted, reactive
 import { CopyOutlined } from '@ant-design/icons-vue'
 import useClipboard from 'vue-clipboard3'
 import { message } from 'ant-design-vue'
-import {
-  INSTANCE_DEPLOY_COLOR,
-  INSTANCE_LIFECYCLE_COLOR,
-  PRIMARY_COLOR,
-  PRIMARY_COLOR_T
-} from '@/base/constants'
+import { INSTANCE_DEPLOY_COLOR, PRIMARY_COLOR, PRIMARY_COLOR_T } from '@/base/constants'
 import { getInstanceDetail } from '@/api/service/instance'
 import { useRoute, useRouter } from 'vue-router'
 import { formattedDate } from '@/utils/DateUtil'
@@ -306,10 +291,6 @@ const isProbeOpen = (status: boolean) => {
 
 const deployColor = (state?: string) => {
   return INSTANCE_DEPLOY_COLOR[(state || 'UNKNOWN').toUpperCase()] || 'default'
-}
-
-const lifecycleColor = (state?: string) => {
-  return INSTANCE_LIFECYCLE_COLOR[(state || 'UNKNOWN').toUpperCase()] || 'default'
 }
 </script>
 

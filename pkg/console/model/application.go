@@ -131,18 +131,18 @@ func NewApplicationTabInstanceInfoReq() *ApplicationTabInstanceInfoReq {
 }
 
 type AppInstanceInfoResp struct {
-	AppName         string            `json:"appName"`
-	CreateTime      string            `json:"createTime"`
-	LifecycleState  string            `json:"lifecycleState"`
-	DeployState     string            `json:"deployState"`
-	DeployClusters  string            `json:"deployClusters"`
-	IP              string            `json:"ip"`
-	Labels          map[string]string `json:"labels"`
-	Name            string            `json:"name"`
-	RegisterCluster string            `json:"registerCluster"`
-	RegisterState   string            `json:"registerState"`
-	RegisterTime    string            `json:"registerTime"`
-	WorkloadName    string            `json:"workloadName"`
+	AppName         string                 `json:"appName"`
+	CreateTime      string                 `json:"createTime"`
+	LifecycleState  InstanceLifecycleState `json:"lifecycleState"`
+	DeployState     InstanceDeployState    `json:"deployState"`
+	DeployClusters  string                 `json:"deployClusters"`
+	IP              string                 `json:"ip"`
+	Labels          map[string]string      `json:"labels"`
+	Name            string                 `json:"name"`
+	RegisterCluster string                 `json:"registerCluster"`
+	RegisterState   InstanceRegisterState  `json:"registerState"`
+	RegisterTime    string                 `json:"registerTime"`
+	WorkloadName    string                 `json:"workloadName"`
 }
 
 type ApplicationServiceReq struct {
