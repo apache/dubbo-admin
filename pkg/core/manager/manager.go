@@ -25,6 +25,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/governor"
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
 type ReadOnlyResourceManager interface {
@@ -32,13 +33,10 @@ type ReadOnlyResourceManager interface {
 	GetByKey(rk model.ResourceKind, key string) (r model.Resource, exist bool, err error)
 	// GetByKeys returns the resources with the given resource keys
 	GetByKeys(rk model.ResourceKind, keys []string) ([]model.Resource, error)
-	// ListByIndexes returns the resources with the given indexes, indexes is a map of index name and index value
-	ListByIndexes(rk model.ResourceKind, indexes map[string]string) ([]model.Resource, error)
-	// PageListByIndexes page list the resources with the given indexes, indexes is a map of index name and index value
-	PageListByIndexes(rk model.ResourceKind, indexes map[string]string, pr model.PageReq) (*model.PageData[model.Resource], error)
-	// PageSearchResourceByConditions page fuzzy search resource by conditions, conditions cannot be empty
-	// TODO support multiple conditions
-	PageSearchResourceByConditions(rk model.ResourceKind, conditions []string, pr model.PageReq) (*model.PageData[model.Resource], error)
+	// ListByIndexes returns the resources with the given index conditions
+	ListByIndexes(rk model.ResourceKind, indexes []index.IndexCondition) ([]model.Resource, error)
+	// PageListByIndexes page list the resources with the given index conditions
+	PageListByIndexes(rk model.ResourceKind, indexes []index.IndexCondition, pr model.PageReq) (*model.PageData[model.Resource], error)
 }
 
 type WriteOnlyResourceManager interface {
@@ -100,7 +98,7 @@ func (rm *resourcesManager) GetByKeys(rk model.ResourceKind, keys []string) ([]m
 	return resources, nil
 }
 
-func (rm *resourcesManager) ListByIndexes(rk model.ResourceKind, indexes map[string]string) ([]model.Resource, error) {
+func (rm *resourcesManager) ListByIndexes(rk model.ResourceKind, indexes []index.IndexCondition) ([]model.Resource, error) {
 	rs, err := rm.storeRouter.ResourceKindRoute(rk)
 	if err != nil {
 		return nil, err
@@ -114,7 +112,7 @@ func (rm *resourcesManager) ListByIndexes(rk model.ResourceKind, indexes map[str
 
 func (rm *resourcesManager) PageListByIndexes(
 	rk model.ResourceKind,
-	indexes map[string]string,
+	indexes []index.IndexCondition,
 	pr model.PageReq) (*model.PageData[model.Resource], error) {
 
 	rs, err := rm.storeRouter.ResourceKindRoute(rk)
@@ -126,11 +124,6 @@ func (rm *resourcesManager) PageListByIndexes(
 		return nil, err
 	}
 	return pageData, nil
-}
-
-func (rm *resourcesManager) PageSearchResourceByConditions(rk model.ResourceKind, conditions []string, pr model.PageReq) (*model.PageData[model.Resource], error) {
-	//TODO implement me
-	panic("implement me")
 }
 
 func (rm *resourcesManager) Add(r model.Resource) error {

@@ -22,6 +22,7 @@ import (
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
 // GetByKey is a helper function of ResourceManager.GeyByKey
@@ -59,7 +60,7 @@ func GetByKeys[T model.Resource](rm ReadOnlyResourceManager, rk model.ResourceKi
 }
 
 // ListByIndexes is a helper function of ResourceManager.ListByIndexes
-func ListByIndexes[T model.Resource](rm ReadOnlyResourceManager, rk model.ResourceKind, indexes map[string]string) ([]T, error) {
+func ListByIndexes[T model.Resource](rm ReadOnlyResourceManager, rk model.ResourceKind, indexes []index.IndexCondition) ([]T, error) {
 	resources, err := rm.ListByIndexes(rk, indexes)
 	if err != nil {
 		return nil, err
@@ -81,40 +82,10 @@ func ListByIndexes[T model.Resource](rm ReadOnlyResourceManager, rk model.Resour
 func PageListByIndexes[T model.Resource](
 	rm ReadOnlyResourceManager,
 	rk model.ResourceKind,
-	indexes map[string]string,
+	indexes []index.IndexCondition,
 	pr model.PageReq) (*model.PageData[T], error) {
 
 	pageData, err := rm.PageListByIndexes(rk, indexes, pr)
-	if err != nil {
-		return nil, err
-	}
-
-	typedResources := make([]T, len(pageData.Data))
-	for i, resource := range pageData.Data {
-		typedResource, ok := resource.(T)
-		if !ok {
-			return nil, bizerror.NewAssertionError(rk, reflect.TypeOf(typedResource).Name())
-		}
-		typedResources[i] = typedResource
-	}
-	newPageData := &model.PageData[T]{
-		Pagination: model.Pagination{
-			Total:      pageData.Total,
-			PageOffset: pageData.PageOffset,
-			PageSize:   pageData.PageSize,
-		},
-		Data: typedResources,
-	}
-	return newPageData, nil
-}
-
-// PageSearchResourceByConditions is a helper function of ResourceManager.PageSearchResourceByConditions
-func PageSearchResourceByConditions[T model.Resource](
-	rm ReadOnlyResourceManager,
-	rk model.ResourceKind,
-	conditions []string,
-	pr model.PageReq) (*model.PageData[T], error) {
-	pageData, err := rm.PageSearchResourceByConditions(rk, conditions, pr)
 	if err != nil {
 		return nil, err
 	}

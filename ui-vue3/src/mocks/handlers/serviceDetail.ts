@@ -15,15 +15,23 @@
  * limitations under the License.
  */
 
-import Mock from 'mockjs'
-Mock.mock('/mock/metrics/cluster', 'get', {
-  code: 200,
-  message: '成功',
-  data: {
-    all: Mock.mock('@integer(100, 500)'),
-    application: Mock.mock('@integer(80, 200)'),
-    consumers: Mock.mock('@integer(80, 200)'),
-    providers: Mock.mock('@integer(80, 200)'),
-    services: Mock.mock('@integer(80, 200)')
-  }
-})
+import { http, type HttpHandler } from 'msw'
+import { success, base } from '../utils'
+import type { ServiceDetail } from '@/types/api'
+
+const serviceDetail: ServiceDetail = {
+  serviceName: 'org.apache.dubbo.samples.UserService',
+  versionGroup: ['version=v1', 'version=2.0,group=group1'],
+  protocol: 'triple',
+  delay: '3000ms',
+  timeOut: '3000ms',
+  retry: 3,
+  requestTotal: 1384,
+  avgRT: '96ms',
+  avgQPS: 12,
+  obsolete: false
+}
+
+export const serviceDetailHandlers: HttpHandler[] = [
+  http.get(`${base}/service/detail`, () => success(serviceDetail))
+]

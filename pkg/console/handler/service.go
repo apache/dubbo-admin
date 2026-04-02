@@ -69,6 +69,83 @@ func GetServiceTabDistribution(ctx consolectx.Context) gin.HandlerFunc {
 	}
 }
 
+func GetServiceProviderInstances(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := model.BaseServiceReq{}
+		if err := req.Query(c); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		resp, err := service.GetServiceProviderInstances(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}
+
+func GetServiceMethodNames(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := model.BaseServiceReq{}
+		if err := req.Query(c); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		methodNames, err := service.GetServiceMethodNames(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(methodNames))
+	}
+}
+
+func GetServiceMethodDetail(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := model.ServiceMethodDetailReq{}
+		if err := req.Query(c); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		resp, err := service.GetServiceMethodDetail(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}
+
+func ServiceGenericInvoke(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := model.ServiceGenericInvokeReq{}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		if err := req.Validate(); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		resp, err := service.InvokeServiceGeneric(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}
+
 func ServiceConfigTimeoutGET(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req := model.BaseServiceReq{}

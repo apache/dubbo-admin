@@ -20,7 +20,11 @@ package store
 import (
 	"fmt"
 	"math"
+	"reflect"
 
+	"gorm.io/gorm"
+
+	"github.com/apache/dubbo-admin/pkg/core/leader"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 )
@@ -32,6 +36,12 @@ func init() {
 type Router interface {
 	ResourceRoute(coremodel.Resource) (ResourceStore, error)
 	ResourceKindRoute(k coremodel.ResourceKind) (ResourceStore, error)
+}
+
+// poolProvider is an internal interface for stores that provide DB access
+// This avoids circular imports by not referencing dbcommon directly
+type poolProvider interface {
+	Pool() interface{} // Returns *ConnectionPool, but we don't type it to avoid import
 }
 
 // The Component interface is composed of both functional interfaces and lifecycle interfaces
@@ -47,6 +57,9 @@ type storeComponent struct {
 	// stores every resource corresponds to a ResourceStore
 	stores map[coremodel.ResourceKind]ManagedResourceStore
 }
+
+// Compile-time check that storeComponent implements leader.DBSource interface
+var _ leader.DBSource = &storeComponent{}
 
 func (sc *storeComponent) RequiredDependencies() []runtime.ComponentType {
 	return []runtime.ComponentType{
@@ -108,4 +121,33 @@ func (sc *storeComponent) ResourceKindRoute(k coremodel.ResourceKind) (ResourceS
 	}
 	return nil, fmt.Errorf("%s is not supported by store yet", k)
 
+}
+
+// GetDB returns the shared DB connection if the underlying store is DB-backed
+// Implements the leader.DBSource interface
+func (sc *storeComponent) GetDB() (*gorm.DB, bool) {
+	// Try to get DB from any store that has a Pool() method (all GormStores share the same ConnectionPool)
+	for _, store := range sc.stores {
+		pp, ok := store.(poolProvider)
+		if !ok {
+			continue
+		}
+		pool := pp.Pool()
+		if pool == nil {
+			continue
+		}
+		// Use reflection to call GetDB() on the pool to avoid importing dbcommon
+		poolVal := reflect.ValueOf(pool)
+		getDBMethod := poolVal.MethodByName("GetDB")
+		if !getDBMethod.IsValid() {
+			continue
+		}
+		result := getDBMethod.Call(nil)
+		if len(result) > 0 {
+			if db, ok := result[0].Interface().(*gorm.DB); ok {
+				return db, true
+			}
+		}
+	}
+	return nil, false
 }

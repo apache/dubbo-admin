@@ -127,9 +127,9 @@ func (n *NacosServiceEventSubscriber) processConsumerMetadataUpsert(serviceRes *
 		logger.Errorf("process service consumer metadata upsert event, but cannot route to service consumer metadata resource, cause: %v", err)
 		return err
 	}
-	resources, err := st.ListByIndexes(map[string]string{
-		index.ByMeshIndex:                  serviceRes.Mesh,
-		index.ByServiceConsumerServiceName: serviceName,
+	resources, err := st.ListByIndexes([]index.IndexCondition{
+		{IndexName: index.ByMeshIndex, Value: serviceRes.Mesh, Operator: index.Equals},
+		{IndexName: index.ByServiceConsumerServiceName, Value: serviceName, Operator: index.Equals},
 	})
 	if err != nil {
 		logger.Errorf("process service consumer metadata upsert event, but cannot list service consumer metadata resource of %s, cause: %v", serviceRes.Name, err)
@@ -212,9 +212,9 @@ func (n *NacosServiceEventSubscriber) processRPCInstanceUpsert(serviceRes *meshr
 		logger.Errorf("process rpc instance upsert event, but cannot route to rpc instance resource, cause: %v", err)
 		return err
 	}
-	resources, err := st.ListByIndexes(map[string]string{
-		index.ByMeshIndex:          serviceRes.Mesh,
-		index.ByRPCInstanceAppName: serviceRes.Name,
+	resources, err := st.ListByIndexes([]index.IndexCondition{
+		{IndexName: index.ByMeshIndex, Value: serviceRes.Mesh, Operator: index.Equals},
+		{IndexName: index.ByRPCInstanceAppName, Value: serviceRes.Name, Operator: index.Equals},
 	})
 	if err != nil {
 		logger.Errorf("process rpc instance upsert event, but cannot list rpc instance resource of %s, cause: %v", serviceRes.Name, err)
@@ -287,9 +287,9 @@ func (n *NacosServiceEventSubscriber) processServiceConsumerDelete(serviceRes *m
 		logger.Errorf("process service consumer delete event, but cannot route to service consumer metadata resource, cause: %v", err)
 		return err
 	}
-	resources, err := st.ListByIndexes(map[string]string{
-		index.ByMeshIndex:                  serviceRes.Mesh,
-		index.ByServiceConsumerServiceName: serviceRes.Name,
+	resources, err := st.ListByIndexes([]index.IndexCondition{
+		{IndexName: index.ByMeshIndex, Value: serviceRes.Mesh, Operator: index.Equals},
+		{IndexName: index.ByServiceConsumerServiceName, Value: serviceRes.Name, Operator: index.Equals},
 	})
 	if err != nil {
 		logger.Errorf("process service consumer delete event, but cannot list service consumer metadata resource of %s, cause: %v", serviceRes.Name, err)
@@ -311,9 +311,9 @@ func (n *NacosServiceEventSubscriber) processRPCInstanceDelete(serviceRes *meshr
 		logger.Errorf("process rpc instance delete event, but cannot route to rpc instance resource, cause: %v", err)
 		return err
 	}
-	resources, err := st.ListByIndexes(map[string]string{
-		index.ByMeshIndex:          serviceRes.Mesh,
-		index.ByRPCInstanceAppName: serviceRes.Name,
+	resources, err := st.ListByIndexes([]index.IndexCondition{
+		{IndexName: index.ByMeshIndex, Value: serviceRes.Mesh, Operator: index.Equals},
+		{IndexName: index.ByRPCInstanceAppName, Value: serviceRes.Name, Operator: index.Equals},
 	})
 	if err != nil {
 		logger.Errorf("process rpc instance delete event, but cannot list rpc instance resource of %s, cause: %v", serviceRes.Name, err)

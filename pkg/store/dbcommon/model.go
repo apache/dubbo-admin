@@ -123,3 +123,22 @@ func FromResource(resource model.Resource) (*ResourceModel, error) {
 		Data:         data,
 	}, nil
 }
+
+// ResourceIndexModel represents a persisted index entry in the database
+// This table stores index mappings to enable prefix queries and provide index persistence
+// across multiple replicas in distributed deployments
+// Table: resource_indices (shared across all resource kinds)
+type ResourceIndexModel struct {
+	ID           uint   `gorm:"primarykey"`                                           // Auto-incrementing primary key
+	ResourceKind string `gorm:"type:varchar(64);not null;index:idx_kind_name_value"`  // Resource kind (e.g., "Instance")
+	IndexName    string `gorm:"type:varchar(128);not null;index:idx_kind_name_value"` // Index name (e.g., "idx_instance_ip")
+	IndexValue   string `gorm:"type:varchar(255);not null;index:idx_kind_name_value"` // Indexed value (e.g., "192.168.1.1")
+	ResourceKey  string `gorm:"type:varchar(255);not null;index:idx_resource_key"`    // Resource unique key
+	Operator     string `gorm:"type:varchar(32);not null;default:Equals"`             // Index operator type, e.g., Equals, HasPrefix
+}
+
+// TableName specifies the table name for ResourceIndexModel
+// Unlike ResourceModel which uses dynamic per-kind tables, resource_indices is a shared global table
+func (ResourceIndexModel) TableName() string {
+	return "resource_indices"
+}

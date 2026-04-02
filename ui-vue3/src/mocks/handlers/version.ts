@@ -15,28 +15,20 @@
  * limitations under the License.
  */
 
-import Mock from 'mockjs'
-import DevToolUtil from '@/utils/DevToolUtil'
+import { http, type HttpHandler } from 'msw'
+import { success, base } from '../utils'
+import type { VersionInfo } from '@/types/api'
 
-Mock.mock(DevToolUtil.mockUrl('/mock/tag-rule/search'), 'get', () => {
-  const total = Mock.mock('@integer(8, 1000)')
-  const list = []
-  for (let i = 0; i < total; i++) {
-    list.push({
-      ruleName: 'app_' + Mock.mock('@string(2,10)'),
-      enable: Mock.mock('@boolean'),
-      createTime: Mock.mock('@datetime')
-    })
-  }
-  return {
-    code: 200,
-    msg: 'success',
-    data: {
-      pageInfo: {
-        Total: total,
-        NextOffset: '0'
-      },
-      list
-    }
-  }
-})
+const versionInfo: VersionInfo = {
+  gitVersion: 'dubbo-admin-',
+  gitCommit: '$Format:%H$',
+  gitTreeState: '',
+  buildDate: '1970-01-01T00:00:00Z',
+  goVersion: 'go1.20.4',
+  compiler: 'gc',
+  platform: 'darwin/arm64'
+}
+
+export const versionHandlers: HttpHandler[] = [
+  http.get(`${base}/version`, () => success(versionInfo))
+]

@@ -15,29 +15,17 @@
  * limitations under the License.
  */
 
-import devTool from '@/utils/DevToolUtil'
-import Mock from 'mockjs'
+import { HttpResponse } from 'msw'
+import type { ApiResponse } from '@/types/api'
 
-Mock.mock(devTool.mockUrl('/mock/condition-rule/search'), 'get', () => {
-  const total = Mock.mock('@integer(8, 1000)')
-  const list = []
-  for (let i = 0; i < total; i++) {
-    list.push({
-      ruleName: 'app_' + Mock.mock('@string(2,10)'),
-      ruleGranularity: Mock.mock('@boolean'),
-      enable: Mock.mock('@boolean'),
-      createTime: Mock.mock('@datetime')
-    })
-  }
-  return {
-    code: 200,
-    msg: 'success',
-    data: {
-      pageInfo: {
-        Total: total,
-        NextOffset: '0'
-      },
-      list
-    }
-  }
-})
+export function success<T>(data: T) {
+  return HttpResponse.json<ApiResponse<T>>({
+    code: 'Success',
+    message: 'success',
+    data
+  })
+}
+
+const MOCK_BASE = '/api/v1'
+
+export const base = MOCK_BASE

@@ -15,26 +15,14 @@
  * limitations under the License.
  */
 
-import Mock from 'mockjs'
+package leader
 
-Mock.mock('/mock/service/detail', 'get', {
-  code: 200,
-  message: 'success',
-  data: {
-    total: 8,
-    curPage: 1,
-    pageSize: 1,
-    data: {
-      serviceName: 'org.apache.dubbo.samples.UserService',
-      versionGroup: ['version=v1', 'version=2.0,group=group1'],
-      protocol: 'triple',
-      delay: '3000ms',
-      timeOut: '3000ms',
-      retry: 3,
-      requestTotal: 1384,
-      avgRT: '96ms',
-      avgQPS: 12,
-      obsolete: false
-    }
-  }
-})
+import "gorm.io/gorm"
+
+// DBSource is an interface for components that provide access to a database connection
+// Used by leader election to access the shared database for leader lease management
+type DBSource interface {
+	// GetDB returns the shared database connection and a boolean indicating if a DB is available
+	// Returns (db, true) if the component is backed by a database, (nil, false) otherwise
+	GetDB() (*gorm.DB, bool)
+}

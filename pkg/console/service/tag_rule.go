@@ -36,8 +36,8 @@ func PageListTagRule(ctx consolectx.Context, req *model.SearchReq) (*model.Searc
 	pageData, err := manager.PageListByIndexes[*meshresource.TagRouteResource](
 		ctx.ResourceManager(),
 		meshresource.TagRouteKind,
-		map[string]string{
-			index.ByMeshIndex: req.Mesh,
+		[]index.IndexCondition{
+			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
 		},
 		req.PageReq)
 	if err != nil {

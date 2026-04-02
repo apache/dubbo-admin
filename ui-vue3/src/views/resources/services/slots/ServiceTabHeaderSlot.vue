@@ -31,9 +31,7 @@
 </template>
 
 <script setup lang="ts">
-import { inject } from 'vue'
 import { useRoute } from 'vue-router'
-import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 const route = useRoute()
 </script>
 <style lang="less" scoped>

@@ -210,8 +210,8 @@ func (s *RPCInstanceEventSubscriber) findRelatedRuntimeInstanceAndMerge(instance
 
 func (s *RPCInstanceEventSubscriber) getRuntimeInstanceForInstance(instanceRes *meshresource.InstanceResource) *meshresource.RuntimeInstanceResource {
 	ip := instanceRes.Spec.Ip
-	resources, err := s.rtInstanceStore.ListByIndexes(map[string]string{
-		index.ByRuntimeInstanceIPIndex: ip,
+	resources, err := s.rtInstanceStore.ListByIndexes([]index.IndexCondition{
+		{IndexName: index.ByRuntimeInstanceIPIndex, Value: ip, Operator: index.Equals},
 	})
 	if err != nil {
 		logger.Errorf("list runtime instance by ip index failed, ip: %s, err: %s", ip, err.Error())

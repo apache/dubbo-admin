@@ -15,9 +15,24 @@
  * limitations under the License.
  */
 
-const modulesFiles: any = import.meta.glob('./**.ts', { eager: true })
-const fileList = []
-for (const key of Object.keys(modulesFiles)) {
-  fileList.push(modulesFiles[key].default)
+package index
+
+// IndexOperator defines the comparison operator for index queries
+type IndexOperator string
+
+const (
+	// Equals performs exact match on the index value
+	Equals IndexOperator = "Equals"
+	// HasPrefix performs prefix match on the index value
+	HasPrefix IndexOperator = "HasPrefix"
+)
+
+// IndexCondition represents a single index query condition
+type IndexCondition struct {
+	// IndexName is the name of the index to query
+	IndexName string
+	// Value is the value to match against the index
+	Value string
+	// Operator is the comparison operator to use (Equals, HasPrefix, etc.)
+	Operator IndexOperator
 }
-export default fileList

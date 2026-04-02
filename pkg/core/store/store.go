@@ -27,6 +27,7 @@ import (
 
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
 // ResourceStore defines the interface for the persistance of a resource
@@ -36,10 +37,10 @@ type ResourceStore interface {
 	// GetByKeys get resources by keys, return list of resource.
 	// if a resource of specified key doesn't exist in the store, resource list will not include it
 	GetByKeys(keys []string) ([]model.Resource, error)
-	// ListByIndexes list resources by indexes, indexes is map of index name and index value
-	ListByIndexes(indexes map[string]string) ([]model.Resource, error)
-	// PageListByIndexes list resources by indexes pageable, indexes is map of index name and index value
-	PageListByIndexes(indexes map[string]string, pq model.PageReq) (*model.PageData[model.Resource], error)
+	// ListByIndexes list resources by index conditions
+	ListByIndexes(indexes []index.IndexCondition) ([]model.Resource, error)
+	// PageListByIndexes list resources by index conditions pageable
+	PageListByIndexes(indexes []index.IndexCondition, pq model.PageReq) (*model.PageData[model.Resource], error)
 }
 
 // ManagedResourceStore includes both functional interfaces and lifecycle interfaces

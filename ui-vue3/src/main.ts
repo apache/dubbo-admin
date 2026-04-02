@@ -21,7 +21,6 @@ import router from './router'
 import App from './App.vue'
 import 'ant-design-vue/dist/reset.css'
 import { i18n } from '@/base/i18n'
-// import './api/mock/index'
 
 import Vue3ColorPicker from 'vue3-colorpicker'
 
@@ -29,22 +28,33 @@ import 'vue3-colorpicker/style.css'
 import 'nprogress/nprogress.css'
 import piniaPluginPersistedstate from 'pinia-plugin-persistedstate'
 
-import { getAuthState } from '@/utils/AuthUtil'
+import { getAuthState, updateAuthState } from '@/utils/AuthUtil'
 import { createPinia } from 'pinia'
 
-const app = createApp(App)
-
-const pinia = createPinia()
-
-pinia.use(piniaPluginPersistedstate)
-
-app.use(Antd).use(Vue3ColorPicker).use(pinia).use(i18n).use(router).mount('#app')
-
-router.beforeEach((to, from, next) => {
-  const authState = getAuthState()
-  if (authState?.state || to.path.startsWith('/login')) {
-    next()
-  } else {
-    next({ path: `/login?redirect=${to.path}` })
+async function bootstrap() {
+  if (import.meta.env.VITE_MOCK_ENABLED === 'true') {
+    const { worker, workerStartOptions } = await import('./mocks/browser')
+    await worker.start(workerStartOptions)
+    updateAuthState(true, 'admin')
+    console.info('[Mock Mode] MSW enabled, auto-logged in as admin')
   }
-})
+
+  const app = createApp(App)
+
+  const pinia = createPinia()
+
+  pinia.use(piniaPluginPersistedstate)
+
+  app.use(Antd).use(Vue3ColorPicker).use(pinia).use(i18n).use(router).mount('#app')
+
+  router.beforeEach((to, from, next) => {
+    const authState = getAuthState()
+    if (authState?.state || to.path.startsWith('/login')) {
+      next()
+    } else {
+      next({ path: `/login?redirect=${to.path}` })
+    }
+  })
+}
+
+bootstrap()

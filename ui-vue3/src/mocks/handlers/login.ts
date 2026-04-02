@@ -15,13 +15,10 @@
  * limitations under the License.
  */
 
-import Mock from 'mockjs'
+import { http, type HttpHandler } from 'msw'
+import { success, base } from '../utils'
 
-Mock.mock(/\/search\?searchType=\w+&keywords=\w*/, 'get', {
-  code: 200,
-  message: '成功',
-  data: {
-    find: true,
-    candidates: ['test1', 'test2', 'tset3']
-  }
-})
+export const loginHandlers: HttpHandler[] = [
+  http.post(`${base}/auth/login`, () => success(null)),
+  http.post(`${base}/auth/logout`, () => success(null))
+]

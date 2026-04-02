@@ -83,6 +83,7 @@ header:
     - '**/docs/**'
     - '**/.husky/pre-commit'
     - '**/.nvmrc'
+    - '**/public/mockServiceWorker.js'
     - '**/**.txtar'
     - '**/**gen.go'
     - '**/api/**'

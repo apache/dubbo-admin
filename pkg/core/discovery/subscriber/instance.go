@@ -70,9 +70,9 @@ func (s *InstanceEventSubscriber) ProcessEvent(event events.Event) error {
 	} else {
 		instanceRes = oldObj
 	}
-	instanceResList, err := s.instanceStore.ListByIndexes(map[string]string{
-		index.ByMeshIndex:            instanceRes.Mesh,
-		index.ByInstanceAppNameIndex: instanceRes.Spec.AppName,
+	instanceResList, err := s.instanceStore.ListByIndexes([]index.IndexCondition{
+		{IndexName: index.ByMeshIndex, Value: instanceRes.Mesh, Operator: index.Equals},
+		{IndexName: index.ByInstanceAppNameIndex, Value: instanceRes.Spec.AppName, Operator: index.Equals},
 	})
 
 	appResKey := coremodel.BuildResourceKey(instanceRes.Mesh, instanceRes.Spec.AppName)
