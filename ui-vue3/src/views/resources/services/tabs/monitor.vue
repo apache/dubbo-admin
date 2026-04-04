@@ -43,8 +43,7 @@ provide<GrafanaState>(
     params: {
       serviceName: route.params.pathId as string,
       version: route.params.version as string | undefined,
-      group: route.params.group as string | undefined,
-      providerAppName: route.query.providerAppName as string | undefined
+      group: route.params.group as string | undefined
     }
   })
 )
