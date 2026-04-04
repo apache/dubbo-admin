@@ -20,6 +20,7 @@ package subscriber
 import (
 	"reflect"
 	"sort"
+	"strings"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
@@ -240,8 +241,8 @@ func buildServiceSpec(serviceName, version, group string, providers []*meshresou
 		if provider.Spec == nil {
 			continue
 		}
-		if language == "" && provider.Spec.Parameters != nil {
-			language = provider.Spec.Parameters["language"]
+		if language == "" {
+			language = inferProviderLanguage(provider.Spec)
 		}
 		for _, method := range provider.Spec.Methods {
 			if method == nil || method.Name == "" {
@@ -264,4 +265,96 @@ func buildServiceSpec(serviceName, version, group string, providers []*meshresou
 		Language: language,
 		Methods:  methods,
 	}
+}
+
+func inferProviderLanguage(spec *meshproto.ServiceProviderMetadata) string {
+	if spec == nil {
+		return ""
+	}
+	if spec.Parameters != nil && spec.Parameters["language"] != "" {
+		return spec.Parameters["language"]
+	}
+	// Current SDKs do not reliably publish an explicit language field, so we
+	// fall back to SDK-specific metadata fingerprints when the source field is absent.
+	if looksLikeDubboGo(spec) {
+		return "golang"
+	}
+	if looksLikeDubboJava(spec) {
+		return "java"
+	}
+	return ""
+}
+
+func looksLikeDubboGo(spec *meshproto.ServiceProviderMetadata) bool {
+	if spec == nil || spec.Parameters == nil {
+		return false
+	}
+	// dubbo-go writes a release like "dubbo-golang-<version>", which is the
+	// most stable discriminator we can use without requiring provider changes.
+	release := strings.ToLower(spec.Parameters["release"])
+	return strings.HasPrefix(release, "dubbo-golang-") || strings.HasPrefix(release, "dubbo-go-")
+}
+
+func looksLikeDubboJava(spec *meshproto.ServiceProviderMetadata) bool {
+	if spec == nil {
+		return false
+	}
+	// Java providers usually expose Java type names in method signatures and
+	// exported type definitions, even when "language" itself is missing.
+	for _, method := range spec.Methods {
+		if methodHasJavaTypeHint(method) {
+			return true
+		}
+	}
+	for _, typ := range spec.Types {
+		if metadataTypeHasJavaHint(typ) {
+			return true
+		}
+	}
+	return false
+}
+
+func methodHasJavaTypeHint(method *meshproto.Method) bool {
+	if method == nil {
+		return false
+	}
+	for _, parameterType := range method.ParameterTypes {
+		if isJavaTypeHint(parameterType) {
+			return true
+		}
+	}
+	if isJavaTypeHint(method.ReturnType) {
+		return true
+	}
+	for _, parameter := range method.Parameters {
+		if parameter != nil && isJavaTypeHint(parameter.Type) {
+			return true
+		}
+	}
+	return false
+}
+
+func metadataTypeHasJavaHint(typ *meshproto.Type) bool {
+	if typ == nil {
+		return false
+	}
+	if isJavaTypeHint(typ.Type) {
+		return true
+	}
+	for _, item := range typ.Items {
+		if isJavaTypeHint(item) {
+			return true
+		}
+	}
+	for _, propertyType := range typ.Properties {
+		if isJavaTypeHint(propertyType) {
+			return true
+		}
+	}
+	return false
+}
+
+func isJavaTypeHint(typeName string) bool {
+	typeName = strings.ToLower(typeName)
+	return strings.HasPrefix(typeName, "java.") || strings.Contains(typeName, ".java.")
 }
