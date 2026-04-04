@@ -157,14 +157,10 @@ const detailTitle = computed(() => {
   return currentDetailKey.value ? `${base}：${currentDetailKey.value}` : base
 })
 
-const detailEntryBlacklist = new Set<string>(['versionGroups', 'appName'])
-
 const detailEntries = computed(() => {
   const data = detailData.value ?? {}
   return Object.entries(data)
-    .filter(
-      ([k, v]) => !detailEntryBlacklist.has(k) && v !== undefined && v !== null && String(v) !== ''
-    )
+    .filter(([, v]) => v !== undefined && v !== null && String(v) !== '')
     .map(([key, value]) => ({ key, value }))
 })
 
@@ -310,6 +306,9 @@ const renderTopology = (graphData: any) => {
 }
 
 let resizeHandler: (() => void) | null = null
+watch(detailEntries, () => {
+  console.log('detailEntries', detailEntries.value)
+})
 onMounted(async () => {
   try {
     const serviceName = String(route.params?.pathId ?? '')
