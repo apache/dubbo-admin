@@ -52,3 +52,4 @@ app/dubbo-cp/cache
 .env
 .env.local
 .env.*.local
+AI_CHANGES_SUMMARY.md
