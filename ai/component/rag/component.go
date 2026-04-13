@@ -22,6 +22,7 @@ import (
 	"dubbo-admin-ai/component/rag/rerankers"
 	"dubbo-admin-ai/runtime"
 	"fmt"
+t"dubbo-admin-ai/component/rag/query"
 
 	"github.com/cloudwego/eino/components/document"
 	"github.com/cloudwego/eino/components/indexer"
@@ -268,6 +269,7 @@ func (c *queryProcessorComponent) Init(rt *runtime.Runtime) error {
 		Timeout:         spec.Timeout,
 		Temperature:     spec.Temperature,
 		FallbackOnError: spec.FallbackOnError,
+		Enabled:         spec.Enabled,
 	}
 
 	// Get the genkit registry from runtime
@@ -368,14 +370,29 @@ func (r *RAGComponent) Init(rt *runtime.Runtime) error {
 		"splitter", r.cfg.Splitter.Type,
 		"reranker_enabled", r.cfg.Reranker != nil,
 		"query_processor_enabled", r.queryProcessor != nil && r.queryProcessor.get() != nil)
+	// Extract QueryLayer from query processor if available
+	var queryLayer *t.Layer
+	if r.queryProcessor != nil {
+		if qp := r.queryProcessor.get(); qp != nil {
+			// Try to get the Layer from LegacyProcessor
+			type legacyProcessor interface {
+				GetLayer() *t.Layer
+			}
+			if lp, ok := qp.(legacyProcessor); ok {
+				queryLayer = lp.GetLayer()
+			}
+		}
+	}
 
-	// Create RAG instance
+
+	// Create RAG instance with logger
 	r.Rag = &RAG{
-		Loader:    r.loader.get(),
+		QueryLayer: queryLayer,
 		Splitter:  r.splitter.get(),
 		Indexer:   r.indexer.get(),
 		Retriever: r.retriever.get(),
 		Reranker:  r.reranker.get(),
+		logger:    rt.GetLogger(),
 	}
 
 	return nil
@@ -456,6 +473,11 @@ func (r *RAGComponent) GetQueryProcessor() QueryProcessor {
 		return r.queryProcessor.get()
 	}
 	return nil
+}
+
+// GetRAG returns the RAG instance for direct method access
+func (r *RAGComponent) GetRAG() *RAG {
+	return r.Rag
 }
 
 // ============= 辅助函数 =============

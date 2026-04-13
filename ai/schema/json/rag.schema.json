@@ -31,6 +31,9 @@
         },
         "reranker": {
           "$ref": "#/$defs/reranker"
+        },
+        "query_processor": {
+          "$ref": "#/$defs/query_processor"
         }
       }
     }
@@ -142,11 +145,18 @@
       "properties": {
         "type": {
           "type": "string",
-          "default": "dev",
-          "enum": ["dev", "pinecone"]
+          "default": "local",
+          "enum": ["local", "pinecone", "milvus"]
         },
         "spec": {
-          "$ref": "#/$defs/index_storage_spec"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/index_storage_spec"
+            },
+            {
+              "$ref": "#/$defs/milvus_indexer_spec"
+            }
+          ]
         }
       }
     },
@@ -157,11 +167,18 @@
       "properties": {
         "type": {
           "type": "string",
-          "default": "dev",
-          "enum": ["dev", "pinecone"]
+          "default": "local",
+          "enum": ["local", "pinecone", "milvus"]
         },
         "spec": {
-          "$ref": "#/$defs/index_storage_spec"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/index_storage_spec"
+            },
+            {
+              "$ref": "#/$defs/milvus_retriever_spec"
+            }
+          ]
         }
       }
     },
@@ -181,6 +198,139 @@
           "type": "integer",
           "minimum": 1,
           "default": 1536
+        }
+      }
+    },
+    "milvus_indexer_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "Milvus server address (env: MILVUS_HOST)"
+        },
+        "token": {
+          "type": "string",
+          "description": "Auth token for Zilliz Cloud (env: MILVUS_TOKEN)"
+        },
+        "username": {
+          "type": "string",
+          "description": "Optional username for self-hosted"
+        },
+        "password": {
+          "type": "string",
+          "description": "Optional password for self-hosted"
+        },
+        "collection": {
+          "type": "string",
+          "description": "Collection name"
+        },
+        "dimension": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1536
+        },
+        "batch_size": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 100
+        },
+        "enable_sparse": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable sparse vector support for BM25"
+        },
+        "dense_field": {
+          "type": "string",
+          "default": "vector"
+        },
+        "sparse_field": {
+          "type": "string",
+          "default": "sparse_vector"
+        },
+        "text_field": {
+          "type": "string",
+          "default": "text"
+        },
+        "dense_index_type": {
+          "type": "string",
+          "default": "IVF_FLAT"
+        },
+        "sparse_index_type": {
+          "type": "string",
+          "default": "SPARSE_INVERTED_INDEX"
+        }
+      }
+    },
+    "milvus_retriever_spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "address": {
+          "type": "string",
+          "description": "Milvus server address (env: MILVUS_HOST)"
+        },
+        "token": {
+          "type": "string",
+          "description": "Auth token for Zilliz Cloud (env: MILVUS_TOKEN)"
+        },
+        "username": {
+          "type": "string",
+          "description": "Optional username for self-hosted"
+        },
+        "password": {
+          "type": "string",
+          "description": "Optional password for self-hosted"
+        },
+        "collection": {
+          "type": "string",
+          "description": "Collection name"
+        },
+        "search_type": {
+          "type": "string",
+          "enum": ["dense", "sparse", "hybrid"],
+          "default": "dense",
+          "description": "Search type: dense (vector), sparse (BM25), or hybrid"
+        },
+        "dense_field": {
+          "type": "string",
+          "default": "vector"
+        },
+        "dense_top_k": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10
+        },
+        "metric_type": {
+          "type": "string",
+          "enum": ["L2", "IP", "COSINE"],
+          "default": "COSINE"
+        },
+        "sparse_field": {
+          "type": "string",
+          "default": "sparse_vector"
+        },
+        "sparse_top_k": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 10
+        },
+        "hybrid_ranker": {
+          "type": "string",
+          "enum": ["rrf", "weighted_rank", "nn"],
+          "default": "rrf"
+        },
+        "dense_weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.7
+        },
+        "sparse_weight": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.3
         }
       }
     },
@@ -208,6 +358,47 @@
             },
             "api_key": {
               "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "query_processor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spec"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "default": "rewrite",
+          "enum": ["rewrite", "hyde", "expansion", "intent"]
+        },
+        "spec": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            },
+            "model": {
+              "type": "string",
+              "default": "dashscope/qwen-max"
+            },
+            "timeout": {
+              "type": "string",
+              "default": "5s",
+              "description": "Duration string like '5s'"
+            },
+            "temperature": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 2,
+              "default": 0.3
+            },
+            "fallback_on_error": {
+              "type": "boolean",
+              "default": true
             }
           }
         }

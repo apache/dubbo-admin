@@ -15,17 +15,17 @@ spec:
       chunk_size: 1000
       overlap_size: 100
 
-  # Available indexer types: dev, pinecone, milvus
+  # Available indexer types: local, pinecone, milvus
   indexer:
-    type: dev
+    type: local
     spec:
       storage_path: "../../data/ai/index"
       index_format: sqlite
       dimension: 1536
 
-  # Available retriever types: dev, pinecone, milvus
+  # Available retriever types: local, pinecone, milvus
   retriever:
-    type: dev
+    type: local
     spec:
       storage_path: "../../data/ai/index"
       index_format: sqlite
@@ -41,7 +41,7 @@ spec:
   query_processor:
     type: rewrite
     spec:
-      enabled: false
+      enabled: true
       model: dashscope/qwen-max
       timeout: 5s
       temperature: 0.3

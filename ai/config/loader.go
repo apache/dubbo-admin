@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
@@ -90,9 +91,15 @@ func (l *Loader) loadEnvFile() error {
 		// File not found is acceptable, only log for other errors
 		// os.IsNotExist(err) always returns false for godotenv
 		// So we check the error message instead
-		if err.Error() != "open .env: no such file or directory" &&
-			err.Error() != "open .env: file does not exist" {
-			return err
+		errMsg := err.Error()
+		// Unix-like systems
+		if errMsg != "open .env: no such file or directory" &&
+			errMsg != "open .env: file does not exist" {
+			// Windows: "open .env: The system cannot find the file specified."
+			// Check if it's a "file not found" type error by checking if error message contains ".env"
+			if !strings.Contains(errMsg, ".env") || strings.Contains(strings.ToLower(errMsg), "permission") || strings.Contains(strings.ToLower(errMsg), "denied") {
+				return err
+			}
 		}
 		// .env file not found is normal, continue execution
 	}

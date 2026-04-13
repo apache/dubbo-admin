@@ -204,14 +204,14 @@ func (c *RAGSpec) Validate() error {
 	}
 	if c.Indexer != nil {
 		switch c.Indexer.Type {
-		case "dev", "pinecone", "milvus":
+		case "local", "pinecone", "milvus":
 		default:
 			return fmt.Errorf("unsupported indexer type: %s", c.Indexer.Type)
 		}
 	}
 	if c.Retriever != nil {
 		switch c.Retriever.Type {
-		case "dev", "pinecone", "milvus":
+		case "local", "pinecone", "milvus":
 		default:
 			return fmt.Errorf("unsupported retriever type: %s", c.Retriever.Type)
 		}

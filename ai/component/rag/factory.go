@@ -126,6 +126,14 @@ func newIndexerWithConfig(g *genkit.Genkit, cfg *config.Config, embedderModel st
 		return indexers.NewLocalIndexer(g, embedderModel, targetIndex, batchSize), nil
 	case indexers.IndexerTypePinecone:
 		return indexers.NewPineconeIndexer(g, embedderModel, targetIndex, batchSize), nil
+	case indexers.IndexerTypeMilvus:
+		var milvusCfg indexers.MilvusConfig
+		if err := cfg.Spec.Decode(&milvusCfg); err != nil {
+			return nil, fmt.Errorf("failed to decode milvus indexer spec: %w", err)
+		}
+		milvusCfg.Embedder = embedderModel
+		milvusCfg.BatchSize = batchSize
+		return indexers.NewMilvusIndexer(g, &milvusCfg)
 	default:
 		return nil, fmt.Errorf("unsupported indexer type: %s", cfg.Type)
 	}
@@ -155,6 +163,13 @@ func newRetrieverWithConfig(g *genkit.Genkit, cfg *config.Config, embedderModel 
 		return retrievers.NewLocalRetriever(g, embedderModel, targetIndex, defaultTopK), nil
 	case retrievers.RetrieverTypePinecone:
 		return retrievers.NewPineconeRetriever(g, embedderModel, targetIndex, defaultTopK), nil
+	case retrievers.RetrieverTypeMilvus:
+		var milvusCfg retrievers.MilvusConfig
+		if err := cfg.Spec.Decode(&milvusCfg); err != nil {
+			return nil, fmt.Errorf("failed to decode milvus retriever spec: %w", err)
+		}
+		milvusCfg.Embedder = embedderModel
+		return retrievers.NewMilvusRetriever(g, &milvusCfg)
 	default:
 		return nil, fmt.Errorf("unsupported retriever type: %s", cfg.Type)
 	}

@@ -78,6 +78,10 @@ func (p *LegacyProcessor) Process(ctx context.Context, query string) (string, er
 	return result.Query, nil
 }
 
+// GetLayer returns the underlying Layer for direct access.
+func (p *LegacyProcessor) GetLayer() *Layer {
+	return p.layer
+}
 // NewQueryProcessor creates a QueryProcessor using the legacy configuration.
 // This function maintains backward compatibility with the old factory pattern.
 func NewQueryProcessor(g interface{}, cfg *QueryProcessorConfig, promptBasePath string) (QueryProcessor, error) {
@@ -102,6 +106,10 @@ func NewQueryProcessor(g interface{}, cfg *QueryProcessorConfig, promptBasePath 
 		// Type assertion for *genkit.Genkit
 		if gg, ok := g.(*genkit.Genkit); ok {
 			genkitInstance = gg
+		} else {
+			// Type assertion failed - this shouldn't happen if rt.GetRegistry() is used
+			// Return noop processor to maintain backward compatibility
+			return &noopProcessor{}, nil
 		}
 	}
 

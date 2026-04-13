@@ -20,6 +20,7 @@ package rag
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"dubbo-admin-ai/component/rag/loaders"
 	"dubbo-admin-ai/component/rag/mergers"
@@ -57,6 +58,9 @@ type RAG struct {
 
 	// Reranking
 	Reranker rerankers.Reranker
+
+	// Logger for operation logging
+	logger *slog.Logger
 }
 
 // RetrievalPath represents a single retrieval path with its configuration.
@@ -82,6 +86,7 @@ func NewRAG(components *Components) (*RAG, error) {
 		Merger:         components.Merger,
 		QueryLayer:     components.QueryLayer,
 		Reranker:       components.Reranker,
+		logger:         components.Logger,
 	}, nil
 }
 
@@ -95,6 +100,7 @@ type Components struct {
 	Merger         *mergers.MergeLayer
 	QueryLayer     *query.Layer
 	Reranker       rerankers.Reranker
+	Logger         *slog.Logger
 
 	// Legacy: for backward compatibility
 	QueryProcessor QueryProcessor
@@ -102,22 +108,78 @@ type Components struct {
 
 // Split splits documents into chunks.
 func (r *RAG) Split(ctx context.Context, docs []*schema.Document) ([]*schema.Document, error) {
+	if r.logger != nil {
+		r.logger.InfoContext(ctx, "RAG.Split: START",
+			"input_documents", len(docs),
+		)
+	}
 	if r.Splitter == nil {
+		if r.logger != nil {
+			r.logger.InfoContext(ctx, "RAG.Split: END - no splitter configured",
+				"output_documents", len(docs),
+			)
+		}
 		return docs, nil
 	}
-	return r.Splitter.Transform(ctx, docs)
+	result, err := r.Splitter.Transform(ctx, docs)
+	if err != nil {
+		if r.logger != nil {
+			r.logger.ErrorContext(ctx, "RAG.Split: ERROR",
+				"error", err,
+			)
+		}
+		return nil, err
+	}
+	if r.logger != nil {
+		r.logger.InfoContext(ctx, "RAG.Split: END",
+			"input_documents", len(docs),
+			"output_chunks", len(result),
+		)
+	}
+	return result, nil
 }
 
 // Index indexes documents into the vector store.
 func (r *RAG) Index(ctx context.Context, namespace string, docs []*schema.Document, opts ...indexer.Option) ([]string, error) {
+	if r.logger != nil {
+		r.logger.InfoContext(ctx, "RAG.Index: START",
+			"namespace", namespace,
+			"input_documents", len(docs),
+		)
+	}
 	if r.Indexer == nil {
-		return nil, fmt.Errorf("indexer is nil")
+		err := fmt.Errorf("indexer is nil")
+		if r.logger != nil {
+			r.logger.ErrorContext(ctx, "RAG.Index: ERROR",
+				"error", err,
+			)
+		}
+		return nil, err
 	}
+	var ids []string
+	var err error
 	if namespace == "" {
-		return r.Indexer.Store(ctx, docs, opts...)
+		ids, err = r.Indexer.Store(ctx, docs, opts...)
+	} else {
+		all := append([]indexer.Option{WithIndexerNamespace(namespace)}, opts...)
+		ids, err = r.Indexer.Store(ctx, docs, all...)
 	}
-	all := append([]indexer.Option{WithIndexerNamespace(namespace)}, opts...)
-	return r.Indexer.Store(ctx, docs, all...)
+	if err != nil {
+		if r.logger != nil {
+			r.logger.ErrorContext(ctx, "RAG.Index: ERROR",
+				"error", err,
+			)
+		}
+		return nil, err
+	}
+	if r.logger != nil {
+		r.logger.InfoContext(ctx, "RAG.Index: END",
+			"namespace", namespace,
+			"input_documents", len(docs),
+			"indexed_ids", len(ids),
+		)
+	}
+	return ids, nil
 }
 
 // RetrieveV2 performs retrieval with query understanding, multi-path retrieval, and reranking.
@@ -132,15 +194,35 @@ func (r *RAG) RetrieveV2(ctx context.Context, req *RetrieveRequest) (*RetrieveRe
 		req = DefaultRetrieveRequest()
 	}
 
+	if r.logger != nil {
+		r.logger.InfoContext(ctx, "RAG.RetrieveV2: START",
+			"query", req.Query,
+			"top_k", req.TopK,
+			"reranker_enabled", r.Reranker != nil,
+		)
+	}
+
 	// Step 1: Query understanding
 	queryResult, err := r.processQuery(ctx, req)
 	if err != nil {
+		if r.logger != nil {
+			r.logger.ErrorContext(ctx, "RAG.RetrieveV2: query processing ERROR",
+				"error", err,
+				"query", req.Query,
+			)
+		}
 		return nil, fmt.Errorf("query processing failed: %w", err)
 	}
 
 	// Step 2: Multi-path retrieval
 	rawResults, err := r.retrieveMultiPath(ctx, queryResult, req)
 	if err != nil {
+		if r.logger != nil {
+			r.logger.ErrorContext(ctx, "RAG.RetrieveV2: retrieval ERROR",
+				"error", err,
+				"query", req.Query,
+			)
+		}
 		return nil, fmt.Errorf("retrieval failed: %w", err)
 	}
 
@@ -148,13 +230,27 @@ func (r *RAG) RetrieveV2(ctx context.Context, req *RetrieveRequest) (*RetrieveRe
 	if r.Reranker != nil {
 		rawResults, err = r.rerank(ctx, req.Query, rawResults, req.TopK)
 		if err != nil {
-			// Log error but return results without reranking
+			if r.logger != nil {
+				r.logger.WarnContext(ctx, "RAG.RetrieveV2: rerank failed, returning unranked results",
+					"error", err,
+					"results_count", len(rawResults),
+				)
+			}
+			// Return results without reranking
 			return &RetrieveResponse{
 				Results:       toRetrieveResults(rawResults),
 				QueryResult:   toQueryProcessResult(queryResult),
 				RetrievalMeta: buildRetrievalMeta(rawResults),
 			}, nil
 		}
+	}
+
+	if r.logger != nil {
+		r.logger.InfoContext(ctx, "RAG.RetrieveV2: END",
+			"query", req.Query,
+			"results_count", len(rawResults),
+			"top_k", req.TopK,
+		)
 	}
 
 	return &RetrieveResponse{
@@ -167,15 +263,40 @@ func (r *RAG) RetrieveV2(ctx context.Context, req *RetrieveRequest) (*RetrieveRe
 // processQuery applies query understanding layer.
 func (r *RAG) processQuery(ctx context.Context, req *RetrieveRequest) (*query.Result, error) {
 	queryStr := req.Query
-
-	// Use new query.Layer if available
-	if r.QueryLayer != nil {
-		return r.QueryLayer.Process(ctx, queryStr)
+	if r.logger != nil {
+		r.logger.InfoContext(ctx, "RAG.processQuery: START",
+			"original_query", queryStr,
+			"top_k", req.TopK,
+		)
 	}
-
-	// Fallback to legacy QueryProcessor
-	// This won't be used if QueryLayer is set
-	return &query.Result{Query: queryStr}, nil
+	// Use new query.Layer if available
+	var result *query.Result
+	var err error
+	if r.QueryLayer != nil {
+		result, err = r.QueryLayer.Process(ctx, queryStr)
+		if err != nil {
+			if r.logger != nil {
+				r.logger.ErrorContext(ctx, "RAG.processQuery: ERROR",
+					"error", err,
+				)
+			}
+			return nil, err
+		}
+	} else {
+		// Fallback to legacy QueryProcessor
+		result = &query.Result{Query: queryStr}
+	}
+	if r.logger != nil {
+		r.logger.InfoContext(ctx, "RAG.processQuery: END",
+			"original_query", queryStr,
+			"processed_query", result.Query,
+			"queries_count", len(result.Queries),
+			"intent", result.Intent,
+			"modified", result.Modified,
+			"has_hypothetical", result.Hypothetical != "",
+		)
+	}
+	return result, nil
 }
 
 // retrieveMultiPath executes multi-path retrieval with merging.
@@ -211,7 +332,13 @@ func (r *RAG) retrieveFromPaths(ctx context.Context, queries []string, req *Retr
 	if topK <= 0 {
 		topK = 10
 	}
-
+	if r.logger != nil {
+		r.logger.InfoContext(ctx, "RAG.retrieveFromPaths: START",
+			"queries", queries,
+			"top_k", topK,
+			"paths_count", len(r.RetrievalPaths),
+		)
+	}
 	// Collect results from all paths
 	allPaths := make([]*mergers.MultiPathResult, 0)
 
@@ -219,7 +346,13 @@ func (r *RAG) retrieveFromPaths(ctx context.Context, queries []string, req *Retr
 		if path.Retriever == nil {
 			continue
 		}
-
+		if r.logger != nil {
+			r.logger.InfoContext(ctx, "RAG.retrieveFromPaths: retrieving from path",
+				"path_label", path.Label,
+				"path_top_k", path.TopK,
+				"path_weight", path.Weight,
+			)
+		}
 		pathTopK := path.TopK
 		if pathTopK <= 0 {
 			pathTopK = topK
@@ -228,8 +361,21 @@ func (r *RAG) retrieveFromPaths(ctx context.Context, queries []string, req *Retr
 		// Retrieve for each query (use first query for simplicity)
 		docs, err := path.Retriever.Retrieve(ctx, queries[0], retriever.WithTopK(pathTopK))
 		if err != nil {
+			if r.logger != nil {
+				r.logger.WarnContext(ctx, "RAG.retrieveFromPaths: path retrieval failed",
+					"path_label", path.Label,
+					"error", err,
+				)
+			}
 			// Log and continue with other paths
 			continue
+		}
+
+		if r.logger != nil {
+			r.logger.InfoContext(ctx, "RAG.retrieveFromPaths: path retrieved",
+				"path_label", path.Label,
+				"results_count", len(docs),
+			)
 		}
 
 		allPaths = append(allPaths, &mergers.MultiPathResult{
@@ -240,12 +386,44 @@ func (r *RAG) retrieveFromPaths(ctx context.Context, queries []string, req *Retr
 	}
 
 	// Merge paths
+	var merged []*schema.Document
 	if r.Merger != nil {
-		return r.Merger.Merge(ctx, allPaths)
+		var err error
+		merged, err = r.Merger.Merge(ctx, allPaths)
+		if err != nil {
+			if r.logger != nil {
+				r.logger.ErrorContext(ctx, "RAG.retrieveFromPaths: merge ERROR",
+					"error", err,
+				)
+			}
+			return nil, err
+		}
+		if r.logger != nil {
+			r.logger.InfoContext(ctx, "RAG.retrieveFromPaths: merged results",
+				"input_paths", len(allPaths),
+				"merged_count", len(merged),
+			)
+		}
+	} else {
+		// Fallback: concatenate without merge
+		merged = r.concatenateResults(allPaths)
+		if r.logger != nil {
+			r.logger.InfoContext(ctx, "RAG.retrieveFromPaths: concatenated results (no merger)",
+				"input_paths", len(allPaths),
+				"output_count", len(merged),
+			)
+		}
 	}
 
-	// Fallback: concatenate without merge
-	return r.concatenateResults(allPaths), nil
+	if r.logger != nil {
+		r.logger.InfoContext(ctx, "RAG.retrieveFromPaths: END",
+			"queries", queries,
+			"top_k", topK,
+			"final_results", len(merged),
+		)
+	}
+
+	return merged, nil
 }
 
 // retrieveSingle executes single-path retrieval.
@@ -254,7 +432,30 @@ func (r *RAG) retrieveSingle(ctx context.Context, query string, req *RetrieveReq
 	if topK <= 0 {
 		topK = 10
 	}
-	return r.Retriever.Retrieve(ctx, query, retriever.WithTopK(topK))
+	if r.logger != nil {
+		r.logger.InfoContext(ctx, "RAG.retrieveSingle: START",
+			"query", query,
+			"top_k", topK,
+		)
+	}
+	docs, err := r.Retriever.Retrieve(ctx, query, retriever.WithTopK(topK))
+	if err != nil {
+		if r.logger != nil {
+			r.logger.ErrorContext(ctx, "RAG.retrieveSingle: ERROR",
+				"error", err,
+				"query", query,
+			)
+		}
+		return nil, err
+	}
+	if r.logger != nil {
+		r.logger.InfoContext(ctx, "RAG.retrieveSingle: END",
+			"query", query,
+			"top_k", topK,
+			"results_count", len(docs),
+		)
+	}
+	return docs, nil
 }
 
 // concatenateResults concatenates results from multiple paths.
@@ -280,8 +481,21 @@ func (r *RAG) concatenateResults(paths []*mergers.MultiPathResult) []*schema.Doc
 
 // rerank applies reranking to the results.
 func (r *RAG) rerank(ctx context.Context, query string, docs []*schema.Document, topK int) ([]*schema.Document, error) {
+	if r.logger != nil {
+		r.logger.InfoContext(ctx, "RAG.rerank: START",
+			"query", query,
+			"input_docs", len(docs),
+			"top_k", topK,
+		)
+	}
 	reranked, err := r.Reranker.Rerank(ctx, query, docs, rerankers.WithTopN(topK))
 	if err != nil {
+		if r.logger != nil {
+			r.logger.ErrorContext(ctx, "RAG.rerank: ERROR",
+				"error", err,
+				"query", query,
+			)
+		}
 		return nil, err
 	}
 
@@ -307,6 +521,22 @@ func (r *RAG) rerank(ctx context.Context, query string, docs []*schema.Document,
 			doc.MetaData["rerank_index"] = r.Index
 			result = append(result, doc)
 		}
+	}
+
+	if r.logger != nil {
+		scores := make([]float64, 0, len(result))
+		for _, doc := range result {
+			if s, ok := doc.MetaData["rerank_score"].(float64); ok {
+				scores = append(scores, s)
+			}
+		}
+		r.logger.InfoContext(ctx, "RAG.rerank: END",
+			"query", query,
+			"input_docs", len(docs),
+			"output_docs", len(result),
+			"top_k", topK,
+			"rerank_scores", scores,
+		)
 	}
 
 	return result, nil
