@@ -14,7 +14,6 @@
   ~ See the License for the specific language governing permissions and
   ~ limitations under the License.
 -->
-
 <script setup lang="ts">
 import { RouterView, useRouter } from 'vue-router'
 import enUS from 'ant-design-vue/es/locale/en_US'

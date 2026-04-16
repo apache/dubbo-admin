@@ -107,6 +107,7 @@ function loginHandle() {
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     display: flex;
     justify-content: center;
+    min-width: 350px;
     width: 22vw;
     //height: 30vh;
 
