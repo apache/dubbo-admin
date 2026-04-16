@@ -26,11 +26,19 @@ export const searchService = (params: any): Promise<any> => {
   })
 }
 
-export const getServiceDetail = (params: any): Promise<any> => {
+export const getServiceDetail = ({
+  serviceName,
+  version,
+  group
+}: {
+  serviceName: string
+  version?: string
+  group?: string
+}): Promise<any> => {
   return request({
     url: '/service/detail',
     method: 'get',
-    params
+    params: { serviceName, version, group }
   })
 }
 
@@ -134,6 +142,16 @@ export const updateParamRouteAPI = (data: {
     url: '/service/config/argumentRoute',
     method: 'put',
     data
+  })
+}
+
+export const getServiceGraph = (serviceName: string): Promise<any> => {
+  return request({
+    url: '/service/graph',
+    method: 'get',
+    params: {
+      serviceName
+    }
   })
 }
 

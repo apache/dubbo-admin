@@ -103,6 +103,16 @@ export const routes: Readonly<RouteRecordType[]> = [
                 }
               },
               {
+                path: '/topology/:pathId',
+                name: 'applicationDomain.topology',
+                component: () => import('../views/resources/applications/tabs/topology.vue'),
+                meta: {
+                  tab: true,
+                  icon: 'tabler:topology-ring',
+                  back: '/resources/applications/list'
+                }
+              },
+              {
                 path: '/instance/:pathId',
                 name: 'applicationDomain.instance',
                 component: () => import('../views/resources/applications/tabs/instance.vue'),
@@ -288,6 +298,16 @@ export const routes: Readonly<RouteRecordType[]> = [
                   tab: true,
                   back: '/resources/services/list',
                   icon: 'material-symbols:code-blocks-outline'
+                }
+              },
+              {
+                path: '/topology/:pathId/:group?/:version?',
+                name: 'topology',
+                component: () => import('../views/resources/services/tabs/topology.vue'),
+                meta: {
+                  tab: true,
+                  icon: 'tabler:topology-ring',
+                  back: '/resources/services/list'
                 }
               },
               {
