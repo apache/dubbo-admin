@@ -189,6 +189,23 @@ func NewApplicationSearchReq() *ApplicationSearchReq {
 	}
 }
 
+type ApplicationGraphReq struct {
+	coremodel.PageReq
+
+	AppName  string `form:"appName" json:"appName"`
+	Keywords string `form:"keywords" json:"keywords"`
+	Mesh     string `form:"mesh" json:"mesh"`
+}
+
+func NewApplicationGraphReq() *ApplicationGraphReq {
+	return &ApplicationGraphReq{
+		PageReq: coremodel.PageReq{
+			PageOffset: 0,
+			PageSize:   15,
+		},
+	}
+}
+
 type ApplicationSearchResp struct {
 	AppName          string   `json:"appName"`
 	DeployClusters   []string `json:"deployClusters"`

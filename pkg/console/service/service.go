@@ -753,3 +753,121 @@ func isArgumentRoute(condition string) bool {
 	}
 	return false
 }
+
+// GraphServices builds a service dependency graph for the given service key.
+//
+// It gathers both provider and consumer metadata for serviceKey and creates
+// graph nodes/edges where:
+//   - application nodes are marked as provider/consumer
+//   - service node is the target/subject service
+//   - edges describe provide/consume relationships
+//
+// This API is used by topology view to visualize service-level dependencies.
+func GraphServices(ctx consolectx.Context, req *model.ServiceGraphReq) (*model.GraphData, error) {
+	serviceKey := req.ServiceKey()
+
+	providers, err := manager.ListByIndexes[*meshresource.ServiceProviderMetadataResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceProviderMetadataKind,
+		[]index.IndexCondition{{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+			{IndexName: index.ByServiceProviderServiceKey, Value: serviceKey, Operator: index.Equals},
+		},
+	)
+	if err != nil {
+		logger.Errorf("get service providers for mesh %s, serviceKey %s failed, cause: %v", req.Mesh, serviceKey, err)
+		return nil, bizerror.New(bizerror.InternalError, "get service providers failed, please try again")
+	}
+
+	if len(providers) == 0 {
+		logger.Errorf("no providers found for service %s in mesh %s", serviceKey, req.Mesh)
+		return nil, bizerror.New(bizerror.NotFoundError, "no providers found for this service")
+	}
+
+	// Nodes for this graph: provider apps, service itself, consumer apps.
+	// Edges represent provider->service and consumer->service relationships.
+
+	consumers, err := manager.ListByIndexes[*meshresource.ServiceConsumerMetadataResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceConsumerMetadataKind,
+		[]index.IndexCondition{{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+			{IndexName: index.ByServiceConsumerServiceKey, Value: serviceKey, Operator: index.Equals},
+		})
+	if err != nil {
+		logger.Errorf("get service consumers for mesh %s, serviceKey %s failed, cause: %v", req.Mesh, serviceKey, err)
+		return nil, bizerror.New(bizerror.InternalError, "get service consumers failed, please try again")
+	}
+
+	nodes := make([]model.GraphNode, 0)
+	edges := make([]model.GraphEdge, 0)
+
+	// use struct{} as a zero-size value for a lightweight deduplication set
+	// this prevents duplicate application nodes when multiple providers are recorded.
+	providerAppSet := make(map[string]struct{})
+	for _, provider := range providers {
+		if provider.Spec == nil {
+			continue
+		}
+		if _, ok := providerAppSet[provider.Spec.ProviderAppName]; !ok {
+			providerAppSet[provider.Spec.ProviderAppName] = struct{}{}
+			nodes = append(nodes, model.GraphNode{
+				ID:    provider.Spec.ProviderAppName,
+				Label: provider.Spec.ProviderAppName,
+				Type:  "application",
+				Rule:  "provider",
+				Data:  nil,
+			})
+		}
+	}
+
+	nodes = append(nodes, model.GraphNode{
+		ID:    serviceKey,
+		Label: serviceKey,
+		Type:  "service",
+		Rule:  "",
+		Data:  nil,
+	})
+
+	consumerAppSet := make(map[string]struct{})
+	for _, consumer := range consumers {
+		if consumer.Spec == nil {
+			continue
+		}
+		if _, ok := consumerAppSet[consumer.Spec.ConsumerAppName]; !ok {
+			consumerAppSet[consumer.Spec.ConsumerAppName] = struct{}{}
+			nodes = append(nodes, model.GraphNode{
+				ID:    consumer.Spec.ConsumerAppName,
+				Label: consumer.Spec.ConsumerAppName,
+				Type:  "application",
+				Rule:  "consumer",
+				Data:  nil,
+			})
+		}
+	}
+
+	// Connect provider applications to service node.
+	for providerApp := range providerAppSet {
+		edges = append(edges, model.GraphEdge{
+			Source: serviceKey,
+			Target: providerApp,
+			Data: map[string]interface{}{
+				"type": "provides",
+			},
+		})
+	}
+
+	// Connect consumer applications to service node.
+	for consumerApp := range consumerAppSet {
+		edges = append(edges, model.GraphEdge{
+			Source: consumerApp,
+			Target: serviceKey,
+			Data: map[string]interface{}{
+				"type": "consumes",
+			},
+		})
+	}
+
+	return &model.GraphData{
+		Nodes: nodes,
+		Edges: edges,
+	}, nil
+}

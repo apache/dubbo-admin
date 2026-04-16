@@ -202,6 +202,140 @@ func getAppConsumeServiceInfo(ctx consolectx.Context, req *model.ApplicationServ
 	return pageResult, nil
 }
 
+// GraphApplications returns the application-level graph for a given application.
+// It collects provider and consumer service relations and transforms them into nodes and edges.
+// The current implementation is a simplified version (provider/consumer link traversal).
+func GraphApplications(ctx consolectx.Context, req *model.ApplicationGraphReq) (*model.GraphData, error) {
+
+	// Step 1: query all services provided by this application in the namespace.
+	providerServiceList, err := manager.ListByIndexes[*meshresource.ServiceProviderMetadataResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceProviderMetadataKind,
+		[]index.IndexCondition{{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+			{IndexName: index.ByServiceProviderAppName, Value: req.AppName, Operator: index.Equals},
+		},
+	)
+	if err != nil {
+		// manager.ListByIndexes 内部已经有合适的 error 返回，直接透传即可
+		return nil, err
+	}
+
+	// Step 2: query all services consumed by this application in the namespace.
+	consumerServiceList, err := manager.ListByIndexes[*meshresource.ServiceConsumerMetadataResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceConsumerMetadataKind,
+		[]index.IndexCondition{{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+			{IndexName: index.ByServiceConsumerAppName, Value: req.AppName, Operator: index.Equals},
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 3: build the graph nodes and edges from provider and consumer relations.
+	// providerAppSet and consumerAppSet track already-added application nodes.
+	providerAppSet := make(map[string]struct{})
+	consumerAppSet := make(map[string]struct{})
+
+	nodes := make([]model.GraphNode, 0)
+	edges := make([]model.GraphEdge, 0)
+	// init self node
+	nodes = append(nodes, model.GraphNode{
+		ID:    req.AppName,
+		Label: req.AppName,
+		Type:  "application",
+		Rule:  "", // self node doesn't have a rule
+		Data:  nil,
+	})
+	// 3.a: iterate over provided services, collect service nodes and consumer app nodes.
+	for _, provider := range providerServiceList {
+		if provider.Spec == nil {
+			continue
+		}
+
+		// For each provided service, find consuming applications and add them as nodes.
+		consumerAppServiceList, err := manager.ListByIndexes[*meshresource.ServiceConsumerMetadataResource](
+			ctx.ResourceManager(),
+			meshresource.ServiceConsumerMetadataKind,
+			[]index.IndexCondition{{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+				{IndexName: index.ByServiceConsumerServiceKey, Value: provider.Spec.ServiceName + ":" + provider.Spec.Version + ":" + provider.Spec.Group, Operator: index.Equals},
+			},
+		)
+		if err != nil {
+			logger.Errorf("failed to list consumer apps by provider service key, mesh: %s, serviceKey: %s, err: %s", req.Mesh, provider.Spec.ProviderAppName+":"+provider.Spec.Version+":"+provider.Spec.Group, err)
+			continue
+		}
+
+		for _, item := range consumerAppServiceList {
+			if item.Spec == nil {
+				continue
+			}
+			if _, ok := consumerAppSet[item.Spec.ConsumerAppName]; !ok {
+				consumerAppSet[item.Spec.ConsumerAppName] = struct{}{}
+				nodes = append(nodes, model.GraphNode{
+					ID:    item.Spec.ConsumerAppName,
+					Label: item.Spec.ConsumerAppName,
+					Type:  "application",
+					Rule:  constants.ConsumerSide,
+					Data:  nil,
+				})
+				edges = append(edges, model.GraphEdge{
+					Source: item.Spec.ConsumerAppName,
+					Target: provider.Spec.ProviderAppName,
+					Data:   nil,
+				})
+			}
+		}
+	}
+
+	// 3.b: iterate over consumed services, collect service nodes and provider app nodes.
+	for _, consumer := range consumerServiceList {
+		if consumer.Spec == nil {
+			continue
+		}
+
+		// For each consumed service, find providing applications and add them as nodes.
+		providerAppList, err := manager.ListByIndexes[*meshresource.ServiceProviderMetadataResource](
+			ctx.ResourceManager(),
+			meshresource.ServiceProviderMetadataKind,
+			[]index.IndexCondition{{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+				{IndexName: index.ByServiceProviderServiceKey, Value: consumer.Spec.ServiceName + ":" + consumer.Spec.Version + ":" + consumer.Spec.Group, Operator: index.Equals},
+			},
+		)
+		if err != nil {
+			logger.Errorf("failed to list consumer apps by provider service key, mesh: %s, serviceKey: %s, err: %s", req.Mesh, consumer.Spec.ConsumerAppName+":"+consumer.Spec.Version+":"+consumer.Spec.Group, err)
+			continue
+		}
+
+		for _, item := range providerAppList {
+			if item.Spec == nil {
+				continue
+			}
+			if _, ok := providerAppSet[item.Spec.ProviderAppName]; !ok {
+				providerAppSet[item.Spec.ProviderAppName] = struct{}{}
+				nodes = append(nodes, model.GraphNode{
+					ID:    item.Spec.ProviderAppName,
+					Label: item.Spec.ProviderAppName,
+					Type:  "application",
+					Rule:  constants.ProviderSide,
+					Data:  nil,
+				})
+				edges = append(edges, model.GraphEdge{
+					Source: consumer.Spec.ConsumerAppName,
+					Target: item.Spec.ProviderAppName,
+					Data:   nil,
+				})
+			}
+		}
+	}
+
+	// Step 4: assemble and return graph data (nodes + edges).
+	return &model.GraphData{
+		Nodes: nodes,
+		Edges: edges,
+	}, nil
+}
+
 func SearchApplications(ctx consolectx.Context, req *model.ApplicationSearchReq) (*model.SearchPaginationResult, error) {
 	if strutil.IsNotBlank(req.Keywords) {
 		appResList, err := SearchApplicationsByKeywords(ctx, &model.SearchReq{
