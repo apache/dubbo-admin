@@ -55,6 +55,10 @@ func (s *InstanceEventSubscriber) Name() string {
 	return "Discovery-" + s.ResourceKind().ToString()
 }
 
+func (s *InstanceEventSubscriber) AsyncEnabled() bool {
+	return true
+}
+
 func (s *InstanceEventSubscriber) ProcessEvent(event events.Event) error {
 	newObj, ok := event.NewObj().(*meshresource.InstanceResource)
 	if !ok && event.NewObj() != nil {

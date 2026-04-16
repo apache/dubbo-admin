@@ -136,6 +136,11 @@ func (rt *runtime) Start(stop <-chan struct{}) error {
 	logger.Info("Admin started successfully")
 	select {
 	case <-stop:
+		for _, com := range components {
+			if gc, ok := com.(GracefulComponent); ok {
+				gc.WaitForDone()
+			}
+		}
 		return nil
 	}
 }

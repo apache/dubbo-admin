@@ -57,6 +57,10 @@ func (n *NacosServiceEventSubscriber) Name() string {
 	return "Nacos2Discovery-" + n.ResourceKind().ToString()
 }
 
+func (n *NacosServiceEventSubscriber) AsyncEnabled() bool {
+	return true
+}
+
 func (n *NacosServiceEventSubscriber) ProcessEvent(event events.Event) error {
 	newObj, ok := event.NewObj().(*meshresource.NacosServiceResource)
 	if !ok && event.NewObj() != nil {

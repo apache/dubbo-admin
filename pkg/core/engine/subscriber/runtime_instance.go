@@ -56,6 +56,10 @@ func (s *RuntimeInstanceEventSubscriber) Name() string {
 	return "Engine-" + s.ResourceKind().ToString()
 }
 
+func (s *RuntimeInstanceEventSubscriber) AsyncEnabled() bool {
+	return true
+}
+
 func (s *RuntimeInstanceEventSubscriber) ProcessEvent(event events.Event) error {
 	newObj, ok := event.NewObj().(*meshresource.RuntimeInstanceResource)
 	if !ok && event.NewObj() != nil {

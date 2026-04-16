@@ -63,6 +63,10 @@ func (s *RPCInstanceEventSubscriber) ResourceKind() coremodel.ResourceKind {
 	return meshresource.RPCInstanceKind
 }
 
+func (s *RPCInstanceEventSubscriber) AsyncEnabled() bool {
+	return true
+}
+
 func (s *RPCInstanceEventSubscriber) ProcessEvent(event events.Event) error {
 	newObj, ok := event.NewObj().(*meshresource.RPCInstanceResource)
 	if !ok && event.NewObj() != nil {

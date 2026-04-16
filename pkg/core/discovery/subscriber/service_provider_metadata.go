@@ -53,6 +53,10 @@ func (s *ServiceProviderMetadataEventSubscriber) Name() string {
 	return "Discovery-" + s.ResourceKind().ToString()
 }
 
+func (s *ServiceProviderMetadataEventSubscriber) AsyncEnabled() bool {
+	return true
+}
+
 func (s *ServiceProviderMetadataEventSubscriber) ProcessEvent(event events.Event) error {
 	newObj, ok := event.NewObj().(*meshresource.ServiceProviderMetadataResource)
 	if !ok && event.NewObj() != nil {
