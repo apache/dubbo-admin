@@ -15,23 +15,32 @@
  * limitations under the License.
  */
 
-export interface GrafanaState {
-  api: (params: any) => Promise<any>
-  showIframe: boolean
-  params: Record<string, any>
-  url?: string
+package index
+
+import (
+	"reflect"
+
+	"k8s.io/client-go/tools/cache"
+
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
+)
+
+const ByServiceName = "idx_service_name"
+
+func init() {
+	RegisterIndexers(meshresource.ServiceKind, map[string]cache.IndexFunc{
+		ByServiceName: byServiceName,
+	})
 }
 
-export interface ApplicationDashboardParams {
-  appName: string
-}
-
-export interface InstanceDashboardParams {
-  instanceName: string
-}
-
-export interface ServiceDashboardParams {
-  serviceName: string
-  version?: string
-  group?: string
+func byServiceName(obj interface{}) ([]string, error) {
+	service, ok := obj.(*meshresource.ServiceResource)
+	if !ok {
+		return nil, bizerror.NewAssertionError(meshresource.ServiceKind, reflect.TypeOf(obj).Name())
+	}
+	if service.Spec == nil {
+		return []string{}, nil
+	}
+	return []string{service.Spec.Name}, nil
 }

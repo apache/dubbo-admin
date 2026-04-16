@@ -99,7 +99,7 @@ func SearchServices(ctx consolectx.Context, req *model.ServiceSearchReq) (*model
 	if strutil.IsNotBlank(req.Keywords) {
 		return SearchServicesByKeywords(ctx, req)
 	}
-	pageData, err := manager.PageListByIndexes[*meshresource.ServiceProviderMetadataResource](
+	pageData, err := manager.PageListByIndexes[*meshresource.ServiceResource](
 		ctx.ResourceManager(),
 		meshresource.ServiceProviderMetadataKind,
 		[]index.IndexCondition{
@@ -112,11 +112,14 @@ func SearchServices(ctx consolectx.Context, req *model.ServiceSearchReq) (*model
 		return nil, err
 	}
 	if pageData.Data == nil || len(pageData.Data) == 0 {
-		return nil, nil
+		return &model.SearchPaginationResult{
+			List:     []*model.ServiceSearchResp{},
+			PageInfo: pageData.Pagination,
+		}, nil
 	}
 	serviceSearchResps := slice.Map(pageData.Data,
-		func(_ int, item *meshresource.ServiceProviderMetadataResource) *model.ServiceSearchResp {
-			return ToServiceSearchRespByProvider(item)
+		func(_ int, item *meshresource.ServiceResource) *model.ServiceSearchResp {
+			return ToServiceSearchRespByService(item)
 		})
 	return &model.SearchPaginationResult{
 		List:     serviceSearchResps,
@@ -126,7 +129,7 @@ func SearchServices(ctx consolectx.Context, req *model.ServiceSearchReq) (*model
 
 // SearchServicesByKeywords search services by keywords with prefix matching
 func SearchServicesByKeywords(ctx consolectx.Context, req *model.ServiceSearchReq) (*model.SearchPaginationResult, error) {
-	pageData, err := manager.PageListByIndexes[*meshresource.ServiceProviderMetadataResource](
+	pageData, err := manager.PageListByIndexes[*meshresource.ServiceResource](
 		ctx.ResourceManager(),
 		meshresource.ServiceProviderMetadataKind,
 		[]index.IndexCondition{
@@ -139,8 +142,8 @@ func SearchServicesByKeywords(ctx consolectx.Context, req *model.ServiceSearchRe
 		return nil, err
 	}
 	searchRespList := slice.Map(pageData.Data,
-		func(_ int, item *meshresource.ServiceProviderMetadataResource) *model.ServiceSearchResp {
-			return ToServiceSearchRespByProvider(item)
+		func(_ int, item *meshresource.ServiceResource) *model.ServiceSearchResp {
+			return ToServiceSearchRespByService(item)
 		})
 	return &model.SearchPaginationResult{
 		List:     searchRespList,
@@ -148,12 +151,19 @@ func SearchServicesByKeywords(ctx consolectx.Context, req *model.ServiceSearchRe
 	}, nil
 }
 
+func ToServiceSearchRespByService(res *meshresource.ServiceResource) *model.ServiceSearchResp {
+	return &model.ServiceSearchResp{
+		ServiceName: res.Spec.Name,
+		Group:       res.Spec.Group,
+		Version:     res.Spec.Version,
+	}
+}
+
 func ToServiceSearchRespByProvider(res *meshresource.ServiceProviderMetadataResource) *model.ServiceSearchResp {
 	return &model.ServiceSearchResp{
-		ServiceName:     res.Spec.ServiceName,
-		Group:           res.Spec.Group,
-		Version:         res.Spec.Version,
-		ProviderAppName: res.Spec.ProviderAppName,
+		ServiceName: res.Spec.ServiceName,
+		Group:       res.Spec.Group,
+		Version:     res.Spec.Version,
 	}
 }
 
@@ -754,6 +764,27 @@ func isArgumentRoute(condition string) bool {
 	return false
 }
 
+func GetServiceDetail(ctx consolectx.Context, req *model.ServiceDetailReq) (*model.ServiceDetailResp, error) {
+	serviceKey := coremodel.BuildResourceKey(req.Mesh, meshresource.BuildServiceIdentityKey(req.ServiceName, req.Version, req.Group))
+	serviceRes, exists, err := manager.GetByKey[*meshresource.ServiceResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceKind,
+		serviceKey,
+	)
+	if err != nil {
+		logger.Errorf("get service detail failed, serviceKey: %s, cause: %v", serviceKey, err)
+		return nil, err
+	}
+	if !exists || serviceRes.Spec == nil {
+		return nil, bizerror.New(bizerror.NotFoundError, "service not found")
+	}
+
+	return &model.ServiceDetailResp{
+		Language: serviceRes.Spec.Language,
+		Methods:  serviceRes.Spec.Methods,
+	}, nil
+}
+
 // GraphServices builds a service dependency graph for the given service key.
 //
 // It gathers both provider and consumer metadata for serviceKey and creates
@@ -870,4 +901,13 @@ func GraphServices(ctx consolectx.Context, req *model.ServiceGraphReq) (*model.G
 		Nodes: nodes,
 		Edges: edges,
 	}, nil
+}
+
+func sortedKeys(items map[string]struct{}) []string {
+	keys := make([]string, 0, len(items))
+	for key := range items {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }

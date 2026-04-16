@@ -252,8 +252,19 @@ func (d *discoveryComponent) initSubscribes(storeRouter store.Router, emitter ev
 		return bizerror.Wrap(err, bizerror.StoreError,
 			fmt.Sprintf("can not find store for resource kind %s", meshresource.ApplicationKind))
 	}
+	serviceStore, err := storeRouter.ResourceKindRoute(meshresource.ServiceKind)
+	if err != nil {
+		return bizerror.Wrap(err, bizerror.StoreError,
+			fmt.Sprintf("can not find store for resource kind %s", meshresource.ServiceKind))
+	}
+	serviceProviderMetadataStore, err := storeRouter.ResourceKindRoute(meshresource.ServiceProviderMetadataKind)
+	if err != nil {
+		return bizerror.Wrap(err, bizerror.StoreError,
+			fmt.Sprintf("can not find store for resource kind %s", meshresource.ServiceProviderMetadataKind))
+	}
 	serviceConsumerMetadataSub := subscriber.NewServiceConsumerMetadataEventSubscriber(appStore, emitter)
-	serviceProviderMetadataSub := subscriber.NewServiceProviderMetadataEventSubscriber(appStore, emitter)
+	serviceProviderMetadataSub := subscriber.NewServiceProviderMetadataEventSubscriber(
+		appStore, serviceStore, serviceProviderMetadataStore, emitter)
 	instanceSub := subscriber.NewInstanceEventSubscriber(appStore, instanceStore, emitter)
 	d.subscribers = append(d.subscribers, rpcInstanceSub, serviceConsumerMetadataSub, serviceProviderMetadataSub, instanceSub)
 

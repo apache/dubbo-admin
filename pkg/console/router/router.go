@@ -105,6 +105,8 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 		service.GET("/methods", handler.GetServiceMethodNames(ctx))
 		service.GET("/search", handler.SearchServices(ctx))
 		service.GET("/graph", handler.GetServiceGraph(ctx))
+		service.GET("/detail", handler.GetServiceDetail(ctx))
+		service.GET("/interfaces", handler.GetServiceInterfaces(ctx))
 	}
 
 	{
