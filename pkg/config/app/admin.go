@@ -68,7 +68,7 @@ var DefaultAdminConfig = func() AdminConfig {
 	}
 }
 
-func (c AdminConfig) Sanitize() {
+func (c *AdminConfig) Sanitize() {
 	c.Engine.Sanitize()
 	for _, d := range c.Discovery {
 		d.Sanitize()
@@ -80,7 +80,7 @@ func (c AdminConfig) Sanitize() {
 	c.Log.Sanitize()
 }
 
-func (c AdminConfig) PreProcess() error {
+func (c *AdminConfig) PreProcess() error {
 	discoveryPreProcess := func() error {
 		for _, d := range c.Discovery {
 			if err := d.PreProcess(); err != nil {
@@ -100,7 +100,7 @@ func (c AdminConfig) PreProcess() error {
 	)
 }
 
-func (c AdminConfig) PostProcess() error {
+func (c *AdminConfig) PostProcess() error {
 	discoveryPostProcess := func() error {
 		for _, d := range c.Discovery {
 			if err := d.PostProcess(); err != nil {
@@ -175,7 +175,7 @@ func (c *AdminConfig) Validate() error {
 }
 
 // FindDiscovery finds the DiscoveryConfig by id, returns nil if not found
-func (c AdminConfig) FindDiscovery(id string) *discovery.Config {
+func (c *AdminConfig) FindDiscovery(id string) *discovery.Config {
 	for _, d := range c.Discovery {
 		if d.ID == id {
 			return d
@@ -185,7 +185,7 @@ func (c AdminConfig) FindDiscovery(id string) *discovery.Config {
 }
 
 // Meshes return the mesh id list of discoveries
-func (c AdminConfig) Meshes() []string {
+func (c *AdminConfig) Meshes() []string {
 	return slice.Map(c.Discovery, func(index int, item *discovery.Config) string {
 		return item.ID
 	})
