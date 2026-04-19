@@ -17,8 +17,12 @@
 <template>
   <div class="__container_app_topology">
     <a-flex>
-      <a-card class="topology-warpper"> <div id="topology"></div> </a-card>
+      <a-card class="topology-warpper">
+        <!-- G6 mount point (service call topology) -->
+        <div id="topology"></div>
+      </a-card>
     </a-flex>
+    <!-- Right drawer: show service/application details after node click -->
     <a-drawer v-model:open="detailDrawerOpen" :title="detailTitle" placement="right" width="520">
       <a-spin :spinning="detailLoading">
         <a-typography-text v-if="detailError" type="danger">{{ detailError }}</a-typography-text>
@@ -52,17 +56,25 @@ import { useRoute } from 'vue-router'
 import { ExtensionCategory, register, Graph, NodeEvent } from '@antv/g6'
 const route = useRoute()
 
+// G6 graph instance for this view (resize/destroy lifecycle)
 const graphRef = shallowRef<Graph | null>(null)
 register(ExtensionCategory.NODE, 'vue-node', VueNode)
+
+// Right-side detail drawer state
 const detailDrawerOpen = ref(false)
 const detailLoading = ref(false)
 const detailError = ref('')
 const detailData = shallowRef<Record<string, unknown>>({})
+
+// Detail cache to avoid refetching the same node
 const detailCache = new Map<string, Record<string, unknown>>()
+
+// Current selected node info (for title and API selection)
 const currentDetailKey = ref('')
 const currentDetailType = ref('')
 const selectedNodeId = ref('')
 
+// Clear selection when the drawer closes to avoid stale highlight
 const clearSelectedNode = () => {
   const id = selectedNodeId.value
   if (id && graphRef.value) {
@@ -94,6 +106,7 @@ const resolveNodeIconClass = (type: unknown) => {
   return 'icon-jiekouzhushou'
 }
 
+// Node renderer: choose icon by type and highlight for selected/active state
 const StatefulNode = defineComponent({
   props: {
     data: { type: Object as PropType<VueNodeViewData>, required: true }
@@ -157,6 +170,7 @@ const detailTitle = computed(() => {
   return currentDetailKey.value ? `${base}：${currentDetailKey.value}` : base
 })
 
+// Expand detail object into description entries and filter empty values
 const detailEntries = computed(() => {
   const data = detailData.value ?? {}
   return Object.entries(data)
@@ -164,6 +178,7 @@ const detailEntries = computed(() => {
     .map(([key, value]) => ({ key, value }))
 })
 
+// Format values for display (primitives/arrays/objects)
 const formatValueForDisplay = (v: unknown) => {
   if (v === null || v === undefined) return ''
   if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v)
@@ -182,6 +197,7 @@ const formatValueForDisplay = (v: unknown) => {
   return String(v)
 }
 
+// Convert backend topology payload into G6 nodes/edges
 const buildGraphData = (raw: any) => {
   const nodes = Array.isArray(raw?.nodes)
     ? raw.nodes.map((n: any) => ({
@@ -202,6 +218,8 @@ const buildGraphData = (raw: any) => {
 
   return { nodes, edges }
 }
+
+// Render topology: create Graph, configure layout/styles/behaviors, bind node click
 const renderTopology = (graphData: any) => {
   const root = document.getElementById('topology')
   if (!root) return
@@ -244,6 +262,7 @@ const renderTopology = (graphData: any) => {
     ]
   })
 
+  // On node click, choose detail API by node type and show it in the drawer
   const handleNodeClick = async (e: any) => {
     const serviceName = String(e?.target?.id ?? '')
     const nodeData: any = serviceName ? graphRef.value?.getNodeData(serviceName) : undefined
@@ -260,6 +279,7 @@ const renderTopology = (graphData: any) => {
       : 'service'
     detailError.value = ''
 
+    // Return immediately on cache hit
     const cacheKey = `${serviceName}`
     const cached = detailCache.get(cacheKey)
     if (cached) {
@@ -271,6 +291,7 @@ const renderTopology = (graphData: any) => {
     detailLoading.value = true
     try {
       let res
+      // application: use application detail API; service: split 'service:version:group' for service detail API
       if (nodeData.type === 'application') {
         res = await getApplicationDetail(nodeData.id)
       } else if (nodeData.type === 'service') {
@@ -311,6 +332,7 @@ watch(detailEntries, () => {
 })
 onMounted(async () => {
   try {
+    // Fetch service graph by route param and render with force layout
     const serviceName = String(route.params?.pathId ?? '')
     console.log('topology', serviceName)
     const res = await getServiceGraph(serviceName)
@@ -318,6 +340,7 @@ onMounted(async () => {
     const graphData = buildGraphData(res?.data)
     renderTopology(graphData)
 
+    // Resize canvas on window resize (keep container width responsive)
     resizeHandler = () => {
       const root = document.getElementById('topology')
       if (!root || !graphRef.value) return
@@ -329,6 +352,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   if (resizeHandler) window.removeEventListener('resize', resizeHandler)
+  // Destroy Graph on unmount to release events/resources
   graphRef.value?.destroy()
   graphRef.value = null
 })

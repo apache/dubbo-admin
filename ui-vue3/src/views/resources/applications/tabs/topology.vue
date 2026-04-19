@@ -17,8 +17,12 @@
 <template>
   <div class="__container_app_topology">
     <a-flex>
-      <a-card class="topology-warpper"> <div id="topology"></div> </a-card>
+      <a-card class="topology-warpper">
+        <!-- G6 mount point (application topology) -->
+        <div id="topology"></div>
+      </a-card>
     </a-flex>
+    <!-- Right drawer: show application details after node click -->
     <a-drawer v-model:open="detailDrawerOpen" :title="detailTitle" placement="right" width="520">
       <a-spin :spinning="detailLoading">
         <a-typography-text v-if="detailError" type="danger">{{ detailError }}</a-typography-text>
@@ -51,8 +55,10 @@ import { VueNode } from 'g6-extension-vue'
 
 const route = useRoute()
 
+// G6 graph instance for this view (resize/destroy lifecycle)
 const graphRef = shallowRef<Graph | null>(null)
 
+// Right-side detail drawer state
 const detailDrawerOpen = ref(false)
 const detailLoading = ref(false)
 const detailError = ref('')
@@ -60,6 +66,7 @@ const detailData = shallowRef<Record<string, unknown>>({})
 const currentDetailKey = ref('')
 const selectedNodeId = ref('')
 
+// Clear selection when the drawer closes to avoid stale highlight
 const clearSelectedNode = () => {
   const id = selectedNodeId.value
   if (id && graphRef.value) {
@@ -82,6 +89,7 @@ type VueNodeViewData = {
   data?: Record<string, unknown>
 }
 
+// Node renderer: render a TSX component into a G6 node via VueNode
 const StatefulNode = defineComponent({
   props: {
     data: { type: Object as PropType<VueNodeViewData>, required: true }
@@ -138,12 +146,15 @@ const StatefulNode = defineComponent({
   }
 })
 
+// Register the VueNode extension type in G6
 register(ExtensionCategory.NODE, 'vue-node', VueNode)
 
+// Drawer title: current node (application name)
 const detailTitle = computed(() => {
   return currentDetailKey.value ? `应用详情：${currentDetailKey.value}` : '应用详情'
 })
 
+// Expand detail object into description entries and filter empty values
 const detailEntries = computed(() => {
   const data = detailData.value ?? {}
   return Object.entries(data)
@@ -151,6 +162,7 @@ const detailEntries = computed(() => {
     .map(([key, value]) => ({ key, value }))
 })
 
+// Format values for display (primitives/arrays/objects)
 const formatValueForDisplay = (v: unknown): string => {
   if (v === null || v === undefined) return ''
   if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v)
@@ -169,6 +181,7 @@ const formatValueForDisplay = (v: unknown): string => {
   return String(v)
 }
 
+// Convert backend topology payload into G6 nodes/edges
 const buildGraphData = (raw: any) => {
   const nodes = Array.isArray(raw?.nodes)
     ? raw.nodes.map((n: any) => ({
@@ -189,6 +202,7 @@ const buildGraphData = (raw: any) => {
   return { nodes, edges }
 }
 
+// Render topology: create Graph, configure layout/styles/behaviors, bind node click
 const renderTopology = (graphData: any) => {
   const root = document.getElementById('topology')
   if (!root) return
@@ -232,6 +246,7 @@ const renderTopology = (graphData: any) => {
     ]
   })
 
+  // On node click, fetch application detail and show it in the drawer
   const handleNodeClick = async (e: any) => {
     const rawId = e?.target?.id
     const appName = rawId == null ? '' : String(rawId)
@@ -268,13 +283,15 @@ const renderTopology = (graphData: any) => {
 let resizeHandler: (() => void) | null = null
 onMounted(async () => {
   try {
-    const serviceName = String(route.params?.pathId ?? '')
-    const res = await getApplicationGraph(serviceName)
+    // Fetch application graph by route param and render with force layout
+    const appName = String(route.params?.pathId ?? '')
+    const res = await getApplicationGraph(appName)
     if (res?.code !== HTTP_STATUS.SUCCESS) return
 
     const graphData = buildGraphData(res?.data)
     renderTopology(graphData)
 
+    // Resize canvas on window resize (keep container width responsive)
     resizeHandler = () => {
       const root = document.getElementById('topology')
       if (!root || !graphRef.value) return
@@ -286,6 +303,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   if (resizeHandler) window.removeEventListener('resize', resizeHandler)
+  // Destroy Graph on unmount to release events/resources
   graphRef.value?.destroy()
   graphRef.value = null
 })
