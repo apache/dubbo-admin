@@ -19,11 +19,6 @@ package events
 
 import "sync/atomic"
 
-type AsyncSubscriber interface {
-	Subscriber
-	AsyncEnabled() bool
-}
-
 type subscriberState struct {
 	subscriber     Subscriber
 	async          bool

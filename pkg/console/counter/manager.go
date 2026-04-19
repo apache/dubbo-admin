@@ -355,6 +355,10 @@ func (s *counterEventSubscriber) Name() string {
 	return s.name
 }
 
+func (s *counterEventSubscriber) AsyncEnabled() bool {
+	return false
+}
+
 func (s *counterEventSubscriber) ProcessEvent(event events.Event) error {
 	if s.handler == nil {
 		return nil

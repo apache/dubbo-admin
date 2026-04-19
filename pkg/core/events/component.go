@@ -108,7 +108,7 @@ func (b *eventBus) Subscribe(subscriber Subscriber) error {
 	}
 	isAsync := false
 	if b.bufferSize > 0 {
-		if as, ok := subscriber.(AsyncSubscriber); ok && as.AsyncEnabled() {
+		if subscriber.AsyncEnabled() {
 			isAsync = true
 		}
 	}
