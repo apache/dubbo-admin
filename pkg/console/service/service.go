@@ -131,20 +131,22 @@ func SearchServices(ctx consolectx.Context, req *model.ServiceSearchReq) (*model
 func SearchServicesByKeywords(ctx consolectx.Context, req *model.ServiceSearchReq) (*model.SearchPaginationResult, error) {
 	pageData, err := manager.PageListByIndexes[*meshresource.ServiceResource](
 		ctx.ResourceManager(),
-		meshresource.ServiceProviderMetadataKind,
+		meshresource.ServiceKind,
 		[]index.IndexCondition{
 			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
-			{IndexName: index.ByServiceProviderServiceName, Value: req.Keywords, Operator: index.HasPrefix},
+			{IndexName: index.ByServiceName, Value: req.Keywords, Operator: index.HasPrefix},
 		},
 		req.PageReq,
 	)
 	if err != nil {
 		return nil, err
 	}
-	searchRespList := slice.Map(pageData.Data,
+	searchRespList := slice.Map(
+		pageData.Data,
 		func(_ int, item *meshresource.ServiceResource) *model.ServiceSearchResp {
 			return ToServiceSearchRespByService(item)
-		})
+		},
+	)
 	return &model.SearchPaginationResult{
 		List:     searchRespList,
 		PageInfo: pageData.Pagination,

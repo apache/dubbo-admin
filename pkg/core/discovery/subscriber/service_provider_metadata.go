@@ -87,7 +87,7 @@ func (s *ServiceProviderMetadataEventSubscriber) ProcessEvent(event events.Event
 			logger.Errorf(errStr)
 			return bizerror.New(bizerror.EventError, errStr)
 		}
-		processErr = s.processUpdate(oldObj, newObj)
+		processErr = s.processUpdate(newObj)
 	case cache.Deleted:
 		if oldObj == nil {
 			errStr := "process provider metadata resource delete event, but old obj is nil, skipped processing"
@@ -121,24 +121,13 @@ func (s *ServiceProviderMetadataEventSubscriber) processDelete(r *meshresource.S
 	return s.syncService(r.Mesh, r.Spec.ServiceName, r.Spec.Version, r.Spec.Group)
 }
 
-func (s *ServiceProviderMetadataEventSubscriber) processUpdate(oldRes, newRes *meshresource.ServiceProviderMetadataResource) error {
+func (s *ServiceProviderMetadataEventSubscriber) processUpdate(newRes *meshresource.ServiceProviderMetadataResource) error {
 	if newRes.Spec == nil {
 		return bizerror.New(bizerror.UnknownError, "provider metadata resource spec is nil")
 	}
 	if err := s.ensureApplication(newRes); err != nil {
 		return err
 	}
-
-	if oldRes != nil && oldRes.Spec != nil {
-		oldKey := meshresource.BuildServiceIdentityKey(oldRes.Spec.ServiceName, oldRes.Spec.Version, oldRes.Spec.Group)
-		newKey := meshresource.BuildServiceIdentityKey(newRes.Spec.ServiceName, newRes.Spec.Version, newRes.Spec.Group)
-		if oldRes.Mesh != newRes.Mesh || oldKey != newKey {
-			if err := s.syncService(oldRes.Mesh, oldRes.Spec.ServiceName, oldRes.Spec.Version, oldRes.Spec.Group); err != nil {
-				return err
-			}
-		}
-	}
-
 	return s.syncService(newRes.Mesh, newRes.Spec.ServiceName, newRes.Spec.Version, newRes.Spec.Group)
 }
 
@@ -172,7 +161,7 @@ func (s *ServiceProviderMetadataEventSubscriber) syncService(mesh, serviceName, 
 	serviceKey := meshresource.BuildServiceIdentityKey(serviceName, version, group)
 	resources, err := s.providerStore.ListByIndexes(
 		[]index.IndexCondition{{IndexName: index.ByMeshIndex, Value: mesh, Operator: index.Equals},
-			{IndexName: index.ByServiceProviderServiceName, Value: serviceName, Operator: index.Equals},
+			{IndexName: index.ByServiceProviderServiceKey, Value: serviceKey, Operator: index.Equals},
 		})
 	if err != nil {
 		return err
@@ -184,12 +173,7 @@ func (s *ServiceProviderMetadataEventSubscriber) syncService(mesh, serviceName, 
 		if !ok {
 			return bizerror.NewAssertionError(meshresource.ServiceProviderMetadataKind, reflect.TypeOf(item).Name())
 		}
-		if res.Spec == nil {
-			continue
-		}
-		if res.Spec.Version == version && res.Spec.Group == group {
-			providers = append(providers, res)
-		}
+		providers = append(providers, res)
 	}
 
 	rawOldRes, exists, err := s.serviceStore.GetByKey(coremodel.BuildResourceKey(mesh, serviceKey))
