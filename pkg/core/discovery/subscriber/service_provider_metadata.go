@@ -22,6 +22,8 @@ import (
 	"sort"
 	"strings"
 
+	"k8s.io/client-go/tools/cache"
+
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/core/events"
@@ -30,7 +32,6 @@ import (
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
-	"k8s.io/client-go/tools/cache"
 )
 
 type ServiceProviderMetadataEventSubscriber struct {

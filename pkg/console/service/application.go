@@ -216,7 +216,7 @@ func GraphApplications(ctx consolectx.Context, req *model.ApplicationGraphReq) (
 		},
 	)
 	if err != nil {
-		// manager.ListByIndexes 内部已经有合适的 error 返回，直接透传即可
+		// manager.ListByIndexes An appropriate error has already been generated internally; simply pass it through directly.
 		return nil, err
 	}
 
