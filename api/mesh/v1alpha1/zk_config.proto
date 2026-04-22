@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+
+message ZKConfig {
+  option (dubbo.mesh.resource).name = "ZKConfig";
+  option (dubbo.mesh.resource).plural_name = "ZKConfig";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).is_experimental = true;
+
+  string nodeName = 1;
+
+  string nodeData = 2;
+}

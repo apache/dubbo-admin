@@ -17,30 +17,44 @@
 
 package handler
 
-// proxy for prometheus
-
 import (
+	"io"
 	"net/http"
-	"net/http/httputil"
-	"net/url"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
+	"github.com/apache/dubbo-admin/pkg/console/model"
 )
 
 func PromQL(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		query := c.Request.URL.Query().Get("query")
-		values := url.Values{}
-		values.Add("query", query)
-		promUrl := ctx.Config().Console.Prometheus + "/api/v1/query?" + values.Encode()
-		proxyUrl, _ := url.Parse(promUrl)
-		director := func(req *http.Request) {
-			req.URL.Scheme = proxyUrl.Scheme
-			req.URL.Host = proxyUrl.Host
-			req.Host = proxyUrl.Host
-			req.URL.Path = proxyUrl.Path
+		promBaseUrl := ctx.Config().Observability.PrometheusBaseURL
+		if promBaseUrl == nil {
+			c.JSON(http.StatusOK, model.NewBizErrorResp(
+				bizerror.New(bizerror.ConfigError, "Please configure prometheus url to retrieve metrics")))
+			return
 		}
-		proxy := &httputil.ReverseProxy{Director: director}
-		proxy.ServeHTTP(c.Writer, c.Request)
+
+		u := *promBaseUrl
+		u.RawQuery = c.Request.URL.RawQuery
+		u.Path = "/api/v1/query"
+		s := u.String()
+		resp, err := http.Get(s)
+		if err != nil {
+			c.JSON(http.StatusOK, model.NewBizErrorResp(
+				bizerror.New(bizerror.NetWorkError, err.Error())))
+			return
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			c.JSON(http.StatusOK, model.NewBizErrorResp(
+				bizerror.New(bizerror.NetWorkError, err.Error())))
+			return
+		}
+		c.Data(http.StatusOK, resp.Header.Get("Content-Type"), body)
 	}
 }

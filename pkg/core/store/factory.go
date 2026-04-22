@@ -1,9 +1,26 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package store
 
 import (
 	"fmt"
 
-	"github.com/apache/dubbo-admin/pkg/config/store"
+	storecfg "github.com/apache/dubbo-admin/pkg/config/store"
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
@@ -20,17 +37,17 @@ func FactoryRegistry() Registry {
 // Factory is the interface for create a specific type of ManagedResourceStore
 type Factory interface {
 	// Support returns true if the factory supports the given type in config
-	Support(store.Type) bool
+	Support(storecfg.Type) bool
 	// New returns a new ManagedResourceStore for the model.ResourceKind using the given config
-	New(model.ResourceKind, *store.Config) (ManagedResourceStore, error)
+	New(model.ResourceKind, *storecfg.Config) (ManagedResourceStore, error)
 }
 
 type Registry interface {
-	GetStoreFactory(store.Type) (Factory, error)
+	GetStoreFactory(storecfg.Type) (Factory, error)
 }
 
 type RegistryMutator interface {
-	// RegisterFactory registers a resource store type and a func to new it
+	// Register registers a new factory
 	Register(Factory)
 }
 type MutableRegistry interface {
@@ -49,7 +66,7 @@ func newStoreFactoryRegistry() MutableRegistry {
 		factories: make([]Factory, 0),
 	}
 }
-func (s *storeFactoryRegistry) GetStoreFactory(t store.Type) (Factory, error) {
+func (s *storeFactoryRegistry) GetStoreFactory(t storecfg.Type) (Factory, error) {
 	for _, factory := range s.factories {
 		if factory.Support(t) {
 			return factory, nil

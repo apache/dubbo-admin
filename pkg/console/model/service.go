@@ -18,22 +18,25 @@
 package model
 
 import (
-	"strconv"
-	"strings"
+	"fmt"
 
-	"github.com/apache/dubbo-admin/api/mesh/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/console/constants"
+	"github.com/gin-gonic/gin"
+
+	"github.com/apache/dubbo-admin/pkg/common/constants"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
 type ServiceSearchReq struct {
+	coremodel.PageReq
+
 	ServiceName string `form:"serviceName" json:"serviceName"`
 	Keywords    string `form:"keywords" json:"keywords"`
-	PageReq
+	Mesh        string `form:"mesh" json:"mesh"`
 }
 
 func NewServiceSearchReq() *ServiceSearchReq {
 	return &ServiceSearchReq{
-		PageReq: PageReq{
+		PageReq: coremodel.PageReq{
 			PageOffset: 0,
 			PageSize:   15,
 		},
@@ -41,8 +44,11 @@ func NewServiceSearchReq() *ServiceSearchReq {
 }
 
 type ServiceSearchResp struct {
-	ServiceName   string         `json:"serviceName"`
-	VersionGroups []VersionGroup `json:"versionGroups"`
+	ServiceName     string `json:"serviceName"`
+	Version         string `json:"version"`
+	Group           string `json:"group"`
+	ProviderAppName string `json:"providerAppName,omitempty"`
+	ConsumerAppName string `json:"consumerAppName,omitempty"`
 }
 
 type ByServiceName []*ServiceSearchResp
@@ -55,55 +61,15 @@ func (a ByServiceName) Less(i, j int) bool {
 
 func (a ByServiceName) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
 
-type ServiceSearch struct {
-	ServiceName   string
-	VersionGroups Set
-}
-
-func (s *ServiceSearch) FromServiceInfo(info *v1alpha1.ServiceInfo) {
-	s.VersionGroups.Add(info.Version + " " + info.Group)
-}
-
-func NewServiceSearch(serviceName string) *ServiceSearch {
-	return &ServiceSearch{
-		ServiceName:   serviceName,
-		VersionGroups: NewSet(),
-	}
-}
-
-func NewServiceSearchResp() *ServiceSearchResp {
-	return &ServiceSearchResp{
-		ServiceName:   "",
-		VersionGroups: nil,
-	}
-}
-
-func NewServiceDistributionResp() *ServiceTabDistributionResp {
-	return &ServiceTabDistributionResp{
-		AppName:      "",
-		InstanceName: "",
-		Endpoint:     "",
-		TimeOut:      "",
-		Retries:      "",
-	}
-}
-
-func (s *ServiceSearchResp) FromServiceSearch(search *ServiceSearch) {
-	s.ServiceName = search.ServiceName
-	versionGroupList := make([]VersionGroup, 0)
-	for _, gv := range search.VersionGroups.Values() {
-		groupAndVersion := strings.Split(gv, " ")
-		versionGroupList = append(versionGroupList, VersionGroup{Version: groupAndVersion[0], Group: groupAndVersion[1]})
-	}
-	s.VersionGroups = versionGroupList
-}
-
 type ServiceTabDistributionReq struct {
-	ServiceName string `json:"serviceName"  form:"serviceName" binding:"required"`
-	Version     string `json:"version"  form:"version"`
-	Group       string `json:"group"  form:"group"`
-	Side        string `json:"side" form:"side"  binding:"required"`
-	PageReq
+	ServiceName     string `json:"serviceName"  form:"serviceName" binding:"required"`
+	Version         string `json:"version"  form:"version"`
+	Group           string `json:"group"  form:"group"`
+	Side            string `json:"side" form:"side"  binding:"required"`
+	Mesh            string `json:"mesh" form:"mesh" binding:"required"`
+	ProviderAppName string `json:"providerAppName"  form:"providerAppName"`
+	Keywords        string `json:"keywords"  form:"keywords"`
+	coremodel.PageReq
 }
 
 type ServiceTabDistributionResp struct {
@@ -133,60 +99,24 @@ type ServiceTabDistribution struct {
 	Retries      string
 }
 
-func NewServiceDistribution() *ServiceTabDistribution {
-	return &ServiceTabDistribution{
-		AppName:      "",
-		InstanceName: "",
-		Endpoint:     "",
-		TimeOut:      "",
-		Retries:      "",
+type BaseServiceReq struct {
+	ServiceName string `json:"serviceName"`
+	Group       string `json:"group"`
+	Version     string `json:"version"`
+	Mesh        string `json:"mesh"`
+}
+
+func (s *BaseServiceReq) Query(c *gin.Context) error {
+	s.ServiceName = c.Query("serviceName")
+	if s.ServiceName == "" {
+		return fmt.Errorf("service name is empty")
 	}
+	s.Group = c.Query("group")
+	s.Version = c.Query("version")
+	s.Mesh = c.Query("mesh")
+	return nil
 }
 
-func (r *ServiceTabDistributionResp) FromServiceDataplaneResource(dataplane *coremesh.DataplaneResource, metadata *coremesh.MetaDataResource, name string, req *ServiceTabDistributionReq) *ServiceTabDistributionResp {
-	r.AppName = name
-	inbounds := dataplane.Spec.Networking.Inbound
-	ip := dataplane.GetIP()
-	for _, inbound := range inbounds {
-		r.mergeInbound(inbound, ip)
-	}
-	meta := dataplane.GetMeta()
-	r.InstanceName = meta.GetName()
-	r.mergeMetaData(metadata, req)
-
-	return r
-}
-
-func (r *ServiceTabDistributionResp) mergeInbound(inbound *legacy.Dataplane_Networking_Inbound, ip string) {
-	r.Endpoint = ip + ":" + strconv.Itoa(int(inbound.Port))
-}
-
-func (r *ServiceTabDistributionResp) FromServiceDistribution(distribution *ServiceTabDistribution) *ServiceTabDistributionResp {
-	r.AppName = distribution.AppName
-	r.InstanceName = distribution.InstanceName
-	r.Endpoint = distribution.Endpoint
-	r.TimeOut = distribution.TimeOut
-	r.Retries = distribution.Retries
-	return r
-}
-
-func (r *ServiceTabDistributionResp) mergeMetaData(metadata *coremesh.MetaDataResource, req *ServiceTabDistributionReq) {
-	// key format is '{group}/{interface name}:{version}:{protocol}'
-	serviceinfos := metadata.Spec.Services
-
-	for _, serviceinfo := range serviceinfos {
-		if serviceinfo.Name == req.ServiceName &&
-			serviceinfo.Group == req.Group &&
-			serviceinfo.Version == req.Version &&
-			req.Side == serviceinfo.GetParams()[constants.ServiceInfoSide] {
-			r.Retries = serviceinfo.Params[constants.RetriesKey]
-			r.TimeOut = serviceinfo.Params[constants.TimeoutKey]
-			r.Params = serviceinfo.Params
-		}
-	}
-}
-
-type VersionGroup struct {
-	Version string `json:"version"`
-	Group   string `json:"group"`
+func (s *BaseServiceReq) ServiceKey() string {
+	return s.ServiceName + constants.ColonSeparator + s.Version + constants.ColonSeparator + s.Group
 }

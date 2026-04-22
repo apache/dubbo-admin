@@ -74,8 +74,7 @@ var stageTypeRegistry = map[string]stageTypeInfo{
 	"observe": {inType: nil, outType: schema.Observation{}, needsTools: false, isStreaming: true},
 }
 
-func NewReactAgent(g *genkit.Genkit, promptBasePath string, defaultModel string, maxIterations int, stagesCfg []StageInfo, toolRefs []ai.ToolRef) (*ReActAgent, error) {
-	memoryCtx := memory.NewMemoryContext(memory.ChatHistoryKey)
+func NewReactAgent(g *genkit.Genkit, memoryCtx context.Context, promptBasePath string, defaultModel string, maxIterations int, stagesCfg []StageInfo, toolRefs []ai.ToolRef) (*ReActAgent, error) {
 	channels := agent.NewChannels(len(stagesCfg))
 	stages, err := buildStagesFromConfig(g, stagesCfg, promptBasePath, defaultModel, toolRefs)
 	if err != nil {
@@ -174,9 +173,9 @@ func (ra *ReActAgent) Interact(input *schema.UserInput, sessionID string) *agent
 		in.UserInput = input
 		in.SessionID = sessionID
 
-		// Add user input to history
-		ra.memoryCtx = context.WithValue(ra.memoryCtx, memory.SessionIDKey, sessionID)
-		history, ok := ra.memoryCtx.Value(memory.ChatHistoryKey).(*memory.HistoryMemory)
+		// Create request-scoped context with sessionID, don't overwrite ra.memoryCtx
+		ctx := context.WithValue(ra.memoryCtx, memory.SessionIDKey, sessionID)
+		history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.HistoryMemory)
 		if !ok {
 			err = fmt.Errorf("failed to get history from context")
 			ra.channels.ErrorChan <- err
@@ -189,7 +188,7 @@ func (ra *ReActAgent) Interact(input *schema.UserInput, sessionID string) *agent
 		inputMsg := ai.NewUserMessage(ai.NewJSONPart(string(inputJson)))
 		history.AddHistory(sessionID, inputMsg)
 
-		err = ra.orchestrator.Run(ra.memoryCtx, in, ra.channels)
+		err = ra.orchestrator.Run(ctx, in, ra.channels)
 		if err != nil {
 			ra.channels.ErrorChan <- err
 		}
@@ -275,7 +274,7 @@ func ThinkFlow(
 				return nil, fmt.Errorf("failed to parse agentThink prompt response: %w", err)
 			}
 
-			history.AddHistory(sessionID, resp.Message)
+			// Don't store Think response in history - only store user input and final result
 			schema.AccumulateUsage(thinkOut.UsageInfo, resp.Usage, in.Usage())
 
 			return thinkOut, nil
@@ -356,8 +355,8 @@ func ActFlow(g *genkit.Genkit, actPrompt ai.Prompt) agent.NormalFlow {
 				actOuts.Add(&output)
 			}
 			runtime.GetLogger().Info("act out:", "out", actOuts)
-			// ai.RoleTool's messages will be ingored by ai.WithMessages
-			history.AddHistory(sessionID, ai.NewMessage(ai.RoleModel, nil, parts...))
+			// ai.RoleTool's messages will be ignored by ai.WithMessages
+			// Don't store Act tool calls in history - only store user input and final result
 			schema.AccumulateUsage(actOuts.UsageInfo, toolReqs.Usage, in.Usage())
 
 			return actOuts, nil

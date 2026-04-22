@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+
+// Nacos config is the raw data of nacos configuration
+message NacosConfig {
+  option (dubbo.mesh.resource).name = "NacosConfig";
+  option (dubbo.mesh.resource).plural_name = "NacosConfigs";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).is_experimental = true;
+
+  string dataId = 1;
+
+  string content = 2;
+}

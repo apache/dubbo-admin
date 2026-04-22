@@ -21,33 +21,35 @@
 package v1alpha1
 
 import (
+	"encoding/json"
+
+	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
-
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:categories=dubbo,scope=Namespaced
 
 const ApplicationKind coremodel.ResourceKind = "Application"
 
 func init() {
-	coremodel.RegisterResourceKind(ApplicationKind)
+	coremodel.RegisterResourceSchema(ApplicationKind, NewApplicationResource, NewApplicationResourceList)
 }
 
 type ApplicationResource struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Mesh is the name of the dubbo mesh this resource belongs to.
 	// It may be omitted for cluster-scoped resources.
-	//
-	// +kubebuilder:validation:Optional
 	Mesh string `json:"mesh,omitempty"`
+
 	// Spec is the specification of the Dubbo Application resource.
-	// +kubebuilder:validation:Optional
 	Spec *meshproto.Application `json:"spec,omitempty"`
+
 	// Status is the status of the Dubbo Application resource.
 	Status ApplicationResourceStatus `json:"status,omitempty"`
 }
@@ -56,19 +58,11 @@ type ApplicationResourceStatus struct {
 	// define resource-specific status here
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:scope=Cluster
-type ApplicationResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ApplicationResource `json:"items"`
-}
-
 func (r *ApplicationResource) ResourceKind() coremodel.ResourceKind {
 	return ApplicationKind
 }
 
-func (r *ApplicationResource) MeshName() string {
+func (r *ApplicationResource) ResourceMesh() string {
 	return r.Mesh
 }
 
@@ -84,16 +78,111 @@ func (r *ApplicationResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func NewApplicationResource(name string, mesh string, apiVersion string) *ApplicationResource {
+func (r *ApplicationResource) DeepCopyObject() k8sruntime.Object {
+	out := &ApplicationResource{
+		TypeMeta: r.TypeMeta,
+		Mesh:     r.Mesh,
+		Status:   r.Status,
+	}
+
+	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+
+	if r.Spec != nil {
+		spec, ok := proto.Clone(r.Spec).(*meshproto.Application)
+		if !ok {
+			logger.Warnf("failed to clone spec %v, spec is not conformed to %s", r.Spec, r.ResourceKind())
+			return out
+		}
+		out.Spec = spec
+	}
+
+	return out
+}
+
+func (r *ApplicationResource) String() string {
+	jsonStr, err := json.Marshal(r)
+	if err != nil {
+		logger.Errorf("failed to encode ApplicationResource: %s to json, err: %v", r.ResourceKey(), err)
+		return ""
+	}
+	return string(jsonStr)
+}
+
+func NewApplicationResourceWithAttributes(name string, mesh string) *ApplicationResource {
 	return &ApplicationResource{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(ApplicationKind),
-			APIVersion: apiVersion,
+			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+		Spec: &meshproto.Application{},
+	}
+}
+
+func NewApplicationResource() coremodel.Resource {
+	return &ApplicationResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ApplicationKind),
+			APIVersion: "v1alpha1",
+		},
+		Spec: &meshproto.Application{},
+	}
+}
+
+type ApplicationResourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []*ApplicationResource `json:"items"`
+}
+
+func (r *ApplicationResourceList) DeepCopyObject() k8sruntime.Object {
+	out := &ApplicationResourceList{
+		TypeMeta: r.TypeMeta,
+	}
+	r.ListMeta.DeepCopyInto(&out.ListMeta)
+
+	if len(r.Items) == 0 {
+		return out
+	}
+	out.Items = make([]*ApplicationResource, len(r.Items))
+	for i := range r.Items {
+		out.Items[i] = r.Items[i].DeepCopyObject().(*ApplicationResource)
+	}
+	return out
+}
+
+func NewApplicationResourceList() coremodel.ResourceList {
+	return &ApplicationResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ApplicationKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: make([]*ApplicationResource, 0),
+	}
+}
+
+func (r *ApplicationResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*ApplicationResource, len(items))
+	for i := range items {
+		res, ok := items[i].(*ApplicationResource)
+		if !ok {
+			logger.Errorf("unexpected resource type, expected: %s, get %s", ApplicationKind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func NewApplicationResourceListWithItems(items ...*ApplicationResource) *ApplicationResourceList {
+	return &ApplicationResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ApplicationKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
 	}
 }

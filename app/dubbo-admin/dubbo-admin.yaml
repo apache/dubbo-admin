@@ -33,20 +33,21 @@ console:
         instance: xx
         service: xx
   auth:
-    type: oath2
+    user: admin
+    password: admin
+    expirationTime: 7200
     oauth2:
       clientId: xx
 store:
-  type: mysql
-  address: xx
+  type: memory
 discovery:
   - type: nacos
     id: nacos-44.33
+    name: nacos-discovery
     address:
       registry: nacos://47.76.94.134:8848?username=nacos&password=nacos
       configCenter: nacos://47.76.94.134:8848?username=nacos&password=nacos
       metadataReport: nacos://47.76.94.134:8848?username=nacos&password=nacos
-  - type: istio
 engine:
   type: k8s
 controlPlane:

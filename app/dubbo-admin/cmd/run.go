@@ -66,7 +66,6 @@ func newRunCmdWithOpts(opts dubbocmd.RunCmdOpts) *cobra.Command {
 				return err
 			}
 			runLog.Info(fmt.Sprintf("Current config %s", cfgBytes))
-			runLog.Info(fmt.Sprintf("Running in mode `%s`", cfg.Mode))
 
 			// 2. build components
 			gracefulCtx, ctx := opts.SetupSignalHandler()

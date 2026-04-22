@@ -18,52 +18,158 @@
 package service
 
 import (
-	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
+	"github.com/apache/dubbo-admin/pkg/core/lock"
+	"github.com/duke-git/lancet/v2/slice"
+
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
+	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
+	"github.com/apache/dubbo-admin/pkg/core/manager"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
-	"github.com/apache/dubbo-admin/pkg/core/store"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
-func GetTagRule(ctx consolectx.Context, name string) (*mesh.TagRouteResource, error) {
-	res := &mesh.TagRouteResource{Spec: &meshproto.TagRoute{}}
-	err := ctx.ResourceManager().Get(ctx.AppContext(), res,
-		// here `name` may be service name or app name, set *ByApplication(`name`) is ok.
-		store.GetByApplication(name), store.GetByKey(name+consts.TagRuleSuffix, coremodel.DefaultMesh))
+func PageListTagRule(ctx consolectx.Context, req *model.SearchReq) (*model.SearchPaginationResult, error) {
+	pageData, err := manager.PageListByIndexes[*meshresource.TagRouteResource](
+		ctx.ResourceManager(),
+		meshresource.TagRouteKind,
+		map[string]string{
+			index.ByMeshIndex: req.Mesh,
+		},
+		req.PageReq)
 	if err != nil {
-		logger.Warnf("get tag rule %s error: %v", name, err)
+		logger.Errorf("search tag rule error: %v", err)
+		return nil, bizerror.New(bizerror.InternalError, "search tag rule failed, please try again")
+	}
+	if pageData.Data == nil || len(pageData.Data) == 0 {
+		return &model.SearchPaginationResult{
+			List: nil,
+			PageInfo: coremodel.Pagination{
+				Total:      0,
+				PageSize:   req.PageReq.PageSize,
+				PageOffset: req.PageReq.PageOffset,
+			},
+		}, nil
+	}
+	respList := slice.Map(pageData.Data, func(_ int, item *meshresource.TagRouteResource) *model.TagRuleSearchResp {
+		return &model.TagRuleSearchResp{
+			CreateTime: "",
+			Enabled:    item.Spec.Enabled,
+			RuleName:   item.Name,
+		}
+	})
+	return &model.SearchPaginationResult{
+		List:     respList,
+		PageInfo: pageData.Pagination,
+	}, nil
+}
+
+// SearchTagRuleByKeywords for now, only accurate search is supported
+func SearchTagRuleByKeywords(ctx consolectx.Context, req *model.SearchReq) (*model.SearchPaginationResult, error) {
+	resKey := coremodel.BuildResourceKey(req.Mesh, req.Keywords)
+	tagRuleRes, exists, err := manager.GetByKey[*meshresource.TagRouteResource](ctx.ResourceManager(), meshresource.TagRouteKind, resKey)
+	if err != nil {
+		logger.Errorf("search tag rule error: %v", err)
+		return nil, bizerror.New(bizerror.InternalError, "search tag rule failed, please try again")
+	}
+	if !exists {
+		return &model.SearchPaginationResult{
+			List: nil,
+			PageInfo: coremodel.Pagination{
+				Total:      0,
+				PageSize:   req.PageReq.PageSize,
+				PageOffset: req.PageReq.PageOffset,
+			},
+		}, nil
+	}
+	return &model.SearchPaginationResult{
+		List: []*model.TagRuleSearchResp{
+			{
+				CreateTime: "",
+				Enabled:    tagRuleRes.Spec.Enabled,
+				RuleName:   tagRuleRes.Name,
+			},
+		},
+		PageInfo: coremodel.Pagination{
+			Total:      1,
+			PageSize:   req.PageReq.PageSize,
+			PageOffset: req.PageReq.PageOffset,
+		},
+	}, nil
+}
+
+func GetTagRule(ctx consolectx.Context, name string, mesh string) (*meshresource.TagRouteResource, error) {
+	res, _, err := manager.GetByKey[*meshresource.TagRouteResource](
+		ctx.ResourceManager(),
+		meshresource.TagRouteKind,
+		coremodel.BuildResourceKey(mesh, name),
+	)
+	if err != nil {
 		return nil, err
 	}
 	return res, nil
 }
 
-func UpdateTagRule(ctx consolectx.Context, name string, res *mesh.TagRouteResource) error {
-	err := ctx.ResourceManager().Update(ctx.AppContext(), res,
-		// here `name` may be service name or app name, set *ByApplication(`name`) is ok.
-		store.UpdateByApplication(name), store.UpdateByKey(name+consts.TagRuleSuffix, coremodel.DefaultMesh))
+func UpdateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
+	lockMgr := ctx.LockManager()
+	if lockMgr == nil {
+		return updateTagRuleUnsafe(ctx, res)
+	}
+
+	lockKey := lock.BuildTagRouteLockKey(res.Mesh, res.Name)
+
+	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
+		return updateTagRuleUnsafe(ctx, res)
+	})
+}
+
+func updateTagRuleUnsafe(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
+	err := ctx.ResourceManager().Update(res)
 	if err != nil {
-		logger.Warnf("update tag rule %s error: %v", name, err)
+		logger.Warnf("update tag rule %s error: %v", res.Name, err)
 		return err
 	}
 	return nil
 }
 
-func CreateTagRule(ctx consolectx.Context, name string, res *mesh.TagRouteResource) error {
-	err := ctx.ResourceManager().Create(ctx.AppContext(), res,
-		// here `name` may be service name or app name, set *ByApplication(`name`) is ok.
-		store.CreateByApplication(name), store.CreateByKey(name+consts.TagRuleSuffix, coremodel.DefaultMesh))
+func CreateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
+	lockMgr := ctx.LockManager()
+	if lockMgr == nil {
+		return createTagRuleUnsafe(ctx, res)
+	}
+
+	lockKey := lock.BuildTagRouteLockKey(res.Mesh, res.Name)
+
+	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
+		return createTagRuleUnsafe(ctx, res)
+	})
+}
+
+func createTagRuleUnsafe(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
+	err := ctx.ResourceManager().Add(res)
 	if err != nil {
-		logger.Warnf("create tag rule %s error: %v", name, err)
+		logger.Warnf("create tag rule %s error: %v", res.Name, err)
 		return err
 	}
 	return nil
 }
 
-func DeleteTagRule(ctx consolectx.Context, name string, res *mesh.TagRouteResource) error {
-	err := ctx.ResourceManager().Delete(ctx.AppContext(), res,
-		// here `name` may be service name or app name, set *ByApplication(`name`) is ok.
-		store.DeleteByApplication(name), store.DeleteByKey(name+consts.TagRuleSuffix, coremodel.DefaultMesh))
+func DeleteTagRule(ctx consolectx.Context, name string, mesh string) error {
+	lockMgr := ctx.LockManager()
+	if lockMgr == nil {
+		return deleteTagRuleUnsafe(ctx, name, mesh)
+	}
+	lockKey := lock.BuildTagRouteLockKey(mesh, name)
+	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
+		return deleteTagRuleUnsafe(ctx, name, mesh)
+	})
+}
+
+func deleteTagRuleUnsafe(ctx consolectx.Context, name string, mesh string) error {
+	err := ctx.ResourceManager().DeleteByKey(meshresource.TagRouteKind, mesh, coremodel.BuildResourceKey(mesh, name))
 	if err != nil {
 		logger.Warnf("delete tag rule %s error: %v", name, err)
 		return err

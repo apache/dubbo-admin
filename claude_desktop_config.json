@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "dubbo-admin": {
+      "command": "C:\\Users\\weizh\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\JetBrains Toolbox\\D\\dubbo-admin（my）\\dubbo-admin-mcp.exe",
+      "args": [],
+      "env": {
+        "DUBBO_ADMIN_CONFIG": "app/dubbo-admin/dubbo-admin.yaml"
+      }
+    }
+  }
+}
+
+
+
+

@@ -23,17 +23,23 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	. "k8s.io/client-go/tools/cache"
 
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"github.com/apache/dubbo-admin/pkg/core/runtime"
 )
 
 // ResourceStore defines the interface for the persistance of a resource
 // ResourceStore expanded the interface of cache.Indexer and cache.Store
 type ResourceStore interface {
 	Indexer
-	ListPageByIndex(indexName string, indexValue interface{}, pq model.PageQuery) ([]interface{}, model.Pagination, error)
+	// GetByKeys get resources by keys, return list of resource.
+	// if a resource of specified key doesn't exist in the store, resource list will not include it
+	GetByKeys(keys []string) ([]model.Resource, error)
+	// ListByIndexes list resources by indexes, indexes is map of index name and index value
+	ListByIndexes(indexes map[string]string) ([]model.Resource, error)
+	// PageListByIndexes list resources by indexes pageable, indexes is map of index name and index value
+	PageListByIndexes(indexes map[string]string, pq model.PageReq) (*model.PageData[model.Resource], error)
 }
 
 // ManagedResourceStore includes both functional interfaces and lifecycle interfaces
@@ -74,37 +80,6 @@ var ErrorInvalidOffset = errors.New("invalid offset")
 
 func IsResourceNotFound(err error) bool {
 	return err != nil && strings.HasPrefix(err.Error(), "Resource not found")
-}
-
-// AssertionError
-type AssertionError struct {
-	msg string
-	err error
-}
-
-func ErrorResourceAssertion(msg, rt, name, mesh string) error {
-	return &AssertionError{
-		msg: fmt.Sprintf("%s: type=%q name=%q mesh=%q", msg, rt, name, mesh),
-	}
-}
-
-func (e *AssertionError) Unwrap() error {
-	return e.err
-}
-
-func (e *AssertionError) Error() string {
-	msg := "store assertion failed"
-	if e.msg != "" {
-		msg += " " + e.msg
-	}
-	if e.err != nil {
-		msg += fmt.Sprintf("error: %s", e.err)
-	}
-	return msg
-}
-
-func (e *AssertionError) Is(err error) bool {
-	return reflect.TypeOf(e) == reflect.TypeOf(err)
 }
 
 type PreconditionError struct {

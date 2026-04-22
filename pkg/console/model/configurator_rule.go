@@ -18,19 +18,20 @@
 package model
 
 import (
-	"net/http"
-
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
 type SearchConfiguratorReq struct {
+	coremodel.PageReq
+
 	Keywords string `json:"keywords"`
-	PageReq
+	Mesh     string `json:"mesh"`
 }
 
 func NewSearchConfiguratorReq() *SearchConfiguratorReq {
 	return &SearchConfiguratorReq{
-		PageReq: PageReq{
+		PageReq: coremodel.PageReq{
 			PageSize:   15,
 			PageOffset: 0,
 		},
@@ -98,7 +99,7 @@ type RespAddressMatch struct {
 }
 
 func GenDynamicConfigToResp(pb *meshproto.DynamicConfig) (res *CommonResp) {
-	cfg := RespConfigurator{}
+	cfg := &RespConfigurator{}
 	if pb != nil {
 		cfg.ConfigVersion = pb.ConfigVersion
 		cfg.Key = pb.Key
@@ -107,10 +108,7 @@ func GenDynamicConfigToResp(pb *meshproto.DynamicConfig) (res *CommonResp) {
 		cfg.Configs = overrideConfigToRespConfigItem(pb.Configs)
 		return NewSuccessResp(cfg)
 	}
-	return &CommonResp{
-		Code: http.StatusNotFound,
-		Msg:  "configurator not found",
-	}
+	return NewSuccessResp(nil)
 }
 
 func overrideConfigToRespConfigItem(OverrideConfigs []*meshproto.OverrideConfig) []ConfigItem {

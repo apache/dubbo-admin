@@ -22,15 +22,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/duke-git/lancet/v2/strutil"
 	"github.com/gin-gonic/gin"
-	"github.com/pkg/errors"
 
-	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
-	corestore "github.com/apache/dubbo-admin/pkg/core/store"
+	"github.com/apache/dubbo-admin/pkg/console/util"
 )
 
 func GetInstanceDetail(ctx consolectx.Context) gin.HandlerFunc {
@@ -43,15 +42,15 @@ func GetInstanceDetail(ctx consolectx.Context) gin.HandlerFunc {
 
 		resp, err := service.GetInstanceDetail(ctx, req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
+			util.HandleServiceError(c, err)
 			return
 		}
 
-		if len(resp) == 0 {
-			c.JSON(http.StatusNotFound, model.NewErrorResp("instance not exist"))
+		if resp == nil {
+			util.HandleNotFoundError(c, req.InstanceName)
 			return
 		}
-		c.JSON(http.StatusOK, model.NewSuccessResp(resp[0]))
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
 	}
 }
 
@@ -59,13 +58,14 @@ func SearchInstances(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req := model.NewSearchInstanceReq()
 		if err := c.ShouldBindQuery(req); err != nil {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+			c.JSON(http.StatusBadRequest, model.NewBizErrorResp(
+				bizerror.New(bizerror.InvalidArgument, "appName is empty")))
 			return
 		}
 
 		instances, err := service.SearchInstances(ctx, req)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
+			util.HandleServiceError(c, err)
 			return
 		}
 
@@ -79,205 +79,55 @@ func InstanceConfigTrafficDisableGET(ctx consolectx.Context) gin.HandlerFunc {
 			TrafficDisable bool `json:"trafficDisable"`
 		}{false}
 		applicationName := c.Query("appName")
-		if applicationName == "" {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp("application name is empty"))
+		mesh := c.Query("mesh")
+		if strutil.IsBlank(applicationName) {
+			c.JSON(http.StatusBadRequest, model.NewBizErrorResp(
+				bizerror.New(bizerror.InvalidArgument, "appName is empty")))
 			return
 		}
 		instanceIP := strings.TrimSpace(c.Query("instanceIP"))
-		if instanceIP == "" {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp("instanceIP is empty"))
+		if strutil.IsBlank(instanceIP) {
+			c.JSON(http.StatusBadRequest, model.NewBizErrorResp(
+				bizerror.New(bizerror.InvalidArgument, "instanceIP is empty")))
 			return
 		}
-
-		res, err := service.GetConditionRule(ctx, applicationName)
+		trafficStatus, err := service.GetInstanceTrafficStatus(ctx, mesh, applicationName, instanceIP)
 		if err != nil {
-			if corestore.IsResourceNotFound(err) {
-				c.JSON(http.StatusOK, model.NewSuccessResp(resp))
-				return
-			}
-			c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
+			util.HandleServiceError(c, err)
 			return
 		}
-
-		if res.Spec.GetVersion() != consts.ConfiguratorVersionV3 {
-			c.JSON(http.StatusServiceUnavailable, model.NewErrorResp("this config only serve condition-route.configVersion == v3, got v3.1 config "))
-			return
-		}
-
-		cr := res.Spec.ToConditionRouteV3()
-		cr.RangeConditions(func(condition string) (isStop bool) {
-			_, resp.TrafficDisable = isTrafficDisabledV3(condition, instanceIP)
-			return resp.TrafficDisable
-		})
-
+		resp.TrafficDisable = trafficStatus
 		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
 	}
-}
-
-func isTrafficDisabledV3X1(r *meshproto.ConditionRule, targetIP string) bool {
-	if len(r.To) != 0 {
-		return false
-	}
-	// rule must match `host=x1{,x2,x3}`
-	if r.From.Match != "" && !strings.Contains(r.From.Match, "&") && strings.Index(r.From.Match, "!=") == -1 {
-		idx := strings.Index(r.From.Match, "=")
-		if idx == -1 {
-			return false
-		}
-		then := r.From.Match[idx+1:]
-		Ips := strings.Split(then, ",")
-		for _, ip := range Ips {
-			if strings.TrimSpace(ip) == targetIP {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-/*
-*
-isTrafficDisabledV3 judge if a condition is disabled or not.
-A condition include fromCondition and toCondition which is seperated by `=>`.
-The first return parameter `exist` indicates if a condition of specific targetIP exists.
-The second return parameter `disabled` indicates if the traffic of targetIP is disabled.
-*/
-func isTrafficDisabledV3(condition string, targetIP string) (exist bool, disabled bool) {
-	if len(condition) == 0 {
-		return false, false
-	}
-	condition = strings.ReplaceAll(condition, " ", "")
-	// only accept string start with `=>`
-	if !strings.HasPrefix(condition, "=>") {
-		return false, false
-	}
-	toCondition := strings.TrimPrefix(condition, "=>")
-	// TODO more specific judge
-	if !strings.Contains(toCondition, targetIP) {
-		return false, false
-	}
-	targetExpression := "host!=" + targetIP
-	if targetExpression != toCondition {
-		return true, false
-	}
-	return true, true
 }
 
 func InstanceConfigTrafficDisablePUT(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		appName := strings.TrimSpace(c.Query("appName"))
-		if appName == "" {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp("application name is empty"))
+		mesh := c.Query("mesh")
+		if strutil.IsBlank(appName) {
+			c.JSON(http.StatusBadRequest, model.NewBizErrorResp(
+				bizerror.New(bizerror.InvalidArgument, "appName is empty")))
 			return
 		}
 		instanceIP := strings.TrimSpace(c.Query("instanceIP"))
-		if instanceIP == "" {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp("instanceIP is empty"))
+		if strutil.IsBlank(instanceIP) {
+			c.JSON(http.StatusBadRequest, model.NewBizErrorResp(
+				bizerror.New(bizerror.InvalidArgument, "instanceIP is empty")))
 			return
 		}
-		newDisabled, err := strconv.ParseBool(c.Query(`trafficDisable`))
+		disableTraffic, err := strconv.ParseBool(c.Query(`trafficDisable`))
 		if err != nil {
-			c.JSON(http.StatusBadRequest, model.NewErrorResp(errors.Wrap(err, "parse trafficDisable fail").Error()))
+			c.JSON(http.StatusBadRequest, model.NewBizErrorResp(
+				bizerror.Wrap(err, bizerror.InvalidArgument, "parse trafficDisable failed")))
 			return
 		}
-
-		existRule := true
-		rawRes, err := service.GetConditionRule(ctx, appName)
-		var res *meshproto.ConditionRouteV3
+		err = service.UpdateInstanceTrafficStatus(ctx, mesh, appName, instanceIP, disableTraffic)
 		if err != nil {
-			if !corestore.IsResourceNotFound(err) {
-				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
-				return
-			} else if !newDisabled { // not found && cancel traffic-disable
-				c.JSON(http.StatusOK, model.NewSuccessResp(nil))
-				return
-			}
-			existRule = false
-			res = generateDefaultConditionV3(true, true, true, appName, consts.ScopeApplication)
-			rawRes = &mesh.ConditionRouteResource{Spec: res.ToConditionRoute()}
-		} else if res = rawRes.Spec.ToConditionRouteV3(); res == nil {
-			c.JSON(http.StatusServiceUnavailable, model.NewErrorResp("this config only serve condition-route.configVersion == v3.1, got v3.0 config "))
+			util.HandleServiceError(c, err)
 			return
 		}
-
-		// enable traffic
-		if !newDisabled {
-			for i, condition := range res.Conditions {
-				existCondition, oldDisabled := isTrafficDisabledV3(condition, instanceIP)
-				if existCondition {
-					if oldDisabled != newDisabled {
-						res.Conditions = append(res.Conditions[:i], res.Conditions[i+1:]...)
-						rawRes.Spec = res.ToConditionRoute()
-						if err = updateORCreateConditionRule(ctx, existRule, appName, rawRes); err != nil {
-							c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
-						}
-						c.JSON(http.StatusOK, model.NewSuccessResp(nil))
-						return
-					}
-				}
-			}
-		} else { // disable traffic
-			// check if condition exists
-			for _, condition := range res.Conditions {
-				existCondition, oldDisabled := isTrafficDisabledV3(condition, instanceIP)
-				if existCondition && oldDisabled {
-					c.JSON(http.StatusBadRequest, model.NewErrorResp("The instance has been disabled!"))
-					return
-				}
-			}
-			res.Conditions = append(res.Conditions, disableExpression(instanceIP))
-			if err = updateORCreateConditionRule(ctx, existRule, appName, rawRes); err != nil {
-				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
-			}
-			c.JSON(http.StatusOK, model.NewSuccessResp(nil))
-		}
-	}
-}
-
-func disableExpression(instanceIP string) string {
-	return "=>host!=" + instanceIP
-}
-func updateORCreateConditionRule(ctx consolectx.Context, existRule bool, appName string, rawRes *mesh.ConditionRouteResource) error {
-	if !existRule {
-		return service.CreateConditionRule(ctx, appName, rawRes)
-	} else {
-		return service.UpdateConditionRule(ctx, appName, rawRes)
-	}
-}
-
-func newDisableConditionV3x1(ip string) *meshproto.ConditionRule {
-	return &meshproto.ConditionRule{
-		From: &meshproto.ConditionRuleFrom{Match: "host=" + ip},
-		To:   nil,
-	}
-}
-
-func newDisableConditionV3(ip string) string {
-	return "=>host!=" + ip
-}
-
-func generateDefaultConditionV3x1(Enabled, Force, Runtime bool, Key, Scope string) *meshproto.ConditionRouteV3X1 {
-	return &meshproto.ConditionRouteV3X1{
-		ConfigVersion: consts.ConfiguratorVersionV3x1,
-		Enabled:       Enabled,
-		Force:         Force,
-		Runtime:       Runtime,
-		Key:           Key,
-		Scope:         Scope,
-		Conditions:    make([]*meshproto.ConditionRule, 0),
-	}
-}
-
-func generateDefaultConditionV3(Enabled, Force, Runtime bool, Key, Scope string) *meshproto.ConditionRouteV3 {
-	return &meshproto.ConditionRouteV3{
-		ConfigVersion: consts.ConfiguratorVersionV3,
-		Priority:      0,
-		Enabled:       true,
-		Force:         Force,
-		Runtime:       Runtime,
-		Key:           Key,
-		Scope:         Scope,
-		Conditions:    make([]string, 0),
+		c.JSON(http.StatusOK, model.NewSuccessResp(nil))
 	}
 }
 
@@ -287,113 +137,56 @@ func InstanceConfigOperatorLogGET(ctx consolectx.Context) gin.HandlerFunc {
 			OperatorLog bool `json:"operatorLog"`
 		}{false}
 		applicationName := c.Query(`appName`)
-		if applicationName == "" {
+		if strutil.IsBlank(applicationName) {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("application name is empty"))
 			return
 		}
 		instanceIP := c.Query(`instanceIP`)
-		if instanceIP == "" {
+		if strutil.IsBlank(instanceIP) {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("instanceIP is empty"))
 			return
 		}
-
-		res, err := service.GetConfigurator(ctx, applicationName)
-		if err != nil {
-			if corestore.IsResourceNotFound(err) {
-				c.JSON(http.StatusOK, model.NewSuccessResp(resp))
-				return
-			}
-			c.JSON(http.StatusNotFound, model.NewErrorResp(err.Error()))
+		mesh := c.Query(`mesh`)
+		if strutil.IsBlank(mesh) {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp("mesh is empty"))
 			return
 		}
-
-		if res.Spec.Enabled {
-			res.Spec.RangeConfig(func(conf *meshproto.OverrideConfig) (isStop bool) {
-				resp.OperatorLog = isInstanceOperatorLogOpen(conf, instanceIP)
-				return resp.OperatorLog
-			})
+		accessLogOpenStatus, err := service.GetInstanceAccessLogOpenStatus(ctx, mesh, applicationName, instanceIP)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
 		}
-
+		resp.OperatorLog = accessLogOpenStatus
 		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
 	}
-}
-
-func isInstanceOperatorLogOpen(conf *meshproto.OverrideConfig, IP string) bool {
-	if conf != nil &&
-		conf.Match != nil &&
-		conf.Match.Address != nil &&
-		conf.Match.Address.Wildcard == IP+`:*` &&
-		conf.Side == consts.SideProvider &&
-		conf.Parameters != nil &&
-		conf.Parameters[`accesslog`] == `true` {
-		return true
-	}
-	return false
 }
 
 func InstanceConfigOperatorLogPUT(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		applicationName := c.Query(`appName`)
-		if applicationName == "" {
+		if strutil.IsBlank(applicationName) {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("application name is empty"))
 			return
 		}
 		instanceIP := c.Query(`instanceIP`)
-		if instanceIP == "" {
+		if strutil.IsBlank(instanceIP) {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp("instanceIP is empty"))
 			return
 		}
-		adminOperatorLog, err := strconv.ParseBool(c.Query(`operatorLog`))
+		openAccessLog, err := strconv.ParseBool(c.Query(`operatorLog`))
 		if err != nil {
 			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
 			return
 		}
-
-		res, err := service.GetConfigurator(ctx, applicationName)
-		notExist := false
-		if err != nil {
-			if !corestore.IsResourceNotFound(err) {
-				c.JSON(http.StatusNotFound, model.NewErrorResp(err.Error()))
-				return
-			}
-			res = generateDefaultConfigurator(applicationName, consts.ScopeApplication, consts.ConfiguratorVersionV3, true)
-			notExist = true
+		mesh := c.Query("mesh")
+		if strutil.IsBlank(mesh) {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp("mesh is empty"))
+			return
 		}
-
-		if !adminOperatorLog {
-			res.Spec.RangeConfigsToRemove(func(conf *meshproto.OverrideConfig) (IsRemove bool) {
-				return isInstanceOperatorLogOpen(conf, instanceIP)
-			})
-		} else {
-			var isExist bool
-			res.Spec.RangeConfig(func(conf *meshproto.OverrideConfig) (isStop bool) {
-				isExist = isInstanceOperatorLogOpen(conf, instanceIP)
-				return isExist
-			})
-			if !isExist {
-				res.Spec.Configs = append(res.Spec.Configs, &meshproto.OverrideConfig{
-					Side:          consts.SideProvider,
-					Match:         &meshproto.ConditionMatch{Address: &meshproto.AddressMatch{Wildcard: instanceIP + `:*`}},
-					Parameters:    map[string]string{`accesslog`: `true`},
-					XGenerateByCp: true,
-				})
-			}
+		if err = service.UpdateInstanceAccessLogOpenStatus(ctx, mesh, applicationName, instanceIP, openAccessLog); err != nil {
+			util.HandleServiceError(c, err)
+			return
 		}
-
-		if notExist {
-			err = service.CreateConfigurator(ctx, applicationName, res)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
-				return
-			}
-		} else {
-			err = service.UpdateConfigurator(ctx, applicationName, res)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, model.NewErrorResp(err.Error()))
-				return
-			}
-		}
-
 		c.JSON(http.StatusOK, model.NewSuccessResp(nil))
 	}
 }

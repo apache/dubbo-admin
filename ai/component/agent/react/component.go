@@ -18,6 +18,7 @@
 package react
 
 import (
+	"dubbo-admin-ai/component/memory"
 	"dubbo-admin-ai/component/tools"
 	"dubbo-admin-ai/runtime"
 	"fmt"
@@ -90,7 +91,19 @@ func (a *AgentComponent) Init(rt *runtime.Runtime) error {
 		return fmt.Errorf("invalid tools component type")
 	}
 	toolRefs := tools.GetToolRefs()
-	reactAgent, err := NewReactAgent(rt.GetGenkitRegistry(), a.promptBasePath, a.model, a.maxIterations, a.stages, toolRefs)
+
+	// Get memory component from runtime and retrieve its context
+	memoryComp, err := rt.GetComponent("memory")
+	if err != nil {
+		return fmt.Errorf("memory component not found: %w", err)
+	}
+	memComponent, ok := memoryComp.(*memory.MemoryComponent)
+	if !ok {
+		return fmt.Errorf("invalid memory component type")
+	}
+	memoryCtx := memComponent.GetContext()
+
+	reactAgent, err := NewReactAgent(rt.GetGenkitRegistry(), memoryCtx, a.promptBasePath, a.model, a.maxIterations, a.stages, toolRefs)
 	if err != nil {
 		return fmt.Errorf("failed to create ReAct agent: %w", err)
 	}

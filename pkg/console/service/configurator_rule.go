@@ -18,50 +18,154 @@
 package service
 
 import (
-	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
+	"github.com/apache/dubbo-admin/pkg/core/lock"
+	"github.com/duke-git/lancet/v2/slice"
+
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
+	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
-	coreresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/core/manager"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
-	"github.com/apache/dubbo-admin/pkg/core/store"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
-func GetConfigurator(ctx consolectx.Context, name string) (*meshproto.DynamicConfig, error) {
-	res := &coreresource.DynamicConfig{Spec: &meshproto.DynamicConfig{}}
-	if err := ctx.ResourceManager().Get(ctx.AppContext(), res,
-		// here `name` may be service-name or app-name, set *ByApplication(`name`) is ok.
-		store.GetByApplication(name), store.GetByKey(name+consts.ConfiguratorRuleSuffix, coremodel.DefaultMesh)); err != nil {
-		logger.Warnf("get %s configurator failed with error: %s", name, err.Error())
+func PageListConfiguratorRule(ctx consolectx.Context, req *model.SearchReq) (*model.SearchPaginationResult, error) {
+	pageData, err := manager.PageListByIndexes[*meshresource.DynamicConfigResource](
+		ctx.ResourceManager(),
+		meshresource.DynamicConfigKind,
+		map[string]string{
+			index.ByMeshIndex: req.Mesh,
+		},
+		req.PageReq)
+	if err != nil {
+		logger.Errorf("search dynamic config rule error: %v", err)
+		return nil, bizerror.New(bizerror.InternalError, "search dynamic config rule failed, please try again")
+	}
+	if pageData.Data == nil || len(pageData.Data) == 0 {
+		return &model.SearchPaginationResult{
+			List: nil,
+			PageInfo: coremodel.Pagination{
+				Total:      0,
+				PageSize:   req.PageReq.PageSize,
+				PageOffset: req.PageReq.PageOffset,
+			},
+		}, nil
+	}
+	respList := slice.Map(pageData.Data, func(_ int, item *meshresource.DynamicConfigResource) *model.ConfiguratorSearchResp {
+		return &model.ConfiguratorSearchResp{
+			Scope:      item.Spec.Scope,
+			CreateTime: "",
+			Enabled:    item.Spec.Enabled,
+			RuleName:   item.Name,
+		}
+	})
+	return &model.SearchPaginationResult{
+		List:     respList,
+		PageInfo: pageData.Pagination,
+	}, nil
+}
+
+// SearchConfiguratorRuleByKeywords for now, only accurate search is supported
+func SearchConfiguratorRuleByKeywords(ctx consolectx.Context, req *model.SearchReq) (*model.SearchPaginationResult, error) {
+	resKey := coremodel.BuildResourceKey(req.Mesh, req.Keywords)
+	configuratorRuleRes, exists, err := manager.GetByKey[*meshresource.DynamicConfigResource](
+		ctx.ResourceManager(), meshresource.DynamicConfigKind, resKey)
+	if err != nil {
+		logger.Errorf("search dynamic config rule error: %v", err)
+		return nil, bizerror.New(bizerror.InternalError, "search dynamic config rule failed, please try again")
+	}
+	if !exists {
+		return &model.SearchPaginationResult{
+			List: nil,
+			PageInfo: coremodel.Pagination{
+				Total:      0,
+				PageSize:   req.PageReq.PageSize,
+				PageOffset: req.PageReq.PageOffset,
+			},
+		}, nil
+	}
+	resp := &model.ConfiguratorSearchResp{
+		Scope:      configuratorRuleRes.Spec.Scope,
+		CreateTime: "",
+		Enabled:    configuratorRuleRes.Spec.Enabled,
+		RuleName:   configuratorRuleRes.Name,
+	}
+	return &model.SearchPaginationResult{
+		List: []*model.ConfiguratorSearchResp{resp},
+		PageInfo: coremodel.Pagination{
+			Total:      1,
+			PageSize:   req.PageReq.PageSize,
+			PageOffset: req.PageReq.PageOffset,
+		},
+	}, nil
+}
+
+func GetConfigurator(ctx consolectx.Context, name string, mesh string) (*meshresource.DynamicConfigResource, error) {
+	res, _, err := manager.GetByKey[*meshresource.DynamicConfigResource](
+		ctx.ResourceManager(),
+		meshresource.DynamicConfigKind,
+		coremodel.BuildResourceKey(mesh, name),
+	)
+	if err != nil {
 		return nil, err
 	}
 	return res, nil
 }
 
-func UpdateConfigurator(ctx consolectx.Context, name string, res *mesh.DynamicConfigResource) error {
-	if err := ctx.ResourceManager().Update(ctx.AppContext(), res,
-		// here `name` may be service-name or app-name, set *ByApplication(`name`) is ok.
-		store.UpdateByApplication(name), store.UpdateByKey(name+consts.ConfiguratorRuleSuffix, coremodel.DefaultMesh)); err != nil {
-		logger.Warnf("update %s configurator failed with error: %s", name, err.Error())
+func UpdateConfigurator(ctx consolectx.Context, res *meshresource.DynamicConfigResource) error {
+	lockMgr := ctx.LockManager()
+	if lockMgr == nil {
+		return updateConfiguratorUnsafe(ctx, res)
+	}
+	lockKey := lock.BuildConfiguratorRuleLockKey(res.Mesh, res.Name)
+	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
+		return updateConfiguratorUnsafe(ctx, res)
+	})
+}
+
+func updateConfiguratorUnsafe(ctx consolectx.Context, res *meshresource.DynamicConfigResource) error {
+	if err := ctx.ResourceManager().Update(res); err != nil {
+		logger.Warnf("update %s configurator failed with error: %s", res.Name, err.Error())
 		return err
 	}
 	return nil
 }
 
-func CreateConfigurator(ctx consolectx.Context, name string, res *mesh.DynamicConfigResource) error {
-	if err := ctx.ResourceManager().Create(ctx.AppContext(), res,
-		// here `name` may be service-name or app-name, set *ByApplication(`name`) is ok.
-		store.CreateByApplication(name), store.CreateByKey(name+consts.ConfiguratorRuleSuffix, coremodel.DefaultMesh)); err != nil {
-		logger.Warnf("create %s configurator failed with error: %s", name, err.Error())
+func CreateConfigurator(ctx consolectx.Context, res *meshresource.DynamicConfigResource) error {
+	lockMgr := ctx.LockManager()
+	if lockMgr == nil {
+		return createConfiguratorUnsafe(ctx, res)
+	}
+	lockKey := lock.BuildConfiguratorRuleLockKey(res.Mesh, res.Name)
+	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
+		return createConfiguratorUnsafe(ctx, res)
+	})
+}
+
+func createConfiguratorUnsafe(ctx consolectx.Context, res *meshresource.DynamicConfigResource) error {
+	if err := ctx.ResourceManager().Add(res); err != nil {
+		logger.Warnf("create %s configurator failed with error: %s", res.Name, err.Error())
 		return err
 	}
 	return nil
 }
 
-func DeleteConfigurator(ctx consolectx.Context, name string, res *mesh.DynamicConfigResource) error {
-	if err := ctx.ResourceManager().Delete(ctx.AppContext(), res,
-		// here `name` may be service-name or app-name, set *ByApplication(`name`) is ok.
-		store.DeleteByApplication(name), store.DeleteByKey(name+consts.ConfiguratorRuleSuffix, coremodel.DefaultMesh)); err != nil {
+func DeleteConfigurator(ctx consolectx.Context, name string, mesh string) error {
+	lockMgr := ctx.LockManager()
+	if lockMgr == nil {
+		return deleteConfiguratorUnsafe(ctx, name, mesh)
+	}
+	lockKey := lock.BuildConfiguratorRuleLockKey(mesh, name)
+	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
+		return deleteConfiguratorUnsafe(ctx, name, mesh)
+	})
+}
+
+func deleteConfiguratorUnsafe(ctx consolectx.Context, name string, mesh string) error {
+	if err := ctx.ResourceManager().DeleteByKey(meshresource.DynamicConfigKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
 		logger.Warnf("delete %s configurator failed with error: %s", name, err.Error())
 		return err
 	}

@@ -25,9 +25,11 @@ const (
 	ResourceStore     ComponentType = "resource store"
 	ResourceEngine    ComponentType = "resource engine"
 	ResourceDiscovery ComponentType = "resource discovery"
+	EventBus          ComponentType = "event bus"
+	RuleGovernor      ComponentType = "rule governor"
 )
 
-var CoreComponentTypes = []ComponentType{Console, ResourceManager, ResourceStore, ResourceEngine, ResourceDiscovery}
+var CoreComponentTypes = []ComponentType{Console, ResourceManager, ResourceStore, ResourceEngine, ResourceDiscovery, RuleGovernor}
 
 type Lifecycle interface {
 	// Init initializes the component
@@ -41,7 +43,12 @@ type Attribute interface {
 	// Type returns the type of the component
 	Type() ComponentType
 	// Order indicates the order of the component during bootstrap, the bigger will be started first
+	// Deprecated: Use RequiredDependencies() instead for explicit dependency management
 	Order() int
+	// RequiredDependencies returns the component types that must be initialized before this component
+	// The system will ensure all required dependencies are initialized first, or fail with a clear error
+	// Return an empty slice if the component has no dependencies
+	RequiredDependencies() []ComponentType
 }
 
 // Component defines a process that will be run in the application
