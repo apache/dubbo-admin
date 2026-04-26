@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "dubbo-admin": {
+      "command": "C:/dubbo-admin-mcp/dubbo-admin-mcp.exe",
+      "args": [],
+      "env": {
+        "DUBBO_ADMIN_CONFIG": "C:/dubbo-admin-mcp/app/dubbo-admin/dubbo-admin.yaml"
+      }
+    }
+  }
+}

@@ -24,25 +24,34 @@ import (
 )
 
 // MemoryComponent implements the memory component
-// TODO(memory, 2026-02-24): Inject unified memory interface to support different memory implementations
-// Current implementation uses HistoryMemory directly
 type MemoryComponent struct {
 	instanceName string
 	historyKey   HistoryKey
-	maxTurns     int
+	config       MemoryConfig
 	memoryCtx    context.Context
-	memory       *HistoryMemory
+	memory       *ChatMemory
 }
 
-func NewMemoryComponent(historyKey HistoryKey, maxTurns ...int) (runtime.Component, error) {
-	limit := 100
-	if len(maxTurns) > 0 {
-		limit = maxTurns[0]
+// NewMemoryComponent creates a new MemoryComponent with the given config
+func NewMemoryComponent(config MemoryConfig) (runtime.Component, error) {
+	if config.MaxMessages <= 0 {
+		config.MaxMessages = 20 // default
 	}
 	return &MemoryComponent{
-		historyKey: historyKey,
-		maxTurns:   limit,
+		historyKey: ChatHistoryKey,
+		config:     config,
 	}, nil
+}
+
+// Deprecated: Use NewMemoryComponent with MemoryConfig instead
+func NewMemoryComponentWithKey(historyKey HistoryKey, maxTurns ...int) (runtime.Component, error) {
+	maxMessages := 20
+	if len(maxTurns) > 0 && maxTurns[0] > 0 {
+		maxMessages = maxTurns[0]
+	}
+	return NewMemoryComponent(MemoryConfig{
+		MaxMessages: maxMessages,
+	})
 }
 
 func (m *MemoryComponent) Name() string {
@@ -57,8 +66,8 @@ func (m *MemoryComponent) SetName(name string) {
 }
 
 func (m *MemoryComponent) Validate() error {
-	if m.maxTurns <= 0 {
-		return fmt.Errorf("max_turns must be greater than 0")
+	if m.config.MaxMessages <= 0 {
+		return fmt.Errorf("max_messages must be greater than 0")
 	}
 	return nil
 }
@@ -69,10 +78,17 @@ func (m *MemoryComponent) Init(rt *runtime.Runtime) error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize history: %w", err)
 	}
+
+	// Update max messages if configured
+	if m.config.MaxMessages > 0 {
+		history.max = m.config.MaxMessages
+	}
+
 	m.memory = history
 
 	rt.GetLogger().Info("Memory component initialized",
-		"history_key", m.historyKey)
+		"history_key", m.historyKey,
+		"max_messages", m.config.MaxMessages)
 
 	return nil
 }
@@ -90,11 +106,15 @@ func (m *MemoryComponent) GetContext() context.Context {
 	return m.memoryCtx
 }
 
-// TODO(memory, 2026-02-24): Provide unified interface for different memory types (HistoryMemory, VectorMemory, etc.)
-// GetMemory returns the underlying HistoryMemory instance
-func (m *MemoryComponent) GetMemory() (*HistoryMemory, error) {
+// GetMemory returns the underlying ChatMemory instance
+func (m *MemoryComponent) GetMemory() (*ChatMemory, error) {
 	if m.memory == nil {
 		return nil, fmt.Errorf("history not initialized")
 	}
 	return m.memory, nil
+}
+
+// GetHistory returns the underlying HistoryMemory instance (alias for backward compatibility)
+func (m *MemoryComponent) GetHistory() (*HistoryMemory, error) {
+	return m.GetMemory()
 }

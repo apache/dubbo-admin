@@ -13,15 +13,11 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "history_key": {
-          "type": "string",
-          "enum": ["chat_history", "system_memory", "core_memory"],
-          "default": "chat_history"
-        },
-        "max_turns": {
+        "max_messages": {
           "type": "integer",
           "minimum": 1,
-          "default": 100
+          "default": 20,
+          "description": "Maximum number of messages per session (user + assistant total)"
         }
       }
     }

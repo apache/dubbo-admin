@@ -137,7 +137,7 @@ type MilvusRetrieverSpec struct {
 
 // DefaultEmbedderSpec returns default embedder configuration
 func DefaultEmbedderSpec() *EmbedderSpec {
-	return &EmbedderSpec{Model: "dashscope/qwen3-embedding"}
+	return &EmbedderSpec{Model: "dashscope/text-embedding-v4"}
 }
 
 // DefaultSplitterSpec returns default splitter configuration

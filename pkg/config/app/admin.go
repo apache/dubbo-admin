@@ -28,6 +28,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/config/discovery"
 	"github.com/apache/dubbo-admin/pkg/config/engine"
 	"github.com/apache/dubbo-admin/pkg/config/log"
+	"github.com/apache/dubbo-admin/pkg/config/mcp"
 	"github.com/apache/dubbo-admin/pkg/config/observability"
 	"github.com/apache/dubbo-admin/pkg/config/store"
 )
@@ -48,6 +49,8 @@ type AdminConfig struct {
 	Discovery []*discovery.Config `json:"discovery" yaml:"discovery"`
 	// Engine configuration
 	Engine *engine.Config `json:"engine" yaml:"engine"`
+	// MCP configuration
+	MCP *mcp.Config `json:"mcp,omitempty" yaml:"mcp"`
 }
 
 var _ = &AdminConfig{}
@@ -60,6 +63,7 @@ var DefaultAdminConfig = func() AdminConfig {
 		Observability: observability.DefaultObservabilityConfig(),
 		Diagnostics:   diagnostics.DefaultDiagnosticsConfig(),
 		Console:       console.DefaultConsoleConfig(),
+		MCP:           mcp.DefaultMCPConfig(),
 	}
 }
 
@@ -69,10 +73,15 @@ func (c AdminConfig) Sanitize() {
 		d.Sanitize()
 	}
 	c.Store.Sanitize()
-	c.Console.Sanitize()
+	if c.Console != nil {
+		c.Console.Sanitize()
+	}
 	c.Observability.Sanitize()
 	c.Diagnostics.Sanitize()
 	c.Log.Sanitize()
+	if c.MCP != nil {
+		c.MCP.Sanitize()
+	}
 }
 
 func (c AdminConfig) PreProcess() error {
@@ -84,15 +93,20 @@ func (c AdminConfig) PreProcess() error {
 		}
 		return nil
 	}
-	return multierr.Combine(
-		c.Engine.PreProcess(),
-		discoveryPreProcess(),
-		c.Store.PreProcess(),
-		c.Console.PreProcess(),
-		c.Observability.PreProcess(),
-		c.Diagnostics.PreProcess(),
-		c.Log.PreProcess(),
-	)
+	var errs []error
+	errs = append(errs, c.Engine.PreProcess())
+	errs = append(errs, discoveryPreProcess())
+	errs = append(errs, c.Store.PreProcess())
+	if c.Console != nil {
+		errs = append(errs, c.Console.PreProcess())
+	}
+	errs = append(errs, c.Observability.PreProcess())
+	errs = append(errs, c.Diagnostics.PreProcess())
+	errs = append(errs, c.Log.PreProcess())
+	if c.MCP != nil {
+		errs = append(errs, c.MCP.PreProcess())
+	}
+	return multierr.Combine(errs...)
 }
 
 func (c AdminConfig) PostProcess() error {
@@ -104,15 +118,20 @@ func (c AdminConfig) PostProcess() error {
 		}
 		return nil
 	}
-	return multierr.Combine(
-		c.Engine.PostProcess(),
-		discoveryPostProcess(),
-		c.Store.PostProcess(),
-		c.Console.PostProcess(),
-		c.Observability.PostProcess(),
-		c.Diagnostics.PostProcess(),
-		c.Log.PostProcess(),
-	)
+	var errs []error
+	errs = append(errs, c.Engine.PostProcess())
+	errs = append(errs, discoveryPostProcess())
+	errs = append(errs, c.Store.PostProcess())
+	if c.Console != nil {
+		errs = append(errs, c.Console.PostProcess())
+	}
+	errs = append(errs, c.Observability.PostProcess())
+	errs = append(errs, c.Diagnostics.PostProcess())
+	errs = append(errs, c.Log.PostProcess())
+	if c.MCP != nil {
+		errs = append(errs, c.MCP.PostProcess())
+	}
+	return multierr.Combine(errs...)
 }
 
 func (c AdminConfig) Validate() error {
@@ -159,6 +178,11 @@ func (c AdminConfig) Validate() error {
 		c.Engine = engine.DefaultResourceEngineConfig()
 	} else if err := c.Engine.Validate(); err != nil {
 		return bizerror.Wrap(err, bizerror.ConfigError, "engine config validation failed")
+	}
+	if c.MCP == nil {
+		c.MCP = mcp.DefaultMCPConfig()
+	} else if err := c.MCP.Validate(); err != nil {
+		return bizerror.Wrap(err, bizerror.ConfigError, "mcp config validation failed")
 	}
 	return nil
 }

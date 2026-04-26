@@ -40,12 +40,12 @@ func getAllMemoryBySession(rt *runtime.Runtime) ai.Tool {
 			if !ok {
 				return ToolOutput{}, fmt.Errorf("invalid memory component type")
 			}
-			history, err := memComp.GetMemory()
+			chatMemory, err := memComp.GetMemory()
 			if err != nil {
 				return ToolOutput{}, fmt.Errorf("failed to get history from memory component: %w", err)
 			}
 
-			if history.IsEmpty(input.SessionID) {
+			if chatMemory.IsEmpty(input.SessionID) {
 				return ToolOutput{
 					ToolName: GetAllMemoryTool,
 					Summary:  "No memory available",
@@ -54,7 +54,7 @@ func getAllMemoryBySession(rt *runtime.Runtime) ai.Tool {
 
 			return ToolOutput{
 				ToolName: GetAllMemoryTool,
-				Result:   history.AllMemory(input.SessionID),
+				Result:   chatMemory.GetMessagesAsMap(input.SessionID),
 				Summary:  "",
 			}, nil
 		},

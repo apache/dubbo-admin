@@ -1,0 +1,38 @@
+mode: zone
+
+# 禁用 Console HTTP 服务器（MCP 模式下不需要）
+console: null
+
+store:
+  type: memory
+
+discovery:
+  - type: nacos2
+    id: nacos-prod
+    name: nacos-production
+    address:
+      registry: nacos://47.76.94.134:8848?username=nacos&password=nacos
+      configCenter: nacos://47.76.94.134:8848?username=nacos&password=nacos
+      metadataReport: nacos://47.76.94.134:8848?username=nacos&password=nacos
+    properties:
+      configWatchPeriod: 30
+      serviceWatchPeriod: 30
+
+engine:
+  type: mock
+
+diagnostics:
+  serverPort: 5681  # 使用不同端口避免冲突
+
+log:
+  level: warn
+  outputPath: logs/dubbo-admin-mcp.log
+  maxSize: 100
+  maxBackups: 3
+  maxAge: 1
+
+# MCP 配置（由 AI 服务启动时启用）
+mcp:
+  enabled: true
+  serverName: dubbo-admin-mcp
+  serverVersion: 1.0.0

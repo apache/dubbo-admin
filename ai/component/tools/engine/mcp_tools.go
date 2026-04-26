@@ -54,6 +54,14 @@ func NewMCPToolManager(rt *runtime.Runtime, hostName string) (*MCPToolManager, e
 	}
 
 	mcps := map[string][]string{
+		"dubbo-admin": {
+			"go",
+			"run",
+			"app/dubbo-admin/main.go",
+			"run",
+			"-c",
+			"app/dubbo-admin/dubbo-admin-simple.yaml",
+		},
 		"kubernetes": {
 			"npx",
 			"-y",

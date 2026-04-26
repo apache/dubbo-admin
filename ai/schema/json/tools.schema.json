@@ -23,7 +23,7 @@
         },
         "enable_mcp_tools": {
           "type": "boolean",
-          "default": true
+          "default": false
         },
         "mcp_host_name": {
           "type": "string",

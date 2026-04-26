@@ -1,4 +1,3 @@
 type: memory
 spec:
-  history_key: "chat_history"
-  max_turns: 100
+  max_messages: 20

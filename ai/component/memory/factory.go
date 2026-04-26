@@ -26,9 +26,9 @@ import (
 
 // MemoryFactory creates a memory component (explicit registration, no init)
 func MemoryFactory(spec *yaml.Node) (runtime.Component, error) {
-	var cfg MemorySpec
+	var cfg MemoryConfig
 	if err := spec.Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to decode memory spec: %w", err)
 	}
-	return NewMemoryComponent(cfg.HistoryKey, cfg.MaxTurns)
+	return NewMemoryComponent(cfg)
 }

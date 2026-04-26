@@ -65,7 +65,7 @@ response.use(
     NProgress.done()
     if (
       response.status === 200 &&
-      (response.data.code === 200 || response.data.status === 'success')
+      (response.data.code === 200 || response.data.code === 'Success')
     ) {
       return Promise.resolve(response.data)
     }

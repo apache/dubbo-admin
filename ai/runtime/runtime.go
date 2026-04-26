@@ -415,3 +415,17 @@ func GetRuntime() *Runtime {
 	}
 	return gloRuntime
 }
+
+// GetGenkitRegistryFromContext 从 context 获取 genkit registry
+// 首先尝试从 context 获取，如果失败则从全局 runtime 获取
+func GetGenkitRegistryFromContext(ctx context.Context) *genkit.Genkit {
+	// 尝试从 context 获取（如果已设置）
+	if rt, ok := ctx.Value("runtime").(*Runtime); ok && rt != nil {
+		return rt.genkitRegistry
+	}
+	// 回退到全局 runtime
+	if gloRuntime != nil {
+		return gloRuntime.genkitRegistry
+	}
+	return nil
+}

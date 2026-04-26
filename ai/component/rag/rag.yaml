@@ -3,7 +3,7 @@ spec:
   embedder:
     type: genkit
     spec:
-      model: dashscope/qwen3-embedding
+      model: dashscope/text-embedding-v4
 
   loader:
     type: local

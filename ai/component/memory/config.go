@@ -17,14 +17,12 @@
 
 package memory
 
-type MemorySpec struct {
-	HistoryKey HistoryKey `yaml:"history_key"` // History key name
-	MaxTurns   int        `yaml:"max_turns"`   // Maximum conversation turns
+type MemoryConfig struct {
+	MaxMessages int `yaml:"max_messages"` // Maximum messages per session
 }
 
-func DefaultMemorySpec() *MemorySpec {
-	return &MemorySpec{
-		HistoryKey: ChatHistoryKey,
-		MaxTurns:   100,
+func DefaultMemoryConfig() *MemoryConfig {
+	return &MemoryConfig{
+		MaxMessages: 20,
 	}
 }

@@ -19,14 +19,19 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/apache/dubbo-admin/pkg/config"
 	"github.com/apache/dubbo-admin/pkg/config/app"
+	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/core/bootstrap"
 	dubbocmd "github.com/apache/dubbo-admin/pkg/core/cmd"
+	"github.com/apache/dubbo-admin/pkg/mcp/core"
+	"github.com/apache/dubbo-admin/pkg/mcp/tools"
+	"github.com/apache/dubbo-admin/pkg/mcp/transport/stdio"
 	dubboversion "github.com/apache/dubbo-admin/pkg/version"
 )
 
@@ -77,6 +82,47 @@ func newRunCmdWithOpts(opts dubbocmd.RunCmdOpts) *cobra.Command {
 
 			// 3. start components
 			runLog.Info("starting Admin......", "version", dubboversion.Build.Version)
+
+			// Start MCP server if enabled
+			var mcpTransport *stdio.Transport
+			if cfg.MCP != nil && cfg.MCP.Enabled {
+				runLog.Info("MCP server enabled, starting...", "serverName", cfg.MCP.ServerName)
+
+				// Create console context for MCP tools
+				consoleCtx := consolectx.NewConsoleContext(rt)
+
+				// Create MCP server
+				server := core.NewServer(cfg.MCP.ServerName, cfg.MCP.ServerVersion)
+
+				// Register all tools
+				reg := server.GetRegistry()
+				reg.RegisterRegistrar(&tools.MetricsRegistrar{})
+				reg.RegisterRegistrar(&tools.ResourceSearchRegistrar{})
+				reg.RegisterRegistrar(&tools.ServiceRegistrar{})
+				reg.RegisterRegistrar(&tools.DetailRegistrar{})
+				reg.RegisterAll()
+
+				// Set console context
+				server.SetConsoleContext(consoleCtx)
+
+				runLog.Info("MCP server initialized", "tools", len(reg.List()))
+
+				// Create and start stdio transport in background
+				mcpTransport = stdio.NewTransport(server)
+				mcpErrCh := make(chan error, 1)
+				go func() {
+					if err := mcpTransport.Serve(gracefulCtx); err != nil {
+						runLog.Error(err, "MCP transport error")
+						mcpErrCh <- err
+					}
+				}()
+
+				// Log to stderr for Claude Desktop to see
+				fmt.Fprintf(log.Writer(), "%s MCP Server v%s started\n", cfg.MCP.ServerName, cfg.MCP.ServerVersion)
+				fmt.Fprintf(log.Writer(), "Registered %d tools\n", len(reg.List()))
+			}
+
+			// Start HTTP server and other components
 			if err := rt.Start(gracefulCtx.Done()); err != nil {
 				runLog.Error(err, "problem running Admin")
 				return err
@@ -86,8 +132,16 @@ func newRunCmdWithOpts(opts dubbocmd.RunCmdOpts) *cobra.Command {
 			select {
 			case <-ctx.Done():
 				runLog.Info("all components have stopped")
+				// Close MCP transport if it was started
+				if mcpTransport != nil {
+					mcpTransport.Close()
+				}
 			case <-time.After(gracefullyShutdownDuration):
 				runLog.Info("forcefully stopped")
+				// Close MCP transport if it was started
+				if mcpTransport != nil {
+					mcpTransport.Close()
+				}
 			}
 			return nil
 		},

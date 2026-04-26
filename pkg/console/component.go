@@ -68,6 +68,11 @@ func (c *consoleWebServer) Order() int {
 
 func (c *consoleWebServer) Init(ctx runtime.BuilderContext) error {
 	c.cfg = ctx.Config().Console
+	// If console config is nil, skip initialization (e.g., MCP mode)
+	if c.cfg == nil {
+		logger.Sugar().Info("Console config is nil, skipping console initialization")
+		return nil
+	}
 	r := gin.New()
 	// Admin UI
 	r.StaticFS("/admin", http.FS(ui.FS()))
@@ -94,6 +99,13 @@ func (c *consoleWebServer) Init(ctx runtime.BuilderContext) error {
 }
 
 func (c *consoleWebServer) Start(coreRt runtime.Runtime, stop <-chan struct{}) error {
+	// If console config is nil, skip starting (e.g., MCP mode)
+	if c.cfg == nil {
+		logger.Sugar().Info("Console config is nil, skipping console start")
+		// Wait for stop signal since we need to keep the component "running"
+		<-stop
+		return nil
+	}
 	errChan := make(chan error)
 	c.cs = consolectx.NewConsoleContext(coreRt)
 	router.InitRouter(c.Engine, c.cs)

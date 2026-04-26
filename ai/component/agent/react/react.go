@@ -8,6 +8,7 @@ import (
 	"path"
 
 	"dubbo-admin-ai/component/agent"
+	"dubbo-admin-ai/component/util"
 	"dubbo-admin-ai/component/memory"
 	toolEngine "dubbo-admin-ai/component/tools/engine"
 	"dubbo-admin-ai/runtime"
@@ -146,11 +147,11 @@ func buildStagesFromConfig(g *genkit.Genkit, stagesCfg []StageInfo, promptBasePa
 		var stage *agent.Stage
 		switch stageCfg.FlowType {
 		case "think":
-			stage = agent.NewStage(ThinkFlow(g, prompt), agent.InLoop)
+			stage = agent.NewStage(ThinkFlow(g, prompt, model), agent.InLoop)
 		case "act":
 			stage = agent.NewStage(ActFlow(g, prompt), agent.InLoop)
 		case "observe":
-			stage = agent.NewStreamStage(observe(g, prompt),
+			stage = agent.NewStreamStage(observe(g, prompt, model),
 				agent.InLoop, onStreaming2User, onOutput2Flow)
 		}
 
@@ -166,34 +167,30 @@ func (ra *ReActAgent) Interact(input *schema.UserInput, sessionID string) *agent
 	ra.channels.Reset()
 	go func() {
 		var (
-			err       error
-			inputJson []byte
-			in        schema.ThinkInput
+			err error
+			in  schema.ThinkInput
 		)
 		in.UserInput = input
 		in.SessionID = sessionID
 
 		// Create request-scoped context with sessionID, don't overwrite ra.memoryCtx
 		ctx := context.WithValue(ra.memoryCtx, memory.SessionIDKey, sessionID)
-		history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.HistoryMemory)
+		history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.ChatMemory)
 		if !ok {
 			err = fmt.Errorf("failed to get history from context")
 			ra.channels.ErrorChan <- err
+			return
 		}
 
-		inputJson, err = json.Marshal(in)
-		if err != nil {
-			ra.channels.ErrorChan <- err
-		}
-		inputMsg := ai.NewUserMessage(ai.NewJSONPart(string(inputJson)))
-		history.AddHistory(sessionID, inputMsg)
+		// Store user input as plain text
+		history.Add(sessionID, memory.RoleUser, in.UserInput.Content)
 
 		err = ra.orchestrator.Run(ctx, in, ra.channels)
 		if err != nil {
 			ra.channels.ErrorChan <- err
 		}
 		ra.channels.Close()
-		history.NextTurn(sessionID)
+		// No need to call NextTurn anymore - circular buffer handles overflow automatically
 	}()
 	return ra.channels
 }
@@ -236,6 +233,7 @@ func buildPrompt(registry *genkit.Genkit, inType, outType any, tag, prompt strin
 func ThinkFlow(
 	g *genkit.Genkit,
 	thinkPrompt ai.Prompt,
+	defaultModel string,
 ) agent.NormalFlow {
 	return genkit.DefineFlow(g, agent.ThinkFlowName,
 		func(ctx context.Context, in schema.Schema) (out schema.Schema, err error) {
@@ -244,7 +242,7 @@ func ThinkFlow(
 				runtime.GetLogger().Info("Think Done.", "output", out, "error", err)
 			}()
 
-			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.HistoryMemory)
+			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.ChatMemory)
 			if !ok {
 				return nil, fmt.Errorf("failed to get history from context")
 			}
@@ -256,8 +254,12 @@ func ThinkFlow(
 				return nil, fmt.Errorf("history is empty")
 			}
 
-			// Execute the thinking prompt with window memory context
-			resp, err := thinkPrompt.Execute(ctx, ai.WithMessages(history.WindowMemory(sessionID)...))
+			// Build messages from memory for LLM context
+			messages := history.Get(sessionID)
+			aiMessages := buildAIMessages(messages)
+
+			// Execute the thinking prompt with memory context
+			resp, err := thinkPrompt.Execute(ctx, ai.WithMessages(aiMessages...))
 			if err != nil {
 				return nil, fmt.Errorf("failed to execute agentThink prompt: %w", err)
 			}
@@ -266,12 +268,14 @@ func ThinkFlow(
 			}
 			runtime.GetLogger().Info("Think response:", "response", resp.Text())
 
-			// Parse output
-			var thinkOut ThinkOut
-			thinkOut.UsageInfo = &ai.GenerationUsage{}
-			err = resp.Output(&thinkOut)
+			// Parse output with retry and auto-fix
+			rawText := resp.Text()
+			thinkOut, err := util.ParseOutputWithRetry(ctx, rawText, resp, ThinkOut{}, defaultModel)
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse agentThink prompt response: %w", err)
+			}
+			if thinkOut.UsageInfo == nil {
+				thinkOut.UsageInfo = &ai.GenerationUsage{}
 			}
 
 			// Don't store Think response in history - only store user input and final result
@@ -279,6 +283,29 @@ func ThinkFlow(
 
 			return thinkOut, nil
 		})
+}
+
+func buildAIMessages(messages []*memory.Message) []*ai.Message {
+	if messages == nil {
+		return nil
+	}
+
+	result := make([]*ai.Message, len(messages))
+	for i, msg := range messages {
+		var role ai.Role
+		switch msg.Role {
+		case memory.RoleUser:
+			role = ai.RoleUser
+		case memory.RoleAssistant:
+			role = ai.RoleModel
+		case memory.RoleSystem:
+			role = ai.RoleSystem
+		default:
+			role = ai.RoleUser
+		}
+		result[i] = ai.NewMessage(role, nil, ai.NewTextPart(msg.Content))
+	}
+	return result
 }
 
 func ActFlow(g *genkit.Genkit, actPrompt ai.Prompt) agent.NormalFlow {
@@ -311,7 +338,7 @@ func ActFlow(g *genkit.Genkit, actPrompt ai.Prompt) agent.NormalFlow {
 				return actOuts, nil
 			}
 
-			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.HistoryMemory)
+			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.ChatMemory)
 			if !ok {
 				return nil, fmt.Errorf("failed to get history from context")
 			}
@@ -324,8 +351,13 @@ func ActFlow(g *genkit.Genkit, actPrompt ai.Prompt) agent.NormalFlow {
 			if history.IsEmpty(sessionID) {
 				return nil, fmt.Errorf("history is empty")
 			}
+
+			// Build messages from memory for LLM context
+			messages := history.Get(sessionID)
+			aiMessages := buildAIMessages(messages)
+
 			toolReqs, err := actPrompt.Execute(ctx,
-				ai.WithMessages(history.WindowMemory(sessionID)...),
+				ai.WithMessages(aiMessages...),
 			)
 			if err != nil {
 				return nil, fmt.Errorf("failed to execute tool selection prompt: %w", err)
@@ -338,7 +370,6 @@ func ActFlow(g *genkit.Genkit, actPrompt ai.Prompt) agent.NormalFlow {
 			runtime.GetLogger().Info("tool requests:", "req", toolReqs.ToolRequests())
 
 			// Call tool requests and collect outputs
-			var parts []*ai.Part
 			var actOuts ActOut
 			actOuts.UsageInfo = &ai.GenerationUsage{}
 			for _, req := range toolReqs.ToolRequests() {
@@ -351,8 +382,8 @@ func ActFlow(g *genkit.Genkit, actPrompt ai.Prompt) agent.NormalFlow {
 				if err != nil {
 					return nil, fmt.Errorf("failed to marshal output: %w", err)
 				}
-				parts = append(parts, ai.NewJSONPart(string(outputJson)))
 				actOuts.Add(&output)
+				runtime.GetLogger().Info("tool output", "tool", req.Name, "output", string(outputJson))
 			}
 			runtime.GetLogger().Info("act out:", "out", actOuts)
 			// ai.RoleTool's messages will be ignored by ai.WithMessages
@@ -363,7 +394,7 @@ func ActFlow(g *genkit.Genkit, actPrompt ai.Prompt) agent.NormalFlow {
 		})
 }
 
-func observe(g *genkit.Genkit, observePrompt ai.Prompt) agent.StreamFlow {
+func observe(g *genkit.Genkit, observePrompt ai.Prompt, defaultModel string) agent.StreamFlow {
 	return genkit.DefineStreamingFlow(g, agent.ObserveFlowName,
 		func(ctx context.Context, in schema.Schema, _ core.StreamCallback[schema.StreamChunk]) (out schema.Schema, err error) {
 			runtime.GetLogger().Info("Observing...", "input", in)
@@ -371,7 +402,7 @@ func observe(g *genkit.Genkit, observePrompt ai.Prompt) agent.StreamFlow {
 				runtime.GetLogger().Info("Observe Done.", "output", out, "error", err)
 			}()
 
-			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.HistoryMemory)
+			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.ChatMemory)
 			if !ok {
 				return nil, fmt.Errorf("failed to get history from context")
 			}
@@ -384,24 +415,33 @@ func observe(g *genkit.Genkit, observePrompt ai.Prompt) agent.StreamFlow {
 				return nil, fmt.Errorf("history is empty")
 			}
 
+			// Build messages from memory for LLM context
+			messages := history.Get(sessionID)
+			aiMessages := buildAIMessages(messages)
+
 			resp, err := observePrompt.Execute(ctx,
-				ai.WithMessages(history.WindowMemory(sessionID)...),
+				ai.WithMessages(aiMessages...),
 			)
 
 			if err != nil {
 				return nil, fmt.Errorf("failed to execute observe prompt: %w", err)
 			}
 
-			// Parse output
-			var observation schema.Observation
-			observation.UsageInfo = &ai.GenerationUsage{}
-			err = resp.Output(&observation)
+			// Parse output with retry and auto-fix
+			rawText := resp.Text()
+			observation, err := util.ParseOutputWithRetry(ctx, rawText, resp, schema.Observation{}, defaultModel)
 			if err != nil {
 				return nil, fmt.Errorf("failed to parse observe prompt response: %w", err)
 			}
+			if observation.UsageInfo == nil {
+				observation.UsageInfo = &ai.GenerationUsage{}
+			}
 			runtime.GetLogger().Info("Observe out:", "out", observation)
 
-			history.AddHistory(sessionID, resp.Message)
+			// Store only the final answer, not intermediate Think/Act/Observe steps
+			if observation.FinalAnswer != "" {
+				history.Add(sessionID, memory.RoleAssistant, observation.FinalAnswer)
+			}
 			schema.AccumulateUsage(observation.UsageInfo, resp.Usage, in.Usage())
 
 			return observation, err
