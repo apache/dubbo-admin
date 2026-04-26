@@ -68,7 +68,7 @@ var DefaultAdminConfig = func() AdminConfig {
 	}
 }
 
-func (c *AdminConfig) Sanitize() {
+func (c AdminConfig) Sanitize() {
 	c.Engine.Sanitize()
 	for _, d := range c.Discovery {
 		d.Sanitize()
@@ -80,7 +80,7 @@ func (c *AdminConfig) Sanitize() {
 	c.Log.Sanitize()
 }
 
-func (c *AdminConfig) PreProcess() error {
+func (c AdminConfig) PreProcess() error {
 	discoveryPreProcess := func() error {
 		for _, d := range c.Discovery {
 			if err := d.PreProcess(); err != nil {
@@ -100,7 +100,7 @@ func (c *AdminConfig) PreProcess() error {
 	)
 }
 
-func (c *AdminConfig) PostProcess() error {
+func (c AdminConfig) PostProcess() error {
 	discoveryPostProcess := func() error {
 		for _, d := range c.Discovery {
 			if err := d.PostProcess(); err != nil {
@@ -120,7 +120,7 @@ func (c *AdminConfig) PostProcess() error {
 	)
 }
 
-func (c *AdminConfig) Validate() error {
+func (c AdminConfig) Validate() error {
 	if c.Log == nil {
 		c.Log = log.DefaultLogConfig()
 	} else if err := c.Log.Validate(); err != nil {
