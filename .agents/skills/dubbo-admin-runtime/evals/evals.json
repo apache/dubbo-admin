@@ -1,0 +1,30 @@
+{
+  "skill_name": "dubbo-admin-runtime",
+  "evals": [
+    {
+      "id": "obvious-trigger",
+      "prompt": "Add a new runtime component with dependencies on EventBus and ResourceStore.",
+      "expected_behavior": "Use component lifecycle, registration, dependency graph, and bootstrap workflow."
+    },
+    {
+      "id": "paraphrased-trigger",
+      "prompt": "Startup order is wrong because one component initializes before its dependency.",
+      "expected_behavior": "Inspect RequiredDependencies and dependency graph behavior."
+    },
+    {
+      "id": "file-based-trigger",
+      "prompt": "Review pkg/core/runtime/dependency_graph.go and pkg/core/bootstrap/bootstrap.go.",
+      "expected_behavior": "Use this skill because runtime and bootstrap files are touched."
+    },
+    {
+      "id": "no-trigger",
+      "prompt": "Change only the Vue route metadata for a tab.",
+      "expected_behavior": "Do not use this skill; use dubbo-admin-frontend."
+    },
+    {
+      "id": "conflict-trigger",
+      "prompt": "The discovery component fails because EventBus is unavailable during Init.",
+      "expected_behavior": "Use runtime for dependency ordering and discovery for component-specific logic."
+    }
+  ]
+}

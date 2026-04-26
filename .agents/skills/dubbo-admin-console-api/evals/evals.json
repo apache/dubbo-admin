@@ -1,0 +1,30 @@
+{
+  "skill_name": "dubbo-admin-console-api",
+  "evals": [
+    {
+      "id": "obvious-trigger",
+      "prompt": "Add a new GET endpoint under /api/v1/service that returns a typed response from pkg/console/service.",
+      "expected_behavior": "Use the Console API router, handler, model, service, and manager workflow."
+    },
+    {
+      "id": "paraphrased-trigger",
+      "prompt": "The admin backend route binds query parameters incorrectly and returns the wrong CommonResp data.",
+      "expected_behavior": "Inspect pkg/console handlers, models, services, and response helpers."
+    },
+    {
+      "id": "file-based-trigger",
+      "prompt": "Review changes in pkg/console/router/router.go and pkg/console/handler/application.go.",
+      "expected_behavior": "Use this skill because Console API files are touched."
+    },
+    {
+      "id": "no-trigger",
+      "prompt": "Change the Vue sidebar icon for the service page.",
+      "expected_behavior": "Do not use this skill; use the frontend skill."
+    },
+    {
+      "id": "conflict-trigger",
+      "prompt": "A frontend API call fails because the backend response field changed.",
+      "expected_behavior": "Use this skill for backend contract review and coordinate with frontend skill for caller updates."
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "skill_name": "dubbo-admin-engine",
+  "evals": [
+    {
+      "id": "obvious-trigger",
+      "prompt": "Update RuntimeInstanceEventSubscriber so runtime-only instances are deleted correctly.",
+      "expected_behavior": "Use engine subscriber and RuntimeInstance to Instance lifecycle workflow."
+    },
+    {
+      "id": "paraphrased-trigger",
+      "prompt": "Kubernetes pod runtime metadata is not being merged into dubbo-admin Instance resources.",
+      "expected_behavior": "Trace engine ListWatchers, RuntimeInstance events, and merge logic."
+    },
+    {
+      "id": "file-based-trigger",
+      "prompt": "Review pkg/core/engine/component.go and pkg/engine/kubernetes/listerwatcher/runtime_instance.go.",
+      "expected_behavior": "Use this skill because engine component and engine ListWatcher files are touched."
+    },
+    {
+      "id": "no-trigger",
+      "prompt": "Provider metadata from Zookeeper is missing method names.",
+      "expected_behavior": "Do not use this skill; use dubbo-admin-discovery."
+    },
+    {
+      "id": "conflict-trigger",
+      "prompt": "An Instance resource is wrong after both registry and Kubernetes events arrive.",
+      "expected_behavior": "Use engine for RuntimeInstance merge and coordinate with discovery for RPC source state."
+    }
+  ]
+}
