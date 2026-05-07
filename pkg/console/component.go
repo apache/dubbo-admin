@@ -42,6 +42,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	mcpcore "github.com/apache/dubbo-admin/pkg/mcp/core"
 	mcphttp "github.com/apache/dubbo-admin/pkg/mcp/transport/http"
+	mcp_tools "github.com/apache/dubbo-admin/pkg/mcp/tools"
 )
 
 func init() {
@@ -165,29 +166,18 @@ func (c *consoleWebServer) registerMCPEndpoints(coreRt runtime.Runtime, engine *
 	// 存储MCP路径供auth中间件使用
 	c.mcpPath = path
 
-	// 获取MCP组件
-	mcpComp, err := coreRt.GetComponent(runtime.ComponentType("mcp"))
-	if err != nil {
-		logger.Sugar().Warnf("MCP component not found: %v, skipping MCP endpoint registration", err)
-		return
-	}
+	// 直接创建MCP服务器
+	consoleCtx := consolectx.NewConsoleContext(coreRt)
+	server := mcpcore.NewServer("dubbo-admin", "1.0.0")
+	server.SetConsoleContext(consoleCtx)
 
-	// 获取MCP服务器
-	type serverGetter interface {
-		GetServer() *mcpcore.Server
-	}
-
-	sg, ok := mcpComp.(serverGetter)
-	if !ok {
-		logger.Sugar().Warn("MCP component does not implement GetServer(), skipping MCP endpoint registration")
-		return
-	}
-
-	server := sg.GetServer()
-	if server == nil {
-		logger.Sugar().Warn("MCP server is nil, skipping MCP endpoint registration")
-		return
-	}
+	// 注册所有工具
+	reg := server.GetRegistry()
+	reg.RegisterRegistrar(&mcp_tools.MetricsRegistrar{})
+	reg.RegisterRegistrar(&mcp_tools.ResourceSearchRegistrar{})
+	reg.RegisterRegistrar(&mcp_tools.ServiceRegistrar{})
+	reg.RegisterRegistrar(&mcp_tools.DetailRegistrar{})
+	reg.RegisterAll()
 
 	// 创建HTTP处理器
 	handler := mcphttp.NewHandler(server)
@@ -197,7 +187,7 @@ func (c *consoleWebServer) registerMCPEndpoints(coreRt runtime.Runtime, engine *
 		handler.ServeHTTP(ctx.Writer, ctx.Request)
 	})
 
-	logger.Sugar().Infof("MCP endpoint registered at %s", path)
+	logger.Sugar().Infof("MCP endpoint registered at %s with %d tools", path, len(reg.List()))
 }
 
 func (c *consoleWebServer) authMiddleware() gin.HandlerFunc {

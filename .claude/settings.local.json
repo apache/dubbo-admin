@@ -23,7 +23,21 @@
       "Bash(rm pkg/governor/mock/governor.go)",
       "Bash(rmdir pkg/governor/mock)",
       "Bash(timeout 60 go run app/dubbo-admin/main.go run -c dubbo-admin.yaml)",
-      "Bash(curl -s -X POST http://localhost:8888/api/mcp -H \"Content-Type: application/json\" -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{},\"clientInfo\":{\"name\":\"test\",\"version\":\"1.0\"}}}')"
+      "Bash(curl -s -X POST http://localhost:8888/api/mcp -H \"Content-Type: application/json\" -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{},\"clientInfo\":{\"name\":\"test\",\"version\":\"1.0\"}}}')",
+      "Bash(curl *)",
+      "Bash(taskkill /F /IM go.exe)",
+      "Bash(taskkill /F /IM main.exe)",
+      "Bash(timeout 30 go run app/dubbo-admin/main.go run -c dubbo-admin.yaml)",
+      "Bash(go run *)",
+      "Bash(tee /tmp/admin.log)",
+      "Read(//tmp/**)",
+      "Bash(taskkill /F /IM go.exe /T)",
+      "Bash(taskkill /F /IM main.exe /T)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill /F /PID 50036)",
+      "Bash(taskkill /F /PID 50036 /T)",
+      "Bash(findstr :8888)",
+      "Bash(cmd //c \"taskkill /F /PID 50036\")"
     ]
   }
 }
