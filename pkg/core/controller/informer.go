@@ -24,6 +24,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-logr/zapr"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/tools/cache"
@@ -179,10 +180,12 @@ func (s *informer) Run(stopCh <-chan struct{}) {
 	func() {
 		s.startedLock.Lock()
 		defer s.startedLock.Unlock()
+		zapLogr := zapr.NewLogger(logger.Logger())
 		fifo := cache.NewDeltaFIFOWithOptions(cache.DeltaFIFOOptions{
 			KnownObjects:          s.indexer,
 			EmitDeltaTypeReplaced: true,
 			Transformer:           s.transform,
+			Logger:                &zapLogr,
 			KeyFunction:           s.keyFunc,
 		})
 

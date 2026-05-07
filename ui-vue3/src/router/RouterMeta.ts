@@ -27,4 +27,5 @@ export interface RouterMeta extends RouteMeta {
   _router_key?: string
   parent?: RouteRecordType
   slots?: { [key: string]: Component }
+  headerParamKey?: string
 }

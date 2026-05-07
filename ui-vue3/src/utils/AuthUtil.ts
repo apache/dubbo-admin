@@ -18,7 +18,7 @@
 import Cookies from 'js-cookie'
 // Format time
 export function updateAuthState(state: boolean, username: string) {
-  let authState = { state: state, userinfo: { username } }
+  const authState = { state: state, userinfo: { username } }
   Cookies.set('auth-state', JSON.stringify(authState))
 }
 export function getAuthState() {

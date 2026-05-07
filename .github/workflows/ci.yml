@@ -13,70 +13,80 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Continues Integration
+name: dubbo-admin ci
 
 on:
   push:
     branches:
-      - master
+      - develop
   pull_request:
     branches:
-      - master
+      - develop
 
 jobs:
-  unit-test:
-    name: Go Test
-    runs-on: ubuntu-latest
-    if: github.repository == 'apache/dubbo-admin'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - name: Download dependencies
-        run: |
-          go mod download
-      - name: Go Test
-        run: |
-          go test ./... -gcflags=-l -coverprofile=coverage.txt -covermode=atomic
-      - name: "Upload test result"
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-coverage
-          path: "**/coverage.txt"
-      - name: Coverage
-        run: bash <(curl -s https://codecov.io/bash)
-
   license-check:
-    name: License Check - Go
+    name: License Check
     runs-on: ubuntu-latest
     if: github.repository == 'apache/dubbo-admin'
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-
       - name: Check License Header
         uses: apache/skywalking-eyes/header@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          config: .licenserc.yaml
+          mode: check
 
-  go-fmt:
-    name: Go fmt
-    runs-on: ubuntu-latest
+  CI:
+    name: CI (${{ matrix.os }} - Go ${{ matrix.go_version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # If you want to matrix build , you can append the following list.
+      matrix:
+        go_version:
+          - "1.24"
+          - "1.23"
+        os:
+          - ubuntu-latest
     if: github.repository == 'apache/dubbo-admin'
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Go 1.x
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'yarn'
+          cache-dependency-path: ui-vue3/yarn.lock
+      - name: Build Frontend (Vue3)
+        working-directory: ui-vue3
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
+      - name: Copy Dist Directory
+        run: cp -r ui-vue3/dist/ app/dubbo-ui/
+      - name: Setup Go ${{ matrix.go_version }}
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Download dependencies
-        run: |
-          go mod download
-      - name: Go Fmt
-        run: |
-          go fmt ./... && git status && [[ -z `git status -s` ]]
-          # diff -u <(echo -n) <(gofmt -d -s .)
+      - name: Cache dependencies
+        # ref: https://github.com/actions/cache/blob/main/examples.md#go---module
+        uses: actions/cache@v4
+        with:
+          # Cache, works only on Linux
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          # Cache key
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          # An ordered list of keys to use for restoring the cache if no cache hit occurred for key
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Check Code Format
+        run: make fmt && git status && [[ -z `git status -s` ]]
+      - name: Run Unit Test
+        run: make test
+      # TODO(marsevilspirit): add lint
+      - name: Coverage
+        # TODO(marsevilspirit): fix coverage
+        run: bash <(curl -s https://codecov.io/bash)

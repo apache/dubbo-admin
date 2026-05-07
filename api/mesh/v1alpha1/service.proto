@@ -8,14 +8,10 @@ import "api/mesh/options.proto";
 
 
 message Service{
-  option (dubbo.mesh.resource).name = "ServiceResource";
-  option (dubbo.mesh.resource).type = "Service";
+  option (dubbo.mesh.resource).name = "Service";
+  option (dubbo.mesh.resource).plural_name = "Services";
   option (dubbo.mesh.resource).package = "mesh";
-  option (dubbo.mesh.resource).ws.name = "service";
-  option (dubbo.mesh.resource).ws.plural = "services";
-  option (dubbo.mesh.resource).ws.read_only = true;
-  option (dubbo.mesh.resource).scope_namespace = true;
-  option (dubbo.mesh.resource).allow_to_inspect = true;
+  option (dubbo.mesh.resource).is_experimental = true;
 
   string name = 1;
 

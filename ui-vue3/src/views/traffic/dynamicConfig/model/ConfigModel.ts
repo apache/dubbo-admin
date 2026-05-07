@@ -102,7 +102,7 @@ export class ConfigModel {
 
   constructor(obj: any) {
     if (obj) {
-      for (let key of Object.keys(this)) {
+      for (const key of Object.keys(this)) {
         if (obj[key]) {
           this[key] = obj[key]
         }
@@ -112,17 +112,17 @@ export class ConfigModel {
   }
 
   descMatches() {
-    let desc = []
-    for (let key in this.matchesValue) {
-      let tmp = this.matchesValue[key]
+    const desc = []
+    for (const key in this.matchesValue) {
+      const tmp = this.matchesValue[key]
       if (!this.matchesKeys.includes(key)) continue
       if (tmp.type === 'obj') {
         desc.push(`${key} ${tmp.relation} ${tmp.value}`)
       } else if (tmp.type === 'arr') {
-        let oneof = tmp.arr.map((x) => `${x.relation} ${x.value}`).join(', ')
+        const oneof = tmp.arr.map((x) => `${x.relation} ${x.value}`).join(', ')
         desc.push(`${key} oneof [${oneof}]`)
       } else {
-        let allof = tmp.arr.map((x) => `${x.key} ${x.relation} ${x.value}`).join(', ')
+        const allof = tmp.arr.map((x) => `${x.key} ${x.relation} ${x.value}`).join(', ')
         desc.push(`${key} allof [${allof}]`)
       }
     }
@@ -130,9 +130,9 @@ export class ConfigModel {
   }
 
   descParameters() {
-    let desc = []
-    for (let key in this.parametersValue) {
-      let tmp = this.parametersValue[key]
+    const desc = []
+    for (const key in this.parametersValue) {
+      const tmp = this.parametersValue[key]
       if (!this.parametersKeys.includes(key)) continue
       if (tmp.type === 'obj') {
         desc.push(`${key} = ${tmp.value}`)
@@ -156,22 +156,22 @@ export class ConfigModel {
   }
 
   parseMatches(org: any) {
-    let obj = this.matchesValue
-    for (let key in org) {
+    const obj = this.matchesValue
+    for (const key in org) {
       this.matchesKeys.push(key)
       this.hasMatch = true
-      let tmp = org[key]
+      const tmp = org[key]
       if (obj[key]) {
         if (obj[key].type === 'obj') {
-          for (let tmpKey in tmp) {
+          for (const tmpKey in tmp) {
             obj[key].relation = tmpKey
             obj[key].value = tmp[tmpKey]
           }
         } else if (obj[key].type === 'arr') {
           obj[key].arr = []
-          for (let tmpKey in tmp) {
-            for (let tmpItem of tmp[tmpKey]) {
-              for (let tmpItemKey in tmpItem) {
+          for (const tmpKey in tmp) {
+            for (const tmpItem of tmp[tmpKey]) {
+              for (const tmpItemKey in tmpItem) {
                 obj[key].arr.push({
                   key: tmpKey,
                   relation: tmpItemKey,
@@ -182,8 +182,8 @@ export class ConfigModel {
           }
         } else {
           obj[key].arr = []
-          for (let tmpItem of tmp) {
-            for (let valueKey in tmpItem.value) {
+          for (const tmpItem of tmp) {
+            for (const valueKey in tmpItem.value) {
               obj[key].arr.push({
                 key: tmpItem.key,
                 relation: valueKey,
@@ -197,15 +197,15 @@ export class ConfigModel {
   }
 
   parseParameters(org: any) {
-    let obj = this.parametersValue
-    for (let key in org) {
-      let tmp = org[key]
+    const obj = this.parametersValue
+    for (const key in org) {
+      const tmp = org[key]
       if (this.parametersValue[key]) {
         this.parametersKeys.push(key)
         obj[key].relation = '='
         obj[key].value = tmp
       } else {
-        let key2 = 'other'
+        const key2 = 'other'
         this.parametersKeys.push(key2)
         obj[key2].arr = []
         obj[key2].arr.push({
@@ -218,8 +218,8 @@ export class ConfigModel {
   }
 
   checkArrConfig(prefix: string, keys: [any], obj: any, errorMsg: []) {
-    for (let key of keys) {
-      let item = obj[key]
+    for (const key of keys) {
+      const item = obj[key]
       if (item.type === 'obj') {
         if (null === item.relation || '' === item.relation) {
           errorMsg.push(`${prefix}: ${key} 条件为空`)
@@ -233,7 +233,7 @@ export class ConfigModel {
         }
       }
       if (item.type === 'arr') {
-        for (let arrElement of item.arr) {
+        for (const arrElement of item.arr) {
           if (null === arrElement.relation || '' === arrElement.relation) {
             errorMsg.push(`${prefix}: ${key} 条件为空`)
             console.log(`${prefix}: ${key} 条件为空`)
@@ -248,7 +248,7 @@ export class ConfigModel {
       } else {
         let idx = 1
         if (!item.arr) continue
-        for (let arrElement of item.arr) {
+        for (const arrElement of item.arr) {
           if (null === arrElement.relation || '' === arrElement.relation) {
             errorMsg.push(`${prefix}: ${key} 下第${idx}条记录key为空`)
             console.log(`${prefix}: ${key} 下第${idx}条记录key为空`)
@@ -301,7 +301,7 @@ export class ViewDataModel {
     this.basicInfo.key = data.key
     this.basicInfo.enabled = data.enabled || false
     this.config = data.configs.map((x: any) => {
-      let configModel = new ConfigModel({
+      const configModel = new ConfigModel({
         enabled: x.enabled,
         side: x.side
         // matchesKeys: x.match ? Object.keys(x.match) : [],
@@ -317,7 +317,7 @@ export class ViewDataModel {
 
   toApiInput(check = false) {
     this.errorMsg = []
-    let newVal = {
+    const newVal = {
       ruleName:
         this.basicInfo.ruleName === '_tmp'
           ? this.basicInfo.key + '.configurators'
@@ -356,8 +356,9 @@ export class ViewDataModel {
             throw new Error('数据检查失败')
           }
         }
-        for (let key of x.matchesKeys) {
-          let tmp = x.matchesValue[key]
+        for (const key of x.matchesKeys) {
+          const tmp = x.matchesValue[key]
+          if (!tmp) continue // Skip if key doesn't exist in matchesValue
           if (tmp.type === 'obj') {
             match[key] = { [tmp.relation]: tmp.value }
           } else if (tmp.type === 'arr') {
@@ -370,7 +371,7 @@ export class ViewDataModel {
             }
           } else {
             match[key] = []
-            for (let arrElement of tmp.arr) {
+            for (const arrElement of tmp.arr) {
               match[key].push({
                 key: arrElement.key,
                 value: { [arrElement.relation]: arrElement.value }
@@ -378,13 +379,14 @@ export class ViewDataModel {
             }
           }
         }
-        for (let key of x.parametersKeys) {
-          let tmp = x.parametersValue[key]
+        for (const key of x.parametersKeys) {
+          const tmp = x.parametersValue[key]
+          if (!tmp) continue // Skip if key doesn't exist in parametersValue
           if (tmp.type === 'obj') {
             parameters[key] = tmp.value
           } else {
             match[key] = {}
-            for (let arrElement of tmp.arr) {
+            for (const arrElement of tmp.arr) {
               parameters[arrElement.key] = arrElement.value
             }
           }

@@ -68,11 +68,6 @@ func (c *consoleWebServer) Order() int {
 
 func (c *consoleWebServer) Init(ctx runtime.BuilderContext) error {
 	c.cfg = ctx.Config().Console
-	// If console config is nil, skip initialization (e.g., MCP mode)
-	if c.cfg == nil {
-		logger.Sugar().Info("Console config is nil, skipping console initialization")
-		return nil
-	}
 	r := gin.New()
 	// Admin UI
 	r.StaticFS("/admin", http.FS(ui.FS()))

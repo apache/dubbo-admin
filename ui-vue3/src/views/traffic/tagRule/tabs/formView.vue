@@ -151,6 +151,7 @@ import {
 import { PRIMARY_COLOR } from '@/base/constants'
 import { getTagRuleDetailAPI } from '@/api/service/traffic'
 import { useRoute } from 'vue-router'
+import { HTTP_STATUS } from '@/base/http/constants'
 
 const route = useRoute()
 const {
@@ -197,7 +198,7 @@ const tagRuleDetail = reactive({
 // Get label routing details
 const getTagRuleDetail = async () => {
   const res = await getTagRuleDetailAPI(<string>route.params?.ruleName)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     Object.assign(tagRuleDetail, res.data || {})
   }
 }

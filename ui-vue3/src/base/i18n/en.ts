@@ -44,7 +44,52 @@ const words: I18nType = {
 
   routingRuleDomain: {
     YAMLView: 'YAML view',
-    formView: 'Form view'
+    formView: 'Form view',
+    ruleGranularity: 'Rule Granularity',
+    objectOfAction: 'Action Object',
+    version: 'Version',
+    group: 'Group',
+    force: 'Fault Tolerant',
+    runtime: 'Runtime Effective',
+    enabled: 'Enable Now',
+    priority: 'Priority',
+    routeList: 'Route List',
+    route: 'Route',
+    matchRequest: 'Request Match',
+    matchConditionType: 'Match Condition Type',
+    addMatchRequest: 'Add Request Match',
+    routeDistribution: 'Route Distribution',
+    addRoute: 'Add Route',
+    addArgument: 'Add Argument',
+    addAttachment: 'Add Attachment',
+    addOther: 'Add Other',
+    paramIndex: 'Parameter Index',
+    relation: 'Relation',
+    value: 'Value',
+    operation: 'Operation',
+    key: 'Key',
+    fieldDesc: 'Field Description',
+    desc: {
+      objectOfAction: 'Action Object<br />Possible values: Dubbo application name or service name',
+      ruleGranularity: 'Rule Granularity<br />Possible values: application, service',
+      force:
+        'Fault Tolerant<br />Possible values: true, false<br />Description: If true, an exception will be reported directly if no available address is found after routing filtering; if false, it will choose from available addresses to complete the RPC call',
+      runtime:
+        'Runtime Effective<br />Possible values: true, false<br />Description: If true, all routes under this rule will take effect in real time; if false, they will only take effect at startup'
+    },
+    service: 'Service',
+    application: 'Application',
+    anyRequest: 'Any Request',
+    baseDesc: 'For {type} [{value}]',
+    matchDesc: 'Match request [{condition}]',
+    distributeDesc: 'Forward to [{condition}]',
+    host: 'IP',
+    method: 'Method',
+    arguments: 'Arguments',
+    attachments: 'Attachments',
+    other: 'Other',
+    createNewRoutingRule: 'Create New Conditional Routing Rule',
+    warnDeleteRouteRule: 'Are you sure to delete this conditional routing rule?'
   },
   addRoutingRuleDomain: {
     YAMLView: 'YAML view',
@@ -158,6 +203,13 @@ const words: I18nType = {
     opened: 'Opened',
     paramRoute: 'Param Route'
   },
+  servicesDomain: {
+    appName: 'Application Name',
+    consumerAppName: 'Consumer Application Name',
+    instanceCount: 'Instance Count',
+    deployClusters: 'Deploy Clusters',
+    registryClusters: 'Registry Clusters'
+  },
   appServiceTimeout: 'Adjusting the timeout for application service provision',
   enableAppInstanceLogs: 'Enable access logs for all instances of this application',
   appServiceLoadBalance: 'Adjusting the load balancing strategy for application service provision',
@@ -177,6 +229,7 @@ const words: I18nType = {
   whichApplication: 'application',
   registerTime: 'Register Time',
   startTime_k8s: 'Start Time(k8s)',
+  readyTime_k8s: 'Ready Time(k8s)',
   registerStates: 'Register States',
   deployState: 'Deployment Status',
   owningWorkload_k8s: 'Owning Workload(k8s)',
@@ -198,6 +251,8 @@ const words: I18nType = {
   service: 'Service',
   versionGroup: 'Version & Group',
   avgQPS: 'last 1min QPS',
+  provider: 'Provider',
+  subset: 'Group',
   avgRT: 'last 1min RT',
   requestTotal: 'last 1min request total',
   serviceSearch: 'Search Service',
@@ -256,7 +311,7 @@ const words: I18nType = {
   close: 'CLOSE',
   confirm: 'CONFIRM',
   ruleContent: 'RULE CONTENT',
-  createNewRoutingRule: 'Create New Routing Rule',
+
   createNewTagRule: 'Create New Tag Rule',
   createNewMeshRule: 'Create New Mesh Rule',
   createNewDynamicConfigRule: 'Create New Dynamic Config Rule',
@@ -343,7 +398,7 @@ const words: I18nType = {
   scope: 'Scope',
   name: 'Name',
   warnDeleteConfig: ' Are you sure to Delete Dubbo Config: ',
-  warnDeleteRouteRule: 'Are you sure to Delete routing rule',
+
   warnDeleteDynamicConfig: 'Are you sure to Delete dynamic config',
   warnDeleteBalancing: 'Are you sure to Delete load balancing',
   warnDeleteAccessControl: 'Are you sure to Delete access control',
@@ -367,6 +422,15 @@ const words: I18nType = {
   test: 'Test',
   placeholders: {
     searchService: 'Search by service name'
+  },
+  placeholder: {
+    searchService: 'Search by service name',
+    typeAppName: 'Enter application name',
+    typeInstanceIP: 'Enter instance IP',
+    consumerAppName: 'Enter consumer application name',
+    typeDefault: 'Please enter',
+    typeRoutingRules: 'Search routing rules',
+    searchAppNameOrIP: 'Search application, IP'
   },
   methods: 'Methods',
   testModule: {
@@ -419,6 +483,7 @@ const words: I18nType = {
   },
   authFailed: 'Authorized failed,please login.',
 
+  registryCenter: 'Registry',
   ruleList: 'Rule List',
   mockRule: 'Mock Rule',
   mockData: 'Mock Data',
@@ -489,10 +554,6 @@ const words: I18nType = {
   backHome: 'Back Home',
   noPageTip: 'Sorry, the page you visited does not exist.',
   globalSearchTip: 'Search ip, application, instance, service',
-  placeholder: {
-    typeAppName: 'please type appName, support for prefix',
-    typeDefault: 'please type '
-  },
   none: 'No Select',
   debug: 'Debug',
   distribution: 'Distribution',

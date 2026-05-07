@@ -1,1 +1,0 @@
-import{r as t}from"./request-8jI_GZey.js";const e=o=>t({url:"/auth/login",method:"post",data:o,headers:{"Content-Type":"multipart/form-data"}}),a=()=>t({url:"/auth/logout",method:"post"});export{a,e as l};

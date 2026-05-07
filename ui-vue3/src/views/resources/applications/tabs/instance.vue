@@ -32,9 +32,11 @@
       </a-card>
     </a-flex>
     <search-table :search-domain="searchDomain">
-      <template #bodyCell="{ column, text }">
+      <template #bodyCell="{ column, text, record }">
         <template v-if="column.dataIndex === 'name'">
-          <a-button type="link" @click="viewDetail(text)">{{ text }}</a-button>
+          <a-tooltip :title="text">
+            <span class="app-link" @click="viewDetail(record)">{{ text }}</span>
+          </a-tooltip>
         </template>
         <template v-if="column.dataIndex === 'deployState'">
           <a-tag :color="INSTANCE_DEPLOY_COLOR[text.toUpperCase()]">{{ text }}</a-tag>
@@ -110,67 +112,67 @@ onMounted(async () => {
 
 const columns = [
   {
-    title: 'instanceDomain.ip',
-    dataIndex: 'ip',
-    key: 'ip',
-    sorter: true,
-    width: 150,
-    fixed: 'left'
-  },
-  {
     title: 'instanceDomain.name',
     dataIndex: 'name',
     key: 'name',
-    sorter: true,
-    width: 180
+    // sorter: true,
+    width: 180,
+    fixed: 'left'
+  },
+  {
+    title: 'instanceDomain.ip',
+    dataIndex: 'ip',
+    key: 'ip',
+    // sorter: true,
+    width: 150
   },
   {
     title: 'instanceDomain.deployState',
     dataIndex: 'deployState',
     key: 'deployState',
-    sorter: true,
+    // sorter: true,
     width: 150
   },
   {
     title: 'instanceDomain.deployCluster',
     dataIndex: 'deployClusters',
     key: 'deployClusters',
-    sorter: true,
+    // sorter: true,
     width: 180
   },
   {
     title: 'instanceDomain.registerState',
     dataIndex: 'registerState',
     key: 'registerState',
-    sorter: true,
+    // sorter: true,
     width: 150
   },
   {
     title: 'instanceDomain.registerClusters',
     dataIndex: 'registerCluster',
     key: 'registerCluster',
-    sorter: true,
+    // sorter: true,
     width: 200
   },
   {
     title: 'instanceDomain.cpu',
     dataIndex: 'cpu',
     key: 'cpu',
-    sorter: true,
+    // sorter: true,
     width: 120
   },
   {
     title: 'instanceDomain.memory',
     dataIndex: 'memory',
     key: 'memory',
-    sorter: true,
+    // sorter: true,
     width: 120
   },
   {
     title: 'instanceDomain.startTime',
     dataIndex: 'startTime',
     key: 'startTime',
-    sorter: true,
+    // sorter: true,
     width: 150
   }
   // {
@@ -252,8 +254,8 @@ onMounted(() => {
   searchDomain.onSearch()
 })
 
-const viewDetail = (serviceName: string) => {
-  router.replace(`/resources/instances/detail/${serviceName.split(':')[0]}/${serviceName}`)
+const viewDetail = (record: any) => {
+  router.push(`/resources/instances/detail/${record.name}/${record.ip}`)
 }
 
 provide(PROVIDE_INJECT_KEY.SEARCH_DOMAIN, searchDomain)

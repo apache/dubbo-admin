@@ -19,16 +19,16 @@ import { nextTick, reactive } from 'vue'
 
 export function promQueryList(res: any, initArr: string[], asyncFun: any) {
   const react_res = reactive(res)
-  for (let key of initArr) {
-    let list = res?.data?.list
-    for (let r of list) {
+  for (const key of initArr) {
+    const list = res?.data?.list
+    for (const r of list) {
       r[key] = 'skeleton-loading'
     }
   }
   nextTick(async () => {
     try {
-      let list = react_res?.data?.list || []
-      for (let r of list) {
+      const list = react_res?.data?.list || []
+      for (const r of list) {
         asyncFun(r)
       }
     } catch (e) {

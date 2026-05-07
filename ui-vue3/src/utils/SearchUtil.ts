@@ -99,12 +99,12 @@ export class SearchDomain {
     this.searchApi(queryParams)
       .then((res: any) => {
         const {
-          data: { list, pageInfo }
-        } = res
+          data: { list = [], pageInfo }
+        } = res || {}
         this.result = handleResult ? handleResult(list) : list
 
         if (!this.noPaged) {
-          this.paged.total = pageInfo?.Total || 0
+          this.paged.total = pageInfo?.total || 0
         }
       })
       .catch((error: any) => {

@@ -46,16 +46,34 @@
       <template v-slot:form_paramRoute="{ current }">
         <a-form-item name="paramRoute">
           <div class="param-route">
-            <ParamRoute
-              v-for="(item, index) in current.form.paramRoute"
-              :key="index"
-              :paramRouteForm="item"
-              :index="index"
-              @deleteParamRoute="deleteParamRoute"
-            />
-            <a-button type="primary" style="margin-top: 20px" @click="addParamRoute"
-              >增加路由</a-button
+            <a-empty
+              v-if="!current.form.paramRoute || current.form.paramRoute.length === 0"
+              description="暂无参数路由配置"
+              :image="null"
+              style="margin: 40px 0"
             >
+              <template #description>
+                <span style="color: rgba(0, 0, 0, 0.45); font-size: 14px">暂无参数路由配置</span>
+              </template>
+              <a-button type="primary" @click="addParamRoute">添加第一条路由</a-button>
+            </a-empty>
+            <template v-else>
+              <ParamRoute
+                v-for="(item, index) in current.form.paramRoute"
+                :key="index"
+                :paramRouteForm="item"
+                :index="index"
+                @deleteParamRoute="deleteParamRoute"
+              />
+              <div class="add-route-button-wrapper">
+                <a-button type="dashed" @click="addParamRoute" block>
+                  <template #icon>
+                    <PlusOutlined />
+                  </template>
+                  增加路由
+                </a-button>
+              </div>
+            </template>
           </div>
         </a-form-item>
       </template>
@@ -64,7 +82,8 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { PlusOutlined } from '@ant-design/icons-vue'
 import ParamRoute from './paramRoute.vue'
 import ConfigPage from '@/components/ConfigPage.vue'
 import {
@@ -78,6 +97,7 @@ import {
   updateServiceTimeoutAPI
 } from '@/api/service/service'
 import { useRoute } from 'vue-router'
+import { HTTP_STATUS } from '@/base/http/constants'
 
 const route = useRoute()
 
@@ -213,10 +233,10 @@ const getParamRoute = async () => {
     version
   }
   const res = await getParamRouteAPI(params)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     options.list.forEach((item: any) => {
       if (item.key === 'paramRoute') {
-        item.form.paramRoute = res.data?.routes
+        item.form.paramRoute = res.data?.routes || []
       }
     })
   }
@@ -307,11 +327,42 @@ const updateServiceIntraRegionPriority = async (enabled: boolean) => {
   await getServiceIntraRegionPriority()
 }
 
-onMounted(async () => {
-  await getServiceTimeout()
-  await getServiceRetry()
-  await getServiceIntraRegionPriority()
-  await getParamRoute()
+// Load data for a specific config item by key
+const loadConfigData = async (key: string) => {
+  try {
+    switch (key) {
+      case 'timeout':
+        await getServiceTimeout()
+        break
+      case 'retryNum':
+        await getServiceRetry()
+        break
+      case 'sameAreaFirst':
+        await getServiceIntraRegionPriority()
+        break
+      case 'paramRoute':
+        await getParamRoute()
+        break
+    }
+  } catch (error) {
+    console.error(`Failed to load ${key}:`, error)
+  }
+}
+
+// Watch for tab changes and load data (always reload on tab switch)
+watch(
+  () => options.current[0],
+  (newIndex: number) => {
+    const currentKey = options.list[newIndex]?.key
+    if (currentKey) {
+      loadConfigData(currentKey)
+    }
+  },
+  { immediate: true }
+)
+
+onMounted(() => {
+  // Data loading is handled by the watch when tabs are switched
 })
 </script>
 
@@ -333,6 +384,12 @@ onMounted(async () => {
   .param-route {
     // margin-bottom: 20px;
     height: 320px;
+
+    .add-route-button-wrapper {
+      margin-top: 16px;
+      width: 100%;
+      max-width: 1000px;
+    }
   }
 }
 

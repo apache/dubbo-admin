@@ -7,81 +7,19 @@ option go_package = "github.com/apache/dubbo-admin/api/mesh";
 import "google/protobuf/descriptor.proto";
 
 message DubboResourceOptions {
-  // Name of the Dubbo resource struct.
+  // Name and type of the dubbo resource struct.
   string name = 1;
 
-  // Name and value of the modelResourceType constant.
-  string type = 2;
-
-  // True if this resource has global scope. Otherwise it will be mesh scope.
-  bool global = 3;
+  // The name of the resource showed as plural
+  string plural_name = 2;
 
   // Name of the resource's Go package.
-  string package = 4;
+  string package = 3;
 
-  // Whether to skip type registration for this resource.
-  bool skip_registration = 6;
-
-  DubboDdsOptions dds = 10;
-  DubboWsOptions ws = 7;
-
-  // Whether scope is "Namespace"; Otherwise to "Cluster".
-  bool scope_namespace = 11;
-
-  // Whether to skip generation of native API helper functions.
-  bool skip_kubernetes_wrappers = 12;
-
-  // Whether to generate Inspect API endpoint
-  bool allow_to_inspect = 13;
-
-  // If resource has more than one version, then the flag defines which version
-  // is used in the storage. All other versions must be convertible to it.
-  bool storage_version = 14;
-
-  // The name of the policy showed as plural to be displayed in the UI and maybe
-  // CLI
-  string plural_display_name = 15;
-
-  // Is Experimental indicates if a policy is in experimental state (might not
-  // be production ready).
-  bool is_experimental = 16;
-
-  // Columns to set using `+kubebuilder::printcolumns`
-  repeated string additional_printer_columns = 17;
-
-  // Whether the resource has a matching insight type
-  bool has_insights = 18;
-}
-
-message DubboWsOptions {
-  // Name is the name of the policy for resource name usage in path.
-  string name = 1;
-  // Plural is only to be set if the plural of the resource is irregular (not
-  // just adding a 's' at the end).
-  string plural = 2;
-  // ReadOnly if the resource is read only.
-  bool read_only = 3;
-  // AdminOnly whether this entity requires admin auth to access these
-  // endpoints.
-  bool admin_only = 4;
-}
-
-message DubboDdsOptions {
-  // SendToGlobal whether this entity will be sent from zone cp to global cp
-  bool send_to_global = 1;
-  // SendToZone whether this entity will be sent from global cp to zone cp
-  bool send_to_zone = 2;
-}
-
-message DubboPolicyOptions {
-  // Whether to skip type registration for this resource.
-  bool skip_registration = 1;
-  // An optional alternative plural form if this is unset default to a standard
-  // derivation of the name
-  string plural = 2;
+  // Is Experimental indicates if a resource is in experimental state.
+  bool is_experimental = 4;
 }
 
 extend google.protobuf.MessageOptions {
   DubboResourceOptions resource = 43534533; // 'dubbo'
-  DubboPolicyOptions policy = 43534534;     // 'dubbo'
 }

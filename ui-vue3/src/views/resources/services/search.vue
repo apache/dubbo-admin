@@ -17,28 +17,22 @@
 <template>
   <div class="__container_services_index">
     <search-table :search-domain="searchDomain">
-      <template #bodyCell="{ column, record, text, index: tableRowIndex }">
+      <template #bodyCell="{ column, record, text }">
         <template v-if="column.dataIndex === 'serviceName'">
-          {{ record.versionGroup }}
-          <span class="service-link" @click="viewDistribution(text, tableRowIndex)">
-            <b>
-              <Icon style="margin-bottom: -2px" icon="material-symbols:attach-file-rounded"></Icon>
-              {{ text }}
-            </b>
-          </span>
-        </template>
-
-        <template v-else-if="column.dataIndex === 'versionGroupSelect'">
-          <a-select :value="text?.versionGroupValue" :bordered="false" style="width: 80%">
-            <a-select-option
-              v-for="(item, index) in text?.versionGroupArr"
-              :value="item"
-              @click="selectedVersionAndGroup(tableRowIndex, index, item)"
-              :key="index"
+          <a-tooltip :title="text">
+            <span
+              class="app-link"
+              @click="viewDistribution(text, record.group, record.version, record.providerAppName)"
             >
-              {{ item }}
-            </a-select-option>
-          </a-select>
+              <b>
+                <Icon
+                  style="margin-bottom: -2px"
+                  icon="material-symbols:attach-file-rounded"
+                ></Icon>
+                {{ text }}
+              </b>
+            </span>
+          </a-tooltip>
         </template>
       </template>
     </search-table>
@@ -47,7 +41,7 @@
 
 <script setup lang="ts">
 import { useRoute, useRouter } from 'vue-router'
-import { nextTick, provide, reactive, ref, watch } from 'vue'
+import { provide, reactive, watch } from 'vue'
 import { searchService } from '@/api/service/service'
 import { SearchDomain } from '@/utils/SearchUtil'
 import SearchTable from '@/components/SearchTable.vue'
@@ -65,63 +59,67 @@ const columns = [
   {
     title: 'service',
     key: 'service',
-    dataIndex: 'serviceName',
-    sorter: true,
-    width: '30%',
-    ellipsis: true
+    dataIndex: 'serviceName'
+    // sorter: true,
   },
   {
-    title: 'versionGroup',
-    key: 'versionGroup',
-    dataIndex: 'versionGroupSelect',
-    width: '25%'
+    title: 'version',
+    key: 'version',
+    dataIndex: 'version'
+  },
+  {
+    title: 'subset',
+    key: 'group',
+    dataIndex: 'group'
+  },
+  {
+    title: 'provider',
+    key: 'provider',
+    dataIndex: 'providerAppName'
   },
   {
     title: 'avgQPS',
     key: 'avgQPS',
-    dataIndex: 'avgQPS',
-    sorter: true,
-    width: '15%'
+    dataIndex: 'avgQPS'
+    // sorter: true,
   },
   {
     title: 'avgRT',
     key: 'avgRT',
-    dataIndex: 'avgRT',
-    sorter: true,
-    width: '15%'
+    dataIndex: 'avgRT'
+    // sorter: true,
   },
   {
     title: 'requestTotal',
     key: 'requestTotal',
-    dataIndex: 'requestTotal',
-    sorter: true,
-    width: '15%'
+    dataIndex: 'requestTotal'
+    // sorter: true,
   }
+  // {
+  //   title: 'avgQPS',
+  //   key: 'avgQPS',
+  //   dataIndex: 'avgQPS',
+  //   // sorter: true,
+  //   width: '15%'
+  // },
+  // {
+  //   title: 'avgRT',
+  //   key: 'avgRT',
+  //   dataIndex: 'avgRT',
+  //   // sorter: true,
+  //   width: '15%'
+  // },
+  // {
+  //   title: 'requestTotal',
+  //   key: 'requestTotal',
+  //   dataIndex: 'requestTotal',
+  //   // sorter: true,
+  //   width: '15%'
+  // }
 ]
-
-const tempServiceList = ref([])
-
-const handleResult = (result: any) => {
-  return result.map((service: any) => {
-    service.versionGroupSelect = {}
-    service.versionGroupSelect.versionGroupArr = service.versionGroups.map((item: any) => {
-      return (item.versionGroup =
-        (item.version ? 'version: ' + item.version + ', ' : '') +
-          (item.group ? 'group: ' + item.group : '') || '无')
-    })
-    service.versionGroupSelect.versionGroupValue = service.versionGroupSelect.versionGroupArr[0]
-    return service
-  })
-}
 
 function serviceInfo(params: any, table: any) {
   return searchService(params).then(async (res) => {
-    tempServiceList.value = res.data?.list
-    tempServiceList.value.forEach((service: any) => {
-      service.selectedIndex = -1
-    })
-
-    console.log(tempServiceList.value)
     return promQueryList(res, ['avgQPS', 'avgRT', 'requestTotal'], async (service: any) => {
       service.avgQPS = await queryMetrics(
         `sum (dubbo_provider_qps_total{interface='${service.serviceName}'}) by (interface)`
@@ -152,34 +150,27 @@ const searchDomain = reactive(
     serviceInfo,
     columns,
     undefined,
-    undefined,
-    handleResult
+    undefined
   )
 )
 
-searchDomain.onSearch(handleResult)
+searchDomain.onSearch()
 searchDomain.tableStyle = {
   scrollX: '100',
   scrollY: '367px'
 }
 
-const selectedVersionAndGroup = (
-  tableRowIndex: number,
-  versionAndGroupIndex: number,
-  versionAndGroupText: string
+const viewDistribution = (
+  serviceName: string,
+  group: string,
+  version: string,
+  providerAppName?: string
 ) => {
-  if (versionAndGroupText === '无') {
-    tempServiceList.value[tableRowIndex].selectedIndex = -1
-  } else {
-    tempServiceList.value[tableRowIndex].selectedIndex = versionAndGroupIndex
-  }
-}
-
-const viewDistribution = (serviceName: string, tableRowIndex: number) => {
-  const selectedIndex = tempServiceList.value[tableRowIndex]?.selectedIndex
-  const group = tempServiceList.value[tableRowIndex].versionGroups[selectedIndex]?.group || ''
-  const version = tempServiceList.value[tableRowIndex].versionGroups[selectedIndex]?.version || ''
-  router.push({ name: 'distribution', params: { pathId: serviceName, group, version } })
+  router.push({
+    name: 'distribution',
+    params: { pathId: serviceName, group, version },
+    query: providerAppName ? { providerAppName } : {}
+  })
 }
 
 provide(PROVIDE_INJECT_KEY.SEARCH_DOMAIN, searchDomain)
@@ -191,15 +182,6 @@ watch(route, (a, b) => {
 </script>
 <style lang="less" scoped>
 .__container_services_index {
-  .service-link {
-    padding: 4px 10px 4px 4px;
-    border-radius: 4px;
-    color: v-bind('PRIMARY_COLOR');
-
-    &:hover {
-      cursor: pointer;
-      background: rgba(133, 131, 131, 0.13);
-    }
-  }
+  // Styles moved to global app-link in App.vue
 }
 </style>
