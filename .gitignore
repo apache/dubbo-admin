@@ -51,3 +51,4 @@ app/dubbo-ui/dist/
 claude_desktop_config.json
 .mcp.json
 .env
+dubbo-admin.yaml
