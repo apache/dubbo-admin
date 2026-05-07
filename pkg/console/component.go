@@ -49,9 +49,10 @@ func init() {
 }
 
 type consoleWebServer struct {
-	Engine *gin.Engine
-	cfg    *console.Config
-	cs     consolectx.Context
+	Engine  *gin.Engine
+	cfg     *console.Config
+	cs      consolectx.Context
+	mcpPath string // MCP端点路径，用于auth中间件跳过认证
 }
 
 func (c *consoleWebServer) RequiredDependencies() []runtime.ComponentType {
@@ -155,6 +156,15 @@ func (c *consoleWebServer) registerMCPEndpoints(coreRt runtime.Runtime, engine *
 		return
 	}
 
+	// 确定端点路径
+	path := cfg.MCP.Path
+	if path == "" {
+		path = "/api/mcp"
+	}
+
+	// 存储MCP路径供auth中间件使用
+	c.mcpPath = path
+
 	// 获取MCP组件
 	mcpComp, err := coreRt.GetComponent(runtime.ComponentType("mcp"))
 	if err != nil {
@@ -179,12 +189,6 @@ func (c *consoleWebServer) registerMCPEndpoints(coreRt runtime.Runtime, engine *
 		return
 	}
 
-	// 确定端点路径
-	path := cfg.MCP.Path
-	if path == "" {
-		path = "/api/mcp"
-	}
-
 	// 创建HTTP处理器
 	handler := mcphttp.NewHandler(server)
 
@@ -197,21 +201,27 @@ func (c *consoleWebServer) registerMCPEndpoints(coreRt runtime.Runtime, engine *
 }
 
 func (c *consoleWebServer) authMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
+	return func(ctx *gin.Context) {
 		// skip login api
-		requestPath := c.Request.URL.Path
+		requestPath := ctx.Request.URL.Path
 		if strings.HasSuffix(requestPath, "/login") {
-			c.Next()
+			ctx.Next()
 			return
 		}
-		session := sessions.Default(c)
+		// skip MCP endpoint (no authentication needed)
+		// check default path or configured path
+		if requestPath == "/api/mcp" || (c.mcpPath != "" && requestPath == c.mcpPath) {
+			ctx.Next()
+			return
+		}
+		session := sessions.Default(ctx)
 		user := session.Get("user")
 		if user == nil {
 			authErr := bizerror.New(bizerror.Unauthorized, "no access, please login")
-			c.JSON(http.StatusUnauthorized, model.NewBizErrorResp(authErr))
-			c.Abort()
+			ctx.JSON(http.StatusUnauthorized, model.NewBizErrorResp(authErr))
+			ctx.Abort()
 			return
 		}
-		c.Next()
+		ctx.Next()
 	}
 }
