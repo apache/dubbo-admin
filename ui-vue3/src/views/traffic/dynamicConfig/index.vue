@@ -77,14 +77,14 @@ import { Icon } from '@iconify/vue'
 const router = useRouter()
 
 let __null = PRIMARY_COLOR
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 TAB_STATE.dynamicConfigForm = reactive({})
 let columns = [
   {
     title: 'ruleName',
     key: 'ruleName',
     dataIndex: 'ruleName',
-    sorter: (a: any, b: any) => sortString(a.appName, b.appName),
+    // sorter: (a: any, b: any) => sortString(a.appName, b.appName),
     width: 200,
     ellipsis: true
   },
@@ -93,23 +93,23 @@ let columns = [
     key: 'ruleGranularity',
     dataIndex: 'ruleGranularity',
     render: (text, record) => (record.isService ? '服务' : '应用'),
-    width: 100,
-    sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
+    width: 100
+    // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
     title: 'createTime',
     key: 'createTime',
     dataIndex: 'createTime',
-    width: 200,
-    sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
+    width: 200
+    // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
     title: 'enabled',
     key: 'enabled',
     dataIndex: 'enabled',
     render: (text, record) => (record.enabled ? '是' : '否'),
-    width: 120,
-    sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
+    width: 120
+    // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
     title: 'operation',
@@ -123,7 +123,7 @@ const searchDomain = reactive(
     [
       {
         label: 'serviceGovernance',
-        param: 'serviceGovernance',
+        param: 'keywords',
         placeholder: 'typeRoutingRules',
         style: {
           width: '200px'
@@ -152,10 +152,12 @@ provide(PROVIDE_INJECT_KEY.SEARCH_DOMAIN, searchDomain)
 <style lang="less" scoped>
 .__container_traffic_config_index {
   min-height: 60vh;
+
   .config-link {
     padding: 4px 10px 4px 4px;
     border-radius: 4px;
     color: v-bind('PRIMARY_COLOR');
+
     &:hover {
       cursor: pointer;
       background: rgba(133, 131, 131, 0.13);

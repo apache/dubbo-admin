@@ -18,7 +18,10 @@
 package cmd
 
 import (
-	"fmt"
+	"context"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -26,19 +29,14 @@ import (
 	"github.com/apache/dubbo-admin/pkg/config"
 	"github.com/apache/dubbo-admin/pkg/config/app"
 	"github.com/apache/dubbo-admin/pkg/core/bootstrap"
-	dubbocmd "github.com/apache/dubbo-admin/pkg/core/cmd"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
+	_ "github.com/apache/dubbo-admin/pkg/lock/gorm"
 	dubboversion "github.com/apache/dubbo-admin/pkg/version"
 )
 
-var runLog = adminLog.WithName("run")
-
 const gracefullyShutdownDuration = 3 * time.Second
 
-// This is the open file limit below which the control plane may not
-// reasonably have enough descriptors to accept all its clients.
-const minOpenFileLimit = 4096
-
-func newRunCmdWithOpts(opts dubbocmd.RunCmdOpts) *cobra.Command {
+func newRunCmdWithOpts() *cobra.Command {
 	args := struct {
 		configPath string
 	}{}
@@ -51,49 +49,66 @@ func newRunCmdWithOpts(opts dubbocmd.RunCmdOpts) *cobra.Command {
 			cfg := app.DefaultAdminConfig()
 			err := config.Load(args.configPath, &cfg)
 			if err != nil {
-				runLog.Error(err, "could not load the configuration")
 				return err
-
 			}
+			// 2. configure logger
+			logger.Init(cfg.Log)
 			cfgForDisplay, err := config.ConfigForDisplay(&cfg)
 			if err != nil {
-				runLog.Error(err, "unable to prepare config for display")
+				logger.Errorf("unable to prepare config for display, cause: %s", err.Error())
 				return err
 			}
 			cfgBytes, err := config.ToJson(cfgForDisplay)
 			if err != nil {
-				runLog.Error(err, "unable to convert config to json")
+				logger.Errorf("unable to convert config to json, cause: %s", err.Error())
 				return err
 			}
-			runLog.Info(fmt.Sprintf("Current config %s", cfgBytes))
-			runLog.Info(fmt.Sprintf("Running in mode `%s`", cfg.Mode))
+			logger.Infof("current config:\n %s", cfgBytes)
 
 			// 2. build components
-			gracefulCtx, ctx := opts.SetupSignalHandler()
+			gracefulCtx, ctx := setupSignalHandler()
 			rt, err := bootstrap.Bootstrap(gracefulCtx, cfg)
 			if err != nil {
-				runLog.Error(err, "unable to bootstrap")
+				logger.Errorf("unable to bootstrap, cause: %s", err.Error())
 				return err
 			}
 
 			// 3. start components
-			runLog.Info("starting Admin......", "version", dubboversion.Build.Version)
+			logger.Infof("starting Admin......, version: %s", dubboversion.Build.Version)
 			if err := rt.Start(gracefulCtx.Done()); err != nil {
-				runLog.Error(err, "problem running Admin")
+				logger.Errorf("problem running Admin, cause: %s", err.Error())
 				return err
 			}
-
-			runLog.Info("stop signal received. Waiting 3 seconds for components to stop gracefully...")
+			logger.Info("stop signal received. Waiting 3 seconds for components to stop gracefully...")
 			select {
 			case <-ctx.Done():
-				runLog.Info("all components have stopped")
+				logger.Info("all components have stopped")
 			case <-time.After(gracefullyShutdownDuration):
-				runLog.Info("forcefully stopped")
+				logger.Info("forcefully stopped")
 			}
 			return nil
 		},
 	}
 	// flags
-	cmd.PersistentFlags().StringVarP(&args.configPath, "config-file", "c", "", "configuration file")
+	cmd.PersistentFlags().StringVarP(&args.configPath, "config-file", "c", "./dubbo-admin.yaml", "configuration file")
 	return cmd
+}
+
+func setupSignalHandler() (context.Context, context.Context) {
+	gracefulCtx, gracefulCancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	c := make(chan os.Signal, 3)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		s := <-c
+		logger.Warnf("received signal %s, stopping instance gracefully", s.String())
+		gracefulCancel()
+		s = <-c
+		logger.Warnf("received second signal %s, stopping instance", s.String())
+		cancel()
+		s = <-c
+		logger.Warnf("received third signal %s, force exit", s.String())
+		os.Exit(1)
+	}()
+	return gracefulCtx, ctx
 }

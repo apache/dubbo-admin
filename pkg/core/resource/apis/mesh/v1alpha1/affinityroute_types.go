@@ -21,33 +21,35 @@
 package v1alpha1
 
 import (
+	"encoding/json"
+
+	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
-
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:categories=dubbo,scope=Cluster
 
 const AffinityRouteKind coremodel.ResourceKind = "AffinityRoute"
 
 func init() {
-	coremodel.RegisterResourceKind(AffinityRouteKind)
+	coremodel.RegisterResourceSchema(AffinityRouteKind, NewAffinityRouteResource, NewAffinityRouteResourceList)
 }
 
 type AffinityRouteResource struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Mesh is the name of the dubbo mesh this resource belongs to.
 	// It may be omitted for cluster-scoped resources.
-	//
-	// +kubebuilder:validation:Optional
 	Mesh string `json:"mesh,omitempty"`
+
 	// Spec is the specification of the Dubbo AffinityRoute resource.
-	// +kubebuilder:validation:Optional
 	Spec *meshproto.AffinityRoute `json:"spec,omitempty"`
+
 	// Status is the status of the Dubbo AffinityRoute resource.
 	Status AffinityRouteResourceStatus `json:"status,omitempty"`
 }
@@ -56,19 +58,11 @@ type AffinityRouteResourceStatus struct {
 	// define resource-specific status here
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:scope=Namespaced
-type AffinityRouteResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []AffinityRouteResource `json:"items"`
-}
-
 func (r *AffinityRouteResource) ResourceKind() coremodel.ResourceKind {
 	return AffinityRouteKind
 }
 
-func (r *AffinityRouteResource) MeshName() string {
+func (r *AffinityRouteResource) ResourceMesh() string {
 	return r.Mesh
 }
 
@@ -84,16 +78,111 @@ func (r *AffinityRouteResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func NewAffinityRouteResource(name string, mesh string, apiVersion string) *AffinityRouteResource {
+func (r *AffinityRouteResource) DeepCopyObject() k8sruntime.Object {
+	out := &AffinityRouteResource{
+		TypeMeta: r.TypeMeta,
+		Mesh:     r.Mesh,
+		Status:   r.Status,
+	}
+
+	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+
+	if r.Spec != nil {
+		spec, ok := proto.Clone(r.Spec).(*meshproto.AffinityRoute)
+		if !ok {
+			logger.Warnf("failed to clone spec %v, spec is not conformed to %s", r.Spec, r.ResourceKind())
+			return out
+		}
+		out.Spec = spec
+	}
+
+	return out
+}
+
+func (r *AffinityRouteResource) String() string {
+	jsonStr, err := json.Marshal(r)
+	if err != nil {
+		logger.Errorf("failed to encode AffinityRouteResource: %s to json, err: %v", r.ResourceKey(), err)
+		return ""
+	}
+	return string(jsonStr)
+}
+
+func NewAffinityRouteResourceWithAttributes(name string, mesh string) *AffinityRouteResource {
 	return &AffinityRouteResource{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(AffinityRouteKind),
-			APIVersion: apiVersion,
+			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+		Spec: &meshproto.AffinityRoute{},
+	}
+}
+
+func NewAffinityRouteResource() coremodel.Resource {
+	return &AffinityRouteResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(AffinityRouteKind),
+			APIVersion: "v1alpha1",
+		},
+		Spec: &meshproto.AffinityRoute{},
+	}
+}
+
+type AffinityRouteResourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []*AffinityRouteResource `json:"items"`
+}
+
+func (r *AffinityRouteResourceList) DeepCopyObject() k8sruntime.Object {
+	out := &AffinityRouteResourceList{
+		TypeMeta: r.TypeMeta,
+	}
+	r.ListMeta.DeepCopyInto(&out.ListMeta)
+
+	if len(r.Items) == 0 {
+		return out
+	}
+	out.Items = make([]*AffinityRouteResource, len(r.Items))
+	for i := range r.Items {
+		out.Items[i] = r.Items[i].DeepCopyObject().(*AffinityRouteResource)
+	}
+	return out
+}
+
+func NewAffinityRouteResourceList() coremodel.ResourceList {
+	return &AffinityRouteResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(AffinityRouteKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: make([]*AffinityRouteResource, 0),
+	}
+}
+
+func (r *AffinityRouteResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*AffinityRouteResource, len(items))
+	for i := range items {
+		res, ok := items[i].(*AffinityRouteResource)
+		if !ok {
+			logger.Errorf("unexpected resource type, expected: %s, get %s", AffinityRouteKind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func NewAffinityRouteResourceListWithItems(items ...*AffinityRouteResource) *AffinityRouteResourceList {
+	return &AffinityRouteResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(AffinityRouteKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
 	}
 }

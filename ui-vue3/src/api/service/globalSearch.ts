@@ -24,3 +24,10 @@ export const globalSearch = (params: any): Promise<any> => {
     params
   })
 }
+
+export const meshesSearch = (): Promise<any> => {
+  return request({
+    url: '/meshes',
+    method: 'get'
+  })
+}

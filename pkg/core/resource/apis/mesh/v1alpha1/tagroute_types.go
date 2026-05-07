@@ -21,33 +21,35 @@
 package v1alpha1
 
 import (
+	"encoding/json"
+
+	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
-
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:categories=dubbo,scope=Cluster
 
 const TagRouteKind coremodel.ResourceKind = "TagRoute"
 
 func init() {
-	coremodel.RegisterResourceKind(TagRouteKind)
+	coremodel.RegisterResourceSchema(TagRouteKind, NewTagRouteResource, NewTagRouteResourceList)
 }
 
 type TagRouteResource struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Mesh is the name of the dubbo mesh this resource belongs to.
 	// It may be omitted for cluster-scoped resources.
-	//
-	// +kubebuilder:validation:Optional
 	Mesh string `json:"mesh,omitempty"`
+
 	// Spec is the specification of the Dubbo TagRoute resource.
-	// +kubebuilder:validation:Optional
 	Spec *meshproto.TagRoute `json:"spec,omitempty"`
+
 	// Status is the status of the Dubbo TagRoute resource.
 	Status TagRouteResourceStatus `json:"status,omitempty"`
 }
@@ -56,19 +58,11 @@ type TagRouteResourceStatus struct {
 	// define resource-specific status here
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:scope=Namespaced
-type TagRouteResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []TagRouteResource `json:"items"`
-}
-
 func (r *TagRouteResource) ResourceKind() coremodel.ResourceKind {
 	return TagRouteKind
 }
 
-func (r *TagRouteResource) MeshName() string {
+func (r *TagRouteResource) ResourceMesh() string {
 	return r.Mesh
 }
 
@@ -84,16 +78,111 @@ func (r *TagRouteResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func NewTagRouteResource(name string, mesh string, apiVersion string) *TagRouteResource {
+func (r *TagRouteResource) DeepCopyObject() k8sruntime.Object {
+	out := &TagRouteResource{
+		TypeMeta: r.TypeMeta,
+		Mesh:     r.Mesh,
+		Status:   r.Status,
+	}
+
+	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+
+	if r.Spec != nil {
+		spec, ok := proto.Clone(r.Spec).(*meshproto.TagRoute)
+		if !ok {
+			logger.Warnf("failed to clone spec %v, spec is not conformed to %s", r.Spec, r.ResourceKind())
+			return out
+		}
+		out.Spec = spec
+	}
+
+	return out
+}
+
+func (r *TagRouteResource) String() string {
+	jsonStr, err := json.Marshal(r)
+	if err != nil {
+		logger.Errorf("failed to encode TagRouteResource: %s to json, err: %v", r.ResourceKey(), err)
+		return ""
+	}
+	return string(jsonStr)
+}
+
+func NewTagRouteResourceWithAttributes(name string, mesh string) *TagRouteResource {
 	return &TagRouteResource{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(TagRouteKind),
-			APIVersion: apiVersion,
+			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+		Spec: &meshproto.TagRoute{},
+	}
+}
+
+func NewTagRouteResource() coremodel.Resource {
+	return &TagRouteResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(TagRouteKind),
+			APIVersion: "v1alpha1",
+		},
+		Spec: &meshproto.TagRoute{},
+	}
+}
+
+type TagRouteResourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []*TagRouteResource `json:"items"`
+}
+
+func (r *TagRouteResourceList) DeepCopyObject() k8sruntime.Object {
+	out := &TagRouteResourceList{
+		TypeMeta: r.TypeMeta,
+	}
+	r.ListMeta.DeepCopyInto(&out.ListMeta)
+
+	if len(r.Items) == 0 {
+		return out
+	}
+	out.Items = make([]*TagRouteResource, len(r.Items))
+	for i := range r.Items {
+		out.Items[i] = r.Items[i].DeepCopyObject().(*TagRouteResource)
+	}
+	return out
+}
+
+func NewTagRouteResourceList() coremodel.ResourceList {
+	return &TagRouteResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(TagRouteKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: make([]*TagRouteResource, 0),
+	}
+}
+
+func (r *TagRouteResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*TagRouteResource, len(items))
+	for i := range items {
+		res, ok := items[i].(*TagRouteResource)
+		if !ok {
+			logger.Errorf("unexpected resource type, expected: %s, get %s", TagRouteKind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func NewTagRouteResourceListWithItems(items ...*TagRouteResource) *TagRouteResourceList {
+	return &TagRouteResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(TagRouteKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
 	}
 }

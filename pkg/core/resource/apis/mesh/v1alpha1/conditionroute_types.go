@@ -21,33 +21,35 @@
 package v1alpha1
 
 import (
+	"encoding/json"
+
+	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
-
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:categories=dubbo,scope=Cluster
 
 const ConditionRouteKind coremodel.ResourceKind = "ConditionRoute"
 
 func init() {
-	coremodel.RegisterResourceKind(ConditionRouteKind)
+	coremodel.RegisterResourceSchema(ConditionRouteKind, NewConditionRouteResource, NewConditionRouteResourceList)
 }
 
 type ConditionRouteResource struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Mesh is the name of the dubbo mesh this resource belongs to.
 	// It may be omitted for cluster-scoped resources.
-	//
-	// +kubebuilder:validation:Optional
 	Mesh string `json:"mesh,omitempty"`
+
 	// Spec is the specification of the Dubbo ConditionRoute resource.
-	// +kubebuilder:validation:Optional
 	Spec *meshproto.ConditionRoute `json:"spec,omitempty"`
+
 	// Status is the status of the Dubbo ConditionRoute resource.
 	Status ConditionRouteResourceStatus `json:"status,omitempty"`
 }
@@ -56,19 +58,11 @@ type ConditionRouteResourceStatus struct {
 	// define resource-specific status here
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:scope=Namespaced
-type ConditionRouteResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ConditionRouteResource `json:"items"`
-}
-
 func (r *ConditionRouteResource) ResourceKind() coremodel.ResourceKind {
 	return ConditionRouteKind
 }
 
-func (r *ConditionRouteResource) MeshName() string {
+func (r *ConditionRouteResource) ResourceMesh() string {
 	return r.Mesh
 }
 
@@ -84,16 +78,111 @@ func (r *ConditionRouteResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func NewConditionRouteResource(name string, mesh string, apiVersion string) *ConditionRouteResource {
+func (r *ConditionRouteResource) DeepCopyObject() k8sruntime.Object {
+	out := &ConditionRouteResource{
+		TypeMeta: r.TypeMeta,
+		Mesh:     r.Mesh,
+		Status:   r.Status,
+	}
+
+	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+
+	if r.Spec != nil {
+		spec, ok := proto.Clone(r.Spec).(*meshproto.ConditionRoute)
+		if !ok {
+			logger.Warnf("failed to clone spec %v, spec is not conformed to %s", r.Spec, r.ResourceKind())
+			return out
+		}
+		out.Spec = spec
+	}
+
+	return out
+}
+
+func (r *ConditionRouteResource) String() string {
+	jsonStr, err := json.Marshal(r)
+	if err != nil {
+		logger.Errorf("failed to encode ConditionRouteResource: %s to json, err: %v", r.ResourceKey(), err)
+		return ""
+	}
+	return string(jsonStr)
+}
+
+func NewConditionRouteResourceWithAttributes(name string, mesh string) *ConditionRouteResource {
 	return &ConditionRouteResource{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(ConditionRouteKind),
-			APIVersion: apiVersion,
+			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+		Spec: &meshproto.ConditionRoute{},
+	}
+}
+
+func NewConditionRouteResource() coremodel.Resource {
+	return &ConditionRouteResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ConditionRouteKind),
+			APIVersion: "v1alpha1",
+		},
+		Spec: &meshproto.ConditionRoute{},
+	}
+}
+
+type ConditionRouteResourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []*ConditionRouteResource `json:"items"`
+}
+
+func (r *ConditionRouteResourceList) DeepCopyObject() k8sruntime.Object {
+	out := &ConditionRouteResourceList{
+		TypeMeta: r.TypeMeta,
+	}
+	r.ListMeta.DeepCopyInto(&out.ListMeta)
+
+	if len(r.Items) == 0 {
+		return out
+	}
+	out.Items = make([]*ConditionRouteResource, len(r.Items))
+	for i := range r.Items {
+		out.Items[i] = r.Items[i].DeepCopyObject().(*ConditionRouteResource)
+	}
+	return out
+}
+
+func NewConditionRouteResourceList() coremodel.ResourceList {
+	return &ConditionRouteResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ConditionRouteKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: make([]*ConditionRouteResource, 0),
+	}
+}
+
+func (r *ConditionRouteResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*ConditionRouteResource, len(items))
+	for i := range items {
+		res, ok := items[i].(*ConditionRouteResource)
+		if !ok {
+			logger.Errorf("unexpected resource type, expected: %s, get %s", ConditionRouteKind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func NewConditionRouteResourceListWithItems(items ...*ConditionRouteResource) *ConditionRouteResourceList {
+	return &ConditionRouteResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ConditionRouteKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
 	}
 }

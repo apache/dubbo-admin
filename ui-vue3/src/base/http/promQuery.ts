@@ -19,7 +19,7 @@ import { queryPromSql } from '@/api/service/metricInfo'
 
 export async function queryMetrics(promSql: string) {
   try {
-    let prom_result = (
+    const prom_result = (
       await queryPromSql({
         query: promSql
       })

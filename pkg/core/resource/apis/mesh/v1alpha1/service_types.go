@@ -21,33 +21,35 @@
 package v1alpha1
 
 import (
+	"encoding/json"
+
+	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
-
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:categories=dubbo,scope=Namespaced
 
 const ServiceKind coremodel.ResourceKind = "Service"
 
 func init() {
-	coremodel.RegisterResourceKind(ServiceKind)
+	coremodel.RegisterResourceSchema(ServiceKind, NewServiceResource, NewServiceResourceList)
 }
 
 type ServiceResource struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Mesh is the name of the dubbo mesh this resource belongs to.
 	// It may be omitted for cluster-scoped resources.
-	//
-	// +kubebuilder:validation:Optional
 	Mesh string `json:"mesh,omitempty"`
+
 	// Spec is the specification of the Dubbo Service resource.
-	// +kubebuilder:validation:Optional
 	Spec *meshproto.Service `json:"spec,omitempty"`
+
 	// Status is the status of the Dubbo Service resource.
 	Status ServiceResourceStatus `json:"status,omitempty"`
 }
@@ -56,19 +58,11 @@ type ServiceResourceStatus struct {
 	// define resource-specific status here
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:scope=Cluster
-type ServiceResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ServiceResource `json:"items"`
-}
-
 func (r *ServiceResource) ResourceKind() coremodel.ResourceKind {
 	return ServiceKind
 }
 
-func (r *ServiceResource) MeshName() string {
+func (r *ServiceResource) ResourceMesh() string {
 	return r.Mesh
 }
 
@@ -84,16 +78,111 @@ func (r *ServiceResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func NewServiceResource(name string, mesh string, apiVersion string) *ServiceResource {
+func (r *ServiceResource) DeepCopyObject() k8sruntime.Object {
+	out := &ServiceResource{
+		TypeMeta: r.TypeMeta,
+		Mesh:     r.Mesh,
+		Status:   r.Status,
+	}
+
+	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+
+	if r.Spec != nil {
+		spec, ok := proto.Clone(r.Spec).(*meshproto.Service)
+		if !ok {
+			logger.Warnf("failed to clone spec %v, spec is not conformed to %s", r.Spec, r.ResourceKind())
+			return out
+		}
+		out.Spec = spec
+	}
+
+	return out
+}
+
+func (r *ServiceResource) String() string {
+	jsonStr, err := json.Marshal(r)
+	if err != nil {
+		logger.Errorf("failed to encode ServiceResource: %s to json, err: %v", r.ResourceKey(), err)
+		return ""
+	}
+	return string(jsonStr)
+}
+
+func NewServiceResourceWithAttributes(name string, mesh string) *ServiceResource {
 	return &ServiceResource{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(ServiceKind),
-			APIVersion: apiVersion,
+			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+		Spec: &meshproto.Service{},
+	}
+}
+
+func NewServiceResource() coremodel.Resource {
+	return &ServiceResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ServiceKind),
+			APIVersion: "v1alpha1",
+		},
+		Spec: &meshproto.Service{},
+	}
+}
+
+type ServiceResourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []*ServiceResource `json:"items"`
+}
+
+func (r *ServiceResourceList) DeepCopyObject() k8sruntime.Object {
+	out := &ServiceResourceList{
+		TypeMeta: r.TypeMeta,
+	}
+	r.ListMeta.DeepCopyInto(&out.ListMeta)
+
+	if len(r.Items) == 0 {
+		return out
+	}
+	out.Items = make([]*ServiceResource, len(r.Items))
+	for i := range r.Items {
+		out.Items[i] = r.Items[i].DeepCopyObject().(*ServiceResource)
+	}
+	return out
+}
+
+func NewServiceResourceList() coremodel.ResourceList {
+	return &ServiceResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ServiceKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: make([]*ServiceResource, 0),
+	}
+}
+
+func (r *ServiceResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*ServiceResource, len(items))
+	for i := range items {
+		res, ok := items[i].(*ServiceResource)
+		if !ok {
+			logger.Errorf("unexpected resource type, expected: %s, get %s", ServiceKind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func NewServiceResourceListWithItems(items ...*ServiceResource) *ServiceResourceList {
+	return &ServiceResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(ServiceKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
 	}
 }

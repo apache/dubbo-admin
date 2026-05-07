@@ -7,13 +7,11 @@ option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
 import "api/mesh/options.proto";
 
 message TagRoute {
-  option (dubbo.mesh.resource).name = "TagRouteResource";
-  option (dubbo.mesh.resource).type = "TagRoute";
+  option (dubbo.mesh.resource).name = "TagRoute";
+  option (dubbo.mesh.resource).plural_name = "TagRoutes";
   option (dubbo.mesh.resource).package = "mesh";
-  option (dubbo.mesh.resource).dds.send_to_zone = true;
-  option (dubbo.mesh.resource).ws.name = "tagroute";
-  option (dubbo.mesh.resource).ws.plural = "tagroutes";
-  option (dubbo.mesh.resource).allow_to_inspect = true;
+  option (dubbo.mesh.resource).is_experimental = false;
+
 
   int32 priority = 1;
   bool enabled = 2;

@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+
+// RuntimeInstance is retrieved from Engine, defines the attributes of instance in runtime environments
+message RuntimeInstance {
+  option (dubbo.mesh.resource).name = "RuntimeInstance";
+  option (dubbo.mesh.resource).plural_name = "RuntimeInstances";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).is_experimental = true;
+
+  string name = 1;
+
+  string ip = 2;
+
+  int64 rpcPort = 3;
+
+  string image = 4;
+
+  string appName = 5;
+
+  string createTime = 6;
+
+  string startTime = 7;
+
+  string readyTime = 8;
+
+  string phase = 9;
+
+  string workloadName = 10;
+
+  string workloadType = 11;
+
+  string node = 12;
+
+  repeated Probe probes = 13;
+
+  repeated Condition conditions = 14;
+
+  // reserved for future use
+  reserved 15 to 50;
+
+  // start from 50 for extra fields which is added by components in admin
+  // sourceEngine is the engine name of runtime instance running on
+  string sourceEngine = 51;
+
+  // sourceEngineType is the engine type of runtime instance running on
+  string sourceEngineType = 52;
+
+}
+
+message Probe {
+  string type = 1;
+  int32 port = 2;
+}
+
+// reference: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#pod-conditions
+message Condition{
+
+  string type = 1;
+
+  string status = 2;
+
+  string lastTransitionTime = 3;
+
+  string reason = 4;
+
+  string message = 5;
+}

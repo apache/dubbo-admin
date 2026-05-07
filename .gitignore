@@ -45,11 +45,4 @@ bin/
 build/
 vendor/
 
-# dubbo cp cache
-app/dubbo-cp/cache
-
-# environment files
-.env
-.env.local
-.env.*.local
-AI_CHANGES_SUMMARY.md
+app/dubbo-ui/dist/

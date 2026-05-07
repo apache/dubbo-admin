@@ -75,7 +75,8 @@ import { Icon } from '@iconify/vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { formattedDate } from '@/utils/DateUtil'
 import { useRoute } from 'vue-router'
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.PROVIDE_INJECT_KEY)
+import { HTTP_STATUS } from '@/base/http/constants'
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
 onMounted(() => {
   TAB_STATE.tagRule = null
@@ -86,23 +87,23 @@ let columns = [
     title: 'ruleName',
     key: 'ruleName',
     dataIndex: 'ruleName',
-    sorter: (a: any, b: any) => sortString(a.appName, b.appName),
+    // sorter: (a: any, b: any) => sortString(a.appName, b.appName),
     width: 140
   },
   {
     title: 'createTime',
     key: 'createTime',
     dataIndex: 'createTime',
-    width: 120,
-    sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
+    width: 120
+    // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
     title: 'enable',
     key: 'enabled',
     dataIndex: 'enabled',
     // render: (text, record) => (record.enable ? '是' : '否'),
-    width: 120,
-    sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
+    width: 120
+    // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
   {
     title: 'operation',
@@ -116,7 +117,7 @@ const searchDomain = reactive(
     [
       {
         label: 'serviceGovernance',
-        param: 'serviceGovernance',
+        param: 'keywords',
         placeholder: 'typeRoutingRules',
         style: {
           width: '200px'
@@ -131,7 +132,7 @@ const searchDomain = reactive(
 // Delete tag routing.
 const deleteTagRule = async (ruleName: string) => {
   const res = await deleteTagRuleAPI(ruleName)
-  if (res.code === 200) {
+  if (res.code === HTTP_STATUS.SUCCESS) {
     await searchDomain.onSearch()
   }
 }
@@ -153,6 +154,7 @@ provide(PROVIDE_INJECT_KEY.SEARCH_DOMAIN, searchDomain)
 <style lang="less" scoped>
 .tag-rule-container {
   height: 100%;
+
   .search-table-container {
     min-height: 60vh;
     //max-height: 70vh; //overflow: auto;

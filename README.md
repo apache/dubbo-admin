@@ -2,11 +2,11 @@
 Dubbo Admin
 </h1>
 
-[![Build](https://github.com/apache/dubbo-kubernetes/actions/workflows/ci.yml/badge.svg)](https://github.com/apache/dubbo-kubernetes/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/apache/dubbo-kubernetes/branch/master/graph/badge.svg)](https://codecov.io/gh/apache/dubbo-kubernetes)
+[![Build](https://github.com/apache/dubbo-admin/actions/workflows/ci.yml/badge.svg)](https://github.com/apache/dubbo-admin/actions/workflows/ci.yml/badge.svg)
+[![codecov](https://codecov.io/gh/apache/dubbo-admin/branch/develop/graph/badge.svg)](https://codecov.io/gh/apache/dubbo-admin)
 ![license](https://img.shields.io/badge/license-Apache--2.0-green.svg)
 
-Dubbo Admin is the console designed for better visualization of Dubbo services.
+Dubbo Admin is the console designed for better visualization of Dubbo applications.
 
 ## Repositories
 The main code repositories of Dubbo Admin include:
@@ -33,7 +33,7 @@ Please refer to [RoadMap](https://github.com/apache/dubbo-admin/discussions/1300
 - [docs/server-develop](https://github.com/apache/dubbo-admin/docs/server-develop/README.md) for more detail
 
 ### Other Information 
-Refer to [CONTRIBUTING.md](https://github.com/apache/dubbo-kubernetes/blob/master/CONTRIBUTING.md)
+Refer to [CONTRIBUTING.md](https://github.com/apache/dubbo-admin/blob/develop/CONTRIBUTING.md)
 
 ## License
-Apache License 2.0, see [LICENSE](https://github.com/apache/dubbo-kubernetes/blob/master/LICENSE).
+Apache License 2.0, see [LICENSE](https://github.com/apache/dubbo-admin/blob/develop/LICENSE).

@@ -8,14 +8,10 @@ import "api/mesh/options.proto";
 import "api/mesh/v1alpha1/tag_route.proto";
 
 message DynamicConfig {
-  option (dubbo.mesh.resource).name = "DynamicConfigResource";
-  option (dubbo.mesh.resource).type = "DynamicConfig";
+  option (dubbo.mesh.resource).name = "DynamicConfig";
+  option (dubbo.mesh.resource).plural_name = "DynamicConfigs";
   option (dubbo.mesh.resource).package = "mesh";
-  option (dubbo.mesh.resource).dds.send_to_zone = true;
-  option (dubbo.mesh.resource).ws.name = "dynamicconfig";
-  option (dubbo.mesh.resource).ws.plural = "dynamicconfigs";
-  option (dubbo.mesh.resource).allow_to_inspect = true;
-
+  option (dubbo.mesh.resource).is_experimental = false;
   string key = 1;
   string scope = 2;
   string configVersion = 3;

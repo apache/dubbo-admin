@@ -7,17 +7,16 @@ option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
 import "api/mesh/options.proto";
 
 message AffinityRoute {
-  option (dubbo.mesh.resource).name = "AffinityRouteResource";
-  option (dubbo.mesh.resource).type = "AffinityRoute";
+  option (dubbo.mesh.resource).name = "AffinityRoute";
+  option (dubbo.mesh.resource).plural_name = "AffinityRoutes";
   option (dubbo.mesh.resource).package = "mesh";
-  option (dubbo.mesh.resource).dds.send_to_zone = true;
-  option (dubbo.mesh.resource).ws.name = "affinityroute";
-  option (dubbo.mesh.resource).ws.plural = "affinityroutes";
-  option (dubbo.mesh.resource).allow_to_inspect = true;
+  option (dubbo.mesh.resource).is_experimental = false;
 
   string configVersion = 1;
-  string scope = 2; // must be chosen from `service` and `application`
-  string key = 3;   // specifies which service or application the rule body acts on
+  // scope must be chosen from `service` and `application`
+  string scope = 2;
+  // key specifies which service or application the rule body acts on
+  string key = 3;
   bool runtime = 4;
   bool enabled = 5;
   AffinityAware affinity = 6;

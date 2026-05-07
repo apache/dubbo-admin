@@ -18,19 +18,19 @@
 package model
 
 import (
-	"encoding/json"
-	"fmt"
-	"regexp"
 	"strconv"
 
-	"github.com/apache/dubbo-admin/api/mesh/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/console/constants"
-	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
+	"github.com/duke-git/lancet/v2/strutil"
+
+	"github.com/apache/dubbo-admin/pkg/common/constants"
+	"github.com/apache/dubbo-admin/pkg/config/app"
+	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
 type ApplicationDetailReq struct {
 	AppName string `form:"appName"`
+	Mesh    string `form:"mesh"`
 }
 
 type ApplicationDetailResp struct {
@@ -88,68 +88,49 @@ func NewApplicationDetail() *ApplicationDetail {
 		Workloads:        NewSet(),
 	}
 }
-
-func (a *ApplicationDetail) MergeMetaData(metadata *mesh.MetaDataResource) {
-	a.mergeServiceInfo(metadata)
-}
-
-func (a *ApplicationDetail) mergeServiceInfo(metadata *mesh.MetaDataResource) {
-	for _, serviceInfo := range metadata.Spec.Services {
-		a.DubboVersions.Add(fmt.Sprintf("dubbo %s", serviceInfo.Params[constants.ReleaseKey]))
-		a.RPCProtocols.Add(serviceInfo.Protocol)
-		a.SerialProtocols.Add(serviceInfo.Params[constants.SerializationKey])
-
-	}
-}
-
-func (a *ApplicationDetail) MergeDataplane(dataplane *mesh.DataplaneResource) {
-	if work, ok := dataplane.Spec.Extensions[constants.WorkLoadKey]; ok &&
-		regexp.MustCompile(`^.*-\d+$`).MatchString(work) {
+func (a *ApplicationDetail) MergeInstance(instanceRes *meshresource.InstanceResource, cfg app.AdminConfig) {
+	instance := instanceRes.Spec
+	if instance.WorkloadType == constants.StatefulSet {
 		a.AppTypes.Add(constants.Stateful)
 	} else {
 		a.AppTypes.Add(constants.Stateless)
 	}
-
-	inbounds := dataplane.Spec.Networking.Inbound
-	for _, inbound := range inbounds {
-		a.mergeInbound(inbound)
+	a.DubboPorts.Add(strconv.FormatInt(instance.RpcPort, 10))
+	a.DubboVersions.Add(instance.ReleaseVersion)
+	a.Images.Add(instance.Image)
+	if d := cfg.FindDiscovery(instanceRes.Mesh); d != nil {
+		a.RegisterClusters.Add(instanceRes.Mesh)
 	}
-	extensions := dataplane.Spec.Extensions
-	a.mergeExtensions(extensions)
+	if cfg.Engine != nil && cfg.Engine.ID == instance.SourceEngine {
+		a.DeployClusters.Add(cfg.Engine.Name)
+	}
+	a.RegisterModes.Add(constants.Application)
+	a.RPCProtocols.Add(instance.Protocol)
+	if strutil.IsNotBlank(instance.Serialization) {
+		a.SerialProtocols.Add(instance.Serialization)
+	} else if strutil.IsNotBlank(instance.PreferSerialization) {
+		a.SerialProtocols.Add(instance.PreferSerialization)
+	}
+	a.Workloads.Add(instance.WorkloadName)
 }
-
-func (a *ApplicationDetail) mergeInbound(inbound *legacy.Dataplane_Networking_Inbound) {
-	a.DubboPorts.Add(strconv.Itoa(int(inbound.Port)))
-	a.DeployClusters.Add(inbound.Tags[legacy.ZoneTag])
-}
-
-func (a *ApplicationDetail) mergeExtensions(extensions map[string]string) {
-	a.Images.Add(extensions[coremodel.ExtensionsImageKey])
-	a.Workloads.Add(extensions[coremodel.ExtensionsWorkLoadKey])
-}
-
-func (a *ApplicationDetail) GetRegistry(ctx consolectx.Context) {
-	// TODO
-
-}
-
-// todo Application instance info
 
 type ApplicationTabInstanceInfoReq struct {
+	coremodel.PageReq
+
 	AppName string `form:"appName"`
-	PageReq
+	Mesh    string `form:"mesh"`
 }
 
 func NewApplicationTabInstanceInfoReq() *ApplicationTabInstanceInfoReq {
 	return &ApplicationTabInstanceInfoReq{
-		PageReq: PageReq{
+		PageReq: coremodel.PageReq{
 			PageOffset: 0,
 			PageSize:   15,
 		},
 	}
 }
 
-type ApplicationTabInstanceInfoResp struct {
+type AppInstanceInfoResp struct {
 	AppName         string            `json:"appName"`
 	CreateTime      string            `json:"createTime"`
 	DeployState     string            `json:"deployState"`
@@ -163,52 +144,6 @@ type ApplicationTabInstanceInfoResp struct {
 	WorkloadName    string            `json:"workloadName"`
 }
 
-type ByApplicationInstanceName []*ApplicationTabInstanceInfoResp
-
-func (a ByApplicationInstanceName) Len() int { return len(a) }
-
-func (a ByApplicationInstanceName) Less(i, j int) bool {
-	return a[i].Name < a[j].Name
-}
-
-func (a ByApplicationInstanceName) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-
-func (a *ApplicationTabInstanceInfoResp) FromDataplaneResource(dataplane *mesh.DataplaneResource) *ApplicationTabInstanceInfoResp {
-	// TODO: support more fields
-	extensions := dataplane.Spec.Extensions
-	a.mergeExtension(extensions)
-	a.mergeMainDataplane(dataplane)
-	return a
-}
-
-// nolint
-func (a *ApplicationTabInstanceInfoResp) mergeMainDataplane(dataplane *mesh.DataplaneResource) {
-	a.AppName = dataplane.GetMeta().GetLabels()[v1alpha1.Application]
-	a.CreateTime = dataplane.Meta.GetCreationTime().String()
-	a.IP = dataplane.Spec.Networking.Address
-	a.DeployClusters = dataplane.Spec.Networking.Inbound[0].Tags[legacy.ZoneTag]
-	a.Labels = dataplane.GetMeta().GetLabels()
-	a.Name = dataplane.Meta.GetName()
-	a.RegisterTime = a.CreateTime
-	if a.RegisterTime != "" {
-		a.RegisterState = "Registed"
-	} else {
-		a.RegisterState = "UnRegisted"
-	}
-}
-
-func (a *ApplicationTabInstanceInfoResp) mergeExtension(extensions map[string]string) {
-	a.WorkloadName = extensions[coremodel.ExtensionsWorkLoadKey]
-	a.DeployState = extensions[coremodel.ExtensionsPodPhaseKey]
-}
-
-func (a *ApplicationTabInstanceInfoResp) GetRegistry(ctx consolectx.Context) {
-	// TODO
-
-}
-
-// Todo Application Service
-
 type ApplicationServiceReq struct {
 	AppName string `json:"appName"`
 }
@@ -219,95 +154,34 @@ type ApplicationServiceResp struct {
 }
 
 type ApplicationServiceFormReq struct {
-	AppName string `form:"appName"`
-	Side    string `form:"side"`
-	PageReq
+	coremodel.PageReq
+
+	AppName     string `form:"appName"`
+	ServiceName string `form:"serviceName"`
+	Side        string `form:"side"`
+	Mesh        string `form:"mesh"`
 }
 
 func NewApplicationServiceFormReq() *ApplicationServiceFormReq {
 	return &ApplicationServiceFormReq{
-		PageReq: PageReq{
+		PageReq: coremodel.PageReq{
 			PageOffset: 0,
 			PageSize:   15,
 		},
 	}
 }
 
-type ApplicationServiceFormResp struct {
-	ServiceName   string         `json:"serviceName"`
-	VersionGroups []versionGroup `json:"versionGroups"`
-}
-
-type ByAppServiceFormName []*ApplicationServiceFormResp
-
-func (a ByAppServiceFormName) Len() int { return len(a) }
-
-func (a ByAppServiceFormName) Less(i, j int) bool {
-	return a[i].ServiceName < a[j].ServiceName
-}
-
-func (a ByAppServiceFormName) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-
-type versionGroup struct {
-	Group   string `json:"group"`
-	Version string `json:"version"`
-}
-
-func NewApplicationServiceFormResp() *ApplicationServiceFormResp {
-	return &ApplicationServiceFormResp{
-		ServiceName:   "",
-		VersionGroups: nil,
-	}
-}
-
-func (a *ApplicationServiceFormResp) FromApplicationServiceForm(form *ApplicationServiceForm) error {
-	a.ServiceName = form.ServiceName
-	versionGroupList := make([]versionGroup, 0)
-	for _, gv := range form.VersionGroups.Values() {
-		var versionGroupInfo versionGroup
-		if err := json.Unmarshal([]byte(gv), &versionGroupInfo); err != nil {
-			return err
-		}
-		versionGroupList = append(versionGroupList, versionGroupInfo)
-	}
-	a.VersionGroups = versionGroupList
-	return nil
-}
-
-type ApplicationServiceForm struct {
-	ServiceName   string
-	VersionGroups Set
-}
-
-func NewApplicationServiceForm(serviceName string) *ApplicationServiceForm {
-	return &ApplicationServiceForm{
-		ServiceName:   serviceName,
-		VersionGroups: NewSet(),
-	}
-}
-
-func (a *ApplicationServiceForm) FromServiceInfo(serviceInfo *v1alpha1.ServiceInfo) error {
-	versionGroupInfo := versionGroup{
-		Group:   serviceInfo.Group,
-		Version: serviceInfo.Version,
-	}
-	bytes, err := json.Marshal(versionGroupInfo)
-	if err != nil {
-		return err
-	}
-	a.VersionGroups.Add(string(bytes))
-	return nil
-}
-
 type ApplicationSearchReq struct {
+	coremodel.PageReq
+
 	AppName  string `form:"appName" json:"appName"`
 	Keywords string `form:"keywords" json:"keywords"`
-	PageReq
+	Mesh     string `form:"mesh" json:"mesh"`
 }
 
 func NewApplicationSearchReq() *ApplicationSearchReq {
 	return &ApplicationSearchReq{
-		PageReq: PageReq{
+		PageReq: coremodel.PageReq{
 			PageOffset: 0,
 			PageSize:   15,
 		},
@@ -321,56 +195,6 @@ type ApplicationSearchResp struct {
 	RegistryClusters []string `json:"registryClusters"`
 }
 
-func (a *ApplicationSearchResp) FromApplicationSearch(applicationSearch *ApplicationSearch) *ApplicationSearchResp {
-	a.RegistryClusters = applicationSearch.RegistryClusters.Values()
-	a.InstanceCount = applicationSearch.InstanceCount
-	a.DeployClusters = applicationSearch.DeployClusters.Values()
-	return a
-}
-
-type ByAppName []*ApplicationSearchResp
-
-func (a ByAppName) Len() int { return len(a) }
-
-func (a ByAppName) Less(i, j int) bool {
-	return a[i].AppName < a[j].AppName
-}
-
-func (a ByAppName) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-
-// Todo Application Search
-
-type ApplicationSearch struct {
-	AppName          string
-	DeployClusters   Set
-	InstanceCount    int64
-	RegistryClusters Set
-}
-
-func NewApplicationSearch(appName string) *ApplicationSearch {
-	return &ApplicationSearch{
-		AppName:          appName,
-		DeployClusters:   NewSet(),
-		InstanceCount:    0,
-		RegistryClusters: NewSet(),
-	}
-}
-
-func (a *ApplicationSearch) MergeDataplane(dataplane *mesh.DataplaneResource) {
-	a.InstanceCount++
-
-	// merge inbounds
-	inbounds := dataplane.Spec.Networking.Inbound
-	for _, inbound := range inbounds {
-		a.DeployClusters.Add(inbound.Tags[legacy.ZoneTag])
-	}
-}
-
-func (a *ApplicationSearch) GetRegistry(ctx consolectx.Context) {
-
-	// TODO
-}
-
 type FlowWeightSet struct {
 	Weight int32        `json:"weight"`
 	Scope  []ParamMatch `json:"scope,omitempty"`
@@ -379,4 +203,16 @@ type FlowWeightSet struct {
 type GraySet struct {
 	EnvName string       `json:"name,omitempty"`
 	Scope   []ParamMatch `json:"scope,omitempty"`
+}
+
+type AppAccessLogConfigResp struct {
+	AccessLog bool `json:"operatorLog"`
+}
+
+type AppFlowWeightConfigResp struct {
+	FlowWeightSets []FlowWeightSet `json:"flowWeightSets"`
+}
+
+type AppGrayConfigResp struct {
+	GraySets []GraySet `json:"graySets"`
 }

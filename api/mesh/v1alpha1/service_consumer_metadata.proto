@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+
+message ServiceConsumerMetadata {
+  option (dubbo.mesh.resource).name = "ServiceConsumerMetadata";
+  option (dubbo.mesh.resource).plural_name = "ServiceConsumerMetaDatas";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).is_experimental = false;
+
+  string serviceName = 1;
+
+  string consumerAppName = 2;
+
+  string version = 3;
+
+  string group = 4;
+
+  map<string, string> metadata = 5;
+}
+

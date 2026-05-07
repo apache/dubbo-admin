@@ -5,35 +5,69 @@ package dubbo.mesh.v1alpha1;
 option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
 
 import "api/mesh/options.proto";
+import "api/mesh/v1alpha1/runtime_instance.proto";
 
-
+// Instance is merged from RuntimeInstance and RPCInstance, indicates a runtime entity of a specific dubbo application
 message Instance {
-  option (dubbo.mesh.resource).name = "InstanceResource";
-  option (dubbo.mesh.resource).type = "Instance";
+  option (dubbo.mesh.resource).name = "Instance";
+  option (dubbo.mesh.resource).plural_name = "Instances";
   option (dubbo.mesh.resource).package = "mesh";
-  option (dubbo.mesh.resource).ws.name = "instance";
-  option (dubbo.mesh.resource).ws.plural = "instances";
-  option (dubbo.mesh.resource).ws.read_only = true;
-  option (dubbo.mesh.resource).scope_namespace = true;
-  option (dubbo.mesh.resource).allow_to_inspect = true;
+  option (dubbo.mesh.resource).is_experimental = true;
 
   string name = 1;
 
-  string ip = 2;
+  string appName = 2;
 
-  string port = 3;
+  string ip = 3;
 
-  string image = 4;
+  int64 rpcPort = 4;
+  /*
+  FROM RPCInstance
+   */
 
-  string appName = 5;
+  int64 qosPort = 5;
 
-  string createTime = 6;
+  string releaseVersion = 6;
 
-  string startTime = 7;
+  string registerTime = 7;
 
-  string readyTime = 8;
+  string unregisterTime = 8;
 
-  string registerTime = 9;
+  string protocol = 9;
 
-  map<string, string> features = 99;
+  string serialization = 10;
+
+  string preferSerialization = 11;
+
+  map<string, string> tags = 50;
+
+  reserved 12 to 49;
+
+  /*
+  FROM RuntimeInstance
+   */
+
+  string image = 51;
+
+  string createTime = 52;
+
+  string startTime = 53;
+
+  string readyTime = 54;
+
+  string deployState = 55;
+
+  string workloadType = 56;
+
+  string workloadName = 57;
+
+  string node = 58;
+
+  string sourceEngine = 59;
+
+  repeated Probe probes = 99;
+
+  repeated Condition conditions = 100;
+
+  reserved 60 to 98;
 }

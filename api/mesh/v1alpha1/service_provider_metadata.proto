@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package dubbo.mesh.v1alpha1;
+
+option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
+
+import "api/mesh/options.proto";
+
+message ServiceProviderMetadata {
+  option (dubbo.mesh.resource).name = "ServiceProviderMetadata";
+  option (dubbo.mesh.resource).plural_name = "ServiceProviderMetaDatas";
+  option (dubbo.mesh.resource).package = "mesh";
+  option (dubbo.mesh.resource).is_experimental = false;
+
+  string serviceName = 1;
+
+  string providerAppName = 2;
+
+  string version = 3;
+
+  string group = 4;
+
+  string canonicalName = 5;
+
+  repeated Method methods = 6;
+
+  map<string, string> parameters = 7;
+
+  repeated Type types = 8;
+}
+
+message Method {
+  repeated string annotations = 1;
+
+  string name = 2;
+
+  repeated string parameterTypes = 3;
+
+  repeated Parameter parameters = 4;
+
+  string returnType = 5;
+}
+
+message Parameter {
+  string name = 1;
+
+  string type = 2;
+}
+
+message Type {
+  repeated string enums = 1;
+
+  repeated string items = 2;
+
+  map<string, string> properties = 3;
+
+  string type = 4;
+}

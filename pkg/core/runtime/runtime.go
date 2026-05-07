@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/apache/dubbo-admin/pkg/config/app"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 
 	"github.com/apache/dubbo-admin/pkg/config/mode"
 )
@@ -78,7 +79,6 @@ func (i *runtimeInfo) GetMode() mode.Mode {
 
 var _ RuntimeContext = &runtimeContext{}
 
-// TODO add console
 type runtimeContext struct {
 	cfg        app.AdminConfig
 	components map[ComponentType]Component
@@ -116,13 +116,26 @@ func (rt *runtime) Add(components ...Component) {
 func (rt *runtime) Start(stop <-chan struct{}) error {
 	components := maputil.Values(rt.components)
 	slice.SortBy(components, func(a, b Component) bool {
-		return a.Order() < b.Order()
+		return a.Order() > b.Order()
 	})
 	for _, com := range components {
-		err := com.Start(rt, stop)
-		if err != nil {
-			return err
-		}
+		go func() {
+			err := com.Start(rt, stop)
+			if err != nil {
+				// if a core component failed to start, panic
+				if slice.Contain(CoreComponentTypes, com.Type()) {
+					panic("core component " + com.Type() + " running failed with error: " + err.Error())
+				} else {
+					logger.Errorf("component %s running failed with error: %s", com.Type(), err.Error())
+				}
+			} else {
+				logger.Infof("component %s started successfully", com.Type())
+			}
+		}()
 	}
-	return nil
+	logger.Info("Admin started successfully")
+	select {
+	case <-stop:
+		return nil
+	}
 }

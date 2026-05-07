@@ -18,21 +18,26 @@
 package model
 
 import (
-	"net/http"
 	"strings"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
 type SearchConditionRuleReq struct {
-	Keywords string `json:"keywords"`
-	PageReq
+	coremodel.PageReq
+	Mesh     string `form:"mesh"`
+	Keywords string `form:"keywords"`
+}
+
+func (s *SearchConditionRuleReq) PageRequest() coremodel.PageReq {
+	return s.PageReq
 }
 
 func NewSearchConditionRuleReq() *SearchConditionRuleReq {
 	return &SearchConditionRuleReq{
-		PageReq: PageReq{PageSize: 15},
+		PageReq: coremodel.PageReq{PageSize: 15},
 	}
 }
 
@@ -62,11 +67,43 @@ type ServiceArgument struct {
 	Method       string           `json:"method"`
 }
 
-func (s *ServiceArgument) toFrom() *meshproto.ConditionRuleFrom {
-	res := "method=" + s.Method
-	if len(s.Conditions) != 0 {
-		for i := 0; len(s.Conditions) > i; i++ {
-			res += " & " + s.Conditions[i].string()
+// ToExpression Convert ServiceArgument to expression string
+func (sa *ServiceArgument) ToExpression() string {
+	expression := "method=" + sa.Method
+
+	// Add route conditions
+	for _, condition := range sa.Conditions {
+		expression += " & " + condition.string()
+	}
+
+	// Add destinations if any
+	if len(sa.Destinations) > 0 {
+		expression += " => "
+
+		// Process each destination
+		for destIdx, destination := range sa.Destinations {
+			for condIdx, condition := range destination.Conditions {
+				if destIdx > 0 || condIdx > 0 {
+					expression += " & "
+				}
+				expression += condition.string()
+			}
+
+			// If there are multiple destinations, separate them (using comma as separator)
+			if destIdx < len(sa.Destinations)-1 {
+				expression += ", "
+			}
+		}
+	}
+
+	return expression
+}
+
+func (sa *ServiceArgument) toFrom() *meshproto.ConditionRuleFrom {
+	res := "method=" + sa.Method
+	if len(sa.Conditions) != 0 {
+		for i := 0; len(sa.Conditions) > i; i++ {
+			res += " & " + sa.Conditions[i].string()
 		}
 	}
 	return &meshproto.ConditionRuleFrom{
@@ -74,9 +111,9 @@ func (s *ServiceArgument) toFrom() *meshproto.ConditionRuleFrom {
 	}
 }
 
-func (s *ServiceArgument) toTo() []*meshproto.ConditionRuleTo {
-	res := make([]*meshproto.ConditionRuleTo, 0, len(s.Destinations))
-	for _, destination := range s.Destinations {
+func (sa *ServiceArgument) toTo() []*meshproto.ConditionRuleTo {
+	res := make([]*meshproto.ConditionRuleTo, 0, len(sa.Destinations))
+	for _, destination := range sa.Destinations {
 		match := ""
 		for _, condition := range destination.Conditions {
 			if match == "" {
@@ -100,10 +137,10 @@ type RouteCondition struct {
 }
 
 func (r *RouteCondition) string() string {
-	if r.Relation == consts.Equal {
-		return "arguments[" + r.Index + "]" + consts.Equal + r.Value
+	if r.Relation == constants.Equal {
+		return "arguments[" + r.Index + "]" + constants.Equal + r.Value
 	} else {
-		return "arguments[" + r.Index + "]" + consts.NotEqual + r.Value
+		return "arguments[" + r.Index + "]" + constants.NotEqual + r.Value
 	}
 }
 
@@ -119,10 +156,10 @@ type DestinationCondition struct {
 }
 
 func (d *DestinationCondition) string() string {
-	if d.Relation == consts.Equal {
-		return d.Tag + consts.Equal + d.Value
+	if d.Relation == constants.Equal {
+		return d.Tag + constants.Equal + d.Value
 	} else {
-		return d.Tag + consts.NotEqual + d.Value
+		return d.Tag + constants.NotEqual + d.Value
 	}
 }
 
@@ -163,17 +200,17 @@ func matchValueToRouteCondition(val string) []RouteCondition {
 	subsets := strings.Split(val, "&")
 	res := make([]RouteCondition, 0, len(subsets))
 	for _, subset := range subsets {
-		if index := strings.Index(subset, consts.NotEqual); index != -1 {
+		if index := strings.Index(subset, constants.NotEqual); index != -1 {
 			res = append(res, RouteCondition{
 				Index:    strings.Trim(subset[:index], " "),
-				Relation: consts.NotEqual,
-				Value:    strings.Trim(subset[index+len(consts.NotEqual):], " "),
+				Relation: constants.NotEqual,
+				Value:    strings.Trim(subset[index+len(constants.NotEqual):], " "),
 			})
-		} else if index := strings.Index(subset, consts.Equal); index != -1 {
+		} else if index := strings.Index(subset, constants.Equal); index != -1 {
 			res = append(res, RouteCondition{
 				Index:    strings.Trim(subset[:index], " "),
-				Relation: consts.Equal,
-				Value:    strings.Trim(subset[index+len(consts.Equal):], " "),
+				Relation: constants.Equal,
+				Value:    strings.Trim(subset[index+len(constants.Equal):], " "),
 			})
 		}
 	}
@@ -184,17 +221,17 @@ func matchValueToDestinationCondition(val string) []DestinationCondition {
 	subsets := strings.Split(val, "&")
 	res := make([]DestinationCondition, 0, len(subsets))
 	for _, subset := range subsets {
-		if index := strings.Index(subset, consts.NotEqual); index != -1 {
+		if index := strings.Index(subset, constants.NotEqual); index != -1 {
 			res = append(res, DestinationCondition{
 				Tag:      strings.Trim(subset[:index], " "),
-				Relation: consts.NotEqual,
-				Value:    strings.Trim(subset[index+len(consts.NotEqual):], " "),
+				Relation: constants.NotEqual,
+				Value:    strings.Trim(subset[index+len(constants.NotEqual):], " "),
 			})
-		} else if index := strings.Index(subset, consts.Equal); index != -1 {
+		} else if index := strings.Index(subset, constants.Equal); index != -1 {
 			res = append(res, DestinationCondition{
 				Tag:      strings.Trim(subset[:index], " "),
-				Relation: consts.Equal,
-				Value:    strings.Trim(subset[index+len(consts.Equal):], " "),
+				Relation: constants.Equal,
+				Value:    strings.Trim(subset[index+len(constants.Equal):], " "),
 			})
 		}
 	}
@@ -203,52 +240,16 @@ func matchValueToDestinationCondition(val string) []DestinationCondition {
 
 func GenConditionRuleToResp(data *meshproto.ConditionRoute) *CommonResp {
 	if data == nil {
-		return &CommonResp{
-			Code: http.StatusNotFound,
-			Msg:  "not found",
-			Data: map[string]string{},
-		}
+		return NewSuccessResp(nil)
 	}
-	if pb := data.ToConditionRouteV3(); pb != nil {
-		return NewSuccessResp(ConditionRuleResp{
-			Conditions:    pb.Conditions,
-			ConfigVersion: pb.ConfigVersion,
-			Enabled:       pb.Enabled,
-			Key:           pb.Key,
-			Runtime:       pb.Runtime,
-			Scope:         pb.Scope,
-		})
-	} else if pb := data.ToConditionRouteV3x1(); pb != nil {
-		res := ConditionRuleV3X1{
-			Conditions:    make([]Condition, 0, len(pb.Conditions)),
-			ConfigVersion: "v3.1",
-			Enabled:       pb.Enabled,
-			Force:         pb.Force,
-			Key:           pb.Key,
-			Runtime:       pb.Runtime,
-			Scope:         pb.Scope,
-		}
-		for _, condition := range pb.Conditions {
-			resCondition := Condition{
-				From: ConditionFrom{Match: condition.From.Match},
-				To:   make([]ConditionTo, 0, len(condition.To)),
-			}
-			for _, to := range condition.To {
-				resCondition.To = append(resCondition.To, ConditionTo{
-					Match:  to.Match,
-					Weight: to.Weight,
-				})
-			}
-			res.Conditions = append(res.Conditions, resCondition)
-		}
-		return NewSuccessResp(res)
-	} else {
-		return &CommonResp{
-			Code: http.StatusInternalServerError,
-			Msg:  "invalid condition rule",
-			Data: data,
-		}
-	}
+	return NewSuccessResp(ConditionRuleResp{
+		Conditions:    data.Conditions,
+		ConfigVersion: data.ConfigVersion,
+		Enabled:       data.Enabled,
+		Key:           data.Key,
+		Runtime:       data.Runtime,
+		Scope:         data.Scope,
+	})
 }
 
 type ConditionRuleV3X1 struct {
@@ -278,4 +279,148 @@ type ConditionFrom struct {
 type ConditionTo struct {
 	Match  string `json:"match"`
 	Weight int32  `json:"weight"`
+}
+
+// ParseConditionExpression converts an expression string to a ServiceArgument struct
+// Expression format: "method=methodName & condition1 => destination1"
+func ParseConditionExpression(expression string) ServiceArgument {
+	// Split into from and to parts (separated by "=>")
+	parts := strings.Split(expression, "=>")
+	fromPart := strings.TrimSpace(parts[0])
+	toPart := ""
+	if len(parts) > 1 {
+		toPart = strings.TrimSpace(parts[1])
+	}
+
+	// Parse from part to get method and conditions
+	method, conditions := parseFromPart(fromPart)
+
+	// Parse to part to get destinations
+	destinations := parseToPart(toPart)
+
+	return ServiceArgument{
+		Method:       method,
+		Conditions:   conditions,
+		Destinations: destinations,
+	}
+}
+
+// parseFromPart parses the from part containing method and arguments conditions
+func parseFromPart(fromPart string) (string, []RouteCondition) {
+	conditions := []RouteCondition{}
+	method := ""
+
+	// Split conditions by "&"
+	subConditions := strings.Split(fromPart, "&")
+
+	for _, condition := range subConditions {
+		condition = strings.TrimSpace(condition)
+
+		// Check if it's a method condition
+		if strings.HasPrefix(condition, "method=") {
+			method = strings.TrimPrefix(condition, "method=")
+			method = strings.TrimSpace(method)
+		} else {
+			// Parse arguments condition
+			routeCond := parseRouteCondition(condition)
+			if routeCond.Index != "" {
+				conditions = append(conditions, routeCond)
+			}
+		}
+	}
+
+	return method, conditions
+}
+
+// parseRouteCondition parses a single route condition
+func parseRouteCondition(condition string) RouteCondition {
+	var relation string
+	var relationOp string
+
+	// Check if it's "=" or "!="
+	if index := strings.Index(condition, constants.NotEqual); index != -1 {
+		relation = constants.NotEqual
+		relationOp = constants.NotEqual
+	} else if index := strings.Index(condition, constants.Equal); index != -1 {
+		relation = constants.Equal
+		relationOp = constants.Equal
+	} else {
+		return RouteCondition{} // Invalid condition
+	}
+
+	// Find the position of the relation
+	index := strings.Index(condition, relationOp)
+	leftPart := strings.TrimSpace(condition[:index])
+	rightPart := strings.TrimSpace(condition[index+len(relationOp):])
+
+	// Parse arguments[index] format
+	if strings.HasPrefix(leftPart, "arguments[") && strings.HasSuffix(leftPart, "]") {
+		argIndex := leftPart[10 : len(leftPart)-1] // Extract index within brackets
+		return RouteCondition{
+			Index:    argIndex,
+			Relation: relation,
+			Value:    rightPart,
+		}
+	}
+
+	// If not arguments format, return generic condition
+	return RouteCondition{
+		Index:    leftPart,
+		Relation: relation,
+		Value:    rightPart,
+	}
+}
+
+// parseToPart parses the to part (destination conditions)
+func parseToPart(toPart string) []Destination {
+	if toPart == "" {
+		return []Destination{}
+	}
+
+	// Split multiple conditions by "&"
+	conditions := strings.Split(toPart, "&")
+	destinationConditions := []DestinationCondition{}
+
+	for _, condition := range conditions {
+		condition = strings.TrimSpace(condition)
+		destCond := parseDestinationCondition(condition)
+		if destCond.Tag != "" {
+			destinationConditions = append(destinationConditions, destCond)
+		}
+	}
+
+	return []Destination{
+		{
+			Conditions: destinationConditions,
+			Weight:     0, // Default weight is 0, can be adjusted as needed
+		},
+	}
+}
+
+// parseDestinationCondition parses destination condition
+func parseDestinationCondition(condition string) DestinationCondition {
+	var relation string
+	var relationOp string
+
+	// Check if it's "=" or "!="
+	if index := strings.Index(condition, constants.NotEqual); index != -1 {
+		relation = constants.NotEqual
+		relationOp = constants.NotEqual
+	} else if index := strings.Index(condition, constants.Equal); index != -1 {
+		relation = constants.Equal
+		relationOp = constants.Equal
+	} else {
+		return DestinationCondition{} // Invalid condition
+	}
+
+	// Find the position of the relation
+	index := strings.Index(condition, relationOp)
+	leftPart := strings.TrimSpace(condition[:index])
+	rightPart := strings.TrimSpace(condition[index+len(relationOp):])
+
+	return DestinationCondition{
+		Tag:      leftPart,
+		Relation: relation,
+		Value:    rightPart,
+	}
 }

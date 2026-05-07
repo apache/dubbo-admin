@@ -18,16 +18,14 @@
 package model
 
 import (
-	"net/http"
-
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/core/consts"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 )
 
 type TagRuleSearchResp struct {
-	CreateTime *string `json:"createTime,omitempty"`
-	Enabled    *bool   `json:"enabled,omitempty"`
-	RuleName   *string `json:"ruleName,omitempty"`
+	CreateTime string `json:"createTime,omitempty"`
+	Enabled    bool   `json:"enabled,omitempty"`
+	RuleName   string `json:"ruleName,omitempty"`
 }
 
 type TagRuleResp struct {
@@ -47,18 +45,14 @@ type RespTagElement struct {
 
 func GenTagRouteResp(pb *meshproto.TagRoute) *CommonResp {
 	if pb == nil {
-		return &CommonResp{
-			Code: http.StatusNotFound,
-			Msg:  "tag rule not found",
-			Data: "",
-		}
+		return NewSuccessResp(nil)
 	} else {
 		return NewSuccessResp(TagRuleResp{
 			ConfigVersion: pb.ConfigVersion,
 			Enabled:       pb.Enabled,
 			Key:           pb.Key,
 			Runtime:       pb.Runtime,
-			Scope:         consts.ScopeApplication,
+			Scope:         constants.ScopeApplication,
 			Tags:          tagToRespTagElement(pb.Tags),
 		})
 	}

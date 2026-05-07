@@ -18,6 +18,11 @@
 package store
 
 import (
+	"fmt"
+
+	set "github.com/duke-git/lancet/v2/datastructure/set"
+
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/config"
 )
 
@@ -26,15 +31,26 @@ var _ config.Config = &Config{}
 type Type = string
 
 const (
-	Memory Type = "memory"
+	Memory   Type = "memory"
+	MySQL    Type = "mysql"
+	Postgres Type = "postgres"
 )
+
+var supportTypes = set.New(Memory, MySQL, Postgres)
 
 // Config defines the ResourceStore configuration
 type Config struct {
 	config.BaseConfig
 	// Type of Store used in Admin
-	Type    Type   `json:"type"`
-	Address string `json:"address"`
+	Type    Type   `json:"type" yaml:"type"`
+	Address string `json:"address" yaml:"address"`
+}
+
+func (c *Config) Validate() error {
+	if !supportTypes.Contain(c.Type) {
+		return bizerror.New(bizerror.ConfigError, fmt.Sprintf("unsupported store type: %s", c.Type))
+	}
+	return nil
 }
 
 func DefaultStoreConfig() *Config {

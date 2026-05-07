@@ -21,7 +21,7 @@ import { getMetricsMetadata } from '@/api/service/serverInfo'
 
 let promUrl: string = ''
 async function initPromUrl() {
-  let config = (await getMetricsMetadata({})).data
+  const config = (await getMetricsMetadata({})).data
   if (!config) {
     throw "can't get prometheus url"
   }

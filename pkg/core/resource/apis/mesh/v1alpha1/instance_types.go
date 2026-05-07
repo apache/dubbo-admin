@@ -21,33 +21,35 @@
 package v1alpha1
 
 import (
+	"encoding/json"
+
+	"google.golang.org/protobuf/proto"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
-
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:categories=dubbo,scope=Namespaced
 
 const InstanceKind coremodel.ResourceKind = "Instance"
 
 func init() {
-	coremodel.RegisterResourceKind(InstanceKind)
+	coremodel.RegisterResourceSchema(InstanceKind, NewInstanceResource, NewInstanceResourceList)
 }
 
 type InstanceResource struct {
-	metav1.TypeMeta   `json:",inline"`
+	metav1.TypeMeta `json:",inline"`
+
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Mesh is the name of the dubbo mesh this resource belongs to.
 	// It may be omitted for cluster-scoped resources.
-	//
-	// +kubebuilder:validation:Optional
 	Mesh string `json:"mesh,omitempty"`
+
 	// Spec is the specification of the Dubbo Instance resource.
-	// +kubebuilder:validation:Optional
 	Spec *meshproto.Instance `json:"spec,omitempty"`
+
 	// Status is the status of the Dubbo Instance resource.
 	Status InstanceResourceStatus `json:"status,omitempty"`
 }
@@ -56,19 +58,11 @@ type InstanceResourceStatus struct {
 	// define resource-specific status here
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:resource:scope=Cluster
-type InstanceResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []InstanceResource `json:"items"`
-}
-
 func (r *InstanceResource) ResourceKind() coremodel.ResourceKind {
 	return InstanceKind
 }
 
-func (r *InstanceResource) MeshName() string {
+func (r *InstanceResource) ResourceMesh() string {
 	return r.Mesh
 }
 
@@ -84,16 +78,111 @@ func (r *InstanceResource) ResourceSpec() coremodel.ResourceSpec {
 	return r.Spec
 }
 
-func NewInstanceResource(name string, mesh string, apiVersion string) *InstanceResource {
+func (r *InstanceResource) DeepCopyObject() k8sruntime.Object {
+	out := &InstanceResource{
+		TypeMeta: r.TypeMeta,
+		Mesh:     r.Mesh,
+		Status:   r.Status,
+	}
+
+	r.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
+
+	if r.Spec != nil {
+		spec, ok := proto.Clone(r.Spec).(*meshproto.Instance)
+		if !ok {
+			logger.Warnf("failed to clone spec %v, spec is not conformed to %s", r.Spec, r.ResourceKind())
+			return out
+		}
+		out.Spec = spec
+	}
+
+	return out
+}
+
+func (r *InstanceResource) String() string {
+	jsonStr, err := json.Marshal(r)
+	if err != nil {
+		logger.Errorf("failed to encode InstanceResource: %s to json, err: %v", r.ResourceKey(), err)
+		return ""
+	}
+	return string(jsonStr)
+}
+
+func NewInstanceResourceWithAttributes(name string, mesh string) *InstanceResource {
 	return &InstanceResource{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       string(InstanceKind),
-			APIVersion: apiVersion,
+			APIVersion: "v1alpha1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: map[string]string{},
 		},
 		Mesh: mesh,
+		Spec: &meshproto.Instance{},
+	}
+}
+
+func NewInstanceResource() coremodel.Resource {
+	return &InstanceResource{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(InstanceKind),
+			APIVersion: "v1alpha1",
+		},
+		Spec: &meshproto.Instance{},
+	}
+}
+
+type InstanceResourceList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []*InstanceResource `json:"items"`
+}
+
+func (r *InstanceResourceList) DeepCopyObject() k8sruntime.Object {
+	out := &InstanceResourceList{
+		TypeMeta: r.TypeMeta,
+	}
+	r.ListMeta.DeepCopyInto(&out.ListMeta)
+
+	if len(r.Items) == 0 {
+		return out
+	}
+	out.Items = make([]*InstanceResource, len(r.Items))
+	for i := range r.Items {
+		out.Items[i] = r.Items[i].DeepCopyObject().(*InstanceResource)
+	}
+	return out
+}
+
+func NewInstanceResourceList() coremodel.ResourceList {
+	return &InstanceResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(InstanceKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: make([]*InstanceResource, 0),
+	}
+}
+
+func (r *InstanceResourceList) SetItems(items []coremodel.Resource) {
+	r.Items = make([]*InstanceResource, len(items))
+	for i := range items {
+		res, ok := items[i].(*InstanceResource)
+		if !ok {
+			logger.Errorf("unexpected resource type, expected: %s, get %s", InstanceKind, res.ResourceKind())
+			continue
+		}
+		r.Items[i] = res
+	}
+}
+
+func NewInstanceResourceListWithItems(items ...*InstanceResource) *InstanceResourceList {
+	return &InstanceResourceList{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       string(InstanceKind),
+			APIVersion: "v1alpha1",
+		},
+		Items: items,
 	}
 }

@@ -21,25 +21,27 @@ import (
 	"github.com/pkg/errors"
 )
 
-var global = NewRegistry()
+var registry = NewRegistry()
 
 func ComponentRegistry() Registry {
-	return global
+	return registry
 }
 
 func RegisterComponent(component Component) {
-	if err := global.Register(component); err != nil {
+	if err := registry.Register(component); err != nil {
 		panic(err)
 	}
 }
 
 type Registry interface {
 	Get(typ ComponentType) (Component, error)
+	EventBus() (Component, error)
 	Console() (Component, error)
 	ResourceStore() (Component, error)
 	ResourceManager() (Component, error)
 	ResourceDiscovery() (Component, error)
 	ResourceEngine() (Component, error)
+	RuleGovernor() (Component, error)
 }
 
 type RegistryMutator interface {
@@ -63,6 +65,10 @@ type componentRegistry struct {
 	directory map[ComponentType]Component
 }
 
+func (r *componentRegistry) EventBus() (Component, error) {
+	return r.Get(EventBus)
+}
+
 func (r *componentRegistry) Console() (Component, error) {
 	return r.Get(Console)
 }
@@ -83,6 +89,9 @@ func (r *componentRegistry) ResourceEngine() (Component, error) {
 	return r.Get(ResourceEngine)
 }
 
+func (r *componentRegistry) RuleGovernor() (Component, error) {
+	return r.Get(RuleGovernor)
+}
 func (r *componentRegistry) Register(component Component) error {
 	_, ok := r.directory[component.Type()]
 	if ok {

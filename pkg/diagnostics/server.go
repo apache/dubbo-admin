@@ -19,24 +19,21 @@ package diagnostics
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
 	"net/http/pprof"
 	"time"
 
-	"github.com/bakito/go-log-logr-adapter/adapter"
-
 	diagnosticsconfig "github.com/apache/dubbo-admin/pkg/config/diagnostics"
-	"github.com/apache/dubbo-admin/pkg/core"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 )
 
 func init() {
 	runtime.RegisterComponent(&diagnosticsServer{})
 }
-
-var diagnosticsServerLog = core.Log.WithName("diagnostics")
 
 const DiagnosticsServer = "diagnostics server"
 
@@ -48,12 +45,12 @@ var (
 	_ runtime.Component = &diagnosticsServer{}
 )
 
-func (s *diagnosticsServer) Type() runtime.ComponentType {
-	return DiagnosticsServer
+func (s *diagnosticsServer) RequiredDependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{} // Diagnostics server has no dependencies
 }
 
-func (s *diagnosticsServer) SubType() runtime.ComponentType {
-	return runtime.DefaultComponentSubType
+func (s *diagnosticsServer) Type() runtime.ComponentType {
+	return DiagnosticsServer
 }
 
 func (s *diagnosticsServer) Order() int {
@@ -83,31 +80,30 @@ func (s *diagnosticsServer) Start(_ runtime.Runtime, stop <-chan struct{}) error
 		Addr:              fmt.Sprintf(":%d", s.config.ServerPort),
 		Handler:           mux,
 		ReadHeaderTimeout: time.Second,
-		ErrorLog:          adapter.ToStd(diagnosticsServerLog),
 	}
 
-	diagnosticsServerLog.Info("starting diagnostic server", "interface", "0.0.0.0", "port", s.config.ServerPort)
+	logger.Infof("starting diagnostic server, endpoint is 0.0.0.0: %d", s.config.ServerPort)
 	errChan := make(chan error)
 	go func() {
 		defer close(errChan)
 		var err error
 		err = httpServer.ListenAndServe()
 		if err != nil {
-			switch err {
-			case http.ErrServerClosed:
-				diagnosticsServerLog.Info("shutting down server")
+			switch {
+			case errors.Is(err, http.ErrServerClosed):
+				logger.Info("shutting down diagnostics server")
 			default:
-				diagnosticsServerLog.Error(err, "could not start HTTP Server")
+				logger.Error("could not start diagnostics http server, unknown err: %s", err)
 				errChan <- err
 			}
 			return
 		}
-		diagnosticsServerLog.Info("terminated normally")
+		logger.Info("terminated normally")
 	}()
 
 	select {
 	case <-stop:
-		diagnosticsServerLog.Info("stopping")
+		logger.Info("received stop signal, stopping diagnostics server ...")
 		return httpServer.Shutdown(context.Background())
 	case err := <-errChan:
 		return err

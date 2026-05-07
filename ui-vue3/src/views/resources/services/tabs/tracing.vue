@@ -22,19 +22,30 @@
 
 <script setup lang="ts">
 import GrafanaPage from '@/components/GrafanaPage.vue'
-import { provide, reactive, ref } from 'vue'
+import { provide, reactive } from 'vue'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { useRoute } from 'vue-router'
 import { getServiceTracingDashboard } from '@/api/service/service'
+import type { GrafanaState } from '@/types/grafana'
 
 const route = useRoute()
-provide(
+
+// 参数验证
+if (!route.params?.pathId) {
+  throw new Error('Missing required parameter: pathId')
+}
+
+provide<GrafanaState>(
   PROVIDE_INJECT_KEY.GRAFANA,
   reactive({
     api: getServiceTracingDashboard,
     showIframe: false,
-    name: route.params?.pathId + ':22222',
-    type: 'service'
+    params: {
+      serviceName: route.params.pathId as string,
+      version: route.params.version as string | undefined,
+      group: route.params.group as string | undefined,
+      providerAppName: route.query.providerAppName as string | undefined
+    }
   })
 )
 </script>

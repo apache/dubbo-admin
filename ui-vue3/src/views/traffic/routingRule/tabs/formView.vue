@@ -22,11 +22,11 @@
         <a-row>
           <a-flex justify="space-between" style="width: 100%">
             <a-typography-title :level="3"> 基础信息</a-typography-title>
-            <a-button type="text" style="color: #0a90d5" @click="isDrawerOpened = !isDrawerOpened">
-              {{ $t('flowControlDomain.versionRecords') }}
-              <DoubleLeftOutlined v-if="!isDrawerOpened" />
-              <DoubleRightOutlined v-else />
-            </a-button>
+            <!--            <a-button type="text" style="color: #0a90d5" @click="isDrawerOpened = !isDrawerOpened">-->
+            <!--              {{ $t('flowControlDomain.versionRecords') }}-->
+            <!--              <DoubleLeftOutlined v-if="!isDrawerOpened" />-->
+            <!--              <DoubleRightOutlined v-else />-->
+            <!--            </a-button>-->
           </a-flex>
           <a-card class="_detail">
             <a-descriptions :column="2" layout="vertical" title="">
@@ -205,12 +205,13 @@ import {
   reactive,
   ref
 } from 'vue'
-import { CopyOutlined, DoubleLeftOutlined, DoubleRightOutlined } from '@ant-design/icons-vue'
+import { CopyOutlined } from '@ant-design/icons-vue'
 import useClipboard from 'vue-clipboard3'
 import { message } from 'ant-design-vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { getConditionRuleDetailAPI } from '@/api/service/traffic'
 import { useRoute } from 'vue-router'
+import { HTTP_STATUS } from '@/base/http/constants'
 
 const {
   appContext: {
@@ -233,23 +234,14 @@ function copyIt(v: string) {
 }
 
 // Condition routing details
-const conditionRuleDetail = reactive({
-  configVersion: 'v3.0',
-  scope: 'service',
-  key: 'org.apache.dubbo.samples.UserService',
-  enabled: true,
-  runtime: true,
-  force: false,
-  conditions: ['=>host!=192.168.0.68'],
-  group: '',
-  version: ''
-})
+const conditionRuleDetail = reactive({})
 
 const actionObj = computed(() => {
-  const arr = conditionRuleDetail.key.split(':')
+  const key = conditionRuleDetail.key || ''
+  const arr = typeof key === 'string' ? key.split(':') : []
   conditionRuleDetail.version = arr[1] || ''
   conditionRuleDetail.group = arr[2] || ''
-  return arr[0] ? arr[0] : ''
+  return arr[0] || ''
 })
 
 // Request parameter matching
@@ -261,8 +253,7 @@ const addressSubsetMatch = ref<string[]>([])
 // Get condition routing details
 async function getRoutingRuleDetail() {
   let res = await getConditionRuleDetailAPI(<string>route.params?.ruleName)
-  console.log(res)
-  if (res?.code === 200) {
+  if (res?.code === HTTP_STATUS.SUCCESS) {
     Object.assign(conditionRuleDetail, res?.data || {})
 
     conditionRuleDetail.conditions.forEach((item: any, index: number) => {

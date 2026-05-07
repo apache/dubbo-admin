@@ -24,12 +24,15 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
+	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 
 	ui "github.com/apache/dubbo-admin/app/dubbo-ui"
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/config/console"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
@@ -48,20 +51,24 @@ type consoleWebServer struct {
 	cs     consolectx.Context
 }
 
+func (c *consoleWebServer) RequiredDependencies() []runtime.ComponentType {
+	return []runtime.ComponentType{
+		runtime.ResourceManager, // Console needs Manager for resource operations
+		// Note: No need to list ResourceStore explicitly as Manager already depends on it
+	}
+}
+
 func (c *consoleWebServer) Type() runtime.ComponentType {
 	return runtime.Console
 }
 
-func (c *consoleWebServer) SubType() runtime.ComponentSubType {
-	return runtime.DefaultComponentSubType
-}
-
 func (c *consoleWebServer) Order() int {
-	return math.MaxInt
+	return math.MaxInt - 5
 }
 
 func (c *consoleWebServer) Init(ctx runtime.BuilderContext) error {
-	r := gin.Default()
+	c.cfg = ctx.Config().Console
+	r := gin.New()
 	// Admin UI
 	r.StaticFS("/admin", http.FS(ui.FS()))
 	r.NoRoute(func(c *gin.Context) {
@@ -79,8 +86,10 @@ func (c *consoleWebServer) Init(ctx runtime.BuilderContext) error {
 	store := cookie.NewStore([]byte("secret"))
 	r.Use(sessions.Sessions("session", store))
 	r.Use(c.authMiddleware())
+	r.Use(ginzap.Ginzap(logger.Logger(), time.RFC3339, true))
+	r.Use(ginzap.RecoveryWithZap(logger.Logger(), true))
 	c.Engine = r
-	c.cfg = ctx.Config().Console
+	gin.SetMode(string(c.cfg.GinMode))
 	return nil
 }
 
@@ -134,7 +143,8 @@ func (c *consoleWebServer) authMiddleware() gin.HandlerFunc {
 		session := sessions.Default(c)
 		user := session.Get("user")
 		if user == nil {
-			c.JSON(http.StatusUnauthorized, model.NewUnauthorizedResp())
+			authErr := bizerror.New(bizerror.Unauthorized, "no access, please login")
+			c.JSON(http.StatusUnauthorized, model.NewBizErrorResp(authErr))
 			c.Abort()
 			return
 		}
