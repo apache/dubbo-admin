@@ -92,6 +92,7 @@ engine:
 mcp:
   enabled: true
   path: /api/mcp
+  apiKey: "dubbo-admin-mcp-key-2025"  # MCP API密钥，留空则不需要认证
 
     # [Kubernetes, Optional] dubboAppIdentifier: Identify which Dubbo app the pod belongs to, if not set, pod will not be seen as a dubbo instance at first
     # 1. ByLabels: Use the label value corresponding to the labelKey as the dubbo app name

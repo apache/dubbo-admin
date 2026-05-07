@@ -50,10 +50,11 @@ func init() {
 }
 
 type consoleWebServer struct {
-	Engine  *gin.Engine
-	cfg     *console.Config
-	cs      consolectx.Context
-	mcpPath string // MCP端点路径，用于auth中间件跳过认证
+	Engine   *gin.Engine
+	cfg      *console.Config
+	cs       consolectx.Context
+	mcpPath  string // MCP端点路径，用于auth中间件跳过认证
+	mcpAPIKey string // MCP API密钥，用于认证
 }
 
 func (c *consoleWebServer) RequiredDependencies() []runtime.ComponentType {
@@ -73,6 +74,16 @@ func (c *consoleWebServer) Order() int {
 
 func (c *consoleWebServer) Init(ctx runtime.BuilderContext) error {
 	c.cfg = ctx.Config().Console
+
+	// 提前读取 MCP 配置，供 auth 中间件使用
+	cfg := ctx.Config()
+	if cfg.MCP != nil {
+		if cfg.MCP.Path != "" {
+			c.mcpPath = cfg.MCP.Path
+		}
+		c.mcpAPIKey = cfg.MCP.APIKey
+	}
+
 	r := gin.New()
 	// Admin UI
 	r.StaticFS("/admin", http.FS(ui.FS()))
@@ -163,8 +174,9 @@ func (c *consoleWebServer) registerMCPEndpoints(coreRt runtime.Runtime, engine *
 		path = "/api/mcp"
 	}
 
-	// 存储MCP路径供auth中间件使用
+	// 存储MCP路径和API Key供auth中间件使用
 	c.mcpPath = path
+	c.mcpAPIKey = cfg.MCP.APIKey
 
 	// 直接创建MCP服务器
 	consoleCtx := consolectx.NewConsoleContext(coreRt)
@@ -182,28 +194,58 @@ func (c *consoleWebServer) registerMCPEndpoints(coreRt runtime.Runtime, engine *
 	// 创建HTTP处理器
 	handler := mcphttp.NewHandler(server)
 
-	// 注册路由（不需要认证）
+	// 注册路由
 	engine.POST(path, func(ctx *gin.Context) {
 		handler.ServeHTTP(ctx.Writer, ctx.Request)
 	})
 
-	logger.Sugar().Infof("MCP endpoint registered at %s with %d tools", path, len(reg.List()))
+	authStatus := "no-auth"
+	if c.mcpAPIKey != "" {
+		authStatus = "with-auth"
+	}
+	logger.Sugar().Infof("MCP endpoint registered at %s with %d tools (%s)", path, len(reg.List()), authStatus)
 }
 
 func (c *consoleWebServer) authMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		// skip login api
 		requestPath := ctx.Request.URL.Path
+
+		// skip login api
 		if strings.HasSuffix(requestPath, "/login") {
 			ctx.Next()
 			return
 		}
-		// skip MCP endpoint (no authentication needed)
-		// check default path or configured path
-		if requestPath == "/api/mcp" || (c.mcpPath != "" && requestPath == c.mcpPath) {
+
+		// check MCP endpoint authentication
+		isMCPRequest := requestPath == "/api/mcp" || (c.mcpPath != "" && requestPath == c.mcpPath)
+		if isMCPRequest {
+			// 如果配置了 API Key，验证 Bearer Token
+			if c.mcpAPIKey != "" {
+				authHeader := ctx.GetHeader("Authorization")
+				if authHeader == "" {
+					ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Missing Authorization header"})
+					ctx.Abort()
+					return
+				}
+				// 检查 Bearer Token 格式
+				if len(authHeader) < 7 || authHeader[:7] != "Bearer " {
+					ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization header format. Use: Bearer <token>"})
+					ctx.Abort()
+					return
+				}
+				token := authHeader[7:]
+				if token != c.mcpAPIKey {
+					ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid API key"})
+					ctx.Abort()
+					return
+				}
+			}
+			// API Key 验证通过或未配置 API Key，继续处理
 			ctx.Next()
 			return
 		}
+
+		// 其他 API 需要会话认证
 		session := sessions.Default(ctx)
 		user := session.Get("user")
 		if user == nil {

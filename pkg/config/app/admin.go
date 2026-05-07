@@ -58,6 +58,8 @@ type MCPConfig struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
 	// Path MCP端点路径，默认 /api/mcp
 	Path string `json:"path,omitempty" yaml:"path"`
+	// APIKey MCP API密钥，用于认证。如果为空则不需要认证
+	APIKey string `json:"apiKey,omitempty" yaml:"apiKey"`
 }
 
 var _ = &AdminConfig{}
