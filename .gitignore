@@ -48,6 +48,7 @@ vendor/
 app/dubbo-ui/dist/
 .claude/
 *.exe
+*.log
 claude_desktop_config.json
 .mcp.json
 .env
