@@ -33,12 +33,15 @@ import (
 
 	ui "github.com/apache/dubbo-admin/app/dubbo-ui"
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	"github.com/apache/dubbo-admin/pkg/config/app"
 	"github.com/apache/dubbo-admin/pkg/config/console"
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/router"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
+	mcpcore "github.com/apache/dubbo-admin/pkg/mcp/core"
+	mcphttp "github.com/apache/dubbo-admin/pkg/mcp/transport/http"
 )
 
 func init() {
@@ -104,6 +107,10 @@ func (c *consoleWebServer) Start(coreRt runtime.Runtime, stop <-chan struct{}) e
 	errChan := make(chan error)
 	c.cs = consolectx.NewConsoleContext(coreRt)
 	router.InitRouter(c.Engine, c.cs)
+
+	// 注册MCP端点（如果启用）
+	c.registerMCPEndpoints(coreRt, c.Engine)
+
 	httpServer := c.startHttpServer(errChan)
 	select {
 	case <-stop:
@@ -137,6 +144,56 @@ func (c *consoleWebServer) startHttpServer(errChan chan error) *http.Server {
 	}()
 
 	return server
+}
+
+func (c *consoleWebServer) registerMCPEndpoints(coreRt runtime.Runtime, engine *gin.Engine) {
+	// 从runtime获取完整配置
+	var cfg app.AdminConfig = coreRt.Config()
+
+	// 检查MCP是否启用
+	if cfg.MCP == nil || !cfg.MCP.Enabled {
+		return
+	}
+
+	// 获取MCP组件
+	mcpComp, err := coreRt.GetComponent(runtime.ComponentType("mcp"))
+	if err != nil {
+		logger.Sugar().Warnf("MCP component not found: %v, skipping MCP endpoint registration", err)
+		return
+	}
+
+	// 获取MCP服务器
+	type serverGetter interface {
+		GetServer() *mcpcore.Server
+	}
+
+	sg, ok := mcpComp.(serverGetter)
+	if !ok {
+		logger.Sugar().Warn("MCP component does not implement GetServer(), skipping MCP endpoint registration")
+		return
+	}
+
+	server := sg.GetServer()
+	if server == nil {
+		logger.Sugar().Warn("MCP server is nil, skipping MCP endpoint registration")
+		return
+	}
+
+	// 确定端点路径
+	path := cfg.MCP.Path
+	if path == "" {
+		path = "/api/mcp"
+	}
+
+	// 创建HTTP处理器
+	handler := mcphttp.NewHandler(server)
+
+	// 注册路由（不需要认证）
+	engine.POST(path, func(ctx *gin.Context) {
+		handler.ServeHTTP(ctx.Writer, ctx.Request)
+	})
+
+	logger.Sugar().Infof("MCP endpoint registered at %s", path)
 }
 
 func (c *consoleWebServer) authMiddleware() gin.HandlerFunc {

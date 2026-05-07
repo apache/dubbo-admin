@@ -72,7 +72,7 @@ func (t *SSETransport) HandleSSE(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	// 创建客户端
-	client := NewSSEClient(r.RemoteAddr())
+	client := NewSSEClient(r.RemoteAddr)
 
 	t.mu.Lock()
 	t.clients[client] = true

@@ -28,7 +28,6 @@ import (
 
 	"github.com/apache/dubbo-admin/pkg/config"
 	"github.com/apache/dubbo-admin/pkg/config/app"
-	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/core/bootstrap"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	_ "github.com/apache/dubbo-admin/pkg/lock/gorm"

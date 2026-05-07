@@ -116,14 +116,14 @@ func main() {
 	port := getPortConfig()
 
 	// 创建HTTP传输层
-	cfg := &httppkg.Config{
+	httpCfg := &httppkg.Config{
 		Host:            "0.0.0.0",
 		Port:            port,
 		ReadTimeout:     30 * time.Second,
 		WriteTimeout:    30 * time.Second,
 		ShutdownTimeout: 10 * time.Second,
 	}
-	transport := httppkg.NewTransportWithConfig(server, cfg)
+	transport := httppkg.NewTransportWithConfig(server, httpCfg)
 
 	// 打印启动信息
 	fmt.Fprintf(os.Stderr, "\n%s HTTP MCP Server v%s\n", ServerName, ServerVersion)

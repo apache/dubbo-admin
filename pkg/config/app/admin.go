@@ -48,6 +48,16 @@ type AdminConfig struct {
 	Discovery []*discovery.Config `json:"discovery" yaml:"discovery"`
 	// Engine configuration
 	Engine *engine.Config `json:"engine" yaml:"engine"`
+	// MCP configuration
+	MCP *MCPConfig `json:"mcp,omitempty" yaml:"mcp"`
+}
+
+// MCPConfig MCP配置
+type MCPConfig struct {
+	// Enabled 是否启用MCP端点
+	Enabled bool `json:"enabled" yaml:"enabled"`
+	// Path MCP端点路径，默认 /api/mcp
+	Path string `json:"path,omitempty" yaml:"path"`
 }
 
 var _ = &AdminConfig{}
