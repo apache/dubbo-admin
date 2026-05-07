@@ -1,0 +1,150 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [Optional] Config for log.
+log:
+  # [Optional] log level, options are debug, info, warn, error. Optional, default is info.
+  level: info
+  # [Optional] log file output path, default is ./logs/dubbo-admin.log.
+  outputPath: logs/dubbo-admin.log
+  # [Optional] max size for a single log file, default is 100, unit is `M`. [Optional]
+  maxSize: 100
+  # [Optional] max number of old log files to retain, default is 5. [Optional]
+  maxBackups: 5
+  # [Optional] max age for a log file, default is 3, unit is `day`. [Optional]
+  maxAge: 3
+
+# [Optional] config for observability.
+# observability:
+#   # [Optional] config for grafana and prometheus.
+#   grafana: http://101.34.253.152:30300
+#   # [Optional] config for prometheus.
+#   prometheus: http://101.34.253.152:30900/
+
+# [Optional] config for console.
+console:
+  # [Optional] port of http server, default is 8888.
+  port: 8888
+  # [Optional] running mode of Gin, options are debug, release, test, default is release.
+  ginMode: debug
+  # [Optional] typical user-pwd authentication, default user-pwd is admin-admin.
+  auth:
+    user: admin
+    password: admin
+    expirationTime: 3600
+
+# [Optional] config for data storage, default is memory
+store:
+  # [Optional] store data in memory
+  type: memory
+  # [Optional, Beta] store data in mysql
+#  type: mysql
+#  address: root:123456@tcp(127.0.0.1:23306)/dubbo-admin?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai
+
+# [Necessary] configs for service discovery
+discovery:
+  # [Necessary] discovery type, options are nacos2, zookeeper, mock(only for dev)
+  - type: nacos2
+  # [Necessary] discovery name, will be displayed in the web ui
+    name: nacos2.5-standalone
+  # [Necessary] a unique id for this discovery
+    id: nacos2.5
+  # [Necessary] address config
+    address:
+      # [Necessary] registry address
+      registry: nacos://101.34.253.152:30848?username=nacos&password=nacos
+      # [Optional] config center address, if not set, will use registry address
+      configCenter: nacos://101.34.253.152:30848?username=nacos&password=nacos
+      # [Optional] metadata report address, if not set, will use registry address
+      metadataReport: nacos://101.34.253.152:30848?username=nacos&password=nacos
+    # [Optional] extra properties
+    properties:
+      # [Nacos2, Optional] Adjust the interval(time unit is `s`) to adjust the frequency of list-all configs in nacos.
+      # Default period is 30s
+      configWatchPeriod: 30
+      # [Nacos2, Optional] Adjust the interval(time unit is `s`) to adjust the frequency of list-all services in nacos.
+      # Default period is 30s
+      serviceWatchPeriod: 30
+
+# [Optional] config for runtime engine, default is mock, as well as no engine.
+engine:
+  id: mock
+  name: mock
+  type: mock
+
+    # [Kubernetes, Optional] podWatchSelector: Watch pods with specified labels, if not set, will watch all pods
+    # e.g.
+    # podWatchSelector: org.apache.dubbo/dubbo-apps=true
+
+# [Optional] MCP config for Model Context Protocol
+mcp:
+  enabled: true
+  path: /api/mcp
+
+    # [Kubernetes, Optional] dubboAppIdentifier: Identify which Dubbo app the pod belongs to, if not set, pod will not be seen as a dubbo instance at first
+    # 1. ByLabels: Use the label value corresponding to the labelKey as the dubbo app name
+    # e.g.
+    #  dubboAppIdentifier:
+    #    type: ByLabel
+    #    labelKey: org.apache.dubbo/dubbo-app-name
+    # 2. ByAnnotation: Use the annotation value corresponding to the annotationKey as the dubbo app name
+    # e.g.
+    #  dubboAppIdentifier:
+    #    type: ByAnnotation
+    #    annotationKey: org.apache.dubbo/dubbo-app-name
+
+    # [Kubernetes, Optional] dubboRPCPortIdentifier: Identify the rpc port of a dubbo application, if not set, pod will not be seen as a dubbo instance at first
+    # 1. ByLabels: Use the label value corresponding to the labelKey as the dubbo rpc port
+    # e.g.
+    #  dubboRPCPortIdentifier:
+    #    type: ByLabel
+    #    labelKey: org.apache.dubbo/dubbo-rpc-port
+    # 2. ByAnnotation: Use the annotation value corresponding to the annotationKey as the dubbo rpc port
+    # e.g.
+    #  dubboRPCPortIdentifier:
+    #    type: ByAnnotation
+    #    annotationKey: org.apache.dubbo/dubbo-rpc-port
+
+    # [Kubernetes, Optional] dubboDiscoveryIdentifier: Identify the registry(discovery) which the dubbo instance belongs to, if not set, pod will not be seen as a dubbo instance at first
+    # 1. ByLabels: Use the label value corresponding to the labelKey as the dubbo registry name
+    # e.g.
+    #  dubboDiscoveryIdentifier:
+    #    type: ByLabel
+    #    labelKey: org.apache.dubbo/registry
+    # 2. ByAnnotation: Use the annotation value corresponding to the annotationKey as the dubbo registry name
+    # e.g.
+    #  dubboDiscoveryIdentifier:
+    #    type: ByAnnotation
+    #    annotationKey: org.apache.dubbo/registry
+
+    # [Kubernetes, Optional] mainContainerChooseStrategy: Strategy of choosing the main container, if not set, [type = ByIndex] and [index = 0] will be used
+    # 1. ByLast: choose the last container as the main container
+    # e.g.
+    #  mainContainerChooseStrategy:
+    #    type: ByLast
+    # 2. ByIndex(default): choose the container at the specified index location as the main container
+    # e.g.
+    #    type: ByIndex
+    #    index: 0
+    # 3. ByName: choose the container with the specified name
+    # e.g.
+    #  mainContainerChooseStrategy:
+    #    type: ByName
+    #    name: main
+    # 4. ByAnnotation: choose the container with the annotation key, specified annotation value will be used as the container name
+    # e.g.
+    #  mainContainerChooseStrategy:
+    #    type: ByAnnotation
+    #    annotationKey: org.apache.dubbo/main-container-name=${app-name}

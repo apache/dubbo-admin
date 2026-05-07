@@ -5,7 +5,25 @@
       "Bash(git merge *)",
       "Bash(git rm *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(echo \".claude/\")",
+      "Bash(git checkout *)",
+      "Bash(git ls-tree *)",
+      "Bash(gh pr *)",
+      "mcp__web-reader__webReader",
+      "Bash(git fetch *)",
+      "Bash(echo \"*.exe\")",
+      "Bash(echo \"claude_desktop_config.json\")",
+      "Bash(git push *)",
+      "Bash(grep -E \"\\\\.\\(exe|dll|so|dylib\\)$|test-config\\\\.yaml|\\\\.env\")",
+      "Bash(grep -c \"^\\\\.env$\")",
+      "Bash(go build *)",
+      "Bash(go mod *)",
+      "Bash(git restore *)",
+      "Bash(rm pkg/governor/mock/governor.go)",
+      "Bash(rmdir pkg/governor/mock)",
+      "Bash(timeout 60 go run app/dubbo-admin/main.go run -c dubbo-admin.yaml)",
+      "Bash(curl -s -X POST http://localhost:8888/api/mcp -H \"Content-Type: application/json\" -d '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{},\"clientInfo\":{\"name\":\"test\",\"version\":\"1.0\"}}}')"
     ]
   }
 }

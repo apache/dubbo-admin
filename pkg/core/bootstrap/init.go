@@ -34,6 +34,7 @@ import (
 	_ "github.com/apache/dubbo-admin/pkg/engine/mock"
 	_ "github.com/apache/dubbo-admin/pkg/governor/nacos2"
 	_ "github.com/apache/dubbo-admin/pkg/governor/zk"
+	_ "github.com/apache/dubbo-admin/pkg/mcp"
 	_ "github.com/apache/dubbo-admin/pkg/store/memory"
 	_ "github.com/apache/dubbo-admin/pkg/store/mysql"
 	_ "github.com/apache/dubbo-admin/pkg/store/postgres"
