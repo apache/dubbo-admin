@@ -27,13 +27,27 @@ func DefineMCPHost(g *genkit.Genkit, hostName string, mcpNameCmdMap map[string][
 	for key, value := range mcpNameCmdMap {
 		server := mcp.MCPServerConfig{
 			Name: key,
-			Config: mcp.MCPClientOptions{
+		}
+
+		// 检查连接类型
+		if len(value) > 0 && value[0] == "http" {
+			// HTTP连接
+			url := value[1]
+			server.Config = mcp.MCPClientOptions{
+				Name: key,
+				HTTP: &mcp.HTTPConfig{
+					URL: url,
+				},
+			}
+		} else {
+			// Stdio连接（默认）
+			server.Config = mcp.MCPClientOptions{
 				Name: key,
 				Stdio: &mcp.StdioConfig{
 					Command: value[0],
 					Args:    value[1:],
 				},
-			},
+			}
 		}
 		servers = append(servers, server)
 	}
@@ -54,13 +68,16 @@ func NewMCPToolManager(rt *runtime.Runtime, hostName string) (*MCPToolManager, e
 	}
 
 	mcps := map[string][]string{
-		"dubbo-admin": {
+		// 本地stdio连接（用于开发）
+		"dubbo-admin-local": {
 			"go",
 			"run",
-			"app/dubbo-admin/main.go",
-			"run",
-			"-c",
-			"app/dubbo-admin/dubbo-admin-simple.yaml",
+			"cmd/mcp-server/main.go",
+		},
+		// HTTP连接（用于生产环境）
+		"dubbo-admin": {
+			"http",
+			"http://localhost:8080/mcp",
 		},
 		"kubernetes": {
 			"npx",
@@ -68,13 +85,8 @@ func NewMCPToolManager(rt *runtime.Runtime, hostName string) (*MCPToolManager, e
 			"kubernetes-mcp-server@latest",
 		},
 		// "prometheus": {
-		// 	"docker",
-		// 	"run",
-		// 	"-i",
-		// 	"--rm",
-		// 	"-e",
-		// 	config.PROMETHEUS_URL,
-		// 	"ghcr.io/pab1it0/prometheus-mcp-server:latest",
+		// 	"http",
+		// 	"http://localhost:9090/mcp",
 		// },
 	}
 
