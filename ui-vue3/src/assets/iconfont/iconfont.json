@@ -1,0 +1,30 @@
+{
+  "id": "5134812",
+  "name": "dubbo-admin",
+  "font_family": "iconfont",
+  "css_prefix_text": "icon-",
+  "description": "",
+  "glyphs": [
+    {
+      "icon_id": "44716945",
+      "name": "实例",
+      "font_class": "shili",
+      "unicode": "e604",
+      "unicode_decimal": 58884
+    },
+    {
+      "icon_id": "15643729",
+      "name": "接口助手",
+      "font_class": "jiekouzhushou",
+      "unicode": "e6ae",
+      "unicode_decimal": 59054
+    },
+    {
+      "icon_id": "25739378",
+      "name": "应用",
+      "font_class": "yingyong",
+      "unicode": "e603",
+      "unicode_decimal": 58883
+    }
+  ]
+}

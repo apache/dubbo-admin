@@ -1,0 +1,30 @@
+{
+  "skill_name": "dubbo-admin-store",
+  "evals": [
+    {
+      "id": "obvious-trigger",
+      "prompt": "Add a new index for ServiceKind and query it with ListByIndexes.",
+      "expected_behavior": "Use store index registration and query validation workflow."
+    },
+    {
+      "id": "paraphrased-trigger",
+      "prompt": "Prefix search in the memory resource store returns missing keys.",
+      "expected_behavior": "Inspect HasPrefix handling and radix tree maintenance."
+    },
+    {
+      "id": "file-based-trigger",
+      "prompt": "Review pkg/store/memory/store.go and pkg/core/store/index/service.go.",
+      "expected_behavior": "Use this skill because store implementation and index files are touched."
+    },
+    {
+      "id": "no-trigger",
+      "prompt": "Add a frontend filter input to the service page.",
+      "expected_behavior": "Do not use this skill unless backend store query behavior changes."
+    },
+    {
+      "id": "conflict-trigger",
+      "prompt": "A Console API search endpoint is slow because it scans resources.",
+      "expected_behavior": "Use Console API for endpoint contract and store for index/query design."
+    }
+  ]
+}

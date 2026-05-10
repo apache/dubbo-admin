@@ -103,6 +103,16 @@ export const routes: Readonly<RouteRecordType[]> = [
                 }
               },
               {
+                path: '/topology/:pathId',
+                name: 'applicationDomain.topology',
+                component: () => import('../views/resources/applications/tabs/topology.vue'),
+                meta: {
+                  tab: true,
+                  icon: 'tabler:topology-ring',
+                  back: '/resources/applications/list'
+                }
+              },
+              {
                 path: '/instance/:pathId',
                 name: 'applicationDomain.instance',
                 component: () => import('../views/resources/applications/tabs/instance.vue'),
@@ -266,7 +276,8 @@ export const routes: Readonly<RouteRecordType[]> = [
                 component: () => import('../views/resources/services/tabs/distribution.vue'),
                 meta: {
                   tab: true,
-                  back: '/resources/services/list'
+                  back: '/resources/services/list',
+                  icon: 'material-symbols:analytics-outline'
                 }
               },
 
@@ -279,22 +290,34 @@ export const routes: Readonly<RouteRecordType[]> = [
               //     tab: true
               //   }
               // },
-              // {
-              //   path: '/debug/:pathId/:group?/:version?',
-              //   name: 'debug',
-              //   component: () => import('../views/resources/services/tabs/debug.vue'),
-              //   meta: {
-              //     tab: true,
-              //     back: '/resources/services/list'
-              //   }
-              // },
+              {
+                path: '/debug/:pathId/:group?/:version?',
+                name: 'debug',
+                component: () => import('../views/resources/services/tabs/debug.vue'),
+                meta: {
+                  tab: true,
+                  back: '/resources/services/list',
+                  icon: 'material-symbols:code-blocks-outline'
+                }
+              },
+              {
+                path: '/topology/:pathId/:group?/:version?',
+                name: 'topology',
+                component: () => import('../views/resources/services/tabs/topology.vue'),
+                meta: {
+                  tab: true,
+                  icon: 'tabler:topology-ring',
+                  back: '/resources/services/list'
+                }
+              },
               {
                 path: '/monitor/:pathId/:group?/:version?',
                 name: 'monitor',
                 component: () => import('../views/resources/services/tabs/monitor.vue'),
                 meta: {
                   tab: true,
-                  back: '/resources/services/list'
+                  back: '/resources/services/list',
+                  icon: 'material-symbols:monitor-heart-outline'
                 }
               },
               {
@@ -303,7 +326,8 @@ export const routes: Readonly<RouteRecordType[]> = [
                 component: () => import('../views/resources/services/tabs/tracing.vue'),
                 meta: {
                   tab: true,
-                  back: '/resources/services/list'
+                  back: '/resources/services/list',
+                  icon: 'material-symbols:route-outline'
                 }
               },
               {
@@ -312,7 +336,8 @@ export const routes: Readonly<RouteRecordType[]> = [
                 component: () => import('../views/resources/services/tabs/sceneConfig.vue'),
                 meta: {
                   tab: true,
-                  back: '/resources/services/list'
+                  back: '/resources/services/list',
+                  icon: 'material-symbols:settings'
                 }
               },
               {
@@ -322,7 +347,8 @@ export const routes: Readonly<RouteRecordType[]> = [
                 meta: {
                   tab: true,
                   hidden: true,
-                  back: '/resources/services/list'
+                  back: '/resources/services/list',
+                  icon: 'material-symbols:date-range'
                 }
               }
             ]

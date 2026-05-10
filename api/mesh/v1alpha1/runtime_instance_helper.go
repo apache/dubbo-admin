@@ -23,4 +23,8 @@ const (
 	StartupProbe   = "startup"
 )
 
-const InstanceTerminating = "Terminating"
+const (
+	InstanceStarting    = "Starting"
+	InstanceCrashing    = "Crashing"
+	InstanceTerminating = "Terminating"
+)

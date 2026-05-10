@@ -48,6 +48,7 @@ type PodListerWatcher struct {
 }
 
 var _ controller.ResourceListerWatcher = &PodListerWatcher{}
+var _ controller.ResourceKeyProvider = &PodListerWatcher{}
 
 func NewPodListWatcher(clientset *kubernetes.Clientset, cfg *enginecfg.Config) (*PodListerWatcher, error) {
 	var selector fields.Selector
@@ -105,10 +106,7 @@ func (p *PodListerWatcher) TransformFunc() cache.TransformFunc {
 				readyTime = c.LastTransitionTime.Format(constants.TimeFormatStr)
 			}
 		})
-		phase := string(pod.Status.Phase)
-		if pod.DeletionTimestamp != nil {
-			phase = meshproto.InstanceTerminating
-		}
+		phase := derivePodPhase(pod)
 		var workloadName string
 		var workloadType string
 		if len(pod.GetOwnerReferences()) > 0 {
@@ -171,6 +169,105 @@ func (p *PodListerWatcher) TransformFunc() cache.TransformFunc {
 		}
 		return res, nil
 	}
+}
+
+func (p *PodListerWatcher) KeyFunc() cache.KeyFunc {
+	return p.resourceKeyFromObject
+}
+
+func (p *PodListerWatcher) resourceKeyFromObject(obj interface{}) (string, error) {
+	for {
+		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
+		if !ok {
+			break
+		}
+		obj = tombstone.Obj
+	}
+	switch o := obj.(type) {
+	case *v1.Pod:
+		return p.resourceKeyFromPod(o), nil
+	case *meshresource.RuntimeInstanceResource:
+		return o.ResourceKey(), nil
+	default:
+		if obj == nil {
+			return "", bizerror.NewAssertionError("Pod", "nil")
+		}
+		return "", bizerror.NewAssertionError("Pod", reflect.TypeOf(obj).Name())
+	}
+}
+
+func (p *PodListerWatcher) resourceKeyFromPod(pod *v1.Pod) string {
+	return coremodel.BuildResourceKey(p.getDubboMesh(pod), pod.Name)
+}
+
+func derivePodPhase(pod *v1.Pod) string {
+	if pod == nil {
+		return "Unknown"
+	}
+	if pod.DeletionTimestamp != nil {
+		return meshproto.InstanceTerminating
+	}
+	if hasCrashingContainerStatus(pod.Status.InitContainerStatuses) || hasCrashingContainerStatus(pod.Status.ContainerStatuses) {
+		return meshproto.InstanceCrashing
+	}
+	switch pod.Status.Phase {
+	case v1.PodPending:
+		if hasStartingContainerStatus(pod.Status.InitContainerStatuses) || hasStartingContainerStatus(pod.Status.ContainerStatuses) {
+			return meshproto.InstanceStarting
+		}
+		return string(v1.PodPending)
+	case v1.PodRunning:
+		if !isPodReady(pod.Status.Conditions) {
+			return meshproto.InstanceStarting
+		}
+		return string(v1.PodRunning)
+	case v1.PodFailed:
+		return string(v1.PodFailed)
+	case v1.PodSucceeded:
+		return string(v1.PodSucceeded)
+	case v1.PodUnknown:
+		return string(v1.PodUnknown)
+	default:
+		return string(pod.Status.Phase)
+	}
+}
+
+func isPodReady(conditions []v1.PodCondition) bool {
+	for _, condition := range conditions {
+		if condition.Type == v1.PodReady {
+			return condition.Status == v1.ConditionTrue
+		}
+	}
+	return false
+}
+
+func hasStartingContainerStatus(statuses []v1.ContainerStatus) bool {
+	for _, status := range statuses {
+		if status.State.Waiting == nil {
+			continue
+		}
+		switch status.State.Waiting.Reason {
+		case "ContainerCreating", "PodInitializing":
+			return true
+		}
+	}
+	return false
+}
+
+func hasCrashingContainerStatus(statuses []v1.ContainerStatus) bool {
+	for _, status := range statuses {
+		if status.State.Waiting != nil {
+			switch status.State.Waiting.Reason {
+			case "CrashLoopBackOff", "ImagePullBackOff", "ErrImagePull", "RunContainerError",
+				"CreateContainerConfigError", "CreateContainerError", "StartError":
+				return true
+			}
+		}
+		if status.State.Terminated != nil && status.State.Terminated.ExitCode != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *PodListerWatcher) getMainContainer(pod *v1.Pod) *v1.Container {

@@ -20,6 +20,7 @@ header:
   paths-ignore:
     - '**/*.versionsBackup'
     - '**/.idea/**'
+    - '**/.agents/**'
     - '**/*.iml'
     - '**/.settings/*'
     - '**/.classpath'
@@ -83,6 +84,7 @@ header:
     - '**/docs/**'
     - '**/.husky/pre-commit'
     - '**/.nvmrc'
+    - '**/public/mockServiceWorker.js'
     - '**/**.txtar'
     - '**/**gen.go'
     - '**/api/**'

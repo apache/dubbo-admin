@@ -53,6 +53,10 @@ func (z *ZKMetadataEventSubscriber) Name() string {
 	return "Discovery-" + z.ResourceKind().ToString()
 }
 
+func (z *ZKMetadataEventSubscriber) AsyncEnabled() bool {
+	return true
+}
+
 func (z *ZKMetadataEventSubscriber) ProcessEvent(event events.Event) error {
 	newObj, ok := event.NewObj().(*meshresource.ZKMetadataResource)
 	if !ok && event.NewObj() != nil {

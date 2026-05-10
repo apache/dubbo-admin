@@ -20,6 +20,7 @@ package model
 import (
 	"github.com/duke-git/lancet/v2/strutil"
 
+	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/config/app"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
@@ -54,17 +55,18 @@ func NewSearchPaginationResult() *SearchPaginationResult {
 }
 
 type SearchInstanceResp struct {
-	Ip               string            `json:"ip"`
-	Name             string            `json:"name"`
-	WorkloadName     string            `json:"workloadName"`
-	AppName          string            `json:"appName"`
-	DeployState      string            `json:"deployState"`
-	DeployCluster    string            `json:"deployCluster"`
-	RegisterState    string            `json:"registerState"`
-	RegisterClusters []string          `json:"registerClusters"`
-	CreateTime       string            `json:"createTime"`
-	RegisterTime     string            `json:"registerTime"`
-	Labels           map[string]string `json:"labels"`
+	Ip               string                 `json:"ip"`
+	Name             string                 `json:"name"`
+	WorkloadName     string                 `json:"workloadName"`
+	AppName          string                 `json:"appName"`
+	LifecycleState   InstanceLifecycleState `json:"lifecycleState"`
+	DeployState      InstanceDeployState    `json:"deployState"`
+	DeployCluster    string                 `json:"deployCluster"`
+	RegisterState    InstanceRegisterState  `json:"registerState"`
+	RegisterClusters []string               `json:"registerClusters"`
+	CreateTime       string                 `json:"createTime"`
+	RegisterTime     string                 `json:"registerTime"`
+	Labels           map[string]string      `json:"labels"`
 }
 
 func NewSearchInstanceResp() *SearchInstanceResp {
@@ -85,13 +87,10 @@ func (r *SearchInstanceResp) FromInstanceResource(instanceResource *meshresource
 	if cfg.Engine != nil && cfg.Engine.ID == instance.SourceEngine {
 		r.DeployCluster = cfg.Engine.Name
 	}
-	if r.RegisterTime != "" {
-		r.RegisterState = "Registered"
-	} else {
-		r.RegisterState = "UnRegistered"
-	}
+	r.RegisterState = DeriveInstanceRegisterState(instance)
 	r.Labels = instance.Tags
-	r.DeployState = instance.DeployState
+	r.DeployState = DeriveInstanceDeployState(instance)
+	r.LifecycleState = DeriveInstanceLifecycleState(instance, r.DeployState, r.RegisterState)
 	r.WorkloadName = instance.WorkloadName
 	r.AppName = instance.AppName
 	return r
@@ -104,23 +103,74 @@ type State struct {
 	Value string `json:"value"`
 }
 
+// InstanceDeployState describes the runtime deployment state reported by the platform.
+type InstanceDeployState string
+
+const (
+	// InstanceDeployStateUnknown indicates the deployment state cannot be derived from runtime metadata.
+	InstanceDeployStateUnknown InstanceDeployState = "Unknown"
+	// InstanceDeployStatePending indicates the workload has been accepted but is not running yet.
+	InstanceDeployStatePending InstanceDeployState = "Pending"
+	// InstanceDeployStateStarting indicates the workload is running but not ready to serve.
+	InstanceDeployStateStarting InstanceDeployState = "Starting"
+	// InstanceDeployStateRunning indicates the workload is running and ready.
+	InstanceDeployStateRunning InstanceDeployState = "Running"
+	// InstanceDeployStateTerminating indicates the workload is shutting down.
+	InstanceDeployStateTerminating InstanceDeployState = "Terminating"
+	// InstanceDeployStateFailed indicates the workload has failed.
+	InstanceDeployStateFailed InstanceDeployState = "Failed"
+	// InstanceDeployStateSucceeded indicates the workload has completed successfully and exited.
+	InstanceDeployStateSucceeded InstanceDeployState = "Succeeded"
+	// InstanceDeployStateCrashing indicates the workload is repeatedly crashing or restarting.
+	InstanceDeployStateCrashing InstanceDeployState = "Crashing"
+)
+
+// InstanceRegisterState describes whether the instance is visible to the registry.
+type InstanceRegisterState string
+
+const (
+	// InstanceRegisterStateRegistered indicates the instance has been registered to the registry.
+	InstanceRegisterStateRegistered InstanceRegisterState = "Registered"
+	// InstanceRegisterStateUnregistered indicates the instance has not registered yet or has been removed.
+	InstanceRegisterStateUnregistered InstanceRegisterState = "UnRegistered"
+)
+
+// InstanceLifecycleState describes the user-facing lifecycle synthesized from deploy/register signals.
+type InstanceLifecycleState string
+
+const (
+	// InstanceLifecycleStateStarting indicates the instance is still warming up.
+	InstanceLifecycleStateStarting InstanceLifecycleState = "Starting"
+	// InstanceLifecycleStateServing indicates the instance is both running and registered.
+	InstanceLifecycleStateServing InstanceLifecycleState = "Serving"
+	// InstanceLifecycleStateDraining indicates the instance is running but has started unregistering.
+	InstanceLifecycleStateDraining InstanceLifecycleState = "Draining"
+	// InstanceLifecycleStateTerminating indicates the instance is shutting down.
+	InstanceLifecycleStateTerminating InstanceLifecycleState = "Terminating"
+	// InstanceLifecycleStateError indicates the instance is in an unexpected or failed state.
+	InstanceLifecycleStateError InstanceLifecycleState = "Error"
+	// InstanceLifecycleStateUnknown indicates the lifecycle cannot be inferred from current signals.
+	InstanceLifecycleStateUnknown InstanceLifecycleState = "Unknown"
+)
+
 type InstanceDetailResp struct {
-	RpcPort          int64             `json:"rpcPort"`
-	Ip               string            `json:"ip"`
-	AppName          string            `json:"appName"`
-	WorkloadName     string            `json:"workloadName"`
-	Labels           map[string]string `json:"labels"`
-	CreateTime       string            `json:"createTime"`
-	ReadyTime        string            `json:"readyTime"`
-	RegisterTime     string            `json:"registerTime"`
-	RegisterClusters []string          `json:"registerClusters"`
-	DeployCluster    string            `json:"deployCluster"`
-	DeployState      string            `json:"deployState"`
-	RegisterState    string            `json:"registerState"`
-	Node             string            `json:"node"`
-	Image            string            `json:"image"`
-	Probes           ProbeStruct       `json:"probes"`
-	Tags             map[string]string `json:"tags"`
+	RpcPort          int64                  `json:"rpcPort"`
+	Ip               string                 `json:"ip"`
+	AppName          string                 `json:"appName"`
+	WorkloadName     string                 `json:"workloadName"`
+	Labels           map[string]string      `json:"labels"`
+	CreateTime       string                 `json:"createTime"`
+	ReadyTime        string                 `json:"readyTime"`
+	RegisterTime     string                 `json:"registerTime"`
+	RegisterClusters []string               `json:"registerClusters"`
+	DeployCluster    string                 `json:"deployCluster"`
+	LifecycleState   InstanceLifecycleState `json:"lifecycleState"`
+	DeployState      InstanceDeployState    `json:"deployState"`
+	RegisterState    InstanceRegisterState  `json:"registerState"`
+	Node             string                 `json:"node"`
+	Image            string                 `json:"image"`
+	Probes           ProbeStruct            `json:"probes"`
+	Tags             map[string]string      `json:"tags"`
 }
 
 const (
@@ -158,16 +208,9 @@ func FromInstanceResource(res *meshresource.InstanceResource, cfg app.AdminConfi
 	if cfg.Engine.ID == res.Spec.SourceEngine {
 		r.DeployCluster = cfg.Engine.Name
 	}
-	if strutil.IsNotBlank(instance.DeployState) {
-		r.DeployState = instance.DeployState
-	} else {
-		r.DeployState = "Unknown"
-	}
-	if strutil.IsBlank(r.RegisterTime) {
-		r.RegisterState = "UnRegistered"
-	} else {
-		r.RegisterState = "Registered"
-	}
+	r.DeployState = DeriveInstanceDeployState(instance)
+	r.RegisterState = DeriveInstanceRegisterState(instance)
+	r.LifecycleState = DeriveInstanceLifecycleState(instance, r.DeployState, r.RegisterState)
 	r.Node = instance.Node
 	r.Image = instance.Image
 	r.Probes = ProbeStruct{}
@@ -195,4 +238,70 @@ func FromInstanceResource(res *meshresource.InstanceResource, cfg app.AdminConfi
 
 	}
 	return r
+}
+
+func DeriveInstanceDeployState(instance *meshproto.Instance) InstanceDeployState {
+	if instance == nil || strutil.IsBlank(instance.DeployState) {
+		return InstanceDeployStateUnknown
+	}
+	deployState := InstanceDeployState(instance.DeployState)
+	switch deployState {
+	case InstanceDeployStateRunning:
+		if !isPodReady(instance) {
+			return InstanceDeployStateStarting
+		}
+		return InstanceDeployStateRunning
+	default:
+		return deployState
+	}
+}
+
+func DeriveInstanceRegisterState(instance *meshproto.Instance) InstanceRegisterState {
+	if instance == nil || strutil.IsBlank(instance.RegisterTime) {
+		return InstanceRegisterStateUnregistered
+	}
+	return InstanceRegisterStateRegistered
+}
+
+func DeriveInstanceLifecycleState(
+	instance *meshproto.Instance,
+	deployState InstanceDeployState,
+	registerState InstanceRegisterState,
+) InstanceLifecycleState {
+	switch deployState {
+	case InstanceDeployStateCrashing, InstanceDeployStateFailed, InstanceDeployStateUnknown, InstanceDeployStateSucceeded:
+		return InstanceLifecycleStateError
+	case InstanceDeployStateTerminating:
+		return InstanceLifecycleStateTerminating
+	}
+
+	if registerState == InstanceRegisterStateRegistered {
+		if deployState == InstanceDeployStateRunning {
+			return InstanceLifecycleStateServing
+		}
+		return InstanceLifecycleStateError
+	}
+
+	if instance != nil && deployState == InstanceDeployStateRunning && strutil.IsNotBlank(instance.UnregisterTime) {
+		return InstanceLifecycleStateDraining
+	}
+
+	switch deployState {
+	case InstanceDeployStatePending, InstanceDeployStateStarting, InstanceDeployStateRunning:
+		return InstanceLifecycleStateStarting
+	default:
+		return InstanceLifecycleStateUnknown
+	}
+}
+
+func isPodReady(instance *meshproto.Instance) bool {
+	for _, condition := range instance.Conditions {
+		if condition == nil {
+			continue
+		}
+		if condition.Type == "Ready" {
+			return condition.Status == "True"
+		}
+	}
+	return false
 }

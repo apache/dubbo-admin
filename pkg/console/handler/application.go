@@ -98,6 +98,23 @@ func ApplicationSearch(ctx consolectx.Context) gin.HandlerFunc {
 	}
 }
 
+func GetApplicationGraph(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := model.NewApplicationGraphReq()
+		if err := c.ShouldBindQuery(req); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		resp, err := service.GraphApplications(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}
+
 func ApplicationConfigAccessLogPut(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		appName := c.Query("appName")

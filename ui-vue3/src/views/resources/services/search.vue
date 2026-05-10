@@ -20,10 +20,7 @@
       <template #bodyCell="{ column, record, text }">
         <template v-if="column.dataIndex === 'serviceName'">
           <a-tooltip :title="text">
-            <span
-              class="app-link"
-              @click="viewDistribution(text, record.group, record.version, record.providerAppName)"
-            >
+            <span class="app-link" @click="viewDistribution(text, record.group, record.version)">
               <b>
                 <Icon
                   style="margin-bottom: -2px"
@@ -71,11 +68,6 @@ const columns = [
     title: 'subset',
     key: 'group',
     dataIndex: 'group'
-  },
-  {
-    title: 'provider',
-    key: 'provider',
-    dataIndex: 'providerAppName'
   },
   {
     title: 'avgQPS',
@@ -140,7 +132,7 @@ const searchDomain = reactive(
       {
         label: 'serviceName',
         param: 'keywords',
-        placeholder: 'typeAppName',
+        placeholder: 'serviceName',
         defaultValue: query,
         style: {
           width: '200px'
@@ -160,16 +152,10 @@ searchDomain.tableStyle = {
   scrollY: '367px'
 }
 
-const viewDistribution = (
-  serviceName: string,
-  group: string,
-  version: string,
-  providerAppName?: string
-) => {
+const viewDistribution = (serviceName: string, group: string, version: string) => {
   router.push({
     name: 'distribution',
-    params: { pathId: serviceName, group, version },
-    query: providerAppName ? { providerAppName } : {}
+    params: { pathId: serviceName, group, version }
   })
 }
 

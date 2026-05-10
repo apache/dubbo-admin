@@ -194,6 +194,7 @@ const words: I18nType = {
     instanceIP: '实例IP',
     ip: 'IP',
     name: '实例名称',
+    lifecycleState: '生命周期状态',
     deployState: '部署状态',
     deployCluster: '部署集群',
     deployClusters: '部署集群',
@@ -500,6 +501,7 @@ const words: I18nType = {
     gray: '灰度隔离',
     name: '应用名',
     detail: '详情',
+    topology: '拓扑',
     instance: '实例',
     service: '服务',
     monitor: '监控',
@@ -545,6 +547,7 @@ const words: I18nType = {
   debug: '调试',
   distribution: '分布',
   monitor: '监控',
+  topology: '拓扑',
   tracing: '链路追踪',
   sceneConfig: '场景配置',
   event: '事件',
@@ -554,6 +557,7 @@ const words: I18nType = {
   idx: '序号',
   submit: '提交',
   reset: '重置',
+  refresh: '刷新',
   router: {
     resource: {
       app: {

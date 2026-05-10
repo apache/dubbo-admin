@@ -36,8 +36,8 @@ func PageListConfiguratorRule(ctx consolectx.Context, req *model.SearchReq) (*mo
 	pageData, err := manager.PageListByIndexes[*meshresource.DynamicConfigResource](
 		ctx.ResourceManager(),
 		meshresource.DynamicConfigKind,
-		map[string]string{
-			index.ByMeshIndex: req.Mesh,
+		[]index.IndexCondition{
+			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
 		},
 		req.PageReq)
 	if err != nil {

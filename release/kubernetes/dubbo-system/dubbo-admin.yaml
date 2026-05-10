@@ -113,6 +113,20 @@ data:
       id: default
       name: default
       type: kubernetes
+      properties:
+        podWatchSelector: metadata.namespace=dubbo-samples-shop
+        dubboAppIdentifier:
+          type: ByLabel
+          labelKey: app
+        dubboRPCPortIdentifier:
+          type: ByLabel
+          labelKey: org.apache.dubbo/dubbo-rpc-port
+        dubboDiscoveryIdentifier:
+          type: ByLabel
+          labelKey: org.apache.dubbo/registry
+        mainContainerChooseStrategy:
+          type: ByIndex
+          index: 0
 ---
 apiVersion: v1
 kind: Service

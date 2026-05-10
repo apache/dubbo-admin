@@ -28,6 +28,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
 // mockResource is a mock implementation of model.Resource for testing
@@ -377,7 +378,7 @@ func TestResourceStore_ListByIndexes(t *testing.T) {
 	assert.NoError(t, err)
 
 	// List by indexes
-	indexes := map[string]string{"by-mesh": "mesh1"}
+	indexes := []index.IndexCondition{{IndexName: "by-mesh", Value: "mesh1", Operator: index.Equals}}
 	resources, err := store.ListByIndexes(indexes)
 	assert.NoError(t, err)
 	assert.Len(t, resources, 2)
@@ -432,7 +433,7 @@ func TestResourceStore_PageListByIndexes(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Page list by indexes
-	indexes := map[string]string{"by-mesh": "mesh1"}
+	indexes := []index.IndexCondition{{IndexName: "by-mesh", Value: "mesh1", Operator: index.Equals}}
 	pageReq := model.PageReq{
 		PageOffset: 0,
 		PageSize:   2,
@@ -543,9 +544,9 @@ func TestResourceStore_MultipleIndexes(t *testing.T) {
 	}
 
 	// Test multiple indexes - get all prod env resources in mesh1
-	indexes := map[string]string{
-		"by-mesh":    "mesh1",
-		"by-version": "v1",
+	indexes := []index.IndexCondition{
+		{IndexName: "by-mesh", Value: "mesh1", Operator: index.Equals},
+		{IndexName: "by-version", Value: "v1", Operator: index.Equals},
 	}
 	result, err := store.ListByIndexes(indexes)
 	assert.NoError(t, err)
@@ -783,4 +784,426 @@ func TestResourceStore_ListIndexFuncValues(t *testing.T) {
 	assert.Len(t, values, 2)
 	assert.Contains(t, values, "active")
 	assert.Contains(t, values, "inactive")
+}
+
+func TestResourceStore_HasPrefixMatch(t *testing.T) {
+	store := NewMemoryResourceStore("TestInstance")
+	err := store.Init(nil)
+	assert.NoError(t, err)
+
+	// Create mock resources with IP-like values for prefix matching
+	mockRes1 := &mockResource{
+		kind: "TestInstance",
+		key:  "instance-1",
+		mesh: "default",
+		meta: metav1.ObjectMeta{
+			Name: "instance-1",
+			Labels: map[string]string{
+				"ip": "192.168.1.10",
+			},
+		},
+	}
+
+	mockRes2 := &mockResource{
+		kind: "TestInstance",
+		key:  "instance-2",
+		mesh: "default",
+		meta: metav1.ObjectMeta{
+			Name: "instance-2",
+			Labels: map[string]string{
+				"ip": "192.168.1.20",
+			},
+		},
+	}
+
+	mockRes3 := &mockResource{
+		kind: "TestInstance",
+		key:  "instance-3",
+		mesh: "default",
+		meta: metav1.ObjectMeta{
+			Name: "instance-3",
+			Labels: map[string]string{
+				"ip": "10.0.0.5",
+			},
+		},
+	}
+
+	mockRes4 := &mockResource{
+		kind: "TestInstance",
+		key:  "instance-4",
+		mesh: "default",
+		meta: metav1.ObjectMeta{
+			Name: "instance-4",
+			Labels: map[string]string{
+				"ip": "192.168.2.1",
+			},
+		},
+	}
+
+	// Add indexer
+	indexers := map[string]cache.IndexFunc{
+		"by-ip": func(obj interface{}) ([]string, error) {
+			resource := obj.(model.Resource)
+			ip := resource.ResourceMeta().Labels["ip"]
+			return []string{ip}, nil
+		},
+	}
+	err = store.AddIndexers(indexers)
+	assert.NoError(t, err)
+
+	// Add resources
+	err = store.Add(mockRes1)
+	assert.NoError(t, err)
+	err = store.Add(mockRes2)
+	assert.NoError(t, err)
+	err = store.Add(mockRes3)
+	assert.NoError(t, err)
+	err = store.Add(mockRes4)
+	assert.NoError(t, err)
+
+	// Test HasPrefix match: find all IPs starting with "192.168.1."
+	conditions := []index.IndexCondition{
+		{IndexName: "by-ip", Value: "192.168.1.", Operator: index.HasPrefix},
+	}
+	result, err := store.ListByIndexes(conditions)
+	assert.NoError(t, err)
+	assert.Len(t, result, 2)
+
+	// Verify the correct instances are returned
+	keys := make([]string, len(result))
+	for i, res := range result {
+		keys[i] = res.ResourceKey()
+	}
+	assert.Contains(t, keys, "instance-1")
+	assert.Contains(t, keys, "instance-2")
+
+	// Test HasPrefix match: find all IPs starting with "192.168."
+	conditions = []index.IndexCondition{
+		{IndexName: "by-ip", Value: "192.168.", Operator: index.HasPrefix},
+	}
+	result, err = store.ListByIndexes(conditions)
+	assert.NoError(t, err)
+	assert.Len(t, result, 3)
+
+	keys = make([]string, len(result))
+	for i, res := range result {
+		keys[i] = res.ResourceKey()
+	}
+	assert.Contains(t, keys, "instance-1")
+	assert.Contains(t, keys, "instance-2")
+	assert.Contains(t, keys, "instance-4")
+
+	// Test HasPrefix match: find all IPs starting with "10."
+	conditions = []index.IndexCondition{
+		{IndexName: "by-ip", Value: "10.", Operator: index.HasPrefix},
+	}
+	result, err = store.ListByIndexes(conditions)
+	assert.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Equal(t, "instance-3", result[0].ResourceKey())
+}
+
+func TestResourceStore_HasPrefixPageList(t *testing.T) {
+	store := NewMemoryResourceStore("TestInstance")
+	err := store.Init(nil)
+	assert.NoError(t, err)
+
+	// Create mock resources
+	mockRes1 := &mockResource{
+		kind: "TestInstance",
+		key:  "instance-1",
+		mesh: "default",
+		meta: metav1.ObjectMeta{
+			Name: "instance-1",
+			Labels: map[string]string{
+				"ip": "192.168.1.10",
+			},
+		},
+	}
+
+	mockRes2 := &mockResource{
+		kind: "TestInstance",
+		key:  "instance-2",
+		mesh: "default",
+		meta: metav1.ObjectMeta{
+			Name: "instance-2",
+			Labels: map[string]string{
+				"ip": "192.168.1.20",
+			},
+		},
+	}
+
+	mockRes3 := &mockResource{
+		kind: "TestInstance",
+		key:  "instance-3",
+		mesh: "default",
+		meta: metav1.ObjectMeta{
+			Name: "instance-3",
+			Labels: map[string]string{
+				"ip": "192.168.1.30",
+			},
+		},
+	}
+
+	// Add indexer
+	indexers := map[string]cache.IndexFunc{
+		"by-ip": func(obj interface{}) ([]string, error) {
+			resource := obj.(model.Resource)
+			ip := resource.ResourceMeta().Labels["ip"]
+			return []string{ip}, nil
+		},
+	}
+	err = store.AddIndexers(indexers)
+	assert.NoError(t, err)
+
+	// Add resources
+	err = store.Add(mockRes1)
+	assert.NoError(t, err)
+	err = store.Add(mockRes2)
+	assert.NoError(t, err)
+	err = store.Add(mockRes3)
+	assert.NoError(t, err)
+
+	// Test HasPrefix with pagination
+	conditions := []index.IndexCondition{
+		{IndexName: "by-ip", Value: "192.168.1.", Operator: index.HasPrefix},
+	}
+	pageReq := model.PageReq{
+		PageOffset: 0,
+		PageSize:   2,
+	}
+
+	pageData, err := store.PageListByIndexes(conditions, pageReq)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, pageData.Total)
+	assert.Equal(t, 0, pageData.PageOffset)
+	assert.Equal(t, 2, pageData.PageSize)
+	assert.Len(t, pageData.Data, 2)
+
+	// Test second page
+	pageReq.PageOffset = 2
+	pageData, err = store.PageListByIndexes(conditions, pageReq)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, pageData.Total)
+	assert.Equal(t, 2, pageData.PageOffset)
+	assert.Len(t, pageData.Data, 1)
+}
+
+func TestResourceStore_HasPrefixWithMultipleConditions(t *testing.T) {
+	store := NewMemoryResourceStore("TestInstance")
+	err := store.Init(nil)
+	assert.NoError(t, err)
+
+	// Create mock resources
+	mockRes1 := &mockResource{
+		kind: "TestInstance",
+		key:  "instance-1",
+		mesh: "mesh1",
+		meta: metav1.ObjectMeta{
+			Name: "instance-1",
+			Labels: map[string]string{
+				"ip": "192.168.1.10",
+			},
+		},
+	}
+
+	mockRes2 := &mockResource{
+		kind: "TestInstance",
+		key:  "instance-2",
+		mesh: "mesh1",
+		meta: metav1.ObjectMeta{
+			Name: "instance-2",
+			Labels: map[string]string{
+				"ip": "192.168.1.20",
+			},
+		},
+	}
+
+	mockRes3 := &mockResource{
+		kind: "TestInstance",
+		key:  "instance-3",
+		mesh: "mesh2",
+		meta: metav1.ObjectMeta{
+			Name: "instance-3",
+			Labels: map[string]string{
+				"ip": "192.168.1.30",
+			},
+		},
+	}
+
+	// Add indexers
+	indexers := map[string]cache.IndexFunc{
+		"by-ip": func(obj interface{}) ([]string, error) {
+			resource := obj.(model.Resource)
+			ip := resource.ResourceMeta().Labels["ip"]
+			return []string{ip}, nil
+		},
+		"by-mesh": func(obj interface{}) ([]string, error) {
+			return []string{obj.(model.Resource).ResourceMesh()}, nil
+		},
+	}
+	err = store.AddIndexers(indexers)
+	assert.NoError(t, err)
+
+	// Add resources
+	err = store.Add(mockRes1)
+	assert.NoError(t, err)
+	err = store.Add(mockRes2)
+	assert.NoError(t, err)
+	err = store.Add(mockRes3)
+	assert.NoError(t, err)
+
+	// Test combined: HasPrefix on IP AND Equals on mesh
+	conditions := []index.IndexCondition{
+		{IndexName: "by-ip", Value: "192.168.1.", Operator: index.HasPrefix},
+		{IndexName: "by-mesh", Value: "mesh1", Operator: index.Equals},
+	}
+	result, err := store.ListByIndexes(conditions)
+	assert.NoError(t, err)
+	assert.Len(t, result, 2)
+
+	keys := make([]string, len(result))
+	for i, res := range result {
+		keys[i] = res.ResourceKey()
+	}
+	assert.Contains(t, keys, "instance-1")
+	assert.Contains(t, keys, "instance-2")
+	assert.NotContains(t, keys, "instance-3")
+}
+
+func TestResourceStore_HasPrefixAfterUpdate(t *testing.T) {
+	store := NewMemoryResourceStore("TestInstance")
+	err := store.Init(nil)
+	assert.NoError(t, err)
+
+	// Create initial mock resource
+	mockRes1 := &mockResource{
+		kind: "TestInstance",
+		key:  "instance-1",
+		mesh: "default",
+		meta: metav1.ObjectMeta{
+			Name: "instance-1",
+			Labels: map[string]string{
+				"ip": "192.168.1.10",
+			},
+		},
+	}
+
+	// Add indexer
+	indexers := map[string]cache.IndexFunc{
+		"by-ip": func(obj interface{}) ([]string, error) {
+			resource := obj.(model.Resource)
+			ip := resource.ResourceMeta().Labels["ip"]
+			return []string{ip}, nil
+		},
+	}
+	err = store.AddIndexers(indexers)
+	assert.NoError(t, err)
+
+	// Add resource
+	err = store.Add(mockRes1)
+	assert.NoError(t, err)
+
+	// Verify it matches 192.168.1.
+	conditions := []index.IndexCondition{
+		{IndexName: "by-ip", Value: "192.168.1.", Operator: index.HasPrefix},
+	}
+	result, err := store.ListByIndexes(conditions)
+	assert.NoError(t, err)
+	assert.Len(t, result, 1)
+
+	// Update resource with different IP
+	updatedRes := &mockResource{
+		kind: "TestInstance",
+		key:  "instance-1",
+		mesh: "default",
+		meta: metav1.ObjectMeta{
+			Name: "instance-1",
+			Labels: map[string]string{
+				"ip": "10.0.0.5",
+			},
+		},
+	}
+	err = store.Update(updatedRes)
+	assert.NoError(t, err)
+
+	// Verify it no longer matches 192.168.1.
+	result, err = store.ListByIndexes(conditions)
+	assert.NoError(t, err)
+	assert.Len(t, result, 0)
+
+	// Verify it matches 10.0.
+	conditions = []index.IndexCondition{
+		{IndexName: "by-ip", Value: "10.0.", Operator: index.HasPrefix},
+	}
+	result, err = store.ListByIndexes(conditions)
+	assert.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Equal(t, "instance-1", result[0].ResourceKey())
+}
+
+func TestResourceStore_HasPrefixAfterDelete(t *testing.T) {
+	store := NewMemoryResourceStore("TestInstance")
+	err := store.Init(nil)
+	assert.NoError(t, err)
+
+	// Create mock resources
+	mockRes1 := &mockResource{
+		kind: "TestInstance",
+		key:  "instance-1",
+		mesh: "default",
+		meta: metav1.ObjectMeta{
+			Name: "instance-1",
+			Labels: map[string]string{
+				"ip": "192.168.1.10",
+			},
+		},
+	}
+
+	mockRes2 := &mockResource{
+		kind: "TestInstance",
+		key:  "instance-2",
+		mesh: "default",
+		meta: metav1.ObjectMeta{
+			Name: "instance-2",
+			Labels: map[string]string{
+				"ip": "192.168.1.20",
+			},
+		},
+	}
+
+	// Add indexer
+	indexers := map[string]cache.IndexFunc{
+		"by-ip": func(obj interface{}) ([]string, error) {
+			resource := obj.(model.Resource)
+			ip := resource.ResourceMeta().Labels["ip"]
+			return []string{ip}, nil
+		},
+	}
+	err = store.AddIndexers(indexers)
+	assert.NoError(t, err)
+
+	// Add resources
+	err = store.Add(mockRes1)
+	assert.NoError(t, err)
+	err = store.Add(mockRes2)
+	assert.NoError(t, err)
+
+	// Verify both match 192.168.1.
+	conditions := []index.IndexCondition{
+		{IndexName: "by-ip", Value: "192.168.1.", Operator: index.HasPrefix},
+	}
+	result, err := store.ListByIndexes(conditions)
+	assert.NoError(t, err)
+	assert.Len(t, result, 2)
+
+	// Delete one resource
+	err = store.Delete(mockRes1)
+	assert.NoError(t, err)
+
+	// Verify only one still matches
+	result, err = store.ListByIndexes(conditions)
+	assert.NoError(t, err)
+	assert.Len(t, result, 1)
+	assert.Equal(t, "instance-2", result[0].ResourceKey())
 }

@@ -69,6 +69,83 @@ func GetServiceTabDistribution(ctx consolectx.Context) gin.HandlerFunc {
 	}
 }
 
+func GetServiceProviderInstances(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := model.BaseServiceReq{}
+		if err := req.Query(c); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		resp, err := service.GetServiceProviderInstances(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}
+
+func GetServiceMethodNames(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := model.BaseServiceReq{}
+		if err := req.Query(c); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		methodNames, err := service.GetServiceMethodNames(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(methodNames))
+	}
+}
+
+func GetServiceMethodDetail(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := model.ServiceMethodDetailReq{}
+		if err := req.Query(c); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		resp, err := service.GetServiceMethodDetail(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}
+
+func ServiceGenericInvoke(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := model.ServiceGenericInvokeReq{}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		if err := req.Validate(); err != nil {
+			util.HandleArgumentError(c, err)
+			return
+		}
+
+		resp, err := service.InvokeServiceGeneric(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}
+
 func ServiceConfigTimeoutGET(ctx consolectx.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		req := model.BaseServiceReq{}
@@ -228,4 +305,62 @@ func ServiceConfigArgumentRoutePUT(ctx consolectx.Context) gin.HandlerFunc {
 		}
 		c.JSON(http.StatusOK, model.NewSuccessResp(nil))
 	}
+}
+
+// GetServiceGraph returns the service graph as graph data (nodes and edges) for visualization
+func GetServiceGraph(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := &model.ServiceGraphReq{}
+		if err := c.ShouldBindQuery(req); err != nil {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+			return
+		}
+
+		resp, err := service.GraphServices(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}
+
+// GetServiceDetail returns service detail information
+func GetServiceDetail(ctx consolectx.Context) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		req := &model.ServiceDetailReq{}
+		if err := c.ShouldBindQuery(req); err != nil {
+			c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+			return
+		}
+
+		resp, err := service.GetServiceDetail(ctx, req)
+		if err != nil {
+			util.HandleServiceError(c, err)
+			return
+		}
+
+		c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	}
+}
+
+// GetServiceInterfaces returns service interfaces information
+func GetServiceInterfaces(ctx consolectx.Context) gin.HandlerFunc {
+	// return func(c *gin.Context) {
+	// 	req := &model.ServiceInterfacesReq{}
+	// 	if err := c.ShouldBindQuery(req); err != nil {
+	// 		c.JSON(http.StatusBadRequest, model.NewErrorResp(err.Error()))
+	// 		return
+	// 	}
+
+	// 	resp, err := service.GetServiceInterfaces(ctx, req)
+	// 	if err != nil {
+	// 		util.HandleServiceError(c, err)
+	// 		return
+	// 	}
+
+	// 	c.JSON(http.StatusOK, model.NewSuccessResp(resp))
+	// }
+	return nil
 }

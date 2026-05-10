@@ -18,10 +18,14 @@
 package counter
 
 import (
+	"context"
 	"fmt"
 	"math"
+	"sync/atomic"
 
+	storecfg "github.com/apache/dubbo-admin/pkg/config/store"
 	"github.com/apache/dubbo-admin/pkg/core/events"
+	"github.com/apache/dubbo-admin/pkg/core/leader"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	resmodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
@@ -50,7 +54,13 @@ func (c *managerComponent) RequiredDependencies() []runtime.ComponentType {
 }
 
 type managerComponent struct {
-	manager CounterManager
+	manager             CounterManager
+	leaderElection      *leader.LeaderElection
+	needsLeaderElection bool
+	isLeader            atomic.Bool
+	bound               atomic.Bool
+	storeRouter         store.Router
+	bus                 events.EventBus
 }
 
 func (c *managerComponent) Type() runtime.ComponentType {
@@ -61,13 +71,45 @@ func (c *managerComponent) Order() int {
 	return math.MaxInt - 1
 }
 
-func (c *managerComponent) Init(runtime.BuilderContext) error {
+func (c *managerComponent) Init(ctx runtime.BuilderContext) error {
 	mgr := NewCounterManager()
 	c.manager = mgr
+
+	// Memory store runs single-replica; leader election is not needed.
+	if ctx.Config().Store.Type == storecfg.Memory {
+		return nil
+	}
+
+	storeComponent, err := ctx.GetActivatedComponent(runtime.ResourceStore)
+	if err != nil {
+		logger.Warnf("counter: failed to get ResourceStore component, skipping leader election: %v", err)
+		return nil
+	}
+	dbSrc, ok := storeComponent.(leader.DBSource)
+	if !ok {
+		return nil
+	}
+	db, hasDB := dbSrc.GetDB()
+	if !hasDB {
+		return nil
+	}
+	holderID, err := leader.GenerateHolderID()
+	if err != nil {
+		logger.Warnf("counter: failed to generate holder ID, skipping leader election: %v", err)
+		return nil
+	}
+	le := leader.NewLeaderElection(db, string(ComponentType), holderID)
+	if err := le.EnsureTable(); err != nil {
+		logger.Warnf("counter: failed to ensure leader lease table: %v", err)
+		return nil
+	}
+	c.leaderElection = le
+	c.needsLeaderElection = true
+	logger.Infof("counter: leader election initialized (holder: %s)", holderID)
 	return nil
 }
 
-func (c *managerComponent) Start(rt runtime.Runtime, _ <-chan struct{}) error {
+func (c *managerComponent) Start(rt runtime.Runtime, ch <-chan struct{}) error {
 	storeComponent, err := rt.GetComponent(runtime.ResourceStore)
 	if err != nil {
 		return err
@@ -76,10 +118,7 @@ func (c *managerComponent) Start(rt runtime.Runtime, _ <-chan struct{}) error {
 	if !ok {
 		return fmt.Errorf("component %s does not implement store.Router", runtime.ResourceStore)
 	}
-
-	if err := c.initializeCountsFromStore(storeRouter); err != nil {
-		logger.Warnf("Failed to initialize counter manager from store: %v", err)
-	}
+	c.storeRouter = storeRouter
 
 	component, err := rt.GetComponent(runtime.EventBus)
 	if err != nil {
@@ -89,7 +128,57 @@ func (c *managerComponent) Start(rt runtime.Runtime, _ <-chan struct{}) error {
 	if !ok {
 		return fmt.Errorf("component %s does not implement events.EventBus", runtime.EventBus)
 	}
-	return c.manager.Bind(bus)
+	c.bus = bus
+
+	if !c.needsLeaderElection {
+		return c.startBusinessLogic()
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		<-ch
+		cancel()
+	}()
+
+	c.leaderElection.RunLeaderElection(ctx, ch,
+		func() { // onStartLeading
+			logger.Infof("counter: became leader, starting business logic")
+			c.isLeader.Store(true)
+			if err := c.startBusinessLogic(); err != nil {
+				logger.Errorf("counter: failed to start business logic: %v", err)
+			}
+		},
+		func() { // onStopLeading
+			logger.Warnf("counter: lost leadership, resetting counters")
+			c.isLeader.Store(false)
+			c.manager.Reset()
+		},
+	)
+
+	return nil
+}
+
+// startBusinessLogic initializes counts from store and binds to EventBus.
+// When re-elected, it resets and re-initializes counts; Bind is called only once.
+func (c *managerComponent) startBusinessLogic() error {
+	c.manager.Reset()
+	// Wire up leader guard so event handler skips processing when not leader.
+	if c.needsLeaderElection {
+		cm := c.manager.(*counterManager)
+		cm.isLeader = &c.isLeader
+	}
+	if err := c.initializeCountsFromStore(c.storeRouter); err != nil {
+		logger.Warnf("Failed to initialize counter manager from store: %v", err)
+	}
+	if !c.bound.Load() {
+		if err := c.manager.Bind(c.bus); err != nil {
+			return err
+		}
+		c.bound.Store(true)
+	}
+	return nil
 }
 
 func (c *managerComponent) initializeCountsFromStore(storeRouter store.Router) error {

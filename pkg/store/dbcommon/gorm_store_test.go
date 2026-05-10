@@ -33,6 +33,7 @@ import (
 
 	storecfg "github.com/apache/dubbo-admin/pkg/config/store"
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
+	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
 // mockResource is a mock implementation of model.Resource for testing
@@ -170,7 +171,7 @@ func TestNewGormStore(t *testing.T) {
 	assert.Equal(t, kind, store.kind)
 	assert.Equal(t, "test-address", store.address)
 	assert.NotNil(t, store.pool)
-	assert.NotNil(t, store.indices)
+	assert.NotNil(t, store.indexers)
 	assert.NotNil(t, store.stopCh)
 }
 
@@ -775,7 +776,7 @@ func TestGormStore_ListByIndexes(t *testing.T) {
 	require.NoError(t, err)
 
 	// List by indexes
-	indexes := map[string]string{"by-mesh": "mesh1"}
+	indexes := []index.IndexCondition{{IndexName: "by-mesh", Value: "mesh1", Operator: index.Equals}}
 	resources, err := store.ListByIndexes(indexes)
 	assert.NoError(t, err)
 	assert.Len(t, resources, 2)
@@ -802,7 +803,7 @@ func TestGormStore_ListByIndexesEmpty(t *testing.T) {
 	require.NoError(t, err)
 
 	// List with empty indexes should return all resources
-	resources, err := store.ListByIndexes(map[string]string{})
+	resources, err := store.ListByIndexes([]index.IndexCondition{})
 	assert.NoError(t, err)
 	assert.Len(t, resources, 1)
 }
@@ -855,7 +856,7 @@ func TestGormStore_PageListByIndexes(t *testing.T) {
 	require.NoError(t, err)
 
 	// Page list by indexes
-	indexes := map[string]string{"by-mesh": "mesh1"}
+	indexes := []index.IndexCondition{{IndexName: "by-mesh", Value: "mesh1", Operator: index.Equals}}
 	pageReq := model.PageReq{
 		PageOffset: 0,
 		PageSize:   2,
@@ -918,7 +919,7 @@ func TestGormStore_PageListByIndexesOffsetBeyondTotal(t *testing.T) {
 	require.NoError(t, err)
 
 	// Request page beyond total
-	indexes := map[string]string{"by-mesh": "default"}
+	indexes := []index.IndexCondition{{IndexName: "by-mesh", Value: "default", Operator: index.Equals}}
 	pageReq := model.PageReq{
 		PageOffset: 10,
 		PageSize:   2,
@@ -999,9 +1000,9 @@ func TestGormStore_MultipleIndexes(t *testing.T) {
 	}
 
 	// Test multiple indexes - get all resources in mesh1 and default namespace
-	indexes := map[string]string{
-		"by-mesh":      "mesh1",
-		"by-namespace": "default",
+	indexes := []index.IndexCondition{
+		{IndexName: "by-mesh", Value: "mesh1", Operator: index.Equals},
+		{IndexName: "by-namespace", Value: "default", Operator: index.Equals},
 	}
 	result, err := store.ListByIndexes(indexes)
 	assert.NoError(t, err)
@@ -1238,79 +1239,6 @@ func TestGormStore_ReplaceIndices(t *testing.T) {
 	assert.Contains(t, keys, "test-key-2")
 }
 
-func TestGormStore_InitRebuildIndices(t *testing.T) {
-	// This test verifies that indices are rebuilt from existing data during Init()
-	// Simulates the scenario where a GormStore starts with existing data in the database
-
-	// Create store and add data
-	store, cleanup := setupTestStore(t)
-	defer cleanup()
-
-	err := store.Init(nil)
-	require.NoError(t, err)
-
-	// Add indexer before adding data
-	indexers := map[string]cache.IndexFunc{
-		"by-mesh": func(obj interface{}) ([]string, error) {
-			resource := obj.(model.Resource)
-			return []string{resource.ResourceMesh()}, nil
-		},
-	}
-	err = store.AddIndexers(indexers)
-	require.NoError(t, err)
-
-	// Add some resources to the database
-	mockRes1 := &mockResource{
-		Kind: "TestResource",
-		Key:  "test-key-1",
-		Mesh: "mesh1",
-		Meta: metav1.ObjectMeta{Name: "test-resource-1"},
-	}
-	mockRes2 := &mockResource{
-		Kind: "TestResource",
-		Key:  "test-key-2",
-		Mesh: "mesh2",
-		Meta: metav1.ObjectMeta{Name: "test-resource-2"},
-	}
-	err = store.Add(mockRes1)
-	require.NoError(t, err)
-	err = store.Add(mockRes2)
-	require.NoError(t, err)
-
-	// Verify indices are populated
-	keys, err := store.IndexKeys("by-mesh", "mesh1")
-	assert.NoError(t, err)
-	assert.Contains(t, keys, "test-key-1")
-
-	// Now simulate a restart by creating a new store instance with the same pool
-	// This simulates the scenario where existing data exists in the database
-	pool := store.pool
-	pool.IncrementRef() // Increment ref count since we're creating another store using it
-
-	newStore := NewGormStore("TestResource", pool.Address(), pool)
-
-	// Add indexers BEFORE Init to ensure they're available during index rebuild
-	err = newStore.AddIndexers(indexers)
-	require.NoError(t, err)
-
-	// Init should rebuild indices from existing database data
-	err = newStore.Init(nil)
-	require.NoError(t, err)
-
-	// Verify indices were rebuilt with existing data
-	keys, err = newStore.IndexKeys("by-mesh", "mesh1")
-	assert.NoError(t, err)
-	assert.Contains(t, keys, "test-key-1", "Index should contain existing data after Init()")
-
-	keys, err = newStore.IndexKeys("by-mesh", "mesh2")
-	assert.NoError(t, err)
-	assert.Contains(t, keys, "test-key-2", "Index should contain existing data after Init()")
-
-	// Verify all keys are present
-	allKeys := newStore.ListKeys()
-	assert.Len(t, allKeys, 2)
-}
-
 func TestGormStore_Resync(t *testing.T) {
 	store, cleanup := setupTestStore(t)
 	defer cleanup()
@@ -1474,4 +1402,291 @@ func TestGormStore_InvalidResourceType(t *testing.T) {
 	// Try to get invalid type
 	_, _, err = store.Get("not-a-resource")
 	assert.Error(t, err)
+}
+
+func TestGormStore_IndexPersistence(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	err := store.Init(nil)
+	require.NoError(t, err)
+
+	// Add indexer for IP addresses
+	indexers := map[string]cache.IndexFunc{
+		"by-ip": func(obj interface{}) ([]string, error) {
+			resource := obj.(model.Resource)
+			// Simulate an IP address from the resource key
+			return []string{resource.ResourceKey()}, nil
+		},
+	}
+	err = store.AddIndexers(indexers)
+	require.NoError(t, err)
+
+	// Create and add resources with IP-like keys
+	mockRes1 := &mockResource{
+		Kind: "TestResource",
+		Key:  "192.168.1.1",
+		Mesh: "default",
+		Meta: metav1.ObjectMeta{Name: "resource-1"},
+	}
+	mockRes2 := &mockResource{
+		Kind: "TestResource",
+		Key:  "192.168.1.2",
+		Mesh: "default",
+		Meta: metav1.ObjectMeta{Name: "resource-2"},
+	}
+
+	err = store.Add(mockRes1)
+	require.NoError(t, err)
+	err = store.Add(mockRes2)
+	require.NoError(t, err)
+
+	// Verify indices are persisted to resource_indices table
+	db := store.pool.GetDB()
+	var count int64
+	err = db.Model(&ResourceIndexModel{}).
+		Where("resource_kind = ? AND index_name = ?", "TestResource", "by-ip").
+		Count(&count).Error
+	assert.NoError(t, err)
+	assert.Equal(t, int64(2), count, "Both index entries should be persisted to resource_indices table")
+
+	// Verify operator field is set to "Equals"
+	var entries []ResourceIndexModel
+	err = db.Where("resource_kind = ? AND index_name = ?", "TestResource", "by-ip").
+		Find(&entries).Error
+	assert.NoError(t, err)
+	for _, entry := range entries {
+		assert.Equal(t, "Equals", entry.Operator, "Operator field should be set to Equals")
+	}
+}
+
+func TestGormStore_ListByIndexes_HasPrefix(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	err := store.Init(nil)
+	require.NoError(t, err)
+
+	// Add indexer for IP addresses
+	indexers := map[string]cache.IndexFunc{
+		"by-ip": func(obj interface{}) ([]string, error) {
+			resource := obj.(model.Resource)
+			return []string{resource.ResourceKey()}, nil
+		},
+	}
+	err = store.AddIndexers(indexers)
+	require.NoError(t, err)
+
+	// Create resources with IP-like keys
+	mockRes1 := &mockResource{
+		Kind: "TestResource",
+		Key:  "192.168.1.1",
+		Mesh: "default",
+		Meta: metav1.ObjectMeta{Name: "resource-1"},
+	}
+	mockRes2 := &mockResource{
+		Kind: "TestResource",
+		Key:  "192.168.1.2",
+		Mesh: "default",
+		Meta: metav1.ObjectMeta{Name: "resource-2"},
+	}
+	mockRes3 := &mockResource{
+		Kind: "TestResource",
+		Key:  "10.0.0.1",
+		Mesh: "default",
+		Meta: metav1.ObjectMeta{Name: "resource-3"},
+	}
+
+	err = store.Add(mockRes1)
+	require.NoError(t, err)
+	err = store.Add(mockRes2)
+	require.NoError(t, err)
+	err = store.Add(mockRes3)
+	require.NoError(t, err)
+
+	// Query with HasPrefix operator
+	indexes := []index.IndexCondition{
+		{IndexName: "by-ip", Value: "192.168", Operator: index.HasPrefix},
+	}
+	resources, err := store.ListByIndexes(indexes)
+	assert.NoError(t, err)
+	assert.Len(t, resources, 2)
+
+	// Verify the correct resources were returned
+	keys := make([]string, len(resources))
+	for i, res := range resources {
+		keys[i] = res.ResourceKey()
+	}
+	assert.Contains(t, keys, "192.168.1.1")
+	assert.Contains(t, keys, "192.168.1.2")
+	assert.NotContains(t, keys, "10.0.0.1")
+}
+
+func TestGormStore_PageListByIndexes_HasPrefix(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	err := store.Init(nil)
+	require.NoError(t, err)
+
+	// Add indexer for IP addresses
+	indexers := map[string]cache.IndexFunc{
+		"by-ip": func(obj interface{}) ([]string, error) {
+			resource := obj.(model.Resource)
+			return []string{resource.ResourceKey()}, nil
+		},
+	}
+	err = store.AddIndexers(indexers)
+	require.NoError(t, err)
+
+	// Create resources with IP-like keys
+	for i := 1; i <= 5; i++ {
+		mockRes := &mockResource{
+			Kind: "TestResource",
+			Key:  fmt.Sprintf("192.168.1.%d", i),
+			Mesh: "default",
+			Meta: metav1.ObjectMeta{Name: fmt.Sprintf("resource-%d", i)},
+		}
+		err = store.Add(mockRes)
+		require.NoError(t, err)
+	}
+
+	// Query with HasPrefix operator and pagination
+	indexes := []index.IndexCondition{
+		{IndexName: "by-ip", Value: "192.168", Operator: index.HasPrefix},
+	}
+	pageReq := model.PageReq{
+		PageOffset: 0,
+		PageSize:   2,
+	}
+	pageData, err := store.PageListByIndexes(indexes, pageReq)
+	assert.NoError(t, err)
+	assert.Equal(t, 5, pageData.Total)
+	assert.Len(t, pageData.Data, 2)
+
+	// Verify second page
+	pageReq.PageOffset = 2
+	pageData, err = store.PageListByIndexes(indexes, pageReq)
+	assert.NoError(t, err)
+	assert.Equal(t, 5, pageData.Total)
+	assert.Len(t, pageData.Data, 2)
+
+	// Verify last page
+	pageReq.PageOffset = 4
+	pageData, err = store.PageListByIndexes(indexes, pageReq)
+	assert.NoError(t, err)
+	assert.Equal(t, 5, pageData.Total)
+	assert.Len(t, pageData.Data, 1)
+}
+
+func TestGormStore_DeleteIndex_RemovesFromDB(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	err := store.Init(nil)
+	require.NoError(t, err)
+
+	// Add indexer
+	indexers := map[string]cache.IndexFunc{
+		"by-name": func(obj interface{}) ([]string, error) {
+			resource := obj.(model.Resource)
+			return []string{resource.ResourceMeta().Name}, nil
+		},
+	}
+	err = store.AddIndexers(indexers)
+	require.NoError(t, err)
+
+	// Create and add resource
+	mockRes := &mockResource{
+		Kind: "TestResource",
+		Key:  "test-key",
+		Mesh: "default",
+		Meta: metav1.ObjectMeta{Name: "test-resource"},
+	}
+	err = store.Add(mockRes)
+	require.NoError(t, err)
+
+	// Verify index entry exists in DB
+	db := store.pool.GetDB()
+	var count int64
+	err = db.Model(&ResourceIndexModel{}).
+		Where("resource_kind = ? AND resource_key = ?", "TestResource", "test-key").
+		Count(&count).Error
+	assert.NoError(t, err)
+	assert.Greater(t, count, int64(0), "Index entry should exist after Add")
+
+	// Delete the resource
+	err = store.Delete(mockRes)
+	require.NoError(t, err)
+
+	// Verify index entry is removed from DB
+	count = 0
+	err = db.Model(&ResourceIndexModel{}).
+		Where("resource_kind = ? AND resource_key = ?", "TestResource", "test-key").
+		Count(&count).Error
+	assert.NoError(t, err)
+	assert.Equal(t, int64(0), count, "Index entry should be removed after Delete")
+}
+
+func TestGormStore_UpdateIndex_UpdatesInDB(t *testing.T) {
+	store, cleanup := setupTestStore(t)
+	defer cleanup()
+
+	err := store.Init(nil)
+	require.NoError(t, err)
+
+	// Add indexer
+	indexers := map[string]cache.IndexFunc{
+		"by-mesh": func(obj interface{}) ([]string, error) {
+			resource := obj.(model.Resource)
+			return []string{resource.ResourceMesh()}, nil
+		},
+	}
+	err = store.AddIndexers(indexers)
+	require.NoError(t, err)
+
+	// Create and add resource
+	mockRes := &mockResource{
+		Kind: "TestResource",
+		Key:  "test-key",
+		Mesh: "mesh1",
+		Meta: metav1.ObjectMeta{Name: "test-resource"},
+	}
+	err = store.Add(mockRes)
+	require.NoError(t, err)
+
+	// Verify initial index entry in DB
+	db := store.pool.GetDB()
+	var count int64
+	err = db.Model(&ResourceIndexModel{}).
+		Where("resource_kind = ? AND resource_key = ? AND index_value = ?", "TestResource", "test-key", "mesh1").
+		Count(&count).Error
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), count, "Initial index entry should exist")
+
+	// Update resource with different mesh
+	updatedRes := &mockResource{
+		Kind: "TestResource",
+		Key:  "test-key",
+		Mesh: "mesh2",
+		Meta: metav1.ObjectMeta{Name: "test-resource"},
+	}
+	err = store.Update(updatedRes)
+	require.NoError(t, err)
+
+	// Verify old index entry is removed
+	count = 0
+	err = db.Model(&ResourceIndexModel{}).
+		Where("resource_kind = ? AND resource_key = ? AND index_value = ?", "TestResource", "test-key", "mesh1").
+		Count(&count).Error
+	assert.NoError(t, err)
+	assert.Equal(t, int64(0), count, "Old index entry should be removed")
+
+	// Verify new index entry exists
+	count = 0
+	err = db.Model(&ResourceIndexModel{}).
+		Where("resource_kind = ? AND resource_key = ? AND index_value = ?", "TestResource", "test-key", "mesh2").
+		Count(&count).Error
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), count, "New index entry should exist")
 }

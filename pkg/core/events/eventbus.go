@@ -45,6 +45,16 @@ type Subscriber interface {
 	Name() string
 
 	ProcessEvent(event Event) error
+
+	// AsyncEnabled controls whether this subscriber should be dispatched asynchronously.
+	//
+	// Return true when the subscriber may execute relatively slow logic and should not
+	// block EventBus.Send(). In async mode, EventBus enqueues events into a buffered
+	// channel and processes them in a dedicated drainer goroutine.
+	//
+	// Async dispatch is best-effort: when the subscriber queue is full, new events are
+	// dropped with a warning log.
+	AsyncEnabled() bool
 }
 
 type Subscribers []Subscriber

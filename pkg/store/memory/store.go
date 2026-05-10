@@ -18,9 +18,13 @@
 package memory
 
 import (
+	"fmt"
 	"reflect"
 	"sort"
+	"strings"
+	"sync"
 
+	"github.com/armon/go-radix"
 	set "github.com/duke-git/lancet/v2/datastructure/set"
 	"github.com/duke-git/lancet/v2/slice"
 	"k8s.io/client-go/tools/cache"
@@ -33,8 +37,10 @@ import (
 )
 
 type resourceStore struct {
-	rk         coremodel.ResourceKind
-	storeProxy cache.Indexer
+	rk          coremodel.ResourceKind
+	storeProxy  cache.Indexer
+	prefixTrees map[string]*radix.Tree
+	treesMu     sync.RWMutex
 }
 
 var _ store.ManagedResourceStore = &resourceStore{}
@@ -55,6 +61,11 @@ func (rs *resourceStore) Init(_ runtime.BuilderContext) error {
 		},
 		indexers,
 	)
+	// Initialize RadixTree for each index for prefix matching support
+	rs.prefixTrees = make(map[string]*radix.Tree)
+	for indexName := range indexers {
+		rs.prefixTrees[indexName] = radix.New()
+	}
 	return nil
 }
 
@@ -63,15 +74,47 @@ func (rs *resourceStore) Start(_ runtime.Runtime, _ <-chan struct{}) error {
 }
 
 func (rs *resourceStore) Add(obj interface{}) error {
-	return rs.storeProxy.Add(obj)
+	if err := rs.storeProxy.Add(obj); err != nil {
+		return err
+	}
+	r, ok := obj.(coremodel.Resource)
+	if ok {
+		rs.addToTrees(r)
+	}
+	return nil
 }
 
 func (rs *resourceStore) Update(obj interface{}) error {
-	return rs.storeProxy.Update(obj)
+	r, ok := obj.(coremodel.Resource)
+	var oldRes coremodel.Resource
+	if ok {
+		// Fetch old resource before mutating the store
+		oldObj, exists, err := rs.storeProxy.Get(r)
+		if exists && err == nil {
+			oldRes, _ = oldObj.(coremodel.Resource)
+		}
+	}
+	if err := rs.storeProxy.Update(obj); err != nil {
+		return err
+	}
+	// Only mutate trees after a successful store update
+	if ok {
+		if oldRes != nil {
+			rs.removeFromTrees(oldRes)
+		}
+		rs.addToTrees(r)
+	}
+	return nil
 }
 
 func (rs *resourceStore) Delete(obj interface{}) error {
-	return rs.storeProxy.Delete(obj)
+	if err := rs.storeProxy.Delete(obj); err != nil {
+		return err
+	}
+	if r, ok := obj.(coremodel.Resource); ok {
+		rs.removeFromTrees(r)
+	}
+	return nil
 }
 
 func (rs *resourceStore) List() []interface{} {
@@ -91,7 +134,25 @@ func (rs *resourceStore) GetByKey(key string) (item interface{}, exists bool, er
 }
 
 func (rs *resourceStore) Replace(i []interface{}, s string) error {
-	return rs.storeProxy.Replace(i, s)
+	// Clear all trees before replace
+	rs.treesMu.Lock()
+	for indexName := range rs.prefixTrees {
+		rs.prefixTrees[indexName] = radix.New()
+	}
+	rs.treesMu.Unlock()
+
+	if err := rs.storeProxy.Replace(i, s); err != nil {
+		return err
+	}
+
+	// Add all new resources to trees
+	for _, obj := range i {
+		r, ok := obj.(coremodel.Resource)
+		if ok {
+			rs.addToTrees(r)
+		}
+	}
+	return nil
 }
 
 func (rs *resourceStore) Resync() error {
@@ -119,7 +180,20 @@ func (rs *resourceStore) GetIndexers() cache.Indexers {
 }
 
 func (rs *resourceStore) AddIndexers(newIndexers cache.Indexers) error {
-	return rs.storeProxy.AddIndexers(newIndexers)
+	rs.treesMu.Lock()
+	defer rs.treesMu.Unlock()
+
+	if err := rs.storeProxy.AddIndexers(newIndexers); err != nil {
+		return err
+	}
+
+	// Add RadixTrees for new indexers
+	for indexName := range newIndexers {
+		if _, exists := rs.prefixTrees[indexName]; !exists {
+			rs.prefixTrees[indexName] = radix.New()
+		}
+	}
+	return nil
 }
 
 func (rs *resourceStore) GetByKeys(keys []string) ([]coremodel.Resource, error) {
@@ -141,7 +215,7 @@ func (rs *resourceStore) GetByKeys(keys []string) ([]coremodel.Resource, error) 
 	return resources, nil
 }
 
-func (rs *resourceStore) ListByIndexes(indexes map[string]string) ([]coremodel.Resource, error) {
+func (rs *resourceStore) ListByIndexes(indexes []index.IndexCondition) ([]coremodel.Resource, error) {
 	keys, err := rs.getKeysByIndexes(indexes)
 	if err != nil {
 		return nil, err
@@ -156,7 +230,7 @@ func (rs *resourceStore) ListByIndexes(indexes map[string]string) ([]coremodel.R
 	return resources, nil
 }
 
-func (rs *resourceStore) PageListByIndexes(indexes map[string]string, pq coremodel.PageReq) (*coremodel.PageData[coremodel.Resource], error) {
+func (rs *resourceStore) PageListByIndexes(indexes []index.IndexCondition, pq coremodel.PageReq) (*coremodel.PageData[coremodel.Resource], error) {
 	keys, err := rs.getKeysByIndexes(indexes)
 	if err != nil {
 		return nil, err
@@ -183,17 +257,29 @@ func (rs *resourceStore) PageListByIndexes(indexes map[string]string, pq coremod
 	return pageData, nil
 }
 
-func (rs *resourceStore) getKeysByIndexes(indexes map[string]string) ([]string, error) {
+func (rs *resourceStore) getKeysByIndexes(indexes []index.IndexCondition) ([]string, error) {
 	if len(indexes) == 0 {
 		return []string{}, nil
 	}
 	keySet := set.New[string]()
 	first := true
-	for indexName, indexValue := range indexes {
-		keys, err := rs.storeProxy.IndexKeys(indexName, indexValue)
+	for _, condition := range indexes {
+		var keys []string
+		var err error
+
+		switch condition.Operator {
+		case index.Equals:
+			keys, err = rs.storeProxy.IndexKeys(condition.IndexName, condition.Value)
+		case index.HasPrefix:
+			keys, err = rs.getKeysByPrefix(condition.IndexName, condition.Value)
+		default:
+			return nil, bizerror.New(bizerror.InvalidArgument, "operator not yet supported: "+string(condition.Operator))
+		}
+
 		if err != nil {
 			return nil, err
 		}
+
 		if first {
 			keySet = set.FromSlice(keys)
 			first = false
@@ -203,4 +289,79 @@ func (rs *resourceStore) getKeysByIndexes(indexes map[string]string) ([]string, 
 		}
 	}
 	return keySet.ToSlice(), nil
+}
+
+// addToTrees adds a resource to all relevant RadixTrees for prefix matching
+func (rs *resourceStore) addToTrees(resource coremodel.Resource) {
+	rs.treesMu.Lock()
+	defer rs.treesMu.Unlock()
+
+	// Get indexers from storeProxy, not from global registry
+	// This ensures we include both init-time and dynamically-added indexers
+	indexers := rs.storeProxy.GetIndexers()
+	for indexName, indexFunc := range indexers {
+		values, err := indexFunc(resource)
+		if err != nil {
+			continue
+		}
+		tree, ok := rs.prefixTrees[indexName]
+		if !ok || tree == nil {
+			continue
+		}
+		for _, v := range values {
+			// Key format: "indexValue/resourceKey"
+			key := v + "/" + resource.ResourceKey()
+			tree.Insert(key, struct{}{})
+		}
+	}
+}
+
+// removeFromTrees removes a resource from all relevant RadixTrees
+func (rs *resourceStore) removeFromTrees(resource coremodel.Resource) {
+	rs.treesMu.Lock()
+	defer rs.treesMu.Unlock()
+
+	// Get indexers from storeProxy, not from global registry
+	// This ensures we include both init-time and dynamically-added indexers
+	indexers := rs.storeProxy.GetIndexers()
+	for indexName, indexFunc := range indexers {
+		values, err := indexFunc(resource)
+		if err != nil {
+			continue
+		}
+		tree, ok := rs.prefixTrees[indexName]
+		if !ok || tree == nil {
+			continue
+		}
+		for _, v := range values {
+			// Key format: "indexValue/resourceKey"
+			key := v + "/" + resource.ResourceKey()
+			tree.Delete(key)
+		}
+	}
+}
+
+// getKeysByPrefix retrieves resource keys by prefix match using RadixTree
+func (rs *resourceStore) getKeysByPrefix(indexName, prefix string) ([]string, error) {
+	rs.treesMu.RLock()
+	defer rs.treesMu.RUnlock()
+
+	tree, ok := rs.prefixTrees[indexName]
+	if !ok {
+		return nil, fmt.Errorf("index %s does not exist", indexName)
+	}
+
+	var keys []string
+	tree.WalkPrefix(prefix, func(k string, v interface{}) bool {
+		// Key format: "indexValue/resourceKey"
+		// Key format: "indexValue/resourceKey"
+		// Use Index (first "/") because resourceKey itself contains "/" (mesh/name)
+		idx := strings.Index(k, "/")
+		if idx >= 0 && idx < len(k)-1 {
+			keys = append(keys, k[idx+1:])
+		}
+		return false // Continue walking
+	})
+
+	return keys, nil
 }

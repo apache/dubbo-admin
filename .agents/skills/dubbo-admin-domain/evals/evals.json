@@ -1,0 +1,30 @@
+{
+  "skill_name": "dubbo-admin-domain",
+  "evals": [
+    {
+      "id": "obvious-trigger",
+      "prompt": "Explain the end-to-end dubbo-admin data flow from registry data to Vue pages.",
+      "expected_behavior": "Use domain routing and name relevant subskills in data-flow order."
+    },
+    {
+      "id": "paraphrased-trigger",
+      "prompt": "I am not sure whether this bug belongs to discovery, store, API, or frontend. Help classify it.",
+      "expected_behavior": "Use this skill to choose subsystem ownership."
+    },
+    {
+      "id": "file-based-trigger",
+      "prompt": "A change touches pkg/core/discovery, pkg/core/store, pkg/console, and ui-vue3. How should I review it?",
+      "expected_behavior": "Use this skill to sequence multiple domain skills."
+    },
+    {
+      "id": "no-trigger",
+      "prompt": "Only update pkg/store/memory/store.go prefix lookup logic.",
+      "expected_behavior": "Do not stay in domain skill; use dubbo-admin-store."
+    },
+    {
+      "id": "conflict-trigger",
+      "prompt": "Both discovery and engine use informers. Which skill applies to a Kubernetes RuntimeInstance bug?",
+      "expected_behavior": "Choose dubbo-admin-engine and explain the boundary."
+    }
+  ]
+}

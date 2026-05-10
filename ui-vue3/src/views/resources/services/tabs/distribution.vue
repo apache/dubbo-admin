@@ -100,7 +100,6 @@ function getDistribution(params: any) {
     side: 'consumer',
     version: route.params?.version || '',
     group: route.params?.group || '',
-    providerAppName: route.query?.providerAppName || '',
     ...params
   })
 }

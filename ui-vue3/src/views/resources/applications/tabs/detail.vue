@@ -112,7 +112,7 @@ let detailMap = reactive({
 
 onMounted(async () => {
   let appNameParam: any = route.params?.pathId
-  apiData.detail = await getApplicationDetail({ appName: appNameParam })
+  apiData.detail = await getApplicationDetail(appNameParam)
   console.log(apiData.detail)
   let {
     appName,

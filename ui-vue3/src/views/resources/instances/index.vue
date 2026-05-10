@@ -17,6 +17,18 @@
 <template>
   <div class="instances-container">
     <search-table :search-domain="searchDomain">
+      <template #customOperation>
+        <a-button
+          class="refresh-button"
+          :loading="searchDomain.table.loading"
+          @click="searchDomain.onSearch()"
+        >
+          <template #icon>
+            <Icon icon="material-symbols:refresh-rounded"></Icon>
+          </template>
+          {{ $t('refresh') }}
+        </a-button>
+      </template>
       <template #bodyCell="{ text, record, index, column }">
         <template v-if="column.dataIndex === 'name'">
           <a-tooltip :title="text">
@@ -43,18 +55,14 @@
           <span>{{ text }}</span>
         </template>
 
-        <template v-if="column.dataIndex === 'deployState'">
-          <a-tag :color="INSTANCE_DEPLOY_COLOR[text.toUpperCase()]">{{ text }}</a-tag>
-        </template>
-
-        <template v-if="column.dataIndex === 'deployCluster'">
-          <a-tag color="grey">
+        <template v-if="column.dataIndex === 'lifecycleState'">
+          <a-tag :color="INSTANCE_LIFECYCLE_COLOR[(text || 'UNKNOWN').toUpperCase()] || 'default'">
             {{ text }}
           </a-tag>
         </template>
 
-        <template v-if="column.dataIndex === 'registerState'">
-          <a-tag :color="INSTANCE_REGISTER_COLOR[text.toUpperCase()]">
+        <template v-if="column.dataIndex === 'deployCluster'">
+          <a-tag color="grey">
             {{ text }}
           </a-tag>
         </template>
@@ -83,7 +91,7 @@ import { searchInstances } from '@/api/service/instance'
 import SearchTable from '@/components/SearchTable.vue'
 import { SearchDomain } from '@/utils/SearchUtil'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
-import { INSTANCE_DEPLOY_COLOR, INSTANCE_REGISTER_COLOR, PRIMARY_COLOR } from '@/base/constants'
+import { INSTANCE_LIFECYCLE_COLOR, PRIMARY_COLOR } from '@/base/constants'
 import router from '@/router'
 import { Icon } from '@iconify/vue'
 import { queryMetrics } from '@/base/http/promQuery'
@@ -110,25 +118,16 @@ let columns = [
     width: 200
   },
   {
-    title: 'instanceDomain.deployState',
-    key: 'deployState',
-    dataIndex: 'deployState',
-    width: 120
-    // sorter: (a: any, b: any) => sortString(a.deployState, b.deployState)
+    title: 'instanceDomain.lifecycleState',
+    key: 'lifecycleState',
+    dataIndex: 'lifecycleState',
+    width: 130
   },
-
   {
     title: 'instanceDomain.deployCluster',
     key: 'deployCluster',
     dataIndex: 'deployCluster',
     // sorter: (a: any, b: any) => sortString(a.deployCluster, b.deployCluster),
-    width: 120
-  },
-  {
-    title: 'instanceDomain.registerState',
-    key: 'registerState',
-    dataIndex: 'registerState',
-    // sorter: (a: any, b: any) => sortString(a.registerState, b.registerState),
     width: 120
   },
   {

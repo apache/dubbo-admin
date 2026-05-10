@@ -39,13 +39,24 @@
           </a-tooltip>
         </template>
         <template v-if="column.dataIndex === 'deployState'">
-          <a-tag :color="INSTANCE_DEPLOY_COLOR[text.toUpperCase()]">{{ text }}</a-tag>
+          <a-tag :color="INSTANCE_DEPLOY_COLOR[(text || 'UNKNOWN').toUpperCase()] || 'default'">
+            {{ text }}
+          </a-tag>
+        </template>
+        <template v-if="column.dataIndex === 'lifecycleState'">
+          <a-tag :color="INSTANCE_LIFECYCLE_COLOR[(text || 'UNKNOWN').toUpperCase()] || 'default'">
+            {{ text }}
+          </a-tag>
         </template>
         <template v-if="column.dataIndex === 'deployClusters'">
           <a-tag>{{ text }}</a-tag>
         </template>
         <template v-if="column.dataIndex === 'registerState'">
-          <a-tag :color="INSTANCE_REGISTER_COLOR[text.toUpperCase()]">{{ text }}</a-tag>
+          <a-tag
+            :color="INSTANCE_REGISTER_COLOR[(text || 'UNREGISTERED').toUpperCase()] || 'default'"
+          >
+            {{ text }}
+          </a-tag>
         </template>
         <template v-if="column.dataIndex === 'registerCluster'">
           <a-tag>{{ text }}</a-tag>
@@ -64,7 +75,12 @@
 
 <script setup lang="ts">
 import { onMounted, provide, reactive } from 'vue'
-import { INSTANCE_DEPLOY_COLOR, INSTANCE_REGISTER_COLOR, PRIMARY_COLOR } from '@/base/constants'
+import {
+  INSTANCE_DEPLOY_COLOR,
+  INSTANCE_LIFECYCLE_COLOR,
+  INSTANCE_REGISTER_COLOR,
+  PRIMARY_COLOR
+} from '@/base/constants'
 import { Icon } from '@iconify/vue'
 import SearchTable from '@/components/SearchTable.vue'
 import { SearchDomain } from '@/utils/SearchUtil'
@@ -124,6 +140,12 @@ const columns = [
     dataIndex: 'ip',
     key: 'ip',
     // sorter: true,
+    width: 150
+  },
+  {
+    title: 'instanceDomain.lifecycleState',
+    dataIndex: 'lifecycleState',
+    key: 'lifecycleState',
     width: 150
   },
   {
@@ -203,7 +225,7 @@ function instanceInfo(params: any) {
 * on (pod) group_left(pod_ip)
 kube_pod_info{pod_ip="${ip}"}`)
       instance.cpu = isNumber(cpu) ? cpu.toFixed(3) + 'u' : cpu
-      instance.memory = bytesToHuman(mem)
+      instance.memory = isNumber(mem) ? bytesToHuman(mem) : mem
     })
   })
 }
@@ -255,7 +277,7 @@ onMounted(() => {
 })
 
 const viewDetail = (record: any) => {
-  router.push(`/resources/instances/detail/${record.name}/${record.ip}`)
+  router.push(`/resources/instances/detail/${record.name}/${record.ip}/${record.appName}`)
 }
 
 provide(PROVIDE_INJECT_KEY.SEARCH_DOMAIN, searchDomain)

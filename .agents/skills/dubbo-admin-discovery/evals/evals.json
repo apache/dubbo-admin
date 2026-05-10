@@ -1,0 +1,30 @@
+{
+  "skill_name": "dubbo-admin-discovery",
+  "evals": [
+    {
+      "id": "obvious-trigger",
+      "prompt": "Fix ServiceProviderMetadataEventSubscriber so Service resources update after provider metadata deletion.",
+      "expected_behavior": "Use discovery subscriber and informer event flow."
+    },
+    {
+      "id": "paraphrased-trigger",
+      "prompt": "Nacos registry changes are not reflected in applications shown by dubbo-admin.",
+      "expected_behavior": "Trace registry ListWatcher, informer events, subscribers, and store writes."
+    },
+    {
+      "id": "file-based-trigger",
+      "prompt": "Review pkg/core/discovery/component.go and pkg/core/discovery/subscriber/service_consumer_metadata.go.",
+      "expected_behavior": "Use this skill because discovery orchestration and subscribers are touched."
+    },
+    {
+      "id": "no-trigger",
+      "prompt": "Change how EventBus handles subscriber errors for all domains.",
+      "expected_behavior": "Do not use this skill as primary; use dubbo-admin-events."
+    },
+    {
+      "id": "conflict-trigger",
+      "prompt": "A RuntimeInstance from Kubernetes is not merged into an Instance resource.",
+      "expected_behavior": "Use dubbo-admin-engine, not discovery, because RuntimeInstance is engine-sourced."
+    }
+  ]
+}

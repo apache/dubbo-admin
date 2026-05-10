@@ -28,11 +28,10 @@ type InstanceDashboardReq struct {
 }
 
 type ServiceDashboardReq struct {
-	ServiceName     string `form:"serviceName"`
-	Version         string `form:"version"`
-	Group           string `form:"group"`
-	ProviderAppName string `form:"providerAppName"`
-	Mesh            string `form:"mesh"`
+	ServiceName string `form:"serviceName"`
+	Version     string `form:"version"`
+	Group       string `form:"group"`
+	Mesh        string `form:"mesh"`
 }
 
 type DashboardResp struct {

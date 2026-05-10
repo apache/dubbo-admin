@@ -25,11 +25,13 @@ export const searchApplications = (params: any): Promise<any> => {
   })
 }
 
-export const getApplicationDetail = (params: any): Promise<any> => {
+export const getApplicationDetail = (appName: string): Promise<any> => {
   return request({
     url: '/application/detail',
     method: 'get',
-    params
+    params: {
+      appName
+    }
   })
 }
 
@@ -172,5 +174,13 @@ export const updateAppGrayIsolation = (appName: string, graySets: Array<any>): P
     data: {
       graySets
     }
+  })
+}
+
+export const getApplicationGraph = (appName: string): Promise<any> => {
+  return request({
+    url: '/application/graph',
+    method: 'get',
+    params: { appName }
   })
 }

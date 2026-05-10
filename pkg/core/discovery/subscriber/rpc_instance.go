@@ -20,6 +20,7 @@ package subscriber
 import (
 	"reflect"
 
+	"github.com/duke-git/lancet/v2/slice"
 	"github.com/duke-git/lancet/v2/strutil"
 	"k8s.io/client-go/tools/cache"
 
@@ -60,6 +61,10 @@ func (s *RPCInstanceEventSubscriber) Name() string {
 
 func (s *RPCInstanceEventSubscriber) ResourceKind() coremodel.ResourceKind {
 	return meshresource.RPCInstanceKind
+}
+
+func (s *RPCInstanceEventSubscriber) AsyncEnabled() bool {
+	return true
 }
 
 func (s *RPCInstanceEventSubscriber) ProcessEvent(event events.Event) error {
@@ -110,7 +115,12 @@ func (s *RPCInstanceEventSubscriber) processUpsert(rpcInstanceRes *meshresource.
 	// We should merge the rpc info into it
 	if instanceRes != nil {
 		meshresource.MergeRPCInstanceIntoInstance(rpcInstanceRes, instanceRes)
-		return s.instanceStore.Update(instanceRes)
+		if err := s.instanceStore.Update(instanceRes); err != nil {
+			return err
+		}
+		logger.Infof("instance lifecycle merged rpc source, instance: %s, rpc: %s, registerState: registered, deployState: %s",
+			instanceRes.ResourceKey(), rpcInstanceRes.ResourceKey(), instanceRes.Spec.DeployState)
+		return nil
 	}
 	// Otherwise we can create a new instance resource by rpc instance
 	instanceRes = meshresource.FromRPCInstance(rpcInstanceRes)
@@ -119,6 +129,8 @@ func (s *RPCInstanceEventSubscriber) processUpsert(rpcInstanceRes *meshresource.
 		logger.Errorf("add instance resource failed, instance: %s, err: %s", instanceRes.ResourceKey(), err.Error())
 		return err
 	}
+	logger.Infof("instance lifecycle created rpc-only instance, instance: %s, rpc: %s, registerState: registered",
+		instanceRes.ResourceKey(), rpcInstanceRes.ResourceKey())
 
 	instanceAddEvent := events.NewResourceChangedEvent(cache.Added, nil, instanceRes)
 	s.eventEmitter.Send(instanceAddEvent)
@@ -135,10 +147,26 @@ func (s *RPCInstanceEventSubscriber) processDelete(rpcInstanceRes *meshresource.
 		logger.Warnf("cannot find instance resource for rpc instance %s, skipped deleting instance", rpcInstanceRes.Name)
 		return nil
 	}
+	meshresource.ClearRPCInstanceFromInstance(instanceRes)
+	if meshresource.HasRuntimeInstanceSource(instanceRes) {
+		if err := s.instanceStore.Update(instanceRes); err != nil {
+			logger.Errorf("update instance resource failed after rpc delete, instance: %s, err: %s",
+				instanceRes.ResourceKey(), err.Error())
+			return err
+		}
+		logger.Infof("instance lifecycle rpc source removed, keep instance by runtime source, instance: %s, rpc: %s, deployState: %s",
+			instanceRes.ResourceKey(), rpcInstanceRes.ResourceKey(), instanceRes.Spec.DeployState)
+		instanceUpdateEvent := events.NewResourceChangedEvent(cache.Updated, instanceRes, instanceRes)
+		s.eventEmitter.Send(instanceUpdateEvent)
+		logger.Debugf("rpc instance delete trigger instance update event, event: %s", instanceUpdateEvent.String())
+		return nil
+	}
 	if err := s.instanceStore.Delete(instanceRes); err != nil {
 		logger.Errorf("delete instance resource failed, instance: %s, err: %s", instanceRes.ResourceKey(), err.Error())
 		return err
 	}
+	logger.Infof("instance lifecycle rpc source removed and no runtime source remains, deleted instance: %s, rpc: %s",
+		instanceRes.ResourceKey(), rpcInstanceRes.ResourceKey())
 	instanceDeleteEvent := events.NewResourceChangedEvent(cache.Deleted, instanceRes, nil)
 	s.eventEmitter.Send(instanceDeleteEvent)
 	logger.Debugf("rpc instance delete trigger instance delete event, event: %s", instanceDeleteEvent.String())
@@ -173,7 +201,7 @@ func (s *RPCInstanceEventSubscriber) getRelatedInstanceRes(
 func (s *RPCInstanceEventSubscriber) findRelatedRuntimeInstanceAndMerge(instanceRes *meshresource.InstanceResource) {
 	switch s.engineCfg.Type {
 	case enginecfg.Kubernetes:
-		rtInstance := s.getRuntimeInstanceByIp(instanceRes.Spec.Ip)
+		rtInstance := s.getRuntimeInstanceForInstance(instanceRes)
 		if rtInstance == nil {
 			logger.Warnf("cannot find runtime instance for instace %s, skipping merging", instanceRes.ResourceKey())
 			return
@@ -184,9 +212,10 @@ func (s *RPCInstanceEventSubscriber) findRelatedRuntimeInstanceAndMerge(instance
 	}
 }
 
-func (s *RPCInstanceEventSubscriber) getRuntimeInstanceByIp(ip string) *meshresource.RuntimeInstanceResource {
-	resources, err := s.rtInstanceStore.ListByIndexes(map[string]string{
-		index.ByRuntimeInstanceIPIndex: ip,
+func (s *RPCInstanceEventSubscriber) getRuntimeInstanceForInstance(instanceRes *meshresource.InstanceResource) *meshresource.RuntimeInstanceResource {
+	ip := instanceRes.Spec.Ip
+	resources, err := s.rtInstanceStore.ListByIndexes([]index.IndexCondition{
+		{IndexName: index.ByRuntimeInstanceIPIndex, Value: ip, Operator: index.Equals},
 	})
 	if err != nil {
 		logger.Errorf("list runtime instance by ip index failed, ip: %s, err: %s", ip, err.Error())
@@ -195,9 +224,31 @@ func (s *RPCInstanceEventSubscriber) getRuntimeInstanceByIp(ip string) *meshreso
 	if len(resources) == 0 {
 		return nil
 	}
-	runtimeInstanceRes, ok := resources[0].(*meshresource.RuntimeInstanceResource)
-	if !ok {
-		return nil
+	candidates := make([]*meshresource.RuntimeInstanceResource, 0, len(resources))
+	for _, item := range resources {
+		res, ok := item.(*meshresource.RuntimeInstanceResource)
+		if !ok {
+			continue
+		}
+		candidates = append(candidates, res)
 	}
-	return runtimeInstanceRes
+	// Prefer exact runtime identity match by app + rpcPort + mesh.
+	for _, candidate := range candidates {
+		if candidate.Spec == nil {
+			continue
+		}
+		if candidate.Mesh == instanceRes.Mesh &&
+			candidate.Spec.AppName == instanceRes.Spec.AppName &&
+			candidate.Spec.RpcPort == instanceRes.Spec.RpcPort {
+			return candidate
+		}
+	}
+	if len(candidates) > 1 {
+		keys := slice.Map(candidates, func(_ int, item *meshresource.RuntimeInstanceResource) string {
+			return item.ResourceKey()
+		})
+		logger.Warnf("multiple runtime instances share same ip %s, fallback to first candidate, runtime keys: %v, target instance: %s",
+			ip, keys, instanceRes.ResourceKey())
+	}
+	return candidates[0]
 }

@@ -34,5 +34,4 @@ export interface ServiceDashboardParams {
   serviceName: string
   version?: string
   group?: string
-  providerAppName?: string
 }

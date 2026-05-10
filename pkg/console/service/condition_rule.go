@@ -40,8 +40,8 @@ func SearchConditionRules(ctx context.Context, req *model.SearchConditionRuleReq
 	pageData, err := manager.PageListByIndexes[*meshresource.ConditionRouteResource](
 		ctx.ResourceManager(),
 		meshresource.ConditionRouteKind,
-		map[string]string{
-			index.ByMeshIndex: req.Mesh,
+		[]index.IndexCondition{
+			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
 		},
 		req.PageReq)
 	if err != nil {

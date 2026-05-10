@@ -51,21 +51,13 @@
           <a-col :span="12">
             <a-card class="_detail" style="height: 100%">
               <a-descriptions class="description-column" :column="1">
-                <!-- deployState -->
                 <a-descriptions-item
                   :label="$t('instanceDomain.deployState')"
                   :labelStyle="{ fontWeight: 'bold' }"
                 >
-                  <a-typography-paragraph
-                    type="success"
-                    style=""
-                    v-if="instanceDetail?.deployState === 'Running'"
-                  >
-                    Running
-                  </a-typography-paragraph>
-                  <a-typography-paragraph type="danger" v-else>
+                  <a-tag :color="deployColor(instanceDetail?.deployState)">
                     {{ instanceDetail?.deployState }}
-                  </a-typography-paragraph>
+                  </a-tag>
                 </a-descriptions-item>
 
                 <!-- Start time -->
@@ -249,7 +241,7 @@ import { type ComponentInternalInstance, getCurrentInstance, onMounted, reactive
 import { CopyOutlined } from '@ant-design/icons-vue'
 import useClipboard from 'vue-clipboard3'
 import { message } from 'ant-design-vue'
-import { PRIMARY_COLOR, PRIMARY_COLOR_T } from '@/base/constants'
+import { INSTANCE_DEPLOY_COLOR, PRIMARY_COLOR, PRIMARY_COLOR_T } from '@/base/constants'
 import { getInstanceDetail } from '@/api/service/instance'
 import { useRoute, useRouter } from 'vue-router'
 import { formattedDate } from '@/utils/DateUtil'
@@ -295,6 +287,10 @@ function copyIt(v: string) {
 
 const isProbeOpen = (status: boolean) => {
   return status ? '开启' : '关闭'
+}
+
+const deployColor = (state?: string) => {
+  return INSTANCE_DEPLOY_COLOR[(state || 'UNKNOWN').toUpperCase()] || 'default'
 }
 </script>
 

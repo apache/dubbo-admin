@@ -53,6 +53,10 @@ func (z *ZKConfigEventSubscriber) Name() string {
 	return "Discovery-" + z.ResourceKind().ToString()
 }
 
+func (z *ZKConfigEventSubscriber) AsyncEnabled() bool {
+	return true
+}
+
 func (z *ZKConfigEventSubscriber) ProcessEvent(event events.Event) error {
 	newObj, ok := event.NewObj().(*meshresource.ZKConfigResource)
 	if !ok && event.NewObj() != nil {

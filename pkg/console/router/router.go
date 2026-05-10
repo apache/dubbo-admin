@@ -60,6 +60,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 		application.GET("/instance/info", handler.GetApplicationTabInstanceInfo(ctx))
 		application.GET("/service/form", handler.GetApplicationServiceForm(ctx))
 		application.GET("/search", handler.ApplicationSearch(ctx))
+		application.GET("/graph", handler.GetApplicationGraph(ctx))
 		{
 			applicationConfig := application.Group("/config")
 			applicationConfig.PUT("/operatorLog", handler.ApplicationConfigAccessLogPut(ctx))
@@ -97,10 +98,15 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 
 	{
 		service := router.Group("/service")
+		service.POST("/generic/invoke", handler.ServiceGenericInvoke(ctx))
+		service.GET("/method/detail", handler.GetServiceMethodDetail(ctx))
 		service.GET("/distribution", handler.GetServiceTabDistribution(ctx))
+		service.GET("/provider-instances", handler.GetServiceProviderInstances(ctx))
+		service.GET("/methods", handler.GetServiceMethodNames(ctx))
 		service.GET("/search", handler.SearchServices(ctx))
-		//service.GET("/detail", handler.GetServiceDetail(ctx))
-		//service.GET("/interfaces", handler.GetServiceInterfaces(ctx))
+		service.GET("/graph", handler.GetServiceGraph(ctx))
+		service.GET("/detail", handler.GetServiceDetail(ctx))
+		service.GET("/interfaces", handler.GetServiceInterfaces(ctx))
 	}
 
 	{

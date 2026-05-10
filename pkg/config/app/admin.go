@@ -27,6 +27,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/config/diagnostics"
 	"github.com/apache/dubbo-admin/pkg/config/discovery"
 	"github.com/apache/dubbo-admin/pkg/config/engine"
+	"github.com/apache/dubbo-admin/pkg/config/eventbus"
 	"github.com/apache/dubbo-admin/pkg/config/log"
 	"github.com/apache/dubbo-admin/pkg/config/observability"
 	"github.com/apache/dubbo-admin/pkg/config/store"
@@ -48,11 +49,14 @@ type AdminConfig struct {
 	Discovery []*discovery.Config `json:"discovery" yaml:"discovery"`
 	// Engine configuration
 	Engine *engine.Config `json:"engine" yaml:"engine"`
+	// EventBus configuration
+	EventBus *eventbus.Config `json:"eventBus,omitempty" yaml:"eventBus,omitempty"`
 }
 
 var _ = &AdminConfig{}
 
 var DefaultAdminConfig = func() AdminConfig {
+	eventBusCfg := eventbus.Default()
 	return AdminConfig{
 		Log:           log.DefaultLogConfig(),
 		Store:         store.DefaultStoreConfig(),
@@ -60,6 +64,7 @@ var DefaultAdminConfig = func() AdminConfig {
 		Observability: observability.DefaultObservabilityConfig(),
 		Diagnostics:   diagnostics.DefaultDiagnosticsConfig(),
 		Console:       console.DefaultConsoleConfig(),
+		EventBus:      &eventBusCfg,
 	}
 }
 
@@ -159,6 +164,12 @@ func (c AdminConfig) Validate() error {
 		c.Engine = engine.DefaultResourceEngineConfig()
 	} else if err := c.Engine.Validate(); err != nil {
 		return bizerror.Wrap(err, bizerror.ConfigError, "engine config validation failed")
+	}
+	if c.EventBus == nil {
+		cfg := eventbus.Default()
+		c.EventBus = &cfg
+	} else if err := c.EventBus.Validate(); err != nil {
+		return bizerror.Wrap(err, bizerror.ConfigError, "event bus config validation failed")
 	}
 	return nil
 }

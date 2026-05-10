@@ -1,0 +1,30 @@
+{
+  "skill_name": "dubbo-admin-frontend",
+  "evals": [
+    {
+      "id": "obvious-trigger",
+      "prompt": "Add a new Vue tab to the service detail page and call an API from ui-vue3/src/api.",
+      "expected_behavior": "Use frontend routing, layout tab, API client, and view workflow."
+    },
+    {
+      "id": "paraphrased-trigger",
+      "prompt": "The traffic rule form and YAML view produce different route conditions.",
+      "expected_behavior": "Use traffic rule form design and round-trip validation."
+    },
+    {
+      "id": "file-based-trigger",
+      "prompt": "Review ui-vue3/src/views/traffic/routingRule/composables/useRoutingRule.ts.",
+      "expected_behavior": "Use this skill because traffic form composable files are touched."
+    },
+    {
+      "id": "no-trigger",
+      "prompt": "Fix ListByIndexes in pkg/store/memory/store.go.",
+      "expected_behavior": "Do not use this skill; use dubbo-admin-store."
+    },
+    {
+      "id": "conflict-trigger",
+      "prompt": "Backend changed a response field and the Vue table no longer renders.",
+      "expected_behavior": "Use frontend for caller updates and coordinate with Console API contract."
+    }
+  ]
+}

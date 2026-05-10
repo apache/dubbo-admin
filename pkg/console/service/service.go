@@ -18,6 +18,8 @@
 package service
 
 import (
+	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -39,17 +41,21 @@ import (
 
 // GetServiceTabDistribution get service distribution
 func GetServiceTabDistribution(ctx consolectx.Context, req *model.ServiceTabDistributionReq) (*model.SearchPaginationResult, error) {
-	indexes := map[string]string{
-		index.ByServiceConsumerServiceName: req.ServiceName,
+	conditions := []index.IndexCondition{
+		{IndexName: index.ByServiceConsumerServiceName, Value: req.ServiceName, Operator: index.Equals},
 	}
 	// for now, only support accurate name match
 	if strutil.IsNotBlank(req.Keywords) {
-		indexes[index.ByServiceConsumerAppName] = req.Keywords
+		conditions = append(conditions, index.IndexCondition{
+			IndexName: index.ByServiceConsumerAppName,
+			Value:     req.Keywords,
+			Operator:  index.Equals,
+		})
 	}
 	pageData, err := manager.PageListByIndexes[*meshresource.ServiceConsumerMetadataResource](
 		ctx.ResourceManager(),
 		meshresource.ServiceConsumerMetadataKind,
-		indexes,
+		conditions,
 		req.PageReq)
 	if err != nil {
 		logger.Errorf("get service consumer %s failed, cause: %v", req.ServiceName, err)
@@ -93,11 +99,11 @@ func SearchServices(ctx consolectx.Context, req *model.ServiceSearchReq) (*model
 	if strutil.IsNotBlank(req.Keywords) {
 		return SearchServicesByKeywords(ctx, req)
 	}
-	pageData, err := manager.PageListByIndexes[*meshresource.ServiceProviderMetadataResource](
+	pageData, err := manager.PageListByIndexes[*meshresource.ServiceResource](
 		ctx.ResourceManager(),
-		meshresource.ServiceProviderMetadataKind,
-		map[string]string{
-			index.ByMeshIndex: req.Mesh,
+		meshresource.ServiceKind,
+		[]index.IndexCondition{
+			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
 		},
 		req.PageReq,
 	)
@@ -106,11 +112,14 @@ func SearchServices(ctx consolectx.Context, req *model.ServiceSearchReq) (*model
 		return nil, err
 	}
 	if pageData.Data == nil || len(pageData.Data) == 0 {
-		return nil, nil
+		return &model.SearchPaginationResult{
+			List:     []*model.ServiceSearchResp{},
+			PageInfo: pageData.Pagination,
+		}, nil
 	}
 	serviceSearchResps := slice.Map(pageData.Data,
-		func(_ int, item *meshresource.ServiceProviderMetadataResource) *model.ServiceSearchResp {
-			return ToServiceSearchRespByProvider(item)
+		func(_ int, item *meshresource.ServiceResource) *model.ServiceSearchResp {
+			return ToServiceSearchRespByService(item)
 		})
 	return &model.SearchPaginationResult{
 		List:     serviceSearchResps,
@@ -118,36 +127,45 @@ func SearchServices(ctx consolectx.Context, req *model.ServiceSearchReq) (*model
 	}, nil
 }
 
-// SearchServicesByKeywords search services by keywords, for now only support accurate search
+// SearchServicesByKeywords search services by keywords with prefix matching
 func SearchServicesByKeywords(ctx consolectx.Context, req *model.ServiceSearchReq) (*model.SearchPaginationResult, error) {
-	pageData, err := manager.PageListByIndexes[*meshresource.ServiceProviderMetadataResource](
+	pageData, err := manager.PageListByIndexes[*meshresource.ServiceResource](
 		ctx.ResourceManager(),
-		meshresource.ServiceProviderMetadataKind,
-		map[string]string{
-			index.ByMeshIndex:                  req.Mesh,
-			index.ByServiceProviderServiceName: req.Keywords,
+		meshresource.ServiceKind,
+		[]index.IndexCondition{
+			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+			{IndexName: index.ByServiceName, Value: req.Keywords, Operator: index.HasPrefix},
 		},
 		req.PageReq,
 	)
 	if err != nil {
 		return nil, err
 	}
-	searchRespList := slice.Map(pageData.Data,
-		func(_ int, item *meshresource.ServiceProviderMetadataResource) *model.ServiceSearchResp {
-			return ToServiceSearchRespByProvider(item)
-		})
+	searchRespList := slice.Map(
+		pageData.Data,
+		func(_ int, item *meshresource.ServiceResource) *model.ServiceSearchResp {
+			return ToServiceSearchRespByService(item)
+		},
+	)
 	return &model.SearchPaginationResult{
 		List:     searchRespList,
 		PageInfo: pageData.Pagination,
 	}, nil
 }
 
+func ToServiceSearchRespByService(res *meshresource.ServiceResource) *model.ServiceSearchResp {
+	return &model.ServiceSearchResp{
+		ServiceName: res.Spec.Name,
+		Group:       res.Spec.Group,
+		Version:     res.Spec.Version,
+	}
+}
+
 func ToServiceSearchRespByProvider(res *meshresource.ServiceProviderMetadataResource) *model.ServiceSearchResp {
 	return &model.ServiceSearchResp{
-		ServiceName:     res.Spec.ServiceName,
-		Group:           res.Spec.Group,
-		Version:         res.Spec.Version,
-		ProviderAppName: res.Spec.ProviderAppName,
+		ServiceName: res.Spec.ServiceName,
+		Group:       res.Spec.Group,
+		Version:     res.Spec.Version,
 	}
 }
 
@@ -158,6 +176,231 @@ func ToServiceSearchRespByConsumer(res *meshresource.ServiceConsumerMetadataReso
 		Version:         res.Spec.Version,
 		ConsumerAppName: res.Spec.ConsumerAppName,
 	}
+}
+
+func GetServiceMethodNames(ctx consolectx.Context, req model.BaseServiceReq) ([]model.ServiceMethodSummaryResp, error) {
+	metadataList, err := listProviderMeta(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return buildMethodSummaries(metadataList), nil
+}
+
+func GetServiceMethodDetail(ctx consolectx.Context, req model.ServiceMethodDetailReq) (*model.ServiceMethodDetailResp, error) {
+	metadataList, err := listProviderMeta(ctx, req.BaseServiceReq)
+	if err != nil {
+		return nil, err
+	}
+	method := findMethod(metadataList, req.MethodName, req.Signature)
+	if method == nil {
+		return nil, bizerror.New(
+			bizerror.NotFoundError,
+			fmt.Sprintf("method %s not found for service %s", req.MethodName, req.ServiceName),
+		)
+	}
+
+	detail := toMethodDetail(method)
+	detail.Types = buildRelatedTypes(metadataList, method)
+	return detail, nil
+}
+
+// providerIndexes defines the canonical indexes for provider metadata
+func providerIndexes(req model.BaseServiceReq) []index.IndexCondition {
+	return []index.IndexCondition{
+		{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+		{IndexName: index.ByServiceProviderServiceKey, Value: req.ServiceKey(), Operator: index.Equals},
+	}
+}
+
+// listProviderMeta loads provider metadata by the canonical mesh + serviceKey indexes.
+func listProviderMeta(ctx consolectx.Context, req model.BaseServiceReq) ([]*meshresource.ServiceProviderMetadataResource, error) {
+	return manager.ListByIndexes[*meshresource.ServiceProviderMetadataResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceProviderMetadataKind,
+		providerIndexes(req),
+	)
+}
+
+func buildMethodSummaries(metadataList []*meshresource.ServiceProviderMetadataResource) []model.ServiceMethodSummaryResp {
+	methods := collectMethods(metadataList)
+	summaries := make([]model.ServiceMethodSummaryResp, 0, len(methods))
+	for _, method := range methods {
+		detail := toMethodDetail(method)
+		summaries = append(summaries, model.ServiceMethodSummaryResp{
+			MethodName:     detail.MethodName,
+			ParameterTypes: detail.ParameterTypes,
+			Signature:      detail.Signature,
+		})
+	}
+	return summaries
+}
+
+// collectMethods flattens provider metadata into a unique, sorted method list.
+func collectMethods(metadataList []*meshresource.ServiceProviderMetadataResource) []*meshproto.Method {
+	methodByKey := make(map[string]*meshproto.Method)
+
+	for _, metadata := range metadataList {
+		if metadata == nil || metadata.Spec == nil {
+			continue
+		}
+		for _, method := range metadata.Spec.Methods {
+			methodName := method.GetName()
+			if method == nil || methodName == "" {
+				continue
+			}
+			methodByKey[methodKey(methodName, methodSig(method))] = method
+		}
+	}
+
+	methods := make([]*meshproto.Method, 0, len(methodByKey))
+	for _, method := range methodByKey {
+		methods = append(methods, method)
+	}
+	sort.Slice(methods, func(i, j int) bool {
+		leftName := methods[i].GetName()
+		rightName := methods[j].GetName()
+		if leftName != rightName {
+			return leftName < rightName
+		}
+		return methodSig(methods[i]) < methodSig(methods[j])
+	})
+	return methods
+}
+
+// findMethod scans the current metadata snapshot for one exact method signature.
+func findMethod(metadataList []*meshresource.ServiceProviderMetadataResource, methodName string, signature string) *meshproto.Method {
+	for _, metadata := range metadataList {
+		if metadata == nil || metadata.Spec == nil {
+			continue
+		}
+		for _, method := range metadata.Spec.Methods {
+			if method == nil {
+				continue
+			}
+			if method.GetName() == methodName && methodSig(method) == signature {
+				return method
+			}
+		}
+	}
+	return nil
+}
+
+func methodKey(methodName, signature string) string {
+	return methodName + "\x00" + signature
+}
+
+// toMethodDetail projects proto metadata into the API response shape.
+func toMethodDetail(method *meshproto.Method) *model.ServiceMethodDetailResp {
+	resp := &model.ServiceMethodDetailResp{
+		MethodName:     method.GetName(),
+		Signature:      methodSig(method),
+		ParameterTypes: method.GetParameterTypes(),
+		Parameters:     make([]model.ServiceMethodParameter, 0, len(method.GetParameters())),
+		ReturnType:     method.GetReturnType(),
+		Types:          []model.ServiceMethodTypeResp{},
+	}
+	for _, parameter := range method.GetParameters() {
+		if parameter == nil {
+			continue
+		}
+		resp.Parameters = append(resp.Parameters, model.ServiceMethodParameter{
+			Name: parameter.GetName(),
+			Type: parameter.GetType(),
+		})
+	}
+	return resp
+}
+
+// buildRelatedTypes walks parameter and return types against the current metadata snapshot.
+func buildRelatedTypes(metadataList []*meshresource.ServiceProviderMetadataResource, method *meshproto.Method) []model.ServiceMethodTypeResp {
+	if method == nil {
+		return []model.ServiceMethodTypeResp{}
+	}
+
+	// Index all declared types once, then resolve only the subset reachable from this method.
+	typesByName := buildTypeMap(metadataList)
+	visited := make(map[string]struct{})
+	for _, parameterType := range method.GetParameterTypes() {
+		collectRelatedTypes(typesByName, parameterType, visited)
+	}
+	collectRelatedTypes(typesByName, method.GetReturnType(), visited)
+
+	// Sort for stable API output and deterministic tests.
+	typeNames := make([]string, 0, len(visited))
+	for typeName := range visited {
+		typeNames = append(typeNames, typeName)
+	}
+	sort.Strings(typeNames)
+
+	resp := make([]model.ServiceMethodTypeResp, 0, len(typeNames))
+	for _, typeName := range typeNames {
+		typeSpec, ok := typesByName[typeName]
+		if !ok {
+			continue
+		}
+		resp = append(resp, toServiceMethodTypeResp(typeSpec))
+	}
+	return resp
+}
+
+// buildTypeMap keeps the first declaration for each type name in the current metadata snapshot.
+func buildTypeMap(metadataList []*meshresource.ServiceProviderMetadataResource) map[string]*meshproto.Type {
+	typesByName := make(map[string]*meshproto.Type)
+	for _, metadata := range metadataList {
+		if metadata == nil || metadata.Spec == nil {
+			continue
+		}
+		for _, typeSpec := range metadata.Spec.Types {
+			if typeSpec == nil {
+				continue
+			}
+			typeName := typeSpec.GetType()
+			if typeName == "" {
+				continue
+			}
+			if _, exists := typesByName[typeName]; !exists {
+				typesByName[typeName] = typeSpec
+			}
+		}
+	}
+	return typesByName
+}
+
+// collectRelatedTypes follows nested item/property references and uses visited to stop cycles.
+func collectRelatedTypes(typesByName map[string]*meshproto.Type, typeName string, visited map[string]struct{}) {
+	if strutil.IsBlank(typeName) {
+		return
+	}
+	typeSpec, ok := typesByName[typeName]
+	if !ok {
+		return
+	}
+	if _, exists := visited[typeName]; exists {
+		return
+	}
+	visited[typeName] = struct{}{}
+
+	for _, itemType := range typeSpec.GetItems() {
+		collectRelatedTypes(typesByName, itemType, visited)
+	}
+	for _, propertyType := range typeSpec.GetProperties() {
+		collectRelatedTypes(typesByName, propertyType, visited)
+	}
+}
+
+func toServiceMethodTypeResp(typeSpec *meshproto.Type) model.ServiceMethodTypeResp {
+	return model.ServiceMethodTypeResp{
+		Type:       typeSpec.GetType(),
+		Properties: typeSpec.GetProperties(),
+		Items:      typeSpec.GetItems(),
+		Enums:      typeSpec.GetEnums(),
+	}
+}
+
+func methodSig(method *meshproto.Method) string {
+	return strings.Join(method.GetParameterTypes(), ",") +
+		"->" + method.GetReturnType()
 }
 
 func GetServiceTimeoutConfig(ctx consolectx.Context, req model.BaseServiceReq) (int32, error) {
@@ -521,4 +764,152 @@ func isArgumentRoute(condition string) bool {
 		return true
 	}
 	return false
+}
+
+func GetServiceDetail(ctx consolectx.Context, req *model.ServiceDetailReq) (*model.ServiceDetailResp, error) {
+	serviceKey := coremodel.BuildResourceKey(req.Mesh, meshresource.BuildServiceIdentityKey(req.ServiceName, req.Version, req.Group))
+	serviceRes, exists, err := manager.GetByKey[*meshresource.ServiceResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceKind,
+		serviceKey,
+	)
+	if err != nil {
+		logger.Errorf("get service detail failed, serviceKey: %s, cause: %v", serviceKey, err)
+		return nil, err
+	}
+	if !exists || serviceRes.Spec == nil {
+		return nil, bizerror.New(bizerror.NotFoundError, "service not found")
+	}
+
+	return &model.ServiceDetailResp{
+		Language: serviceRes.Spec.Language,
+		Methods:  serviceRes.Spec.Methods,
+	}, nil
+}
+
+// GraphServices builds a service dependency graph for the given service key.
+//
+// It gathers both provider and consumer metadata for serviceKey and creates
+// graph nodes/edges where:
+//   - application nodes are marked as provider/consumer
+//   - service node is the target/subject service
+//   - edges describe provide/consume relationships
+//
+// This API is used by topology view to visualize service-level dependencies.
+func GraphServices(ctx consolectx.Context, req *model.ServiceGraphReq) (*model.GraphData, error) {
+	serviceKey := req.ServiceKey()
+
+	providers, err := manager.ListByIndexes[*meshresource.ServiceProviderMetadataResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceProviderMetadataKind,
+		[]index.IndexCondition{{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+			{IndexName: index.ByServiceProviderServiceKey, Value: serviceKey, Operator: index.Equals},
+		},
+	)
+	if err != nil {
+		logger.Errorf("get service providers for mesh %s, serviceKey %s failed, cause: %v", req.Mesh, serviceKey, err)
+		return nil, bizerror.New(bizerror.InternalError, "get service providers failed, please try again")
+	}
+
+	if len(providers) == 0 {
+		logger.Errorf("no providers found for service %s in mesh %s", serviceKey, req.Mesh)
+		return nil, bizerror.New(bizerror.NotFoundError, "no providers found for this service")
+	}
+
+	// Nodes for this graph: provider apps, service itself, consumer apps.
+	// Edges represent provider->service and consumer->service relationships.
+
+	consumers, err := manager.ListByIndexes[*meshresource.ServiceConsumerMetadataResource](
+		ctx.ResourceManager(),
+		meshresource.ServiceConsumerMetadataKind,
+		[]index.IndexCondition{{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+			{IndexName: index.ByServiceConsumerServiceKey, Value: serviceKey, Operator: index.Equals},
+		})
+	if err != nil {
+		logger.Errorf("get service consumers for mesh %s, serviceKey %s failed, cause: %v", req.Mesh, serviceKey, err)
+		return nil, bizerror.New(bizerror.InternalError, "get service consumers failed, please try again")
+	}
+
+	nodes := make([]model.GraphNode, 0)
+	edges := make([]model.GraphEdge, 0)
+
+	// use struct{} as a zero-size value for a lightweight deduplication set
+	// this prevents duplicate application nodes when multiple providers are recorded.
+	providerAppSet := make(map[string]struct{})
+	for _, provider := range providers {
+		if provider.Spec == nil {
+			continue
+		}
+		if _, ok := providerAppSet[provider.Spec.ProviderAppName]; !ok {
+			providerAppSet[provider.Spec.ProviderAppName] = struct{}{}
+			nodes = append(nodes, model.GraphNode{
+				ID:    provider.Spec.ProviderAppName,
+				Label: provider.Spec.ProviderAppName,
+				Type:  "application",
+				Rule:  "provider",
+				Data:  nil,
+			})
+		}
+	}
+
+	nodes = append(nodes, model.GraphNode{
+		ID:    serviceKey,
+		Label: serviceKey,
+		Type:  "service",
+		Rule:  "",
+		Data:  nil,
+	})
+
+	consumerAppSet := make(map[string]struct{})
+	for _, consumer := range consumers {
+		if consumer.Spec == nil {
+			continue
+		}
+		if _, ok := consumerAppSet[consumer.Spec.ConsumerAppName]; !ok {
+			consumerAppSet[consumer.Spec.ConsumerAppName] = struct{}{}
+			nodes = append(nodes, model.GraphNode{
+				ID:    consumer.Spec.ConsumerAppName,
+				Label: consumer.Spec.ConsumerAppName,
+				Type:  "application",
+				Rule:  "consumer",
+				Data:  nil,
+			})
+		}
+	}
+
+	// Connect provider applications to service node.
+	for providerApp := range providerAppSet {
+		edges = append(edges, model.GraphEdge{
+			Source: serviceKey,
+			Target: providerApp,
+			Data: map[string]interface{}{
+				"type": "provides",
+			},
+		})
+	}
+
+	// Connect consumer applications to service node.
+	for consumerApp := range consumerAppSet {
+		edges = append(edges, model.GraphEdge{
+			Source: consumerApp,
+			Target: serviceKey,
+			Data: map[string]interface{}{
+				"type": "consumes",
+			},
+		})
+	}
+
+	return &model.GraphData{
+		Nodes: nodes,
+		Edges: edges,
+	}, nil
+}
+
+func sortedKeys(items map[string]struct{}) []string {
+	keys := make([]string, 0, len(items))
+	for key := range items {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	return keys
 }

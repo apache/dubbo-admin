@@ -44,9 +44,9 @@ func SearchInstanceByIp(ctx consolectx.Context, req *model.SearchReq) (*model.Se
 	pageData, err := manager.PageListByIndexes[*meshresource.InstanceResource](
 		ctx.ResourceManager(),
 		meshresource.InstanceKind,
-		map[string]string{
-			index.ByMeshIndex:       req.Mesh,
-			index.ByInstanceIpIndex: req.Keywords,
+		[]index.IndexCondition{
+			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+			{IndexName: index.ByInstanceIpIndex, Value: req.Keywords, Operator: index.HasPrefix},
 		},
 		req.PageReq)
 	if err != nil {
@@ -54,7 +54,7 @@ func SearchInstanceByIp(ctx consolectx.Context, req *model.SearchReq) (*model.Se
 	}
 	if pageData.Data == nil || len(pageData.Data) == 0 {
 		return &model.SearchPaginationResult{
-			List: []*meshresource.ServiceProviderMetadataResourceList{},
+			List: []*model.SearchInstanceResp{},
 			PageInfo: coremodel.Pagination{
 				Total:      0,
 				PageSize:   req.PageReq.PageSize,
@@ -63,8 +63,8 @@ func SearchInstanceByIp(ctx consolectx.Context, req *model.SearchReq) (*model.Se
 		}, nil
 	}
 	return &model.SearchPaginationResult{
-		List: slice.Map(pageData.Data, func(_ int, item *meshresource.InstanceResource) *model.AppInstanceInfoResp {
-			return buildAppInstanceInfoResp(item, ctx.Config())
+		List: slice.Map(pageData.Data, func(_ int, item *meshresource.InstanceResource) *model.SearchInstanceResp {
+			return model.NewSearchInstanceResp().FromInstanceResource(item, ctx.Config())
 		}),
 		PageInfo: pageData.Pagination,
 	}, nil
@@ -75,9 +75,9 @@ func SearchInstanceByName(ctx consolectx.Context, req *model.SearchReq) (*model.
 	pageData, err := manager.PageListByIndexes[*meshresource.InstanceResource](
 		ctx.ResourceManager(),
 		meshresource.InstanceKind,
-		map[string]string{
-			index.ByMeshIndex:         req.Mesh,
-			index.ByInstanceNameIndex: req.Keywords,
+		[]index.IndexCondition{
+			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
+			{IndexName: index.ByInstanceNameIndex, Value: req.Keywords, Operator: index.HasPrefix},
 		},
 		req.PageReq)
 	if err != nil {
@@ -85,7 +85,7 @@ func SearchInstanceByName(ctx consolectx.Context, req *model.SearchReq) (*model.
 	}
 	if pageData.Data == nil || len(pageData.Data) == 0 {
 		return &model.SearchPaginationResult{
-			List: []*meshresource.ServiceProviderMetadataResourceList{},
+			List: []*model.SearchInstanceResp{},
 			PageInfo: coremodel.Pagination{
 				Total:      0,
 				PageSize:   req.PageReq.PageSize,
@@ -94,8 +94,8 @@ func SearchInstanceByName(ctx consolectx.Context, req *model.SearchReq) (*model.
 		}, nil
 	}
 	return &model.SearchPaginationResult{
-		List: slice.Map(pageData.Data, func(_ int, item *meshresource.InstanceResource) *model.AppInstanceInfoResp {
-			return buildAppInstanceInfoResp(item, ctx.Config())
+		List: slice.Map(pageData.Data, func(_ int, item *meshresource.InstanceResource) *model.SearchInstanceResp {
+			return model.NewSearchInstanceResp().FromInstanceResource(item, ctx.Config())
 		}),
 		PageInfo: pageData.Pagination,
 	}, nil
@@ -113,8 +113,8 @@ func SearchInstances(ctx consolectx.Context, req *model.SearchInstanceReq) (*mod
 	pageData, err := manager.PageListByIndexes[*meshresource.InstanceResource](
 		ctx.ResourceManager(),
 		meshresource.InstanceKind,
-		map[string]string{
-			index.ByMeshIndex: req.Mesh,
+		[]index.IndexCondition{
+			{IndexName: index.ByMeshIndex, Value: req.Mesh, Operator: index.Equals},
 		},
 		req.PageReq)
 	if err != nil {

@@ -229,17 +229,10 @@ func (s *informer) HandleDeltas(obj interface{}, _ bool) error {
 	}
 	// from oldest to newest
 	for _, d := range deltas {
-		var resource model.Resource
-		var object interface{}
-		if o, ok := d.Object.(cache.DeletedFinalStateUnknown); ok {
-			object = o.Obj
-		} else {
-			object = d.Object
-		}
-		resource, ok := object.(model.Resource)
-		if !ok {
-			logger.Errorf("object from ListWatcher is not conformed to Resource, obj: %v", obj)
-			return bizerror.NewAssertionError("Resource", reflect.TypeOf(obj).Name())
+		resource, err := s.toResource(d.Object)
+		if err != nil {
+			logger.Errorf("object from ListWatcher is not conformed to Resource, obj: %v, err: %v", obj, err)
+			return err
 		}
 		switch d.Type {
 		case cache.Sync, cache.Replaced, cache.Added, cache.Updated:
@@ -257,6 +250,8 @@ func (s *informer) HandleDeltas(obj interface{}, _ bool) error {
 				s.EmitEvent(cache.Added, nil, resource)
 			}
 		case cache.Deleted:
+			logger.Infof("informer processing delete delta, resource kind: %s, key: %s",
+				resource.ResourceKind().ToString(), resource.ResourceKey())
 			if err := s.indexer.Delete(resource); err != nil {
 				logger.Errorf("failed to delete resource from informer, cause %v, resource: %s,", err, resource.String())
 				return err
@@ -265,6 +260,31 @@ func (s *informer) HandleDeltas(obj interface{}, _ bool) error {
 		}
 	}
 	return nil
+}
+
+func (s *informer) toResource(obj interface{}) (model.Resource, error) {
+	object := obj
+	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
+		logger.Debugf("informer resolved tombstone object during delete handling, key: %s", tombstone.Key)
+		object = tombstone.Obj
+	}
+	if resource, ok := object.(model.Resource); ok {
+		return resource, nil
+	}
+	if s.transform != nil {
+		transformed, err := s.transform(object)
+		if err != nil {
+			return nil, err
+		}
+		if resource, ok := transformed.(model.Resource); ok {
+			return resource, nil
+		}
+		object = transformed
+	}
+	if object == nil {
+		return nil, bizerror.NewAssertionError("Resource", "nil")
+	}
+	return nil, bizerror.NewAssertionError("Resource", reflect.TypeOf(object).Name())
 }
 
 // EmitEvent emits an event to the event bus.

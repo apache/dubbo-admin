@@ -81,7 +81,7 @@ watch(
 )
 
 onMounted(() => {
-  const editor = createEditor(document.querySelector(`#${props.editorId}`), {
+  const editor = createEditor(document.getElementById(props.editorId), {
     theme: props.theme,
     readOnly: props.readonly,
     ...props.editorOptions
@@ -93,7 +93,6 @@ onMounted(() => {
       emit('change', editor.getValue())
     })
     editor.onDidBlurEditorText(() => {
-      console.log(222)
       emit('blur')
     })
   }

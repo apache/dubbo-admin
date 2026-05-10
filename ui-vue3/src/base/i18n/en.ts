@@ -172,6 +172,7 @@ const words: I18nType = {
     instanceName: 'InstanceName',
     ip: 'Ip',
     name: 'Name',
+    lifecycleState: 'Lifecycle State',
     deployState: 'Deploy State',
     deployCluster: 'Deploy Cluster',
     deployClusters: 'Deploy Clusters',
@@ -223,6 +224,7 @@ const words: I18nType = {
   configuration: 'Configuration',
   linkTracking: 'Link Tracking',
   monitor: 'Monitor',
+  topology: 'Topology',
   details: 'Details',
   creationTime_k8s: 'creationTime(k8s)',
   dubboPort: 'Dubbo Port',
@@ -524,6 +526,7 @@ const words: I18nType = {
     flowWeight: 'FlowWeight',
     gray: 'Gray',
     detail: 'Detail',
+    topology: 'Topology',
     instance: 'Instance',
     service: 'Service',
     monitor: 'Monitor',
@@ -564,6 +567,7 @@ const words: I18nType = {
   dependentService: 'Dependent Service',
   submit: 'Submit',
   reset: 'Reset',
+  refresh: 'Refresh',
   router: {
     resource: {
       app: {

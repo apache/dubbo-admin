@@ -1,0 +1,30 @@
+{
+  "skill_name": "dubbo-admin-events",
+  "evals": [
+    {
+      "id": "obvious-trigger",
+      "prompt": "Change EventBus.Send so subscriber errors stop later subscribers.",
+      "expected_behavior": "Use EventBus dispatch workflow and validate global impact."
+    },
+    {
+      "id": "paraphrased-trigger",
+      "prompt": "Events are routed to the wrong subscribers when NewObj is nil.",
+      "expected_behavior": "Inspect Send resource-kind routing with OldObj fallback."
+    },
+    {
+      "id": "file-based-trigger",
+      "prompt": "Review pkg/core/events/component.go and pkg/core/events/eventbus.go.",
+      "expected_behavior": "Use this skill because EventBus implementation files are touched."
+    },
+    {
+      "id": "no-trigger",
+      "prompt": "Modify only ServiceProviderMetadataEventSubscriber aggregation logic.",
+      "expected_behavior": "Do not use this skill as primary unless EventBus dispatch changes."
+    },
+    {
+      "id": "conflict-trigger",
+      "prompt": "A discovery subscriber does not run after informer emits an event.",
+      "expected_behavior": "Use this skill if dispatch or subscription is suspect; otherwise use discovery."
+    }
+  ]
+}
