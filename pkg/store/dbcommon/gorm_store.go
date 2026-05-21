@@ -267,6 +267,26 @@ func (gs *GormStore) List() []interface{} {
 	return result
 }
 
+func (gs *GormStore) ListResources() ([]model.Resource, error) {
+	var models []ResourceModel
+	db := gs.pool.GetDB()
+	if err := db.Scopes(TableScope(gs.kind.ToString())).Model(&ResourceModel{}).
+		Order("resource_key ASC").
+		Find(&models).Error; err != nil {
+		return nil, err
+	}
+
+	resources := make([]model.Resource, 0, len(models))
+	for _, m := range models {
+		resource, err := m.ToResource()
+		if err != nil {
+			return nil, err
+		}
+		resources = append(resources, resource)
+	}
+	return resources, nil
+}
+
 // ListKeys returns all resource keys of the configured kind from the database
 func (gs *GormStore) ListKeys() []string {
 	var keys []string
@@ -594,7 +614,7 @@ func (gs *GormStore) findByIndex(indexName, indexedValue string) ([]interface{},
 
 func (gs *GormStore) getKeysByIndexes(indexes []index.IndexCondition) ([]string, error) {
 	if len(indexes) == 0 {
-		return gs.ListKeys(), nil
+		return []string{}, nil
 	}
 
 	var keySet map[string]struct{}
