@@ -30,6 +30,7 @@ import (
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
+	"github.com/apache/dubbo-admin/pkg/core/versioning"
 )
 
 func PageListConfiguratorRule(ctx consolectx.Context, req *model.SearchReq) (*model.SearchPaginationResult, error) {
@@ -116,17 +117,27 @@ func GetConfigurator(ctx consolectx.Context, name string, mesh string) (*meshres
 }
 
 func UpdateConfigurator(ctx consolectx.Context, res *meshresource.DynamicConfigResource) error {
+	return UpdateConfiguratorWithOptions(ctx, res, RuleMutationOptions{})
+}
+
+func UpdateConfiguratorWithOptions(ctx consolectx.Context, res *meshresource.DynamicConfigResource, opts RuleMutationOptions) error {
 	lockMgr := ctx.LockManager()
 	if lockMgr == nil {
-		return updateConfiguratorUnsafe(ctx, res)
+		return updateConfiguratorUnsafe(ctx, res, opts)
 	}
 	lockKey := lock.BuildConfiguratorRuleLockKey(res.Mesh, res.Name)
 	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
-		return updateConfiguratorUnsafe(ctx, res)
+		return updateConfiguratorUnsafe(ctx, res, opts)
 	})
 }
 
-func updateConfiguratorUnsafe(ctx consolectx.Context, res *meshresource.DynamicConfigResource) error {
+func updateConfiguratorUnsafe(ctx consolectx.Context, res *meshresource.DynamicConfigResource, opts RuleMutationOptions) error {
+	if err := checkExpectedVersion(ctx, RuleKindName{Kind: meshresource.DynamicConfigKind, Mesh: res.Mesh, Name: res.Name}, opts); err != nil {
+		return err
+	}
+	if err := putAdminHint(ctx, res, versioning.OperationUpdate, opts); err != nil {
+		return err
+	}
 	if err := ctx.ResourceManager().Update(res); err != nil {
 		logger.Warnf("update %s configurator failed with error: %s", res.Name, err.Error())
 		return err
@@ -135,17 +146,27 @@ func updateConfiguratorUnsafe(ctx consolectx.Context, res *meshresource.DynamicC
 }
 
 func CreateConfigurator(ctx consolectx.Context, res *meshresource.DynamicConfigResource) error {
+	return CreateConfiguratorWithOptions(ctx, res, RuleMutationOptions{})
+}
+
+func CreateConfiguratorWithOptions(ctx consolectx.Context, res *meshresource.DynamicConfigResource, opts RuleMutationOptions) error {
 	lockMgr := ctx.LockManager()
 	if lockMgr == nil {
-		return createConfiguratorUnsafe(ctx, res)
+		return createConfiguratorUnsafe(ctx, res, opts)
 	}
 	lockKey := lock.BuildConfiguratorRuleLockKey(res.Mesh, res.Name)
 	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
-		return createConfiguratorUnsafe(ctx, res)
+		return createConfiguratorUnsafe(ctx, res, opts)
 	})
 }
 
-func createConfiguratorUnsafe(ctx consolectx.Context, res *meshresource.DynamicConfigResource) error {
+func createConfiguratorUnsafe(ctx consolectx.Context, res *meshresource.DynamicConfigResource, opts RuleMutationOptions) error {
+	if err := checkExpectedVersion(ctx, RuleKindName{Kind: meshresource.DynamicConfigKind, Mesh: res.Mesh, Name: res.Name}, opts); err != nil {
+		return err
+	}
+	if err := putAdminHint(ctx, res, versioning.OperationCreate, opts); err != nil {
+		return err
+	}
 	if err := ctx.ResourceManager().Add(res); err != nil {
 		logger.Warnf("create %s configurator failed with error: %s", res.Name, err.Error())
 		return err
@@ -154,17 +175,32 @@ func createConfiguratorUnsafe(ctx consolectx.Context, res *meshresource.DynamicC
 }
 
 func DeleteConfigurator(ctx consolectx.Context, name string, mesh string) error {
+	return DeleteConfiguratorWithOptions(ctx, name, mesh, RuleMutationOptions{})
+}
+
+func DeleteConfiguratorWithOptions(ctx consolectx.Context, name string, mesh string, opts RuleMutationOptions) error {
 	lockMgr := ctx.LockManager()
 	if lockMgr == nil {
-		return deleteConfiguratorUnsafe(ctx, name, mesh)
+		return deleteConfiguratorUnsafe(ctx, name, mesh, opts)
 	}
 	lockKey := lock.BuildConfiguratorRuleLockKey(mesh, name)
 	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
-		return deleteConfiguratorUnsafe(ctx, name, mesh)
+		return deleteConfiguratorUnsafe(ctx, name, mesh, opts)
 	})
 }
 
-func deleteConfiguratorUnsafe(ctx consolectx.Context, name string, mesh string) error {
+func deleteConfiguratorUnsafe(ctx consolectx.Context, name string, mesh string, opts RuleMutationOptions) error {
+	kindName := RuleKindName{Kind: meshresource.DynamicConfigKind, Mesh: mesh, Name: name}
+	res, err := getExistingRule(ctx, kindName)
+	if err != nil {
+		return err
+	}
+	if err := checkExpectedVersion(ctx, kindName, opts); err != nil {
+		return err
+	}
+	if err := putAdminHint(ctx, res, versioning.OperationDelete, opts); err != nil {
+		return err
+	}
 	if err := ctx.ResourceManager().DeleteByKey(meshresource.DynamicConfigKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
 		logger.Warnf("delete %s configurator failed with error: %s", name, err.Error())
 		return err

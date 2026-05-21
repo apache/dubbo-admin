@@ -103,8 +103,12 @@ func PutTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
 			return
 		}
-		if err = service.UpdateTagRule(ctx, res); err != nil {
-			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
+		opts, ok := mutationOptions(c)
+		if !ok {
+			return
+		}
+		if err = service.UpdateTagRuleWithOptions(ctx, res, opts); err != nil {
+			writeVersioningResp(c, nil, err)
 			return
 		} else {
 			c.JSON(http.StatusOK, model.GenTagRouteResp(res.Spec))
@@ -127,8 +131,12 @@ func PostTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
 			return
 		}
-		if err = service.CreateTagRule(ctx, res); err != nil {
-			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
+		opts, ok := mutationOptions(c)
+		if !ok {
+			return
+		}
+		if err = service.CreateTagRuleWithOptions(ctx, res, opts); err != nil {
+			writeVersioningResp(c, nil, err)
 			return
 		} else {
 			c.JSON(http.StatusOK, model.GenTagRouteResp(res.Spec))
@@ -145,8 +153,12 @@ func DeleteTagRuleWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusBadRequest, model.NewBizErrorResp(err))
 			return
 		}
-		if err := service.DeleteTagRule(ctx, ruleName, mesh); err != nil {
-			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
+		opts, ok := mutationOptions(c)
+		if !ok {
+			return
+		}
+		if err := service.DeleteTagRuleWithOptions(ctx, ruleName, mesh, opts); err != nil {
+			writeVersioningResp(c, nil, err)
 			return
 		}
 		c.JSON(http.StatusOK, model.NewSuccessResp(""))
