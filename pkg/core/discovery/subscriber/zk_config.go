@@ -38,6 +38,8 @@ type ZKConfigEventSubscriber struct {
 	storeRouter store.Router
 }
 
+const sourceRegistryZookeeper = "zookeeper"
+
 func NewZKConfigEventSubscriber(eventEmitter events.Emitter, storeRouter store.Router) *ZKConfigEventSubscriber {
 	return &ZKConfigEventSubscriber{
 		emitter:     eventEmitter,
@@ -167,7 +169,9 @@ func processConfigUpsert[T coremodel.Resource](
 			logger.Errorf("add rule %s to store failed, cause: %s", newRuleRes.ResourceKey(), err.Error())
 			return err
 		}
-		emitter.Send(events.NewResourceChangedEvent(cache.Added, nil, newRuleRes))
+		emitter.Send(events.NewResourceChangedEventWithContext(cache.Added, nil, newRuleRes, map[string]string{
+			"source-registry": sourceRegistryZookeeper,
+		}))
 		return nil
 	}
 
@@ -184,7 +188,9 @@ func processConfigUpsert[T coremodel.Resource](
 		return bizerror.NewAssertionError(reflect.TypeOf(oldMetadataRes), oldRes)
 	}
 
-	emitter.Send(events.NewResourceChangedEvent(cache.Updated, oldMetadataRes, newRuleRes))
+	emitter.Send(events.NewResourceChangedEventWithContext(cache.Updated, oldMetadataRes, newRuleRes, map[string]string{
+		"source-registry": sourceRegistryZookeeper,
+	}))
 	return nil
 }
 
@@ -194,6 +200,10 @@ func processConfigDelete[T coremodel.Resource](
 	router store.Router,
 	emitter events.Emitter) error {
 	ruleRes := toRuleRes(configRes.Mesh, configRes.Name, configRes.Spec.NodeData)
+	if ruleRes == nil {
+		logger.Warnf("cannot derive rule resource from zk delete event, mesh: %s, nodeName: %s", configRes.Mesh, configRes.Name)
+		return nil
+	}
 	st, err := router.ResourceKindRoute(ruleRes.ResourceKind())
 	if err != nil {
 		logger.Errorf("get %s store failed, cause: %s", ruleRes.ResourceKind(), err.Error())
@@ -205,7 +215,7 @@ func processConfigDelete[T coremodel.Resource](
 		return err
 	}
 	if !exists {
-		logger.Infof("rule %s not exists in store, skipped deleting", ruleRes.ResourceKey())
+		logger.Warnf("rule %s not exists in store for zk delete event, skipped deleting; node data may be unavailable", ruleRes.ResourceKey())
 		return nil
 	}
 	oldRuleRes, ok := oldRes.(T)
@@ -217,6 +227,8 @@ func processConfigDelete[T coremodel.Resource](
 		logger.Errorf("delete rule %s from store failed, cause: %s", ruleRes.ResourceKey(), err.Error())
 		return err
 	}
-	emitter.Send(events.NewResourceChangedEvent(cache.Deleted, oldRuleRes, nil))
+	emitter.Send(events.NewResourceChangedEventWithContext(cache.Deleted, oldRuleRes, nil, map[string]string{
+		"source-registry": sourceRegistryZookeeper,
+	}))
 	return nil
 }
