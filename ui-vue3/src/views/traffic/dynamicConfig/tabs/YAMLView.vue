@@ -21,19 +21,16 @@
       <a-flex style="width: 100%">
         <a-col :span="isDrawerOpened ? 24 - sliderSpan : 24" class="left">
           <a-flex vertical align="end">
-            <a-row style="width: 100%" justify="space-between">
-              <a-col :span="12"> </a-col>
-              <a-col :span="12">
-                <!--                todo 版本记录后续添加-->
-                <!--                <a-button-->
-                <!--                  type="text"-->
-                <!--                  style="color: #0a90d5; float: right; margin-top: -5px"-->
-                <!--                  @click="isDrawerOpened = !isDrawerOpened"-->
-                <!--                >-->
-                <!--                  {{ $t('flowControlDomain.versionRecords') }}-->
-                <!--                  <DoubleLeftOutlined v-if="!isDrawerOpened" />-->
-                <!--                  <DoubleRightOutlined v-else />-->
-                <!--                </a-button>-->
+            <a-row style="width: 100%" justify="end">
+              <a-col v-if="!viewData.isAdd">
+                <a-space>
+                  <a-tag v-if="currentVersionNo !== undefined" color="blue">
+                    current v{{ currentVersionNo }}
+                  </a-tag>
+                  <a-button type="text" style="color: #0a90d5" @click="isHistoryOpen = true">
+                    Version history
+                  </a-button>
+                </a-space>
               </a-col>
             </a-row>
 
@@ -71,11 +68,21 @@
     <a-button type="primary" @click="saveConfig">保存</a-button>
     <a-button style="margin-left: 30px" @click="resetConfig">重置</a-button>
   </a-flex>
+
+  <RuleHistoryPanel
+    v-if="!viewData.isAdd"
+    v-model:open="isHistoryOpen"
+    kind="configurator"
+    :rule-name="pathId"
+    :title="ruleName || pathId"
+    @current-version-change="currentVersionId = $event"
+    @current-version-no-change="currentVersionNo = $event"
+    @rollback-success="handleRollbackSuccess"
+  />
 </template>
 
 <script setup lang="ts">
 import MonacoEditor from '@/components/editor/MonacoEditor.vue'
-import { DoubleLeftOutlined, DoubleRightOutlined } from '@ant-design/icons-vue'
 import { computed, inject, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
@@ -89,10 +96,14 @@ import yaml from 'js-yaml'
 import { message } from 'ant-design-vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { ViewDataModel } from '@/views/traffic/dynamicConfig/model/ConfigModel'
+import { fetchCurrentVersionState, notifyVersionConflict } from '../../_shared/ruleVersion'
+import RuleHistoryPanel from '../../_shared/RuleHistoryPanel.vue'
 
 const route = useRoute()
+const pathId = computed(() => String(route.params?.pathId || ''))
 const isEdit = ref(route.params.isEdit === '1')
 const isDrawerOpened = ref(false)
+const isHistoryOpen = ref(false)
 const loading = ref(false)
 const sliderSpan = ref(8)
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
@@ -100,9 +111,23 @@ const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 const YAMLValue = ref()
 const initValue = ref()
 const ruleName = ref('')
+const currentVersionId = ref<number | undefined>(undefined)
+const currentVersionNo = ref<number | undefined>(undefined)
+
+async function reloadCurrentVersion() {
+  if (!pathId.value || pathId.value === '_tmp') {
+    currentVersionId.value = undefined
+    currentVersionNo.value = undefined
+    return
+  }
+  const current = await fetchCurrentVersionState('configurator', pathId.value)
+  currentVersionId.value = current.id
+  currentVersionNo.value = current.versionNo
+}
 
 onMounted(async () => {
   await initConfig()
+  await reloadCurrentVersion()
 })
 const modify = computed(() => {
   return initValue.value !== JSON.stringify(YAMLValue.value)
@@ -112,14 +137,12 @@ async function initConfig() {
   if (TAB_STATE.dynamicConfigForm?.data) {
     viewData.fromData(TAB_STATE.dynamicConfigForm.data)
   } else {
-    if (route.params?.pathId === '_tmp') {
+    if (pathId.value === '_tmp') {
       isEdit.value = true
       viewData.isAdd = true
     } else {
-      console.log('666')
-
       viewData.isAdd = false
-      const res = await getConfiguratorDetail({ name: route.params?.pathId })
+      const res = await getConfiguratorDetail({ name: pathId.value })
       viewData.fromApiOutput(res.data)
     }
     TAB_STATE.dynamicConfigForm = reactive({
@@ -149,7 +172,9 @@ async function saveConfig() {
   let data = yaml.load(YAMLValue.value)
   try {
     if (viewData.isAdd === true) {
-      addConfiguratorDetail({ name: viewData.basicInfo.key + '.configurators' }, data)
+      addConfiguratorDetail({ name: viewData.basicInfo.key + '.configurators' }, data, {
+        expectedVersionId: currentVersionId.value
+      })
         .then((res) => {
           TAB_STATE.dynamicConfigForm.data = null
           nextTick(() => {
@@ -162,12 +187,23 @@ async function saveConfig() {
         })
       return
     }
-    await saveConfiguratorDetail({ name: route.params?.pathId }, data)
+    await saveConfiguratorDetail({ name: pathId.value }, data, {
+      expectedVersionId: currentVersionId.value
+    })
     message.success('config save success')
     // 延迟 2 秒后再获取数据，确保数据库已更新
     await new Promise((resolve) => setTimeout(resolve, 2000))
     TAB_STATE.dynamicConfigForm.data = null
     await initConfig()
+    await reloadCurrentVersion()
+  } catch (e: any) {
+    notifyVersionConflict(e, {
+      reload: async () => {
+        TAB_STATE.dynamicConfigForm.data = null
+        await initConfig()
+        await reloadCurrentVersion()
+      }
+    })
   } finally {
     loading.value = false
   }
@@ -175,6 +211,12 @@ async function saveConfig() {
 
 function changeEditor(val) {
   viewData.fromApiOutput(yaml.load(YAMLValue.value))
+}
+
+async function handleRollbackSuccess() {
+  TAB_STATE.dynamicConfigForm.data = null
+  await initConfig()
+  await reloadCurrentVersion()
 }
 </script>
 

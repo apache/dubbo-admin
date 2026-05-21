@@ -55,13 +55,31 @@
               :disabled="!isEdit"
             />
           </a-descriptions-item>
+          <a-descriptions-item
+            v-if="!formViewData.isAdd"
+            :label="$t('flowControlDomain.versionRecords')"
+            :labelStyle="{ fontWeight: 'bold' }"
+          >
+            <a-space>
+              <a-tag v-if="currentVersionNo !== undefined" color="blue">
+                current v{{ currentVersionNo }}
+              </a-tag>
+              <a-button type="text" style="color: #0a90d5" @click="isHistoryOpen = true">
+                Version history
+              </a-button>
+            </a-space>
+          </a-descriptions-item>
         </a-descriptions>
       </div>
     </a-card>
 
     <a-spin :spinning="loading">
       <a-form ref="formRef">
-        <a-card v-for="(config, index) in formViewEdit.config" class="dynamic-config-card">
+        <a-card
+          v-for="(config, index) in formViewEdit.config"
+          :key="index"
+          class="dynamic-config-card"
+        >
           <template #title>
             <a-button
               v-if="!isEdit"
@@ -76,11 +94,15 @@
               对于{{ formViewData?.basicInfo?.scope === 'application' ? '应用' : '服务' }}的{{
                 config.side === 'provider' ? '提供者' : '消费者'
               }}，将满足
-              <a-tag :color="PRIMARY_COLOR" v-for="item in descMatchesComputed(config)">
+              <a-tag v-for="item in descMatchesComputed(config)" :key="item" :color="PRIMARY_COLOR">
                 {{ item }}
               </a-tag>
               的实例，配置
-              <a-tag :color="PRIMARY_COLOR" v-for="item in descParametersComputed(config)">
+              <a-tag
+                v-for="item in descParametersComputed(config)"
+                :key="item"
+                :color="PRIMARY_COLOR"
+              >
                 {{ item }}
               </a-tag>
             </div>
@@ -189,6 +211,7 @@
                       <a-input-group
                         :disabled="!isEdit"
                         v-for="(item, idx) in config.matchesValue[key].arr"
+                        :key="idx"
                         style="margin-bottom: 5px"
                         compact
                       >
@@ -304,6 +327,7 @@
                       </template>
                       <a-input-group
                         v-for="(item, idx) in config.parametersValue[key].arr"
+                        :key="idx"
                         style="margin-bottom: 5px"
                         compact
                       >
@@ -376,6 +400,17 @@
         }}</a-button>
       </a-flex>
     </a-card>
+
+    <RuleHistoryPanel
+      v-if="!formViewData.isAdd"
+      v-model:open="isHistoryOpen"
+      kind="configurator"
+      :rule-name="pathId"
+      :title="formViewData.basicInfo.ruleName || pathId"
+      @current-version-change="currentVersionId = $event"
+      @current-version-no-change="currentVersionNo = $event"
+      @rollback-success="handleRollbackSuccess"
+    />
   </div>
 </template>
 
@@ -395,6 +430,8 @@ import gsap from 'gsap'
 import { Icon } from '@iconify/vue'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { ConfigModel, ViewDataModel } from '@/views/traffic/dynamicConfig/model/ConfigModel'
+import { fetchCurrentVersionState, notifyVersionConflict } from '../../_shared/ruleVersion'
+import RuleHistoryPanel from '../../_shared/RuleHistoryPanel.vue'
 
 let __ = PRIMARY_COLOR
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
@@ -402,11 +439,26 @@ const {
   appContext: {
     config: { globalProperties }
   }
-} = <ComponentInternalInstance>getCurrentInstance()
+} = getCurrentInstance() as ComponentInternalInstance
 
 const route = useRoute()
 const router = useRouter()
+const pathId = computed(() => String(route.params?.pathId || ''))
 const isEdit = ref(route.params.isEdit === '1')
+const isHistoryOpen = ref(false)
+const currentVersionId = ref<number | undefined>(undefined)
+const currentVersionNo = ref<number | undefined>(undefined)
+
+async function reloadCurrentVersion() {
+  if (!pathId.value || pathId.value === '_tmp') {
+    currentVersionId.value = undefined
+    currentVersionNo.value = undefined
+    return
+  }
+  const current = await fetchCurrentVersionState('configurator', pathId.value)
+  currentVersionId.value = current.id
+  currentVersionNo.value = current.versionNo
+}
 
 const toClipboard = useClipboard().toClipboard
 
@@ -530,6 +582,7 @@ const hasUnsavedChanges = ref(true)
 
 onMounted(async () => {
   await initConfig()
+  await reloadCurrentVersion()
 })
 const delConfig = (idx) => {
   Modal.confirm({
@@ -556,8 +609,8 @@ async function initConfig() {
   if (TAB_STATE.dynamicConfigForm?.data) {
     formViewData.fromData(TAB_STATE.dynamicConfigForm.data)
   } else {
-    if (route.params?.pathId !== '_tmp') {
-      const res = await getConfiguratorDetail({ name: route.params?.pathId })
+    if (pathId.value !== '_tmp') {
+      const res = await getConfiguratorDetail({ name: pathId.value })
       transApiData(res.data)
     } else {
       formViewData.basicInfo.ruleName = '_tmp'
@@ -576,7 +629,9 @@ async function saveConfig() {
   try {
     let data = formViewEdit.toApiInput(true)
     if (formViewData.isAdd === true) {
-      addConfiguratorDetail({ name: formViewEdit.basicInfo.key + '.configurators' }, data)
+      addConfiguratorDetail({ name: formViewEdit.basicInfo.key + '.configurators' }, data, {
+        expectedVersionId: currentVersionId.value
+      })
         .then((res) => {
           TAB_STATE.dynamicConfigForm.data = null
           nextTick(() => {
@@ -589,18 +644,36 @@ async function saveConfig() {
         })
       return
     }
-    await saveConfiguratorDetail({ name: route.params?.pathId }, data)
+    await saveConfiguratorDetail({ name: pathId.value }, data, {
+      expectedVersionId: currentVersionId.value
+    })
     message.success('config save success')
     // 延迟 2 秒后再获取数据，确保数据库已更新
     await new Promise((resolve) => setTimeout(resolve, 2000))
     TAB_STATE.dynamicConfigForm.data = null
     await initConfig()
-  } catch (e) {
-    message.error(formViewEdit.errorMsg.join(';'))
+    await reloadCurrentVersion()
+  } catch (e: any) {
+    const handled = notifyVersionConflict(e, {
+      reload: async () => {
+        TAB_STATE.dynamicConfigForm.data = null
+        await initConfig()
+        await reloadCurrentVersion()
+      }
+    })
+    if (!handled) {
+      message.error(formViewEdit.errorMsg.join(';'))
+    }
     console.error(e)
   } finally {
     loading.value = false
   }
+}
+
+async function handleRollbackSuccess() {
+  TAB_STATE.dynamicConfigForm.data = null
+  await initConfig()
+  await reloadCurrentVersion()
 }
 </script>
 
