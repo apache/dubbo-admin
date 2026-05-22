@@ -77,6 +77,7 @@ export const notifyVersionConflict = (
   if (isVersionConflict(e)) {
     notification.warning({
       key: 'rule-version-conflict',
+      duration: 0,
       message: '版本冲突',
       description: '规则已被其他操作更新，请重新加载当前版本后再提交。',
       btn: options?.reload

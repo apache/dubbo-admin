@@ -229,6 +229,44 @@ func TestSubscriberRespectsRegistrySourceContext(t *testing.T) {
 	require.Equal(t, "system:zookeeper", items[0].Author)
 }
 
+func TestSubscriberSkipsNoopUpstreamEchoAfterBootstrap(t *testing.T) {
+	store := NewMemoryStore()
+	hints := NewAdminHintRegistry()
+	sub := NewSubscriber(meshresource.ConditionRouteKind, store, hints, 5, 0)
+
+	original := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
+	original.Spec = &meshproto.ConditionRoute{Key: "demo", Priority: 1}
+	require.NoError(t, RecordBootstrap(store, 5, original))
+	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEventWithContext(
+		cache.Updated,
+		nil,
+		original,
+		map[string]string{"source-registry": "zookeeper"},
+	)))
+
+	items, err := store.ListVersions(meshresource.ConditionRouteKind, original.ResourceKey())
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.Equal(t, SourceBootstrap, items[0].Source)
+	require.True(t, items[0].IsCurrent)
+
+	changed := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
+	changed.Spec = &meshproto.ConditionRoute{Key: "demo", Priority: 2}
+	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEventWithContext(
+		cache.Updated,
+		original,
+		changed,
+		map[string]string{"source-registry": "zookeeper"},
+	)))
+
+	items, err = store.ListVersions(meshresource.ConditionRouteKind, original.ResourceKey())
+	require.NoError(t, err)
+	require.Len(t, items, 2)
+	require.Equal(t, SourceUpstream, items[0].Source)
+	require.Equal(t, "system:zookeeper", items[0].Author)
+	require.True(t, items[0].IsCurrent)
+}
+
 func TestSubscriberRecordsDeleteWithAdminHintSnapshot(t *testing.T) {
 	store := NewMemoryStore()
 	hints := NewAdminHintRegistry()

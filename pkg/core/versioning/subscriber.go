@@ -160,12 +160,14 @@ func (s *Subscriber) record(event events.Event) error {
 	author := "system:upstream"
 	reason := ""
 	var rolledBackFromID *int64
+	hinted := false
 	if ctx := event.Context(); ctx != nil {
 		if registry := ctx[sourceRegistryContextKey]; registry != "" {
 			author = "system:" + registry
 		}
 	}
 	if hint, ok := s.hints.Take(res.ResourceKind(), res.ResourceKey(), hash); ok {
+		hinted = true
 		source = hint.Source
 		if source == "" {
 			source = SourceAdmin
@@ -193,6 +195,15 @@ func (s *Subscriber) record(event events.Event) error {
 	}
 	if author == "" {
 		author = "system:unknown"
+	}
+	if !hinted && source == SourceUpstream && op != OperationDelete {
+		latest, err := s.store.LatestVersion(ruleKind, resourceKey)
+		if err != nil {
+			return err
+		}
+		if latest != nil && latest.ContentHash == hash {
+			return nil
+		}
 	}
 	_, err = s.store.InsertVersion(InsertRequest{
 		RuleKind:         ruleKind,

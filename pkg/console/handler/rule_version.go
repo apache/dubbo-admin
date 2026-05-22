@@ -151,6 +151,7 @@ func writeVersioningResp(c *gin.Context, data any, err error) {
 		return
 	}
 	var conflict *versioning.ConflictError
+	var bizErr bizerror.Error
 	switch {
 	case errors.As(err, &conflict):
 		c.JSON(http.StatusConflict, gin.H{
@@ -164,6 +165,8 @@ func writeVersioningResp(c *gin.Context, data any, err error) {
 		c.JSON(http.StatusOK, model.NewBizErrorResp(bizerror.New(bizerror.NotFoundError, err.Error())))
 	case errors.Is(err, versioning.ErrRollbackToDelete):
 		c.JSON(http.StatusOK, model.NewBizErrorResp(bizerror.New(bizerror.InvalidArgument, err.Error())))
+	case errors.As(err, &bizErr) && bizErr.Code() == bizerror.InvalidArgument:
+		c.JSON(http.StatusBadRequest, model.NewBizErrorResp(bizErr))
 	default:
 		c.JSON(http.StatusOK, model.NewBizErrorResp(bizerror.New(bizerror.UnknownError, err.Error())))
 	}
