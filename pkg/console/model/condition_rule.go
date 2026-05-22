@@ -52,7 +52,9 @@ type ConditionRuleResp struct {
 	Conditions    []string `json:"conditions"`
 	ConfigVersion string   `json:"configVersion"`
 	Enabled       bool     `json:"enabled"`
+	Force         bool     `json:"force"`
 	Key           string   `json:"key"`
+	Priority      int32    `json:"priority"`
 	Runtime       bool     `json:"runtime"`
 	Scope         string   `json:"scope"`
 }
@@ -246,7 +248,9 @@ func GenConditionRuleToResp(data *meshproto.ConditionRoute) *CommonResp {
 		Conditions:    data.Conditions,
 		ConfigVersion: data.ConfigVersion,
 		Enabled:       data.Enabled,
+		Force:         data.Force,
 		Key:           data.Key,
+		Priority:      data.Priority,
 		Runtime:       data.Runtime,
 		Scope:         data.Scope,
 	})

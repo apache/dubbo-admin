@@ -181,8 +181,20 @@ const {
 
 onMounted(async () => {
   if (!isNil(TAB_STATE.conditionRule)) {
-    const { enabled = true, key, scope, runtime = true, conditions } = TAB_STATE.conditionRule
+    const {
+      configVersion,
+      priority,
+      enabled = true,
+      force = false,
+      key,
+      scope,
+      runtime = true,
+      conditions
+    } = TAB_STATE.conditionRule
+    baseInfo.configVersion = configVersion
+    baseInfo.priority = priority
     baseInfo.enable = enabled
+    baseInfo.faultTolerantProtection = force
     baseInfo.objectOfAction = key
     baseInfo.ruleGranularity = scope
     baseInfo.runtime = runtime
@@ -248,6 +260,7 @@ const baseInfo = reactive({
   faultTolerantProtection: false,
   runtime: true,
   priority: null,
+  configVersion: '',
   group: ''
 })
 
@@ -300,16 +313,18 @@ async function getRoutingRuleDetail() {
   // console.log(res)
   if (res?.code === HTTP_STATUS.SUCCESS) {
     console.log('res', res.data)
-    const { conditions, configVersion, enabled, force, key, runtime, scope } = res.data || {}
+    const { conditions, configVersion, priority, enabled, force, key, runtime, scope } =
+      res.data || {}
     baseInfo.ruleGranularity = scope
     baseInfo.objectOfAction = key
     baseInfo.enable = enabled
     baseInfo.faultTolerantProtection = force
     baseInfo.runtime = runtime
     baseInfo.configVersion = configVersion
+    baseInfo.priority = priority
 
     //   format conditions data
-    if (configVersion == 'v3.0' && conditions && conditions.length > 0) {
+    if (conditions && conditions.length > 0) {
       // Clear and rebuild routeList based on conditions
       routeList.value = []
       conditions.forEach((item, index) => {
@@ -336,10 +351,19 @@ const updateRoutingRule = async () => {
   loading.value = true
   try {
     const { ruleName } = route.params
-    const { version, ruleGranularity, objectOfAction, enable, faultTolerantProtection, runtime } =
-      baseInfo
+    const {
+      version,
+      ruleGranularity,
+      objectOfAction,
+      enable,
+      faultTolerantProtection,
+      runtime,
+      priority,
+      configVersion
+    } = baseInfo
     const data = {
-      configVersion: 'v3.0',
+      configVersion: configVersion || 'v3.0',
+      priority,
       scope: ruleGranularity,
       key: objectOfAction,
       enabled: enable,

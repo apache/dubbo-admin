@@ -251,8 +251,20 @@ const router = useRouter()
 
 onMounted(async () => {
   if (!isNil(TAB_STATE.tagRule)) {
-    const { enabled = true, key, scope, runtime = true, tags } = TAB_STATE.tagRule
+    const {
+      configVersion,
+      priority,
+      enabled = true,
+      force = false,
+      key,
+      scope,
+      runtime = true,
+      tags
+    } = TAB_STATE.tagRule
+    baseInfo.configVersion = configVersion
+    baseInfo.priority = priority
     baseInfo.enable = enabled
+    baseInfo.faultTolerantProtection = force
     baseInfo.objectOfAction = key
     baseInfo.ruleGranularity = scope
     baseInfo.runtime = runtime
@@ -565,10 +577,11 @@ const deleteTagItem = (tagItemIndex: number) => {
 const getTagRuleDetail = async () => {
   const res = await getTagRuleDetailAPI(route.params?.ruleName as string)
   if (res.code === HTTP_STATUS.SUCCESS) {
-    const { configVersion, enabled, key, runtime, scope, tags } = res.data || {}
+    const { configVersion, priority, enabled, force, key, runtime, scope, tags } = res.data || {}
     baseInfo.configVersion = configVersion
+    baseInfo.priority = priority
     baseInfo.enable = enabled
-    // baseInfo.faultTolerantProtection =
+    baseInfo.faultTolerantProtection = force
     baseInfo.runtime = runtime
     baseInfo.ruleGranularity = scope
     baseInfo.objectOfAction = key
@@ -618,7 +631,9 @@ const updateTagRule = async () => {
       configVersion,
       scope: ruleGranularity,
       key: objectOfAction,
+      priority,
       enabled: enable,
+      force: faultTolerantProtection,
       runtime,
       tags: []
     }
