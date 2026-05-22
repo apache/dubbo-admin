@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	"github.com/apache/dubbo-admin/pkg/config"
 )
 
 const (
@@ -32,6 +33,7 @@ const (
 )
 
 type Config struct {
+	config.BaseConfig
 	Enabled            bool  `json:"enabled" yaml:"enabled"`
 	MaxVersionsPerRule int64 `json:"maxVersionsPerRule" yaml:"maxVersionsPerRule"`
 	CoalesceWindowMs   int64 `json:"coalesceWindowMs" yaml:"coalesceWindowMs"`
@@ -69,14 +71,6 @@ func (c *Config) Sanitize() {
 	if c.RollbackWaitMs < 0 {
 		c.RollbackWaitMs = DefaultRollbackWaitMs
 	}
-}
-
-func (c *Config) PreProcess() error {
-	return nil
-}
-
-func (c *Config) PostProcess() error {
-	return nil
 }
 
 func (c *Config) Validate() error {

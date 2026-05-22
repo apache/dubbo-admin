@@ -46,7 +46,7 @@ func checkExpectedVersion(ctx consolectx.Context, kindName RuleKindName, opts Ru
 	return svc.CheckExpected(kindName.Kind, kindName.Mesh, kindName.Name, opts.ExpectedVersionID)
 }
 
-func putAdminHint(ctx consolectx.Context, res versionedResource, op versioning.Operation, opts RuleMutationOptions) error {
+func putAdminHint(ctx consolectx.Context, res coremodel.Resource, op versioning.Operation, opts RuleMutationOptions) error {
 	svc := ruleVersioning(ctx)
 	if svc == nil {
 		return nil
@@ -70,10 +70,6 @@ func getExistingRule(ctx consolectx.Context, kindName RuleKindName) (coremodel.R
 		return nil, fmt.Errorf("%s %s does not exist", kindName.Kind, key)
 	}
 	return res, nil
-}
-
-type versionedResource interface {
-	coremodel.Resource
 }
 
 func ListRuleVersions(ctx consolectx.Context, kindName RuleKindName) (*versioning.ListResult, error) {
