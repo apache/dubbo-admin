@@ -61,7 +61,7 @@ func (s *GormStore) InsertVersion(req InsertRequest, maxVersions int64) (*Versio
 		err = tx.Where("rule_kind = ? AND resource_key = ?", req.RuleKind, req.ResourceKey).
 			Order("version_no DESC").
 			First(&latest).Error
-		if err == nil && latest.ContentHash == req.ContentHash && latest.Operation == req.Operation {
+		if err == nil && shouldDedupVersion(&latest, req) {
 			inserted = latest
 			return nil
 		}

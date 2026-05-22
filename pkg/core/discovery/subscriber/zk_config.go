@@ -170,7 +170,7 @@ func processConfigUpsert[T coremodel.Resource](
 			return err
 		}
 		emitter.Send(events.NewResourceChangedEventWithContext(cache.Added, nil, newRuleRes, map[string]string{
-			"source-registry": sourceRegistryZookeeper,
+			events.SourceRegistryContextKey: sourceRegistryZookeeper,
 		}))
 		return nil
 	}
@@ -189,7 +189,7 @@ func processConfigUpsert[T coremodel.Resource](
 	}
 
 	emitter.Send(events.NewResourceChangedEventWithContext(cache.Updated, oldMetadataRes, newRuleRes, map[string]string{
-		"source-registry": sourceRegistryZookeeper,
+		events.SourceRegistryContextKey: sourceRegistryZookeeper,
 	}))
 	return nil
 }
@@ -228,7 +228,7 @@ func processConfigDelete[T coremodel.Resource](
 		return err
 	}
 	emitter.Send(events.NewResourceChangedEventWithContext(cache.Deleted, oldRuleRes, nil, map[string]string{
-		"source-registry": sourceRegistryZookeeper,
+		events.SourceRegistryContextKey: sourceRegistryZookeeper,
 	}))
 	return nil
 }

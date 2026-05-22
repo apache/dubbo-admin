@@ -116,7 +116,7 @@ func (c *component) Init(ctx runtime.BuilderContext) error {
 	return nil
 }
 
-func (c *component) Start(rt runtime.Runtime, _ <-chan struct{}) error {
+func (c *component) Start(rt runtime.Runtime, stop <-chan struct{}) error {
 	cfg := rt.Config().Versioning
 	if cfg == nil {
 		cfg = versioningcfg.Default()
@@ -139,6 +139,14 @@ func (c *component) Start(rt runtime.Runtime, _ <-chan struct{}) error {
 				return err
 			}
 		}
+	}
+	if stop != nil {
+		go func() {
+			<-stop
+			for _, sub := range c.subscribers {
+				sub.FlushAll()
+			}
+		}()
 	}
 	return nil
 }

@@ -64,6 +64,7 @@ func (r *AdminHintRegistry) Put(kind coremodel.ResourceKind, resourceKey, conten
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.pruneExpiredLocked()
 	r.hints[hintKey{kind: kind, resourceKey: resourceKey, hash: contentHash}] = hint
 }
 
@@ -73,6 +74,7 @@ func (r *AdminHintRegistry) Take(kind coremodel.ResourceKind, resourceKey, conte
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.pruneExpiredLocked()
 	key := hintKey{kind: kind, resourceKey: resourceKey, hash: contentHash}
 	hint, ok := r.hints[key]
 	if !ok {

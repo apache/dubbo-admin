@@ -67,7 +67,7 @@ func (s *MemoryStore) InsertVersion(req InsertRequest, maxVersions int64) (*Vers
 	}
 	if ids := s.byRule[key]; len(ids) > 0 {
 		latest := s.versions[ids[len(ids)-1]]
-		if latest != nil && latest.ContentHash == req.ContentHash && latest.Operation == req.Operation {
+		if shouldDedupVersion(latest, req) {
 			cp := *latest
 			if meta.CurrentVersion != nil && *meta.CurrentVersion == cp.ID {
 				cp.IsCurrent = true
@@ -108,6 +108,16 @@ func (s *MemoryStore) InsertVersion(req InsertRequest, maxVersions int64) (*Vers
 	cp := *v
 	cp.IsCurrent = meta.CurrentVersion != nil && *meta.CurrentVersion == cp.ID
 	return &cp, nil
+}
+
+func shouldDedupVersion(latest *Version, req InsertRequest) bool {
+	if latest == nil || latest.ContentHash != req.ContentHash {
+		return false
+	}
+	if latest.Operation == OperationDelete || req.Operation == OperationDelete {
+		return latest.Operation == req.Operation
+	}
+	return true
 }
 
 func (s *MemoryStore) ListVersions(kind coremodel.ResourceKind, resourceKey string) ([]Version, error) {

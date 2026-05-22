@@ -60,7 +60,7 @@ func TestE2ERollbackDrill(t *testing.T) {
 
 	upstreamPush := newE2EConditionRoute(3)
 	bus.Send(events.NewResourceChangedEventWithContext(cache.Updated, adminEdit, upstreamPush, map[string]string{
-		"source-registry": "zookeeper",
+		events.SourceRegistryContextKey: "zookeeper",
 	}))
 	items = requireVersions(t, store, original.ResourceKey(), 3)
 	require.Equal(t, SourceUpstream, items[0].Source)

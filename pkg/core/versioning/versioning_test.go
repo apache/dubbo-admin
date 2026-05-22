@@ -29,7 +29,10 @@ import (
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	appconfig "github.com/apache/dubbo-admin/pkg/config/app"
 	eventbusconfig "github.com/apache/dubbo-admin/pkg/config/eventbus"
+	"github.com/apache/dubbo-admin/pkg/config/mode"
+	versioningcfg "github.com/apache/dubbo-admin/pkg/config/versioning"
 	"github.com/apache/dubbo-admin/pkg/core/events"
+	"github.com/apache/dubbo-admin/pkg/core/manager"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 	coreruntime "github.com/apache/dubbo-admin/pkg/core/runtime"
@@ -72,6 +75,26 @@ func TestAdminHintTTLHitAndMiss(t *testing.T) {
 	reg.Put(meshresource.ConditionRouteKind, "m/r", "expired", AdminHint{ExpiresAt: now.Add(-time.Second)})
 	_, ok = reg.Take(meshresource.ConditionRouteKind, "m/r", "expired")
 	require.False(t, ok)
+}
+
+func TestAdminHintPrunesExpiredOnPutAndTake(t *testing.T) {
+	now := time.Now()
+	reg := NewAdminHintRegistry()
+	reg.now = func() time.Time { return now }
+
+	reg.Put(meshresource.ConditionRouteKind, "m/stale", "stale", AdminHint{ExpiresAt: now.Add(-time.Second)})
+	require.Len(t, reg.hints, 1)
+
+	reg.Put(meshresource.ConditionRouteKind, "m/fresh", "fresh", AdminHint{
+		ExpiresAt: now.Add(time.Second),
+	})
+	require.Len(t, reg.hints, 1)
+
+	reg.Put(meshresource.ConditionRouteKind, "m/stale", "stale", AdminHint{ExpiresAt: now.Add(-time.Second)})
+	hint, ok := reg.Take(meshresource.ConditionRouteKind, "m/fresh", "fresh")
+	require.True(t, ok)
+	require.Empty(t, hint.Author)
+	require.Empty(t, reg.hints)
 }
 
 func TestMemoryStoreRetentionCurrentPointerAndDelete(t *testing.T) {
@@ -219,7 +242,7 @@ func TestSubscriberRespectsRegistrySourceContext(t *testing.T) {
 		cache.Updated,
 		nil,
 		upstreamRes,
-		map[string]string{"source-registry": "zookeeper"},
+		map[string]string{events.SourceRegistryContextKey: "zookeeper"},
 	)))
 
 	items, err := store.ListVersions(meshresource.ConditionRouteKind, upstreamRes.ResourceKey())
@@ -241,7 +264,7 @@ func TestSubscriberSkipsNoopUpstreamEchoAfterBootstrap(t *testing.T) {
 		cache.Updated,
 		nil,
 		original,
-		map[string]string{"source-registry": "zookeeper"},
+		map[string]string{events.SourceRegistryContextKey: "zookeeper"},
 	)))
 
 	items, err := store.ListVersions(meshresource.ConditionRouteKind, original.ResourceKey())
@@ -256,7 +279,7 @@ func TestSubscriberSkipsNoopUpstreamEchoAfterBootstrap(t *testing.T) {
 		cache.Updated,
 		original,
 		changed,
-		map[string]string{"source-registry": "zookeeper"},
+		map[string]string{events.SourceRegistryContextKey: "zookeeper"},
 	)))
 
 	items, err = store.ListVersions(meshresource.ConditionRouteKind, original.ResourceKey())
@@ -265,6 +288,26 @@ func TestSubscriberSkipsNoopUpstreamEchoAfterBootstrap(t *testing.T) {
 	require.Equal(t, SourceUpstream, items[0].Source)
 	require.Equal(t, "system:zookeeper", items[0].Author)
 	require.True(t, items[0].IsCurrent)
+}
+
+func TestSubscriberRecordsEmptyCreateAfterDelete(t *testing.T) {
+	store := NewMemoryStore()
+	hints := NewAdminHintRegistry()
+	sub := NewSubscriber(meshresource.ConditionRouteKind, store, hints, 5, 0)
+	res := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
+	res.Spec = &meshproto.ConditionRoute{}
+
+	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Added, nil, res)))
+	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Deleted, res, nil)))
+	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Added, nil, res)))
+
+	items, err := store.ListVersions(meshresource.ConditionRouteKind, res.ResourceKey())
+	require.NoError(t, err)
+	require.Len(t, items, 3)
+	require.Equal(t, OperationCreate, items[0].Operation)
+	require.True(t, items[0].IsCurrent)
+	require.Equal(t, OperationDelete, items[1].Operation)
+	require.False(t, items[1].IsCurrent)
 }
 
 func TestSubscriberRecordsDeleteWithAdminHintSnapshot(t *testing.T) {
@@ -408,6 +451,37 @@ func TestDisabledServiceHistoryReturnsFeatureDisabled(t *testing.T) {
 	svc := NewService(false, 5, 0, time.Second, NewMemoryStore(), NewAdminHintRegistry())
 	_, err := svc.List(meshresource.ConditionRouteKind, "mesh", "demo.condition-router")
 	require.ErrorIs(t, err, ErrFeatureDisabled)
+}
+
+func TestComponentFlushesPendingVersionsOnStop(t *testing.T) {
+	store := NewMemoryStore()
+	sub := NewSubscriber(meshresource.ConditionRouteKind, store, NewAdminHintRegistry(), 5, time.Hour)
+	comp := &component{
+		store:       store,
+		subscribers: []*Subscriber{sub},
+	}
+	res := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
+	res.Spec = &meshproto.ConditionRoute{Key: "demo", Priority: 1}
+	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Added, nil, res)))
+
+	stop := make(chan struct{})
+	require.NoError(t, comp.Start(testRuntime{
+		cfg: appconfig.AdminConfig{
+			Versioning: &versioningcfg.Config{
+				Enabled:            true,
+				MaxVersionsPerRule: 5,
+			},
+		},
+		components: map[coreruntime.ComponentType]coreruntime.Component{
+			coreruntime.ResourceManager: testRMComponent{rm: fakeNoopResourceManager{}},
+		},
+	}, stop))
+	close(stop)
+
+	require.Eventually(t, func() bool {
+		items, err := store.ListVersions(meshresource.ConditionRouteKind, res.ResourceKey())
+		return err == nil && len(items) == 1
+	}, time.Second, 10*time.Millisecond)
 }
 
 type fakeVersionResourceManager struct {
@@ -563,4 +637,71 @@ func (c testBuilderContext) GetActivatedComponent(coreruntime.ComponentType) (co
 
 func (c testBuilderContext) ActivateComponent(coreruntime.Component) error {
 	return nil
+}
+
+type testRuntime struct {
+	cfg        appconfig.AdminConfig
+	components map[coreruntime.ComponentType]coreruntime.Component
+}
+
+func (r testRuntime) GetInstanceId() string {
+	return "test-instance"
+}
+
+func (r testRuntime) GetClusterId() string {
+	return "test-cluster"
+}
+
+func (r testRuntime) GetStartTime() time.Time {
+	return time.Now()
+}
+
+func (r testRuntime) GetMode() mode.Mode {
+	return mode.Test
+}
+
+func (r testRuntime) Config() appconfig.AdminConfig {
+	return r.cfg
+}
+
+func (r testRuntime) GetComponent(typ coreruntime.ComponentType) (coreruntime.Component, error) {
+	return r.components[typ], nil
+}
+
+func (r testRuntime) AppContext() context.Context {
+	return context.Background()
+}
+
+func (r testRuntime) Add(...coreruntime.Component) {}
+
+func (r testRuntime) Start(<-chan struct{}) error {
+	return nil
+}
+
+type testRMComponent struct {
+	rm manager.ResourceManager
+}
+
+func (c testRMComponent) Type() coreruntime.ComponentType {
+	return coreruntime.ResourceManager
+}
+
+func (c testRMComponent) Order() int {
+	return 0
+}
+
+func (c testRMComponent) RequiredDependencies() []coreruntime.ComponentType {
+	return nil
+}
+
+func (c testRMComponent) Init(coreruntime.BuilderContext) error {
+	return nil
+}
+
+func (c testRMComponent) Start(coreruntime.Runtime, <-chan struct{}) error {
+	return nil
+}
+
+func (c testRMComponent) ResourceManager() manager.ResourceManager {
+	return c.rm
 }
