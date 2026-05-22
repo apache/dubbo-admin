@@ -89,10 +89,6 @@ defineEmits(['update:open', 'view-json', 'diff-current', 'rollback'])
 
 .history-item {
   padding: 4px 0 12px;
-
-  &.current {
-    color: inherit;
-  }
 }
 
 .history-head,

@@ -25,10 +25,6 @@ import {
 } from '@/api/service/traffic'
 import { HTTP_STATUS } from '@/base/http/constants'
 
-export const currentVersionIdFromItems = (items: RuleVersion[]): number | undefined => {
-  return items.find((item) => item.isCurrent)?.id || items[0]?.id
-}
-
 export interface CurrentVersionState {
   id?: number
   versionNo?: number
@@ -40,13 +36,6 @@ export const currentVersionStateFromItems = (items: RuleVersion[]): CurrentVersi
     id: current?.id,
     versionNo: current?.versionNo
   }
-}
-
-export const fetchCurrentVersionId = async (
-  kind: TrafficRuleKind,
-  ruleName: string
-): Promise<number | undefined> => {
-  return (await fetchCurrentVersionState(kind, ruleName)).id
 }
 
 export const fetchCurrentVersionState = async (

@@ -16,11 +16,11 @@
 -->
 
 <template>
-  <div :id="editorId" class="rule-diff-editor" :style="{ height: editorHeight }"></div>
+  <div ref="editorEl" class="rule-diff-editor" :style="{ height: editorHeight }"></div>
 </template>
 
 <script lang="ts" setup>
-import { computed, onBeforeUnmount, onMounted, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as monaco from 'monaco-editor'
 
 const props = defineProps({
@@ -32,10 +32,6 @@ const props = defineProps({
     type: String,
     default: ''
   },
-  editorId: {
-    type: String,
-    default: 'rule-diff-editor'
-  },
   height: {
     type: [String, Number],
     default: '420px'
@@ -43,25 +39,32 @@ const props = defineProps({
 })
 
 let diffEditor: monaco.editor.IStandaloneDiffEditor | null = null
+const editorEl = ref<HTMLElement | null>(null)
 const editorHeight = computed(() =>
   typeof props.height === 'number' ? `${props.height}px` : props.height
 )
+
+const disposeModels = () => {
+  const model = diffEditor?.getModel()
+  model?.original.dispose()
+  model?.modified.dispose()
+}
 
 const render = () => {
   if (!diffEditor) {
     return
   }
+  disposeModels()
   const originalModel = monaco.editor.createModel(props.original || '', 'json')
   const modifiedModel = monaco.editor.createModel(props.modified || '', 'json')
   diffEditor.setModel({ original: originalModel, modified: modifiedModel })
 }
 
 onMounted(() => {
-  const el = document.getElementById(props.editorId)
-  if (!el) {
+  if (!editorEl.value) {
     return
   }
-  diffEditor = monaco.editor.createDiffEditor(el, {
+  diffEditor = monaco.editor.createDiffEditor(editorEl.value, {
     automaticLayout: true,
     renderSideBySide: true,
     readOnly: true,
@@ -76,6 +79,7 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  disposeModels()
   diffEditor?.dispose()
   diffEditor = null
 })
