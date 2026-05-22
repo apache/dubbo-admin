@@ -46,8 +46,3 @@ build/
 vendor/
 
 app/dubbo-ui/dist/
-
-# planning-with-files local working memory (never commit; per-developer)
-/task_plan.md
-/findings.md
-/progress.md
