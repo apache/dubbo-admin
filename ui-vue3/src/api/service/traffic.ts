@@ -62,7 +62,7 @@ export interface RuleRollbackRequest extends RuleMutationOptions {
 }
 
 export interface VersionConflictError {
-  code: 'VERSION_CONFLICT'
+  code: 'VERSION_CONFLICT' | 'VERSION_LEDGER_PENDING'
   message: string
   currentVersionId?: number | null
 }

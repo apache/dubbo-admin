@@ -37,7 +37,7 @@ func NewGormStore(db *gorm.DB) *GormStore {
 }
 
 func (s *GormStore) AutoMigrate() error {
-	return s.db.AutoMigrate(&Version{}, &Meta{})
+	return s.db.AutoMigrate(&Version{}, &Meta{}, &Intent{})
 }
 
 func (s *GormStore) InsertVersion(req InsertRequest, maxVersions int64) (*Version, error) {
@@ -45,59 +45,12 @@ func (s *GormStore) InsertVersion(req InsertRequest, maxVersions int64) (*Versio
 	defer s.mu.Unlock()
 	var inserted Version
 	err := s.db.Transaction(func(tx *gorm.DB) error {
-		var meta Meta
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("rule_kind = ? AND resource_key = ?", req.RuleKind, req.ResourceKey).
-			First(&meta).Error
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			meta = Meta{RuleKind: req.RuleKind, ResourceKey: req.ResourceKey}
-			if err := tx.Create(&meta).Error; err != nil {
-				return err
-			}
-		} else if err != nil {
+		version, err := insertVersionTx(tx, req, maxVersions)
+		if err != nil {
 			return err
 		}
-		var latest Version
-		err = tx.Where("rule_kind = ? AND resource_key = ?", req.RuleKind, req.ResourceKey).
-			Order("version_no DESC").
-			First(&latest).Error
-		if err == nil && shouldDedupVersion(&latest, req) {
-			inserted = latest
-			return nil
-		}
-		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-			return err
-		}
-		meta.LastVersionNo++
-		inserted = Version{
-			RuleKind:         req.RuleKind,
-			Mesh:             req.Mesh,
-			ResourceKey:      req.ResourceKey,
-			RuleName:         req.RuleName,
-			VersionNo:        meta.LastVersionNo,
-			ContentHash:      req.ContentHash,
-			SpecJSON:         req.SpecJSON,
-			Source:           req.Source,
-			Operation:        req.Operation,
-			Author:           req.Author,
-			Reason:           req.Reason,
-			RolledBackFromID: req.RolledBackFromID,
-			CreatedAt:        req.CreatedAt,
-		}
-		if err := tx.Create(&inserted).Error; err != nil {
-			return err
-		}
-		if req.Operation == OperationDelete {
-			meta.CurrentVersion = nil
-		} else {
-			current := inserted.ID
-			meta.CurrentVersion = &current
-		}
-		meta.UpdatedAt = req.CreatedAt
-		if err := tx.Save(&meta).Error; err != nil {
-			return err
-		}
-		return trimGorm(tx, req.RuleKind, req.ResourceKey, maxVersions)
+		inserted = *version
+		return nil
 	})
 	if err != nil {
 		return nil, err
@@ -107,6 +60,162 @@ func (s *GormStore) InsertVersion(req InsertRequest, maxVersions int64) (*Versio
 		inserted.IsCurrent = *meta.CurrentVersion == inserted.ID
 	}
 	return &inserted, nil
+}
+
+func (s *GormStore) CreateIntent(req InsertRequest, expected *int64) (*Intent, error) {
+	now := req.CreatedAt
+	if now.IsZero() {
+		now = s.db.NowFunc()
+	}
+	intent := Intent{
+		RuleKind:          req.RuleKind,
+		Mesh:              req.Mesh,
+		ResourceKey:       req.ResourceKey,
+		RuleName:          req.RuleName,
+		ContentHash:       req.ContentHash,
+		SpecJSON:          req.SpecJSON,
+		Source:            req.Source,
+		Operation:         req.Operation,
+		Author:            req.Author,
+		Reason:            req.Reason,
+		RolledBackFromID:  req.RolledBackFromID,
+		ExpectedVersionID: expected,
+		Status:            IntentStatusPending,
+		CreatedAt:         now,
+		UpdatedAt:         now,
+	}
+	if err := s.db.Create(&intent).Error; err != nil {
+		return nil, err
+	}
+	return &intent, nil
+}
+
+func (s *GormStore) GetIntent(id int64) (*Intent, error) {
+	var intent Intent
+	err := s.db.Where("id = ?", id).First(&intent).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, ErrVersionIntentNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &intent, nil
+}
+
+func (s *GormStore) OpenIntent(kind coremodel.ResourceKind, resourceKey string) (*Intent, error) {
+	var intent Intent
+	err := s.db.Where("rule_kind = ? AND resource_key = ? AND status IN ?", kind, resourceKey, openIntentStatuses()).
+		Order("id ASC").
+		First(&intent).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &intent, nil
+}
+
+func (s *GormStore) FindOpenIntentByHash(kind coremodel.ResourceKind, resourceKey, contentHash string) (*Intent, error) {
+	var intent Intent
+	err := s.db.Where("rule_kind = ? AND resource_key = ? AND content_hash = ? AND status IN ?", kind, resourceKey, contentHash, openIntentStatuses()).
+		Order("id ASC").
+		First(&intent).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &intent, nil
+}
+
+func (s *GormStore) MarkIntentApplied(id int64) error {
+	return s.db.Model(&Intent{}).
+		Where("id = ? AND status = ?", id, IntentStatusPending).
+		Updates(map[string]any{
+			"status":     IntentStatusApplied,
+			"updated_at": s.db.NowFunc(),
+		}).Error
+}
+
+func (s *GormStore) MarkIntentFailed(id int64, message string) error {
+	return s.MarkIntentFailedWithReason(id, message)
+}
+
+func (s *GormStore) MarkIntentFailedWithReason(id int64, reason string) error {
+	result := s.db.Model(&Intent{}).
+		Where("id = ? AND status = ?", id, IntentStatusPending).
+		Updates(map[string]any{
+			"status":     IntentStatusFailed,
+			"last_error": reason,
+			"updated_at": s.db.NowFunc(),
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected > 0 {
+		return nil
+	}
+	if _, err := s.GetIntent(id); err != nil {
+		return err
+	}
+	return ErrVersionIntentNotOpen
+}
+
+func (s *GormStore) CommitIntent(id int64, maxVersions int64) (*Version, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var inserted Version
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		var intent Intent
+		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ?", id).
+			First(&intent).Error
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrVersionIntentPending
+		}
+		if err != nil {
+			return err
+		}
+		if intent.Status == IntentStatusCommitted {
+			if intent.VersionID == nil {
+				return ErrVersionIntentPending
+			}
+			return tx.Where("id = ?", *intent.VersionID).First(&inserted).Error
+		}
+		if !isOpenIntent(&intent) {
+			return ErrVersionIntentPending
+		}
+		version, err := insertVersionTx(tx, intentInsertRequest(&intent), maxVersions)
+		if err != nil {
+			return err
+		}
+		inserted = *version
+		versionID := version.ID
+		intent.Status = IntentStatusCommitted
+		intent.VersionID = &versionID
+		intent.UpdatedAt = tx.NowFunc()
+		return tx.Save(&intent).Error
+	})
+	if err != nil {
+		return nil, err
+	}
+	meta, err := s.CurrentMeta(inserted.RuleKind, inserted.ResourceKey)
+	if err == nil && meta != nil && meta.CurrentVersion != nil {
+		inserted.IsCurrent = *meta.CurrentVersion == inserted.ID
+	}
+	return &inserted, nil
+}
+
+func (s *GormStore) ListOpenIntents() ([]Intent, error) {
+	var items []Intent
+	if err := s.db.Where("status IN ?", openIntentStatuses()).
+		Order("id ASC").
+		Find(&items).Error; err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 func (s *GormStore) ListVersions(kind coremodel.ResourceKind, resourceKey string) ([]Version, error) {
@@ -202,6 +311,68 @@ func (s *GormStore) CheckExpectedVersion(kind coremodel.ResourceKind, resourceKe
 		return &ConflictError{CurrentVersionID: current}
 	}
 	return nil
+}
+
+func insertVersionTx(tx *gorm.DB, req InsertRequest, maxVersions int64) (*Version, error) {
+	var meta Meta
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("rule_kind = ? AND resource_key = ?", req.RuleKind, req.ResourceKey).
+		First(&meta).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		meta = Meta{RuleKind: req.RuleKind, ResourceKey: req.ResourceKey}
+		if err := tx.Create(&meta).Error; err != nil {
+			return nil, err
+		}
+	} else if err != nil {
+		return nil, err
+	}
+	var latest Version
+	err = tx.Where("rule_kind = ? AND resource_key = ?", req.RuleKind, req.ResourceKey).
+		Order("version_no DESC").
+		First(&latest).Error
+	if err == nil && shouldDedupVersion(&latest, req) {
+		return &latest, nil
+	}
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, err
+	}
+	meta.LastVersionNo++
+	inserted := Version{
+		RuleKind:         req.RuleKind,
+		Mesh:             req.Mesh,
+		ResourceKey:      req.ResourceKey,
+		RuleName:         req.RuleName,
+		VersionNo:        meta.LastVersionNo,
+		ContentHash:      req.ContentHash,
+		SpecJSON:         req.SpecJSON,
+		Source:           req.Source,
+		Operation:        req.Operation,
+		Author:           req.Author,
+		Reason:           req.Reason,
+		RolledBackFromID: req.RolledBackFromID,
+		CreatedAt:        req.CreatedAt,
+	}
+	if err := tx.Create(&inserted).Error; err != nil {
+		return nil, err
+	}
+	if req.Operation == OperationDelete {
+		meta.CurrentVersion = nil
+	} else {
+		current := inserted.ID
+		meta.CurrentVersion = &current
+	}
+	meta.UpdatedAt = req.CreatedAt
+	if err := tx.Save(&meta).Error; err != nil {
+		return nil, err
+	}
+	if err := trimGorm(tx, req.RuleKind, req.ResourceKey, maxVersions); err != nil {
+		return nil, err
+	}
+	return &inserted, nil
+}
+
+func openIntentStatuses() []IntentStatus {
+	return []IntentStatus{IntentStatusPending, IntentStatusApplied}
 }
 
 func trimGorm(tx *gorm.DB, kind coremodel.ResourceKind, resourceKey string, maxVersions int64) error {

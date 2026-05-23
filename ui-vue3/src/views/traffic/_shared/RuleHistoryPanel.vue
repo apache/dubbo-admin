@@ -153,6 +153,9 @@ const openVersionDiff = async (item: RuleVersion) => {
 }
 
 const openVersionRollback = (item: RuleVersion) => {
+  if (item.isCurrent || item.operation === 'DELETE') {
+    return
+  }
   rollbackTarget.value = item
   rollbackReason.value = ''
   rollbackOpen.value = true

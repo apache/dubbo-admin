@@ -18,7 +18,6 @@
 package versioning
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -26,7 +25,6 @@ import (
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
-	"github.com/apache/dubbo-admin/pkg/core/manager"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -39,18 +37,23 @@ type Service interface {
 	Get(kind coremodel.ResourceKind, mesh, ruleName string, id int64) (*Version, error)
 	Diff(kind coremodel.ResourceKind, mesh, ruleName string, id int64, against string) (*DiffResult, error)
 	CheckExpected(kind coremodel.ResourceKind, mesh, ruleName string, expected *int64) error
+	BeginMutationIntent(res coremodel.Resource, op Operation, source Source, author, reason string, expected *int64, rolledBackFromID *int64) (*Intent, error)
+	MarkMutationIntentApplied(id int64) error
+	FailMutationIntent(id int64, message string) error
+	CommitMutationIntent(id int64) (*Version, error)
+	RepairIntent(kind coremodel.ResourceKind, resourceKey string, current coremodel.Resource, deleted bool) (*Version, error)
+	RepairIntentByID(id int64, current coremodel.Resource, deleted bool) (*Version, error)
+	CommitMatchingIntent(kind coremodel.ResourceKind, resourceKey, contentHash string) (*Version, bool, error)
+	RecordMutation(res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromID *int64) (*Version, error)
 	PutAdminHint(res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromID *int64) error
-	Rollback(ctx context.Context, rm manager.ResourceManager, kind coremodel.ResourceKind, mesh, ruleName string, versionID int64, reason string, expected *int64, author string) (*Version, error)
 }
 
 type service struct {
-	enabled        bool
-	maxVersions    int64
-	hintTTL        time.Duration
-	coalesceWindow time.Duration
-	rollbackWait   time.Duration
-	store          Store
-	hints          *AdminHintRegistry
+	enabled     bool
+	maxVersions int64
+	hintTTL     time.Duration
+	store       Store
+	hints       *AdminHintRegistry
 }
 
 func NewService(enabled bool, maxVersions int64, coalesceWindow, hintTTL time.Duration, store Store, hints *AdminHintRegistry) Service {
@@ -58,14 +61,14 @@ func NewService(enabled bool, maxVersions int64, coalesceWindow, hintTTL time.Du
 }
 
 func NewServiceWithRollbackWait(enabled bool, maxVersions int64, coalesceWindow, hintTTL, rollbackWait time.Duration, store Store, hints *AdminHintRegistry) Service {
+	_ = coalesceWindow
+	_ = rollbackWait
 	return &service{
-		enabled:        enabled,
-		maxVersions:    maxVersions,
-		hintTTL:        hintTTL,
-		coalesceWindow: coalesceWindow,
-		rollbackWait:   rollbackWait,
-		store:          store,
-		hints:          hints,
+		enabled:     enabled,
+		maxVersions: maxVersions,
+		hintTTL:     hintTTL,
+		store:       store,
+		hints:       hints,
 	}
 }
 
@@ -140,12 +143,155 @@ func (s *service) CheckExpected(kind coremodel.ResourceKind, mesh, ruleName stri
 	if err := s.ensureEnabled(); err != nil {
 		return nil
 	}
-	return s.store.CheckExpectedVersion(kind, coremodel.BuildResourceKey(mesh, ruleName), expected)
+	resourceKey := coremodel.BuildResourceKey(mesh, ruleName)
+	intent, err := s.store.OpenIntent(kind, resourceKey)
+	if err != nil {
+		return err
+	}
+	if intent != nil {
+		return &IntentPendingError{IntentID: intent.ID}
+	}
+	return s.store.CheckExpectedVersion(kind, resourceKey, expected)
+}
+
+func (s *service) BeginMutationIntent(res coremodel.Resource, op Operation, source Source, author, reason string, expected *int64, rolledBackFromID *int64) (*Intent, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, nil
+	}
+	req, err := buildMutationInsertRequest(res, op, source, author, reason, rolledBackFromID, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	return s.store.CreateIntent(req, expected)
+}
+
+func (s *service) MarkMutationIntentApplied(id int64) error {
+	if err := s.ensureEnabled(); err != nil {
+		return nil
+	}
+	return s.store.MarkIntentApplied(id)
+}
+
+func (s *service) FailMutationIntent(id int64, message string) error {
+	if err := s.ensureEnabled(); err != nil {
+		return nil
+	}
+	return s.store.MarkIntentFailed(id, message)
+}
+
+func (s *service) CommitMutationIntent(id int64) (*Version, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, nil
+	}
+	return s.store.CommitIntent(id, s.maxVersions)
+}
+
+func (s *service) RepairIntent(kind coremodel.ResourceKind, resourceKey string, current coremodel.Resource, deleted bool) (*Version, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, nil
+	}
+	intent, err := s.store.OpenIntent(kind, resourceKey)
+	if err != nil || intent == nil {
+		return nil, err
+	}
+	return s.repairIntent(intent, current, deleted)
+}
+
+func (s *service) RepairIntentByID(id int64, current coremodel.Resource, deleted bool) (*Version, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, nil
+	}
+	intent, err := s.store.GetIntent(id)
+	if err != nil {
+		return nil, err
+	}
+	return s.repairIntent(intent, current, deleted)
+}
+
+func (s *service) repairIntent(intent *Intent, current coremodel.Resource, deleted bool) (*Version, error) {
+	if intent == nil {
+		return nil, nil
+	}
+	if intent.Status == IntentStatusCommitted {
+		if intent.VersionID == nil {
+			return nil, ErrVersionIntentNotOpen
+		}
+		return s.store.GetVersionByID(*intent.VersionID)
+	}
+	if intent.Status == IntentStatusFailed {
+		return nil, ErrVersionIntentNotOpen
+	}
+	if intent.Status != IntentStatusPending && intent.Status != IntentStatusApplied {
+		return nil, ErrVersionIntentNotOpen
+	}
+	if intent.Status == IntentStatusApplied || IntentMatchesResource(intent, current, deleted) {
+		if intent.Status == IntentStatusPending {
+			if err := s.store.MarkIntentApplied(intent.ID); err != nil {
+				return nil, err
+			}
+		}
+		return s.store.CommitIntent(intent.ID, s.maxVersions)
+	}
+	return nil, &IntentPendingError{IntentID: intent.ID}
+}
+
+func (s *service) CommitMatchingIntent(kind coremodel.ResourceKind, resourceKey, contentHash string) (*Version, bool, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, false, nil
+	}
+	intent, err := s.store.FindOpenIntentByHash(kind, resourceKey, contentHash)
+	if err != nil || intent == nil {
+		return nil, false, err
+	}
+	if intent.Status == IntentStatusPending {
+		if err := s.store.MarkIntentApplied(intent.ID); err != nil {
+			return nil, false, err
+		}
+	}
+	version, err := s.store.CommitIntent(intent.ID, s.maxVersions)
+	return version, true, err
+}
+
+func (s *service) RecordMutation(res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromID *int64) (*Version, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, nil
+	}
+	req, err := buildMutationInsertRequest(res, op, source, author, reason, rolledBackFromID, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	return s.store.InsertVersion(req, s.maxVersions)
 }
 
 func (s *service) PutAdminHint(res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromID *int64) error {
 	if err := s.ensureEnabled(); err != nil {
 		return nil
+	}
+	now := time.Now()
+	req, err := buildMutationInsertRequest(res, op, source, author, reason, rolledBackFromID, now)
+	if err != nil {
+		return err
+	}
+	s.hints.Put(req.RuleKind, req.ResourceKey, req.ContentHash, AdminHint{
+		RuleKind:         req.RuleKind,
+		Mesh:             req.Mesh,
+		ResourceKey:      req.ResourceKey,
+		RuleName:         req.RuleName,
+		ContentHash:      req.ContentHash,
+		SpecJSON:         req.SpecJSON,
+		Source:           req.Source,
+		Author:           req.Author,
+		Reason:           req.Reason,
+		Operation:        req.Operation,
+		RolledBackFromID: req.RolledBackFromID,
+		ExpiresAt:        now.Add(s.hintTTL),
+	})
+	return nil
+}
+
+func buildMutationInsertRequest(res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromID *int64, createdAt time.Time) (InsertRequest, error) {
+	if res == nil {
+		return InsertRequest{}, bizerror.New(bizerror.InvalidArgument, "rule resource is required")
 	}
 	hash, specJSON, err := NormalizeResource(res)
 	if op == OperationDelete {
@@ -154,81 +300,41 @@ func (s *service) PutAdminHint(res coremodel.Resource, op Operation, source Sour
 		err = nil
 	}
 	if err != nil {
-		return err
+		return InsertRequest{}, err
 	}
 	if strings.TrimSpace(author) == "" {
 		author = "system:unknown"
+	} else {
+		author = strings.TrimSpace(author)
 	}
-	s.hints.Put(res.ResourceKind(), res.ResourceKey(), hash, AdminHint{
+	if source == "" {
+		source = SourceAdmin
+	}
+	return InsertRequest{
 		RuleKind:         res.ResourceKind(),
 		Mesh:             res.ResourceMesh(),
 		ResourceKey:      res.ResourceKey(),
 		RuleName:         res.ResourceMeta().Name,
-		ContentHash:      hash,
 		SpecJSON:         specJSON,
+		ContentHash:      hash,
 		Source:           source,
+		Operation:        op,
 		Author:           author,
 		Reason:           reason,
-		Operation:        op,
 		RolledBackFromID: rolledBackFromID,
-		ExpiresAt:        time.Now().Add(s.hintTTL),
-	})
-	return nil
+		CreatedAt:        createdAt,
+	}, nil
 }
 
-func (s *service) Rollback(ctx context.Context, rm manager.ResourceManager, kind coremodel.ResourceKind, mesh, ruleName string, versionID int64, reason string, expected *int64, author string) (*Version, error) {
-	if err := s.ensureEnabled(); err != nil {
-		return nil, err
+func IntentMatchesResource(intent *Intent, current coremodel.Resource, deleted bool) bool {
+	if intent == nil {
+		return false
 	}
-	reason = strings.TrimSpace(reason)
-	if reason == "" {
-		return nil, bizerror.New(bizerror.InvalidArgument, "rollback reason is required")
+	if deleted || current == nil {
+		return intent.Operation == OperationDelete && intent.ContentHash == HashSpecJSON(DeleteSpecJSON)
 	}
-	if err := s.store.CheckExpectedVersion(kind, coremodel.BuildResourceKey(mesh, ruleName), expected); err != nil {
-		return nil, err
-	}
-	target, err := s.store.GetVersion(kind, coremodel.BuildResourceKey(mesh, ruleName), versionID)
-	if err != nil {
-		return nil, err
-	}
-	if target.Operation == OperationDelete {
-		return nil, ErrRollbackToDelete
-	}
-	res, err := ResourceFromSpecJSON(kind, mesh, ruleName, target.SpecJSON)
-	if err != nil {
-		return nil, err
-	}
-	fromID := target.ID
-	if err := s.PutAdminHint(res, OperationUpdate, SourceRollback, author, reason, &fromID); err != nil {
-		return nil, err
-	}
-	if err := rm.Upsert(res); err != nil {
-		return nil, err
-	}
-	wait := s.rollbackWait
-	if wait == 0 {
-		wait = s.coalesceWindow + 500*time.Millisecond
-	}
-	deadline := time.NewTimer(wait)
-	defer deadline.Stop()
-	tick := time.NewTicker(25 * time.Millisecond)
-	defer tick.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-deadline.C:
-			return nil, fmt.Errorf("timeout waiting for rollback version row")
-		case <-tick.C:
-			latest, err := s.store.LatestVersion(kind, res.ResourceKey())
-			if err != nil {
-				return nil, err
-			}
-			if latest != nil && latest.Source == SourceRollback && latest.RolledBackFromID != nil && *latest.RolledBackFromID == fromID {
-				return latest, nil
-			}
-		}
-	}
+	hash, _, err := NormalizeResource(current)
+	return err == nil && hash == intent.ContentHash
 }
 
 func ResourceFromSpecJSON(kind coremodel.ResourceKind, mesh, ruleName, specJSON string) (coremodel.Resource, error) {

@@ -154,6 +154,17 @@ func (s *Subscriber) record(event events.Event) error {
 	mesh := res.ResourceMesh()
 	resourceKey := res.ResourceKey()
 	ruleName := res.ResourceMeta().Name
+	if intent, err := s.store.FindOpenIntentByHash(ruleKind, resourceKey, hash); err != nil {
+		return err
+	} else if intent != nil {
+		if intent.Status == IntentStatusPending {
+			if err := s.store.MarkIntentApplied(intent.ID); err != nil {
+				return err
+			}
+		}
+		_, err := s.store.CommitIntent(intent.ID, s.maxVersions)
+		return err
+	}
 	source := SourceUpstream
 	author := "system:upstream"
 	reason := ""

@@ -91,7 +91,7 @@ func RollbackRuleVersion(cs consolectx.Context, kind coremodel.ResourceKind) gin
 			c.JSON(http.StatusOK, model.NewBizErrorResp(bizerror.New(bizerror.InvalidArgument, err.Error())))
 			return
 		}
-		resp, err := service.RollbackRuleVersion(c.Request.Context(), cs, service.RuleKindName{Kind: kind, Mesh: c.Query("mesh"), Name: c.Param("ruleName")}, id, req.Reason, req.ExpectedVersionID, currentUser(c))
+		resp, err := service.RollbackRuleVersion(cs, service.RuleKindName{Kind: kind, Mesh: c.Query("mesh"), Name: c.Param("ruleName")}, id, req.Reason, req.ExpectedVersionID, currentUser(c))
 		writeVersioningResp(c, resp, err)
 	}
 }
@@ -159,11 +159,16 @@ func writeVersioningResp(c *gin.Context, data any, err error) {
 			"message":          versioning.ErrVersionConflict.Error(),
 			"currentVersionId": conflict.CurrentVersionID,
 		})
+	case errors.Is(err, versioning.ErrVersionIntentPending):
+		c.JSON(http.StatusConflict, gin.H{
+			"code":    "VERSION_LEDGER_PENDING",
+			"message": versioning.ErrVersionIntentPending.Error(),
+		})
 	case errors.Is(err, versioning.ErrFeatureDisabled):
 		c.JSON(http.StatusServiceUnavailable, gin.H{"code": "FEATURE_DISABLED", "message": err.Error()})
 	case errors.Is(err, versioning.ErrVersionNotFound):
 		c.JSON(http.StatusOK, model.NewBizErrorResp(bizerror.New(bizerror.NotFoundError, err.Error())))
-	case errors.Is(err, versioning.ErrRollbackToDelete):
+	case errors.Is(err, versioning.ErrRollbackToDelete), errors.Is(err, versioning.ErrRollbackToCurrent):
 		c.JSON(http.StatusOK, model.NewBizErrorResp(bizerror.New(bizerror.InvalidArgument, err.Error())))
 	case errors.As(err, &bizErr) && bizErr.Code() == bizerror.InvalidArgument:
 		c.JSON(http.StatusBadRequest, model.NewBizErrorResp(bizErr))

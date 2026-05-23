@@ -54,9 +54,14 @@
             <a-space>
               <a-button type="link" @click="$emit('view-json', item)">查看</a-button>
               <a-button type="link" @click="$emit('diff-current', item)">对比当前</a-button>
-              <a-popconfirm title="确认回滚到该版本？" @confirm="$emit('rollback', item)">
+              <a-popconfirm
+                v-if="canRollback(item)"
+                title="确认回滚到该版本？"
+                @confirm="$emit('rollback', item)"
+              >
                 <a-button type="link">回滚</a-button>
               </a-popconfirm>
+              <a-button v-else type="link" disabled>回滚</a-button>
             </a-space>
           </div>
         </a-timeline-item>
@@ -78,6 +83,8 @@ defineProps<{
 }>()
 
 defineEmits(['update:open', 'view-json', 'diff-current', 'rollback'])
+
+const canRollback = (item: RuleVersion) => !item.isCurrent && item.operation !== 'DELETE'
 </script>
 
 <style scoped lang="less">

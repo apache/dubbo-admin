@@ -31,7 +31,7 @@ export interface CurrentVersionState {
 }
 
 export const currentVersionStateFromItems = (items: RuleVersion[]): CurrentVersionState => {
-  const current = items.find((item) => item.isCurrent) || items[0]
+  const current = items.find((item) => item.isCurrent)
   return {
     id: current?.id,
     versionNo: current?.versionNo
@@ -56,7 +56,7 @@ export const fetchCurrentVersionState = async (
 }
 
 export const isVersionConflict = (e: any): e is VersionConflictError => {
-  return e?.code === 'VERSION_CONFLICT'
+  return e?.code === 'VERSION_CONFLICT' || e?.code === 'VERSION_LEDGER_PENDING'
 }
 
 export const notifyVersionConflict = (

@@ -18,6 +18,7 @@
 package versioning
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"time"
@@ -25,6 +26,7 @@ import (
 	versioningcfg "github.com/apache/dubbo-admin/pkg/config/versioning"
 	"github.com/apache/dubbo-admin/pkg/core/events"
 	"github.com/apache/dubbo-admin/pkg/core/governor"
+	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	"gorm.io/gorm"
@@ -129,6 +131,9 @@ func (c *component) Start(rt runtime.Runtime, stop <-chan struct{}) error {
 		return err
 	}
 	rm := rmComp.(manager.ResourceManagerComponent).ResourceManager()
+	if err := c.repairOpenIntents(rm); err != nil {
+		return err
+	}
 	for _, kind := range governor.RuleResourceKinds.Values() {
 		resources, err := rm.List(kind)
 		if err != nil {
@@ -153,4 +158,25 @@ func (c *component) Start(rt runtime.Runtime, stop <-chan struct{}) error {
 
 func (c *component) Service() Service {
 	return c.service
+}
+
+func (c *component) repairOpenIntents(rm manager.ResourceManager) error {
+	intents, err := c.store.ListOpenIntents()
+	if err != nil {
+		return err
+	}
+	for _, intent := range intents {
+		current, exists, err := rm.GetByKey(intent.RuleKind, intent.ResourceKey)
+		if err != nil {
+			return err
+		}
+		if _, err := c.service.RepairIntentByID(intent.ID, current, !exists); err != nil {
+			if errors.Is(err, ErrVersionIntentPending) {
+				logger.Warnf("rule version intent %d is still pending for %s", intent.ID, intent.ResourceKey)
+				continue
+			}
+			return err
+		}
+	}
+	return nil
 }

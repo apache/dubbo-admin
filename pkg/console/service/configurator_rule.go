@@ -132,17 +132,17 @@ func UpdateConfiguratorWithOptions(ctx consolectx.Context, res *meshresource.Dyn
 }
 
 func updateConfiguratorUnsafe(ctx consolectx.Context, res *meshresource.DynamicConfigResource, opts RuleMutationOptions) error {
-	if err := checkExpectedVersion(ctx, RuleKindName{Kind: meshresource.DynamicConfigKind, Mesh: res.Mesh, Name: res.Name}, opts); err != nil {
+	kindName := RuleKindName{Kind: meshresource.DynamicConfigKind, Mesh: res.Mesh, Name: res.Name}
+	if err := prepareRuleMutation(ctx, kindName, opts); err != nil {
 		return err
 	}
-	if err := putAdminHint(ctx, res, versioning.OperationUpdate, opts); err != nil {
-		return err
-	}
-	if err := ctx.ResourceManager().Update(res); err != nil {
-		logger.Warnf("update %s configurator failed with error: %s", res.Name, err.Error())
-		return err
-	}
-	return nil
+	return applyAdminMutation(ctx, res, versioning.OperationUpdate, opts, func() error {
+		if err := ctx.ResourceManager().Update(res); err != nil {
+			logger.Warnf("update %s configurator failed with error: %s", res.Name, err.Error())
+			return err
+		}
+		return nil
+	})
 }
 
 func CreateConfigurator(ctx consolectx.Context, res *meshresource.DynamicConfigResource) error {
@@ -161,17 +161,17 @@ func CreateConfiguratorWithOptions(ctx consolectx.Context, res *meshresource.Dyn
 }
 
 func createConfiguratorUnsafe(ctx consolectx.Context, res *meshresource.DynamicConfigResource, opts RuleMutationOptions) error {
-	if err := checkExpectedVersion(ctx, RuleKindName{Kind: meshresource.DynamicConfigKind, Mesh: res.Mesh, Name: res.Name}, opts); err != nil {
+	kindName := RuleKindName{Kind: meshresource.DynamicConfigKind, Mesh: res.Mesh, Name: res.Name}
+	if err := prepareRuleMutation(ctx, kindName, opts); err != nil {
 		return err
 	}
-	if err := putAdminHint(ctx, res, versioning.OperationCreate, opts); err != nil {
-		return err
-	}
-	if err := ctx.ResourceManager().Add(res); err != nil {
-		logger.Warnf("create %s configurator failed with error: %s", res.Name, err.Error())
-		return err
-	}
-	return nil
+	return applyAdminMutation(ctx, res, versioning.OperationCreate, opts, func() error {
+		if err := ctx.ResourceManager().Add(res); err != nil {
+			logger.Warnf("create %s configurator failed with error: %s", res.Name, err.Error())
+			return err
+		}
+		return nil
+	})
 }
 
 func DeleteConfigurator(ctx consolectx.Context, name string, mesh string) error {
@@ -191,6 +191,9 @@ func DeleteConfiguratorWithOptions(ctx consolectx.Context, name string, mesh str
 
 func deleteConfiguratorUnsafe(ctx consolectx.Context, name string, mesh string, opts RuleMutationOptions) error {
 	kindName := RuleKindName{Kind: meshresource.DynamicConfigKind, Mesh: mesh, Name: name}
+	if err := repairPendingIntent(ctx, kindName); err != nil {
+		return err
+	}
 	res, err := getExistingRule(ctx, kindName)
 	if err != nil {
 		return err
@@ -198,12 +201,11 @@ func deleteConfiguratorUnsafe(ctx consolectx.Context, name string, mesh string, 
 	if err := checkExpectedVersion(ctx, kindName, opts); err != nil {
 		return err
 	}
-	if err := putAdminHint(ctx, res, versioning.OperationDelete, opts); err != nil {
-		return err
-	}
-	if err := ctx.ResourceManager().DeleteByKey(meshresource.DynamicConfigKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
-		logger.Warnf("delete %s configurator failed with error: %s", name, err.Error())
-		return err
-	}
-	return nil
+	return applyAdminMutation(ctx, res, versioning.OperationDelete, opts, func() error {
+		if err := ctx.ResourceManager().DeleteByKey(meshresource.DynamicConfigKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
+			logger.Warnf("delete %s configurator failed with error: %s", name, err.Error())
+			return err
+		}
+		return nil
+	})
 }

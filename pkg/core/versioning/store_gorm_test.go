@@ -143,6 +143,83 @@ func TestGormStoreDeleteIsNotDedupedAgainstEmptyCurrentSpec(t *testing.T) {
 	require.Nil(t, meta.CurrentVersion)
 }
 
+func TestGormStoreIntentCommit(t *testing.T) {
+	store := setupGormVersionStore(t)
+	key := "mesh/demo.condition-router"
+	expected := int64(7)
+	intent, err := store.CreateIntent(InsertRequest{
+		RuleKind:    meshresource.ConditionRouteKind,
+		Mesh:        "mesh",
+		ResourceKey: key,
+		RuleName:    "demo.condition-router",
+		SpecJSON:    `{"priority":1}`,
+		ContentHash: "hash-1",
+		Source:      SourceAdmin,
+		Operation:   OperationUpdate,
+		Author:      "alice",
+		Reason:      "admin edit",
+		CreatedAt:   time.Now(),
+	}, &expected)
+	require.NoError(t, err)
+	require.Equal(t, IntentStatusPending, intent.Status)
+
+	open, err := store.FindOpenIntentByHash(meshresource.ConditionRouteKind, key, "hash-1")
+	require.NoError(t, err)
+	require.NotNil(t, open)
+	require.Equal(t, expected, *open.ExpectedVersionID)
+
+	require.NoError(t, store.MarkIntentApplied(intent.ID))
+	version, err := store.CommitIntent(intent.ID, 5)
+	require.NoError(t, err)
+	require.Equal(t, SourceAdmin, version.Source)
+	require.True(t, version.IsCurrent)
+
+	open, err = store.OpenIntent(meshresource.ConditionRouteKind, key)
+	require.NoError(t, err)
+	require.Nil(t, open)
+	committed, err := store.CommitIntent(intent.ID, 5)
+	require.NoError(t, err)
+	require.Equal(t, version.ID, committed.ID)
+}
+
+func TestGormStoreIntentGetListOpenAndFailWithReason(t *testing.T) {
+	store := setupGormVersionStore(t)
+	key := "mesh/demo.condition-router"
+	intent, err := store.CreateIntent(InsertRequest{
+		RuleKind:    meshresource.ConditionRouteKind,
+		Mesh:        "mesh",
+		ResourceKey: key,
+		RuleName:    "demo.condition-router",
+		SpecJSON:    `{"priority":1}`,
+		ContentHash: "hash-1",
+		Source:      SourceAdmin,
+		Operation:   OperationUpdate,
+		Author:      "alice",
+		CreatedAt:   time.Now(),
+	}, nil)
+	require.NoError(t, err)
+
+	got, err := store.GetIntent(intent.ID)
+	require.NoError(t, err)
+	require.Equal(t, IntentStatusPending, got.Status)
+	open, err := store.ListOpenIntents()
+	require.NoError(t, err)
+	require.Len(t, open, 1)
+	require.Equal(t, intent.ID, open[0].ID)
+
+	require.NoError(t, store.MarkIntentFailedWithReason(intent.ID, "registry rejected mutation"))
+	got, err = store.GetIntent(intent.ID)
+	require.NoError(t, err)
+	require.Equal(t, IntentStatusFailed, got.Status)
+	require.Equal(t, "registry rejected mutation", got.LastError)
+	open, err = store.ListOpenIntents()
+	require.NoError(t, err)
+	require.Empty(t, open)
+	require.ErrorIs(t, store.MarkIntentFailedWithReason(intent.ID, "again"), ErrVersionIntentNotOpen)
+	_, err = store.GetIntent(404)
+	require.ErrorIs(t, err, ErrVersionIntentNotFound)
+}
+
 func TestGormStoreMetaCounterConcurrencyMonotonic(t *testing.T) {
 	store := setupGormVersionStore(t)
 	key := "mesh/concurrent.condition-router"

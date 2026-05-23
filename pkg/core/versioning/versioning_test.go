@@ -187,6 +187,44 @@ func TestMemoryStoreDeleteIsNotDedupedAgainstEmptyCurrentSpec(t *testing.T) {
 	require.Nil(t, meta.CurrentVersion)
 }
 
+func TestMemoryStoreIntentGetListOpenAndFailWithReason(t *testing.T) {
+	store := NewMemoryStore()
+	key := "mesh/demo.condition-router"
+	intent, err := store.CreateIntent(InsertRequest{
+		RuleKind:    meshresource.ConditionRouteKind,
+		Mesh:        "mesh",
+		ResourceKey: key,
+		RuleName:    "demo.condition-router",
+		SpecJSON:    `{"priority":1}`,
+		ContentHash: "hash-1",
+		Source:      SourceAdmin,
+		Operation:   OperationUpdate,
+		Author:      "alice",
+		CreatedAt:   time.Now(),
+	}, nil)
+	require.NoError(t, err)
+
+	got, err := store.GetIntent(intent.ID)
+	require.NoError(t, err)
+	require.Equal(t, IntentStatusPending, got.Status)
+	open, err := store.ListOpenIntents()
+	require.NoError(t, err)
+	require.Len(t, open, 1)
+	require.Equal(t, intent.ID, open[0].ID)
+
+	require.NoError(t, store.MarkIntentFailedWithReason(intent.ID, "registry rejected mutation"))
+	got, err = store.GetIntent(intent.ID)
+	require.NoError(t, err)
+	require.Equal(t, IntentStatusFailed, got.Status)
+	require.Equal(t, "registry rejected mutation", got.LastError)
+	open, err = store.ListOpenIntents()
+	require.NoError(t, err)
+	require.Empty(t, open)
+	require.ErrorIs(t, store.MarkIntentFailedWithReason(intent.ID, "again"), ErrVersionIntentNotOpen)
+	_, err = store.GetIntent(404)
+	require.ErrorIs(t, err, ErrVersionIntentNotFound)
+}
+
 func TestSubscriberCoalescesBursts(t *testing.T) {
 	store := NewMemoryStore()
 	hints := NewAdminHintRegistry()
@@ -341,110 +379,112 @@ func TestSubscriberRecordsDeleteWithAdminHintSnapshot(t *testing.T) {
 	require.Len(t, items, 1)
 }
 
-func TestServiceRollbackWaitsForAsyncEventBusSubscriber(t *testing.T) {
-	store := NewMemoryStore()
-	hints := NewAdminHintRegistry()
-	svc := NewServiceWithRollbackWait(true, 5, 0, time.Second, 200*time.Millisecond, store, hints)
-	sub := NewSubscriber(meshresource.ConditionRouteKind, store, hints, 5, 0)
-	bus := newTestEventBus(t)
-	defer bus.WaitForDone()
-	require.NoError(t, bus.Subscribe(sub))
-	require.NoError(t, bus.Start(nil, nil))
-
-	original := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
-	original.Spec = &meshproto.ConditionRoute{Key: "demo", Priority: 1}
-	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Added, nil, original)))
-
-	updated := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
-	updated.Spec = &meshproto.ConditionRoute{Key: "demo", Priority: 2}
-	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Updated, original, updated)))
-
-	items, err := store.ListVersions(meshresource.ConditionRouteKind, original.ResourceKey())
-	require.NoError(t, err)
-	targetID := items[1].ID
-	current := items[0].ID
-
-	rollback, err := svc.Rollback(context.Background(), eventBusVersionResourceManager{
-		emitter: bus,
-	}, meshresource.ConditionRouteKind, "mesh", "demo.condition-router", targetID, "restore previous rule", &current, "alice")
-	require.NoError(t, err)
-	require.Equal(t, SourceRollback, rollback.Source)
-}
-
-func TestServiceRollbackTimesOutWaitingForVersionRow(t *testing.T) {
-	store := NewMemoryStore()
-	hints := NewAdminHintRegistry()
-	svc := NewServiceWithRollbackWait(true, 5, 0, time.Second, 40*time.Millisecond, store, hints)
-	sub := NewSubscriber(meshresource.ConditionRouteKind, store, hints, 5, 0)
-	original := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
-	original.Spec = &meshproto.ConditionRoute{Key: "demo", Priority: 1}
-	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Added, nil, original)))
-	updated := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
-	updated.Spec = &meshproto.ConditionRoute{Key: "demo", Priority: 2}
-	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Updated, original, updated)))
-	items, err := store.ListVersions(meshresource.ConditionRouteKind, original.ResourceKey())
-	require.NoError(t, err)
-	targetID := items[1].ID
-	current := items[0].ID
-
-	start := time.Now()
-	_, err = svc.Rollback(context.Background(), fakeNoopResourceManager{}, meshresource.ConditionRouteKind, "mesh", "demo.condition-router", targetID, "restore previous rule", &current, "alice")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "timeout waiting for rollback version row")
-	require.Less(t, time.Since(start), 500*time.Millisecond)
-}
-
-func TestServiceRollbackCreatesRollbackVersionAndExpectedConflict(t *testing.T) {
+func TestServiceRecordMutationCreatesAdminVersionAndDedupsEcho(t *testing.T) {
 	store := NewMemoryStore()
 	hints := NewAdminHintRegistry()
 	svc := NewService(true, 5, 0, time.Second, store, hints)
 	sub := NewSubscriber(meshresource.ConditionRouteKind, store, hints, 5, 0)
-	original := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
-	original.Spec = &meshproto.ConditionRoute{Key: "demo", Priority: 1}
-	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Added, nil, original)))
-	updated := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
-	updated.Spec = &meshproto.ConditionRoute{Key: "demo", Priority: 2}
-	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Updated, original, updated)))
-	items, err := store.ListVersions(meshresource.ConditionRouteKind, original.ResourceKey())
-	require.NoError(t, err)
-	targetID := items[1].ID
-	wrongExpected := int64(999)
-	_, err = svc.Rollback(context.Background(), fakeVersionResourceManager{subscriber: sub}, meshresource.ConditionRouteKind, "mesh", "demo.condition-router", targetID, "restore previous rule", &wrongExpected, "alice")
-	var conflict *ConflictError
-	require.ErrorAs(t, err, &conflict)
 
-	current := items[0].ID
-	rollback, err := svc.Rollback(context.Background(), fakeVersionResourceManager{subscriber: sub}, meshresource.ConditionRouteKind, "mesh", "demo.condition-router", targetID, "restore previous rule", &current, "alice")
+	res := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
+	res.Spec = &meshproto.ConditionRoute{Key: "demo", Priority: 1}
+	recorded, err := svc.RecordMutation(res, OperationUpdate, SourceAdmin, " alice ", "", nil)
 	require.NoError(t, err)
-	require.Equal(t, SourceRollback, rollback.Source)
-	require.NotNil(t, rollback.RolledBackFromID)
-	require.Equal(t, targetID, *rollback.RolledBackFromID)
-	require.Equal(t, "restore previous rule", rollback.Reason)
+	require.Equal(t, SourceAdmin, recorded.Source)
+	require.Equal(t, "alice", recorded.Author)
+	require.True(t, recorded.IsCurrent)
+
+	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Updated, nil, res)))
+	items, err := store.ListVersions(meshresource.ConditionRouteKind, res.ResourceKey())
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.Equal(t, recorded.ID, items[0].ID)
+	require.Equal(t, SourceAdmin, items[0].Source)
 }
 
-func TestServiceRollbackReturnsWhenContextCanceled(t *testing.T) {
+func TestSubscriberCommitsMatchingAdminIntent(t *testing.T) {
 	store := NewMemoryStore()
 	hints := NewAdminHintRegistry()
-	svc := NewService(true, 5, time.Hour, time.Second, store, hints)
+	svc := NewService(true, 5, 0, time.Second, store, hints)
 	sub := NewSubscriber(meshresource.ConditionRouteKind, store, hints, 5, 0)
-	original := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
-	original.Spec = &meshproto.ConditionRoute{Key: "demo", Priority: 1}
-	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Added, nil, original)))
-	updated := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
-	updated.Spec = &meshproto.ConditionRoute{Key: "demo", Priority: 2}
-	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Updated, original, updated)))
-	items, err := store.ListVersions(meshresource.ConditionRouteKind, original.ResourceKey())
+
+	res := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
+	res.Spec = &meshproto.ConditionRoute{Key: "demo", Priority: 1}
+	intent, err := svc.BeginMutationIntent(res, OperationUpdate, SourceAdmin, "alice", "admin edit", nil, nil)
 	require.NoError(t, err)
-	targetID := items[1].ID
-	current := items[0].ID
-	rollbackCtx, cancel := context.WithCancel(context.Background())
-	cancel()
+	require.Equal(t, IntentStatusPending, intent.Status)
 
-	start := time.Now()
-	_, err = svc.Rollback(rollbackCtx, fakeNoopResourceManager{}, meshresource.ConditionRouteKind, "mesh", "demo.condition-router", targetID, "restore previous rule", &current, "alice")
+	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Updated, nil, res)))
+	items, err := store.ListVersions(meshresource.ConditionRouteKind, res.ResourceKey())
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.Equal(t, SourceAdmin, items[0].Source)
+	require.Equal(t, "alice", items[0].Author)
+	require.Equal(t, "admin edit", items[0].Reason)
+	open, err := store.OpenIntent(meshresource.ConditionRouteKind, res.ResourceKey())
+	require.NoError(t, err)
+	require.Nil(t, open)
+}
 
-	require.ErrorIs(t, err, context.Canceled)
-	require.Less(t, time.Since(start), 500*time.Millisecond)
+func TestServiceRepairIntentByIDCommitsOnlyMatchingPendingIntent(t *testing.T) {
+	store := NewMemoryStore()
+	svc := NewService(true, 5, 0, time.Second, store, NewAdminHintRegistry())
+	res := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
+	res.Spec = &meshproto.ConditionRoute{Key: "demo", Priority: 1}
+	intent, err := svc.BeginMutationIntent(res, OperationUpdate, SourceAdmin, "alice", "admin edit", nil, nil)
+	require.NoError(t, err)
+
+	_, err = svc.RepairIntentByID(intent.ID, nil, false)
+	require.ErrorIs(t, err, ErrVersionIntentPending)
+
+	version, err := svc.RepairIntentByID(intent.ID, res, false)
+	require.NoError(t, err)
+	require.Equal(t, SourceAdmin, version.Source)
+	require.Equal(t, "alice", version.Author)
+	repaired, err := store.GetIntent(intent.ID)
+	require.NoError(t, err)
+	require.Equal(t, IntentStatusCommitted, repaired.Status)
+	require.NotNil(t, repaired.VersionID)
+}
+
+func TestServiceRecordMutationDeleteClearsCurrent(t *testing.T) {
+	store := NewMemoryStore()
+	hints := NewAdminHintRegistry()
+	svc := NewService(true, 5, 0, time.Second, store, hints)
+
+	res := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
+	res.Spec = &meshproto.ConditionRoute{Key: "demo", Priority: 1}
+	created, err := svc.RecordMutation(res, OperationCreate, SourceAdmin, "alice", "", nil)
+	require.NoError(t, err)
+	require.True(t, created.IsCurrent)
+
+	deleted, err := svc.RecordMutation(res, OperationDelete, SourceAdmin, "alice", "", nil)
+	require.NoError(t, err)
+	require.Equal(t, OperationDelete, deleted.Operation)
+	require.False(t, deleted.IsCurrent)
+
+	meta, err := store.CurrentMeta(meshresource.ConditionRouteKind, res.ResourceKey())
+	require.NoError(t, err)
+	require.Nil(t, meta.CurrentVersion)
+	items, err := store.ListVersions(meshresource.ConditionRouteKind, res.ResourceKey())
+	require.NoError(t, err)
+	require.Len(t, items, 2)
+	require.Equal(t, OperationDelete, items[0].Operation)
+	require.False(t, items[0].IsCurrent)
+}
+
+func TestDisabledServiceRecordMutationNoops(t *testing.T) {
+	store := NewMemoryStore()
+	svc := NewService(false, 5, 0, time.Second, store, NewAdminHintRegistry())
+	res := meshresource.NewConditionRouteResourceWithAttributes("demo.condition-router", "mesh")
+	res.Spec = &meshproto.ConditionRoute{Key: "demo", Priority: 1}
+
+	recorded, err := svc.RecordMutation(res, OperationUpdate, SourceAdmin, "alice", "", nil)
+	require.NoError(t, err)
+	require.Nil(t, recorded)
+
+	items, err := store.ListVersions(meshresource.ConditionRouteKind, res.ResourceKey())
+	require.NoError(t, err)
+	require.Empty(t, items)
 }
 
 func TestDisabledServiceHistoryReturnsFeatureDisabled(t *testing.T) {

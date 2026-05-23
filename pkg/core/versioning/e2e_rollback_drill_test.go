@@ -18,7 +18,6 @@
 package versioning
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -51,7 +50,8 @@ func TestE2ERollbackDrill(t *testing.T) {
 	bootstrapID := items[0].ID
 
 	adminEdit := newE2EConditionRoute(2)
-	require.NoError(t, svc.PutAdminHint(adminEdit, OperationUpdate, SourceAdmin, "alice", "raise priority", nil))
+	_, err := svc.RecordMutation(adminEdit, OperationUpdate, SourceAdmin, "alice", "raise priority", nil)
+	require.NoError(t, err)
 	bus.Send(events.NewResourceChangedEvent(cache.Updated, original, adminEdit))
 	items = requireVersions(t, store, original.ResourceKey(), 2)
 	require.Equal(t, SourceAdmin, items[0].Source)
@@ -67,19 +67,10 @@ func TestE2ERollbackDrill(t *testing.T) {
 	require.Equal(t, "system:zookeeper", items[0].Author)
 	require.Equal(t, int64(3), items[0].VersionNo)
 
-	currentID := items[0].ID
-	rollback, err := svc.Rollback(
-		context.Background(),
-		eventBusVersionResourceManager{emitter: bus},
-		meshresource.ConditionRouteKind,
-		"mesh",
-		"demo.condition-router",
-		bootstrapID,
-		"restore bootstrap baseline",
-		&currentID,
-		"bob",
-	)
+	fromID := bootstrapID
+	rollback, err := svc.RecordMutation(original, OperationUpdate, SourceRollback, "bob", "restore bootstrap baseline", &fromID)
 	require.NoError(t, err)
+	bus.Send(events.NewResourceChangedEvent(cache.Updated, upstreamPush, original))
 	require.Equal(t, SourceRollback, rollback.Source)
 	require.Equal(t, OperationUpdate, rollback.Operation)
 	require.NotNil(t, rollback.RolledBackFromID)
@@ -93,7 +84,8 @@ func TestE2ERollbackDrill(t *testing.T) {
 	previous := newE2EConditionRoute(1)
 	for priority := int32(4); priority <= 9; priority++ {
 		next := newE2EConditionRoute(priority)
-		require.NoError(t, svc.PutAdminHint(next, OperationUpdate, SourceAdmin, "alice", "bulk edit", nil))
+		_, err := svc.RecordMutation(next, OperationUpdate, SourceAdmin, "alice", "bulk edit", nil)
+		require.NoError(t, err)
 		bus.Send(events.NewResourceChangedEvent(cache.Updated, previous, next))
 		previous = next
 		require.Eventually(t, func() bool {
