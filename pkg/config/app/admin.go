@@ -31,7 +31,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/config/log"
 	"github.com/apache/dubbo-admin/pkg/config/observability"
 	"github.com/apache/dubbo-admin/pkg/config/store"
-	"github.com/apache/dubbo-admin/pkg/config/versioning"
 )
 
 type AdminConfig struct {
@@ -52,8 +51,6 @@ type AdminConfig struct {
 	Engine *engine.Config `json:"engine" yaml:"engine"`
 	// EventBus configuration
 	EventBus *eventbus.Config `json:"eventBus,omitempty" yaml:"eventBus,omitempty"`
-	// Versioning configuration for governor-managed traffic rules.
-	Versioning *versioning.Config `json:"versioning,omitempty" yaml:"versioning,omitempty"`
 }
 
 var _ = &AdminConfig{}
@@ -68,12 +65,10 @@ var DefaultAdminConfig = func() AdminConfig {
 		Diagnostics:   diagnostics.DefaultDiagnosticsConfig(),
 		Console:       console.DefaultConsoleConfig(),
 		EventBus:      &eventBusCfg,
-		Versioning:    versioning.Default(),
 	}
 }
 
-func (c *AdminConfig) Sanitize() {
-	c.ensureDefaults()
+func (c AdminConfig) Sanitize() {
 	c.Engine.Sanitize()
 	for _, d := range c.Discovery {
 		d.Sanitize()
@@ -83,11 +78,9 @@ func (c *AdminConfig) Sanitize() {
 	c.Observability.Sanitize()
 	c.Diagnostics.Sanitize()
 	c.Log.Sanitize()
-	c.Versioning.Sanitize()
 }
 
-func (c *AdminConfig) PreProcess() error {
-	c.ensureDefaults()
+func (c AdminConfig) PreProcess() error {
 	discoveryPreProcess := func() error {
 		for _, d := range c.Discovery {
 			if err := d.PreProcess(); err != nil {
@@ -104,12 +97,10 @@ func (c *AdminConfig) PreProcess() error {
 		c.Observability.PreProcess(),
 		c.Diagnostics.PreProcess(),
 		c.Log.PreProcess(),
-		c.Versioning.PreProcess(),
 	)
 }
 
-func (c *AdminConfig) PostProcess() error {
-	c.ensureDefaults()
+func (c AdminConfig) PostProcess() error {
 	discoveryPostProcess := func() error {
 		for _, d := range c.Discovery {
 			if err := d.PostProcess(); err != nil {
@@ -126,12 +117,10 @@ func (c *AdminConfig) PostProcess() error {
 		c.Observability.PostProcess(),
 		c.Diagnostics.PostProcess(),
 		c.Log.PostProcess(),
-		c.Versioning.PostProcess(),
 	)
 }
 
-func (c *AdminConfig) Validate() error {
-	c.ensureDefaults()
+func (c AdminConfig) Validate() error {
 	if c.Log == nil {
 		c.Log = log.DefaultLogConfig()
 	} else if err := c.Log.Validate(); err != nil {
@@ -182,40 +171,7 @@ func (c *AdminConfig) Validate() error {
 	} else if err := c.EventBus.Validate(); err != nil {
 		return bizerror.Wrap(err, bizerror.ConfigError, "event bus config validation failed")
 	}
-	if c.Versioning == nil {
-		c.Versioning = versioning.Default()
-	} else if err := c.Versioning.Validate(); err != nil {
-		return bizerror.Wrap(err, bizerror.ConfigError, "versioning config validation failed")
-	}
 	return nil
-}
-
-func (c *AdminConfig) ensureDefaults() {
-	if c.Log == nil {
-		c.Log = log.DefaultLogConfig()
-	}
-	if c.Store == nil {
-		c.Store = store.DefaultStoreConfig()
-	}
-	if c.Diagnostics == nil {
-		c.Diagnostics = diagnostics.DefaultDiagnosticsConfig()
-	}
-	if c.Console == nil {
-		c.Console = console.DefaultConsoleConfig()
-	}
-	if c.Observability == nil {
-		c.Observability = observability.DefaultObservabilityConfig()
-	}
-	if c.Engine == nil {
-		c.Engine = engine.DefaultResourceEngineConfig()
-	}
-	if c.EventBus == nil {
-		cfg := eventbus.Default()
-		c.EventBus = &cfg
-	}
-	if c.Versioning == nil {
-		c.Versioning = versioning.Default()
-	}
 }
 
 // FindDiscovery finds the DiscoveryConfig by id, returns nil if not found

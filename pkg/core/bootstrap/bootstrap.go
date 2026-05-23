@@ -27,7 +27,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
-	"github.com/apache/dubbo-admin/pkg/core/versioning"
 	"github.com/apache/dubbo-admin/pkg/diagnostics"
 )
 
@@ -131,7 +130,6 @@ func (sb *SmartBootstrapper) gatherComponents() ([]runtime.Component, error) {
 		{"CounterManager", counter.ComponentType},
 		{"DiagnosticsServer", diagnostics.DiagnosticsServer},
 		{"DistributedLock", lock.DistributedLockComponent},
-		{"RuleVersioning", versioning.ComponentType},
 	}
 
 	for _, comp := range optionalComps {

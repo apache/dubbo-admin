@@ -105,12 +105,8 @@ func PutConfiguratorWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 			c.JSON(http.StatusOK, model.NewBizErrorResp(
 				bizerror.New(bizerror.NotFoundError, fmt.Sprintf("%s not found", ruleName))))
 		}
-		opts, ok := mutationOptions(c)
-		if !ok {
-			return
-		}
-		if err = service.UpdateConfiguratorWithOptions(ctx, res, opts); err != nil {
-			writeVersioningResp(c, nil, err)
+		if err = service.UpdateConfigurator(ctx, res); err != nil {
+			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
 			return
 		}
 		c.JSON(http.StatusOK, model.GenDynamicConfigToResp(res.Spec))
@@ -132,12 +128,8 @@ func PostConfiguratorWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 			util.HandleArgumentError(c, err)
 			return
 		}
-		opts, ok := mutationOptions(c)
-		if !ok {
-			return
-		}
-		if err = service.CreateConfiguratorWithOptions(ctx, res, opts); err != nil {
-			writeVersioningResp(c, nil, err)
+		if err = service.CreateConfigurator(ctx, res); err != nil {
+			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
 			return
 		}
 		c.JSON(http.StatusOK, model.GenDynamicConfigToResp(res.Spec))
@@ -154,12 +146,8 @@ func DeleteConfiguratorWithRuleName(ctx consolectx.Context) gin.HandlerFunc {
 				fmt.Sprintf("dynamic config name must end with %s", constants.ConfiguratorRuleDotSuffix))))
 			return
 		}
-		opts, ok := mutationOptions(c)
-		if !ok {
-			return
-		}
-		if err := service.DeleteConfiguratorWithOptions(ctx, ruleName, mesh, opts); err != nil {
-			writeVersioningResp(c, nil, err)
+		if err := service.DeleteConfigurator(ctx, ruleName, mesh); err != nil {
+			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
 			return
 		}
 		c.JSON(http.StatusOK, model.NewSuccessResp(""))

@@ -26,8 +26,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-const SourceRegistryContextKey = "source-registry"
-
 type Event interface {
 	// Type returns the type of the event, see definitions in cache.DeltaType
 	Type() cache.DeltaType
@@ -35,7 +33,7 @@ type Event interface {
 	OldObj() model.Resource
 	// NewObj returns the new object, nil if event type is in [cache.Deleted]
 	NewObj() model.Resource
-	// Context returns read-only event metadata. Subscribers must not mutate the returned map.
+	// Context returns the context of the event, if event provider want to pass extra info to the consumer, just use context
 	Context() map[string]string
 	// String returns the string representation of the event
 	String() string

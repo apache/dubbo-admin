@@ -34,8 +34,6 @@ import (
 // ResourceStore expanded the interface of cache.Indexer and cache.Store
 type ResourceStore interface {
 	Indexer
-	// ListResources lists all resources in this store with error propagation.
-	ListResources() ([]model.Resource, error)
 	// GetByKeys get resources by keys, return list of resource.
 	// if a resource of specified key doesn't exist in the store, resource list will not include it
 	GetByKeys(keys []string) ([]model.Resource, error)

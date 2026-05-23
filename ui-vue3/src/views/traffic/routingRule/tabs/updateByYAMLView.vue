@@ -90,7 +90,6 @@ import yaml from 'js-yaml'
 import { isNil } from 'lodash'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from '@/base/http/constants'
-import { fetchCurrentVersionState, notifyVersionConflict } from '../../_shared/ruleVersion'
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
 const route = useRoute()
@@ -102,23 +101,15 @@ const isDrawerOpened = ref(false)
 const sliderSpan = ref(8)
 
 const YAMLValue = ref('')
-const currentVersionId = ref<number | undefined>(undefined)
 
-async function reloadCurrentVersion() {
-  currentVersionId.value = (
-    await fetchCurrentVersionState('condition-rule', route.params?.ruleName as string)
-  ).id
-}
-
-onMounted(async () => {
+onMounted(() => {
   if (!isNil(TAB_STATE.conditionRule)) {
     const data = TAB_STATE.conditionRule
     YAMLValue.value = yaml.dump(data)
   } else {
     YAMLValue.value = ``
-    await getRoutingRuleDetail()
+    getRoutingRuleDetail()
   }
-  await reloadCurrentVersion()
 })
 
 const changeEditor = (val) => {
@@ -127,7 +118,7 @@ const changeEditor = (val) => {
 
 // Get condition routing details
 async function getRoutingRuleDetail() {
-  let res = await getConditionRuleDetailAPI(route.params?.ruleName as string)
+  let res = await getConditionRuleDetailAPI(<string>route.params?.ruleName)
   if (res?.code === HTTP_STATUS.SUCCESS) {
     const conditionName = route.params?.ruleName
     if (conditionName && res.data.scope === 'service') {
@@ -143,25 +134,14 @@ const updateRoutingRule = async () => {
   try {
     const data = yaml.load(YAMLValue.value)
     data.configVersion = 'v3.0'
-    const res = await updateConditionRuleAPI(route.params?.ruleName as string, data, {
-      expectedVersionId: currentVersionId.value
-    })
+    const res = await updateConditionRuleAPI(<string>route.params?.ruleName, data)
     if (res.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
       // 延迟 2 秒后再获取数据，确保数据库已更新
       await new Promise((resolve) => setTimeout(resolve, 2000))
       TAB_STATE.conditionRule = null
       await getRoutingRuleDetail()
-      await reloadCurrentVersion()
     }
-  } catch (e: any) {
-    notifyVersionConflict(e, {
-      reload: async () => {
-        TAB_STATE.conditionRule = null
-        await getRoutingRuleDetail()
-        await reloadCurrentVersion()
-      }
-    })
   } finally {
     loading.value = false
   }

@@ -33,8 +33,6 @@ type ReadOnlyResourceManager interface {
 	GetByKey(rk model.ResourceKind, key string) (r model.Resource, exist bool, err error)
 	// GetByKeys returns the resources with the given resource keys
 	GetByKeys(rk model.ResourceKind, keys []string) ([]model.Resource, error)
-	// List returns all resources for the given resource kind.
-	List(rk model.ResourceKind) ([]model.Resource, error)
 	// ListByIndexes returns the resources with the given index conditions
 	ListByIndexes(rk model.ResourceKind, indexes []index.IndexCondition) ([]model.Resource, error)
 	// PageListByIndexes page list the resources with the given index conditions
@@ -98,14 +96,6 @@ func (rm *resourcesManager) GetByKeys(rk model.ResourceKind, keys []string) ([]m
 		return nil, err
 	}
 	return resources, nil
-}
-
-func (rm *resourcesManager) List(rk model.ResourceKind) ([]model.Resource, error) {
-	rs, err := rm.storeRouter.ResourceKindRoute(rk)
-	if err != nil {
-		return nil, err
-	}
-	return rs.ListResources()
 }
 
 func (rm *resourcesManager) ListByIndexes(rk model.ResourceKind, indexes []index.IndexCondition) ([]model.Resource, error) {

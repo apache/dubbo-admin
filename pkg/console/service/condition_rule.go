@@ -31,7 +31,6 @@ import (
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
-	"github.com/apache/dubbo-admin/pkg/core/versioning"
 )
 
 func SearchConditionRules(ctx context.Context, req *model.SearchConditionRuleReq) (*model.SearchPaginationResult, error) {
@@ -109,94 +108,57 @@ func GetConditionRule(ctx context.Context, name string, mesh string) (*meshresou
 }
 
 func UpdateConditionRule(ctx context.Context, res *meshresource.ConditionRouteResource) error {
-	return UpdateConditionRuleWithOptions(ctx, res, RuleMutationOptions{})
-}
-
-func UpdateConditionRuleWithOptions(ctx context.Context, res *meshresource.ConditionRouteResource, opts RuleMutationOptions) error {
 	lockMgr := ctx.LockManager()
 	if lockMgr == nil {
-		return updateConditionRuleUnsafe(ctx, res, opts)
+		return updateConditionRuleUnsafe(ctx, res)
 	}
 	lockKey := lock.BuildConditionRuleLockKey(res.Mesh, res.Name)
 	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
-		return updateConditionRuleUnsafe(ctx, res, opts)
+		return updateConditionRuleUnsafe(ctx, res)
 	})
 }
 
-func updateConditionRuleUnsafe(ctx context.Context, res *meshresource.ConditionRouteResource, opts RuleMutationOptions) error {
-	kindName := RuleKindName{Kind: meshresource.ConditionRouteKind, Mesh: res.Mesh, Name: res.Name}
-	if err := prepareRuleMutation(ctx, kindName, opts); err != nil {
+func updateConditionRuleUnsafe(ctx context.Context, res *meshresource.ConditionRouteResource) error {
+	if err := ctx.ResourceManager().Update(res); err != nil {
+		logger.Warnf("update %s condition failed with error: %s", res.Name, err.Error())
 		return err
 	}
-	return applyAdminMutation(ctx, res, versioning.OperationUpdate, opts, func() error {
-		if err := ctx.ResourceManager().Update(res); err != nil {
-			logger.Warnf("update %s condition failed with error: %s", res.Name, err.Error())
-			return err
-		}
-		return nil
-	})
+	return nil
 }
 
 func CreateConditionRule(ctx context.Context, res *meshresource.ConditionRouteResource) error {
-	return CreateConditionRuleWithOptions(ctx, res, RuleMutationOptions{})
-}
-
-func CreateConditionRuleWithOptions(ctx context.Context, res *meshresource.ConditionRouteResource, opts RuleMutationOptions) error {
 	lockMgr := ctx.LockManager()
 	if lockMgr == nil {
-		return createConditionRuleUnsafe(ctx, res, opts)
+		return createConditionRuleUnsafe(ctx, res)
 	}
 	lockKey := lock.BuildConditionRuleLockKey(res.Mesh, res.Name)
 	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
-		return createConditionRuleUnsafe(ctx, res, opts)
+		return createConditionRuleUnsafe(ctx, res)
 	})
 }
 
-func createConditionRuleUnsafe(ctx context.Context, res *meshresource.ConditionRouteResource, opts RuleMutationOptions) error {
-	kindName := RuleKindName{Kind: meshresource.ConditionRouteKind, Mesh: res.Mesh, Name: res.Name}
-	if err := prepareRuleMutation(ctx, kindName, opts); err != nil {
+func createConditionRuleUnsafe(ctx context.Context, res *meshresource.ConditionRouteResource) error {
+	if err := ctx.ResourceManager().Add(res); err != nil {
+		logger.Warnf("create %s condition failed with error: %s", res.Name, err.Error())
 		return err
 	}
-	return applyAdminMutation(ctx, res, versioning.OperationCreate, opts, func() error {
-		if err := ctx.ResourceManager().Add(res); err != nil {
-			logger.Warnf("create %s condition failed with error: %s", res.Name, err.Error())
-			return err
-		}
-		return nil
-	})
+	return nil
 }
 
 func DeleteConditionRule(ctx context.Context, name string, mesh string) error {
-	return DeleteConditionRuleWithOptions(ctx, name, mesh, RuleMutationOptions{})
-}
-
-func DeleteConditionRuleWithOptions(ctx context.Context, name string, mesh string, opts RuleMutationOptions) error {
 	lockMgr := ctx.LockManager()
 	if lockMgr == nil {
-		return deleteConditionRuleUnsafe(ctx, name, mesh, opts)
+		return deleteConditionRuleUnsafe(ctx, name, mesh)
 	}
 	lockKey := lock.BuildConditionRuleLockKey(mesh, name)
 	return lockMgr.WithLock(ctx.AppContext(), lockKey, constants.DefaultLockTimeout, func() error {
-		return deleteConditionRuleUnsafe(ctx, name, mesh, opts)
+		return deleteConditionRuleUnsafe(ctx, name, mesh)
 	})
 }
 
-func deleteConditionRuleUnsafe(ctx context.Context, name string, mesh string, opts RuleMutationOptions) error {
-	kindName := RuleKindName{Kind: meshresource.ConditionRouteKind, Mesh: mesh, Name: name}
-	if err := repairPendingIntent(ctx, kindName); err != nil {
+func deleteConditionRuleUnsafe(ctx context.Context, name string, mesh string) error {
+	if err := ctx.ResourceManager().DeleteByKey(meshresource.ConditionRouteKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
 		return err
 	}
-	res, err := getExistingRule(ctx, kindName)
-	if err != nil {
-		return err
-	}
-	if err := checkExpectedVersion(ctx, kindName, opts); err != nil {
-		return err
-	}
-	return applyAdminMutation(ctx, res, versioning.OperationDelete, opts, func() error {
-		if err := ctx.ResourceManager().DeleteByKey(meshresource.ConditionRouteKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
-			return err
-		}
-		return nil
-	})
+	return nil
 }
