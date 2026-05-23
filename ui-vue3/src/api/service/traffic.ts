@@ -17,6 +17,111 @@
 
 import request from '@/base/http/request'
 
+export type TrafficRuleKind = 'condition-rule' | 'tag-rule' | 'configurator'
+
+export interface RuleVersion {
+  id: number
+  ruleKind: string
+  mesh: string
+  resourceKey: string
+  ruleName: string
+  versionNo: number
+  contentHash: string
+  specJson: string
+  source: 'ADMIN' | 'UPSTREAM' | 'ROLLBACK' | 'BOOTSTRAP' | string
+  operation: 'CREATE' | 'UPDATE' | 'DELETE' | string
+  author: string
+  reason?: string
+  rolledBackFromId?: number
+  createdAt: string
+  isCurrent: boolean
+}
+
+export interface RuleVersionList {
+  items: RuleVersion[]
+  total: number
+}
+
+export interface RuleVersionDiffSide {
+  id: number
+  versionNo: number
+  specJson: string
+}
+
+export interface RuleVersionDiff {
+  left: RuleVersionDiffSide
+  right: RuleVersionDiffSide
+}
+
+export interface RuleMutationOptions {
+  expectedVersionId?: number
+}
+
+export interface RuleRollbackRequest extends RuleMutationOptions {
+  reason: string
+}
+
+export interface VersionConflictError {
+  code: 'VERSION_CONFLICT' | 'VERSION_LEDGER_PENDING'
+  message: string
+  currentVersionId?: number | null
+}
+
+const ruleNameForPath = (kind: TrafficRuleKind, ruleName: string): string => {
+  return kind === 'configurator' ? encodeURIComponent(ruleName) : ruleName
+}
+
+const withExpectedVersion = (options?: RuleMutationOptions) => {
+  return options?.expectedVersionId ? { expectedVersionId: options.expectedVersionId } : undefined
+}
+
+export const listRuleVersionsAPI = (
+  kind: TrafficRuleKind,
+  ruleName: string
+): Promise<{ code: string; data: RuleVersionList }> => {
+  return request({
+    url: `/${kind}/${ruleNameForPath(kind, ruleName)}/versions`,
+    method: 'get'
+  })
+}
+
+export const getRuleVersionAPI = (
+  kind: TrafficRuleKind,
+  ruleName: string,
+  versionId: number
+): Promise<{ code: string; data: RuleVersion }> => {
+  return request({
+    url: `/${kind}/${ruleNameForPath(kind, ruleName)}/versions/${versionId}`,
+    method: 'get'
+  })
+}
+
+export const diffRuleVersionAPI = (
+  kind: TrafficRuleKind,
+  ruleName: string,
+  versionId: number,
+  against = 'current'
+): Promise<{ code: string; data: RuleVersionDiff }> => {
+  return request({
+    url: `/${kind}/${ruleNameForPath(kind, ruleName)}/versions/${versionId}/diff`,
+    method: 'get',
+    params: { against }
+  })
+}
+
+export const rollbackRuleVersionAPI = (
+  kind: TrafficRuleKind,
+  ruleName: string,
+  versionId: number,
+  data: RuleRollbackRequest
+): Promise<{ code: string; data: RuleVersion }> => {
+  return request({
+    url: `/${kind}/${ruleNameForPath(kind, ruleName)}/versions/${versionId}/rollback`,
+    method: 'post',
+    data
+  })
+}
+
 export const searchRoutingRule = (params: any): Promise<any> => {
   return request({
     url: '/condition-rule/search',
@@ -34,28 +139,42 @@ export const getConditionRuleDetailAPI = (ruleName: string): Promise<any> => {
 }
 
 // Delete condition routing.
-export const deleteConditionRuleAPI = (ruleName: string): Promise<any> => {
+export const deleteConditionRuleAPI = (
+  ruleName: string,
+  options?: RuleMutationOptions
+): Promise<any> => {
   return request({
     url: `/condition-rule/${ruleName}`,
-    method: 'delete'
+    method: 'delete',
+    params: withExpectedVersion(options)
   })
 }
 
 // update condition routing.
-export const updateConditionRuleAPI = (ruleName: string, data: any): Promise<any> => {
+export const updateConditionRuleAPI = (
+  ruleName: string,
+  data: any,
+  options?: RuleMutationOptions
+): Promise<any> => {
   return request({
     url: `/condition-rule/${ruleName}`,
     method: 'put',
-    data
+    data,
+    params: withExpectedVersion(options)
   })
 }
 
 // add condition routing.
-export const addConditionRuleAPI = (ruleName: string, data: any): Promise<any> => {
+export const addConditionRuleAPI = (
+  ruleName: string,
+  data: any,
+  options?: RuleMutationOptions
+): Promise<any> => {
   return request({
     url: `/condition-rule/${ruleName}`,
     method: 'post',
-    data
+    data,
+    params: withExpectedVersion(options)
   })
 }
 
@@ -68,10 +187,11 @@ export const searchTagRule = (params: any): Promise<any> => {
 }
 
 // Delete tag routing.
-export const deleteTagRuleAPI = (ruleName: string): Promise<any> => {
+export const deleteTagRuleAPI = (ruleName: string, options?: RuleMutationOptions): Promise<any> => {
   return request({
     url: `/tag-rule/${ruleName}`,
-    method: 'delete'
+    method: 'delete',
+    params: withExpectedVersion(options)
   })
 }
 
@@ -83,19 +203,29 @@ export const getTagRuleDetailAPI = (ruleName: string): Promise<any> => {
   })
 }
 
-export const updateTagRuleAPI = (ruleName: string, data: any): Promise<any> => {
+export const updateTagRuleAPI = (
+  ruleName: string,
+  data: any,
+  options?: RuleMutationOptions
+): Promise<any> => {
   return request({
     url: `/tag-rule/${ruleName}`,
     method: 'put',
-    data
+    data,
+    params: withExpectedVersion(options)
   })
 }
 
-export const addTagRuleAPI = (ruleName: string, data: any): Promise<any> => {
+export const addTagRuleAPI = (
+  ruleName: string,
+  data: any,
+  options?: RuleMutationOptions
+): Promise<any> => {
   return request({
     url: `/tag-rule/${ruleName}`,
     method: 'post',
-    data
+    data,
+    params: withExpectedVersion(options)
   })
 }
 
@@ -129,24 +259,35 @@ export const getConfiguratorDetail = (params: any): Promise<any> => {
     method: 'get'
   })
 }
-export const saveConfiguratorDetail = (params: any, data: any): Promise<any> => {
+export const saveConfiguratorDetail = (
+  params: any,
+  data: any,
+  options?: RuleMutationOptions
+): Promise<any> => {
   return request({
     url: `/configurator/${encodeURIComponent(params.name)}`,
     method: 'put',
-    data
+    data,
+    params: withExpectedVersion(options)
   })
 }
-export const addConfiguratorDetail = (params: any, data: any): Promise<any> => {
+export const addConfiguratorDetail = (
+  params: any,
+  data: any,
+  options?: RuleMutationOptions
+): Promise<any> => {
   return request({
     url: `/configurator/${encodeURIComponent(params.name)}`,
     method: 'post',
-    data
+    data,
+    params: withExpectedVersion(options)
   })
 }
-export const delConfiguratorDetail = (params: any): Promise<any> => {
+export const delConfiguratorDetail = (params: any, options?: RuleMutationOptions): Promise<any> => {
   return request({
     url: `/configurator/${encodeURIComponent(params.name)}`,
-    method: 'delete'
+    method: 'delete',
+    params: withExpectedVersion(options)
   })
 }
 
