@@ -18,18 +18,15 @@
 <template>
   <div class="__container_routingRule_detail">
     <a-flex style="width: 100%">
-      <a-col :span="24" class="left">
+      <a-col :span="isDrawerOpened ? 24 - sliderSpan : 24" class="left">
         <a-row>
           <a-flex justify="space-between" style="width: 100%">
             <a-typography-title :level="3"> 基础信息</a-typography-title>
-            <a-space>
-              <a-tag v-if="currentVersionNo !== undefined" color="blue">
-                current v{{ currentVersionNo }}
-              </a-tag>
-              <a-button type="text" style="color: #0a90d5" @click="isHistoryOpen = true">
-                Version history
-              </a-button>
-            </a-space>
+            <!--            <a-button type="text" style="color: #0a90d5" @click="isDrawerOpened = !isDrawerOpened">-->
+            <!--              {{ $t('flowControlDomain.versionRecords') }}-->
+            <!--              <DoubleLeftOutlined v-if="!isDrawerOpened" />-->
+            <!--              <DoubleRightOutlined v-else />-->
+            <!--            </a-button>-->
           </a-flex>
           <a-card class="_detail">
             <a-descriptions :column="2" layout="vertical" title="">
@@ -181,16 +178,21 @@
           </a-space>
         </a-card>
       </a-col>
-    </a-flex>
 
-    <RuleHistoryPanel
-      v-model:open="isHistoryOpen"
-      :title="conditionRuleDetail.key || ruleName"
-      kind="condition-rule"
-      :rule-name="ruleName"
-      @current-version-no-change="currentVersionNo = $event"
-      @rollback-success="handleRollbackSuccess"
-    />
+      <a-col :span="isDrawerOpened ? sliderSpan : 0" class="right">
+        <a-card v-if="isDrawerOpened" class="sliderBox">
+          <a-card v-for="i in 2" :key="i">
+            <p>修改时间: 2024/3/20 15:20:31</p>
+            <p>版本号: xo842xqpx834</p>
+
+            <a-flex justify="flex-end">
+              <a-button type="text" style="color: #0a90d5">查看</a-button>
+              <a-button type="text" style="color: #0a90d5">回滚</a-button>
+            </a-flex>
+          </a-card>
+        </a-card>
+      </a-col>
+    </a-flex>
   </div>
 </template>
 
@@ -210,18 +212,17 @@ import { PRIMARY_COLOR } from '@/base/constants'
 import { getConditionRuleDetailAPI } from '@/api/service/traffic'
 import { useRoute } from 'vue-router'
 import { HTTP_STATUS } from '@/base/http/constants'
-import RuleHistoryPanel from '../../_shared/RuleHistoryPanel.vue'
 
 const {
   appContext: {
     config: { globalProperties }
   }
-} = getCurrentInstance() as ComponentInternalInstance
+} = <ComponentInternalInstance>getCurrentInstance()
 const route = useRoute()
-const ruleName = computed(() => String(route.params?.ruleName || ''))
 
-const isHistoryOpen = ref(false)
-const currentVersionNo = ref<number | undefined>(undefined)
+const isDrawerOpened = ref(false)
+
+const sliderSpan = ref(8)
 
 let __ = PRIMARY_COLOR
 
@@ -238,6 +239,8 @@ const conditionRuleDetail = reactive({})
 const actionObj = computed(() => {
   const key = conditionRuleDetail.key || ''
   const arr = typeof key === 'string' ? key.split(':') : []
+  conditionRuleDetail.version = arr[1] || ''
+  conditionRuleDetail.group = arr[2] || ''
   return arr[0] || ''
 })
 
@@ -249,12 +252,10 @@ const addressSubsetMatch = ref<string[]>([])
 
 // Get condition routing details
 async function getRoutingRuleDetail() {
-  let res = await getConditionRuleDetailAPI(ruleName.value)
+  let res = await getConditionRuleDetailAPI(<string>route.params?.ruleName)
   if (res?.code === HTTP_STATUS.SUCCESS) {
     Object.assign(conditionRuleDetail, res?.data || {})
 
-    requestParameterMatch.value = []
-    addressSubsetMatch.value = []
     conditionRuleDetail.conditions.forEach((item: any, index: number) => {
       const arr = item.split(' => ')
       const addressArr = arr[1]?.split(' & ')
@@ -265,16 +266,12 @@ async function getRoutingRuleDetail() {
   }
 }
 
-const handleRollbackSuccess = async () => {
-  await getRoutingRuleDetail()
-}
-
 const getVersionAndGroup = () => {
-  const conditionName = ruleName.value
+  const conditionName = route.params?.ruleName
   if (conditionName && conditionRuleDetail.scope === 'service') {
     const arr = conditionName?.split(':')
-    conditionRuleDetail.version = arr[1] || ''
-    conditionRuleDetail.group = arr[2]?.split('.')[0] || ''
+    conditionRuleDetail.version = arr[1]
+    conditionRuleDetail.group = arr[2].split('.')[0]
   }
 }
 

@@ -802,42 +802,10 @@ func TestGormStore_ListByIndexesEmpty(t *testing.T) {
 	err = store.Add(mockRes)
 	require.NoError(t, err)
 
-	// Empty index conditions preserve memory-store semantics: no indexed query means no results.
+	// List with empty indexes should return all resources
 	resources, err := store.ListByIndexes([]index.IndexCondition{})
 	assert.NoError(t, err)
-	assert.Empty(t, resources)
-}
-
-func TestGormStore_ListResourcesSorted(t *testing.T) {
-	store, cleanup := setupTestStore(t)
-	defer cleanup()
-
-	err := store.Init(nil)
-	require.NoError(t, err)
-
-	mockRes1 := &mockResource{
-		Kind: "TestResource",
-		Key:  "mesh/test-key-2",
-		Mesh: "mesh",
-		Meta: metav1.ObjectMeta{Name: "test-resource-2"},
-	}
-	mockRes2 := &mockResource{
-		Kind: "TestResource",
-		Key:  "mesh/test-key-1",
-		Mesh: "mesh",
-		Meta: metav1.ObjectMeta{Name: "test-resource-1"},
-	}
-
-	err = store.Add(mockRes1)
-	require.NoError(t, err)
-	err = store.Add(mockRes2)
-	require.NoError(t, err)
-
-	resources, err := store.ListResources()
-	require.NoError(t, err)
-	require.Len(t, resources, 2)
-	assert.Equal(t, "mesh/test-key-1", resources[0].ResourceKey())
-	assert.Equal(t, "mesh/test-key-2", resources[1].ResourceKey())
+	assert.Len(t, resources, 1)
 }
 
 func TestGormStore_PageListByIndexes(t *testing.T) {

@@ -88,7 +88,6 @@ import { isNil } from 'lodash'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from '@/base/http/constants'
-import { fetchCurrentVersionState, notifyVersionConflict } from '../../_shared/ruleVersion'
 
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
@@ -98,25 +97,17 @@ const isReadonly = ref(false)
 
 const isDrawerOpened = ref(false)
 const loading = ref(false)
-const currentVersionId = ref<number | undefined>(undefined)
-
-async function reloadCurrentVersion() {
-  currentVersionId.value = (
-    await fetchCurrentVersionState('tag-rule', route.params?.ruleName as string)
-  ).id
-}
 
 const sliderSpan = ref(8)
 
-onMounted(async () => {
+onMounted(() => {
   if (!isNil(TAB_STATE.tagRule)) {
     const data = TAB_STATE.tagRule
     YAMLValue.value = yaml.dump(data)
   } else {
     YAMLValue.value = ``
-    await getTagRuleDetail()
+    getTagRuleDetail()
   }
-  await reloadCurrentVersion()
 })
 
 const changeEditor = (val) => {
@@ -137,7 +128,7 @@ const YAMLValue = ref(
 )
 
 async function getTagRuleDetail() {
-  let res = await getTagRuleDetailAPI(route.params?.ruleName as string)
+  let res = await getTagRuleDetailAPI(<string>route.params?.ruleName)
   if (res?.code === HTTP_STATUS.SUCCESS) {
     YAMLValue.value = yaml.dump(res?.data)
   }
@@ -147,25 +138,14 @@ const updateTagRule = async () => {
   loading.value = true
   try {
     const data = yaml.load(YAMLValue.value)
-    const res = await updateTagRuleAPI(route.params?.ruleName as string, data, {
-      expectedVersionId: currentVersionId.value
-    })
+    const res = await updateTagRuleAPI(<string>route.params?.ruleName, data)
     if (res.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
       // 延迟 2 秒后再获取数据，确保数据库已更新
       await new Promise((resolve) => setTimeout(resolve, 2000))
       TAB_STATE.tagRule = null
       await getTagRuleDetail()
-      await reloadCurrentVersion()
     }
-  } catch (e: any) {
-    notifyVersionConflict(e, {
-      reload: async () => {
-        TAB_STATE.tagRule = null
-        await getTagRuleDetail()
-        await reloadCurrentVersion()
-      }
-    })
   } finally {
     loading.value = false
   }

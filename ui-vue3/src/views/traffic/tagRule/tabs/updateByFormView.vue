@@ -131,7 +131,7 @@
                               :columns="labelsColumns"
                               :data-source="tagItem.scope?.labels"
                             >
-                              <template #bodyCell="{ column, record, index: labelItemIndex }">
+                              <template #bodyCell="{ column, record, text, index: labelItemIndex }">
                                 <template v-if="column.key === 'myKey'">
                                   <a-input placeholder="label key" v-model:value="record.myKey" />
                                 </template>
@@ -244,27 +244,14 @@ import { getTagRuleDetailAPI, updateTagRuleAPI } from '@/api/service/traffic'
 import { isNil } from 'lodash'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { HTTP_STATUS } from '@/base/http/constants'
-import { fetchCurrentVersionState, notifyVersionConflict } from '../../_shared/ruleVersion'
 
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 const router = useRouter()
 
 onMounted(async () => {
   if (!isNil(TAB_STATE.tagRule)) {
-    const {
-      configVersion,
-      priority,
-      enabled = true,
-      force = false,
-      key,
-      scope,
-      runtime = true,
-      tags
-    } = TAB_STATE.tagRule
-    baseInfo.configVersion = configVersion
-    baseInfo.priority = priority
+    const { enabled = true, key, scope, runtime = true, tags } = TAB_STATE.tagRule
     baseInfo.enable = enabled
-    baseInfo.faultTolerantProtection = force
     baseInfo.objectOfAction = key
     baseInfo.ruleGranularity = scope
     baseInfo.runtime = runtime
@@ -300,24 +287,16 @@ onMounted(async () => {
   } else {
     await getTagRuleDetail()
   }
-  await reloadCurrentVersion()
 })
 const {
   appContext: {
     config: { globalProperties }
   }
-} = getCurrentInstance() as ComponentInternalInstance
+} = <ComponentInternalInstance>getCurrentInstance()
 const route = useRoute()
 
 const isDrawerOpened = ref(false)
 const loading = ref(false)
-const currentVersionId = ref<number | undefined>(undefined)
-
-async function reloadCurrentVersion() {
-  currentVersionId.value = (
-    await fetchCurrentVersionState('tag-rule', route.params?.ruleName as string)
-  ).id
-}
 
 const sliderSpan = ref(8)
 
@@ -575,13 +554,12 @@ const deleteTagItem = (tagItemIndex: number) => {
 
 // Get label routing details
 const getTagRuleDetail = async () => {
-  const res = await getTagRuleDetailAPI(route.params?.ruleName as string)
+  const res = await getTagRuleDetailAPI(<string>route.params?.ruleName)
   if (res.code === HTTP_STATUS.SUCCESS) {
-    const { configVersion, priority, enabled, force, key, runtime, scope, tags } = res.data || {}
+    const { configVersion, enabled, key, runtime, scope, tags } = res?.data
     baseInfo.configVersion = configVersion
-    baseInfo.priority = priority
     baseInfo.enable = enabled
-    baseInfo.faultTolerantProtection = force
+    // baseInfo.faultTolerantProtection =
     baseInfo.runtime = runtime
     baseInfo.ruleGranularity = scope
     baseInfo.objectOfAction = key
@@ -631,9 +609,7 @@ const updateTagRule = async () => {
       configVersion,
       scope: ruleGranularity,
       key: objectOfAction,
-      priority,
       enabled: enable,
-      force: faultTolerantProtection,
       runtime,
       tags: []
     }
@@ -652,25 +628,14 @@ const updateTagRule = async () => {
       })
       data.tags.push(tag)
     })
-    const res = await updateTagRuleAPI(route.params?.ruleName as string, data, {
-      expectedVersionId: currentVersionId.value
-    })
+    const res = await updateTagRuleAPI(route.params?.ruleName, data)
     if (res.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
       // 延迟 2 秒后再获取数据，确保数据库已更新
       await new Promise((resolve) => setTimeout(resolve, 2000))
       TAB_STATE.tagRule = null
       await getTagRuleDetail()
-      await reloadCurrentVersion()
     }
-  } catch (e: any) {
-    notifyVersionConflict(e, {
-      reload: async () => {
-        TAB_STATE.tagRule = null
-        await getTagRuleDetail()
-        await reloadCurrentVersion()
-      }
-    })
   } finally {
     loading.value = false
   }

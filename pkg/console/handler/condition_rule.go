@@ -94,12 +94,9 @@ func PutConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 			util.HandleArgumentError(c, err)
 			return
 		}
-		opts, ok := mutationOptions(c)
-		if !ok {
-			return
-		}
-		if err := service.UpdateConditionRuleWithOptions(cs, res, opts); err != nil {
-			writeVersioningResp(c, nil, err)
+
+		if err := service.UpdateConditionRule(cs, res); err != nil {
+			util.HandleServiceError(c, err)
 			return
 		} else {
 			c.JSON(http.StatusOK, model.GenConditionRuleToResp(res.Spec))
@@ -121,12 +118,9 @@ func PostConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 			util.HandleArgumentError(c, err)
 			return
 		}
-		opts, ok := mutationOptions(c)
-		if !ok {
-			return
-		}
-		if err := service.CreateConditionRuleWithOptions(cs, res, opts); err != nil {
-			writeVersioningResp(c, nil, err)
+
+		if err := service.CreateConditionRule(cs, res); err != nil {
+			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
 			return
 		} else {
 			c.JSON(http.StatusOK, model.GenConditionRuleToResp(res.Spec))
@@ -143,12 +137,8 @@ func DeleteConditionRuleWithRuleName(cs consolectx.Context) gin.HandlerFunc {
 				fmt.Sprintf("ruleName must end with %s", constants.ConditionRuleDotSuffix))))
 			return
 		}
-		opts, ok := mutationOptions(c)
-		if !ok {
-			return
-		}
-		if err := service.DeleteConditionRuleWithOptions(cs, ruleName, mesh, opts); err != nil {
-			writeVersioningResp(c, nil, err)
+		if err := service.DeleteConditionRule(cs, ruleName, mesh); err != nil {
+			c.JSON(http.StatusOK, model.NewErrorResp(err.Error()))
 			return
 		}
 		c.JSON(http.StatusOK, model.NewSuccessResp(""))

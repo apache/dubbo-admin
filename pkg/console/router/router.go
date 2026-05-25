@@ -22,7 +22,6 @@ import (
 
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/handler"
-	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 )
 
 func InitRouter(r *gin.Engine, ctx consolectx.Context) {
@@ -113,10 +112,6 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 	{
 		configuration := router.Group("/configurator")
 		configuration.GET("/search", handler.ConfiguratorSearch(ctx))
-		configuration.GET("/:ruleName/versions", handler.ListRuleVersions(ctx, meshresource.DynamicConfigKind))
-		configuration.GET("/:ruleName/versions/:versionId", handler.GetRuleVersion(ctx, meshresource.DynamicConfigKind))
-		configuration.GET("/:ruleName/versions/:versionId/diff", handler.DiffRuleVersion(ctx, meshresource.DynamicConfigKind))
-		configuration.POST("/:ruleName/versions/:versionId/rollback", handler.RollbackRuleVersion(ctx, meshresource.DynamicConfigKind))
 		configuration.GET("/:ruleName", handler.GetConfiguratorWithRuleName(ctx))
 		configuration.PUT("/:ruleName", handler.PutConfiguratorWithRuleName(ctx))
 		configuration.POST("/:ruleName", handler.PostConfiguratorWithRuleName(ctx))
@@ -126,10 +121,6 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 	{
 		conditionRule := router.Group("/condition-rule")
 		conditionRule.GET("/search", handler.ConditionRuleSearch(ctx))
-		conditionRule.GET("/:ruleName/versions", handler.ListRuleVersions(ctx, meshresource.ConditionRouteKind))
-		conditionRule.GET("/:ruleName/versions/:versionId", handler.GetRuleVersion(ctx, meshresource.ConditionRouteKind))
-		conditionRule.GET("/:ruleName/versions/:versionId/diff", handler.DiffRuleVersion(ctx, meshresource.ConditionRouteKind))
-		conditionRule.POST("/:ruleName/versions/:versionId/rollback", handler.RollbackRuleVersion(ctx, meshresource.ConditionRouteKind))
 		conditionRule.GET("/:ruleName", handler.GetConditionRuleWithRuleName(ctx))
 		conditionRule.PUT("/:ruleName", handler.PutConditionRuleWithRuleName(ctx))
 		conditionRule.POST("/:ruleName", handler.PostConditionRuleWithRuleName(ctx))
@@ -139,10 +130,6 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 	{
 		tagRule := router.Group("/tag-rule")
 		tagRule.GET("/search", handler.TagRuleSearch(ctx))
-		tagRule.GET("/:ruleName/versions", handler.ListRuleVersions(ctx, meshresource.TagRouteKind))
-		tagRule.GET("/:ruleName/versions/:versionId", handler.GetRuleVersion(ctx, meshresource.TagRouteKind))
-		tagRule.GET("/:ruleName/versions/:versionId/diff", handler.DiffRuleVersion(ctx, meshresource.TagRouteKind))
-		tagRule.POST("/:ruleName/versions/:versionId/rollback", handler.RollbackRuleVersion(ctx, meshresource.TagRouteKind))
 		tagRule.GET("/:ruleName", handler.GetTagRuleWithRuleName(ctx))
 		tagRule.PUT("/:ruleName", handler.PutTagRuleWithRuleName(ctx))
 		tagRule.POST("/:ruleName", handler.PostTagRuleWithRuleName(ctx))

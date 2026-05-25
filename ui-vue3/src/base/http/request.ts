@@ -39,10 +39,6 @@ const isSilentErrorUrl = (url?: string): boolean => {
   return SILENT_ERROR_URLS.some((silentUrl) => url.includes(silentUrl))
 }
 
-const shouldShowErrorMessage = (url?: string, code?: string): boolean => {
-  return !isSilentErrorUrl(url) && code !== 'VERSION_CONFLICT'
-}
-
 const service: AxiosInstance = axios.create({
   baseURL: '/api/v1',
   timeout: 30 * 1000
@@ -86,7 +82,7 @@ response.use(
 
     // Show error toast message
     const errorMsg = `${response.data.code}:${response.data.message}`
-    if (shouldShowErrorMessage(response.config.url, response.data.code)) {
+    if (!isSilentErrorUrl(response.config.url)) {
       message.error(errorMsg)
     }
     console.error(errorMsg)
@@ -124,7 +120,7 @@ response.use(
     }
     if (response?.data) {
       const errorMsg = `${response.data?.code}:${response.data?.message}`
-      if (shouldShowErrorMessage(error.config?.url, response.data?.code)) {
+      if (!isSilentErrorUrl(error.config?.url)) {
         message.error(errorMsg)
       }
       console.error(errorMsg)

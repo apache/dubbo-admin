@@ -25,7 +25,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/console/counter"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
-	"github.com/apache/dubbo-admin/pkg/core/versioning"
 )
 
 type Context interface {
@@ -36,7 +35,6 @@ type Context interface {
 
 	AppContext() ctx.Context
 	LockManager() lock.Lock
-	RuleVersioning() versioning.Service
 }
 
 var _ Context = &context{}
@@ -82,16 +80,4 @@ func (c *context) LockManager() lock.Lock {
 		return nil
 	}
 	return distributedLock
-}
-
-func (c *context) RuleVersioning() versioning.Service {
-	comp, err := c.coreRt.GetComponent(versioning.ComponentType)
-	if err != nil {
-		return nil
-	}
-	versioningComp, ok := comp.(versioning.Component)
-	if !ok {
-		return nil
-	}
-	return versioningComp.Service()
 }

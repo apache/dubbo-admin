@@ -121,22 +121,6 @@ func (rs *resourceStore) List() []interface{} {
 	return rs.storeProxy.List()
 }
 
-func (rs *resourceStore) ListResources() ([]coremodel.Resource, error) {
-	items := rs.storeProxy.List()
-	resources := make([]coremodel.Resource, 0, len(items))
-	for _, item := range items {
-		res, ok := item.(coremodel.Resource)
-		if !ok {
-			return nil, bizerror.NewAssertionError("Resource", reflect.TypeOf(item).Name())
-		}
-		resources = append(resources, res)
-	}
-	slice.SortBy(resources, func(r1 coremodel.Resource, r2 coremodel.Resource) bool {
-		return r1.ResourceKey() < r2.ResourceKey()
-	})
-	return resources, nil
-}
-
 func (rs *resourceStore) ListKeys() []string {
 	return rs.storeProxy.ListKeys()
 }
