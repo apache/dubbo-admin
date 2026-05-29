@@ -30,7 +30,7 @@
     "@types/lodash-es": "^4.17.12",
     "@types/nprogress": "^0.2.3",
     "ant-design-vue": "4.x",
-    "axios": "^1.13.6",
+    "axios": "^1.16.0",
     "dayjs": "^1.11.13",
     "g6-extension-vue": "^0.1.0",
     "gsap": "^3.12.7",
