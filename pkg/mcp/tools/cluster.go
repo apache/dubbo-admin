@@ -20,37 +20,15 @@ package tools
 import (
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/counter"
-	"github.com/apache/dubbo-admin/pkg/mcp/types"
-	"github.com/apache/dubbo-admin/pkg/mcp/registry"
+	"github.com/apache/dubbo-admin/pkg/mcp/common"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 )
 
-// MetricsRegistrar 集群工具注册器
-type MetricsRegistrar struct{}
-
-// RegisterTools 实现 ToolRegistrar 接口
-func (r *MetricsRegistrar) RegisterTools(reg *registry.Registry) {
-	reg.Register(types.ToolDef{
-		Name:        "get_cluster_info",
-		Description: "获取 Dubbo 集群基本信息，包括应用数、服务数、实例数等统计信息",
-		InputSchema: types.InputSchema{
-			Type: "object",
-			Properties: map[string]types.PropertyDef{
-				"mesh": {
-					Type:        "string",
-					Description: "Mesh 名称，默认使用配置中的默认 mesh",
-				},
-			},
-		},
-		Handler: GetClusterInfo,
-	})
-}
-
 // GetClusterInfo 获取集群基本信息
-func GetClusterInfo(ctx consolectx.Context, args map[string]any) (*types.ToolResult, error) {
-	mesh := GetMeshArg(ctx, args)
+func GetClusterInfo(ctx consolectx.Context, args map[string]any) (*common.ToolResult, error) {
+	mesh := common.GetMeshArg(ctx, args)
 	info := collectClusterInfo(ctx, mesh)
-	return JsonResult(info)
+	return common.JsonResult(info)
 }
 
 // collectClusterInfo 收集集群信息
@@ -79,6 +57,3 @@ func collectClusterInfo(ctx consolectx.Context, mesh string) map[string]any {
 		"discoveries":   counterMgr.DistributionByMesh(counter.DiscoveryCounter, mesh),
 	}
 }
-
-// Ensure MetricsRegistrar implements ToolRegistrar
-var _ registry.ToolRegistrar = (*MetricsRegistrar)(nil)

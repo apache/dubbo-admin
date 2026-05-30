@@ -15,41 +15,31 @@
  * limitations under the License.
  */
 
-package types
+package common
 
-import "fmt"
+const (
+	// DefaultPageSize 默认分页大小
+	DefaultPageSize = 10
+	// DefaultPageNumber 默认页码
+	DefaultPageNumber = 1
+	// MaxDistributionLimit 服务分布查询的最大数量
+	MaxDistributionLimit = 100
+)
 
-// ValidateRequired 验证必需参数是否存在且非空
-func ValidateRequired(schema InputSchema, args map[string]any) error {
-	if args == nil {
-		args = make(map[string]any)
-	}
+// SearchType 搜索类型枚举
+type SearchType string
 
-	for _, required := range schema.Required {
-		val, exists := args[required]
-		if !exists {
-			return fmt.Errorf("missing required parameter: %s", required)
-		}
+const (
+	SearchTypeIP           SearchType = "ip"
+	SearchTypeInstanceName SearchType = "instanceName"
+	SearchTypeAppName      SearchType = "appName"
+	SearchTypeName         SearchType = "serviceName"
+)
 
-		if IsEmpty(val) {
-			return fmt.Errorf("required parameter %s cannot be empty", required)
-		}
-	}
-	return nil
-}
+// ServiceSide 服务端类型
+type ServiceSide string
 
-// IsEmpty 判断值是否为空
-func IsEmpty(val any) bool {
-	switch v := val.(type) {
-	case string:
-		return v == ""
-	case []any:
-		return len(v) == 0
-	case map[string]any:
-		return len(v) == 0
-	case nil:
-		return true
-	default:
-		return false
-	}
-}
+const (
+	ServiceSideProvider ServiceSide = "provider"
+	ServiceSideConsumer ServiceSide = "consumer"
+)

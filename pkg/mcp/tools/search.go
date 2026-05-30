@@ -21,12 +21,8 @@ import (
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
-	"github.com/apache/dubbo-admin/pkg/mcp/types"
-	"github.com/apache/dubbo-admin/pkg/mcp/registry"
+	"github.com/apache/dubbo-admin/pkg/mcp/common"
 )
-
-// ResourceSearchRegistrar 搜索工具注册器
-type ResourceSearchRegistrar struct{}
 
 // searchExecutor 搜索执行器接口
 type searchExecutor interface {
@@ -34,74 +30,35 @@ type searchExecutor interface {
 	buildResult(pagedResult *model.SearchPaginationResult, keyword string, pageSize, pageNumber int) map[string]any
 }
 
-// RegisterTools 实现 ToolRegistrar 接口
-func (r *ResourceSearchRegistrar) RegisterTools(reg *registry.Registry) {
-	reg.Register(types.ToolDef{
-		Name:        "global_search",
-		Description: "全局搜索，支持搜索服务、实例、应用等资源。不传 keyword 返回所有数据",
-		InputSchema: types.InputSchema{
-			Type:     "object",
-			Required: []string{}, // keyword 改为可选，空值返回所有数据
-			Properties: map[string]types.PropertyDef{
-				"keyword": {
-					Type:        "string",
-					Description: "搜索关键字，为空时返回所有数据",
-				},
-				"searchType": {
-					Type:        "string",
-					Description: "搜索类型: ip(按IP搜索实例), instanceName(按实例名搜索), appName(按应用名搜索), serviceName(按服务名搜索)",
-					Default:     string(SearchTypeName),
-					Enum:        []string{string(SearchTypeIP), string(SearchTypeInstanceName), string(SearchTypeAppName), string(SearchTypeName)},
-				},
-				"mesh": {
-					Type:        "string",
-					Description: "Mesh 名称，默认使用配置中的默认 mesh",
-				},
-				"pageSize": {
-					Type:        "integer",
-					Description: "每页数量",
-					Default:     DefaultPageSize,
-				},
-				"pageNumber": {
-					Type:        "integer",
-					Description: "页码，从 1 开始",
-					Default:     DefaultPageNumber,
-				},
-			},
-		},
-		Handler: GlobalSearch,
-	})
-}
-
 // GlobalSearch 全局搜索
-func GlobalSearch(ctx consolectx.Context, args map[string]any) (*types.ToolResult, error) {
-	helper := NewArgsHelper(args)
+func GlobalSearch(ctx consolectx.Context, args map[string]any) (*common.ToolResult, error) {
+	helper := common.NewArgsHelper(args)
 	keyword := helper.GetString("keyword", "")
 
-	searchType := SearchType(helper.GetString("searchType", string(SearchTypeName)))
-	mesh := GetMeshArg(ctx, args)
-	pageSize := helper.GetInt("pageSize", DefaultPageSize)
-	pageNumber := helper.GetInt("pageNumber", DefaultPageNumber)
+	searchType := common.SearchType(helper.GetString("searchType", string(common.SearchTypeName)))
+	mesh := common.GetMeshArg(ctx, args)
+	pageSize := helper.GetInt("pageSize", common.DefaultPageSize)
+	pageNumber := helper.GetInt("pageNumber", common.DefaultPageNumber)
 
 	executor := getSearchExecutor(searchType)
 	result, err := executor.execute(ctx, keyword, mesh, pageNumber, pageSize)
 	if err != nil {
-		return ErrorResult(err), nil
+		return common.ErrorResult(err), nil
 	}
 
 	searchResult := executor.buildResult(result, keyword, pageSize, pageNumber)
 	searchResult["searchType"] = string(searchType)
 
-	return JsonResult(searchResult)
+	return common.JsonResult(searchResult)
 }
 
 // getSearchExecutor 根据搜索类型获取对应的执行器
-func getSearchExecutor(searchType SearchType) searchExecutor {
-	executors := map[SearchType]searchExecutor{
-		SearchTypeIP:           &ipSearchExecutor{},
-		SearchTypeInstanceName: &instanceNameSearchExecutor{},
-		SearchTypeAppName:      &appNameSearchExecutor{},
-		SearchTypeName:         &serviceNameSearchExecutor{},
+func getSearchExecutor(searchType common.SearchType) searchExecutor {
+	executors := map[common.SearchType]searchExecutor{
+		common.SearchTypeIP:           &ipSearchExecutor{},
+		common.SearchTypeInstanceName: &instanceNameSearchExecutor{},
+		common.SearchTypeAppName:      &appNameSearchExecutor{},
+		common.SearchTypeName:         &serviceNameSearchExecutor{},
 	}
 
 	if executor, ok := executors[searchType]; ok {
@@ -119,7 +76,7 @@ func (e *ipSearchExecutor) execute(ctx consolectx.Context, keyword, mesh string,
 }
 
 func (e *ipSearchExecutor) buildResult(pagedResult *model.SearchPaginationResult, keyword string, pageSize, pageNumber int) map[string]any {
-	instances, totalCount := extractInstances(pagedResult)
+	instances, totalCount := extractGlobalInstances(pagedResult)
 	return map[string]any{
 		"keyword":    keyword,
 		"pageSize":   pageSize,
@@ -138,7 +95,7 @@ func (e *instanceNameSearchExecutor) execute(ctx consolectx.Context, keyword, me
 }
 
 func (e *instanceNameSearchExecutor) buildResult(pagedResult *model.SearchPaginationResult, keyword string, pageSize, pageNumber int) map[string]any {
-	instances, totalCount := extractInstances(pagedResult)
+	instances, totalCount := extractGlobalInstances(pagedResult)
 	return map[string]any{
 		"keyword":    keyword,
 		"pageSize":   pageSize,
@@ -152,18 +109,16 @@ func (e *instanceNameSearchExecutor) buildResult(pagedResult *model.SearchPagina
 type appNameSearchExecutor struct{}
 
 func (e *appNameSearchExecutor) execute(ctx consolectx.Context, keyword, mesh string, pageNumber, pageSize int) (*model.SearchPaginationResult, error) {
-	// 使用 SearchApplications 而不是 SearchApplicationsByKeywords
-	// SearchApplications 会正确处理空 keyword 的情况（返回所有应用的分页列表）
 	req := &model.ApplicationSearchReq{
 		Keywords: keyword,
 		Mesh:     mesh,
-		PageReq:  BuildPageReq(pageNumber, pageSize),
+		PageReq:  common.BuildPageReq(pageNumber, pageSize),
 	}
 	return service.SearchApplications(ctx, req)
 }
 
 func (e *appNameSearchExecutor) buildResult(pagedResult *model.SearchPaginationResult, keyword string, pageSize, pageNumber int) map[string]any {
-	apps := extractApplicationsFromResult(pagedResult)
+	apps := extractGlobalApplications(pagedResult)
 	return map[string]any{
 		"keyword":     keyword,
 		"pageSize":    pageSize,
@@ -181,9 +136,8 @@ func (e *serviceNameSearchExecutor) execute(ctx consolectx.Context, keyword, mes
 		ServiceName: "",
 		Keywords:    keyword,
 		Mesh:        mesh,
-		PageReq:     BuildPageReq(pageNumber, pageSize),
+		PageReq:     common.BuildPageReq(pageNumber, pageSize),
 	}
-	// 空关键字时调用 SearchServices 获取所有服务，否则精确匹配
 	if keyword == "" {
 		return service.SearchServices(ctx, req)
 	}
@@ -191,7 +145,7 @@ func (e *serviceNameSearchExecutor) execute(ctx consolectx.Context, keyword, mes
 }
 
 func (e *serviceNameSearchExecutor) buildResult(pagedResult *model.SearchPaginationResult, keyword string, pageSize, pageNumber int) map[string]any {
-	services, totalCount := extractServicesFromResult(pagedResult)
+	services, totalCount := extractGlobalServices(pagedResult)
 	return map[string]any{
 		"keyword":    keyword,
 		"pageSize":   pageSize,
@@ -206,12 +160,12 @@ func buildSearchReq(keyword, mesh string, pageNumber, pageSize int) *model.Searc
 	req := model.NewSearchReq()
 	req.Keywords = keyword
 	req.Mesh = mesh
-	req.PageReq = BuildPageReq(pageNumber, pageSize)
+	req.PageReq = common.BuildPageReq(pageNumber, pageSize)
 	return req
 }
 
-// extractInstances 从分页结果中提取实例列表
-func extractInstances(pagedResult *model.SearchPaginationResult) ([]any, int) {
+// extractGlobalInstances 从分页结果中提取实例列表
+func extractGlobalInstances(pagedResult *model.SearchPaginationResult) ([]any, int) {
 	if pagedResult == nil || pagedResult.List == nil {
 		return []any{}, 0
 	}
@@ -240,8 +194,8 @@ func extractInstances(pagedResult *model.SearchPaginationResult) ([]any, int) {
 	return result, int(pagedResult.PageInfo.Total)
 }
 
-// extractApplicationsFromResult 从分页结果中提取应用列表
-func extractApplicationsFromResult(pagedResult *model.SearchPaginationResult) []any {
+// extractGlobalApplications 从分页结果中提取应用列表
+func extractGlobalApplications(pagedResult *model.SearchPaginationResult) []any {
 	if pagedResult == nil || pagedResult.List == nil {
 		return []any{}
 	}
@@ -263,8 +217,8 @@ func extractApplicationsFromResult(pagedResult *model.SearchPaginationResult) []
 	return result
 }
 
-// extractServicesFromResult 从分页结果中提取服务列表
-func extractServicesFromResult(pagedResult *model.SearchPaginationResult) ([]any, int) {
+// extractGlobalServices 从分页结果中提取服务列表
+func extractGlobalServices(pagedResult *model.SearchPaginationResult) ([]any, int) {
 	if pagedResult == nil || pagedResult.List == nil {
 		return []any{}, 0
 	}
@@ -280,12 +234,8 @@ func extractServicesFromResult(pagedResult *model.SearchPaginationResult) ([]any
 			"serviceName":     svc.ServiceName,
 			"version":         svc.Version,
 			"group":           svc.Group,
-			"providerAppName": svc.ProviderAppName,
 			"consumerAppName": svc.ConsumerAppName,
 		})
 	}
 	return result, int(pagedResult.PageInfo.Total)
 }
-
-// Ensure ResourceSearchRegistrar implements ToolRegistrar
-var _ registry.ToolRegistrar = (*ResourceSearchRegistrar)(nil)

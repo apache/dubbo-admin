@@ -290,26 +290,34 @@ func ActFlow(g *genkit.Genkit, actPrompt ai.Prompt) agent.NormalFlow {
 				runtime.GetLogger().Info("Act Done.", "output", out, "error", err)
 			}()
 
-			// Beacause the input is in the history, so don't need to use, just check the type
-			input, ok := in.(ActIn)
-			if !ok {
-				return nil, fmt.Errorf("input is not of type ActIn, got %T", in)
+			// Try to get input from orchestrator or parse from history
+			var input ActIn
+			var hasInput bool
+			if inTyped, ok := in.(ActIn); ok {
+				input = inTyped
+				hasInput = true
 			}
-			if input.Intent == schema.GeneralInquiry || len(input.SuggestedTools) == 0 {
-				actOuts := ActOut{
-					Outputs: []toolEngine.ToolOutput{
-						{
-							ToolName: "no_need_tool_call",
-							Summary:  "no need tool call",
-							Result: map[string]any{
-								"reason": "general inquiry or no suggested tools",
+			// If no valid input from orchestrator, we'll skip the general inquiry check
+			// and let the LLM decide based on history
+			if !hasInput || (input.Intent == schema.GeneralInquiry || len(input.SuggestedTools) == 0) {
+				// Only skip if we actually have input and it indicates general inquiry
+				if hasInput && (input.Intent == schema.GeneralInquiry || len(input.SuggestedTools) == 0) {
+					actOuts := ActOut{
+						Outputs: []toolEngine.ToolOutput{
+							{
+								ToolName: "no_need_tool_call",
+								Summary:  "no need tool call",
+								Result: map[string]any{
+									"reason": "general inquiry or no suggested tools",
+								},
 							},
 						},
-					},
-					UsageInfo: &ai.GenerationUsage{},
+						UsageInfo: &ai.GenerationUsage{},
+					}
+					schema.AccumulateUsage(actOuts.UsageInfo, in.Usage())
+					return actOuts, nil
 				}
-				schema.AccumulateUsage(actOuts.UsageInfo, in.Usage())
-				return actOuts, nil
+				// If no valid input, continue to let LLM decide from history
 			}
 
 			history, ok := ctx.Value(memory.ChatHistoryKey).(*memory.HistoryMemory)
@@ -333,7 +341,7 @@ func ActFlow(g *genkit.Genkit, actPrompt ai.Prompt) agent.NormalFlow {
 			}
 
 			// If the model returns no tool requests while suggested_tools is non-empty, surface the real cause.
-			if len(toolReqs.ToolRequests()) == 0 && input.SuggestedTools != nil && len(input.SuggestedTools) > 0 {
+			if hasInput && len(toolReqs.ToolRequests()) == 0 && input.SuggestedTools != nil && len(input.SuggestedTools) > 0 {
 				return nil, fmt.Errorf("model returned no tool calls for suggested_tools=%v", input.SuggestedTools)
 			}
 			runtime.GetLogger().Info("tool requests:", "req", toolReqs.ToolRequests())

@@ -40,9 +40,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/console/router"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
-	mcpcore "github.com/apache/dubbo-admin/pkg/mcp/core"
-	mcphttp "github.com/apache/dubbo-admin/pkg/mcp/transport/http"
-	mcp_tools "github.com/apache/dubbo-admin/pkg/mcp/tools"
+	"github.com/apache/dubbo-admin/pkg/mcp"
 )
 
 func init() {
@@ -180,30 +178,22 @@ func (c *consoleWebServer) registerMCPEndpoints(coreRt runtime.Runtime, engine *
 
 	// 直接创建MCP服务器
 	consoleCtx := consolectx.NewConsoleContext(coreRt)
-	server := mcpcore.NewServer("dubbo-admin", "1.0.0")
+	server := mcp.NewServer("dubbo-admin", "1.0.0")
 	server.SetConsoleContext(consoleCtx)
 
 	// 注册所有工具
-	reg := server.GetRegistry()
-	reg.RegisterRegistrar(&mcp_tools.MetricsRegistrar{})
-	reg.RegisterRegistrar(&mcp_tools.ResourceSearchRegistrar{})
-	reg.RegisterRegistrar(&mcp_tools.ServiceRegistrar{})
-	reg.RegisterRegistrar(&mcp_tools.DetailRegistrar{})
-	reg.RegisterAll()
-
-	// 创建HTTP处理器
-	handler := mcphttp.NewHandler(server)
+	mcp.RegisterTools(server)
 
 	// 注册路由
 	engine.POST(path, func(ctx *gin.Context) {
-		handler.ServeHTTP(ctx.Writer, ctx.Request)
+		server.HandleHTTP(ctx)
 	})
 
 	authStatus := "no-auth"
 	if c.mcpAPIKey != "" {
 		authStatus = "with-auth"
 	}
-	logger.Sugar().Infof("MCP endpoint registered at %s with %d tools (%s)", path, len(reg.List()), authStatus)
+	logger.Sugar().Infof("MCP endpoint registered at %s (%s)", path, authStatus)
 }
 
 func (c *consoleWebServer) authMiddleware() gin.HandlerFunc {

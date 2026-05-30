@@ -15,41 +15,13 @@
  * limitations under the License.
  */
 
-package tools
+package common
 
 import (
 	"encoding/json"
 
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
-	"github.com/apache/dubbo-admin/pkg/mcp/core"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
-)
-
-const (
-	// DefaultPageSize 默认分页大小
-	DefaultPageSize = 10
-	// DefaultPageNumber 默认页码
-	DefaultPageNumber = 1
-	// MaxDistributionLimit 服务分布查询的最大数量
-	MaxDistributionLimit = 100
-)
-
-// SearchType 搜索类型枚举
-type SearchType string
-
-const (
-	SearchTypeIP           SearchType = "ip"
-	SearchTypeInstanceName SearchType = "instanceName"
-	SearchTypeAppName      SearchType = "appName"
-	SearchTypeName         SearchType = "serviceName"
-)
-
-// ServiceSide 服务端类型
-type ServiceSide string
-
-const (
-	ServiceSideProvider ServiceSide = "provider"
-	ServiceSideConsumer ServiceSide = "consumer"
 )
 
 // ArgsHelper 参数辅助器
@@ -122,17 +94,17 @@ func FormatJSON(data any) (string, error) {
 }
 
 // JsonResult 创建 JSON 结果
-func JsonResult(data any) (*core.ToolResult, error) {
+func JsonResult(data any) (*ToolResult, error) {
 	jsonData, err := FormatJSON(data)
 	if err != nil {
 		return nil, err
 	}
-	return core.NewTextResult(jsonData, false), nil
+	return NewTextResult(jsonData, false), nil
 }
 
 // ErrorResult 创建错误结果
-func ErrorResult(err error) *core.ToolResult {
-	return core.NewErrorResult(err)
+func ErrorResult(err error) *ToolResult {
+	return NewErrorResult(err)
 }
 
 // GetMeshArg 获取 mesh 参数，默认使用配置中的 discovery id 作为 mesh

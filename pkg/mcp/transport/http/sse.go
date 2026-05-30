@@ -24,12 +24,13 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/apache/dubbo-admin/pkg/mcp/core"
+	"github.com/apache/dubbo-admin/pkg/mcp"
+	"github.com/apache/dubbo-admin/pkg/mcp/common"
 )
 
 // SSETransport Server-Sent Events传输层
 type SSETransport struct {
-	server   *core.Server
+	server   *mcp.Server
 	clients  map[*SSEClient]bool
 	mu       sync.RWMutex
 	broadcast chan []byte
@@ -55,7 +56,7 @@ func NewSSEClient(id string) *SSEClient {
 }
 
 // NewSSETransport 创建SSE传输层
-func NewSSETransport(server *core.Server) *SSETransport {
+func NewSSETransport(server *mcp.Server) *SSETransport {
 	return &SSETransport{
 		server:   server,
 		clients:  make(map[*SSEClient]bool),
@@ -106,7 +107,7 @@ func (t *SSETransport) HandleRPCWithSSE(w http.ResponseWriter, r *http.Request) 
 
 	// 读取请求
 	decoder := json.NewDecoder(r.Body)
-	var req core.JSONRPCRequest
+	var req common.JSONRPCRequest
 	if err := decoder.Decode(&req); err != nil {
 		t.sendSSE(w, "error", err.Error())
 		return

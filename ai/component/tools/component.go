@@ -52,8 +52,11 @@ func (t *ToolsComponent) SetName(name string) {
 }
 
 func (t *ToolsComponent) Validate() error {
-	if t.config.EnableMCPTools && t.config.MCPHostName == "" {
-		return fmt.Errorf("mcp_host_name is required when mcp tools are enabled")
+	if t.config.EnableMCPTools && t.config.MCP.Host == "" {
+		return fmt.Errorf("mcp.host is required when mcp tools are enabled")
+	}
+	if t.config.MCP.Port <= 0 || t.config.MCP.Port > 65535 {
+		return fmt.Errorf("mcp.port must be between 1 and 65535")
 	}
 	if t.config.MCPTimeout <= 0 {
 		return fmt.Errorf("mcp_timeout must be greater than 0")
@@ -82,7 +85,7 @@ func (t *ToolsComponent) Init(rt *runtime.Runtime) error {
 	}
 
 	if t.config.EnableMCPTools {
-		mcpToolManager, err := engine.NewMCPToolManager(rt, t.config.MCPHostName)
+		mcpToolManager, err := engine.NewMCPToolManager(rt, t.config.MCP.Host, t.config.MCP.Port, t.config.MCP.APIKey, t.config.MCPMaxRetries)
 		if err != nil {
 			return fmt.Errorf("failed to create MCP tool manager: %w", err)
 		}
@@ -94,7 +97,7 @@ func (t *ToolsComponent) Init(rt *runtime.Runtime) error {
 	rt.GetLogger().Info("Tools component initialized",
 		"total_tools", len(t.toolRefs),
 		"total_managers", len(t.toolManagers),
-		"mcp_host", t.config.MCPHostName)
+		"mcp_endpoint", fmt.Sprintf("http://%s:%d/api/mcp", t.config.MCP.Host, t.config.MCP.Port))
 
 	return nil
 }
