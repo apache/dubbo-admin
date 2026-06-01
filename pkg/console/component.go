@@ -54,8 +54,8 @@ type consoleWebServer struct {
 	Engine    *gin.Engine
 	cfg       *console.Config
 	cs        consolectx.Context
-	mcpPath   string // MCP endpoint path used by auth middleware to skip authentication.
-	mcpAPIKey string // MCP API key used for authentication.
+	mcpPath   string // MCP端点路径，用于auth中间件跳过认证
+	mcpAPIKey string // MCP API密钥，用于认证
 }
 
 func (c *consoleWebServer) RequiredDependencies() []runtime.ComponentType {
