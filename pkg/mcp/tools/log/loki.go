@@ -77,6 +77,7 @@ func (c *lokiClient) search(ctx context.Context, req *SearchLogsReq) (*SearchLog
 		if err != nil {
 			return nil, err
 		}
+		// remove duplicates
 		for _, item := range logs {
 			key := dedupeKey(item)
 			if _, ok := seen[key]; ok {
@@ -136,6 +137,7 @@ func (c *lokiClient) queryRange(ctx context.Context, query string, start, end ti
 	return normalizeLokiLogs(lokiResp), nil
 }
 
+// e.g: endpoint: {endpoint}/loki/api/v1/query_range?query={app="order-service"}&start=1717200000000000000&end=1717203600000000000&limit=100&direction=backward
 func (c *lokiClient) queryRangeURL(logQL string, start, end time.Time, limit int) (string, error) {
 	baseURL, err := url.Parse(c.config.Endpoint)
 	if err != nil {
@@ -156,6 +158,7 @@ func (c *lokiClient) queryRangeURL(logQL string, start, end time.Time, limit int
 func buildLogQLQueries(req *SearchLogsReq) []string {
 	selectors := buildStreamSelectors(req)
 	queries := make([]string, 0, len(selectors))
+	// add keywords filter
 	for _, selector := range selectors {
 		query := selector
 		if req.Keywords != "" {
@@ -187,6 +190,7 @@ func buildStreamSelectors(req *SearchLogsReq) []string {
 		return []string{`{job=~".+"}`}
 	}
 
+	// Cartesian product
 	selectors := []string{""}
 	for _, group := range labelGroups {
 		next := make([]string, 0, len(selectors)*len(group))
@@ -287,6 +291,7 @@ func normalizeLokiTimestamp(value string) string {
 	return time.Unix(0, ns).UTC().Format(time.RFC3339Nano)
 }
 
+// firstLabel returns the first label value that matches any of the keys, or an empty string if none matches
 func firstLabel(labels map[string]string, keys ...string) string {
 	for _, key := range keys {
 		if value := labels[key]; value != "" {
@@ -296,6 +301,7 @@ func firstLabel(labels map[string]string, keys ...string) string {
 	return ""
 }
 
+// extraLabels returns all labels except the ones used to filter the logs
 func extraLabels(labels map[string]string) map[string]string {
 	attrs := make(map[string]string)
 	for key, value := range labels {

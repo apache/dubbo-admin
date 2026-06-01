@@ -35,7 +35,7 @@ func (r *LogRegistrar) RegisterTools(reg *registry.Registry) {
 	properties := logSearchProperties()
 	reg.Register(types.ToolDef{
 		Name:        "search_logs",
-		Description: "查询 Dubbo 服务日志，支持按应用、服务、实例、TraceID 和关键字过滤",
+		Description: "查询 Dubbo 服务日志，支持按应用、服务、实例 和关键字过滤，暂不支持TraceID",
 		InputSchema: types.InputSchema{
 			Type:       "object",
 			Properties: properties,
