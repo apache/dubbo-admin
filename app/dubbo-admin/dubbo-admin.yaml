@@ -32,6 +32,17 @@ observability:
   grafana: http://101.34.253.152:30300
   # [Optional] config for prometheus.
   prometheus: http://101.34.253.152:30900/
+  # [Optional] config for log providers used by MCP log tools.
+  # defaultProvider must match one provider name in providers.
+  # Currently only Loki is supported. endpoint should be the Loki HTTP API root.
+  # tenant is optional and will be sent as X-Scope-OrgID for multi-tenant Loki.
+  # logs:
+  #   defaultProvider: loki-main
+  #   providers:
+  #     - name: loki-main
+  #       type: loki
+  #       endpoint: http://localhost:3100
+  #       tenant: ""
 
 # [Optional] config for console.
 console:
