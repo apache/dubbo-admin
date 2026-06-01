@@ -41,8 +41,9 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	mcpcore "github.com/apache/dubbo-admin/pkg/mcp/core"
-	mcphttp "github.com/apache/dubbo-admin/pkg/mcp/transport/http"
 	mcp_tools "github.com/apache/dubbo-admin/pkg/mcp/tools"
+	mcp_log_tools "github.com/apache/dubbo-admin/pkg/mcp/tools/log"
+	mcphttp "github.com/apache/dubbo-admin/pkg/mcp/transport/http"
 )
 
 func init() {
@@ -50,11 +51,11 @@ func init() {
 }
 
 type consoleWebServer struct {
-	Engine   *gin.Engine
-	cfg      *console.Config
-	cs       consolectx.Context
-	mcpPath  string // MCP端点路径，用于auth中间件跳过认证
-	mcpAPIKey string // MCP API密钥，用于认证
+	Engine    *gin.Engine
+	cfg       *console.Config
+	cs        consolectx.Context
+	mcpPath   string // MCP endpoint path used by auth middleware to skip authentication.
+	mcpAPIKey string // MCP API key used for authentication.
 }
 
 func (c *consoleWebServer) RequiredDependencies() []runtime.ComponentType {
@@ -189,6 +190,7 @@ func (c *consoleWebServer) registerMCPEndpoints(coreRt runtime.Runtime, engine *
 	reg.RegisterRegistrar(&mcp_tools.ResourceSearchRegistrar{})
 	reg.RegisterRegistrar(&mcp_tools.ServiceRegistrar{})
 	reg.RegisterRegistrar(&mcp_tools.DetailRegistrar{})
+	reg.RegisterRegistrar(&mcp_log_tools.LogRegistrar{})
 	reg.RegisterAll()
 
 	// 创建HTTP处理器

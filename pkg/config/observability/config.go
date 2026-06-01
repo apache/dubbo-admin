@@ -33,6 +33,8 @@ type Config struct {
 	Grafana string `json:"grafana" yaml:"grafana"`
 	// Prometheus is the url of prometheus
 	Prometheus string `json:"prometheus" yaml:"prometheus"`
+	// Logs configures the log query provider.
+	Logs *LogsConfig `json:"logs,omitempty" yaml:"logs,omitempty"`
 
 	GrafanaBaseURL    *url.URL `json:"-" yaml:"-"`
 	PrometheusBaseURL *url.URL `json:"-" yaml:"-"`
@@ -54,6 +56,11 @@ func (c *Config) Validate() error {
 				fmt.Sprintf("invalid grafana url: %s", c.Grafana))
 		}
 		c.GrafanaBaseURL = grafanaBaseURL
+	}
+	if c.Logs != nil {
+		if err := c.Logs.Validate(); err != nil {
+			return err
+		}
 	}
 	return nil
 }

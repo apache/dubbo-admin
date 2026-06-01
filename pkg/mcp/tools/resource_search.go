@@ -21,8 +21,8 @@ import (
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/console/model"
 	"github.com/apache/dubbo-admin/pkg/console/service"
-	"github.com/apache/dubbo-admin/pkg/mcp/types"
 	"github.com/apache/dubbo-admin/pkg/mcp/registry"
+	"github.com/apache/dubbo-admin/pkg/mcp/types"
 )
 
 // ResourceSearchRegistrar 搜索工具注册器
@@ -165,11 +165,11 @@ func (e *appNameSearchExecutor) execute(ctx consolectx.Context, keyword, mesh st
 func (e *appNameSearchExecutor) buildResult(pagedResult *model.SearchPaginationResult, keyword string, pageSize, pageNumber int) map[string]any {
 	apps := extractApplicationsFromResult(pagedResult)
 	return map[string]any{
-		"keyword":     keyword,
-		"pageSize":    pageSize,
-		"pageNumber":  pageNumber,
+		"keyword":      keyword,
+		"pageSize":     pageSize,
+		"pageNumber":   pageNumber,
 		"applications": apps,
-		"totalCount":  len(apps),
+		"totalCount":   len(apps),
 	}
 }
 
@@ -280,7 +280,6 @@ func extractServicesFromResult(pagedResult *model.SearchPaginationResult) ([]any
 			"serviceName":     svc.ServiceName,
 			"version":         svc.Version,
 			"group":           svc.Group,
-			"providerAppName": svc.ProviderAppName,
 			"consumerAppName": svc.ConsumerAppName,
 		})
 	}
