@@ -28,13 +28,44 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	observabilitycfg "github.com/apache/dubbo-admin/pkg/config/observability"
 )
 
-const defaultQueryWindow = time.Hour
+const (
+	defaultQueryWindow = time.Hour
+	labelCacheTTL      = 5 * time.Minute
+)
+
+var fallbackSelectorPriority = []string{
+	"namespace",
+	"job",
+	"app",
+	"appName",
+	"service_name",
+	"serviceName",
+	"service",
+	"pod",
+	"container",
+	"instance",
+	"instanceName",
+	"level",
+}
+
+var lokiLabelsCache = struct {
+	sync.Mutex
+	items map[string]cachedLokiLabels
+}{
+	items: map[string]cachedLokiLabels{},
+}
+
+type cachedLokiLabels struct {
+	labels    map[string]struct{}
+	expiresAt time.Time
+}
 
 type lokiClient struct {
 	config observabilitycfg.LogProviderConfig
@@ -47,6 +78,12 @@ type lokiQueryRangeResp struct {
 		Result []lokiStream `json:"result"`
 	} `json:"data"`
 	Error string `json:"error,omitempty"`
+}
+
+type lokiLabelsResp struct {
+	Status string   `json:"status"`
+	Data   []string `json:"data"`
+	Error  string   `json:"error,omitempty"`
 }
 
 type lokiStream struct {
@@ -70,7 +107,8 @@ func (c *lokiClient) search(ctx context.Context, req *SearchLogsReq) (*SearchLog
 		return nil, err
 	}
 
-	queries := buildLogQLQueries(req)
+	labelNames, _ := c.labelNames(ctx, start, end)
+	queries := buildLogQLQueriesWithLabels(req, labelNames)
 	merged := &SearchLogsResp{SourceEngine: "loki", Logs: make([]LogItem, 0, req.Limit)}
 	seen := map[string]struct{}{}
 	for _, query := range queries {
@@ -99,6 +137,41 @@ func (c *lokiClient) search(ctx context.Context, req *SearchLogsReq) (*SearchLog
 		return merged.Logs[i].Timestamp > merged.Logs[j].Timestamp
 	})
 	return merged, nil
+}
+
+func (c *lokiClient) capabilities(ctx context.Context, req *LogCapabilitiesReq) (*LogCapabilitiesResp, error) {
+	start, end, err := resolveTimeRange(req.StartTime, req.EndTime)
+	if err != nil {
+		return nil, err
+	}
+	labelNames, err := c.labelNames(ctx, start, end)
+	if err != nil {
+		return nil, err
+	}
+
+	return &LogCapabilitiesResp{
+		AvailableLabels: supportedLabels(labelNames),
+		SupportedFilters: []string{
+			"mesh",
+			"appName",
+			"serviceName",
+			"instanceName",
+			"traceId",
+			"keywords",
+			"startTime",
+			"endTime",
+			"limit",
+		},
+		LabelFilters: map[string][]string{
+			"mesh":         matchingLabels([]string{"mesh"}, labelNames),
+			"appName":      matchingLabels([]string{"app", "appName"}, labelNames),
+			"serviceName":  matchingLabels([]string{"service", "serviceName", "service_name"}, labelNames),
+			"instanceName": matchingLabels([]string{"instance", "instanceName", "pod"}, labelNames),
+		},
+		ContentFilters: []string{"traceId", "keywords"},
+		FallbackLabel:  fallbackSelectorLabel(labelNames),
+		SourceEngine:   "loki",
+	}, nil
 }
 
 func (c *lokiClient) queryRange(ctx context.Context, query string, start, end time.Time, limit int) ([]LogItem, error) {
@@ -138,6 +211,80 @@ func (c *lokiClient) queryRange(ctx context.Context, query string, start, end ti
 	return normalizeLokiLogs(lokiResp), nil
 }
 
+func (c *lokiClient) labelNames(ctx context.Context, start, end time.Time) (map[string]struct{}, error) {
+	cacheKey := c.labelCacheKey()
+	now := time.Now()
+	lokiLabelsCache.Lock()
+	if cached, ok := lokiLabelsCache.items[cacheKey]; ok && now.Before(cached.expiresAt) {
+		labels := cloneLabelSet(cached.labels)
+		lokiLabelsCache.Unlock()
+		return labels, nil
+	}
+	lokiLabelsCache.Unlock()
+
+	labelsURL, err := c.labelsURL(start, end)
+	if err != nil {
+		return nil, err
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, labelsURL, nil)
+	if err != nil {
+		return nil, bizerror.Wrap(err, bizerror.InternalError, "failed to create loki labels request")
+	}
+	if c.config.Tenant != "" {
+		httpReq.Header.Set("X-Scope-OrgID", c.config.Tenant)
+	}
+
+	httpResp, err := c.client.Do(httpReq)
+	if err != nil {
+		return nil, bizerror.Wrap(err, bizerror.NetWorkError, "failed to query loki labels")
+	}
+	defer httpResp.Body.Close()
+	if httpResp.StatusCode < http.StatusOK || httpResp.StatusCode >= http.StatusMultipleChoices {
+		body, _ := io.ReadAll(io.LimitReader(httpResp.Body, 4096))
+		return nil, bizerror.New(bizerror.NetWorkError,
+			fmt.Sprintf("loki labels query failed with status %d: %s", httpResp.StatusCode, strings.TrimSpace(string(body))))
+	}
+
+	var labelsResp lokiLabelsResp
+	if err := json.NewDecoder(httpResp.Body).Decode(&labelsResp); err != nil {
+		return nil, bizerror.Wrap(err, bizerror.JsonError, "failed to decode loki labels response")
+	}
+	if labelsResp.Status != "success" {
+		if labelsResp.Error != "" {
+			return nil, bizerror.New(bizerror.NetWorkError, fmt.Sprintf("loki labels query failed: %s", labelsResp.Error))
+		}
+		return nil, bizerror.New(bizerror.NetWorkError, fmt.Sprintf("loki labels query returned status %q", labelsResp.Status))
+	}
+
+	labels := make(map[string]struct{}, len(labelsResp.Data))
+	for _, label := range labelsResp.Data {
+		labels[label] = struct{}{}
+	}
+
+	lokiLabelsCache.Lock()
+	lokiLabelsCache.items[cacheKey] = cachedLokiLabels{
+		labels:    cloneLabelSet(labels),
+		expiresAt: now.Add(labelCacheTTL),
+	}
+	lokiLabelsCache.Unlock()
+	return labels, nil
+}
+
+func (c *lokiClient) labelCacheKey() string {
+	return c.config.Endpoint + "|" + c.config.Tenant
+}
+
+func cloneLabelSet(labels map[string]struct{}) map[string]struct{} {
+	if labels == nil {
+		return nil
+	}
+	cloned := make(map[string]struct{}, len(labels))
+	for label := range labels {
+		cloned[label] = struct{}{}
+	}
+	return cloned
+}
+
 // e.g: endpoint: {endpoint}/loki/api/v1/query_range?query={app="order-service"}&start=1717200000000000000&end=1717203600000000000&limit=100&direction=backward
 func (c *lokiClient) queryRangeURL(logQL string, start, end time.Time, limit int) (string, error) {
 	baseURL, err := url.Parse(c.config.Endpoint)
@@ -156,8 +303,26 @@ func (c *lokiClient) queryRangeURL(logQL string, start, end time.Time, limit int
 	return baseURL.String(), nil
 }
 
+func (c *lokiClient) labelsURL(start, end time.Time) (string, error) {
+	baseURL, err := url.Parse(c.config.Endpoint)
+	if err != nil {
+		return "", bizerror.Wrap(err, bizerror.ConfigError, "invalid loki endpoint")
+	}
+	baseURL.Path = strings.TrimRight(baseURL.Path, "/") + "/loki/api/v1/labels"
+
+	query := baseURL.Query()
+	query.Set("start", strconv.FormatInt(start.UnixNano(), 10))
+	query.Set("end", strconv.FormatInt(end.UnixNano(), 10))
+	baseURL.RawQuery = query.Encode()
+	return baseURL.String(), nil
+}
+
 func buildLogQLQueries(req *SearchLogsReq) []string {
-	selectors := buildStreamSelectors(req)
+	return buildLogQLQueriesWithLabels(req, nil)
+}
+
+func buildLogQLQueriesWithLabels(req *SearchLogsReq, labelNames map[string]struct{}) []string {
+	selectors := buildStreamSelectorsWithLabels(req, labelNames)
 	queries := make([]string, 0, len(selectors))
 	for _, selector := range selectors {
 		query := selector
@@ -173,21 +338,25 @@ func buildLogQLQueries(req *SearchLogsReq) []string {
 }
 
 func buildStreamSelectors(req *SearchLogsReq) []string {
+	return buildStreamSelectorsWithLabels(req, nil)
+}
+
+func buildStreamSelectorsWithLabels(req *SearchLogsReq, labelNames map[string]struct{}) []string {
 	labelGroups := make([][]string, 0, 4)
 	if req.Mesh != "" {
-		labelGroups = append(labelGroups, []string{labelMatcher("mesh", req.Mesh)})
+		labelGroups = append(labelGroups, labelMatchersWithLabels([]string{"mesh"}, req.Mesh, labelNames))
 	}
 	if req.AppName != "" {
-		labelGroups = append(labelGroups, labelMatchers([]string{"app", "appName"}, req.AppName))
+		labelGroups = append(labelGroups, labelMatchersWithLabels([]string{"app", "appName"}, req.AppName, labelNames))
 	}
 	if req.ServiceName != "" {
-		labelGroups = append(labelGroups, labelMatchers([]string{"service", "serviceName", "service_name"}, req.ServiceName))
+		labelGroups = append(labelGroups, labelMatchersWithLabels([]string{"service", "serviceName", "service_name"}, req.ServiceName, labelNames))
 	}
 	if req.InstanceName != "" {
-		labelGroups = append(labelGroups, labelMatchers([]string{"instance", "instanceName", "pod"}, req.InstanceName))
+		labelGroups = append(labelGroups, labelMatchersWithLabels([]string{"instance", "instanceName", "pod"}, req.InstanceName, labelNames))
 	}
 	if len(labelGroups) == 0 {
-		return []string{`{job=~".+"}`}
+		return []string{fmt.Sprintf("{%s=~%s}", fallbackSelectorLabel(labelNames), strconv.Quote(".+"))}
 	}
 
 	// Cartesian product
@@ -214,11 +383,63 @@ func buildStreamSelectors(req *SearchLogsReq) []string {
 }
 
 func labelMatchers(names []string, value string) []string {
+	return labelMatchersWithLabels(names, value, nil)
+}
+
+func labelMatchersWithLabels(names []string, value string, labelNames map[string]struct{}) []string {
+	selected := selectExistingLabels(names, labelNames)
 	matchers := make([]string, 0, len(names))
-	for _, name := range names {
+	for _, name := range selected {
 		matchers = append(matchers, labelMatcher(name, value))
 	}
 	return matchers
+}
+
+func selectExistingLabels(names []string, labelNames map[string]struct{}) []string {
+	if len(labelNames) == 0 {
+		return names
+	}
+	selected := make([]string, 0, len(names))
+	for _, name := range names {
+		if _, ok := labelNames[name]; ok {
+			selected = append(selected, name)
+		}
+	}
+	if len(selected) == 0 {
+		return names
+	}
+	return selected
+}
+
+func matchingLabels(names []string, labelNames map[string]struct{}) []string {
+	selected := make([]string, 0, len(names))
+	for _, name := range names {
+		if _, ok := labelNames[name]; ok {
+			selected = append(selected, name)
+		}
+	}
+	return selected
+}
+
+func fallbackSelectorLabel(labelNames map[string]struct{}) string {
+	if len(labelNames) == 0 {
+		return "namespace"
+	}
+	for _, label := range fallbackSelectorPriority {
+		if _, ok := labelNames[label]; ok {
+			return label
+		}
+	}
+	return "namespace"
+}
+
+func supportedLabels(labelNames map[string]struct{}) []string {
+	labels := make([]string, 0, len(labelNames))
+	for label := range labelNames {
+		labels = append(labels, label)
+	}
+	sort.Strings(labels)
+	return labels
 }
 
 func labelMatcher(name, value string) string {

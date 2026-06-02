@@ -52,6 +52,16 @@ func (r *LogRegistrar) RegisterTools(reg *registry.Registry) {
 		},
 		Handler: AnalyzeErrorLogs,
 	})
+
+	reg.Register(types.ToolDef{
+		Name:        "get_log_capabilities",
+		Description: "获取日志查询能力，返回 Loki 当前可用 labels 以及查询参数到 labels 的映射",
+		InputSchema: types.InputSchema{
+			Type:       "object",
+			Properties: logCapabilitiesProperties(),
+		},
+		Handler: GetLogCapabilities,
+	})
 }
 
 func SearchLogs(ctx consolectx.Context, args map[string]any) (*types.ToolResult, error) {
@@ -80,6 +90,18 @@ func AnalyzeErrorLogs(ctx consolectx.Context, args map[string]any) (*types.ToolR
 		return basetools.ErrorResult(err), nil
 	}
 	return basetools.JsonResult(analyzeErrors(searchResp.Logs, searchResp.SourceEngine))
+}
+
+func GetLogCapabilities(ctx consolectx.Context, args map[string]any) (*types.ToolResult, error) {
+	client, err := lokiClientFromContext(ctx)
+	if err != nil {
+		return basetools.ErrorResult(err), nil
+	}
+	resp, err := client.capabilities(requestContext(ctx), buildLogCapabilitiesReq(args))
+	if err != nil {
+		return basetools.ErrorResult(err), nil
+	}
+	return basetools.JsonResult(resp)
 }
 
 func lokiClientFromContext(ctx consolectx.Context) (*lokiClient, error) {
@@ -112,6 +134,14 @@ func buildSearchLogsReq(args map[string]any) *SearchLogsReq {
 		StartTime:    helper.GetString("startTime", ""),
 		EndTime:      helper.GetString("endTime", ""),
 		Limit:        helper.GetInt("limit", defaultLogLimit),
+	}
+}
+
+func buildLogCapabilitiesReq(args map[string]any) *LogCapabilitiesReq {
+	helper := basetools.NewArgsHelper(args)
+	return &LogCapabilitiesReq{
+		StartTime: helper.GetString("startTime", ""),
+		EndTime:   helper.GetString("endTime", ""),
 	}
 }
 
@@ -153,6 +183,19 @@ func logSearchProperties() map[string]types.PropertyDef {
 			Type:        "integer",
 			Description: "返回日志条数上限",
 			Default:     defaultLogLimit,
+		},
+	}
+}
+
+func logCapabilitiesProperties() map[string]types.PropertyDef {
+	return map[string]types.PropertyDef{
+		"startTime": {
+			Type:        "string",
+			Description: "开始时间，支持 RFC3339/RFC3339Nano 或 Unix 纳秒",
+		},
+		"endTime": {
+			Type:        "string",
+			Description: "结束时间，支持 RFC3339/RFC3339Nano 或 Unix 纳秒",
 		},
 	}
 }

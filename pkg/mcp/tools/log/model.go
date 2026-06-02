@@ -52,6 +52,20 @@ type AnalyzeErrorLogsReq struct {
 	SearchLogsReq
 }
 
+type LogCapabilitiesReq struct {
+	StartTime string `json:"startTime,omitempty"`
+	EndTime   string `json:"endTime,omitempty"`
+}
+
+type LogCapabilitiesResp struct {
+	AvailableLabels  []string            `json:"availableLabels"`
+	SupportedFilters []string            `json:"supportedFilters"`
+	LabelFilters     map[string][]string `json:"labelFilters"`
+	ContentFilters   []string            `json:"contentFilters"`
+	FallbackLabel    string              `json:"fallbackLabel"`
+	SourceEngine     string              `json:"sourceEngine"`
+}
+
 type ErrorPattern struct {
 	Pattern   string    `json:"pattern"`
 	Count     int       `json:"count"`

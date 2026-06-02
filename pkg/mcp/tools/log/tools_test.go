@@ -37,10 +37,10 @@ func TestLogRegistrarRegistersExpectedTools(t *testing.T) {
 	reg := registry.NewRegistry()
 	(&LogRegistrar{}).RegisterTools(reg)
 
-	if got := reg.Count(); got != 2 {
-		t.Fatalf("expected 2 log tools, got %d", got)
+	if got := reg.Count(); got != 3 {
+		t.Fatalf("expected 3 log tools, got %d", got)
 	}
-	for _, name := range []string{"search_logs", "analyze_error_logs"} {
+	for _, name := range []string{"search_logs", "analyze_error_logs", "get_log_capabilities"} {
 		tool, ok := reg.Get(name)
 		if !ok {
 			t.Fatalf("tool %s was not registered", name)
@@ -48,6 +48,60 @@ func TestLogRegistrarRegistersExpectedTools(t *testing.T) {
 		if tool.Handler == nil {
 			t.Fatalf("tool %s handler is nil", name)
 		}
+	}
+}
+
+func TestGetLogCapabilitiesReturnsAvailableLabelsAndResolvedFilters(t *testing.T) {
+	loki := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/loki/api/v1/labels" {
+			t.Fatalf("unexpected loki path: %s", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":"success","data":["pod","namespace","service_name","mesh"]}`))
+	}))
+	defer loki.Close()
+
+	result, err := GetLogCapabilities(newLogToolTestContext(loki.URL), map[string]any{
+		"startTime": "2026-04-01T00:00:00Z",
+		"endTime":   "2026-04-01T01:00:00Z",
+	})
+	if err != nil {
+		t.Fatalf("GetLogCapabilities returned unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("GetLogCapabilities returned error result: %s", result.Content[0].Text)
+	}
+
+	var payload LogCapabilitiesResp
+	if err := json.Unmarshal([]byte(result.Content[0].Text), &payload); err != nil {
+		t.Fatalf("failed to decode tool result: %v", err)
+	}
+	expectedLabels := []string{"mesh", "namespace", "pod", "service_name"}
+	if len(payload.AvailableLabels) != len(expectedLabels) {
+		t.Fatalf("expected labels %v, got %v", expectedLabels, payload.AvailableLabels)
+	}
+	for i := range expectedLabels {
+		if payload.AvailableLabels[i] != expectedLabels[i] {
+			t.Fatalf("label[%d] expected %q, got %q", i, expectedLabels[i], payload.AvailableLabels[i])
+		}
+	}
+	if payload.FallbackLabel != "namespace" {
+		t.Fatalf("expected fallbackLabel namespace, got %q", payload.FallbackLabel)
+	}
+	if got := payload.LabelFilters["serviceName"]; len(got) != 1 || got[0] != "service_name" {
+		t.Fatalf("expected serviceName to resolve to service_name, got %v", got)
+	}
+	if got := payload.LabelFilters["instanceName"]; len(got) != 1 || got[0] != "pod" {
+		t.Fatalf("expected instanceName to resolve to pod, got %v", got)
+	}
+	if got := payload.LabelFilters["appName"]; len(got) != 0 {
+		t.Fatalf("expected appName to have no available labels, got %v", got)
+	}
+	if len(payload.ContentFilters) != 2 || payload.ContentFilters[0] != "traceId" || payload.ContentFilters[1] != "keywords" {
+		t.Fatalf("unexpected content filters: %v", payload.ContentFilters)
+	}
+	if payload.SourceEngine != "loki" {
+		t.Fatalf("expected sourceEngine loki, got %q", payload.SourceEngine)
 	}
 }
 
@@ -83,6 +137,24 @@ func TestBuildLogQLQueriesFiltersTraceIDFromLogContent(t *testing.T) {
 		`{service="org.apache.DemoService"} |= "ERROR" |= "trace-1"`,
 		`{serviceName="org.apache.DemoService"} |= "ERROR" |= "trace-1"`,
 		`{service_name="org.apache.DemoService"} |= "ERROR" |= "trace-1"`,
+	}
+	if len(queries) != len(expected) {
+		t.Fatalf("expected %d queries, got %d: %v", len(expected), len(queries), queries)
+	}
+	for i := range expected {
+		if queries[i] != expected[i] {
+			t.Fatalf("query[%d] expected %q, got %q", i, expected[i], queries[i])
+		}
+	}
+}
+
+func TestBuildLogQLQueriesUsesNamespaceSelectorWhenOnlyTraceIDIsProvided(t *testing.T) {
+	queries := buildLogQLQueries(&SearchLogsReq{
+		TraceID: "trace-1",
+	})
+
+	expected := []string{
+		`{namespace=~".+"} |= "trace-1"`,
 	}
 	if len(queries) != len(expected) {
 		t.Fatalf("expected %d queries, got %d: %v", len(expected), len(queries), queries)
@@ -163,27 +235,31 @@ func TestNormalizeLokiLogsParsesDubboGoJSONLog(t *testing.T) {
 func TestSearchLogsQueriesLoki(t *testing.T) {
 	var seenQueries []string
 	loki := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/loki/api/v1/query_range" {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/loki/api/v1/labels":
+			http.Error(w, "labels unavailable", http.StatusInternalServerError)
+		case "/loki/api/v1/query_range":
+			seenQueries = append(seenQueries, r.URL.Query().Get("query"))
+			_, _ = w.Write([]byte(`{
+				"status": "success",
+				"data": {
+					"resultType": "streams",
+					"result": [{
+						"stream": {
+							"app": "demo-provider",
+							"service_name": "org.apache.DemoService",
+							"instance": "127.0.0.1:20880",
+							"level": "ERROR",
+							"namespace": "dubbo-system"
+						},
+						"values": [["1777110661783444000", "ERROR trace_id=trace-1 span_id=span-1 test log"]]
+					}]
+				}
+			}`))
+		default:
 			t.Fatalf("unexpected loki path: %s", r.URL.Path)
 		}
-		seenQueries = append(seenQueries, r.URL.Query().Get("query"))
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{
-			"status": "success",
-			"data": {
-				"resultType": "streams",
-				"result": [{
-					"stream": {
-						"app": "demo-provider",
-						"service_name": "org.apache.DemoService",
-						"instance": "127.0.0.1:20880",
-						"level": "ERROR",
-						"namespace": "dubbo-system"
-					},
-					"values": [["1777110661783444000", "ERROR trace_id=trace-1 span_id=span-1 test log"]]
-				}]
-			}
-		}`))
 	}))
 	defer loki.Close()
 
@@ -214,6 +290,96 @@ func TestSearchLogsQueriesLoki(t *testing.T) {
 	}
 	if len(seenQueries) != 3 {
 		t.Fatalf("expected three service label alias queries, got %d: %v", len(seenQueries), seenQueries)
+	}
+}
+
+func TestSearchLogsUsesLokiLabelsToReduceAliasQueries(t *testing.T) {
+	var seenQueries []string
+	labelsRequested := false
+	loki := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/loki/api/v1/labels":
+			labelsRequested = true
+			_, _ = w.Write([]byte(`{"status":"success","data":["namespace","service_name","pod"]}`))
+		case "/loki/api/v1/query_range":
+			seenQueries = append(seenQueries, r.URL.Query().Get("query"))
+			_, _ = w.Write([]byte(`{
+				"status": "success",
+				"data": {
+					"result": [{
+						"stream": {"service_name": "org.apache.DemoService", "namespace": "dubbo-system"},
+						"values": [["1777110661783444000", "ERROR trace_id=trace-1 test log"]]
+					}]
+				}
+			}`))
+		default:
+			t.Fatalf("unexpected loki path: %s", r.URL.Path)
+		}
+	}))
+	defer loki.Close()
+
+	result, err := SearchLogs(newLogToolTestContext(loki.URL), map[string]any{
+		"serviceName": "org.apache.DemoService",
+		"keywords":    "ERROR",
+		"startTime":   "2026-04-01T00:00:00Z",
+		"endTime":     "2026-04-01T01:00:00Z",
+	})
+	if err != nil {
+		t.Fatalf("SearchLogs returned unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("SearchLogs returned error result: %s", result.Content[0].Text)
+	}
+	if !labelsRequested {
+		t.Fatal("expected labels endpoint to be requested")
+	}
+	expected := []string{`{service_name="org.apache.DemoService"} |= "ERROR"`}
+	if len(seenQueries) != len(expected) {
+		t.Fatalf("expected %d queries, got %d: %v", len(expected), len(seenQueries), seenQueries)
+	}
+	for i := range expected {
+		if seenQueries[i] != expected[i] {
+			t.Fatalf("query[%d] expected %q, got %q", i, expected[i], seenQueries[i])
+		}
+	}
+}
+
+func TestSearchLogsUsesAvailableFallbackLabelWhenOnlyTraceIDIsProvided(t *testing.T) {
+	var seenQueries []string
+	loki := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/loki/api/v1/labels":
+			_, _ = w.Write([]byte(`{"status":"success","data":["pod","job"]}`))
+		case "/loki/api/v1/query_range":
+			seenQueries = append(seenQueries, r.URL.Query().Get("query"))
+			_, _ = w.Write([]byte(`{"status":"success","data":{"result":[]}}`))
+		default:
+			t.Fatalf("unexpected loki path: %s", r.URL.Path)
+		}
+	}))
+	defer loki.Close()
+
+	result, err := SearchLogs(newLogToolTestContext(loki.URL), map[string]any{
+		"traceId":   "trace-1",
+		"startTime": "2026-04-01T00:00:00Z",
+		"endTime":   "2026-04-01T01:00:00Z",
+	})
+	if err != nil {
+		t.Fatalf("SearchLogs returned unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("SearchLogs returned error result: %s", result.Content[0].Text)
+	}
+	expected := []string{`{job=~".+"} |= "trace-1"`}
+	if len(seenQueries) != len(expected) {
+		t.Fatalf("expected %d queries, got %d: %v", len(expected), len(seenQueries), seenQueries)
+	}
+	for i := range expected {
+		if seenQueries[i] != expected[i] {
+			t.Fatalf("query[%d] expected %q, got %q", i, expected[i], seenQueries[i])
+		}
 	}
 }
 
