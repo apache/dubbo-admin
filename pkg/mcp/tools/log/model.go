@@ -38,6 +38,7 @@ type LogItem struct {
 	Message      string            `json:"message"`
 	TraceID      string            `json:"traceId,omitempty"`
 	SpanID       string            `json:"spanId,omitempty"`
+	TraceFlags   string            `json:"traceFlags,omitempty"`
 	Attributes   map[string]string `json:"attributes,omitempty"`
 	Raw          string            `json:"raw,omitempty"`
 }

@@ -24,6 +24,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -158,11 +159,13 @@ func (c *lokiClient) queryRangeURL(logQL string, start, end time.Time, limit int
 func buildLogQLQueries(req *SearchLogsReq) []string {
 	selectors := buildStreamSelectors(req)
 	queries := make([]string, 0, len(selectors))
-	// add keywords filter
 	for _, selector := range selectors {
 		query := selector
 		if req.Keywords != "" {
 			query += " |= " + strconv.Quote(req.Keywords)
+		}
+		if req.TraceID != "" {
+			query += " |= " + strconv.Quote(req.TraceID)
 		}
 		queries = append(queries, query)
 	}
@@ -182,9 +185,6 @@ func buildStreamSelectors(req *SearchLogsReq) []string {
 	}
 	if req.InstanceName != "" {
 		labelGroups = append(labelGroups, labelMatchers([]string{"instance", "instanceName", "pod"}, req.InstanceName))
-	}
-	if req.TraceID != "" {
-		labelGroups = append(labelGroups, labelMatchers([]string{"trace_id", "traceId", "traceid"}, req.TraceID))
 	}
 	if len(labelGroups) == 0 {
 		return []string{`{job=~".+"}`}
@@ -266,21 +266,36 @@ func normalizeLokiLogs(resp lokiQueryRangeResp) []LogItem {
 			if len(value) < 2 {
 				continue
 			}
+			raw := value[1]
+			message := extractLogField(raw, "msg", "message")
+			if message == "" {
+				message = raw
+			}
 			logs = append(logs, LogItem{
-				Timestamp:    normalizeLokiTimestamp(value[0]),
+				Timestamp:    normalizeLogTimestamp(value[0], extractLogField(raw, "time", "timestamp")),
 				AppName:      firstLabel(stream.Stream, "app", "appName"),
 				ServiceName:  firstLabel(stream.Stream, "service", "serviceName", "service_name"),
 				InstanceName: firstLabel(stream.Stream, "instance", "instanceName", "pod"),
-				Severity:     firstLabel(stream.Stream, "level", "severity", "detected_level"),
-				Message:      value[1],
-				TraceID:      firstLabel(stream.Stream, "trace_id", "traceId", "traceid"),
-				SpanID:       firstLabel(stream.Stream, "span_id", "spanId", "spanid"),
+				Severity:     firstNonEmpty(extractLogField(raw, "level", "severity"), firstLabel(stream.Stream, "level", "severity", "detected_level")),
+				Message:      message,
+				TraceID:      extractLogField(raw, "trace_id", "traceId", "traceid"),
+				SpanID:       extractLogField(raw, "span_id", "spanId", "spanid"),
+				TraceFlags:   extractLogField(raw, "trace_flags", "traceFlags", "traceflags"),
 				Attributes:   extraLabels(stream.Stream),
-				Raw:          value[1],
+				Raw:          raw,
 			})
 		}
 	}
 	return logs
+}
+
+func normalizeLogTimestamp(lokiTimestamp, logTimestamp string) string {
+	if logTimestamp != "" {
+		if parsed, err := time.Parse(time.RFC3339Nano, logTimestamp); err == nil {
+			return parsed.UTC().Format(time.RFC3339Nano)
+		}
+	}
+	return normalizeLokiTimestamp(lokiTimestamp)
 }
 
 func normalizeLokiTimestamp(value string) string {
@@ -296,6 +311,56 @@ func firstLabel(labels map[string]string, keys ...string) string {
 	for _, key := range keys {
 		if value := labels[key]; value != "" {
 			return value
+		}
+	}
+	return ""
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func extractLogField(message string, keys ...string) string {
+	if value := extractJSONLogField(message, keys...); value != "" {
+		return value
+	}
+	return extractTextLogField(message, keys...)
+}
+
+func extractJSONLogField(message string, keys ...string) string {
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(message), &payload); err != nil {
+		return ""
+	}
+	for _, key := range keys {
+		if value := stringifyLogField(payload[key]); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func stringifyLogField(value any) string {
+	switch v := value.(type) {
+	case string:
+		return v
+	case float64, bool:
+		return fmt.Sprint(v)
+	default:
+		return ""
+	}
+}
+
+func extractTextLogField(message string, keys ...string) string {
+	for _, key := range keys {
+		pattern := regexp.MustCompile(`(?i)(?:^|[\s{,])"?` + regexp.QuoteMeta(key) + `"?\s*[:=]\s*"?([^"\s,}]+)`)
+		if matches := pattern.FindStringSubmatch(message); len(matches) == 2 {
+			return matches[1]
 		}
 	}
 	return ""

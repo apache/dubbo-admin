@@ -72,6 +72,94 @@ func TestBuildLogQLQueriesUsesCommonLabelAliases(t *testing.T) {
 	}
 }
 
+func TestBuildLogQLQueriesFiltersTraceIDFromLogContent(t *testing.T) {
+	queries := buildLogQLQueries(&SearchLogsReq{
+		ServiceName: "org.apache.DemoService",
+		TraceID:     "trace-1",
+		Keywords:    "ERROR",
+	})
+
+	expected := []string{
+		`{service="org.apache.DemoService"} |= "ERROR" |= "trace-1"`,
+		`{serviceName="org.apache.DemoService"} |= "ERROR" |= "trace-1"`,
+		`{service_name="org.apache.DemoService"} |= "ERROR" |= "trace-1"`,
+	}
+	if len(queries) != len(expected) {
+		t.Fatalf("expected %d queries, got %d: %v", len(expected), len(queries), queries)
+	}
+	for i := range expected {
+		if queries[i] != expected[i] {
+			t.Fatalf("query[%d] expected %q, got %q", i, expected[i], queries[i])
+		}
+	}
+}
+
+func TestNormalizeLokiLogsExtractsTraceContextFromMessage(t *testing.T) {
+	logs := normalizeLokiLogs(lokiQueryRangeResp{
+		Status: "success",
+		Data: struct {
+			Result []lokiStream `json:"result"`
+		}{
+			Result: []lokiStream{{
+				Stream: map[string]string{
+					"app":      "demo-provider",
+					"trace_id": "label-trace",
+					"span_id":  "label-span",
+				},
+				Values: [][]string{{
+					"1777110661783444000",
+					`ERROR trace_id=message-trace span_id=message-span metadata report failed`,
+				}},
+			}},
+		},
+	})
+
+	if len(logs) != 1 {
+		t.Fatalf("expected one log, got %d", len(logs))
+	}
+	if logs[0].TraceID != "message-trace" || logs[0].SpanID != "message-span" {
+		t.Fatalf("expected trace context from message, got traceID=%q spanID=%q", logs[0].TraceID, logs[0].SpanID)
+	}
+}
+
+func TestNormalizeLokiLogsParsesDubboGoJSONLog(t *testing.T) {
+	raw := `{"level":"error","msg":"error message","span_id":"36d69a3dd9bea02c","time":"2026-06-02T14:56:37+08:00","trace_flags":"01","trace_id":"faba6a688ea3070b1613f50fb081c578"}`
+	logs := normalizeLokiLogs(lokiQueryRangeResp{
+		Status: "success",
+		Data: struct {
+			Result []lokiStream `json:"result"`
+		}{
+			Result: []lokiStream{{
+				Stream: map[string]string{
+					"app":          "dubbo-go-provider",
+					"service_name": "org.apache.DemoService",
+				},
+				Values: [][]string{{
+					"1777110661783444000",
+					raw,
+				}},
+			}},
+		},
+	})
+
+	if len(logs) != 1 {
+		t.Fatalf("expected one log, got %d", len(logs))
+	}
+	logItem := logs[0]
+	if logItem.Timestamp != "2026-06-02T06:56:37Z" {
+		t.Fatalf("expected timestamp from JSON log time, got %q", logItem.Timestamp)
+	}
+	if logItem.Severity != "error" || logItem.Message != "error message" {
+		t.Fatalf("expected level and msg from JSON log, got severity=%q message=%q", logItem.Severity, logItem.Message)
+	}
+	if logItem.TraceID != "faba6a688ea3070b1613f50fb081c578" || logItem.SpanID != "36d69a3dd9bea02c" || logItem.TraceFlags != "01" {
+		t.Fatalf("unexpected trace context: traceID=%q spanID=%q traceFlags=%q", logItem.TraceID, logItem.SpanID, logItem.TraceFlags)
+	}
+	if logItem.Raw != raw {
+		t.Fatalf("expected raw JSON log to be preserved, got %q", logItem.Raw)
+	}
+}
+
 func TestSearchLogsQueriesLoki(t *testing.T) {
 	var seenQueries []string
 	loki := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -90,11 +178,9 @@ func TestSearchLogsQueriesLoki(t *testing.T) {
 						"service_name": "org.apache.DemoService",
 						"instance": "127.0.0.1:20880",
 						"level": "ERROR",
-						"trace_id": "trace-1",
-						"span_id": "span-1",
 						"namespace": "dubbo-system"
 					},
-					"values": [["1777110661783444000", "ERROR test log"]]
+					"values": [["1777110661783444000", "ERROR trace_id=trace-1 span_id=span-1 test log"]]
 				}]
 			}
 		}`))
