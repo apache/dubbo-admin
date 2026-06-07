@@ -22,64 +22,27 @@ import (
 	"fmt"
 
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
-	"github.com/apache/dubbo-admin/pkg/mcp/registry"
-	basetools "github.com/apache/dubbo-admin/pkg/mcp/tools"
-	"github.com/apache/dubbo-admin/pkg/mcp/types"
+	"github.com/apache/dubbo-admin/pkg/mcp/common"
 )
 
 const defaultLogLimit = 100
 
-type LogRegistrar struct{}
-
-func (r *LogRegistrar) RegisterTools(reg *registry.Registry) {
-	properties := logSearchProperties()
-	reg.Register(types.ToolDef{
-		Name:        "search_logs",
-		Description: "查询 Dubbo 服务日志，支持按应用、服务、实例、TraceID 和关键字过滤",
-		InputSchema: types.InputSchema{
-			Type:       "object",
-			Properties: properties,
-		},
-		Handler: SearchLogs,
-	})
-
-	reg.Register(types.ToolDef{
-		Name:        "analyze_error_logs",
-		Description: "分析错误日志并按错误模式聚合",
-		InputSchema: types.InputSchema{
-			Type:       "object",
-			Properties: properties,
-		},
-		Handler: AnalyzeErrorLogs,
-	})
-
-	reg.Register(types.ToolDef{
-		Name:        "get_log_capabilities",
-		Description: "获取日志查询能力，返回 Loki 当前可用 labels 以及查询参数到 labels 的映射",
-		InputSchema: types.InputSchema{
-			Type:       "object",
-			Properties: logCapabilitiesProperties(),
-		},
-		Handler: GetLogCapabilities,
-	})
-}
-
-func SearchLogs(ctx consolectx.Context, args map[string]any) (*types.ToolResult, error) {
+func SearchLogs(ctx consolectx.Context, args map[string]any) (*common.ToolResult, error) {
 	client, err := lokiClientFromContext(ctx)
 	if err != nil {
-		return basetools.ErrorResult(err), nil
+		return common.ErrorResult(err), nil
 	}
 	resp, err := client.search(requestContext(ctx), buildSearchLogsReq(args))
 	if err != nil {
-		return basetools.ErrorResult(err), nil
+		return common.ErrorResult(err), nil
 	}
-	return basetools.JsonResult(resp)
+	return common.JsonResult(resp)
 }
 
-func AnalyzeErrorLogs(ctx consolectx.Context, args map[string]any) (*types.ToolResult, error) {
+func AnalyzeErrorLogs(ctx consolectx.Context, args map[string]any) (*common.ToolResult, error) {
 	client, err := lokiClientFromContext(ctx)
 	if err != nil {
-		return basetools.ErrorResult(err), nil
+		return common.ErrorResult(err), nil
 	}
 	req := buildSearchLogsReq(args)
 	if req.Keywords == "" {
@@ -87,21 +50,21 @@ func AnalyzeErrorLogs(ctx consolectx.Context, args map[string]any) (*types.ToolR
 	}
 	searchResp, err := client.search(requestContext(ctx), req)
 	if err != nil {
-		return basetools.ErrorResult(err), nil
+		return common.ErrorResult(err), nil
 	}
-	return basetools.JsonResult(analyzeErrors(searchResp.Logs, searchResp.SourceEngine))
+	return common.JsonResult(analyzeErrors(searchResp.Logs, searchResp.SourceEngine))
 }
 
-func GetLogCapabilities(ctx consolectx.Context, args map[string]any) (*types.ToolResult, error) {
+func GetLogCapabilities(ctx consolectx.Context, args map[string]any) (*common.ToolResult, error) {
 	client, err := lokiClientFromContext(ctx)
 	if err != nil {
-		return basetools.ErrorResult(err), nil
+		return common.ErrorResult(err), nil
 	}
 	resp, err := client.capabilities(requestContext(ctx), buildLogCapabilitiesReq(args))
 	if err != nil {
-		return basetools.ErrorResult(err), nil
+		return common.ErrorResult(err), nil
 	}
-	return basetools.JsonResult(resp)
+	return common.JsonResult(resp)
 }
 
 func lokiClientFromContext(ctx consolectx.Context) (*lokiClient, error) {
@@ -123,7 +86,7 @@ func requestContext(ctx consolectx.Context) context.Context {
 }
 
 func buildSearchLogsReq(args map[string]any) *SearchLogsReq {
-	helper := basetools.NewArgsHelper(args)
+	helper := common.NewArgsHelper(args)
 	return &SearchLogsReq{
 		Mesh:         helper.GetString("mesh", ""),
 		AppName:      helper.GetString("appName", ""),
@@ -138,15 +101,15 @@ func buildSearchLogsReq(args map[string]any) *SearchLogsReq {
 }
 
 func buildLogCapabilitiesReq(args map[string]any) *LogCapabilitiesReq {
-	helper := basetools.NewArgsHelper(args)
+	helper := common.NewArgsHelper(args)
 	return &LogCapabilitiesReq{
 		StartTime: helper.GetString("startTime", ""),
 		EndTime:   helper.GetString("endTime", ""),
 	}
 }
 
-func logSearchProperties() map[string]types.PropertyDef {
-	return map[string]types.PropertyDef{
+func LogSearchProperties() map[string]common.PropertyDef {
+	return map[string]common.PropertyDef{
 		"mesh": {
 			Type:        "string",
 			Description: "Mesh 名称，用于显式按 mesh label 过滤",
@@ -187,8 +150,8 @@ func logSearchProperties() map[string]types.PropertyDef {
 	}
 }
 
-func logCapabilitiesProperties() map[string]types.PropertyDef {
-	return map[string]types.PropertyDef{
+func LogCapabilitiesProperties() map[string]common.PropertyDef {
+	return map[string]common.PropertyDef{
 		"startTime": {
 			Type:        "string",
 			Description: "开始时间，支持 RFC3339/RFC3339Nano 或 Unix 纳秒",
@@ -199,5 +162,3 @@ func logCapabilitiesProperties() map[string]types.PropertyDef {
 		},
 	}
 }
-
-var _ registry.ToolRegistrar = (*LogRegistrar)(nil)

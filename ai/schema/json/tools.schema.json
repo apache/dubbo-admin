@@ -25,10 +25,30 @@
           "type": "boolean",
           "default": true
         },
-        "mcp_host_name": {
-          "type": "string",
-          "minLength": 1,
-          "default": "mcp_host"
+        "mcp": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            },
+            "host": {
+              "type": "string",
+              "minLength": 1,
+              "default": "localhost"
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535,
+              "default": 8888
+            },
+            "apiKey": {
+              "type": "string",
+              "default": ""
+            }
+          }
         },
         "mcp_timeout": {
           "type": "integer",
@@ -61,7 +81,7 @@
       "then": {
         "properties": {
           "spec": {
-            "required": ["mcp_host_name"]
+            "required": ["mcp"]
           }
         }
       }

@@ -26,12 +26,13 @@ import (
 	"os"
 	"sync"
 
-	"github.com/apache/dubbo-admin/pkg/mcp/core"
+	"github.com/apache/dubbo-admin/pkg/mcp"
+	"github.com/apache/dubbo-admin/pkg/mcp/common"
 )
 
 // Transport stdio 传输层
 type Transport struct {
-	server *core.Server
+	server *mcp.Server
 	reader io.Reader
 	writer io.Writer
 	mu     sync.Mutex
@@ -39,7 +40,7 @@ type Transport struct {
 }
 
 // NewTransport 创建 stdio 传输层（使用 stdin/stdout）
-func NewTransport(server *core.Server) *Transport {
+func NewTransport(server *mcp.Server) *Transport {
 	return &Transport{
 		server: server,
 		reader: os.Stdin,
@@ -48,7 +49,7 @@ func NewTransport(server *core.Server) *Transport {
 }
 
 // NewTransportWithIO 创建使用指定 reader/writer 的传输层（用于测试）
-func NewTransportWithIO(server *core.Server, reader io.Reader, writer io.Writer) *Transport {
+func NewTransportWithIO(server *mcp.Server, reader io.Reader, writer io.Writer) *Transport {
 	return &Transport{
 		server: server,
 		reader: reader,
@@ -86,10 +87,10 @@ func (t *Transport) Serve(ctx context.Context) error {
 		}
 
 		// 解析 JSON-RPC 请求
-		var req core.JSONRPCRequest
+		var req common.JSONRPCRequest
 		if err := json.Unmarshal([]byte(line), &req); err != nil {
 			// 发送错误响应
-			t.sendError(writer, nil, core.ErrCodeParseError, "Parse error")
+			t.sendError(writer, nil, common.ErrCodeParseError, "Parse error")
 			if err := writer.Flush(); err != nil {
 				return fmt.Errorf("flush error: %w", err)
 			}
@@ -102,7 +103,7 @@ func (t *Transport) Serve(ctx context.Context) error {
 		// 发送响应
 		respData, err := json.Marshal(resp)
 		if err != nil {
-			t.sendError(writer, req.ID, core.ErrCodeInternalError, "Failed to marshal response")
+			t.sendError(writer, req.ID, common.ErrCodeInternalError, "Failed to marshal response")
 		} else {
 			writer.Write(respData)
 			writer.WriteByte('\n')
@@ -116,10 +117,10 @@ func (t *Transport) Serve(ctx context.Context) error {
 
 // sendError 发送错误响应
 func (t *Transport) sendError(writer *bufio.Writer, id interface{}, code int, message string) {
-	resp := core.JSONRPCResponse{
-		JSONRPC: core.JSONRPCVersion,
+	resp := common.JSONRPCResponse{
+		JSONRPC: common.JSONRPCVersion,
 		ID:      id,
-		Error: &core.JSONRPCError{
+		Error: &common.JSONRPCError{
 			Code:    code,
 			Message: message,
 		},
@@ -142,7 +143,7 @@ func (t *Transport) Close() error {
 
 // ServeOnce 处理单个请求（用于测试）
 func (t *Transport) ServeOnce(input string) (string, error) {
-	var req core.JSONRPCRequest
+	var req common.JSONRPCRequest
 	if err := json.Unmarshal([]byte(input), &req); err != nil {
 		return "", fmt.Errorf("parse request: %w", err)
 	}

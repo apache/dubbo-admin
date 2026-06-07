@@ -23,10 +23,21 @@ Given conversation history and tool outputs, return a short structured decision.
 Return one JSON object only. No markdown. No code fence. No extra text.
 Use exactly these fields:
 - `summary`: short status, max 120 chars
-- `heartbeat`: boolean
+- `heartbeat`: boolean (true if need more info, false if done)
 - `final_answer`: empty string when continuing; concise complete answer when stopping
 - `focus`: next step when continuing; empty string when stopping
 - `evidence`: short evidence summary, max 240 chars
 
+# Important Format Notes
+- Input contains tool outputs with fields like `tool_name`, `result`, `summary`
+- Your output MUST be in the Observation format defined above
+- Do NOT include `tool_name` or `result` fields in your output
+- Your output should ONLY have: summary, heartbeat, final_answer, focus, evidence
+- Use the `evidence` field to summarize what you learned from tools
+
 # Required Format
 {"summary":"...","heartbeat":true,"final_answer":"","focus":"...","evidence":"..."}
+
+# Examples
+Input tool output: {"tool_name":"get_cluster_info","result":"{\"appCount\":0}","summary":"Cluster info retrieved"}
+Your output: {"summary":"Retrieved cluster information","heartbeat":false,"final_answer":"The cluster has 0 applications currently deployed.","focus":"","evidence":"Cluster info shows 0 apps"}

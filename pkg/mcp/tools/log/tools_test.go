@@ -30,23 +30,20 @@ import (
 	"github.com/apache/dubbo-admin/pkg/console/counter"
 	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
-	"github.com/apache/dubbo-admin/pkg/mcp/registry"
 )
 
-func TestLogRegistrarRegistersExpectedTools(t *testing.T) {
-	reg := registry.NewRegistry()
-	(&LogRegistrar{}).RegisterTools(reg)
-
-	if got := reg.Count(); got != 3 {
-		t.Fatalf("expected 3 log tools, got %d", got)
-	}
-	for _, name := range []string{"search_logs", "analyze_error_logs", "get_log_capabilities"} {
-		tool, ok := reg.Get(name)
-		if !ok {
-			t.Fatalf("tool %s was not registered", name)
+func TestLogToolPropertiesAreAvailable(t *testing.T) {
+	searchProperties := LogSearchProperties()
+	for _, name := range []string{"mesh", "appName", "serviceName", "instanceName", "traceId", "keywords", "startTime", "endTime", "limit"} {
+		if _, ok := searchProperties[name]; !ok {
+			t.Fatalf("search property %s was not configured", name)
 		}
-		if tool.Handler == nil {
-			t.Fatalf("tool %s handler is nil", name)
+	}
+
+	capabilityProperties := LogCapabilitiesProperties()
+	for _, name := range []string{"startTime", "endTime"} {
+		if _, ok := capabilityProperties[name]; !ok {
+			t.Fatalf("capability property %s was not configured", name)
 		}
 	}
 }

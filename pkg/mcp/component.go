@@ -21,9 +21,6 @@ import (
 	consolectx "github.com/apache/dubbo-admin/pkg/console/context"
 	"github.com/apache/dubbo-admin/pkg/config/app"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
-	"github.com/apache/dubbo-admin/pkg/mcp/core"
-	"github.com/apache/dubbo-admin/pkg/mcp/tools"
-	"github.com/apache/dubbo-admin/pkg/mcp/transport/http"
 )
 
 const (
@@ -33,7 +30,7 @@ const (
 
 // Component MCP组件，集成到admin服务中
 type Component struct {
-	server     *core.Server
+	server     *Server
 	consoleCtx consolectx.Context
 	cfg        *app.MCPConfig
 }
@@ -95,16 +92,11 @@ func (c *Component) Start(coreRt runtime.Runtime, stop <-chan struct{}) error {
 	c.consoleCtx = consolectx.NewConsoleContext(coreRt)
 
 	// 创建MCP服务器
-	c.server = core.NewServer("dubbo-admin", "1.0.0")
+	c.server = NewServer("dubbo-admin", "1.0.0")
 	c.server.SetConsoleContext(c.consoleCtx)
 
 	// 注册所有工具
-	reg := c.server.GetRegistry()
-	reg.RegisterRegistrar(&tools.MetricsRegistrar{})
-	reg.RegisterRegistrar(&tools.ResourceSearchRegistrar{})
-	reg.RegisterRegistrar(&tools.ServiceRegistrar{})
-	reg.RegisterRegistrar(&tools.DetailRegistrar{})
-	reg.RegisterAll()
+	RegisterTools(c.server)
 
 	// 获取console的HTTP引擎并注册MCP路由
 	consoleComp, err := coreRt.GetComponent(runtime.Console)
@@ -129,22 +121,15 @@ func (c *Component) Start(coreRt runtime.Runtime, stop <-chan struct{}) error {
 
 // RegisterMCPRoutes 注册MCP路由到gin引擎
 // 这个函数应该在console路由初始化后调用
-// 注意：由于这个函数使用gin.Default()，它创建了一个新的引擎实例
-// 在实际使用中，应该由console组件调用并注册到它自己的引擎上
-func RegisterMCPRoutes(server *core.Server, path string) {
+func RegisterMCPRoutes(server *Server, path string) {
 	if path == "" {
 		path = "/api/mcp"
 	}
-
-	handler := http.NewHandler(server)
-
-	// 注册MCP端点（不需要认证）
-	// 注意：这只是示例代码，实际注册应该在console组件中完成
-	_ = handler // 避免未使用警告
-	_ = path    // 避免未使用警告
+	_ = server
+	_ = path
 }
 
 // GetServer 获取MCP服务器实例
-func (c *Component) GetServer() *core.Server {
+func (c *Component) GetServer() *Server {
 	return c.server
 }

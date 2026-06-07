@@ -27,12 +27,12 @@ type ToolsConfig struct {
 
 // ToolConfig defines the tool configuration
 type ToolConfig struct {
-	EnableMockTools     bool   `yaml:"enable_mock_tools"`
-	EnableInternalTools bool   `yaml:"enable_internal_tools"`
-	EnableMCPTools      bool   `yaml:"enable_mcp_tools"`
-	MCPHostName         string `yaml:"mcp_host_name"`
-	MCPTimeout          int    `yaml:"mcp_timeout"`
-	MCPMaxRetries       int    `yaml:"mcp_max_retries"`
+	EnableMockTools     bool      `yaml:"enable_mock_tools"`
+	EnableInternalTools bool      `yaml:"enable_internal_tools"`
+	EnableMCPTools      bool      `yaml:"enable_mcp_tools"`
+	MCP                 MCPConfig `yaml:"mcp"`
+	MCPTimeout          int       `yaml:"mcp_timeout"`
+	MCPMaxRetries       int       `yaml:"mcp_max_retries"`
 }
 
 // MemoryConfig defines the memory configuration
@@ -59,6 +59,7 @@ type MCPConfig struct {
 	Enabled bool   `yaml:"enabled"`
 	Host    string `yaml:"host"`
 	Port    int    `yaml:"port"`
+	APIKey  string `yaml:"apiKey"`
 }
 
 // DefaultToolsConfig returns default tools configuration
@@ -67,7 +68,7 @@ func DefaultToolsConfig() ToolsConfig {
 		Memory:   DefaultMemoryConfig(),
 		Mock:     MockConfig{Enabled: true},
 		Internal: InternalConfig{Enabled: true},
-		MCP:      MCPConfig{Enabled: true, Host: "mcp_host", Port: 8080},
+		MCP:      MCPConfig{Enabled: true, Host: "localhost", Port: 8888, APIKey: ""},
 	}
 }
 
@@ -77,7 +78,7 @@ func DefaultToolConfig() *ToolConfig {
 		EnableMockTools:     true,
 		EnableInternalTools: true,
 		EnableMCPTools:      true,
-		MCPHostName:         "mcp_host",
+		MCP:                 MCPConfig{Enabled: true, Host: "localhost", Port: 8888},
 		MCPTimeout:          30,
 		MCPMaxRetries:       3,
 	}
