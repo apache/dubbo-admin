@@ -589,6 +589,7 @@ const words: I18nType = {
   tracing: '链路追踪',
   sceneConfig: '场景配置',
   event: '事件',
+  eventExpiryHint: '过期事件不会存储',
 
   provideService: '提供服务',
   dependentService: '依赖服务',

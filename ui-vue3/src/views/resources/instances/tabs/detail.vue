@@ -17,227 +17,230 @@
 
 <template>
   <div class="__container_instance_detail">
+    <a-empty v-if="instanceMissing" description="实例不存在或已下线" />
     <a-flex>
-      <a-card-grid>
-        <a-row :gutter="10">
-          <a-col :span="12">
-            <a-card class="_detail" style="height: 100%">
-              <a-descriptions class="description-column" :column="1">
-                <!-- registerState -->
-                <a-descriptions-item
-                  :label="$t('instanceDomain.registerState')"
-                  :labelStyle="{ fontWeight: 'bold' }"
-                >
-                  <a-typography-paragraph
-                    :type="instanceDetail?.registerState === 'Registered' ? 'success' : 'danger'"
+      <template v-if="!instanceMissing">
+        <a-card-grid>
+          <a-row :gutter="10">
+            <a-col :span="12">
+              <a-card class="_detail" style="height: 100%">
+                <a-descriptions class="description-column" :column="1">
+                  <!-- registerState -->
+                  <a-descriptions-item
+                    :label="$t('instanceDomain.registerState')"
+                    :labelStyle="{ fontWeight: 'bold' }"
                   >
-                    {{ instanceDetail?.registerState }}
-                  </a-typography-paragraph>
-                </a-descriptions-item>
+                    <a-typography-paragraph
+                      :type="instanceDetail?.registerState === 'Registered' ? 'success' : 'danger'"
+                    >
+                      {{ instanceDetail?.registerState }}
+                    </a-typography-paragraph>
+                  </a-descriptions-item>
 
-                <!-- Register Time -->
-                <a-descriptions-item
-                  :label="$t('instanceDomain.registerTime')"
-                  :labelStyle="{ fontWeight: 'bold' }"
-                >
-                  <a-typography-paragraph>
-                    {{ formattedDate(instanceDetail?.registerTime) }}
-                  </a-typography-paragraph>
-                </a-descriptions-item>
-              </a-descriptions>
-            </a-card>
-          </a-col>
+                  <!-- Register Time -->
+                  <a-descriptions-item
+                    :label="$t('instanceDomain.registerTime')"
+                    :labelStyle="{ fontWeight: 'bold' }"
+                  >
+                    <a-typography-paragraph>
+                      {{ formattedDate(instanceDetail?.registerTime) }}
+                    </a-typography-paragraph>
+                  </a-descriptions-item>
+                </a-descriptions>
+              </a-card>
+            </a-col>
 
-          <a-col :span="12">
-            <a-card class="_detail" style="height: 100%">
-              <a-descriptions class="description-column" :column="1">
-                <a-descriptions-item
-                  :label="$t('instanceDomain.deployState')"
-                  :labelStyle="{ fontWeight: 'bold' }"
-                >
-                  <a-tag :color="deployColor(instanceDetail?.deployState)">
-                    {{ instanceDetail?.deployState }}
-                  </a-tag>
-                </a-descriptions-item>
+            <a-col :span="12">
+              <a-card class="_detail" style="height: 100%">
+                <a-descriptions class="description-column" :column="1">
+                  <a-descriptions-item
+                    :label="$t('instanceDomain.deployState')"
+                    :labelStyle="{ fontWeight: 'bold' }"
+                  >
+                    <a-tag :color="deployColor(instanceDetail?.deployState)">
+                      {{ instanceDetail?.deployState }}
+                    </a-tag>
+                  </a-descriptions-item>
 
-                <!-- Start time -->
-                <a-descriptions-item
-                  :label="$t('instanceDomain.startTime_k8s')"
-                  :labelStyle="{ fontWeight: 'bold' }"
-                >
-                  <a-typography-paragraph>
-                    {{ formattedDate(instanceDetail?.startTime) }}
-                  </a-typography-paragraph>
-                </a-descriptions-item>
+                  <!-- Start time -->
+                  <a-descriptions-item
+                    :label="$t('instanceDomain.startTime_k8s')"
+                    :labelStyle="{ fontWeight: 'bold' }"
+                  >
+                    <a-typography-paragraph>
+                      {{ formattedDate(instanceDetail?.startTime) }}
+                    </a-typography-paragraph>
+                  </a-descriptions-item>
 
-                <!-- Ready time -->
-                <!-- <a-descriptions-item :label="$t('instanceDomain.readyTime_k8s')" :labelStyle="{ fontWeight: 'bold' }">
+                  <!-- Ready time -->
+                  <!-- <a-descriptions-item :label="$t('instanceDomain.readyTime_k8s')" :labelStyle="{ fontWeight: 'bold' }">
                   <a-typography-paragraph>
                     {{ formattedDate(instanceDetail?.readyTime) }}
                   </a-typography-paragraph>
                 </a-descriptions-item> -->
-              </a-descriptions>
-            </a-card>
-          </a-col>
-        </a-row>
+                </a-descriptions>
+              </a-card>
+            </a-col>
+          </a-row>
 
-        <a-card style="margin-top: 10px" class="_detail">
-          <a-descriptions class="description-column" :column="1">
-            <!-- instanceIP -->
-            <a-descriptions-item
-              :label="$t('instanceDomain.instanceIP')"
-              :labelStyle="{ fontWeight: 'bold' }"
-            >
-              <p @click="copyIt(instanceDetail?.ip)" class="description-item-content with-card">
-                {{ instanceDetail?.ip }}
-                <CopyOutlined />
-              </p>
-            </a-descriptions-item>
-
-            <!-- deploy cluster -->
-            <a-descriptions-item
-              :label="$t('instanceDomain.deployCluster')"
-              :labelStyle="{ fontWeight: 'bold' }"
-            >
-              <a-typography-paragraph>
-                {{ instanceDetail?.deployCluster }}
-              </a-typography-paragraph>
-            </a-descriptions-item>
-
-            <!-- Dubbo Port -->
-            <a-descriptions-item
-              :label="$t('instanceDomain.dubboPort')"
-              :labelStyle="{ fontWeight: 'bold' }"
-            >
-              <p
-                v-if="instanceDetail?.rpcPort"
-                @click="copyIt(instanceDetail?.rpcPort)"
-                class="description-item-content with-card"
+          <a-card style="margin-top: 10px" class="_detail">
+            <a-descriptions class="description-column" :column="1">
+              <!-- instanceIP -->
+              <a-descriptions-item
+                :label="$t('instanceDomain.instanceIP')"
+                :labelStyle="{ fontWeight: 'bold' }"
               >
-                {{ instanceDetail?.rpcPort }}
-                <CopyOutlined />
-              </p>
-            </a-descriptions-item>
-
-            <!-- Register cluster -->
-            <a-descriptions-item
-              :label="$t('instanceDomain.registerCluster')"
-              :labelStyle="{ fontWeight: 'bold' }"
-            >
-              <a-space>
-                <a-typography-link v-for="cluster in instanceDetail?.registerClusters">
-                  {{ cluster }}
-                </a-typography-link>
-              </a-space>
-            </a-descriptions-item>
-
-            <!-- whichApplication -->
-            <a-descriptions-item
-              :label="$t('instanceDomain.whichApplication')"
-              :labelStyle="{ fontWeight: 'bold' }"
-            >
-              <a-typography-link @click="checkApplication(instanceDetail?.appName)">
-                {{ instanceDetail?.appName }}
-              </a-typography-link>
-            </a-descriptions-item>
-
-            <!-- Node IP -->
-            <a-descriptions-item
-              :label="$t('instanceDomain.node')"
-              :labelStyle="{ fontWeight: 'bold' }"
-            >
-              <p
-                v-if="instanceDetail?.node"
-                @click="copyIt(instanceDetail?.node)"
-                class="description-item-content with-card"
-              >
-                {{ instanceDetail?.node }}
-                <CopyOutlined />
-              </p>
-            </a-descriptions-item>
-
-            <!-- Owning workload(k8s) -->
-            <a-descriptions-item
-              :label="$t('instanceDomain.owningWorkload_k8s')"
-              :labelStyle="{ fontWeight: 'bold' }"
-            >
-              <a-typography-paragraph>
-                {{ instanceDetail?.workloadName }}
-              </a-typography-paragraph>
-            </a-descriptions-item>
-
-            <!-- image -->
-            <a-descriptions-item
-              v-if="instanceDetail?.image"
-              :label="$t('instanceDomain.instanceImage_k8s')"
-              :labelStyle="{ fontWeight: 'bold' }"
-            >
-              <a-card class="description-item-card">
-                <p
-                  @click="copyIt(instanceDetail?.image)"
-                  class="description-item-content with-card"
-                >
-                  {{ instanceDetail?.image }}
+                <p @click="copyIt(instanceDetail?.ip)" class="description-item-content with-card">
+                  {{ instanceDetail?.ip }}
                   <CopyOutlined />
                 </p>
-              </a-card>
-            </a-descriptions-item>
+              </a-descriptions-item>
 
-            <!-- instanceLabel -->
-            <a-descriptions-item
-              v-if="instanceDetail?.labels && Object.keys(instanceDetail?.labels).length > 0"
-              :label="$t('instanceDomain.instanceLabel')"
-              :labelStyle="{ fontWeight: 'bold' }"
-            >
-              <a-card class="description-item-card">
-                <a-tag v-for="(value, key) in instanceDetail?.labels">
-                  {{ key }} : {{ value }}
-                </a-tag>
-              </a-card>
-            </a-descriptions-item>
+              <!-- deploy cluster -->
+              <a-descriptions-item
+                :label="$t('instanceDomain.deployCluster')"
+                :labelStyle="{ fontWeight: 'bold' }"
+              >
+                <a-typography-paragraph>
+                  {{ instanceDetail?.deployCluster }}
+                </a-typography-paragraph>
+              </a-descriptions-item>
 
-            <!-- health examination -->
-            <a-descriptions-item
-              v-if="instanceDetail?.probes"
-              :label="$t('instanceDomain.healthExamination_k8s')"
-              :labelStyle="{ fontWeight: 'bold' }"
-            >
-              <a-card class="description-item-card">
-                <p class="white_space">
-                  启动探针(StartupProbe):{{
-                    isProbeOpen(instanceDetail?.probes?.startupProbe.open)
-                  }}
-                  类型: {{ instanceDetail?.probes?.startupProbe.type }} 端口:{{
-                    instanceDetail?.probes?.startupProbe.port
-                  }}
+              <!-- Dubbo Port -->
+              <a-descriptions-item
+                :label="$t('instanceDomain.dubboPort')"
+                :labelStyle="{ fontWeight: 'bold' }"
+              >
+                <p
+                  v-if="instanceDetail?.rpcPort"
+                  @click="copyIt(instanceDetail?.rpcPort)"
+                  class="description-item-content with-card"
+                >
+                  {{ instanceDetail?.rpcPort }}
+                  <CopyOutlined />
                 </p>
-                <p class="white_space">
-                  就绪探针(ReadinessProbe):{{
-                    isProbeOpen(instanceDetail?.probes?.readinessProbe.open)
-                  }}
-                  类型: {{ instanceDetail?.probes?.readinessProbe.type }} 端口:{{
-                    instanceDetail?.probes?.readinessProbe.port
-                  }}
+              </a-descriptions-item>
+
+              <!-- Register cluster -->
+              <a-descriptions-item
+                :label="$t('instanceDomain.registerCluster')"
+                :labelStyle="{ fontWeight: 'bold' }"
+              >
+                <a-space>
+                  <a-typography-link v-for="cluster in instanceDetail?.registerClusters">
+                    {{ cluster }}
+                  </a-typography-link>
+                </a-space>
+              </a-descriptions-item>
+
+              <!-- whichApplication -->
+              <a-descriptions-item
+                :label="$t('instanceDomain.whichApplication')"
+                :labelStyle="{ fontWeight: 'bold' }"
+              >
+                <a-typography-link @click="checkApplication(instanceDetail?.appName)">
+                  {{ instanceDetail?.appName }}
+                </a-typography-link>
+              </a-descriptions-item>
+
+              <!-- Node IP -->
+              <a-descriptions-item
+                :label="$t('instanceDomain.node')"
+                :labelStyle="{ fontWeight: 'bold' }"
+              >
+                <p
+                  v-if="instanceDetail?.node"
+                  @click="copyIt(instanceDetail?.node)"
+                  class="description-item-content with-card"
+                >
+                  {{ instanceDetail?.node }}
+                  <CopyOutlined />
                 </p>
-                <p class="white_space">
-                  存活探针(LivenessProbe):{{
-                    isProbeOpen(instanceDetail?.probes?.livenessProbe.open)
-                  }}
-                  类型: {{ instanceDetail?.probes?.livenessProbe.type }} 端口:{{
-                    instanceDetail?.probes?.livenessProbe.port
-                  }}
-                </p>
-              </a-card>
-            </a-descriptions-item>
-          </a-descriptions>
-        </a-card>
-      </a-card-grid>
+              </a-descriptions-item>
+
+              <!-- Owning workload(k8s) -->
+              <a-descriptions-item
+                :label="$t('instanceDomain.owningWorkload_k8s')"
+                :labelStyle="{ fontWeight: 'bold' }"
+              >
+                <a-typography-paragraph>
+                  {{ instanceDetail?.workloadName }}
+                </a-typography-paragraph>
+              </a-descriptions-item>
+
+              <!-- image -->
+              <a-descriptions-item
+                v-if="instanceDetail?.image"
+                :label="$t('instanceDomain.instanceImage_k8s')"
+                :labelStyle="{ fontWeight: 'bold' }"
+              >
+                <a-card class="description-item-card">
+                  <p
+                    @click="copyIt(instanceDetail?.image)"
+                    class="description-item-content with-card"
+                  >
+                    {{ instanceDetail?.image }}
+                    <CopyOutlined />
+                  </p>
+                </a-card>
+              </a-descriptions-item>
+
+              <!-- instanceLabel -->
+              <a-descriptions-item
+                v-if="instanceDetail?.labels && Object.keys(instanceDetail?.labels).length > 0"
+                :label="$t('instanceDomain.instanceLabel')"
+                :labelStyle="{ fontWeight: 'bold' }"
+              >
+                <a-card class="description-item-card">
+                  <a-tag v-for="(value, key) in instanceDetail?.labels">
+                    {{ key }} : {{ value }}
+                  </a-tag>
+                </a-card>
+              </a-descriptions-item>
+
+              <!-- health examination -->
+              <a-descriptions-item
+                v-if="instanceDetail?.probes"
+                :label="$t('instanceDomain.healthExamination_k8s')"
+                :labelStyle="{ fontWeight: 'bold' }"
+              >
+                <a-card class="description-item-card">
+                  <p class="white_space">
+                    启动探针(StartupProbe):{{
+                      isProbeOpen(instanceDetail?.probes?.startupProbe.open)
+                    }}
+                    类型: {{ instanceDetail?.probes?.startupProbe.type }} 端口:{{
+                      instanceDetail?.probes?.startupProbe.port
+                    }}
+                  </p>
+                  <p class="white_space">
+                    就绪探针(ReadinessProbe):{{
+                      isProbeOpen(instanceDetail?.probes?.readinessProbe.open)
+                    }}
+                    类型: {{ instanceDetail?.probes?.readinessProbe.type }} 端口:{{
+                      instanceDetail?.probes?.readinessProbe.port
+                    }}
+                  </p>
+                  <p class="white_space">
+                    存活探针(LivenessProbe):{{
+                      isProbeOpen(instanceDetail?.probes?.livenessProbe.open)
+                    }}
+                    类型: {{ instanceDetail?.probes?.livenessProbe.type }} 端口:{{
+                      instanceDetail?.probes?.livenessProbe.port
+                    }}
+                  </p>
+                </a-card>
+              </a-descriptions-item>
+            </a-descriptions>
+          </a-card>
+        </a-card-grid>
+      </template>
     </a-flex>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { type ComponentInternalInstance, getCurrentInstance, onMounted, reactive } from 'vue'
+import { type ComponentInternalInstance, getCurrentInstance, onMounted, reactive, ref } from 'vue'
 import { CopyOutlined } from '@ant-design/icons-vue'
 import useClipboard from 'vue-clipboard3'
 import { message } from 'ant-design-vue'
@@ -260,6 +263,7 @@ let PRIMARY_COLOR_20 = PRIMARY_COLOR_T('20')
 
 // instance detail information
 const instanceDetail = <any>reactive({})
+const instanceMissing = ref(false)
 
 onMounted(async () => {
   const { name, pathId } = route.params
@@ -267,8 +271,12 @@ onMounted(async () => {
     instanceName: name,
     instanceIP: pathId
   }
-  apiData.detail = await getInstanceDetail(params)
-  Object.assign(instanceDetail, apiData.detail.data)
+  try {
+    apiData.detail = await getInstanceDetail(params, { silentError: true })
+    Object.assign(instanceDetail, apiData.detail.data)
+  } catch {
+    instanceMissing.value = true
+  }
 })
 
 // Click on the application name to view the application

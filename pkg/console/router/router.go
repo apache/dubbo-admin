@@ -50,6 +50,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 			instanceConfig.GET("/operatorLog", handler.InstanceConfigOperatorLogGET(ctx))
 			instanceConfig.PUT("/operatorLog", handler.InstanceConfigOperatorLogPUT(ctx))
 		}
+		instance.GET("/event", handler.GetInstanceEvents(ctx))
 		instance.GET("/metric-dashboard", handler.GetGrafanaDashboard(ctx, handler.InstanceDimension, handler.MetricDashboard))
 		instance.GET("/trace-dashboard", handler.GetGrafanaDashboard(ctx, handler.InstanceDimension, handler.TraceDashboard))
 		instance.GET("/metrics-list", handler.GetMetricsList(ctx))
@@ -73,6 +74,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 			applicationConfig.GET("/gray", handler.ApplicationConfigGrayGET(ctx))
 			applicationConfig.PUT("/gray", handler.ApplicationConfigGrayPUT(ctx))
 		}
+		application.GET("/event", handler.GetApplicationEvents(ctx))
 		application.GET("/metric-dashboard", handler.GetGrafanaDashboard(ctx, handler.AppDimension, handler.MetricDashboard))
 		application.GET("/trace-dashboard", handler.GetGrafanaDashboard(ctx, handler.AppDimension, handler.TraceDashboard))
 	}
@@ -107,6 +109,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 		service.GET("/search", handler.SearchServices(ctx))
 		service.GET("/graph", handler.GetServiceGraph(ctx))
 		service.GET("/detail", handler.GetServiceDetail(ctx))
+		service.GET("/event", handler.GetServiceEvents(ctx))
 		service.GET("/interfaces", handler.GetServiceInterfaces(ctx))
 	}
 

@@ -178,7 +178,7 @@ func (b *eventBus) Send(event Event) {
 	}
 	states, exists := b.subscriberDir[rk]
 	if !exists {
-		logger.Infof("no subscriber for resource %s, skipped sending event%v", rk, event)
+		logger.Debugf("no subscriber for resource %s, skipped sending event%v", rk, event)
 		return
 	}
 	for _, st := range states {

@@ -72,7 +72,12 @@ export const getApplicationTraceDashboard = (params: any): Promise<any> => {
     params
   })
 }
-export const listApplicationEvent = (params: any): Promise<any> => {
+export const listApplicationEvent = (params: {
+  appName?: string
+  mesh?: string
+  pageOffset?: number
+  pageSize?: number
+}): Promise<any> => {
   return request({
     url: '/application/event',
     method: 'get',

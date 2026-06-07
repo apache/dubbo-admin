@@ -39,8 +39,8 @@ const isSilentErrorUrl = (url?: string): boolean => {
   return SILENT_ERROR_URLS.some((silentUrl) => url.includes(silentUrl))
 }
 
-const shouldShowErrorMessage = (url?: string): boolean => {
-  return !isSilentErrorUrl(url)
+const shouldSilenceError = (config?: { url?: string; silentError?: boolean }): boolean => {
+  return Boolean(config?.silentError) || isSilentErrorUrl(config?.url)
 }
 
 const service: AxiosInstance = axios.create({
@@ -86,10 +86,12 @@ response.use(
 
     // Show error toast message
     const errorMsg = `${response.data.code}:${response.data.message}`
-    if (shouldShowErrorMessage(response.config.url)) {
+    if (!shouldSilenceError(response.config as any)) {
       message.error(errorMsg)
     }
-    console.error(errorMsg)
+    if (!shouldSilenceError(response.config as any)) {
+      console.error(errorMsg)
+    }
     return Promise.reject(response.data)
   },
   (error) => {
@@ -124,16 +126,20 @@ response.use(
     }
     if (response?.data) {
       const errorMsg = `${response.data?.code}:${response.data?.message}`
-      if (shouldShowErrorMessage(error.config?.url)) {
+      if (!shouldSilenceError(error.config as any)) {
         message.error(errorMsg)
       }
-      console.error(errorMsg)
+      if (!shouldSilenceError(error.config as any)) {
+        console.error(errorMsg)
+      }
     } else {
       // Handle network or other errors
-      if (!isSilentErrorUrl(error.config?.url)) {
+      if (!shouldSilenceError(error.config as any)) {
         message.error('NetworkError:请求失败，请检查网络连接')
       }
-      console.error(error)
+      if (!shouldSilenceError(error.config as any)) {
+        console.error(error)
+      }
     }
     return Promise.reject(error.response?.data)
   }

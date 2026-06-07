@@ -51,10 +51,15 @@ const fetchInstanceLifecycleState = async () => {
   }
 
   try {
-    const { data } = await getInstanceDetail({
-      instanceName,
-      instanceIP: route.params?.pathId
-    })
+    const { data } = await getInstanceDetail(
+      {
+        instanceName,
+        instanceIP: route.params?.pathId
+      },
+      {
+        silentError: true
+      }
+    )
     instanceLifecycleState.value = data?.lifecycleState || 'Unknown'
   } catch {
     instanceLifecycleState.value = 'Unknown'

@@ -600,6 +600,7 @@ const words: I18nType = {
   distribution: 'Distribution',
   tracing: 'Tracing',
   sceneConfig: 'Scene Config',
+  eventExpiryHint: 'Expired events are not stored',
 
   provideService: 'Provide Service',
   dependentService: 'Dependent Service',

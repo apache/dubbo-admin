@@ -78,14 +78,14 @@ func (n *NacosServiceEventSubscriber) ProcessEvent(event events.Event) error {
 			logger.Errorf(errStr)
 			return bizerror.New(bizerror.EventError, errStr)
 		}
-		processErr = n.processUpsert(newObj)
+		processErr = n.processUpsert(oldObj, newObj, event.Type())
 	case cache.Deleted:
 		if oldObj == nil {
 			errStr := "process nacos service delete event, but old obj is nil, skipped processing"
 			logger.Errorf(errStr)
 			return bizerror.New(bizerror.EventError, errStr)
 		}
-		processErr = n.processDelete(oldObj)
+		processErr = n.processDelete(oldObj, event.Type())
 	}
 	if processErr != nil {
 		logger.Errorf("process nacos service event failed, cause: %s, event: %s", processErr.Error(), event.String())
@@ -95,7 +95,11 @@ func (n *NacosServiceEventSubscriber) ProcessEvent(event events.Event) error {
 	return nil
 }
 
-func (n *NacosServiceEventSubscriber) processUpsert(serviceRes *meshresource.NacosServiceResource) error {
+func (n *NacosServiceEventSubscriber) processUpsert(
+	oldServiceRes *meshresource.NacosServiceResource,
+	serviceRes *meshresource.NacosServiceResource,
+	eventType cache.DeltaType,
+) error {
 	providerRe := regexp.MustCompile(`^providers:[\w.]+(?::[\w.]*:|::[\w.]*)?$`)
 	consumerRe := regexp.MustCompile(`^consumers:[\w.]+(?::[\w.]*:|::[\w.]*)?$`)
 	if providerRe.MatchString(serviceRes.Name) {
@@ -103,13 +107,17 @@ func (n *NacosServiceEventSubscriber) processUpsert(serviceRes *meshresource.Nac
 		return nil
 	}
 	if consumerRe.MatchString(serviceRes.Name) {
-		return n.processConsumerMetadataUpsert(serviceRes)
+		return n.processConsumerMetadataUpsert(oldServiceRes, serviceRes, eventType)
 	}
-	return n.processRPCInstanceUpsert(serviceRes)
+	return n.processRPCInstanceUpsert(oldServiceRes, serviceRes, eventType)
 
 }
 
-func (n *NacosServiceEventSubscriber) processConsumerMetadataUpsert(serviceRes *meshresource.NacosServiceResource) error {
+func (n *NacosServiceEventSubscriber) processConsumerMetadataUpsert(
+	oldServiceRes *meshresource.NacosServiceResource,
+	serviceRes *meshresource.NacosServiceResource,
+	eventType cache.DeltaType,
+) error {
 	serviceName, err := parseServiceName(serviceRes.Name)
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.UnknownError, "parse service name error, raw nacos service is"+serviceRes.String())
@@ -183,6 +191,7 @@ func (n *NacosServiceEventSubscriber) processConsumerMetadataUpsert(serviceRes *
 		n.emitter.Send(events.NewResourceChangedEvent(cache.Updated, item, item))
 	})
 
+	n.recordNacosConsumerEvents(oldServiceRes, serviceRes, eventType, serviceName)
 	return nil
 }
 
@@ -201,7 +210,11 @@ func parseServiceName(s string) (string, error) {
 	return parts[0], nil
 }
 
-func (n *NacosServiceEventSubscriber) processRPCInstanceUpsert(serviceRes *meshresource.NacosServiceResource) error {
+func (n *NacosServiceEventSubscriber) processRPCInstanceUpsert(
+	oldServiceRes *meshresource.NacosServiceResource,
+	serviceRes *meshresource.NacosServiceResource,
+	eventType cache.DeltaType,
+) error {
 	convertFunc := func(i int, instance *meshproto.NacosInstance) maputil.Entry[string, *meshresource.RPCInstanceResource] {
 
 		res := meshresource.ToRPCInstance(serviceRes.Mesh, serviceRes.Name, instance.Ip, instance.Port, instance.Metadata)
@@ -269,10 +282,11 @@ func (n *NacosServiceEventSubscriber) processRPCInstanceUpsert(serviceRes *meshr
 	})
 	logger.Debugf("process rpc instance upsert event, oldInstances: %s, newInstances: %s, offlineInstances: %s, addInstances: %s, updateInstances: %s",
 		maputil.Keys(oldInstances), maputil.Keys(newInstances), maputil.Keys(offlineInstances), maputil.Keys(addInstances), updateInstances)
+	n.recordNacosInstanceEvents(oldServiceRes, serviceRes, eventType)
 	return nil
 }
 
-func (n *NacosServiceEventSubscriber) processDelete(serviceRes *meshresource.NacosServiceResource) error {
+func (n *NacosServiceEventSubscriber) processDelete(serviceRes *meshresource.NacosServiceResource, eventType cache.DeltaType) error {
 	providerRe := regexp.MustCompile(`^providers:[\w.]+(?::[\w.]*:|::[\w.]*)?$`)
 	consumerRe := regexp.MustCompile(`^consumers:[\w.]+(?::[\w.]*:|::[\w.]*)?$`)
 	if providerRe.MatchString(serviceRes.Name) {
@@ -280,20 +294,24 @@ func (n *NacosServiceEventSubscriber) processDelete(serviceRes *meshresource.Nac
 		return nil
 	}
 	if consumerRe.MatchString(serviceRes.Name) {
-		return n.processServiceConsumerDelete(serviceRes)
+		return n.processServiceConsumerDelete(serviceRes, eventType)
 	}
-	return n.processRPCInstanceDelete(serviceRes)
+	return n.processRPCInstanceDelete(serviceRes, eventType)
 }
 
-func (n *NacosServiceEventSubscriber) processServiceConsumerDelete(serviceRes *meshresource.NacosServiceResource) error {
+func (n *NacosServiceEventSubscriber) processServiceConsumerDelete(serviceRes *meshresource.NacosServiceResource, eventType cache.DeltaType) error {
 	st, err := n.storeRouter.ResourceKindRoute(meshresource.ServiceConsumerMetadataKind)
 	if err != nil {
 		logger.Errorf("process service consumer delete event, but cannot route to service consumer metadata resource, cause: %v", err)
 		return err
 	}
+	serviceName, parseErr := parseServiceName(serviceRes.Name)
+	if parseErr != nil {
+		return bizerror.Wrap(parseErr, bizerror.UnknownError, "parse service name error, raw nacos service is"+serviceRes.String())
+	}
 	resources, err := st.ListByIndexes([]index.IndexCondition{
 		{IndexName: index.ByMeshIndex, Value: serviceRes.Mesh, Operator: index.Equals},
-		{IndexName: index.ByServiceConsumerServiceName, Value: serviceRes.Name, Operator: index.Equals},
+		{IndexName: index.ByServiceConsumerServiceName, Value: serviceName, Operator: index.Equals},
 	})
 	if err != nil {
 		logger.Errorf("process service consumer delete event, but cannot list service consumer metadata resource of %s, cause: %v", serviceRes.Name, err)
@@ -306,10 +324,11 @@ func (n *NacosServiceEventSubscriber) processServiceConsumerDelete(serviceRes *m
 		}
 		n.emitter.Send(events.NewResourceChangedEvent(cache.Deleted, item, nil))
 	})
+	n.recordNacosConsumerEvents(serviceRes, nil, eventType, serviceName)
 	return nil
 }
 
-func (n *NacosServiceEventSubscriber) processRPCInstanceDelete(serviceRes *meshresource.NacosServiceResource) error {
+func (n *NacosServiceEventSubscriber) processRPCInstanceDelete(serviceRes *meshresource.NacosServiceResource, eventType cache.DeltaType) error {
 	st, err := n.storeRouter.ResourceKindRoute(meshresource.RPCInstanceKind)
 	if err != nil {
 		logger.Errorf("process rpc instance delete event, but cannot route to rpc instance resource, cause: %v", err)
@@ -330,5 +349,157 @@ func (n *NacosServiceEventSubscriber) processRPCInstanceDelete(serviceRes *meshr
 		}
 		n.emitter.Send(events.NewResourceChangedEvent(cache.Deleted, item, nil))
 	})
+	n.recordNacosInstanceEvents(serviceRes, nil, eventType)
 	return nil
+}
+
+func (n *NacosServiceEventSubscriber) recordNacosInstanceEvents(
+	oldServiceRes *meshresource.NacosServiceResource,
+	newServiceRes *meshresource.NacosServiceResource,
+	eventType cache.DeltaType,
+) {
+	if eventType != cache.Added && eventType != cache.Updated && eventType != cache.Deleted {
+		return
+	}
+
+	oldInstances := buildNacosRPCInstanceMap(oldServiceRes)
+	newInstances := buildNacosRPCInstanceMap(newServiceRes)
+
+	for key, item := range maputil.Minus(oldInstances, newInstances) {
+		RecordRegistryEvent(n.storeRouter, RegistryEventInput{
+			Mesh:         item.Mesh,
+			Source:       "Nacos",
+			SourceType:   "nacos",
+			Category:     "registry",
+			Action:       "deregistered",
+			Message:      fmt.Sprintf("Nacos instance deregistered: %s (%s:%d)", item.Spec.Name, item.Spec.Ip, item.Spec.Port),
+			AppName:      item.Spec.AppName,
+			InstanceName: item.Spec.Name,
+			InstanceIP:   item.Spec.Ip,
+		})
+		delete(oldInstances, key)
+	}
+
+	for _, item := range maputil.Values(maputil.Minus(newInstances, oldInstances)) {
+		RecordRegistryEvent(n.storeRouter, RegistryEventInput{
+			Mesh:         item.Mesh,
+			Source:       "Nacos",
+			SourceType:   "nacos",
+			Category:     "registry",
+			Action:       "registered",
+			Message:      fmt.Sprintf("Nacos instance registered: %s (%s:%d)", item.Spec.Name, item.Spec.Ip, item.Spec.Port),
+			AppName:      item.Spec.AppName,
+			InstanceName: item.Spec.Name,
+			InstanceIP:   item.Spec.Ip,
+		})
+	}
+
+	for key, newItem := range newInstances {
+		oldItem, exists := oldInstances[key]
+		if !exists || oldItem == nil || oldItem.Spec == nil || newItem.Spec == nil {
+			continue
+		}
+		if reflect.DeepEqual(oldItem.Spec, newItem.Spec) {
+			continue
+		}
+		RecordRegistryEvent(n.storeRouter, RegistryEventInput{
+			Mesh:         newItem.Mesh,
+			Source:       "Nacos",
+			SourceType:   "nacos",
+			Category:     "registry",
+			Action:       "updated",
+			Message:      fmt.Sprintf("Nacos instance metadata updated: %s (%s:%d)", newItem.Spec.Name, newItem.Spec.Ip, newItem.Spec.Port),
+			AppName:      newItem.Spec.AppName,
+			InstanceName: newItem.Spec.Name,
+			InstanceIP:   newItem.Spec.Ip,
+		})
+	}
+}
+
+func (n *NacosServiceEventSubscriber) recordNacosConsumerEvents(
+	oldServiceRes *meshresource.NacosServiceResource,
+	newServiceRes *meshresource.NacosServiceResource,
+	eventType cache.DeltaType,
+	serviceName string,
+) {
+	if eventType != cache.Added && eventType != cache.Updated && eventType != cache.Deleted {
+		return
+	}
+
+	oldConsumers := buildNacosConsumerMap(oldServiceRes)
+	newConsumers := buildNacosConsumerMap(newServiceRes)
+
+	for key, item := range maputil.Minus(oldConsumers, newConsumers) {
+		RecordRegistryEvent(n.storeRouter, RegistryEventInput{
+			Mesh:        item.Mesh,
+			Source:      "Nacos",
+			SourceType:  "nacos",
+			Category:    "metadata",
+			Action:      "consumer-removed",
+			Message:     fmt.Sprintf("Nacos consumer metadata removed: %s -> %s", item.Spec.ConsumerAppName, serviceName),
+			AppName:     item.Spec.ConsumerAppName,
+			ServiceName: serviceName,
+		})
+		delete(oldConsumers, key)
+	}
+
+	for _, item := range maputil.Values(maputil.Minus(newConsumers, oldConsumers)) {
+		RecordRegistryEvent(n.storeRouter, RegistryEventInput{
+			Mesh:        item.Mesh,
+			Source:      "Nacos",
+			SourceType:  "nacos",
+			Category:    "metadata",
+			Action:      "consumer-added",
+			Message:     fmt.Sprintf("Nacos consumer metadata added: %s -> %s", item.Spec.ConsumerAppName, serviceName),
+			AppName:     item.Spec.ConsumerAppName,
+			ServiceName: serviceName,
+		})
+	}
+
+	for key, newItem := range newConsumers {
+		oldItem, exists := oldConsumers[key]
+		if !exists || oldItem == nil || oldItem.Spec == nil || newItem.Spec == nil {
+			continue
+		}
+		if reflect.DeepEqual(oldItem.Spec, newItem.Spec) {
+			continue
+		}
+		RecordRegistryEvent(n.storeRouter, RegistryEventInput{
+			Mesh:        newItem.Mesh,
+			Source:      "Nacos",
+			SourceType:  "nacos",
+			Category:    "metadata",
+			Action:      "consumer-updated",
+			Message:     fmt.Sprintf("Nacos consumer metadata updated: %s -> %s", newItem.Spec.ConsumerAppName, serviceName),
+			AppName:     newItem.Spec.ConsumerAppName,
+			ServiceName: serviceName,
+		})
+	}
+}
+
+func buildNacosRPCInstanceMap(serviceRes *meshresource.NacosServiceResource) map[string]*meshresource.RPCInstanceResource {
+	result := make(map[string]*meshresource.RPCInstanceResource)
+	if serviceRes == nil || serviceRes.Spec == nil {
+		return result
+	}
+	for _, item := range serviceRes.Spec.Instances {
+		res := meshresource.ToRPCInstance(serviceRes.Mesh, serviceRes.Name, item.Ip, item.Port, item.Metadata)
+		result[res.ResourceKey()] = res
+	}
+	return result
+}
+
+func buildNacosConsumerMap(serviceRes *meshresource.NacosServiceResource) map[string]*meshresource.ServiceConsumerMetadataResource {
+	result := make(map[string]*meshresource.ServiceConsumerMetadataResource)
+	if serviceRes == nil || serviceRes.Spec == nil {
+		return result
+	}
+	for _, item := range serviceRes.Spec.Instances {
+		res := meshresource.ToServiceConsumerMetadataByMap(item.Metadata, serviceRes.Mesh)
+		if res == nil {
+			continue
+		}
+		result[res.ResourceKey()] = res
+	}
+	return result
 }

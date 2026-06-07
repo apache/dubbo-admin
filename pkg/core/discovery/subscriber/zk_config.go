@@ -174,6 +174,8 @@ func processConfigUpsert[T coremodel.Resource](
 			logger.Errorf("add rule %s to store failed, cause: %s", newRuleRes.ResourceKey(), err.Error())
 			return err
 		}
+		recordConfigPlatformEvent(router, newRuleRes, "added")
+		emitter.Send(events.NewResourceChangedEvent(cache.Added, nil, newRuleRes))
 		emitter.Send(events.NewResourceChangedEventWithContext(cache.Added, nil, newRuleRes, map[string]string{
 			events.SourceRegistryContextKey: sourceRegistryZookeeper,
 		}))
@@ -196,6 +198,8 @@ func processConfigUpsert[T coremodel.Resource](
 	emitter.Send(events.NewResourceChangedEventWithContext(cache.Updated, oldMetadataRes, newRuleRes, map[string]string{
 		events.SourceRegistryContextKey: sourceRegistryZookeeper,
 	}))
+	recordConfigPlatformEvent(router, newRuleRes, "updated")
+	emitter.Send(events.NewResourceChangedEvent(cache.Updated, oldMetadataRes, newRuleRes))
 	return nil
 }
 
@@ -228,8 +232,48 @@ func processConfigDelete[T coremodel.Resource](
 		logger.Errorf("delete rule %s from store failed, cause: %s", resourceKey, err.Error())
 		return err
 	}
+	recordConfigPlatformEvent(router, oldRuleRes, "deleted")
+	emitter.Send(events.NewResourceChangedEvent(cache.Deleted, oldRuleRes, nil))
 	emitter.Send(events.NewResourceChangedEventWithContext(cache.Deleted, oldRuleRes, nil, map[string]string{
 		events.SourceRegistryContextKey: sourceRegistryZookeeper,
 	}))
 	return nil
+}
+
+func recordConfigPlatformEvent(router store.Router, res coremodel.Resource, action string) {
+	serviceName, category := extractRuleEventContext(res)
+	if serviceName == "" {
+		return
+	}
+	RecordRegistryEvent(router, RegistryEventInput{
+		Mesh:        res.ResourceMesh(),
+		Source:      "Zookeeper",
+		SourceType:  "zookeeper",
+		Category:    category,
+		Action:      action,
+		Message:     fmt.Sprintf("Zookeeper %s %s: %s", category, action, serviceName),
+		ServiceName: serviceName,
+	})
+}
+
+func extractRuleEventContext(res coremodel.Resource) (string, string) {
+	switch item := res.(type) {
+	case *meshresource.TagRouteResource:
+		if item.Spec == nil {
+			return "", ""
+		}
+		return item.Spec.Key, "tag-route"
+	case *meshresource.ConditionRouteResource:
+		if item.Spec == nil {
+			return "", ""
+		}
+		return item.Spec.Key, "condition-route"
+	case *meshresource.DynamicConfigResource:
+		if item.Spec == nil {
+			return "", ""
+		}
+		return item.Spec.Key, "dynamic-config"
+	default:
+		return "", ""
+	}
 }

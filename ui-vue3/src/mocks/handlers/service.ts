@@ -253,5 +253,23 @@ export const serviceHandlers: HttpHandler[] = [
 
   http.post(`${base}/service/generic/invoke`, () =>
     success({ elapsedMs: 12, rawResult: { id: '1001', name: 'Alice', age: 18 } })
-  )
+  ),
+
+  http.get(`${base}/service/event`, () => {
+    const sources = ['deployment-controller', 'nacos', 'zookeeper', 'kubelet']
+    const messages = [
+      'Service provider metadata updated: org.apache.dubbo.samples.UserService:v1',
+      'Service consumer registered: shop-user app',
+      'Instance registered via Nacos: 10.20.30.11:20880',
+      'Condition route rule applied to org.apache.dubbo.samples.UserService',
+      'Instance deregistered from Zookeeper: 10.20.30.12:20880'
+    ]
+    const list = Array.from({ length: 5 }, (_, i) => ({
+      time: `2024/2/17 ${String(20 - i).padStart(2, '0')}:04:38`,
+      type: (i === 4 ? 'warning' : 'normal') as 'normal' | 'warning',
+      message: messages[i],
+      source: sources[i % sources.length]
+    }))
+    return success({ list, total: list.length })
+  })
 ]

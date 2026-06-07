@@ -72,5 +72,12 @@ func (e *EngineFactory) NewListWatchers(cfg *enginecfg.Config) ([]controller.Res
 		return nil, fmt.Errorf("failed to init PodListerWatcher in kubernetes engine, %w", err)
 	}
 	lwList = append(lwList, podListerWatcher)
+
+	eventListerWatcher, err := listerwatcher.NewK8sEventListWatcher(clientset, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init K8sEventListWatcher in kubernetes engine, %w", err)
+	}
+	lwList = append(lwList, eventListerWatcher)
+
 	return lwList, nil
 }
