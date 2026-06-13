@@ -499,9 +499,9 @@ func normalizeLokiLogs(resp lokiQueryRangeResp) []LogItem {
 				InstanceName: firstLabel(stream.Stream, "instance", "instanceName", "pod"),
 				Severity:     firstNonEmpty(extractLogField(raw, "level", "severity"), firstLabel(stream.Stream, "level", "severity", "detected_level")),
 				Message:      message,
-				TraceID:      extractLogField(raw, "trace_id", "traceId", "traceid"),
-				SpanID:       extractLogField(raw, "span_id", "spanId", "spanid"),
-				TraceFlags:   extractLogField(raw, "trace_flags", "traceFlags", "traceflags"),
+				TraceID:      firstNonEmpty(extractLogField(raw, "trace_id", "traceId", "traceid"), firstLabel(stream.Stream, "trace_id", "traceId", "traceid")),
+				SpanID:       firstNonEmpty(extractLogField(raw, "span_id", "spanId", "spanid"), firstLabel(stream.Stream, "span_id", "spanId", "spanid")),
+				TraceFlags:   firstNonEmpty(extractLogField(raw, "trace_flags", "traceFlags", "traceflags"), firstLabel(stream.Stream, "trace_flags", "traceFlags", "traceflags")),
 				Attributes:   extraLabels(stream.Stream),
 				Raw:          raw,
 			})
@@ -577,9 +577,20 @@ func stringifyLogField(value any) string {
 	}
 }
 
+// cache the compiled regex per key and reuse it.
+var textLogFieldPatterns sync.Map // map[string]*regexp.Regexp
+func textLogFieldPattern(key string) *regexp.Regexp {
+	if re, ok := textLogFieldPatterns.Load(key); ok {
+		return re.(*regexp.Regexp)
+	}
+	compiled := regexp.MustCompile(`(?i)(?:^|[\s{,])"?` + regexp.QuoteMeta(key) + `"?\s*[:=]\s*"?([^"\s,}]+)`)
+	actual, _ := textLogFieldPatterns.LoadOrStore(key, compiled)
+	return actual.(*regexp.Regexp)
+}
+
 func extractTextLogField(message string, keys ...string) string {
 	for _, key := range keys {
-		pattern := regexp.MustCompile(`(?i)(?:^|[\s{,])"?` + regexp.QuoteMeta(key) + `"?\s*[:=]\s*"?([^"\s,}]+)`)
+		pattern := textLogFieldPattern(key)
 		if matches := pattern.FindStringSubmatch(message); len(matches) == 2 {
 			return matches[1]
 		}
@@ -593,7 +604,8 @@ func extraLabels(labels map[string]string) map[string]string {
 	for key, value := range labels {
 		switch key {
 		case "mesh", "app", "appName", "service", "serviceName", "service_name", "instance", "instanceName",
-			"pod", "level", "severity", "detected_level", "trace_id", "traceId", "traceid", "span_id", "spanId", "spanid":
+			"pod", "level", "severity", "detected_level", "trace_id", "traceId", "traceid", "span_id", "spanId",
+			"spanid", "trace_flags", "traceFlags", "traceflags":
 			continue
 		default:
 			attrs[key] = value

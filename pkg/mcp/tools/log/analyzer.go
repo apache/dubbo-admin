@@ -44,7 +44,12 @@ func analyzeErrors(logs []LogItem, sourceEngine string) *AnalyzeErrorLogsResp {
 			patternsByName[patternName] = pattern
 		}
 		pattern.Count++
-		pattern.LastSeen = item.Timestamp
+		if pattern.FirstSeen == "" || item.Timestamp < pattern.FirstSeen {
+			pattern.FirstSeen = item.Timestamp
+		}
+		if pattern.LastSeen == "" || item.Timestamp > pattern.LastSeen {
+			pattern.LastSeen = item.Timestamp
+		}
 		if len(pattern.Examples) < 3 {
 			pattern.Examples = append(pattern.Examples, item)
 		}

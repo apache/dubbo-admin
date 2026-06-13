@@ -66,8 +66,12 @@ func (c *LogsConfig) Validate() error {
 		if strutil.IsBlank(provider.Endpoint) {
 			return bizerror.New(bizerror.ConfigError, "log provider endpoint is required")
 		}
-		if _, err := url.Parse(provider.Endpoint); err != nil {
+		parsed, err := url.Parse(provider.Endpoint)
+		if err != nil {
 			return bizerror.Wrap(err, bizerror.ConfigError, fmt.Sprintf("invalid log provider endpoint: %s", provider.Endpoint))
+		}
+		if parsed.Scheme == "" || parsed.Host == "" {
+			return bizerror.New(bizerror.ConfigError, fmt.Sprintf("invalid log provider endpoint: %s", provider.Endpoint))
 		}
 	}
 	if !foundDefault {
