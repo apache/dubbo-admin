@@ -19,32 +19,304 @@ package lock
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"sync"
 	"time"
+
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 )
 
-// Lock defines the distributed lock interface
-// This abstraction allows for multiple implementations (GORM, Redis, etcd, etc.)
+var (
+	ErrLockLeaseLost   = errors.New("lock lease lost")
+	ErrLockUnavailable = errors.New("lock is required")
+)
+
+type leaseContextKey struct{}
+
+// Lease represents one successful lock acquisition. Its token is scoped to this
+// acquisition only; delayed Renew or Unlock calls from an older lease must not
+// affect a newer lease for the same key.
+type Lease interface {
+	Key() string
+	Token() string
+	Context() context.Context
+	Lost() <-chan struct{}
+	Renew(ctx context.Context, ttl time.Duration) error
+	Unlock(ctx context.Context) error
+}
+
+// Lock defines the distributed lock interface.
 type Lock interface {
-	// Lock acquires a distributed lock, blocking until successful or context cancelled
-	Lock(ctx context.Context, key string, ttl time.Duration) error
+	// Acquire blocks until it obtains a lease or the context is cancelled.
+	Acquire(ctx context.Context, key string, ttl time.Duration) (Lease, error)
 
-	// TryLock attempts to acquire a lock without blocking
-	// Returns true if lock was acquired, false otherwise
-	TryLock(ctx context.Context, key string, ttl time.Duration) (bool, error)
+	// TryAcquire attempts to acquire a lease without blocking.
+	TryAcquire(ctx context.Context, key string, ttl time.Duration) (Lease, bool, error)
 
-	// Unlock releases a lock held by this instance
-	Unlock(ctx context.Context, key string) error
-
-	// Renew extends the TTL of a lock held by this instance
-	Renew(ctx context.Context, key string, ttl time.Duration) error
-
-	// IsLocked checks if a lock is currently held by anyone
+	// IsLocked checks if a lock is currently held by anyone.
 	IsLocked(ctx context.Context, key string) (bool, error)
 
-	// WithLock executes a function while holding a lock
-	// Automatically acquires the lock, executes the function, and releases the lock
-	WithLock(ctx context.Context, key string, ttl time.Duration, fn func() error) error
-
-	// CleanupExpiredLocks removes expired locks (maintenance task)
+	// CleanupExpiredLocks removes expired locks (maintenance task).
 	CleanupExpiredLocks(ctx context.Context) error
+}
+
+type StatefulLease interface {
+	Lease
+	BindContext(context.Context)
+	MarkLost(error)
+	LostError() error
+}
+
+type LeaseState struct {
+	key   string
+	token string
+
+	mu       sync.RWMutex
+	ctx      context.Context
+	lostErr  error
+	lost     chan struct{}
+	lostOnce sync.Once
+}
+
+func NewLeaseState(key, token string) *LeaseState {
+	s := &LeaseState{
+		key:   key,
+		token: token,
+		ctx:   context.Background(),
+		lost:  make(chan struct{}),
+	}
+	return s
+}
+
+func (s *LeaseState) Key() string {
+	return s.key
+}
+
+func (s *LeaseState) Token() string {
+	return s.token
+}
+
+func (s *LeaseState) Context() context.Context {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.ctx != nil {
+		return s.ctx
+	}
+	return context.Background()
+}
+
+func (s *LeaseState) BindContext(ctx context.Context) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	s.mu.Lock()
+	s.ctx = ctx
+	s.mu.Unlock()
+}
+
+func (s *LeaseState) Lost() <-chan struct{} {
+	return s.lost
+}
+
+func (s *LeaseState) MarkLost(err error) {
+	if err == nil {
+		err = ErrLockLeaseLost
+	}
+	s.mu.Lock()
+	s.lostErr = err
+	s.mu.Unlock()
+	s.lostOnce.Do(func() {
+		close(s.lost)
+	})
+}
+
+func (s *LeaseState) LostError() error {
+	s.mu.RLock()
+	err := s.lostErr
+	s.mu.RUnlock()
+	if err != nil {
+		return err
+	}
+	select {
+	case <-s.lost:
+		return ErrLockLeaseLost
+	default:
+		return nil
+	}
+}
+
+func NewLeaseToken() (string, error) {
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b[:]), nil
+}
+
+func WithLock(ctx context.Context, lockMgr Lock, key string, ttl time.Duration, fn func(context.Context) error) (err error) {
+	if lockMgr == nil {
+		return ErrLockUnavailable
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if fn == nil {
+		return fmt.Errorf("lock callback is required")
+	}
+
+	acquireCtx := ctx
+	cancelAcquire := func() {}
+	if _, ok := ctx.Deadline(); !ok {
+		acquireCtx, cancelAcquire = context.WithTimeout(ctx, constants.DefaultLockTimeout)
+	}
+	lease, acquireErr := lockMgr.Acquire(acquireCtx, key, ttl)
+	cancelAcquire()
+	if acquireErr != nil {
+		return acquireErr
+	}
+
+	leaseCtx, cancelLease := context.WithCancel(ctx)
+	leaseCtx = context.WithValue(leaseCtx, leaseContextKey{}, lease)
+	if stateful, ok := lease.(StatefulLease); ok {
+		stateful.BindContext(leaseCtx)
+	}
+
+	stopRenew := make(chan struct{})
+	renewDone := make(chan struct{})
+	leaseLost := make(chan error, 1)
+	if ttl > 0 {
+		go autoRenewLease(leaseCtx, cancelLease, lease, ttl, stopRenew, renewDone, leaseLost)
+	} else {
+		close(renewDone)
+	}
+
+	defer func() {
+		close(stopRenew)
+		<-renewDone
+
+		unlockCtx, unlockCancel := context.WithTimeout(context.Background(), constants.DefaultUnlockTimeout)
+		unlockErr := lease.Unlock(unlockCtx)
+		unlockCancel()
+		cancelLease()
+
+		if recovered := recover(); recovered != nil {
+			panic(recovered)
+		}
+		if err != nil {
+			return
+		}
+		if lostErr := leaseLostError(lease, leaseLost); lostErr != nil {
+			err = lostErr
+			return
+		}
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			err = ctxErr
+			return
+		}
+		if unlockErr != nil {
+			err = unlockErr
+		}
+	}()
+
+	err = fn(leaseCtx)
+	if err != nil {
+		return err
+	}
+	if lostErr := leaseLostError(lease, leaseLost); lostErr != nil {
+		return lostErr
+	}
+	return CheckLease(leaseCtx)
+}
+
+func CheckLease(ctx context.Context) error {
+	if ctx == nil {
+		return nil
+	}
+	if lease, ok := ctx.Value(leaseContextKey{}).(Lease); ok {
+		if lostErr := leaseLostError(lease, nil); lostErr != nil {
+			return lostErr
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func LeaseFromContext(ctx context.Context) (Lease, bool) {
+	if ctx == nil {
+		return nil, false
+	}
+	lease, ok := ctx.Value(leaseContextKey{}).(Lease)
+	return lease, ok
+}
+
+func autoRenewLease(leaseCtx context.Context, cancelLease context.CancelFunc, lease Lease, ttl time.Duration, stop <-chan struct{}, done chan<- struct{}, lost chan<- error) {
+	defer close(done)
+	interval := ttl / 3
+	if interval <= 0 {
+		interval = ttl
+	}
+	if interval < 10*time.Millisecond {
+		interval = 10 * time.Millisecond
+	}
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-stop:
+			return
+		case <-leaseCtx.Done():
+			return
+		case <-ticker.C:
+			renewCtx, cancel := context.WithTimeout(context.Background(), constants.DefaultRenewTimeout)
+			err := lease.Renew(renewCtx, ttl)
+			cancel()
+			if err != nil {
+				lostErr := fmt.Errorf("%w: renew failed for %s: %v", ErrLockLeaseLost, lease.Key(), err)
+				if stateful, ok := lease.(StatefulLease); ok {
+					stateful.MarkLost(lostErr)
+				}
+				select {
+				case lost <- lostErr:
+				default:
+				}
+				cancelLease()
+				return
+			}
+		}
+	}
+}
+
+func leaseLostError(lease Lease, ch <-chan error) error {
+	select {
+	case <-lease.Lost():
+		if stateful, ok := lease.(StatefulLease); ok {
+			if err := stateful.LostError(); err != nil {
+				if errors.Is(err, ErrLockLeaseLost) {
+					return err
+				}
+				return fmt.Errorf("%w: %v", ErrLockLeaseLost, err)
+			}
+		}
+		return ErrLockLeaseLost
+	default:
+	}
+	if ch == nil {
+		return nil
+	}
+	select {
+	case err := <-ch:
+		if err == nil {
+			return ErrLockLeaseLost
+		}
+		return err
+	default:
+		return nil
+	}
 }

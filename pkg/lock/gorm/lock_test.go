@@ -19,6 +19,7 @@ package gorm_test
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -30,6 +31,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	corelock "github.com/apache/dubbo-admin/pkg/core/lock"
 	gormlock "github.com/apache/dubbo-admin/pkg/lock/gorm"
 )
 
@@ -61,14 +63,14 @@ func TestBasicLockUnlock(t *testing.T) {
 	lockInstance := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
-	err := lockInstance.Lock(ctx, "test-key", 5*time.Second)
+	lease, err := lockInstance.Acquire(ctx, "test-key", 5*time.Second)
 	assert.NoError(t, err, "should acquire lock successfully")
 
 	isLocked, err := lockInstance.IsLocked(ctx, "test-key")
 	assert.NoError(t, err)
 	assert.True(t, isLocked, "lock should be held")
 
-	err = lockInstance.Unlock(ctx, "test-key")
+	err = lease.Unlock(ctx)
 	assert.NoError(t, err, "should release lock successfully")
 
 	isLocked, err = lockInstance.IsLocked(ctx, "test-key")
@@ -82,22 +84,22 @@ func TestTryLock(t *testing.T) {
 	lock2 := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
-	acquired, err := lock1.TryLock(ctx, "test-key", 5*time.Second)
+	lease1, acquired, err := lock1.TryAcquire(ctx, "test-key", 5*time.Second)
 	assert.NoError(t, err)
 	assert.True(t, acquired, "first lock should be acquired")
 
-	acquired, err = lock2.TryLock(ctx, "test-key", 5*time.Second)
+	_, acquired, err = lock2.TryAcquire(ctx, "test-key", 5*time.Second)
 	assert.NoError(t, err)
 	assert.False(t, acquired, "second lock should not be acquired")
 
-	err = lock1.Unlock(ctx, "test-key")
+	err = lease1.Unlock(ctx)
 	assert.NoError(t, err)
 
-	acquired, err = lock2.TryLock(ctx, "test-key", 5*time.Second)
+	lease2, acquired, err := lock2.TryAcquire(ctx, "test-key", 5*time.Second)
 	assert.NoError(t, err)
 	assert.True(t, acquired, "second lock should be acquired after first is released")
 
-	_ = lock2.Unlock(ctx, "test-key")
+	_ = lease2.Unlock(ctx)
 }
 
 func TestConcurrentLockAttempts(t *testing.T) {
@@ -113,11 +115,11 @@ func TestConcurrentLockAttempts(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			lockInstance := gormlock.NewGormLockFromDB(db)
-			acquired, err := lockInstance.TryLock(ctx, "concurrent-key", 1*time.Second)
+			lease, acquired, err := lockInstance.TryAcquire(ctx, "concurrent-key", 1*time.Second)
 			if err == nil && acquired {
 				successCount.Add(1)
 				time.Sleep(100 * time.Millisecond) // Hold lock briefly
-				_ = lockInstance.Unlock(ctx, "concurrent-key")
+				_ = lease.Unlock(ctx)
 			}
 		}()
 	}
@@ -133,21 +135,21 @@ func TestLockExpiration(t *testing.T) {
 	lock2 := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
-	acquired, err := lock1.TryLock(ctx, "expire-key", 100*time.Millisecond)
+	_, acquired, err := lock1.TryAcquire(ctx, "expire-key", 100*time.Millisecond)
 	assert.NoError(t, err)
 	assert.True(t, acquired)
 
-	acquired, err = lock2.TryLock(ctx, "expire-key", 1*time.Second)
+	_, acquired, err = lock2.TryAcquire(ctx, "expire-key", 1*time.Second)
 	assert.NoError(t, err)
 	assert.False(t, acquired, "lock should still be held")
 
 	time.Sleep(200 * time.Millisecond)
 
-	acquired, err = lock2.TryLock(ctx, "expire-key", 1*time.Second)
+	lease2, acquired, err := lock2.TryAcquire(ctx, "expire-key", 1*time.Second)
 	assert.NoError(t, err)
 	assert.True(t, acquired, "lock should be acquired after expiration")
 
-	_ = lock2.Unlock(ctx, "expire-key")
+	_ = lease2.Unlock(ctx)
 }
 
 func TestLockRenewal(t *testing.T) {
@@ -155,19 +157,19 @@ func TestLockRenewal(t *testing.T) {
 	lockInstance := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
-	err := lockInstance.Lock(ctx, "renew-key", 1*time.Second)
+	lease, err := lockInstance.Acquire(ctx, "renew-key", 1*time.Second)
 	require.NoError(t, err)
 
 	time.Sleep(500 * time.Millisecond)
 
-	err = lockInstance.Renew(ctx, "renew-key", 2*time.Second)
+	err = lease.Renew(ctx, 2*time.Second)
 	assert.NoError(t, err, "should renew lock successfully")
 
 	isLocked, err := lockInstance.IsLocked(ctx, "renew-key")
 	assert.NoError(t, err)
 	assert.True(t, isLocked, "lock should still be held after renewal")
 
-	_ = lockInstance.Unlock(ctx, "renew-key")
+	_ = lease.Unlock(ctx)
 }
 
 func TestUnlockNotHeld(t *testing.T) {
@@ -176,10 +178,14 @@ func TestUnlockNotHeld(t *testing.T) {
 	lock2 := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
-	err := lock1.Lock(ctx, "test-key", 5*time.Second)
+	lease1, err := lock1.Acquire(ctx, "test-key", 20*time.Millisecond)
 	require.NoError(t, err)
+	time.Sleep(30 * time.Millisecond)
 
-	err = lock2.Unlock(ctx, "test-key")
+	lease2, acquired, err := lock2.TryAcquire(ctx, "test-key", 5*time.Second)
+	require.NoError(t, err)
+	require.True(t, acquired)
+	err = lease1.Unlock(ctx)
 	assert.Error(t, err, "should return error")
 
 	// 检查错误类型和错误码
@@ -188,7 +194,7 @@ func TestUnlockNotHeld(t *testing.T) {
 		assert.Equal(t, bizerror.LockNotHeld, bizErr.Code(), "should return LockNotHeld error code")
 	}
 
-	_ = lock1.Unlock(ctx, "test-key")
+	_ = lease2.Unlock(ctx)
 }
 
 func TestRenewNotHeld(t *testing.T) {
@@ -197,10 +203,14 @@ func TestRenewNotHeld(t *testing.T) {
 	lock2 := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
-	err := lock1.Lock(ctx, "test-key", 5*time.Second)
+	lease1, err := lock1.Acquire(ctx, "test-key", 20*time.Millisecond)
 	require.NoError(t, err)
+	time.Sleep(30 * time.Millisecond)
 
-	err = lock2.Renew(ctx, "test-key", 10*time.Second)
+	lease2, acquired, err := lock2.TryAcquire(ctx, "test-key", 5*time.Second)
+	require.NoError(t, err)
+	require.True(t, acquired)
+	err = lease1.Renew(ctx, 10*time.Second)
 	assert.Error(t, err, "should return error")
 
 	var bizErr bizerror.Error
@@ -208,7 +218,7 @@ func TestRenewNotHeld(t *testing.T) {
 		assert.Equal(t, bizerror.LockNotHeld, bizErr.Code(), "should return LockNotHeld error code")
 	}
 
-	_ = lock1.Unlock(ctx, "test-key")
+	_ = lease2.Unlock(ctx)
 }
 
 func TestWithLock(t *testing.T) {
@@ -217,7 +227,7 @@ func TestWithLock(t *testing.T) {
 	ctx := context.Background()
 
 	executed := false
-	err := lockInstance.WithLock(ctx, "with-lock-key", 2*time.Second, func() error {
+	err := corelock.WithLock(ctx, lockInstance, "with-lock-key", 2*time.Second, func(context.Context) error {
 		executed = true
 		isLocked, err := lockInstance.IsLocked(ctx, "with-lock-key")
 		assert.NoError(t, err)
@@ -240,8 +250,8 @@ func TestWithLockAutoRenewal(t *testing.T) {
 	ctx := context.Background()
 
 	executed := false
-	err := lockInstance.WithLock(ctx, "auto-renew-key", 15*time.Second, func() error {
-		time.Sleep(6 * time.Second)
+	err := corelock.WithLock(ctx, lockInstance, "auto-renew-key", 30*time.Millisecond, func(context.Context) error {
+		time.Sleep(80 * time.Millisecond)
 		executed = true
 		return nil
 	})
@@ -262,7 +272,7 @@ func TestWithLockContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	started := make(chan struct{})
-	err := lockInstance.WithLock(ctx, "cancel-key", 5*time.Second, func() error {
+	err := corelock.WithLock(ctx, lockInstance, "cancel-key", 5*time.Second, func(context.Context) error {
 		close(started)
 		cancel()
 		time.Sleep(100 * time.Millisecond)
@@ -271,12 +281,31 @@ func TestWithLockContextCancellation(t *testing.T) {
 
 	<-started
 
-	assert.NoError(t, err, "function should complete even if context is cancelled during execution")
+	assert.ErrorIs(t, err, context.Canceled)
 
 	time.Sleep(100 * time.Millisecond)
 	isLocked, err := lockInstance.IsLocked(context.Background(), "cancel-key")
 	assert.NoError(t, err)
 	assert.False(t, isLocked, "lock should be released even after context cancellation")
+}
+
+func TestWithLockAcquisitionTimeout(t *testing.T) {
+	db := setupTestDB(t)
+	lock1 := gormlock.NewGormLockFromDB(db)
+	lock2 := gormlock.NewGormLockFromDB(db)
+
+	lease1, err := lock1.Acquire(context.Background(), "timeout-key", time.Second)
+	require.NoError(t, err)
+	defer func() { _ = lease1.Unlock(context.Background()) }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
+	defer cancel()
+	err = corelock.WithLock(ctx, lock2, "timeout-key", time.Second, func(context.Context) error {
+		t.Fatal("second owner must not enter while lock is held")
+		return nil
+	})
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
 }
 
 func TestCleanupExpiredLocks(t *testing.T) {
@@ -285,8 +314,8 @@ func TestCleanupExpiredLocks(t *testing.T) {
 	lock2 := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
-	_, _ = lock1.TryLock(ctx, "cleanup-key-1", 100*time.Millisecond)
-	_, _ = lock2.TryLock(ctx, "cleanup-key-2", 100*time.Millisecond)
+	_, _, _ = lock1.TryAcquire(ctx, "cleanup-key-1", 100*time.Millisecond)
+	_, _, _ = lock2.TryAcquire(ctx, "cleanup-key-2", 100*time.Millisecond)
 
 	time.Sleep(200 * time.Millisecond)
 
@@ -303,9 +332,9 @@ func TestMultipleDifferentLocks(t *testing.T) {
 	lockInstance := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
-	err1 := lockInstance.Lock(ctx, "key-1", 5*time.Second)
-	err2 := lockInstance.Lock(ctx, "key-2", 5*time.Second)
-	err3 := lockInstance.Lock(ctx, "key-3", 5*time.Second)
+	lease1, err1 := lockInstance.Acquire(ctx, "key-1", 5*time.Second)
+	lease2, err2 := lockInstance.Acquire(ctx, "key-2", 5*time.Second)
+	lease3, err3 := lockInstance.Acquire(ctx, "key-3", 5*time.Second)
 
 	assert.NoError(t, err1)
 	assert.NoError(t, err2)
@@ -319,9 +348,9 @@ func TestMultipleDifferentLocks(t *testing.T) {
 	assert.True(t, isLocked2)
 	assert.True(t, isLocked3)
 
-	_ = lockInstance.Unlock(ctx, "key-1")
-	_ = lockInstance.Unlock(ctx, "key-2")
-	_ = lockInstance.Unlock(ctx, "key-3")
+	_ = lease1.Unlock(ctx)
+	_ = lease2.Unlock(ctx)
+	_ = lease3.Unlock(ctx)
 }
 
 func TestLockBlockingBehavior(t *testing.T) {
@@ -330,7 +359,7 @@ func TestLockBlockingBehavior(t *testing.T) {
 	lock2 := gormlock.NewGormLockFromDB(db)
 	ctx := context.Background()
 
-	err := lock1.Lock(ctx, "blocking-key", 10*time.Second)
+	lease1, err := lock1.Acquire(ctx, "blocking-key", 10*time.Second)
 	require.NoError(t, err)
 
 	isLocked, err := lock1.IsLocked(ctx, "blocking-key")
@@ -341,16 +370,21 @@ func TestLockBlockingBehavior(t *testing.T) {
 	done := make(chan time.Time)
 
 	go func() {
-		_ = lock2.Lock(ctx, "blocking-key", 10*time.Second)
+		lease2, _ := lock2.Acquire(ctx, "blocking-key", 10*time.Second)
+		defer func() {
+			if lease2 != nil {
+				_ = lease2.Unlock(ctx)
+			}
+		}()
 		done <- time.Now()
 	}()
 
 	time.Sleep(500 * time.Millisecond)
 
-	unlockErr := lock1.Unlock(ctx, "blocking-key")
+	unlockErr := lease1.Unlock(ctx)
 	require.NoError(t, unlockErr, "unlock should succeed")
 
-	isLocked, err = lock1.IsLocked(ctx, "blocking-key")
+	_, err = lock1.IsLocked(ctx, "blocking-key")
 	require.NoError(t, err)
 
 	lock2AcquiredTime := <-done
@@ -359,6 +393,40 @@ func TestLockBlockingBehavior(t *testing.T) {
 
 	assert.GreaterOrEqual(t, duration, 500*time.Millisecond, "lock2 should acquire after lock1 releases")
 	assert.Less(t, duration, 1500*time.Millisecond, "lock2 should acquire shortly after lock1 releases")
+}
 
-	_ = lock2.Unlock(ctx, "blocking-key")
+func TestGormLockSameInstanceABADelayedUnlockAndRenew(t *testing.T) {
+	db := setupTestDB(t)
+	lockInstance := gormlock.NewGormLockFromDB(db)
+
+	leaseA, err := lockInstance.Acquire(context.Background(), "same-instance-aba", 20*time.Millisecond)
+	require.NoError(t, err)
+	time.Sleep(30 * time.Millisecond)
+
+	leaseB, acquired, err := lockInstance.TryAcquire(context.Background(), "same-instance-aba", time.Second)
+	require.NoError(t, err)
+	require.True(t, acquired)
+	require.NotEqual(t, leaseA.Token(), leaseB.Token())
+
+	require.Error(t, leaseA.Unlock(context.Background()))
+	require.Error(t, leaseA.Renew(context.Background(), time.Second))
+
+	locked, err := lockInstance.IsLocked(context.Background(), "same-instance-aba")
+	require.NoError(t, err)
+	require.True(t, locked)
+	require.NoError(t, leaseB.Renew(context.Background(), time.Second))
+	require.NoError(t, leaseB.Unlock(context.Background()))
+}
+
+func TestGormWithLockCancelsOnLeaseLoss(t *testing.T) {
+	db := setupTestDB(t)
+	lockInstance := gormlock.NewGormLockFromDB(db)
+
+	err := corelock.WithLock(context.Background(), lockInstance, "lost-lease", 30*time.Millisecond, func(leaseCtx context.Context) error {
+		require.NoError(t, db.Where("lock_key = ?", "lost-lease").Delete(&gormlock.LockRecord{}).Error)
+		<-leaseCtx.Done()
+		return nil
+	})
+	require.Error(t, err)
+	require.True(t, errors.Is(err, corelock.ErrLockLeaseLost))
 }

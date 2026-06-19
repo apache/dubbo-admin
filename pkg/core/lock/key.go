@@ -18,31 +18,43 @@
 package lock
 
 import (
-	"fmt"
+	"encoding/base64"
+	"strings"
 
 	"github.com/apache/dubbo-admin/pkg/common/constants"
 )
 
 // BuildLockKey constructs a lock key from a prefix and parts
 func BuildLockKey(prefix string, parts ...string) string {
-	key := prefix
+	segments := make([]string, 0, len(parts)+1)
+	segments = append(segments, encodeLockPart(prefix))
 	for _, part := range parts {
-		key += ":" + part
+		segments = append(segments, encodeLockPart(part))
 	}
-	return key
+	return strings.Join(segments, ":")
+}
+
+// BuildRuleVersioningLockKey constructs the canonical per-rule lock key used by
+// console writes, rollback, bootstrap, repair, retention, and subscriber commits.
+func BuildRuleVersioningLockKey(kind, mesh, name string) string {
+	return BuildLockKey(constants.RuleVersioningKeyPrefix, kind, mesh, name)
 }
 
 // BuildTagRouteLockKey constructs a lock key for tag route operations
 func BuildTagRouteLockKey(mesh, name string) string {
-	return fmt.Sprintf("%s:%s:%s", constants.TagRouteKeyPrefix, mesh, name)
+	return BuildRuleVersioningLockKey("TagRoute", mesh, name)
 }
 
 // BuildConfiguratorRuleLockKey constructs a lock key for configurator rule operations
 func BuildConfiguratorRuleLockKey(mesh, name string) string {
-	return fmt.Sprintf("%s:%s:%s", constants.ConfiguratorRuleKeyPrefix, mesh, name)
+	return BuildRuleVersioningLockKey("DynamicConfig", mesh, name)
 }
 
 // BuildConditionRuleLockKey constructs a lock key for condition rule operations
 func BuildConditionRuleLockKey(mesh, name string) string {
-	return fmt.Sprintf("%s:%s:%s", constants.ConditionRuleKeyPrefix, mesh, name)
+	return BuildRuleVersioningLockKey("ConditionRoute", mesh, name)
+}
+
+func encodeLockPart(part string) string {
+	return base64.RawURLEncoding.EncodeToString([]byte(part))
 }

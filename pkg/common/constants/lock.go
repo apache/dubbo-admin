@@ -46,6 +46,9 @@ const (
 
 // Lock key prefixes for different resource types
 const (
+	// RuleVersioningKeyPrefix is the canonical prefix for per-rule versioning locks.
+	RuleVersioningKeyPrefix = "rule_versioning"
+
 	// TagRouteKeyPrefix is the prefix for tag route lock keys
 	TagRouteKeyPrefix = "tag_route"
 

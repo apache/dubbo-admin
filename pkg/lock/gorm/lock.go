@@ -22,14 +22,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/common/constants"
 	"github.com/apache/dubbo-admin/pkg/core/lock"
-	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/store/dbcommon"
 )
 
@@ -39,18 +37,16 @@ var _ lock.Lock = (*GormLock)(nil)
 // GormLock provides distributed locking using database as backend
 // It uses GORM for database operations and supports MySQL, PostgreSQL, etc.
 type GormLock struct {
-	pool  *dbcommon.ConnectionPool
-	db    *gorm.DB // Direct DB reference to avoid circular dependency
-	owner string   // Unique identifier for this lock instance
+	pool *dbcommon.ConnectionPool
+	db   *gorm.DB
 }
 
 // NewGormLock creates a new GORM-based distributed lock instance
 // Deprecated: Use NewGormLockFromDB to avoid circular dependencies
 func NewGormLock(pool *dbcommon.ConnectionPool) lock.Lock {
 	return &GormLock{
-		pool:  pool,
-		db:    pool.GetDB(),
-		owner: uuid.New().String(),
+		pool: pool,
+		db:   pool.GetDB(),
 	}
 }
 
@@ -58,8 +54,7 @@ func NewGormLock(pool *dbcommon.ConnectionPool) lock.Lock {
 // This is the preferred constructor to avoid circular dependencies
 func NewGormLockFromDB(db *gorm.DB) lock.Lock {
 	return &GormLock{
-		db:    db,
-		owner: uuid.New().String(),
+		db: db,
 	}
 }
 
@@ -74,55 +69,58 @@ func (g *GormLock) getDB() *gorm.DB {
 	return nil
 }
 
-// Lock acquires a lock with the specified key and TTL
-// It blocks until the lock is acquired or context is cancelled
-func (g *GormLock) Lock(ctx context.Context, key string, ttl time.Duration) error {
+type lease struct {
+	*lock.LeaseState
+	lock *GormLock
+}
+
+func (g *GormLock) Acquire(ctx context.Context, key string, ttl time.Duration) (lock.Lease, error) {
 	ticker := time.NewTicker(constants.DefaultLockRetryInterval)
 	defer ticker.Stop()
 
 	for {
-		acquired, err := g.TryLock(ctx, key, ttl)
+		lease, acquired, err := g.TryAcquire(ctx, key, ttl)
 		if err != nil {
-			return fmt.Errorf("failed to try lock: %w", err)
+			return nil, fmt.Errorf("failed to try lock: %w", err)
 		}
 		if acquired {
-			return nil
+			return lease, nil
 		}
 
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil, ctx.Err()
 		case <-ticker.C:
 		}
 	}
 }
 
-// TryLock attempts to acquire a lock without blocking
-// Returns true if lock was acquired, false otherwise
-func (g *GormLock) TryLock(ctx context.Context, key string, ttl time.Duration) (bool, error) {
+func (g *GormLock) TryAcquire(ctx context.Context, key string, ttl time.Duration) (lock.Lease, bool, error) {
 	db := g.getDB().WithContext(ctx)
+	token, err := lock.NewLeaseToken()
+	if err != nil {
+		return nil, false, err
+	}
 	expireAt := time.Now().Add(ttl)
 
 	var acquired bool
-	err := db.Transaction(func(tx *gorm.DB) error {
+	err = db.Transaction(func(tx *gorm.DB) error {
 		// Clean up only this key's expired lock to improve performance
 		now := time.Now()
-		if err := tx.Where("lock_key = ? AND expire_at < ?", key, now).
+		if err := tx.Where("lock_key = ? AND expire_at <= ?", key, now).
 			Delete(&LockRecord{}).Error; err != nil {
 			return fmt.Errorf("failed to clean expired lock for key %s: %w", key, err)
 		}
 
-		// Try to acquire lock using INSERT ... ON CONFLICT
 		lock := &LockRecord{
 			LockKey:  key,
-			Owner:    g.owner,
+			Owner:    token,
 			ExpireAt: expireAt,
 		}
 
-		// Try to insert the lock record
 		result := tx.Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "lock_key"}},
-			DoNothing: true, // If conflict, do nothing
+			DoNothing: true,
 		}).Create(lock)
 
 		if result.Error != nil {
@@ -142,17 +140,22 @@ func (g *GormLock) TryLock(ctx context.Context, key string, ttl time.Duration) (
 	})
 
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 
-	return acquired, nil
+	if !acquired {
+		return nil, false, nil
+	}
+	return &lease{
+		LeaseState: lock.NewLeaseState(key, token),
+		lock:       g,
+	}, true, nil
 }
 
-// Unlock releases a lock held by this instance
-func (g *GormLock) Unlock(ctx context.Context, key string) error {
-	db := g.getDB().WithContext(ctx)
+func (l *lease) Unlock(ctx context.Context) error {
+	db := l.lock.getDB().WithContext(ctx)
 
-	result := db.Where("lock_key = ? AND owner = ?", key, g.owner).
+	result := db.Where("lock_key = ? AND owner = ?", l.Key(), l.Token()).
 		Delete(&LockRecord{})
 
 	if result.Error != nil {
@@ -166,13 +169,13 @@ func (g *GormLock) Unlock(ctx context.Context, key string) error {
 	return nil
 }
 
-// Renew extends the TTL of a lock held by this instance
-func (g *GormLock) Renew(ctx context.Context, key string, ttl time.Duration) error {
-	db := g.getDB().WithContext(ctx)
+func (l *lease) Renew(ctx context.Context, ttl time.Duration) error {
+	db := l.lock.getDB().WithContext(ctx)
+	now := time.Now()
 	newExpireAt := time.Now().Add(ttl)
 
 	result := db.Model(&LockRecord{}).
-		Where("lock_key = ? AND owner = ?", key, g.owner).
+		Where("lock_key = ? AND owner = ? AND expire_at > ?", l.Key(), l.Token(), now).
 		Update("expire_at", newExpireAt)
 
 	if result.Error != nil {
@@ -200,68 +203,6 @@ func (g *GormLock) IsLocked(ctx context.Context, key string) (bool, error) {
 	}
 
 	return count > 0, nil
-}
-
-// WithLock executes a function while holding a lock
-func (g *GormLock) WithLock(ctx context.Context, key string, ttl time.Duration, fn func() error) error {
-	// Acquire lock
-	if err := g.Lock(ctx, key, ttl); err != nil {
-		return fmt.Errorf("failed to acquire lock: %w", err)
-	}
-
-	// Ensure lock is released
-	defer func() {
-		// Use background context for unlock to ensure it completes even if ctx is cancelled
-		unlockCtx, cancel := context.WithTimeout(context.Background(), constants.DefaultUnlockTimeout)
-		defer cancel()
-
-		if err := g.Unlock(unlockCtx, key); err != nil {
-			logger.Errorf("Failed to release lock %s: %v", key, err)
-		}
-	}()
-
-	// Start auto-renewal if TTL is long enough
-	var renewDone chan struct{}
-	if ttl > constants.DefaultAutoRenewThreshold {
-		renewDone = make(chan struct{})
-		go g.autoRenew(ctx, key, ttl, renewDone)
-		defer close(renewDone)
-	}
-
-	// Execute the function
-	return fn()
-}
-
-// autoRenew periodically renews the lock until done channel is closed
-func (g *GormLock) autoRenew(ctx context.Context, key string, ttl time.Duration, done <-chan struct{}) {
-	// Renew at 1/3 of TTL to ensure lock doesn't expire
-	renewInterval := ttl / 3
-	ticker := time.NewTicker(renewInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-done:
-			return
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			// Double-check done channel before renewing to avoid unnecessary renewal
-			select {
-			case <-done:
-				return
-			default:
-			}
-
-			renewCtx, cancel := context.WithTimeout(context.Background(), constants.DefaultRenewTimeout)
-			if err := g.Renew(renewCtx, key, ttl); err != nil {
-				logger.Warnf("Failed to renew lock %s: %v", key, err)
-				cancel()
-				return
-			}
-			cancel()
-		}
-	}
 }
 
 // CleanupExpiredLocks removes all expired locks from the database
