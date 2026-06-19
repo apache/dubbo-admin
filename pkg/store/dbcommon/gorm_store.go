@@ -594,7 +594,7 @@ func (gs *GormStore) findByIndex(indexName, indexedValue string) ([]interface{},
 
 func (gs *GormStore) getKeysByIndexes(indexes []index.IndexCondition) ([]string, error) {
 	if len(indexes) == 0 {
-		return gs.ListKeys(), nil
+		return []string{}, nil
 	}
 
 	var keySet map[string]struct{}
