@@ -37,6 +37,9 @@ type ReadOnlyResourceManager interface {
 	ListByIndexes(rk model.ResourceKind, indexes []index.IndexCondition) ([]model.Resource, error)
 	// PageListByIndexes page list the resources with the given index conditions
 	PageListByIndexes(rk model.ResourceKind, indexes []index.IndexCondition, pr model.PageReq) (*model.PageData[model.Resource], error)
+	// GetStore returns the ResourceStore for the given resource kind.
+	// This is for special cases like bootstrap that need direct store access.
+	GetStore(rk model.ResourceKind) (store.ResourceStore, error)
 }
 
 type WriteOnlyResourceManager interface {
@@ -175,4 +178,8 @@ func (rm *resourcesManager) DeleteByKey(rk model.ResourceKind, mesh string, key 
 		return fmt.Errorf("%s %s does not exist", rk, key)
 	}
 	return gov.DeleteRule(r)
+}
+
+func (rm *resourcesManager) GetStore(rk model.ResourceKind) (store.ResourceStore, error) {
+	return rm.storeRouter.ResourceKindRoute(rk)
 }

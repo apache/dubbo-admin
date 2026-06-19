@@ -1,0 +1,472 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package versioning
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	"github.com/apache/dubbo-admin/pkg/common/constants"
+	"github.com/apache/dubbo-admin/pkg/core/lock"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
+)
+
+// Service provides rule versioning functionality.
+// Use NewService to create an instance.
+type Service struct {
+	enabled     bool
+	maxVersions int64
+	store       Store
+}
+
+func NewService(enabled bool, maxVersions int64, store Store) *Service {
+	return &Service{
+		enabled:     enabled,
+		maxVersions: maxVersions,
+		store:       store,
+	}
+}
+
+func (s *Service) ensureEnabled() error {
+	if !s.enabled {
+		return ErrFeatureDisabled
+	}
+	return nil
+}
+
+func (s *Service) List(kind coremodel.ResourceKind, mesh, ruleName string) (*ListResult, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	resourceKey := coremodel.BuildResourceKey(mesh, ruleName)
+	items, err := s.store.ListVersions(kind, resourceKey)
+	if err != nil {
+		return nil, err
+	}
+	meta, err := s.store.ReconcileMeta(kind, resourceKey)
+	if err != nil {
+		return nil, err
+	}
+	if meta != nil && meta.CurrentVersion != nil {
+		for i := range items {
+			items[i].IsCurrent = items[i].ID == *meta.CurrentVersion
+		}
+	}
+	return &ListResult{Items: items, Total: int64(len(items))}, nil
+}
+
+func (s *Service) Get(kind coremodel.ResourceKind, mesh, ruleName string, id int64) (*Version, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	resourceKey := coremodel.BuildResourceKey(mesh, ruleName)
+	version, err := s.store.GetVersion(kind, resourceKey, id)
+	if err != nil {
+		return nil, err
+	}
+	meta, err := s.store.ReconcileMeta(kind, resourceKey)
+	if err != nil {
+		return nil, err
+	}
+	if meta != nil && meta.CurrentVersion != nil {
+		version.IsCurrent = version.ID == *meta.CurrentVersion
+	}
+	return version, nil
+}
+
+func (s *Service) Diff(kind coremodel.ResourceKind, mesh, ruleName string, id int64, against string) (*DiffResult, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	left, err := s.Get(kind, mesh, ruleName, id)
+	if err != nil {
+		return nil, err
+	}
+	var right *Version
+	switch against {
+	case "", "current":
+		resourceKey := coremodel.BuildResourceKey(mesh, ruleName)
+		meta, err := s.store.ReconcileMeta(kind, resourceKey)
+		if err != nil {
+			return nil, err
+		}
+		if meta == nil || meta.CurrentVersion == nil {
+			latest, err := s.store.LatestVersion(kind, resourceKey)
+			if err != nil {
+				return nil, err
+			}
+			if latest.Operation != OperationDelete {
+				return nil, ErrVersionNotFound
+			}
+			right = latest
+			break
+		}
+		right, err = s.store.GetVersion(kind, resourceKey, *meta.CurrentVersion)
+		if err != nil {
+			return nil, err
+		}
+	case "previous":
+		list, err := s.store.ListVersions(kind, coremodel.BuildResourceKey(mesh, ruleName))
+		if err != nil {
+			return nil, err
+		}
+		for i := range list {
+			if list[i].ID != id {
+				continue
+			}
+			if i+1 >= len(list) {
+				return nil, ErrVersionNotFound
+			}
+			right = &list[i+1]
+			break
+		}
+		if right == nil {
+			return nil, ErrVersionNotFound
+		}
+	default:
+		var againstID int64
+		if parsed, err := strconv.ParseInt(against, 10, 64); err != nil {
+			return nil, bizerror.New(bizerror.InvalidArgument, "against must be 'current', 'previous', or a version ID")
+		} else {
+			againstID = parsed
+		}
+		right, err = s.Get(kind, mesh, ruleName, againstID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &DiffResult{
+		Left:  DiffSide{ID: left.ID, VersionNo: left.VersionNo, SpecJSON: left.SpecJSON},
+		Right: DiffSide{ID: right.ID, VersionNo: right.VersionNo, SpecJSON: right.SpecJSON},
+	}, nil
+}
+
+// CheckExpected applies the UI-supplied expectedVersionId as a weak
+// compare-and-set guard. It prevents a mutation from proceeding over a newer
+// ledger entry, but it is not a transactional lock by itself.
+func (s *Service) CheckExpected(kind coremodel.ResourceKind, mesh, ruleName string, expected *int64) error {
+	if err := s.ensureEnabled(); err != nil {
+		return nil
+	}
+	resourceKey := coremodel.BuildResourceKey(mesh, ruleName)
+	if _, err := s.store.ReconcileMeta(kind, resourceKey); err != nil {
+		return err
+	}
+	// Check for open intents first before checking version mismatch.
+	// Why: If Writer A created an intent at T1, and Writer B checks expected
+	// version at T2 (before A's subscriber commits), the meta pointer still
+	// reflects the old version. Without this guard, B would get VersionConflict
+	// instead of IntentPending, masking the real issue (concurrent write).
+	intent, err := s.store.OpenIntent(kind, resourceKey)
+	if err != nil {
+		return err
+	}
+	if intent != nil {
+		return &IntentPendingError{IntentID: intent.ID}
+	}
+	return s.store.CheckExpectedVersion(kind, resourceKey, expected)
+}
+
+// BeginMutation records a user's mutation before the rule is written.
+// The immutable Version is created later from the observed rule state, not from
+// the request alone. rolledBackFromID is audit metadata for rollback intents.
+func (s *Service) BeginMutation(res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromID *int64) (*Intent, error) {
+	return s.BeginMutationContext(context.Background(), res, op, source, author, reason, rolledBackFromID)
+}
+
+func (s *Service) BeginMutationContext(ctx context.Context, res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromID *int64) (*Intent, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	if err := lock.CheckLease(ctx); err != nil {
+		return nil, err
+	}
+	req, err := buildMutationInsertRequest(res, op, source, author, reason, rolledBackFromID, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	return s.store.CreateIntent(req)
+}
+
+func (s *Service) AbandonIntent(intent *Intent, reason string) error {
+	return s.AbandonIntentContext(context.Background(), intent, reason)
+}
+
+func (s *Service) AbandonIntentContext(ctx context.Context, intent *Intent, reason string) error {
+	if err := s.ensureEnabled(); err != nil {
+		return err
+	}
+	if err := lock.CheckLease(ctx); err != nil {
+		return err
+	}
+	if intent == nil {
+		return bizerror.New(bizerror.InvalidArgument, "rule version intent is required")
+	}
+	return s.store.MarkIntentFailed(intent.ID, reason)
+}
+
+// RepairIntent reconciles an open intent when the rule mutation reached
+// ResourceManager but the subscriber did not commit the corresponding version.
+// It derives the version from current rule state instead of trusting payloads.
+func (s *Service) RepairIntent(kind coremodel.ResourceKind, resourceKey string, current coremodel.Resource, deleted bool) (*Version, error) {
+	return s.RepairIntentContext(context.Background(), kind, resourceKey, current, deleted)
+}
+
+func (s *Service) RepairIntentContext(ctx context.Context, kind coremodel.ResourceKind, resourceKey string, current coremodel.Resource, deleted bool) (*Version, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	if err := lock.CheckLease(ctx); err != nil {
+		return nil, err
+	}
+	intent, err := s.store.OpenIntent(kind, resourceKey)
+	if err != nil || intent == nil {
+		return nil, err
+	}
+	return s.repairIntent(ctx, intent, current, deleted)
+}
+
+func (s *Service) FinalizeMutation(intent *Intent, current coremodel.Resource, deleted bool) (*Version, error) {
+	return s.FinalizeMutationContext(context.Background(), intent, current, deleted)
+}
+
+func (s *Service) FinalizeMutationContext(ctx context.Context, intent *Intent, current coremodel.Resource, deleted bool) (*Version, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	if err := lock.CheckLease(ctx); err != nil {
+		return nil, err
+	}
+	if intent == nil {
+		return nil, bizerror.New(bizerror.InvalidArgument, "rule version intent is required")
+	}
+	fresh, err := s.store.GetIntent(intent.ID)
+	if err != nil {
+		return nil, err
+	}
+	if fresh.Status == IntentStatusPending {
+		if !IntentMatchesResource(fresh, current, deleted) {
+			return nil, &IntentPendingError{IntentID: fresh.ID}
+		}
+		if err := lock.CheckLease(ctx); err != nil {
+			return nil, err
+		}
+		if err := s.store.MarkIntentApplied(fresh.ID); err != nil {
+			return nil, err
+		}
+		fresh.Status = IntentStatusApplied
+	}
+	committed, err := s.repairIntent(ctx, fresh, current, deleted)
+	if err != nil {
+		if errorsIsIntentAlreadyClosed(err) {
+			return s.committedVersionForIntent(fresh)
+		}
+		return nil, err
+	}
+	if committed != nil {
+		return validateCommittedIntentVersion(committed, fresh)
+	}
+	return s.committedVersionForIntent(fresh)
+}
+
+func (s *Service) GetIntent(id int64) (*Intent, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	return s.store.GetIntent(id)
+}
+
+func (s *Service) committedVersionForIntent(intent *Intent) (*Version, error) {
+	versions, err := s.store.ListVersions(intent.RuleKind, intent.ResourceKey)
+	if err != nil {
+		return nil, err
+	}
+	var found *Version
+	for i := range versions {
+		if versions[i].IntentID != intent.ID {
+			continue
+		}
+		if found != nil && found.ID != versions[i].ID {
+			return nil, fmt.Errorf("%w: multiple RuleVersion resources committed for intent %d", ErrVersionLedgerCorrupt, intent.ID)
+		}
+		v := versions[i]
+		found = &v
+	}
+	if found == nil {
+		return nil, ErrVersionNotFound
+	}
+	return validateCommittedIntentVersion(found, intent)
+}
+
+func validateCommittedIntentVersion(version *Version, intent *Intent) (*Version, error) {
+	if version == nil || intent == nil ||
+		version.RuleKind != intent.RuleKind ||
+		version.ResourceKey != intent.ResourceKey ||
+		version.ContentHash != intent.ContentHash ||
+		version.SpecJSON != intent.SpecJSON ||
+		version.Operation != intent.Operation ||
+		version.Source != intent.Source ||
+		version.Author != intent.Author ||
+		version.Reason != intent.Reason ||
+		version.IntentID != intent.ID ||
+		rolledBackFromIDValue(version.RolledBackFromID) != rolledBackFromIDValue(intent.RolledBackFromID) {
+		return nil, fmt.Errorf("%w: committed RuleVersion does not match intent %d", ErrVersionLedgerCorrupt, intent.ID)
+	}
+	return version, nil
+}
+
+func errorsIsIntentAlreadyClosed(err error) bool {
+	return err == nil || errors.Is(err, ErrVersionIntentNotOpen) || errors.Is(err, ErrVersionIntentNotFound)
+}
+
+func (s *Service) ReconcileMeta(kind coremodel.ResourceKind, resourceKey string) (*Meta, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	return s.store.ReconcileMeta(kind, resourceKey)
+}
+
+func (s *Service) GetVersion(kind coremodel.ResourceKind, resourceKey string, id int64) (*Version, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	return s.store.GetVersion(kind, resourceKey, id)
+}
+
+// repairIntent attempts to resolve a stale or stuck intent.
+// Called during startup to recover from crashes, and before mutations to clear pending state.
+//
+// Why repair is needed:
+//   - If admin crashes after creating an intent but before the subscriber commits,
+//     the intent stays PENDING forever, blocking future writes
+//   - If the actual resource state matches the intent's desired state, we can
+//     safely commit the intent retroactively
+//
+// How to apply:
+// - Repair runs automatically at startup (component.Start)
+// - Also runs before each mutation (prepareRuleMutation) to clear stale intents
+// - Returns IntentPendingError if the intent genuinely conflicts with current state
+func (s *Service) repairIntent(ctx context.Context, intent *Intent, current coremodel.Resource, deleted bool) (*Version, error) {
+	if intent == nil {
+		return nil, nil
+	}
+	if err := lock.CheckLease(ctx); err != nil {
+		return nil, err
+	}
+	if intent.Status == IntentStatusCommitted {
+		return nil, ErrVersionIntentNotOpen
+	}
+	if intent.Status == IntentStatusFailed {
+		return nil, ErrVersionIntentNotOpen
+	}
+	if intent.Status != IntentStatusPending && intent.Status != IntentStatusApplied {
+		return nil, ErrVersionIntentNotOpen
+	}
+	if _, err := s.store.ReconcileMeta(intent.RuleKind, intent.ResourceKey); err != nil {
+		return nil, err
+	}
+	if err := lock.CheckLease(ctx); err != nil {
+		return nil, err
+	}
+	matches := IntentMatchesResource(intent, current, deleted)
+	if intent.Status == IntentStatusPending {
+		if !matches {
+			return nil, &IntentPendingError{IntentID: intent.ID}
+		}
+		if err := lock.CheckLease(ctx); err != nil {
+			return nil, err
+		}
+		if err := s.store.MarkIntentApplied(intent.ID); err != nil {
+			return nil, err
+		}
+		if err := lock.CheckLease(ctx); err != nil {
+			return nil, err
+		}
+		return s.store.CommitIntent(intent.ID, s.maxVersions)
+	}
+	if !matches {
+		return nil, ErrIntentOutcomeMismatch
+	}
+	if err := lock.CheckLease(ctx); err != nil {
+		return nil, err
+	}
+	return s.store.CommitIntent(intent.ID, s.maxVersions)
+}
+
+func buildMutationInsertRequest(res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromID *int64, createdAt time.Time) (InsertRequest, error) {
+	if res == nil {
+		return InsertRequest{}, bizerror.New(bizerror.InvalidArgument, "rule resource is required")
+	}
+	hash, specJSON, err := NormalizeResource(res)
+	if op == OperationDelete {
+		hash = HashSpecJSON(DeleteSpecJSON)
+		specJSON = DeleteSpecJSON
+		err = nil
+	}
+	if err != nil {
+		return InsertRequest{}, err
+	}
+	if strings.TrimSpace(author) == "" {
+		author = "system:unknown"
+	} else {
+		author = strings.TrimSpace(author)
+	}
+	if source == "" {
+		source = SourceAdmin
+	}
+	return InsertRequest{
+		RuleKind:         res.ResourceKind(),
+		Mesh:             res.ResourceMesh(),
+		ResourceKey:      res.ResourceKey(),
+		RuleName:         res.ResourceMeta().Name,
+		SpecJSON:         specJSON,
+		ContentHash:      hash,
+		Source:           source,
+		Operation:        op,
+		Author:           author,
+		Reason:           reason,
+		RolledBackFromID: rolledBackFromID,
+		CreatedAt:        createdAt,
+	}, nil
+}
+
+// IntentMatchesResource checks if the intent's desired state matches actual resource state.
+// Used by repair logic to decide if a stale intent can be safely committed.
+func IntentMatchesResource(intent *Intent, current coremodel.Resource, deleted bool) bool {
+	if intent == nil {
+		return false
+	}
+	if deleted || current == nil {
+		return intent.Operation == OperationDelete && intent.ContentHash == HashSpecJSON(DeleteSpecJSON)
+	}
+	hash, _, err := NormalizeResource(current)
+	return err == nil && hash == intent.ContentHash
+}
+
+func withRuleVersionLock(lockMgr lock.Lock, kind coremodel.ResourceKind, resourceKey string, fn func(context.Context) error) error {
+	if lockMgr == nil {
+		return lock.ErrLockUnavailable
+	}
+	key := lock.BuildRuleVersioningLockKey(string(kind), extractMesh(resourceKey), extractName(resourceKey))
+	return lock.WithLock(context.Background(), lockMgr, key, constants.DefaultLockTimeout, fn)
+}
