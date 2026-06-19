@@ -31,6 +31,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/config/log"
 	"github.com/apache/dubbo-admin/pkg/config/observability"
 	"github.com/apache/dubbo-admin/pkg/config/store"
+	"github.com/apache/dubbo-admin/pkg/config/versioning"
 )
 
 type AdminConfig struct {
@@ -51,6 +52,9 @@ type AdminConfig struct {
 	Engine *engine.Config `json:"engine" yaml:"engine"`
 	// EventBus configuration
 	EventBus *eventbus.Config `json:"eventBus,omitempty" yaml:"eventBus,omitempty"`
+	// RuleVersioning provides version history and optimistic locking for governor-managed traffic rules.
+	// This applies to ConditionRoute, TagRoute, and Configurator (DynamicConfig).
+	RuleVersioning *versioning.Config `json:"ruleVersioning,omitempty" yaml:"ruleVersioning,omitempty"`
 }
 
 var _ = &AdminConfig{}
@@ -58,17 +62,18 @@ var _ = &AdminConfig{}
 var DefaultAdminConfig = func() AdminConfig {
 	eventBusCfg := eventbus.Default()
 	return AdminConfig{
-		Log:           log.DefaultLogConfig(),
-		Store:         store.DefaultStoreConfig(),
-		Engine:        engine.DefaultResourceEngineConfig(),
-		Observability: observability.DefaultObservabilityConfig(),
-		Diagnostics:   diagnostics.DefaultDiagnosticsConfig(),
-		Console:       console.DefaultConsoleConfig(),
-		EventBus:      &eventBusCfg,
+		Log:            log.DefaultLogConfig(),
+		Store:          store.DefaultStoreConfig(),
+		Engine:         engine.DefaultResourceEngineConfig(),
+		Observability:  observability.DefaultObservabilityConfig(),
+		Diagnostics:    diagnostics.DefaultDiagnosticsConfig(),
+		Console:        console.DefaultConsoleConfig(),
+		EventBus:       &eventBusCfg,
+		RuleVersioning: versioning.Default(),
 	}
 }
 
-func (c AdminConfig) Sanitize() {
+func (c *AdminConfig) Sanitize() {
 	c.Engine.Sanitize()
 	for _, d := range c.Discovery {
 		d.Sanitize()
@@ -78,9 +83,13 @@ func (c AdminConfig) Sanitize() {
 	c.Observability.Sanitize()
 	c.Diagnostics.Sanitize()
 	c.Log.Sanitize()
+	if c.RuleVersioning == nil {
+		c.RuleVersioning = versioning.Default()
+	}
+	c.RuleVersioning.Sanitize()
 }
 
-func (c AdminConfig) PreProcess() error {
+func (c *AdminConfig) PreProcess() error {
 	discoveryPreProcess := func() error {
 		for _, d := range c.Discovery {
 			if err := d.PreProcess(); err != nil {
@@ -88,6 +97,9 @@ func (c AdminConfig) PreProcess() error {
 			}
 		}
 		return nil
+	}
+	if c.RuleVersioning == nil {
+		c.RuleVersioning = versioning.Default()
 	}
 	return multierr.Combine(
 		c.Engine.PreProcess(),
@@ -97,10 +109,11 @@ func (c AdminConfig) PreProcess() error {
 		c.Observability.PreProcess(),
 		c.Diagnostics.PreProcess(),
 		c.Log.PreProcess(),
+		c.RuleVersioning.PreProcess(),
 	)
 }
 
-func (c AdminConfig) PostProcess() error {
+func (c *AdminConfig) PostProcess() error {
 	discoveryPostProcess := func() error {
 		for _, d := range c.Discovery {
 			if err := d.PostProcess(); err != nil {
@@ -108,6 +121,9 @@ func (c AdminConfig) PostProcess() error {
 			}
 		}
 		return nil
+	}
+	if c.RuleVersioning == nil {
+		c.RuleVersioning = versioning.Default()
 	}
 	return multierr.Combine(
 		c.Engine.PostProcess(),
@@ -117,10 +133,11 @@ func (c AdminConfig) PostProcess() error {
 		c.Observability.PostProcess(),
 		c.Diagnostics.PostProcess(),
 		c.Log.PostProcess(),
+		c.RuleVersioning.PostProcess(),
 	)
 }
 
-func (c AdminConfig) Validate() error {
+func (c *AdminConfig) Validate() error {
 	if c.Log == nil {
 		c.Log = log.DefaultLogConfig()
 	} else if err := c.Log.Validate(); err != nil {
@@ -170,6 +187,11 @@ func (c AdminConfig) Validate() error {
 		c.EventBus = &cfg
 	} else if err := c.EventBus.Validate(); err != nil {
 		return bizerror.Wrap(err, bizerror.ConfigError, "event bus config validation failed")
+	}
+	if c.RuleVersioning == nil {
+		c.RuleVersioning = versioning.Default()
+	} else if err := c.RuleVersioning.Validate(); err != nil {
+		return bizerror.Wrap(err, bizerror.ConfigError, "versioning config validation failed")
 	}
 	return nil
 }

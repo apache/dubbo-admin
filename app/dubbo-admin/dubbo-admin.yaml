@@ -63,6 +63,12 @@ store:
 #  type: mysql
 #  address: root:123456@tcp(127.0.0.1:23306)/dubbo-admin?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai
 
+# [Optional] version history and rollback for traffic rules.
+# Default is enabled. Set enabled to false to skip RuleVersion/RuleIntent/RuleMeta writes.
+ruleVersioning:
+  enabled: true
+  maxVersionsPerRule: 5
+
 # [Necessary] configs for service discovery
 discovery:
   # [Necessary] discovery type, options are nacos2, zookeeper, mock(only for dev)
