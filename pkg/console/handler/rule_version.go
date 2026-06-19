@@ -313,8 +313,11 @@ type ruleVersionAPI struct {
 }
 
 type ruleVersionListAPI struct {
-	Items []ruleVersionAPI `json:"items"`
-	Total int64            `json:"total"`
+	Items            []ruleVersionAPI `json:"items"`
+	Total            int64            `json:"total"`
+	CurrentVersionID *string          `json:"currentVersionId,omitempty"`
+	CurrentVersionNo int64            `json:"currentVersionNo,omitempty"`
+	Deleted          bool             `json:"deleted"`
 }
 
 type ruleVersionDiffAPI struct {
@@ -346,7 +349,13 @@ func versioningAPIData(data any) any {
 		for i := range v.Items {
 			items = append(items, toRuleVersionAPI(&v.Items[i]))
 		}
-		return &ruleVersionListAPI{Items: items, Total: v.Total}
+		return &ruleVersionListAPI{
+			Items:            items,
+			Total:            v.Total,
+			CurrentVersionID: formatOptionalInt64(v.CurrentVersionID),
+			CurrentVersionNo: v.CurrentVersionNo,
+			Deleted:          v.Deleted,
+		}
 	case *versioning.Version:
 		if v == nil {
 			return nil

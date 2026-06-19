@@ -93,24 +93,14 @@ func TestNormalizeRuleEvent(t *testing.T) {
 	}
 }
 
-func TestNormalizeRuleEventParsesIntentTokenOnce(t *testing.T) {
+func TestNormalizeRuleEventKeepsMetadata(t *testing.T) {
 	res := testConditionRule("demo-rule", "v1")
 	event := events.NewResourceChangedEventWithContext(cache.Updated, nil, res, map[string]string{
-		IntentIDEventContextKey: "42",
+		"event-source": "test-registry",
 	})
 
 	normalized, err := normalizeRuleEvent(event)
 	require.NoError(t, err)
 	require.NotNil(t, normalized)
-	assert.Equal(t, int64(42), normalized.MutationIntentID)
-}
-
-func TestNormalizeRuleEventRejectsInvalidIntentToken(t *testing.T) {
-	res := testConditionRule("demo-rule", "v1")
-	event := events.NewResourceChangedEventWithContext(cache.Updated, nil, res, map[string]string{
-		IntentIDEventContextKey: "not-an-int",
-	})
-
-	_, err := normalizeRuleEvent(event)
-	require.ErrorIs(t, err, ErrVersionLedgerCorrupt)
+	assert.Equal(t, "test-registry", normalized.Context["event-source"])
 }

@@ -42,6 +42,9 @@ export interface RuleVersion {
 export interface RuleVersionList {
   items: RuleVersion[]
   total: number
+  currentVersionId?: string
+  currentVersionNo?: number
+  deleted?: boolean
 }
 
 export interface RuleVersionDiffSide {

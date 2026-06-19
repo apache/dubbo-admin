@@ -18,6 +18,7 @@
 package manager
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
@@ -44,13 +45,13 @@ type ReadOnlyResourceManager interface {
 
 type WriteOnlyResourceManager interface {
 	// Add adds the resource
-	Add(r model.Resource) error
+	Add(ctx context.Context, r model.Resource) error
 	// Update updates the resource
-	Update(r model.Resource) error
+	Update(ctx context.Context, r model.Resource) error
 	// Upsert upserts the resource
-	Upsert(r model.Resource) error
+	Upsert(ctx context.Context, r model.Resource) error
 	// DeleteByKey deletes the resource with the given resource key
-	DeleteByKey(rk model.ResourceKind, mesh string, key string) error
+	DeleteByKey(ctx context.Context, rk model.ResourceKind, mesh string, key string) error
 }
 
 type ResourceManager interface {
@@ -129,7 +130,13 @@ func (rm *resourcesManager) PageListByIndexes(
 	return pageData, nil
 }
 
-func (rm *resourcesManager) Add(r model.Resource) error {
+func (rm *resourcesManager) Add(ctx context.Context, r model.Resource) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if !governor.RuleResourceKinds.Contain(r.ResourceKind()) {
 		return bizerror.New(bizerror.InvalidArgument, "invalid resource kind")
 	}
@@ -137,10 +144,16 @@ func (rm *resourcesManager) Add(r model.Resource) error {
 	if err != nil {
 		return err
 	}
-	return rs.CreateRule(r)
+	return rs.CreateRule(ctx, r)
 }
 
-func (rm *resourcesManager) Update(r model.Resource) error {
+func (rm *resourcesManager) Update(ctx context.Context, r model.Resource) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if !governor.RuleResourceKinds.Contain(r.ResourceKind()) {
 		return bizerror.New(bizerror.InvalidArgument, "invalid resource kind")
 	}
@@ -148,21 +161,33 @@ func (rm *resourcesManager) Update(r model.Resource) error {
 	if err != nil {
 		return err
 	}
-	return rs.UpdateRule(r)
+	return rs.UpdateRule(ctx, r)
 }
 
-func (rm *resourcesManager) Upsert(r model.Resource) error {
+func (rm *resourcesManager) Upsert(ctx context.Context, r model.Resource) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if !governor.RuleResourceKinds.Contain(r.ResourceKind()) {
 		return bizerror.New(bizerror.InvalidArgument, "invalid resource kind")
 	}
 	if _, exists, _ := rm.GetByKey(r.ResourceKind(), r.ResourceKey()); exists {
-		return rm.Update(r)
+		return rm.Update(ctx, r)
 	} else {
-		return rm.Add(r)
+		return rm.Add(ctx, r)
 	}
 }
 
-func (rm *resourcesManager) DeleteByKey(rk model.ResourceKind, mesh string, key string) error {
+func (rm *resourcesManager) DeleteByKey(ctx context.Context, rk model.ResourceKind, mesh string, key string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if !governor.RuleResourceKinds.Contain(rk) {
 		return bizerror.New(bizerror.InvalidArgument, "invalid resource kind")
 	}
@@ -177,7 +202,7 @@ func (rm *resourcesManager) DeleteByKey(rk model.ResourceKind, mesh string, key 
 	if !exists {
 		return fmt.Errorf("%s %s does not exist", rk, key)
 	}
-	return gov.DeleteRule(r)
+	return gov.DeleteRule(ctx, r)
 }
 
 func (rm *resourcesManager) GetStore(rk model.ResourceKind) (store.ResourceStore, error) {

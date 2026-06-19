@@ -138,6 +138,12 @@ type ledgerState struct {
 	MaxVersionNo int64
 }
 
+type LedgerSnapshot struct {
+	Versions []Version
+	Head     *Version
+	Deleted  bool
+}
+
 type InsertRequest struct {
 	RuleKind         coremodel.ResourceKind
 	Mesh             string
@@ -156,8 +162,11 @@ type InsertRequest struct {
 }
 
 type ListResult struct {
-	Items []Version `json:"items"`
-	Total int64     `json:"total"`
+	Items            []Version `json:"items"`
+	Total            int64     `json:"total"`
+	CurrentVersionID *int64    `json:"currentVersionId,omitempty"`
+	CurrentVersionNo int64     `json:"currentVersionNo,omitempty"`
+	Deleted          bool      `json:"deleted"`
 }
 
 type DiffResult struct {

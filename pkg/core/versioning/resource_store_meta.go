@@ -18,12 +18,14 @@
 package versioning
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/core/lock"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
@@ -35,12 +37,13 @@ func (a *ResourceStoreAdapter) CheckExpectedVersion(kind coremodel.ResourceKind,
 
 	var currentID *int64
 	err := a.withParentLock(kind, resourceKey, func() error {
-		meta, err := a.reconcileMetaFromLedgerLocked(kind, resourceKey)
+		state, err := a.ledgerState(kind, resourceKey)
 		if err != nil {
 			return err
 		}
-		if meta != nil {
-			currentID = meta.CurrentVersion
+		if state.Latest != nil && state.Latest.Operation != OperationDelete {
+			id := state.Latest.ID
+			currentID = &id
 		}
 		return nil
 	})
@@ -61,17 +64,20 @@ func (a *ResourceStoreAdapter) CheckExpectedVersion(kind coremodel.ResourceKind,
 	return nil
 }
 
-func (a *ResourceStoreAdapter) ReconcileMeta(kind coremodel.ResourceKind, resourceKey string) (*Meta, error) {
+func (a *ResourceStoreAdapter) ReconcileMeta(ctx context.Context, kind coremodel.ResourceKind, resourceKey string) (*Meta, error) {
 	var meta *Meta
 	err := a.withParentLock(kind, resourceKey, func() error {
+		if err := lock.CheckLease(ctx); err != nil {
+			return err
+		}
 		var inner error
-		meta, inner = a.reconcileMetaFromLedgerLocked(kind, resourceKey)
+		meta, inner = a.reconcileMetaFromLedgerLocked(ctx, kind, resourceKey)
 		return inner
 	})
 	return meta, err
 }
 
-func (a *ResourceStoreAdapter) reconcileMetaFromLedgerLocked(kind coremodel.ResourceKind, resourceKey string) (*Meta, error) {
+func (a *ResourceStoreAdapter) reconcileMetaFromLedgerLocked(ctx context.Context, kind coremodel.ResourceKind, resourceKey string) (*Meta, error) {
 	state, err := a.ledgerState(kind, resourceKey)
 	if err != nil {
 		return nil, err
@@ -105,6 +111,9 @@ func (a *ResourceStoreAdapter) reconcileMetaFromLedgerLocked(kind coremodel.Reso
 			CurrentContentHash: latest.ContentHash,
 			UpdatedAt:          timestamppb.New(time.Now()),
 		}
+		if err := lock.CheckLease(ctx); err != nil {
+			return nil, err
+		}
 		if err := a.metaStore.Add(metaRes); err != nil {
 			return nil, err
 		}
@@ -136,6 +145,9 @@ func (a *ResourceStoreAdapter) reconcileMetaFromLedgerLocked(kind coremodel.Reso
 	updated.Spec.CurrentVersionNo = latest.VersionNo
 	updated.Spec.CurrentContentHash = latest.ContentHash
 	updated.Spec.UpdatedAt = timestamppb.New(time.Now())
+	if err := lock.CheckLease(ctx); err != nil {
+		return nil, err
+	}
 	if err := a.metaStore.Update(updated); err != nil {
 		return nil, err
 	}
@@ -143,21 +155,14 @@ func (a *ResourceStoreAdapter) reconcileMetaFromLedgerLocked(kind coremodel.Reso
 }
 
 func (a *ResourceStoreAdapter) LatestVersion(kind coremodel.ResourceKind, resourceKey string) (*Version, error) {
-	metaErr := a.withParentLock(kind, resourceKey, func() error {
-		_, err := a.reconcileMetaFromLedgerLocked(kind, resourceKey)
-		return err
-	})
-	if metaErr != nil {
-		return nil, metaErr
-	}
-	state, err := a.ledgerState(kind, resourceKey)
+	snapshot, err := a.LedgerSnapshot(kind, resourceKey)
 	if err != nil {
 		return nil, err
 	}
-	if state.Latest == nil {
+	if snapshot.Head == nil {
 		return nil, ErrVersionNotFound
 	}
-	return state.Latest, nil
+	return snapshot.Head, nil
 }
 
 // Helper functions

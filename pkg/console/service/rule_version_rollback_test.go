@@ -82,7 +82,10 @@ type noopGovernor struct {
 	emitter events.Emitter
 }
 
-func (g *noopGovernor) CreateRule(res coremodel.Resource) error {
+func (g *noopGovernor) CreateRule(ctx context.Context, res coremodel.Resource) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	s, ok := g.stores[res.ResourceKind()]
 	if !ok {
 		return bizerror.New(bizerror.InvalidArgument, "store not found")
@@ -94,7 +97,10 @@ func (g *noopGovernor) CreateRule(res coremodel.Resource) error {
 	return nil
 }
 
-func (g *noopGovernor) UpdateRule(res coremodel.Resource) error {
+func (g *noopGovernor) UpdateRule(ctx context.Context, res coremodel.Resource) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	s, ok := g.stores[res.ResourceKind()]
 	if !ok {
 		return bizerror.New(bizerror.InvalidArgument, "store not found")
@@ -111,7 +117,10 @@ func (g *noopGovernor) UpdateRule(res coremodel.Resource) error {
 	return nil
 }
 
-func (g *noopGovernor) DeleteRule(res coremodel.Resource) error {
+func (g *noopGovernor) DeleteRule(ctx context.Context, res coremodel.Resource) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	s, ok := g.stores[res.ResourceKind()]
 	if !ok {
 		return bizerror.New(bizerror.InvalidArgument, "store not found")
@@ -239,6 +248,17 @@ func setupRollbackTestEnvWithMax(t *testing.T, maxVersions int64) *testContext {
 	}
 }
 
+func beginMutationForTest(ctx *testContext, res coremodel.Resource, op versioning.Operation, source versioning.Source, author string) (*versioning.Intent, error) {
+	var intent *versioning.Intent
+	kindName := RuleKindName{Kind: res.ResourceKind(), Mesh: res.ResourceMesh(), Name: res.ResourceMeta().Name}
+	err := withRuleLock(ctx, kindName, func(leaseCtx context.Context) error {
+		var inner error
+		intent, inner = ctx.versioningSvc.BeginMutation(leaseCtx, res, op, source, author, "", nil)
+		return inner
+	})
+	return intent, err
+}
+
 func TestAdminMutationSuccessCommitsLedgerBeforeReturn(t *testing.T) {
 	ctx := setupRollbackTestEnv(t)
 	f := conditionFactory()
@@ -275,10 +295,8 @@ func TestAdminMutationSuccessCommitsLedgerBeforeReturn(t *testing.T) {
 	require.Equal(t, versioning.OperationDelete, versions.Items[0].Operation)
 	require.Equal(t, versioning.DeleteSpecJSON, versions.Items[0].SpecJSON)
 
-	meta, err := ctx.versioningSvc.ReconcileMeta(f.kind, coremodel.BuildResourceKey("", "admin-rule"))
-	require.NoError(t, err)
-	require.NotNil(t, meta)
-	require.Nil(t, meta.CurrentVersion)
+	require.True(t, versions.Deleted)
+	require.Nil(t, versions.CurrentVersionID)
 }
 
 // ruleFactory builds a rule resource of a given kind with a discriminating
@@ -331,7 +349,7 @@ func TestRollbackRuleVersion_Success(t *testing.T) {
 		Key:        "demo-rule",
 		Conditions: []string{"host=1.2.3.4 => host=5.6.7.8"},
 	}
-	require.NoError(t, ctx.rm.Add(rule1))
+	require.NoError(t, ctx.rm.Add(context.Background(), rule1))
 
 	// Update rule (v2)
 	rule2 := meshresource.NewConditionRouteResourceWithAttributes("demo-rule", "")
@@ -340,7 +358,7 @@ func TestRollbackRuleVersion_Success(t *testing.T) {
 		Key:        "demo-rule",
 		Conditions: []string{"host=9.9.9.9 => host=10.10.10.10"},
 	}
-	require.NoError(t, ctx.rm.Update(rule2))
+	require.NoError(t, ctx.rm.Update(context.Background(), rule2))
 
 	// Verify v1 and v2 exist
 	versions, err := ListRuleVersions(ctx, RuleKindName{Kind: meshresource.ConditionRouteKind, Mesh: "", Name: "demo-rule"})
@@ -389,8 +407,8 @@ func TestRollbackRuleVersion_RejectDeleteMarker(t *testing.T) {
 
 	rule := meshresource.NewConditionRouteResourceWithAttributes("demo-rule", "")
 	rule.Spec = &meshproto.ConditionRoute{Enabled: true, Key: "demo-rule"}
-	require.NoError(t, ctx.rm.Add(rule))
-	require.NoError(t, ctx.rm.DeleteByKey(meshresource.ConditionRouteKind, "", "/demo-rule"))
+	require.NoError(t, ctx.rm.Add(context.Background(), rule))
+	require.NoError(t, ctx.rm.DeleteByKey(context.Background(), meshresource.ConditionRouteKind, "", "/demo-rule"))
 
 	versions, err := ListRuleVersions(ctx, RuleKindName{Kind: meshresource.ConditionRouteKind, Mesh: "", Name: "demo-rule"})
 	require.NoError(t, err)
@@ -407,7 +425,7 @@ func TestRollbackRuleVersion_RejectCurrent(t *testing.T) {
 
 	rule := meshresource.NewConditionRouteResourceWithAttributes("demo-rule", "")
 	rule.Spec = &meshproto.ConditionRoute{Enabled: true, Key: "demo-rule"}
-	require.NoError(t, ctx.rm.Add(rule))
+	require.NoError(t, ctx.rm.Add(context.Background(), rule))
 
 	versions, err := ListRuleVersions(ctx, RuleKindName{Kind: meshresource.ConditionRouteKind, Mesh: "", Name: "demo-rule"})
 	require.NoError(t, err)
@@ -423,15 +441,15 @@ func TestRollbackRuleVersion_RestoresDeletedCurrentRule(t *testing.T) {
 
 	f := conditionFactory()
 	kindName := RuleKindName{Kind: f.kind, Name: "demo-rule"}
-	require.NoError(t, ctx.rm.Add(f.build("demo-rule", "v1")))
-	require.NoError(t, ctx.rm.Update(f.build("demo-rule", "v2")))
+	require.NoError(t, ctx.rm.Add(context.Background(), f.build("demo-rule", "v1")))
+	require.NoError(t, ctx.rm.Update(context.Background(), f.build("demo-rule", "v2")))
 
 	versions, err := ListRuleVersions(ctx, kindName)
 	require.NoError(t, err)
 	v1 := versions.Items[1]
 	v2 := versions.Items[0]
 
-	require.NoError(t, ctx.rm.DeleteByKey(f.kind, "", "/demo-rule"))
+	require.NoError(t, ctx.rm.DeleteByKey(context.Background(), f.kind, "", "/demo-rule"))
 	versions, err = ListRuleVersions(ctx, kindName)
 	require.NoError(t, err)
 	require.Equal(t, versioning.OperationDelete, versions.Items[0].Operation)
@@ -469,17 +487,17 @@ func TestRollbackRuleVersion_DeletedStateCASRace(t *testing.T) {
 
 	f := conditionFactory()
 	kindName := RuleKindName{Kind: f.kind, Name: "demo-rule"}
-	require.NoError(t, ctx.rm.Add(f.build("demo-rule", "v1")))
-	require.NoError(t, ctx.rm.Update(f.build("demo-rule", "v2")))
+	require.NoError(t, ctx.rm.Add(context.Background(), f.build("demo-rule", "v1")))
+	require.NoError(t, ctx.rm.Update(context.Background(), f.build("demo-rule", "v2")))
 
 	versions, err := ListRuleVersions(ctx, kindName)
 	require.NoError(t, err)
 	v1 := versions.Items[1]
-	require.NoError(t, ctx.rm.DeleteByKey(f.kind, "", "/demo-rule"))
+	require.NoError(t, ctx.rm.DeleteByKey(context.Background(), f.kind, "", "/demo-rule"))
 
 	// T1 read the deleted state and therefore sends expectedVersionId=0.
 	expectedDeleted := int64(0)
-	require.NoError(t, ctx.rm.Add(f.build("demo-rule", "v3")))
+	require.NoError(t, ctx.rm.Add(context.Background(), f.build("demo-rule", "v3")))
 
 	_, err = RollbackRuleVersion(ctx, kindName, v1.ID, "restore stale deleted view", &expectedDeleted, "admin")
 	var conflict *versioning.ConflictError
@@ -502,8 +520,8 @@ func TestRollbackRuleVersion_RepairsWhenCommitNotObserved(t *testing.T) {
 
 	f := conditionFactory()
 	kindName := RuleKindName{Kind: f.kind, Name: "demo-rule"}
-	require.NoError(t, ctx.rm.Add(f.build("demo-rule", "v1")))
-	require.NoError(t, ctx.rm.Update(f.build("demo-rule", "v2")))
+	require.NoError(t, ctx.rm.Add(context.Background(), f.build("demo-rule", "v1")))
+	require.NoError(t, ctx.rm.Update(context.Background(), f.build("demo-rule", "v2")))
 
 	versions, err := ListRuleVersions(ctx, kindName)
 	require.NoError(t, err)
@@ -545,11 +563,11 @@ func TestRollbackRuleVersion_VersionConflict(t *testing.T) {
 
 	rule1 := meshresource.NewConditionRouteResourceWithAttributes("demo-rule", "")
 	rule1.Spec = &meshproto.ConditionRoute{Enabled: true, Key: "demo-rule", Conditions: []string{"v1"}}
-	require.NoError(t, ctx.rm.Add(rule1))
+	require.NoError(t, ctx.rm.Add(context.Background(), rule1))
 
 	rule2 := meshresource.NewConditionRouteResourceWithAttributes("demo-rule", "")
 	rule2.Spec = &meshproto.ConditionRoute{Enabled: true, Key: "demo-rule", Conditions: []string{"v2"}}
-	require.NoError(t, ctx.rm.Update(rule2))
+	require.NoError(t, ctx.rm.Update(context.Background(), rule2))
 
 	versions, err := ListRuleVersions(ctx, RuleKindName{Kind: meshresource.ConditionRouteKind, Mesh: "", Name: "demo-rule"})
 	require.NoError(t, err)
@@ -569,8 +587,8 @@ func TestRollbackRuleVersion_EmptyReasonRejected(t *testing.T) {
 	ctx := setupRollbackTestEnv(t)
 
 	f := conditionFactory()
-	require.NoError(t, ctx.rm.Add(f.build("demo-rule", "v1")))
-	require.NoError(t, ctx.rm.Update(f.build("demo-rule", "v2")))
+	require.NoError(t, ctx.rm.Add(context.Background(), f.build("demo-rule", "v1")))
+	require.NoError(t, ctx.rm.Update(context.Background(), f.build("demo-rule", "v2")))
 
 	versions, err := ListRuleVersions(ctx, RuleKindName{Kind: f.kind, Name: "demo-rule"})
 	require.NoError(t, err)
@@ -587,8 +605,8 @@ func TestRollbackRuleVersion_RepeatedSameContentRejected(t *testing.T) {
 	ctx := setupRollbackTestEnv(t)
 
 	f := conditionFactory()
-	require.NoError(t, ctx.rm.Add(f.build("demo-rule", "A")))    // v1: A
-	require.NoError(t, ctx.rm.Update(f.build("demo-rule", "B"))) // v2: B
+	require.NoError(t, ctx.rm.Add(context.Background(), f.build("demo-rule", "A")))    // v1: A
+	require.NoError(t, ctx.rm.Update(context.Background(), f.build("demo-rule", "B"))) // v2: B
 
 	versions, err := ListRuleVersions(ctx, RuleKindName{Kind: f.kind, Name: "demo-rule"})
 	require.NoError(t, err)
@@ -623,8 +641,8 @@ func TestRollbackRuleVersion_PendingIntentBlocks(t *testing.T) {
 	ctx := setupRollbackTestEnv(t)
 
 	f := conditionFactory()
-	require.NoError(t, ctx.rm.Add(f.build("demo-rule", "v1")))
-	require.NoError(t, ctx.rm.Update(f.build("demo-rule", "v2")))
+	require.NoError(t, ctx.rm.Add(context.Background(), f.build("demo-rule", "v1")))
+	require.NoError(t, ctx.rm.Update(context.Background(), f.build("demo-rule", "v2")))
 
 	versions, err := ListRuleVersions(ctx, RuleKindName{Kind: f.kind, Name: "demo-rule"})
 	require.NoError(t, err)
@@ -633,7 +651,7 @@ func TestRollbackRuleVersion_PendingIntentBlocks(t *testing.T) {
 	// Inject a stale PENDING intent whose desired spec ("phantom") does not
 	// match the current resource ("v2"), so repair cannot auto-clear it.
 	phantom := f.build("demo-rule", "phantom-divergent")
-	_, err = ctx.versioningSvc.BeginMutation(phantom, versioning.OperationUpdate, versioning.SourceAdmin, "other-admin", "", nil)
+	_, err = beginMutationForTest(ctx, phantom, versioning.OperationUpdate, versioning.SourceAdmin, "other-admin")
 	require.NoError(t, err)
 
 	_, err = RollbackRuleVersion(ctx, RuleKindName{Kind: f.kind, Name: "demo-rule"}, v1ID, "rollback", nil, "admin")
@@ -645,12 +663,12 @@ func TestAbandonRuleVersionIntent_CleansAppliedIntent(t *testing.T) {
 	ctx := setupRollbackTestEnv(t)
 
 	f := conditionFactory()
-	require.NoError(t, ctx.rm.Add(f.build("demo-rule", "current")))
+	require.NoError(t, ctx.rm.Add(context.Background(), f.build("demo-rule", "current")))
 
 	stale := f.build("demo-rule", "stale-applied")
-	intent, err := ctx.versioningSvc.BeginMutation(stale, versioning.OperationUpdate, versioning.SourceAdmin, "admin", "", nil)
+	intent, err := beginMutationForTest(ctx, stale, versioning.OperationUpdate, versioning.SourceAdmin, "admin")
 	require.NoError(t, err)
-	require.NoError(t, ctx.adapter.MarkIntentApplied(intent.ID))
+	require.NoError(t, ctx.adapter.MarkIntentApplied(context.Background(), intent.ID))
 
 	require.NoError(t, AbandonRuleVersionIntent(ctx, intent.ID, "operator decided not to repair"))
 
@@ -665,8 +683,8 @@ func TestRollbackRuleVersion_DuplicateEventSingleVersion(t *testing.T) {
 	ctx := setupRollbackTestEnv(t)
 
 	f := conditionFactory()
-	require.NoError(t, ctx.rm.Add(f.build("demo-rule", "v1")))
-	require.NoError(t, ctx.rm.Update(f.build("demo-rule", "v2")))
+	require.NoError(t, ctx.rm.Add(context.Background(), f.build("demo-rule", "v1")))
+	require.NoError(t, ctx.rm.Update(context.Background(), f.build("demo-rule", "v2")))
 
 	versions, err := ListRuleVersions(ctx, RuleKindName{Kind: f.kind, Name: "demo-rule"})
 	require.NoError(t, err)
@@ -678,7 +696,7 @@ func TestRollbackRuleVersion_DuplicateEventSingleVersion(t *testing.T) {
 
 	// Re-apply the same spec (simulates a duplicate upstream re-registration of
 	// the now-current rule). Dedup must skip it: no new version.
-	require.NoError(t, ctx.rm.Update(f.build("demo-rule", "v1")))
+	require.NoError(t, ctx.rm.Update(context.Background(), f.build("demo-rule", "v1")))
 
 	versions, err = ListRuleVersions(ctx, RuleKindName{Kind: f.kind, Name: "demo-rule"})
 	require.NoError(t, err)
@@ -692,10 +710,10 @@ func TestRollbackRuleVersion_AfterRetentionTrim(t *testing.T) {
 	ctx := setupRollbackTestEnvWithMax(t, 3) // keep only 3 versions
 
 	f := conditionFactory()
-	require.NoError(t, ctx.rm.Add(f.build("demo-rule", "p1")))    // v1 (trimmed)
-	require.NoError(t, ctx.rm.Update(f.build("demo-rule", "p2"))) // v2 (trimmed)
-	require.NoError(t, ctx.rm.Update(f.build("demo-rule", "p3"))) // v3
-	require.NoError(t, ctx.rm.Update(f.build("demo-rule", "p4"))) // v4
+	require.NoError(t, ctx.rm.Add(context.Background(), f.build("demo-rule", "p1")))    // v1 (trimmed)
+	require.NoError(t, ctx.rm.Update(context.Background(), f.build("demo-rule", "p2"))) // v2 (trimmed)
+	require.NoError(t, ctx.rm.Update(context.Background(), f.build("demo-rule", "p3"))) // v3
+	require.NoError(t, ctx.rm.Update(context.Background(), f.build("demo-rule", "p4"))) // v4
 
 	versions, err := ListRuleVersions(ctx, RuleKindName{Kind: f.kind, Name: "demo-rule"})
 	require.NoError(t, err)
@@ -738,9 +756,9 @@ func TestRollbackRuleVersion_AllKinds(t *testing.T) {
 			ctx := setupRollbackTestEnv(t)
 			kindName := RuleKindName{Kind: f.kind, Name: "drill-rule"}
 
-			require.NoError(t, ctx.rm.Add(f.build("drill-rule", "spec-1")))    // v1
-			require.NoError(t, ctx.rm.Update(f.build("drill-rule", "spec-2"))) // v2
-			require.NoError(t, ctx.rm.Update(f.build("drill-rule", "spec-3"))) // v3
+			require.NoError(t, ctx.rm.Add(context.Background(), f.build("drill-rule", "spec-1")))    // v1
+			require.NoError(t, ctx.rm.Update(context.Background(), f.build("drill-rule", "spec-2"))) // v2
+			require.NoError(t, ctx.rm.Update(context.Background(), f.build("drill-rule", "spec-3"))) // v3
 
 			versions, err := ListRuleVersions(ctx, kindName)
 			require.NoError(t, err)

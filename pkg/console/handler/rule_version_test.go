@@ -148,7 +148,9 @@ func TestWriteVersioningRespSerializesLargeVersionIDsAsStrings(t *testing.T) {
 				IsCurrent:        true,
 			},
 		},
-		Total: 1,
+		Total:            1,
+		CurrentVersionID: ptrInt64(7473321752550968337),
+		CurrentVersionNo: 2,
 	}, nil)
 
 	require.Equal(t, http.StatusOK, recorder.Code)
@@ -158,12 +160,16 @@ func TestWriteVersioningRespSerializesLargeVersionIDsAsStrings(t *testing.T) {
 				ID               string `json:"id"`
 				RolledBackFromID string `json:"rolledBackFromId"`
 			} `json:"items"`
+			CurrentVersionID string `json:"currentVersionId"`
+			CurrentVersionNo int64  `json:"currentVersionNo"`
 		} `json:"data"`
 	}
 	require.NoError(t, json.Unmarshal(recorder.Body.Bytes(), &body))
 	require.Len(t, body.Data.Items, 1)
 	assert.Equal(t, "7473321752550968337", body.Data.Items[0].ID)
 	assert.Equal(t, "7473321752550968336", body.Data.Items[0].RolledBackFromID)
+	assert.Equal(t, "7473321752550968337", body.Data.CurrentVersionID)
+	assert.Equal(t, int64(2), body.Data.CurrentVersionNo)
 }
 
 func TestParseJSONInt64AcceptsStringID(t *testing.T) {
@@ -177,6 +183,10 @@ func TestParseJSONInt64AcceptsStringID(t *testing.T) {
 	require.NotNil(t, id)
 	assert.Equal(t, int64(7473321752550968337), *id)
 	assert.Equal(t, http.StatusOK, recorder.Code)
+}
+
+func ptrInt64(v int64) *int64 {
+	return &v
 }
 
 func TestParseJSONInt64AcceptsDeletedStateSentinel(t *testing.T) {

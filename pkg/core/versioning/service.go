@@ -59,20 +59,17 @@ func (s *Service) List(kind coremodel.ResourceKind, mesh, ruleName string) (*Lis
 		return nil, err
 	}
 	resourceKey := coremodel.BuildResourceKey(mesh, ruleName)
-	items, err := s.store.ListVersions(kind, resourceKey)
+	snapshot, err := s.store.LedgerSnapshot(kind, resourceKey)
 	if err != nil {
 		return nil, err
 	}
-	meta, err := s.store.ReconcileMeta(kind, resourceKey)
-	if err != nil {
-		return nil, err
+	result := &ListResult{Items: snapshot.Versions, Total: int64(len(snapshot.Versions)), Deleted: snapshot.Deleted}
+	if snapshot.Head != nil && !snapshot.Deleted {
+		currentID := snapshot.Head.ID
+		result.CurrentVersionID = &currentID
+		result.CurrentVersionNo = snapshot.Head.VersionNo
 	}
-	if meta != nil && meta.CurrentVersion != nil {
-		for i := range items {
-			items[i].IsCurrent = items[i].ID == *meta.CurrentVersion
-		}
-	}
-	return &ListResult{Items: items, Total: int64(len(items))}, nil
+	return result, nil
 }
 
 func (s *Service) Get(kind coremodel.ResourceKind, mesh, ruleName string, id int64) (*Version, error) {
@@ -84,12 +81,12 @@ func (s *Service) Get(kind coremodel.ResourceKind, mesh, ruleName string, id int
 	if err != nil {
 		return nil, err
 	}
-	meta, err := s.store.ReconcileMeta(kind, resourceKey)
+	snapshot, err := s.store.LedgerSnapshot(kind, resourceKey)
 	if err != nil {
 		return nil, err
 	}
-	if meta != nil && meta.CurrentVersion != nil {
-		version.IsCurrent = version.ID == *meta.CurrentVersion
+	if snapshot.Head != nil && !snapshot.Deleted {
+		version.IsCurrent = version.ID == snapshot.Head.ID
 	}
 	return version, nil
 }
@@ -106,25 +103,14 @@ func (s *Service) Diff(kind coremodel.ResourceKind, mesh, ruleName string, id in
 	switch against {
 	case "", "current":
 		resourceKey := coremodel.BuildResourceKey(mesh, ruleName)
-		meta, err := s.store.ReconcileMeta(kind, resourceKey)
+		snapshot, err := s.store.LedgerSnapshot(kind, resourceKey)
 		if err != nil {
 			return nil, err
 		}
-		if meta == nil || meta.CurrentVersion == nil {
-			latest, err := s.store.LatestVersion(kind, resourceKey)
-			if err != nil {
-				return nil, err
-			}
-			if latest.Operation != OperationDelete {
-				return nil, ErrVersionNotFound
-			}
-			right = latest
-			break
+		if snapshot.Head == nil {
+			return nil, ErrVersionNotFound
 		}
-		right, err = s.store.GetVersion(kind, resourceKey, *meta.CurrentVersion)
-		if err != nil {
-			return nil, err
-		}
+		right = snapshot.Head
 	case "previous":
 		list, err := s.store.ListVersions(kind, coremodel.BuildResourceKey(mesh, ruleName))
 		if err != nil {
@@ -166,12 +152,9 @@ func (s *Service) Diff(kind coremodel.ResourceKind, mesh, ruleName string, id in
 // ledger entry, but it is not a transactional lock by itself.
 func (s *Service) CheckExpected(kind coremodel.ResourceKind, mesh, ruleName string, expected *int64) error {
 	if err := s.ensureEnabled(); err != nil {
-		return nil
-	}
-	resourceKey := coremodel.BuildResourceKey(mesh, ruleName)
-	if _, err := s.store.ReconcileMeta(kind, resourceKey); err != nil {
 		return err
 	}
+	resourceKey := coremodel.BuildResourceKey(mesh, ruleName)
 	// Check for open intents first before checking version mismatch.
 	// Why: If Writer A created an intent at T1, and Writer B checks expected
 	// version at T2 (before A's subscriber commits), the meta pointer still
@@ -190,53 +173,41 @@ func (s *Service) CheckExpected(kind coremodel.ResourceKind, mesh, ruleName stri
 // BeginMutation records a user's mutation before the rule is written.
 // The immutable Version is created later from the observed rule state, not from
 // the request alone. rolledBackFromID is audit metadata for rollback intents.
-func (s *Service) BeginMutation(res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromID *int64) (*Intent, error) {
-	return s.BeginMutationContext(context.Background(), res, op, source, author, reason, rolledBackFromID)
-}
-
-func (s *Service) BeginMutationContext(ctx context.Context, res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromID *int64) (*Intent, error) {
+func (s *Service) BeginMutation(ctx context.Context, res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromID *int64) (*Intent, error) {
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err
 	}
-	if err := lock.CheckLease(ctx); err != nil {
+	if _, err := lock.RequireLease(ctx); err != nil {
 		return nil, err
 	}
 	req, err := buildMutationInsertRequest(res, op, source, author, reason, rolledBackFromID, time.Now())
 	if err != nil {
 		return nil, err
 	}
-	return s.store.CreateIntent(req)
+	return s.store.CreateIntent(ctx, req)
 }
 
-func (s *Service) AbandonIntent(intent *Intent, reason string) error {
-	return s.AbandonIntentContext(context.Background(), intent, reason)
-}
-
-func (s *Service) AbandonIntentContext(ctx context.Context, intent *Intent, reason string) error {
+func (s *Service) AbandonIntent(ctx context.Context, intent *Intent, reason string) error {
 	if err := s.ensureEnabled(); err != nil {
 		return err
 	}
-	if err := lock.CheckLease(ctx); err != nil {
+	if _, err := lock.RequireLease(ctx); err != nil {
 		return err
 	}
 	if intent == nil {
 		return bizerror.New(bizerror.InvalidArgument, "rule version intent is required")
 	}
-	return s.store.MarkIntentFailed(intent.ID, reason)
+	return s.store.MarkIntentFailed(ctx, intent.ID, reason)
 }
 
 // RepairIntent reconciles an open intent when the rule mutation reached
 // ResourceManager but the subscriber did not commit the corresponding version.
 // It derives the version from current rule state instead of trusting payloads.
-func (s *Service) RepairIntent(kind coremodel.ResourceKind, resourceKey string, current coremodel.Resource, deleted bool) (*Version, error) {
-	return s.RepairIntentContext(context.Background(), kind, resourceKey, current, deleted)
-}
-
-func (s *Service) RepairIntentContext(ctx context.Context, kind coremodel.ResourceKind, resourceKey string, current coremodel.Resource, deleted bool) (*Version, error) {
+func (s *Service) RepairIntent(ctx context.Context, kind coremodel.ResourceKind, resourceKey string, current coremodel.Resource, deleted bool) (*Version, error) {
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err
 	}
-	if err := lock.CheckLease(ctx); err != nil {
+	if _, err := lock.RequireLease(ctx); err != nil {
 		return nil, err
 	}
 	intent, err := s.store.OpenIntent(kind, resourceKey)
@@ -246,15 +217,11 @@ func (s *Service) RepairIntentContext(ctx context.Context, kind coremodel.Resour
 	return s.repairIntent(ctx, intent, current, deleted)
 }
 
-func (s *Service) FinalizeMutation(intent *Intent, current coremodel.Resource, deleted bool) (*Version, error) {
-	return s.FinalizeMutationContext(context.Background(), intent, current, deleted)
-}
-
-func (s *Service) FinalizeMutationContext(ctx context.Context, intent *Intent, current coremodel.Resource, deleted bool) (*Version, error) {
+func (s *Service) FinalizeMutation(ctx context.Context, intent *Intent, current coremodel.Resource, deleted bool) (*Version, error) {
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err
 	}
-	if err := lock.CheckLease(ctx); err != nil {
+	if _, err := lock.RequireLease(ctx); err != nil {
 		return nil, err
 	}
 	if intent == nil {
@@ -268,10 +235,10 @@ func (s *Service) FinalizeMutationContext(ctx context.Context, intent *Intent, c
 		if !IntentMatchesResource(fresh, current, deleted) {
 			return nil, &IntentPendingError{IntentID: fresh.ID}
 		}
-		if err := lock.CheckLease(ctx); err != nil {
+		if _, err := lock.RequireLease(ctx); err != nil {
 			return nil, err
 		}
-		if err := s.store.MarkIntentApplied(fresh.ID); err != nil {
+		if err := s.store.MarkIntentApplied(ctx, fresh.ID); err != nil {
 			return nil, err
 		}
 		fresh.Status = IntentStatusApplied
@@ -339,11 +306,25 @@ func errorsIsIntentAlreadyClosed(err error) bool {
 	return err == nil || errors.Is(err, ErrVersionIntentNotOpen) || errors.Is(err, ErrVersionIntentNotFound)
 }
 
-func (s *Service) ReconcileMeta(kind coremodel.ResourceKind, resourceKey string) (*Meta, error) {
+func (s *Service) ReconcileMeta(ctx context.Context, kind coremodel.ResourceKind, resourceKey string) (*Meta, error) {
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err
 	}
-	return s.store.ReconcileMeta(kind, resourceKey)
+	if _, err := lock.RequireLease(ctx); err != nil {
+		return nil, err
+	}
+	return s.store.ReconcileMeta(ctx, kind, resourceKey)
+}
+
+func (s *Service) CurrentLedgerHead(kind coremodel.ResourceKind, resourceKey string) (*Version, bool, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, false, err
+	}
+	snapshot, err := s.store.LedgerSnapshot(kind, resourceKey)
+	if err != nil {
+		return nil, false, err
+	}
+	return snapshot.Head, snapshot.Deleted, nil
 }
 
 func (s *Service) GetVersion(kind coremodel.ResourceKind, resourceKey string, id int64) (*Version, error) {
@@ -370,7 +351,7 @@ func (s *Service) repairIntent(ctx context.Context, intent *Intent, current core
 	if intent == nil {
 		return nil, nil
 	}
-	if err := lock.CheckLease(ctx); err != nil {
+	if _, err := lock.RequireLease(ctx); err != nil {
 		return nil, err
 	}
 	if intent.Status == IntentStatusCommitted {
@@ -382,10 +363,10 @@ func (s *Service) repairIntent(ctx context.Context, intent *Intent, current core
 	if intent.Status != IntentStatusPending && intent.Status != IntentStatusApplied {
 		return nil, ErrVersionIntentNotOpen
 	}
-	if _, err := s.store.ReconcileMeta(intent.RuleKind, intent.ResourceKey); err != nil {
+	if _, err := s.store.ReconcileMeta(ctx, intent.RuleKind, intent.ResourceKey); err != nil {
 		return nil, err
 	}
-	if err := lock.CheckLease(ctx); err != nil {
+	if _, err := lock.RequireLease(ctx); err != nil {
 		return nil, err
 	}
 	matches := IntentMatchesResource(intent, current, deleted)
@@ -393,24 +374,24 @@ func (s *Service) repairIntent(ctx context.Context, intent *Intent, current core
 		if !matches {
 			return nil, &IntentPendingError{IntentID: intent.ID}
 		}
-		if err := lock.CheckLease(ctx); err != nil {
+		if _, err := lock.RequireLease(ctx); err != nil {
 			return nil, err
 		}
-		if err := s.store.MarkIntentApplied(intent.ID); err != nil {
+		if err := s.store.MarkIntentApplied(ctx, intent.ID); err != nil {
 			return nil, err
 		}
-		if err := lock.CheckLease(ctx); err != nil {
+		if _, err := lock.RequireLease(ctx); err != nil {
 			return nil, err
 		}
-		return s.store.CommitIntent(intent.ID, s.maxVersions)
+		return s.store.CommitIntent(ctx, intent.ID, s.maxVersions)
 	}
 	if !matches {
 		return nil, ErrIntentOutcomeMismatch
 	}
-	if err := lock.CheckLease(ctx); err != nil {
+	if _, err := lock.RequireLease(ctx); err != nil {
 		return nil, err
 	}
-	return s.store.CommitIntent(intent.ID, s.maxVersions)
+	return s.store.CommitIntent(ctx, intent.ID, s.maxVersions)
 }
 
 func buildMutationInsertRequest(res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromID *int64, createdAt time.Time) (InsertRequest, error) {

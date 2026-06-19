@@ -18,23 +18,26 @@
 package versioning
 
 import (
+	"context"
+
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
 // Store defines the storage interface for rule versioning.
 // Production implementation: ResourceStoreAdapter (uses resource store)
 type Store interface {
-	InsertVersion(req InsertRequest, maxVersions int64) (*Version, error)
-	CreateIntent(req InsertRequest) (*Intent, error)
+	InsertVersion(ctx context.Context, req InsertRequest, maxVersions int64) (*Version, error)
+	CreateIntent(ctx context.Context, req InsertRequest) (*Intent, error)
 	GetIntent(id int64) (*Intent, error)
 	OpenIntent(kind coremodel.ResourceKind, resourceKey string) (*Intent, error)
-	MarkIntentApplied(id int64) error
-	MarkIntentFailed(id int64, message string) error
-	CommitIntent(id int64, maxVersions int64) (*Version, error)
+	MarkIntentApplied(ctx context.Context, id int64) error
+	MarkIntentFailed(ctx context.Context, id int64, message string) error
+	CommitIntent(ctx context.Context, id int64, maxVersions int64) (*Version, error)
 	ListOpenIntents() ([]Intent, error)
 	ListVersions(kind coremodel.ResourceKind, resourceKey string) ([]Version, error)
+	LedgerSnapshot(kind coremodel.ResourceKind, resourceKey string) (*LedgerSnapshot, error)
 	GetVersion(kind coremodel.ResourceKind, resourceKey string, id int64) (*Version, error)
 	LatestVersion(kind coremodel.ResourceKind, resourceKey string) (*Version, error)
 	CheckExpectedVersion(kind coremodel.ResourceKind, resourceKey string, expected *int64) error
-	ReconcileMeta(kind coremodel.ResourceKind, resourceKey string) (*Meta, error)
+	ReconcileMeta(ctx context.Context, kind coremodel.ResourceKind, resourceKey string) (*Meta, error)
 }

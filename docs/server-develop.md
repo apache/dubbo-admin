@@ -43,6 +43,7 @@ If you're using GoLand, you can run it locally by following steps:
 2. Fill the block with the config that screenshot shows below:
 ![ide_configuration.png](./static/images/ide-config.png)
 3. Modify the config file(app/dubbo-admin/dubbo-admin.yaml), make sure that the discovery, engine, store is configured.
+   Traffic-rule version history is enabled by default and writes RuleVersion, RuleIntent, and RuleMeta resources for history and rollback. Memory store uses a process-local lock; shared database stores must initialize the lock component, otherwise versioning fails closed during startup.
 4. Run the application, you can open the browser and visit localhost:8888/admin if everything works.
 
 

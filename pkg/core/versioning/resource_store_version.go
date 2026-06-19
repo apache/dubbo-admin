@@ -18,6 +18,7 @@
 package versioning
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -29,6 +30,7 @@ import (
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
@@ -57,11 +59,24 @@ func (a *ResourceStoreAdapter) GetVersion(kind coremodel.ResourceKind, resourceK
 }
 
 func (a *ResourceStoreAdapter) ListVersions(kind coremodel.ResourceKind, resourceKey string) ([]Version, error) {
-	state, err := a.ledgerState(kind, resourceKey)
+	snapshot, err := a.LedgerSnapshot(kind, resourceKey)
 	if err != nil {
 		return nil, err
 	}
-	return state.Versions, nil
+	return snapshot.Versions, nil
+}
+
+func (a *ResourceStoreAdapter) LedgerSnapshot(kind coremodel.ResourceKind, resourceKey string) (*LedgerSnapshot, error) {
+	var snapshot *LedgerSnapshot
+	err := a.withParentLock(kind, resourceKey, func() error {
+		state, err := a.ledgerState(kind, resourceKey)
+		if err != nil {
+			return err
+		}
+		snapshot = ledgerSnapshotFromState(state)
+		return nil
+	})
+	return snapshot, err
 }
 
 func (a *ResourceStoreAdapter) ledgerState(kind coremodel.ResourceKind, resourceKey string) (*ledgerState, error) {
@@ -112,22 +127,34 @@ func (a *ResourceStoreAdapter) ledgerState(kind coremodel.ResourceKind, resource
 	return state, nil
 }
 
-func (a *ResourceStoreAdapter) InsertVersion(req InsertRequest, maxVersions int64) (*Version, error) {
+func (a *ResourceStoreAdapter) InsertVersion(ctx context.Context, req InsertRequest, maxVersions int64) (*Version, error) {
 	var version *Version
 	err := a.withParentLock(req.RuleKind, req.ResourceKey, func() error {
+		if err := lock.CheckLease(ctx); err != nil {
+			return err
+		}
 		var inner error
-		version, inner = a.insertVersionLocked(req, maxVersions)
+		version, inner = a.insertVersionLocked(ctx, req, maxVersions)
 		return inner
 	})
 	return version, err
 }
 
-func (a *ResourceStoreAdapter) insertVersionLocked(req InsertRequest, maxVersions int64) (*Version, error) {
-	if _, err := a.reconcileMetaFromLedgerLocked(req.RuleKind, req.ResourceKey); err != nil {
+func (a *ResourceStoreAdapter) insertVersionLocked(ctx context.Context, req InsertRequest, maxVersions int64) (*Version, error) {
+	if err := lock.CheckLease(ctx); err != nil {
+		return nil, err
+	}
+	if _, err := a.reconcileMetaFromLedgerLocked(ctx, req.RuleKind, req.ResourceKey); err != nil {
+		return nil, err
+	}
+	if err := lock.CheckLease(ctx); err != nil {
 		return nil, err
 	}
 	state, err := a.ledgerState(req.RuleKind, req.ResourceKey)
 	if err != nil {
+		return nil, err
+	}
+	if err := lock.CheckLease(ctx); err != nil {
 		return nil, err
 	}
 
@@ -195,6 +222,9 @@ func (a *ResourceStoreAdapter) insertVersionLocked(req InsertRequest, maxVersion
 				}
 			}
 			rv = newRuleVersionResource(req, id, versionNo, createdAt, committedAt)
+			if err := lock.CheckLease(ctx); err != nil {
+				return nil, err
+			}
 			addErr = a.versionStore.Add(rv)
 			if addErr == nil {
 				break
@@ -220,12 +250,18 @@ func (a *ResourceStoreAdapter) insertVersionLocked(req InsertRequest, maxVersion
 		}
 	}
 
-	if _, err := a.reconcileMetaFromLedgerLocked(req.RuleKind, req.ResourceKey); err != nil {
+	if err := lock.CheckLease(ctx); err != nil {
+		return nil, err
+	}
+	if _, err := a.reconcileMetaFromLedgerLocked(ctx, req.RuleKind, req.ResourceKey); err != nil {
 		return nil, fmt.Errorf("failed to reconcile meta after version %d: %w", id, err)
 	}
 
+	if err := lock.CheckLease(ctx); err != nil {
+		return nil, err
+	}
 	if maxVersions > 0 {
-		if err := a.TrimVersions(req.RuleKind, req.ResourceKey, maxVersions); err != nil {
+		if err := a.trimVersionsLocked(req.RuleKind, req.ResourceKey, maxVersions); err != nil {
 			logger.Warnf("rule version retention cleanup failed for kind=%s resourceKey=%s committedVersion=%d: %v", req.RuleKind, req.ResourceKey, id, err)
 		}
 	}
@@ -234,11 +270,17 @@ func (a *ResourceStoreAdapter) insertVersionLocked(req InsertRequest, maxVersion
 }
 
 func (a *ResourceStoreAdapter) TrimVersions(kind coremodel.ResourceKind, resourceKey string, keep int64) error {
-	versions, err := a.ListVersions(kind, resourceKey)
+	return a.withParentLock(kind, resourceKey, func() error {
+		return a.trimVersionsLocked(kind, resourceKey, keep)
+	})
+}
+
+func (a *ResourceStoreAdapter) trimVersionsLocked(kind coremodel.ResourceKind, resourceKey string, keep int64) error {
+	state, err := a.ledgerState(kind, resourceKey)
 	if err != nil {
 		return err
 	}
-
+	versions := state.Versions
 	if int64(len(versions)) <= keep {
 		return nil
 	}

@@ -35,8 +35,7 @@ const SCENARIOS = [
   'repair-failure',
   'abandon-success',
   'backend-error',
-  'diff',
-  'rollback-success'
+  'diff'
 ] as const
 
 type Scenario = (typeof SCENARIOS)[number]
@@ -121,6 +120,18 @@ const fixtureVersions = (kind: TrafficRuleKind, ruleName: string): RuleVersion[]
 
 const currentVersionOf = (versions: RuleVersion[]) => versions.find((version) => version.isCurrent)
 
+const versionList = (versions: RuleVersion[]): RuleVersionList => {
+  const current = currentVersionOf(versions)
+  const head = versions[0]
+  return {
+    items: versions,
+    total: versions.length,
+    currentVersionId: current?.id,
+    currentVersionNo: current?.versionNo,
+    deleted: Boolean(!current && head?.operation === 'DELETE')
+  }
+}
+
 const featureDisabledResp = () =>
   HttpResponse.json(
     { code: 'FEATURE_DISABLED', message: 'rule versioning is disabled' },
@@ -186,7 +197,7 @@ const buildVersionHandlersForKind = (kind: TrafficRuleKind): HttpHandler[] => [
     if (scenarioOf(ruleName) === 'backend-error')
       return bizError('InternalError', 'backend error', 500)
     const versions = fixtureVersions(kind, ruleName)
-    return success<RuleVersionList>({ items: versions, total: versions.length })
+    return success<RuleVersionList>(versionList(versions))
   }),
 
   http.get(`${base}/${kind}/:ruleName/versions/:versionId`, ({ params }) => {
@@ -322,9 +333,5 @@ export const ruleVersionMock = {
   },
   pendingResponse(kind: TrafficRuleKind, ruleName: string) {
     return pendingResp(ensurePendingIntent(kind, ruleName))
-  },
-  recordAdminWrite(...args: unknown[]) {
-    void args
-    return
   }
 }

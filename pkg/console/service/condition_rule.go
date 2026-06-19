@@ -136,7 +136,7 @@ func updateConditionRuleUnsafe(ctx context.Context, res *meshresource.ConditionR
 		if err := checkMutationLease(opts); err != nil {
 			return err
 		}
-		if err := ctx.ResourceManager().Update(res); err != nil {
+		if err := ctx.ResourceManager().Update(opts.leaseCtx, res); err != nil {
 			logger.Warnf("update %s condition failed with error: %s", res.Name, err.Error())
 			return err
 		}
@@ -171,7 +171,7 @@ func createConditionRuleUnsafe(ctx context.Context, res *meshresource.ConditionR
 		if err := checkMutationLease(opts); err != nil {
 			return err
 		}
-		if err := ctx.ResourceManager().Add(res); err != nil {
+		if err := ctx.ResourceManager().Add(opts.leaseCtx, res); err != nil {
 			logger.Warnf("create %s condition failed with error: %s", res.Name, err.Error())
 			return err
 		}
@@ -199,21 +199,18 @@ func DeleteConditionRuleWithOptions(ctx context.Context, name string, mesh strin
 
 func deleteConditionRuleUnsafe(ctx context.Context, name string, mesh string, opts RuleMutationOptions) error {
 	kindName := RuleKindName{Kind: meshresource.ConditionRouteKind, Mesh: mesh, Name: name}
-	if err := repairPendingIntent(ctx, kindName, opts); err != nil {
+	if err := prepareRuleMutation(ctx, kindName, opts); err != nil {
 		return err
 	}
 	res, err := getExistingRule(ctx, kindName)
 	if err != nil {
 		return err
 	}
-	if err := checkExpectedVersion(ctx, kindName, opts); err != nil {
-		return err
-	}
 	return applyAdminMutation(ctx, res, versioning.OperationDelete, opts, func() error {
 		if err := checkMutationLease(opts); err != nil {
 			return err
 		}
-		if err := ctx.ResourceManager().DeleteByKey(meshresource.ConditionRouteKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
+		if err := ctx.ResourceManager().DeleteByKey(opts.leaseCtx, meshresource.ConditionRouteKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
 			return err
 		}
 		return nil

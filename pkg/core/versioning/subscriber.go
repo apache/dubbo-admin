@@ -21,7 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"k8s.io/client-go/tools/cache"
@@ -29,10 +28,9 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/events"
 	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
+	"github.com/apache/dubbo-admin/pkg/core/manager"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
-
-const IntentIDEventContextKey = "rule-version-intent-id"
 
 type Subscriber struct {
 	kind        coremodel.ResourceKind
@@ -49,13 +47,12 @@ type ParentRef struct {
 }
 
 type normalizedRuleEvent struct {
-	Resource         coremodel.Resource
-	Parent           ParentRef
-	Operation        Operation
-	SpecJSON         []byte
-	ContentHash      string
-	MutationIntentID int64
-	Context          map[string]string
+	Resource    coremodel.Resource
+	Parent      ParentRef
+	Operation   Operation
+	SpecJSON    []byte
+	ContentHash string
+	Context     map[string]string
 }
 
 func NewSubscriber(kind coremodel.ResourceKind, store Store, maxVersions int64, lockMgr lock.Lock) *Subscriber {
@@ -112,16 +109,6 @@ func normalizeRuleEvent(event events.Event) (*normalizedRuleEvent, error) {
 		return nil, err
 	}
 
-	ctx := event.Context()
-	intentID := int64(0)
-	if ctx != nil && ctx[IntentIDEventContextKey] != "" {
-		parsed, err := strconv.ParseInt(ctx[IntentIDEventContextKey], 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("%w: invalid intent token %q", ErrVersionLedgerCorrupt, ctx[IntentIDEventContextKey])
-		}
-		intentID = parsed
-	}
-
 	return &normalizedRuleEvent{
 		Resource: res,
 		Parent: ParentRef{
@@ -130,11 +117,10 @@ func normalizeRuleEvent(event events.Event) (*normalizedRuleEvent, error) {
 			Name:        res.ResourceMeta().Name,
 			ResourceKey: res.ResourceKey(),
 		},
-		Operation:        op,
-		SpecJSON:         []byte(specJSON),
-		ContentHash:      hash,
-		MutationIntentID: intentID,
-		Context:          ctx,
+		Operation:   op,
+		SpecJSON:    []byte(specJSON),
+		ContentHash: hash,
+		Context:     event.Context(),
 	}, nil
 }
 
@@ -146,15 +132,13 @@ func (s *Subscriber) ProcessEvent(event events.Event) error {
 	if normalized == nil {
 		return nil
 	}
-	if normalized.MutationIntentID == 0 {
-		openIntent, err := s.store.OpenIntent(normalized.Parent.Kind, normalized.Parent.ResourceKey)
-		if err != nil {
-			return err
-		}
-		if openIntent != nil {
-			logger.Infof("skipping un-tokened event for %s while rule version intent %d is open", normalized.Parent.ResourceKey, openIntent.ID)
-			return nil
-		}
+	openIntent, err := s.store.OpenIntent(normalized.Parent.Kind, normalized.Parent.ResourceKey)
+	if err != nil {
+		return err
+	}
+	if openIntent != nil {
+		logger.Infof("skipping rule event for %s while rule version intent %d is open", normalized.Parent.ResourceKey, openIntent.ID)
+		return nil
 	}
 	return withRuleVersionLock(s.lockMgr, normalized.Parent.Kind, normalized.Parent.ResourceKey, func(leaseCtx context.Context) error {
 		return s.record(leaseCtx, *normalized)
@@ -165,23 +149,18 @@ func (s *Subscriber) record(ctx context.Context, event normalizedRuleEvent) erro
 	if err := lock.CheckLease(ctx); err != nil {
 		return err
 	}
-	if _, err := s.store.ReconcileMeta(event.Parent.Kind, event.Parent.ResourceKey); err != nil {
+	if _, err := s.store.ReconcileMeta(ctx, event.Parent.Kind, event.Parent.ResourceKey); err != nil {
 		return err
 	}
 	if err := lock.CheckLease(ctx); err != nil {
 		return err
-	}
-	if committed, err := s.tryCommitIntentFromToken(ctx, event); err != nil {
-		return err
-	} else if committed {
-		return nil
 	}
 	openIntent, err := s.store.OpenIntent(event.Parent.Kind, event.Parent.ResourceKey)
 	if err != nil {
 		return err
 	}
 	if openIntent != nil {
-		logger.Infof("skipping un-tokened event for %s while rule version intent %d is open", event.Parent.ResourceKey, openIntent.ID)
+		logger.Infof("skipping rule event for %s while rule version intent %d is open", event.Parent.ResourceKey, openIntent.ID)
 		return nil
 	}
 
@@ -216,7 +195,7 @@ func (s *Subscriber) record(ctx context.Context, event normalizedRuleEvent) erro
 		CreatedAt:   time.Now(),
 	}
 
-	_, err = s.store.InsertVersion(req, s.maxVersions)
+	_, err = s.store.InsertVersion(ctx, req, s.maxVersions)
 	if err != nil {
 		return fmt.Errorf("failed to insert version: %w", err)
 	}
@@ -228,43 +207,6 @@ func (s *Subscriber) record(ctx context.Context, event normalizedRuleEvent) erro
 	// - Old version cleanup (trimming)
 
 	return nil
-}
-
-func (s *Subscriber) tryCommitIntentFromToken(ctx context.Context, event normalizedRuleEvent) (bool, error) {
-	if event.MutationIntentID == 0 {
-		return false, nil
-	}
-	intent, err := s.store.GetIntent(event.MutationIntentID)
-	if err != nil {
-		return false, err
-	}
-	if intent.Status != IntentStatusPending && intent.Status != IntentStatusApplied {
-		return false, ErrVersionIntentNotOpen
-	}
-	if intent.RuleKind != event.Parent.Kind ||
-		intent.ResourceKey != event.Parent.ResourceKey ||
-		intent.ContentHash != event.ContentHash ||
-		intent.Operation != event.Operation {
-		return false, fmt.Errorf("%w: intent token %d does not match event parent/content/operation", ErrVersionLedgerCorrupt, event.MutationIntentID)
-	}
-	if intent.Source == SourceRollback && intent.RolledBackFromID == nil {
-		return false, fmt.Errorf("%w: rollback intent %d is missing rolledBackFromId", ErrVersionLedgerCorrupt, event.MutationIntentID)
-	}
-	if intent.Status == IntentStatusPending {
-		if err := lock.CheckLease(ctx); err != nil {
-			return false, err
-		}
-		if err := s.store.MarkIntentApplied(intent.ID); err != nil {
-			return false, err
-		}
-	}
-	if err := lock.CheckLease(ctx); err != nil {
-		return false, err
-	}
-	if _, err := s.store.CommitIntent(intent.ID, s.maxVersions); err != nil {
-		return false, err
-	}
-	return true, nil
 }
 
 func (s *Subscriber) checkDuplicate(kind coremodel.ResourceKind, resourceKey string, op Operation, hash string) (bool, error) {
@@ -284,10 +226,10 @@ func (s *Subscriber) checkDuplicate(kind coremodel.ResourceKind, resourceKey str
 	return op != OperationDelete && latest.ContentHash == hash, nil
 }
 
-// RecordBootstrap creates a baseline version for a rule during bootstrap.
-func RecordBootstrap(store Store, maxVersions int64, res coremodel.Resource) error {
+// recordBootstrapState creates a baseline version for a rule during bootstrap.
+func recordBootstrapState(ctx context.Context, store Store, maxVersions int64, res coremodel.Resource) error {
 	kind := res.ResourceKind()
-	if _, err := store.ReconcileMeta(kind, res.ResourceKey()); err != nil {
+	if _, err := store.ReconcileMeta(ctx, kind, res.ResourceKey()); err != nil {
 		return err
 	}
 	versions, err := store.ListVersions(kind, res.ResourceKey())
@@ -315,18 +257,25 @@ func RecordBootstrap(store Store, maxVersions int64, res coremodel.Resource) err
 		Author:      "system:bootstrap",
 		CreatedAt:   time.Now(),
 	}
-	if _, err := store.InsertVersion(req, maxVersions); err != nil {
+	if _, err := store.InsertVersion(ctx, req, maxVersions); err != nil {
 		return fmt.Errorf("bootstrap version for %s failed: %w", res.ResourceKey(), err)
 	}
 	return nil
 }
 
-func RecordBootstrapLocked(store Store, maxVersions int64, res coremodel.Resource, lockMgr lock.Lock) error {
-	return withRuleVersionLock(lockMgr, res.ResourceKind(), res.ResourceKey(), func(ctx context.Context) error {
+func RecordBootstrapLocked(store Store, maxVersions int64, kind coremodel.ResourceKind, resourceKey string, rm manager.ResourceManager, lockMgr lock.Lock) error {
+	return withRuleVersionLock(lockMgr, kind, resourceKey, func(ctx context.Context) error {
 		if err := lock.CheckLease(ctx); err != nil {
 			return err
 		}
-		return RecordBootstrap(store, maxVersions, res)
+		current, exists, err := rm.GetByKey(kind, resourceKey)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return nil
+		}
+		return recordBootstrapState(ctx, store, maxVersions, current)
 	})
 }
 

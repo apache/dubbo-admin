@@ -22,6 +22,7 @@ import {
   listRuleVersionsAPI,
   repairRuleVersionIntentAPI,
   type RuleVersion,
+  type RuleVersionList,
   type TrafficRuleKind,
   type VersionConflictError,
   type VersionLedgerPendingError
@@ -37,11 +38,26 @@ export interface CurrentVersionState {
 
 export const currentVersionStateFromItems = (items: RuleVersion[]): CurrentVersionState => {
   const current = items.find((item) => item.isCurrent)
+  const head = items[0]
   return {
     id: current?.id,
     versionNo: current?.versionNo,
-    deleted: items.length > 0 && !current
+    deleted: !current && head?.operation === 'DELETE'
   }
+}
+
+export const currentVersionStateFromList = (list?: RuleVersionList): CurrentVersionState => {
+  if (!list) {
+    return { deleted: false }
+  }
+  if (list.currentVersionId !== undefined || list.deleted !== undefined) {
+    return {
+      id: list.currentVersionId,
+      versionNo: list.currentVersionNo,
+      deleted: Boolean(list.deleted)
+    }
+  }
+  return currentVersionStateFromItems(list.items || [])
 }
 
 export const rollbackExpectedVersionId = (state: CurrentVersionState): string | undefined => {
@@ -71,7 +87,7 @@ export const fetchCurrentVersionState = async (
   try {
     const res = await listRuleVersionsAPI(kind, ruleName)
     if (res.code === HTTP_STATUS.SUCCESS) {
-      return currentVersionStateFromItems(res.data?.items || [])
+      return currentVersionStateFromList(res.data)
     }
   } catch (e: any) {
     if (e?.code !== 'FEATURE_DISABLED') {

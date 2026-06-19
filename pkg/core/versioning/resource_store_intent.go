@@ -18,6 +18,7 @@
 package versioning
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -27,6 +28,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
+	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
@@ -36,17 +38,20 @@ import (
 
 // Intent operations using RuleIntentResource
 
-func (a *ResourceStoreAdapter) CreateIntent(req InsertRequest) (*Intent, error) {
+func (a *ResourceStoreAdapter) CreateIntent(ctx context.Context, req InsertRequest) (*Intent, error) {
 	var intent *Intent
 	err := a.withParentLock(req.RuleKind, req.ResourceKey, func() error {
+		if err := lock.CheckLease(ctx); err != nil {
+			return err
+		}
 		var inner error
-		intent, inner = a.createIntentLocked(req)
+		intent, inner = a.createIntentLocked(ctx, req)
 		return inner
 	})
 	return intent, err
 }
 
-func (a *ResourceStoreAdapter) createIntentLocked(req InsertRequest) (*Intent, error) {
+func (a *ResourceStoreAdapter) createIntentLocked(ctx context.Context, req InsertRequest) (*Intent, error) {
 	open, err := a.OpenIntent(req.RuleKind, req.ResourceKey)
 	if err != nil {
 		return nil, err
@@ -71,6 +76,9 @@ func (a *ResourceStoreAdapter) createIntentLocked(req InsertRequest) (*Intent, e
 			return nil, err
 		}
 		intentRes = newRuleIntentResource(req, id)
+		if err := lock.CheckLease(ctx); err != nil {
+			return nil, err
+		}
 		addErr = a.intentStore.Add(intentRes)
 		if addErr == nil {
 			break
@@ -113,19 +121,25 @@ func (a *ResourceStoreAdapter) OpenIntent(kind coremodel.ResourceKind, resourceK
 	}
 }
 
-func (a *ResourceStoreAdapter) MarkIntentApplied(id int64) error {
-	return a.updateIntentStatus(id, IntentStatusApplied, "")
+func (a *ResourceStoreAdapter) MarkIntentApplied(ctx context.Context, id int64) error {
+	return a.updateIntentStatus(ctx, id, IntentStatusApplied, "")
 }
 
-func (a *ResourceStoreAdapter) MarkIntentFailed(id int64, message string) error {
-	if err := a.updateIntentStatus(id, IntentStatusFailed, message); err != nil {
+func (a *ResourceStoreAdapter) MarkIntentFailed(ctx context.Context, id int64, message string) error {
+	if err := a.updateIntentStatus(ctx, id, IntentStatusFailed, message); err != nil {
+		return err
+	}
+	if err := lock.CheckLease(ctx); err != nil {
 		return err
 	}
 	a.cleanupIntent(id, IntentStatusFailed)
 	return nil
 }
 
-func (a *ResourceStoreAdapter) CommitIntent(id int64, maxVersions int64) (*Version, error) {
+func (a *ResourceStoreAdapter) CommitIntent(ctx context.Context, id int64, maxVersions int64) (*Version, error) {
+	if err := lock.CheckLease(ctx); err != nil {
+		return nil, err
+	}
 	intentRes, parsedID, err := a.getIntentResourceByID(id)
 	if err != nil {
 		return nil, err
@@ -139,7 +153,7 @@ func (a *ResourceStoreAdapter) CommitIntent(id int64, maxVersions int64) (*Versi
 	// CommitIntent appends the observed rule state as a new immutable version
 	// and advances RuleMeta to that new version. It must not mutate older
 	// versions, including rollback targets.
-	version, err := a.InsertVersion(InsertRequest{
+	version, err := a.InsertVersion(ctx, InsertRequest{
 		RuleKind:         intent.RuleKind,
 		Mesh:             intent.Mesh,
 		ResourceKey:      intent.ResourceKey,
@@ -159,8 +173,14 @@ func (a *ResourceStoreAdapter) CommitIntent(id int64, maxVersions int64) (*Versi
 		return nil, err
 	}
 
+	if err := lock.CheckLease(ctx); err != nil {
+		return nil, err
+	}
 	// Update intent status to committed
 	if err := updateIntentResourceStatus(a.intentStore, intentRes, IntentStatusCommitted, ""); err != nil {
+		return nil, err
+	}
+	if err := lock.CheckLease(ctx); err != nil {
 		return nil, err
 	}
 	a.cleanupIntent(id, IntentStatusCommitted)
@@ -253,9 +273,15 @@ func (a *ResourceStoreAdapter) openIntentResources(kind coremodel.ResourceKind, 
 	return intents, nil
 }
 
-func (a *ResourceStoreAdapter) updateIntentStatus(id int64, status IntentStatus, failureReason string) error {
+func (a *ResourceStoreAdapter) updateIntentStatus(ctx context.Context, id int64, status IntentStatus, failureReason string) error {
+	if err := lock.CheckLease(ctx); err != nil {
+		return err
+	}
 	intentRes, _, err := a.getIntentResourceByID(id)
 	if err != nil {
+		return err
+	}
+	if err := lock.CheckLease(ctx); err != nil {
 		return err
 	}
 	return updateIntentResourceStatus(a.intentStore, intentRes, status, failureReason)

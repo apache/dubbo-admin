@@ -131,7 +131,7 @@ import {
 import RuleHistoryDrawer from './RuleHistoryDrawer.vue'
 import RuleDiffEditor from './RuleDiffEditor.vue'
 import {
-  currentVersionStateFromItems,
+  currentVersionStateFromList,
   formatRuleSpec,
   isCurrentHistoryRequest,
   isVersionConflict,
@@ -215,7 +215,7 @@ async function loadHistory() {
     }
     if (res?.code === HTTP_STATUS.SUCCESS) {
       items.value = res.data?.items || []
-      const current = currentVersionStateFromItems(items.value)
+      const current = currentVersionStateFromList(res.data)
       currentVersionId.value = current.id
       currentVersionNo.value = current.versionNo
       currentDeleted.value = current.deleted

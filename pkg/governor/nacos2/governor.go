@@ -18,12 +18,14 @@
 package nacos2
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"time"
 
 	nacosconfigclient "github.com/nacos-group/nacos-sdk-go/v2/clients/config_client"
 	nacosnamingclient "github.com/nacos-group/nacos-sdk-go/v2/clients/naming_client"
+	nacosutil "github.com/nacos-group/nacos-sdk-go/v2/util"
 	nacosvo "github.com/nacos-group/nacos-sdk-go/v2/vo"
 	"k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/yaml"
@@ -64,33 +66,79 @@ func NewNacos2Governor(
 	}, nil
 }
 
-func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
+func (g *RuleGovernor) CreateRule(ctx context.Context, r coremodel.Resource) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	rawContent, err := yaml.Marshal(r.ResourceSpec())
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.NacosError,
 			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
 	}
+	if err := g.publishRuleConfig(ctx, r, string(rawContent), ""); err != nil {
+		return err
+	}
+	// wait for the config to be published indeed
+	if err := waitForRulePropagation(ctx, 2*time.Second); err != nil {
+		return err
+	}
+	g.GetConfigAndUpdateStore(r)
+	return nil
+}
+
+func (g *RuleGovernor) UpdateRule(ctx context.Context, r coremodel.Resource) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	currentContent, err := g.configClient.GetConfig(nacosvo.ConfigParam{
+		DataId: r.ResourceMeta().Name,
+		Group:  constants.NacosConfigGroup,
+	})
+	if err != nil {
+		return bizerror.Wrap(err, bizerror.NacosError,
+			fmt.Sprintf("failed to read config before publish, res: %s", r.String()))
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	rawContent, err := yaml.Marshal(r.ResourceSpec())
+	if err != nil {
+		return bizerror.Wrap(err, bizerror.NacosError,
+			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
+	}
+	if err := g.publishRuleConfig(ctx, r, string(rawContent), nacosutil.Md5(currentContent)); err != nil {
+		return err
+	}
+	// wait for the config to be published indeed
+	if err := waitForRulePropagation(ctx, 2*time.Second); err != nil {
+		return err
+	}
+	g.GetConfigAndUpdateStore(r)
+	return nil
+}
+
+func (g *RuleGovernor) publishRuleConfig(ctx context.Context, r coremodel.Resource, content, casMd5 string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	ok, err := g.configClient.PublishConfig(nacosvo.ConfigParam{
 		DataId:  r.ResourceMeta().Name,
 		Group:   constants.NacosConfigGroup,
-		Content: string(rawContent),
+		Content: content,
+		CasMd5:  casMd5,
 	})
 	if err != nil || !ok {
 		logger.Errorf("failed to publish config in %s, res: %s", r.String(), r.ResourceMesh())
 		return bizerror.Wrap(err, bizerror.NacosError,
 			fmt.Sprintf("failed to publish config, res: %s", r.String()))
 	}
-	// wait for the config to be published indeed
-	<-time.After(2 * time.Second)
-	g.GetConfigAndUpdateStore(r)
-	return nil
+	return ctx.Err()
 }
 
-func (g *RuleGovernor) UpdateRule(r coremodel.Resource) error {
-	return g.CreateRule(r)
-}
-
-func (g *RuleGovernor) DeleteRule(r coremodel.Resource) error {
+func (g *RuleGovernor) DeleteRule(ctx context.Context, r coremodel.Resource) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	ok, err := g.configClient.DeleteConfig(nacosvo.ConfigParam{
 		DataId: r.ResourceMeta().Name,
 		Group:  constants.NacosConfigGroup,
@@ -108,12 +156,25 @@ func (g *RuleGovernor) DeleteRule(r coremodel.Resource) error {
 		return nil
 	}
 	// wait for the config to be deleted indeed
-	<-time.After(2 * time.Second)
+	if err := waitForRulePropagation(ctx, 2*time.Second); err != nil {
+		return err
+	}
 	if err := st.Delete(r); err != nil {
 		logger.Errorf("failed to delete resource in %s, res: %s, cause: %s", r.String(), r.ResourceMesh(), err)
 		return nil
 	}
 	return nil
+}
+
+func waitForRulePropagation(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }
 
 // GetConfigAndUpdateStore get resource from nacos, and update resource in store, if failed, just log an error message,

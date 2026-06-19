@@ -190,7 +190,7 @@ func (c *component) Start(rt runtime.Runtime, stop <-chan struct{}) error {
 			return err
 		}
 		for _, res := range resources {
-			if err := RecordBootstrapLocked(c.store, cfg.MaxVersionsPerRule, res, c.lock); err != nil {
+			if err := RecordBootstrapLocked(c.store, cfg.MaxVersionsPerRule, res.ResourceKind(), res.ResourceKey(), rm, c.lock); err != nil {
 				return err
 			}
 		}
@@ -208,12 +208,16 @@ func (c *component) repairOpenIntents(rm manager.ResourceManager) error {
 		return err
 	}
 	for _, intent := range intents {
-		current, exists, err := rm.GetByKey(intent.RuleKind, intent.ResourceKey)
-		if err != nil {
-			return err
-		}
 		err = withRuleVersionLock(c.lock, intent.RuleKind, intent.ResourceKey, func(leaseCtx context.Context) error {
-			_, err := c.service.FinalizeMutationContext(leaseCtx, &intent, current, !exists)
+			freshIntent, err := c.service.GetIntent(intent.ID)
+			if err != nil {
+				return err
+			}
+			current, exists, err := rm.GetByKey(freshIntent.RuleKind, freshIntent.ResourceKey)
+			if err != nil {
+				return err
+			}
+			_, err = c.service.FinalizeMutation(leaseCtx, freshIntent, current, !exists)
 			return err
 		})
 		if err != nil {

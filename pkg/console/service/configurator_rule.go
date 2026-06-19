@@ -144,7 +144,7 @@ func updateConfiguratorUnsafe(ctx consolectx.Context, res *meshresource.DynamicC
 		if err := checkMutationLease(opts); err != nil {
 			return err
 		}
-		if err := ctx.ResourceManager().Update(res); err != nil {
+		if err := ctx.ResourceManager().Update(opts.leaseCtx, res); err != nil {
 			logger.Warnf("update %s configurator failed with error: %s", res.Name, err.Error())
 			return err
 		}
@@ -179,7 +179,7 @@ func createConfiguratorUnsafe(ctx consolectx.Context, res *meshresource.DynamicC
 		if err := checkMutationLease(opts); err != nil {
 			return err
 		}
-		if err := ctx.ResourceManager().Add(res); err != nil {
+		if err := ctx.ResourceManager().Add(opts.leaseCtx, res); err != nil {
 			logger.Warnf("create %s configurator failed with error: %s", res.Name, err.Error())
 			return err
 		}
@@ -207,21 +207,18 @@ func DeleteConfiguratorWithOptions(ctx consolectx.Context, name string, mesh str
 
 func deleteConfiguratorUnsafe(ctx consolectx.Context, name string, mesh string, opts RuleMutationOptions) error {
 	kindName := RuleKindName{Kind: meshresource.DynamicConfigKind, Mesh: mesh, Name: name}
-	if err := repairPendingIntent(ctx, kindName, opts); err != nil {
+	if err := prepareRuleMutation(ctx, kindName, opts); err != nil {
 		return err
 	}
 	res, err := getExistingRule(ctx, kindName)
 	if err != nil {
 		return err
 	}
-	if err := checkExpectedVersion(ctx, kindName, opts); err != nil {
-		return err
-	}
 	return applyAdminMutation(ctx, res, versioning.OperationDelete, opts, func() error {
 		if err := checkMutationLease(opts); err != nil {
 			return err
 		}
-		if err := ctx.ResourceManager().DeleteByKey(meshresource.DynamicConfigKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
+		if err := ctx.ResourceManager().DeleteByKey(opts.leaseCtx, meshresource.DynamicConfigKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
 			logger.Warnf("delete %s configurator failed with error: %s", name, err.Error())
 			return err
 		}

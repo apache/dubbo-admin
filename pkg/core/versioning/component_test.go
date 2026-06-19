@@ -130,10 +130,10 @@ func (rm *fakeVersioningRM) ListByIndexes(coremodel.ResourceKind, []index.IndexC
 func (rm *fakeVersioningRM) PageListByIndexes(coremodel.ResourceKind, []index.IndexCondition, coremodel.PageReq) (*coremodel.PageData[coremodel.Resource], error) {
 	return nil, nil
 }
-func (rm *fakeVersioningRM) Add(coremodel.Resource) error    { return nil }
-func (rm *fakeVersioningRM) Update(coremodel.Resource) error { return nil }
-func (rm *fakeVersioningRM) Upsert(coremodel.Resource) error { return nil }
-func (rm *fakeVersioningRM) DeleteByKey(coremodel.ResourceKind, string, string) error {
+func (rm *fakeVersioningRM) Add(context.Context, coremodel.Resource) error    { return nil }
+func (rm *fakeVersioningRM) Update(context.Context, coremodel.Resource) error { return nil }
+func (rm *fakeVersioningRM) Upsert(context.Context, coremodel.Resource) error { return nil }
+func (rm *fakeVersioningRM) DeleteByKey(context.Context, coremodel.ResourceKind, string, string) error {
 	return nil
 }
 

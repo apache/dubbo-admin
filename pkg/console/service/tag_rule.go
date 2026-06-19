@@ -144,7 +144,7 @@ func updateTagRuleUnsafe(ctx consolectx.Context, res *meshresource.TagRouteResou
 		if err := checkMutationLease(opts); err != nil {
 			return err
 		}
-		err := ctx.ResourceManager().Update(res)
+		err := ctx.ResourceManager().Update(opts.leaseCtx, res)
 		if err != nil {
 			logger.Warnf("update tag rule %s error: %v", res.Name, err)
 			return err
@@ -182,7 +182,7 @@ func createTagRuleUnsafe(ctx consolectx.Context, res *meshresource.TagRouteResou
 		if err := checkMutationLease(opts); err != nil {
 			return err
 		}
-		err := ctx.ResourceManager().Add(res)
+		err := ctx.ResourceManager().Add(opts.leaseCtx, res)
 		if err != nil {
 			logger.Warnf("create tag rule %s error: %v", res.Name, err)
 			return err
@@ -211,21 +211,18 @@ func DeleteTagRuleWithOptions(ctx consolectx.Context, name string, mesh string, 
 
 func deleteTagRuleUnsafe(ctx consolectx.Context, name string, mesh string, opts RuleMutationOptions) error {
 	kindName := RuleKindName{Kind: meshresource.TagRouteKind, Mesh: mesh, Name: name}
-	if err := repairPendingIntent(ctx, kindName, opts); err != nil {
+	if err := prepareRuleMutation(ctx, kindName, opts); err != nil {
 		return err
 	}
 	res, err := getExistingRule(ctx, kindName)
 	if err != nil {
 		return err
 	}
-	if err := checkExpectedVersion(ctx, kindName, opts); err != nil {
-		return err
-	}
 	return applyAdminMutation(ctx, res, versioning.OperationDelete, opts, func() error {
 		if err := checkMutationLease(opts); err != nil {
 			return err
 		}
-		if err := ctx.ResourceManager().DeleteByKey(meshresource.TagRouteKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
+		if err := ctx.ResourceManager().DeleteByKey(opts.leaseCtx, meshresource.TagRouteKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
 			logger.Warnf("delete tag rule %s error: %v", name, err)
 			return err
 		}

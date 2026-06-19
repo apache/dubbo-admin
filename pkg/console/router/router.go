@@ -151,7 +151,7 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 
 	{
 		// Intent repair reconciles the version ledger from ResourceManager state
-		// when the synchronous subscriber did not commit a matching mutation.
+		// when an admin mutation finishes before the ledger is finalized.
 		ruleVersionIntent := router.Group("/rule-version-intents")
 		ruleVersionIntent.POST("/:intentId/repair", handler.RepairRuleVersionIntent(ctx))
 		ruleVersionIntent.POST("/:intentId/abandon", handler.AbandonRuleVersionIntent(ctx))

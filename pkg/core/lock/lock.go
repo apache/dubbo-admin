@@ -42,7 +42,6 @@ type leaseContextKey struct{}
 type Lease interface {
 	Key() string
 	Token() string
-	Context() context.Context
 	Lost() <-chan struct{}
 	Renew(ctx context.Context, ttl time.Duration) error
 	Unlock(ctx context.Context) error
@@ -63,11 +62,11 @@ type Lock interface {
 	CleanupExpiredLocks(ctx context.Context) error
 }
 
-type StatefulLease interface {
+type statefulLease interface {
 	Lease
-	BindContext(context.Context)
-	MarkLost(error)
-	LostError() error
+	bindContext(context.Context)
+	markLost(error)
+	lostError() error
 }
 
 type LeaseState struct {
@@ -99,7 +98,7 @@ func (s *LeaseState) Token() string {
 	return s.token
 }
 
-func (s *LeaseState) Context() context.Context {
+func (s *LeaseState) context() context.Context {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if s.ctx != nil {
@@ -108,7 +107,7 @@ func (s *LeaseState) Context() context.Context {
 	return context.Background()
 }
 
-func (s *LeaseState) BindContext(ctx context.Context) {
+func (s *LeaseState) bindContext(ctx context.Context) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -121,7 +120,7 @@ func (s *LeaseState) Lost() <-chan struct{} {
 	return s.lost
 }
 
-func (s *LeaseState) MarkLost(err error) {
+func (s *LeaseState) markLost(err error) {
 	if err == nil {
 		err = ErrLockLeaseLost
 	}
@@ -133,7 +132,7 @@ func (s *LeaseState) MarkLost(err error) {
 	})
 }
 
-func (s *LeaseState) LostError() error {
+func (s *LeaseState) lostError() error {
 	s.mu.RLock()
 	err := s.lostErr
 	s.mu.RUnlock()
@@ -180,8 +179,8 @@ func WithLock(ctx context.Context, lockMgr Lock, key string, ttl time.Duration, 
 
 	leaseCtx, cancelLease := context.WithCancel(ctx)
 	leaseCtx = context.WithValue(leaseCtx, leaseContextKey{}, lease)
-	if stateful, ok := lease.(StatefulLease); ok {
-		stateful.BindContext(leaseCtx)
+	if stateful, ok := lease.(statefulLease); ok {
+		stateful.bindContext(leaseCtx)
 	}
 
 	stopRenew := make(chan struct{})
@@ -206,6 +205,10 @@ func WithLock(ctx context.Context, lockMgr Lock, key string, ttl time.Duration, 
 			panic(recovered)
 		}
 		if err != nil {
+			if lostErr := leaseLostError(lease, leaseLost); lostErr != nil &&
+				(errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, ErrLockLeaseLost)) {
+				err = lostErr
+			}
 			return
 		}
 		if lostErr := leaseLostError(lease, leaseLost); lostErr != nil {
@@ -246,6 +249,23 @@ func CheckLease(ctx context.Context) error {
 	return nil
 }
 
+func RequireLease(ctx context.Context) (Lease, error) {
+	if ctx == nil {
+		return nil, ErrLockUnavailable
+	}
+	lease, ok := ctx.Value(leaseContextKey{}).(Lease)
+	if !ok || lease == nil {
+		return nil, ErrLockUnavailable
+	}
+	if lostErr := leaseLostError(lease, nil); lostErr != nil {
+		return nil, lostErr
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return lease, nil
+}
+
 func LeaseFromContext(ctx context.Context) (Lease, bool) {
 	if ctx == nil {
 		return nil, false
@@ -279,8 +299,8 @@ func autoRenewLease(leaseCtx context.Context, cancelLease context.CancelFunc, le
 			cancel()
 			if err != nil {
 				lostErr := fmt.Errorf("%w: renew failed for %s: %v", ErrLockLeaseLost, lease.Key(), err)
-				if stateful, ok := lease.(StatefulLease); ok {
-					stateful.MarkLost(lostErr)
+				if stateful, ok := lease.(statefulLease); ok {
+					stateful.markLost(lostErr)
 				}
 				select {
 				case lost <- lostErr:
@@ -296,8 +316,8 @@ func autoRenewLease(leaseCtx context.Context, cancelLease context.CancelFunc, le
 func leaseLostError(lease Lease, ch <-chan error) error {
 	select {
 	case <-lease.Lost():
-		if stateful, ok := lease.(StatefulLease); ok {
-			if err := stateful.LostError(); err != nil {
+		if stateful, ok := lease.(statefulLease); ok {
+			if err := stateful.lostError(); err != nil {
 				if errors.Is(err, ErrLockLeaseLost) {
 					return err
 				}

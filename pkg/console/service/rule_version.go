@@ -100,7 +100,7 @@ func repairPendingIntent(ctx consolectx.Context, kindName RuleKindName, opts Rul
 	if err := checkMutationLease(opts); err != nil {
 		return err
 	}
-	_, err = svc.RepairIntentContext(opts.leaseCtx, kindName.Kind, resourceKey, current, !exists)
+	_, err = svc.RepairIntent(opts.leaseCtx, kindName.Kind, resourceKey, current, !exists)
 	return err
 }
 
@@ -128,7 +128,12 @@ func applyAdminMutation(ctx consolectx.Context, res coremodel.Resource, op versi
 	return err
 }
 
-func applyRuleMutationIntentWithOptions(ctx consolectx.Context, res coremodel.Resource, op versioning.Operation, source versioning.Source, opts RuleMutationOptions, reason string, rolledBackFromID *int64, mutate func() error) (*versioning.Intent, error) {
+type MutationCommit struct {
+	Intent  *versioning.Intent
+	Version *versioning.Version
+}
+
+func applyRuleMutationIntentWithOptions(ctx consolectx.Context, res coremodel.Resource, op versioning.Operation, source versioning.Source, opts RuleMutationOptions, reason string, rolledBackFromID *int64, mutate func() error) (*MutationCommit, error) {
 	svc := ruleVersioning(ctx)
 	if svc == nil {
 		if err := checkMutationLease(opts); err != nil {
@@ -139,7 +144,7 @@ func applyRuleMutationIntentWithOptions(ctx consolectx.Context, res coremodel.Re
 	if err := checkMutationLease(opts); err != nil {
 		return nil, err
 	}
-	intent, err := svc.BeginMutationContext(opts.leaseCtx, res, op, source, opts.Author, reason, rolledBackFromID)
+	intent, err := svc.BeginMutation(opts.leaseCtx, res, op, source, opts.Author, reason, rolledBackFromID)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +158,7 @@ func applyRuleMutationIntentWithOptions(ctx consolectx.Context, res coremodel.Re
 		return nil, err
 	}
 	if err := mutate(); err != nil {
-		if markErr := svc.AbandonIntentContext(opts.leaseCtx, intent, err.Error()); markErr != nil {
+		if markErr := svc.AbandonIntent(opts.leaseCtx, intent, err.Error()); markErr != nil {
 			return nil, fmt.Errorf("%w; failed to mark version intent failed: %v", err, markErr)
 		}
 		return nil, err
@@ -161,10 +166,11 @@ func applyRuleMutationIntentWithOptions(ctx consolectx.Context, res coremodel.Re
 	if err := checkMutationLease(opts); err != nil {
 		return nil, err
 	}
-	if _, err := ensureMutationIntentCommitted(ctx, svc, intent, opts); err != nil {
+	version, err := ensureMutationIntentCommitted(ctx, svc, intent, opts)
+	if err != nil {
 		return nil, pendingLedgerError(intent.ID, err)
 	}
-	return intent, nil
+	return &MutationCommit{Intent: intent, Version: version}, nil
 }
 
 func checkMutationLease(opts RuleMutationOptions) error {
@@ -179,7 +185,7 @@ func ensureMutationIntentCommitted(ctx consolectx.Context, svc *versioning.Servi
 	if err != nil {
 		return nil, err
 	}
-	return svc.FinalizeMutationContext(opts.leaseCtx, intent, current, !exists)
+	return svc.FinalizeMutation(opts.leaseCtx, intent, current, !exists)
 }
 
 func pendingLedgerError(intentID int64, cause error) error {
@@ -236,7 +242,7 @@ func RepairRuleVersionIntent(ctx consolectx.Context, intentID int64) (*versionin
 		if err != nil {
 			return err
 		}
-		repaired, err = svc.FinalizeMutationContext(leaseCtx, intent, current, deleted)
+		repaired, err = svc.FinalizeMutation(leaseCtx, intent, current, deleted)
 		return err
 	})
 	return repaired, err
@@ -273,7 +279,7 @@ func AbandonRuleVersionIntent(ctx consolectx.Context, intentID int64, reason str
 		if err := lock.CheckLease(leaseCtx); err != nil {
 			return err
 		}
-		return svc.AbandonIntentContext(leaseCtx, intent, reason)
+		return svc.AbandonIntent(leaseCtx, intent, reason)
 	})
 }
 
@@ -329,16 +335,11 @@ func rollbackRuleVersionLocked(ctx consolectx.Context, kindName RuleKindName, ta
 	}
 
 	resourceKey := coremodel.BuildResourceKey(kindName.Mesh, kindName.Name)
-	meta, err := svc.ReconcileMeta(kindName.Kind, resourceKey)
+	current, currentDeleted, err := svc.CurrentLedgerHead(kindName.Kind, resourceKey)
 	if err != nil {
 		return nil, err
 	}
-	currentDeleted := meta == nil || meta.CurrentVersion == nil
-	if meta != nil && meta.CurrentVersion != nil {
-		current, err := svc.GetVersion(kindName.Kind, resourceKey, *meta.CurrentVersion)
-		if err != nil {
-			return nil, err
-		}
+	if current != nil && !currentDeleted {
 		if current.ContentHash == target.ContentHash {
 			return nil, versioning.ErrRollbackToCurrent
 		}
@@ -354,20 +355,20 @@ func rollbackRuleVersionLocked(ctx consolectx.Context, kindName RuleKindName, ta
 	if currentDeleted {
 		operation = versioning.OperationCreate
 	}
-	rollbackIntent, err := applyRuleMutationIntentWithOptions(ctx, res, operation, versioning.SourceRollback, opts, reason, &fromID, func() error {
+	commit, err := applyRuleMutationIntentWithOptions(ctx, res, operation, versioning.SourceRollback, opts, reason, &fromID, func() error {
 		if err := checkMutationLease(opts); err != nil {
 			return err
 		}
-		return ctx.ResourceManager().Upsert(res)
+		return ctx.ResourceManager().Upsert(opts.leaseCtx, res)
 	})
 	if err != nil {
 		return nil, err
 	}
-	if rollbackIntent == nil {
+	if commit == nil || commit.Intent == nil || commit.Version == nil {
 		return nil, fmt.Errorf("rollback intent was not created for %s", resourceKey)
 	}
 
-	committed, err := repairOrCommittedRollbackVersion(ctx, svc, kindName.Kind, resourceKey, rollbackIntent.ID, fromID, target, leaseCtx)
+	committed, err := validateRollbackCommit(commit.Version, kindName.Kind, resourceKey, commit.Intent.ID, fromID, target)
 	if err != nil {
 		return nil, err
 	}
@@ -381,53 +382,7 @@ func rollbackRuleVersionLocked(ctx consolectx.Context, kindName RuleKindName, ta
 	}, nil
 }
 
-// repairOrCommittedRollbackVersion ensures that a successful rollback returns
-// only after the rollback version is visible in the version ledger. The normal
-// path is the synchronous subscriber; if it misses the mutation, repair derives
-// the open intent from the current ResourceManager state.
-func repairOrCommittedRollbackVersion(ctx consolectx.Context, svc *versioning.Service, kind coremodel.ResourceKind, resourceKey string, intentID, rolledBackFromID int64, target *versioning.Version, leaseCtx context.Context) (*versioning.Version, error) {
-	if err := lock.CheckLease(leaseCtx); err != nil {
-		return nil, err
-	}
-	current, exists, err := ctx.ResourceManager().GetByKey(kind, resourceKey)
-	if err != nil {
-		return nil, err
-	}
-	committed, err := svc.RepairIntentContext(leaseCtx, kind, resourceKey, current, !exists)
-	if err != nil {
-		if errors.Is(err, versioning.ErrVersionIntentNotOpen) {
-			// The subscriber may have already committed the intent before repair
-			// runs. In that case, validate the committed current version instead.
-			return committedRollbackVersion(svc, kind, resourceKey, intentID, rolledBackFromID, target)
-		}
-		return nil, err
-	}
-	if committed != nil {
-		return validateCommittedRollbackVersion(committed, kind, resourceKey, intentID, rolledBackFromID, target)
-	}
-	return committedRollbackVersion(svc, kind, resourceKey, intentID, rolledBackFromID, target)
-}
-
-// committedRollbackVersion reads the current ledger entry when repair had
-// nothing to commit, then verifies it is the rollback created for this request.
-func committedRollbackVersion(svc *versioning.Service, kind coremodel.ResourceKind, resourceKey string, intentID, rolledBackFromID int64, target *versioning.Version) (*versioning.Version, error) {
-	meta, err := svc.ReconcileMeta(kind, resourceKey)
-	if err != nil {
-		return nil, err
-	}
-	if meta == nil || meta.CurrentVersion == nil {
-		return nil, fmt.Errorf("rollback version commit was not observed for %s", resourceKey)
-	}
-	current, err := svc.GetVersion(kind, resourceKey, *meta.CurrentVersion)
-	if err != nil {
-		return nil, err
-	}
-	return validateCommittedRollbackVersion(current, kind, resourceKey, intentID, rolledBackFromID, target)
-}
-
-// validateCommittedRollbackVersion prevents returning success when another
-// concurrent mutation became current instead of the requested rollback.
-func validateCommittedRollbackVersion(current *versioning.Version, kind coremodel.ResourceKind, resourceKey string, intentID, rolledBackFromID int64, target *versioning.Version) (*versioning.Version, error) {
+func validateRollbackCommit(current *versioning.Version, kind coremodel.ResourceKind, resourceKey string, intentID, rolledBackFromID int64, target *versioning.Version) (*versioning.Version, error) {
 	if current == nil ||
 		current.IntentID != intentID ||
 		current.RuleKind != kind ||

@@ -63,7 +63,9 @@ describe('ruleVersion helpers', () => {
   })
 
   it('uses 0 as rollback CAS token for deleted state', () => {
-    const state = helpers.currentVersionStateFromItems([version('7473321752550968337', false)])
+    const state = helpers.currentVersionStateFromItems([
+      version('7473321752550968337', false, 'DELETE')
+    ])
 
     expect(state.deleted).toBe(true)
     expect(state.id).toBeUndefined()
@@ -88,6 +90,33 @@ describe('ruleVersion helpers', () => {
     ])
 
     expect(state).toEqual({ id: undefined, versionNo: undefined, deleted: true })
+  })
+
+  it('uses explicit list metadata for current and deleted state', () => {
+    const state = helpers.currentVersionStateFromList({
+      items: [version('stale-item', false)],
+      total: 1,
+      currentVersionId: '7473321752550968337',
+      currentVersionNo: 9,
+      deleted: false
+    })
+
+    expect(state).toEqual({ id: '7473321752550968337', versionNo: 9, deleted: false })
+
+    expect(
+      helpers.currentVersionStateFromList({
+        items: [version('delete-marker', false, 'DELETE')],
+        total: 1,
+        deleted: true
+      })
+    ).toEqual({ id: undefined, versionNo: undefined, deleted: true })
+  })
+
+  it('does not infer deletion merely because a stale list lacks current item', () => {
+    const state = helpers.currentVersionStateFromItems([version('stale-visible-item', false)])
+
+    expect(state.deleted).toBe(false)
+    expect(helpers.rollbackExpectedVersionId(state)).toBeUndefined()
   })
 
   it('separates conflict and pending error classification', () => {
@@ -129,8 +158,7 @@ describe('ruleVersion helpers', () => {
       'repair-failure',
       'abandon-success',
       'backend-error',
-      'diff',
-      'rollback-success'
+      'diff'
     ])
     expect(ruleVersionMock.scenarioOf('demo-conflict')).toBe('conflict')
     expect(ruleVersionMock.shouldConflict('demo-conflict')).toBe(true)

@@ -178,6 +178,27 @@ func metaFromRuleMeta(kind coremodel.ResourceKind, resourceKey string, spec *mes
 	return meta
 }
 
+func ledgerSnapshotFromState(state *ledgerState) *LedgerSnapshot {
+	if state == nil {
+		return &LedgerSnapshot{}
+	}
+	snapshot := &LedgerSnapshot{
+		Versions: append([]Version(nil), state.Versions...),
+	}
+	if len(snapshot.Versions) == 0 {
+		return snapshot
+	}
+	head := snapshot.Versions[0]
+	snapshot.Head = &head
+	snapshot.Deleted = head.Operation == OperationDelete
+	if !snapshot.Deleted {
+		for i := range snapshot.Versions {
+			snapshot.Versions[i].IsCurrent = snapshot.Versions[i].ID == head.ID
+		}
+	}
+	return snapshot
+}
+
 func duplicateVersionNoError(kind coremodel.ResourceKind, resourceKey string, versionNo, firstID, secondID int64) error {
 	return fmt.Errorf("%w: duplicate version number for kind=%s mesh=%s rule=%s versionNo=%d conflictingVersionIDs=%d,%d",
 		ErrVersionLedgerCorrupt,

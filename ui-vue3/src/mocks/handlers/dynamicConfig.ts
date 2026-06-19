@@ -43,7 +43,7 @@ const writeOrConflict = (rawName: string, operation: 'CREATE' | 'UPDATE' | 'DELE
     return ruleVersionMock.conflictResponse('configurator', ruleName)
   if (ruleVersionMock.shouldPend(ruleName))
     return ruleVersionMock.pendingResponse('configurator', ruleName)
-  ruleVersionMock.recordAdminWrite('configurator', ruleName, operation)
+  void operation
   return success(null)
 }
 
