@@ -90,6 +90,7 @@ import yaml from 'js-yaml'
 import { isNil } from 'lodash'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from '@/base/http/constants'
+import { fetchCurrentVersionState, notifyRuleVersionError } from '../../_shared/ruleVersion'
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
 const route = useRoute()
@@ -101,24 +102,40 @@ const isDrawerOpened = ref(false)
 const sliderSpan = ref(8)
 
 const YAMLValue = ref('')
+const currentVersionId = ref<string | undefined>(undefined)
 
-onMounted(() => {
+async function reloadCurrentVersion() {
+  currentVersionId.value = (
+    await fetchCurrentVersionState('condition-rule', route.params?.ruleName as string)
+  ).id
+}
+
+onMounted(async () => {
   if (!isNil(TAB_STATE.conditionRule)) {
     const data = TAB_STATE.conditionRule
     YAMLValue.value = yaml.dump(data)
   } else {
     YAMLValue.value = ``
-    getRoutingRuleDetail()
+    await getRoutingRuleDetail()
   }
+  await reloadCurrentVersion()
 })
 
 const changeEditor = (val) => {
   TAB_STATE.conditionRule = yaml.load(YAMLValue.value)
 }
 
+const parseYAMLObject = (): Record<string, any> => {
+  const data = yaml.load(YAMLValue.value)
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('YAML content must be an object')
+  }
+  return data
+}
+
 // Get condition routing details
 async function getRoutingRuleDetail() {
-  let res = await getConditionRuleDetailAPI(<string>route.params?.ruleName)
+  let res = await getConditionRuleDetailAPI(route.params?.ruleName as string)
   if (res?.code === HTTP_STATUS.SUCCESS) {
     const conditionName = route.params?.ruleName
     if (conditionName && res.data.scope === 'service') {
@@ -132,15 +149,32 @@ async function getRoutingRuleDetail() {
 const updateRoutingRule = async () => {
   loading.value = true
   try {
-    const data = yaml.load(YAMLValue.value)
+    const data = parseYAMLObject()
     data.configVersion = 'v3.0'
-    const res = await updateConditionRuleAPI(<string>route.params?.ruleName, data)
+    const res = await updateConditionRuleAPI(route.params?.ruleName as string, data, {
+      expectedVersionId: currentVersionId.value
+    })
     if (res.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
       // 延迟 2 秒后再获取数据，确保数据库已更新
       await new Promise((resolve) => setTimeout(resolve, 2000))
       TAB_STATE.conditionRule = null
       await getRoutingRuleDetail()
+      await reloadCurrentVersion()
+    }
+  } catch (e: any) {
+    const handled = notifyRuleVersionError(e, {
+      reload: async () => {
+        TAB_STATE.conditionRule = null
+        await getRoutingRuleDetail()
+        await reloadCurrentVersion()
+      }
+    })
+    if (!handled) {
+      if (e instanceof Error) {
+        message.error(e.message)
+      }
+      console.error(e)
     }
   } finally {
     loading.value = false

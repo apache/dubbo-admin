@@ -17,6 +17,7 @@
 
 import { http, type HttpHandler } from 'msw'
 import { success, base } from '../utils'
+import { ruleVersionMock } from './ruleVersion'
 import type { RoutingRule, RoutingRuleDetail, PaginatedData } from '@/types/api'
 
 function randomInt(min: number, max: number): number {
@@ -26,6 +27,15 @@ function randomInt(min: number, max: number): number {
 function randomString(min: number, max: number): string {
   const len = randomInt(min, max)
   return Array.from({ length: len }, () => String.fromCharCode(97 + randomInt(0, 25))).join('')
+}
+
+const writeOrConflict = (ruleName: string, operation: 'CREATE' | 'UPDATE' | 'DELETE') => {
+  if (ruleVersionMock.shouldConflict(ruleName))
+    return ruleVersionMock.conflictResponse('condition-rule', ruleName)
+  if (ruleVersionMock.shouldPend(ruleName))
+    return ruleVersionMock.pendingResponse('condition-rule', ruleName)
+  ruleVersionMock.recordAdminWrite('condition-rule', ruleName, operation)
+  return success(null)
 }
 
 export const routingRuleHandlers: HttpHandler[] = [
@@ -59,9 +69,15 @@ export const routingRuleHandlers: HttpHandler[] = [
     return success(detail)
   }),
 
-  http.delete(`${base}/condition-rule/:ruleName`, () => success(null)),
+  http.delete(`${base}/condition-rule/:ruleName`, ({ params }) =>
+    writeOrConflict(params.ruleName as string, 'DELETE')
+  ),
 
-  http.put(`${base}/condition-rule/:ruleName`, () => success(null)),
+  http.put(`${base}/condition-rule/:ruleName`, ({ params }) =>
+    writeOrConflict(params.ruleName as string, 'UPDATE')
+  ),
 
-  http.post(`${base}/condition-rule/:ruleName`, () => success(null))
+  http.post(`${base}/condition-rule/:ruleName`, ({ params }) =>
+    writeOrConflict(params.ruleName as string, 'CREATE')
+  )
 ]

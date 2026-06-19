@@ -17,6 +17,7 @@
 
 import { http, type HttpHandler } from 'msw'
 import { success, base } from '../utils'
+import { ruleVersionMock } from './ruleVersion'
 import type { ConfiguratorRule, ConfiguratorDetail, PaginatedData } from '@/types/api'
 
 function randomInt(min: number, max: number): number {
@@ -26,6 +27,24 @@ function randomInt(min: number, max: number): number {
 function randomString(min: number, max: number): string {
   const len = randomInt(min, max)
   return Array.from({ length: len }, () => String.fromCharCode(97 + randomInt(0, 25))).join('')
+}
+
+const decodeRuleName = (raw: string) => {
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return raw
+  }
+}
+
+const writeOrConflict = (rawName: string, operation: 'CREATE' | 'UPDATE' | 'DELETE') => {
+  const ruleName = decodeRuleName(rawName)
+  if (ruleVersionMock.shouldConflict(ruleName))
+    return ruleVersionMock.conflictResponse('configurator', ruleName)
+  if (ruleVersionMock.shouldPend(ruleName))
+    return ruleVersionMock.pendingResponse('configurator', ruleName)
+  ruleVersionMock.recordAdminWrite('configurator', ruleName, operation)
+  return success(null)
 }
 
 export const dynamicConfigHandlers: HttpHandler[] = [
@@ -45,15 +64,21 @@ export const dynamicConfigHandlers: HttpHandler[] = [
 
   http.get(`${base}/configurator/:ruleName`, ({ params }) => {
     const detail: ConfiguratorDetail = {
-      name: params.ruleName as string,
+      name: decodeRuleName(params.ruleName as string),
       configs: [{ side: 'provider', timeout: 3000, retries: 2, loadbalance: 'roundrobin' }]
     }
     return success(detail)
   }),
 
-  http.delete(`${base}/configurator/:ruleName`, () => success(null)),
+  http.delete(`${base}/configurator/:ruleName`, ({ params }) =>
+    writeOrConflict(params.ruleName as string, 'DELETE')
+  ),
 
-  http.put(`${base}/configurator/:ruleName`, () => success(null)),
+  http.put(`${base}/configurator/:ruleName`, ({ params }) =>
+    writeOrConflict(params.ruleName as string, 'UPDATE')
+  ),
 
-  http.post(`${base}/configurator/:ruleName`, () => success(null))
+  http.post(`${base}/configurator/:ruleName`, ({ params }) =>
+    writeOrConflict(params.ruleName as string, 'CREATE')
+  )
 ]

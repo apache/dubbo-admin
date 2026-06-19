@@ -17,6 +17,7 @@
 
 import { http, type HttpHandler } from 'msw'
 import { success, base } from '../utils'
+import { ruleVersionMock } from './ruleVersion'
 import type { TagRule, TagRuleDetail, PaginatedData } from '@/types/api'
 
 function randomInt(min: number, max: number): number {
@@ -26,6 +27,15 @@ function randomInt(min: number, max: number): number {
 function randomString(min: number, max: number): string {
   const len = randomInt(min, max)
   return Array.from({ length: len }, () => String.fromCharCode(97 + randomInt(0, 25))).join('')
+}
+
+const writeOrConflict = (ruleName: string, operation: 'CREATE' | 'UPDATE' | 'DELETE') => {
+  if (ruleVersionMock.shouldConflict(ruleName))
+    return ruleVersionMock.conflictResponse('tag-rule', ruleName)
+  if (ruleVersionMock.shouldPend(ruleName))
+    return ruleVersionMock.pendingResponse('tag-rule', ruleName)
+  ruleVersionMock.recordAdminWrite('tag-rule', ruleName, operation)
+  return success(null)
 }
 
 export const tagRuleHandlers: HttpHandler[] = [
@@ -55,9 +65,15 @@ export const tagRuleHandlers: HttpHandler[] = [
     return success(detail)
   }),
 
-  http.delete(`${base}/tag-rule/:ruleName`, () => success(null)),
+  http.delete(`${base}/tag-rule/:ruleName`, ({ params }) =>
+    writeOrConflict(params.ruleName as string, 'DELETE')
+  ),
 
-  http.put(`${base}/tag-rule/:ruleName`, () => success(null)),
+  http.put(`${base}/tag-rule/:ruleName`, ({ params }) =>
+    writeOrConflict(params.ruleName as string, 'UPDATE')
+  ),
 
-  http.post(`${base}/tag-rule/:ruleName`, () => success(null))
+  http.post(`${base}/tag-rule/:ruleName`, ({ params }) =>
+    writeOrConflict(params.ruleName as string, 'CREATE')
+  )
 ]

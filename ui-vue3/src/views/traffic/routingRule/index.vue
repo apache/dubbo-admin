@@ -82,6 +82,12 @@ import { Icon } from '@iconify/vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { formattedDate } from '@/utils/DateUtil'
 import { HTTP_STATUS } from '@/base/http/constants'
+import { message } from 'ant-design-vue'
+import {
+  fetchCurrentVersionState,
+  notifyRuleVersionError,
+  ruleVersionErrorMessage
+} from '../_shared/ruleVersion'
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 let columns = [
   {
@@ -140,9 +146,17 @@ const searchDomain = reactive(
 
 //Delete conditional routing
 const deleteRule = async (ruleName: string) => {
-  const res = await deleteConditionRuleAPI(ruleName)
-  if (res.code === HTTP_STATUS.SUCCESS) {
-    await searchDomain.onSearch()
+  try {
+    const expectedVersionId = (await fetchCurrentVersionState('condition-rule', ruleName)).id
+    const res = await deleteConditionRuleAPI(ruleName, { expectedVersionId })
+    if (res.code === HTTP_STATUS.SUCCESS) {
+      await searchDomain.onSearch()
+    }
+  } catch (e: any) {
+    const handled = notifyRuleVersionError(e, { reload: () => searchDomain.onSearch() })
+    if (!handled) {
+      message.error(ruleVersionErrorMessage(e))
+    }
   }
 }
 

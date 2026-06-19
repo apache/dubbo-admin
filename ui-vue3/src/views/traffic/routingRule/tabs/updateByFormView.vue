@@ -145,7 +145,7 @@
 
 <script lang="ts" setup>
 import {
-  ComponentInternalInstance,
+  type ComponentInternalInstance,
   getCurrentInstance,
   onMounted,
   reactive,
@@ -165,6 +165,11 @@ import { HTTP_STATUS } from '@/base/http/constants'
 import useRoutingRule from '../composables/useRoutingRule'
 import RoutingRuleList from '../components/RoutingRuleList.vue'
 import { useI18n } from 'vue-i18n'
+import {
+  fetchCurrentVersionState,
+  notifyRuleVersionError,
+  ruleVersionErrorMessage
+} from '../../_shared/ruleVersion'
 
 const { t } = useI18n()
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
@@ -180,46 +185,72 @@ const {
 
 onMounted(async () => {
   if (!isNil(TAB_STATE.conditionRule)) {
-    const { enabled = true, key, scope, runtime = true, conditions } = TAB_STATE.conditionRule
+    const {
+      configVersion,
+      priority,
+      enabled = true,
+      force = false,
+      key,
+      scope,
+      runtime = true,
+      conditions
+    } = TAB_STATE.conditionRule
+    baseInfo.configVersion = configVersion
+    baseInfo.priority = priority
     baseInfo.enable = enabled
+    baseInfo.faultTolerantProtection = force
     baseInfo.objectOfAction = key
     baseInfo.ruleGranularity = scope
     baseInfo.runtime = runtime
 
     // Clear and rebuild routeList based on conditions
     if (conditions && conditions.length > 0) {
-      routeList.value = []
-      conditions.forEach((item, index) => {
-        // Add new route item for each condition
-        routeList.value.push({
-          selectedMatchConditionTypes: [],
-          requestMatch: [],
-          selectedRouteDistributeMatchTypes: [],
-          routeDistribute: []
-        })
+      if (configVersion !== 'v3.0') {
+        console.warn(
+          `skip condition route form parsing for unsupported configVersion: ${configVersion}`
+        )
+      } else {
+        routeList.value = []
+        conditions.forEach((item, index) => {
+          // Add new route item for each condition
+          routeList.value.push({
+            selectedMatchConditionTypes: [],
+            requestMatch: [],
+            selectedRouteDistributeMatchTypes: [],
+            routeDistribute: []
+          })
 
-        const conditionArr = item.split(' => ')
-        const match = conditionArr[0]?.trim()
-        const to = conditionArr[1]?.trim()
-        routeList.value[index].requestMatch = parseConditionMatchStringToArray(match, index)
-        routeList.value[index].routeDistribute = parseConditionToStringToArray(to, index)
-      })
+          const conditionArr = item.split(' => ')
+          const match = conditionArr[0]?.trim()
+          const to = conditionArr[1]?.trim()
+          routeList.value[index].requestMatch = parseConditionMatchStringToArray(match, index)
+          routeList.value[index].routeDistribute = parseConditionToStringToArray(to, index)
+        })
+      }
     }
   } else {
     await getRoutingRuleDetail()
   }
   getVersionAndGroup()
+  await reloadCurrentVersion()
 })
 const {
   appContext: {
     config: { globalProperties }
   }
-} = <ComponentInternalInstance>getCurrentInstance()
+} = getCurrentInstance() as ComponentInternalInstance
 const route = useRoute()
 
 const isDrawerOpened = ref(false)
 
 const sliderSpan = ref(8)
+const currentVersionId = ref<string | undefined>(undefined)
+
+async function reloadCurrentVersion() {
+  currentVersionId.value = (
+    await fetchCurrentVersionState('condition-rule', route.params?.ruleName as string)
+  ).id
+}
 
 let __ = PRIMARY_COLOR
 
@@ -239,6 +270,7 @@ const baseInfo = reactive({
   faultTolerantProtection: false,
   runtime: true,
   priority: null,
+  configVersion: '',
   group: ''
 })
 
@@ -287,20 +319,28 @@ watch(
 
 // Get condition routing details
 async function getRoutingRuleDetail() {
-  let res = await getConditionRuleDetailAPI(<string>route.params?.ruleName)
+  let res = await getConditionRuleDetailAPI(route.params?.ruleName as string)
   // console.log(res)
   if (res?.code === HTTP_STATUS.SUCCESS) {
     console.log('res', res.data)
-    const { conditions, configVersion, enabled, force, key, runtime, scope } = res?.data
+    const { conditions, configVersion, priority, enabled, force, key, runtime, scope } =
+      res.data || {}
     baseInfo.ruleGranularity = scope
     baseInfo.objectOfAction = key
     baseInfo.enable = enabled
     baseInfo.faultTolerantProtection = force
     baseInfo.runtime = runtime
     baseInfo.configVersion = configVersion
+    baseInfo.priority = priority
 
     //   format conditions data
-    if (configVersion == 'v3.0' && conditions && conditions.length > 0) {
+    if (conditions && conditions.length > 0) {
+      if (configVersion !== 'v3.0') {
+        console.warn(
+          `skip condition route form parsing for unsupported configVersion: ${configVersion}`
+        )
+        return
+      }
       // Clear and rebuild routeList based on conditions
       routeList.value = []
       conditions.forEach((item, index) => {
@@ -327,10 +367,19 @@ const updateRoutingRule = async () => {
   loading.value = true
   try {
     const { ruleName } = route.params
-    const { version, ruleGranularity, objectOfAction, enable, faultTolerantProtection, runtime } =
-      baseInfo
+    const {
+      version,
+      ruleGranularity,
+      objectOfAction,
+      enable,
+      faultTolerantProtection,
+      runtime,
+      priority,
+      configVersion
+    } = baseInfo
     const data = {
-      configVersion: 'v3.0',
+      configVersion: configVersion || 'v3.0',
+      priority,
       scope: ruleGranularity,
       key: objectOfAction,
       enabled: enable,
@@ -338,13 +387,27 @@ const updateRoutingRule = async () => {
       runtime,
       conditions: mergeConditions()
     }
-    const res = await updateConditionRuleAPI(<string>ruleName, data)
+    const res = await updateConditionRuleAPI(ruleName as string, data, {
+      expectedVersionId: currentVersionId.value
+    })
     if (res?.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
       // 延迟 2 秒后再获取数据，确保数据库已更新
       await new Promise((resolve) => setTimeout(resolve, 2000))
       TAB_STATE.conditionRule = null
       await getRoutingRuleDetail()
+      await reloadCurrentVersion()
+    }
+  } catch (e: any) {
+    const handled = notifyRuleVersionError(e, {
+      reload: async () => {
+        TAB_STATE.conditionRule = null
+        await getRoutingRuleDetail()
+        await reloadCurrentVersion()
+      }
+    })
+    if (!handled) {
+      message.error(ruleVersionErrorMessage(e))
     }
   } finally {
     loading.value = false

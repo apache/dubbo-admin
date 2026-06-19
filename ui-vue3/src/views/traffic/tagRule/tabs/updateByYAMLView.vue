@@ -88,6 +88,7 @@ import { isNil } from 'lodash'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from '@/base/http/constants'
+import { fetchCurrentVersionState, notifyRuleVersionError } from '../../_shared/ruleVersion'
 
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
@@ -97,21 +98,37 @@ const isReadonly = ref(false)
 
 const isDrawerOpened = ref(false)
 const loading = ref(false)
+const currentVersionId = ref<string | undefined>(undefined)
+
+async function reloadCurrentVersion() {
+  currentVersionId.value = (
+    await fetchCurrentVersionState('tag-rule', route.params?.ruleName as string)
+  ).id
+}
 
 const sliderSpan = ref(8)
 
-onMounted(() => {
+onMounted(async () => {
   if (!isNil(TAB_STATE.tagRule)) {
     const data = TAB_STATE.tagRule
     YAMLValue.value = yaml.dump(data)
   } else {
     YAMLValue.value = ``
-    getTagRuleDetail()
+    await getTagRuleDetail()
   }
+  await reloadCurrentVersion()
 })
 
 const changeEditor = (val) => {
   TAB_STATE.tagRule = yaml.load(YAMLValue.value)
+}
+
+const parseYAMLObject = (): Record<string, any> => {
+  const data = yaml.load(YAMLValue.value)
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new Error('YAML content must be an object')
+  }
+  return data
 }
 
 const YAMLValue = ref(
@@ -128,7 +145,7 @@ const YAMLValue = ref(
 )
 
 async function getTagRuleDetail() {
-  let res = await getTagRuleDetailAPI(<string>route.params?.ruleName)
+  let res = await getTagRuleDetailAPI(route.params?.ruleName as string)
   if (res?.code === HTTP_STATUS.SUCCESS) {
     YAMLValue.value = yaml.dump(res?.data)
   }
@@ -137,14 +154,31 @@ async function getTagRuleDetail() {
 const updateTagRule = async () => {
   loading.value = true
   try {
-    const data = yaml.load(YAMLValue.value)
-    const res = await updateTagRuleAPI(<string>route.params?.ruleName, data)
+    const data = parseYAMLObject()
+    const res = await updateTagRuleAPI(route.params?.ruleName as string, data, {
+      expectedVersionId: currentVersionId.value
+    })
     if (res.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
       // 延迟 2 秒后再获取数据，确保数据库已更新
       await new Promise((resolve) => setTimeout(resolve, 2000))
       TAB_STATE.tagRule = null
       await getTagRuleDetail()
+      await reloadCurrentVersion()
+    }
+  } catch (e: any) {
+    const handled = notifyRuleVersionError(e, {
+      reload: async () => {
+        TAB_STATE.tagRule = null
+        await getTagRuleDetail()
+        await reloadCurrentVersion()
+      }
+    })
+    if (!handled) {
+      if (e instanceof Error) {
+        message.error(e.message)
+      }
+      console.error(e)
     }
   } finally {
     loading.value = false
