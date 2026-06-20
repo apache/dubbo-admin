@@ -69,7 +69,7 @@ store:
 # prerequisites are missing, startup fails closed instead of recording unsafe
 # history. Set maxVersionsPerRule to 0 to disable retention trimming.
 ruleVersioning:
-  maxVersionsPerRule: 50
+  maxVersionsPerRule: 20
 
 # [Necessary] configs for service discovery
 discovery:
