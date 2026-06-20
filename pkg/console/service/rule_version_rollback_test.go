@@ -20,6 +20,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -260,43 +261,53 @@ func beginMutationForTest(ctx *testContext, res coremodel.Resource, op versionin
 }
 
 func TestAdminMutationSuccessCommitsLedgerBeforeReturn(t *testing.T) {
-	ctx := setupRollbackTestEnv(t)
-	f := conditionFactory()
-	kindName := RuleKindName{Kind: f.kind, Name: "admin-rule"}
+	factories := map[string]ruleFactory{
+		"condition": conditionFactory(),
+		"tag":       tagFactory(),
+		"dynamic":   dynamicFactory(),
+	}
 
-	create := f.build("admin-rule", "v1").(*meshresource.ConditionRouteResource)
-	require.NoError(t, CreateConditionRuleWithOptions(ctx, create, RuleMutationOptions{Author: "admin"}))
-	versions, err := ListRuleVersions(ctx, kindName)
-	require.NoError(t, err)
-	require.Len(t, versions.Items, 1)
-	require.Equal(t, versioning.SourceAdmin, versions.Items[0].Source)
-	require.Equal(t, versioning.OperationCreate, versions.Items[0].Operation)
-	require.NotZero(t, versions.Items[0].IntentID)
-	createVersionID := versions.Items[0].ID
+	for name, f := range factories {
+		t.Run(name, func(t *testing.T) {
+			ctx := setupRollbackTestEnv(t)
+			ruleName := "admin-" + name + "-rule"
+			kindName := RuleKindName{Kind: f.kind, Name: ruleName}
 
-	update := f.build("admin-rule", "v2").(*meshresource.ConditionRouteResource)
-	require.NoError(t, UpdateConditionRuleWithOptions(ctx, update, RuleMutationOptions{
-		ExpectedVersionID: &createVersionID,
-		Author:            "admin",
-	}))
-	versions, err = ListRuleVersions(ctx, kindName)
-	require.NoError(t, err)
-	require.Len(t, versions.Items, 2)
-	require.Equal(t, versioning.OperationUpdate, versions.Items[0].Operation)
-	updateVersionID := versions.Items[0].ID
+			create := f.build(ruleName, "v1")
+			require.NoError(t, createRuleWithOptions(ctx, create, RuleMutationOptions{Author: "admin"}))
+			versions, err := ListRuleVersions(ctx, kindName)
+			require.NoError(t, err)
+			require.Len(t, versions.Items, 1)
+			require.Equal(t, versioning.SourceAdmin, versions.Items[0].Source)
+			require.Equal(t, versioning.OperationCreate, versions.Items[0].Operation)
+			require.NotZero(t, versions.Items[0].IntentID)
+			createVersionID := versions.Items[0].ID
 
-	require.NoError(t, DeleteConditionRuleWithOptions(ctx, "admin-rule", "", RuleMutationOptions{
-		ExpectedVersionID: &updateVersionID,
-		Author:            "admin",
-	}))
-	versions, err = ListRuleVersions(ctx, kindName)
-	require.NoError(t, err)
-	require.Len(t, versions.Items, 3)
-	require.Equal(t, versioning.OperationDelete, versions.Items[0].Operation)
-	require.Equal(t, versioning.DeleteSpecJSON, versions.Items[0].SpecJSON)
+			update := f.build(ruleName, "v2")
+			require.NoError(t, updateRuleWithOptions(ctx, update, RuleMutationOptions{
+				ExpectedVersionID: &createVersionID,
+				Author:            "admin",
+			}))
+			versions, err = ListRuleVersions(ctx, kindName)
+			require.NoError(t, err)
+			require.Len(t, versions.Items, 2)
+			require.Equal(t, versioning.OperationUpdate, versions.Items[0].Operation)
+			updateVersionID := versions.Items[0].ID
 
-	require.True(t, versions.Deleted)
-	require.Nil(t, versions.CurrentVersionID)
+			require.NoError(t, deleteRuleWithOptions(ctx, f.kind, ruleName, "", RuleMutationOptions{
+				ExpectedVersionID: &updateVersionID,
+				Author:            "admin",
+			}))
+			versions, err = ListRuleVersions(ctx, kindName)
+			require.NoError(t, err)
+			require.Len(t, versions.Items, 3)
+			require.Equal(t, versioning.OperationDelete, versions.Items[0].Operation)
+			require.Equal(t, versioning.DeleteSpecJSON, versions.Items[0].SpecJSON)
+
+			require.True(t, versions.Deleted)
+			require.Nil(t, versions.CurrentVersionID)
+		})
+	}
 }
 
 // ruleFactory builds a rule resource of a given kind with a discriminating
@@ -336,6 +347,45 @@ func dynamicFactory() ruleFactory {
 			res.Spec = &meshproto.DynamicConfig{Key: name, Enabled: true, ConfigVersion: payload}
 			return res
 		},
+	}
+}
+
+func createRuleWithOptions(ctx *testContext, res coremodel.Resource, opts RuleMutationOptions) error {
+	switch typed := res.(type) {
+	case *meshresource.ConditionRouteResource:
+		return CreateConditionRuleWithOptions(ctx, typed, opts)
+	case *meshresource.TagRouteResource:
+		return CreateTagRuleWithOptions(ctx, typed, opts)
+	case *meshresource.DynamicConfigResource:
+		return CreateConfiguratorWithOptions(ctx, typed, opts)
+	default:
+		return fmt.Errorf("unsupported test rule resource %T", res)
+	}
+}
+
+func updateRuleWithOptions(ctx *testContext, res coremodel.Resource, opts RuleMutationOptions) error {
+	switch typed := res.(type) {
+	case *meshresource.ConditionRouteResource:
+		return UpdateConditionRuleWithOptions(ctx, typed, opts)
+	case *meshresource.TagRouteResource:
+		return UpdateTagRuleWithOptions(ctx, typed, opts)
+	case *meshresource.DynamicConfigResource:
+		return UpdateConfiguratorWithOptions(ctx, typed, opts)
+	default:
+		return fmt.Errorf("unsupported test rule resource %T", res)
+	}
+}
+
+func deleteRuleWithOptions(ctx *testContext, kind coremodel.ResourceKind, name, mesh string, opts RuleMutationOptions) error {
+	switch kind {
+	case meshresource.ConditionRouteKind:
+		return DeleteConditionRuleWithOptions(ctx, name, mesh, opts)
+	case meshresource.TagRouteKind:
+		return DeleteTagRuleWithOptions(ctx, name, mesh, opts)
+	case meshresource.DynamicConfigKind:
+		return DeleteConfiguratorWithOptions(ctx, name, mesh, opts)
+	default:
+		return fmt.Errorf("unsupported test rule kind %s", kind)
 	}
 }
 
@@ -829,7 +879,7 @@ func TestRollbackRuleVersion_AllKinds(t *testing.T) {
 				versions.Items[3].VersionNo,
 			})
 
-			// v1/v2/v3 unchanged (append-only): same content hashes as before.
+			// v1/v2/v3 unchanged: same content hashes as before.
 			assert.Equal(t, v1.ContentHash, versions.Items[3].ContentHash)
 			assert.Equal(t, v3.ContentHash, versions.Items[1].ContentHash)
 			// v4 re-publishes v1's content.

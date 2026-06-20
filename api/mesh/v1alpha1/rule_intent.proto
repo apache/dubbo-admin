@@ -23,8 +23,10 @@ option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
 
 import "google/protobuf/timestamp.proto";
 
-// RuleIntent records a pending rule mutation before the resource write.
-// The committed RuleVersion is created from observed or repaired rule state.
+// RuleIntent records recovery state for a rule mutation before the resource
+// write. COMMITTED and FAILED are usually short-lived because the intent is
+// cleaned up immediately after the terminal status is written. RuleVersion is
+// the durable audit record.
 message RuleIntent {
   reserved 4;
   reserved "version_no";
@@ -46,7 +48,8 @@ message RuleIntent {
   // re-published. It is audit metadata only and never a current-version pointer.
   int64 rolled_back_from_id = 11;
 
-  // Intent lifecycle
+  // Intent lifecycle. Terminal statuses can remain only when cleanup fails; on
+  // restart, repair reconciles open intents from observed resource state.
   string status = 12;              // PENDING, APPLIED, FAILED, COMMITTED
   string failure_reason = 13;      // Error message if status=FAILED
   google.protobuf.Timestamp created_at = 14;

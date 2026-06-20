@@ -20,10 +20,13 @@ package versioning
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	appcfg "github.com/apache/dubbo-admin/pkg/config/app"
+	"github.com/apache/dubbo-admin/pkg/config/mode"
 	storecfg "github.com/apache/dubbo-admin/pkg/config/store"
 	versioningcfg "github.com/apache/dubbo-admin/pkg/config/versioning"
 	"github.com/apache/dubbo-admin/pkg/core/events"
@@ -35,7 +38,8 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 	corestore "github.com/apache/dubbo-admin/pkg/core/store"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
-	_ "github.com/apache/dubbo-admin/pkg/lock/local"
+	locallock "github.com/apache/dubbo-admin/pkg/lock/local"
+	memoryst "github.com/apache/dubbo-admin/pkg/store/memory"
 )
 
 func TestComponentEnabledFailsClosedWithoutLock(t *testing.T) {
@@ -78,6 +82,124 @@ func TestComponentMemoryStoreUsesLocalLock(t *testing.T) {
 	require.NotNil(t, c.Service())
 	require.NotNil(t, c.lock)
 	require.Len(t, bus.subscribers, len(governor.RuleResourceKinds.Values()))
+}
+
+func TestComponentRepairOpenIntentsHonorsCancellationWhileWaitingForLock(t *testing.T) {
+	versionStore, intentStore, metaStore := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	intent, err := adapter.CreateIntent(context.Background(), testInsertRequest("repair-cancel-rule", "hash-a"))
+	require.NoError(t, err)
+
+	lockMgr := locallock.NewLocalLock()
+	lease := holdRuleVersionLock(t, lockMgr, intent.RuleKind, intent.ResourceKey)
+	defer func() { require.NoError(t, lease.Unlock(context.Background())) }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	c := &component{
+		service: NewService(true, 5, adapter),
+		store:   adapter,
+		lock:    lockMgr,
+	}
+	err = c.repairOpenIntents(ctx, &fakeVersioningRM{})
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+}
+
+func TestComponentBootstrapExistingRulesHonorsCancellationWhileWaitingForLock(t *testing.T) {
+	versionStore, intentStore, metaStore := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	res := testConditionRule("bootstrap-cancel-rule", "v1")
+	conditionStore := newRuleStoreWithResource(t, meshresource.ConditionRouteKind, res)
+	rm := &fakeVersioningRM{stores: map[coremodel.ResourceKind]corestore.ResourceStore{
+		meshresource.ConditionRouteKind: conditionStore,
+	}}
+
+	lockMgr := locallock.NewLocalLock()
+	lease := holdRuleVersionLock(t, lockMgr, res.ResourceKind(), res.ResourceKey())
+	defer func() { require.NoError(t, lease.Unlock(context.Background())) }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	c := &component{
+		service: NewService(true, 5, adapter),
+		store:   adapter,
+		lock:    lockMgr,
+	}
+	err := c.bootstrapExistingRules(ctx, rm, 5)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+
+	versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, res.ResourceKey())
+	require.NoError(t, err)
+	assert.Empty(t, versions)
+}
+
+func TestComponentStartHonorsStopDuringBootstrapLockWait(t *testing.T) {
+	versionStore, intentStore, metaStore := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	res := testConditionRule("bootstrap-stop-rule", "v1")
+	conditionStore := newRuleStoreWithResource(t, meshresource.ConditionRouteKind, res)
+	rmComp := &fakeVersioningRMComponent{rm: &fakeVersioningRM{stores: map[coremodel.ResourceKind]corestore.ResourceStore{
+		meshresource.ConditionRouteKind: conditionStore,
+	}}}
+
+	lockMgr := locallock.NewLocalLock()
+	lease := holdRuleVersionLock(t, lockMgr, res.ResourceKind(), res.ResourceKey())
+	defer func() { require.NoError(t, lease.Unlock(context.Background())) }()
+
+	cfg := appcfg.DefaultAdminConfig()
+	cfg.RuleVersioning = &versioningcfg.Config{Enabled: true, MaxVersionsPerRule: 5}
+	rt := &fakeVersioningRuntime{
+		cfg: appcfg.DefaultAdminConfig(),
+		components: map[runtime.ComponentType]runtime.Component{
+			runtime.ResourceManager: rmComp,
+		},
+		appCtx: context.Background(),
+	}
+	rt.cfg = cfg
+	c := &component{
+		service: NewService(true, 5, adapter),
+		store:   adapter,
+		lock:    lockMgr,
+	}
+	stop := make(chan struct{})
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- c.Start(rt, stop)
+	}()
+	time.AfterFunc(20*time.Millisecond, func() {
+		close(stop)
+	})
+
+	select {
+	case err := <-errCh:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(time.Second):
+		t.Fatal("versioning Start did not return after stop closed")
+	}
+}
+
+func TestComponentBootstrapExistingRulesIsIdempotentAcrossRestarts(t *testing.T) {
+	versionStore, intentStore, metaStore := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	res := testConditionRule("bootstrap-idempotent-rule", "v1")
+	conditionStore := newRuleStoreWithResource(t, meshresource.ConditionRouteKind, res)
+	rm := &fakeVersioningRM{stores: map[coremodel.ResourceKind]corestore.ResourceStore{
+		meshresource.ConditionRouteKind: conditionStore,
+	}}
+
+	c := &component{
+		service: NewService(true, 5, adapter),
+		store:   adapter,
+		lock:    locallock.NewLocalLock(),
+	}
+	require.NoError(t, c.bootstrapExistingRules(context.Background(), rm, 5))
+	require.NoError(t, c.bootstrapExistingRules(context.Background(), rm, 5))
+
+	versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, res.ResourceKey())
+	require.NoError(t, err)
+	require.Len(t, versions, 1)
+	assert.Equal(t, SourceBootstrap, versions[0].Source)
+	assert.Equal(t, int64(1), versions[0].VersionNo)
 }
 
 func newVersioningComponentBuilder(t *testing.T, enabled bool) *runtime.Builder {
@@ -123,11 +245,27 @@ type fakeVersioningRM struct {
 func (rm *fakeVersioningRM) GetStore(kind coremodel.ResourceKind) (corestore.ResourceStore, error) {
 	return rm.stores[kind], nil
 }
-func (rm *fakeVersioningRM) GetByKey(coremodel.ResourceKind, string) (coremodel.Resource, bool, error) {
-	return nil, false, nil
+func (rm *fakeVersioningRM) GetByKey(kind coremodel.ResourceKind, key string) (coremodel.Resource, bool, error) {
+	rs := rm.stores[kind]
+	if rs == nil {
+		return nil, false, nil
+	}
+	item, exists, err := rs.GetByKey(key)
+	if err != nil || !exists {
+		return nil, exists, err
+	}
+	res, ok := item.(coremodel.Resource)
+	if !ok {
+		return nil, false, nil
+	}
+	return res, true, nil
 }
-func (rm *fakeVersioningRM) GetByKeys(coremodel.ResourceKind, []string) ([]coremodel.Resource, error) {
-	return nil, nil
+func (rm *fakeVersioningRM) GetByKeys(kind coremodel.ResourceKind, keys []string) ([]coremodel.Resource, error) {
+	rs := rm.stores[kind]
+	if rs == nil {
+		return nil, nil
+	}
+	return rs.GetByKeys(keys)
 }
 func (rm *fakeVersioningRM) ListByIndexes(coremodel.ResourceKind, []index.IndexCondition) ([]coremodel.Resource, error) {
 	return nil, nil
@@ -166,3 +304,54 @@ var _ manager.ResourceManagerComponent = (*fakeVersioningRMComponent)(nil)
 var _ manager.ResourceManager = (*fakeVersioningRM)(nil)
 var _ events.EventBus = (*fakeVersioningEventBus)(nil)
 var _ runtime.Component = (*fakeVersioningEventBus)(nil)
+
+type fakeVersioningRuntime struct {
+	cfg        appcfg.AdminConfig
+	components map[runtime.ComponentType]runtime.Component
+	appCtx     context.Context
+}
+
+func (rt *fakeVersioningRuntime) GetInstanceId() string { return "test-instance" }
+func (rt *fakeVersioningRuntime) GetClusterId() string  { return "test-cluster" }
+func (rt *fakeVersioningRuntime) GetStartTime() time.Time {
+	return time.Unix(0, 0)
+}
+func (rt *fakeVersioningRuntime) GetMode() mode.Mode { return mode.Test }
+func (rt *fakeVersioningRuntime) Config() appcfg.AdminConfig {
+	return rt.cfg
+}
+func (rt *fakeVersioningRuntime) GetComponent(typ runtime.ComponentType) (runtime.Component, error) {
+	comp := rt.components[typ]
+	if comp == nil {
+		return nil, assert.AnError
+	}
+	return comp, nil
+}
+func (rt *fakeVersioningRuntime) AppContext() context.Context {
+	if rt.appCtx == nil {
+		return context.Background()
+	}
+	return rt.appCtx
+}
+func (rt *fakeVersioningRuntime) Add(components ...runtime.Component) {
+	for _, comp := range components {
+		rt.components[comp.Type()] = comp
+	}
+}
+func (rt *fakeVersioningRuntime) Start(<-chan struct{}) error { return nil }
+
+func newRuleStoreWithResource(t *testing.T, kind coremodel.ResourceKind, res coremodel.Resource) corestore.ResourceStore {
+	t.Helper()
+	rs := memoryst.NewMemoryResourceStore(kind)
+	require.NoError(t, rs.Init(nil))
+	require.NoError(t, rs.Add(res))
+	return rs
+}
+
+func holdRuleVersionLock(t *testing.T, lockMgr lock.Lock, kind coremodel.ResourceKind, resourceKey string) lock.Lease {
+	t.Helper()
+	key := lock.BuildRuleVersioningLockKey(string(kind), extractMesh(resourceKey), extractName(resourceKey))
+	lease, err := lockMgr.Acquire(context.Background(), key, time.Second)
+	require.NoError(t, err)
+	return lease
+}

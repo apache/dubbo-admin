@@ -64,7 +64,9 @@ store:
 #  address: root:123456@tcp(127.0.0.1:23306)/dubbo-admin?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai
 
 # [Optional] version history and rollback for traffic rules.
-# Default is enabled. Set enabled to false to skip RuleVersion/RuleIntent/RuleMeta writes.
+# Default is enabled. Startup requires RuleVersion, RuleIntent, RuleMeta stores and
+# an available lock implementation; when those prerequisites are missing,
+# versioning fails closed instead of recording unsafe history.
 ruleVersioning:
   enabled: true
   maxVersionsPerRule: 5

@@ -33,7 +33,7 @@ const (
 	SourceUpstream  Source = "UPSTREAM"  // Registry change detected by subscriber
 	SourceBootstrap Source = "BOOTSTRAP" // Initial version recorded at startup
 	// SourceRollback marks a version produced by re-publishing a historical
-	// snapshot. Rollback is append-only and does not rewind RuleMeta.
+	// snapshot. Rollback records a new version and does not rewind RuleMeta.
 	SourceRollback Source = "ROLLBACK"
 )
 
@@ -46,8 +46,11 @@ const (
 )
 
 // IntentStatus tracks the lifecycle of a mutation intent.
-// Intent workflow: PENDING (created) → APPLIED (mutation succeeded) → COMMITTED (version recorded)
-// Or: PENDING → FAILED (mutation failed or conflicted)
+// Intent workflow: PENDING -> APPLIED -> COMMITTED, or PENDING -> FAILED.
+// COMMITTED and FAILED are short-lived terminal states because successful
+// status updates are immediately followed by intent cleanup. A terminal intent
+// can remain only when cleanup fails; startup repair treats RuleIntent as
+// recovery state, not an audit log. Durable audit facts live in RuleVersion.
 type IntentStatus string
 
 const (
@@ -70,10 +73,10 @@ var (
 	ErrRollbackToCurrent     = errors.New("cannot roll back to a version identical to current")
 )
 
-// Version represents an immutable snapshot of a rule's spec at a point in time.
-// Versions are append-only; rollback creates a new Version instead of changing
-// the historical target version.
-// The IsCurrent field is derived from the immutable ledger head at query time.
+// Version represents a snapshot of a rule's spec at a point in time. Version
+// entries are immutable after creation. Rollback appends a new version, while
+// retention may delete the oldest entries. IsCurrent is derived from the ledger
+// head at query time.
 type Version struct {
 	ID          int64                  `json:"id"`
 	RuleKind    coremodel.ResourceKind `json:"ruleKind"`

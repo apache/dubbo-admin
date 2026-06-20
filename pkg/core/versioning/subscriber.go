@@ -144,7 +144,7 @@ func (s *Subscriber) ProcessEvent(event events.Event) error {
 		logger.Infof("deferring non-matching rule event for %s while rule version intent %d is open; intent close will reconcile actual state", normalized.Parent.ResourceKey, openIntent.ID)
 		return nil
 	}
-	return withRuleVersionLock(s.lockMgr, normalized.Parent.Kind, normalized.Parent.ResourceKey, func(leaseCtx context.Context) error {
+	return withRuleVersionLock(context.Background(), s.lockMgr, normalized.Parent.Kind, normalized.Parent.ResourceKey, func(leaseCtx context.Context) error {
 		return s.record(leaseCtx, *normalized)
 	})
 }
@@ -208,11 +208,9 @@ func (s *Subscriber) record(ctx context.Context, event normalizedRuleEvent) erro
 		return fmt.Errorf("failed to insert version: %w", err)
 	}
 
-	// InsertVersion already handles:
-	// - Version number allocation from Meta
-	// - RuleVersion resource creation
-	// - Meta update (for optimistic locking)
-	// - Old version cleanup (trimming)
+	// InsertVersion reconciles RuleMeta as a cached projection, derives the next
+	// version number from the ledger's maximum version, creates the RuleVersion,
+	// updates RuleMeta, and applies retention cleanup.
 
 	return nil
 }
@@ -280,8 +278,8 @@ func recordBootstrapState(ctx context.Context, store Store, maxVersions int64, r
 	return nil
 }
 
-func RecordBootstrapLocked(store Store, maxVersions int64, kind coremodel.ResourceKind, resourceKey string, rm manager.ResourceManager, lockMgr lock.Lock) error {
-	return withRuleVersionLock(lockMgr, kind, resourceKey, func(ctx context.Context) error {
+func RecordBootstrapLocked(ctx context.Context, store Store, maxVersions int64, kind coremodel.ResourceKind, resourceKey string, rm manager.ResourceManager, lockMgr lock.Lock) error {
+	return withRuleVersionLock(ctx, lockMgr, kind, resourceKey, func(ctx context.Context) error {
 		if err := lock.CheckLease(ctx); err != nil {
 			return err
 		}

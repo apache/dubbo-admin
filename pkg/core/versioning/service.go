@@ -530,10 +530,10 @@ func IntentMatchesResource(intent *Intent, current coremodel.Resource, deleted b
 	return err == nil && hash == intent.ContentHash
 }
 
-func withRuleVersionLock(lockMgr lock.Lock, kind coremodel.ResourceKind, resourceKey string, fn func(context.Context) error) error {
+func withRuleVersionLock(ctx context.Context, lockMgr lock.Lock, kind coremodel.ResourceKind, resourceKey string, fn func(context.Context) error) error {
 	if lockMgr == nil {
 		return lock.ErrLockUnavailable
 	}
 	key := lock.BuildRuleVersioningLockKey(string(kind), extractMesh(resourceKey), extractName(resourceKey))
-	return lock.WithLock(context.Background(), lockMgr, key, constants.DefaultLockTimeout, fn)
+	return lock.WithLock(ctx, lockMgr, key, constants.DefaultLockTimeout, fn)
 }

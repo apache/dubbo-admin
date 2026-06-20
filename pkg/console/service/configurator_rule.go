@@ -18,9 +18,6 @@
 package service
 
 import (
-	"context"
-
-	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/duke-git/lancet/v2/slice"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
@@ -122,34 +119,19 @@ func UpdateConfigurator(ctx consolectx.Context, res *meshresource.DynamicConfigR
 }
 
 func UpdateConfiguratorWithOptions(ctx consolectx.Context, res *meshresource.DynamicConfigResource, opts RuleMutationOptions) error {
-	lockMgr := ctx.LockManager()
-	if lockMgr == nil {
-		if ruleVersioning(ctx) != nil {
-			return lock.ErrLockUnavailable
-		}
-		return updateConfiguratorUnsafe(ctx, res, opts)
-	}
-	lockKey := lock.BuildConfiguratorRuleLockKey(res.Mesh, res.Name)
-	return lock.WithLock(ctx.AppContext(), lockMgr, lockKey, ruleLockTTL, func(leaseCtx context.Context) error {
-		return updateConfiguratorUnsafe(ctx, res, opts.WithLeaseContext(leaseCtx))
-	})
-}
-
-func updateConfiguratorUnsafe(ctx consolectx.Context, res *meshresource.DynamicConfigResource, opts RuleMutationOptions) error {
 	kindName := RuleKindName{Kind: meshresource.DynamicConfigKind, Mesh: res.Mesh, Name: res.Name}
-	if err := prepareRuleMutation(ctx, kindName, opts); err != nil {
-		return err
-	}
-	return applyAdminMutation(ctx, res, versioning.OperationUpdate, opts, func() error {
-		if err := checkMutationLease(opts); err != nil {
-			return err
-		}
-		if err := ctx.ResourceManager().Update(opts.leaseCtx, res); err != nil {
-			logger.Warnf("update %s configurator failed with error: %s", res.Name, err.Error())
-			return err
-		}
-		return nil
-	})
+	return withRuleMutation(ctx, kindName, opts,
+		func(RuleMutationOptions) (coremodel.Resource, error) {
+			return res, nil
+		},
+		versioning.OperationUpdate,
+		func(scoped RuleMutationOptions) error {
+			if err := ctx.ResourceManager().Update(scoped.leaseCtx, res); err != nil {
+				logger.Warnf("update %s configurator failed with error: %s", res.Name, err.Error())
+				return err
+			}
+			return nil
+		})
 }
 
 func CreateConfigurator(ctx consolectx.Context, res *meshresource.DynamicConfigResource) error {
@@ -157,34 +139,19 @@ func CreateConfigurator(ctx consolectx.Context, res *meshresource.DynamicConfigR
 }
 
 func CreateConfiguratorWithOptions(ctx consolectx.Context, res *meshresource.DynamicConfigResource, opts RuleMutationOptions) error {
-	lockMgr := ctx.LockManager()
-	if lockMgr == nil {
-		if ruleVersioning(ctx) != nil {
-			return lock.ErrLockUnavailable
-		}
-		return createConfiguratorUnsafe(ctx, res, opts)
-	}
-	lockKey := lock.BuildConfiguratorRuleLockKey(res.Mesh, res.Name)
-	return lock.WithLock(ctx.AppContext(), lockMgr, lockKey, ruleLockTTL, func(leaseCtx context.Context) error {
-		return createConfiguratorUnsafe(ctx, res, opts.WithLeaseContext(leaseCtx))
-	})
-}
-
-func createConfiguratorUnsafe(ctx consolectx.Context, res *meshresource.DynamicConfigResource, opts RuleMutationOptions) error {
 	kindName := RuleKindName{Kind: meshresource.DynamicConfigKind, Mesh: res.Mesh, Name: res.Name}
-	if err := prepareRuleMutation(ctx, kindName, opts); err != nil {
-		return err
-	}
-	return applyAdminMutation(ctx, res, versioning.OperationCreate, opts, func() error {
-		if err := checkMutationLease(opts); err != nil {
-			return err
-		}
-		if err := ctx.ResourceManager().Add(opts.leaseCtx, res); err != nil {
-			logger.Warnf("create %s configurator failed with error: %s", res.Name, err.Error())
-			return err
-		}
-		return nil
-	})
+	return withRuleMutation(ctx, kindName, opts,
+		func(RuleMutationOptions) (coremodel.Resource, error) {
+			return res, nil
+		},
+		versioning.OperationCreate,
+		func(scoped RuleMutationOptions) error {
+			if err := ctx.ResourceManager().Add(scoped.leaseCtx, res); err != nil {
+				logger.Warnf("create %s configurator failed with error: %s", res.Name, err.Error())
+				return err
+			}
+			return nil
+		})
 }
 
 func DeleteConfigurator(ctx consolectx.Context, name string, mesh string) error {
@@ -192,36 +159,17 @@ func DeleteConfigurator(ctx consolectx.Context, name string, mesh string) error 
 }
 
 func DeleteConfiguratorWithOptions(ctx consolectx.Context, name string, mesh string, opts RuleMutationOptions) error {
-	lockMgr := ctx.LockManager()
-	if lockMgr == nil {
-		if ruleVersioning(ctx) != nil {
-			return lock.ErrLockUnavailable
-		}
-		return deleteConfiguratorUnsafe(ctx, name, mesh, opts)
-	}
-	lockKey := lock.BuildConfiguratorRuleLockKey(mesh, name)
-	return lock.WithLock(ctx.AppContext(), lockMgr, lockKey, ruleLockTTL, func(leaseCtx context.Context) error {
-		return deleteConfiguratorUnsafe(ctx, name, mesh, opts.WithLeaseContext(leaseCtx))
-	})
-}
-
-func deleteConfiguratorUnsafe(ctx consolectx.Context, name string, mesh string, opts RuleMutationOptions) error {
 	kindName := RuleKindName{Kind: meshresource.DynamicConfigKind, Mesh: mesh, Name: name}
-	if err := prepareRuleMutation(ctx, kindName, opts); err != nil {
-		return err
-	}
-	res, err := getExistingRule(ctx, kindName)
-	if err != nil {
-		return err
-	}
-	return applyAdminMutation(ctx, res, versioning.OperationDelete, opts, func() error {
-		if err := checkMutationLease(opts); err != nil {
-			return err
-		}
-		if err := ctx.ResourceManager().DeleteByKey(opts.leaseCtx, meshresource.DynamicConfigKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
-			logger.Warnf("delete %s configurator failed with error: %s", name, err.Error())
-			return err
-		}
-		return nil
-	})
+	return withRuleMutation(ctx, kindName, opts,
+		func(RuleMutationOptions) (coremodel.Resource, error) {
+			return getExistingRule(ctx, kindName)
+		},
+		versioning.OperationDelete,
+		func(scoped RuleMutationOptions) error {
+			if err := ctx.ResourceManager().DeleteByKey(scoped.leaseCtx, meshresource.DynamicConfigKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
+				logger.Warnf("delete %s configurator failed with error: %s", name, err.Error())
+				return err
+			}
+			return nil
+		})
 }

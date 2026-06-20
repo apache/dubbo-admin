@@ -43,8 +43,16 @@ If you're using GoLand, you can run it locally by following steps:
 2. Fill the block with the config that screenshot shows below:
 ![ide_configuration.png](./static/images/ide-config.png)
 3. Modify the config file(app/dubbo-admin/dubbo-admin.yaml), make sure that the discovery, engine, store is configured.
-   Traffic-rule version history is enabled by default and writes RuleVersion, RuleIntent, and RuleMeta resources for history and rollback. Memory store uses a process-local lock; shared database stores must initialize the lock component, otherwise versioning fails closed during startup.
+   Traffic-rule version history is enabled by default and writes RuleVersion, RuleIntent, and RuleMeta resources for history and rollback. Memory store uses a process-local lock; shared database stores must initialize the lock component when versioning is enabled, otherwise versioning fails closed during startup. Nacos create/delete APIs do not expose a safe conditional mutation, so lease-protected versioning rejects those operations instead of claiming multi-writer correctness.
 4. Run the application, you can open the browser and visit localhost:8888/admin if everything works.
+
+### Traffic-rule versioning notes
+
+Traffic-rule versioning is enabled by default. On startup it requires stores for `RuleVersion`, `RuleIntent`, and `RuleMeta`, plus a distributed lock implementation. Startup first repairs open intents and then bootstraps existing `ConditionRoute`, `TagRoute`, and `DynamicConfig` rules; both steps honor shutdown cancellation.
+
+Version entries are immutable after creation. Rollback publishes a new version from a historical snapshot, while `maxVersionsPerRule` retention may physically delete the oldest entries. `RuleMeta` is a cached projection of the latest ledger head, not the source of version-number allocation.
+
+The traffic-form field preservation fix stays with this versioning PR because version history smoke tests depend on round-tripping `priority`, `force`, and `configVersion` without losing fields. The Zookeeper delete nil guard also stays here because versioning subscribers consume delete events through the same discovery event path and require safe old-object handling. These notes document the review boundary instead of splitting the PR.
 
 
 ### Project catalog

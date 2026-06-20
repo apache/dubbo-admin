@@ -25,6 +25,7 @@ import (
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/core/governor"
+	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
@@ -132,10 +133,7 @@ func (rm *resourcesManager) PageListByIndexes(
 }
 
 func (rm *resourcesManager) Add(ctx context.Context, r model.Resource) error {
-	if ctx == nil {
-		return errors.New("resource mutation context is required")
-	}
-	if err := ctx.Err(); err != nil {
+	if err := validateMutationContext(ctx); err != nil {
 		return err
 	}
 	if !governor.RuleResourceKinds.Contain(r.ResourceKind()) {
@@ -149,10 +147,7 @@ func (rm *resourcesManager) Add(ctx context.Context, r model.Resource) error {
 }
 
 func (rm *resourcesManager) Update(ctx context.Context, r model.Resource) error {
-	if ctx == nil {
-		return errors.New("resource mutation context is required")
-	}
-	if err := ctx.Err(); err != nil {
+	if err := validateMutationContext(ctx); err != nil {
 		return err
 	}
 	if !governor.RuleResourceKinds.Contain(r.ResourceKind()) {
@@ -166,10 +161,7 @@ func (rm *resourcesManager) Update(ctx context.Context, r model.Resource) error 
 }
 
 func (rm *resourcesManager) Upsert(ctx context.Context, r model.Resource) error {
-	if ctx == nil {
-		return errors.New("resource mutation context is required")
-	}
-	if err := ctx.Err(); err != nil {
+	if err := validateMutationContext(ctx); err != nil {
 		return err
 	}
 	if !governor.RuleResourceKinds.Contain(r.ResourceKind()) {
@@ -183,10 +175,7 @@ func (rm *resourcesManager) Upsert(ctx context.Context, r model.Resource) error 
 }
 
 func (rm *resourcesManager) DeleteByKey(ctx context.Context, rk model.ResourceKind, mesh string, key string) error {
-	if ctx == nil {
-		return errors.New("resource mutation context is required")
-	}
-	if err := ctx.Err(); err != nil {
+	if err := validateMutationContext(ctx); err != nil {
 		return err
 	}
 	if !governor.RuleResourceKinds.Contain(rk) {
@@ -208,4 +197,11 @@ func (rm *resourcesManager) DeleteByKey(ctx context.Context, rk model.ResourceKi
 
 func (rm *resourcesManager) GetStore(rk model.ResourceKind) (store.ResourceStore, error) {
 	return rm.storeRouter.ResourceKindRoute(rk)
+}
+
+func validateMutationContext(ctx context.Context) error {
+	if ctx == nil {
+		return errors.New("resource mutation context is required")
+	}
+	return lock.CheckLease(ctx)
 }

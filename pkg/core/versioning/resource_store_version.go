@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -39,7 +38,7 @@ import (
 )
 
 func (a *ResourceStoreAdapter) GetVersion(kind coremodel.ResourceKind, resourceKey string, id int64) (*Version, error) {
-	rv, err := a.getVersionResourceByID(kind, resourceKey, id)
+	rv, err := a.getVersionResourceForRule(kind, resourceKey, id)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +175,7 @@ func (a *ResourceStoreAdapter) insertVersionLocked(ctx context.Context, req Inse
 			return nil, bizerror.New(bizerror.InvalidArgument, "fixed version ID must be positive")
 		}
 		id = *req.FixedVersionID
-		existing, err := a.getVersionResourceByID(req.RuleKind, req.ResourceKey, id)
+		existing, err := a.getVersionResourceByGlobalID(id)
 		if err == nil {
 			if validateErr := validateExistingVersionForRequest(existing, id, req); validateErr != nil {
 				return nil, validateErr
@@ -199,7 +198,7 @@ func (a *ResourceStoreAdapter) insertVersionLocked(ctx context.Context, req Inse
 					return nil, err
 				}
 				id = generated
-				if _, err := a.getVersionResourceByID(req.RuleKind, req.ResourceKey, id); err == nil {
+				if _, err := a.getVersionResourceByGlobalID(id); err == nil {
 					addErr = store.ErrorResourceAlreadyExists(meshresource.RuleVersionKind.ToString(), buildVersionName(req.RuleKind, req.ResourceKey, id), extractMesh(req.ResourceKey))
 					continue
 				} else if !errors.Is(err, ErrVersionNotFound) {
@@ -215,7 +214,7 @@ func (a *ResourceStoreAdapter) insertVersionLocked(ctx context.Context, req Inse
 				break
 			}
 			if req.FixedVersionID != nil {
-				existing, getErr := a.getVersionResourceByID(req.RuleKind, req.ResourceKey, id)
+				existing, getErr := a.getVersionResourceByGlobalID(id)
 				if getErr == nil {
 					if validateErr := validateExistingVersionForRequest(existing, id, req); validateErr != nil {
 						return nil, validateErr
@@ -267,12 +266,6 @@ func (a *ResourceStoreAdapter) insertVersionLocked(ctx context.Context, req Inse
 	return protoToVersion(rv.Spec, id)
 }
 
-func (a *ResourceStoreAdapter) trimVersions(ctx context.Context, kind coremodel.ResourceKind, resourceKey string, keep int64) error {
-	return a.withParentLock(kind, resourceKey, func() error {
-		return a.trimVersionsLocked(ctx, kind, resourceKey, keep)
-	})
-}
-
 func (a *ResourceStoreAdapter) trimVersionsLocked(ctx context.Context, kind coremodel.ResourceKind, resourceKey string, keep int64) error {
 	state, err := a.ledgerState(kind, resourceKey)
 	if err != nil {
@@ -289,7 +282,7 @@ func (a *ResourceStoreAdapter) trimVersionsLocked(ctx context.Context, kind core
 		if err := lock.CheckLease(ctx); err != nil {
 			return err
 		}
-		rv, err := a.getVersionResourceByID(kind, resourceKey, v.ID)
+		rv, err := a.getVersionResourceForRule(kind, resourceKey, v.ID)
 		if err != nil {
 			return err
 		}
@@ -301,7 +294,7 @@ func (a *ResourceStoreAdapter) trimVersionsLocked(ctx context.Context, kind core
 	return nil
 }
 
-func (a *ResourceStoreAdapter) getVersionResourceByID(kind coremodel.ResourceKind, resourceKey string, id int64) (*meshresource.RuleVersionResource, error) {
+func (a *ResourceStoreAdapter) getVersionResourceByGlobalID(id int64) (*meshresource.RuleVersionResource, error) {
 	objects, err := a.versionStore.ByIndex(index.ByRuleVersionIDIndexName, strconv.FormatInt(id, 10))
 	if err != nil {
 		return nil, err
@@ -319,15 +312,33 @@ func (a *ResourceStoreAdapter) getVersionResourceByID(kind coremodel.ResourceKin
 	if rv.Spec == nil {
 		return nil, fmt.Errorf("%w: RuleVersion spec is nil for id %d", ErrVersionLedgerCorrupt, id)
 	}
-	if rv.Spec.ParentRuleKind != string(kind) ||
-		rv.Spec.ParentRuleMesh != extractMesh(resourceKey) ||
-		rv.Spec.ParentRuleName != extractName(resourceKey) {
-		return nil, ErrVersionNotFound
+	indexedID, err := versionIDFromResource(rv)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrVersionLedgerCorrupt, err)
 	}
-	if rv.Spec == nil {
-		return nil, fmt.Errorf("%w: RuleVersion spec is nil for id %d", ErrVersionLedgerCorrupt, id)
+	if indexedID != id {
+		return nil, fmt.Errorf("%w: RuleVersion id index mismatch: requested %d, got %d", ErrVersionLedgerCorrupt, id, indexedID)
 	}
 	return rv, nil
+}
+
+func (a *ResourceStoreAdapter) getVersionResourceForRule(kind coremodel.ResourceKind, resourceKey string, id int64) (*meshresource.RuleVersionResource, error) {
+	rv, err := a.getVersionResourceByGlobalID(id)
+	if err != nil {
+		return nil, err
+	}
+	if !versionResourceMatchesParent(rv, kind, resourceKey) {
+		return nil, ErrVersionNotFound
+	}
+	return rv, nil
+}
+
+func versionResourceMatchesParent(rv *meshresource.RuleVersionResource, kind coremodel.ResourceKind, resourceKey string) bool {
+	return rv != nil &&
+		rv.Spec != nil &&
+		rv.Spec.ParentRuleKind == string(kind) &&
+		rv.Spec.ParentRuleMesh == extractMesh(resourceKey) &&
+		rv.Spec.ParentRuleName == extractName(resourceKey)
 }
 
 func (a *ResourceStoreAdapter) getVersionResourceByIntentID(intentID int64) (*meshresource.RuleVersionResource, int64, error) {
@@ -406,10 +417,7 @@ func newRuleVersionResource(req InsertRequest, id, versionNo int64, createdAt, c
 
 func isAddConflict(err error) bool {
 	var conflict *store.ResourceConflictError
-	if errors.As(err, &conflict) {
-		return true
-	}
-	return strings.Contains(strings.ToLower(err.Error()), "already exists")
+	return errors.As(err, &conflict)
 }
 
 func rolledBackFromIDValue(id *int64) int64 {

@@ -38,8 +38,9 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// RuleVersion is an immutable snapshot in the traffic-rule version ledger.
-// Rollback appends a new RuleVersion instead of mutating historical entries.
+// RuleVersion is a traffic-rule version entry. Entries are immutable after
+// creation. Rollback appends a new RuleVersion, while retention may delete the
+// oldest entries.
 type RuleVersion struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Parent rule information

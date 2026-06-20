@@ -157,6 +157,8 @@ func (c *component) Start(rt runtime.Runtime, stop <-chan struct{}) error {
 	if !cfg.Enabled {
 		return nil
 	}
+	startCtx, cancel := contextWithStop(rt.AppContext(), stop)
+	defer cancel()
 	rmComp, err := rt.GetComponent(runtime.ResourceManager)
 	if err != nil {
 		return err
@@ -166,14 +168,26 @@ func (c *component) Start(rt runtime.Runtime, stop <-chan struct{}) error {
 	// Why: If admin crashed after creating an intent but before the subscriber
 	// committed it, the intent stays PENDING forever and blocks future writes.
 	// Repair attempts to commit intents whose desired state matches actual state.
-	if err := c.repairOpenIntents(rm); err != nil {
+	if err := c.repairOpenIntents(startCtx, rm); err != nil {
 		return err
 	}
-	// Bootstrap: record initial version for all existing rules.
-	// Why: Versioning was just enabled or this is the first startup. Existing rules
-	// have no version history. Recording a BOOTSTRAP version establishes a baseline
-	// so future mutations have a proper "before" state to diff against.
+	if err := c.bootstrapExistingRules(startCtx, rm, cfg.MaxVersionsPerRule); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *component) Service() *Service {
+	return c.service
+}
+
+func (c *component) bootstrapExistingRules(ctx context.Context, rm manager.ResourceManager, maxVersions int64) error {
+	// Bootstrap records one baseline version for pre-existing rules. It is
+	// idempotent across restarts: a rule with any existing version is skipped.
 	for _, kind := range governor.RuleResourceKinds.Values() {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		// Get the store for this kind and list all resources
 		rs, err := rm.GetStore(kind)
 		if err != nil {
@@ -189,7 +203,10 @@ func (c *component) Start(rt runtime.Runtime, stop <-chan struct{}) error {
 			return err
 		}
 		for _, res := range resources {
-			if err := RecordBootstrapLocked(c.store, cfg.MaxVersionsPerRule, res.ResourceKind(), res.ResourceKey(), rm, c.lock); err != nil {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if err := RecordBootstrapLocked(ctx, c.store, maxVersions, res.ResourceKind(), res.ResourceKey(), rm, c.lock); err != nil {
 				return err
 			}
 		}
@@ -197,17 +214,16 @@ func (c *component) Start(rt runtime.Runtime, stop <-chan struct{}) error {
 	return nil
 }
 
-func (c *component) Service() *Service {
-	return c.service
-}
-
-func (c *component) repairOpenIntents(rm manager.ResourceManager) error {
+func (c *component) repairOpenIntents(ctx context.Context, rm manager.ResourceManager) error {
 	intents, err := c.store.ListOpenIntents()
 	if err != nil {
 		return err
 	}
 	for _, intent := range intents {
-		err = withRuleVersionLock(c.lock, intent.RuleKind, intent.ResourceKey, func(leaseCtx context.Context) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		err = withRuleVersionLock(ctx, c.lock, intent.RuleKind, intent.ResourceKey, func(leaseCtx context.Context) error {
 			freshIntent, err := c.service.GetIntent(intent.ID)
 			if err != nil {
 				return err
@@ -231,4 +247,19 @@ func (c *component) repairOpenIntents(rm manager.ResourceManager) error {
 		}
 	}
 	return nil
+}
+
+func contextWithStop(parent context.Context, stop <-chan struct{}) (context.Context, context.CancelFunc) {
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := context.WithCancel(parent)
+	go func() {
+		select {
+		case <-stop:
+			cancel()
+		case <-ctx.Done():
+		}
+	}()
+	return ctx, cancel
 }

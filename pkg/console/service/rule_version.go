@@ -48,6 +48,19 @@ func (o RuleMutationOptions) WithLeaseContext(ctx context.Context) RuleMutationO
 	return o
 }
 
+func ensureMutationContext(ctx consolectx.Context, opts RuleMutationOptions) RuleMutationOptions {
+	if opts.leaseCtx != nil {
+		return opts
+	}
+	if ctx != nil {
+		opts.leaseCtx = ctx.AppContext()
+	}
+	if opts.leaseCtx == nil {
+		opts.leaseCtx = context.Background()
+	}
+	return opts
+}
+
 func ruleVersioning(ctx consolectx.Context) *versioning.Service {
 	if ctx == nil {
 		return nil
@@ -120,6 +133,47 @@ func getExistingRule(ctx consolectx.Context, kindName RuleKindName) (coremodel.R
 		return nil, fmt.Errorf("%s %s does not exist", kindName.Kind, key)
 	}
 	return res, nil
+}
+
+func withRuleMutation(
+	ctx consolectx.Context,
+	kindName RuleKindName,
+	opts RuleMutationOptions,
+	loadResource func(RuleMutationOptions) (coremodel.Resource, error),
+	op versioning.Operation,
+	mutate func(RuleMutationOptions) error,
+) error {
+	execute := func(scoped RuleMutationOptions) error {
+		scoped = ensureMutationContext(ctx, scoped)
+		if err := prepareRuleMutation(ctx, kindName, scoped); err != nil {
+			return err
+		}
+		res, err := loadResource(scoped)
+		if err != nil {
+			return err
+		}
+		return applyAdminMutation(ctx, res, op, scoped, func() error {
+			if err := checkMutationLease(scoped); err != nil {
+				return err
+			}
+			return mutate(scoped)
+		})
+	}
+
+	lockMgr := ctx.LockManager()
+	if lockMgr == nil {
+		if ruleVersioning(ctx) != nil {
+			return lock.ErrLockUnavailable
+		}
+		return execute(opts)
+	}
+	lockKey, err := ruleLockKey(kindName)
+	if err != nil {
+		return err
+	}
+	return lock.WithLock(ctx.AppContext(), lockMgr, lockKey, ruleLockTTL, func(leaseCtx context.Context) error {
+		return execute(opts.WithLeaseContext(leaseCtx))
+	})
 }
 
 // applyAdminMutation is a convenience wrapper for admin-initiated mutations.

@@ -18,9 +18,6 @@
 package service
 
 import (
-	"context"
-
-	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/duke-git/lancet/v2/slice"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
@@ -120,37 +117,20 @@ func UpdateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) e
 }
 
 func UpdateTagRuleWithOptions(ctx consolectx.Context, res *meshresource.TagRouteResource, opts RuleMutationOptions) error {
-	lockMgr := ctx.LockManager()
-	if lockMgr == nil {
-		if ruleVersioning(ctx) != nil {
-			return lock.ErrLockUnavailable
-		}
-		return updateTagRuleUnsafe(ctx, res, opts)
-	}
-
-	lockKey := lock.BuildTagRouteLockKey(res.Mesh, res.Name)
-
-	return lock.WithLock(ctx.AppContext(), lockMgr, lockKey, ruleLockTTL, func(leaseCtx context.Context) error {
-		return updateTagRuleUnsafe(ctx, res, opts.WithLeaseContext(leaseCtx))
-	})
-}
-
-func updateTagRuleUnsafe(ctx consolectx.Context, res *meshresource.TagRouteResource, opts RuleMutationOptions) error {
 	kindName := RuleKindName{Kind: meshresource.TagRouteKind, Mesh: res.Mesh, Name: res.Name}
-	if err := prepareRuleMutation(ctx, kindName, opts); err != nil {
-		return err
-	}
-	return applyAdminMutation(ctx, res, versioning.OperationUpdate, opts, func() error {
-		if err := checkMutationLease(opts); err != nil {
-			return err
-		}
-		err := ctx.ResourceManager().Update(opts.leaseCtx, res)
-		if err != nil {
-			logger.Warnf("update tag rule %s error: %v", res.Name, err)
-			return err
-		}
-		return nil
-	})
+	return withRuleMutation(ctx, kindName, opts,
+		func(RuleMutationOptions) (coremodel.Resource, error) {
+			return res, nil
+		},
+		versioning.OperationUpdate,
+		func(scoped RuleMutationOptions) error {
+			err := ctx.ResourceManager().Update(scoped.leaseCtx, res)
+			if err != nil {
+				logger.Warnf("update tag rule %s error: %v", res.Name, err)
+				return err
+			}
+			return nil
+		})
 }
 
 func CreateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
@@ -158,37 +138,20 @@ func CreateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) e
 }
 
 func CreateTagRuleWithOptions(ctx consolectx.Context, res *meshresource.TagRouteResource, opts RuleMutationOptions) error {
-	lockMgr := ctx.LockManager()
-	if lockMgr == nil {
-		if ruleVersioning(ctx) != nil {
-			return lock.ErrLockUnavailable
-		}
-		return createTagRuleUnsafe(ctx, res, opts)
-	}
-
-	lockKey := lock.BuildTagRouteLockKey(res.Mesh, res.Name)
-
-	return lock.WithLock(ctx.AppContext(), lockMgr, lockKey, ruleLockTTL, func(leaseCtx context.Context) error {
-		return createTagRuleUnsafe(ctx, res, opts.WithLeaseContext(leaseCtx))
-	})
-}
-
-func createTagRuleUnsafe(ctx consolectx.Context, res *meshresource.TagRouteResource, opts RuleMutationOptions) error {
 	kindName := RuleKindName{Kind: meshresource.TagRouteKind, Mesh: res.Mesh, Name: res.Name}
-	if err := prepareRuleMutation(ctx, kindName, opts); err != nil {
-		return err
-	}
-	return applyAdminMutation(ctx, res, versioning.OperationCreate, opts, func() error {
-		if err := checkMutationLease(opts); err != nil {
-			return err
-		}
-		err := ctx.ResourceManager().Add(opts.leaseCtx, res)
-		if err != nil {
-			logger.Warnf("create tag rule %s error: %v", res.Name, err)
-			return err
-		}
-		return nil
-	})
+	return withRuleMutation(ctx, kindName, opts,
+		func(RuleMutationOptions) (coremodel.Resource, error) {
+			return res, nil
+		},
+		versioning.OperationCreate,
+		func(scoped RuleMutationOptions) error {
+			err := ctx.ResourceManager().Add(scoped.leaseCtx, res)
+			if err != nil {
+				logger.Warnf("create tag rule %s error: %v", res.Name, err)
+				return err
+			}
+			return nil
+		})
 }
 
 func DeleteTagRule(ctx consolectx.Context, name string, mesh string) error {
@@ -196,36 +159,17 @@ func DeleteTagRule(ctx consolectx.Context, name string, mesh string) error {
 }
 
 func DeleteTagRuleWithOptions(ctx consolectx.Context, name string, mesh string, opts RuleMutationOptions) error {
-	lockMgr := ctx.LockManager()
-	if lockMgr == nil {
-		if ruleVersioning(ctx) != nil {
-			return lock.ErrLockUnavailable
-		}
-		return deleteTagRuleUnsafe(ctx, name, mesh, opts)
-	}
-	lockKey := lock.BuildTagRouteLockKey(mesh, name)
-	return lock.WithLock(ctx.AppContext(), lockMgr, lockKey, ruleLockTTL, func(leaseCtx context.Context) error {
-		return deleteTagRuleUnsafe(ctx, name, mesh, opts.WithLeaseContext(leaseCtx))
-	})
-}
-
-func deleteTagRuleUnsafe(ctx consolectx.Context, name string, mesh string, opts RuleMutationOptions) error {
 	kindName := RuleKindName{Kind: meshresource.TagRouteKind, Mesh: mesh, Name: name}
-	if err := prepareRuleMutation(ctx, kindName, opts); err != nil {
-		return err
-	}
-	res, err := getExistingRule(ctx, kindName)
-	if err != nil {
-		return err
-	}
-	return applyAdminMutation(ctx, res, versioning.OperationDelete, opts, func() error {
-		if err := checkMutationLease(opts); err != nil {
-			return err
-		}
-		if err := ctx.ResourceManager().DeleteByKey(opts.leaseCtx, meshresource.TagRouteKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
-			logger.Warnf("delete tag rule %s error: %v", name, err)
-			return err
-		}
-		return nil
-	})
+	return withRuleMutation(ctx, kindName, opts,
+		func(RuleMutationOptions) (coremodel.Resource, error) {
+			return getExistingRule(ctx, kindName)
+		},
+		versioning.OperationDelete,
+		func(scoped RuleMutationOptions) error {
+			if err := ctx.ResourceManager().DeleteByKey(scoped.leaseCtx, meshresource.TagRouteKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
+				logger.Warnf("delete tag rule %s error: %v", name, err)
+				return err
+			}
+			return nil
+		})
 }

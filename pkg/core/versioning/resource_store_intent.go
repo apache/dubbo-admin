@@ -36,8 +36,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
-// Intent operations using RuleIntentResource
-
 func (a *ResourceStoreAdapter) CreateIntent(ctx context.Context, req InsertRequest) (*Intent, error) {
 	var intent *Intent
 	err := a.withParentLock(req.RuleKind, req.ResourceKey, func() error {
@@ -73,6 +71,12 @@ func (a *ResourceStoreAdapter) createIntentLocked(ctx context.Context, req Inser
 			addErr = store.ErrorResourceAlreadyExists(meshresource.RuleIntentKind.ToString(), buildIntentName(req.RuleKind, req.ResourceKey, id), req.Mesh)
 			continue
 		} else if !errors.Is(err, ErrVersionIntentNotFound) {
+			return nil, err
+		}
+		if _, err := a.getVersionResourceByGlobalID(id); err == nil {
+			addErr = store.ErrorResourceAlreadyExists(meshresource.RuleIntentKind.ToString(), buildIntentName(req.RuleKind, req.ResourceKey, id), req.Mesh)
+			continue
+		} else if !errors.Is(err, ErrVersionNotFound) {
 			return nil, err
 		}
 		intentRes = newRuleIntentResource(req, id)

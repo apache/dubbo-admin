@@ -133,7 +133,7 @@ func TestResourceStoreAdapter_InsertVersionFixedIDRepairAfterMetaFailure(t *test
 	assert.Equal(t, intent.ID, versions[0].ID)
 
 	var repaired *Version
-	err = withRuleVersionLock(locallock.NewLocalLock(), meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"), func(leaseCtx context.Context) error {
+	err = withRuleVersionLock(context.Background(), locallock.NewLocalLock(), meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"), func(leaseCtx context.Context) error {
 		var inner error
 		repaired, inner = svc.FinalizeMutation(leaseCtx, intent, res, false)
 		return inner
@@ -205,7 +205,7 @@ func TestService_FinalizeClosedIntentDistinguishesCommittedVersionFromCorruption
 	orphan := *intent
 	orphan.ID = committed.ID + 1000
 	var retried *Version
-	err = withRuleVersionLock(locallock.NewLocalLock(), intent.RuleKind, intent.ResourceKey, func(leaseCtx context.Context) error {
+	err = withRuleVersionLock(context.Background(), locallock.NewLocalLock(), intent.RuleKind, intent.ResourceKey, func(leaseCtx context.Context) error {
 		var inner error
 		retried, inner = svc.FinalizeMutation(leaseCtx, intent, res, false)
 		return inner
@@ -213,7 +213,7 @@ func TestService_FinalizeClosedIntentDistinguishesCommittedVersionFromCorruption
 	require.NoError(t, err)
 	assert.Equal(t, committed.ID, retried.ID)
 
-	err = withRuleVersionLock(locallock.NewLocalLock(), orphan.RuleKind, orphan.ResourceKey, func(leaseCtx context.Context) error {
+	err = withRuleVersionLock(context.Background(), locallock.NewLocalLock(), orphan.RuleKind, orphan.ResourceKey, func(leaseCtx context.Context) error {
 		_, inner := svc.FinalizeMutation(leaseCtx, &orphan, res, false)
 		return inner
 	})
@@ -516,7 +516,7 @@ func TestRuleVersionCommitPointRejectsOldLeaseAfterReacquire(t *testing.T) {
 
 	err := corelock.WithLock(context.Background(), lockMgr, lockKey, 5*time.Millisecond, func(staleLeaseCtx context.Context) error {
 		<-staleLeaseCtx.Done()
-		err := withRuleVersionLock(lockMgr, meshresource.ConditionRouteKind, key, func(freshLeaseCtx context.Context) error {
+		err := withRuleVersionLock(context.Background(), lockMgr, meshresource.ConditionRouteKind, key, func(freshLeaseCtx context.Context) error {
 			if err := corelock.CheckLease(freshLeaseCtx); err != nil {
 				return err
 			}
@@ -785,7 +785,7 @@ func TestRuleVersionLockSerializesSharedAdapters(t *testing.T) {
 			if i%2 == 1 {
 				adapter = writerB
 			}
-			err := withRuleVersionLock(lockMgr, meshresource.ConditionRouteKind, key, func(context.Context) error {
+			err := withRuleVersionLock(context.Background(), lockMgr, meshresource.ConditionRouteKind, key, func(context.Context) error {
 				_, err := adapter.InsertVersion(context.Background(), testInsertRequest("demo-rule", fmt.Sprintf("hash-%02d", i)), 100)
 				return err
 			})
@@ -833,7 +833,7 @@ func TestRuleVersionLockSerializesSharedAdapterIntentCreate(t *testing.T) {
 			if i == 1 {
 				adapter = writerB
 			}
-			err := withRuleVersionLock(lockMgr, meshresource.ConditionRouteKind, key, func(context.Context) error {
+			err := withRuleVersionLock(context.Background(), lockMgr, meshresource.ConditionRouteKind, key, func(context.Context) error {
 				_, err := adapter.CreateIntent(context.Background(), testInsertRequest("intent-rule", fmt.Sprintf("hash-%d", i)))
 				return err
 			})
@@ -877,7 +877,7 @@ func TestRecordBootstrapLockedSharedAdaptersSingleBaseline(t *testing.T) {
 		wg.Add(1)
 		go func(writer *ResourceStoreAdapter) {
 			defer wg.Done()
-			errCh <- RecordBootstrapLocked(writer, 10, res.ResourceKind(), res.ResourceKey(), rm, lockMgr)
+			errCh <- RecordBootstrapLocked(context.Background(), writer, 10, res.ResourceKind(), res.ResourceKey(), rm, lockMgr)
 		}(writer)
 	}
 	wg.Wait()
@@ -907,7 +907,7 @@ func TestRecordBootstrapLockedAndSubscriberEventNoDuplicate(t *testing.T) {
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		errCh <- RecordBootstrapLocked(bootstrapWriter, 10, res.ResourceKind(), res.ResourceKey(), rm, lockMgr)
+		errCh <- RecordBootstrapLocked(context.Background(), bootstrapWriter, 10, res.ResourceKind(), res.ResourceKey(), rm, lockMgr)
 	}()
 	go func() {
 		defer wg.Done()
@@ -932,7 +932,7 @@ func TestRuleVersionLockAllowsDifferentParentsInParallel(t *testing.T) {
 	secondEntered := make(chan struct{})
 
 	go func() {
-		err := withRuleVersionLock(lockMgr, meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "rule-a"), func(context.Context) error {
+		err := withRuleVersionLock(context.Background(), lockMgr, meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "rule-a"), func(context.Context) error {
 			close(firstEntered)
 			<-releaseFirst
 			return nil
@@ -941,7 +941,7 @@ func TestRuleVersionLockAllowsDifferentParentsInParallel(t *testing.T) {
 	}()
 	<-firstEntered
 
-	err := withRuleVersionLock(lockMgr, meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "rule-b"), func(context.Context) error {
+	err := withRuleVersionLock(context.Background(), lockMgr, meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "rule-b"), func(context.Context) error {
 		close(secondEntered)
 		return nil
 	})
@@ -967,6 +967,26 @@ func TestResourceStoreAdapter_RetriesVersionIDCollision(t *testing.T) {
 	assert.Equal(t, int64(2), version.VersionNo)
 }
 
+func TestResourceStoreAdapter_RetriesVersionIDCollisionAcrossParents(t *testing.T) {
+	versionStore, intentStore, metaStore := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	adapter.idGenerator = &sequenceIDGenerator{ids: []int64{100, 101}}
+	require.NoError(t, versionStore.Add(testVersionResource("rule-a", 100, 1, "existing-a", OperationUpdate, SourceAdmin)))
+
+	version, err := adapter.InsertVersion(context.Background(), testInsertRequest("rule-b", "new-b"), 10)
+	require.NoError(t, err)
+	assert.Equal(t, int64(101), version.ID)
+	assert.Equal(t, int64(1), version.VersionNo)
+
+	_, err = adapter.GetVersion(meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "rule-b"), 100)
+	require.ErrorIs(t, err, ErrVersionNotFound)
+
+	existing, err := adapter.getVersionResourceByGlobalID(100)
+	require.NoError(t, err)
+	require.NotNil(t, existing.Spec)
+	assert.Equal(t, "rule-a", existing.Spec.ParentRuleName)
+}
+
 func TestResourceStoreAdapter_RetriesIntentIDCollision(t *testing.T) {
 	versionStore, intentStore, metaStore := newVersioningStores(t)
 	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
@@ -976,6 +996,17 @@ func TestResourceStoreAdapter_RetriesIntentIDCollision(t *testing.T) {
 	intent, err := adapter.CreateIntent(context.Background(), testInsertRequest("demo-rule", "new-hash"))
 	require.NoError(t, err)
 	assert.Equal(t, int64(8), intent.ID)
+}
+
+func TestResourceStoreAdapter_RetriesIntentIDCollisionWithExistingVersion(t *testing.T) {
+	versionStore, intentStore, metaStore := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	adapter.idGenerator = &sequenceIDGenerator{ids: []int64{100, 101}}
+	require.NoError(t, versionStore.Add(testVersionResource("rule-a", 100, 1, "existing-a", OperationUpdate, SourceAdmin)))
+
+	intent, err := adapter.CreateIntent(context.Background(), testInsertRequest("rule-b", "new-b"))
+	require.NoError(t, err)
+	assert.Equal(t, int64(101), intent.ID)
 }
 
 func TestService_RepairPendingIntentRequiresCurrentResourceMatch(t *testing.T) {
@@ -1176,7 +1207,7 @@ func testConditionRule(ruleName, payload string) *meshresource.ConditionRouteRes
 
 func finalizeMutationForTest(svc *Service, intent *Intent, current coremodel.Resource, deleted bool) (*Version, error) {
 	var version *Version
-	err := withRuleVersionLock(locallock.NewLocalLock(), intent.RuleKind, intent.ResourceKey, func(leaseCtx context.Context) error {
+	err := withRuleVersionLock(context.Background(), locallock.NewLocalLock(), intent.RuleKind, intent.ResourceKey, func(leaseCtx context.Context) error {
 		var inner error
 		version, inner = svc.FinalizeMutation(leaseCtx, intent, current, deleted)
 		return inner

@@ -23,8 +23,9 @@ option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
 
 import "google/protobuf/timestamp.proto";
 
-// RuleVersion is an immutable snapshot in the traffic-rule version ledger.
-// Rollback appends a new RuleVersion instead of mutating historical entries.
+// RuleVersion is a traffic-rule version entry. Entries are immutable after
+// creation. Rollback appends a new RuleVersion, while retention may delete the
+// oldest entries.
 message RuleVersion {
   // Parent rule information
   string parent_rule_kind = 1;      // e.g., "ConditionRoute"

@@ -164,5 +164,3 @@ func (a *ResourceStoreAdapter) LatestVersion(kind coremodel.ResourceKind, resour
 	}
 	return snapshot.Head, nil
 }
-
-// Helper functions

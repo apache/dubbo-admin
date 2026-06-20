@@ -38,8 +38,10 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// RuleIntent records a pending rule mutation before the resource write.
-// The committed RuleVersion is created from observed or repaired rule state.
+// RuleIntent records recovery state for a rule mutation before the resource
+// write. COMMITTED and FAILED are usually short-lived because the intent is
+// cleaned up immediately after the terminal status is written. RuleVersion is
+// the durable audit record.
 type RuleIntent struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Parent rule identification
@@ -56,7 +58,8 @@ type RuleIntent struct {
 	// rolled_back_from_id records the historical version whose snapshot is being
 	// re-published. It is audit metadata only and never a current-version pointer.
 	RolledBackFromId int64 `protobuf:"varint,11,opt,name=rolled_back_from_id,json=rolledBackFromId,proto3" json:"rolled_back_from_id,omitempty"`
-	// Intent lifecycle
+	// Intent lifecycle. Terminal statuses can remain only when cleanup fails; on
+	// restart, repair reconciles open intents from observed resource state.
 	Status        string                 `protobuf:"bytes,12,opt,name=status,proto3" json:"status,omitempty"`                                    // PENDING, APPLIED, FAILED, COMMITTED
 	FailureReason string                 `protobuf:"bytes,13,opt,name=failure_reason,json=failureReason,proto3" json:"failure_reason,omitempty"` // Error message if status=FAILED
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
