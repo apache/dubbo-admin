@@ -69,21 +69,9 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: Cache dependencies
-        # ref: https://github.com/actions/cache/blob/main/examples.md#go---module
-        uses: actions/cache@v4
-        with:
-          # Cache, works only on Linux
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          # Cache key
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          # An ordered list of keys to use for restoring the cache if no cache hit occurred for key
-          restore-keys: |
-            ${{ runner.os }}-go-
+          cache-dependency-path: go.sum
       - name: Check Code Format
-        run: make fmt && git status && [[ -z `git status -s` ]]
+        run: make fmt && git status && [[ -z $(git status -s) ]]
       - name: Run Unit Test
         run: make test
       # TODO(marsevilspirit): add lint
