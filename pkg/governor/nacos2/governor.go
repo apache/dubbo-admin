@@ -35,6 +35,7 @@ import (
 	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
 	"github.com/apache/dubbo-admin/pkg/core/clients"
 	"github.com/apache/dubbo-admin/pkg/core/events"
+	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
@@ -69,6 +70,9 @@ func NewNacos2Governor(
 func (g *RuleGovernor) CreateRule(ctx context.Context, r coremodel.Resource) error {
 	if err := ctx.Err(); err != nil {
 		return err
+	}
+	if _, ok := lock.LeaseFromContext(ctx); ok {
+		return bizerror.New(bizerror.NacosError, "nacos create does not support lease-safe conditional mutation")
 	}
 	rawContent, err := yaml.Marshal(r.ResourceSpec())
 	if err != nil {
@@ -138,6 +142,9 @@ func (g *RuleGovernor) publishRuleConfig(ctx context.Context, r coremodel.Resour
 func (g *RuleGovernor) DeleteRule(ctx context.Context, r coremodel.Resource) error {
 	if err := ctx.Err(); err != nil {
 		return err
+	}
+	if _, ok := lock.LeaseFromContext(ctx); ok {
+		return bizerror.New(bizerror.NacosError, "nacos delete does not support lease-safe conditional mutation")
 	}
 	ok, err := g.configClient.DeleteConfig(nacosvo.ConfigParam{
 		DataId: r.ResourceMeta().Name,

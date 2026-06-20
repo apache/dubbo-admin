@@ -19,6 +19,7 @@ package manager
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -132,7 +133,7 @@ func (rm *resourcesManager) PageListByIndexes(
 
 func (rm *resourcesManager) Add(ctx context.Context, r model.Resource) error {
 	if ctx == nil {
-		ctx = context.Background()
+		return errors.New("resource mutation context is required")
 	}
 	if err := ctx.Err(); err != nil {
 		return err
@@ -149,7 +150,7 @@ func (rm *resourcesManager) Add(ctx context.Context, r model.Resource) error {
 
 func (rm *resourcesManager) Update(ctx context.Context, r model.Resource) error {
 	if ctx == nil {
-		ctx = context.Background()
+		return errors.New("resource mutation context is required")
 	}
 	if err := ctx.Err(); err != nil {
 		return err
@@ -166,7 +167,7 @@ func (rm *resourcesManager) Update(ctx context.Context, r model.Resource) error 
 
 func (rm *resourcesManager) Upsert(ctx context.Context, r model.Resource) error {
 	if ctx == nil {
-		ctx = context.Background()
+		return errors.New("resource mutation context is required")
 	}
 	if err := ctx.Err(); err != nil {
 		return err
@@ -183,7 +184,7 @@ func (rm *resourcesManager) Upsert(ctx context.Context, r model.Resource) error 
 
 func (rm *resourcesManager) DeleteByKey(ctx context.Context, rk model.ResourceKind, mesh string, key string) error {
 	if ctx == nil {
-		ctx = context.Background()
+		return errors.New("resource mutation context is required")
 	}
 	if err := ctx.Err(); err != nil {
 		return err

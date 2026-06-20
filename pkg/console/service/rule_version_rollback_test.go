@@ -676,6 +676,38 @@ func TestAbandonRuleVersionIntent_CleansAppliedIntent(t *testing.T) {
 	require.ErrorIs(t, err, versioning.ErrVersionIntentNotFound)
 }
 
+func TestAbandonRuleVersionIntent_ReconcilesDeferredExternalState(t *testing.T) {
+	ctx := setupRollbackTestEnv(t)
+
+	f := conditionFactory()
+	require.NoError(t, ctx.rm.Add(context.Background(), f.build("demo-rule", "v1")))
+
+	intentTarget := f.build("demo-rule", "admin-pending")
+	intent, err := beginMutationForTest(ctx, intentTarget, versioning.OperationUpdate, versioning.SourceAdmin, "admin")
+	require.NoError(t, err)
+
+	external := f.build("demo-rule", "external-change")
+	require.NoError(t, ctx.rm.Update(context.Background(), external))
+
+	versions, err := ListRuleVersions(ctx, RuleKindName{Kind: f.kind, Name: "demo-rule"})
+	require.NoError(t, err)
+	require.Len(t, versions.Items, 1, "open intent should defer the external event until the intent is closed")
+
+	require.NoError(t, AbandonRuleVersionIntent(ctx, intent.ID, "operator chose external state"))
+
+	versions, err = ListRuleVersions(ctx, RuleKindName{Kind: f.kind, Name: "demo-rule"})
+	require.NoError(t, err)
+	require.Len(t, versions.Items, 2)
+	hash, _, err := versioning.NormalizeResource(external)
+	require.NoError(t, err)
+	assert.Equal(t, hash, versions.Items[0].ContentHash)
+	assert.Equal(t, versioning.SourceUpstream, versions.Items[0].Source)
+	assert.True(t, versions.Items[0].IsCurrent)
+
+	_, err = ctx.versioningSvc.GetIntent(intent.ID)
+	require.ErrorIs(t, err, versioning.ErrVersionIntentNotFound)
+}
+
 // TestRollbackRuleVersion_DuplicateEventSingleVersion verifies that a redundant
 // upstream event with the rollback's content hash does not create a second
 // version: the rollback intent is committed exactly once.

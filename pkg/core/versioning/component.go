@@ -61,7 +61,6 @@ func (c *component) Order() int {
 func (c *component) RequiredDependencies() []runtime.ComponentType {
 	return []runtime.ComponentType{
 		runtime.EventBus,
-		lock.DistributedLockComponent,
 		runtime.ResourceStore,
 		runtime.ResourceManager,
 	}

@@ -57,6 +57,11 @@ func TestComponentDisabledDoesNotRequireLock(t *testing.T) {
 	require.ErrorIs(t, err, ErrFeatureDisabled)
 }
 
+func TestComponentRequiredDependenciesDoNotForceLockWhenDisabled(t *testing.T) {
+	c := &component{}
+	require.NotContains(t, c.RequiredDependencies(), lock.DistributedLockComponent)
+}
+
 func TestComponentMemoryStoreUsesLocalLock(t *testing.T) {
 	builder := newVersioningComponentBuilder(t, true)
 	require.NoError(t, builder.ActivateComponent(newFakeVersioningRMComponent(t)))

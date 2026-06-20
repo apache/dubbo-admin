@@ -189,6 +189,37 @@ func TestResourceStoreAdapter_CommitIntentRetryAfterIntentStatusFailure(t *testi
 	require.ErrorIs(t, err, ErrVersionIntentNotFound)
 }
 
+func TestService_FinalizeClosedIntentDistinguishesCommittedVersionFromCorruption(t *testing.T) {
+	versionStore, intentStore, metaStore := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	svc := NewService(true, 10, adapter)
+	res := testConditionRule("demo-rule", "v1")
+	req, err := buildMutationInsertRequest(res, OperationUpdate, SourceAdmin, "admin", "", nil, time.Unix(100, 0))
+	require.NoError(t, err)
+	intent, err := adapter.CreateIntent(context.Background(), req)
+	require.NoError(t, err)
+	require.NoError(t, adapter.MarkIntentApplied(context.Background(), intent.ID))
+	committed, err := adapter.CommitIntent(context.Background(), intent.ID, 10)
+	require.NoError(t, err)
+
+	orphan := *intent
+	orphan.ID = committed.ID + 1000
+	var retried *Version
+	err = withRuleVersionLock(locallock.NewLocalLock(), intent.RuleKind, intent.ResourceKey, func(leaseCtx context.Context) error {
+		var inner error
+		retried, inner = svc.FinalizeMutation(leaseCtx, intent, res, false)
+		return inner
+	})
+	require.NoError(t, err)
+	assert.Equal(t, committed.ID, retried.ID)
+
+	err = withRuleVersionLock(locallock.NewLocalLock(), orphan.RuleKind, orphan.ResourceKey, func(leaseCtx context.Context) error {
+		_, inner := svc.FinalizeMutation(leaseCtx, &orphan, res, false)
+		return inner
+	})
+	require.ErrorIs(t, err, ErrVersionLedgerCorrupt)
+}
+
 func TestResourceStoreAdapter_FixedVersionRetryKeepsVersionNoAfterRetentionTrim(t *testing.T) {
 	versionStore, intentStore, metaStore := newVersioningStores(t)
 	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
@@ -338,6 +369,20 @@ func TestResourceStoreAdapter_CreatedAtAndCommittedAtSemantics(t *testing.T) {
 	assert.Equal(t, version.ID, retried.ID)
 	assert.True(t, retried.CreatedAt.Equal(version.CreatedAt))
 	assert.True(t, retried.CommittedAt.Equal(version.CommittedAt))
+}
+
+func TestResourceStoreAdapter_NewVersionResourceKeyRejectsDuplicateVersionNo(t *testing.T) {
+	versionStore, intentStore, metaStore := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	req := testInsertRequest("demo-rule", "hash-a")
+
+	version, err := adapter.InsertVersion(context.Background(), req, 10)
+	require.NoError(t, err)
+
+	conflicting := newRuleVersionResource(testInsertRequest("demo-rule", "hash-b"), version.ID+1000, version.VersionNo, time.Unix(101, 0), time.Unix(102, 0))
+	err = versionStore.Add(conflicting)
+	require.Error(t, err)
+	assert.True(t, isAddConflict(err), "duplicate versionNo must be rejected by the ResourceStore key")
 }
 
 func TestProtoToVersionMissingCommittedAtFallsBackToCreatedAt(t *testing.T) {

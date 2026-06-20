@@ -31,8 +31,14 @@ import (
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
+const ruleVersionIDAnnotation = "dubbo.apache.org/rule-version-id"
+
 func buildVersionName(kind coremodel.ResourceKind, resourceKey string, id int64) string {
 	return fmt.Sprintf("%s-%s-%d", kind, extractName(resourceKey), id)
+}
+
+func buildVersionNoName(kind coremodel.ResourceKind, resourceKey string, versionNo int64) string {
+	return fmt.Sprintf("%s-%s-version-%d", kind, extractName(resourceKey), versionNo)
 }
 
 func buildParentIndexKey(kind coremodel.ResourceKind, resourceKey string) string {
@@ -71,6 +77,22 @@ func extractIDFromName(name string) (int64, error) {
 		return 0, fmt.Errorf("invalid version name format: %s", name)
 	}
 	return id, nil
+}
+
+func versionIDFromResource(rv *meshresource.RuleVersionResource) (int64, error) {
+	if rv == nil {
+		return 0, fmt.Errorf("RuleVersion resource is nil")
+	}
+	if rv.Annotations != nil {
+		if raw := rv.Annotations[ruleVersionIDAnnotation]; raw != "" {
+			id, err := strconv.ParseInt(raw, 10, 64)
+			if err != nil {
+				return 0, fmt.Errorf("invalid RuleVersion id annotation for %s: %w", rv.Name, err)
+			}
+			return id, nil
+		}
+	}
+	return extractIDFromName(rv.Name)
 }
 
 func protoToVersion(spec *meshproto.RuleVersion, id int64) (*Version, error) {

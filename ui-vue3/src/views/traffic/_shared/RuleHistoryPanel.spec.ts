@@ -151,13 +151,14 @@ const textAreaStub = defineComponent({
   }
 })
 
-const mountPanel = () =>
+const mountPanel = (props: Partial<InstanceType<typeof RuleHistoryPanelType>['$props']> = {}) =>
   mount(RuleHistoryPanel, {
     props: {
       open: true,
       kind: 'condition-rule',
       ruleName: 'demo-rule',
-      title: 'History'
+      title: 'History',
+      ...props
     },
     global: {
       plugins: [i18n],
@@ -237,5 +238,42 @@ describe('RuleHistoryPanel', () => {
       'restore deleted rule',
       '0'
     )
+  })
+
+  it('ignores stale history responses after ruleName changes', async () => {
+    let resolveFirst: (value: unknown) => void = () => undefined
+    mocks.listRuleVersionsAPI
+      .mockReturnValueOnce(new Promise((resolve) => (resolveFirst = resolve)))
+      .mockResolvedValueOnce({
+        code: HTTP_STATUS.SUCCESS,
+        data: {
+          items: [version('new-current', 7, 'UPDATE', true)],
+          total: 1,
+          currentVersionId: 'new-current',
+          currentVersionNo: 7,
+          deleted: false
+        }
+      })
+
+    const wrapper = mountPanel({ ruleName: 'old-rule' })
+    await wrapper.setProps({ ruleName: 'new-rule' })
+    await flushPromises()
+
+    resolveFirst({
+      code: HTTP_STATUS.SUCCESS,
+      data: {
+        items: [version('old-current', 3, 'UPDATE', true)],
+        total: 1,
+        currentVersionId: 'old-current',
+        currentVersionNo: 3,
+        deleted: false
+      }
+    })
+    await flushPromises()
+
+    expect(wrapper.emitted('current-version-change')?.at(-1)).toEqual(['new-current'])
+    expect(wrapper.emitted('current-version-no-change')?.at(-1)).toEqual([7])
+    expect(wrapper.text()).toContain('rollback-new-current')
+    expect(wrapper.text()).not.toContain('rollback-old-current')
   })
 })

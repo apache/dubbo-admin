@@ -158,7 +158,7 @@ func applyRuleMutationIntentWithOptions(ctx consolectx.Context, res coremodel.Re
 		return nil, err
 	}
 	if err := mutate(); err != nil {
-		if markErr := svc.AbandonIntent(opts.leaseCtx, intent, err.Error()); markErr != nil {
+		if markErr := abandonIntentAndReconcile(ctx, svc, opts.leaseCtx, intent, err.Error()); markErr != nil {
 			return nil, fmt.Errorf("%w; failed to mark version intent failed: %v", err, markErr)
 		}
 		return nil, err
@@ -186,6 +186,24 @@ func ensureMutationIntentCommitted(ctx consolectx.Context, svc *versioning.Servi
 		return nil, err
 	}
 	return svc.FinalizeMutation(opts.leaseCtx, intent, current, !exists)
+}
+
+func abandonIntentAndReconcile(ctx consolectx.Context, svc *versioning.Service, leaseCtx context.Context, intent *versioning.Intent, reason string) error {
+	if err := svc.AbandonIntent(leaseCtx, intent, reason); err != nil {
+		return err
+	}
+	if err := lock.CheckLease(leaseCtx); err != nil {
+		return err
+	}
+	current, exists, err := ctx.ResourceManager().GetByKey(intent.RuleKind, intent.ResourceKey)
+	if err != nil {
+		return err
+	}
+	if err := lock.CheckLease(leaseCtx); err != nil {
+		return err
+	}
+	_, err = svc.ReconcileActualState(leaseCtx, intent.RuleKind, intent.ResourceKey, current, !exists, "system:reconcile")
+	return err
 }
 
 func pendingLedgerError(intentID int64, cause error) error {
@@ -279,7 +297,7 @@ func AbandonRuleVersionIntent(ctx consolectx.Context, intentID int64, reason str
 		if err := lock.CheckLease(leaseCtx); err != nil {
 			return err
 		}
-		return svc.AbandonIntent(leaseCtx, intent, reason)
+		return abandonIntentAndReconcile(ctx, svc, leaseCtx, intent, reason)
 	})
 }
 

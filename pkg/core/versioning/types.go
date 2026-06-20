@@ -73,7 +73,7 @@ var (
 // Version represents an immutable snapshot of a rule's spec at a point in time.
 // Versions are append-only; rollback creates a new Version instead of changing
 // the historical target version.
-// The IsCurrent field is computed at query time by comparing with Meta.CurrentVersion.
+// The IsCurrent field is derived from the immutable ledger head at query time.
 type Version struct {
 	ID          int64                  `json:"id"`
 	RuleKind    coremodel.ResourceKind `json:"ruleKind"`

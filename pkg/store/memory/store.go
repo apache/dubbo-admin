@@ -74,6 +74,13 @@ func (rs *resourceStore) Start(_ runtime.Runtime, _ <-chan struct{}) error {
 }
 
 func (rs *resourceStore) Add(obj interface{}) error {
+	if r, ok := obj.(coremodel.Resource); ok {
+		if _, exists, err := rs.storeProxy.GetByKey(r.ResourceKey()); err != nil {
+			return err
+		} else if exists {
+			return store.ErrorResourceAlreadyExists(r.ResourceKind().ToString(), r.ResourceMeta().Name, r.ResourceMesh())
+		}
+	}
 	if err := rs.storeProxy.Add(obj); err != nil {
 		return err
 	}

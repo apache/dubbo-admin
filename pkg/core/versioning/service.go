@@ -229,7 +229,19 @@ func (s *Service) FinalizeMutation(ctx context.Context, intent *Intent, current 
 	}
 	fresh, err := s.store.GetIntent(intent.ID)
 	if err != nil {
+		if errors.Is(err, ErrVersionIntentNotFound) {
+			return s.committedVersionForClosedIntent(intent)
+		}
 		return nil, err
+	}
+	switch fresh.Status {
+	case IntentStatusCommitted:
+		return s.committedVersionForIntent(fresh)
+	case IntentStatusFailed:
+		if fresh.LastError != "" {
+			return nil, fmt.Errorf("%w: %s", ErrVersionIntentNotOpen, fresh.LastError)
+		}
+		return nil, ErrVersionIntentNotOpen
 	}
 	if fresh.Status == IntentStatusPending {
 		if !IntentMatchesResource(fresh, current, deleted) {
@@ -245,8 +257,8 @@ func (s *Service) FinalizeMutation(ctx context.Context, intent *Intent, current 
 	}
 	committed, err := s.repairIntent(ctx, fresh, current, deleted)
 	if err != nil {
-		if errorsIsIntentAlreadyClosed(err) {
-			return s.committedVersionForIntent(fresh)
+		if errors.Is(err, ErrVersionIntentNotFound) {
+			return s.committedVersionForClosedIntent(fresh)
 		}
 		return nil, err
 	}
@@ -285,6 +297,14 @@ func (s *Service) committedVersionForIntent(intent *Intent) (*Version, error) {
 	return validateCommittedIntentVersion(found, intent)
 }
 
+func (s *Service) committedVersionForClosedIntent(intent *Intent) (*Version, error) {
+	version, err := s.committedVersionForIntent(intent)
+	if errors.Is(err, ErrVersionNotFound) {
+		return nil, fmt.Errorf("%w: terminal intent %d has no committed RuleVersion", ErrVersionLedgerCorrupt, intent.ID)
+	}
+	return version, err
+}
+
 func validateCommittedIntentVersion(version *Version, intent *Intent) (*Version, error) {
 	if version == nil || intent == nil ||
 		version.RuleKind != intent.RuleKind ||
@@ -302,10 +322,6 @@ func validateCommittedIntentVersion(version *Version, intent *Intent) (*Version,
 	return version, nil
 }
 
-func errorsIsIntentAlreadyClosed(err error) bool {
-	return err == nil || errors.Is(err, ErrVersionIntentNotOpen) || errors.Is(err, ErrVersionIntentNotFound)
-}
-
 func (s *Service) ReconcileMeta(ctx context.Context, kind coremodel.ResourceKind, resourceKey string) (*Meta, error) {
 	if err := s.ensureEnabled(); err != nil {
 		return nil, err
@@ -314,6 +330,76 @@ func (s *Service) ReconcileMeta(ctx context.Context, kind coremodel.ResourceKind
 		return nil, err
 	}
 	return s.store.ReconcileMeta(ctx, kind, resourceKey)
+}
+
+func (s *Service) ReconcileActualState(ctx context.Context, kind coremodel.ResourceKind, resourceKey string, current coremodel.Resource, deleted bool, author string) (*Version, error) {
+	if err := s.ensureEnabled(); err != nil {
+		return nil, err
+	}
+	if _, err := lock.RequireLease(ctx); err != nil {
+		return nil, err
+	}
+	if _, err := s.store.ReconcileMeta(ctx, kind, resourceKey); err != nil {
+		return nil, err
+	}
+	if _, err := lock.RequireLease(ctx); err != nil {
+		return nil, err
+	}
+
+	operation := OperationUpdate
+	mesh := extractMesh(resourceKey)
+	ruleName := extractName(resourceKey)
+	specJSON := string(DeleteSpecJSON)
+	contentHash := HashSpecJSON(DeleteSpecJSON)
+	if deleted || current == nil {
+		operation = OperationDelete
+	} else {
+		mesh = current.ResourceMesh()
+		ruleName = current.ResourceMeta().Name
+		hash, normalized, err := NormalizeResource(current)
+		if err != nil {
+			return nil, err
+		}
+		contentHash = hash
+		specJSON = normalized
+	}
+
+	latest, err := s.store.LatestVersion(kind, resourceKey)
+	if err != nil && !errors.Is(err, ErrVersionNotFound) {
+		return nil, err
+	}
+	if latest != nil {
+		if latest.Operation == OperationDelete && operation == OperationDelete {
+			return nil, nil
+		}
+		if latest.Operation == OperationDelete && operation != OperationDelete {
+			operation = OperationCreate
+		}
+		if latest.Operation != OperationDelete && operation != OperationDelete && latest.ContentHash == contentHash {
+			return nil, nil
+		}
+	} else if operation != OperationDelete {
+		operation = OperationCreate
+	}
+
+	if strings.TrimSpace(author) == "" {
+		author = "system:reconcile"
+	}
+	if _, err := lock.RequireLease(ctx); err != nil {
+		return nil, err
+	}
+	return s.store.InsertVersion(ctx, InsertRequest{
+		RuleKind:    kind,
+		Mesh:        mesh,
+		ResourceKey: resourceKey,
+		RuleName:    ruleName,
+		SpecJSON:    specJSON,
+		ContentHash: contentHash,
+		Operation:   operation,
+		Source:      SourceUpstream,
+		Author:      author,
+		CreatedAt:   time.Now(),
+	}, s.maxVersions)
 }
 
 func (s *Service) CurrentLedgerHead(kind coremodel.ResourceKind, resourceKey string) (*Version, bool, error) {

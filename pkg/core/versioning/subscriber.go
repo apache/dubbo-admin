@@ -137,7 +137,11 @@ func (s *Subscriber) ProcessEvent(event events.Event) error {
 		return err
 	}
 	if openIntent != nil {
-		logger.Infof("skipping rule event for %s while rule version intent %d is open", normalized.Parent.ResourceKey, openIntent.ID)
+		if intentMatchesEvent(openIntent, *normalized) {
+			logger.Infof("skipping admin echo rule event for %s while rule version intent %d is open", normalized.Parent.ResourceKey, openIntent.ID)
+			return nil
+		}
+		logger.Infof("deferring non-matching rule event for %s while rule version intent %d is open; intent close will reconcile actual state", normalized.Parent.ResourceKey, openIntent.ID)
 		return nil
 	}
 	return withRuleVersionLock(s.lockMgr, normalized.Parent.Kind, normalized.Parent.ResourceKey, func(leaseCtx context.Context) error {
@@ -160,7 +164,11 @@ func (s *Subscriber) record(ctx context.Context, event normalizedRuleEvent) erro
 		return err
 	}
 	if openIntent != nil {
-		logger.Infof("skipping rule event for %s while rule version intent %d is open", event.Parent.ResourceKey, openIntent.ID)
+		if intentMatchesEvent(openIntent, event) {
+			logger.Infof("skipping admin echo rule event for %s while rule version intent %d is open", event.Parent.ResourceKey, openIntent.ID)
+			return nil
+		}
+		logger.Infof("deferring non-matching rule event for %s while rule version intent %d is open; intent close will reconcile actual state", event.Parent.ResourceKey, openIntent.ID)
 		return nil
 	}
 
@@ -207,6 +215,15 @@ func (s *Subscriber) record(ctx context.Context, event normalizedRuleEvent) erro
 	// - Old version cleanup (trimming)
 
 	return nil
+}
+
+func intentMatchesEvent(intent *Intent, event normalizedRuleEvent) bool {
+	return intent != nil &&
+		intent.RuleKind == event.Parent.Kind &&
+		intent.ResourceKey == event.Parent.ResourceKey &&
+		intent.Operation == event.Operation &&
+		intent.ContentHash == event.ContentHash &&
+		intent.SpecJSON == string(event.SpecJSON)
 }
 
 func (s *Subscriber) checkDuplicate(kind coremodel.ResourceKind, resourceKey string, op Operation, hash string) (bool, error) {
