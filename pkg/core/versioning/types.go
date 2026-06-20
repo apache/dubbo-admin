@@ -51,6 +51,8 @@ const (
 //   - APPLIED: intended state was observed, but RuleVersion may not be durable.
 //   - OUTCOME_UNKNOWN: registry returned an uncertain result or a conflicting
 //     event was observed; repair must read actual state before cleanup.
+//   - COMMITTING: a clean APPLIED intent won the storage-level CAS for commit;
+//     retries must finish the fixed-ID RuleVersion or reconcile actual state.
 //   - COMMITTED/FAILED: terminal states, cleaned up after the durable outcome.
 //
 // RPC errors and context cancellation are not registry-side fencing. They move
@@ -61,6 +63,7 @@ const (
 	IntentStatusPending        IntentStatus = "PENDING"         // Intent created, mutation not yet applied
 	IntentStatusApplied        IntentStatus = "APPLIED"         // Intended state observed, awaiting version commit
 	IntentStatusOutcomeUnknown IntentStatus = "OUTCOME_UNKNOWN" // Actual registry outcome must be reconciled
+	IntentStatusCommitting     IntentStatus = "COMMITTING"      // Commit ownership acquired before fixed-ID version append
 	IntentStatusCommitted      IntentStatus = "COMMITTED"       // Version successfully recorded, intent closed
 	IntentStatusFailed         IntentStatus = "FAILED"          // Mutation failed or was rejected
 )

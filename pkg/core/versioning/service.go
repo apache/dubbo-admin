@@ -473,6 +473,9 @@ func (s *Service) repairIntent(ctx context.Context, intent *Intent, current core
 		return s.store.CommitIntent(ctx, intent.ID, s.maxVersions)
 	}
 	if !matches {
+		if intent.Status == IntentStatusCommitting {
+			return s.failIntentAfterActualReconcile(ctx, intent, current, deleted, "committing intent no longer matches actual registry state")
+		}
 		return nil, ErrIntentOutcomeMismatch
 	}
 	if _, err := lock.RequireLease(ctx); err != nil {

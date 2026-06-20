@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 
 	"gorm.io/gorm"
@@ -48,6 +49,7 @@ type GormStore struct {
 }
 
 var _ store.ManagedResourceStore = &GormStore{}
+var _ store.ConditionalResourceStore = &GormStore{}
 
 // NewGormStore creates a new GORM store for the specified resource kind
 func NewGormStore(kind model.ResourceKind, address string, pool *ConnectionPool) *GormStore {
@@ -214,6 +216,70 @@ func (gs *GormStore) Update(obj interface{}) error {
 		}
 		return nil
 	})
+}
+
+// UpdateIfUnchanged replaces a resource only when the stored serialized
+// resource still matches expected. The conditional UPDATE and index rewrite run
+// in one transaction; RowsAffected=0 is a CAS miss and leaves index rows intact.
+func (gs *GormStore) UpdateIfUnchanged(expected model.Resource, updated model.Resource) (bool, error) {
+	if expected == nil || updated == nil {
+		return false, fmt.Errorf("expected and updated resources are required")
+	}
+	if expected.ResourceKind() != gs.kind || updated.ResourceKind() != gs.kind {
+		return false, fmt.Errorf("resource kind mismatch: expected store kind %s, got expected=%s updated=%s", gs.kind, expected.ResourceKind(), updated.ResourceKind())
+	}
+	if expected.ResourceKey() != updated.ResourceKey() {
+		return false, fmt.Errorf("conditional update resource key mismatch: expected %s, updated %s", expected.ResourceKey(), updated.ResourceKey())
+	}
+
+	expectedModel, err := FromResource(expected)
+	if err != nil {
+		return false, err
+	}
+	updatedModel, err := FromResource(updated)
+	if err != nil {
+		return false, err
+	}
+
+	db := gs.pool.GetDB()
+	var changed bool
+	err = db.Transaction(func(tx *gorm.DB) error {
+		result := tx.Scopes(TableScope(gs.kind.ToString())).Model(&ResourceModel{}).
+			Where("resource_key = ? AND name = ? AND mesh = ? AND data = ?", expected.ResourceKey(), expectedModel.Name, expectedModel.Mesh, expectedModel.Data).
+			Updates(map[string]interface{}{
+				"name": updatedModel.Name,
+				"mesh": updatedModel.Mesh,
+				"data": updatedModel.Data,
+			})
+		if result.Error != nil {
+			if isSQLiteLockedError(result.Error) {
+				changed = false
+				return nil
+			}
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			changed = false
+			return nil
+		}
+		if err := gs.persistIndexEntriesTx(tx, updated, expected); err != nil {
+			return fmt.Errorf("failed to persist index entries for %s: %w", updated.ResourceKey(), err)
+		}
+		changed = true
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+	return changed, nil
+}
+
+func isSQLiteLockedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "database table is locked") || strings.Contains(msg, "database is locked")
 }
 
 // Delete removes a resource from the database

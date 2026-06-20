@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -30,10 +31,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"gorm.io/driver/sqlite"
 	"k8s.io/client-go/tools/cache"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
+	storecfg "github.com/apache/dubbo-admin/pkg/config/store"
 	"github.com/apache/dubbo-admin/pkg/core/events"
 	corelock "github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
@@ -42,6 +45,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/store"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
 	locallock "github.com/apache/dubbo-admin/pkg/lock/local"
+	"github.com/apache/dubbo-admin/pkg/store/dbcommon"
 	memoryst "github.com/apache/dubbo-admin/pkg/store/memory"
 )
 
@@ -160,7 +164,7 @@ func TestResourceStoreAdapter_CommitIntentRetryAfterIntentStatusFailure(t *testi
 	require.NoError(t, err)
 	require.NoError(t, adapter.MarkIntentApplied(context.Background(), intent.ID))
 
-	failingIntentStore.failNextUpdate = true
+	failingIntentStore.failUpdateAfter = 2
 	_, err = adapter.CommitIntent(context.Background(), intent.ID, 10)
 	require.ErrorContains(t, err, "intent status update failed")
 
@@ -798,7 +802,7 @@ func TestResourceStoreAdapter_StaleObservedAndStatusUpdatesConflictOnRevision(t 
 	fresh, _, err := adapter.getIntentResourceByID(intent.ID)
 	require.NoError(t, err)
 	require.NoError(t, updateIntentResourceObserved(intentStore, fresh, OperationUpdate, "hash-b", `{"key":"B"}`))
-	err = updateIntentResourceStatus(intentStore, fresh, IntentStatusCommitted, "")
+	err = updateIntentResourceStatus(intentStore, fresh, IntentStatusCommitting, "")
 	require.ErrorIs(t, err, ErrVersionIntentConflict)
 
 	open, err := adapter.GetIntent(intent.ID)
@@ -806,6 +810,208 @@ func TestResourceStoreAdapter_StaleObservedAndStatusUpdatesConflictOnRevision(t 
 	assert.Equal(t, IntentStatusApplied, open.Status)
 	assert.True(t, open.ReconcileRequired)
 	assert.Equal(t, "hash-b", open.ObservedContentHash)
+}
+
+func TestResourceStoreAdapter_GormConditionalUpdateConcurrentCommitAndObservedOnlyOneWins(t *testing.T) {
+	writerA, writerB, _, intentStoreA, intentStoreB := newGormVersioningAdapters(t)
+
+	intent, err := writerA.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-a"))
+	require.NoError(t, err)
+	require.NoError(t, writerA.MarkIntentApplied(context.Background(), intent.ID))
+
+	staleForCommit, _, err := writerA.getIntentResourceByID(intent.ID)
+	require.NoError(t, err)
+	staleForObserved, _, err := writerB.getIntentResourceByID(intent.ID)
+	require.NoError(t, err)
+	require.Equal(t, staleForCommit.Spec.Revision, staleForObserved.Spec.Revision)
+
+	ready := make(chan struct{}, 2)
+	start := make(chan struct{})
+	results := make(chan error, 2)
+	go func() {
+		ready <- struct{}{}
+		<-start
+		results <- updateIntentResourceStatus(intentStoreA, staleForCommit, IntentStatusCommitting, "")
+	}()
+	go func() {
+		ready <- struct{}{}
+		<-start
+		results <- updateIntentResourceObserved(intentStoreB, staleForObserved, OperationUpdate, "hash-b", `{"key":"B"}`)
+	}()
+	<-ready
+	<-ready
+	close(start)
+
+	first := <-results
+	second := <-results
+	winners := 0
+	conflicts := 0
+	for _, err := range []error{first, second} {
+		if err == nil {
+			winners++
+			continue
+		}
+		if errors.Is(err, ErrVersionIntentConflict) {
+			conflicts++
+			continue
+		}
+		require.NoError(t, err)
+	}
+	require.Equal(t, 1, winners)
+	require.Equal(t, 1, conflicts)
+
+	finalIntent, err := writerA.GetIntent(intent.ID)
+	require.NoError(t, err)
+	switch finalIntent.Status {
+	case IntentStatusCommitting:
+		assert.False(t, finalIntent.ReconcileRequired)
+		err = writerB.MarkIntentObserved(context.Background(), intent.ID, OperationUpdate, "hash-b", `{"key":"B"}`)
+		require.ErrorIs(t, err, ErrVersionIntentNotOpen)
+	case IntentStatusApplied:
+		assert.True(t, finalIntent.ReconcileRequired)
+		_, err = writerB.CommitIntent(context.Background(), intent.ID, 10)
+		var pending *IntentPendingError
+		require.ErrorAs(t, err, &pending)
+	default:
+		t.Fatalf("unexpected final intent status after concurrent CAS: %s", finalIntent.Status)
+	}
+}
+
+func TestResourceStoreAdapter_CommitIntentDirtyMarkerCASRejectsBeforeAppend(t *testing.T) {
+	versionStore, baseIntentStore, _ := newVersioningStores(t)
+	commitAtCAS := make(chan struct{})
+	releaseCommit := make(chan struct{})
+	var once sync.Once
+	blockingIntentStore := &barrierCASStore{ResourceStore: baseIntentStore}
+	writerA := NewResourceStoreAdapter(versionStore, blockingIntentStore)
+	writerB := NewResourceStoreAdapter(versionStore, baseIntentStore)
+
+	intent, err := writerA.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-a"))
+	require.NoError(t, err)
+	require.NoError(t, writerA.MarkIntentApplied(context.Background(), intent.ID))
+
+	blockingIntentStore.beforeCAS = func(_, updated coremodel.Resource) {
+		intentRes, ok := updated.(*meshresource.RuleIntentResource)
+		if !ok || intentRes.Spec == nil || IntentStatus(intentRes.Spec.Status) != IntentStatusCommitting {
+			return
+		}
+		once.Do(func() {
+			close(commitAtCAS)
+			<-releaseCommit
+		})
+	}
+
+	errCh := make(chan error, 1)
+	go func() {
+		_, commitErr := writerA.CommitIntent(context.Background(), intent.ID, 10)
+		errCh <- commitErr
+	}()
+	<-commitAtCAS
+
+	require.NoError(t, writerB.MarkIntentObserved(context.Background(), intent.ID, OperationUpdate, "hash-b", `{"key":"B"}`))
+	close(releaseCommit)
+
+	err = <-errCh
+	var pending *IntentPendingError
+	require.ErrorAs(t, err, &pending)
+
+	versions, err := writerA.ListVersions(meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
+	require.NoError(t, err)
+	require.Empty(t, versions)
+
+	open, err := writerA.GetIntent(intent.ID)
+	require.NoError(t, err)
+	assert.Equal(t, IntentStatusApplied, open.Status)
+	assert.True(t, open.ReconcileRequired)
+	assert.Equal(t, "hash-b", open.ObservedContentHash)
+}
+
+func TestSubscriber_StaleOpenIntentAfterCleanupFallsBackToUpstreamVersion(t *testing.T) {
+	tests := []struct {
+		name     string
+		terminal func(t *testing.T, adapter *ResourceStoreAdapter, intent *Intent, res coremodel.Resource)
+	}{
+		{
+			name: "committed cleanup complete",
+			terminal: func(t *testing.T, adapter *ResourceStoreAdapter, intent *Intent, _ coremodel.Resource) {
+				t.Helper()
+				_, err := adapter.CommitIntent(context.Background(), intent.ID, 10)
+				require.NoError(t, err)
+				_, err = adapter.GetIntent(intent.ID)
+				require.ErrorIs(t, err, ErrVersionIntentNotFound)
+			},
+		},
+		{
+			name: "committed cleanup pending",
+			terminal: func(t *testing.T, adapter *ResourceStoreAdapter, intent *Intent, _ coremodel.Resource) {
+				t.Helper()
+				intentStore := adapter.intentStore.(*failOnceStore)
+				intentStore.failNextDelete = true
+				_, err := adapter.CommitIntent(context.Background(), intent.ID, 10)
+				require.ErrorContains(t, err, "cleanup failed")
+				terminalIntent, err := adapter.GetIntent(intent.ID)
+				require.NoError(t, err)
+				require.Equal(t, IntentStatusCommitted, terminalIntent.Status)
+			},
+		},
+		{
+			name: "failed cleanup pending",
+			terminal: func(t *testing.T, adapter *ResourceStoreAdapter, intent *Intent, _ coremodel.Resource) {
+				t.Helper()
+				intentStore := adapter.intentStore.(*failOnceStore)
+				intentStore.failNextDelete = true
+				err := adapter.MarkIntentFailed(context.Background(), intent.ID, "abandoned")
+				require.ErrorContains(t, err, "cleanup failed")
+				terminalIntent, err := adapter.GetIntent(intent.ID)
+				require.NoError(t, err)
+				require.Equal(t, IntentStatusFailed, terminalIntent.Status)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			versionStore, baseIntentStore, _ := newVersioningStores(t)
+			intentStore := &failOnceStore{ResourceStore: baseIntentStore, err: errors.New("cleanup failed")}
+			adapter := NewResourceStoreAdapter(versionStore, intentStore)
+			sub := NewSubscriber(meshresource.ConditionRouteKind, adapter, 10, locallock.NewLocalLock(), context.Background())
+
+			intended := testConditionRule("demo-rule", "A")
+			req, err := buildMutationInsertRequest(intended, OperationUpdate, SourceAdmin, "admin", "", nil, time.Unix(100, 0))
+			require.NoError(t, err)
+			intent, err := adapter.CreateIntent(context.Background(), req)
+			require.NoError(t, err)
+			require.NoError(t, adapter.MarkIntentApplied(context.Background(), intent.ID))
+			staleOpen, err := adapter.GetIntent(intent.ID)
+			require.NoError(t, err)
+
+			tc.terminal(t, adapter, intent, intended)
+
+			external := testConditionRule("demo-rule", "B")
+			event := normalizedRuleEvent{
+				Resource: external,
+				Parent: ParentRef{
+					Kind:        external.ResourceKind(),
+					Mesh:        external.ResourceMesh(),
+					Name:        external.ResourceMeta().Name,
+					ResourceKey: external.ResourceKey(),
+				},
+				Operation:   OperationUpdate,
+				SpecJSON:    []byte(`{"key":"B"}`),
+				ContentHash: "hash-b",
+			}
+			hash, normalized, err := NormalizeResource(external)
+			require.NoError(t, err)
+			event.SpecJSON = []byte(normalized)
+			event.ContentHash = hash
+			require.NoError(t, sub.handleOpenIntentEvent(staleOpen, event))
+
+			versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, external.ResourceKey())
+			require.NoError(t, err)
+			require.NotEmpty(t, versions)
+			assert.Equal(t, hash, versions[0].ContentHash)
+			assert.Equal(t, SourceUpstream, versions[0].Source)
+		})
+	}
 }
 
 func TestService_OutcomeUnknownActualMatchCommitsFixedIntentID(t *testing.T) {
@@ -941,7 +1147,7 @@ func TestResourceStoreAdapter_CommitIntentAuditMismatchLeavesIntentOpen(t *testi
 
 	open, err := adapter.GetIntent(intent.ID)
 	require.NoError(t, err)
-	assert.Equal(t, IntentStatusApplied, open.Status)
+	assert.Equal(t, IntentStatusCommitting, open.Status)
 
 	versions, err := adapter.ListVersions(req.RuleKind, req.ResourceKey)
 	require.NoError(t, err)
@@ -1459,6 +1665,30 @@ func newVersioningStores(t *testing.T) (store.ResourceStore, store.ResourceStore
 	return versionStore, intentStore, nil
 }
 
+func newGormVersioningAdapters(t *testing.T) (*ResourceStoreAdapter, *ResourceStoreAdapter, store.ResourceStore, store.ResourceStore, store.ResourceStore) {
+	t.Helper()
+	dbPath := filepath.Join(t.TempDir(), "versioning.db")
+	dialector := sqlite.Open("file:" + dbPath + "?cache=shared&_journal_mode=WAL&_busy_timeout=5000")
+	pool, err := dbcommon.NewConnectionPool(dialector, storecfg.MySQL, t.Name(), dbcommon.DefaultConnectionPoolConfig())
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, pool.Close())
+	})
+
+	versionStoreA := dbcommon.NewGormStore(meshresource.RuleVersionKind, t.Name()+"-version-a", pool)
+	intentStoreA := dbcommon.NewGormStore(meshresource.RuleIntentKind, t.Name()+"-intent-a", pool)
+	versionStoreB := dbcommon.NewGormStore(meshresource.RuleVersionKind, t.Name()+"-version-b", pool)
+	intentStoreB := dbcommon.NewGormStore(meshresource.RuleIntentKind, t.Name()+"-intent-b", pool)
+	for _, s := range []store.ManagedResourceStore{versionStoreA, intentStoreA, versionStoreB, intentStoreB} {
+		require.NoError(t, s.Init(nil))
+	}
+	return NewResourceStoreAdapter(versionStoreA, intentStoreA),
+		NewResourceStoreAdapter(versionStoreB, intentStoreB),
+		versionStoreA,
+		intentStoreA,
+		intentStoreB
+}
+
 func testInsertRequest(ruleName, hash string) InsertRequest {
 	return InsertRequest{
 		RuleKind:    meshresource.ConditionRouteKind,
@@ -1554,6 +1784,14 @@ func (s *noListKeysStore) ListKeys() []string {
 	return nil
 }
 
+func (s *noListKeysStore) UpdateIfUnchanged(expected coremodel.Resource, updated coremodel.Resource) (bool, error) {
+	cas, ok := s.ResourceStore.(store.ConditionalResourceStore)
+	if !ok {
+		return false, fmt.Errorf("wrapped store does not support conditional updates")
+	}
+	return cas.UpdateIfUnchanged(expected, updated)
+}
+
 type singleResourceManager struct {
 	res coremodel.Resource
 }
@@ -1625,12 +1863,44 @@ func (s *hookStore) Update(obj interface{}) error {
 	return nil
 }
 
+func (s *hookStore) UpdateIfUnchanged(expected coremodel.Resource, updated coremodel.Resource) (bool, error) {
+	cas, ok := s.ResourceStore.(store.ConditionalResourceStore)
+	if !ok {
+		return false, fmt.Errorf("wrapped store does not support conditional updates")
+	}
+	changed, err := cas.UpdateIfUnchanged(expected, updated)
+	if err != nil || !changed {
+		return changed, err
+	}
+	if s.afterUpdate != nil {
+		s.afterUpdate(updated)
+	}
+	return true, nil
+}
+
+type barrierCASStore struct {
+	store.ResourceStore
+	beforeCAS func(expected coremodel.Resource, updated coremodel.Resource)
+}
+
+func (s *barrierCASStore) UpdateIfUnchanged(expected coremodel.Resource, updated coremodel.Resource) (bool, error) {
+	if s.beforeCAS != nil {
+		s.beforeCAS(expected, updated)
+	}
+	cas, ok := s.ResourceStore.(store.ConditionalResourceStore)
+	if !ok {
+		return false, fmt.Errorf("wrapped store does not support conditional updates")
+	}
+	return cas.UpdateIfUnchanged(expected, updated)
+}
+
 type failOnceStore struct {
 	store.ResourceStore
-	failNextAdd    bool
-	failNextUpdate bool
-	failNextDelete bool
-	err            error
+	failNextAdd     bool
+	failNextUpdate  bool
+	failNextDelete  bool
+	failUpdateAfter int
+	err             error
 }
 
 func (s *failOnceStore) Add(obj interface{}) error {
@@ -1647,6 +1917,24 @@ func (s *failOnceStore) Update(obj interface{}) error {
 		return s.err
 	}
 	return s.ResourceStore.Update(obj)
+}
+
+func (s *failOnceStore) UpdateIfUnchanged(expected coremodel.Resource, updated coremodel.Resource) (bool, error) {
+	if s.failNextUpdate {
+		s.failNextUpdate = false
+		return false, s.err
+	}
+	if s.failUpdateAfter > 0 {
+		s.failUpdateAfter--
+		if s.failUpdateAfter == 0 {
+			return false, s.err
+		}
+	}
+	cas, ok := s.ResourceStore.(store.ConditionalResourceStore)
+	if !ok {
+		return false, fmt.Errorf("wrapped store does not support conditional updates")
+	}
+	return cas.UpdateIfUnchanged(expected, updated)
 }
 
 func (s *failOnceStore) Delete(obj interface{}) error {

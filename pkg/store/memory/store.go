@@ -40,10 +40,12 @@ type resourceStore struct {
 	rk          coremodel.ResourceKind
 	storeProxy  cache.Indexer
 	prefixTrees map[string]*radix.Tree
+	mu          sync.Mutex
 	treesMu     sync.RWMutex
 }
 
 var _ store.ManagedResourceStore = &resourceStore{}
+var _ store.ConditionalResourceStore = &resourceStore{}
 
 func NewMemoryResourceStore(rk coremodel.ResourceKind) store.ManagedResourceStore {
 	return &resourceStore{rk: rk}
@@ -74,6 +76,8 @@ func (rs *resourceStore) Start(_ runtime.Runtime, _ <-chan struct{}) error {
 }
 
 func (rs *resourceStore) Add(obj interface{}) error {
+	rs.mu.Lock()
+	defer rs.mu.Unlock()
 	if r, ok := obj.(coremodel.Resource); ok {
 		if _, exists, err := rs.storeProxy.GetByKey(r.ResourceKey()); err != nil {
 			return err
@@ -92,6 +96,8 @@ func (rs *resourceStore) Add(obj interface{}) error {
 }
 
 func (rs *resourceStore) Update(obj interface{}) error {
+	rs.mu.Lock()
+	defer rs.mu.Unlock()
 	r, ok := obj.(coremodel.Resource)
 	var oldRes coremodel.Resource
 	if ok {
@@ -114,7 +120,45 @@ func (rs *resourceStore) Update(obj interface{}) error {
 	return nil
 }
 
+func (rs *resourceStore) UpdateIfUnchanged(expected coremodel.Resource, updated coremodel.Resource) (bool, error) {
+	if expected == nil || updated == nil {
+		return false, fmt.Errorf("expected and updated resources are required")
+	}
+	if expected.ResourceKind() != rs.rk || updated.ResourceKind() != rs.rk {
+		return false, fmt.Errorf("resource kind mismatch: expected store kind %s, got expected=%s updated=%s", rs.rk, expected.ResourceKind(), updated.ResourceKind())
+	}
+	if expected.ResourceKey() != updated.ResourceKey() {
+		return false, fmt.Errorf("conditional update resource key mismatch: expected %s, updated %s", expected.ResourceKey(), updated.ResourceKey())
+	}
+
+	rs.mu.Lock()
+	defer rs.mu.Unlock()
+
+	currentObj, exists, err := rs.storeProxy.GetByKey(expected.ResourceKey())
+	if err != nil {
+		return false, err
+	}
+	if !exists {
+		return false, nil
+	}
+	current, ok := currentObj.(coremodel.Resource)
+	if !ok {
+		return false, bizerror.NewAssertionError("Resource", reflect.TypeOf(currentObj).Name())
+	}
+	if !reflect.DeepEqual(current, expected) {
+		return false, nil
+	}
+	if err := rs.storeProxy.Update(updated); err != nil {
+		return false, err
+	}
+	rs.removeFromTrees(current)
+	rs.addToTrees(updated)
+	return true, nil
+}
+
 func (rs *resourceStore) Delete(obj interface{}) error {
+	rs.mu.Lock()
+	defer rs.mu.Unlock()
 	if err := rs.storeProxy.Delete(obj); err != nil {
 		return err
 	}
@@ -141,6 +185,8 @@ func (rs *resourceStore) GetByKey(key string) (item interface{}, exists bool, er
 }
 
 func (rs *resourceStore) Replace(i []interface{}, s string) error {
+	rs.mu.Lock()
+	defer rs.mu.Unlock()
 	// Clear all trees before replace
 	rs.treesMu.Lock()
 	for indexName := range rs.prefixTrees {

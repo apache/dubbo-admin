@@ -160,7 +160,10 @@ func (s *Subscriber) record(ctx context.Context, event normalizedRuleEvent) erro
 	if openIntent != nil {
 		return s.handleOpenIntentEvent(openIntent, event)
 	}
+	return s.recordVersion(ctx, event)
+}
 
+func (s *Subscriber) recordVersion(ctx context.Context, event normalizedRuleEvent) error {
 	source := SourceUpstream
 	author := "system:upstream"
 	if event.Context != nil {
@@ -192,7 +195,7 @@ func (s *Subscriber) record(ctx context.Context, event normalizedRuleEvent) erro
 		CreatedAt:   time.Now(),
 	}
 
-	_, err = s.store.InsertVersion(ctx, req, s.maxVersions)
+	_, err := s.store.InsertVersion(ctx, req, s.maxVersions)
 	if err != nil {
 		return fmt.Errorf("failed to insert version: %w", err)
 	}
@@ -206,7 +209,81 @@ func (s *Subscriber) handleOpenIntentEvent(openIntent *Intent, event normalizedR
 		return nil
 	}
 	logger.Infof("recording non-matching rule event for %s while rule version intent %d is open; intent close will reconcile actual state", event.Parent.ResourceKey, openIntent.ID)
-	return s.store.MarkIntentObserved(nil, openIntent.ID, event.Operation, event.ContentHash, string(event.SpecJSON))
+	return s.markIntentObservedOrRecord(openIntent, event)
+}
+
+func (s *Subscriber) markIntentObservedOrRecord(openIntent *Intent, event normalizedRuleEvent) error {
+	if s.appCtx == nil {
+		return context.Canceled
+	}
+	current := openIntent
+	for attempt := 0; attempt < maxIntentCASRetries; attempt++ {
+		if err := s.appCtx.Err(); err != nil {
+			return err
+		}
+		if current == nil || current.Status == IntentStatusCommitting {
+			return s.recordAfterIntentClosed(event)
+		}
+		err := s.store.MarkIntentObserved(s.appCtx, current.ID, event.Operation, event.ContentHash, string(event.SpecJSON))
+		if err == nil {
+			return nil
+		}
+		if errors.Is(err, ErrVersionIntentNotFound) || errors.Is(err, ErrVersionIntentNotOpen) {
+			return s.recordAfterIntentClosed(event)
+		}
+		if !errors.Is(err, ErrVersionIntentConflict) {
+			return err
+		}
+		refreshed, refreshErr := s.store.OpenIntent(event.Parent.Kind, event.Parent.ResourceKey)
+		if refreshErr != nil {
+			return refreshErr
+		}
+		if refreshed != nil && intentMatchesEvent(refreshed, event) {
+			logger.Infof("skipping admin echo rule event for %s after intent refresh; rule version intent %d is open", event.Parent.ResourceKey, refreshed.ID)
+			return nil
+		}
+		current = refreshed
+	}
+	return s.recordAfterIntentClosed(event)
+}
+
+func (s *Subscriber) recordAfterIntentClosed(event normalizedRuleEvent) error {
+	if s.lockMgr == nil {
+		return lock.ErrLockUnavailable
+	}
+	if s.appCtx == nil {
+		return context.Canceled
+	}
+	return withRuleVersionLock(s.appCtx, s.lockMgr, event.Parent.Kind, event.Parent.ResourceKey, func(leaseCtx context.Context) error {
+		for attempt := 0; attempt < maxIntentCASRetries; attempt++ {
+			if err := lock.CheckLease(leaseCtx); err != nil {
+				return err
+			}
+			openIntent, err := s.store.OpenIntent(event.Parent.Kind, event.Parent.ResourceKey)
+			if err != nil {
+				return err
+			}
+			if openIntent == nil || openIntent.Status == IntentStatusCommitting {
+				return s.recordVersion(leaseCtx, event)
+			}
+			if intentMatchesEvent(openIntent, event) {
+				logger.Infof("skipping admin echo rule event for %s after lock reacquire; rule version intent %d is open", event.Parent.ResourceKey, openIntent.ID)
+				return nil
+			}
+			err = s.store.MarkIntentObserved(leaseCtx, openIntent.ID, event.Operation, event.ContentHash, string(event.SpecJSON))
+			if err == nil {
+				return nil
+			}
+			if errors.Is(err, ErrVersionIntentNotFound) || errors.Is(err, ErrVersionIntentNotOpen) {
+				continue
+			}
+			if errors.Is(err, ErrVersionIntentConflict) {
+				continue
+			}
+			return err
+		}
+		return s.recordVersion(leaseCtx, event)
+	})
 }
 
 func intentMatchesEvent(intent *Intent, event normalizedRuleEvent) bool {

@@ -98,6 +98,9 @@ func (c *component) Init(ctx runtime.BuilderContext) error {
 	}
 
 	store := NewResourceStoreAdapter(rvStore, intentStore)
+	if err := store.ensureStores(); err != nil {
+		return err
+	}
 	lockComponent, err := ctx.GetActivatedComponent(lock.DistributedLockComponent)
 	if err != nil {
 		return fmt.Errorf("rule versioning requires a lock component: %w", err)

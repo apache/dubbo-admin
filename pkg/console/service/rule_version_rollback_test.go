@@ -210,6 +210,18 @@ func (s *failingResourceStore) Update(obj interface{}) error {
 	return s.ResourceStore.Update(obj)
 }
 
+func (s *failingResourceStore) UpdateIfUnchanged(expected coremodel.Resource, updated coremodel.Resource) (bool, error) {
+	if s.failNextUpdate {
+		s.failNextUpdate = false
+		return false, s.err
+	}
+	cas, ok := s.ResourceStore.(store.ConditionalResourceStore)
+	if !ok {
+		return false, fmt.Errorf("wrapped store does not support conditional updates")
+	}
+	return cas.UpdateIfUnchanged(expected, updated)
+}
+
 func (s *failingResourceStore) Delete(obj interface{}) error {
 	if s.failNextDelete {
 		s.failNextDelete = false

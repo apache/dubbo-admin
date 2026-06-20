@@ -30,6 +30,7 @@ var _ Store = &ResourceStoreAdapter{}
 
 const parentLockStripes = 256
 const maxIDGenerateAttempts = 16
+const maxIntentCASRetries = 8
 
 // ResourceStoreAdapter routes RuleVersion and RuleIntent resources through the
 // existing resource store. Callers that mutate a parent rule must hold the
@@ -53,6 +54,9 @@ func NewResourceStoreAdapter(versionStore, intentStore store.ResourceStore) *Res
 func (a *ResourceStoreAdapter) ensureStores() error {
 	if a == nil || a.versionStore == nil || a.intentStore == nil {
 		return fmt.Errorf("%w: RuleVersion and RuleIntent stores are required", ErrVersionLedgerCorrupt)
+	}
+	if _, ok := a.intentStore.(store.ConditionalResourceStore); !ok {
+		return fmt.Errorf("%w: RuleIntent store must support conditional updates", ErrVersionLedgerCorrupt)
 	}
 	return nil
 }

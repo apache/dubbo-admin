@@ -43,6 +43,13 @@ type ResourceStore interface {
 	PageListByIndexes(indexes []index.IndexCondition, pq model.PageReq) (*model.PageData[model.Resource], error)
 }
 
+// ConditionalResourceStore is a narrow compare-and-swap extension used by
+// RuleIntent recovery records. The expected and updated resources must have the
+// same key; false means another writer changed or removed the resource.
+type ConditionalResourceStore interface {
+	UpdateIfUnchanged(expected model.Resource, updated model.Resource) (bool, error)
+}
+
 // ManagedResourceStore includes both functional interfaces and lifecycle interfaces
 // If there is a new type of ResourceStore, it should implement this interface
 type ManagedResourceStore interface {
