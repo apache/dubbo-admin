@@ -38,10 +38,10 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// RuleIntent records recovery state for a rule mutation before the resource
+// RuleIntent records recovery state for a rule mutation before the registry
 // write. COMMITTED and FAILED are usually short-lived because the intent is
 // cleaned up immediately after the terminal status is written. RuleVersion is
-// the durable audit record.
+// the durable version record.
 type RuleIntent struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Parent rule identification
@@ -60,13 +60,21 @@ type RuleIntent struct {
 	RolledBackFromId int64 `protobuf:"varint,11,opt,name=rolled_back_from_id,json=rolledBackFromId,proto3" json:"rolled_back_from_id,omitempty"`
 	// Intent lifecycle. Terminal statuses can remain only when cleanup fails; on
 	// restart, repair reconciles open intents from observed resource state.
-	Status        string                 `protobuf:"bytes,12,opt,name=status,proto3" json:"status,omitempty"`                                    // PENDING, APPLIED, FAILED, COMMITTED
+	Status        string                 `protobuf:"bytes,12,opt,name=status,proto3" json:"status,omitempty"`                                    // PENDING, APPLIED, OUTCOME_UNKNOWN, FAILED, COMMITTED
 	FailureReason string                 `protobuf:"bytes,13,opt,name=failure_reason,json=failureReason,proto3" json:"failure_reason,omitempty"` // Error message if status=FAILED
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	AppliedAt     *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=applied_at,json=appliedAt,proto3" json:"applied_at,omitempty"`
 	CommittedAt   *timestamppb.Timestamp `protobuf:"bytes,16,opt,name=committed_at,json=committedAt,proto3" json:"committed_at,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Durable reconcile marker written when a non-matching subscriber event is
+	// observed while the intent is open. The marker prevents intent cleanup from
+	// committing an older snapshot after a real upstream change has arrived.
+	ReconcileRequired   bool                   `protobuf:"varint,17,opt,name=reconcile_required,json=reconcileRequired,proto3" json:"reconcile_required,omitempty"`
+	ObservedContentHash string                 `protobuf:"bytes,18,opt,name=observed_content_hash,json=observedContentHash,proto3" json:"observed_content_hash,omitempty"`
+	ObservedSpecJson    string                 `protobuf:"bytes,19,opt,name=observed_spec_json,json=observedSpecJson,proto3" json:"observed_spec_json,omitempty"`
+	ObservedOperation   string                 `protobuf:"bytes,20,opt,name=observed_operation,json=observedOperation,proto3" json:"observed_operation,omitempty"`
+	ObservedAt          *timestamppb.Timestamp `protobuf:"bytes,21,opt,name=observed_at,json=observedAt,proto3" json:"observed_at,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *RuleIntent) Reset() {
@@ -204,98 +212,37 @@ func (x *RuleIntent) GetCommittedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-// RuleMeta tracks the current committed version for a rule. Rollback advances
-// current_version_id to the new rollback version, not to rolled_back_from_id.
-type RuleMeta struct {
-	state protoimpl.MessageState `protogen:"open.v1"`
-	// Parent rule identification
-	ParentRuleKind string `protobuf:"bytes,1,opt,name=parent_rule_kind,json=parentRuleKind,proto3" json:"parent_rule_kind,omitempty"`
-	ParentRuleMesh string `protobuf:"bytes,2,opt,name=parent_rule_mesh,json=parentRuleMesh,proto3" json:"parent_rule_mesh,omitempty"`
-	ParentRuleName string `protobuf:"bytes,3,opt,name=parent_rule_name,json=parentRuleName,proto3" json:"parent_rule_name,omitempty"`
-	// Current state
-	CurrentVersionId   int64                  `protobuf:"varint,4,opt,name=current_version_id,json=currentVersionId,proto3" json:"current_version_id,omitempty"`      // ID of the current committed version
-	CurrentVersionNo   int64                  `protobuf:"varint,5,opt,name=current_version_no,json=currentVersionNo,proto3" json:"current_version_no,omitempty"`      // Version number of current version
-	CurrentContentHash string                 `protobuf:"bytes,6,opt,name=current_content_hash,json=currentContentHash,proto3" json:"current_content_hash,omitempty"` // Hash of current spec
-	UpdatedAt          *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
-}
-
-func (x *RuleMeta) Reset() {
-	*x = RuleMeta{}
-	mi := &file_api_mesh_v1alpha1_rule_intent_proto_msgTypes[1]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *RuleMeta) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RuleMeta) ProtoMessage() {}
-
-func (x *RuleMeta) ProtoReflect() protoreflect.Message {
-	mi := &file_api_mesh_v1alpha1_rule_intent_proto_msgTypes[1]
+func (x *RuleIntent) GetReconcileRequired() bool {
 	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
+		return x.ReconcileRequired
 	}
-	return mi.MessageOf(x)
+	return false
 }
 
-// Deprecated: Use RuleMeta.ProtoReflect.Descriptor instead.
-func (*RuleMeta) Descriptor() ([]byte, []int) {
-	return file_api_mesh_v1alpha1_rule_intent_proto_rawDescGZIP(), []int{1}
-}
-
-func (x *RuleMeta) GetParentRuleKind() string {
+func (x *RuleIntent) GetObservedContentHash() string {
 	if x != nil {
-		return x.ParentRuleKind
+		return x.ObservedContentHash
 	}
 	return ""
 }
 
-func (x *RuleMeta) GetParentRuleMesh() string {
+func (x *RuleIntent) GetObservedSpecJson() string {
 	if x != nil {
-		return x.ParentRuleMesh
+		return x.ObservedSpecJson
 	}
 	return ""
 }
 
-func (x *RuleMeta) GetParentRuleName() string {
+func (x *RuleIntent) GetObservedOperation() string {
 	if x != nil {
-		return x.ParentRuleName
+		return x.ObservedOperation
 	}
 	return ""
 }
 
-func (x *RuleMeta) GetCurrentVersionId() int64 {
+func (x *RuleIntent) GetObservedAt() *timestamppb.Timestamp {
 	if x != nil {
-		return x.CurrentVersionId
-	}
-	return 0
-}
-
-func (x *RuleMeta) GetCurrentVersionNo() int64 {
-	if x != nil {
-		return x.CurrentVersionNo
-	}
-	return 0
-}
-
-func (x *RuleMeta) GetCurrentContentHash() string {
-	if x != nil {
-		return x.CurrentContentHash
-	}
-	return ""
-}
-
-func (x *RuleMeta) GetUpdatedAt() *timestamppb.Timestamp {
-	if x != nil {
-		return x.UpdatedAt
+		return x.ObservedAt
 	}
 	return nil
 }
@@ -304,7 +251,7 @@ var File_api_mesh_v1alpha1_rule_intent_proto protoreflect.FileDescriptor
 
 const file_api_mesh_v1alpha1_rule_intent_proto_rawDesc = "" +
 	"\n" +
-	"#api/mesh/v1alpha1/rule_intent.proto\x12\x13dubbo.mesh.v1alpha1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe5\x04\n" +
+	"#api/mesh/v1alpha1/rule_intent.proto\x12\x13dubbo.mesh.v1alpha1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe2\x06\n" +
 	"\n" +
 	"RuleIntent\x12(\n" +
 	"\x10parent_rule_kind\x18\x01 \x01(\tR\x0eparentRuleKind\x12(\n" +
@@ -324,17 +271,14 @@ const file_api_mesh_v1alpha1_rule_intent_proto_rawDesc = "" +
 	"created_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
 	"applied_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tappliedAt\x12=\n" +
-	"\fcommitted_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\vcommittedAtJ\x04\b\x04\x10\x05R\n" +
-	"version_no\"\xd1\x02\n" +
-	"\bRuleMeta\x12(\n" +
-	"\x10parent_rule_kind\x18\x01 \x01(\tR\x0eparentRuleKind\x12(\n" +
-	"\x10parent_rule_mesh\x18\x02 \x01(\tR\x0eparentRuleMesh\x12(\n" +
-	"\x10parent_rule_name\x18\x03 \x01(\tR\x0eparentRuleName\x12,\n" +
-	"\x12current_version_id\x18\x04 \x01(\x03R\x10currentVersionId\x12,\n" +
-	"\x12current_version_no\x18\x05 \x01(\x03R\x10currentVersionNo\x120\n" +
-	"\x14current_content_hash\x18\x06 \x01(\tR\x12currentContentHash\x129\n" +
-	"\n" +
-	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAtB1Z/github.com/apache/dubbo-admin/api/mesh/v1alpha1b\x06proto3"
+	"\fcommitted_at\x18\x10 \x01(\v2\x1a.google.protobuf.TimestampR\vcommittedAt\x12-\n" +
+	"\x12reconcile_required\x18\x11 \x01(\bR\x11reconcileRequired\x122\n" +
+	"\x15observed_content_hash\x18\x12 \x01(\tR\x13observedContentHash\x12,\n" +
+	"\x12observed_spec_json\x18\x13 \x01(\tR\x10observedSpecJson\x12-\n" +
+	"\x12observed_operation\x18\x14 \x01(\tR\x11observedOperation\x12;\n" +
+	"\vobserved_at\x18\x15 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"observedAtJ\x04\b\x04\x10\x05R\n" +
+	"version_noB1Z/github.com/apache/dubbo-admin/api/mesh/v1alpha1b\x06proto3"
 
 var (
 	file_api_mesh_v1alpha1_rule_intent_proto_rawDescOnce sync.Once
@@ -348,17 +292,16 @@ func file_api_mesh_v1alpha1_rule_intent_proto_rawDescGZIP() []byte {
 	return file_api_mesh_v1alpha1_rule_intent_proto_rawDescData
 }
 
-var file_api_mesh_v1alpha1_rule_intent_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_api_mesh_v1alpha1_rule_intent_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_api_mesh_v1alpha1_rule_intent_proto_goTypes = []any{
 	(*RuleIntent)(nil),            // 0: dubbo.mesh.v1alpha1.RuleIntent
-	(*RuleMeta)(nil),              // 1: dubbo.mesh.v1alpha1.RuleMeta
-	(*timestamppb.Timestamp)(nil), // 2: google.protobuf.Timestamp
+	(*timestamppb.Timestamp)(nil), // 1: google.protobuf.Timestamp
 }
 var file_api_mesh_v1alpha1_rule_intent_proto_depIdxs = []int32{
-	2, // 0: dubbo.mesh.v1alpha1.RuleIntent.created_at:type_name -> google.protobuf.Timestamp
-	2, // 1: dubbo.mesh.v1alpha1.RuleIntent.applied_at:type_name -> google.protobuf.Timestamp
-	2, // 2: dubbo.mesh.v1alpha1.RuleIntent.committed_at:type_name -> google.protobuf.Timestamp
-	2, // 3: dubbo.mesh.v1alpha1.RuleMeta.updated_at:type_name -> google.protobuf.Timestamp
+	1, // 0: dubbo.mesh.v1alpha1.RuleIntent.created_at:type_name -> google.protobuf.Timestamp
+	1, // 1: dubbo.mesh.v1alpha1.RuleIntent.applied_at:type_name -> google.protobuf.Timestamp
+	1, // 2: dubbo.mesh.v1alpha1.RuleIntent.committed_at:type_name -> google.protobuf.Timestamp
+	1, // 3: dubbo.mesh.v1alpha1.RuleIntent.observed_at:type_name -> google.protobuf.Timestamp
 	4, // [4:4] is the sub-list for method output_type
 	4, // [4:4] is the sub-list for method input_type
 	4, // [4:4] is the sub-list for extension type_name
@@ -377,7 +320,7 @@ func file_api_mesh_v1alpha1_rule_intent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_mesh_v1alpha1_rule_intent_proto_rawDesc), len(file_api_mesh_v1alpha1_rule_intent_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

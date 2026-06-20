@@ -37,6 +37,7 @@ type Subscriber struct {
 	store       Store
 	maxVersions int64
 	lockMgr     lock.Lock
+	appCtx      context.Context
 }
 
 type ParentRef struct {
@@ -55,15 +56,13 @@ type normalizedRuleEvent struct {
 	Context     map[string]string
 }
 
-func NewSubscriber(kind coremodel.ResourceKind, store Store, maxVersions int64, lockMgr lock.Lock) *Subscriber {
-	if lockMgr == nil {
-		panic("rule version subscriber requires lock manager")
-	}
+func NewSubscriber(kind coremodel.ResourceKind, store Store, maxVersions int64, lockMgr lock.Lock, appCtx context.Context) *Subscriber {
 	return &Subscriber{
 		kind:        kind,
 		store:       store,
 		maxVersions: maxVersions,
 		lockMgr:     lockMgr,
+		appCtx:      appCtx,
 	}
 }
 
@@ -137,14 +136,15 @@ func (s *Subscriber) ProcessEvent(event events.Event) error {
 		return err
 	}
 	if openIntent != nil {
-		if intentMatchesEvent(openIntent, *normalized) {
-			logger.Infof("skipping admin echo rule event for %s while rule version intent %d is open", normalized.Parent.ResourceKey, openIntent.ID)
-			return nil
-		}
-		logger.Infof("deferring non-matching rule event for %s while rule version intent %d is open; intent close will reconcile actual state", normalized.Parent.ResourceKey, openIntent.ID)
-		return nil
+		return s.handleOpenIntentEvent(openIntent, *normalized)
 	}
-	return withRuleVersionLock(context.Background(), s.lockMgr, normalized.Parent.Kind, normalized.Parent.ResourceKey, func(leaseCtx context.Context) error {
+	if s.lockMgr == nil {
+		return lock.ErrLockUnavailable
+	}
+	if s.appCtx == nil {
+		return context.Canceled
+	}
+	return withRuleVersionLock(s.appCtx, s.lockMgr, normalized.Parent.Kind, normalized.Parent.ResourceKey, func(leaseCtx context.Context) error {
 		return s.record(leaseCtx, *normalized)
 	})
 }
@@ -153,23 +153,12 @@ func (s *Subscriber) record(ctx context.Context, event normalizedRuleEvent) erro
 	if err := lock.CheckLease(ctx); err != nil {
 		return err
 	}
-	if _, err := s.store.ReconcileMeta(ctx, event.Parent.Kind, event.Parent.ResourceKey); err != nil {
-		return err
-	}
-	if err := lock.CheckLease(ctx); err != nil {
-		return err
-	}
 	openIntent, err := s.store.OpenIntent(event.Parent.Kind, event.Parent.ResourceKey)
 	if err != nil {
 		return err
 	}
 	if openIntent != nil {
-		if intentMatchesEvent(openIntent, event) {
-			logger.Infof("skipping admin echo rule event for %s while rule version intent %d is open", event.Parent.ResourceKey, openIntent.ID)
-			return nil
-		}
-		logger.Infof("deferring non-matching rule event for %s while rule version intent %d is open; intent close will reconcile actual state", event.Parent.ResourceKey, openIntent.ID)
-		return nil
+		return s.handleOpenIntentEvent(openIntent, event)
 	}
 
 	source := SourceUpstream
@@ -208,11 +197,16 @@ func (s *Subscriber) record(ctx context.Context, event normalizedRuleEvent) erro
 		return fmt.Errorf("failed to insert version: %w", err)
 	}
 
-	// InsertVersion reconciles RuleMeta as a cached projection, derives the next
-	// version number from the ledger's maximum version, creates the RuleVersion,
-	// updates RuleMeta, and applies retention cleanup.
-
 	return nil
+}
+
+func (s *Subscriber) handleOpenIntentEvent(openIntent *Intent, event normalizedRuleEvent) error {
+	if intentMatchesEvent(openIntent, event) {
+		logger.Infof("skipping admin echo rule event for %s while rule version intent %d is open", event.Parent.ResourceKey, openIntent.ID)
+		return nil
+	}
+	logger.Infof("recording non-matching rule event for %s while rule version intent %d is open; intent close will reconcile actual state", event.Parent.ResourceKey, openIntent.ID)
+	return s.store.MarkIntentObserved(nil, openIntent.ID, event.Operation, event.ContentHash, string(event.SpecJSON))
 }
 
 func intentMatchesEvent(intent *Intent, event normalizedRuleEvent) bool {
@@ -244,9 +238,6 @@ func (s *Subscriber) checkDuplicate(kind coremodel.ResourceKind, resourceKey str
 // recordBootstrapState creates a baseline version for a rule during bootstrap.
 func recordBootstrapState(ctx context.Context, store Store, maxVersions int64, res coremodel.Resource) error {
 	kind := res.ResourceKind()
-	if _, err := store.ReconcileMeta(ctx, kind, res.ResourceKey()); err != nil {
-		return err
-	}
 	versions, err := store.ListVersions(kind, res.ResourceKey())
 	if err != nil {
 		return err

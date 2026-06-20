@@ -31,25 +31,55 @@ var _ Store = &ResourceStoreAdapter{}
 const parentLockStripes = 256
 const maxIDGenerateAttempts = 16
 
-// ResourceStoreAdapter routes RuleVersion, RuleIntent, and RuleMeta resources
-// through the existing resource store. Callers that mutate a parent rule must
-// hold the canonical per-rule lock; the striped mutexes only keep a single
-// adapter instance internally consistent while it rebuilds Meta from the ledger.
+// ResourceStoreAdapter routes RuleVersion and RuleIntent resources through the
+// existing resource store. Callers that mutate a parent rule must hold the
+// canonical per-rule lock; the striped mutexes only keep a single adapter
+// instance internally consistent while it derives state from the ledger.
 type ResourceStoreAdapter struct {
 	versionStore store.ResourceStore
 	intentStore  store.ResourceStore
-	metaStore    store.ResourceStore
 	idGenerator  idGenerator
 	parentLocks  [parentLockStripes]sync.Mutex
 }
 
-func NewResourceStoreAdapter(versionStore, intentStore, metaStore store.ResourceStore) *ResourceStoreAdapter {
+func NewResourceStoreAdapter(versionStore, intentStore store.ResourceStore) *ResourceStoreAdapter {
 	return &ResourceStoreAdapter{
 		versionStore: versionStore,
 		intentStore:  intentStore,
-		metaStore:    metaStore,
 		idGenerator:  NewIDGenerator(),
 	}
+}
+
+func (a *ResourceStoreAdapter) CheckExpectedVersion(kind coremodel.ResourceKind, resourceKey string, expected *int64) error {
+	if expected == nil {
+		return nil
+	}
+	snapshot, err := a.LedgerSnapshot(kind, resourceKey)
+	if err != nil {
+		return err
+	}
+	if snapshot.Head == nil || snapshot.Deleted {
+		if *expected == 0 {
+			return nil
+		}
+		return &ConflictError{CurrentVersionID: nil}
+	}
+	currentID := snapshot.Head.ID
+	if *expected != currentID {
+		return &ConflictError{CurrentVersionID: &currentID}
+	}
+	return nil
+}
+
+func (a *ResourceStoreAdapter) LatestVersion(kind coremodel.ResourceKind, resourceKey string) (*Version, error) {
+	snapshot, err := a.LedgerSnapshot(kind, resourceKey)
+	if err != nil {
+		return nil, err
+	}
+	if snapshot.Head == nil {
+		return nil, ErrVersionNotFound
+	}
+	return snapshot.Head, nil
 }
 
 func (a *ResourceStoreAdapter) withParentLock(kind coremodel.ResourceKind, resourceKey string, fn func() error) error {

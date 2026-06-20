@@ -163,9 +163,9 @@ func parseExpectedVersionID(c *gin.Context) (*int64, bool) {
 	if raw == "" {
 		return nil, true
 	}
-	id, err := strconv.ParseInt(raw, 10, 64)
+	id, err := parseProtocolInt64(raw, true)
 	if err != nil {
-		writeVersioningInvalidArgument(c, "expectedVersionId must be an integer")
+		writeVersioningInvalidArgument(c, "expectedVersionId must be omitted, \"0\", or a positive decimal string")
 		return nil, false
 	}
 	return &id, true
@@ -184,14 +184,16 @@ func parseJSONInt64(c *gin.Context, raw json.RawMessage, field string) (*int64, 
 		}
 		value = strings.TrimSpace(value)
 	} else {
-		value = trimmed
+		writeVersioningInvalidArgument(c, fmt.Sprintf("%s must be a decimal string", field))
+		return nil, false
 	}
 	if value == "" {
-		return nil, true
+		writeVersioningInvalidArgument(c, fmt.Sprintf("%s must not be empty", field))
+		return nil, false
 	}
-	id, err := strconv.ParseInt(value, 10, 64)
+	id, err := parseProtocolInt64(value, true)
 	if err != nil {
-		writeVersioningInvalidArgument(c, fmt.Sprintf("%s must be an integer", field))
+		writeVersioningInvalidArgument(c, fmt.Sprintf("%s must be omitted, \"0\", or a positive decimal string", field))
 		return nil, false
 	}
 	return &id, true
@@ -206,21 +208,46 @@ func mutationOptions(c *gin.Context) (service.RuleMutationOptions, bool) {
 }
 
 func parseVersionID(c *gin.Context) (int64, bool) {
-	id, err := strconv.ParseInt(c.Param("versionId"), 10, 64)
+	id, err := parseProtocolInt64(c.Param("versionId"), false)
 	if err != nil {
-		writeVersioningInvalidArgument(c, "versionId must be an integer")
+		writeVersioningInvalidArgument(c, "versionId must be a positive decimal string")
 		return 0, false
 	}
 	return id, true
 }
 
 func parseIntentID(c *gin.Context) (int64, bool) {
-	id, err := strconv.ParseInt(c.Param("intentId"), 10, 64)
+	id, err := parseProtocolInt64(c.Param("intentId"), false)
 	if err != nil {
-		writeVersioningInvalidArgument(c, "intentId must be an integer")
+		writeVersioningInvalidArgument(c, "intentId must be a positive decimal string")
 		return 0, false
 	}
 	return id, true
+}
+
+func parseProtocolInt64(raw string, allowZero bool) (int64, error) {
+	if raw == "" {
+		return 0, fmt.Errorf("empty id")
+	}
+	for i := range raw {
+		if raw[i] < '0' || raw[i] > '9' {
+			return 0, fmt.Errorf("invalid decimal id")
+		}
+	}
+	if len(raw) > 1 && raw[0] == '0' {
+		return 0, fmt.Errorf("invalid leading zero")
+	}
+	id, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	if id == 0 && allowZero {
+		return id, nil
+	}
+	if id <= 0 {
+		return 0, fmt.Errorf("id must be positive")
+	}
+	return id, nil
 }
 
 func currentUser(c *gin.Context) string {
@@ -232,12 +259,12 @@ func currentUser(c *gin.Context) string {
 }
 
 func ensureVersioningEnabled(c *gin.Context, cs consolectx.Context) bool {
-	if cs.RuleVersioning() != nil && cs.Config().RuleVersioning != nil && cs.Config().RuleVersioning.Enabled {
+	if cs.RuleVersioning() != nil {
 		return true
 	}
 	c.JSON(http.StatusServiceUnavailable, &model.CommonResp{
-		Code:    "FEATURE_DISABLED",
-		Message: versioning.ErrFeatureDisabled.Error(),
+		Code:    "VERSION_LEDGER_UNAVAILABLE",
+		Message: "rule versioning service is unavailable",
 	})
 	return false
 }
@@ -251,7 +278,7 @@ func writeVersioningResp(c *gin.Context, data any, err error) {
 	var pending *versioning.IntentPendingError
 	var bizErr bizerror.Error
 	// Versioning callers need status codes to distinguish validation failures,
-	// weak-CAS conflicts, pending ledgers, and disabled versioning.
+	// weak-CAS conflicts, pending ledgers, and backend failures.
 	switch {
 	case errors.As(err, &conflict):
 		// Conflict and pending responses intentionally use flat fields because
@@ -277,8 +304,6 @@ func writeVersioningResp(c *gin.Context, data any, err error) {
 			"code":    "VERSION_LEDGER_OUTCOME_MISMATCH",
 			"message": err.Error(),
 		})
-	case errors.Is(err, versioning.ErrFeatureDisabled):
-		c.JSON(http.StatusServiceUnavailable, gin.H{"code": "FEATURE_DISABLED", "message": err.Error()})
 	case errors.Is(err, versioning.ErrVersionNotFound), errors.Is(err, versioning.ErrVersionIntentNotFound):
 		c.JSON(http.StatusNotFound, model.NewBizErrorResp(bizerror.New(bizerror.NotFoundError, err.Error())))
 	case errors.Is(err, versioning.ErrRollbackToDelete), errors.Is(err, versioning.ErrRollbackToCurrent), errors.Is(err, versioning.ErrVersionIntentNotOpen):
@@ -442,7 +467,7 @@ func writeVersioningMutationError(c *gin.Context, err error) bool {
 	var conflict *versioning.ConflictError
 	var pending *versioning.IntentPendingError
 	if errors.As(err, &conflict) || errors.As(err, &pending) ||
-		errors.Is(err, versioning.ErrVersionIntentPending) || errors.Is(err, versioning.ErrFeatureDisabled) {
+		errors.Is(err, versioning.ErrVersionIntentPending) {
 		writeVersioningResp(c, nil, err)
 		return true
 	}

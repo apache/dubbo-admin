@@ -23,10 +23,10 @@ option go_package = "github.com/apache/dubbo-admin/api/mesh/v1alpha1";
 
 import "google/protobuf/timestamp.proto";
 
-// RuleIntent records recovery state for a rule mutation before the resource
+// RuleIntent records recovery state for a rule mutation before the registry
 // write. COMMITTED and FAILED are usually short-lived because the intent is
 // cleaned up immediately after the terminal status is written. RuleVersion is
-// the durable audit record.
+// the durable version record.
 message RuleIntent {
   reserved 4;
   reserved "version_no";
@@ -50,24 +50,18 @@ message RuleIntent {
 
   // Intent lifecycle. Terminal statuses can remain only when cleanup fails; on
   // restart, repair reconciles open intents from observed resource state.
-  string status = 12;              // PENDING, APPLIED, FAILED, COMMITTED
+  string status = 12;              // PENDING, APPLIED, OUTCOME_UNKNOWN, FAILED, COMMITTED
   string failure_reason = 13;      // Error message if status=FAILED
   google.protobuf.Timestamp created_at = 14;
   google.protobuf.Timestamp applied_at = 15;
   google.protobuf.Timestamp committed_at = 16;
-}
 
-// RuleMeta tracks the current committed version for a rule. Rollback advances
-// current_version_id to the new rollback version, not to rolled_back_from_id.
-message RuleMeta {
-  // Parent rule identification
-  string parent_rule_kind = 1;
-  string parent_rule_mesh = 2;
-  string parent_rule_name = 3;
-
-  // Current state
-  int64 current_version_id = 4;    // ID of the current committed version
-  int64 current_version_no = 5;    // Version number of current version
-  string current_content_hash = 6; // Hash of current spec
-  google.protobuf.Timestamp updated_at = 7;
+  // Durable reconcile marker written when a non-matching subscriber event is
+  // observed while the intent is open. The marker prevents intent cleanup from
+  // committing an older snapshot after a real upstream change has arrived.
+  bool reconcile_required = 17;
+  string observed_content_hash = 18;
+  string observed_spec_json = 19;
+  string observed_operation = 20;
+  google.protobuf.Timestamp observed_at = 21;
 }

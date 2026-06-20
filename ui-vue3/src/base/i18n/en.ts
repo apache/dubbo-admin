@@ -570,7 +570,6 @@ const words: I18nType = {
       'This rule has an unfinished version intent. Reload before submitting again.',
     ledgerPendingWithIntent:
       'This rule has unfinished version intent #{intentId}. Repair or abandon it before submitting.',
-    disabled: 'Versioning is not enabled',
     empty: 'No version records',
     view: 'View',
     diffCurrent: 'Diff current',

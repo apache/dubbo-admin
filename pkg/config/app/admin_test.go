@@ -33,38 +33,22 @@ func TestAdminConfigVersioningDefaultsWhenMissing(t *testing.T) {
 		cfg.Sanitize()
 	})
 	require.NotNil(t, cfg.RuleVersioning)
-	require.True(t, cfg.RuleVersioning.Enabled)
 	require.Equal(t, versioning.DefaultMaxVersionsPerRule, cfg.RuleVersioning.MaxVersionsPerRule)
 
 	cfg.RuleVersioning = nil
 	require.NoError(t, cfg.PreProcess())
 	require.NotNil(t, cfg.RuleVersioning)
-	require.True(t, cfg.RuleVersioning.Enabled)
 
 	cfg.RuleVersioning = nil
 	require.NoError(t, cfg.PostProcess())
 	require.NotNil(t, cfg.RuleVersioning)
-	require.True(t, cfg.RuleVersioning.Enabled)
 }
 
-func TestAdminConfigExplicitVersioningDisable(t *testing.T) {
+func TestAdminConfigVersioningRetentionOverride(t *testing.T) {
 	cfg := DefaultAdminConfig()
-	require.True(t, cfg.RuleVersioning.Enabled)
 
-	require.NoError(t, yaml.Unmarshal([]byte("ruleVersioning:\n  enabled: false\n"), &cfg))
+	require.NoError(t, yaml.Unmarshal([]byte("ruleVersioning:\n  maxVersionsPerRule: 99\n"), &cfg))
 
 	require.NotNil(t, cfg.RuleVersioning)
-	require.False(t, cfg.RuleVersioning.Enabled)
-	require.Equal(t, versioning.DefaultMaxVersionsPerRule, cfg.RuleVersioning.MaxVersionsPerRule)
-}
-
-func TestAdminConfigExplicitVersioningEnable(t *testing.T) {
-	cfg := DefaultAdminConfig()
-	require.True(t, cfg.RuleVersioning.Enabled)
-
-	require.NoError(t, yaml.Unmarshal([]byte("ruleVersioning:\n  enabled: true\n"), &cfg))
-
-	require.NotNil(t, cfg.RuleVersioning)
-	require.True(t, cfg.RuleVersioning.Enabled)
-	require.Equal(t, versioning.DefaultMaxVersionsPerRule, cfg.RuleVersioning.MaxVersionsPerRule)
+	require.Equal(t, int64(99), cfg.RuleVersioning.MaxVersionsPerRule)
 }

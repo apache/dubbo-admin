@@ -34,22 +34,20 @@ import (
 // Service provides rule versioning functionality.
 // Use NewService to create an instance.
 type Service struct {
-	enabled     bool
 	maxVersions int64
 	store       Store
 }
 
-func NewService(enabled bool, maxVersions int64, store Store) *Service {
+func NewService(maxVersions int64, store Store) *Service {
 	return &Service{
-		enabled:     enabled,
 		maxVersions: maxVersions,
 		store:       store,
 	}
 }
 
 func (s *Service) ensureEnabled() error {
-	if !s.enabled {
-		return ErrFeatureDisabled
+	if s == nil || s.store == nil {
+		return ErrVersionLedgerCorrupt
 	}
 	return nil
 }
@@ -157,7 +155,7 @@ func (s *Service) CheckExpected(kind coremodel.ResourceKind, mesh, ruleName stri
 	resourceKey := coremodel.BuildResourceKey(mesh, ruleName)
 	// Check for open intents first before checking version mismatch.
 	// Why: If Writer A created an intent at T1, and Writer B checks expected
-	// version at T2 (before A's subscriber commits), the meta pointer still
+	// version at T2 (before A's subscriber commits), the ledger head still
 	// reflects the old version. Without this guard, B would get VersionConflict
 	// instead of IntentPending, masking the real issue (concurrent write).
 	intent, err := s.store.OpenIntent(kind, resourceKey)
@@ -198,6 +196,16 @@ func (s *Service) AbandonIntent(ctx context.Context, intent *Intent, reason stri
 		return bizerror.New(bizerror.InvalidArgument, "rule version intent is required")
 	}
 	return s.store.MarkIntentFailed(ctx, intent.ID, reason)
+}
+
+func (s *Service) MarkIntentOutcomeUnknown(ctx context.Context, intent *Intent, reason string) error {
+	if err := s.ensureEnabled(); err != nil {
+		return err
+	}
+	if intent == nil {
+		return bizerror.New(bizerror.InvalidArgument, "rule version intent is required")
+	}
+	return s.store.MarkIntentOutcomeUnknown(ctx, intent.ID, reason)
 }
 
 // RepairIntent reconciles an open intent when the rule mutation reached
@@ -247,18 +255,6 @@ func (s *Service) FinalizeMutation(ctx context.Context, intent *Intent, current 
 			return nil, fmt.Errorf("%w: %s", ErrVersionIntentNotOpen, fresh.LastError)
 		}
 		return nil, ErrVersionIntentNotOpen
-	}
-	if fresh.Status == IntentStatusPending {
-		if !IntentMatchesResource(fresh, current, deleted) {
-			return nil, &IntentPendingError{IntentID: fresh.ID}
-		}
-		if _, err := lock.RequireLease(ctx); err != nil {
-			return nil, err
-		}
-		if err := s.store.MarkIntentApplied(ctx, fresh.ID); err != nil {
-			return nil, err
-		}
-		fresh.Status = IntentStatusApplied
 	}
 	committed, err := s.repairIntent(ctx, fresh, current, deleted)
 	if err != nil {
@@ -327,24 +323,8 @@ func validateCommittedIntentVersion(version *Version, intent *Intent) (*Version,
 	return version, nil
 }
 
-func (s *Service) ReconcileMeta(ctx context.Context, kind coremodel.ResourceKind, resourceKey string) (*Meta, error) {
-	if err := s.ensureEnabled(); err != nil {
-		return nil, err
-	}
-	if _, err := lock.RequireLease(ctx); err != nil {
-		return nil, err
-	}
-	return s.store.ReconcileMeta(ctx, kind, resourceKey)
-}
-
 func (s *Service) ReconcileActualState(ctx context.Context, kind coremodel.ResourceKind, resourceKey string, current coremodel.Resource, deleted bool, author string) (*Version, error) {
 	if err := s.ensureEnabled(); err != nil {
-		return nil, err
-	}
-	if _, err := lock.RequireLease(ctx); err != nil {
-		return nil, err
-	}
-	if _, err := s.store.ReconcileMeta(ctx, kind, resourceKey); err != nil {
 		return nil, err
 	}
 	if _, err := lock.RequireLease(ctx); err != nil {
@@ -445,24 +425,24 @@ func (s *Service) repairIntent(ctx context.Context, intent *Intent, current core
 	if _, err := lock.RequireLease(ctx); err != nil {
 		return nil, err
 	}
-	if intent.Status == IntentStatusCommitted {
+	if intent.Status == IntentStatusCommitted || intent.Status == IntentStatusFailed {
 		return nil, ErrVersionIntentNotOpen
 	}
-	if intent.Status == IntentStatusFailed {
+	if !isOpenIntentStatus(intent.Status) {
 		return nil, ErrVersionIntentNotOpen
-	}
-	if intent.Status != IntentStatusPending && intent.Status != IntentStatusApplied {
-		return nil, ErrVersionIntentNotOpen
-	}
-	if _, err := s.store.ReconcileMeta(ctx, intent.RuleKind, intent.ResourceKey); err != nil {
-		return nil, err
 	}
 	if _, err := lock.RequireLease(ctx); err != nil {
 		return nil, err
 	}
+	if intent.ReconcileRequired {
+		return s.resolveObservedIntent(ctx, intent, current, deleted)
+	}
 	matches := IntentMatchesResource(intent, current, deleted)
-	if intent.Status == IntentStatusPending {
+	if intent.Status == IntentStatusPending || intent.Status == IntentStatusOutcomeUnknown {
 		if !matches {
+			if intent.Status == IntentStatusOutcomeUnknown {
+				return s.failIntentAfterActualReconcile(ctx, intent, current, deleted, "registry mutation outcome did not match intended state")
+			}
 			return nil, &IntentPendingError{IntentID: intent.ID}
 		}
 		if _, err := lock.RequireLease(ctx); err != nil {
@@ -483,6 +463,65 @@ func (s *Service) repairIntent(ctx context.Context, intent *Intent, current core
 		return nil, err
 	}
 	return s.store.CommitIntent(ctx, intent.ID, s.maxVersions)
+}
+
+func (s *Service) resolveObservedIntent(ctx context.Context, intent *Intent, current coremodel.Resource, deleted bool) (*Version, error) {
+	visible, err := observedStateVisible(intent, current, deleted)
+	if err != nil {
+		return nil, err
+	}
+	if !visible {
+		return nil, &IntentPendingError{IntentID: intent.ID}
+	}
+	if IntentMatchesResource(intent, current, deleted) {
+		if intent.Status == IntentStatusPending || intent.Status == IntentStatusOutcomeUnknown {
+			if _, err := lock.RequireLease(ctx); err != nil {
+				return nil, err
+			}
+			if err := s.store.MarkIntentApplied(ctx, intent.ID); err != nil {
+				return nil, err
+			}
+		}
+		if _, err := lock.RequireLease(ctx); err != nil {
+			return nil, err
+		}
+		return s.store.CommitIntent(ctx, intent.ID, s.maxVersions)
+	}
+	return s.failIntentAfterActualReconcile(ctx, intent, current, deleted, "non-matching rule event superseded the open intent")
+}
+
+func (s *Service) failIntentAfterActualReconcile(ctx context.Context, intent *Intent, current coremodel.Resource, deleted bool, reason string) (*Version, error) {
+	if _, err := lock.RequireLease(ctx); err != nil {
+		return nil, err
+	}
+	if _, err := s.ReconcileActualState(ctx, intent.RuleKind, intent.ResourceKey, current, deleted, "system:reconcile"); err != nil {
+		return nil, err
+	}
+	if _, err := lock.RequireLease(ctx); err != nil {
+		return nil, err
+	}
+	if err := s.store.MarkIntentFailed(ctx, intent.ID, reason); err != nil {
+		return nil, err
+	}
+	return nil, ErrIntentOutcomeMismatch
+}
+
+func observedStateVisible(intent *Intent, current coremodel.Resource, deleted bool) (bool, error) {
+	if intent == nil || !intent.ReconcileRequired || intent.ObservedContentHash == "" {
+		return true, nil
+	}
+	op := OperationUpdate
+	hash := HashSpecJSON(DeleteSpecJSON)
+	if deleted || current == nil {
+		op = OperationDelete
+	} else {
+		normalizedHash, _, err := NormalizeResource(current)
+		if err != nil {
+			return false, err
+		}
+		hash = normalizedHash
+	}
+	return op == intent.ObservedOperation && hash == intent.ObservedContentHash, nil
 }
 
 func buildMutationInsertRequest(res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromID *int64, createdAt time.Time) (InsertRequest, error) {

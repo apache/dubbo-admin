@@ -22,7 +22,6 @@
     :items="items"
     :current-version-no="currentVersionNo"
     :loading="loading"
-    :disabled="disabled"
     @view-json="openVersionJson"
     @diff-current="openVersionDiff"
     @rollback="openRollbackConfirm"
@@ -166,7 +165,6 @@ const currentVersionId = ref<string | undefined>(undefined)
 const currentVersionNo = ref<number | undefined>(undefined)
 const currentDeleted = ref(false)
 const loading = ref(false)
-const disabled = ref(false)
 const versionJsonOpen = ref(false)
 const versionJson = ref('')
 const versionDiffOpen = ref(false)
@@ -207,7 +205,6 @@ async function loadHistory() {
   }
 
   loading.value = true
-  disabled.value = false
   try {
     const res = await listRuleVersionsAPI(kind, ruleName)
     if (!isCurrentHistoryRequest(seq, requestSeq, disposed)) {
@@ -224,16 +221,6 @@ async function loadHistory() {
     }
   } catch (e: any) {
     if (!isCurrentHistoryRequest(seq, requestSeq, disposed)) {
-      return
-    }
-    if (e?.code === 'FEATURE_DISABLED') {
-      disabled.value = true
-      items.value = []
-      currentVersionId.value = undefined
-      currentVersionNo.value = undefined
-      currentDeleted.value = false
-      emit('current-version-change', undefined)
-      emit('current-version-no-change', undefined)
       return
     }
     throw e

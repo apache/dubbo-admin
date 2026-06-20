@@ -46,8 +46,8 @@ import (
 )
 
 func TestResourceStoreAdapter_GetIntentUsesIDIndex(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, &noListKeysStore{ResourceStore: intentStore, t: t}, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, &noListKeysStore{ResourceStore: intentStore, t: t})
 
 	intent, err := adapter.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-a"))
 	require.NoError(t, err)
@@ -59,16 +59,16 @@ func TestResourceStoreAdapter_GetIntentUsesIDIndex(t *testing.T) {
 }
 
 func TestResourceStoreAdapter_GetIntentMissing(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 
 	_, err := adapter.GetIntent(404)
 	require.ErrorIs(t, err, ErrVersionIntentNotFound)
 }
 
 func TestResourceStoreAdapter_GetIntentDuplicateIDIndex(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 
 	require.NoError(t, intentStore.Add(testIntentResource("demo-a", 42, IntentStatusPending, "hash-a")))
 	require.NoError(t, intentStore.Add(testIntentResource("demo-b", 42, IntentStatusPending, "hash-b")))
@@ -78,8 +78,8 @@ func TestResourceStoreAdapter_GetIntentDuplicateIDIndex(t *testing.T) {
 }
 
 func TestResourceStoreAdapter_IntentStatusUpdatesUseID(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 
 	intent, err := adapter.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-a"))
 	require.NoError(t, err)
@@ -97,11 +97,9 @@ func TestResourceStoreAdapter_IntentStatusUpdatesUseID(t *testing.T) {
 	_, err = adapter.GetIntent(intent.ID)
 	require.ErrorIs(t, err, ErrVersionIntentNotFound)
 
-	meta, err := adapter.ReconcileMeta(context.Background(), meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
-	require.NoError(t, err)
-	require.NotNil(t, meta)
-	require.NotNil(t, meta.CurrentVersion)
-	assert.Equal(t, intent.ID, *meta.CurrentVersion)
+	snapshot := ledgerSnapshotForTest(t, adapter, meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
+	require.NotNil(t, snapshot.Head)
+	assert.Equal(t, intent.ID, snapshot.Head.ID)
 
 	failedIntent, err := adapter.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-b"))
 	require.NoError(t, err)
@@ -111,11 +109,10 @@ func TestResourceStoreAdapter_IntentStatusUpdatesUseID(t *testing.T) {
 	require.ErrorIs(t, err, ErrVersionIntentNotFound)
 }
 
-func TestResourceStoreAdapter_InsertVersionFixedIDRepairAfterMetaFailure(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	failingMetaStore := &failOnceStore{ResourceStore: metaStore, failNextAdd: true, err: errors.New("meta add failed")}
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, failingMetaStore)
-	svc := NewService(true, 10, adapter)
+func TestResourceStoreAdapter_InsertVersionFixedIDRepairAfterTerminalCleanupFailure(t *testing.T) {
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	svc := NewService(10, adapter)
 
 	res := testConditionRule("demo-rule", "v1")
 	req, err := buildMutationInsertRequest(res, OperationUpdate, SourceAdmin, "admin", "", nil, time.Unix(100, 0))
@@ -125,7 +122,7 @@ func TestResourceStoreAdapter_InsertVersionFixedIDRepairAfterMetaFailure(t *test
 	require.NoError(t, adapter.MarkIntentApplied(context.Background(), intent.ID))
 
 	_, err = adapter.CommitIntent(context.Background(), intent.ID, 10)
-	require.ErrorContains(t, err, "failed to reconcile meta")
+	require.NoError(t, err)
 
 	versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
 	require.NoError(t, err)
@@ -148,18 +145,16 @@ func TestResourceStoreAdapter_InsertVersionFixedIDRepairAfterMetaFailure(t *test
 	require.Len(t, versions, 1)
 	assert.Equal(t, int64(1), versions[0].VersionNo)
 
-	meta, err := adapter.ReconcileMeta(context.Background(), meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
-	require.NoError(t, err)
-	require.NotNil(t, meta)
-	require.NotNil(t, meta.CurrentVersion)
-	assert.Equal(t, intent.ID, *meta.CurrentVersion)
-	assert.Equal(t, int64(1), meta.LastVersionNo)
+	snapshot := ledgerSnapshotForTest(t, adapter, meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
+	require.NotNil(t, snapshot.Head)
+	assert.Equal(t, intent.ID, snapshot.Head.ID)
+	assert.Equal(t, int64(1), snapshot.Head.VersionNo)
 }
 
 func TestResourceStoreAdapter_CommitIntentRetryAfterIntentStatusFailure(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
+	versionStore, intentStore, _ := newVersioningStores(t)
 	failingIntentStore := &failOnceStore{ResourceStore: intentStore, err: errors.New("intent status update failed")}
-	adapter := NewResourceStoreAdapter(versionStore, failingIntentStore, metaStore)
+	adapter := NewResourceStoreAdapter(versionStore, failingIntentStore)
 
 	intent, err := adapter.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-a"))
 	require.NoError(t, err)
@@ -190,9 +185,9 @@ func TestResourceStoreAdapter_CommitIntentRetryAfterIntentStatusFailure(t *testi
 }
 
 func TestService_FinalizeClosedIntentDistinguishesCommittedVersionFromCorruption(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	svc := NewService(true, 10, adapter)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	svc := NewService(10, adapter)
 	res := testConditionRule("demo-rule", "v1")
 	req, err := buildMutationInsertRequest(res, OperationUpdate, SourceAdmin, "admin", "", nil, time.Unix(100, 0))
 	require.NoError(t, err)
@@ -221,23 +216,18 @@ func TestService_FinalizeClosedIntentDistinguishesCommittedVersionFromCorruption
 }
 
 func TestResourceStoreAdapter_FixedVersionRetryKeepsVersionNoAfterRetentionTrim(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 
 	_, err := adapter.InsertVersion(context.Background(), testInsertRequest("demo-rule", "hash-a"), 2)
 	require.NoError(t, err)
 	_, err = adapter.InsertVersion(context.Background(), testInsertRequest("demo-rule", "hash-b"), 2)
 	require.NoError(t, err)
-
-	failingMetaStore := &failOnceStore{ResourceStore: metaStore, failNextUpdate: true, err: errors.New("meta update failed")}
-	adapter = NewResourceStoreAdapter(versionStore, intentStore, failingMetaStore)
+	adapter = NewResourceStoreAdapter(versionStore, intentStore)
 
 	intent, err := adapter.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-c"))
 	require.NoError(t, err)
 	require.NoError(t, adapter.MarkIntentApplied(context.Background(), intent.ID))
-
-	_, err = adapter.CommitIntent(context.Background(), intent.ID, 2)
-	require.ErrorContains(t, err, "failed to reconcile meta")
 
 	committed, err := adapter.CommitIntent(context.Background(), intent.ID, 2)
 	require.NoError(t, err)
@@ -251,15 +241,14 @@ func TestResourceStoreAdapter_FixedVersionRetryKeepsVersionNoAfterRetentionTrim(
 	assert.Equal(t, int64(2), versions[1].VersionNo)
 }
 
-func TestSubscriber_ReconcilesMetaAfterVersionAddedAndMetaFailed(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	failingMetaStore := &failOnceStore{ResourceStore: metaStore, failNextAdd: true, err: errors.New("meta add failed")}
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, failingMetaStore)
-	sub := NewSubscriber(meshresource.ConditionRouteKind, adapter, 10, locallock.NewLocalLock())
+func TestSubscriberRecordsLedgerFromResourceSnapshot(t *testing.T) {
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	sub := NewSubscriber(meshresource.ConditionRouteKind, adapter, 10, locallock.NewLocalLock(), context.Background())
 	res := testConditionRule("demo-rule", "v1")
 
 	err := sub.ProcessEvent(events.NewResourceChangedEvent(cache.Added, nil, res))
-	require.ErrorContains(t, err, "failed to reconcile meta")
+	require.NoError(t, err)
 
 	err = sub.ProcessEvent(events.NewResourceChangedEvent(cache.Added, nil, res))
 	require.NoError(t, err)
@@ -267,21 +256,18 @@ func TestSubscriber_ReconcilesMetaAfterVersionAddedAndMetaFailed(t *testing.T) {
 	versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
 	require.NoError(t, err)
 	require.Len(t, versions, 1)
-	meta, err := adapter.ReconcileMeta(context.Background(), meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
-	require.NoError(t, err)
-	require.NotNil(t, meta)
-	require.NotNil(t, meta.CurrentVersion)
-	assert.Equal(t, versions[0].ID, *meta.CurrentVersion)
+	snapshot := ledgerSnapshotForTest(t, adapter, meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
+	require.NotNil(t, snapshot.Head)
+	assert.Equal(t, versions[0].ID, snapshot.Head.ID)
 }
 
-func TestRecordBootstrap_ReconcilesMetaAfterVersionAddedAndMetaFailed(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	failingMetaStore := &failOnceStore{ResourceStore: metaStore, failNextAdd: true, err: errors.New("meta add failed")}
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, failingMetaStore)
+func TestRecordBootstrapRecordsLedgerFromResourceSnapshot(t *testing.T) {
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	res := testConditionRule("demo-rule", "v1")
 
 	err := recordBootstrapState(context.Background(), adapter, 10, res)
-	require.ErrorContains(t, err, "bootstrap version")
+	require.NoError(t, err)
 
 	require.NoError(t, recordBootstrapState(context.Background(), adapter, 10, res))
 	versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
@@ -291,8 +277,8 @@ func TestRecordBootstrap_ReconcilesMetaAfterVersionAddedAndMetaFailed(t *testing
 }
 
 func TestResourceStoreAdapter_DuplicateVersionNoIsCorruption(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	key := coremodel.BuildResourceKey("", "demo-rule")
 	require.NoError(t, versionStore.Add(testVersionResource("demo-rule", 101, 1, "hash-a", OperationUpdate, SourceAdmin)))
 	require.NoError(t, versionStore.Add(testVersionResource("demo-rule", 202, 1, "hash-b", OperationUpdate, SourceAdmin)))
@@ -305,19 +291,16 @@ func TestResourceStoreAdapter_DuplicateVersionNoIsCorruption(t *testing.T) {
 }
 
 func TestResourceStoreAdapter_SharedStoreAdaptersDetectDuplicateVersionNo(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	writerA := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	writerB := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	writerA := NewResourceStoreAdapter(versionStore, intentStore)
+	writerB := NewResourceStoreAdapter(versionStore, intentStore)
 	key := coremodel.BuildResourceKey("", "demo-rule")
 
 	committed, err := writerA.InsertVersion(context.Background(), testInsertRequest("demo-rule", "hash-a"), 10)
 	require.NoError(t, err)
 	require.NoError(t, versionStore.Add(testVersionResource("demo-rule", 999999, committed.VersionNo, "hash-b", OperationUpdate, SourceAdmin)))
 
-	var reconcileErr error
-	require.NotPanics(t, func() {
-		_, reconcileErr = writerB.ReconcileMeta(context.Background(), meshresource.ConditionRouteKind, key)
-	})
+	_, reconcileErr := writerB.LedgerSnapshot(meshresource.ConditionRouteKind, key)
 	require.ErrorIs(t, reconcileErr, ErrVersionLedgerCorrupt)
 	assert.Contains(t, reconcileErr.Error(), "duplicate version number")
 	assert.Contains(t, reconcileErr.Error(), "ConditionRoute")
@@ -329,9 +312,9 @@ func TestResourceStoreAdapter_SharedStoreAdaptersDetectDuplicateVersionNo(t *tes
 }
 
 func TestResourceStoreAdapter_TrimFailureDoesNotFailCommittedVersion(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
+	versionStore, intentStore, _ := newVersioningStores(t)
 	failingVersionStore := &failOnceStore{ResourceStore: versionStore, failNextDelete: true, err: errors.New("delete failed")}
-	adapter := NewResourceStoreAdapter(failingVersionStore, intentStore, metaStore)
+	adapter := NewResourceStoreAdapter(failingVersionStore, intentStore)
 
 	v1, err := adapter.InsertVersion(context.Background(), testInsertRequest("demo-rule", "hash-a"), 10)
 	require.NoError(t, err)
@@ -339,11 +322,9 @@ func TestResourceStoreAdapter_TrimFailureDoesNotFailCommittedVersion(t *testing.
 	require.NoError(t, err)
 	assert.NotEqual(t, v1.ID, v2.ID)
 
-	meta, err := adapter.ReconcileMeta(context.Background(), meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
-	require.NoError(t, err)
-	require.NotNil(t, meta)
-	require.NotNil(t, meta.CurrentVersion)
-	assert.Equal(t, v2.ID, *meta.CurrentVersion)
+	snapshot := ledgerSnapshotForTest(t, adapter, meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
+	require.NotNil(t, snapshot.Head)
+	assert.Equal(t, v2.ID, snapshot.Head.ID)
 
 	versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
 	require.NoError(t, err)
@@ -351,8 +332,8 @@ func TestResourceStoreAdapter_TrimFailureDoesNotFailCommittedVersion(t *testing.
 }
 
 func TestResourceStoreAdapter_CreatedAtAndCommittedAtSemantics(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	req := testInsertRequest("demo-rule", "hash-time")
 	req.CreatedAt = time.Unix(100, 0)
 
@@ -372,8 +353,8 @@ func TestResourceStoreAdapter_CreatedAtAndCommittedAtSemantics(t *testing.T) {
 }
 
 func TestResourceStoreAdapter_NewVersionResourceKeyRejectsDuplicateVersionNo(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	req := testInsertRequest("demo-rule", "hash-a")
 
 	version, err := adapter.InsertVersion(context.Background(), req, 10)
@@ -405,46 +386,30 @@ func TestProtoToVersionMissingCommittedAtFallsBackToCreatedAt(t *testing.T) {
 }
 
 func TestResourceStoreAdapter_ListOpenIntentsUsesStatusIndex(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, &noListKeysStore{ResourceStore: intentStore, t: t}, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, &noListKeysStore{ResourceStore: intentStore, t: t})
 	require.NoError(t, intentStore.Add(testIntentResource("pending", 1, IntentStatusPending, "hash-a")))
 	require.NoError(t, intentStore.Add(testIntentResource("applied", 2, IntentStatusApplied, "hash-b")))
-	require.NoError(t, intentStore.Add(testIntentResource("failed", 3, IntentStatusFailed, "hash-c")))
-	require.NoError(t, intentStore.Add(testIntentResource("committed", 4, IntentStatusCommitted, "hash-d")))
+	require.NoError(t, intentStore.Add(testIntentResource("unknown", 3, IntentStatusOutcomeUnknown, "hash-c")))
+	require.NoError(t, intentStore.Add(testIntentResource("failed", 4, IntentStatusFailed, "hash-d")))
+	require.NoError(t, intentStore.Add(testIntentResource("committed", 5, IntentStatusCommitted, "hash-e")))
 
 	intents, err := adapter.ListOpenIntents()
 	require.NoError(t, err)
-	require.Len(t, intents, 2)
+	require.Len(t, intents, 3)
 	statuses := map[IntentStatus]bool{}
 	for _, intent := range intents {
 		statuses[intent.Status] = true
 	}
 	assert.True(t, statuses[IntentStatusPending])
 	assert.True(t, statuses[IntentStatusApplied])
-}
-
-func TestServiceDisabledMutationsReturnFeatureDisabled(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	svc := NewService(false, 10, adapter)
-	res := testConditionRule("demo-rule", "v1")
-	req := testInsertRequest("demo-rule", "hash-a")
-	intent := &Intent{ID: 1, RuleKind: req.RuleKind, ResourceKey: req.ResourceKey}
-
-	_, err := svc.BeginMutation(context.Background(), res, OperationUpdate, SourceAdmin, "admin", "", nil)
-	require.ErrorIs(t, err, ErrFeatureDisabled)
-	_, err = svc.RepairIntent(context.Background(), req.RuleKind, req.ResourceKey, res, false)
-	require.ErrorIs(t, err, ErrFeatureDisabled)
-	_, err = svc.FinalizeMutation(context.Background(), intent, res, false)
-	require.ErrorIs(t, err, ErrFeatureDisabled)
-	err = svc.AbandonIntent(context.Background(), intent, "operator abort")
-	require.ErrorIs(t, err, ErrFeatureDisabled)
+	assert.True(t, statuses[IntentStatusOutcomeUnknown])
 }
 
 func TestServiceFinalizeMutationRejectsLeaseLostBeforeCommit(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	svc := NewService(true, 10, adapter)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	svc := NewService(10, adapter)
 	res := testConditionRule("demo-rule", "v1")
 	req, err := buildMutationInsertRequest(res, OperationUpdate, SourceAdmin, "admin", "", nil, time.Unix(100, 0))
 	require.NoError(t, err)
@@ -462,9 +427,8 @@ func TestServiceFinalizeMutationRejectsLeaseLostBeforeCommit(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, versions)
 
-	meta, err := adapter.ReconcileMeta(context.Background(), meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
-	require.NoError(t, err)
-	require.Nil(t, meta)
+	snapshot := ledgerSnapshotForTest(t, adapter, meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
+	require.Nil(t, snapshot.Head)
 
 	open, err := adapter.GetIntent(intent.ID)
 	require.NoError(t, err)
@@ -472,10 +436,10 @@ func TestServiceFinalizeMutationRejectsLeaseLostBeforeCommit(t *testing.T) {
 }
 
 func TestServiceFinalizeMutationStopsAfterLeaseLossBeforeLedgerAppend(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	leaseLosingStore := &leaseLosingStore{Store: adapter}
-	svc := NewService(true, 10, leaseLosingStore)
+	svc := NewService(10, leaseLosingStore)
 	res := testConditionRule("demo-rule", "v1")
 	req, err := buildMutationInsertRequest(res, OperationUpdate, SourceAdmin, "admin", "", nil, time.Unix(100, 0))
 	require.NoError(t, err)
@@ -496,9 +460,8 @@ func TestServiceFinalizeMutationStopsAfterLeaseLossBeforeLedgerAppend(t *testing
 	require.NoError(t, err)
 	require.Empty(t, versions)
 
-	meta, err := adapter.ReconcileMeta(context.Background(), meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
-	require.NoError(t, err)
-	require.Nil(t, meta)
+	snapshot := ledgerSnapshotForTest(t, adapter, meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
+	require.Nil(t, snapshot.Head)
 
 	open, err := adapter.GetIntent(intent.ID)
 	require.NoError(t, err)
@@ -506,10 +469,10 @@ func TestServiceFinalizeMutationStopsAfterLeaseLossBeforeLedgerAppend(t *testing
 }
 
 func TestResourceStoreAdapter_CommitIntentSucceedsWhenLeaseLostAfterCommittedStatus(t *testing.T) {
-	baseVersionStore, baseIntentStore, metaStore := newVersioningStores(t)
+	baseVersionStore, baseIntentStore, _ := newVersioningStores(t)
 	versionStore := &hookStore{ResourceStore: baseVersionStore}
 	intentStore := &hookStore{ResourceStore: baseIntentStore}
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	intent, err := adapter.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-a"))
 	require.NoError(t, err)
 	require.NoError(t, adapter.MarkIntentApplied(context.Background(), intent.ID))
@@ -549,20 +512,18 @@ func TestResourceStoreAdapter_CommitIntentSucceedsWhenLeaseLostAfterCommittedSta
 	require.Len(t, versions, 1)
 	assert.Equal(t, committed.ID, versions[0].ID)
 
-	meta, err := adapter.ReconcileMeta(context.Background(), meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
-	require.NoError(t, err)
-	require.NotNil(t, meta)
-	require.NotNil(t, meta.CurrentVersion)
-	assert.Equal(t, committed.ID, *meta.CurrentVersion)
+	snapshot := ledgerSnapshotForTest(t, adapter, meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
+	require.NotNil(t, snapshot.Head)
+	assert.Equal(t, committed.ID, snapshot.Head.ID)
 
 	_, err = adapter.GetIntent(intent.ID)
 	require.ErrorIs(t, err, ErrVersionIntentNotFound)
 }
 
 func TestResourceStoreAdapter_MarkIntentFailedSucceedsWhenLeaseLostAfterFailedStatus(t *testing.T) {
-	versionStore, baseIntentStore, metaStore := newVersioningStores(t)
+	versionStore, baseIntentStore, _ := newVersioningStores(t)
 	intentStore := &hookStore{ResourceStore: baseIntentStore}
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	intent, err := adapter.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-a"))
 	require.NoError(t, err)
 
@@ -586,10 +547,10 @@ func TestResourceStoreAdapter_MarkIntentFailedSucceedsWhenLeaseLostAfterFailedSt
 }
 
 func TestRuleVersionCommitPointRejectsOldLeaseAfterReacquire(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	writerA := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	writerB := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	svcA := NewService(true, 10, writerA)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	writerA := NewResourceStoreAdapter(versionStore, intentStore)
+	writerB := NewResourceStoreAdapter(versionStore, intentStore)
+	svcA := NewService(10, writerA)
 	lockMgr := locallock.NewLocalLock()
 	key := coremodel.BuildResourceKey("", "demo-rule")
 	lockKey := corelock.BuildRuleVersioningLockKey(string(meshresource.ConditionRouteKind), "", "demo-rule")
@@ -623,9 +584,9 @@ func TestRuleVersionCommitPointRejectsOldLeaseAfterReacquire(t *testing.T) {
 }
 
 func TestSubscriber_DeleteDedupAndRecreatePreserved(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	sub := NewSubscriber(meshresource.ConditionRouteKind, adapter, 10, locallock.NewLocalLock())
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	sub := NewSubscriber(meshresource.ConditionRouteKind, adapter, 10, locallock.NewLocalLock(), context.Background())
 	res := testConditionRule("demo-rule", "A")
 
 	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Added, nil, res)))
@@ -643,10 +604,10 @@ func TestSubscriber_DeleteDedupAndRecreatePreserved(t *testing.T) {
 	})
 }
 
-func TestSubscriber_DoesNotConsumeAdminIntentBySameHash(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	sub := NewSubscriber(meshresource.ConditionRouteKind, adapter, 10, locallock.NewLocalLock())
+func TestSubscriber_AdminEchoDoesNotCommitOpenIntent(t *testing.T) {
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	sub := NewSubscriber(meshresource.ConditionRouteKind, adapter, 10, locallock.NewLocalLock(), context.Background())
 	res := testConditionRule("demo-rule", "B")
 	req, err := buildMutationInsertRequest(res, OperationUpdate, SourceAdmin, "admin", "", nil, time.Unix(100, 0))
 	require.NoError(t, err)
@@ -663,10 +624,10 @@ func TestSubscriber_DoesNotConsumeAdminIntentBySameHash(t *testing.T) {
 	require.Empty(t, versions)
 }
 
-func TestSubscriber_MetadataDoesNotCommitAdminIntent(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	sub := NewSubscriber(meshresource.ConditionRouteKind, adapter, 10, locallock.NewLocalLock())
+func TestSubscriber_AdminEchoWithMetadataDoesNotCommitOpenIntent(t *testing.T) {
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	sub := NewSubscriber(meshresource.ConditionRouteKind, adapter, 10, locallock.NewLocalLock(), context.Background())
 	res := testConditionRule("demo-rule", "B")
 	req, err := buildMutationInsertRequest(res, OperationUpdate, SourceAdmin, "admin", "", nil, time.Unix(100, 0))
 	require.NoError(t, err)
@@ -686,10 +647,10 @@ func TestSubscriber_MetadataDoesNotCommitAdminIntent(t *testing.T) {
 	require.Empty(t, versions)
 }
 
-func TestSubscriber_MetadataMismatchStillSkipsOpenIntent(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	sub := NewSubscriber(meshresource.ConditionRouteKind, adapter, 10, locallock.NewLocalLock())
+func TestSubscriber_NonMatchingEventMarksIntentForReconcile(t *testing.T) {
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	sub := NewSubscriber(meshresource.ConditionRouteKind, adapter, 10, locallock.NewLocalLock(), context.Background())
 	intentRes := testConditionRule("demo-rule", "B")
 	req, err := buildMutationInsertRequest(intentRes, OperationUpdate, SourceAdmin, "admin", "", nil, time.Unix(100, 0))
 	require.NoError(t, err)
@@ -705,15 +666,104 @@ func TestSubscriber_MetadataMismatchStillSkipsOpenIntent(t *testing.T) {
 
 	open, err := adapter.GetIntent(intent.ID)
 	require.NoError(t, err)
-	assert.Equal(t, IntentStatusPending, open.Status)
+	assert.Equal(t, IntentStatusOutcomeUnknown, open.Status)
+	assert.True(t, open.ReconcileRequired)
+	assert.Equal(t, OperationUpdate, open.ObservedOperation)
+	assert.Equal(t, HashSpecForTest(t, eventRes), open.ObservedContentHash)
 	versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
 	require.NoError(t, err)
 	require.Empty(t, versions)
 }
 
+func TestService_FinalizeDoesNotCommitStaleSnapshotAfterNonMatchingEvent(t *testing.T) {
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	svc := NewService(10, adapter)
+	sub := NewSubscriber(meshresource.ConditionRouteKind, adapter, 10, locallock.NewLocalLock(), context.Background())
+
+	intended := testConditionRule("demo-rule", "A")
+	req, err := buildMutationInsertRequest(intended, OperationUpdate, SourceAdmin, "admin", "", nil, time.Unix(100, 0))
+	require.NoError(t, err)
+	intent, err := adapter.CreateIntent(context.Background(), req)
+	require.NoError(t, err)
+
+	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Updated, nil, intended)))
+	open, err := adapter.GetIntent(intent.ID)
+	require.NoError(t, err)
+	require.Equal(t, IntentStatusPending, open.Status)
+
+	external := testConditionRule("demo-rule", "B")
+	require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Updated, intended, external)))
+	dirty, err := adapter.GetIntent(intent.ID)
+	require.NoError(t, err)
+	require.Equal(t, IntentStatusOutcomeUnknown, dirty.Status)
+	require.True(t, dirty.ReconcileRequired)
+
+	_, err = finalizeMutationForTest(svc, intent, intended, false)
+	var pending *IntentPendingError
+	require.ErrorAs(t, err, &pending)
+
+	_, err = finalizeMutationForTest(svc, intent, external, false)
+	require.ErrorIs(t, err, ErrIntentOutcomeMismatch)
+
+	_, err = adapter.GetIntent(intent.ID)
+	require.ErrorIs(t, err, ErrVersionIntentNotFound)
+	versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
+	require.NoError(t, err)
+	require.Len(t, versions, 1)
+	assert.Equal(t, SourceUpstream, versions[0].Source)
+	assert.Equal(t, HashSpecForTest(t, external), versions[0].ContentHash)
+	assert.NotEqual(t, intent.ID, versions[0].IntentID)
+}
+
+func TestService_OutcomeUnknownActualMatchCommitsFixedIntentID(t *testing.T) {
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	svc := NewService(10, adapter)
+	res := testConditionRule("demo-rule", "v1")
+	req, err := buildMutationInsertRequest(res, OperationUpdate, SourceAdmin, "admin", "", nil, time.Unix(100, 0))
+	require.NoError(t, err)
+	intent, err := adapter.CreateIntent(context.Background(), req)
+	require.NoError(t, err)
+	require.NoError(t, adapter.MarkIntentOutcomeUnknown(context.Background(), intent.ID, "timeout"))
+
+	committed, err := finalizeMutationForTest(svc, intent, res, false)
+	require.NoError(t, err)
+	require.NotNil(t, committed)
+	assert.Equal(t, intent.ID, committed.ID)
+	assert.Equal(t, intent.ID, committed.IntentID)
+
+	_, err = adapter.GetIntent(intent.ID)
+	require.ErrorIs(t, err, ErrVersionIntentNotFound)
+}
+
+func TestService_OutcomeUnknownActualMismatchReconcilesAndFailsIntent(t *testing.T) {
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	svc := NewService(10, adapter)
+	intended := testConditionRule("demo-rule", "A")
+	req, err := buildMutationInsertRequest(intended, OperationUpdate, SourceAdmin, "admin", "", nil, time.Unix(100, 0))
+	require.NoError(t, err)
+	intent, err := adapter.CreateIntent(context.Background(), req)
+	require.NoError(t, err)
+	require.NoError(t, adapter.MarkIntentOutcomeUnknown(context.Background(), intent.ID, "timeout"))
+
+	actual := testConditionRule("demo-rule", "B")
+	_, err = finalizeMutationForTest(svc, intent, actual, false)
+	require.ErrorIs(t, err, ErrIntentOutcomeMismatch)
+
+	_, err = adapter.GetIntent(intent.ID)
+	require.ErrorIs(t, err, ErrVersionIntentNotFound)
+	versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
+	require.NoError(t, err)
+	require.Len(t, versions, 1)
+	assert.Equal(t, SourceUpstream, versions[0].Source)
+	assert.Equal(t, HashSpecForTest(t, actual), versions[0].ContentHash)
+}
+
 func TestResourceStoreAdapter_FixedVersionIDConflict(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	fixedID := int64(99)
 
 	req := testInsertRequest("demo-rule", "hash-a")
@@ -727,7 +777,7 @@ func TestResourceStoreAdapter_FixedVersionIDConflict(t *testing.T) {
 	require.ErrorIs(t, err, ErrVersionLedgerCorrupt)
 }
 
-func TestResourceStoreAdapter_FixedVersionIDAuditMismatchDoesNotUpdateMeta(t *testing.T) {
+func TestResourceStoreAdapter_FixedVersionIDAuditMismatchDoesNotAdvanceLedger(t *testing.T) {
 	cases := []struct {
 		name   string
 		mutate func(*InsertRequest)
@@ -753,8 +803,8 @@ func TestResourceStoreAdapter_FixedVersionIDAuditMismatchDoesNotUpdateMeta(t *te
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			versionStore, intentStore, metaStore := newVersioningStores(t)
-			adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+			versionStore, intentStore, _ := newVersioningStores(t)
+			adapter := NewResourceStoreAdapter(versionStore, intentStore)
 			fixedID := int64(100)
 			req := testInsertRequest("demo-rule", "hash-a")
 			req.Author = "alice"
@@ -767,7 +817,6 @@ func TestResourceStoreAdapter_FixedVersionIDAuditMismatchDoesNotUpdateMeta(t *te
 			tc.mutate(&retry)
 			_, err := adapter.InsertVersion(context.Background(), retry, 10)
 			require.ErrorIs(t, err, ErrVersionLedgerCorrupt)
-			requireRuleMetaMissing(t, metaStore, req.RuleKind, req.ResourceKey)
 
 			versions, err := adapter.ListVersions(req.RuleKind, req.ResourceKey)
 			require.NoError(t, err)
@@ -778,9 +827,9 @@ func TestResourceStoreAdapter_FixedVersionIDAuditMismatchDoesNotUpdateMeta(t *te
 	}
 }
 
-func TestResourceStoreAdapter_CommitIntentAuditMismatchDoesNotAdvanceIntentOrMeta(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+func TestResourceStoreAdapter_CommitIntentAuditMismatchLeavesIntentOpen(t *testing.T) {
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	req := testInsertRequest("demo-rule", "hash-a")
 	req.Author = "bob"
 	req.Reason = "rollback recovery"
@@ -797,7 +846,6 @@ func TestResourceStoreAdapter_CommitIntentAuditMismatchDoesNotAdvanceIntentOrMet
 
 	_, err = adapter.CommitIntent(context.Background(), intent.ID, 10)
 	require.ErrorIs(t, err, ErrVersionLedgerCorrupt)
-	requireRuleMetaMissing(t, metaStore, req.RuleKind, req.ResourceKey)
 
 	open, err := adapter.GetIntent(intent.ID)
 	require.NoError(t, err)
@@ -811,21 +859,9 @@ func TestResourceStoreAdapter_CommitIntentAuditMismatchDoesNotAdvanceIntentOrMet
 	assert.Equal(t, "normal update", versions[0].Reason)
 }
 
-func TestResourceStoreAdapter_CorruptMetaObjectRejected(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-
-	corrupt := meshresource.NewRuleIntentResourceWithAttributes(buildMetaName(meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule")), "")
-	corrupt.Spec = &meshproto.RuleIntent{Status: string(IntentStatusPending)}
-	require.NoError(t, metaStore.Add(corrupt))
-
-	_, err := adapter.InsertVersion(context.Background(), testInsertRequest("demo-rule", "hash-a"), 10)
-	require.ErrorIs(t, err, ErrVersionLedgerCorrupt)
-}
-
 func TestResourceStoreAdapter_ListVersionsRejectsMalformedVersionName(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 
 	corrupt := meshresource.NewRuleVersionResourceWithAttributes("malformed-version-name", "")
 	corrupt.Spec = &meshproto.RuleVersion{
@@ -848,8 +884,8 @@ func TestResourceStoreAdapter_ListVersionsRejectsMalformedVersionName(t *testing
 }
 
 func TestResourceStoreAdapter_OpenIntentDuplicateOpenIntents(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 
 	require.NoError(t, intentStore.Add(testIntentResource("demo-rule", 1, IntentStatusPending, "hash-a")))
 	require.NoError(t, intentStore.Add(testIntentResource("demo-rule", 2, IntentStatusApplied, "hash-b")))
@@ -859,8 +895,8 @@ func TestResourceStoreAdapter_OpenIntentDuplicateOpenIntents(t *testing.T) {
 }
 
 func TestResourceStoreAdapter_OpenIntentDuplicatePendingIntents(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 
 	require.NoError(t, intentStore.Add(testIntentResource("demo-rule", 1, IntentStatusPending, "hash-a")))
 	require.NoError(t, intentStore.Add(testIntentResource("demo-rule", 2, IntentStatusPending, "hash-b")))
@@ -870,8 +906,8 @@ func TestResourceStoreAdapter_OpenIntentDuplicatePendingIntents(t *testing.T) {
 }
 
 func TestResourceStoreAdapter_CreateIntentRejectsExistingOpenIntent(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 
 	first, err := adapter.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-a"))
 	require.NoError(t, err)
@@ -883,8 +919,8 @@ func TestResourceStoreAdapter_CreateIntentRejectsExistingOpenIntent(t *testing.T
 }
 
 func TestResourceStoreAdapter_CreateIntentSerializesSameParent(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 
 	const workers = 16
 	var started sync.WaitGroup
@@ -932,9 +968,9 @@ func TestResourceStoreAdapter_CreateIntentSerializesSameParent(t *testing.T) {
 }
 
 func TestRuleVersionLockSerializesSharedAdapters(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	writerA := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	writerB := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	writerA := NewResourceStoreAdapter(versionStore, intentStore)
+	writerB := NewResourceStoreAdapter(versionStore, intentStore)
 	lockMgr := locallock.NewLocalLock()
 	key := coremodel.BuildResourceKey("", "demo-rule")
 
@@ -971,16 +1007,15 @@ func TestRuleVersionLockSerializesSharedAdapters(t *testing.T) {
 		seen[version.VersionNo] = true
 		assert.Equal(t, int64(writes-i), version.VersionNo)
 	}
-	meta, err := writerB.ReconcileMeta(context.Background(), meshresource.ConditionRouteKind, key)
-	require.NoError(t, err)
-	require.NotNil(t, meta)
-	assert.Equal(t, int64(writes), meta.LastVersionNo)
+	snapshot := ledgerSnapshotForTest(t, writerB, meshresource.ConditionRouteKind, key)
+	require.NotNil(t, snapshot.Head)
+	assert.Equal(t, int64(writes), snapshot.Head.VersionNo)
 }
 
 func TestRuleVersionLockSerializesSharedAdapterIntentCreate(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	writerA := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	writerB := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	writerA := NewResourceStoreAdapter(versionStore, intentStore)
+	writerB := NewResourceStoreAdapter(versionStore, intentStore)
 	lockMgr := locallock.NewLocalLock()
 	key := coremodel.BuildResourceKey("", "intent-rule")
 
@@ -1028,9 +1063,9 @@ func TestRuleVersionLockSerializesSharedAdapterIntentCreate(t *testing.T) {
 }
 
 func TestRecordBootstrapLockedSharedAdaptersSingleBaseline(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	writerA := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	writerB := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	writerA := NewResourceStoreAdapter(versionStore, intentStore)
+	writerB := NewResourceStoreAdapter(versionStore, intentStore)
 	lockMgr := locallock.NewLocalLock()
 	res := testConditionRule("bootstrap-rule", "v1")
 	rm := &singleResourceManager{res: res}
@@ -1058,13 +1093,13 @@ func TestRecordBootstrapLockedSharedAdaptersSingleBaseline(t *testing.T) {
 }
 
 func TestRecordBootstrapLockedAndSubscriberEventNoDuplicate(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	bootstrapWriter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	eventWriter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	bootstrapWriter := NewResourceStoreAdapter(versionStore, intentStore)
+	eventWriter := NewResourceStoreAdapter(versionStore, intentStore)
 	lockMgr := locallock.NewLocalLock()
 	res := testConditionRule("bootstrap-event-rule", "v1")
 	rm := &singleResourceManager{res: res}
-	sub := NewSubscriber(meshresource.ConditionRouteKind, eventWriter, 10, lockMgr)
+	sub := NewSubscriber(meshresource.ConditionRouteKind, eventWriter, 10, lockMgr, context.Background())
 
 	var wg sync.WaitGroup
 	errCh := make(chan error, 2)
@@ -1140,8 +1175,8 @@ func TestRuleVersionLockAllowsDifferentParentsInParallel(t *testing.T) {
 }
 
 func TestResourceStoreAdapter_RetriesVersionIDCollision(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	adapter.idGenerator = &sequenceIDGenerator{ids: []int64{7, 8}}
 	require.NoError(t, versionStore.Add(testVersionResource("demo-rule", 7, 1, "existing", OperationUpdate, SourceAdmin)))
 
@@ -1152,8 +1187,8 @@ func TestResourceStoreAdapter_RetriesVersionIDCollision(t *testing.T) {
 }
 
 func TestResourceStoreAdapter_RetriesVersionIDCollisionAcrossParents(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	adapter.idGenerator = &sequenceIDGenerator{ids: []int64{100, 101}}
 	require.NoError(t, versionStore.Add(testVersionResource("rule-a", 100, 1, "existing-a", OperationUpdate, SourceAdmin)))
 
@@ -1172,8 +1207,8 @@ func TestResourceStoreAdapter_RetriesVersionIDCollisionAcrossParents(t *testing.
 }
 
 func TestResourceStoreAdapter_RetriesIntentIDCollision(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	adapter.idGenerator = &sequenceIDGenerator{ids: []int64{7, 8}}
 	require.NoError(t, intentStore.Add(testIntentResource("demo-rule", 7, IntentStatusFailed, "old-hash")))
 
@@ -1183,8 +1218,8 @@ func TestResourceStoreAdapter_RetriesIntentIDCollision(t *testing.T) {
 }
 
 func TestResourceStoreAdapter_RetriesIntentIDCollisionWithExistingVersion(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	adapter.idGenerator = &sequenceIDGenerator{ids: []int64{100, 101}}
 	require.NoError(t, versionStore.Add(testVersionResource("rule-a", 100, 1, "existing-a", OperationUpdate, SourceAdmin)))
 
@@ -1194,9 +1229,9 @@ func TestResourceStoreAdapter_RetriesIntentIDCollisionWithExistingVersion(t *tes
 }
 
 func TestService_RepairPendingIntentRequiresCurrentResourceMatch(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	svc := NewService(true, 10, adapter)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	svc := NewService(10, adapter)
 	res := testConditionRule("demo-rule", "v1")
 	req, err := buildMutationInsertRequest(res, OperationUpdate, SourceAdmin, "admin", "", nil, time.Unix(100, 0))
 	require.NoError(t, err)
@@ -1219,9 +1254,9 @@ func TestService_RepairPendingIntentRequiresCurrentResourceMatch(t *testing.T) {
 }
 
 func TestService_RepairAppliedIntentRejectsOutcomeMismatch(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	svc := NewService(true, 10, adapter)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	svc := NewService(10, adapter)
 	res := testConditionRule("demo-rule", "v1")
 	req, err := buildMutationInsertRequest(res, OperationUpdate, SourceAdmin, "admin", "", nil, time.Unix(100, 0))
 	require.NoError(t, err)
@@ -1239,8 +1274,8 @@ func TestService_RepairAppliedIntentRejectsOutcomeMismatch(t *testing.T) {
 }
 
 func TestResourceStoreAdapter_CheckExpectedVersion(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	key := coremodel.BuildResourceKey("", "demo-rule")
 
 	require.NoError(t, adapter.CheckExpectedVersion(meshresource.ConditionRouteKind, key, nil))
@@ -1270,9 +1305,9 @@ func TestResourceStoreAdapter_CheckExpectedVersion(t *testing.T) {
 }
 
 func TestService_DiffAgainstCurrentPreviousAndExplicitVersion(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	svc := NewService(true, 10, adapter)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	svc := NewService(10, adapter)
 
 	v1, err := adapter.InsertVersion(context.Background(), testInsertRequest("demo-rule", "hash-a"), 10)
 	require.NoError(t, err)
@@ -1302,9 +1337,9 @@ func TestService_DiffAgainstCurrentPreviousAndExplicitVersion(t *testing.T) {
 }
 
 func TestService_DiffAgainstCurrentUsesDeleteMarkerWhenDeleted(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	svc := NewService(true, 10, adapter)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	svc := NewService(10, adapter)
 
 	v1, err := adapter.InsertVersion(context.Background(), testInsertRequest("demo-rule", "hash-a"), 10)
 	require.NoError(t, err)
@@ -1326,11 +1361,10 @@ func newVersioningStores(t *testing.T) (store.ResourceStore, store.ResourceStore
 	t.Helper()
 	versionStore := memoryst.NewMemoryResourceStore(meshresource.RuleVersionKind)
 	intentStore := memoryst.NewMemoryResourceStore(meshresource.RuleIntentKind)
-	metaStore := memoryst.NewMemoryResourceStore(meshresource.RuleMetaKind)
-	for _, s := range []store.ManagedResourceStore{versionStore, intentStore, metaStore} {
+	for _, s := range []store.ManagedResourceStore{versionStore, intentStore} {
 		require.NoError(t, s.Init(nil))
 	}
-	return versionStore, intentStore, metaStore
+	return versionStore, intentStore, nil
 }
 
 func testInsertRequest(ruleName, hash string) InsertRequest {
@@ -1346,6 +1380,21 @@ func testInsertRequest(ruleName, hash string) InsertRequest {
 		Author:      "admin",
 		CreatedAt:   time.Unix(100, 0),
 	}
+}
+
+func HashSpecForTest(t *testing.T, res coremodel.Resource) string {
+	t.Helper()
+	hash, _, err := NormalizeResource(res)
+	require.NoError(t, err)
+	return hash
+}
+
+func ledgerSnapshotForTest(t *testing.T, versionStore Store, kind coremodel.ResourceKind, resourceKey string) *LedgerSnapshot {
+	t.Helper()
+	snapshot, err := versionStore.LedgerSnapshot(kind, resourceKey)
+	require.NoError(t, err)
+	require.NotNil(t, snapshot)
+	return snapshot
 }
 
 func testIntentResource(ruleName string, id int64, status IntentStatus, hash string) *meshresource.RuleIntentResource {
@@ -1457,15 +1506,6 @@ func (rm *singleResourceManager) DeleteByKey(context.Context, coremodel.Resource
 }
 
 var _ manager.ResourceManager = (*singleResourceManager)(nil)
-
-func requireRuleMetaMissing(t *testing.T, metaStore store.ResourceStore, kind coremodel.ResourceKind, resourceKey string) {
-	t.Helper()
-	metaName := buildMetaName(kind, resourceKey)
-	fullKey := coremodel.BuildResourceKey(extractMesh(resourceKey), metaName)
-	_, exists, err := metaStore.GetByKey(fullKey)
-	require.NoError(t, err)
-	require.False(t, exists)
-}
 
 type hookStore struct {
 	store.ResourceStore

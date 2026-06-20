@@ -661,8 +661,6 @@ const updateTagRule = async () => {
     })
     if (res.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
-      // 延迟 2 秒后再获取数据，确保数据库已更新
-      await new Promise((resolve) => setTimeout(resolve, 2000))
       TAB_STATE.tagRule = null
       await getTagRuleDetail()
       await reloadCurrentVersion()

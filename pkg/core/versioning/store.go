@@ -31,6 +31,8 @@ type Store interface {
 	GetIntent(id int64) (*Intent, error)
 	OpenIntent(kind coremodel.ResourceKind, resourceKey string) (*Intent, error)
 	MarkIntentApplied(ctx context.Context, id int64) error
+	MarkIntentOutcomeUnknown(ctx context.Context, id int64, message string) error
+	MarkIntentObserved(ctx context.Context, id int64, op Operation, contentHash, specJSON string) error
 	MarkIntentFailed(ctx context.Context, id int64, message string) error
 	CommitIntent(ctx context.Context, id int64, maxVersions int64) (*Version, error)
 	CleanupIntent(id int64, terminalStatus IntentStatus)
@@ -40,5 +42,4 @@ type Store interface {
 	GetVersion(kind coremodel.ResourceKind, resourceKey string, id int64) (*Version, error)
 	LatestVersion(kind coremodel.ResourceKind, resourceKey string) (*Version, error)
 	CheckExpectedVersion(kind coremodel.ResourceKind, resourceKey string, expected *int64) error
-	ReconcileMeta(ctx context.Context, kind coremodel.ResourceKind, resourceKey string) (*Meta, error)
 }

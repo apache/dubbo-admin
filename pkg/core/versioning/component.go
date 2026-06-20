@@ -72,12 +72,6 @@ func (c *component) Init(ctx runtime.BuilderContext) error {
 		cfg = versioningcfg.Default()
 	}
 
-	if !cfg.Enabled {
-		// If versioning is disabled, no need to set up store
-		c.service = NewService(false, 0, nil)
-		return nil
-	}
-
 	// Get ResourceManager for ResourceStoreAdapter
 	rmComponent, err := ctx.GetActivatedComponent(runtime.ResourceManager)
 	if err != nil {
@@ -86,8 +80,8 @@ func (c *component) Init(ctx runtime.BuilderContext) error {
 	rm := rmComponent.(manager.ResourceManagerComponent).ResourceManager()
 
 	// Get resource stores for each versioning resource kind. ResourceStore is
-	// routed by kind, so RuleVersion, RuleIntent, and RuleMeta cannot share one
-	// store instance.
+	// routed by kind, so RuleVersion and RuleIntent cannot share one store
+	// instance.
 	rvStore, err := rm.GetStore(meshresource.RuleVersionKind)
 	if err != nil {
 		return fmt.Errorf("failed to get RuleVersion store: %w", err)
@@ -102,15 +96,8 @@ func (c *component) Init(ctx runtime.BuilderContext) error {
 	if intentStore == nil {
 		return fmt.Errorf("RuleIntent store not available - versioning requires resource store")
 	}
-	metaStore, err := rm.GetStore(meshresource.RuleMetaKind)
-	if err != nil {
-		return fmt.Errorf("failed to get RuleMeta store: %w", err)
-	}
-	if metaStore == nil {
-		return fmt.Errorf("RuleMeta store not available - versioning requires resource store")
-	}
 
-	store := NewResourceStoreAdapter(rvStore, intentStore, metaStore)
+	store := NewResourceStoreAdapter(rvStore, intentStore)
 	lockComponent, err := ctx.GetActivatedComponent(lock.DistributedLockComponent)
 	if err != nil {
 		return fmt.Errorf("rule versioning requires a lock component when enabled: %w", err)
@@ -126,11 +113,10 @@ func (c *component) Init(ctx runtime.BuilderContext) error {
 	c.store = store
 	c.lock = lockMgr
 	c.service = NewService(
-		cfg.Enabled,
 		cfg.MaxVersionsPerRule,
 		store,
 	)
-	logger.Infof("Using resource store for rule versioning (RuleVersion, RuleIntent, RuleMeta)")
+	logger.Infof("Using resource store for rule versioning (RuleVersion, RuleIntent)")
 
 	eventBusComponent, err := ctx.GetActivatedComponent(runtime.EventBus)
 	if err != nil {
@@ -141,7 +127,7 @@ func (c *component) Init(ctx runtime.BuilderContext) error {
 		return fmt.Errorf("component %s does not implement events.EventBus", runtime.EventBus)
 	}
 	for _, kind := range governor.RuleResourceKinds.Values() {
-		sub := NewSubscriber(kind, store, cfg.MaxVersionsPerRule, lockMgr)
+		sub := NewSubscriber(kind, store, cfg.MaxVersionsPerRule, lockMgr, ctx.AppContext())
 		if err := bus.Subscribe(sub); err != nil {
 			return err
 		}
@@ -153,9 +139,6 @@ func (c *component) Start(rt runtime.Runtime, stop <-chan struct{}) error {
 	cfg := rt.Config().RuleVersioning
 	if cfg == nil {
 		cfg = versioningcfg.Default()
-	}
-	if !cfg.Enabled {
-		return nil
 	}
 	startCtx, cancel := contextWithStop(rt.AppContext(), stop)
 	defer cancel()
@@ -250,9 +233,6 @@ func (c *component) repairOpenIntents(ctx context.Context, rm manager.ResourceMa
 }
 
 func contextWithStop(parent context.Context, stop <-chan struct{}) (context.Context, context.CancelFunc) {
-	if parent == nil {
-		parent = context.Background()
-	}
 	ctx, cancel := context.WithCancel(parent)
 	go func() {
 		select {

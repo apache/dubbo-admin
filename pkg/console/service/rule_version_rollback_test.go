@@ -198,9 +198,8 @@ func setupRollbackTestEnvWithMax(t *testing.T, maxVersions int64) *testContext {
 	dynamicStore := memoryst.NewMemoryResourceStore(meshresource.DynamicConfigKind)
 	versionStore := memoryst.NewMemoryResourceStore(meshresource.RuleVersionKind)
 	intentStore := memoryst.NewMemoryResourceStore(meshresource.RuleIntentKind)
-	metaStore := memoryst.NewMemoryResourceStore(meshresource.RuleMetaKind)
 
-	for _, s := range []store.ManagedResourceStore{conditionStore, tagStore, dynamicStore, versionStore, intentStore, metaStore} {
+	for _, s := range []store.ManagedResourceStore{conditionStore, tagStore, dynamicStore, versionStore, intentStore} {
 		require.NoError(t, s.Init(nil))
 	}
 
@@ -210,7 +209,6 @@ func setupRollbackTestEnvWithMax(t *testing.T, maxVersions int64) *testContext {
 		meshresource.DynamicConfigKind:  dynamicStore,
 		meshresource.RuleVersionKind:    versionStore,
 		meshresource.RuleIntentKind:     intentStore,
-		meshresource.RuleMetaKind:       metaStore,
 	}
 
 	storeRouter := &testRouter{stores: stores}
@@ -223,20 +221,20 @@ func setupRollbackTestEnvWithMax(t *testing.T, maxVersions int64) *testContext {
 	rm := manager.NewResourceManager(storeRouter, govRouter)
 
 	// Create versioning service + subscriber for each rule kind, sharing the
-	// same adapter (RuleVersion/RuleIntent/RuleMeta stores).
-	adapter := versioning.NewResourceStoreAdapter(versionStore, intentStore, metaStore)
-	versioningSvc := versioning.NewService(true, maxVersions, adapter)
+	// same adapter (RuleVersion/RuleIntent stores).
+	adapter := versioning.NewResourceStoreAdapter(versionStore, intentStore)
+	versioningSvc := versioning.NewService(maxVersions, adapter)
 	lockMgr := locallock.NewLocalLock()
 	for _, kind := range []coremodel.ResourceKind{
 		meshresource.ConditionRouteKind,
 		meshresource.TagRouteKind,
 		meshresource.DynamicConfigKind,
 	} {
-		require.NoError(t, bus.Subscribe(versioning.NewSubscriber(kind, adapter, maxVersions, lockMgr)))
+		require.NoError(t, bus.Subscribe(versioning.NewSubscriber(kind, adapter, maxVersions, lockMgr, context.Background())))
 	}
 
 	cfg := &appcfg.AdminConfig{
-		RuleVersioning: &versioningcfg.Config{Enabled: true, MaxVersionsPerRule: maxVersions},
+		RuleVersioning: &versioningcfg.Config{MaxVersionsPerRule: maxVersions},
 	}
 
 	return &testContext{

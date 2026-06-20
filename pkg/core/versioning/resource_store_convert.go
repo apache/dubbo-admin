@@ -129,7 +129,7 @@ func protoToVersion(spec *meshproto.RuleVersion, id int64) (*Version, error) {
 		RolledBackFromID: rolledBackFromID,
 		CreatedAt:        createdAt,
 		CommittedAt:      committedAt,
-		IsCurrent:        false, // Will be set by caller based on Meta
+		IsCurrent:        false, // Will be set by caller from the ledger head
 	}, nil
 }
 
@@ -157,47 +157,30 @@ func intentFromResource(res *meshresource.RuleIntentResource, id int64) *Intent 
 	}
 
 	createdAt := timestampAsTime(spec.CreatedAt)
+	observedAt := timestampAsTime(spec.ObservedAt)
 
 	return &Intent{
-		ID:               id,
-		RuleKind:         coremodel.ResourceKind(spec.ParentRuleKind),
-		Mesh:             spec.ParentRuleMesh,
-		ResourceKey:      coremodel.BuildResourceKey(spec.ParentRuleMesh, spec.ParentRuleName),
-		RuleName:         spec.ParentRuleName,
-		ContentHash:      spec.ContentHash,
-		SpecJSON:         spec.SpecJson,
-		Operation:        Operation(spec.Operation),
-		Source:           Source(spec.Source),
-		Author:           spec.Author,
-		Reason:           spec.Reason,
-		RolledBackFromID: rolledBackFromID,
-		Status:           IntentStatus(spec.Status),
-		LastError:        spec.FailureReason,
-		CreatedAt:        createdAt,
+		ID:                  id,
+		RuleKind:            coremodel.ResourceKind(spec.ParentRuleKind),
+		Mesh:                spec.ParentRuleMesh,
+		ResourceKey:         coremodel.BuildResourceKey(spec.ParentRuleMesh, spec.ParentRuleName),
+		RuleName:            spec.ParentRuleName,
+		ContentHash:         spec.ContentHash,
+		SpecJSON:            spec.SpecJson,
+		Operation:           Operation(spec.Operation),
+		Source:              Source(spec.Source),
+		Author:              spec.Author,
+		Reason:              spec.Reason,
+		RolledBackFromID:    rolledBackFromID,
+		Status:              IntentStatus(spec.Status),
+		LastError:           spec.FailureReason,
+		ReconcileRequired:   spec.ReconcileRequired,
+		ObservedContentHash: spec.ObservedContentHash,
+		ObservedSpecJSON:    spec.ObservedSpecJson,
+		ObservedOperation:   Operation(spec.ObservedOperation),
+		ObservedAt:          observedAt,
+		CreatedAt:           createdAt,
 	}
-}
-
-// Meta helper functions
-
-func buildMetaName(kind coremodel.ResourceKind, resourceKey string) string {
-	name := extractName(resourceKey)
-	return fmt.Sprintf("%s-%s-meta", kind, name)
-}
-
-func metaFromRuleMeta(kind coremodel.ResourceKind, resourceKey string, spec *meshproto.RuleMeta) *Meta {
-	meta := &Meta{
-		RuleKind:      kind,
-		ResourceKey:   resourceKey,
-		LastVersionNo: spec.CurrentVersionNo,
-	}
-	if spec.UpdatedAt != nil {
-		meta.UpdatedAt = spec.UpdatedAt.AsTime()
-	}
-	if spec.CurrentVersionId != 0 {
-		currentID := spec.CurrentVersionId
-		meta.CurrentVersion = &currentID
-	}
-	return meta
 }
 
 func ledgerSnapshotFromState(state *ledgerState) *LedgerSnapshot {

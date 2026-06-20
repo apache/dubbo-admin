@@ -544,7 +544,6 @@ const words: I18nType = {
     ledgerPendingDescription: '当前规则存在未完成的版本 intent，请重新加载后再提交。',
     ledgerPendingWithIntent:
       '当前规则存在未完成的版本 intent #{intentId}，请先修复或放弃后再提交。',
-    disabled: '版本功能未启用',
     empty: '暂无版本记录',
     view: '查看',
     diffCurrent: '对比当前',

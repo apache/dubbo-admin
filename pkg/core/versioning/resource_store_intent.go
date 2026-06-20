@@ -129,6 +129,24 @@ func (a *ResourceStoreAdapter) MarkIntentApplied(ctx context.Context, id int64) 
 	return a.updateIntentStatus(ctx, id, IntentStatusApplied, "")
 }
 
+func (a *ResourceStoreAdapter) MarkIntentOutcomeUnknown(ctx context.Context, id int64, message string) error {
+	_ = ctx
+	intentRes, _, err := a.getIntentResourceByID(id)
+	if err != nil {
+		return err
+	}
+	return updateIntentResourceStatus(a.intentStore, intentRes, IntentStatusOutcomeUnknown, message)
+}
+
+func (a *ResourceStoreAdapter) MarkIntentObserved(ctx context.Context, id int64, op Operation, contentHash, specJSON string) error {
+	_ = ctx
+	intentRes, _, err := a.getIntentResourceByID(id)
+	if err != nil {
+		return err
+	}
+	return updateIntentResourceObserved(a.intentStore, intentRes, op, contentHash, specJSON)
+}
+
 func (a *ResourceStoreAdapter) MarkIntentFailed(ctx context.Context, id int64, message string) error {
 	if err := a.updateIntentStatus(ctx, id, IntentStatusFailed, message); err != nil {
 		return err
@@ -151,9 +169,9 @@ func (a *ResourceStoreAdapter) CommitIntent(ctx context.Context, id int64, maxVe
 		return nil, ErrVersionIntentNotOpen
 	}
 
-	// CommitIntent appends the observed rule state as a new immutable version
-	// and advances RuleMeta to that new version. It must not mutate older
-	// versions, including rollback targets.
+	// CommitIntent appends the observed rule state as a new immutable version.
+	// The current version is derived from the ledger head, so fixed-ID retries
+	// must validate the existing RuleVersion instead of updating any side state.
 	version, err := a.InsertVersion(ctx, InsertRequest{
 		RuleKind:         intent.RuleKind,
 		Mesh:             intent.Mesh,
@@ -192,7 +210,7 @@ func (a *ResourceStoreAdapter) CleanupIntent(id int64, terminalStatus IntentStat
 
 func (a *ResourceStoreAdapter) ListOpenIntents() ([]Intent, error) {
 	var open []Intent
-	for _, status := range []IntentStatus{IntentStatusPending, IntentStatusApplied} {
+	for _, status := range openIntentStatuses() {
 		objects, err := a.intentStore.ByIndex(index.ByRuleIntentStatusIndexName, string(status))
 		if err != nil {
 			return nil, err
@@ -217,7 +235,16 @@ func (a *ResourceStoreAdapter) ListOpenIntents() ([]Intent, error) {
 }
 
 func isOpenIntentStatus(status IntentStatus) bool {
-	return status == IntentStatusPending || status == IntentStatusApplied
+	switch status {
+	case IntentStatusPending, IntentStatusApplied, IntentStatusOutcomeUnknown:
+		return true
+	default:
+		return false
+	}
+}
+
+func openIntentStatuses() []IntentStatus {
+	return []IntentStatus{IntentStatusPending, IntentStatusApplied, IntentStatusOutcomeUnknown}
 }
 
 func (a *ResourceStoreAdapter) getIntentResourceByID(id int64) (*meshresource.RuleIntentResource, int64, error) {
@@ -253,7 +280,7 @@ func (a *ResourceStoreAdapter) openIntentResources(kind coremodel.ResourceKind, 
 	mesh := extractMesh(resourceKey)
 	name := extractName(resourceKey)
 	var intents []*meshresource.RuleIntentResource
-	for _, status := range []IntentStatus{IntentStatusPending, IntentStatusApplied} {
+	for _, status := range openIntentStatuses() {
 		indexKey := fmt.Sprintf("%s/%s/%s/%s", kind, mesh, name, status)
 		objects, err := a.intentStore.ByIndex(index.ByRuleIntentParentAndStatus, indexKey)
 		if err != nil {
@@ -296,7 +323,16 @@ func updateIntentResourceStatus(intentStore store.ResourceStore, intentRes *mesh
 		if currentStatus == IntentStatusCommitted {
 			return nil
 		}
-		if currentStatus != IntentStatusPending && currentStatus != IntentStatusApplied {
+		if currentStatus != IntentStatusPending &&
+			currentStatus != IntentStatusApplied &&
+			currentStatus != IntentStatusOutcomeUnknown {
+			return ErrVersionIntentNotOpen
+		}
+	case IntentStatusOutcomeUnknown:
+		if currentStatus == IntentStatusCommitted {
+			return ErrVersionIntentNotOpen
+		}
+		if !isOpenIntentStatus(currentStatus) {
 			return ErrVersionIntentNotOpen
 		}
 	case IntentStatusCommitted:
@@ -330,6 +366,27 @@ func updateIntentResourceStatus(intentStore store.ResourceStore, intentRes *mesh
 		return err
 	}
 
+	return nil
+}
+
+func updateIntentResourceObserved(intentStore store.ResourceStore, intentRes *meshresource.RuleIntentResource, op Operation, contentHash, specJSON string) error {
+	currentStatus := IntentStatus(intentRes.Spec.Status)
+	if !isOpenIntentStatus(currentStatus) {
+		return ErrVersionIntentNotOpen
+	}
+
+	updated := intentRes.DeepCopyObject().(*meshresource.RuleIntentResource)
+	updated.Spec.ReconcileRequired = true
+	updated.Spec.ObservedOperation = string(op)
+	updated.Spec.ObservedContentHash = contentHash
+	updated.Spec.ObservedSpecJson = specJSON
+	updated.Spec.ObservedAt = timestamppb.New(time.Now())
+	if currentStatus == IntentStatusPending {
+		updated.Spec.Status = string(IntentStatusOutcomeUnknown)
+	}
+	if err := intentStore.Update(updated); err != nil {
+		return err
+	}
 	return nil
 }
 

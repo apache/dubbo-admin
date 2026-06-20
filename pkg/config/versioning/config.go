@@ -25,13 +25,11 @@ import (
 )
 
 const (
-	DefaultEnabled            = true
-	DefaultMaxVersionsPerRule = int64(5)
+	DefaultMaxVersionsPerRule = int64(50)
 )
 
 type Config struct {
 	config.BaseConfig
-	Enabled            bool  `json:"enabled" yaml:"enabled"`
 	MaxVersionsPerRule int64 `json:"maxVersionsPerRule" yaml:"maxVersionsPerRule"`
 }
 
@@ -44,20 +42,19 @@ func (c *Config) UnmarshalJSON(data []byte) error {
 
 func Default() *Config {
 	return &Config{
-		Enabled:            DefaultEnabled,
 		MaxVersionsPerRule: DefaultMaxVersionsPerRule,
 	}
 }
 
 func (c *Config) Sanitize() {
-	if c.MaxVersionsPerRule <= 0 {
+	if c.MaxVersionsPerRule < 0 {
 		c.MaxVersionsPerRule = DefaultMaxVersionsPerRule
 	}
 }
 
 func (c *Config) Validate() error {
-	if c.MaxVersionsPerRule <= 0 {
-		return bizerror.New(bizerror.ConfigError, "ruleVersioning.maxVersionsPerRule must be greater than 0")
+	if c.MaxVersionsPerRule < 0 {
+		return bizerror.New(bizerror.ConfigError, "ruleVersioning.maxVersionsPerRule must be greater than or equal to 0")
 	}
 	return nil
 }

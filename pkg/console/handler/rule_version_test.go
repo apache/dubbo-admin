@@ -80,12 +80,6 @@ func TestWriteVersioningRespHTTPStatusMapping(t *testing.T) {
 			wantJSON:   `{"code":"VERSION_LEDGER_PENDING","message":"rule version intent is pending","intentId":"99"}`,
 		},
 		{
-			name:       "feature disabled",
-			err:        versioning.ErrFeatureDisabled,
-			wantStatus: http.StatusServiceUnavailable,
-			wantJSON:   `{"code":"FEATURE_DISABLED","message":"rule versioning is disabled"}`,
-		},
-		{
 			name:       "unknown error",
 			err:        errors.New("storage exploded"),
 			wantStatus: http.StatusInternalServerError,
@@ -200,4 +194,30 @@ func TestParseJSONInt64AcceptsDeletedStateSentinel(t *testing.T) {
 	require.NotNil(t, id)
 	assert.Equal(t, int64(0), *id)
 	assert.Equal(t, http.StatusOK, recorder.Code)
+}
+
+func TestParseJSONInt64RejectsInvalidExpectedVersionID(t *testing.T) {
+	tests := []json.RawMessage{
+		json.RawMessage(`1`),
+		json.RawMessage(`""`),
+		json.RawMessage(`"-1"`),
+		json.RawMessage(`"+1"`),
+		json.RawMessage(`"1.2"`),
+		json.RawMessage(`"1e3"`),
+		json.RawMessage(`"9223372036854775808"`),
+	}
+
+	for _, raw := range tests {
+		t.Run(string(raw), func(t *testing.T) {
+			gin.SetMode(gin.TestMode)
+			recorder := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(recorder)
+
+			id, ok := parseJSONInt64(c, raw, "expectedVersionId")
+
+			require.False(t, ok)
+			require.Nil(t, id)
+			assert.Equal(t, http.StatusBadRequest, recorder.Code)
+		})
+	}
 }

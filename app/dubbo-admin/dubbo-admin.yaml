@@ -64,12 +64,12 @@ store:
 #  address: root:123456@tcp(127.0.0.1:23306)/dubbo-admin?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai
 
 # [Optional] version history and rollback for traffic rules.
-# Default is enabled. Startup requires RuleVersion, RuleIntent, RuleMeta stores and
-# an available lock implementation; when those prerequisites are missing,
-# versioning fails closed instead of recording unsafe history.
+# This is an always-on built-in capability. Startup requires RuleVersion and
+# RuleIntent stores plus an available lock implementation; when those
+# prerequisites are missing, startup fails closed instead of recording unsafe
+# history. Set maxVersionsPerRule to 0 to disable retention trimming.
 ruleVersioning:
-  enabled: true
-  maxVersionsPerRule: 5
+  maxVersionsPerRule: 50
 
 # [Necessary] configs for service discovery
 discovery:

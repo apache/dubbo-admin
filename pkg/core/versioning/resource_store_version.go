@@ -186,12 +186,6 @@ func (a *ResourceStoreAdapter) insertVersionLocked(ctx context.Context, req Inse
 		if err := lock.CheckLease(ctx); err != nil {
 			return nil, err
 		}
-		if _, err := a.reconcileMetaFromLedgerLocked(ctx, req.RuleKind, req.ResourceKey); err != nil {
-			return nil, err
-		}
-		if err := lock.CheckLease(ctx); err != nil {
-			return nil, err
-		}
 
 		attempts := maxIDGenerateAttempts
 		var addErr error
@@ -249,13 +243,6 @@ func (a *ResourceStoreAdapter) insertVersionLocked(ctx context.Context, req Inse
 		if addErr != nil {
 			return nil, fmt.Errorf("failed to allocate unique rule version id after %d attempts: %w", attempts, addErr)
 		}
-	}
-
-	if err := lock.CheckLease(ctx); err != nil {
-		return nil, err
-	}
-	if _, err := a.reconcileMetaFromLedgerLocked(ctx, req.RuleKind, req.ResourceKey); err != nil {
-		return nil, fmt.Errorf("failed to reconcile meta after version %d: %w", id, err)
 	}
 
 	if err := lock.CheckLease(ctx); err != nil {

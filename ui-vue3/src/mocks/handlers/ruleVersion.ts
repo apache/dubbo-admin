@@ -132,12 +132,6 @@ const versionList = (versions: RuleVersion[]): RuleVersionList => {
   }
 }
 
-const featureDisabledResp = () =>
-  HttpResponse.json(
-    { code: 'FEATURE_DISABLED', message: 'rule versioning is disabled' },
-    { status: 503 }
-  )
-
 const conflictResp = (currentVersionId?: string | null) =>
   HttpResponse.json(
     {
@@ -193,7 +187,6 @@ const ensurePendingIntent = (kind: TrafficRuleKind, ruleName: string) => {
 const buildVersionHandlersForKind = (kind: TrafficRuleKind): HttpHandler[] => [
   http.get(`${base}/${kind}/:ruleName/versions`, ({ params }) => {
     const ruleName = decodeName(params.ruleName as string)
-    if (ruleName.includes('-disabled')) return featureDisabledResp()
     if (scenarioOf(ruleName) === 'backend-error')
       return bizError('InternalError', 'backend error', 500)
     const versions = fixtureVersions(kind, ruleName)
@@ -202,7 +195,6 @@ const buildVersionHandlersForKind = (kind: TrafficRuleKind): HttpHandler[] => [
 
   http.get(`${base}/${kind}/:ruleName/versions/:versionId`, ({ params }) => {
     const ruleName = decodeName(params.ruleName as string)
-    if (ruleName.includes('-disabled')) return featureDisabledResp()
     const versionId = String(params.versionId || '').trim()
     if (!versionId) return bizError('InvalidArgument', 'versionId must be an integer', 400)
     const found = fixtureVersions(kind, ruleName).find((item) => item.id === versionId)
@@ -211,7 +203,6 @@ const buildVersionHandlersForKind = (kind: TrafficRuleKind): HttpHandler[] => [
 
   http.get(`${base}/${kind}/:ruleName/versions/:versionId/diff`, ({ params, request }) => {
     const ruleName = decodeName(params.ruleName as string)
-    if (ruleName.includes('-disabled')) return featureDisabledResp()
     const versionId = String(params.versionId || '').trim()
     if (!versionId) return bizError('InvalidArgument', 'versionId must be an integer', 400)
     const versions = fixtureVersions(kind, ruleName)
@@ -243,7 +234,6 @@ const buildVersionHandlersForKind = (kind: TrafficRuleKind): HttpHandler[] => [
     `${base}/${kind}/:ruleName/versions/:versionId/rollback`,
     async ({ params, request }) => {
       const ruleName = decodeName(params.ruleName as string)
-      if (ruleName.includes('-disabled')) return featureDisabledResp()
       const body = await readJsonBody(request)
       const reasonErr = validateReason(typeof body.reason === 'string' ? body.reason : '')
       if (reasonErr) return reasonErr

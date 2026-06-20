@@ -33,7 +33,7 @@ const (
 	SourceUpstream  Source = "UPSTREAM"  // Registry change detected by subscriber
 	SourceBootstrap Source = "BOOTSTRAP" // Initial version recorded at startup
 	// SourceRollback marks a version produced by re-publishing a historical
-	// snapshot. Rollback records a new version and does not rewind RuleMeta.
+	// snapshot. Rollback records a new version and does not rewrite history.
 	SourceRollback Source = "ROLLBACK"
 )
 
@@ -46,22 +46,26 @@ const (
 )
 
 // IntentStatus tracks the lifecycle of a mutation intent.
-// Intent workflow: PENDING -> APPLIED -> COMMITTED, or PENDING -> FAILED.
-// COMMITTED and FAILED are short-lived terminal states because successful
-// status updates are immediately followed by intent cleanup. A terminal intent
-// can remain only when cleanup fails; startup repair treats RuleIntent as
-// recovery state, not an audit log. Durable audit facts live in RuleVersion.
+// Intent workflow:
+//   - PENDING: intent is durable, registry mutation is not yet proven.
+//   - APPLIED: intended state was observed, but RuleVersion may not be durable.
+//   - OUTCOME_UNKNOWN: registry returned an uncertain result or a conflicting
+//     event was observed; repair must read actual state before cleanup.
+//   - COMMITTED/FAILED: terminal states, cleaned up after the durable outcome.
+//
+// RPC errors and context cancellation are not registry-side fencing. They move
+// the intent to OUTCOME_UNKNOWN so repair can reconcile actual state later.
 type IntentStatus string
 
 const (
-	IntentStatusPending   IntentStatus = "PENDING"   // Intent created, mutation not yet applied
-	IntentStatusApplied   IntentStatus = "APPLIED"   // Mutation applied to resource store, awaiting commit
-	IntentStatusCommitted IntentStatus = "COMMITTED" // Version successfully recorded, intent closed
-	IntentStatusFailed    IntentStatus = "FAILED"    // Mutation failed or was rejected
+	IntentStatusPending        IntentStatus = "PENDING"         // Intent created, mutation not yet applied
+	IntentStatusApplied        IntentStatus = "APPLIED"         // Intended state observed, awaiting version commit
+	IntentStatusOutcomeUnknown IntentStatus = "OUTCOME_UNKNOWN" // Actual registry outcome must be reconciled
+	IntentStatusCommitted      IntentStatus = "COMMITTED"       // Version successfully recorded, intent closed
+	IntentStatusFailed         IntentStatus = "FAILED"          // Mutation failed or was rejected
 )
 
 var (
-	ErrFeatureDisabled       = errors.New("rule versioning is disabled")
 	ErrVersionConflict       = errors.New("rule version conflict") // ExpectedVersionID mismatch
 	ErrVersionNotFound       = errors.New("rule version not found")
 	ErrVersionIntentNotFound = errors.New("rule version intent not found")
@@ -100,18 +104,6 @@ type Version struct {
 	IsCurrent        bool      `json:"isCurrent"`
 }
 
-// Meta tracks the current committed version and sequence number for a rule.
-// Rollback advances CurrentVersion to the newly committed rollback version; it
-// must not point back to the historical target.
-// CurrentVersion may be nil if the rule was deleted.
-type Meta struct {
-	RuleKind       coremodel.ResourceKind `json:"ruleKind"`
-	ResourceKey    string                 `json:"resourceKey"`
-	CurrentVersion *int64                 `json:"currentVersion"`
-	LastVersionNo  int64                  `json:"lastVersionNo"`
-	UpdatedAt      time.Time              `json:"updatedAt"`
-}
-
 // Intent represents a pending mutation to a rule. It records the user's
 // mutation before the rule is written; the Version is created only after the
 // resulting rule state is observed or repaired from ResourceManager.
@@ -132,7 +124,15 @@ type Intent struct {
 	RolledBackFromID *int64       `json:"rolledBackFromId,omitempty"`
 	Status           IntentStatus `json:"status"`
 	LastError        string       `json:"lastError,omitempty"`
-	CreatedAt        time.Time    `json:"createdAt"`
+	// ReconcileRequired is durable evidence that a non-matching event arrived
+	// while the intent was open. The observed fields let repair wait until the
+	// ResourceManager snapshot has caught up before deciding the final outcome.
+	ReconcileRequired   bool      `json:"reconcileRequired,omitempty"`
+	ObservedContentHash string    `json:"observedContentHash,omitempty"`
+	ObservedSpecJSON    string    `json:"observedSpecJson,omitempty"`
+	ObservedOperation   Operation `json:"observedOperation,omitempty"`
+	ObservedAt          time.Time `json:"observedAt,omitempty"`
+	CreatedAt           time.Time `json:"createdAt"`
 }
 
 type ledgerState struct {

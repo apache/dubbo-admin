@@ -55,18 +55,11 @@ func ensureMutationContext(ctx consolectx.Context, opts RuleMutationOptions) Rul
 	if ctx != nil {
 		opts.leaseCtx = ctx.AppContext()
 	}
-	if opts.leaseCtx == nil {
-		opts.leaseCtx = context.Background()
-	}
 	return opts
 }
 
 func ruleVersioning(ctx consolectx.Context) *versioning.Service {
 	if ctx == nil {
-		return nil
-	}
-	cfg := ctx.Config().RuleVersioning
-	if cfg == nil || !cfg.Enabled {
 		return nil
 	}
 	return ctx.RuleVersioning()
@@ -212,10 +205,16 @@ func applyRuleMutationIntentWithOptions(ctx consolectx.Context, res coremodel.Re
 		return nil, err
 	}
 	if err := mutate(); err != nil {
-		if markErr := abandonIntentAndReconcile(ctx, svc, opts.leaseCtx, intent, err.Error()); markErr != nil {
-			return nil, fmt.Errorf("%w; failed to mark version intent failed: %v", err, markErr)
+		// A registry error, timeout, or lease loss does not prove the remote
+		// mutation failed. Keep the durable intent and reconcile actual state
+		// under the same canonical rule lock before reporting the outcome.
+		if markErr := svc.MarkIntentOutcomeUnknown(opts.leaseCtx, intent, err.Error()); markErr != nil && !errors.Is(markErr, versioning.ErrVersionIntentNotFound) {
+			return nil, markErr
 		}
-		return nil, err
+		if version, finalizeErr := ensureMutationIntentCommitted(ctx, svc, intent, opts); finalizeErr == nil {
+			return &MutationCommit{Intent: intent, Version: version}, nil
+		}
+		return nil, pendingLedgerError(intent.ID, err)
 	}
 	if err := checkMutationLease(opts); err != nil {
 		return nil, err
@@ -270,7 +269,7 @@ func pendingLedgerError(intentID int64, cause error) error {
 func ListRuleVersions(ctx consolectx.Context, kindName RuleKindName) (*versioning.ListResult, error) {
 	svc := ruleVersioning(ctx)
 	if svc == nil {
-		return nil, versioning.ErrFeatureDisabled
+		return nil, versioning.ErrVersionLedgerCorrupt
 	}
 	return svc.List(kindName.Kind, kindName.Mesh, kindName.Name)
 }
@@ -278,7 +277,7 @@ func ListRuleVersions(ctx consolectx.Context, kindName RuleKindName) (*versionin
 func GetRuleVersion(ctx consolectx.Context, kindName RuleKindName, versionID int64) (*versioning.Version, error) {
 	svc := ruleVersioning(ctx)
 	if svc == nil {
-		return nil, versioning.ErrFeatureDisabled
+		return nil, versioning.ErrVersionLedgerCorrupt
 	}
 	return svc.Get(kindName.Kind, kindName.Mesh, kindName.Name, versionID)
 }
@@ -286,7 +285,7 @@ func GetRuleVersion(ctx consolectx.Context, kindName RuleKindName, versionID int
 func DiffRuleVersion(ctx consolectx.Context, kindName RuleKindName, versionID int64, against string) (*versioning.DiffResult, error) {
 	svc := ruleVersioning(ctx)
 	if svc == nil {
-		return nil, versioning.ErrFeatureDisabled
+		return nil, versioning.ErrVersionLedgerCorrupt
 	}
 	return svc.Diff(kindName.Kind, kindName.Mesh, kindName.Name, versionID, against)
 }
@@ -294,7 +293,7 @@ func DiffRuleVersion(ctx consolectx.Context, kindName RuleKindName, versionID in
 func RepairRuleVersionIntent(ctx consolectx.Context, intentID int64) (*versioning.Version, error) {
 	svc := ruleVersioning(ctx)
 	if svc == nil {
-		return nil, versioning.ErrFeatureDisabled
+		return nil, versioning.ErrVersionLedgerCorrupt
 	}
 	intent, err := svc.GetIntent(intentID)
 	if err != nil {
@@ -323,7 +322,7 @@ func RepairRuleVersionIntent(ctx consolectx.Context, intentID int64) (*versionin
 func AbandonRuleVersionIntent(ctx consolectx.Context, intentID int64, reason string) error {
 	svc := ruleVersioning(ctx)
 	if svc == nil {
-		return versioning.ErrFeatureDisabled
+		return versioning.ErrVersionLedgerCorrupt
 	}
 	reason = strings.TrimSpace(reason)
 	if reason == "" {
@@ -338,7 +337,9 @@ func AbandonRuleVersionIntent(ctx consolectx.Context, intentID int64, reason str
 		if err != nil {
 			return err
 		}
-		if intent.Status != versioning.IntentStatusPending && intent.Status != versioning.IntentStatusApplied {
+		if intent.Status != versioning.IntentStatusPending &&
+			intent.Status != versioning.IntentStatusApplied &&
+			intent.Status != versioning.IntentStatusOutcomeUnknown {
 			return bizerror.New(bizerror.InvalidArgument, "only open rule version intent can be abandoned")
 		}
 		current, exists, err := ctx.ResourceManager().GetByKey(intent.RuleKind, intent.ResourceKey)
@@ -365,9 +366,9 @@ type RollbackResult struct {
 }
 
 // RollbackRuleVersion re-publishes the spec of a historical version as a new
-// rule mutation. It does not modify historical versions and does not rewind
-// RuleMeta.CurrentVersionID. The resulting rule change is observed through the
-// normal versioning flow and recorded as a new SourceRollback version.
+// rule mutation. It does not modify historical versions; the resulting rule
+// change is observed through the normal versioning flow and recorded as a new
+// SourceRollback version.
 func RollbackRuleVersion(ctx consolectx.Context, kindName RuleKindName, targetVersionID int64, reason string, expectedVersionID *int64, author string) (*RollbackResult, error) {
 	var result *RollbackResult
 	err := withRuleLock(ctx, kindName, func(leaseCtx context.Context) error {
@@ -381,7 +382,7 @@ func RollbackRuleVersion(ctx consolectx.Context, kindName RuleKindName, targetVe
 func rollbackRuleVersionLocked(ctx consolectx.Context, kindName RuleKindName, targetVersionID int64, reason string, expectedVersionID *int64, author string, leaseCtx context.Context) (*RollbackResult, error) {
 	svc := ruleVersioning(ctx)
 	if svc == nil {
-		return nil, versioning.ErrFeatureDisabled
+		return nil, versioning.ErrVersionLedgerCorrupt
 	}
 
 	reason = strings.TrimSpace(reason)

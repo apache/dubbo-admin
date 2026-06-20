@@ -33,8 +33,7 @@
     </template>
 
     <a-spin :spinning="loading">
-      <a-empty v-if="disabled" :description="t('ruleVersionDomain.disabled')" />
-      <a-empty v-else-if="!items.length" :description="t('ruleVersionDomain.empty')" />
+      <a-empty v-if="!items.length" :description="t('ruleVersionDomain.empty')" />
       <div v-else class="history-list">
         <div
           v-for="item in items"
@@ -89,7 +88,6 @@ defineProps<{
   items: RuleVersion[]
   currentVersionNo?: number
   loading?: boolean
-  disabled?: boolean
 }>()
 
 defineEmits(['update:open', 'view-json', 'diff-current', 'rollback'])

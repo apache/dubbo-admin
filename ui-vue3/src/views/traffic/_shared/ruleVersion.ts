@@ -84,15 +84,9 @@ export const fetchCurrentVersionState = async (
   kind: TrafficRuleKind,
   ruleName: string
 ): Promise<CurrentVersionState> => {
-  try {
-    const res = await listRuleVersionsAPI(kind, ruleName)
-    if (res.code === HTTP_STATUS.SUCCESS) {
-      return currentVersionStateFromList(res.data)
-    }
-  } catch (e: any) {
-    if (e?.code !== 'FEATURE_DISABLED') {
-      throw e
-    }
+  const res = await listRuleVersionsAPI(kind, ruleName)
+  if (res.code === HTTP_STATUS.SUCCESS) {
+    return currentVersionStateFromList(res.data)
   }
   return { deleted: false }
 }
@@ -103,10 +97,6 @@ export const isVersionConflict = (e: any): e is VersionConflictError => {
 
 export const isVersionLedgerPending = (e: any): e is VersionLedgerPendingError => {
   return e?.code === 'VERSION_LEDGER_PENDING'
-}
-
-export const isFeatureDisabled = (e: any): boolean => {
-  return e?.code === 'FEATURE_DISABLED'
 }
 
 const t = (key: string, params?: Record<string, unknown>) => i18n.global.t(key, params)

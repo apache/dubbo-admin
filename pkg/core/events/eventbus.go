@@ -26,7 +26,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-// TODO(@mochengqian): wire this context from Nacos and Apollo subscribers too.
+// SourceRegistryContextKey identifies which registry produced a resource event.
 const SourceRegistryContextKey = "source-registry"
 
 type Event interface {

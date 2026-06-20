@@ -102,8 +102,7 @@ data:
         password: dubbo@2025
         expirationTime: 3600
     ruleVersioning:
-      enabled: true
-      maxVersionsPerRule: 5
+      maxVersionsPerRule: 50
     discovery:
       - type: nacos2
         name: nacos2.5-standalone

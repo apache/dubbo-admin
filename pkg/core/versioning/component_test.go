@@ -42,8 +42,8 @@ import (
 	memoryst "github.com/apache/dubbo-admin/pkg/store/memory"
 )
 
-func TestComponentEnabledFailsClosedWithoutLock(t *testing.T) {
-	builder := newVersioningComponentBuilder(t, true)
+func TestComponentFailsClosedWithoutLock(t *testing.T) {
+	builder := newVersioningComponentBuilder(t)
 	require.NoError(t, builder.ActivateComponent(newFakeVersioningRMComponent(t)))
 	require.NoError(t, builder.ActivateComponent(&fakeVersioningEventBus{}))
 
@@ -51,23 +51,13 @@ func TestComponentEnabledFailsClosedWithoutLock(t *testing.T) {
 	require.ErrorContains(t, err, "requires a lock component")
 }
 
-func TestComponentDisabledDoesNotRequireLock(t *testing.T) {
-	builder := newVersioningComponentBuilder(t, false)
-
-	c := &component{}
-	require.NoError(t, c.Init(builder))
-	require.NotNil(t, c.Service())
-	_, err := c.Service().List(meshresource.ConditionRouteKind, "", "demo")
-	require.ErrorIs(t, err, ErrFeatureDisabled)
-}
-
-func TestComponentRequiredDependenciesDoNotForceLockWhenDisabled(t *testing.T) {
+func TestComponentRequiredDependenciesDoNotForceLockDependency(t *testing.T) {
 	c := &component{}
 	require.NotContains(t, c.RequiredDependencies(), lock.DistributedLockComponent)
 }
 
 func TestComponentMemoryStoreUsesLocalLock(t *testing.T) {
-	builder := newVersioningComponentBuilder(t, true)
+	builder := newVersioningComponentBuilder(t)
 	require.NoError(t, builder.ActivateComponent(newFakeVersioningRMComponent(t)))
 	bus := &fakeVersioningEventBus{}
 	require.NoError(t, builder.ActivateComponent(bus))
@@ -85,8 +75,8 @@ func TestComponentMemoryStoreUsesLocalLock(t *testing.T) {
 }
 
 func TestComponentRepairOpenIntentsHonorsCancellationWhileWaitingForLock(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	intent, err := adapter.CreateIntent(context.Background(), testInsertRequest("repair-cancel-rule", "hash-a"))
 	require.NoError(t, err)
 
@@ -97,7 +87,7 @@ func TestComponentRepairOpenIntentsHonorsCancellationWhileWaitingForLock(t *test
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
 	c := &component{
-		service: NewService(true, 5, adapter),
+		service: NewService(5, adapter),
 		store:   adapter,
 		lock:    lockMgr,
 	}
@@ -106,8 +96,8 @@ func TestComponentRepairOpenIntentsHonorsCancellationWhileWaitingForLock(t *test
 }
 
 func TestComponentBootstrapExistingRulesHonorsCancellationWhileWaitingForLock(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	res := testConditionRule("bootstrap-cancel-rule", "v1")
 	conditionStore := newRuleStoreWithResource(t, meshresource.ConditionRouteKind, res)
 	rm := &fakeVersioningRM{stores: map[coremodel.ResourceKind]corestore.ResourceStore{
@@ -121,7 +111,7 @@ func TestComponentBootstrapExistingRulesHonorsCancellationWhileWaitingForLock(t 
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
 	c := &component{
-		service: NewService(true, 5, adapter),
+		service: NewService(5, adapter),
 		store:   adapter,
 		lock:    lockMgr,
 	}
@@ -134,8 +124,8 @@ func TestComponentBootstrapExistingRulesHonorsCancellationWhileWaitingForLock(t 
 }
 
 func TestComponentStartHonorsStopDuringBootstrapLockWait(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	res := testConditionRule("bootstrap-stop-rule", "v1")
 	conditionStore := newRuleStoreWithResource(t, meshresource.ConditionRouteKind, res)
 	rmComp := &fakeVersioningRMComponent{rm: &fakeVersioningRM{stores: map[coremodel.ResourceKind]corestore.ResourceStore{
@@ -147,7 +137,7 @@ func TestComponentStartHonorsStopDuringBootstrapLockWait(t *testing.T) {
 	defer func() { require.NoError(t, lease.Unlock(context.Background())) }()
 
 	cfg := appcfg.DefaultAdminConfig()
-	cfg.RuleVersioning = &versioningcfg.Config{Enabled: true, MaxVersionsPerRule: 5}
+	cfg.RuleVersioning = &versioningcfg.Config{MaxVersionsPerRule: 5}
 	rt := &fakeVersioningRuntime{
 		cfg: appcfg.DefaultAdminConfig(),
 		components: map[runtime.ComponentType]runtime.Component{
@@ -157,7 +147,7 @@ func TestComponentStartHonorsStopDuringBootstrapLockWait(t *testing.T) {
 	}
 	rt.cfg = cfg
 	c := &component{
-		service: NewService(true, 5, adapter),
+		service: NewService(5, adapter),
 		store:   adapter,
 		lock:    lockMgr,
 	}
@@ -179,8 +169,8 @@ func TestComponentStartHonorsStopDuringBootstrapLockWait(t *testing.T) {
 }
 
 func TestComponentBootstrapExistingRulesIsIdempotentAcrossRestarts(t *testing.T) {
-	versionStore, intentStore, metaStore := newVersioningStores(t)
-	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
 	res := testConditionRule("bootstrap-idempotent-rule", "v1")
 	conditionStore := newRuleStoreWithResource(t, meshresource.ConditionRouteKind, res)
 	rm := &fakeVersioningRM{stores: map[coremodel.ResourceKind]corestore.ResourceStore{
@@ -188,7 +178,7 @@ func TestComponentBootstrapExistingRulesIsIdempotentAcrossRestarts(t *testing.T)
 	}}
 
 	c := &component{
-		service: NewService(true, 5, adapter),
+		service: NewService(5, adapter),
 		store:   adapter,
 		lock:    locallock.NewLocalLock(),
 	}
@@ -202,11 +192,11 @@ func TestComponentBootstrapExistingRulesIsIdempotentAcrossRestarts(t *testing.T)
 	assert.Equal(t, int64(1), versions[0].VersionNo)
 }
 
-func newVersioningComponentBuilder(t *testing.T, enabled bool) *runtime.Builder {
+func newVersioningComponentBuilder(t *testing.T) *runtime.Builder {
 	t.Helper()
 	cfg := appcfg.DefaultAdminConfig()
 	cfg.Store = &storecfg.Config{Type: storecfg.Memory}
-	cfg.RuleVersioning = &versioningcfg.Config{Enabled: enabled, MaxVersionsPerRule: 5}
+	cfg.RuleVersioning = &versioningcfg.Config{MaxVersionsPerRule: 5}
 	builder, err := runtime.BuilderFor(context.Background(), cfg)
 	require.NoError(t, err)
 	return builder
@@ -218,11 +208,10 @@ type fakeVersioningRMComponent struct {
 
 func newFakeVersioningRMComponent(t *testing.T) *fakeVersioningRMComponent {
 	t.Helper()
-	versionStore, intentStore, metaStore := newVersioningStores(t)
+	versionStore, intentStore, _ := newVersioningStores(t)
 	stores := map[coremodel.ResourceKind]corestore.ResourceStore{
 		meshresource.RuleVersionKind: versionStore,
 		meshresource.RuleIntentKind:  intentStore,
-		meshresource.RuleMetaKind:    metaStore,
 	}
 	return &fakeVersioningRMComponent{rm: &fakeVersioningRM{stores: stores}}
 }

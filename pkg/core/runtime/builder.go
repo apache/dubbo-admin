@@ -34,6 +34,7 @@ type BuilderContext interface {
 	Config() app.AdminConfig
 	GetActivatedComponent(typ ComponentType) (Component, error)
 	ActivateComponent(comp Component) error
+	AppContext() context.Context
 }
 
 var _ BuilderContext = &Builder{}
@@ -52,6 +53,10 @@ func (b *Builder) GetActivatedComponent(typ ComponentType) (Component, error) {
 		return nil, errors.Errorf("no such component: %v", typ)
 	}
 	return comp, nil
+}
+
+func (b *Builder) AppContext() context.Context {
+	return b.appCtx
 }
 
 func BuilderFor(appCtx context.Context, cfg app.AdminConfig) (*Builder, error) {

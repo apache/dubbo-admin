@@ -28,37 +28,28 @@ func TestConfigDefaultsOnYAMLUnmarshal(t *testing.T) {
 	var cfg Config
 	require.NoError(t, yaml.Unmarshal([]byte("{}\n"), &cfg))
 
-	require.True(t, cfg.Enabled)
 	require.Equal(t, DefaultMaxVersionsPerRule, cfg.MaxVersionsPerRule)
 }
 
-func TestConfigExplicitDisableOnYAMLUnmarshal(t *testing.T) {
+func TestConfigAllowsNoRetention(t *testing.T) {
 	var cfg Config
-	require.NoError(t, yaml.Unmarshal([]byte("enabled: false\n"), &cfg))
+	require.NoError(t, yaml.Unmarshal([]byte("maxVersionsPerRule: 0\n"), &cfg))
 
-	require.False(t, cfg.Enabled)
-	require.Equal(t, DefaultMaxVersionsPerRule, cfg.MaxVersionsPerRule)
-}
-
-func TestConfigExplicitEnableOnYAMLUnmarshal(t *testing.T) {
-	var cfg Config
-	require.NoError(t, yaml.Unmarshal([]byte("enabled: true\n"), &cfg))
-
-	require.True(t, cfg.Enabled)
-	require.Equal(t, DefaultMaxVersionsPerRule, cfg.MaxVersionsPerRule)
+	require.Equal(t, int64(0), cfg.MaxVersionsPerRule)
+	require.NoError(t, cfg.Validate())
 }
 
 func TestConfigValidate(t *testing.T) {
 	cfg := Default()
 	require.NoError(t, cfg.Validate())
 
-	cfg.MaxVersionsPerRule = 0
+	cfg.MaxVersionsPerRule = -1
 	require.ErrorContains(t, cfg.Validate(), "ruleVersioning.maxVersionsPerRule")
 }
 
 func TestConfigSanitizeRestoresDefaults(t *testing.T) {
 	cfg := Default()
-	cfg.MaxVersionsPerRule = 0
+	cfg.MaxVersionsPerRule = -1
 	cfg.Sanitize()
 
 	require.Equal(t, DefaultMaxVersionsPerRule, cfg.MaxVersionsPerRule)

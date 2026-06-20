@@ -105,88 +105,9 @@ func (r *RuleIntentResourceList) SetItems(items []model.Resource) {
 	}
 }
 
-// RuleMetaResource tracks the current state of a rule for version control
-type RuleMetaResource struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Mesh              string              `json:"mesh,omitempty"`
-	Spec              *meshproto.RuleMeta `json:"spec,omitempty"`
-}
-
-func (r *RuleMetaResource) ResourceKind() model.ResourceKind {
-	return RuleMetaKind
-}
-
-func (r *RuleMetaResource) ResourceMesh() string {
-	return r.Mesh
-}
-
-func (r *RuleMetaResource) ResourceMeta() metav1.ObjectMeta {
-	return r.ObjectMeta
-}
-
-func (r *RuleMetaResource) ResourceSpec() model.ResourceSpec {
-	return r.Spec
-}
-
-func (r *RuleMetaResource) ResourceKey() string {
-	return model.BuildResourceKey(r.Mesh, r.Name)
-}
-
-func (r *RuleMetaResource) String() string {
-	jsonStr, err := json.Marshal(r)
-	if err != nil {
-		return ""
-	}
-	return string(jsonStr)
-}
-
-func (r *RuleMetaResource) DeepCopyObject() k8sruntime.Object {
-	out := &RuleMetaResource{
-		TypeMeta:   r.TypeMeta,
-		ObjectMeta: *r.ObjectMeta.DeepCopy(),
-		Mesh:       r.Mesh,
-	}
-	if r.Spec != nil {
-		out.Spec = proto.Clone(r.Spec).(*meshproto.RuleMeta)
-	}
-	return out
-}
-
-// RuleMetaResourceList contains a list of RuleMetaResource
-type RuleMetaResourceList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []RuleMetaResource `json:"items"`
-}
-
-func (r *RuleMetaResourceList) DeepCopyObject() k8sruntime.Object {
-	out := &RuleMetaResourceList{
-		TypeMeta: r.TypeMeta,
-	}
-	r.ListMeta.DeepCopyInto(&out.ListMeta)
-	if r.Items != nil {
-		out.Items = make([]RuleMetaResource, len(r.Items))
-		for i := range r.Items {
-			out.Items[i] = *r.Items[i].DeepCopyObject().(*RuleMetaResource)
-		}
-	}
-	return out
-}
-
-func (r *RuleMetaResourceList) SetItems(items []model.Resource) {
-	r.Items = make([]RuleMetaResource, len(items))
-	for i, res := range items {
-		if typed, ok := res.(*RuleMetaResource); ok {
-			r.Items[i] = *typed
-		}
-	}
-}
-
 // Resource kind constants
 const (
 	RuleIntentKind model.ResourceKind = "RuleIntent"
-	RuleMetaKind   model.ResourceKind = "RuleMeta"
 )
 
 // NewRuleIntentResource creates a new RuleIntentResource with given name and mesh
@@ -206,35 +127,10 @@ func NewRuleIntentResourceWithAttributes(name, mesh string) *RuleIntentResource 
 	return r
 }
 
-// NewRuleMetaResource creates a new RuleMetaResource
-func NewRuleMetaResource() *RuleMetaResource {
-	return &RuleMetaResource{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "v1alpha1",
-			Kind:       string(RuleMetaKind),
-		},
-	}
-}
-
-func NewRuleMetaResourceWithAttributes(name, mesh string) *RuleMetaResource {
-	r := NewRuleMetaResource()
-	r.Name = name
-	r.Mesh = mesh
-	return r
-}
-
 func init() {
-	// Register RuleIntent
 	model.RegisterResourceSchema(RuleIntentKind, func() model.Resource {
 		return NewRuleIntentResource()
 	}, func() model.ResourceList {
 		return &RuleIntentResourceList{}
-	})
-
-	// Register RuleMeta
-	model.RegisterResourceSchema(RuleMetaKind, func() model.Resource {
-		return NewRuleMetaResource()
-	}, func() model.ResourceList {
-		return &RuleMetaResourceList{}
 	})
 }
