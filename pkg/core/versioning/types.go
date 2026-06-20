@@ -72,6 +72,7 @@ var (
 	ErrVersionIntentNotOpen  = errors.New("rule version intent is not open") // Intent already committed or failed
 	ErrVersionIntentPending  = errors.New("rule version intent is pending")  // Another mutation in progress
 	ErrVersionLedgerCorrupt  = errors.New("rule version ledger corruption")
+	ErrVersionIntentConflict = errors.New("rule version intent revision conflict")
 	ErrIntentOutcomeMismatch = errors.New("rule version intent outcome does not match current resource")
 	ErrRollbackToDelete      = errors.New("cannot roll back to a deleted rule version")
 	ErrRollbackToCurrent     = errors.New("cannot roll back to a version identical to current")
@@ -132,6 +133,7 @@ type Intent struct {
 	ObservedSpecJSON    string    `json:"observedSpecJson,omitempty"`
 	ObservedOperation   Operation `json:"observedOperation,omitempty"`
 	ObservedAt          time.Time `json:"observedAt,omitempty"`
+	Revision            int64     `json:"revision"`
 	CreatedAt           time.Time `json:"createdAt"`
 }
 

@@ -588,6 +588,7 @@ const words: I18nType = {
     rollbackConflict: 'Version conflict: the rule was changed. Reload and try again.',
     rollbackPending: 'A version intent is pending. Repair or abandon it first.',
     rollbackFailed: 'Rollback failed',
+    diffFailed: 'Failed to load version diff',
     rollbackCurrentDisabled: 'Current version does not need rollback',
     rollbackDeleteDisabled: 'Delete markers cannot be rolled back',
     source: 'Source',

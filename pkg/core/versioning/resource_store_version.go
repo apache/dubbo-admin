@@ -38,6 +38,9 @@ import (
 )
 
 func (a *ResourceStoreAdapter) GetVersion(kind coremodel.ResourceKind, resourceKey string, id int64) (*Version, error) {
+	if err := a.ensureStores(); err != nil {
+		return nil, err
+	}
 	rv, err := a.getVersionResourceForRule(kind, resourceKey, id)
 	if err != nil {
 		return nil, err
@@ -46,6 +49,9 @@ func (a *ResourceStoreAdapter) GetVersion(kind coremodel.ResourceKind, resourceK
 }
 
 func (a *ResourceStoreAdapter) ListVersions(kind coremodel.ResourceKind, resourceKey string) ([]Version, error) {
+	if err := a.ensureStores(); err != nil {
+		return nil, err
+	}
 	snapshot, err := a.LedgerSnapshot(kind, resourceKey)
 	if err != nil {
 		return nil, err
@@ -54,6 +60,9 @@ func (a *ResourceStoreAdapter) ListVersions(kind coremodel.ResourceKind, resourc
 }
 
 func (a *ResourceStoreAdapter) LedgerSnapshot(kind coremodel.ResourceKind, resourceKey string) (*LedgerSnapshot, error) {
+	if err := a.ensureStores(); err != nil {
+		return nil, err
+	}
 	var snapshot *LedgerSnapshot
 	err := a.withParentLock(kind, resourceKey, func() error {
 		state, err := a.ledgerState(kind, resourceKey)
@@ -115,6 +124,9 @@ func (a *ResourceStoreAdapter) ledgerState(kind coremodel.ResourceKind, resource
 }
 
 func (a *ResourceStoreAdapter) InsertVersion(ctx context.Context, req InsertRequest, maxVersions int64) (*Version, error) {
+	if err := a.ensureStores(); err != nil {
+		return nil, err
+	}
 	var version *Version
 	err := a.withParentLock(req.RuleKind, req.ResourceKey, func() error {
 		if err := lock.CheckLease(ctx); err != nil {

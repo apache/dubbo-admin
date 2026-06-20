@@ -177,6 +177,7 @@ const rollbackTarget = ref<RuleVersion | null>(null)
 const rollbackReason = ref('')
 const rollbackLoading = ref(false)
 let requestSeq = 0
+let operationSeq = 0
 let disposed = false
 
 const sourceLabels: Record<string, string> = {
@@ -189,6 +190,31 @@ const sourceLabels: Record<string, string> = {
 const sourceLabel = (source: string) => (sourceLabels[source] ? t(sourceLabels[source]) : source)
 const authorLabel = (author: string) => author.replace(/^system:/, '')
 const createdAtLabel = (createdAt: string) => dayjs(createdAt).format('YYYY/M/D HH:mm:ss')
+
+type OperationToken = {
+  seq: number
+  open: boolean
+  kind: TrafficRuleKind
+  ruleName: string
+  targetId?: string
+}
+
+const nextOperationToken = (targetId?: string): OperationToken => ({
+  seq: ++operationSeq,
+  open: props.open,
+  kind: props.kind,
+  ruleName: props.ruleName,
+  targetId
+})
+
+const isCurrentOperation = (token: OperationToken, targetId = token.targetId) =>
+  !disposed &&
+  token.seq === operationSeq &&
+  token.open &&
+  props.open &&
+  token.kind === props.kind &&
+  token.ruleName === props.ruleName &&
+  token.targetId === targetId
 
 async function loadHistory() {
   const seq = ++requestSeq
@@ -237,18 +263,28 @@ const openVersionJson = (item: RuleVersion) => {
 }
 
 const openVersionDiff = async (item: RuleVersion) => {
-  const res = await diffRuleVersionAPI(props.kind, props.ruleName, item.id)
-  if (res?.code === HTTP_STATUS.SUCCESS) {
-    versionDiffLeft.value = formatRuleSpec(res.data.left.specJson)
-    versionDiffRight.value = formatRuleSpec(res.data.right.specJson)
-    versionDiffLeftLabel.value = versionDiffLabel(
-      t('ruleVersionDomain.targetVersion'),
-      res.data.left?.versionNo
-    )
-    versionDiffRightLabel.value = currentDeleted.value
-      ? t('ruleVersionDomain.currentDeleted')
-      : versionDiffLabel(t('ruleVersionDomain.currentVersion'), res.data.right?.versionNo)
-    versionDiffOpen.value = true
+  const token = nextOperationToken(item.id)
+  try {
+    const res = await diffRuleVersionAPI(token.kind, token.ruleName, item.id)
+    if (!isCurrentOperation(token, item.id)) {
+      return
+    }
+    if (res?.code === HTTP_STATUS.SUCCESS) {
+      versionDiffLeft.value = formatRuleSpec(res.data.left.specJson)
+      versionDiffRight.value = formatRuleSpec(res.data.right.specJson)
+      versionDiffLeftLabel.value = versionDiffLabel(
+        t('ruleVersionDomain.targetVersion'),
+        res.data.left?.versionNo
+      )
+      versionDiffRightLabel.value = currentDeleted.value
+        ? t('ruleVersionDomain.currentDeleted')
+        : versionDiffLabel(t('ruleVersionDomain.currentVersion'), res.data.right?.versionNo)
+      versionDiffOpen.value = true
+    }
+  } catch (e: any) {
+    if (isCurrentOperation(token, item.id)) {
+      message.error(e?.message || t('ruleVersionDomain.diffFailed'))
+    }
   }
 }
 
@@ -265,14 +301,16 @@ const handleRollbackConfirm = async () => {
     return
   }
 
+  const target = rollbackTarget.value
+  const token = nextOperationToken(target.id)
   rollbackLoading.value = true
   try {
     // Send the current version as a weak CAS guard so rollback does not
     // overwrite a newer change made after the drawer was opened.
     const res = await rollbackRuleVersionAPI(
-      props.kind,
-      props.ruleName,
-      rollbackTarget.value.id,
+      token.kind,
+      token.ruleName,
+      target.id,
       rollbackReason.value,
       rollbackExpectedVersionId({
         id: currentVersionId.value,
@@ -280,6 +318,9 @@ const handleRollbackConfirm = async () => {
         deleted: currentDeleted.value
       })
     )
+    if (!isCurrentOperation(token, target.id) || rollbackTarget.value?.id !== target.id) {
+      return
+    }
     if (res?.code === HTTP_STATUS.SUCCESS) {
       const versionNo = res.data?.versionNo
       message.success(
@@ -291,6 +332,9 @@ const handleRollbackConfirm = async () => {
       await loadHistory()
     }
   } catch (e: any) {
+    if (!isCurrentOperation(token, target.id) || rollbackTarget.value?.id !== target.id) {
+      return
+    }
     if (isVersionConflict(e)) {
       message.error(t('ruleVersionDomain.rollbackConflict'))
       await loadHistory()
@@ -301,7 +345,9 @@ const handleRollbackConfirm = async () => {
       message.error(e?.message || t('ruleVersionDomain.rollbackFailed'))
     }
   } finally {
-    rollbackLoading.value = false
+    if (isCurrentOperation(token, target.id)) {
+      rollbackLoading.value = false
+    }
   }
 }
 
@@ -312,6 +358,7 @@ watch(
       loadHistory()
     } else {
       requestSeq++
+      operationSeq++
       loading.value = false
     }
   },
@@ -321,6 +368,7 @@ watch(
 onBeforeUnmount(() => {
   disposed = true
   requestSeq++
+  operationSeq++
 })
 </script>
 

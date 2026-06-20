@@ -100,7 +100,7 @@ func (c *component) Init(ctx runtime.BuilderContext) error {
 	store := NewResourceStoreAdapter(rvStore, intentStore)
 	lockComponent, err := ctx.GetActivatedComponent(lock.DistributedLockComponent)
 	if err != nil {
-		return fmt.Errorf("rule versioning requires a lock component when enabled: %w", err)
+		return fmt.Errorf("rule versioning requires a lock component: %w", err)
 	}
 	lockComp, ok := lockComponent.(*lock.Component)
 	if !ok {
@@ -108,7 +108,7 @@ func (c *component) Init(ctx runtime.BuilderContext) error {
 	}
 	lockMgr := lockComp.GetLock()
 	if lockMgr == nil {
-		return fmt.Errorf("rule versioning requires an available lock implementation when enabled")
+		return fmt.Errorf("rule versioning requires an available lock implementation")
 	}
 	c.store = store
 	c.lock = lockMgr
@@ -152,6 +152,9 @@ func (c *component) Start(rt runtime.Runtime, stop <-chan struct{}) error {
 	// committed it, the intent stays PENDING forever and blocks future writes.
 	// Repair attempts to commit intents whose desired state matches actual state.
 	if err := c.repairOpenIntents(startCtx, rm); err != nil {
+		return err
+	}
+	if err := c.cleanupTerminalIntents(startCtx); err != nil {
 		return err
 	}
 	if err := c.bootstrapExistingRules(startCtx, rm, cfg.MaxVersionsPerRule); err != nil {
@@ -225,6 +228,34 @@ func (c *component) repairOpenIntents(ctx context.Context, rm manager.ResourceMa
 			if errors.Is(err, ErrVersionIntentPending) || errors.Is(err, ErrIntentOutcomeMismatch) {
 				logger.Warnf("rule version intent %d cannot be repaired automatically for %s: %v", intent.ID, intent.ResourceKey, err)
 				continue
+			}
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *component) cleanupTerminalIntents(ctx context.Context) error {
+	intents, err := c.store.ListTerminalIntents()
+	if err != nil {
+		return err
+	}
+	for _, intent := range intents {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		err = withRuleVersionLock(ctx, c.lock, intent.RuleKind, intent.ResourceKey, func(leaseCtx context.Context) error {
+			if err := lock.CheckLease(leaseCtx); err != nil {
+				return err
+			}
+			return c.store.CleanupIntent(intent.ID, intent.Status)
+		})
+		if err != nil {
+			if errors.Is(err, ErrVersionIntentNotFound) {
+				continue
+			}
+			if errors.Is(err, ErrVersionNotFound) && intent.Status == IntentStatusCommitted {
+				return fmt.Errorf("%w: terminal committed intent %d has no RuleVersion", ErrVersionLedgerCorrupt, intent.ID)
 			}
 			return err
 		}

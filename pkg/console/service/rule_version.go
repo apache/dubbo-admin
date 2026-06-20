@@ -68,7 +68,7 @@ func ruleVersioning(ctx consolectx.Context) *versioning.Service {
 func checkExpectedVersion(ctx consolectx.Context, kindName RuleKindName, opts RuleMutationOptions) error {
 	svc := ruleVersioning(ctx)
 	if svc == nil {
-		return nil
+		return versioning.ErrVersionLedgerCorrupt
 	}
 	return svc.CheckExpected(kindName.Kind, kindName.Mesh, kindName.Name, opts.ExpectedVersionID)
 }
@@ -93,7 +93,7 @@ func prepareRuleMutation(ctx consolectx.Context, kindName RuleKindName, opts Rul
 func repairPendingIntent(ctx consolectx.Context, kindName RuleKindName, opts RuleMutationOptions) error {
 	svc := ruleVersioning(ctx)
 	if svc == nil {
-		return nil
+		return versioning.ErrVersionLedgerCorrupt
 	}
 	resourceKey := coremodel.BuildResourceKey(kindName.Mesh, kindName.Name)
 	if err := checkMutationLease(opts); err != nil {
@@ -155,10 +155,7 @@ func withRuleMutation(
 
 	lockMgr := ctx.LockManager()
 	if lockMgr == nil {
-		if ruleVersioning(ctx) != nil {
-			return lock.ErrLockUnavailable
-		}
-		return execute(opts)
+		return lock.ErrLockUnavailable
 	}
 	lockKey, err := ruleLockKey(kindName)
 	if err != nil {
@@ -183,10 +180,7 @@ type MutationCommit struct {
 func applyRuleMutationIntentWithOptions(ctx consolectx.Context, res coremodel.Resource, op versioning.Operation, source versioning.Source, opts RuleMutationOptions, reason string, rolledBackFromID *int64, mutate func() error) (*MutationCommit, error) {
 	svc := ruleVersioning(ctx)
 	if svc == nil {
-		if err := checkMutationLease(opts); err != nil {
-			return nil, err
-		}
-		return nil, mutate()
+		return nil, versioning.ErrVersionLedgerCorrupt
 	}
 	if err := checkMutationLease(opts); err != nil {
 		return nil, err
@@ -196,10 +190,7 @@ func applyRuleMutationIntentWithOptions(ctx consolectx.Context, res coremodel.Re
 		return nil, err
 	}
 	if intent == nil {
-		if err := checkMutationLease(opts); err != nil {
-			return nil, err
-		}
-		return nil, mutate()
+		return nil, versioning.ErrVersionLedgerCorrupt
 	}
 	if err := checkMutationLease(opts); err != nil {
 		return nil, err
@@ -242,21 +233,23 @@ func ensureMutationIntentCommitted(ctx consolectx.Context, svc *versioning.Servi
 }
 
 func abandonIntentAndReconcile(ctx consolectx.Context, svc *versioning.Service, leaseCtx context.Context, intent *versioning.Intent, reason string) error {
-	if err := svc.AbandonIntent(leaseCtx, intent, reason); err != nil {
-		return err
-	}
-	if err := lock.CheckLease(leaseCtx); err != nil {
-		return err
-	}
 	current, exists, err := ctx.ResourceManager().GetByKey(intent.RuleKind, intent.ResourceKey)
 	if err != nil {
 		return err
 	}
+	if versioning.IntentMatchesResource(intent, current, !exists) {
+		return bizerror.New(bizerror.InvalidArgument, "rule version intent matches the current resource; repair it instead")
+	}
 	if err := lock.CheckLease(leaseCtx); err != nil {
 		return err
 	}
-	_, err = svc.ReconcileActualState(leaseCtx, intent.RuleKind, intent.ResourceKey, current, !exists, "system:reconcile")
-	return err
+	if _, err := svc.ReconcileActualState(leaseCtx, intent.RuleKind, intent.ResourceKey, current, !exists, "system:reconcile"); err != nil {
+		return err
+	}
+	if err := lock.CheckLease(leaseCtx); err != nil {
+		return err
+	}
+	return svc.AbandonIntent(leaseCtx, intent, reason)
 }
 
 func pendingLedgerError(intentID int64, cause error) error {
@@ -337,17 +330,13 @@ func AbandonRuleVersionIntent(ctx consolectx.Context, intentID int64, reason str
 		if err != nil {
 			return err
 		}
+		if intent.Status == versioning.IntentStatusFailed {
+			return svc.AbandonIntent(leaseCtx, intent, reason)
+		}
 		if intent.Status != versioning.IntentStatusPending &&
 			intent.Status != versioning.IntentStatusApplied &&
 			intent.Status != versioning.IntentStatusOutcomeUnknown {
 			return bizerror.New(bizerror.InvalidArgument, "only open rule version intent can be abandoned")
-		}
-		current, exists, err := ctx.ResourceManager().GetByKey(intent.RuleKind, intent.ResourceKey)
-		if err != nil {
-			return err
-		}
-		if versioning.IntentMatchesResource(intent, current, !exists) {
-			return bizerror.New(bizerror.InvalidArgument, "rule version intent matches the current resource; repair it instead")
 		}
 		if err := lock.CheckLease(leaseCtx); err != nil {
 			return err

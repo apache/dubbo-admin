@@ -73,8 +73,12 @@ type RuleIntent struct {
 	ObservedSpecJson    string                 `protobuf:"bytes,19,opt,name=observed_spec_json,json=observedSpecJson,proto3" json:"observed_spec_json,omitempty"`
 	ObservedOperation   string                 `protobuf:"bytes,20,opt,name=observed_operation,json=observedOperation,proto3" json:"observed_operation,omitempty"`
 	ObservedAt          *timestamppb.Timestamp `protobuf:"bytes,21,opt,name=observed_at,json=observedAt,proto3" json:"observed_at,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// Monotonic resource revision owned by RuleIntent. Status transitions and
+	// observed-marker writes advance it so finalization can reject stale commits
+	// instead of overwriting a subscriber reconcile marker.
+	Revision      int64 `protobuf:"varint,22,opt,name=revision,proto3" json:"revision,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RuleIntent) Reset() {
@@ -247,11 +251,18 @@ func (x *RuleIntent) GetObservedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *RuleIntent) GetRevision() int64 {
+	if x != nil {
+		return x.Revision
+	}
+	return 0
+}
+
 var File_api_mesh_v1alpha1_rule_intent_proto protoreflect.FileDescriptor
 
 const file_api_mesh_v1alpha1_rule_intent_proto_rawDesc = "" +
 	"\n" +
-	"#api/mesh/v1alpha1/rule_intent.proto\x12\x13dubbo.mesh.v1alpha1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe2\x06\n" +
+	"#api/mesh/v1alpha1/rule_intent.proto\x12\x13dubbo.mesh.v1alpha1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xfe\x06\n" +
 	"\n" +
 	"RuleIntent\x12(\n" +
 	"\x10parent_rule_kind\x18\x01 \x01(\tR\x0eparentRuleKind\x12(\n" +
@@ -277,7 +288,8 @@ const file_api_mesh_v1alpha1_rule_intent_proto_rawDesc = "" +
 	"\x12observed_spec_json\x18\x13 \x01(\tR\x10observedSpecJson\x12-\n" +
 	"\x12observed_operation\x18\x14 \x01(\tR\x11observedOperation\x12;\n" +
 	"\vobserved_at\x18\x15 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"observedAtJ\x04\b\x04\x10\x05R\n" +
+	"observedAt\x12\x1a\n" +
+	"\brevision\x18\x16 \x01(\x03R\brevisionJ\x04\b\x04\x10\x05R\n" +
 	"version_noB1Z/github.com/apache/dubbo-admin/api/mesh/v1alpha1b\x06proto3"
 
 var (

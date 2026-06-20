@@ -50,7 +50,17 @@ func NewResourceStoreAdapter(versionStore, intentStore store.ResourceStore) *Res
 	}
 }
 
+func (a *ResourceStoreAdapter) ensureStores() error {
+	if a == nil || a.versionStore == nil || a.intentStore == nil {
+		return fmt.Errorf("%w: RuleVersion and RuleIntent stores are required", ErrVersionLedgerCorrupt)
+	}
+	return nil
+}
+
 func (a *ResourceStoreAdapter) CheckExpectedVersion(kind coremodel.ResourceKind, resourceKey string, expected *int64) error {
+	if err := a.ensureStores(); err != nil {
+		return err
+	}
 	if expected == nil {
 		return nil
 	}

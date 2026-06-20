@@ -195,6 +195,18 @@ func (s *Service) AbandonIntent(ctx context.Context, intent *Intent, reason stri
 	if intent == nil {
 		return bizerror.New(bizerror.InvalidArgument, "rule version intent is required")
 	}
+	fresh, err := s.store.GetIntent(intent.ID)
+	if err != nil {
+		return err
+	}
+	if fresh.Status == IntentStatusFailed {
+		return s.store.CleanupIntent(fresh.ID, IntentStatusFailed)
+	}
+	if fresh.Status != IntentStatusPending &&
+		fresh.Status != IntentStatusApplied &&
+		fresh.Status != IntentStatusOutcomeUnknown {
+		return ErrVersionIntentNotOpen
+	}
 	return s.store.MarkIntentFailed(ctx, intent.ID, reason)
 }
 
@@ -246,11 +258,15 @@ func (s *Service) FinalizeMutation(ctx context.Context, intent *Intent, current 
 	case IntentStatusCommitted:
 		committed, err := s.committedVersionForIntent(fresh)
 		if err == nil {
-			s.store.CleanupIntent(fresh.ID, IntentStatusCommitted)
+			if cleanupErr := s.store.CleanupIntent(fresh.ID, IntentStatusCommitted); cleanupErr != nil {
+				return nil, cleanupErr
+			}
 		}
 		return committed, err
 	case IntentStatusFailed:
-		s.store.CleanupIntent(fresh.ID, IntentStatusFailed)
+		if cleanupErr := s.store.CleanupIntent(fresh.ID, IntentStatusFailed); cleanupErr != nil {
+			return nil, cleanupErr
+		}
 		if fresh.LastError != "" {
 			return nil, fmt.Errorf("%w: %s", ErrVersionIntentNotOpen, fresh.LastError)
 		}

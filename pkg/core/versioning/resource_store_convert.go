@@ -179,6 +179,7 @@ func intentFromResource(res *meshresource.RuleIntentResource, id int64) *Intent 
 		ObservedSpecJSON:    spec.ObservedSpecJson,
 		ObservedOperation:   Operation(spec.ObservedOperation),
 		ObservedAt:          observedAt,
+		Revision:            spec.Revision,
 		CreatedAt:           createdAt,
 	}
 }

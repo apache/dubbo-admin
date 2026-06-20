@@ -184,6 +184,33 @@ func TestResourceStoreAdapter_CommitIntentRetryAfterIntentStatusFailure(t *testi
 	require.ErrorIs(t, err, ErrVersionIntentNotFound)
 }
 
+func TestComponent_CleanupTerminalIntentSweepAfterRestart(t *testing.T) {
+	versionStore, baseIntentStore, _ := newVersioningStores(t)
+	intentStore := &failOnceStore{ResourceStore: baseIntentStore, err: errors.New("cleanup failed")}
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+
+	intent, err := adapter.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-a"))
+	require.NoError(t, err)
+	require.NoError(t, adapter.MarkIntentApplied(context.Background(), intent.ID))
+
+	intentStore.failNextDelete = true
+	_, err = adapter.CommitIntent(context.Background(), intent.ID, 10)
+	require.ErrorContains(t, err, "cleanup failed")
+	terminal, err := adapter.GetIntent(intent.ID)
+	require.NoError(t, err)
+	require.Equal(t, IntentStatusCommitted, terminal.Status)
+
+	c := &component{store: adapter, lock: locallock.NewLocalLock()}
+	require.NoError(t, c.cleanupTerminalIntents(context.Background()))
+
+	_, err = adapter.GetIntent(intent.ID)
+	require.ErrorIs(t, err, ErrVersionIntentNotFound)
+	versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
+	require.NoError(t, err)
+	require.Len(t, versions, 1)
+	assert.Equal(t, intent.ID, versions[0].ID)
+}
+
 func TestService_FinalizeClosedIntentDistinguishesCommittedVersionFromCorruption(t *testing.T) {
 	versionStore, intentStore, _ := newVersioningStores(t)
 	adapter := NewResourceStoreAdapter(versionStore, intentStore)
@@ -714,6 +741,71 @@ func TestService_FinalizeDoesNotCommitStaleSnapshotAfterNonMatchingEvent(t *test
 	assert.Equal(t, SourceUpstream, versions[0].Source)
 	assert.Equal(t, HashSpecForTest(t, external), versions[0].ContentHash)
 	assert.NotEqual(t, intent.ID, versions[0].IntentID)
+}
+
+func TestResourceStoreAdapter_CommitIntentRejectsObservedMarkerAfterMarkApplied(t *testing.T) {
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+
+	intended := testConditionRule("demo-rule", "A")
+	req, err := buildMutationInsertRequest(intended, OperationUpdate, SourceAdmin, "admin", "", nil, time.Unix(100, 0))
+	require.NoError(t, err)
+	intent, err := adapter.CreateIntent(context.Background(), req)
+	require.NoError(t, err)
+
+	// T1 finalizer observes actual=A and advances the intent to APPLIED.
+	require.NoError(t, adapter.MarkIntentApplied(context.Background(), intent.ID))
+	applied, err := adapter.GetIntent(intent.ID)
+	require.NoError(t, err)
+	require.Equal(t, IntentStatusApplied, applied.Status)
+	require.False(t, applied.ReconcileRequired)
+
+	// T2 subscriber observes a non-matching upstream state B before T1 commits.
+	external := testConditionRule("demo-rule", "B")
+	hash, specJSON, err := NormalizeResource(external)
+	require.NoError(t, err)
+	require.NoError(t, adapter.MarkIntentObserved(context.Background(), intent.ID, OperationUpdate, hash, specJSON))
+
+	// T1 must not append the stale intended A version or cleanup the intent.
+	_, err = adapter.CommitIntent(context.Background(), intent.ID, 10)
+	var pending *IntentPendingError
+	require.ErrorAs(t, err, &pending)
+
+	versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
+	require.NoError(t, err)
+	require.Empty(t, versions)
+
+	open, err := adapter.GetIntent(intent.ID)
+	require.NoError(t, err)
+	assert.Equal(t, IntentStatusApplied, open.Status)
+	assert.True(t, open.ReconcileRequired)
+	assert.Equal(t, hash, open.ObservedContentHash)
+}
+
+func TestResourceStoreAdapter_StaleObservedAndStatusUpdatesConflictOnRevision(t *testing.T) {
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+
+	intent, err := adapter.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-a"))
+	require.NoError(t, err)
+	stale, _, err := adapter.getIntentResourceByID(intent.ID)
+	require.NoError(t, err)
+
+	require.NoError(t, adapter.MarkIntentApplied(context.Background(), intent.ID))
+	err = updateIntentResourceObserved(intentStore, stale, OperationUpdate, "hash-b", `{"key":"B"}`)
+	require.ErrorIs(t, err, ErrVersionIntentConflict)
+
+	fresh, _, err := adapter.getIntentResourceByID(intent.ID)
+	require.NoError(t, err)
+	require.NoError(t, updateIntentResourceObserved(intentStore, fresh, OperationUpdate, "hash-b", `{"key":"B"}`))
+	err = updateIntentResourceStatus(intentStore, fresh, IntentStatusCommitted, "")
+	require.ErrorIs(t, err, ErrVersionIntentConflict)
+
+	open, err := adapter.GetIntent(intent.ID)
+	require.NoError(t, err)
+	assert.Equal(t, IntentStatusApplied, open.Status)
+	assert.True(t, open.ReconcileRequired)
+	assert.Equal(t, "hash-b", open.ObservedContentHash)
 }
 
 func TestService_OutcomeUnknownActualMatchCommitsFixedIntentID(t *testing.T) {

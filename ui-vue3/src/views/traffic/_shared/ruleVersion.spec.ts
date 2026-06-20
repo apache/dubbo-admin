@@ -15,8 +15,42 @@
  * limitations under the License.
  */
 
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RuleVersion } from '@/api/service/traffic'
+
+const mocks = vi.hoisted(() => ({
+  repairRuleVersionIntentAPI: vi.fn(),
+  abandonRuleVersionIntentAPI: vi.fn(),
+  notification: {
+    warning: vi.fn(),
+    error: vi.fn(),
+    close: vi.fn()
+  },
+  modal: {
+    confirm: vi.fn()
+  }
+}))
+
+vi.mock('@/api/service/traffic', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/service/traffic')>()
+  return {
+    ...actual,
+    repairRuleVersionIntentAPI: mocks.repairRuleVersionIntentAPI,
+    abandonRuleVersionIntentAPI: mocks.abandonRuleVersionIntentAPI
+  }
+})
+
+vi.mock('ant-design-vue', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('ant-design-vue')>()
+  return {
+    ...actual,
+    notification: mocks.notification,
+    Modal: {
+      ...actual.Modal,
+      confirm: mocks.modal.confirm
+    }
+  }
+})
 
 let helpers: typeof import('./ruleVersion')
 let ruleVersionMock: typeof import('@/mocks/handlers/ruleVersion').ruleVersionMock
@@ -32,6 +66,16 @@ beforeAll(async () => {
   })
   helpers = await import('./ruleVersion')
   ruleVersionMock = (await import('@/mocks/handlers/ruleVersion')).ruleVersionMock
+})
+
+beforeEach(() => {
+  mocks.repairRuleVersionIntentAPI.mockReset()
+  mocks.abandonRuleVersionIntentAPI.mockReset()
+  mocks.notification.warning.mockReset()
+  mocks.notification.error.mockReset()
+  mocks.notification.close.mockReset()
+  mocks.modal.confirm.mockReset()
+  mocks.modal.confirm.mockReturnValue({ update: vi.fn() })
 })
 
 const version = (
@@ -164,5 +208,54 @@ describe('ruleVersion helpers', () => {
     expect(ruleVersionMock.shouldConflict('demo-conflict')).toBe(true)
     expect(ruleVersionMock.shouldPend('demo-repair-success')).toBe(true)
     expect(ruleVersionMock.shouldPend('demo-normal')).toBe(false)
+  })
+
+  it('ignores stale repair responses when operation identity is no longer current', async () => {
+    let current = true
+    const reload = vi.fn()
+    mocks.repairRuleVersionIntentAPI.mockResolvedValue({ code: '0000', data: {} })
+
+    expect(
+      helpers.notifyRuleVersionError(
+        { code: 'VERSION_LEDGER_PENDING', intentId: 'intent-1', message: 'pending' },
+        { reload, isCurrent: () => current }
+      )
+    ).toBe(true)
+    const pendingConfig = mocks.notification.warning.mock.calls[0][0]
+    const buttons = pendingConfig.btn().children.default()
+
+    const repairPromise = buttons[0].props.onClick()
+    current = false
+    await repairPromise
+
+    expect(mocks.repairRuleVersionIntentAPI).toHaveBeenCalledWith('intent-1')
+    expect(reload).not.toHaveBeenCalled()
+    expect(mocks.notification.close).not.toHaveBeenCalledWith('rule-version-ledger-pending')
+    expect(mocks.notification.error).not.toHaveBeenCalled()
+  })
+
+  it('ignores stale abandon responses when operation identity is no longer current', async () => {
+    let current = true
+    const reload = vi.fn()
+    mocks.abandonRuleVersionIntentAPI.mockResolvedValue({ code: '0000', data: '' })
+
+    helpers.notifyRuleVersionError(
+      { code: 'VERSION_LEDGER_PENDING', intentId: 'intent-2', message: 'pending' },
+      { reload, isCurrent: () => current }
+    )
+    const pendingConfig = mocks.notification.warning.mock.calls[0][0]
+    const buttons = pendingConfig.btn().children.default()
+    buttons[1].props.onClick()
+
+    const modalConfig = mocks.modal.confirm.mock.calls[0][0]
+    modalConfig.content().props.onChange({ target: { value: 'abandon old intent' } })
+    const abandonPromise = modalConfig.onOk().catch(() => undefined)
+    current = false
+    await abandonPromise
+
+    expect(mocks.abandonRuleVersionIntentAPI).toHaveBeenCalledWith('intent-2', 'abandon old intent')
+    expect(reload).not.toHaveBeenCalled()
+    expect(mocks.notification.close).not.toHaveBeenCalledWith('rule-version-ledger-pending')
+    expect(mocks.notification.error).not.toHaveBeenCalled()
   })
 })

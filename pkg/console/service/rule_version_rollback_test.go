@@ -186,6 +186,38 @@ func (b *simpleBus) Send(event events.Event) {
 	}
 }
 
+type failingResourceStore struct {
+	store.ResourceStore
+	failNextAdd    bool
+	failNextUpdate bool
+	failNextDelete bool
+	err            error
+}
+
+func (s *failingResourceStore) Add(obj interface{}) error {
+	if s.failNextAdd {
+		s.failNextAdd = false
+		return s.err
+	}
+	return s.ResourceStore.Add(obj)
+}
+
+func (s *failingResourceStore) Update(obj interface{}) error {
+	if s.failNextUpdate {
+		s.failNextUpdate = false
+		return s.err
+	}
+	return s.ResourceStore.Update(obj)
+}
+
+func (s *failingResourceStore) Delete(obj interface{}) error {
+	if s.failNextDelete {
+		s.failNextDelete = false
+		return s.err
+	}
+	return s.ResourceStore.Delete(obj)
+}
+
 // setupRollbackTestEnv builds an in-memory ResourceManager with versioning
 // subscribers for all three governor-managed rule kinds.
 func setupRollbackTestEnv(t *testing.T) *testContext {
@@ -193,6 +225,10 @@ func setupRollbackTestEnv(t *testing.T) *testContext {
 }
 
 func setupRollbackTestEnvWithMax(t *testing.T, maxVersions int64) *testContext {
+	return setupRollbackTestEnvWithStoreWrappers(t, maxVersions, nil, nil)
+}
+
+func setupRollbackTestEnvWithStoreWrappers(t *testing.T, maxVersions int64, wrapVersionStore, wrapIntentStore func(store.ResourceStore) store.ResourceStore) *testContext {
 	conditionStore := memoryst.NewMemoryResourceStore(meshresource.ConditionRouteKind)
 	tagStore := memoryst.NewMemoryResourceStore(meshresource.TagRouteKind)
 	dynamicStore := memoryst.NewMemoryResourceStore(meshresource.DynamicConfigKind)
@@ -202,13 +238,21 @@ func setupRollbackTestEnvWithMax(t *testing.T, maxVersions int64) *testContext {
 	for _, s := range []store.ManagedResourceStore{conditionStore, tagStore, dynamicStore, versionStore, intentStore} {
 		require.NoError(t, s.Init(nil))
 	}
+	var versioningVersionStore store.ResourceStore = versionStore
+	if wrapVersionStore != nil {
+		versioningVersionStore = wrapVersionStore(versionStore)
+	}
+	var versioningIntentStore store.ResourceStore = intentStore
+	if wrapIntentStore != nil {
+		versioningIntentStore = wrapIntentStore(intentStore)
+	}
 
 	stores := map[coremodel.ResourceKind]store.ResourceStore{
 		meshresource.ConditionRouteKind: conditionStore,
 		meshresource.TagRouteKind:       tagStore,
 		meshresource.DynamicConfigKind:  dynamicStore,
-		meshresource.RuleVersionKind:    versionStore,
-		meshresource.RuleIntentKind:     intentStore,
+		meshresource.RuleVersionKind:    versioningVersionStore,
+		meshresource.RuleIntentKind:     versioningIntentStore,
 	}
 
 	storeRouter := &testRouter{stores: stores}
@@ -222,7 +266,7 @@ func setupRollbackTestEnvWithMax(t *testing.T, maxVersions int64) *testContext {
 
 	// Create versioning service + subscriber for each rule kind, sharing the
 	// same adapter (RuleVersion/RuleIntent stores).
-	adapter := versioning.NewResourceStoreAdapter(versionStore, intentStore)
+	adapter := versioning.NewResourceStoreAdapter(versioningVersionStore, versioningIntentStore)
 	versioningSvc := versioning.NewService(maxVersions, adapter)
 	lockMgr := locallock.NewLocalLock()
 	for _, kind := range []coremodel.ResourceKind{
@@ -245,6 +289,18 @@ func setupRollbackTestEnvWithMax(t *testing.T, maxVersions int64) *testContext {
 		bus:           bus,
 		lockMgr:       lockMgr,
 	}
+}
+
+func mustVersionStoreForTest(t *testing.T) store.ResourceStore {
+	s := memoryst.NewMemoryResourceStore(meshresource.RuleVersionKind)
+	require.NoError(t, s.Init(nil))
+	return s
+}
+
+func mustIntentStoreForTest(t *testing.T) store.ResourceStore {
+	s := memoryst.NewMemoryResourceStore(meshresource.RuleIntentKind)
+	require.NoError(t, s.Init(nil))
+	return s
 }
 
 func beginMutationForTest(ctx *testContext, res coremodel.Resource, op versioning.Operation, source versioning.Source, author string) (*versioning.Intent, error) {
@@ -304,6 +360,53 @@ func TestAdminMutationSuccessCommitsLedgerBeforeReturn(t *testing.T) {
 
 			require.True(t, versions.Deleted)
 			require.Nil(t, versions.CurrentVersionID)
+		})
+	}
+}
+
+func TestRuleMutationFailClosedWithoutVersioningService(t *testing.T) {
+	ctx := setupRollbackTestEnv(t)
+	ctx.versioningSvc = nil
+
+	res := conditionFactory().build("demo-rule", "v1")
+	err := createRuleWithOptions(ctx, res, RuleMutationOptions{Author: "admin"})
+	require.ErrorIs(t, err, versioning.ErrVersionLedgerCorrupt)
+
+	_, exists, getErr := ctx.rm.GetByKey(res.ResourceKind(), res.ResourceKey())
+	require.NoError(t, getErr)
+	assert.False(t, exists)
+}
+
+func TestRuleMutationFailClosedWithoutLockManager(t *testing.T) {
+	ctx := setupRollbackTestEnv(t)
+	ctx.lockMgr = nil
+
+	res := conditionFactory().build("demo-rule", "v1")
+	err := createRuleWithOptions(ctx, res, RuleMutationOptions{Author: "admin"})
+	require.ErrorIs(t, err, lock.ErrLockUnavailable)
+
+	_, exists, getErr := ctx.rm.GetByKey(res.ResourceKind(), res.ResourceKey())
+	require.NoError(t, getErr)
+	assert.False(t, exists)
+}
+
+func TestRuleMutationFailClosedWithoutIntentOrVersionStore(t *testing.T) {
+	for name, adapter := range map[string]*versioning.ResourceStoreAdapter{
+		"intent-store-nil":  versioning.NewResourceStoreAdapter(mustVersionStoreForTest(t), nil),
+		"version-store-nil": versioning.NewResourceStoreAdapter(nil, mustIntentStoreForTest(t)),
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := setupRollbackTestEnv(t)
+			ctx.adapter = adapter
+			ctx.versioningSvc = versioning.NewService(5, adapter)
+
+			res := conditionFactory().build("demo-rule", "v1")
+			err := createRuleWithOptions(ctx, res, RuleMutationOptions{Author: "admin"})
+			require.ErrorIs(t, err, versioning.ErrVersionLedgerCorrupt)
+
+			_, exists, getErr := ctx.rm.GetByKey(res.ResourceKind(), res.ResourceKey())
+			require.NoError(t, getErr)
+			assert.False(t, exists)
 		})
 	}
 }
@@ -752,6 +855,91 @@ func TestAbandonRuleVersionIntent_ReconcilesDeferredExternalState(t *testing.T) 
 	assert.Equal(t, versioning.SourceUpstream, versions.Items[0].Source)
 	assert.True(t, versions.Items[0].IsCurrent)
 
+	_, err = ctx.versioningSvc.GetIntent(intent.ID)
+	require.ErrorIs(t, err, versioning.ErrVersionIntentNotFound)
+}
+
+func TestAbandonRuleVersionIntent_CrashBeforeReconcileKeepsIntentOpen(t *testing.T) {
+	versionErr := errors.New("version add failed before reconcile")
+	failingVersionStore := &failingResourceStore{err: versionErr}
+	ctx := setupRollbackTestEnvWithStoreWrappers(t, 5, func(base store.ResourceStore) store.ResourceStore {
+		failingVersionStore.ResourceStore = base
+		return failingVersionStore
+	}, nil)
+
+	f := conditionFactory()
+	require.NoError(t, ctx.rm.Add(context.Background(), f.build("demo-rule", "v1")))
+	intentTarget := f.build("demo-rule", "admin-pending")
+	intent, err := beginMutationForTest(ctx, intentTarget, versioning.OperationUpdate, versioning.SourceAdmin, "admin")
+	require.NoError(t, err)
+	require.NoError(t, ctx.rm.Update(context.Background(), f.build("demo-rule", "external-change")))
+
+	failingVersionStore.failNextAdd = true
+	err = AbandonRuleVersionIntent(ctx, intent.ID, "operator chose external state")
+	require.ErrorIs(t, err, versionErr)
+
+	open, err := ctx.versioningSvc.GetIntent(intent.ID)
+	require.NoError(t, err)
+	assert.Equal(t, versioning.IntentStatusOutcomeUnknown, open.Status)
+}
+
+func TestAbandonRuleVersionIntent_RuleVersionAddBeforeMarkFailedCrashIsRepairable(t *testing.T) {
+	intentErr := errors.New("mark failed crash")
+	failingIntentStore := &failingResourceStore{err: intentErr}
+	ctx := setupRollbackTestEnvWithStoreWrappers(t, 5, nil, func(base store.ResourceStore) store.ResourceStore {
+		failingIntentStore.ResourceStore = base
+		return failingIntentStore
+	})
+
+	f := conditionFactory()
+	require.NoError(t, ctx.rm.Add(context.Background(), f.build("demo-rule", "v1")))
+	intent, err := beginMutationForTest(ctx, f.build("demo-rule", "admin-pending"), versioning.OperationUpdate, versioning.SourceAdmin, "admin")
+	require.NoError(t, err)
+	external := f.build("demo-rule", "external-change")
+	require.NoError(t, ctx.rm.Update(context.Background(), external))
+
+	failingIntentStore.failNextUpdate = true
+	err = AbandonRuleVersionIntent(ctx, intent.ID, "operator chose external state")
+	require.ErrorIs(t, err, intentErr)
+
+	open, err := ctx.versioningSvc.GetIntent(intent.ID)
+	require.NoError(t, err)
+	require.True(t, open.ReconcileRequired)
+
+	require.NoError(t, AbandonRuleVersionIntent(ctx, intent.ID, "operator chose external state"))
+	versions, err := ListRuleVersions(ctx, RuleKindName{Kind: f.kind, Name: "demo-rule"})
+	require.NoError(t, err)
+	require.Len(t, versions.Items, 2)
+	hash, _, err := versioning.NormalizeResource(external)
+	require.NoError(t, err)
+	assert.Equal(t, hash, versions.Items[0].ContentHash)
+	_, err = ctx.versioningSvc.GetIntent(intent.ID)
+	require.ErrorIs(t, err, versioning.ErrVersionIntentNotFound)
+}
+
+func TestAbandonRuleVersionIntent_MarkFailedBeforeCleanupCrashSweepsOnRetry(t *testing.T) {
+	cleanupErr := errors.New("cleanup failed")
+	failingIntentStore := &failingResourceStore{err: cleanupErr}
+	ctx := setupRollbackTestEnvWithStoreWrappers(t, 5, nil, func(base store.ResourceStore) store.ResourceStore {
+		failingIntentStore.ResourceStore = base
+		return failingIntentStore
+	})
+
+	f := conditionFactory()
+	require.NoError(t, ctx.rm.Add(context.Background(), f.build("demo-rule", "v1")))
+	intent, err := beginMutationForTest(ctx, f.build("demo-rule", "admin-pending"), versioning.OperationUpdate, versioning.SourceAdmin, "admin")
+	require.NoError(t, err)
+	require.NoError(t, ctx.rm.Update(context.Background(), f.build("demo-rule", "external-change")))
+
+	failingIntentStore.failNextDelete = true
+	err = AbandonRuleVersionIntent(ctx, intent.ID, "operator chose external state")
+	require.ErrorIs(t, err, cleanupErr)
+
+	terminal, err := ctx.versioningSvc.GetIntent(intent.ID)
+	require.NoError(t, err)
+	require.Equal(t, versioning.IntentStatusFailed, terminal.Status)
+
+	require.NoError(t, AbandonRuleVersionIntent(ctx, intent.ID, "operator chose external state"))
 	_, err = ctx.versioningSvc.GetIntent(intent.ID)
 	require.ErrorIs(t, err, versioning.ErrVersionIntentNotFound)
 }

@@ -107,7 +107,7 @@ const repairingIntentIds = new Set<string>()
 
 const openAbandonReasonModal = (
   intentId: string,
-  options?: { reload?: () => void | Promise<void> }
+  options?: { reload?: () => void | Promise<void>; isCurrent?: () => boolean }
 ) => {
   let reason = ''
   let submitting = false
@@ -141,10 +141,20 @@ const openAbandonReasonModal = (
       modal.update({ okButtonProps: { danger: true, loading: true } })
       try {
         await abandonRuleVersionIntentAPI(intentId, trimmed)
+        if (options?.isCurrent && !options.isCurrent()) {
+          submitting = false
+          modal.update({ okButtonProps: { danger: true, loading: false } })
+          return Promise.reject()
+        }
         notification.close('rule-version-ledger-pending')
         notification.close('rule-version-abandon-reason-required')
         await options?.reload?.()
       } catch (e: any) {
+        if (options?.isCurrent && !options.isCurrent()) {
+          submitting = false
+          modal.update({ okButtonProps: { danger: true, loading: false } })
+          return Promise.reject()
+        }
         notification.error({
           key: 'rule-version-abandon-error',
           message: t('ruleVersionDomain.abandonFailed'),
@@ -160,7 +170,7 @@ const openAbandonReasonModal = (
 
 export const notifyVersionConflict = (
   e: any,
-  options?: { reload?: () => void | Promise<void> }
+  options?: { reload?: () => void | Promise<void>; isCurrent?: () => boolean }
 ): boolean => {
   if (isVersionConflict(e)) {
     notification.warning({
@@ -177,7 +187,9 @@ export const notifyVersionConflict = (
                 size: 'small',
                 onClick: () => {
                   notification.close('rule-version-conflict')
-                  options.reload?.()
+                  if (!options.isCurrent || options.isCurrent()) {
+                    options.reload?.()
+                  }
                 }
               },
               { default: () => t('ruleVersionDomain.reload') }
@@ -191,7 +203,7 @@ export const notifyVersionConflict = (
 
 export const notifyVersionLedgerPending = (
   e: any,
-  options?: { reload?: () => void | Promise<void> }
+  options?: { reload?: () => void | Promise<void>; isCurrent?: () => boolean }
 ): boolean => {
   if (!isVersionLedgerPending(e)) {
     return false
@@ -223,9 +235,15 @@ export const notifyVersionLedgerPending = (
                       repairingIntentIds.add(intentId)
                       try {
                         await repairRuleVersionIntentAPI(intentId)
+                        if (options?.isCurrent && !options.isCurrent()) {
+                          return
+                        }
                         notification.close('rule-version-ledger-pending')
                         await options?.reload?.()
                       } catch (e: any) {
+                        if (options?.isCurrent && !options.isCurrent()) {
+                          return
+                        }
                         notification.error({
                           key: 'rule-version-repair-error',
                           message: t('ruleVersionDomain.repairFailed'),
@@ -262,7 +280,9 @@ export const notifyVersionLedgerPending = (
                 size: 'small',
                 onClick: () => {
                   notification.close('rule-version-ledger-pending')
-                  options.reload?.()
+                  if (!options.isCurrent || options.isCurrent()) {
+                    options.reload?.()
+                  }
                 }
               },
               { default: () => t('ruleVersionDomain.reload') }
@@ -274,7 +294,7 @@ export const notifyVersionLedgerPending = (
 
 export const notifyRuleVersionError = (
   e: any,
-  options?: { reload?: () => void | Promise<void> }
+  options?: { reload?: () => void | Promise<void>; isCurrent?: () => boolean }
 ): boolean => {
   if (notifyVersionLedgerPending(e, options)) {
     return true

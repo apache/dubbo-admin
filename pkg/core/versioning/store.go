@@ -35,8 +35,9 @@ type Store interface {
 	MarkIntentObserved(ctx context.Context, id int64, op Operation, contentHash, specJSON string) error
 	MarkIntentFailed(ctx context.Context, id int64, message string) error
 	CommitIntent(ctx context.Context, id int64, maxVersions int64) (*Version, error)
-	CleanupIntent(id int64, terminalStatus IntentStatus)
+	CleanupIntent(id int64, terminalStatus IntentStatus) error
 	ListOpenIntents() ([]Intent, error)
+	ListTerminalIntents() ([]Intent, error)
 	ListVersions(kind coremodel.ResourceKind, resourceKey string) ([]Version, error)
 	LedgerSnapshot(kind coremodel.ResourceKind, resourceKey string) (*LedgerSnapshot, error)
 	GetVersion(kind coremodel.ResourceKind, resourceKey string, id int64) (*Version, error)

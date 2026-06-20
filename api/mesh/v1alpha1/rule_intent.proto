@@ -64,4 +64,9 @@ message RuleIntent {
   string observed_spec_json = 19;
   string observed_operation = 20;
   google.protobuf.Timestamp observed_at = 21;
+
+  // Monotonic resource revision owned by RuleIntent. Status transitions and
+  // observed-marker writes advance it so finalization can reject stale commits
+  // instead of overwriting a subscriber reconcile marker.
+  int64 revision = 22;
 }
