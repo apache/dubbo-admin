@@ -82,7 +82,7 @@
 <script setup lang="ts">
 import MonacoEditor from '@/components/editor/MonacoEditor.vue'
 import { DoubleLeftOutlined, DoubleRightOutlined } from '@ant-design/icons-vue'
-import { onMounted, reactive, ref, inject } from 'vue'
+import { onMounted, ref, inject } from 'vue'
 import { getConditionRuleDetailAPI, updateConditionRuleAPI } from '@/api/service/traffic'
 import { useRoute } from 'vue-router'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
@@ -121,7 +121,7 @@ onMounted(async () => {
   await reloadCurrentVersion()
 })
 
-const changeEditor = (val) => {
+const changeEditor = () => {
   TAB_STATE.conditionRule = yaml.load(YAMLValue.value)
 }
 

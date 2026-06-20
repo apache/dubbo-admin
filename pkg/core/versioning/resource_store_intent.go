@@ -262,6 +262,14 @@ func (a *ResourceStoreAdapter) CommitIntent(ctx context.Context, id int64, maxVe
 			if err := lock.CheckLease(ctx); err != nil {
 				return err
 			}
+			if intent.ReconcileRequired {
+				if _, err := a.insertObservedSuccessorLocked(ctx, intent, maxVersions); err != nil {
+					return err
+				}
+				if err := lock.CheckLease(ctx); err != nil {
+					return err
+				}
+			}
 			refreshed, _, err := a.getIntentResourceByID(id)
 			if err != nil {
 				return err
@@ -316,6 +324,14 @@ func (a *ResourceStoreAdapter) CommitIntent(ctx context.Context, id int64, maxVe
 		if err := lock.CheckLease(ctx); err != nil {
 			return err
 		}
+		if intent.ReconcileRequired {
+			if _, err := a.insertObservedSuccessorLocked(ctx, intent, maxVersions); err != nil {
+				return err
+			}
+			if err := lock.CheckLease(ctx); err != nil {
+				return err
+			}
+		}
 		refreshed, _, err := a.getIntentResourceByID(id)
 		if err != nil {
 			return err
@@ -330,6 +346,50 @@ func (a *ResourceStoreAdapter) CommitIntent(ctx context.Context, id int64, maxVe
 		return nil
 	})
 	return version, err
+}
+
+func (a *ResourceStoreAdapter) insertObservedSuccessorLocked(ctx context.Context, intent *Intent, maxVersions int64) (*Version, error) {
+	if intent == nil || !intent.ReconcileRequired || intent.ObservedContentHash == "" {
+		return nil, nil
+	}
+	if err := lock.CheckLease(ctx); err != nil {
+		return nil, err
+	}
+	latest, err := a.latestVersionLocked(intent.RuleKind, intent.ResourceKey)
+	if err != nil && !errors.Is(err, ErrVersionNotFound) {
+		return nil, err
+	}
+	if latest != nil {
+		if latest.Operation == OperationDelete && intent.ObservedOperation == OperationDelete {
+			return latest, nil
+		}
+		if latest.Operation != OperationDelete &&
+			intent.ObservedOperation != OperationDelete &&
+			latest.ContentHash == intent.ObservedContentHash {
+			return latest, nil
+		}
+	}
+	operation := intent.ObservedOperation
+	if operation == "" {
+		operation = OperationUpdate
+	}
+	if latest == nil && operation != OperationDelete {
+		operation = OperationCreate
+	} else if latest != nil && latest.Operation == OperationDelete && operation != OperationDelete {
+		operation = OperationCreate
+	}
+	return a.insertVersionLocked(ctx, InsertRequest{
+		RuleKind:    intent.RuleKind,
+		Mesh:        intent.Mesh,
+		ResourceKey: intent.ResourceKey,
+		RuleName:    intent.RuleName,
+		SpecJSON:    intent.ObservedSpecJSON,
+		ContentHash: intent.ObservedContentHash,
+		Operation:   operation,
+		Source:      SourceUpstream,
+		Author:      "system:reconcile",
+		CreatedAt:   time.Now(),
+	}, maxVersions)
 }
 
 func (a *ResourceStoreAdapter) CleanupIntent(id int64, terminalStatus IntentStatus) error {
@@ -545,7 +605,7 @@ func updateIntentResourceStatus(intentStore store.ResourceStore, intentRes *mesh
 
 func updateIntentResourceObserved(intentStore store.ResourceStore, intentRes *meshresource.RuleIntentResource, op Operation, contentHash, specJSON string) error {
 	currentStatus := IntentStatus(intentRes.Spec.Status)
-	if currentStatus == IntentStatusCommitting || !isOpenIntentStatus(currentStatus) {
+	if !isOpenIntentStatus(currentStatus) {
 		return ErrVersionIntentNotOpen
 	}
 
@@ -585,7 +645,15 @@ func conditionalIntentUpdate(intentStore store.ResourceStore, expected *meshreso
 	if !ok {
 		return false, fmt.Errorf("%w: RuleIntent store must support conditional updates", ErrVersionLedgerCorrupt)
 	}
-	return cas.UpdateIfUnchanged(expected, updated)
+	var lastErr error
+	for attempt := 0; attempt < maxIntentCASRetries; attempt++ {
+		changed, err := cas.UpdateIfUnchanged(expected, updated)
+		if err == nil || !errors.Is(err, store.ErrResourceStoreTransient) {
+			return changed, err
+		}
+		lastErr = err
+	}
+	return false, lastErr
 }
 
 func intentResourceKey(intentRes *meshresource.RuleIntentResource) string {

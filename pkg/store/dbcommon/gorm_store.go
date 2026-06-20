@@ -253,8 +253,7 @@ func (gs *GormStore) UpdateIfUnchanged(expected model.Resource, updated model.Re
 			})
 		if result.Error != nil {
 			if isSQLiteLockedError(result.Error) {
-				changed = false
-				return nil
+				return fmt.Errorf("%w: %v", store.ErrResourceStoreTransient, result.Error)
 			}
 			return result.Error
 		}
@@ -269,6 +268,9 @@ func (gs *GormStore) UpdateIfUnchanged(expected model.Resource, updated model.Re
 		return nil
 	})
 	if err != nil {
+		if isSQLiteLockedError(err) {
+			return false, fmt.Errorf("%w: %v", store.ErrResourceStoreTransient, err)
+		}
 		return false, err
 	}
 	return changed, nil

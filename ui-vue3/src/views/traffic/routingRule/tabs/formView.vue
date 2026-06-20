@@ -205,7 +205,6 @@ import {
 import { CopyOutlined } from '@ant-design/icons-vue'
 import useClipboard from 'vue-clipboard3'
 import { message } from 'ant-design-vue'
-import { PRIMARY_COLOR } from '@/base/constants'
 import { getConditionRuleDetailAPI } from '@/api/service/traffic'
 import { useRoute } from 'vue-router'
 import { HTTP_STATUS } from '@/base/http/constants'
@@ -221,8 +220,6 @@ const ruleName = computed(() => String(route.params?.ruleName || ''))
 
 const isHistoryOpen = ref(false)
 const currentVersionNo = ref<number | undefined>(undefined)
-
-let __ = PRIMARY_COLOR
 
 const toClipboard = useClipboard().toClipboard
 
@@ -254,7 +251,7 @@ async function getRoutingRuleDetail() {
 
     requestParameterMatch.value = []
     addressSubsetMatch.value = []
-    conditionRuleDetail.conditions.forEach((item: any, index: number) => {
+    conditionRuleDetail.conditions.forEach((item: any) => {
       const arr = item.split(' => ')
       const addressArr = arr[1]?.split(' & ')
       const requestMatchArr = arr[0]?.split(' & ')

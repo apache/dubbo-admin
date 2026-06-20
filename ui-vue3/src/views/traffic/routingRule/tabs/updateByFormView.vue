@@ -144,19 +144,9 @@
 </template>
 
 <script lang="ts" setup>
-import {
-  type ComponentInternalInstance,
-  getCurrentInstance,
-  onMounted,
-  reactive,
-  ref,
-  inject,
-  watch
-} from 'vue'
+import { onMounted, reactive, ref, inject, watch } from 'vue'
 import { DoubleLeftOutlined, DoubleRightOutlined } from '@ant-design/icons-vue'
-import useClipboard from 'vue-clipboard3'
 import { message } from 'ant-design-vue'
-import { PRIMARY_COLOR } from '@/base/constants'
 import { useRoute } from 'vue-router'
 import { getConditionRuleDetailAPI, updateConditionRuleAPI } from '@/api/service/traffic'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
@@ -234,11 +224,6 @@ onMounted(async () => {
   getVersionAndGroup()
   await reloadCurrentVersion()
 })
-const {
-  appContext: {
-    config: { globalProperties }
-  }
-} = getCurrentInstance() as ComponentInternalInstance
 const route = useRoute()
 
 const isDrawerOpened = ref(false)
@@ -250,15 +235,6 @@ async function reloadCurrentVersion() {
   currentVersionId.value = (
     await fetchCurrentVersionState('condition-rule', route.params?.ruleName as string)
   ).id
-}
-
-let __ = PRIMARY_COLOR
-
-const toClipboard = useClipboard().toClipboard
-
-function copyIt(v: string) {
-  message.success(globalProperties.$t('messageDomain.success.copy'))
-  toClipboard(v)
 }
 
 // base info
@@ -299,14 +275,9 @@ const ruleGranularityOptions = computed(() => [
   }
 ])
 
-enum ruleGranularityEnum {
-  application = '应用',
-  service = '服务'
-}
-
 watch(
   routeList,
-  (newVal) => {
+  () => {
     TAB_STATE.conditionRule = {
       ...TAB_STATE.conditionRule,
       conditions: mergeConditions()
@@ -368,7 +339,6 @@ const updateRoutingRule = async () => {
   try {
     const { ruleName } = route.params
     const {
-      version,
       ruleGranularity,
       objectOfAction,
       enable,

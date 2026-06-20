@@ -80,9 +80,9 @@
 <script setup lang="ts">
 import MonacoEditor from '@/components/editor/MonacoEditor.vue'
 import { DoubleLeftOutlined, DoubleRightOutlined } from '@ant-design/icons-vue'
-import { inject, onMounted, reactive, ref } from 'vue'
+import { inject, onMounted, ref } from 'vue'
 import { getTagRuleDetailAPI, updateTagRuleAPI } from '@/api/service/traffic'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import yaml from 'js-yaml'
 import { isNil } from 'lodash'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
@@ -93,7 +93,6 @@ import { fetchCurrentVersionState, notifyRuleVersionError } from '../../_shared/
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
 const route = useRoute()
-const router = useRouter()
 const isReadonly = ref(false)
 
 const isDrawerOpened = ref(false)
@@ -119,7 +118,7 @@ onMounted(async () => {
   await reloadCurrentVersion()
 })
 
-const changeEditor = (val) => {
+const changeEditor = () => {
   TAB_STATE.tagRule = yaml.load(YAMLValue.value)
 }
 

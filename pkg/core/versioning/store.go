@@ -38,6 +38,7 @@ type Store interface {
 	CleanupIntent(id int64, terminalStatus IntentStatus) error
 	ListOpenIntents() ([]Intent, error)
 	ListTerminalIntents() ([]Intent, error)
+	ListLatestVersions(kind coremodel.ResourceKind) ([]Version, error)
 	ListVersions(kind coremodel.ResourceKind, resourceKey string) ([]Version, error)
 	LedgerSnapshot(kind coremodel.ResourceKind, resourceKey string) (*LedgerSnapshot, error)
 	GetVersion(kind coremodel.ResourceKind, resourceKey string, id int64) (*Version, error)

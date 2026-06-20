@@ -814,6 +814,7 @@ func TestResourceStoreAdapter_StaleObservedAndStatusUpdatesConflictOnRevision(t 
 
 func TestResourceStoreAdapter_GormConditionalUpdateConcurrentCommitAndObservedOnlyOneWins(t *testing.T) {
 	writerA, writerB, _, intentStoreA, intentStoreB := newGormVersioningAdapters(t)
+	key := coremodel.BuildResourceKey("", "demo-rule")
 
 	intent, err := writerA.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-a"))
 	require.NoError(t, err)
@@ -866,7 +867,14 @@ func TestResourceStoreAdapter_GormConditionalUpdateConcurrentCommitAndObservedOn
 	case IntentStatusCommitting:
 		assert.False(t, finalIntent.ReconcileRequired)
 		err = writerB.MarkIntentObserved(context.Background(), intent.ID, OperationUpdate, "hash-b", `{"key":"B"}`)
-		require.ErrorIs(t, err, ErrVersionIntentNotOpen)
+		require.NoError(t, err)
+		_, err = writerB.CommitIntent(context.Background(), intent.ID, 10)
+		require.NoError(t, err)
+		versions, err := writerB.ListVersions(meshresource.ConditionRouteKind, key)
+		require.NoError(t, err)
+		require.Len(t, versions, 2)
+		assert.Equal(t, "hash-b", versions[0].ContentHash)
+		assert.Equal(t, "hash-a", versions[1].ContentHash)
 	case IntentStatusApplied:
 		assert.True(t, finalIntent.ReconcileRequired)
 		_, err = writerB.CommitIntent(context.Background(), intent.ID, 10)
@@ -1012,6 +1020,131 @@ func TestSubscriber_StaleOpenIntentAfterCleanupFallsBackToUpstreamVersion(t *tes
 			assert.Equal(t, SourceUpstream, versions[0].Source)
 		})
 	}
+}
+
+func TestSubscriber_CommittingIntentFinishesAdminBeforeUpstreamSuccessor(t *testing.T) {
+	tests := []struct {
+		name         string
+		prepareCrash func(t *testing.T, adapter *ResourceStoreAdapter, intent *Intent)
+	}{
+		{
+			name: "applied to committing succeeded before fixed id add",
+			prepareCrash: func(t *testing.T, adapter *ResourceStoreAdapter, intent *Intent) {
+				t.Helper()
+				versionStore := adapter.versionStore.(*failOnceStore)
+				versionStore.failNextAdd = true
+				_, err := adapter.CommitIntent(context.Background(), intent.ID, 10)
+				require.ErrorContains(t, err, "version add failed")
+			},
+		},
+		{
+			name: "fixed id add succeeded before committed transition",
+			prepareCrash: func(t *testing.T, adapter *ResourceStoreAdapter, intent *Intent) {
+				t.Helper()
+				intentStore := adapter.intentStore.(*failOnceStore)
+				intentStore.failUpdateAfter = 2
+				_, err := adapter.CommitIntent(context.Background(), intent.ID, 10)
+				require.ErrorContains(t, err, "intent update failed")
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			baseVersionStore, baseIntentStore, _ := newVersioningStores(t)
+			versionStore := &failOnceStore{ResourceStore: baseVersionStore, err: errors.New("version add failed")}
+			intentStore := &failOnceStore{ResourceStore: baseIntentStore, err: errors.New("intent update failed")}
+			adapter := NewResourceStoreAdapter(versionStore, intentStore)
+			sub := NewSubscriber(meshresource.ConditionRouteKind, adapter, 10, locallock.NewLocalLock(), context.Background())
+
+			intent, err := adapter.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-a"))
+			require.NoError(t, err)
+			require.NoError(t, adapter.MarkIntentApplied(context.Background(), intent.ID))
+			tc.prepareCrash(t, adapter, intent)
+
+			committing, err := adapter.GetIntent(intent.ID)
+			require.NoError(t, err)
+			require.Equal(t, IntentStatusCommitting, committing.Status)
+
+			upstream := testConditionRule("demo-rule", "B")
+			event, err := normalizeRuleEvent(events.NewResourceChangedEvent(cache.Updated, upstream, upstream))
+			require.NoError(t, err)
+			require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Updated, upstream, upstream)))
+
+			versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, upstream.ResourceKey())
+			require.NoError(t, err)
+			require.Len(t, versions, 2)
+			assert.Equal(t, event.ContentHash, versions[0].ContentHash)
+			assert.Equal(t, SourceUpstream, versions[0].Source)
+			assert.Equal(t, int64(2), versions[0].VersionNo)
+			assert.Equal(t, "hash-a", versions[1].ContentHash)
+			assert.Equal(t, SourceAdmin, versions[1].Source)
+			assert.Equal(t, intent.ID, versions[1].ID)
+			assert.Equal(t, int64(1), versions[1].VersionNo)
+
+			_, err = adapter.GetIntent(intent.ID)
+			require.ErrorIs(t, err, ErrVersionIntentNotFound)
+
+			require.NoError(t, sub.ProcessEvent(events.NewResourceChangedEvent(cache.Updated, upstream, upstream)))
+			retried, err := adapter.ListVersions(meshresource.ConditionRouteKind, upstream.ResourceKey())
+			require.NoError(t, err)
+			require.Len(t, retried, 2)
+		})
+	}
+}
+
+func TestSubscriber_CommittingIntentSuccessorSurvivesCommitRetry(t *testing.T) {
+	versionStore, baseIntentStore, _ := newVersioningStores(t)
+	intentStore := &failOnceStore{ResourceStore: baseIntentStore, err: errors.New("intent update failed")}
+	writerA := NewResourceStoreAdapter(versionStore, intentStore)
+	writerB := NewResourceStoreAdapter(versionStore, baseIntentStore)
+	lockMgr := locallock.NewLocalLock()
+	sub := NewSubscriber(meshresource.ConditionRouteKind, writerB, 10, lockMgr, context.Background())
+
+	intent, err := writerA.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-a"))
+	require.NoError(t, err)
+	require.NoError(t, writerA.MarkIntentApplied(context.Background(), intent.ID))
+	intentStore.failUpdateAfter = 2
+	_, err = writerA.CommitIntent(context.Background(), intent.ID, 10)
+	require.ErrorContains(t, err, "intent update failed")
+
+	intended := testConditionRule("demo-rule", "A")
+	upstream := testConditionRule("demo-rule", "B")
+	var wg sync.WaitGroup
+	errCh := make(chan error, 2)
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		errCh <- sub.ProcessEvent(events.NewResourceChangedEvent(cache.Updated, intended, upstream))
+	}()
+	go func() {
+		defer wg.Done()
+		errCh <- withRuleVersionLock(context.Background(), lockMgr, intent.RuleKind, intent.ResourceKey, func(leaseCtx context.Context) error {
+			_, err := writerA.CommitIntent(leaseCtx, intent.ID, 10)
+			return err
+		})
+	}()
+	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		if err == nil ||
+			errors.Is(err, ErrVersionIntentConflict) ||
+			errors.Is(err, ErrVersionIntentNotFound) ||
+			errors.Is(err, ErrVersionIntentNotOpen) {
+			continue
+		}
+		require.NoError(t, err)
+	}
+
+	versions, err := writerA.ListVersions(meshresource.ConditionRouteKind, upstream.ResourceKey())
+	require.NoError(t, err)
+	require.Len(t, versions, 2)
+	assert.Equal(t, SourceUpstream, versions[0].Source)
+	assert.Equal(t, SourceAdmin, versions[1].Source)
+	assert.Equal(t, int64(2), versions[0].VersionNo)
+	assert.Equal(t, int64(1), versions[1].VersionNo)
+
+	_, err = writerA.GetIntent(intent.ID)
+	require.ErrorIs(t, err, ErrVersionIntentNotFound)
 }
 
 func TestService_OutcomeUnknownActualMatchCommitsFixedIntentID(t *testing.T) {

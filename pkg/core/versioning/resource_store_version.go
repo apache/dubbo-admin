@@ -59,6 +59,63 @@ func (a *ResourceStoreAdapter) ListVersions(kind coremodel.ResourceKind, resourc
 	return snapshot.Versions, nil
 }
 
+func (a *ResourceStoreAdapter) ListLatestVersions(kind coremodel.ResourceKind) ([]Version, error) {
+	if err := a.ensureStores(); err != nil {
+		return nil, err
+	}
+	keys := a.versionStore.ListKeys()
+	objs, err := a.versionStore.GetByKeys(keys)
+	if err != nil {
+		return nil, err
+	}
+	byParent := make(map[string][]Version)
+	for _, obj := range objs {
+		rv, ok := obj.(*meshresource.RuleVersionResource)
+		if !ok {
+			return nil, fmt.Errorf("%w: expected RuleVersionResource, got %T", ErrVersionLedgerCorrupt, obj)
+		}
+		if rv.Spec == nil {
+			return nil, fmt.Errorf("%w: RuleVersion spec is nil for %s", ErrVersionLedgerCorrupt, rv.ResourceKey())
+		}
+		if rv.Spec.ParentRuleKind != string(kind) {
+			continue
+		}
+		id, err := versionIDFromResource(rv)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", ErrVersionLedgerCorrupt, err)
+		}
+		v, err := protoToVersion(rv.Spec, id)
+		if err != nil {
+			return nil, err
+		}
+		byParent[v.ResourceKey] = append(byParent[v.ResourceKey], *v)
+	}
+
+	latest := make([]Version, 0, len(byParent))
+	for resourceKey, versions := range byParent {
+		seenVersionNo := make(map[int64]int64, len(versions))
+		for _, version := range versions {
+			if previousID, ok := seenVersionNo[version.VersionNo]; ok && previousID != version.ID {
+				return nil, duplicateVersionNoError(kind, resourceKey, version.VersionNo, previousID, version.ID)
+			}
+			seenVersionNo[version.VersionNo] = version.ID
+		}
+		sort.Slice(versions, func(i, j int) bool {
+			return versions[i].VersionNo > versions[j].VersionNo
+		})
+		if len(versions) > 0 {
+			latest = append(latest, versions[0])
+		}
+	}
+	sort.Slice(latest, func(i, j int) bool {
+		if latest[i].ResourceKey == latest[j].ResourceKey {
+			return latest[i].VersionNo > latest[j].VersionNo
+		}
+		return latest[i].ResourceKey < latest[j].ResourceKey
+	})
+	return latest, nil
+}
+
 func (a *ResourceStoreAdapter) LedgerSnapshot(kind coremodel.ResourceKind, resourceKey string) (*LedgerSnapshot, error) {
 	if err := a.ensureStores(); err != nil {
 		return nil, err
@@ -73,6 +130,17 @@ func (a *ResourceStoreAdapter) LedgerSnapshot(kind coremodel.ResourceKind, resou
 		return nil
 	})
 	return snapshot, err
+}
+
+func (a *ResourceStoreAdapter) latestVersionLocked(kind coremodel.ResourceKind, resourceKey string) (*Version, error) {
+	state, err := a.ledgerState(kind, resourceKey)
+	if err != nil {
+		return nil, err
+	}
+	if state.Latest == nil {
+		return nil, ErrVersionNotFound
+	}
+	return state.Latest, nil
 }
 
 func (a *ResourceStoreAdapter) ledgerState(kind coremodel.ResourceKind, resourceKey string) (*ledgerState, error) {

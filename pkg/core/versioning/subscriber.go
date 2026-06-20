@@ -38,6 +38,7 @@ type Subscriber struct {
 	maxVersions int64
 	lockMgr     lock.Lock
 	appCtx      context.Context
+	onError     func()
 }
 
 type ParentRef struct {
@@ -56,13 +57,18 @@ type normalizedRuleEvent struct {
 	Context     map[string]string
 }
 
-func NewSubscriber(kind coremodel.ResourceKind, store Store, maxVersions int64, lockMgr lock.Lock, appCtx context.Context) *Subscriber {
+func NewSubscriber(kind coremodel.ResourceKind, store Store, maxVersions int64, lockMgr lock.Lock, appCtx context.Context, onError ...func()) *Subscriber {
+	var trigger func()
+	if len(onError) > 0 {
+		trigger = onError[0]
+	}
 	return &Subscriber{
 		kind:        kind,
 		store:       store,
 		maxVersions: maxVersions,
 		lockMgr:     lockMgr,
 		appCtx:      appCtx,
+		onError:     trigger,
 	}
 }
 
@@ -131,6 +137,14 @@ func (s *Subscriber) ProcessEvent(event events.Event) error {
 	if normalized == nil {
 		return nil
 	}
+	err = s.processNormalizedEvent(normalized)
+	if err != nil && s.onError != nil {
+		s.onError()
+	}
+	return err
+}
+
+func (s *Subscriber) processNormalizedEvent(normalized *normalizedRuleEvent) error {
 	openIntent, err := s.store.OpenIntent(normalized.Parent.Kind, normalized.Parent.ResourceKey)
 	if err != nil {
 		return err
@@ -221,11 +235,15 @@ func (s *Subscriber) markIntentObservedOrRecord(openIntent *Intent, event normal
 		if err := s.appCtx.Err(); err != nil {
 			return err
 		}
-		if current == nil || current.Status == IntentStatusCommitting {
+		if current == nil {
 			return s.recordAfterIntentClosed(event)
 		}
 		err := s.store.MarkIntentObserved(s.appCtx, current.ID, event.Operation, event.ContentHash, string(event.SpecJSON))
 		if err == nil {
+			if current.Status == IntentStatusCommitting {
+				_, err = s.store.CommitIntent(s.appCtx, current.ID, s.maxVersions)
+				return err
+			}
 			return nil
 		}
 		if errors.Is(err, ErrVersionIntentNotFound) || errors.Is(err, ErrVersionIntentNotOpen) {
@@ -263,7 +281,7 @@ func (s *Subscriber) recordAfterIntentClosed(event normalizedRuleEvent) error {
 			if err != nil {
 				return err
 			}
-			if openIntent == nil || openIntent.Status == IntentStatusCommitting {
+			if openIntent == nil {
 				return s.recordVersion(leaseCtx, event)
 			}
 			if intentMatchesEvent(openIntent, event) {
@@ -272,6 +290,10 @@ func (s *Subscriber) recordAfterIntentClosed(event normalizedRuleEvent) error {
 			}
 			err = s.store.MarkIntentObserved(leaseCtx, openIntent.ID, event.Operation, event.ContentHash, string(event.SpecJSON))
 			if err == nil {
+				if openIntent.Status == IntentStatusCommitting {
+					_, err = s.store.CommitIntent(leaseCtx, openIntent.ID, s.maxVersions)
+					return err
+				}
 				return nil
 			}
 			if errors.Is(err, ErrVersionIntentNotFound) || errors.Is(err, ErrVersionIntentNotOpen) {
@@ -282,7 +304,14 @@ func (s *Subscriber) recordAfterIntentClosed(event normalizedRuleEvent) error {
 			}
 			return err
 		}
-		return s.recordVersion(leaseCtx, event)
+		openIntent, err := s.store.OpenIntent(event.Parent.Kind, event.Parent.ResourceKey)
+		if err != nil {
+			return err
+		}
+		if openIntent == nil {
+			return s.recordVersion(leaseCtx, event)
+		}
+		return &IntentPendingError{IntentID: openIntent.ID}
 	})
 }
 
@@ -315,17 +344,28 @@ func (s *Subscriber) checkDuplicate(kind coremodel.ResourceKind, resourceKey str
 // recordBootstrapState creates a baseline version for a rule during bootstrap.
 func recordBootstrapState(ctx context.Context, store Store, maxVersions int64, res coremodel.Resource) error {
 	kind := res.ResourceKind()
-	versions, err := store.ListVersions(kind, res.ResourceKey())
-	if err != nil {
-		return err
-	}
-	if len(versions) > 0 {
-		return nil
-	}
-
 	hash, specJSON, err := NormalizeResource(res)
 	if err != nil {
 		return err
+	}
+
+	operation := OperationCreate
+	source := SourceBootstrap
+	author := "system:bootstrap"
+	latest, err := store.LatestVersion(kind, res.ResourceKey())
+	if err != nil && !errors.Is(err, ErrVersionNotFound) {
+		return err
+	}
+	if latest != nil {
+		if latest.Operation != OperationDelete && latest.ContentHash == hash {
+			return nil
+		}
+		source = SourceUpstream
+		author = "system:reconcile"
+		operation = OperationUpdate
+		if latest.Operation == OperationDelete {
+			operation = OperationCreate
+		}
 	}
 
 	req := InsertRequest{
@@ -335,13 +375,13 @@ func recordBootstrapState(ctx context.Context, store Store, maxVersions int64, r
 		RuleName:    res.ResourceMeta().Name,
 		SpecJSON:    specJSON,
 		ContentHash: hash,
-		Source:      SourceBootstrap,
-		Operation:   OperationCreate,
-		Author:      "system:bootstrap",
+		Source:      source,
+		Operation:   operation,
+		Author:      author,
 		CreatedAt:   time.Now(),
 	}
 	if _, err := store.InsertVersion(ctx, req, maxVersions); err != nil {
-		return fmt.Errorf("bootstrap version for %s failed: %w", res.ResourceKey(), err)
+		return fmt.Errorf("current-state version for %s failed: %w", res.ResourceKey(), err)
 	}
 	return nil
 }
@@ -350,6 +390,13 @@ func RecordBootstrapLocked(ctx context.Context, store Store, maxVersions int64, 
 	return withRuleVersionLock(ctx, lockMgr, kind, resourceKey, func(ctx context.Context) error {
 		if err := lock.CheckLease(ctx); err != nil {
 			return err
+		}
+		openIntent, err := store.OpenIntent(kind, resourceKey)
+		if err != nil {
+			return err
+		}
+		if openIntent != nil {
+			return nil
 		}
 		current, exists, err := rm.GetByKey(kind, resourceKey)
 		if err != nil {

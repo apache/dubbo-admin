@@ -18,14 +18,18 @@
 package dbcommon
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -33,6 +37,7 @@ import (
 
 	storecfg "github.com/apache/dubbo-admin/pkg/config/store"
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
+	corestore "github.com/apache/dubbo-admin/pkg/core/store"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
 )
 
@@ -118,12 +123,26 @@ func (m mockResourceList) SetItems(items []model.Resource) {
 // setupTestStore creates a new GormStore with an in-memory SQLite database for testing
 func setupTestStore(t *testing.T) (*GormStore, func()) {
 	// Create temporary SQLite database file for better isolation and reliability
-	tmpFile, err := os.CreateTemp("", fmt.Sprintf("test-db-%s-*.db", t.Name()))
+	dbPath := tempSQLitePath(t)
+	dialector := sqlite.Open(dbPath)
+	return setupTestStoreWithDialector(t, dialector)
+}
+
+func tempSQLitePath(t *testing.T) string {
+	t.Helper()
+	safeName := strings.NewReplacer("/", "_", "\\", "_").Replace(t.Name())
+	tmpFile, err := os.CreateTemp("", fmt.Sprintf("test-db-%s-*.db", safeName))
 	require.NoError(t, err)
 	dbPath := tmpFile.Name()
-	tmpFile.Close()
+	require.NoError(t, tmpFile.Close())
+	t.Cleanup(func() {
+		_ = os.Remove(dbPath)
+	})
+	return dbPath
+}
 
-	dialector := sqlite.Open(dbPath)
+func setupTestStoreWithDialector(t *testing.T, dialector gorm.Dialector) (*GormStore, func()) {
+	t.Helper()
 	pool, err := NewConnectionPool(dialector, storecfg.MySQL, t.Name(), DefaultConnectionPoolConfig())
 	require.NoError(t, err)
 
@@ -146,8 +165,7 @@ func setupTestStore(t *testing.T) (*GormStore, func()) {
 
 	// Cleanup function
 	cleanup := func() {
-		pool.Close()
-		os.Remove(dbPath)
+		_ = pool.Close()
 	}
 
 	return store, cleanup
@@ -345,6 +363,97 @@ func TestGormStore_UpdateNonExistent(t *testing.T) {
 	err = store.Update(mockRes)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestGormStore_UpdateIfUnchangedDistinguishesCASMissDBLockedAndSQLError(t *testing.T) {
+	t.Run("cas miss", func(t *testing.T) {
+		store, cleanup := setupTestStore(t)
+		defer cleanup()
+		require.NoError(t, store.Init(nil))
+
+		current := &mockResource{
+			Kind: "TestResource",
+			Key:  "cas-key",
+			Mesh: "default",
+			Meta: metav1.ObjectMeta{Name: "current"},
+		}
+		require.NoError(t, store.Add(current))
+		stale := &mockResource{
+			Kind: "TestResource",
+			Key:  "cas-key",
+			Mesh: "default",
+			Meta: metav1.ObjectMeta{Name: "stale"},
+		}
+		updated := &mockResource{
+			Kind: "TestResource",
+			Key:  "cas-key",
+			Mesh: "default",
+			Meta: metav1.ObjectMeta{Name: "updated"},
+		}
+
+		changed, err := store.UpdateIfUnchanged(stale, updated)
+		require.NoError(t, err)
+		assert.False(t, changed)
+	})
+
+	t.Run("db locked", func(t *testing.T) {
+		dbPath := tempSQLitePath(t)
+		store, cleanup := setupTestStoreWithDialector(t, sqlite.Open(dbPath+"?_busy_timeout=1"))
+		defer cleanup()
+		require.NoError(t, store.Init(nil))
+
+		current := &mockResource{
+			Kind: "TestResource",
+			Key:  "locked-key",
+			Mesh: "default",
+			Meta: metav1.ObjectMeta{Name: "current"},
+		}
+		require.NoError(t, store.Add(current))
+		updated := &mockResource{
+			Kind: "TestResource",
+			Key:  "locked-key",
+			Mesh: "default",
+			Meta: metav1.ObjectMeta{Name: "updated"},
+		}
+
+		sqlDB, err := store.pool.GetDB().DB()
+		require.NoError(t, err)
+		sqlDB.SetMaxOpenConns(2)
+		conn, err := sqlDB.Conn(context.Background())
+		require.NoError(t, err)
+		defer conn.Close()
+		_, err = conn.ExecContext(context.Background(), "BEGIN EXCLUSIVE")
+		require.NoError(t, err)
+		defer conn.ExecContext(context.Background(), "ROLLBACK")
+
+		changed, err := store.UpdateIfUnchanged(current, updated)
+		require.ErrorIs(t, err, corestore.ErrResourceStoreTransient)
+		assert.False(t, changed)
+	})
+
+	t.Run("ordinary sql error", func(t *testing.T) {
+		store, cleanup := setupTestStore(t)
+		require.NoError(t, store.Init(nil))
+		current := &mockResource{
+			Kind: "TestResource",
+			Key:  "sql-error-key",
+			Mesh: "default",
+			Meta: metav1.ObjectMeta{Name: "current"},
+		}
+		require.NoError(t, store.Add(current))
+		cleanup()
+		updated := &mockResource{
+			Kind: "TestResource",
+			Key:  "sql-error-key",
+			Mesh: "default",
+			Meta: metav1.ObjectMeta{Name: "updated"},
+		}
+
+		changed, err := store.UpdateIfUnchanged(current, updated)
+		require.Error(t, err)
+		assert.False(t, changed)
+		assert.False(t, errors.Is(err, corestore.ErrResourceStoreTransient))
+	})
 }
 
 func TestGormStore_Delete(t *testing.T) {

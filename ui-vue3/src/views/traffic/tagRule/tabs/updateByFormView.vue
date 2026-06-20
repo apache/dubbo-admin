@@ -225,20 +225,10 @@
 </template>
 
 <script setup lang="ts">
-import {
-  type ComponentInternalInstance,
-  getCurrentInstance,
-  inject,
-  onMounted,
-  reactive,
-  ref,
-  watch
-} from 'vue'
+import { inject, onMounted, reactive, ref, watch } from 'vue'
 import { DoubleLeftOutlined, DoubleRightOutlined } from '@ant-design/icons-vue'
-import useClipboard from 'vue-clipboard3'
 import { message } from 'ant-design-vue'
-import { PRIMARY_COLOR } from '@/base/constants'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { getTagRuleDetailAPI, updateTagRuleAPI } from '@/api/service/traffic'
 import { isNil } from 'lodash'
@@ -251,7 +241,6 @@ import {
 } from '../../_shared/ruleVersion'
 
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
-const router = useRouter()
 
 onMounted(async () => {
   if (!isNil(TAB_STATE.tagRule)) {
@@ -290,7 +279,7 @@ onMounted(async () => {
 
         const { match } = tagItem
         let formatLabels: any[] = []
-        match.forEach((matchItem, matchIndex) => {
+        match.forEach((matchItem) => {
           formatLabels.push({
             myKey: matchItem.key,
             condition: Object.keys(matchItem.value)[0],
@@ -306,11 +295,6 @@ onMounted(async () => {
   }
   await reloadCurrentVersion()
 })
-const {
-  appContext: {
-    config: { globalProperties }
-  }
-} = getCurrentInstance() as ComponentInternalInstance
 const route = useRoute()
 
 const isDrawerOpened = ref(false)
@@ -324,15 +308,6 @@ async function reloadCurrentVersion() {
 }
 
 const sliderSpan = ref(8)
-
-let __ = PRIMARY_COLOR
-
-const toClipboard = useClipboard().toClipboard
-
-function copyIt(v: string) {
-  message.success(globalProperties.$t('messageDomain.success.copy'))
-  toClipboard(v)
-}
 
 const generateDescription = (tagItem: any, serviceName: string): string => {
   let description = `对于应用 ${serviceName || '未指定'}，将满足 `
@@ -605,7 +580,7 @@ const getTagRuleDetail = async () => {
 
       const { match } = tagItem
       let formatLabels: any[] = []
-      match.forEach((matchItem, matchIndex) => {
+      match.forEach((matchItem) => {
         formatLabels.push({
           myKey: matchItem.key,
           condition: Object.keys(matchItem.value)[0],
@@ -641,12 +616,12 @@ const updateTagRule = async () => {
       runtime,
       tags: []
     }
-    tagList.value.forEach((tagItem, tagIndex) => {
+    tagList.value.forEach((tagItem) => {
       const tag = {
         name: tagItem.tagName,
         match: []
       }
-      tagItem.scope.labels.forEach((labelItem, labelIndex) => {
+      tagItem.scope.labels.forEach((labelItem) => {
         const matchItem = {
           key: labelItem.myKey,
           value: {}

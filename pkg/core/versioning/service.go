@@ -453,6 +453,9 @@ func (s *Service) repairIntent(ctx context.Context, intent *Intent, current core
 	if intent.ReconcileRequired {
 		return s.resolveObservedIntent(ctx, intent, current, deleted)
 	}
+	if intent.Status == IntentStatusCommitting {
+		return s.store.CommitIntent(ctx, intent.ID, s.maxVersions)
+	}
 	matches := IntentMatchesResource(intent, current, deleted)
 	if intent.Status == IntentStatusPending || intent.Status == IntentStatusOutcomeUnknown {
 		if !matches {
@@ -473,9 +476,6 @@ func (s *Service) repairIntent(ctx context.Context, intent *Intent, current core
 		return s.store.CommitIntent(ctx, intent.ID, s.maxVersions)
 	}
 	if !matches {
-		if intent.Status == IntentStatusCommitting {
-			return s.failIntentAfterActualReconcile(ctx, intent, current, deleted, "committing intent no longer matches actual registry state")
-		}
 		return nil, ErrIntentOutcomeMismatch
 	}
 	if _, err := lock.RequireLease(ctx); err != nil {
@@ -504,6 +504,9 @@ func (s *Service) resolveObservedIntent(ctx context.Context, intent *Intent, cur
 		if _, err := lock.RequireLease(ctx); err != nil {
 			return nil, err
 		}
+		return s.store.CommitIntent(ctx, intent.ID, s.maxVersions)
+	}
+	if intent.Status == IntentStatusCommitting {
 		return s.store.CommitIntent(ctx, intent.ID, s.maxVersions)
 	}
 	return s.failIntentAfterActualReconcile(ctx, intent, current, deleted, "non-matching rule event superseded the open intent")

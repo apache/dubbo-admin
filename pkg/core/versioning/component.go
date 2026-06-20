@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"time"
 
 	versioningcfg "github.com/apache/dubbo-admin/pkg/config/versioning"
 	"github.com/apache/dubbo-admin/pkg/core/events"
@@ -30,6 +31,7 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	"github.com/apache/dubbo-admin/pkg/core/manager"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
+	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
 )
 
@@ -45,9 +47,10 @@ type Component interface {
 }
 
 type component struct {
-	service *Service
-	store   Store
-	lock    lock.Lock
+	service           *Service
+	store             Store
+	lock              lock.Lock
+	reconcileRequests chan struct{}
 }
 
 func (c *component) Type() runtime.ComponentType {
@@ -115,6 +118,7 @@ func (c *component) Init(ctx runtime.BuilderContext) error {
 	}
 	c.store = store
 	c.lock = lockMgr
+	c.reconcileRequests = make(chan struct{}, 1)
 	c.service = NewService(
 		cfg.MaxVersionsPerRule,
 		store,
@@ -130,7 +134,7 @@ func (c *component) Init(ctx runtime.BuilderContext) error {
 		return fmt.Errorf("component %s does not implement events.EventBus", runtime.EventBus)
 	}
 	for _, kind := range governor.RuleResourceKinds.Values() {
-		sub := NewSubscriber(kind, store, cfg.MaxVersionsPerRule, lockMgr, ctx.AppContext())
+		sub := NewSubscriber(kind, store, cfg.MaxVersionsPerRule, lockMgr, ctx.AppContext(), c.requestReconcile)
 		if err := bus.Subscribe(sub); err != nil {
 			return err
 		}
@@ -163,6 +167,7 @@ func (c *component) Start(rt runtime.Runtime, stop <-chan struct{}) error {
 	if err := c.bootstrapExistingRules(startCtx, rm, cfg.MaxVersionsPerRule); err != nil {
 		return err
 	}
+	c.startReconcileLoop(rt.AppContext(), stop, rm, cfg.MaxVersionsPerRule)
 	return nil
 }
 
@@ -171,8 +176,7 @@ func (c *component) Service() *Service {
 }
 
 func (c *component) bootstrapExistingRules(ctx context.Context, rm manager.ResourceManager, maxVersions int64) error {
-	// Bootstrap records one baseline version for pre-existing rules. It is
-	// idempotent across restarts: a rule with any existing version is skipped.
+	currentKeys := make(map[coremodel.ResourceKind]map[string]struct{})
 	for _, kind := range governor.RuleResourceKinds.Values() {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -183,10 +187,13 @@ func (c *component) bootstrapExistingRules(ctx context.Context, rm manager.Resou
 			return err
 		}
 		if rs == nil {
-			// Store not available (e.g., in test), skip bootstrap for this kind
 			continue
 		}
 		keys := rs.ListKeys()
+		currentKeys[kind] = make(map[string]struct{}, len(keys))
+		for _, key := range keys {
+			currentKeys[kind][key] = struct{}{}
+		}
 		resources, err := rs.GetByKeys(keys)
 		if err != nil {
 			return err
@@ -200,7 +207,87 @@ func (c *component) bootstrapExistingRules(ctx context.Context, rm manager.Resou
 			}
 		}
 	}
+	return c.reconcileDeletedRules(ctx, rm, currentKeys)
+}
+
+func (c *component) reconcileDeletedRules(ctx context.Context, rm manager.ResourceManager, currentKeys map[coremodel.ResourceKind]map[string]struct{}) error {
+	for _, kind := range governor.RuleResourceKinds.Values() {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		latest, err := c.store.ListLatestVersions(kind)
+		if err != nil {
+			return err
+		}
+		for _, head := range latest {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			if head.Operation == OperationDelete {
+				continue
+			}
+			if _, exists := currentKeys[kind][head.ResourceKey]; exists {
+				continue
+			}
+			err := withRuleVersionLock(ctx, c.lock, kind, head.ResourceKey, func(leaseCtx context.Context) error {
+				intent, err := c.store.OpenIntent(kind, head.ResourceKey)
+				if err != nil {
+					return err
+				}
+				if intent != nil {
+					return nil
+				}
+				current, exists, err := rm.GetByKey(kind, head.ResourceKey)
+				if err != nil {
+					return err
+				}
+				if exists {
+					return nil
+				}
+				_, err = c.service.ReconcileActualState(leaseCtx, kind, head.ResourceKey, current, true, "system:reconcile")
+				return err
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
+}
+
+func (c *component) requestReconcile() {
+	if c == nil || c.reconcileRequests == nil {
+		return
+	}
+	select {
+	case c.reconcileRequests <- struct{}{}:
+	default:
+	}
+}
+
+func (c *component) startReconcileLoop(parent context.Context, stop <-chan struct{}, rm manager.ResourceManager, maxVersions int64) {
+	if c.reconcileRequests == nil {
+		c.reconcileRequests = make(chan struct{}, 1)
+	}
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-stop:
+				return
+			case <-parent.Done():
+				return
+			case <-c.reconcileRequests:
+			case <-ticker.C:
+			}
+			ctx, cancel := contextWithStop(parent, stop)
+			if err := c.bootstrapExistingRules(ctx, rm, maxVersions); err != nil {
+				logger.Warnf("rule version current-state reconcile failed: %v", err)
+			}
+			cancel()
+		}
+	}()
 }
 
 func (c *component) repairOpenIntents(ctx context.Context, rm manager.ResourceManager) error {

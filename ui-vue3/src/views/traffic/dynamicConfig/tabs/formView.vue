@@ -414,10 +414,8 @@
 </template>
 
 <script lang="ts" setup>
-import type { ComponentInternalInstance } from 'vue'
-import { computed, getCurrentInstance, inject, nextTick, onMounted, reactive, ref } from 'vue'
+import { computed, inject, nextTick, onMounted, reactive, ref } from 'vue'
 import { PRIMARY_COLOR } from '@/base/constants'
-import useClipboard from 'vue-clipboard3'
 import { message, Modal } from 'ant-design-vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
@@ -432,13 +430,7 @@ import { ConfigModel, ViewDataModel } from '@/views/traffic/dynamicConfig/model/
 import { fetchCurrentVersionState, notifyRuleVersionError } from '../../_shared/ruleVersion'
 import RuleHistoryPanel from '../../_shared/RuleHistoryPanel.vue'
 
-let __ = PRIMARY_COLOR
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
-const {
-  appContext: {
-    config: { globalProperties }
-  }
-} = getCurrentInstance() as ComponentInternalInstance
 
 const route = useRoute()
 const router = useRouter()
@@ -457,13 +449,6 @@ async function reloadCurrentVersion() {
   const current = await fetchCurrentVersionState('configurator', pathId.value)
   currentVersionId.value = current.id
   currentVersionNo.value = current.versionNo
-}
-
-const toClipboard = useClipboard().toClipboard
-
-function copyIt(v: string) {
-  message.success(globalProperties.$t('messageDomain.success.copy'))
-  toClipboard(v)
 }
 
 const formViewData: ViewDataModel = reactive(new ViewDataModel())
@@ -576,8 +561,6 @@ function transApiData(data: any) {
     formViewData.fromApiOutput(data)
   }
 }
-
-const hasUnsavedChanges = ref(true)
 
 onMounted(async () => {
   await initConfig()

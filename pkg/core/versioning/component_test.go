@@ -19,11 +19,14 @@ package versioning
 
 import (
 	"context"
+	"errors"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/tools/cache"
 
 	appcfg "github.com/apache/dubbo-admin/pkg/config/app"
 	"github.com/apache/dubbo-admin/pkg/config/mode"
@@ -190,6 +193,130 @@ func TestComponentBootstrapExistingRulesIsIdempotentAcrossRestarts(t *testing.T)
 	require.Len(t, versions, 1)
 	assert.Equal(t, SourceBootstrap, versions[0].Source)
 	assert.Equal(t, int64(1), versions[0].VersionNo)
+}
+
+func TestComponentCurrentStateReconcileRecoversSubscriberAppendFailureWithoutReplay(t *testing.T) {
+	baseVersionStore, intentStore, _ := newVersioningStores(t)
+	versionStore := &failOnceStore{ResourceStore: baseVersionStore, err: assert.AnError}
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	_, err := adapter.InsertVersion(context.Background(), testInsertRequest("reconcile-rule", "hash-a"), 10)
+	require.NoError(t, err)
+
+	lockMgr := locallock.NewLocalLock()
+	reconcileRequested := make(chan struct{}, 1)
+	sub := NewSubscriber(meshresource.ConditionRouteKind, adapter, 10, lockMgr, context.Background(), func() {
+		reconcileRequested <- struct{}{}
+	})
+	current := testConditionRule("reconcile-rule", "B")
+	versionStore.failNextAdd = true
+	err = sub.ProcessEvent(events.NewResourceChangedEvent(cache.Updated, current, current))
+	require.Error(t, err)
+	require.Len(t, reconcileRequested, 1)
+
+	conditionStore := newRuleStoreWithResource(t, meshresource.ConditionRouteKind, current)
+	rm := &fakeVersioningRM{stores: map[coremodel.ResourceKind]corestore.ResourceStore{
+		meshresource.ConditionRouteKind: conditionStore,
+	}}
+	c := &component{service: NewService(10, adapter), store: adapter, lock: lockMgr}
+	require.NoError(t, c.bootstrapExistingRules(context.Background(), rm, 10))
+
+	versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, current.ResourceKey())
+	require.NoError(t, err)
+	require.Len(t, versions, 2)
+	assert.Equal(t, SourceUpstream, versions[0].Source)
+	assert.Equal(t, "system:reconcile", versions[0].Author)
+	assert.Equal(t, HashSpecForTest(t, current), versions[0].ContentHash)
+	assert.Equal(t, int64(2), versions[0].VersionNo)
+}
+
+func TestComponentCurrentStateReconcileIsIdempotentAcrossInstances(t *testing.T) {
+	versionStore, intentStore, _ := newVersioningStores(t)
+	writerA := NewResourceStoreAdapter(versionStore, intentStore)
+	writerB := NewResourceStoreAdapter(versionStore, intentStore)
+	_, err := writerA.InsertVersion(context.Background(), testInsertRequest("multi-reconcile-rule", "hash-a"), 10)
+	require.NoError(t, err)
+
+	current := testConditionRule("multi-reconcile-rule", "B")
+	conditionStore := newRuleStoreWithResource(t, meshresource.ConditionRouteKind, current)
+	rm := &fakeVersioningRM{stores: map[coremodel.ResourceKind]corestore.ResourceStore{
+		meshresource.ConditionRouteKind: conditionStore,
+	}}
+	lockMgr := locallock.NewLocalLock()
+	components := []*component{
+		{service: NewService(10, writerA), store: writerA, lock: lockMgr},
+		{service: NewService(10, writerB), store: writerB, lock: lockMgr},
+	}
+
+	var wg sync.WaitGroup
+	errCh := make(chan error, len(components))
+	for _, c := range components {
+		wg.Add(1)
+		go func(c *component) {
+			defer wg.Done()
+			errCh <- c.bootstrapExistingRules(context.Background(), rm, 10)
+		}(c)
+	}
+	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		require.NoError(t, err)
+	}
+
+	versions, err := writerA.ListVersions(meshresource.ConditionRouteKind, current.ResourceKey())
+	require.NoError(t, err)
+	require.Len(t, versions, 2)
+	assert.Equal(t, HashSpecForTest(t, current), versions[0].ContentHash)
+	assert.Equal(t, int64(2), versions[0].VersionNo)
+}
+
+func TestComponentCurrentStateReconcileRecordsDeleteWhenRegistryMissing(t *testing.T) {
+	versionStore, intentStore, _ := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	_, err := adapter.InsertVersion(context.Background(), testInsertRequest("deleted-reconcile-rule", "hash-a"), 10)
+	require.NoError(t, err)
+
+	emptyRuleStore := memoryst.NewMemoryResourceStore(meshresource.ConditionRouteKind)
+	require.NoError(t, emptyRuleStore.Init(nil))
+	rm := &fakeVersioningRM{stores: map[coremodel.ResourceKind]corestore.ResourceStore{
+		meshresource.ConditionRouteKind: emptyRuleStore,
+	}}
+	c := &component{service: NewService(10, adapter), store: adapter, lock: locallock.NewLocalLock()}
+	require.NoError(t, c.bootstrapExistingRules(context.Background(), rm, 10))
+
+	versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "deleted-reconcile-rule"))
+	require.NoError(t, err)
+	require.Len(t, versions, 2)
+	assert.Equal(t, OperationDelete, versions[0].Operation)
+	assert.Equal(t, SourceUpstream, versions[0].Source)
+}
+
+func TestComponentRepairCommittingThenCurrentReconcilePreservesAdminBeforeUpstream(t *testing.T) {
+	baseVersionStore, intentStore, _ := newVersioningStores(t)
+	versionStore := &failOnceStore{ResourceStore: baseVersionStore, err: errors.New("version add failed")}
+	adapter := NewResourceStoreAdapter(versionStore, intentStore)
+	intent, err := adapter.CreateIntent(context.Background(), testInsertRequest("committing-startup-rule", "hash-a"))
+	require.NoError(t, err)
+	require.NoError(t, adapter.MarkIntentApplied(context.Background(), intent.ID))
+	versionStore.failNextAdd = true
+	_, err = adapter.CommitIntent(context.Background(), intent.ID, 10)
+	require.ErrorContains(t, err, "version add failed")
+
+	current := testConditionRule("committing-startup-rule", "B")
+	conditionStore := newRuleStoreWithResource(t, meshresource.ConditionRouteKind, current)
+	rm := &fakeVersioningRM{stores: map[coremodel.ResourceKind]corestore.ResourceStore{
+		meshresource.ConditionRouteKind: conditionStore,
+	}}
+	c := &component{service: NewService(10, adapter), store: adapter, lock: locallock.NewLocalLock()}
+	require.NoError(t, c.repairOpenIntents(context.Background(), rm))
+	require.NoError(t, c.bootstrapExistingRules(context.Background(), rm, 10))
+
+	versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, current.ResourceKey())
+	require.NoError(t, err)
+	require.Len(t, versions, 2)
+	assert.Equal(t, HashSpecForTest(t, current), versions[0].ContentHash)
+	assert.Equal(t, SourceUpstream, versions[0].Source)
+	assert.Equal(t, "hash-a", versions[1].ContentHash)
+	assert.Equal(t, SourceAdmin, versions[1].Source)
 }
 
 func newVersioningComponentBuilder(t *testing.T) *runtime.Builder {

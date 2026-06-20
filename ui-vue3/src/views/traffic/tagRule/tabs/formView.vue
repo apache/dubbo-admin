@@ -181,7 +181,6 @@ const {
   }
 } = getCurrentInstance() as ComponentInternalInstance
 
-let __ = PRIMARY_COLOR
 const toClipboard = useClipboard().toClipboard
 const isHistoryOpen = ref(false)
 const currentVersionNo = ref<number | undefined>(undefined)
