@@ -133,9 +133,6 @@ func (a *ResourceStoreAdapter) MarkIntentFailed(ctx context.Context, id int64, m
 	if err := a.updateIntentStatus(ctx, id, IntentStatusFailed, message); err != nil {
 		return err
 	}
-	if err := lock.CheckLease(ctx); err != nil {
-		return err
-	}
 	a.cleanupIntent(id, IntentStatusFailed)
 	return nil
 }
@@ -184,12 +181,13 @@ func (a *ResourceStoreAdapter) CommitIntent(ctx context.Context, id int64, maxVe
 	if err := updateIntentResourceStatus(a.intentStore, intentRes, IntentStatusCommitted, ""); err != nil {
 		return nil, err
 	}
-	if err := lock.CheckLease(ctx); err != nil {
-		return nil, err
-	}
 	a.cleanupIntent(id, IntentStatusCommitted)
 
 	return version, nil
+}
+
+func (a *ResourceStoreAdapter) CleanupIntent(id int64, terminalStatus IntentStatus) {
+	a.cleanupIntent(id, terminalStatus)
 }
 
 func (a *ResourceStoreAdapter) ListOpenIntents() ([]Intent, error) {

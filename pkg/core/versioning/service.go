@@ -236,8 +236,13 @@ func (s *Service) FinalizeMutation(ctx context.Context, intent *Intent, current 
 	}
 	switch fresh.Status {
 	case IntentStatusCommitted:
-		return s.committedVersionForIntent(fresh)
+		committed, err := s.committedVersionForIntent(fresh)
+		if err == nil {
+			s.store.CleanupIntent(fresh.ID, IntentStatusCommitted)
+		}
+		return committed, err
 	case IntentStatusFailed:
+		s.store.CleanupIntent(fresh.ID, IntentStatusFailed)
 		if fresh.LastError != "" {
 			return nil, fmt.Errorf("%w: %s", ErrVersionIntentNotOpen, fresh.LastError)
 		}

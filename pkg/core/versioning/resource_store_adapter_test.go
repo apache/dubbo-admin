@@ -505,6 +505,86 @@ func TestServiceFinalizeMutationStopsAfterLeaseLossBeforeLedgerAppend(t *testing
 	assert.Equal(t, IntentStatusApplied, open.Status)
 }
 
+func TestResourceStoreAdapter_CommitIntentSucceedsWhenLeaseLostAfterCommittedStatus(t *testing.T) {
+	baseVersionStore, baseIntentStore, metaStore := newVersioningStores(t)
+	versionStore := &hookStore{ResourceStore: baseVersionStore}
+	intentStore := &hookStore{ResourceStore: baseIntentStore}
+	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	intent, err := adapter.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-a"))
+	require.NoError(t, err)
+	require.NoError(t, adapter.MarkIntentApplied(context.Background(), intent.ID))
+
+	lockKey := corelock.BuildRuleVersioningLockKey(string(meshresource.ConditionRouteKind), "", "demo-rule")
+	var committed *Version
+	var commitErr error
+	var versionAddLeaseErr error
+	versionAdded := false
+	withLockErr := corelock.WithLock(context.Background(), locallock.NewLocalLock(), lockKey, 5*time.Millisecond, func(leaseCtx context.Context) error {
+		versionStore.afterAdd = func(obj interface{}) {
+			if _, ok := obj.(*meshresource.RuleVersionResource); ok {
+				versionAdded = true
+				versionAddLeaseErr = corelock.CheckLease(leaseCtx)
+			}
+		}
+		intentStore.afterUpdate = func(obj interface{}) {
+			intentRes, ok := obj.(*meshresource.RuleIntentResource)
+			if !ok || intentRes.Spec == nil || IntentStatus(intentRes.Spec.Status) != IntentStatusCommitted {
+				return
+			}
+			<-leaseCtx.Done()
+		}
+		committed, commitErr = adapter.CommitIntent(leaseCtx, intent.ID, 10)
+		return nil
+	})
+	require.ErrorIs(t, withLockErr, corelock.ErrLockLeaseLost)
+	require.True(t, versionAdded)
+	require.NoError(t, versionAddLeaseErr)
+	require.NoError(t, commitErr)
+	require.NotNil(t, committed)
+	assert.Equal(t, intent.ID, committed.ID)
+	assert.Equal(t, intent.ID, committed.IntentID)
+
+	versions, err := adapter.ListVersions(meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
+	require.NoError(t, err)
+	require.Len(t, versions, 1)
+	assert.Equal(t, committed.ID, versions[0].ID)
+
+	meta, err := adapter.ReconcileMeta(context.Background(), meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "demo-rule"))
+	require.NoError(t, err)
+	require.NotNil(t, meta)
+	require.NotNil(t, meta.CurrentVersion)
+	assert.Equal(t, committed.ID, *meta.CurrentVersion)
+
+	_, err = adapter.GetIntent(intent.ID)
+	require.ErrorIs(t, err, ErrVersionIntentNotFound)
+}
+
+func TestResourceStoreAdapter_MarkIntentFailedSucceedsWhenLeaseLostAfterFailedStatus(t *testing.T) {
+	versionStore, baseIntentStore, metaStore := newVersioningStores(t)
+	intentStore := &hookStore{ResourceStore: baseIntentStore}
+	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	intent, err := adapter.CreateIntent(context.Background(), testInsertRequest("demo-rule", "hash-a"))
+	require.NoError(t, err)
+
+	var markErr error
+	withLockErr := corelock.WithLock(context.Background(), locallock.NewLocalLock(), "mark-failed-terminal", 5*time.Millisecond, func(leaseCtx context.Context) error {
+		intentStore.afterUpdate = func(obj interface{}) {
+			intentRes, ok := obj.(*meshresource.RuleIntentResource)
+			if !ok || intentRes.Spec == nil || IntentStatus(intentRes.Spec.Status) != IntentStatusFailed {
+				return
+			}
+			<-leaseCtx.Done()
+		}
+		markErr = adapter.MarkIntentFailed(leaseCtx, intent.ID, "mutation failed")
+		return nil
+	})
+	require.ErrorIs(t, withLockErr, corelock.ErrLockLeaseLost)
+	require.NoError(t, markErr)
+
+	_, err = adapter.GetIntent(intent.ID)
+	require.ErrorIs(t, err, ErrVersionIntentNotFound)
+}
+
 func TestRuleVersionCommitPointRejectsOldLeaseAfterReacquire(t *testing.T) {
 	versionStore, intentStore, metaStore := newVersioningStores(t)
 	writerA := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
@@ -645,6 +725,90 @@ func TestResourceStoreAdapter_FixedVersionIDConflict(t *testing.T) {
 	conflicting.FixedVersionID = &fixedID
 	_, err = adapter.InsertVersion(context.Background(), conflicting, 10)
 	require.ErrorIs(t, err, ErrVersionLedgerCorrupt)
+}
+
+func TestResourceStoreAdapter_FixedVersionIDAuditMismatchDoesNotUpdateMeta(t *testing.T) {
+	cases := []struct {
+		name   string
+		mutate func(*InsertRequest)
+	}{
+		{
+			name: "author",
+			mutate: func(req *InsertRequest) {
+				req.Author = "bob"
+			},
+		},
+		{
+			name: "reason",
+			mutate: func(req *InsertRequest) {
+				req.Reason = "rollback recovery"
+			},
+		},
+		{
+			name: "created_at",
+			mutate: func(req *InsertRequest) {
+				req.CreatedAt = req.CreatedAt.Add(time.Second)
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			versionStore, intentStore, metaStore := newVersioningStores(t)
+			adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+			fixedID := int64(100)
+			req := testInsertRequest("demo-rule", "hash-a")
+			req.Author = "alice"
+			req.Reason = "normal update"
+			req.FixedVersionID = &fixedID
+			existing := newRuleVersionResource(req, fixedID, 1, req.CreatedAt, time.Unix(101, 0))
+			require.NoError(t, versionStore.Add(existing))
+
+			retry := req
+			tc.mutate(&retry)
+			_, err := adapter.InsertVersion(context.Background(), retry, 10)
+			require.ErrorIs(t, err, ErrVersionLedgerCorrupt)
+			requireRuleMetaMissing(t, metaStore, req.RuleKind, req.ResourceKey)
+
+			versions, err := adapter.ListVersions(req.RuleKind, req.ResourceKey)
+			require.NoError(t, err)
+			require.Len(t, versions, 1)
+			assert.Equal(t, "alice", versions[0].Author)
+			assert.Equal(t, "normal update", versions[0].Reason)
+		})
+	}
+}
+
+func TestResourceStoreAdapter_CommitIntentAuditMismatchDoesNotAdvanceIntentOrMeta(t *testing.T) {
+	versionStore, intentStore, metaStore := newVersioningStores(t)
+	adapter := NewResourceStoreAdapter(versionStore, intentStore, metaStore)
+	req := testInsertRequest("demo-rule", "hash-a")
+	req.Author = "bob"
+	req.Reason = "rollback recovery"
+	intent, err := adapter.CreateIntent(context.Background(), req)
+	require.NoError(t, err)
+	require.NoError(t, adapter.MarkIntentApplied(context.Background(), intent.ID))
+
+	existingReq := req
+	existingReq.Author = "alice"
+	existingReq.Reason = "normal update"
+	existingReq.IntentID = intent.ID
+	existing := newRuleVersionResource(existingReq, intent.ID, 1, existingReq.CreatedAt, time.Unix(101, 0))
+	require.NoError(t, versionStore.Add(existing))
+
+	_, err = adapter.CommitIntent(context.Background(), intent.ID, 10)
+	require.ErrorIs(t, err, ErrVersionLedgerCorrupt)
+	requireRuleMetaMissing(t, metaStore, req.RuleKind, req.ResourceKey)
+
+	open, err := adapter.GetIntent(intent.ID)
+	require.NoError(t, err)
+	assert.Equal(t, IntentStatusApplied, open.Status)
+
+	versions, err := adapter.ListVersions(req.RuleKind, req.ResourceKey)
+	require.NoError(t, err)
+	require.Len(t, versions, 1)
+	assert.Equal(t, intent.ID, versions[0].IntentID)
+	assert.Equal(t, "alice", versions[0].Author)
+	assert.Equal(t, "normal update", versions[0].Reason)
 }
 
 func TestResourceStoreAdapter_CorruptMetaObjectRejected(t *testing.T) {
@@ -930,16 +1094,30 @@ func TestRuleVersionLockAllowsDifferentParentsInParallel(t *testing.T) {
 	firstEntered := make(chan struct{})
 	releaseFirst := make(chan struct{})
 	secondEntered := make(chan struct{})
+	errCh := make(chan error, 1)
+	var releaseOnce sync.Once
+	release := func() {
+		releaseOnce.Do(func() {
+			close(releaseFirst)
+		})
+	}
 
 	go func() {
-		err := withRuleVersionLock(context.Background(), lockMgr, meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "rule-a"), func(context.Context) error {
+		errCh <- withRuleVersionLock(context.Background(), lockMgr, meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "rule-a"), func(context.Context) error {
 			close(firstEntered)
 			<-releaseFirst
 			return nil
 		})
-		require.NoError(t, err)
 	}()
-	<-firstEntered
+	select {
+	case <-firstEntered:
+	case err := <-errCh:
+		require.NoError(t, err)
+		t.Fatal("first operation exited before entering critical section")
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("timed out waiting for first operation")
+	}
+	defer release()
 
 	err := withRuleVersionLock(context.Background(), lockMgr, meshresource.ConditionRouteKind, coremodel.BuildResourceKey("", "rule-b"), func(context.Context) error {
 		close(secondEntered)
@@ -952,7 +1130,13 @@ func TestRuleVersionLockAllowsDifferentParentsInParallel(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("different parent rules should not be blocked by a global lock")
 	}
-	close(releaseFirst)
+	release()
+	select {
+	case err := <-errCh:
+		require.NoError(t, err)
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("timed out waiting for first operation to exit")
+	}
 }
 
 func TestResourceStoreAdapter_RetriesVersionIDCollision(t *testing.T) {
@@ -1273,6 +1457,41 @@ func (rm *singleResourceManager) DeleteByKey(context.Context, coremodel.Resource
 }
 
 var _ manager.ResourceManager = (*singleResourceManager)(nil)
+
+func requireRuleMetaMissing(t *testing.T, metaStore store.ResourceStore, kind coremodel.ResourceKind, resourceKey string) {
+	t.Helper()
+	metaName := buildMetaName(kind, resourceKey)
+	fullKey := coremodel.BuildResourceKey(extractMesh(resourceKey), metaName)
+	_, exists, err := metaStore.GetByKey(fullKey)
+	require.NoError(t, err)
+	require.False(t, exists)
+}
+
+type hookStore struct {
+	store.ResourceStore
+	afterAdd    func(interface{})
+	afterUpdate func(interface{})
+}
+
+func (s *hookStore) Add(obj interface{}) error {
+	if err := s.ResourceStore.Add(obj); err != nil {
+		return err
+	}
+	if s.afterAdd != nil {
+		s.afterAdd(obj)
+	}
+	return nil
+}
+
+func (s *hookStore) Update(obj interface{}) error {
+	if err := s.ResourceStore.Update(obj); err != nil {
+		return err
+	}
+	if s.afterUpdate != nil {
+		s.afterUpdate(obj)
+	}
+	return nil
+}
 
 type failOnceStore struct {
 	store.ResourceStore

@@ -131,12 +131,6 @@ func (a *ResourceStoreAdapter) insertVersionLocked(ctx context.Context, req Inse
 	if err := lock.CheckLease(ctx); err != nil {
 		return nil, err
 	}
-	if _, err := a.reconcileMetaFromLedgerLocked(ctx, req.RuleKind, req.ResourceKey); err != nil {
-		return nil, err
-	}
-	if err := lock.CheckLease(ctx); err != nil {
-		return nil, err
-	}
 	state, err := a.ledgerState(req.RuleKind, req.ResourceKey)
 	if err != nil {
 		return nil, err
@@ -189,6 +183,16 @@ func (a *ResourceStoreAdapter) insertVersionLocked(ctx context.Context, req Inse
 	}
 
 	if !versionExists {
+		if err := lock.CheckLease(ctx); err != nil {
+			return nil, err
+		}
+		if _, err := a.reconcileMetaFromLedgerLocked(ctx, req.RuleKind, req.ResourceKey); err != nil {
+			return nil, err
+		}
+		if err := lock.CheckLease(ctx); err != nil {
+			return nil, err
+		}
+
 		attempts := maxIDGenerateAttempts
 		var addErr error
 		for attempt := 0; attempt < attempts; attempt++ {
@@ -379,8 +383,13 @@ func validateExistingVersionForRequest(existing *meshresource.RuleVersionResourc
 		spec.SpecJson != req.SpecJSON ||
 		spec.Source != string(req.Source) ||
 		spec.Operation != string(req.Operation) ||
+		spec.Author != req.Author ||
+		spec.Reason != req.Reason ||
 		spec.IntentId != req.IntentID ||
 		spec.RolledBackFromId != rolledBackFromIDValue(req.RolledBackFromID) {
+		return fmt.Errorf("%w: RuleVersion id %d already exists with different content", ErrVersionLedgerCorrupt, existingID)
+	}
+	if !req.CreatedAt.IsZero() && !timestampAsTime(spec.CreatedAt).Equal(req.CreatedAt) {
 		return fmt.Errorf("%w: RuleVersion id %d already exists with different content", ErrVersionLedgerCorrupt, existingID)
 	}
 	return nil
