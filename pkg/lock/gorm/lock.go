@@ -31,18 +31,18 @@ import (
 	"github.com/apache/dubbo-admin/pkg/store/dbcommon"
 )
 
-// Ensure GormLock implements Lock interface
 var _ lock.Lock = (*GormLock)(nil)
 
-// GormLock provides distributed locking using database as backend
-// It uses GORM for database operations and supports MySQL, PostgreSQL, etc.
+// GormLock provides cross-instance locking through a shared SQL database.
+// Lease ownership is scoped by token so delayed renew/unlock calls from an old
+// holder cannot release a newer holder's lease.
 type GormLock struct {
 	pool *dbcommon.ConnectionPool
 	db   *gorm.DB
 }
 
-// NewGormLock creates a new GORM-based distributed lock instance
-// Deprecated: Use NewGormLockFromDB to avoid circular dependencies
+// NewGormLock creates a GORM-based distributed lock instance.
+// Deprecated: Use NewGormLockFromDB to avoid circular dependencies.
 func NewGormLock(pool *dbcommon.ConnectionPool) lock.Lock {
 	return &GormLock{
 		pool: pool,
@@ -50,15 +50,13 @@ func NewGormLock(pool *dbcommon.ConnectionPool) lock.Lock {
 	}
 }
 
-// NewGormLockFromDB creates a new GORM-based distributed lock instance from a DB connection
-// This is the preferred constructor to avoid circular dependencies
+// NewGormLockFromDB creates a GORM-based distributed lock from a DB connection.
 func NewGormLockFromDB(db *gorm.DB) lock.Lock {
 	return &GormLock{
 		db: db,
 	}
 }
 
-// getDB returns the database instance, to prefer direct DB to pool
 func (g *GormLock) getDB() *gorm.DB {
 	if g.db != nil {
 		return g.db
@@ -105,7 +103,8 @@ func (g *GormLock) TryAcquire(ctx context.Context, key string, ttl time.Duration
 
 	var acquired bool
 	err = db.Transaction(func(tx *gorm.DB) error {
-		// Clean up only this key's expired lock to improve performance
+		// Only the requested key is cleaned here so acquisition does not scan
+		// unrelated locks on every retry.
 		now := time.Now()
 		if err := tx.Where("lock_key = ? AND expire_at <= ?", key, now).
 			Delete(&LockRecord{}).Error; err != nil {
@@ -127,14 +126,11 @@ func (g *GormLock) TryAcquire(ctx context.Context, key string, ttl time.Duration
 			return fmt.Errorf("failed to insert lock record: %w", result.Error)
 		}
 
-		// Check if the insertion was successful
 		if result.RowsAffected == 0 {
-			// The lock already exists
 			acquired = false
 			return nil
 		}
 
-		// New row inserted successfully, lock acquired successfully
 		acquired = true
 		return nil
 	})
@@ -189,7 +185,7 @@ func (l *lease) Renew(ctx context.Context, ttl time.Duration) error {
 	return nil
 }
 
-// IsLocked checks if a lock is currently held (by anyone)
+// IsLocked reports whether a non-expired lease exists for key.
 func (g *GormLock) IsLocked(ctx context.Context, key string) (bool, error) {
 	db := g.getDB().WithContext(ctx)
 
@@ -205,8 +201,7 @@ func (g *GormLock) IsLocked(ctx context.Context, key string) (bool, error) {
 	return count > 0, nil
 }
 
-// CleanupExpiredLocks removes all expired locks from the database
-// This should be called periodically as a maintenance task
+// CleanupExpiredLocks removes expired leases from the database.
 func (g *GormLock) CleanupExpiredLocks(ctx context.Context) error {
 	db := g.getDB().WithContext(ctx)
 

@@ -27,7 +27,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// RuleIntentResource represents a pending mutation to a rule
+// RuleIntentResource stores the durable recovery record for one rule mutation.
+// Its spec is updated conditionally by the versioning store; callers should not
+// treat it as the committed rule-version history.
 type RuleIntentResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

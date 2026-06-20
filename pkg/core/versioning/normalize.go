@@ -32,8 +32,11 @@ import (
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
+// DeleteSpecJSON is the canonical snapshot stored for a rule delete marker.
 const DeleteSpecJSON = "{}"
 
+// NormalizeSpec returns canonical JSON and its hash for stable comparisons.
+// It does not validate whether the spec is acceptable to the registry.
 func NormalizeSpec(spec coremodel.ResourceSpec) (string, string, error) {
 	if spec == nil {
 		return HashSpecJSON(DeleteSpecJSON), DeleteSpecJSON, nil
@@ -67,6 +70,8 @@ func NormalizeSpec(spec coremodel.ResourceSpec) (string, string, error) {
 	return HashSpecJSON(specJSON), specJSON, nil
 }
 
+// HashSpecJSON hashes canonical spec JSON for comparison and dedup filters.
+// It is not sufficient on its own to prove operation source or intent ownership.
 func HashSpecJSON(specJSON string) string {
 	sum := sha256.Sum256([]byte(specJSON))
 	return hex.EncodeToString(sum[:])

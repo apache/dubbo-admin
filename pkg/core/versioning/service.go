@@ -31,8 +31,9 @@ import (
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-// Service provides rule versioning functionality.
-// Use NewService to create an instance.
+// Service coordinates rule-version reads, mutation intents, repair, and
+// rollback. Mutating calls require a lock lease in the context; callers choose
+// the canonical per-rule lock before entering the service.
 type Service struct {
 	maxVersions int64
 	store       Store
@@ -421,19 +422,10 @@ func (s *Service) GetVersion(kind coremodel.ResourceKind, resourceKey string, id
 	return s.store.GetVersion(kind, resourceKey, id)
 }
 
-// repairIntent attempts to resolve a stale or stuck intent.
-// Called during startup to recover from crashes, and before mutations to clear pending state.
-//
-// Why repair is needed:
-//   - If admin crashes after creating an intent but before the subscriber commits,
-//     the intent stays PENDING forever, blocking future writes
-//   - If the actual resource state matches the intent's desired state, we can
-//     safely commit the intent retroactively
-//
-// How to apply:
-// - Repair runs automatically at startup (component.Start)
-// - Also runs before each mutation (prepareRuleMutation) to clear stale intents
-// - Returns IntentPendingError if the intent genuinely conflicts with current state
+// repairIntent reconciles an open intent against ResourceManager state. It only
+// commits the intent when the observed rule state proves that the mutation
+// happened; otherwise the open intent continues to fence later writes or is
+// failed after the actual state has been recorded.
 func (s *Service) repairIntent(ctx context.Context, intent *Intent, current coremodel.Resource, deleted bool) (*Version, error) {
 	if intent == nil {
 		return nil, nil
@@ -583,8 +575,9 @@ func buildMutationInsertRequest(res coremodel.Resource, op Operation, source Sou
 	}, nil
 }
 
-// IntentMatchesResource checks if the intent's desired state matches actual resource state.
-// Used by repair logic to decide if a stale intent can be safely committed.
+// IntentMatchesResource reports whether ResourceManager currently exposes the
+// state requested by the intent. It is a recovery check, not event attribution;
+// callers still validate intent identity before accepting an existing version.
 func IntentMatchesResource(intent *Intent, current coremodel.Resource, deleted bool) bool {
 	if intent == nil {
 		return false

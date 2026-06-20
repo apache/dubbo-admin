@@ -51,6 +51,8 @@ type LocalLock struct {
 
 var _ corelock.Lock = (*LocalLock)(nil)
 
+// NewLocalLock returns a process-local lock backend. It is only shared inside
+// one admin process, so clustered deployments must use a distributed backend.
 func NewLocalLock() corelock.Lock {
 	return &LocalLock{
 		backend: defaultBackend,

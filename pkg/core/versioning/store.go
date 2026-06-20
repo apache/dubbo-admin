@@ -23,8 +23,9 @@ import (
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-// Store defines the storage interface for rule versioning.
-// Production implementation: ResourceStoreAdapter (uses resource store)
+// Store persists committed rule-version ledgers and unfinished mutation
+// intents. Implementations must keep intent state transitions conditional so
+// competing console/subscriber paths cannot both own the same commit.
 type Store interface {
 	InsertVersion(ctx context.Context, req InsertRequest, maxVersions int64) (*Version, error)
 	CreateIntent(ctx context.Context, req InsertRequest) (*Intent, error)

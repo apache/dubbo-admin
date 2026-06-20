@@ -64,6 +64,8 @@ export const rollbackExpectedVersionId = (state: CurrentVersionState): string | 
   if (state.id !== undefined) {
     return state.id
   }
+  // A deleted ledger head has no current version ID, but rollback must still
+  // assert that the rule is absent. "0" is the API's deleted-state precondition.
   return state.deleted ? '0' : undefined
 }
 
@@ -232,6 +234,9 @@ export const notifyVersionLedgerPending = (
                       if (repairingIntentIds.has(intentId)) {
                         return
                       }
+                      // Repair mutates the durable intent. Suppress duplicate
+                      // clicks for the same intent while preserving normal
+                      // error reporting for unrelated failures.
                       repairingIntentIds.add(intentId)
                       try {
                         await repairRuleVersionIntentAPI(intentId)

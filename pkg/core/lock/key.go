@@ -24,7 +24,8 @@ import (
 	"github.com/apache/dubbo-admin/pkg/common/constants"
 )
 
-// BuildLockKey constructs a lock key from a prefix and parts
+// BuildLockKey constructs a stable lock key from a prefix and escaped identity
+// parts.
 func BuildLockKey(prefix string, parts ...string) string {
 	segments := make([]string, 0, len(parts)+1)
 	segments = append(segments, encodeLockPart(prefix))
@@ -34,23 +35,25 @@ func BuildLockKey(prefix string, parts ...string) string {
 	return strings.Join(segments, ":")
 }
 
-// BuildRuleVersioningLockKey constructs the canonical per-rule lock key used by
-// console writes, rollback, bootstrap, repair, retention, and subscriber commits.
+// BuildRuleVersioningLockKey constructs the canonical per-rule lock key. All
+// paths that read the current rule state and then append or repair its ledger
+// share this key so the check-then-act sequence observes one parent-rule state.
 func BuildRuleVersioningLockKey(kind, mesh, name string) string {
 	return BuildLockKey(constants.RuleVersioningKeyPrefix, kind, mesh, name)
 }
 
-// BuildTagRouteLockKey constructs a lock key for tag route operations
+// BuildTagRouteLockKey constructs the rule-versioning lock key for tag routes.
 func BuildTagRouteLockKey(mesh, name string) string {
 	return BuildRuleVersioningLockKey("TagRoute", mesh, name)
 }
 
-// BuildConfiguratorRuleLockKey constructs a lock key for configurator rule operations
+// BuildConfiguratorRuleLockKey constructs the rule-versioning lock key for
+// dynamic configs.
 func BuildConfiguratorRuleLockKey(mesh, name string) string {
 	return BuildRuleVersioningLockKey("DynamicConfig", mesh, name)
 }
 
-// BuildConditionRuleLockKey constructs a lock key for condition rule operations
+// BuildConditionRuleLockKey constructs the rule-versioning lock key for condition routes.
 func BuildConditionRuleLockKey(mesh, name string) string {
 	return BuildRuleVersioningLockKey("ConditionRoute", mesh, name)
 }

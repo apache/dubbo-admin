@@ -19,6 +19,8 @@ import request from '@/base/http/request'
 
 export type TrafficRuleKind = 'condition-rule' | 'tag-rule' | 'configurator'
 
+// Version and intent IDs are int64 values serialized as decimal strings by the
+// API. Keep them as strings in the UI to avoid JavaScript number precision loss.
 export interface RuleVersion {
   id: string
   ruleKind: string

@@ -158,6 +158,9 @@ func validateRuleVersionReasonLength(c *gin.Context, reason string) bool {
 	return false
 }
 
+// expectedVersionId is omitted/null for no precondition, "0" for an absent or
+// deleted current rule, or a positive version ID. JSON requests carry it as a
+// string so browser clients do not lose int64 precision.
 func parseExpectedVersionID(c *gin.Context) (*int64, bool) {
 	raw := strings.TrimSpace(c.Query("expectedVersionId"))
 	if raw == "" {

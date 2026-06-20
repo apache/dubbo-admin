@@ -129,11 +129,9 @@ func protoToVersion(spec *meshproto.RuleVersion, id int64) (*Version, error) {
 		RolledBackFromID: rolledBackFromID,
 		CreatedAt:        createdAt,
 		CommittedAt:      committedAt,
-		IsCurrent:        false, // Will be set by caller from the ledger head
+		IsCurrent:        false,
 	}, nil
 }
-
-// Intent helper functions
 
 func buildIntentName(kind coremodel.ResourceKind, resourceKey string, id int64) string {
 	return fmt.Sprintf("%s-%s-intent-%d", kind, extractName(resourceKey), id)

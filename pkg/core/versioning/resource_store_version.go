@@ -178,7 +178,6 @@ func (a *ResourceStoreAdapter) ledgerState(kind coremodel.ResourceKind, resource
 		seenVersionNo[version.VersionNo] = version.ID
 	}
 
-	// Sort by version number descending (newest first).
 	sort.Slice(versions, func(i, j int) bool {
 		return versions[i].VersionNo > versions[j].VersionNo
 	})
@@ -347,7 +346,9 @@ func (a *ResourceStoreAdapter) trimVersionsLocked(ctx context.Context, kind core
 		return nil
 	}
 
-	// Delete oldest versions beyond keep limit
+	// Retention runs after the new version is durable and only removes entries
+	// beyond the configured window. Cleanup failure is reported to logs by the
+	// caller and does not roll back the already-committed mutation.
 	toDelete := versions[int(keep):]
 	for _, v := range toDelete {
 		if err := lock.CheckLease(ctx); err != nil {

@@ -62,6 +62,8 @@ const editorLanguage = computed(() =>
 )
 
 const disposeModels = () => {
+  // The diff editor does not own models passed through setModel. Dispose the
+  // previous pair before each rebuild so Monaco workers do not retain snapshots.
   const model = diffEditor?.getModel()
   model?.original.dispose()
   model?.modified.dispose()
@@ -72,6 +74,8 @@ const render = () => {
     return
   }
   disposeModels()
+  // Models are recreated when language changes; a disposed model must never be
+  // reused after Monaco has detached it from the editor.
   const originalModel = monaco.editor.createModel(props.original || '', editorLanguage.value)
   const modifiedModel = monaco.editor.createModel(props.modified || '', editorLanguage.value)
   diffEditor.setModel({ original: originalModel, modified: modifiedModel })

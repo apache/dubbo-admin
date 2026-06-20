@@ -25,9 +25,13 @@ import (
 )
 
 const (
+	// DefaultMaxVersionsPerRule is the retention window used when configuration
+	// omits maxVersionsPerRule or provides a negative value.
 	DefaultMaxVersionsPerRule = int64(50)
 )
 
+// Config controls rule-version retention. A zero MaxVersionsPerRule disables
+// cleanup; committed mutations are still recorded.
 type Config struct {
 	config.BaseConfig
 	MaxVersionsPerRule int64 `json:"maxVersionsPerRule" yaml:"maxVersionsPerRule"`
@@ -40,18 +44,21 @@ func (c *Config) UnmarshalJSON(data []byte) error {
 	return json.Unmarshal(data, (*config)(c))
 }
 
+// Default returns rule-versioning configuration with retention enabled.
 func Default() *Config {
 	return &Config{
 		MaxVersionsPerRule: DefaultMaxVersionsPerRule,
 	}
 }
 
+// Sanitize normalizes invalid retention values to the default window.
 func (c *Config) Sanitize() {
 	if c.MaxVersionsPerRule < 0 {
 		c.MaxVersionsPerRule = DefaultMaxVersionsPerRule
 	}
 }
 
+// Validate rejects negative retention values before startup.
 func (c *Config) Validate() error {
 	if c.MaxVersionsPerRule < 0 {
 		return bizerror.New(bizerror.ConfigError, "ruleVersioning.maxVersionsPerRule must be greater than or equal to 0")

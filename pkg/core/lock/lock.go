@@ -47,7 +47,9 @@ type Lease interface {
 	Unlock(ctx context.Context) error
 }
 
-// Lock defines the distributed lock interface.
+// Lock defines the lock backend contract used by cross-instance critical
+// sections. A successful Acquire returns an acquisition-scoped Lease; backends
+// must reject Renew and Unlock calls made with an older token.
 type Lock interface {
 	// Acquire blocks until it obtains a lease or the context is cancelled.
 	Acquire(ctx context.Context, key string, ttl time.Duration) (Lease, error)
@@ -80,6 +82,7 @@ type LeaseState struct {
 	lostOnce sync.Once
 }
 
+// NewLeaseState creates the shared lease state embedded by lock backends.
 func NewLeaseState(key, token string) *LeaseState {
 	s := &LeaseState{
 		key:   key,
@@ -147,6 +150,7 @@ func (s *LeaseState) lostError() error {
 	}
 }
 
+// NewLeaseToken returns an owner token scoped to one lock acquisition.
 func NewLeaseToken() (string, error) {
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {
@@ -155,6 +159,9 @@ func NewLeaseToken() (string, error) {
 	return hex.EncodeToString(b[:]), nil
 }
 
+// WithLock runs fn while holding key and returns ErrLockLeaseLost if the lease
+// expires or renewal fails before the critical section is safely complete. Code
+// inside fn should call CheckLease before mutating state after blocking work.
 func WithLock(ctx context.Context, lockMgr Lock, key string, ttl time.Duration, fn func(context.Context) error) (err error) {
 	if lockMgr == nil {
 		return ErrLockUnavailable
@@ -234,6 +241,9 @@ func WithLock(ctx context.Context, lockMgr Lock, key string, ttl time.Duration, 
 	return CheckLease(leaseCtx)
 }
 
+// CheckLease fails closed when the context is cancelled or its bound lease has
+// been lost. It is intentionally cheap so mutation code can call it between
+// ResourceManager writes, intent CAS, and ledger appends.
 func CheckLease(ctx context.Context) error {
 	if ctx == nil {
 		return nil
@@ -249,6 +259,8 @@ func CheckLease(ctx context.Context) error {
 	return nil
 }
 
+// RequireLease returns the lease bound by WithLock or fails when a mutating
+// versioning path is entered without the canonical rule lock.
 func RequireLease(ctx context.Context) (Lease, error) {
 	if ctx == nil {
 		return nil, ErrLockUnavailable
@@ -266,6 +278,8 @@ func RequireLease(ctx context.Context) (Lease, error) {
 	return lease, nil
 }
 
+// LeaseFromContext exposes the lease bound by WithLock for diagnostics and
+// tests; callers must still use CheckLease or RequireLease before writes.
 func LeaseFromContext(ctx context.Context) (Lease, bool) {
 	if ctx == nil {
 		return nil, false

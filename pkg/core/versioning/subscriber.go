@@ -219,6 +219,9 @@ func (s *Subscriber) recordVersion(ctx context.Context, event normalizedRuleEven
 
 func (s *Subscriber) handleOpenIntentEvent(openIntent *Intent, event normalizedRuleEvent) error {
 	if intentMatchesEvent(openIntent, event) {
+		// The synchronous registry echo for an admin mutation is finalized by
+		// the console path that owns the intent; recording it here would append
+		// a duplicate version for the same mutation.
 		logger.Infof("skipping admin echo rule event for %s while rule version intent %d is open", event.Parent.ResourceKey, openIntent.ID)
 		return nil
 	}
@@ -273,6 +276,9 @@ func (s *Subscriber) recordAfterIntentClosed(event normalizedRuleEvent) error {
 		return context.Canceled
 	}
 	return withRuleVersionLock(s.appCtx, s.lockMgr, event.Parent.Kind, event.Parent.ResourceKey, func(leaseCtx context.Context) error {
+		// The intent can close between the first subscriber read and the dirty
+		// marker CAS. Re-read under the canonical rule lock before deciding
+		// whether this event belongs to the console intent or to upstream state.
 		for attempt := 0; attempt < maxIntentCASRetries; attempt++ {
 			if err := lock.CheckLease(leaseCtx); err != nil {
 				return err
@@ -338,6 +344,9 @@ func (s *Subscriber) checkDuplicate(kind coremodel.ResourceKind, resourceKey str
 	if latest.Operation == OperationDelete {
 		return false, nil
 	}
+	// Hash dedup is only a projection filter for adjacent upstream echoes.
+	// Operation and parent identity are checked separately, and admin/rollback
+	// attribution is handled through intents rather than inferred from content.
 	return op != OperationDelete && latest.ContentHash == hash, nil
 }
 

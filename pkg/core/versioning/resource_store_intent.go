@@ -299,8 +299,9 @@ func (a *ResourceStoreAdapter) CommitIntent(ctx context.Context, id int64, maxVe
 			return err
 		}
 
-		// The fixed version ID makes retries idempotent if the process crashes
-		// after the COMMITTING ownership CAS or after Add.
+		// Reuse the intent ID as the version resource ID so a retry after the
+		// COMMITTING CAS can validate and finish the existing append instead of
+		// creating another ledger entry.
 		committed, err := a.insertVersionLocked(ctx, InsertRequest{
 			RuleKind:         intent.RuleKind,
 			Mesh:             intent.Mesh,
@@ -378,6 +379,9 @@ func (a *ResourceStoreAdapter) insertObservedSuccessorLocked(ctx context.Context
 	} else if latest != nil && latest.Operation == OperationDelete && operation != OperationDelete {
 		operation = OperationCreate
 	}
+	// A non-matching event observed while the intent was open represents the
+	// actual upstream successor. Record it after the owned intent version so the
+	// ledger reflects both facts in order.
 	return a.insertVersionLocked(ctx, InsertRequest{
 		RuleKind:    intent.RuleKind,
 		Mesh:        intent.Mesh,

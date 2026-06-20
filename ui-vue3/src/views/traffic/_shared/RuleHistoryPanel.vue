@@ -207,6 +207,9 @@ const nextOperationToken = (targetId?: string): OperationToken => ({
   targetId
 })
 
+// Async drawer actions outlive loading flags when the drawer is closed or a
+// different rule is selected. The token keeps stale responses from reopening
+// modals or overwriting state for the next rule.
 const isCurrentOperation = (token: OperationToken, targetId = token.targetId) =>
   !disposed &&
   token.seq === operationSeq &&
@@ -217,6 +220,8 @@ const isCurrentOperation = (token: OperationToken, targetId = token.targetId) =>
   token.targetId === targetId
 
 async function loadHistory() {
+  // Loading alone cannot distinguish an older request from a newer one. The
+  // sequence guard lets the newest rule/open state own the history snapshot.
   const seq = ++requestSeq
   const kind = props.kind
   const ruleName = props.ruleName
@@ -357,6 +362,8 @@ watch(
     if (open) {
       loadHistory()
     } else {
+      // Closing the drawer invalidates in-flight history, diff, and rollback
+      // responses so they cannot update a later open cycle.
       requestSeq++
       operationSeq++
       loading.value = false

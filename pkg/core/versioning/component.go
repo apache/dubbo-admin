@@ -75,7 +75,6 @@ func (c *component) Init(ctx runtime.BuilderContext) error {
 		cfg = versioningcfg.Default()
 	}
 
-	// Get ResourceManager for ResourceStoreAdapter
 	rmComponent, err := ctx.GetActivatedComponent(runtime.ResourceManager)
 	if err != nil {
 		return err
@@ -154,10 +153,8 @@ func (c *component) Start(rt runtime.Runtime, stop <-chan struct{}) error {
 		return err
 	}
 	rm := rmComp.(manager.ResourceManagerComponent).ResourceManager()
-	// Repair open intents left by crashes or failed mutations.
-	// Why: If admin crashed after creating an intent but before the subscriber
-	// committed it, the intent stays PENDING forever and blocks future writes.
-	// Repair attempts to commit intents whose desired state matches actual state.
+	// Startup repair resolves durable intents left by crashes before bootstrap
+	// records current rules, so a stale intent cannot fence all later writes.
 	if err := c.repairOpenIntents(startCtx, rm); err != nil {
 		return err
 	}
@@ -181,7 +178,6 @@ func (c *component) bootstrapExistingRules(ctx context.Context, rm manager.Resou
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		// Get the store for this kind and list all resources
 		rs, err := rm.GetStore(kind)
 		if err != nil {
 			return err
