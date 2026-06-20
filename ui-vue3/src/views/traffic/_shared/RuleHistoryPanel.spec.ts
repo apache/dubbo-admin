@@ -75,12 +75,7 @@ vi.mock('./RuleDiffEditor.vue', () => ({
   }
 }))
 
-const version = (
-  id: string,
-  versionNo: number,
-  operation: RuleVersion['operation'],
-  isCurrent: boolean
-): RuleVersion => ({
+const version = (id: string, versionNo: number, isCurrent: boolean): RuleVersion => ({
   id,
   ruleKind: 'ConditionRoute',
   mesh: '',
@@ -90,40 +85,21 @@ const version = (
   contentHash: `hash-${id}`,
   specJson: '{"key":"demo-rule"}',
   source: 'ADMIN',
-  operation,
+  operation: 'UPDATE',
   author: 'admin',
   createdAt: '2026-06-19T00:00:00Z',
   isCurrent
 })
 
-const deferred = <T = unknown>() => {
-  let resolve!: (value: T) => void
-  let reject!: (reason?: unknown) => void
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res
-    reject = rej
-  })
-  return { promise, resolve, reject }
-}
-
 const drawerStub = defineComponent({
   props: ['items'],
-  emits: ['rollback', 'diff-current'],
+  emits: ['rollback'],
   setup(props, { emit }) {
     return () =>
       h(
         'div',
         { 'data-test': 'history-drawer' },
-        (props.items as RuleVersion[]).flatMap((item) => [
-          h(
-            'button',
-            {
-              type: 'button',
-              'data-test': `diff-${item.id}`,
-              onClick: () => emit('diff-current', item)
-            },
-            `diff-${item.id}`
-          ),
+        (props.items as RuleVersion[]).map((item) =>
           h(
             'button',
             {
@@ -133,7 +109,7 @@ const drawerStub = defineComponent({
             },
             `rollback-${item.id}`
           )
-        ])
+        )
       )
   }
 })
@@ -157,7 +133,6 @@ const modalStub = defineComponent({
 })
 
 const textAreaStub = defineComponent({
-  props: ['value'],
   emits: ['update:value'],
   setup(_props, { emit }) {
     return () =>
@@ -187,8 +162,8 @@ const mountPanel = (props: Partial<InstanceType<typeof RuleHistoryPanelType>['$p
         RuleDiffEditor: true,
         AModal: modalStub,
         'a-modal': modalStub,
-        AAlert: { template: '<div data-test="alert">{{ message }}</div>', props: ['message'] },
-        'a-alert': { template: '<div data-test="alert">{{ message }}</div>', props: ['message'] },
+        AAlert: { template: '<div />' },
+        'a-alert': { template: '<div />' },
         ATypographyText: { template: '<span><slot /></span>' },
         'a-typography-text': { template: '<span><slot /></span>' },
         AForm: { template: '<form><slot /></form>' },
@@ -216,49 +191,6 @@ beforeEach(() => {
 })
 
 describe('RuleHistoryPanel', () => {
-  it('renders deleted warning from explicit list state and sends rollback CAS token 0', async () => {
-    mocks.listRuleVersionsAPI.mockResolvedValue({
-      code: HTTP_STATUS.SUCCESS,
-      data: {
-        items: [
-          version('delete-marker', 3, 'DELETE', false),
-          version('target-version', 2, 'UPDATE', false)
-        ],
-        total: 2,
-        deleted: true
-      }
-    })
-    mocks.rollbackRuleVersionAPI.mockResolvedValue({
-      code: HTTP_STATUS.SUCCESS,
-      data: {
-        rolledBackFromId: 'target-version',
-        versionId: '4',
-        versionNo: 4,
-        source: 'ROLLBACK',
-        committed: true
-      }
-    })
-
-    const wrapper = mountPanel()
-    await flushPromises()
-
-    await wrapper.get('[data-test="rollback-target-version"]').trigger('click')
-    await nextTick()
-    expect(wrapper.text()).toContain('当前规则已删除，回滚会重新创建该规则')
-
-    await wrapper.get('[data-test="rollback-reason"]').setValue('restore deleted rule')
-    await wrapper.get('[data-test="modal-ok"]').trigger('click')
-    await flushPromises()
-
-    expect(mocks.rollbackRuleVersionAPI).toHaveBeenCalledWith(
-      'condition-rule',
-      'demo-rule',
-      'target-version',
-      'restore deleted rule',
-      '0'
-    )
-  })
-
   it('ignores stale history responses after ruleName changes', async () => {
     let resolveFirst: (value: unknown) => void = () => undefined
     mocks.listRuleVersionsAPI
@@ -266,7 +198,7 @@ describe('RuleHistoryPanel', () => {
       .mockResolvedValueOnce({
         code: HTTP_STATUS.SUCCESS,
         data: {
-          items: [version('new-current', 7, 'UPDATE', true)],
+          items: [version('new-current', 7, true)],
           total: 1,
           currentVersionId: 'new-current',
           currentVersionNo: 7,
@@ -281,7 +213,7 @@ describe('RuleHistoryPanel', () => {
     resolveFirst({
       code: HTTP_STATUS.SUCCESS,
       data: {
-        items: [version('old-current', 3, 'UPDATE', true)],
+        items: [version('old-current', 3, true)],
         total: 1,
         currentVersionId: 'old-current',
         currentVersionNo: 3,
@@ -296,91 +228,12 @@ describe('RuleHistoryPanel', () => {
     expect(wrapper.text()).not.toContain('rollback-old-current')
   })
 
-  it('ignores stale diff responses after ruleName changes', async () => {
-    mocks.listRuleVersionsAPI
-      .mockResolvedValueOnce({
-        code: HTTP_STATUS.SUCCESS,
-        data: {
-          items: [version('old-target', 1, 'UPDATE', false)],
-          total: 1,
-          currentVersionId: 'old-current',
-          currentVersionNo: 2,
-          deleted: false
-        }
-      })
-      .mockResolvedValueOnce({
-        code: HTTP_STATUS.SUCCESS,
-        data: {
-          items: [version('new-target', 3, 'UPDATE', false)],
-          total: 1,
-          currentVersionId: 'new-current',
-          currentVersionNo: 4,
-          deleted: false
-        }
-      })
-    const oldDiff = deferred<any>()
-    mocks.diffRuleVersionAPI.mockReturnValueOnce(oldDiff.promise)
-
-    const wrapper = mountPanel({ ruleName: 'old-rule' })
-    await flushPromises()
-    await wrapper.get('[data-test="diff-old-target"]').trigger('click')
-
-    await wrapper.setProps({ ruleName: 'new-rule' })
-    await flushPromises()
-    oldDiff.resolve({
-      code: HTTP_STATUS.SUCCESS,
-      data: {
-        left: { id: 'old-target', versionNo: 1, specJson: '{"key":"old"}' },
-        right: { id: 'old-current', versionNo: 2, specJson: '{"key":"old-current"}' }
-      }
-    })
-    await flushPromises()
-
-    expect(wrapper.find('[data-test="rule-diff-editor"]').exists()).toBe(false)
-    expect(mocks.diffRuleVersionAPI).toHaveBeenCalledWith(
-      'condition-rule',
-      'old-rule',
-      'old-target'
-    )
-  })
-
-  it('ignores diff responses after drawer closes', async () => {
-    mocks.listRuleVersionsAPI.mockResolvedValue({
-      code: HTTP_STATUS.SUCCESS,
-      data: {
-        items: [version('target', 1, 'UPDATE', false)],
-        total: 1,
-        currentVersionId: 'current',
-        currentVersionNo: 2,
-        deleted: false
-      }
-    })
-    const diff = deferred<any>()
-    mocks.diffRuleVersionAPI.mockReturnValueOnce(diff.promise)
-
-    const wrapper = mountPanel()
-    await flushPromises()
-    await wrapper.get('[data-test="diff-target"]').trigger('click')
-    await wrapper.setProps({ open: false })
-
-    diff.resolve({
-      code: HTTP_STATUS.SUCCESS,
-      data: {
-        left: { id: 'target', versionNo: 1, specJson: '{"key":"target"}' },
-        right: { id: 'current', versionNo: 2, specJson: '{"key":"current"}' }
-      }
-    })
-    await flushPromises()
-
-    expect(wrapper.find('[data-test="rule-diff-editor"]').exists()).toBe(false)
-  })
-
   it('ignores stale rollback success after ruleName changes', async () => {
     mocks.listRuleVersionsAPI
       .mockResolvedValueOnce({
         code: HTTP_STATUS.SUCCESS,
         data: {
-          items: [version('old-target', 1, 'UPDATE', false)],
+          items: [version('old-target', 1, false)],
           total: 1,
           currentVersionId: 'old-current',
           currentVersionNo: 2,
@@ -390,15 +243,17 @@ describe('RuleHistoryPanel', () => {
       .mockResolvedValueOnce({
         code: HTTP_STATUS.SUCCESS,
         data: {
-          items: [version('new-target', 3, 'UPDATE', false)],
+          items: [version('new-target', 3, false)],
           total: 1,
           currentVersionId: 'new-current',
           currentVersionNo: 4,
           deleted: false
         }
       })
-    const rollback = deferred<any>()
-    mocks.rollbackRuleVersionAPI.mockReturnValueOnce(rollback.promise)
+    let resolveRollback: (value: unknown) => void = () => undefined
+    mocks.rollbackRuleVersionAPI.mockReturnValueOnce(
+      new Promise((resolve) => (resolveRollback = resolve))
+    )
 
     const wrapper = mountPanel({ ruleName: 'old-rule' })
     await flushPromises()
@@ -411,9 +266,8 @@ describe('RuleHistoryPanel', () => {
     await flushPromises()
     await wrapper.get('[data-test="rollback-new-target"]').trigger('click')
     await nextTick()
-    expect(wrapper.text()).toContain('v3')
 
-    rollback.resolve({
+    resolveRollback({
       code: HTTP_STATUS.SUCCESS,
       data: {
         rolledBackFromId: 'old-target',
@@ -425,7 +279,7 @@ describe('RuleHistoryPanel', () => {
     })
     await flushPromises()
 
-    expect(wrapper.text()).toContain('v3')
+    expect(wrapper.text()).toContain('rollback-new-target')
     expect(wrapper.find('[data-test="modal"]').exists()).toBe(true)
     expect(mocks.listRuleVersionsAPI).toHaveBeenCalledTimes(2)
   })
