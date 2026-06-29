@@ -243,14 +243,25 @@ Outer:
 			emitStageProgress(chans, order, false)
 
 			// Check if LLM returned final answer
-			if out, ok := output.(schema.Observation); ok {
+			finalFound := false
+			if out, ok := output.(*schema.Observation); ok {
+				if !out.Heartbeat && out.FinalAnswer != "" {
+					finalOutput = *out
+					finalFound = true
+				}
+			} else if out, ok := output.(schema.Observation); ok {
 				if !out.Heartbeat && out.FinalAnswer != "" {
 					finalOutput = out
-					break Outer
+					finalFound = true
 				}
 			}
+			if finalFound {
+				break Outer
+			}
 			// The output of current stage will be the input of the next stage
-			if val, ok := output.(schema.Observation); ok {
+			if val, ok := output.(*schema.Observation); ok {
+				finalOutput = *val
+			} else if val, ok := output.(schema.Observation); ok {
 				finalOutput = val
 			}
 			input = output

@@ -18,11 +18,13 @@
 package rag
 
 import (
-	"dubbo-admin-ai/config"
+	"context"
+	t "dubbo-admin-ai/component/rag/query"
 	"dubbo-admin-ai/component/rag/rerankers"
+	"dubbo-admin-ai/config"
 	"dubbo-admin-ai/runtime"
 	"fmt"
-t"dubbo-admin-ai/component/rag/query"
+	"sync"
 
 	"github.com/cloudwego/eino/components/document"
 	"github.com/cloudwego/eino/components/indexer"
@@ -310,6 +312,8 @@ type RAGComponent struct {
 	reranker       *rerankerComponent
 	queryProcessor *queryProcessorComponent
 	promptBasePath string
+	rt             *runtime.Runtime
+	seedOnce       sync.Once
 
 	// Rag is the RAG instance created after Init
 	Rag *RAG
@@ -324,6 +328,7 @@ func (r *RAGComponent) Validate() error {
 }
 
 func (r *RAGComponent) Init(rt *runtime.Runtime) error {
+	r.rt = rt
 	// 获取 embedder 模型名称
 	var embedderSpec EmbedderSpec
 	if err := r.cfg.Embedder.Spec.Decode(&embedderSpec); err != nil {
@@ -384,15 +389,14 @@ func (r *RAGComponent) Init(rt *runtime.Runtime) error {
 		}
 	}
 
-
 	// Create RAG instance with logger
 	r.Rag = &RAG{
 		QueryLayer: queryLayer,
-		Splitter:  r.splitter.get(),
-		Indexer:   r.indexer.get(),
-		Retriever: r.retriever.get(),
-		Reranker:  r.reranker.get(),
-		logger:    rt.GetLogger(),
+		Splitter:   r.splitter.get(),
+		Indexer:    r.indexer.get(),
+		Retriever:  r.retriever.get(),
+		Reranker:   r.reranker.get(),
+		logger:     rt.GetLogger(),
 	}
 
 	return nil
@@ -410,7 +414,48 @@ func (r *RAGComponent) Start() error {
 			return fmt.Errorf("failed to start query_processor: %w", err)
 		}
 	}
+
+	// Best-effort: populate the vector store with bundled knowledge so retrieval
+	// is never empty on a fresh deployment. Failures (e.g. embedder/API key not
+	// reachable) are logged but never block startup.
+	r.maybeSeed()
 	return nil
+}
+
+// seedEnabled reports whether auto-seeding should run. It is on by default and
+// only applies to the local indexer; managed stores (e.g. Milvus) are expected
+// to be populated out-of-band via the indexing CLI.
+func (r *RAGComponent) seedEnabled() bool {
+	if r.cfg != nil && r.cfg.Seed != nil && !r.cfg.Seed.Enabled {
+		return false
+	}
+	if r.cfg == nil || r.cfg.Indexer == nil {
+		return false
+	}
+	switch r.cfg.Indexer.Type {
+	case "", "local":
+		return true
+	default:
+		return false
+	}
+}
+
+// maybeSeed indexes the bundled seed documents once per process, best-effort.
+func (r *RAGComponent) maybeSeed() {
+	if r.Rag == nil || !r.seedEnabled() {
+		return
+	}
+	r.seedOnce.Do(func() {
+		n, err := r.Rag.Seed(context.Background())
+		if r.rt == nil {
+			return
+		}
+		if err != nil {
+			r.rt.GetLogger().Warn("RAG seed skipped", "error", err)
+			return
+		}
+		r.rt.GetLogger().Info("RAG seed completed", "indexed_chunks", n)
+	})
 }
 
 func (r *RAGComponent) Stop() error {
