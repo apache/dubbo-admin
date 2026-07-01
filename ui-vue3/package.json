@@ -8,6 +8,7 @@
     "dev:mock": "vite --mode mock",
     "check:i18n": "node --loader ts-node/esm src/base/i18n/sortI18n.ts",
     "preview": "vite preview",
+    "test": "vitest run",
     "test:unit": "vitest",
     "build": "prettier --write src/ && vite build",
     "format": "prettier --write src/",
