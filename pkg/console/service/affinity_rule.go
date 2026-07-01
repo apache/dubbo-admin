@@ -38,7 +38,7 @@ func GetAffinityRule(ctx consolectx.Context, name string, mesh string) (*meshres
 }
 
 func UpdateAffinityRule(ctx consolectx.Context, res *meshresource.AffinityRouteResource) error {
-	if err := ctx.ResourceManager().Update(ctx.AppContext(), res); err != nil {
+	if err := ctx.ResourceManager().Update(res); err != nil {
 		logger.Warnf("update %s affinity rule failed with error: %s", res.Name, err.Error())
 		return err
 	}
@@ -46,7 +46,7 @@ func UpdateAffinityRule(ctx consolectx.Context, res *meshresource.AffinityRouteR
 }
 
 func CreateAffinityRule(ctx consolectx.Context, res *meshresource.AffinityRouteResource) error {
-	if err := ctx.ResourceManager().Add(ctx.AppContext(), res); err != nil {
+	if err := ctx.ResourceManager().Add(res); err != nil {
 		logger.Warnf("create %s condition failed with error: %s", res.Name, err.Error())
 		return err
 	}
@@ -55,7 +55,6 @@ func CreateAffinityRule(ctx consolectx.Context, res *meshresource.AffinityRouteR
 
 func DeleteAffinityRule(ctx consolectx.Context, name string, mesh string) error {
 	if err := ctx.ResourceManager().DeleteByKey(
-		ctx.AppContext(),
 		meshresource.AffinityRouteKind,
 		mesh,
 		coremodel.BuildResourceKey(mesh, name)); err != nil {

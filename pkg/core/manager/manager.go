@@ -18,14 +18,11 @@
 package manager
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"reflect"
 
 	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	"github.com/apache/dubbo-admin/pkg/core/governor"
-	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
@@ -40,20 +37,17 @@ type ReadOnlyResourceManager interface {
 	ListByIndexes(rk model.ResourceKind, indexes []index.IndexCondition) ([]model.Resource, error)
 	// PageListByIndexes page list the resources with the given index conditions
 	PageListByIndexes(rk model.ResourceKind, indexes []index.IndexCondition, pr model.PageReq) (*model.PageData[model.Resource], error)
-	// GetStore returns the ResourceStore for the given resource kind.
-	// This is for special cases like bootstrap that need direct store access.
-	GetStore(rk model.ResourceKind) (store.ResourceStore, error)
 }
 
 type WriteOnlyResourceManager interface {
 	// Add adds the resource
-	Add(ctx context.Context, r model.Resource) error
+	Add(r model.Resource) error
 	// Update updates the resource
-	Update(ctx context.Context, r model.Resource) error
+	Update(r model.Resource) error
 	// Upsert upserts the resource
-	Upsert(ctx context.Context, r model.Resource) error
+	Upsert(r model.Resource) error
 	// DeleteByKey deletes the resource with the given resource key
-	DeleteByKey(ctx context.Context, rk model.ResourceKind, mesh string, key string) error
+	DeleteByKey(rk model.ResourceKind, mesh string, key string) error
 }
 
 type ResourceManager interface {
@@ -132,10 +126,7 @@ func (rm *resourcesManager) PageListByIndexes(
 	return pageData, nil
 }
 
-func (rm *resourcesManager) Add(ctx context.Context, r model.Resource) error {
-	if err := validateMutationContext(ctx); err != nil {
-		return err
-	}
+func (rm *resourcesManager) Add(r model.Resource) error {
 	if !governor.RuleResourceKinds.Contain(r.ResourceKind()) {
 		return bizerror.New(bizerror.InvalidArgument, "invalid resource kind")
 	}
@@ -143,13 +134,10 @@ func (rm *resourcesManager) Add(ctx context.Context, r model.Resource) error {
 	if err != nil {
 		return err
 	}
-	return rs.CreateRule(ctx, r)
+	return rs.CreateRule(r)
 }
 
-func (rm *resourcesManager) Update(ctx context.Context, r model.Resource) error {
-	if err := validateMutationContext(ctx); err != nil {
-		return err
-	}
+func (rm *resourcesManager) Update(r model.Resource) error {
 	if !governor.RuleResourceKinds.Contain(r.ResourceKind()) {
 		return bizerror.New(bizerror.InvalidArgument, "invalid resource kind")
 	}
@@ -157,27 +145,21 @@ func (rm *resourcesManager) Update(ctx context.Context, r model.Resource) error 
 	if err != nil {
 		return err
 	}
-	return rs.UpdateRule(ctx, r)
+	return rs.UpdateRule(r)
 }
 
-func (rm *resourcesManager) Upsert(ctx context.Context, r model.Resource) error {
-	if err := validateMutationContext(ctx); err != nil {
-		return err
-	}
+func (rm *resourcesManager) Upsert(r model.Resource) error {
 	if !governor.RuleResourceKinds.Contain(r.ResourceKind()) {
 		return bizerror.New(bizerror.InvalidArgument, "invalid resource kind")
 	}
 	if _, exists, _ := rm.GetByKey(r.ResourceKind(), r.ResourceKey()); exists {
-		return rm.Update(ctx, r)
+		return rm.Update(r)
 	} else {
-		return rm.Add(ctx, r)
+		return rm.Add(r)
 	}
 }
 
-func (rm *resourcesManager) DeleteByKey(ctx context.Context, rk model.ResourceKind, mesh string, key string) error {
-	if err := validateMutationContext(ctx); err != nil {
-		return err
-	}
+func (rm *resourcesManager) DeleteByKey(rk model.ResourceKind, mesh string, key string) error {
 	if !governor.RuleResourceKinds.Contain(rk) {
 		return bizerror.New(bizerror.InvalidArgument, "invalid resource kind")
 	}
@@ -192,16 +174,5 @@ func (rm *resourcesManager) DeleteByKey(ctx context.Context, rk model.ResourceKi
 	if !exists {
 		return fmt.Errorf("%s %s does not exist", rk, key)
 	}
-	return gov.DeleteRule(ctx, r)
-}
-
-func (rm *resourcesManager) GetStore(rk model.ResourceKind) (store.ResourceStore, error) {
-	return rm.storeRouter.ResourceKindRoute(rk)
-}
-
-func validateMutationContext(ctx context.Context) error {
-	if ctx == nil {
-		return errors.New("resource mutation context is required")
-	}
-	return lock.CheckLease(ctx)
+	return gov.DeleteRule(r)
 }

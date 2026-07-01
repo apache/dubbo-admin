@@ -43,3 +43,15 @@ const (
 	// DefaultCleanupTimeout is the timeout for cleanup operations
 	DefaultCleanupTimeout = 30 * time.Second
 )
+
+// Lock key prefixes for different resource types
+const (
+	// TagRouteKeyPrefix is the prefix for tag route lock keys
+	TagRouteKeyPrefix = "tag_route"
+
+	// ConfiguratorRuleKeyPrefix is the prefix for configurator rule lock keys
+	ConfiguratorRuleKeyPrefix = "configurator_rule"
+
+	// ConditionRuleKeyPrefix is the prefix for condition rule lock keys
+	ConditionRuleKeyPrefix = "condition_rule"
+)

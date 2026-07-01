@@ -27,7 +27,9 @@ import (
 )
 
 // RecordBootstrapState creates a best-effort baseline history entry for a rule
-// that already exists before rule history starts tracking it.
+// that already exists before rule history starts tracking it. Bootstrap is not
+// reconciliation: once a rule has any history, startup must not record the
+// current registry state as an UPDATE.
 func RecordBootstrapState(ctx context.Context, store Store, maxVersions int64, res coremodel.Resource) error {
 	if store == nil {
 		return ErrVersionStoreError
@@ -35,28 +37,18 @@ func RecordBootstrapState(ctx context.Context, store Store, maxVersions int64, r
 	if res == nil {
 		return nil
 	}
-	hash, specJSON, err := NormalizeResource(res)
-	if err != nil {
-		return err
-	}
 	latest, err := store.LatestVersion(res.ResourceKind(), res.ResourceKey())
 	if err != nil && !errors.Is(err, ErrVersionNotFound) {
 		return err
 	}
-	if latest != nil && latest.Operation != OperationDelete && latest.ContentHash == hash {
+	if latest != nil {
 		return nil
 	}
 
-	operation := OperationCreate
-	source := SourceBootstrap
-	author := "system:bootstrap"
-	if latest != nil {
-		operation = OperationUpdate
-		if latest.Operation == OperationDelete {
-			operation = OperationCreate
-		}
+	hash, specJSON, err := NormalizeResource(res)
+	if err != nil {
+		return err
 	}
-
 	req := InsertRequest{
 		RuleKind:    res.ResourceKind(),
 		Mesh:        res.ResourceMesh(),
@@ -64,9 +56,10 @@ func RecordBootstrapState(ctx context.Context, store Store, maxVersions int64, r
 		RuleName:    res.ResourceMeta().Name,
 		SpecJSON:    specJSON,
 		ContentHash: hash,
-		Source:      source,
-		Operation:   operation,
-		Author:      author,
+		Source:      SourceBootstrap,
+		Operation:   OperationCreate,
+		Author:      "system:bootstrap",
+		Reason:      "initial rule history baseline",
 		CreatedAt:   time.Now(),
 	}
 	if _, err := store.InsertVersion(ctx, req, maxVersions); err != nil {

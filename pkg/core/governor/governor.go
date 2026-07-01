@@ -18,8 +18,6 @@
 package governor
 
 import (
-	"context"
-
 	set "github.com/duke-git/lancet/v2/datastructure/set"
 
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
@@ -31,9 +29,9 @@ var RuleResourceKinds = set.New(meshresource.DynamicConfigKind, meshresource.Con
 // RuleGovernor makes the rule operations effective
 type RuleGovernor interface {
 	// CreateRule creates a resource in the registry
-	CreateRule(context.Context, model.Resource) error
+	CreateRule(model.Resource) error
 	// UpdateRule updates a resource in the registry
-	UpdateRule(context.Context, model.Resource) error
+	UpdateRule(model.Resource) error
 	// DeleteRule deletes a resource from the registry
-	DeleteRule(context.Context, model.Resource) error
+	DeleteRule(model.Resource) error
 }

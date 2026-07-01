@@ -18,7 +18,6 @@
 package zk
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/dubbogo/go-zookeeper/zk"
@@ -54,10 +53,7 @@ func NewZKRuleGovernor(cfg *discoverycfg.Config, router store.Router, emitter ev
 	}, nil
 }
 
-func (g *RuleGovernor) CreateRule(ctx context.Context, r coremodel.Resource) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
+func (g *RuleGovernor) CreateRule(r coremodel.Resource) error {
 	path := "/dubbo/config/" + r.ResourceMeta().Name
 	content, err := yaml.Marshal(r.ResourceSpec())
 	if err != nil {
@@ -68,9 +64,6 @@ func (g *RuleGovernor) CreateRule(ctx context.Context, r coremodel.Resource) err
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.ZKError,
 			fmt.Sprintf("failed to create zk node, path: %s", path))
-	}
-	if err := ctx.Err(); err != nil {
-		return err
 	}
 	// save to store once znode is created in zk to insure local store is consistent to zk timely.
 	// if save to store failed, the discovery will watch and update the store finally.
@@ -87,31 +80,17 @@ func (g *RuleGovernor) CreateRule(ctx context.Context, r coremodel.Resource) err
 	return nil
 }
 
-func (g *RuleGovernor) UpdateRule(ctx context.Context, r coremodel.Resource) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
+func (g *RuleGovernor) UpdateRule(r coremodel.Resource) error {
 	path := "/dubbo/config/" + r.ResourceMeta().Name
 	content, err := yaml.Marshal(r.ResourceSpec())
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.YamlError,
 			fmt.Sprintf("failed to marshal resource spec, res: %s", r.String()))
 	}
-	_, stat, err := g.conn.Get(path)
-	if err != nil {
-		return bizerror.Wrap(err, bizerror.ZKError,
-			fmt.Sprintf("failed to read zk node version before update, path: %s", path))
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	_, err = g.conn.Set(path, content, stat.Version)
+	_, err = g.conn.Set(path, content, -1)
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.ZKError,
 			fmt.Sprintf("failed to update zk node, path: %s", path))
-	}
-	if err := ctx.Err(); err != nil {
-		return err
 	}
 	st, err := g.storeRouter.ResourceRoute(r)
 	if err != nil {
@@ -125,30 +104,12 @@ func (g *RuleGovernor) UpdateRule(ctx context.Context, r coremodel.Resource) err
 	return nil
 }
 
-func (g *RuleGovernor) DeleteRule(ctx context.Context, r coremodel.Resource) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
+func (g *RuleGovernor) DeleteRule(r coremodel.Resource) error {
 	path := "/dubbo/config/" + r.ResourceMeta().Name
-	exists, stat, err := g.conn.Exists(path)
-	if err != nil {
-		return bizerror.Wrap(err, bizerror.ZKError,
-			fmt.Sprintf("failed to read zk node version before delete, path: %s", path))
-	}
-	if !exists {
-		return bizerror.Wrap(zk.ErrNoNode, bizerror.ZKError,
-			fmt.Sprintf("failed to delete zk node, path: %s", path))
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	err = g.conn.Delete(path, stat.Version)
+	err := g.conn.Delete(path, -1)
 	if err != nil {
 		return bizerror.Wrap(err, bizerror.ZKError,
 			fmt.Sprintf("failed to delete zk node, path: %s", path))
-	}
-	if err := ctx.Err(); err != nil {
-		return err
 	}
 	st, err := g.storeRouter.ResourceRoute(r)
 	if err != nil {

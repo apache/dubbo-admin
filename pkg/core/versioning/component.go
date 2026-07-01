@@ -21,13 +21,15 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"reflect"
 
+	"github.com/apache/dubbo-admin/pkg/common/bizerror"
 	versioningcfg "github.com/apache/dubbo-admin/pkg/config/versioning"
 	"github.com/apache/dubbo-admin/pkg/core/governor"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
-	"github.com/apache/dubbo-admin/pkg/core/manager"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	"github.com/apache/dubbo-admin/pkg/core/runtime"
+	"github.com/apache/dubbo-admin/pkg/core/store"
 )
 
 const ComponentType runtime.ComponentType = "rule versioning"
@@ -56,7 +58,7 @@ func (c *component) Order() int {
 
 func (c *component) RequiredDependencies() []runtime.ComponentType {
 	return []runtime.ComponentType{
-		runtime.ResourceManager,
+		runtime.ResourceStore,
 	}
 }
 
@@ -66,12 +68,15 @@ func (c *component) Init(ctx runtime.BuilderContext) error {
 		cfg = versioningcfg.Default()
 	}
 
-	rmComponent, err := ctx.GetActivatedComponent(runtime.ResourceManager)
+	storeComponent, err := ctx.GetActivatedComponent(runtime.ResourceStore)
 	if err != nil {
 		return err
 	}
-	rm := rmComponent.(manager.ResourceManagerComponent).ResourceManager()
-	rvStore, err := rm.GetStore(meshresource.RuleVersionKind)
+	storeRouter, ok := storeComponent.(store.Router)
+	if !ok {
+		return bizerror.NewAssertionError("store.Router", reflect.TypeOf(storeComponent).Name())
+	}
+	rvStore, err := storeRouter.ResourceKindRoute(meshresource.RuleVersionKind)
 	if err != nil {
 		return fmt.Errorf("failed to get RuleVersion store: %w", err)
 	}
@@ -96,12 +101,15 @@ func (c *component) Start(rt runtime.Runtime, stop <-chan struct{}) error {
 	}
 	ctx, cancel := contextWithStop(rt.AppContext(), stop)
 	defer cancel()
-	rmComp, err := rt.GetComponent(runtime.ResourceManager)
+	storeComponent, err := rt.GetComponent(runtime.ResourceStore)
 	if err != nil {
 		return err
 	}
-	rm := rmComp.(manager.ResourceManagerComponent).ResourceManager()
-	if err := c.bootstrapExistingRules(ctx, rm, cfg.MaxVersionsPerRule); err != nil {
+	storeRouter, ok := storeComponent.(store.Router)
+	if !ok {
+		return bizerror.NewAssertionError("store.Router", reflect.TypeOf(storeComponent).Name())
+	}
+	if err := c.bootstrapExistingRules(ctx, storeRouter, cfg.MaxVersionsPerRule); err != nil {
 		logger.Warnf("rule history bootstrap failed: %v", err)
 	}
 	return nil
@@ -111,12 +119,12 @@ func (c *component) Service() *Service {
 	return c.service
 }
 
-func (c *component) bootstrapExistingRules(ctx context.Context, rm manager.ResourceManager, maxVersions int64) error {
+func (c *component) bootstrapExistingRules(ctx context.Context, storeRouter store.Router, maxVersions int64) error {
 	for _, kind := range governor.RuleResourceKinds.Values() {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		rs, err := rm.GetStore(kind)
+		rs, err := storeRouter.ResourceKindRoute(kind)
 		if err != nil {
 			return err
 		}

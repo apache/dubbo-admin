@@ -96,7 +96,7 @@ func ensureBaselineHistoryBestEffort(ctx consolectx.Context, res coremodel.Resou
 }
 
 func createRule(ctx consolectx.Context, res coremodel.Resource, opts RuleMutationOptions) error {
-	if err := ctx.ResourceManager().Add(ctx.AppContext(), res); err != nil {
+	if err := ctx.ResourceManager().Add(res); err != nil {
 		return err
 	}
 	appendRuleHistoryBestEffort(ctx, res, versioning.OperationCreate, versioning.SourceAdmin, opts.Author, "", nil)
@@ -109,7 +109,7 @@ func updateRule(ctx consolectx.Context, res coremodel.Resource, opts RuleMutatio
 		return err
 	}
 	ensureBaselineHistoryBestEffort(ctx, existing)
-	if err := ctx.ResourceManager().Update(ctx.AppContext(), res); err != nil {
+	if err := ctx.ResourceManager().Update(res); err != nil {
 		return err
 	}
 	appendRuleHistoryBestEffort(ctx, res, versioning.OperationUpdate, versioning.SourceAdmin, opts.Author, "", nil)
@@ -122,7 +122,7 @@ func deleteRule(ctx consolectx.Context, kindName RuleKindName, opts RuleMutation
 		return err
 	}
 	ensureBaselineHistoryBestEffort(ctx, snapshot)
-	if err := ctx.ResourceManager().DeleteByKey(ctx.AppContext(), kindName.Kind, kindName.Mesh, coremodel.BuildResourceKey(kindName.Mesh, kindName.Name)); err != nil {
+	if err := ctx.ResourceManager().DeleteByKey(kindName.Kind, kindName.Mesh, coremodel.BuildResourceKey(kindName.Mesh, kindName.Name)); err != nil {
 		return err
 	}
 	appendRuleHistoryBestEffort(ctx, snapshot, versioning.OperationDelete, versioning.SourceAdmin, opts.Author, "", nil)
@@ -228,7 +228,7 @@ func RollbackRuleVersion(ctx consolectx.Context, kindName RuleKindName, targetVe
 	if !exists {
 		operation = versioning.OperationCreate
 	}
-	if err := ctx.ResourceManager().Upsert(ctx.AppContext(), res); err != nil {
+	if err := ctx.ResourceManager().Upsert(res); err != nil {
 		return nil, err
 	}
 

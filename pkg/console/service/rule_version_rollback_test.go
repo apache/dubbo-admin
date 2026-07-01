@@ -75,10 +75,7 @@ type noopGovernor struct {
 	stores map[coremodel.ResourceKind]store.ResourceStore
 }
 
-func (g *noopGovernor) CreateRule(ctx context.Context, res coremodel.Resource) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
+func (g *noopGovernor) CreateRule(res coremodel.Resource) error {
 	s, ok := g.stores[res.ResourceKind()]
 	if !ok {
 		return bizerror.New(bizerror.InvalidArgument, "store not found")
@@ -86,10 +83,7 @@ func (g *noopGovernor) CreateRule(ctx context.Context, res coremodel.Resource) e
 	return s.Add(res)
 }
 
-func (g *noopGovernor) UpdateRule(ctx context.Context, res coremodel.Resource) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
+func (g *noopGovernor) UpdateRule(res coremodel.Resource) error {
 	s, ok := g.stores[res.ResourceKind()]
 	if !ok {
 		return bizerror.New(bizerror.InvalidArgument, "store not found")
@@ -97,10 +91,7 @@ func (g *noopGovernor) UpdateRule(ctx context.Context, res coremodel.Resource) e
 	return s.Update(res)
 }
 
-func (g *noopGovernor) DeleteRule(ctx context.Context, res coremodel.Resource) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
+func (g *noopGovernor) DeleteRule(res coremodel.Resource) error {
 	s, ok := g.stores[res.ResourceKind()]
 	if !ok {
 		return bizerror.New(bizerror.InvalidArgument, "store not found")

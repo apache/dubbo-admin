@@ -18,8 +18,6 @@
 package mock
 
 import (
-	"context"
-
 	discoverycfg "github.com/apache/dubbo-admin/pkg/config/discovery"
 	"github.com/apache/dubbo-admin/pkg/core/events"
 	"github.com/apache/dubbo-admin/pkg/core/governor"
@@ -47,14 +45,6 @@ type mockGovernor struct{}
 
 var _ governor.RuleGovernor = &mockGovernor{}
 
-func (g *mockGovernor) CreateRule(ctx context.Context, _ coremodel.Resource) error {
-	return ctx.Err()
-}
-
-func (g *mockGovernor) UpdateRule(ctx context.Context, _ coremodel.Resource) error {
-	return ctx.Err()
-}
-
-func (g *mockGovernor) DeleteRule(ctx context.Context, _ coremodel.Resource) error {
-	return ctx.Err()
-}
+func (g *mockGovernor) CreateRule(_ coremodel.Resource) error { return nil }
+func (g *mockGovernor) UpdateRule(_ coremodel.Resource) error { return nil }
+func (g *mockGovernor) DeleteRule(_ coremodel.Resource) error { return nil }

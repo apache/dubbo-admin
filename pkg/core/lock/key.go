@@ -18,21 +18,31 @@
 package lock
 
 import (
-	"encoding/base64"
-	"strings"
+	"fmt"
+
+	"github.com/apache/dubbo-admin/pkg/common/constants"
 )
 
-// BuildLockKey constructs a stable lock key from a prefix and escaped identity
-// parts.
+// BuildLockKey constructs a lock key from a prefix and parts
 func BuildLockKey(prefix string, parts ...string) string {
-	segments := make([]string, 0, len(parts)+1)
-	segments = append(segments, encodeLockPart(prefix))
+	key := prefix
 	for _, part := range parts {
-		segments = append(segments, encodeLockPart(part))
+		key += ":" + part
 	}
-	return strings.Join(segments, ":")
+	return key
 }
 
-func encodeLockPart(part string) string {
-	return base64.RawURLEncoding.EncodeToString([]byte(part))
+// BuildTagRouteLockKey constructs a lock key for tag route operations
+func BuildTagRouteLockKey(mesh, name string) string {
+	return fmt.Sprintf("%s:%s:%s", constants.TagRouteKeyPrefix, mesh, name)
+}
+
+// BuildConfiguratorRuleLockKey constructs a lock key for configurator rule operations
+func BuildConfiguratorRuleLockKey(mesh, name string) string {
+	return fmt.Sprintf("%s:%s:%s", constants.ConfiguratorRuleKeyPrefix, mesh, name)
+}
+
+// BuildConditionRuleLockKey constructs a lock key for condition rule operations
+func BuildConditionRuleLockKey(mesh, name string) string {
+	return fmt.Sprintf("%s:%s:%s", constants.ConditionRuleKeyPrefix, mesh, name)
 }
