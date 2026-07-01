@@ -27,11 +27,13 @@ import (
 const (
 	// DefaultMaxVersionsPerRule is the retention window used when configuration
 	// omits maxVersionsPerRule or provides a negative value.
-	DefaultMaxVersionsPerRule = int64(50)
+	DefaultMaxVersionsPerRule = int64(20)
 )
 
-// Config controls rule-version retention. A zero MaxVersionsPerRule disables
-// cleanup; new rule history entries are still recorded.
+// Config controls lightweight RuleVersion audit-history retention. Live rule
+// state remains in ResourceManager/registry, and history append failures must
+// not block rule mutations. A zero MaxVersionsPerRule disables cleanup; new
+// rule history entries are still recorded.
 type Config struct {
 	config.BaseConfig
 	MaxVersionsPerRule int64 `json:"maxVersionsPerRule" yaml:"maxVersionsPerRule"`
@@ -44,7 +46,7 @@ func (c *Config) UnmarshalJSON(data []byte) error {
 	return json.Unmarshal(data, (*config)(c))
 }
 
-// Default returns rule-versioning configuration with retention enabled.
+// Default returns rule-history configuration with bounded retention enabled.
 func Default() *Config {
 	return &Config{
 		MaxVersionsPerRule: DefaultMaxVersionsPerRule,

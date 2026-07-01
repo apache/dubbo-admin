@@ -52,8 +52,8 @@ type AdminConfig struct {
 	Engine *engine.Config `json:"engine" yaml:"engine"`
 	// EventBus configuration
 	EventBus *eventbus.Config `json:"eventBus,omitempty" yaml:"eventBus,omitempty"`
-	// RuleVersioning provides version history and optimistic locking for governor-managed traffic rules.
-	// This applies to ConditionRoute, TagRoute, and Configurator (DynamicConfig).
+	// RuleVersioning records lightweight audit history for governor-managed traffic rules.
+	// Live rule state remains in ResourceManager/registry.
 	RuleVersioning *versioning.Config `json:"ruleVersioning,omitempty" yaml:"ruleVersioning,omitempty"`
 }
 

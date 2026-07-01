@@ -43,16 +43,16 @@ If you're using GoLand, you can run it locally by following steps:
 2. Fill the block with the config that screenshot shows below:
 ![ide_configuration.png](./static/images/ide-config.png)
 3. Modify the config file(app/dubbo-admin/dubbo-admin.yaml), make sure that the discovery, engine, store is configured.
-   Traffic-rule version history is always enabled and writes RuleVersion and RuleIntent resources for history, rollback, and crash recovery. Memory store uses a process-local lock; shared database stores must initialize the lock component, otherwise startup fails closed instead of recording unsafe history. Registry writes are reconciled from actual rule state after mutation because context cancellation is not server-side fencing.
+   Traffic-rule version history records lightweight RuleVersion audit entries for history, diff, and rollback material. Live rule state remains stored in ResourceManager/registry, and history append failures do not block rule mutations.
 4. Run the application, you can open the browser and visit localhost:8888/admin if everything works.
 
 ### Traffic-rule versioning notes
 
-Traffic-rule versioning is always enabled. On startup it requires stores for `RuleVersion` and `RuleIntent`, plus a distributed lock implementation. Startup first repairs open intents and then bootstraps existing `ConditionRoute`, `TagRoute`, and `DynamicConfig` rules; both steps honor shutdown cancellation.
+Traffic-rule versioning is always enabled. On startup it uses the existing `RuleVersion` resource store to create an initial baseline only for existing `ConditionRoute`, `TagRoute`, and `DynamicConfig` rules that have no history yet. Startup bootstrap is not reconciliation and does not record external registry changes after history exists.
 
-Version entries are immutable after creation. Rollback publishes a new version from a historical snapshot, while `maxVersionsPerRule` retention may physically delete the oldest entries. This is a bounded immutable version history, not a permanent compliance audit log; the latest version and version number are derived from the RuleVersion ledger.
+Version entries are immutable after creation. Rollback republishes a historical CREATE/UPDATE snapshot through the normal ResourceManager write path, then best-effort records a new `RuleVersion` with `source=ROLLBACK`. `maxVersionsPerRule` retention may physically delete the oldest entries, so this is a bounded audit history and rollback aid, not a permanent compliance audit log or source of truth for current rule state.
 
-The traffic-form field preservation fix stays with this versioning PR because version history smoke tests depend on round-tripping `priority`, `force`, and `configVersion` without losing fields. The Zookeeper delete nil guard also stays here because versioning subscribers consume delete events through the same discovery event path and require safe old-object handling. These notes document the review boundary instead of splitting the PR.
+The traffic-form field preservation fix stays with this versioning PR because version history smoke tests depend on round-tripping `priority`, `force`, and `configVersion` without losing fields. These notes document the review boundary instead of splitting the PR.
 
 
 ### Project catalog
