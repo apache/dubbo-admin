@@ -92,12 +92,6 @@
         {{ createdAtLabel(rollbackTarget.createdAt) }}
       </div>
     </div>
-    <a-alert
-      :message="t('ruleVersionDomain.rollbackCasHint')"
-      type="info"
-      show-icon
-      style="margin-bottom: 12px"
-    />
     <a-typography-text type="secondary" class="rollback-hint">
       {{ t('ruleVersionDomain.rollbackAppendHint') }}
     </a-typography-text>
@@ -133,9 +127,6 @@ import {
   currentVersionStateFromList,
   formatRuleSpec,
   isCurrentHistoryRequest,
-  isVersionConflict,
-  isVersionLedgerPending,
-  rollbackExpectedVersionId,
   versionDiffLabel
 } from './ruleVersion'
 import dayjs from 'dayjs'
@@ -310,18 +301,11 @@ const handleRollbackConfirm = async () => {
   const token = nextOperationToken(target.id)
   rollbackLoading.value = true
   try {
-    // Send the current version as a weak CAS guard so rollback does not
-    // overwrite a newer change made after the drawer was opened.
     const res = await rollbackRuleVersionAPI(
       token.kind,
       token.ruleName,
       target.id,
-      rollbackReason.value,
-      rollbackExpectedVersionId({
-        id: currentVersionId.value,
-        versionNo: currentVersionNo.value,
-        deleted: currentDeleted.value
-      })
+      rollbackReason.value
     )
     if (!isCurrentOperation(token, target.id) || rollbackTarget.value?.id !== target.id) {
       return
@@ -340,15 +324,7 @@ const handleRollbackConfirm = async () => {
     if (!isCurrentOperation(token, target.id) || rollbackTarget.value?.id !== target.id) {
       return
     }
-    if (isVersionConflict(e)) {
-      message.error(t('ruleVersionDomain.rollbackConflict'))
-      await loadHistory()
-    } else if (isVersionLedgerPending(e)) {
-      message.error(t('ruleVersionDomain.rollbackPending'))
-      await loadHistory()
-    } else {
-      message.error(e?.message || t('ruleVersionDomain.rollbackFailed'))
-    }
+    message.error(e?.message || t('ruleVersionDomain.rollbackFailed'))
   } finally {
     if (isCurrentOperation(token, target.id)) {
       rollbackLoading.value = false

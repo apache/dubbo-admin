@@ -71,7 +71,7 @@ func NormalizeSpec(spec coremodel.ResourceSpec) (string, string, error) {
 }
 
 // HashSpecJSON hashes canonical spec JSON for comparison and dedup filters.
-// It is not sufficient on its own to prove operation source or intent ownership.
+// It is not sufficient on its own to prove operation source.
 func HashSpecJSON(specJSON string) string {
 	sum := sha256.Sum256([]byte(specJSON))
 	return hex.EncodeToString(sum[:])

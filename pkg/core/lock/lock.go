@@ -243,7 +243,7 @@ func WithLock(ctx context.Context, lockMgr Lock, key string, ttl time.Duration, 
 
 // CheckLease fails closed when the context is cancelled or its bound lease has
 // been lost. It is intentionally cheap so mutation code can call it between
-// ResourceManager writes, intent CAS, and ledger appends.
+// ResourceManager writes and best-effort history appends.
 func CheckLease(ctx context.Context) error {
 	if ctx == nil {
 		return nil

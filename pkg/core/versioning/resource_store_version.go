@@ -28,8 +28,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	meshproto "github.com/apache/dubbo-admin/api/mesh/v1alpha1"
-	"github.com/apache/dubbo-admin/pkg/common/bizerror"
-	"github.com/apache/dubbo-admin/pkg/core/lock"
 	"github.com/apache/dubbo-admin/pkg/core/logger"
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
@@ -52,7 +50,7 @@ func (a *ResourceStoreAdapter) ListVersions(kind coremodel.ResourceKind, resourc
 	if err := a.ensureStores(); err != nil {
 		return nil, err
 	}
-	snapshot, err := a.LedgerSnapshot(kind, resourceKey)
+	snapshot, err := a.HistorySnapshot(kind, resourceKey)
 	if err != nil {
 		return nil, err
 	}
@@ -72,17 +70,17 @@ func (a *ResourceStoreAdapter) ListLatestVersions(kind coremodel.ResourceKind) (
 	for _, obj := range objs {
 		rv, ok := obj.(*meshresource.RuleVersionResource)
 		if !ok {
-			return nil, fmt.Errorf("%w: expected RuleVersionResource, got %T", ErrVersionLedgerCorrupt, obj)
+			return nil, fmt.Errorf("%w: expected RuleVersionResource, got %T", ErrVersionStoreError, obj)
 		}
 		if rv.Spec == nil {
-			return nil, fmt.Errorf("%w: RuleVersion spec is nil for %s", ErrVersionLedgerCorrupt, rv.ResourceKey())
+			return nil, fmt.Errorf("%w: RuleVersion spec is nil for %s", ErrVersionStoreError, rv.ResourceKey())
 		}
 		if rv.Spec.ParentRuleKind != string(kind) {
 			continue
 		}
 		id, err := versionIDFromResource(rv)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %v", ErrVersionLedgerCorrupt, err)
+			return nil, fmt.Errorf("%w: %v", ErrVersionStoreError, err)
 		}
 		v, err := protoToVersion(rv.Spec, id)
 		if err != nil {
@@ -116,24 +114,24 @@ func (a *ResourceStoreAdapter) ListLatestVersions(kind coremodel.ResourceKind) (
 	return latest, nil
 }
 
-func (a *ResourceStoreAdapter) LedgerSnapshot(kind coremodel.ResourceKind, resourceKey string) (*LedgerSnapshot, error) {
+func (a *ResourceStoreAdapter) HistorySnapshot(kind coremodel.ResourceKind, resourceKey string) (*HistorySnapshot, error) {
 	if err := a.ensureStores(); err != nil {
 		return nil, err
 	}
-	var snapshot *LedgerSnapshot
+	var snapshot *HistorySnapshot
 	err := a.withParentLock(kind, resourceKey, func() error {
-		state, err := a.ledgerState(kind, resourceKey)
+		state, err := a.historyState(kind, resourceKey)
 		if err != nil {
 			return err
 		}
-		snapshot = ledgerSnapshotFromState(state)
+		snapshot = historySnapshotFromState(state)
 		return nil
 	})
 	return snapshot, err
 }
 
 func (a *ResourceStoreAdapter) latestVersionLocked(kind coremodel.ResourceKind, resourceKey string) (*Version, error) {
-	state, err := a.ledgerState(kind, resourceKey)
+	state, err := a.historyState(kind, resourceKey)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +141,7 @@ func (a *ResourceStoreAdapter) latestVersionLocked(kind coremodel.ResourceKind, 
 	return state.Latest, nil
 }
 
-func (a *ResourceStoreAdapter) ledgerState(kind coremodel.ResourceKind, resourceKey string) (*ledgerState, error) {
+func (a *ResourceStoreAdapter) historyState(kind coremodel.ResourceKind, resourceKey string) (*historyState, error) {
 	parentKey := buildParentIndexKey(kind, resourceKey)
 	objs, err := a.versionStore.ByIndex(index.ByParentRuleIndexName, parentKey)
 	if err != nil {
@@ -154,14 +152,14 @@ func (a *ResourceStoreAdapter) ledgerState(kind coremodel.ResourceKind, resource
 	for _, obj := range objs {
 		rv, ok := obj.(*meshresource.RuleVersionResource)
 		if !ok {
-			return nil, fmt.Errorf("%w: expected RuleVersionResource, got %T", ErrVersionLedgerCorrupt, obj)
+			return nil, fmt.Errorf("%w: expected RuleVersionResource, got %T", ErrVersionStoreError, obj)
 		}
 		if rv.Spec == nil {
-			return nil, fmt.Errorf("%w: RuleVersion spec is nil for parent %s", ErrVersionLedgerCorrupt, parentKey)
+			return nil, fmt.Errorf("%w: RuleVersion spec is nil for parent %s", ErrVersionStoreError, parentKey)
 		}
 		id, err := versionIDFromResource(rv)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %v", ErrVersionLedgerCorrupt, err)
+			return nil, fmt.Errorf("%w: %v", ErrVersionStoreError, err)
 		}
 		v, err := protoToVersion(rv.Spec, id)
 		if err != nil {
@@ -182,7 +180,7 @@ func (a *ResourceStoreAdapter) ledgerState(kind coremodel.ResourceKind, resource
 		return versions[i].VersionNo > versions[j].VersionNo
 	})
 
-	state := &ledgerState{Versions: versions}
+	state := &historyState{Versions: versions}
 	if len(versions) > 0 {
 		state.Latest = &versions[0]
 		state.MaxVersionNo = versions[0].VersionNo
@@ -196,9 +194,6 @@ func (a *ResourceStoreAdapter) InsertVersion(ctx context.Context, req InsertRequ
 	}
 	var version *Version
 	err := a.withParentLock(req.RuleKind, req.ResourceKey, func() error {
-		if err := lock.CheckLease(ctx); err != nil {
-			return err
-		}
 		var inner error
 		version, inner = a.insertVersionLocked(ctx, req, maxVersions)
 		return inner
@@ -207,14 +202,14 @@ func (a *ResourceStoreAdapter) InsertVersion(ctx context.Context, req InsertRequ
 }
 
 func (a *ResourceStoreAdapter) insertVersionLocked(ctx context.Context, req InsertRequest, maxVersions int64) (*Version, error) {
-	if err := lock.CheckLease(ctx); err != nil {
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	state, err := a.ledgerState(req.RuleKind, req.ResourceKey)
+	state, err := a.historyState(req.RuleKind, req.ResourceKey)
 	if err != nil {
 		return nil, err
 	}
-	if err := lock.CheckLease(ctx); err != nil {
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
@@ -224,112 +219,62 @@ func (a *ResourceStoreAdapter) insertVersionLocked(ctx context.Context, req Inse
 	if createdAt.IsZero() {
 		createdAt = time.Now()
 	}
-	committedAt := time.Now()
+	recordedAt := time.Now()
 
-	versionExists := false
 	var rv *meshresource.RuleVersionResource
 	var id int64
-	if req.IntentID != 0 {
-		existing, existingID, err := a.getVersionResourceByIntentID(req.IntentID)
-		if err == nil {
-			if validateErr := validateExistingVersionForRequest(existing, existingID, req); validateErr != nil {
-				return nil, validateErr
-			}
-			rv = existing
-			id = existingID
-			versionNo = existing.Spec.VersionNo
-			versionExists = true
+
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	attempts := maxIDGenerateAttempts
+	var addErr error
+	for attempt := 0; attempt < attempts; attempt++ {
+		generated, err := a.idGenerator.Next()
+		if err != nil {
+			return nil, err
+		}
+		id = generated
+		if _, err := a.getVersionResourceByGlobalID(id); err == nil {
+			addErr = store.ErrorResourceAlreadyExists(meshresource.RuleVersionKind.ToString(), buildVersionName(req.RuleKind, req.ResourceKey, id), extractMesh(req.ResourceKey))
+			continue
 		} else if !errors.Is(err, ErrVersionNotFound) {
 			return nil, err
 		}
-	}
-	if req.FixedVersionID != nil {
-		if *req.FixedVersionID <= 0 {
-			return nil, bizerror.New(bizerror.InvalidArgument, "fixed version ID must be positive")
-		}
-		id = *req.FixedVersionID
-		existing, err := a.getVersionResourceByGlobalID(id)
-		if err == nil {
-			if validateErr := validateExistingVersionForRequest(existing, id, req); validateErr != nil {
-				return nil, validateErr
-			}
-			rv = existing
-			versionNo = existing.Spec.VersionNo
-			versionExists = true
-		} else if !errors.Is(err, ErrVersionNotFound) {
+		rv = newRuleVersionResource(req, id, versionNo, createdAt, recordedAt)
+		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-	}
-
-	if !versionExists {
-		if err := lock.CheckLease(ctx); err != nil {
+		addErr = a.versionStore.Add(rv)
+		if addErr == nil {
+			break
+		}
+		if !isAddConflict(addErr) {
+			return nil, fmt.Errorf("failed to add version resource id=%d: %w", id, addErr)
+		}
+		if err := ctx.Err(); err != nil {
 			return nil, err
 		}
-
-		attempts := maxIDGenerateAttempts
-		var addErr error
-		for attempt := 0; attempt < attempts; attempt++ {
-			if req.FixedVersionID == nil {
-				generated, err := a.idGenerator.Next()
-				if err != nil {
-					return nil, err
-				}
-				id = generated
-				if _, err := a.getVersionResourceByGlobalID(id); err == nil {
-					addErr = store.ErrorResourceAlreadyExists(meshresource.RuleVersionKind.ToString(), buildVersionName(req.RuleKind, req.ResourceKey, id), extractMesh(req.ResourceKey))
-					continue
-				} else if !errors.Is(err, ErrVersionNotFound) {
-					return nil, err
-				}
-			}
-			rv = newRuleVersionResource(req, id, versionNo, createdAt, committedAt)
-			if err := lock.CheckLease(ctx); err != nil {
-				return nil, err
-			}
-			addErr = a.versionStore.Add(rv)
-			if addErr == nil {
-				break
-			}
-			if req.FixedVersionID != nil {
-				existing, getErr := a.getVersionResourceByGlobalID(id)
-				if getErr == nil {
-					if validateErr := validateExistingVersionForRequest(existing, id, req); validateErr != nil {
-						return nil, validateErr
-					}
-					rv = existing
-					addErr = nil
-					break
-				}
-				if !errors.Is(getErr, ErrVersionNotFound) {
-					return nil, fmt.Errorf("failed to add version resource with fixed id %d: %w", id, addErr)
-				}
-			}
-			if !isAddConflict(addErr) {
-				return nil, fmt.Errorf("failed to add version resource id=%d: %w", id, addErr)
-			}
-			if err := lock.CheckLease(ctx); err != nil {
-				return nil, err
-			}
-			state, err = a.ledgerState(req.RuleKind, req.ResourceKey)
-			if err != nil {
-				return nil, err
-			}
-			if state.MaxVersionNo+1 <= versionNo {
-				return nil, fmt.Errorf("failed to allocate unique rule version number %d: %w", versionNo, addErr)
-			}
-			versionNo = state.MaxVersionNo + 1
+		state, err = a.historyState(req.RuleKind, req.ResourceKey)
+		if err != nil {
+			return nil, err
 		}
-		if addErr != nil {
-			return nil, fmt.Errorf("failed to allocate unique rule version id after %d attempts: %w", attempts, addErr)
+		if state.MaxVersionNo+1 <= versionNo {
+			return nil, fmt.Errorf("failed to allocate unique rule version number %d: %w", versionNo, addErr)
 		}
+		versionNo = state.MaxVersionNo + 1
+	}
+	if addErr != nil {
+		return nil, fmt.Errorf("failed to allocate unique rule version id after %d attempts: %w", attempts, addErr)
 	}
 
-	if err := lock.CheckLease(ctx); err != nil {
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	if maxVersions > 0 {
 		if err := a.trimVersionsLocked(ctx, req.RuleKind, req.ResourceKey, maxVersions); err != nil {
-			logger.Warnf("rule version retention cleanup failed for kind=%s resourceKey=%s committedVersion=%d: %v", req.RuleKind, req.ResourceKey, id, err)
+			logger.Warnf("rule version retention cleanup failed for kind=%s resourceKey=%s recordedVersion=%d: %v", req.RuleKind, req.ResourceKey, id, err)
 		}
 	}
 
@@ -337,7 +282,7 @@ func (a *ResourceStoreAdapter) insertVersionLocked(ctx context.Context, req Inse
 }
 
 func (a *ResourceStoreAdapter) trimVersionsLocked(ctx context.Context, kind coremodel.ResourceKind, resourceKey string, keep int64) error {
-	state, err := a.ledgerState(kind, resourceKey)
+	state, err := a.historyState(kind, resourceKey)
 	if err != nil {
 		return err
 	}
@@ -348,10 +293,10 @@ func (a *ResourceStoreAdapter) trimVersionsLocked(ctx context.Context, kind core
 
 	// Retention runs after the new version is durable and only removes entries
 	// beyond the configured window. Cleanup failure is reported to logs by the
-	// caller and does not roll back the already-committed mutation.
+	// caller and does not roll back the already-written rule mutation.
 	toDelete := versions[int(keep):]
 	for _, v := range toDelete {
-		if err := lock.CheckLease(ctx); err != nil {
+		if err := ctx.Err(); err != nil {
 			return err
 		}
 		rv, err := a.getVersionResourceForRule(kind, resourceKey, v.ID)
@@ -375,21 +320,21 @@ func (a *ResourceStoreAdapter) getVersionResourceByGlobalID(id int64) (*meshreso
 		return nil, ErrVersionNotFound
 	}
 	if len(objects) > 1 {
-		return nil, fmt.Errorf("%w: multiple RuleVersion resources indexed by id %d", ErrVersionLedgerCorrupt, id)
+		return nil, fmt.Errorf("%w: multiple RuleVersion resources indexed by id %d", ErrVersionStoreError, id)
 	}
 	rv, ok := objects[0].(*meshresource.RuleVersionResource)
 	if !ok {
-		return nil, fmt.Errorf("%w: expected RuleVersionResource, got %T", ErrVersionLedgerCorrupt, objects[0])
+		return nil, fmt.Errorf("%w: expected RuleVersionResource, got %T", ErrVersionStoreError, objects[0])
 	}
 	if rv.Spec == nil {
-		return nil, fmt.Errorf("%w: RuleVersion spec is nil for id %d", ErrVersionLedgerCorrupt, id)
+		return nil, fmt.Errorf("%w: RuleVersion spec is nil for id %d", ErrVersionStoreError, id)
 	}
 	indexedID, err := versionIDFromResource(rv)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrVersionLedgerCorrupt, err)
+		return nil, fmt.Errorf("%w: %v", ErrVersionStoreError, err)
 	}
 	if indexedID != id {
-		return nil, fmt.Errorf("%w: RuleVersion id index mismatch: requested %d, got %d", ErrVersionLedgerCorrupt, id, indexedID)
+		return nil, fmt.Errorf("%w: RuleVersion id index mismatch: requested %d, got %d", ErrVersionStoreError, id, indexedID)
 	}
 	return rv, nil
 }
@@ -413,37 +358,8 @@ func versionResourceMatchesParent(rv *meshresource.RuleVersionResource, kind cor
 		rv.Spec.ParentRuleName == extractName(resourceKey)
 }
 
-func (a *ResourceStoreAdapter) getVersionResourceByIntentID(intentID int64) (*meshresource.RuleVersionResource, int64, error) {
-	objects, err := a.versionStore.ByIndex(index.ByRuleVersionIntentIDIndexName, strconv.FormatInt(intentID, 10))
-	if err != nil {
-		return nil, 0, err
-	}
-	switch len(objects) {
-	case 0:
-		return nil, 0, ErrVersionNotFound
-	case 1:
-		rv, ok := objects[0].(*meshresource.RuleVersionResource)
-		if !ok {
-			return nil, 0, fmt.Errorf("%w: expected RuleVersionResource, got %T", ErrVersionLedgerCorrupt, objects[0])
-		}
-		if rv.Spec == nil {
-			return nil, 0, fmt.Errorf("%w: RuleVersion spec is nil for intent %d", ErrVersionLedgerCorrupt, intentID)
-		}
-		id, err := versionIDFromResource(rv)
-		if err != nil {
-			return nil, 0, fmt.Errorf("%w: %v", ErrVersionLedgerCorrupt, err)
-		}
-		return rv, id, nil
-	default:
-		return nil, 0, fmt.Errorf("%w: multiple RuleVersion resources indexed by intent id %d", ErrVersionLedgerCorrupt, intentID)
-	}
-}
-
 func validateExistingVersionForRequest(existing *meshresource.RuleVersionResource, existingID int64, req InsertRequest) error {
 	spec := existing.Spec
-	if req.FixedVersionID != nil && existingID != *req.FixedVersionID {
-		return fmt.Errorf("%w: RuleVersion intent id %d maps to version id %d, expected %d", ErrVersionLedgerCorrupt, req.IntentID, existingID, *req.FixedVersionID)
-	}
 	if spec.ParentRuleKind != string(req.RuleKind) ||
 		spec.ParentRuleMesh != extractMesh(req.ResourceKey) ||
 		spec.ParentRuleName != extractName(req.ResourceKey) ||
@@ -453,17 +369,16 @@ func validateExistingVersionForRequest(existing *meshresource.RuleVersionResourc
 		spec.Operation != string(req.Operation) ||
 		spec.Author != req.Author ||
 		spec.Reason != req.Reason ||
-		spec.IntentId != req.IntentID ||
 		spec.RolledBackFromId != rolledBackFromIDValue(req.RolledBackFromID) {
-		return fmt.Errorf("%w: RuleVersion id %d already exists with different content", ErrVersionLedgerCorrupt, existingID)
+		return fmt.Errorf("%w: RuleVersion id %d already exists with different content", ErrVersionStoreError, existingID)
 	}
 	if !req.CreatedAt.IsZero() && !timestampAsTime(spec.CreatedAt).Equal(req.CreatedAt) {
-		return fmt.Errorf("%w: RuleVersion id %d already exists with different content", ErrVersionLedgerCorrupt, existingID)
+		return fmt.Errorf("%w: RuleVersion id %d already exists with different content", ErrVersionStoreError, existingID)
 	}
 	return nil
 }
 
-func newRuleVersionResource(req InsertRequest, id, versionNo int64, createdAt, committedAt time.Time) *meshresource.RuleVersionResource {
+func newRuleVersionResource(req InsertRequest, id, versionNo int64, createdAt, recordedAt time.Time) *meshresource.RuleVersionResource {
 	rv := meshresource.NewRuleVersionResourceWithAttributes(
 		buildVersionNoName(req.RuleKind, req.ResourceKey, versionNo),
 		extractMesh(req.ResourceKey),
@@ -482,9 +397,8 @@ func newRuleVersionResource(req InsertRequest, id, versionNo int64, createdAt, c
 		Source:         string(req.Source),
 		Author:         req.Author,
 		Reason:         req.Reason,
-		IntentId:       req.IntentID,
 		CreatedAt:      timestamppb.New(createdAt),
-		CommittedAt:    timestamppb.New(committedAt),
+		RecordedAt:     timestamppb.New(recordedAt),
 	}
 	if req.RolledBackFromID != nil {
 		rv.Spec.RolledBackFromId = *req.RolledBackFromID

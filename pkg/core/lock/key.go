@@ -20,8 +20,6 @@ package lock
 import (
 	"encoding/base64"
 	"strings"
-
-	"github.com/apache/dubbo-admin/pkg/common/constants"
 )
 
 // BuildLockKey constructs a stable lock key from a prefix and escaped identity
@@ -33,29 +31,6 @@ func BuildLockKey(prefix string, parts ...string) string {
 		segments = append(segments, encodeLockPart(part))
 	}
 	return strings.Join(segments, ":")
-}
-
-// BuildRuleVersioningLockKey constructs the canonical per-rule lock key. All
-// paths that read the current rule state and then append or repair its ledger
-// share this key so the check-then-act sequence observes one parent-rule state.
-func BuildRuleVersioningLockKey(kind, mesh, name string) string {
-	return BuildLockKey(constants.RuleVersioningKeyPrefix, kind, mesh, name)
-}
-
-// BuildTagRouteLockKey constructs the rule-versioning lock key for tag routes.
-func BuildTagRouteLockKey(mesh, name string) string {
-	return BuildRuleVersioningLockKey("TagRoute", mesh, name)
-}
-
-// BuildConfiguratorRuleLockKey constructs the rule-versioning lock key for
-// dynamic configs.
-func BuildConfiguratorRuleLockKey(mesh, name string) string {
-	return BuildRuleVersioningLockKey("DynamicConfig", mesh, name)
-}
-
-// BuildConditionRuleLockKey constructs the rule-versioning lock key for condition routes.
-func BuildConditionRuleLockKey(mesh, name string) string {
-	return BuildRuleVersioningLockKey("ConditionRoute", mesh, name)
 }
 
 func encodeLockPart(part string) string {

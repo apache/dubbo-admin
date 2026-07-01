@@ -75,7 +75,6 @@
     kind="configurator"
     :rule-name="pathId"
     :title="ruleName || pathId"
-    @current-version-change="currentVersionId = $event"
     @current-version-no-change="currentVersionNo = $event"
   />
 </template>
@@ -95,7 +94,6 @@ import yaml from 'js-yaml'
 import { message } from 'ant-design-vue'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { ViewDataModel } from '@/views/traffic/dynamicConfig/model/ConfigModel'
-import { fetchCurrentVersionState, notifyRuleVersionError } from '../../_shared/ruleVersion'
 import RuleHistoryPanel from '../../_shared/RuleHistoryPanel.vue'
 
 const route = useRoute()
@@ -110,23 +108,10 @@ const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 const YAMLValue = ref()
 const initValue = ref()
 const ruleName = ref('')
-const currentVersionId = ref<string | undefined>(undefined)
 const currentVersionNo = ref<number | undefined>(undefined)
-
-async function reloadCurrentVersion() {
-  if (!pathId.value || pathId.value === '_tmp') {
-    currentVersionId.value = undefined
-    currentVersionNo.value = undefined
-    return
-  }
-  const current = await fetchCurrentVersionState('configurator', pathId.value)
-  currentVersionId.value = current.id
-  currentVersionNo.value = current.versionNo
-}
 
 onMounted(async () => {
   await initConfig()
-  await reloadCurrentVersion()
 })
 const modify = computed(() => {
   return initValue.value !== JSON.stringify(YAMLValue.value)
@@ -179,9 +164,7 @@ async function saveConfig() {
   try {
     const data = parseYAMLObject()
     if (viewData.isAdd === true) {
-      await addConfiguratorDetail({ name: viewData.basicInfo.key + '.configurators' }, data, {
-        expectedVersionId: currentVersionId.value
-      })
+      await addConfiguratorDetail({ name: viewData.basicInfo.key + '.configurators' }, data)
       TAB_STATE.dynamicConfigForm.data = null
       nextTick(() => {
         router.replace('/traffic/dynamicConfig')
@@ -189,27 +172,15 @@ async function saveConfig() {
       })
       return
     }
-    await saveConfiguratorDetail({ name: pathId.value }, data, {
-      expectedVersionId: currentVersionId.value
-    })
+    await saveConfiguratorDetail({ name: pathId.value }, data)
     message.success('config save success')
     TAB_STATE.dynamicConfigForm.data = null
     await initConfig()
-    await reloadCurrentVersion()
   } catch (e: any) {
-    const handled = notifyRuleVersionError(e, {
-      reload: async () => {
-        TAB_STATE.dynamicConfigForm.data = null
-        await initConfig()
-        await reloadCurrentVersion()
-      }
-    })
-    if (!handled) {
-      if (e instanceof Error) {
-        message.error(e.message)
-      }
-      console.error(e)
+    if (e instanceof Error) {
+      message.error(e.message)
     }
+    console.error(e)
   } finally {
     loading.value = false
   }

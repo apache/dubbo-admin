@@ -49,7 +49,6 @@ type GormStore struct {
 }
 
 var _ store.ManagedResourceStore = &GormStore{}
-var _ store.ConditionalResourceStore = &GormStore{}
 
 // NewGormStore creates a new GORM store for the specified resource kind
 func NewGormStore(kind model.ResourceKind, address string, pool *ConnectionPool) *GormStore {
@@ -220,7 +219,8 @@ func (gs *GormStore) Update(obj interface{}) error {
 
 // UpdateIfUnchanged replaces a resource only when the stored serialized
 // resource still matches expected. The conditional UPDATE and index rewrite run
-// in one transaction; RowsAffected=0 is a CAS miss and leaves index rows intact.
+// in one transaction; RowsAffected=0 means the stored resource changed and
+// leaves index rows intact.
 func (gs *GormStore) UpdateIfUnchanged(expected model.Resource, updated model.Resource) (bool, error) {
 	if expected == nil || updated == nil {
 		return false, fmt.Errorf("expected and updated resources are required")

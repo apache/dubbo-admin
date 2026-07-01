@@ -27,16 +27,14 @@ import (
 )
 
 const (
-	ByParentRuleIndexName          = "ByParentRule"
-	ByRuleVersionIDIndexName       = "ByRuleVersionID"
-	ByRuleVersionIntentIDIndexName = "ByRuleVersionIntentID"
+	ByParentRuleIndexName    = "ByParentRule"
+	ByRuleVersionIDIndexName = "ByRuleVersionID"
 )
 
 func init() {
 	RegisterIndexers(meshresource.RuleVersionKind, map[string]cache.IndexFunc{
-		ByParentRuleIndexName:          byParentRule,
-		ByRuleVersionIDIndexName:       byRuleVersionID,
-		ByRuleVersionIntentIDIndexName: byRuleVersionIntentID,
+		ByParentRuleIndexName:    byParentRule,
+		ByRuleVersionIDIndexName: byRuleVersionID,
 	})
 }
 
@@ -68,14 +66,6 @@ func byRuleVersionID(obj interface{}) ([]string, error) {
 		return nil, nil
 	}
 	return []string{id}, nil
-}
-
-func byRuleVersionIntentID(obj interface{}) ([]string, error) {
-	rv, ok := obj.(*meshresource.RuleVersionResource)
-	if !ok || rv.Spec == nil || rv.Spec.IntentId == 0 {
-		return nil, nil
-	}
-	return []string{fmt.Sprintf("%d", rv.Spec.IntentId)}, nil
 }
 
 func parseNumericSuffix(name string) (string, error) {

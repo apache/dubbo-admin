@@ -37,9 +37,8 @@ func init() {
 	coremodel.RegisterResourceSchema(RuleVersionKind, NewRuleVersionResource, NewRuleVersionResourceList)
 }
 
-// RuleVersionResource stores one committed ledger entry for a parent traffic
-// rule. The current rule state is derived from the highest version number, not
-// from mutable fields on older resources.
+// RuleVersionResource stores one immutable history entry for a parent traffic
+// rule. The live rule state is always read from ResourceManager.
 type RuleVersionResource struct {
 	metav1.TypeMeta `json:",inline"`
 

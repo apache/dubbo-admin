@@ -107,9 +107,9 @@ func protoToVersion(spec *meshproto.RuleVersion, id int64) (*Version, error) {
 	}
 
 	createdAt := timestampAsTime(spec.CreatedAt)
-	committedAt := timestampAsTime(spec.CommittedAt)
-	if committedAt.IsZero() {
-		committedAt = createdAt
+	recordedAt := timestampAsTime(spec.RecordedAt)
+	if recordedAt.IsZero() {
+		recordedAt = createdAt
 	}
 
 	return &Version{
@@ -125,68 +125,18 @@ func protoToVersion(spec *meshproto.RuleVersion, id int64) (*Version, error) {
 		Source:           Source(spec.Source),
 		Author:           spec.Author,
 		Reason:           spec.Reason,
-		IntentID:         spec.IntentId,
 		RolledBackFromID: rolledBackFromID,
 		CreatedAt:        createdAt,
-		CommittedAt:      committedAt,
+		RecordedAt:       recordedAt,
 		IsCurrent:        false,
 	}, nil
 }
 
-func buildIntentName(kind coremodel.ResourceKind, resourceKey string, id int64) string {
-	return fmt.Sprintf("%s-%s-intent-%d", kind, extractName(resourceKey), id)
-}
-
-func extractIDFromIntentName(name string) (int64, error) {
-	id, err := extractIDFromName(name)
-	if err != nil {
-		return 0, err
-	}
-	return id, nil
-}
-
-func intentFromResource(res *meshresource.RuleIntentResource, id int64) *Intent {
-	spec := res.Spec
-
-	var rolledBackFromID *int64
-	if spec.RolledBackFromId != 0 {
-		v := spec.RolledBackFromId
-		rolledBackFromID = &v
-	}
-
-	createdAt := timestampAsTime(spec.CreatedAt)
-	observedAt := timestampAsTime(spec.ObservedAt)
-
-	return &Intent{
-		ID:                  id,
-		RuleKind:            coremodel.ResourceKind(spec.ParentRuleKind),
-		Mesh:                spec.ParentRuleMesh,
-		ResourceKey:         coremodel.BuildResourceKey(spec.ParentRuleMesh, spec.ParentRuleName),
-		RuleName:            spec.ParentRuleName,
-		ContentHash:         spec.ContentHash,
-		SpecJSON:            spec.SpecJson,
-		Operation:           Operation(spec.Operation),
-		Source:              Source(spec.Source),
-		Author:              spec.Author,
-		Reason:              spec.Reason,
-		RolledBackFromID:    rolledBackFromID,
-		Status:              IntentStatus(spec.Status),
-		LastError:           spec.FailureReason,
-		ReconcileRequired:   spec.ReconcileRequired,
-		ObservedContentHash: spec.ObservedContentHash,
-		ObservedSpecJSON:    spec.ObservedSpecJson,
-		ObservedOperation:   Operation(spec.ObservedOperation),
-		ObservedAt:          observedAt,
-		Revision:            spec.Revision,
-		CreatedAt:           createdAt,
-	}
-}
-
-func ledgerSnapshotFromState(state *ledgerState) *LedgerSnapshot {
+func historySnapshotFromState(state *historyState) *HistorySnapshot {
 	if state == nil {
-		return &LedgerSnapshot{}
+		return &HistorySnapshot{}
 	}
-	snapshot := &LedgerSnapshot{
+	snapshot := &HistorySnapshot{
 		Versions: append([]Version(nil), state.Versions...),
 	}
 	if len(snapshot.Versions) == 0 {
@@ -205,7 +155,7 @@ func ledgerSnapshotFromState(state *ledgerState) *LedgerSnapshot {
 
 func duplicateVersionNoError(kind coremodel.ResourceKind, resourceKey string, versionNo, firstID, secondID int64) error {
 	return fmt.Errorf("%w: duplicate version number for kind=%s mesh=%s rule=%s versionNo=%d conflictingVersionIDs=%d,%d",
-		ErrVersionLedgerCorrupt,
+		ErrVersionStoreError,
 		kind,
 		extractMesh(resourceKey),
 		extractName(resourceKey),

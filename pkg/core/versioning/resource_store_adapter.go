@@ -30,63 +30,33 @@ var _ Store = &ResourceStoreAdapter{}
 
 const parentLockStripes = 256
 const maxIDGenerateAttempts = 16
-const maxIntentCASRetries = 8
 
-// ResourceStoreAdapter routes RuleVersion and RuleIntent resources through the
-// existing resource store. Callers that mutate a parent rule must hold the
-// canonical per-rule lock; the striped mutexes only keep a single adapter
-// instance internally consistent while it derives state from the ledger.
+// ResourceStoreAdapter routes RuleVersion resources through the existing
+// resource store. The striped mutexes only keep a single adapter instance
+// internally consistent while it derives monotonically increasing version
+// numbers for audit entries.
 type ResourceStoreAdapter struct {
 	versionStore store.ResourceStore
-	intentStore  store.ResourceStore
 	idGenerator  idGenerator
 	parentLocks  [parentLockStripes]sync.Mutex
 }
 
-func NewResourceStoreAdapter(versionStore, intentStore store.ResourceStore) *ResourceStoreAdapter {
+func NewResourceStoreAdapter(versionStore store.ResourceStore) *ResourceStoreAdapter {
 	return &ResourceStoreAdapter{
 		versionStore: versionStore,
-		intentStore:  intentStore,
 		idGenerator:  NewIDGenerator(),
 	}
 }
 
 func (a *ResourceStoreAdapter) ensureStores() error {
-	if a == nil || a.versionStore == nil || a.intentStore == nil {
-		return fmt.Errorf("%w: RuleVersion and RuleIntent stores are required", ErrVersionLedgerCorrupt)
-	}
-	if _, ok := a.intentStore.(store.ConditionalResourceStore); !ok {
-		return fmt.Errorf("%w: RuleIntent store must support conditional updates", ErrVersionLedgerCorrupt)
-	}
-	return nil
-}
-
-func (a *ResourceStoreAdapter) CheckExpectedVersion(kind coremodel.ResourceKind, resourceKey string, expected *int64) error {
-	if err := a.ensureStores(); err != nil {
-		return err
-	}
-	if expected == nil {
-		return nil
-	}
-	snapshot, err := a.LedgerSnapshot(kind, resourceKey)
-	if err != nil {
-		return err
-	}
-	if snapshot.Head == nil || snapshot.Deleted {
-		if *expected == 0 {
-			return nil
-		}
-		return &ConflictError{CurrentVersionID: nil}
-	}
-	currentID := snapshot.Head.ID
-	if *expected != currentID {
-		return &ConflictError{CurrentVersionID: &currentID}
+	if a == nil || a.versionStore == nil {
+		return fmt.Errorf("%w: RuleVersion store is required", ErrVersionStoreError)
 	}
 	return nil
 }
 
 func (a *ResourceStoreAdapter) LatestVersion(kind coremodel.ResourceKind, resourceKey string) (*Version, error) {
-	snapshot, err := a.LedgerSnapshot(kind, resourceKey)
+	snapshot, err := a.HistorySnapshot(kind, resourceKey)
 	if err != nil {
 		return nil, err
 	}

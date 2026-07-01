@@ -365,7 +365,7 @@ func TestGormStore_UpdateNonExistent(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
-func TestGormStore_UpdateIfUnchangedDistinguishesCASMissDBLockedAndSQLError(t *testing.T) {
+func TestGormStore_UpdateIfUnchangedDistinguishesChangedRowsDBLockedAndSQLError(t *testing.T) {
 	t.Run("cas miss", func(t *testing.T) {
 		store, cleanup := setupTestStore(t)
 		defer cleanup()

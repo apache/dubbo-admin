@@ -234,11 +234,6 @@ import { getTagRuleDetailAPI, updateTagRuleAPI } from '@/api/service/traffic'
 import { isNil } from 'lodash'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { HTTP_STATUS } from '@/base/http/constants'
-import {
-  fetchCurrentVersionState,
-  notifyRuleVersionError,
-  ruleVersionErrorMessage
-} from '../../_shared/ruleVersion'
 
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
@@ -293,19 +288,11 @@ onMounted(async () => {
   } else {
     await getTagRuleDetail()
   }
-  await reloadCurrentVersion()
 })
 const route = useRoute()
 
 const isDrawerOpened = ref(false)
 const loading = ref(false)
-const currentVersionId = ref<string | undefined>(undefined)
-
-async function reloadCurrentVersion() {
-  currentVersionId.value = (
-    await fetchCurrentVersionState('tag-rule', route.params?.ruleName as string)
-  ).id
-}
 
 const sliderSpan = ref(8)
 
@@ -631,26 +618,14 @@ const updateTagRule = async () => {
       })
       data.tags.push(tag)
     })
-    const res = await updateTagRuleAPI(route.params?.ruleName as string, data, {
-      expectedVersionId: currentVersionId.value
-    })
+    const res = await updateTagRuleAPI(route.params?.ruleName as string, data)
     if (res.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
       TAB_STATE.tagRule = null
       await getTagRuleDetail()
-      await reloadCurrentVersion()
     }
   } catch (e: any) {
-    const handled = notifyRuleVersionError(e, {
-      reload: async () => {
-        TAB_STATE.tagRule = null
-        await getTagRuleDetail()
-        await reloadCurrentVersion()
-      }
-    })
-    if (!handled) {
-      message.error(ruleVersionErrorMessage(e))
-    }
+    message.error(e?.message || String(e))
   } finally {
     loading.value = false
   }

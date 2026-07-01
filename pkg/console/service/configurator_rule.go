@@ -28,7 +28,6 @@ import (
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
-	"github.com/apache/dubbo-admin/pkg/core/versioning"
 )
 
 func PageListConfiguratorRule(ctx consolectx.Context, req *model.SearchReq) (*model.SearchPaginationResult, error) {
@@ -119,19 +118,11 @@ func UpdateConfigurator(ctx consolectx.Context, res *meshresource.DynamicConfigR
 }
 
 func UpdateConfiguratorWithOptions(ctx consolectx.Context, res *meshresource.DynamicConfigResource, opts RuleMutationOptions) error {
-	kindName := RuleKindName{Kind: meshresource.DynamicConfigKind, Mesh: res.Mesh, Name: res.Name}
-	return withRuleMutation(ctx, kindName, opts,
-		func(RuleMutationOptions) (coremodel.Resource, error) {
-			return res, nil
-		},
-		versioning.OperationUpdate,
-		func(scoped RuleMutationOptions) error {
-			if err := ctx.ResourceManager().Update(scoped.leaseCtx, res); err != nil {
-				logger.Warnf("update %s configurator failed with error: %s", res.Name, err.Error())
-				return err
-			}
-			return nil
-		})
+	if err := updateRule(ctx, res, opts); err != nil {
+		logger.Warnf("update %s configurator failed with error: %s", res.Name, err.Error())
+		return err
+	}
+	return nil
 }
 
 func CreateConfigurator(ctx consolectx.Context, res *meshresource.DynamicConfigResource) error {
@@ -139,19 +130,11 @@ func CreateConfigurator(ctx consolectx.Context, res *meshresource.DynamicConfigR
 }
 
 func CreateConfiguratorWithOptions(ctx consolectx.Context, res *meshresource.DynamicConfigResource, opts RuleMutationOptions) error {
-	kindName := RuleKindName{Kind: meshresource.DynamicConfigKind, Mesh: res.Mesh, Name: res.Name}
-	return withRuleMutation(ctx, kindName, opts,
-		func(RuleMutationOptions) (coremodel.Resource, error) {
-			return res, nil
-		},
-		versioning.OperationCreate,
-		func(scoped RuleMutationOptions) error {
-			if err := ctx.ResourceManager().Add(scoped.leaseCtx, res); err != nil {
-				logger.Warnf("create %s configurator failed with error: %s", res.Name, err.Error())
-				return err
-			}
-			return nil
-		})
+	if err := createRule(ctx, res, opts); err != nil {
+		logger.Warnf("create %s configurator failed with error: %s", res.Name, err.Error())
+		return err
+	}
+	return nil
 }
 
 func DeleteConfigurator(ctx consolectx.Context, name string, mesh string) error {
@@ -160,16 +143,9 @@ func DeleteConfigurator(ctx consolectx.Context, name string, mesh string) error 
 
 func DeleteConfiguratorWithOptions(ctx consolectx.Context, name string, mesh string, opts RuleMutationOptions) error {
 	kindName := RuleKindName{Kind: meshresource.DynamicConfigKind, Mesh: mesh, Name: name}
-	return withRuleMutation(ctx, kindName, opts,
-		func(RuleMutationOptions) (coremodel.Resource, error) {
-			return getExistingRule(ctx, kindName)
-		},
-		versioning.OperationDelete,
-		func(scoped RuleMutationOptions) error {
-			if err := ctx.ResourceManager().DeleteByKey(scoped.leaseCtx, meshresource.DynamicConfigKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
-				logger.Warnf("delete %s configurator failed with error: %s", name, err.Error())
-				return err
-			}
-			return nil
-		})
+	if err := deleteRule(ctx, kindName, opts); err != nil {
+		logger.Warnf("delete %s configurator failed with error: %s", name, err.Error())
+		return err
+	}
+	return nil
 }

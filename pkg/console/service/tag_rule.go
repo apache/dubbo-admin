@@ -28,7 +28,6 @@ import (
 	meshresource "github.com/apache/dubbo-admin/pkg/core/resource/apis/mesh/v1alpha1"
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 	"github.com/apache/dubbo-admin/pkg/core/store/index"
-	"github.com/apache/dubbo-admin/pkg/core/versioning"
 )
 
 func PageListTagRule(ctx consolectx.Context, req *model.SearchReq) (*model.SearchPaginationResult, error) {
@@ -117,20 +116,11 @@ func UpdateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) e
 }
 
 func UpdateTagRuleWithOptions(ctx consolectx.Context, res *meshresource.TagRouteResource, opts RuleMutationOptions) error {
-	kindName := RuleKindName{Kind: meshresource.TagRouteKind, Mesh: res.Mesh, Name: res.Name}
-	return withRuleMutation(ctx, kindName, opts,
-		func(RuleMutationOptions) (coremodel.Resource, error) {
-			return res, nil
-		},
-		versioning.OperationUpdate,
-		func(scoped RuleMutationOptions) error {
-			err := ctx.ResourceManager().Update(scoped.leaseCtx, res)
-			if err != nil {
-				logger.Warnf("update tag rule %s error: %v", res.Name, err)
-				return err
-			}
-			return nil
-		})
+	if err := updateRule(ctx, res, opts); err != nil {
+		logger.Warnf("update tag rule %s error: %v", res.Name, err)
+		return err
+	}
+	return nil
 }
 
 func CreateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) error {
@@ -138,20 +128,11 @@ func CreateTagRule(ctx consolectx.Context, res *meshresource.TagRouteResource) e
 }
 
 func CreateTagRuleWithOptions(ctx consolectx.Context, res *meshresource.TagRouteResource, opts RuleMutationOptions) error {
-	kindName := RuleKindName{Kind: meshresource.TagRouteKind, Mesh: res.Mesh, Name: res.Name}
-	return withRuleMutation(ctx, kindName, opts,
-		func(RuleMutationOptions) (coremodel.Resource, error) {
-			return res, nil
-		},
-		versioning.OperationCreate,
-		func(scoped RuleMutationOptions) error {
-			err := ctx.ResourceManager().Add(scoped.leaseCtx, res)
-			if err != nil {
-				logger.Warnf("create tag rule %s error: %v", res.Name, err)
-				return err
-			}
-			return nil
-		})
+	if err := createRule(ctx, res, opts); err != nil {
+		logger.Warnf("create tag rule %s error: %v", res.Name, err)
+		return err
+	}
+	return nil
 }
 
 func DeleteTagRule(ctx consolectx.Context, name string, mesh string) error {
@@ -160,16 +141,9 @@ func DeleteTagRule(ctx consolectx.Context, name string, mesh string) error {
 
 func DeleteTagRuleWithOptions(ctx consolectx.Context, name string, mesh string, opts RuleMutationOptions) error {
 	kindName := RuleKindName{Kind: meshresource.TagRouteKind, Mesh: mesh, Name: name}
-	return withRuleMutation(ctx, kindName, opts,
-		func(RuleMutationOptions) (coremodel.Resource, error) {
-			return getExistingRule(ctx, kindName)
-		},
-		versioning.OperationDelete,
-		func(scoped RuleMutationOptions) error {
-			if err := ctx.ResourceManager().DeleteByKey(scoped.leaseCtx, meshresource.TagRouteKind, mesh, coremodel.BuildResourceKey(mesh, name)); err != nil {
-				logger.Warnf("delete tag rule %s error: %v", name, err)
-				return err
-			}
-			return nil
-		})
+	if err := deleteRule(ctx, kindName, opts); err != nil {
+		logger.Warnf("delete tag rule %s error: %v", name, err)
+		return err
+	}
+	return nil
 }

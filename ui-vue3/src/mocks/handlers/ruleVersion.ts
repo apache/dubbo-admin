@@ -25,25 +25,10 @@ import type {
 } from '@/api/service/traffic'
 
 const KINDS: TrafficRuleKind[] = ['condition-rule', 'tag-rule', 'configurator']
-const SCENARIOS = [
-  'normal',
-  'deleted',
-  'empty',
-  'conflict',
-  'pending',
-  'repair-success',
-  'repair-failure',
-  'abandon-success',
-  'backend-error',
-  'diff'
-] as const
+const SCENARIOS = ['normal', 'deleted', 'empty', 'backend-error', 'diff'] as const
 
 type Scenario = (typeof SCENARIOS)[number]
 
-const pendingIntentByRule = new Map<string, string>()
-let nextIntentID = 9001
-
-const ledgerKey = (kind: TrafficRuleKind, ruleName: string) => `${kind}:${ruleName}`
 const scenarioOf = (ruleName: string): Scenario =>
   SCENARIOS.find((scenario) => ruleName.includes(`-${scenario}`)) ?? 'normal'
 
@@ -75,12 +60,12 @@ const version = (
   ruleName,
   versionNo,
   contentHash: `sha256:${ruleName}:${marker}`,
-  specJson: operation === 'DELETE' ? '{}' : spec(ruleName, marker),
+  specJson: spec(ruleName, marker),
   source,
   operation,
   author: source === 'UPSTREAM' ? 'system:upstream' : 'user name',
   createdAt: `2026-05-${(20 + versionNo).toString().padStart(2, '0')}T08:00:00Z`,
-  committedAt: `2026-05-${(20 + versionNo).toString().padStart(2, '0')}T08:01:00Z`,
+  recordedAt: `2026-05-${(20 + versionNo).toString().padStart(2, '0')}T08:01:00Z`,
   isCurrent
 })
 
@@ -93,14 +78,6 @@ const fixtureVersions = (kind: TrafficRuleKind, ruleName: string): RuleVersion[]
         version(kind, ruleName, '2003', 3, 'DELETE', 'ADMIN', false, 'deleted'),
         version(kind, ruleName, '2002', 2, 'UPDATE', 'ADMIN', false),
         version(kind, ruleName, '2001', 1, 'CREATE', 'BOOTSTRAP', false)
-      ]
-    case 'pending':
-    case 'repair-success':
-    case 'repair-failure':
-    case 'abandon-success':
-      return [
-        version(kind, ruleName, '3002', 2, 'UPDATE', 'ADMIN', true),
-        version(kind, ruleName, '3001', 1, 'CREATE', 'BOOTSTRAP', false)
       ]
     case 'diff':
       return [
@@ -132,26 +109,6 @@ const versionList = (versions: RuleVersion[]): RuleVersionList => {
   }
 }
 
-const conflictResp = (currentVersionId?: string | null) =>
-  HttpResponse.json(
-    {
-      code: 'VERSION_CONFLICT',
-      message: 'rule version conflict',
-      currentVersionId: currentVersionId ?? null
-    },
-    { status: 409 }
-  )
-
-const pendingResp = (intentId: string) =>
-  HttpResponse.json(
-    {
-      code: 'VERSION_LEDGER_PENDING',
-      message: 'rule version intent is pending',
-      intentId
-    },
-    { status: 409 }
-  )
-
 const bizError = (code: string, message: string, status = 200) =>
   HttpResponse.json({ code, message, data: null }, { status })
 
@@ -172,16 +129,6 @@ const validateReason = (reason: string) => {
   if (trimmed.length > 1024)
     return bizError('InvalidArgument', 'reason must be at most 1024 characters', 400)
   return null
-}
-
-const ensurePendingIntent = (kind: TrafficRuleKind, ruleName: string) => {
-  const key = ledgerKey(kind, ruleName)
-  let intentID = pendingIntentByRule.get(key)
-  if (!intentID) {
-    intentID = `${nextIntentID++}`
-    pendingIntentByRule.set(key, intentID)
-  }
-  return intentID
 }
 
 const buildVersionHandlersForKind = (kind: TrafficRuleKind): HttpHandler[] => [
@@ -243,85 +190,23 @@ const buildVersionHandlersForKind = (kind: TrafficRuleKind): HttpHandler[] => [
       if (!target) return notFoundResp('rule version not found')
       if (target.operation === 'DELETE')
         return bizError('InvalidArgument', 'cannot roll back to a deleted rule version', 400)
-      if (scenarioOf(ruleName) === 'pending')
-        return pendingResp(ensurePendingIntent(kind, ruleName))
-
       const current = currentVersionOf(versions)
-      const expected =
-        typeof body.expectedVersionId === 'string' ? body.expectedVersionId.trim() : undefined
-      if (expected !== undefined) {
-        if (!current && expected !== '0') return conflictResp(null)
-        if (current && expected !== current.id) return conflictResp(current.id)
-      }
-      if (scenarioOf(ruleName) === 'conflict') return conflictResp(current?.id ?? null)
 
       return success({
         rolledBackFromId: target.id,
         versionId: '9901',
         versionNo: (current?.versionNo ?? 0) + 1,
         source: 'ROLLBACK',
-        committed: true
+        historyRecorded: true
       })
     }
   )
 ]
 
-const intentHandlers: HttpHandler[] = [
-  http.post(`${base}/rule-version-intents/:intentId/repair`, ({ params }) => {
-    const intentId = String(params.intentId || '').trim()
-    if (!intentId) return bizError('InvalidArgument', 'intentId must be an integer', 400)
-    const shouldFail = Array.from(pendingIntentByRule).some(
-      ([key, value]) => value === intentId && key.includes('-repair-failure')
-    )
-    if (shouldFail) return bizError('InternalError', 'repair failed', 500)
-    const matched = Array.from(pendingIntentByRule).find(([, value]) => value === intentId)
-    if (!matched) return notFoundResp('rule version intent not found')
-    pendingIntentByRule.delete(matched[0])
-    const [kind, ruleName] = matched[0].split(':') as [TrafficRuleKind, string]
-    return success(version(kind, ruleName, '9101', 3, 'UPDATE', 'ADMIN', true, 'repair'))
-  }),
-
-  http.post(`${base}/rule-version-intents/:intentId/abandon`, async ({ params, request }) => {
-    const intentId = String(params.intentId || '').trim()
-    if (!intentId) return bizError('InvalidArgument', 'intentId must be an integer', 400)
-    const body = await readJsonBody(request)
-    const reasonErr = validateReason(typeof body.reason === 'string' ? body.reason : '')
-    if (reasonErr) return reasonErr
-    const matched = Array.from(pendingIntentByRule).find(([, value]) => value === intentId)
-    if (!matched) return notFoundResp('rule version intent not found')
-    pendingIntentByRule.delete(matched[0])
-    return success('')
-  })
-]
-
-export const ruleVersionHandlers: HttpHandler[] = [
-  ...KINDS.flatMap(buildVersionHandlersForKind),
-  ...intentHandlers
-]
+export const ruleVersionHandlers: HttpHandler[] = KINDS.flatMap(buildVersionHandlersForKind)
 
 export const ruleVersionMock = {
   scenarios: SCENARIOS,
   scenarioOf,
-  reset() {
-    pendingIntentByRule.clear()
-    nextIntentID = 9001
-  },
-  shouldConflict(ruleName: string) {
-    return scenarioOf(ruleName) === 'conflict'
-  },
-  shouldPend(ruleName: string) {
-    const scenario = scenarioOf(ruleName)
-    return (
-      scenario === 'pending' ||
-      scenario === 'repair-success' ||
-      scenario === 'repair-failure' ||
-      scenario === 'abandon-success'
-    )
-  },
-  conflictResponse(kind: TrafficRuleKind, ruleName: string) {
-    return conflictResp(currentVersionOf(fixtureVersions(kind, ruleName))?.id ?? null)
-  },
-  pendingResponse(kind: TrafficRuleKind, ruleName: string) {
-    return pendingResp(ensurePendingIntent(kind, ruleName))
-  }
+  reset() {}
 }

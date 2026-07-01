@@ -38,11 +38,11 @@ type ZKConfigEventSubscriber struct {
 	storeRouter store.Router
 }
 
-// sourceRegistryZookeeper labels rule events coming from ZooKeeper so the
-// versioning ledger can attribute upstream writes to author "system:zookeeper".
-// Other registry subscribers (Nacos, Apollo, ...) should emit the equivalent
-// SourceRegistryContextKey on their ResourceChangedEvents — until they do,
-// the ledger falls back to "system:upstream" for those sources.
+// sourceRegistryZookeeper labels rule events coming from ZooKeeper so rule
+// history can attribute upstream writes to author "system:zookeeper". Other
+// registry subscribers (Nacos, Apollo, ...) should emit the equivalent
+// SourceRegistryContextKey on their ResourceChangedEvents; until they do, rule
+// history falls back to "system:upstream" for those sources.
 const sourceRegistryZookeeper = "zookeeper"
 
 func NewZKConfigEventSubscriber(eventEmitter events.Emitter, storeRouter store.Router) *ZKConfigEventSubscriber {

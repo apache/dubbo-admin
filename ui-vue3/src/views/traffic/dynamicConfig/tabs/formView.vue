@@ -407,7 +407,6 @@
       kind="configurator"
       :rule-name="pathId"
       :title="formViewData.basicInfo.ruleName || pathId"
-      @current-version-change="currentVersionId = $event"
       @current-version-no-change="currentVersionNo = $event"
     />
   </div>
@@ -427,7 +426,6 @@ import gsap from 'gsap'
 import { Icon } from '@iconify/vue'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { ConfigModel, ViewDataModel } from '@/views/traffic/dynamicConfig/model/ConfigModel'
-import { fetchCurrentVersionState, notifyRuleVersionError } from '../../_shared/ruleVersion'
 import RuleHistoryPanel from '../../_shared/RuleHistoryPanel.vue'
 
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
@@ -437,19 +435,7 @@ const router = useRouter()
 const pathId = computed(() => String(route.params?.pathId || ''))
 const isEdit = ref(route.params.isEdit === '1')
 const isHistoryOpen = ref(false)
-const currentVersionId = ref<string | undefined>(undefined)
 const currentVersionNo = ref<number | undefined>(undefined)
-
-async function reloadCurrentVersion() {
-  if (!pathId.value || pathId.value === '_tmp') {
-    currentVersionId.value = undefined
-    currentVersionNo.value = undefined
-    return
-  }
-  const current = await fetchCurrentVersionState('configurator', pathId.value)
-  currentVersionId.value = current.id
-  currentVersionNo.value = current.versionNo
-}
 
 const formViewData: ViewDataModel = reactive(new ViewDataModel())
 
@@ -564,7 +550,6 @@ function transApiData(data: any) {
 
 onMounted(async () => {
   await initConfig()
-  await reloadCurrentVersion()
 })
 const delConfig = (idx) => {
   Modal.confirm({
@@ -611,9 +596,7 @@ async function saveConfig() {
   try {
     let data = formViewEdit.toApiInput(true)
     if (formViewData.isAdd === true) {
-      await addConfiguratorDetail({ name: formViewEdit.basicInfo.key + '.configurators' }, data, {
-        expectedVersionId: currentVersionId.value
-      })
+      await addConfiguratorDetail({ name: formViewEdit.basicInfo.key + '.configurators' }, data)
       TAB_STATE.dynamicConfigForm.data = null
       nextTick(() => {
         router.replace('/traffic/dynamicConfig')
@@ -621,24 +604,12 @@ async function saveConfig() {
       })
       return
     }
-    await saveConfiguratorDetail({ name: pathId.value }, data, {
-      expectedVersionId: currentVersionId.value
-    })
+    await saveConfiguratorDetail({ name: pathId.value }, data)
     message.success('config save success')
     TAB_STATE.dynamicConfigForm.data = null
     await initConfig()
-    await reloadCurrentVersion()
   } catch (e: any) {
-    const handled = notifyRuleVersionError(e, {
-      reload: async () => {
-        TAB_STATE.dynamicConfigForm.data = null
-        await initConfig()
-        await reloadCurrentVersion()
-      }
-    })
-    if (!handled) {
-      message.error(formViewEdit.errorMsg.join(';'))
-    }
+    message.error(formViewEdit.errorMsg.join(';') || e?.message || String(e))
     console.error(e)
   } finally {
     loading.value = false

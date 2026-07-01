@@ -77,11 +77,6 @@ import { formattedDate } from '@/utils/DateUtil'
 import { useRoute } from 'vue-router'
 import { HTTP_STATUS } from '@/base/http/constants'
 import { message } from 'ant-design-vue'
-import {
-  fetchCurrentVersionState,
-  notifyRuleVersionError,
-  ruleVersionErrorMessage
-} from '../_shared/ruleVersion'
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
 onMounted(() => {
@@ -138,16 +133,12 @@ const searchDomain = reactive(
 // Delete tag routing.
 const deleteTagRule = async (ruleName: string) => {
   try {
-    const expectedVersionId = (await fetchCurrentVersionState('tag-rule', ruleName)).id
-    const res = await deleteTagRuleAPI(ruleName, { expectedVersionId })
+    const res = await deleteTagRuleAPI(ruleName)
     if (res.code === HTTP_STATUS.SUCCESS) {
       await searchDomain.onSearch()
     }
   } catch (e: any) {
-    const handled = notifyRuleVersionError(e, { reload: () => searchDomain.onSearch() })
-    if (!handled) {
-      message.error(ruleVersionErrorMessage(e))
-    }
+    message.error(e?.message || String(e))
   }
 }
 

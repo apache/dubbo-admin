@@ -17,7 +17,6 @@
 
 import { http, type HttpHandler } from 'msw'
 import { success, base } from '../utils'
-import { ruleVersionMock } from './ruleVersion'
 import type { ConfiguratorRule, ConfiguratorDetail, PaginatedData } from '@/types/api'
 
 function randomInt(min: number, max: number): number {
@@ -35,16 +34,6 @@ const decodeRuleName = (raw: string) => {
   } catch {
     return raw
   }
-}
-
-const writeOrConflict = (rawName: string, operation: 'CREATE' | 'UPDATE' | 'DELETE') => {
-  const ruleName = decodeRuleName(rawName)
-  if (ruleVersionMock.shouldConflict(ruleName))
-    return ruleVersionMock.conflictResponse('configurator', ruleName)
-  if (ruleVersionMock.shouldPend(ruleName))
-    return ruleVersionMock.pendingResponse('configurator', ruleName)
-  void operation
-  return success(null)
 }
 
 export const dynamicConfigHandlers: HttpHandler[] = [
@@ -70,15 +59,9 @@ export const dynamicConfigHandlers: HttpHandler[] = [
     return success(detail)
   }),
 
-  http.delete(`${base}/configurator/:ruleName`, ({ params }) =>
-    writeOrConflict(params.ruleName as string, 'DELETE')
-  ),
+  http.delete(`${base}/configurator/:ruleName`, () => success(null)),
 
-  http.put(`${base}/configurator/:ruleName`, ({ params }) =>
-    writeOrConflict(params.ruleName as string, 'UPDATE')
-  ),
+  http.put(`${base}/configurator/:ruleName`, () => success(null)),
 
-  http.post(`${base}/configurator/:ruleName`, ({ params }) =>
-    writeOrConflict(params.ruleName as string, 'CREATE')
-  )
+  http.post(`${base}/configurator/:ruleName`, () => success(null))
 ]

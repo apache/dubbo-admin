@@ -40,7 +40,7 @@ const isSilentErrorUrl = (url?: string): boolean => {
 }
 
 const shouldShowErrorMessage = (url?: string, code?: string): boolean => {
-  return !isSilentErrorUrl(url) && code !== 'VERSION_CONFLICT' && code !== 'VERSION_LEDGER_PENDING'
+  return !isSilentErrorUrl(url)
 }
 
 const service: AxiosInstance = axios.create({

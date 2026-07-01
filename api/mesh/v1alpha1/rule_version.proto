@@ -52,9 +52,5 @@ message RuleVersion {
 
   // Timestamps
   google.protobuf.Timestamp created_at = 12;
-  google.protobuf.Timestamp committed_at = 13;
-
-  // intent_id links a RuleVersion to the mutation intent that produced it.
-  // Non-intent versions such as UPSTREAM and BOOTSTRAP leave this as 0.
-  int64 intent_id = 14;
+  google.protobuf.Timestamp recorded_at = 13;
 }

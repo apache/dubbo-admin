@@ -149,14 +149,6 @@ func InitRouter(r *gin.Engine, ctx consolectx.Context) {
 		tagRule.DELETE("/:ruleName", handler.DeleteTagRuleWithRuleName(ctx))
 	}
 
-	{
-		// Intent repair reconciles the version ledger from ResourceManager state
-		// when an admin mutation finishes before the ledger is finalized.
-		ruleVersionIntent := router.Group("/rule-version-intents")
-		ruleVersionIntent.POST("/:intentId/repair", handler.RepairRuleVersionIntent(ctx))
-		ruleVersionIntent.POST("/:intentId/abandon", handler.AbandonRuleVersionIntent(ctx))
-	}
-
 	router.GET("/prometheus", handler.GetPrometheus(ctx))
 	router.GET("/search", handler.BannerGlobalSearch(ctx))
 	router.GET("/overview", handler.ClusterOverview(ctx))

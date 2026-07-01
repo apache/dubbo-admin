@@ -15,20 +15,13 @@
  * limitations under the License.
  */
 
-import { h } from 'vue'
-import { Button, Input, Modal, notification, Space } from 'ant-design-vue'
 import {
-  abandonRuleVersionIntentAPI,
   listRuleVersionsAPI,
-  repairRuleVersionIntentAPI,
   type RuleVersion,
   type RuleVersionList,
-  type TrafficRuleKind,
-  type VersionConflictError,
-  type VersionLedgerPendingError
+  type TrafficRuleKind
 } from '@/api/service/traffic'
 import { HTTP_STATUS } from '@/base/http/constants'
-import { i18n } from '@/base/i18n'
 
 export interface CurrentVersionState {
   id?: string
@@ -60,19 +53,8 @@ export const currentVersionStateFromList = (list?: RuleVersionList): CurrentVers
   return currentVersionStateFromItems(list.items || [])
 }
 
-export const rollbackExpectedVersionId = (state: CurrentVersionState): string | undefined => {
-  if (state.id !== undefined) {
-    return state.id
-  }
-  // A deleted ledger head has no current version ID, but rollback must still
-  // assert that the rule is absent. "0" is the API's deleted-state precondition.
-  return state.deleted ? '0' : undefined
-}
-
 export const versionDiffLabel = (prefix: string, versionNo?: number): string =>
-  typeof versionNo === 'number' ? `${prefix} v${versionNo}` : prefix
-
-export const normalizeIntentReason = (reason: string): string => reason.trim()
+  typeof versionNo === 'number' && versionNo > 0 ? `${prefix} v${versionNo}` : prefix
 
 export const isCurrentHistoryRequest = (
   requestSeq: number,
@@ -91,220 +73,6 @@ export const fetchCurrentVersionState = async (
     return currentVersionStateFromList(res.data)
   }
   return { deleted: false }
-}
-
-export const isVersionConflict = (e: any): e is VersionConflictError => {
-  return e?.code === 'VERSION_CONFLICT'
-}
-
-export const isVersionLedgerPending = (e: any): e is VersionLedgerPendingError => {
-  return e?.code === 'VERSION_LEDGER_PENDING'
-}
-
-const t = (key: string, params?: Record<string, unknown>) => i18n.global.t(key, params)
-
-export const ruleVersionErrorMessage = (e: any): string => e?.message || String(e)
-
-const repairingIntentIds = new Set<string>()
-
-const openAbandonReasonModal = (
-  intentId: string,
-  options?: { reload?: () => void | Promise<void>; isCurrent?: () => boolean }
-) => {
-  let reason = ''
-  let submitting = false
-  const modal = Modal.confirm({
-    title: t('ruleVersionDomain.abandonIntentTitle'),
-    content: () =>
-      h(Input.TextArea, {
-        rows: 3,
-        maxlength: 1024,
-        placeholder: t('ruleVersionDomain.abandonReasonPlaceholder'),
-        onChange: (event: Event) => {
-          reason = (event.target as HTMLTextAreaElement).value
-        }
-      }),
-    okText: t('ruleVersionDomain.abandon'),
-    cancelText: t('ruleVersionDomain.cancel'),
-    okButtonProps: { danger: true },
-    async onOk() {
-      if (submitting) {
-        return Promise.reject()
-      }
-      const trimmed = normalizeIntentReason(reason)
-      if (!trimmed) {
-        notification.warning({
-          key: 'rule-version-abandon-reason-required',
-          message: t('ruleVersionDomain.abandonReasonRequired')
-        })
-        return Promise.reject()
-      }
-      submitting = true
-      modal.update({ okButtonProps: { danger: true, loading: true } })
-      try {
-        await abandonRuleVersionIntentAPI(intentId, trimmed)
-        if (options?.isCurrent && !options.isCurrent()) {
-          submitting = false
-          modal.update({ okButtonProps: { danger: true, loading: false } })
-          return Promise.reject()
-        }
-        notification.close('rule-version-ledger-pending')
-        notification.close('rule-version-abandon-reason-required')
-        await options?.reload?.()
-      } catch (e: any) {
-        if (options?.isCurrent && !options.isCurrent()) {
-          submitting = false
-          modal.update({ okButtonProps: { danger: true, loading: false } })
-          return Promise.reject()
-        }
-        notification.error({
-          key: 'rule-version-abandon-error',
-          message: t('ruleVersionDomain.abandonFailed'),
-          description: e?.message || String(e)
-        })
-        submitting = false
-        modal.update({ okButtonProps: { danger: true, loading: false } })
-        return Promise.reject()
-      }
-    }
-  })
-}
-
-export const notifyVersionConflict = (
-  e: any,
-  options?: { reload?: () => void | Promise<void>; isCurrent?: () => boolean }
-): boolean => {
-  if (isVersionConflict(e)) {
-    notification.warning({
-      key: 'rule-version-conflict',
-      duration: 0,
-      message: t('ruleVersionDomain.versionConflict'),
-      description: t('ruleVersionDomain.versionConflictDescription'),
-      btn: options?.reload
-        ? () =>
-            h(
-              Button,
-              {
-                type: 'link',
-                size: 'small',
-                onClick: () => {
-                  notification.close('rule-version-conflict')
-                  if (!options.isCurrent || options.isCurrent()) {
-                    options.reload?.()
-                  }
-                }
-              },
-              { default: () => t('ruleVersionDomain.reload') }
-            )
-        : undefined
-    })
-    return true
-  }
-  return false
-}
-
-export const notifyVersionLedgerPending = (
-  e: any,
-  options?: { reload?: () => void | Promise<void>; isCurrent?: () => boolean }
-): boolean => {
-  if (!isVersionLedgerPending(e)) {
-    return false
-  }
-  const intentId = e.intentId
-  notification.warning({
-    key: 'rule-version-ledger-pending',
-    duration: 0,
-    message: t('ruleVersionDomain.ledgerPending'),
-    description: intentId
-      ? t('ruleVersionDomain.ledgerPendingWithIntent', { intentId })
-      : t('ruleVersionDomain.ledgerPendingDescription'),
-    btn: intentId
-      ? () =>
-          h(
-            Space,
-            {},
-            {
-              default: () => [
-                h(
-                  Button,
-                  {
-                    type: 'link',
-                    size: 'small',
-                    onClick: async () => {
-                      if (repairingIntentIds.has(intentId)) {
-                        return
-                      }
-                      // Repair mutates the durable intent. Suppress duplicate
-                      // clicks for the same intent while preserving normal
-                      // error reporting for unrelated failures.
-                      repairingIntentIds.add(intentId)
-                      try {
-                        await repairRuleVersionIntentAPI(intentId)
-                        if (options?.isCurrent && !options.isCurrent()) {
-                          return
-                        }
-                        notification.close('rule-version-ledger-pending')
-                        await options?.reload?.()
-                      } catch (e: any) {
-                        if (options?.isCurrent && !options.isCurrent()) {
-                          return
-                        }
-                        notification.error({
-                          key: 'rule-version-repair-error',
-                          message: t('ruleVersionDomain.repairFailed'),
-                          description: e?.message || String(e)
-                        })
-                      } finally {
-                        repairingIntentIds.delete(intentId)
-                      }
-                    }
-                  },
-                  { default: () => t('ruleVersionDomain.repair') }
-                ),
-                h(
-                  Button,
-                  {
-                    type: 'link',
-                    size: 'small',
-                    danger: true,
-                    onClick: () => {
-                      openAbandonReasonModal(intentId, options)
-                    }
-                  },
-                  { default: () => t('ruleVersionDomain.abandon') }
-                )
-              ]
-            }
-          )
-      : options?.reload
-        ? () =>
-            h(
-              Button,
-              {
-                type: 'link',
-                size: 'small',
-                onClick: () => {
-                  notification.close('rule-version-ledger-pending')
-                  if (!options.isCurrent || options.isCurrent()) {
-                    options.reload?.()
-                  }
-                }
-              },
-              { default: () => t('ruleVersionDomain.reload') }
-            )
-        : undefined
-  })
-  return true
-}
-
-export const notifyRuleVersionError = (
-  e: any,
-  options?: { reload?: () => void | Promise<void>; isCurrent?: () => boolean }
-): boolean => {
-  if (notifyVersionLedgerPending(e, options)) {
-    return true
-  }
-  return notifyVersionConflict(e, options)
 }
 
 export const formatRuleSpec = (specJson?: string): string => {

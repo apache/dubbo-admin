@@ -31,7 +31,7 @@ const (
 )
 
 // Config controls rule-version retention. A zero MaxVersionsPerRule disables
-// cleanup; committed mutations are still recorded.
+// cleanup; new rule history entries are still recorded.
 type Config struct {
 	config.BaseConfig
 	MaxVersionsPerRule int64 `json:"maxVersionsPerRule" yaml:"maxVersionsPerRule"`

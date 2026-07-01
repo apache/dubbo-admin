@@ -562,22 +562,12 @@ const words: I18nType = {
     currentVersion: 'Current version',
     currentDeleted: 'Current deleted',
     targetVersion: 'Target version',
-    versionConflict: 'Version conflict',
-    versionConflictDescription:
-      'The rule was changed by another operation. Reload before submitting again.',
-    ledgerPending: 'Version ledger pending',
-    ledgerPendingDescription:
-      'This rule has an unfinished version intent. Reload before submitting again.',
-    ledgerPendingWithIntent:
-      'This rule has unfinished version intent #{intentId}. Repair or abandon it before submitting.',
     empty: 'No version records',
     view: 'View',
     diffCurrent: 'Diff current',
     rollback: 'Rollback',
     rollbackConfirmTitle: 'Confirm rollback',
     rollbackDeletedWarning: 'The current rule is deleted. Rollback will recreate it.',
-    rollbackCasHint:
-      'If the current version changed, the backend will reject this rollback. Reload and try again.',
     rollbackAppendHint:
       'Rollback creates a new version from the historical snapshot. Existing history is not modified.',
     rollbackReason: 'Rollback reason',
@@ -585,8 +575,6 @@ const words: I18nType = {
     rollbackReasonRequired: 'Rollback reason is required',
     rollbackSuccess: 'Rollback succeeded and created a new version',
     rollbackSuccessWithVersion: 'Rollback succeeded and created v{versionNo}',
-    rollbackConflict: 'Version conflict: the rule was changed. Reload and try again.',
-    rollbackPending: 'A version intent is pending. Repair or abandon it first.',
     rollbackFailed: 'Rollback failed',
     diffFailed: 'Failed to load version diff',
     rollbackCurrentDisabled: 'Current version does not need rollback',
@@ -603,14 +591,7 @@ const words: I18nType = {
     reason: 'Reason',
     none: 'None',
     reload: 'Reload',
-    repair: 'Repair',
-    repairFailed: 'Failed to repair intent',
-    abandon: 'Abandon',
-    cancel: 'Cancel',
-    abandonIntentTitle: 'Abandon version intent',
-    abandonReasonPlaceholder: 'Enter the abandon reason',
-    abandonReasonRequired: 'Abandon reason is required',
-    abandonFailed: 'Failed to abandon intent'
+    cancel: 'Cancel'
   },
   backHome: 'Back Home',
   noPageTip: 'Sorry, the page you visited does not exist.',

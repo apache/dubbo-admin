@@ -90,7 +90,6 @@ import yaml from 'js-yaml'
 import { isNil } from 'lodash'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from '@/base/http/constants'
-import { fetchCurrentVersionState, notifyRuleVersionError } from '../../_shared/ruleVersion'
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
 const route = useRoute()
@@ -102,13 +101,6 @@ const isDrawerOpened = ref(false)
 const sliderSpan = ref(8)
 
 const YAMLValue = ref('')
-const currentVersionId = ref<string | undefined>(undefined)
-
-async function reloadCurrentVersion() {
-  currentVersionId.value = (
-    await fetchCurrentVersionState('condition-rule', route.params?.ruleName as string)
-  ).id
-}
 
 onMounted(async () => {
   if (!isNil(TAB_STATE.conditionRule)) {
@@ -118,7 +110,6 @@ onMounted(async () => {
     YAMLValue.value = ``
     await getRoutingRuleDetail()
   }
-  await reloadCurrentVersion()
 })
 
 const changeEditor = () => {
@@ -151,29 +142,17 @@ const updateRoutingRule = async () => {
   try {
     const data = parseYAMLObject()
     data.configVersion = 'v3.0'
-    const res = await updateConditionRuleAPI(route.params?.ruleName as string, data, {
-      expectedVersionId: currentVersionId.value
-    })
+    const res = await updateConditionRuleAPI(route.params?.ruleName as string, data)
     if (res.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
       TAB_STATE.conditionRule = null
       await getRoutingRuleDetail()
-      await reloadCurrentVersion()
     }
   } catch (e: any) {
-    const handled = notifyRuleVersionError(e, {
-      reload: async () => {
-        TAB_STATE.conditionRule = null
-        await getRoutingRuleDetail()
-        await reloadCurrentVersion()
-      }
-    })
-    if (!handled) {
-      if (e instanceof Error) {
-        message.error(e.message)
-      }
-      console.error(e)
+    if (e instanceof Error) {
+      message.error(e.message)
     }
+    console.error(e)
   } finally {
     loading.value = false
   }

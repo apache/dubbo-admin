@@ -74,11 +74,6 @@ import { useRouter } from 'vue-router'
 import { PRIMARY_COLOR } from '@/base/constants'
 import { Icon } from '@iconify/vue'
 import { message } from 'ant-design-vue'
-import {
-  fetchCurrentVersionState,
-  notifyRuleVersionError,
-  ruleVersionErrorMessage
-} from '../_shared/ruleVersion'
 
 const router = useRouter()
 
@@ -150,14 +145,10 @@ onMounted(async () => {
 
 const delDynamicConfig = async (record: any) => {
   try {
-    const expectedVersionId = (await fetchCurrentVersionState('configurator', record.ruleName)).id
-    await delConfiguratorDetail({ name: record.ruleName }, { expectedVersionId })
+    await delConfiguratorDetail({ name: record.ruleName })
     await searchDomain.onSearch()
   } catch (e: any) {
-    const handled = notifyRuleVersionError(e, { reload: () => searchDomain.onSearch() })
-    if (!handled) {
-      message.error(ruleVersionErrorMessage(e))
-    }
+    message.error(e?.message || String(e))
   }
 }
 

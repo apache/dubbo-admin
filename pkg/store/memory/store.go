@@ -45,7 +45,6 @@ type resourceStore struct {
 }
 
 var _ store.ManagedResourceStore = &resourceStore{}
-var _ store.ConditionalResourceStore = &resourceStore{}
 
 func NewMemoryResourceStore(rk coremodel.ResourceKind) store.ManagedResourceStore {
 	return &resourceStore{rk: rk}

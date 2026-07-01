@@ -88,7 +88,6 @@ import { isNil } from 'lodash'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from '@/base/http/constants'
-import { fetchCurrentVersionState, notifyRuleVersionError } from '../../_shared/ruleVersion'
 
 const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 
@@ -97,13 +96,6 @@ const isReadonly = ref(false)
 
 const isDrawerOpened = ref(false)
 const loading = ref(false)
-const currentVersionId = ref<string | undefined>(undefined)
-
-async function reloadCurrentVersion() {
-  currentVersionId.value = (
-    await fetchCurrentVersionState('tag-rule', route.params?.ruleName as string)
-  ).id
-}
 
 const sliderSpan = ref(8)
 
@@ -115,7 +107,6 @@ onMounted(async () => {
     YAMLValue.value = ``
     await getTagRuleDetail()
   }
-  await reloadCurrentVersion()
 })
 
 const changeEditor = () => {
@@ -154,29 +145,17 @@ const updateTagRule = async () => {
   loading.value = true
   try {
     const data = parseYAMLObject()
-    const res = await updateTagRuleAPI(route.params?.ruleName as string, data, {
-      expectedVersionId: currentVersionId.value
-    })
+    const res = await updateTagRuleAPI(route.params?.ruleName as string, data)
     if (res.code === HTTP_STATUS.SUCCESS) {
       message.success('update success')
       TAB_STATE.tagRule = null
       await getTagRuleDetail()
-      await reloadCurrentVersion()
     }
   } catch (e: any) {
-    const handled = notifyRuleVersionError(e, {
-      reload: async () => {
-        TAB_STATE.tagRule = null
-        await getTagRuleDetail()
-        await reloadCurrentVersion()
-      }
-    })
-    if (!handled) {
-      if (e instanceof Error) {
-        message.error(e.message)
-      }
-      console.error(e)
+    if (e instanceof Error) {
+      message.error(e.message)
     }
+    console.error(e)
   } finally {
     loading.value = false
   }

@@ -62,11 +62,8 @@ type RuleVersion struct {
 	// be used as the current-version pointer.
 	RolledBackFromId int64 `protobuf:"varint,11,opt,name=rolled_back_from_id,json=rolledBackFromId,proto3" json:"rolled_back_from_id,omitempty"`
 	// Timestamps
-	CreatedAt   *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	CommittedAt *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=committed_at,json=committedAt,proto3" json:"committed_at,omitempty"`
-	// intent_id links a RuleVersion to the mutation intent that produced it.
-	// Non-intent versions such as UPSTREAM and BOOTSTRAP leave this as 0.
-	IntentId      int64 `protobuf:"varint,14,opt,name=intent_id,json=intentId,proto3" json:"intent_id,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	RecordedAt    *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=recorded_at,json=recordedAt,proto3" json:"recorded_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -185,25 +182,18 @@ func (x *RuleVersion) GetCreatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
-func (x *RuleVersion) GetCommittedAt() *timestamppb.Timestamp {
+func (x *RuleVersion) GetRecordedAt() *timestamppb.Timestamp {
 	if x != nil {
-		return x.CommittedAt
+		return x.RecordedAt
 	}
 	return nil
-}
-
-func (x *RuleVersion) GetIntentId() int64 {
-	if x != nil {
-		return x.IntentId
-	}
-	return 0
 }
 
 var File_api_mesh_v1alpha1_rule_version_proto protoreflect.FileDescriptor
 
 const file_api_mesh_v1alpha1_rule_version_proto_rawDesc = "" +
 	"\n" +
-	"$api/mesh/v1alpha1/rule_version.proto\x12\x13dubbo.mesh.v1alpha1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x96\x04\n" +
+	"$api/mesh/v1alpha1/rule_version.proto\x12\x13dubbo.mesh.v1alpha1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf7\x03\n" +
 	"\vRuleVersion\x12(\n" +
 	"\x10parent_rule_kind\x18\x01 \x01(\tR\x0eparentRuleKind\x12(\n" +
 	"\x10parent_rule_mesh\x18\x02 \x01(\tR\x0eparentRuleMesh\x12(\n" +
@@ -219,9 +209,9 @@ const file_api_mesh_v1alpha1_rule_version_proto_rawDesc = "" +
 	" \x01(\tR\x06reason\x12-\n" +
 	"\x13rolled_back_from_id\x18\v \x01(\x03R\x10rolledBackFromId\x129\n" +
 	"\n" +
-	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12=\n" +
-	"\fcommitted_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\vcommittedAt\x12\x1b\n" +
-	"\tintent_id\x18\x0e \x01(\x03R\bintentIdB1Z/github.com/apache/dubbo-admin/api/mesh/v1alpha1b\x06proto3"
+	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12;\n" +
+	"\vrecorded_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"recordedAtB1Z/github.com/apache/dubbo-admin/api/mesh/v1alpha1b\x06proto3"
 
 var (
 	file_api_mesh_v1alpha1_rule_version_proto_rawDescOnce sync.Once
@@ -242,7 +232,7 @@ var file_api_mesh_v1alpha1_rule_version_proto_goTypes = []any{
 }
 var file_api_mesh_v1alpha1_rule_version_proto_depIdxs = []int32{
 	1, // 0: dubbo.mesh.v1alpha1.RuleVersion.created_at:type_name -> google.protobuf.Timestamp
-	1, // 1: dubbo.mesh.v1alpha1.RuleVersion.committed_at:type_name -> google.protobuf.Timestamp
+	1, // 1: dubbo.mesh.v1alpha1.RuleVersion.recorded_at:type_name -> google.protobuf.Timestamp
 	2, // [2:2] is the sub-list for method output_type
 	2, // [2:2] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name

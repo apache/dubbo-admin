@@ -23,26 +23,14 @@ import (
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-// Store persists committed rule-version ledgers and unfinished mutation
-// intents. Implementations must keep intent state transitions conditional so
-// competing console/subscriber paths cannot both own the same commit.
+// Store persists immutable rule-version history. Implementations append audit
+// entries and expose parent-rule queries; they are not part of rule-write
+// consistency.
 type Store interface {
 	InsertVersion(ctx context.Context, req InsertRequest, maxVersions int64) (*Version, error)
-	CreateIntent(ctx context.Context, req InsertRequest) (*Intent, error)
-	GetIntent(id int64) (*Intent, error)
-	OpenIntent(kind coremodel.ResourceKind, resourceKey string) (*Intent, error)
-	MarkIntentApplied(ctx context.Context, id int64) error
-	MarkIntentOutcomeUnknown(ctx context.Context, id int64, message string) error
-	MarkIntentObserved(ctx context.Context, id int64, op Operation, contentHash, specJSON string) error
-	MarkIntentFailed(ctx context.Context, id int64, message string) error
-	CommitIntent(ctx context.Context, id int64, maxVersions int64) (*Version, error)
-	CleanupIntent(id int64, terminalStatus IntentStatus) error
-	ListOpenIntents() ([]Intent, error)
-	ListTerminalIntents() ([]Intent, error)
 	ListLatestVersions(kind coremodel.ResourceKind) ([]Version, error)
 	ListVersions(kind coremodel.ResourceKind, resourceKey string) ([]Version, error)
-	LedgerSnapshot(kind coremodel.ResourceKind, resourceKey string) (*LedgerSnapshot, error)
+	HistorySnapshot(kind coremodel.ResourceKind, resourceKey string) (*HistorySnapshot, error)
 	GetVersion(kind coremodel.ResourceKind, resourceKey string, id int64) (*Version, error)
 	LatestVersion(kind coremodel.ResourceKind, resourceKey string) (*Version, error)
-	CheckExpectedVersion(kind coremodel.ResourceKind, resourceKey string, expected *int64) error
 }

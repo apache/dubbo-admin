@@ -27,7 +27,7 @@ type idGenerator interface {
 }
 
 // IDGenerator creates positive int64 identifiers. VersionNo, not this ID,
-// defines ledger ordering, so randomness plus store-level conflict retry is
+// defines history ordering, so randomness plus store-level conflict retry is
 // enough and avoids clock-coupled ID behavior.
 type IDGenerator struct{}
 
