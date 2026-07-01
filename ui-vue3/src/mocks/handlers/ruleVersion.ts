@@ -50,7 +50,7 @@ const version = (
   versionNo: number,
   operation: RuleVersion['operation'],
   source: RuleVersion['source'],
-  isCurrent: boolean,
+  isLatestRecorded: boolean,
   marker = `v${versionNo}`
 ): RuleVersion => ({
   id,
@@ -63,10 +63,10 @@ const version = (
   specJson: spec(ruleName, marker),
   source,
   operation,
-  author: source === 'UPSTREAM' ? 'system:upstream' : 'user name',
+  author: 'user name',
   createdAt: `2026-05-${(20 + versionNo).toString().padStart(2, '0')}T08:00:00Z`,
   recordedAt: `2026-05-${(20 + versionNo).toString().padStart(2, '0')}T08:01:00Z`,
-  isCurrent
+  isLatestRecorded
 })
 
 const fixtureVersions = (kind: TrafficRuleKind, ruleName: string): RuleVersion[] => {
@@ -88,24 +88,25 @@ const fixtureVersions = (kind: TrafficRuleKind, ruleName: string): RuleVersion[]
       return [
         version(kind, ruleName, '1005', 5, 'UPDATE', 'ADMIN', true),
         version(kind, ruleName, '1004', 4, 'UPDATE', 'ADMIN', false),
-        version(kind, ruleName, '1003', 3, 'UPDATE', 'UPSTREAM', false),
+        version(kind, ruleName, '1003', 3, 'UPDATE', 'ADMIN', false),
         version(kind, ruleName, '1002', 2, 'UPDATE', 'ADMIN', false),
         version(kind, ruleName, '1001', 1, 'CREATE', 'BOOTSTRAP', false)
       ]
   }
 }
 
-const currentVersionOf = (versions: RuleVersion[]) => versions.find((version) => version.isCurrent)
+const latestRecordedVersionOf = (versions: RuleVersion[]) =>
+  versions.find((version) => version.isLatestRecorded)
 
 const versionList = (versions: RuleVersion[]): RuleVersionList => {
-  const current = currentVersionOf(versions)
+  const latestRecorded = latestRecordedVersionOf(versions)
   const head = versions[0]
   return {
     items: versions,
     total: versions.length,
-    currentVersionId: current?.id,
-    currentVersionNo: current?.versionNo,
-    deleted: Boolean(!current && head?.operation === 'DELETE')
+    latestRecordedVersionId: latestRecorded?.id,
+    latestRecordedVersionNo: latestRecorded?.versionNo,
+    latestRecordedDeleted: Boolean(head?.operation === 'DELETE')
   }
 }
 
@@ -166,7 +167,7 @@ const buildVersionHandlersForKind = (kind: TrafficRuleKind): HttpHandler[] => [
     const leftIndex = versions.findIndex((item) => item.id === versionId)
     const right =
       against === 'current'
-        ? currentVersionOf(versions)
+        ? latestRecordedVersionOf(versions)
         : against === 'previous'
           ? versions[leftIndex + 1]
           : versions.find((item) => item.id === against)
@@ -190,12 +191,12 @@ const buildVersionHandlersForKind = (kind: TrafficRuleKind): HttpHandler[] => [
       if (!target) return notFoundResp('rule version not found')
       if (target.operation === 'DELETE')
         return bizError('InvalidArgument', 'cannot roll back to a deleted rule version', 400)
-      const current = currentVersionOf(versions)
+      const latestRecorded = latestRecordedVersionOf(versions)
 
       return success({
         rolledBackFromId: target.id,
         versionId: '9901',
-        versionNo: (current?.versionNo ?? 0) + 1,
+        versionNo: (latestRecorded?.versionNo ?? 0) + 1,
         source: 'ROLLBACK',
         historyRecorded: true
       })

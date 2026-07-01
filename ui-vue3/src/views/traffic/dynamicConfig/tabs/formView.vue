@@ -61,8 +61,8 @@
             :labelStyle="{ fontWeight: 'bold' }"
           >
             <a-space>
-              <a-tag v-if="currentVersionNo !== undefined" color="blue">
-                current v{{ currentVersionNo }}
+              <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue">
+                latest recorded v{{ latestRecordedVersionNo }}
               </a-tag>
               <a-button type="text" style="color: #0a90d5" @click="isHistoryOpen = true">
                 {{ $t('flowControlDomain.versionRecords') }}
@@ -407,7 +407,7 @@
       kind="configurator"
       :rule-name="pathId"
       :title="formViewData.basicInfo.ruleName || pathId"
-      @current-version-no-change="currentVersionNo = $event"
+      @latest-recorded-version-no-change="latestRecordedVersionNo = $event"
     />
   </div>
 </template>
@@ -435,7 +435,7 @@ const router = useRouter()
 const pathId = computed(() => String(route.params?.pathId || ''))
 const isEdit = ref(route.params.isEdit === '1')
 const isHistoryOpen = ref(false)
-const currentVersionNo = ref<number | undefined>(undefined)
+const latestRecordedVersionNo = ref<number | undefined>(undefined)
 
 const formViewData: ViewDataModel = reactive(new ViewDataModel())
 

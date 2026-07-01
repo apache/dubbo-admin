@@ -23,40 +23,40 @@ import {
 } from '@/api/service/traffic'
 import { HTTP_STATUS } from '@/base/http/constants'
 
-export interface CurrentVersionState {
+export interface LatestRecordedState {
   id?: string
   versionNo?: number
-  deleted: boolean
+  latestRecordedDeleted: boolean
 }
 
-export const currentVersionStateFromItems = (items: RuleVersion[]): CurrentVersionState => {
-  const current = items.find((item) => item.isCurrent)
+export const latestRecordedStateFromItems = (items: RuleVersion[]): LatestRecordedState => {
+  const latestRecorded = items.find((item) => item.isLatestRecorded)
   const head = items[0]
   return {
-    id: current?.id,
-    versionNo: current?.versionNo,
-    deleted: !current && head?.operation === 'DELETE'
+    id: latestRecorded?.id,
+    versionNo: latestRecorded?.versionNo,
+    latestRecordedDeleted: Boolean(head?.operation === 'DELETE')
   }
 }
 
-export const currentVersionStateFromList = (list?: RuleVersionList): CurrentVersionState => {
+export const latestRecordedStateFromList = (list?: RuleVersionList): LatestRecordedState => {
   if (!list) {
-    return { deleted: false }
+    return { latestRecordedDeleted: false }
   }
-  if (list.currentVersionId !== undefined || list.deleted !== undefined) {
+  if (list.latestRecordedVersionId !== undefined || list.latestRecordedDeleted !== undefined) {
     return {
-      id: list.currentVersionId,
-      versionNo: list.currentVersionNo,
-      deleted: Boolean(list.deleted)
+      id: list.latestRecordedVersionId,
+      versionNo: list.latestRecordedVersionNo,
+      latestRecordedDeleted: Boolean(list.latestRecordedDeleted)
     }
   }
-  return currentVersionStateFromItems(list.items || [])
+  return latestRecordedStateFromItems(list.items || [])
 }
 
 export const versionDiffLabel = (prefix: string, versionNo?: number): string =>
   typeof versionNo === 'number' && versionNo > 0 ? `${prefix} v${versionNo}` : prefix
 
-export const isCurrentHistoryRequest = (
+export const isLatestRecordedHistoryRequest = (
   requestSeq: number,
   latestSeq: number,
   disposed: boolean
@@ -64,15 +64,15 @@ export const isCurrentHistoryRequest = (
   return !disposed && requestSeq === latestSeq
 }
 
-export const fetchCurrentVersionState = async (
+export const fetchLatestRecordedState = async (
   kind: TrafficRuleKind,
   ruleName: string
-): Promise<CurrentVersionState> => {
+): Promise<LatestRecordedState> => {
   const res = await listRuleVersionsAPI(kind, ruleName)
   if (res.code === HTTP_STATUS.SUCCESS) {
-    return currentVersionStateFromList(res.data)
+    return latestRecordedStateFromList(res.data)
   }
-  return { deleted: false }
+  return { latestRecordedDeleted: false }
 }
 
 export const formatRuleSpec = (specJson?: string): string => {

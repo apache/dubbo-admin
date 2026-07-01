@@ -23,8 +23,8 @@
           <a-flex justify="space-between" style="width: 100%">
             <a-typography-title :level="3"> 基础信息</a-typography-title>
             <a-space>
-              <a-tag v-if="currentVersionNo !== undefined" color="blue">
-                current v{{ currentVersionNo }}
+              <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue">
+                latest recorded v{{ latestRecordedVersionNo }}
               </a-tag>
               <a-button type="text" style="color: #0a90d5" @click="isHistoryOpen = true">
                 {{ $t('flowControlDomain.versionRecords') }}
@@ -188,7 +188,7 @@
       :title="conditionRuleDetail.key || ruleName"
       kind="condition-rule"
       :rule-name="ruleName"
-      @current-version-no-change="currentVersionNo = $event"
+      @latest-recorded-version-no-change="latestRecordedVersionNo = $event"
     />
   </div>
 </template>
@@ -219,7 +219,7 @@ const route = useRoute()
 const ruleName = computed(() => String(route.params?.ruleName || ''))
 
 const isHistoryOpen = ref(false)
-const currentVersionNo = ref<number | undefined>(undefined)
+const latestRecordedVersionNo = ref<number | undefined>(undefined)
 
 const toClipboard = useClipboard().toClipboard
 

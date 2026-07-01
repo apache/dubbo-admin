@@ -20,7 +20,7 @@
     v-model:open="openProxy"
     :title="title"
     :items="items"
-    :current-version-no="currentVersionNo"
+    :latest-recorded-version-no="latestRecordedVersionNo"
     :loading="loading"
     @view-json="openVersionJson"
     @diff-current="openVersionDiff"
@@ -62,22 +62,15 @@
     @ok="handleRollbackConfirm"
     :confirmLoading="rollbackLoading"
   >
-    <a-alert
-      v-if="currentDeleted"
-      :message="t('ruleVersionDomain.rollbackDeletedWarning')"
-      type="warning"
-      show-icon
-      style="margin-bottom: 16px"
-    />
     <div v-if="rollbackTarget" style="margin-bottom: 16px">
       <div>
         <strong>{{ t('ruleVersionDomain.targetVersion') }}:</strong>
         v{{ rollbackTarget.versionNo }}
       </div>
       <div>
-        <strong>{{ t('ruleVersionDomain.currentVersion') }}:</strong>
-        {{ currentVersionNo ? `v${currentVersionNo}` : t('ruleVersionDomain.none') }}
-        <span v-if="currentVersionId">({{ currentVersionId }})</span>
+        <strong>{{ t('ruleVersionDomain.latestRecordedVersion') }}:</strong>
+        {{ latestRecordedVersionNo ? `v${latestRecordedVersionNo}` : t('ruleVersionDomain.none') }}
+        <span v-if="latestRecordedVersionId">({{ latestRecordedVersionId }})</span>
       </div>
       <div>
         <strong>{{ t('ruleVersionDomain.source') }}:</strong>
@@ -124,9 +117,9 @@ import {
 import RuleHistoryDrawer from './RuleHistoryDrawer.vue'
 import RuleDiffEditor from './RuleDiffEditor.vue'
 import {
-  currentVersionStateFromList,
+  latestRecordedStateFromList,
   formatRuleSpec,
-  isCurrentHistoryRequest,
+  isLatestRecordedHistoryRequest,
   versionDiffLabel
 } from './ruleVersion'
 import dayjs from 'dayjs'
@@ -140,8 +133,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:open', value: boolean): void
-  (e: 'current-version-change', value: string | undefined): void
-  (e: 'current-version-no-change', value: number | undefined): void
+  (e: 'latest-recorded-version-change', value: string | undefined): void
+  (e: 'latest-recorded-version-no-change', value: number | undefined): void
 }>()
 
 const { t } = useI18n()
@@ -152,9 +145,8 @@ const openProxy = computed({
 })
 
 const items = ref<RuleVersion[]>([])
-const currentVersionId = ref<string | undefined>(undefined)
-const currentVersionNo = ref<number | undefined>(undefined)
-const currentDeleted = ref(false)
+const latestRecordedVersionId = ref<string | undefined>(undefined)
+const latestRecordedVersionNo = ref<number | undefined>(undefined)
 const loading = ref(false)
 const versionJsonOpen = ref(false)
 const versionJson = ref('')
@@ -162,7 +154,7 @@ const versionDiffOpen = ref(false)
 const versionDiffLeft = ref('')
 const versionDiffRight = ref('')
 const versionDiffLeftLabel = ref(t('ruleVersionDomain.targetVersion'))
-const versionDiffRightLabel = ref(t('ruleVersionDomain.currentVersion'))
+const versionDiffRightLabel = ref(t('ruleVersionDomain.currentRule'))
 const rollbackConfirmOpen = ref(false)
 const rollbackTarget = ref<RuleVersion | null>(null)
 const rollbackReason = ref('')
@@ -173,7 +165,6 @@ let disposed = false
 
 const sourceLabels: Record<string, string> = {
   ADMIN: 'ruleVersionDomain.sourceAdmin',
-  UPSTREAM: 'ruleVersionDomain.sourceUpstream',
   BOOTSTRAP: 'ruleVersionDomain.sourceBootstrap',
   ROLLBACK: 'ruleVersionDomain.sourceRollback'
 }
@@ -201,7 +192,7 @@ const nextOperationToken = (targetId?: string): OperationToken => ({
 // Async drawer actions outlive loading flags when the drawer is closed or a
 // different rule is selected. The token keeps stale responses from reopening
 // modals or overwriting state for the next rule.
-const isCurrentOperation = (token: OperationToken, targetId = token.targetId) =>
+const isLatestRecordedOperation = (token: OperationToken, targetId = token.targetId) =>
   !disposed &&
   token.seq === operationSeq &&
   token.open &&
@@ -218,36 +209,34 @@ async function loadHistory() {
   const ruleName = props.ruleName
   if (!props.open || !ruleName || ruleName === '_tmp') {
     items.value = []
-    currentVersionId.value = undefined
-    currentVersionNo.value = undefined
-    currentDeleted.value = false
-    emit('current-version-change', undefined)
-    emit('current-version-no-change', undefined)
+    latestRecordedVersionId.value = undefined
+    latestRecordedVersionNo.value = undefined
+    emit('latest-recorded-version-change', undefined)
+    emit('latest-recorded-version-no-change', undefined)
     return
   }
 
   loading.value = true
   try {
     const res = await listRuleVersionsAPI(kind, ruleName)
-    if (!isCurrentHistoryRequest(seq, requestSeq, disposed)) {
+    if (!isLatestRecordedHistoryRequest(seq, requestSeq, disposed)) {
       return
     }
     if (res?.code === HTTP_STATUS.SUCCESS) {
       items.value = res.data?.items || []
-      const current = currentVersionStateFromList(res.data)
-      currentVersionId.value = current.id
-      currentVersionNo.value = current.versionNo
-      currentDeleted.value = current.deleted
-      emit('current-version-change', currentVersionId.value)
-      emit('current-version-no-change', currentVersionNo.value)
+      const latestRecorded = latestRecordedStateFromList(res.data)
+      latestRecordedVersionId.value = latestRecorded.id
+      latestRecordedVersionNo.value = latestRecorded.versionNo
+      emit('latest-recorded-version-change', latestRecordedVersionId.value)
+      emit('latest-recorded-version-no-change', latestRecordedVersionNo.value)
     }
   } catch (e: any) {
-    if (!isCurrentHistoryRequest(seq, requestSeq, disposed)) {
+    if (!isLatestRecordedHistoryRequest(seq, requestSeq, disposed)) {
       return
     }
     throw e
   } finally {
-    if (isCurrentHistoryRequest(seq, requestSeq, disposed)) {
+    if (isLatestRecordedHistoryRequest(seq, requestSeq, disposed)) {
       loading.value = false
     }
   }
@@ -262,7 +251,7 @@ const openVersionDiff = async (item: RuleVersion) => {
   const token = nextOperationToken(item.id)
   try {
     const res = await diffRuleVersionAPI(token.kind, token.ruleName, item.id)
-    if (!isCurrentOperation(token, item.id)) {
+    if (!isLatestRecordedOperation(token, item.id)) {
       return
     }
     if (res?.code === HTTP_STATUS.SUCCESS) {
@@ -272,13 +261,14 @@ const openVersionDiff = async (item: RuleVersion) => {
         t('ruleVersionDomain.targetVersion'),
         res.data.left?.versionNo
       )
-      versionDiffRightLabel.value = currentDeleted.value
-        ? t('ruleVersionDomain.currentDeleted')
-        : versionDiffLabel(t('ruleVersionDomain.currentVersion'), res.data.right?.versionNo)
+      versionDiffRightLabel.value = versionDiffLabel(
+        t('ruleVersionDomain.currentRule'),
+        res.data.right?.versionNo
+      )
       versionDiffOpen.value = true
     }
   } catch (e: any) {
-    if (isCurrentOperation(token, item.id)) {
+    if (isLatestRecordedOperation(token, item.id)) {
       message.error(e?.message || t('ruleVersionDomain.diffFailed'))
     }
   }
@@ -307,26 +297,30 @@ const handleRollbackConfirm = async () => {
       target.id,
       rollbackReason.value
     )
-    if (!isCurrentOperation(token, target.id) || rollbackTarget.value?.id !== target.id) {
+    if (!isLatestRecordedOperation(token, target.id) || rollbackTarget.value?.id !== target.id) {
       return
     }
     if (res?.code === HTTP_STATUS.SUCCESS) {
       const versionNo = res.data?.versionNo
-      message.success(
-        versionNo
-          ? t('ruleVersionDomain.rollbackSuccessWithVersion', { versionNo })
-          : t('ruleVersionDomain.rollbackSuccess')
-      )
+      if (res.data?.historyRecorded === false) {
+        message.warning(t('ruleVersionDomain.rollbackHistoryRecordFailed'))
+      } else {
+        message.success(
+          versionNo
+            ? t('ruleVersionDomain.rollbackSuccessWithVersion', { versionNo })
+            : t('ruleVersionDomain.rollbackSuccess')
+        )
+      }
       rollbackConfirmOpen.value = false
       await loadHistory()
     }
   } catch (e: any) {
-    if (!isCurrentOperation(token, target.id) || rollbackTarget.value?.id !== target.id) {
+    if (!isLatestRecordedOperation(token, target.id) || rollbackTarget.value?.id !== target.id) {
       return
     }
     message.error(e?.message || t('ruleVersionDomain.rollbackFailed'))
   } finally {
-    if (isCurrentOperation(token, target.id)) {
+    if (isLatestRecordedOperation(token, target.id)) {
       rollbackLoading.value = false
     }
   }

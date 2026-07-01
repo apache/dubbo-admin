@@ -26,8 +26,8 @@
     <template #title>
       <div class="drawer-title">
         <a-typography-text strong>{{ title }}</a-typography-text>
-        <a-tag v-if="currentVersionNo !== undefined" color="blue"
-          >{{ t('ruleVersionDomain.current') }} v{{ currentVersionNo }}</a-tag
+        <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue"
+          >{{ t('ruleVersionDomain.latestRecorded') }} v{{ latestRecordedVersionNo }}</a-tag
         >
       </div>
     </template>
@@ -39,14 +39,14 @@
           v-for="item in items"
           :key="item.id"
           class="history-item"
-          :class="{ current: item.isCurrent }"
+          :class="{ current: item.isLatestRecorded }"
         >
           <div class="history-head">
             <a-space wrap>
               <a-tag color="geekblue">v{{ item.versionNo }}</a-tag>
               <a-tag>{{ sourceLabel(item.source) }}</a-tag>
-              <a-tag v-if="item.isCurrent" color="green">{{
-                t('ruleVersionDomain.current')
+              <a-tag v-if="item.isLatestRecorded" color="green">{{
+                t('ruleVersionDomain.latestRecorded')
               }}</a-tag>
             </a-space>
           </div>
@@ -86,7 +86,7 @@ defineProps<{
   open: boolean
   title: string
   items: RuleVersion[]
-  currentVersionNo?: number
+  latestRecordedVersionNo?: number
   loading?: boolean
 }>()
 
@@ -96,7 +96,6 @@ const { t } = useI18n()
 
 const sourceLabels: Record<string, string> = {
   ADMIN: 'ruleVersionDomain.sourceAdmin',
-  UPSTREAM: 'ruleVersionDomain.sourceUpstream',
   BOOTSTRAP: 'ruleVersionDomain.sourceBootstrap',
   ROLLBACK: 'ruleVersionDomain.sourceRollback'
 }
@@ -109,10 +108,11 @@ const createdAtLabel = (createdAt: string) => dayjs(createdAt).format('YYYY/M/D 
 
 // The backend rejects these cases as well; the UI disables them to avoid
 // offering a misleading rollback action.
-const isRollbackDisabled = (item: RuleVersion) => item.isCurrent || item.operation === 'DELETE'
+const isRollbackDisabled = (item: RuleVersion) =>
+  item.isLatestRecorded || item.operation === 'DELETE'
 
 const rollbackDisabledReason = (item: RuleVersion) => {
-  if (item.isCurrent) return t('ruleVersionDomain.rollbackCurrentDisabled')
+  if (item.isLatestRecorded) return t('ruleVersionDomain.rollbackLatestRecordedDisabled')
   if (item.operation === 'DELETE') return t('ruleVersionDomain.rollbackDeleteDisabled')
   return ''
 }

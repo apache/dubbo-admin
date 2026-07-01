@@ -24,8 +24,8 @@
             <a-row style="width: 100%" justify="end">
               <a-col v-if="!viewData.isAdd">
                 <a-space>
-                  <a-tag v-if="currentVersionNo !== undefined" color="blue">
-                    current v{{ currentVersionNo }}
+                  <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue">
+                    latest recorded v{{ latestRecordedVersionNo }}
                   </a-tag>
                   <a-button type="text" style="color: #0a90d5" @click="isHistoryOpen = true">
                     {{ $t('flowControlDomain.versionRecords') }}
@@ -75,7 +75,7 @@
     kind="configurator"
     :rule-name="pathId"
     :title="ruleName || pathId"
-    @current-version-no-change="currentVersionNo = $event"
+    @latest-recorded-version-no-change="latestRecordedVersionNo = $event"
   />
 </template>
 
@@ -108,7 +108,7 @@ const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
 const YAMLValue = ref()
 const initValue = ref()
 const ruleName = ref('')
-const currentVersionNo = ref<number | undefined>(undefined)
+const latestRecordedVersionNo = ref<number | undefined>(undefined)
 
 onMounted(async () => {
   await initConfig()

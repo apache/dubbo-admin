@@ -75,7 +75,7 @@ vi.mock('./RuleDiffEditor.vue', () => ({
   }
 }))
 
-const version = (id: string, versionNo: number, isCurrent: boolean): RuleVersion => ({
+const version = (id: string, versionNo: number, isLatestRecorded: boolean): RuleVersion => ({
   id,
   ruleKind: 'ConditionRoute',
   mesh: '',
@@ -88,7 +88,7 @@ const version = (id: string, versionNo: number, isCurrent: boolean): RuleVersion
   operation: 'UPDATE',
   author: 'admin',
   createdAt: '2026-06-19T00:00:00Z',
-  isCurrent
+  isLatestRecorded
 })
 
 const drawerStub = defineComponent({
@@ -198,11 +198,11 @@ describe('RuleHistoryPanel', () => {
       .mockResolvedValueOnce({
         code: HTTP_STATUS.SUCCESS,
         data: {
-          items: [version('new-current', 7, true)],
+          items: [version('new-latest-recorded', 7, true)],
           total: 1,
-          currentVersionId: 'new-current',
-          currentVersionNo: 7,
-          deleted: false
+          latestRecordedVersionId: 'new-latest-recorded',
+          latestRecordedVersionNo: 7,
+          latestRecordedDeleted: false
         }
       })
 
@@ -213,19 +213,21 @@ describe('RuleHistoryPanel', () => {
     resolveFirst({
       code: HTTP_STATUS.SUCCESS,
       data: {
-        items: [version('old-current', 3, true)],
+        items: [version('old-latest-recorded', 3, true)],
         total: 1,
-        currentVersionId: 'old-current',
-        currentVersionNo: 3,
-        deleted: false
+        latestRecordedVersionId: 'old-latest-recorded',
+        latestRecordedVersionNo: 3,
+        latestRecordedDeleted: false
       }
     })
     await flushPromises()
 
-    expect(wrapper.emitted('current-version-change')?.at(-1)).toEqual(['new-current'])
-    expect(wrapper.emitted('current-version-no-change')?.at(-1)).toEqual([7])
-    expect(wrapper.text()).toContain('rollback-new-current')
-    expect(wrapper.text()).not.toContain('rollback-old-current')
+    expect(wrapper.emitted('latest-recorded-version-change')?.at(-1)).toEqual([
+      'new-latest-recorded'
+    ])
+    expect(wrapper.emitted('latest-recorded-version-no-change')?.at(-1)).toEqual([7])
+    expect(wrapper.text()).toContain('rollback-new-latest-recorded')
+    expect(wrapper.text()).not.toContain('rollback-old-latest-recorded')
   })
 
   it('ignores stale rollback success after ruleName changes', async () => {
@@ -235,9 +237,9 @@ describe('RuleHistoryPanel', () => {
         data: {
           items: [version('old-target', 1, false)],
           total: 1,
-          currentVersionId: 'old-current',
-          currentVersionNo: 2,
-          deleted: false
+          latestRecordedVersionId: 'old-latest-recorded',
+          latestRecordedVersionNo: 2,
+          latestRecordedDeleted: false
         }
       })
       .mockResolvedValueOnce({
@@ -245,9 +247,9 @@ describe('RuleHistoryPanel', () => {
         data: {
           items: [version('new-target', 3, false)],
           total: 1,
-          currentVersionId: 'new-current',
-          currentVersionNo: 4,
-          deleted: false
+          latestRecordedVersionId: 'new-latest-recorded',
+          latestRecordedVersionNo: 4,
+          latestRecordedDeleted: false
         }
       })
     let resolveRollback: (value: unknown) => void = () => undefined

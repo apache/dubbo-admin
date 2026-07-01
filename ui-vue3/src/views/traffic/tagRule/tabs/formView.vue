@@ -99,8 +99,8 @@
           </a-descriptions-item>
           <a-descriptions-item label="版本历史" :labelStyle="{ fontWeight: 'bold' }">
             <a-space>
-              <a-tag v-if="currentVersionNo !== undefined" color="blue"
-                >current v{{ currentVersionNo }}</a-tag
+              <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue"
+                >latest recorded v{{ latestRecordedVersionNo }}</a-tag
               >
               <a-button type="text" style="color: #0a90d5" @click="isHistoryOpen = true">
                 {{ $t('flowControlDomain.versionRecords') }}
@@ -125,7 +125,7 @@
       :title="tagRuleDetail.key || ruleName"
       kind="tag-rule"
       :rule-name="ruleName"
-      @current-version-no-change="currentVersionNo = $event"
+      @latest-recorded-version-no-change="latestRecordedVersionNo = $event"
     />
 
     <a-card
@@ -183,7 +183,7 @@ const {
 
 const toClipboard = useClipboard().toClipboard
 const isHistoryOpen = ref(false)
-const currentVersionNo = ref<number | undefined>(undefined)
+const latestRecordedVersionNo = ref<number | undefined>(undefined)
 
 function copyIt(v: string) {
   message.success(globalProperties.$t('messageDomain.success.copy'))

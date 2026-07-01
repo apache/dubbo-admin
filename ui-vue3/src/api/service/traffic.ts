@@ -30,22 +30,22 @@ export interface RuleVersion {
   versionNo: number
   contentHash: string
   specJson: string
-  source: 'ADMIN' | 'UPSTREAM' | 'BOOTSTRAP' | 'ROLLBACK' | string
+  source: 'ADMIN' | 'BOOTSTRAP' | 'ROLLBACK' | string
   operation: 'CREATE' | 'UPDATE' | 'DELETE' | string
   author: string
   reason?: string
   rolledBackFromId?: string
   createdAt: string
   recordedAt?: string
-  isCurrent: boolean
+  isLatestRecorded: boolean
 }
 
 export interface RuleVersionList {
   items: RuleVersion[]
   total: number
-  currentVersionId?: string
-  currentVersionNo?: number
-  deleted?: boolean
+  latestRecordedVersionId?: string
+  latestRecordedVersionNo?: number
+  latestRecordedDeleted?: boolean
 }
 
 export interface RuleVersionDiffSide {
