@@ -35,9 +35,9 @@ import (
 // DeleteSpecJSON is the canonical snapshot stored for a rule delete marker.
 const DeleteSpecJSON = "{}"
 
-// NormalizeSpec returns canonical JSON and its hash for stable comparisons.
+// NormalizeSpec returns the spec hash followed by canonical JSON for stable comparisons.
 // It does not validate whether the spec is acceptable to the registry.
-func NormalizeSpec(spec coremodel.ResourceSpec) (string, string, error) {
+func NormalizeSpec(spec coremodel.ResourceSpec) (specHash string, specJSON string, err error) {
 	if spec == nil {
 		return HashSpecJSON(DeleteSpecJSON), DeleteSpecJSON, nil
 	}
@@ -66,7 +66,7 @@ func NormalizeSpec(spec coremodel.ResourceSpec) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	specJSON := string(canonical)
+	specJSON = string(canonical)
 	return HashSpecJSON(specJSON), specJSON, nil
 }
 

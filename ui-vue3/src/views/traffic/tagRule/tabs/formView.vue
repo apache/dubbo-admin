@@ -97,7 +97,10 @@
               }}
             </a-typography-paragraph>
           </a-descriptions-item>
-          <a-descriptions-item label="版本历史" :labelStyle="{ fontWeight: 'bold' }">
+          <a-descriptions-item
+            :label="$t('flowControlDomain.versionRecords')"
+            :labelStyle="{ fontWeight: 'bold' }"
+          >
             <a-space>
               <a-tag v-if="latestRecordedVersionNo !== undefined" color="blue"
                 >latest recorded v{{ latestRecordedVersionNo }}</a-tag
