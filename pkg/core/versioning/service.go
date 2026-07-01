@@ -59,11 +59,11 @@ func (s *Service) List(kind coremodel.ResourceKind, mesh, ruleName string) (*Lis
 	if err != nil {
 		return nil, err
 	}
-	result := &ListResult{Items: snapshot.Versions, Total: int64(len(snapshot.Versions)), Deleted: snapshot.Deleted}
-	if snapshot.Head != nil && !snapshot.Deleted {
-		currentID := snapshot.Head.ID
-		result.CurrentVersionID = &currentID
-		result.CurrentVersionNo = snapshot.Head.VersionNo
+	result := &ListResult{Items: snapshot.Versions, Total: int64(len(snapshot.Versions)), LatestRecordedDeleted: snapshot.Deleted}
+	if snapshot.Head != nil {
+		latestID := snapshot.Head.ID
+		result.LatestRecordedVersionID = &latestID
+		result.LatestRecordedVersionNo = snapshot.Head.VersionNo
 	}
 	return result, nil
 }
@@ -81,8 +81,8 @@ func (s *Service) Get(kind coremodel.ResourceKind, mesh, ruleName string, id int
 	if err != nil {
 		return nil, err
 	}
-	if snapshot.Head != nil && !snapshot.Deleted {
-		version.IsCurrent = version.ID == snapshot.Head.ID
+	if snapshot.Head != nil {
+		version.IsLatestRecorded = version.ID == snapshot.Head.ID
 	}
 	return version, nil
 }
@@ -123,15 +123,7 @@ func (s *Service) diffRight(kind coremodel.ResourceKind, mesh, ruleName string, 
 		}
 		return nil, ErrVersionNotFound
 	case "", "current":
-		resourceKey := coremodel.BuildResourceKey(mesh, ruleName)
-		snapshot, err := s.store.HistorySnapshot(kind, resourceKey)
-		if err != nil {
-			return nil, err
-		}
-		if snapshot.Head == nil {
-			return nil, ErrVersionNotFound
-		}
-		return snapshot.Head, nil
+		return nil, bizerror.New(bizerror.InvalidArgument, "current diff requires ResourceManager state")
 	default:
 		againstID, err := strconv.ParseInt(against, 10, 64)
 		if err != nil {

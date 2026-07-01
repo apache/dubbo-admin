@@ -179,6 +179,23 @@ func TestUpdateAppendsBaselineBeforeFirstHistory(t *testing.T) {
 	assert.Contains(t, versions.Items[1].SpecJSON, "v1")
 }
 
+func TestCreateUpdateDeleteAppendHistory(t *testing.T) {
+	ctx := setupRollbackTestEnv(t)
+
+	require.NoError(t, CreateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v1"), RuleMutationOptions{Author: "admin"}))
+	require.NoError(t, UpdateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v2"), RuleMutationOptions{Author: "admin"}))
+	require.NoError(t, DeleteConditionRuleWithOptions(ctx, "demo-rule", "", RuleMutationOptions{Author: "admin"}))
+
+	versions, err := ListRuleVersions(ctx, kindName("demo-rule"))
+	require.NoError(t, err)
+	require.Len(t, versions.Items, 3)
+	assert.Equal(t, versioning.OperationDelete, versions.Items[0].Operation)
+	assert.Equal(t, versioning.OperationUpdate, versions.Items[1].Operation)
+	assert.Equal(t, versioning.OperationCreate, versions.Items[2].Operation)
+	assert.Equal(t, versioning.SourceAdmin, versions.Items[0].Source)
+	assert.Contains(t, versions.Items[0].SpecJSON, "v2")
+}
+
 func TestMainWriteSucceedsWhenHistoryAppendFails(t *testing.T) {
 	appendErr := errors.New("history append failed")
 	failingVersionStore := &failingResourceStore{err: appendErr}
@@ -196,6 +213,16 @@ func TestMainWriteSucceedsWhenHistoryAppendFails(t *testing.T) {
 	assert.Contains(t, current.String(), "v1")
 
 	versions, err := ListRuleVersions(ctx, kindName("demo-rule"))
+	require.NoError(t, err)
+	assert.Empty(t, versions.Items)
+}
+
+func TestDeleteMissingRuleDoesNotAppendHistory(t *testing.T) {
+	ctx := setupRollbackTestEnv(t)
+
+	require.NoError(t, DeleteConditionRuleWithOptions(ctx, "missing-rule", "", RuleMutationOptions{Author: "admin"}))
+
+	versions, err := ListRuleVersions(ctx, kindName("missing-rule"))
 	require.NoError(t, err)
 	assert.Empty(t, versions.Items)
 }
@@ -222,6 +249,31 @@ func TestRollbackUpsertsAndAppendsRollbackHistory(t *testing.T) {
 	assert.Equal(t, versioning.OperationCreate, versions.Items[0].Operation)
 	require.NotNil(t, versions.Items[0].RolledBackFromID)
 	assert.Equal(t, targetID, *versions.Items[0].RolledBackFromID)
+}
+
+func TestRollbackUpsertSuccessWithHistoryAppendFailure(t *testing.T) {
+	appendErr := errors.New("history append failed")
+	failingVersionStore := &failingResourceStore{err: appendErr}
+	ctx := setupRollbackTestEnv(t, func(base store.ResourceStore) store.ResourceStore {
+		failingVersionStore.ResourceStore = base
+		return failingVersionStore
+	})
+	require.NoError(t, CreateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v1"), RuleMutationOptions{Author: "admin"}))
+	require.NoError(t, UpdateConditionRuleWithOptions(ctx, conditionRule("demo-rule", "v2"), RuleMutationOptions{Author: "admin"}))
+	versions, err := ListRuleVersions(ctx, kindName("demo-rule"))
+	require.NoError(t, err)
+	targetID := versions.Items[1].ID
+	failingVersionStore.failNextAdd = true
+
+	result, err := RollbackRuleVersion(ctx, kindName("demo-rule"), targetID, "restore", "admin")
+	require.NoError(t, err)
+	require.False(t, result.HistoryRecorded)
+	assert.Zero(t, result.VersionID)
+	assert.Zero(t, result.VersionNo)
+	current, exists, err := ctx.rm.GetByKey(meshresource.ConditionRouteKind, "/demo-rule")
+	require.NoError(t, err)
+	require.True(t, exists)
+	assert.Contains(t, current.String(), "v1")
 }
 
 func TestRollbackRejectsDeleteMarker(t *testing.T) {

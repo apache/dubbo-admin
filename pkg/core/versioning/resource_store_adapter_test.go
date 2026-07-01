@@ -47,8 +47,8 @@ func TestResourceStoreAdapter_AppendsAndListsByParentRule(t *testing.T) {
 	require.Len(t, snapshot.Versions, 2)
 	assert.Equal(t, v2.ID, snapshot.Head.ID)
 	assert.Equal(t, int64(2), snapshot.Head.VersionNo)
-	assert.True(t, snapshot.Versions[0].IsCurrent)
-	assert.False(t, snapshot.Versions[1].IsCurrent)
+	assert.True(t, snapshot.Versions[0].IsLatestRecorded)
+	assert.False(t, snapshot.Versions[1].IsLatestRecorded)
 	assert.NotEqual(t, v1.ID, v2.ID)
 }
 
@@ -70,6 +70,36 @@ func TestResourceStoreAdapter_DeleteVersionMarksSnapshotDeleted(t *testing.T) {
 	require.NotNil(t, snapshot.Head)
 	assert.Equal(t, OperationDelete, snapshot.Head.Operation)
 	assert.Contains(t, snapshot.Head.SpecJSON, "v1")
+}
+
+func TestRecordBootstrapStateCreatesOnlyInitialBaseline(t *testing.T) {
+	versionStore := newVersionStore(t)
+	adapter := NewResourceStoreAdapter(versionStore)
+	res := conditionRouteForVersionTest("demo-rule", "v1")
+
+	require.NoError(t, RecordBootstrapState(context.Background(), adapter, 10, res))
+
+	snapshot, err := adapter.HistorySnapshot(meshresource.ConditionRouteKind, res.ResourceKey())
+	require.NoError(t, err)
+	require.Len(t, snapshot.Versions, 1)
+	assert.Equal(t, OperationCreate, snapshot.Versions[0].Operation)
+	assert.Equal(t, SourceBootstrap, snapshot.Versions[0].Source)
+	assert.Contains(t, snapshot.Versions[0].SpecJSON, "v1")
+}
+
+func TestRecordBootstrapStateDoesNotReconcileWhenHistoryExists(t *testing.T) {
+	versionStore := newVersionStore(t)
+	adapter := NewResourceStoreAdapter(versionStore)
+	res := conditionRouteForVersionTest("demo-rule", "v1")
+	require.NoError(t, RecordBootstrapState(context.Background(), adapter, 10, res))
+
+	require.NoError(t, RecordBootstrapState(context.Background(), adapter, 10, conditionRouteForVersionTest("demo-rule", "v2-outside-history")))
+
+	snapshot, err := adapter.HistorySnapshot(meshresource.ConditionRouteKind, res.ResourceKey())
+	require.NoError(t, err)
+	require.Len(t, snapshot.Versions, 1)
+	assert.Equal(t, OperationCreate, snapshot.Versions[0].Operation)
+	assert.Contains(t, snapshot.Versions[0].SpecJSON, "v1")
 }
 
 func newVersionStore(t *testing.T) store.ManagedResourceStore {

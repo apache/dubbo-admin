@@ -54,12 +54,12 @@ type RuleVersion struct {
 	SpecJson string `protobuf:"bytes,6,opt,name=spec_json,json=specJson,proto3" json:"spec_json,omitempty"` // JSON-serialized rule spec at this version
 	// Mutation context
 	Operation string `protobuf:"bytes,7,opt,name=operation,proto3" json:"operation,omitempty"` // CREATE, UPDATE, DELETE
-	Source    string `protobuf:"bytes,8,opt,name=source,proto3" json:"source,omitempty"`       // ADMIN, UPSTREAM, BOOTSTRAP, ROLLBACK
+	Source    string `protobuf:"bytes,8,opt,name=source,proto3" json:"source,omitempty"`       // ADMIN, BOOTSTRAP, ROLLBACK
 	Author    string `protobuf:"bytes,9,opt,name=author,proto3" json:"author,omitempty"`       // User or system identifier
 	Reason    string `protobuf:"bytes,10,opt,name=reason,proto3" json:"reason,omitempty"`      // Change description
 	// rolled_back_from_id records the historical version whose snapshot was
 	// re-published to produce this version. It is audit metadata only and MUST NOT
-	// be used as the current-version pointer.
+	// be used as a live-state pointer.
 	RolledBackFromId int64 `protobuf:"varint,11,opt,name=rolled_back_from_id,json=rolledBackFromId,proto3" json:"rolled_back_from_id,omitempty"`
 	// Timestamps
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`

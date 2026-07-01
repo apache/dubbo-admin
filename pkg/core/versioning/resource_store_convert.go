@@ -128,7 +128,7 @@ func protoToVersion(spec *meshproto.RuleVersion, id int64) (*Version, error) {
 		RolledBackFromID: rolledBackFromID,
 		CreatedAt:        createdAt,
 		RecordedAt:       recordedAt,
-		IsCurrent:        false,
+		IsLatestRecorded: false,
 	}, nil
 }
 
@@ -145,10 +145,8 @@ func historySnapshotFromState(state *historyState) *HistorySnapshot {
 	head := snapshot.Versions[0]
 	snapshot.Head = &head
 	snapshot.Deleted = head.Operation == OperationDelete
-	if !snapshot.Deleted {
-		for i := range snapshot.Versions {
-			snapshot.Versions[i].IsCurrent = snapshot.Versions[i].ID == head.ID
-		}
+	for i := range snapshot.Versions {
+		snapshot.Versions[i].IsLatestRecorded = snapshot.Versions[i].ID == head.ID
 	}
 	return snapshot
 }

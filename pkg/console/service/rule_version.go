@@ -117,12 +117,16 @@ func updateRule(ctx consolectx.Context, res coremodel.Resource, opts RuleMutatio
 }
 
 func deleteRule(ctx consolectx.Context, kindName RuleKindName, opts RuleMutationOptions) error {
-	snapshot, err := getExistingRule(ctx, kindName)
+	resourceKey := coremodel.BuildResourceKey(kindName.Mesh, kindName.Name)
+	snapshot, exists, err := ctx.ResourceManager().GetByKey(kindName.Kind, resourceKey)
 	if err != nil {
 		return err
 	}
+	if !exists || snapshot == nil {
+		return nil
+	}
 	ensureBaselineHistoryBestEffort(ctx, snapshot)
-	if err := ctx.ResourceManager().DeleteByKey(kindName.Kind, kindName.Mesh, coremodel.BuildResourceKey(kindName.Mesh, kindName.Name)); err != nil {
+	if err := ctx.ResourceManager().DeleteByKey(kindName.Kind, kindName.Mesh, resourceKey); err != nil {
 		return err
 	}
 	appendRuleHistoryBestEffort(ctx, snapshot, versioning.OperationDelete, versioning.SourceAdmin, opts.Author, "", nil)

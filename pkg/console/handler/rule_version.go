@@ -203,15 +203,15 @@ type ruleVersionAPI struct {
 	RolledBackFromID *string                `json:"rolledBackFromId,omitempty"`
 	CreatedAt        time.Time              `json:"createdAt"`
 	RecordedAt       time.Time              `json:"recordedAt"`
-	IsCurrent        bool                   `json:"isCurrent"`
+	IsLatestRecorded bool                   `json:"isLatestRecorded"`
 }
 
 type ruleVersionListAPI struct {
-	Items            []ruleVersionAPI `json:"items"`
-	Total            int64            `json:"total"`
-	CurrentVersionID *string          `json:"currentVersionId,omitempty"`
-	CurrentVersionNo int64            `json:"currentVersionNo,omitempty"`
-	Deleted          bool             `json:"deleted"`
+	Items                   []ruleVersionAPI `json:"items"`
+	Total                   int64            `json:"total"`
+	LatestRecordedVersionID *string          `json:"latestRecordedVersionId,omitempty"`
+	LatestRecordedVersionNo int64            `json:"latestRecordedVersionNo,omitempty"`
+	LatestRecordedDeleted   bool             `json:"latestRecordedDeleted"`
 }
 
 type ruleVersionDiffAPI struct {
@@ -244,11 +244,11 @@ func versioningAPIData(data any) any {
 			items = append(items, toRuleVersionAPI(&v.Items[i]))
 		}
 		return &ruleVersionListAPI{
-			Items:            items,
-			Total:            v.Total,
-			CurrentVersionID: formatOptionalInt64(v.CurrentVersionID),
-			CurrentVersionNo: v.CurrentVersionNo,
-			Deleted:          v.Deleted,
+			Items:                   items,
+			Total:                   v.Total,
+			LatestRecordedVersionID: formatOptionalInt64(v.LatestRecordedVersionID),
+			LatestRecordedVersionNo: v.LatestRecordedVersionNo,
+			LatestRecordedDeleted:   v.LatestRecordedDeleted,
 		}
 	case *versioning.Version:
 		if v == nil {
@@ -296,7 +296,7 @@ func toRuleVersionAPI(v *versioning.Version) ruleVersionAPI {
 		RolledBackFromID: formatOptionalInt64(v.RolledBackFromID),
 		CreatedAt:        v.CreatedAt,
 		RecordedAt:       v.RecordedAt,
-		IsCurrent:        v.IsCurrent,
+		IsLatestRecorded: v.IsLatestRecorded,
 	}
 }
 

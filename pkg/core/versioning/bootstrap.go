@@ -28,8 +28,8 @@ import (
 
 // RecordBootstrapState creates a best-effort baseline history entry for a rule
 // that already exists before rule history starts tracking it. Bootstrap is not
-// reconciliation: once a rule has any history, startup must not record the
-// current registry state as an UPDATE.
+// reconciliation: once any history exists, startup must not record the current
+// registry state as an UPDATE.
 func RecordBootstrapState(ctx context.Context, store Store, maxVersions int64, res coremodel.Resource) error {
 	if store == nil {
 		return ErrVersionStoreError

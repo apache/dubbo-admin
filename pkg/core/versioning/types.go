@@ -53,8 +53,8 @@ var (
 
 // Version represents a snapshot of a rule's spec at a point in time. Version
 // entries are immutable after creation. Rollback appends a new version, while
-// retention may delete the oldest entries. IsCurrent is derived from the latest
-// history entry at query time and is audit metadata only.
+// retention may delete the oldest entries. IsLatestRecorded is derived from
+// history only; it is not proof that this snapshot equals the live rule.
 type Version struct {
 	ID          int64                  `json:"id"`
 	RuleKind    coremodel.ResourceKind `json:"ruleKind"`
@@ -69,12 +69,11 @@ type Version struct {
 	Author      string                 `json:"author"`
 	Reason      string                 `json:"reason,omitempty"`
 	// RolledBackFromID records the historical version whose snapshot was
-	// re-published to produce this version. It is audit metadata only and must
-	// not be used to decide the current version.
+	// re-published to produce this version. It is audit metadata only.
 	RolledBackFromID *int64    `json:"rolledBackFromId,omitempty"`
 	CreatedAt        time.Time `json:"createdAt"`
 	RecordedAt       time.Time `json:"recordedAt"`
-	IsCurrent        bool      `json:"isCurrent"`
+	IsLatestRecorded bool      `json:"isLatestRecorded"`
 }
 
 type historyState struct {
@@ -105,11 +104,11 @@ type InsertRequest struct {
 }
 
 type ListResult struct {
-	Items            []Version `json:"items"`
-	Total            int64     `json:"total"`
-	CurrentVersionID *int64    `json:"currentVersionId,omitempty"`
-	CurrentVersionNo int64     `json:"currentVersionNo,omitempty"`
-	Deleted          bool      `json:"deleted"`
+	Items                   []Version `json:"items"`
+	Total                   int64     `json:"total"`
+	LatestRecordedVersionID *int64    `json:"latestRecordedVersionId,omitempty"`
+	LatestRecordedVersionNo int64     `json:"latestRecordedVersionNo,omitempty"`
+	LatestRecordedDeleted   bool      `json:"latestRecordedDeleted"`
 }
 
 type DiffResult struct {
