@@ -26,8 +26,6 @@ import (
 	"github.com/apache/dubbo-admin/pkg/core/store"
 )
 
-var _ Store = &ResourceStoreAdapter{}
-
 const parentLockStripes = 256
 const maxIDGenerateAttempts = 16
 

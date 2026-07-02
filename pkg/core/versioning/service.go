@@ -34,10 +34,10 @@ import (
 // ResourceManager and the backing registry.
 type Service struct {
 	maxVersions int64
-	store       Store
+	store       *ResourceStoreAdapter
 }
 
-func NewService(maxVersions int64, store Store) *Service {
+func NewService(maxVersions int64, store *ResourceStoreAdapter) *Service {
 	return &Service{
 		maxVersions: maxVersions,
 		store:       store,

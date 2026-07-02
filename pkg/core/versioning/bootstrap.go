@@ -30,7 +30,7 @@ import (
 // exists before rule history starts tracking it. Bootstrap is not reconciliation:
 // once any history exists, startup must not record the current registry state as
 // an UPDATE.
-func RecordBootstrapState(ctx context.Context, store Store, maxVersions int64, res coremodel.Resource) error {
+func RecordBootstrapState(ctx context.Context, store *ResourceStoreAdapter, maxVersions int64, res coremodel.Resource) error {
 	if store == nil {
 		return ErrVersionStoreError
 	}

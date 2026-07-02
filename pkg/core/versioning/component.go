@@ -45,7 +45,7 @@ type Component interface {
 
 type component struct {
 	service *Service
-	store   Store
+	store   *ResourceStoreAdapter
 }
 
 func (c *component) Type() runtime.ComponentType {
