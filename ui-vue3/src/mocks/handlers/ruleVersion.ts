@@ -190,15 +190,14 @@ const buildVersionHandlersForKind = (kind: TrafficRuleKind): HttpHandler[] => [
       const target = versions.find((item) => item.id === String(params.versionId || '').trim())
       if (!target) return notFoundResp('rule version not found')
       if (target.operation === 'DELETE')
-        return bizError('InvalidArgument', 'cannot roll back to a deleted rule version', 400)
+        return bizError('InvalidArgument', 'cannot roll back to a DELETE marker', 400)
       const latestRecorded = latestRecordedVersionOf(versions)
 
       return success({
         rolledBackFromId: target.id,
         versionId: '9901',
         versionNo: (latestRecorded?.versionNo ?? 0) + 1,
-        source: 'ROLLBACK',
-        historyRecorded: true
+        source: 'ROLLBACK'
       })
     }
   )

@@ -64,9 +64,9 @@ store:
 #  address: root:123456@tcp(127.0.0.1:23306)/dubbo-admin?charset=utf8mb4&parseTime=True&loc=Asia%2FShanghai
 
 # [Optional] version history and rollback for traffic rules.
-# This records lightweight RuleVersion audit history. Live rule state remains
-# in ResourceManager/registry, and history append failures must not block rule
-# mutations. Set maxVersionsPerRule to 0 to disable retention trimming.
+# This records RuleVersion audit history. Supported governance rule mutations
+# fail closed if the version ledger is unavailable or cannot record the
+# mutation. Set maxVersionsPerRule to 0 to disable retention trimming.
 ruleVersioning:
   maxVersionsPerRule: 20
 

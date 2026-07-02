@@ -26,10 +26,10 @@ import (
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-// RecordBootstrapState creates a best-effort baseline history entry for a rule
-// that already exists before rule history starts tracking it. Bootstrap is not
-// reconciliation: once any history exists, startup must not record the current
-// registry state as an UPDATE.
+// RecordBootstrapState creates a baseline history entry for a rule that already
+// exists before rule history starts tracking it. Bootstrap is not reconciliation:
+// once any history exists, startup must not record the current registry state as
+// an UPDATE.
 func RecordBootstrapState(ctx context.Context, store Store, maxVersions int64, res coremodel.Resource) error {
 	if store == nil {
 		return ErrVersionStoreError

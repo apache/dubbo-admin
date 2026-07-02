@@ -96,6 +96,7 @@ const { t } = useI18n()
 
 const sourceLabels: Record<string, string> = {
   ADMIN: 'ruleVersionDomain.sourceAdmin',
+  UPSTREAM: 'ruleVersionDomain.sourceUpstream',
   BOOTSTRAP: 'ruleVersionDomain.sourceBootstrap',
   ROLLBACK: 'ruleVersionDomain.sourceRollback'
 }

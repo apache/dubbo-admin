@@ -20,6 +20,7 @@ package versioning
 import (
 	"context"
 	"errors"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -28,8 +29,8 @@ import (
 	coremodel "github.com/apache/dubbo-admin/pkg/core/resource/model"
 )
 
-// Service provides lightweight rule history operations. RuleVersion entries are
-// audit records and rollback material; rule writes are still owned by
+// Service provides rule history operations. RuleVersion entries are audit
+// records and rollback material; live current state is still owned by
 // ResourceManager and the backing registry.
 type Service struct {
 	maxVersions int64
@@ -43,7 +44,7 @@ func NewService(maxVersions int64, store Store) *Service {
 	}
 }
 
-func (s *Service) ensureEnabled() error {
+func (s *Service) ensureAvailable() error {
 	if s == nil || s.store == nil {
 		return ErrVersionStoreError
 	}
@@ -51,7 +52,7 @@ func (s *Service) ensureEnabled() error {
 }
 
 func (s *Service) List(kind coremodel.ResourceKind, mesh, ruleName string) (*ListResult, error) {
-	if err := s.ensureEnabled(); err != nil {
+	if err := s.ensureAvailable(); err != nil {
 		return nil, err
 	}
 	resourceKey := coremodel.BuildResourceKey(mesh, ruleName)
@@ -69,7 +70,7 @@ func (s *Service) List(kind coremodel.ResourceKind, mesh, ruleName string) (*Lis
 }
 
 func (s *Service) Get(kind coremodel.ResourceKind, mesh, ruleName string, id int64) (*Version, error) {
-	if err := s.ensureEnabled(); err != nil {
+	if err := s.ensureAvailable(); err != nil {
 		return nil, err
 	}
 	resourceKey := coremodel.BuildResourceKey(mesh, ruleName)
@@ -87,8 +88,8 @@ func (s *Service) Get(kind coremodel.ResourceKind, mesh, ruleName string, id int
 	return version, nil
 }
 
-func (s *Service) Diff(kind coremodel.ResourceKind, mesh, ruleName string, id int64, against string) (*DiffResult, error) {
-	if err := s.ensureEnabled(); err != nil {
+func (s *Service) DiffHistoryVersions(kind coremodel.ResourceKind, mesh, ruleName string, id int64, against string) (*DiffResult, error) {
+	if err := s.ensureAvailable(); err != nil {
 		return nil, err
 	}
 	left, err := s.Get(kind, mesh, ruleName, id)
@@ -112,6 +113,9 @@ func (s *Service) diffRight(kind coremodel.ResourceKind, mesh, ruleName string, 
 		if err != nil {
 			return nil, err
 		}
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].VersionNo > list[j].VersionNo
+		})
 		for i := range list {
 			if list[i].ID != id {
 				continue
@@ -123,7 +127,7 @@ func (s *Service) diffRight(kind coremodel.ResourceKind, mesh, ruleName string, 
 		}
 		return nil, ErrVersionNotFound
 	case "", "current":
-		return nil, bizerror.New(bizerror.InvalidArgument, "current diff requires ResourceManager state")
+		return nil, bizerror.New(bizerror.InvalidArgument, "current diff requires live ResourceManager state and is implemented by the console service")
 	default:
 		againstID, err := strconv.ParseInt(against, 10, 64)
 		if err != nil {
@@ -134,7 +138,7 @@ func (s *Service) diffRight(kind coremodel.ResourceKind, mesh, ruleName string, 
 }
 
 func (s *Service) Append(ctx context.Context, res coremodel.Resource, op Operation, source Source, author, reason string, rolledBackFromID *int64) (*Version, error) {
-	if err := s.ensureEnabled(); err != nil {
+	if err := s.ensureAvailable(); err != nil {
 		return nil, err
 	}
 	req, err := BuildInsertRequest(res, op, source, author, reason, rolledBackFromID, time.Now())
@@ -144,19 +148,15 @@ func (s *Service) Append(ctx context.Context, res coremodel.Resource, op Operati
 	return s.store.InsertVersion(ctx, req, s.maxVersions)
 }
 
-func (s *Service) AppendDelete(ctx context.Context, res coremodel.Resource, source Source, author, reason string) (*Version, error) {
-	return s.Append(ctx, res, OperationDelete, source, author, reason, nil)
-}
-
 func (s *Service) LatestVersion(kind coremodel.ResourceKind, mesh, ruleName string) (*Version, error) {
-	if err := s.ensureEnabled(); err != nil {
+	if err := s.ensureAvailable(); err != nil {
 		return nil, err
 	}
 	return s.store.LatestVersion(kind, coremodel.BuildResourceKey(mesh, ruleName))
 }
 
 func (s *Service) HasHistory(kind coremodel.ResourceKind, mesh, ruleName string) (bool, error) {
-	if err := s.ensureEnabled(); err != nil {
+	if err := s.ensureAvailable(); err != nil {
 		return false, err
 	}
 	_, err := s.store.LatestVersion(kind, coremodel.BuildResourceKey(mesh, ruleName))
@@ -176,6 +176,10 @@ func BuildInsertRequest(res coremodel.Resource, op Operation, source Source, aut
 	hash, specJSON, err := NormalizeResource(res)
 	if err != nil {
 		return InsertRequest{}, err
+	}
+	if op == OperationDelete {
+		specJSON = DeleteSpecJSON
+		hash = HashSpecJSON(specJSON)
 	}
 	if strings.TrimSpace(author) == "" {
 		author = "system:unknown"

@@ -372,7 +372,7 @@ const handleChange = (index: number, name: string, keys: string) => {
 
 function transApiData(data: any) {
   if (data) {
-    formViewData.basicInfo.configVerison = data.configVerison
+    formViewData.basicInfo.configVersion = data.configVersion
     formViewData.basicInfo.scope = data.scope
     formViewData.basicInfo.key = data.key
     formViewData.basicInfo.enabled = data.enabled

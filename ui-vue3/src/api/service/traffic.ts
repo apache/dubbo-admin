@@ -30,7 +30,7 @@ export interface RuleVersion {
   versionNo: number
   contentHash: string
   specJson: string
-  source: 'ADMIN' | 'BOOTSTRAP' | 'ROLLBACK' | string
+  source: 'ADMIN' | 'UPSTREAM' | 'BOOTSTRAP' | 'ROLLBACK' | string
   operation: 'CREATE' | 'UPDATE' | 'DELETE' | string
   author: string
   reason?: string
@@ -64,7 +64,6 @@ export interface RollbackRuleVersionResult {
   versionId: string
   versionNo: number
   source: 'ROLLBACK' | string
-  historyRecorded: boolean
 }
 
 const ruleNameForPath = (kind: TrafficRuleKind, ruleName: string): string => {

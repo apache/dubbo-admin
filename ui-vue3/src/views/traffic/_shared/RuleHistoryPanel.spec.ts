@@ -275,8 +275,7 @@ describe('RuleHistoryPanel', () => {
         rolledBackFromId: 'old-target',
         versionId: 'old-rollback',
         versionNo: 5,
-        source: 'ROLLBACK',
-        historyRecorded: true
+        source: 'ROLLBACK'
       }
     })
     await flushPromises()

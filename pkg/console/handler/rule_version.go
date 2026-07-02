@@ -44,7 +44,7 @@ const maxRuleVersionReasonLength = 1024
 
 func ListRuleVersions(cs consolectx.Context, kind coremodel.ResourceKind) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !ensureVersioningEnabled(c, cs) {
+		if !ensureVersioningAvailable(c, cs) {
 			return
 		}
 		resp, err := service.ListRuleVersions(cs, service.RuleKindName{Kind: kind, Mesh: c.Query("mesh"), Name: c.Param("ruleName")})
@@ -54,7 +54,7 @@ func ListRuleVersions(cs consolectx.Context, kind coremodel.ResourceKind) gin.Ha
 
 func GetRuleVersion(cs consolectx.Context, kind coremodel.ResourceKind) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !ensureVersioningEnabled(c, cs) {
+		if !ensureVersioningAvailable(c, cs) {
 			return
 		}
 		id, ok := parseVersionID(c)
@@ -68,7 +68,7 @@ func GetRuleVersion(cs consolectx.Context, kind coremodel.ResourceKind) gin.Hand
 
 func DiffRuleVersion(cs consolectx.Context, kind coremodel.ResourceKind) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !ensureVersioningEnabled(c, cs) {
+		if !ensureVersioningAvailable(c, cs) {
 			return
 		}
 		id, ok := parseVersionID(c)
@@ -82,7 +82,7 @@ func DiffRuleVersion(cs consolectx.Context, kind coremodel.ResourceKind) gin.Han
 
 func RollbackRuleVersion(cs consolectx.Context, kind coremodel.ResourceKind) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if !ensureVersioningEnabled(c, cs) {
+		if !ensureVersioningAvailable(c, cs) {
 			return
 		}
 		id, ok := parseVersionID(c)
@@ -156,7 +156,7 @@ func currentUser(c *gin.Context) string {
 	return "system:unknown"
 }
 
-func ensureVersioningEnabled(c *gin.Context, cs consolectx.Context) bool {
+func ensureVersioningAvailable(c *gin.Context, cs consolectx.Context) bool {
 	if cs.RuleVersioning() != nil {
 		return true
 	}
@@ -230,7 +230,6 @@ type rollbackRuleVersionAPI struct {
 	VersionID        string `json:"versionId"`
 	VersionNo        int64  `json:"versionNo"`
 	Source           string `json:"source"`
-	HistoryRecorded  bool   `json:"historyRecorded"`
 }
 
 func versioningAPIData(data any) any {
@@ -272,7 +271,6 @@ func versioningAPIData(data any) any {
 			VersionID:        formatInt64(v.VersionID),
 			VersionNo:        v.VersionNo,
 			Source:           v.Source,
-			HistoryRecorded:  v.HistoryRecorded,
 		}
 	default:
 		return data

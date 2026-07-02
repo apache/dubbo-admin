@@ -30,10 +30,9 @@ const (
 	DefaultMaxVersionsPerRule = int64(20)
 )
 
-// Config controls lightweight RuleVersion audit-history retention. Live rule
-// state remains in ResourceManager/registry, and history append failures must
-// not block rule mutations. A zero MaxVersionsPerRule disables cleanup; new
-// rule history entries are still recorded.
+// Config controls RuleVersion audit-history retention. Versioning is always on
+// for supported governance rule mutations; a zero MaxVersionsPerRule disables
+// cleanup only, not history recording.
 type Config struct {
 	config.BaseConfig
 	MaxVersionsPerRule int64 `json:"maxVersionsPerRule" yaml:"maxVersionsPerRule"`

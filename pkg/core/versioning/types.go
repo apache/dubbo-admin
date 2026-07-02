@@ -29,8 +29,12 @@ import (
 type Source string
 
 const (
-	SourceAdmin     Source = "ADMIN"     // User edit via Admin UI/API
-	SourceBootstrap Source = "BOOTSTRAP" // Initial version recorded at startup
+	SourceAdmin Source = "ADMIN" // User edit via Admin UI/API
+	// SourceUpstream marks a version imported from an upstream registry event.
+	SourceUpstream Source = "UPSTREAM"
+	// SourceBootstrap represents a baseline record for an existing rule when it
+	// is first brought under version tracking.
+	SourceBootstrap Source = "BOOTSTRAP"
 	// SourceRollback marks a version produced by re-publishing a historical
 	// snapshot. Rollback records a new version and does not rewrite history.
 	SourceRollback Source = "ROLLBACK"
@@ -47,7 +51,7 @@ const (
 var (
 	ErrVersionNotFound   = errors.New("rule version not found")
 	ErrVersionStoreError = errors.New("rule version store error")
-	ErrRollbackToDelete  = errors.New("cannot roll back to a deleted rule version")
+	ErrRollbackToDelete  = errors.New("cannot roll back to a DELETE marker")
 	ErrRollbackToCurrent = errors.New("cannot roll back to a version identical to current")
 )
 

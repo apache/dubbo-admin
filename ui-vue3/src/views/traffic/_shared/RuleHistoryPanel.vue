@@ -165,6 +165,7 @@ let disposed = false
 
 const sourceLabels: Record<string, string> = {
   ADMIN: 'ruleVersionDomain.sourceAdmin',
+  UPSTREAM: 'ruleVersionDomain.sourceUpstream',
   BOOTSTRAP: 'ruleVersionDomain.sourceBootstrap',
   ROLLBACK: 'ruleVersionDomain.sourceRollback'
 }
@@ -302,15 +303,11 @@ const handleRollbackConfirm = async () => {
     }
     if (res?.code === HTTP_STATUS.SUCCESS) {
       const versionNo = res.data?.versionNo
-      if (res.data?.historyRecorded === false) {
-        message.warning(t('ruleVersionDomain.rollbackHistoryRecordFailed'))
-      } else {
-        message.success(
-          versionNo
-            ? t('ruleVersionDomain.rollbackSuccessWithVersion', { versionNo })
-            : t('ruleVersionDomain.rollbackSuccess')
-        )
-      }
+      message.success(
+        versionNo
+          ? t('ruleVersionDomain.rollbackSuccessWithVersion', { versionNo })
+          : t('ruleVersionDomain.rollbackSuccess')
+      )
       rollbackConfirmOpen.value = false
       await loadHistory()
     }

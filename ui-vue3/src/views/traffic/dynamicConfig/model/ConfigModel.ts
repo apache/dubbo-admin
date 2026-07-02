@@ -103,7 +103,7 @@ export class ConfigModel {
   constructor(obj: any) {
     if (obj) {
       for (const key of Object.keys(this)) {
-        if (obj[key]) {
+        if (obj[key] !== undefined) {
           this[key] = obj[key]
         }
       }
@@ -296,7 +296,7 @@ export class ViewDataModel {
   }
 
   fromApiOutput(data: any) {
-    this.basicInfo.configVerison = data.configVerison || 'v3.0'
+    this.basicInfo.configVersion = data.configVersion || 'v3.0'
     this.basicInfo.scope = data.scope
     this.basicInfo.key = data.key
     this.basicInfo.enabled = data.enabled || false
@@ -325,8 +325,8 @@ export class ViewDataModel {
       scope: this.basicInfo.scope,
       key: this.basicInfo.key,
       enabled: this.basicInfo.enabled,
-      configVersion: this.basicInfo.configVerison || 'v3.0',
-      configs: this.config.map((x: configModel, idx: number) => {
+      configVersion: this.basicInfo.configVersion || 'v3.0',
+      configs: this.config.map((x: ConfigModel, idx: number) => {
         const match: any = {}
         const parameters: any = {}
         if (check) {
@@ -334,7 +334,6 @@ export class ViewDataModel {
             this.errorMsg.push(
               `配置 ${idx + 1}${i18n.global.t('dynamicConfigDomain.configType')} 不能为空`
             )
-            loading.value = false
             throw new Error('数据检查失败')
           }
           if (

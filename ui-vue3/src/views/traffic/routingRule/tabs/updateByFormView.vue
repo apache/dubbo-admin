@@ -278,9 +278,7 @@ watch(
 // Get condition routing details
 async function getRoutingRuleDetail() {
   let res = await getConditionRuleDetailAPI(route.params?.ruleName as string)
-  // console.log(res)
   if (res?.code === HTTP_STATUS.SUCCESS) {
-    console.log('res', res.data)
     const { conditions, configVersion, priority, enabled, force, key, runtime, scope } =
       res.data || {}
     baseInfo.ruleGranularity = scope

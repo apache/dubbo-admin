@@ -24,8 +24,10 @@ import (
 )
 
 // Store persists immutable rule-version history. Implementations append audit
-// entries and expose parent-rule queries; they are not part of rule-write
-// consistency.
+// entries and expose parent-rule queries. Callers must not depend on
+// ListVersions ordering unless a concrete implementation documents a stronger
+// contract; the versioning service sorts before applying previous-version
+// semantics.
 type Store interface {
 	InsertVersion(ctx context.Context, req InsertRequest, maxVersions int64) (*Version, error)
 	ListLatestVersions(kind coremodel.ResourceKind) ([]Version, error)

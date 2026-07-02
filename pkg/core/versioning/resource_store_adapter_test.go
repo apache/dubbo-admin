@@ -52,15 +52,13 @@ func TestResourceStoreAdapter_AppendsAndListsByParentRule(t *testing.T) {
 	assert.NotEqual(t, v1.ID, v2.ID)
 }
 
-func TestResourceStoreAdapter_DeleteVersionMarksSnapshotDeleted(t *testing.T) {
+func TestResourceStoreAdapter_DeleteVersionStoresAbsenceMarker(t *testing.T) {
 	versionStore := newVersionStore(t)
 	adapter := NewResourceStoreAdapter(versionStore)
 	res := conditionRouteForVersionTest("demo-rule", "v1")
 	_, err := adapter.InsertVersion(context.Background(), insertRequestForTest(t, res, OperationCreate), 10)
 	require.NoError(t, err)
 	deleteReq := insertRequestForTest(t, res, OperationDelete)
-	deleteReq.SpecJSON = `{"conditions":["v1"]}`
-	deleteReq.ContentHash = HashSpecJSON(deleteReq.SpecJSON)
 	_, err = adapter.InsertVersion(context.Background(), deleteReq, 10)
 	require.NoError(t, err)
 
@@ -69,7 +67,7 @@ func TestResourceStoreAdapter_DeleteVersionMarksSnapshotDeleted(t *testing.T) {
 	require.True(t, snapshot.Deleted)
 	require.NotNil(t, snapshot.Head)
 	assert.Equal(t, OperationDelete, snapshot.Head.Operation)
-	assert.Contains(t, snapshot.Head.SpecJSON, "v1")
+	assert.Equal(t, DeleteSpecJSON, snapshot.Head.SpecJSON)
 }
 
 func TestRecordBootstrapStateCreatesOnlyInitialBaseline(t *testing.T) {
@@ -119,11 +117,5 @@ func insertRequestForTest(t *testing.T, res *meshresource.ConditionRouteResource
 	t.Helper()
 	req, err := BuildInsertRequest(res, op, SourceAdmin, "admin", "", nil, time.Now())
 	require.NoError(t, err)
-	if op == OperationDelete {
-		hash, specJSON, err := NormalizeResource(res)
-		require.NoError(t, err)
-		req.ContentHash = hash
-		req.SpecJSON = specJSON
-	}
 	return req
 }
