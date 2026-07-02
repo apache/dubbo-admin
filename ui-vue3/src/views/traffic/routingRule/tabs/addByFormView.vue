@@ -157,7 +157,7 @@ import RoutingRuleList from '../components/RoutingRuleList.vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
 const routingRuleLogic = useRoutingRule()
 const {
@@ -177,7 +177,7 @@ onMounted(() => {
 
     conditions &&
       conditions.length &&
-      conditions.forEach((item, index) => {
+      conditions.forEach((item: string, index: number) => {
         const conditionArr = item.split(' => ')
         const match = conditionArr[0]?.trim()
         const to = conditionArr[1]?.trim()

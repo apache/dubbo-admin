@@ -89,7 +89,7 @@ import { isNil } from 'lodash'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from '@/base/http/constants'
 
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
 const router = useRouter()
 const isReadonly = ref(false)
@@ -135,7 +135,7 @@ onMounted(() => {
   }
 })
 
-const changeEditor = (val) => {
+const changeEditor = (val: string) => {
   TAB_STATE.conditionRule = yaml.load(YAMLValue.value)
 }
 

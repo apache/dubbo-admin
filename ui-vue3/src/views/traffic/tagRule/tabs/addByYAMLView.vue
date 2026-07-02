@@ -88,7 +88,7 @@ import { isNil } from 'lodash'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { HTTP_STATUS } from '@/base/http/constants'
 
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
 const router = useRouter()
 
@@ -121,7 +121,7 @@ onMounted(() => {
   }
 })
 
-const changeEditor = (val) => {
+const changeEditor = (val: string) => {
   TAB_STATE.tagRule = yaml.load(YAMLValue.value)
 }
 

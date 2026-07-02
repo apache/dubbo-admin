@@ -77,7 +77,7 @@ import { formattedDate } from '@/utils/DateUtil'
 import { useRoute } from 'vue-router'
 import { HTTP_STATUS } from '@/base/http/constants'
 import { message } from 'ant-design-vue'
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
 onMounted(() => {
   TAB_STATE.tagRule = null

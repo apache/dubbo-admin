@@ -235,7 +235,7 @@ import { isNil } from 'lodash'
 import { PROVIDE_INJECT_KEY } from '@/base/enums/ProvideInject'
 import { HTTP_STATUS } from '@/base/http/constants'
 
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
 onMounted(async () => {
   if (!isNil(TAB_STATE.tagRule)) {
@@ -259,7 +259,7 @@ onMounted(async () => {
     console.log('tags', tags)
     tags &&
       tags.length &&
-      tags.forEach((tagItem, tagIndex) => {
+      tags.forEach((tagItem: any, tagIndex: number) => {
         tagList.value.push({
           tagName: tagItem.name,
           scope: {
@@ -274,7 +274,7 @@ onMounted(async () => {
 
         const { match } = tagItem
         let formatLabels: any[] = []
-        match.forEach((matchItem) => {
+        match.forEach((matchItem: any) => {
           formatLabels.push({
             myKey: matchItem.key,
             condition: Object.keys(matchItem.value)[0],
@@ -459,24 +459,24 @@ const labelsColumns = ref([
 ])
 
 // tag list
-const tagList: any[] = ref([])
+const tagList = ref<any[]>([])
 
 watch(
   tagList,
   (newVal) => {
     console.log(newVal)
-    const tags = []
+    const tags: any[] = []
     newVal.forEach((tagItem) => {
       const { tagName, scope } = tagItem
       const labels = scope.labels
 
       const newTagItem = {
         name: tagName,
-        match: []
+        match: [] as any[]
       }
 
       if (labels && labels.length > 0) {
-        labels.forEach((labelItem) => {
+        labels.forEach((labelItem: any) => {
           newTagItem.match.push({
             key: labelItem.myKey,
             value: {
@@ -552,7 +552,7 @@ const getTagRuleDetail = async () => {
     baseInfo.ruleGranularity = scope
     baseInfo.objectOfAction = key
     tagList.value = []
-    tags.forEach((tagItem, tagIndex) => {
+    tags.forEach((tagItem: any, tagIndex: number) => {
       tagList.value.push({
         tagName: tagItem.name,
         scope: {
@@ -567,7 +567,7 @@ const getTagRuleDetail = async () => {
 
       const { match } = tagItem
       let formatLabels: any[] = []
-      match.forEach((matchItem) => {
+      match.forEach((matchItem: any) => {
         formatLabels.push({
           myKey: matchItem.key,
           condition: Object.keys(matchItem.value)[0],
@@ -601,17 +601,17 @@ const updateTagRule = async () => {
       enabled: enable,
       force: faultTolerantProtection,
       runtime,
-      tags: []
+      tags: [] as any[]
     }
-    tagList.value.forEach((tagItem) => {
+    tagList.value.forEach((tagItem: any) => {
       const tag = {
         name: tagItem.tagName,
-        match: []
+        match: [] as any[]
       }
-      tagItem.scope.labels.forEach((labelItem) => {
+      tagItem.scope.labels.forEach((labelItem: any) => {
         const matchItem = {
           key: labelItem.myKey,
-          value: {}
+          value: {} as Record<string, any>
         }
         matchItem.value[labelItem.condition] = labelItem.value
         tag.match.push(matchItem)

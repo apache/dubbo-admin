@@ -157,7 +157,7 @@ import RoutingRuleList from '../components/RoutingRuleList.vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 const loading = ref(false)
 
 const routingRuleLogic = useRoutingRule()
@@ -196,7 +196,7 @@ onMounted(async () => {
         )
       } else {
         routeList.value = []
-        conditions.forEach((item, index) => {
+        conditions.forEach((item: string, index: number) => {
           // Add new route item for each condition
           routeList.value.push({
             selectedMatchConditionTypes: [],
@@ -299,7 +299,7 @@ async function getRoutingRuleDetail() {
       }
       // Clear and rebuild routeList based on conditions
       routeList.value = []
-      conditions.forEach((item, index) => {
+      conditions.forEach((item: string, index: number) => {
         // Add new route item for each condition
         routeList.value.push({
           selectedMatchConditionTypes: [],
@@ -356,7 +356,7 @@ const updateRoutingRule = async () => {
 }
 
 const getVersionAndGroup = () => {
-  const conditionName = route.params?.ruleName
+  const conditionName = String(route.params?.ruleName || '')
   // console.log('lll', baseInfo)
   if (conditionName && baseInfo.ruleGranularity === 'service') {
     const arr = conditionName.split(':')

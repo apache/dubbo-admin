@@ -78,7 +78,7 @@ import { message } from 'ant-design-vue'
 const router = useRouter()
 
 let __null = PRIMARY_COLOR
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 TAB_STATE.dynamicConfigForm = reactive({})
 let columns = [
   {
@@ -93,7 +93,7 @@ let columns = [
     title: 'ruleGranularity',
     key: 'ruleGranularity',
     dataIndex: 'ruleGranularity',
-    render: (text, record) => (record.isService ? '服务' : '应用'),
+    render: (_text: any, record: any) => (record.isService ? '服务' : '应用'),
     width: 100
     // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },
@@ -108,7 +108,7 @@ let columns = [
     title: 'enabled',
     key: 'enabled',
     dataIndex: 'enabled',
-    render: (text, record) => (record.enabled ? '是' : '否'),
+    render: (_text: any, record: any) => (record.enabled ? '是' : '否'),
     width: 120
     // sorter: (a: any, b: any) => sortString(a.instanceNum, b.instanceNum)
   },

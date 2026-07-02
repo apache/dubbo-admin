@@ -90,7 +90,7 @@ import yaml from 'js-yaml'
 import { isNil } from 'lodash'
 import { message } from 'ant-design-vue'
 import { HTTP_STATUS } from '@/base/http/constants'
-const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE)
+const TAB_STATE = inject(PROVIDE_INJECT_KEY.TAB_LAYOUT_STATE) as any
 
 const route = useRoute()
 const isReadonly = ref(false)
@@ -128,7 +128,7 @@ const parseYAMLObject = (): Record<string, any> => {
 async function getRoutingRuleDetail() {
   let res = await getConditionRuleDetailAPI(route.params?.ruleName as string)
   if (res?.code === HTTP_STATUS.SUCCESS) {
-    const conditionName = route.params?.ruleName
+    const conditionName = String(route.params?.ruleName || '')
     if (conditionName && res.data.scope === 'service') {
       const arr = conditionName?.split(':')
       res.data.group = arr[2]?.split('.')[0]
