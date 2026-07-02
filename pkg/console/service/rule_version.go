@@ -52,13 +52,26 @@ func requiredRuleVersioning(ctx consolectx.Context) (*versioning.Service, error)
 	return svc, nil
 }
 
-func getExistingRule(ctx consolectx.Context, kindName RuleKindName) (coremodel.Resource, error) {
+// getRuleIfExists reads the live ResourceManager state, not recorded history.
+func getRuleIfExists(ctx consolectx.Context, kindName RuleKindName) (coremodel.Resource, bool, error) {
 	key := coremodel.BuildResourceKey(kindName.Mesh, kindName.Name)
 	res, exists, err := ctx.ResourceManager().GetByKey(kindName.Kind, key)
+	if err != nil {
+		return nil, false, err
+	}
+	if !exists || res == nil {
+		return nil, false, nil
+	}
+	return res, true, nil
+}
+
+func getExistingRule(ctx consolectx.Context, kindName RuleKindName) (coremodel.Resource, error) {
+	res, exists, err := getRuleIfExists(ctx, kindName)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
+		key := coremodel.BuildResourceKey(kindName.Mesh, kindName.Name)
 		return nil, fmt.Errorf("%s %s does not exist", kindName.Kind, key)
 	}
 	return res, nil
@@ -169,14 +182,12 @@ func DiffRuleVersion(ctx consolectx.Context, kindName RuleKindName, versionID in
 	if err != nil {
 		return nil, err
 	}
-	// "current" means the live ResourceManager/registry state, not the latest
-	// recorded RuleVersion ledger entry.
-	current, exists, err := ctx.ResourceManager().GetByKey(kindName.Kind, coremodel.BuildResourceKey(kindName.Mesh, kindName.Name))
+	current, exists, err := getRuleIfExists(ctx, kindName)
 	if err != nil {
 		return nil, err
 	}
 	specJSON := versioning.DeleteSpecJSON
-	if exists && current != nil {
+	if exists {
 		_, specJSON, err = versioning.NormalizeResource(current)
 		if err != nil {
 			return nil, err
@@ -217,12 +228,11 @@ func RollbackRuleVersion(ctx consolectx.Context, kindName RuleKindName, targetVe
 		return nil, bizerror.New(bizerror.InvalidArgument, "only CREATE or UPDATE rule versions can be rolled back")
 	}
 
-	resourceKey := coremodel.BuildResourceKey(kindName.Mesh, kindName.Name)
-	current, exists, err := ctx.ResourceManager().GetByKey(kindName.Kind, resourceKey)
+	current, exists, err := getRuleIfExists(ctx, kindName)
 	if err != nil {
 		return nil, err
 	}
-	if exists && current != nil {
+	if exists {
 		hash, _, err := versioning.NormalizeResource(current)
 		if err != nil {
 			return nil, err

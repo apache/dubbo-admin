@@ -48,23 +48,13 @@ func buildParentIndexKey(kind coremodel.ResourceKind, resourceKey string) string
 }
 
 func extractMesh(resourceKey string) string {
-	// resourceKey format: "mesh/name" or just "name"
-	for i := 0; i < len(resourceKey); i++ {
-		if resourceKey[i] == '/' {
-			return resourceKey[:i]
-		}
-	}
-	return ""
+	mesh, _ := coremodel.ParseResourceKey(resourceKey)
+	return mesh
 }
 
 func extractName(resourceKey string) string {
-	// resourceKey format: "mesh/name" or just "name"
-	for i := 0; i < len(resourceKey); i++ {
-		if resourceKey[i] == '/' {
-			return resourceKey[i+1:]
-		}
-	}
-	return resourceKey
+	_, name := coremodel.ParseResourceKey(resourceKey)
+	return name
 }
 
 func extractIDFromName(name string) (int64, error) {

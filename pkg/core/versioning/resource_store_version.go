@@ -61,46 +61,28 @@ func (a *ResourceStoreAdapter) ListLatestVersions(kind coremodel.ResourceKind) (
 	if err := a.ensureStores(); err != nil {
 		return nil, err
 	}
+	// ListLatestVersions builds the global latest list, so it scans all stored
+	// RuleVersion resources and groups by parent. ByParentRule is only suitable
+	// for a single parent query; this pass intentionally avoids a new index.
 	keys := a.versionStore.ListKeys()
 	objs, err := a.versionStore.GetByKeys(keys)
 	if err != nil {
 		return nil, err
 	}
+	versions, err := versionsFromResources(objs, kind, "", false, "")
+	if err != nil {
+		return nil, err
+	}
 	byParent := make(map[string][]Version)
-	for _, obj := range objs {
-		rv, ok := obj.(*meshresource.RuleVersionResource)
-		if !ok {
-			return nil, fmt.Errorf("%w: expected RuleVersionResource, got %T", ErrVersionStoreError, obj)
-		}
-		if rv.Spec == nil {
-			return nil, fmt.Errorf("%w: RuleVersion spec is nil for %s", ErrVersionStoreError, rv.ResourceKey())
-		}
-		if rv.Spec.ParentRuleKind != string(kind) {
-			continue
-		}
-		id, err := versionIDFromResource(rv)
-		if err != nil {
-			return nil, fmt.Errorf("%w: %v", ErrVersionStoreError, err)
-		}
-		v, err := protoToVersion(rv.Spec, id)
-		if err != nil {
-			return nil, err
-		}
-		byParent[v.ResourceKey] = append(byParent[v.ResourceKey], *v)
+	for _, version := range versions {
+		byParent[version.ResourceKey] = append(byParent[version.ResourceKey], version)
 	}
 
 	latest := make([]Version, 0, len(byParent))
 	for resourceKey, versions := range byParent {
-		seenVersionNo := make(map[int64]int64, len(versions))
-		for _, version := range versions {
-			if previousID, ok := seenVersionNo[version.VersionNo]; ok && previousID != version.ID {
-				return nil, duplicateVersionNoError(kind, resourceKey, version.VersionNo, previousID, version.ID)
-			}
-			seenVersionNo[version.VersionNo] = version.ID
+		if err := validateAndSortVersions(kind, resourceKey, versions); err != nil {
+			return nil, err
 		}
-		sort.Slice(versions, func(i, j int) bool {
-			return versions[i].VersionNo > versions[j].VersionNo
-		})
 		if len(versions) > 0 {
 			latest = append(latest, versions[0])
 		}
@@ -148,37 +130,13 @@ func (a *ResourceStoreAdapter) historyState(kind coremodel.ResourceKind, resourc
 		return nil, err
 	}
 
-	versions := make([]Version, 0, len(objs))
-	for _, obj := range objs {
-		rv, ok := obj.(*meshresource.RuleVersionResource)
-		if !ok {
-			return nil, fmt.Errorf("%w: expected RuleVersionResource, got %T", ErrVersionStoreError, obj)
-		}
-		if rv.Spec == nil {
-			return nil, fmt.Errorf("%w: RuleVersion spec is nil for parent %s", ErrVersionStoreError, parentKey)
-		}
-		id, err := versionIDFromResource(rv)
-		if err != nil {
-			return nil, fmt.Errorf("%w: %v", ErrVersionStoreError, err)
-		}
-		v, err := protoToVersion(rv.Spec, id)
-		if err != nil {
-			return nil, err
-		}
-		versions = append(versions, *v)
+	versions, err := versionsFromIndexObjects(objs, kind, resourceKey, true, "parent "+parentKey)
+	if err != nil {
+		return nil, err
 	}
-
-	seenVersionNo := make(map[int64]int64, len(versions))
-	for _, version := range versions {
-		if previousID, ok := seenVersionNo[version.VersionNo]; ok && previousID != version.ID {
-			return nil, duplicateVersionNoError(kind, resourceKey, version.VersionNo, previousID, version.ID)
-		}
-		seenVersionNo[version.VersionNo] = version.ID
+	if err := validateAndSortVersions(kind, resourceKey, versions); err != nil {
+		return nil, err
 	}
-
-	sort.Slice(versions, func(i, j int) bool {
-		return versions[i].VersionNo > versions[j].VersionNo
-	})
 
 	state := &historyState{Versions: versions}
 	if len(versions) > 0 {
@@ -186,6 +144,76 @@ func (a *ResourceStoreAdapter) historyState(kind coremodel.ResourceKind, resourc
 		state.MaxVersionNo = versions[0].VersionNo
 	}
 	return state, nil
+}
+
+func versionsFromResources(objs []coremodel.Resource, kind coremodel.ResourceKind, resourceKey string, filterParent bool, specContext string) ([]Version, error) {
+	versions := make([]Version, 0, len(objs))
+	for _, obj := range objs {
+		version, include, err := versionFromObject(obj, kind, resourceKey, filterParent, specContext)
+		if err != nil {
+			return nil, err
+		}
+		if include {
+			versions = append(versions, version)
+		}
+	}
+	return versions, nil
+}
+
+func versionsFromIndexObjects(objs []interface{}, kind coremodel.ResourceKind, resourceKey string, filterParent bool, specContext string) ([]Version, error) {
+	versions := make([]Version, 0, len(objs))
+	for _, obj := range objs {
+		version, include, err := versionFromObject(obj, kind, resourceKey, filterParent, specContext)
+		if err != nil {
+			return nil, err
+		}
+		if include {
+			versions = append(versions, version)
+		}
+	}
+	return versions, nil
+}
+
+func versionFromObject(obj interface{}, kind coremodel.ResourceKind, resourceKey string, filterParent bool, specContext string) (Version, bool, error) {
+	rv, ok := obj.(*meshresource.RuleVersionResource)
+	if !ok {
+		return Version{}, false, fmt.Errorf("%w: expected RuleVersionResource, got %T", ErrVersionStoreError, obj)
+	}
+	if rv.Spec == nil {
+		if specContext == "" {
+			specContext = rv.ResourceKey()
+		}
+		return Version{}, false, fmt.Errorf("%w: RuleVersion spec is nil for %s", ErrVersionStoreError, specContext)
+	}
+	if rv.Spec.ParentRuleKind != string(kind) {
+		return Version{}, false, nil
+	}
+	if filterParent && !versionResourceMatchesParent(rv, kind, resourceKey) {
+		return Version{}, false, nil
+	}
+	id, err := versionIDFromResource(rv)
+	if err != nil {
+		return Version{}, false, fmt.Errorf("%w: %v", ErrVersionStoreError, err)
+	}
+	v, err := protoToVersion(rv.Spec, id)
+	if err != nil {
+		return Version{}, false, err
+	}
+	return *v, true, nil
+}
+
+func validateAndSortVersions(kind coremodel.ResourceKind, resourceKey string, versions []Version) error {
+	seenVersionNo := make(map[int64]int64, len(versions))
+	for _, version := range versions {
+		if previousID, ok := seenVersionNo[version.VersionNo]; ok && previousID != version.ID {
+			return duplicateVersionNoError(kind, resourceKey, version.VersionNo, previousID, version.ID)
+		}
+		seenVersionNo[version.VersionNo] = version.ID
+	}
+	sort.Slice(versions, func(i, j int) bool {
+		return versions[i].VersionNo > versions[j].VersionNo
+	})
+	return nil
 }
 
 func (a *ResourceStoreAdapter) InsertVersion(ctx context.Context, req InsertRequest, maxVersions int64) (*Version, error) {
